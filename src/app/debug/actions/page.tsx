@@ -1,0 +1,94 @@
+'use client';
+
+import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import Link from 'next/link';
+import { ManageActions } from '@/features/debug/components/ManageActions';
+import { db } from '@/lib/db';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+
+export default function ManageActionsMaster() {
+  const [newActionName, setNewActionName] = useState('');
+
+  // Get all actions from the actions_master table
+  const actions = useLiveQuery(() => db.actions_master.toArray());
+
+  // Add a new action
+  const addAction = async () => {
+    if (!newActionName.trim()) return;
+    try {
+      await db.actions_master.add({
+        name: newActionName,
+      });
+      setNewActionName(''); // Clear input field
+    } catch (error) {
+      console.error('Failed to add action:', error);
+      // Here you could add a user-facing error message
+    }
+  };
+
+  // Delete an action
+  const deleteAction = async (id: number) => {
+    try {
+      await db.actions_master.delete(id);
+    } catch (error) {
+      console.error('Failed to delete action:', error);
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Manage Tactical Actions (actions_master)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex w-full max-w-sm items-center space-x-2">
+            <Input
+              type="text"
+              placeholder="e.g., #DecoyRun"
+              value={newActionName}
+              onChange={e => setNewActionName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addAction()}
+            />
+            <Button type="submit" onClick={addAction}>
+              Add Action
+            </Button>
+          </div>
+
+          <Separator className="my-4" />
+
+          <h2 className="text-lg font-semibold mb-2">Existing Actions</h2>
+          <ScrollArea className="h-72 w-full rounded-md border">
+            <div className="p-4">
+              {actions?.map(action => (
+                <div
+                  key={action.id}
+                  className="flex items-center justify-between mb-2"
+                >
+                  <span>{action.name}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => action.id && deleteAction(action.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              ))}
+              {actions?.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No actions found. Add one above.
+                </p>
+              )}
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

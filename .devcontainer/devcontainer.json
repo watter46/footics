@@ -2,7 +2,7 @@
   "name": "nextjs",
   "dockerComposeFile": "../compose.yml",
   "service": "next",
-  "workspaceFolder": "/app",
+  "workspaceFolder": "/src",
   "runServices": ["next"],
   "shutdownAction": "stopCompose",
   "forwardPorts": [3000],
@@ -14,12 +14,14 @@
   },
   "containerEnv": {
     "NEXT_TELEMETRY_DISABLED": "1",
-    "TURBOPACK": "1"
+    "TURBOPACK": "1",
+    "PNPM_HOME": "/root/.local/share/pnpm"
   },
   "remoteEnv": {
-    "NEXT_TELEMETRY_DISABLED": "1"
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "PNPM_HOME": "/root/.local/share/pnpm"
   },
-  "postCreateCommand": "pnpm install",
+  // "postCreateCommand": "pnpm install", // Dockerfileで既にインストール済み
   "customizations": {
     "vscode": {
       "settings": {
@@ -35,7 +37,14 @@
         "files.watcherExclude": {
           "**/.next/**": true,
           "**/.turbo/**": true
-        }
+        },
+        "github.copilot.enable": {
+          "*": true
+        },
+        "github.copilot.chat.enabled": true,
+        "github.copilot.advanced.agent.enabled": true,
+        "github.copilot.inlineSuggest.enable": true,
+        "github.copilot.editor.enableAutoCompletions": true
       },
       "extensions": [
         "esbenp.prettier-vscode",
@@ -53,5 +62,5 @@
       ]
     }
   },
-  "remoteUser": "root"
+  "remoteUser": "node"
 }

@@ -1,7 +1,7 @@
 # Next.js 開発用Dockerfile (Node.js 24 LTS)
 FROM node:24-slim AS development
 
-WORKDIR /app
+WORKDIR /src
 
 # 開発に便利なツールのインストール（最小限）
 RUN apt-get update && \

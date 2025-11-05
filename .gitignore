@@ -16,7 +16,6 @@ pnpm-debug.log*
 Thumbs.db
 
 # Editor
-.vscode/
 .idea/
 *.swp
 
@@ -30,7 +29,8 @@ dist/
 coverage/
 
 # Env
-.env
+.env.local
+.env.*.local
 .env.*
 
 # Misc
@@ -48,3 +48,5 @@ coverage/
 # Public assets (except favicon etc. for Next.js)
 public/
 !public/favicon.ico
+
+cfc/

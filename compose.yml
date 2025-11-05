@@ -1,6 +1,7 @@
 volumes:
   node_modules:
   nextjs_cache:
+  pnpm_store:
 
 services:
   next:
@@ -9,14 +10,18 @@ services:
       dockerfile: docker/next/Dockerfile
       target: development
     container_name: next
+    command: /src/docker/next/dev-entrypoint.sh
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - '3000:3000'
     volumes:
-      # プロジェクトルート全体をマウント（cached で高速化）
-      - .:/app:cached
+      # プロジェクトルート全体をマウント
+      - .:/src
       # node_modulesとキャッシュは名前付きボリュームで分離（重要）
-      - node_modules:/app/node_modules
-      - nextjs_cache:/app/.next
+      - node_modules:/src/node_modules
+      - nextjs_cache:/src/.next
+      - pnpm_store:/pnpm-store
+      - ./docs:/src/docs
     environment:
       - NODE_ENV=development
       # ホットリロード最適化
@@ -24,5 +29,7 @@ services:
       - CHOKIDAR_USEPOLLING=true
       # Turbopack有効化（Next.js 15+）
       - TURBOPACK=1
+      # pnpmのストアを固定し、store競合を回避
+      - PNPM_STORE_DIR=/pnpm-store
     stdin_open: true
     tty: true
