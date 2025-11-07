@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import Link from 'next/link';
-import { ManageTeams } from '@/features/debug/components/ManageTeams';
 import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

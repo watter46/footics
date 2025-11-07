@@ -39,15 +39,16 @@ const MatchDetailPage = ({ params }: MatchDetailPageProps) => {
     }
     const ids = [match.team1Id, match.team2Id];
     return Array.from(new Set(ids.filter(teamId => Number.isFinite(teamId))));
-  }, [match?.team1Id, match?.team2Id]);
+  }, [match]);
 
-  const teams =
-    useLiveQuery<TempTeam[]>(async () => {
-      if (teamIds.length === 0) {
-        return [];
-      }
-      return db.temp_teams.where('id').anyOf(teamIds).toArray();
-    }, [JSON.stringify(teamIds)]) ?? [];
+  const teamsData = useLiveQuery<TempTeam[]>(async () => {
+    if (teamIds.length === 0) {
+      return [];
+    }
+    return db.temp_teams.where('id').anyOf(teamIds).toArray();
+  }, [teamIds]);
+
+  const teams = useMemo(() => teamsData ?? [], [teamsData]);
 
   const teamNameById = useMemo(() => {
     const map = new Map<number, string>();
@@ -73,7 +74,7 @@ const MatchDetailPage = ({ params }: MatchDetailPageProps) => {
       console.warn('Failed to format match date', error);
       return match.date;
     }
-  }, [match?.date]);
+  }, [match]);
 
   const isLoading = matchResult === undefined;
   const isInvalidId = matchId === null;

@@ -1,8 +1,9 @@
 {
-  "name": "nextjs",
+  "name": "footics",
   "dockerComposeFile": "../compose.yml",
   "service": "next",
   "workspaceFolder": "/src",
+  "remoteUser": "node",
   "runServices": ["next"],
   "shutdownAction": "stopCompose",
   "forwardPorts": [3000],
@@ -15,13 +16,12 @@
   "containerEnv": {
     "NEXT_TELEMETRY_DISABLED": "1",
     "TURBOPACK": "1",
-    "PNPM_HOME": "/root/.local/share/pnpm"
+    "PNPM_HOME": "/home/node/.local/share/pnpm"
   },
   "remoteEnv": {
     "NEXT_TELEMETRY_DISABLED": "1",
-    "PNPM_HOME": "/root/.local/share/pnpm"
+    "PNPM_HOME": "/home/node/.local/share/pnpm"
   },
-  // "postCreateCommand": "pnpm install", // Dockerfileで既にインストール済み
   "customizations": {
     "vscode": {
       "settings": {
@@ -61,6 +61,5 @@
         "ms-vscode.vscode-typescript-next"
       ]
     }
-  },
-  "remoteUser": "node"
+  }
 }

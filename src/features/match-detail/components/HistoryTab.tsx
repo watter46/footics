@@ -103,7 +103,7 @@ export const HistoryTab = ({ match }: HistoryTabProps) => {
     if (activeEvent) {
       setMemoDraft(activeEvent.memo ?? '');
     }
-  }, [activeEvent?.id, activeEvent?.memo]);
+  }, [activeEvent]);
 
   const closeModal = () => {
     setActiveEventId(null);
@@ -151,8 +151,9 @@ export const HistoryTab = ({ match }: HistoryTabProps) => {
             <ScrollArea className="max-h-[480px]">
               <div className="space-y-3 pr-2">
                 {events.map(event => {
-                  const playerName =
-                    playerNameById.get(event.playerId) ?? '選手未登録';
+                  const playerName = event.playerId
+                    ? playerNameById.get(event.playerId) ?? '選手未登録'
+                    : '選手未登録';
                   const actionName =
                     actionNameById.get(event.actionId) ?? 'アクション未登録';
                   const memo = event.memo?.trim();
@@ -195,7 +196,9 @@ export const HistoryTab = ({ match }: HistoryTabProps) => {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base text-slate-100">
                 {activeEvent.matchTime} /{' '}
-                {playerNameById.get(activeEvent.playerId) ?? '選手未登録'}
+                {activeEvent.playerId
+                  ? playerNameById.get(activeEvent.playerId) ?? '選手未登録'
+                  : '選手未登録'}
               </CardTitle>
               <Button size="icon" variant="ghost" onClick={closeModal}>
                 <X className="h-5 w-5" />

@@ -44,8 +44,9 @@ export const useLineupStore = create<LineupState>(set => ({
       if (!(matchId in state.starters)) {
         return state;
       }
-      const { [matchId]: _removed, ...rest } = state.starters;
-      return { starters: rest };
+      const updatedStarters = { ...state.starters };
+      delete updatedStarters[matchId];
+      return { starters: updatedStarters };
     });
   },
 }));

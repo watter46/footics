@@ -19,13 +19,21 @@ interface RecordTabProps {
   teamNameById: Map<number, string>;
 }
 
-const usePlayers = (teamIds: number[]) =>
+const ACTION_CATEGORIES = [
+  '攻撃',
+  '守備',
+  'トランジション',
+  'イベント',
+  'メンタル/その他',
+] as const;
+
+const usePlayers = (teamIds: readonly number[]) =>
   useLiveQuery<TempPlayer[]>(async () => {
     if (teamIds.length === 0) {
       return [];
     }
     return db.temp_players.where('teamId').anyOf(teamIds).toArray();
-  }, [JSON.stringify(teamIds)]) ?? [];
+  }, [teamIds]) ?? [];
 
 const useActionMasters = () =>
   useLiveQuery<ActionMaster[]>(
@@ -71,17 +79,9 @@ export const RecordTab = ({ match, teamNameById }: RecordTabProps) => {
   const players = usePlayers(teamIds);
   const actions = useActionMasters();
 
-  const categories = [
-    '攻撃',
-    '守備',
-    'トランジション',
-    'イベント',
-    'メンタル/その他',
-  ];
-
   const actionsByCategory = useMemo(() => {
     const grouped = new Map<string, ActionMaster[]>();
-    categories.forEach(cat => grouped.set(cat, []));
+    ACTION_CATEGORIES.forEach(cat => grouped.set(cat, []));
 
     actions.forEach(action => {
       const category = action.category || 'その他';
@@ -281,9 +281,9 @@ export const RecordTab = ({ match, teamNameById }: RecordTabProps) => {
                   アクションマスタが登録されていません。Debugメニューで追加してください。
                 </p>
               ) : (
-                <Tabs defaultValue={categories[0]} className="w-full">
+                <Tabs defaultValue={ACTION_CATEGORIES[0]} className="w-full">
                   <TabsList className="w-full grid grid-cols-5 h-auto">
-                    {categories.map(category => (
+                    {ACTION_CATEGORIES.map(category => (
                       <TabsTrigger
                         key={category}
                         value={category}
@@ -293,7 +293,7 @@ export const RecordTab = ({ match, teamNameById }: RecordTabProps) => {
                       </TabsTrigger>
                     ))}
                   </TabsList>
-                  {categories.map(category => {
+                  {ACTION_CATEGORIES.map(category => {
                     const categoryActions =
                       actionsByCategory.get(category) ?? [];
                     return (

@@ -1,9 +1,7 @@
-# Next.js 開発用Dockerfile (Node.js 24 LTS)
 FROM node:24-slim AS development
 
 WORKDIR /src
 
-# 開発に便利なツールのインストール（最小限）
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     git \
@@ -11,18 +9,13 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# pnpmのインストール
 RUN npm install -g pnpm
 
-# 依存関係用ファイルをコピー
-COPY package.json pnpm-lock.yaml ./
+ENV PNPM_HOME="/home/node/.local/share/pnpm"
+ENV PATH=${PNPM_HOME}:${PATH}
 
-# 依存関係インストール
-RUN pnpm install
+RUN mkdir /pnpm-store /src/node_modules && chown -R node:node /pnpm-store /src/node_modules /src
 
-# アプリケーションのソースをコピー
-COPY . .
+USER node
 
-EXPOSE 3000
-
-CMD ["pnpm", "dev"]
+CMD ["sleep", "infinity"]

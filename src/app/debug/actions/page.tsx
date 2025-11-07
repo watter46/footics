@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import Link from 'next/link';
-import { ManageActions } from '@/features/debug/components/ManageActions';
 import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,18 +11,21 @@ import { Separator } from '@/components/ui/separator';
 
 export default function ManageActionsMaster() {
   const [newActionName, setNewActionName] = useState('');
+  const [newActionCategory, setNewActionCategory] = useState('');
 
   // Get all actions from the actions_master table
   const actions = useLiveQuery(() => db.actions_master.toArray());
 
   // Add a new action
   const addAction = async () => {
-    if (!newActionName.trim()) return;
+    if (!newActionName.trim() || !newActionCategory.trim()) return;
     try {
       await db.actions_master.add({
         name: newActionName,
+        category: newActionCategory,
       });
       setNewActionName(''); // Clear input field
+      setNewActionCategory(''); // Clear category field
     } catch (error) {
       console.error('Failed to add action:', error);
       // Here you could add a user-facing error message
@@ -47,7 +48,7 @@ export default function ManageActionsMaster() {
           <CardTitle>Manage Tactical Actions (actions_master)</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex w-full max-w-sm items-center space-x-2">
+          <div className="space-y-2">
             <Input
               type="text"
               placeholder="e.g., #DecoyRun"
@@ -55,7 +56,14 @@ export default function ManageActionsMaster() {
               onChange={e => setNewActionName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addAction()}
             />
-            <Button type="submit" onClick={addAction}>
+            <Input
+              type="text"
+              placeholder="e.g., 攻撃, 守備, トランジション"
+              value={newActionCategory}
+              onChange={e => setNewActionCategory(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addAction()}
+            />
+            <Button type="submit" onClick={addAction} className="w-full">
               Add Action
             </Button>
           </div>
@@ -70,7 +78,12 @@ export default function ManageActionsMaster() {
                   key={action.id}
                   className="flex items-center justify-between mb-2"
                 >
-                  <span>{action.name}</span>
+                  <div>
+                    <span className="font-medium">{action.name}</span>
+                    <span className="text-sm text-muted-foreground ml-2">
+                      ({action.category})
+                    </span>
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"

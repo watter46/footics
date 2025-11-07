@@ -11,16 +11,19 @@ import { Separator } from '@/components/ui/separator';
 
 export function ManageActions() {
   const [newActionName, setNewActionName] = useState('');
+  const [newActionCategory, setNewActionCategory] = useState('');
 
   const actions = useLiveQuery(() => db.actions_master.toArray());
 
   const addAction = async () => {
-    if (!newActionName.trim()) return;
+    if (!newActionName.trim() || !newActionCategory.trim()) return;
     try {
       await db.actions_master.add({
         name: newActionName,
+        category: newActionCategory,
       });
       setNewActionName('');
+      setNewActionCategory('');
     } catch (error) {
       console.error('Failed to add action:', error);
     }
@@ -40,15 +43,22 @@ export function ManageActions() {
         <CardTitle>Manage Tactical Actions</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex w-full max-w-sm items-center space-x-2">
+        <div className="space-y-2">
           <Input
             type="text"
-            placeholder="e.g., #DecoyRun"
+            placeholder="Action name (e.g., #DecoyRun)"
             value={newActionName}
             onChange={e => setNewActionName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addAction()}
           />
-          <Button type="submit" onClick={addAction}>
+          <Input
+            type="text"
+            placeholder="Category (e.g., 攻撃, 守備)"
+            value={newActionCategory}
+            onChange={e => setNewActionCategory(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addAction()}
+          />
+          <Button type="submit" onClick={addAction} className="w-full">
             Add Action
           </Button>
         </div>
@@ -61,7 +71,12 @@ export function ManageActions() {
                 key={action.id}
                 className="flex items-center justify-between mb-2"
               >
-                <span>{action.name}</span>
+                <div>
+                  <span className="font-medium">{action.name}</span>
+                  <span className="text-sm text-muted-foreground ml-2">
+                    ({action.category})
+                  </span>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
