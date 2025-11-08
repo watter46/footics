@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
+import { db, seedInitialData } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,7 @@ export default function ManageTempPlayers() {
   const [playerName, setPlayerName] = useState('');
   const [playerNumber, setPlayerNumber] = useState('');
   const [playerPosition, setPlayerPosition] = useState('');
+  const [isSeeding, setIsSeeding] = useState(false);
 
   // 1. Get all teams for the dropdown
   const teams = useLiveQuery(() => db.temp_teams.toArray(), []);
@@ -59,6 +60,17 @@ export default function ManageTempPlayers() {
     }
   };
 
+  const handleSeedPlayers = async () => {
+    try {
+      setIsSeeding(true);
+      await seedInitialData({ reset: true });
+    } catch (error) {
+      console.error('Failed to seed players:', error);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-4">
       <Card>
@@ -87,6 +99,15 @@ export default function ManageTempPlayers() {
                 </option>
               ))}
             </select>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSeedPlayers}
+              disabled={isSeeding}
+              className="mt-3"
+            >
+              {isSeeding ? 'Seeding...' : 'Seed Default Data'}
+            </Button>
           </div>
 
           <Separator className="my-4" />

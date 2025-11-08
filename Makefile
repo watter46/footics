@@ -9,14 +9,12 @@ up:
 down:
 	docker compose down
 
-stop:
-	docker compose stop
-
 start:
 	docker compose start
 
 restart:
-	docker compose restart next
+	@make down
+	@make up
 
 logs:
 	docker compose logs -f next
@@ -24,12 +22,9 @@ logs:
 build:
 	docker compose build --no-cache
 
-rebuild: down build up
-	@echo "Container rebuilt and started"
-
 # Development commands (inside container)
 dev:
-	docker compose up
+	docker compose exec next pnpm dev
 
 install:
 	docker compose exec next pnpm install

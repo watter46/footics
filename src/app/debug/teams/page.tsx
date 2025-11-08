@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
+import { db, seedInitialData } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,9 +11,21 @@ import { Separator } from '@/components/ui/separator';
 
 export default function ManageTempTeams() {
   const [newTeamName, setNewTeamName] = useState('');
+  const [isSeeding, setIsSeeding] = useState(false);
 
   // Get all teams from the temp_teams table
   const teams = useLiveQuery(() => db.temp_teams.toArray());
+
+  const handleSeedTeams = async () => {
+    try {
+      setIsSeeding(true);
+      await seedInitialData({ reset: true });
+    } catch (error) {
+      console.error('Failed to seed teams:', error);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   // Add a new team
   const addTeam = async () => {
@@ -46,6 +58,14 @@ export default function ManageTempTeams() {
         </CardHeader>
         <CardContent>
           <div className="flex w-full max-w-sm items-center space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSeedTeams}
+              disabled={isSeeding}
+            >
+              {isSeeding ? 'Seeding...' : 'Seed Default Data'}
+            </Button>
             <Input
               type="text"
               placeholder="e.g., Team A"

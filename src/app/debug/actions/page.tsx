@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
+import { db, seedActionMaster } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,18 @@ export default function ManageActionsMaster() {
 
   // Get all actions from the actions_master table
   const actions = useLiveQuery(() => db.actions_master.toArray());
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleSeedActions = async () => {
+    try {
+      setIsSeeding(true);
+      await seedActionMaster({ reset: true });
+    } catch (error) {
+      console.error('Failed to seed actions:', error);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   // Add a new action
   const addAction = async () => {
@@ -49,6 +61,15 @@ export default function ManageActionsMaster() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSeedActions}
+              disabled={isSeeding}
+              className="w-full"
+            >
+              {isSeeding ? 'Seeding...' : 'Seed Default Actions'}
+            </Button>
             <Input
               type="text"
               placeholder="e.g., #DecoyRun"
