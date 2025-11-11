@@ -14,7 +14,8 @@ RUN npm install -g pnpm
 ENV PNPM_HOME="/home/node/.local/share/pnpm"
 ENV PATH=${PNPM_HOME}:${PATH}
 
-RUN mkdir /pnpm-store /src/node_modules && chown -R node:node /pnpm-store /src/node_modules /src
+RUN mkdir /pnpm-store /src/node_modules /src/.next /src/.turbo && \
+  chown -R node:node /pnpm-store /src/node_modules /src/.next /src/.turbo /src
 
 USER node
 

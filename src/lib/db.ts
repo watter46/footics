@@ -1,6 +1,7 @@
 'use client';
 
 import Dexie, { type Table } from 'dexie';
+import type { FormationType } from './formation-template';
 
 // ============================================================================
 // Types
@@ -24,6 +25,8 @@ export interface IMatch {
   date: string;
   team1Id: number;
   team2Id: number;
+  currentFormation?: FormationType | null;
+  assignedPlayers?: Record<number, number> | null;
 }
 
 export interface IActionMaster {
@@ -44,6 +47,7 @@ export interface IEvent {
 
 // Backward compatibility aliases
 export type Match = IMatch;
+export type Player = IPlayer;
 export type TempTeam = ITeam;
 export type TempPlayer = IPlayer;
 export type ActionMaster = IActionMaster;

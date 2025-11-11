@@ -1,0 +1,1 @@
+export { HorizontalThumbnail } from './HorizontalThumbnail';

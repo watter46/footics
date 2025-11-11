@@ -2,7 +2,8 @@
 
 import { CalendarDays, ClipboardCheck, Database, Zap, X } from 'lucide-react';
 import Link from 'next/link';
-import { FormEvent, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { db } from '@/lib/db';
+import { toast } from '@/features/toast/toast-store';
 
 const featureCards = [
   {
@@ -44,11 +46,20 @@ const featureCards = [
   },
 ];
 
-const HomePage = () => {
+const HomePageContent = () => {
+  const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [matchDate, setMatchDate] = useState('');
   const [homeTeamId, setHomeTeamId] = useState('');
   const [awayTeamId, setAwayTeamId] = useState('');
+
+  useEffect(() => {
+    const errorMessage = searchParams.get('error');
+    if (errorMessage) {
+      toast.error(decodeURIComponent(errorMessage));
+      window.history.replaceState({}, '', '/');
+    }
+  }, [searchParams]);
 
   const teams = useLiveQuery(() => db.temp_teams.orderBy('name').toArray());
   const matches = useLiveQuery(() =>
@@ -306,5 +317,11 @@ const HomePage = () => {
     </main>
   );
 };
+
+const HomePage = () => (
+  <Suspense fallback={null}>
+    <HomePageContent />
+  </Suspense>
+);
 
 export default HomePage;

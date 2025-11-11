@@ -1,22 +1,27 @@
+# Dependencies
 node_modules
-.pnpm-debug.log
-dist
-build
+.pnpm-store
+
+# Build outputs
 .next
 out
-coverage
+dist
+build
+
+# Cache
+.turbo
+.cache
+
+# Logs
 *.log
-*.lock
-*.tsbuildinfo
-*.local
-*.env
-*.env.local
-*.env.development
-*.env.test
-*.env.production
-.vscode
-.idea
-.DS_Store
-Thumbs.db
-*.sublime-workspace
-*.sublime-project
+
+# Environment files
+.env*
+
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Public assets
+public

@@ -1,0 +1,89 @@
+'use client';
+
+import {
+  FORMATION_POSITIONS,
+  type FormationType,
+} from '@/lib/formation-template';
+import type { FormationPlayers } from '@/lib/types';
+import type { Player } from '@/lib/db';
+
+const extractLastName = (name?: string): string | undefined => {
+  if (!name) {
+    return undefined;
+  }
+
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const segments = trimmed.split(/[\.\s]+/).filter(Boolean);
+  if (segments.length === 0) {
+    return undefined;
+  }
+
+  return segments[segments.length - 1];
+};
+
+interface FormationProps {
+  formationName: FormationType;
+  players: FormationPlayers;
+  onPositionClick: (positionId: number, player?: Player) => void;
+}
+
+export function Formation({
+  formationName,
+  players,
+  onPositionClick,
+}: FormationProps) {
+  const positionSlots = FORMATION_POSITIONS[formationName];
+
+  if (!positionSlots) {
+    return (
+      <div className="rounded-lg border border-red-500/40 bg-red-950/40 p-4 text-sm text-red-200">
+        指定されたフォーメーション"{formationName}"は定義されていません。
+      </div>
+    );
+  }
+
+  return (
+    <div className="absolute inset-0">
+      {positionSlots.map(slot => {
+        const assignedPlayer = players[slot.id];
+        const jerseyNumber = assignedPlayer?.number;
+        const jerseyLabel =
+          typeof jerseyNumber === 'number' && !Number.isNaN(jerseyNumber)
+            ? `#${jerseyNumber}`
+            : '-';
+        const lastName = extractLastName(assignedPlayer?.name);
+
+        return (
+          <div
+            key={slot.id}
+            className="absolute -translate-x-1/2 -translate-y-1/2 transform flex flex-col items-center"
+            style={{
+              top: `${slot.top}%`,
+              left: `${slot.left}%`,
+            }}
+          >
+            <button
+              type="button"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/60 bg-emerald-700/80 text-center font-semibold text-emerald-50 shadow-lg shadow-emerald-950/40 transition hover:bg-emerald-600/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900"
+              onClick={() => onPositionClick(slot.id, assignedPlayer)}
+            >
+              <div className="absolute -top-2 -translate-x-2/3 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-100">
+                {slot.position}
+              </div>
+              <span className="text-sm font-bold leading-none text-emerald-50">
+                {jerseyLabel}
+              </span>
+            </button>
+            <div className="w-20 text-center text-xs font-semibold leading-tight text-slate-100">
+              {lastName}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

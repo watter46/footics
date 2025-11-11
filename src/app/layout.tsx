@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { ToastContainer } from '@/features/toast/toast-container';
 
 export const metadata: Metadata = {
   title: 'Footics Tactical Memo',
@@ -8,8 +9,11 @@ export const metadata: Metadata = {
 };
 
 const RootLayout = ({ children }: { children: React.ReactNode }) => (
-  <html lang="ja">
-    <body>{children}</body>
+  <html lang="ja" data-scroll-behavior="smooth">
+    <body>
+      {children}
+      <ToastContainer />
+    </body>
   </html>
 );
 

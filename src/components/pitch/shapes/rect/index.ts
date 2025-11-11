@@ -1,0 +1,1 @@
+export { RectThumbnail } from "./RectThumbnail";

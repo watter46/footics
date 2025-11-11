@@ -1,0 +1,1 @@
+export { TiltedThumbnail } from "./TiltedThumbnail";
