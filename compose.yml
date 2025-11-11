@@ -9,17 +9,28 @@ services:
     ports:
       - '3000:3000'
     volumes:
-      - .:/src
+      - .:/src:cached
+      
       - node_modules:/src/node_modules
+      - next_cache:/src/.next
+      - turbo_cache:/src/.turbo
       - pnpm_store:/pnpm-store
-      - ./docs:/src/docs
+      
+      - ./docs:/src/docs:cached
     environment:
       - NODE_ENV=development
-      - WATCHPACK_POLLING=true
-      - CHOKIDAR_USEPOLLING=true
+      
+      - WATCHPACK_POLLING=false
+      - CHOKIDAR_USEPOLLING=false
+      
       - TURBOPACK=1
+      
       - PNPM_STORE_DIR=/pnpm-store
       - PNPM_HOME=/home/node/.local/share/pnpm
+      
+      - NEXT_TELEMETRY_DISABLED=1
+      
+      - NODE_OPTIONS=--max-old-space-size=4096
     stdin_open: true
     tty: true
     user: node
@@ -28,3 +39,5 @@ services:
 volumes:
   node_modules:
   pnpm_store:
+  next_cache:
+  turbo_cache:

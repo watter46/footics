@@ -29,6 +29,12 @@ This file provides guidelines for GitHub Copilot to ensure consistent, clean, an
 - **Long, clear names over short, vague names, even at the cost of verbosity**
 - **Resource Usage:** Run memory-intensive commands (e.g., pint, build) only against the impacted scope.
 
+### Robust Error Handling
+
+- **Mandatory `try...catch`:** All `async/await` operations must be wrapped in a `try...catch` block to handle potential errors gracefully (e.g., user feedback, logging).
+- **Promise Rejection Handling:** When using `.then()`, a `.catch()` block for error handling is mandatory.
+- **API Response Validation:** Always validate data fetched from external APIs (e.g., using type guards or libraries like Zod) before trusting and using it in the application.
+
 ---
 
 ## React Specific Guidelines
@@ -38,7 +44,7 @@ This file provides guidelines for GitHub Copilot to ensure consistent, clean, an
 - **Functional Components & Hooks:** Prefer **functional components with React Hooks**. Avoid class components unless explicitly for error boundaries.
 - **Single Responsibility:** Each component should ideally have one primary responsibility. **Components should be kept small and focused.**
 - **Component Naming:** Use `PascalCase` for all component names (e.g., `MyButton`, `UserAvatar`).
-- **Component File Naming:** Component file names should also use `PascalCase` (e.g., `MyButton.tsx`, `UserAvatar.tsx`).
+- **Component File Naming:** Component file names should also use `PascalCase` (e.g., `MyButton.tsx`), *except* when following the Feature-Specific `index.tsx` convention (see Project Structure).
 - **Component Reusability:** When creating components, always check other files in the codebase to identify opportunities for creating reusable generic components. Extract common patterns into shared components.
 - **Props:**
   - Use `camelCase` for prop names.
@@ -79,7 +85,7 @@ This file provides guidelines for GitHub Copilot to ensure consistent, clean, an
 - **Data Fetching Methods:**
   - For build-time data or rarely changing content, suggest `getStaticProps` (Pages Router) or direct `fetch` in Server Components with `revalidate` (App Router).
   - For dynamic, frequently changing data, suggest `getServerSideProps` (Pages Router) or direct `fetch` in Server Components (App Router).
-  - Avoid client-side data fetching for initial page loads unless absolutely necessary (e.g., user-specific data after hydration).
+  - Avoid client-side data fetching for inidial page loads unless absolutely necessary (e.g., user-specific data after hydration).
 - **Parallel Fetching:** When fetching multiple independent data sources, initiate requests in parallel.
 
 ### Routing
@@ -95,13 +101,44 @@ This file provides guidelines for GitHub Copilot to ensure consistent, clean, an
 - **Font Optimization:** Use `next/font` for optimizing fonts.
 - **Dynamic Imports:** Use `next/dynamic` for lazy loading components to reduce initial bundle size.
 
+### Security
+
+- **Prevent Secret Exposure:** **Never** reference sensitive environment variables (e.g., `process.env.API_KEY`) directly in Client Components (`'use client'` files). Sensitive keys must only be accessed in Server Components or Route Handlers.
+- **Secure API Routes:** All API Routes (Route Handlers) should implement authentication and authorization checks by default. Always validate input data for `POST`, `PUT`, or `PATCH` requests.
+
 ### Project Structure
 
-- **Colocation:** Colocate component files (JSX/TSX, CSS Modules, tests) within a feature folder.
-- **Utility & Helper Modules:** **All general utility functions, helper functions, and large, non-component-specific logic should be extracted into a dedicated `lib/` folder.**
-- **Private Folders:** Use underscore-prefixed folders (e.g., `_lib`, `_components`) for internal, non-route-related files.
-- **No Barrel Files:** Do not use barrel files (e.g., `index.ts` that re-exports from other files) for module exports. Always import directly from the specific file to improve traceability and avoid circular dependencies.
+- **Component Placement Rules:** Strictly follow these rules based on reusability and scope.
+  - **A. Feature-Specific Components (Priority 1):**
+    - **Condition:** Components used *only* within a specific feature (e.g., `match-detail`).
+    - **Location:** `src/features/[feature-name]/components/[ComponentName]/index.tsx`
+    - **Details:** Create a directory named in `PascalCase` (`[ComponentName]`) and name the component file `index.tsx`.
+    - **Example:** `/src/features/match-detail/components/RecordTab/index.tsx`
+  - **B. Global UI Components (Priority 2):**
+    - **Condition:** Generic, feature-agnostic components used project-wide (e.g., `Button`, `Input`).
+    - **Location:** `src/components/ui/[ComponentName].tsx` (or `/index.tsx` if it has related files like hooks).
 
+- **Custom Hook Placement Rules:** Always colocate hooks at the smallest possible scope (highest proximity).
+  - **A. Component-Specific Hooks (Priority 1):**
+    - **Condition:** Internal logic used by *only one* component.
+    - **Location:** Inside the component's directory: `src/features/[feature-name]/components/[ComponentName]/hooks/useMyHook.ts`
+  - **B. Feature-Wide Hooks (Priority 2):**
+    - **Condition:** Logic shared by *multiple* components within the same feature.
+    - **Location:** At the feature's root hooks folder: `src/features/[feature-name]/hooks/useFeatureData.ts`
+  - **C. Global Hooks (Priority 3):**
+    - **Condition:** Generic, reusable logic used project-wide (e.g., `useWindowSize`).
+    - **Location:** `src/hooks/`
+
+- **Utility & Helper Modules:**
+  - All general utility functions (non-React, pure functions) should be placed in `src/lib/` (e.g., `src/lib/utils/`).
+  - *Note: Global React Hooks belong in `src/hooks/`, not `src/lib/`.*
+
+- **Private Folders:**
+  - Use underscore-prefixed folders (e.g., `_lib`, `_components`) for internal, non-route-related files.
+
+- **No Barrel Files:**
+  - Do not use barrel files (e.g., `index.ts` that *only* re-exports from other files) for module exports. Always import directly from the specific file.
+  - *(Note: Using `index.tsx` as the main file for a component, e.g., `.../MyComponent/index.tsx`, is permitted and is **not** considered a barrel file.)*
 ### SEO & Accessibility
 
 - **Metadata:** Use `generateMetadata` (App Router) or `next/head` (Pages Router) for SEO metadata.
@@ -111,7 +148,8 @@ This file provides guidelines for GitHub Copilot to ensure consistent, clean, an
 
 - **Strict Mode:** Ensure `strict: true` is enabled in `tsconfig.json`.
 - **Type Definitions:** Provide accurate type definitions for API responses, props, and state.
-- **Type Organization:** When generating TypeScript types or interfaces in this project, always place them in the `types/` folder with a descriptive filename (e.g. `user.ts`, `post.ts`). Do not define types or interfaces inside components.
+- **Type Organization:**
+  **Shared types** (e.g., API responses, DB schemas, types used across multiple features) **must be placed in the `types/` folder** with a descriptive filename (e.g., `user.ts`, `post.ts`). Component-specific `Props` or `State` types may be defined within their respective component `.tsx` file for convenience and colocation.
 
 ---
 

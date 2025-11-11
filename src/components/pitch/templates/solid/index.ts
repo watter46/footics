@@ -1,0 +1,1 @@
+export { SolidThumbnail } from './SolidThumbnail';

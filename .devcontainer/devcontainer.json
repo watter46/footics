@@ -9,14 +9,15 @@
   "forwardPorts": [3000],
   "portsAttributes": {
     "3000": {
-      "label": "Next.js 15 dev server",
+      "label": "Next.js 16 dev server",
       "onAutoForward": "notify"
     }
   },
   "containerEnv": {
     "NEXT_TELEMETRY_DISABLED": "1",
     "TURBOPACK": "1",
-    "PNPM_HOME": "/home/node/.local/share/pnpm"
+    "PNPM_HOME": "/home/node/.local/share/pnpm",
+    "NODE_ENV": "development"
   },
   "remoteEnv": {
     "NEXT_TELEMETRY_DISABLED": "1",
@@ -25,40 +26,120 @@
   "customizations": {
     "vscode": {
       "settings": {
+        // フォーマット設定
         "editor.defaultFormatter": "esbenp.prettier-vscode",
         "editor.formatOnSave": true,
+        "editor.formatOnPaste": false,
+        "editor.formatOnType": false,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+
+        // ESLint設定
         "eslint.useFlatConfig": true,
-        "eslint.workingDirectories": ["."],
+        "eslint.workingDirectories": [{ "mode": "auto" }],
+        "eslint.validate": [
+          "javascript",
+          "javascriptreact",
+          "typescript",
+          "typescriptreact"
+        ],
+
+        // TypeScript設定
         "typescript.tsserver.experimental.enableProjectDiagnostics": true,
         "typescript.tsserver.maxTsServerMemory": 4096,
+        "typescript.updateImportsOnFileMove.enabled": "always",
+        "typescript.preferences.importModuleSpecifier": "relative",
+
+        // Tailwind設定
+        "tailwindCSS.experimental.classRegex": [
+          ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+          ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
+          ["tailwind-merge\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+        ],
+        "tailwindCSS.includeLanguages": {
+          "typescript": "javascript",
+          "typescriptreact": "javascript"
+        },
+
+        // ファイル
         "files.exclude": {
-          "**/.next": true
+          "**/.next": true,
+          "**/.turbo": true,
+          "**/node_modules": true
         },
         "files.watcherExclude": {
           "**/.next/**": true,
-          "**/.turbo/**": true
+          "**/.turbo/**": true,
+          "**/node_modules/**": true,
+          "**/.git/objects/**": true,
+          "**/.git/subtree-cache/**": true,
+          "**/dist/**": true,
+          "**/build/**": true
         },
+        "search.exclude": {
+          "**/.next": true,
+          "**/.turbo": true,
+          "**/node_modules": true,
+          "**/pnpm-lock.yaml": true
+        },
+
+        // Prettier設定
+        "prettier.documentSelectors": ["**/*.{js,jsx,ts,tsx,json,css}"],
+        "prettier.enable": true,
+        "prettier.requireConfig": true,
+
+        // ファイル保存時の動作最適化
+        "files.autoSave": "onFocusChange",
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true,
+
+        // エディタ設定
+        "editor.tabSize": 2,
+        "editor.detectIndentation": false,
+        "editor.insertSpaces": true,
+        "editor.linkedEditing": true,
+        "editor.minimap.enabled": false,
+        "editor.suggestSelection": "first",
+        "editor.inlineSuggest.enabled": true,
+
+        // GitHub Copilot設定
         "github.copilot.enable": {
-          "*": true
+          "*": true,
+          "yaml": true,
+          "plaintext": false,
+          "markdown": true
         },
         "github.copilot.chat.enabled": true,
         "github.copilot.advanced.agent.enabled": true,
         "github.copilot.inlineSuggest.enable": true,
-        "github.copilot.editor.enableAutoCompletions": true
+        "github.copilot.editor.enableAutoCompletions": true,
+
+        "emmet.showExpandedAbbreviation": "inMarkupAndStylesheetFilesOnly",
+        "extensions.autoUpdate": false,
+        "git.autofetch": false,
+        "git.decorations.enabled": true
       },
       "extensions": [
         "esbenp.prettier-vscode",
         "dbaeumer.vscode-eslint",
         "bradlc.vscode-tailwindcss",
+
         "yoavbls.pretty-ts-errors",
-        "streetsidesoftware.code-spell-checker",
+        "ms-vscode.vscode-typescript-next",
+
         "dsznajder.es7-react-js-snippets",
-        "styled-components.vscode-styled-components",
         "formulahendry.auto-rename-tag",
-        "christian-kohler.path-intellisense",
+
         "usernamehw.errorlens",
+        "christian-kohler.path-intellisense",
+        "streetsidesoftware.code-spell-checker",
         "meganrogge.template-string-converter",
-        "ms-vscode.vscode-typescript-next"
+
+        "github.copilot",
+        "github.copilot-chat",
+
+        "styled-components.vscode-styled-components"
       ]
     }
   }
