@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Pitch, defaultPitchSettings } from '@/components/pitch';
@@ -15,7 +16,6 @@ import { useMatchEventRecorder } from '@/features/match-detail/hooks/useMatchEve
 
 interface RecordTabProps {
   match: Match;
-  teamNameById: Map<number, string>;
   currentFormation?: FormationType;
   resolvedPlayers?: FormationPlayers;
 }
@@ -23,7 +23,6 @@ interface RecordTabProps {
 const DEFAULT_FORMATION: FormationType = '4-2-3-1';
 export const RecordTab = ({
   match,
-  teamNameById,
   currentFormation,
   resolvedPlayers,
 }: RecordTabProps) => {
@@ -34,21 +33,49 @@ export const RecordTab = ({
     formation: effectiveFormation,
     resolvedPlayers,
   });
+  const [bufferedMatchTime, setBufferedMatchTime] = useState<string | null>(null);
   const {
     isSelectorOpen: isSheetOpen,
     selectedTarget,
     selectorTitle: sheetTitle,
-    handlePositionClick,
-    handleOpenForOpponent,
-    handleSelectorChange: handleSheetChange,
+    handlePositionClick: baseHandlePositionClick,
+    handleOpenForOpponent: baseHandleOpenForOpponent,
+    handleSelectorChange: baseHandleSheetChange,
   } = useFormationSelection({ formationSlots });
   const { formattedTime } = useMatchClock();
+  const handleSheetChange = useCallback(
+    (open: boolean) => {
+      baseHandleSheetChange(open);
+      if (!open) {
+        setBufferedMatchTime(null);
+      }
+    },
+    [baseHandleSheetChange]
+  );
   const { handleActionSelect } = useMatchEventRecorder({
     matchId,
-    formattedTime,
     selectedTarget,
+    bufferedMatchTime,
+    fallbackTime: formattedTime,
     onClose: () => handleSheetChange(false),
+    onAfterRecord: () => setBufferedMatchTime(null),
   });
+
+  const handlePositionClick = useCallback(
+    (...args: Parameters<typeof baseHandlePositionClick>) => {
+      setBufferedMatchTime(formattedTime);
+      baseHandlePositionClick(...args);
+    },
+    [baseHandlePositionClick, formattedTime]
+  );
+
+  const handleOpenForOpponent = useCallback(
+    (...args: Parameters<typeof baseHandleOpenForOpponent>) => {
+      setBufferedMatchTime(formattedTime);
+      baseHandleOpenForOpponent(...args);
+    },
+    [baseHandleOpenForOpponent, formattedTime]
+  );
 
   const opponentPositions = ['相手GK', '相手DF', '相手MF', '相手FW'];
 

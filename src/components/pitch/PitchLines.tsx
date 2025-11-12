@@ -43,9 +43,9 @@ export function PitchLines({ court, line }: PitchLinesProps) {
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none">
+    <div className="pointer-events-none absolute inset-0">
       <svg
-        className="w-full h-full"
+        className="h-full w-full"
         viewBox={viewBox}
         preserveAspectRatio="xMidYMid meet"
       >

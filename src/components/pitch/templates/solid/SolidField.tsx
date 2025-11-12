@@ -25,7 +25,7 @@ export function SolidField({
 
   return (
     <div
-      className={cn('relative w-full mx-auto h-full')}
+      className={cn('relative mx-auto h-full w-full')}
       style={{
         transform: shapeConfig.fieldTransform,
         transformStyle: 'preserve-3d',
@@ -34,7 +34,7 @@ export function SolidField({
         top: shapeConfig.top,
       }}
     >
-      <div className="relative w-full h-full p-4">
+      <div className="relative h-full w-full p-4">
         <PitchLines court={court} line={line} />
       </div>
     </div>

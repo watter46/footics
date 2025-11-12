@@ -11,14 +11,14 @@ export const Pitch = memo(({ settings, children, className }: PitchProps) => {
 
     return (
       <div
-        className={cn('relative w-full mx-auto h-full', shapeConfig.top)}
+        className={cn('relative mx-auto h-full w-full', shapeConfig.top)}
         style={{
           transform: shapeConfig.fieldTransform,
           transformStyle: 'preserve-3d',
           ...getFieldBackgroundStyle(settings.background),
         }}
       >
-        <div className="relative w-full h-full">
+        <div className="relative h-full w-full">
           <PitchLines court={settings.court} line={settings.line} />
         </div>
       </div>
@@ -38,8 +38,8 @@ export const Pitch = memo(({ settings, children, className }: PitchProps) => {
     >
       {renderBackground()}
 
-      <div className="absolute inset-0 w-full h-full pointer-events-none">
-        <div className="relative z-10 w-full h-full pointer-events-auto">
+      <div className="pointer-events-none absolute inset-0 h-full w-full">
+        <div className="pointer-events-auto relative z-10 h-full w-full">
           {children}
         </div>
       </div>

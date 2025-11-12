@@ -5,16 +5,20 @@ import type { FormationSelectionTarget } from '@/features/match-detail/hooks/use
 
 interface UseMatchEventRecorderParams {
   matchId: number | undefined;
-  formattedTime: string;
   selectedTarget: FormationSelectionTarget | null;
+  bufferedMatchTime: string | null;
+  fallbackTime: string;
   onClose: () => void;
+  onAfterRecord?: () => void;
 }
 
 export const useMatchEventRecorder = ({
   matchId,
-  formattedTime,
   selectedTarget,
+  bufferedMatchTime,
+  fallbackTime,
   onClose,
+  onAfterRecord,
 }: UseMatchEventRecorderParams) => {
   const handleActionSelect = useCallback(
     async (actionId: number) => {
@@ -23,13 +27,17 @@ export const useMatchEventRecorder = ({
         return;
       }
 
+      const matchTime = bufferedMatchTime ?? fallbackTime;
+
       try {
+        const isPlayerTarget = selectedTarget.type === 'player';
+
         await db.events.add({
           matchId,
           actionId,
-          matchTime: formattedTime,
-          playerId:
-            selectedTarget.type === 'player' ? selectedTarget.playerId : null,
+          matchTime,
+          playerId: isPlayerTarget ? selectedTarget.playerId : null,
+          positionName: isPlayerTarget ? selectedTarget.positionLabel : undefined,
           opponentPosition:
             selectedTarget.type === 'opponent'
               ? selectedTarget.position
@@ -40,10 +48,11 @@ export const useMatchEventRecorder = ({
         console.error('Failed to save event', error);
         toast.error('記録に失敗しました');
       } finally {
+        onAfterRecord?.();
         onClose();
       }
     },
-    [formattedTime, matchId, onClose, selectedTarget]
+    [bufferedMatchTime, fallbackTime, matchId, onAfterRecord, onClose, selectedTarget]
   );
 
   return { handleActionSelect };

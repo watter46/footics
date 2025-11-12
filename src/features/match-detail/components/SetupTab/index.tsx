@@ -1,11 +1,10 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { Pitch, defaultPitchSettings } from '@/components/pitch';
 import { Formation } from '@/components/formation';
 import type { Match, TempPlayer } from '@/lib/db';
@@ -270,7 +269,7 @@ export const SetupTab = ({
       await assignPlayer(selectedTarget.positionId, playerId);
       toast.success('選手を割り当てました');
       handleSelectorChange(false);
-    } catch (error) {
+    } catch (_error) {
       // エラー通知はフック内で処理済み
     } finally {
       setIsAssigning(false);
@@ -287,7 +286,7 @@ export const SetupTab = ({
       await clearPlayer(selectedTarget.positionId);
       toast.success('割り当てをクリアしました');
       handleSelectorChange(false);
-    } catch (error) {
+    } catch (_error) {
       // エラー通知はフック内で処理済み
     } finally {
       setIsAssigning(false);

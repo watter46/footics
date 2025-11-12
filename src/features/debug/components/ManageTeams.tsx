@@ -53,13 +53,13 @@ export function ManageTeams() {
           </Button>
         </div>
         <Separator className="my-4" />
-        <h2 className="text-lg font-semibold mb-2">Existing Teams</h2>
+        <h2 className="mb-2 text-lg font-semibold">Existing Teams</h2>
         <ScrollArea className="h-60 w-full rounded-md border">
           <div className="p-4">
             {teams?.map(team => (
               <div
                 key={team.id}
-                className="flex items-center justify-between mb-2"
+                className="mb-2 flex items-center justify-between"
               >
                 <span>{team.name}</span>
                 <Button
@@ -72,7 +72,7 @@ export function ManageTeams() {
               </div>
             ))}
             {teams?.length === 0 && (
-              <p className="text-sm text-muted-foreground">No teams found.</p>
+              <p className="text-muted-foreground text-sm">No teams found.</p>
             )}
           </div>
         </ScrollArea>

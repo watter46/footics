@@ -29,8 +29,8 @@
         // フォーマット設定
         "editor.defaultFormatter": "esbenp.prettier-vscode",
         "editor.formatOnSave": true,
-        "editor.formatOnPaste": false,
-        "editor.formatOnType": false,
+        "editor.formatOnPaste": true,
+        "editor.formatOnType": true,
         "editor.codeActionsOnSave": {
           "source.fixAll.eslint": "explicit"
         },
@@ -46,8 +46,7 @@
         ],
 
         // TypeScript設定
-        "typescript.tsserver.experimental.enableProjectDiagnostics": true,
-        "typescript.tsserver.maxTsServerMemory": 4096,
+        "typescript.tsserver.maxTsServerMemory": 2048,
         "typescript.updateImportsOnFileMove.enabled": "always",
         "typescript.preferences.importModuleSpecifier": "relative",
 
@@ -126,7 +125,6 @@
         "bradlc.vscode-tailwindcss",
 
         "yoavbls.pretty-ts-errors",
-        "ms-vscode.vscode-typescript-next",
 
         "dsznajder.es7-react-js-snippets",
         "formulahendry.auto-rename-tag",

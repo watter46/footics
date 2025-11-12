@@ -17,7 +17,7 @@ const extractLastName = (name?: string): string | undefined => {
     return undefined;
   }
 
-  const segments = trimmed.split(/[\.\s]+/).filter(Boolean);
+  const segments = trimmed.split(/[.\s]+/).filter(Boolean);
   if (segments.length === 0) {
     return undefined;
   }
@@ -41,7 +41,7 @@ export function Formation({
   if (!positionSlots) {
     return (
       <div className="rounded-lg border border-red-500/40 bg-red-950/40 p-4 text-sm text-red-200">
-        指定されたフォーメーション"{formationName}"は定義されていません。
+        指定されたフォーメーション「{formationName}」は定義されていません。
       </div>
     );
   }
@@ -60,7 +60,7 @@ export function Formation({
         return (
           <div
             key={slot.id}
-            className="absolute -translate-x-1/2 -translate-y-1/2 transform flex flex-col items-center"
+            className="absolute flex -translate-x-1/2 -translate-y-1/2 transform flex-col items-center"
             style={{
               top: `${slot.top}%`,
               left: `${slot.left}%`,
@@ -68,17 +68,17 @@ export function Formation({
           >
             <button
               type="button"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/60 bg-emerald-700/80 text-center font-semibold text-emerald-50 shadow-lg shadow-emerald-950/40 transition hover:bg-emerald-600/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/60 bg-emerald-700/80 text-center font-semibold text-emerald-50 shadow-lg shadow-emerald-950/40 transition hover:bg-emerald-600/80 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900 focus-visible:outline-none"
               onClick={() => onPositionClick(slot.id, assignedPlayer)}
             >
-              <div className="absolute -top-2 -translate-x-2/3 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-100">
+              <div className="absolute -top-2 -translate-x-2/3 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-100 uppercase">
                 {slot.position}
               </div>
-              <span className="text-sm font-bold leading-none text-emerald-50">
+              <span className="text-sm leading-none font-bold text-emerald-50">
                 {jerseyLabel}
               </span>
             </button>
-            <div className="w-20 text-center text-xs font-semibold leading-tight text-slate-100">
+            <div className="w-20 text-center text-xs leading-tight font-semibold text-slate-100">
               {lastName}
             </div>
           </div>

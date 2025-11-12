@@ -8,11 +8,6 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      colors: {
-        // カスタムカラーをここに追加
-        background: 'var(--background)',
-        foreground: 'var(--foreground)',
-      },
     },
   },
   plugins: [

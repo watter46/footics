@@ -55,9 +55,9 @@ export const MatchPageContent = ({ matchId }: MatchPageContentProps) => {
             <span>{formattedDate}</span>
           </div>
           <CardTitle className="grid grid-cols-[1fr_auto_1fr] items-start gap-x-7 text-2xl font-semibold text-slate-100">
-            <span className="text-right font-bold text-lg">{homeTeamName}</span>
+            <span className="text-right text-lg font-bold">{homeTeamName}</span>
             <span className="block text-lg font-medium text-slate-500">vs</span>
-            <span className="text-left font-bold text-lg">{awayTeamName}</span>
+            <span className="text-left text-lg font-bold">{awayTeamName}</span>
           </CardTitle>
         </CardHeader>
       </Card>
@@ -72,7 +72,6 @@ export const MatchPageContent = ({ matchId }: MatchPageContentProps) => {
         <TabsContent value="record">
           <RecordTab
             match={match}
-            teamNameById={teamNameById}
             currentFormation={currentFormation}
             resolvedPlayers={resolvedPlayers}
           />

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Next.js layout exports metadata alongside the root component */
 import type { Metadata } from 'next';
 import './globals.css';
 import { ToastContainer } from '@/features/toast/toast-container';
