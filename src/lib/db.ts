@@ -1,7 +1,6 @@
 'use client';
 
 import Dexie, { type Table } from 'dexie';
-import type { FormationType } from './formation-template';
 
 // ============================================================================
 // Types
@@ -25,7 +24,7 @@ export interface IMatch {
   date: string;
   team1Id: number;
   team2Id: number;
-  currentFormation?: FormationType | null;
+  currentFormation?: string | null;
   assignedPlayers?: Record<number, number> | null;
 }
 
@@ -33,6 +32,7 @@ export interface IActionMaster {
   id?: number;
   name: string;
   category: string;
+  isFavorite?: boolean;
 }
 
 export interface IEvent {
@@ -42,6 +42,7 @@ export interface IEvent {
   actionId: number;
   matchTime: string;
   opponentPosition?: string;
+  positionName?: string;
   memo?: string;
 }
 
@@ -309,7 +310,9 @@ const PLAYER_SEED_DATA: IPlayer[] = [
   },
 ];
 
-const ACTION_MASTER_SEED: IActionMaster[] = [
+type ActionSeedInput = Omit<IActionMaster, 'isFavorite'>;
+
+const ACTION_MASTER_SEED_SOURCE: ActionSeedInput[] = [
   // 🟩 攻撃（Offensive Actions）
   // パス関連
   { name: 'ショートパス', category: '攻撃' },
@@ -405,6 +408,13 @@ const ACTION_MASTER_SEED: IActionMaster[] = [
   { name: '集中力', category: 'メンタル/その他' },
 ];
 
+const ACTION_MASTER_SEED: IActionMaster[] = ACTION_MASTER_SEED_SOURCE.map(
+  action => ({
+    ...action,
+    isFavorite: false,
+  })
+);
+
 // ============================================================================
 // Dexie Database Class
 // ============================================================================
@@ -430,6 +440,48 @@ class FooticsDB extends Dexie {
       actions_master: '++id, name, category',
       events: '++id, matchId, playerId, opponentPosition, actionId, matchTime',
     });
+
+    this.version(4)
+      .stores({
+        teams: '&id, name, code',
+        players: '&id, teamId, number, name, position',
+        matches: '++id, date, team1Id, team2Id',
+        actions_master: '++id, name, category, isFavorite',
+        events: '++id, matchId, playerId, opponentPosition, actionId, matchTime',
+      })
+      .upgrade(async transaction => {
+        const table = transaction.table('actions_master');
+        await table.toCollection().modify(action => {
+          if (typeof action.isFavorite !== 'boolean') {
+            action.isFavorite = false;
+          }
+        });
+      });
+
+    this.version(5)
+      .stores({
+        teams: '&id, name, code',
+        players: '&id, teamId, number, name, position',
+        matches:
+          '++id, date, team1Id, team2Id, currentFormation, assignedPlayers',
+        actions_master: '++id, name, category, isFavorite',
+        events:
+          '++id, matchId, playerId, positionName, opponentPosition, actionId, matchTime',
+      })
+      .upgrade(async transaction => {
+        const matchesTable = transaction.table('matches');
+        await matchesTable.toCollection().modify(match => {
+          if (match.currentFormation === undefined) {
+            match.currentFormation = null;
+          } else if (match.currentFormation != null) {
+            match.currentFormation = String(match.currentFormation);
+          }
+
+          if (match.assignedPlayers === undefined) {
+            match.assignedPlayers = null;
+          }
+        });
+      });
 
     // Backward compatibility: map old table names to new ones
     this.temp_teams = this.teams;
@@ -515,7 +567,6 @@ if (typeof window !== 'undefined') {
 db.on('populate', async () => {
   try {
     await seedInitialData();
-    console.log('初期データの投入が完了しました');
   } catch (error) {
     console.error('初期データの投入に失敗しました:', error);
   }

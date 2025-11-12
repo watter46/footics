@@ -2,6 +2,8 @@
 
 :root {
   color-scheme: dark;
+  --background: #050714;
+  --foreground: rgb(226 232 240);
 }
 
 html {

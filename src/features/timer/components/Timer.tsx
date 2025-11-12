@@ -112,32 +112,31 @@ export const Timer = () => {
   return (
     <div
       ref={widgetRef}
-      className={cn(
-        'fixed right-4 top-20 z-50 flex flex-col sm:right-6',
-        !isExpanded && 'cursor-pointer'
-      )}
+      className="fixed top-20 right-4 z-50 flex flex-col sm:right-6"
     >
       {/* Timer Display */}
-      <div
+      <button
+        type="button"
         onClick={handleToggleExpand}
+        aria-expanded={isExpanded}
         className={cn(
-          'relative flex flex-col items-center gap-3 rounded-t-2xl border border-slate-800/70 bg-slate-950/95 px-4 py-3 shadow-xl backdrop-blur-md',
+          'relative flex flex-col items-center gap-3 rounded-t-2xl border border-slate-800/70 bg-slate-950/95 px-4 py-3 text-left shadow-xl backdrop-blur-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60',
           !isExpanded &&
-            'rounded-2xl hover:border-sky-500/50 active:scale-95 cursor-pointer',
+            'cursor-pointer rounded-2xl hover:border-sky-500/50 active:scale-95',
           isExpanded && 'border-b-0'
         )}
       >
         <Badge
           variant="outline"
           className={cn(
-            'absolute left-2 top-2 text-[10px] px-1.5 py-0',
+            'absolute top-2 left-2 px-1.5 py-0 text-[10px]',
             phaseColor()
           )}
         >
           {getPhaseDisplay(phase)}
         </Badge>
         <div className="mt-2 flex items-baseline gap-1">
-          <span className="font-mono text-2xl font-semibold tabular-nums text-slate-100">
+          <span className="font-mono text-2xl font-semibold text-slate-100 tabular-nums">
             {main}
           </span>
           {stoppage ? (
@@ -146,13 +145,13 @@ export const Timer = () => {
             </span>
           ) : null}
         </div>
-      </div>
+      </button>
 
       {/* Expanded Controls */}
       {isExpanded && (
         <div
           className={cn(
-            'flex flex-col border border-t-0 border-slate-800/70 bg-slate-950/95 shadow-xl backdrop-blur-md overflow-hidden',
+            'flex flex-col overflow-hidden border border-t-0 border-slate-800/70 bg-slate-950/95 shadow-xl backdrop-blur-md',
             'rounded-b-2xl'
           )}
         >
@@ -187,7 +186,7 @@ export const Timer = () => {
           <div className="flex flex-col items-center gap-3 p-3">
             {/* Phase Controls */}
             <div className="w-full space-y-2">
-              <div className="text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <div className="text-center text-xs font-semibold tracking-wide text-slate-400 uppercase">
                 Phase
               </div>
               <div className="grid grid-cols-3 gap-1.5">
@@ -196,10 +195,10 @@ export const Timer = () => {
                     key={option.value}
                     onClick={() => handlePhaseChange(option.value)}
                     className={cn(
-                      'rounded-lg px-2 py-1.5 text-xs font-medium transition-colors border-2',
+                      'rounded-lg border-2 px-2 py-1.5 text-xs font-medium transition-colors',
                       phase === option.value
-                        ? 'bg-sky-500/20 text-sky-200 border-sky-500/60'
-                        : 'bg-slate-800/40 text-slate-300 border-slate-800/70 hover:bg-slate-800/60 hover:border-slate-700'
+                        ? 'border-sky-500/60 bg-sky-500/20 text-sky-200'
+                        : 'border-slate-800/70 bg-slate-800/40 text-slate-300 hover:border-slate-700 hover:bg-slate-800/60'
                     )}
                   >
                     {option.label}
@@ -210,7 +209,7 @@ export const Timer = () => {
 
             {/* Time Adjustment Controls */}
             <div className="w-full space-y-2">
-              <div className="text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <div className="text-center text-xs font-semibold tracking-wide text-slate-400 uppercase">
                 Time
               </div>
               <div className="grid grid-cols-4 gap-1.5">

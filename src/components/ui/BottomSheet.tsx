@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { AnimatePresence, motion, type Transition } from 'framer-motion';
 import { cn } from '@/lib/utils/cn';
 
@@ -66,7 +66,7 @@ export function BottomSheet({
           <motion.div
             key="action-sheet-content"
             className={cn(
-              'fixed bottom-0 left-0 right-0 z-50 mx-auto flex h-[80vh] max-h-[80vh] w-full max-w-lg flex-col rounded-t-2xl border border-slate-800/60 bg-slate-950 text-slate-100 shadow-lg',
+              'fixed right-0 bottom-0 left-0 z-50 mx-auto flex h-[80vh] max-h-[80vh] w-full max-w-lg flex-col rounded-t-2xl border border-slate-800/60 bg-slate-950 text-slate-100 shadow-lg',
               className
             )}
             variants={sheetVariants}

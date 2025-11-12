@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Next.js icon route requires exported metadata constants */
 import { ImageResponse } from 'next/og';
 
 export const size = {

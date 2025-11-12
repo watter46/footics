@@ -34,6 +34,8 @@ export const useFormationAssignments = ({
   );
 
   useEffect(() => {
+    // react-hooks/set-state-in-effect: syncing component state with Dexie persistence is intentional here
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAssignedPlayers(normalizeAssignedPlayers(match.assignedPlayers));
   }, [match.assignedPlayers]);
 
@@ -133,6 +135,8 @@ export const useFormationAssignments = ({
     });
 
     if (Object.keys(sanitized).length !== Object.keys(assignedPlayers).length) {
+      // react-hooks/set-state-in-effect: sanitize assignments when formation slots change
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAssignedPlayers(sanitized);
       void persistAssignments(sanitized);
     }

@@ -1,22 +1,22 @@
-import { FlatCompat } from '@eslint/eslintrc';
+// @ts-check
+
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
+import tseslint from 'typescript-eslint'; // tseslint.defineConfig をインポート
+import nextPlugin from '@next/eslint-plugin-next';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
+import reactRefreshPlugin from 'eslint-plugin-react-refresh';
 import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
-import tailwindPlugin from 'eslint-plugin-tailwindcss';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import tailwind from "eslint-plugin-tailwindcss";
+import prettierConfig from 'eslint-config-prettier';
+import { fixupPluginRules } from '@eslint/compat';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const tailwindConfigPath = path.resolve(currentDir, 'src/app/globals.css');
 
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-export default [
-  // グローバルイグノア設定
+export default tseslint.config(
   {
     ignores: [
       '**/node_modules/**',
@@ -29,57 +29,79 @@ export default [
       '**/.cache/**',
       '**/public/**',
       '.pnpm-store/',
-
-      // 環境設定
       '.devcontainer/',
       'docker/',
-
-      // ドキュメント・その他
       'cfc/',
       'docs/',
-
-      // ルートの設定ファイル
       'Makefile',
       'components.json',
-      'next.config.ts',
       'pnpm-workspace.yaml',
       'tsconfig.tsbuildinfo',
       'README.md',
       'compose.yml',
-      'eslint.config.mjs', // このファイル自体
-      'package.json',
-      'postcss.config.mjs',
       'next-env.d.ts',
       'pnpm-lock.yaml',
+      'next.config.ts',
+      'package.json',
+      'postcss.config.mjs',
       'tsconfig.json',
+      'eslint.config.mjs',
+      'eslint-env.d.ts',
     ],
   },
 
-  // 基本設定
+  // 2. 基本設定 (ESLint + TypeScript)
   js.configs.recommended,
-
-  // TypeScript設定（typescript-eslint v8の推奨設定）
   ...tseslint.configs.recommended,
 
-  // Next.js公式設定（互換レイヤー使用）
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
-
-  // React 19設定
+  // 3. React 19 + Hooks
   {
     files: ['**/*.jsx', '**/*.tsx'],
+    ...reactPlugin.configs.flat.recommended,
+    settings: {
+      react: {
+        version: '19.2.0',
+      },
+    },
+    rules: {
+      ...reactPlugin.configs.flat.recommended.rules,
+      'react/react-in-jsx-scope': 'off',
+      'react/jsx-uses-react': 'off',
+      'react/prop-types': 'off',
+    },
+  },
+  {
+    files: ['**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx'],
     plugins: {
-      react: reactPlugin,
       'react-hooks': reactHooksPlugin,
     },
     rules: {
-      'react/react-in-jsx-scope': 'off', // Next.jsでは不要
-      'react/prop-types': 'off', // TypeScriptを使用
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      ...reactHooksPlugin.configs.recommended.rules,
     },
   },
 
-  // アクセシビリティ設定
+  // 4. React Fast Refresh
+  {
+    files: ['**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx'],
+    plugins: {
+      'react-refresh': fixupPluginRules(reactRefreshPlugin),
+    },
+    rules: {
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true },
+      ],
+    },
+  },
+
+  // 5. Next.js
+  {
+    files: ['**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx'],
+    ...nextPlugin.configs.recommended,
+    ...nextPlugin.configs['core-web-vitals'],
+  },
+
+  // 6. アクセシビリティ (jsx-a11y)
   {
     files: ['**/*.jsx', '**/*.tsx'],
     plugins: {
@@ -90,12 +112,10 @@ export default [
     },
   },
 
-  // Tailwind CSS設定
+  // 7. Tailwind CSS
+  ...tailwind.configs["flat/recommended"],
   {
-    files: ['**/*.jsx', '**/*.tsx'],
-    plugins: {
-      tailwindcss: tailwindPlugin,
-    },
+    files: ['**/*.ts', '**/*.tsx'],
     rules: {
       'tailwindcss/classnames-order': 'warn',
       'tailwindcss/no-custom-classname': 'off',
@@ -104,12 +124,12 @@ export default [
     settings: {
       tailwindcss: {
         callees: ['cn', 'clsx', 'tailwind-merge'],
-        config: 'tailwind.config.ts',
+        config: tailwindConfigPath,
       },
     },
   },
 
-  // TypeScriptカスタムルール
+  // 8. ユーザー定義のカスタムルール (TypeScript)
   {
     files: ['**/*.ts', '**/*.tsx'],
     rules: {
@@ -132,7 +152,7 @@ export default [
     },
   },
 
-  // 一般的なルール
+  // 9. ユーザー定義の一般ルール (グローバル)
   {
     rules: {
       'no-console': ['warn', { allow: ['warn', 'error'] }],
@@ -140,4 +160,7 @@ export default [
       'no-var': 'error',
     },
   },
-];
+
+  // 10. Prettier (必ず最後に)
+  prettierConfig,
+);

@@ -1,18 +1,28 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useState,
+  type MouseEvent,
+} from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { db, type ActionMaster } from '@/lib/db';
 import { cn } from '@/lib/utils/cn';
+import { Star } from 'lucide-react';
+import { toast } from '@/features/toast/toast-store';
 
-// ... (CATEGORY_ORDER, useCategorizedActions などのフックは変更なし) ...
 interface CategoryMeta {
   key: string;
   label: string;
 }
+
+const FAVORITE_CATEGORY_KEY = '__favorites__';
 
 const CATEGORY_ORDER: CategoryMeta[] = [
   { key: '攻撃', label: '🟩 攻撃' },
@@ -21,6 +31,11 @@ const CATEGORY_ORDER: CategoryMeta[] = [
   { key: 'イベント', label: '🟦 イベント' },
   { key: 'メンタル/その他', label: '⚪ メンタル' },
 ];
+
+const FAVORITE_CATEGORY: CategoryMeta = {
+  key: FAVORITE_CATEGORY_KEY,
+  label: '⭐ お気に入り',
+};
 
 const swipeThreshold = 100;
 const swipeVelocity = 500;
@@ -35,25 +50,36 @@ function useCategorizedActions() {
   const actions = useLiveQuery(() => db.actions_master.toArray(), []);
 
   return useMemo(() => {
+    const categories: CategoryMeta[] = [
+      FAVORITE_CATEGORY,
+      ...CATEGORY_ORDER.map(meta => ({ ...meta })),
+    ];
     const categorizedMap = new Map<string, ActionMaster[]>();
-    CATEGORY_ORDER.forEach(meta => categorizedMap.set(meta.key, []));
+    categories.forEach(category => categorizedMap.set(category.key, []));
 
     const safeActions: ActionMaster[] = actions ?? [];
 
     safeActions.forEach(action => {
-      const key = CATEGORY_ORDER.find(
+      if (action.isFavorite) {
+        categorizedMap.get(FAVORITE_CATEGORY_KEY)?.push(action);
+      }
+
+      const orderedCategory = CATEGORY_ORDER.find(
         meta => meta.key === action.category
-      )?.key;
-      const targetKey = key ?? action.category ?? 'その他';
+      );
+      const targetKey = orderedCategory?.key ?? action.category ?? 'その他';
 
       if (!categorizedMap.has(targetKey)) {
         categorizedMap.set(targetKey, []);
+        if (!categories.some(category => category.key === targetKey)) {
+          categories.push({ key: targetKey, label: targetKey });
+        }
       }
 
       categorizedMap.get(targetKey)?.push(action);
     });
 
-    return { categories: CATEGORY_ORDER, categorizedMap, actions: safeActions };
+    return { categories, categorizedMap, actions: safeActions };
   }, [actions]);
 }
 
@@ -74,19 +100,29 @@ export function ActionBottomSheet({
   const [activeTab, setActiveTab] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
 
-  useEffect(() => {
+  const ensureSheetState = useEffectEvent(() => {
     if (!isOpen) {
-      setActiveTab(0);
-      setDirection(1);
-    } else if (activeTab >= categories.length) {
+      if (activeTab !== 0) {
+        setActiveTab(0);
+      }
+
+      if (direction !== 1) {
+        setDirection(1);
+      }
+
+      return;
+    }
+
+    if (activeTab >= categories.length && categories.length > 0) {
       setActiveTab(0);
     }
-  }, [isOpen, categories.length, activeTab]);
+  });
 
-  const handleDragEnd = (
-    _event: any,
-    info: { offset: { x: number }; velocity: { x: number } }
-  ) => {
+  useEffect(() => {
+    ensureSheetState();
+  }, [activeTab, categories.length, direction, isOpen]);
+
+  const handleDragEnd = (_event: unknown, info: PanInfo) => {
     const { offset, velocity } = info;
     const canSwipeLeft = activeTab < categories.length - 1;
     const canSwipeRight = activeTab > 0;
@@ -97,7 +133,10 @@ export function ActionBottomSheet({
     ) {
       setDirection(1);
       setActiveTab(prev => Math.min(prev + 1, categories.length - 1));
-    } else if (
+      return;
+    }
+
+    if (
       (offset.x > swipeThreshold || velocity.x > swipeVelocity) &&
       canSwipeRight
     ) {
@@ -110,6 +149,7 @@ export function ActionBottomSheet({
     if (index === activeTab) {
       return;
     }
+
     setDirection(index > activeTab ? 1 : -1);
     setActiveTab(index);
   };
@@ -118,14 +158,38 @@ export function ActionBottomSheet({
     if (!actionId) {
       return;
     }
+
     onActionSelect(actionId);
   };
+
+  const handleFavoriteToggle = useCallback(
+    async (event: MouseEvent<HTMLButtonElement>, action: ActionMaster) => {
+      event.stopPropagation();
+
+      if (typeof action.id !== 'number') {
+        return;
+      }
+
+      try {
+        const nextValue = !action.isFavorite;
+        await db.actions_master.update(action.id, { isFavorite: nextValue });
+      } catch (error) {
+        console.error('Failed to toggle favorite', error);
+        toast.error('お気に入りの更新に失敗しました');
+      }
+    },
+    []
+  );
 
   const activeCategory = categories[activeTab];
   const activeActions = activeCategory
     ? categorizedMap.get(activeCategory.key) ?? []
     : [];
   const hasAnyActions = actions.length > 0;
+  const isFavoriteTab = activeCategory?.key === FAVORITE_CATEGORY_KEY;
+  const emptyMessage = isFavoriteTab
+    ? 'まだお気に入りが登録されていません。カテゴリ一覧から⭐をタップして追加してください。'
+    : 'このカテゴリに該当するアクションがありません。';
 
   const handleClose = () => {
     onOpenChange(false);
@@ -137,8 +201,8 @@ export function ActionBottomSheet({
       onClose={handleClose}
       className="max-w-none border border-slate-800/60 bg-slate-950 p-0 text-slate-100 shadow-2xl"
     >
-      <div className="flex flex-col flex-1 h-full">
-        <header className="flex flex-col gap-1 px-6 pb-3 pt-4 text-left">
+      <div className="flex h-full flex-1 flex-col">
+        <header className="flex flex-col gap-1 px-6 pt-4 pb-3 text-left">
           <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
           <p className="sr-only">
             アクションカテゴリとタグの一覧から記録する項目を選択してください。
@@ -157,7 +221,7 @@ export function ActionBottomSheet({
                   : 'text-slate-500 hover:text-slate-300'
               )}
             >
-              {category.label.split(' ')[1] ?? category.label}
+              {category.label}
             </button>
           ))}
         </div>
@@ -183,19 +247,38 @@ export function ActionBottomSheet({
                 </p>
               ) : activeActions.length === 0 ? (
                 <p className="pt-12 text-center text-sm text-slate-400">
-                  このカテゴリに該当するアクションがありません。
+                  {emptyMessage}
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {activeActions.map(action => (
-                    <Button
-                      key={action.id}
-                      variant="outline"
-                      className="h-auto py-3 text-sm"
-                      onClick={() => handleActionClick(action.id)}
-                    >
-                      {action.name}
-                    </Button>
+                    <div key={action.id} className="flex w-full items-center border">
+                      <Button
+                        variant="outline"
+                        className="h-auto w-full border-0 py-3 text-left text-sm"
+                        onClick={() => handleActionClick(action.id)}
+                        key={action.id}
+                      >
+                        {action.name}
+                      </Button>
+                      <button
+                        type="button"
+                        aria-label={`${action.name} をお気に入りに${action.isFavorite ? '解除' : '追加'}`}
+                        aria-pressed={Boolean(action.isFavorite)}
+                        className={cn(
+                          'rounded-full p-1 transition-colors',
+                          action.isFavorite
+                            ? 'text-amber-400 hover:text-amber-300'
+                            : 'text-slate-500 hover:text-slate-300'
+                        )}
+                        onClick={event => handleFavoriteToggle(event, action)}
+                      >
+                        <Star
+                          className="h-4 w-4"
+                          fill={action.isFavorite ? 'currentColor' : 'none'}
+                        />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}

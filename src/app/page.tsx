@@ -3,7 +3,7 @@
 import { CalendarDays, ClipboardCheck, Database, Zap, X } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -200,7 +200,7 @@ const HomePageContent = () => {
                       {formatDate(match.date)}
                     </CardDescription>
                   </div>
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
+                  <div className="flex items-center gap-2 text-xs tracking-wide text-slate-500 uppercase">
                     <CalendarDays className="h-4 w-4" />
                     詳細へ
                   </div>

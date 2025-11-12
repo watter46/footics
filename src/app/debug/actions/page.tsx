@@ -91,17 +91,17 @@ export default function ManageActionsMaster() {
 
           <Separator className="my-4" />
 
-          <h2 className="text-lg font-semibold mb-2">Existing Actions</h2>
+          <h2 className="mb-2 text-lg font-semibold">Existing Actions</h2>
           <ScrollArea className="h-72 w-full rounded-md border">
             <div className="p-4">
               {actions?.map(action => (
                 <div
                   key={action.id}
-                  className="flex items-center justify-between mb-2"
+                  className="mb-2 flex items-center justify-between"
                 >
                   <div>
                     <span className="font-medium">{action.name}</span>
-                    <span className="text-sm text-muted-foreground ml-2">
+                    <span className="text-muted-foreground ml-2 text-sm">
                       ({action.category})
                     </span>
                   </div>
@@ -115,7 +115,7 @@ export default function ManageActionsMaster() {
                 </div>
               ))}
               {actions?.length === 0 && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   No actions found. Add one above.
                 </p>
               )}
