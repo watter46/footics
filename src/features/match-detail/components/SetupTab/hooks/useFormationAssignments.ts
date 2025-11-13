@@ -22,6 +22,8 @@ interface UseFormationAssignmentsResult {
   ) => FormationPlayers[number] | undefined;
   assignPlayer: (positionId: number, playerId: number) => Promise<void>;
   clearPlayer: (positionId: number) => Promise<void>;
+  swapPlayers: (fromPositionId: number, toPositionId: number) => Promise<void>;
+  setAssignedPlayersState: (nextAssignments: AssignedPlayersMap) => void;
 }
 
 export const useFormationAssignments = ({
@@ -117,6 +119,56 @@ export const useFormationAssignments = ({
     [assignedPlayers, persistAssignments]
   );
 
+  const swapPlayers = useCallback(
+    async (fromPositionId: number, toPositionId: number) => {
+      if (fromPositionId === toPositionId) {
+        return;
+      }
+
+      const fromPlayerId = assignedPlayers[fromPositionId];
+      const toPlayerId = assignedPlayers[toPositionId];
+
+      if (
+        fromPlayerId === undefined &&
+        toPlayerId === undefined
+      ) {
+        return;
+      }
+
+      const nextAssignments: AssignedPlayersMap = { ...assignedPlayers };
+      const previousAssignments = assignedPlayers;
+
+      if (fromPlayerId !== undefined) {
+        nextAssignments[toPositionId] = fromPlayerId;
+      } else {
+        delete nextAssignments[toPositionId];
+      }
+
+      if (toPlayerId !== undefined) {
+        nextAssignments[fromPositionId] = toPlayerId;
+      } else {
+        delete nextAssignments[fromPositionId];
+      }
+
+      setAssignedPlayers(nextAssignments);
+
+      try {
+        await persistAssignments(nextAssignments);
+      } catch (error) {
+        setAssignedPlayers(previousAssignments);
+        throw error;
+      }
+    },
+    [assignedPlayers, persistAssignments]
+  );
+
+  const setAssignedPlayersState = useCallback(
+    (nextAssignments: AssignedPlayersMap) => {
+      setAssignedPlayers(nextAssignments);
+    },
+    []
+  );
+
   useEffect(() => {
     const positionsSet = new Set(formationSlots.map(slot => slot.id));
     const sanitized: AssignedPlayersMap = {};
@@ -148,5 +200,7 @@ export const useFormationAssignments = ({
     getAssignedPlayer,
     assignPlayer,
     clearPlayer,
+    swapPlayers,
+    setAssignedPlayersState,
   };
 };
