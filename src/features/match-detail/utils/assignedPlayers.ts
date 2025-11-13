@@ -1,5 +1,5 @@
 import type { IMatch, Player } from '@/lib/db';
-import type { FormationPlayers } from '@/lib/types';
+import type { FormationPlayers } from '@/types/formation';
 
 export type AssignedPlayersMap = Record<number, number>;
 

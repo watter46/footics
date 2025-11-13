@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Pitch, defaultPitchSettings } from '@/components/pitch';
 import { Formation } from '@/components/formation';
 import type { Match, TempPlayer } from '@/lib/db';
-import type { FormationPlayers } from '@/lib/types';
+import type { FormationPlayers } from '@/types/formation';
 import type { FormationType } from '@/lib/formation-template';
 import { useFormationPlayers } from '@/features/match-detail/hooks/useFormationPlayers';
 import { useFormationSelection } from '@/features/match-detail/hooks/useFormationSelection';

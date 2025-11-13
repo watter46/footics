@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 
 import { db, type IMatch } from '@/lib/db';
 import type { FormationType } from '@/lib/formation-template';
-import type { FormationPlayers } from '@/lib/types';
+import type { FormationPlayers } from '@/types/formation';
 import {
   normalizeAssignedPlayers,
   resolvePlayersForMap,

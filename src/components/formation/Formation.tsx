@@ -4,8 +4,8 @@ import {
   FORMATION_POSITIONS,
   type FormationType,
 } from '@/lib/formation-template';
-import type { FormationPlayers } from '@/lib/types';
 import type { Player } from '@/lib/db';
+import type { FormationPlayers } from '@/types/formation';
 
 const extractLastName = (name?: string): string | undefined => {
   if (!name) {
