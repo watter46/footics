@@ -1,4 +1,9 @@
 import type { IMatch, Player } from '@/lib/db';
+import {
+  FORMATION_POSITIONS,
+  type FormationType,
+  type FormationPosition,
+} from '@/lib/formation-template';
 import type { FormationPlayers } from '@/types/formation';
 
 export type AssignedPlayersMap = Record<number, number>;
@@ -74,4 +79,98 @@ const createResolvedPlayers = (
   });
 
   return resolved;
+};
+
+type PlayerToMigrate = {
+  playerId: number;
+  oldPosition: FormationPosition['position'];
+  oldGroup: FormationPosition['group'];
+};
+
+type AvailableSlot = {
+  slot: FormationPosition;
+  isAssigned: boolean;
+};
+
+export const migrateAssignedPlayers = (
+  currentAssignments: AssignedPlayersMap | null | undefined,
+  oldFormationName: FormationType,
+  newFormationName: FormationType
+): AssignedPlayersMap => {
+  if (!currentAssignments) {
+    return {};
+  }
+
+  const oldSlots = FORMATION_POSITIONS[oldFormationName] ?? [];
+  const oldSlotMap = new Map<number, FormationPosition>();
+  oldSlots.forEach(slot => oldSlotMap.set(slot.id, slot));
+
+  const playersToMigrate: PlayerToMigrate[] = [];
+
+  Object.entries(currentAssignments).forEach(([positionIdKey, playerId]) => {
+    const positionId = Number(positionIdKey);
+    if (!Number.isFinite(positionId)) {
+      return;
+    }
+
+    const oldSlot = oldSlotMap.get(positionId);
+    if (!oldSlot) {
+      return;
+    }
+
+    if (typeof playerId !== 'number' || Number.isNaN(playerId)) {
+      return;
+    }
+
+    playersToMigrate.push({
+      playerId,
+      oldPosition: oldSlot.position,
+      oldGroup: oldSlot.group,
+    });
+  });
+
+  const newSlots = FORMATION_POSITIONS[newFormationName] ?? [];
+  const availableSlots: AvailableSlot[] = newSlots.map(slot => ({
+    slot,
+    isAssigned: false,
+  }));
+
+  const newAssignedPlayers: AssignedPlayersMap = {};
+
+  playersToMigrate.forEach(player => {
+    const exactMatch = availableSlots.find(
+      candidate =>
+        !candidate.isAssigned && candidate.slot.position === player.oldPosition
+    );
+
+    if (!exactMatch) {
+      return;
+    }
+
+    newAssignedPlayers[exactMatch.slot.id] = player.playerId;
+    exactMatch.isAssigned = true;
+    // マークして後続の処理で除外
+    player.playerId = -1;
+  });
+
+  playersToMigrate.forEach(player => {
+    if (player.playerId === -1) {
+      return;
+    }
+
+    const groupMatch = availableSlots.find(
+      candidate =>
+        !candidate.isAssigned && candidate.slot.group === player.oldGroup
+    );
+
+    if (!groupMatch) {
+      return;
+    }
+
+    newAssignedPlayers[groupMatch.slot.id] = player.playerId;
+    groupMatch.isAssigned = true;
+    player.playerId = -1;
+  });
+
+  return newAssignedPlayers;
 };

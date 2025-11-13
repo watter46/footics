@@ -5,6 +5,7 @@ import {
   type FormationType,
 } from '@/lib/formation-template';
 import type { Player } from '@/lib/db';
+import { cn } from '@/lib/utils/cn';
 import type { FormationPlayers } from '@/types/formation';
 
 const extractLastName = (name?: string): string | undefined => {
@@ -28,12 +29,14 @@ const extractLastName = (name?: string): string | undefined => {
 interface FormationProps {
   formationName: FormationType;
   players: FormationPlayers;
+  selectedPositionId?: number | null;
   onPositionClick: (positionId: number, player?: Player) => void;
 }
 
 export function Formation({
   formationName,
   players,
+  selectedPositionId,
   onPositionClick,
 }: FormationProps) {
   const positionSlots = FORMATION_POSITIONS[formationName];
@@ -56,6 +59,7 @@ export function Formation({
             ? `#${jerseyNumber}`
             : '-';
         const lastName = extractLastName(assignedPlayer?.name);
+        const isSelected = selectedPositionId === slot.id;
 
         return (
           <div
@@ -68,8 +72,14 @@ export function Formation({
           >
             <button
               type="button"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/60 bg-emerald-700/80 text-center font-semibold text-emerald-50 shadow-lg shadow-emerald-950/40 transition hover:bg-emerald-600/80 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900 focus-visible:outline-none"
+              className={cn(
+                'relative flex h-10 w-10 items-center justify-center rounded-full border bg-emerald-700/80 text-center font-semibold text-emerald-50 shadow-lg shadow-emerald-950/40 transition hover:bg-emerald-600/80 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900 focus-visible:outline-none',
+                isSelected
+                  ? 'border-sky-400/90 bg-sky-700/80 text-sky-50'
+                  : 'border-emerald-500/60'
+              )}
               onClick={() => onPositionClick(slot.id, assignedPlayer)}
+              aria-pressed={isSelected}
             >
               <div className="absolute -top-2 -translate-x-2/3 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-100 uppercase">
                 {slot.position}
@@ -78,7 +88,12 @@ export function Formation({
                 {jerseyLabel}
               </span>
             </button>
-            <div className="w-20 text-center text-xs leading-tight font-semibold text-slate-100">
+            <div
+              className={cn(
+                'w-20 text-center text-xs leading-tight font-semibold text-slate-100',
+                isSelected && 'text-sky-200'
+              )}
+            >
               {lastName}
             </div>
           </div>
