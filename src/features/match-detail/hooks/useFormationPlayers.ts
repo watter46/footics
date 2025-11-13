@@ -5,7 +5,7 @@ import {
   type FormationType,
 } from '@/lib/formation-template';
 import type { Match, Player } from '@/lib/db';
-import type { FormationPlayers } from '@/lib/types';
+import type { FormationPlayers } from '@/types/formation';
 
 interface UseFormationPlayersParams {
   match: Match;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { db, type Match } from '@/lib/db';
-import type { FormationPlayers } from '@/lib/types';
+import type { FormationPlayers } from '@/types/formation';
 import type { FormationPosition } from '@/lib/formation-template';
 import {
   normalizeAssignedPlayers,

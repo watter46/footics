@@ -7,7 +7,7 @@ import { Pitch, defaultPitchSettings } from '@/components/pitch';
 import { Formation } from '@/components/formation';
 import { ActionBottomSheet } from '@/features/match-detail/components/ActionBottomSheet';
 import type { Match } from '@/lib/db';
-import type { FormationPlayers } from '@/lib/types';
+import type { FormationPlayers } from '@/types/formation';
 import type { FormationType } from '@/lib/formation-template';
 import { useMatchClock } from '@/features/match-detail/hooks/useMatchClock';
 import { useFormationPlayers } from '@/features/match-detail/hooks/useFormationPlayers';
