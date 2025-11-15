@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HistoryTab } from '@/features/match-detail/components/HistoryTab';
 import { RecordTab } from '@/features/match-detail/components/RecordTab';
 import { SetupTab } from '@/features/match-detail/components/SetupTab';
+import { EditEventSheet } from '@/features/match-detail/components/EditEventSheet';
 import { useMatchPageState } from '@/features/match-detail/hooks/useMatchPageState';
 import { useMatchTeamInfo } from '@/features/match-detail/hooks/useMatchTeamInfo';
 
@@ -90,6 +91,8 @@ export const MatchPageContent = ({ matchId }: MatchPageContentProps) => {
           />
         </TabsContent>
       </Tabs>
+
+      <EditEventSheet />
     </div>
   );
 };

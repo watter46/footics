@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { db } from '@/lib/db';
 import { toast } from '@/features/toast/toast-store';
+import { useEditEventStore } from '@/features/match-detail/stores/edit-event-store';
 import type { FormationSelectionTarget } from '@/features/match-detail/hooks/useFormationSelection';
 
 interface UseMatchEventRecorderParams {
@@ -20,6 +21,8 @@ export const useMatchEventRecorder = ({
   onClose,
   onAfterRecord,
 }: UseMatchEventRecorderParams) => {
+  const openEditSheet = useEditEventStore(state => state.openEditSheet);
+
   const handleActionSelect = useCallback(
     async (actionId: number) => {
       if (!matchId || !selectedTarget) {
@@ -31,8 +34,10 @@ export const useMatchEventRecorder = ({
 
       try {
         const isPlayerTarget = selectedTarget.type === 'player';
-
-        await db.events.add({
+        const subjectLabel = isPlayerTarget
+          ? selectedTarget.label
+          : selectedTarget.position;
+        const addEventPromise = db.events.add({
           matchId,
           actionId,
           matchTime,
@@ -43,7 +48,23 @@ export const useMatchEventRecorder = ({
               ? selectedTarget.position
               : undefined,
         });
-        toast.success('アクションを記録しました');
+        const actionPromise = db.actions_master.get(actionId);
+
+        const eventId = await addEventPromise;
+        const action = await actionPromise;
+
+        toast.success(
+          {
+            eventId,
+            subject: subjectLabel,
+            actionName: action?.name ?? 'アクション',
+            time: matchTime,
+          },
+          undefined,
+          () => {
+            openEditSheet(eventId);
+          }
+        );
       } catch (error) {
         console.error('Failed to save event', error);
         toast.error('記録に失敗しました');
@@ -52,7 +73,15 @@ export const useMatchEventRecorder = ({
         onClose();
       }
     },
-    [bufferedMatchTime, fallbackTime, matchId, onAfterRecord, onClose, selectedTarget]
+    [
+      bufferedMatchTime,
+      fallbackTime,
+      matchId,
+      onAfterRecord,
+      onClose,
+      openEditSheet,
+      selectedTarget,
+    ]
   );
 
   return { handleActionSelect };

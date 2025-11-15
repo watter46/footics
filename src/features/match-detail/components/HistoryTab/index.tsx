@@ -67,17 +67,28 @@ export const HistoryTab = ({ match }: HistoryTabProps) => {
                     >
                       <div className="flex w-full justify-end">
                         {event.isOpponent ? (
-                          <HistoryEventCard event={event} align="left" />
+                          <HistoryEventCard
+                            event={event}
+                            align="left"
+                            icon={event.icon}
+                          />
                         ) : (
                           <span className="block h-0 w-full" aria-hidden="true" />
                         )}
                       </div>
 
-                      <HistoryTimelineMarker colorClass={event.markerClassName} />
+                      <HistoryTimelineMarker
+                        colorClass={event.markerClassName}
+                        icon={event.icon}
+                      />
 
                       <div className="flex w-full justify-start">
                         {!event.isOpponent ? (
-                          <HistoryEventCard event={event} align="right" />
+                          <HistoryEventCard
+                            event={event}
+                            align="right"
+                            icon={event.icon}
+                          />
                         ) : (
                           <span className="block h-0 w-full" aria-hidden="true" />
                         )}

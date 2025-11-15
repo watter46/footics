@@ -54,6 +54,7 @@ export const useResolvedMatchEvents = (
               actionName: action?.name ?? 'アクション未登録',
               categoryLabel: categoryMeta.label,
               markerClassName: categoryMeta.markerClassName,
+              icon: categoryMeta.icon,
               subjectLabel: resolveEventSubjectLabel(event, player ?? null),
               memoSummary: buildMemoSummary(event.memo),
               isOpponent,

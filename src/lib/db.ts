@@ -94,6 +94,16 @@ class FooticsDB extends Dexie {
         });
       });
 
+    this.version(6).stores({
+      teams: '&id, name, code',
+      players: '&id, teamId, number, name, position',
+      matches:
+        '++id, date, team1Id, team2Id, currentFormation, assignedPlayers',
+      actions_master: '++id, name, category, isFavorite',
+      events:
+        '++id, matchId, playerId, positionName, opponentPosition, actionId, matchTime, memo',
+    });
+
     // Backward compatibility: map old table names to new ones
     this.temp_teams = this.teams;
     this.temp_players = this.players;

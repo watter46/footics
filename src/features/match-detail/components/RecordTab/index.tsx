@@ -134,7 +134,9 @@ export const RecordTab = ({
       <ActionBottomSheet
         isOpen={isSheetOpen}
         onOpenChange={handleSheetChange}
-        onActionSelect={handleActionSelect}
+        onActionSelect={(actionId: number, _actionName: string) =>
+          handleActionSelect(actionId)
+        }
         title={sheetTitle}
       />
     </>

@@ -5,8 +5,16 @@ export type ToastType = 'success' | 'error' | 'info';
 interface Toast {
   id: string;
   type: ToastType;
-  message: string;
+  content:
+    | string
+    | {
+        eventId: number;
+        subject: string;
+        actionName: string;
+        time: string;
+      };
   duration?: number;
+  onClick?: (id: string) => void;
 }
 
 interface ToastState {
@@ -46,13 +54,31 @@ export const useToastStore = create<ToastState>((set, get) => ({
 }));
 
 export const toast = {
-  success: (message: string, duration?: number) => {
-    useToastStore.getState().addToast({ type: 'success', message, duration });
+  success: (
+    content: Toast['content'],
+    duration?: number,
+    onClick?: (id: string) => void
+  ) => {
+    useToastStore
+      .getState()
+      .addToast({ type: 'success', content, duration, onClick });
   },
-  error: (message: string, duration?: number) => {
-    useToastStore.getState().addToast({ type: 'error', message, duration });
+  error: (
+    content: Toast['content'],
+    duration?: number,
+    onClick?: (id: string) => void
+  ) => {
+    useToastStore
+      .getState()
+      .addToast({ type: 'error', content, duration, onClick });
   },
-  info: (message: string, duration?: number) => {
-    useToastStore.getState().addToast({ type: 'info', message, duration });
+  info: (
+    content: Toast['content'],
+    duration?: number,
+    onClick?: (id: string) => void
+  ) => {
+    useToastStore
+      .getState()
+      .addToast({ type: 'info', content, duration, onClick });
   },
 };
