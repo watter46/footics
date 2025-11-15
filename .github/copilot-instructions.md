@@ -42,7 +42,9 @@ This file provides guidelines for GitHub Copilot to ensure consistent, clean, an
 ### Component Design
 
 - **Functional Components & Hooks:** Prefer **functional components with React Hooks**. Avoid class components unless explicitly for error boundaries.
-- **Single Responsibility:** Each component should ideally have one primary responsibility. **Components should be kept small and focused.**
+- **Single Responsibility:** Each component should ideally have one primary responsibility. **Components must be kept small and focused.**
+- **Signs of Complexity:** If a component requires multiple state variables (`useState`), side effects (`useEffect`), or internal helper functions, it is considered complex.
+- **Default Action:** Complex components **must** be refactored by default. Separate UI (JSX) into the component file (e.g., `index.tsx`) and logic into custom hooks (e.g., `hooks/useMyComponent.ts`).
 - **Component Naming:** Use `PascalCase` for all component names (e.g., `MyButton`, `UserAvatar`).
 - **Component File Naming:** Component file names should also use `PascalCase` (e.g., `MyButton.tsx`), *except* when following the Feature-Specific `index.tsx` convention (see Project Structure).
 - **Component Reusability:** When creating components, always check other files in the codebase to identify opportunities for creating reusable generic components. Extract common patterns into shared components.
@@ -110,10 +112,20 @@ This file provides guidelines for GitHub Copilot to ensure consistent, clean, an
 
 - **Component Placement Rules:** Strictly follow these rules based on reusability and scope.
   - **A. Feature-Specific Components (Priority 1):**
-    - **Condition:** Components used *only* within a specific feature (e.g., `match-detail`).
+    - **Default Structure:** This directory structure is the default for **all** new feature-specific components, even if they start small.
+    - **Mandatory Separation (UI):** The `index.tsx` file **must** contain only the UI (JSX) and presentation logic.
+    - **Mandatory Separation (Logic):** All state (`useState`), effects (`useEffect`), callbacks (`useCallback`), and business logic **must** be extracted into component-specific hooks. (See Hook Placement Rule A).
+    - **Sub-Component Separation:** Any smaller components defined *within* `index.tsx` (e.g., `function MyListItem() {}`) **should be** actively split into their own files (e.g., `.../[ComponentName]/components/MyListItem.tsx`).
     - **Location:** `src/features/[feature-name]/components/[ComponentName]/index.tsx`
-    - **Details:** Create a directory named in `PascalCase` (`[ComponentName]`) and name the component file `index.tsx`.
-    - **Example:** `/src/features/match-detail/components/RecordTab/index.tsx`
+    - **Example Structure:**
+      ```
+      /RecordTab/
+      ├── index.tsx         # (UI / JSX Only)
+      ├── hooks/
+      │   └── useRecordTab.ts # (All Logic / State / Effects)
+      └── components/
+          └── RecordItem.tsx  # (Sub-component)
+      ```
   - **B. Global UI Components (Priority 2):**
     - **Condition:** Generic, feature-agnostic components used project-wide (e.g., `Button`, `Input`).
     - **Location:** `src/components/ui/[ComponentName].tsx` (or `/index.tsx` if it has related files like hooks).
@@ -139,6 +151,7 @@ This file provides guidelines for GitHub Copilot to ensure consistent, clean, an
 - **No Barrel Files:**
   - Do not use barrel files (e.g., `index.ts` that *only* re-exports from other files) for module exports. Always import directly from the specific file.
   - *(Note: Using `index.tsx` as the main file for a component, e.g., `.../MyComponent/index.tsx`, is permitted and is **not** considered a barrel file.)*
+
 ### SEO & Accessibility
 
 - **Metadata:** Use `generateMetadata` (App Router) or `next/head` (Pages Router) for SEO metadata.

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils/cn';
 
-type ButtonVariant = 'default' | 'secondary' | 'ghost' | 'outline';
+type ButtonVariant = 'default' | 'secondary' | 'ghost' | 'outline' | 'destructive';
 type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
 
 const baseClasses =
@@ -12,6 +12,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary: 'bg-slate-800 text-slate-100 hover:bg-slate-700',
   ghost: 'hover:bg-slate-800 hover:text-slate-100',
   outline: 'border border-slate-700 bg-transparent hover:bg-slate-900',
+  destructive: 'bg-rose-600 text-white hover:bg-rose-500',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
