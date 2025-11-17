@@ -16,6 +16,7 @@ export function EditEventSheet() {
   const {
     event,
     player,
+    action,
     draftMemo,
     setDraftMemo,
     draftTime,
@@ -30,6 +31,8 @@ export function EditEventSheet() {
     handleActionSheetOpenChange,
     handleActionSelect,
   } = useEditEventForm();
+
+  const isSubstitutionEvent = action?.category === 'イベント';
 
   return (
     <>
@@ -101,7 +104,7 @@ export function EditEventSheet() {
                     type="button"
                     variant="secondary"
                     onClick={openActionSheet}
-                    disabled={!event}
+                    disabled={!event || isSubstitutionEvent}
                   >
                     アクションを変更
                   </Button>
@@ -113,7 +116,7 @@ export function EditEventSheet() {
                   type="button"
                   variant="destructive"
                   onClick={handleDelete}
-                  disabled={!event}
+                  disabled={!event || isSubstitutionEvent}
                 >
                   削除
                 </Button>

@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 
-import { db, type IMatch } from '@/lib/db';
+import { db, type IMatch, type Player } from '@/lib/db';
 import type { FormationType } from '@/lib/formation-template';
 import type { FormationPlayers } from '@/types/formation';
 import {
@@ -16,6 +16,7 @@ interface InternalMatchState {
   currentFormation: FormationType;
   assignedPlayersMap: AssignedPlayersMap;
   resolvedPlayers: FormationPlayers;
+  resolvedSubstitutedOutPlayers: Player[];
 }
 
 const EMPTY_MATCH_STATE: InternalMatchState = {
@@ -23,6 +24,7 @@ const EMPTY_MATCH_STATE: InternalMatchState = {
   currentFormation: DEFAULT_FORMATION,
   assignedPlayersMap: {},
   resolvedPlayers: {} as FormationPlayers,
+  resolvedSubstitutedOutPlayers: [],
 };
 
 export interface MatchPageState extends InternalMatchState {
@@ -42,12 +44,20 @@ export const useMatchPageState = (matchId: number): MatchPageState => {
 
     const resolvedPlayers = await resolvePlayersForMap(assignedPlayersMap);
 
+    const substitutedOutPlayerIds = match.substitutedOutPlayerIds ?? [];
+    const resolvedSubstitutedOutPlayers = substitutedOutPlayerIds.length
+      ? (await db.players.bulkGet(substitutedOutPlayerIds)).filter(
+          (player): player is Player => Boolean(player)
+        )
+      : [];
+
     return {
       match,
       currentFormation: (match.currentFormation ??
         DEFAULT_FORMATION) as FormationType,
       assignedPlayersMap,
       resolvedPlayers,
+      resolvedSubstitutedOutPlayers,
     } satisfies InternalMatchState;
   }, [matchId]);
 

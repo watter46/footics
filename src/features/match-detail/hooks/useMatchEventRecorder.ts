@@ -37,11 +37,24 @@ export const useMatchEventRecorder = ({
         const subjectLabel = isPlayerTarget
           ? selectedTarget.label
           : selectedTarget.position;
+
+        let resolvedPlayerId: number | null = null;
+        let resolvedTempSlotId: string | null = null;
+
+        if (isPlayerTarget) {
+          if (selectedTarget.tempSlotId) {
+            resolvedTempSlotId = selectedTarget.tempSlotId;
+          } else if (typeof selectedTarget.playerId === 'number') {
+            resolvedPlayerId = selectedTarget.playerId;
+          }
+        }
+
         const addEventPromise = db.events.add({
           matchId,
           actionId,
           matchTime,
-          playerId: isPlayerTarget ? selectedTarget.playerId : null,
+          playerId: isPlayerTarget ? resolvedPlayerId : null,
+          tempSlotId: isPlayerTarget ? resolvedTempSlotId : null,
           positionName: isPlayerTarget ? selectedTarget.positionLabel : undefined,
           opponentPosition:
             selectedTarget.type === 'opponent'

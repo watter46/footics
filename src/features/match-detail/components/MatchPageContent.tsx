@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { CalendarDays } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,11 +17,20 @@ interface MatchPageContentProps {
 }
 
 export const MatchPageContent = ({ matchId }: MatchPageContentProps) => {
-  const { match, currentFormation, resolvedPlayers, isLoading, notFound } =
+  const {
+    match,
+    currentFormation,
+    resolvedPlayers,
+    resolvedSubstitutedOutPlayers,
+    isLoading,
+    notFound,
+  } =
     useMatchPageState(matchId);
 
   const { teamNameById, formattedDate, isTeamsLoading } =
     useMatchTeamInfo(match);
+
+  const [tempSlotIdMap, setTempSlotIdMap] = useState(new Map<number, string>());
 
   if (isLoading || isTeamsLoading) {
     return (
@@ -75,6 +85,9 @@ export const MatchPageContent = ({ matchId }: MatchPageContentProps) => {
             match={match}
             currentFormation={currentFormation}
             resolvedPlayers={resolvedPlayers}
+            substitutedOutPlayers={resolvedSubstitutedOutPlayers}
+            tempSlotIdMap={tempSlotIdMap}
+            setTempSlotIdMap={setTempSlotIdMap}
           />
         </TabsContent>
 
@@ -88,6 +101,8 @@ export const MatchPageContent = ({ matchId }: MatchPageContentProps) => {
             teamNameById={teamNameById}
             currentFormation={currentFormation}
             resolvedPlayers={resolvedPlayers}
+            tempSlotIdMap={tempSlotIdMap}
+            setTempSlotIdMap={setTempSlotIdMap}
           />
         </TabsContent>
       </Tabs>

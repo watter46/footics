@@ -180,3 +180,9 @@ This file provides guidelines for GitHub Copilot to ensure consistent, clean, an
 - **Expected Output:** A route handler (or API route in `pages/api`) that demonstrates server-side data fetching, proper error handling, and potentially uses server-only context for sensitive operations. Any complex data transformation should be suggested in a separate utility function.
 - **Given:** `// Refactor this component to use a custom hook for form validation.`
 - **Expected Output:** A new file for a `useForm` hook, and the original component updated to utilize the hook. Any specific validation logic should be suggested in a helper function within `utils/validation.ts`.
+
+### Quality Assurance & Task Completion
+
+- **Linting (`pnpm lint`):** All generated code **must** strictly adhere to the project's ESLint rules (defined in `eslint.config.mjs`). Avoid generating code that would produce linting errors, especially regarding imports, unused variables, and React hook dependencies.
+- **Building (`pnpm build`):** All generated code **must** be type-safe and successfully build. Pay close attention to TypeScript rules (`tsconfig.json`) and Next.js specific requirements (e.g., Client/Server component boundaries).
+- **Task Summary:** At the end of completing all requested tasks, provide a brief summary in Japanese explaining **what was changed and why** (e.g., "ロジックを `useRecordTab` フックに分離し、UIの責務を `index.tsx` に限定しました").

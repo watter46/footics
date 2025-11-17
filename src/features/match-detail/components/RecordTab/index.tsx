@@ -1,23 +1,27 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Pitch, defaultPitchSettings } from '@/components/pitch';
 import { Formation } from '@/components/formation';
 import { ActionBottomSheet } from '@/features/match-detail/components/ActionBottomSheet';
-import type { Match } from '@/lib/db';
+import type { Match, Player } from '@/lib/db';
 import type { FormationPlayers } from '@/types/formation';
 import type { FormationType } from '@/lib/formation-template';
 import { useMatchClock } from '@/features/match-detail/hooks/useMatchClock';
 import { useFormationPlayers } from '@/features/match-detail/hooks/useFormationPlayers';
 import { useFormationSelection } from '@/features/match-detail/hooks/useFormationSelection';
 import { useMatchEventRecorder } from '@/features/match-detail/hooks/useMatchEventRecorder';
+import { SubstituteList } from '@/features/match-detail/components/SetupTab/components/SubstituteList';
 
 interface RecordTabProps {
   match: Match;
   currentFormation?: FormationType;
   resolvedPlayers?: FormationPlayers;
+  substitutedOutPlayers: Player[];
+  tempSlotIdMap: Map<number, string>;
+  setTempSlotIdMap: Dispatch<SetStateAction<Map<number, string>>>;
 }
 
 const DEFAULT_FORMATION: FormationType = '4-2-3-1';
@@ -25,6 +29,9 @@ export const RecordTab = ({
   match,
   currentFormation,
   resolvedPlayers,
+  substitutedOutPlayers,
+  tempSlotIdMap,
+  setTempSlotIdMap,
 }: RecordTabProps) => {
   const matchId = match.id;
   const effectiveFormation = currentFormation ?? DEFAULT_FORMATION;
@@ -41,7 +48,11 @@ export const RecordTab = ({
     handlePositionClick: baseHandlePositionClick,
     handleOpenForOpponent: baseHandleOpenForOpponent,
     handleSelectorChange: baseHandleSheetChange,
-  } = useFormationSelection({ formationSlots });
+  } = useFormationSelection({
+    formationSlots,
+    tempSlotIdMap,
+    setTempSlotIdMap,
+  });
   const { formattedTime } = useMatchClock();
   const handleSheetChange = useCallback(
     (open: boolean) => {
@@ -129,6 +140,24 @@ export const RecordTab = ({
             </div>
           </CardContent>
         </Card>
+
+        {substitutedOutPlayers.length > 0 ? (
+          <Card className="border-slate-800/70 bg-slate-900/30">
+            <CardHeader>
+              <CardTitle className="text-lg text-slate-100">
+                交代済み選手
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SubstituteList
+                players={substitutedOutPlayers}
+                selectedPlayerId={null}
+                onPlayerSelect={() => {}}
+                disabled
+              />
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
 
       <ActionBottomSheet

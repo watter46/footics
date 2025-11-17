@@ -1,20 +1,30 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type ChangeEvent,
+  type Dispatch,
   type FormEvent,
+  type SetStateAction,
 } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { nanoid } from 'nanoid';
 
 import { toast } from '@/features/toast/toast-store';
 import { migrateAssignedPlayers } from '@/features/match-detail/utils/assignedPlayers';
 import { useFormationPlayers } from '@/features/match-detail/hooks/useFormationPlayers';
-import { db, type Match, type Player, type TempPlayer } from '@/lib/db';
+import { useMatchClock } from '@/features/match-detail/hooks/useMatchClock';
+import { db, type Match, type Player, type TempPlayer, type Event } from '@/lib/db';
 import type { FormationPlayers } from '@/types/formation';
 import {
   type FormationType,
   type FormationPosition,
 } from '@/lib/formation-template';
+import {
+  preloadSubstitutionActionIds,
+  recordSubstitutionEvent,
+} from '@/features/match-detail/utils/substitutionEvent';
 
 import { useFormationAssignments } from './useFormationAssignments';
 import { useTeamPlayers } from './useTeamPlayers';
@@ -31,11 +41,30 @@ export type SelectionState =
   | { type: 'list'; playerId: number }
   | null;
 
+type BenchGhostItem = {
+  type: 'ghost';
+  tempSlotId: string;
+  position: string;
+  count: number;
+};
+
+type BenchPlayerStatus = 'bench' | 'substituted';
+
+type BenchPlayerItem = {
+  type: 'player';
+  status: BenchPlayerStatus;
+  player: TempPlayer;
+};
+
+export type BenchItem = BenchGhostItem | BenchPlayerItem;
+
 interface UseSetupTabStateParams {
   match: Match;
   teamNameById: Map<number, string>;
   currentFormation?: FormationType;
   resolvedPlayers?: FormationPlayers;
+  tempSlotIdMap: Map<number, string>;
+  setTempSlotIdMap: Dispatch<SetStateAction<Map<number, string>>>;
 }
 
 interface ModalState {
@@ -51,16 +80,21 @@ interface UseSetupTabStateResult {
   effectiveFormation: FormationType;
   homeTeamName: string;
   teamPlayers: TempPlayer[];
+  assignedPlayers: Record<number, number>;
   homeFormationPlayers: FormationPlayers;
-  recentlyDroppedPlayers: TempPlayer[];
-  substitutePlayers: TempPlayer[];
+  substitutedOutPlayers: TempPlayer[];
+  benchItems: BenchItem[];
   selection: SelectionState;
   selectedBenchPlayerId: number | null;
   isAssigning: boolean;
   isFormationUpdating: boolean;
+  isSubstitutionMode: boolean;
+  setIsSubstitutionMode: Dispatch<SetStateAction<boolean>>;
   formState: PlayerFormState;
   isSubmitting: boolean;
   modalState: ModalState;
+  assignModalTempSlotId: string | null;
+  setAssignModalTempSlotId: Dispatch<SetStateAction<string | null>>;
   handleFormationChange: (event: ChangeEvent<HTMLSelectElement>) => Promise<void>;
   handleSubstituteClick: (playerId: number, isSelected: boolean) => void;
   handlePositionClick: (positionId: number, player?: Player) => Promise<void>;
@@ -77,15 +111,22 @@ export const useSetupTabState = ({
   teamNameById,
   currentFormation,
   resolvedPlayers,
+  tempSlotIdMap,
+  setTempSlotIdMap,
 }: UseSetupTabStateParams): UseSetupTabStateResult => {
   const [selection, setSelection] = useState<SelectionState>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPositionId, setModalPositionId] = useState<number | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [isFormationUpdating, setIsFormationUpdating] = useState(false);
-  const [recentlyDroppedPlayerIds, setRecentlyDroppedPlayerIds] = useState<
-    Set<number>
-  >(() => new Set());
+  const [isSubstitutionMode, setIsSubstitutionMode] = useState(false);
+  const [assignModalTempSlotId, setAssignModalTempSlotId] = useState<string | null>(null);
+
+  const { formattedTime } = useMatchClock();
+
+  useEffect(() => {
+    void preloadSubstitutionActionIds();
+  }, []);
 
   const effectiveFormation = currentFormation ?? DEFAULT_FORMATION;
 
@@ -114,15 +155,15 @@ export const useSetupTabState = ({
     resolvedPlayers,
   });
 
-  const assignedPlayerIds = useMemo(() => {
-    const validIds = Object.values(assignedPlayers).filter(
-      (id): id is number => typeof id === 'number' && Number.isFinite(id)
+  const substitutedOutPlayerIds = useMemo(() => {
+    const ids = (match.substitutedOutPlayerIds ?? []).filter(
+      (playerId): playerId is number => typeof playerId === 'number' && Number.isFinite(playerId)
     );
-    return new Set(validIds);
-  }, [assignedPlayers]);
+    return new Set(ids);
+  }, [match.substitutedOutPlayerIds]);
 
-  const recentlyDroppedPlayers = useMemo(() => {
-    if (recentlyDroppedPlayerIds.size === 0) {
+  const substitutedOutPlayers = useMemo(() => {
+    if (substitutedOutPlayerIds.size === 0) {
       return [] as TempPlayer[];
     }
 
@@ -131,23 +172,98 @@ export const useSetupTabState = ({
         return false;
       }
 
-      return recentlyDroppedPlayerIds.has(player.id);
+      return substitutedOutPlayerIds.has(player.id);
     });
-  }, [recentlyDroppedPlayerIds, teamPlayers]);
+  }, [substitutedOutPlayerIds, teamPlayers]);
 
-  const substitutePlayers = useMemo(() => {
-    return teamPlayers.filter(player => {
-      if (typeof player.id !== 'number') {
-        return false;
+  const persistSubstitutedOutPlayerId = useCallback(
+    async (playerId: number | null) => {
+      if (playerId == null || typeof match.id !== 'number') {
+        return;
       }
 
-      if (recentlyDroppedPlayerIds.has(player.id)) {
-        return false;
+      const currentIds = Array.isArray(match.substitutedOutPlayerIds)
+        ? match.substitutedOutPlayerIds
+        : [];
+
+      if (currentIds.includes(playerId)) {
+        return;
       }
 
-      return !assignedPlayerIds.has(player.id);
-    });
-  }, [assignedPlayerIds, recentlyDroppedPlayerIds, teamPlayers]);
+      const nextIds = [...currentIds, playerId];
+      await db.matches.update(match.id, { substitutedOutPlayerIds: nextIds });
+    },
+    [match.id, match.substitutedOutPlayerIds]
+  );
+
+  const rawUnassignedSubstitutedOutEvents = useLiveQuery<Event[][]>(
+    async () => {
+      if (typeof match.id !== 'number') {
+        return [];
+      }
+
+      const events = await db.events
+        .where('matchId')
+        .equals(match.id)
+        .filter(event => event.playerId === null && event.tempSlotId != null)
+        .toArray();
+
+      const grouped = new Map<string, Event[]>();
+
+      events.forEach(event => {
+        if (!event.tempSlotId) {
+          return;
+        }
+
+        const current = grouped.get(event.tempSlotId) ?? [];
+        current.push(event);
+        grouped.set(event.tempSlotId, current);
+      });
+
+      return Array.from(grouped.values());
+    },
+    [match.id]
+  );
+
+  const unassignedSubstitutedOutEvents = useMemo(
+    () => rawUnassignedSubstitutedOutEvents ?? [],
+    [rawUnassignedSubstitutedOutEvents]
+  );
+
+  const benchItems = useMemo<BenchItem[]>(() => {
+    const ghostItems = unassignedSubstitutedOutEvents
+      .map(eventGroup => {
+        const representative = eventGroup[0];
+        if (!representative?.tempSlotId) {
+          return null;
+        }
+
+        return {
+          type: 'ghost',
+          tempSlotId: representative.tempSlotId,
+          position: representative.positionName ?? '未設定',
+          count: eventGroup.length,
+        } satisfies BenchGhostItem;
+      })
+      .filter((item): item is BenchGhostItem => item !== null);
+
+    const substitutedItems = substitutedOutPlayers.reduce<BenchPlayerItem[]>
+      ((acc, player) => {
+        if (typeof player.id !== 'number') {
+          return acc;
+        }
+
+        acc.push({
+          type: 'player',
+          status: 'substituted',
+          player,
+        });
+
+        return acc;
+      }, []);
+
+    return [...ghostItems, ...substitutedItems];
+  }, [substitutedOutPlayers, unassignedSubstitutedOutEvents]);
 
   const homeTeamName = useMemo(
     () => teamNameById.get(match.team1Id) ?? `Team #${match.team1Id}`,
@@ -183,7 +299,8 @@ export const useSetupTabState = ({
     [modalAssignedPlayer]
   );
 
-  const selectedBenchPlayerId = selection?.type === 'list' ? selection.playerId : null;
+  const selectedBenchPlayerId =
+    selection?.type === 'list' ? selection.playerId : null;
 
   const resetSelection = useCallback(() => {
     setSelection(null);
@@ -213,12 +330,6 @@ export const useSetupTabState = ({
         return;
       }
 
-      const oldPlayerIds = new Set(
-        Object.values(assignedPlayers).filter(
-          (id): id is number => typeof id === 'number' && Number.isFinite(id)
-        )
-      );
-
       const migratedAssignments = migrateAssignedPlayers(
         assignedPlayers,
         effectiveFormation,
@@ -236,18 +347,6 @@ export const useSetupTabState = ({
 
         setAssignedPlayersState(migratedAssignments);
 
-        const newPlayerIds = new Set(
-          Object.values(migratedAssignments).filter(
-            (id): id is number =>
-              typeof id === 'number' && Number.isFinite(id)
-          )
-        );
-
-        const droppedIds = new Set(
-          [...oldPlayerIds].filter(id => !newPlayerIds.has(id))
-        );
-
-        setRecentlyDroppedPlayerIds(droppedIds);
         resetSelection();
         toast.success('フォーメーションを変更しました');
       } catch (error) {
@@ -289,18 +388,70 @@ export const useSetupTabState = ({
         return;
       }
 
+      const currentPlayerInSlot = assignedPlayers[modalPositionId];
+      const outgoingPlayer = teamPlayers.find(candidate => {
+        if (typeof candidate.id !== 'number') {
+          return false;
+        }
+
+        return candidate.id === currentPlayerInSlot;
+      });
+
+      const newPlayer = teamPlayers.find(
+        candidate => typeof candidate.id === 'number' && candidate.id === playerId
+      );
+
       setIsAssigning(true);
       try {
         await assignPlayer(modalPositionId, playerId);
-        setRecentlyDroppedPlayerIds(prev => {
-          if (prev.size === 0) {
-            return prev;
+
+        if (isSubstitutionMode) {
+          let tempSlotIdA =
+            modalPositionId != null ? tempSlotIdMap.get(modalPositionId) ?? null : null;
+
+          if (
+            outgoingPlayer == null &&
+            tempSlotIdA == null &&
+            modalPositionId != null
+          ) {
+            const generatedId = nanoid(8);
+            tempSlotIdA = generatedId;
+            setTempSlotIdMap(prev => {
+              const next = new Map(prev);
+              next.set(modalPositionId, generatedId);
+              return next;
+            });
           }
-          const next = new Set(prev);
-          next.delete(playerId);
-          return next;
-        });
-        toast.success('選手を割り当てました');
+          const outgoingPlayerId =
+            outgoingPlayer && typeof outgoingPlayer.id === 'number'
+              ? outgoingPlayer.id
+              : null;
+
+          await recordSubstitutionEvent(
+            match.id,
+            outgoingPlayerId,
+            tempSlotIdA,
+            formattedTime,
+            modalSlot?.position,
+            'out'
+          );
+          await persistSubstitutedOutPlayerId(outgoingPlayerId);
+
+          if (newPlayer) {
+            await recordSubstitutionEvent(
+              match.id,
+              typeof newPlayer.id === 'number' ? newPlayer.id : null,
+              null,
+              formattedTime,
+              modalSlot?.position,
+              'in'
+            );
+          }
+        }
+
+        toast.success(
+          isSubstitutionMode ? '選手を交代しました' : 'スタメンを設定しました'
+        );
         resetSelection();
         handleModalClose();
       } catch (error) {
@@ -310,7 +461,21 @@ export const useSetupTabState = ({
         setIsAssigning(false);
       }
     },
-    [assignPlayer, handleModalClose, modalPositionId, resetSelection]
+    [
+      assignPlayer,
+      formattedTime,
+      handleModalClose,
+      isSubstitutionMode,
+      match.id,
+      modalPositionId,
+      modalSlot,
+      resetSelection,
+      persistSubstitutedOutPlayerId,
+      assignedPlayers,
+      teamPlayers,
+      setTempSlotIdMap,
+      tempSlotIdMap,
+    ]
   );
 
   const handleModalClearSelection = useCallback(async () => {
@@ -321,47 +486,67 @@ export const useSetupTabState = ({
     setIsAssigning(true);
     try {
       await clearPlayer(modalPositionId);
-      toast.success('割り当てをクリアしました');
+
+      if (!isSubstitutionMode) {
+        toast.success('割り当てをクリアしました');
+        return;
+      }
+
+      let tempSlotIdA =
+        modalPositionId != null ? tempSlotIdMap.get(modalPositionId) ?? null : null;
+
+      if (
+        modalAssignedPlayer == null &&
+        tempSlotIdA == null &&
+        modalPositionId != null
+      ) {
+        const generatedId = nanoid(8);
+        tempSlotIdA = generatedId;
+        setTempSlotIdMap(prev => {
+          const next = new Map(prev);
+          next.set(modalPositionId, generatedId);
+          return next;
+        });
+      }
+
+      const outgoingPlayerId =
+        modalAssignedPlayer && typeof modalAssignedPlayer.id === 'number'
+          ? modalAssignedPlayer.id
+          : null;
+
+      await recordSubstitutionEvent(
+        match.id,
+        outgoingPlayerId,
+        tempSlotIdA,
+        formattedTime,
+        modalSlot?.position,
+        'out'
+      );
+      await persistSubstitutedOutPlayerId(outgoingPlayerId);
+
+      toast.success('選手を交代しました');
     } catch (error) {
       console.error('Failed to clear assignment', error);
       toast.error('割り当てのクリアに失敗しました');
     } finally {
       setIsAssigning(false);
     }
-  }, [clearPlayer, modalPositionId]);
+  }, [
+    clearPlayer,
+    formattedTime,
+    isSubstitutionMode,
+    match.id,
+    modalAssignedPlayer,
+    modalPositionId,
+    modalSlot,
+    persistSubstitutedOutPlayerId,
+    setTempSlotIdMap,
+    tempSlotIdMap,
+  ]);
 
   const handlePositionClick = useCallback(
     async (positionId: number, player?: Player) => {
       if (isAssigning || isFormationUpdating) {
-        return;
-      }
-
-      if (selection?.type === 'list') {
-        const benchPlayerId = selection.playerId;
-        if (typeof benchPlayerId !== 'number') {
-          resetSelection();
-          return;
-        }
-
-        setIsAssigning(true);
-        try {
-          await assignPlayer(positionId, benchPlayerId);
-          setRecentlyDroppedPlayerIds(prev => {
-            if (prev.size === 0) {
-              return prev;
-            }
-            const next = new Set(prev);
-            next.delete(benchPlayerId);
-            return next;
-          });
-          toast.success('選手を割り当てました');
-          resetSelection();
-        } catch (error) {
-          console.error('Failed to assign player', error);
-          toast.error('選手の割り当てに失敗しました');
-        } finally {
-          setIsAssigning(false);
-        }
         return;
       }
 
@@ -399,6 +584,85 @@ export const useSetupTabState = ({
         return;
       }
 
+      if (selection?.type === 'list') {
+        const benchPlayerId = selection.playerId;
+        if (typeof benchPlayerId !== 'number') {
+          resetSelection();
+          return;
+        }
+
+        const currentPlayerInSlot = assignedPlayers[positionId];
+        const outgoingPlayer = teamPlayers.find(candidate => {
+          if (typeof candidate.id !== 'number') {
+            return false;
+          }
+
+          return candidate.id === currentPlayerInSlot;
+        });
+
+        setIsAssigning(true);
+        try {
+          await assignPlayer(positionId, benchPlayerId);
+
+          if (isSubstitutionMode) {
+            const targetSlot = formationSlots.find(slot => slot.id === positionId);
+            let tempSlotIdA = tempSlotIdMap.get(positionId) ?? null;
+
+            if (outgoingPlayer == null && tempSlotIdA == null) {
+              const generatedId = nanoid(8);
+              tempSlotIdA = generatedId;
+              setTempSlotIdMap(prev => {
+                const next = new Map(prev);
+                next.set(positionId, generatedId);
+                return next;
+              });
+            }
+
+            const outgoingPlayerId =
+              outgoingPlayer && typeof outgoingPlayer.id === 'number'
+                ? outgoingPlayer.id
+                : null;
+
+            await recordSubstitutionEvent(
+              match.id,
+              outgoingPlayerId,
+              tempSlotIdA,
+              formattedTime,
+              targetSlot?.position,
+              'out'
+            );
+            await persistSubstitutedOutPlayerId(outgoingPlayerId);
+
+            const newPlayer = teamPlayers.find(
+              candidate =>
+                typeof candidate.id === 'number' && candidate.id === benchPlayerId
+            );
+
+            if (newPlayer) {
+              await recordSubstitutionEvent(
+                match.id,
+                typeof newPlayer.id === 'number' ? newPlayer.id : null,
+                null,
+                formattedTime,
+                targetSlot?.position,
+                'in'
+              );
+            }
+          }
+
+          toast.success(
+            isSubstitutionMode ? '選手を交代しました' : 'スタメンを設定しました'
+          );
+          resetSelection();
+        } catch (error) {
+          console.error('Failed to assign player', error);
+          toast.error('選手の割り当てに失敗しました');
+        } finally {
+          setIsAssigning(false);
+        }
+        return;
+      }
+
       const hasAssignedPlayer = Boolean(player && typeof player.id === 'number');
 
       if (hasAssignedPlayer) {
@@ -410,13 +674,22 @@ export const useSetupTabState = ({
     },
     [
       assignPlayer,
+      formattedTime,
+      formationSlots,
       getAssignedPlayerId,
       isAssigning,
       isFormationUpdating,
+      isSubstitutionMode,
+      match.id,
       openPlayerModal,
       resetSelection,
       selection,
       swapPlayers,
+      teamPlayers,
+      persistSubstitutedOutPlayerId,
+      setTempSlotIdMap,
+      tempSlotIdMap,
+      assignedPlayers,
     ]
   );
 
@@ -433,16 +706,21 @@ export const useSetupTabState = ({
     effectiveFormation,
     homeTeamName,
     teamPlayers,
+    assignedPlayers,
     homeFormationPlayers,
-    recentlyDroppedPlayers,
-    substitutePlayers,
+    substitutedOutPlayers,
+    benchItems,
     selection,
     selectedBenchPlayerId,
     isAssigning,
     isFormationUpdating,
+    isSubstitutionMode,
+    setIsSubstitutionMode,
     formState,
     isSubmitting,
     modalState,
+    assignModalTempSlotId,
+    setAssignModalTempSlotId,
     handleFormationChange,
     handleSubstituteClick,
     handlePositionClick,

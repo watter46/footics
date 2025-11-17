@@ -55,6 +55,11 @@ export const CATEGORY_META: Record<string, CategoryMeta> = {
     markerClassName: 'text-sky-400',
     icon: Hand,
   },
+  イベント: {
+    label: '交代',
+    markerClassName: 'text-sky-400',
+    icon: ArrowRightLeft,
+  },
   エラー: {
     label: 'エラー',
     markerClassName: 'text-red-600',
@@ -75,6 +80,7 @@ export const CATEGORY_ORDER: string[] = [
   'コントロール',
   '守備',
   'GK',
+  'イベント',
   'エラー',
   '印象',
 ];
