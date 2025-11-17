@@ -1,9 +1,8 @@
 'use client';
 
 import { CalendarDays, ClipboardCheck, Database, Zap, X } from 'lucide-react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { type FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, Suspense, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { db } from '@/lib/db';
+import { MatchList } from '@/features/matches/components/MatchList';
 import { toast } from '@/features/toast/toast-store';
 
 const featureCards = [
@@ -62,19 +62,6 @@ const HomePageContent = () => {
   }, [searchParams]);
 
   const teams = useLiveQuery(() => db.temp_teams.orderBy('name').toArray());
-  const matches = useLiveQuery(() =>
-    db.matches.orderBy('date').reverse().toArray()
-  );
-
-  const teamNameById = useMemo(() => {
-    const map = new Map<number, string>();
-    (teams ?? []).forEach(team => {
-      if (team.id !== undefined) {
-        map.set(team.id, team.name);
-      }
-    });
-    return map;
-  }, [teams]);
 
   const isDuplicateSelection = homeTeamId !== '' && homeTeamId === awayTeamId;
   const canSubmit = Boolean(
@@ -106,20 +93,6 @@ const HomePageContent = () => {
       resetForm();
     } catch (error) {
       console.error('Failed to create match:', error);
-    }
-  };
-
-  const formatDate = (value: string) => {
-    if (!value) return '';
-    try {
-      return new Intl.DateTimeFormat('ja-JP', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(new Date(value));
-    } catch (error) {
-      console.warn('Failed to format date:', error);
-      return value;
     }
   };
 
@@ -175,40 +148,7 @@ const HomePageContent = () => {
           </p>
         </div>
         <Separator className="bg-slate-800/70" />
-        <div className="grid gap-4">
-          {(matches ?? []).length === 0 && (
-            <Card className="border-dashed border-slate-800/70 bg-slate-900/40">
-              <CardContent className="py-10 text-center text-sm text-slate-400">
-                登録された試合がまだありません。「新規試合を登録」ボタンから試合を追加してください。
-              </CardContent>
-            </Card>
-          )}
-
-          {(matches ?? []).map(match => (
-            <Link key={match.id} href={`/matches/${match.id ?? ''}`}>
-              <Card className="border-slate-800/70 bg-slate-900/40 transition hover:border-sky-500/60 hover:bg-slate-900/60">
-                <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <CardTitle className="text-lg text-slate-100">
-                      {teamNameById.get(match.team1Id) ??
-                        `Team #${match.team1Id}`}{' '}
-                      vs{' '}
-                      {teamNameById.get(match.team2Id) ??
-                        `Team #${match.team2Id}`}
-                    </CardTitle>
-                    <CardDescription className="text-slate-400">
-                      {formatDate(match.date)}
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs tracking-wide text-slate-500 uppercase">
-                    <CalendarDays className="h-4 w-4" />
-                    詳細へ
-                  </div>
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        <MatchList />
       </section>
 
       {isModalOpen && (

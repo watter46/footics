@@ -20,6 +20,7 @@ export interface IMatch {
   currentFormation?: string | null;
   assignedPlayers?: Record<number, number> | null;
   substitutedOutPlayerIds?: number[] | null;
+  deletedAt?: string;
 }
 
 export interface IActionMaster {
