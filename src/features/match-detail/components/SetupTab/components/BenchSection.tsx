@@ -4,20 +4,20 @@ import { type PointerEvent } from 'react';
 
 import { PlayerNode } from '@/components/formation';
 
-import type { BenchItem } from '../hooks/useSetupTabState';
+import type { AssignModalContext, BenchItem } from '../hooks/useSetupTabState';
 
 interface BenchSectionProps {
   items: BenchItem[];
   selectedBenchPlayerId: number | null;
   onSubstituteSelect: (playerId: number, isSelected: boolean) => void;
-  onAssignGhost: (tempSlotId: string) => void;
+  onAssignSlot: (context: AssignModalContext) => void;
 }
 
 export const BenchSection = ({
   items,
   selectedBenchPlayerId,
   onSubstituteSelect,
-  onAssignGhost,
+  onAssignSlot,
 }: BenchSectionProps) => {
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     event.stopPropagation();
@@ -47,7 +47,9 @@ export const BenchSection = ({
               positionLabel={item.position}
               variant="ghost"
               actionCount={item.count}
-              onClick={() => onAssignGhost(item.tempSlotId)}
+              onClick={() =>
+                onAssignSlot({ tempSlotId: item.tempSlotId })
+              }
             />
           );
         }
@@ -61,7 +63,13 @@ export const BenchSection = ({
         const isSubstituted = item.status === 'substituted';
         const isSelected = !isSubstituted && selectedBenchPlayerId === playerId;
         const handleClick = isSubstituted
-          ? undefined
+          ? item.originalEventId
+            ? () =>
+                onAssignSlot({
+                  eventId: item.originalEventId,
+                  defaultPlayerId: playerId,
+                })
+            : undefined
           : () => onSubstituteSelect(playerId, isSelected);
 
         return (

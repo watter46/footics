@@ -143,6 +143,88 @@ class FooticsDB extends Dexie {
         '++id, matchId, playerId, positionName, opponentPosition, actionId, matchTime, memo, tempSlotId, [matchId+playerId]',
     });
 
+    this.version(10)
+      .stores({
+        teams: '&id, name, code',
+        players: '&id, teamId, number, name, position',
+        matches:
+          '++id, date, team1Id, team2Id, subjectTeamId, currentFormation, assignedPlayers, deletedAt',
+        actions_master: '++id, name, category, isFavorite',
+        events:
+          '++id, matchId, playerId, positionName, opponentPosition, actionId, matchTime, memo, tempSlotId, [matchId+playerId]',
+      })
+      .upgrade(async transaction => {
+        const matchesTable = transaction.table('matches');
+        await matchesTable.toCollection().modify(match => {
+          if (typeof match.subjectTeamId !== 'number') {
+            match.subjectTeamId = match.team1Id ?? null;
+          }
+        });
+      });
+
+    this.version(11)
+      .stores({
+        teams: '&id, name, code',
+        players: '&id, teamId, number, name, position',
+        matches:
+          '++id, date, team1Id, team2Id, subjectTeamId, currentFormation, assignedPlayers, deletedAt',
+        actions_master: '++id, name, category, isFavorite',
+        events:
+          '++id, matchId, teamId, playerId, positionName, opponentPosition, actionId, matchTime, memo, tempSlotId, [matchId+playerId]',
+      })
+      .upgrade(async transaction => {
+        const matchesTable = transaction.table('matches');
+
+        await matchesTable.toCollection().modify(match => {
+          if (typeof match.subjectTeamId !== 'number') {
+            match.subjectTeamId = match.team1Id ?? null;
+          }
+        });
+
+        const matches = await matchesTable.toArray();
+        const matchesById = new Map<number, (typeof matches)[number]>();
+
+        matches.forEach(matchRecord => {
+          if (typeof matchRecord.id === 'number') {
+            matchesById.set(matchRecord.id, matchRecord);
+          }
+        });
+
+        const eventsTable = transaction.table('events');
+        await eventsTable.toCollection().modify(event => {
+          if (typeof event.teamId === 'number') {
+            return;
+          }
+
+          const relatedMatch = matchesById.get(event.matchId);
+          if (!relatedMatch) {
+            return;
+          }
+
+          const subjectTeamId =
+            typeof relatedMatch.subjectTeamId === 'number'
+              ? relatedMatch.subjectTeamId
+              : relatedMatch.team1Id ?? null;
+
+          if (subjectTeamId == null) {
+            return;
+          }
+
+          const opponentTeamId =
+            subjectTeamId === relatedMatch.team1Id
+              ? relatedMatch.team2Id
+              : relatedMatch.team1Id;
+
+          const inferredTeamId = event.opponentPosition
+            ? opponentTeamId ?? subjectTeamId
+            : subjectTeamId;
+
+          if (typeof inferredTeamId === 'number') {
+            event.teamId = inferredTeamId;
+          }
+        });
+      });
+
     // Backward compatibility: map old table names to new ones
     this.temp_teams = this.teams;
     this.temp_players = this.players;

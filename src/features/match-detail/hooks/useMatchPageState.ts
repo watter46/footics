@@ -40,11 +40,19 @@ export const useMatchPageState = (matchId: number): MatchPageState => {
       return EMPTY_MATCH_STATE;
     }
 
-    const assignedPlayersMap = normalizeAssignedPlayers(match.assignedPlayers);
+    const normalizedMatch: IMatch =
+      typeof match.subjectTeamId === 'number'
+        ? match
+        : { ...match, subjectTeamId: match.team1Id };
+
+    const assignedPlayersMap = normalizeAssignedPlayers(
+      normalizedMatch.assignedPlayers
+    );
 
     const resolvedPlayers = await resolvePlayersForMap(assignedPlayersMap);
 
-    const substitutedOutPlayerIds = match.substitutedOutPlayerIds ?? [];
+    const substitutedOutPlayerIds =
+      normalizedMatch.substitutedOutPlayerIds ?? [];
     const resolvedSubstitutedOutPlayers = substitutedOutPlayerIds.length
       ? (await db.players.bulkGet(substitutedOutPlayerIds)).filter(
           (player): player is Player => Boolean(player)
@@ -52,8 +60,8 @@ export const useMatchPageState = (matchId: number): MatchPageState => {
       : [];
 
     return {
-      match,
-      currentFormation: (match.currentFormation ??
+      match: normalizedMatch,
+      currentFormation: (normalizedMatch.currentFormation ??
         DEFAULT_FORMATION) as FormationType,
       assignedPlayersMap,
       resolvedPlayers,

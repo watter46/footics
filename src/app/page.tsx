@@ -1,9 +1,10 @@
 'use client';
 
 import { CalendarDays, ClipboardCheck, Database, Zap, X } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
-import { type FormEvent, Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { type FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -48,10 +49,14 @@ const featureCards = [
 
 const HomePageContent = () => {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [matchDate, setMatchDate] = useState('');
   const [homeTeamId, setHomeTeamId] = useState('');
   const [awayTeamId, setAwayTeamId] = useState('');
+  const [subjectTeamSide, setSubjectTeamSide] = useState<'home' | 'away' | null>(
+    null
+  );
 
   useEffect(() => {
     const errorMessage = searchParams.get('error');
@@ -63,15 +68,41 @@ const HomePageContent = () => {
 
   const teams = useLiveQuery(() => db.temp_teams.orderBy('name').toArray());
 
+  const teamNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    (teams ?? []).forEach(team => {
+      if (typeof team.id === 'number') {
+        map.set(team.id, team.name);
+      }
+    });
+    return map;
+  }, [teams]);
+
+  const resolveTeamName = (value: string, fallback: string) => {
+    const numericId = Number(value);
+    if (!value || !Number.isFinite(numericId)) {
+      return fallback;
+    }
+    return teamNameById.get(numericId) ?? fallback;
+  };
+
+  const homeTeamName = resolveTeamName(homeTeamId, 'ホームチーム');
+  const awayTeamName = resolveTeamName(awayTeamId, 'アウェイチーム');
+
   const isDuplicateSelection = homeTeamId !== '' && homeTeamId === awayTeamId;
   const canSubmit = Boolean(
-    matchDate && homeTeamId && awayTeamId && !isDuplicateSelection
+    matchDate &&
+      homeTeamId &&
+      awayTeamId &&
+      subjectTeamSide &&
+      !isDuplicateSelection
   );
 
   const resetForm = () => {
     setMatchDate('');
     setHomeTeamId('');
     setAwayTeamId('');
+    setSubjectTeamSide(null);
   };
 
   const closeModal = () => {
@@ -81,18 +112,25 @@ const HomePageContent = () => {
 
   const handleCreateMatch = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || !subjectTeamSide) return;
 
     try {
-      await db.matches.add({
+      const subjectTeamId =
+        subjectTeamSide === 'home' ? Number(homeTeamId) : Number(awayTeamId);
+      const createdMatchId = await db.matches.add({
         date: matchDate,
         team1Id: Number(homeTeamId),
         team2Id: Number(awayTeamId),
+        subjectTeamId,
       });
       setIsModalOpen(false);
       resetForm();
+      if (typeof createdMatchId === 'number') {
+        router.push(`/matches/${createdMatchId}`);
+      }
     } catch (error) {
       console.error('Failed to create match:', error);
+      toast.error('試合作成に失敗しました');
     }
   };
 
@@ -104,12 +142,10 @@ const HomePageContent = () => {
             Phase1 MVP
           </Badge>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Tactical Memo
-            でリアルタイムに試合を記録し、戦術的な振り返りをシンプルに。
+            Tactical Memo でリアルタイムに試合を記録し、戦術的な振り返りをシンプルに。
           </h1>
           <p className="max-w-3xl text-sm text-slate-400 sm:text-base">
-            Footics は「準備 → 記録 →
-            振り返り」のサイクルを最短距離で回すための分析メモアプリです。フォーメーション表示、アクション記録、タイムライン編集をモバイル前提の
+            Footics は「準備 → 記録 → 振り返り」のサイクルを最短距離で回すための分析メモアプリです。フォーメーション表示、アクション記録、タイムライン編集をモバイル前提の
             UI で提供します。
           </p>
           <Button onClick={() => setIsModalOpen(true)} className="w-fit">
@@ -143,8 +179,7 @@ const HomePageContent = () => {
             あなたの試合メモ
           </h2>
           <p className="text-sm text-slate-400">
-            Phase1 ではローカルに保存された最大 10
-            件の試合を読み込み、一覧から詳細へアクセスできます。
+            Phase1 ではローカルに保存された最大 10 件の試合を読み込み、一覧から詳細へアクセスできます。
           </p>
         </div>
         <Separator className="bg-slate-800/70" />
@@ -236,11 +271,66 @@ const HomePageContent = () => {
                 </select>
               </div>
 
-              {isDuplicateSelection && (
-                <p className="text-sm text-amber-400">
-                  同じチームをホームとアウェイに設定することはできません。
-                </p>
-              )}
+              <section className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-200">
+                    自チーム（記録対象）を選択
+                  </p>
+                  <span className="text-xs text-slate-500">
+                    ホーム / アウェイ どちらか一方
+                  </span>
+                </div>
+
+                {homeTeamId && awayTeamId ? (
+                  isDuplicateSelection ? (
+                    <p className="text-sm text-amber-400">
+                      同じチームをホームとアウェイに設定することはできません。
+                    </p>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        className={`flex-1 rounded-xl border px-4 py-3 text-left text-sm transition ${
+                          subjectTeamSide === 'home'
+                            ? 'border-sky-500 bg-slate-900 ring-2 ring-sky-500/40'
+                            : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                        }`}
+                        onClick={() => setSubjectTeamSide('home')}
+                      >
+                        <p className="text-xs tracking-wide text-slate-500 uppercase">
+                          ホーム
+                        </p>
+                        <p className="text-base font-semibold text-slate-100">
+                          {homeTeamName}
+                        </p>
+                      </button>
+                      <span className="text-sm font-semibold tracking-wide text-slate-500 uppercase">
+                        vs
+                      </span>
+                      <button
+                        type="button"
+                        className={`flex-1 rounded-xl border px-4 py-3 text-left text-sm transition ${
+                          subjectTeamSide === 'away'
+                            ? 'border-sky-500 bg-slate-900 ring-2 ring-sky-500/40'
+                            : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                        }`}
+                        onClick={() => setSubjectTeamSide('away')}
+                      >
+                        <p className="text-xs tracking-wide text-slate-500 uppercase">
+                          アウェイ
+                        </p>
+                        <p className="text-base font-semibold text-slate-100">
+                          {awayTeamName}
+                        </p>
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  <p className="text-sm text-slate-500">
+                    先にホーム/アウェイチームを選択してください。
+                  </p>
+                )}
+              </section>
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <Button type="button" variant="ghost" onClick={closeModal}>
