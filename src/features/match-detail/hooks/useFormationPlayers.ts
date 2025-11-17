@@ -30,6 +30,8 @@ export const useFormationPlayers = ({
   formation,
   resolvedPlayers,
 }: UseFormationPlayersParams): UseFormationPlayersResult => {
+  const subjectTeamId = match.subjectTeamId ?? match.team1Id;
+
   const formationSlots = useMemo(
     () => FORMATION_POSITIONS[formation] ?? [],
     [formation]
@@ -40,7 +42,7 @@ export const useFormationPlayers = ({
 
     formationSlots.forEach(slot => {
       placeholders[slot.id] = buildPlaceholderPlayer(
-        match.team1Id,
+        subjectTeamId,
         slot.position
       );
     });
@@ -59,7 +61,7 @@ export const useFormationPlayers = ({
         return;
       }
 
-      if (player.teamId !== match.team1Id) {
+      if (player.teamId !== subjectTeamId) {
         return;
       }
 
@@ -67,7 +69,7 @@ export const useFormationPlayers = ({
     });
 
     return placeholders;
-  }, [formationSlots, match.team1Id, resolvedPlayers]);
+  }, [formationSlots, resolvedPlayers, subjectTeamId]);
 
   return {
     formationSlots,

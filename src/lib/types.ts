@@ -17,6 +17,7 @@ export interface IMatch {
   date: string;
   team1Id: number;
   team2Id: number;
+  subjectTeamId?: number;
   currentFormation?: string | null;
   assignedPlayers?: Record<number, number> | null;
   substitutedOutPlayerIds?: number[] | null;
@@ -33,6 +34,7 @@ export interface IActionMaster {
 export interface IEvent {
   id?: number;
   matchId: number;
+  teamId?: number;
   playerId: number | null;
   tempSlotId?: string | null;
   actionId: number;

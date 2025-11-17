@@ -12,7 +12,7 @@ import type { FormationPlayers } from '@/types/formation';
 import { FORMATION_LIST, type FormationType } from '@/lib/formation-template';
 
 import { BenchSection } from './BenchSection';
-import type { BenchItem } from '../hooks/useSetupTabState';
+import type { AssignModalContext, BenchItem } from '../hooks/useSetupTabState';
 
 interface FormationSectionProps {
   homeTeamName: string;
@@ -28,7 +28,7 @@ interface FormationSectionProps {
   onPositionClick: (positionId: number, player?: Player) => Promise<void>;
   onSubstitutionModeChange: (checked: boolean) => void;
   onSubstituteSelect: (playerId: number, isSelected: boolean) => void;
-  onAssignGhost: (tempSlotId: string) => void;
+  onAssignSlot: (context: AssignModalContext) => void;
 }
 
 export const FormationSection = ({
@@ -45,7 +45,7 @@ export const FormationSection = ({
   onPositionClick,
   onSubstitutionModeChange,
   onSubstituteSelect,
-  onAssignGhost,
+  onAssignSlot,
 }: FormationSectionProps) => {
   const handleContainerPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     event.stopPropagation();
@@ -118,7 +118,7 @@ export const FormationSection = ({
             items={benchItems}
             selectedBenchPlayerId={selectedBenchPlayerId}
             onSubstituteSelect={onSubstituteSelect}
-            onAssignGhost={onAssignGhost}
+            onAssignSlot={onAssignSlot}
           />
         </div>
       </CardContent>

@@ -1,10 +1,11 @@
 import { useCallback } from 'react';
-import { db } from '@/lib/db';
+import { db, type Match } from '@/lib/db';
 import { toast } from '@/features/toast/toast-store';
 import { useEditEventStore } from '@/features/match-detail/stores/edit-event-store';
 import type { FormationSelectionTarget } from '@/features/match-detail/hooks/useFormationSelection';
 
 interface UseMatchEventRecorderParams {
+  match: Match | null;
   matchId: number | undefined;
   selectedTarget: FormationSelectionTarget | null;
   bufferedMatchTime: string | null;
@@ -14,6 +15,7 @@ interface UseMatchEventRecorderParams {
 }
 
 export const useMatchEventRecorder = ({
+  match,
   matchId,
   selectedTarget,
   bufferedMatchTime,
@@ -25,12 +27,22 @@ export const useMatchEventRecorder = ({
 
   const handleActionSelect = useCallback(
     async (actionId: number) => {
-      if (!matchId || !selectedTarget) {
+      if (!match || !matchId || !selectedTarget) {
         onClose();
         return;
       }
 
       const matchTime = bufferedMatchTime ?? fallbackTime;
+      const subjectTeamId =
+        typeof match.subjectTeamId === 'number'
+          ? match.subjectTeamId
+          : match.team1Id;
+      const opponentTeamId =
+        subjectTeamId === match.team1Id ? match.team2Id : match.team1Id;
+      const eventTeamId =
+        selectedTarget.type === 'opponent'
+          ? opponentTeamId ?? subjectTeamId
+          : subjectTeamId;
 
       try {
         const isPlayerTarget = selectedTarget.type === 'player';
@@ -51,6 +63,7 @@ export const useMatchEventRecorder = ({
 
         const addEventPromise = db.events.add({
           matchId,
+          teamId: eventTeamId,
           actionId,
           matchTime,
           playerId: isPlayerTarget ? resolvedPlayerId : null,
@@ -89,6 +102,7 @@ export const useMatchEventRecorder = ({
     [
       bufferedMatchTime,
       fallbackTime,
+      match,
       matchId,
       onAfterRecord,
       onClose,

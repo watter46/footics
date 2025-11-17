@@ -64,6 +64,7 @@ export const RecordTab = ({
     [baseHandleSheetChange]
   );
   const { handleActionSelect } = useMatchEventRecorder({
+    match,
     matchId,
     selectedTarget,
     bufferedMatchTime,

@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 
-import { db, type ActionMaster, type Player } from '@/lib/db';
+import { db, type ActionMaster, type Match, type Player } from '@/lib/db';
 
 import {
   buildMemoSummary,
@@ -10,13 +10,19 @@ import {
 import type { ResolvedHistoryEvent } from '../types';
 
 export const useResolvedMatchEvents = (
-  matchId?: number
+  match: Match | null
 ): ResolvedHistoryEvent[] =>
   useLiveQuery<ResolvedHistoryEvent[]>(
     async () => {
+      const matchId = match?.id;
       if (!matchId) {
         return [];
       }
+
+      const subjectTeamId =
+        typeof match.subjectTeamId === 'number'
+          ? match.subjectTeamId
+          : match.team1Id;
 
       try {
         const baseEvents = await db.events.where('matchId').equals(matchId).toArray();
@@ -55,7 +61,10 @@ export const useResolvedMatchEvents = (
           eventsToResolve.map(async event => {
             const { action, ...eventWithoutAction } = event;
             const categoryMeta = getCategoryMeta(action ?? null);
-            const isOpponent = Boolean(eventWithoutAction.opponentPosition);
+            const isOpponent =
+              typeof eventWithoutAction.teamId === 'number'
+                ? eventWithoutAction.teamId !== subjectTeamId
+                : Boolean(eventWithoutAction.opponentPosition);
             const basePositionLabel = isOpponent
               ? eventWithoutAction.opponentPosition ?? 'ポジション未設定'
               : eventWithoutAction.positionName ?? 'ポジション未設定';
@@ -140,5 +149,17 @@ export const useResolvedMatchEvents = (
         return [];
       }
     },
-    [matchId]
+    [match?.id ?? null, subjectTeamIdDependency(match)]
   ) ?? [];
+
+const subjectTeamIdDependency = (match: Match | null): number | null => {
+  if (!match) {
+    return null;
+  }
+
+  if (typeof match.subjectTeamId === 'number') {
+    return match.subjectTeamId;
+  }
+
+  return match.team1Id ?? null;
+};

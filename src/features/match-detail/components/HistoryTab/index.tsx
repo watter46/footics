@@ -15,13 +15,21 @@ interface HistoryTabProps {
 }
 
 export const HistoryTab = ({ match }: HistoryTabProps) => {
-  const events = useResolvedMatchEvents(match.id);
+  const events = useResolvedMatchEvents(match);
   const teamNameMap = useTeamNameMap(match);
 
-  const ownTeamName = createTeamDisplayName(match.team1Id, teamNameMap, '自チーム');
+  const subjectTeamId = match.subjectTeamId ?? match.team1Id;
+  const opponentTeamId =
+    subjectTeamId === match.team1Id ? match.team2Id : match.team1Id;
+
+  const ownTeamName = createTeamDisplayName(
+    subjectTeamId,
+    teamNameMap,
+    '自チーム'
+  );
 
   const opponentTeamName = createTeamDisplayName(
-    match.team2Id,
+    opponentTeamId,
     teamNameMap,
     '相手チーム'
   );

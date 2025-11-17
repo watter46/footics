@@ -1,14 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Pencil } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HistoryTab } from '@/features/match-detail/components/HistoryTab';
 import { RecordTab } from '@/features/match-detail/components/RecordTab';
 import { SetupTab } from '@/features/match-detail/components/SetupTab';
 import { EditEventSheet } from '@/features/match-detail/components/EditEventSheet';
+import { EditMatchSheet } from '@/features/match-detail/components/EditMatchSheet';
 import { useMatchPageState } from '@/features/match-detail/hooks/useMatchPageState';
 import { useMatchTeamInfo } from '@/features/match-detail/hooks/useMatchTeamInfo';
 
@@ -31,6 +33,7 @@ export const MatchPageContent = ({ matchId }: MatchPageContentProps) => {
     useMatchTeamInfo(match);
 
   const [tempSlotIdMap, setTempSlotIdMap] = useState(new Map<number, string>());
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
 
   if (isLoading || isTeamsLoading) {
     return (
@@ -61,9 +64,21 @@ export const MatchPageContent = ({ matchId }: MatchPageContentProps) => {
     <div className="space-y-5">
       <Card className="border-slate-800/70 bg-slate-900/40">
         <CardHeader className="gap-4">
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
-            <CalendarDays className="h-4 w-4" />
-            <span>{formattedDate}</span>
+          <div className="flex items-center justify-between gap-3 text-xs font-medium text-slate-400">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              <span>{formattedDate}</span>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="text-slate-400 hover:text-slate-100"
+              aria-label="試合情報を編集"
+              onClick={() => setIsEditSheetOpen(true)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
           </div>
           <CardTitle className="grid grid-cols-[1fr_auto_1fr] items-start gap-x-7 text-2xl font-semibold text-slate-100">
             <span className="text-right text-lg font-bold">{homeTeamName}</span>
@@ -108,6 +123,12 @@ export const MatchPageContent = ({ matchId }: MatchPageContentProps) => {
       </Tabs>
 
       <EditEventSheet />
+      <EditMatchSheet
+        isOpen={isEditSheetOpen}
+        onClose={() => setIsEditSheetOpen(false)}
+        match={match}
+        teamNameById={teamNameById}
+      />
     </div>
   );
 };

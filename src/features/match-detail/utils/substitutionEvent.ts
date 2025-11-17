@@ -28,15 +28,17 @@ export const preloadSubstitutionActionIds = async (): Promise<void> => {
 
 export const recordSubstitutionEvent = async (
   matchId: number | undefined,
+  teamId: number | undefined,
   playerId: number | null | undefined,
   tempSlotId: string | null | undefined,
   matchTime: string,
   positionName: string | undefined,
   type: 'in' | 'out'
 ): Promise<void> => {
-  if (matchId == null) {
-    console.error('交代イベントの記録に必要な matchId がありません', {
+  if (matchId == null || teamId == null || !Number.isFinite(teamId)) {
+    console.error('交代イベントの記録に必要な情報が不足しています', {
       matchId,
+      teamId,
       playerId,
       tempSlotId,
     });
@@ -66,6 +68,7 @@ export const recordSubstitutionEvent = async (
   try {
     await db.events.add({
       matchId,
+      teamId,
       playerId: playerId ?? null,
       tempSlotId: tempSlotId ?? null,
       actionId: action.id,

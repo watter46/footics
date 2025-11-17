@@ -35,6 +35,7 @@ import {
 import { formatPlayerLabel } from '../utils/playerLabel';
 
 const DEFAULT_FORMATION: FormationType = '4-2-3-1';
+const EMPTY_SUBSTITUTION_EVENTS: Event[] = [];
 
 export type SelectionState =
   | { type: 'pitch'; positionId: number }
@@ -54,9 +55,16 @@ type BenchPlayerItem = {
   type: 'player';
   status: BenchPlayerStatus;
   player: TempPlayer;
+  originalEventId?: number;
 };
 
 export type BenchItem = BenchGhostItem | BenchPlayerItem;
+
+export type AssignModalContext = {
+  tempSlotId?: string | null;
+  eventId?: number | null;
+  defaultPlayerId?: number | null;
+};
 
 interface UseSetupTabStateParams {
   match: Match;
@@ -93,8 +101,8 @@ interface UseSetupTabStateResult {
   formState: PlayerFormState;
   isSubmitting: boolean;
   modalState: ModalState;
-  assignModalTempSlotId: string | null;
-  setAssignModalTempSlotId: Dispatch<SetStateAction<string | null>>;
+  assignModalContext: AssignModalContext | null;
+  setAssignModalContext: Dispatch<SetStateAction<AssignModalContext | null>>;
   handleFormationChange: (event: ChangeEvent<HTMLSelectElement>) => Promise<void>;
   handleSubstituteClick: (playerId: number, isSelected: boolean) => void;
   handlePositionClick: (positionId: number, player?: Player) => Promise<void>;
@@ -120,7 +128,8 @@ export const useSetupTabState = ({
   const [isAssigning, setIsAssigning] = useState(false);
   const [isFormationUpdating, setIsFormationUpdating] = useState(false);
   const [isSubstitutionMode, setIsSubstitutionMode] = useState(false);
-  const [assignModalTempSlotId, setAssignModalTempSlotId] = useState<string | null>(null);
+  const [assignModalContext, setAssignModalContext] =
+    useState<AssignModalContext | null>(null);
 
   const { formattedTime } = useMatchClock();
 
@@ -129,11 +138,12 @@ export const useSetupTabState = ({
   }, []);
 
   const effectiveFormation = currentFormation ?? DEFAULT_FORMATION;
+  const subjectTeamId = match.subjectTeamId ?? match.team1Id;
 
-  const teamPlayers = useTeamPlayers(match.team1Id);
+  const teamPlayers = useTeamPlayers(subjectTeamId);
 
   const { formState, isSubmitting, handleFormChange, handleFormSubmit } =
-    usePlayerRegistration({ teamId: match.team1Id });
+    usePlayerRegistration({ teamId: subjectTeamId });
 
   const { formationSlots, homeFormationPlayers } = useFormationPlayers({
     match,
@@ -196,78 +206,92 @@ export const useSetupTabState = ({
     [match.id, match.substitutedOutPlayerIds]
   );
 
-  const rawUnassignedSubstitutedOutEvents = useLiveQuery<Event[][]>(
-    async () => {
-      if (typeof match.id !== 'number') {
-        return [];
+  const substitutedOutEvents =
+    useLiveQuery<Event[]>(
+      async () => {
+        if (typeof match.id !== 'number' || typeof subjectTeamId !== 'number') {
+          return [];
+        }
+
+        const outAction = await db.actions_master
+          .where('name')
+          .equals('交代OUT')
+          .first();
+
+        if (!outAction?.id) {
+          return [];
+        }
+
+        return db.events
+          .where('matchId')
+          .equals(match.id)
+          .filter(
+            event =>
+              event.actionId === outAction.id && event.teamId === subjectTeamId
+          )
+          .toArray();
+      },
+      [match.id, subjectTeamId]
+    ) ?? EMPTY_SUBSTITUTION_EVENTS;
+
+  const teamPlayersById = useMemo(() => {
+    const map = new Map<number, TempPlayer>();
+    teamPlayers.forEach(player => {
+      if (typeof player.id === 'number') {
+        map.set(player.id, player);
       }
+    });
+    return map;
+  }, [teamPlayers]);
 
-      const events = await db.events
-        .where('matchId')
-        .equals(match.id)
-        .filter(event => event.playerId === null && event.tempSlotId != null)
-        .toArray();
+  const benchItems = useMemo<BenchItem[]>(() => {
+    const ghostItemsMap = new Map<string, BenchGhostItem>();
+    const playerItems: BenchPlayerItem[] = [];
 
-      const grouped = new Map<string, Event[]>();
-
-      events.forEach(event => {
+    substitutedOutEvents.forEach(event => {
+      if (event.playerId == null) {
         if (!event.tempSlotId) {
           return;
         }
 
-        const current = grouped.get(event.tempSlotId) ?? [];
-        current.push(event);
-        grouped.set(event.tempSlotId, current);
-      });
-
-      return Array.from(grouped.values());
-    },
-    [match.id]
-  );
-
-  const unassignedSubstitutedOutEvents = useMemo(
-    () => rawUnassignedSubstitutedOutEvents ?? [],
-    [rawUnassignedSubstitutedOutEvents]
-  );
-
-  const benchItems = useMemo<BenchItem[]>(() => {
-    const ghostItems = unassignedSubstitutedOutEvents
-      .map(eventGroup => {
-        const representative = eventGroup[0];
-        if (!representative?.tempSlotId) {
-          return null;
+        const existing = ghostItemsMap.get(event.tempSlotId);
+        if (existing) {
+          existing.count += 1;
+          return;
         }
 
-        return {
+        ghostItemsMap.set(event.tempSlotId, {
           type: 'ghost',
-          tempSlotId: representative.tempSlotId,
-          position: representative.positionName ?? '未設定',
-          count: eventGroup.length,
-        } satisfies BenchGhostItem;
-      })
-      .filter((item): item is BenchGhostItem => item !== null);
-
-    const substitutedItems = substitutedOutPlayers.reduce<BenchPlayerItem[]>
-      ((acc, player) => {
-        if (typeof player.id !== 'number') {
-          return acc;
-        }
-
-        acc.push({
-          type: 'player',
-          status: 'substituted',
-          player,
+          tempSlotId: event.tempSlotId,
+          position: event.positionName ?? '未設定',
+          count: 1,
         });
+        return;
+      }
 
-        return acc;
-      }, []);
+      if (typeof event.playerId !== 'number') {
+        return;
+      }
 
-    return [...ghostItems, ...substitutedItems];
-  }, [substitutedOutPlayers, unassignedSubstitutedOutEvents]);
+      const player = teamPlayersById.get(event.playerId);
+      if (!player) {
+        return;
+      }
+
+      playerItems.push({
+        type: 'player',
+        status: 'substituted',
+        player,
+        originalEventId: typeof event.id === 'number' ? event.id : undefined,
+      });
+    });
+
+    return [...ghostItemsMap.values(), ...playerItems];
+  }, [substitutedOutEvents, teamPlayersById]);
 
   const homeTeamName = useMemo(
-    () => teamNameById.get(match.team1Id) ?? `Team #${match.team1Id}`,
-    [match.team1Id, teamNameById]
+    () => teamNameById.get(subjectTeamId) ?? `Team #${subjectTeamId}`,
+    [subjectTeamId, teamNameById]
   );
 
   const modalSlot = useMemo(() => {
@@ -429,6 +453,7 @@ export const useSetupTabState = ({
 
           await recordSubstitutionEvent(
             match.id,
+            subjectTeamId,
             outgoingPlayerId,
             tempSlotIdA,
             formattedTime,
@@ -440,6 +465,7 @@ export const useSetupTabState = ({
           if (newPlayer) {
             await recordSubstitutionEvent(
               match.id,
+              subjectTeamId,
               typeof newPlayer.id === 'number' ? newPlayer.id : null,
               null,
               formattedTime,
@@ -474,6 +500,7 @@ export const useSetupTabState = ({
       assignedPlayers,
       teamPlayers,
       setTempSlotIdMap,
+      subjectTeamId,
       tempSlotIdMap,
     ]
   );
@@ -516,6 +543,7 @@ export const useSetupTabState = ({
 
       await recordSubstitutionEvent(
         match.id,
+        subjectTeamId,
         outgoingPlayerId,
         tempSlotIdA,
         formattedTime,
@@ -541,6 +569,7 @@ export const useSetupTabState = ({
     modalSlot,
     persistSubstitutedOutPlayerId,
     setTempSlotIdMap,
+    subjectTeamId,
     tempSlotIdMap,
   ]);
 
@@ -625,6 +654,7 @@ export const useSetupTabState = ({
 
             await recordSubstitutionEvent(
               match.id,
+              subjectTeamId,
               outgoingPlayerId,
               tempSlotIdA,
               formattedTime,
@@ -641,6 +671,7 @@ export const useSetupTabState = ({
             if (newPlayer) {
               await recordSubstitutionEvent(
                 match.id,
+                subjectTeamId,
                 typeof newPlayer.id === 'number' ? newPlayer.id : null,
                 null,
                 formattedTime,
@@ -688,6 +719,7 @@ export const useSetupTabState = ({
       teamPlayers,
       persistSubstitutedOutPlayerId,
       setTempSlotIdMap,
+      subjectTeamId,
       tempSlotIdMap,
       assignedPlayers,
     ]
@@ -719,8 +751,8 @@ export const useSetupTabState = ({
     formState,
     isSubmitting,
     modalState,
-    assignModalTempSlotId,
-    setAssignModalTempSlotId,
+    assignModalContext,
+    setAssignModalContext,
     handleFormationChange,
     handleSubstituteClick,
     handlePositionClick,

@@ -8,8 +8,8 @@ import type { FormationPlayers } from '@/types/formation';
 import { type FormationType } from '@/lib/formation-template';
 import { PlayerSelectionModal } from './components/PlayerSelectionModal';
 import { FormationSection } from './components/FormationSection';
-import { AssignGhostPlayerModal } from './components/AssignGhostPlayerModal';
-import { useSetupTabState } from './hooks/useSetupTabState';
+import { AssignSubstitutionModal } from './components/AssignSubstitutionModal';
+import { useSetupTabState, type AssignModalContext } from './hooks/useSetupTabState';
 
 interface SetupTabProps {
   match: Match;
@@ -28,6 +28,7 @@ export const SetupTab = ({
   tempSlotIdMap,
   setTempSlotIdMap,
 }: SetupTabProps) => {
+  const subjectTeamId = match.subjectTeamId ?? match.team1Id;
   const {
     canRender,
     effectiveFormation,
@@ -46,8 +47,8 @@ export const SetupTab = ({
     formState,
     isSubmitting,
     modalState,
-    assignModalTempSlotId,
-    setAssignModalTempSlotId,
+    assignModalContext,
+    setAssignModalContext,
     handleFormationChange,
     handleSubstituteClick,
     handlePositionClick,
@@ -93,8 +94,12 @@ export const SetupTab = ({
     void handleFormSubmit(event);
   };
 
-  const handleAssignGhost = (tempSlotId: string) => {
-    setAssignModalTempSlotId(tempSlotId);
+  const handleAssignSlot = (context: AssignModalContext) => {
+    if (!context.tempSlotId && typeof context.eventId !== 'number') {
+      return;
+    }
+
+    setAssignModalContext(context);
   };
 
   return (
@@ -113,7 +118,7 @@ export const SetupTab = ({
         onPositionClick={handlePositionClick}
         onSubstitutionModeChange={setIsSubstitutionMode}
         onSubstituteSelect={handleSubstituteClick}
-        onAssignGhost={handleAssignGhost}
+        onAssignSlot={handleAssignSlot}
       />
 
       <PlayerSelectionModal
@@ -136,13 +141,15 @@ export const SetupTab = ({
         initialGroupKey={modalState.initialGroupKey}
       />
 
-      <AssignGhostPlayerModal
-        isOpen={Boolean(assignModalTempSlotId)}
-        tempSlotId={assignModalTempSlotId}
-        teamId={match.team1Id}
+      <AssignSubstitutionModal
+        isOpen={Boolean(assignModalContext)}
+        tempSlotId={assignModalContext?.tempSlotId}
+        eventId={assignModalContext?.eventId}
+        defaultPlayerId={assignModalContext?.defaultPlayerId}
+        teamId={subjectTeamId}
         matchId={match.id as number}
         substitutedOutPlayers={substitutedOutPlayers}
-        onClose={() => setAssignModalTempSlotId(null)}
+        onClose={() => setAssignModalContext(null)}
       />
     </div>
   );
