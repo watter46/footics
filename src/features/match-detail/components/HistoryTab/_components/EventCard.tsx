@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 
 import { cn } from '@/lib/utils/cn';
 import { useEditEventStore } from '@/features/match-detail/stores/edit-event-store';
+import { Separator } from '@/components/ui/separator';
 
 import type { ResolvedHistoryEvent } from '../types';
 
@@ -14,6 +15,7 @@ interface HistoryEventCardProps {
 
 export const HistoryEventCard = ({ event, align, icon: Icon }: HistoryEventCardProps) => {
   const isLeft = align === 'left';
+  const isSubstitution = event.actionName === '交代';
   const openEditSheet = useEditEventStore(state => state.openEditSheet);
   const ariaLabel = event.actionName ? `${event.actionName}を編集` : 'イベントを編集';
 
@@ -22,6 +24,26 @@ export const HistoryEventCard = ({ event, align, icon: Icon }: HistoryEventCardP
       openEditSheet(event.id);
     }
   }, [event.id, openEditSheet]);
+
+  const renderStandardDetails = (textAlign: 'left' | 'right') => (
+    <div
+      className={cn(
+        'flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-300',
+        textAlign === 'left' ? 'justify-end text-right' : 'text-left'
+      )}
+    >
+      <span className="text-sm font-semibold text-slate-100">
+        {event.positionLabel}
+      </span>
+      {event.playerSnapshotLabel ? (
+        <span className="text-xs text-slate-300">
+          [{event.playerSnapshotLabel}]
+        </span>
+      ) : event.subjectLabel && event.subjectLabel !== event.positionLabel ? (
+        <span className="text-xs text-slate-400">{event.subjectLabel}</span>
+      ) : null}
+    </div>
+  );
 
   const leftCard = (
     <button
@@ -41,21 +63,30 @@ export const HistoryEventCard = ({ event, align, icon: Icon }: HistoryEventCardP
           />
           <span>{event.actionName}</span>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs text-slate-300">
-          <span className="text-sm font-semibold text-slate-100">
-            {event.positionLabel}
-          </span>
-          {event.playerSnapshotLabel ? (
-            <span className="text-xs text-slate-300">
-              [{event.playerSnapshotLabel}]
-            </span>
-          ) : event.subjectLabel && event.subjectLabel !== event.positionLabel ? (
-            <span className="text-xs text-slate-400">{event.subjectLabel}</span>
-          ) : null}
-        </div>
-        {event.memoSummary ? (
-          <p className="text-xs leading-relaxed text-slate-400">{event.memoSummary}</p>
-        ) : null}
+        {isSubstitution ? (
+          <>
+            <Separator className="border-slate-800" />
+            <div className="space-y-1 text-right text-xs">
+              {event.playerSnapshotLabel ? (
+                <p className="font-semibold text-emerald-400">
+                  {event.playerSnapshotLabel}
+                </p>
+              ) : null}
+              {event.playerOutSnapshotLabel ? (
+                <p className="font-semibold text-rose-400">
+                  {event.playerOutSnapshotLabel}
+                </p>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <>
+            {renderStandardDetails('left')}
+            {event.memoSummary ? (
+              <p className="text-xs leading-relaxed text-slate-400">{event.memoSummary}</p>
+            ) : null}
+          </>
+        )}
       </div>
     </button>
   );
@@ -78,21 +109,30 @@ export const HistoryEventCard = ({ event, align, icon: Icon }: HistoryEventCardP
           />
           <span>{event.actionName}</span>
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-300">
-          <span className="text-sm font-semibold text-slate-100">
-            {event.positionLabel}
-          </span>
-          {event.playerSnapshotLabel ? (
-            <span className="text-xs text-slate-300">
-              [{event.playerSnapshotLabel}]
-            </span>
-          ) : event.subjectLabel && event.subjectLabel !== event.positionLabel ? (
-            <span className="text-xs text-slate-400">{event.subjectLabel}</span>
-          ) : null}
-        </div>
-        {event.memoSummary ? (
-          <p className="text-xs leading-relaxed text-slate-400">{event.memoSummary}</p>
-        ) : null}
+        {isSubstitution ? (
+          <>
+            <Separator className="border-slate-800" />
+            <div className="space-y-1 text-left text-xs">
+              {event.playerSnapshotLabel ? (
+                <p className="font-semibold text-emerald-400">
+                  {event.playerSnapshotLabel}
+                </p>
+              ) : null}
+              {event.playerOutSnapshotLabel ? (
+                <p className="font-semibold text-rose-400">
+                  {event.playerOutSnapshotLabel}
+                </p>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <>
+            {renderStandardDetails('right')}
+            {event.memoSummary ? (
+              <p className="text-xs leading-relaxed text-slate-400">{event.memoSummary}</p>
+            ) : null}
+          </>
+        )}
       </div>
     </button>
   );

@@ -101,6 +101,10 @@ const ACTION_MASTER_SEED_SOURCE: ActionSeedInput[] = [
   { name: 'カウンター起点', category: '印象' },
   { name: 'コーチング', category: '印象' },
   { name: '集中力', category: '印象' },
+
+  // 10. イベント (Event)
+  { name: '交代IN', category: 'イベント' },
+  { name: '交代OUT', category: 'イベント' },
 ];
 
 export const ACTION_MASTER_SEED: IActionMaster[] =

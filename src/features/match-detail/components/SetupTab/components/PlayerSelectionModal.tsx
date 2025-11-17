@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, type FormEvent } from 'react';
 import { Check, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ interface PlayerSelectionModalProps {
   currentPlayerLabel?: string;
   selectedPlayerId?: number;
   players: TempPlayer[];
+  currentAssignedPlayers?: Record<number, number>;
+  substitutedOutPlayers?: TempPlayer[];
   formState: PlayerFormState;
   isSubmitting: boolean;
   isAssigning: boolean;
@@ -38,6 +40,8 @@ export const PlayerSelectionModal = ({
   currentPlayerLabel,
   selectedPlayerId,
   players,
+  currentAssignedPlayers,
+  substitutedOutPlayers,
   formState,
   isSubmitting,
   isAssigning,
@@ -48,7 +52,44 @@ export const PlayerSelectionModal = ({
   onClearSelection,
   initialGroupKey,
 }: PlayerSelectionModalProps) => {
-  const groupedPlayers = groupAndSortPlayers(players);
+  const assignedIds = useMemo(
+    () =>
+      new Set(
+        Object.values(currentAssignedPlayers ?? {}).filter(
+          (playerId): playerId is number =>
+            typeof playerId === 'number' && Number.isFinite(playerId)
+        )
+      ),
+    [currentAssignedPlayers]
+  );
+
+  const substitutedIds = useMemo(
+    () =>
+      new Set(
+        (substitutedOutPlayers ?? [])
+          .map(player => (typeof player.id === 'number' ? player.id : null))
+          .filter((playerId): playerId is number => playerId != null)
+      ),
+    [substitutedOutPlayers]
+  );
+
+  const candidatePlayers = players.filter(player => {
+    const playerId = player.id;
+    if (typeof playerId !== 'number') {
+      return false;
+    }
+
+    if (playerId === selectedPlayerId) {
+      return true;
+    }
+
+    const isAssigned = assignedIds.has(playerId);
+    const isSubstituted = substitutedIds.has(playerId);
+
+    return !isAssigned && !isSubstituted;
+  });
+
+  const groupedPlayers = groupAndSortPlayers(candidatePlayers);
   const groupRefs = useRef<Map<string, HTMLHeadingElement>>(new Map());
 
   useEffect(() => {
@@ -109,9 +150,11 @@ export const PlayerSelectionModal = ({
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-slate-300">登録済み選手</h3>
             <ScrollArea className="h-[45vh] pr-2">
-              {players.length === 0 ? (
+              {candidatePlayers.length === 0 ? (
                 <p className="text-sm text-slate-500">
-                  選手が登録されていません。右側のフォームから追加してください。
+                  {players.length === 0
+                    ? '選手が登録されていません。右側のフォームから追加してください。'
+                    : '割り当て可能な選手がいません。'}
                 </p>
               ) : (
                 <div className="space-y-4 pr-1">

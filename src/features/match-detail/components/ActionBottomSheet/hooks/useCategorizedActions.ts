@@ -29,12 +29,24 @@ export const useCategorizedActions = (): UseCategorizedActionsResult => {
       };
     });
 
-    return [FAVORITE_CATEGORY, ...ordered];
+    const filtered = ordered.filter(category => category.key !== 'イベント');
+
+    return [FAVORITE_CATEGORY, ...filtered];
   }, []);
 
   return useMemo(() => {
     const categorizedMap = new Map<string, ActionMaster[]>();
-    categories.forEach(category => categorizedMap.set(category.key, []));
+    categorizedMap.set(FAVORITE_CATEGORY_KEY, []);
+    CATEGORY_ORDER.forEach(categoryKey => {
+      if (!categorizedMap.has(categoryKey)) {
+        categorizedMap.set(categoryKey, []);
+      }
+    });
+    categories.forEach(category => {
+      if (!categorizedMap.has(category.key)) {
+        categorizedMap.set(category.key, []);
+      }
+    });
 
     const safeActions: ActionMaster[] = actions ?? [];
     const fallbackKey = CATEGORY_ORDER.includes('印象')
@@ -53,6 +65,8 @@ export const useCategorizedActions = (): UseCategorizedActionsResult => {
 
       categorizedMap.get(categoryKey)?.push(action);
     });
+
+    categorizedMap.delete('イベント');
 
     categorizedMap.forEach(actionsInCategory => {
       actionsInCategory.sort((a, b) => a.name.localeCompare(b.name, 'ja'));

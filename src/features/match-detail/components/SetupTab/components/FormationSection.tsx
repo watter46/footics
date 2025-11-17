@@ -3,11 +3,16 @@
 import { type ChangeEvent, type PointerEvent } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Pitch, defaultPitchSettings } from '@/components/pitch';
 import { Formation } from '@/components/formation';
 import type { Player } from '@/lib/db';
 import type { FormationPlayers } from '@/types/formation';
 import { FORMATION_LIST, type FormationType } from '@/lib/formation-template';
+
+import { BenchSection } from './BenchSection';
+import type { BenchItem } from '../hooks/useSetupTabState';
 
 interface FormationSectionProps {
   homeTeamName: string;
@@ -15,9 +20,15 @@ interface FormationSectionProps {
   selectedPositionId: number | null;
   isAssigning: boolean;
   isFormationUpdating: boolean;
+  isSubstitutionMode: boolean;
   formationPlayers: FormationPlayers;
+  benchItems: BenchItem[];
+  selectedBenchPlayerId: number | null;
   onFormationChange: (event: ChangeEvent<HTMLSelectElement>) => Promise<void>;
   onPositionClick: (positionId: number, player?: Player) => Promise<void>;
+  onSubstitutionModeChange: (checked: boolean) => void;
+  onSubstituteSelect: (playerId: number, isSelected: boolean) => void;
+  onAssignGhost: (tempSlotId: string) => void;
 }
 
 export const FormationSection = ({
@@ -26,9 +37,15 @@ export const FormationSection = ({
   selectedPositionId,
   isAssigning,
   isFormationUpdating,
+  isSubstitutionMode,
   formationPlayers,
+  benchItems,
+  selectedBenchPlayerId,
   onFormationChange,
   onPositionClick,
+  onSubstitutionModeChange,
+  onSubstituteSelect,
+  onAssignGhost,
 }: FormationSectionProps) => {
   const handleContainerPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     event.stopPropagation();
@@ -67,6 +84,20 @@ export const FormationSection = ({
             ))}
           </select>
         </label>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="substitution-mode"
+            checked={isSubstitutionMode}
+            onCheckedChange={onSubstitutionModeChange}
+            disabled={isFormationUpdating || isAssigning}
+          />
+          <Label
+            htmlFor="substitution-mode"
+            className="text-xs font-semibold tracking-wide text-slate-300 uppercase"
+          >
+            交代モード
+          </Label>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4 border-t border-slate-800/60 bg-slate-900/30">
         <div className="mx-auto w-full max-w-sm">
@@ -82,6 +113,14 @@ export const FormationSection = ({
         <p className="text-center text-xs text-slate-500">
           ポジションを選択してスタメンを設定してください。
         </p>
+        <div className="mt-6 border-t border-slate-800/60 pt-4">
+          <BenchSection
+            items={benchItems}
+            selectedBenchPlayerId={selectedBenchPlayerId}
+            onSubstituteSelect={onSubstituteSelect}
+            onAssignGhost={onAssignGhost}
+          />
+        </div>
       </CardContent>
     </Card>
   );

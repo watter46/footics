@@ -18,4 +18,5 @@ export interface ResolvedHistoryEvent extends Event {
   isOpponent: boolean;
   positionLabel: string;
   playerSnapshotLabel: string | null;
+  playerOutSnapshotLabel: string | null;
 }

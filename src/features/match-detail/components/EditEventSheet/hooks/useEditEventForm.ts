@@ -8,6 +8,7 @@ import { formatDisplayTime, parseTimeInput } from '@/lib/utils/timer';
 interface UseEditEventFormResult {
   event: IEvent | null;
   player: IPlayer | null;
+  action: IActionMaster | null;
   actionName: string | null;
   subjectLabel: string;
   draftMemo: string;
@@ -56,6 +57,7 @@ export const useEditEventForm = (): UseEditEventFormResult => {
 
   const event = snapshot?.event ?? null;
   const player = snapshot?.player ?? null;
+  const action = snapshot?.action ?? null;
   const persistedActionName = snapshot?.action?.name ?? null;
 
   const [draftMemo, setDraftMemo] = useState('');
@@ -176,8 +178,53 @@ export const useEditEventForm = (): UseEditEventFormResult => {
     }
   }, [closeEditSheet, draftActionId, draftMemo, draftTime, editingEventId]);
 
+  const deleteCounterpartEvent = useCallback(
+    async (targetActionName: '交代IN' | '交代OUT') => {
+      if (!event) {
+        return;
+      }
+
+      const counterpartAction = await db.actions_master
+        .where('name')
+        .equals(targetActionName)
+        .first();
+
+      if (!counterpartAction?.id) {
+        return;
+      }
+
+      const counterpartEvent = await db.events
+        .where('matchId')
+        .equals(event.matchId)
+        .and(candidate => {
+          if (candidate.matchTime !== event.matchTime) {
+            return false;
+          }
+          if (candidate.actionId !== counterpartAction.id) {
+            return false;
+          }
+          if (event.positionName) {
+            return candidate.positionName === event.positionName;
+          }
+          return true;
+        })
+        .first();
+
+      if (counterpartEvent?.id != null) {
+        await db.events.delete(counterpartEvent.id);
+      }
+    },
+    [event]
+  );
+
   const handleDelete = useCallback(async () => {
-    if (!editingEventId) {
+    if (!editingEventId || !event) {
+      return;
+    }
+
+    if (action?.category === 'イベント') {
+      console.warn('交代イベントの削除操作がブロックされました。');
+      toast.error('交代イベントはHistoryからは削除できません。Setupタブから操作してください。');
       return;
     }
 
@@ -186,14 +233,32 @@ export const useEditEventForm = (): UseEditEventFormResult => {
     }
 
     try {
-      await db.events.delete(editingEventId);
+      await db.transaction('rw', db.events, db.actions_master, async () => {
+        await db.events.delete(editingEventId);
+
+        const currentActionName = action?.name ?? null;
+
+        if (currentActionName === '交代IN') {
+          await deleteCounterpartEvent('交代OUT');
+        } else if (currentActionName === '交代OUT') {
+          await deleteCounterpartEvent('交代IN');
+        }
+      });
+
       closeEditSheet();
       toast.info('イベントを削除しました');
     } catch (error) {
       console.error('イベントの削除に失敗しました', error);
       toast.error('イベントの削除に失敗しました');
     }
-  }, [closeEditSheet, editingEventId]);
+  }, [
+    action?.category,
+    action?.name,
+    closeEditSheet,
+    deleteCounterpartEvent,
+    editingEventId,
+    event,
+  ]);
 
   const handleActionSelect = useCallback(
     (actionId: number, actionName: string) => {
@@ -207,6 +272,7 @@ export const useEditEventForm = (): UseEditEventFormResult => {
   return {
     event,
     player,
+    action,
     actionName: draftActionName,
     subjectLabel,
     draftMemo,

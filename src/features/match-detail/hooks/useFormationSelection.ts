@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import { nanoid } from 'nanoid';
 import type { Player } from '@/lib/db';
 import type { FormationPosition } from '@/lib/formation-template';
 
@@ -6,6 +7,7 @@ export type FormationSelectionTarget =
   | {
       type: 'player';
       playerId: number | null;
+      tempSlotId: string | null;
       positionId: number;
       positionLabel: string;
       label: string;
@@ -14,6 +16,8 @@ export type FormationSelectionTarget =
 
 interface UseFormationSelectionParams {
   formationSlots: FormationPosition[];
+  tempSlotIdMap: Map<number, string>;
+  setTempSlotIdMap: Dispatch<SetStateAction<Map<number, string>>>;
 }
 
 interface UseFormationSelectionResult {
@@ -48,6 +52,8 @@ const buildPlayerLabel = (
 
 export const useFormationSelection = ({
   formationSlots,
+  tempSlotIdMap,
+  setTempSlotIdMap,
 }: UseFormationSelectionParams): UseFormationSelectionResult => {
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const [selectedTarget, setSelectedTarget] =
@@ -65,16 +71,34 @@ export const useFormationSelection = ({
       const positionLabel = slot?.position ?? 'フィールド';
       const { label, playerId } = buildPlayerLabel(positionLabel, player);
 
+      let tempSlotId: string | null = null;
+
+      if (playerId === null) {
+        const existingSlotId = tempSlotIdMap.get(positionId);
+        if (existingSlotId) {
+          tempSlotId = existingSlotId;
+        } else {
+          const newSlotId = nanoid(8);
+          tempSlotId = newSlotId;
+          setTempSlotIdMap(prev => {
+            const next = new Map(prev);
+            next.set(positionId, newSlotId);
+            return next;
+          });
+        }
+      }
+
       setSelectedTarget({
         type: 'player',
         playerId,
+        tempSlotId,
         positionId,
         positionLabel,
         label,
       });
       setIsSelectorOpen(true);
     },
-    [findSlot]
+    [findSlot, setTempSlotIdMap, tempSlotIdMap]
   );
 
   const handleOpenForOpponent = useCallback((position: string) => {
