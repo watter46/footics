@@ -166,11 +166,11 @@ export function ActionBottomSheet({
     <BottomSheet
       isOpen={isOpen}
       onClose={handleClose}
-      className="max-w-none border border-slate-800/60 bg-slate-950 p-0 text-slate-100 shadow-2xl"
+      className="bg-background/95 text-foreground max-w-none border border-white/10 p-0 shadow-[0_-40px_120px_rgb(0_0_0/0.6)]"
     >
       <div className="flex h-full flex-1 flex-col">
         <header className="flex flex-col gap-1 px-6 pt-4 pb-3 text-left">
-          <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
+          <h2 className="text-foreground text-lg font-semibold">{title}</h2>
           <p className="sr-only">
             アクションカテゴリとタグの一覧から記録する項目を選択してください。
           </p>

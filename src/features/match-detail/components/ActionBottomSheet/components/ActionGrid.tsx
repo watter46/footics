@@ -21,7 +21,7 @@ export const ActionGrid = ({
 }: ActionGridProps) => {
   if (!hasAnyActions) {
     return (
-      <p className="pt-12 text-center text-sm text-slate-400">
+      <p className="text-muted-foreground pt-12 text-center text-sm">
         アクションマスタが登録されていません。管理メニューから追加してください。
       </p>
     );
@@ -29,17 +29,20 @@ export const ActionGrid = ({
 
   if (actions.length === 0) {
     return (
-      <p className="pt-12 text-center text-sm text-slate-400">{emptyMessage}</p>
+      <p className="text-muted-foreground pt-12 text-center text-sm">{emptyMessage}</p>
     );
   }
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
       {actions.map(action => (
-        <div key={action.id} className="flex w-full items-center border">
+        <div
+          key={action.id}
+          className="bg-card/40 flex w-full items-center rounded-2xl border border-white/10 px-1 py-1 shadow-[0_0_25px_rgb(0_0_0/0.35)] backdrop-blur"
+        >
           <Button
-            variant="outline"
-            className="h-auto w-full border-0 py-3 text-left text-sm"
+            variant="ghost"
+            className="text-foreground hover:bg-primary/10 h-auto flex-1 justify-start rounded-2xl border-0 px-4 py-3 text-left text-sm"
             onClick={() => onActionClick(action)}
           >
             {action.name}
@@ -49,10 +52,9 @@ export const ActionGrid = ({
             aria-label={`${action.name} をお気に入りに${action.isFavorite ? '解除' : '追加'}`}
             aria-pressed={Boolean(action.isFavorite)}
             className={cn(
-              'rounded-full p-1 transition-colors',
-              action.isFavorite
-                ? 'text-amber-400 hover:text-amber-300'
-                : 'text-slate-500 hover:text-slate-300'
+              'text-muted-foreground hover:border-primary/50 hover:text-foreground mr-1 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 transition-all',
+              action.isFavorite &&
+                'border-amber-400/60 bg-amber-400/10 text-amber-300 shadow-[0_0_15px_rgb(251_191_36/0.4)]'
             )}
             onClick={event => onFavoriteToggle(event, action)}
           >

@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { CalendarDays, Pencil } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { IconButton } from '@/components/ui/icon-button';
 import { HistoryTab } from '@/features/match-detail/components/HistoryTab';
 import { RecordTab } from '@/features/match-detail/components/RecordTab';
 import { SetupTab } from '@/features/match-detail/components/SetupTab';
@@ -37,8 +37,8 @@ export const MatchPageContent = ({ matchId }: MatchPageContentProps) => {
 
   if (isLoading || isTeamsLoading) {
     return (
-      <Card className="border-slate-800/70 bg-slate-900/40">
-        <CardContent className="py-10 text-center text-sm text-slate-400">
+      <Card>
+        <CardContent className="text-muted-foreground py-10 text-center text-sm">
           試合情報を読み込んでいます...
         </CardContent>
       </Card>
@@ -47,8 +47,8 @@ export const MatchPageContent = ({ matchId }: MatchPageContentProps) => {
 
   if (notFound || !match) {
     return (
-      <Card className="border-slate-800/70 bg-slate-900/40">
-        <CardContent className="py-10 text-center text-sm text-slate-400">
+      <Card>
+        <CardContent className="text-muted-foreground py-10 text-center text-sm">
           指定された試合が見つかりませんでした。
         </CardContent>
       </Card>
@@ -62,27 +62,24 @@ export const MatchPageContent = ({ matchId }: MatchPageContentProps) => {
 
   return (
     <div className="space-y-5">
-      <Card className="border-slate-800/70 bg-slate-900/40">
+      <Card>
         <CardHeader className="gap-4">
-          <div className="flex items-center justify-between gap-3 text-xs font-medium text-slate-400">
+          <div className="text-muted-foreground flex items-center justify-between gap-3 text-xs font-medium">
             <div className="flex items-center gap-2">
               <CalendarDays className="h-4 w-4" />
               <span>{formattedDate}</span>
             </div>
-            <Button
+            <IconButton
               type="button"
-              variant="ghost"
-              size="icon"
-              className="text-slate-400 hover:text-slate-100"
-              aria-label="試合情報を編集"
+              srLabel="試合情報を編集"
               onClick={() => setIsEditSheetOpen(true)}
             >
               <Pencil className="h-4 w-4" />
-            </Button>
+            </IconButton>
           </div>
-          <CardTitle className="grid grid-cols-[1fr_auto_1fr] items-start gap-x-7 text-2xl font-semibold text-slate-100">
+          <CardTitle className="text-foreground grid grid-cols-[1fr_auto_1fr] items-center gap-x-7 text-2xl font-semibold">
             <span className="text-right text-lg font-bold">{homeTeamName}</span>
-            <span className="block text-lg font-medium text-slate-500">vs</span>
+            <span className="text-muted-foreground text-lg font-medium">vs</span>
             <span className="text-left text-lg font-bold">{awayTeamName}</span>
           </CardTitle>
         </CardHeader>

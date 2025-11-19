@@ -8,7 +8,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     <div
       ref={ref}
       className={cn(
-        'rounded-xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg ring-1 ring-slate-800/60',
+        'rounded-4xl border border-slate-800 bg-[#111111] p-6 text-slate-100 shadow-[0_0_1px_hsl(var(--primary)/0.5),0_25px_50px_rgba(0,0,0,0.45)] sm:p-10',
         className
       )}
       {...props}
@@ -25,7 +25,7 @@ const CardHeader = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('mb-4 flex flex-col gap-1', className)}
+    className={cn('flex flex-col space-y-1.5 p-6', className)}
     {...props}
   >
     {children}
@@ -39,10 +39,7 @@ const CardTitle = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn(
-      'text-lg font-semibold tracking-tight text-slate-100',
-      className
-    )}
+    className={cn('text-lg leading-none font-semibold tracking-tight', className)}
     {...props}
   >
     {children}
@@ -54,7 +51,11 @@ const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, children, ...props }, ref) => (
-  <p ref={ref} className={cn('text-sm text-slate-400', className)} {...props}>
+  <p
+    ref={ref}
+    className={cn('text-sm text-slate-500', className)}
+    {...props}
+  >
     {children}
   </p>
 ));
@@ -64,7 +65,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, children, ...props }, ref) => (
-  <div ref={ref} className={cn('space-y-4', className)} {...props}>
+  <div ref={ref} className={cn('p-6 pt-0', className)} {...props}>
     {children}
   </div>
 ));
@@ -76,7 +77,7 @@ const CardFooter = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('mt-6 flex items-center justify-end gap-2', className)}
+    className={cn('flex items-center p-6 pt-0', className)}
     {...props}
   >
     {children}

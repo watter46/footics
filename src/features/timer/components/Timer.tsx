@@ -112,7 +112,7 @@ export const Timer = () => {
   return (
     <div
       ref={widgetRef}
-      className="fixed top-20 right-4 z-50 flex flex-col sm:right-6"
+      className="fixed top-20 right-3 z-50 flex flex-col sm:right-6"
     >
       {/* Timer Display */}
       <button
@@ -120,9 +120,9 @@ export const Timer = () => {
         onClick={handleToggleExpand}
         aria-expanded={isExpanded}
         className={cn(
-          'relative flex flex-col items-center gap-3 rounded-t-2xl border border-slate-800/70 bg-slate-950/95 px-4 py-3 text-left shadow-xl backdrop-blur-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60',
+          'bg-card/95 text-foreground focus-visible:ring-primary/50 relative flex flex-col items-center gap-3 rounded-t-2xl border border-white/10 px-4 py-3 text-left shadow-[0_20px_65px_rgba(0,0,0,0.55)] backdrop-blur-lg focus:outline-none focus-visible:ring-2',
           !isExpanded &&
-            'cursor-pointer rounded-2xl hover:border-sky-500/50 active:scale-95',
+            'hover:border-primary/50 cursor-pointer rounded-2xl active:scale-95',
           isExpanded && 'border-b-0'
         )}
       >
@@ -136,7 +136,7 @@ export const Timer = () => {
           {getPhaseDisplay(phase)}
         </Badge>
         <div className="mt-2 flex items-baseline gap-1">
-          <span className="font-mono text-2xl font-semibold text-slate-100 tabular-nums">
+          <span className="text-foreground font-mono text-2xl font-semibold tabular-nums">
             {main}
           </span>
           {stoppage ? (
@@ -151,12 +151,12 @@ export const Timer = () => {
       {isExpanded && (
         <div
           className={cn(
-            'flex flex-col overflow-hidden border border-t-0 border-slate-800/70 bg-slate-950/95 shadow-xl backdrop-blur-md',
+            'bg-card/95 flex flex-col overflow-hidden border border-t-0 border-white/10 shadow-[0_25px_70px_rgba(0,0,0,0.55)] backdrop-blur-lg',
             'rounded-b-2xl'
           )}
         >
           {/* Control Buttons (横拡張メニュー) */}
-          <div className="flex items-center justify-evenly gap-2 border-b border-slate-800/70 px-3 py-2">
+          <div className="flex items-center justify-evenly gap-2 border-b border-white/10 px-3 py-2">
             <Button
               size="sm"
               variant="ghost"
@@ -186,7 +186,7 @@ export const Timer = () => {
           <div className="flex flex-col items-center gap-3 p-3">
             {/* Phase Controls */}
             <div className="w-full space-y-2">
-              <div className="text-center text-xs font-semibold tracking-wide text-slate-400 uppercase">
+              <div className="text-muted-foreground text-center text-xs font-semibold tracking-wide uppercase">
                 Phase
               </div>
               <div className="grid grid-cols-3 gap-1.5">
@@ -195,10 +195,10 @@ export const Timer = () => {
                     key={option.value}
                     onClick={() => handlePhaseChange(option.value)}
                     className={cn(
-                      'rounded-lg border-2 px-2 py-1.5 text-xs font-medium transition-colors',
+                      'rounded-2xl border px-2 py-1.5 text-xs font-medium transition-colors',
                       phase === option.value
-                        ? 'border-sky-500/60 bg-sky-500/20 text-sky-200'
-                        : 'border-slate-800/70 bg-slate-800/40 text-slate-300 hover:border-slate-700 hover:bg-slate-800/60'
+                        ? 'border-primary/60 bg-primary/15 text-foreground'
+                        : 'text-foreground/70 border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
                     )}
                   >
                     {option.label}
@@ -209,34 +209,34 @@ export const Timer = () => {
 
             {/* Time Adjustment Controls */}
             <div className="w-full space-y-2">
-              <div className="text-center text-xs font-semibold tracking-wide text-slate-400 uppercase">
+              <div className="text-muted-foreground text-center text-xs font-semibold tracking-wide uppercase">
                 Time
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 <button
                   onClick={() => handleTimeAdjust(-30)}
-                  className="flex items-center justify-center rounded-lg border border-slate-800/70 bg-slate-800/40 px-2 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800/60"
+                  className="text-foreground/80 flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-2 py-1.5 text-xs font-medium transition-colors hover:border-white/20 hover:bg-white/10"
                   title="-30秒"
                 >
                   <ChevronsLeft className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => handleTimeAdjust(-5)}
-                  className="flex items-center justify-center rounded-lg border border-slate-800/70 bg-slate-800/40 px-2 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800/60"
+                  className="text-foreground/80 flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-2 py-1.5 text-xs font-medium transition-colors hover:border-white/20 hover:bg-white/10"
                   title="-5秒"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => handleTimeAdjust(5)}
-                  className="flex items-center justify-center rounded-lg border border-slate-800/70 bg-slate-800/40 px-2 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800/60"
+                  className="text-foreground/80 flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-2 py-1.5 text-xs font-medium transition-colors hover:border-white/20 hover:bg-white/10"
                   title="+5秒"
                 >
                   <ChevronRight className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => handleTimeAdjust(30)}
-                  className="flex items-center justify-center rounded-lg border border-slate-800/70 bg-slate-800/40 px-2 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800/60"
+                  className="text-foreground/80 flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-2 py-1.5 text-xs font-medium transition-colors hover:border-white/20 hover:bg-white/10"
                   title="+30秒"
                 >
                   <ChevronsRight className="h-3.5 w-3.5" />

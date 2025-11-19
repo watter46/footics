@@ -64,7 +64,7 @@ export function ManageActions() {
         </div>
         <Separator className="my-4" />
         <h2 className="mb-2 text-lg font-semibold">Existing Actions</h2>
-        <ScrollArea className="h-60 w-full rounded-md border">
+        <ScrollArea className="h-60 w-full rounded-md">
           <div className="p-4">
             {actions?.map(action => (
               <div

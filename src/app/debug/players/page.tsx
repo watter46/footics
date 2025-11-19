@@ -143,7 +143,7 @@ export default function ManageTempPlayers() {
           {/* Player List */}
           <div>
             <h2 className="mb-2 text-lg font-semibold">3. Player List</h2>
-            <ScrollArea className="h-72 w-full rounded-md border">
+            <ScrollArea className="h-72 w-full rounded-md">
               <div className="p-4">
                 {players && players.length > 0 ? (
                   players.map(player => (

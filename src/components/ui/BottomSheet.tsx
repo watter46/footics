@@ -54,7 +54,7 @@ export function BottomSheet({
         <>
           <motion.div
             key="action-sheet-overlay"
-            className="fixed inset-0 z-40 bg-black/50"
+            className="fixed inset-0 z-40 bg-black/80"
             variants={overlayVariants}
             initial="hidden"
             animate="visible"
@@ -66,7 +66,7 @@ export function BottomSheet({
           <motion.div
             key="action-sheet-content"
             className={cn(
-              'fixed right-0 bottom-0 left-0 z-50 mx-auto flex h-[80vh] max-h-[80vh] w-full max-w-lg flex-col rounded-t-2xl border border-slate-800/60 bg-slate-950 text-slate-100 shadow-lg',
+              'fixed inset-x-0 bottom-0 z-50 mx-auto flex h-[80vh] max-h-[80vh] w-full max-w-lg flex-col rounded-t-3xl border border-b-0 border-slate-800 bg-[#111111] text-slate-100 shadow-[0_0_1px_hsl(var(--primary)/0.4),0_-25px_65px_rgba(0,0,0,0.7)]',
               className
             )}
             variants={sheetVariants}

@@ -1,34 +1,38 @@
 @import 'tailwindcss';
 
-:root {
-  color-scheme: dark;
-  --background: #050714;
-  --foreground: rgb(226 232 240);
-}
+@layer base {
+  :root {
+    color-scheme: dark;
+    --background: 210 10% 4%; /* #090909 */
+    --background-soft: 210 10% 6%; /* #0e0e0e */
+    --background-raised: 210 10% 9%; /* #131313 */
+    --foreground: 210 40% 97%;
+    --card: 210 12% 8%;
+    --card-foreground: 210 40% 97%;
+    --muted: 210 10% 16%;
+    --muted-foreground: 210 15% 65%;
+    --border: 210 12% 18%;
+    --input: 210 12% 18%;
+    --ring: 189 100% 41%;
+    --primary: 189 100% 41%; /* #00B3D3 */
+    --primary-foreground: 210 80% 5%;
+    --secondary: 210 8% 12%;
+    --secondary-foreground: 210 40% 97%;
+    --destructive: 345 85% 55%;
+    --destructive-foreground: 210 40% 97%;
+    --radius: 1.5rem;
+  }
 
-html {
-  scroll-behavior: smooth;
-}
+  html {
+    scroll-behavior: smooth;
+  }
 
-body {
-  min-height: 100vh;
-  background: radial-gradient(
-      circle at top,
-      rgba(59, 130, 246, 0.25),
-      transparent 55%
-    ),
-    radial-gradient(circle at bottom, rgba(14, 165, 233, 0.15), transparent 60%),
-    #050714;
-  color: rgb(226 232 240);
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
-}
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-* {
-  border-color: rgba(51, 65, 85, 0.6);
+  * {
+    border-color: hsl(var(--border));
+  }
 }
