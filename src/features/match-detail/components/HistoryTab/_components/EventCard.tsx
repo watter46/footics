@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import type { ComponentType } from 'react';
+import { motion } from 'framer-motion';
 
 import { cn } from '@/lib/utils/cn';
 import { useEditEventStore } from '@/features/match-detail/stores/edit-event-store';
@@ -28,34 +29,40 @@ export const HistoryEventCard = ({ event, align, icon: Icon }: HistoryEventCardP
   const renderStandardDetails = (textAlign: 'left' | 'right') => (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-300',
+        'text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-xs',
         textAlign === 'left' ? 'justify-end text-right' : 'text-left'
       )}
     >
-      <span className="text-sm font-semibold text-slate-100">
+      <span className="text-foreground text-sm font-semibold">
         {event.positionLabel}
       </span>
       {event.playerSnapshotLabel ? (
-        <span className="text-xs text-slate-300">
+        <span className="text-muted-foreground text-xs">
           [{event.playerSnapshotLabel}]
         </span>
       ) : event.subjectLabel && event.subjectLabel !== event.positionLabel ? (
-        <span className="text-xs text-slate-400">{event.subjectLabel}</span>
+        <span className="text-muted-foreground text-xs">{event.subjectLabel}</span>
       ) : null}
     </div>
   );
 
   const leftCard = (
-    <button
+    <motion.button
       type="button"
       className={cn(
-        'w-full max-w-68 rounded-lg border border-slate-800/70 bg-slate-950/60 px-3 py-3 text-left shadow-sm transition hover:bg-slate-900/60 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-950 focus:outline-none md:ml-auto'
+        'bg-card/50 hover:border-primary/50 hover:bg-primary/10 focus:ring-primary/60 focus:ring-offset-background w-full max-w-68 rounded-2xl border border-white/10 px-4 py-3 text-left shadow-[0_0_25px_rgb(0_0_0/0.45)] transition focus:ring-2 focus:ring-offset-2 focus:outline-none md:ml-auto'
       )}
       onClick={handleOpenEdit}
       aria-label={ariaLabel}
+      layout
+      initial={{ opacity: 0, x: -12, y: 8 }}
+      animate={{ opacity: 1, x: 0, y: 0 }}
+      whileHover={{ y: -4, scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
     >
       <div className="flex flex-col items-end gap-3 text-right">
-        <div className="flex items-center justify-end gap-2 text-sm font-semibold text-slate-100">
+        <div className="text-foreground flex items-center justify-end gap-2 text-sm font-semibold">
           <span>{event.matchTime}</span>
           <Icon
             aria-hidden="true"
@@ -65,15 +72,15 @@ export const HistoryEventCard = ({ event, align, icon: Icon }: HistoryEventCardP
         </div>
         {isSubstitution ? (
           <>
-            <Separator className="border-slate-800" />
+            <Separator className="border-white/10" />
             <div className="space-y-1 text-right text-xs">
               {event.playerSnapshotLabel ? (
-                <p className="font-semibold text-emerald-400">
+                <p className="font-semibold text-emerald-300">
                   {event.playerSnapshotLabel}
                 </p>
               ) : null}
               {event.playerOutSnapshotLabel ? (
-                <p className="font-semibold text-rose-400">
+                <p className="font-semibold text-rose-300">
                   {event.playerOutSnapshotLabel}
                 </p>
               ) : null}
@@ -83,25 +90,31 @@ export const HistoryEventCard = ({ event, align, icon: Icon }: HistoryEventCardP
           <>
             {renderStandardDetails('left')}
             {event.memoSummary ? (
-              <p className="text-xs leading-relaxed text-slate-400">{event.memoSummary}</p>
+              <p className="text-muted-foreground text-xs leading-relaxed">{event.memoSummary}</p>
             ) : null}
           </>
         )}
       </div>
-    </button>
+    </motion.button>
   );
 
   const rightCard = (
-    <button
+    <motion.button
       type="button"
       className={cn(
-        'w-full max-w-68 rounded-lg border border-slate-800/70 bg-slate-950/60 px-3 py-3 text-left shadow-sm transition hover:bg-slate-900/60 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-950 focus:outline-none md:mr-auto'
+        'bg-card/50 hover:border-primary/50 hover:bg-primary/10 focus:ring-primary/60 focus:ring-offset-background w-full max-w-68 rounded-2xl border border-white/10 px-4 py-3 text-left shadow-[0_0_25px_rgb(0_0_0/0.45)] transition focus:ring-2 focus:ring-offset-2 focus:outline-none md:mr-auto'
       )}
       onClick={handleOpenEdit}
       aria-label={ariaLabel}
+      layout
+      initial={{ opacity: 0, x: 12, y: 8 }}
+      animate={{ opacity: 1, x: 0, y: 0 }}
+      whileHover={{ y: -4, scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
     >
       <div className="flex flex-col items-start gap-3 text-left">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+        <div className="text-foreground flex items-center gap-2 text-sm font-semibold">
           <span>{event.matchTime}</span>
           <Icon
             aria-hidden="true"
@@ -111,15 +124,15 @@ export const HistoryEventCard = ({ event, align, icon: Icon }: HistoryEventCardP
         </div>
         {isSubstitution ? (
           <>
-            <Separator className="border-slate-800" />
+            <Separator className="border-white/10" />
             <div className="space-y-1 text-left text-xs">
               {event.playerSnapshotLabel ? (
-                <p className="font-semibold text-emerald-400">
+                <p className="font-semibold text-emerald-300">
                   {event.playerSnapshotLabel}
                 </p>
               ) : null}
               {event.playerOutSnapshotLabel ? (
-                <p className="font-semibold text-rose-400">
+                <p className="font-semibold text-rose-300">
                   {event.playerOutSnapshotLabel}
                 </p>
               ) : null}
@@ -129,12 +142,12 @@ export const HistoryEventCard = ({ event, align, icon: Icon }: HistoryEventCardP
           <>
             {renderStandardDetails('right')}
             {event.memoSummary ? (
-              <p className="text-xs leading-relaxed text-slate-400">{event.memoSummary}</p>
+              <p className="text-muted-foreground text-xs leading-relaxed">{event.memoSummary}</p>
             ) : null}
           </>
         )}
       </div>
-    </button>
+    </motion.button>
   );
 
   return isLeft ? leftCard : rightCard;

@@ -110,7 +110,7 @@ export function ManagePlayers() {
 
         <div>
           <h3 className="text-md mb-2 font-semibold">Player List</h3>
-          <ScrollArea className="h-60 w-full rounded-md border">
+          <ScrollArea className="h-60 w-full rounded-md">
             <div className="p-4">
               {players && players.length > 0 ? (
                 players.map(player => (

@@ -8,6 +8,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      colors: {
+        space: {
+          950: '#020617',
+        },
+      },
     },
   },
   plugins: [

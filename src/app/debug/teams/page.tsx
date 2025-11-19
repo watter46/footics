@@ -81,7 +81,7 @@ export default function ManageTempTeams() {
           <Separator className="my-4" />
 
           <h2 className="mb-2 text-lg font-semibold">Existing Teams</h2>
-          <ScrollArea className="h-72 w-full rounded-md border">
+          <ScrollArea className="h-72 w-full rounded-md">
             <div className="p-4">
               {teams?.map(team => (
                 <div

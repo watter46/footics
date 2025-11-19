@@ -60,10 +60,7 @@ export const FormationSection = ({
   };
 
   return (
-    <Card
-      className="border-slate-800/70 bg-slate-900/40"
-      onPointerDownCapture={handleContainerPointerDown}
-    >
+    <Card onPointerDownCapture={handleContainerPointerDown}>
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle className="text-lg text-slate-100">{homeTeamName}</CardTitle>
         <label className="flex w-full flex-col gap-2 sm:w-52">
@@ -99,7 +96,7 @@ export const FormationSection = ({
           </Label>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 border-t border-slate-800/60 bg-slate-900/30">
+      <CardContent className="space-y-4">
         <div className="mx-auto w-full max-w-sm">
           <Pitch className="w-full max-w-sm" settings={defaultPitchSettings}>
             <Formation

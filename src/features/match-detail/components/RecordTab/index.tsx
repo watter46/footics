@@ -93,8 +93,8 @@ export const RecordTab = ({
 
   if (!matchId) {
     return (
-      <Card className="border-slate-800/70 bg-slate-900/40">
-        <CardContent className="py-10 text-center text-sm text-slate-400">
+      <Card>
+        <CardContent className="text-muted-foreground py-10 text-center text-sm">
           試合情報が正しく読み込めませんでした。
         </CardContent>
       </Card>
@@ -103,8 +103,8 @@ export const RecordTab = ({
   return (
     <>
       <div className="space-y-6">
-        <Card className="border-slate-800/70 bg-slate-900/40">
-          <CardContent className="space-y-4 border-t border-slate-800/60 bg-slate-900/30">
+        <Card>
+          <CardContent className="space-y-4">
             <div className="mx-auto w-full max-w-sm">
               <Pitch
                 className="w-full max-w-sm"
@@ -120,9 +120,9 @@ export const RecordTab = ({
           </CardContent>
         </Card>
 
-        <Card className="border-slate-800/70 bg-slate-900/40">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-lg text-slate-100">
+            <CardTitle className="text-foreground text-lg">
               相手チーム（ポジション別）
             </CardTitle>
           </CardHeader>
@@ -143,9 +143,9 @@ export const RecordTab = ({
         </Card>
 
         {substitutedOutPlayers.length > 0 ? (
-          <Card className="border-slate-800/70 bg-slate-900/30">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-lg text-slate-100">
+              <CardTitle className="text-foreground text-lg">
                 交代済み選手
               </CardTitle>
             </CardHeader>

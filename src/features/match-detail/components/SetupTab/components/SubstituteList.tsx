@@ -1,7 +1,7 @@
 'use client';
 
 import type { TempPlayer } from '@/lib/db';
-import { cn } from '@/lib/utils/cn';
+import { SelectableCard } from '@/components/ui/selectable-card';
 
 import { groupAndSortPlayers } from '../utils/playerListUtils';
 import { formatPlayerListLabel } from '../utils/playerLabel';
@@ -27,7 +27,7 @@ export const SubstituteList = ({
     <div className="space-y-3">
       {Object.entries(groupedPlayers).map(([groupName, groupPlayers]) => (
         <div key={groupName} className="space-y-2">
-          <h4 className="sticky top-0 mb-1.5 bg-slate-900/80 px-1 py-1 text-xs font-semibold text-slate-400 uppercase backdrop-blur-sm">
+          <h4 className="bg-background/80 text-muted-foreground sticky top-0 mb-1.5 px-1 py-1 text-xs font-semibold tracking-[0.3em] uppercase backdrop-blur">
             {groupName}
           </h4>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
@@ -41,34 +41,25 @@ export const SubstituteList = ({
               const label = formatPlayerListLabel(player);
 
               return (
-                <button
+                <SelectableCard
                   key={player.id}
-                  type="button"
-                  className={cn(
-                    'w-full rounded-lg border px-3 py-2 text-left text-sm text-slate-100 transition',
-                    'border-slate-800/80 bg-slate-900/40 hover:border-sky-500/70 hover:bg-slate-900/70',
-                    highlightVariant === 'reassign' &&
-                      'border-amber-500/40 bg-amber-500/10 text-amber-50 hover:border-amber-400 hover:bg-amber-400/20',
-                    isSelected &&
-                      (highlightVariant === 'reassign'
-                        ? 'border-sky-400/80 bg-amber-400/20 text-amber-50'
-                        : 'border-sky-400/80 bg-sky-400/10 text-sky-200'),
-                    disabled && 'cursor-not-allowed opacity-60 hover:border-slate-800/80 hover:bg-slate-900/40'
-                  )}
+                  tone={highlightVariant === 'reassign' ? 'warning' : 'default'}
+                  isSelected={isSelected}
+                  disabled={disabled}
                   onClick={() =>
                     disabled ? undefined : onPlayerSelect(playerId, isSelected)
                   }
-                  disabled={disabled}
+                  className="text-sm"
                 >
                   {label}
-                </button>
+                </SelectableCard>
               );
             })}
           </div>
         </div>
       ))}
       {players.length === 0 ? (
-        <p className="text-sm text-slate-500">控え選手はいません。</p>
+        <p className="text-muted-foreground text-sm">控え選手はいません。</p>
       ) : null}
     </div>
   );
