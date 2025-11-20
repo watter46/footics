@@ -1,5 +1,5 @@
 import type { FieldSettings } from './types';
-import { getFieldBackgroundOption } from './templates/background';
+import { getFieldBackgroundOption } from './utils/templates/background';
 
 export const defaultPitchSettings: FieldSettings = {
   background: getFieldBackgroundOption('gradient', {

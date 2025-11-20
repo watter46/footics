@@ -1,4 +1,4 @@
-import type { FieldShapeOptions } from '../types';
+import type { FieldShapeOptions } from '../../types';
 import React from 'react';
 import { RectThumbnail } from './rect';
 import { TiltedThumbnail } from './tilted';

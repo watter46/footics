@@ -7,21 +7,21 @@ import {
 import type { Player } from '@/lib/db';
 import type { FormationPlayers } from '@/types/formation';
 
-import { PlayerNode } from './PlayerNode';
+import { PlayerMarker } from './parts/PlayerMarker';
 
-interface FormationProps {
+interface FormationBoardProps {
   formationName: FormationType;
   players: FormationPlayers;
   selectedPositionId?: number | null;
   onPositionClick: (positionId: number, player?: Player) => void;
 }
 
-export function Formation({
+export function FormationBoard({
   formationName,
   players,
   selectedPositionId,
   onPositionClick,
-}: FormationProps) {
+}: FormationBoardProps) {
   const positionSlots = FORMATION_POSITIONS[formationName];
 
   if (!positionSlots) {
@@ -39,7 +39,7 @@ export function Formation({
         const isSelected = selectedPositionId === slot.id;
 
         return (
-          <PlayerNode
+          <PlayerMarker
             key={slot.id}
             player={assignedPlayer}
             positionLabel={slot.position}

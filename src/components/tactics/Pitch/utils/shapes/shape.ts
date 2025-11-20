@@ -3,7 +3,7 @@
  * 長方形・台形・カスタム形状を管理
  */
 
-import type { FieldShapeOptions } from '../types';
+import type { FieldShapeOptions } from '../../types';
 
 export type FieldShapeConfig = {
   key: 'rect' | 'tilted' | 'deep';

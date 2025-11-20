@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { FieldBackgroundOptions } from './template-types';
+import type { FieldBackgroundOptions } from './utils/template-types';
 
 /**
  * フィールド背景はtemplate-types.ts参照

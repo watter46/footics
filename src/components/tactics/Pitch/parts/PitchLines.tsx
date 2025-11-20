@@ -1,4 +1,4 @@
-import type { FieldCourtOptions, FieldLineOptions } from './types';
+import type { FieldCourtOptions, FieldLineOptions } from '../types';
 
 interface PitchLinesProps {
   court: FieldCourtOptions;
@@ -158,7 +158,7 @@ export function PitchLines({ court, line }: PitchLinesProps) {
 
             {/* 半円センターサークル（下向き・大きめ） */}
             <path
-              d={`M ${fieldX + fieldWidth / 2 - 60} ${fieldY} 
+              d={`M ${fieldX + fieldWidth / 2 - 60} ${fieldY}
                   A 60 60 0 0 0 ${fieldX + fieldWidth / 2 + 60} ${fieldY}`}
               {...lineProps}
             />

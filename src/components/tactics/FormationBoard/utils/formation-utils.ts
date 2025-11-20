@@ -8,7 +8,7 @@ import type {
   FieldPositionPlayer,
   GridPlayer,
   PlayerCoordinates,
-} from './types';
+} from '../types';
 
 /**
  * 指定人数を中央揃えで均等配置するleft座標配列を返す関数

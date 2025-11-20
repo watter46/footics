@@ -5,8 +5,8 @@ import { type ChangeEvent, type PointerEvent } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Pitch, defaultPitchSettings } from '@/components/pitch';
-import { Formation } from '@/components/formation';
+import { Pitch, defaultPitchSettings } from '@/components/tactics/Pitch';
+import { FormationBoard } from '@/components/tactics/FormationBoard';
 import type { Player } from '@/lib/db';
 import type { FormationPlayers } from '@/types/formation';
 import { FORMATION_LIST, type FormationType } from '@/lib/formation-template';
@@ -88,7 +88,7 @@ export const FormationSection = ({
       <CardContent className="space-y-4">
         <div className="mx-auto w-full max-w-sm">
           <Pitch className="w-full max-w-sm" settings={defaultPitchSettings}>
-            <Formation
+            <FormationBoard
               formationName={effectiveFormation}
               players={formationPlayers}
               selectedPositionId={selectedPositionId ?? undefined}

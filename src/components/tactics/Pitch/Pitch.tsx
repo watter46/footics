@@ -1,9 +1,9 @@
 import { memo } from 'react';
 import type { PitchProps } from './types';
 import { cn } from '@/lib/utils/cn';
-import { getFieldShapeConfig } from './shapes';
-import { PitchLines } from './PitchLines';
-import { getFieldBackgroundStyle } from './templates/background';
+import { getFieldShapeConfig } from './utils/shapes/shape';
+import { PitchLines } from './parts/PitchLines';
+import { getFieldBackgroundStyle } from './utils/templates/background';
 
 export const Pitch = memo(({ settings, children, className }: PitchProps) => {
   const renderBackground = () => {

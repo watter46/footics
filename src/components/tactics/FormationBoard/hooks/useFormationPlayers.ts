@@ -1,9 +1,9 @@
-import type { GridPlayer, GridPlayerNullable } from "./types";
+import type { GridPlayer, GridPlayerNullable } from "../types";
 import {
   convertToFieldPositionPlayers,
   convertToFormationPlayers,
   getFormationType,
-} from "./formation-utils";
+} from "../utils/formation-utils";
 import { useMemo } from "react";
 
 /**

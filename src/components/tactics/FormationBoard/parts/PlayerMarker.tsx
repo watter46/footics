@@ -23,9 +23,9 @@ const extractLastName = (name?: string | null): string | undefined => {
   return segments[segments.length - 1];
 };
 
-export type PlayerNodeVariant = 'default' | 'ghost' | 'substituted';
+export type PlayerMarkerVariant = 'default' | 'ghost' | 'substituted';
 
-export interface PlayerNodeProps {
+export interface PlayerMarkerProps {
   player?: Pick<TempPlayer, 'number' | 'name'> | null;
   positionLabel: string;
   isSelected?: boolean;
@@ -33,10 +33,10 @@ export interface PlayerNodeProps {
   className?: string;
   style?: CSSProperties;
   actionCount?: number;
-  variant?: PlayerNodeVariant;
+  variant?: PlayerMarkerVariant;
 }
 
-export const PlayerNode = ({
+export const PlayerMarker = ({
   player,
   positionLabel,
   isSelected = false,
@@ -45,7 +45,7 @@ export const PlayerNode = ({
   style,
   actionCount,
   variant = 'default',
-}: PlayerNodeProps) => {
+}: PlayerMarkerProps) => {
   const jerseyNumber =
     typeof player?.number === 'number' && Number.isFinite(player.number)
       ? `#${player.number}`

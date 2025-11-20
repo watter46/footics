@@ -2,7 +2,7 @@
 
 import { type PointerEvent } from 'react';
 
-import { PlayerNode } from '@/components/formation';
+import { PlayerMarker } from '@/components/tactics/FormationBoard';
 
 import type { AssignModalContext, BenchItem } from '../hooks/useSetupTab';
 
@@ -42,7 +42,7 @@ export const BenchSection = ({
       {items.map(item => {
         if (item.type === 'ghost') {
           return (
-            <PlayerNode
+            <PlayerMarker
               key={`ghost-${item.tempSlotId}`}
               positionLabel={item.position}
               variant="ghost"
@@ -73,7 +73,7 @@ export const BenchSection = ({
           : () => onSubstituteSelect(playerId, isSelected);
 
         return (
-          <PlayerNode
+          <PlayerMarker
             key={`player-${playerId}`}
             player={item.player}
             positionLabel={item.player.position ?? '未設定'}

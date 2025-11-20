@@ -2,23 +2,23 @@
 export * from './Pitch';
 
 // フィールドのライン
-export * from './PitchLines';
+export * from './parts/PitchLines';
 
 // 型定義
 export * from './types';
 
 // テンプレート関連
-export * from './template-types';
+export * from './utils/template-types';
 
 // デフォルト設定
 export {
   defaultPitchSettings,
   guestDefaultPitchSettings,
   guestAllowedTemplateKeys,
-} from './defaultPitchSettings';
+} from './constants';
 
 // Shapes
-export * from './shapes';
+export * from './utils/shapes';
 
 // Templates
-export * from './templates';
+export * from './utils/templates';

@@ -2,8 +2,8 @@
 
 import type { Dispatch, SetStateAction } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Pitch, defaultPitchSettings } from '@/components/pitch';
-import { Formation } from '@/components/formation';
+import { Pitch, defaultPitchSettings } from '@/components/tactics/Pitch';
+import { FormationBoard } from '@/components/tactics/FormationBoard';
 import { ActionBottomSheet } from '@/features/match/components/ActionBottomSheet';
 import type { Match, Player } from '@/lib/db';
 import type { FormationPlayers } from '@/types/formation';
@@ -66,7 +66,7 @@ export const RecordTab = ({
                 className="w-full max-w-sm"
                 settings={defaultPitchSettings}
               >
-                <Formation
+                <FormationBoard
                   formationName={effectiveFormation}
                   players={homeFormationPlayers}
                   onPositionClick={handlePositionClick}
