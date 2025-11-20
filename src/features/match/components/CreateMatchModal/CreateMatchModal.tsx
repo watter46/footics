@@ -4,7 +4,6 @@ import { X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
   type FormEvent,
-  type ReactNode,
   useCallback,
   useMemo,
   useState,
@@ -21,6 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,11 +34,8 @@ const selectStyles =
 
 type SubjectTeamSide = 'home' | 'away' | null;
 
-export interface CreateMatchModalProps {
-  trigger: ReactNode;
-}
 
-export const CreateMatchModal = ({ trigger }: CreateMatchModalProps) => {
+export const CreateMatchModal = () => {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [matchDate, setMatchDate] = useState('');
@@ -123,7 +120,11 @@ export const CreateMatchModal = ({ trigger }: CreateMatchModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" /> 新規作成
+        </Button>
+      </DialogTrigger>
       <DialogContent className="gap-6">
         <div className="flex items-start justify-between gap-4">
           <DialogHeader className="text-left">

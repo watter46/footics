@@ -1,12 +1,11 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect } from 'react';
 
-import { Button } from '@/components/ui/button';
-import { CreateMatchModal } from '@/features/matches/components/CreateMatchModal';
-import { MatchList } from '@/features/matches/components/MatchList';
+import { CreateMatchModal } from '@/features/match/components/CreateMatchModal';
+import { MatchList } from '@/features/match/components/MatchList';
 import { toast } from '@/features/toast/toast-store';
 
 const HomePageContent = () => {
@@ -27,13 +26,7 @@ const HomePageContent = () => {
           <h1 className="text-3xl font-bold tracking-tight text-white">試合一覧</h1>
           <p className="mt-2 text-sm text-slate-400">メモした試合の履歴と管理</p>
         </div>
-        <CreateMatchModal
-          trigger={
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> 新規作成
-            </Button>
-          }
-        />
+        <CreateMatchModal />
       </div>
       <MatchList />
     </main>
