@@ -1,105 +1,81 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-
-import { db } from '@/lib/db';
-import type { IMatch } from '@/lib/types';
+import { useMatchRepository } from '@/features/match/hooks/useMatchRepository'; // RepositoryをImport
 
 const DEFAULT_PAGE_SIZE = 20;
 
-interface MatchListQueryResult {
-  matches: IMatch[];
-  totalCount: number;
-  currentPage: number;
-  totalPages: number;
-}
-
 export const useMatchList = (initialPageSize = DEFAULT_PAGE_SIZE) => {
-  const normalizedInitialPageSize =
-    Number.isFinite(initialPageSize) && initialPageSize > 0
-      ? Math.floor(initialPageSize)
-      : DEFAULT_PAGE_SIZE;
+  // --- Repositoryの呼び出し ---
+  const { usePaginatedMatches, deleteMatch: deleteMatchRepo, useTeamsMap } = useMatchRepository();
+
+  // --- State (UIの状態) ---
+  const normalizedInitialPageSize = Number.isFinite(initialPageSize) && initialPageSize > 0
+    ? Math.floor(initialPageSize)
+    : DEFAULT_PAGE_SIZE;
+
   const [requestedPage, setRequestedPage] = useState(1);
   const [pageSize, setPageSizeState] = useState(normalizedInitialPageSize);
 
-  const liveQueryResult = useLiveQuery<MatchListQueryResult | undefined>(
-    async () => {
-      const safePageSize = pageSize > 0 ? pageSize : DEFAULT_PAGE_SIZE;
-      const baseCollection = db.matches
-        .orderBy('date')
-        .reverse()
-        .filter(match => !match.deletedAt);
+  // --- Data Fetching (Repositoryに委譲) ---
+  const queryResult = usePaginatedMatches(requestedPage, pageSize);
+  const teamsMap = useTeamsMap();
 
-      const totalCount = await baseCollection.count();
-      const totalPages = Math.max(1, Math.ceil(totalCount / safePageSize));
-      const currentPage = Math.min(requestedPage, totalPages);
+  // --- Derived State (データの整形) ---
+  const isLoading = queryResult === undefined || teamsMap === undefined;
+  const totalPages = queryResult?.totalPages ?? 0;
+  // Repository側で補正されたページ番号を採用する (データ不整合を防ぐ)
+  const currentPage = queryResult?.adjustedPage ?? requestedPage;
 
-      const paginatedMatches = await baseCollection
-        .offset((currentPage - 1) * safePageSize)
-        .limit(safePageSize)
-        .toArray();
+  const matches = useMemo(() => {
+    const rawMatches = queryResult?.items ?? [];
+    return rawMatches.map((match) => ({
+      ...match,
+      homeTeamName: teamsMap?.get(match.team1Id) ?? `Team #${match.team1Id}`,
+      awayTeamName: teamsMap?.get(match.team2Id) ?? `Team #${match.team2Id}`,
+    }));
+  }, [queryResult?.items, teamsMap]);
 
-      return {
-        matches: paginatedMatches,
-        totalCount,
-        currentPage,
-        totalPages,
-      };
-    },
-    [requestedPage, pageSize]
-  );
-
-  const matches = liveQueryResult?.matches ?? [];
-  const totalCount = liveQueryResult?.totalCount ?? 0;
-  const safePageSize = pageSize > 0 ? pageSize : DEFAULT_PAGE_SIZE;
-  const totalPages =
-    liveQueryResult?.totalPages ?? Math.max(1, Math.ceil(totalCount / safePageSize));
-  const page = liveQueryResult?.currentPage ?? Math.min(requestedPage, totalPages);
-  const isLoading = liveQueryResult === undefined;
-
-  const deleteMatch = useCallback(async (matchId: number) => {
-    try {
-      await db.matches.update(matchId, {
-        deletedAt: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error('Failed to soft delete match', error);
-      throw error;
-    }
-  }, []);
+  // --- Action Handlers (ユーザー操作) ---
 
   const nextPage = useCallback(() => {
-    setRequestedPage(current => Math.min(current + 1, totalPages));
+    // 現在が最終ページでなければ進む
+    setRequestedPage((current) => (current < totalPages ? current + 1 : current));
   }, [totalPages]);
 
   const prevPage = useCallback(() => {
-    setRequestedPage(current => Math.max(1, current - 1));
+    setRequestedPage((current) => Math.max(1, current - 1));
   }, []);
 
-  const updatePageSize = useCallback((nextSize: number) => {
-    if (!Number.isFinite(nextSize) || nextSize <= 0) {
-      return;
-    }
-    setRequestedPage(1);
+  const setPageSize = useCallback((nextSize: number) => {
+    if (!Number.isFinite(nextSize) || nextSize <= 0) return;
+    setRequestedPage(1); // サイズ変更時は1ページ目に戻すのが一般的
     setPageSizeState(Math.floor(nextSize));
   }, []);
 
-  const pagination = useMemo(
-    () => ({
-      currentPage: page,
-      totalPages,
-      hasNext: page < totalPages,
-      hasPrev: page > 1,
-      nextPage,
-      prevPage,
-    }),
-    [page, totalPages, nextPage, prevPage]
-  );
+  const deleteMatch = useCallback(async (matchId: number) => {
+    try {
+      await deleteMatchRepo(matchId);
+      // 必要ならここでToast表示などのUI処理を行う
+    } catch (error) {
+      console.error('Failed to delete match', error);
+      // 必要ならError Stateを更新する
+    }
+  }, [deleteMatchRepo]);
+
+  // --- ViewModelの構築 ---
+  const pagination = useMemo(() => ({
+    currentPage,
+    totalPages,
+    hasNext: currentPage < totalPages,
+    hasPrev: currentPage > 1,
+    nextPage,
+    prevPage,
+  }), [currentPage, totalPages, nextPage, prevPage]);
 
   return {
     matches,
     isLoading,
     pageSize,
-    setPageSize: updatePageSize,
+    setPageSize,
     pagination,
     deleteMatch,
   };

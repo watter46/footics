@@ -1,13 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { db } from '@/lib/db';
 import { useMatchList } from './useMatchList';
 
 import { MatchCard } from '@/features/match/components/MatchCard';
@@ -23,20 +20,8 @@ const MatchCardSkeleton = () => (
 );
 
 export const MatchList = () => {
-  // useMatchListからロジックを借りる
   const { matches, isLoading, pagination, deleteMatch } = useMatchList();
   const { currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage } = pagination;
-
-  // チーム名解決のためのデータ取得（これは親でやって正解です。N+1問題回避のため）
-  const teams = useLiveQuery(() => db.temp_teams.orderBy('name').toArray());
-
-  const teamNameById = useMemo(() => {
-    const map = new Map<number, string>();
-    (teams ?? []).forEach(team => {
-      if (team.id !== undefined) map.set(team.id, team.name);
-    });
-    return map;
-  }, [teams]);
 
   if (isLoading) {
     return (
@@ -60,14 +45,11 @@ export const MatchList = () => {
     <div className="space-y-6">
       <div className="grid gap-4">
         {matches.map(match => {
-          const homeName = teamNameById.get(match.team1Id) ?? `Team #${match.team1Id}`;
-          const awayName = teamNameById.get(match.team2Id) ?? `Team #${match.team2Id}`;
-
           return (
             <MatchCard
               key={match.id}
-              homeTeamName={homeName}
-              awayTeamName={awayName}
+              homeTeamName={match.homeTeamName}
+              awayTeamName={match.awayTeamName}
               date={match.date}
               iconButton={<DeleteButton matchId={match.id} onDelete={deleteMatch} />}
               href={`/matches/${match.id}`}

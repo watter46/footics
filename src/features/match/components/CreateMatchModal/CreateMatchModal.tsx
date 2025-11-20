@@ -1,14 +1,7 @@
 'use client';
 
-import { X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import {
-  type FormEvent,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { X, Plus } from 'lucide-react';
+import { useState } from 'react';
 
 import {
   Dialog,
@@ -20,101 +13,45 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { IconButton } from '@/components/ui/icon-button';
 import { SelectableCard } from '@/components/ui/selectable-card';
-import { db } from '@/lib/db';
-import { toast } from '@/features/toast/toast-store';
+import { useCreateMatch } from './hooks/useCreateMatch';
 
 const selectStyles =
   'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white transition focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-50';
 
-type SubjectTeamSide = 'home' | 'away' | null;
-
-
 export const CreateMatchModal = () => {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [matchDate, setMatchDate] = useState('');
-  const [homeTeamId, setHomeTeamId] = useState('');
-  const [awayTeamId, setAwayTeamId] = useState('');
-  const [subjectTeamSide, setSubjectTeamSide] = useState<SubjectTeamSide>(
-    null
-  );
 
-  const teams = useLiveQuery(() => db.temp_teams.orderBy('name').toArray());
-
-  const teamNameById = useMemo(() => {
-    const map = new Map<number, string>();
-    (teams ?? []).forEach(team => {
-      if (typeof team.id === 'number') {
-        map.set(team.id, team.name);
-      }
-    });
-    return map;
-  }, [teams]);
-
-  const resolveTeamName = useCallback(
-    (value: string, fallback: string) => {
-      const numericId = Number(value);
-      if (!value || !Number.isFinite(numericId)) {
-        return fallback;
-      }
-      return teamNameById.get(numericId) ?? fallback;
+  const {
+    teams,
+    formState: {
+      matchDate,
+      homeTeamId,
+      awayTeamId,
+      subjectTeamSide,
+      homeTeamName,
+      awayTeamName,
+      isDuplicateSelection,
+      canSubmit,
     },
-    [teamNameById]
-  );
-
-  const homeTeamName = resolveTeamName(homeTeamId, 'ホームチーム');
-  const awayTeamName = resolveTeamName(awayTeamId, 'アウェイチーム');
-
-  const isDuplicateSelection = homeTeamId !== '' && homeTeamId === awayTeamId;
-  const canSubmit = Boolean(
-    matchDate &&
-      homeTeamId &&
-      awayTeamId &&
-      subjectTeamSide &&
-      !isDuplicateSelection
-  );
-
-  const resetForm = () => {
-    setMatchDate('');
-    setHomeTeamId('');
-    setAwayTeamId('');
-    setSubjectTeamSide(null);
-  };
+    setters: {
+      setMatchDate,
+      setHomeTeamId,
+      setAwayTeamId,
+      setSubjectTeamSide,
+      resetForm,
+    },
+    handleCreateMatch,
+  } = useCreateMatch(() => setOpen(false));
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     if (!nextOpen) {
       resetForm();
-    }
-  };
-
-  const handleCreateMatch = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!canSubmit || !subjectTeamSide) return;
-
-    try {
-      const subjectTeamId =
-        subjectTeamSide === 'home' ? Number(homeTeamId) : Number(awayTeamId);
-      const createdMatchId = await db.matches.add({
-        date: matchDate,
-        team1Id: Number(homeTeamId),
-        team2Id: Number(awayTeamId),
-        subjectTeamId,
-      });
-      setOpen(false);
-      resetForm();
-      if (typeof createdMatchId === 'number') {
-        router.push(`/matches/${createdMatchId}`);
-      }
-    } catch (error) {
-      console.error('Failed to create match:', error);
-      toast.error('試合作成に失敗しました');
     }
   };
 
