@@ -12,6 +12,9 @@ export const SiteHeader = () => {
           </span>
         </Link>
         <nav aria-label="Site actions" className="text-muted-foreground flex items-center gap-4 text-sm">
+          <Link href="/teams" className="hover:text-foreground transition-colors">
+            チーム管理
+          </Link>
           {/* Placeholder for future header actions (e.g., GitHub link, debug menu) */}
         </nav>
       </div>

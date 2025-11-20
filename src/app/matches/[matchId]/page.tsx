@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 
 import { Timer } from '@/features/timer/components/Timer';
 
-import { MatchPageContent } from '@/features/match-detail/components/MatchPageContent';
+import { MatchDetail } from '@/features/match/components/MatchDetail';
 
 interface MatchDetailPageProps {
   params: Promise<{ matchId: string }>;
@@ -37,7 +37,7 @@ export default async function MatchDetailPage({
         </Link>
       </div>
 
-      <MatchPageContent matchId={parsedMatchId} />
+      <MatchDetail matchId={parsedMatchId} />
     </main>
   );
 }

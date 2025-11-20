@@ -1,0 +1,2 @@
+export { MatchDetail } from './MatchDetail';
+
