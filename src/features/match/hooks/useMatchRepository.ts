@@ -1,88 +1,113 @@
-import { useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
-import type { IMatch } from '@/lib/types';
+import type { Match, MatchInput } from '../types';
 
-export interface PaginatedMatchesResult {
-  items: IMatch[];
-  totalCount: number;
-  totalPages: number;
-  adjustedPage: number;
-}
+/**
+ * Match Repository Hook
+ *
+ * 責務:
+ * - Dexie.js (db.matches) への直接アクセスをカプセル化する
+ * - データの取得 (Read) と 更新 (Write) を提供する
+ * - UIロジックは持たない
+ */
+export function useMatchRepository() {
 
-export const useMatchRepository = () => {
+  // ==========================================================================
+  // Read Operations (Live Queries)
+  // ==========================================================================
+
   /**
-   * ページネーション付きでマッチリストを取得する
-   * @param page 要求ページ番号 (1-based)
-   * @param pageSize 1ページあたりの件数
+   * 全ての試合を取得し、日付の降順でソートして返す
    */
-  const usePaginatedMatches = (page: number, pageSize: number) => {
-    return useLiveQuery<PaginatedMatchesResult | undefined>(
-      async () => {
-        const safePageSize = Math.max(1, pageSize); // 防御的プログラミング
+  const useAllMatches = () => {
+    return useLiveQuery(async () => {
+      const matches = await db.matches
+        .filter(m => !m.deletedAt)
+        .toArray();
 
-        const baseCollection = db.matches
-          .orderBy('date')
-          .reverse()
-          .filter((match) => !match.deletedAt);
-
-        const totalCount = await baseCollection.count();
-        const totalPages = Math.max(1, Math.ceil(totalCount / safePageSize));
-
-        const adjustedPage = Math.min(Math.max(1, page), totalPages);
-
-        const items = await baseCollection
-          .offset((adjustedPage - 1) * safePageSize)
-          .limit(safePageSize)
-          .toArray();
-
-        return {
-          items,
-          totalCount,
-          totalPages,
-          adjustedPage,
-        };
-      },
-      [page, pageSize]
-    );
+      // 日付降順 (新しい順)
+      return matches.sort((a, b) => {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      });
+    });
   };
 
   /**
-   * IDによる論理削除
+   * 指定されたIDの試合を取得する
    */
-  const deleteMatch = useCallback(async (matchId: number) => {
-    await db.matches.update(matchId, {
-      deletedAt: new Date().toISOString(),
-    });
-  }, []);
+  const useMatchById = (id: number) => {
+    return useLiveQuery(() => db.matches.get(id), [id]);
+  };
+
+  // ==========================================================================
+  // Write Operations
+  // ==========================================================================
 
   /**
-   * 新規試合を作成する
+   * 新しい試合を作成する
    */
-  const createMatch = useCallback(async (match: Omit<IMatch, 'id'>) => {
-    return await db.matches.add(match as IMatch);
-  }, []);
+  const createMatch = async (match: MatchInput): Promise<number> => {
+    // Dexieの型定義(IMatch)は assignedPlayers: Record<number, number> を要求するが
+    // 実行時のJSオブジェクトのキーは文字列であるため、型アサーションで対応する
+    return await db.matches.add(match as unknown as Match);
+  };
 
   /**
-   * チームIDとチーム名のマップを取得する
+   * 試合情報を更新する
    */
-  const useTeamsMap = () => {
+  const updateMatch = async (id: number, updates: Partial<Match>): Promise<number> => {
+    return await db.matches.update(id, updates);
+  };
+
+  /**
+   * 試合を論理削除する
+   */
+  const deleteMatch = async (id: number): Promise<number> => {
+    return await db.matches.update(id, { deletedAt: new Date().toISOString() });
+  };
+
+  /**
+   * ページネーション付きで試合を取得する
+   */
+  const usePaginatedMatches = (page: number, pageSize: number) => {
     return useLiveQuery(async () => {
-      const teams = await db.teams.toArray();
-      const map = new Map<number, string>();
-      teams.forEach((team) => {
-        if (team.id !== undefined) {
-          map.set(team.id, team.name);
-        }
-      });
-      return map;
-    }, []);
+      const offset = (page - 1) * pageSize;
+
+      // 論理削除されていないレコードを対象とする
+      // Dexieでは orderBy().reverse() の後に filter() をチェーンできる
+      const collection = db.matches
+        .orderBy('date')
+        .reverse()
+        .filter(m => !m.deletedAt);
+
+      const totalCount = await collection.count();
+      const matches = await collection
+        .offset(offset)
+        .limit(pageSize)
+        .toArray();
+
+      return {
+        matches,
+        totalCount,
+        totalPages: Math.ceil(totalCount / pageSize)
+      };
+    }, [page, pageSize]);
+  };
+
+  /**
+   * 指定されたIDの試合を取得する (Async)
+   */
+  const getMatch = async (id: number) => {
+    return await db.matches.get(id);
   };
 
   return {
+    useAllMatches,
+    useMatchById,
     usePaginatedMatches,
-    deleteMatch,
+    getMatch,
     createMatch,
-    useTeamsMap,
+    updateMatch,
+    deleteMatch,
   };
-};
+}

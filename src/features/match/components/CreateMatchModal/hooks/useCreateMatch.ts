@@ -9,14 +9,15 @@ type SubjectTeamSide = 'home' | 'away' | null;
 export const useCreateMatch = (onClose?: () => void) => {
   const router = useRouter();
   const { createMatch } = useMatchRepository();
-  const { getAllTeams } = useTeamRepository();
+  const { useAllTeams } = useTeamRepository();
 
-  const teams = getAllTeams();
+  const teams = useAllTeams();
 
   const [matchDate, setMatchDate] = useState('');
   const [homeTeamId, setHomeTeamId] = useState('');
   const [awayTeamId, setAwayTeamId] = useState('');
   const [subjectTeamSide, setSubjectTeamSide] = useState<SubjectTeamSide>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const teamNameById = useMemo(() => {
     const map = new Map<number, string>();
@@ -48,7 +49,8 @@ export const useCreateMatch = (onClose?: () => void) => {
       homeTeamId &&
       awayTeamId &&
       subjectTeamSide &&
-      !isDuplicateSelection
+      !isDuplicateSelection &&
+      !isSubmitting
   );
 
   const resetForm = () => {
@@ -56,12 +58,14 @@ export const useCreateMatch = (onClose?: () => void) => {
     setHomeTeamId('');
     setAwayTeamId('');
     setSubjectTeamSide(null);
+    setIsSubmitting(false);
   };
 
   const handleCreateMatch = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canSubmit || !subjectTeamSide) return;
 
+    setIsSubmitting(true);
     try {
       const subjectTeamId =
         subjectTeamSide === 'home' ? Number(homeTeamId) : Number(awayTeamId);
@@ -82,6 +86,8 @@ export const useCreateMatch = (onClose?: () => void) => {
     } catch (error) {
       console.error('Failed to create match:', error);
       toast.error('試合作成に失敗しました');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -96,6 +102,7 @@ export const useCreateMatch = (onClose?: () => void) => {
       awayTeamName,
       isDuplicateSelection,
       canSubmit,
+      isSubmitting,
     },
     setters: {
       setMatchDate,
