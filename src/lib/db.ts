@@ -156,3 +156,28 @@ export async function getAllCustomEvents(): Promise<CustomEvent[]> {
   const db = await getDatabase();
   return db.getAll("custom_events");
 }
+
+/**
+ * メモとカスタムイベントを一括で IndexedDB に保存する。
+ * 単独のトランザクションを使用し、完結を保証する。
+ */
+export async function importMemosBatch(
+  memos: EventMemo[],
+  customEvents: CustomEvent[]
+): Promise<void> {
+  const db = await getDatabase();
+  const tx = db.transaction(["event_memos", "custom_events"], "readwrite");
+  
+  const memoStore = tx.objectStore("event_memos");
+  const eventStore = tx.objectStore("custom_events");
+
+  for (const m of memos) {
+    memoStore.put(m);
+  }
+  for (const e of customEvents) {
+    eventStore.put(e);
+  }
+
+  await tx.done;
+  console.log(`[footics] Batch memo import completed (${memos.length + customEvents.length} items)`);
+}

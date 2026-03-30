@@ -1,17 +1,17 @@
 import JSZip from "jszip";
 import { 
-  getAllEventMemos, 
-  getAllCustomEvents, 
-  putEventMemo, 
-  saveCustomEvent,
-  getDatabase 
-} from "./db";
-import { 
   getAllCacheEntries, 
   openCacheDB, 
-  idbPut, 
+  importCacheEntriesBatch,
+  CACHE_VERSION,
   CacheEntry 
 } from "./duckdb/data-loader";
+import { 
+  getAllEventMemos, 
+  getAllCustomEvents, 
+  importMemosBatch,
+  getDatabase 
+} from "./db";
 
 const BACKUP_VERSION = 1;
 
@@ -84,29 +84,17 @@ export async function importAllDataZip(file: File): Promise<{ matchCount: number
   // 1. Check Manifest
   const manifestFile = zip.file("manifest.json");
   if (!manifestFile) throw new Error("Invalid backup: manifest.json missing");
-  const manifest = JSON.parse(await manifestFile.async("string"));
   
   // 2. Import Memos
   let memoCount = 0;
   const memosFile = zip.file("memos.json");
   if (memosFile) {
     const memosData = JSON.parse(await memosFile.async("string"));
+    const eventMemos = Array.isArray(memosData.event_memos) ? memosData.event_memos : [];
+    const customEvents = Array.isArray(memosData.custom_events) ? memosData.custom_events : [];
     
-    // Event Memos
-    if (Array.isArray(memosData.event_memos)) {
-      for (const m of memosData.event_memos) {
-        await putEventMemo(m);
-        memoCount++;
-      }
-    }
-    
-    // Custom Events
-    if (Array.isArray(memosData.custom_events)) {
-      for (const e of memosData.custom_events) {
-        await saveCustomEvent(e);
-        memoCount++;
-      }
-    }
+    await importMemosBatch(eventMemos, customEvents);
+    memoCount = eventMemos.length + customEvents.length;
   }
 
   // 3. Import Match Cache
@@ -114,7 +102,7 @@ export async function importAllDataZip(file: File): Promise<{ matchCount: number
   const matchesFile = zip.file("matches.json");
   if (matchesFile) {
     const matchesList = JSON.parse(await matchesFile.async("string"));
-    const idb = await openCacheDB();
+    const entriesToImport: { key: string; value: CacheEntry }[] = [];
     
     for (const mInfo of matchesList) {
       const matchId = mInfo.key.replace("match_", "");
@@ -124,17 +112,24 @@ export async function importAllDataZip(file: File): Promise<{ matchCount: number
       const pEvents = zip.file(`parquet/${matchId}_events.parquet`);
       
       if (pMatches && pPlayers && pEvents) {
-        const entry: CacheEntry = {
-          version: mInfo.version,
-          metadata: mInfo.metadata,
-          matchesParquet: await pMatches.async("arraybuffer"),
-          playersParquet: await pPlayers.async("arraybuffer"),
-          eventsParquet: await pEvents.async("arraybuffer"),
-        };
-        
-        await idbPut(idb, mInfo.key, entry);
-        matchCount++;
+        entriesToImport.push({
+          key: mInfo.key,
+          value: {
+            // BACKUP 内のバージョンに関わらず、現在のアプリが期待する最新バージョンを付与する。
+            // これにより、読み込み時の Invalid data や Not found を防ぐ。
+            version: CACHE_VERSION,
+            metadata: mInfo.metadata,
+            matchesParquet: await pMatches.async("arraybuffer"),
+            playersParquet: await pPlayers.async("arraybuffer"),
+            eventsParquet: await pEvents.async("arraybuffer"),
+          }
+        });
       }
+    }
+    
+    if (entriesToImport.length > 0) {
+      await importCacheEntriesBatch(entriesToImport);
+      matchCount = entriesToImport.length;
     }
   }
 

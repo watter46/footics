@@ -54,13 +54,14 @@ export function GlobalDataManagement() {
       const result = await importAllDataZip(file);
       toast.success("Restore complete!", { 
         id: toastId,
-        description: `Imported ${result.matchCount} matches and ${result.memoCount} memos. Reloading...`
+        description: `Successfully merged ${result.matchCount} matches and ${result.memoCount} items. Finalizing...`,
+        duration: 3500,
       });
       
-      // Auto-reload after a short delay
+      // Give the browser a bit more time to flush to disk and the user to read the message
       setTimeout(() => {
         window.location.reload();
-      }, 1500);
+      }, 2500);
     } catch (err: any) {
       toast.error(`Restore failed: ${err.message}`, { id: toastId });
     } finally {

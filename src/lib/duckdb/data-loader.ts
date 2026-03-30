@@ -18,7 +18,7 @@ import { getCustomEventsByMatch } from "@/lib/db";
 
 const IDB_NAME = "footics_cache";
 const IDB_STORE = "parquet_store";
-const CACHE_VERSION = 5; // バンプしてキャッシュ無効化可能
+export const CACHE_VERSION = 5; // バンプしてキャッシュ無効化可能
 
 // ──────────────────────────────────────────────
 // IndexedDB ヘルパー
@@ -76,9 +76,10 @@ async function exportTableAsParquet(
   tableName: string
 ): Promise<ArrayBuffer> {
   const fileName = `${tableName}.parquet`;
-  await conn.query(`COPY ${tableName} TO '${fileName}' (FORMAT PARQUET)`);
   const buffer = await db.copyFileToBuffer(fileName);
-  return buffer.slice().buffer as ArrayBuffer;
+  // もとの Uint8Array のコピーを作成し、その中の ArrayBuffer を返すことで
+  // メモリのオフセット不整合や意図しない共有を完全に防ぐ
+  return new Uint8Array(buffer).slice().buffer as ArrayBuffer;
 }
 
 async function importParquetAsTable(
@@ -100,6 +101,14 @@ async function importParquetAsTable(
 
 export interface LoadResult {
   metadata: MatchMetadata;
+}
+
+export interface BatchImportResult {
+  total: number;
+  success: number;
+  skipped: number;
+  failed: number;
+  errors: { fileName: string; errorMessage: string }[];
 }
 
 /**
@@ -135,6 +144,10 @@ export async function loadMatchData(
       await loadCustomEventsToDuckDB(db, conn, matchId);
 
       return { metadata: cached.metadata };
+    } else if (cached) {
+      console.warn(`[footics] Cache version mismatch for ${matchId}: expected ${CACHE_VERSION}, found ${cached.version}`);
+    } else {
+      console.warn(`[footics] Cache entry for ${matchId} not found in IndexedDB`);
     }
   } catch (err) {
     console.error("[footics] IndexedDB store access failed", err);
@@ -257,6 +270,35 @@ export async function getAllCacheEntries(): Promise<{ key: string; value: CacheE
 }
 
 /**
+ * 複数のキャッシュエントリを一括で IndexedDB に保存する。
+ * 単一のトランザクションを使用し、oncomplete を待機することで
+ * データの不整合とリロード時の破損を防ぐ。
+ */
+export async function importCacheEntriesBatch(
+  entries: { key: string; value: CacheEntry }[]
+): Promise<void> {
+  const db = await openCacheDB();
+  
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    const store = tx.objectStore(IDB_STORE);
+    
+    tx.oncomplete = () => {
+      console.log(`[footics] Batch cache import completed (${entries.length} entries)`);
+      resolve();
+    };
+    tx.onerror = () => {
+      console.error("[footics] Batch cache import failed", tx.error);
+      reject(tx.error);
+    };
+    
+    for (const entry of entries) {
+      store.put(entry.value, entry.key);
+    }
+  });
+}
+
+/**
  * カスタムイベントを DuckDB にロード
  */
 export async function loadCustomEventsToDuckDB(
@@ -286,20 +328,156 @@ export async function loadCustomEventsToDuckDB(
 }
 
 /**
- * JSONファイルから直接マッチデータを読み込んでインポートする
- * 成功時には新しい matchId を返す
+ * ナショナルデータ特有の構造をパースして正規化する
  */
-export async function importMatchJsonFile(
-  file: File,
-  db: duckdb.AsyncDuckDB,
-  conn: duckdb.AsyncDuckDBConnection
-): Promise<string> {
-  const text = await file.text();
-  const data = JSON.parse(text) as MatchRoot;
-  const matchId = String(data.matchId);
+function parseNationalMatchData(data: any) {
+  const matchId = data.matchId;
+  const scrap = data.initialMatchDataForScrappers;
+  
+  // scrap[0][0] contains match info
+  const info = scrap[0][0];
+  const homeTeamId = info[0];
+  const awayTeamId = info[1];
+  const homeTeamName = info[2] || info[13] || "Home";
+  const awayTeamName = info[3] || info[14] || "Away";
+  const score = info[12] || info[8] || "0 : 0"; 
+  const rawDate = info[4] || ""; 
+  
+  let date = "";
+  if (rawDate) {
+    const parts = rawDate.split(" ")[0].split("/");
+    if (parts.length === 3) {
+      date = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+  }
 
+  const playerInfo = scrap[0][2];
+  const homeLineup = playerInfo[9] || [];
+  const awayLineup = playerInfo[10] || [];
+  const homeSubsList = playerInfo[11] || [];
+  const awaySubsList = playerInfo[12] || [];
+
+  const playerIdNameDictionary: Record<string, string> = {};
+
+  const mapPlayers = (list: any[], teamId: number, isFirstEleven: boolean) => {
+    return list.map((p: any) => {
+      const name = p[0];
+      const playerId = p[3] || Math.floor(Math.random() * 1000000);
+      playerIdNameDictionary[String(playerId)] = name;
+      return {
+        match_id: matchId,
+        team_id: teamId,
+        player_id: playerId,
+        shirt_no: 0,
+        name: name,
+        position: isFirstEleven ? "FW" : "Sub",
+        is_first_eleven: isFirstEleven,
+      };
+    });
+  };
+
+  const players = [
+    ...mapPlayers(homeLineup, homeTeamId, true),
+    ...mapPlayers(homeSubsList, homeTeamId, false),
+    ...mapPlayers(awayLineup, awayTeamId, true),
+    ...mapPlayers(awaySubsList, awayTeamId, false),
+  ];
+
+  const matches = [
+    {
+      match_id: matchId,
+      start_time: date,
+      venue_name: "International Venue",
+      home_team_id: homeTeamId,
+      away_team_id: awayTeamId,
+      score: score,
+    },
+  ];
+
+  const events: any[] = [];
+
+  const metadata: MatchMetadata = {
+    matchId: String(matchId),
+    date: date,
+    score: score,
+    matchType: "national",
+    playerIdNameDictionary,
+    teams: {
+      home: { teamId: homeTeamId, name: homeTeamName, players: [] } as any,
+      away: { teamId: awayTeamId, name: awayTeamName, players: [] } as any,
+    },
+  };
+
+  return { matches, players, events, metadata };
+}
+
+/**
+ * 複数のJSONファイルを一括でインポートする。
+ * 重複する試合は自動的にスキップされる。
+ */
+export async function importMatchesBatch(
+  files: File[],
+  db: duckdb.AsyncDuckDB,
+  conn: duckdb.AsyncDuckDBConnection,
+  onProgress?: (current: number, total: number) => void
+): Promise<BatchImportResult> {
+  const result: BatchImportResult = {
+    total: files.length,
+    success: 0,
+    skipped: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  const idb = await openCacheDB();
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (onProgress) onProgress(i + 1, files.length);
+
+    try {
+      // 1. 最小限のパースで matchId を取得して重複チェック
+      const text = await file.text();
+      const data = JSON.parse(text) as MatchRoot;
+      const matchId = String(data.matchId);
+
+      // checkMatchExists を直接 idb で実行して高速化
+      const cached = await idbGet(idb, `match_${matchId}`);
+      const exists = !!cached && cached.version === CACHE_VERSION;
+
+      if (exists) {
+        console.log(`[footics] Batch import: Skipping match ${matchId} (already exists)`);
+        result.skipped++;
+        continue;
+      }
+
+      // 2. インポート実行
+      await importMatchJsonFileCore(data, db, conn, idb);
+      result.success++;
+    } catch (err: any) {
+      console.error(`[footics] Batch import failed for ${file.name}:`, err);
+      result.failed++;
+      result.errors.push({
+        fileName: file.name,
+        errorMessage: err.message || "Unknown error",
+      });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * importMatchJsonFile のコアロジックを分離し、パース済みデータとDB接続を再利用可能にする
+ */
+async function importMatchJsonFileCore(
+  data: MatchRoot,
+  db: duckdb.AsyncDuckDB,
+  conn: duckdb.AsyncDuckDBConnection,
+  idb: IDBDatabase
+): Promise<string> {
+  const matchId = String(data.matchId);
   const start = performance.now();
-  console.log(`[footics] Importing match ${matchId} from file...`);
 
   let matches: any[] = [];
   let players: any[] = [];
@@ -307,7 +485,6 @@ export async function importMatchJsonFile(
   let metadata: MatchMetadata;
 
   if ("matchCentreData" in data) {
-    // Club format (WhoScored standard)
     const mc = data.matchCentreData;
     matches = [
       {
@@ -373,17 +550,15 @@ export async function importMatchJsonFile(
       teams: { home: mc.home, away: mc.away },
     };
   } else if ("initialMatchDataForScrappers" in data) {
-    // National data format (Simplified scrappable format)
     const result = parseNationalMatchData(data);
     matches = result.matches;
     players = result.players;
     events = result.events;
     metadata = result.metadata;
   } else {
-    throw new Error("Unknown JSON format. Neither 'matchCentreData' nor 'initialMatchDataForScrappers' found.");
+    throw new Error("Unknown JSON format.");
   }
 
-  // Register and create tables
   await db.registerFileText("matches.json", JSON.stringify(matches));
   await db.registerFileText("players.json", JSON.stringify(players));
   await db.registerFileText("events.json", JSON.stringify(events));
@@ -394,123 +569,36 @@ export async function importMatchJsonFile(
     CREATE OR REPLACE TABLE events AS SELECT * FROM read_json_auto('events.json');
   `);
 
-  // カスタムイベントの読み込み
   await loadCustomEventsToDuckDB(db, conn, matchId);
 
-  // IndexedDB にキャッシュ保存
-  try {
-    const idb = await openCacheDB();
-    const [matchesParquet, playersParquet, eventsParquet] = await Promise.all([
-      exportTableAsParquet(conn, db, "matches"),
-      exportTableAsParquet(conn, db, "players"),
-      exportTableAsParquet(conn, db, "events"),
-    ]);
+  const [matchesParquet, playersParquet, eventsParquet] = await Promise.all([
+    exportTableAsParquet(conn, db, "matches"),
+    exportTableAsParquet(conn, db, "players"),
+    exportTableAsParquet(conn, db, "events"),
+  ]);
 
-    await idbPut(idb, `match_${matchId}`, {
-      version: CACHE_VERSION,
-      matchesParquet,
-      playersParquet,
-      eventsParquet,
-      metadata,
-    });
-    console.log(`[footics] Match ${matchId} cached to IndexedDB`);
-  } catch (err) {
-    console.warn("[footics] Failed to cache to IndexedDB", err);
-  }
+  await idbPut(idb, `match_${matchId}`, {
+    version: CACHE_VERSION,
+    matchesParquet,
+    playersParquet,
+    eventsParquet,
+    metadata,
+  });
 
-  console.log(
-    `[footics] Import completed in ${(performance.now() - start).toFixed(0)}ms`
-  );
-
+  console.log(`[footics] Import ${matchId} done in ${(performance.now() - start).toFixed(0)}ms`);
   return matchId;
 }
 
 /**
- * ナショナルデータ特有の構造をパースして正規化する
+ * JSONファイルから直接マッチデータを読み込んでインポートする（単一ファイル用）
  */
-function parseNationalMatchData(data: any) {
-  const matchId = data.matchId;
-  const scrap = data.initialMatchDataForScrappers;
-  
-  // scrap[0][0] contains match info
-  // [homeTeamId, awayTeamId, homeTeamName, awayTeamName, dateTime, date, leagueId, status, halfTimeScore, score, ...]
-  const info = scrap[0][0];
-  const homeTeamId = info[0];
-  const awayTeamId = info[1];
-  const homeTeamName = info[2] || info[13] || "Home";
-  const awayTeamName = info[3] || info[14] || "Away";
-  const score = info[12] || info[8] || "0 : 0"; 
-  const rawDate = info[4] || ""; 
-  
-  // Format date to ISO
-  let date = "";
-  if (rawDate) {
-    const parts = rawDate.split(" ")[0].split("/");
-    if (parts.length === 3) {
-      date = `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-  }
-
-  // scrap[0][2] contains player info
-  // [?, ?, ?, ?, ?, ?, ?, ?, ?, homeLineup, awayLineup, homeSubs, awaySubs]
-  const playerInfo = scrap[0][2];
-  const homeLineup = playerInfo[9] || [];
-  const awayLineup = playerInfo[10] || [];
-  const homeSubsList = playerInfo[11] || [];
-  const awaySubsList = playerInfo[12] || [];
-
-  const playerIdNameDictionary: Record<string, string> = {};
-
-  const mapPlayers = (list: any[], teamId: number, isFirstEleven: boolean) => {
-    return list.map((p: any) => {
-      const name = p[0];
-      const playerId = p[3] || Math.floor(Math.random() * 1000000);
-      playerIdNameDictionary[String(playerId)] = name;
-      return {
-        match_id: matchId,
-        team_id: teamId,
-        player_id: playerId,
-        shirt_no: 0, // Not easily available in this format
-        name: name,
-        position: isFirstEleven ? "FW" : "Sub", // Dummy position
-        is_first_eleven: isFirstEleven,
-      };
-    });
-  };
-
-  const players = [
-    ...mapPlayers(homeLineup, homeTeamId, true),
-    ...mapPlayers(homeSubsList, homeTeamId, false),
-    ...mapPlayers(awayLineup, awayTeamId, true),
-    ...mapPlayers(awaySubsList, awayTeamId, false),
-  ];
-
-  const matches = [
-    {
-      match_id: matchId,
-      start_time: date,
-      venue_name: "International Venue",
-      home_team_id: homeTeamId,
-      away_team_id: awayTeamId,
-      score: score,
-    },
-  ];
-
-  // For national data, we often don't have detailed events.
-  // We provide an empty array to maintain schema consistency.
-  const events: any[] = [];
-
-  const metadata: MatchMetadata = {
-    matchId: String(matchId),
-    date: date,
-    score: score,
-    matchType: "national",
-    playerIdNameDictionary,
-    teams: {
-      home: { teamId: homeTeamId, name: homeTeamName, players: [] } as any,
-      away: { teamId: awayTeamId, name: awayTeamName, players: [] } as any,
-    },
-  };
-
-  return { matches, players, events, metadata };
+export async function importMatchJsonFile(
+  file: File,
+  db: duckdb.AsyncDuckDB,
+  conn: duckdb.AsyncDuckDBConnection
+): Promise<string> {
+  const text = await file.text();
+  const data = JSON.parse(text) as MatchRoot;
+  const idb = await openCacheDB();
+  return importMatchJsonFileCore(data, db, conn, idb);
 }
