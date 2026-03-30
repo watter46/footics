@@ -1,18 +1,16 @@
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+import { FlatCompat } from "@eslint/eslintrc";
 
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
-]);
+const compat = new FlatCompat({
+  basePath: import.meta.dirname,
+});
+
+const eslintConfig = [
+  // core-web-vitals と typescript の設定を互換レイヤー経由で読み込む
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    // 追加の無視設定
+    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts", ".open-next/**"],
+  },
+];
 
 export default eslintConfig;

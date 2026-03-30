@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
-import type { MatchSummary } from "@/lib/data/scan-matches";
-import { Calendar, Filter, X } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import type { MatchSummary } from "@/types";
+import { Calendar, Filter, X, Database } from "lucide-react";
+import { getAllCachedMatches } from "@/lib/duckdb/data-loader";
+import { GlobalDataManagement } from "./GlobalDataManagement";
 
 interface Props {
   matches: MatchSummary[];
@@ -14,12 +16,38 @@ const TEAM_FILTERS = [
   { label: "Chelsea", value: "Chelsea" },
 ];
 
-export function MatchListClient({ matches }: Props) {
+export function MatchListClient({ matches: serverMatches }: Props) {
   const [activeTeam, setActiveTeam] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<"all" | "club" | "national">("all");
+  const [idbMatches, setIdbMatches] = useState<MatchSummary[]>([]);
+  const [isLoadingIdb, setIsLoadingIdb] = useState(true);
+
+  useEffect(() => {
+    async function loadIdbMatches() {
+      try {
+        const cached = await getAllCachedMatches();
+        setIdbMatches(cached);
+      } catch (err) {
+        console.error("Failed to load IndexedDB matches:", err);
+      } finally {
+        setIsLoadingIdb(false);
+      }
+    }
+    loadIdbMatches();
+  }, []);
+
+  const allMatches = useMemo(() => {
+    // Merge server matches and IDB matches, prioritizing IDB (which might be newer or overwritten)
+    const merged = new Map<string, MatchSummary>();
+    
+    serverMatches.forEach(m => merged.set(m.id, m));
+    idbMatches.forEach(m => merged.set(m.id, m));
+    
+    return Array.from(merged.values());
+  }, [serverMatches, idbMatches]);
 
   const sortedAndFiltered = useMemo(() => {
-    let sorted = [...matches].sort(
+    let sorted = [...allMatches].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     if (activeType !== "all") {
@@ -33,7 +61,7 @@ export function MatchListClient({ matches }: Props) {
       );
     }
     return sorted;
-  }, [matches, activeTeam, activeType]);
+  }, [allMatches, activeTeam, activeType]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -81,10 +109,13 @@ export function MatchListClient({ matches }: Props) {
           );
         })}
         {activeTeam && (
-          <span className="text-xs text-slate-500 ml-auto">
+          <span className="text-xs text-slate-500 ml-auto mr-4">
             {sortedAndFiltered.length} match{sortedAndFiltered.length !== 1 ? "es" : ""}
           </span>
         )}
+        <div className={activeTeam ? "" : "ml-auto"}>
+          <GlobalDataManagement />
+        </div>
       </div>
 
       {/* Match List */}
@@ -135,6 +166,12 @@ export function MatchListClient({ matches }: Props) {
                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-500 font-mono mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis w-full max-w-full block">
                       #{match.id}
                     </span>
+                    {idbMatches.some(im => im.id === match.id) && (
+                      <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-blue-900/40 border border-blue-500/40 text-blue-400 font-semibold mt-0.5 uppercase tracking-wider">
+                        <Database className="w-2.5 h-2.5" />
+                        Imported
+                      </span>
+                    )}
                     {match.matchType === "national" && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/40 border border-emerald-500/40 text-emerald-400 font-semibold mt-0.5 uppercase tracking-wider">
                         National
@@ -161,7 +198,7 @@ export function MatchListClient({ matches }: Props) {
                     {/* Score */}
                     <div className="flex flex-col items-center justify-center flex-1 z-10">
                       <div className="text-xl sm:text-3xl font-extrabold tracking-tighter text-slate-50 whitespace-nowrap tabular-nums">
-                        {match.score.replace(/\s+/g, "").replace(":", " - ")}
+                        {(match.score || "0 : 0").replace(/\s+/g, "").replace(":", " - ")}
                       </div>
                       <div className="text-[9px] sm:text-[10px] text-slate-600 mt-0.5 uppercase tracking-widest font-bold">
                         FT

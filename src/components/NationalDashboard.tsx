@@ -18,7 +18,6 @@ interface Props {
 }
 
 export default function NationalDashboard({ matchId, defaultHome, defaultAway, defaultScore }: Props) {
-  const matchInfo = MATCHES.find((m) => m.id === matchId);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [highlightEventId, setHighlightEventId] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<{ id: string; minute: number; second: number; labels: string[]; memo: string } | null>(null);
@@ -68,14 +67,18 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
     });
   }, [customEvents]);
 
-  // Dummy metadata
-  const metadata: MatchMetadata = {
+  // Create metadata object from props for consistency with components that expect it
+  const metadata: MatchMetadata = useMemo(() => ({
+    matchId: matchId,
+    date: "", // Date could be passed as prop if needed
+    score: defaultScore || "vs",
+    matchType: "national",
     playerIdNameDictionary: {},
     teams: {
-      home: { teamId: 0, name: matchInfo?.homeTeam.name || defaultHome || "Home", players: [] } as any,
-      away: { teamId: 1, name: matchInfo?.awayTeam.name || defaultAway || "Away", players: [] } as any
+      home: { teamId: 0, name: defaultHome || "Home", players: [] } as any,
+      away: { teamId: 1, name: defaultAway || "Away", players: [] } as any
     }
-  };
+  }), [matchId, defaultHome, defaultAway, defaultScore]);
 
   return (
     <div className="flex h-screen w-full bg-slate-950 text-slate-50 overflow-hidden font-sans">
@@ -94,7 +97,7 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
             <div className="flex items-center gap-4 text-slate-200">
               <span className="font-bold text-lg">{metadata.teams.home.name}</span>
               <div className="px-3 py-1 bg-slate-800/80 rounded-md font-mono text-sm font-bold shadow-inner">
-                 {matchInfo?.score || defaultScore || "vs"}
+                 {metadata.score || defaultScore || "vs"}
               </div>
               <span className="font-bold text-lg text-slate-300">{metadata.teams.away.name}</span>
             </div>

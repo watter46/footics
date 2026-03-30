@@ -146,3 +146,13 @@ export async function importMemosFromJson(
   await transaction.done;
   return count;
 }
+
+export async function getAllEventMemos(): Promise<EventMemo[]> {
+  const db = await getDatabase();
+  return db.getAll("event_memos");
+}
+
+export async function getAllCustomEvents(): Promise<CustomEvent[]> {
+  const db = await getDatabase();
+  return db.getAll("custom_events");
+}

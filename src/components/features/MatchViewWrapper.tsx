@@ -1,0 +1,70 @@
+"use client";
+
+import { useDuckDB } from "@/hooks/use-duckdb";
+import Dashboard from "@/components/Dashboard";
+import NationalDashboard from "@/components/NationalDashboard";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
+
+interface Props {
+  matchId: string;
+}
+
+export function MatchViewWrapper({ matchId }: Props) {
+  const { status, error, metadata } = useDuckDB(matchId);
+
+  if (status === "idle" || status === "initializing" || status === "loading-data") {
+    const statusMessage =
+      status === "initializing"
+        ? "Initializing DuckDB-WASM..."
+        : status === "loading-data"
+          ? "Loading match data from IndexedDB..."
+          : "Starting...";
+
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-950 text-slate-50 gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+        <span className="text-lg font-medium text-slate-300">{statusMessage}</span>
+      </div>
+    );
+  }
+
+  if (status === "error" || !metadata) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-950 text-red-400 p-6">
+        <Card className="bg-slate-900 border-red-500/50 p-8 max-w-md w-full shadow-2xl">
+          <div className="flex items-center gap-3 mb-4 text-red-400">
+            <AlertCircle className="w-8 h-8" />
+            <h2 className="text-2xl font-bold">Data Not Found</h2>
+          </div>
+          <p className="text-slate-400 mb-6 leading-relaxed">
+            {error || "Match data not found in local storage. Please import the JSON file first."}
+          </p>
+          <Link 
+            href="/"
+            className="flex items-center justify-center gap-2 w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-100 rounded-xl transition-all font-semibold border border-slate-700"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back to Match List
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
+  // Determine dashboard based on metadata
+  if (metadata.matchType === "national") {
+    return (
+      <NationalDashboard 
+        matchId={matchId} 
+        defaultHome={metadata.teams.home.name} 
+        defaultAway={metadata.teams.away.name} 
+        defaultScore={metadata.score} 
+      />
+    );
+  }
+
+  return <Dashboard matchId={matchId} />;
+}

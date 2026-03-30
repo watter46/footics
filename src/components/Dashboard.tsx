@@ -25,7 +25,6 @@ import { deleteCustomEvent } from "@/lib/db";
 import { MATCHES } from "@/lib/data/matches";
 
 export default function Dashboard({ matchId }: { matchId: string }) {
-  const matchInfo = MATCHES.find((m) => m.id === matchId);
   // ── DB State ──
   const { status, db, connection, error, metadata } = useDuckDB(matchId);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -185,18 +184,18 @@ export default function Dashboard({ matchId }: { matchId: string }) {
             >
               <ChevronLeft className="w-5 h-5" />
             </Link>
-            {matchInfo ? (
+            {metadata ? (
               <div className="flex items-center gap-4 text-slate-200">
                 <div className="flex items-center gap-2">
-                  <img src={`https://d2zywfiolv4f83.cloudfront.net/img/teams/${matchInfo.homeTeam.id}.png`} alt={matchInfo.homeTeam.name} className="w-7 h-7 object-contain" />
-                  <span className="font-bold text-lg">{matchInfo.homeTeam.name}</span>
+                  <img src={`https://d2zywfiolv4f83.cloudfront.net/img/teams/${metadata.teams.home.teamId}.png`} alt={metadata.teams.home.name} className="w-7 h-7 object-contain" />
+                  <span className="font-bold text-lg">{metadata.teams.home.name}</span>
                 </div>
                 <div className="px-3 py-1 bg-slate-800/80 rounded-md font-mono text-sm font-bold shadow-inner">
-                  {matchInfo.score}
+                  {metadata.score}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-lg text-slate-300">{matchInfo.awayTeam.name}</span>
-                  <img src={`https://d2zywfiolv4f83.cloudfront.net/img/teams/${matchInfo.awayTeam.id}.png`} alt={matchInfo.awayTeam.name} className="w-7 h-7 object-contain" />
+                  <span className="font-bold text-lg text-slate-300">{metadata.teams.away.name}</span>
+                  <img src={`https://d2zywfiolv4f83.cloudfront.net/img/teams/${metadata.teams.away.teamId}.png`} alt={metadata.teams.away.name} className="w-7 h-7 object-contain" />
                 </div>
               </div>
             ) : (

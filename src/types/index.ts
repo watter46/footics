@@ -4,11 +4,18 @@ import type { AsyncDuckDBConnection, AsyncDuckDB } from "@duckdb/duckdb-wasm";
 // Domain Models (Match Data)
 // ──────────────────────────────────────────────
 
-export interface MatchRoot {
+export type MatchRoot = ClubMatchRoot | NationalMatchRoot;
+
+export interface ClubMatchRoot {
   matchId: number;
   matchCentreData: MatchCentreData;
   matchCentreEventTypeJson: Record<string, number>;
   formationIdNameMappings: Record<string, string>;
+}
+
+export interface NationalMatchRoot {
+  matchId: number;
+  initialMatchDataForScrappers: any[][][]; // 複雑なネスト構造のため、一旦 any で定義しつつ必要な箇所を抽出
 }
 
 export interface MatchCentreData {
@@ -144,6 +151,10 @@ export interface DatabaseState {
 }
 
 export interface MatchMetadata {
+  matchId: string;
+  date: string;
+  score: string;
+  matchType: "club" | "national";
   playerIdNameDictionary: Record<string, string>;
   teams: {
     home: Team;
@@ -213,5 +224,14 @@ export interface CustomEventRow {
   labels: string[];
   memo: string;
   created_at: number;
+}
+
+export interface MatchSummary {
+  id: string;
+  homeTeam: { id: number; name: string };
+  awayTeam: { id: number; name: string };
+  date: string;
+  score: string;
+  matchType: "club" | "national";
 }
 
