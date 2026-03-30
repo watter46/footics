@@ -1,0 +1,974 @@
+{
+  "matchId": 1966204,
+  "initialMatchDataForScrappers": [
+    [
+      [
+        424,
+        986,
+        "Scotland",
+        "Japan",
+        "28/03/2026 17:00:00",
+        "28/03/2026 00:00:00",
+        6,
+        "FT",
+        "0 : 0",
+        "0 : 1",
+        null,
+        null,
+        "0 : 1",
+        "Scotland",
+        "Japan"
+      ],
+      [
+        [
+          [
+            46,
+            [],
+            [
+              [
+                "Hiroki Ito",
+                "Junnosuke Suzuki",
+                "subst",
+                null,
+                null,
+                46,
+                422717,
+                562979
+              ],
+              [
+                "Kodai Sano",
+                "Kaoru Mitoma",
+                "subst",
+                null,
+                null,
+                46,
+                497708,
+                425142
+              ],
+              [
+                "Tsuyoshi Watanabe",
+                "Shogo Taniguchi",
+                "subst",
+                null,
+                null,
+                46,
+                431258,
+                143724
+              ]
+            ],
+            0,
+            1
+          ],
+          [
+            62,
+            [],
+            [
+              [
+                "Daizen Maeda",
+                "Keito Nakamura",
+                "subst",
+                null,
+                null,
+                62,
+                377287,
+                346606
+              ]
+            ],
+            0,
+            1
+          ],
+          [
+            63,
+            [
+              [
+                "John McGinn",
+                "Ryan Christie",
+                "subst",
+                null,
+                null,
+                63,
+                318449,
+                128882
+              ],
+              [
+                "Lyndon Dykes",
+                "George Hirst",
+                "subst",
+                null,
+                null,
+                63,
+                396795,
+                317547
+              ]
+            ],
+            [
+              [
+                "Yukinari Sugawara",
+                "Ritsu Doan",
+                "subst",
+                null,
+                null,
+                63,
+                379783,
+                343435
+              ],
+              [
+                "Yuito Suzuki",
+                "Junya Ito",
+                "subst",
+                null,
+                null,
+                63,
+                472403,
+                370255
+              ]
+            ],
+            1,
+            1
+          ],
+          [
+            66,
+            [],
+            [
+              [
+                "Junnosuke Suzuki",
+                null,
+                "yellow",
+                null,
+                null,
+                66,
+                562979,
+                0
+              ]
+            ],
+            0,
+            1
+          ],
+          [
+            70,
+            [
+              [
+                "Andy Robertson",
+                "Kieran Tierney",
+                "subst",
+                null,
+                null,
+                70,
+                115726,
+                297403
+              ],
+              [
+                "Scott McTominay",
+                "Billy Gilmour",
+                "subst",
+                null,
+                null,
+                70,
+                336915,
+                381255
+              ]
+            ],
+            [],
+            1,
+            0
+          ],
+          [
+            77,
+            [],
+            [
+              [
+                "Ayumu Seko",
+                "Daiki Hashioka",
+                "subst",
+                null,
+                null,
+                77,
+                457079,
+                411101
+              ]
+            ],
+            0,
+            1
+          ],
+          [
+            78,
+            [],
+            [
+              [
+                "Ritsu Doan",
+                null,
+                "yellow",
+                null,
+                null,
+                78,
+                343435,
+                0
+              ],
+              [
+                "Ao Tanaka",
+                "Daichi Kamada",
+                "subst",
+                null,
+                null,
+                78,
+                423347,
+                344166
+              ],
+              [
+                "Joel Chima Fujita",
+                "Kento Shiogai",
+                "subst",
+                null,
+                null,
+                78,
+                447584,
+                538340
+              ]
+            ],
+            0,
+            1
+          ],
+          [
+            80,
+            [
+              [
+                "Nathan Patterson",
+                "Anthony Ralston",
+                "subst",
+                null,
+                null,
+                80,
+                396975,
+                291944
+              ],
+              [
+                "Tommy Conway",
+                "Findlay Curtis",
+                "subst",
+                null,
+                null,
+                80,
+                391154,
+                533012
+              ]
+            ],
+            [],
+            1,
+            0
+          ],
+          [
+            84,
+            [],
+            [
+              [
+                "Junya Ito",
+                null,
+                "goal",
+                "(0-1)",
+                null,
+                84,
+                370255,
+                0
+              ]
+            ],
+            0,
+            1
+          ]
+        ]
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        [
+          [
+            "Angus Gunn",
+            "gb-sct",
+            [],
+            318896
+          ],
+          [
+            "Andy Robertson",
+            "gb-sct",
+            [
+              [
+                "Andy Robertson",
+                "Kieran Tierney",
+                "subst-out",
+                null,
+                null,
+                70,
+                115726,
+                297403
+              ]
+            ],
+            115726
+          ],
+          [
+            "Jack Hendry",
+            "gb-sct",
+            [],
+            280210
+          ],
+          [
+            "Nathan Patterson",
+            "gb-sct",
+            [
+              [
+                "Nathan Patterson",
+                "Anthony Ralston",
+                "subst-out",
+                null,
+                null,
+                80,
+                396975,
+                291944
+              ]
+            ],
+            396975
+          ],
+          [
+            "Scott McKenna",
+            "gb-sct",
+            [],
+            364624
+          ],
+          [
+            "John McGinn",
+            "gb-sct",
+            [
+              [
+                "John McGinn",
+                "Ryan Christie",
+                "subst-out",
+                null,
+                null,
+                63,
+                318449,
+                128882
+              ]
+            ],
+            318449
+          ],
+          [
+            "Kenny McLean",
+            "gb-sct",
+            [],
+            82917
+          ],
+          [
+            "Lewis Ferguson",
+            "gb-sct",
+            [],
+            396971
+          ],
+          [
+            "Scott McTominay",
+            "gb-sct",
+            [
+              [
+                "Scott McTominay",
+                "Billy Gilmour",
+                "subst-out",
+                null,
+                null,
+                70,
+                336915,
+                381255
+              ]
+            ],
+            336915
+          ],
+          [
+            "Tommy Conway",
+            "gb-sct",
+            [
+              [
+                "Tommy Conway",
+                "Findlay Curtis",
+                "subst-out",
+                null,
+                null,
+                80,
+                391154,
+                533012
+              ]
+            ],
+            391154
+          ],
+          [
+            "Lyndon Dykes",
+            "gb-sct",
+            [
+              [
+                "Lyndon Dykes",
+                "George Hirst",
+                "subst-out",
+                null,
+                null,
+                63,
+                396795,
+                317547
+              ]
+            ],
+            396795
+          ]
+        ],
+        [
+          [
+            "Zion Suzuki",
+            "jp",
+            [],
+            447570
+          ],
+          [
+            "Ayumu Seko",
+            "jp",
+            [
+              [
+                "Ayumu Seko",
+                "Daiki Hashioka",
+                "subst-out",
+                null,
+                null,
+                77,
+                457079,
+                411101
+              ]
+            ],
+            457079
+          ],
+          [
+            "Hiroki Ito",
+            "jp",
+            [
+              [
+                "Hiroki Ito",
+                "Junnosuke Suzuki",
+                "subst-out",
+                null,
+                null,
+                46,
+                422717,
+                562979
+              ]
+            ],
+            422717
+          ],
+          [
+            "Tsuyoshi Watanabe",
+            "jp",
+            [
+              [
+                "Tsuyoshi Watanabe",
+                "Shogo Taniguchi",
+                "subst-out",
+                null,
+                null,
+                46,
+                431258,
+                143724
+              ]
+            ],
+            431258
+          ],
+          [
+            "Ao Tanaka",
+            "jp",
+            [
+              [
+                "Ao Tanaka",
+                "Daichi Kamada",
+                "subst-out",
+                null,
+                null,
+                78,
+                423347,
+                344166
+              ]
+            ],
+            423347
+          ],
+          [
+            "Daizen Maeda",
+            "jp",
+            [
+              [
+                "Daizen Maeda",
+                "Keito Nakamura",
+                "subst-out",
+                null,
+                null,
+                62,
+                377287,
+                346606
+              ]
+            ],
+            377287
+          ],
+          [
+            "Joel Chima Fujita",
+            "jp",
+            [
+              [
+                "Joel Chima Fujita",
+                "Kento Shiogai",
+                "subst-out",
+                null,
+                null,
+                78,
+                447584,
+                538340
+              ]
+            ],
+            447584
+          ],
+          [
+            "Kodai Sano",
+            "jp",
+            [
+              [
+                "Kodai Sano",
+                "Kaoru Mitoma",
+                "subst-out",
+                null,
+                null,
+                46,
+                497708,
+                425142
+              ]
+            ],
+            497708
+          ],
+          [
+            "Yuito Suzuki",
+            "jp",
+            [
+              [
+                "Yuito Suzuki",
+                "Junya Ito",
+                "subst-out",
+                null,
+                null,
+                63,
+                472403,
+                370255
+              ]
+            ],
+            472403
+          ],
+          [
+            "Yukinari Sugawara",
+            "jp",
+            [
+              [
+                "Yukinari Sugawara",
+                "Ritsu Doan",
+                "subst-out",
+                null,
+                null,
+                63,
+                379783,
+                343435
+              ]
+            ],
+            379783
+          ],
+          [
+            "Keisuke Goto",
+            "jp",
+            [],
+            550709
+          ]
+        ],
+        [
+          [
+            "Ché Adams",
+            "gb-sct",
+            [],
+            256419
+          ],
+          [
+            "Ryan Christie",
+            "gb-sct",
+            [
+              [
+                "John McGinn",
+                "Ryan Christie",
+                "subst-in",
+                null,
+                null,
+                63,
+                318449,
+                128882
+              ]
+            ],
+            128882
+          ],
+          [
+            "Liam Kelly",
+            "gb-sct",
+            [],
+            371756
+          ],
+          [
+            "Lennon Miller",
+            "gb-sct",
+            [],
+            454901
+          ],
+          [
+            "John Souttar",
+            "gb-sct",
+            [],
+            363298
+          ],
+          [
+            "Ross McCrorie",
+            "gb-sct",
+            [],
+            363668
+          ],
+          [
+            "Dominic Hyam",
+            "gb-sct",
+            [],
+            300049
+          ],
+          [
+            "George Hirst",
+            "gb-eng",
+            [
+              [
+                "Lyndon Dykes",
+                "George Hirst",
+                "subst-in",
+                null,
+                null,
+                63,
+                396795,
+                317547
+              ]
+            ],
+            317547
+          ],
+          [
+            "Scott Bain",
+            "gb-sct",
+            [],
+            81984
+          ],
+          [
+            "Anthony Ralston",
+            "gb-sct",
+            [
+              [
+                "Nathan Patterson",
+                "Anthony Ralston",
+                "subst-in",
+                null,
+                null,
+                80,
+                396975,
+                291944
+              ]
+            ],
+            291944
+          ],
+          [
+            "Andy Irving",
+            "gb-sct",
+            [],
+            451945
+          ],
+          [
+            "Findlay Curtis",
+            "gb-sct",
+            [
+              [
+                "Tommy Conway",
+                "Findlay Curtis",
+                "subst-in",
+                null,
+                null,
+                80,
+                391154,
+                533012
+              ]
+            ],
+            533012
+          ],
+          [
+            "Grant Hanley",
+            "gb-sct",
+            [],
+            86593
+          ],
+          [
+            "Kieran Tierney",
+            "gb-sct",
+            [
+              [
+                "Andy Robertson",
+                "Kieran Tierney",
+                "subst-in",
+                null,
+                null,
+                70,
+                115726,
+                297403
+              ]
+            ],
+            297403
+          ],
+          [
+            "Billy Gilmour",
+            "gb-sct",
+            [
+              [
+                "Scott McTominay",
+                "Billy Gilmour",
+                "subst-in",
+                null,
+                null,
+                70,
+                336915,
+                381255
+              ]
+            ],
+            381255
+          ]
+        ],
+        [
+          [
+            "Ritsu Doan",
+            "jp",
+            [
+              [
+                "Yukinari Sugawara",
+                "Ritsu Doan",
+                "subst-in",
+                null,
+                null,
+                63,
+                379783,
+                343435
+              ],
+              [
+                "Ritsu Doan",
+                null,
+                "yellow",
+                null,
+                null,
+                78,
+                343435,
+                0
+              ]
+            ],
+            343435
+          ],
+          [
+            "Keisuke Osako",
+            "jp",
+            [],
+            377282
+          ],
+          [
+            "Keito Nakamura",
+            "jp",
+            [
+              [
+                "Daizen Maeda",
+                "Keito Nakamura",
+                "subst-in",
+                null,
+                null,
+                62,
+                377287,
+                346606
+              ]
+            ],
+            346606
+          ],
+          [
+            "Junya Ito",
+            "jp",
+            [
+              [
+                "Yuito Suzuki",
+                "Junya Ito",
+                "subst-in",
+                null,
+                null,
+                63,
+                472403,
+                370255
+              ],
+              [
+                "Junya Ito",
+                null,
+                "goal",
+                null,
+                null,
+                84,
+                370255,
+                0
+              ]
+            ],
+            370255
+          ],
+          [
+            "Daichi Kamada",
+            "jp",
+            [
+              [
+                "Ao Tanaka",
+                "Daichi Kamada",
+                "subst-in",
+                null,
+                null,
+                78,
+                423347,
+                344166
+              ]
+            ],
+            344166
+          ],
+          [
+            "Daiki Hashioka",
+            "jp",
+            [
+              [
+                "Ayumu Seko",
+                "Daiki Hashioka",
+                "subst-in",
+                null,
+                null,
+                77,
+                457079,
+                411101
+              ]
+            ],
+            411101
+          ],
+          [
+            "Ayase Ueda",
+            "jp",
+            [],
+            377288
+          ],
+          [
+            "Koki Ogawa",
+            "jp",
+            [],
+            487049
+          ],
+          [
+            "Kento Shiogai",
+            "jp",
+            [
+              [
+                "Joel Chima Fujita",
+                "Kento Shiogai",
+                "subst-in",
+                null,
+                null,
+                78,
+                447584,
+                538340
+              ]
+            ],
+            538340
+          ],
+          [
+            "Tomoki Hayakawa",
+            "jp",
+            [],
+            570080
+          ],
+          [
+            "Kaishu Sano",
+            "jp",
+            [],
+            509815
+          ],
+          [
+            "Junnosuke Suzuki",
+            "jp",
+            [
+              [
+                "Hiroki Ito",
+                "Junnosuke Suzuki",
+                "subst-in",
+                null,
+                null,
+                46,
+                422717,
+                562979
+              ],
+              [
+                "Junnosuke Suzuki",
+                null,
+                "yellow",
+                null,
+                null,
+                66,
+                562979,
+                0
+              ]
+            ],
+            562979
+          ],
+          [
+            "Shogo Taniguchi",
+            "jp",
+            [
+              [
+                "Tsuyoshi Watanabe",
+                "Shogo Taniguchi",
+                "subst-in",
+                null,
+                null,
+                46,
+                431258,
+                143724
+              ]
+            ],
+            143724
+          ],
+          [
+            "Kaoru Mitoma",
+            "jp",
+            [
+              [
+                "Kodai Sano",
+                "Kaoru Mitoma",
+                "subst-in",
+                null,
+                null,
+                46,
+                497708,
+                425142
+              ]
+            ],
+            425142
+          ],
+          [
+            "Shuto Machino",
+            "jp",
+            [],
+            447590
+          ]
+        ]
+      ]
+    ],
+    0
+  ],
+  "hasLineup": true
+}
