@@ -16,7 +16,7 @@ import type { MatchRoot, MatchMetadata } from "@/types";
 import { getCustomEventsByMatch } from "@/lib/db";
 
 
-const IDB_NAME = "footlog_cache";
+const IDB_NAME = "footics_cache";
 const IDB_STORE = "parquet_store";
 const CACHE_VERSION = 5; // バンプしてキャッシュ無効化可能
 
@@ -118,7 +118,7 @@ export async function loadMatchData(
     const cached = await idbGet(idb, `match_${matchId}`);
 
     if (cached && cached.version === CACHE_VERSION) {
-      console.log("[FootLog] Cache hit — restoring from IndexedDB Parquet");
+      console.log("[footics] Cache hit — restoring from IndexedDB Parquet");
       const start = performance.now();
 
       await Promise.all([
@@ -128,7 +128,7 @@ export async function loadMatchData(
       ]);
 
       console.log(
-        `[FootLog] Restored from cache in ${(performance.now() - start).toFixed(0)}ms`
+        `[footics] Restored from cache in ${(performance.now() - start).toFixed(0)}ms`
       );
 
       // Load custom events
@@ -137,11 +137,11 @@ export async function loadMatchData(
       return { metadata: cached.metadata };
     }
   } catch (err) {
-    console.warn("[FootLog] IndexedDB cache unavailable, falling back to JSON", err);
+    console.warn("[footics] IndexedDB cache unavailable, falling back to JSON", err);
   }
 
   // 2. JSON フルロード
-  console.log("[FootLog] Cache miss — loading from JSON");
+  console.log("[footics] Cache miss — loading from JSON");
   const start = performance.now();
 
   const res = await fetch(`/data/match_${matchId}.json`);
@@ -225,7 +225,7 @@ export async function loadMatchData(
   await loadCustomEventsToDuckDB(db, conn, matchId);
 
   console.log(
-    `[FootLog] Full load completed in ${(performance.now() - start).toFixed(0)}ms`
+    `[footics] Full load completed in ${(performance.now() - start).toFixed(0)}ms`
   );
 
   // 3. IndexedDB にキャッシュ保存（非同期、エラーは無視）
@@ -244,9 +244,9 @@ export async function loadMatchData(
         eventsParquet,
         metadata,
       });
-      console.log("[FootLog] Cached to IndexedDB for next load");
+      console.log("[footics] Cached to IndexedDB for next load");
     } catch (err) {
-      console.warn("[FootLog] Failed to cache to IndexedDB", err);
+      console.warn("[footics] Failed to cache to IndexedDB", err);
     }
   }
 
@@ -264,16 +264,16 @@ export async function clearMatchCache(matchId: string): Promise<void> {
       const store = tx.objectStore(IDB_STORE);
       const request = store.delete(`match_${matchId}`);
       request.onsuccess = () => {
-        console.log(`[FootLog] Cache cleared for match_${matchId}`);
+        console.log(`[footics] Cache cleared for match_${matchId}`);
         resolve();
       };
       request.onerror = () => {
-        console.error(`[FootLog] Failed to clear cache for match_${matchId}`);
+        console.error(`[footics] Failed to clear cache for match_${matchId}`);
         reject(request.error);
       };
     });
   } catch (err) {
-    console.error(`[FootLog] Failed to open cache DB for clearing`, err);
+    console.error(`[footics] Failed to open cache DB for clearing`, err);
   }
 }
 
@@ -286,7 +286,7 @@ export async function checkMatchExists(matchId: string): Promise<boolean> {
     const cached = await idbGet(idb, `match_${matchId}`);
     return !!cached && cached.version === CACHE_VERSION;
   } catch (err) {
-    console.warn("[FootLog] Error checking match cache", err);
+    console.warn("[footics] Error checking match cache", err);
     return false;
   }
 }
@@ -336,7 +336,7 @@ export async function importMatchJsonFile(
 
 
   const start = performance.now();
-  console.log(`[FootLog] Importing match ${matchId} from file...`);
+  console.log(`[footics] Importing match ${matchId} from file...`);
 
   // Flatten data
   const matches = [
@@ -429,13 +429,13 @@ export async function importMatchJsonFile(
       eventsParquet,
       metadata,
     });
-    console.log(`[FootLog] Match ${matchId} cached to IndexedDB`);
+    console.log(`[footics] Match ${matchId} cached to IndexedDB`);
   } catch (err) {
-    console.warn("[FootLog] Failed to cache to IndexedDB", err);
+    console.warn("[footics] Failed to cache to IndexedDB", err);
   }
 
   console.log(
-    `[FootLog] Import completed in ${(performance.now() - start).toFixed(0)}ms`
+    `[footics] Import completed in ${(performance.now() - start).toFixed(0)}ms`
   );
 
   return matchId;

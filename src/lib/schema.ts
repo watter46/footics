@@ -1,5 +1,5 @@
 /**
- * FootLog Event Schema
+ * footics Event Schema
  *
  * 設計意図:
  * WhoScoredの生イベントデータと、分析官が付与するメモ・タグを

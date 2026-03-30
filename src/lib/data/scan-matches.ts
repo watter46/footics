@@ -95,7 +95,7 @@ export function scanMatchFiles(): MatchSummary[] {
           }
         }
       } catch (err) {
-        console.warn(`[FootLog] Failed to parse ${file} in ${type}:`, err);
+        console.warn(`[footics] Failed to parse ${file} in ${type}:`, err);
       }
     }
   }

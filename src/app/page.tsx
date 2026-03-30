@@ -1,3 +1,5 @@
+import Image from "next/image";
+import logoName from "./logo-name.png";
 import { scanMatchFiles } from "@/lib/data/scan-matches";
 import { ImportMatchButton } from "@/components/features/ImportMatchButton";
 import { MatchListClient } from "@/components/features/MatchListClient";
@@ -10,13 +12,15 @@ export default async function Home() {
       {/* Top Bar */}
       <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/60">
         <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
-              FootLog
-            </span>
-            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">
-              Match Center
-            </span>
+          <div className="flex items-center">
+            <Image
+              src={logoName}
+              alt="Footics Match Center"
+              width={160}
+              height={40}
+              priority
+              className="h-12 w-auto"
+            />
           </div>
           <ImportMatchButton />
         </div>

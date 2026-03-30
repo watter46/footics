@@ -1,5 +1,5 @@
 /**
- * FootLog Unified Database Layer
+ * footics Unified Database Layer
  *
  * 設計意図:
  * - 旧 custom-events/store.ts を統合し、単一のDBモジュールとして管理
@@ -14,10 +14,10 @@ import type { EventMemo, CustomEvent } from "./schema";
 // DB Schema Definition
 // ──────────────────────────────────────────────
 
-const DB_NAME = "footlog_db";
+const DB_NAME = "footics_db";
 const DB_VERSION = 1;
 
-interface FootLogDBSchema {
+interface FooticsDBSchema {
   event_memos: {
     key: number;
     value: EventMemo;
@@ -38,11 +38,11 @@ interface FootLogDBSchema {
 // Singleton DB Connection
 // ──────────────────────────────────────────────
 
-let dbPromise: Promise<IDBPDatabase<FootLogDBSchema>> | null = null;
+let dbPromise: Promise<IDBPDatabase<FooticsDBSchema>> | null = null;
 
-export function getDatabase(): Promise<IDBPDatabase<FootLogDBSchema>> {
+export function getDatabase(): Promise<IDBPDatabase<FooticsDBSchema>> {
   if (!dbPromise) {
-    dbPromise = openDB<FootLogDBSchema>(DB_NAME, DB_VERSION, {
+    dbPromise = openDB<FooticsDBSchema>(DB_NAME, DB_VERSION, {
       upgrade(db) {
         // event_memos ストア
         if (!db.objectStoreNames.contains("event_memos")) {

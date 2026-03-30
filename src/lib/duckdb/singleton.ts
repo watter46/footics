@@ -17,7 +17,7 @@ interface DuckDBInstance {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __footlog_duckdb_instance: Promise<DuckDBInstance> | undefined;
+  var __footics_duckdb_instance: Promise<DuckDBInstance> | undefined;
 }
 
 /**
@@ -25,7 +25,7 @@ declare global {
  * モジュールロード時は undefined → 最初の initializeDuckDB() 呼び出しで確定。
  */
 let initPromise: Promise<DuckDBInstance> | undefined =
-  globalThis.__footlog_duckdb_instance;
+  globalThis.__footics_duckdb_instance;
 
 /**
  * DuckDB-WASM インスタンスを初期化し、接続を返す。
@@ -36,7 +36,7 @@ export function initializeDuckDB(): Promise<DuckDBInstance> {
 
   initPromise = createInstance();
   // HMR で module が再評価されても同じインスタンスを維持
-  globalThis.__footlog_duckdb_instance = initPromise;
+  globalThis.__footics_duckdb_instance = initPromise;
   return initPromise;
 }
 
