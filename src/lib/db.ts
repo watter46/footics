@@ -8,14 +8,14 @@
  * - シングルトンパターンでDB接続を管理
  */
 import { openDB, type IDBPDatabase } from "idb";
-import type { EventMemo, CustomEvent, MatchMemo, TacticalSetting } from "./schema";
+import type { EventMemo, CustomEvent, MatchMemo, TacticalSnapshot } from "./schema";
 
 // ──────────────────────────────────────────────
 // DB Schema Definition
 // ──────────────────────────────────────────────
 
 const DB_NAME = "footics_db";
-const DB_VERSION = 7;
+const DB_VERSION = 9;
 
 interface FooticsDBSchema {
   event_memos: {
@@ -36,12 +36,9 @@ interface FooticsDBSchema {
     key: string;
     value: MatchMemo;
   };
-  tactical_settings: {
-    key: string; // matchId-playerId
-    value: TacticalSetting;
-    indexes: {
-      by_match: string;
-    };
+  tactical_snapshots: {
+    key: string; // matchId
+    value: TacticalSnapshot;
   };
 }
 
@@ -61,6 +58,7 @@ export function getDatabase(): Promise<IDBPDatabase<FooticsDBSchema>> {
         }
         const memoStore = transaction.objectStore("event_memos");
         if (!memoStore.indexNames.contains("by_match")) {
+          memoStore.indexNames.contains("by_match");
           memoStore.createIndex("by_match", "matchId", { unique: false });
         }
         if (!memoStore.indexNames.contains("by_updatedAt")) {
@@ -84,13 +82,20 @@ export function getDatabase(): Promise<IDBPDatabase<FooticsDBSchema>> {
           db.createObjectStore("match_memos", { keyPath: "matchId" });
         }
 
-        // tactical_settings ストア
-        if (!db.objectStoreNames.contains("tactical_settings")) {
-          db.createObjectStore("tactical_settings", { keyPath: "id" });
+        // tactical_settings ストア (旧形式) の削除
+        if (db.objectStoreNames.contains("tactical_settings" as any)) {
+          db.deleteObjectStore("tactical_settings" as any);
         }
-        const tacticalStore = transaction.objectStore("tactical_settings");
-        if (!tacticalStore.indexNames.contains("by_match")) {
-          tacticalStore.createIndex("by_match", "matchId", { unique: false });
+
+        // tactical_snapshots ストア (新形式)
+        if (!db.objectStoreNames.contains("tactical_snapshots")) {
+          db.createObjectStore("tactical_snapshots", { keyPath: "matchId" });
+        }
+
+        // Version 9: 形式変更に伴うデータのクリア
+        if (oldVersion < 9) {
+          const store = transaction.objectStore("tactical_snapshots");
+          store.clear();
         }
       },
     });
@@ -240,27 +245,22 @@ export async function importMemosBatch(
 }
 
 // ──────────────────────────────────────────────
-// Tactical Settings Operations
+// Tactical Snapshots Operations
 // ──────────────────────────────────────────────
 
-export async function getTacticalSettingsByMatch(
+export async function getTacticalSnapshot(
   matchId: string
-): Promise<TacticalSetting[]> {
+): Promise<TacticalSnapshot | undefined> {
   const db = await getDatabase();
-  return db.getAllFromIndex("tactical_settings", "by_match", matchId);
+  return db.get("tactical_snapshots", matchId);
 }
 
-export async function putTacticalSetting(setting: TacticalSetting): Promise<void> {
+export async function putTacticalSnapshot(snapshot: TacticalSnapshot): Promise<void> {
   const db = await getDatabase();
-  await db.put("tactical_settings", setting);
+  await db.put("tactical_snapshots", snapshot);
 }
 
-export async function deleteTacticalSettingsByMatch(matchId: string): Promise<void> {
+export async function deleteTacticalSnapshot(matchId: string): Promise<void> {
   const db = await getDatabase();
-  const settings = await getTacticalSettingsByMatch(matchId);
-  const tx = db.transaction("tactical_settings", "readwrite");
-  for (const s of settings) {
-    tx.store.delete(s.id);
-  }
-  await tx.done;
+  await db.delete("tactical_snapshots", matchId);
 }

@@ -68,19 +68,31 @@ export const MatchMemoSchema = z.object({
 export type MatchMemo = z.infer<typeof MatchMemoSchema>;
 
 // ──────────────────────────────────────────────
-// Tactical Board Settings Schema
+// Tactical Board Snapshots Schema
 // ──────────────────────────────────────────────
 
-/** 戦術ボード上の選手マーカー設定（座標、色など） */
-export const TacticalSettingSchema = z.object({
-  id: z.string(), // matchId-playerId
+/**
+ * 戦術ボードのスナップショット (JSON構造化版)
+ */
+export const TacticalSnapshotSchema = z.object({
   matchId: z.string(),
-  playerId: z.number().int(),
-  x: z.number(),
-  y: z.number(),
-  color: z.string().optional(),
-  team: z.enum(["home", "away"]),
   updatedAt: z.number(),
+  isInverted: z.boolean().default(false),
+  tactics: z.array(z.object({
+    time: z.number(),
+    players: z.array(z.object({
+      playerId: z.number().int(),
+      team: z.enum(["home", "away"]),
+      x: z.number(),
+      y: z.number(),
+    })),
+    assets: z.object({
+      ball: z.object({
+        x: z.number(),
+        y: z.number(),
+      })
+    })
+  }))
 });
 
-export type TacticalSetting = z.infer<typeof TacticalSettingSchema>;
+export type TacticalSnapshot = z.infer<typeof TacticalSnapshotSchema>;

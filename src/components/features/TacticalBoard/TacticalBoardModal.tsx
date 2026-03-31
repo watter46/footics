@@ -4,8 +4,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, ArrowLeftRight, Clock } from 'lucide-react';
 import { Pitch } from './Pitch';
 import { PlayerMarker } from './PlayerMarker';
-// import { getTacticalSettingsByMatch, putTacticalSetting } from '@/lib/db';
-import { TacticalSetting } from '@/lib/schema';
+import { getTacticalSnapshot, putTacticalSnapshot } from '@/lib/db';
+import { TacticalSnapshot } from '@/lib/schema';
 import { 
   getActivePlayersNational, 
   getActivePlayersClub, 
@@ -32,29 +32,21 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
 }) => {
   const [timeStr, setTimeStr] = useState("0");
   const [isFlipped, setIsFlipped] = useState(false);
-  const [savedSettings, setSavedSettings] = useState<Record<number, TacticalSetting>>({});
+  const minute = useMemo(() => {
+    const raw = timeStr.trim();
+    return parseInt(raw, 10) || 0;
+  }, [timeStr]);
+
+  const formattedTime = useMemo(() => {
+    return `${String(minute).padStart(2, "0")}:00`;
+  }, [minute]);
+
+  // 永続化データ (構造化スナップショット方式)
+  const [savedSettings, setSavedSettings] = useState<Record<number, { playerId: number, x: number, y: number, team: "home" | "away" }>>({});
+  const [ballPos, setBallPos] = useState({ x: 50, y: 50 });
   const [homeColor, setHomeColor] = useState("#3b82f6");
   const [awayColor, setAwayColor] = useState("#ef4444");
 
-  const { minute, formattedTime } = useMemo(() => {
-    const raw = timeStr.trim();
-    if (!raw) return { minute: 0, formattedTime: "00:00" };
-    const m = parseInt(raw, 10) || 0;
-    return { minute: m, formattedTime: `${String(m).padStart(2, "0")}:00` };
-  }, [timeStr]);
-
-  // メモリ内管理のため、DBからのロードは行わない
-  /*
-  useEffect(() => {
-    if (isOpen) {
-      getTacticalSettingsByMatch(matchId).then((settings) => {
-        const mapping: Record<number, TacticalSetting> = {};
-        settings.forEach(s => mapping[s.playerId] = s);
-        setSavedSettings(mapping);
-      });
-    }
-  }, [isOpen, matchId]);
-  */
 
   const activePlayers = useMemo<{ 
     home: { playerId: number, name: string, team: "home" | "away" }[], 
@@ -91,19 +83,89 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
     };
   }, [metadata, matchData, minute]);
 
-  const handlePositionChange = useCallback(async (id: string, visualX: number, visualY: number, team: "home" | "away") => {
+  // 永続化データのロード (構造化スナップショット方式)
+  useEffect(() => {
+    if (isOpen && matchId) {
+      getTacticalSnapshot(matchId).then((snapshot) => {
+        if (snapshot && snapshot.tactics?.[0]) {
+          const tactic = snapshot.tactics[0];
+          const mapping: Record<number, { playerId: number, x: number, y: number, team: "home" | "away" }> = {};
+          tactic.players.forEach(p => {
+            mapping[p.playerId] = p;
+          });
+          setSavedSettings(mapping);
+          setBallPos(tactic.assets.ball);
+          setIsFlipped(snapshot.isInverted);
+        } else {
+          // [最適化] スナップショットがない場合、全選手（スタメン＋控え）とボールの初期位置を生成
+          const initialMapping: Record<number, { playerId: number, x: number, y: number, team: "home" | "away" }> = {};
+          
+          const setupTeam = (team: "home" | "away") => {
+            const players = metadata?.teams[team]?.players || [];
+            players.forEach((p: any, i: number) => {
+              let x, y;
+              if (i < 11) {
+                // スタメンは 4-4-2
+                x = DEFAULT_442_POSITIONS[team][i]?.x || (team === "home" ? 10 : 90);
+                y = DEFAULT_442_POSITIONS[team][i]?.y || (10 + i * 8);
+              } else {
+                // 控えはサイドライン(外側)に整列
+                x = team === "home" ? 5 : 95;
+                y = 105 + (i - 11) * 6; // ピッチ下側に並べる
+              }
+              initialMapping[p.playerId] = { playerId: p.playerId, x, y, team };
+            });
+          };
+
+          setupTeam("home");
+          setupTeam("away");
+
+          setSavedSettings(initialMapping);
+          setBallPos({ x: 50, y: 50 });
+          setIsFlipped(false);
+        }
+      });
+    }
+  }, [isOpen, matchId, metadata]);
+
+  // 一括保存のデバウンス処理
+  useEffect(() => {
+    if (!isOpen || Object.keys(savedSettings).length === 0) return;
+
+    const timer = setTimeout(() => {
+      const players = Object.values(savedSettings);
+      putTacticalSnapshot({
+        matchId,
+        isInverted: isFlipped,
+        updatedAt: Date.now(),
+        tactics: [{
+          time: 0,
+          players,
+          assets: { ball: ballPos }
+        }]
+      });
+      console.log("[footics] Tactical structured snapshot saved");
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [savedSettings, ballPos, isFlipped, matchId, isOpen]);
+
+
+
+  const handlePositionChange = useCallback((id: string, visualX: number, visualY: number, team: "home" | "away") => {
     const [_, playerIdStr] = id.split('-');
     const playerId = parseInt(playerIdStr);
     
     // 表示座標 (visualX/Y: 0-100) をホーム視点のデータ座標に変換
     const actualPos = toActualPos({ x: visualX, y: visualY }, isFlipped);
 
-    const newSetting: TacticalSetting = {
-      id, matchId, playerId, x: actualPos.x, y: actualPos.y, team, updatedAt: Date.now(),
-    };
-    // putTacticalSetting(newSetting); // メモリ内管理のため非表示
-    setSavedSettings(prev => ({ ...prev, [playerId]: newSetting }));
-  }, [matchId, isFlipped]);
+    // Stateのみ更新。保存は useEffect のデバウンスに任せる
+    setSavedSettings(prev => ({ 
+      ...prev, 
+      [playerId]: { playerId, x: actualPos.x, y: actualPos.y, team } 
+    }));
+  }, [isFlipped]);
+
 
   if (!isOpen) return null;
 
@@ -194,50 +256,44 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
               }}
             >
               <Pitch>
-                {/* Home Players */}
-                {activePlayers.home.map((p: { playerId: number, name: string }, i: number) => {
-                  const saved = savedSettings[p.playerId];
-                  const actualX = saved ? saved.x : DEFAULT_442_POSITIONS.home[i]?.x || (10 + i * 4);
-                  const actualY = saved ? saved.y : DEFAULT_442_POSITIONS.home[i]?.y || (10 + i * 8);
-                  
-                  // 表示座標への変換 (180度回転モデル)
-                  const viewPos = toViewPos({ x: actualX, y: actualY }, isFlipped);
+                {/* All Players from Saved Settings */}
+                {Object.values(savedSettings).map((p) => {
+                  const playerMeta = metadata?.teams[p.team]?.players?.find((pm: any) => pm.playerId === p.playerId);
+                  const viewPos = toViewPos({ x: p.x, y: p.y }, isFlipped);
 
                   return (
                     <PlayerMarker 
-                      key={`${p.playerId}-${minute}`}
+                      key={`${p.playerId}`}
                       id={`${matchId}-${p.playerId}`}
-                      playerName={p.name}
+                      playerName={playerMeta?.name || `Player ${p.playerId}`}
                       initialX={viewPos.x}
                       initialY={viewPos.y}
-                      color={homeColor}
-                      onPositionChange={(id, x, y) => handlePositionChange(id, x, y, "home")}
+                      color={p.team === "home" ? homeColor : awayColor}
+                      onPositionChange={(id, x, y) => handlePositionChange(id, x, y, p.team)}
                     />
                   );
                 })}
 
-                {/* Away Players */}
-                {activePlayers.away.map((p: { playerId: number, name: string }, i: number) => {
-                  const saved = savedSettings[p.playerId];
-                  const actualX = saved ? saved.x : DEFAULT_442_POSITIONS.away[i]?.x || (90 - i * 4);
-                  const actualY = saved ? saved.y : DEFAULT_442_POSITIONS.away[i]?.y || (10 + i * 8);
-
-                  // 表示座標への変換 (180度回転モデル)
-                  const viewPos = toViewPos({ x: actualX, y: actualY }, isFlipped);
-
+                {/* Ball */}
+                {(() => {
+                  const viewBall = toViewPos(ballPos, isFlipped);
                   return (
                     <PlayerMarker 
-                      key={`${p.playerId}-${minute}`}
-                      id={`${matchId}-${p.playerId}`}
-                      playerName={p.name}
-                      initialX={viewPos.x}
-                      initialY={viewPos.y}
-                      color={awayColor}
-                      onPositionChange={(id, x, y) => handlePositionChange(id, x, y, "away")}
+                      key="ball"
+                      id="ball"
+                      playerName="BALL"
+                      initialX={viewBall.x}
+                      initialY={viewBall.y}
+                      color="#f97316" // Orange
+                      onPositionChange={(_, x, y) => {
+                        const actualBall = toActualPos({ x, y }, isFlipped);
+                        setBallPos(actualBall);
+                      }}
                     />
                   );
-                })}
+                })()}
               </Pitch>
+
             </div>
           </div>
         </div>
