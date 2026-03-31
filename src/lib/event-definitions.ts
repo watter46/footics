@@ -26,66 +26,67 @@ export const EVENT_GROUPS: EventGroup[] = [
       {
         name: "パス",
         events: [
-          { label: "アシスト", keywords: ["a", "as", "asis", "assist"] },
-          { label: "キーパス", keywords: ["k", "ki", "kipa", "keypass"] },
-          { label: "クロス", keywords: ["c", "ku", "kuro", "cross"] },
-          { label: "スルーパス", keywords: ["t", "tu", "suru", "throughpass"] },
-          { label: "楔のパス", keywords: ["k", "ku", "kusa", "linebreak"] },
-          { label: "サイドチェンジ", keywords: ["s", "sa", "said", "sidechange"] },
-          { label: "ショートパス", keywords: ["s", "sh", "shor", "shortpass"] },
-          { label: "ロングパス", keywords: ["l", "ro", "rong", "longpass"] },
-          { label: "レイオフ", keywords: ["r", "re", "reio", "layoff"] },
-          { label: "ライン間へのパス", keywords: ["l", "ra", "rain", "betweenlines"] },
-          { label: "プログレッシブパス", keywords: ["p", "pu", "puro", "progressive"] },
-          { label: "フリック", keywords: ["f", "fu", "furi", "flick"] }
+          { label: "アシスト", keywords: ["a", "as", "asis", "あ", "あし", "あしすと", "ア", "アシ", "アシスト", "assist"] },
+          { label: "キーパス", keywords: ["k", "ki", "kipa", "き", "きー", "きーぱす", "キ", "キー", "キーパス", "keypass"] },
+          { label: "クロス", keywords: ["c", "cu", "kuro", "く", "くろ", "くろす", "ク", "クロ", "クロス", "cross"] },
+          { label: "スルーパス", keywords: ["s", "su", "suru", "す", "する", "するー", "するーぱす", "ス", "スル", "スルー", "スルーパス", "throughpass"] },
+          { label: "楔のパス", keywords: ["k", "ku", "kusa", "く", "くさ", "くさび", "くさびのぱす", "ク", "クサ", "クサビ", "クサビノパス", "linebreak"] },
+          { label: "サイドチェンジ", keywords: ["s", "sa", "said", "さ", "さい", "さいど", "さいどちぇんじ", "サ", "サイ", "サイド", "サイドチェンジ", "sidechange"] },
+          { label: "ショートパス", keywords: ["s", "sy", "shor", "し", "しょ", "しょー", "しょーとぱす", "シ", "ショ", "ショー", "ショートパス", "shortpass"] },
+          { label: "ロングパス", keywords: ["r", "ro", "rong", "ろ", "ろん", "ろんぐ", "ろんぐぱす", "ロ", "ロン", "ロング", "ロングパス", "longpass"] },
+          { label: "レイオフ", keywords: ["r", "re", "reio", "れ", "れい", "れいお", "れいおふ", "レ", "レイ", "レイオ", "レイオフ", "layoff"] },
+          { label: "ライン間へのパス", keywords: ["r", "ra", "rain", "ら", "らい", "らいん", "らいんかん", "ラ", "ライ", "ライン", "ラインカン", "betweenlines"] },
+          { label: "プログレッシブパス", keywords: ["p", "pu", "puro", "ぷ", "ぷろ", "ぷろぐ", "ぷろぐれ", "プ", "プロ", "プログ", "プログレ", "progressive"] },
+          { label: "フリック", keywords: ["f", "fu", "furi", "ふ", "ふり", "ふりっ", "ふりっく", "フ", "フリ", "フリッ", "フリック", "flick"] }
         ]
       },
       {
         name: "シュート",
         events: [
-          { label: "ゴール", keywords: ["g", "go", "goal", "goal"] },
-          { label: "ヘディング", keywords: ["h", "he", "hedi", "heading"] },
-          { label: "ミドルシュート", keywords: ["m", "mi", "mido", "middleshoot"] },
-          { label: "枠内シュート", keywords: ["w", "wa", "waku", "shotontarget"] },
-          { label: "枠外シュート", keywords: ["w", "wa", "wake", "shotofftarget"] }
+          { label: "ゴール", keywords: ["g", "go", "goal", "ご", "ごー", "ごーる", "ゴ", "ゴー", "ゴール", "goal"] },
+          { label: "ヘディング", keywords: ["h", "he", "hedi", "へ", "へで", "へでぃ", "へでぃんぐ", "ヘ", "ヘデ", "ヘディ", "ヘディング", "heading"] },
+          { label: "ミドルシュート", keywords: ["m", "mi", "mido", "み", "みど", "みどる", "みどるしゅーと", "ミ", "ミド", "ミドル", "ミドルシュート", "middleshoot"] },
+          { label: "枠内シュート", keywords: ["w", "wa", "waku", "わ", "わく", "わくな", "わくない", "ワ", "ワク", "ワクナ", "ワクナイ", "shotontarget"] },
+          { label: "枠外シュート", keywords: ["w", "wa", "wake", "わ", "わく", "わくが", "わくがい", "ワ", "ワク", "ワクガ", "ワクガイ", "shotofftarget"] }
         ]
       },
       {
         name: "キャリー/コントロール",
         events: [
-          { label: "ドリブル", keywords: ["d", "do", "dori", "dribble"] },
-          { label: "キャリー", keywords: ["c", "ky", "kyar", "carry"] },
-          { label: "キープ", keywords: ["k", "ki", "kipu", "keep"] },
-          { label: "ターン", keywords: ["t", "ta", "tarn", "turn"] },
-          { label: "トラップ", keywords: ["t", "to", "tora", "trap"] },
-          { label: "フェイント", keywords: ["f", "fe", "fein", "feint"] },
-          { label: "ポストプレー", keywords: ["p", "po", "posu", "postplay"] },
-          { label: "プレス回避", keywords: ["p", "pu", "pure", "pressbreaker"] },
-          { label: "キャンセル", keywords: ["c", "ky", "kyan", "cancel"] },
-          { label: "正対", keywords: ["s", "se", "seit", "facingup"] },
-          { label: "押し込み", keywords: ["o", "os", "oshi", "push"] }
+          { label: "ドリブル", keywords: ["d", "do", "dori", "ど", "どり", "どりぶ", "どりぶる", "ド", "ドリ", "ドリブ", "ドリブル", "dribble"] },
+          { label: "キャリー", keywords: ["k", "ky", "kyar", "き", "きゃ", "きゃり", "きゃりー", "キ", "キャ", "キャリ", "キャリー", "carry"] },
+          { label: "キープ", keywords: ["k", "ki", "kipu", "き", "きー", "きーぷ", "キ", "キー", "キープ", "keep"] },
+          { label: "ターン", keywords: ["t", "ta", "tarn", "た", "たー", "たーん", "タ", "ター", "ターン", "turn"] },
+          { label: "トラップ", keywords: ["t", "to", "tora", "と", "とら", "とらっ", "とらっぷ", "ト", "トラ", "トラッ", "トラップ", "trap"] },
+          { label: "フェイント", keywords: ["f", "fe", "fein", "ふ", "ふぇ", "ふぇい", "ふぇいんと", "フ", "フェ", "フェイ", "フェイント", "feint"] },
+          { label: "ポストプレー", keywords: ["p", "po", "posu", "ほ", "ぽす", "ぽすと", "ぽすとぷれー", "ホ", "ポス", "ポスト", "ポストプレー", "postplay"] },
+          { label: "プレス回避", keywords: ["p", "pu", "pure", "ぷ", "ぷれ", "ぷれす", "ぷれすかいひ", "プ", "プレ", "プレス", "プレスカイヒ", "pressbreaker"] },
+          { label: "キャンセル", keywords: ["k", "ky", "kyan", "き", "きゃ", "きゃん", "きゃんせる", "キ", "キャ", "キャン", "キャンセル", "cancel"] },
+          { label: "正対", keywords: ["s", "se", "seit", "せ", "せい", "せいた", "せいたい", "セ", "セイ", "セイタ", "セイタイ", "facingup"] },
+          { label: "押し込み", keywords: ["o", "os", "oshi", "お", "おし", "おしこ", "おしこみ", "オ", "オシ", "オシコ", "オシコミ", "push"] },
+          { label: "ビルド", keywords: ["b", "bi", "biru", "び", "びる", "びるど", "ビ", "ビル", "ビルド", "buildup"] }
         ]
       },
       {
         name: "オフザボール",
         events: [
-          { label: "アンダーラップ", keywords: ["u", "an", "anda", "underlap"] },
-          { label: "オーバーラップ", keywords: ["o", "ob", "obar", "overlap"] },
-          { label: "チェックイン", keywords: ["c", "ch", "chek", "checkin"] },
-          { label: "デコイ", keywords: ["d", "de", "deko", "decoy"] },
-          { label: "プルアウェイ", keywords: ["p", "pu", "puru", "pullaway"] },
-          { label: "裏抜け", keywords: ["u", "ur", "uran", "runbehind"] },
-          { label: "3人目の動き", keywords: ["3", "sa", "sann", "thirdman"] },
-          { label: "ハーフスペース", keywords: ["h", "ha", "hafu", "halfspace"] },
-          { label: "ポケット", keywords: ["p", "po", "poke", "pocket"] },
-          { label: "降りる", keywords: ["o", "or", "orir", "drop"] },
-          { label: "幅をとる", keywords: ["h", "ha", "haba", "width"] },
-          { label: "高さをとる", keywords: ["t", "ta", "taka", "height"] },
-          { label: "サイドフロー", keywords: ["s", "si", "said", "drift"] },
-          { label: "レーン移動", keywords: ["r", "re", "ren", "lanechange"] },
-          { label: "ピン留め", keywords: ["p", "pi", "pind", "pinning"] },
-          { label: "ポジショニング(攻撃)", keywords: ["p", "po", "pozi", "pos_att"] },
-          { label: "DFラインから距離を取る", keywords: ["d", "df", "hana", "gap"] }
+          { label: "アンダーラップ", keywords: ["a", "an", "anda", "あ", "あん", "あんだー", "あんだーらっぷ", "ア", "アン", "アンダー", "アンダーラップ", "underlap"] },
+          { label: "オーバーラップ", keywords: ["o", "ob", "obar", "お", "おー", "おーば", "おーばーらっぷ", "オ", "オー", "オーバ", "オーバーラップ", "overlap"] },
+          { label: "チェックイン", keywords: ["t", "ty", "tiye", "ち", "ちぇ", "ちぇっ", "ちぇっくいん", "チ", "チェ", "チェッ", "チェックイン", "checkin"] },
+          { label: "デコイ", keywords: ["d", "de", "deko", "で", "でこ", "でこい", "デ", "デコ", "デコイ", "decoy"] },
+          { label: "プルアウェイ", keywords: ["p", "pu", "puru", "ぷ", "ぷる", "ぷるあ", "ぷるあうぇい", "プ", "プル", "プルア", "プルアウェイ", "pullaway"] },
+          { label: "裏抜け", keywords: ["u", "ur", "uran", "う", "うら", "うらぬ", "うらぬけ", "ウ", "ウラ", "ウラヌ", "ウラヌケ", "runbehind"] },
+          { label: "3人目の動き", keywords: ["3", "sa", "sann", "3", "さ", "さん", "さんにんめ", "3", "サ", "サン", "サンニンメ", "thirdman"] },
+          { label: "ハーフスペース", keywords: ["h", "ha", "hafu", "は", "はー", "はーふ", "はーふすぺーす", "ハ", "ハー", "ハーフ", "ハーフスペース", "halfspace"] },
+          { label: "ポケット", keywords: ["p", "po", "poke", "ぽ", "ぽけ", "ぽけっ", "ぽけっと", "ポ", "ポケ", "ポケッ", "ポケット", "pocket"] },
+          { label: "降りる", keywords: ["o", "or", "orir", "お", "おり", "おりる", "オ", "オリ", "オリル", "drop"] },
+          { label: "幅をとる", keywords: ["h", "ha", "haba", "は", "はば", "はばを", "はばをとる", "ハ", "ハバ", "ハバヲ", "ハバヲトル", "width"] },
+          { label: "高さをとる", keywords: ["t", "ta", "taka", "た", "たか", "たかさ", "たかさをとる", "タ", "タカ", "タカサ", "タカサヲトル", "height"] },
+          { label: "サイドフロー", keywords: ["s", "sa", "said", "さ", "さい", "さいど", "さいどふろー", "サ", "サイ", "サイド", "サイドフロー", "drift"] },
+          { label: "レーン移動", keywords: ["r", "re", "ren", "れ", "れー", "れーん", "れーんいどう", "レ", "レー", "レーン", "レーンイドウ", "lanechange"] },
+          { label: "ピン留め", keywords: ["p", "pi", "pind", "ぴ", "ぴん", "ぴんど", "ぴんどめ", "ピ", "ピン", "ピンド", "ピンドメ", "pinning"] },
+          { label: "ポジショニング(攻撃)", keywords: ["p", "po", "pozi", "ほ", "ぽじ", "ぽじし", "ぽじしょにんぐ", "ホ", "ポジ", "ポジシ", "ポジショニング", "pos_att"] },
+          { label: "DFラインから距離を取る", keywords: ["d", "df", "hana", "d", "df", "はな", "きょり", "d", "df", "ハナ", "キョリ", "gap"] }
         ]
       }
     ]
@@ -99,44 +100,45 @@ export const EVENT_GROUPS: EventGroup[] = [
       {
         name: "対人・奪取",
         events: [
-          { label: "インターセプト", keywords: ["i", "in", "inta", "intercept"] },
-          { label: "タックル", keywords: ["t", "ta", "takk", "tackle"] },
-          { label: "制限", keywords: ["s", "se", "seig", "limit"] },
-          { label: "デュエル(空中戦)", keywords: ["d", "de", "dyue", "duel_air"] },
-          { label: "デュエル(地上戦)", keywords: ["d", "de", "dyue", "duel_ground"] },
-          { label: "セカンドボール回収", keywords: ["s", "se", "seka", "secondball"] },
-          { label: "裏ケア", keywords: ["u", "ur", "urac", "depth"] },
-          { label: "カバーリング", keywords: ["c", "ka", "kaba", "cover"] },
-          { label: "密着", keywords: ["m", "mi", "mitc", "tight"] },
-          { label: "マーク", keywords: ["m", "ma", "maku", "mark"] },
-          { label: "ロングボール対応", keywords: ["r", "l", "rong", "longball"] },
-          { label: "ハイボール対応", keywords: ["h", "ha", "haib", "highball"] },
-          { label: "背走", keywords: ["h", "ha", "hais", "retreat"] }
+          { label: "インターセプト", keywords: ["i", "in", "inta", "い", "いん", "いんた", "いんたーせぷと", "イ", "イン", "インタ", "インターセプト", "intercept"] },
+          { label: "タックル", keywords: ["t", "ta", "takk", "た", "たっ", "たっく", "たっくる", "タ", "タッ", "タック", "タックル", "tackle"] },
+          { label: "制限", keywords: ["s", "se", "seig", "せ", "せい", "せいげ", "せいげん", "セ", "セイ", "セイゲ", "セイゲン", "limit"] },
+          { label: "デュエル(空中戦)", keywords: ["d", "de", "dyue", "で", "でゅ", "でゅえ", "でゅえる", "デ", "デュ", "デュエ", "デュエル", "duel_air"] },
+          { label: "デュエル(地上戦)", keywords: ["d", "de", "dyue", "で", "でゅ", "でゅえ", "でゅえる", "デ", "デュ", "デュエ", "デュエル", "duel_ground"] },
+          { label: "セカンドボール回収", keywords: ["s", "se", "seka", "せ", "せか", "せかん", "せかんどぼーる", "セ", "セカ", "セカン", "セカンドボール", "secondball"] },
+          { label: "裏ケア", keywords: ["u", "ur", "urac", "う", "うら", "うらけ", "うらけあ", "ウ", "ウラ", "ウラケ", "ウラケア", "depth"] },
+          { label: "カバーリング", keywords: ["k", "ka", "kaba", "か", "かば", "かばー", "かばーりんぐ", "カ", "カバ", "カバー", "カバーリング", "cover"] },
+          { label: "密着", keywords: ["m", "mi", "mitc", "み", "みっ", "みっちゃ", "みっちゃく", "ミ", "ミッ", "ミッチャ", "ミッチャク", "tight"] },
+          { label: "マーク", keywords: ["m", "ma", "maku", "ま", "まー", "まーく", "マ", "マー", "マーク", "mark"] },
+          { label: "ロングボール対応", keywords: ["r", "l", "rong", "ろ", "ろん", "ろんぐ", "ろんぐぼーる", "ロ", "ロン", "ロング", "ロングボール", "longball"] },
+          { label: "ハイボール対応", keywords: ["h", "ha", "haib", "は", "はい", "はいぼ", "はいぼーる", "ハ", "ハイ", "ハイボ", "ハイボール", "highball"] },
+          { label: "背走", keywords: ["h", "ha", "hais", "は", "はい", "はいそ", "はいそう", "ハ", "ハイ", "ハイソ", "ハイソウ", "retreat"] }
         ]
       },
       {
         name: "組織・遅延",
         events: [
-          { label: "ディレイ", keywords: ["d", "de", "dire", "delay"] },
-          { label: "プレス", keywords: ["p", "pu", "pure", "press"] },
-          { label: "プレスバック", keywords: ["p", "pu", "pure", "pressback"] },
-          { label: "ジョッキー", keywords: ["j", "zy", "zyok", "jockey"] },
-          { label: "シュートブロック", keywords: ["s", "sy", "syut", "shotblock"] },
-          { label: "クロス対応", keywords: ["c", "ku", "kuro", "crossdef"] },
-          { label: "ラインコントロール", keywords: ["l", "ra", "rain", "linecontrol"] },
-          { label: "ポジショニング(守備)", keywords: ["p", "po", "pozi", "pos_def"] },
-          { label: "横スライド", keywords: ["y", "yo", "yoko", "sliding"] },
-          { label: "縦スライド", keywords: ["t", "ta", "tate", "steppingup"] },
-          { label: "リトリート", keywords: ["r", "re", "rito", "retreat"] },
-          { label: "同サイド圧縮", keywords: ["d", "do", "dous", "overload"] },
-          { label: "ミドルブロック", keywords: ["m", "mi", "mido", "midblock"] },
-          { label: "ハイプレス", keywords: ["h", "ha", "haip", "highpress"] },
-          { label: "ミドルプレス", keywords: ["m", "mi", "mido", "midpress"] },
-          { label: "ローブロック", keywords: ["r", "ro", "rob", "lowblock"] },
-          { label: "プレストリガー", keywords: ["p", "pu", "pure", "trigger"] },
-          { label: "マンマーク", keywords: ["m", "ma", "manm", "manmark"] },
-          { label: "ゾーン", keywords: ["z", "zo", "zon", "zone"] },
-          { label: "受け渡し", keywords: ["u", "uk", "ukew", "ukewatashi"] }
+          { label: "ディレイ", keywords: ["d", "de", "dire", "で", "でい", "でいれ", "でいれい", "デ", "デイ", "デイレ", "デイレイ", "delay"] },
+          { label: "プレス", keywords: ["p", "pu", "pure", "ぷ", "ぷれ", "ぷれす", "プ", "プレ", "プレス", "press"] },
+          { label: "プレスバック", keywords: ["p", "pu", "pure", "ぷ", "ぷれ", "ぷれす", "ぷれすばっく", "プ", "プレ", "プレス", "プレスバック", "pressback"] },
+          { label: "ジョッキー", keywords: ["j", "zy", "zyok", "じ", "じょ", "じょっ", "じょっきー", "ジ", "ジョ", "ジョッ", "ジョッキー", "jockey"] },
+          { label: "シュートブロック", keywords: ["s", "sy", "syut", "し", "しゅ", "しゅう", "しゅーとぶろっく", "シ", "シュ", "シュー", "シュートブロック", "shotblock"] },
+          { label: "クロス対応", keywords: ["c", "cu", "kuro", "く", "くろ", "くろす", "くろすたいおう", "ク", "クロ", "クロス", "クロスタイオウ", "crossdef"] },
+          { label: "ラインコントロール", keywords: ["r", "ra", "rain", "ら", "らい", "らいん", "らいんこんとろーる", "ラ", "ライン", "ラインコントロール", "linecontrol"] },
+          { label: "ポジショニング(守備)", keywords: ["p", "po", "pozi", "ほ", "ぽじ", "ぽじし", "ぽじしょにんぐ", "ホ", "ポジ", "ポジシ", "ポジショニング", "pos_def"] },
+          { label: "横スライド", keywords: ["y", "yo", "yoko", "よ", "よこ", "よこす", "よこすらいど", "ヨ", "ヨコ", "ヨコス", "ヨコスライド", "sliding"] },
+          { label: "縦スライド", keywords: ["t", "ta", "tate", "た", "たて", "たてす", "たてすらいど", "タ", "タテ", "タテス", "タテスライド", "steppingup"] },
+          { label: "リトリート", keywords: ["r", "re", "rito", "り", "りと", "りとど", "りとりーと", "リ", "リト", "リトリ", "リトリート", "retreat"] },
+          { label: "同サイド圧縮", keywords: ["d", "do", "dous", "ど", "どう", "どうさ", "どうさいどあっしゅく", "ド", "ドウ", "ドウサ", "ドウサイドアッシュク", "overload"] },
+          { label: "ミドルブロック", keywords: ["m", "mi", "mido", "み", "みど", "みどる", "みどるぶろっく", "ミ", "ミド", "ミドル", "ミドルブロック", "midblock"] },
+          { label: "ハイプレス", keywords: ["h", "ha", "haip", "は", "はい", "はいぷ", "はいぷれす", "ハ", "ハイ", "ハイプ", "ハイプレス", "highpress"] },
+          { label: "ミドルプレス", keywords: ["m", "mi", "mido", "み", "みど", "みどる", "みどるぷれす", "ミ", "ミド", "ミドル", "ミドルプレス", "midpress"] },
+          { label: "ローブロック", keywords: ["r", "ro", "rob", "ろ", "ろー", "ろーぶ", "ろーぶろっく", "ロ", "ロー", "ローブ", "ローブロック", "lowblock"] },
+          { label: "プレストリガー", keywords: ["p", "pu", "pure", "ぷ", "ぷれ", "ぷれす", "ぷれすとりがー", "プ", "プレ", "プレス", "プレストリガー", "trigger"] },
+          { label: "マンマーク", keywords: ["m", "ma", "manm", "ま", "まん", "まんま", "まんまーく", "マ", "マン", "マンマ", "マンマーク", "manmark"] },
+          { label: "ゾーン", keywords: ["z", "zo", "zon", "ぞ", "ぞー", "ぞーん", "ゾ", "ゾー", "ゾーン", "zone"] },
+          { label: "受け渡し", keywords: ["u", "uk", "ukew", "う", "うけ", "うけわ", "うけわたし", "ウ", "ウケ", "ウケワ", "ウケワタシ", "ukewatashi"] },
+          { label: "カバーシャドウ", keywords: ["k", "ka", "kaba", "か", "かば", "かばー", "かばーしゃどう", "カ", "カバ", "カバー", "カバーシャドウ", "covershadow"] }
         ]
       }
     ]
@@ -150,10 +152,10 @@ export const EVENT_GROUPS: EventGroup[] = [
       {
         name: "切替アクション",
         events: [
-          { label: "ネガトラ", keywords: ["n", "ne", "nega", "neg_trans"] },
-          { label: "ポジトラ", keywords: ["p", "po", "pozi", "pos_trans"] },
-          { label: "カウンタープレス", keywords: ["k", "ka", "kaun", "counterpress"] },
-          { label: "ゲーゲンプレス", keywords: ["g", "ge", "gege", "gegenpress"] }
+          { label: "ネガトラ", keywords: ["n", "ne", "nega", "ね", "ねが", "ねがと", "ねがとら", "ネ", "ネガ", "ネガト", "ネガトラ", "neg_trans"] },
+          { label: "ポジトラ", keywords: ["p", "po", "pozi", "ほ", "ぽじ", "ぽじと", "ぽじとら", "ホ", "ポジ", "ポジト", "ポジトラ", "pos_trans"] },
+          { label: "カウンタープレス", keywords: ["k", "ka", "kaun", "か", "かん", "かうん", "かうんたーぷれす", "カ", "カン", "カウン", "カウンタープレス", "counterpress"] },
+          { label: "ゲーゲンプレス", keywords: ["g", "ge", "gege", "げ", "げー", "げーげ", "げーげんぷれす", "ゲ", "ゲー", "ゲーゲ", "ゲーゲンプレス", "gegenpress"] }
         ]
       }
     ]
@@ -167,13 +169,13 @@ export const EVENT_GROUPS: EventGroup[] = [
       {
         name: "アクション",
         events: [
-          { label: "キャッチ", keywords: ["c", "ky", "kyat", "catch"] },
-          { label: "セーブ", keywords: ["s", "se", "sebu", "save"] },
-          { label: "パンチング", keywords: ["p", "pa", "pant", "punching"] },
-          { label: "スイーパー", keywords: ["s", "su", "suip", "sweeper"] },
-          { label: "ロングキック", keywords: ["l", "ro", "rong", "longkick"] },
-          { label: "GKビルド", keywords: ["g", "gk", "gkbi", "gkbuildup"] },
-          { label: "GKエラー", keywords: ["e", "er", "era", "gk_error"] }
+          { label: "キャッチ", keywords: ["c", "ky", "kyat", "き", "きゃ", "きゃっ", "きゃっち", "キ", "キャ", "キャッ", "キャッチ", "catch"] },
+          { label: "セーブ", keywords: ["s", "se", "sebu", "せ", "せい", "せーぶ", "セ", "セイ", "セーブ", "save"] },
+          { label: "パンチング", keywords: ["p", "pa", "pant", "は", "ぱん", "ぱんち", "ぱんちんぐ", "ハ", "パン", "パンチ", "パンチング", "punching"] },
+          { label: "スイーパー", keywords: ["s", "su", "suip", "す", "すい", "すいー", "すいーぱー", "ス", "スイ", "スイー", "スイーパー", "sweeper"] },
+          { label: "ロングキック", keywords: ["l", "ro", "rong", "ろ", "ろん", "ろんぐ", "ろんぐきっく", "ロ", "ロン", "ロング", "ロングキック", "longkick"] },
+          { label: "GKビルド", keywords: ["g", "gk", "gkbi", "じ", "じー", "じーけ", "じーけーびるど", "ジ", "ジー", "ジーケ", "ジーケービルド", "gkbuildup"] },
+          { label: "GKエラー", keywords: ["e", "er", "era", "じ", "じー", "じーけ", "じーけーえらー", "ジ", "ジー", "ジーケ", "ジーケーエラー", "gk_error"] }
         ]
       }
     ]
@@ -187,30 +189,30 @@ export const EVENT_GROUPS: EventGroup[] = [
       {
         name: "セットプレー",
         events: [
-          { label: "コーナーキック", keywords: ["c", "ko", "kona", "ck"] },
-          { label: "フリーキック", keywords: ["f", "fu", "furi", "fk"] },
-          { label: "スローイン", keywords: ["s", "su", "suro", "throwin"] },
-          { label: "ロングスロー", keywords: ["l", "ro", "rong", "longthrow"] }
+          { label: "コーナーキック", keywords: ["c", "ko", "kona", "こ", "こー", "こな", "こーなーきっく", "コ", "コー", "コナ", "コーナーキック", "ck"] },
+          { label: "フリーキック", keywords: ["f", "fu", "furi", "ふ", "ふり", "ふりー", "ふりーきっく", "フ", "フリ", "フリー", "フリーキック", "fk"] },
+          { label: "スローイン", keywords: ["s", "su", "suro", "す", "すろ", "すろー", "すろーいん", "ス", "スロ", "スロー", "スローイン", "throwin"] },
+          { label: "ロングスロー", keywords: ["l", "ro", "rong", "ろ", "ろん", "ろんぐ", "ろんぐすろー", "ロ", "ロン", "ロング", "ロングスロー", "longthrow"] }
         ]
       },
       {
         name: "判定・カード",
         events: [
-          { label: "ファウル", keywords: ["f", "fa", "faur", "foul"] },
-          { label: "オフサイド", keywords: ["o", "of", "ofus", "offside"] },
-          { label: "イエローカード", keywords: ["y", "ie", "iero", "yellow"] },
-          { label: "レッドカード", keywords: ["r", "re", "redd", "red"] }
+          { label: "ファウル", keywords: ["f", "fa", "faur", "ふ", "ふぁ", "ふぁう", "ふぁうる", "フ", "ファ", "ファウ", "ファウル", "foul"] },
+          { label: "オフサイド", keywords: ["o", "of", "ofus", "お", "おふ", "おふさ", "おふさいど", "オ", "オフ", "オフサ", "オフサイド", "offside"] },
+          { label: "イエローカード", keywords: ["y", "ie", "iero", "い", "いえ", "いえろ", "いえろーかーど", "イ", "イエ", "イエロ", "イエローカード", "yellow"] },
+          { label: "レッドカード", keywords: ["r", "re", "redd", "れ", "れっ", "れっど", "れっどかーど", "レ", "レッ", "レッド", "レッドカード", "red"] }
         ]
       },
       {
         name: "ミス全般",
         events: [
-          { label: "パスミス", keywords: ["p", "pa", "pasu", "pass_error"] },
-          { label: "トラップミス", keywords: ["t", "to", "tora", "trap_error"] },
-          { label: "ボールロスト", keywords: ["b", "bo", "boru", "loss"] },
-          { label: "判断ミス", keywords: ["h", "ha", "hand", "decision_error"] },
-          { label: "決定機ミス", keywords: ["k", "ke", "kett", "miss"] },
-          { label: "イージーミス", keywords: ["i", "iz", "izi", "unforcederror"] }
+          { label: "パスミス", keywords: ["p", "pa", "pasu", "は", "ぱす", "ぱすみ", "ぱすみす", "ハ", "パス", "パスミ", "パスミス", "pass_error"] },
+          { label: "トラップミス", keywords: ["t", "to", "tora", "と", "とら", "とらっ", "とらっぷみす", "ト", "トラ", "トラッ", "トラップミス", "trap_error"] },
+          { label: "ボールロスト", keywords: ["b", "bo", "boru", "ほ", "ぼー", "ぼーる", "ぼーるろすと", "ホ", "ボー", "ボール", "ボールロスト", "loss"] },
+          { label: "判断ミス", keywords: ["h", "ha", "hand", "は", "はん", "はんだ", "はんだんみす", "ハ", "ハン", "ハンダ", "ハンダンミス", "decision_error"] },
+          { label: "決定機ミス", keywords: ["k", "ke", "kett", "け", "けっ", "けって", "けっていきみす", "ケ", "ケッ", "ケッテ", "ケッテイキミス", "miss"] },
+          { label: "イージーミス", keywords: ["i", "iz", "izi", "い", "いー", "いーじ", "いーじーみす", "イ", "イー", "イージ", "イージーミス", "unforcederror"] }
         ]
       }
     ]
@@ -224,17 +226,17 @@ export const EVENT_GROUPS: EventGroup[] = [
       {
         name: "認知・スキル",
         events: [
-          { label: "スキャン", keywords: ["s", "su", "suky", "scan"] },
-          { label: "体の向き", keywords: ["k", "ka", "kara", "bodyshape"] },
-          { label: "コーチング", keywords: ["c", "ko", "koti", "coaching"] },
-          { label: "集中力", keywords: ["s", "sy", "syuu", "focus"] },
-          { label: "予測", keywords: ["y", "yo", "yoso", "predict"] },
-          { label: "連携", keywords: ["r", "re", "renk", "link"] },
-          { label: "好判断", keywords: ["h", "ko", "kouh", "good_decision"] },
-          { label: "戦術的", keywords: ["s", "se", "senz", "tactical"] },
-          { label: "クレバー", keywords: ["c", "ku", "kure", "clever"] },
-          { label: "ハードワーク", keywords: ["h", "ha", "hado", "hardwork"] },
-          { label: "消極的", keywords: ["s", "sy", "syok", "passive"] }
+          { label: "スキャン", keywords: ["s", "su", "suky", "す", "すき", "すきゃ", "すきゃん", "ス", "スキ", "スキャ", "スキャン", "scan"] },
+          { label: "体の向き", keywords: ["k", "ka", "kara", "から", "からだ", "からだのむき", "カラ", "カラダ", "カラダノムキ", "bodyshape"] },
+          { label: "コーチング", keywords: ["c", "ko", "koti", "こ", "こー", "こーち", "こーちんぐ", "コ", "コー", "コーチ", "コーチング", "coaching"] },
+          { label: "集中力", keywords: ["s", "sy", "syuu", "し", "しゅ", "しゅう", "しゅうちゅうりょく", "シ", "シュ", "シュウ", "シュウチュウリョク", "focus"] },
+          { label: "予測", keywords: ["y", "yo", "yoso", "よ", "よそ", "よそく", "ヨ", "ヨソ", "ヨソク", "predict"] },
+          { label: "連携", keywords: ["r", "re", "renk", "れ", "れん", "れんけ", "れんけい", "レ", "レン", "レンケ", "レンケイ", "link"] },
+          { label: "好判断", keywords: ["h", "ko", "kouh", "こ", "こう", "こうは", "こうはんだん", "コ", "コウ", "コウハ", "コウハンダン", "good_decision"] },
+          { label: "戦術的", keywords: ["s", "se", "senz", "せ", "せん", "ぜんじ", "せんじゅつてき", "セ", "セン", "ゼンジ", "センジュツテキ", "tactical"] },
+          { label: "クレバー", keywords: ["c", "ku", "kure", "く", "くれ", "くれは", "くればー", "ク", "クレ", "クレハ", "クレバー", "clever"] },
+          { label: "ハードワーク", keywords: ["h", "ha", "hado", "は", "はー", "はーど", "はーどわーく", "ハ", "ハー", "ハード", "ハードワーク", "hardwork"] },
+          { label: "消極的", keywords: ["s", "sy", "syok", "し", "しょ", "しょう", "しょうきょくてき", "シ", "ショ", "ショウ", "ショウキョクテキ", "passive"] }
         ]
       }
     ]
