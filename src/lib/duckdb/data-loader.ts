@@ -32,8 +32,14 @@ export interface CacheEntry {
   metadata: MatchMetadata;
 }
 
+let idbConnection: IDBDatabase | null = null;
+let idbOpenPromise: Promise<IDBDatabase> | null = null;
+
 export function openCacheDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (idbConnection) return Promise.resolve(idbConnection);
+  if (idbOpenPromise) return idbOpenPromise;
+
+  idbOpenPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(IDB_NAME, 1);
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -41,9 +47,17 @@ export function openCacheDB(): Promise<IDBDatabase> {
         db.createObjectStore(IDB_STORE);
       }
     };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      idbConnection = request.result;
+      idbOpenPromise = null;
+      resolve(idbConnection);
+    };
+    request.onerror = () => {
+      idbOpenPromise = null;
+      reject(request.error);
+    };
   });
+  return idbOpenPromise;
 }
 
 function idbGet(db: IDBDatabase, key: string): Promise<CacheEntry | undefined> {
@@ -86,13 +100,32 @@ async function importParquetAsTable(
   conn: duckdb.AsyncDuckDBConnection,
   db: duckdb.AsyncDuckDB,
   tableName: string,
-  parquetBuffer: ArrayBuffer
+  parquetBuffer: ArrayBuffer,
+  matchId: string
 ): Promise<void> {
-  const fileName = `${tableName}.parquet`;
-  await db.registerFileBuffer(fileName, new Uint8Array(parquetBuffer));
-  await conn.query(
-    `CREATE OR REPLACE TABLE ${tableName} AS SELECT * FROM read_parquet('${fileName}')`
-  );
+  // ファイル名の競合を避けるため matchId とタイムスタンプを含めてユニーク化
+  const fileName = `${tableName}_${matchId}_${Date.now()}.parquet`;
+  
+  try {
+    // バッファのコピーを確実に渡す (Brave 等の Shield/メモリ制限対策)
+    const uint8View = new Uint8Array(parquetBuffer);
+    await db.registerFileBuffer(fileName, uint8View);
+    
+    await conn.query(
+      `CREATE OR REPLACE TABLE ${tableName} AS SELECT * FROM read_parquet('${fileName}')`
+    );
+  } catch (err: any) {
+    console.error(`[footics] Failed to import parquet table ${tableName} for match ${matchId}:`, err);
+    throw err;
+  } finally {
+    // 読み込み完了後、即座に VFS からファイルを解除してメモリを解放
+    try {
+      await db.unregisterFileBuffer(fileName);
+    } catch (e) {
+      // unregister の失敗は致命的でないため警告のみ
+      console.warn(`[footics] Cleanup failed for ${fileName}`, e);
+    }
+  }
 }
 
 // ──────────────────────────────────────────────
@@ -118,26 +151,27 @@ export interface BatchImportResult {
 export async function loadMatchData(
   db: duckdb.AsyncDuckDB,
   conn: duckdb.AsyncDuckDBConnection,
-  matchId: string
+  matchId: string,
+  _isRetry = false
 ): Promise<LoadResult> {
   // 1. IndexedDB キャッシュ確認
-  let idb: IDBDatabase | null = null;
   try {
-    idb = await openCacheDB();
+    const idb = await openCacheDB();
     const cached = await idbGet(idb, `match_${matchId}`);
 
     if (cached && cached.version === CACHE_VERSION) {
-      console.log("[footics] Cache hit — restoring from IndexedDB Parquet");
+      if (_isRetry) console.log(`[footics] Retry success for ${matchId}`);
+      console.log(`[footics] Cache hit for ${matchId} — restoring from IndexedDB Parquet`);
       const start = performance.now();
 
       await Promise.all([
-        importParquetAsTable(conn, db, "matches", cached.matchesParquet),
-        importParquetAsTable(conn, db, "players", cached.playersParquet),
-        importParquetAsTable(conn, db, "events", cached.eventsParquet),
+        importParquetAsTable(conn, db, "matches", cached.matchesParquet, matchId),
+        importParquetAsTable(conn, db, "players", cached.playersParquet, matchId),
+        importParquetAsTable(conn, db, "events", cached.eventsParquet, matchId),
       ]);
 
       console.log(
-        `[footics] Restored from cache in ${(performance.now() - start).toFixed(0)}ms`
+        `[footics] Success: Restored match ${matchId} from cache in ${(performance.now() - start).toFixed(0)}ms`
       );
 
       // Load custom events
@@ -150,7 +184,13 @@ export async function loadMatchData(
       console.warn(`[footics] Cache entry for ${matchId} not found in IndexedDB`);
     }
   } catch (err) {
-    console.error("[footics] IndexedDB store access failed", err);
+    if (!_isRetry) {
+      console.warn(`[footics] Load failed for ${matchId}, retrying once...`, err);
+      await new Promise(r => setTimeout(r, 200));
+      return loadMatchData(db, conn, matchId, true);
+    }
+    console.error(`[footics] Data load failed after retry for match ${matchId}:`, err);
+    throw err;
   }
 
   // キャッシュがない場合はエラー

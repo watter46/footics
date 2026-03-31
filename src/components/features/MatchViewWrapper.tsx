@@ -39,7 +39,10 @@ export function MatchViewWrapper({ matchId }: Props) {
             <AlertCircle className="w-8 h-8" />
             <h2 className="text-2xl font-bold">Data Not Found</h2>
           </div>
-          <p className="text-slate-400 mb-6 leading-relaxed">
+          <div className="text-xs font-mono text-slate-500 mb-2 uppercase tracking-wider">
+            Match ID: {matchId}
+          </div>
+          <p className="text-slate-400 mb-6 leading-relaxed text-sm">
             {error || "Match data not found in local storage. Please import the JSON file first."}
           </p>
           <Link 

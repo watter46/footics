@@ -35,7 +35,7 @@ const initialState: DatabaseState = {
 function reducer(state: DatabaseState, action: Action): DatabaseState {
   switch (action.type) {
     case "SET_STATUS":
-      return { ...state, status: action.status, error: null };
+      return { ...state, status: action.status, error: null, metadata: null };
     case "SET_READY":
       return {
         status: "ready",
@@ -60,6 +60,7 @@ export function useDuckDB(matchId: string): DatabaseState {
     let cancelled = false;
 
     async function init() {
+      console.log(`[useDuckDB] Start loading for matchId: ${matchId}`);
       try {
         dispatch({ type: "SET_STATUS", status: "initializing" });
         const { db, conn } = await initializeDuckDB();
@@ -69,9 +70,11 @@ export function useDuckDB(matchId: string): DatabaseState {
         const { metadata } = await loadMatchData(db, conn, matchId);
         if (cancelled) return;
 
+        console.log(`[useDuckDB] Successfully loaded matchId: ${matchId}`);
         dispatch({ type: "SET_READY", db, connection: conn, metadata });
       } catch (err: unknown) {
         if (cancelled) return;
+        console.error(`[useDuckDB] Error loading matchId: ${matchId}`, err);
         const message =
           err instanceof Error ? err.message : "Unknown initialization error";
         dispatch({ type: "SET_ERROR", error: message });
