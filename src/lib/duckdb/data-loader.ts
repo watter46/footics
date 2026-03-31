@@ -120,7 +120,7 @@ async function importParquetAsTable(
   } finally {
     // 読み込み完了後、即座に VFS からファイルを解除してメモリを解放
     try {
-      await db.unregisterFileBuffer(fileName);
+      await db.dropFile(fileName);
     } catch (e) {
       // unregister の失敗は致命的でないため警告のみ
       console.warn(`[footics] Cleanup failed for ${fileName}`, e);
