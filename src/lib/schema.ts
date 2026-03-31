@@ -55,4 +55,14 @@ export const CustomEventSchema = z.object({
   created_at: z.number(),
 });
 
+
 export type CustomEvent = z.infer<typeof CustomEventSchema>;
+
+/** 試合全体の自由記述メモ */
+export const MatchMemoSchema = z.object({
+  matchId: z.string(),
+  memo: z.string().default(""),
+  updatedAt: z.number().default(() => Date.now()),
+});
+
+export type MatchMemo = z.infer<typeof MatchMemoSchema>;

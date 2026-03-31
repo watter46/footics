@@ -9,6 +9,7 @@ import {
 import { 
   getAllEventMemos, 
   getAllCustomEvents, 
+  getAllMatchMemos,
   importMemosBatch,
   getDatabase 
 } from "./db";
@@ -21,15 +22,17 @@ const BACKUP_VERSION = 1;
 export async function exportAllDataZip(): Promise<void> {
   const zip = new JSZip();
   
-  // 1. Memos & Custom Events
-  const [eventMemos, customEvents] = await Promise.all([
+  // 1. Memos, Custom Events & Match Memos
+  const [eventMemos, customEvents, matchMemos] = await Promise.all([
     getAllEventMemos(),
-    getAllCustomEvents()
+    getAllCustomEvents(),
+    getAllMatchMemos()
   ]);
   
   zip.file("memos.json", JSON.stringify({
     event_memos: eventMemos,
-    custom_events: customEvents
+    custom_events: customEvents,
+    match_memos: matchMemos
   }, null, 2));
 
   // 2. Match Cache (Parquet & Metadata)
@@ -92,9 +95,10 @@ export async function importAllDataZip(file: File): Promise<{ matchCount: number
     const memosData = JSON.parse(await memosFile.async("string"));
     const eventMemos = Array.isArray(memosData.event_memos) ? memosData.event_memos : [];
     const customEvents = Array.isArray(memosData.custom_events) ? memosData.custom_events : [];
+    const matchMemos = Array.isArray(memosData.match_memos) ? memosData.match_memos : [];
     
-    await importMemosBatch(eventMemos, customEvents);
-    memoCount = eventMemos.length + customEvents.length;
+    await importMemosBatch(eventMemos, customEvents, matchMemos);
+    memoCount = eventMemos.length + customEvents.length + matchMemos.length;
   }
 
   // 3. Import Match Cache

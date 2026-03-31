@@ -1,6 +1,6 @@
 {
-  "/_not-found/page": "/_not-found",
   "/favicon.ico/route": "/favicon.ico",
+  "/_not-found/page": "/_not-found",
   "/match/[matchId]/page": "/match/[matchId]",
   "/page": "/"
 }

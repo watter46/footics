@@ -8,15 +8,16 @@
  * 2. useEvents() でフィルタ→クエリ→結果取得
  * 3. Sidebar / EventTimeline に props を渡すだけ
  */
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useDuckDB } from "@/hooks/use-duckdb";
 import { useEvents } from "@/hooks/use-events";
 import { Sidebar } from "@/components/features/Sidebar";
 import { EventTimeline } from "@/components/features/EventTimeline";
 import { CentralFocusModal } from "@/components/features/CentralFocusModal";
+import { MatchMemoModal } from "@/components/features/MatchMemoModal";
 import { DataManagementMenu } from "@/components/features/DataManagementMenu";
 import { Card } from "@/components/ui/card";
-import { Loader2, RefreshCw, ChevronLeft } from "lucide-react";
+import { Loader2, RefreshCw, ChevronLeft, Edit3 } from "lucide-react";
 import Link from "next/link";
 import type { FilterState, OutcomeFilter } from "@/types";
 
@@ -30,6 +31,7 @@ export default function Dashboard({ matchId }: { matchId: string }) {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [highlightEventId, setHighlightEventId] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<{ id: string; minute: number; second: number; labels: string[]; memo: string } | null>(null);
+  const [isMatchMemoOpen, setIsMatchMemoOpen] = useState(false);
 
   // ── Filter State ──
   const [filters, setFilters] = useState<FilterState>({
@@ -131,6 +133,25 @@ export default function Dashboard({ matchId }: { matchId: string }) {
     }
   }, [db, connection, matchId]);
 
+  // ── Keyboard Shortcuts (Ctrl + M for Match Memo) ──
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
+      // input や textarea にフォーカスがある場合は無視
+      const activeEl = document.activeElement;
+      const isInput = activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA" || (activeEl as HTMLElement)?.isContentEditable;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
+        if (!isInput) {
+          e.preventDefault();
+          setIsMatchMemoOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
+
   // ── Loading / Error States ──
   if (status === "idle" || status === "initializing" || status === "loading-data") {
     const statusMessage =
@@ -226,6 +247,14 @@ export default function Dashboard({ matchId }: { matchId: string }) {
               <RefreshCw className="h-4 w-4 mr-2 text-blue-400 group-hover:text-blue-300 transition-colors" />
               ReCache
             </button>
+            <button
+              onClick={() => setIsMatchMemoOpen(true)}
+              className="flex items-center px-4 py-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700 hover:border-slate-500 rounded-lg text-sm font-medium text-slate-200 transition-all shadow-sm group"
+              title="Match Memo (Ctrl+M)"
+            >
+              <Edit3 className="h-4 w-4 mr-2 text-amber-400 group-hover:text-amber-300 transition-colors" />
+              Memo
+            </button>
           </div>
         </div>
         <EventTimeline
@@ -249,6 +278,12 @@ export default function Dashboard({ matchId }: { matchId: string }) {
             setRefreshTrigger(prev => prev + 1);
             setHighlightEventId(eventId);
           }} 
+        />
+
+        <MatchMemoModal 
+          matchId={matchId} 
+          isOpen={isMatchMemoOpen} 
+          onClose={() => setIsMatchMemoOpen(false)} 
         />
       </main>
     </div>

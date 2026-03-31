@@ -8,14 +8,14 @@
  * - シングルトンパターンでDB接続を管理
  */
 import { openDB, type IDBPDatabase } from "idb";
-import type { EventMemo, CustomEvent } from "./schema";
+import type { EventMemo, CustomEvent, MatchMemo } from "./schema";
 
 // ──────────────────────────────────────────────
 // DB Schema Definition
 // ──────────────────────────────────────────────
 
 const DB_NAME = "footics_db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 interface FooticsDBSchema {
   event_memos: {
@@ -31,6 +31,10 @@ interface FooticsDBSchema {
     indexes: {
       by_match: string;
     };
+  };
+  match_memos: {
+    key: string;
+    value: MatchMemo;
   };
 }
 
@@ -58,6 +62,13 @@ export function getDatabase(): Promise<IDBPDatabase<FooticsDBSchema>> {
             keyPath: "id",
           });
           customStore.createIndex("by_match", "match_id", { unique: false });
+        }
+
+        // match_memos ストア (NEW: 試合全体のメモ)
+        if (!db.objectStoreNames.contains("match_memos")) {
+          db.createObjectStore("match_memos", {
+            keyPath: "matchId",
+          });
         }
       },
     });
@@ -100,6 +111,25 @@ export async function getCustomEventsByMatch(
 export async function deleteCustomEvent(id: string): Promise<void> {
   const db = await getDatabase();
   await db.delete("custom_events", id);
+}
+
+// ──────────────────────────────────────────────
+// Match Memo Operations
+// ──────────────────────────────────────────────
+
+export async function getMatchMemo(matchId: string): Promise<MatchMemo | undefined> {
+  const db = await getDatabase();
+  return db.get("match_memos", matchId);
+}
+
+export async function putMatchMemo(memo: MatchMemo): Promise<void> {
+  const db = await getDatabase();
+  await db.put("match_memos", memo);
+}
+
+export async function getAllMatchMemos(): Promise<MatchMemo[]> {
+  const db = await getDatabase();
+  return db.getAll("match_memos");
 }
 
 export async function exportMemosAsJson(matchId: string): Promise<void> {
@@ -163,13 +193,15 @@ export async function getAllCustomEvents(): Promise<CustomEvent[]> {
  */
 export async function importMemosBatch(
   memos: EventMemo[],
-  customEvents: CustomEvent[]
+  customEvents: CustomEvent[],
+  matchMemos: MatchMemo[] = []
 ): Promise<void> {
   const db = await getDatabase();
-  const tx = db.transaction(["event_memos", "custom_events"], "readwrite");
+  const tx = db.transaction(["event_memos", "custom_events", "match_memos"], "readwrite");
   
   const memoStore = tx.objectStore("event_memos");
   const eventStore = tx.objectStore("custom_events");
+  const matchMemoStore = tx.objectStore("match_memos");
 
   for (const m of memos) {
     memoStore.put(m);
@@ -177,7 +209,10 @@ export async function importMemosBatch(
   for (const e of customEvents) {
     eventStore.put(e);
   }
+  for (const mm of matchMemos) {
+    matchMemoStore.put(mm);
+  }
 
   await tx.done;
-  console.log(`[footics] Batch memo import completed (${memos.length + customEvents.length} items)`);
+  console.log(`[footics] Batch memo import completed (${memos.length + customEvents.length + matchMemos.length} items)`);
 }

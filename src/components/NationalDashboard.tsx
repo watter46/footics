@@ -3,7 +3,8 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { EventTimeline } from "@/components/features/EventTimeline";
 import { CentralFocusModal } from "@/components/features/CentralFocusModal";
-import { ChevronLeft } from "lucide-react";
+import { MatchMemoModal } from "@/components/features/MatchMemoModal";
+import { ChevronLeft, Edit3 } from "lucide-react";
 import Link from "next/link";
 
 import { getCustomEventsByMatch, deleteCustomEvent } from "@/lib/db";
@@ -21,6 +22,7 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [highlightEventId, setHighlightEventId] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<{ id: string; minute: number; second: number; labels: string[]; memo: string } | null>(null);
+  const [isMatchMemoOpen, setIsMatchMemoOpen] = useState(false);
 
   const [customEvents, setCustomEvents] = useState<any[]>([]);
 
@@ -48,6 +50,24 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
     if (!confirm("Are you sure you want to delete this event?")) return;
     await deleteCustomEvent(eventId);
     setRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  // ── Keyboard Shortcuts (Ctrl + M for Match Memo) ──
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA" || (activeEl as HTMLElement)?.isContentEditable;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
+        if (!isInput) {
+          e.preventDefault();
+          setIsMatchMemoOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, []);
 
   const events: EventRow[] = useMemo(() => {
@@ -103,8 +123,18 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
             </div>
             <span className="ml-4 px-2 py-1 bg-emerald-900/50 text-emerald-400 text-xs font-bold rounded">National</span>
           </div>
-          <div className="text-slate-500 text-sm">
-            Press <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">I</kbd> to add memo
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsMatchMemoOpen(true)}
+              className="flex items-center px-4 py-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700 hover:border-slate-500 rounded-lg text-sm font-medium text-slate-200 transition-all shadow-sm group"
+              title="Match Memo (Ctrl+M)"
+            >
+              <Edit3 className="h-4 w-4 mr-2 text-amber-400 group-hover:text-amber-300 transition-colors" />
+              Memo
+            </button>
+            <div className="text-slate-500 text-sm">
+              Press <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Ctrl+I</kbd> for Event / <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Ctrl+M</kbd> for Match
+            </div>
           </div>
         </div>
         
@@ -129,6 +159,12 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
             setRefreshTrigger(prev => prev + 1);
             setHighlightEventId(eventId);
           }} 
+        />
+
+        <MatchMemoModal 
+          matchId={matchId} 
+          isOpen={isMatchMemoOpen} 
+          onClose={() => setIsMatchMemoOpen(false)} 
         />
       </main>
     </div>
