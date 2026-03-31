@@ -66,3 +66,21 @@ export const MatchMemoSchema = z.object({
 });
 
 export type MatchMemo = z.infer<typeof MatchMemoSchema>;
+
+// ──────────────────────────────────────────────
+// Tactical Board Settings Schema
+// ──────────────────────────────────────────────
+
+/** 戦術ボード上の選手マーカー設定（座標、色など） */
+export const TacticalSettingSchema = z.object({
+  id: z.string(), // matchId-playerId
+  matchId: z.string(),
+  playerId: z.number().int(),
+  x: z.number(),
+  y: z.number(),
+  color: z.string().optional(),
+  team: z.enum(["home", "away"]),
+  updatedAt: z.number(),
+});
+
+export type TacticalSetting = z.infer<typeof TacticalSettingSchema>;

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { EventTimeline } from "@/components/features/EventTimeline";
 import { CentralFocusModal } from "@/components/features/CentralFocusModal";
 import { MatchMemoModal } from "@/components/features/MatchMemoModal";
+import { TacticalBoardModal } from "@/components/features/TacticalBoard/TacticalBoardModal";
 import { ChevronLeft, Edit3 } from "lucide-react";
 import Link from "next/link";
 
@@ -23,12 +24,35 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
   const [highlightEventId, setHighlightEventId] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<{ id: string; minute: number; second: number; labels: string[]; memo: string } | null>(null);
   const [isMatchMemoOpen, setIsMatchMemoOpen] = useState(false);
+  const [isTacticalBoardOpen, setIsTacticalBoardOpen] = useState(false);
+  const [matchData, setMatchData] = useState<any>(null);
 
   const [customEvents, setCustomEvents] = useState<any[]>([]);
 
   useEffect(() => {
     getCustomEventsByMatch(matchId).then(setCustomEvents);
   }, [matchId, refreshTrigger]);
+
+  useEffect(() => {
+    fetch(`/national_data/match_${matchId}.json`)
+      .then(res => res.json())
+      .then(data => {
+        // 構造を使いやすく変換
+        const d = data.initialMatchDataForScrappers[0];
+        const lineups = d[2];
+        const formatted = {
+          lineups: {
+            homeStarters: lineups[9].map((p: any) => ({ name: p[0], playerId: p[3], isFirstEleven: true })),
+            awayStarters: lineups[10].map((p: any) => ({ name: p[0], playerId: p[3], isFirstEleven: true })),
+            homeBench: lineups[11].map((p: any) => ({ name: p[0], playerId: p[3], isFirstEleven: false })),
+            awayBench: lineups[12].map((p: any) => ({ name: p[0], playerId: p[3], isFirstEleven: false })),
+          },
+          timeline: d[1] // timeline
+        };
+        setMatchData(formatted);
+      })
+      .catch(err => console.error("Failed to load national match data:", err));
+  }, [matchId]);
 
   const handleEditCustomEvent = useCallback((event: any) => {
     // DuckDBからの取得時や IDB からの取得時は labels 配列がない場合があるため、
@@ -64,6 +88,13 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
           setIsMatchMemoOpen(true);
         }
       }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        if (!isInput) {
+          e.preventDefault();
+          setIsTacticalBoardOpen(prev => !prev);
+        }
+      }
     };
 
     window.addEventListener("keydown", handleGlobalKeyDown);
@@ -95,10 +126,18 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
     matchType: "national",
     playerIdNameDictionary: {},
     teams: {
-      home: { teamId: 0, name: defaultHome || "Home", players: [] } as any,
-      away: { teamId: 1, name: defaultAway || "Away", players: [] } as any
+      home: { 
+        teamId: 0, 
+        name: defaultHome || "Home", 
+        players: matchData ? [...matchData.lineups.homeStarters, ...matchData.lineups.homeBench] : [] 
+      } as any,
+      away: { 
+        teamId: 1, 
+        name: defaultAway || "Away", 
+        players: matchData ? [...matchData.lineups.awayStarters, ...matchData.lineups.awayBench] : [] 
+      } as any
     }
-  }), [matchId, defaultHome, defaultAway, defaultScore]);
+  }), [matchId, defaultHome, defaultAway, defaultScore, matchData]);
 
   return (
     <div className="flex h-screen w-full bg-slate-950 text-slate-50 overflow-hidden font-sans">
@@ -165,6 +204,14 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
           matchId={matchId} 
           isOpen={isMatchMemoOpen} 
           onClose={() => setIsMatchMemoOpen(false)} 
+        />
+
+        <TacticalBoardModal 
+          matchId={matchId} 
+          isOpen={isTacticalBoardOpen} 
+          onClose={() => setIsTacticalBoardOpen(false)} 
+          metadata={metadata}
+          matchData={matchData}
         />
       </main>
     </div>

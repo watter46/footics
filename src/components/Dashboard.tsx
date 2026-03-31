@@ -15,6 +15,7 @@ import { Sidebar } from "@/components/features/Sidebar";
 import { EventTimeline } from "@/components/features/EventTimeline";
 import { CentralFocusModal } from "@/components/features/CentralFocusModal";
 import { MatchMemoModal } from "@/components/features/MatchMemoModal";
+import { TacticalBoardModal } from "@/components/features/TacticalBoard/TacticalBoardModal";
 import { DataManagementMenu } from "@/components/features/DataManagementMenu";
 import { Card } from "@/components/ui/card";
 import { Loader2, RefreshCw, ChevronLeft, Edit3 } from "lucide-react";
@@ -32,6 +33,7 @@ export default function Dashboard({ matchId }: { matchId: string }) {
   const [highlightEventId, setHighlightEventId] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<{ id: string; minute: number; second: number; labels: string[]; memo: string } | null>(null);
   const [isMatchMemoOpen, setIsMatchMemoOpen] = useState(false);
+  const [isTacticalBoardOpen, setIsTacticalBoardOpen] = useState(false);
 
   // ── Filter State ──
   const [filters, setFilters] = useState<FilterState>({
@@ -144,6 +146,13 @@ export default function Dashboard({ matchId }: { matchId: string }) {
         if (!isInput) {
           e.preventDefault();
           setIsMatchMemoOpen(true);
+        }
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        if (!isInput) {
+          e.preventDefault();
+          setIsTacticalBoardOpen(prev => !prev);
         }
       }
     };
@@ -284,6 +293,13 @@ export default function Dashboard({ matchId }: { matchId: string }) {
           matchId={matchId} 
           isOpen={isMatchMemoOpen} 
           onClose={() => setIsMatchMemoOpen(false)} 
+        />
+
+        <TacticalBoardModal 
+          matchId={matchId} 
+          isOpen={isTacticalBoardOpen} 
+          onClose={() => setIsTacticalBoardOpen(false)} 
+          metadata={metadata}
         />
       </main>
     </div>
