@@ -1,109 +1,100 @@
 "use client";
 
-import React, { useRef, useState } from 'react';
+import React from 'react';
+import { useDraggable } from '@dnd-kit/core';
 import { shortenName } from '@/lib/data/tactical-utils';
 
 interface PlayerMarkerProps {
-  id: string; // matchId-playerId
+  id: string; // matchId-playerId または "ball"
   playerName: string;
-  initialX: number; // 0-100
-  initialY: number; // 0-100
+  initialX: number; // 0-100 (Parent relative)
+  initialY: number; // 0-100 (Parent relative)
   color?: string;
-  onPositionChange: (id: string, x: number, y: number) => void;
-  isFlipped?: boolean;
+  isBall?: boolean;
 }
 
 /**
- * 選手マーカー
- * ドラッグ可能、座標保存（アニメーションなし）
+ * リアルなサッカーボールのSVGコンポーネント (正円)
+ */
+const SoccerBallSVG = () => (
+  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+    <circle cx="50" cy="50" r="48" fill="white" stroke="#333" strokeWidth="2" />
+    <path d="M50 2L61 24L50 40L39 24Z" fill="#333" />
+    <path d="M85 35L98 52L82 68L70 55Z" fill="#333" />
+    <path d="M15 35L2 52L18 68L30 55Z" fill="#333" />
+    <path d="M50 98L65 80L50 65L35 80Z" fill="#333" />
+    <path d="M85 75L72 92L58 85L68 70Z" fill="#333" />
+    <path d="M15 75L28 92L42 85L32 70Z" fill="#333" />
+    <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="1" />
+  </svg>
+);
+
+/**
+ * 選手・ボールマーカー (dnd-kit Draggable)
+ * ハンドルの中心ズレ（ジャンプ）を防止し、精密な操作感を実現。
  */
 export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
   id,
   playerName,
   initialX,
   initialY,
-  color = "#3b82f6", // blue-500
-  onPositionChange,
+  color = "#3b82f6",
+  isBall = false,
 }) => {
-  const markerRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const startPos = useRef({ x: 0, y: 0 });
-  const isMoving = useRef(false);
-  
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: id,
+    data: {
+      type: isBall ? 'ball' : 'player',
+    },
+  });
+
   const displayName = shortenName(playerName);
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (!markerRef.current) return;
-    
-    isMoving.current = true;
-    setIsDragging(true);
-    startPos.current = { x: e.clientX, y: e.clientY };
-    
-    // ポインターをキャプチャして要素外に出てもイベントを継続させる
-    markerRef.current.setPointerCapture(e.pointerId);
-  };
+  // マーカーサイズ (w-10 = 40px, w-6 = 24px)
+  const markerSize = isBall ? 24 : 40;
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isMoving.current || !markerRef.current) return;
-
-    const dx = e.clientX - startPos.current.x;
-    const dy = e.clientY - startPos.current.y;
-
-    // 直接スタイルを更新することで、Reactの再レンダリングを回避し即時反映させる
-    markerRef.current.style.transform = `translate(${dx}px, ${dy}px)`;
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!isMoving.current || !markerRef.current) return;
-
-    isMoving.current = false;
-    setIsDragging(false);
-    
-    const parent = markerRef.current.parentElement;
-    if (!parent) return;
-
-    const rect = parent.getBoundingClientRect();
-    // 親要素内でのマウス離脱座標を計算
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
-
-    // 0-100のパーセンテージに変換
-    const newX = Math.max(0, Math.min(100, (offsetX / rect.width) * 100));
-    const newY = Math.max(0, Math.min(100, (offsetY / rect.height) * 100));
-
-    // ドラッグ用の変形をリセット
-    markerRef.current.style.transform = "";
-
-    // 座標確定を通知
-    onPositionChange(id, newX, newY);
+  const style: React.CSSProperties = {
+    position: "absolute",
+    left: `${initialX}%`,
+    top: `${initialY}%`,
+    zIndex: isDragging ? 1000 : 20,
+    touchAction: "none",
+    width: `${markerSize}px`,
+    height: `${markerSize}px`,
+    // dnd-kit の計測を妨げないための -50% 補正
+    // transform は dnd-kit の移動量 (px) + 初期位置補正 (-50%)
+    transform: transform 
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0) translate(-50%, -50%)` 
+      : `translate(-50%, -50%)`,
+    // ドラッグ時の二重表示(残像)を完全に消去
+    opacity: isDragging ? 0 : 1,
+    transition: 'none',
   };
 
   return (
     <div
-      ref={markerRef}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      style={{
-        position: "absolute",
-        left: `${initialX}%`,
-        top: `${initialY}%`,
-        zIndex: 20,
-        touchAction: "none", // モバイルでのスクロール干渉を防止
-      }}
-      className={`cursor-grab ${isDragging ? "cursor-grabbing" : ""}`}
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={`cursor-grab active:cursor-grabbing ${isDragging ? "z-50" : ""}`}
     >
-      <div className="flex flex-col items-center gap-1 group -translate-x-1/2 -translate-y-1/2 select-none">
+      <div className="relative w-full h-full group select-none">
+        {/* 正円マーカー本体 */}
         <div 
-          className="w-10 h-10 rounded-full border-2 border-white shadow-lg flex items-center justify-center font-bold text-white text-xs select-none"
-          style={{ backgroundColor: color }}
+          className={`rounded-full border-2 border-white shadow flex items-center justify-center font-bold text-white w-full h-full ${isDragging ? 'shadow-2xl' : ''}`}
+          style={{ backgroundColor: isBall ? 'transparent' : color, border: isBall ? 'none' : undefined }}
         >
-          {displayName.charAt(0)}
+          {isBall && <SoccerBallSVG />}
+          {!isBall && <span className="text-[10px]">{displayName.charAt(0)}</span>}
         </div>
-        <div className="bg-slate-900/80 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] text-slate-100 whitespace-nowrap opacity-100 select-none pointer-events-none">
-          {displayName}
-        </div>
+
+        {/* 選手名: 絶対配置でオーバーフローを許可 */}
+        {!isBall && (
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-1.5 py-0.5 bg-slate-900/90 rounded text-[9px] text-slate-100 whitespace-nowrap pointer-events-none border border-slate-700/50 shadow-sm z-50">
+            {displayName}
+          </div>
+        )}
       </div>
     </div>
   );
