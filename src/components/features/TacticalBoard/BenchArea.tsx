@@ -2,12 +2,18 @@
 
 import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { Users, ChevronDown, LayoutGrid } from 'lucide-react';
+import { Users, ChevronDown, LayoutGrid, Layout } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { FORMATION_LIST, FormationType, FormationMode } from '@/lib/data/formations';
 
 interface BenchAreaProps {
   teamName: string;
   onTeamToggle: () => void;
-  onAlignGrid: () => void; // グリッド整列関数用
+  onAlignGrid: () => void;
+  formationMode: FormationMode;
+  onFormationModeChange: (mode: FormationMode) => void;
+  onFormationChange?: (formation: FormationType) => void;
   children?: React.ReactNode;
 }
 
@@ -19,6 +25,9 @@ export const BenchArea: React.FC<BenchAreaProps> = ({
   teamName, 
   onTeamToggle, 
   onAlignGrid,
+  formationMode,
+  onFormationModeChange,
+  onFormationChange,
   children 
 }) => {
   const { setNodeRef } = useDroppable({
@@ -56,6 +65,49 @@ export const BenchArea: React.FC<BenchAreaProps> = ({
           <span className="text-[9px] font-bold text-slate-100 truncate pr-2">{teamName}</span>
           <ChevronDown className="w-2.5 h-2.5 text-slate-400 shrink-0" />
         </button>
+
+        {/* フォーメーション選択 & モード切替 */}
+        <div className="flex flex-col gap-2 mt-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 pl-2">
+              <Layout className="w-2.5 h-2.5 text-slate-500" />
+              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Formation</span>
+            </div>
+            
+            {/* Full / Half Toggle */}
+            <div className="flex bg-slate-950/50 p-0.5 rounded-lg border border-slate-800/50">
+              <Button 
+                variant={formationMode === 'full' ? 'default' : 'ghost'} 
+                size="xs" 
+                onClick={() => onFormationModeChange('full')}
+                className={`text-[8px] h-5 px-2 rounded-md ${formationMode === 'full' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                FULL
+              </Button>
+              <Button 
+                variant={formationMode === 'half' ? 'default' : 'ghost'} 
+                size="xs" 
+                onClick={() => onFormationModeChange('half')}
+                className={`text-[8px] h-5 px-2 rounded-md ${formationMode === 'half' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                HALF
+              </Button>
+            </div>
+          </div>
+
+          <Select onValueChange={(val) => onFormationChange?.(val as FormationType)}>
+            <SelectTrigger className="w-full h-7 bg-slate-900/50 border-slate-700 hover:bg-slate-800 text-[10px] font-bold text-slate-200">
+              <SelectValue placeholder="Chose Formation..." />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+              {FORMATION_LIST.map((f) => (
+                <SelectItem key={f} value={f} className="text-[10px] py-1">
+                  {f}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Interactive Droppable Area - Free positioning */}

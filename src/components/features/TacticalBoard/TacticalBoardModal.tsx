@@ -24,6 +24,13 @@ import {
   toViewPos,
   toActualPos
 } from '@/lib/data/tactical-utils';
+import { 
+  FORMATION_POSITIONS, 
+  FormationType, 
+  getFormationActualPos,
+  FormationMode
+} from '@/lib/data/formations';
+import { RotateCcw } from 'lucide-react';
 
 
 interface PlayerState {
@@ -51,6 +58,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
   const [isFlipped, setIsFlipped] = useState(false);
   const [benchTeam, setBenchTeam] = useState<"home" | "away">("home");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [formationMode, setFormationMode] = useState<FormationMode>('full');
 
   // 永続化データ
   const [savedSettings, setSavedSettings] = useState<Record<number, PlayerState>>({});
@@ -222,6 +230,71 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
       return next;
     });
   };
+  
+  /**
+   * 全てを初期状態にリセットする
+   */
+  const handleReset = () => {
+    const initialMapping: Record<number, PlayerState> = {};
+    const setupTeam = (team: "home" | "away") => {
+      const players = metadata?.teams[team]?.players || [];
+      players.forEach((p: any, i: number) => {
+        let x, y, area: 'pitch' | 'bench';
+        if (i < 11) {
+          area = 'pitch';
+          // DEFAULT_442_POSITIONS を使用
+          x = DEFAULT_442_POSITIONS[team][i]?.x || (team === "home" ? 10 : 90);
+          y = DEFAULT_442_POSITIONS[team][i]?.y || (10 + i * 8);
+        } else {
+          area = 'bench';
+          const subIdx = i - 11;
+          x = 15 + (subIdx % 3) * 35;
+          y = 10 + Math.floor(subIdx / 3) * 15;
+        }
+        initialMapping[p.playerId] = { playerId: p.playerId, x, y, team, area };
+      });
+    };
+    setupTeam("home");
+    setupTeam("away");
+    setSavedSettings(initialMapping);
+    setBallPos({ x: 50, y: 50 });
+  };
+
+  /**
+   * 特定チームのフォーメーションを変更する
+   */
+  const handleApplyFormation = (team: "home" | "away", formationType: FormationType) => {
+    const positions = FORMATION_POSITIONS[formationType];
+    if (!positions) return;
+
+    setSavedSettings(prev => {
+      const next = { ...prev };
+      const teamPlayers = Object.values(next).filter(p => p.team === team);
+      
+      // 登録順（または現在のピッチ優先）に11人選出
+      // ここでは仕様通り「登録順（ID順）」の先頭11人をピッチに配置
+      const sorted = [...teamPlayers].sort((a, b) => a.playerId - b.playerId);
+      
+      sorted.forEach((p, i) => {
+        if (i < 11) {
+          const pos = positions[i];
+          const actual = getFormationActualPos(pos, team, formationMode);
+          next[p.playerId] = { ...p, area: 'pitch', x: actual.x, y: actual.y };
+        } else {
+          // 12人目以降はベンチへ
+          const subIdx = i - 11;
+          next[p.playerId] = { 
+            ...p, 
+            area: 'bench', 
+            x: 15 + (subIdx % 3) * 35,
+            y: 10 + Math.floor(subIdx / 3) * 15
+          };
+        }
+      });
+
+      return next;
+    });
+  };
 
   if (!isOpen) return null;
 
@@ -256,6 +329,14 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
               >
                 <ArrowLeftRight className="w-3 h-3" />
                 {isFlipped ? "AWAY VIEW" : "HOME VIEW"}
+              </button>
+
+              <button 
+                onClick={handleReset}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold transition-none border bg-slate-800 border-slate-700 text-slate-400 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400"
+              >
+                <RotateCcw className="w-3 h-3" />
+                RESET
               </button>
             </div>
 
@@ -314,6 +395,9 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
                 teamName={metadata.teams[benchTeam].name}
                 onTeamToggle={() => setBenchTeam(prev => prev === "home" ? "away" : "home")}
                 onAlignGrid={handleAlignBench}
+                formationMode={formationMode}
+                onFormationModeChange={setFormationMode}
+                onFormationChange={(type) => handleApplyFormation(benchTeam, type)}
               >
                 {benchPlayers.map((p) => {
                   const playerMeta = metadata?.teams[p.team]?.players?.find((pm: any) => pm.playerId === p.playerId);
