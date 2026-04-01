@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useMatchMemo } from "@/hooks/use-match-memo";
 import { X, Save, Edit3, Loader2 } from "lucide-react";
+import { useKeyboardShortcut } from "@/hooks/use-shortcut";
+import { SHORTCUT_ACTIONS } from "@/lib/shortcuts";
 
 interface MatchMemoModalProps {
   matchId: string;
@@ -38,13 +40,12 @@ export function MatchMemoModal({ matchId, isOpen, onClose }: MatchMemoModalProps
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      onClose();
-    } else if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-      e.preventDefault();
-      handleSave();
-    }
+    // Only local keys like Tab or specific phase transitions stay here if needed.
+    // Escape is now handled by useKeyboardShortcut.
   };
+
+  useKeyboardShortcut(SHORTCUT_ACTIONS.SAVE_MEMO, handleSave, { enabled: isOpen, ignoreInput: false });
+  useKeyboardShortcut(SHORTCUT_ACTIONS.CLOSE_MODAL, onClose, { enabled: isOpen, ignoreInput: false });
 
   if (!isOpen) return null;
 

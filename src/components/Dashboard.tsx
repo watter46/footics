@@ -22,6 +22,9 @@ import { Loader2, RefreshCw, ChevronLeft, Edit3 } from "lucide-react";
 import Link from "next/link";
 import type { FilterState, OutcomeFilter } from "@/types";
 
+import { useKeyboardShortcut, useExternalAction, useModalToggleShortcut } from "@/hooks/use-shortcut";
+import { SHORTCUT_ACTIONS } from "@/lib/shortcuts";
+
 import { clearMatchCache, loadCustomEventsToDuckDB } from "@/lib/duckdb/data-loader";
 import { deleteCustomEvent } from "@/lib/db";
 import { MATCHES } from "@/lib/data/matches";
@@ -135,31 +138,9 @@ export default function Dashboard({ matchId }: { matchId: string }) {
     }
   }, [db, connection, matchId]);
 
-  // ── Keyboard Shortcuts (Ctrl + M for Match Memo) ──
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
-      // input や textarea にフォーカスがある場合は無視
-      const activeEl = document.activeElement;
-      const isInput = activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA" || (activeEl as HTMLElement)?.isContentEditable;
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
-        if (!isInput) {
-          e.preventDefault();
-          setIsMatchMemoOpen(true);
-        }
-      }
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
-        if (!isInput) {
-          e.preventDefault();
-          setIsTacticalBoardOpen(prev => !prev);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleGlobalKeyDown);
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, []);
+  // ── Keyboard Shortcuts (Centralized Management) ──
+  useModalToggleShortcut(SHORTCUT_ACTIONS.TOGGLE_MATCH_MEMO, setIsMatchMemoOpen);
+  useModalToggleShortcut(SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD, setIsTacticalBoardOpen);
 
   // ── Loading / Error States ──
   if (status === "idle" || status === "initializing" || status === "loading-data") {

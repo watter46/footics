@@ -31,6 +31,8 @@ import {
   FormationMode
 } from '@/lib/data/formations';
 import { RotateCcw } from 'lucide-react';
+import { useKeyboardShortcut } from '@/hooks/use-shortcut';
+import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
 
 
 interface PlayerState {
@@ -136,7 +138,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
     }, 1000);
     return () => clearTimeout(timer);
   }, [savedSettings, ballPos, isFlipped, matchId, isOpen]);
-
+  
   const handleDragStart = (event: DragStartEvent) => setActiveId(event.active.id as string);
 
   const handleDragEnd = (event: DragEndEvent) => {

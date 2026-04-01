@@ -1,4 +1,4 @@
-import { TacticalSetting } from "@/lib/schema";
+// TacticalSetting import removed as it was unused and non-existent
 
 /**
  * 選手名を短縮形式に変換する

@@ -4,6 +4,8 @@ import React, { useState, useMemo, KeyboardEvent, useEffect, useRef } from "reac
 import { EVENT_GROUPS, getFlattenedEvents, getEventMetadata, FlattenedEvent } from "@/lib/event-definitions";
 import { saveCustomEvent } from "@/lib/db";
 import { loadCustomEventsToDuckDB } from "@/lib/duckdb/data-loader";
+import { useKeyboardShortcut, useExternalAction, useModalToggleShortcut } from "@/hooks/use-shortcut";
+import { SHORTCUT_ACTIONS } from "@/lib/shortcuts";
 import type { AsyncDuckDBConnection, AsyncDuckDB } from "@duckdb/duckdb-wasm";
 import { Badge } from "@/components/ui/badge";
 
@@ -61,26 +63,25 @@ export function CentralFocusModal({ matchId, db, connection, onRefresh, editingE
     return { minute: m, second: s, formattedTime: formatted };
   }, [timeStr]);
 
-  // Handle Ctrl+I and group shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key === "i") {
-          e.preventDefault();
-          setIsOpen(true);
-        } else if (isOpen && phase === "label") {
-          const group = EVENT_GROUPS.find(g => g.shortcutKey === e.key);
-          if (group) {
-            e.preventDefault();
-            setActiveGroupId(prev => prev === group.id ? null : group.id);
-            setSuggestionIndex(0);
-          }
+  // ── Keyboard Shortcuts (Centralized Management) ──
+  // 1. Modal Toggle (Global & Esc)
+  useModalToggleShortcut(SHORTCUT_ACTIONS.OPEN_QUICK_EVENT, setIsOpen);
+
+  // 2. Group Selection (Internal, Ctrl + 1~6)
+  // ここは動的なため、直接キー設定を渡す
+  EVENT_GROUPS.forEach(group => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useKeyboardShortcut(
+      { key: group.shortcutKey, ctrl: true }, 
+      () => {
+        if (isOpen && phase === "label") {
+          setActiveGroupId(prev => prev === group.id ? null : group.id);
+          setSuggestionIndex(0);
         }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, phase]);
+      },
+      { enabled: isOpen && phase === "label" }
+    );
+  });
 
   // Set focus on open or phase change
   useEffect(() => {
@@ -190,10 +191,7 @@ export function CentralFocusModal({ matchId, db, connection, onRefresh, editingE
   };
 
   const handleTimestampKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      setIsOpen(false);
-    } else if (e.key === "Tab" && e.shiftKey) {
+    if (e.key === "Tab" && e.shiftKey) {
       e.preventDefault();
     } else if (e.key === "Tab" || e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -202,10 +200,7 @@ export function CentralFocusModal({ matchId, db, connection, onRefresh, editingE
   };
 
   const handleLabelKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      setIsOpen(false);
-    } else if (e.key === "ArrowDown") {
+    if (e.key === "ArrowDown") {
       e.preventDefault();
       setSuggestionIndex(prev => Math.min(prev + 1, suggestions.length - 1));
     } else if (e.key === "ArrowUp") {
@@ -237,17 +232,13 @@ export function CentralFocusModal({ matchId, db, connection, onRefresh, editingE
   };
 
   const handleMemoKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      setIsOpen(false);
-    } else if (e.key === "Tab" && e.shiftKey) {
+    if (e.key === "Tab" && e.shiftKey) {
       e.preventDefault();
       setPhase("label");
-    } else if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-      e.preventDefault();
-      handleSave();
     }
   };
+
+  useKeyboardShortcut(SHORTCUT_ACTIONS.SAVE_MEMO, handleSave, { enabled: isOpen && phase === "memo", ignoreInput: false });
 
   if (!isOpen) return null;
 

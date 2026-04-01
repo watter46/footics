@@ -8,6 +8,9 @@ import { TacticalBoardModal } from "@/components/features/TacticalBoard/Tactical
 import { ChevronLeft, Edit3 } from "lucide-react";
 import Link from "next/link";
 
+import { useKeyboardShortcut, useExternalAction, useModalToggleShortcut } from "@/hooks/use-shortcut";
+import { SHORTCUT_ACTIONS } from "@/lib/shortcuts";
+
 import { getCustomEventsByMatch, deleteCustomEvent } from "@/lib/db";
 import { MATCHES } from "@/lib/data/matches";
 import type { EventRow, MatchMetadata } from "@/types";
@@ -76,30 +79,9 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
     setRefreshTrigger(prev => prev + 1);
   }, []);
 
-  // ── Keyboard Shortcuts (Ctrl + M for Match Memo) ──
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
-      const activeEl = document.activeElement;
-      const isInput = activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA" || (activeEl as HTMLElement)?.isContentEditable;
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
-        if (!isInput) {
-          e.preventDefault();
-          setIsMatchMemoOpen(true);
-        }
-      }
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
-        if (!isInput) {
-          e.preventDefault();
-          setIsTacticalBoardOpen(prev => !prev);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleGlobalKeyDown);
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, []);
+  // ── Keyboard Shortcuts (Centralized Management) ──
+  useModalToggleShortcut(SHORTCUT_ACTIONS.TOGGLE_MATCH_MEMO, setIsMatchMemoOpen);
+  useModalToggleShortcut(SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD, setIsTacticalBoardOpen);
 
   const events: EventRow[] = useMemo(() => {
     return customEvents.map(e => ({
