@@ -11,6 +11,7 @@ interface PlayerMarkerProps {
   initialY: number; // 0-100 (Parent relative)
   color?: string;
   isBall?: boolean;
+  isOverlay?: boolean; // ドラッグ中の強調表示フラグ
 }
 
 /**
@@ -40,6 +41,7 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
   initialY,
   color = "#3b82f6",
   isBall = false,
+  isOverlay = false,
 }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: id,
@@ -66,8 +68,8 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
     transform: transform 
       ? `translate3d(${transform.x}px, ${transform.y}px, 0) translate(-50%, -50%)` 
       : `translate(-50%, -50%)`,
-    // ドラッグ時の二重表示(残像)を完全に消去
-    opacity: isDragging ? 0 : 1,
+    // ドラッグ時の二重表示(残像)を消去。ただしオーバーレイ側の場合は表示する。
+    opacity: (isDragging && !isOverlay) ? 0 : 1,
     transition: 'none',
   };
 
@@ -80,6 +82,21 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
       className={`cursor-grab active:cursor-grabbing ${isDragging ? "z-50" : ""}`}
     >
       <div className="relative w-full h-full group select-none">
+        {/* 強調エフェクト (2倍サイズのバブル) */}
+        {isOverlay && (
+          <div 
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none transition-all duration-200 ease-out"
+            style={{ 
+              backgroundColor: color, 
+              opacity: 0.35,
+              width: `${markerSize * 2.5}px`,
+              height: `${markerSize * 2.5}px`,
+              zIndex: -1,
+              filter: 'blur(1px)',
+            }}
+          />
+        )}
+
         {/* 正円マーカー本体 */}
         <div 
           className={`rounded-full border-2 border-white shadow flex items-center justify-center font-bold text-white w-full h-full ${isDragging ? 'shadow-2xl' : ''}`}

@@ -419,7 +419,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
           <DragOverlay dropAnimation={null} modifiers={[snapCenterToCursor]}>
             {activeId ? (
               activeId === 'ball' ? (
-                <PlayerMarker id="ball" playerName="BALL" initialX={0} initialY={0} color="#f97316" isBall />
+                <PlayerMarker id="ball" playerName="BALL" initialX={0} initialY={0} color="#f97316" isBall isOverlay />
               ) : (
                 (() => {
                   const [_, pIdStr] = activeId.split('-');
@@ -427,7 +427,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
                   const p = savedSettings[pId];
                   const playerMeta = metadata?.teams[p?.team || 'home']?.players?.find((pm: any) => pm.playerId === pId);
                   return (
-                    <PlayerMarker id={activeId} playerName={playerMeta?.name || `Player ${pId}`} initialX={0} initialY={0} color={p?.team === "home" ? homeColor : awayColor} />
+                    <PlayerMarker id={activeId} playerName={playerMeta?.name || `Player ${pId}`} initialX={0} initialY={0} color={p?.team === "home" ? homeColor : awayColor} isOverlay />
                   );
                 })()
               )
