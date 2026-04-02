@@ -24,23 +24,44 @@ export function useNationalDashboard({ matchId, defaultHome, defaultAway, defaul
   }, [matchId, refreshTrigger]);
 
   useEffect(() => {
-    fetch(`/national_data/match_${matchId}.json`)
-      .then(res => res.json())
+    // 開発・本番両方で動作するよう、ルート相対パスを使用しつつエラーチェックを強化
+    const jsonPath = `/national_data/match_${matchId}.json`;
+    
+    fetch(jsonPath)
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status} (Check if ${jsonPath} exists in public folder)`);
+        }
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new TypeError("Received non-JSON response from server. (Possible 404 redirect)");
+        }
+        return res.json();
+      })
       .then(data => {
+        if (!data?.initialMatchDataForScrappers?.[0]) {
+          throw new Error("Invalid format: initialMatchDataForScrappers[0] not found");
+        }
         const d = data.initialMatchDataForScrappers[0];
         const lineups = d[2];
+        if (!lineups || !lineups[9]) {
+          throw new Error("Invalid format: lineups data not found at expected index");
+        }
+        
         const formatted = {
           lineups: {
-            homeStarters: lineups[9].map((p: any) => ({ name: p[0], playerId: p[3], isFirstEleven: true })),
-            awayStarters: lineups[10].map((p: any) => ({ name: p[0], playerId: p[3], isFirstEleven: true })),
-            homeBench: lineups[11].map((p: any) => ({ name: p[0], playerId: p[3], isFirstEleven: false })),
-            awayBench: lineups[12].map((p: any) => ({ name: p[0], playerId: p[3], isFirstEleven: false })),
+            homeStarters: (lineups[9] || []).map((p: any) => ({ name: p[0], playerId: p[3], isFirstEleven: true })),
+            awayStarters: (lineups[10] || []).map((p: any) => ({ name: p[0], playerId: p[3], isFirstEleven: true })),
+            homeBench: (lineups[11] || []).map((p: any) => ({ name: p[0], playerId: p[3], isFirstEleven: false })),
+            awayBench: (lineups[12] || []).map((p: any) => ({ name: p[0], playerId: p[3], isFirstEleven: false })),
           },
           timeline: d[1]
         };
         setMatchData(formatted);
       })
-      .catch(err => console.error("Failed to load national match data:", err));
+      .catch(err => {
+        console.error("[footics] Failed to load national match data:", err);
+      });
   }, [matchId]);
 
   const handleEditCustomEvent = useCallback((event: any) => {

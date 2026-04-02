@@ -32,23 +32,12 @@ export function useTacticalBoard(matchId: string, metadata: any, isOpen: boolean
   useEffect(() => {
     if (isOpen && matchId) {
       getTacticalSnapshot(matchId).then((snapshot) => {
-        if (snapshot && snapshot.tactics?.[0]) {
-          const tactic = snapshot.tactics[0];
-          const mapping: Record<number, PlayerState> = {};
-          tactic.players.forEach((p: any) => {
-            mapping[p.playerId] = {
-              ...p,
-              area: p.area || (p.y > 100 ? 'bench' : 'pitch')
-            };
-          });
-          store.setSavedSettings(mapping);
-          store.setBallPos(tactic.assets.ball);
-          store.setIsFlipped(snapshot.isInverted);
-        } else {
-          // Initial Setup if no snapshot exists
+        const setupFallback = () => {
           const initialMapping: Record<number, PlayerState> = {};
           const setupTeam = (team: "home" | "away") => {
             const players = metadata?.teams[team]?.players || [];
+            if (players.length === 0) return false;
+            
             players.forEach((p: any, i: number) => {
               let x, y, area: 'pitch' | 'bench';
               if (i < 11) {
@@ -63,12 +52,47 @@ export function useTacticalBoard(matchId: string, metadata: any, isOpen: boolean
               }
               initialMapping[p.playerId] = { playerId: p.playerId, x, y, team, area };
             });
+            return true;
           };
-          setupTeam("home");
-          setupTeam("away");
+          
+          const homeSuccess = setupTeam("home");
+          const awaySuccess = setupTeam("away");
+          
+          // どちらのチームも選手がいない場合は、まだロード中と判断してセットしない
+          if (!homeSuccess && !awaySuccess) {
+            console.log("[footics] Metadata players not ready, skipping setup");
+            return;
+          }
+
           store.setSavedSettings(initialMapping);
           store.setBallPos({ x: 50, y: 50 });
           store.setIsFlipped(false);
+        };
+
+        if (snapshot && snapshot.tactics?.[0]) {
+          const tactic = snapshot.tactics[0];
+          
+          // 自己修復: スナップショットが空だが、メタデータには選手がいる場合、メタデータを優先
+          const hasMetadataPlayers = (metadata?.teams?.home?.players?.length || 0) > 0;
+          if (tactic.players.length === 0 && hasMetadataPlayers) {
+            console.warn("[footics] Empty snapshot found. Repairing from metadata...");
+            setupFallback();
+            return;
+          }
+
+          const mapping: Record<number, PlayerState> = {};
+          tactic.players.forEach((p: any) => {
+            mapping[p.playerId] = {
+              ...p,
+              area: p.area || (p.y > 100 ? 'bench' : 'pitch')
+            };
+          });
+          store.setSavedSettings(mapping);
+          store.setBallPos(tactic.assets.ball);
+          store.setIsFlipped(snapshot.isInverted);
+        } else {
+          // Initial Setup if no snapshot exists
+          setupFallback();
         }
       });
     }
