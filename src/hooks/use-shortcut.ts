@@ -1,14 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { isInputFocused, SHORTCUT_CONFIG, ShortcutAction, SHORTCUT_ACTIONS } from "@/lib/shortcuts";
-
-interface SimpleKeyConfig {
-  key: string;
-  ctrl?: boolean;
-  shift?: boolean;
-  meta?: boolean;
-}
+import { isInputFocused, ShortcutAction, SHORTCUT_CONFIG, isActionMatch, SimpleKeyConfig, SHORTCUT_ACTIONS } from "@/lib/shortcuts";
 
 /**
  * キーボードショートカットを登録するカスタムフック
@@ -17,7 +10,7 @@ interface SimpleKeyConfig {
  * @param options 追加設定
  */
 export function useKeyboardShortcut(
-  actionOrConfig: ShortcutAction | SimpleKeyConfig,
+  actionOrConfig: ShortcutAction | SimpleKeyConfig | ((e: KeyboardEvent) => boolean),
   callback: (e: KeyboardEvent) => void,
   options: { enabled?: boolean; ignoreInput?: boolean } = {}
 ) {
@@ -28,20 +21,15 @@ export function useKeyboardShortcut(
       if (!enabled) return;
       if (ignoreInput && isInputFocused()) return;
 
-      let keyConf: SimpleKeyConfig;
-      if (typeof actionOrConfig === "string") {
-        keyConf = SHORTCUT_CONFIG[actionOrConfig];
-      } else {
-        keyConf = actionOrConfig;
+      if (typeof actionOrConfig === "function") {
+        if (actionOrConfig(e)) {
+          e.preventDefault();
+          callback(e);
+        }
+        return;
       }
 
-      if (!keyConf) return;
-
-      const isKeyMatch = e.key.toLowerCase() === keyConf.key.toLowerCase();
-      const isCtrlMatch = !!keyConf.ctrl === (e.ctrlKey || e.metaKey); // Ctrl or Cmd
-      const isShiftMatch = !!keyConf.shift === e.shiftKey;
-
-      if (isKeyMatch && isCtrlMatch && isShiftMatch) {
+      if (isActionMatch(e, actionOrConfig)) {
         e.preventDefault();
         callback(e);
       }
@@ -86,19 +74,20 @@ export function useExternalAction(actionName: ShortcutAction, action: () => void
 export function useModalToggleShortcut(
   action: ShortcutAction,
   setOpen: (open: boolean | ((prev: boolean) => boolean)) => void,
-  options: { closeOnEsc?: boolean } = {}
+  options: { closeOnEsc?: boolean; isOpen?: boolean } = {}
 ) {
-  const { closeOnEsc = true } = options;
+  const { closeOnEsc = true, isOpen = false } = options;
 
-  // Toggle on action key
-  useKeyboardShortcut(action, () => setOpen(prev => !prev), { ignoreInput: false });
+  // Toggle on action key (Always available to open/close)
+  useKeyboardShortcut(action, () => setOpen(prev => !prev), { 
+    ignoreInput: false 
+  });
 
-  // Close on Escape (only if requested)
-  if (closeOnEsc) {
-    useKeyboardShortcut(SHORTCUT_ACTIONS.CLOSE_MODAL, () => setOpen(false), { 
-      ignoreInput: false 
-    });
-  }
+  // Close on Escape (Only if modal is actually OPEN)
+  useKeyboardShortcut(SHORTCUT_ACTIONS.CLOSE_MODAL, () => setOpen(false), { 
+    enabled: isOpen && closeOnEsc,
+    ignoreInput: false 
+  });
 
   // Support external API trigger
   useExternalAction(action, () => setOpen(prev => !prev));

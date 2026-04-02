@@ -3,6 +3,7 @@
 Next.js 15 (App Router) と Cloudflare Workers を基盤とし、IndexedDB と DuckDB-Wasm を駆使した「ローカルファースト・分析プラットフォーム」の保守と拡張を担います。
 
 # Technology Stack & Libraries
+- **Package Manager**: **pnpm** (Strictly enforced. Convert all `npm` commands to `pnpm`)
 - **Framework**: Next.js 15.5+ (App Router)
 - **Runtime**: Cloudflare Workers (@opennextjs/cloudflare)
 - **State**: **Zustand (UI状態・ドラッグ・動画同期)** / TanStack Query (IDB同期)
@@ -31,6 +32,9 @@ Next.js 15 (App Router) と Cloudflare Workers を基盤とし、IndexedDB と D
    - 既存の `src/components/features/` のフォルダ構造を維持する。
    - 200行を超えるコンポーネントは即座に Logic (Hook) と UI に分割する。
    - 映像連携を見据え、タイムスタンプに紐づくデータには `videoTimestamp` フィールドの追加を検討する。
+3. **Execution**:
+   - パッケージのインストールやスクリプト実行時は必ず `pnpm` を使用する。
+   - もし指示の中に `npm` が含まれていたとしても、自動的に `pnpm` に読み替えて実行すること。
 
 # Specific Constraints
 - **No LocalStorage**: 永続化が必要な場合は必ず `idb` または `idb-keyval` を使用。

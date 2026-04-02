@@ -1,72 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo, useEffect } from "react";
+import React from "react";
 import type { MatchSummary } from "@/types";
 import { Calendar, Filter, X, Database } from "lucide-react";
-import { getAllMatches } from "@/lib/db";
 import { GlobalDataManagement } from "./GlobalDataManagement";
+import { useMatchList } from "@/hooks/use-match-list";
 
 interface Props {
   matches: MatchSummary[];
 }
 
-// チームフィルター定義 (拡張しやすいように配列で管理)
 const TEAM_FILTERS = [
   { label: "Chelsea", value: "Chelsea" },
 ];
 
 export function MatchListClient({ matches: serverMatches }: Props) {
-  const [activeTeam, setActiveTeam] = useState<string | null>(null);
-  const [activeType, setActiveType] = useState<"all" | "club" | "national">("all");
-  const [idbMatches, setIdbMatches] = useState<MatchSummary[]>([]);
-  const [isLoadingIdb, setIsLoadingIdb] = useState(true);
-
-  useEffect(() => {
-    async function loadIdbMatches() {
-      try {
-        const cached = await getAllMatches();
-        setIdbMatches(cached);
-      } catch (err) {
-        console.error("Failed to load IndexedDB matches:", err);
-      } finally {
-        setIsLoadingIdb(false);
-      }
-    }
-    loadIdbMatches();
-  }, []);
-
-  const allMatches = useMemo(() => {
-    // Merge server matches and IDB matches, prioritizing IDB (which might be newer or overwritten)
-    const merged = new Map<string, MatchSummary>();
-    
-    serverMatches.forEach(m => merged.set(m.id, m));
-    idbMatches.forEach(m => merged.set(m.id, m));
-    
-    return Array.from(merged.values());
-  }, [serverMatches, idbMatches]);
-
-  const sortedAndFiltered = useMemo(() => {
-    let sorted = [...allMatches].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-    if (activeType !== "all") {
-      sorted = sorted.filter((m) => m.matchType === activeType);
-    }
-    if (activeTeam) {
-      sorted = sorted.filter(
-        (m) =>
-          m.homeTeam.name.toLowerCase().includes(activeTeam.toLowerCase()) ||
-          m.awayTeam.name.toLowerCase().includes(activeTeam.toLowerCase())
-      );
-    }
-    return sorted;
-  }, [allMatches, activeTeam, activeType]);
+  const d = useMatchList(serverMatches);
 
   return (
     <div className="flex flex-col gap-6">
       {/* Filter Bar */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap relative z-20">
         <div className="flex items-center gap-1.5 text-slate-500 text-sm font-medium pr-2">
           <Filter className="w-3.5 h-3.5" />
           <span>Type</span>
@@ -74,9 +29,9 @@ export function MatchListClient({ matches: serverMatches }: Props) {
         {(["all", "club", "national"] as const).map((t) => (
           <button
             key={t}
-            onClick={() => setActiveType(t)}
+            onClick={() => d.setActiveType(t)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border transition-all duration-200 capitalize ${
-              activeType === t
+              d.activeType === t
                 ? "bg-blue-500/20 border-blue-500/60 text-blue-300"
                 : "bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
             }`}
@@ -92,11 +47,11 @@ export function MatchListClient({ matches: serverMatches }: Props) {
           <span>Team</span>
         </div>
         {TEAM_FILTERS.map((f) => {
-          const isActive = activeTeam === f.value;
+          const isActive = d.activeTeam === f.value;
           return (
             <button
               key={f.value}
-              onClick={() => setActiveTeam(isActive ? null : f.value)}
+              onClick={() => d.setActiveTeam(isActive ? null : f.value)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border transition-all duration-200 ${
                 isActive
                   ? "bg-blue-500/20 border-blue-500/60 text-blue-300"
@@ -108,32 +63,32 @@ export function MatchListClient({ matches: serverMatches }: Props) {
             </button>
           );
         })}
-        {activeTeam && (
-          <span className="text-xs text-slate-500 ml-auto mr-4">
-            {sortedAndFiltered.length} match{sortedAndFiltered.length !== 1 ? "es" : ""}
+        {d.activeTeam && (
+          <span className="text-xs text-slate-500 ml-auto mr-4 italic">
+            {d.sortedAndFiltered.length} match{d.sortedAndFiltered.length !== 1 ? "es" : ""} found
           </span>
         )}
-        <div className={activeTeam ? "" : "ml-auto"}>
+        <div className={d.activeTeam ? "" : "ml-auto"}>
           <GlobalDataManagement />
         </div>
       </div>
 
       {/* Match List */}
-      {sortedAndFiltered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-600">
-          <Filter className="w-10 h-10 opacity-40" />
-          <p className="text-base font-medium">No matches found</p>
+      {d.sortedAndFiltered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-600 bg-slate-900/40 rounded-3xl border border-slate-800 border-dashed">
+          <Filter className="w-10 h-10 opacity-40 animate-pulse" />
+          <p className="text-base font-medium">No matches found matching filters</p>
           <button
-            onClick={() => setActiveTeam(null)}
-            className="text-sm text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
+            onClick={() => d.setActiveTeam(null)}
+            className="text-sm text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors font-bold"
           >
-            Clear filter
+            Reset Filters
           </button>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {sortedAndFiltered.map((match, i) => {
-            const isLatest = i === 0 && !activeTeam;
+          {d.sortedAndFiltered.map((match, i) => {
+            const isLatest = i === 0 && !d.activeTeam;
             return (
               <Link key={match.id} href={`/match/${match.id}`}>
                 <div
@@ -161,19 +116,19 @@ export function MatchListClient({ matches: serverMatches }: Props) {
                         : "—"}
                     </div>
                     <div className="text-[10px] text-slate-600 font-mono">
-                      {match.date ? new Date(match.date).getFullYear() : ""}
+                      {match.date ? new Date(match.date).getFullYear() : "N/A"}
                     </div>
                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-500 font-mono mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis w-full max-w-full block">
                       #{match.id}
                     </span>
-                    {idbMatches.some(im => im.id === match.id) && (
-                      <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-blue-900/40 border border-blue-500/40 text-blue-400 font-semibold mt-0.5 uppercase tracking-wider">
+                    {d.idbMatches.some(im => im.id === match.id) && (
+                      <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-blue-900/40 border border-blue-500/40 text-blue-400 font-bold mt-0.5 uppercase tracking-wider">
                         <Database className="w-2.5 h-2.5" />
                         Imported
                       </span>
                     )}
                     {match.matchType === "national" && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/40 border border-emerald-500/40 text-emerald-400 font-semibold mt-0.5 uppercase tracking-wider">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/40 border border-emerald-500/40 text-emerald-400 font-bold mt-0.5 uppercase tracking-wider">
                         National
                       </span>
                     )}
@@ -186,7 +141,7 @@ export function MatchListClient({ matches: serverMatches }: Props) {
                       <span className="font-bold text-xs sm:text-base leading-tight line-clamp-1 text-slate-100">
                         {match.homeTeam.name}
                       </span>
-                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg bg-slate-100 flex items-center justify-center p-1.5 shadow-inner transform group-hover:scale-105 transition-transform duration-200 shrink-0">
+                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg bg-slate-100 flex items-center justify-center p-1.5 shadow-inner transform group-hover:scale-105 transition-transform duration-200 shrink-0 border border-slate-200">
                         <img
                           src={`https://d2zywfiolv4f83.cloudfront.net/img/teams/${match.homeTeam.id}.png`}
                           alt={match.homeTeam.name}
@@ -197,17 +152,17 @@ export function MatchListClient({ matches: serverMatches }: Props) {
 
                     {/* Score */}
                     <div className="flex flex-col items-center justify-center flex-1 z-10">
-                      <div className="text-xl sm:text-3xl font-extrabold tracking-tighter text-slate-50 whitespace-nowrap tabular-nums">
+                      <div className="text-xl sm:text-3xl font-black tracking-tighter text-slate-50 whitespace-nowrap tabular-nums drop-shadow-sm">
                         {(match.score || "0 : 0").replace(/\s+/g, "").replace(":", " - ")}
                       </div>
-                      <div className="text-[9px] sm:text-[10px] text-slate-600 mt-0.5 uppercase tracking-widest font-bold">
-                        FT
+                      <div className="text-[9px] sm:text-[10px] text-slate-600 mt-0.5 uppercase tracking-widest font-black opacity-60">
+                        Full Time
                       </div>
                     </div>
 
                     {/* Away Team */}
                     <div className="flex items-center gap-2 sm:gap-3 w-[38%] justify-start text-left">
-                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg bg-slate-100 flex items-center justify-center p-1.5 shadow-inner transform group-hover:scale-105 transition-transform duration-200 shrink-0">
+                      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg bg-slate-100 flex items-center justify-center p-1.5 shadow-inner transform group-hover:scale-105 transition-transform duration-200 shrink-0 border border-slate-200">
                         <img
                           src={`https://d2zywfiolv4f83.cloudfront.net/img/teams/${match.awayTeam.id}.png`}
                           alt={match.awayTeam.name}
@@ -221,7 +176,7 @@ export function MatchListClient({ matches: serverMatches }: Props) {
                   </div>
 
                   {/* Hover accent */}
-                  <div className="absolute inset-y-0 left-0 w-0.5 bg-blue-500/0 group-hover:bg-blue-500/60 transition-all duration-200 rounded-l-xl" />
+                  <div className="absolute inset-y-0 left-0 w-0.5 bg-blue-500/0 group-hover:bg-blue-500/80 transition-all duration-200 rounded-l-xl" />
                 </div>
               </Link>
             );

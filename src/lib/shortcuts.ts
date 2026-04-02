@@ -11,6 +11,13 @@ export const SHORTCUT_ACTIONS = {
 
 export type ShortcutAction = typeof SHORTCUT_ACTIONS[keyof typeof SHORTCUT_ACTIONS];
 
+export interface SimpleKeyConfig {
+  key: string;
+  ctrl?: boolean;
+  shift?: boolean;
+  meta?: boolean;
+}
+
 /**
  * キーとアクションの対応（デフォルト設定）
  * 将来的に localStorage などから読み込むように拡張可能
@@ -34,4 +41,48 @@ export const isInputFocused = () => {
     activeEl.tagName === "TEXTAREA" ||
     (activeEl as HTMLElement).isContentEditable
   );
+};
+
+/**
+ * イベントが指定のアクションまたは設定に合致するか判定
+ */
+export const isActionMatch = (
+  e: KeyboardEvent, 
+  actionOrConfig: ShortcutAction | SimpleKeyConfig
+) => {
+  let keyConf: SimpleKeyConfig;
+  if (typeof actionOrConfig === "string") {
+    keyConf = SHORTCUT_CONFIG[actionOrConfig];
+  } else {
+    keyConf = actionOrConfig;
+  }
+
+  if (!keyConf) return false;
+
+  const targetKey = keyConf.key.toLowerCase();
+  const eventKey = (e.key || "").toLowerCase();
+  const eventCode = e.code || "";
+
+  // モディファイア判定を先に計算
+  const isCtrlMatch = !!keyConf.ctrl === (e.ctrlKey || e.metaKey);
+  const isShiftMatch = !!keyConf.shift === e.shiftKey;
+
+  // Escape の特別扱い
+  if (targetKey === "escape" || targetKey === "esc") {
+    // Escape の場合は、修飾キー（Ctrl/Shift）が押されていなければ常に許容
+    const looksLikeEscape = 
+      eventCode === "Escape" || 
+      eventKey === "escape" || 
+      eventKey === "esc" ||
+      (e as any).keyCode === 27;
+    
+    if (looksLikeEscape && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+      return true;
+    }
+  }
+
+  // 通常キー判定
+  const isKeyMatch = eventKey === targetKey;
+
+  return isKeyMatch && isCtrlMatch && isShiftMatch;
 };
