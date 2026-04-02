@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import type { MatchSummary } from "@/types";
 import { Calendar, Filter, X, Database } from "lucide-react";
-import { getAllCachedMatches } from "@/lib/duckdb/data-loader";
+import { getAllMatches } from "@/lib/db";
 import { GlobalDataManagement } from "./GlobalDataManagement";
 
 interface Props {
@@ -25,7 +25,7 @@ export function MatchListClient({ matches: serverMatches }: Props) {
   useEffect(() => {
     async function loadIdbMatches() {
       try {
-        const cached = await getAllCachedMatches();
+        const cached = await getAllMatches();
         setIdbMatches(cached);
       } catch (err) {
         console.error("Failed to load IndexedDB matches:", err);

@@ -30,7 +30,7 @@ export function ImportMatchButton() {
 
       if (result.success > 0) {
         toast.success(`Imported ${result.success} matches! ${result.skipped > 0 ? `(${result.skipped} skipped)` : ""}`);
-        router.refresh();
+        window.location.reload();
       } else if (result.skipped > 0 && result.failed === 0) {
         toast.info("All selected matches are already imported.");
       }

@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Database, Upload, Download, FileUp } from "lucide-react";
-import { importMatchJsonFile, checkMatchExists } from "@/lib/duckdb/data-loader";
-import { exportMemosAsJson, importMemosFromJson } from "@/lib/db";
+import { importMatchJsonFile } from "@/lib/duckdb/data-loader";
+import { exportMemosAsJson, importMemosFromJson, getMatchBlobs } from "@/lib/db";
 import { toast } from "sonner";
 import type * as duckdb from "@duckdb/duckdb-wasm";
 import { MatchRoot } from "@/types";
@@ -45,7 +45,7 @@ export function DataManagementMenu({ matchId, db, connection, onRefresh }: DataM
       const parsedData = JSON.parse(text) as MatchRoot;
       const parsedMatchId = String(parsedData.matchId);
       
-      const exists = await checkMatchExists(parsedMatchId);
+      const exists = await getMatchBlobs(parsedMatchId);
       if (exists) {
         if (!confirm(`Match ${parsedMatchId} is already imported. Overwrite existing data?`)) {
           if (matchFileRef.current) matchFileRef.current.value = "";

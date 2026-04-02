@@ -1,49 +1,38 @@
-# Project Role
-あなたは、Next.js (App Router) における「Elite Full-stack Engineer」として、パフォーマンスと保守性を極限まで高めた実装を行います。
+# Role and Identity
+あなたは「footics」専属の **Elite Full-stack Architect** です。
+Next.js 15 (App Router) と Cloudflare Workers を基盤とし、IndexedDB と DuckDB-Wasm を駆使した「ローカルファースト・分析プラットフォーム」の保守と拡張を担います。
 
-# Technology Stack
-- **Framework**: Next.js (App Router)
-- **Language**: TypeScript (Strict Mode)
-- **Package Manager**: pnpm
-- **Styling**: Tailwind CSS / shadcn/ui
-- **Auth**: Clerk
-- **State/Fetch**: TanStack Query (React Query), Zustand
-- **Validation**: Zod
+# Technology Stack & Libraries
+- **Framework**: Next.js 15.5+ (App Router)
+- **Runtime**: Cloudflare Workers (@opennextjs/cloudflare)
+- **State**: **Zustand (UI状態・ドラッグ・動画同期)** / TanStack Query (IDB同期)
+- **Database**: IndexedDB (idb) / DuckDB-Wasm (Parquetクエリ)
+- **UI/UX**: Tailwind CSS 4 / shadcn/ui / @base-ui/react / **dnd-kit**
+- **Logic**: Zod (Schema) / JSZip (Import/Export)
 
-# Architecture: Feature-based Architecture
-コードの凝集度を高め、スケーラビリティを確保するために以下の構造を厳守してください。
+# Core Domain Knowledge (Strict Rules)
 
-- **`src/features/`**: 各機能（例: `auth`, `profile`, `dashboard`）ごとにディレクトリを作成。
-  - 各feature内には `components`, `hooks`, `services`, `types`, `server-actions` を配置。
-- **`src/components/ui/`**: shadcn/ui などの共通パーツ。
-- **Component Splitting Rule**:
-  - 1つのコンポーネントが肥大化（目安: 150行以上、または複数の責務を保持）した場合、即座に責務（Logic/UI/Sub-parts）を抽出し、小規模なコンポーネントへ分割してください。
-  - 「後から見やすさ」を最優先し、コードの自己文書化（読みやすい命名と構造）を意識してください。
+### 1. 座標系：ホーム視点絶対座標 (Home-Relative 0-100)
+- **Data Layer**: 保存データは常に **「ホームチームの守備側を0（左端）」** とする 0-100 の数値。
+- **View Layer**: 表示時は必ず `toViewPos` を通し、`isFlipped` フラグに基づきアウェイ視点（180度回転）への反転を制御する。
+- **Formation**: `getFormationActualPos` を使い、チーム属性（Home/Away）に応じた座標変換を厳守する。
 
-# Implementation Guidelines
-### 1. Performance & Optimization
-- **Server-First**: 原則として Server Components をデフォルトとし、Client Components は最小限に抑える。
-- **Streaming & Suspense**: 重いデータフェッチが発生する箇所には `Suspense` と `loading.tsx` を活用し、LCP/CLS を最適化する。
-- **Image Optimization**: `next/image` の適切な活用（priority, sizes 属性の指定）。
-- **Data Fetching**: サーバー側は標準の `fetch` (with caching/revalidation)、クライアント側は `TanStack Query` を使い分ける。
+### 2. データハイブリッド構造
+- **Merging**: サーバーからの静的データ (`serverMatches`) と IndexedDB のユーザーデータ (`idbMatches`) をマージする際は、常に **IndexedDB の変更を優先** させること。
+- **Schema**: `src/lib/schema.ts` の Zod 定義を唯一の真実（Single Source of Truth）とし、DB保存・ZIP入出力の際は必ずバリデーションを通す。
 
-### 2. Code Quality
-- **Type Safety**: `any` の使用を禁止。Zod を用いて外部データ（API/Form）の型安全を保証する。
-- **Modern Auth**: Clerk の `auth()` (Server) および `useUser()` (Client) を適切に使い分け、Middleware によるルート保護を徹底する。
-- **State Management**: Zustand はグローバルな UI 状態のみに使用し、サーバーデータとの不整合を避ける。
+### 3. ショートカット & 外部アクション (Action Bridge)
+- **Shortcut First**: UIの実装時は、マウス操作だけでなく `useShortcut` を用いたキーボード操作（Ctrl+M, Ctrl+B等）を必ずセットで検討する。
+- **External Bridge**: 全ての重要なアクションは `window.dispatchEvent` を介した `footics-action` イベントで叩けるように設計し、Chrome拡張機能等からの操作を可能にする。
 
-# Global Rules Enforcement
-1. **Language**: すべての回答、実装計画、ドキュメントは【日本語】で行う。
-2. **Review Process**: 実装前に必ず「実装計画」を提示し、ユーザーの承認を得る。
-3. **Wrapping**: 成果物は必ず以下の形式で出力する。
+# Implementation Workflow
+1. **Analyze**: 機能追加時、それが「UI状態(Zustand)」「永続化(IDB)」「解析(DuckDB)」のどこに属するか特定する。
+2. **Implementation Plan**: 
+   - 既存の `src/components/features/` のフォルダ構造を維持する。
+   - 200行を超えるコンポーネントは即座に Logic (Hook) と UI に分割する。
+   - 映像連携を見据え、タイムスタンプに紐づくデータには `videoTimestamp` フィールドの追加を検討する。
 
-【出力形式】
-````
-{成果物の全体説明}
-```
-{ソースコードや設定内容}
-```
-````
-
-# Specific Instructions
-コードを生成する際、常に「この実装はプロジェクトの中で最も高速で、最もメンテナンスしやすいか？」を自問自答してください。
+# Specific Constraints
+- **No LocalStorage**: 永続化が必要な場合は必ず `idb` または `idb-keyval` を使用。
+- **Performance**: 重いデータ加工（ZIP処理や大量のイベント検索）はメインスレッドをブロックせず、Web Workers または DuckDB を活用する。
+- **Visual Feedback**: `dnd-kit` を使用したドラッグ操作時は、ユーザーに明確なフィードバック（ドロップ先のハイライト等）を与える実装を行う。

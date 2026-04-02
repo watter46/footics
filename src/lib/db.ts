@@ -9,13 +9,14 @@
  */
 import { openDB, type IDBPDatabase } from "idb";
 import type { EventMemo, CustomEvent, MatchMemo, TacticalSnapshot } from "./schema";
+import type { MatchSummary, MatchBlobEntry } from "@/types";
 
 // ──────────────────────────────────────────────
 // DB Schema Definition
 // ──────────────────────────────────────────────
 
 const DB_NAME = "footics_db";
-const DB_VERSION = 9;
+const DB_VERSION = 11;
 
 interface FooticsDBSchema {
   event_memos: {
@@ -39,6 +40,14 @@ interface FooticsDBSchema {
   tactical_snapshots: {
     key: string; // matchId
     value: TacticalSnapshot;
+  };
+  matches: {
+    key: string; // matchId
+    value: MatchSummary;
+  };
+  match_blobs: {
+    key: string; // matchId
+    value: MatchBlobEntry;
   };
 }
 
@@ -96,6 +105,16 @@ export function getDatabase(): Promise<IDBPDatabase<FooticsDBSchema>> {
         if (oldVersion < 9) {
           const store = transaction.objectStore("tactical_snapshots");
           store.clear();
+        }
+
+        // matches ストア (Version 10)
+        if (!db.objectStoreNames.contains("matches")) {
+          db.createObjectStore("matches", { keyPath: "id" });
+        }
+
+        // match_blobs ストア (Version 11: Unified DB 化)
+        if (!db.objectStoreNames.contains("match_blobs")) {
+          db.createObjectStore("match_blobs", { keyPath: "matchId" });
         }
       },
     });
@@ -263,4 +282,84 @@ export async function putTacticalSnapshot(snapshot: TacticalSnapshot): Promise<v
 export async function deleteTacticalSnapshot(matchId: string): Promise<void> {
   const db = await getDatabase();
   await db.delete("tactical_snapshots", matchId);
+}
+
+// ──────────────────────────────────────────────
+// Match Registry Operations
+// ──────────────────────────────────────────────
+
+export async function getAllMatches(): Promise<MatchSummary[]> {
+  const db = await getDatabase();
+  return db.getAll("matches");
+}
+
+export async function getMatch(matchId: string): Promise<MatchSummary | undefined> {
+  const db = await getDatabase();
+  return db.get("matches", matchId);
+}
+
+export async function putMatch(match: MatchSummary): Promise<void> {
+  const db = await getDatabase();
+  await db.put("matches", match);
+}
+
+/**
+ * 複数の試合情報を一括で保存する (ZIPインポート等で使用)
+ */
+export async function putMatchesBatch(matches: MatchSummary[]): Promise<void> {
+  const db = await getDatabase();
+  const tx = db.transaction("matches", "readwrite");
+  const store = tx.objectStore("matches");
+  for (const m of matches) {
+    await store.put(m);
+  }
+  await tx.done;
+}
+
+// ──────────────────────────────────────────────
+// Match Blob (Parquet) Operations
+// ──────────────────────────────────────────────
+
+export async function getMatchBlobs(matchId: string): Promise<MatchBlobEntry | undefined> {
+  const db = await getDatabase();
+  return db.get("match_blobs", matchId);
+}
+
+export async function getAllMatchBlobs(): Promise<MatchBlobEntry[]> {
+  const db = await getDatabase();
+  return db.getAll("match_blobs");
+}
+
+export async function putMatchBlobs(matchId: string, entry: MatchBlobEntry): Promise<void> {
+  const db = await getDatabase();
+  await db.put("match_blobs", entry);
+}
+
+export async function putMatchBlobsBatch(entries: MatchBlobEntry[]): Promise<void> {
+  const db = await getDatabase();
+  const tx = db.transaction("match_blobs", "readwrite");
+  const store = tx.objectStore("match_blobs");
+  for (const entry of entries) {
+    await store.put(entry);
+  }
+  await tx.done;
+}
+
+/**
+ * 試合情報とバイナリデータをアトミックに保存する
+ */
+export async function saveMatchUnified(match: MatchSummary, entry: MatchBlobEntry): Promise<void> {
+  const db = await getDatabase();
+  const tx = db.transaction(["matches", "match_blobs"], "readwrite");
+  await tx.objectStore("matches").put(match);
+  await tx.objectStore("match_blobs").put(entry);
+  await tx.done;
+}
+
+export async function deleteMatch(matchId: string): Promise<void> {
+  const db = await getDatabase();
+  const tx = db.transaction(["matches", "match_blobs"], "readwrite");
+  await tx.objectStore("matches").delete(matchId);
+  await tx.objectStore("match_blobs").delete(matchId);
+  await tx.done;
 }

@@ -14,6 +14,7 @@
  */
 import { useEffect, useReducer } from "react";
 import { initializeDuckDB, loadMatchData } from "@/lib/duckdb";
+import { getMatch } from "@/lib/db";
 import type { DatabaseState, DatabaseStatus, MatchMetadata } from "@/types";
 import type { AsyncDuckDBConnection, AsyncDuckDB } from "@duckdb/duckdb-wasm";
 
@@ -21,8 +22,8 @@ import type { AsyncDuckDBConnection, AsyncDuckDB } from "@duckdb/duckdb-wasm";
 
 type Action =
   | { type: "SET_STATUS"; status: DatabaseStatus }
-  | { type: "SET_READY"; db: AsyncDuckDB; connection: AsyncDuckDBConnection; metadata: MatchMetadata }
-  | { type: "SET_ERROR"; error: string };
+  | { type: "SET_READY"; db: AsyncDuckDB; connection: AsyncDuckDBConnection; metadata: MatchMetadata; cacheMissing?: boolean }
+  | { type: "SET_ERROR"; error: string; db?: AsyncDuckDB; connection?: AsyncDuckDBConnection };
 
 const initialState: DatabaseState = {
   status: "idle",
@@ -30,6 +31,7 @@ const initialState: DatabaseState = {
   connection: null,
   error: null,
   metadata: null,
+  cacheMissing: false,
 };
 
 function reducer(state: DatabaseState, action: Action): DatabaseState {
@@ -42,10 +44,17 @@ function reducer(state: DatabaseState, action: Action): DatabaseState {
         db: action.db,
         connection: action.connection,
         metadata: action.metadata,
+        cacheMissing: action.cacheMissing || false,
         error: null,
       };
     case "SET_ERROR":
-      return { ...state, status: "error", error: action.error };
+      return { 
+        ...state, 
+        status: "error", 
+        error: action.error,
+        db: action.db ?? state.db,
+        connection: action.connection ?? state.connection,
+      };
     default:
       return state;
   }
@@ -74,10 +83,54 @@ export function useDuckDB(matchId: string): DatabaseState {
         dispatch({ type: "SET_READY", db, connection: conn, metadata });
       } catch (err: unknown) {
         if (cancelled) return;
+
+        // DuckDB の初期化自体は成功しているか確認
+        let currentDb: AsyncDuckDB | null = null;
+        let currentConn: AsyncDuckDBConnection | null = null;
+        
+        try {
+          const res = await initializeDuckDB();
+          currentDb = res.db;
+          currentConn = res.conn;
+        } catch (e) {
+          // DuckDB 自体の初期化に失敗している場合は追わない
+        }
+
+        // キャッシュがない場合、metadata だけでも footics_db から復旧できないか試みる
+        if (currentDb && currentConn) {
+          try {
+            const matchFromDb = await getMatch(matchId);
+            if (matchFromDb) {
+              const partialMetadata: MatchMetadata = {
+                matchId: matchFromDb.id,
+                date: matchFromDb.date,
+                score: matchFromDb.score,
+                matchType: matchFromDb.matchType,
+                teams: {
+                  home: { teamId: matchFromDb.homeTeam.id, name: matchFromDb.homeTeam.name, players: [] } as any,
+                  away: { teamId: matchFromDb.awayTeam.id, name: matchFromDb.awayTeam.name, players: [] } as any,
+                },
+                playerIdNameDictionary: {},
+              };
+              dispatch({ 
+                type: "SET_READY", 
+                db: currentDb, 
+                connection: currentConn, 
+                metadata: partialMetadata,
+                cacheMissing: true 
+              });
+              return;
+            }
+          } catch (dbErr) {
+            console.warn("[useDuckDB] Metadata recovery failed", dbErr);
+          }
+        }
+
         console.error(`[useDuckDB] Error loading matchId: ${matchId}`, err);
         const message =
           err instanceof Error ? err.message : "Unknown initialization error";
-        dispatch({ type: "SET_ERROR", error: message });
+        
+        dispatch({ type: "SET_ERROR", error: message, db: currentDb || undefined, connection: currentConn || undefined });
       }
     }
 

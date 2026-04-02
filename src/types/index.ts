@@ -148,6 +148,7 @@ export interface DatabaseState {
   connection: AsyncDuckDBConnection | null;
   error: string | null;
   metadata: MatchMetadata | null;
+  cacheMissing: boolean;
 }
 
 export interface MatchMetadata {
@@ -160,6 +161,15 @@ export interface MatchMetadata {
     home: Team;
     away: Team;
   };
+}
+
+export interface MatchBlobEntry {
+  matchId: string;
+  version: number;
+  matchesParquet: ArrayBuffer;
+  playersParquet: ArrayBuffer;
+  eventsParquet: ArrayBuffer;
+  metadata: MatchMetadata;
 }
 
 // ──────────────────────────────────────────────

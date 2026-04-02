@@ -1,84 +1,6 @@
-/**
- * Data Loader — JSON → DuckDB Tables + IndexedDB Persistence
- *
- * データパイプライン:
- * 1. IndexedDB にキャッシュが存在するか確認
- * 2. キャッシュあり → Parquet バイナリから直接テーブル復元（高速パス）
- * 3. キャッシュなし → エラー（インポートが必要）
- *
- * IndexedDB 構造:
- *   DB名: "footlog_cache"
- *   Store: "parquet_store"
- *   Key: "match_<matchId>" → { version, matchesParquet, playersParquet, eventsParquet, metadata }
- */
 import type * as duckdb from "@duckdb/duckdb-wasm";
-import type { MatchRoot, MatchMetadata, MatchSummary } from "@/types";
-import { getCustomEventsByMatch } from "@/lib/db";
-
-
-const IDB_NAME = "footics_cache";
-const IDB_STORE = "parquet_store";
-export const CACHE_VERSION = 5; // バンプしてキャッシュ無効化可能
-
-// ──────────────────────────────────────────────
-// IndexedDB ヘルパー
-// ──────────────────────────────────────────────
-
-export interface CacheEntry {
-  version: number;
-  matchesParquet: ArrayBuffer;
-  playersParquet: ArrayBuffer;
-  eventsParquet: ArrayBuffer;
-  metadata: MatchMetadata;
-}
-
-let idbConnection: IDBDatabase | null = null;
-let idbOpenPromise: Promise<IDBDatabase> | null = null;
-
-export function openCacheDB(): Promise<IDBDatabase> {
-  if (idbConnection) return Promise.resolve(idbConnection);
-  if (idbOpenPromise) return idbOpenPromise;
-
-  idbOpenPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(IDB_NAME, 1);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(IDB_STORE)) {
-        db.createObjectStore(IDB_STORE);
-      }
-    };
-    request.onsuccess = () => {
-      idbConnection = request.result;
-      idbOpenPromise = null;
-      resolve(idbConnection);
-    };
-    request.onerror = () => {
-      idbOpenPromise = null;
-      reject(request.error);
-    };
-  });
-  return idbOpenPromise;
-}
-
-function idbGet(db: IDBDatabase, key: string): Promise<CacheEntry | undefined> {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(IDB_STORE, "readonly");
-    const store = tx.objectStore(IDB_STORE);
-    const request = store.get(key);
-    request.onsuccess = () => resolve(request.result as CacheEntry | undefined);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export function idbPut(db: IDBDatabase, key: string, value: CacheEntry): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(IDB_STORE, "readwrite");
-    const store = tx.objectStore(IDB_STORE);
-    const request = store.put(value, key);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
+import type { MatchRoot, MatchMetadata, MatchSummary, MatchBlobEntry } from "@/types";
+import { getCustomEventsByMatch, saveMatchUnified, getMatchBlobs } from "@/lib/db";
 
 // ──────────────────────────────────────────────
 // Parquet Export / Import
@@ -89,11 +11,27 @@ async function exportTableAsParquet(
   db: duckdb.AsyncDuckDB,
   tableName: string
 ): Promise<ArrayBuffer> {
-  const fileName = `${tableName}.parquet`;
-  const buffer = await db.copyFileToBuffer(fileName);
-  // もとの Uint8Array のコピーを作成し、その中の ArrayBuffer を返すことで
-  // メモリのオフセット不整合や意図しない共有を完全に防ぐ
-  return new Uint8Array(buffer).slice().buffer as ArrayBuffer;
+  const fileName = `${tableName}_export_${Date.now()}.parquet`;
+  
+  try {
+    // 1. メモリ上のテーブルを VFS 上の Parquet ファイルとして書き出し
+    await conn.query(
+      `COPY (SELECT * FROM ${tableName}) TO '${fileName}' (FORMAT PARQUET)`
+    );
+
+    // 2. VFS 上のファイルをバッファに取得
+    const buffer = await db.copyFileToBuffer(fileName);
+    
+    // バッファのコピーを返す
+    return new Uint8Array(buffer).slice().buffer as ArrayBuffer;
+  } finally {
+    // 3. VFS 上のテンポラリファイルを削除
+    try {
+      await db.dropFile(fileName);
+    } catch (e) {
+      // Ignore
+    }
+  }
 }
 
 async function importParquetAsTable(
@@ -107,12 +45,14 @@ async function importParquetAsTable(
   const fileName = `${tableName}_${matchId}_${Date.now()}.parquet`;
   
   try {
-    // バッファのコピーを確実に渡す (Brave 等の Shield/メモリ制限対策)
+    // バッファを VFS に登録
     const uint8View = new Uint8Array(parquetBuffer);
     await db.registerFileBuffer(fileName, uint8View);
     
+    // 既存テーブルを破棄してから、Parquet から読み込み
+    await conn.query(`DROP TABLE IF EXISTS ${tableName}`);
     await conn.query(
-      `CREATE OR REPLACE TABLE ${tableName} AS SELECT * FROM read_parquet('${fileName}')`
+      `CREATE TABLE ${tableName} AS SELECT * FROM read_parquet('${fileName}')`
     );
   } catch (err: any) {
     console.error(`[footics] Failed to import parquet table ${tableName} for match ${matchId}:`, err);
@@ -122,7 +62,6 @@ async function importParquetAsTable(
     try {
       await db.dropFile(fileName);
     } catch (e) {
-      // unregister の失敗は致命的でないため警告のみ
       console.warn(`[footics] Cleanup failed for ${fileName}`, e);
     }
   }
@@ -146,7 +85,7 @@ export interface BatchImportResult {
 
 /**
  * マッチデータをロードし、DuckDB テーブルを作成する。
- * IndexedDB キャッシュがあればそちらから復元（高速パス）。
+ * Unified DB (footics_db) から Parquet バイナリをロードする。
  */
 export async function loadMatchData(
   db: duckdb.AsyncDuckDB,
@@ -154,34 +93,27 @@ export async function loadMatchData(
   matchId: string,
   _isRetry = false
 ): Promise<LoadResult> {
-  // 1. IndexedDB キャッシュ確認
+  const start = performance.now();
+  console.log(`[footics] Loading match ${matchId} from Unified DB...`);
+
   try {
-    const idb = await openCacheDB();
-    const cached = await idbGet(idb, `match_${matchId}`);
+    const entry = await getMatchBlobs(matchId);
 
-    if (cached && cached.version === CACHE_VERSION) {
-      if (_isRetry) console.log(`[footics] Retry success for ${matchId}`);
-      console.log(`[footics] Cache hit for ${matchId} — restoring from IndexedDB Parquet`);
-      const start = performance.now();
-
+    if (entry) {
       await Promise.all([
-        importParquetAsTable(conn, db, "matches", cached.matchesParquet, matchId),
-        importParquetAsTable(conn, db, "players", cached.playersParquet, matchId),
-        importParquetAsTable(conn, db, "events", cached.eventsParquet, matchId),
+        importParquetAsTable(conn, db, "matches", entry.matchesParquet, matchId),
+        importParquetAsTable(conn, db, "players", entry.playersParquet, matchId),
+        importParquetAsTable(conn, db, "events", entry.eventsParquet, matchId),
       ]);
 
       console.log(
-        `[footics] Success: Restored match ${matchId} from cache in ${(performance.now() - start).toFixed(0)}ms`
+        `[footics] Success: Restored match ${matchId} from Unified DB in ${(performance.now() - start).toFixed(0)}ms`
       );
 
-      // Load custom events
+      // カスタムイベントのロード
       await loadCustomEventsToDuckDB(db, conn, matchId);
 
-      return { metadata: cached.metadata };
-    } else if (cached) {
-      console.warn(`[footics] Cache version mismatch for ${matchId}: expected ${CACHE_VERSION}, found ${cached.version}`);
-    } else {
-      console.warn(`[footics] Cache entry for ${matchId} not found in IndexedDB`);
+      return { metadata: entry.metadata };
     }
   } catch (err) {
     if (!_isRetry) {
@@ -193,148 +125,26 @@ export async function loadMatchData(
     throw err;
   }
 
-  // キャッシュがない場合はエラー
+  // データがない場合はエラー
   throw new Error(`Match ${matchId} not found in local storage. Please use "Data Import" to add this match.`);
 }
 
 /**
- * IndexedDB の特定の matchId のキャッシュをクリアする
+ * 旧構成 (footics_cache) のデータベースを削除・クリーンアップする
  */
-export async function clearMatchCache(matchId: string): Promise<void> {
-  try {
-    const db = await openCacheDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(IDB_STORE, "readwrite");
-      const store = tx.objectStore(IDB_STORE);
-      const request = store.delete(`match_${matchId}`);
-      request.onsuccess = () => {
-        console.log(`[footics] Cache cleared for match_${matchId}`);
-        resolve();
-      };
-      request.onerror = () => {
-        console.error(`[footics] Failed to clear cache for match_${matchId}`);
-        reject(request.error);
-      };
-    });
-  } catch (err) {
-    console.error(`[footics] Failed to open cache DB for clearing`, err);
-  }
-}
-
-/**
- * 指定された matchId のキャッシュが存在するか確認する
- */
-export async function checkMatchExists(matchId: string): Promise<boolean> {
-  try {
-    const idb = await openCacheDB();
-    const cached = await idbGet(idb, `match_${matchId}`);
-    return !!cached && cached.version === CACHE_VERSION;
-  } catch (err) {
-    console.warn("[footics] Error checking match cache", err);
-    return false;
-  }
-}
-
-/**
- * IndexedDB にキャッシュされている全試合のメタデータを取得し、
- * MatchSummary 形式で返す。
- */
-export async function getAllCachedMatches(): Promise<MatchSummary[]> {
-  try {
-    const db = await openCacheDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(IDB_STORE, "readonly");
-      const store = tx.objectStore(IDB_STORE);
-      const request = store.getAll(); // 全エントリ取得(件数が少ない前提)
-      
-      request.onsuccess = () => {
-        const entries = request.result as CacheEntry[];
-        const summaries: MatchSummary[] = entries.map(entry => {
-          const m = entry.metadata;
-          return {
-            id: m.matchId || "unknown", // メタデータから取得、なければ unknown (旧形式対応用)
-            homeTeam: { 
-              id: m.teams?.home?.teamId ?? 0, 
-              name: m.teams?.home?.name ?? "Home" 
-            },
-            awayTeam: { 
-              id: m.teams?.away?.teamId ?? 1, 
-              name: m.teams?.away?.name ?? "Away" 
-            },
-            date: m.date || "",
-            score: m.score || "0 : 0",
-            matchType: m.matchType || "club",
-          };
-        });
-        resolve(summaries);
-      };
-      request.onerror = () => reject(request.error);
-    });
-  } catch (err) {
-    console.warn("[footics] Error getting all cached matches", err);
-    return [];
-  }
-}
-
-/**
- * IndexedDB から全キャッシュエントリを直接取得する（エクスポート用）
- */
-export async function getAllCacheEntries(): Promise<{ key: string; value: CacheEntry }[]> {
-  try {
-    const db = await openCacheDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(IDB_STORE, "readonly");
-      const store = tx.objectStore(IDB_STORE);
-      
-      const results: { key: string; value: CacheEntry }[] = [];
-      const request = store.openCursor();
-      
-      request.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
-        if (cursor) {
-          results.push({
-            key: cursor.key as string,
-            value: cursor.value as CacheEntry
-          });
-          cursor.continue();
-        } else {
-          resolve(results);
-        }
-      };
-      request.onerror = () => reject(request.error);
-    });
-  } catch (err) {
-    console.error("[footics] Failed to get all cache entries", err);
-    return [];
-  }
-}
-
-/**
- * 複数のキャッシュエントリを一括で IndexedDB に保存する。
- * 単一のトランザクションを使用し、oncomplete を待機することで
- * データの不整合とリロード時の破損を防ぐ。
- */
-export async function importCacheEntriesBatch(
-  entries: { key: string; value: CacheEntry }[]
-): Promise<void> {
-  const db = await openCacheDB();
-  
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(IDB_STORE, "readwrite");
-    const store = tx.objectStore(IDB_STORE);
-    
-    tx.oncomplete = () => {
-      console.log(`[footics] Batch cache import completed (${entries.length} entries)`);
+export async function cleanupOldCache(): Promise<void> {
+  const DB_NAME = "footics_cache";
+  return new Promise((resolve) => {
+    console.log(`[footics] Cleaning up legacy database: ${DB_NAME}`);
+    const request = indexedDB.deleteDatabase(DB_NAME);
+    request.onsuccess = () => {
+      console.log(`[footics] Legacy database deleted: ${DB_NAME}`);
       resolve();
     };
-    tx.onerror = () => {
-      console.error("[footics] Batch cache import failed", tx.error);
-      reject(tx.error);
+    request.onerror = () => {
+      console.warn(`[footics] Failed to delete legacy database: ${DB_NAME}`);
+      resolve();
     };
-    
-    for (const entry of entries) {
-      store.put(entry.value, entry.key);
-    }
   });
 }
 
@@ -431,6 +241,7 @@ function parseNationalMatchData(data: any) {
       home_team_id: homeTeamId,
       away_team_id: awayTeamId,
       score: score,
+      match_type: "national",
     },
   ];
 
@@ -469,30 +280,25 @@ export async function importMatchesBatch(
     errors: [],
   };
 
-  const idb = await openCacheDB();
-
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     if (onProgress) onProgress(i + 1, files.length);
 
     try {
-      // 1. 最小限のパースで matchId を取得して重複チェック
       const text = await file.text();
       const data = JSON.parse(text) as MatchRoot;
       const matchId = String(data.matchId);
 
-      // checkMatchExists を直接 idb で実行して高速化
-      const cached = await idbGet(idb, `match_${matchId}`);
-      const exists = !!cached && cached.version === CACHE_VERSION;
-
-      if (exists) {
+      // 重複チェック (Unified DB)
+      const existing = await getMatchBlobs(matchId);
+      if (existing) {
         console.log(`[footics] Batch import: Skipping match ${matchId} (already exists)`);
         result.skipped++;
         continue;
       }
 
-      // 2. インポート実行
-      await importMatchJsonFileCore(data, db, conn, idb);
+      // インポート実行
+      await importMatchJsonFileCore(data, db, conn);
       result.success++;
     } catch (err: any) {
       console.error(`[footics] Batch import failed for ${file.name}:`, err);
@@ -514,7 +320,6 @@ async function importMatchJsonFileCore(
   data: MatchRoot,
   db: duckdb.AsyncDuckDB,
   conn: duckdb.AsyncDuckDBConnection,
-  idb: IDBDatabase
 ): Promise<string> {
   const matchId = String(data.matchId);
   const start = performance.now();
@@ -534,6 +339,7 @@ async function importMatchJsonFileCore(
         home_team_id: mc.home.teamId,
         away_team_id: mc.away.teamId,
         score: mc.score,
+        match_type: "club",
       },
     ];
 
@@ -581,12 +387,27 @@ async function importMatchJsonFileCore(
       qualifiers: e.qualifiers || [],
     }));
 
+    const playerIdNameDictionary: Record<string, string> = {};
+    
+    if (mc.playerIdNameDictionary) {
+      Object.keys(mc.playerIdNameDictionary).forEach(id => {
+        playerIdNameDictionary[String(id)] = mc.playerIdNameDictionary[id];
+      });
+    }
+
+    [...mc.home.players, ...mc.away.players].forEach(p => {
+      const idStr = String(p.playerId);
+      if (!playerIdNameDictionary[idStr]) {
+        playerIdNameDictionary[idStr] = p.name;
+      }
+    });
+
     metadata = {
       matchId,
       date: mc.startTime ? mc.startTime.split("T")[0] : "",
       score: mc.score,
       matchType: "club",
-      playerIdNameDictionary: mc.playerIdNameDictionary,
+      playerIdNameDictionary,
       teams: { home: mc.home, away: mc.away },
     };
   } else if ("initialMatchDataForScrappers" in data) {
@@ -617,13 +438,26 @@ async function importMatchJsonFileCore(
     exportTableAsParquet(conn, db, "events"),
   ]);
 
-  await idbPut(idb, `match_${matchId}`, {
-    version: CACHE_VERSION,
+  // Unified DB に保存 (Metadata と Blobs を同時に保存)
+  const summary: MatchSummary = {
+    id: metadata.matchId,
+    homeTeam: { id: metadata.teams.home.teamId, name: metadata.teams.home.name },
+    awayTeam: { id: metadata.teams.away.teamId, name: metadata.teams.away.name },
+    date: metadata.date,
+    score: metadata.score,
+    matchType: metadata.matchType
+  };
+
+  const blobs: MatchBlobEntry = {
+    matchId,
+    version: 1,
     matchesParquet,
     playersParquet,
     eventsParquet,
     metadata,
-  });
+  };
+
+  await saveMatchUnified(summary, blobs);
 
   console.log(`[footics] Import ${matchId} done in ${(performance.now() - start).toFixed(0)}ms`);
   return matchId;
@@ -639,6 +473,5 @@ export async function importMatchJsonFile(
 ): Promise<string> {
   const text = await file.text();
   const data = JSON.parse(text) as MatchRoot;
-  const idb = await openCacheDB();
-  return importMatchJsonFileCore(data, db, conn, idb);
+  return importMatchJsonFileCore(data, db, conn);
 }

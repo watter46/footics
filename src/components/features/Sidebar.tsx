@@ -80,7 +80,7 @@ export function Sidebar({
       <div className="p-6 pb-0 flex-shrink-0">
         <div className="flex items-center gap-3 mb-4">
           <Activity className="h-6 w-6 text-blue-400" />
-          <h1 className="text-xl font-bold tracking-tight">Match Analytics</h1>
+          <h1 className="text-xl font-bold tracking-tight">DashBoard</h1>
         </div>
 
         {/* Team Filter */}

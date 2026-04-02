@@ -104,7 +104,7 @@ export function EventTimeline({
       <header className="mb-6 relative z-10 flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-light tracking-tight text-white mb-1">
-            Timeline{" "}
+            Event Timeline{" "}
             {selectedTeamName && (
               <span className="text-slate-400 font-medium">({selectedTeamName})</span>
             )}
@@ -162,7 +162,7 @@ export function EventTimeline({
               >
                 {virtualizer.getVirtualItems().map((virtualRow) => {
                   const event = events[virtualRow.index];
-                  const isHome = Number(event.team_id) === teams.home.teamId;
+                  const isHome = Number(event.team_id) === Number(teams.home.teamId);
                   const timeString = formatTime(event);
 
                   const matchedStrategies = activeStrategyList.filter(
@@ -253,12 +253,18 @@ export function EventTimeline({
                       </div>
 
                       {/* Player */}
-                      <div className="flex-1 font-medium text-slate-200 text-sm truncate">
+                      <div 
+                        className={`flex-1 font-medium text-sm truncate px-3 py-1 rounded-md transition-colors ${
+                          isHome 
+                            ? "bg-blue-500/10 text-blue-300 border border-blue-400/10" 
+                            : "bg-emerald-500/10 text-emerald-300 border border-emerald-400/10"
+                        }`}
+                      >
                         {(() => {
-                          if (!event.player_id) return <span className="text-slate-600">Team Event</span>;
-                          const pidStr = event.player_id.toString().split('.')[0];
+                          if (!event.player_id) return <span className="opacity-50">Team Event</span>;
+                          const pidStr = String(event.player_id).split('.')[0];
                           const name = playerIdNameDictionary[pidStr];
-                          return name || <span className="text-slate-600">Team Event ({pidStr})</span>;
+                          return name || <span className="opacity-50">Team Event ({pidStr})</span>;
                         })()}
                       </div>
 

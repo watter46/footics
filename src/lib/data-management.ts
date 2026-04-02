@@ -1,18 +1,14 @@
 import JSZip from "jszip";
 import { 
-  getAllCacheEntries, 
-  openCacheDB, 
-  importCacheEntriesBatch,
-  CACHE_VERSION,
-  CacheEntry 
-} from "./duckdb/data-loader";
-import { 
   getAllEventMemos, 
   getAllCustomEvents, 
   getAllMatchMemos,
   importMemosBatch,
-  getDatabase 
+  getAllMatchBlobs,
+  putMatchBlobsBatch,
+  putMatchesBatch 
 } from "./db";
+import { MatchSummary, MatchBlobEntry } from "@/types";
 
 const BACKUP_VERSION = 1;
 
@@ -35,24 +31,23 @@ export async function exportAllDataZip(): Promise<void> {
     match_memos: matchMemos
   }, null, 2));
 
-  // 2. Match Cache (Parquet & Metadata)
-  const cacheEntries = await getAllCacheEntries();
+  // 2. Match Blobs (Unified DB)
+  const blobEntries = await getAllMatchBlobs();
   const matchMetadataList: any[] = [];
   
   const parquetFolder = zip.folder("parquet");
   
-  for (const entry of cacheEntries) {
-    const matchId = entry.key.replace("match_", "");
+  for (const entry of blobEntries) {
+    const matchId = entry.metadata.matchId;
     matchMetadataList.push({
-      key: entry.key,
-      version: entry.value.version,
-      metadata: entry.value.metadata
+      matchId,
+      metadata: entry.metadata
     });
     
     if (parquetFolder) {
-      parquetFolder.file(`${matchId}_matches.parquet`, entry.value.matchesParquet);
-      parquetFolder.file(`${matchId}_players.parquet`, entry.value.playersParquet);
-      parquetFolder.file(`${matchId}_events.parquet`, entry.value.eventsParquet);
+      parquetFolder.file(`${matchId}_matches.parquet`, entry.matchesParquet);
+      parquetFolder.file(`${matchId}_players.parquet`, entry.playersParquet);
+      parquetFolder.file(`${matchId}_events.parquet`, entry.eventsParquet);
     }
   }
   
@@ -62,7 +57,7 @@ export async function exportAllDataZip(): Promise<void> {
   zip.file("manifest.json", JSON.stringify({
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    matchCount: cacheEntries.length
+    matchCount: blobEntries.length
   }, null, 2));
 
   // 4. Generate & Download
@@ -101,41 +96,56 @@ export async function importAllDataZip(file: File): Promise<{ matchCount: number
     memoCount = eventMemos.length + customEvents.length + matchMemos.length;
   }
 
-  // 3. Import Match Cache
+  // 3. Import Match Blobs
   let matchCount = 0;
   const matchesFile = zip.file("matches.json");
   if (matchesFile) {
     const matchesList = JSON.parse(await matchesFile.async("string"));
-    const entriesToImport: { key: string; value: CacheEntry }[] = [];
+    const blobEntries: MatchBlobEntry[] = [];
     
     for (const mInfo of matchesList) {
-      const matchId = mInfo.key.replace("match_", "");
+      const matchId = mInfo.matchId;
       
       const pMatches = zip.file(`parquet/${matchId}_matches.parquet`);
       const pPlayers = zip.file(`parquet/${matchId}_players.parquet`);
       const pEvents = zip.file(`parquet/${matchId}_events.parquet`);
       
       if (pMatches && pPlayers && pEvents) {
-        entriesToImport.push({
-          key: mInfo.key,
-          value: {
-            // BACKUP 内のバージョンに関わらず、現在のアプリが期待する最新バージョンを付与する。
-            // これにより、読み込み時の Invalid data や Not found を防ぐ。
-            version: CACHE_VERSION,
-            metadata: mInfo.metadata,
-            matchesParquet: await pMatches.async("arraybuffer"),
-            playersParquet: await pPlayers.async("arraybuffer"),
-            eventsParquet: await pEvents.async("arraybuffer"),
-          }
+        blobEntries.push({
+          matchId,
+          version: 1,
+          metadata: mInfo.metadata,
+          matchesParquet: await pMatches.async("arraybuffer"),
+          playersParquet: await pPlayers.async("arraybuffer"),
+          eventsParquet: await pEvents.async("arraybuffer"),
         });
       }
     }
     
-    if (entriesToImport.length > 0) {
-      await importCacheEntriesBatch(entriesToImport);
-      matchCount = entriesToImport.length;
+    if (blobEntries.length > 0) {
+      await putMatchBlobsBatch(blobEntries);
+      
+      // footics_db.matches ストアにも概要情報を登録
+      const summaries: MatchSummary[] = blobEntries.map(e => ({
+        id: e.metadata.matchId,
+        homeTeam: { 
+          id: e.metadata.teams.home.teamId, 
+          name: e.metadata.teams.home.name 
+        },
+        awayTeam: { 
+          id: e.metadata.teams.away.teamId, 
+          name: e.metadata.teams.away.name 
+        },
+        date: e.metadata.date,
+        score: e.metadata.score,
+        matchType: e.metadata.matchType,
+      }));
+      await putMatchesBatch(summaries);
+      
+      matchCount = blobEntries.length;
     }
   }
 
   return { matchCount, memoCount };
 }
+
