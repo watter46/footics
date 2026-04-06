@@ -1,28 +1,24 @@
-"use client";
-
 import React from "react";
-import {
-  Edit3,
-  X,
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Loader2, 
+  Save, 
   Info,
-  AlertCircle,
-  Save,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
+  X,
+  AlertCircle
 } from "lucide-react";
-import type { MemoOverlayState, MemoOverlayActions } from "@/hooks/features/MemoOverlay/useMemoOverlay";
+import { useMemoOverlayDerived } from "@/stores/useMemoOverlayStore";
+import { MemoOverlayHeader } from "./parts/MemoOverlayHeader";
+import { MemoOverlayProgressBar, MemoOverlayRecap } from "./parts/MemoOverlayProgress";
 import { PhaseTimeInput } from "./parts/PhaseTimeInput";
 import { PhaseLabelSelection } from "./parts/PhaseLabelSelection";
 import { PhaseMemoInput } from "./parts/PhaseMemoInput";
 import { MatchMemoUnit } from "./parts/MatchMemoUnit";
-import { getEventMetadata } from "@/lib/event-definitions";
 
-const UI_VERSION = "0.1.6";
+const UI_VERSION = "0.2.0";
 
 interface MemoOverlayViewProps {
-  state: MemoOverlayState;
-  actions: MemoOverlayActions;
   matchId: string | undefined;
   onClose: () => void;
   onSave: () => void;
@@ -31,28 +27,78 @@ interface MemoOverlayViewProps {
 /**
  * MemoOverlayView
  * 責務: MemoOverlayの全体レイアウトのオーケストレーター。
+ * - Zustand ストアから状態を取得
  * - ヘッダー、進捗バー、フッターナビゲーションを提供
- * - 現在のモード・フェーズに応じたコンテンツコンポーネントを切り替える
- * - 保存・閉じるなどのコール先は Props 経由で注入される
+ * - 各フェーズの描画をサブコンポーネントへ委譲
  */
 export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
-  state,
-  actions,
   matchId,
   onClose,
   onSave,
 }) => {
-  const { mode, phase, error, isSaving, formattedTime, selectedLabels } = state;
+  const {
+    mode,
+    phase,
+    timeStr,
+    formattedTime,
+    selectedLabels,
+    labelInput,
+    suggestions,
+    suggestionIndex,
+    isListMode,
+    isInvalidLabel,
+    memo,
+    error,
+    isSaving,
+    
+    // Actions
+    setTimeStr,
+    addLabel,
+    removeLabel,
+    setLabelInput,
+    setMemo,
+    nextPhase,
+    prevPhase,
+    clearError,
+  } = useMemoOverlayDerived();
 
   // フェーズごとのコンテンツを返す
   const renderEventPhaseContent = () => {
     switch (phase) {
       case 0:
-        return <PhaseTimeInput state={state} actions={actions} />;
+        return (
+          <PhaseTimeInput 
+            timeStr={timeStr}
+            displayTime={formattedTime.display}
+            isInvalid={formattedTime.isInvalid}
+            isEmpty={formattedTime.empty}
+            phase={phase}
+            validationError={error || null}
+            onTimeChange={setTimeStr}
+          />
+        );
       case 1:
-        return <PhaseLabelSelection state={state} actions={actions} />;
+        return (
+          <PhaseLabelSelection 
+            labelInput={labelInput}
+            suggestions={suggestions}
+            suggestionIndex={suggestionIndex}
+            isListMode={isListMode}
+            isInvalidLabel={isInvalidLabel}
+            phase={phase}
+            validationError={error || null}
+            onLabelInputChange={setLabelInput}
+            onAddLabel={addLabel}
+          />
+        );
       case 2:
-        return <PhaseMemoInput state={state} actions={actions} onSave={onSave} />;
+        return (
+          <PhaseMemoInput 
+            memo={memo}
+            onMemoChange={setMemo}
+            onSave={onSave}
+          />
+        );
       default:
         return null;
     }
@@ -61,81 +107,21 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
   return (
     <div
       className="fixed top-6 right-6 w-[22vw] min-w-[380px] aspect-[1/1.3] bg-slate-900 border border-slate-700/60 rounded-xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden font-sans animate-in slide-in-from-right-4 duration-500 flex flex-col"
-      onKeyDown={(e) => e.stopPropagation()} // ページ側のイベントへの干渉を防止
+      onKeyDown={(e) => e.stopPropagation()}
     >
       {/* ── ヘッダー ── */}
-      <div className="flex-shrink-0 px-5 py-3 border-b border-slate-800/50 bg-slate-900/50 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className={`p-2 rounded-lg ${
-              mode === "MATCH" ? "bg-blue-500/10 text-blue-400" : "bg-amber-500/10 text-amber-400"
-            }`}
-          >
-            <Edit3 className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-sm font-black text-slate-100 uppercase tracking-tighter">
-              {mode === "MATCH" ? "Match Insight" : "Event"}
-            </h2>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-              {mode === "MATCH" ? "Final Summary" : `Phase ${phase + 1} of 3`}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-slate-800 rounded-lg text-slate-600 transition-all"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+      <MemoOverlayHeader mode={mode} phase={phase} onClose={onClose} />
 
       {/* ── イベントモード: 進捗バー & レキャップ ── */}
       {mode === "EVENT" && (
         <>
-          <div className="flex-shrink-0 flex h-1 bg-slate-800">
-            <div
-              className="bg-amber-500 transition-all duration-500"
-              style={{ width: `${((phase + 1) / 4) * 100}%` }}
-            />
-          </div>
-          {phase > 0 && (
-            <div className="flex-shrink-0 px-5 py-2.5 bg-slate-950/20 border-b border-slate-800/50 flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                    Time
-                  </span>
-                  <span className="text-[14px] font-mono text-amber-500 font-black">
-                    {formattedTime.display}
-                  </span>
-                </div>
-              </div>
-              
-              {phase >= 1 && selectedLabels.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  {selectedLabels.map((lbl, i) => {
-                    const meta = getEventMetadata(lbl);
-                    return (
-                      <span 
-                        key={i} 
-                        className="text-[10px] px-2 py-0.5 rounded-full text-slate-100 font-bold border border-white/10 shadow-sm flex items-center gap-1"
-                        style={{ backgroundColor: meta?.groupColor ?? "#334155" }}
-                      >
-                        {lbl}
-                        <button
-                          onClick={() => actions.removeLabel(i)}
-                          className="opacity-60 hover:opacity-100 transition-opacity"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          <MemoOverlayProgressBar phase={phase} />
+          <MemoOverlayRecap 
+            phase={phase}
+            displayTime={formattedTime.display}
+            selectedLabels={selectedLabels}
+            onRemoveLabel={removeLabel}
+          />
         </>
       )}
 
@@ -149,10 +135,11 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
         `}</style>
         {mode === "MATCH" ? (
           <MatchMemoUnit
-            state={state}
-            actions={actions}
-            onSave={onSave}
+            memo={memo}
+            isSaving={isSaving}
             hasMatchId={!!matchId}
+            onMemoChange={setMemo}
+            onSave={onSave}
           />
         ) : (
           renderEventPhaseContent()
@@ -165,7 +152,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
           <div className="flex gap-3">
             {phase > 0 && (
               <button
-                onClick={actions.prevPhase}
+                onClick={prevPhase}
                 className="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-slate-100 transition-all"
               >
                 <ChevronLeft className="w-4 h-4" /> BACK
@@ -175,10 +162,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
           <div className="flex gap-2">
             {phase < 2 ? (
               <button
-                onClick={() => {
-                  const result = actions.nextPhase();
-                  if (result === "BLOCKED") return;
-                }}
+                onClick={nextPhase}
                 className="flex items-center gap-1.5 px-5 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-black text-slate-100 transition-all shadow-xl"
               >
                 NEXT <ChevronRight className="w-4 h-4" />
@@ -204,7 +188,6 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
       {/* ── フッター: Instance Info ── */}
       <div className="flex-shrink-0 px-5 py-2 bg-slate-950 flex items-center justify-between font-mono">
         <div className="flex items-center gap-2 overflow-hidden">
-          <Info className="w-3 h-3 text-slate-400" />
           <span className="text-[9px] text-slate-300 font-bold uppercase truncate">
             Target: {matchId || "No Instance Connected"}
           </span>
@@ -219,7 +202,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
         <div className="absolute inset-x-0 bottom-12 p-3 bg-red-950/90 border-y border-red-500/30 flex items-center gap-3 backdrop-blur-lg animate-in slide-in-from-bottom-2">
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
           <p className="text-xs text-red-200 font-bold leading-tight">{error}</p>
-          <button onClick={actions.clearError} className="ml-auto text-red-500">
+          <button onClick={() => useMemoOverlayStore.getState().setError(undefined)} className="ml-auto text-red-500">
             <X className="w-4 h-4" />
           </button>
         </div>

@@ -4,7 +4,7 @@ import React, { useEffect } from "react";
 import { useMatchMemo } from "@/hooks/use-match-memo";
 import { useKeyboardShortcut } from "@/hooks/use-shortcut";
 import { SHORTCUT_ACTIONS } from "@/lib/shortcuts";
-import { useMemoOverlay } from "@/hooks/features/MemoOverlay/useMemoOverlay";
+import { useMemoOverlayStore } from "@/stores/useMemoOverlayStore";
 import { MatchMemoUnit } from "./MemoOverlay/parts/MatchMemoUnit";
 
 interface MatchMemoModalProps {
@@ -18,19 +18,21 @@ interface MatchMemoModalProps {
  * 統一された MemoOverlay のロジックとUIコンポーネントを使用します。
  */
 export function MatchMemoModal({ matchId, isOpen, onClose }: MatchMemoModalProps) {
-  const { memo: initialMemo, saveMemo, isSaving, isLoading } = useMatchMemo(matchId);
-  const { state, actions } = useMemoOverlay("MATCH");
+  const { memo: initialMemo, saveMemo, isSaving: isMatchSaving, isLoading } = useMatchMemo(matchId);
+  const store = useMemoOverlayStore();
+  const { memo, setMemo } = store;
 
   // モーダルが開いた際に初期値をセット
   useEffect(() => {
     if (isOpen) {
-      actions.setMemo(initialMemo || "");
+      store.reset("MATCH");
+      store.setMemo(initialMemo || "");
     }
-  }, [isOpen, initialMemo, actions]);
+  }, [isOpen, initialMemo]);
 
   const handleSave = async () => {
-    if (!state.memo.trim()) return;
-    await saveMemo(state.memo);
+    if (!memo.trim()) return;
+    await saveMemo(memo);
     onClose();
   };
 
@@ -60,10 +62,11 @@ export function MatchMemoModal({ matchId, isOpen, onClose }: MatchMemoModalProps
           </div>
         ) : (
           <MatchMemoUnit 
-            state={{ ...state, isSaving }} 
-            actions={actions} 
+            memo={memo}
+            isSaving={isMatchSaving}
+            hasMatchId={!!matchId}
+            onMemoChange={setMemo}
             onSave={handleSave} 
-            hasMatchId={!!matchId} 
           />
         )}
       </div>

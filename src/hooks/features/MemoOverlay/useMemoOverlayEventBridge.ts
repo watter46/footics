@@ -1,18 +1,15 @@
 import { useEffect } from "react";
-import type { MemoOverlayActions, MemoOverlayState } from "./useMemoOverlay";
+import { useMemoOverlayStore } from "@/stores/useMemoOverlayStore";
 
 /**
  * useMemoOverlayEventBridge
  *
  * 責務: `window` の `footics-action` カスタムイベントを監視し、
- * `useMemoOverlay` のアクションへ橋渡しする。
+ * `useMemoOverlayStore` のアクションへ橋渡しする。
  *
  * このHookは拡張機能・本体アプリ問わず、イベント駆動の操作連携を提供する。
- * ただし `browser` グローバルは使用しないため環境に依存しない。
  */
 export function useMemoOverlayEventBridge(
-  state: MemoOverlayState,
-  actions: MemoOverlayActions,
   onClose: () => void,
   onSave: () => void,
 ) {
@@ -25,6 +22,9 @@ export function useMemoOverlayEventBridge(
         shiftKey?: boolean;
       };
       const { action } = detail;
+      
+      // Zustandストアから最新の状態を取得
+      const store = useMemoOverlayStore.getState();
 
       switch (action) {
         case "CLOSE_OVERLAY":
@@ -36,8 +36,8 @@ export function useMemoOverlayEventBridge(
           break;
 
         case "NEXT_PHASE": {
-          if (state.mode === "EVENT") {
-            const result = actions.nextPhase();
+          if (store.mode === "EVENT") {
+            const result = store.nextPhase();
             if (result === "BLOCKED") return;
           } else {
             onSave();
@@ -46,29 +46,29 @@ export function useMemoOverlayEventBridge(
         }
 
         case "PREV_PHASE":
-          actions.prevPhase();
+          store.prevPhase();
           break;
 
         case "BACKSPACE":
-          if (state.mode === "EVENT") {
-            if (state.phase === 0) {
-              actions.backspaceTimeStr();
-            } else if (state.phase === 1) {
-              actions.backspaceLabel();
+          if (store.mode === "EVENT") {
+            if (store.phase === 0) {
+              store.backspaceTimeStr();
+            } else if (store.phase === 1) {
+              store.backspaceLabel();
             }
           }
           break;
 
         case "NAVIGATE_SUGGESTION":
-          if (state.mode === "EVENT" && state.phase === 1) {
+          if (store.mode === "EVENT" && store.phase === 1) {
             const direction = detail.key === "ArrowDown" ? 1 : -1;
-            actions.navigateSuggestion(direction);
+            store.navigateSuggestion(direction);
           }
           break;
 
         case "FILTER_CATEGORY":
-          if (state.mode === "EVENT" && typeof detail.categoryIndex === "number") {
-            actions.filterByCategory(detail.categoryIndex);
+          if (store.mode === "EVENT" && typeof detail.categoryIndex === "number") {
+            store.filterByCategory(detail.categoryIndex);
           }
           break;
 
@@ -79,16 +79,5 @@ export function useMemoOverlayEventBridge(
 
     window.addEventListener("footics-action", handleFooticsAction);
     return () => window.removeEventListener("footics-action", handleFooticsAction);
-  }, [
-    state.mode,
-    state.phase,
-    state.suggestions,
-    state.suggestionIndex,
-    state.isListMode,
-    state.labelInput,
-    state.validationError,
-    actions,
-    onClose,
-    onSave,
-  ]);
+  }, [onClose, onSave]); // onClose, onSave のみが依存関係
 }

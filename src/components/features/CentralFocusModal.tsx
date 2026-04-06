@@ -9,8 +9,9 @@ import { saveCustomEvent } from "@/lib/db";
 import { loadCustomEventsToDuckDB } from "@/lib/duckdb/data-loader";
 import type { AsyncDuckDBConnection, AsyncDuckDB } from "@duckdb/duckdb-wasm";
 
-import { useMemoOverlay } from "@/hooks/features/MemoOverlay/useMemoOverlay";
+import { useMemoOverlayDerived, useMemoOverlayStore } from "@/stores/useMemoOverlayStore";
 import { MemoOverlayView } from "./MemoOverlay/MemoOverlayView";
+import { createSavePayload } from "@/lib/features/MemoOverlay/memoOverlayLogic";
 
 interface CentralFocusModalProps {
   matchId: string;
@@ -24,22 +25,38 @@ interface CentralFocusModalProps {
 /**
  * CentralFocusModal (Main App Adapter)
  * 責務: クイックイベント入力の「本体アプリ用」アダプター。
- * - 統一された useMemoOverlay と MemoOverlayView を使用。
+ * - 統一された useMemoOverlayStore と MemoOverlayView を使用。
  * - 保存処理として DuckDB への書き込みとタイムライン更新を実行。
  */
 export function CentralFocusModal({ 
   matchId, db, connection, onRefresh, editingEvent, onClose 
 }: CentralFocusModalProps) {
   const { isCentralFocusOpen, setCentralFocusOpen } = useUIStore();
-  const { state, actions } = useMemoOverlay("EVENT");
+  const store = useMemoOverlayStore();
+  const { phase, error, nextPhase } = store;
 
   // ── 保存処理（Main App 固有の実装） ──
   const handleSave = async () => {
-    if (!actions.validateBeforeSave()) return;
-    const payload = actions.getSavePayload();
+    const currentState = useMemoOverlayStore.getState();
+    
+    // バリデーション
+    if (currentState.mode === "EVENT") {
+      const result = currentState.nextPhase();
+      if (result === "BLOCKED") return;
+      // 最終フェーズでなければ抜ける（保存はフェーズ2のみ）
+      if (currentState.phase < 2) return;
+    }
+
+    const payload = createSavePayload({
+      mode: currentState.mode,
+      timeStr: currentState.timeStr,
+      selectedLabels: currentState.selectedLabels,
+      memo: currentState.memo,
+    });
+    
     if (!payload || payload.type !== "EVENT") return;
 
-    actions.setIsSaving(true);
+    store.setIsSaving(true);
     try {
       const id = editingEvent ? editingEvent.id : crypto.randomUUID();
       const event = {
@@ -67,9 +84,9 @@ export function CentralFocusModal({
       }));
     } catch (err) {
       console.error("[CentralFocusModal] Save failed:", err);
-      actions.setError("保存に失敗しました。");
+      store.setError("保存に失敗しました。");
     } finally {
-      actions.setIsSaving(false);
+      store.setIsSaving(false);
     }
   };
 
@@ -80,55 +97,51 @@ export function CentralFocusModal({
   useKeyboardShortcut(
     (e: KeyboardEvent) => {
       const groupIndex = EVENT_GROUPS.findIndex(g => isActionMatch(e, { key: g.shortcutKey, ctrl: true }));
-      if (groupIndex !== -1 && isCentralFocusOpen && state.phase === 1) {
-        actions.filterByCategory(groupIndex);
+      if (groupIndex !== -1 && isCentralFocusOpen && phase === 1) {
+        store.filterByCategory(groupIndex);
         return true;
       }
       return false;
     },
     () => {}, 
-    { enabled: isCentralFocusOpen && state.phase === 1, ignoreInput: false }
+    { enabled: isCentralFocusOpen && phase === 1, ignoreInput: false }
   );
 
   // 編集イベントの注入
   useEffect(() => {
-    if (editingEvent) {
-      setCentralFocusOpen(true);
+    if (editingEvent && isCentralFocusOpen) {
       const timeStr = `${String(editingEvent.minute).padStart(2, "0")}${String(editingEvent.second).padStart(2, "0")}`;
-      actions.setTimeStr(timeStr);
-      // ラベルを一つずつ追加
+      store.reset("EVENT");
+      store.setTimeStr(timeStr);
       if (editingEvent.labels) {
-        editingEvent.labels.forEach((l: string) => actions.addLabel(l));
+        editingEvent.labels.forEach((l: string) => store.addLabel(l));
       }
-      actions.setMemo(editingEvent.memo || "");
-      actions.forceSetPhase(2); // 最初からメモフェーズへ
+      store.setMemo(editingEvent.memo || "");
+      store.forceSetPhase(2); // 最初からメモフェーズへ
     }
-  }, [editingEvent, actions, setCentralFocusOpen]);
+  }, [editingEvent, isCentralFocusOpen]);
 
   // モーダルが閉じられた際のリセット
   useEffect(() => {
     if (!isCentralFocusOpen) {
-      actions.reset();
-      // onClose は、編集中のイベントがあった場合のみ呼び出す（無限ループ防止）
+      store.reset();
       if (editingEvent && onClose) {
         onClose();
       }
     }
-  }, [isCentralFocusOpen, actions.reset, onClose, editingEvent]);
+  }, [isCentralFocusOpen, editingEvent, onClose]);
 
   if (!isCentralFocusOpen) return null;
 
-  // 既存のモーダルUIの枠組みに MemoOverlayView を埋め込む
-  // ※ MemoOverlayView は fixed ポジションのため、そのまま表示可能
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 backdrop-blur-md">
-       <MemoOverlayView 
-         state={state} 
-         actions={actions} 
-         matchId={matchId} 
-         onClose={() => setCentralFocusOpen(false)}
-         onSave={handleSave} 
-       />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 backdrop-blur-md" onClick={() => setCentralFocusOpen(false)}>
+       <div onClick={e => e.stopPropagation()}>
+         <MemoOverlayView 
+           matchId={matchId} 
+           onClose={() => setCentralFocusOpen(false)}
+           onSave={handleSave} 
+         />
+       </div>
     </div>
   );
 }

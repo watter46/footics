@@ -2,11 +2,14 @@
 
 import React, { useRef, useEffect } from "react";
 import { Clock, AlertCircle } from "lucide-react";
-import type { MemoOverlayState, MemoOverlayActions } from "@/hooks/features/MemoOverlay/useMemoOverlay";
-
 interface PhaseTimeInputProps {
-  state: MemoOverlayState;
-  actions: MemoOverlayActions;
+  timeStr: string;
+  displayTime: string;
+  isInvalid: boolean;
+  isEmpty: boolean;
+  phase: number;
+  validationError: string | null;
+  onTimeChange: (val: string) => void;
 }
 
 /**
@@ -14,7 +17,15 @@ interface PhaseTimeInputProps {
  * 責務: 時間入力フェーズ（Phase 0）のUI。
  * 数字入力・バリデーションフィードバック・パース結果の表示を担う。
  */
-export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({ state, actions }) => {
+export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({ 
+  timeStr, 
+  displayTime, 
+  isInvalid, 
+  isEmpty, 
+  phase, 
+  validationError, 
+  onTimeChange 
+}) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // フェーズ表示時にフォーカス
@@ -31,7 +42,7 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({ state, actions }
       <input
         ref={inputRef}
         type="text"
-        value={state.timeStr}
+        value={timeStr}
         onChange={(e) => {
           const val = e.target.value;
           // 全角数字を半角に変換し、数字のみ最大5文字
@@ -39,7 +50,7 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({ state, actions }
             .replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
             .replace(/\D/g, "")
             .slice(0, 5);
-          actions.setTimeStr(normalized);
+          onTimeChange(normalized);
         }}
         placeholder="MMSS"
         className="w-full text-center text-6xl font-mono bg-transparent outline-none text-slate-200 placeholder:text-slate-800 tracking-widest"
@@ -50,19 +61,19 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({ state, actions }
       />
       <div
         className={`text-sm font-mono h-6 transition-colors ${
-          state.validationError && state.phase === 0
+          validationError && phase === 0
             ? "text-red-500 font-bold animate-pulse"
             : "text-slate-300"
         }`}
       >
-        {state.validationError && state.phase === 0 ? (
+        {validationError && phase === 0 ? (
           <span className="flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" /> {state.validationError}
+            <AlertCircle className="w-3 h-3" /> {validationError}
           </span>
-        ) : state.formattedTime.empty ? (
+        ) : isEmpty ? (
           "Enter numbers (e.g. 12345)"
         ) : (
-          `Parsed: ${state.formattedTime.display}`
+          `Parsed: ${displayTime}`
         )}
       </div>
     </div>
