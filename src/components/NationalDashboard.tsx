@@ -7,11 +7,11 @@ import { MatchMemoModal } from "@/components/features/MatchMemoModal";
 import { TacticalBoardModal } from "@/components/features/TacticalBoard/TacticalBoardModal";
 import { ChevronLeft, Edit3 } from "lucide-react";
 import Link from "next/link";
+import { useCallback, useState } from "react";
 
 import { useUIStore } from "@/hooks/use-ui-store";
 import { useModalToggleShortcut } from "@/hooks/use-shortcut";
 import { SHORTCUT_ACTIONS } from "@/lib/shortcuts";
-import { useState } from "react";
 
 interface Props {
   matchId: string;
@@ -33,6 +33,16 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
   // Modal Shortcuts
   useModalToggleShortcut(SHORTCUT_ACTIONS.TOGGLE_MATCH_MEMO, setMatchMemoOpen, { isOpen: isMatchMemoOpen });
   useModalToggleShortcut(SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD, setTacticalBoardOpen, { isOpen: isTacticalBoardOpen });
+
+  const handleCloseCentralFocus = useCallback(() => {
+    d.setEditingEvent(null);
+  }, [d]);
+
+  const handleRefresh = useCallback((id: string) => {
+    d.setRefreshTrigger(p => p + 1);
+    setHighlightIdLocal(id);
+    setHighlightEventId(id);
+  }, [d, setHighlightEventId]);
 
   return (
     <div className="flex h-screen w-full bg-slate-950 text-slate-50 overflow-hidden font-sans">
@@ -75,12 +85,8 @@ export default function NationalDashboard({ matchId, defaultHome, defaultAway, d
         <CentralFocusModal 
           matchId={matchId} db={null} connection={null}
           editingEvent={d.editingEvent}
-          onClose={() => d.setEditingEvent(null)}
-          onRefresh={(id) => {
-            d.setRefreshTrigger(p => p + 1);
-            setHighlightIdLocal(id);
-            setHighlightEventId(id);
-          }} 
+          onClose={handleCloseCentralFocus}
+          onRefresh={handleRefresh} 
         />
 
         <MatchMemoModal matchId={matchId} isOpen={isMatchMemoOpen} onClose={() => setMatchMemoOpen(false)} />

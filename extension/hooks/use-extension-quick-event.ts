@@ -1,24 +1,15 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { getFlattenedEvents, FlattenedEvent } from "@/lib/event-definitions";
-import { saveCustomEvent } from "@/lib/db";
-import { loadCustomEventsToDuckDB } from "@/lib/duckdb/data-loader";
-import { AsyncDuckDB, AsyncDuckDBConnection } from "@duckdb/duckdb-wasm";
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { browser } from 'wxt/browser';
+import { getFlattenedEvents } from '@/lib/event-definitions';
 
 export type Phase = "timestamp" | "label" | "memo";
 
-interface UseCentralFocusProps {
-  matchId: string;
-  db: AsyncDuckDB | null;
-  connection: AsyncDuckDBConnection | null;
-  onRefresh: (eventId: string) => void;
-  editingEvent?: any;
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
+interface UseExtensionQuickEventProps {
+  matchId: string | null;
+  onSaveSuccess?: () => void;
 }
 
-export function useCentralFocus({
-  matchId, db, connection, onRefresh, editingEvent, isOpen, setIsOpen
-}: UseCentralFocusProps) {
+export function useExtensionQuickEvent({ matchId, onSaveSuccess }: UseExtensionQuickEventProps) {
   const [phase, setPhase] = useState<Phase>("timestamp");
   const [timeStr, setTimeStr] = useState("");
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
@@ -26,10 +17,11 @@ export function useCentralFocus({
   const [memoStr, setMemoStr] = useState("");
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const flatEvents = useMemo(() => getFlattenedEvents(), []);
 
-  // Parse time
+  // 時間のパース処理 (本体のロジックと同一)
   const { minute, second, formattedTime } = useMemo(() => {
     const raw = timeStr.trim();
     if (!raw) return { minute: -1, second: -1, formattedTime: "" };
@@ -50,7 +42,7 @@ export function useCentralFocus({
     return { minute: m, second: s, formattedTime: formatted };
   }, [timeStr]);
 
-  // Suggestions
+  // サジェスト処理
   const suggestions = useMemo(() => {
     let allOptions = flatEvents;
     if (activeGroupId) {
@@ -66,12 +58,11 @@ export function useCentralFocus({
     return allOptions;
   }, [labelInput, flatEvents, activeGroupId]);
 
-  const handleSave = useCallback(async () => {
-    if (minute < 0 || selectedLabels.length === 0) return;
-
-    const id = editingEvent ? editingEvent.id : crypto.randomUUID();
-    const event = {
-      id,
+  // イベントオブジェクトの生成
+  const prepareEvent = useCallback(() => {
+    if (!matchId || minute < 0 || selectedLabels.length === 0) return null;
+    return {
+      id: crypto.randomUUID(),
       match_id: matchId,
       minute,
       second,
@@ -79,21 +70,7 @@ export function useCentralFocus({
       memo: memoStr.trim(),
       created_at: Date.now(),
     };
-
-    await saveCustomEvent(event as any);
-
-    if (db && connection) {
-      await loadCustomEventsToDuckDB(db, connection, matchId);
-    }
-
-    setIsOpen(false);
-    onRefresh(id);
-
-    // External bridge
-    window.dispatchEvent(new CustomEvent('footics-action', { 
-        detail: { type: 'event-save', matchId, eventId: id } 
-    }));
-  }, [minute, selectedLabels, memoStr, editingEvent, matchId, db, connection, setIsOpen, onRefresh]);
+  }, [matchId, minute, second, selectedLabels, memoStr]);
 
   const commitLabel = useCallback((label: string) => {
     const trimmed = label.trim();
@@ -118,6 +95,41 @@ export function useCentralFocus({
     setActiveGroupId(null);
   }, []);
 
+  // 保存処理 (Content Script 経由 - UIボタン用)
+  const handleSave = useCallback(async () => {
+    const event = prepareEvent();
+    if (!event) {
+      console.warn('Save failed: validation error');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const tabs = await browser.tabs.query({});
+      const footicsTab = tabs.find(t => 
+        t.url?.includes('localhost:3000') || 
+        t.url?.includes('10.255.255.254') || 
+        t.url?.includes('footics.com')
+      );
+
+      if (footicsTab?.id) {
+        const response = await browser.tabs.sendMessage(footicsTab.id, { 
+          type: 'SAVE_CUSTOM_EVENT', 
+          event 
+        });
+        
+        if (response?.success) {
+          onSaveSuccess?.();
+          resetForm();
+        }
+      }
+    } catch (e) {
+      console.error('Failed to save event via extension:', e);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [prepareEvent, onSaveSuccess, resetForm]);
+
   return {
     phase, setPhase,
     timeStr, setTimeStr,
@@ -129,7 +141,9 @@ export function useCentralFocus({
     formattedTime, minute, second,
     suggestions,
     handleSave,
+    prepareEvent,
     commitLabel,
-    resetForm
+    resetForm,
+    isSaving
   };
 }

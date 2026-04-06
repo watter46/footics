@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Shadow UI内部での基本フォント設定 */
+:host {
+  all: initial;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* WXTのShadow UIコンテナ自体のリセット */
+#root {
+  all: initial;
+}

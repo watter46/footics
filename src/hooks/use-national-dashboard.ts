@@ -122,7 +122,7 @@ export function useNationalDashboard({ matchId, defaultHome, defaultAway, defaul
     }
   }), [matchId, defaultHome, defaultAway, defaultScore, matchData]);
 
-  return {
+  return useMemo(() => ({
     events,
     metadata,
     editingEvent,
@@ -131,5 +131,9 @@ export function useNationalDashboard({ matchId, defaultHome, defaultAway, defaul
     setRefreshTrigger,
     handleEditCustomEvent,
     handleDeleteCustomEvent
-  };
+  }), [
+    events, metadata, editingEvent, setEditingEvent, 
+    refreshTrigger, setRefreshTrigger, 
+    handleEditCustomEvent, handleDeleteCustomEvent
+  ]);
 }

@@ -142,7 +142,7 @@ export function useDashboard(matchId: string) {
     }
   }, [db, connection, matchId]);
 
-  return {
+  return useMemo(() => ({
     status, db, connection, error, metadata, cacheMissing,
     filters,
     events, totalCount, isQuerying,
@@ -161,5 +161,24 @@ export function useDashboard(matchId: string) {
     handleDeleteCustomEvent,
     handleRestoreCache,
     handleRefreshCustomEvents
-  };
+  }), [
+    status, db, connection, error, metadata, cacheMissing,
+    filters,
+    events, totalCount, isQuerying,
+    refreshTrigger, setRefreshTrigger,
+    editingEvent, setEditingEvent,
+    isRestoring,
+    restoreInputRef,
+    handleTeamChange,
+    handlePlayerToggle,
+    handlePlayersClear,
+    handleOutcomeChange,
+    handleStrategyToggle,
+    handleStrategyParamChange,
+    handleTimelineSourceChange,
+    handleEditCustomEvent,
+    handleDeleteCustomEvent,
+    handleRestoreCache,
+    handleRefreshCustomEvents
+  ]);
 }

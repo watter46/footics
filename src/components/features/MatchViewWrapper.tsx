@@ -8,12 +8,27 @@ import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
+import React, { useEffect } from "react";
+
 interface Props {
   matchId: string;
 }
 
 export function MatchViewWrapper({ matchId }: Props) {
   const { status, error, metadata } = useDuckDB(matchId);
+
+  // 拡張機能から現在のアクティブな試合を特定できるように保存
+  useEffect(() => {
+    if (matchId) {
+      localStorage.setItem("lastActiveMatchId", matchId);
+      // DOM 経由で拡張機能 (Isolated World) に受け渡す
+      document.documentElement.dataset.matchId = matchId;
+      console.log('[MatchViewWrapper] matchId set to dataset:', matchId);
+    }
+    return () => {
+      delete document.documentElement.dataset.matchId;
+    };
+  }, [matchId]);
 
   if (status === "idle" || status === "initializing" || status === "loading-data") {
     const statusMessage =

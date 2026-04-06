@@ -43,7 +43,16 @@ next-env.d.ts
 # Match data (large JSON files)
 public/data/
 public/national_data/
+public/preview/
 upload/
 docs/
 .open-next/
 .wrangler/
+# extension
+/extension/.output/
+/extension/.wxt/
+/extension/node_modules/
+/extension/dist/
+
+# certs
+certificates

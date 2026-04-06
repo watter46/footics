@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useUIStore } from "@/hooks/use-ui-store";
 import { useModalToggleShortcut } from "@/hooks/use-shortcut";
 import { SHORTCUT_ACTIONS } from "@/lib/shortcuts";
+import { useCallback } from "react";
 
 export default function Dashboard({ matchId }: { matchId: string }) {
   const d = useDashboard(matchId);
@@ -81,6 +82,15 @@ export default function Dashboard({ matchId }: { matchId: string }) {
 
   if (!d.metadata) return null;
 
+  const handleCloseCentralFocus = useCallback(() => {
+    d.setEditingEvent(null);
+  }, [d]);
+
+  const handleRefresh = useCallback((id: string) => {
+    d.setRefreshTrigger(p => p + 1);
+    setHighlightEventId(id);
+  }, [d, setHighlightEventId]);
+
   return (
     <div className="flex h-screen w-full bg-slate-950 text-slate-50 overflow-hidden font-sans">
       <Sidebar
@@ -129,11 +139,8 @@ export default function Dashboard({ matchId }: { matchId: string }) {
         <CentralFocusModal 
           matchId={matchId} db={d.db} connection={d.connection} 
           editingEvent={d.editingEvent} 
-          onClose={() => d.setEditingEvent(null)}
-          onRefresh={(id) => {
-            d.setRefreshTrigger(p => p + 1);
-            setHighlightEventId(id);
-          }} 
+          onClose={handleCloseCentralFocus}
+          onRefresh={handleRefresh} 
         />
 
         <MatchMemoModal matchId={matchId} isOpen={isMatchMemoOpen} onClose={() => setMatchMemoOpen(false)} />

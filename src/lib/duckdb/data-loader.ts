@@ -49,10 +49,9 @@ async function importParquetAsTable(
     const uint8View = new Uint8Array(parquetBuffer);
     await db.registerFileBuffer(fileName, uint8View);
     
-    // 既存テーブルを破棄してから、Parquet から読み込み
-    await conn.query(`DROP TABLE IF EXISTS ${tableName}`);
+    // 既存テーブルを置換（または新規作成）して Parquet から読み込み
     await conn.query(
-      `CREATE TABLE ${tableName} AS SELECT * FROM read_parquet('${fileName}')`
+      `CREATE OR REPLACE TABLE ${tableName} AS SELECT * FROM read_parquet('${fileName}')`
     );
   } catch (err: any) {
     console.error(`[footics] Failed to import parquet table ${tableName} for match ${matchId}:`, err);
