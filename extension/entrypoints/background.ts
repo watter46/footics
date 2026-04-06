@@ -1,7 +1,18 @@
 import { browser } from 'wxt/browser';
+import type { ExtensionMessage } from '../types/messaging';
 
 export default defineBackground(() => {
   console.log('Footics Background Script loaded');
+
+  // Footics 本体タブを特定するヘルパー
+  const findFooticsTab = async () => {
+    const allTabs = await browser.tabs.query({});
+    return allTabs.find(t => 
+      t.url?.includes('localhost') || 
+      t.url?.includes('footics.com') ||
+      t.url?.includes('footics.watool.workers.dev')
+    );
+  };
 
   browser.commands.onCommand.addListener(async (command, tab) => {
     console.info('🚀 [Footics BG] Command received:', command);
@@ -10,9 +21,8 @@ export default defineBackground(() => {
 
     const mode: 'MATCH' | 'EVENT' = command === 'toggle-match-memo' ? 'MATCH' : 'EVENT';
 
-    // 1. Footics 本体 (localhost / footics.com) のタブを検索
-    const allTabs = await browser.tabs.query({});
-    const footicsTab = allTabs.find(t => t.url?.includes('localhost') || t.url?.includes('footics.com'));
+    // 1. Footics 本体タブを検索
+    const footicsTab = await findFooticsTab();
 
     // 分析対象タブ（動画視聴中など、コマンドが押されたタブ）
     const activeTab = tab || (await browser.tabs.query({ active: true, currentWindow: true }))[0];
@@ -20,11 +30,12 @@ export default defineBackground(() => {
     if (!footicsTab) {
       console.warn('❌ [Footics BG] Footics App tab not found.');
       if (activeTab?.id) {
-        browser.tabs.sendMessage(activeTab.id, { 
+        const message: ExtensionMessage = { 
           type: 'OPEN_OVERLAY', 
           mode, 
           error: 'Footics本体のタブを開いてください' 
-        });
+        };
+        browser.tabs.sendMessage(activeTab.id, message);
       }
       return;
     }
@@ -35,22 +46,22 @@ export default defineBackground(() => {
       const matchId = response?.matchId;
 
       if (activeTab?.id) {
-        browser.tabs.sendMessage(activeTab.id, { 
+        const message: ExtensionMessage = { 
           type: 'OPEN_OVERLAY', 
           mode, 
           matchId 
-        });
+        };
+        browser.tabs.sendMessage(activeTab.id, message);
       }
     } catch (err) {
       console.error('❌ [Footics BG] Failed to get match info from app tab:', err);
     }
   });
 
-  browser.runtime.onMessage.addListener(async (message) => {
+  browser.runtime.onMessage.addListener(async (message: any) => {
     // 3. オーバーレイからの保存リクエストを本体タブへ転送（リレー）
     if (message.type === 'SAVE_MEMO_RELAY') {
-      const allTabs = await browser.tabs.query({});
-      const footicsTab = allTabs.find(t => t.url?.includes('localhost') || t.url?.includes('footics.com'));
+      const footicsTab = await findFooticsTab();
 
       if (footicsTab?.id) {
         return browser.tabs.sendMessage(footicsTab.id, message);

@@ -4,6 +4,7 @@ import { useMemoOverlay } from "@/hooks/features/MemoOverlay/useMemoOverlay";
 import { useMemoOverlayEventBridge } from "@/hooks/features/MemoOverlay/useMemoOverlayEventBridge";
 import { MemoOverlayView } from "@/components/features/MemoOverlay/MemoOverlayView";
 import type { MemoMode } from "@/hooks/features/MemoOverlay/useMemoOverlay";
+import type { ExtensionMessage, SaveMemoResponse } from "../../types/messaging";
 
 interface MemoOverlayBridgeProps {
   mode: MemoMode;
@@ -14,11 +15,10 @@ interface MemoOverlayBridgeProps {
 }
 
 /**
- * 検証モード (Dry Run)
- * true の間は実際の保存を行わず、コンソール出力と入力リセットのみを行います。
- * 全ての動作確認が完了したら、ここを false にするか、このブロックを削除してください。
+ * 検証モード (DRY_RUN)
+ * 本番運用時は false に設定します。
  */
-const DRY_RUN = true;
+const DRY_RUN = false;
 
 /**
  * MemoOverlayBridge (Extension Adapter Layer)
@@ -27,9 +27,6 @@ const DRY_RUN = true;
  * - `useMemoOverlay` でコアロジックをインスタンス化
  * - `useMemoOverlayEventBridge` で footics-action イベントを購読
  * - `handleSave` として `browser.runtime.sendMessage` を実行
- * - 保存成功後の後処理（onClose, onSaveSuccess）を担当
- *
- * ここが Extension 固有の唯一の依存点になる。
  */
 export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
   mode,
@@ -39,12 +36,6 @@ export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
   onSaveSuccess,
 }) => {
   const { state, actions } = useMemoOverlay(mode, initialError);
-
-  React.useEffect(() => {
-    if (DRY_RUN) {
-      console.info("🛠️ [Footics] Verification Mode (DRY_RUN) is ACTIVE.");
-    }
-  }, []);
 
   // ── 保存処理（Extension 固有の実装） ──
   const handleSave = async () => {
@@ -60,24 +51,17 @@ export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
     actions.setIsSaving(true);
     try {
       if (DRY_RUN) {
-        // 検証モード：コンソール出力のみ
-        console.info("🚀 [DRY RUN] Save Payload:", {
-          matchId: matchId || "MOCK_MATCH_ID",
-          ...payload,
-        });
-        
-        // 擬似的な待ち時間
+        console.info("🚀 [DRY RUN] Save Payload:", { matchId, ...payload });
         await new Promise((resolve) => setTimeout(resolve, 500));
-
-        onSaveSuccess("Dry Run: Saved (Check Console)");
-        actions.reset(); // 入力をリセットして次のテストへ（オーバーレイは閉じない）
+        onSaveSuccess("Dry Run: Saved");
+        actions.reset();
         return;
       }
 
-      const message: Record<string, unknown> = {
+      const message: ExtensionMessage = {
         type: "SAVE_MEMO_RELAY",
         mode,
-        matchId,
+        matchId: matchId!,
         memo: payload.memo,
       };
 
@@ -87,15 +71,13 @@ export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
         message.labels = payload.labels;
       }
 
-      const response = await browser.runtime.sendMessage(message);
+      const response = await browser.runtime.sendMessage(message) as SaveMemoResponse;
 
       if (response?.success) {
         onClose();
         onSaveSuccess("Saved Successfully");
       } else {
-        actions.setError(
-          response?.error || "保存に失敗しました。本体タブを確認してください。"
-        );
+        actions.setError(response?.error || "保存に失敗しました。本体タブを確認してください。");
       }
     } catch (err) {
       console.error("[MemoOverlayBridge] sendMessage failed:", err);
@@ -105,7 +87,6 @@ export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
     }
   };
 
-  // ── footics-action イベントの購読 ──
   useMemoOverlayEventBridge(state, actions, onClose, handleSave);
 
   return (

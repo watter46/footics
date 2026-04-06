@@ -48,11 +48,4 @@ upload/
 docs/
 .open-next/
 .wrangler/
-# extension
-/extension/.output/
-/extension/.wxt/
-/extension/node_modules/
-/extension/dist/
-
-# certs
 certificates
