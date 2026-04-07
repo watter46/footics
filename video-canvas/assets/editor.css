@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@theme {
+  --color-neutral-750: #333333;
+}
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}

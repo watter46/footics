@@ -207,10 +207,13 @@ export const useMemoOverlayDerived = () => {
     ? !suggestions.some((s) => s.label.toLowerCase() === store.labelInput.toLowerCase())
     : false;
 
+  const clearError = () => store.setError(undefined);
+
   return {
     ...store,
     formattedTime,
     suggestions,
     isInvalidLabel,
+    clearError,
   };
 };

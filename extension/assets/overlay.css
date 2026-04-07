@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@source "../../src/**/*.tsx";
+@source "../../src/**/*.ts";
 
 /* Shadow UI内部での基本フォント設定 */
 :host {

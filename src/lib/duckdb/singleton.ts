@@ -18,6 +18,8 @@ interface DuckDBInstance {
 declare global {
   // eslint-disable-next-line no-var
   var __footics_duckdb_instance: Promise<DuckDBInstance> | undefined;
+  // eslint-disable-next-line no-var
+  var __footics_duckdb_match_id: string | null;
 }
 
 /**
@@ -26,6 +28,17 @@ declare global {
  */
 let initPromise: Promise<DuckDBInstance> | undefined =
   globalThis.__footics_duckdb_instance;
+
+/**
+ * 現在ロードされている試合IDを追跡（セッションキャッシュ）
+ */
+export function getCurrentlyLoadedMatchId(): string | null {
+  return globalThis.__footics_duckdb_match_id || null;
+}
+
+export function setCurrentlyLoadedMatchId(matchId: string | null) {
+  globalThis.__footics_duckdb_match_id = matchId;
+}
 
 /**
  * DuckDB-WASM インスタンスを初期化し、接続を返す。
@@ -41,9 +54,23 @@ export function initializeDuckDB(): Promise<DuckDBInstance> {
 }
 
 async function createInstance(): Promise<DuckDBInstance> {
-  // jsdelivr バンドルを取得
-  const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
-  const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+  const origin = window.location.origin;
+  // ローカル配信用のバンドル設定
+  const MANUAL_BUNDLES: duckdb.DuckDBBundles = {
+    mvp: {
+      mainModule: `${origin}/static/duckdb/duckdb-mvp.wasm`,
+      mainWorker: `${origin}/static/duckdb/duckdb-browser-mvp.worker.js`,
+    },
+    eh: {
+      mainModule: `${origin}/static/duckdb/duckdb-eh.wasm`,
+      mainWorker: `${origin}/static/duckdb/duckdb-browser-eh.worker.js`,
+    },
+  };
+
+  const bundle = await duckdb.selectBundle(MANUAL_BUNDLES);
+
+  // COI (Cross-Origin Isolation) が有効な場合は COI バンドルを優先する等のロジックも可能だが、
+  // 現状は MVP/EH の出し分けで十分高速。
 
   // CORS 対応: Blob Worker
   const workerUrl = URL.createObjectURL(

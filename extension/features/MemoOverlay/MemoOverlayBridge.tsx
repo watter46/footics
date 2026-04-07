@@ -1,9 +1,13 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { browser } from "wxt/browser";
 import { useMemoOverlayStore, useMemoOverlayDerived } from "@/stores/useMemoOverlayStore";
 import { useMemoOverlayEventBridge } from "@/hooks/features/MemoOverlay/useMemoOverlayEventBridge";
 import { MemoOverlayView } from "@/components/features/MemoOverlay/MemoOverlayView";
-import { type MemoMode, createSavePayload } from "@/lib/features/MemoOverlay/memoOverlayLogic";
+import { 
+  type MemoMode, 
+  createSavePayload, 
+  getValidationError 
+} from "@/lib/features/MemoOverlay/memoOverlayLogic";
 import type { ExtensionMessage, SaveMemoResponse } from "../../types/messaging";
 
 interface MemoOverlayBridgeProps {
@@ -18,7 +22,7 @@ interface MemoOverlayBridgeProps {
  * 検証モード (DRY_RUN)
  * 本番運用時は false に設定します。
  */
-const DRY_RUN = false;
+const DRY_RUN = true;
 
 /**
  * MemoOverlayBridge (Extension Adapter Layer)
@@ -31,11 +35,21 @@ const DRY_RUN = false;
 export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
   mode,
   matchId,
+  initialError,
   onClose,
   onSaveSuccess,
 }) => {
   const store = useMemoOverlayStore();
   const derived = useMemoOverlayDerived();
+
+  // ── ストアの初期化 ──
+  // マウント時およびモード・エラー情報変更時にストアを同期する
+  useEffect(() => {
+    store.reset(mode);
+    if (initialError) {
+      store.setError(initialError);
+    }
+  }, [mode, initialError]);
 
   // ── 保存処理（Extension 固有の実装） ──
   const handleSave = async () => {
@@ -46,11 +60,22 @@ export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
       return;
     }
 
-    // バリデーション
+    // ── 完全なバリデーション ──
     if (currentState.mode === "EVENT") {
-      const result = store.nextPhase();
-      if (result === "BLOCKED") return;
-      if (currentState.phase < 2) return;
+      // Phase 0: 時間のチェック
+      const timeErr = getValidationError({ ...currentState, phase: 0 });
+      if (timeErr) {
+        store.setError(timeErr);
+        store.forceSetPhase(0);
+        return;
+      }
+      // Phase 1: ラベルのチェック
+      const labelErr = getValidationError({ ...currentState, phase: 1 });
+      if (labelErr) {
+        store.setError(labelErr);
+        store.forceSetPhase(1);
+        return;
+      }
     }
 
     const payload = createSavePayload({

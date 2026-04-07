@@ -1,0 +1,18 @@
+# WXT outputs
+.output/
+.wxt/
+
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Build cache
+*.tsbuildinfo
+
+# OS files
+.DS_Store
+Thumbs.db

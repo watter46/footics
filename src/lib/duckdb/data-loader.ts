@@ -82,6 +82,8 @@ export interface BatchImportResult {
   errors: { fileName: string; errorMessage: string }[];
 }
 
+import { getCurrentlyLoadedMatchId, setCurrentlyLoadedMatchId } from "./singleton";
+
 /**
  * マッチデータをロードし、DuckDB テーブルを作成する。
  * Unified DB (footics_db) から Parquet バイナリをロードする。
@@ -93,6 +95,19 @@ export async function loadMatchData(
   _isRetry = false
 ): Promise<LoadResult> {
   const start = performance.now();
+
+  // セッションキャッシュのチェック
+  if (getCurrentlyLoadedMatchId() === matchId && !_isRetry) {
+    console.log(`[footics] Match ${matchId} is already loaded in DuckDB. Skipping data load.`);
+    // metadata だけ取得して返す必要がある。
+    // metadata は entry に含まれているので、結局 getMatchBlobs は呼ぶ必要があるが、
+    // 重い Parquet のテーブル構築をスキップできる。
+    const entry = await getMatchBlobs(matchId);
+    if (entry) {
+      return { metadata: entry.metadata };
+    }
+  }
+
   console.log(`[footics] Loading match ${matchId} from Unified DB...`);
 
   try {
@@ -111,6 +126,9 @@ export async function loadMatchData(
 
       // カスタムイベントのロード
       await loadCustomEventsToDuckDB(db, conn, matchId);
+
+      // ロード済み ID を更新
+      setCurrentlyLoadedMatchId(matchId);
 
       return { metadata: entry.metadata };
     }
@@ -457,6 +475,9 @@ async function importMatchJsonFileCore(
   };
 
   await saveMatchUnified(summary, blobs);
+
+  // インポート直後は DuckDB テーブルがこの試合のもので上書きされているため、キャッシュを更新
+  setCurrentlyLoadedMatchId(matchId);
 
   console.log(`[footics] Import ${matchId} done in ${(performance.now() - start).toFixed(0)}ms`);
   return matchId;

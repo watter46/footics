@@ -28,6 +28,15 @@ export default function Dashboard({ matchId }: { matchId: string }) {
   useModalToggleShortcut(SHORTCUT_ACTIONS.TOGGLE_MATCH_MEMO, setMatchMemoOpen, { isOpen: isMatchMemoOpen });
   useModalToggleShortcut(SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD, setTacticalBoardOpen, { isOpen: isTacticalBoardOpen });
 
+  const handleCloseCentralFocus = useCallback(() => {
+    d.setEditingEvent(null);
+  }, [d]);
+
+  const handleRefresh = useCallback((id: string) => {
+    d.setRefreshTrigger(p => p + 1);
+    setHighlightEventId(id);
+  }, [d, setHighlightEventId]);
+
   // Loading States
   if (d.status === "idle" || d.status === "initializing" || d.status === "loading-data") {
     const statusMessage = d.status === "initializing" ? "Initializing DuckDB-WASM..." : "Loading match data...";
@@ -81,15 +90,6 @@ export default function Dashboard({ matchId }: { matchId: string }) {
   }
 
   if (!d.metadata) return null;
-
-  const handleCloseCentralFocus = useCallback(() => {
-    d.setEditingEvent(null);
-  }, [d]);
-
-  const handleRefresh = useCallback((id: string) => {
-    d.setRefreshTrigger(p => p + 1);
-    setHighlightEventId(id);
-  }, [d, setHighlightEventId]);
 
   return (
     <div className="flex h-screen w-full bg-slate-950 text-slate-50 overflow-hidden font-sans">
