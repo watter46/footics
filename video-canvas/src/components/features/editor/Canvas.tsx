@@ -6,6 +6,7 @@ import {
   copyAs,
   createShapeId,
   Editor,
+  AssetRecordType,
 } from 'tldraw';
 import 'tldraw/tldraw.css';
 import { useEditorStore } from '@/stores/useEditorStore';
@@ -24,8 +25,11 @@ import { CustomToolbar } from './tldraw/CustomToolbar';
 
 const EditorEventsListener: React.FC = () => {
   const editor = useEditor();
+  const triggerCopy = useEditorStore(state => state.triggerCopy);
+  const triggerSave = useEditorStore(state => state.triggerSave);
 
   useEffect(() => {
+    if (triggerCopy === 0) return;
     const handleCopy = async () => {
       try {
         const shapeIds = editor.getSelectedShapeIds();
@@ -38,7 +42,11 @@ const EditorEventsListener: React.FC = () => {
         console.error("Failed to copy:", err);
       }
     };
+    handleCopy();
+  }, [triggerCopy, editor]);
 
+  useEffect(() => {
+    if (triggerSave === 0) return;
     const handleSave = async () => {
       try {
         const shapeIds = editor.getSelectedShapeIds();
@@ -51,14 +59,8 @@ const EditorEventsListener: React.FC = () => {
         console.error("Failed to save:", err);
       }
     };
-
-    window.addEventListener('tldraw-copy-png', handleCopy);
-    window.addEventListener('tldraw-save-png', handleSave);
-    return () => {
-      window.removeEventListener('tldraw-copy-png', handleCopy);
-      window.removeEventListener('tldraw-save-png', handleSave);
-    }
-  }, [editor]);
+    handleSave();
+  }, [triggerSave, editor]);
 
   return null;
 }
@@ -83,7 +85,7 @@ const BackgroundManager: React.FC = () => {
 
     try {
       const timestamp = Date.now();
-      const assetId = `asset:screenshot-${timestamp}` as any;
+      const assetId = AssetRecordType.createId();
       const shapeId = createShapeId('bg-screenshot');
 
       const img = new Image();

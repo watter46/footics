@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { MessageTypes, type CaptureResultMessage, type ExtensionMessage } from '../lib/message-types';
 
 export default defineBackground(() => {
   console.log('Video Canvas Background Script loaded');
@@ -8,7 +9,7 @@ export default defineBackground(() => {
       const activeTab = tab || (await browser.tabs.query({ active: true, currentWindow: true }))[0];
       if (activeTab?.id) {
         try {
-          await browser.tabs.sendMessage(activeTab.id, { type: 'VIDEO_CANVAS_CAPTURE_TRIGGER' });
+          await browser.tabs.sendMessage(activeTab.id, { type: MessageTypes.CAPTURE_TRIGGER });
         } catch (err) {
           console.error('❌ [Video Canvas] Failed to send capture trigger. Is the content script loaded?', err);
           // 接続エラーの場合はユーザーにリロードを促す
@@ -19,12 +20,12 @@ export default defineBackground(() => {
     }
   });
 
-  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  browser.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
     switch (message.type) {
-      case 'VIDEO_CANVAS_CAPTURE_RESULT':
-        handleCaptureResult(message, sendResponse);
+      case MessageTypes.CAPTURE_RESULT:
+        handleCaptureResult(message as CaptureResultMessage, sendResponse);
         return true;
-      case 'VIDEO_CANVAS_REQUEST_TAB_CAPTURE':
+      case MessageTypes.REQUEST_TAB_CAPTURE:
         handleTabCaptureRequest(sendResponse);
         return true;
       default:
@@ -35,7 +36,7 @@ export default defineBackground(() => {
   /**
    * キャプチャ結果をストレージに保存し、エディタを開く
    */
-  async function handleCaptureResult(message: any, sendResponse: (r: any) => void) {
+  async function handleCaptureResult(message: CaptureResultMessage, sendResponse: (r: any) => void) {
     try {
       const captureId = crypto.randomUUID();
       const storageKey = `capture:${captureId}`;

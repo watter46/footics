@@ -1,11 +1,12 @@
 import { browser } from 'wxt/browser';
+import { MessageTypes, type CaptureResultMessage, type RequestTabCaptureMessage } from '../lib/message-types';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
   runAt: 'document_start',
   main() {
     browser.runtime.onMessage.addListener((message: any) => {
-      if (message.type === 'VIDEO_CANVAS_CAPTURE_TRIGGER') {
+      if (message.type === MessageTypes.CAPTURE_TRIGGER) {
         captureVideo();
       }
     });
@@ -29,13 +30,14 @@ export default defineContentScript({
       try {
         await new Promise(r => setTimeout(r, 250));
 
-        const response = await browser.runtime.sendMessage({
-          type: 'VIDEO_CANVAS_REQUEST_TAB_CAPTURE'
-        }) as any;
+        const requestMessage: RequestTabCaptureMessage = {
+          type: MessageTypes.REQUEST_TAB_CAPTURE
+        };
+        const response = await browser.runtime.sendMessage(requestMessage) as any;
 
         if (response?.success) {
-          await browser.runtime.sendMessage({
-            type: 'VIDEO_CANVAS_CAPTURE_RESULT',
+          const resultMessage: CaptureResultMessage = {
+            type: MessageTypes.CAPTURE_RESULT,
             dataUrl: response.dataUrl,
             rect: {
               x: 0, y: 0,
@@ -54,7 +56,8 @@ export default defineContentScript({
               }
             },
             isDirectCapture: false
-          });
+          };
+          await browser.runtime.sendMessage(resultMessage);
         }
       } finally {
         cleanup();
@@ -77,11 +80,12 @@ export default defineContentScript({
         const isBlack = pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0;
 
         if (!isBlack) {
-          await browser.runtime.sendMessage({
-            type: 'VIDEO_CANVAS_CAPTURE_RESULT',
+          const directMessage: CaptureResultMessage = {
+            type: MessageTypes.CAPTURE_RESULT,
             dataUrl: canvas.toDataURL('image/png'),
             isDirectCapture: true
-          });
+          };
+          await browser.runtime.sendMessage(directMessage);
           return true;
         }
       } catch (e) {

@@ -18,9 +18,3 @@ export interface CaptureMetadata {
   originalVideoRect?: CaptureRect;
 }
 
-export interface CaptureMessage {
-  type: 'VIDEO_CANVAS_CAPTURE_RESULT';
-  dataUrl: string;
-  rect?: CaptureMetadata;
-  isDirectCapture: boolean;
-}

@@ -1,8 +1,10 @@
 import React, { useRef } from 'react';
 import { CanvasContainer } from './Canvas';
+import { useEditorStore } from '@/stores/useEditorStore';
 
 
 export const Workspace: React.FC = () => {
+  const { dispatchCopy, dispatchSave } = useEditorStore();
   return (
     <div className="flex flex-col h-screen bg-neutral-950 text-white selection:bg-blue-500/30">
       {/* Header / Top Toolbar */}
@@ -15,16 +17,15 @@ export const Workspace: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Action buttons will be handled by custom events triggered from within Canvas component or via standard Tldraw API */}
-          {/* We'll pass an ID or rely on global event dispatches to trigger PNG generation */}
+          {/* Action buttons trigger via Zustand store to Canvas component */}
           <button 
-            onClick={() => window.dispatchEvent(new CustomEvent('tldraw-copy-png'))}
+            onClick={dispatchCopy}
             className="px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-xs font-medium transition-all"
           >
             画像をコピー
           </button>
           <button 
-            onClick={() => window.dispatchEvent(new CustomEvent('tldraw-save-png'))}
+            onClick={dispatchSave}
             className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-xs font-medium transition-all shadow-lg shadow-blue-600/20"
           >
             画像を保存

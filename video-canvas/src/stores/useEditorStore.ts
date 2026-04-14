@@ -1,33 +1,39 @@
 import { create } from 'zustand';
-import { z } from 'zod';
-import { browser } from 'wxt/browser';
+import { StorageUtils } from '@/lib/storage';
+import type { CaptureMetadata } from '@/lib/types';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// --- Storage Schema ---
-
-const CaptureStorageSchema = z.object({
-  lastCapturedFrame: z.string().nullable().optional(),
-  cropRect: z.any().nullable().optional(), // CaptureMetadata 型を許容
-});
 
 // --- Store ---
 
 interface EditorState {
   lastCapturedFrame: string | null;
-  cropRect: any | null;
+  cropRect: CaptureMetadata | null;
   isHydrated: boolean;
+  triggerCopy: number;
+  triggerSave: number;
+  
   setLastCapturedFrame: (dataUrl: string | null) => void;
-  setCropRect: (rect: any | null) => void;
+  setCropRect: (rect: CaptureMetadata | null) => void;
   hydrateFromStorage: () => Promise<void>;
+  
+  dispatchCopy: () => void;
+  dispatchSave: () => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   lastCapturedFrame: null,
   cropRect: null,
   isHydrated: false,
+  triggerCopy: 0,
+  triggerSave: 0,
+  
   setLastCapturedFrame: (dataUrl) => set({ lastCapturedFrame: dataUrl }),
   setCropRect: (rect) => set({ cropRect: rect }),
+  
+  dispatchCopy: () => set((state) => ({ triggerCopy: state.triggerCopy + 1 })),
+  dispatchSave: () => set((state) => ({ triggerSave: state.triggerSave + 1 })),
+  
   hydrateFromStorage: async () => {
     if (get().isHydrated) return;
 
@@ -42,35 +48,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
       // 最大3回リトライ (ストレージの伝搬待ち対策)
       for (let attempt = 0; attempt < 3; attempt++) {
-        let result: any = null;
+        const data = await StorageUtils.getCaptureData(captureId);
 
-        if (captureId) {
-          const storageKey = `capture:${captureId}`;
-          // session から優先的に取得
-          const sessionData = (await browser.storage.session.get(storageKey).catch(() => ({}))) as any;
-          result = sessionData[storageKey];
-
-          // session になければ local から取得
-          if (!result) {
-            const localData = (await browser.storage.local.get(storageKey).catch(() => ({}))) as any;
-            result = localData[storageKey];
-          }
-        } else {
-          // フォールバック
-          const sessionData = (await browser.storage.session.get(['lastCapturedFrame', 'cropRect']).catch(() => ({}))) as any;
-          result = sessionData;
-        }
-
-        if (result && result.lastCapturedFrame) {
-          const parsed = CaptureStorageSchema.safeParse(result);
-          if (parsed.success) {
-            console.log(`[EditorStore] Successfully hydrated from storage on attempt ${attempt + 1}`);
-            set({ 
-              lastCapturedFrame: parsed.data.lastCapturedFrame || null,
-              cropRect: parsed.data.cropRect || null
-            });
-            return; // 成功したら終了
-          }
+        if (data && data.lastCapturedFrame) {
+          console.log(`[EditorStore] Successfully hydrated from storage on attempt ${attempt + 1}`);
+          set({ 
+            lastCapturedFrame: data.lastCapturedFrame || null,
+            cropRect: data.cropRect || null
+          });
+          return; // 成功したら終了
         }
 
         console.warn(`[EditorStore] Attempt ${attempt + 1} failed to find data. Retrying...`);
