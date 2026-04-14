@@ -37,17 +37,53 @@ export default defineBackground(() => {
    */
   async function handleCaptureResult(message: any, sendResponse: (r: any) => void) {
     try {
-      const editorUrl = browser.runtime.getURL('/editor.html');
-      await browser.tabs.create({ url: editorUrl });
-      await browser.storage.session.set({ 
+      const captureId = crypto.randomUUID();
+      const storageKey = `capture:${captureId}`;
+      const captureData = {
         lastCapturedFrame: message.dataUrl,
         cropRect: message.rect,
-        isDirectCapture: message.isDirectCapture || false
-      });
+        isDirectCapture: message.isDirectCapture || false,
+        timestamp: Date.now()
+      };
+      
+      // session (高速・メモリ) と local (確実・永続) の両方に保存
+      // session が使えない環境（一部のブラウザや設定）への対策
+      await Promise.all([
+        browser.storage.session.set({ [storageKey]: captureData }).catch(() => {}),
+        browser.storage.local.set({ [storageKey]: captureData })
+      ]);
+
+      const editorUrl = browser.runtime.getURL(`/editor.html?id=${captureId}`);
+      await browser.tabs.create({ url: editorUrl });
+
+      // 保存件数が増えすぎないようにクリーンアップを実行
+      cleanOldCaptures();
+
       sendResponse({ success: true });
     } catch (err: any) {
       console.error('[Video Canvas] Storage Error:', err);
       sendResponse({ success: false, error: err.message });
+    }
+  }
+
+  /**
+   * 古いキャプチャデータをクリーンアップする (直近20件のみ保持)
+   */
+  async function cleanOldCaptures() {
+    try {
+      const allData = (await browser.storage.local.get(null)) as Record<string, any>;
+      const captureKeys = Object.keys(allData)
+        .filter(key => key.startsWith('capture:'))
+        .map(key => ({ key, timestamp: allData[key]?.timestamp || 0 }))
+        .sort((a, b) => b.timestamp - a.timestamp); // 降順
+
+      if (captureKeys.length > 20) {
+        const keysToRemove = captureKeys.slice(20).map(item => item.key);
+        await browser.storage.local.remove(keysToRemove);
+        console.log(`[Video Canvas] Cleaned up ${keysToRemove.length} old captures.`);
+      }
+    } catch (err) {
+      console.warn('[Video Canvas] Cleanup failed:', err);
     }
   }
 

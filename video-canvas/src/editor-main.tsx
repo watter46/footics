@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import EditorApp from './EditorApp';
+import { EditorApp } from './EditorApp';
 import '../assets/editor.css';
 
 if (typeof document !== 'undefined') {

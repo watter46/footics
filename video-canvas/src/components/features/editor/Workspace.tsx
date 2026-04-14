@@ -1,8 +1,6 @@
-import React from 'react';
-import { Toolbar } from './Toolbar';
-import { Sidebar } from './Sidebar';
+import React, { useRef } from 'react';
 import { CanvasContainer } from './Canvas';
-import { useEditorStore } from '../../../stores/useEditorStore';
+
 
 export const Workspace: React.FC = () => {
   return (
@@ -17,32 +15,29 @@ export const Workspace: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          <button className="px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-xs font-medium transition-all">Export</button>
-          <button className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-xs font-medium transition-all shadow-lg shadow-blue-600/20">Save</button>
+          {/* Action buttons will be handled by custom events triggered from within Canvas component or via standard Tldraw API */}
+          {/* We'll pass an ID or rely on global event dispatches to trigger PNG generation */}
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('tldraw-copy-png'))}
+            className="px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-xs font-medium transition-all"
+          >
+            画像をコピー
+          </button>
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('tldraw-save-png'))}
+            className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-xs font-medium transition-all shadow-lg shadow-blue-600/20"
+          >
+            画像を保存
+          </button>
         </div>
       </header>
 
       <main className="flex flex-1 overflow-hidden relative">
-        {/* Float Toolbar */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40">
-          <Toolbar />
-        </div>
-
         {/* Central Canvas Area */}
-        <div className="flex-1 bg-neutral-950 relative overflow-hidden flex items-center justify-center">
+        <div className="flex-1 relative overflow-hidden flex items-center justify-center tldraw-wrapper">
           <CanvasContainer />
         </div>
-
-        {/* Right Sidebar */}
-        <aside className="w-72 border-l border-white/10 bg-neutral-900/40 backdrop-blur-md flex flex-col z-40">
-          <Sidebar />
-        </aside>
       </main>
-
-      {/* Footer / Status */}
-      <footer className="h-8 border-t border-white/10 bg-neutral-900/80 px-4 flex items-center text-[10px] text-neutral-500 uppercase tracking-widest font-medium">
-        Ready • Layer Count: 0 • Zoom: 100%
-      </footer>
     </div>
   );
 };

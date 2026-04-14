@@ -1,71 +1,193 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useEditorStore } from '../../../stores/useEditorStore';
-import { useCanvas } from '../../../hooks/useCanvas';
-import { useShortcuts } from '../../../hooks/useShortcuts';
-import { ContextMenu } from './ContextMenu';
+import React, { useEffect } from 'react';
+import {
+  Tldraw,
+  useEditor,
+  exportAs,
+  copyAs,
+  createShapeId,
+  Editor,
+} from 'tldraw';
+import 'tldraw/tldraw.css';
+import { useEditorStore } from '@/stores/useEditorStore';
+import { FloatingMarkerToolbar } from './tldraw/FloatingMarkerToolbar';
 
-export const CanvasContainer: React.FC = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { fabricCanvas, initCanvas } = useCanvas();
-  const { activeTool } = useEditorStore();
+// --- Zone shape modules ---
+import { ZoneCircleShapeUtil, ZoneCircleTool } from './tldraw/zone-circle';
+import { ZoneRectShapeUtil, ZoneRectTool } from './tldraw/zone-rect';
+import { LinkLineShapeUtil, LinkLineTool } from './tldraw/link-line';
+import { MarkerShapeUtil } from './tldraw/marker-shape';
+import { MarkerTool } from './tldraw/marker-tool';
+import { uiOverrides } from './tldraw/ui-overrides';
+import { CustomToolbar } from './tldraw/CustomToolbar';
 
-  // Context Menu State
-  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, targetId: string | null } | null>(null);
+// --- Editor event bridge ---
 
-  useShortcuts(fabricCanvas);
+const EditorEventsListener: React.FC = () => {
+  const editor = useEditor();
 
   useEffect(() => {
-    if (canvasRef.current && containerRef.current && !fabricCanvas) {
-      initCanvas(canvasRef.current, containerRef.current);
-    }
-  }, [canvasRef, containerRef, fabricCanvas, initCanvas]);
+    const handleCopy = async () => {
+      try {
+        const shapeIds = editor.getSelectedShapeIds();
+        const idsToCopy = shapeIds.length > 0 ? shapeIds : Array.from(editor.getCurrentPageShapeIds().values());
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!fabricCanvas) return;
+        if (idsToCopy.length === 0) return;
 
-    // Find target object at right-click location
-    const pointer = fabricCanvas.getScenePoint(e.nativeEvent);
-    const target = fabricCanvas.findTarget(e.nativeEvent);
-    
-    if (target) {
-        setContextMenu({
-            x: e.clientX,
-            y: e.clientY,
-            targetId: (target as any).id || null
-        });
-    } else {
-        setContextMenu(null);
+        await copyAs(editor, idsToCopy, { format: 'png' });
+      } catch (err) {
+        console.error("Failed to copy:", err);
+      }
+    };
+
+    const handleSave = async () => {
+      try {
+        const shapeIds = editor.getSelectedShapeIds();
+        const idsToSave = shapeIds.length > 0 ? shapeIds : Array.from(editor.getCurrentPageShapeIds().values());
+
+        if (idsToSave.length === 0) return;
+
+        await exportAs(editor, idsToSave, { format: 'png' });
+      } catch (err) {
+        console.error("Failed to save:", err);
+      }
+    };
+
+    window.addEventListener('tldraw-copy-png', handleCopy);
+    window.addEventListener('tldraw-save-png', handleSave);
+    return () => {
+      window.removeEventListener('tldraw-copy-png', handleCopy);
+      window.removeEventListener('tldraw-save-png', handleSave);
     }
+  }, [editor]);
+
+  return null;
+}
+
+// --- Main container ---
+
+// --- Background Manager ---
+
+/**
+ * 背景画像の配置をリアクティブに管理するコンポーネント
+ * Tldraw の子コンポーネントとして配置する必要がある (useEditor を使用するため)
+ */
+const BackgroundManager: React.FC = () => {
+  const editor = useEditor();
+  const lastCapturedFrame = useEditorStore((state) => state.lastCapturedFrame);
+  const isHydrated = useEditorStore((state) => state.isHydrated);
+
+  useEffect(() => {
+    if (!isHydrated || !lastCapturedFrame || !editor) return;
+
+    console.log('[Canvas] Placing background image...');
+
+    try {
+      const timestamp = Date.now();
+      const assetId = `asset:screenshot-${timestamp}` as any;
+      const shapeId = createShapeId('bg-screenshot');
+
+      const img = new Image();
+      img.onload = () => {
+        editor.run(() => {
+          // 新しいアセットを作成
+          editor.createAssets([
+            {
+              id: assetId,
+              type: 'image',
+              typeName: 'asset',
+              props: {
+                name: `screenshot-${timestamp}.png`,
+                src: lastCapturedFrame,
+                w: img.width,
+                h: img.height,
+                mimeType: 'image/png',
+                isAnimated: false,
+              },
+              meta: {},
+            }
+          ]);
+
+          const existing = editor.getShape(shapeId);
+          if (existing) {
+            editor.updateShape({
+              id: shapeId,
+              type: 'image',
+              isLocked: true, 
+              props: {
+                assetId,
+                w: img.width,
+                h: img.height,
+              }
+            });
+          } else {
+            editor.createShape({
+              id: shapeId,
+              type: 'image',
+              x: 0,
+              y: 0,
+              isLocked: true,
+              props: {
+                w: img.width,
+                h: img.height,
+                assetId,
+              }
+            });
+          }
+
+          editor.sendToBack([shapeId]);
+          
+          // 背景にズームを合わせる
+          editor.zoomToBounds({ x: 0, y: 0, w: img.width, h: img.height }, { inset: 0 });
+
+          console.log('[Canvas] Background image placed successfully.');
+        }, { history: 'ignore' });
+      };
+      img.onerror = (e) => console.error('[Canvas] Image load error:', e);
+      img.src = lastCapturedFrame;
+    } catch (e) {
+      console.error('[Canvas] Background placement failed:', e);
+    }
+  }, [editor, lastCapturedFrame, isHydrated]);
+
+  return null;
+};
+
+// --- Main container ---
+
+export const CanvasContainer: React.FC = () => {
+  // URLからcaptureIdを取得し、タブごとにキャンバス状態を分離する
+  const captureId = new URLSearchParams(window.location.search).get('id') || 'default';
+  const persistenceKey = `footics-video-canvas-${captureId}`;
+
+  const handleMount = (editor: Editor) => {
+    // 初期設定 (背景以外)
+    editor.updateInstanceState({ isReadonly: false });
+    editor.user.updateUserPreferences({ isSnapMode: true });
   };
 
   return (
-    <div 
-      ref={containerRef} 
-      // Adjusted workspace background to neutral-800 for better contrast with black canvas
-      className="w-full h-full flex items-center justify-center relative select-none bg-neutral-800/50"
-      onContextMenu={handleContextMenu}
-    >
-      <div className="shadow-[0_20px_50px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.1)] overflow-hidden bg-neutral-900 border-2 border-white/20 transition-all duration-300">
-        <canvas ref={canvasRef} />
-      </div>
-
-      {/* Context Menu */}
-      {contextMenu && (
-        <ContextMenu 
-            x={contextMenu.x} 
-            y={contextMenu.y} 
-            targetId={contextMenu.targetId} 
-            onClose={() => setContextMenu(null)} 
-        />
-      )}
-
-      {/* Floating Info */}
-      <div className="absolute bottom-6 left-6 px-3 py-1.5 bg-neutral-900/80 backdrop-blur-md rounded-full border border-white/10 text-[10px] text-neutral-500 font-bold uppercase tracking-widest shadow-2xl flex items-center gap-2">
-        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-        Work Area: <span className="text-blue-500">{activeTool}</span>
-      </div>
+    <div className="w-full h-full isolate">
+      <Tldraw
+        persistenceKey={persistenceKey}
+        inferDarkMode
+        tools={[ZoneCircleTool, ZoneRectTool, LinkLineTool, MarkerTool]}
+        shapeUtils={[ZoneCircleShapeUtil, ZoneRectShapeUtil, LinkLineShapeUtil, MarkerShapeUtil]}
+        overrides={[uiOverrides]}
+        onMount={handleMount}
+        // Remove unnecessary built-in menus by hiding them via components
+        components={{
+          Toolbar: CustomToolbar,
+          HelpMenu: null,
+          MainMenu: null, // Keep minimal UI
+          PageMenu: null,
+          NavigationPanel: null,
+          DebugPanel: null,
+        }}
+      >
+        <BackgroundManager />
+        <EditorEventsListener />
+        <FloatingMarkerToolbar />
+      </Tldraw>
     </div>
   );
 };

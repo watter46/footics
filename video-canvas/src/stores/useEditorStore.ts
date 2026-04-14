@@ -1,194 +1,87 @@
 import { create } from 'zustand';
-import { DrawingObject } from '../lib/models/drawing';
+import { z } from 'zod';
+import { browser } from 'wxt/browser';
 
-export type ToolType = 'select' | 'rect' | 'circle' | 'arrow' | 'line' | 'highlight' | 'spotlight' | 'connector';
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export interface ObjectProperties {
-  fill: string;
-  stroke: string;
-  strokeWidth: number;
-  strokeDashArray: number[] | null;
-  opacity: number;
-  visible: boolean;
-  locked: boolean;
-}
+// --- Storage Schema ---
+
+const CaptureStorageSchema = z.object({
+  lastCapturedFrame: z.string().nullable().optional(),
+  cropRect: z.any().nullable().optional(), // CaptureMetadata 型を許容
+});
+
+// --- Store ---
 
 interface EditorState {
-  // --- Data Model (Reactive) ---
-  objects: DrawingObject[];
-  activeTool: ToolType;
-  selectedObjectId: string | null;
-  hoveredObjectId: string | null;
-  globalProperties: ObjectProperties;
-  
-  // --- History (Reactive Model-based) ---
-  history: DrawingObject[][];
-  historyIndex: number;
-  
-  // --- Actions ---
-  setTool: (tool: ToolType) => void;
-  setSelectedObject: (id: string | null) => void;
-  setHoveredObject: (id: string | null) => void;
-  setObjects: (objects: DrawingObject[]) => void;
-  
-  // Model Mutations
-  addObject: (obj: DrawingObject) => void;
-  updateObject: (id: string, props: Partial<DrawingObject>) => void;
-  removeObject: (id: string) => void;
-  updateGlobalProperties: (props: Partial<ObjectProperties>) => void;
-  
-  // Reordering
-  bringToFront: (id: string) => void;
-  sendToBack: (id: string) => void;
-  bringForward: (id: string) => void;
-  sendBackward: (id: string) => void;
-  
-  // History Actions
-  saveHistory: () => void;
-  undo: () => void;
-  redo: () => void;
+  lastCapturedFrame: string | null;
+  cropRect: any | null;
+  isHydrated: boolean;
+  setLastCapturedFrame: (dataUrl: string | null) => void;
+  setCropRect: (rect: any | null) => void;
+  hydrateFromStorage: () => Promise<void>;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
-  objects: [],
-  activeTool: 'select',
-  selectedObjectId: null,
-  hoveredObjectId: null,
-  globalProperties: {
-    fill: '#ff000033',
-    stroke: '#ff0000',
-    strokeWidth: 2,
-    strokeDashArray: null,
-    opacity: 1,
-    visible: true,
-    locked: false,
-  },
-  history: [],
-  historyIndex: -1,
+  lastCapturedFrame: null,
+  cropRect: null,
+  isHydrated: false,
+  setLastCapturedFrame: (dataUrl) => set({ lastCapturedFrame: dataUrl }),
+  setCropRect: (rect) => set({ cropRect: rect }),
+  hydrateFromStorage: async () => {
+    if (get().isHydrated) return;
 
-  setTool: (tool) => set({ activeTool: tool }),
-  setSelectedObject: (id) => set({ selectedObjectId: id }),
-  setHoveredObject: (id) => set({ hoveredObjectId: id }),
-  setObjects: (objects) => set({ objects }),
+    try {
+      let captureId: string | null = null;
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        captureId = urlParams.get('id');
+      }
 
-  addObject: (obj) => {
-    set((state) => ({ objects: [...state.objects, obj] }));
-    get().saveHistory();
-  },
+      console.log(`[EditorStore] Starting hydration. ID: ${captureId}`);
 
-  updateObject: (id, props) => {
-    set((state) => ({
-      objects: state.objects.map((obj) => 
-        obj.id === id ? { ...obj, ...props } : obj
-      ),
-    }));
-    // Note: We might want to throttle saveHistory for frequent updates like dragging
-  },
+      // 最大3回リトライ (ストレージの伝搬待ち対策)
+      for (let attempt = 0; attempt < 3; attempt++) {
+        let result: any = null;
 
-  removeObject: (id) => {
-    set((state) => ({
-      objects: state.objects.filter((obj) => obj.id !== id),
-      selectedObjectId: state.selectedObjectId === id ? null : state.selectedObjectId,
-    }));
-    get().saveHistory();
-  },
+        if (captureId) {
+          const storageKey = `capture:${captureId}`;
+          // session から優先的に取得
+          const sessionData = (await browser.storage.session.get(storageKey).catch(() => ({}))) as any;
+          result = sessionData[storageKey];
 
-  updateGlobalProperties: (props) => {
-    set((state) => ({
-      globalProperties: { ...state.globalProperties, ...props }
-    }));
-    
-    // If an object is selected, update it too (Figma style)
-    const { selectedObjectId } = get();
-    if (selectedObjectId) {
-      get().updateObject(selectedObjectId, props as any);
-      get().saveHistory();
+          // session になければ local から取得
+          if (!result) {
+            const localData = (await browser.storage.local.get(storageKey).catch(() => ({}))) as any;
+            result = localData[storageKey];
+          }
+        } else {
+          // フォールバック
+          const sessionData = (await browser.storage.session.get(['lastCapturedFrame', 'cropRect']).catch(() => ({}))) as any;
+          result = sessionData;
+        }
+
+        if (result && result.lastCapturedFrame) {
+          const parsed = CaptureStorageSchema.safeParse(result);
+          if (parsed.success) {
+            console.log(`[EditorStore] Successfully hydrated from storage on attempt ${attempt + 1}`);
+            set({ 
+              lastCapturedFrame: parsed.data.lastCapturedFrame || null,
+              cropRect: parsed.data.cropRect || null
+            });
+            return; // 成功したら終了
+          }
+        }
+
+        console.warn(`[EditorStore] Attempt ${attempt + 1} failed to find data. Retrying...`);
+        await sleep(150 * (attempt + 1));
+      }
+
+      console.warn('[EditorStore] Use persistent data could not be found after all attempts.');
+    } catch (err) {
+      console.error('[EditorStore] Failed to hydrate from storage:', err);
+    } finally {
+      set({ isHydrated: true });
     }
-  },
-
-  bringToFront: (id) => {
-    set((state) => {
-      const index = state.objects.findIndex((o) => o.id === id);
-      if (index === -1) return state;
-      const newObjects = [...state.objects];
-      const [item] = newObjects.splice(index, 1);
-      newObjects.push(item);
-      return { objects: newObjects };
-    });
-    get().saveHistory();
-  },
-
-  sendToBack: (id) => {
-    set((state) => {
-      const index = state.objects.findIndex((o) => o.id === id);
-      if (index === -1) return state;
-      const newObjects = [...state.objects];
-      const [item] = newObjects.splice(index, 1);
-      newObjects.unshift(item);
-      return { objects: newObjects };
-    });
-    get().saveHistory();
-  },
-
-  bringForward: (id) => {
-    set((state) => {
-      const index = state.objects.findIndex((o) => o.id === id);
-      if (index === -1 || index === state.objects.length - 1) return state;
-      const newObjects = [...state.objects];
-      [newObjects[index], newObjects[index + 1]] = [newObjects[index + 1], newObjects[index]];
-      return { objects: newObjects };
-    });
-    get().saveHistory();
-  },
-
-  sendBackward: (id) => {
-    set((state) => {
-      const index = state.objects.findIndex((o) => o.id === id);
-      if (index === -1 || index === 0) return state;
-      const newObjects = [...state.objects];
-      [newObjects[index], newObjects[index - 1]] = [newObjects[index - 1], newObjects[index]];
-      return { objects: newObjects };
-    });
-    get().saveHistory();
-  },
-
-  saveHistory: () => {
-    const { objects, history, historyIndex } = get();
-    const newHistory = history.slice(0, historyIndex + 1);
-    
-    // Simple deep equal check to avoid redundant history
-    if (newHistory.length > 0 && JSON.stringify(newHistory[newHistory.length - 1]) === JSON.stringify(objects)) {
-      return;
-    }
-    
-    newHistory.push([...objects]);
-    if (newHistory.length > 50) newHistory.shift();
-    
-    set({ 
-      history: newHistory, 
-      historyIndex: newHistory.length - 1 
-    });
-  },
-
-  undo: () => {
-    const { history, historyIndex } = get();
-    if (historyIndex <= 0) return;
-    
-    const newIndex = historyIndex - 1;
-    set({ 
-      objects: [...history[newIndex]],
-      historyIndex: newIndex 
-    });
-  },
-
-  redo: () => {
-    const { history, historyIndex } = get();
-    if (historyIndex >= history.length - 1) return;
-    
-    const newIndex = historyIndex + 1;
-    set({ 
-      objects: [...history[newIndex]],
-      historyIndex: newIndex 
-    });
   },
 }));
