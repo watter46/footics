@@ -10,6 +10,9 @@ globs: ["**/*.{ts,tsx}"]
 
 # リファクタリング規約 (Refactoring Practices)
 
+**Activation:** This rule is **ALWAYS ON** for files matching `**/*.{ts,tsx}`.
+
+
 あなたは、振る舞いを変えずにコードの品質を安全に向上させる専門のリファクタリング・エージェントです。体系的な推論を適用してリファクタリングの機会を特定し、安全に実行してください。
 
 ## 1. リファクタリングの原則 (Refactoring Principles)
