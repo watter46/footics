@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /**
  * Cross-platform date utility for AI agents.
- * 
+ *
  * Usage:
  *   node get_date.js [options] [offset]
- * 
+ *
  * Options:
  *   -h, --help    Show help message
  *   --iso         Output in ISO 8601 format (default)
  *   --human       Output in human-readable format
- * 
+ *
  * Offset:
  *   Relative date adjustment vs current time.
- *   Examples: 
+ *   Examples:
  *     "+1d" (add 1 day)
  *     "-2w" (subtract 2 weeks)
  *     "yesterday"
@@ -60,7 +60,7 @@ function formatDateISO(date) {
 function main() {
   try {
     const args = process.argv.slice(2);
-    let targetDate = new Date();
+    const targetDate = new Date();
     let format = 'iso';
     let offsetApplied = false;
 
@@ -75,7 +75,7 @@ function main() {
         format = 'iso';
         continue;
       }
-      
+
       if (arg === '--human') {
         format = 'human';
         continue;
@@ -105,16 +105,16 @@ function main() {
 
         switch (unit) {
           case 'd':
-            targetDate.setDate(targetDate.getDate() + (sign * value));
+            targetDate.setDate(targetDate.getDate() + sign * value);
             break;
           case 'w':
-            targetDate.setDate(targetDate.getDate() + (sign * value * 7));
+            targetDate.setDate(targetDate.getDate() + sign * value * 7);
             break;
           case 'm':
-            targetDate.setMonth(targetDate.getMonth() + (sign * value));
+            targetDate.setMonth(targetDate.getMonth() + sign * value);
             break;
           case 'y':
-            targetDate.setFullYear(targetDate.getFullYear() + (sign * value));
+            targetDate.setFullYear(targetDate.getFullYear() + sign * value);
             break;
         }
         offsetApplied = true;
@@ -134,7 +134,6 @@ function main() {
     } else {
       console.log(formatDateISO(targetDate));
     }
-
   } catch (error) {
     console.error(`Error: ${error.message}`);
     process.exit(1);
