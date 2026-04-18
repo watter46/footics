@@ -37,7 +37,7 @@ description: レビューする
 ---
 
 **出力フォーマット:**
-（`./.agent/rules/language-strategies.md` で定義された戦略に従ってください）
+（`./GEMINI.md` で定義された戦略に従ってください）
 1. **レビューの視点 (Review Perspective)**: 例: "視点: セキュリティ" または "視点: 論文査読"
 2. 🔴 **重大な問題 (Critical Issues)**: バグ、リスク、論理破綻。
 3. 🟡 **提案 (Suggestions)**: リファクタリング、最適化。

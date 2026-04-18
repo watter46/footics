@@ -34,7 +34,7 @@ description: 把握する
 ---
 
 **出力フォーマット:**
-（`./.agent/rules/language-strategies.md` で定義された戦略に従ってください）
+（`./GEMINI.md` で定義された戦略に従ってください）
 1.  **役割定義**
 2.  **依存関係マップ**:
     - ⬅️ **被依存（Used By）**: ...

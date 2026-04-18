@@ -32,7 +32,7 @@ description: 破棄する
 ---
 
 **出力フォーマット:**
-（`./.agent/rules/language-strategies.md` で定義された戦略に従ってください）
+（`./GEMINI.md` で定義された戦略に従ってください）
 ```text
 **再開プロンプト**
 **目的:** ...

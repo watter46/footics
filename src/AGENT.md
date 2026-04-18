@@ -10,9 +10,8 @@
 - **Deployment:** Cloudflare Pages (OpenNext) 向けに最適化。
 
 ## 2. 開発ルール
-- **Next.js Patterns:** `next-patterns.md` に必ず従うこと。
-- **Data Management:** クライアントサイドでの永続化やクエリ実行には `duckdb-idb.md` のプラクティスを必ず適用すること。
-- **API Fetching:** `@tanstack/react-query` を使用し、`tanstack-query.md` のルールに必ず従うこと。
+- **Next.js Patterns:** `nextjs-patterns.md` に必ず従うこと。
+- **Data Management:** クライアントサイドでの永続化やクエリ実行、API Fetching (`@tanstack/react-query`) には `data-management-patterns.md` のプラクティスを必ず適用すること。
 
 ## 3. UI コンポーネント
 - `shadcn/ui` をベースとし、`components/ui` 内のプリミティブなコンポーネントを再利用すること。
@@ -20,5 +19,4 @@
 
 ## 参照すべきルール
 - [nextjs-patterns.md](file:///home/watter46/src/footics/.agent/rules/nextjs-patterns.md)
-- [duckdb-idb.md](file:///home/watter46/src/footics/.agent/rules/duckdb-idb.md)
-- [component-architecture.md](file:///home/watter46/src/footics/.agent/rules/component-architecture.md)
+- [data-management-patterns.md](file:///home/watter46/src/footics/.agent/rules/data-management-patterns.md)

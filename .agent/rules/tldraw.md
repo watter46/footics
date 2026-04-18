@@ -60,3 +60,18 @@ globs: ["**/tldraw/**/*.tsx", "**/editor/**/*.tsx"]
   - ツールユーティリティ: `[Name]Tool` (例: `ZoneCircleTool`)
   - スタイル・定数定義: `[name]-styles.ts`
 - **スタイルの再利用**: `ZONE_STROKE_WIDTH` など、プロジェクト全体で統一すべきスタイル値は共通ファイルから import し、ハードコードを避けてください。
+
+## 7. Component Architecture (コンポーネント構成)
+
+- **原則:** tldraw エディタ、カスタム UI (Overlay)、およびツール設定を明確に分離する。
+- **行動指針:**
+    - `Canvas`: `tldraw` エディタ本体をラップし、イベントや初期化を管理する。
+    - `Overlay`: エディタの上に重なる UI（ツールバー、インスペクタ）。`pointer-events: none` と `pointer-events: auto` を適切に使い分ける。
+    - `Panel`: 各種設定項目（色、太さなど）。shadcn/ui のコンポーネントをベースにカスタマイズする。
+
+## 8. State Management Integration (状態管理の統合)
+
+- **原則:** React の `useState` と `editor` のステートを混在させず、適切に同期する。
+- **行動指針:**
+    - エディタのプロパティ（色やスタイル）は、`editor.user.updateUserPreferences` や `editor.setStyleForSelectedShapes` を通じて操作する。
+    - UI 側で保持すべきステート（パネルの開閉、ドラッグ中フラグなど）は Zustand または `useState` で管理する。

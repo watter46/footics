@@ -7,7 +7,7 @@
       "recommended": true,
       "style": {
         "useTemplate": "error",
-        "noNonNullAssertion": "off"
+        "noNonNullAssertion": "warn"
       },
       "correctness": {
         "noUnusedVariables": "warn"
@@ -16,7 +16,7 @@
         "noSvgWithoutTitle": "off"
       },
       "suspicious": {
-        "noExplicitAny": "off"
+        "noExplicitAny": "warn"
       }
     }
   },

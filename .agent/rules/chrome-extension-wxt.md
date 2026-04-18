@@ -49,5 +49,5 @@ globs: ["extension/**/*", "video-canvas/**/*"]
 ## 6. UI & UX (Shadow DOM / Overlay)
 - **原則:** ウェブページの既存のデザインを壊さず、スムーズなオーバーレイを提供する。
 - **行動指針:**
-    - Overlay UI は Shadow DOM を利用してスタイルを分離する。
+    - Overlay UI は Shadow DOM を利用してスタイルを分離する。`wxt` の `createShadowRootUi` などを活用し、Tailwind CSS を Shadow DOM 内に適用してカプセル化を徹底すること。
     - プレミアムな外観（トースト通知、アニメーション）を維持し、拡張機能であることを意識させないシームレスな体験を目指す。

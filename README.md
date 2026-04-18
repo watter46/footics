@@ -34,3 +34,35 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Agentic Governance
+
+This repository is optimized for autonomous AI agents (Antigravity/Gemini).
+
+### Rules
+- `chrome-extension-wxt.md`
+- `code-quality-standards.md`
+- `data-management-patterns.md`
+- `nextjs-patterns.md`
+- `tldraw.md`
+- `GEMINI.md` (Global Core)
+
+### Workflows
+- `/ask`
+- `/discard`
+- `/explain`
+- `/grasp`
+- `/ideate`
+- `/plan`
+- `/refactor`
+- `/research`
+- `/review`
+
+### Skills
+- `agent-browser`
+- `indexing-awareness`
+- `knowledge-cutoff-awareness`
+- `perplexity`
+- `quality-harness`
+- `tavily`
+
