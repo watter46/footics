@@ -9,7 +9,8 @@
     "build": "wxt build",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
-    "compile": "vue-tsc --noEmit",
+    "compile": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "postinstall": "wxt prepare"
   },
   "dependencies": {

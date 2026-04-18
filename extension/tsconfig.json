@@ -19,12 +19,6 @@
       "~/*": ["./*"]
     }
   },
-  "include": [
-    ".wxt/wxt.d.ts",
-    "**/*",
-    "../src/**/*"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": [".wxt/wxt.d.ts", "**/*", "../src/**/*"],
+  "exclude": ["node_modules"]
 }

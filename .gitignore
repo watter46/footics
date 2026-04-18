@@ -65,3 +65,8 @@ docs/
 .open-next/
 .wrangler/
 certificates/
+
+# Agent / Debug outputs
+biome_output.txt
+*errors.txt
+*_output.txt
