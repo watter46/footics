@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import React from "react";
-import type { MatchSummary } from "@/types";
-import { Filter } from "lucide-react";
-import { useMatchList } from "@/hooks/use-match-list";
-import { FilterBar } from "./match-list/FilterBar";
-import { MatchCard } from "./match-list/MatchCard";
+import { Filter } from 'lucide-react';
+import React from 'react';
+import { useMatchList } from '@/hooks/use-match-list';
+import type { MatchSummary } from '@/types';
+import { FilterBar } from './match-list/FilterBar';
+import { MatchCard } from './match-list/MatchCard';
 
 interface Props {
   matches: MatchSummary[];
@@ -51,7 +51,7 @@ export function MatchListClient({ matches: serverMatches }: Props) {
         {sortedAndFiltered.map((match, i) => {
           const isLatest = i === 0 && !activeTeam;
           const isImported = idbMatches.some((im) => im.id === match.id);
-          
+
           return (
             <MatchCard
               key={match.id}

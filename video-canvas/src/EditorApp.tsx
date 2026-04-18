@@ -1,11 +1,14 @@
-import React, { useEffect } from 'react';
+import type React from 'react';
+import { useEffect } from 'react';
 import { Workspace } from './components/features/editor/Workspace';
 import { Loading } from './components/ui/Loading';
 import { useEditorStore } from './stores/useEditorStore';
 
 export const EditorApp: React.FC = () => {
   const isHydrated = useEditorStore((state) => state.isHydrated);
-  const hydrateFromStorage = useEditorStore((state) => state.hydrateFromStorage);
+  const hydrateFromStorage = useEditorStore(
+    (state) => state.hydrateFromStorage,
+  );
 
   useEffect(() => {
     hydrateFromStorage();
@@ -21,5 +24,3 @@ export const EditorApp: React.FC = () => {
     </div>
   );
 };
-
-

@@ -1,20 +1,20 @@
-import { type MemoMode } from '@/hooks/features/MemoOverlay/useMemoOverlay';
+import type { MemoMode } from '@/hooks/features/MemoOverlay/useMemoOverlay';
 
 /**
  * Footics Extension Messaging Protocol
  */
 
 export type ExtensionMessage =
-  | { 
+  | {
       type: 'OPEN_OVERLAY';
       mode: MemoMode;
       matchId?: string;
       error?: string;
     }
-  | { 
+  | {
       type: 'GET_ACTIVE_MATCH_INFO';
     }
-  | { 
+  | {
       type: 'SAVE_MEMO_RELAY';
       mode: MemoMode;
       matchId: string;
@@ -23,7 +23,7 @@ export type ExtensionMessage =
       second?: number;
       labels?: string[];
     }
-  | { 
+  | {
       type: 'SAVE_CUSTOM_EVENT';
       event: {
         id: string;

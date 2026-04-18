@@ -1,7 +1,9 @@
-"use client";
+'use client';
 
-import React, { useRef, useEffect } from "react";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useRef } from 'react';
+
 interface MatchMemoUnitProps {
   memo: string;
   isSaving: boolean;
@@ -38,7 +40,7 @@ export const MatchMemoUnit: React.FC<MatchMemoUnitProps> = ({
         placeholder="試合全体の総括を記録..."
         className="w-full h-48 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 transition-all resize-none custom-scrollbar"
         onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             onSave();
           }
@@ -47,13 +49,15 @@ export const MatchMemoUnit: React.FC<MatchMemoUnitProps> = ({
       <div className="flex justify-between items-center">
         <div className="flex gap-3 text-[9px] text-slate-300 uppercase font-black">
           <span className="flex items-center gap-1">
-            <kbd className="px-1 py-0.5 bg-slate-800 border border-slate-700 rounded-sm">Esc</kbd>{" "}
+            <kbd className="px-1 py-0.5 bg-slate-800 border border-slate-700 rounded-sm">
+              Esc
+            </kbd>{' '}
             Close
           </span>
           <span className="flex items-center gap-1">
             <kbd className="px-1 py-0.5 bg-slate-800 border border-slate-700 rounded-sm">
               Ctrl+Ent
-            </kbd>{" "}
+            </kbd>{' '}
             Save
           </span>
         </div>

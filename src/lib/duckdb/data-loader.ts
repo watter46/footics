@@ -1,6 +1,15 @@
-import type * as duckdb from "@duckdb/duckdb-wasm";
-import type { MatchRoot, MatchMetadata, MatchSummary, MatchBlobEntry } from "@/types";
-import { getCustomEventsByMatch, saveMatchUnified, getMatchBlobs } from "@/lib/db";
+import type * as duckdb from '@duckdb/duckdb-wasm';
+import {
+  getCustomEventsByMatch,
+  getMatchBlobs,
+  saveMatchUnified,
+} from '@/lib/db';
+import type {
+  MatchBlobEntry,
+  MatchMetadata,
+  MatchRoot,
+  MatchSummary,
+} from '@/types';
 
 // ──────────────────────────────────────────────
 // Parquet Export / Import
@@ -9,19 +18,19 @@ import { getCustomEventsByMatch, saveMatchUnified, getMatchBlobs } from "@/lib/d
 async function exportTableAsParquet(
   conn: duckdb.AsyncDuckDBConnection,
   db: duckdb.AsyncDuckDB,
-  tableName: string
+  tableName: string,
 ): Promise<ArrayBuffer> {
   const fileName = `${tableName}_export_${Date.now()}.parquet`;
-  
+
   try {
     // 1. メモリ上のテーブルを VFS 上の Parquet ファイルとして書き出し
     await conn.query(
-      `COPY (SELECT * FROM ${tableName}) TO '${fileName}' (FORMAT PARQUET)`
+      `COPY (SELECT * FROM ${tableName}) TO '${fileName}' (FORMAT PARQUET)`,
     );
 
     // 2. VFS 上のファイルをバッファに取得
     const buffer = await db.copyFileToBuffer(fileName);
-    
+
     // バッファのコピーを返す
     return new Uint8Array(buffer).slice().buffer as ArrayBuffer;
   } finally {
@@ -39,22 +48,25 @@ async function importParquetAsTable(
   db: duckdb.AsyncDuckDB,
   tableName: string,
   parquetBuffer: ArrayBuffer,
-  matchId: string
+  matchId: string,
 ): Promise<void> {
   // ファイル名の競合を避けるため matchId とタイムスタンプを含めてユニーク化
   const fileName = `${tableName}_${matchId}_${Date.now()}.parquet`;
-  
+
   try {
     // バッファを VFS に登録
     const uint8View = new Uint8Array(parquetBuffer);
     await db.registerFileBuffer(fileName, uint8View);
-    
+
     // 既存テーブルを置換（または新規作成）して Parquet から読み込み
     await conn.query(
-      `CREATE OR REPLACE TABLE ${tableName} AS SELECT * FROM read_parquet('${fileName}')`
+      `CREATE OR REPLACE TABLE ${tableName} AS SELECT * FROM read_parquet('${fileName}')`,
     );
   } catch (err: any) {
-    console.error(`[footics] Failed to import parquet table ${tableName} for match ${matchId}:`, err);
+    console.error(
+      `[footics] Failed to import parquet table ${tableName} for match ${matchId}:`,
+      err,
+    );
     throw err;
   } finally {
     // 読み込み完了後、即座に VFS からファイルを解除してメモリを解放
@@ -82,7 +94,10 @@ export interface BatchImportResult {
   errors: { fileName: string; errorMessage: string }[];
 }
 
-import { getCurrentlyLoadedMatchId, setCurrentlyLoadedMatchId } from "./singleton";
+import {
+  getCurrentlyLoadedMatchId,
+  setCurrentlyLoadedMatchId,
+} from './singleton';
 
 /**
  * マッチデータをロードし、DuckDB テーブルを作成する。
@@ -92,13 +107,15 @@ export async function loadMatchData(
   db: duckdb.AsyncDuckDB,
   conn: duckdb.AsyncDuckDBConnection,
   matchId: string,
-  _isRetry = false
+  _isRetry = false,
 ): Promise<LoadResult> {
   const start = performance.now();
 
   // セッションキャッシュのチェック
   if (getCurrentlyLoadedMatchId() === matchId && !_isRetry) {
-    console.log(`[footics] Match ${matchId} is already loaded in DuckDB. Skipping data load.`);
+    console.log(
+      `[footics] Match ${matchId} is already loaded in DuckDB. Skipping data load.`,
+    );
     // metadata だけ取得して返す必要がある。
     // metadata は entry に含まれているので、結局 getMatchBlobs は呼ぶ必要があるが、
     // 重い Parquet のテーブル構築をスキップできる。
@@ -115,13 +132,25 @@ export async function loadMatchData(
 
     if (entry) {
       await Promise.all([
-        importParquetAsTable(conn, db, "matches", entry.matchesParquet, matchId),
-        importParquetAsTable(conn, db, "players", entry.playersParquet, matchId),
-        importParquetAsTable(conn, db, "events", entry.eventsParquet, matchId),
+        importParquetAsTable(
+          conn,
+          db,
+          'matches',
+          entry.matchesParquet,
+          matchId,
+        ),
+        importParquetAsTable(
+          conn,
+          db,
+          'players',
+          entry.playersParquet,
+          matchId,
+        ),
+        importParquetAsTable(conn, db, 'events', entry.eventsParquet, matchId),
       ]);
 
       console.log(
-        `[footics] Success: Restored match ${matchId} from Unified DB in ${(performance.now() - start).toFixed(0)}ms`
+        `[footics] Success: Restored match ${matchId} from Unified DB in ${(performance.now() - start).toFixed(0)}ms`,
       );
 
       // カスタムイベントのロード
@@ -134,23 +163,31 @@ export async function loadMatchData(
     }
   } catch (err) {
     if (!_isRetry) {
-      console.warn(`[footics] Load failed for ${matchId}, retrying once...`, err);
-      await new Promise(r => setTimeout(r, 200));
+      console.warn(
+        `[footics] Load failed for ${matchId}, retrying once...`,
+        err,
+      );
+      await new Promise((r) => setTimeout(r, 200));
       return loadMatchData(db, conn, matchId, true);
     }
-    console.error(`[footics] Data load failed after retry for match ${matchId}:`, err);
+    console.error(
+      `[footics] Data load failed after retry for match ${matchId}:`,
+      err,
+    );
     throw err;
   }
 
   // データがない場合はエラー
-  throw new Error(`Match ${matchId} not found in local storage. Please use "Data Import" to add this match.`);
+  throw new Error(
+    `Match ${matchId} not found in local storage. Please use "Data Import" to add this match.`,
+  );
 }
 
 /**
  * 旧構成 (footics_cache) のデータベースを削除・クリーンアップする
  */
 export async function cleanupOldCache(): Promise<void> {
-  const DB_NAME = "footics_cache";
+  const DB_NAME = 'footics_cache';
   return new Promise((resolve) => {
     console.log(`[footics] Cleaning up legacy database: ${DB_NAME}`);
     const request = indexedDB.deleteDatabase(DB_NAME);
@@ -171,15 +208,17 @@ export async function cleanupOldCache(): Promise<void> {
 export async function loadCustomEventsToDuckDB(
   db: duckdb.AsyncDuckDB,
   conn: duckdb.AsyncDuckDBConnection,
-  matchId: string
+  matchId: string,
 ): Promise<void> {
   const customEvents = await getCustomEventsByMatch(matchId);
   // labels配列を label VARCHAR（" / " 結合）に変換して DuckDB に渡す
-  const rows = customEvents.map(e => ({
+  const rows = customEvents.map((e) => ({
     ...e,
-    label: Array.isArray(e.labels) ? e.labels.join(" / ") : (e as any).label ?? "",
+    label: Array.isArray(e.labels)
+      ? e.labels.join(' / ')
+      : ((e as any).label ?? ''),
   }));
-  await db.registerFileText("custom_events.json", JSON.stringify(rows));
+  await db.registerFileText('custom_events.json', JSON.stringify(rows));
   await conn.query(`
     CREATE OR REPLACE TABLE custom_events AS 
     SELECT * FROM read_json('custom_events.json', columns={
@@ -200,19 +239,19 @@ export async function loadCustomEventsToDuckDB(
 function parseNationalMatchData(data: any) {
   const matchId = data.matchId;
   const scrap = data.initialMatchDataForScrappers;
-  
+
   // scrap[0][0] contains match info
   const info = scrap[0][0];
   const homeTeamId = info[0];
   const awayTeamId = info[1];
-  const homeTeamName = info[2] || info[13] || "Home";
-  const awayTeamName = info[3] || info[14] || "Away";
-  const score = info[12] || info[8] || "0 : 0"; 
-  const rawDate = info[4] || ""; 
-  
-  let date = "";
+  const homeTeamName = info[2] || info[13] || 'Home';
+  const awayTeamName = info[3] || info[14] || 'Away';
+  const score = info[12] || info[8] || '0 : 0';
+  const rawDate = info[4] || '';
+
+  let date = '';
   if (rawDate) {
-    const parts = rawDate.split(" ")[0].split("/");
+    const parts = rawDate.split(' ')[0].split('/');
     if (parts.length === 3) {
       date = `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
@@ -237,7 +276,7 @@ function parseNationalMatchData(data: any) {
         player_id: playerId,
         shirt_no: 0,
         name: name,
-        position: isFirstEleven ? "FW" : "Sub",
+        position: isFirstEleven ? 'FW' : 'Sub',
         is_first_eleven: isFirstEleven,
       };
     });
@@ -254,11 +293,11 @@ function parseNationalMatchData(data: any) {
     {
       match_id: matchId,
       start_time: date,
-      venue_name: "International Venue",
+      venue_name: 'International Venue',
       home_team_id: homeTeamId,
       away_team_id: awayTeamId,
       score: score,
-      match_type: "national",
+      match_type: 'national',
     },
   ];
 
@@ -268,7 +307,7 @@ function parseNationalMatchData(data: any) {
     matchId: String(matchId),
     date: date,
     score: score,
-    matchType: "national",
+    matchType: 'national',
     playerIdNameDictionary,
     teams: {
       home: { teamId: homeTeamId, name: homeTeamName, players: [] } as any,
@@ -287,7 +326,7 @@ export async function importMatchesBatch(
   files: File[],
   db: duckdb.AsyncDuckDB,
   conn: duckdb.AsyncDuckDBConnection,
-  onProgress?: (current: number, total: number) => void
+  onProgress?: (current: number, total: number) => void,
 ): Promise<BatchImportResult> {
   const result: BatchImportResult = {
     total: files.length,
@@ -309,7 +348,9 @@ export async function importMatchesBatch(
       // 重複チェック (Unified DB)
       const existing = await getMatchBlobs(matchId);
       if (existing) {
-        console.log(`[footics] Batch import: Skipping match ${matchId} (already exists)`);
+        console.log(
+          `[footics] Batch import: Skipping match ${matchId} (already exists)`,
+        );
         result.skipped++;
         continue;
       }
@@ -322,7 +363,7 @@ export async function importMatchesBatch(
       result.failed++;
       result.errors.push({
         fileName: file.name,
-        errorMessage: err.message || "Unknown error",
+        errorMessage: err.message || 'Unknown error',
       });
     }
   }
@@ -346,7 +387,7 @@ async function importMatchJsonFileCore(
   let events: any[] = [];
   let metadata: MatchMetadata;
 
-  if ("matchCentreData" in data) {
+  if ('matchCentreData' in data) {
     const mc = data.matchCentreData;
     matches = [
       {
@@ -356,7 +397,7 @@ async function importMatchJsonFileCore(
         home_team_id: mc.home.teamId,
         away_team_id: mc.away.teamId,
         score: mc.score,
-        match_type: "club",
+        match_type: 'club',
       },
     ];
 
@@ -405,14 +446,14 @@ async function importMatchJsonFileCore(
     }));
 
     const playerIdNameDictionary: Record<string, string> = {};
-    
+
     if (mc.playerIdNameDictionary) {
-      Object.keys(mc.playerIdNameDictionary).forEach(id => {
+      Object.keys(mc.playerIdNameDictionary).forEach((id) => {
         playerIdNameDictionary[String(id)] = mc.playerIdNameDictionary[id];
       });
     }
 
-    [...mc.home.players, ...mc.away.players].forEach(p => {
+    [...mc.home.players, ...mc.away.players].forEach((p) => {
       const idStr = String(p.playerId);
       if (!playerIdNameDictionary[idStr]) {
         playerIdNameDictionary[idStr] = p.name;
@@ -421,25 +462,25 @@ async function importMatchJsonFileCore(
 
     metadata = {
       matchId,
-      date: mc.startTime ? mc.startTime.split("T")[0] : "",
+      date: mc.startTime ? mc.startTime.split('T')[0] : '',
       score: mc.score,
-      matchType: "club",
+      matchType: 'club',
       playerIdNameDictionary,
       teams: { home: mc.home, away: mc.away },
     };
-  } else if ("initialMatchDataForScrappers" in data) {
+  } else if ('initialMatchDataForScrappers' in data) {
     const result = parseNationalMatchData(data);
     matches = result.matches;
     players = result.players;
     events = result.events;
     metadata = result.metadata;
   } else {
-    throw new Error("Unknown JSON format.");
+    throw new Error('Unknown JSON format.');
   }
 
-  await db.registerFileText("matches.json", JSON.stringify(matches));
-  await db.registerFileText("players.json", JSON.stringify(players));
-  await db.registerFileText("events.json", JSON.stringify(events));
+  await db.registerFileText('matches.json', JSON.stringify(matches));
+  await db.registerFileText('players.json', JSON.stringify(players));
+  await db.registerFileText('events.json', JSON.stringify(events));
 
   await conn.query(`
     CREATE OR REPLACE TABLE matches AS SELECT * FROM read_json_auto('matches.json');
@@ -450,19 +491,25 @@ async function importMatchJsonFileCore(
   await loadCustomEventsToDuckDB(db, conn, matchId);
 
   const [matchesParquet, playersParquet, eventsParquet] = await Promise.all([
-    exportTableAsParquet(conn, db, "matches"),
-    exportTableAsParquet(conn, db, "players"),
-    exportTableAsParquet(conn, db, "events"),
+    exportTableAsParquet(conn, db, 'matches'),
+    exportTableAsParquet(conn, db, 'players'),
+    exportTableAsParquet(conn, db, 'events'),
   ]);
 
   // Unified DB に保存 (Metadata と Blobs を同時に保存)
   const summary: MatchSummary = {
     id: metadata.matchId,
-    homeTeam: { id: metadata.teams.home.teamId, name: metadata.teams.home.name },
-    awayTeam: { id: metadata.teams.away.teamId, name: metadata.teams.away.name },
+    homeTeam: {
+      id: metadata.teams.home.teamId,
+      name: metadata.teams.home.name,
+    },
+    awayTeam: {
+      id: metadata.teams.away.teamId,
+      name: metadata.teams.away.name,
+    },
     date: metadata.date,
     score: metadata.score,
-    matchType: metadata.matchType
+    matchType: metadata.matchType,
   };
 
   const blobs: MatchBlobEntry = {
@@ -479,7 +526,9 @@ async function importMatchJsonFileCore(
   // インポート直後は DuckDB テーブルがこの試合のもので上書きされているため、キャッシュを更新
   setCurrentlyLoadedMatchId(matchId);
 
-  console.log(`[footics] Import ${matchId} done in ${(performance.now() - start).toFixed(0)}ms`);
+  console.log(
+    `[footics] Import ${matchId} done in ${(performance.now() - start).toFixed(0)}ms`,
+  );
   return matchId;
 }
 
@@ -489,7 +538,7 @@ async function importMatchJsonFileCore(
 export async function importMatchJsonFile(
   file: File,
   db: duckdb.AsyncDuckDB,
-  conn: duckdb.AsyncDuckDBConnection
+  conn: duckdb.AsyncDuckDBConnection,
 ): Promise<string> {
   const text = await file.text();
   const data = JSON.parse(text) as MatchRoot;

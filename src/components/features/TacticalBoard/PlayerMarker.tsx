@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import type React from 'react';
 import { shortenName } from '@/lib/data/tactical-utils';
 
 interface PlayerMarkerProps {
@@ -26,7 +26,14 @@ const SoccerBallSVG = () => (
     <path d="M50 98L65 80L50 65L35 80Z" fill="#333" />
     <path d="M85 75L72 92L58 85L68 70Z" fill="#333" />
     <path d="M15 75L28 92L42 85L32 70Z" fill="#333" />
-    <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="1" />
+    <circle
+      cx="50"
+      cy="50"
+      r="48"
+      fill="none"
+      stroke="rgba(0,0,0,0.1)"
+      strokeWidth="1"
+    />
   </svg>
 );
 
@@ -39,16 +46,17 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
   playerName,
   initialX,
   initialY,
-  color = "#3b82f6",
+  color = '#3b82f6',
   isBall = false,
   isOverlay = false,
 }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: id,
-    data: {
-      type: isBall ? 'ball' : 'player',
-    },
-  });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: id,
+      data: {
+        type: isBall ? 'ball' : 'player',
+      },
+    });
 
   const displayName = shortenName(playerName);
 
@@ -56,20 +64,20 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
   const markerSize = isBall ? 24 : 40;
 
   const style: React.CSSProperties = {
-    position: "absolute",
+    position: 'absolute',
     left: `${initialX}%`,
     top: `${initialY}%`,
     zIndex: isDragging ? 1000 : 20,
-    touchAction: "none",
+    touchAction: 'none',
     width: `${markerSize}px`,
     height: `${markerSize}px`,
     // dnd-kit の計測を妨げないための -50% 補正
     // transform は dnd-kit の移動量 (px) + 初期位置補正 (-50%)
-    transform: transform 
-      ? `translate3d(${transform.x}px, ${transform.y}px, 0) translate(-50%, -50%)` 
+    transform: transform
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0) translate(-50%, -50%)`
       : `translate(-50%, -50%)`,
     // ドラッグ時の二重表示(残像)を消去。ただしオーバーレイ側の場合は表示する。
-    opacity: (isDragging && !isOverlay) ? 0 : 1,
+    opacity: isDragging && !isOverlay ? 0 : 1,
     transition: 'none',
   };
 
@@ -79,15 +87,15 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
       style={style}
       {...listeners}
       {...attributes}
-      className={`cursor-grab active:cursor-grabbing ${isDragging ? "z-50" : ""}`}
+      className={`cursor-grab active:cursor-grabbing ${isDragging ? 'z-50' : ''}`}
     >
       <div className="relative w-full h-full group select-none">
         {/* 強調エフェクト (2倍サイズのバブル) */}
         {isOverlay && (
-          <div 
+          <div
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none transition-all duration-200 ease-out"
-            style={{ 
-              backgroundColor: color, 
+            style={{
+              backgroundColor: color,
               opacity: 0.35,
               width: `${markerSize * 2.5}px`,
               height: `${markerSize * 2.5}px`,
@@ -98,12 +106,17 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
         )}
 
         {/* 正円マーカー本体 */}
-        <div 
+        <div
           className={`rounded-full border-2 border-white shadow flex items-center justify-center font-bold text-white w-full h-full ${isDragging ? 'shadow-2xl' : ''}`}
-          style={{ backgroundColor: isBall ? 'transparent' : color, border: isBall ? 'none' : undefined }}
+          style={{
+            backgroundColor: isBall ? 'transparent' : color,
+            border: isBall ? 'none' : undefined,
+          }}
         >
           {isBall && <SoccerBallSVG />}
-          {!isBall && <span className="text-[10px]">{displayName.charAt(0)}</span>}
+          {!isBall && (
+            <span className="text-[10px]">{displayName.charAt(0)}</span>
+          )}
         </div>
 
         {/* 選手名: 絶対配置でオーバーフローを許可 */}

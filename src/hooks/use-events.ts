@@ -1,17 +1,10 @@
-"use client";
+'use client';
 
-/**
- * useEvents — フィルタ条件に基づいて DuckDB からイベントを取得する Hook
- *
- * 設計:
- * - フィルタ変更を検知して自動再クエリ。
- * - useRef で「最新のクエリID」を管理し、古いクエリの結果を破棄（Race Condition 防止）。
- * - 150ms debounce でパラメータ連続変更時のクエリ乱発を抑制。
- */
-import { useEffect, useRef, useState, useCallback } from "react";
-import type { AsyncDuckDBConnection } from "@duckdb/duckdb-wasm";
-import type { EventRow, FilterState } from "@/types";
-import { buildQuery, buildCountQuery } from "@/services/query-builder";
+import type { AsyncDuckDBConnection } from '@duckdb/duckdb-wasm';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { eventKeys } from '@/lib/query-keys';
+import { buildCountQuery, buildQuery } from '@/services/query-builder';
+import type { EventRow, FilterState } from '@/types';
 
 interface UseEventsResult {
   events: EventRow[];
@@ -19,69 +12,38 @@ interface UseEventsResult {
   isQuerying: boolean;
 }
 
-const DEBOUNCE_MS = 150;
-
 export function useEvents(
   connection: AsyncDuckDBConnection | null,
-  filters: FilterState
+  filters: FilterState,
 ): UseEventsResult {
-  const [events, setEvents] = useState<EventRow[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [isQuerying, setIsQuerying] = useState(false);
+  const { data, isPlaceholderData, isLoading } = useQuery({
+    queryKey: eventKeys.filtered(filters),
+    queryFn: async () => {
+      if (!connection) throw new Error('No connection');
 
-  // Race condition 防止用のクエリ ID
-  const queryIdRef = useRef(0);
-
-  const executeQuery = useCallback(async () => {
-    if (!connection) return;
-
-    const currentQueryId = ++queryIdRef.current;
-    setIsQuerying(true);
-
-    try {
       // Count query
       const countSql = buildCountQuery(filters);
       const countResult = await connection.query(countSql);
-
-      // Race check
-      if (currentQueryId !== queryIdRef.current) return;
-
       const countRows = countResult.toArray().map((r) => r.toJSON());
-      const total = countRows.length > 0 ? Number(countRows[0].total) : 0;
-      setTotalCount(total);
+      const totalCount = countRows.length > 0 ? Number(countRows[0].total) : 0;
 
       // Data query
       const dataSql = buildQuery(filters);
       const dataResult = await connection.query(dataSql);
+      const events = dataResult
+        .toArray()
+        .map((row) => row.toJSON()) as EventRow[];
 
-      // Race check
-      if (currentQueryId !== queryIdRef.current) return;
+      return { events, totalCount };
+    },
+    enabled: !!connection,
+    placeholderData: keepPreviousData,
+  });
 
-      const rows = dataResult.toArray().map((row) => row.toJSON()) as EventRow[];
-      setEvents(rows);
-    } catch (err) {
-      console.error("[useEvents] Query error:", err);
-      // Race check — only clear on current query
-      if (currentQueryId === queryIdRef.current) {
-        setEvents([]);
-        setTotalCount(0);
-      }
-    } finally {
-      if (currentQueryId === queryIdRef.current) {
-        setIsQuerying(false);
-      }
-    }
-  }, [connection, filters]);
-
-  useEffect(() => {
-    if (!connection) return;
-
-    const timer = setTimeout(() => {
-      executeQuery();
-    }, DEBOUNCE_MS);
-
-    return () => clearTimeout(timer);
-  }, [executeQuery, connection]);
-
-  return { events, totalCount, isQuerying };
+  return {
+    events: data?.events ?? [],
+    totalCount: data?.totalCount ?? 0,
+    // data があっても次の条件での取得中なら querying として扱う (または isLoading)
+    isQuerying: isLoading || isPlaceholderData,
+  };
 }

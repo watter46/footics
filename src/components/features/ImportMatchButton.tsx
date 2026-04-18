@@ -1,17 +1,20 @@
-"use client";
+'use client';
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Database, Loader2 } from "lucide-react";
-import { importMatchesBatch } from "@/lib/duckdb/data-loader";
-import { initializeDuckDB } from "@/lib/duckdb";
-import { toast } from "sonner";
+import { Database, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { initializeDuckDB } from '@/lib/duckdb';
+import { importMatchesBatch } from '@/lib/duckdb/data-loader';
 
 export function ImportMatchButton() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
+  const [progress, setProgress] = useState<{
+    current: number;
+    total: number;
+  } | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -19,31 +22,40 @@ export function ImportMatchButton() {
 
     try {
       setIsLoading(true);
-      
+
       // Initialize DB just for importing
       const { db, conn } = await initializeDuckDB();
       const fileArray = Array.from(files);
-      
-      const result = await importMatchesBatch(fileArray, db, conn, (current, total) => {
-        setProgress({ current, total });
-      });
+
+      const result = await importMatchesBatch(
+        fileArray,
+        db,
+        conn,
+        (current, total) => {
+          setProgress({ current, total });
+        },
+      );
 
       if (result.success > 0) {
-        toast.success(`Imported ${result.success} matches! ${result.skipped > 0 ? `(${result.skipped} skipped)` : ""}`);
+        toast.success(
+          `Imported ${result.success} matches! ${result.skipped > 0 ? `(${result.skipped} skipped)` : ''}`,
+        );
         window.location.reload();
       } else if (result.skipped > 0 && result.failed === 0) {
-        toast.info("All selected matches are already imported.");
+        toast.info('All selected matches are already imported.');
       }
 
       if (result.failed > 0) {
-        toast.error(`Failed to import ${result.failed} matches. Check console for details.`);
+        toast.error(
+          `Failed to import ${result.failed} matches. Check console for details.`,
+        );
       }
     } catch (err: any) {
       toast.error(`Failed to import matches: ${err.message}`);
     } finally {
       setIsLoading(false);
       setProgress(null);
-      if (fileRef.current) fileRef.current.value = "";
+      if (fileRef.current) fileRef.current.value = '';
     }
   };
 
@@ -60,9 +72,11 @@ export function ImportMatchButton() {
           <Database className="mr-2 h-4 w-4 text-purple-400 group-hover:text-purple-300 transition-colors" />
         )}
         <span className="truncate">
-          {isLoading ? (
-            progress ? `${progress.current}/${progress.total}` : "Importing..."
-          ) : "Data Import"}
+          {isLoading
+            ? progress
+              ? `${progress.current}/${progress.total}`
+              : 'Importing...'
+            : 'Data Import'}
         </span>
       </button>
 

@@ -12,11 +12,11 @@ interface EditorState {
   isHydrated: boolean;
   triggerCopy: number;
   triggerSave: number;
-  
+
   setLastCapturedFrame: (dataUrl: string | null) => void;
   setCropRect: (rect: CaptureMetadata | null) => void;
   hydrateFromStorage: () => Promise<void>;
-  
+
   dispatchCopy: () => void;
   dispatchSave: () => void;
 }
@@ -27,13 +27,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   isHydrated: false,
   triggerCopy: 0,
   triggerSave: 0,
-  
+
   setLastCapturedFrame: (dataUrl) => set({ lastCapturedFrame: dataUrl }),
   setCropRect: (rect) => set({ cropRect: rect }),
-  
+
   dispatchCopy: () => set((state) => ({ triggerCopy: state.triggerCopy + 1 })),
   dispatchSave: () => set((state) => ({ triggerSave: state.triggerSave + 1 })),
-  
+
   hydrateFromStorage: async () => {
     if (get().isHydrated) return;
 
@@ -51,19 +51,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         const data = await StorageUtils.getCaptureData(captureId);
 
         if (data && data.lastCapturedFrame) {
-          console.log(`[EditorStore] Successfully hydrated from storage on attempt ${attempt + 1}`);
-          set({ 
+          console.log(
+            `[EditorStore] Successfully hydrated from storage on attempt ${attempt + 1}`,
+          );
+          set({
             lastCapturedFrame: data.lastCapturedFrame || null,
-            cropRect: data.cropRect || null
+            cropRect: data.cropRect || null,
           });
           return; // 成功したら終了
         }
 
-        console.warn(`[EditorStore] Attempt ${attempt + 1} failed to find data. Retrying...`);
+        console.warn(
+          `[EditorStore] Attempt ${attempt + 1} failed to find data. Retrying...`,
+        );
         await sleep(150 * (attempt + 1));
       }
 
-      console.warn('[EditorStore] Use persistent data could not be found after all attempts.');
+      console.warn(
+        '[EditorStore] Use persistent data could not be found after all attempts.',
+      );
     } catch (err) {
       console.error('[EditorStore] Failed to hydrate from storage:', err);
     } finally {

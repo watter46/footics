@@ -1,12 +1,14 @@
-import React from "react";
-import { type EventPhase } from "@/lib/features/MemoOverlay/memoOverlayLogic";
-import { getEventMetadata } from "@/lib/event-definitions";
+import type React from 'react';
+import { getEventMetadata } from '@/lib/event-definitions';
+import type { EventPhase } from '@/lib/features/MemoOverlay/memoOverlayLogic';
 
 interface MemoOverlayProgressBarProps {
   phase: EventPhase;
 }
 
-export const MemoOverlayProgressBar: React.FC<MemoOverlayProgressBarProps> = ({ phase }) => {
+export const MemoOverlayProgressBar: React.FC<MemoOverlayProgressBarProps> = ({
+  phase,
+}) => {
   return (
     <div className="flex-shrink-0 flex h-1 bg-slate-800">
       <div
@@ -44,16 +46,16 @@ export const MemoOverlayRecap: React.FC<MemoOverlayRecapProps> = ({
           </span>
         </div>
       </div>
-      
+
       {phase >= 1 && selectedLabels.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-0.5">
           {selectedLabels.map((lbl, i) => {
             const meta = getEventMetadata(lbl);
             return (
-              <span 
-                key={i} 
+              <span
+                key={i}
                 className="text-[10px] px-2 py-0.5 rounded-full text-slate-100 font-bold border border-white/10 shadow-sm flex items-center gap-1"
-                style={{ backgroundColor: meta?.groupColor ?? "#334155" }}
+                style={{ backgroundColor: meta?.groupColor ?? '#334155' }}
               >
                 {lbl}
                 <button

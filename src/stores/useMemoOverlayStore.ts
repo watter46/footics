@@ -1,12 +1,12 @@
-import { create } from "zustand";
-import { getFlattenedEvents } from "@/lib/event-definitions";
-import { 
-  type MemoMode, 
-  type EventPhase, 
-  parseTimeStr, 
-  getValidationError, 
-  filterSuggestions 
-} from "@/lib/features/MemoOverlay/memoOverlayLogic";
+import { create } from 'zustand';
+import { getFlattenedEvents } from '@/lib/event-definitions';
+import {
+  type EventPhase,
+  filterSuggestions,
+  getValidationError,
+  type MemoMode,
+  parseTimeStr,
+} from '@/lib/features/MemoOverlay/memoOverlayLogic';
 
 interface MemoOverlayState {
   mode: MemoMode;
@@ -32,7 +32,7 @@ interface MemoOverlayState {
   navigateSuggestion: (direction: 1 | -1) => void;
   confirmSuggestion: () => void;
   setMemo: (val: string) => void;
-  nextPhase: () => "OK" | "BLOCKED";
+  nextPhase: () => 'OK' | 'BLOCKED';
   prevPhase: () => void;
   forceSetPhase: (phase: EventPhase) => void;
   setError: (err: string | undefined) => void;
@@ -41,92 +41,108 @@ interface MemoOverlayState {
 }
 
 export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
-  mode: "EVENT",
+  mode: 'EVENT',
   phase: 0,
-  timeStr: "",
+  timeStr: '',
   selectedLabels: [],
-  labelInput: "",
+  labelInput: '',
   suggestionIndex: 0,
   isListMode: false,
-  memo: "",
+  memo: '',
   error: undefined,
   isSaving: false,
 
-  reset: (mode) => set((state) => ({
-    mode: mode ?? state.mode,
-    phase: 0,
-    timeStr: "",
-    selectedLabels: [],
-    labelInput: "",
-    suggestionIndex: 0,
-    isListMode: false,
-    memo: "",
-    error: undefined,
-    isSaving: false,
-  })),
+  reset: (mode) =>
+    set((state) => ({
+      mode: mode ?? state.mode,
+      phase: 0,
+      timeStr: '',
+      selectedLabels: [],
+      labelInput: '',
+      suggestionIndex: 0,
+      isListMode: false,
+      memo: '',
+      error: undefined,
+      isSaving: false,
+    })),
 
   setTimeStr: (val) => set({ timeStr: val, error: undefined }),
 
-  appendTimeDigit: (digit) => set((state) => ({
-    timeStr: (state.timeStr + digit).slice(0, 5),
-    error: undefined,
-  })),
+  appendTimeDigit: (digit) =>
+    set((state) => ({
+      timeStr: (state.timeStr + digit).slice(0, 5),
+      error: undefined,
+    })),
 
-  backspaceTimeStr: () => set((state) => ({
-    timeStr: state.timeStr.slice(0, -1),
-    error: undefined,
-  })),
+  backspaceTimeStr: () =>
+    set((state) => ({
+      timeStr: state.timeStr.slice(0, -1),
+      error: undefined,
+    })),
 
-  setLabelInput: (val) => set({ 
-    labelInput: val, 
-    suggestionIndex: 0, 
-    isListMode: false, 
-    error: undefined 
-  }),
+  setLabelInput: (val) =>
+    set({
+      labelInput: val,
+      suggestionIndex: 0,
+      isListMode: false,
+      error: undefined,
+    }),
 
-  addLabel: (label) => set((state) => ({
-    selectedLabels: state.selectedLabels.includes(label) 
-      ? state.selectedLabels 
-      : [...state.selectedLabels, label],
-    labelInput: "",
-    suggestionIndex: 0,
-    isListMode: false,
-    error: undefined,
-  })),
+  addLabel: (label) =>
+    set((state) => ({
+      selectedLabels: state.selectedLabels.includes(label)
+        ? state.selectedLabels
+        : [...state.selectedLabels, label],
+      labelInput: '',
+      suggestionIndex: 0,
+      isListMode: false,
+      error: undefined,
+    })),
 
-  removeLabel: (index) => set((state) => ({
-    selectedLabels: state.selectedLabels.filter((_, i) => i !== index),
-  })),
+  removeLabel: (index) =>
+    set((state) => ({
+      selectedLabels: state.selectedLabels.filter((_, i) => i !== index),
+    })),
 
-  backspaceLabel: () => set((state) => {
-    if (state.labelInput !== "") {
-      return { labelInput: state.labelInput.slice(0, -1), error: undefined };
-    } else if (state.selectedLabels.length > 0) {
-      const labels = [...state.selectedLabels];
-      const last = labels.pop();
-      return { 
-        selectedLabels: labels, 
-        labelInput: last || "", 
-        isListMode: false,
-        error: undefined
-      };
-    }
-    return {};
-  }),
+  backspaceLabel: () =>
+    set((state) => {
+      if (state.labelInput !== '') {
+        return { labelInput: state.labelInput.slice(0, -1), error: undefined };
+      } else if (state.selectedLabels.length > 0) {
+        const labels = [...state.selectedLabels];
+        const last = labels.pop();
+        return {
+          selectedLabels: labels,
+          labelInput: last || '',
+          isListMode: false,
+          error: undefined,
+        };
+      }
+      return {};
+    }),
 
-  navigateSuggestion: (direction) => set((state) => {
-    const suggestions = filterSuggestions(state.labelInput, getFlattenedEvents());
-    if (suggestions.length === 0) return {};
+  navigateSuggestion: (direction) =>
+    set((state) => {
+      const suggestions = filterSuggestions(
+        state.labelInput,
+        getFlattenedEvents(),
+      );
+      if (suggestions.length === 0) return {};
 
-    if (!state.isListMode && direction === 1) {
-      return { isListMode: true, suggestionIndex: 0 };
-    }
+      if (!state.isListMode && direction === 1) {
+        return { isListMode: true, suggestionIndex: 0 };
+      }
 
-    const next = state.suggestionIndex + direction;
-    const finalIndex = next < 0 ? suggestions.length - 1 : (next >= suggestions.length ? 0 : next);
-    
-    return { isListMode: true, suggestionIndex: finalIndex };
-  }),
+      const next = state.suggestionIndex + direction;
+      const finalIndex =
+        next < 0
+          ? suggestions.length - 1
+          : next >= suggestions.length
+            ? 0
+            : next;
+
+      return { isListMode: true, suggestionIndex: finalIndex };
+    }),
 
   confirmSuggestion: () => {
     const { labelInput, suggestionIndex, addLabel } = get();
@@ -141,11 +157,11 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
 
   nextPhase: () => {
     const state = get();
-    if (state.mode !== "EVENT") return "OK";
+    if (state.mode !== 'EVENT') return 'OK';
 
     if (state.phase === 1 && state.isListMode) {
       state.confirmSuggestion();
-      return "OK";
+      return 'OK';
     }
 
     const vError = getValidationError({
@@ -157,23 +173,26 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
 
     if (vError) {
       set({ error: vError });
-      return "BLOCKED";
+      return 'BLOCKED';
     }
 
     if (state.phase === 0) {
       set({ phase: 1 });
     } else if (state.phase === 1) {
-      set({ labelInput: "", phase: 2 });
+      set({ labelInput: '', phase: 2 });
     }
-    
+
     set({ error: undefined });
-    return "OK";
+    return 'OK';
   },
 
-  prevPhase: () => set((state) => ({
-    phase: (state.mode === "EVENT" ? Math.max(0, state.phase - 1) : 0) as EventPhase,
-    error: undefined,
-  })),
+  prevPhase: () =>
+    set((state) => ({
+      phase: (state.mode === 'EVENT'
+        ? Math.max(0, state.phase - 1)
+        : 0) as EventPhase,
+      error: undefined,
+    })),
 
   forceSetPhase: (phase) => set({ phase, error: undefined }),
 
@@ -183,12 +202,12 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
 
   filterByCategory: (categoryIndex) => {
     const { phase, appendTimeDigit, setLabelInput } = get();
-    const cats = ["攻撃", "守備", "トランジション", "GK", "判定", "メンタル"];
+    const cats = ['攻撃', '守備', 'トランジション', 'GK', '判定', 'メンタル'];
     set({ error: undefined });
     if (phase === 0) {
       appendTimeDigit((categoryIndex + 1).toString());
     } else if (phase === 1) {
-      setLabelInput(cats[categoryIndex] ?? "");
+      setLabelInput(cats[categoryIndex] ?? '');
     }
   },
 }));
@@ -202,9 +221,11 @@ export const useMemoOverlayDerived = () => {
 
   const formattedTime = parseTimeStr(store.timeStr);
   const suggestions = filterSuggestions(store.labelInput, flattenedEvents);
-  
-  const isInvalidLabel = store.labelInput 
-    ? !suggestions.some((s) => s.label.toLowerCase() === store.labelInput.toLowerCase())
+
+  const isInvalidLabel = store.labelInput
+    ? !suggestions.some(
+        (s) => s.label.toLowerCase() === store.labelInput.toLowerCase(),
+      )
     : false;
 
   const clearError = () => store.setError(undefined);

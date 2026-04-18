@@ -1,7 +1,9 @@
-"use client";
+'use client';
 
-import React, { useRef, useEffect } from "react";
-import { Clock, AlertCircle } from "lucide-react";
+import { AlertCircle, Clock } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useRef } from 'react';
+
 interface PhaseTimeInputProps {
   timeStr: string;
   displayTime: string;
@@ -17,14 +19,14 @@ interface PhaseTimeInputProps {
  * 責務: 時間入力フェーズ（Phase 0）のUI。
  * 数字入力・バリデーションフィードバック・パース結果の表示を担う。
  */
-export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({ 
-  timeStr, 
-  displayTime, 
-  isInvalid, 
-  isEmpty, 
-  phase, 
-  validationError, 
-  onTimeChange 
+export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
+  timeStr,
+  displayTime,
+  isInvalid,
+  isEmpty,
+  phase,
+  validationError,
+  onTimeChange,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,8 +49,10 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
           const val = e.target.value;
           // 全角数字を半角に変換し、数字のみ最大5文字
           const normalized = val
-            .replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
-            .replace(/\D/g, "")
+            .replace(/[０-９]/g, (s) =>
+              String.fromCharCode(s.charCodeAt(0) - 0xfee0),
+            )
+            .replace(/\D/g, '')
             .slice(0, 5);
           onTimeChange(normalized);
         }}
@@ -56,14 +60,14 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
         className="w-full text-center text-6xl font-mono bg-transparent outline-none text-slate-200 placeholder:text-slate-800 tracking-widest"
         onKeyDown={(e) => {
           // Action Bridgeに制御を委譲するため、Enterのデフォルト動作のみ阻止
-          if (e.key === "Enter" || e.key === "Tab") e.preventDefault();
+          if (e.key === 'Enter' || e.key === 'Tab') e.preventDefault();
         }}
       />
       <div
         className={`text-sm font-mono h-6 transition-colors ${
           validationError && phase === 0
-            ? "text-red-500 font-bold animate-pulse"
-            : "text-slate-300"
+            ? 'text-red-500 font-bold animate-pulse'
+            : 'text-slate-300'
         }`}
       >
         {validationError && phase === 0 ? (
@@ -71,7 +75,7 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
             <AlertCircle className="w-3 h-3" /> {validationError}
           </span>
         ) : isEmpty ? (
-          "Enter numbers (e.g. 12345)"
+          'Enter numbers (e.g. 12345)'
         ) : (
           `Parsed: ${displayTime}`
         )}

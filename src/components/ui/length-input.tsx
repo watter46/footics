@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState, useCallback } from "react";
+import { useCallback, useState } from 'react';
 
 interface LengthValue {
   presets?: string[];
@@ -14,9 +14,9 @@ interface LengthInputProps {
 }
 
 const PRESETS = [
-  { id: "short", label: "Short", description: "<15m" },
-  { id: "middle", label: "Middle", description: "15-32m" },
-  { id: "long", label: "Long", description: ">32m" },
+  { id: 'short', label: 'Short', description: '<15m' },
+  { id: 'middle', label: 'Middle', description: '15-32m' },
+  { id: 'long', label: 'Long', description: '>32m' },
 ] as const;
 
 export function LengthInput({ value, onChange }: LengthInputProps) {
@@ -30,21 +30,21 @@ export function LengthInput({ value, onChange }: LengthInputProps) {
         : [...current, presetId];
       onChange({ ...value, presets: next, min: undefined, max: undefined });
     },
-    [value, onChange]
+    [value, onChange],
   );
 
   const handleMinChange = useCallback(
     (newMin: string) => {
       onChange({ ...value, min: newMin, presets: [] });
     },
-    [value, onChange]
+    [value, onChange],
   );
 
   const handleMaxChange = useCallback(
     (newMax: string) => {
       onChange({ ...value, max: newMax, presets: [] });
     },
-    [value, onChange]
+    [value, onChange],
   );
 
   const activePresets = value.presets || [];
@@ -65,13 +65,15 @@ export function LengthInput({ value, onChange }: LengthInputProps) {
                 transition-all duration-200 border
                 ${
                   isActive
-                    ? "bg-fuchsia-600/30 border-fuchsia-500/60 text-fuchsia-300 shadow-[0_0_8px_rgba(192,38,211,0.2)]"
-                    : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:text-slate-300"
+                    ? 'bg-fuchsia-600/30 border-fuchsia-500/60 text-fuchsia-300 shadow-[0_0_8px_rgba(192,38,211,0.2)]'
+                    : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:text-slate-300'
                 }
               `}
             >
               <div className="font-semibold">{preset.label}</div>
-              <div className={`text-[9px] ${isActive ? "text-fuchsia-400/80" : "text-slate-500"}`}>
+              <div
+                className={`text-[9px] ${isActive ? 'text-fuchsia-400/80' : 'text-slate-500'}`}
+              >
                 {preset.description}
               </div>
             </button>
@@ -83,7 +85,8 @@ export function LengthInput({ value, onChange }: LengthInputProps) {
       {activePresets.length > 0 && (
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-fuchsia-400">
-            {activePresets.length} range{activePresets.length !== 1 ? "s" : ""} selected
+            {activePresets.length} range{activePresets.length !== 1 ? 's' : ''}{' '}
+            selected
           </span>
           <button
             type="button"
@@ -104,14 +107,14 @@ export function LengthInput({ value, onChange }: LengthInputProps) {
           text-[10px] transition-all duration-200
           ${
             showDetail
-              ? "text-fuchsia-400 bg-fuchsia-950/30"
-              : "text-slate-500 hover:text-slate-400 hover:bg-slate-800/50"
+              ? 'text-fuchsia-400 bg-fuchsia-950/30'
+              : 'text-slate-500 hover:text-slate-400 hover:bg-slate-800/50'
           }
         `}
       >
         <span
           className={`inline-block transition-transform duration-200 ${
-            showDetail ? "rotate-180" : ""
+            showDetail ? 'rotate-180' : ''
           }`}
         >
           ▾
@@ -123,10 +126,12 @@ export function LengthInput({ value, onChange }: LengthInputProps) {
       {showDetail && (
         <div className="flex gap-2 items-center animate-in slide-in-from-top-1 duration-200">
           <div className="flex-1">
-            <label className="text-[9px] text-slate-500 block mb-0.5">Min (m)</label>
+            <label className="text-[9px] text-slate-500 block mb-0.5">
+              Min (m)
+            </label>
             <input
               type="number"
-              value={value.min ?? ""}
+              value={value.min ?? ''}
               onChange={(e) => handleMinChange(e.target.value)}
               placeholder="0"
               min={0}
@@ -141,10 +146,12 @@ export function LengthInput({ value, onChange }: LengthInputProps) {
           </div>
           <span className="text-slate-600 text-xs mt-3">–</span>
           <div className="flex-1">
-            <label className="text-[9px] text-slate-500 block mb-0.5">Max (m)</label>
+            <label className="text-[9px] text-slate-500 block mb-0.5">
+              Max (m)
+            </label>
             <input
               type="number"
-              value={value.max ?? ""}
+              value={value.max ?? ''}
               onChange={(e) => handleMaxChange(e.target.value)}
               placeholder="∞"
               min={0}

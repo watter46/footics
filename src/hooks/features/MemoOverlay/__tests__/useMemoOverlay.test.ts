@@ -1,6 +1,6 @@
-import { renderHook, act } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
-import { useMemoOverlay, parseTimeStr } from '../useMemoOverlay';
+import { act, renderHook } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { parseTimeStr, useMemoOverlay } from '../useMemoOverlay';
 
 // lib/event-definitions などの外部依存をモックする場合
 vi.mock('@/lib/event-definitions', () => ({
@@ -118,7 +118,7 @@ describe('useMemoOverlay hook', () => {
     act(() => {
       result.current.actions.addLabel('テスト');
     });
-    
+
     let res: any;
     act(() => {
       res = result.current.actions.nextPhase();

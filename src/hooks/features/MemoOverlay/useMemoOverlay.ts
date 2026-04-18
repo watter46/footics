@@ -1,7 +1,10 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { getFlattenedEvents, type FlattenedEvent } from "@/lib/event-definitions";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type FlattenedEvent,
+  getFlattenedEvents,
+} from '@/lib/event-definitions';
 
-export type MemoMode = "MATCH" | "EVENT";
+export type MemoMode = 'MATCH' | 'EVENT';
 export type EventPhase = 0 | 1 | 2; // 0: Time, 1: Label, 2: Memo
 
 // Hook が外部に公開するデータ型
@@ -46,7 +49,7 @@ export interface MemoOverlayActions {
   // メモ
   setMemo: (val: string) => void;
   // フェーズ
-  nextPhase: () => "BLOCKED" | "OK";
+  nextPhase: () => 'BLOCKED' | 'OK';
   prevPhase: () => void;
   forceSetPhase: (phase: EventPhase) => void;
   // エラー
@@ -63,7 +66,7 @@ export interface MemoOverlayActions {
 }
 
 export interface EventSavePayload {
-  type: "EVENT";
+  type: 'EVENT';
   minute: number;
   second: number;
   labels: string[];
@@ -71,21 +74,26 @@ export interface EventSavePayload {
 }
 
 export interface MatchSavePayload {
-  type: "MATCH";
+  type: 'MATCH';
   memo: string;
 }
 
 // =======================================
 // ユーティリティ: 時間文字列のパース
 // =======================================
-export function parseTimeStr(timeStr: string): { display: string; isInvalid: boolean; empty: boolean } {
-  const digits = timeStr.replace(/\D/g, "");
-  if (digits.length === 0) return { display: "--:--", isInvalid: false, empty: true };
+export function parseTimeStr(timeStr: string): {
+  display: string;
+  isInvalid: boolean;
+  empty: boolean;
+} {
+  const digits = timeStr.replace(/\D/g, '');
+  if (digits.length === 0)
+    return { display: '--:--', isInvalid: false, empty: true };
 
-  let m = "0";
-  let s = "00";
+  let m = '0';
+  let s = '00';
   if (digits.length <= 2) {
-    s = digits.padStart(2, "0");
+    s = digits.padStart(2, '0');
   } else {
     m = digits.slice(0, -2);
     s = digits.slice(-2);
@@ -97,10 +105,13 @@ export function parseTimeStr(timeStr: string): { display: string; isInvalid: boo
   };
 }
 
-export function timeStrToMinuteSecond(timeStr: string): { minute: number; second: number } {
-  const digits = timeStr.replace(/\D/g, "").padStart(2, "0");
+export function timeStrToMinuteSecond(timeStr: string): {
+  minute: number;
+  second: number;
+} {
+  const digits = timeStr.replace(/\D/g, '').padStart(2, '0');
   const second = parseInt(digits.slice(-2), 10);
-  const minute = parseInt(digits.slice(0, -2) || "0", 10);
+  const minute = parseInt(digits.slice(0, -2) || '0', 10);
   return { minute, second };
 }
 
@@ -109,12 +120,12 @@ export function timeStrToMinuteSecond(timeStr: string): { minute: number; second
 // =======================================
 export function useMemoOverlay(mode: MemoMode, initialError?: string) {
   const [phase, setPhase] = useState<EventPhase>(0);
-  const [timeStr, setTimeStr] = useState("");
+  const [timeStr, setTimeStr] = useState('');
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
-  const [labelInput, setLabelInput] = useState("");
+  const [labelInput, setLabelInput] = useState('');
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [isListMode, setIsListMode] = useState(false);
-  const [memo, setMemo] = useState("");
+  const [memo, setMemo] = useState('');
   const [error, setError] = useState<string | undefined>(initialError);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -131,49 +142,88 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
       .filter(
         (e) =>
           e.label.toLowerCase().includes(query) ||
-          e.keywords.some((k) => k.toLowerCase().includes(query))
+          e.keywords.some((k) => k.toLowerCase().includes(query)),
       )
       .slice(0, 15);
   }, [labelInput, flattenedEvents]);
 
   const isInvalidLabel = useMemo(() => {
     if (!labelInput) return false;
-    return !suggestions.some((s) => s.label.toLowerCase() === labelInput.toLowerCase());
+    return !suggestions.some(
+      (s) => s.label.toLowerCase() === labelInput.toLowerCase(),
+    );
   }, [labelInput, suggestions]);
 
   // -------------------------------------------------------
   // 最新のステートを Ref に保持（アクション関数の安定化のため）
   // -------------------------------------------------------
   const stateRef = useRef({
-    mode, phase, timeStr, formattedTime, 
-    selectedLabels, labelInput, suggestions, suggestionIndex, 
-    isListMode, memo, error, isSaving
+    mode,
+    phase,
+    timeStr,
+    formattedTime,
+    selectedLabels,
+    labelInput,
+    suggestions,
+    suggestionIndex,
+    isListMode,
+    memo,
+    error,
+    isSaving,
   });
 
   useEffect(() => {
     stateRef.current = {
-      mode, phase, timeStr, formattedTime, 
-      selectedLabels, labelInput, suggestions, suggestionIndex, 
-      isListMode, memo, error, isSaving
+      mode,
+      phase,
+      timeStr,
+      formattedTime,
+      selectedLabels,
+      labelInput,
+      suggestions,
+      suggestionIndex,
+      isListMode,
+      memo,
+      error,
+      isSaving,
     };
-  }, [mode, phase, timeStr, formattedTime, selectedLabels, labelInput, suggestions, suggestionIndex, isListMode, memo, error, isSaving]);
+  }, [
+    mode,
+    phase,
+    timeStr,
+    formattedTime,
+    selectedLabels,
+    labelInput,
+    suggestions,
+    suggestionIndex,
+    isListMode,
+    memo,
+    error,
+    isSaving,
+  ]);
 
   // -------------------------------------------------------
   // Internal Helper
   // -------------------------------------------------------
   const getValidationErrorInternal = useCallback((): string | null => {
-    const { mode: m, phase: p, timeStr: t, formattedTime: f, selectedLabels: s } = stateRef.current;
-    if (m !== "EVENT") return null;
-    
+    const {
+      mode: m,
+      phase: p,
+      timeStr: t,
+      formattedTime: f,
+      selectedLabels: s,
+    } = stateRef.current;
+    if (m !== 'EVENT') return null;
+
     if (p === 0) {
-      if (t === "") return "時間を入力してください。";
-      if (f.isInvalid) return "秒を59以下にして入力してください。";
+      if (t === '') return '時間を入力してください。';
+      if (f.isInvalid) return '秒を59以下にして入力してください。';
     }
-    
+
     if (p === 1) {
-      if (s.length === 0) return "ラベルを1つ以上選択してください。";
+      if (s.length === 0) return 'ラベルを1つ以上選択してください。';
     }
-    
+
     return null;
   }, []);
 
@@ -204,8 +254,10 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
 
   const addLabel = useCallback((label: string) => {
     setError(undefined);
-    setSelectedLabels((prev) => (prev.includes(label) ? prev : [...prev, label]));
-    setLabelInput("");
+    setSelectedLabels((prev) =>
+      prev.includes(label) ? prev : [...prev, label],
+    );
+    setLabelInput('');
     setSuggestionIndex(0);
     setIsListMode(false);
   }, []);
@@ -217,7 +269,7 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
   const backspaceLabel = useCallback(() => {
     setError(undefined);
     const { labelInput: li, selectedLabels: sl } = stateRef.current;
-    if (li !== "") {
+    if (li !== '') {
       setLabelInput((prev) => prev.slice(0, -1));
     } else if (sl.length > 0) {
       setSelectedLabels((prev) => {
@@ -259,50 +311,53 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
     }
   }, [addLabel]);
 
-  const filterByCategory = useCallback((categoryIndex: number) => {
-    const { phase: p } = stateRef.current;
-    const cats = ["攻撃", "守備", "トランジション", "GK", "判定", "メンタル"];
-    setError(undefined);
-    if (p === 0) {
-      appendTimeDigit((categoryIndex + 1).toString());
-    } else if (p === 1) {
-      setLabelInput(cats[categoryIndex] ?? "");
-      setSuggestionIndex(0);
-      setIsListMode(false);
-    }
-  }, [appendTimeDigit]);
+  const filterByCategory = useCallback(
+    (categoryIndex: number) => {
+      const { phase: p } = stateRef.current;
+      const cats = ['攻撃', '守備', 'トランジション', 'GK', '判定', 'メンタル'];
+      setError(undefined);
+      if (p === 0) {
+        appendTimeDigit((categoryIndex + 1).toString());
+      } else if (p === 1) {
+        setLabelInput(cats[categoryIndex] ?? '');
+        setSuggestionIndex(0);
+        setIsListMode(false);
+      }
+    },
+    [appendTimeDigit],
+  );
 
-  const nextPhase = useCallback((): "BLOCKED" | "OK" => {
+  const nextPhase = useCallback((): 'BLOCKED' | 'OK' => {
     const { mode: m, phase: p, isListMode: ilm } = stateRef.current;
-    if (m !== "EVENT") return "OK";
+    if (m !== 'EVENT') return 'OK';
 
     if (p === 1 && ilm) {
       confirmSuggestion();
-      return "OK";
+      return 'OK';
     }
 
     const vError = getValidationErrorInternal();
     if (vError) {
       setError(vError);
-      return "BLOCKED";
+      return 'BLOCKED';
     }
 
     if (p === 0) {
       setPhase(1);
     } else if (p === 1) {
-      setLabelInput("");
+      setLabelInput('');
       setPhase(2);
     }
-    
+
     setError(undefined);
-    return "OK";
+    return 'OK';
   }, [confirmSuggestion, getValidationErrorInternal]);
 
   const prevPhase = useCallback(() => {
     const { mode: m } = stateRef.current;
     setError(undefined);
-    if (m === "EVENT") {
-      setPhase((p) => (Math.max(0, p - 1) as EventPhase));
+    if (m === 'EVENT') {
+      setPhase((p) => Math.max(0, p - 1) as EventPhase);
     }
   }, []);
 
@@ -315,38 +370,46 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
 
   const validateBeforeSave = useCallback((): boolean => {
     const { mode: m, memo: me } = stateRef.current;
-    if (m === "MATCH") {
+    if (m === 'MATCH') {
       if (!me.trim()) return false;
       return true;
     }
     const vError = getValidationErrorInternal();
     if (vError) {
       setError(vError);
-      if (vError.includes("時間")) setPhase(0);
-      else if (vError.includes("ラベル")) setPhase(1);
+      if (vError.includes('時間')) setPhase(0);
+      else if (vError.includes('ラベル')) setPhase(1);
       return false;
     }
     return true;
   }, [getValidationErrorInternal]);
 
-  const getSavePayload = useCallback((): EventSavePayload | MatchSavePayload | null => {
-    const { mode: m, memo: me, timeStr: t, selectedLabels: sl } = stateRef.current;
-    if (m === "MATCH") {
+  const getSavePayload = useCallback(():
+    | EventSavePayload
+    | MatchSavePayload
+    | null => {
+    const {
+      mode: m,
+      memo: me,
+      timeStr: t,
+      selectedLabels: sl,
+    } = stateRef.current;
+    if (m === 'MATCH') {
       if (!me.trim()) return null;
-      return { type: "MATCH", memo: me };
+      return { type: 'MATCH', memo: me };
     }
     const { minute, second } = timeStrToMinuteSecond(t);
-    return { type: "EVENT", minute, second, labels: sl, memo: me };
+    return { type: 'EVENT', minute, second, labels: sl, memo: me };
   }, []);
 
   const reset = useCallback(() => {
     setPhase(0);
-    setTimeStr("");
+    setTimeStr('');
     setSelectedLabels([]);
-    setLabelInput("");
+    setLabelInput('');
     setSuggestionIndex(0);
     setIsListMode(false);
-    setMemo("");
+    setMemo('');
     setError(undefined);
     setIsSaving(false);
   }, []);
@@ -356,57 +419,86 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
   // -------------------------------------------------------
   // Return
   // -------------------------------------------------------
-  const state: MemoOverlayState = useMemo(() => ({
-    mode,
-    phase,
-    timeStr,
-    formattedTime,
-    selectedLabels,
-    labelInput,
-    suggestions,
-    suggestionIndex,
-    isListMode,
-    isInvalidLabel,
-    memo,
-    validationError: null,
-    error,
-    isSaving,
-  }), [
-    mode, phase, timeStr, formattedTime, selectedLabels,
-    labelInput, suggestions, suggestionIndex, isListMode,
-    isInvalidLabel, memo, error, isSaving
-  ]);
+  const state: MemoOverlayState = useMemo(
+    () => ({
+      mode,
+      phase,
+      timeStr,
+      formattedTime,
+      selectedLabels,
+      labelInput,
+      suggestions,
+      suggestionIndex,
+      isListMode,
+      isInvalidLabel,
+      memo,
+      validationError: null,
+      error,
+      isSaving,
+    }),
+    [
+      mode,
+      phase,
+      timeStr,
+      formattedTime,
+      selectedLabels,
+      labelInput,
+      suggestions,
+      suggestionIndex,
+      isListMode,
+      isInvalidLabel,
+      memo,
+      error,
+      isSaving,
+    ],
+  );
 
-  const actions: MemoOverlayActions = useMemo(() => ({
-    setTimeStr: setTimeStrAction,
-    appendTimeDigit,
-    backspaceTimeStr,
-    setLabelInput: setLabelInputAction,
-    addLabel,
-    removeLabel,
-    backspaceLabel,
-    navigateSuggestion,
-    setIsListMode,
-    setSuggestionIndex,
-    confirmSuggestion,
-    filterByCategory,
-    setMemo: setMemoAction,
-    nextPhase,
-    prevPhase,
-    forceSetPhase,
-    setError,
-    clearError,
-    setIsSaving,
-    validateBeforeSave,
-    getSavePayload,
-    reset,
-  }), [
-    setTimeStrAction, appendTimeDigit, backspaceTimeStr, setLabelInputAction,
-    addLabel, removeLabel, backspaceLabel, navigateSuggestion,
-    confirmSuggestion, filterByCategory, setMemoAction,
-    nextPhase, prevPhase, forceSetPhase, clearError,
-    validateBeforeSave, getSavePayload, reset
-  ]);
+  const actions: MemoOverlayActions = useMemo(
+    () => ({
+      setTimeStr: setTimeStrAction,
+      appendTimeDigit,
+      backspaceTimeStr,
+      setLabelInput: setLabelInputAction,
+      addLabel,
+      removeLabel,
+      backspaceLabel,
+      navigateSuggestion,
+      setIsListMode,
+      setSuggestionIndex,
+      confirmSuggestion,
+      filterByCategory,
+      setMemo: setMemoAction,
+      nextPhase,
+      prevPhase,
+      forceSetPhase,
+      setError,
+      clearError,
+      setIsSaving,
+      validateBeforeSave,
+      getSavePayload,
+      reset,
+    }),
+    [
+      setTimeStrAction,
+      appendTimeDigit,
+      backspaceTimeStr,
+      setLabelInputAction,
+      addLabel,
+      removeLabel,
+      backspaceLabel,
+      navigateSuggestion,
+      confirmSuggestion,
+      filterByCategory,
+      setMemoAction,
+      nextPhase,
+      prevPhase,
+      forceSetPhase,
+      clearError,
+      validateBeforeSave,
+      getSavePayload,
+      reset,
+    ],
+  );
 
   return { state, actions };
 }

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useCallback } from "react";
+import { useCallback } from 'react';
 
 /**
  * ZonePicker — 20エリアのピッチ図 UI
@@ -32,11 +32,26 @@ const CELL_HEIGHT = (PITCH_HEIGHT - PADDING * 2) / ROWS;
 
 // ゾーンラベル
 const ZONE_LABELS = [
-  "DL", "DML", "AML", "AL",
-  "DHL", "DMHL", "AMHL", "AHL",
-  "DC", "DMC", "AMC", "AC",
-  "DHR", "DMHR", "AMHR", "AHR",
-  "DR", "DMR", "AMR", "AR",
+  'DL',
+  'DML',
+  'AML',
+  'AL',
+  'DHL',
+  'DMHL',
+  'AMHL',
+  'AHL',
+  'DC',
+  'DMC',
+  'AMC',
+  'AC',
+  'DHR',
+  'DMHR',
+  'AMHR',
+  'AHR',
+  'DR',
+  'DMR',
+  'AMR',
+  'AR',
 ];
 
 export function ZonePicker({ selectedZones, onChange }: ZonePickerProps) {
@@ -47,7 +62,7 @@ export function ZonePicker({ selectedZones, onChange }: ZonePickerProps) {
         : [...selectedZones, zoneIndex];
       onChange(next);
     },
-    [selectedZones, onChange]
+    [selectedZones, onChange],
   );
 
   return (
@@ -129,13 +144,17 @@ export function ZonePicker({ selectedZones, onChange }: ZonePickerProps) {
           const isSelected = selectedZones.includes(idx);
 
           return (
-            <g key={idx} style={{ cursor: "pointer" }} onClick={() => toggleZone(idx)}>
+            <g
+              key={idx}
+              style={{ cursor: 'pointer' }}
+              onClick={() => toggleZone(idx)}
+            >
               <rect
                 x={x}
                 y={y}
                 width={CELL_WIDTH}
                 height={CELL_HEIGHT}
-                fill={isSelected ? "rgba(192, 38, 211, 0.45)" : "transparent"}
+                fill={isSelected ? 'rgba(192, 38, 211, 0.45)' : 'transparent'}
                 stroke="rgba(255,255,255,0.12)"
                 strokeWidth={0.5}
                 rx={1}
@@ -158,11 +177,15 @@ export function ZonePicker({ selectedZones, onChange }: ZonePickerProps) {
                 y={y + CELL_HEIGHT / 2}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill={isSelected ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.35)"}
+                fill={
+                  isSelected
+                    ? 'rgba(255,255,255,0.95)'
+                    : 'rgba(255,255,255,0.35)'
+                }
                 fontSize={7}
                 fontWeight={isSelected ? 600 : 400}
                 className="pointer-events-none select-none"
-                style={{ fontFamily: "monospace" }}
+                style={{ fontFamily: 'monospace' }}
               >
                 {ZONE_LABELS[idx]}
               </text>
@@ -175,7 +198,8 @@ export function ZonePicker({ selectedZones, onChange }: ZonePickerProps) {
       {selectedZones.length > 0 && (
         <div className="flex items-center justify-between mt-1.5">
           <span className="text-[10px] text-fuchsia-400">
-            {selectedZones.length} zone{selectedZones.length !== 1 ? "s" : ""} selected
+            {selectedZones.length} zone{selectedZones.length !== 1 ? 's' : ''}{' '}
+            selected
           </span>
           <button
             type="button"

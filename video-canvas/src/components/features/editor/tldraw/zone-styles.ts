@@ -4,15 +4,12 @@ import { getDefaultColorTheme } from 'tldraw';
  * Resolve a tldraw color style ID (e.g. 'red', 'blue') to an actual CSS color
  * string using the current theme.
  */
-export function resolveColor(
-  colorId: string,
-  isDarkMode: boolean
-): string {
+export function resolveColor(colorId: string, isDarkMode: boolean): string {
   const theme = getDefaultColorTheme({ isDarkMode });
   const colorValue = theme[colorId as keyof typeof theme];
   return typeof colorValue === 'string'
     ? colorValue
-    : (colorValue as any)?.solid ?? colorId;
+    : ((colorValue as any)?.solid ?? colorId);
 }
 
 /**
@@ -20,7 +17,7 @@ export function resolveColor(
  */
 export function resolveFill(
   fillStyle: string,
-  color: string
+  color: string,
 ): { fill: string; fillOpacity: number } {
   switch (fillStyle) {
     case 'solid':

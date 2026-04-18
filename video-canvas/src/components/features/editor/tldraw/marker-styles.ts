@@ -21,11 +21,31 @@ export const MARKER_RING_RY = 10;
 /** Default stroke width for arrows coming out of the marker */
 export const MARKER_ARROW_STROKE_WIDTH = 8;
 
+/** Default arrow length in pixels */
+export const MARKER_ARROW_DEFAULT_LENGTH = 120;
+
+/** Default FOV arc length in pixels */
+export const MARKER_FOV_DEFAULT_LENGTH = 180;
+
+/** Default FOV spread angle in radians (60 degrees) */
+export const MARKER_FOV_DEFAULT_ANGLE = Math.PI / 3;
+
+/** Arrowhead dimensions */
+export const MARKER_ARROWHEAD_WIDTH = 4.5;
+export const MARKER_ARROWHEAD_HEIGHT = 4;
+
+/** Default stroke width for man-mark lines */
+export const MARKER_MAN_MARK_STROKE_WIDTH = 2;
+
+/** Dot radius for man-mark endpoints (both ends of the line) */
+export const MARKER_MAN_MARK_DOT_RADIUS = 3;
+
+/** Default stroke width for marker connector lines */
+export const MARKER_CONNECTOR_STROKE_WIDTH = 6;
+
 /** Default props for a newly created Marker shape */
 export const MARKER_DEFAULT_PROPS = {
   w: MARKER_DEFAULT_SIZE,
   h: MARKER_DEFAULT_SIZE,
   color: '#034694' as const,
-  arrows: [] as Array<{ type: string; angle: number; length: number; bend: number }>,
-  fovs: [] as Array<{ angle: number; direction: number; length: number }>,
 };

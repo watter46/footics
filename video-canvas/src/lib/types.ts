@@ -17,4 +17,3 @@ export interface CaptureMetadata {
   viewportHeight?: number;
   originalVideoRect?: CaptureRect;
 }
-

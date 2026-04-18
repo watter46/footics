@@ -1,4 +1,4 @@
-import type { MatchSummary } from "@/types";
+import type { MatchSummary } from '@/types';
 
 /**
  * 静的マッチリスト。

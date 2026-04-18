@@ -6,7 +6,7 @@
  * - HMR (Hot Module Replacement) 時に globalThis にキャッシュし、二重初期化を防止。
  * - Worker の Blob URL は使用後即座に revoke してメモリリークを回避。
  */
-import * as duckdb from "@duckdb/duckdb-wasm";
+import * as duckdb from '@duckdb/duckdb-wasm';
 
 interface DuckDBInstance {
   db: duckdb.AsyncDuckDB;
@@ -54,29 +54,14 @@ export function initializeDuckDB(): Promise<DuckDBInstance> {
 }
 
 async function createInstance(): Promise<DuckDBInstance> {
-  const origin = window.location.origin;
-  // ローカル配信用のバンドル設定
-  const MANUAL_BUNDLES: duckdb.DuckDBBundles = {
-    mvp: {
-      mainModule: `${origin}/static/duckdb/duckdb-mvp.wasm`,
-      mainWorker: `${origin}/static/duckdb/duckdb-browser-mvp.worker.js`,
-    },
-    eh: {
-      mainModule: `${origin}/static/duckdb/duckdb-eh.wasm`,
-      mainWorker: `${origin}/static/duckdb/duckdb-browser-eh.worker.js`,
-    },
-  };
-
-  const bundle = await duckdb.selectBundle(MANUAL_BUNDLES);
-
-  // COI (Cross-Origin Isolation) が有効な場合は COI バンドルを優先する等のロジックも可能だが、
-  // 現状は MVP/EH の出し分けで十分高速。
+  // Cloudflare Workers Assets の 25MB 制限を回避するため、公式 CDN (jsDelivr) からバンドルを取得します。
+  const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
 
   // CORS 対応: Blob Worker
   const workerUrl = URL.createObjectURL(
     new Blob([`importScripts("${bundle.mainWorker!}");`], {
-      type: "text/javascript",
-    })
+      type: 'text/javascript',
+    }),
   );
   const worker = new Worker(workerUrl);
   const logger = new duckdb.ConsoleLogger();

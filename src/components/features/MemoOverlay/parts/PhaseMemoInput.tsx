@@ -1,7 +1,9 @@
-"use client";
+'use client';
 
-import React, { useRef, useEffect } from "react";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useRef } from 'react';
+
 interface PhaseMemoInputProps {
   memo: string;
   onMemoChange: (val: string) => void;
@@ -13,7 +15,11 @@ interface PhaseMemoInputProps {
  * 責務: 補足メモ入力フェーズ（Phase 2）のUI。
  * Ctrl+EnterでのSave連携、フォーカス管理を担う。
  */
-export const PhaseMemoInput: React.FC<PhaseMemoInputProps> = ({ memo, onMemoChange, onSave }) => {
+export const PhaseMemoInput: React.FC<PhaseMemoInputProps> = ({
+  memo,
+  onMemoChange,
+  onSave,
+}) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // フェーズ表示時にフォーカス
@@ -34,7 +40,7 @@ export const PhaseMemoInput: React.FC<PhaseMemoInputProps> = ({ memo, onMemoChan
         placeholder="補足メモを入力..."
         className="w-full h-32 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 outline-none focus:border-blue-500 transition-all resize-none"
         onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             onSave();
           }

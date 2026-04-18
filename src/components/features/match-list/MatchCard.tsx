@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import React from "react";
-import Link from "next/link";
-import { Calendar, Database } from "lucide-react";
-import type { MatchSummary } from "@/types";
+import { Calendar, Database } from 'lucide-react';
+import Link from 'next/link';
+import React from 'react';
+import type { MatchSummary } from '@/types';
 
 interface MatchCardProps {
   match: MatchSummary;
@@ -17,8 +17,8 @@ export function MatchCard({ match, isLatest, isImported }: MatchCardProps) {
       <div
         className={`relative bg-slate-900 border hover:bg-slate-800/80 transition-all duration-200 overflow-hidden group cursor-pointer w-full rounded-xl shadow hover:shadow-blue-900/10 flex flex-row ${
           isLatest
-            ? "border-blue-500/40 shadow-blue-900/20"
-            : "border-slate-800 hover:border-blue-500/30"
+            ? 'border-blue-500/40 shadow-blue-900/20'
+            : 'border-slate-800 hover:border-blue-500/30'
         }`}
       >
         {isLatest && (
@@ -32,14 +32,14 @@ export function MatchCard({ match, isLatest, isImported }: MatchCardProps) {
           <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
             <Calendar className="w-3 h-3 text-blue-400/70" />
             {match.date
-              ? new Date(match.date).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
+              ? new Date(match.date).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
                 })
-              : "—"}
+              : '—'}
           </div>
           <div className="text-[10px] text-slate-600 font-mono">
-            {match.date ? new Date(match.date).getFullYear() : "N/A"}
+            {match.date ? new Date(match.date).getFullYear() : 'N/A'}
           </div>
           <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-500 font-mono mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis w-full max-w-full block">
             #{match.id}
@@ -50,7 +50,7 @@ export function MatchCard({ match, isLatest, isImported }: MatchCardProps) {
               Imported
             </span>
           )}
-          {match.matchType === "national" && (
+          {match.matchType === 'national' && (
             <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/40 border border-emerald-500/40 text-emerald-400 font-bold mt-0.5 uppercase tracking-wider">
               National
             </span>
@@ -76,7 +76,7 @@ export function MatchCard({ match, isLatest, isImported }: MatchCardProps) {
           {/* Score */}
           <div className="flex flex-col items-center justify-center flex-1 z-10">
             <div className="text-xl sm:text-3xl font-black tracking-tighter text-slate-50 whitespace-nowrap tabular-nums drop-shadow-sm">
-              {(match.score || "0 : 0").replace(/\s+/g, "").replace(":", " - ")}
+              {(match.score || '0 : 0').replace(/\s+/g, '').replace(':', ' - ')}
             </div>
             <div className="text-[9px] sm:text-[10px] text-slate-600 mt-0.5 uppercase tracking-widest font-black opacity-60">
               Full Time

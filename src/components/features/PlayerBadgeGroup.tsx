@@ -1,29 +1,41 @@
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import { Badge } from "@/components/ui/badge";
-import type { Player } from "@/types";
+import { useMemo } from 'react';
+import { Badge } from '@/components/ui/badge';
+import type { BasePlayer, Player } from '@/types';
 
 // ── ポジション定義 ──
 
 const POSITION_ORDER: Record<string, number> = {
-  FW: 0, AML: 1, AMR: 2, AMC: 3, MC: 4, DMC: 5,
-  DL: 6, DC: 7, DR: 8, GK: 9, Sub: 10,
+  FW: 0,
+  AML: 1,
+  AMR: 2,
+  AMC: 3,
+  MC: 4,
+  DMC: 5,
+  DL: 6,
+  DC: 7,
+  DR: 8,
+  GK: 9,
+  Sub: 10,
 };
 
-const CATEGORY_ORDER = ["FW", "MID", "DF", "GK", "SUB"] as const;
+const CATEGORY_ORDER = ['FW', 'MID', 'DF', 'GK', 'SUB'] as const;
 
-function getPositionCategory(position: string): string {
-  if (position === "FW") return "FW";
-  if (["AML", "AMR", "AMC", "MC", "DMC"].includes(position)) return "MID";
-  if (["DL", "DC", "DR"].includes(position)) return "DF";
-  if (position === "GK") return "GK";
-  return "SUB";
+function getPositionCategory(position?: string): string {
+  if (!position) return 'SUB';
+  if (position === 'FW') return 'FW';
+  if (['AML', 'AMR', 'AMC', 'MC', 'DMC'].includes(position)) return 'MID';
+  if (['DL', 'DC', 'DR'].includes(position)) return 'DF';
+  if (position === 'GK') return 'GK';
+  return 'SUB';
 }
 
-function sortPlayersByPosition(players: Player[]): Player[] {
+function sortPlayersByPosition(players: BasePlayer[]): BasePlayer[] {
   return [...players].sort(
-    (a, b) => (POSITION_ORDER[a.position] ?? 99) - (POSITION_ORDER[b.position] ?? 99)
+    (a, b) =>
+      (POSITION_ORDER[a.position ?? ''] ?? 99) -
+      (POSITION_ORDER[b.position ?? ''] ?? 99),
   );
 }
 
@@ -31,7 +43,7 @@ function sortPlayersByPosition(players: Player[]): Player[] {
 
 interface PlayerBadgeGroupProps {
   teamName: string;
-  players: Player[];
+  players: BasePlayer[];
   colorClass: string;
   selectedPlayers: Set<number>;
   onTogglePlayer: (playerId: number) => void;
@@ -44,10 +56,13 @@ export function PlayerBadgeGroup({
   selectedPlayers,
   onTogglePlayer,
 }: PlayerBadgeGroupProps) {
-  const sortedPlayers = useMemo(() => sortPlayersByPosition(players), [players]);
+  const sortedPlayers = useMemo(
+    () => sortPlayersByPosition(players),
+    [players],
+  );
 
   const groupedByCategory = useMemo(() => {
-    const groups: Record<string, Player[]> = {};
+    const groups: Record<string, BasePlayer[]> = {};
     for (const player of sortedPlayers) {
       const category = getPositionCategory(player.position);
       if (!groups[category]) groups[category] = [];
@@ -60,7 +75,9 @@ export function PlayerBadgeGroup({
 
   return (
     <div className="space-y-1.5">
-      <div className={`text-[10px] font-semibold uppercase tracking-wider ${colorClass}`}>
+      <div
+        className={`text-[10px] font-semibold uppercase tracking-wider ${colorClass}`}
+      >
         {teamName}
       </div>
       {CATEGORY_ORDER.map((category) => {
@@ -78,11 +95,11 @@ export function PlayerBadgeGroup({
                 return (
                   <Badge
                     key={player.playerId}
-                    variant={isSelected ? "default" : "outline"}
+                    variant={isSelected ? 'default' : 'outline'}
                     className={`cursor-pointer transition-all duration-200 text-[10px] px-1.5 py-0.5 ${
                       isSelected
-                        ? "bg-blue-600 hover:bg-blue-500"
-                        : "border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                        ? 'bg-blue-600 hover:bg-blue-500'
+                        : 'border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                     }`}
                     onClick={() => onTogglePlayer(player.playerId)}
                   >
@@ -101,7 +118,7 @@ export function PlayerBadgeGroup({
 // ── Flat badge list (team-selected mode) ──
 
 interface FlatPlayerBadgesProps {
-  players: Player[];
+  players: BasePlayer[];
   selectedPlayers: Set<number>;
   onTogglePlayer: (playerId: number) => void;
 }
@@ -111,7 +128,10 @@ export function FlatPlayerBadges({
   selectedPlayers,
   onTogglePlayer,
 }: FlatPlayerBadgesProps) {
-  const sortedPlayers = useMemo(() => sortPlayersByPosition(players), [players]);
+  const sortedPlayers = useMemo(
+    () => sortPlayersByPosition(players),
+    [players],
+  );
 
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -121,11 +141,11 @@ export function FlatPlayerBadges({
         return (
           <Badge
             key={player.playerId}
-            variant={isSelected ? "default" : "outline"}
+            variant={isSelected ? 'default' : 'outline'}
             className={`cursor-pointer transition-all duration-200 text-[10px] px-1.5 py-0.5 ${
               isSelected
-                ? "bg-blue-600 hover:bg-blue-500"
-                : "border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                ? 'bg-blue-600 hover:bg-blue-500'
+                : 'border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
             }`}
             onClick={() => onTogglePlayer(player.playerId)}
           >

@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import React from "react";
+import type React from 'react';
 
 const TIMELINE_SOURCE_OPTIONS = [
-  { id: "all", label: "All Events" },
-  { id: "custom", label: "My Memos" },
-  { id: "whoscored", label: "WhoScored" },
+  { id: 'all', label: 'All Events' },
+  { id: 'custom', label: 'My Memos' },
+  { id: 'whoscored', label: 'WhoScored' },
 ] as const;
 
 interface TimelineSourceFilterProps {
-  timelineSource: "all" | "whoscored" | "custom";
-  onChange: (source: "all" | "whoscored" | "custom") => void;
+  timelineSource: 'all' | 'whoscored' | 'custom';
+  onChange: (source: 'all' | 'whoscored' | 'custom') => void;
 }
 
 export const TimelineSourceFilter: React.FC<TimelineSourceFilterProps> = ({
@@ -31,8 +31,8 @@ export const TimelineSourceFilter: React.FC<TimelineSourceFilterProps> = ({
               onClick={() => onChange(option.id as any)}
               className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-all ${
                 isActive
-                  ? "bg-amber-600 text-amber-50 shadow-sm"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? 'bg-amber-600 text-amber-50 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               {option.label}

@@ -1,24 +1,24 @@
-"use client";
+'use client';
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getMatchMemo, putMatchMemo } from "@/lib/db";
-import { MatchMemoSchema, type MatchMemo } from "@/lib/schema";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getMatchMemo, putMatchMemo } from '@/lib/db';
+import { type MatchMemo, MatchMemoSchema } from '@/lib/schema';
 
 /**
  * useMatchMemo - 試合全体の自由記述メモを管理するフック
- * 
+ *
  * 取得・保存・キャッシュ更新をカプセル化します。
  */
 export function useMatchMemo(matchId: string) {
   const queryClient = useQueryClient();
-  const queryKey = ["match-memo", matchId];
+  const queryKey = ['match-memo', matchId];
 
   // 1. フェッチ
   const { data: matchMemo, isLoading } = useQuery({
     queryKey,
     queryFn: async () => {
       const stored = await getMatchMemo(matchId);
-      return stored || { matchId, memo: "", updatedAt: Date.now() };
+      return stored || { matchId, memo: '', updatedAt: Date.now() };
     },
   });
 
@@ -42,7 +42,7 @@ export function useMatchMemo(matchId: string) {
   });
 
   return {
-    memo: matchMemo?.memo ?? "",
+    memo: matchMemo?.memo ?? '',
     saveMemo: mutation.mutate,
     isSaving: mutation.isPending,
     isLoading,

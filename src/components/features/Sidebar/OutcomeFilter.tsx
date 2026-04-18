@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import React from "react";
-import { OutcomeFilter as OutcomeType } from "@/types";
+import type React from 'react';
+import type { OutcomeFilter as OutcomeType } from '@/types';
 
 const OUTCOME_OPTIONS = [
-  { id: "all", label: "All", icon: "●" },
-  { id: "success", label: "Success", icon: "✓" },
-  { id: "fail", label: "Fail", icon: "✗" },
+  { id: 'all', label: 'All', icon: '●' },
+  { id: 'success', label: 'Success', icon: '✓' },
+  { id: 'fail', label: 'Fail', icon: '✗' },
 ] as const;
 
 interface OutcomeFilterProps {
@@ -36,12 +36,12 @@ export const OutcomeFilter: React.FC<OutcomeFilterProps> = ({
                 transition-all duration-200 border
                 ${
                   isActive
-                    ? option.id === "success"
-                      ? "bg-green-600/20 border-green-500/50 text-green-400"
-                      : option.id === "fail"
-                        ? "bg-red-600/20 border-red-500/50 text-red-400"
-                        : "bg-slate-700/50 border-slate-600 text-slate-200"
-                    : "bg-slate-800/50 border-slate-700/50 text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+                    ? option.id === 'success'
+                      ? 'bg-green-600/20 border-green-500/50 text-green-400'
+                      : option.id === 'fail'
+                        ? 'bg-red-600/20 border-red-500/50 text-red-400'
+                        : 'bg-slate-700/50 border-slate-600 text-slate-200'
+                    : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:bg-slate-800 hover:text-slate-300'
                 }
               `}
             >

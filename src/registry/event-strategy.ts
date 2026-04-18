@@ -1,6 +1,6 @@
 export interface StrategyParameter {
   id: string;
-  type: "player" | "length" | "zone";
+  type: 'player' | 'length' | 'zone';
   label: string;
   required?: boolean;
 }
@@ -20,9 +20,9 @@ export interface EventStrategy {
  */
 export function resolveSqlCondition(
   strategy: EventStrategy,
-  params: Record<string, any> = {}
+  params: Record<string, any> = {},
 ): string {
-  return typeof strategy.sqlCondition === "function"
+  return typeof strategy.sqlCondition === 'function'
     ? strategy.sqlCondition(params)
     : strategy.sqlCondition;
 }

@@ -1,33 +1,33 @@
 import {
-  ShapeUtil,
-  TLBaseShape,
-  T,
-  SVGContainer,
-  DefaultColorStyle,
-  DefaultDashStyle,
-  Polyline2d,
-  Vec,
-  TLHandle,
-  StateNode,
   createShapeId,
-  IndexKey,
   createShapePropsMigrationIds,
   createShapePropsMigrationSequence,
+  DefaultColorStyle,
+  DefaultDashStyle,
+  type IndexKey,
+  Polyline2d,
+  ShapeUtil,
+  StateNode,
+  SVGContainer,
+  T,
+  type TLBaseShape,
+  type TLHandle,
+  Vec,
 } from 'tldraw';
-import {
-  resolveColor,
-  resolveDash,
-  ZONE_STROKE_WIDTH,
-} from './zone-styles';
+import { resolveColor, resolveDash, ZONE_STROKE_WIDTH } from './zone-styles';
 
 // --- Type ---
 
-export interface TLLinkLineShape extends TLBaseShape<'link-line', {
-  color: string;
-  dash: string;
-  start: { x: number; y: number };
-  end: { x: number; y: number };
-}> {}
+export interface TLLinkLineShape
+  extends TLBaseShape<
+    'link-line',
+    {
+      color: string;
+      dash: string;
+      start: { x: number; y: number };
+      end: { x: number; y: number };
+    }
+  > {}
 
 // --- Migrations ---
 
@@ -73,8 +73,20 @@ export class LinkLineShapeUtil extends ShapeUtil<any> {
 
   override getHandles(shape: TLLinkLineShape): TLHandle[] {
     return [
-      { id: 'start', type: 'vertex', index: 'a1' as IndexKey, x: shape.props.start.x, y: shape.props.start.y },
-      { id: 'end', type: 'vertex', index: 'a2' as IndexKey, x: shape.props.end.x, y: shape.props.end.y },
+      {
+        id: 'start',
+        type: 'vertex',
+        index: 'a1' as IndexKey,
+        x: shape.props.start.x,
+        y: shape.props.start.y,
+      },
+      {
+        id: 'end',
+        type: 'vertex',
+        index: 'a2' as IndexKey,
+        x: shape.props.end.x,
+        y: shape.props.end.y,
+      },
     ];
   }
 
@@ -178,7 +190,9 @@ export class LinkLineTool extends StateNode {
     const selectedShapeIds = this.editor.getSelectedShapeIds();
     if (selectedShapeIds.length === 0) return;
 
-    const shape = this.editor.getShape(selectedShapeIds[0]) as unknown as TLLinkLineShape;
+    const shape = this.editor.getShape(
+      selectedShapeIds[0],
+    ) as unknown as TLLinkLineShape;
     if (!shape || shape.type !== 'link-line') return;
 
     const { currentPagePoint } = this.editor.inputs;

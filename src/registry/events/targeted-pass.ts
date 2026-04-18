@@ -1,4 +1,4 @@
-import { EventStrategy } from "../event-strategy";
+import type { EventStrategy } from '../event-strategy';
 
 /**
  * ゾーン境界定義 (Opta 0-100 座標系)
@@ -48,19 +48,19 @@ const LENGTH_PRESETS: Record<string, { min: number; max: number }> = {
 };
 
 export const TargetedPassStrategy: EventStrategy = {
-  id: "targeted-pass",
-  label: "Targeted Pass",
+  id: 'targeted-pass',
+  label: 'Targeted Pass',
   description:
-    "Analyze passes by distance and target zone (use Player Filter for passer selection)",
+    'Analyze passes by distance and target zone (use Player Filter for passer selection)',
   color:
-    "bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow-[0_0_15px_rgba(192,38,211,0.5)]",
+    'bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow-[0_0_15px_rgba(192,38,211,0.5)]',
   params: [
-    { id: "length", type: "length", label: "Pass Length" },
-    { id: "zone", type: "zone", label: "Target Zone" },
+    { id: 'length', type: 'length', label: 'Pass Length' },
+    { id: 'zone', type: 'zone', label: 'Target Zone' },
   ],
   sqlCondition: (params) => {
     const { length, zone } = params;
-    const conditions: string[] = ["type_value = 1"];
+    const conditions: string[] = ['type_value = 1'];
 
     // --- 距離条件 (Qualifier 212) ---
     // length は複数プリセット選択またはカスタム min/max を持つ
@@ -68,18 +68,33 @@ export const TargetedPassStrategy: EventStrategy = {
       const lengthExpr = `(SELECT CAST(t.q.value AS FLOAT) FROM UNNEST(qualifiers) AS t(q) WHERE t.q.type.value = 212 LIMIT 1)`;
 
       // 複数プリセットが選択されている場合
-      if (length.presets && Array.isArray(length.presets) && length.presets.length > 0) {
-        const rangeConditions = (length.presets as string[]).map((presetId: string) => {
-          const preset = LENGTH_PRESETS[presetId];
-          if (!preset) return "FALSE";
-          return `(${lengthExpr} BETWEEN ${preset.min} AND ${preset.max})`;
-        });
-        conditions.push(`(${rangeConditions.join(" OR ")})`);
+      if (
+        length.presets &&
+        Array.isArray(length.presets) &&
+        length.presets.length > 0
+      ) {
+        const rangeConditions = (length.presets as string[]).map(
+          (presetId: string) => {
+            const preset = LENGTH_PRESETS[presetId];
+            if (!preset) return 'FALSE';
+            return `(${lengthExpr} BETWEEN ${preset.min} AND ${preset.max})`;
+          },
+        );
+        conditions.push(`(${rangeConditions.join(' OR ')})`);
       }
       // カスタム min/max が指定されている場合（プリセットより優先）
-      else if (length.min !== undefined && length.min !== "" || length.max !== undefined && length.max !== "") {
-        const min = length.min !== undefined && length.min !== "" ? Number(length.min) : undefined;
-        const max = length.max !== undefined && length.max !== "" ? Number(length.max) : undefined;
+      else if (
+        (length.min !== undefined && length.min !== '') ||
+        (length.max !== undefined && length.max !== '')
+      ) {
+        const min =
+          length.min !== undefined && length.min !== ''
+            ? Number(length.min)
+            : undefined;
+        const max =
+          length.max !== undefined && length.max !== ''
+            ? Number(length.max)
+            : undefined;
 
         if (min !== undefined && max !== undefined) {
           conditions.push(`${lengthExpr} BETWEEN ${min} AND ${max}`);
@@ -101,9 +116,9 @@ export const TargetedPassStrategy: EventStrategy = {
         return `(${passEndX} >= ${bounds.xMin} AND ${passEndX} < ${bounds.xMax} AND ${passEndY} >= ${bounds.yMin} AND ${passEndY} < ${bounds.yMax})`;
       });
 
-      conditions.push(`(${zoneConditions.join(" OR ")})`);
+      conditions.push(`(${zoneConditions.join(' OR ')})`);
     }
 
-    return conditions.join(" AND ");
+    return conditions.join(' AND ');
   },
 };

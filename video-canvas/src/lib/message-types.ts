@@ -8,7 +8,7 @@ export const MessageTypes = {
   REQUEST_TAB_CAPTURE: 'VIDEO_CANVAS_REQUEST_TAB_CAPTURE',
 } as const;
 
-export type MessageType = typeof MessageTypes[keyof typeof MessageTypes];
+export type MessageType = (typeof MessageTypes)[keyof typeof MessageTypes];
 
 // キャプチャメタデータのスキーマ (types.ts の構造に合わせる)
 export const CaptureMetadataSchema = z.object({
@@ -21,12 +21,14 @@ export const CaptureMetadataSchema = z.object({
   videoHeight: z.number().optional(),
   viewportWidth: z.number().optional(),
   viewportHeight: z.number().optional(),
-  originalVideoRect: z.object({
-    x: z.number(),
-    y: z.number(),
-    width: z.number(),
-    height: z.number(),
-  }).optional(),
+  originalVideoRect: z
+    .object({
+      x: z.number(),
+      y: z.number(),
+      width: z.number(),
+      height: z.number(),
+    })
+    .optional(),
 }) as z.ZodType<CaptureMetadata>;
 
 // メッセージのスキーマ
@@ -53,6 +55,8 @@ export const AnyMessageSchema = z.discriminatedUnion('type', [
 
 // Zodから型を抽出
 export type CaptureTriggerMessage = z.infer<typeof CaptureTriggerMessageSchema>;
-export type RequestTabCaptureMessage = z.infer<typeof RequestTabCaptureMessageSchema>;
+export type RequestTabCaptureMessage = z.infer<
+  typeof RequestTabCaptureMessageSchema
+>;
 export type CaptureResultMessage = z.infer<typeof CaptureResultMessageSchema>;
 export type ExtensionMessage = z.infer<typeof AnyMessageSchema>;

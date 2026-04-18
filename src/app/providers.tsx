@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * Providers — TanStack Query のグローバル設定
@@ -9,10 +9,10 @@
  * - gcTime: 30分 — メモリ圧迫を防ぎつつ再フェッチを抑制
  * - DevTools は開発時のみ表示
  */
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { useState, useEffect, type ReactNode } from "react";
-import { initializeDuckDB } from "@/lib/duckdb";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { type ReactNode, useEffect, useState } from 'react';
+import { initializeDuckDB } from '@/lib/duckdb';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -24,14 +24,14 @@ export function Providers({ children }: { children: ReactNode }) {
             gcTime: 1000 * 60 * 30,
           },
         },
-      })
+      }),
   );
 
   // Early initialization of DuckDB-WASM
   useEffect(() => {
-    console.log("[footics] Proactive DuckDB initialization starting...");
-    initializeDuckDB().catch(err => {
-      console.warn("[footics] Proactive DuckDB initialization failed", err);
+    console.log('[footics] Proactive DuckDB initialization starting...');
+    initializeDuckDB().catch((err) => {
+      console.warn('[footics] Proactive DuckDB initialization failed', err);
     });
   }, []);
 

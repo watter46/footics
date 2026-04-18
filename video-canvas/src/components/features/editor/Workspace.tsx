@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
-import { CanvasContainer } from './Canvas';
+import type React from 'react';
+import { useRef } from 'react';
 import { useEditorStore } from '@/stores/useEditorStore';
-
+import { CanvasContainer } from './Canvas';
 
 export const Workspace: React.FC = () => {
   const { dispatchCopy, dispatchSave } = useEditorStore();
@@ -13,18 +13,21 @@ export const Workspace: React.FC = () => {
           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
             <span className="font-black text-sm text-white">VC</span>
           </div>
-          <h1 className="font-semibold text-sm tracking-tight text-neutral-200">Video Canvas <span className="text-neutral-500 font-normal">/ Project 1</span></h1>
+          <h1 className="font-semibold text-sm tracking-tight text-neutral-200">
+            Video Canvas{' '}
+            <span className="text-neutral-500 font-normal">/ Project 1</span>
+          </h1>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {/* Action buttons trigger via Zustand store to Canvas component */}
-          <button 
+          <button
             onClick={dispatchCopy}
             className="px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-xs font-medium transition-all"
           >
             画像をコピー
           </button>
-          <button 
+          <button
             onClick={dispatchSave}
             className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-xs font-medium transition-all shadow-lg shadow-blue-600/20"
           >

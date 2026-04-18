@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React from "react";
+import type React from 'react';
 
 export const TimelineHeader: React.FC = () => {
   return (

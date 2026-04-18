@@ -7,15 +7,20 @@
  * - custom_events: 手動追加のカスタムイベント（既存機能の移植）
  * - シングルトンパターンでDB接続を管理
  */
-import { openDB, type IDBPDatabase } from "idb";
-import type { EventMemo, CustomEvent, MatchMemo, TacticalSnapshot } from "./schema";
-import type { MatchSummary, MatchBlobEntry } from "@/types";
+import { type IDBPDatabase, openDB } from 'idb';
+import type { MatchBlobEntry, MatchSummary } from '@/types';
+import type {
+  CustomEvent,
+  EventMemo,
+  MatchMemo,
+  TacticalSnapshot,
+} from './schema';
 
 // ──────────────────────────────────────────────
 // DB Schema Definition
 // ──────────────────────────────────────────────
 
-const DB_NAME = "footics_db";
+const DB_NAME = 'footics_db';
 const DB_VERSION = 11;
 
 interface FooticsDBSchema {
@@ -62,59 +67,60 @@ export function getDatabase(): Promise<IDBPDatabase<FooticsDBSchema>> {
     dbPromise = openDB<FooticsDBSchema>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion, newVersion, transaction) {
         // event_memos ストア
-        if (!db.objectStoreNames.contains("event_memos")) {
-          db.createObjectStore("event_memos", { keyPath: "id" });
+        if (!db.objectStoreNames.contains('event_memos')) {
+          db.createObjectStore('event_memos', { keyPath: 'id' });
         }
-        const memoStore = transaction.objectStore("event_memos");
-        if (!memoStore.indexNames.contains("by_match")) {
-          memoStore.indexNames.contains("by_match");
-          memoStore.createIndex("by_match", "matchId", { unique: false });
+        const memoStore = transaction.objectStore('event_memos');
+        if (!memoStore.indexNames.contains('by_match')) {
+          memoStore.createIndex('by_match', 'matchId', { unique: false });
         }
-        if (!memoStore.indexNames.contains("by_updatedAt")) {
-          memoStore.createIndex("by_updatedAt", "updatedAt", { unique: false });
+        if (!memoStore.indexNames.contains('by_updatedAt')) {
+          memoStore.createIndex('by_updatedAt', 'updatedAt', { unique: false });
         }
 
         // custom_events ストア
-        if (!db.objectStoreNames.contains("custom_events")) {
-          db.createObjectStore("custom_events", { keyPath: "id" });
+        if (!db.objectStoreNames.contains('custom_events')) {
+          db.createObjectStore('custom_events', { keyPath: 'id' });
         }
-        const customStore = transaction.objectStore("custom_events");
-        if (!customStore.indexNames.contains("by_match")) {
-          customStore.createIndex("by_match", "match_id", { unique: false });
+        const customStore = transaction.objectStore('custom_events');
+        if (!customStore.indexNames.contains('by_match')) {
+          customStore.createIndex('by_match', 'match_id', { unique: false });
         }
-        if (!customStore.indexNames.contains("by_created_at")) {
-          customStore.createIndex("by_created_at", "created_at", { unique: false });
+        if (!customStore.indexNames.contains('by_created_at')) {
+          customStore.createIndex('by_created_at', 'created_at', {
+            unique: false,
+          });
         }
 
         // match_memos ストア
-        if (!db.objectStoreNames.contains("match_memos")) {
-          db.createObjectStore("match_memos", { keyPath: "matchId" });
+        if (!db.objectStoreNames.contains('match_memos')) {
+          db.createObjectStore('match_memos', { keyPath: 'matchId' });
         }
 
         // tactical_settings ストア (旧形式) の削除
-        if (db.objectStoreNames.contains("tactical_settings" as any)) {
-          db.deleteObjectStore("tactical_settings" as any);
+        if (db.objectStoreNames.contains('tactical_settings' as any)) {
+          db.deleteObjectStore('tactical_settings' as any);
         }
 
         // tactical_snapshots ストア (新形式)
-        if (!db.objectStoreNames.contains("tactical_snapshots")) {
-          db.createObjectStore("tactical_snapshots", { keyPath: "matchId" });
+        if (!db.objectStoreNames.contains('tactical_snapshots')) {
+          db.createObjectStore('tactical_snapshots', { keyPath: 'matchId' });
         }
 
         // Version 9: 形式変更に伴うデータのクリア
         if (oldVersion < 9) {
-          const store = transaction.objectStore("tactical_snapshots");
+          const store = transaction.objectStore('tactical_snapshots');
           store.clear();
         }
 
         // matches ストア (Version 10)
-        if (!db.objectStoreNames.contains("matches")) {
-          db.createObjectStore("matches", { keyPath: "id" });
+        if (!db.objectStoreNames.contains('matches')) {
+          db.createObjectStore('matches', { keyPath: 'id' });
         }
 
         // match_blobs ストア (Version 11: Unified DB 化)
-        if (!db.objectStoreNames.contains("match_blobs")) {
-          db.createObjectStore("match_blobs", { keyPath: "matchId" });
+        if (!db.objectStoreNames.contains('match_blobs')) {
+          db.createObjectStore('match_blobs', { keyPath: 'matchId' });
         }
       },
     });
@@ -127,15 +133,15 @@ export function getDatabase(): Promise<IDBPDatabase<FooticsDBSchema>> {
 // ──────────────────────────────────────────────
 
 export async function getEventMemosByMatch(
-  matchId: number
+  matchId: number,
 ): Promise<EventMemo[]> {
   const db = await getDatabase();
-  return db.getAllFromIndex("event_memos", "by_match", matchId);
+  return db.getAllFromIndex('event_memos', 'by_match', matchId);
 }
 
 export async function putEventMemo(memo: EventMemo): Promise<void> {
   const db = await getDatabase();
-  await db.put("event_memos", memo);
+  await db.put('event_memos', memo);
 }
 
 // ──────────────────────────────────────────────
@@ -144,47 +150,49 @@ export async function putEventMemo(memo: EventMemo): Promise<void> {
 
 export async function saveCustomEvent(event: CustomEvent): Promise<void> {
   const db = await getDatabase();
-  await db.put("custom_events", event);
+  await db.put('custom_events', event);
 }
 
 export async function getCustomEventsByMatch(
-  matchId: string
+  matchId: string,
 ): Promise<CustomEvent[]> {
   const db = await getDatabase();
-  return db.getAllFromIndex("custom_events", "by_match", matchId);
+  return db.getAllFromIndex('custom_events', 'by_match', matchId);
 }
 
 export async function deleteCustomEvent(id: string): Promise<void> {
   const db = await getDatabase();
-  await db.delete("custom_events", id);
+  await db.delete('custom_events', id);
 }
 
 // ──────────────────────────────────────────────
 // Match Memo Operations
 // ──────────────────────────────────────────────
 
-export async function getMatchMemo(matchId: string): Promise<MatchMemo | undefined> {
+export async function getMatchMemo(
+  matchId: string,
+): Promise<MatchMemo | undefined> {
   const db = await getDatabase();
-  return db.get("match_memos", matchId);
+  return db.get('match_memos', matchId);
 }
 
 export async function putMatchMemo(memo: MatchMemo): Promise<void> {
   const db = await getDatabase();
-  await db.put("match_memos", memo);
+  await db.put('match_memos', memo);
 }
 
 export async function getAllMatchMemos(): Promise<MatchMemo[]> {
   const db = await getDatabase();
-  return db.getAll("match_memos");
+  return db.getAll('match_memos');
 }
 
 export async function exportMemosAsJson(matchId: string): Promise<void> {
   const memos = await getCustomEventsByMatch(matchId);
   const blob = new Blob([JSON.stringify(memos, null, 2)], {
-    type: "application/json",
+    type: 'application/json',
   });
   const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
+  const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = `memos_${matchId}_${Date.now()}.json`;
   anchor.click();
@@ -193,27 +201,27 @@ export async function exportMemosAsJson(matchId: string): Promise<void> {
 
 export async function importMemosFromJson(
   file: File,
-  currentMatchId: string
+  currentMatchId: string,
 ): Promise<number> {
   const text = await file.text();
   const memos = JSON.parse(text) as CustomEvent[];
 
   if (!Array.isArray(memos)) {
-    throw new Error("Invalid format: expected an array of memos");
+    throw new Error('Invalid format: expected an array of memos');
   }
 
   let count = 0;
   const db = await getDatabase();
-  const transaction = db.transaction("custom_events", "readwrite");
+  const transaction = db.transaction('custom_events', 'readwrite');
 
   for (const memo of memos) {
     if (String(memo.match_id) !== String(currentMatchId)) {
       throw new Error(
-        `Match ID mismatch. Expected ${currentMatchId}, found ${memo.match_id}`
+        `Match ID mismatch. Expected ${currentMatchId}, found ${memo.match_id}`,
       );
     }
     if (!memo.id || memo.minute === undefined || memo.second === undefined) {
-      throw new Error("Invalid memo format");
+      throw new Error('Invalid memo format');
     }
     await transaction.store.put(memo);
     count++;
@@ -225,12 +233,12 @@ export async function importMemosFromJson(
 
 export async function getAllEventMemos(): Promise<EventMemo[]> {
   const db = await getDatabase();
-  return db.getAll("event_memos");
+  return db.getAll('event_memos');
 }
 
 export async function getAllCustomEvents(): Promise<CustomEvent[]> {
   const db = await getDatabase();
-  return db.getAll("custom_events");
+  return db.getAll('custom_events');
 }
 
 /**
@@ -240,14 +248,17 @@ export async function getAllCustomEvents(): Promise<CustomEvent[]> {
 export async function importMemosBatch(
   memos: EventMemo[],
   customEvents: CustomEvent[],
-  matchMemos: MatchMemo[] = []
+  matchMemos: MatchMemo[] = [],
 ): Promise<void> {
   const db = await getDatabase();
-  const tx = db.transaction(["event_memos", "custom_events", "match_memos"], "readwrite");
-  
-  const memoStore = tx.objectStore("event_memos");
-  const eventStore = tx.objectStore("custom_events");
-  const matchMemoStore = tx.objectStore("match_memos");
+  const tx = db.transaction(
+    ['event_memos', 'custom_events', 'match_memos'],
+    'readwrite',
+  );
+
+  const memoStore = tx.objectStore('event_memos');
+  const eventStore = tx.objectStore('custom_events');
+  const matchMemoStore = tx.objectStore('match_memos');
 
   for (const m of memos) {
     memoStore.put(m);
@@ -260,7 +271,9 @@ export async function importMemosBatch(
   }
 
   await tx.done;
-  console.log(`[footics] Batch memo import completed (${memos.length + customEvents.length + matchMemos.length} items)`);
+  console.log(
+    `[footics] Batch memo import completed (${memos.length + customEvents.length + matchMemos.length} items)`,
+  );
 }
 
 // ──────────────────────────────────────────────
@@ -268,20 +281,22 @@ export async function importMemosBatch(
 // ──────────────────────────────────────────────
 
 export async function getTacticalSnapshot(
-  matchId: string
+  matchId: string,
 ): Promise<TacticalSnapshot | undefined> {
   const db = await getDatabase();
-  return db.get("tactical_snapshots", matchId);
+  return db.get('tactical_snapshots', matchId);
 }
 
-export async function putTacticalSnapshot(snapshot: TacticalSnapshot): Promise<void> {
+export async function putTacticalSnapshot(
+  snapshot: TacticalSnapshot,
+): Promise<void> {
   const db = await getDatabase();
-  await db.put("tactical_snapshots", snapshot);
+  await db.put('tactical_snapshots', snapshot);
 }
 
 export async function deleteTacticalSnapshot(matchId: string): Promise<void> {
   const db = await getDatabase();
-  await db.delete("tactical_snapshots", matchId);
+  await db.delete('tactical_snapshots', matchId);
 }
 
 // ──────────────────────────────────────────────
@@ -290,17 +305,19 @@ export async function deleteTacticalSnapshot(matchId: string): Promise<void> {
 
 export async function getAllMatches(): Promise<MatchSummary[]> {
   const db = await getDatabase();
-  return db.getAll("matches");
+  return db.getAll('matches');
 }
 
-export async function getMatch(matchId: string): Promise<MatchSummary | undefined> {
+export async function getMatch(
+  matchId: string,
+): Promise<MatchSummary | undefined> {
   const db = await getDatabase();
-  return db.get("matches", matchId);
+  return db.get('matches', matchId);
 }
 
 export async function putMatch(match: MatchSummary): Promise<void> {
   const db = await getDatabase();
-  await db.put("matches", match);
+  await db.put('matches', match);
 }
 
 /**
@@ -308,8 +325,8 @@ export async function putMatch(match: MatchSummary): Promise<void> {
  */
 export async function putMatchesBatch(matches: MatchSummary[]): Promise<void> {
   const db = await getDatabase();
-  const tx = db.transaction("matches", "readwrite");
-  const store = tx.objectStore("matches");
+  const tx = db.transaction('matches', 'readwrite');
+  const store = tx.objectStore('matches');
   for (const m of matches) {
     await store.put(m);
   }
@@ -320,25 +337,32 @@ export async function putMatchesBatch(matches: MatchSummary[]): Promise<void> {
 // Match Blob (Parquet) Operations
 // ──────────────────────────────────────────────
 
-export async function getMatchBlobs(matchId: string): Promise<MatchBlobEntry | undefined> {
+export async function getMatchBlobs(
+  matchId: string,
+): Promise<MatchBlobEntry | undefined> {
   const db = await getDatabase();
-  return db.get("match_blobs", matchId);
+  return db.get('match_blobs', matchId);
 }
 
 export async function getAllMatchBlobs(): Promise<MatchBlobEntry[]> {
   const db = await getDatabase();
-  return db.getAll("match_blobs");
+  return db.getAll('match_blobs');
 }
 
-export async function putMatchBlobs(matchId: string, entry: MatchBlobEntry): Promise<void> {
+export async function putMatchBlobs(
+  matchId: string,
+  entry: MatchBlobEntry,
+): Promise<void> {
   const db = await getDatabase();
-  await db.put("match_blobs", entry);
+  await db.put('match_blobs', entry);
 }
 
-export async function putMatchBlobsBatch(entries: MatchBlobEntry[]): Promise<void> {
+export async function putMatchBlobsBatch(
+  entries: MatchBlobEntry[],
+): Promise<void> {
   const db = await getDatabase();
-  const tx = db.transaction("match_blobs", "readwrite");
-  const store = tx.objectStore("match_blobs");
+  const tx = db.transaction('match_blobs', 'readwrite');
+  const store = tx.objectStore('match_blobs');
   for (const entry of entries) {
     await store.put(entry);
   }
@@ -348,18 +372,21 @@ export async function putMatchBlobsBatch(entries: MatchBlobEntry[]): Promise<voi
 /**
  * 試合情報とバイナリデータをアトミックに保存する
  */
-export async function saveMatchUnified(match: MatchSummary, entry: MatchBlobEntry): Promise<void> {
+export async function saveMatchUnified(
+  match: MatchSummary,
+  entry: MatchBlobEntry,
+): Promise<void> {
   const db = await getDatabase();
-  const tx = db.transaction(["matches", "match_blobs"], "readwrite");
-  await tx.objectStore("matches").put(match);
-  await tx.objectStore("match_blobs").put(entry);
+  const tx = db.transaction(['matches', 'match_blobs'], 'readwrite');
+  await tx.objectStore('matches').put(match);
+  await tx.objectStore('match_blobs').put(entry);
   await tx.done;
 }
 
 export async function deleteMatch(matchId: string): Promise<void> {
   const db = await getDatabase();
-  const tx = db.transaction(["matches", "match_blobs"], "readwrite");
-  await tx.objectStore("matches").delete(matchId);
-  await tx.objectStore("match_blobs").delete(matchId);
+  const tx = db.transaction(['matches', 'match_blobs'], 'readwrite');
+  await tx.objectStore('matches').delete(matchId);
+  await tx.objectStore('match_blobs').delete(matchId);
   await tx.done;
 }

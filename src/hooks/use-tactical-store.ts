@@ -26,7 +26,7 @@ interface TacticalState {
   setHomeColor: (color: string) => void;
   setAwayColor: (color: string) => void;
   setActiveId: (id: string | null) => void;
-  
+
   // Reset/Heleprs
   toggleFlipped: () => void;
   resetTactical: () => void;
@@ -44,21 +44,23 @@ export const useTacticalStore = create<TacticalState>((set) => ({
   setIsFlipped: (flipped) => set({ isFlipped: flipped }),
   setBenchTeam: (team) => set({ benchTeam: team }),
   setSavedSettings: (settings) => set({ savedSettings: settings }),
-  updatePlayer: (playerId, data) => set((state) => ({
-    savedSettings: {
-      ...state.savedSettings,
-      [playerId]: { ...state.savedSettings[playerId], ...data }
-    }
-  })),
+  updatePlayer: (playerId, data) =>
+    set((state) => ({
+      savedSettings: {
+        ...state.savedSettings,
+        [playerId]: { ...state.savedSettings[playerId], ...data },
+      },
+    })),
   setBallPos: (pos) => set({ ballPos: pos }),
   setHomeColor: (color) => set({ homeColor: color }),
   setAwayColor: (color) => set({ awayColor: color }),
   setActiveId: (id) => set({ activeId: id }),
 
   toggleFlipped: () => set((state) => ({ isFlipped: !state.isFlipped })),
-  resetTactical: () => set({
-    isFlipped: false,
-    ballPos: { x: 50, y: 50 },
-    // note: savedSettings reset logic is more complex and depends on metadata
-  }),
+  resetTactical: () =>
+    set({
+      isFlipped: false,
+      ballPos: { x: 50, y: 50 },
+      // note: savedSettings reset logic is more complex and depends on metadata
+    }),
 }));

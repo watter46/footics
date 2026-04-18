@@ -7,14 +7,15 @@ interface UseOverlayShortcutInterceptorProps {
 
 /**
  * useOverlayShortcutInterceptor
- * 
+ *
  * 責務: オーバーレイ表示中に特定のキー入力をキャプチャし、
  * `footics-action` カスタムイベントとしてディスパッチする。
  * また、フェーズ3（メモ入力）等においてホストページ（動画プレイヤー等）への
  * キー漏れを防ぐため、イベントの遮断と入力のエミュレーションを行う。
  */
-export function useOverlayShortcutInterceptor({ isVisible }: UseOverlayShortcutInterceptorProps) {
-  
+export function useOverlayShortcutInterceptor({
+  isVisible,
+}: UseOverlayShortcutInterceptorProps) {
   useEffect(() => {
     if (!isVisible) return;
 
@@ -23,9 +24,22 @@ export function useOverlayShortcutInterceptor({ isVisible }: UseOverlayShortcutI
       if ((e as any)._footics_processed) return;
 
       const hijackedKeys = [
-        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-        'Tab', 'Escape', 'Enter', ' ', 'Backspace', 'Delete',
-        '1', '2', '3', '4', '5', '6',
+        'ArrowUp',
+        'ArrowDown',
+        'ArrowLeft',
+        'ArrowRight',
+        'Tab',
+        'Escape',
+        'Enter',
+        ' ',
+        'Backspace',
+        'Delete',
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        '6',
       ];
 
       const isSaveCombo = e.key === 'Enter' && (e.ctrlKey || e.metaKey);
@@ -43,7 +57,7 @@ export function useOverlayShortcutInterceptor({ isVisible }: UseOverlayShortcutI
       // イベントを完全に遮断し、必要に応じて入力をプログラムでエミュレートする。
       if (isPhase3 && isTextarea) {
         const isNavigationKey = e.key === 'Tab' || e.key === 'Escape';
-        
+
         if (!isNavigationKey && !isSaveCombo) {
           // 強制的に全ての伝播とデフォルト動作を停止（ホスト側を沈黙させる）
           e.stopImmediatePropagation();
@@ -119,7 +133,9 @@ export function useOverlayShortcutInterceptor({ isVisible }: UseOverlayShortcutI
       }
 
       if (action) {
-        window.dispatchEvent(new CustomEvent('footics-action', { detail: { action, ...detail } }));
+        window.dispatchEvent(
+          new CustomEvent('footics-action', { detail: { action, ...detail } }),
+        );
       }
     };
 

@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import React from "react";
-import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2 } from "lucide-react";
-import { EventRow, MatchMetadata } from "@/types";
-import { getEventMetadata } from "@/lib/event-definitions";
-import { formatTimelineTime } from "@/lib/timeline-utils";
+import { Pencil, Trash2 } from 'lucide-react';
+import type React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { getEventMetadata } from '@/lib/event-definitions';
+import { formatTimelineTime } from '@/lib/timeline-utils';
+import type { EventRow, MatchMetadata } from '@/types';
 
 interface TimelineRowProps {
   event: EventRow;
@@ -33,7 +33,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
   const timeString = formatTimelineTime(event);
 
   const matchedStrategies = activeStrategyList.filter(
-    (s) => event[`is_strategy_${s.id.replace(/-/g, "_")}`] === true
+    (s) => event[`is_strategy_${s.id.replace(/-/g, '_')}`] === true,
   );
 
   // Custom Event Mode
@@ -44,13 +44,15 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
       <div
         data-index={index}
         className={`flex items-center px-4 border-b border-amber-900/30 transition-colors ${
-          isHighlighted ? "bg-amber-700/50 blink-shadow" : "bg-amber-950/20 hover:bg-amber-900/30"
+          isHighlighted
+            ? 'bg-amber-700/50 blink-shadow'
+            : 'bg-amber-950/20 hover:bg-amber-900/30'
         }`}
         style={{
-          position: "absolute",
+          position: 'absolute',
           top: 0,
           left: 0,
-          width: "100%",
+          width: '100%',
           height: `${virtualRow.size}px`,
           transform: `translateY(${virtualRow.start}px)`,
         }}
@@ -60,24 +62,29 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
         </div>
         <div className="flex-1 flex items-center gap-2 pr-10 overflow-hidden">
           <div className="flex gap-1 flex-wrap shrink-0">
-            {(event.custom_label || "").split(" / ").filter(Boolean).map((lbl, i) => {
-              const meta = getEventMetadata(lbl);
-              return (
-                <Badge 
-                  key={i} 
-                  className="border font-bold px-2 py-0.5 rounded shadow-none text-[10px] uppercase tracking-wider whitespace-nowrap text-white"
-                  style={{ 
-                    backgroundColor: (meta?.groupColor ?? "#8E8E93") + "33", 
-                    borderColor: meta?.groupColor ?? "#8E8E93",
-                    color: meta?.groupColor ?? "#ffffff"
-                  }}
-                >
-                  {lbl}
-                </Badge>
-              );
-            })}
+            {(event.custom_label || '')
+              .split(' / ')
+              .filter(Boolean)
+              .map((lbl, i) => {
+                const meta = getEventMetadata(lbl);
+                return (
+                  <Badge
+                    key={i}
+                    className="border font-bold px-2 py-0.5 rounded shadow-none text-[10px] uppercase tracking-wider whitespace-nowrap text-white"
+                    style={{
+                      backgroundColor: (meta?.groupColor ?? '#8E8E93') + '33',
+                      borderColor: meta?.groupColor ?? '#8E8E93',
+                      color: meta?.groupColor ?? '#ffffff',
+                    }}
+                  >
+                    {lbl}
+                  </Badge>
+                );
+              })}
           </div>
-          <span className="text-amber-100/90 text-sm font-medium leading-relaxed truncate">{event.custom_memo}</span>
+          <span className="text-amber-100/90 text-sm font-medium leading-relaxed truncate">
+            {event.custom_memo}
+          </span>
         </div>
         <div className="flex items-center gap-2 pr-4 shrink-0">
           <button
@@ -105,32 +112,33 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
       data-index={index}
       className="flex items-center px-4 border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors"
       style={{
-        position: "absolute",
+        position: 'absolute',
         top: 0,
         left: 0,
-        width: "100%",
+        width: '100%',
         height: `${virtualRow.size}px`,
         transform: `translateY(${virtualRow.start}px)`,
       }}
     >
       {/* Time */}
-      <div className="w-28 font-mono text-slate-300 text-sm">
-        {timeString}
-      </div>
+      <div className="w-28 font-mono text-slate-300 text-sm">{timeString}</div>
 
       {/* Player */}
-      <div 
+      <div
         className={`flex-1 font-medium text-sm truncate px-3 py-1 rounded-md transition-colors ${
-          isHome 
-            ? "bg-blue-500/10 text-blue-300 border border-blue-400/10" 
-            : "bg-emerald-500/10 text-emerald-300 border border-emerald-400/10"
+          isHome
+            ? 'bg-blue-500/10 text-blue-300 border border-blue-400/10'
+            : 'bg-emerald-500/10 text-emerald-300 border border-emerald-400/10'
         }`}
       >
         {(() => {
-          if (!event.player_id) return <span className="opacity-50">Team Event</span>;
+          if (!event.player_id)
+            return <span className="opacity-50">Team Event</span>;
           const pidStr = String(event.player_id).split('.')[0];
           const name = playerIdNameDictionary[pidStr];
-          return name || <span className="opacity-50">Team Event ({pidStr})</span>;
+          return (
+            name || <span className="opacity-50">Team Event ({pidStr})</span>
+          );
         })()}
       </div>
 
@@ -140,8 +148,8 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
           variant="outline"
           className={`border-0 bg-opacity-15 font-semibold text-xs ${
             isHome
-              ? "bg-blue-500 text-blue-400"
-              : "bg-emerald-500 text-emerald-400"
+              ? 'bg-blue-500 text-blue-400'
+              : 'bg-emerald-500 text-emerald-400'
           }`}
         >
           {isHome ? teams.home.name : teams.away.name}
@@ -184,17 +192,15 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
       <div className="w-24">
         <div
           className={`flex items-center gap-1.5 text-sm ${
-            event.outcome
-              ? "text-green-500"
-              : "text-red-500/80"
+            event.outcome ? 'text-green-500' : 'text-red-500/80'
           }`}
         >
           <div
             className={`h-1.5 w-1.5 rounded-full ${
-              event.outcome ? "bg-green-500" : "bg-red-500/80"
+              event.outcome ? 'bg-green-500' : 'bg-red-500/80'
             }`}
           />
-          {event.outcome ? "Success" : "Fail"}
+          {event.outcome ? 'Success' : 'Fail'}
         </div>
       </div>
     </div>

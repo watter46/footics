@@ -1,17 +1,22 @@
-"use client";
+'use client';
 
-import React, { useEffect } from "react";
-import { EVENT_GROUPS } from "@/lib/event-definitions";
-import { useKeyboardShortcut, useModalToggleShortcut } from "@/hooks/use-shortcut";
-import { SHORTCUT_ACTIONS, isActionMatch } from "@/lib/shortcuts";
-import { useUIStore } from "@/hooks/use-ui-store";
-import { saveCustomEvent } from "@/lib/db";
-import { loadCustomEventsToDuckDB } from "@/lib/duckdb/data-loader";
-import type { AsyncDuckDBConnection, AsyncDuckDB } from "@duckdb/duckdb-wasm";
-
-import { useMemoOverlayDerived, useMemoOverlayStore } from "@/stores/useMemoOverlayStore";
-import { MemoOverlayView } from "./MemoOverlay/MemoOverlayView";
-import { createSavePayload } from "@/lib/features/MemoOverlay/memoOverlayLogic";
+import type { AsyncDuckDB, AsyncDuckDBConnection } from '@duckdb/duckdb-wasm';
+import React, { useEffect } from 'react';
+import {
+  useKeyboardShortcut,
+  useModalToggleShortcut,
+} from '@/hooks/use-shortcut';
+import { useUIStore } from '@/hooks/use-ui-store';
+import { saveCustomEvent } from '@/lib/db';
+import { loadCustomEventsToDuckDB } from '@/lib/duckdb/data-loader';
+import { EVENT_GROUPS } from '@/lib/event-definitions';
+import { createSavePayload } from '@/lib/features/MemoOverlay/memoOverlayLogic';
+import { isActionMatch, SHORTCUT_ACTIONS } from '@/lib/shortcuts';
+import {
+  useMemoOverlayDerived,
+  useMemoOverlayStore,
+} from '@/stores/useMemoOverlayStore';
+import { MemoOverlayView } from './MemoOverlay/MemoOverlayView';
 
 interface CentralFocusModalProps {
   matchId: string;
@@ -28,8 +33,13 @@ interface CentralFocusModalProps {
  * - 統一された useMemoOverlayStore と MemoOverlayView を使用。
  * - 保存処理として DuckDB への書き込みとタイムライン更新を実行。
  */
-export function CentralFocusModal({ 
-  matchId, db, connection, onRefresh, editingEvent, onClose 
+export function CentralFocusModal({
+  matchId,
+  db,
+  connection,
+  onRefresh,
+  editingEvent,
+  onClose,
 }: CentralFocusModalProps) {
   const { isCentralFocusOpen, setCentralFocusOpen } = useUIStore();
   const store = useMemoOverlayStore();
@@ -38,11 +48,11 @@ export function CentralFocusModal({
   // ── 保存処理（Main App 固有の実装） ──
   const handleSave = async () => {
     const currentState = useMemoOverlayStore.getState();
-    
+
     // バリデーション
-    if (currentState.mode === "EVENT") {
+    if (currentState.mode === 'EVENT') {
       const result = currentState.nextPhase();
-      if (result === "BLOCKED") return;
+      if (result === 'BLOCKED') return;
       // 最終フェーズでなければ抜ける（保存はフェーズ2のみ）
       if (currentState.phase < 2) return;
     }
@@ -53,8 +63,8 @@ export function CentralFocusModal({
       selectedLabels: currentState.selectedLabels,
       memo: currentState.memo,
     });
-    
-    if (!payload || payload.type !== "EVENT") return;
+
+    if (!payload || payload.type !== 'EVENT') return;
 
     store.setIsSaving(true);
     try {
@@ -79,44 +89,52 @@ export function CentralFocusModal({
       onRefresh(id);
 
       // 外部への通知（拡張機能などが必要に応じて受信）
-      window.dispatchEvent(new CustomEvent('footics-action', { 
-          detail: { type: 'event-save', matchId, eventId: id } 
-      }));
+      window.dispatchEvent(
+        new CustomEvent('footics-action', {
+          detail: { type: 'event-save', matchId, eventId: id },
+        }),
+      );
     } catch (err) {
-      console.error("[CentralFocusModal] Save failed:", err);
-      store.setError("保存に失敗しました。");
+      console.error('[CentralFocusModal] Save failed:', err);
+      store.setError('保存に失敗しました。');
     } finally {
       store.setIsSaving(false);
     }
   };
 
   // Modal Toggle (Global & Esc)
-  useModalToggleShortcut(SHORTCUT_ACTIONS.OPEN_QUICK_EVENT, setCentralFocusOpen, { isOpen: isCentralFocusOpen });
+  useModalToggleShortcut(
+    SHORTCUT_ACTIONS.OPEN_QUICK_EVENT,
+    setCentralFocusOpen,
+    { isOpen: isCentralFocusOpen },
+  );
 
   // Group Selection (Ctrl + 1~6 を Hook 側のアクションへ)
   useKeyboardShortcut(
     (e: KeyboardEvent) => {
-      const groupIndex = EVENT_GROUPS.findIndex(g => isActionMatch(e, { key: g.shortcutKey, ctrl: true }));
+      const groupIndex = EVENT_GROUPS.findIndex((g) =>
+        isActionMatch(e, { key: g.shortcutKey, ctrl: true }),
+      );
       if (groupIndex !== -1 && isCentralFocusOpen && phase === 1) {
         store.filterByCategory(groupIndex);
         return true;
       }
       return false;
     },
-    () => {}, 
-    { enabled: isCentralFocusOpen && phase === 1, ignoreInput: false }
+    () => {},
+    { enabled: isCentralFocusOpen && phase === 1, ignoreInput: false },
   );
 
   // 編集イベントの注入
   useEffect(() => {
     if (editingEvent && isCentralFocusOpen) {
-      const timeStr = `${String(editingEvent.minute).padStart(2, "0")}${String(editingEvent.second).padStart(2, "0")}`;
-      store.reset("EVENT");
+      const timeStr = `${String(editingEvent.minute).padStart(2, '0')}${String(editingEvent.second).padStart(2, '0')}`;
+      store.reset('EVENT');
       store.setTimeStr(timeStr);
       if (editingEvent.labels) {
         editingEvent.labels.forEach((l: string) => store.addLabel(l));
       }
-      store.setMemo(editingEvent.memo || "");
+      store.setMemo(editingEvent.memo || '');
       store.forceSetPhase(2); // 最初からメモフェーズへ
     }
   }, [editingEvent, isCentralFocusOpen]);
@@ -134,14 +152,17 @@ export function CentralFocusModal({
   if (!isCentralFocusOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 backdrop-blur-md" onClick={() => setCentralFocusOpen(false)}>
-       <div onClick={e => e.stopPropagation()}>
-         <MemoOverlayView 
-           matchId={matchId} 
-           onClose={() => setCentralFocusOpen(false)}
-           onSave={handleSave} 
-         />
-       </div>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 backdrop-blur-md"
+      onClick={() => setCentralFocusOpen(false)}
+    >
+      <div onClick={(e) => e.stopPropagation()}>
+        <MemoOverlayView
+          matchId={matchId}
+          onClose={() => setCentralFocusOpen(false)}
+          onSave={handleSave}
+        />
+      </div>
     </div>
   );
 }

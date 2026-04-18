@@ -1,34 +1,37 @@
 import React from 'react';
 import {
-  BaseBoxShapeUtil,
   BaseBoxShapeTool,
-  TLBaseShape,
-  T,
-  SVGContainer,
-  DefaultColorStyle,
-  DefaultFillStyle,
-  DefaultDashStyle,
-  Ellipse2d,
+  BaseBoxShapeUtil,
   createShapePropsMigrationIds,
   createShapePropsMigrationSequence,
+  DefaultColorStyle,
+  DefaultDashStyle,
+  DefaultFillStyle,
+  Ellipse2d,
+  SVGContainer,
+  T,
+  type TLBaseShape,
 } from 'tldraw';
 import {
   resolveColor,
-  resolveFill,
   resolveDash,
-  ZONE_STROKE_WIDTH,
+  resolveFill,
   ZONE_DEFAULT_PROPS,
+  ZONE_STROKE_WIDTH,
 } from './zone-styles';
 
 // --- Type ---
 
-type TLZoneCircleShape = TLBaseShape<'zone-circle', {
-  w: number;
-  h: number;
-  color: string;
-  fill: string;
-  dash: string;
-}>;
+type TLZoneCircleShape = TLBaseShape<
+  'zone-circle',
+  {
+    w: number;
+    h: number;
+    color: string;
+    fill: string;
+    dash: string;
+  }
+>;
 
 // --- Migrations ---
 

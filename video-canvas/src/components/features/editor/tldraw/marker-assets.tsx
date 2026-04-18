@@ -18,7 +18,15 @@ export const MARKER_PATHS = [
   'M32 40.415C32 40.7381 31.738 41.0002 31.415 40.9982C26.245 40.9663 21.1853 40.5116 16.7288 39.6771C12.8953 38.9591 9.6249 37.9819 7.1439 36.8194C6.6485 36.5873 6.76315 35.8935 7.30213 35.7996L9.00823 35.5026C9.1431 35.4791 9.28148 35.504 9.40109 35.5705C11.6388 36.8163 14.866 37.8562 18.7655 38.5865C22.6052 39.3056 26.9617 39.6992 31.4149 39.7309C31.738 39.7332 32 39.9949 32 40.318L32 40.415Z',
 ] as const;
 
-export const MarkerDefs = ({ fid, color, hasArrows }: { fid: string; color: string; hasArrows: boolean }) => (
+export const MarkerDefs = ({
+  fid,
+  color,
+  hasArrows,
+}: {
+  fid: string;
+  color: string;
+  hasArrows: boolean;
+}) => (
   <defs>
     {/* Shared drop-shadow filter (white glow for contrast) */}
     <filter
@@ -44,8 +52,17 @@ export const MarkerDefs = ({ fid, color, hasArrows }: { fid: string; color: stri
         type="matrix"
         values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0"
       />
-      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow" />
-      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape" />
+      <feBlend
+        mode="normal"
+        in2="BackgroundImageFix"
+        result="effect1_dropShadow"
+      />
+      <feBlend
+        mode="normal"
+        in="SourceGraphic"
+        in2="effect1_dropShadow"
+        result="shape"
+      />
     </filter>
 
     {/* Foreground blur for center glow */}
@@ -59,7 +76,12 @@ export const MarkerDefs = ({ fid, color, hasArrows }: { fid: string; color: stri
       colorInterpolationFilters="sRGB"
     >
       <feFlood floodOpacity="0" result="BackgroundImageFix" />
-      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+      <feBlend
+        mode="normal"
+        in="SourceGraphic"
+        in2="BackgroundImageFix"
+        result="shape"
+      />
       <feGaussianBlur stdDeviation="5" result="effect1_foregroundBlur" />
     </filter>
 
@@ -68,23 +90,54 @@ export const MarkerDefs = ({ fid, color, hasArrows }: { fid: string; color: stri
       <rect width="64" height="64" fill="white" />
     </clipPath>
 
-    {/* Arrowhead marker */}
-    {hasArrows && (
-      <marker
-        id={`mah_${fid}`}
-        markerWidth="10"
-        markerHeight="7"
-        refX="9"
-        refY="3.5"
-        orient="auto"
-      >
-        <polygon points="0 0, 10 3.5, 0 7" fill={color} />
-      </marker>
-    )}
+    {/* Spotlight definitions */}
+    <filter
+      id={`spotlight_filter_${fid}`}
+      x="0.0358396"
+      y="0.0910153"
+      width="62.6368"
+      height="104.518"
+      filterUnits="userSpaceOnUse"
+      colorInterpolationFilters="sRGB"
+    >
+      <feFlood floodOpacity="0" result="BackgroundImageFix" />
+      <feBlend
+        mode="normal"
+        in="SourceGraphic"
+        in2="BackgroundImageFix"
+        result="shape"
+      />
+      <feGaussianBlur
+        stdDeviation="2.475"
+        result={`effect1_foregroundBlur_spotlight_${fid}`}
+      />
+    </filter>
+    <linearGradient
+      id={`spotlight_gradient_${fid}`}
+      x1="31.3502"
+      y1="0.989258"
+      x2="30.1259"
+      y2="99.6413"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop stopColor="white" />
+      <stop offset="1" stopColor="#838383" stopOpacity="0.15" />
+    </linearGradient>
+    <clipPath id={`spotlight_clip_${fid}`}>
+      <rect width="62.7" height="104.61" fill="white" />
+    </clipPath>
   </defs>
 );
 
-export const MarkerBaseSVG = ({ scale, fid, color }: { scale: number; fid: string; color: string }) => (
+export const MarkerBaseSVG = ({
+  scale,
+  fid,
+  color,
+}: {
+  scale: number;
+  fid: string;
+  color: string;
+}) => (
   <g transform={`scale(${scale})`}>
     <g clipPath={`url(#mcp_${fid})`}>
       {MARKER_PATHS.map((d, i) => (
@@ -99,3 +152,45 @@ export const MarkerBaseSVG = ({ scale, fid, color }: { scale: number; fid: strin
     </g>
   </g>
 );
+
+export const MarkerSpotlight = ({
+  cx,
+  cy,
+  w,
+  fid,
+}: {
+  cx: number;
+  cy: number;
+  w: number;
+  fid: string;
+}) => {
+  // spotlight.svg base size: ~62.7 x 104.6.
+  // We want the spotlight width to be 1.2 * marker width w.
+  const spotlightScale = (w * 1.2) / 62.7;
+
+  // The spotlight should be horizontally centered on cx.
+  const tx = cx - (62.7 * spotlightScale) / 2;
+
+  // The bottom "puddle" part of the spotlight should be centered on cy.
+  // The puddle in the original SVG is roughly between y=88 and y=104.
+  // We'll use y=96 as the vertical center of the puddle.
+  const ty = cy - 96 * spotlightScale;
+
+  return (
+    <g
+      transform={`translate(${tx}, ${ty}) scale(${spotlightScale})`}
+      opacity="0.9"
+      pointerEvents="none"
+    >
+      <g clipPath={`url(#spotlight_clip_${fid})`}>
+        <g filter={`url(#spotlight_filter_${fid})`}>
+          <path
+            d="M29.944 6.21095C30.4196 4.64846 32.6332 4.6527 33.1028 6.21701L57.6551 88.0037C57.7179 88.2129 57.7402 88.4377 57.708 88.6538C55.4196 104.027 7.71639 102.604 5.00953 88.6793C4.96408 88.4455 4.98611 88.2026 5.05548 87.9748L29.944 6.21095Z"
+            fill={`url(#spotlight_gradient_${fid})`}
+            fillOpacity="0.7"
+          />
+        </g>
+      </g>
+    </g>
+  );
+};

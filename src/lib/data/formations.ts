@@ -429,30 +429,30 @@ export type FormationMode = 'full' | 'half';
 export function getFormationActualPos(
   pos: { top: number; left: number },
   team: 'home' | 'away',
-  mode: FormationMode = 'full'
+  mode: FormationMode = 'full',
 ): { x: number; y: number } {
   const isHome = team === 'home';
-  
+
   if (mode === 'full') {
     // フルコート: Pitch全体 (x: 10-90)
     return {
-      x: isHome ? (100 - pos.top) : pos.top,
-      y: isHome ? pos.left : (100 - pos.left),
+      x: isHome ? 100 - pos.top : pos.top,
+      y: isHome ? pos.left : 100 - pos.left,
     };
   } else {
     // ハーフコート: 自陣側半分 (x: 0-50 または 50-100)
     // Home: 10-90 -> 5-45
     // Away: 10-90 -> 55-95
-    const fullX = isHome ? (100 - pos.top) : pos.top;
+    const fullX = isHome ? 100 - pos.top : pos.top;
     if (isHome) {
       return {
         x: fullX * 0.5,
-        y: pos.left
+        y: pos.left,
       };
     } else {
       return {
         x: 100 - (100 - fullX) * 0.5,
-        y: 100 - pos.left
+        y: 100 - pos.left,
       };
     }
   }

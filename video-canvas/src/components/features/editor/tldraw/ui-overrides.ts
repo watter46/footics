@@ -1,5 +1,6 @@
 /**
- * UI overrides for registering custom Zone tools in the tldraw toolbar.
+ * UI overrides for registering custom tools in the tldraw toolbar.
+ * marker_connector は FloatingMarkerToolbar から起動するためここには登録しない。
  */
 export const uiOverrides: any = {
   tools(editor: any, tools: any) {
@@ -17,12 +18,12 @@ export const uiOverrides: any = {
       kbd: 'r',
       onSelect: () => editor.setCurrentTool('zone-rect'),
     };
-    tools.link_line = {
-      id: 'link-line',
+    tools.zone_path = {
+      id: 'zone-path',
       icon: 'line',
-      label: 'Link Line',
-      kbd: 'l',
-      onSelect: () => editor.setCurrentTool('link-line'),
+      label: 'Zone Path',
+      kbd: 'p',
+      onSelect: () => editor.setCurrentTool('zone_path'),
     };
     tools.marker = {
       id: 'marker',

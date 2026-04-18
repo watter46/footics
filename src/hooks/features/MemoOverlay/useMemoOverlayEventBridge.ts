@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { useMemoOverlayStore } from "@/stores/useMemoOverlayStore";
+import { useEffect } from 'react';
+import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
 
 /**
  * useMemoOverlayEventBridge
@@ -22,35 +22,35 @@ export function useMemoOverlayEventBridge(
         shiftKey?: boolean;
       };
       const { action } = detail;
-      
+
       // Zustandストアから最新の状態を取得
       const store = useMemoOverlayStore.getState();
 
       switch (action) {
-        case "CLOSE_OVERLAY":
+        case 'CLOSE_OVERLAY':
           onClose();
           break;
 
-        case "SAVE_MEMO":
+        case 'SAVE_MEMO':
           onSave();
           break;
 
-        case "NEXT_PHASE": {
-          if (store.mode === "EVENT") {
+        case 'NEXT_PHASE': {
+          if (store.mode === 'EVENT') {
             const result = store.nextPhase();
-            if (result === "BLOCKED") return;
+            if (result === 'BLOCKED') return;
           } else {
             onSave();
           }
           break;
         }
 
-        case "PREV_PHASE":
+        case 'PREV_PHASE':
           store.prevPhase();
           break;
 
-        case "BACKSPACE":
-          if (store.mode === "EVENT") {
+        case 'BACKSPACE':
+          if (store.mode === 'EVENT') {
             if (store.phase === 0) {
               store.backspaceTimeStr();
             } else if (store.phase === 1) {
@@ -59,15 +59,18 @@ export function useMemoOverlayEventBridge(
           }
           break;
 
-        case "NAVIGATE_SUGGESTION":
-          if (store.mode === "EVENT" && store.phase === 1) {
-            const direction = detail.key === "ArrowDown" ? 1 : -1;
+        case 'NAVIGATE_SUGGESTION':
+          if (store.mode === 'EVENT' && store.phase === 1) {
+            const direction = detail.key === 'ArrowDown' ? 1 : -1;
             store.navigateSuggestion(direction);
           }
           break;
 
-        case "FILTER_CATEGORY":
-          if (store.mode === "EVENT" && typeof detail.categoryIndex === "number") {
+        case 'FILTER_CATEGORY':
+          if (
+            store.mode === 'EVENT' &&
+            typeof detail.categoryIndex === 'number'
+          ) {
             store.filterByCategory(detail.categoryIndex);
           }
           break;
@@ -77,7 +80,8 @@ export function useMemoOverlayEventBridge(
       }
     };
 
-    window.addEventListener("footics-action", handleFooticsAction);
-    return () => window.removeEventListener("footics-action", handleFooticsAction);
+    window.addEventListener('footics-action', handleFooticsAction);
+    return () =>
+      window.removeEventListener('footics-action', handleFooticsAction);
   }, [onClose, onSave]); // onClose, onSave のみが依存関係
 }

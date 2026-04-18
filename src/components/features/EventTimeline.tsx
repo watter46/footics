@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useRef, useMemo, useEffect } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { Card, CardContent } from "@/components/ui/card";
-import { eventStrategies } from "@/registry";
-import type { EventRow, MatchMetadata } from "@/types";
-import { TimelineHeader } from "./Timeline/TimelineHeader";
-import { TimelineRow } from "./Timeline/TimelineRow";
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useEffect, useMemo, useRef } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { eventStrategies } from '@/registry';
+import type { EventRow, MatchMetadata } from '@/types';
+import { TimelineHeader } from './Timeline/TimelineHeader';
+import { TimelineRow } from './Timeline/TimelineRow';
 
 interface EventTimelineProps {
   events: EventRow[];
@@ -43,10 +43,10 @@ export function EventTimeline({
 
   useEffect(() => {
     if (highlightEventId && events.length > 0) {
-      const idx = events.findIndex(e => e.id.toString() === highlightEventId);
+      const idx = events.findIndex((e) => e.id.toString() === highlightEventId);
       if (idx !== -1) {
         setTimeout(() => {
-          virtualizer.scrollToIndex(idx, { align: "center" });
+          virtualizer.scrollToIndex(idx, { align: 'center' });
         }, 50);
       }
     }
@@ -54,7 +54,7 @@ export function EventTimeline({
 
   const activeStrategyList = useMemo(
     () => eventStrategies.filter((s) => activeStrategies.has(s.id)),
-    [activeStrategies]
+    [activeStrategies],
   );
 
   return (
@@ -80,7 +80,6 @@ export function EventTimeline({
       {/* Table Container */}
       <Card className="flex-1 flex flex-col overflow-hidden bg-slate-900/80 border-slate-800 backdrop-blur-xl relative z-10 shadow-2xl">
         <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
-          
           <TimelineHeader />
 
           {/* Virtual scroll container */}
@@ -93,12 +92,12 @@ export function EventTimeline({
               <div
                 style={{
                   height: `${virtualizer.getTotalSize()}px`,
-                  width: "100%",
-                  position: "relative",
+                  width: '100%',
+                  position: 'relative',
                 }}
               >
                 {virtualizer.getVirtualItems().map((virtualRow) => (
-                  <TimelineRow 
+                  <TimelineRow
                     key={events[virtualRow.index].id}
                     event={events[virtualRow.index]}
                     index={virtualRow.index}

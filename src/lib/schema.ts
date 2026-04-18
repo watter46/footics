@@ -6,7 +6,7 @@
  * 型安全に管理するためのZodスキーマ。
  * IndexedDB保存時のバリデーションゲートとして機能する。
  */
-import { z } from "zod";
+import { z } from 'zod';
 
 // ──────────────────────────────────────────────
 // WhoScored Raw Event Schema
@@ -33,7 +33,7 @@ export type WhoScoredEvent = z.infer<typeof WhoScoredEventSchema>;
 
 /** 分析官がイベントに付与するメモ・タグ */
 export const EventMemoSchema = WhoScoredEventSchema.extend({
-  memo: z.string().default(""),
+  memo: z.string().default(''),
   tags: z.array(z.string()).default([]),
   updatedAt: z.number().default(() => Date.now()),
 });
@@ -51,17 +51,16 @@ export const CustomEventSchema = z.object({
   minute: z.number().int().min(0),
   second: z.number().int().min(0).max(59),
   labels: z.array(z.string().min(1)).min(1),
-  memo: z.string().default(""),
+  memo: z.string().default(''),
   created_at: z.number(),
 });
-
 
 export type CustomEvent = z.infer<typeof CustomEventSchema>;
 
 /** 試合全体の自由記述メモ */
 export const MatchMemoSchema = z.object({
   matchId: z.string(),
-  memo: z.string().default(""),
+  memo: z.string().default(''),
   updatedAt: z.number().default(() => Date.now()),
 });
 
@@ -78,21 +77,25 @@ export const TacticalSnapshotSchema = z.object({
   matchId: z.string(),
   updatedAt: z.number(),
   isInverted: z.boolean().default(false),
-  tactics: z.array(z.object({
-    time: z.number(),
-    players: z.array(z.object({
-      playerId: z.number().int(),
-      team: z.enum(["home", "away"]),
-      x: z.number(),
-      y: z.number(),
-    })),
-    assets: z.object({
-      ball: z.object({
-        x: z.number(),
-        y: z.number(),
-      })
-    })
-  }))
+  tactics: z.array(
+    z.object({
+      time: z.number(),
+      players: z.array(
+        z.object({
+          playerId: z.number().int(),
+          team: z.enum(['home', 'away']),
+          x: z.number(),
+          y: z.number(),
+        }),
+      ),
+      assets: z.object({
+        ball: z.object({
+          x: z.number(),
+          y: z.number(),
+        }),
+      }),
+    }),
+  ),
 });
 
 export type TacticalSnapshot = z.infer<typeof TacticalSnapshotSchema>;

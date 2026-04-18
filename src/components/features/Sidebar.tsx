@@ -1,12 +1,18 @@
-"use client";
+'use client';
 
-import { Activity } from "lucide-react";
-import { PlayerBadgeGroup, FlatPlayerBadges } from "./PlayerBadgeGroup";
-import type { FilterState, MatchMetadata, OutcomeFilter as OutcomeType, Player } from "@/types";
-import { TeamFilter } from "./Sidebar/TeamFilter";
-import { TimelineSourceFilter } from "./Sidebar/TimelineSourceFilter";
-import { OutcomeFilter } from "./Sidebar/OutcomeFilter";
-import { StrategyFilter } from "./Sidebar/StrategyFilter";
+import { Activity } from 'lucide-react';
+import type {
+  BasePlayer,
+  FilterState,
+  MatchMetadata,
+  OutcomeFilter as OutcomeType,
+  Player,
+} from '@/types';
+import { FlatPlayerBadges, PlayerBadgeGroup } from './PlayerBadgeGroup';
+import { OutcomeFilter } from './Sidebar/OutcomeFilter';
+import { StrategyFilter } from './Sidebar/StrategyFilter';
+import { TeamFilter } from './Sidebar/TeamFilter';
+import { TimelineSourceFilter } from './Sidebar/TimelineSourceFilter';
 
 interface SidebarProps {
   metadata: MatchMetadata;
@@ -16,8 +22,12 @@ interface SidebarProps {
   onPlayersClear: () => void;
   onOutcomeChange: (outcome: OutcomeType) => void;
   onStrategyToggle: (strategyId: string) => void;
-  onStrategyParamChange: (strategyId: string, paramId: string, value: unknown) => void;
-  onTimelineSourceChange: (source: "all" | "whoscored" | "custom") => void;
+  onStrategyParamChange: (
+    strategyId: string,
+    paramId: string,
+    value: unknown,
+  ) => void;
+  onTimelineSourceChange: (source: 'all' | 'whoscored' | 'custom') => void;
 }
 
 export function Sidebar({
@@ -41,8 +51,8 @@ export function Sidebar({
     timelineSource,
   } = filters;
 
-  const currentPlayers: Player[] =
-    selectedTeam === "all"
+  const currentPlayers: BasePlayer[] =
+    selectedTeam === 'all'
       ? [...teams.home.players, ...teams.away.players]
       : selectedTeam === teams.home.teamId.toString()
         ? teams.home.players
@@ -57,15 +67,15 @@ export function Sidebar({
           <h1 className="text-xl font-bold tracking-tight">DashBoard</h1>
         </div>
 
-        <TeamFilter 
-          selectedTeam={selectedTeam} 
-          teams={teams} 
-          onTeamChange={onTeamChange} 
+        <TeamFilter
+          selectedTeam={selectedTeam}
+          teams={teams}
+          onTeamChange={onTeamChange}
         />
 
-        <TimelineSourceFilter 
-          timelineSource={timelineSource} 
-          onChange={onTimelineSourceChange} 
+        <TimelineSourceFilter
+          timelineSource={timelineSource}
+          onChange={onTimelineSourceChange}
         />
       </div>
 
@@ -85,7 +95,7 @@ export function Sidebar({
             )}
           </label>
           <div className="border border-slate-800 rounded-md bg-slate-900/30 p-2 space-y-3">
-            {selectedTeam === "all" ? (
+            {selectedTeam === 'all' ? (
               <>
                 <PlayerBadgeGroup
                   teamName={teams.home.name}
@@ -113,16 +123,16 @@ export function Sidebar({
           </div>
         </div>
 
-        <OutcomeFilter 
-          outcomeFilter={outcomeFilter} 
-          onChange={onOutcomeChange} 
+        <OutcomeFilter
+          outcomeFilter={outcomeFilter}
+          onChange={onOutcomeChange}
         />
 
-        <StrategyFilter 
-          activeStrategies={activeStrategies} 
-          activeStrategyParams={activeStrategyParams} 
-          onStrategyToggle={onStrategyToggle} 
-          onStrategyParamChange={onStrategyParamChange} 
+        <StrategyFilter
+          activeStrategies={activeStrategies}
+          activeStrategyParams={activeStrategyParams}
+          onStrategyToggle={onStrategyToggle}
+          onStrategyParamChange={onStrategyParamChange}
         />
       </div>
     </aside>

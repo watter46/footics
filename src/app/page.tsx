@@ -1,9 +1,8 @@
-import Image from "next/image";
-import logoName from "./logo-name.png";
-import { ImportMatchButton } from "@/components/features/ImportMatchButton";
-import { MatchListClient } from "@/components/features/MatchListClient";
-
-import type { MatchSummary } from "@/types";
+import Image from 'next/image';
+import { ImportMatchButton } from '@/components/features/ImportMatchButton';
+import { MatchListClient } from '@/components/features/MatchListClient';
+import type { MatchSummary } from '@/types';
+import logoName from './logo-name.png';
 
 export default async function Home() {
   const matches: MatchSummary[] = [];

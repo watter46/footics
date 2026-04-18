@@ -1,7 +1,4 @@
-import {
-  StateNode,
-  createShapeId,
-} from 'tldraw';
+import { createShapeId, StateNode } from 'tldraw';
 import { MARKER_DEFAULT_PROPS } from './marker-styles';
 
 /**

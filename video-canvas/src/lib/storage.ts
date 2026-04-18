@@ -21,28 +21,36 @@ export const StorageUtils = {
   /**
    * Session / Local の両方から指定のキーのデータを試行取得する
    */
-  async getCaptureData(captureId: string | null): Promise<CaptureStorageData | null> {
+  async getCaptureData(
+    captureId: string | null,
+  ): Promise<CaptureStorageData | null> {
     try {
       if (captureId) {
         const storageKey = this.getCaptureKey(captureId);
-        
+
         // session から優先的に取得
-        const sessionData = (await browser.storage.session.get(storageKey).catch(() => ({}))) as any;
+        const sessionData = (await browser.storage.session
+          .get(storageKey)
+          .catch(() => ({}))) as any;
         let result = sessionData[storageKey];
 
         // session になければ local から取得
         if (!result) {
-          const localData = (await browser.storage.local.get(storageKey).catch(() => ({}))) as any;
+          const localData = (await browser.storage.local
+            .get(storageKey)
+            .catch(() => ({}))) as any;
           result = localData[storageKey];
         }
 
         if (result) {
-           const parsed = CaptureStorageSchema.safeParse(result);
-           return parsed.success ? parsed.data : null;
+          const parsed = CaptureStorageSchema.safeParse(result);
+          return parsed.success ? parsed.data : null;
         }
       } else {
         // フォールバック
-        const sessionData = (await browser.storage.session.get(['lastCapturedFrame', 'cropRect']).catch(() => ({}))) as any;
+        const sessionData = (await browser.storage.session
+          .get(['lastCapturedFrame', 'cropRect'])
+          .catch(() => ({}))) as any;
         const parsed = CaptureStorageSchema.safeParse(sessionData);
         return parsed.success ? parsed.data : null;
       }
@@ -50,5 +58,5 @@ export const StorageUtils = {
       console.error('[StorageUtils] Failed to get capture data', e);
     }
     return null;
-  }
+  },
 };

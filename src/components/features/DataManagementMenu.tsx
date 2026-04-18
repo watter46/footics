@@ -1,14 +1,18 @@
-"use client";
+'use client';
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Database, Upload, Download, FileUp } from "lucide-react";
-import { importMatchJsonFile } from "@/lib/duckdb/data-loader";
-import { exportMemosAsJson, importMemosFromJson, getMatchBlobs } from "@/lib/db";
-import { toast } from "sonner";
-import type * as duckdb from "@duckdb/duckdb-wasm";
-import { MatchRoot } from "@/types";
+import type * as duckdb from '@duckdb/duckdb-wasm';
+import { Database, Download, FileUp, Upload } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import {
+  exportMemosAsJson,
+  getMatchBlobs,
+  importMemosFromJson,
+} from '@/lib/db';
+import { importMatchJsonFile } from '@/lib/duckdb/data-loader';
+import type { MatchRoot } from '@/types';
 
 interface DataManagementMenuProps {
   matchId: string;
@@ -17,7 +21,12 @@ interface DataManagementMenuProps {
   onRefresh: () => void;
 }
 
-export function DataManagementMenu({ matchId, db, connection, onRefresh }: DataManagementMenuProps) {
+export function DataManagementMenu({
+  matchId,
+  db,
+  connection,
+  onRefresh,
+}: DataManagementMenuProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const matchFileRef = useRef<HTMLInputElement>(null);
@@ -31,31 +40,35 @@ export function DataManagementMenu({ matchId, db, connection, onRefresh }: DataM
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleImportMatch = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !db || !connection) return;
-    
+
     try {
       // Check if it already exists before importing
       const text = await file.text();
       const parsedData = JSON.parse(text) as MatchRoot;
       const parsedMatchId = String(parsedData.matchId);
-      
+
       const exists = await getMatchBlobs(parsedMatchId);
       if (exists) {
-        if (!confirm(`Match ${parsedMatchId} is already imported. Overwrite existing data?`)) {
-          if (matchFileRef.current) matchFileRef.current.value = "";
+        if (
+          !confirm(
+            `Match ${parsedMatchId} is already imported. Overwrite existing data?`,
+          )
+        ) {
+          if (matchFileRef.current) matchFileRef.current.value = '';
           return;
         }
       }
 
-      // Re-create the file object because file.text() read destroys the stream in some browsers if consumed, 
-      // but actually a File object text() method reads from the underlying Blob so we can read it again, 
-      // however better to build a new one or just rely on importMatchJsonFile parsing it again. 
+      // Re-create the file object because file.text() read destroys the stream in some browsers if consumed,
+      // but actually a File object text() method reads from the underlying Blob so we can read it again,
+      // however better to build a new one or just rely on importMatchJsonFile parsing it again.
       // Fortunately File.text() can be read multiple times.
       const newMatchId = await importMatchJsonFile(file, db, connection);
       toast.success(`Match ${newMatchId} imported successfully`);
@@ -69,14 +82,14 @@ export function DataManagementMenu({ matchId, db, connection, onRefresh }: DataM
     } catch (err: any) {
       toast.error(`Failed to import match: ${err.message}`);
     } finally {
-      if (matchFileRef.current) matchFileRef.current.value = "";
+      if (matchFileRef.current) matchFileRef.current.value = '';
     }
   };
 
   const handleExportMemos = async () => {
     try {
       await exportMemosAsJson(matchId);
-      toast.success("Memos exported successfully");
+      toast.success('Memos exported successfully');
       setIsOpen(false);
     } catch (err: any) {
       toast.error(`Failed to export memos: ${err.message}`);
@@ -95,7 +108,7 @@ export function DataManagementMenu({ matchId, db, connection, onRefresh }: DataM
     } catch (err: any) {
       toast.error(`Failed to import memos: ${err.message}`);
     } finally {
-      if (memoFileRef.current) memoFileRef.current.value = "";
+      if (memoFileRef.current) memoFileRef.current.value = '';
     }
   };
 

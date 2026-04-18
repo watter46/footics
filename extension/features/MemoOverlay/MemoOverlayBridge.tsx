@@ -1,14 +1,18 @@
-import React, { useEffect } from "react";
-import { browser } from "wxt/browser";
-import { useMemoOverlayStore, useMemoOverlayDerived } from "@/stores/useMemoOverlayStore";
-import { useMemoOverlayEventBridge } from "@/hooks/features/MemoOverlay/useMemoOverlayEventBridge";
-import { MemoOverlayView } from "@/components/features/MemoOverlay/MemoOverlayView";
-import { 
-  type MemoMode, 
-  createSavePayload, 
-  getValidationError 
-} from "@/lib/features/MemoOverlay/memoOverlayLogic";
-import type { ExtensionMessage, SaveMemoResponse } from "../../types/messaging";
+import type React from 'react';
+import { useEffect } from 'react';
+import { browser } from 'wxt/browser';
+import { MemoOverlayView } from '@/components/features/MemoOverlay/MemoOverlayView';
+import { useMemoOverlayEventBridge } from '@/hooks/features/MemoOverlay/useMemoOverlayEventBridge';
+import {
+  createSavePayload,
+  getValidationError,
+  type MemoMode,
+} from '@/lib/features/MemoOverlay/memoOverlayLogic';
+import {
+  useMemoOverlayDerived,
+  useMemoOverlayStore,
+} from '@/stores/useMemoOverlayStore';
+import type { ExtensionMessage, SaveMemoResponse } from '../../types/messaging';
 
 interface MemoOverlayBridgeProps {
   mode: MemoMode;
@@ -56,12 +60,12 @@ export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
     const currentState = useMemoOverlayStore.getState();
 
     if (!DRY_RUN && !matchId) {
-      store.setError("保存先の試合情報が見つかりません。");
+      store.setError('保存先の試合情報が見つかりません。');
       return;
     }
 
     // ── 完全なバリデーション ──
-    if (currentState.mode === "EVENT") {
+    if (currentState.mode === 'EVENT') {
       // Phase 0: 時間のチェック
       const timeErr = getValidationError({ ...currentState, phase: 0 });
       if (timeErr) {
@@ -84,43 +88,47 @@ export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
       selectedLabels: currentState.selectedLabels,
       memo: currentState.memo,
     });
-    
+
     if (!payload) return;
 
     store.setIsSaving(true);
     try {
       if (DRY_RUN) {
-        console.info("🚀 [DRY RUN] Save Payload:", { matchId, ...payload });
+        console.info('🚀 [DRY RUN] Save Payload:', { matchId, ...payload });
         await new Promise((resolve) => setTimeout(resolve, 500));
-        onSaveSuccess("Dry Run: Saved");
+        onSaveSuccess('Dry Run: Saved');
         store.reset();
         return;
       }
 
       const message: ExtensionMessage = {
-        type: "SAVE_MEMO_RELAY",
+        type: 'SAVE_MEMO_RELAY',
         mode: currentState.mode,
         matchId: matchId!,
         memo: payload.memo,
       };
 
-      if (payload.type === "EVENT") {
+      if (payload.type === 'EVENT') {
         message.minute = payload.minute;
         message.second = payload.second;
         message.labels = payload.labels;
       }
 
-      const response = await browser.runtime.sendMessage(message) as SaveMemoResponse;
+      const response = (await browser.runtime.sendMessage(
+        message,
+      )) as SaveMemoResponse;
 
       if (response?.success) {
         onClose();
-        onSaveSuccess("Saved Successfully");
+        onSaveSuccess('Saved Successfully');
       } else {
-        store.setError(response?.error || "保存に失敗しました。本体タブを確認してください。");
+        store.setError(
+          response?.error || '保存に失敗しました。本体タブを確認してください。',
+        );
       }
     } catch (err) {
-      console.error("[MemoOverlayBridge] sendMessage failed:", err);
-      store.setError("通信エラーが発生しました。");
+      console.error('[MemoOverlayBridge] sendMessage failed:', err);
+      store.setError('通信エラーが発生しました。');
     } finally {
       store.setIsSaving(false);
     }
@@ -130,11 +138,6 @@ export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
   useMemoOverlayEventBridge(onClose, handleSave);
 
   return (
-    <MemoOverlayView
-      matchId={matchId}
-      onClose={onClose}
-      onSave={handleSave}
-    />
+    <MemoOverlayView matchId={matchId} onClose={onClose} onSave={handleSave} />
   );
 };
-

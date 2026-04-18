@@ -1,5 +1,9 @@
 import { browser } from 'wxt/browser';
-import { MessageTypes, type CaptureResultMessage, type RequestTabCaptureMessage } from '../lib/message-types';
+import {
+  type CaptureResultMessage,
+  MessageTypes,
+  type RequestTabCaptureMessage,
+} from '../lib/message-types';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -26,21 +30,24 @@ export default defineContentScript({
 
       // 2. Viewport キャプチャ (DRM回避・UI完全排除モード)
       const { cleanup } = prepareUIForCapture(video);
-      
+
       try {
-        await new Promise(r => setTimeout(r, 250));
+        await new Promise((r) => setTimeout(r, 250));
 
         const requestMessage: RequestTabCaptureMessage = {
-          type: MessageTypes.REQUEST_TAB_CAPTURE
+          type: MessageTypes.REQUEST_TAB_CAPTURE,
         };
-        const response = await browser.runtime.sendMessage(requestMessage) as any;
+        const response = (await browser.runtime.sendMessage(
+          requestMessage,
+        )) as any;
 
         if (response?.success) {
           const resultMessage: CaptureResultMessage = {
             type: MessageTypes.CAPTURE_RESULT,
             dataUrl: response.dataUrl,
             rect: {
-              x: 0, y: 0,
+              x: 0,
+              y: 0,
               width: window.innerWidth,
               height: window.innerHeight,
               devicePixelRatio: window.devicePixelRatio,
@@ -52,10 +59,10 @@ export default defineContentScript({
                 x: originalRect.x,
                 y: originalRect.y,
                 width: originalRect.width,
-                height: originalRect.height
-              }
+                height: originalRect.height,
+              },
             },
-            isDirectCapture: false
+            isDirectCapture: false,
           };
           await browser.runtime.sendMessage(resultMessage);
         }
@@ -67,7 +74,9 @@ export default defineContentScript({
     /**
      * Canvas.drawImage を使用した直接キャプチャ。成功した場合は true を返す。
      */
-    async function tryDirectCanvasCapture(video: HTMLVideoElement): Promise<boolean> {
+    async function tryDirectCanvasCapture(
+      video: HTMLVideoElement,
+    ): Promise<boolean> {
       try {
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
@@ -76,14 +85,19 @@ export default defineContentScript({
         if (!ctx) return false;
 
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const pixel = ctx.getImageData(canvas.width / 2, canvas.height / 2, 1, 1).data;
+        const pixel = ctx.getImageData(
+          canvas.width / 2,
+          canvas.height / 2,
+          1,
+          1,
+        ).data;
         const isBlack = pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0;
 
         if (!isBlack) {
           const directMessage: CaptureResultMessage = {
             type: MessageTypes.CAPTURE_RESULT,
             dataUrl: canvas.toDataURL('image/png'),
-            isDirectCapture: true
+            isDirectCapture: true,
           };
           await browser.runtime.sendMessage(directMessage);
           return true;
@@ -119,7 +133,7 @@ export default defineContentScript({
         }
         video *:not(video) { position: absolute !important; }
       `;
-      
+
       const parents: HTMLElement[] = [];
       let parent = video.parentElement;
       while (parent) {
@@ -132,8 +146,8 @@ export default defineContentScript({
       return {
         cleanup: () => {
           style.remove();
-          parents.forEach(p => (p.style.visibility = ''));
-        }
+          parents.forEach((p) => (p.style.visibility = ''));
+        },
       };
     }
   },

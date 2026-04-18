@@ -1,4 +1,6 @@
-import type { AsyncDuckDBConnection, AsyncDuckDB } from "@duckdb/duckdb-wasm";
+import type { AsyncDuckDB, AsyncDuckDBConnection } from '@duckdb/duckdb-wasm';
+import { z } from 'zod';
+import type { NationalMatchRawData } from '@/lib/national-match-schema';
 
 // ──────────────────────────────────────────────
 // Domain Models (Match Data)
@@ -15,7 +17,7 @@ export interface ClubMatchRoot {
 
 export interface NationalMatchRoot {
   matchId: number;
-  initialMatchDataForScrappers: any[][][]; // 複雑なネスト構造のため、一旦 any で定義しつつ必要な箇所を抽出
+  initialMatchDataForScrappers: NationalMatchRawData['initialMatchDataForScrappers'];
 }
 
 export interface MatchCentreData {
@@ -57,35 +59,39 @@ export interface Team {
   name: string;
   countryName: string;
   managerName: string;
-  field: "home" | "away";
+  field: 'home' | 'away';
   averageAge: number;
   players: Player[];
   formations: Formation[];
   stats: Record<string, unknown>;
 }
 
-export interface Player {
+export interface BasePlayer {
   playerId: number;
-  shirtNo: number;
   name: string;
+  isFirstEleven: boolean;
+  position?: string;
+}
+
+export interface Player extends BasePlayer {
+  shirtNo: number;
   position:
-    | "GK"
-    | "DR"
-    | "DC"
-    | "DL"
-    | "DMC"
-    | "MC"
-    | "AMC"
-    | "AMR"
-    | "AML"
-    | "FW"
-    | "Sub";
+    | 'GK'
+    | 'DR'
+    | 'DC'
+    | 'DL'
+    | 'DMC'
+    | 'MC'
+    | 'AMC'
+    | 'AMR'
+    | 'AML'
+    | 'FW'
+    | 'Sub';
   height: number;
   weight: number;
   age: number;
-  isFirstEleven: boolean;
   isManOfTheMatch: boolean;
-  field: "home" | "away";
+  field: 'home' | 'away';
   stats: Record<string, unknown>;
 }
 
@@ -136,11 +142,11 @@ export interface Qualifier {
 // ──────────────────────────────────────────────
 
 export type DatabaseStatus =
-  | "idle"
-  | "initializing"
-  | "loading-data"
-  | "ready"
-  | "error";
+  | 'idle'
+  | 'initializing'
+  | 'loading-data'
+  | 'ready'
+  | 'error';
 
 export interface DatabaseState {
   status: DatabaseStatus;
@@ -155,12 +161,18 @@ export interface MatchMetadata {
   matchId: string;
   date: string;
   score: string;
-  matchType: "club" | "national";
+  matchType: 'club' | 'national';
   playerIdNameDictionary: Record<string, string>;
   teams: {
-    home: Team;
-    away: Team;
+    home: Team | SimplifiedTeam;
+    away: Team | SimplifiedTeam;
   };
+}
+
+export interface SimplifiedTeam {
+  teamId: number;
+  name: string;
+  players: BasePlayer[];
 }
 
 export interface MatchBlobEntry {
@@ -176,7 +188,7 @@ export interface MatchBlobEntry {
 // UI / Filter State
 // ──────────────────────────────────────────────
 
-export type OutcomeFilter = "all" | "success" | "fail";
+export type OutcomeFilter = 'all' | 'success' | 'fail';
 
 export interface FilterState {
   selectedTeam: string;
@@ -184,7 +196,7 @@ export interface FilterState {
   outcomeFilter: OutcomeFilter;
   activeStrategies: Set<string>;
   activeStrategyParams: Record<string, Record<string, unknown>>;
-  timelineSource: "all" | "whoscored" | "custom";
+  timelineSource: 'all' | 'whoscored' | 'custom';
 }
 
 // ──────────────────────────────────────────────
@@ -192,8 +204,8 @@ export interface FilterState {
 // ──────────────────────────────────────────────
 
 export interface EventRow {
-  id: number;
-  match_id: number;
+  id: number | string;
+  match_id: number | string;
   event_id: number;
   team_id: number;
   player_id: number | null;
@@ -212,7 +224,7 @@ export interface EventRow {
   is_shot?: boolean;
   is_goal?: boolean;
   qualifiers: unknown[];
-  
+
   // Custom Event Fields (source = "custom")
   source?: 'whoscored' | 'custom';
   custom_label?: string;
@@ -242,6 +254,5 @@ export interface MatchSummary {
   awayTeam: { id: number; name: string };
   date: string;
   score: string;
-  matchType: "club" | "national";
+  matchType: 'club' | 'national';
 }
-

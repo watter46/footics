@@ -13,4 +13,3 @@ if (typeof document !== 'undefined') {
     );
   }
 }
-

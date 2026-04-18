@@ -6,20 +6,21 @@
  * - Strategy Pattern の resolveSqlCondition と連携。
  * - SQL インジェクション対策: team_id, player_id は数値のみ許可。
  */
-import type { FilterState } from "@/types";
-import { eventStrategies } from "@/registry";
-import { resolveSqlCondition } from "@/registry/event-strategy";
+
+import { eventStrategies } from '@/registry';
+import { resolveSqlCondition } from '@/registry/event-strategy';
+import type { FilterState } from '@/types';
 
 /**
  * フィルタ条件から WHERE 句を生成
  */
 function buildWhereClause(filters: FilterState): string {
-  const conditions: string[] = ["TRUE"];
+  const conditions: string[] = ['TRUE'];
 
   // Team filter
-  if (filters.selectedTeam !== "all") {
+  if (filters.selectedTeam !== 'all') {
     const teamId = Number(filters.selectedTeam);
-    if (!Number.isFinite(teamId)) throw new Error("Invalid team_id");
+    if (!Number.isFinite(teamId)) throw new Error('Invalid team_id');
     conditions.push(`team_id = ${teamId}`);
   }
 
@@ -27,48 +28,53 @@ function buildWhereClause(filters: FilterState): string {
   if (filters.selectedPlayers.size > 0) {
     const playerIds = Array.from(filters.selectedPlayers)
       .map((id) => {
-        if (!Number.isFinite(id)) throw new Error("Invalid player_id");
+        if (!Number.isFinite(id)) throw new Error('Invalid player_id');
         return id;
       })
-      .join(",");
+      .join(',');
     conditions.push(`player_id IN (${playerIds})`);
   }
 
   // Outcome filter
-  if (filters.outcomeFilter === "success") {
-    conditions.push("outcome = true");
-  } else if (filters.outcomeFilter === "fail") {
-    conditions.push("outcome = false");
+  if (filters.outcomeFilter === 'success') {
+    conditions.push('outcome = true');
+  } else if (filters.outcomeFilter === 'fail') {
+    conditions.push('outcome = false');
   }
 
   // Strategy filters (OR within strategies, AND with other conditions)
   if (filters.activeStrategies.size > 0) {
-    const strategyConditions = Array.from(filters.activeStrategies)
-      .map((id) => {
+    const strategyConditions = Array.from(filters.activeStrategies).map(
+      (id) => {
         const strategy = eventStrategies.find((s) => s.id === id);
-        if (!strategy) return "FALSE";
-        const params = (filters.activeStrategyParams[id] || {}) as Record<string, unknown>;
+        if (!strategy) return 'FALSE';
+        const params = (filters.activeStrategyParams[id] || {}) as Record<
+          string,
+          unknown
+        >;
         return `(${resolveSqlCondition(strategy, params)})`;
-      });
-    conditions.push(`(${strategyConditions.join(" OR ")})`);
+      },
+    );
+    conditions.push(`(${strategyConditions.join(' OR ')})`);
   }
 
-  return conditions.join(" AND ");
+  return conditions.join(' AND ');
 }
 
 /**
  * Strategy projection columns for boolean flags
  */
-function buildStrategyProjections(
-  filters: FilterState
-): string {
+function buildStrategyProjections(filters: FilterState): string {
   return eventStrategies
     .map((s) => {
-      const params = (filters.activeStrategyParams[s.id] || {}) as Record<string, unknown>;
+      const params = (filters.activeStrategyParams[s.id] || {}) as Record<
+        string,
+        unknown
+      >;
       const resolved = resolveSqlCondition(s, params);
-      return `(${resolved}) AS is_strategy_${s.id.replace(/-/g, "_")}`;
+      return `(${resolved}) AS is_strategy_${s.id.replace(/-/g, '_')}`;
     })
-    .join(", ");
+    .join(', ');
 }
 
 /**
@@ -77,16 +83,19 @@ function buildStrategyProjections(
 export function buildCountQuery(filters: FilterState): string {
   const where = buildWhereClause(filters);
   const parts: string[] = [];
-  
-  if (filters.timelineSource === "all" || filters.timelineSource === "whoscored") {
+
+  if (
+    filters.timelineSource === 'all' ||
+    filters.timelineSource === 'whoscored'
+  ) {
     parts.push(`SELECT id FROM events WHERE ${where}`);
   }
-  if (filters.timelineSource === "all" || filters.timelineSource === "custom") {
+  if (filters.timelineSource === 'all' || filters.timelineSource === 'custom') {
     parts.push(`SELECT id FROM custom_events`);
   }
-  
-  const unionSql = parts.join(" UNION ALL ");
-  
+
+  const unionSql = parts.join(' UNION ALL ');
+
   return `
     WITH combined_events AS (
       ${unionSql || 'SELECT NULL AS id WHERE FALSE'}
@@ -102,12 +111,15 @@ export function buildQuery(filters: FilterState): string {
   const where = buildWhereClause(filters);
   const eventStrategiesCols = buildStrategyProjections(filters);
   const customStrategiesCols = eventStrategies
-    .map((s) => `FALSE AS is_strategy_${s.id.replace(/-/g, "_")}`)
-    .join(", ");
+    .map((s) => `FALSE AS is_strategy_${s.id.replace(/-/g, '_')}`)
+    .join(', ');
 
   const parts: string[] = [];
 
-  if (filters.timelineSource === "all" || filters.timelineSource === "whoscored") {
+  if (
+    filters.timelineSource === 'all' ||
+    filters.timelineSource === 'whoscored'
+  ) {
     parts.push(`
       SELECT 
         id::VARCHAR AS id,
@@ -136,7 +148,7 @@ export function buildQuery(filters: FilterState): string {
     `);
   }
 
-  if (filters.timelineSource === "all" || filters.timelineSource === "custom") {
+  if (filters.timelineSource === 'all' || filters.timelineSource === 'custom') {
     parts.push(`
       SELECT 
         id,
@@ -164,7 +176,7 @@ export function buildQuery(filters: FilterState): string {
     `);
   }
 
-  const unionSql = parts.join(" UNION ALL ");
+  const unionSql = parts.join(' UNION ALL ');
 
   return `
     WITH combined_events AS (

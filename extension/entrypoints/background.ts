@@ -7,33 +7,38 @@ export default defineBackground(() => {
   // Footics 本体タブを特定するヘルパー
   const findFooticsTab = async () => {
     const allTabs = await browser.tabs.query({});
-    return allTabs.find(t => 
-      t.url?.includes('localhost') || 
-      t.url?.includes('footics.com') ||
-      t.url?.includes('footics.watool.workers.dev')
+    return allTabs.find(
+      (t) =>
+        t.url?.includes('localhost') ||
+        t.url?.includes('footics.com') ||
+        t.url?.includes('footics.watool.workers.dev'),
     );
   };
 
   browser.commands.onCommand.addListener(async (command, tab) => {
     console.info('🚀 [Footics BG] Command received:', command);
 
-    if (command !== 'toggle-match-memo' && command !== 'toggle-event-memo') return;
+    if (command !== 'toggle-match-memo' && command !== 'toggle-event-memo')
+      return;
 
-    const mode: 'MATCH' | 'EVENT' = command === 'toggle-match-memo' ? 'MATCH' : 'EVENT';
+    const mode: 'MATCH' | 'EVENT' =
+      command === 'toggle-match-memo' ? 'MATCH' : 'EVENT';
 
     // 1. Footics 本体タブを検索
     const footicsTab = await findFooticsTab();
 
     // 分析対象タブ（動画視聴中など、コマンドが押されたタブ）
-    const activeTab = tab || (await browser.tabs.query({ active: true, currentWindow: true }))[0];
+    const activeTab =
+      tab ||
+      (await browser.tabs.query({ active: true, currentWindow: true }))[0];
 
     if (!footicsTab) {
       console.warn('❌ [Footics BG] Footics App tab not found.');
       if (activeTab?.id) {
-        const message: ExtensionMessage = { 
-          type: 'OPEN_OVERLAY', 
-          mode, 
-          error: 'Footics本体のタブを開いてください' 
+        const message: ExtensionMessage = {
+          type: 'OPEN_OVERLAY',
+          mode,
+          error: 'Footics本体のタブを開いてください',
         };
         browser.tabs.sendMessage(activeTab.id, message);
       }
@@ -42,19 +47,24 @@ export default defineBackground(() => {
 
     // 2. 本体タブから現在の Match ID を取得
     try {
-      const response = await browser.tabs.sendMessage(footicsTab.id!, { type: 'GET_ACTIVE_MATCH_INFO' });
+      const response = await browser.tabs.sendMessage(footicsTab.id!, {
+        type: 'GET_ACTIVE_MATCH_INFO',
+      });
       const matchId = response?.matchId;
 
       if (activeTab?.id) {
-        const message: ExtensionMessage = { 
-          type: 'OPEN_OVERLAY', 
-          mode, 
-          matchId 
+        const message: ExtensionMessage = {
+          type: 'OPEN_OVERLAY',
+          mode,
+          matchId,
         };
         browser.tabs.sendMessage(activeTab.id, message);
       }
     } catch (err) {
-      console.error('❌ [Footics BG] Failed to get match info from app tab:', err);
+      console.error(
+        '❌ [Footics BG] Failed to get match info from app tab:',
+        err,
+      );
     }
   });
 

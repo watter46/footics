@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import React from "react";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Team } from "@/types";
+import type React from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import type { SimplifiedTeam, Team } from '@/types';
 
 interface TeamFilterProps {
   selectedTeam: string;
-  teams: { home: Team; away: Team };
+  teams: { home: Team | SimplifiedTeam; away: Team | SimplifiedTeam };
   onTeamChange: (teamId: string) => void;
 }
 
@@ -22,8 +22,8 @@ export const TeamFilter: React.FC<TeamFilterProps> = ({
   onTeamChange,
 }) => {
   const selectedTeamName =
-    selectedTeam === "all"
-      ? ""
+    selectedTeam === 'all'
+      ? ''
       : selectedTeam === teams.home.teamId.toString()
         ? teams.home.name
         : teams.away.name;
@@ -33,10 +33,13 @@ export const TeamFilter: React.FC<TeamFilterProps> = ({
       <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
         Team Filter
       </label>
-      <Select value={selectedTeam} onValueChange={(val) => onTeamChange(val || "all")}>
+      <Select
+        value={selectedTeam}
+        onValueChange={(val) => onTeamChange(val || 'all')}
+      >
         <SelectTrigger className="w-full bg-slate-800/50 border-slate-700 text-slate-200">
           <SelectValue placeholder="All Teams">
-            {selectedTeam === "all" ? "All Teams" : selectedTeamName}
+            {selectedTeam === 'all' ? 'All Teams' : selectedTeamName}
           </SelectValue>
         </SelectTrigger>
         <SelectContent className="bg-slate-800 border-slate-700 text-slate-200">

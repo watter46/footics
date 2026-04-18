@@ -1,22 +1,25 @@
-import React from "react";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Loader2, 
-  Save, 
+import {
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
   Info,
+  Loader2,
+  Save,
   X,
-  AlertCircle
-} from "lucide-react";
-import { useMemoOverlayDerived } from "@/stores/useMemoOverlayStore";
-import { MemoOverlayHeader } from "./parts/MemoOverlayHeader";
-import { MemoOverlayProgressBar, MemoOverlayRecap } from "./parts/MemoOverlayProgress";
-import { PhaseTimeInput } from "./parts/PhaseTimeInput";
-import { PhaseLabelSelection } from "./parts/PhaseLabelSelection";
-import { PhaseMemoInput } from "./parts/PhaseMemoInput";
-import { MatchMemoUnit } from "./parts/MatchMemoUnit";
+} from 'lucide-react';
+import type React from 'react';
+import { useMemoOverlayDerived } from '@/stores/useMemoOverlayStore';
+import { MatchMemoUnit } from './parts/MatchMemoUnit';
+import { MemoOverlayHeader } from './parts/MemoOverlayHeader';
+import {
+  MemoOverlayProgressBar,
+  MemoOverlayRecap,
+} from './parts/MemoOverlayProgress';
+import { PhaseLabelSelection } from './parts/PhaseLabelSelection';
+import { PhaseMemoInput } from './parts/PhaseMemoInput';
+import { PhaseTimeInput } from './parts/PhaseTimeInput';
 
-const UI_VERSION = "0.2.1";
+const UI_VERSION = '0.2.1';
 
 interface MemoOverlayViewProps {
   matchId: string | undefined;
@@ -50,7 +53,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
     memo,
     error,
     isSaving,
-    
+
     // Actions
     setTimeStr,
     addLabel,
@@ -67,7 +70,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
     switch (phase) {
       case 0:
         return (
-          <PhaseTimeInput 
+          <PhaseTimeInput
             timeStr={timeStr}
             displayTime={formattedTime.display}
             isInvalid={formattedTime.isInvalid}
@@ -79,7 +82,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
         );
       case 1:
         return (
-          <PhaseLabelSelection 
+          <PhaseLabelSelection
             labelInput={labelInput}
             suggestions={suggestions}
             suggestionIndex={suggestionIndex}
@@ -93,11 +96,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
         );
       case 2:
         return (
-          <PhaseMemoInput 
-            memo={memo}
-            onMemoChange={setMemo}
-            onSave={onSave}
-          />
+          <PhaseMemoInput memo={memo} onMemoChange={setMemo} onSave={onSave} />
         );
       default:
         return null;
@@ -113,10 +112,10 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
       <MemoOverlayHeader mode={mode} phase={phase} onClose={onClose} />
 
       {/* ── イベントモード: 進捗バー & レキャップ ── */}
-      {mode === "EVENT" && (
+      {mode === 'EVENT' && (
         <>
           <MemoOverlayProgressBar phase={phase} />
-          <MemoOverlayRecap 
+          <MemoOverlayRecap
             phase={phase}
             displayTime={formattedTime.display}
             selectedLabels={selectedLabels}
@@ -133,7 +132,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
           .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
           .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
         `}</style>
-        {mode === "MATCH" ? (
+        {mode === 'MATCH' ? (
           <MatchMemoUnit
             memo={memo}
             isSaving={isSaving}
@@ -147,7 +146,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
       </div>
 
       {/* ── イベントモード: フッターナビゲーション ── */}
-      {mode === "EVENT" && (
+      {mode === 'EVENT' && (
         <div className="flex-shrink-0 px-5 py-4 bg-slate-950/30 border-t border-slate-800/50 flex justify-between items-center">
           <div className="flex gap-3">
             {phase > 0 && (
@@ -189,7 +188,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
       <div className="flex-shrink-0 px-5 py-2 bg-slate-950 flex items-center justify-between font-mono">
         <div className="flex items-center gap-2 overflow-hidden">
           <span className="text-[9px] text-slate-300 font-bold uppercase truncate">
-            Target: {matchId || "No Instance Connected"}
+            Target: {matchId || 'No Instance Connected'}
           </span>
         </div>
         <div className="text-[9px] font-black text-slate-200 tracking-tighter">
@@ -201,7 +200,9 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
       {error && (
         <div className="absolute inset-x-0 bottom-12 p-3 bg-red-950/90 border-y border-red-500/30 flex items-center gap-3 backdrop-blur-lg animate-in slide-in-from-bottom-2">
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-          <p className="text-xs text-red-200 font-bold leading-tight">{error}</p>
+          <p className="text-xs text-red-200 font-bold leading-tight">
+            {error}
+          </p>
           <button onClick={clearError} className="ml-auto text-red-500">
             <X className="w-4 h-4" />
           </button>

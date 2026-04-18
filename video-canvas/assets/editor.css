@@ -8,7 +8,9 @@
   --color-brand-to: #4f46e5;
   --color-brand-glow: rgba(59, 130, 246, 0.2);
 }
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
   padding: 0;
@@ -20,4 +22,3 @@ html, body, #root {
 .tl-container {
   --tl-color-background: #000000 !important;
 }
-
