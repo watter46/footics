@@ -4,8 +4,8 @@ import { Filter } from 'lucide-react';
 import React from 'react';
 import { useMatchList } from '@/hooks/use-match-list';
 import type { MatchSummary } from '@/types';
-import { FilterBar } from './match-list/FilterBar';
-import { MatchCard } from './match-list/MatchCard';
+import { FilterBar } from '../match-list/FilterBar';
+import { MatchCard } from '../match-list/MatchCard';
 
 interface Props {
   matches: MatchSummary[];

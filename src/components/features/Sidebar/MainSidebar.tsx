@@ -8,11 +8,14 @@ import type {
   OutcomeFilter as OutcomeType,
   Player,
 } from '@/types';
-import { FlatPlayerBadges, PlayerBadgeGroup } from './PlayerBadgeGroup';
-import { OutcomeFilter } from './Sidebar/OutcomeFilter';
-import { StrategyFilter } from './Sidebar/StrategyFilter';
-import { TeamFilter } from './Sidebar/TeamFilter';
-import { TimelineSourceFilter } from './Sidebar/TimelineSourceFilter';
+import {
+  FlatPlayerBadges,
+  PlayerBadgeGroup,
+} from '../analysis/PlayerBadgeGroup';
+import { OutcomeFilter } from './OutcomeFilter';
+import { StrategyFilter } from './StrategyFilter';
+import { TeamFilter } from './TeamFilter';
+import { TimelineSourceFilter } from './TimelineSourceFilter';
 
 interface SidebarProps {
   metadata: MatchMetadata;

@@ -33,8 +33,9 @@ export function GlobalDataManagement() {
     try {
       await exportAllDataZip();
       toast.success('Backup downloaded successfully!', { id: toastId });
-    } catch (err: any) {
-      toast.error(`Export failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast.error(`Export failed: ${message}`, { id: toastId });
     } finally {
       setIsProcessing(false);
       setIsOpen(false);
@@ -62,8 +63,9 @@ export function GlobalDataManagement() {
       setTimeout(() => {
         window.location.reload();
       }, 2500);
-    } catch (err: any) {
-      toast.error(`Restore failed: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast.error(`Restore failed: ${message}`, { id: toastId });
     } finally {
       setIsProcessing(false);
       setIsOpen(false);

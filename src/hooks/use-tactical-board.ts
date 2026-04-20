@@ -14,11 +14,12 @@ import {
 import { FORMATION_POSITIONS } from '@/lib/data/formations-data';
 import { DEFAULT_442_POSITIONS, toActualPos } from '@/lib/data/tactical-utils';
 import { getTacticalSnapshot, putTacticalSnapshot } from '@/lib/db';
+import type { BasePlayer, MatchMetadata, Player } from '@/types';
 import { type PlayerState, useTacticalStore } from './use-tactical-store';
 
 export function useTacticalBoard(
   matchId: string,
-  metadata: any,
+  metadata: MatchMetadata | null,
   isOpen: boolean,
 ) {
   const store = useTacticalStore();
@@ -39,7 +40,7 @@ export function useTacticalBoard(
             const players = metadata?.teams[team]?.players || [];
             if (players.length === 0) return false;
 
-            players.forEach((p: any, i: number) => {
+            players.forEach((p, i: number) => {
               let x, y, area: 'pitch' | 'bench';
               if (i < 11) {
                 area = 'pitch';
@@ -93,7 +94,7 @@ export function useTacticalBoard(
           }
 
           const mapping: Record<number, PlayerState> = {};
-          tactic.players.forEach((p: any) => {
+          tactic.players.forEach((p) => {
             mapping[p.playerId] = {
               ...p,
               area: p.area || (p.y > 100 ? 'bench' : 'pitch'),
@@ -228,7 +229,7 @@ export function useTacticalBoard(
     const initialMapping: Record<number, PlayerState> = {};
     const setupTeam = (team: 'home' | 'away') => {
       const players = metadata?.teams[team]?.players || [];
-      players.forEach((p: any, i: number) => {
+      players.forEach((p, i: number) => {
         let x, y, area: 'pitch' | 'bench';
         if (i < 11) {
           area = 'pitch';

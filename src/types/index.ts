@@ -197,6 +197,7 @@ export interface FilterState {
   activeStrategies: Set<string>;
   activeStrategyParams: Record<string, Record<string, unknown>>;
   timelineSource: 'all' | 'whoscored' | 'custom';
+  refreshTimestamp?: number;
 }
 
 // ──────────────────────────────────────────────

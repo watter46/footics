@@ -22,16 +22,17 @@ globs: ["extension/**/*.{ts,tsx}", "video-canvas/**/*.{ts,tsx}", "**/wxt.config.
     - 生存期間が限られる Service Worker の特性を考慮し、ステートの永続化には `storage` を利用する。
 
 ## 3. Storage & State Management
-- **原則:** 型安全なストレージアクセスを行い、複数のエントリポイント間で同期をとる。
+- **原則:** 型安全なストレージアクセスと一貫した UI ステート管理を行い、複数のエントリポイント間で状態を同期する。
 - **行動指針:**
-    - WXT の `storage` API を利用する。
-    - ストレージキーは一元管理し、Zod 等でスキーマ定義を行うことを推奨。
-    - クライアントサイド（Popup/Overlay）の UI ステート管理には Zustand を併用し、ストレージとの同期レイヤーを作成する。
+    - 軽量な設定には WXT `storage` を利用し、大量データ・複雑なスキーマをもつ IndexedDB 操作用には **`Dexie.js`** を使用する（`idb-keyval` 等の利用は非推奨・撤廃）。
+    - ストレージキーやデータ構造は **`Zod`** でスキーマ定義および検証を行うことを推奨。
+    - クライアントサイド（Popup/Overlay）の UI ステート管理には完全に **`Zustand`** を使用し、ローカルステートの散在を防止する。
 
 ## 4. Communication (Messaging)
-- **原則:** エントリポイント間の通信は透過的かつ型安全に行う。
+- **原則:** エントリポイント間の通信は、堅牢なブリッジライブラリを介して透過的かつ型安全に行う。
 - **行動指針:**
-    - `sendMessage` / `onMessage` の通信時には、メッセージの種類に応じた型定義を共通化して利用する。
+    - ネイティブの `browser.runtime.sendMessage` 等の直接利用は避け、通信の標準として **`webext-bridge`** を使用する。
+    - 通信するメッセージングペイロードとその応答型は、**`Zod`** のスキーマ検証と型推論 (`z.infer`) を用いて厳密に定義・管理する。
     - Content Scripts とウェブページ間の干渉を避けるため、CSS のカプセル化（Shadow DOM等）を検討する。
 
 ## 5. Security & Permissions
@@ -45,4 +46,5 @@ globs: ["extension/**/*.{ts,tsx}", "video-canvas/**/*.{ts,tsx}", "**/wxt.config.
 - **原則:** ウェブページの既存のデザインを壊さず、スムーズなオーバーレイを提供する。
 - **行動指針:**
     - Overlay UI は Shadow DOM を利用してスタイルを分離する。`wxt` の `createShadowRootUi` などを活用し、Tailwind CSS を Shadow DOM 内に適用してカプセル化を徹底すること。
+    - 動的な Tailwind クラス名の生成（条件付きスタイルなど）には、直接的な文字列結合を避け、必ず **`clsx` と `tailwind-merge`** を使用してスタイルの競合や破綻を防ぐ。
     - プレミアムな外観（トースト通知、アニメーション）を維持し、拡張機能であることを意識させないシームレスな体験を目指す。

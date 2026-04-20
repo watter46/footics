@@ -5,14 +5,18 @@ import type React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { getEventMetadata } from '@/lib/event-definitions';
 import { formatTimelineTime } from '@/lib/timeline-utils';
+import type { EventStrategy } from '@/registry/event-strategy';
 import type { EventRow, MatchMetadata } from '@/types';
 
 interface TimelineRowProps {
   event: EventRow;
   index: number;
-  virtualRow: any;
+  virtualRow: {
+    size: number;
+    start: number;
+  };
   metadata: MatchMetadata;
-  activeStrategyList: any[];
+  activeStrategyList: EventStrategy[];
   highlightEventId?: string | null;
   onEdit?: (event: EventRow) => void;
   onDelete?: (eventId: string) => void;

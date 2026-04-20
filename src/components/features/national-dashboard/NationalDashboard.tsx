@@ -3,9 +3,11 @@
 import { ChevronLeft, Edit3 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
-import { CentralFocusModal } from '@/components/features/CentralFocusModal';
-import { EventTimeline } from '@/components/features/EventTimeline';
-import { MatchMemoModal } from '@/components/features/MatchMemoModal';
+import {
+  CentralFocusModal,
+  EventTimeline,
+} from '@/components/features/analysis';
+import { MatchMemoModal } from '@/components/features/match';
 import { TacticalBoardModal } from '@/components/features/TacticalBoard/TacticalBoardModal';
 import { useNationalDashboard } from '@/hooks/features/national-dashboard/use-national-dashboard';
 import { useModalToggleShortcut } from '@/hooks/use-shortcut';

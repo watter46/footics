@@ -7,6 +7,7 @@ import Dashboard from '@/components/features/dashboard/Dashboard';
 import NationalDashboard from '@/components/features/national-dashboard/NationalDashboard';
 import { Card } from '@/components/ui/card';
 import { useDuckDB } from '@/hooks/use-duckdb';
+import { setKeyValue } from '@/lib/db';
 
 interface Props {
   matchId: string;
@@ -18,7 +19,7 @@ export function MatchViewWrapper({ matchId }: Props) {
   // 拡張機能から現在のアクティブな試合を特定できるように保存
   useEffect(() => {
     if (matchId) {
-      localStorage.setItem('lastActiveMatchId', matchId);
+      setKeyValue('lastActiveMatchId', matchId);
       // DOM 経由で拡張機能 (Isolated World) に受け渡す
       document.documentElement.dataset.matchId = matchId;
       console.log('[MatchViewWrapper] matchId set to dataset:', matchId);

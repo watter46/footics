@@ -1,4 +1,4 @@
-import { MatchViewWrapper } from '@/components/features/MatchViewWrapper';
+import { MatchViewWrapper } from '@/components/features/match';
 
 export default async function MatchPage({
   params,

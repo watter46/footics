@@ -10,10 +10,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback } from 'react';
-import { CentralFocusModal } from '@/components/features/CentralFocusModal';
-import { DataManagementMenu } from '@/components/features/DataManagementMenu';
-import { EventTimeline } from '@/components/features/EventTimeline';
-import { MatchMemoModal } from '@/components/features/MatchMemoModal';
+import {
+  CentralFocusModal,
+  EventTimeline,
+} from '@/components/features/analysis';
+import { DataManagementMenu } from '@/components/features/management';
+import { MatchMemoModal } from '@/components/features/match';
 import { Sidebar } from '@/components/features/Sidebar';
 import { TacticalBoardModal } from '@/components/features/TacticalBoard/TacticalBoardModal';
 import { Card } from '@/components/ui/card';

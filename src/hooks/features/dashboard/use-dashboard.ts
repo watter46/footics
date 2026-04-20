@@ -55,7 +55,7 @@ export function useDashboard(matchId: string) {
 
   const { events, totalCount, isQuerying } = useEvents(
     connection,
-    queryFilters as any,
+    queryFilters,
   );
 
   const handleEditCustomEvent = useCallback(
@@ -103,8 +103,9 @@ export function useDashboard(matchId: string) {
         await importMatchJsonFile(file, db, connection);
         toast.success('Cache restored successfully!', { id: toastId });
         window.location.reload();
-      } catch (err: any) {
-        toast.error(`Restore failed: ${err.message}`, { id: toastId });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        toast.error(`Restore failed: ${message}`, { id: toastId });
       } finally {
         setIsRestoring(false);
       }

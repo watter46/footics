@@ -5,7 +5,7 @@ import { useMatchMemo } from '@/hooks/use-match-memo';
 import { useKeyboardShortcut } from '@/hooks/use-shortcut';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
 import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
-import { MatchMemoUnit } from './MemoOverlay/parts/MatchMemoUnit';
+import { MatchMemoUnit } from '../MemoOverlay/parts/MatchMemoUnit';
 
 interface MatchMemoModalProps {
   matchId: string;

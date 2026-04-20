@@ -2,7 +2,7 @@
 
 import { Filter, X } from 'lucide-react';
 import React from 'react';
-import { GlobalDataManagement } from '../GlobalDataManagement';
+import { GlobalDataManagement } from '../management';
 
 interface FilterBarProps {
   activeType: 'all' | 'club' | 'national';

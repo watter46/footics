@@ -5,8 +5,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { eventStrategies } from '@/registry';
 import type { EventRow, MatchMetadata } from '@/types';
-import { TimelineHeader } from './Timeline/TimelineHeader';
-import { TimelineRow } from './Timeline/TimelineRow';
+import { TimelineHeader } from '../Timeline/TimelineHeader';
+import { TimelineRow } from '../Timeline/TimelineRow';
 
 interface EventTimelineProps {
   events: EventRow[];

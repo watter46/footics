@@ -11,20 +11,20 @@ import { saveCustomEvent } from '@/lib/db';
 import { loadCustomEventsToDuckDB } from '@/lib/duckdb/data-loader';
 import { EVENT_GROUPS } from '@/lib/event-definitions';
 import { createSavePayload } from '@/lib/features/MemoOverlay/memoOverlayLogic';
+import type { CustomEvent } from '@/lib/schema';
 import { isActionMatch, SHORTCUT_ACTIONS } from '@/lib/shortcuts';
 import {
   useMemoOverlayDerived,
   useMemoOverlayStore,
 } from '@/stores/useMemoOverlayStore';
-import { MemoOverlayView } from './MemoOverlay/MemoOverlayView';
+import { MemoOverlayView } from '../MemoOverlay/MemoOverlayView';
 
-interface CentralFocusModalProps {
-  matchId: string;
-  db: AsyncDuckDB | null;
-  connection: AsyncDuckDBConnection | null;
-  onRefresh: (eventId: string) => void;
-  editingEvent?: any;
-  onClose?: () => void;
+interface EditingEvent {
+  id: string;
+  minute: number;
+  second: number;
+  labels: string[];
+  memo: string;
 }
 
 /**
@@ -33,6 +33,15 @@ interface CentralFocusModalProps {
  * - 統一された useMemoOverlayStore と MemoOverlayView を使用。
  * - 保存処理として DuckDB への書き込みとタイムライン更新を実行。
  */
+interface CentralFocusModalProps {
+  matchId: string;
+  db: AsyncDuckDB | null;
+  connection: AsyncDuckDBConnection | null;
+  onRefresh: (eventId: string) => void;
+  editingEvent?: EditingEvent | null;
+  onClose?: () => void;
+}
+
 export function CentralFocusModal({
   matchId,
   db,
@@ -69,7 +78,7 @@ export function CentralFocusModal({
     store.setIsSaving(true);
     try {
       const id = editingEvent ? editingEvent.id : crypto.randomUUID();
-      const event = {
+      const event: CustomEvent = {
         id,
         match_id: matchId,
         minute: payload.minute,
@@ -79,7 +88,7 @@ export function CentralFocusModal({
         created_at: Date.now(),
       };
 
-      await saveCustomEvent(event as any);
+      await saveCustomEvent(event);
 
       if (db && connection) {
         await loadCustomEventsToDuckDB(db, connection, matchId);

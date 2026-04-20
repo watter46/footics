@@ -130,12 +130,12 @@ export function useDuckDB(matchId: string): DatabaseState {
                     teamId: matchFromDb.homeTeam.id,
                     name: matchFromDb.homeTeam.name,
                     players: [],
-                  } as any,
+                  },
                   away: {
                     teamId: matchFromDb.awayTeam.id,
                     name: matchFromDb.awayTeam.name,
                     players: [],
-                  } as any,
+                  },
                 },
                 playerIdNameDictionary: {},
               };
@@ -169,18 +169,16 @@ export function useDuckDB(matchId: string): DatabaseState {
     init();
 
     // 拡張機能等からのリフレッシュ要求を監視
-    const handleRefresh = (e: any) => {
-      if (
-        e.detail?.action === 'REFRESH_DATA' &&
-        e.detail?.matchId === matchId
-      ) {
+    const handleRefresh = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.action === 'REFRESH_DATA' && detail?.matchId === matchId) {
         console.log(
           `[useDuckDB] REFRESH_DATA received for matchId: ${matchId}. Reloading...`,
         );
         init(true);
       }
     };
-    window.addEventListener('footics-action' as any, handleRefresh);
+    window.addEventListener('footics-action', handleRefresh);
 
     return () => {
       cancelled = true;
