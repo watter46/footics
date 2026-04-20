@@ -1,7 +1,6 @@
-import { browser } from 'wxt/browser';
 import { putMatchMemo, saveCustomEvent } from '@/lib/db';
-import type { ExtensionMessage } from '../types/messaging';
 import { STORAGE_KEYS } from '../constants';
+import { ExtensionMessageSchema } from '../types/schemas';
 
 export default defineContentScript({
   matches: [
@@ -58,7 +57,13 @@ export default defineContentScript({
     syncMatchIdToStorage();
 
     // 1. Listen for messages from Background / Sidepanel
-    browser.runtime.onMessage.addListener(async (message: ExtensionMessage) => {
+    browser.runtime.onMessage.addListener(async (rawMessage) => {
+      const result = ExtensionMessageSchema.safeParse(rawMessage);
+      if (!result.success) {
+        console.warn('[ContentScript] Invalid message received:', result.error);
+        return;
+      }
+      const message = result.data;
       console.log('[ContentScript] Message received:', message.type);
 
       if (message.type === 'GET_ACTIVE_MATCH_INFO') {

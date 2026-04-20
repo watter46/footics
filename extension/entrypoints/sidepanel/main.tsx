@@ -1,9 +1,10 @@
 import '@/app/globals.css';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
+import { useSidepanelStore } from '../../stores/useSidepanelStore';
 
 const Sidepanel: React.FC = () => {
-  const [text, setText] = useState('');
+  const { text, setText } = useSidepanelStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {

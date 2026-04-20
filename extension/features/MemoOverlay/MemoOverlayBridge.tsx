@@ -9,29 +9,20 @@ import {
   type MemoMode,
 } from '@/lib/features/MemoOverlay/memoOverlayLogic';
 import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
+import { useOverlayStore } from '../../stores/useOverlayStore';
 import { DEBUG_CONFIG } from '../../constants';
-import type { ExtensionMessage, SaveMemoResponse } from '../../types/messaging';
-
-interface MemoOverlayBridgeProps {
-  mode: MemoMode;
-  matchId: string | undefined;
-  initialError?: string;
-  onClose: () => void;
-  onSaveSuccess: (message: string) => void;
-}
+import {
+  ExtensionMessageSchema,
+  SaveMemoResponseSchema,
+} from '../../types/schemas';
 
 /**
  * MemoOverlayBridge (Extension Adapter Layer)
  *
  * 責務: 拡張機能固有のI/Oをコア（Hook + View）に繋ぐ「接着剤」。
  */
-export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
-  mode,
-  matchId,
-  initialError,
-  onClose,
-  onSaveSuccess,
-}) => {
+export const MemoOverlayBridge: React.FC = () => {
+  const { mode, matchId, initialError, close, setToast } = useOverlayStore();
   const store = useMemoOverlayStore();
 
   // ── ストアの初期化 ──
@@ -88,31 +79,41 @@ export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
       if (DEBUG_CONFIG.DRY_RUN) {
         console.info('🚀 [DRY RUN] Save Payload:', { matchId, ...payload });
         await new Promise((resolve) => setTimeout(resolve, 500));
-        onSaveSuccess('Dry Run: Saved');
+        setToast('Dry Run: Saved');
         store.reset();
         return;
       }
 
-      const message: ExtensionMessage = {
+      const rawMessage = {
         type: 'SAVE_MEMO_RELAY',
         mode: currentState.mode,
         matchId: matchId!,
         memo: payload.memo,
+        ...(payload.type === 'EVENT'
+          ? {
+              minute: payload.minute,
+              second: payload.second,
+              labels: payload.labels,
+            }
+          : {}),
       };
 
-      if (payload.type === 'EVENT') {
-        message.minute = payload.minute;
-        message.second = payload.second;
-        message.labels = payload.labels;
+      const messageResult = ExtensionMessageSchema.safeParse(rawMessage);
+      if (!messageResult.success) {
+        console.error(
+          '[MemoOverlayBridge] Invalid payload:',
+          messageResult.error,
+        );
+        store.setError('内部エラーが発生しました。');
+        return;
       }
 
-      const response = (await browser.runtime.sendMessage(
-        message,
-      )) as SaveMemoResponse;
+      const rawResponse = await browser.runtime.sendMessage(messageResult.data);
+      const response = SaveMemoResponseSchema.safeParse(rawResponse).data;
 
       if (response?.success) {
-        onClose();
-        onSaveSuccess('Saved Successfully');
+        close();
+        setToast('Saved Successfully');
       } else {
         store.setError(
           response?.error || '保存に失敗しました。本体タブを確認してください。',
@@ -127,9 +128,9 @@ export const MemoOverlayBridge: React.FC<MemoOverlayBridgeProps> = ({
   };
 
   // ストア連携
-  useMemoOverlayEventBridge(onClose, handleSave);
+  useMemoOverlayEventBridge(close, handleSave);
 
   return (
-    <MemoOverlayView matchId={matchId} onClose={onClose} onSave={handleSave} />
+    <MemoOverlayView matchId={matchId} onClose={close} onSave={handleSave} />
   );
 };

@@ -1,10 +1,8 @@
 import { useEffect } from 'react';
 import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
 import { CATEGORY_KEYS, HIJACKED_KEYS } from '../constants';
-
-interface UseOverlayShortcutInterceptorProps {
-  isVisible: boolean;
-}
+import { useOverlayStore } from '../stores/useOverlayStore';
+import { FooticsActionSchema } from '../types/schemas';
 
 /**
  * useOverlayShortcutInterceptor
@@ -12,9 +10,9 @@ interface UseOverlayShortcutInterceptorProps {
  * 責務: オーバーレイ表示中に特定のキー入力をキャプチャし、
  * `footics-action` カスタムイベントとしてディスパッチする。
  */
-export function useOverlayShortcutInterceptor({
-  isVisible,
-}: UseOverlayShortcutInterceptorProps) {
+export function useOverlayShortcutInterceptor() {
+  const isVisible = useOverlayStore((state) => state.isVisible);
+
   useEffect(() => {
     if (!isVisible) return;
 
@@ -133,8 +131,15 @@ function dispatchAction(e: KeyboardEvent, isSaveCombo: boolean) {
   }
 
   if (action) {
-    window.dispatchEvent(
-      new CustomEvent('footics-action', { detail: { action, ...detail } }),
-    );
+    const rawData = { type: 'footics-action', detail: { action, ...detail } };
+    const result = FooticsActionSchema.safeParse(rawData);
+
+    if (result.success) {
+      window.dispatchEvent(
+        new CustomEvent('footics-action', { detail: result.data.detail }),
+      );
+    } else {
+      console.warn('[Footics Action] Invalid action data:', result.error);
+    }
   }
 }

@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { SuccessToast } from '../components/ui/SuccessToast';
-import { OVERLAY_TRANSITION_DURATION } from '../constants';
 import { MemoOverlayBridge } from '../features/MemoOverlay/MemoOverlayBridge';
 import { useOverlayShortcutInterceptor } from '../hooks/use-overlay-shortcut-interceptor';
-import type { ExtensionMessage } from '../types/messaging';
+import { useOverlayStore } from '../stores/useOverlayStore';
+import { ExtensionMessageSchema } from '../types/schemas';
 import '../assets/overlay.css';
 
 export default defineContentScript({
@@ -43,47 +43,50 @@ export default defineContentScript({
 });
 
 const OverlayApp = () => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [toast, setToast] = useState<{ message: string; visible: boolean }>({
-    message: '',
-    visible: false,
-  });
-  const [mode, setMode] = useState<'MATCH' | 'EVENT'>('MATCH');
-  const [matchId, setMatchId] = useState<string | undefined>();
-  const [initialError, setInitialError] = useState<string | undefined>();
+  const {
+    isVisible,
+    toast,
+    mode,
+    matchId,
+    initialError,
+    open,
+    close,
+    setToast,
+  } = useOverlayStore();
 
   // キーボード入力をキャプチャして footics-action に変換するロジックを分離
-  useOverlayShortcutInterceptor({ isVisible });
+  useOverlayShortcutInterceptor();
 
   useEffect(() => {
     // Background からのメッセージを受信
-    const listener = (message: ExtensionMessage) => {
+    const listener = (rawMessage: unknown) => {
+      const result = ExtensionMessageSchema.safeParse(rawMessage);
+      if (!result.success) return;
+
+      const message = result.data;
       if (message.type !== 'OPEN_OVERLAY') return;
 
       // 同モードで既に開いていればトグルで閉じる
-      setIsVisible((prev) => {
-        if (prev && mode === message.mode) return false;
-
-        setMode(message.mode || 'MATCH');
-        setMatchId(message.matchId);
-        setInitialError(message.error);
-        return true;
-      });
+      if (isVisible && mode === message.mode) {
+        close();
+      } else {
+        open({
+          mode: message.mode,
+          matchId: message.matchId,
+          error: message.error,
+        });
+      }
     };
 
     browser.runtime.onMessage.addListener(listener);
     return () => browser.runtime.onMessage.removeListener(listener);
-  }, [mode]);
+  }, [isVisible, mode, open, close]);
 
   const handleSaveSuccess = (message: string) => {
-    setToast({ message, visible: true });
-    setTimeout(
-      () => setToast((prev) => ({ ...prev, visible: false })),
-      OVERLAY_TRANSITION_DURATION,
-    );
+    setToast(message);
   };
 
-  const handleClose = () => setIsVisible(false);
+  const handleClose = () => close();
 
   return (
     <div className="footics-overlay-host">
@@ -92,13 +95,7 @@ const OverlayApp = () => {
       {/* Main Overlay */}
       {isVisible && (
         <div className="footics-overlay-root">
-          <MemoOverlayBridge
-            mode={mode}
-            matchId={matchId}
-            initialError={initialError}
-            onClose={handleClose}
-            onSaveSuccess={handleSaveSuccess}
-          />
+          <MemoOverlayBridge />
         </div>
       )}
     </div>

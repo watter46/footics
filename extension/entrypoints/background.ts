@@ -1,6 +1,10 @@
-import { browser } from 'wxt/browser';
+import { z } from 'zod';
 import { FOOTICS_APP_URLS, STORAGE_KEYS } from '../constants';
-import type { ExtensionMessage, MatchInfoResponse } from '../types/messaging';
+import type { ExtensionMessage } from '../types/messaging';
+import {
+  ExtensionMessageSchema,
+  MatchInfoResponseSchema,
+} from '../types/schemas';
 
 export default defineBackground(() => {
   console.log('Footics Background Script loaded');
@@ -29,19 +33,20 @@ export default defineBackground(() => {
       tab ||
       (await browser.tabs.query({ active: true, currentWindow: true }))[0];
 
-    // 2. ストレージから最新の Match ID を取得（第一優先）
     const stored = await browser.storage.local.get(
       STORAGE_KEYS.LAST_ACTIVE_MATCH_ID,
     );
-    let matchId =
-      (stored[STORAGE_KEYS.LAST_ACTIVE_MATCH_ID] as string) || undefined;
+    let matchId = z
+      .string()
+      .safeParse(stored[STORAGE_KEYS.LAST_ACTIVE_MATCH_ID]).data;
 
     // ストレージに無い場合のみ、本体タブに直接聞きに行く
     if (!matchId && footicsTab?.id) {
       try {
-        const response = (await browser.tabs.sendMessage(footicsTab.id, {
+        const rawResponse = await browser.tabs.sendMessage(footicsTab.id, {
           type: 'GET_ACTIVE_MATCH_INFO',
-        })) as MatchInfoResponse;
+        });
+        const response = MatchInfoResponseSchema.safeParse(rawResponse).data;
         matchId = response?.matchId;
       } catch (err) {
         console.warn('[Footics BG] Legacy relay fallback failed:', err);
@@ -74,7 +79,15 @@ export default defineBackground(() => {
     }
   });
 
-  browser.runtime.onMessage.addListener(async (message: ExtensionMessage) => {
+  browser.runtime.onMessage.addListener(async (rawMessage) => {
+    const result = ExtensionMessageSchema.safeParse(rawMessage);
+    if (!result.success) {
+      console.warn('[Footics BG] Invalid message received:', result.error);
+      return;
+    }
+
+    const message = result.data;
+
     // 3. オーバーレイからの保存リクエストを本体タブへ転送（リレー）
     if (message.type === 'SAVE_MEMO_RELAY') {
       const footicsTab = await findFooticsTab();
