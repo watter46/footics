@@ -6,6 +6,7 @@ import { MemoOverlayBridge } from '../features/MemoOverlay/MemoOverlayBridge';
 import { useOverlayShortcutInterceptor } from '../hooks/use-overlay-shortcut-interceptor';
 import { useOverlayStore } from '../stores/useOverlayStore';
 import { ExtensionMessageSchema } from '../types/schemas';
+import { cn } from '../utils/cn';
 import '../assets/overlay.css';
 
 export default defineContentScript({
@@ -82,19 +83,15 @@ const OverlayApp = () => {
     return () => browser.runtime.onMessage.removeListener(listener);
   }, [isVisible, mode, open, close]);
 
-  const handleSaveSuccess = (message: string) => {
-    setToast(message);
-  };
 
-  const handleClose = () => close();
 
   return (
-    <div className="footics-overlay-host">
+    <div className={cn('footics-overlay-host')}>
       <SuccessToast message={toast.message} isVisible={toast.visible} />
 
       {/* Main Overlay */}
       {isVisible && (
-        <div className="footics-overlay-root">
+        <div className={cn('footics-overlay-root')}>
           <MemoOverlayBridge />
         </div>
       )}

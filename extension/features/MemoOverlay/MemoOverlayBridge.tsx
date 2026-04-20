@@ -9,8 +9,8 @@ import {
   type MemoMode,
 } from '@/lib/features/MemoOverlay/memoOverlayLogic';
 import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
-import { useOverlayStore } from '../../stores/useOverlayStore';
 import { DEBUG_CONFIG } from '../../constants';
+import { useOverlayStore } from '../../stores/useOverlayStore';
 import {
   ExtensionMessageSchema,
   SaveMemoResponseSchema,
