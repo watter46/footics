@@ -1,20 +1,15 @@
 import type React from 'react';
 import { useEffect } from 'react';
-import { browser } from 'wxt/browser';
+import { sendMessage } from 'webext-bridge/content-script';
 import { MemoOverlayView } from '@/components/features/MemoOverlay/MemoOverlayView';
 import { useMemoOverlayEventBridge } from '@/hooks/features/MemoOverlay/useMemoOverlayEventBridge';
 import {
   createSavePayload,
   getValidationError,
-  type MemoMode,
 } from '@/lib/features/MemoOverlay/memoOverlayLogic';
 import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
 import { DEBUG_CONFIG } from '../../constants';
 import { useOverlayStore } from '../../stores/useOverlayStore';
-import {
-  ExtensionMessageSchema,
-  SaveMemoResponseSchema,
-} from '../../types/schemas';
 
 /**
  * MemoOverlayBridge (Extension Adapter Layer)
@@ -84,8 +79,7 @@ export const MemoOverlayBridge: React.FC = () => {
         return;
       }
 
-      const rawMessage = {
-        type: 'SAVE_MEMO_RELAY',
+      const payloadData = {
         mode: currentState.mode,
         matchId: matchId!,
         memo: payload.memo,
@@ -98,18 +92,11 @@ export const MemoOverlayBridge: React.FC = () => {
           : {}),
       };
 
-      const messageResult = ExtensionMessageSchema.safeParse(rawMessage);
-      if (!messageResult.success) {
-        console.error(
-          '[MemoOverlayBridge] Invalid payload:',
-          messageResult.error,
-        );
-        store.setError('内部エラーが発生しました。');
-        return;
-      }
-
-      const rawResponse = await browser.runtime.sendMessage(messageResult.data);
-      const response = SaveMemoResponseSchema.safeParse(rawResponse).data;
+      const response = await sendMessage(
+        'SAVE_MEMO_RELAY',
+        payloadData,
+        'background',
+      );
 
       if (response?.success) {
         close();

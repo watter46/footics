@@ -1,6 +1,6 @@
+import { onMessage, sendMessage } from 'webext-bridge/content-script';
 import { putMatchMemo, saveCustomEvent } from '@/lib/db';
 import { STORAGE_KEYS } from '../constants';
-import { ExtensionMessageSchema } from '../types/schemas';
 
 export default defineContentScript({
   matches: [
@@ -14,7 +14,10 @@ export default defineContentScript({
     console.log('Footics Bridge Content Script loaded');
 
     // 3. メインワールド（本体アプリ）へイベントを飛ばすためのブリッジ
-    const dispatchMainWorldEvent = (type: string, detail: any) => {
+    const dispatchMainWorldEvent = (
+      type: string,
+      detail: Record<string, unknown>,
+    ) => {
       const script = document.createElement('script');
       script.textContent = `
         window.dispatchEvent(new CustomEvent('footics-action', {
@@ -57,69 +60,59 @@ export default defineContentScript({
     syncMatchIdToStorage();
 
     // 1. Listen for messages from Background / Sidepanel
-    browser.runtime.onMessage.addListener(async (rawMessage) => {
-      const result = ExtensionMessageSchema.safeParse(rawMessage);
-      if (!result.success) {
-        console.warn('[ContentScript] Invalid message received:', result.error);
-        return;
-      }
-      const message = result.data;
-      console.log('[ContentScript] Message received:', message.type);
+    onMessage('GET_ACTIVE_MATCH_INFO', async () => {
+      const pathParts = window.location.pathname.split('/');
+      const matchIdx = pathParts.indexOf('match');
+      const matchIdFromUrl =
+        matchIdx !== -1 ? pathParts[matchIdx + 1] : undefined;
 
-      if (message.type === 'GET_ACTIVE_MATCH_INFO') {
-        const pathParts = window.location.pathname.split('/');
-        const matchIdx = pathParts.indexOf('match');
-        const matchIdFromUrl =
-          matchIdx !== -1 ? pathParts[matchIdx + 1] : undefined;
+      const matchId =
+        document.documentElement.dataset.matchId ||
+        document.body.dataset.matchId ||
+        matchIdFromUrl ||
+        pathParts.find((p) => p.startsWith('match_'));
 
-        const matchId =
-          document.documentElement.dataset.matchId ||
-          document.body.dataset.matchId ||
-          matchIdFromUrl ||
-          pathParts.find((p) => p.startsWith('match_'));
+      console.log('[ContentScript] Detected matchId:', matchId);
+      return { matchId };
+    });
 
-        console.log('[ContentScript] Detected matchId:', matchId);
-        return { matchId };
-      }
+    onMessage('SAVE_MEMO_RELAY', async ({ data }) => {
+      const { mode, matchId, memo } = data;
+      console.log('[ContentScript] Saving via Relay:', mode, matchId);
 
-      if (message.type === 'SAVE_MEMO_RELAY') {
-        const { mode, matchId, memo } = message;
-        console.log('[ContentScript] Saving via Relay:', mode, matchId);
-
-        try {
-          if (mode === 'MATCH') {
-            await putMatchMemo({ matchId, memo, updatedAt: Date.now() });
-          } else if (mode === 'EVENT') {
-            await saveCustomEvent({
-              id: crypto.randomUUID(),
-              match_id: matchId,
-              minute: message.minute || 0,
-              second: message.second || 0,
-              labels: message.labels || ['分析メモ'],
-              memo: memo || '',
-              created_at: Date.now(),
-            });
-          }
-          // メインワールド（アプリ側）に通知
-          dispatchMainWorldEvent('REFRESH_DATA', { matchId });
-          return { success: true };
-        } catch (e) {
-          console.error('[ContentScript] Save Relay failed:', e);
-          return { success: false, error: String(e) };
+      try {
+        if (mode === 'MATCH') {
+          await putMatchMemo({ matchId, memo, updatedAt: Date.now() });
+        } else if (mode === 'EVENT') {
+          await saveCustomEvent({
+            id: crypto.randomUUID(),
+            match_id: matchId,
+            minute: data.minute || 0,
+            second: data.second || 0,
+            labels: data.labels || ['分析メモ'],
+            memo: memo || '',
+            created_at: Date.now(),
+          });
         }
+        // メインワールド（アプリ側）に通知
+        dispatchMainWorldEvent('REFRESH_DATA', { matchId });
+        return { success: true };
+      } catch (e) {
+        console.error('[ContentScript] Save Relay failed:', e);
+        return { success: false, error: String(e) };
       }
+    });
 
-      if (message.type === 'SAVE_CUSTOM_EVENT') {
-        const { event } = message;
-        try {
-          await saveCustomEvent(event);
-          // メインワールド（アプリ側）に通知
-          dispatchMainWorldEvent('REFRESH_DATA', { matchId: event.match_id });
-          return { success: true };
-        } catch (e) {
-          console.error('[ContentScript] SAVE_CUSTOM_EVENT failed:', e);
-          return { success: false, error: String(e) };
-        }
+    onMessage('SAVE_CUSTOM_EVENT', async ({ data }) => {
+      const { event } = data;
+      try {
+        await saveCustomEvent(event);
+        // メインワールド（アプリ側）に通知
+        dispatchMainWorldEvent('REFRESH_DATA', { matchId: event.match_id });
+        return { success: true };
+      } catch (e) {
+        console.error('[ContentScript] SAVE_CUSTOM_EVENT failed:', e);
+        return { success: false, error: String(e) };
       }
     });
 
@@ -131,7 +124,7 @@ export default defineContentScript({
           console.log(
             '[ContentScript] Escape key detected - relaying to background',
           );
-          browser.runtime.sendMessage({ type: 'CLOSE_SIDEPANEL' });
+          sendMessage('CLOSE_SIDEPANEL', {}, 'background');
         }
       },
       true,

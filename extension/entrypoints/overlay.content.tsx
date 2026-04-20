@@ -1,11 +1,10 @@
 import { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import { browser } from 'wxt/browser';
+import { onMessage } from 'webext-bridge/content-script';
 import { SuccessToast } from '../components/ui/SuccessToast';
 import { MemoOverlayBridge } from '../features/MemoOverlay/MemoOverlayBridge';
 import { useOverlayShortcutInterceptor } from '../hooks/use-overlay-shortcut-interceptor';
 import { useOverlayStore } from '../stores/useOverlayStore';
-import { ExtensionMessageSchema } from '../types/schemas';
 import { cn } from '../utils/cn';
 import '../assets/overlay.css';
 
@@ -44,46 +43,26 @@ export default defineContentScript({
 });
 
 const OverlayApp = () => {
-  const {
-    isVisible,
-    toast,
-    mode,
-    matchId,
-    initialError,
-    open,
-    close,
-    setToast,
-  } = useOverlayStore();
+  const { isVisible, toast, mode, open, close } = useOverlayStore();
 
   // キーボード入力をキャプチャして footics-action に変換するロジックを分離
   useOverlayShortcutInterceptor();
 
   useEffect(() => {
     // Background からのメッセージを受信
-    const listener = (rawMessage: unknown) => {
-      const result = ExtensionMessageSchema.safeParse(rawMessage);
-      if (!result.success) return;
-
-      const message = result.data;
-      if (message.type !== 'OPEN_OVERLAY') return;
-
+    return onMessage('OPEN_OVERLAY', ({ data }) => {
       // 同モードで既に開いていればトグルで閉じる
-      if (isVisible && mode === message.mode) {
+      if (isVisible && mode === data.mode) {
         close();
       } else {
         open({
-          mode: message.mode,
-          matchId: message.matchId,
-          error: message.error,
+          mode: data.mode,
+          matchId: data.matchId,
+          error: data.error,
         });
       }
-    };
-
-    browser.runtime.onMessage.addListener(listener);
-    return () => browser.runtime.onMessage.removeListener(listener);
+    });
   }, [isVisible, mode, open, close]);
-
-
 
   return (
     <div className={cn('footics-overlay-host')}>

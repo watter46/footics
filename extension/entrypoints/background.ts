@@ -1,10 +1,6 @@
+import { onMessage, sendMessage } from 'webext-bridge/background';
 import { z } from 'zod';
 import { FOOTICS_APP_URLS, STORAGE_KEYS } from '../constants';
-import type { ExtensionMessage } from '../types/messaging';
-import {
-  ExtensionMessageSchema,
-  MatchInfoResponseSchema,
-} from '../types/schemas';
 
 export default defineBackground(() => {
   console.log('Footics Background Script loaded');
@@ -40,13 +36,13 @@ export default defineBackground(() => {
       .string()
       .safeParse(stored[STORAGE_KEYS.LAST_ACTIVE_MATCH_ID]).data;
 
-    // ストレージに無い場合のみ、本体タブに直接聞きに行く
     if (!matchId && footicsTab?.id) {
       try {
-        const rawResponse = await browser.tabs.sendMessage(footicsTab.id, {
-          type: 'GET_ACTIVE_MATCH_INFO',
-        });
-        const response = MatchInfoResponseSchema.safeParse(rawResponse).data;
+        const response = await sendMessage(
+          'GET_ACTIVE_MATCH_INFO',
+          {},
+          `content-script@${footicsTab.id}`,
+        );
         matchId = response?.matchId;
       } catch (err) {
         console.warn('[Footics BG] Legacy relay fallback failed:', err);
@@ -58,44 +54,44 @@ export default defineBackground(() => {
         '❌ [Footics BG] Footics App tab not found and no ID in storage.',
       );
       if (activeTab?.id) {
-        const message: ExtensionMessage = {
-          type: 'OPEN_OVERLAY',
-          mode,
-          error: 'Footics本体のタブを開いて試合を特定してください',
-        };
-        browser.tabs.sendMessage(activeTab.id, message);
+        sendMessage(
+          'OPEN_OVERLAY',
+          {
+            mode,
+            error: 'Footics本体のタブを開いて試合を特定してください',
+          },
+          `content-script@${activeTab.id}`,
+        );
       }
       return;
     }
 
     // 3. オーバレイを開く
     if (activeTab?.id) {
-      const message: ExtensionMessage = {
-        type: 'OPEN_OVERLAY',
-        mode,
-        matchId: matchId || undefined,
-      };
-      browser.tabs.sendMessage(activeTab.id, message);
+      sendMessage(
+        'OPEN_OVERLAY',
+        {
+          mode,
+          matchId: matchId || undefined,
+        },
+        `content-script@${activeTab.id}`,
+      );
     }
   });
 
-  browser.runtime.onMessage.addListener(async (rawMessage) => {
-    const result = ExtensionMessageSchema.safeParse(rawMessage);
-    if (!result.success) {
-      console.warn('[Footics BG] Invalid message received:', result.error);
-      return;
+  onMessage('SAVE_MEMO_RELAY', async ({ data }) => {
+    const footicsTab = await findFooticsTab();
+    if (footicsTab?.id) {
+      return sendMessage(
+        'SAVE_MEMO_RELAY',
+        data,
+        `content-script@${footicsTab.id}`,
+      );
     }
+    return { success: false, error: 'Footics本体タブが見つかりません' };
+  });
 
-    const message = result.data;
-
-    // 3. オーバーレイからの保存リクエストを本体タブへ転送（リレー）
-    if (message.type === 'SAVE_MEMO_RELAY') {
-      const footicsTab = await findFooticsTab();
-
-      if (footicsTab?.id) {
-        return browser.tabs.sendMessage(footicsTab.id, message);
-      }
-      return { success: false, error: 'Footics本体タブが見つかりません' };
-    }
+  onMessage('CLOSE_SIDEPANEL', () => {
+    // 必要に応じて処理を追加
   });
 });
