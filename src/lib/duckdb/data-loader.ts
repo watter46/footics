@@ -10,73 +10,8 @@ import type {
   MatchRoot,
   MatchSummary,
 } from '@/types';
-
-// ──────────────────────────────────────────────
-// Parquet Export / Import
-// ──────────────────────────────────────────────
-
-async function exportTableAsParquet(
-  conn: duckdb.AsyncDuckDBConnection,
-  db: duckdb.AsyncDuckDB,
-  tableName: string,
-): Promise<ArrayBuffer> {
-  const fileName = `${tableName}_export_${Date.now()}.parquet`;
-
-  try {
-    // 1. メモリ上のテーブルを VFS 上の Parquet ファイルとして書き出し
-    await conn.query(
-      `COPY (SELECT * FROM ${tableName}) TO '${fileName}' (FORMAT PARQUET)`,
-    );
-
-    // 2. VFS 上のファイルをバッファに取得
-    const buffer = await db.copyFileToBuffer(fileName);
-
-    // バッファのコピーを返す
-    return new Uint8Array(buffer).slice().buffer as ArrayBuffer;
-  } finally {
-    // 3. VFS 上のテンポラリファイルを削除
-    try {
-      await db.dropFile(fileName);
-    } catch (e) {
-      // Ignore
-    }
-  }
-}
-
-async function importParquetAsTable(
-  conn: duckdb.AsyncDuckDBConnection,
-  db: duckdb.AsyncDuckDB,
-  tableName: string,
-  parquetBuffer: ArrayBuffer,
-  matchId: string,
-): Promise<void> {
-  // ファイル名の競合を避けるため matchId とタイムスタンプを含めてユニーク化
-  const fileName = `${tableName}_${matchId}_${Date.now()}.parquet`;
-
-  try {
-    // バッファを VFS に登録
-    const uint8View = new Uint8Array(parquetBuffer);
-    await db.registerFileBuffer(fileName, uint8View);
-
-    // 既存テーブルを置換（または新規作成）して Parquet から読み込み
-    await conn.query(
-      `CREATE OR REPLACE TABLE ${tableName} AS SELECT * FROM read_parquet('${fileName}')`,
-    );
-  } catch (err: any) {
-    console.error(
-      `[footics] Failed to import parquet table ${tableName} for match ${matchId}:`,
-      err,
-    );
-    throw err;
-  } finally {
-    // 読み込み完了後、即座に VFS からファイルを解除してメモリを解放
-    try {
-      await db.dropFile(fileName);
-    } catch (e) {
-      console.warn(`[footics] Cleanup failed for ${fileName}`, e);
-    }
-  }
-}
+import { parseNationalMatchData } from './national-parser';
+import { exportTableAsParquet, importParquetAsTable } from './parquet-utils';
 
 // ──────────────────────────────────────────────
 // Public API
@@ -108,11 +43,12 @@ export async function loadMatchData(
   conn: duckdb.AsyncDuckDBConnection,
   matchId: string,
   _isRetry = false,
+  forceRefresh = false,
 ): Promise<LoadResult> {
   const start = performance.now();
 
   // セッションキャッシュのチェック
-  if (getCurrentlyLoadedMatchId() === matchId && !_isRetry) {
+  if (getCurrentlyLoadedMatchId() === matchId && !_isRetry && !forceRefresh) {
     console.log(
       `[footics] Match ${matchId} is already loaded in DuckDB. Skipping data load.`,
     );
@@ -231,91 +167,6 @@ export async function loadCustomEventsToDuckDB(
       'created_at': 'BIGINT'
     });
   `);
-}
-
-/**
- * ナショナルデータ特有の構造をパースして正規化する
- */
-function parseNationalMatchData(data: any) {
-  const matchId = data.matchId;
-  const scrap = data.initialMatchDataForScrappers;
-
-  // scrap[0][0] contains match info
-  const info = scrap[0][0];
-  const homeTeamId = info[0];
-  const awayTeamId = info[1];
-  const homeTeamName = info[2] || info[13] || 'Home';
-  const awayTeamName = info[3] || info[14] || 'Away';
-  const score = info[12] || info[8] || '0 : 0';
-  const rawDate = info[4] || '';
-
-  let date = '';
-  if (rawDate) {
-    const parts = rawDate.split(' ')[0].split('/');
-    if (parts.length === 3) {
-      date = `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-  }
-
-  const playerInfo = scrap[0][2];
-  const homeLineup = playerInfo[9] || [];
-  const awayLineup = playerInfo[10] || [];
-  const homeSubsList = playerInfo[11] || [];
-  const awaySubsList = playerInfo[12] || [];
-
-  const playerIdNameDictionary: Record<string, string> = {};
-
-  const mapPlayers = (list: any[], teamId: number, isFirstEleven: boolean) => {
-    return list.map((p: any) => {
-      const name = p[0];
-      const playerId = p[3] || Math.floor(Math.random() * 1000000);
-      playerIdNameDictionary[String(playerId)] = name;
-      return {
-        match_id: matchId,
-        team_id: teamId,
-        player_id: playerId,
-        shirt_no: 0,
-        name: name,
-        position: isFirstEleven ? 'FW' : 'Sub',
-        is_first_eleven: isFirstEleven,
-      };
-    });
-  };
-
-  const players = [
-    ...mapPlayers(homeLineup, homeTeamId, true),
-    ...mapPlayers(homeSubsList, homeTeamId, false),
-    ...mapPlayers(awayLineup, awayTeamId, true),
-    ...mapPlayers(awaySubsList, awayTeamId, false),
-  ];
-
-  const matches = [
-    {
-      match_id: matchId,
-      start_time: date,
-      venue_name: 'International Venue',
-      home_team_id: homeTeamId,
-      away_team_id: awayTeamId,
-      score: score,
-      match_type: 'national',
-    },
-  ];
-
-  const events: any[] = [];
-
-  const metadata: MatchMetadata = {
-    matchId: String(matchId),
-    date: date,
-    score: score,
-    matchType: 'national',
-    playerIdNameDictionary,
-    teams: {
-      home: { teamId: homeTeamId, name: homeTeamName, players: [] } as any,
-      away: { teamId: awayTeamId, name: awayTeamName, players: [] } as any,
-    },
-  };
-
-  return { matches, players, events, metadata };
 }
 
 /**

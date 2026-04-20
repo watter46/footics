@@ -79,15 +79,23 @@ export function useDuckDB(matchId: string): DatabaseState {
   useEffect(() => {
     let cancelled = false;
 
-    async function init() {
-      console.log(`[useDuckDB] Start loading for matchId: ${matchId}`);
+    async function init(force = false) {
+      console.log(
+        `[useDuckDB] Start loading for matchId: ${matchId}${force ? ' (force)' : ''}`,
+      );
       try {
         dispatch({ type: 'SET_STATUS', status: 'initializing' });
         const { db, conn } = await initializeDuckDB();
         if (cancelled) return;
 
         dispatch({ type: 'SET_STATUS', status: 'loading-data' });
-        const { metadata } = await loadMatchData(db, conn, matchId);
+        const { metadata } = await loadMatchData(
+          db,
+          conn,
+          matchId,
+          false,
+          force,
+        );
         if (cancelled) return;
 
         console.log(`[useDuckDB] Successfully loaded matchId: ${matchId}`);
@@ -166,7 +174,7 @@ export function useDuckDB(matchId: string): DatabaseState {
         console.log(
           `[useDuckDB] REFRESH_DATA received for matchId: ${matchId}. Reloading...`,
         );
-        init();
+        init(true);
       }
     };
     window.addEventListener('footics-action' as any, handleRefresh);

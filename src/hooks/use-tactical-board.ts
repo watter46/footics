@@ -7,11 +7,11 @@ import {
 } from '@dnd-kit/core';
 import { useCallback, useEffect } from 'react';
 import {
-  FORMATION_POSITIONS,
   type FormationMode,
   type FormationType,
   getFormationActualPos,
 } from '@/lib/data/formations';
+import { FORMATION_POSITIONS } from '@/lib/data/formations-data';
 import { DEFAULT_442_POSITIONS, toActualPos } from '@/lib/data/tactical-utils';
 import { getTacticalSnapshot, putTacticalSnapshot } from '@/lib/db';
 import { type PlayerState, useTacticalStore } from './use-tactical-store';

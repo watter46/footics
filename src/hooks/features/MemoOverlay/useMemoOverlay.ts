@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  type FlattenedEvent,
-  getFlattenedEvents,
-} from '@/lib/event-definitions';
+import type { FlattenedEvent } from '@/lib/event-definitions';
+import { timeStrToMinuteSecond } from '@/lib/features/MemoOverlay/utils';
+import { useMemoOverlayLabels } from './useMemoOverlayLabels';
+import { useMemoOverlayTime } from './useMemoOverlayTime';
 
 export type MemoMode = 'MATCH' | 'EVENT';
 export type EventPhase = 0 | 1 | 2; // 0: Time, 1: Label, 2: Memo
@@ -79,80 +79,17 @@ export interface MatchSavePayload {
 }
 
 // =======================================
-// ユーティリティ: 時間文字列のパース
-// =======================================
-export function parseTimeStr(timeStr: string): {
-  display: string;
-  isInvalid: boolean;
-  empty: boolean;
-} {
-  const digits = timeStr.replace(/\D/g, '');
-  if (digits.length === 0)
-    return { display: '--:--', isInvalid: false, empty: true };
-
-  let m = '0';
-  let s = '00';
-  if (digits.length <= 2) {
-    s = digits.padStart(2, '0');
-  } else {
-    m = digits.slice(0, -2);
-    s = digits.slice(-2);
-  }
-  return {
-    display: `${m}:${s}`,
-    isInvalid: parseInt(s, 10) >= 60,
-    empty: false,
-  };
-}
-
-export function timeStrToMinuteSecond(timeStr: string): {
-  minute: number;
-  second: number;
-} {
-  const digits = timeStr.replace(/\D/g, '').padStart(2, '0');
-  const second = parseInt(digits.slice(-2), 10);
-  const minute = parseInt(digits.slice(0, -2) || '0', 10);
-  return { minute, second };
-}
-
-// =======================================
 // Hook 本体
 // =======================================
 export function useMemoOverlay(mode: MemoMode, initialError?: string) {
   const [phase, setPhase] = useState<EventPhase>(0);
-  const [timeStr, setTimeStr] = useState('');
-  const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
-  const [labelInput, setLabelInput] = useState('');
-  const [suggestionIndex, setSuggestionIndex] = useState(0);
-  const [isListMode, setIsListMode] = useState(false);
   const [memo, setMemo] = useState('');
   const [error, setError] = useState<string | undefined>(initialError);
   const [isSaving, setIsSaving] = useState(false);
 
-  // -------------------------------------------------------
-  // Derived State
-  // -------------------------------------------------------
-  const formattedTime = useMemo(() => parseTimeStr(timeStr), [timeStr]);
-  const flattenedEvents = useMemo(() => getFlattenedEvents(), []);
-
-  const suggestions = useMemo<FlattenedEvent[]>(() => {
-    if (!labelInput) return flattenedEvents.slice(0, 50);
-    const query = labelInput.toLowerCase();
-    return flattenedEvents
-      .filter(
-        (e) =>
-          e.label.toLowerCase().includes(query) ||
-          e.keywords.some((k) => k.toLowerCase().includes(query)),
-      )
-      .slice(0, 15);
-  }, [labelInput, flattenedEvents]);
-
-  const isInvalidLabel = useMemo(() => {
-    if (!labelInput) return false;
-    return !suggestions.some(
-      (s) => s.label.toLowerCase() === labelInput.toLowerCase(),
-    );
-  }, [labelInput, suggestions]);
+  // 子フックの利用
+  const timeHook = useMemoOverlayTime();
+  const labelHook = useMemoOverlayLabels();
 
   // -------------------------------------------------------
   // 最新のステートを Ref に保持（アクション関数の安定化のため）
@@ -160,13 +97,13 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
   const stateRef = useRef({
     mode,
     phase,
-    timeStr,
-    formattedTime,
-    selectedLabels,
-    labelInput,
-    suggestions,
-    suggestionIndex,
-    isListMode,
+    timeStr: timeHook.timeStr,
+    formattedTime: timeHook.formattedTime,
+    selectedLabels: labelHook.selectedLabels,
+    labelInput: labelHook.labelInput,
+    suggestions: labelHook.suggestions,
+    suggestionIndex: labelHook.suggestionIndex,
+    isListMode: labelHook.isListMode,
     memo,
     error,
     isSaving,
@@ -176,13 +113,13 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
     stateRef.current = {
       mode,
       phase,
-      timeStr,
-      formattedTime,
-      selectedLabels,
-      labelInput,
-      suggestions,
-      suggestionIndex,
-      isListMode,
+      timeStr: timeHook.timeStr,
+      formattedTime: timeHook.formattedTime,
+      selectedLabels: labelHook.selectedLabels,
+      labelInput: labelHook.labelInput,
+      suggestions: labelHook.suggestions,
+      suggestionIndex: labelHook.suggestionIndex,
+      isListMode: labelHook.isListMode,
       memo,
       error,
       isSaving,
@@ -190,13 +127,13 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
   }, [
     mode,
     phase,
-    timeStr,
-    formattedTime,
-    selectedLabels,
-    labelInput,
-    suggestions,
-    suggestionIndex,
-    isListMode,
+    timeHook.timeStr,
+    timeHook.formattedTime,
+    labelHook.selectedLabels,
+    labelHook.labelInput,
+    labelHook.suggestions,
+    labelHook.suggestionIndex,
+    labelHook.isListMode,
     memo,
     error,
     isSaving,
@@ -211,7 +148,7 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
       phase: p,
       timeStr: t,
       formattedTime: f,
-      selectedLabels: s,
+      selectedLabels: sl,
     } = stateRef.current;
     if (m !== 'EVENT') return null;
 
@@ -221,7 +158,7 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
     }
 
     if (p === 1) {
-      if (s.length === 0) return 'ラベルを1つ以上選択してください。';
+      if (sl.length === 0) return 'ラベルを1つ以上選択してください。';
     }
 
     return null;
@@ -230,86 +167,47 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
   // -------------------------------------------------------
   // Actions
   // -------------------------------------------------------
-  const setTimeStrAction = useCallback((val: string) => {
-    setTimeStr(val);
-    setError(undefined);
-  }, []);
-
-  const appendTimeDigit = useCallback((digit: string) => {
-    setError(undefined);
-    setTimeStr((prev) => (prev + digit).slice(0, 5));
-  }, []);
-
-  const backspaceTimeStr = useCallback(() => {
-    setError(undefined);
-    setTimeStr((prev) => prev.slice(0, -1));
-  }, []);
-
-  const setLabelInputAction = useCallback((val: string) => {
-    setLabelInput(val);
-    setSuggestionIndex(0);
-    setIsListMode(false);
-    setError(undefined);
-  }, []);
-
-  const addLabel = useCallback((label: string) => {
-    setError(undefined);
-    setSelectedLabels((prev) =>
-      prev.includes(label) ? prev : [...prev, label],
-    );
-    setLabelInput('');
-    setSuggestionIndex(0);
-    setIsListMode(false);
-  }, []);
-
-  const removeLabel = useCallback((index: number) => {
-    setSelectedLabels((prev) => prev.filter((_, i) => i !== index));
-  }, []);
-
-  const backspaceLabel = useCallback(() => {
-    setError(undefined);
-    const { labelInput: li, selectedLabels: sl } = stateRef.current;
-    if (li !== '') {
-      setLabelInput((prev) => prev.slice(0, -1));
-    } else if (sl.length > 0) {
-      setSelectedLabels((prev) => {
-        const labels = [...prev];
-        const last = labels.pop();
-        if (last) setLabelInput(last);
-        return labels;
-      });
-      setIsListMode(false);
-    }
-  }, []);
-
-  const navigateSuggestion = useCallback((direction: 1 | -1) => {
-    const { suggestions: s, isListMode: ilm } = stateRef.current;
-    if (s.length === 0) return;
-
-    // 初めてリストモードに入る時（↓キー）は、0番目から開始するように強制
-    if (!ilm && direction === 1) {
-      setIsListMode(true);
-      setSuggestionIndex(0);
-      return;
-    }
-
-    setIsListMode(true);
-    setSuggestionIndex((prev) => {
-      const next = prev + direction;
-      if (next < 0) return s.length - 1;
-      if (next >= s.length) return 0;
-      return next;
-    });
-  }, []);
-
-  const confirmSuggestion = useCallback(() => {
-    const { suggestions: s, suggestionIndex: si } = stateRef.current;
-    const target = s[si];
-    if (target) {
-      addLabel(target.label);
+  const setTimeStrAction = useCallback(
+    (val: string) => {
+      timeHook.setTimeStr(val);
       setError(undefined);
-    }
-  }, [addLabel]);
+    },
+    [timeHook],
+  );
+
+  const appendTimeDigitAction = useCallback(
+    (digit: string) => {
+      setError(undefined);
+      timeHook.appendTimeDigit(digit);
+    },
+    [timeHook],
+  );
+
+  const backspaceTimeStrAction = useCallback(() => {
+    setError(undefined);
+    timeHook.backspaceTimeStr();
+  }, [timeHook]);
+
+  const setLabelInputAction = useCallback(
+    (val: string) => {
+      labelHook.setLabelInput(val);
+      setError(undefined);
+    },
+    [labelHook],
+  );
+
+  const addLabelAction = useCallback(
+    (label: string) => {
+      setError(undefined);
+      labelHook.addLabel(label);
+    },
+    [labelHook],
+  );
+
+  const backspaceLabelAction = useCallback(() => {
+    setError(undefined);
+    labelHook.backspaceLabel();
+  }, [labelHook]);
 
   const filterByCategory = useCallback(
     (categoryIndex: number) => {
@@ -317,14 +215,12 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
       const cats = ['攻撃', '守備', 'トランジション', 'GK', '判定', 'メンタル'];
       setError(undefined);
       if (p === 0) {
-        appendTimeDigit((categoryIndex + 1).toString());
+        timeHook.appendTimeDigit((categoryIndex + 1).toString());
       } else if (p === 1) {
-        setLabelInput(cats[categoryIndex] ?? '');
-        setSuggestionIndex(0);
-        setIsListMode(false);
+        labelHook.setLabelInput(cats[categoryIndex] ?? '');
       }
     },
-    [appendTimeDigit],
+    [timeHook, labelHook],
   );
 
   const nextPhase = useCallback((): 'BLOCKED' | 'OK' => {
@@ -332,7 +228,7 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
     if (m !== 'EVENT') return 'OK';
 
     if (p === 1 && ilm) {
-      confirmSuggestion();
+      labelHook.confirmSuggestion();
       return 'OK';
     }
 
@@ -345,28 +241,25 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
     if (p === 0) {
       setPhase(1);
     } else if (p === 1) {
-      setLabelInput('');
+      labelHook.setLabelInput('');
       setPhase(2);
     }
 
     setError(undefined);
     return 'OK';
-  }, [confirmSuggestion, getValidationErrorInternal]);
+  }, [labelHook, getValidationErrorInternal]);
 
   const prevPhase = useCallback(() => {
-    const { mode: m } = stateRef.current;
     setError(undefined);
-    if (m === 'EVENT') {
+    if (mode === 'EVENT') {
       setPhase((p) => Math.max(0, p - 1) as EventPhase);
     }
-  }, []);
+  }, [mode]);
 
-  const forceSetPhase = useCallback((p: EventPhase) => {
+  const forceSetPhaseAction = useCallback((p: EventPhase) => {
     setError(undefined);
     setPhase(p);
   }, []);
-
-  const clearError = useCallback(() => setError(undefined), []);
 
   const validateBeforeSave = useCallback((): boolean => {
     const { mode: m, memo: me } = stateRef.current;
@@ -404,33 +297,25 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
 
   const reset = useCallback(() => {
     setPhase(0);
-    setTimeStr('');
-    setSelectedLabels([]);
-    setLabelInput('');
-    setSuggestionIndex(0);
-    setIsListMode(false);
+    timeHook.resetTime();
+    labelHook.resetLabels();
     setMemo('');
     setError(undefined);
     setIsSaving(false);
-  }, []);
+  }, [timeHook, labelHook]);
 
-  const setMemoAction = useCallback((val: string) => setMemo(val), []);
-
-  // -------------------------------------------------------
-  // Return
-  // -------------------------------------------------------
   const state: MemoOverlayState = useMemo(
     () => ({
       mode,
       phase,
-      timeStr,
-      formattedTime,
-      selectedLabels,
-      labelInput,
-      suggestions,
-      suggestionIndex,
-      isListMode,
-      isInvalidLabel,
+      timeStr: timeHook.timeStr,
+      formattedTime: timeHook.formattedTime,
+      selectedLabels: labelHook.selectedLabels,
+      labelInput: labelHook.labelInput,
+      suggestions: labelHook.suggestions,
+      suggestionIndex: labelHook.suggestionIndex,
+      isListMode: labelHook.isListMode,
+      isInvalidLabel: labelHook.isInvalidLabel,
       memo,
       validationError: null,
       error,
@@ -439,14 +324,14 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
     [
       mode,
       phase,
-      timeStr,
-      formattedTime,
-      selectedLabels,
-      labelInput,
-      suggestions,
-      suggestionIndex,
-      isListMode,
-      isInvalidLabel,
+      timeHook.timeStr,
+      timeHook.formattedTime,
+      labelHook.selectedLabels,
+      labelHook.labelInput,
+      labelHook.suggestions,
+      labelHook.suggestionIndex,
+      labelHook.isListMode,
+      labelHook.isInvalidLabel,
       memo,
       error,
       isSaving,
@@ -456,23 +341,23 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
   const actions: MemoOverlayActions = useMemo(
     () => ({
       setTimeStr: setTimeStrAction,
-      appendTimeDigit,
-      backspaceTimeStr,
+      appendTimeDigit: appendTimeDigitAction,
+      backspaceTimeStr: backspaceTimeStrAction,
       setLabelInput: setLabelInputAction,
-      addLabel,
-      removeLabel,
-      backspaceLabel,
-      navigateSuggestion,
-      setIsListMode,
-      setSuggestionIndex,
-      confirmSuggestion,
+      addLabel: addLabelAction,
+      removeLabel: labelHook.removeLabel,
+      backspaceLabel: backspaceLabelAction,
+      navigateSuggestion: labelHook.navigateSuggestion,
+      setIsListMode: labelHook.setIsListMode,
+      setSuggestionIndex: labelHook.setSuggestionIndex,
+      confirmSuggestion: labelHook.confirmSuggestion,
       filterByCategory,
-      setMemo: setMemoAction,
+      setMemo,
       nextPhase,
       prevPhase,
-      forceSetPhase,
+      forceSetPhase: forceSetPhaseAction,
       setError,
-      clearError,
+      clearError: () => setError(undefined),
       setIsSaving,
       validateBeforeSave,
       getSavePayload,
@@ -480,20 +365,16 @@ export function useMemoOverlay(mode: MemoMode, initialError?: string) {
     }),
     [
       setTimeStrAction,
-      appendTimeDigit,
-      backspaceTimeStr,
+      appendTimeDigitAction,
+      backspaceTimeStrAction,
       setLabelInputAction,
-      addLabel,
-      removeLabel,
-      backspaceLabel,
-      navigateSuggestion,
-      confirmSuggestion,
+      addLabelAction,
+      labelHook,
+      backspaceLabelAction,
       filterByCategory,
-      setMemoAction,
       nextPhase,
       prevPhase,
-      forceSetPhase,
-      clearError,
+      forceSetPhaseAction,
       validateBeforeSave,
       getSavePayload,
       reset,

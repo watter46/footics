@@ -1,0 +1,83 @@
+import type { EventGroup } from '../../event-definitions';
+
+export const TR_GROUP: EventGroup = {
+  id: 'TR',
+  name: 'トランジション',
+  color: '#FF9500',
+  shortcutKey: '3',
+  subGroups: [
+    {
+      name: '切替アクション',
+      events: [
+        {
+          label: 'ネガトラ',
+          keywords: [
+            'n',
+            'ne',
+            'nega',
+            'ね',
+            'ねが',
+            'ねがと',
+            'ねがとら',
+            'ネ',
+            'ネガ',
+            'ネガト',
+            'ネガトラ',
+            'neg_trans',
+          ],
+        },
+        {
+          label: 'ポジトラ',
+          keywords: [
+            'p',
+            'po',
+            'pozi',
+            'ほ',
+            'ぽじ',
+            'ぽじと',
+            'ぽじとら',
+            'ホ',
+            'ポジ',
+            'ポジト',
+            'ポジトラ',
+            'pos_trans',
+          ],
+        },
+        {
+          label: 'カウンタープレス',
+          keywords: [
+            'k',
+            'ka',
+            'kaun',
+            'か',
+            'かん',
+            'かうん',
+            'かうんたーぷれす',
+            'カ',
+            'カン',
+            'カウン',
+            'カウンタープレス',
+            'counterpress',
+          ],
+        },
+        {
+          label: 'ゲーゲンプレス',
+          keywords: [
+            'g',
+            'ge',
+            'gege',
+            'げ',
+            'げー',
+            'げーげ',
+            'げーげんぷれす',
+            'ゲ',
+            'ゲー',
+            'ゲーゲ',
+            'ゲーゲンプレス',
+            'gegenpress',
+          ],
+        },
+      ],
+    },
+  ],
+};
