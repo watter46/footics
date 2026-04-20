@@ -1,6 +1,5 @@
 import { browser } from 'wxt/browser';
 import { z } from 'zod';
-import type { CaptureMetadata } from './types';
 
 // --- Storage Schema ---
 
@@ -31,14 +30,14 @@ export const StorageUtils = {
         // session から優先的に取得
         const sessionData = (await browser.storage.session
           .get(storageKey)
-          .catch(() => ({}))) as any;
+          .catch(() => ({}))) as Record<string, unknown>;
         let result = sessionData[storageKey];
 
         // session になければ local から取得
         if (!result) {
           const localData = (await browser.storage.local
             .get(storageKey)
-            .catch(() => ({}))) as any;
+            .catch(() => ({}))) as Record<string, unknown>;
           result = localData[storageKey];
         }
 
@@ -50,7 +49,7 @@ export const StorageUtils = {
         // フォールバック
         const sessionData = (await browser.storage.session
           .get(['lastCapturedFrame', 'cropRect'])
-          .catch(() => ({}))) as any;
+          .catch(() => ({}))) as Record<string, unknown>;
         const parsed = CaptureStorageSchema.safeParse(sessionData);
         return parsed.success ? parsed.data : null;
       }

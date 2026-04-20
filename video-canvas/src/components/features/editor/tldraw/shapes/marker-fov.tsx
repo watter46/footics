@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   createShapePropsMigrationIds,
   createShapePropsMigrationSequence,
@@ -13,12 +12,15 @@ import {
   type TLHandle,
   type TLShapeId,
 } from 'tldraw';
-import { getFovLayout, getMarkerLayoutDimensions } from './marker-geometry';
 import {
   MARKER_FOV_DEFAULT_ANGLE,
   MARKER_FOV_DEFAULT_LENGTH,
-} from './marker-styles';
-import { resolveColor } from './zone-styles';
+} from '../styles/marker-styles';
+import { resolveColor } from '../styles/zone-styles';
+import {
+  getFovLayout,
+  getMarkerLayoutDimensions,
+} from '../utils/marker-geometry';
 
 // --- Type ---
 

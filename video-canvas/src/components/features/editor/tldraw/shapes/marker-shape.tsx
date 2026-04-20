@@ -1,19 +1,21 @@
-import React from 'react';
 import {
   BaseBoxShapeUtil,
   createShapePropsMigrationIds,
   createShapePropsMigrationSequence,
   Ellipse2d,
-  Group2d,
   resizeBox,
   SVGContainer,
   T,
   type TLBaseShape,
 } from 'tldraw';
-import { MarkerBaseSVG, MarkerDefs, MarkerSpotlight } from './marker-assets';
-import { getMarkerLayoutDimensions } from './marker-geometry';
-import { MARKER_DEFAULT_PROPS, MARKER_MIN_SIZE } from './marker-styles';
-import { resolveColor } from './zone-styles';
+import { MARKER_DEFAULT_PROPS, MARKER_MIN_SIZE } from '../styles/marker-styles';
+import { resolveColor } from '../styles/zone-styles';
+import {
+  MarkerBaseSVG,
+  MarkerDefs,
+  MarkerSpotlight,
+} from '../utils/marker-assets';
+import { getMarkerLayoutDimensions } from '../utils/marker-geometry';
 
 // ---------------------------------------------------------------------------
 // Type

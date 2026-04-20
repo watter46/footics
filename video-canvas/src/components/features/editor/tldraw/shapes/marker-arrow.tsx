@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   CubicBezier2d,
   createShapePropsMigrationIds,
@@ -14,7 +13,6 @@ import {
   type TLHandle,
   type TLShapeId,
 } from 'tldraw';
-import { getArrowLayout, getMarkerLayoutDimensions } from './marker-geometry';
 import {
   MARKER_ARROW_DEFAULT_LENGTH,
   MARKER_ARROW_STROKE_WIDTH,
@@ -22,8 +20,12 @@ import {
   MARKER_ARROWHEAD_WIDTH,
   MARKER_MAN_MARK_DOT_RADIUS,
   MARKER_MAN_MARK_STROKE_WIDTH,
-} from './marker-styles';
-import { resolveColor } from './zone-styles';
+} from '../styles/marker-styles';
+import { resolveColor } from '../styles/zone-styles';
+import {
+  getArrowLayout,
+  getMarkerLayoutDimensions,
+} from '../utils/marker-geometry';
 
 // =============================================================================
 // 共通 Props 型

@@ -1,9 +1,5 @@
 import { browser } from 'wxt/browser';
-import {
-  type CaptureResultMessage,
-  type ExtensionMessage,
-  MessageTypes,
-} from '../lib/message-types';
+import { type CaptureResultMessage, MessageTypes } from '../lib/message-types';
 
 export default defineBackground(() => {
   console.log('Video Canvas Background Script loaded');
@@ -35,7 +31,7 @@ export default defineBackground(() => {
   });
 
   browser.runtime.onMessage.addListener(
-    (message: any, sender, sendResponse) => {
+    (message: any, _sender, sendResponse) => {
       switch (message.type) {
         case MessageTypes.CAPTURE_RESULT:
           handleCaptureResult(message as CaptureResultMessage, sendResponse);

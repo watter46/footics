@@ -1,12 +1,12 @@
 import { Eye, Lightbulb, Link, MoveRight } from 'lucide-react';
 import type React from 'react';
 import { createShapeId, track, useEditor } from 'tldraw';
-import type { AppShape } from './app-shapes';
 import {
   MARKER_ARROW_DEFAULT_LENGTH,
   MARKER_FOV_DEFAULT_ANGLE,
   MARKER_FOV_DEFAULT_LENGTH,
-} from './marker-styles';
+} from '../styles/marker-styles';
+import type { AppShape } from '../types/app-shapes';
 
 /**
  * マーカー選択時に横に浮かぶツールバー。

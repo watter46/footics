@@ -1,5 +1,5 @@
 import type { Editor, TLShapeId } from 'tldraw';
-import type { AppShape } from './app-shapes';
+import type { AppShape } from '../types/app-shapes';
 
 /** マーカーに従属するオプションShapeのtypeリスト */
 const MARKER_OPTION_TYPES = [

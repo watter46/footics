@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   BaseBoxShapeTool,
   BaseBoxShapeUtil,
@@ -7,7 +6,7 @@ import {
   DefaultColorStyle,
   DefaultDashStyle,
   DefaultFillStyle,
-  Rectangle2d,
+  Ellipse2d,
   SVGContainer,
   T,
   type TLBaseShape,
@@ -18,12 +17,12 @@ import {
   resolveFill,
   ZONE_DEFAULT_PROPS,
   ZONE_STROKE_WIDTH,
-} from './zone-styles';
+} from '../styles/zone-styles';
 
 // --- Type ---
 
-type TLZoneRectShape = TLBaseShape<
-  'zone-rect',
+type TLZoneCircleShape = TLBaseShape<
+  'zone-circle',
   {
     w: number;
     h: number;
@@ -35,11 +34,11 @@ type TLZoneRectShape = TLBaseShape<
 
 // --- Migrations ---
 
-const migrationVersions = createShapePropsMigrationIds('zone-rect', {
+const migrationVersions = createShapePropsMigrationIds('zone-circle', {
   AddStyles: 1,
 });
 
-const zoneRectMigrations = createShapePropsMigrationSequence({
+const zoneCircleMigrations = createShapePropsMigrationSequence({
   sequence: [
     {
       id: migrationVersions.AddStyles,
@@ -52,14 +51,11 @@ const zoneRectMigrations = createShapePropsMigrationSequence({
   ],
 });
 
-/** Corner radius for rounded rectangle shapes. */
-const CORNER_RADIUS = 8;
-
 // --- ShapeUtil ---
 
-export class ZoneRectShapeUtil extends BaseBoxShapeUtil<any> {
-  static override type = 'zone-rect' as const;
-  static override migrations = zoneRectMigrations;
+export class ZoneCircleShapeUtil extends BaseBoxShapeUtil<any> {
+  static override type = 'zone-circle' as const;
+  static override migrations = zoneCircleMigrations;
 
   static override props = {
     w: T.number,
@@ -69,19 +65,19 @@ export class ZoneRectShapeUtil extends BaseBoxShapeUtil<any> {
     dash: DefaultDashStyle,
   };
 
-  override getDefaultProps(): TLZoneRectShape['props'] {
+  override getDefaultProps(): TLZoneCircleShape['props'] {
     return { ...ZONE_DEFAULT_PROPS };
   }
 
-  override getGeometry(shape: TLZoneRectShape) {
-    return new Rectangle2d({
+  override getGeometry(shape: TLZoneCircleShape) {
+    return new Ellipse2d({
       width: shape.props.w,
       height: shape.props.h,
       isFilled: shape.props.fill !== 'none',
     });
   }
 
-  override component(shape: TLZoneRectShape) {
+  override component(shape: TLZoneCircleShape) {
     const isDarkMode = this.editor.user.getIsDarkMode();
     const color = resolveColor(shape.props.color, isDarkMode);
     const { fill, fillOpacity } = resolveFill(shape.props.fill, color);
@@ -89,11 +85,11 @@ export class ZoneRectShapeUtil extends BaseBoxShapeUtil<any> {
 
     return (
       <SVGContainer>
-        <rect
-          width={shape.props.w}
-          height={shape.props.h}
-          rx={CORNER_RADIUS}
-          ry={CORNER_RADIUS}
+        <ellipse
+          cx={shape.props.w / 2}
+          cy={shape.props.h / 2}
+          rx={shape.props.w / 2}
+          ry={shape.props.h / 2}
           fill={fill}
           fillOpacity={fillOpacity}
           stroke={color}
@@ -104,13 +100,13 @@ export class ZoneRectShapeUtil extends BaseBoxShapeUtil<any> {
     );
   }
 
-  override indicator(shape: TLZoneRectShape) {
+  override indicator(shape: TLZoneCircleShape) {
     return (
-      <rect
-        width={shape.props.w}
-        height={shape.props.h}
-        rx={CORNER_RADIUS}
-        ry={CORNER_RADIUS}
+      <ellipse
+        cx={shape.props.w / 2}
+        cy={shape.props.h / 2}
+        rx={shape.props.w / 2}
+        ry={shape.props.h / 2}
       />
     );
   }
@@ -118,9 +114,9 @@ export class ZoneRectShapeUtil extends BaseBoxShapeUtil<any> {
 
 // --- Tool ---
 
-export class ZoneRectTool extends BaseBoxShapeTool {
-  static override id = 'zone-rect';
-  override shapeType = 'zone-rect' as any;
+export class ZoneCircleTool extends BaseBoxShapeTool {
+  static override id = 'zone-circle';
+  override shapeType = 'zone-circle' as any;
 
   override onEnter() {
     this.editor.setCursor({ type: 'cross', rotation: 0 });

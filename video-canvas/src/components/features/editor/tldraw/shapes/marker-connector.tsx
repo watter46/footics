@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   createShapeId,
   createShapePropsMigrationIds,
@@ -14,10 +13,10 @@ import {
   type TLShapeId,
   Vec,
 } from 'tldraw';
-import type { AppShape } from './app-shapes';
-import { getMarkerLayoutDimensions } from './marker-geometry';
-import { MARKER_CONNECTOR_STROKE_WIDTH } from './marker-styles';
-import { resolveColor } from './zone-styles';
+import { MARKER_CONNECTOR_STROKE_WIDTH } from '../styles/marker-styles';
+import { resolveColor } from '../styles/zone-styles';
+import type { AppShape } from '../types/app-shapes';
+import { getMarkerLayoutDimensions } from '../utils/marker-geometry';
 
 // =============================================================================
 // 型定義

@@ -3,7 +3,7 @@ import {
   MARKER_RING_RX,
   MARKER_RING_RY,
   MARKER_SVG_SIZE,
-} from './marker-styles';
+} from '../styles/marker-styles';
 
 // 親マーカーのサイズから、配置の中心とオフセット付きのリング半径を計算する
 export function getMarkerLayoutDimensions(w: number, h: number) {

@@ -6,12 +6,17 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // --- Store ---
 
+export type ExportStatus = 'idle' | 'loading' | 'success' | 'error';
+export type ExportType = 'copy' | 'save';
+
 interface EditorState {
   lastCapturedFrame: string | null;
   cropRect: CaptureMetadata | null;
   isHydrated: boolean;
   triggerCopy: number;
   triggerSave: number;
+  exportStatus: ExportStatus;
+  lastExportType: ExportType | null;
 
   setLastCapturedFrame: (dataUrl: string | null) => void;
   setCropRect: (rect: CaptureMetadata | null) => void;
@@ -19,6 +24,7 @@ interface EditorState {
 
   dispatchCopy: () => void;
   dispatchSave: () => void;
+  setExportStatus: (status: ExportStatus, type?: ExportType | null) => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -27,12 +33,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   isHydrated: false,
   triggerCopy: 0,
   triggerSave: 0,
+  exportStatus: 'idle',
+  lastExportType: null,
 
   setLastCapturedFrame: (dataUrl) => set({ lastCapturedFrame: dataUrl }),
   setCropRect: (rect) => set({ cropRect: rect }),
 
   dispatchCopy: () => set((state) => ({ triggerCopy: state.triggerCopy + 1 })),
   dispatchSave: () => set((state) => ({ triggerSave: state.triggerSave + 1 })),
+  setExportStatus: (status, type) =>
+    set((state) => ({
+      exportStatus: status,
+      lastExportType: type !== undefined ? type : state.lastExportType,
+    })),
 
   hydrateFromStorage: async () => {
     if (get().isHydrated) return;
@@ -50,7 +63,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       for (let attempt = 0; attempt < 3; attempt++) {
         const data = await StorageUtils.getCaptureData(captureId);
 
-        if (data && data.lastCapturedFrame) {
+        if (data?.lastCapturedFrame) {
           console.log(
             `[EditorStore] Successfully hydrated from storage on attempt ${attempt + 1}`,
           );

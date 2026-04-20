@@ -1,5 +1,5 @@
 import { createShapeId, StateNode } from 'tldraw';
-import { MARKER_DEFAULT_PROPS } from './marker-styles';
+import { MARKER_DEFAULT_PROPS } from '../styles/marker-styles';
 
 /**
  * Custom tool for placing a Marker shape with a single click.

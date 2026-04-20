@@ -1,6 +1,3 @@
-import React from 'react';
-import { MARKER_ARROW_STROKE_WIDTH } from './marker-styles';
-
 // ---------------------------------------------------------------------------
 // SVG path data (inlined from assets/svg/marker.svg)
 // ---------------------------------------------------------------------------

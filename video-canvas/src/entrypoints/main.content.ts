@@ -146,7 +146,9 @@ export default defineContentScript({
       return {
         cleanup: () => {
           style.remove();
-          parents.forEach((p) => (p.style.visibility = ''));
+          parents.forEach((p) => {
+            p.style.visibility = '';
+          });
         },
       };
     }

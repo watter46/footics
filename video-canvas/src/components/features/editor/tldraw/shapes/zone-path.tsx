@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   createShapeId,
   createShapePropsMigrationIds,
@@ -17,7 +16,11 @@ import {
   type TLShapeId,
   Vec,
 } from 'tldraw';
-import { resolveColor, resolveDash, ZONE_STROKE_WIDTH } from './zone-styles';
+import {
+  resolveColor,
+  resolveDash,
+  ZONE_STROKE_WIDTH,
+} from '../styles/zone-styles';
 
 // --- Type ---
 
