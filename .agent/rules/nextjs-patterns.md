@@ -3,14 +3,9 @@ trigger: always_on
 globs: ["src/**/*.{ts,tsx}", "next.config.ts", "open-next.config.ts"]
 ---
 
----
-trigger: always_on
-globs: ["src/**/*.{ts,tsx}", "next.config.ts", "open-next.config.ts"]
----
-
 # Next.js 15 Implementation Patterns (Next.js 15 実装規約)
 
-**Activation:** This rule is **ALWAYS ON** for files matching `src/**/*.{ts,tsx}` and configuration files.
+**Activation:** This rule is **ALWAYS ON** for files matching `src/**/*.{ts,tsx}`, `next.config.ts`, and `open-next.config.ts`.
 
 > **Positioning:** Next.js 15 環境に最適化した実装パターンを定義します。
 

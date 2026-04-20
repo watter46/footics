@@ -3,14 +3,9 @@ trigger: always_on
 globs: ["extension/**/*.{ts,tsx}", "video-canvas/**/*.{ts,tsx}", "**/wxt.config.ts"]
 ---
 
----
-trigger: always_on
-globs: ["extension/**/*", "video-canvas/**/*"]
----
-
 # WXT & Chrome Extension Guidelines (WXT/拡張機能実装規約)
 
-**Activation:** This rule is **ALWAYS ON** for files matching `extension/**/*`, `video-canvas/**/*``.
+**Activation:** This rule is **ALWAYS ON** for files matching `extension/**/*` and `video-canvas/**/*`.
 
 > **Positioning:** `/tep/exception-template.md` をベースに、WXT フレームワーク特有の機能（Manifest V3 自動生成, Storage等）を加味した実装指針です。
 

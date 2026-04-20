@@ -1,11 +1,11 @@
 ---
 trigger: always_on
-globs: ["src/hooks/**/*.{ts,tsx}", "src/lib/db.ts", "src/lib/duckdb/**/*", "src/lib/query-keys.ts", "src/lib/data-management.ts"]
+globs: ["src/hooks/**/*.{ts,tsx}", "src/lib/**/*.{ts,tsx}"]
 ---
 
 # Data Management Patterns (データ管理パターン)
 
-**Activation:** This rule is **ALWAYS ON** for data-related files in `src/hooks/` and `src/lib/`.
+**Activation:** This rule is **ALWAYS ON** for files matching `src/hooks/**/*.{ts,tsx}` and `src/lib/**/*.{ts,tsx}`.
 
 DuckDB-WASM, IndexedDB, and TanStack Query を組み合わせた、型安全で高性能なデータライフサイクル管理の規約を定めます。
 
