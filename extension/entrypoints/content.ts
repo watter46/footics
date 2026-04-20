@@ -1,5 +1,7 @@
-import { getMatchMemo, putMatchMemo, saveCustomEvent } from '@/lib/db';
-import { MatchMemoSchema } from '@/lib/schema';
+import { browser } from 'wxt/browser';
+import { putMatchMemo, saveCustomEvent } from '@/lib/db';
+import type { ExtensionMessage } from '../types/messaging';
+import { STORAGE_KEYS } from '../constants';
 
 export default defineContentScript({
   matches: [
@@ -7,34 +9,76 @@ export default defineContentScript({
     '*://footics.com/*',
     '*://10.255.255.254/*',
     '*://127.0.0.1/*',
+    '*://footics.watool.workers.dev/*',
   ],
   async main() {
     console.log('Footics Bridge Content Script loaded');
 
+    // 3. メインワールド（本体アプリ）へイベントを飛ばすためのブリッジ
+    const dispatchMainWorldEvent = (type: string, detail: any) => {
+      const script = document.createElement('script');
+      script.textContent = `
+        window.dispatchEvent(new CustomEvent('footics-action', {
+          detail: ${JSON.stringify({ ...detail, type })}
+        }));
+      `;
+      (document.head || document.documentElement).appendChild(script);
+      script.remove();
+    };
+
+    // 4. Match ID をストレージに同期するロジック
+    const syncMatchIdToStorage = async () => {
+      const pathParts = window.location.pathname.split('/');
+      const matchIdx = pathParts.indexOf('match');
+      const matchIdFromUrl =
+        matchIdx !== -1 ? pathParts[matchIdx + 1] : undefined;
+
+      const matchId =
+        document.documentElement.dataset.matchId ||
+        document.body.dataset.matchId ||
+        matchIdFromUrl ||
+        pathParts.find((p) => p.startsWith('match_'));
+
+      if (matchId) {
+        await browser.storage.local.set({
+          [STORAGE_KEYS.LAST_ACTIVE_MATCH_ID]: matchId,
+        });
+        console.log('[ContentScript] Syncing matchId to storage:', matchId);
+      }
+    };
+
+    // DOM の変更（dataset.matchId）を監視
+    const observer = new MutationObserver(() => syncMatchIdToStorage());
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-match-id'],
+    });
+
+    // 初期実行
+    syncMatchIdToStorage();
+
     // 1. Listen for messages from Background / Sidepanel
-    browser.runtime.onMessage.addListener(async (message) => {
+    browser.runtime.onMessage.addListener(async (message: ExtensionMessage) => {
       console.log('[ContentScript] Message received:', message.type);
 
-      if (message.type === 'footics-action') {
-        window.dispatchEvent(
-          new CustomEvent('footics-action', {
-            detail: message.detail,
-          }),
-        );
-        return;
-      }
-
       if (message.type === 'GET_ACTIVE_MATCH_INFO') {
+        const pathParts = window.location.pathname.split('/');
+        const matchIdx = pathParts.indexOf('match');
+        const matchIdFromUrl =
+          matchIdx !== -1 ? pathParts[matchIdx + 1] : undefined;
+
         const matchId =
           document.documentElement.dataset.matchId ||
-          window.location.pathname
-            .split('/')
-            .find((p) => p.startsWith('match_'));
+          document.body.dataset.matchId ||
+          matchIdFromUrl ||
+          pathParts.find((p) => p.startsWith('match_'));
+
+        console.log('[ContentScript] Detected matchId:', matchId);
         return { matchId };
       }
 
       if (message.type === 'SAVE_MEMO_RELAY') {
-        const { mode, matchId, memo, minute, second, labels } = message;
+        const { mode, matchId, memo } = message;
         console.log('[ContentScript] Saving via Relay:', mode, matchId);
 
         try {
@@ -44,18 +88,15 @@ export default defineContentScript({
             await saveCustomEvent({
               id: crypto.randomUUID(),
               match_id: matchId,
-              minute: minute || 0,
-              second: second || 0,
-              labels: labels || ['分析メモ'],
+              minute: message.minute || 0,
+              second: message.second || 0,
+              labels: message.labels || ['分析メモ'],
               memo: memo || '',
               created_at: Date.now(),
             });
           }
-          window.dispatchEvent(
-            new CustomEvent('footics-action', {
-              detail: { type: 'REFRESH_DATA' },
-            }),
-          );
+          // メインワールド（アプリ側）に通知
+          dispatchMainWorldEvent('REFRESH_DATA', { matchId });
           return { success: true };
         } catch (e) {
           console.error('[ContentScript] Save Relay failed:', e);
@@ -67,11 +108,8 @@ export default defineContentScript({
         const { event } = message;
         try {
           await saveCustomEvent(event);
-          window.dispatchEvent(
-            new CustomEvent('footics-action', {
-              detail: { type: 'REFRESH_DATA', matchId: event.match_id },
-            }),
-          );
+          // メインワールド（アプリ側）に通知
+          dispatchMainWorldEvent('REFRESH_DATA', { matchId: event.match_id });
           return { success: true };
         } catch (e) {
           console.error('[ContentScript] SAVE_CUSTOM_EVENT failed:', e);
@@ -80,7 +118,7 @@ export default defineContentScript({
       }
     });
 
-    // 2. グローバルな Esc 監視 (サイドパネルへのフォーカスがない場合をカバー)
+    // 2. グローバルな Esc 監視
     window.addEventListener(
       'keydown',
       (e) => {

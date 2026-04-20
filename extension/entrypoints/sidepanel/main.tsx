@@ -1,7 +1,6 @@
 import '@/app/globals.css';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { browser } from 'wxt/browser';
 
 const Sidepanel: React.FC = () => {
   const [text, setText] = useState('');

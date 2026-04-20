@@ -15,6 +15,13 @@ export type ExtensionMessage =
       type: 'GET_ACTIVE_MATCH_INFO';
     }
   | {
+      type: 'CLOSE_SIDEPANEL';
+    }
+  | {
+      type: 'footics-action';
+      detail: any;
+    }
+  | {
       type: 'SAVE_MEMO_RELAY';
       mode: MemoMode;
       matchId: string;
