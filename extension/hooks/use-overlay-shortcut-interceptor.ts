@@ -3,6 +3,7 @@ import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
 import { CATEGORY_KEYS, HIJACKED_KEYS } from '../constants';
 import { useOverlayStore } from '../stores/useOverlayStore';
 import { FooticsActionSchema } from '../types/schemas';
+import { handleTextareaIsolation } from './use-textarea-isolation';
 
 /**
  * useOverlayShortcutInterceptor
@@ -18,14 +19,22 @@ export function useOverlayShortcutInterceptor() {
 
     const handleEvent = (e: KeyboardEvent) => {
       // 重複処理の防止
-      if ('_footics_processed' in e && e._footics_processed) return;
+      if (
+        '_footics_processed' in e &&
+        (e as KeyboardEvent & { _footics_processed: boolean })
+          ._footics_processed
+      )
+        return;
 
       const isSaveCombo = e.key === 'Enter' && (e.ctrlKey || e.metaKey);
+
+      // 指定されたキー以外、かつ保存コンボでもない場合は無視
       if (
         !HIJACKED_KEYS.includes(e.key as (typeof HIJACKED_KEYS)[number]) &&
         !isSaveCombo
-      )
+      ) {
         return;
+      }
 
       const path = e.composedPath();
       const realTarget = path[0] as HTMLElement;
@@ -34,15 +43,37 @@ export function useOverlayShortcutInterceptor() {
       const isPhase3 = store.phase === 2;
 
       // --- [強力なアイソレーションロジック] ---
+      // メモ入力フェーズかつ Textarea フォーカス時のみ隔離ロジックを適用
       if (isPhase3 && isTextarea) {
-        if (handleIsolation(e, realTarget as HTMLTextAreaElement, isSaveCombo))
+        const { shouldStop, shouldPrevent } = handleTextareaIsolation(
+          e,
+          realTarget as HTMLTextAreaElement,
+          isSaveCombo,
+        );
+
+        if (shouldStop) {
+          e.stopImmediatePropagation();
+        }
+        if (shouldPrevent) {
+          e.preventDefault();
+        }
+
+        // 隔離モードで処理された場合でも、アクション判定（保存コンボ等）は継続する可能性があるが、
+        // 文字入力自体はブラウザに任せるため、ここで return する
+        if (shouldStop || shouldPrevent) {
+          if (isSaveCombo) {
+            // 保存コンボだけはアクションとして実行する
+            dispatchAction(e, isSaveCombo);
+            e.preventDefault(); // デフォルト（改行等）を防ぐ
+          }
           return;
+        }
       }
 
       // --- [既存のシステムアクション処理] ---
       if (e.type !== 'keydown') return;
 
-      // 重大な副作用を防ぐために伝播を停止
+      // ホストページへの伝播を完全に遮断
       e.stopImmediatePropagation();
       e.preventDefault();
 
@@ -50,6 +81,7 @@ export function useOverlayShortcutInterceptor() {
     };
 
     // keydown, keyup, keypress 全てに対して同様のハンドラを登録（Captureフェーズ）
+    // 注意: 他の拡張機能やビデオプレイヤーのリスナーより先に実行するため capture: true
     window.addEventListener('keydown', handleEvent, { capture: true });
     window.addEventListener('keyup', handleEvent, { capture: true });
     window.addEventListener('keypress', handleEvent, { capture: true });
@@ -60,42 +92,6 @@ export function useOverlayShortcutInterceptor() {
       window.removeEventListener('keypress', handleEvent, { capture: true });
     };
   }, [isVisible]);
-}
-
-/**
- * フェーズ3（メモ入力）での入力をエミュレートし、ホストページへの干渉を遮断する
- */
-function handleIsolation(
-  e: KeyboardEvent,
-  ta: HTMLTextAreaElement,
-  isSaveCombo: boolean,
-): boolean {
-  const isNavigationKey = e.key === 'Tab' || e.key === 'Escape';
-
-  if (!isNavigationKey && !isSaveCombo) {
-    e.stopImmediatePropagation();
-    e.preventDefault();
-
-    if (e.type === 'keydown') {
-      if (e.key.length === 1) {
-        document.execCommand('insertText', false, e.key);
-      } else if (e.key === 'Enter') {
-        document.execCommand('insertLineBreak');
-      } else if (e.key === 'Backspace') {
-        document.execCommand('delete');
-      } else if (e.key === 'Delete') {
-        document.execCommand('forwardDelete');
-      } else if (e.key === 'ArrowLeft') {
-        const pos = Math.max(0, ta.selectionStart - 1);
-        ta.setSelectionRange(pos, pos);
-      } else if (e.key === 'ArrowRight') {
-        const pos = Math.min(ta.value.length, ta.selectionStart + 1);
-        ta.setSelectionRange(pos, pos);
-      }
-    }
-    return true;
-  }
-  return false;
 }
 
 /**

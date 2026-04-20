@@ -6,7 +6,7 @@
 - **Domain:** サッカー解析データの可視化、ダッシュボード、ユーザー管理。
 - **Core Stack:** Next.js 15 (App Router), React 19.
 - **Styling:** Tailwind CSS v4, shadcn/ui.
-- **Local Data:** DuckDB (WASM) および IDB / idb-keyval を利用したクライアントサイドでの重いデータ処理。
+- **Local Data:** DuckDB (WASM) および Dexie.js を利用したクライアントサイドでの重いデータ処理。
 - **Deployment:** Cloudflare Pages (OpenNext) 向けに最適化。
 
 ## 2. 開発ルール

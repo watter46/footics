@@ -47,6 +47,9 @@ declare module 'webext-bridge' {
       { event: CustomEvent },
       SaveMemoResponse
     >;
+
+    /** 本体アプリのデータ更新を要求（Main Worldへの通知） */
+    REFRESH_APP: { matchId: string };
   }
 }
 

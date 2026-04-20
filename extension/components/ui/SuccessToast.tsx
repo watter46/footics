@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import type React from 'react';
 import { Z_INDEX } from '../../constants';
 import { cn } from '../../utils/cn';
@@ -25,20 +26,7 @@ export const SuccessToast: React.FC<SuccessToastProps> = ({
           'w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20',
         )}
       >
-        <svg
-          className={cn('w-3 h-3 text-white')}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={4}
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
+        <Check className={cn('w-3 h-3 text-white')} strokeWidth={4} />
       </div>
       <p
         className={cn(

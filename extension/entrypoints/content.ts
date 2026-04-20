@@ -1,6 +1,11 @@
-import { onMessage, sendMessage } from 'webext-bridge/content-script';
+import {
+  allowWindowMessaging,
+  onMessage,
+  sendMessage,
+} from 'webext-bridge/content-script';
 import { putMatchMemo, saveCustomEvent } from '@/lib/db';
 import { STORAGE_KEYS } from '../constants';
+import { detectMatchId } from '../utils/match';
 
 export default defineContentScript({
   matches: [
@@ -11,35 +16,14 @@ export default defineContentScript({
     '*://footics.watool.workers.dev/*',
   ],
   async main() {
-    console.log('Footics Bridge Content Script loaded');
+    console.log('💎 [Footics Isolated Bridge] Content Script loaded');
 
-    // 3. メインワールド（本体アプリ）へイベントを飛ばすためのブリッジ
-    const dispatchMainWorldEvent = (
-      type: string,
-      detail: Record<string, unknown>,
-    ) => {
-      const script = document.createElement('script');
-      script.textContent = `
-        window.dispatchEvent(new CustomEvent('footics-action', {
-          detail: ${JSON.stringify({ ...detail, type })}
-        }));
-      `;
-      (document.head || document.documentElement).appendChild(script);
-      script.remove();
-    };
+    // Main World (bridge) との通信を許可
+    allowWindowMessaging('footics-app');
 
-    // 4. Match ID をストレージに同期するロジック
+    // Match ID をストレージに同期するロジック
     const syncMatchIdToStorage = async () => {
-      const pathParts = window.location.pathname.split('/');
-      const matchIdx = pathParts.indexOf('match');
-      const matchIdFromUrl =
-        matchIdx !== -1 ? pathParts[matchIdx + 1] : undefined;
-
-      const matchId =
-        document.documentElement.dataset.matchId ||
-        document.body.dataset.matchId ||
-        matchIdFromUrl ||
-        pathParts.find((p) => p.startsWith('match_'));
+      const matchId = detectMatchId();
 
       if (matchId) {
         await browser.storage.local.set({
@@ -59,19 +43,9 @@ export default defineContentScript({
     // 初期実行
     syncMatchIdToStorage();
 
-    // 1. Listen for messages from Background / Sidepanel
+    // 1. Listen for messages
     onMessage('GET_ACTIVE_MATCH_INFO', async () => {
-      const pathParts = window.location.pathname.split('/');
-      const matchIdx = pathParts.indexOf('match');
-      const matchIdFromUrl =
-        matchIdx !== -1 ? pathParts[matchIdx + 1] : undefined;
-
-      const matchId =
-        document.documentElement.dataset.matchId ||
-        document.body.dataset.matchId ||
-        matchIdFromUrl ||
-        pathParts.find((p) => p.startsWith('match_'));
-
+      const matchId = detectMatchId();
       console.log('[ContentScript] Detected matchId:', matchId);
       return { matchId };
     });
@@ -94,8 +68,12 @@ export default defineContentScript({
             created_at: Date.now(),
           });
         }
-        // メインワールド（アプリ側）に通知
-        dispatchMainWorldEvent('REFRESH_DATA', { matchId });
+        // メインワールド（アプリ側）に通知 (webext-bridge 経由)
+        // await するとバックグラウンド側で Transaction タイムアウトが発生するため fire-and-forget で送信する
+        sendMessage('REFRESH_APP', { matchId }, 'window').catch((e) =>
+          console.warn('[ContentScript] REFRESH_APP notify failed:', e),
+        );
+
         return { success: true };
       } catch (e) {
         console.error('[ContentScript] Save Relay failed:', e);
@@ -107,8 +85,9 @@ export default defineContentScript({
       const { event } = data;
       try {
         await saveCustomEvent(event);
-        // メインワールド（アプリ側）に通知
-        dispatchMainWorldEvent('REFRESH_DATA', { matchId: event.match_id });
+        // メインワールド（アプリ側）に通知 (webext-bridge 経由)
+        await sendMessage('REFRESH_APP', { matchId: event.match_id }, 'window');
+
         return { success: true };
       } catch (e) {
         console.error('[ContentScript] SAVE_CUSTOM_EVENT failed:', e);
@@ -116,7 +95,7 @@ export default defineContentScript({
       }
     });
 
-    // 2. グローバルな Esc 監視
+    // 2. グローバルな Esc 監視 (サイドパネル用)
     window.addEventListener(
       'keydown',
       (e) => {

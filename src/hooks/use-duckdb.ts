@@ -170,7 +170,10 @@ export function useDuckDB(matchId: string): DatabaseState {
 
     // 拡張機能等からのリフレッシュ要求を監視
     const handleRefresh = (e: any) => {
-      if (e.detail?.type === 'REFRESH_DATA' && e.detail?.matchId === matchId) {
+      if (
+        e.detail?.action === 'REFRESH_DATA' &&
+        e.detail?.matchId === matchId
+      ) {
         console.log(
           `[useDuckDB] REFRESH_DATA received for matchId: ${matchId}. Reloading...`,
         );
