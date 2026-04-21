@@ -1,9 +1,9 @@
 'use client';
 
-import type { AsyncDuckDBConnection } from '@duckdb/duckdb-wasm';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { getCustomEventsByMatch, getEventsByMatch } from '@/lib/db';
 import { eventKeys } from '@/lib/query-keys';
-import { buildCountQuery, buildQuery } from '@/services/query-builder';
+import { filterEvents } from '@/services/event-filter';
 import type { EventRow, FilterState } from '@/types';
 
 interface UseEventsResult {
@@ -13,37 +13,62 @@ interface UseEventsResult {
 }
 
 export function useEvents(
-  connection: AsyncDuckDBConnection | null,
+  matchId: string,
   filters: FilterState,
 ): UseEventsResult {
   const { data, isPlaceholderData, isLoading } = useQuery({
-    queryKey: eventKeys.filtered(filters),
+    queryKey: [...eventKeys.filtered(filters), matchId],
     queryFn: async () => {
-      if (!connection) throw new Error('No connection');
+      if (!matchId) return { events: [], totalCount: 0 };
 
-      // Count query
-      const countSql = buildCountQuery(filters);
-      const countResult = await connection.query(countSql);
-      const countRows = countResult.toArray().map((r) => r.toJSON());
-      const totalCount = countRows.length > 0 ? Number(countRows[0].total) : 0;
+      // Dexie から生データを取得
+      const rawEvents = await getEventsByMatch(matchId);
 
-      // Data query
-      const dataSql = buildQuery(filters);
-      const dataResult = await connection.query(dataSql);
-      const events = dataResult
-        .toArray()
-        .map((row) => row.toJSON()) as EventRow[];
+      // カスタムイベントの統合
+      const customEvents = await getCustomEventsByMatch(matchId);
+      const customEventRows: EventRow[] = customEvents.map((c: any) => ({
+        id: c.id,
+        match_id: c.match_id,
+        event_id: -1,
+        team_id: 0,
+        player_id: null,
+        period: 0,
+        minute: c.minute,
+        second: c.second,
+        expanded_minute: c.minute,
+        x: 0,
+        y: 0,
+        end_x: null,
+        end_y: null,
+        type_value: -1,
+        type_name: 'Custom',
+        outcome: true,
+        is_touch: false,
+        is_shot: false,
+        is_goal: false,
+        qualifiers: [],
+        source: 'custom',
+        custom_label: Array.isArray(c.labels) ? c.labels.join(' / ') : c.labels,
+        custom_memo: c.memo,
+      }));
 
-      return { events, totalCount };
+      const allEvents = [...rawEvents, ...customEventRows];
+
+      // オンメモリフィルタリングの実行
+      const filteredEvents = filterEvents(allEvents, filters);
+
+      return {
+        events: filteredEvents,
+        totalCount: filteredEvents.length,
+      };
     },
-    enabled: !!connection,
+    enabled: !!matchId,
     placeholderData: keepPreviousData,
   });
 
   return {
     events: data?.events ?? [],
     totalCount: data?.totalCount ?? 0,
-    // data があっても次の条件での取得中なら querying として扱う (または isLoading)
     isQuerying: isLoading || isPlaceholderData,
   };
 }

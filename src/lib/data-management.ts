@@ -1,16 +1,19 @@
 import JSZip from 'jszip';
-import type { MatchBlobEntry, MatchMetadata, MatchSummary } from '@/types';
+import type { EventRow, Match } from '@/types';
 import {
   getAllCustomEvents,
   getAllEventMemos,
-  getAllMatchBlobs,
+  getAllEvents,
+  getAllMatches,
   getAllMatchMemos,
+  getAllTacticalSnapshots,
   importMemosBatch,
-  putMatchBlobsBatch,
+  putMatchEventsBatch,
   putMatchesBatch,
+  putTacticalSnapshotsBatch,
 } from './db';
 
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 3;
 
 /**
  * 全データを ZIP 形式でエクスポートする
@@ -18,12 +21,14 @@ const BACKUP_VERSION = 1;
 export async function exportAllDataZip(): Promise<void> {
   const zip = new JSZip();
 
-  // 1. Memos, Custom Events & Match Memos
-  const [eventMemos, customEvents, matchMemos] = await Promise.all([
-    getAllEventMemos(),
-    getAllCustomEvents(),
-    getAllMatchMemos(),
-  ]);
+  // 1. Memos, Custom Events, Match Memos & Snapshots
+  const [eventMemos, customEvents, matchMemos, tacticalSnapshots] =
+    await Promise.all([
+      getAllEventMemos(),
+      getAllCustomEvents(),
+      getAllMatchMemos(),
+      getAllTacticalSnapshots(),
+    ]);
 
   zip.file(
     'memos.json',
@@ -32,33 +37,21 @@ export async function exportAllDataZip(): Promise<void> {
         event_memos: eventMemos,
         custom_events: customEvents,
         match_memos: matchMemos,
+        tactical_snapshots: tacticalSnapshots,
       },
       null,
       2,
     ),
   );
 
-  // 2. Match Blobs (Unified DB)
-  const blobEntries = await getAllMatchBlobs();
-  const matchMetadataList: { matchId: string; metadata: MatchMetadata }[] = [];
+  // 2. Main Data (Matches, Events)
+  const [matches, allEvents] = await Promise.all([
+    getAllMatches(),
+    getAllEvents(),
+  ]);
 
-  const parquetFolder = zip.folder('parquet');
-
-  for (const entry of blobEntries) {
-    const matchId = entry.metadata.matchId;
-    matchMetadataList.push({
-      matchId,
-      metadata: entry.metadata,
-    });
-
-    if (parquetFolder) {
-      parquetFolder.file(`${matchId}_matches.parquet`, entry.matchesParquet);
-      parquetFolder.file(`${matchId}_players.parquet`, entry.playersParquet);
-      parquetFolder.file(`${matchId}_events.parquet`, entry.eventsParquet);
-    }
-  }
-
-  zip.file('matches.json', JSON.stringify(matchMetadataList, null, 2));
+  zip.file('matches.json', JSON.stringify(matches, null, 2));
+  zip.file('events.json', JSON.stringify(allEvents, null, 2));
 
   // 3. Manifest
   zip.file(
@@ -67,7 +60,7 @@ export async function exportAllDataZip(): Promise<void> {
       {
         version: BACKUP_VERSION,
         exportedAt: new Date().toISOString(),
-        matchCount: blobEntries.length,
+        matchCount: matches.length,
       },
       null,
       2,
@@ -99,73 +92,83 @@ export async function importAllDataZip(
   const manifestFile = zip.file('manifest.json');
   if (!manifestFile) throw new Error('Invalid backup: manifest.json missing');
 
-  // 2. Import Memos
+  let matchCount = 0;
   let memoCount = 0;
-  const memosFile = zip.file('memos.json');
-  if (memosFile) {
-    const memosData = JSON.parse(await memosFile.async('string'));
-    const eventMemos = Array.isArray(memosData.event_memos)
-      ? memosData.event_memos
-      : [];
-    const customEvents = Array.isArray(memosData.custom_events)
-      ? memosData.custom_events
-      : [];
-    const matchMemos = Array.isArray(memosData.match_memos)
-      ? memosData.match_memos
-      : [];
 
-    await importMemosBatch(eventMemos, customEvents, matchMemos);
-    memoCount = eventMemos.length + customEvents.length + matchMemos.length;
+  // 2. Import Memos
+  try {
+    const memosFile = zip.file('memos.json');
+    if (memosFile) {
+      const memosText = await memosFile.async('string');
+      const memosData = JSON.parse(memosText);
+      const eventMemos = Array.isArray(memosData.event_memos)
+        ? memosData.event_memos
+        : [];
+      const customEvents = Array.isArray(memosData.custom_events)
+        ? memosData.custom_events
+        : [];
+      const matchMemos = Array.isArray(memosData.match_memos)
+        ? memosData.match_memos
+        : [];
+      const tacticalSnapshots = Array.isArray(memosData.tactical_snapshots)
+        ? memosData.tactical_snapshots
+        : [];
+
+      await importMemosBatch(eventMemos, customEvents, matchMemos);
+      if (tacticalSnapshots.length > 0) {
+        await putTacticalSnapshotsBatch(tacticalSnapshots);
+      }
+
+      memoCount =
+        eventMemos.length +
+        customEvents.length +
+        matchMemos.length +
+        tacticalSnapshots.length;
+      console.log(`[footics] Memos restored: ${memoCount} items`);
+    }
+  } catch (err) {
+    console.error('[footics] Failed to restore memos:', err);
   }
 
-  // 3. Import Match Blobs
-  let matchCount = 0;
-  const matchesFile = zip.file('matches.json');
-  if (matchesFile) {
-    const matchesList = JSON.parse(await matchesFile.async('string'));
-    const blobEntries: MatchBlobEntry[] = [];
+  // 3. Import Matches
+  try {
+    const matchesFile = zip.file('matches.json');
+    if (matchesFile) {
+      const matchesText = await matchesFile.async('string');
+      const rawMatches = JSON.parse(matchesText) as Array<
+        Match & { matchId?: number }
+      >;
 
-    for (const mInfo of matchesList) {
-      const matchId = mInfo.matchId;
+      if (rawMatches.length > 0) {
+        // Normalize: ensure every record has a string `id` field
+        const normalizedMatches: Match[] = rawMatches.map((m) => ({
+          ...m,
+          id: String(m.id ?? m.matchId ?? ''),
+        }));
 
-      const pMatches = zip.file(`parquet/${matchId}_matches.parquet`);
-      const pPlayers = zip.file(`parquet/${matchId}_players.parquet`);
-      const pEvents = zip.file(`parquet/${matchId}_events.parquet`);
-
-      if (pMatches && pPlayers && pEvents) {
-        blobEntries.push({
-          matchId,
-          version: 1,
-          metadata: mInfo.metadata,
-          matchesParquet: await pMatches.async('arraybuffer'),
-          playersParquet: await pPlayers.async('arraybuffer'),
-          eventsParquet: await pEvents.async('arraybuffer'),
-        });
+        await putMatchesBatch(normalizedMatches);
+        matchCount = normalizedMatches.length;
+        console.log(`[footics] Matches restored: ${matchCount} matches`);
       }
     }
+  } catch (err) {
+    console.error('[footics] Failed to restore matches:', err);
+  }
 
-    if (blobEntries.length > 0) {
-      await putMatchBlobsBatch(blobEntries);
+  // 4. Import Events
+  try {
+    const eventsFile = zip.file('events.json');
+    if (eventsFile) {
+      const eventsText = await eventsFile.async('string');
+      const allEvents = JSON.parse(eventsText) as EventRow[];
 
-      // footics_db.matches ストアにも概要情報を登録
-      const summaries: MatchSummary[] = blobEntries.map((e) => ({
-        id: e.metadata.matchId,
-        homeTeam: {
-          id: e.metadata.teams.home.teamId,
-          name: e.metadata.teams.home.name,
-        },
-        awayTeam: {
-          id: e.metadata.teams.away.teamId,
-          name: e.metadata.teams.away.name,
-        },
-        date: e.metadata.date,
-        score: e.metadata.score,
-        matchType: e.metadata.matchType,
-      }));
-      await putMatchesBatch(summaries);
-
-      matchCount = blobEntries.length;
+      if (allEvents.length > 0) {
+        await putMatchEventsBatch(allEvents);
+        console.log(`[footics] Events restored: ${allEvents.length} events`);
+      }
     }
+  } catch (err) {
+    console.error('[footics] Failed to restore events:', err);
   }
 
   return { matchCount, memoCount };

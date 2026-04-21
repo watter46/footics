@@ -1,20 +1,30 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, ChevronLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import React, { useEffect } from 'react';
 import Dashboard from '@/components/features/dashboard/Dashboard';
 import NationalDashboard from '@/components/features/national-dashboard/NationalDashboard';
 import { Card } from '@/components/ui/card';
-import { useDuckDB } from '@/hooks/use-duckdb';
-import { setKeyValue } from '@/lib/db';
+import { getMatch, setKeyValue } from '@/lib/db';
 
 interface Props {
   matchId: string;
 }
 
 export function MatchViewWrapper({ matchId }: Props) {
-  const { status, error, metadata } = useDuckDB(matchId);
+  const {
+    data: matchData,
+    isLoading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ['matchData', matchId],
+    queryFn: () => getMatch(matchId),
+  });
+
+  const status = isLoading ? 'loading-data' : matchData ? 'ready' : 'error';
+  const error = queryError ? (queryError as Error).message : null;
 
   // 拡張機能から現在のアクティブな試合を特定できるように保存
   useEffect(() => {
@@ -29,17 +39,8 @@ export function MatchViewWrapper({ matchId }: Props) {
     };
   }, [matchId]);
 
-  if (
-    status === 'idle' ||
-    status === 'initializing' ||
-    status === 'loading-data'
-  ) {
-    const statusMessage =
-      status === 'initializing'
-        ? 'Initializing DuckDB-WASM...'
-        : status === 'loading-data'
-          ? 'Loading match data from IndexedDB...'
-          : 'Starting...';
+  if (status === 'loading-data') {
+    const statusMessage = 'Loading match data from IndexedDB...';
 
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-950 text-slate-50 gap-4">
@@ -51,7 +52,7 @@ export function MatchViewWrapper({ matchId }: Props) {
     );
   }
 
-  if (status === 'error' || !metadata) {
+  if (status === 'error' || !matchData) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-slate-950 text-red-400 p-6">
         <Card className="bg-slate-900 border-red-500/50 p-8 max-w-md w-full shadow-2xl">
@@ -79,13 +80,13 @@ export function MatchViewWrapper({ matchId }: Props) {
   }
 
   // Determine dashboard based on metadata
-  if (metadata.matchType === 'national') {
+  if (matchData.matchType === 'national') {
     return (
       <NationalDashboard
         matchId={matchId}
-        defaultHome={metadata.teams.home.name}
-        defaultAway={metadata.teams.away.name}
-        defaultScore={metadata.score}
+        defaultHome={matchData.homeTeam.name}
+        defaultAway={matchData.awayTeam.name}
+        defaultScore={matchData.score}
       />
     );
   }

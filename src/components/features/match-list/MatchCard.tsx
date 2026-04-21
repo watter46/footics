@@ -3,10 +3,10 @@
 import { Calendar, Database } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
-import type { MatchSummary } from '@/types';
+import type { Match } from '@/types';
 
 interface MatchCardProps {
-  match: MatchSummary;
+  match: Match;
   isLatest?: boolean;
   isImported?: boolean;
 }

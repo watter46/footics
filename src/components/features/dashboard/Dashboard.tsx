@@ -205,8 +205,6 @@ export default function Dashboard({ matchId }: { matchId: string }) {
           <div className="flex items-center gap-3">
             <DataManagementMenu
               matchId={matchId}
-              db={d.db}
-              connection={d.connection}
               onRefresh={d.handleRefreshCustomEvents}
             />
             <button
@@ -231,8 +229,6 @@ export default function Dashboard({ matchId }: { matchId: string }) {
 
         <CentralFocusModal
           matchId={matchId}
-          db={d.db}
-          connection={d.connection}
           editingEvent={d.editingEvent}
           onClose={handleCloseCentralFocus}
           onRefresh={handleRefresh}

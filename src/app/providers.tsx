@@ -12,7 +12,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { type ReactNode, useEffect, useState } from 'react';
-import { initializeDuckDB } from '@/lib/duckdb';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -26,14 +25,6 @@ export function Providers({ children }: { children: ReactNode }) {
         },
       }),
   );
-
-  // Early initialization of DuckDB-WASM
-  useEffect(() => {
-    console.log('[footics] Proactive DuckDB initialization starting...');
-    initializeDuckDB().catch((err) => {
-      console.warn('[footics] Proactive DuckDB initialization failed', err);
-    });
-  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

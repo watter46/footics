@@ -14,12 +14,12 @@ import {
 import { FORMATION_POSITIONS } from '@/lib/data/formations-data';
 import { DEFAULT_442_POSITIONS, toActualPos } from '@/lib/data/tactical-utils';
 import { getTacticalSnapshot, putTacticalSnapshot } from '@/lib/db';
-import type { BasePlayer, MatchMetadata, Player } from '@/types';
+import type { BasePlayer, Match, Player } from '@/types';
 import { type PlayerState, useTacticalStore } from './use-tactical-store';
 
 export function useTacticalBoard(
   matchId: string,
-  metadata: MatchMetadata | null,
+  metadata: Match | null,
   isOpen: boolean,
 ) {
   const store = useTacticalStore();
@@ -40,7 +40,7 @@ export function useTacticalBoard(
             const players = metadata?.teams[team]?.players || [];
             if (players.length === 0) return false;
 
-            players.forEach((p, i: number) => {
+            players.forEach((p: BasePlayer, i: number) => {
               let x, y, area: 'pitch' | 'bench';
               if (i < 11) {
                 area = 'pitch';
@@ -229,7 +229,7 @@ export function useTacticalBoard(
     const initialMapping: Record<number, PlayerState> = {};
     const setupTeam = (team: 'home' | 'away') => {
       const players = metadata?.teams[team]?.players || [];
-      players.forEach((p, i: number) => {
+      players.forEach((p: BasePlayer, i: number) => {
         let x, y, area: 'pitch' | 'bench';
         if (i < 11) {
           area = 'pitch';

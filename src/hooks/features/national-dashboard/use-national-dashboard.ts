@@ -11,12 +11,7 @@ import type {
 } from '@/lib/national-match-schema';
 import { NationalMatchRawDataSchema } from '@/lib/national-match-schema';
 import { customEventKeys, nationalMatchKeys } from '@/lib/query-keys';
-import type {
-  CustomEventRow,
-  EventRow,
-  MatchMetadata,
-  SimplifiedTeam,
-} from '@/types';
+import type { CustomEventRow, EventRow, Match, SimplifiedTeam } from '@/types';
 
 interface UseNationalDashboardProps {
   matchId: string;
@@ -179,13 +174,15 @@ export function useNationalDashboard({
       });
   }, [customEvents]);
 
-  const metadata: MatchMetadata = useMemo(
+  const metadata: Match = useMemo(
     () => ({
-      matchId: matchId,
+      id: matchId,
       date: '',
       score: defaultScore || 'vs',
       matchType: 'national',
       playerIdNameDictionary: {},
+      homeTeam: { id: 0, name: defaultHome || 'Home' },
+      awayTeam: { id: 1, name: defaultAway || 'Away' },
       teams: {
         home: {
           teamId: 0,

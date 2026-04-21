@@ -3,12 +3,12 @@
 import { Filter } from 'lucide-react';
 import React from 'react';
 import { useMatchList } from '@/hooks/use-match-list';
-import type { MatchSummary } from '@/types';
+import type { Match } from '@/types';
 import { FilterBar } from '../match-list/FilterBar';
 import { MatchCard } from '../match-list/MatchCard';
 
 interface Props {
-  matches: MatchSummary[];
+  matches: Match[];
 }
 
 export function MatchListClient({ matches: serverMatches }: Props) {

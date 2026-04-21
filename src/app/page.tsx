@@ -1,11 +1,11 @@
 import Image from 'next/image';
 import { ImportMatchButton } from '@/components/features/management';
 import { MatchListClient } from '@/components/features/match';
-import type { MatchSummary } from '@/types';
+import type { Match } from '@/types';
 import logoName from './logo-name.png';
 
 export default async function Home() {
-  const matches: MatchSummary[] = [];
+  const matches: Match[] = [];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col">

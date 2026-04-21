@@ -58,32 +58,31 @@ export const TargetedPassStrategy: EventStrategy = {
     { id: 'length', type: 'length', label: 'Pass Length' },
     { id: 'zone', type: 'zone', label: 'Target Zone' },
   ],
-  sqlCondition: (params) => {
+  predicate: (event, params) => {
+    if (event.type_value !== 1) return false;
+
     const { length, zone } = params;
-    const conditions: string[] = ['type_value = 1'];
+    const qualifiers = (event.qualifiers || []) as {
+      type: { value: number };
+      value?: string;
+    }[];
 
-    // --- 距離条件 (Qualifier 212) ---
-    // length は複数プリセット選択またはカスタム min/max を持つ
     if (length) {
-      const lengthExpr = `(SELECT CAST(t.q.value AS FLOAT) FROM UNNEST(qualifiers) AS t(q) WHERE t.q.type.value = 212 LIMIT 1)`;
+      const lengthQ = qualifiers.find((q) => q.type?.value === 212);
+      if (!lengthQ || lengthQ.value === undefined) return false;
+      const passLength = Number.parseFloat(lengthQ.value);
 
-      // 複数プリセットが選択されている場合
       if (
         length.presets &&
         Array.isArray(length.presets) &&
         length.presets.length > 0
       ) {
-        const rangeConditions = (length.presets as string[]).map(
-          (presetId: string) => {
-            const preset = LENGTH_PRESETS[presetId];
-            if (!preset) return 'FALSE';
-            return `(${lengthExpr} BETWEEN ${preset.min} AND ${preset.max})`;
-          },
-        );
-        conditions.push(`(${rangeConditions.join(' OR ')})`);
-      }
-      // カスタム min/max が指定されている場合（プリセットより優先）
-      else if (
+        const matchesPreset = length.presets.some((presetId: string) => {
+          const preset = LENGTH_PRESETS[presetId];
+          return preset && passLength >= preset.min && passLength <= preset.max;
+        });
+        if (!matchesPreset) return false;
+      } else if (
         (length.min !== undefined && length.min !== '') ||
         (length.max !== undefined && length.max !== '')
       ) {
@@ -97,28 +96,43 @@ export const TargetedPassStrategy: EventStrategy = {
             : undefined;
 
         if (min !== undefined && max !== undefined) {
-          conditions.push(`${lengthExpr} BETWEEN ${min} AND ${max}`);
+          if (passLength < min || passLength > max) return false;
         } else if (min !== undefined) {
-          conditions.push(`${lengthExpr} >= ${min}`);
+          if (passLength < min) return false;
         } else if (max !== undefined) {
-          conditions.push(`${lengthExpr} <= ${max}`);
+          if (passLength > max) return false;
         }
       }
     }
 
-    // --- エリア条件 (Qualifier 140/141) ---
     if (zone && Array.isArray(zone) && zone.length > 0) {
-      const passEndX = `(SELECT CAST(t.q.value AS FLOAT) FROM UNNEST(qualifiers) AS t(q) WHERE t.q.type.value = 140 LIMIT 1)`;
-      const passEndY = `(SELECT CAST(t.q.value AS FLOAT) FROM UNNEST(qualifiers) AS t(q) WHERE t.q.type.value = 141 LIMIT 1)`;
+      const passEndXQ = qualifiers.find((q) => q.type?.value === 140);
+      const passEndYQ = qualifiers.find((q) => q.type?.value === 141);
 
-      const zoneConditions = (zone as number[]).map((zoneIdx: number) => {
+      if (
+        !passEndXQ ||
+        passEndXQ.value === undefined ||
+        !passEndYQ ||
+        passEndYQ.value === undefined
+      )
+        return false;
+
+      const passEndX = Number.parseFloat(passEndXQ.value);
+      const passEndY = Number.parseFloat(passEndYQ.value);
+
+      const matchesZone = zone.some((zoneIdx: number) => {
         const bounds = getZoneBounds(zoneIdx);
-        return `(${passEndX} >= ${bounds.xMin} AND ${passEndX} < ${bounds.xMax} AND ${passEndY} >= ${bounds.yMin} AND ${passEndY} < ${bounds.yMax})`;
+        return (
+          passEndX >= bounds.xMin &&
+          passEndX < bounds.xMax &&
+          passEndY >= bounds.yMin &&
+          passEndY < bounds.yMax
+        );
       });
 
-      conditions.push(`(${zoneConditions.join(' OR ')})`);
+      if (!matchesZone) return false;
     }
 
-    return conditions.join(' AND ');
+    return true;
   },
 };

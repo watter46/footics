@@ -1,14 +1,11 @@
 'use client';
 
 import { Database, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { initializeDuckDB } from '@/lib/duckdb';
-import { importMatchesBatch } from '@/lib/duckdb/data-loader';
+import { importMatchesBatch } from '@/lib/data-loader';
 
 export function ImportMatchButton() {
-  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState<{
@@ -23,35 +20,31 @@ export function ImportMatchButton() {
     try {
       setIsLoading(true);
 
-      // Initialize DB just for importing
-      const { db, conn } = await initializeDuckDB();
       const fileArray = Array.from(files);
 
-      const result = await importMatchesBatch(
-        fileArray,
-        db,
-        conn,
-        (current, total) => {
-          setProgress({ current, total });
-        },
-      );
+      const result = await importMatchesBatch(fileArray, (current, total) => {
+        setProgress({ current, total });
+      });
 
       if (result.success > 0) {
-        toast.success(
-          `Imported ${result.success} matches! ${result.skipped > 0 ? `(${result.skipped} skipped)` : ''}`,
-        );
+        toast.success(`Imported ${result.success} matches!`);
         window.location.reload();
-      } else if (result.skipped > 0 && result.failed === 0) {
-        toast.info('All selected matches are already imported.');
+      } else if (result.failed === 0) {
+        toast.info('No matches were imported.');
       }
 
       if (result.failed > 0) {
+        const errorSummary = result.errors
+          .map((e) => `• ${e.filename}: ${e.message}`)
+          .join('\n');
         toast.error(
-          `Failed to import ${result.failed} matches. Check console for details.`,
+          `Failed to import ${result.failed} matches.\n${errorSummary}`,
+          { duration: 8000 },
         );
       }
-    } catch (err: any) {
-      toast.error(`Failed to import matches: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast.error(`Failed to import matches: ${message}`);
     } finally {
       setIsLoading(false);
       setProgress(null);
@@ -62,6 +55,7 @@ export function ImportMatchButton() {
   return (
     <>
       <button
+        type="button"
         onClick={() => fileRef.current?.click()}
         disabled={isLoading}
         className="flex items-center px-4 py-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700 hover:border-slate-500 rounded-lg text-sm font-medium text-slate-200 transition-all shadow-sm group disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"

@@ -4,7 +4,7 @@ import { Activity } from 'lucide-react';
 import type {
   BasePlayer,
   FilterState,
-  MatchMetadata,
+  Match,
   OutcomeFilter as OutcomeType,
   Player,
 } from '@/types';
@@ -18,7 +18,7 @@ import { TeamFilter } from './TeamFilter';
 import { TimelineSourceFilter } from './TimelineSourceFilter';
 
 interface SidebarProps {
-  metadata: MatchMetadata;
+  metadata: Match;
   filters: FilterState;
   onTeamChange: (teamId: string) => void;
   onPlayerToggle: (playerId: number) => void;

@@ -1,23 +1,39 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useDuckDB } from '@/hooks/use-duckdb';
 import { useEvents } from '@/hooks/use-events';
 import { useUIStore } from '@/hooks/use-ui-store';
-import { deleteCustomEvent } from '@/lib/db';
-import {
-  cleanupOldCache,
-  importMatchJsonFile,
-  loadCustomEventsToDuckDB,
-} from '@/lib/duckdb/data-loader';
+import { cleanupOldCache, importMatchJsonFile } from '@/lib/data-loader';
+import { deleteCustomEvent, getMatch } from '@/lib/db';
 import type { EventRow } from '@/types';
 import { useDashboardFilters } from './use-dashboard-filters';
 
 export function useDashboard(matchId: string) {
-  const { status, db, connection, error, metadata, cacheMissing } =
-    useDuckDB(matchId);
   const { setCentralFocusOpen } = useUIStore();
+
+  const {
+    data: metadata,
+    isLoading: isMetadataLoading,
+    error: metadataError,
+  } = useQuery({
+    queryKey: ['matchData', matchId],
+    queryFn: () => getMatch(matchId),
+  });
+
+  const status = useMemo(() => {
+    if (isMetadataLoading) return 'loading-data';
+    if (metadataError || !metadata) return 'error';
+    return 'ready';
+  }, [isMetadataLoading, metadataError, metadata]);
+
+  const error = metadataError
+    ? (metadataError as Error).message
+    : !metadata && !isMetadataLoading
+      ? 'Metadata not found'
+      : null;
+  const cacheMissing = !metadata && !isMetadataLoading;
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [editingEvent, setEditingEvent] = useState<{
@@ -53,10 +69,7 @@ export function useDashboard(matchId: string) {
     [filters, refreshTrigger],
   );
 
-  const { events, totalCount, isQuerying } = useEvents(
-    connection,
-    queryFilters,
-  );
+  const { events, totalCount, isQuerying } = useEvents(matchId, queryFilters);
 
   const handleEditCustomEvent = useCallback(
     (event: EventRow) => {
@@ -77,30 +90,24 @@ export function useDashboard(matchId: string) {
     [setCentralFocusOpen],
   );
 
-  const handleDeleteCustomEvent = useCallback(
-    async (eventId: string) => {
-      if (!confirm('Are you sure you want to delete this event?')) return;
-      await deleteCustomEvent(eventId);
-      if (db && connection) {
-        await loadCustomEventsToDuckDB(db, connection, matchId);
-        setRefreshTrigger((prev) => prev + 1);
-      }
-    },
-    [db, connection, matchId],
-  );
+  const handleDeleteCustomEvent = useCallback(async (eventId: string) => {
+    if (!confirm('Are you sure you want to delete this event?')) return;
+    await deleteCustomEvent(eventId);
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
 
   const handleRestoreCache = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (!file || !db || !connection) return;
+      if (!file) return;
 
       setIsRestoring(true);
       const toastId = toast.loading('Restoring match cache...', {
-        description: 'Importing JSON and building Parquet files.',
+        description: 'Importing JSON and saving to database.',
       });
 
       try {
-        await importMatchJsonFile(file, db, connection);
+        await importMatchJsonFile(file);
         toast.success('Cache restored successfully!', { id: toastId });
         window.location.reload();
       } catch (err: unknown) {
@@ -110,22 +117,16 @@ export function useDashboard(matchId: string) {
         setIsRestoring(false);
       }
     },
-    [db, connection],
+    [],
   );
 
   const handleRefreshCustomEvents = useCallback(() => {
-    if (db && connection) {
-      loadCustomEventsToDuckDB(db, connection, matchId).then(() => {
-        setRefreshTrigger((prev) => prev + 1);
-      });
-    }
-  }, [db, connection, matchId]);
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
 
   return useMemo(
     () => ({
       status,
-      db,
-      connection,
       error,
       metadata,
       cacheMissing,
@@ -153,8 +154,6 @@ export function useDashboard(matchId: string) {
     }),
     [
       status,
-      db,
-      connection,
       error,
       metadata,
       cacheMissing,

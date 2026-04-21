@@ -4,7 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { eventStrategies } from '@/registry';
-import type { EventRow, MatchMetadata } from '@/types';
+import type { EventRow, Match } from '@/types';
 import { TimelineHeader } from '../Timeline/TimelineHeader';
 import { TimelineRow } from '../Timeline/TimelineRow';
 
@@ -12,7 +12,7 @@ interface EventTimelineProps {
   events: EventRow[];
   totalCount: number;
   isQuerying: boolean;
-  metadata: MatchMetadata;
+  metadata: Match;
   activeStrategies: Set<string>;
   highlightEventId?: string | null;
   onEditCustomEvent?: (event: EventRow) => void;

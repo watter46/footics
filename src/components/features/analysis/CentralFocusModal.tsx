@@ -1,6 +1,5 @@
 'use client';
 
-import type { AsyncDuckDB, AsyncDuckDBConnection } from '@duckdb/duckdb-wasm';
 import React, { useEffect } from 'react';
 import {
   useKeyboardShortcut,
@@ -8,7 +7,7 @@ import {
 } from '@/hooks/use-shortcut';
 import { useUIStore } from '@/hooks/use-ui-store';
 import { saveCustomEvent } from '@/lib/db';
-import { loadCustomEventsToDuckDB } from '@/lib/duckdb/data-loader';
+
 import { EVENT_GROUPS } from '@/lib/event-definitions';
 import { createSavePayload } from '@/lib/features/MemoOverlay/memoOverlayLogic';
 import type { CustomEvent } from '@/lib/schema';
@@ -35,8 +34,6 @@ interface EditingEvent {
  */
 interface CentralFocusModalProps {
   matchId: string;
-  db: AsyncDuckDB | null;
-  connection: AsyncDuckDBConnection | null;
   onRefresh: (eventId: string) => void;
   editingEvent?: EditingEvent | null;
   onClose?: () => void;
@@ -44,8 +41,6 @@ interface CentralFocusModalProps {
 
 export function CentralFocusModal({
   matchId,
-  db,
-  connection,
   onRefresh,
   editingEvent,
   onClose,
@@ -89,10 +84,6 @@ export function CentralFocusModal({
       };
 
       await saveCustomEvent(event);
-
-      if (db && connection) {
-        await loadCustomEventsToDuckDB(db, connection, matchId);
-      }
 
       setCentralFocusOpen(false);
       onRefresh(id);

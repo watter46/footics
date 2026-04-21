@@ -1,4 +1,3 @@
-import type { AsyncDuckDB, AsyncDuckDBConnection } from '@duckdb/duckdb-wasm';
 import { z } from 'zod';
 import type { NationalMatchRawData } from '@/lib/national-match-schema';
 
@@ -141,47 +140,24 @@ export interface Qualifier {
 // Database State
 // ──────────────────────────────────────────────
 
-export type DatabaseStatus =
-  | 'idle'
-  | 'initializing'
-  | 'loading-data'
-  | 'ready'
-  | 'error';
-
-export interface DatabaseState {
-  status: DatabaseStatus;
-  db: AsyncDuckDB | null;
-  connection: AsyncDuckDBConnection | null;
-  error: string | null;
-  metadata: MatchMetadata | null;
-  cacheMissing: boolean;
-}
-
-export interface MatchMetadata {
-  matchId: string;
-  date: string;
-  score: string;
-  matchType: 'club' | 'national';
-  playerIdNameDictionary: Record<string, string>;
-  teams: {
-    home: Team | SimplifiedTeam;
-    away: Team | SimplifiedTeam;
-  };
-}
-
 export interface SimplifiedTeam {
   teamId: number;
   name: string;
   players: BasePlayer[];
 }
 
-export interface MatchBlobEntry {
-  matchId: string;
-  version: number;
-  matchesParquet: ArrayBuffer;
-  playersParquet: ArrayBuffer;
-  eventsParquet: ArrayBuffer;
-  metadata: MatchMetadata;
+export interface Match {
+  id: string;
+  date: string;
+  score: string;
+  matchType: 'club' | 'national';
+  homeTeam: { id: number; name: string };
+  awayTeam: { id: number; name: string };
+  playerIdNameDictionary: Record<string, string>;
+  teams: {
+    home: Team | SimplifiedTeam;
+    away: Team | SimplifiedTeam;
+  };
 }
 
 // ──────────────────────────────────────────────
@@ -206,7 +182,7 @@ export interface FilterState {
 
 export interface EventRow {
   id: number | string;
-  match_id: number | string;
+  match_id: string;
   event_id: number;
   team_id: number;
   player_id: number | null;
@@ -230,9 +206,6 @@ export interface EventRow {
   source?: 'whoscored' | 'custom';
   custom_label?: string;
   custom_memo?: string;
-
-  // strategy boolean projections are dynamic
-  [key: `is_strategy_${string}`]: boolean | undefined;
 }
 
 // ──────────────────────────────────────────────
@@ -247,13 +220,4 @@ export interface CustomEventRow {
   labels: string[];
   memo: string;
   created_at: number;
-}
-
-export interface MatchSummary {
-  id: string;
-  homeTeam: { id: number; name: string };
-  awayTeam: { id: number; name: string };
-  date: string;
-  score: string;
-  matchType: 'club' | 'national';
 }

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { getEventMetadata } from '@/lib/event-definitions';
 import { formatTimelineTime } from '@/lib/timeline-utils';
 import type { EventStrategy } from '@/registry/event-strategy';
-import type { EventRow, MatchMetadata } from '@/types';
+import type { EventRow, Match } from '@/types';
 
 interface TimelineRowProps {
   event: EventRow;
@@ -15,7 +15,7 @@ interface TimelineRowProps {
     size: number;
     start: number;
   };
-  metadata: MatchMetadata;
+  metadata: Match;
   activeStrategyList: EventStrategy[];
   highlightEventId?: string | null;
   onEdit?: (event: EventRow) => void;
@@ -37,7 +37,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
   const timeString = formatTimelineTime(event);
 
   const matchedStrategies = activeStrategyList.filter(
-    (s) => event[`is_strategy_${s.id.replace(/-/g, '_')}`] === true,
+    (s) => (event as any)[`is_strategy_${s.id.replace(/-/g, '_')}`] === true,
   );
 
   // Custom Event Mode

@@ -7,7 +7,7 @@
  * - 既存の footics_db (v11) との互換性を維持。
  */
 import Dexie, { type Table } from 'dexie';
-import type { MatchBlobEntry, MatchSummary } from '@/types';
+import type { EventRow, Match } from '@/types';
 import type {
   CustomEvent,
   EventMemo,
@@ -26,26 +26,31 @@ export interface KeyValEntry<T = any> {
 }
 
 const DB_NAME = 'footics_db';
-const DB_VERSION = 12;
+// v15: events primary key changed to compound [match_id+id] to prevent cross-match ID collisions
+const DB_VERSION = 15;
 
 export class FooticsDatabase extends Dexie {
   event_memos!: Table<EventMemo, number>;
   custom_events!: Table<CustomEvent, string>;
   match_memos!: Table<MatchMemo, string>;
   tactical_snapshots!: Table<TacticalSnapshot, string>;
-  matches!: Table<MatchSummary, string>;
-  match_blobs!: Table<MatchBlobEntry, string>;
+  matches!: Table<Match, string>;
+  // Primary key is compound [match_id, id] — queried via match_id index
+  events!: Table<EventRow, [number | string, number | string]>;
   keyval!: Table<KeyValEntry, string>;
 
   constructor() {
     super(DB_NAME);
+
+    // v14 → v15: events store recreated with compound primary key
+    // Existing events data will be cleared on migration (intentional: starting fresh from Whoscored JSON)
     this.version(DB_VERSION).stores({
       event_memos: 'id, matchId, updatedAt',
       custom_events: 'id, match_id, created_at',
       match_memos: 'matchId',
       tactical_snapshots: 'matchId',
       matches: 'id',
-      match_blobs: 'matchId',
+      events: '[match_id+id], match_id, team_id, type_value, period',
       keyval: 'key',
     });
   }
@@ -97,10 +102,9 @@ export async function getAllCustomEvents(): Promise<CustomEvent[]> {
 // Match Memo Operations
 // ──────────────────────────────────────────────
 
-export async function getMatchMemo(
-  matchId: string,
-): Promise<MatchMemo | undefined> {
-  return db.match_memos.get(matchId);
+export async function getMatchMemo(matchId: string): Promise<MatchMemo | null> {
+  const data = await db.match_memos.get(matchId);
+  return data ?? null;
 }
 
 export async function putMatchMemo(memo: MatchMemo): Promise<void> {
@@ -117,8 +121,9 @@ export async function getAllMatchMemos(): Promise<MatchMemo[]> {
 
 export async function getTacticalSnapshot(
   matchId: string,
-): Promise<TacticalSnapshot | undefined> {
-  return db.tactical_snapshots.get(matchId);
+): Promise<TacticalSnapshot | null> {
+  const data = await db.tactical_snapshots.get(matchId);
+  return data ?? null;
 }
 
 export async function putTacticalSnapshot(
@@ -131,53 +136,53 @@ export async function deleteTacticalSnapshot(matchId: string): Promise<void> {
   await db.tactical_snapshots.delete(matchId);
 }
 
+export async function getAllTacticalSnapshots(): Promise<TacticalSnapshot[]> {
+  return db.tactical_snapshots.toArray();
+}
+
+export async function putTacticalSnapshotsBatch(
+  snapshots: TacticalSnapshot[],
+): Promise<void> {
+  await db.tactical_snapshots.bulkPut(snapshots);
+}
+
 // ──────────────────────────────────────────────
 // Match Registry Operations
 // ──────────────────────────────────────────────
 
-export async function getAllMatches(): Promise<MatchSummary[]> {
+export async function getAllMatches(): Promise<Match[]> {
   return db.matches.toArray();
 }
 
-export async function getMatch(
-  matchId: string,
-): Promise<MatchSummary | undefined> {
-  return db.matches.get(matchId);
+export async function getMatch(matchId: string): Promise<Match | null> {
+  const data = await db.matches.get(matchId);
+  return data ?? null;
 }
 
-export async function putMatch(match: MatchSummary): Promise<void> {
+export async function putMatch(match: Match): Promise<void> {
   await db.matches.put(match);
 }
 
-export async function putMatchesBatch(matches: MatchSummary[]): Promise<void> {
+export async function putMatchesBatch(matches: Match[]): Promise<void> {
   await db.matches.bulkPut(matches);
 }
 
 // ──────────────────────────────────────────────
-// Match Blob (Parquet) Operations
+// Events Operations
 // ──────────────────────────────────────────────
 
-export async function getMatchBlobs(
-  matchId: string,
-): Promise<MatchBlobEntry | undefined> {
-  return db.match_blobs.get(matchId);
+export async function getEventsByMatch(
+  matchId: string | number,
+): Promise<EventRow[]> {
+  return db.events.where('match_id').equals(matchId).toArray();
 }
 
-export async function getAllMatchBlobs(): Promise<MatchBlobEntry[]> {
-  return db.match_blobs.toArray();
+export async function putMatchEventsBatch(events: EventRow[]): Promise<void> {
+  await db.events.bulkPut(events);
 }
 
-export async function putMatchBlobs(
-  matchId: string,
-  entry: MatchBlobEntry,
-): Promise<void> {
-  await db.match_blobs.put(entry);
-}
-
-export async function putMatchBlobsBatch(
-  entries: MatchBlobEntry[],
-): Promise<void> {
-  await db.match_blobs.bulkPut(entries);
+export async function getAllEvents(): Promise<EventRow[]> {
+  return db.events.toArray();
 }
 
 // ──────────────────────────────────────────────
@@ -185,22 +190,30 @@ export async function putMatchBlobsBatch(
 // ──────────────────────────────────────────────
 
 /**
- * 試合情報とバイナリデータをアトミックに保存する
+ * 試合情報とイベントデータをアトミックに保存する。
+ * 既存の同 matchId に紐づくイベントを削除してから再挿入（delete-then-insert パターン）。
+ * 複合主キー [match_id+id] を使用しているため、match_id インデックスで絞り込んで削除する。
  */
 export async function saveMatchUnified(
-  match: MatchSummary,
-  entry: MatchBlobEntry,
+  match: Match,
+  events: EventRow[],
 ): Promise<void> {
-  await db.transaction('rw', [db.matches, db.match_blobs], async () => {
+  await db.transaction('rw', [db.matches, db.events], async () => {
+    // Step 1: Upsert match metadata
     await db.matches.put(match);
-    await db.match_blobs.put(entry);
+    // Step 2: Delete old events for this match before reinserting
+    await db.events.where('match_id').equals(match.id).delete();
+    // Step 3: Bulk insert new events
+    if (events.length > 0) {
+      await db.events.bulkPut(events);
+    }
   });
 }
 
 export async function deleteMatch(matchId: string): Promise<void> {
-  await db.transaction('rw', [db.matches, db.match_blobs], async () => {
+  await db.transaction('rw', [db.matches, db.events], async () => {
     await db.matches.delete(matchId);
-    await db.match_blobs.delete(matchId);
+    await db.events.where('match_id').equals(matchId).delete();
   });
 }
 
@@ -280,11 +293,9 @@ export async function exportMemosAsJson(matchId: string): Promise<void> {
 // Key-Value Store Operations
 // ──────────────────────────────────────────────
 
-export async function getKeyValue<T = any>(
-  key: string,
-): Promise<T | undefined> {
+export async function getKeyValue<T = any>(key: string): Promise<T | null> {
   const entry = await db.keyval.get(key);
-  return entry?.value as T | undefined;
+  return (entry?.value as T) ?? null;
 }
 
 export async function setKeyValue<T = any>(

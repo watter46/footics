@@ -4,9 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { getAllMatches } from '@/lib/db';
 import { matchKeys } from '@/lib/query-keys';
-import type { MatchSummary } from '@/types';
+import type { Match } from '@/types';
 
-export function useMatchList(serverMatches: MatchSummary[]) {
+export function useMatchList(serverMatches: Match[]) {
   const [activeTeam, setActiveTeam] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<'all' | 'club' | 'national'>(
     'all',
@@ -18,7 +18,7 @@ export function useMatchList(serverMatches: MatchSummary[]) {
   });
 
   const allMatches = useMemo(() => {
-    const merged = new Map<string, MatchSummary>();
+    const merged = new Map<string, Match>();
     for (const m of serverMatches) merged.set(m.id, m);
     for (const m of idbMatches) merged.set(m.id, m);
     return Array.from(merged.values());

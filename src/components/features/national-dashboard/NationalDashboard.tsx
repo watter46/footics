@@ -122,8 +122,6 @@ export default function NationalDashboard({
 
         <CentralFocusModal
           matchId={matchId}
-          db={null}
-          connection={null}
           editingEvent={d.editingEvent}
           onClose={handleCloseCentralFocus}
           onRefresh={handleRefresh}

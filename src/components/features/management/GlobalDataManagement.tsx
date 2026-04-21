@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  AlertCircle,
-  Archive,
-  CheckCircle2,
-  Database,
-  Download,
-  RefreshCw,
-  Settings,
-  Upload,
-} from 'lucide-react';
+import { Archive, Database, RefreshCw, Settings, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -88,8 +79,10 @@ export function GlobalDataManagement() {
       {isOpen && (
         <>
           {/* Backdrop for mobile or just to capture clicks */}
-          <div
-            className="fixed inset-0 z-40"
+          <button
+            type="button"
+            aria-label="Close menu"
+            className="fixed inset-0 z-40 cursor-default"
             onClick={() => setIsOpen(false)}
           />
 
@@ -103,6 +96,7 @@ export function GlobalDataManagement() {
 
             <div className="p-1.5 flex flex-col gap-1">
               <button
+                type="button"
                 disabled={isProcessing}
                 onClick={handleExport}
                 className="flex items-center w-full px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors group disabled:opacity-50"
@@ -122,6 +116,7 @@ export function GlobalDataManagement() {
               </button>
 
               <button
+                type="button"
                 disabled={isProcessing}
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center w-full px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors group disabled:opacity-50"

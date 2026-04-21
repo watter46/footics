@@ -53,3 +53,28 @@ export interface FormattedMatchData {
   };
   timeline: any[];
 }
+
+/**
+ * 試合基本情報のインデックス定義 (initialMatchDataForScrappers[0][0])
+ */
+export const NATIONAL_INFO_IDX = {
+  HOME_TEAM_ID: 0,
+  AWAY_TEAM_ID: 1,
+  HOME_TEAM_NAME: 2,
+  AWAY_TEAM_NAME: 3,
+  DATE_FULL: 4,
+  SCORE: 8,
+} as const;
+
+/**
+ * DD/MM/YYYY HH:mm:ss 形式の文字列を YYYY-MM-DD に変換する
+ */
+export function parseNationalDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const [datePart] = dateStr.split(' ');
+  const parts = datePart.split('/');
+  if (parts.length !== 3) return dateStr;
+
+  const [d, m, y] = parts;
+  return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+}

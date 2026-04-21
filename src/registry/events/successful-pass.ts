@@ -7,5 +7,5 @@ export const SuccessfulPassStrategy: EventStrategy = {
     'Completed passes between teammates (type_value = 1 and outcome = true)',
   color:
     'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_15px_rgba(5,150,105,0.5)]',
-  sqlCondition: 'type_value = 1 AND outcome = true',
+  predicate: (event) => event.type_value === 1 && event.outcome === true,
 };
