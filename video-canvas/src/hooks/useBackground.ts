@@ -79,7 +79,7 @@ export function useBackground(editor: Editor | null) {
                 type: 'capture_frame' as any,
                 x: 0,
                 y: 0,
-                isLocked: true,
+                isLocked: false,
                 props: {
                   w: img.width,
                   h: img.height,
@@ -91,7 +91,7 @@ export function useBackground(editor: Editor | null) {
                 type: 'capture_frame' as any,
                 x: 0,
                 y: 0,
-                isLocked: true,
+                isLocked: false,
                 props: {
                   w: img.width,
                   h: img.height,

@@ -6,7 +6,6 @@ import {
   CAPTURE_FRAME_ID,
   MAX_OPTIMIZED_WIDTH,
 } from '@/components/features/editor/tldraw/styles/constants';
-import type { AppShape } from '@/components/features/editor/tldraw/types/app-shapes';
 import { useEditorStore } from '@/stores/useEditorStore';
 
 /**
@@ -58,15 +57,6 @@ export function useExport() {
           scale = MAX_OPTIMIZED_WIDTH / bounds.width;
         }
 
-        // キャプチャフレームを一時的に非表示にする
-        if (hasCaptureFrame) {
-          editor.updateShape({
-            id: CAPTURE_FRAME_ID,
-            type: 'capture_frame',
-            props: { isVisible: false },
-          } as any);
-        }
-
         const options = {
           format: 'png' as const,
           scale,
@@ -75,20 +65,36 @@ export function useExport() {
           padding: 0,
         };
 
-        if (type === 'copy') {
-          await copyAs(editor, idsToExport, options);
-        } else {
-          await exportAs(editor, idsToExport, options);
-        }
+        // キャプチャフレームを一時的に非表示にしてエクスポートを実行
+        await editor.run(
+          async () => {
+            try {
+              if (hasCaptureFrame) {
+                editor.updateShape({
+                  id: CAPTURE_FRAME_ID,
+                  type: 'capture_frame',
+                  props: { isVisible: false },
+                } as any);
+              }
 
-        // 非表示を戻す
-        if (hasCaptureFrame) {
-          editor.updateShape({
-            id: CAPTURE_FRAME_ID,
-            type: 'capture_frame',
-            props: { isVisible: true },
-          } as any);
-        }
+              if (type === 'copy') {
+                await copyAs(editor, idsToExport, options);
+              } else {
+                await exportAs(editor, idsToExport, options);
+              }
+            } finally {
+              // 非表示を戻す
+              if (hasCaptureFrame) {
+                editor.updateShape({
+                  id: CAPTURE_FRAME_ID,
+                  type: 'capture_frame',
+                  props: { isVisible: true },
+                } as any);
+              }
+            }
+          },
+          { history: 'ignore' },
+        );
 
         setExportStatus('success');
         setTimeout(() => setExportStatus('idle'), 3000);
