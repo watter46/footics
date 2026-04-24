@@ -67,7 +67,7 @@ export class CaptureFrameShapeUtil extends BaseBoxShapeUtil<TLCaptureFrameShape>
           stroke={strokeColor}
           strokeWidth={strokeWidth}
           strokeDasharray="8 4"
-          style={{ pointerEvents: 'all' }}
+          style={{ pointerEvents: 'stroke' }}
         />
 
         {/* 四隅の強調ハンドル（見た目用） */}

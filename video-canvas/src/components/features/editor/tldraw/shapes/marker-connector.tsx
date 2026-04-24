@@ -101,7 +101,15 @@ export class MarkerConnectorShapeUtil extends ShapeUtil<TLMarkerConnectorShape> 
     if (!startShape || !endShape) return new Group2d({ children: [] });
 
     const { startPt, endPt } = this._getPoints(startShape, endShape);
-    return new Edge2d({ start: startPt, end: endPt });
+
+    // tldraw の規約に従い、shape.x, shape.y からの相対座標（ローカル座標）に変換
+    const ox = shape.x;
+    const oy = shape.y;
+
+    return new Edge2d({
+      start: new Vec(startPt.x - ox, startPt.y - oy),
+      end: new Vec(endPt.x - ox, endPt.y - oy),
+    });
   }
 
   _getPoints(startShape: any, endShape: any) {
@@ -158,7 +166,7 @@ export class MarkerConnectorShapeUtil extends ShapeUtil<TLMarkerConnectorShape> 
     const ox = shape.x;
     const oy = shape.y;
 
-    // 計算された座標
+    // 計算された座標（ローカル）
     const x1 = startPt.x - ox;
     const y1 = startPt.y - oy;
     const x2 = endPt.x - ox;
@@ -259,13 +267,17 @@ export class MarkerConnectorTool extends StateNode {
 
     // 起点マーカーIDが渡されていればプレビュー用コネクタを即生成
     if (this.startMarkerId) {
+      const startMarker = this.editor.getShape(this.startMarkerId);
+      if (!startMarker) return;
+
       this.connectorId = createShapeId();
       this.editor.markHistoryStoppingPoint('creating marker connector');
       this.editor.createShape({
         id: this.connectorId,
         type: 'marker_connector' as any,
-        x: 0,
-        y: 0,
+        // 開始マーカーと同じ座標に配置（中心点共有方式）
+        x: startMarker.x,
+        y: startMarker.y,
         props: {
           startMarkerId: this.startMarkerId,
           // 最初は自分自身を指す（非表示相当）

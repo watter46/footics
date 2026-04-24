@@ -6,7 +6,7 @@
 export const MARKER_SVG_SIZE = 64;
 
 /** Default marker dimension in pixels */
-export const MARKER_DEFAULT_SIZE = 230;
+export const MARKER_DEFAULT_SIZE = 100;
 
 /** Minimum marker dimension in pixels */
 export const MARKER_MIN_SIZE = 24;

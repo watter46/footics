@@ -1,4 +1,4 @@
-import { Eye, Lightbulb, Link, MoveRight } from 'lucide-react';
+import { Eye, Lightbulb, Link, MoveRight, Pipette } from 'lucide-react';
 import type React from 'react';
 import { createShapeId, track, useEditor } from 'tldraw';
 import {
@@ -22,9 +22,8 @@ export const FloatingMarkerToolbar = track(function FloatingMarkerToolbar() {
   const shape = editor.getShape(selectedShapeIds[0]) as AppShape;
   if (!shape || shape.type !== 'marker') return null;
 
-  // 形状の境界または現在の選択範囲の境界を取得
-  const bounds =
-    editor.getShapePageBounds(shape.id) ?? editor.getSelectionPageBounds();
+  // ターゲットマーカー自身のページ境界を取得（他の選択物が混ざっても位置を安定させる）
+  const bounds = editor.getShapePageBounds(shape.id);
   if (!bounds) return null;
 
   // ページ空間 → ビューポート空間 (CSS px) へ変換
@@ -121,6 +120,25 @@ export const FloatingMarkerToolbar = track(function FloatingMarkerToolbar() {
       type: 'marker' as any,
       props: { isSpotlight: !props.isSpotlight },
     });
+  };
+
+  const pickColor = async () => {
+    if (!('EyeDropper' in window)) {
+      return;
+    }
+    try {
+      // @ts-expect-error - EyeDropper is a modern browser API not yet in standard TS types
+      const eyeDropper = new window.EyeDropper();
+      const result = await eyeDropper.open();
+      editor.markHistoryStoppingPoint('update marker color');
+      editor.updateShape({
+        id: shape.id,
+        type: 'marker' as any,
+        props: { color: result.sRGBHex },
+      });
+    } catch {
+      // User cancelled or other error
+    }
   };
 
   // ─────────────────────────────────────────────
@@ -224,6 +242,41 @@ export const FloatingMarkerToolbar = track(function FloatingMarkerToolbar() {
       >
         <Lightbulb size={16} strokeWidth={1.5} />
       </ToolbarBtn>
+
+      <div
+        style={{
+          height: '1px',
+          background: 'rgba(255,255,255,0.1)',
+          margin: '2px 0',
+        }}
+      />
+
+      {/* 色選択（スポイト） */}
+      {'EyeDropper' in window && (
+        <ToolbarBtn title="色を選択（スポイト）" onClick={pickColor}>
+          <div
+            style={{
+              position: 'relative',
+              width: '18px',
+              height: '18px',
+              borderRadius: '50%',
+              background: props.color,
+              border: '1px solid rgba(255,255,255,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Pipette
+              size={10}
+              style={{
+                color: '#fff',
+                filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.5))',
+              }}
+            />
+          </div>
+        </ToolbarBtn>
+      )}
     </div>
   );
 });
@@ -240,6 +293,7 @@ const ToolbarBtn: React.FC<{
   children: React.ReactNode;
 }> = ({ title, onClick, dim, active, children }) => (
   <button
+    type="button"
     onClick={onClick}
     title={title}
     style={{

@@ -49,16 +49,28 @@ export function registerMarkerSync(editor: Editor) {
       }[] = [];
 
       for (const s of allShapes) {
-        if (!isMarkerOption(s)) continue;
-        if ((s.props as any).targetMarkerId !== next.id) continue;
-
-        // 差分加算ではなく親の絶対座標に上書き（中心点共有方式）
-        shapesToUpdate.push({
-          id: s.id,
-          type: s.type,
-          x: next.x,
-          y: next.y,
-        });
+        // オプションShape (targetMarkerId を持つもの)
+        if (isMarkerOption(s)) {
+          if ((s.props as any).targetMarkerId === next.id) {
+            shapesToUpdate.push({
+              id: s.id,
+              type: s.type,
+              x: next.x,
+              y: next.y,
+            });
+          }
+        }
+        // コネクタ (startMarkerId を同期の親とする)
+        else if (s.type === 'marker_connector') {
+          if ((s.props as any).startMarkerId === next.id) {
+            shapesToUpdate.push({
+              id: s.id,
+              type: s.type,
+              x: next.x,
+              y: next.y,
+            });
+          }
+        }
       }
 
       if (shapesToUpdate.length > 0) {
