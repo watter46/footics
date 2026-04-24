@@ -1,4 +1,5 @@
 import {
+  Box,
   createShapeId,
   createShapePropsMigrationIds,
   createShapePropsMigrationSequence,
@@ -44,7 +45,7 @@ const migrations = createShapePropsMigrationSequence({
   sequence: [
     {
       id: migrationVersions.Init,
-      up(props: any) {
+      up(props: TLZonePathShape['props']) {
         props.points = props.points ?? [];
         props.color = props.color ?? 'black';
         props.dash = props.dash ?? 'draw';
@@ -120,11 +121,28 @@ export class ZonePathShapeUtil extends ShapeUtil<TLZonePathShape> {
     }));
   }
 
-  override onHandleDrag(shape: TLZonePathShape, { handle }: any): any {
+  override onHandleDrag(
+    shape: TLZonePathShape,
+    { handle }: { handle: TLHandle },
+  ): TLZonePathShape {
     const i = parseInt(handle.id.split('_')[1], 10);
     const newPoints = [...shape.props.points];
     newPoints[i] = { x: handle.x, y: handle.y };
-    return { ...shape, props: { ...shape.props, points: newPoints } };
+
+    // 座標の正規化
+    const bounds = Box.FromPoints(newPoints.map((p) => new Vec(p.x, p.y)));
+    const offset = bounds.point;
+    const normalizedPoints = newPoints.map((p) => ({
+      x: p.x - offset.x,
+      y: p.y - offset.y,
+    }));
+
+    return {
+      ...shape,
+      x: shape.x + offset.x,
+      y: shape.y + offset.y,
+      props: { ...shape.props, points: normalizedPoints },
+    };
   }
 
   override component(shape: TLZonePathShape) {
@@ -162,7 +180,8 @@ export class ZonePathShapeUtil extends ShapeUtil<TLZonePathShape> {
         {!isComplete &&
           points.map((p, i) => (
             <circle
-              key={i}
+              // biome-ignore lint/suspicious/noArrayIndexKey: Indicators for points during drawing are stable by index
+              key={`vertex-${i}`}
               cx={p.x}
               cy={p.y}
               r={4}
@@ -210,14 +229,14 @@ export class ZonePathTool extends StateNode {
       this.editor.markHistoryStoppingPoint('creating zone path');
       this.editor.createShape({
         id: this.currentShapeId,
-        type: 'zone_path' as any,
+        type: 'zone_path',
         x: currentPagePoint.x,
         y: currentPagePoint.y,
         props: {
           points: [{ x: 0, y: 0 }],
           isComplete: false,
         },
-      });
+      } as any);
     } else {
       // Add point
       const shape = this.editor.getShape(this.currentShapeId) as any;
@@ -227,6 +246,8 @@ export class ZonePathTool extends StateNode {
         x: currentPagePoint.x - shape.x,
         y: currentPagePoint.y - shape.y,
       };
+
+      const newPoints = [...shape.props.points, localPoint];
 
       // 始点と重なっているか判定（3点以上の場合）
       if (shape.props.points.length >= 3) {
@@ -239,29 +260,39 @@ export class ZonePathTool extends StateNode {
           // パスを閉じて完了
           this.editor.updateShape({
             id: this.currentShapeId,
-            type: 'zone_path' as any,
+            type: 'zone_path',
             props: { isComplete: true },
-          });
+          } as any);
           this.editor.setCurrentTool('select');
           this.currentShapeId = null;
           return;
         }
       }
 
+      // 座標の正規化
+      const bounds = Box.FromPoints(newPoints.map((p) => new Vec(p.x, p.y)));
+      const offset = bounds.point;
+      const normalizedPoints = newPoints.map((p) => ({
+        x: p.x - offset.x,
+        y: p.y - offset.y,
+      }));
+
       this.editor.updateShape({
         id: this.currentShapeId,
-        type: 'zone_path' as any,
+        type: 'zone_path',
+        x: shape.x + offset.x,
+        y: shape.y + offset.y,
         props: {
-          points: [...shape.props.points, localPoint],
+          points: normalizedPoints,
         },
-      });
+      } as any);
     }
   }
 
   // ダブルクリックによる終了は行わない（不完全な形状の削除のみ）
   override onDoubleClick() {
     if (this.currentShapeId) {
-      this.editor.deleteShape(this.currentShapeId as any);
+      this.editor.deleteShape(this.currentShapeId);
       this.editor.setCurrentTool('select');
       this.currentShapeId = null;
     }

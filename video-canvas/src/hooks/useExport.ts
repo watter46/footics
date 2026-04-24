@@ -61,7 +61,7 @@ export function useExport() {
           format: 'png' as const,
           scale,
           pixelRatio: 1,
-          bounds,
+          bounds: bounds.clone().expandBy(1.5), // ストロークの欠落を防ぐためにわずかに拡張
           padding: 0,
         };
 

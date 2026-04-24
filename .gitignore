@@ -69,5 +69,6 @@ certificates/
 # Agent / Debug outputs
 biome_output.txt
 biome_output_strict.txt
-*errors.txt
+biome_error*.txt
+*error*.txt
 *_output.txt
