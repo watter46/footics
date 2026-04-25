@@ -2,7 +2,6 @@ import {
   createShapeId,
   createShapePropsMigrationIds,
   createShapePropsMigrationSequence,
-  DefaultColorStyle,
   Edge2d,
   Group2d,
   ShapeUtil,
@@ -28,7 +27,6 @@ export interface TLMarkerConnectorShape
     {
       startMarkerId: TLShapeId | null;
       endMarkerId: TLShapeId | null;
-      color: string;
     }
   > {}
 
@@ -36,7 +34,10 @@ export interface TLMarkerConnectorShape
 // マイグレーション
 // =============================================================================
 
-const versions = createShapePropsMigrationIds('marker_connector', { Init: 1 });
+const versions = createShapePropsMigrationIds('marker_connector', {
+  Init: 1,
+  RemoveColor: 2,
+});
 const migrations = createShapePropsMigrationSequence({
   sequence: [
     {
@@ -45,6 +46,12 @@ const migrations = createShapePropsMigrationSequence({
         props.startMarkerId = props.startMarkerId ?? null;
         props.endMarkerId = props.endMarkerId ?? null;
         props.color = props.color ?? 'black';
+      },
+    },
+    {
+      id: versions.RemoveColor,
+      up(props: any) {
+        delete props.color;
       },
     },
   ],
@@ -81,14 +88,12 @@ export class MarkerConnectorShapeUtil extends ShapeUtil<TLMarkerConnectorShape> 
   static override props = {
     startMarkerId: T.any,
     endMarkerId: T.any,
-    color: DefaultColorStyle,
   };
 
   override getDefaultProps(): TLMarkerConnectorShape['props'] {
     return {
       startMarkerId: null,
       endMarkerId: null,
-      color: 'black',
     };
   }
 
@@ -150,12 +155,7 @@ export class MarkerConnectorShapeUtil extends ShapeUtil<TLMarkerConnectorShape> 
     if (!startShape || !endShape) return null;
 
     const isDarkMode = this.editor.user.getIsDarkMode();
-    // コネクタ自身の color が 'black' でなければそちらを優先、そうでなければ開始マーカーの色に従う
-    const colorName =
-      shape.props.color !== 'black'
-        ? shape.props.color
-        : startShape.props.color;
-    const color = resolveColor(colorName, isDarkMode);
+    const color = resolveColor(startShape.props.color, isDarkMode);
 
     const { startPt, endPt } = this._getPoints(startShape, endShape);
 
