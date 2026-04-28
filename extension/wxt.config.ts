@@ -9,6 +9,17 @@ export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   vite: () => ({
     plugins: [tailwindcss()],
+    esbuild: {
+      charset: 'ascii',
+    },
+    build: {
+      minify: 'terser',
+      terserOptions: {
+        format: {
+          ascii_only: true,
+        },
+      },
+    },
     resolve: {
       alias: {
         '@/': `${resolve(__dirname, '../src')}/`,
