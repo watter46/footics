@@ -10,7 +10,7 @@ export function useDashboardFilters() {
     outcomeFilter: 'all',
     activeStrategies: new Set(),
     activeStrategyParams: {},
-    timelineSource: 'all',
+    timelineSource: 'custom',
   });
 
   const handleTeamChange = useCallback((teamId: string) => {

@@ -26,7 +26,7 @@ export function useEvents(
 
       // カスタムイベントの統合
       const customEvents = await getCustomEventsByMatch(matchId);
-      const customEventRows: EventRow[] = customEvents.map((c: any) => ({
+      const customEventRows: EventRow[] = customEvents.map((c) => ({
         id: c.id,
         match_id: c.match_id,
         event_id: -1,
@@ -52,7 +52,10 @@ export function useEvents(
         custom_memo: c.memo,
       }));
 
-      const allEvents = [...rawEvents, ...customEventRows];
+      const allEvents = [...rawEvents, ...customEventRows].sort((a, b) => {
+        if (a.minute !== b.minute) return a.minute - b.minute;
+        return a.second - b.second;
+      });
 
       // オンメモリフィルタリングの実行
       const filteredEvents = filterEvents(allEvents, filters);

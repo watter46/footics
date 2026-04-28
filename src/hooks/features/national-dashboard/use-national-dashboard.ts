@@ -1,8 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
-import { useUIStore } from '@/hooks/use-ui-store';
+import { useCallback, useMemo } from 'react';
 import { deleteCustomEvent, getCustomEventsByMatch } from '@/lib/db';
 import type {
   FormattedMatchData,
