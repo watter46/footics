@@ -22,16 +22,9 @@ export default defineConfig({
   }),
   manifest: {
     name: 'Footics Sidepanel',
-    version: '0.0.5',
+    version: '0.0.0',
     permissions: ['sidePanel', 'storage', 'tabs', 'activeTab'],
-    host_permissions: [
-      '*://localhost/*',
-      '*://footics.com/*',
-      '<all_urls>',
-      '*://*.unext.jp/*',
-      '*://video.unext.jp/*',
-      '*://abema.tv/*',
-    ],
+    host_permissions: ['<all_urls>'],
     commands: {
       'toggle-match-memo': {
         suggested_key: {

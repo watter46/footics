@@ -17,6 +17,7 @@ interface TimelineRowProps {
   };
   metadata: Match;
   activeStrategyList: EventStrategy[];
+  activeStrategyParams: Record<string, Record<string, unknown>>;
   highlightEventId?: string | null;
   onEdit?: (event: EventRow) => void;
   onDelete?: (eventId: string) => void;
@@ -28,6 +29,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
   virtualRow,
   metadata,
   activeStrategyList,
+  activeStrategyParams,
   highlightEventId,
   onEdit,
   onDelete,
@@ -36,9 +38,10 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
   const isHome = Number(event.team_id) === Number(teams.home.teamId);
   const timeString = formatTimelineTime(event);
 
-  const matchedStrategies = activeStrategyList.filter(
-    (s) => (event as any)[`is_strategy_${s.id.replace(/-/g, '_')}`] === true,
-  );
+  const matchedStrategies = activeStrategyList.filter((s) => {
+    const params = activeStrategyParams[s.id] || {};
+    return s.predicate(event, params);
+  });
 
   // Custom Event Mode
   if (event.source === 'custom') {

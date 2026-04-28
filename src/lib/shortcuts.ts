@@ -7,6 +7,7 @@ export const SHORTCUT_ACTIONS = {
   OPEN_QUICK_EVENT: 'OPEN_QUICK_EVENT',
   SAVE_MEMO: 'SAVE_MEMO',
   CLOSE_MODAL: 'CLOSE_MODAL',
+  REFRESH_DATA: 'REFRESH_DATA',
 } as const;
 
 export type ShortcutAction =
@@ -32,6 +33,8 @@ export const SHORTCUT_CONFIG: Record<
   [SHORTCUT_ACTIONS.OPEN_QUICK_EVENT]: { key: 'i', ctrl: true },
   [SHORTCUT_ACTIONS.SAVE_MEMO]: { key: 'Enter', ctrl: true },
   [SHORTCUT_ACTIONS.CLOSE_MODAL]: { key: 'Escape' },
+  // REFRESH_DATA はキー操作ではなくプログラム的に発火される（拡張機能からの通知）
+  [SHORTCUT_ACTIONS.REFRESH_DATA]: { key: '' },
 };
 
 /**

@@ -93,7 +93,6 @@ export function createSavePayload(state: {
   const { mode, timeStr, selectedLabels, memo } = state;
 
   if (mode === 'MATCH') {
-    if (!memo.trim()) return null;
     return { type: 'MATCH', memo: memo.trim() };
   }
 

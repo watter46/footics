@@ -68,7 +68,32 @@ export const PhaseLabelSelection: React.FC<PhaseLabelSelectionProps> = ({
             : 'border-slate-700 focus:border-blue-500'
         }`}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') e.preventDefault();
+          // 動画プレイヤー等のショートカットとの干渉を防ぐため、すべてのキーイベントの伝播を止める
+          e.stopPropagation();
+
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            window.dispatchEvent(
+              new CustomEvent('footics-action', {
+                detail: { action: 'NAVIGATE_SUGGESTION', key: e.key },
+              }),
+            );
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            // サジェストリストが表示されている場合は選択確定 (NEXT_PHASE 内でサジェスト確定ロジックが走る)
+            window.dispatchEvent(
+              new CustomEvent('footics-action', {
+                detail: { action: 'NEXT_PHASE' },
+              }),
+            );
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            window.dispatchEvent(
+              new CustomEvent('footics-action', {
+                detail: { action: 'CLOSE_OVERLAY' },
+              }),
+            );
+          }
         }}
       />
 

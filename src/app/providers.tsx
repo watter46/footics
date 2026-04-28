@@ -11,7 +11,20 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useState } from 'react';
+import { useDataSync } from '@/hooks/use-data-sync';
+
+/**
+ * DataSyncManager
+ *
+ * 拡張機能からの `footics-action` イベントを購読し、
+ * TanStack Query のキャッシュを自動更新するマネージャー。
+ * QueryClientProvider の内側に配置することで useQueryClient が利用可能になる。
+ */
+function DataSyncManager() {
+  useDataSync();
+  return null;
+}
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -28,6 +41,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <DataSyncManager />
       {children}
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

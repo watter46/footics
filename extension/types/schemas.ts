@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { CustomEventSchema } from '@/lib/schema';
 
 /**
  * MemoMode Schema
@@ -38,28 +37,11 @@ export const FooticsActionSchema = z.object({
   }),
 });
 
-export const SaveMemoRelaySchema = z.object({
-  type: z.literal('SAVE_MEMO_RELAY'),
-  mode: MemoModeSchema,
-  matchId: z.string(),
-  memo: z.string(),
-  minute: z.number().int().optional(),
-  second: z.number().int().optional(),
-  labels: z.array(z.string()).optional(),
-});
-
-export const SaveCustomEventSchema = z.object({
-  type: z.literal('SAVE_CUSTOM_EVENT'),
-  event: CustomEventSchema,
-});
-
 export const ExtensionMessageSchema = z.discriminatedUnion('type', [
   OpenOverlaySchema,
   GetActiveMatchInfoSchema,
   CloseSidepanelSchema,
   FooticsActionSchema,
-  SaveMemoRelaySchema,
-  SaveCustomEventSchema,
 ]);
 
 /**
@@ -83,3 +65,27 @@ export type ExtensionMessage = z.infer<typeof ExtensionMessageSchema>;
 export type SaveMemoResponse = z.infer<typeof SaveMemoResponseSchema>;
 export type MatchInfoResponse = z.infer<typeof MatchInfoResponseSchema>;
 export type MemoMode = z.infer<typeof MemoModeSchema>;
+
+/**
+ * Save Queue Schemas (Phase 2: Storage-Driven Sync)
+ *
+ * Overlay は直接 BG への sendMessage をせず、
+ * chrome.storage.local のキューにデータを積む。
+ * Content Script が storage.onChanged でキューを監視し、処理する。
+ */
+export const SaveQueueItemSchema = z.object({
+  id: z.string(),
+  status: z.enum(['pending', 'done', 'error']),
+  mode: MemoModeSchema,
+  matchId: z.string(),
+  memo: z.string(),
+  minute: z.number().int().optional(),
+  second: z.number().int().optional(),
+  labels: z.array(z.string()).optional(),
+  createdAt: z.number(),
+});
+
+export const SaveQueueSchema = z.array(SaveQueueItemSchema);
+
+export type SaveQueueItem = z.infer<typeof SaveQueueItemSchema>;
+export type SaveQueue = z.infer<typeof SaveQueueSchema>;

@@ -223,6 +223,7 @@ export default function Dashboard({ matchId }: { matchId: string }) {
           isQuerying={d.isQuerying}
           metadata={d.metadata}
           activeStrategies={d.filters.activeStrategies}
+          activeStrategyParams={d.filters.activeStrategyParams}
           onEditCustomEvent={d.handleEditCustomEvent}
           onDeleteCustomEvent={d.handleDeleteCustomEvent}
         />

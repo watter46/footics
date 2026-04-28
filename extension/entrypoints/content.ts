@@ -5,6 +5,7 @@ import {
 } from 'webext-bridge/content-script';
 import { putMatchMemo, saveCustomEvent } from '@/lib/db';
 import { STORAGE_KEYS } from '../constants';
+import { SaveQueueSchema } from '../types/schemas';
 import { detectMatchId } from '../utils/match';
 
 export default defineContentScript({
@@ -50,52 +51,100 @@ export default defineContentScript({
       return { matchId };
     });
 
-    onMessage('SAVE_MEMO_RELAY', async ({ data }) => {
-      const { mode, matchId, memo } = data;
-      console.log('[ContentScript] Saving via Relay:', mode, matchId);
+    /**
+     * Storage-Driven Save Queue の処理 (排他制御付き)
+     * 複数タブが開いている場合でも、一つのタブだけが IndexedDB への書き込みを担当するように navigator.locks を使用する。
+     */
+    const processSaveQueue = async () => {
+      await navigator.locks.request('footics_save_queue', async () => {
+        // 最新のキューを取得
+        const stored = await browser.storage.local.get(STORAGE_KEYS.SAVE_QUEUE);
+        const parsed = SaveQueueSchema.safeParse(
+          stored[STORAGE_KEYS.SAVE_QUEUE],
+        );
+        if (!parsed.success) return;
 
-      try {
-        if (mode === 'MATCH') {
-          await putMatchMemo({ matchId, memo, updatedAt: Date.now() });
-        } else if (mode === 'EVENT') {
-          await saveCustomEvent({
-            id: crypto.randomUUID(),
-            match_id: matchId,
-            minute: data.minute || 0,
-            second: data.second || 0,
-            labels: data.labels || ['分析メモ'],
-            memo: memo || '',
-            created_at: Date.now(),
-          });
-        }
-        // メインワールド（アプリ側）に通知 (webext-bridge 経由)
-        // await するとバックグラウンド側で Transaction タイムアウトが発生するため fire-and-forget で送信する
-        sendMessage('REFRESH_APP', { matchId }, 'window').catch((e) =>
-          console.warn('[ContentScript] REFRESH_APP notify failed:', e),
+        const queue = parsed.data;
+        const pendingItems = queue.filter((item) => item.status === 'pending');
+        if (pendingItems.length === 0) return;
+
+        console.log(
+          `[ContentScript] Processing ${pendingItems.length} pending queue item(s) with lock`,
         );
 
-        return { success: true };
-      } catch (e) {
-        console.error('[ContentScript] Save Relay failed:', e);
-        return { success: false, error: String(e) };
+        const updatedQueue = [...queue];
+
+        for (const item of pendingItems) {
+          const idx = updatedQueue.findIndex((q) => q.id === item.id);
+          if (idx === -1) continue;
+
+          try {
+            if (item.mode === 'MATCH') {
+              await putMatchMemo({
+                matchId: item.matchId,
+                memo: item.memo,
+                updatedAt: Date.now(),
+              });
+            } else if (item.mode === 'EVENT') {
+              await saveCustomEvent({
+                id: crypto.randomUUID(),
+                match_id: item.matchId,
+                minute: item.minute ?? 0,
+                second: item.second ?? 0,
+                labels: item.labels ?? ['分析メモ'],
+                memo: item.memo,
+                created_at: Date.now(),
+              });
+            }
+
+            // 処理済みとしてマーク (あとで一括でクリーンアップされる)
+            updatedQueue[idx] = { ...updatedQueue[idx], status: 'done' };
+
+            console.info(
+              `[ContentScript] Queue item processed: ${item.id} (${item.mode})`,
+            );
+
+            // アプリに更新通知を送信 (fire-and-forget)
+            sendMessage(
+              'REFRESH_APP',
+              { matchId: item.matchId },
+              'window',
+            ).catch((e) =>
+              console.warn('[ContentScript] REFRESH_APP notify failed:', e),
+            );
+          } catch (e) {
+            console.error(`[ContentScript] Queue item failed: ${item.id}`, e);
+            updatedQueue[idx] = { ...updatedQueue[idx], status: 'error' };
+          }
+        }
+
+        // 完了したアイテムを削除してクリーンアップ
+        const cleanedQueue = updatedQueue.filter((q) => q.status === 'pending');
+        await browser.storage.local.set({
+          [STORAGE_KEYS.SAVE_QUEUE]: cleanedQueue,
+        });
+      });
+    };
+
+    // 2. Storage-Driven Save Queue の監視
+    browser.storage.onChanged.addListener(async (changes, areaName) => {
+      if (areaName !== 'local') return;
+      if (!(STORAGE_KEYS.SAVE_QUEUE in changes)) return;
+
+      const newValue = changes[STORAGE_KEYS.SAVE_QUEUE]?.newValue;
+      const parsed = SaveQueueSchema.safeParse(newValue);
+      if (!parsed.success) return;
+
+      const hasPending = parsed.data.some((item) => item.status === 'pending');
+      if (hasPending) {
+        processSaveQueue();
       }
     });
 
-    onMessage('SAVE_CUSTOM_EVENT', async ({ data }) => {
-      const { event } = data;
-      try {
-        await saveCustomEvent(event);
-        // メインワールド（アプリ側）に通知 (webext-bridge 経由)
-        await sendMessage('REFRESH_APP', { matchId: event.match_id }, 'window');
+    // 初期ロード時にも未処理のキューがあれば処理する
+    processSaveQueue();
 
-        return { success: true };
-      } catch (e) {
-        console.error('[ContentScript] SAVE_CUSTOM_EVENT failed:', e);
-        return { success: false, error: String(e) };
-      }
-    });
-
-    // 2. グローバルな Esc 監視 (サイドパネル用)
+    // 3. グローバルな Esc 監視 (サイドパネル用)
     window.addEventListener(
       'keydown',
       (e) => {

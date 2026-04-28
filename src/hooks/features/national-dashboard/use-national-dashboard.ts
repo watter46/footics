@@ -11,7 +11,9 @@ import type {
 } from '@/lib/national-match-schema';
 import { NationalMatchRawDataSchema } from '@/lib/national-match-schema';
 import { customEventKeys, nationalMatchKeys } from '@/lib/query-keys';
+import { filterEvents } from '@/services/event-filter';
 import type { CustomEventRow, EventRow, Match, SimplifiedTeam } from '@/types';
+import { useDashboardFilters } from '../dashboard/use-dashboard-filters';
 
 interface UseNationalDashboardProps {
   matchId: string;
@@ -35,6 +37,17 @@ export function useNationalDashboard({
     labels: string[];
     memo: string;
   } | null>(null);
+
+  const {
+    filters,
+    handleTeamChange,
+    handlePlayerToggle,
+    handlePlayersClear,
+    handleOutcomeChange,
+    handleStrategyToggle,
+    handleStrategyParamChange,
+    handleTimelineSourceChange,
+  } = useDashboardFilters();
 
   // カスタムイベントの取得
   const { data: customEvents = [] } = useQuery({
@@ -143,36 +156,39 @@ export function useNationalDashboard({
   );
 
   const events: EventRow[] = useMemo(() => {
-    return customEvents
-      .map(
-        (e) =>
-          ({
-            ...e,
-            source: 'custom',
-            custom_label: Array.isArray(e.labels) ? e.labels.join(' / ') : '',
-            custom_memo: e.memo,
-            period: 1,
-            expanded_minute: e.minute,
-            team_id: 0,
-            type_name: 'Memo',
-            outcome: true,
-            // EventRow の必須プロパティを補完
-            event_id: 0,
-            player_id: null,
-            x: 0,
-            y: 0,
-            end_x: null,
-            end_y: null,
-            type_value: 0,
-            is_touch: false,
-            qualifiers: [],
-          }) as EventRow,
-      )
-      .sort((a, b) => {
-        if (a.minute !== b.minute) return a.minute - b.minute;
-        return a.second - b.second;
-      });
-  }, [customEvents]);
+    const allMemos = customEvents.map(
+      (e) =>
+        ({
+          ...e,
+          source: 'custom',
+          custom_label: Array.isArray(e.labels) ? e.labels.join(' / ') : '',
+          custom_memo: e.memo,
+          period: 1,
+          expanded_minute: e.minute,
+          team_id: 0,
+          type_name: 'Memo',
+          outcome: true,
+          // EventRow の必須プロパティを補完
+          event_id: 0,
+          player_id: null,
+          x: 0,
+          y: 0,
+          end_x: null,
+          end_y: null,
+          type_value: 0,
+          is_touch: false,
+          qualifiers: [],
+        }) as EventRow,
+    );
+
+    // フィルタリングの適用
+    const filtered = filterEvents(allMemos, filters);
+
+    return filtered.sort((a, b) => {
+      if (a.minute !== b.minute) return a.minute - b.minute;
+      return a.second - b.second;
+    });
+  }, [customEvents, filters]);
 
   const metadata: Match = useMemo(
     () => ({
@@ -213,19 +229,35 @@ export function useNationalDashboard({
     () => ({
       events,
       metadata,
+      filters,
       editingEvent,
       setEditingEvent,
       invalidateCustomEvents,
       handleEditCustomEvent,
       handleDeleteCustomEvent,
+      handleTeamChange,
+      handlePlayerToggle,
+      handlePlayersClear,
+      handleOutcomeChange,
+      handleStrategyToggle,
+      handleStrategyParamChange,
+      handleTimelineSourceChange,
     }),
     [
       events,
       metadata,
+      filters,
       editingEvent,
       invalidateCustomEvents,
       handleEditCustomEvent,
       handleDeleteCustomEvent,
+      handleTeamChange,
+      handlePlayerToggle,
+      handlePlayersClear,
+      handleOutcomeChange,
+      handleStrategyToggle,
+      handleStrategyParamChange,
+      handleTimelineSourceChange,
     ],
   );
 }

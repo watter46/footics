@@ -1,0 +1,55 @@
+'use client';
+
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { customEventKeys, eventKeys, matchKeys } from '@/lib/query-keys';
+import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
+
+/**
+ * useDataSync
+ *
+ * 責務: 拡張機能から発火される `footics-action` イベントを購読し、
+ * `REFRESH_DATA` 受信時に TanStack Query のキャッシュを無効化して UI を自動更新する。
+ *
+ * 配置: `QueryClientProvider` の内側にあるコンポーネントから呼び出すこと。
+ */
+export function useDataSync() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const handleAction = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        action: string;
+        matchId?: string;
+      }>;
+      const { action, matchId } = customEvent.detail ?? {};
+
+      if (action !== SHORTCUT_ACTIONS.REFRESH_DATA) return;
+
+      console.log('[useDataSync] REFRESH_DATA received, matchId:', matchId);
+
+      if (matchId) {
+        // 特定の試合に関連するクエリを無効化
+        queryClient.invalidateQueries({
+          queryKey: customEventKeys.byMatch(matchId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: eventKeys.all,
+        });
+        queryClient.invalidateQueries({
+          queryKey: matchKeys.detail(matchId),
+        });
+      } else {
+        // matchId が不明な場合はすべてのデータ系クエリを無効化
+        queryClient.invalidateQueries({ queryKey: customEventKeys.all });
+        queryClient.invalidateQueries({ queryKey: eventKeys.all });
+        queryClient.invalidateQueries({ queryKey: matchKeys.all });
+      }
+    };
+
+    window.addEventListener('footics-action', handleAction);
+    return () => {
+      window.removeEventListener('footics-action', handleAction);
+    };
+  }, [queryClient]);
+}

@@ -17,6 +17,7 @@ export function filterEvents(
   filterState: FilterState,
 ): EventRow[] {
   const {
+    selectedTeam,
     timelineSource,
     outcomeFilter,
     selectedPlayers,
@@ -29,6 +30,13 @@ export function filterEvents(
     .filter((s): s is EventStrategy => s !== undefined);
 
   return events.filter((event) => {
+    // 0. Team Filtering
+    if (selectedTeam !== 'all') {
+      if (event.team_id.toString() !== selectedTeam) {
+        return false;
+      }
+    }
+
     // 1. Source Filtering
     if (timelineSource !== 'all') {
       const isCustomSource = event.source === 'custom';
@@ -36,12 +44,9 @@ export function filterEvents(
       if (timelineSource === 'custom' && !isCustomSource) return false;
     }
 
-    // Custom events bypass outcome/player/strategy filtering usually,
-    // but if you want them to be strictly filtered, we'll let them pass through.
-    // In original code, custom events only apply when source='all' or 'custom'.
-    if (event.source === 'custom') {
-      return true; // Optionally apply other logic if needed
-    }
+    // Custom events also should be filtered by common filters like Team/Player/Outcome
+    // if the user expects consistent behavior.
+    // In current implementation, custom events have player_id = null and team_id = 0.
 
     // 2. Outcome Filtering
     if (outcomeFilter === 'success' && event.outcome !== true) return false;
@@ -59,11 +64,11 @@ export function filterEvents(
     // Or we could do OR condition depending on original logic.
     // Original `query-builder.ts` used `AND`.
     if (strategies.length > 0) {
-      const satisfiesAll = strategies.every((strategy) => {
+      const satisfiesAny = strategies.some((strategy) => {
         const params = activeStrategyParams[strategy.id] || {};
         return strategy.predicate(event, params);
       });
-      if (!satisfiesAll) return false;
+      if (!satisfiesAny) return false;
     }
 
     return true;

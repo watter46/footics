@@ -4,6 +4,7 @@
 
 export const FOOTICS_APP_URLS = [
   'localhost',
+  '127.0.0.1',
   'footics.com',
   'footics.watool.workers.dev',
 ] as const;
@@ -41,4 +42,5 @@ export const Z_INDEX = {
 
 export const STORAGE_KEYS = {
   LAST_ACTIVE_MATCH_ID: 'lastActiveMatchId',
+  SAVE_QUEUE: 'saveQueue',
 } as const;

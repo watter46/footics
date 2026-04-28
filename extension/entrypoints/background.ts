@@ -8,10 +8,29 @@ export default defineBackground(() => {
   // Footics 本体タブを特定するヘルパー
   const findFooticsTab = async () => {
     const allTabs = await browser.tabs.query({});
-    // tabs.query で URL を取得するには、manifest の permissions/host_permissions が必要
-    return allTabs.find((t) =>
+    console.log(
+      '[Footics BG] Searching Footics tab among',
+      allTabs.length,
+      'tabs',
+    );
+    const tab = allTabs.find((t) =>
       FOOTICS_APP_URLS.some((url) => t.url?.includes(url)),
     );
+    if (tab) {
+      console.log(
+        '[Footics BG] Found Footics tab:',
+        tab.url,
+        '(ID:',
+        tab.id,
+        ')',
+      );
+    } else {
+      console.warn(
+        '[Footics BG] Footics tab not found. Checked URLs:',
+        FOOTICS_APP_URLS,
+      );
+    }
+    return tab;
   };
 
   browser.commands.onCommand.addListener(async (command, tab) => {
@@ -78,32 +97,6 @@ export default defineBackground(() => {
         `content-script@${activeTab.id}`,
       );
     }
-  });
-
-  onMessage('SAVE_MEMO_RELAY', async ({ data }) => {
-    const footicsTab = await findFooticsTab();
-    if (footicsTab?.id) {
-      try {
-        console.log(
-          '[Footics BG] Relaying SAVE_MEMO_RELAY to tab:',
-          footicsTab.id,
-        );
-        const response = await sendMessage(
-          'SAVE_MEMO_RELAY',
-          data,
-          `content-script@${footicsTab.id}`,
-        );
-        return response;
-      } catch (err) {
-        console.error('[Footics BG] SAVE_MEMO_RELAY relay failed:', err);
-        return {
-          success: false,
-          error:
-            '本体タブとの通信に失敗しました。ページを更新してみてください。',
-        };
-      }
-    }
-    return { success: false, error: 'Footics本体タブが見つかりません' };
   });
 
   onMessage('CLOSE_SIDEPANEL', () => {

@@ -8,6 +8,7 @@ import {
   EventTimeline,
 } from '@/components/features/analysis';
 import { MatchMemoModal } from '@/components/features/match';
+import { Sidebar } from '@/components/features/Sidebar';
 import { TacticalBoardModal } from '@/components/features/TacticalBoard/TacticalBoardModal';
 import { useNationalDashboard } from '@/hooks/features/national-dashboard/use-national-dashboard';
 import { useModalToggleShortcut } from '@/hooks/use-shortcut';
@@ -69,6 +70,17 @@ export default function NationalDashboard({
 
   return (
     <div className="flex h-screen w-full bg-slate-950 text-slate-50 overflow-hidden font-sans">
+      <Sidebar
+        metadata={d.metadata}
+        filters={d.filters}
+        onTeamChange={d.handleTeamChange}
+        onPlayerToggle={d.handlePlayerToggle}
+        onPlayersClear={d.handlePlayersClear}
+        onOutcomeChange={d.handleOutcomeChange}
+        onStrategyToggle={d.handleStrategyToggle}
+        onStrategyParamChange={d.handleStrategyParamChange}
+        onTimelineSourceChange={d.handleTimelineSourceChange}
+      />
       <main className="flex-1 flex flex-col p-6 overflow-hidden relative">
         <div className="flex justify-between items-center mb-6 pl-2 pb-4 border-b border-slate-800/60 z-10 shrink-0">
           <div className="flex items-center gap-4">
@@ -114,7 +126,8 @@ export default function NationalDashboard({
           totalCount={d.events.length}
           isQuerying={false}
           metadata={d.metadata}
-          activeStrategies={new Set()}
+          activeStrategies={d.filters.activeStrategies}
+          activeStrategyParams={d.filters.activeStrategyParams}
           highlightEventId={highlightIdLocal}
           onEditCustomEvent={d.handleEditCustomEvent}
           onDeleteCustomEvent={d.handleDeleteCustomEvent}

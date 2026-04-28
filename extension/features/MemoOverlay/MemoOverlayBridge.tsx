@@ -1,6 +1,5 @@
 import type React from 'react';
 import { useEffect } from 'react';
-import { sendMessage } from 'webext-bridge/content-script';
 import { MemoOverlayView } from '@/components/features/MemoOverlay/MemoOverlayView';
 import { useMemoOverlayEventBridge } from '@/hooks/features/MemoOverlay/useMemoOverlayEventBridge';
 import {
@@ -8,13 +7,20 @@ import {
   getValidationError,
 } from '@/lib/features/MemoOverlay/memoOverlayLogic';
 import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
-import { DEBUG_CONFIG } from '../../constants';
+import { DEBUG_CONFIG, STORAGE_KEYS } from '../../constants';
 import { useOverlayStore } from '../../stores/useOverlayStore';
+import { type SaveQueueItem, SaveQueueSchema } from '../../types/schemas';
 
 /**
  * MemoOverlayBridge (Extension Adapter Layer)
  *
  * 責務: 拡張機能固有のI/Oをコア（Hook + View）に繋ぐ「接着剤」。
+ *
+ * フェーズ2の変更点:
+ * - 保存処理を `sendMessage('SAVE_MEMO_RELAY')` から
+ *   `chrome.storage.local` のキューへの書き込みに変更。
+ * - Content Script が `storage.onChanged` でキューを監視し、
+ *   IndexedDB への実書き込みと REFRESH_APP の通知を担う。
  */
 export const MemoOverlayBridge: React.FC = () => {
   const { mode, matchId, initialError, close, setToast } = useOverlayStore();
@@ -49,7 +55,7 @@ export const MemoOverlayBridge: React.FC = () => {
     return true;
   };
 
-  // ── 保存処理（Extension 固有の実装） ──
+  // ── 保存処理（Storage Queue への書き込み） ──
   const handleSave = async () => {
     const currentState = useMemoOverlayStore.getState();
 
@@ -79,7 +85,10 @@ export const MemoOverlayBridge: React.FC = () => {
         return;
       }
 
-      const payloadData = {
+      // Storage Queue にアイテムを追加
+      const newItem: SaveQueueItem = {
+        id: crypto.randomUUID(),
+        status: 'pending',
         mode: currentState.mode,
         matchId: matchId!,
         memo: payload.memo,
@@ -90,25 +99,28 @@ export const MemoOverlayBridge: React.FC = () => {
               labels: payload.labels,
             }
           : {}),
+        createdAt: Date.now(),
       };
 
-      const response = await sendMessage(
-        'SAVE_MEMO_RELAY',
-        payloadData,
-        'background',
-      );
+      // 既存のキューを読み込んで新しいアイテムを追加
+      const stored = await browser.storage.local.get(STORAGE_KEYS.SAVE_QUEUE);
+      const rawQueue = stored[STORAGE_KEYS.SAVE_QUEUE];
+      const parsed = SaveQueueSchema.safeParse(rawQueue);
+      const currentQueue = parsed.success ? parsed.data : [];
 
-      if (response?.success) {
-        close();
-        setToast('Saved Successfully');
-      } else {
-        store.setError(
-          response?.error || '保存に失敗しました。本体タブを確認してください。',
-        );
-      }
+      await browser.storage.local.set({
+        [STORAGE_KEYS.SAVE_QUEUE]: [...currentQueue, newItem],
+      });
+
+      console.info('[MemoOverlayBridge] Queued save item:', newItem.id);
+
+      // キューへの書き込み完了をもってUIに成功フィードバックを返す
+      // 実際のDB書き込みはContent Scriptが担う
+      close();
+      setToast('Saved Successfully');
     } catch (err) {
-      console.error('[MemoOverlayBridge] sendMessage failed:', err);
-      store.setError('通信エラーが発生しました。');
+      console.error('[MemoOverlayBridge] Queue write failed:', err);
+      store.setError('保存キューへの書き込みに失敗しました。');
     } finally {
       store.setIsSaving(false);
     }

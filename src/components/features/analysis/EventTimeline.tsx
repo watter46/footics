@@ -14,6 +14,7 @@ interface EventTimelineProps {
   isQuerying: boolean;
   metadata: Match;
   activeStrategies: Set<string>;
+  activeStrategyParams: Record<string, Record<string, unknown>>;
   highlightEventId?: string | null;
   onEditCustomEvent?: (event: EventRow) => void;
   onDeleteCustomEvent?: (eventId: string) => void;
@@ -28,6 +29,7 @@ export function EventTimeline({
   isQuerying,
   metadata,
   activeStrategies,
+  activeStrategyParams,
   highlightEventId,
   onEditCustomEvent,
   onDeleteCustomEvent,
@@ -104,6 +106,7 @@ export function EventTimeline({
                     virtualRow={virtualRow}
                     metadata={metadata}
                     activeStrategyList={activeStrategyList}
+                    activeStrategyParams={activeStrategyParams}
                     highlightEventId={highlightEventId}
                     onEdit={onEditCustomEvent}
                     onDelete={onDeleteCustomEvent}

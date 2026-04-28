@@ -8,6 +8,7 @@ import {
   X,
 } from 'lucide-react';
 import type React from 'react';
+import { useEffect, useRef } from 'react';
 import { useMemoOverlayDerived } from '@/stores/useMemoOverlayStore';
 import { MatchMemoUnit } from './parts/MatchMemoUnit';
 import { MemoOverlayHeader } from './parts/MemoOverlayHeader';
@@ -39,6 +40,8 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
   onClose,
   onSave,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const {
     mode,
     phase,
@@ -105,8 +108,20 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
 
   return (
     <div
-      className="fixed top-6 right-6 w-[22vw] min-w-[380px] aspect-[1/1.3] bg-slate-900 border border-slate-700/60 rounded-xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden font-sans animate-in slide-in-from-right-4 duration-500 flex flex-col"
-      onKeyDown={(e) => e.stopPropagation()}
+      ref={containerRef}
+      tabIndex={-1}
+      className="fixed top-6 right-6 w-[22vw] min-w-[380px] aspect-[1/1.3] bg-slate-900 border border-slate-700/60 rounded-xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden font-sans animate-in slide-in-from-right-4 duration-500 flex flex-col outline-none"
+      onKeyDown={(e) => {
+        // 入力フィールド内のイベントはバブリングさせるが、それ以外は外部へ漏れないようにする
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement
+        ) {
+          // 入力フィールド内では伝播を止めない（ブラウザ標準挙動を保護）
+          return;
+        }
+        e.stopPropagation();
+      }}
     >
       {/* ── ヘッダー ── */}
       <MemoOverlayHeader mode={mode} phase={phase} onClose={onClose} />
