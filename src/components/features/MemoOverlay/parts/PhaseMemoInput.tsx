@@ -41,19 +41,9 @@ export const PhaseMemoInput: React.FC<PhaseMemoInputProps> = ({
         className="w-full h-32 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 outline-none focus:border-blue-500 transition-all resize-none"
         onKeyDown={(e) => {
           // 動画プレイヤー等のショートカットとの干渉を防ぐため、すべてのキーイベントの伝播を止める
+          // 実際の保存・閉じるキー判定は、拡張機能側のキャプチャフェーズリスナーが担当し、
+          // footics-action イベントとして再配送される。
           e.stopPropagation();
-
-          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault();
-            onSave();
-          } else if (e.key === 'Escape') {
-            e.preventDefault();
-            window.dispatchEvent(
-              new CustomEvent('footics-action', {
-                detail: { action: 'CLOSE_OVERLAY' },
-              }),
-            );
-          }
         }}
       />
     </div>

@@ -38,6 +38,7 @@ interface MemoOverlayState {
   setError: (err: string | undefined) => void;
   setIsSaving: (val: boolean) => void;
   filterByCategory: (categoryIndex: number) => void;
+  setSelectedLabels: (labels: string[]) => void;
 }
 
 export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
@@ -210,6 +211,12 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
       setLabelInput(cats[categoryIndex] ?? '');
     }
   },
+
+  setSelectedLabels: (labels) =>
+    set({
+      selectedLabels: labels,
+      error: undefined,
+    }),
 }));
 
 /**

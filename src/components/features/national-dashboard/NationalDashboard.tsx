@@ -1,13 +1,9 @@
 'use client';
 
-import { ChevronLeft, Edit3 } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
-import {
-  CentralFocusModal,
-  EventTimeline,
-} from '@/components/features/analysis';
-import { MatchMemoModal } from '@/components/features/match';
+import { EventTimeline } from '@/components/features/analysis';
 import { Sidebar } from '@/components/features/Sidebar';
 import { TacticalBoardModal } from '@/components/features/TacticalBoard/TacticalBoardModal';
 import { useNationalDashboard } from '@/hooks/features/national-dashboard/use-national-dashboard';
@@ -34,38 +30,12 @@ export default function NationalDashboard({
     defaultAway,
     defaultScore,
   });
-  const {
-    isMatchMemoOpen,
-    setMatchMemoOpen,
-    isTacticalBoardOpen,
-    setTacticalBoardOpen,
-    setHighlightEventId,
-  } = useUIStore();
+  const { isTacticalBoardOpen, setTacticalBoardOpen } = useUIStore();
 
-  const [highlightIdLocal, setHighlightIdLocal] = useState<string | null>(null);
-
-  // Modal Shortcuts
-  useModalToggleShortcut(SHORTCUT_ACTIONS.TOGGLE_MATCH_MEMO, setMatchMemoOpen, {
-    isOpen: isMatchMemoOpen,
-  });
   useModalToggleShortcut(
     SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD,
     setTacticalBoardOpen,
     { isOpen: isTacticalBoardOpen },
-  );
-
-  const handleCloseCentralFocus = useCallback(() => {
-    d.setEditingEvent(null);
-  }, [d]);
-
-  const handleRefresh = useCallback(
-    (id: string) => {
-      // キャッシュの無効化による再取得
-      d.invalidateCustomEvents();
-      setHighlightIdLocal(id);
-      setHighlightEventId(id);
-    },
-    [d, setHighlightEventId],
   );
 
   return (
@@ -105,20 +75,6 @@ export default function NationalDashboard({
               National
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setMatchMemoOpen(true)}
-              className="flex items-center px-4 py-2 bg-slate-800/80 border border-slate-700/50 hover:bg-slate-700 rounded-lg text-sm text-slate-200 shadow-sm transition-all group"
-            >
-              <Edit3 className="h-4 w-4 mr-2 text-amber-400 group-hover:text-amber-300" />
-              Memo
-            </button>
-            <div className="text-slate-500 text-sm">
-              Press{' '}
-              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Ctrl+M</kbd>
-            </div>
-          </div>
         </div>
 
         <EventTimeline
@@ -128,23 +84,10 @@ export default function NationalDashboard({
           metadata={d.metadata}
           activeStrategies={d.filters.activeStrategies}
           activeStrategyParams={d.filters.activeStrategyParams}
-          highlightEventId={highlightIdLocal}
           onEditCustomEvent={d.handleEditCustomEvent}
           onDeleteCustomEvent={d.handleDeleteCustomEvent}
         />
 
-        <CentralFocusModal
-          matchId={matchId}
-          editingEvent={d.editingEvent}
-          onClose={handleCloseCentralFocus}
-          onRefresh={handleRefresh}
-        />
-
-        <MatchMemoModal
-          matchId={matchId}
-          isOpen={isMatchMemoOpen}
-          onClose={() => setMatchMemoOpen(false)}
-        />
         <TacticalBoardModal
           matchId={matchId}
           isOpen={isTacticalBoardOpen}

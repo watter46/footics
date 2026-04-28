@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { customEventKeys, eventKeys, matchKeys } from '@/lib/query-keys';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
+import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
 
 /**
  * useDataSync
@@ -25,8 +26,10 @@ export function useDataSync() {
       const { action, matchId } = customEvent.detail ?? {};
 
       if (action !== SHORTCUT_ACTIONS.REFRESH_DATA) return;
-
       console.log('[useDataSync] REFRESH_DATA received, matchId:', matchId);
+
+      // 保存フラグをリセット
+      useMemoOverlayStore.getState().setIsSaving(false);
 
       if (matchId) {
         // 特定の試合に関連するクエリを無効化
@@ -38,6 +41,9 @@ export function useDataSync() {
         });
         queryClient.invalidateQueries({
           queryKey: matchKeys.detail(matchId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: matchKeys.memo(matchId),
         });
       } else {
         // matchId が不明な場合はすべてのデータ系クエリを無効化

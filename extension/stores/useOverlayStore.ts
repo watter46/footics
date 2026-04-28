@@ -11,11 +11,23 @@ interface OverlayState {
   isVisible: boolean;
   mode: MemoMode;
   matchId: string | undefined;
+  initialData?: {
+    id?: string;
+    minute?: number;
+    second?: number;
+    labels?: string[];
+    memo?: string;
+  };
   initialError: string | undefined;
   toast: ToastState;
 
   // Actions
-  open: (params: { mode: MemoMode; matchId?: string; error?: string }) => void;
+  open: (params: {
+    mode: MemoMode;
+    matchId?: string;
+    error?: string;
+    initialData?: OverlayState['initialData'];
+  }) => void;
   close: () => void;
   setToast: (message: string) => void;
   hideToast: () => void;
@@ -26,21 +38,23 @@ export const useOverlayStore = create<OverlayState>((set) => ({
   isVisible: false,
   mode: 'MATCH',
   matchId: undefined,
+  initialData: undefined,
   initialError: undefined,
   toast: {
     message: '',
     visible: false,
   },
 
-  open: ({ mode, matchId, error }) =>
+  open: ({ mode, matchId, error, initialData }) =>
     set({
       isVisible: true,
       mode,
       matchId,
       initialError: error,
+      initialData,
     }),
 
-  close: () => set({ isVisible: false }),
+  close: () => set({ isVisible: false, initialData: undefined }),
 
   setToast: (message) => {
     set({ toast: { message, visible: true } });

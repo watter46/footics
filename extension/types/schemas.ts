@@ -82,6 +82,7 @@ export const SaveQueueItemSchema = z.object({
   minute: z.number().int().optional(),
   second: z.number().int().optional(),
   labels: z.array(z.string()).optional(),
+  entityId: z.string().optional(),
   createdAt: z.number(),
 });
 

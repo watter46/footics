@@ -6,9 +6,26 @@
 :host {
   all: initial;
   font-family: "Inter", system-ui, -apple-system, sans-serif;
+  z-index: 2147483647; /* Ensure it's on top of everything */
+  position: relative;
 }
 
 /* WXTのShadow UIコンテナ自体のリセット */
 #root {
   all: initial;
+}
+
+.footics-overlay-host {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+}
+
+.footics-overlay-host > * {
+  pointer-events: auto;
+}
+
+.footics-overlay-root {
+  /* Overlay content specific styling if needed */
 }

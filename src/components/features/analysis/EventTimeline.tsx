@@ -7,6 +7,7 @@ import { eventStrategies } from '@/registry';
 import type { EventRow, Match } from '@/types';
 import { TimelineHeader } from '../Timeline/TimelineHeader';
 import { TimelineRow } from '../Timeline/TimelineRow';
+import { MatchMemoDisplay } from './MatchMemoDisplay';
 
 interface EventTimelineProps {
   events: EventRow[];
@@ -62,6 +63,9 @@ export function EventTimeline({
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative">
       <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-slate-950 to-emerald-900/10 pointer-events-none" />
+
+      {/* Match Memo Display */}
+      <MatchMemoDisplay matchId={metadata.id} />
 
       {/* Header Info */}
       <header className="mb-6 relative z-10 flex justify-between items-end">

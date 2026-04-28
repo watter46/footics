@@ -29,14 +29,6 @@ export function useNationalDashboard({
   defaultScore,
 }: UseNationalDashboardProps) {
   const queryClient = useQueryClient();
-  const { setCentralFocusOpen } = useUIStore();
-  const [editingEvent, setEditingEvent] = useState<{
-    id: string;
-    minute: number;
-    second: number;
-    labels: string[];
-    memo: string;
-  } | null>(null);
 
   const {
     filters,
@@ -134,16 +126,21 @@ export function useNationalDashboard({
           .filter(Boolean);
       }
 
-      setEditingEvent({
-        id: event.id.toString(),
-        minute: Number(event.minute),
-        second: Number(event.second),
-        labels,
-        memo: ('memo' in event ? event.memo : event.custom_memo) || '',
-      });
-      setCentralFocusOpen(true);
+      window.dispatchEvent(
+        new CustomEvent('footics-action', {
+          detail: {
+            action: 'TOGGLE_EVENT_MEMO',
+            matchId,
+            id: event.id.toString(),
+            minute: Number(event.minute),
+            second: Number(event.second),
+            labels,
+            memo: ('memo' in event ? event.memo : event.custom_memo) || '',
+          },
+        }),
+      );
     },
-    [setCentralFocusOpen],
+    [matchId],
   );
 
   const handleDeleteCustomEvent = useCallback(
@@ -230,8 +227,6 @@ export function useNationalDashboard({
       events,
       metadata,
       filters,
-      editingEvent,
-      setEditingEvent,
       invalidateCustomEvents,
       handleEditCustomEvent,
       handleDeleteCustomEvent,
@@ -247,7 +242,6 @@ export function useNationalDashboard({
       events,
       metadata,
       filters,
-      editingEvent,
       invalidateCustomEvents,
       handleEditCustomEvent,
       handleDeleteCustomEvent,

@@ -1,4 +1,4 @@
-import { onMessage, setNamespace } from 'webext-bridge/window';
+import { onMessage, sendMessage, setNamespace } from 'webext-bridge/window';
 
 export default defineContentScript({
   matches: [
@@ -31,6 +31,23 @@ export default defineContentScript({
             matchId: data.matchId,
           },
         }),
+      );
+    });
+
+    // 2. アプリからの保存リクエストをキャッチして Isolated World へ中継
+    window.addEventListener('footics-save-request', (e: any) => {
+      const payload = e.detail;
+      if (!payload) return;
+
+      console.log(
+        '[MainBridge] Catching save request, relaying to isolated:',
+        payload,
+      );
+
+      sendMessage('SAVE_MEMO_RELAY', payload, 'content-script').catch(
+        (err: unknown) => {
+          console.error('[MainBridge] Failed to relay save request:', err);
+        },
       );
     });
   },

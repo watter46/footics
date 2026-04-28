@@ -29,8 +29,19 @@ export function useOverlayShortcutInterceptor() {
       );
     });
 
+    hotkeys('ctrl+enter, command+enter', (e) => {
+      e.preventDefault();
+      window.dispatchEvent(
+        new CustomEvent('footics-action', {
+          detail: { action: 'SAVE_MEMO' },
+        }),
+      );
+    });
+
     return () => {
       hotkeys.unbind('escape');
+      hotkeys.unbind('ctrl+enter');
+      hotkeys.unbind('command+enter');
     };
   }, []);
 }

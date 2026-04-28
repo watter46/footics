@@ -7,9 +7,9 @@ import {
   getValidationError,
 } from '@/lib/features/MemoOverlay/memoOverlayLogic';
 import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
-import { DEBUG_CONFIG, STORAGE_KEYS } from '../../constants';
+import { DEBUG_CONFIG } from '../../constants';
+import { addToSaveQueue } from '../../features/storage-sync/save-queue';
 import { useOverlayStore } from '../../stores/useOverlayStore';
-import { type SaveQueueItem, SaveQueueSchema } from '../../types/schemas';
 
 /**
  * MemoOverlayBridge (Extension Adapter Layer)
@@ -23,16 +23,59 @@ import { type SaveQueueItem, SaveQueueSchema } from '../../types/schemas';
  *   IndexedDB への実書き込みと REFRESH_APP の通知を担う。
  */
 export const MemoOverlayBridge: React.FC = () => {
-  const { mode, matchId, initialError, close, setToast } = useOverlayStore();
+  const {
+    isVisible,
+    mode,
+    matchId,
+    initialData,
+    initialError,
+    open,
+    close,
+    setToast,
+  } = useOverlayStore();
   const store = useMemoOverlayStore();
 
   // ── ストアの初期化 ──
   useEffect(() => {
+    if (!isVisible) return;
+
     store.reset(mode);
+
     if (initialError) {
       store.setError(initialError);
     }
-  }, [mode, initialError, store.setError, store.reset]);
+
+    if (initialData) {
+      if (mode === 'EVENT') {
+        if (initialData.minute !== undefined) {
+          const m = initialData.minute;
+          const s = initialData.second ?? 0;
+          store.setTimeStr(`${m}:${s.toString().padStart(2, '0')}`);
+          // 時間が入力された状態なのでフェーズを進める
+          store.forceSetPhase(1);
+        }
+        if (initialData.labels) {
+          store.setSelectedLabels(initialData.labels);
+          // ラベルも入力済みならメモフェーズへ
+          store.forceSetPhase(2);
+        }
+      }
+      if (initialData.memo) {
+        store.setMemo(initialData.memo);
+      }
+    }
+  }, [
+    isVisible,
+    mode,
+    initialData,
+    initialError,
+    store.reset,
+    store.setError,
+    store.setTimeStr,
+    store.setSelectedLabels,
+    store.setMemo,
+    store.forceSetPhase,
+  ]);
 
   // ── バリデーションヘルパー ──
   const validate = (state: ReturnType<typeof useMemoOverlayStore.getState>) => {
@@ -85,10 +128,8 @@ export const MemoOverlayBridge: React.FC = () => {
         return;
       }
 
-      // Storage Queue にアイテムを追加
-      const newItem: SaveQueueItem = {
-        id: crypto.randomUUID(),
-        status: 'pending',
+      // Save Queue に追加（共通サービスに委譲）
+      await addToSaveQueue({
         mode: currentState.mode,
         matchId: matchId!,
         memo: payload.memo,
@@ -99,20 +140,7 @@ export const MemoOverlayBridge: React.FC = () => {
               labels: payload.labels,
             }
           : {}),
-        createdAt: Date.now(),
-      };
-
-      // 既存のキューを読み込んで新しいアイテムを追加
-      const stored = await browser.storage.local.get(STORAGE_KEYS.SAVE_QUEUE);
-      const rawQueue = stored[STORAGE_KEYS.SAVE_QUEUE];
-      const parsed = SaveQueueSchema.safeParse(rawQueue);
-      const currentQueue = parsed.success ? parsed.data : [];
-
-      await browser.storage.local.set({
-        [STORAGE_KEYS.SAVE_QUEUE]: [...currentQueue, newItem],
       });
-
-      console.info('[MemoOverlayBridge] Queued save item:', newItem.id);
 
       // キューへの書き込み完了をもってUIに成功フィードバックを返す
       // 実際のDB書き込みはContent Scriptが担う
@@ -127,7 +155,9 @@ export const MemoOverlayBridge: React.FC = () => {
   };
 
   // ストア連携
-  useMemoOverlayEventBridge(close, handleSave);
+  useMemoOverlayEventBridge(close, handleSave, open);
+
+  if (!isVisible) return null;
 
   return (
     <MemoOverlayView matchId={matchId} onClose={close} onSave={handleSave} />

@@ -1,21 +1,10 @@
 'use client';
 
-import {
-  ChevronLeft,
-  Database,
-  Edit3,
-  FileJson,
-  Loader2,
-  Upload,
-} from 'lucide-react';
+import { ChevronLeft, Database, FileJson, Loader2, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback } from 'react';
-import {
-  CentralFocusModal,
-  EventTimeline,
-} from '@/components/features/analysis';
+import { EventTimeline } from '@/components/features/analysis';
 import { DataManagementMenu } from '@/components/features/management';
-import { MatchMemoModal } from '@/components/features/match';
 import { Sidebar } from '@/components/features/Sidebar';
 import { TacticalBoardModal } from '@/components/features/TacticalBoard/TacticalBoardModal';
 import { Card } from '@/components/ui/card';
@@ -26,34 +15,12 @@ import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
 
 export default function Dashboard({ matchId }: { matchId: string }) {
   const d = useDashboard(matchId);
-  const {
-    isMatchMemoOpen,
-    setMatchMemoOpen,
-    isTacticalBoardOpen,
-    setTacticalBoardOpen,
-    setHighlightEventId,
-  } = useUIStore();
+  const { isTacticalBoardOpen, setTacticalBoardOpen } = useUIStore();
 
-  // Modal Shortcuts
-  useModalToggleShortcut(SHORTCUT_ACTIONS.TOGGLE_MATCH_MEMO, setMatchMemoOpen, {
-    isOpen: isMatchMemoOpen,
-  });
   useModalToggleShortcut(
     SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD,
     setTacticalBoardOpen,
     { isOpen: isTacticalBoardOpen },
-  );
-
-  const handleCloseCentralFocus = useCallback(() => {
-    d.setEditingEvent(null);
-  }, [d]);
-
-  const handleRefresh = useCallback(
-    (id: string) => {
-      d.setRefreshTrigger((p) => p + 1);
-      setHighlightEventId(id);
-    },
-    [d, setHighlightEventId],
   );
 
   // Loading States
@@ -133,6 +100,7 @@ export default function Dashboard({ matchId }: { matchId: string }) {
                     onChange={d.handleRestoreCache}
                   />
                   <button
+                    type="button"
                     onClick={() => d.restoreInputRef.current?.click()}
                     className="w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg transition-all"
                   >
@@ -207,13 +175,6 @@ export default function Dashboard({ matchId }: { matchId: string }) {
               matchId={matchId}
               onRefresh={d.handleRefreshCustomEvents}
             />
-            <button
-              onClick={() => setMatchMemoOpen(true)}
-              className="flex items-center px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm font-medium text-slate-200 shadow-sm transition-all hover:bg-slate-700 group"
-            >
-              <Edit3 className="h-4 w-4 mr-2 text-amber-400" />
-              Memo
-            </button>
           </div>
         </div>
 
@@ -228,18 +189,6 @@ export default function Dashboard({ matchId }: { matchId: string }) {
           onDeleteCustomEvent={d.handleDeleteCustomEvent}
         />
 
-        <CentralFocusModal
-          matchId={matchId}
-          editingEvent={d.editingEvent}
-          onClose={handleCloseCentralFocus}
-          onRefresh={handleRefresh}
-        />
-
-        <MatchMemoModal
-          matchId={matchId}
-          isOpen={isMatchMemoOpen}
-          onClose={() => setMatchMemoOpen(false)}
-        />
         <TacticalBoardModal
           matchId={matchId}
           isOpen={isTacticalBoardOpen}

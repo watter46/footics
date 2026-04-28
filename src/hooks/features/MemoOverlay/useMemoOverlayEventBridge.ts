@@ -12,6 +12,11 @@ import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
 export function useMemoOverlayEventBridge(
   onClose: () => void,
   onSave: () => void,
+  onOpen?: (params: {
+    mode: 'MATCH' | 'EVENT';
+    matchId?: string;
+    data?: any;
+  }) => void,
 ) {
   useEffect(() => {
     const handleFooticsAction = (e: Event) => {
@@ -20,6 +25,12 @@ export function useMemoOverlayEventBridge(
         categoryIndex?: number;
         key?: string;
         shiftKey?: boolean;
+        matchId?: string;
+        id?: string;
+        minute?: number;
+        second?: number;
+        labels?: string[];
+        memo?: string;
       };
       const { action } = detail;
 
@@ -27,9 +38,36 @@ export function useMemoOverlayEventBridge(
       const store = useMemoOverlayStore.getState();
 
       switch (action) {
+        case 'TOGGLE_MATCH_MEMO':
+          if (onOpen) {
+            onOpen({
+              mode: 'MATCH',
+              matchId: detail.matchId,
+              data: { memo: detail.memo },
+            });
+          }
+          break;
+
+        case 'TOGGLE_EVENT_MEMO':
+          if (onOpen) {
+            onOpen({
+              mode: 'EVENT',
+              matchId: detail.matchId,
+              data: {
+                id: detail.id,
+                minute: detail.minute,
+                second: detail.second,
+                labels: detail.labels,
+                memo: detail.memo,
+              },
+            });
+          }
+          break;
+
         case 'CLOSE_OVERLAY':
           onClose();
           break;
+        // ... (rest of the switch remains the same)
 
         case 'SAVE_MEMO':
           onSave();

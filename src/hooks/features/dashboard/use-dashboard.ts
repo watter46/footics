@@ -11,8 +11,6 @@ import type { EventRow } from '@/types';
 import { useDashboardFilters } from './use-dashboard-filters';
 
 export function useDashboard(matchId: string) {
-  const { setCentralFocusOpen } = useUIStore();
-
   const {
     data: metadata,
     isLoading: isMetadataLoading,
@@ -36,13 +34,6 @@ export function useDashboard(matchId: string) {
   const cacheMissing = !metadata && !isMetadataLoading;
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [editingEvent, setEditingEvent] = useState<{
-    id: string;
-    minute: number;
-    second: number;
-    labels: string[];
-    memo: string;
-  } | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const restoreInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,16 +69,21 @@ export function useDashboard(matchId: string) {
         .map((s: string) => s.trim())
         .filter(Boolean);
 
-      setEditingEvent({
-        id: event.id.toString(),
-        minute: Number(event.minute),
-        second: Number(event.second),
-        labels,
-        memo: event.custom_memo || '',
-      });
-      setCentralFocusOpen(true);
+      window.dispatchEvent(
+        new CustomEvent('footics-action', {
+          detail: {
+            action: 'TOGGLE_EVENT_MEMO',
+            matchId,
+            id: event.id.toString(),
+            minute: Number(event.minute),
+            second: Number(event.second),
+            labels,
+            memo: event.custom_memo || '',
+          },
+        }),
+      );
     },
-    [setCentralFocusOpen],
+    [matchId],
   );
 
   const handleDeleteCustomEvent = useCallback(async (eventId: string) => {
@@ -136,8 +132,6 @@ export function useDashboard(matchId: string) {
       isQuerying,
       refreshTrigger,
       setRefreshTrigger,
-      editingEvent,
-      setEditingEvent,
       isRestoring,
       restoreInputRef,
       handleTeamChange,
@@ -162,7 +156,6 @@ export function useDashboard(matchId: string) {
       totalCount,
       isQuerying,
       refreshTrigger,
-      editingEvent,
       isRestoring,
       handleTeamChange,
       handlePlayerToggle,

@@ -3,8 +3,11 @@ import {
   onMessage,
   sendMessage,
 } from 'webext-bridge/content-script';
-import { putMatchMemo, saveCustomEvent } from '@/lib/db';
 import { STORAGE_KEYS } from '../constants';
+import {
+  addToSaveQueue,
+  processSaveQueue,
+} from '../features/storage-sync/save-queue';
 import { SaveQueueSchema } from '../types/schemas';
 import { detectMatchId } from '../utils/match';
 
@@ -22,10 +25,9 @@ export default defineContentScript({
     // Main World (bridge) との通信を許可
     allowWindowMessaging('footics-app');
 
-    // Match ID をストレージに同期するロジック
+    // ── Match ID の同期 ──
     const syncMatchIdToStorage = async () => {
       const matchId = detectMatchId();
-
       if (matchId) {
         await browser.storage.local.set({
           [STORAGE_KEYS.LAST_ACTIVE_MATCH_ID]: matchId,
@@ -34,99 +36,30 @@ export default defineContentScript({
       }
     };
 
-    // DOM の変更（dataset.matchId）を監視
     const observer = new MutationObserver(() => syncMatchIdToStorage());
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-match-id'],
     });
-
-    // 初期実行
     syncMatchIdToStorage();
 
-    // 1. Listen for messages
+    // ── メッセージハンドラ ──
+
     onMessage('GET_ACTIVE_MATCH_INFO', async () => {
       const matchId = detectMatchId();
       console.log('[ContentScript] Detected matchId:', matchId);
       return { matchId };
     });
 
-    /**
-     * Storage-Driven Save Queue の処理 (排他制御付き)
-     * 複数タブが開いている場合でも、一つのタブだけが IndexedDB への書き込みを担当するように navigator.locks を使用する。
-     */
-    const processSaveQueue = async () => {
-      await navigator.locks.request('footics_save_queue', async () => {
-        // 最新のキューを取得
-        const stored = await browser.storage.local.get(STORAGE_KEYS.SAVE_QUEUE);
-        const parsed = SaveQueueSchema.safeParse(
-          stored[STORAGE_KEYS.SAVE_QUEUE],
-        );
-        if (!parsed.success) return;
+    // アプリからの保存リクエスト（Main Bridge 経由）をキューへ登録
+    onMessage('SAVE_MEMO_RELAY', async ({ data: payload }) => {
+      if (!payload) return;
+      console.log('[ContentScript] Received relayed save request:', payload);
+      await addToSaveQueue(payload as Parameters<typeof addToSaveQueue>[0]);
+    });
 
-        const queue = parsed.data;
-        const pendingItems = queue.filter((item) => item.status === 'pending');
-        if (pendingItems.length === 0) return;
+    // ── Storage Queue の監視 ──
 
-        console.log(
-          `[ContentScript] Processing ${pendingItems.length} pending queue item(s) with lock`,
-        );
-
-        const updatedQueue = [...queue];
-
-        for (const item of pendingItems) {
-          const idx = updatedQueue.findIndex((q) => q.id === item.id);
-          if (idx === -1) continue;
-
-          try {
-            if (item.mode === 'MATCH') {
-              await putMatchMemo({
-                matchId: item.matchId,
-                memo: item.memo,
-                updatedAt: Date.now(),
-              });
-            } else if (item.mode === 'EVENT') {
-              await saveCustomEvent({
-                id: crypto.randomUUID(),
-                match_id: item.matchId,
-                minute: item.minute ?? 0,
-                second: item.second ?? 0,
-                labels: item.labels ?? ['分析メモ'],
-                memo: item.memo,
-                created_at: Date.now(),
-              });
-            }
-
-            // 処理済みとしてマーク (あとで一括でクリーンアップされる)
-            updatedQueue[idx] = { ...updatedQueue[idx], status: 'done' };
-
-            console.info(
-              `[ContentScript] Queue item processed: ${item.id} (${item.mode})`,
-            );
-
-            // アプリに更新通知を送信 (fire-and-forget)
-            sendMessage(
-              'REFRESH_APP',
-              { matchId: item.matchId },
-              'window',
-            ).catch((e) =>
-              console.warn('[ContentScript] REFRESH_APP notify failed:', e),
-            );
-          } catch (e) {
-            console.error(`[ContentScript] Queue item failed: ${item.id}`, e);
-            updatedQueue[idx] = { ...updatedQueue[idx], status: 'error' };
-          }
-        }
-
-        // 完了したアイテムを削除してクリーンアップ
-        const cleanedQueue = updatedQueue.filter((q) => q.status === 'pending');
-        await browser.storage.local.set({
-          [STORAGE_KEYS.SAVE_QUEUE]: cleanedQueue,
-        });
-      });
-    };
-
-    // 2. Storage-Driven Save Queue の監視
     browser.storage.onChanged.addListener(async (changes, areaName) => {
       if (areaName !== 'local') return;
       if (!(STORAGE_KEYS.SAVE_QUEUE in changes)) return;
@@ -141,18 +74,36 @@ export default defineContentScript({
       }
     });
 
-    // 初期ロード時にも未処理のキューがあれば処理する
+    // 初期ロード時にも未処理キューがあれば処理する
     processSaveQueue();
 
-    // 3. グローバルな Esc 監視 (サイドパネル用)
+    // ── グローバルショートカット監視（Capture Phase） ──
+    // アプリ側の stopPropagation を越えてキーを拾い、コマンドとして再配送する
     window.addEventListener(
       'keydown',
       (e) => {
-        if (e.key === 'Escape') {
-          console.log(
-            '[ContentScript] Escape key detected - relaying to background',
-          );
-          sendMessage('CLOSE_SIDEPANEL', {}, 'background');
+        const isEscape = e.key === 'Escape';
+        const isSave = e.key === 'Enter' && (e.ctrlKey || e.metaKey);
+
+        if (!isEscape && !isSave) return;
+
+        const action = isEscape ? 'CLOSE_OVERLAY' : 'SAVE_MEMO';
+
+        // アプリ側へ通知 (useDataSync / useMemoOverlayEventBridge が受信)
+        window.dispatchEvent(
+          new CustomEvent('footics-action', {
+            detail: { action },
+          }),
+        );
+
+        // サイドパネルを閉じる（Escape の場合）
+        if (isEscape) {
+          sendMessage('CLOSE_SIDEPANEL', {}, 'background').catch(() => {});
+        }
+
+        // Ctrl+Enter はデフォルト挙動（改行）を抑制
+        if (isSave) {
+          e.preventDefault();
         }
       },
       true,
