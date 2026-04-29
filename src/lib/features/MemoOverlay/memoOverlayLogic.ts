@@ -1,4 +1,9 @@
+import Fuse from 'fuse.js';
 import type { FlattenedEvent } from '@/lib/event-definitions';
+
+// Fuse.js インスタンスと最後に使用したリストをキャッシュするための変数
+let fuseInstance: Fuse<FlattenedEvent> | null = null;
+let lastFlattenedEvents: FlattenedEvent[] | null = null;
 
 export type MemoMode = 'MATCH' | 'EVENT';
 export type EventPhase = 0 | 1 | 2; // 0: Time, 1: Label, 2: Memo
@@ -103,7 +108,7 @@ export function getValidationError(state: {
   selectedLabels: string[];
   period: number;
 }): string | null {
-  const { mode, phase, timeStr, selectedLabels, period } = state;
+  const { mode, phase, timeStr, period } = state;
   if (mode !== 'EVENT') return null;
 
   if (phase === 0) {
@@ -149,19 +154,25 @@ export function createSavePayload(state: {
 }
 
 /**
- * ラベルのサジェストフィルタ
+ * ラベルのサジェストフィルタ (Fuse.js による曖昧検索)
  */
 export function filterSuggestions(
   query: string,
   flattenedEvents: FlattenedEvent[],
 ): FlattenedEvent[] {
   if (!query) return flattenedEvents.slice(0, 50);
-  const lowerQuery = query.toLowerCase();
-  return flattenedEvents
-    .filter(
-      (e) =>
-        e.label.toLowerCase().includes(lowerQuery) ||
-        e.keywords.some((k) => k.toLowerCase().includes(lowerQuery)),
-    )
-    .slice(0, 15);
+
+  // インスタンスの初期化・キャッシュ (リストが変更された場合も再生成)
+  if (!fuseInstance || lastFlattenedEvents !== flattenedEvents) {
+    fuseInstance = new Fuse(flattenedEvents, {
+      keys: ['label', 'keywords'],
+      threshold: 0.35, // 曖昧さのしきい値
+      distance: 100,
+      minMatchCharLength: 1,
+    });
+    lastFlattenedEvents = flattenedEvents;
+  }
+
+  const results = fuseInstance.search(query);
+  return results.map((r) => r.item).slice(0, 15);
 }

@@ -166,7 +166,10 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
     const state = get();
     if (state.mode !== 'EVENT') return 'OK';
 
-    if (state.phase === 1 && state.isListMode) {
+    if (
+      state.phase === 1 &&
+      (state.isListMode || state.labelInput.length > 0)
+    ) {
       state.confirmSuggestion();
       return 'OK';
     }

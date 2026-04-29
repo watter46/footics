@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, Tag } from 'lucide-react';
+import { AlertCircle, Search, Tag } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { type FlattenedEvent, getEventMetadata } from '@/lib/event-definitions';
@@ -55,47 +55,62 @@ export const PhaseLabelSelection: React.FC<PhaseLabelSelectionProps> = ({
 
   return (
     <div className="p-4 flex flex-col gap-4">
-      {/* テキスト入力 */}
-      <input
-        ref={inputRef}
-        type="text"
-        value={labelInput}
-        onChange={(e) => onLabelInputChange(e.target.value)}
-        placeholder="Type or select a label..."
-        className={`w-full bg-transparent border-b pb-2 outline-none text-slate-100 placeholder:text-slate-600 text-lg font-bold transition-colors ${
-          isInvalidLabel
-            ? 'border-red-500/50'
-            : 'border-slate-700 focus:border-blue-500'
-        }`}
-        onKeyDown={(e) => {
-          // 動画プレイヤー等のショートカットとの干渉を防ぐため、すべてのキーイベントの伝播を止める
-          e.stopPropagation();
+      {/* プレミアムな検索入力エリア */}
+      <div className="relative group">
+        <Search
+          className={`absolute left-0 top-2 w-5 h-5 transition-all duration-300 ${
+            labelInput
+              ? 'text-blue-400'
+              : 'text-slate-500 group-focus-within:text-blue-500'
+          }`}
+        />
+        <input
+          ref={inputRef}
+          type="text"
+          value={labelInput}
+          onChange={(e) => onLabelInputChange(e.target.value)}
+          placeholder="Search match events..."
+          className={`w-full bg-transparent border-b pl-8 pb-2 outline-none text-slate-100 placeholder:text-slate-600 text-xl font-bold transition-all duration-300 ${
+            isInvalidLabel
+              ? 'border-red-500/50'
+              : 'border-slate-700 focus:border-blue-500 focus:ring-0'
+          }`}
+          onKeyDown={(e) => {
+            // 動画プレイヤー等のショートカットとの干渉を防ぐため、すべてのキーイベントの伝播を止める
+            e.stopPropagation();
 
-          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-            e.preventDefault();
-            window.dispatchEvent(
-              new CustomEvent('footics-action', {
-                detail: { action: 'NAVIGATE_SUGGESTION', key: e.key },
-              }),
-            );
-          } else if (e.key === 'Enter') {
-            e.preventDefault();
-            // サジェストリストが表示されている場合は選択確定 (NEXT_PHASE 内でサジェスト確定ロジックが走る)
-            window.dispatchEvent(
-              new CustomEvent('footics-action', {
-                detail: { action: 'NEXT_PHASE' },
-              }),
-            );
-          } else if (e.key === 'Escape') {
-            e.preventDefault();
-            window.dispatchEvent(
-              new CustomEvent('footics-action', {
-                detail: { action: 'CLOSE_OVERLAY' },
-              }),
-            );
-          }
-        }}
-      />
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+              e.preventDefault();
+              window.dispatchEvent(
+                new CustomEvent('footics-action', {
+                  detail: { action: 'NAVIGATE_SUGGESTION', key: e.key },
+                }),
+              );
+            } else if (e.key === 'Enter') {
+              e.preventDefault();
+              // サジェストリストが表示されている、または入力がある場合は確定
+              window.dispatchEvent(
+                new CustomEvent('footics-action', {
+                  detail: { action: 'NEXT_PHASE' },
+                }),
+              );
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              window.dispatchEvent(
+                new CustomEvent('footics-action', {
+                  detail: { action: 'CLOSE_OVERLAY' },
+                }),
+              );
+            }
+          }}
+        />
+        {/* インジケーターバー */}
+        <div
+          className={`absolute bottom-0 left-0 h-0.5 bg-blue-500 transition-all duration-500 ease-out ${
+            labelInput ? 'w-full' : 'w-0'
+          }`}
+        />
+      </div>
 
       {/* バリデーションエラー */}
       {validationError && phase === 1 && (
