@@ -20,7 +20,7 @@ describe('useMemoOverlayStore', () => {
     expect(useMemoOverlayStore.getState().timeStr).toBe('12');
   });
 
-  it('should handle phase transitions', () => {
+  it('should handle phase transitions (labels are optional)', () => {
     const store = useMemoOverlayStore.getState();
     store.setTimeStr('123');
 
@@ -28,12 +28,11 @@ describe('useMemoOverlayStore', () => {
     expect(res).toBe('OK');
     expect(useMemoOverlayStore.getState().phase).toBe(1);
 
-    // Selecting no labels should be blocked
-    const resBlock = useMemoOverlayStore.getState().nextPhase();
-    expect(resBlock).toBe('BLOCKED');
-    expect(useMemoOverlayStore.getState().error).toBe(
-      'ラベルを1つ以上選択してください。',
-    );
+    // ラベル未選択でも OK を返して phase 2 へ進む（ラベル任意化）
+    const resNext = useMemoOverlayStore.getState().nextPhase();
+    expect(resNext).toBe('OK');
+    expect(useMemoOverlayStore.getState().phase).toBe(2);
+    expect(useMemoOverlayStore.getState().error).toBeUndefined();
   });
 
   it('should handle label confirmed with confirmSuggestion', () => {

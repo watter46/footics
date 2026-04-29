@@ -17,11 +17,13 @@ interface MemoOverlayState {
   suggestionIndex: number;
   isListMode: boolean;
   memo: string;
+  period: number;
   error: string | undefined;
   isSaving: boolean;
 
   // Actions
   reset: (mode?: MemoMode) => void;
+  setPeriod: (val: number) => void;
   setTimeStr: (val: string) => void;
   appendTimeDigit: (digit: string) => void;
   backspaceTimeStr: () => void;
@@ -50,6 +52,7 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
   suggestionIndex: 0,
   isListMode: false,
   memo: '',
+  period: 1,
   error: undefined,
   isSaving: false,
 
@@ -63,9 +66,12 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
       suggestionIndex: 0,
       isListMode: false,
       memo: '',
+      // period はリセットせず、前の値を引き継ぐ（インテリジェント・デフォルト）
       error: undefined,
       isSaving: false,
     })),
+
+  setPeriod: (val) => set({ period: val, error: undefined }),
 
   setTimeStr: (val) => set({ timeStr: val, error: undefined }),
 
@@ -170,6 +176,7 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
       phase: state.phase,
       timeStr: state.timeStr,
       selectedLabels: state.selectedLabels,
+      period: state.period,
     });
 
     if (vError) {
@@ -226,7 +233,7 @@ export const useMemoOverlayDerived = () => {
   const store = useMemoOverlayStore();
   const flattenedEvents = getFlattenedEvents();
 
-  const formattedTime = parseTimeStr(store.timeStr);
+  const formattedTime = parseTimeStr(store.timeStr, store.period);
   const suggestions = filterSuggestions(store.labelInput, flattenedEvents);
 
   const isInvalidLabel = store.labelInput

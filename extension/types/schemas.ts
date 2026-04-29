@@ -78,6 +78,7 @@ export const SaveQueueItemSchema = z.object({
   status: z.enum(['pending', 'done', 'error']),
   mode: MemoModeSchema,
   matchId: z.string(),
+  period: z.number().int().optional(),
   memo: z.string(),
   minute: z.number().int().optional(),
   second: z.number().int().optional(),

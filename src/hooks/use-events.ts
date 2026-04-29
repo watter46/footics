@@ -32,7 +32,7 @@ export function useEvents(
         event_id: -1,
         team_id: 0,
         player_id: null,
-        period: 0,
+        period: c.period || 1,
         minute: c.minute,
         second: c.second,
         expanded_minute: c.minute,
@@ -53,6 +53,7 @@ export function useEvents(
       }));
 
       const allEvents = [...rawEvents, ...customEventRows].sort((a, b) => {
+        if (a.period !== b.period) return a.period - b.period;
         if (a.minute !== b.minute) return a.minute - b.minute;
         return a.second - b.second;
       });

@@ -55,14 +55,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
             ? 'bg-amber-700/50 blink-shadow'
             : 'bg-amber-950/20 hover:bg-amber-900/30'
         }`}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: `${virtualRow.size}px`,
-          transform: `translateY(${virtualRow.start}px)`,
-        }}
+        style={{ height: `${virtualRow.size}px` }}
       >
         <div className="w-28 font-mono text-amber-500/80 text-sm">
           {timeString}
@@ -118,14 +111,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
     <div
       data-index={index}
       className="flex items-center px-4 border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors"
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: `${virtualRow.size}px`,
-        transform: `translateY(${virtualRow.start}px)`,
-      }}
+      style={{ height: `${virtualRow.size}px` }}
     >
       {/* Time */}
       <div className="w-28 font-mono text-slate-300 text-sm">{timeString}</div>

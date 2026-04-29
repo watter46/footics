@@ -74,6 +74,7 @@ export async function processSaveQueue(): Promise<void> {
           await saveCustomEvent({
             id: item.entityId || crypto.randomUUID(),
             match_id: item.matchId,
+            period: item.period ?? 1,
             minute: item.minute ?? 0,
             second: item.second ?? 0,
             labels: item.labels ?? ['分析メモ'],
@@ -88,6 +89,10 @@ export async function processSaveQueue(): Promise<void> {
         console.info(`[save-queue] Processed: ${item.id} (${item.mode})`);
 
         // アプリに更新通知を送信 (fire-and-forget)
+        console.log(
+          '📡 [save-queue] Sending REFRESH_APP to window:',
+          item.matchId,
+        );
         sendMessage('REFRESH_APP', { matchId: item.matchId }, 'window').catch(
           (e) => console.warn('[save-queue] REFRESH_APP notify failed:', e),
         );

@@ -8,6 +8,11 @@ export const SHORTCUT_ACTIONS = {
   SAVE_MEMO: 'SAVE_MEMO',
   CLOSE_MODAL: 'CLOSE_MODAL',
   REFRESH_DATA: 'REFRESH_DATA',
+  SET_PERIOD_1: 'SET_PERIOD_1',
+  SET_PERIOD_2: 'SET_PERIOD_2',
+  SET_PERIOD_3: 'SET_PERIOD_3',
+  SET_PERIOD_4: 'SET_PERIOD_4',
+  SET_PERIOD_5: 'SET_PERIOD_5',
 } as const;
 
 export type ShortcutAction =
@@ -36,6 +41,11 @@ export const SHORTCUT_CONFIG: Record<
   [SHORTCUT_ACTIONS.CLOSE_MODAL]: { key: 'Escape' },
   // REFRESH_DATA はキー操作ではなくプログラム的に発火される（拡張機能からの通知）
   [SHORTCUT_ACTIONS.REFRESH_DATA]: { key: '' },
+  [SHORTCUT_ACTIONS.SET_PERIOD_1]: { key: '1', alt: true },
+  [SHORTCUT_ACTIONS.SET_PERIOD_2]: { key: '2', alt: true },
+  [SHORTCUT_ACTIONS.SET_PERIOD_3]: { key: '3', alt: true },
+  [SHORTCUT_ACTIONS.SET_PERIOD_4]: { key: '4', alt: true },
+  [SHORTCUT_ACTIONS.SET_PERIOD_5]: { key: '5', alt: true },
 };
 
 /**

@@ -111,6 +111,7 @@ export const MemoOverlayBridge: React.FC = () => {
 
     const payload = createSavePayload({
       mode: currentState.mode,
+      period: currentState.period,
       timeStr: currentState.timeStr,
       selectedLabels: currentState.selectedLabels,
       memo: currentState.memo,
@@ -132,6 +133,7 @@ export const MemoOverlayBridge: React.FC = () => {
       await addToSaveQueue({
         mode: currentState.mode,
         matchId: matchId!,
+        period: currentState.period,
         memo: payload.memo,
         ...(payload.type === 'EVENT'
           ? {

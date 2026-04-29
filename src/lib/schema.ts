@@ -16,6 +16,7 @@ import { z } from 'zod';
 export const WhoScoredEventSchema = z.object({
   id: z.number().int(),
   matchId: z.number().int(),
+  period: z.number().int().min(1).max(16).default(1),
   minute: z.number().int().min(0),
   second: z.number().int().min(0).max(59),
   type: z.string().min(1),
@@ -48,6 +49,7 @@ export type EventMemo = z.infer<typeof EventMemoSchema>;
 export const CustomEventSchema = z.object({
   id: z.string().uuid(),
   match_id: z.string(),
+  period: z.number().int().min(1).max(5).default(1),
   minute: z.number().int().min(0),
   second: z.number().int().min(0).max(59),
   labels: z.array(z.string().min(1)).min(1),

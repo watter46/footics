@@ -2,13 +2,12 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Info,
   Loader2,
   Save,
   X,
 } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { useMemoOverlayDerived } from '@/stores/useMemoOverlayStore';
 import { MatchMemoUnit } from './parts/MatchMemoUnit';
 import { MemoOverlayHeader } from './parts/MemoOverlayHeader';
@@ -54,11 +53,13 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
     isListMode,
     isInvalidLabel,
     memo,
+    period,
     error,
     isSaving,
 
     // Actions
     setTimeStr,
+    setPeriod,
     addLabel,
     removeLabel,
     setLabelInput,
@@ -76,11 +77,12 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
           <PhaseTimeInput
             timeStr={timeStr}
             displayTime={formattedTime.display}
-            isInvalid={formattedTime.isInvalid}
             isEmpty={formattedTime.empty}
             phase={phase}
+            period={period}
             validationError={error || null}
             onTimeChange={setTimeStr}
+            onPeriodChange={setPeriod}
           />
         );
       case 1:
@@ -110,6 +112,8 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
     <div
       ref={containerRef}
       tabIndex={-1}
+      role="dialog"
+      aria-label="Memo Overlay"
       className="fixed top-6 right-6 w-[22vw] min-w-[380px] aspect-[1/1.3] bg-slate-900 border border-slate-700/60 rounded-xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden font-sans animate-in slide-in-from-right-4 duration-500 flex flex-col outline-none"
       onKeyDown={(e) => {
         // 入力フィールド内のイベントはバブリングさせるが、それ以外は外部へ漏れないようにする
@@ -124,7 +128,12 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
       }}
     >
       {/* ── ヘッダー ── */}
-      <MemoOverlayHeader mode={mode} phase={phase} onClose={onClose} />
+      <MemoOverlayHeader
+        mode={mode}
+        phase={phase}
+        period={period}
+        onClose={onClose}
+      />
 
       {/* ── イベントモード: 進捗バー & レキャップ ── */}
       {mode === 'EVENT' && (
@@ -166,6 +175,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
           <div className="flex gap-3">
             {phase > 0 && (
               <button
+                type="button"
                 onClick={prevPhase}
                 className="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-slate-100 transition-all"
               >
@@ -176,6 +186,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
           <div className="flex gap-2">
             {phase < 2 ? (
               <button
+                type="button"
                 onClick={nextPhase}
                 className="flex items-center gap-1.5 px-5 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-black text-slate-100 transition-all shadow-xl"
               >
@@ -183,6 +194,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
               </button>
             ) : (
               <button
+                type="button"
                 onClick={onSave}
                 disabled={isSaving}
                 className="flex items-center gap-2 px-6 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-lg text-xs font-black transition-all shadow-xl shadow-amber-900/20"
@@ -218,7 +230,11 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
           <p className="text-xs text-red-200 font-bold leading-tight">
             {error}
           </p>
-          <button onClick={clearError} className="ml-auto text-red-500">
+          <button
+            type="button"
+            onClick={clearError}
+            className="ml-auto text-red-500"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>

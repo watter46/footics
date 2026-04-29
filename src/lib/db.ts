@@ -27,7 +27,7 @@ export interface KeyValEntry<T = any> {
 
 const DB_NAME = 'footics_db';
 // v15: events primary key changed to compound [match_id+id] to prevent cross-match ID collisions
-const DB_VERSION = 15;
+const DB_VERSION = 16;
 
 export class FooticsDatabase extends Dexie {
   event_memos!: Table<EventMemo, number>;
@@ -44,7 +44,7 @@ export class FooticsDatabase extends Dexie {
 
     // v14 → v15: events store recreated with compound primary key
     // Existing events data will be cleared on migration (intentional: starting fresh from Whoscored JSON)
-    this.version(DB_VERSION).stores({
+    this.version(15).stores({
       event_memos: 'id, matchId, updatedAt',
       custom_events: 'id, match_id, created_at',
       match_memos: 'matchId',
@@ -53,6 +53,19 @@ export class FooticsDatabase extends Dexie {
       events: '[match_id+id], match_id, team_id, type_value, period',
       keyval: 'key',
     });
+
+    this.version(16)
+      .stores({}) // No schema changes, just data migration
+      .upgrade(async (tx) => {
+        await tx
+          .table('custom_events')
+          .toCollection()
+          .modify((event) => {
+            if (event.period === undefined) {
+              event.period = 1;
+            }
+          });
+      });
   }
 }
 

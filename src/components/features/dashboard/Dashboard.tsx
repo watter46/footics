@@ -135,7 +135,7 @@ export default function Dashboard({ matchId }: { matchId: string }) {
         onStrategyParamChange={d.handleStrategyParamChange}
         onTimelineSourceChange={d.handleTimelineSourceChange}
       />
-      <main className="flex-1 flex flex-col p-6 pt-4 overflow-hidden relative">
+      <main className="flex-1 flex flex-col p-6 pt-4 overflow-y-auto relative">
         <div className="flex justify-between items-center mb-6 pl-2 pb-4 border-b border-slate-800/60 z-10 shrink-0">
           <div className="flex items-center gap-4">
             <Link

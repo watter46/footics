@@ -2,21 +2,21 @@ export type FormationPosition = {
   id: number;
   group: 'GK' | 'DF' | 'MF' | 'FW';
   position:
-  | 'GK'
-  | 'CB'
-  | 'LB'
-  | 'RB'
-  | 'LWB'
-  | 'RWB'
-  | 'DM'
-  | 'CM'
-  | 'AM'
-  | 'LM'
-  | 'RM'
-  | 'LW'
-  | 'RW'
-  | 'ST'
-  | 'SS';
+    | 'GK'
+    | 'CB'
+    | 'LB'
+    | 'RB'
+    | 'LWB'
+    | 'RWB'
+    | 'DM'
+    | 'CM'
+    | 'AM'
+    | 'LM'
+    | 'RM'
+    | 'LW'
+    | 'RW'
+    | 'ST'
+    | 'SS';
   top: number;
   left: number;
 };

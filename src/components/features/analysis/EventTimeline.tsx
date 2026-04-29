@@ -1,7 +1,8 @@
 'use client';
 
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useMemo, useRef } from 'react';
+import { ArrowDownUp } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { eventStrategies } from '@/registry';
 import type { EventRow, Match } from '@/types';
@@ -21,8 +22,7 @@ interface EventTimelineProps {
   onDeleteCustomEvent?: (eventId: string) => void;
 }
 
-const ROW_HEIGHT = 44;
-const OVERSCAN = 15;
+type SortOrder = 'asc' | 'desc';
 
 export function EventTimeline({
   events,
@@ -35,25 +35,11 @@ export function EventTimeline({
   onEditCustomEvent,
   onDeleteCustomEvent,
 }: EventTimelineProps) {
-  const parentRef = useRef<HTMLDivElement>(null);
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
-  const virtualizer = useVirtualizer({
-    count: events.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: OVERSCAN,
-  });
-
-  useEffect(() => {
-    if (highlightEventId && events.length > 0) {
-      const idx = events.findIndex((e) => e.id.toString() === highlightEventId);
-      if (idx !== -1) {
-        setTimeout(() => {
-          virtualizer.scrollToIndex(idx, { align: 'center' });
-        }, 50);
-      }
-    }
-  }, [highlightEventId, events, virtualizer]);
+  const sortedEvents = useMemo(() => {
+    return sortOrder === 'desc' ? [...events].reverse() : events;
+  }, [events, sortOrder]);
 
   const activeStrategyList = useMemo(
     () => eventStrategies.filter((s) => activeStrategies.has(s.id)),
@@ -61,7 +47,7 @@ export function EventTimeline({
   );
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden relative">
+    <div className="flex-1 flex flex-col relative">
       <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-slate-950 to-emerald-900/10 pointer-events-none" />
 
       {/* Match Memo Display */}
@@ -81,44 +67,49 @@ export function EventTimeline({
             )}
           </p>
         </div>
+
+        {/* Sort Order Toggle */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+          className="flex items-center gap-1.5 border-slate-700 bg-slate-900/60 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          title={sortOrder === 'asc' ? '昇順（古い順）' : '降順（新しい順）'}
+        >
+          <ArrowDownUp className="w-3.5 h-3.5" />
+          <span className="text-xs font-medium">
+            {sortOrder === 'asc' ? '昇順' : '降順'}
+          </span>
+        </Button>
       </header>
 
       {/* Table Container */}
-      <Card className="flex-1 flex flex-col overflow-hidden bg-slate-900/80 border-slate-800 backdrop-blur-xl relative z-10 shadow-2xl">
-        <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
+      <Card className="flex-1 flex flex-col bg-slate-900/80 border-slate-800 backdrop-blur-xl relative z-10 shadow-2xl">
+        <CardContent className="p-0 flex-1 flex flex-col">
           <TimelineHeader />
 
-          {/* Virtual scroll container */}
-          <div ref={parentRef} className="flex-1 overflow-y-auto">
-            {events.length === 0 ? (
-              <div className="flex items-center justify-center h-64 text-slate-500">
-                No events found for given filters.
-              </div>
-            ) : (
-              <div
-                style={{
-                  height: `${virtualizer.getTotalSize()}px`,
-                  width: '100%',
-                  position: 'relative',
-                }}
-              >
-                {virtualizer.getVirtualItems().map((virtualRow) => (
-                  <TimelineRow
-                    key={events[virtualRow.index].id}
-                    event={events[virtualRow.index]}
-                    index={virtualRow.index}
-                    virtualRow={virtualRow}
-                    metadata={metadata}
-                    activeStrategyList={activeStrategyList}
-                    activeStrategyParams={activeStrategyParams}
-                    highlightEventId={highlightEventId}
-                    onEdit={onEditCustomEvent}
-                    onDelete={onDeleteCustomEvent}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          {sortedEvents.length === 0 ? (
+            <div className="flex items-center justify-center h-64 text-slate-500">
+              No events found for given filters.
+            </div>
+          ) : (
+            <div className="w-full">
+              {sortedEvents.map((event, index) => (
+                <TimelineRow
+                  key={event.id}
+                  event={event}
+                  index={index}
+                  virtualRow={{ size: 44, start: index * 44 }}
+                  metadata={metadata}
+                  activeStrategyList={activeStrategyList}
+                  activeStrategyParams={activeStrategyParams}
+                  highlightEventId={highlightEventId}
+                  onEdit={onEditCustomEvent}
+                  onDelete={onDeleteCustomEvent}
+                />
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -219,5 +219,6 @@ export interface CustomEventRow {
   second: number;
   labels: string[];
   memo: string;
+  period: number;
   created_at: number;
 }

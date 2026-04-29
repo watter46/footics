@@ -10,6 +10,8 @@ import {
   type SimpleKeyConfig,
 } from '@/lib/shortcuts';
 
+hotkeys.filter = () => true;
+
 /**
  * キーボードショートカットを登録するカスタムフック
  * @param actionOrConfig ショートカットアクション名、または直接のキー設定

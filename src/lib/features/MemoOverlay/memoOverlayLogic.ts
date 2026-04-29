@@ -5,6 +5,7 @@ export type EventPhase = 0 | 1 | 2; // 0: Time, 1: Label, 2: Memo
 
 export interface EventSavePayload {
   type: 'EVENT';
+  period: number;
   minute: number;
   second: number;
   labels: string[];
@@ -17,9 +18,23 @@ export interface MatchSavePayload {
 }
 
 /**
- * 時間文字列のパース (MMSS -> M:SS)
+ * Match period limits (minutes)
  */
-export function parseTimeStr(timeStr: string): {
+export const PERIOD_LIMITS: Record<number, number> = {
+  1: 45,
+  2: 90,
+  3: 105,
+  4: 120,
+  5: 999, // PK: No practical limit for display
+};
+
+/**
+ * 時間文字列のパース (MMSS -> M:SS or M+A:SS)
+ */
+export function parseTimeStr(
+  timeStr: string,
+  period = 1,
+): {
   display: string;
   isInvalid: boolean;
   empty: boolean;
@@ -28,17 +43,28 @@ export function parseTimeStr(timeStr: string): {
   if (digits.length === 0)
     return { display: '--:--', isInvalid: false, empty: true };
 
-  let m = '0';
-  let s = '00';
+  let m = 0;
+  let s = 0;
   if (digits.length <= 2) {
-    s = digits.padStart(2, '0');
+    s = parseInt(digits, 10);
   } else {
-    m = digits.slice(0, -2);
-    s = digits.slice(-2);
+    m = parseInt(digits.slice(0, -2), 10);
+    s = parseInt(digits.slice(-2), 10);
   }
+
+  const limit = PERIOD_LIMITS[period] || 45;
+  let displayTime = '';
+
+  if (m > limit && period <= 4) {
+    const extra = m - limit;
+    displayTime = `${limit} + ${extra}:${s.toString().padStart(2, '0')}`;
+  } else {
+    displayTime = `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
   return {
-    display: `${m}:${s}`,
-    isInvalid: parseInt(s, 10) >= 60,
+    display: displayTime,
+    isInvalid: s >= 60,
     empty: false,
   };
 }
@@ -57,6 +83,17 @@ export function timeStrToMinuteSecond(timeStr: string): {
 }
 
 /**
+ * Minimum minutes allowed per period (standard elapsed time)
+ */
+export const MIN_MINUTES_PER_PERIOD: Record<number, number> = {
+  1: 0,
+  2: 45,
+  3: 90,
+  4: 105,
+  5: 0, // PK: No specific start time
+};
+
+/**
  * バリデーション
  */
 export function getValidationError(state: {
@@ -64,18 +101,21 @@ export function getValidationError(state: {
   phase: EventPhase;
   timeStr: string;
   selectedLabels: string[];
+  period: number;
 }): string | null {
-  const { mode, phase, timeStr, selectedLabels } = state;
+  const { mode, phase, timeStr, selectedLabels, period } = state;
   if (mode !== 'EVENT') return null;
 
   if (phase === 0) {
     if (timeStr === '') return '時間を入力してください。';
-    const { isInvalid } = parseTimeStr(timeStr);
+    const { isInvalid } = parseTimeStr(timeStr, period);
     if (isInvalid) return '秒を59以下にして入力してください。';
-  }
 
-  if (phase === 1) {
-    if (selectedLabels.length === 0) return 'ラベルを1つ以上選択してください。';
+    const { minute } = timeStrToMinuteSecond(timeStr);
+    const minLimit = MIN_MINUTES_PER_PERIOD[period] || 0;
+    if (minute < minLimit) {
+      return `第${period}ピリオドの時間は${minLimit}分以降である必要があります。`;
+    }
   }
 
   return null;
@@ -86,11 +126,12 @@ export function getValidationError(state: {
  */
 export function createSavePayload(state: {
   mode: MemoMode;
+  period: number;
   timeStr: string;
   selectedLabels: string[];
   memo: string;
 }): EventSavePayload | MatchSavePayload | null {
-  const { mode, timeStr, selectedLabels, memo } = state;
+  const { mode, period, timeStr, selectedLabels, memo } = state;
 
   if (mode === 'MATCH') {
     return { type: 'MATCH', memo: memo.trim() };
@@ -99,6 +140,7 @@ export function createSavePayload(state: {
   const { minute, second } = timeStrToMinuteSecond(timeStr);
   return {
     type: 'EVENT',
+    period,
     minute,
     second,
     labels: selectedLabels,
