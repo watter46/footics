@@ -1,0 +1,30 @@
+schema_version = 1
+
+# Footics Project Specific Filters
+
+# 巨大なマッチデータ（JSON）の出力を抑制
+[filters.match-data]
+description = "Suppress large match JSON files in public/data"
+match_command = "^(rtk\\s+)?(ls|find|read|cat|view_file).*public/data/.*\\.json$"
+max_lines = 3
+on_empty = "match-data: content suppressed (large file)"
+
+# Biome/Lint のノイズ削減
+[filters.biome-noise]
+description = "Clean up biome lint output"
+match_command = "biome\\s+check"
+strip_lines_matching = ["^Checked", "^Found", "^Diagnostics not shown"]
+
+# TSC の重複エラーの抑制
+[filters.tsc-dedupe]
+description = "Deduplicate TSC errors"
+match_command = "tsc"
+deduplicate_lines = true
+max_lines = 50
+
+# 依存関係ツリーの圧縮
+[filters.pnpm-list]
+description = "Compact pnpm list"
+match_command = "pnpm\\s+list"
+max_lines = 20
+on_empty = "pnpm: dependencies summary shown"

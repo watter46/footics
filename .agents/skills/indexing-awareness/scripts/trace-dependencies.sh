@@ -92,34 +92,21 @@ if [ -f "$TARGET" ]; then
     echo ""
     echo "📥 Forward Dependencies (このファイルが参照しているもの):"
     echo "---"
-    results=$(grep -nE "$IMPORT_PATTERN" "$TARGET" 2>/dev/null)
-    if [ -n "$results" ]; then
-        echo "$results"
+    if command -v rtk > /dev/null 2>&1; then
+        rtk grep -E "$IMPORT_PATTERN" "$TARGET"
     else
-        echo "   (none found)"
+        grep -nE "$IMPORT_PATTERN" "$TARGET" 2>/dev/null
     fi
 
     echo ""
     echo "📤 Reverse Dependencies (このファイルを参照しているもの):"
     echo "---"
-    results=$(grep -rnI "${EXCLUDE_DIRS[@]}" "${SOURCE_INCLUDES[@]}" \
-        -E "(${filename_no_ext}|${filename})" \
-        "$SEARCH_DIR" 2>/dev/null | grep -v "^${TARGET}:" | head -30)
-    if [ -n "$results" ]; then
-        echo "$results"
+    if command -v rtk > /dev/null 2>&1; then
+        rtk grep -r -E "(${filename_no_ext}|${filename})" "$SEARCH_DIR"
     else
-        echo "   (none found)"
-    fi
-
-    echo ""
-    echo "🔍 Config/Doc References (設定・ドキュメントからの参照):"
-    echo "---"
-    results=$(grep -rnI "${EXCLUDE_DIRS[@]}" "${CONFIG_INCLUDES[@]}" \
-        "$filename" "$SEARCH_DIR" 2>/dev/null | grep -v "^${TARGET}:" | head -20)
-    if [ -n "$results" ]; then
-        echo "$results"
-    else
-        echo "   (none found)"
+        grep -rnI "${EXCLUDE_DIRS[@]}" "${SOURCE_INCLUDES[@]}" \
+            -E "(${filename_no_ext}|${filename})" \
+            "$SEARCH_DIR" 2>/dev/null | grep -v "^${TARGET}:" | head -30
     fi
 
 else
@@ -130,37 +117,22 @@ else
     echo ""
     echo "📌 Definitions (定義元):"
     echo "---"
-    # 一般的な定義パターン（言語横断）
-    results=$(grep -rnI "${EXCLUDE_DIRS[@]}" "${SOURCE_INCLUDES[@]}" \
-        -E "(function\s+${TARGET}|const\s+${TARGET}|let\s+${TARGET}|var\s+${TARGET}|class\s+${TARGET}|interface\s+${TARGET}|type\s+${TARGET}|enum\s+${TARGET}|def\s+${TARGET}|fn\s+${TARGET}|func\s+${TARGET}|struct\s+${TARGET}|trait\s+${TARGET}|export\s+(default\s+)?(function|class|const|let|var)\s+${TARGET})" \
-        "$SEARCH_DIR" 2>/dev/null | head -20)
-    if [ -n "$results" ]; then
-        echo "$results"
+    if command -v rtk > /dev/null 2>&1; then
+        rtk grep -r -E "(function\s+${TARGET}|const\s+${TARGET}|let\s+${TARGET}|var\s+${TARGET}|class\s+${TARGET}|interface\s+${TARGET}|type\s+${TARGET}|enum\s+${TARGET}|def\s+${TARGET}|fn\s+${TARGET}|func\s+${TARGET}|struct\s+${TARGET}|trait\s+${TARGET}|export\s+(default\s+)?(function|class|const|let|var)\s+${TARGET})" "$SEARCH_DIR"
     else
-        echo "   (none found)"
+        grep -rnI "${EXCLUDE_DIRS[@]}" "${SOURCE_INCLUDES[@]}" \
+            -E "(function\s+${TARGET}|const\s+${TARGET}|let\s+${TARGET}|var\s+${TARGET}|class\s+${TARGET}|interface\s+${TARGET}|type\s+${TARGET}|enum\s+${TARGET}|def\s+${TARGET}|fn\s+${TARGET}|func\s+${TARGET}|struct\s+${TARGET}|trait\s+${TARGET}|export\s+(default\s+)?(function|class|const|let|var)\s+${TARGET})" \
+            "$SEARCH_DIR" 2>/dev/null | head -20
     fi
 
     echo ""
     echo "📎 Usages (使用箇所):"
     echo "---"
-    results=$(grep -rnI "${EXCLUDE_DIRS[@]}" "${SOURCE_INCLUDES[@]}" \
-        -w "$TARGET" "$SEARCH_DIR" 2>/dev/null | head -30)
-    if [ -n "$results" ]; then
-        echo "$results"
+    if command -v rtk > /dev/null 2>&1; then
+        rtk grep -r -w "$TARGET" "$SEARCH_DIR"
     else
-        echo "   (none found)"
-    fi
-
-    echo ""
-    echo "📦 Import/Require References (インポート参照):"
-    echo "---"
-    results=$(grep -rnI "${EXCLUDE_DIRS[@]}" "${SOURCE_INCLUDES[@]}" \
-        -E "(import.*${TARGET}|require.*${TARGET}|from.*${TARGET})" \
-        "$SEARCH_DIR" 2>/dev/null | head -20)
-    if [ -n "$results" ]; then
-        echo "$results"
-    else
-        echo "   (none found)"
+        grep -rnI "${EXCLUDE_DIRS[@]}" "${SOURCE_INCLUDES[@]}" \
+            -w "$TARGET" "$SEARCH_DIR" 2>/dev/null | head -30
     fi
 fi
 
