@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 export interface PlayerState {
   playerId: number;
+  shirtNo?: string;
   x: number;
   y: number;
   team: 'home' | 'away';

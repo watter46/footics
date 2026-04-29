@@ -36,6 +36,7 @@ export const TacticalPitchArea: React.FC<TacticalPitchAreaProps> = ({
                 key={`${p.playerId}`}
                 id={`${matchId}-${p.playerId}`}
                 playerName={playerMeta?.name || `Player ${p.playerId}`}
+                shirtNo={p.shirtNo || playerMeta?.shirtNo || playerMeta?.number}
                 initialX={viewPos.x}
                 initialY={viewPos.y}
                 color={p.team === 'home' ? homeColor : awayColor}

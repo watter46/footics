@@ -1,4 +1,5 @@
-// TacticalSetting import removed as it was unused and non-existent
+import { getFormationActualPos } from './formations';
+import { FORMATION_POSITIONS } from './formations-data';
 
 /**
  * 選手名を短縮形式に変換する
@@ -20,33 +21,35 @@ export const DEFAULT_442_POSITIONS: Record<
   'home' | 'away',
   { x: number; y: number }[]
 > = {
-  home: [
-    { x: 5, y: 50 }, // GK
-    { x: 20, y: 15 }, // LB
-    { x: 20, y: 38 }, // CB1
-    { x: 20, y: 62 }, // CB2
-    { x: 20, y: 85 }, // RB
-    { x: 38, y: 15 }, // LM
-    { x: 38, y: 38 }, // CM1
-    { x: 38, y: 62 }, // CM2
-    { x: 38, y: 85 }, // RM
-    { x: 48, y: 35 }, // FW1
-    { x: 48, y: 65 }, // FW2
-  ],
-  away: [
-    { x: 95, y: 50 }, // GK
-    { x: 80, y: 85 }, // RB
-    { x: 80, y: 62 }, // CB1
-    { x: 80, y: 38 }, // CB2
-    { x: 80, y: 15 }, // LB
-    { x: 62, y: 85 }, // RM
-    { x: 62, y: 62 }, // CM1
-    { x: 62, y: 38 }, // CM2
-    { x: 62, y: 15 }, // LM
-    { x: 52, y: 65 }, // FW1
-    { x: 52, y: 35 }, // FW2
-  ],
+  home: FORMATION_POSITIONS['4-4-2'].map((pos) =>
+    getFormationActualPos(pos, 'home', 'half'),
+  ),
+  away: FORMATION_POSITIONS['4-4-2'].map((pos) =>
+    getFormationActualPos(pos, 'away', 'half'),
+  ),
 };
+
+/**
+ * ベンチ選手の配置用定数
+ */
+export const BENCH_CONFIG = {
+  COLS: 3,
+  X_START: 15,
+  X_STEP: 35,
+  Y_START: 10,
+  Y_STEP: 15,
+} as const;
+
+/**
+ * ベンチのインデックスからXY座標を計算する
+ */
+export function getBenchPos(index: number): { x: number; y: number } {
+  const { COLS, X_START, X_STEP, Y_START, Y_STEP } = BENCH_CONFIG;
+  return {
+    x: X_START + (index % COLS) * X_STEP,
+    y: Y_START + Math.floor(index / COLS) * Y_STEP,
+  };
+}
 
 /**
  * 特定の分における出場選手を特定する (National Data)
@@ -119,6 +122,65 @@ export function getActivePlayersClub(matchCentreData: any, minute: number) {
   const awayActiveIds = getTeamActive(matchCentreData.away);
 
   return { homeActiveIds, awayActiveIds };
+}
+
+/**
+ * 選手オブジェクトから背番号を取得する
+ * 各種データソース(Club, National, Store)の差異を吸収する
+ */
+export function getShirtNo(player: any): string {
+  if (!player) return '';
+  return (
+    player.shirtNo?.toString() ||
+    player.number?.toString() ||
+    player.jerseyNumber?.toString() ||
+    ''
+  );
+}
+
+/**
+ * メタデータから初期の選手配置マッピングを生成する
+ */
+export function generateInitialMapping(metadata: any): Record<number, any> {
+  const initialMapping: Record<number, any> = {};
+
+  const setupTeam = (team: 'home' | 'away') => {
+    const players = metadata?.teams[team]?.players || [];
+    if (players.length === 0) return false;
+
+    players.forEach((p: any, i: number) => {
+      let x: number;
+      let y: number;
+      let area: 'pitch' | 'bench';
+
+      if (i < 11) {
+        area = 'pitch';
+        x = DEFAULT_442_POSITIONS[team][i]?.x || (team === 'home' ? 10 : 90);
+        y = DEFAULT_442_POSITIONS[team][i]?.y || 10 + i * 8;
+      } else {
+        area = 'bench';
+        const pos = getBenchPos(i - 11);
+        x = pos.x;
+        y = pos.y;
+      }
+
+      initialMapping[p.playerId] = {
+        playerId: p.playerId,
+        shirtNo: getShirtNo(p),
+        x,
+        y,
+        team,
+        area,
+      };
+    });
+    return true;
+  };
+
+  const homeSuccess = setupTeam('home');
+  const awaySuccess = setupTeam('away');
+
+  if (!homeSuccess && !awaySuccess) return {};
+  return initialMapping;
 }
 
 /**

@@ -83,6 +83,7 @@ export const TacticalSnapshotSchema = z.object({
       players: z.array(
         z.object({
           playerId: z.number().int(),
+          shirtNo: z.string().optional(),
           team: z.enum(['home', 'away']),
           area: z.enum(['pitch', 'bench']).optional(),
           x: z.number(),

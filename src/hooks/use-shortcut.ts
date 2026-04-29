@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import hotkeys from 'hotkeys-js';
+import { useEffect } from 'react';
 import {
-  isActionMatch,
+  configToHotkeyString,
   isInputFocused,
   SHORTCUT_ACTIONS,
-  SHORTCUT_CONFIG,
   type ShortcutAction,
   type SimpleKeyConfig,
 } from '@/lib/shortcuts';
@@ -26,31 +26,35 @@ export function useKeyboardShortcut(
 ) {
   const { enabled = true, ignoreInput = true } = options;
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (!enabled) return;
-      if (ignoreInput && isInputFocused()) return;
+  useEffect(() => {
+    if (!enabled) return;
 
-      if (typeof actionOrConfig === 'function') {
+    // カスタム判定関数の場合は、従来の window イベントリスナーを使用
+    if (typeof actionOrConfig === 'function') {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (ignoreInput && isInputFocused()) return;
         if (actionOrConfig(e)) {
           e.preventDefault();
           callback(e);
         }
-        return;
-      }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
 
-      if (isActionMatch(e, actionOrConfig)) {
-        e.preventDefault();
-        callback(e);
-      }
-    },
-    [actionOrConfig, callback, enabled, ignoreInput],
-  );
+    // hotkeys-js を使用した登録
+    const hotkeyStr = configToHotkeyString(actionOrConfig);
+    if (!hotkeyStr) return;
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+    const handler = (event: KeyboardEvent) => {
+      if (ignoreInput && isInputFocused()) return;
+      event.preventDefault();
+      callback(event);
+    };
+
+    hotkeys(hotkeyStr, handler);
+    return () => hotkeys.unbind(hotkeyStr, handler);
+  }, [actionOrConfig, callback, enabled, ignoreInput]);
 }
 
 /**

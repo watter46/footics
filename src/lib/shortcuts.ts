@@ -18,6 +18,7 @@ export interface SimpleKeyConfig {
   ctrl?: boolean;
   shift?: boolean;
   meta?: boolean;
+  alt?: boolean;
 }
 
 /**
@@ -26,10 +27,10 @@ export interface SimpleKeyConfig {
  */
 export const SHORTCUT_CONFIG: Record<
   ShortcutAction,
-  { key: string; ctrl?: boolean; shift?: boolean }
+  { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }
 > = {
   [SHORTCUT_ACTIONS.TOGGLE_MATCH_MEMO]: { key: 'm', ctrl: true },
-  [SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD]: { key: 'b', ctrl: true },
+  [SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD]: { key: 'b', alt: true },
   [SHORTCUT_ACTIONS.OPEN_QUICK_EVENT]: { key: 'i', ctrl: true },
   [SHORTCUT_ACTIONS.SAVE_MEMO]: { key: 'Enter', ctrl: true },
   [SHORTCUT_ACTIONS.CLOSE_MODAL]: { key: 'Escape' },
@@ -73,6 +74,7 @@ export const isActionMatch = (
   // モディファイア判定を先に計算
   const isCtrlMatch = !!keyConf.ctrl === (e.ctrlKey || e.metaKey);
   const isShiftMatch = !!keyConf.shift === e.shiftKey;
+  const isAltMatch = !!keyConf.alt === e.altKey;
 
   // Escape の特別扱い
   if (targetKey === 'escape' || targetKey === 'esc') {
@@ -91,5 +93,32 @@ export const isActionMatch = (
   // 通常キー判定
   const isKeyMatch = eventKey === targetKey;
 
-  return isKeyMatch && isCtrlMatch && isShiftMatch;
+  return isKeyMatch && isCtrlMatch && isShiftMatch && isAltMatch;
+};
+
+/**
+ * SimpleKeyConfig を hotkeys-js 形式の文字列に変換する
+ */
+export const configToHotkeyString = (
+  actionOrConfig: ShortcutAction | SimpleKeyConfig,
+): string => {
+  let conf: SimpleKeyConfig;
+  if (typeof actionOrConfig === 'string') {
+    conf = SHORTCUT_CONFIG[actionOrConfig];
+  } else {
+    conf = actionOrConfig;
+  }
+
+  if (!conf || !conf.key) return '';
+
+  const parts: string[] = [];
+  if (conf.ctrl || conf.meta) parts.push('ctrl'); // hotkeys-js では command も ctrl で扱われることが多いが、必要に応じて調整
+  if (conf.alt) parts.push('alt');
+  if (conf.shift) parts.push('shift');
+
+  // hotkeys-js は小文字を推奨
+  const key = conf.key.toLowerCase();
+  parts.push(key);
+
+  return parts.join('+');
 };

@@ -7,13 +7,13 @@ import { shortenName } from '@/lib/data/tactical-utils';
 interface PlayerMarkerProps {
   id: string; // matchId-playerId または "ball"
   playerName: string;
+  shirtNo?: string;
   initialX: number; // 0-100 (Parent relative)
   initialY: number; // 0-100 (Parent relative)
   color?: string;
   isBall?: boolean;
   isOverlay?: boolean; // ドラッグ中の強調表示フラグ
 }
-
 /**
  * リアルなサッカーボールのSVGコンポーネント (正円)
  */
@@ -38,12 +38,22 @@ const SoccerBallSVG = () => (
 );
 
 /**
+ * マーカーの表示サイズ設定
+ */
+export const MARKER_SIZES = {
+  PLAYER: 40,
+  BALL: 24,
+  OVERLAY_SCALE: 2.5,
+} as const;
+
+/**
  * 選手・ボールマーカー (dnd-kit Draggable)
  * ハンドルの中心ズレ（ジャンプ）を防止し、精密な操作感を実現。
  */
 export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
   id,
   playerName,
+  shirtNo,
   initialX,
   initialY,
   color = '#3b82f6',
@@ -60,8 +70,8 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
 
   const displayName = shortenName(playerName);
 
-  // マーカーサイズ (w-10 = 40px, w-6 = 24px)
-  const markerSize = isBall ? 24 : 40;
+  // マーカーサイズ
+  const markerSize = isBall ? MARKER_SIZES.BALL : MARKER_SIZES.PLAYER;
 
   const style: React.CSSProperties = {
     position: 'absolute',
@@ -97,8 +107,8 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
             style={{
               backgroundColor: color,
               opacity: 0.35,
-              width: `${markerSize * 2.5}px`,
-              height: `${markerSize * 2.5}px`,
+              width: `${markerSize * MARKER_SIZES.OVERLAY_SCALE}px`,
+              height: `${markerSize * MARKER_SIZES.OVERLAY_SCALE}px`,
               zIndex: -1,
               filter: 'blur(1px)',
             }}
@@ -115,7 +125,9 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
         >
           {isBall && <SoccerBallSVG />}
           {!isBall && (
-            <span className="text-[10px]">{displayName.charAt(0)}</span>
+            <span className="text-[10px]">
+              {shirtNo || displayName.charAt(0)}
+            </span>
           )}
         </div>
 

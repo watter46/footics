@@ -3,12 +3,14 @@
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { snapCenterToCursor } from '@dnd-kit/modifiers';
 import type React from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useKeyboardShortcut } from '@/hooks/use-shortcut';
 import { useTacticalBoard } from '@/hooks/use-tactical-board';
 import { useTacticalStore } from '@/hooks/use-tactical-store';
 import type { FormationMode } from '@/lib/data/formations';
+import { getShirtNo } from '@/lib/data/tactical-utils';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
+import type { Match } from '@/types';
 import { BenchArea } from './BenchArea';
 import { PlayerMarker } from './PlayerMarker';
 import { TacticalHeader } from './TacticalHeader';
@@ -18,7 +20,7 @@ interface TacticalBoardModalProps {
   isOpen: boolean;
   onClose: () => void;
   matchId: string;
-  metadata: any;
+  metadata: Match;
 }
 
 export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
@@ -36,7 +38,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
     awayColor,
   } = useTacticalStore();
 
-  const [formationMode, setFormationMode] = useState<FormationMode>('full');
+  const [formationMode, setFormationMode] = useState<FormationMode>('half');
 
   const {
     sensors,
@@ -53,11 +55,28 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
     ignoreInput: false,
   });
 
-  if (!isOpen) return null;
-
-  const benchPlayers = Object.values(savedSettings).filter(
-    (p) => p.area === 'bench' && p.team === benchTeam,
+  const benchPlayers = useMemo(
+    () =>
+      Object.values(savedSettings).filter(
+        (p) => p.area === 'bench' && p.team === benchTeam,
+      ),
+    [savedSettings, benchTeam],
   );
+
+  const activePlayerData = useMemo(() => {
+    if (!activeId || activeId === 'ball') return null;
+    const [_, pIdStr] = activeId.split('-');
+    const pId = parseInt(pIdStr, 10);
+    const p = savedSettings[pId];
+    if (!p) return null;
+
+    const playerMeta = metadata?.teams[p.team]?.players?.find(
+      (pm) => pm.playerId === pId,
+    );
+    return { p, playerMeta, pId };
+  }, [activeId, savedSettings, metadata]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md overflow-hidden">
@@ -93,14 +112,15 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
                 }
               >
                 {benchPlayers.map((p) => {
-                  const playerMeta = metadata?.teams[p.team]?.players?.find(
-                    (pm: any) => pm.playerId === p.playerId,
+                  const playerMeta = metadata.teams[p.team].players.find(
+                    (pm) => pm.playerId === p.playerId,
                   );
                   return (
                     <PlayerMarker
                       key={p.playerId}
                       id={`${matchId}-${p.playerId}`}
                       playerName={playerMeta?.name || `Player ${p.playerId}`}
+                      shirtNo={getShirtNo(p) || getShirtNo(playerMeta)}
                       initialX={p.x}
                       initialY={p.y}
                       color={p.team === 'home' ? homeColor : awayColor}
@@ -112,38 +132,36 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
           </div>
 
           <DragOverlay dropAnimation={null} modifiers={[snapCenterToCursor]}>
-            {activeId ? (
-              activeId === 'ball' ? (
-                <PlayerMarker
-                  id="ball"
-                  playerName="BALL"
-                  initialX={0}
-                  initialY={0}
-                  color="#f97316"
-                  isBall
-                  isOverlay
-                />
-              ) : (
-                (() => {
-                  const [_, pIdStr] = activeId.split('-');
-                  const pId = parseInt(pIdStr);
-                  const p = savedSettings[pId];
-                  const playerMeta = metadata?.teams[
-                    p?.team || 'home'
-                  ]?.players?.find((pm: any) => pm.playerId === pId);
-                  return (
-                    <PlayerMarker
-                      id={activeId}
-                      playerName={playerMeta?.name || `Player ${pId}`}
-                      initialX={0}
-                      initialY={0}
-                      color={p?.team === 'home' ? homeColor : awayColor}
-                      isOverlay
-                    />
-                  );
-                })()
-              )
-            ) : null}
+            {activeId === 'ball' && (
+              <PlayerMarker
+                id="ball"
+                playerName="BALL"
+                initialX={0}
+                initialY={0}
+                color="#f97316"
+                isBall
+                isOverlay
+              />
+            )}
+            {activePlayerData && (
+              <PlayerMarker
+                id={activeId!}
+                playerName={
+                  activePlayerData.playerMeta?.name ||
+                  `Player ${activePlayerData.pId}`
+                }
+                shirtNo={
+                  getShirtNo(activePlayerData.p) ||
+                  getShirtNo(activePlayerData.playerMeta)
+                }
+                initialX={0}
+                initialY={0}
+                color={
+                  activePlayerData.p.team === 'home' ? homeColor : awayColor
+                }
+                isOverlay
+              />
+            )}
           </DragOverlay>
         </div>
       </DndContext>

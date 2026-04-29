@@ -12,9 +12,15 @@ import {
   getFormationActualPos,
 } from '@/lib/data/formations';
 import { FORMATION_POSITIONS } from '@/lib/data/formations-data';
-import { DEFAULT_442_POSITIONS, toActualPos } from '@/lib/data/tactical-utils';
+import {
+  DEFAULT_442_POSITIONS,
+  generateInitialMapping,
+  getBenchPos,
+  getShirtNo,
+  toActualPos,
+} from '@/lib/data/tactical-utils';
 import { getTacticalSnapshot, putTacticalSnapshot } from '@/lib/db';
-import type { BasePlayer, Match, Player } from '@/types';
+import type { Match } from '@/types';
 import { type PlayerState, useTacticalStore } from './use-tactical-store';
 
 export function useTacticalBoard(
@@ -35,51 +41,17 @@ export function useTacticalBoard(
     if (isOpen && matchId) {
       getTacticalSnapshot(matchId).then((snapshot) => {
         const setupFallback = () => {
-          const initialMapping: Record<number, PlayerState> = {};
-          const setupTeam = (team: 'home' | 'away') => {
-            const players = metadata?.teams[team]?.players || [];
-            if (players.length === 0) return false;
-
-            players.forEach((p: BasePlayer, i: number) => {
-              let x, y, area: 'pitch' | 'bench';
-              if (i < 11) {
-                area = 'pitch';
-                x =
-                  DEFAULT_442_POSITIONS[team][i]?.x ||
-                  (team === 'home' ? 10 : 90);
-                y = DEFAULT_442_POSITIONS[team][i]?.y || 10 + i * 8;
-              } else {
-                area = 'bench';
-                const subIdx = i - 11;
-                x = 15 + (subIdx % 3) * 35;
-                y = 10 + Math.floor(subIdx / 3) * 15;
-              }
-              initialMapping[p.playerId] = {
-                playerId: p.playerId,
-                x,
-                y,
-                team,
-                area,
-              };
-            });
-            return true;
-          };
-
-          const homeSuccess = setupTeam('home');
-          const awaySuccess = setupTeam('away');
-
-          // どちらのチームも選手がいない場合は、まだロード中と判断してセットしない
-          if (!homeSuccess && !awaySuccess) {
+          const initialMapping = generateInitialMapping(metadata);
+          if (Object.keys(initialMapping).length === 0) {
             console.log('[footics] Metadata players not ready, skipping setup');
             return;
           }
-
           store.setSavedSettings(initialMapping);
           store.setBallPos({ x: 50, y: 50 });
           store.setIsFlipped(false);
         };
 
-        if (snapshot && snapshot.tactics?.[0]) {
+        if (snapshot?.tactics?.[0]) {
           const tactic = snapshot.tactics[0];
 
           // 自己修復: スナップショットが空だが、メタデータには選手がいる場合、メタデータを優先
@@ -95,8 +67,12 @@ export function useTacticalBoard(
 
           const mapping: Record<number, PlayerState> = {};
           tactic.players.forEach((p) => {
+            const pMeta = metadata?.teams[p.team]?.players?.find(
+              (pm: any) => pm.playerId === p.playerId,
+            );
             mapping[p.playerId] = {
               ...p,
+              shirtNo: getShirtNo(p) || getShirtNo(pMeta),
               area: p.area || (p.y > 100 ? 'bench' : 'pitch'),
             };
           });
@@ -109,7 +85,14 @@ export function useTacticalBoard(
         }
       });
     }
-  }, [isOpen, matchId, metadata]);
+  }, [
+    isOpen,
+    matchId,
+    metadata,
+    store.setSavedSettings,
+    store.setBallPos,
+    store.setIsFlipped,
+  ]);
 
   // Persist Data (Auto-save)
   useEffect(() => {
@@ -148,35 +131,35 @@ export function useTacticalBoard(
     (event: DragEndEvent) => {
       const { active, over } = event;
       store.setActiveId(null);
-      if (!over) return;
+
+      if (!over || !active.rect.current.initial || !over.rect) return;
 
       const id = active.id as string;
-      const activeData = active.data.current;
-      const overData = over.data.current;
-
-      // Validation (acceptance check)
-      if (activeData && overData && overData.accepts) {
-        if (!overData.accepts.includes(activeData.type)) {
-          return;
-        }
-      }
-
       const dropArea = over.id as 'pitch' | 'bench';
       const overRect = over.rect;
-      const rect = active.rect.current.initial;
-      if (!rect || !overRect) return;
+      const activeRect = active.rect.current.initial;
 
-      const centerX = rect.left + event.delta.x + rect.width / 2;
-      const centerY = rect.top + event.delta.y + rect.height / 2;
+      // 1. バリデーション (受け入れチェック)
+      const activeData = active.data.current;
+      const overData = over.data.current;
+      if (activeData && overData?.accepts) {
+        if (!overData.accepts.includes(activeData.type)) return;
+      }
+
+      // 2. 座標計算 (ドロップ先の中心座標を % 単位に変換)
+      const centerX = activeRect.left + event.delta.x + activeRect.width / 2;
+      const centerY = activeRect.top + event.delta.y + activeRect.height / 2;
 
       let newX = ((centerX - overRect.left) / overRect.width) * 100;
       let newY = ((centerY - overRect.top) / overRect.height) * 100;
 
+      // 3. クランプ処理 (はみ出し防止)
       const radiusX = ((id === 'ball' ? 12 : 20) / overRect.width) * 100;
       const radiusY = ((id === 'ball' ? 12 : 20) / overRect.height) * 100;
       newX = Math.max(radiusX, Math.min(100 - radiusX, newX));
       newY = Math.max(radiusY, Math.min(100 - radiusY, newY));
 
+      // 4. 実際のデータ更新
       if (id === 'ball') {
         if (dropArea === 'pitch') {
           const actualBall = toActualPos({ x: newX, y: newY }, store.isFlipped);
@@ -185,20 +168,21 @@ export function useTacticalBoard(
         return;
       }
 
+      // Player drop
       const [_, idValue] = id.split('-');
-      const playerId = idValue ? parseInt(idValue) : null;
+      const playerId = idValue ? parseInt(idValue, 10) : null;
       if (playerId !== null && store.savedSettings[playerId]) {
         const p = store.savedSettings[playerId];
         let finalX = newX;
         let finalY = newY;
 
         if (dropArea === 'bench') {
+          // ベンチにドロップした際、その選手のチームにベンチ表示を切り替える
           if (p.team !== store.benchTeam) {
             store.setBenchTeam(p.team);
           }
-        }
-
-        if (dropArea === 'pitch') {
+        } else if (dropArea === 'pitch') {
+          // ピッチにドロップした際は反転設定を考慮した実座標に変換
           const actual = toActualPos({ x: newX, y: newY }, store.isFlipped);
           finalX = actual.x;
           finalY = actual.y;
@@ -217,38 +201,18 @@ export function useTacticalBoard(
     );
 
     currentBenchPlayers.forEach((p, i) => {
-      const x = 15 + (i % 3) * 35;
-      const y = 10 + Math.floor(i / 3) * 15;
-      next[p.playerId] = { ...p, x, y };
+      const pos = getBenchPos(i);
+      next[p.playerId] = { ...p, x: pos.x, y: pos.y };
     });
 
     store.setSavedSettings(next);
-  }, [store]);
+  }, [store.savedSettings, store.benchTeam, store.setSavedSettings]);
 
   const handleReset = useCallback(() => {
-    const initialMapping: Record<number, PlayerState> = {};
-    const setupTeam = (team: 'home' | 'away') => {
-      const players = metadata?.teams[team]?.players || [];
-      players.forEach((p: BasePlayer, i: number) => {
-        let x, y, area: 'pitch' | 'bench';
-        if (i < 11) {
-          area = 'pitch';
-          x = DEFAULT_442_POSITIONS[team][i]?.x || (team === 'home' ? 10 : 90);
-          y = DEFAULT_442_POSITIONS[team][i]?.y || 10 + i * 8;
-        } else {
-          area = 'bench';
-          const subIdx = i - 11;
-          x = 15 + (subIdx % 3) * 35;
-          y = 10 + Math.floor(subIdx / 3) * 15;
-        }
-        initialMapping[p.playerId] = { playerId: p.playerId, x, y, team, area };
-      });
-    };
-    setupTeam('home');
-    setupTeam('away');
+    const initialMapping = generateInitialMapping(metadata);
     store.setSavedSettings(initialMapping);
     store.setBallPos({ x: 50, y: 50 });
-  }, [metadata, store]);
+  }, [metadata, store.setSavedSettings, store.setBallPos]);
 
   const handleApplyFormation = useCallback(
     (
@@ -261,27 +225,48 @@ export function useTacticalBoard(
 
       const next = { ...store.savedSettings };
       const teamPlayers = Object.values(next).filter((p) => p.team === team);
-      const sorted = [...teamPlayers].sort((a, b) => a.playerId - b.playerId);
 
-      sorted.forEach((p, i) => {
-        if (i < 11) {
-          const pos = positions[i];
-          const actual = getFormationActualPos(pos, team, formationMode);
-          next[p.playerId] = { ...p, area: 'pitch', x: actual.x, y: actual.y };
-        } else {
-          const subIdx = i - 11;
-          next[p.playerId] = {
-            ...p,
-            area: 'bench',
-            x: 15 + (subIdx % 3) * 35,
-            y: 10 + Math.floor(subIdx / 3) * 15,
-          };
-        }
+      // 1. ピッチにいる選手を優先
+      const currentPitchPlayers = teamPlayers
+        .filter((p) => p.area === 'pitch')
+        .sort((a, b) => a.playerId - b.playerId);
+      const currentBenchPlayers = teamPlayers
+        .filter((p) => p.area === 'bench')
+        .sort((a, b) => a.playerId - b.playerId);
+
+      const pitchSelection = currentPitchPlayers.slice(0, 11);
+      const needed = 11 - pitchSelection.length;
+
+      if (needed > 0) {
+        pitchSelection.push(...currentBenchPlayers.slice(0, needed));
+      }
+
+      const selectedIds = new Set(pitchSelection.map((p) => p.playerId));
+      const remainingPlayers = teamPlayers
+        .filter((p) => !selectedIds.has(p.playerId))
+        .sort((a, b) => a.playerId - b.playerId);
+
+      // ピッチ選手への配置適用
+      pitchSelection.forEach((p, i) => {
+        const pos = positions[i];
+        const actual = getFormationActualPos(pos, team, formationMode);
+        next[p.playerId] = { ...p, area: 'pitch', x: actual.x, y: actual.y };
+      });
+
+      // ベンチ選手への配置適用（整列）
+      remainingPlayers.forEach((p, i) => {
+        const pos = getBenchPos(i);
+        next[p.playerId] = {
+          ...p,
+          area: 'bench',
+          x: pos.x,
+          y: pos.y,
+        };
       });
 
       store.setSavedSettings(next);
     },
-    [store],
+    [store.savedSettings, store.setSavedSettings],
   );
 
   return {

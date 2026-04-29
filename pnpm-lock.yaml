@@ -38,6 +38,9 @@ importers:
       dexie:
         specifier: ^4.4.2
         version: 4.4.2
+      hotkeys-js:
+        specifier: ^4.0.3
+        version: 4.0.3
       jszip:
         specifier: ^3.10.1
         version: 3.10.1

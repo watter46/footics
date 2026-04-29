@@ -2,21 +2,21 @@ export type FormationPosition = {
   id: number;
   group: 'GK' | 'DF' | 'MF' | 'FW';
   position:
-    | 'GK'
-    | 'CB'
-    | 'LB'
-    | 'RB'
-    | 'LWB'
-    | 'RWB'
-    | 'DM'
-    | 'CM'
-    | 'AM'
-    | 'LM'
-    | 'RM'
-    | 'LW'
-    | 'RW'
-    | 'ST'
-    | 'SS';
+  | 'GK'
+  | 'CB'
+  | 'LB'
+  | 'RB'
+  | 'LWB'
+  | 'RWB'
+  | 'DM'
+  | 'CM'
+  | 'AM'
+  | 'LM'
+  | 'RM'
+  | 'LW'
+  | 'RW'
+  | 'ST'
+  | 'SS';
   top: number;
   left: number;
 };
@@ -76,19 +76,22 @@ export function getFormationActualPos(
     };
   } else {
     // ハーフコート: 自陣側半分 (x: 0-50 または 50-100)
-    // Home: 10-90 -> 5-45
-    // Away: 10-90 -> 55-95
+    // 自陣ゴールラインからの距離 (dist) に基づき、非線形にマッピングして
+    // GK位置を維持しつつDFラインを押し上げる
     const fullX = isHome ? 100 - pos.top : pos.top;
-    if (isHome) {
-      return {
-        x: fullX * 0.5,
-        y: pos.left,
-      };
-    } else {
-      return {
-        x: 100 - (100 - fullX) * 0.5,
-        y: 100 - pos.left,
-      };
-    }
+    const dist = isHome ? fullX : 100 - fullX;
+
+    const getHalfDist = (d: number) => {
+      if (d <= 10) return d * 0.5; // GK: 10 -> 5
+      if (d <= 20) return 5 + (d - 10) * 1; // DF: 20 -> 25 (ペナルティエリア外)
+      // DF以降: 20 -> 25, 90 -> 48 (比率を維持して 50 以内に収める)
+      return 15 + (d - 20) * (40 / 70);
+    };
+
+    const hx = getHalfDist(dist);
+    return {
+      x: isHome ? hx : 100 - hx,
+      y: isHome ? pos.left : 100 - pos.left,
+    };
   }
 }
