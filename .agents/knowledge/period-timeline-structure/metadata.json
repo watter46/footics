@@ -1,0 +1,9 @@
+{
+  "title": "ピリオドとタイムラインデータ構造 (Period & Timeline Structure)",
+  "summary": "サッカーの試合時間（前後半・延長）におけるピリオド制約、経過時間のパースルール（アディショナルタイム等）、および入力バリデーションの仕様。",
+  "lastUpdated": "2026-05-02T06:30:00Z",
+  "sourceFiles": [
+    "../../src/lib/features/MemoOverlay/memoOverlayLogic.ts",
+    "../../src/components/features/MemoOverlay/parts/PhaseTimeInput.tsx"
+  ]
+}

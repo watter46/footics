@@ -1,0 +1,13 @@
+{
+  "id": "tldraw-custom-shape-template",
+  "title": "tldraw Custom Shape Template",
+  "description": "video-canvas 等で tldraw v2/v3 向けにカスタムシェイプを実装する際の必須ボイラープレート（Type, Migrations, ShapeUtil, Tool, スタイル解決）のテンプレート",
+  "category": "Architecture",
+  "created_at": "2026-05-02T06:40:00+09:00",
+  "updated_at": "2026-05-02T06:40:00+09:00",
+  "references": [
+    "video-canvas/src/components/features/editor/tldraw/shapes/zone-rect.tsx",
+    "video-canvas/src/components/features/editor/tldraw/styles/zone-styles.ts",
+    ".agents/rules/tldraw.md"
+  ]
+}

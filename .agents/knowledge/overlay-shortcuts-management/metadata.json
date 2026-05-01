@@ -1,0 +1,13 @@
+{
+  "id": "overlay-shortcuts-management",
+  "title": "Overlay Shortcuts & Focus Management",
+  "description": "Event Memo Overlay や Webアプリケーションにおける、グローバルショートカットと入力要素のイベント干渉を防ぐための制御パターン（hotkeys-js、stopPropagation、フォーカス復帰）",
+  "category": "Architecture",
+  "created_at": "2026-05-02T06:40:00+09:00",
+  "updated_at": "2026-05-02T06:40:00+09:00",
+  "references": [
+    "src/components/features/MemoOverlay/parts/PhaseTimeInput.tsx",
+    "extension/hooks/use-overlay-shortcut-interceptor.ts",
+    "src/hooks/use-shortcut.ts"
+  ]
+}
