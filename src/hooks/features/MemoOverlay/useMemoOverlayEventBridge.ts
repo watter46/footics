@@ -27,6 +27,7 @@ export function useMemoOverlayEventBridge(
         shiftKey?: boolean;
         matchId?: string;
         id?: string;
+        period?: number;
         minute?: number;
         second?: number;
         labels?: string[];
@@ -55,6 +56,7 @@ export function useMemoOverlayEventBridge(
               matchId: detail.matchId,
               data: {
                 id: detail.id,
+                period: detail.period,
                 minute: detail.minute,
                 second: detail.second,
                 labels: detail.labels,

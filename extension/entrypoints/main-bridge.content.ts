@@ -16,25 +16,8 @@ export default defineContentScript({
     // webext-bridge の名前空間を登録
     setNamespace('footics-app');
 
-    // Isolated World からの更新通知を待機
-    onMessage('REFRESH_APP', ({ data }) => {
-      console.log(
-        '[MainBridge] Received REFRESH_APP, dispatching event:',
-        data.matchId,
-      );
-
-      // アプリが期待している CustomEvent を発火
-      window.dispatchEvent(
-        new CustomEvent('footics-action', {
-          detail: {
-            action: 'REFRESH_DATA',
-            matchId: data.matchId,
-          },
-        }),
-      );
-    });
-
     // 2. アプリからの保存リクエストをキャッチして Isolated World へ中継
+
     window.addEventListener('footics-save-request', (e: any) => {
       const payload = e.detail;
       if (!payload) return;

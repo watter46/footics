@@ -47,6 +47,12 @@ export const MemoOverlayBridge: React.FC = () => {
 
     if (initialData) {
       if (mode === 'EVENT') {
+        if (initialData.id) {
+          store.setEventId(initialData.id);
+        }
+        if (initialData.period) {
+          store.setPeriod(initialData.period);
+        }
         if (initialData.minute !== undefined) {
           const m = initialData.minute;
           const s = initialData.second ?? 0;
@@ -135,6 +141,7 @@ export const MemoOverlayBridge: React.FC = () => {
         matchId: matchId!,
         period: currentState.period,
         memo: payload.memo,
+        entityId: currentState.eventId,
         ...(payload.type === 'EVENT'
           ? {
               minute: payload.minute,

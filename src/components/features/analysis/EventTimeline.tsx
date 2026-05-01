@@ -20,6 +20,7 @@ interface EventTimelineProps {
   highlightEventId?: string | null;
   onEditCustomEvent?: (event: EventRow) => void;
   onDeleteCustomEvent?: (eventId: string) => void;
+  onEditMatchMemo?: () => void;
 }
 
 type SortOrder = 'asc' | 'desc';
@@ -34,6 +35,7 @@ export function EventTimeline({
   highlightEventId,
   onEditCustomEvent,
   onDeleteCustomEvent,
+  onEditMatchMemo,
 }: EventTimelineProps) {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
@@ -51,7 +53,7 @@ export function EventTimeline({
       <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-slate-950 to-emerald-900/10 pointer-events-none" />
 
       {/* Match Memo Display */}
-      <MatchMemoDisplay matchId={metadata.id} />
+      <MatchMemoDisplay matchId={metadata.id} onEdit={onEditMatchMemo} />
 
       {/* Header Info */}
       <header className="mb-6 relative z-10 flex justify-between items-end">

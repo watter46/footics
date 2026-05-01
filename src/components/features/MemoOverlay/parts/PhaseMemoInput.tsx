@@ -40,9 +40,40 @@ export const PhaseMemoInput: React.FC<PhaseMemoInputProps> = ({
         placeholder="補足メモを入力..."
         className="w-full h-32 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 outline-none focus:border-blue-500 transition-all resize-none"
         onKeyDown={(e) => {
-          // 動画プレイヤー等のショートカットとの干渉を防ぐため、すべてのキーイベントの伝播を止める
-          // 実際の保存・閉じるキー判定は、拡張機能側のキャプチャフェーズリスナーが担当し、
-          // footics-action イベントとして再配送される。
+          // Escape: オーバーレイを閉じる
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            window.dispatchEvent(
+              new CustomEvent('footics-action', {
+                detail: { action: 'CLOSE_OVERLAY' },
+              }),
+            );
+            return;
+          }
+          // Ctrl+Enter / Cmd+Enter: 保存
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.dispatchEvent(
+              new CustomEvent('footics-action', {
+                detail: { action: 'SAVE_MEMO' },
+              }),
+            );
+            return;
+          }
+          // Shift+Tab: 前のフェーズへ
+          if (e.key === 'Tab' && e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.dispatchEvent(
+              new CustomEvent('footics-action', {
+                detail: { action: 'PREV_PHASE' },
+              }),
+            );
+            return;
+          }
+          // それ以外は動画プレイヤー等への伝播を防ぐ
           e.stopPropagation();
         }}
       />

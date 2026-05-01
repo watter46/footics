@@ -1,9 +1,17 @@
 'use client';
 
-import { ChevronLeft, Database, FileJson, Loader2, Upload } from 'lucide-react';
+import {
+  ChevronLeft,
+  Database,
+  FileJson,
+  Loader2,
+  Plus,
+  Upload,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useCallback } from 'react';
 import { EventTimeline } from '@/components/features/analysis';
+import { MemoOverlayModal } from '@/components/features/MemoOverlay/MemoOverlayModal';
 import { DataManagementMenu } from '@/components/features/management';
 import { Sidebar } from '@/components/features/Sidebar';
 import { TacticalBoardModal } from '@/components/features/TacticalBoard/TacticalBoardModal';
@@ -12,10 +20,23 @@ import { useDashboard } from '@/hooks/features/dashboard/use-dashboard';
 import { useModalToggleShortcut } from '@/hooks/use-shortcut';
 import { useUIStore } from '@/hooks/use-ui-store';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
+import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
 
 export default function Dashboard({ matchId }: { matchId: string }) {
   const d = useDashboard(matchId);
   const { isTacticalBoardOpen, setTacticalBoardOpen } = useUIStore();
+  const reset = useMemoOverlayStore((state) => state.reset);
+  const setModalOpen = useMemoOverlayStore((state) => state.setModalOpen);
+
+  const handleAddEvent = useCallback(() => {
+    reset('EVENT');
+    setModalOpen(true);
+  }, [reset, setModalOpen]);
+
+  const handleEditMatchMemo = useCallback(() => {
+    reset('MATCH');
+    setModalOpen(true);
+  }, [reset, setModalOpen]);
 
   useModalToggleShortcut(
     SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD,
@@ -171,6 +192,13 @@ export default function Dashboard({ matchId }: { matchId: string }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleAddEvent}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-amber-900/20"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Event
+            </button>
             <DataManagementMenu
               matchId={matchId}
               onRefresh={d.handleRefreshCustomEvents}
@@ -187,6 +215,7 @@ export default function Dashboard({ matchId }: { matchId: string }) {
           activeStrategyParams={d.filters.activeStrategyParams}
           onEditCustomEvent={d.handleEditCustomEvent}
           onDeleteCustomEvent={d.handleDeleteCustomEvent}
+          onEditMatchMemo={handleEditMatchMemo}
         />
 
         <TacticalBoardModal
@@ -195,6 +224,8 @@ export default function Dashboard({ matchId }: { matchId: string }) {
           onClose={() => setTacticalBoardOpen(false)}
           metadata={d.metadata}
         />
+
+        <MemoOverlayModal matchId={matchId} />
       </main>
     </div>
   );

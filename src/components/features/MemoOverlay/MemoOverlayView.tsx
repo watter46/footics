@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useRef } from 'react';
+import { cn } from '@/lib/utils';
 import { useMemoOverlayDerived } from '@/stores/useMemoOverlayStore';
 import { MatchMemoUnit } from './parts/MatchMemoUnit';
 import { MemoOverlayHeader } from './parts/MemoOverlayHeader';
@@ -25,6 +26,7 @@ interface MemoOverlayViewProps {
   matchId: string | undefined;
   onClose: () => void;
   onSave: () => void;
+  className?: string;
 }
 
 /**
@@ -38,6 +40,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
   matchId,
   onClose,
   onSave,
+  className,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -114,7 +117,10 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
       tabIndex={-1}
       role="dialog"
       aria-label="Memo Overlay"
-      className="fixed top-6 right-6 w-[22vw] min-w-[380px] aspect-[1/1.3] bg-slate-900 border border-slate-700/60 rounded-xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden font-sans animate-in slide-in-from-right-4 duration-500 flex flex-col outline-none"
+      className={cn(
+        'fixed top-6 right-6 w-[22vw] min-w-[380px] aspect-[1/1.3] bg-slate-900 border border-slate-700/60 rounded-xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden font-sans flex flex-col outline-none',
+        className,
+      )}
       onKeyDown={(e) => {
         // 入力フィールド内のイベントはバブリングさせるが、それ以外は外部へ漏れないようにする
         if (

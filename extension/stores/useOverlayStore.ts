@@ -13,6 +13,7 @@ interface OverlayState {
   matchId: string | undefined;
   initialData?: {
     id?: string;
+    period?: number;
     minute?: number;
     second?: number;
     labels?: string[];

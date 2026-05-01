@@ -14,6 +14,29 @@ import type {
   MatchMemo,
   TacticalSnapshot,
 } from './schema';
+import { SHORTCUT_ACTIONS } from './shortcuts';
+
+// ──────────────────────────────────────────────
+// Notification Helper
+// ──────────────────────────────────────────────
+
+/**
+ * データの変更をアプリ全体に通知する。
+ * Web本体の useDataSync フックがこのイベントを購読してキャッシュを無効化する。
+ */
+export function dispatchRefreshEvent(matchId?: string | number): void {
+  if (typeof window === 'undefined') return;
+
+  console.log('[db] Dispatching REFRESH_DATA event, matchId:', matchId);
+  window.dispatchEvent(
+    new CustomEvent('footics-action', {
+      detail: {
+        action: SHORTCUT_ACTIONS.REFRESH_DATA,
+        matchId: matchId ? String(matchId) : undefined,
+      },
+    }),
+  );
+}
 
 // ──────────────────────────────────────────────
 // DB Schema Definition
@@ -83,6 +106,7 @@ export async function getEventMemosByMatch(
 
 export async function putEventMemo(memo: EventMemo): Promise<void> {
   await db.event_memos.put(memo);
+  dispatchRefreshEvent(memo.matchId);
 }
 
 export async function getAllEventMemos(): Promise<EventMemo[]> {
@@ -95,6 +119,7 @@ export async function getAllEventMemos(): Promise<EventMemo[]> {
 
 export async function saveCustomEvent(event: CustomEvent): Promise<void> {
   await db.custom_events.put(event);
+  dispatchRefreshEvent(event.match_id);
 }
 
 export async function getCustomEventsByMatch(
@@ -104,7 +129,10 @@ export async function getCustomEventsByMatch(
 }
 
 export async function deleteCustomEvent(id: string): Promise<void> {
+  const event = await db.custom_events.get(id);
+  const matchId = event?.match_id;
   await db.custom_events.delete(id);
+  if (matchId) dispatchRefreshEvent(matchId);
 }
 
 export async function getAllCustomEvents(): Promise<CustomEvent[]> {
@@ -122,6 +150,7 @@ export async function getMatchMemo(matchId: string): Promise<MatchMemo | null> {
 
 export async function putMatchMemo(memo: MatchMemo): Promise<void> {
   await db.match_memos.put(memo);
+  dispatchRefreshEvent(memo.matchId);
 }
 
 export async function getAllMatchMemos(): Promise<MatchMemo[]> {
@@ -221,6 +250,7 @@ export async function saveMatchUnified(
       await db.events.bulkPut(events);
     }
   });
+  dispatchRefreshEvent(match.id);
 }
 
 export async function deleteMatch(matchId: string): Promise<void> {
@@ -238,6 +268,18 @@ export async function importMemosBatch(
   customEvents: CustomEvent[],
   matchMemos: MatchMemo[] = [],
 ): Promise<void> {
+  // 影響を受ける matchId を収集
+  const matchIds = new Set<string | number>();
+  memos.forEach((m) => {
+    matchIds.add(m.matchId);
+  });
+  customEvents.forEach((c) => {
+    matchIds.add(c.match_id);
+  });
+  matchMemos.forEach((m) => {
+    matchIds.add(m.matchId);
+  });
+
   await db.transaction(
     'rw',
     [db.event_memos, db.custom_events, db.match_memos],
@@ -252,6 +294,15 @@ export async function importMemosBatch(
       memos.length + customEvents.length + matchMemos.length
     } items)`,
   );
+
+  // 通知
+  if (matchIds.size > 0) {
+    matchIds.forEach((id) => {
+      dispatchRefreshEvent(id);
+    });
+  } else {
+    dispatchRefreshEvent();
+  }
 }
 
 /**

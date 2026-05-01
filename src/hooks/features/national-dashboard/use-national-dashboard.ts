@@ -11,6 +11,7 @@ import type {
 import { NationalMatchRawDataSchema } from '@/lib/national-match-schema';
 import { customEventKeys, nationalMatchKeys } from '@/lib/query-keys';
 import { filterEvents } from '@/services/event-filter';
+import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
 import type { CustomEventRow, EventRow, Match, SimplifiedTeam } from '@/types';
 import { useDashboardFilters } from '../dashboard/use-dashboard-filters';
 
@@ -113,6 +114,8 @@ export function useNationalDashboard({
     });
   }, [matchId, queryClient]);
 
+  const store = useMemoOverlayStore();
+
   const handleEditCustomEvent = useCallback(
     (event: CustomEventRow | EventRow) => {
       let labels: string[] = [];
@@ -125,21 +128,18 @@ export function useNationalDashboard({
           .filter(Boolean);
       }
 
-      window.dispatchEvent(
-        new CustomEvent('footics-action', {
-          detail: {
-            action: 'TOGGLE_EVENT_MEMO',
-            matchId,
-            id: event.id.toString(),
-            minute: Number(event.minute),
-            second: Number(event.second),
-            labels,
-            memo: ('memo' in event ? event.memo : event.custom_memo) || '',
-          },
-        }),
+      store.reset('EVENT');
+      store.setEventId(event.id.toString());
+      store.setPeriod(Number(event.period));
+      store.setTimeStr(
+        `${event.minute}:${event.second.toString().padStart(2, '0')}`,
       );
+      store.setSelectedLabels(labels);
+      store.setMemo(('memo' in event ? event.memo : event.custom_memo) || '');
+      store.forceSetPhase(2);
+      store.setModalOpen(true);
     },
-    [matchId],
+    [store],
   );
 
   const handleDeleteCustomEvent = useCallback(

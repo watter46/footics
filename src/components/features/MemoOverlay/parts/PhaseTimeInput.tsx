@@ -211,7 +211,15 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
               e.stopPropagation();
             }
 
-            if (e.key === 'Enter' || e.key === 'Tab') {
+            // Shift+Tab: 前のフェーズへ（Tab の前に判定すること）
+            if (e.key === 'Tab' && e.shiftKey) {
+              e.preventDefault();
+              window.dispatchEvent(
+                new CustomEvent('footics-action', {
+                  detail: { action: 'PREV_PHASE' },
+                }),
+              );
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
               if (isComposing.current) return; // 変換確定の Enter は無視
               e.preventDefault();
               window.dispatchEvent(

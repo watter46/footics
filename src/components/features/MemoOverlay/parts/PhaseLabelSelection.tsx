@@ -79,7 +79,15 @@ export const PhaseLabelSelection: React.FC<PhaseLabelSelectionProps> = ({
             // 動画プレイヤー等のショートカットとの干渉を防ぐため、すべてのキーイベントの伝播を止める
             e.stopPropagation();
 
-            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            // Shift+Tab: 前のフェーズへ（ArrowDown/Up の前に判定すること）
+            if (e.key === 'Tab' && e.shiftKey) {
+              e.preventDefault();
+              window.dispatchEvent(
+                new CustomEvent('footics-action', {
+                  detail: { action: 'PREV_PHASE' },
+                }),
+              );
+            } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
               e.preventDefault();
               window.dispatchEvent(
                 new CustomEvent('footics-action', {

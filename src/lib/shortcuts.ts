@@ -2,9 +2,7 @@
  * ショートカットアクションの定義
  */
 export const SHORTCUT_ACTIONS = {
-  TOGGLE_MATCH_MEMO: 'TOGGLE_MATCH_MEMO',
   TOGGLE_TACTICAL_BOARD: 'TOGGLE_TACTICAL_BOARD',
-  OPEN_QUICK_EVENT: 'OPEN_QUICK_EVENT',
   SAVE_MEMO: 'SAVE_MEMO',
   CLOSE_MODAL: 'CLOSE_MODAL',
   REFRESH_DATA: 'REFRESH_DATA',
@@ -34,9 +32,7 @@ export const SHORTCUT_CONFIG: Record<
   ShortcutAction,
   { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }
 > = {
-  [SHORTCUT_ACTIONS.TOGGLE_MATCH_MEMO]: { key: 'm', ctrl: true },
   [SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD]: { key: 'b', alt: true },
-  [SHORTCUT_ACTIONS.OPEN_QUICK_EVENT]: { key: 'i', ctrl: true },
   [SHORTCUT_ACTIONS.SAVE_MEMO]: { key: 'Enter', ctrl: true },
   [SHORTCUT_ACTIONS.CLOSE_MODAL]: { key: 'Escape' },
   // REFRESH_DATA はキー操作ではなくプログラム的に発火される（拡張機能からの通知）

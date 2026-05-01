@@ -20,6 +20,8 @@ interface MemoOverlayState {
   period: number;
   error: string | undefined;
   isSaving: boolean;
+  eventId: string | undefined;
+  isModalOpen: boolean;
 
   // Actions
   reset: (mode?: MemoMode) => void;
@@ -41,6 +43,8 @@ interface MemoOverlayState {
   setIsSaving: (val: boolean) => void;
   filterByCategory: (categoryIndex: number) => void;
   setSelectedLabels: (labels: string[]) => void;
+  setEventId: (id: string | undefined) => void;
+  setModalOpen: (val: boolean) => void;
 }
 
 export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
@@ -55,6 +59,8 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
   period: 1,
   error: undefined,
   isSaving: false,
+  eventId: undefined,
+  isModalOpen: false,
 
   reset: (mode) =>
     set((state) => ({
@@ -69,6 +75,8 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
       // period はリセットせず、前の値を引き継ぐ（インテリジェント・デフォルト）
       error: undefined,
       isSaving: false,
+      eventId: undefined,
+      isModalOpen: false,
     })),
 
   setPeriod: (val) => set({ period: val, error: undefined }),
@@ -227,6 +235,10 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
       selectedLabels: labels,
       error: undefined,
     }),
+
+  setEventId: (id) => set({ eventId: id }),
+
+  setModalOpen: (val) => set({ isModalOpen: val }),
 }));
 
 /**

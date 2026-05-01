@@ -87,15 +87,6 @@ export async function processSaveQueue(): Promise<void> {
         updatedQueue[idx] = { ...updatedQueue[idx], status: 'done' };
 
         console.info(`[save-queue] Processed: ${item.id} (${item.mode})`);
-
-        // アプリに更新通知を送信 (fire-and-forget)
-        console.log(
-          '📡 [save-queue] Sending REFRESH_APP to window:',
-          item.matchId,
-        );
-        sendMessage('REFRESH_APP', { matchId: item.matchId }, 'window').catch(
-          (e) => console.warn('[save-queue] REFRESH_APP notify failed:', e),
-        );
       } catch (e) {
         console.error(`[save-queue] Failed: ${item.id}`, e);
         updatedQueue[idx] = { ...updatedQueue[idx], status: 'error' };

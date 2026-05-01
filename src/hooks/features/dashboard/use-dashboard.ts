@@ -7,6 +7,7 @@ import { useEvents } from '@/hooks/use-events';
 import { useUIStore } from '@/hooks/use-ui-store';
 import { cleanupOldCache, importMatchJsonFile } from '@/lib/data-loader';
 import { deleteCustomEvent, getMatch } from '@/lib/db';
+import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
 import type { EventRow } from '@/types';
 import { useDashboardFilters } from './use-dashboard-filters';
 
@@ -62,6 +63,8 @@ export function useDashboard(matchId: string) {
 
   const { events, totalCount, isQuerying } = useEvents(matchId, queryFilters);
 
+  const store = useMemoOverlayStore();
+
   const handleEditCustomEvent = useCallback(
     (event: EventRow) => {
       const labels = (event.custom_label || '')
@@ -69,21 +72,18 @@ export function useDashboard(matchId: string) {
         .map((s: string) => s.trim())
         .filter(Boolean);
 
-      window.dispatchEvent(
-        new CustomEvent('footics-action', {
-          detail: {
-            action: 'TOGGLE_EVENT_MEMO',
-            matchId,
-            id: event.id.toString(),
-            minute: Number(event.minute),
-            second: Number(event.second),
-            labels,
-            memo: event.custom_memo || '',
-          },
-        }),
+      store.reset('EVENT');
+      store.setEventId(event.id.toString());
+      store.setPeriod(Number(event.period));
+      store.setTimeStr(
+        `${event.minute}:${event.second.toString().padStart(2, '0')}`,
       );
+      store.setSelectedLabels(labels);
+      store.setMemo(event.custom_memo || '');
+      store.forceSetPhase(2); // メモフェーズまで進める
+      store.setModalOpen(true);
     },
-    [matchId],
+    [store],
   );
 
   const handleDeleteCustomEvent = useCallback(async (eventId: string) => {
