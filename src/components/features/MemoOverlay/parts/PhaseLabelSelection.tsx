@@ -76,8 +76,11 @@ export const PhaseLabelSelection: React.FC<PhaseLabelSelectionProps> = ({
               : 'border-slate-700 focus:border-blue-500 focus:ring-0'
           }`}
           onKeyDown={(e) => {
-            // 動画プレイヤー等のショートカットとの干渉を防ぐため、すべてのキーイベントの伝播を止める
-            e.stopPropagation();
+            // 修飾キーを伴わない操作（矢印キーでの選択など）のみ伝播を止める。
+            // Ctrl+Enter などのグローバルショートカットはバブリングさせてリスナーに任せる。
+            if (!e.altKey && !e.ctrlKey && !e.metaKey) {
+              e.stopPropagation();
+            }
 
             // Shift+Tab: 前のフェーズへ（ArrowDown/Up の前に判定すること）
             if (e.key === 'Tab' && e.shiftKey) {
@@ -94,7 +97,7 @@ export const PhaseLabelSelection: React.FC<PhaseLabelSelectionProps> = ({
                   detail: { action: 'NAVIGATE_SUGGESTION', key: e.key },
                 }),
               );
-            } else if (e.key === 'Enter') {
+            } else if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
               e.preventDefault();
               // サジェストリストが表示されている、または入力がある場合は確定
               window.dispatchEvent(

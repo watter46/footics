@@ -80,6 +80,8 @@ export const MemoOverlayBridge: React.FC = () => {
     store.setTimeStr,
     store.setSelectedLabels,
     store.setMemo,
+    store.setEventId,
+    store.setPeriod,
     store.forceSetPhase,
   ]);
 
@@ -107,6 +109,9 @@ export const MemoOverlayBridge: React.FC = () => {
   // ── 保存処理（Storage Queue への書き込み） ──
   const handleSave = async () => {
     const currentState = useMemoOverlayStore.getState();
+
+    // 二重実行防止（保存処理中は入力を受け付けない）
+    if (currentState.isSaving) return;
 
     if (!DEBUG_CONFIG.DRY_RUN && !matchId) {
       store.setError('保存先の試合情報が見つかりません。');
@@ -164,7 +169,7 @@ export const MemoOverlayBridge: React.FC = () => {
   };
 
   // ストア連携
-  useMemoOverlayEventBridge(close, handleSave, open);
+  useMemoOverlayEventBridge(close, handleSave, open, isVisible);
 
   if (!isVisible) return null;
 

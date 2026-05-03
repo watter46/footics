@@ -82,29 +82,19 @@ export default defineContentScript({
     window.addEventListener(
       'keydown',
       (e) => {
+        // Alt+E (Toggle) は browser.commands で処理されるため、ここでは Escape (閉じる) のみを扱う
         const isEscape = e.key === 'Escape';
-        const isSave = e.key === 'Enter' && (e.ctrlKey || e.metaKey);
-
-        if (!isEscape && !isSave) return;
-
-        const action = isEscape ? 'CLOSE_OVERLAY' : 'SAVE_MEMO';
+        if (!isEscape) return;
 
         // アプリ側へ通知 (useDataSync / useMemoOverlayEventBridge が受信)
         window.dispatchEvent(
           new CustomEvent('footics-action', {
-            detail: { action },
+            detail: { action: 'CLOSE_OVERLAY' },
           }),
         );
 
-        // サイドパネルを閉じる（Escape の場合）
-        if (isEscape) {
-          sendMessage('CLOSE_SIDEPANEL', {}, 'background').catch(() => {});
-        }
-
-        // Ctrl+Enter はデフォルト挙動（改行）を抑制
-        if (isSave) {
-          e.preventDefault();
-        }
+        // サイドパネルを閉じる
+        sendMessage('CLOSE_SIDEPANEL', {}, 'background').catch(() => {});
       },
       true,
     );

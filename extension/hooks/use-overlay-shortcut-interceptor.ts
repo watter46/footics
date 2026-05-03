@@ -16,6 +16,10 @@ import { useEffect } from 'react';
  */
 export function useOverlayShortcutInterceptor() {
   useEffect(() => {
+    // hotkeys-js が input/textarea 内でも動作するように設定
+    const originalFilter = hotkeys.filter;
+    hotkeys.filter = () => true;
+
     // hotkeys-js のデフォルトフィルター:
     // input, textarea, select にフォーカスがある場合はイベントを発火しない
     // → Escape はフォーカスが input 外にある場合のみ発火する（安全）
@@ -39,6 +43,7 @@ export function useOverlayShortcutInterceptor() {
     });
 
     return () => {
+      hotkeys.filter = originalFilter;
       hotkeys.unbind('escape');
       hotkeys.unbind('ctrl+enter');
       hotkeys.unbind('command+enter');

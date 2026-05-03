@@ -72,7 +72,7 @@ export const MemoOverlayModal: React.FC<MemoOverlayModalProps> = ({
 
   // footics-action イベントを useMemoOverlayStore のアクションへ橋渡し
   // CLOSE_OVERLAY → handleClose, SAVE_MEMO → handleSave が機能する
-  useMemoOverlayEventBridge(handleClose, handleSave);
+  useMemoOverlayEventBridge(handleClose, handleSave, undefined, isModalOpen);
 
   // モーダルが開いている間だけ hotkeys を登録（拡張機能と同等の操作感を提供）
   // ※ input/textarea にフォーカスがある場合は PhaseMemoInput 側の onKeyDown が対応するため、

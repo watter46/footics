@@ -17,6 +17,7 @@ export function useMemoOverlayEventBridge(
     matchId?: string;
     data?: any;
   }) => void,
+  isActive = true,
 ) {
   useEffect(() => {
     const handleFooticsAction = (e: Event) => {
@@ -37,6 +38,12 @@ export function useMemoOverlayEventBridge(
 
       // Zustandストアから最新の状態を取得
       const store = useMemoOverlayStore.getState();
+
+      // 開く操作 (TOGGLE_*) 以外は、isActive が false の場合は無視する
+      // これにより、本体アプリの非表示モーダルが拡張機能の保存操作に反応するのを防ぐ
+      const isToggleAction =
+        action === 'TOGGLE_MATCH_MEMO' || action === 'TOGGLE_EVENT_MEMO';
+      if (!isActive && !isToggleAction) return;
 
       switch (action) {
         case 'TOGGLE_MATCH_MEMO':
@@ -123,5 +130,5 @@ export function useMemoOverlayEventBridge(
     window.addEventListener('footics-action', handleFooticsAction);
     return () =>
       window.removeEventListener('footics-action', handleFooticsAction);
-  }, [onClose, onSave]); // onClose, onSave のみが依存関係
+  }, [onClose, onSave, onOpen, isActive]); // すべての依存関係を含める
 }

@@ -219,7 +219,11 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
                   detail: { action: 'PREV_PHASE' },
                 }),
               );
-            } else if (e.key === 'Enter' || e.key === 'Tab') {
+            } else if (
+              (e.key === 'Enter' || e.key === 'Tab') &&
+              !e.ctrlKey &&
+              !e.metaKey
+            ) {
               if (isComposing.current) return; // 変換確定の Enter は無視
               e.preventDefault();
               window.dispatchEvent(

@@ -52,6 +52,8 @@ export const PhaseMemoInput: React.FC<PhaseMemoInputProps> = ({
             return;
           }
           // Ctrl+Enter / Cmd+Enter: 保存
+          // Note: ここで dispatch した後は stopPropagation() により
+          // グローバルな (hotkeys-js等の) リスナーへの伝播を防止し、二重発火を防ぐ。
           if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             e.stopPropagation();
