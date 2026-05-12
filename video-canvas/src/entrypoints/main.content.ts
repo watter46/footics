@@ -15,23 +15,40 @@ export default defineContentScript({
       }
     });
 
+    /**
+     * DOMツリー（Shadow DOM含む）からビデオ要素を再帰的に検索する
+     */
+    function findVideoElement(
+      root: Document | ShadowRoot | Element = document,
+    ): HTMLVideoElement | null {
+      const video = root.querySelector('video');
+      if (video) return video;
+
+      // Shadow DOMを持つ要素を検索
+      const shadowHosts = root.querySelectorAll('*');
+      for (const host of Array.from(shadowHosts)) {
+        if (host.shadowRoot) {
+          const v = findVideoElement(host.shadowRoot);
+          if (v) return v;
+        }
+      }
+      return null;
+    }
+
     async function captureVideo() {
-      const video = document.querySelector('video');
-      if (!video) return;
-
-      const isDrmSite = /unext\.jp|dazn\.com/.test(window.location.hostname);
-      const originalRect = video.getBoundingClientRect();
-
-      // 1. DRMサイト以外での高速キャプチャ試行
-      if (!isDrmSite) {
-        const success = await tryDirectCanvasCapture(video);
-        if (success) return;
+      const video = findVideoElement();
+      if (!video) {
+        console.warn('[Video Canvas] No video element found.');
+        return;
       }
 
-      // 2. Viewport キャプチャ (DRM回避・UI完全排除モード)
+      const originalRect = video.getBoundingClientRect();
+
+      // Viewport キャプチャ (全サイト共通・DRM回避・UI完全排除モード)
       const { cleanup } = prepareUIForCapture(video);
 
       try {
+        // スタイル適用待ち
         await new Promise((r) => setTimeout(r, 250));
 
         const requestMessage: RequestTabCaptureMessage = {
@@ -72,43 +89,6 @@ export default defineContentScript({
     }
 
     /**
-     * Canvas.drawImage を使用した直接キャプチャ。成功した場合は true を返す。
-     */
-    async function tryDirectCanvasCapture(
-      video: HTMLVideoElement,
-    ): Promise<boolean> {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return false;
-
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const pixel = ctx.getImageData(
-          canvas.width / 2,
-          canvas.height / 2,
-          1,
-          1,
-        ).data;
-        const isBlack = pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0;
-
-        if (!isBlack) {
-          const directMessage: CaptureResultMessage = {
-            type: MessageTypes.CAPTURE_RESULT,
-            dataUrl: canvas.toDataURL('image/png'),
-            isDirectCapture: true,
-          };
-          await browser.runtime.sendMessage(directMessage);
-          return true;
-        }
-      } catch (e) {
-        console.warn('[Video Canvas] Direct capture failed:', e);
-      }
-      return false;
-    }
-
-    /**
      * キャプチャのためにUIを隠し、ビデオを全画面に固定する。クリーンアップ用関数を返す。
      */
     function prepareUIForCapture(video: HTMLVideoElement) {
@@ -127,9 +107,12 @@ export default defineContentScript({
           z-index: 2147483647 !important;
           object-fit: contain !important;
           background: black !important;
+          /* DRM回避のためのGPU合成強制トリック */
           filter: brightness(1.001) !important;
           opacity: 0.999 !important;
           transform: translateZ(0) !important;
+          will-change: transform, opacity, filter !important;
+          backface-visibility: hidden !important;
         }
         video *:not(video) { position: absolute !important; }
       `;
