@@ -9,15 +9,7 @@ import { cn } from '../utils/cn';
 import '../assets/overlay.css';
 
 export default defineContentScript({
-  matches: [
-    '*://*.dazn.com/*',
-    '*://*.unext.jp/*',
-    '*://video.unext.jp/*',
-    '*://localhost/*',
-    '*://127.0.0.1/*',
-    '*://www.youtube.com/*',
-    '*://footics.watool.workers.dev/*',
-  ],
+  matches: ['<all_urls>'],
   cssInjectionMode: 'ui',
 
   async main(ctx) {
