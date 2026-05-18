@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { onMessage } from 'webext-bridge/content-script';
 import { SuccessToast } from '../components/ui/SuccessToast';
@@ -36,6 +36,7 @@ export default defineContentScript({
 
 const OverlayApp = () => {
   const { isVisible, toast, mode, open, close } = useOverlayStore();
+  const activeElementRef = useRef<HTMLElement | null>(null);
 
   // キーボード入力をキャプチャして footics-action に変換するロジックを分離
   useOverlayShortcutInterceptor();
@@ -47,6 +48,20 @@ const OverlayApp = () => {
       if (isVisible && mode === data.mode) {
         close();
       } else {
+        // 開く直前に、現在フォーカスされている要素を記憶
+        if (
+          document.activeElement &&
+          document.activeElement !== document.body
+        ) {
+          activeElementRef.current = document.activeElement as HTMLElement;
+          console.log(
+            '[Footics Overlay] Captured active element before open:',
+            activeElementRef.current,
+          );
+        } else {
+          activeElementRef.current = null;
+        }
+
         open({
           mode: data.mode,
           matchId: data.matchId,
@@ -55,6 +70,28 @@ const OverlayApp = () => {
       }
     });
   }, [isVisible, mode, open, close]);
+
+  // 閉じたときのフォーカス復元を処理する useEffect
+  useEffect(() => {
+    if (!isVisible) {
+      // 閉じたとき、記憶していた要素にフォーカスを戻す
+      if (activeElementRef.current) {
+        console.log(
+          '[Footics Overlay] Restoring focus to:',
+          activeElementRef.current,
+        );
+        activeElementRef.current.focus();
+        activeElementRef.current = null;
+      } else {
+        // フォールバック：ページ内の video 要素を探してフォーカス
+        const video = document.querySelector('video');
+        if (video) {
+          console.log('[Footics Overlay] Fallback: Focusing video element');
+          video.focus();
+        }
+      }
+    }
+  }, [isVisible]);
 
   return (
     <div className={cn('footics-overlay-host')}>
