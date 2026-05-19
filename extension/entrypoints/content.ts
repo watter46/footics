@@ -5,6 +5,10 @@ import {
 } from 'webext-bridge/content-script';
 import { STORAGE_KEYS } from '../constants';
 import {
+  gcExpiredMatchMemoCaches,
+  syncMatchMemoCacheToStorage,
+} from '../features/storage-sync/cache-sync';
+import {
   addToSaveQueue,
   processSaveQueue,
 } from '../features/storage-sync/save-queue';
@@ -33,6 +37,10 @@ export default defineContentScript({
           [STORAGE_KEYS.LAST_ACTIVE_MATCH_ID]: matchId,
         });
         console.log('[ContentScript] Syncing matchId to storage:', matchId);
+
+        // キャッシュ同期とGCクリーンアップの実行
+        await syncMatchMemoCacheToStorage(matchId);
+        await gcExpiredMatchMemoCaches(matchId);
       }
     };
 
@@ -42,6 +50,19 @@ export default defineContentScript({
       attributeFilter: ['data-match-id'],
     });
     syncMatchIdToStorage();
+
+    // ── footics-action イベントの監視 ──
+    window.addEventListener('footics-action', async (e) => {
+      const customEvent = e as CustomEvent;
+      const { action, matchId } = customEvent.detail ?? {};
+      if (action === 'REFRESH_DATA' && matchId) {
+        console.log(
+          '[ContentScript] Catching REFRESH_DATA action, syncing cache for:',
+          matchId,
+        );
+        await syncMatchMemoCacheToStorage(matchId);
+      }
+    });
 
     // ── メッセージハンドラ ──
 

@@ -110,6 +110,9 @@ export const MemoOverlayBridge: React.FC = () => {
   const handleSave = async () => {
     const currentState = useMemoOverlayStore.getState();
 
+    // 試合メモ(MATCH)の場合は拡張機能側での保存処理を制限
+    if (currentState.mode === 'MATCH') return;
+
     // 二重実行防止（保存処理中は入力を受け付けない）
     if (currentState.isSaving) return;
 
@@ -174,6 +177,11 @@ export const MemoOverlayBridge: React.FC = () => {
   if (!isVisible) return null;
 
   return (
-    <MemoOverlayView matchId={matchId} onClose={close} onSave={handleSave} />
+    <MemoOverlayView
+      matchId={matchId}
+      onClose={close}
+      onSave={handleSave}
+      readOnly={mode === 'MATCH'}
+    />
   );
 };

@@ -6,6 +6,7 @@ import {
   SaveQueueItemSchema,
   SaveQueueSchema,
 } from '../../types/schemas';
+import { syncMatchMemoCacheToStorage } from './cache-sync';
 
 /**
  * addToSaveQueue
@@ -70,6 +71,8 @@ export async function processSaveQueue(): Promise<void> {
             memo: item.memo,
             updatedAt: Date.now(),
           });
+          // 共通のキャッシュ同期ロジックを呼び出す
+          await syncMatchMemoCacheToStorage(item.matchId);
         } else if (item.mode === 'EVENT') {
           await saveCustomEvent({
             id: item.entityId || crypto.randomUUID(),

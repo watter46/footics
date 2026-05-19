@@ -43,4 +43,5 @@ export const Z_INDEX = {
 export const STORAGE_KEYS = {
   LAST_ACTIVE_MATCH_ID: 'lastActiveMatchId',
   SAVE_QUEUE: 'saveQueue',
+  MATCH_MEMO_CACHE_PREFIX: 'match_memo_cache_',
 } as const;

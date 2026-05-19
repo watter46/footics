@@ -7,7 +7,8 @@ import {
   X,
 } from 'lucide-react';
 import type React from 'react';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { getMatchMemo } from '@/lib/db';
 import { cn } from '@/lib/utils';
 import { useMemoOverlayDerived } from '@/stores/useMemoOverlayStore';
 import { MatchMemoUnit } from './parts/MatchMemoUnit';
@@ -27,6 +28,7 @@ interface MemoOverlayViewProps {
   onClose: () => void;
   onSave: () => void;
   className?: string;
+  readOnly?: boolean;
 }
 
 /**
@@ -41,6 +43,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
   onClose,
   onSave,
   className,
+  readOnly = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +74,53 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
     prevPhase,
     clearError,
   } = useMemoOverlayDerived();
+
+  // 過去の試合メモを引き継ぐ処理
+  useEffect(() => {
+    if (mode !== 'MATCH' || !matchId) return;
+
+    let isMounted = true;
+
+    const loadMemo = async () => {
+      try {
+        // Step 1: 拡張機能環境であれば、chrome.storage.local からキャッシュを試行 (別タブ対応)
+        const globalBrowser =
+          typeof window !== 'undefined' ? (window as any).browser : undefined;
+        if (globalBrowser && globalBrowser.storage?.local) {
+          const cacheKey = `match_memo_cache_${matchId}`;
+          const stored = await globalBrowser.storage.local.get(cacheKey);
+          const cachedMemo = stored[cacheKey];
+
+          if (isMounted && typeof cachedMemo === 'string') {
+            console.log(
+              '[MemoOverlayView] Loaded memo from storage cache:',
+              matchId,
+            );
+            setMemo(cachedMemo);
+            return;
+          }
+        }
+
+        // Step 2: キャッシュがない場合、またはWeb本体環境の場合は IndexedDB から読み込む (フォールバック)
+        const existingMemo = await getMatchMemo(matchId);
+        if (isMounted && existingMemo?.memo) {
+          console.log('[MemoOverlayView] Loaded memo from IndexedDB:', matchId);
+          setMemo(existingMemo.memo);
+        }
+      } catch (err) {
+        console.error(
+          '[MemoOverlayView] Failed to load existing match memo:',
+          err,
+        );
+      }
+    };
+
+    loadMemo();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [mode, matchId, setMemo]);
 
   // フェーズごとのコンテンツを返す
   const renderEventPhaseContent = () => {
@@ -169,6 +219,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
             hasMatchId={!!matchId}
             onMemoChange={setMemo}
             onSave={onSave}
+            readOnly={readOnly}
           />
         ) : (
           renderEventPhaseContent()
