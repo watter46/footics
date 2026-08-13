@@ -59,13 +59,12 @@ const FloatingStylePanel: React.FC<TLUiStylePanelProps> = (props) => {
 };
 
 export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
-  matchId,
+  matchId: _matchId,
   activeTool,
   onClearRef,
   onEditorReady,
 }) => {
   const editorRef = useRef<Editor | null>(null);
-  const persistenceKey = `footics-tactical-board-${matchId}`;
 
   const handleMount = (editor: Editor) => {
     editorRef.current = editor;
@@ -250,7 +249,6 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
        */}
       <div className="tdc-canvas absolute inset-0 w-full h-full z-10">
         <Tldraw
-          persistenceKey={persistenceKey}
           inferDarkMode
           onMount={handleMount}
           components={{
