@@ -23,7 +23,7 @@ export const Pitch: React.FC<PitchProps> = ({ children }) => {
   return (
     <div
       ref={setNodeRef}
-      className="relative w-full aspect-[105/68] bg-slate-950 rounded-lg border-2 border-slate-800 shadow-2xl overflow-hidden select-none"
+      className="relative w-full aspect-[105/68] bg-slate-950 rounded-lg border-2 border-slate-800 shadow-2xl overflow-visible select-none"
     >
       <svg
         viewBox="-1 -1 107 70"

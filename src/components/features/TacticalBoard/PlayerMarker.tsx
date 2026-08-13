@@ -13,7 +13,9 @@ interface PlayerMarkerProps {
   color?: string;
   isBall?: boolean;
   isOverlay?: boolean; // ドラッグ中の強調表示フラグ
+  onMarkerTouch?: () => void;
 }
+
 /**
  * リアルなサッカーボールのSVGコンポーネント (正円)
  */
@@ -59,6 +61,7 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
   color = '#3b82f6',
   isBall = false,
   isOverlay = false,
+  onMarkerTouch,
 }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -97,7 +100,13 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
       style={style}
       {...listeners}
       {...attributes}
-      className={`cursor-grab active:cursor-grabbing ${isDragging ? 'z-50' : ''}`}
+      onPointerDown={(e) => {
+        if (onMarkerTouch) onMarkerTouch();
+        if (listeners?.onPointerDown) {
+          listeners.onPointerDown(e);
+        }
+      }}
+      className={`cursor-grab active:cursor-grabbing pointer-events-auto ${isDragging ? 'z-50' : ''}`}
     >
       <div className="relative w-full h-full group select-none">
         {/* 強調エフェクト (2倍サイズのバブル) */}
@@ -117,7 +126,7 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
 
         {/* 正円マーカー本体 */}
         <div
-          className={`rounded-full border-2 border-white shadow flex items-center justify-center font-bold text-white w-full h-full ${isDragging ? 'shadow-2xl' : ''}`}
+          className={`rounded-full border-2 border-white shadow-md flex items-center justify-center font-black text-white w-full h-full ${isDragging ? 'shadow-2xl' : ''}`}
           style={{
             backgroundColor: isBall ? 'transparent' : color,
             border: isBall ? 'none' : undefined,
@@ -125,15 +134,15 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
         >
           {isBall && <SoccerBallSVG />}
           {!isBall && (
-            <span className="text-[10px]">
+            <span className="text-[13px] font-black tracking-tight leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
               {shirtNo || displayName.charAt(0)}
             </span>
           )}
         </div>
 
-        {/* 選手名: 絶対配置でオーバーフローを許可 */}
+        {/* 選手名: 高コントラスト・太字で視認性最大化 */}
         {!isBall && (
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-1.5 py-0.5 bg-slate-900/90 rounded text-[9px] text-slate-100 whitespace-nowrap pointer-events-none border border-slate-700/50 shadow-sm z-50">
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-0.5 bg-slate-950/95 rounded-md text-[11px] font-bold text-white whitespace-nowrap pointer-events-none border border-slate-600/80 shadow-md z-50 leading-tight">
             {displayName}
           </div>
         )}

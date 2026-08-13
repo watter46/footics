@@ -1,19 +1,40 @@
 'use client';
 
-import { ArrowLeftRight, RotateCcw, X } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  Camera,
+  Circle,
+  Eraser,
+  MousePointer,
+  MoveRight,
+  RotateCcw,
+  X,
+} from 'lucide-react';
 import type React from 'react';
 import { useTacticalStore } from '@/hooks/use-tactical-store';
+import type { Match } from '@/types';
+import type { TacticalDrawTool } from './components/TacticalDrawingCanvas';
 
 interface TacticalHeaderProps {
-  metadata: any;
+  metadata: Match;
   onClose: () => void;
   onReset: () => void;
+  activeDrawTool: TacticalDrawTool;
+  onSelectDrawTool: (tool: TacticalDrawTool) => void;
+  onExportScreenshot: () => void;
+  onClearDrawing: () => void;
+  isExporting?: boolean;
 }
 
 export const TacticalHeader: React.FC<TacticalHeaderProps> = ({
   metadata,
   onClose,
   onReset,
+  activeDrawTool,
+  onSelectDrawTool,
+  onExportScreenshot,
+  onClearDrawing,
+  isExporting = false,
 }) => {
   const {
     isFlipped,
@@ -26,9 +47,9 @@ export const TacticalHeader: React.FC<TacticalHeaderProps> = ({
   } = useTacticalStore();
 
   return (
-    <div className="flex items-center justify-between px-6 py-2 border-b border-slate-800 bg-slate-900/50 h-14 shrink-0">
-      <div className="flex items-center gap-6">
-        <div className="flex flex-col">
+    <div className="flex items-center justify-between px-6 py-2 border-b border-slate-800 bg-slate-900/50 h-14 shrink-0 overflow-x-auto">
+      <div className="flex items-center gap-4">
+        <div className="flex flex-col shrink-0">
           <h2 className="text-sm font-bold text-slate-100 mb-1 leading-none">
             Tactical Board
           </h2>
@@ -42,6 +63,7 @@ export const TacticalHeader: React.FC<TacticalHeaderProps> = ({
         </div>
 
         <button
+          type="button"
           onClick={toggleFlipped}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold transition-none border ${isFlipped ? 'bg-orange-500/10 border-orange-500/50 text-orange-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-200'}`}
         >
@@ -50,15 +72,102 @@ export const TacticalHeader: React.FC<TacticalHeaderProps> = ({
         </button>
 
         <button
+          type="button"
           onClick={onReset}
           className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold transition-none border bg-slate-800 border-slate-700 text-slate-400 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400"
         >
           <RotateCcw className="w-3 h-3" />
           RESET
         </button>
+
+        {/* 描画ツール & スクリーンショット グループ */}
+        <div className="flex items-center gap-2 pl-3 border-l border-slate-800">
+          {/* コマ操作モード */}
+          <button
+            type="button"
+            title="コマ移動モード (コマをドラッグ)"
+            onClick={() => onSelectDrawTool('select')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-none border ${
+              activeDrawTool === 'select'
+                ? 'bg-blue-500/20 border-blue-500/60 text-blue-400'
+                : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+            }`}
+          >
+            <MousePointer className="w-3 h-3" />
+            <span>SELECT</span>
+          </button>
+
+          {/* 実線矢印 */}
+          <button
+            type="button"
+            title="実線矢印を描画"
+            onClick={() => onSelectDrawTool('arrow_solid')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-none border ${
+              activeDrawTool === 'arrow_solid'
+                ? 'bg-blue-500/20 border-blue-500/60 text-blue-400'
+                : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+            }`}
+          >
+            <MoveRight className="w-3 h-3" />
+            <span>SOLID ARROW</span>
+          </button>
+
+          {/* 点線矢印 */}
+          <button
+            type="button"
+            title="点線矢印を描画"
+            onClick={() => onSelectDrawTool('arrow_dash')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-none border ${
+              activeDrawTool === 'arrow_dash'
+                ? 'bg-orange-500/20 border-orange-500/60 text-orange-400'
+                : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+            }`}
+          >
+            <MoveRight className="w-3 h-3 stroke-dasharray-2" />
+            <span>DASH ARROW</span>
+          </button>
+
+          {/* ゾーン */}
+          <button
+            type="button"
+            title="円形ゾーンを描画"
+            onClick={() => onSelectDrawTool('zone_circle')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-none border ${
+              activeDrawTool === 'zone_circle'
+                ? 'bg-red-500/20 border-red-500/60 text-red-400'
+                : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+            }`}
+          >
+            <Circle className="w-3 h-3" />
+            <span>ZONE</span>
+          </button>
+
+          {/* 描画クリア（消しゴムとゴミ箱を1つに統合） */}
+          <button
+            type="button"
+            title="すべての矢印・描画を消去"
+            onClick={onClearDrawing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-none border bg-slate-800 border-slate-700 text-slate-400 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400"
+          >
+            <Eraser className="w-3 h-3" />
+            <span>CLEAR</span>
+          </button>
+
+          {/* スクリーンショット（クリップボードコピー） */}
+          <button
+            type="button"
+            title="ピッチ全体の画像をクリップボードにコピー"
+            onClick={onExportScreenshot}
+            disabled={isExporting}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 ml-2 rounded-full text-[10px] font-bold transition-none border bg-emerald-600/20 border-emerald-500/60 text-emerald-400 hover:bg-emerald-600/30 hover:border-emerald-400 disabled:opacity-50"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>{isExporting ? 'COPYING...' : 'COPY IMAGE'}</span>
+          </button>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 shrink-0 ml-4">
         <div className="flex items-center gap-3 px-3 py-1 bg-slate-800/30 rounded-full border border-slate-700/50 min-h-0">
           <div className="flex items-center gap-2">
             <input
@@ -85,6 +194,7 @@ export const TacticalHeader: React.FC<TacticalHeaderProps> = ({
           </div>
         </div>
         <button
+          type="button"
           onClick={onClose}
           className="p-1.5 hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-100 transition-none"
         >

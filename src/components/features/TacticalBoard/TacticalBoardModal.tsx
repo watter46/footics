@@ -1,9 +1,9 @@
 'use client';
 
-import { DndContext, DragOverlay } from '@dnd-kit/core';
+import { DndContext, DragOverlay, type DragStartEvent } from '@dnd-kit/core';
 import { snapCenterToCursor } from '@dnd-kit/modifiers';
 import type React from 'react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useKeyboardShortcut } from '@/hooks/use-shortcut';
 import { useTacticalBoard } from '@/hooks/use-tactical-board';
 import { useTacticalStore } from '@/hooks/use-tactical-store';
@@ -12,6 +12,8 @@ import { getShirtNo } from '@/lib/data/tactical-utils';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
 import type { Match } from '@/types';
 import { BenchArea } from './BenchArea';
+import type { TacticalDrawTool } from './components/TacticalDrawingCanvas';
+import { useTacticalExport } from './hooks/use-tactical-export';
 import { PlayerMarker } from './PlayerMarker';
 import { TacticalHeader } from './TacticalHeader';
 import { TacticalPitchArea } from './TacticalPitchArea';
@@ -39,15 +41,45 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
   } = useTacticalStore();
 
   const [formationMode, setFormationMode] = useState<FormationMode>('half');
+  const [activeDrawTool, setActiveDrawTool] =
+    useState<TacticalDrawTool>('select');
+
+  const pitchRef = useRef<HTMLDivElement>(null);
+  const clearFnRef = useRef<(() => void) | null>(null);
+
+  const { exportPitchImage, isExporting } = useTacticalExport();
 
   const {
     sensors,
-    handleDragStart,
+    handleDragStart: originalHandleDragStart,
     handleDragEnd,
     handleAlignBench,
     handleReset,
     handleApplyFormation,
   } = useTacticalBoard(matchId, metadata, isOpen);
+
+  // マーカー操作が開始されたら自動的にコマ操作モードに切り替え
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      setActiveDrawTool('select');
+      originalHandleDragStart(event);
+    },
+    [originalHandleDragStart],
+  );
+
+  const handleMarkerTouch = useCallback(() => {
+    setActiveDrawTool('select');
+  }, []);
+
+  const handleClearDrawing = useCallback(() => {
+    if (clearFnRef.current) {
+      clearFnRef.current();
+    }
+  }, []);
+
+  const handleExportScreenshot = useCallback(() => {
+    exportPitchImage(pitchRef.current, matchId);
+  }, [exportPitchImage, matchId]);
 
   // Close on Escape
   useKeyboardShortcut(SHORTCUT_ACTIONS.CLOSE_MODAL, onClose, {
@@ -91,11 +123,25 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
             metadata={metadata}
             onClose={onClose}
             onReset={handleReset}
+            activeDrawTool={activeDrawTool}
+            onSelectDrawTool={setActiveDrawTool}
+            onExportScreenshot={handleExportScreenshot}
+            onClearDrawing={handleClearDrawing}
+            isExporting={isExporting}
           />
 
           {/* Main Board Canvas */}
           <div className="flex-1 flex flex-row gap-4 p-4 bg-slate-950/20 overflow-hidden relative">
-            <TacticalPitchArea matchId={matchId} metadata={metadata} />
+            <TacticalPitchArea
+              matchId={matchId}
+              metadata={metadata}
+              activeDrawTool={activeDrawTool}
+              onMarkerTouch={handleMarkerTouch}
+              onClearRef={(clearFn) => {
+                clearFnRef.current = clearFn;
+              }}
+              pitchRef={pitchRef}
+            />
 
             {/* Bench Area (Right 25%) */}
             <div className="flex-[1] min-w-0 h-full flex flex-col min-h-0">
@@ -124,6 +170,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
                       initialX={p.x}
                       initialY={p.y}
                       color={p.team === 'home' ? homeColor : awayColor}
+                      onMarkerTouch={handleMarkerTouch}
                     />
                   );
                 })}
@@ -143,9 +190,9 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
                 isOverlay
               />
             )}
-            {activePlayerData && (
+            {activePlayerData && activeId && (
               <PlayerMarker
-                id={activeId!}
+                id={activeId}
                 playerName={
                   activePlayerData.playerMeta?.name ||
                   `Player ${activePlayerData.pId}`

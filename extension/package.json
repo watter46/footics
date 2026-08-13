@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
-    "build": "wxt build",
+    "build": "wxt build && pnpm run sync-extension",
+    "sync-extension": "mkdir -p /mnt/c/Users/nowat/extensions/$npm_package_name/ && cp -r .output/chrome-mv3/* /mnt/c/Users/nowat/extensions/$npm_package_name/",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",

@@ -75,23 +75,12 @@ export function sortPlayersBy2DPositionGroup(players: any[]): any[] {
   const getGroupPriority = (p: any): number => {
     const pos = (p.position || '').toUpperCase();
     if (pos === 'GK') return 1;
-    if (
-      ['DR', 'DC', 'DL', 'CB', 'LB', 'RB', 'LWB', 'RWB'].includes(pos)
-    )
+    if (['DR', 'DC', 'DL', 'CB', 'LB', 'RB', 'LWB', 'RWB'].includes(pos))
       return 2;
     if (
-      [
-        'DMC',
-        'MC',
-        'AMC',
-        'AMR',
-        'AML',
-        'DM',
-        'CM',
-        'AM',
-        'LM',
-        'RM',
-      ].includes(pos)
+      ['DMC', 'MC', 'AMC', 'AMR', 'AML', 'DM', 'CM', 'AM', 'LM', 'RM'].includes(
+        pos,
+      )
     )
       return 3;
     if (['FW', 'ST', 'SS', 'LW', 'RW'].includes(pos)) return 4;
@@ -413,4 +402,3 @@ export function toActualPos(
 ): { x: number; y: number } {
   return toViewPos(view, isFlipped);
 }
-

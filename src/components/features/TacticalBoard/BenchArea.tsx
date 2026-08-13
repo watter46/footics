@@ -61,6 +61,7 @@ export const BenchArea: React.FC<BenchAreaProps> = ({
 
           {/* グリッド整列ボタン */}
           <button
+            type="button"
             onClick={onAlignGrid}
             title="Align Grid"
             className="p-1 px-2 hover:bg-slate-700/50 rounded flex items-center gap-1.5 transition-none group border border-transparent hover:border-slate-600"
@@ -73,6 +74,7 @@ export const BenchArea: React.FC<BenchAreaProps> = ({
         </div>
 
         <button
+          type="button"
           onClick={onTeamToggle}
           className="flex items-center justify-between w-full px-2 py-1.5 bg-slate-700/30 hover:bg-slate-700/50 rounded border border-slate-600 transition-none group text-left"
         >
