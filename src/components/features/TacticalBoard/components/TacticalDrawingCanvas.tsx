@@ -1,11 +1,13 @@
 'use client';
 
 import type Konva from 'konva';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Arrow,
   Circle,
   Ellipse,
+  Group,
   Layer,
   Rect,
   Stage,
@@ -30,6 +32,46 @@ function getQuadraticBezierPoints(
     points.push(x, y);
   }
   return points;
+}
+
+const ROTATE_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8'/><path d='M21 3v5h-5'/></svg>") 12 12, auto`;
+
+function checkCornerRotateZone(
+  pos: { x: number; y: number },
+  shape: ShapeData,
+): boolean {
+  if (shape.type !== 'zone' || shape.x === undefined || shape.y === undefined)
+    return false;
+  const w = Math.abs(shape.width || 0);
+  const h = Math.abs(shape.height || 0);
+  if (w === 0 || h === 0) return false;
+
+  const cx = shape.x + w / 2;
+  const cy = shape.y + h / 2;
+  const rad = ((shape.rotation || 0) * Math.PI) / 180;
+
+  const hw = w / 2;
+  const hh = h / 2;
+
+  const cornersLocal = [
+    { x: -hw, y: -hh },
+    { x: hw, y: -hh },
+    { x: -hw, y: hh },
+    { x: hw, y: hh },
+  ];
+
+  const corners = cornersLocal.map((pt) => ({
+    x: cx + pt.x * Math.cos(rad) - pt.y * Math.sin(rad),
+    y: cy + pt.x * Math.sin(rad) + pt.y * Math.cos(rad),
+  }));
+
+  for (const corner of corners) {
+    const dist = Math.hypot(pos.x - corner.x, pos.y - corner.y);
+    if (dist >= 6 && dist <= 28) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export type TacticalDrawTool =
@@ -84,6 +126,13 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
 
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const selectedNodeRef = useRef<Konva.Node | null>(null);
+
+  // Custom Rotate interaction refs (tldraw-style corner rotation)
+  const isRotatingRef = useRef(false);
+  const rotateCenterRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const startMouseAngleRef = useRef(0);
+  const startShapeRotationRef = useRef(0);
+  const isOverRotateZoneRef = useRef(false);
 
   // ResizeObserver for matching canvas size with container
   useEffect(() => {
@@ -305,6 +354,26 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
     // If clicking on custom handles, do nothing here (handled by draggable)
     if (e.target.name() === 'control-handle') return;
 
+    const selectedShape = shapes.find((s) => s.id === selectedId);
+
+    // 四隅回転エリアでのクリックの場合、カスタム回転モードを開始
+    if (activeTool === 'select' && selectedShape && isOverRotateZoneRef.current) {
+      const stage = e.target.getStage();
+      const pos = stage?.getPointerPosition();
+      if (pos && selectedShape.x !== undefined && selectedShape.y !== undefined) {
+        const w = Math.abs(selectedShape.width || 0);
+        const h = Math.abs(selectedShape.height || 0);
+        const cx = selectedShape.x + w / 2;
+        const cy = selectedShape.y + h / 2;
+
+        isRotatingRef.current = true;
+        rotateCenterRef.current = { x: cx, y: cy };
+        startMouseAngleRef.current = Math.atan2(pos.y - cy, pos.x - cx);
+        startShapeRotationRef.current = selectedShape.rotation || 0;
+        return;
+      }
+    }
+
     if (activeTool === 'select') {
       const clickedOnEmpty = e.target === e.target.getStage();
       if (clickedOnEmpty) {
@@ -356,6 +425,48 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
   };
 
   const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    // カスタム回転ドラッグ中の処理
+    if (isRotatingRef.current && selectedId && selectedNodeRef.current) {
+      const stage = e.target.getStage();
+      const pos = stage?.getPointerPosition();
+      if (pos) {
+        const cx = rotateCenterRef.current.x;
+        const cy = rotateCenterRef.current.y;
+        const currentAngle = Math.atan2(pos.y - cy, pos.x - cx);
+        const angleDiffRad = currentAngle - startMouseAngleRef.current;
+        const angleDiffDeg = (angleDiffRad * 180) / Math.PI;
+
+        const newRotation = (startShapeRotationRef.current + angleDiffDeg) % 360;
+
+        selectedNodeRef.current.rotation(newRotation);
+        selectedNodeRef.current.getLayer()?.batchDraw();
+
+        setShapes((prev) =>
+          prev.map((s) =>
+            s.id === selectedId ? { ...s, rotation: newRotation } : s,
+          ),
+        );
+        return;
+      }
+    }
+
+    // ホバー時：四隅の回転外側ゾーン判定とカーソル切替
+    const selectedShape = shapes.find((s) => s.id === selectedId);
+    if (activeTool === 'select' && selectedShape?.type === 'zone') {
+      const stage = e.target.getStage();
+      const pos = stage?.getPointerPosition();
+      const container = containerRef.current;
+      if (pos && container) {
+        const isOver = checkCornerRotateZone(pos, selectedShape);
+        isOverRotateZoneRef.current = isOver;
+        if (isOver) {
+          container.style.cursor = ROTATE_CURSOR;
+        } else if (container.style.cursor.includes('data:image/svg+xml')) {
+          container.style.cursor = 'default';
+        }
+      }
+    }
+
     if (!isDrawing || !newShape) return;
 
     const stage = e.target.getStage();
@@ -382,6 +493,12 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
   };
 
   const handleMouseUp = () => {
+    if (isRotatingRef.current) {
+      isRotatingRef.current = false;
+      saveHistory(shapes);
+      return;
+    }
+
     if (!isDrawing || !newShape) return;
     setIsDrawing(false);
 
@@ -444,25 +561,25 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
     const newW = (shape.width || 0) * scaleX;
     const newH = (shape.height || 0) * scaleY;
 
-    // Ellipseの場合、node.x()は中心座標なので左上座標に補正
-    const isEllipse = shape.zoneShape === 'ellipse';
-    const newX = isEllipse ? node.x() - newW / 2 : node.x();
-    const newY = isEllipse ? node.y() - newH / 2 : node.y();
+    // node.x(), node.y() は中心座標
+    const newX = node.x() - Math.abs(newW) / 2;
+    const newY = node.y() - Math.abs(newH) / 2;
 
-    setShapes((prev) =>
-      prev.map((s) =>
-        s.id === shape.id
-          ? {
-              ...s,
-              x: newX,
-              y: newY,
-              width: newW,
-              height: newH,
-              rotation,
-            }
-          : s,
-      ),
+    const nextShapes = shapes.map((s) =>
+      s.id === shape.id
+        ? {
+            ...s,
+            x: newX,
+            y: newY,
+            width: newW,
+            height: newH,
+            rotation,
+          }
+        : s,
     );
+
+    saveHistory(nextShapes);
+    setShapes(nextShapes);
   };
 
   const handleShapeChange = useCallback(
@@ -533,10 +650,43 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                 }
 
                 return (
-                  <React.Fragment key={shape.id}>
+                  <Group
+                    key={shape.id}
+                    draggable={activeTool === 'select' && isSelected}
+                    onDragEnd={(e) => {
+                      if (e.target.name() === 'control-handle') return;
+                      const node = e.target;
+                      const dx = node.x();
+                      const dy = node.y();
+                      node.position({ x: 0, y: 0 });
+
+                      const newPoints = [
+                        shape.points![0] + dx,
+                        shape.points![1] + dy,
+                        shape.points![2] + dx,
+                        shape.points![3] + dy,
+                      ];
+                      const newCp = shape.controlPoint
+                        ? {
+                            x: shape.controlPoint.x + dx,
+                            y: shape.controlPoint.y + dy,
+                          }
+                        : undefined;
+
+                      const nextShapes = shapes.map((s) =>
+                        s.id === shape.id
+                          ? { ...s, points: newPoints, controlPoint: newCp }
+                          : s,
+                      );
+                      saveHistory(nextShapes);
+                      setShapes(nextShapes);
+                    }}
+                  >
                     <Arrow
                       ref={(node) => {
-                        if (isSelected && node) selectedNodeRef.current = node;
+                        if (node) {
+                          if (isSelected) selectedNodeRef.current = node;
+                        }
                       }}
                       points={renderPoints}
                       stroke={shape.color}
@@ -550,42 +700,6 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                       lineCap="round"
                       lineJoin="round"
                       hitStrokeWidth={30}
-                      draggable={activeTool === 'select' && isSelected}
-                      onDragEnd={(e) => {
-                        if (e.target.name() === 'control-handle') return;
-                        const node = e.target;
-                        const dx = node.x();
-                        const dy = node.y();
-                        node.position({ x: 0, y: 0 });
-
-                        const newPoints = [
-                          shape.points![0] + dx,
-                          shape.points![1] + dy,
-                          shape.points![2] + dx,
-                          shape.points![3] + dy,
-                        ];
-                        const newCp = shape.controlPoint
-                          ? {
-                              x: shape.controlPoint.x + dx,
-                              y: shape.controlPoint.y + dy,
-                            }
-                          : undefined;
-
-                        saveHistory(
-                          shapes.map((s) =>
-                            s.id === shape.id
-                              ? { ...s, points: newPoints, controlPoint: newCp }
-                              : s,
-                          ),
-                        );
-                        setShapes((prev) =>
-                          prev.map((s) =>
-                            s.id === shape.id
-                              ? { ...s, points: newPoints, controlPoint: newCp }
-                              : s,
-                          ),
-                        );
-                      }}
                       onClick={(e) => handleShapeClick(shape, e.target, e)}
                       onTap={(e) => handleShapeClick(shape, e.target, e)}
                     />
@@ -598,62 +712,144 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                           name="control-handle"
                           x={shape.points[0]}
                           y={shape.points[1]}
-                          radius={6}
+                          radius={7}
+                          hitStrokeWidth={20}
                           fill="#ffffff"
                           stroke="#3b82f6"
                           strokeWidth={2}
                           draggable
+                          onMouseEnter={(e) => {
+                            const container = e.target.getStage()?.container();
+                            if (container) container.style.cursor = 'grab';
+                          }}
+                          onMouseLeave={(e) => {
+                            const container = e.target.getStage()?.container();
+                            if (container) container.style.cursor = 'default';
+                          }}
+                          onDragStart={(e) => {
+                            e.cancelBubble = true;
+                            const container = e.target.getStage()?.container();
+                            if (container) container.style.cursor = 'grabbing';
+                          }}
                           onDragMove={(e) => {
                             const newX = e.target.x();
                             const newY = e.target.y();
-                            setShapes((prev) =>
-                              prev.map((s) =>
-                                s.id === shape.id
-                                  ? {
-                                      ...s,
-                                      points: [
-                                        newX,
-                                        newY,
-                                        s.points![2],
-                                        s.points![3],
-                                      ],
-                                    }
-                                  : s,
-                              ),
-                            );
+                            const arrowNode = selectedNodeRef.current as Konva.Arrow | null;
+                            if (arrowNode) {
+                              if (isCurved) {
+                                const pts = getQuadraticBezierPoints(
+                                  newX,
+                                  newY,
+                                  cpX,
+                                  cpY,
+                                  shape.points![2],
+                                  shape.points![3],
+                                );
+                                arrowNode.points(pts);
+                              } else {
+                                arrowNode.points([
+                                  newX,
+                                  newY,
+                                  shape.points![2],
+                                  shape.points![3],
+                                ]);
+                              }
+                              arrowNode.getLayer()?.batchDraw();
+                            }
                           }}
-                          onDragEnd={() => saveHistory(shapes)}
+                          onDragEnd={(e) => {
+                            const container = e.target.getStage()?.container();
+                            if (container) container.style.cursor = 'grab';
+                            const newX = e.target.x();
+                            const newY = e.target.y();
+                            const nextShapes = shapes.map((s) =>
+                              s.id === shape.id
+                                ? {
+                                    ...s,
+                                    points: [
+                                      newX,
+                                      newY,
+                                      s.points![2],
+                                      s.points![3],
+                                    ],
+                                  }
+                                : s,
+                            );
+                            saveHistory(nextShapes);
+                            setShapes(nextShapes);
+                          }}
                         />
                         {/* 終点ハンドル */}
                         <Circle
                           name="control-handle"
                           x={shape.points[2]}
                           y={shape.points[3]}
-                          radius={6}
+                          radius={7}
+                          hitStrokeWidth={20}
                           fill="#ffffff"
                           stroke="#3b82f6"
                           strokeWidth={2}
                           draggable
+                          onMouseEnter={(e) => {
+                            const container = e.target.getStage()?.container();
+                            if (container) container.style.cursor = 'grab';
+                          }}
+                          onMouseLeave={(e) => {
+                            const container = e.target.getStage()?.container();
+                            if (container) container.style.cursor = 'default';
+                          }}
+                          onDragStart={(e) => {
+                            e.cancelBubble = true;
+                            const container = e.target.getStage()?.container();
+                            if (container) container.style.cursor = 'grabbing';
+                          }}
                           onDragMove={(e) => {
                             const newX = e.target.x();
                             const newY = e.target.y();
-                            setShapes((prev) =>
-                              prev.map((s) =>
-                                s.id === shape.id
-                                  ? {
-                                      ...s,
-                                      points: [
-                                        s.points![0],
-                                        s.points![1],
-                                        newX,
-                                        newY,
-                                      ],
-                                    }
-                                  : s,
-                              ),
-                            );
+                            const arrowNode = selectedNodeRef.current as Konva.Arrow | null;
+                            if (arrowNode) {
+                              if (isCurved) {
+                                const pts = getQuadraticBezierPoints(
+                                  shape.points![0],
+                                  shape.points![1],
+                                  cpX,
+                                  cpY,
+                                  newX,
+                                  newY,
+                                );
+                                arrowNode.points(pts);
+                              } else {
+                                arrowNode.points([
+                                  shape.points![0],
+                                  shape.points![1],
+                                  newX,
+                                  newY,
+                                ]);
+                              }
+                              arrowNode.getLayer()?.batchDraw();
+                            }
                           }}
-                          onDragEnd={() => saveHistory(shapes)}
+                          onDragEnd={(e) => {
+                            const container = e.target.getStage()?.container();
+                            if (container) container.style.cursor = 'grab';
+                            const newX = e.target.x();
+                            const newY = e.target.y();
+                            const nextShapes = shapes.map((s) =>
+                              s.id === shape.id
+                                ? {
+                                    ...s,
+                                    points: [
+                                      s.points![0],
+                                      s.points![1],
+                                      newX,
+                                      newY,
+                                    ],
+                                  }
+                                : s,
+                            );
+                            saveHistory(nextShapes);
+                            setShapes(nextShapes);
+                          }}
                         />
                         {/* 曲線コントロールハンドル */}
                         {isCurved && (
@@ -661,30 +857,62 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                             name="control-handle"
                             x={cpX}
                             y={cpY}
-                            radius={7}
+                            radius={8}
+                            hitStrokeWidth={20}
                             fill="#3b82f6"
                             stroke="#ffffff"
                             strokeWidth={2}
                             draggable
+                            onMouseEnter={(e) => {
+                              const container = e.target.getStage()?.container();
+                              if (container) container.style.cursor = 'grab';
+                            }}
+                            onMouseLeave={(e) => {
+                              const container = e.target.getStage()?.container();
+                              if (container) container.style.cursor = 'default';
+                            }}
+                            onDragStart={(e) => {
+                              e.cancelBubble = true;
+                              const container = e.target.getStage()?.container();
+                              if (container) container.style.cursor = 'grabbing';
+                            }}
                             onDragMove={(e) => {
+                              const newCpX = e.target.x();
+                              const newCpY = e.target.y();
+                              const arrowNode = selectedNodeRef.current as Konva.Arrow | null;
+                              if (arrowNode) {
+                                const pts = getQuadraticBezierPoints(
+                                  shape.points![0],
+                                  shape.points![1],
+                                  newCpX,
+                                  newCpY,
+                                  shape.points![2],
+                                  shape.points![3],
+                                );
+                                arrowNode.points(pts);
+                                arrowNode.getLayer()?.batchDraw();
+                              }
+                            }}
+                            onDragEnd={(e) => {
+                              const container = e.target.getStage()?.container();
+                              if (container) container.style.cursor = 'grab';
                               const newCp = {
                                 x: e.target.x(),
                                 y: e.target.y(),
                               };
-                              setShapes((prev) =>
-                                prev.map((s) =>
-                                  s.id === shape.id
-                                    ? { ...s, controlPoint: newCp }
-                                    : s,
-                                ),
+                              const nextShapes = shapes.map((s) =>
+                                s.id === shape.id
+                                  ? { ...s, controlPoint: newCp }
+                                  : s,
                               );
+                              saveHistory(nextShapes);
+                              setShapes(nextShapes);
                             }}
-                            onDragEnd={() => saveHistory(shapes)}
                           />
                         )}
                       </>
                     )}
-                  </React.Fragment>
+                  </Group>
                 );
               }
 
@@ -692,8 +920,11 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                 shape.type === 'zone' &&
                 shape.x !== undefined &&
                 shape.y !== undefined
-              ) {                const w = shape.width || 0;
+              ) {
+                const w = shape.width || 0;
                 const h = shape.height || 0;
+                const absW = Math.abs(w);
+                const absH = Math.abs(h);
 
                 const hexColor = shape.color.replace('#', '');
                 const r = parseInt(hexColor.substring(0, 2), 16) || 239;
@@ -708,10 +939,11 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                       ref={(node) => {
                         if (isSelected && node) selectedNodeRef.current = node;
                       }}
-                      x={shape.x + w / 2}
-                      y={shape.y + h / 2}
-                      radiusX={Math.abs(w / 2)}
-                      radiusY={Math.abs(h / 2)}
+                      x={shape.x + absW / 2}
+                      y={shape.y + absH / 2}
+                      radiusX={absW / 2}
+                      radiusY={absH / 2}
+                      rotation={shape.rotation || 0}
                       fill={fillRGBA}
                       stroke={shape.color}
                       strokeWidth={shape.strokeWidth}
@@ -725,20 +957,13 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                       }
                       onDragEnd={(e) => {
                         if (e.target.name() === 'control-handle') return;
-                        const newX = e.target.x() - Math.abs(w / 2);
-                        const newY = e.target.y() - Math.abs(h / 2);
-                        saveHistory(
-                          shapes.map((s) =>
-                            s.id === shape.id
-                              ? { ...s, x: newX, y: newY }
-                              : s,
-                          ),
+                        const newX = e.target.x() - absW / 2;
+                        const newY = e.target.y() - absH / 2;
+                        const nextShapes = shapes.map((s) =>
+                          s.id === shape.id ? { ...s, x: newX, y: newY } : s,
                         );
-                        setShapes((prev) =>
-                          prev.map((s) =>
-                            s.id === shape.id ? { ...s, x: newX, y: newY } : s,
-                          ),
-                        );
+                        saveHistory(nextShapes);
+                        setShapes(nextShapes);
                       }}
                     />
                   );
@@ -750,10 +975,13 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                     ref={(node) => {
                       if (isSelected && node) selectedNodeRef.current = node;
                     }}
-                    x={w < 0 ? shape.x + w : shape.x}
-                    y={h < 0 ? shape.y + h : shape.y}
-                    width={Math.abs(w)}
-                    height={Math.abs(h)}
+                    x={shape.x + absW / 2}
+                    y={shape.y + absH / 2}
+                    width={absW}
+                    height={absH}
+                    offsetX={absW / 2}
+                    offsetY={absH / 2}
+                    rotation={shape.rotation || 0}
                     fill={fillRGBA}
                     stroke={shape.color}
                     strokeWidth={shape.strokeWidth}
@@ -765,20 +993,13 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                     onTransformEnd={(e) => handleTransformEnd(shape, e.target)}
                     onDragEnd={(e) => {
                       if (e.target.name() === 'control-handle') return;
-                      saveHistory(
-                        shapes.map((s) =>
-                          s.id === shape.id
-                            ? { ...s, x: e.target.x(), y: e.target.y() }
-                            : s,
-                        ),
+                      const newX = e.target.x() - absW / 2;
+                      const newY = e.target.y() - absH / 2;
+                      const nextShapes = shapes.map((s) =>
+                        s.id === shape.id ? { ...s, x: newX, y: newY } : s,
                       );
-                      setShapes((prev) =>
-                        prev.map((s) =>
-                          s.id === shape.id
-                            ? { ...s, x: e.target.x(), y: e.target.y() }
-                            : s,
-                        ),
-                      );
+                      saveHistory(nextShapes);
+                      setShapes(nextShapes);
                     }}
                   />
                 );
@@ -787,11 +1008,12 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
               return null;
             })}
 
-            {/* Transformer (Zoneのみ適用) */}
+            {/* Transformer (Zoneのみ適用 - tldraw風の四隅回転対応) */}
             {activeTool === 'select' && selectedShape?.type === 'zone' && (
               <Transformer
                 ref={transformerRef}
                 rotateEnabled={true}
+                rotateAnchorOffset={0}
                 keepRatio={false}
                 enabledAnchors={[
                   'top-left',
@@ -806,7 +1028,14 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                 borderStroke="#3b82f6"
                 anchorFill="#ffffff"
                 anchorStroke="#3b82f6"
-                anchorSize={8}
+                anchorSize={9}
+                anchorCornerRadius={2}
+                anchorStyleFunc={(anchor) => {
+                  // 上部の独立した回転用丸ハンドルを非表示にし、四隅に回転領域を統合
+                  if (anchor.hasName('rotater')) {
+                    anchor.visible(false);
+                  }
+                }}
               />
             )}
           </Layer>

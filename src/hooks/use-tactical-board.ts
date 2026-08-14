@@ -13,7 +13,6 @@ import {
 } from '@/lib/data/formations';
 import { FORMATION_POSITIONS } from '@/lib/data/formations-data';
 import {
-  DEFAULT_442_POSITIONS,
   generateInitialMapping,
   getBenchPos,
   getShirtNo,

@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useEvents } from '@/hooks/use-events';
-import { useUIStore } from '@/hooks/use-ui-store';
 import { cleanupOldCache, importMatchJsonFile } from '@/lib/data-loader';
 import { deleteCustomEvent, getMatch } from '@/lib/db';
 import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';

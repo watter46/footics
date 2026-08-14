@@ -155,7 +155,7 @@ export function getActivePlayersNational(matchData: any, minute: number) {
   const { homeStarters, awayStarters, homeBench, awayBench } =
     matchData.lineups;
 
-  const getTeamActive = (starters: any[], bench: any[]) => {
+  const getTeamActive = (starters: any[], _bench: any[]) => {
     const activeIds = new Set(starters.map((p: any) => p.playerId));
 
     // 交代履歴をスキャン (timeline)

@@ -6,7 +6,6 @@ import type {
   FilterState,
   Match,
   OutcomeFilter as OutcomeType,
-  Player,
 } from '@/types';
 import {
   FlatPlayerBadges,

@@ -54,8 +54,6 @@ export const FORMATION_LIST = [
 
 export type FormationType = (typeof FORMATION_LIST)[number];
 
-import { FORMATION_POSITIONS } from './formations-data';
-
 export type FormationMode = 'full' | 'half';
 
 /**

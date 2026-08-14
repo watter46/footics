@@ -2,7 +2,6 @@
 
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useState } from 'react';
 import { EventTimeline } from '@/components/features/analysis';
 import { Sidebar } from '@/components/features/Sidebar';
 import { TacticalBoardModal } from '@/components/features/TacticalBoard/TacticalBoardModal';

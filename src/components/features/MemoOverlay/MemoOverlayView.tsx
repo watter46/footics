@@ -86,7 +86,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
         // Step 1: 拡張機能環境であれば、chrome.storage.local からキャッシュを試行 (別タブ対応)
         const globalBrowser =
           typeof window !== 'undefined' ? (window as any).browser : undefined;
-        if (globalBrowser && globalBrowser.storage?.local) {
+        if (globalBrowser?.storage?.local) {
           const cacheKey = `match_memo_cache_${matchId}`;
           const stored = await globalBrowser.storage.local.get(cacheKey);
           const cachedMemo = stored[cacheKey];

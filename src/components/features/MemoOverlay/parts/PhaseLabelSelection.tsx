@@ -1,9 +1,9 @@
 'use client';
 
-import { AlertCircle, Search, Tag } from 'lucide-react';
+import { AlertCircle, Search } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import { type FlattenedEvent, getEventMetadata } from '@/lib/event-definitions';
+import type { FlattenedEvent } from '@/lib/event-definitions';
 
 interface PhaseLabelSelectionProps {
   labelInput: string;

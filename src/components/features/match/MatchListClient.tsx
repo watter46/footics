@@ -1,7 +1,6 @@
 'use client';
 
 import { Filter } from 'lucide-react';
-import React from 'react';
 import { useMatchList } from '@/hooks/use-match-list';
 import type { Match } from '@/types';
 import { FilterBar } from '../match-list/FilterBar';

@@ -20,5 +20,5 @@ body,
 
 /* tldraw theme overrides */
 .tl-container {
-  --tl-color-background: #000000 !important;
+  --tl-color-background: #000000;
 }

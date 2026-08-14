@@ -1,4 +1,4 @@
-import { onMessage, sendMessage, setNamespace } from 'webext-bridge/window';
+import { sendMessage, setNamespace } from 'webext-bridge/window';
 
 export default defineContentScript({
   matches: [

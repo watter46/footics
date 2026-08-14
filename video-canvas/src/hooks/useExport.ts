@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { copyAs, type Editor, exportAs } from 'tldraw';
-import type { TLCaptureFrameShape } from '@/components/features/editor/tldraw/shapes/capture-frame';
 import {
   BG_SCREENSHOT_ID,
   CAPTURE_FRAME_ID,

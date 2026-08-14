@@ -72,7 +72,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
                     key={i}
                     className="border font-bold px-2 py-0.5 rounded shadow-none text-[10px] uppercase tracking-wider whitespace-nowrap text-white"
                     style={{
-                      backgroundColor: (meta?.groupColor ?? '#8E8E93') + '33',
+                      backgroundColor: `${meta?.groupColor ?? '#8E8E93'}33`,
                       borderColor: meta?.groupColor ?? '#8E8E93',
                       color: meta?.groupColor ?? '#ffffff',
                     }}

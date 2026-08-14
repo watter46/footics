@@ -62,7 +62,7 @@ function main() {
     const args = process.argv.slice(2);
     const targetDate = new Date();
     let format = 'iso';
-    let offsetApplied = false;
+    let _offsetApplied = false;
 
     // Parse arguments
     for (const arg of args) {
@@ -84,12 +84,12 @@ function main() {
       // Handle keywords
       if (arg === 'yesterday') {
         targetDate.setDate(targetDate.getDate() - 1);
-        offsetApplied = true;
+        _offsetApplied = true;
         continue;
       }
       if (arg === 'tomorrow') {
         targetDate.setDate(targetDate.getDate() + 1);
-        offsetApplied = true;
+        _offsetApplied = true;
         continue;
       }
       if (arg === 'today' || arg === 'now') {
@@ -117,14 +117,14 @@ function main() {
             targetDate.setFullYear(targetDate.getFullYear() + sign * value);
             break;
         }
-        offsetApplied = true;
+        _offsetApplied = true;
       } else {
         console.warn(`Warning: Unrecognized argument "${arg}" ignored.`);
       }
     }
 
     // Checking if date is valid
-    if (isNaN(targetDate.getTime())) {
+    if (Number.isNaN(targetDate.getTime())) {
       throw new Error('Invalid date calculation result.');
     }
 

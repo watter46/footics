@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
-import type { BasePlayer, Player } from '@/types';
+import type { BasePlayer } from '@/types';
 
 // ── ポジション定義 ──
 

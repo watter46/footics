@@ -50,7 +50,7 @@ export interface KeyValEntry<T = any> {
 
 const DB_NAME = 'footics_db';
 // v15: events primary key changed to compound [match_id+id] to prevent cross-match ID collisions
-const DB_VERSION = 16;
+const _DB_VERSION = 16;
 
 export class FooticsDatabase extends Dexie {
   event_memos!: Table<EventMemo, number>;

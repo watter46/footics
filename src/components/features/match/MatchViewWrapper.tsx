@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, ChevronLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import Dashboard from '@/components/features/dashboard/Dashboard';
 import NationalDashboard from '@/components/features/national-dashboard/NationalDashboard';
 import { Card } from '@/components/ui/card';

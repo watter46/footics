@@ -1,4 +1,3 @@
-import { sendMessage } from 'webext-bridge/content-script';
 import { putMatchMemo, saveCustomEvent } from '@/lib/db';
 import { STORAGE_KEYS } from '../../constants';
 import {

@@ -115,7 +115,7 @@ export const configToHotkeyString = (
     conf = actionOrConfig;
   }
 
-  if (!conf || !conf.key) return '';
+  if (!conf?.key) return '';
 
   const parts: string[] = [];
   if (conf.ctrl || conf.meta) parts.push('ctrl'); // hotkeys-js では command も ctrl で扱われることが多いが、必要に応じて調整
