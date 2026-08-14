@@ -16,6 +16,7 @@ interface TacticalPitchAreaProps {
   metadata: Match;
   activeDrawTool: TacticalDrawTool;
   onMarkerTouch: () => void;
+  onSelectDrawTool?: (tool: TacticalDrawTool) => void;
   onClearRef?: (clearFn: () => void) => void;
   pitchRef?: React.RefObject<HTMLDivElement | null>;
 }
@@ -25,6 +26,7 @@ export const TacticalPitchArea: React.FC<TacticalPitchAreaProps> = ({
   metadata,
   activeDrawTool,
   onMarkerTouch,
+  onSelectDrawTool,
   onClearRef,
   pitchRef,
 }) => {
@@ -42,11 +44,17 @@ export const TacticalPitchArea: React.FC<TacticalPitchAreaProps> = ({
         className="relative max-w-full max-h-full aspect-[105/68] w-full h-auto"
       >
         <Pitch>
-          {/* tldraw 描画オーバーレイ */}
+          {/* Konva 描画オーバーレイ */}
           <TacticalDrawingCanvas
             matchId={matchId}
             activeTool={activeDrawTool}
             onClearRef={onClearRef}
+            onSelectToolRequested={(tool) => {
+              onMarkerTouch();
+              if (onSelectDrawTool) {
+                onSelectDrawTool(tool);
+              }
+            }}
           />
 
           {/* マーカー層: 常に pointer-events-none。マーカー自身のみ pointer-events-auto */}

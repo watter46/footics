@@ -42,12 +42,7 @@ export function useTacticalExport() {
               if (node.dataset.noCapture) return false;
               if (
                 node.id === 'tactical-floating-palette' ||
-                node.classList.contains('tdc-floating-palette') ||
-                node.classList.contains('tlui-style-panel') ||
-                node.classList.contains('tlui-popover') ||
-                node.classList.contains('tlui-menu-zone') ||
-                node.classList.contains('tlui-quick-actions') ||
-                node.classList.contains('tl-watermark_SEE-LICENSE')
+                node.classList.contains('konva-floating-palette')
               ) {
                 return false;
               }

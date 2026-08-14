@@ -81,11 +81,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
     exportPitchImage(pitchRef.current, matchId);
   }, [exportPitchImage, matchId]);
 
-  // Close on Escape
-  useKeyboardShortcut(SHORTCUT_ACTIONS.CLOSE_MODAL, onClose, {
-    enabled: isOpen,
-    ignoreInput: false,
-  });
+  // Tactical BoardではEscapeでのモーダル閉じを無効化（誤操作防止のため）
 
   const benchPlayers = useMemo(
     () =>
@@ -137,6 +133,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
               metadata={metadata}
               activeDrawTool={activeDrawTool}
               onMarkerTouch={handleMarkerTouch}
+              onSelectDrawTool={setActiveDrawTool}
               onClearRef={(clearFn) => {
                 clearFnRef.current = clearFn;
               }}
