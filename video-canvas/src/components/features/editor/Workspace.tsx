@@ -167,7 +167,7 @@ export const Workspace: React.FC = () => {
         />
 
         {/* Central Canvas Area */}
-        <div className="flex-1 relative overflow-hidden flex items-center justify-center tldraw-wrapper z-10">
+        <div className="flex-1 relative overflow-hidden flex items-center justify-center z-10">
           <CanvasContainer />
         </div>
       </main>

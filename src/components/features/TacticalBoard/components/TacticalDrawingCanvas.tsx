@@ -357,10 +357,18 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
     const selectedShape = shapes.find((s) => s.id === selectedId);
 
     // 四隅回転エリアでのクリックの場合、カスタム回転モードを開始
-    if (activeTool === 'select' && selectedShape && isOverRotateZoneRef.current) {
+    if (
+      activeTool === 'select' &&
+      selectedShape &&
+      isOverRotateZoneRef.current
+    ) {
       const stage = e.target.getStage();
       const pos = stage?.getPointerPosition();
-      if (pos && selectedShape.x !== undefined && selectedShape.y !== undefined) {
+      if (
+        pos &&
+        selectedShape.x !== undefined &&
+        selectedShape.y !== undefined
+      ) {
         const w = Math.abs(selectedShape.width || 0);
         const h = Math.abs(selectedShape.height || 0);
         const cx = selectedShape.x + w / 2;
@@ -436,7 +444,8 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
         const angleDiffRad = currentAngle - startMouseAngleRef.current;
         const angleDiffDeg = (angleDiffRad * 180) / Math.PI;
 
-        const newRotation = (startShapeRotationRef.current + angleDiffDeg) % 360;
+        const newRotation =
+          (startShapeRotationRef.current + angleDiffDeg) % 360;
 
         selectedNodeRef.current.rotation(newRotation);
         selectedNodeRef.current.getLayer()?.batchDraw();
@@ -627,10 +636,11 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
               const isSelected = shape.id === selectedId;
 
               if (shape.type === 'arrow' && shape.points) {
+                const arrowPts = shape.points;
                 const isCurved = shape.isCurved;
-                let renderPoints = shape.points;
-                let cpX = (shape.points[0] + shape.points[2]) / 2;
-                let cpY = (shape.points[1] + shape.points[3]) / 2;
+                let renderPoints = arrowPts;
+                let cpX = (arrowPts[0] + arrowPts[2]) / 2;
+                let cpY = (arrowPts[1] + arrowPts[3]) / 2;
 
                 if (isCurved) {
                   if (shape.controlPoint) {
@@ -640,12 +650,12 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                     cpY -= 40;
                   }
                   renderPoints = getQuadraticBezierPoints(
-                    shape.points[0],
-                    shape.points[1],
+                    arrowPts[0],
+                    arrowPts[1],
                     cpX,
                     cpY,
-                    shape.points[2],
-                    shape.points[3],
+                    arrowPts[2],
+                    arrowPts[3],
                   );
                 }
 
@@ -653,6 +663,11 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                   <Group
                     key={shape.id}
                     draggable={activeTool === 'select' && isSelected}
+                    onDragStart={(e) => {
+                      if (e.target.name() === 'control-handle') {
+                        e.cancelBubble = true;
+                      }
+                    }}
                     onDragEnd={(e) => {
                       if (e.target.name() === 'control-handle') return;
                       const node = e.target;
@@ -661,10 +676,10 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                       node.position({ x: 0, y: 0 });
 
                       const newPoints = [
-                        shape.points![0] + dx,
-                        shape.points![1] + dy,
-                        shape.points![2] + dx,
-                        shape.points![3] + dy,
+                        arrowPts[0] + dx,
+                        arrowPts[1] + dy,
+                        arrowPts[2] + dx,
+                        arrowPts[3] + dy,
                       ];
                       const newCp = shape.controlPoint
                         ? {
@@ -710,8 +725,8 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                         {/* 始点ハンドル */}
                         <Circle
                           name="control-handle"
-                          x={shape.points[0]}
-                          y={shape.points[1]}
+                          x={arrowPts[0]}
+                          y={arrowPts[1]}
                           radius={7}
                           hitStrokeWidth={20}
                           fill="#ffffff"
@@ -732,9 +747,11 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                             if (container) container.style.cursor = 'grabbing';
                           }}
                           onDragMove={(e) => {
+                            e.cancelBubble = true;
                             const newX = e.target.x();
                             const newY = e.target.y();
-                            const arrowNode = selectedNodeRef.current as Konva.Arrow | null;
+                            const arrowNode =
+                              selectedNodeRef.current as Konva.Arrow | null;
                             if (arrowNode) {
                               if (isCurved) {
                                 const pts = getQuadraticBezierPoints(
@@ -742,22 +759,23 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                                   newY,
                                   cpX,
                                   cpY,
-                                  shape.points![2],
-                                  shape.points![3],
+                                  arrowPts[2],
+                                  arrowPts[3],
                                 );
                                 arrowNode.points(pts);
                               } else {
                                 arrowNode.points([
                                   newX,
                                   newY,
-                                  shape.points![2],
-                                  shape.points![3],
+                                  arrowPts[2],
+                                  arrowPts[3],
                                 ]);
                               }
                               arrowNode.getLayer()?.batchDraw();
                             }
                           }}
                           onDragEnd={(e) => {
+                            e.cancelBubble = true;
                             const container = e.target.getStage()?.container();
                             if (container) container.style.cursor = 'grab';
                             const newX = e.target.x();
@@ -769,8 +787,8 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                                     points: [
                                       newX,
                                       newY,
-                                      s.points![2],
-                                      s.points![3],
+                                      arrowPts[2],
+                                      arrowPts[3],
                                     ],
                                   }
                                 : s,
@@ -782,8 +800,8 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                         {/* 終点ハンドル */}
                         <Circle
                           name="control-handle"
-                          x={shape.points[2]}
-                          y={shape.points[3]}
+                          x={arrowPts[2]}
+                          y={arrowPts[3]}
                           radius={7}
                           hitStrokeWidth={20}
                           fill="#ffffff"
@@ -804,14 +822,16 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                             if (container) container.style.cursor = 'grabbing';
                           }}
                           onDragMove={(e) => {
+                            e.cancelBubble = true;
                             const newX = e.target.x();
                             const newY = e.target.y();
-                            const arrowNode = selectedNodeRef.current as Konva.Arrow | null;
+                            const arrowNode =
+                              selectedNodeRef.current as Konva.Arrow | null;
                             if (arrowNode) {
                               if (isCurved) {
                                 const pts = getQuadraticBezierPoints(
-                                  shape.points![0],
-                                  shape.points![1],
+                                  arrowPts[0],
+                                  arrowPts[1],
                                   cpX,
                                   cpY,
                                   newX,
@@ -820,8 +840,8 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                                 arrowNode.points(pts);
                               } else {
                                 arrowNode.points([
-                                  shape.points![0],
-                                  shape.points![1],
+                                  arrowPts[0],
+                                  arrowPts[1],
                                   newX,
                                   newY,
                                 ]);
@@ -830,6 +850,7 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                             }
                           }}
                           onDragEnd={(e) => {
+                            e.cancelBubble = true;
                             const container = e.target.getStage()?.container();
                             if (container) container.style.cursor = 'grab';
                             const newX = e.target.x();
@@ -839,8 +860,8 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                                 ? {
                                     ...s,
                                     points: [
-                                      s.points![0],
-                                      s.points![1],
+                                      arrowPts[0],
+                                      arrowPts[1],
                                       newX,
                                       newY,
                                     ],
@@ -864,37 +885,49 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                             strokeWidth={2}
                             draggable
                             onMouseEnter={(e) => {
-                              const container = e.target.getStage()?.container();
+                              const container = e.target
+                                .getStage()
+                                ?.container();
                               if (container) container.style.cursor = 'grab';
                             }}
                             onMouseLeave={(e) => {
-                              const container = e.target.getStage()?.container();
+                              const container = e.target
+                                .getStage()
+                                ?.container();
                               if (container) container.style.cursor = 'default';
                             }}
                             onDragStart={(e) => {
                               e.cancelBubble = true;
-                              const container = e.target.getStage()?.container();
-                              if (container) container.style.cursor = 'grabbing';
+                              const container = e.target
+                                .getStage()
+                                ?.container();
+                              if (container)
+                                container.style.cursor = 'grabbing';
                             }}
                             onDragMove={(e) => {
+                              e.cancelBubble = true;
                               const newCpX = e.target.x();
                               const newCpY = e.target.y();
-                              const arrowNode = selectedNodeRef.current as Konva.Arrow | null;
+                              const arrowNode =
+                                selectedNodeRef.current as Konva.Arrow | null;
                               if (arrowNode) {
                                 const pts = getQuadraticBezierPoints(
-                                  shape.points![0],
-                                  shape.points![1],
+                                  arrowPts[0],
+                                  arrowPts[1],
                                   newCpX,
                                   newCpY,
-                                  shape.points![2],
-                                  shape.points![3],
+                                  arrowPts[2],
+                                  arrowPts[3],
                                 );
                                 arrowNode.points(pts);
                                 arrowNode.getLayer()?.batchDraw();
                               }
                             }}
                             onDragEnd={(e) => {
-                              const container = e.target.getStage()?.container();
+                              e.cancelBubble = true;
+                              const container = e.target
+                                .getStage()
+                                ?.container();
                               if (container) container.style.cursor = 'grab';
                               const newCp = {
                                 x: e.target.x(),

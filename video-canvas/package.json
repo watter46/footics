@@ -20,7 +20,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.5.0",
-    "tldraw": "^4.5.8",
+    "konva": "^10.3.0",
+    "react-konva": "^19.0.3",
     "zod": "^3.24.0",
     "zustand": "^5.0.12"
   },

@@ -1,104 +1,88 @@
+import type Konva from 'konva';
 import { useCallback } from 'react';
-import { copyAs, type Editor, exportAs } from 'tldraw';
-import {
-  BG_SCREENSHOT_ID,
-  CAPTURE_FRAME_ID,
-  MAX_OPTIMIZED_WIDTH,
-} from '@/components/features/editor/tldraw/styles/constants';
 import { useEditorStore } from '@/stores/useEditorStore';
 
+/** 最大最適化幅（画像のコピー・保存時のスケール計算用） */
+const MAX_OPTIMIZED_WIDTH = 2560;
+
+export interface ExportBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /**
- * キャンバスの内容をコピーまたは保存するためのロジックを管理するフック
+ * Konva Stage からのエクスポート（クリップボードコピー / PNGダウンロード）を管理するフック。
  */
 export function useExport() {
   const setExportStatus = useEditorStore((state) => state.setExportStatus);
 
   const performExport = useCallback(
-    async (editor: Editor, type: 'copy' | 'save') => {
+    async (
+      stage: Konva.Stage | null,
+      type: 'copy' | 'save',
+      bounds?: ExportBounds,
+    ) => {
+      if (!stage) {
+        console.warn('[useExport] Stage ref is null, skipping export.');
+        return;
+      }
+
       setExportStatus('loading', type);
 
       try {
-        const shapeIds = editor.getSelectedShapeIds();
-        const hasCaptureFrame = !!editor.getShape(CAPTURE_FRAME_ID);
+        const stageWidth = stage.width();
+        const stageHeight = stage.height();
 
-        // キャプチャフレームがある場合は全図形（フレーム自身は除く）、ない場合は選択範囲または全図形
-        const idsToExport = hasCaptureFrame
-          ? Array.from(editor.getCurrentPageShapeIds().values()).filter(
-              (id) => id !== CAPTURE_FRAME_ID,
-            )
-          : shapeIds.length > 0
-            ? shapeIds
-            : Array.from(editor.getCurrentPageShapeIds().values());
-
-        if (idsToExport.length === 0) {
+        if (stageWidth === 0 || stageHeight === 0) {
           setExportStatus('idle');
           return;
         }
 
-        const captureBounds = editor.getShapePageBounds(CAPTURE_FRAME_ID);
-        const bgBounds = editor.getShapePageBounds(BG_SCREENSHOT_ID);
-
-        // 範囲の決定優先順位: キャプチャフレーム > 背景 > 選択範囲 > 全図形範囲
-        const bounds =
-          captureBounds ??
-          bgBounds ??
-          editor.getSelectionPageBounds() ??
-          editor.getCurrentPageBounds();
-
-        if (!bounds) {
-          setExportStatus('idle');
-          return;
-        }
-
-        // 最適化のためのスケール計算
-        let scale = 1;
-        if (bounds.width > MAX_OPTIMIZED_WIDTH) {
-          scale = MAX_OPTIMIZED_WIDTH / bounds.width;
-        }
-
-        const options = {
-          format: 'png' as const,
-          scale,
-          pixelRatio: 1,
-          bounds: bounds.clone().expandBy(1.5), // ストロークの欠落を防ぐためにわずかに拡張
-          padding: 0,
+        const exportArea = bounds || {
+          x: 0,
+          y: 0,
+          width: stageWidth,
+          height: stageHeight,
         };
 
-        // キャプチャフレームを一時的に非表示にしてエクスポートを実行
-        await editor.run(
-          async () => {
-            try {
-              if (hasCaptureFrame) {
-                editor.updateShape({
-                  id: CAPTURE_FRAME_ID,
-                  type: 'capture_frame',
-                  props: { isVisible: false },
-                } as any);
-              }
+        // スケール計算（高解像度を保持）
+        const pixelRatio =
+          exportArea.width > MAX_OPTIMIZED_WIDTH
+            ? MAX_OPTIMIZED_WIDTH / exportArea.width
+            : 2; // 2x レティナ品質でエクスポート
 
-              if (type === 'copy') {
-                await copyAs(editor, idsToExport, options);
-              } else {
-                await exportAs(editor, idsToExport, options);
-              }
-            } finally {
-              // 非表示を戻す
-              if (hasCaptureFrame) {
-                editor.updateShape({
-                  id: CAPTURE_FRAME_ID,
-                  type: 'capture_frame',
-                  props: { isVisible: true },
-                } as any);
-              }
-            }
-          },
-          { history: 'ignore' },
-        );
+        const dataUrl = stage.toDataURL({
+          x: exportArea.x,
+          y: exportArea.y,
+          width: exportArea.width,
+          height: exportArea.height,
+          pixelRatio,
+          mimeType: 'image/png',
+        });
+
+        if (type === 'copy') {
+          // --- クリップボードへコピー ---
+          const res = await fetch(dataUrl);
+          const blob = await res.blob();
+          await navigator.clipboard.write([
+            new ClipboardItem({ [blob.type]: blob }),
+          ]);
+        } else {
+          // --- PNGファイルとしてダウンロード ---
+          const link = document.createElement('a');
+          link.download = `video-canvas-${Date.now()}.png`;
+          link.href = dataUrl;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
 
         setExportStatus('success');
         setTimeout(() => setExportStatus('idle'), 3000);
       } catch (err) {
-        console.error(`Failed to ${type}:`, err);
+        console.error(`[useExport] Failed to ${type}:`, err);
         setExportStatus('error');
         setTimeout(() => setExportStatus('idle'), 3000);
       }
