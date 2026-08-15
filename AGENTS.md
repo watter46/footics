@@ -34,8 +34,9 @@ trigger: always_on
 - **RTK の活用**: 全てのシェルコマンド実行には `rtk` ラッパーを介す。500行を超えるファイルには `rtk smart` を使用する。
 - **ターゲット指向の検索**: 検索（grep）や構造把握（ls）を行う際は、プロジェクトルートではなく、必ず**関連する最小単位のディレクトリ**を対象にすること。
 
-## 6. CLI環境および自動デプロイ運用プロトコル
-- **Auto-Deploy on Push:** `git push` 後は自動でデプロイ処理を実行すること。
+## 6. CLI環境およびデプロイ・ビルド運用プロトコル
+- **Auto-Deploy on Push (Web App):** `src/` 配下の変更を `git push` した後は、自動でデプロイ処理（`pnpm run deploy`）を実行すること。
+- **Auto-Build & Sync (Extension / Video-Canvas):** `extension/` または `video-canvas/` 配下を変更した後は、該当パッケージ内で `pnpm run build`（ビルドおよび Windows 側への `sync-extension`）を実行すること。
 - **CLI Output Optimization:** Mermaid 図などの視覚的ダイヤグラムを出力しない。結論ファーストでプレーンテキスト、箇条書き、シンプルなテキストコードブロックのみで記述する。
 - **CLI Log & Task Notification:** コマンド実行の大量ログは上位エラー原因のみ要約して報告し、ワンラインステータス通知（例: `[STATUS] Build completed`）を徹底する。
 

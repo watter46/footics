@@ -66,3 +66,7 @@ trigger: always_on
 - **行動指針:**
     - エディタのプロパティ（色やスタイル）は、`editor.user.updateUserPreferences` や `editor.setStyleForSelectedShapes` を通じて操作する。
     - UI 側で保持すべきステート（パネルの開閉、ドラッグ中フラグなど）は Zustand または `useState` で管理する。
+
+## 9. Build & Deployment (ビルドと同期)
+
+- **ビルド・同期実行:** 実装完了時や更新時は `pnpm run build` を実行する（WXT ビルドおよび `sync-extension` による Windows 側への成果物コピーが自動実行されます）。

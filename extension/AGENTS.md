@@ -47,3 +47,6 @@ trigger: always_on
     - Overlay UI は Shadow DOM を利用してスタイルを分離する。`wxt` の `createShadowRootUi` などを活用し、Tailwind CSS を Shadow DOM 内に適用してカプセル化を徹底すること。
     - 動的な Tailwind クラス名の生成（条件付きスタイルなど）には、直接的な文字列結合を避け、必ず **`clsx` と `tailwind-merge`** を使用してスタイルの競合や破綻を防ぐ。
     - プレミアムな外観（トースト通知、アニメーション）を維持し、拡張機能であることを意識させないシームレスな体験を目指す。
+
+## 7. Build & Deployment (ビルドと同期)
+- **ビルド・同期実行:** 実装完了時や更新時は `pnpm run build` を実行する（WXT ビルドおよび `sync-extension` による Windows 側への成果物コピーが自動実行されます）。
