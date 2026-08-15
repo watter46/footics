@@ -15,7 +15,9 @@
     "lint": "rtk biome lint --write .",
     "check": "rtk biome check --write .",
     "type-check": "rtk tsc --noEmit",
-    "verify": "rtk pnpm check && rtk pnpm type-check"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "rtk pnpm check && rtk pnpm type-check && rtk pnpm test"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -57,6 +59,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.5",
+    "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.11.2",
     "jsdom": "^29.0.1",
     "tailwindcss": "^4.3.3",
