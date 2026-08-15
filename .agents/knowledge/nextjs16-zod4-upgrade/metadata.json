@@ -1,0 +1,10 @@
+{
+  "title": "Next.js 16 & Zod 4 移行・実装パターン",
+  "summary": "Next.js 16 の非同期 API（params / searchParams）対応、Turbopack / Cloudflare Pages ビルド最適化、および Zod 4 によるスキーマ定義とバリデーション規約。",
+  "lastUpdated": "2026-08-16T05:40:00Z",
+  "sourceFiles": [
+    "../../package.json",
+    "../../src/AGENTS.md",
+    "../../src/lib/schema.ts"
+  ]
+}

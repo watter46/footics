@@ -1,0 +1,11 @@
+{
+  "title": "Dexie データベース設計と src/lib/db モジュール構成",
+  "summary": "Dexie 4.x を用いた IndexedDB 管理方針、src/lib/db/ 配下の責務分離（schema, queries, export）、スキーマバージョン管理・複合主キーの設計規約。",
+  "lastUpdated": "2026-08-16T05:40:00Z",
+  "sourceFiles": [
+    "../../src/lib/db/index.ts",
+    "../../src/lib/db/schema.ts",
+    "../../src/lib/db/queries.ts",
+    "../../src/lib/db/export.ts"
+  ]
+}

@@ -1,6 +1,10 @@
 {
   "title": "統合保存・同期アーキテクチャ (Unified Save & Sync)",
-  "summary": "Web本体と拡張機能における、IndexedDBへの保存処理の共通化と、DOMイベント(footics-action)を用いた状態同期に関する仕様。",
-  "lastUpdated": "2026-05-02T06:00:00Z",
-  "sourceFiles": ["spec.md", "../../src/lib/db.ts"]
+  "summary": "Web本体と拡張機能における、IndexedDB(Dexie)への保存処理の共通化と、DOMイベント(footics-action)を用いた状態同期に関する仕様。",
+  "lastUpdated": "2026-08-16T05:40:00Z",
+  "sourceFiles": [
+    "../../src/lib/db/index.ts",
+    "../../src/lib/db/queries.ts",
+    "../../src/lib/db/schema.ts"
+  ]
 }
