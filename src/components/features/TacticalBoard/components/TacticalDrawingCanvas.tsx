@@ -127,7 +127,7 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const selectedNodeRef = useRef<Konva.Node | null>(null);
 
-  // Custom Rotate interaction refs (tldraw-style corner rotation)
+  // Custom Rotate interaction refs
   const isRotatingRef = useRef(false);
   const rotateCenterRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const startMouseAngleRef = useRef(0);

@@ -7,7 +7,6 @@ import { useEffect, useRef } from 'react';
 interface PhaseMemoInputProps {
   memo: string;
   onMemoChange: (val: string) => void;
-  onSave: () => void;
 }
 
 /**
@@ -18,7 +17,6 @@ interface PhaseMemoInputProps {
 export const PhaseMemoInput: React.FC<PhaseMemoInputProps> = ({
   memo,
   onMemoChange,
-  onSave,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 

@@ -20,9 +20,9 @@ export const OutcomeFilter: React.FC<OutcomeFilterProps> = ({
 }) => {
   return (
     <div className="space-y-2">
-      <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
         Outcome
-      </label>
+      </div>
       <div className="flex gap-1">
         {OUTCOME_OPTIONS.map((option) => {
           const isActive = outcomeFilter === option.id;

@@ -26,9 +26,9 @@ export const StrategyFilter: React.FC<StrategyFilterProps> = ({
 }) => {
   return (
     <div className="space-y-3 pt-4 border-t border-slate-800">
-      <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
         Event Scopes
-      </label>
+      </div>
       <div className="flex flex-col gap-2">
         {eventStrategies.map((strategy) => {
           const isActive = activeStrategies.has(strategy.id);
@@ -57,9 +57,9 @@ export const StrategyFilter: React.FC<StrategyFilterProps> = ({
                     if (param.type === 'length') {
                       return (
                         <div key={param.id}>
-                          <label className="text-xs text-slate-400 mb-1 block">
+                          <div className="text-xs text-slate-400 mb-1 block">
                             {param.label}
-                          </label>
+                          </div>
                           <LengthInput
                             value={
                               (strategyParams[param.id] as Record<
@@ -77,9 +77,9 @@ export const StrategyFilter: React.FC<StrategyFilterProps> = ({
                     if (param.type === 'zone') {
                       return (
                         <div key={param.id}>
-                          <label className="text-xs text-slate-400 mb-1 block">
+                          <div className="text-xs text-slate-400 mb-1 block">
                             {param.label}
-                          </label>
+                          </div>
                           <ZonePicker
                             selectedZones={
                               (strategyParams[param.id] as number[]) || []

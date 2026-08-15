@@ -85,17 +85,18 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
         {/* Player Filter */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex justify-between items-center">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex justify-between items-center">
             <span>Player Filter</span>
             {selectedPlayers.size > 0 && (
-              <span
-                className="text-xs text-blue-400 cursor-pointer"
+              <button
+                type="button"
+                className="text-xs text-blue-400 cursor-pointer hover:text-blue-300"
                 onClick={onPlayersClear}
               >
                 Clear
-              </span>
+              </button>
             )}
-          </label>
+          </div>
           <div className="border border-slate-800 rounded-md bg-slate-900/30 p-2 space-y-3">
             {selectedTeam === 'all' ? (
               <>

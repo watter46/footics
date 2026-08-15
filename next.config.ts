@@ -4,7 +4,6 @@ const nextConfig: NextConfig = {
   // DuckDB-Wasm を外部パッケージとして扱い、ビルド時の依存解析から除外する
   serverExternalPackages: ['@duckdb/duckdb-wasm'],
 
-
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

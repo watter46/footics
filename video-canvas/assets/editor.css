@@ -17,8 +17,3 @@ body,
   overflow: hidden;
   background-color: #000000;
 }
-
-/* tldraw theme overrides */
-.tl-container {
-  --tl-color-background: #000000;
-}

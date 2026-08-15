@@ -30,9 +30,9 @@ export const TeamFilter: React.FC<TeamFilterProps> = ({
 
   return (
     <div className="space-y-2 mb-4">
-      <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
         Team Filter
-      </label>
+      </div>
       <Select
         value={selectedTeam}
         onValueChange={(val) => onTeamChange(val || 'all')}
