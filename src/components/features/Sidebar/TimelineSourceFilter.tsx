@@ -27,8 +27,9 @@ export const TimelineSourceFilter: React.FC<TimelineSourceFilterProps> = ({
           const isActive = timelineSource === option.id;
           return (
             <button
+              type="button"
               key={option.id}
-              onClick={() => onChange(option.id as any)}
+              onClick={() => onChange(option.id)}
               className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-all ${
                 isActive
                   ? 'bg-amber-600 text-amber-50 shadow-sm'

@@ -65,11 +65,11 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
             {(event.custom_label || '')
               .split(' / ')
               .filter(Boolean)
-              .map((lbl, i) => {
+              .map((lbl) => {
                 const meta = getEventMetadata(lbl);
                 return (
                   <Badge
-                    key={i}
+                    key={lbl}
                     className="border font-bold px-2 py-0.5 rounded shadow-none text-[10px] uppercase tracking-wider whitespace-nowrap text-white"
                     style={{
                       backgroundColor: `${meta?.groupColor ?? '#8E8E93'}33`,
@@ -88,6 +88,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
         </div>
         <div className="flex items-center gap-2 pr-4 shrink-0">
           <button
+            type="button"
             onClick={() => onEdit?.(event)}
             className="p-1.5 text-amber-500/50 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
             title="Edit Event"
@@ -95,6 +96,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
             <Pencil className="w-4 h-4" />
           </button>
           <button
+            type="button"
             onClick={() => onDelete?.(event.id.toString())}
             className="p-1.5 text-red-500/50 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
             title="Delete Event"

@@ -74,6 +74,7 @@ function EmptyState({ onReset }: { onReset: () => void }) {
       <Filter className="w-10 h-10 opacity-40 animate-pulse" />
       <p className="text-base font-medium">No matches found matching filters</p>
       <button
+        type="button"
         onClick={onReset}
         className="text-sm text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors font-bold"
       >

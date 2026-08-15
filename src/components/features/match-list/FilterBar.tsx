@@ -28,6 +28,7 @@ export function FilterBar({
       </div>
       {(['all', 'club', 'national'] as const).map((t) => (
         <button
+          type="button"
           key={t}
           onClick={() => setActiveType(t)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border transition-all duration-200 capitalize ${
@@ -50,6 +51,7 @@ export function FilterBar({
         const isActive = activeTeam === f.value;
         return (
           <button
+            type="button"
             key={f.value}
             onClick={() => setActiveTeam(isActive ? null : f.value)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border transition-all duration-200 ${

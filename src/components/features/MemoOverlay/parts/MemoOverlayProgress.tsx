@@ -53,12 +53,13 @@ export const MemoOverlayRecap: React.FC<MemoOverlayRecapProps> = ({
             const meta = getEventMetadata(lbl);
             return (
               <span
-                key={i}
+                key={lbl}
                 className="text-[10px] px-2 py-0.5 rounded-full text-slate-100 font-bold border border-white/10 shadow-sm flex items-center gap-1"
                 style={{ backgroundColor: meta?.groupColor ?? '#334155' }}
               >
                 {lbl}
                 <button
+                  type="button"
                   onClick={() => onRemoveLabel(i)}
                   className="opacity-60 hover:opacity-100 transition-opacity"
                 >
