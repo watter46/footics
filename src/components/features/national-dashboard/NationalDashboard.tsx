@@ -29,7 +29,8 @@ export default function NationalDashboard({
     defaultAway,
     defaultScore,
   });
-  const { isTacticalBoardOpen, setTacticalBoardOpen } = useUIStore();
+  const isTacticalBoardOpen = useUIStore((s) => s.isTacticalBoardOpen);
+  const setTacticalBoardOpen = useUIStore((s) => s.setTacticalBoardOpen);
 
   useModalToggleShortcut(
     SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD,

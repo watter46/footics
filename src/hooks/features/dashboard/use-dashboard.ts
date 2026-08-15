@@ -62,7 +62,14 @@ export function useDashboard(matchId: string) {
 
   const { events, totalCount, isQuerying } = useEvents(matchId, queryFilters);
 
-  const store = useMemoOverlayStore();
+  const resetMemoOverlay = useMemoOverlayStore((s) => s.reset);
+  const setEventId = useMemoOverlayStore((s) => s.setEventId);
+  const setPeriod = useMemoOverlayStore((s) => s.setPeriod);
+  const setTimeStr = useMemoOverlayStore((s) => s.setTimeStr);
+  const setSelectedLabels = useMemoOverlayStore((s) => s.setSelectedLabels);
+  const setMemo = useMemoOverlayStore((s) => s.setMemo);
+  const forceSetPhase = useMemoOverlayStore((s) => s.forceSetPhase);
+  const setModalOpen = useMemoOverlayStore((s) => s.setModalOpen);
 
   const handleEditCustomEvent = useCallback(
     (event: EventRow) => {
@@ -71,18 +78,25 @@ export function useDashboard(matchId: string) {
         .map((s: string) => s.trim())
         .filter(Boolean);
 
-      store.reset('EVENT');
-      store.setEventId(event.id.toString());
-      store.setPeriod(Number(event.period));
-      store.setTimeStr(
-        `${event.minute}:${event.second.toString().padStart(2, '0')}`,
-      );
-      store.setSelectedLabels(labels);
-      store.setMemo(event.custom_memo || '');
-      store.forceSetPhase(2); // メモフェーズまで進める
-      store.setModalOpen(true);
+      resetMemoOverlay('EVENT');
+      setEventId(event.id.toString());
+      setPeriod(Number(event.period));
+      setTimeStr(`${event.minute}:${event.second.toString().padStart(2, '0')}`);
+      setSelectedLabels(labels);
+      setMemo(event.custom_memo || '');
+      forceSetPhase(2); // メモフェーズまで進める
+      setModalOpen(true);
     },
-    [store],
+    [
+      resetMemoOverlay,
+      setEventId,
+      setPeriod,
+      setTimeStr,
+      setSelectedLabels,
+      setMemo,
+      forceSetPhase,
+      setModalOpen,
+    ],
   );
 
   const handleDeleteCustomEvent = useCallback(async (eventId: string) => {

@@ -114,7 +114,14 @@ export function useNationalDashboard({
     });
   }, [matchId, queryClient]);
 
-  const store = useMemoOverlayStore();
+  const resetMemoOverlay = useMemoOverlayStore((s) => s.reset);
+  const setEventId = useMemoOverlayStore((s) => s.setEventId);
+  const setPeriod = useMemoOverlayStore((s) => s.setPeriod);
+  const setTimeStr = useMemoOverlayStore((s) => s.setTimeStr);
+  const setSelectedLabels = useMemoOverlayStore((s) => s.setSelectedLabels);
+  const setMemo = useMemoOverlayStore((s) => s.setMemo);
+  const forceSetPhase = useMemoOverlayStore((s) => s.forceSetPhase);
+  const setModalOpen = useMemoOverlayStore((s) => s.setModalOpen);
 
   const handleEditCustomEvent = useCallback(
     (event: CustomEventRow | EventRow) => {
@@ -128,18 +135,25 @@ export function useNationalDashboard({
           .filter(Boolean);
       }
 
-      store.reset('EVENT');
-      store.setEventId(event.id.toString());
-      store.setPeriod(Number(event.period));
-      store.setTimeStr(
-        `${event.minute}:${event.second.toString().padStart(2, '0')}`,
-      );
-      store.setSelectedLabels(labels);
-      store.setMemo(('memo' in event ? event.memo : event.custom_memo) || '');
-      store.forceSetPhase(2);
-      store.setModalOpen(true);
+      resetMemoOverlay('EVENT');
+      setEventId(event.id.toString());
+      setPeriod(Number(event.period));
+      setTimeStr(`${event.minute}:${event.second.toString().padStart(2, '0')}`);
+      setSelectedLabels(labels);
+      setMemo(('memo' in event ? event.memo : event.custom_memo) || '');
+      forceSetPhase(2);
+      setModalOpen(true);
     },
-    [store],
+    [
+      resetMemoOverlay,
+      setEventId,
+      setPeriod,
+      setTimeStr,
+      setSelectedLabels,
+      setMemo,
+      forceSetPhase,
+      setModalOpen,
+    ],
   );
 
   const handleDeleteCustomEvent = useCallback(

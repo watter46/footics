@@ -29,14 +29,12 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
   matchId,
   metadata,
 }) => {
-  const {
-    savedSettings,
-    activeId,
-    benchTeam,
-    setBenchTeam,
-    homeColor,
-    awayColor,
-  } = useTacticalStore();
+  const savedSettings = useTacticalStore((s) => s.savedSettings);
+  const activeId = useTacticalStore((s) => s.activeId);
+  const benchTeam = useTacticalStore((s) => s.benchTeam);
+  const setBenchTeam = useTacticalStore((s) => s.setBenchTeam);
+  const homeColor = useTacticalStore((s) => s.homeColor);
+  const awayColor = useTacticalStore((s) => s.awayColor);
 
   const [formationMode, setFormationMode] = useState<FormationMode>('half');
   const [activeDrawTool, setActiveDrawTool] =

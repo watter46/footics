@@ -24,7 +24,8 @@ import { useUIStore } from '@/stores/ui-store';
 
 export default function Dashboard({ matchId }: { matchId: string }) {
   const d = useDashboard(matchId);
-  const { isTacticalBoardOpen, setTacticalBoardOpen } = useUIStore();
+  const isTacticalBoardOpen = useUIStore((s) => s.isTacticalBoardOpen);
+  const setTacticalBoardOpen = useUIStore((s) => s.setTacticalBoardOpen);
   const reset = useMemoOverlayStore((state) => state.reset);
   const setModalOpen = useMemoOverlayStore((state) => state.setModalOpen);
 

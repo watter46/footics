@@ -27,7 +27,16 @@ export function useTacticalBoard(
   metadata: Match | null,
   isOpen: boolean,
 ) {
-  const store = useTacticalStore();
+  const savedSettings = useTacticalStore((s) => s.savedSettings);
+  const ballPos = useTacticalStore((s) => s.ballPos);
+  const isFlipped = useTacticalStore((s) => s.isFlipped);
+  const benchTeam = useTacticalStore((s) => s.benchTeam);
+  const setActiveId = useTacticalStore((s) => s.setActiveId);
+  const setSavedSettings = useTacticalStore((s) => s.setSavedSettings);
+  const setBallPos = useTacticalStore((s) => s.setBallPos);
+  const setIsFlipped = useTacticalStore((s) => s.setIsFlipped);
+  const setBenchTeam = useTacticalStore((s) => s.setBenchTeam);
+  const updatePlayer = useTacticalStore((s) => s.updatePlayer);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -45,9 +54,9 @@ export function useTacticalBoard(
             console.log('[footics] Metadata players not ready, skipping setup');
             return;
           }
-          store.setSavedSettings(initialMapping);
-          store.setBallPos({ x: 50, y: 50 });
-          store.setIsFlipped(false);
+          setSavedSettings(initialMapping);
+          setBallPos({ x: 50, y: 50 });
+          setIsFlipped(false);
         };
 
         if (snapshot?.tactics?.[0]) {
@@ -75,37 +84,30 @@ export function useTacticalBoard(
               area: p.area || (p.y > 100 ? 'bench' : 'pitch'),
             };
           });
-          store.setSavedSettings(mapping);
-          store.setBallPos(tactic.assets.ball);
-          store.setIsFlipped(snapshot.isInverted);
+          setSavedSettings(mapping);
+          setBallPos(tactic.assets.ball);
+          setIsFlipped(snapshot.isInverted);
         } else {
           // Initial Setup if no snapshot exists
           setupFallback();
         }
       });
     }
-  }, [
-    isOpen,
-    matchId,
-    metadata,
-    store.setSavedSettings,
-    store.setBallPos,
-    store.setIsFlipped,
-  ]);
+  }, [isOpen, matchId, metadata, setSavedSettings, setBallPos, setIsFlipped]);
 
   // Persist Data (Auto-save)
   useEffect(() => {
-    if (!isOpen || Object.keys(store.savedSettings).length === 0) return;
+    if (!isOpen || Object.keys(savedSettings).length === 0) return;
     const timer = setTimeout(() => {
       putTacticalSnapshot({
         matchId,
-        isInverted: store.isFlipped,
+        isInverted: isFlipped,
         updatedAt: Date.now(),
         tactics: [
           {
             time: 0,
-            players: Object.values(store.savedSettings),
-            assets: { ball: store.ballPos },
+            players: Object.values(savedSettings),
+            assets: { ball: ballPos },
           },
         ],
       });
@@ -117,19 +119,19 @@ export function useTacticalBoard(
       );
     }, 1000);
     return () => clearTimeout(timer);
-  }, [store.savedSettings, store.ballPos, store.isFlipped, matchId, isOpen]);
+  }, [savedSettings, ballPos, isFlipped, matchId, isOpen]);
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
-      store.setActiveId(event.active.id as string);
+      setActiveId(event.active.id as string);
     },
-    [store],
+    [setActiveId],
   );
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
-      store.setActiveId(null);
+      setActiveId(null);
 
       if (!over || !active.rect.current.initial || !over.rect) return;
 
@@ -161,8 +163,8 @@ export function useTacticalBoard(
       // 4. 実際のデータ更新
       if (id === 'ball') {
         if (dropArea === 'pitch') {
-          const actualBall = toActualPos({ x: newX, y: newY }, store.isFlipped);
-          store.setBallPos(actualBall);
+          const actualBall = toActualPos({ x: newX, y: newY }, isFlipped);
+          setBallPos(actualBall);
         }
         return;
       }
@@ -170,33 +172,41 @@ export function useTacticalBoard(
       // Player drop
       const [_, idValue] = id.split('-');
       const playerId = idValue ? parseInt(idValue, 10) : null;
-      if (playerId !== null && store.savedSettings[playerId]) {
-        const p = store.savedSettings[playerId];
+      if (playerId !== null && savedSettings[playerId]) {
+        const p = savedSettings[playerId];
         let finalX = newX;
         let finalY = newY;
 
         if (dropArea === 'bench') {
           // ベンチにドロップした際、その選手のチームにベンチ表示を切り替える
-          if (p.team !== store.benchTeam) {
-            store.setBenchTeam(p.team);
+          if (p.team !== benchTeam) {
+            setBenchTeam(p.team);
           }
         } else if (dropArea === 'pitch') {
           // ピッチにドロップした際は反転設定を考慮した実座標に変換
-          const actual = toActualPos({ x: newX, y: newY }, store.isFlipped);
+          const actual = toActualPos({ x: newX, y: newY }, isFlipped);
           finalX = actual.x;
           finalY = actual.y;
         }
 
-        store.updatePlayer(playerId, { area: dropArea, x: finalX, y: finalY });
+        updatePlayer(playerId, { area: dropArea, x: finalX, y: finalY });
       }
     },
-    [store],
+    [
+      isFlipped,
+      savedSettings,
+      benchTeam,
+      setBallPos,
+      setBenchTeam,
+      updatePlayer,
+      setActiveId,
+    ],
   );
 
   const handleAlignBench = useCallback(() => {
-    const next = { ...store.savedSettings };
+    const next = { ...savedSettings };
     const currentBenchPlayers = Object.values(next).filter(
-      (p) => p.area === 'bench' && p.team === store.benchTeam,
+      (p) => p.area === 'bench' && p.team === benchTeam,
     );
 
     currentBenchPlayers.forEach((p, i) => {
@@ -204,14 +214,14 @@ export function useTacticalBoard(
       next[p.playerId] = { ...p, x: pos.x, y: pos.y };
     });
 
-    store.setSavedSettings(next);
-  }, [store.savedSettings, store.benchTeam, store.setSavedSettings]);
+    setSavedSettings(next);
+  }, [savedSettings, benchTeam, setSavedSettings]);
 
   const handleReset = useCallback(() => {
     const initialMapping = generateInitialMapping(metadata);
-    store.setSavedSettings(initialMapping);
-    store.setBallPos({ x: 50, y: 50 });
-  }, [metadata, store.setSavedSettings, store.setBallPos]);
+    setSavedSettings(initialMapping);
+    setBallPos({ x: 50, y: 50 });
+  }, [metadata, setSavedSettings, setBallPos]);
 
   const handleApplyFormation = useCallback(
     (
@@ -222,7 +232,7 @@ export function useTacticalBoard(
       const positions = FORMATION_POSITIONS[formationType];
       if (!positions) return;
 
-      const next = { ...store.savedSettings };
+      const next = { ...savedSettings };
       const teamPlayers = Object.values(next).filter((p) => p.team === team);
 
       // 1. ピッチにいる選手を優先
@@ -263,9 +273,9 @@ export function useTacticalBoard(
         };
       });
 
-      store.setSavedSettings(next);
+      setSavedSettings(next);
     },
-    [store.savedSettings, store.setSavedSettings],
+    [savedSettings, setSavedSettings],
   );
 
   return {

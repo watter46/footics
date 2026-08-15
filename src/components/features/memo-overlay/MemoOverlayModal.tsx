@@ -18,8 +18,12 @@ export const MemoOverlayModal: React.FC<MemoOverlayModalProps> = ({
   matchId,
 }) => {
   const queryClient = useQueryClient();
-  const { isModalOpen, setModalOpen, reset, eventId, isSaving, setIsSaving } =
-    useMemoOverlayStore();
+  const isModalOpen = useMemoOverlayStore((s) => s.isModalOpen);
+  const setModalOpen = useMemoOverlayStore((s) => s.setModalOpen);
+  const reset = useMemoOverlayStore((s) => s.reset);
+  const eventId = useMemoOverlayStore((s) => s.eventId);
+  const isSaving = useMemoOverlayStore((s) => s.isSaving);
+  const setIsSaving = useMemoOverlayStore((s) => s.setIsSaving);
 
   const handleClose = useCallback(() => {
     setModalOpen(false);

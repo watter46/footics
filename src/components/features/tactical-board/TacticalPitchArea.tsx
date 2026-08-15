@@ -30,8 +30,11 @@ export const TacticalPitchArea: React.FC<TacticalPitchAreaProps> = ({
   onClearRef,
   pitchRef,
 }) => {
-  const { savedSettings, isFlipped, ballPos, homeColor, awayColor } =
-    useTacticalStore();
+  const savedSettings = useTacticalStore((s) => s.savedSettings);
+  const isFlipped = useTacticalStore((s) => s.isFlipped);
+  const ballPos = useTacticalStore((s) => s.ballPos);
+  const homeColor = useTacticalStore((s) => s.homeColor);
+  const awayColor = useTacticalStore((s) => s.awayColor);
 
   const pitchPlayers = Object.values(savedSettings).filter(
     (p) => p.area === 'pitch',
