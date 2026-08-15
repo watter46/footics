@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { importMatchJsonFile, importMatchesBatch } from './data-loader';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { importMatchesBatch, importMatchJsonFile } from './data-loader';
 import { saveMatchUnified } from './db';
 
 vi.mock('./db', () => ({
@@ -24,7 +24,9 @@ describe('data-loader', () => {
   });
 
   const createMockFile = (name: string, content: any): File => {
-    return new File([JSON.stringify(content)], name, { type: 'application/json' });
+    return new File([JSON.stringify(content)], name, {
+      type: 'application/json',
+    });
   };
 
   it('imports club match json correctly', async () => {
@@ -47,18 +49,18 @@ describe('data-loader', () => {
             type: { value: 1, displayName: 'Pass' },
             outcomeType: { value: 1 },
             isTouch: true,
-          }
-        ]
-      }
+          },
+        ],
+      },
     };
     const file = createMockFile('club.json', clubMatchData);
-    
+
     const result = await importMatchJsonFile(file);
     expect(result).toBe('12345');
-    
+
     expect(saveMatchUnified).toHaveBeenCalledTimes(1);
     const [matchArgs, eventsArgs] = vi.mocked(saveMatchUnified).mock.calls[0];
-    
+
     expect(matchArgs.id).toBe('12345');
     expect(matchArgs.matchType).toBe('club');
     expect(eventsArgs).toHaveLength(1);
@@ -76,18 +78,16 @@ describe('data-loader', () => {
 
     const nationalMatchData = {
       matchId: 67890,
-      initialMatchDataForScrappers: [
-        [ infoArray ]
-      ]
+      initialMatchDataForScrappers: [[infoArray]],
     };
     const file = createMockFile('national.json', nationalMatchData);
-    
+
     const result = await importMatchJsonFile(file);
     expect(result).toBe('67890');
-    
+
     expect(saveMatchUnified).toHaveBeenCalledTimes(1);
     const [matchArgs, eventsArgs] = vi.mocked(saveMatchUnified).mock.calls[0];
-    
+
     expect(matchArgs.id).toBe('67890');
     expect(matchArgs.matchType).toBe('national');
     expect(matchArgs.date).toBe('parsed-2023-01-02');
@@ -98,24 +98,26 @@ describe('data-loader', () => {
   it('throws error for unsupported match format', async () => {
     const invalidData = { unsupported: true };
     const file = createMockFile('invalid.json', invalidData);
-    
-    await expect(importMatchJsonFile(file)).rejects.toThrow(/Unsupported match data format/);
+
+    await expect(importMatchJsonFile(file)).rejects.toThrow(
+      /Unsupported match data format/,
+    );
   });
 
   it('imports batch matches', async () => {
     const validData = {
       matchId: 111,
-      matchCentreData: { home: {}, away: {}, events: [] }
+      matchCentreData: { home: {}, away: {}, events: [] },
     };
     const invalidData = { invalid: true };
 
     const files = [
       createMockFile('valid.json', validData),
-      createMockFile('invalid.json', invalidData)
+      createMockFile('invalid.json', invalidData),
     ];
 
     const result = await importMatchesBatch(files);
-    
+
     expect(result.success).toBe(1);
     expect(result.failed).toBe(1);
     expect(result.errors).toHaveLength(1);

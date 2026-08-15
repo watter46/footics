@@ -16,7 +16,10 @@ const isOutcomeMatch = (event: EventRow, outcomeFilter: string): boolean => {
   return true;
 };
 
-const isPlayerMatch = (event: EventRow, selectedPlayers: Set<number>): boolean => {
+const isPlayerMatch = (
+  event: EventRow,
+  selectedPlayers: Set<number>,
+): boolean => {
   if (selectedPlayers.size === 0) return true;
   return event.player_id !== null && selectedPlayers.has(event.player_id);
 };
@@ -24,7 +27,7 @@ const isPlayerMatch = (event: EventRow, selectedPlayers: Set<number>): boolean =
 const isStrategyMatch = (
   event: EventRow,
   strategies: EventStrategy[],
-  activeStrategyParams: Record<string, any>
+  activeStrategyParams: Record<string, any>,
 ): boolean => {
   if (strategies.length === 0) return true;
   return strategies.some((strategy) => {
@@ -66,6 +69,6 @@ export function filterEvents(
       isSourceMatch(event, timelineSource) &&
       isOutcomeMatch(event, outcomeFilter) &&
       isPlayerMatch(event, selectedPlayers) &&
-      isStrategyMatch(event, strategies, activeStrategyParams)
+      isStrategyMatch(event, strategies, activeStrategyParams),
   );
 }

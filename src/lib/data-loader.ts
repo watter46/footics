@@ -112,7 +112,9 @@ async function processClubMatch(rawData: ClubMatchRoot): Promise<string> {
   return matchId;
 }
 
-async function processNationalMatch(rawData: NationalMatchRoot): Promise<string> {
+async function processNationalMatch(
+  rawData: NationalMatchRoot,
+): Promise<string> {
   const matchId = String(rawData.matchId);
   const d0 = rawData.initialMatchDataForScrappers[0];
   const info = d0[0];
