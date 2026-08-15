@@ -259,7 +259,9 @@ export function generateInitialMapping(metadata: any): Record<number, any> {
     if (playerIds.length >= 11 && rawPositions.length >= 11) {
       const starterIdSet = new Set<number>(playerIds.slice(0, 11));
       const startersByIdMap = new Map<number, any>();
-      players.forEach((p) => startersByIdMap.set(p.playerId, p));
+      players.forEach((p) => {
+        startersByIdMap.set(p.playerId, p);
+      });
 
       const starterItems: Array<{
         player: any;
@@ -291,7 +293,9 @@ export function generateInitialMapping(metadata: any): Record<number, any> {
       // playerIds のみある場合
       const starterIdSet = new Set<number>(playerIds.slice(0, 11));
       const startersByIdMap = new Map<number, any>();
-      players.forEach((p) => startersByIdMap.set(p.playerId, p));
+      players.forEach((p) => {
+        startersByIdMap.set(p.playerId, p);
+      });
 
       const rawStarters: any[] = [];
       playerIds.slice(0, 11).forEach((id: number) => {
