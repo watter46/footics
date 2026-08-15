@@ -3,12 +3,12 @@
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { EventTimeline } from '@/components/features/analysis';
-import { Sidebar } from '@/components/features/Sidebar';
-import { TacticalBoardModal } from '@/components/features/TacticalBoard/TacticalBoardModal';
+import { Sidebar } from '@/components/features/sidebar';
+import { TacticalBoardModal } from '@/components/features/tactical-board/TacticalBoardModal';
 import { useNationalDashboard } from '@/hooks/features/national-dashboard/use-national-dashboard';
 import { useModalToggleShortcut } from '@/hooks/use-shortcut';
-import { useUIStore } from '@/hooks/use-ui-store';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
+import { useUIStore } from '@/stores/ui-store';
 
 interface Props {
   matchId: string;

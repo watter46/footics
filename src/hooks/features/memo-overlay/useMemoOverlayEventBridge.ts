@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
+import { useMemoOverlayStore } from '@/stores/memo-overlay-store';
 
 /**
  * useMemoOverlayEventBridge

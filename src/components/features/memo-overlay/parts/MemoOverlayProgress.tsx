@@ -1,6 +1,6 @@
 import type React from 'react';
 import { getEventMetadata } from '@/lib/event-definitions';
-import type { EventPhase } from '@/lib/features/MemoOverlay/memoOverlayLogic';
+import type { EventPhase } from '@/lib/features/memo-overlay/memoOverlayLogic';
 
 interface MemoOverlayProgressBarProps {
   phase: EventPhase;

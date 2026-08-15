@@ -11,7 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import type React from 'react';
-import { useTacticalStore } from '@/hooks/use-tactical-store';
+import { useTacticalStore } from '@/stores/tactical-store';
 import type { Match } from '@/types';
 import type { TacticalDrawTool } from './components/TacticalDrawingCanvas';
 

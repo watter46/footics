@@ -10,7 +10,7 @@ import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { getMatchMemo } from '@/lib/db';
 import { cn } from '@/lib/utils';
-import { useMemoOverlayDerived } from '@/stores/useMemoOverlayStore';
+import { useMemoOverlayDerived } from '@/stores/memo-overlay-store';
 import { MatchMemoUnit } from './parts/MatchMemoUnit';
 import { MemoOverlayHeader } from './parts/MemoOverlayHeader';
 import {

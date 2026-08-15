@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useEvents } from '@/hooks/use-events';
 import { cleanupOldCache, importMatchJsonFile } from '@/lib/data-loader';
 import { deleteCustomEvent, getMatch } from '@/lib/db';
-import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
+import { useMemoOverlayStore } from '@/stores/memo-overlay-store';
 import type { EventRow } from '@/types';
 import { useDashboardFilters } from './use-dashboard-filters';
 

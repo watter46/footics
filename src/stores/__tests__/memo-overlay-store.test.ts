@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useMemoOverlayStore } from '../useMemoOverlayStore';
+import { useMemoOverlayStore } from '../memo-overlay-store';
 
 describe('useMemoOverlayStore', () => {
   beforeEach(() => {

@@ -3,7 +3,7 @@ import type React from 'react';
 import type {
   EventPhase,
   MemoMode,
-} from '@/lib/features/MemoOverlay/memoOverlayLogic';
+} from '@/lib/features/memo-overlay/memoOverlayLogic';
 
 interface MemoOverlayHeaderProps {
   mode: MemoMode;

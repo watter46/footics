@@ -11,7 +11,7 @@ import type {
 import { NationalMatchRawDataSchema } from '@/lib/national-match-schema';
 import { customEventKeys, nationalMatchKeys } from '@/lib/query-keys';
 import { filterEvents } from '@/services/event-filter';
-import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
+import { useMemoOverlayStore } from '@/stores/memo-overlay-store';
 import type { CustomEventRow, EventRow, Match, SimplifiedTeam } from '@/types';
 import { useDashboardFilters } from '../dashboard/use-dashboard-filters';
 

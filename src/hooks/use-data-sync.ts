@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { customEventKeys, eventKeys, matchKeys } from '@/lib/query-keys';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
-import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
+import { useMemoOverlayStore } from '@/stores/memo-overlay-store';
 
 /**
  * useDataSync

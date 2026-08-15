@@ -1,8 +1,8 @@
 'use client';
 
 import type React from 'react';
-import { useTacticalStore } from '@/hooks/use-tactical-store';
 import { getShirtNo, toViewPos } from '@/lib/data/tactical-utils';
+import { useTacticalStore } from '@/stores/tactical-store';
 import type { Match } from '@/types';
 import {
   TacticalDrawingCanvas,

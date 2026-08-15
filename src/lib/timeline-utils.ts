@@ -1,5 +1,5 @@
 import type { EventRow } from '@/types';
-import { PERIOD_LIMITS } from './features/MemoOverlay/memoOverlayLogic';
+import { PERIOD_LIMITS } from './features/memo-overlay/memoOverlayLogic';
 
 /**
  * Football match time formatter (e.g. 45:00, 45 + 2:00)

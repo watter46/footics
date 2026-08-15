@@ -19,8 +19,8 @@ import {
   toActualPos,
 } from '@/lib/data/tactical-utils';
 import { getTacticalSnapshot, putTacticalSnapshot } from '@/lib/db';
+import { type PlayerState, useTacticalStore } from '@/stores/tactical-store';
 import type { Match } from '@/types';
-import { type PlayerState, useTacticalStore } from './use-tactical-store';
 
 export function useTacticalBoard(
   matchId: string,

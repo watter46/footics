@@ -6,7 +6,7 @@ import {
   getValidationError,
   type MemoMode,
   parseTimeStr,
-} from '@/lib/features/MemoOverlay/memoOverlayLogic';
+} from '@/lib/features/memo-overlay/memoOverlayLogic';
 
 interface MemoOverlayState {
   mode: MemoMode;

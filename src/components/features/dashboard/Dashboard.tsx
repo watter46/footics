@@ -11,16 +11,16 @@ import {
 import Link from 'next/link';
 import { useCallback } from 'react';
 import { EventTimeline } from '@/components/features/analysis';
-import { MemoOverlayModal } from '@/components/features/MemoOverlay/MemoOverlayModal';
 import { DataManagementMenu } from '@/components/features/management';
-import { Sidebar } from '@/components/features/Sidebar';
-import { TacticalBoardModal } from '@/components/features/TacticalBoard/TacticalBoardModal';
+import { MemoOverlayModal } from '@/components/features/memo-overlay/MemoOverlayModal';
+import { Sidebar } from '@/components/features/sidebar';
+import { TacticalBoardModal } from '@/components/features/tactical-board/TacticalBoardModal';
 import { Card } from '@/components/ui/card';
 import { useDashboard } from '@/hooks/features/dashboard/use-dashboard';
 import { useModalToggleShortcut } from '@/hooks/use-shortcut';
-import { useUIStore } from '@/hooks/use-ui-store';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
-import { useMemoOverlayStore } from '@/stores/useMemoOverlayStore';
+import { useMemoOverlayStore } from '@/stores/memo-overlay-store';
+import { useUIStore } from '@/stores/ui-store';
 
 export default function Dashboard({ matchId }: { matchId: string }) {
   const d = useDashboard(matchId);
