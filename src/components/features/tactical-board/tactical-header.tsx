@@ -13,7 +13,7 @@ import {
 import type React from 'react';
 import { useTacticalStore } from '@/stores/tactical-store';
 import type { Match } from '@/types';
-import type { TacticalDrawTool } from './components/TacticalDrawingCanvas';
+import type { TacticalDrawTool } from './drawing/tactical-drawing-canvas';
 
 interface TacticalHeaderProps {
   metadata: Match;

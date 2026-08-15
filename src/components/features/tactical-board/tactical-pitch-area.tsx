@@ -7,9 +7,9 @@ import type { Match } from '@/types';
 import {
   TacticalDrawingCanvas,
   type TacticalDrawTool,
-} from './components/TacticalDrawingCanvas';
-import { Pitch } from './Pitch';
-import { PlayerMarker } from './PlayerMarker';
+} from './drawing/tactical-drawing-canvas';
+import { Pitch } from './pitch';
+import { PlayerMarker } from './player-marker';
 
 interface TacticalPitchAreaProps {
   matchId: string;
@@ -52,7 +52,7 @@ export const TacticalPitchArea: React.FC<TacticalPitchAreaProps> = ({
             matchId={matchId}
             activeTool={activeDrawTool}
             onClearRef={onClearRef}
-            onSelectToolRequested={(tool) => {
+            onSelectToolRequested={(tool: TacticalDrawTool) => {
               onMarkerTouch();
               if (onSelectDrawTool) {
                 onSelectDrawTool(tool);

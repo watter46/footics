@@ -14,7 +14,7 @@ import { EventTimeline } from '@/components/features/analysis';
 import { DataManagementMenu } from '@/components/features/management';
 import { MemoOverlayModal } from '@/components/features/memo-overlay/MemoOverlayModal';
 import { Sidebar } from '@/components/features/sidebar';
-import { TacticalBoardModal } from '@/components/features/tactical-board/TacticalBoardModal';
+import { TacticalBoardModal } from '@/components/features/tactical-board/tactical-board-modal';
 import { Card } from '@/components/ui/card';
 import { useDashboard } from '@/hooks/features/dashboard/use-dashboard';
 import { useModalToggleShortcut } from '@/hooks/use-shortcut';

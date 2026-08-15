@@ -5,16 +5,16 @@ import { snapCenterToCursor } from '@dnd-kit/modifiers';
 import type React from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTacticalBoard } from '@/hooks/use-tactical-board';
-import type { FormationMode } from '@/lib/data/formations';
+import type { FormationMode, FormationType } from '@/lib/data/formations';
 import { getShirtNo } from '@/lib/data/tactical-utils';
 import { useTacticalStore } from '@/stores/tactical-store';
 import type { Match } from '@/types';
-import { BenchArea } from './BenchArea';
-import type { TacticalDrawTool } from './components/TacticalDrawingCanvas';
+import { BenchArea } from './bench-area';
+import type { TacticalDrawTool } from './drawing/tactical-drawing-canvas';
 import { useTacticalExport } from './hooks/use-tactical-export';
-import { PlayerMarker } from './PlayerMarker';
-import { TacticalHeader } from './TacticalHeader';
-import { TacticalPitchArea } from './TacticalPitchArea';
+import { PlayerMarker } from './player-marker';
+import { TacticalHeader } from './tactical-header';
+import { TacticalPitchArea } from './tactical-pitch-area';
 
 interface TacticalBoardModalProps {
   isOpen: boolean;
@@ -130,7 +130,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
               activeDrawTool={activeDrawTool}
               onMarkerTouch={handleMarkerTouch}
               onSelectDrawTool={setActiveDrawTool}
-              onClearRef={(clearFn) => {
+              onClearRef={(clearFn: () => void) => {
                 clearFnRef.current = clearFn;
               }}
               pitchRef={pitchRef}
@@ -146,7 +146,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
                 onAlignGrid={handleAlignBench}
                 formationMode={formationMode}
                 onFormationModeChange={setFormationMode}
-                onFormationChange={(type) =>
+                onFormationChange={(type: FormationType) =>
                   handleApplyFormation(benchTeam, type, formationMode)
                 }
               >

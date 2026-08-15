@@ -4,7 +4,7 @@ import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { EventTimeline } from '@/components/features/analysis';
 import { Sidebar } from '@/components/features/sidebar';
-import { TacticalBoardModal } from '@/components/features/tactical-board/TacticalBoardModal';
+import { TacticalBoardModal } from '@/components/features/tactical-board/tactical-board-modal';
 import { useNationalDashboard } from '@/hooks/features/national-dashboard/use-national-dashboard';
 import { useModalToggleShortcut } from '@/hooks/use-shortcut';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
