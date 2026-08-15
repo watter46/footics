@@ -6,6 +6,7 @@ import { MemoOverlayBridge } from '../features/MemoOverlay/MemoOverlayBridge';
 import { useOverlayShortcutInterceptor } from '../hooks/use-overlay-shortcut-interceptor';
 import { useOverlayStore } from '../stores/useOverlayStore';
 import { cn } from '../utils/cn';
+import { findVideoElement } from '../utils/video';
 import '../assets/overlay.css';
 
 export default defineContentScript({
@@ -31,6 +32,24 @@ export default defineContentScript({
     });
 
     ui.mount();
+
+    // ── Fullscreen (Top Layer) 追従 ──
+    // DAZNやYouTube等で動画が全画面表示された際、Top Layerにオーバーレイを移動して不可視化を防ぐ
+    const handleFullscreenChange = () => {
+      const targetHost = document.fullscreenElement || document.body;
+      if (ui.shadowHost && ui.shadowHost.parentElement !== targetHost) {
+        console.log(
+          '[Footics Overlay] Relocating overlay shadowHost to fullscreen target:',
+          targetHost,
+        );
+        targetHost.appendChild(ui.shadowHost);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    ctx.onInvalidated(() => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    });
   },
 });
 
@@ -83,10 +102,12 @@ const OverlayApp = () => {
         activeElementRef.current.focus();
         activeElementRef.current = null;
       } else {
-        // フォールバック：ページ内の video 要素を探してフォーカス
-        const video = document.querySelector('video');
+        // フォールバック：Shadow DOMを含むページ内の video 要素を探してフォーカス
+        const video = findVideoElement();
         if (video) {
-          console.log('[Footics Overlay] Fallback: Focusing video element');
+          console.log(
+            '[Footics Overlay] Fallback: Focusing found video element',
+          );
           video.focus();
         }
       }
