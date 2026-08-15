@@ -153,9 +153,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
           />
         );
       case 2:
-        return (
-          <PhaseMemoInput memo={memo} onMemoChange={setMemo} onSave={onSave} />
-        );
+        return <PhaseMemoInput memo={memo} onMemoChange={setMemo} />;
       default:
         return null;
     }
