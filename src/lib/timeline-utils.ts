@@ -1,6 +1,8 @@
 import type { EventRow } from '@/types';
 import { PERIOD_LIMITS } from './features/memo-overlay/memoOverlayLogic';
 
+const pad = (n: number) => String(n).padStart(2, '0');
+
 /**
  * Football match time formatter (e.g. 45:00, 45 + 2:00)
  */
@@ -8,15 +10,15 @@ export function formatTimelineTime(row: EventRow): string {
   const period = Number(row.period);
   const min = Number(row.minute);
   const sec = Number(row.second);
+  const paddedSec = pad(sec);
 
   // Custom Event Mode
   if (row.source === 'custom') {
-    const limit = PERIOD_LIMITS[period] || 45;
+    const limit = PERIOD_LIMITS[period] ?? 45;
     if (min > limit && period <= 4) {
-      const extra = min - limit;
-      return `${limit} + ${extra}:${String(sec).padStart(2, '0')}`;
+      return `${limit} + ${min - limit}:${paddedSec}`;
     }
-    return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    return `${pad(min)}:${paddedSec}`;
   }
 
   // WhoScored Event Mode (Existing logic using expanded_minute)
@@ -26,8 +28,7 @@ export function formatTimelineTime(row: EventRow): string {
     (period === 2 && min === 90 && expMin > 90);
 
   if (isStoppage) {
-    const addedMin = expMin - min;
-    return `${String(min).padStart(2, '0')}(+${String(addedMin).padStart(2, '0')}:${String(sec).padStart(2, '0')})`;
+    return `${pad(min)}(+${pad(expMin - min)}:${paddedSec})`;
   }
-  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  return `${pad(min)}:${paddedSec}`;
 }

@@ -91,64 +91,72 @@ export async function importMatchesBatch(
   return { success, failed, errors };
 }
 
+async function processClubMatch(rawData: ClubMatchRoot): Promise<string> {
+  const matchId = String(rawData.matchId);
+  const center = rawData.matchCentreData;
+
+  const match: Match = {
+    id: matchId,
+    date: center.startDate ?? '',
+    score: center.score ?? '',
+    matchType: 'club',
+    homeTeam: { id: center.home.teamId, name: center.home.name },
+    awayTeam: { id: center.away.teamId, name: center.away.name },
+    playerIdNameDictionary: center.playerIdNameDictionary ?? {},
+    teams: { home: center.home, away: center.away },
+  };
+
+  const events = (center.events ?? []).map((e) => mapEvent(e, matchId));
+
+  await saveMatchUnified(match, events);
+  return matchId;
+}
+
+async function processNationalMatch(rawData: NationalMatchRoot): Promise<string> {
+  const matchId = String(rawData.matchId);
+  const d0 = rawData.initialMatchDataForScrappers[0];
+  const info = d0[0];
+
+  const match: Match = {
+    id: matchId,
+    date: parseNationalDate(info[NATIONAL_INFO_IDX.DATE_FULL]),
+    score: info[NATIONAL_INFO_IDX.SCORE] || 'vs',
+    matchType: 'national',
+    homeTeam: {
+      id: info[NATIONAL_INFO_IDX.HOME_TEAM_ID],
+      name: info[NATIONAL_INFO_IDX.HOME_TEAM_NAME],
+    },
+    awayTeam: {
+      id: info[NATIONAL_INFO_IDX.AWAY_TEAM_ID],
+      name: info[NATIONAL_INFO_IDX.AWAY_TEAM_NAME],
+    },
+    playerIdNameDictionary: {},
+    teams: {
+      home: {
+        teamId: info[NATIONAL_INFO_IDX.HOME_TEAM_ID],
+        name: info[NATIONAL_INFO_IDX.HOME_TEAM_NAME],
+        players: [],
+      },
+      away: {
+        teamId: info[NATIONAL_INFO_IDX.AWAY_TEAM_ID],
+        name: info[NATIONAL_INFO_IDX.AWAY_TEAM_NAME],
+        players: [],
+      },
+    },
+  };
+
+  // 国際試合のイベント詳細は別ルートで読み込まれるため、DBには空配列を保存して初期化する
+  await saveMatchUnified(match, []);
+  return matchId;
+}
+
 async function processMatchData(rawData: unknown): Promise<string> {
   if (isClubMatch(rawData)) {
-    const matchId = String(rawData.matchId);
-    const center = rawData.matchCentreData;
-
-    const match: Match = {
-      id: matchId,
-      date: center.startDate ?? '',
-      score: center.score ?? '',
-      matchType: 'club',
-      homeTeam: { id: center.home.teamId, name: center.home.name },
-      awayTeam: { id: center.away.teamId, name: center.away.name },
-      playerIdNameDictionary: center.playerIdNameDictionary ?? {},
-      teams: { home: center.home, away: center.away },
-    };
-
-    const events = (center.events ?? []).map((e) => mapEvent(e, matchId));
-
-    await saveMatchUnified(match, events);
-    return matchId;
+    return processClubMatch(rawData);
   }
 
   if (isNationalMatch(rawData)) {
-    const matchId = String(rawData.matchId);
-    const d0 = rawData.initialMatchDataForScrappers[0];
-    const info = d0[0];
-
-    const match: Match = {
-      id: matchId,
-      date: parseNationalDate(info[NATIONAL_INFO_IDX.DATE_FULL]),
-      score: info[NATIONAL_INFO_IDX.SCORE] || 'vs',
-      matchType: 'national',
-      homeTeam: {
-        id: info[NATIONAL_INFO_IDX.HOME_TEAM_ID],
-        name: info[NATIONAL_INFO_IDX.HOME_TEAM_NAME],
-      },
-      awayTeam: {
-        id: info[NATIONAL_INFO_IDX.AWAY_TEAM_ID],
-        name: info[NATIONAL_INFO_IDX.AWAY_TEAM_NAME],
-      },
-      playerIdNameDictionary: {},
-      teams: {
-        home: {
-          teamId: info[NATIONAL_INFO_IDX.HOME_TEAM_ID],
-          name: info[NATIONAL_INFO_IDX.HOME_TEAM_NAME],
-          players: [],
-        },
-        away: {
-          teamId: info[NATIONAL_INFO_IDX.AWAY_TEAM_ID],
-          name: info[NATIONAL_INFO_IDX.AWAY_TEAM_NAME],
-          players: [],
-        },
-      },
-    };
-
-    // 国際試合のイベント詳細は別ルートで読み込まれるため、DBには空配列を保存して初期化する
-    await saveMatchUnified(match, []);
-    return matchId;
+    return processNationalMatch(rawData);
   }
 
   throw new Error(
