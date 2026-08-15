@@ -1,0 +1,33 @@
+{
+  "safety-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "command": "node ./.agents/scripts/safety-guard.js"
+          }
+        ]
+      }
+    ]
+  },
+  "auto-format": {
+    "PostToolUse": [
+      {
+        "matcher": "write_to_file|replace_file_content",
+        "hooks": [
+          {
+            "command": "node ./.agents/scripts/auto-format.js"
+          }
+        ]
+      }
+    ]
+  },
+  "verify-gate": {
+    "Stop": [
+      {
+        "command": "node ./.agents/scripts/verify-gate.js"
+      }
+    ]
+  }
+}

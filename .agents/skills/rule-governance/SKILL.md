@@ -1,6 +1,6 @@
 ---
 name: rule-governance
-description: プロジェクト独自の規約（rules）を作成・編集する際の一貫性と品質を担保するためのスキル
+description: プロジェクト独自の規約（rulesやAGENTS.md）を新しく作成・編集する時に起動してください。
 ---
 
 # Rule Governance Skill

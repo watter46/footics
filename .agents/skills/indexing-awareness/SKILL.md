@@ -1,6 +1,6 @@
 ---
 name: indexing-awareness
-description: プロジェクトの構造インデックスと依存関係トレースにより、RAG的なコンテキスト取得を実現するスキル
+description: 初見のプロジェクト構造を把握したい時、または関数・ファイルの依存関係（影響範囲）を検索したい時に起動してください。
 ---
 
 # Indexing Awareness Skill

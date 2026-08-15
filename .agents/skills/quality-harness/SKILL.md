@@ -1,6 +1,6 @@
 ---
 name: quality-harness
-description: 実装後の品質検証（Lint, Type Check, Logic, Context）を統合し、エージェントの出力を「プロ水準」に保つためのスキル
+description: コードの実装後や、最終報告の直前に、品質（Lint/Type Check）やルールの遵守を検証したい時に起動してください。
 ---
 
 # Quality Harness Skill

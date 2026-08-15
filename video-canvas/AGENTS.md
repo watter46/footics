@@ -1,12 +1,8 @@
 ---
 trigger: always_on
-globs: ["**/tldraw/**/*.tsx", "**/editor/**/*.tsx"]
 ---
 
 # tldraw 開発ガイドライン
-
-**Activation:** This rule is **ALWAYS ON** for files matching `**/tldraw/**/*.tsx` and `**/editor/**/*.tsx`.
-
 
 本プロジェクト（video-canvas等）における `tldraw` (v2/v3以降) の開発・実装ガイドラインです。パフォーマンス、カスタムシェイプの実装、UI/UXのカスタマイズに関するベストプラクティスを定めます。
 

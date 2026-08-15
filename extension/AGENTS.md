@@ -1,11 +1,8 @@
 ---
 trigger: always_on
-globs: ["extension/**/*.{ts,tsx}", "video-canvas/**/*.{ts,tsx}", "**/wxt.config.ts"]
 ---
 
 # WXT & Chrome Extension Guidelines (WXT/拡張機能実装規約)
-
-**Activation:** This rule is **ALWAYS ON** for files matching `extension/**/*` and `video-canvas/**/*`.
 
 > **Positioning:** `/tep/exception-template.md` をベースに、WXT フレームワーク特有の機能（Manifest V3 自動生成, Storage等）を加味した実装指針です。
 
@@ -21,12 +18,14 @@ globs: ["extension/**/*.{ts,tsx}", "video-canvas/**/*.{ts,tsx}", "**/wxt.config.
     - Background 処理での DOM 依存は禁止。必要な場合は Content Scripts と連携する。
     - 生存期間が限られる Service Worker の特性を考慮し、ステートの永続化には `storage` を利用する。
 
-## 3. Storage & State Management
+## 3. Storage, State Management & Data Patterns
 - **原則:** 型安全なストレージアクセスと一貫した UI ステート管理を行い、複数のエントリポイント間で状態を同期する。
 - **行動指針:**
-    - 軽量な設定には WXT `storage` を利用し、大量データ・複雑なスキーマをもつ IndexedDB 操作用には **`Dexie.js`** を使用する（`idb-keyval` 等の利用は非推奨・撤廃）。
-    - ストレージキーやデータ構造は **`Zod`** でスキーマ定義および検証を行うことを推奨。
+    - 軽量な設定には WXT `storage` を利用する。
+    - **IndexedDB (Dexie.js):** 大量データ・複雑なスキーマをもつ IndexedDB 操作用には `Dexie.js` を使用する（`idb-keyval` 等は撤廃）。インスタンスの直接操作を避け、統一レイヤーを介す。
+    - ストレージキーやデータ構造は **`Zod`** でスキーマ定義および検証を行う。
     - クライアントサイド（Popup/Overlay）の UI ステート管理には完全に **`Zustand`** を使用し、ローカルステートの散在を防止する。
+    - DuckDB や TanStack Query を利用する場合は、ウェブ本体と同様のアーキテクチャ（Singletonパターン、Query Key一元管理等）を準用する。
 
 ## 4. Communication (Messaging)
 - **原則:** エントリポイント間の通信は、堅牢なブリッジライブラリを介して透過的かつ型安全に行う。
