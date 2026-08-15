@@ -1,7 +1,8 @@
 'use client';
 
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowDownUp } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { eventStrategies } from '@/registry';
@@ -48,6 +49,15 @@ export function EventTimeline({
     [activeStrategies],
   );
 
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const rowVirtualizer = useVirtualizer({
+    count: sortedEvents.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 44,
+    overscan: 10,
+  });
+
   return (
     <div className="flex-1 flex flex-col relative">
       <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-slate-950 to-emerald-900/10 pointer-events-none" />
@@ -86,8 +96,8 @@ export function EventTimeline({
       </header>
 
       {/* Table Container */}
-      <Card className="flex-1 flex flex-col bg-slate-900/80 border-slate-800 backdrop-blur-xl relative z-10 shadow-2xl">
-        <CardContent className="p-0 flex-1 flex flex-col">
+      <Card className="flex-1 flex flex-col bg-slate-900/80 border-slate-800 backdrop-blur-xl relative z-10 shadow-2xl overflow-hidden">
+        <CardContent className="p-0 flex-1 flex flex-col min-h-0">
           <TimelineHeader />
 
           {sortedEvents.length === 0 ? (
@@ -95,21 +105,45 @@ export function EventTimeline({
               No events found for given filters.
             </div>
           ) : (
-            <div className="w-full">
-              {sortedEvents.map((event, index) => (
-                <TimelineRow
-                  key={event.id}
-                  event={event}
-                  index={index}
-                  virtualRow={{ size: 44, start: index * 44 }}
-                  metadata={metadata}
-                  activeStrategyList={activeStrategyList}
-                  activeStrategyParams={activeStrategyParams}
-                  highlightEventId={highlightEventId}
-                  onEdit={onEditCustomEvent}
-                  onDelete={onDeleteCustomEvent}
-                />
-              ))}
+            <div ref={parentRef} className="w-full flex-1 overflow-y-auto">
+              <div
+                style={{
+                  height: `${rowVirtualizer.getTotalSize()}px`,
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const event = sortedEvents[virtualRow.index];
+                  return (
+                    <div
+                      key={event.id}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    >
+                      <TimelineRow
+                        event={event}
+                        index={virtualRow.index}
+                        virtualRow={{
+                          size: virtualRow.size,
+                          start: virtualRow.start,
+                        }}
+                        metadata={metadata}
+                        activeStrategyList={activeStrategyList}
+                        activeStrategyParams={activeStrategyParams}
+                        highlightEventId={highlightEventId}
+                        onEdit={onEditCustomEvent}
+                        onDelete={onDeleteCustomEvent}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </CardContent>
