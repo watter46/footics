@@ -151,8 +151,8 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       lucide-react:
-        specifier: ^0.471.2
-        version: 0.471.2(react@19.2.4)
+        specifier: ^1.31.0
+        version: 1.31.0(react@19.2.4)
       react:
         specifier: ^19.0.0
         version: 19.2.4
@@ -166,8 +166,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1
       zod:
-        specifier: ^3.24.0
-        version: 3.25.76
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.3.3
@@ -206,8 +206,8 @@ importers:
         specifier: ^10.3.0
         version: 10.3.0
       lucide-react:
-        specifier: ^0.471.2
-        version: 0.471.2(react@19.2.4)
+        specifier: ^1.31.0
+        version: 1.31.0(react@19.2.4)
       react:
         specifier: ^19.0.0
         version: 19.2.4
@@ -221,8 +221,8 @@ importers:
         specifier: ^3.6.0
         version: 3.6.0
       zod:
-        specifier: ^3.24.0
-        version: 3.25.76
+        specifier: ^4.4.3
+        version: 4.4.3
       zustand:
         specifier: ^5.0.15
         version: 5.0.15(@types/react@19.2.18)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
@@ -4315,11 +4315,6 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
-
-  lucide-react@0.471.2:
-    resolution: {integrity: sha512-A8fDycQxGeaSOTaI7Bm4fg8LBXO7Qr9ORAX47bDRvugCsjLIliugQO0PkKFoeAD57LIQwlWKd3NIQ3J7hYp84g==}
-    peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   lucide-react@1.31.0:
     resolution: {integrity: sha512-G8u2eEtoHUnUa9f8lbvqDhCiORMnYLdUEo06EEG9MQvHQrInKcX3Pa2TH39MM5qyzRcWETxB0+aOwAPI1g1kEg==}
@@ -10212,10 +10207,6 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
-  lucide-react@0.471.2(react@19.2.4):
-    dependencies:
-      react: 19.2.4
-
   lucide-react@1.31.0(react@19.2.4):
     dependencies:
       react: 19.2.4
@@ -10747,7 +10738,7 @@ snapshots:
       jsonwebtoken: 9.0.3
       listr2: 10.2.1
       ofetch: 1.5.1
-      zod: 3.25.76
+      zod: 4.4.3
 
   punycode@2.3.1: {}
 

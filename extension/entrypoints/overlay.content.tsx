@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { onMessage } from 'webext-bridge/content-script';
 import { SuccessToast } from '../components/ui/SuccessToast';
-import { MemoOverlayBridge } from '../features/MemoOverlay/MemoOverlayBridge';
+import { MemoOverlayBridge } from '../features/memo-overlay/memo-overlay-bridge';
 import { useOverlayShortcutInterceptor } from '../hooks/use-overlay-shortcut-interceptor';
 import { useOverlayStore } from '../stores/useOverlayStore';
 import { cn } from '../utils/cn';
