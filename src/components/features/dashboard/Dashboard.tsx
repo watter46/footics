@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   Database,
   FileJson,
+  Film,
   Loader2,
   Plus,
   Upload,
@@ -14,6 +15,7 @@ import { EventTimeline } from '@/components/features/analysis';
 import { DataManagementMenu } from '@/components/features/management';
 import { MemoOverlayModal } from '@/components/features/memo-overlay/MemoOverlayModal';
 import { Sidebar } from '@/components/features/sidebar';
+import { TacticalAnimationModal } from '@/components/features/tactical-animation/tactical-animation-modal';
 import { TacticalBoardModal } from '@/components/features/tactical-board/tactical-board-modal';
 import { Card } from '@/components/ui/card';
 import { useDashboard } from '@/hooks/features/dashboard/use-dashboard';
@@ -26,6 +28,10 @@ export default function Dashboard({ matchId }: { matchId: string }) {
   const d = useDashboard(matchId);
   const isTacticalBoardOpen = useUIStore((s) => s.isTacticalBoardOpen);
   const setTacticalBoardOpen = useUIStore((s) => s.setTacticalBoardOpen);
+  const isTacticalAnimationOpen = useUIStore((s) => s.isTacticalAnimationOpen);
+  const setTacticalAnimationOpen = useUIStore(
+    (s) => s.setTacticalAnimationOpen,
+  );
   const reset = useMemoOverlayStore((state) => state.reset);
   const setModalOpen = useMemoOverlayStore((state) => state.setModalOpen);
 
@@ -195,6 +201,13 @@ export default function Dashboard({ matchId }: { matchId: string }) {
           <div className="flex items-center gap-3">
             <button
               type="button"
+              onClick={() => setTacticalAnimationOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-blue-900/20"
+            >
+              <Film className="w-3.5 h-3.5" /> アニメーション作成
+            </button>
+            <button
+              type="button"
               onClick={handleAddEvent}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-amber-900/20"
             >
@@ -223,6 +236,13 @@ export default function Dashboard({ matchId }: { matchId: string }) {
           matchId={matchId}
           isOpen={isTacticalBoardOpen}
           onClose={() => setTacticalBoardOpen(false)}
+          metadata={d.metadata}
+        />
+
+        <TacticalAnimationModal
+          matchId={matchId}
+          isOpen={isTacticalAnimationOpen}
+          onClose={() => setTacticalAnimationOpen(false)}
           metadata={d.metadata}
         />
 

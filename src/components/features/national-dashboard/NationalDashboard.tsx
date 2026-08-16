@@ -1,9 +1,10 @@
 'use client';
 
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Film } from 'lucide-react';
 import Link from 'next/link';
 import { EventTimeline } from '@/components/features/analysis';
 import { Sidebar } from '@/components/features/sidebar';
+import { TacticalAnimationModal } from '@/components/features/tactical-animation/tactical-animation-modal';
 import { TacticalBoardModal } from '@/components/features/tactical-board/tactical-board-modal';
 import { useNationalDashboard } from '@/hooks/features/national-dashboard/use-national-dashboard';
 import { useModalToggleShortcut } from '@/hooks/use-shortcut';
@@ -31,6 +32,10 @@ export default function NationalDashboard({
   });
   const isTacticalBoardOpen = useUIStore((s) => s.isTacticalBoardOpen);
   const setTacticalBoardOpen = useUIStore((s) => s.setTacticalBoardOpen);
+  const isTacticalAnimationOpen = useUIStore((s) => s.isTacticalAnimationOpen);
+  const setTacticalAnimationOpen = useUIStore(
+    (s) => s.setTacticalAnimationOpen,
+  );
 
   useModalToggleShortcut(
     SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD,
@@ -75,6 +80,15 @@ export default function NationalDashboard({
               National
             </span>
           </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setTacticalAnimationOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-blue-900/20"
+            >
+              <Film className="w-3.5 h-3.5" /> アニメーション作成
+            </button>
+          </div>
         </div>
 
         <EventTimeline
@@ -92,6 +106,13 @@ export default function NationalDashboard({
           matchId={matchId}
           isOpen={isTacticalBoardOpen}
           onClose={() => setTacticalBoardOpen(false)}
+          metadata={d.metadata}
+        />
+
+        <TacticalAnimationModal
+          matchId={matchId}
+          isOpen={isTacticalAnimationOpen}
+          onClose={() => setTacticalAnimationOpen(false)}
           metadata={d.metadata}
         />
       </main>
