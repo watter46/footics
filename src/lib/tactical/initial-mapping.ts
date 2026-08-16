@@ -1,4 +1,7 @@
-import { getFormationActualPos } from '../data/formations';
+import {
+  getFormationActualPos,
+  getFormationActualPosVertical,
+} from '../data/formations';
 import { FORMATION_POSITIONS } from '../data/formations-data';
 import { getBenchPos } from './coordinates';
 import { parseWhoScoredFormationName } from './formations';
@@ -88,10 +91,14 @@ export function getActivePlayersClub(matchCentreData: any, minute: number) {
 }
 
 /**
- * メタデータから初期の選手配置マッピングを生成する
+ * メタデータから初期の選手配置マッピングを生成する (縦画面 / 横画面両対応)
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function generateInitialMapping(metadata: any): Record<number, any> {
+export function generateInitialMapping(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metadata: any,
+  orientation: 'vertical' | 'horizontal' = 'vertical',
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Record<number, any> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const initialMapping: Record<number, any> = {};
 
@@ -210,7 +217,10 @@ export function generateInitialMapping(metadata: any): Record<number, any> {
     // ピッチ選手の配置設定
     pitchPlayers.forEach((p, i) => {
       const posTemplate = sortedSlots[i] || sortedSlots[0];
-      const actualPos = getFormationActualPos(posTemplate, team, 'half');
+      const actualPos =
+        orientation === 'vertical'
+          ? getFormationActualPosVertical(posTemplate, team, 'half')
+          : getFormationActualPos(posTemplate, team, 'half');
 
       initialMapping[p.playerId] = {
         playerId: p.playerId,
