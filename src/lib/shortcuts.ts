@@ -46,9 +46,13 @@ export const SHORTCUT_CONFIG: Record<
 
 /**
  * 入力要素（input, textarea）にフォーカスがあるかチェック
+ * Shadow DOM 内のアクティブ要素も再帰的にチェック
  */
 export const isInputFocused = () => {
-  const activeEl = document.activeElement;
+  let activeEl: Element | null = document.activeElement;
+  while (activeEl && (activeEl as HTMLElement).shadowRoot?.activeElement) {
+    activeEl = (activeEl as HTMLElement).shadowRoot!.activeElement;
+  }
   if (!activeEl) return false;
   return (
     activeEl.tagName === 'INPUT' ||

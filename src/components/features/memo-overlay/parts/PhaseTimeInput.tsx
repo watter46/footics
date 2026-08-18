@@ -71,11 +71,26 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const isComposing = useRef(false);
 
-  // フェーズ表示時にフォーカス
+  // フェーズ表示時にフォーカスを確実に当てる
   useEffect(() => {
-    const timer = setTimeout(() => inputRef.current?.focus(), 50);
-    return () => clearTimeout(timer);
-  }, []); // マウント時のみ
+    if (phase !== 0) return;
+    const focusInput = () => {
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus();
+      }
+    };
+    focusInput();
+    const rafId = requestAnimationFrame(focusInput);
+    const t1 = setTimeout(focusInput, 50);
+    const t2 = setTimeout(focusInput, 150);
+    const t3 = setTimeout(focusInput, 300);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [phase]);
 
   // キーボードショートカット管理 (ライブラリを使用)
   useKeyboardShortcut(SHORTCUT_ACTIONS.SET_PERIOD_1, () => onPeriodChange(1), {
@@ -97,8 +112,9 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
   // フォーカス制御
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // インプット以外にフォーカスがある時、数字キーが押されたらインプットにフォーカスを戻す
+      // インプット以外にフォーカスがある時、数字キーが押されたらインプットにフォーカスを戻し即時反映
       if (
+        document.activeElement !== inputRef.current &&
         !(document.activeElement instanceof HTMLInputElement) &&
         !(document.activeElement instanceof HTMLTextAreaElement) &&
         e.key >= '0' &&
@@ -108,12 +124,14 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
         !e.ctrlKey
       ) {
         inputRef.current?.focus();
+        e.preventDefault();
+        onTimeChange(normalize(timeStr + e.key));
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       // Altキーが離されたらインプットにフォーカスを戻す (ショートカット操作後などの復帰)
-      if (e.key === 'Alt') {
+      if (e.key === 'Alt' || e.key === 'AltGraph') {
         inputRef.current?.focus();
       }
     };
@@ -124,7 +142,7 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, []);
+  }, [timeStr, onTimeChange]);
 
   const normalize = (val: string) => {
     // 全角数字を半角に変換し、数字のみ最大5文字

@@ -5,7 +5,7 @@
         "matcher": "run_command",
         "hooks": [
           {
-            "command": "node ./.agents/scripts/safety-guard.js"
+            "command": "node -e 'require(require(\"fs\").existsSync(\"./scripts/safety-guard.js\") ? \"./scripts/safety-guard.js\" : \"./.agents/scripts/safety-guard.js\")'"
           }
         ]
       }
@@ -17,7 +17,7 @@
         "matcher": "write_to_file|replace_file_content",
         "hooks": [
           {
-            "command": "node ./.agents/scripts/auto-format.js"
+            "command": "node -e 'require(require(\"fs\").existsSync(\"./scripts/auto-format.js\") ? \"./scripts/auto-format.js\" : \"./.agents/scripts/auto-format.js\")'"
           }
         ]
       }
@@ -26,7 +26,7 @@
   "verify-gate": {
     "Stop": [
       {
-        "command": "node ./.agents/scripts/verify-gate.js"
+        "command": "node -e 'require(require(\"fs\").existsSync(\"./scripts/verify-gate.js\") ? \"./scripts/verify-gate.js\" : \"./.agents/scripts/verify-gate.js\")'"
       }
     ]
   }

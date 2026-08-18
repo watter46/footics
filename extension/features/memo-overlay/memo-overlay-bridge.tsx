@@ -33,41 +33,50 @@ export const MemoOverlayBridge: React.FC = () => {
     close,
     setToast,
   } = useOverlayStore();
-  const store = useMemoOverlayStore();
+
+  const reset = useMemoOverlayStore((s) => s.reset);
+  const setError = useMemoOverlayStore((s) => s.setError);
+  const setTimeStr = useMemoOverlayStore((s) => s.setTimeStr);
+  const setSelectedLabels = useMemoOverlayStore((s) => s.setSelectedLabels);
+  const setMemo = useMemoOverlayStore((s) => s.setMemo);
+  const setEventId = useMemoOverlayStore((s) => s.setEventId);
+  const setPeriod = useMemoOverlayStore((s) => s.setPeriod);
+  const forceSetPhase = useMemoOverlayStore((s) => s.forceSetPhase);
+  const setIsSaving = useMemoOverlayStore((s) => s.setIsSaving);
 
   // ── ストアの初期化 ──
   useEffect(() => {
     if (!isVisible) return;
 
-    store.reset(mode);
+    reset(mode);
 
     if (initialError) {
-      store.setError(initialError);
+      setError(initialError);
     }
 
     if (initialData) {
       if (mode === 'EVENT') {
         if (initialData.id) {
-          store.setEventId(initialData.id);
+          setEventId(initialData.id);
         }
         if (initialData.period) {
-          store.setPeriod(initialData.period);
+          setPeriod(initialData.period);
         }
         if (initialData.minute !== undefined) {
           const m = initialData.minute;
           const s = initialData.second ?? 0;
-          store.setTimeStr(`${m}:${s.toString().padStart(2, '0')}`);
+          setTimeStr(`${m}:${s.toString().padStart(2, '0')}`);
           // 時間が入力された状態なのでフェーズを進める
-          store.forceSetPhase(1);
+          forceSetPhase(1);
         }
         if (initialData.labels) {
-          store.setSelectedLabels(initialData.labels);
+          setSelectedLabels(initialData.labels);
           // ラベルも入力済みならメモフェーズへ
-          store.forceSetPhase(2);
+          forceSetPhase(2);
         }
       }
       if (initialData.memo) {
-        store.setMemo(initialData.memo);
+        setMemo(initialData.memo);
       }
     }
   }, [
@@ -75,14 +84,14 @@ export const MemoOverlayBridge: React.FC = () => {
     mode,
     initialData,
     initialError,
-    store.reset,
-    store.setError,
-    store.setTimeStr,
-    store.setSelectedLabels,
-    store.setMemo,
-    store.setEventId,
-    store.setPeriod,
-    store.forceSetPhase,
+    reset,
+    setError,
+    setTimeStr,
+    setSelectedLabels,
+    setMemo,
+    setEventId,
+    setPeriod,
+    forceSetPhase,
   ]);
 
   // ── バリデーションヘルパー ──
@@ -91,15 +100,15 @@ export const MemoOverlayBridge: React.FC = () => {
       // Phase 0: 時間のチェック
       const timeErr = getValidationError({ ...state, phase: 0 });
       if (timeErr) {
-        store.setError(timeErr);
-        store.forceSetPhase(0);
+        setError(timeErr);
+        forceSetPhase(0);
         return false;
       }
       // Phase 1: ラベルのチェック
       const labelErr = getValidationError({ ...state, phase: 1 });
       if (labelErr) {
-        store.setError(labelErr);
-        store.forceSetPhase(1);
+        setError(labelErr);
+        forceSetPhase(1);
         return false;
       }
     }
@@ -110,14 +119,11 @@ export const MemoOverlayBridge: React.FC = () => {
   const handleSave = async () => {
     const currentState = useMemoOverlayStore.getState();
 
-    // 試合メモ(MATCH)の場合は拡張機能側での保存処理を制限
-    if (currentState.mode === 'MATCH') return;
-
     // 二重実行防止（保存処理中は入力を受け付けない）
     if (currentState.isSaving) return;
 
     if (!DEBUG_CONFIG.DRY_RUN && !matchId) {
-      store.setError('保存先の試合情報が見つかりません。');
+      setError('保存先の試合情報が見つかりません。');
       return;
     }
 
@@ -133,13 +139,13 @@ export const MemoOverlayBridge: React.FC = () => {
 
     if (!payload) return;
 
-    store.setIsSaving(true);
+    setIsSaving(true);
     try {
       if (DEBUG_CONFIG.DRY_RUN) {
         console.info('🚀 [DRY RUN] Save Payload:', { matchId, ...payload });
         await new Promise((resolve) => setTimeout(resolve, 500));
         setToast('Dry Run: Saved');
-        store.reset();
+        reset();
         return;
       }
 
@@ -162,12 +168,16 @@ export const MemoOverlayBridge: React.FC = () => {
       // キューへの書き込み完了をもってUIに成功フィードバックを返す
       // 実際のDB書き込みはContent Scriptが担う
       close();
-      setToast('Saved Successfully');
+      setToast(
+        currentState.mode === 'MATCH'
+          ? 'Match Memo Saved'
+          : 'Saved Successfully',
+      );
     } catch (err) {
       console.error('[MemoOverlayBridge] Queue write failed:', err);
-      store.setError('保存キューへの書き込みに失敗しました。');
+      setError('保存キューへの書き込みに失敗しました。');
     } finally {
-      store.setIsSaving(false);
+      setIsSaving(false);
     }
   };
 
@@ -181,7 +191,7 @@ export const MemoOverlayBridge: React.FC = () => {
       matchId={matchId}
       onClose={close}
       onSave={handleSave}
-      readOnly={mode === 'MATCH'}
+      readOnly={false}
     />
   );
 };

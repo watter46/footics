@@ -22,8 +22,24 @@ export const PhaseMemoInput: React.FC<PhaseMemoInputProps> = ({
 
   // フェーズ表示時にフォーカス
   useEffect(() => {
-    const timer = setTimeout(() => textareaRef.current?.focus(), 50);
-    return () => clearTimeout(timer);
+    const focusTextarea = () => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        const len = textareaRef.current.value.length;
+        textareaRef.current.setSelectionRange(len, len);
+      }
+    };
+    focusTextarea();
+    const rafId = requestAnimationFrame(focusTextarea);
+    const t1 = setTimeout(focusTextarea, 50);
+    const t2 = setTimeout(focusTextarea, 150);
+    const t3 = setTimeout(focusTextarea, 300);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
   }, []);
 
   return (

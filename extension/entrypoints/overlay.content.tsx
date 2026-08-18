@@ -85,6 +85,7 @@ const OverlayApp = () => {
           mode: data.mode,
           matchId: data.matchId,
           error: data.error,
+          initialData: data.initialData,
         });
       }
     });

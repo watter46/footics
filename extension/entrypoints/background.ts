@@ -88,11 +88,25 @@ export default defineBackground(() => {
 
     // 3. オーバレイを開く
     if (activeTab?.id) {
+      let cachedMemo = '';
+      if (mode === 'MATCH' && matchId) {
+        try {
+          const cacheKey = `${STORAGE_KEYS.MATCH_MEMO_CACHE_PREFIX}${matchId}`;
+          const stored = await browser.storage.local.get(cacheKey);
+          if (typeof stored[cacheKey] === 'string') {
+            cachedMemo = stored[cacheKey];
+          }
+        } catch (e) {
+          console.warn('[Footics BG] Failed to read match memo cache:', e);
+        }
+      }
+
       sendMessage(
         'OPEN_OVERLAY',
         {
           mode,
           matchId: matchId || undefined,
+          initialData: mode === 'MATCH' ? { memo: cachedMemo } : undefined,
         },
         `content-script@${activeTab.id}`,
       );

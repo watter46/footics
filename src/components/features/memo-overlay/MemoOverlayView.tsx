@@ -10,7 +10,10 @@ import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { getMatchMemo } from '@/lib/db';
 import { cn } from '@/lib/utils';
-import { useMemoOverlayDerived } from '@/stores/memo-overlay-store';
+import {
+  useMemoOverlayDerived,
+  useMemoOverlayStore,
+} from '@/stores/memo-overlay-store';
 import { MatchMemoUnit } from './parts/MatchMemoUnit';
 import { MemoOverlayHeader } from './parts/MemoOverlayHeader';
 import {
@@ -82,16 +85,28 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
     let isMounted = true;
 
     const loadMemo = async () => {
+      // 既にストアにメモが存在する場合は読み込みをスキップして上書きを防ぐ
+      if (useMemoOverlayStore.getState().memo) return;
+
       try {
-        // Step 1: 拡張機能環境であれば、chrome.storage.local からキャッシュを試行 (別タブ対応)
-        const globalBrowser =
-          typeof window !== 'undefined' ? (window as any).browser : undefined;
-        if (globalBrowser?.storage?.local) {
+        // Step 1: 拡張機能環境であれば、storage.local からキャッシュを試行 (別タブ対応)
+        const globalAny =
+          typeof globalThis !== 'undefined' ? (globalThis as any) : undefined;
+        const storageLocal =
+          globalAny?.browser?.storage?.local ??
+          globalAny?.chrome?.storage?.local ??
+          undefined;
+
+        if (storageLocal) {
           const cacheKey = `match_memo_cache_${matchId}`;
-          const stored = await globalBrowser.storage.local.get(cacheKey);
+          const stored = await storageLocal.get(cacheKey);
           const cachedMemo = stored[cacheKey];
 
-          if (isMounted && typeof cachedMemo === 'string') {
+          if (
+            isMounted &&
+            typeof cachedMemo === 'string' &&
+            !useMemoOverlayStore.getState().memo
+          ) {
             console.log(
               '[MemoOverlayView] Loaded memo from storage cache:',
               matchId,
@@ -103,7 +118,11 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
 
         // Step 2: キャッシュがない場合、またはWeb本体環境の場合は IndexedDB から読み込む (フォールバック)
         const existingMemo = await getMatchMemo(matchId);
-        if (isMounted && existingMemo?.memo) {
+        if (
+          isMounted &&
+          existingMemo?.memo &&
+          !useMemoOverlayStore.getState().memo
+        ) {
           console.log('[MemoOverlayView] Loaded memo from IndexedDB:', matchId);
           setMemo(existingMemo.memo);
         }

@@ -12,6 +12,14 @@ export interface OpenOverlayPayload {
   mode: MemoMode;
   matchId?: string;
   error?: string;
+  initialData?: {
+    id?: string;
+    period?: number;
+    minute?: number;
+    second?: number;
+    labels?: string[];
+    memo?: string;
+  };
 }
 
 declare module 'webext-bridge' {
