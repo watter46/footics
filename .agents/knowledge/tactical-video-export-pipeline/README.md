@@ -13,9 +13,11 @@
 - ピッチの白線・アーク・ペナルティエリアなどのベクターグラフィックを `createPitchBackground` により 1 枚の `OffscreenCanvas` に事前描画。
 - 毎フレームの描画処理は `ctx.drawImage(bgCanvas, 0, 0)` の高速 GPU blit（サブミリ秒）のみ。
 
-### 3. Pure Canvas 2D マーカーレンダラ (ゼロDOM / ゼロKonva)
+### 3. Pure Canvas 2D マーカーレンダラ & 選手写真最適化パイプライン (ゼロDOM / ゼロKonva / Zero Fetch Skip)
 - Konva のツリー探索・レイヤー再描画オーバーヘッドを完全排除した純粋な 2D Canvas 直接描画 (`renderPitchFrame`)。
 - 選手マーカー（背番号、写真クリッピング、アウトライン縁取り + ドロップシャドウ）とボールを高精細ラスタライズ。
+- **Zero Fetch Skip**: 写真を使用していない（insideContent !== 'photo'）場合はネットワークフェッチ・非同期待機を完全にスキップ。
+- **In-Memory Blob Caching & Timeout**: 一度取得した選手写真はメモリ（Blob レベル）にキャッシュし、2回目以降のフェッチを不要化。3秒タイムアウト制御により外部CDN遅延によるエクスポート待機を防止。
 - 選手写真（photoUrl）はメインスレッドで `createImageBitmap` し、Transferable オブジェクトとして Worker へゼロコピー転送。
 
 ### 4. WebCodecs (VideoEncoder) + mp4-muxer 直結パイプライン
