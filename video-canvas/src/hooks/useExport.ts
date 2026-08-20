@@ -2,14 +2,21 @@ import type Konva from 'konva';
 import { useCallback } from 'react';
 import { useEditorStore } from '@/stores/useEditorStore';
 
-/** 最大最適化幅（画像のコピー・保存時のスケール計算用） */
-const MAX_OPTIMIZED_WIDTH = 2560;
+/** 最大最適化幅（4Kまで100%解像度を完全維持） */
+const MAX_OPTIMIZED_WIDTH = 3840;
 
 export interface ExportBounds {
   x: number;
   y: number;
   width: number;
   height: number;
+}
+
+export interface ExportOptions {
+  bounds?: ExportBounds;
+  fitScale?: number;
+  beforeExport?: () => void;
+  afterExport?: () => void;
 }
 
 /**
@@ -22,7 +29,7 @@ export function useExport() {
     async (
       stage: Konva.Stage | null,
       type: 'copy' | 'save',
-      bounds?: ExportBounds,
+      options?: ExportOptions | ExportBounds,
     ) => {
       if (!stage) {
         console.warn('[useExport] Stage ref is null, skipping export.');
@@ -30,6 +37,11 @@ export function useExport() {
       }
 
       setExportStatus('loading', type);
+
+      const opts: ExportOptions =
+        options && 'x' in options
+          ? { bounds: options as ExportBounds }
+          : (options as ExportOptions) || {};
 
       try {
         const stageWidth = stage.width();
@@ -40,18 +52,26 @@ export function useExport() {
           return;
         }
 
-        const exportArea = bounds || {
+        const exportArea = opts.bounds || {
           x: 0,
           y: 0,
           width: stageWidth,
           height: stageHeight,
         };
 
-        // スケール計算（高解像度を保持）
+        // 一時的にUIレイヤー等を非表示にするコールバックを実行
+        if (opts.beforeExport) {
+          opts.beforeExport();
+        }
+
+        // オリジナルの等倍解像度 (1:1) を完全に保証するスケール計算
+        const baseRatio =
+          opts.fitScale && opts.fitScale > 0 ? 1 / opts.fitScale : 2;
+        const targetWidth = exportArea.width * baseRatio;
         const pixelRatio =
-          exportArea.width > MAX_OPTIMIZED_WIDTH
+          targetWidth > MAX_OPTIMIZED_WIDTH
             ? MAX_OPTIMIZED_WIDTH / exportArea.width
-            : 2; // 2x レティナ品質でエクスポート
+            : baseRatio;
 
         const dataUrl = stage.toDataURL({
           x: exportArea.x,
@@ -61,6 +81,11 @@ export function useExport() {
           pixelRatio,
           mimeType: 'image/png',
         });
+
+        // UIレイヤーの表示を復元
+        if (opts.afterExport) {
+          opts.afterExport();
+        }
 
         if (type === 'copy') {
           // --- クリップボードへコピー ---
@@ -83,6 +108,10 @@ export function useExport() {
         setTimeout(() => setExportStatus('idle'), 3000);
       } catch (err) {
         console.error(`[useExport] Failed to ${type}:`, err);
+        // エラー時もUIを確実に復元
+        if (opts.afterExport) {
+          opts.afterExport();
+        }
         setExportStatus('error');
         setTimeout(() => setExportStatus('idle'), 3000);
       }

@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Eraser,
   Hexagon,
+  Minus,
   MousePointer2,
   MoveRight,
   Square,
@@ -155,6 +156,7 @@ function checkCornerRotateZone(
 // ---------------------------------------------------------------------------
 export type DrawTool =
   | 'select'
+  | 'line'
   | 'arrow_solid'
   | 'arrow_dash'
   | 'zone_circle'
@@ -166,6 +168,7 @@ export interface ShapeData {
   id: string;
   type:
     | 'arrow'
+    | 'line'
     | 'zone'
     | 'polygon_zone'
     | 'marker'
@@ -189,6 +192,7 @@ export interface ShapeData {
   points?: number[]; // [x1, y1, x2, y2, ...]
   isCurved?: boolean;
   controlPoint?: { x: number; y: number };
+  lineDecoration?: 'none' | 'both_dots';
 
   // Marker-attached arrow/line angle & length
   arrowAngle?: number;
@@ -229,6 +233,8 @@ interface CaptureFrameData {
 export const CanvasContainer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
+  const mainLayerRef = useRef<Konva.Layer | null>(null);
+  const uiLayerRef = useRef<Konva.Layer | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   const [shapes, setShapes] = useState<ShapeData[]>([]);
@@ -353,7 +359,30 @@ export const CanvasContainer: React.FC = () => {
         : hasImage
           ? { x: originX, y: originY, width: contentW, height: contentH }
           : undefined;
-      performExport(stageRef.current, 'copy', bounds);
+
+      const prevSelectedId = selectedId;
+      const exportOpts = {
+        bounds,
+        fitScale,
+        beforeExport: () => {
+          if (uiLayerRef.current) {
+            uiLayerRef.current.visible(false);
+          }
+          setSelectedId(null);
+          stageRef.current?.draw();
+        },
+        afterExport: () => {
+          if (uiLayerRef.current) {
+            uiLayerRef.current.visible(true);
+          }
+          if (prevSelectedId) {
+            setSelectedId(prevSelectedId);
+          }
+          stageRef.current?.batchDraw();
+        },
+      };
+
+      performExport(stageRef.current, 'copy', exportOpts);
     }
     triggerCopyRef.current = triggerCopy;
   }, [
@@ -366,6 +395,7 @@ export const CanvasContainer: React.FC = () => {
     contentW,
     contentH,
     fitScale,
+    selectedId,
   ]);
 
   useEffect(() => {
@@ -380,7 +410,30 @@ export const CanvasContainer: React.FC = () => {
         : hasImage
           ? { x: originX, y: originY, width: contentW, height: contentH }
           : undefined;
-      performExport(stageRef.current, 'save', bounds);
+
+      const prevSelectedId = selectedId;
+      const exportOpts = {
+        bounds,
+        fitScale,
+        beforeExport: () => {
+          if (uiLayerRef.current) {
+            uiLayerRef.current.visible(false);
+          }
+          setSelectedId(null);
+          stageRef.current?.draw();
+        },
+        afterExport: () => {
+          if (uiLayerRef.current) {
+            uiLayerRef.current.visible(true);
+          }
+          if (prevSelectedId) {
+            setSelectedId(prevSelectedId);
+          }
+          stageRef.current?.batchDraw();
+        },
+      };
+
+      performExport(stageRef.current, 'save', exportOpts);
     }
     triggerSaveRef.current = triggerSave;
   }, [
@@ -393,6 +446,7 @@ export const CanvasContainer: React.FC = () => {
     contentW,
     contentH,
     fitScale,
+    selectedId,
   ]);
 
   // History state
@@ -595,6 +649,8 @@ export const CanvasContainer: React.FC = () => {
       if (!isCmdOrCtrl) {
         if (e.key === 'v' || e.key === 'V' || e.key === '1') {
           setActiveTool('select');
+        } else if (e.key === 'l' || e.key === 'L' || e.key === '8') {
+          setActiveTool('line');
         } else if (e.key === 'a' || e.key === 'A' || e.key === '2') {
           setActiveTool('arrow_solid');
         } else if (e.key === 'd' || e.key === 'D' || e.key === '3') {
@@ -804,8 +860,24 @@ export const CanvasContainer: React.FC = () => {
 
     const id = `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+    // Line (Solid straight line with configurable end decoration, default red)
+    if (activeTool === 'line') {
+      const shape: ShapeData = {
+        id,
+        type: 'line',
+        points: [pos.x, pos.y, pos.x, pos.y],
+        color: '#ef4444',
+        strokeWidth: 4,
+        dash: [],
+        opacity: 1.0,
+        isCurved: false,
+        lineDecoration: 'none',
+      };
+      setIsDrawing(true);
+      setNewShape(shape);
+    }
     // Arrow (Solid / Dashed)
-    if (activeTool === 'arrow_solid' || activeTool === 'arrow_dash') {
+    else if (activeTool === 'arrow_solid' || activeTool === 'arrow_dash') {
       const isDash = activeTool === 'arrow_dash';
       const shape: ShapeData = {
         id,
@@ -911,7 +983,10 @@ export const CanvasContainer: React.FC = () => {
 
     if (!isDrawing || !newShape) return;
 
-    if (newShape.type === 'arrow' && newShape.points) {
+    if (
+      (newShape.type === 'arrow' || newShape.type === 'line') &&
+      newShape.points
+    ) {
       setNewShape({
         ...newShape,
         points: [newShape.points[0], newShape.points[1], pos.x, pos.y],
@@ -940,7 +1015,10 @@ export const CanvasContainer: React.FC = () => {
     setIsDrawing(false);
 
     let createdShape: ShapeData | null = null;
-    if (newShape.type === 'arrow' && newShape.points) {
+    if (
+      (newShape.type === 'arrow' || newShape.type === 'line') &&
+      newShape.points
+    ) {
       const [x1, y1, x2, y2] = newShape.points;
       if (Math.hypot(x2 - x1, y2 - y1) > 8) {
         createdShape = newShape;
@@ -1265,6 +1343,7 @@ export const CanvasContainer: React.FC = () => {
         dash: selectedShape.dash,
         opacity: selectedShape.opacity,
         isCurved: selectedShape.isCurved,
+        lineDecoration: selectedShape.lineDecoration,
         zoneShape: selectedShape.zoneShape,
         fillOpacity: selectedShape.fillOpacity,
       }
@@ -1312,7 +1391,13 @@ export const CanvasContainer: React.FC = () => {
           }}
         >
           {/* Main Drawing Layer centered on screen */}
-          <Layer x={originX} y={originY} scaleX={fitScale} scaleY={fitScale}>
+          <Layer
+            ref={mainLayerRef}
+            x={originX}
+            y={originY}
+            scaleX={fitScale}
+            scaleY={fitScale}
+          >
             {/* Background Screenshot Image */}
             {backgroundImage && imageSize.w > 0 && (
               <KonvaImage
@@ -1324,231 +1409,6 @@ export const CanvasContainer: React.FC = () => {
                 height={imageSize.h}
                 listening={activeTool === 'select'}
               />
-            )}
-
-            {/* Canvas Mask & Interactive Cropping Trimming Frame */}
-            {captureFrame && (
-              <Group>
-                {/* 4 Outer Dimming Masks */}
-                <Rect
-                  x={-10000}
-                  y={-10000}
-                  width={20000}
-                  height={10000 + captureFrame.y}
-                  fill="rgba(0, 0, 0, 0.45)"
-                  listening={false}
-                />
-                <Rect
-                  x={-10000}
-                  y={captureFrame.y + captureFrame.h}
-                  width={20000}
-                  height={10000}
-                  fill="rgba(0, 0, 0, 0.45)"
-                  listening={false}
-                />
-                <Rect
-                  x={-10000}
-                  y={captureFrame.y}
-                  width={10000 + captureFrame.x}
-                  height={captureFrame.h}
-                  fill="rgba(0, 0, 0, 0.45)"
-                  listening={false}
-                />
-                <Rect
-                  x={captureFrame.x + captureFrame.w}
-                  y={captureFrame.y}
-                  width={10000}
-                  height={captureFrame.h}
-                  fill="rgba(0, 0, 0, 0.45)"
-                  listening={false}
-                />
-
-                {/* Trimming Border */}
-                <Rect
-                  x={captureFrame.x}
-                  y={captureFrame.y}
-                  width={captureFrame.w}
-                  height={captureFrame.h}
-                  stroke="#ffffff"
-                  strokeWidth={2}
-                  dash={[8, 4]}
-                  listening={false}
-                />
-
-                {/* Trimming Corner Handles */}
-                {/* Top-Left */}
-                <Rect
-                  x={captureFrame.x - 7}
-                  y={captureFrame.y - 7}
-                  width={14}
-                  height={14}
-                  fill="#ffffff"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  cornerRadius={2}
-                  draggable
-                  onMouseEnter={(e) => {
-                    const c = e.target.getStage()?.container();
-                    if (c) c.style.cursor = 'nwse-resize';
-                  }}
-                  onMouseLeave={(e) => {
-                    const c = e.target.getStage()?.container();
-                    if (c) c.style.cursor = 'default';
-                  }}
-                  onDragMove={(e) => {
-                    const maxRight = captureFrame.x + captureFrame.w - 50;
-                    const maxBottom = captureFrame.y + captureFrame.h - 50;
-                    const nx = Math.max(
-                      0,
-                      Math.min(e.target.x() + 7, maxRight),
-                    );
-                    const ny = Math.max(
-                      0,
-                      Math.min(e.target.y() + 7, maxBottom),
-                    );
-                    const nw = captureFrame.x + captureFrame.w - nx;
-                    const nh = captureFrame.y + captureFrame.h - ny;
-                    setCaptureFrame({ x: nx, y: ny, w: nw, h: nh });
-                  }}
-                  onDragEnd={(e) => {
-                    e.target.position({
-                      x: captureFrame.x - 7,
-                      y: captureFrame.y - 7,
-                    });
-                  }}
-                />
-
-                {/* Top-Right */}
-                <Rect
-                  x={captureFrame.x + captureFrame.w - 7}
-                  y={captureFrame.y - 7}
-                  width={14}
-                  height={14}
-                  fill="#ffffff"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  cornerRadius={2}
-                  draggable
-                  onMouseEnter={(e) => {
-                    const c = e.target.getStage()?.container();
-                    if (c) c.style.cursor = 'nesw-resize';
-                  }}
-                  onMouseLeave={(e) => {
-                    const c = e.target.getStage()?.container();
-                    if (c) c.style.cursor = 'default';
-                  }}
-                  onDragMove={(e) => {
-                    const maxW = imageSize.w || 2000;
-                    const maxBottom = captureFrame.y + captureFrame.h - 50;
-                    const rX = Math.min(
-                      maxW,
-                      Math.max(e.target.x() + 7, captureFrame.x + 50),
-                    );
-                    const ny = Math.max(
-                      0,
-                      Math.min(e.target.y() + 7, maxBottom),
-                    );
-                    const nw = rX - captureFrame.x;
-                    const nh = captureFrame.y + captureFrame.h - ny;
-                    setCaptureFrame({ x: captureFrame.x, y: ny, w: nw, h: nh });
-                  }}
-                  onDragEnd={(e) => {
-                    e.target.position({
-                      x: captureFrame.x + captureFrame.w - 7,
-                      y: captureFrame.y - 7,
-                    });
-                  }}
-                />
-
-                {/* Bottom-Left */}
-                <Rect
-                  x={captureFrame.x - 7}
-                  y={captureFrame.y + captureFrame.h - 7}
-                  width={14}
-                  height={14}
-                  fill="#ffffff"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  cornerRadius={2}
-                  draggable
-                  onMouseEnter={(e) => {
-                    const c = e.target.getStage()?.container();
-                    if (c) c.style.cursor = 'nesw-resize';
-                  }}
-                  onMouseLeave={(e) => {
-                    const c = e.target.getStage()?.container();
-                    if (c) c.style.cursor = 'default';
-                  }}
-                  onDragMove={(e) => {
-                    const maxRight = captureFrame.x + captureFrame.w - 50;
-                    const maxH = imageSize.h || 2000;
-                    const nx = Math.max(
-                      0,
-                      Math.min(e.target.x() + 7, maxRight),
-                    );
-                    const bY = Math.min(
-                      maxH,
-                      Math.max(e.target.y() + 7, captureFrame.y + 50),
-                    );
-                    const nw = captureFrame.x + captureFrame.w - nx;
-                    const nh = bY - captureFrame.y;
-                    setCaptureFrame({ x: nx, y: captureFrame.y, w: nw, h: nh });
-                  }}
-                  onDragEnd={(e) => {
-                    e.target.position({
-                      x: captureFrame.x - 7,
-                      y: captureFrame.y + captureFrame.h - 7,
-                    });
-                  }}
-                />
-
-                {/* Bottom-Right */}
-                <Rect
-                  x={captureFrame.x + captureFrame.w - 7}
-                  y={captureFrame.y + captureFrame.h - 7}
-                  width={14}
-                  height={14}
-                  fill="#ffffff"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  cornerRadius={2}
-                  draggable
-                  onMouseEnter={(e) => {
-                    const c = e.target.getStage()?.container();
-                    if (c) c.style.cursor = 'nwse-resize';
-                  }}
-                  onMouseLeave={(e) => {
-                    const c = e.target.getStage()?.container();
-                    if (c) c.style.cursor = 'default';
-                  }}
-                  onDragMove={(e) => {
-                    const maxW = imageSize.w || 2000;
-                    const maxH = imageSize.h || 2000;
-                    const rX = Math.min(
-                      maxW,
-                      Math.max(e.target.x() + 7, captureFrame.x + 50),
-                    );
-                    const bY = Math.min(
-                      maxH,
-                      Math.max(e.target.y() + 7, captureFrame.y + 50),
-                    );
-                    const nw = rX - captureFrame.x;
-                    const nh = bY - captureFrame.y;
-                    setCaptureFrame({
-                      x: captureFrame.x,
-                      y: captureFrame.y,
-                      w: nw,
-                      h: nh,
-                    });
-                  }}
-                  onDragEnd={(e) => {
-                    e.target.position({
-                      x: captureFrame.x + captureFrame.w - 7,
-                      y: captureFrame.y + captureFrame.h - 7,
-                    });
-                  }}
-                />
-              </Group>
             )}
 
             {/* Render All Shapes */}
@@ -2030,7 +1890,334 @@ export const CanvasContainer: React.FC = () => {
               }
 
               // ---------------------------------------------------------------
-              // 5. Normal Arrow (Solid / Dashed on Canvas)
+              // 5. Normal Line (Straight / Curved / Optional Both-Dots)
+              // ---------------------------------------------------------------
+              if (shape.type === 'line' && shape.points) {
+                const linePts = shape.points;
+                const isCurved = shape.isCurved;
+                const isDashed = shape.dash && shape.dash.length > 0;
+                const hasDots = shape.lineDecoration === 'both_dots';
+
+                let renderPoints = linePts;
+                let cpX = (linePts[0] + linePts[2]) / 2;
+                let cpY = (linePts[1] + linePts[3]) / 2;
+
+                if (isCurved) {
+                  if (shape.controlPoint) {
+                    cpX = shape.controlPoint.x;
+                    cpY = shape.controlPoint.y;
+                  } else {
+                    cpY -= 40;
+                  }
+                  renderPoints = getQuadraticBezierPoints(
+                    linePts[0],
+                    linePts[1],
+                    cpX,
+                    cpY,
+                    linePts[2],
+                    linePts[3],
+                  );
+                }
+
+                const dotRadius = Math.max((shape.strokeWidth || 4) * 1.5, 6);
+
+                return (
+                  <Group
+                    key={shape.id}
+                    draggable={activeTool === 'select' && isSelected}
+                    onDragStart={(e) => {
+                      if (e.target.name() === 'control-handle') {
+                        e.cancelBubble = true;
+                      }
+                    }}
+                    onDragEnd={(e) => {
+                      if (e.target.name() === 'control-handle') return;
+                      const dx = e.target.x();
+                      const dy = e.target.y();
+                      e.target.position({ x: 0, y: 0 });
+
+                      const newPoints = [
+                        linePts[0] + dx,
+                        linePts[1] + dy,
+                        linePts[2] + dx,
+                        linePts[3] + dy,
+                      ];
+                      const newCp = shape.controlPoint
+                        ? {
+                            x: shape.controlPoint.x + dx,
+                            y: shape.controlPoint.y + dy,
+                          }
+                        : undefined;
+
+                      const nextShapes = shapes.map((s) =>
+                        s.id === shape.id
+                          ? { ...s, points: newPoints, controlPoint: newCp }
+                          : s,
+                      );
+                      saveHistory(nextShapes);
+                      setShapes(nextShapes);
+                    }}
+                  >
+                    <Line
+                      ref={(node) => {
+                        if (node && isSelected) selectedNodeRef.current = node;
+                      }}
+                      points={renderPoints}
+                      stroke={shape.color}
+                      strokeWidth={shape.strokeWidth || 4}
+                      dash={isDashed ? [16, 14] : []}
+                      opacity={shape.opacity || 1.0}
+                      lineCap="round"
+                      lineJoin="round"
+                      hitStrokeWidth={30}
+                      onClick={(e) => handleShapeClick(shape, e.target, e)}
+                      onTap={(e) => handleShapeClick(shape, e.target, e)}
+                    />
+
+                    {/* Optional End Dots Decoration (both_dots) */}
+                    {hasDots && (
+                      <>
+                        <Circle
+                          x={linePts[0]}
+                          y={linePts[1]}
+                          radius={dotRadius}
+                          fill={shape.color}
+                          opacity={shape.opacity || 1.0}
+                          listening={false}
+                        />
+                        <Circle
+                          x={linePts[2]}
+                          y={linePts[3]}
+                          radius={dotRadius}
+                          fill={shape.color}
+                          opacity={shape.opacity || 1.0}
+                          listening={false}
+                        />
+                      </>
+                    )}
+
+                    {/* Custom Line Control Handles */}
+                    {isSelected && activeTool === 'select' && (
+                      <>
+                        <Circle
+                          name="control-handle"
+                          x={linePts[0]}
+                          y={linePts[1]}
+                          radius={7}
+                          hitStrokeWidth={20}
+                          fill="#ffffff"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          draggable
+                          onMouseEnter={(e) => {
+                            const c = e.target.getStage()?.container();
+                            if (c) c.style.cursor = 'grab';
+                          }}
+                          onMouseLeave={(e) => {
+                            const c = e.target.getStage()?.container();
+                            if (c) c.style.cursor = 'default';
+                          }}
+                          onDragStart={(e) => {
+                            e.cancelBubble = true;
+                            const c = e.target.getStage()?.container();
+                            if (c) c.style.cursor = 'grabbing';
+                          }}
+                          onDragMove={(e) => {
+                            e.cancelBubble = true;
+                            const newX = e.target.x();
+                            const newY = e.target.y();
+                            const lineNode =
+                              selectedNodeRef.current as Konva.Line | null;
+                            if (lineNode) {
+                              if (isCurved) {
+                                const pts = getQuadraticBezierPoints(
+                                  newX,
+                                  newY,
+                                  cpX,
+                                  cpY,
+                                  linePts[2],
+                                  linePts[3],
+                                );
+                                lineNode.points(pts);
+                              } else {
+                                lineNode.points([
+                                  newX,
+                                  newY,
+                                  linePts[2],
+                                  linePts[3],
+                                ]);
+                              }
+                              lineNode.getLayer()?.batchDraw();
+                            }
+                          }}
+                          onDragEnd={(e) => {
+                            e.cancelBubble = true;
+                            const c = e.target.getStage()?.container();
+                            if (c) c.style.cursor = 'grab';
+                            const newX = e.target.x();
+                            const newY = e.target.y();
+                            const nextShapes = shapes.map((s) =>
+                              s.id === shape.id
+                                ? {
+                                    ...s,
+                                    points: [
+                                      newX,
+                                      newY,
+                                      linePts[2],
+                                      linePts[3],
+                                    ],
+                                  }
+                                : s,
+                            );
+                            saveHistory(nextShapes);
+                            setShapes(nextShapes);
+                          }}
+                        />
+
+                        <Circle
+                          name="control-handle"
+                          x={linePts[2]}
+                          y={linePts[3]}
+                          radius={7}
+                          hitStrokeWidth={20}
+                          fill="#ffffff"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          draggable
+                          onMouseEnter={(e) => {
+                            const c = e.target.getStage()?.container();
+                            if (c) c.style.cursor = 'grab';
+                          }}
+                          onMouseLeave={(e) => {
+                            const c = e.target.getStage()?.container();
+                            if (c) c.style.cursor = 'default';
+                          }}
+                          onDragStart={(e) => {
+                            e.cancelBubble = true;
+                            const c = e.target.getStage()?.container();
+                            if (c) c.style.cursor = 'grabbing';
+                          }}
+                          onDragMove={(e) => {
+                            e.cancelBubble = true;
+                            const newX = e.target.x();
+                            const newY = e.target.y();
+                            const lineNode =
+                              selectedNodeRef.current as Konva.Line | null;
+                            if (lineNode) {
+                              if (isCurved) {
+                                const pts = getQuadraticBezierPoints(
+                                  linePts[0],
+                                  linePts[1],
+                                  cpX,
+                                  cpY,
+                                  newX,
+                                  newY,
+                                );
+                                lineNode.points(pts);
+                              } else {
+                                lineNode.points([
+                                  linePts[0],
+                                  linePts[1],
+                                  newX,
+                                  newY,
+                                ]);
+                              }
+                              lineNode.getLayer()?.batchDraw();
+                            }
+                          }}
+                          onDragEnd={(e) => {
+                            e.cancelBubble = true;
+                            const c = e.target.getStage()?.container();
+                            if (c) c.style.cursor = 'grab';
+                            const newX = e.target.x();
+                            const newY = e.target.y();
+                            const nextShapes = shapes.map((s) =>
+                              s.id === shape.id
+                                ? {
+                                    ...s,
+                                    points: [
+                                      linePts[0],
+                                      linePts[1],
+                                      newX,
+                                      newY,
+                                    ],
+                                  }
+                                : s,
+                            );
+                            saveHistory(nextShapes);
+                            setShapes(nextShapes);
+                          }}
+                        />
+
+                        {isCurved && (
+                          <Circle
+                            name="control-handle"
+                            x={cpX}
+                            y={cpY}
+                            radius={8}
+                            hitStrokeWidth={20}
+                            fill="#3b82f6"
+                            stroke="#ffffff"
+                            strokeWidth={2}
+                            draggable
+                            onMouseEnter={(e) => {
+                              const c = e.target.getStage()?.container();
+                              if (c) c.style.cursor = 'grab';
+                            }}
+                            onMouseLeave={(e) => {
+                              const c = e.target.getStage()?.container();
+                              if (c) c.style.cursor = 'default';
+                            }}
+                            onDragStart={(e) => {
+                              e.cancelBubble = true;
+                              const c = e.target.getStage()?.container();
+                              if (c) c.style.cursor = 'grabbing';
+                            }}
+                            onDragMove={(e) => {
+                              e.cancelBubble = true;
+                              const newCpX = e.target.x();
+                              const newCpY = e.target.y();
+                              const lineNode =
+                                selectedNodeRef.current as Konva.Line | null;
+                              if (lineNode) {
+                                const pts = getQuadraticBezierPoints(
+                                  linePts[0],
+                                  linePts[1],
+                                  newCpX,
+                                  newCpY,
+                                  linePts[2],
+                                  linePts[3],
+                                );
+                                lineNode.points(pts);
+                                lineNode.getLayer()?.batchDraw();
+                              }
+                            }}
+                            onDragEnd={(e) => {
+                              e.cancelBubble = true;
+                              const c = e.target.getStage()?.container();
+                              if (c) c.style.cursor = 'grab';
+                              const newCp = {
+                                x: e.target.x(),
+                                y: e.target.y(),
+                              };
+                              const nextShapes = shapes.map((s) =>
+                                s.id === shape.id
+                                  ? { ...s, controlPoint: newCp }
+                                  : s,
+                              );
+                              saveHistory(nextShapes);
+                              setShapes(nextShapes);
+                            }}
+                          />
+                        )}
+                      </>
+                    )}
+                  </Group>
+                );
+              }
+
+              // ---------------------------------------------------------------
+              // 6. Normal Arrow (Solid / Dashed on Canvas)
               // ---------------------------------------------------------------
               if (shape.type === 'arrow' && shape.points) {
                 const arrowPts = shape.points;
@@ -2568,6 +2755,240 @@ export const CanvasContainer: React.FC = () => {
 
               return null;
             })}
+          </Layer>
+
+          {/* UI Overlay Layer (Trimming frame masks & handles, Transformers, temporary UI) */}
+          <Layer
+            ref={uiLayerRef}
+            x={originX}
+            y={originY}
+            scaleX={fitScale}
+            scaleY={fitScale}
+          >
+            {/* Canvas Mask & Interactive Cropping Trimming Frame */}
+            {captureFrame && (
+              <Group>
+                {/* 4 Outer Dimming Masks */}
+                <Rect
+                  x={-10000}
+                  y={-10000}
+                  width={20000}
+                  height={10000 + captureFrame.y}
+                  fill="rgba(0, 0, 0, 0.45)"
+                  listening={false}
+                />
+                <Rect
+                  x={-10000}
+                  y={captureFrame.y + captureFrame.h}
+                  width={20000}
+                  height={10000}
+                  fill="rgba(0, 0, 0, 0.45)"
+                  listening={false}
+                />
+                <Rect
+                  x={-10000}
+                  y={captureFrame.y}
+                  width={10000 + captureFrame.x}
+                  height={captureFrame.h}
+                  fill="rgba(0, 0, 0, 0.45)"
+                  listening={false}
+                />
+                <Rect
+                  x={captureFrame.x + captureFrame.w}
+                  y={captureFrame.y}
+                  width={10000}
+                  height={captureFrame.h}
+                  fill="rgba(0, 0, 0, 0.45)"
+                  listening={false}
+                />
+
+                {/* Trimming Border */}
+                <Rect
+                  x={captureFrame.x}
+                  y={captureFrame.y}
+                  width={captureFrame.w}
+                  height={captureFrame.h}
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                  dash={[8, 4]}
+                  listening={false}
+                />
+
+                {/* Trimming Corner Handles */}
+                {/* Top-Left */}
+                <Rect
+                  x={captureFrame.x - 7}
+                  y={captureFrame.y - 7}
+                  width={14}
+                  height={14}
+                  fill="#ffffff"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  cornerRadius={2}
+                  draggable
+                  onMouseEnter={(e) => {
+                    const c = e.target.getStage()?.container();
+                    if (c) c.style.cursor = 'nwse-resize';
+                  }}
+                  onMouseLeave={(e) => {
+                    const c = e.target.getStage()?.container();
+                    if (c) c.style.cursor = 'default';
+                  }}
+                  onDragMove={(e) => {
+                    const maxRight = captureFrame.x + captureFrame.w - 50;
+                    const maxBottom = captureFrame.y + captureFrame.h - 50;
+                    const nx = Math.max(
+                      0,
+                      Math.min(e.target.x() + 7, maxRight),
+                    );
+                    const ny = Math.max(
+                      0,
+                      Math.min(e.target.y() + 7, maxBottom),
+                    );
+                    const nw = captureFrame.x + captureFrame.w - nx;
+                    const nh = captureFrame.y + captureFrame.h - ny;
+                    setCaptureFrame({ x: nx, y: ny, w: nw, h: nh });
+                  }}
+                  onDragEnd={(e) => {
+                    e.target.position({
+                      x: captureFrame.x - 7,
+                      y: captureFrame.y - 7,
+                    });
+                  }}
+                />
+
+                {/* Top-Right */}
+                <Rect
+                  x={captureFrame.x + captureFrame.w - 7}
+                  y={captureFrame.y - 7}
+                  width={14}
+                  height={14}
+                  fill="#ffffff"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  cornerRadius={2}
+                  draggable
+                  onMouseEnter={(e) => {
+                    const c = e.target.getStage()?.container();
+                    if (c) c.style.cursor = 'nesw-resize';
+                  }}
+                  onMouseLeave={(e) => {
+                    const c = e.target.getStage()?.container();
+                    if (c) c.style.cursor = 'default';
+                  }}
+                  onDragMove={(e) => {
+                    const maxW = imageSize.w || 2000;
+                    const maxBottom = captureFrame.y + captureFrame.h - 50;
+                    const rX = Math.min(
+                      maxW,
+                      Math.max(e.target.x() + 7, captureFrame.x + 50),
+                    );
+                    const ny = Math.max(
+                      0,
+                      Math.min(e.target.y() + 7, maxBottom),
+                    );
+                    const nw = rX - captureFrame.x;
+                    const nh = captureFrame.y + captureFrame.h - ny;
+                    setCaptureFrame({ x: captureFrame.x, y: ny, w: nw, h: nh });
+                  }}
+                  onDragEnd={(e) => {
+                    e.target.position({
+                      x: captureFrame.x + captureFrame.w - 7,
+                      y: captureFrame.y - 7,
+                    });
+                  }}
+                />
+
+                {/* Bottom-Left */}
+                <Rect
+                  x={captureFrame.x - 7}
+                  y={captureFrame.y + captureFrame.h - 7}
+                  width={14}
+                  height={14}
+                  fill="#ffffff"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  cornerRadius={2}
+                  draggable
+                  onMouseEnter={(e) => {
+                    const c = e.target.getStage()?.container();
+                    if (c) c.style.cursor = 'nesw-resize';
+                  }}
+                  onMouseLeave={(e) => {
+                    const c = e.target.getStage()?.container();
+                    if (c) c.style.cursor = 'default';
+                  }}
+                  onDragMove={(e) => {
+                    const maxRight = captureFrame.x + captureFrame.w - 50;
+                    const maxH = imageSize.h || 2000;
+                    const nx = Math.max(
+                      0,
+                      Math.min(e.target.x() + 7, maxRight),
+                    );
+                    const bY = Math.min(
+                      maxH,
+                      Math.max(e.target.y() + 7, captureFrame.y + 50),
+                    );
+                    const nw = captureFrame.x + captureFrame.w - nx;
+                    const nh = bY - captureFrame.y;
+                    setCaptureFrame({ x: nx, y: captureFrame.y, w: nw, h: nh });
+                  }}
+                  onDragEnd={(e) => {
+                    e.target.position({
+                      x: captureFrame.x - 7,
+                      y: captureFrame.y + captureFrame.h - 7,
+                    });
+                  }}
+                />
+
+                {/* Bottom-Right */}
+                <Rect
+                  x={captureFrame.x + captureFrame.w - 7}
+                  y={captureFrame.y + captureFrame.h - 7}
+                  width={14}
+                  height={14}
+                  fill="#ffffff"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  cornerRadius={2}
+                  draggable
+                  onMouseEnter={(e) => {
+                    const c = e.target.getStage()?.container();
+                    if (c) c.style.cursor = 'nwse-resize';
+                  }}
+                  onMouseLeave={(e) => {
+                    const c = e.target.getStage()?.container();
+                    if (c) c.style.cursor = 'default';
+                  }}
+                  onDragMove={(e) => {
+                    const maxW = imageSize.w || 2000;
+                    const maxH = imageSize.h || 2000;
+                    const rX = Math.min(
+                      maxW,
+                      Math.max(e.target.x() + 7, captureFrame.x + 50),
+                    );
+                    const bY = Math.min(
+                      maxH,
+                      Math.max(e.target.y() + 7, captureFrame.y + 50),
+                    );
+                    const nw = rX - captureFrame.x;
+                    const nh = bY - captureFrame.y;
+                    setCaptureFrame({
+                      x: captureFrame.x,
+                      y: captureFrame.y,
+                      w: nw,
+                      h: nh,
+                    });
+                  }}
+                  onDragEnd={(e) => {
+                    e.target.position({
+                      x: captureFrame.x + captureFrame.w - 7,
+                      y: captureFrame.y + captureFrame.h - 7,
+                    });
+                  }}
+                />
+              </Group>
+            )}
 
             {/* Transformer (Zone & Marker resize) */}
             {activeTool === 'select' &&
@@ -2646,6 +3067,21 @@ export const CanvasContainer: React.FC = () => {
         >
           <MousePointer2 className="w-4 h-4" />
           <span className="hidden sm:inline">Select</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTool('line')}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all',
+            activeTool === 'line'
+              ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
+              : 'text-neutral-400 hover:text-white hover:bg-white/10',
+          )}
+          title="直線 (L)"
+        >
+          <Minus className="w-4 h-4" />
+          <span className="hidden sm:inline">Line</span>
         </button>
 
         <button

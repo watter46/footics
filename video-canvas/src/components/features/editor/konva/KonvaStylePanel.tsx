@@ -4,6 +4,7 @@ import type React from 'react';
 export interface ShapeProperties {
   type:
     | 'arrow'
+    | 'line'
     | 'zone'
     | 'polygon_zone'
     | 'marker'
@@ -16,8 +17,9 @@ export interface ShapeProperties {
   strokeWidth: number;
   dash: number[];
   opacity: number;
-  // Arrow specific
+  // Arrow / Line specific
   isCurved?: boolean;
+  lineDecoration?: 'none' | 'both_dots';
   // Zone specific
   zoneShape?: 'rect' | 'ellipse';
   fillOpacity?: number;
@@ -66,19 +68,22 @@ export const KonvaStylePanel: React.FC<KonvaStylePanelProps> = ({
     properties.type === 'arrow' ||
     properties.type === 'marker_arrow_solid' ||
     properties.type === 'marker_arrow_dash';
+  const isLine = properties.type === 'line';
 
   return (
     <div className="absolute right-4 top-1/2 -translate-y-1/2 z-50 pointer-events-auto">
       <div className="flex flex-col gap-3 p-3 bg-neutral-900/95 backdrop-blur-xl text-slate-200 rounded-xl shadow-2xl border border-white/10 w-56">
         <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
           <span className="text-xs font-bold text-slate-300 tracking-wider">
-            {isArrow
-              ? 'ARROW STYLE'
-              : properties.type === 'polygon_zone'
-                ? 'POLYGON ZONE'
-                : isZone
-                  ? 'ZONE STYLE'
-                  : 'STYLE'}
+            {isLine
+              ? 'LINE STYLE'
+              : isArrow
+                ? 'ARROW STYLE'
+                : properties.type === 'polygon_zone'
+                  ? 'POLYGON ZONE'
+                  : isZone
+                    ? 'ZONE STYLE'
+                    : 'STYLE'}
           </span>
         </div>
 
@@ -104,6 +109,45 @@ export const KonvaStylePanel: React.FC<KonvaStylePanelProps> = ({
             ))}
           </div>
         </div>
+
+        {/* Line End Decoration (None vs Both Dots) - Only for Line */}
+        {isLine && (
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">
+              End Decoration
+            </span>
+            <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg">
+              <button
+                type="button"
+                onClick={() => onChange({ lineDecoration: 'none' })}
+                className={`flex-1 py-1.5 text-[10px] font-bold rounded-md flex items-center justify-center gap-1 transition-all ${
+                  (properties.lineDecoration || 'none') === 'none'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <Minus className="w-3 h-3" />
+                NONE
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange({ lineDecoration: 'both_dots' })}
+                className={`flex-1 py-1.5 text-[10px] font-bold rounded-md flex items-center justify-center gap-1.5 transition-all ${
+                  properties.lineDecoration === 'both_dots'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-0.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-current" />
+                  <div className="w-2.5 h-0.5 bg-current" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-current" />
+                </div>
+                DOTS
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Zone Shape Type (Rect vs Ellipse) - Only for standard Zone */}
         {properties.type === 'zone' && (
@@ -140,11 +184,11 @@ export const KonvaStylePanel: React.FC<KonvaStylePanelProps> = ({
           </div>
         )}
 
-        {/* Arrow Bend (Straight vs Curved) - Only for Arrow */}
-        {isArrow && (
+        {/* Arrow / Line Bend (Straight vs Curved) */}
+        {(isArrow || isLine) && (
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase">
-              Arrow Type
+              {isLine ? 'Line Type' : 'Arrow Type'}
             </span>
             <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg">
               <button
