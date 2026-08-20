@@ -431,7 +431,10 @@ export async function mergePlayerId(
     await db.players.put({
       id: officialId,
       playerId: officialPlayerId,
-      name: officialRecord?.name || tempRecord?.name || `Player ${officialPlayerId}`,
+      name:
+        officialRecord?.name ||
+        tempRecord?.name ||
+        `Player ${officialPlayerId}`,
       season,
       defaultShirtNo:
         tempRecord?.defaultShirtNo ?? officialRecord?.defaultShirtNo,

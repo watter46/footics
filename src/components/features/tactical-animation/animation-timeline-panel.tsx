@@ -2,8 +2,7 @@
 
 import {
   Activity,
-  ChevronDown,
-  ChevronUp,
+  ChevronLeft,
   Clock,
   Copy,
   Download,
@@ -24,12 +23,14 @@ import { EASING_OPTIONS, type EasingType } from '@/lib/tactical/easing';
 import { useTacticalAnimationStore } from '@/stores/tactical-animation-store';
 import type { AnimationPitchRef } from './animation-pitch';
 
-interface AnimationTimelineProps {
+interface AnimationTimelinePanelProps {
   pitchRef: React.RefObject<AnimationPitchRef | null>;
+  onClose?: () => void;
 }
 
-export const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
+export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
   pitchRef,
+  onClose,
 }) => {
   const scenes = useTacticalAnimationStore((s) => s.scenes);
   const activeSceneIndex = useTacticalAnimationStore((s) => s.activeSceneIndex);
@@ -56,9 +57,6 @@ export const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
   const [batchDuration, setBatchDuration] = useState<number>(1500);
   const [batchPause, setBatchPause] = useState<number>(500);
   const [batchEasing, setBatchEasing] = useState<EasingType>('easeInOut');
-
-  // タイムライン自体の最小化トグル
-  const [isTimelineCollapsed, setIsTimelineCollapsed] = useState(false);
 
   const handlePlay = () => {
     const stage = pitchRef.current?.getStage();
@@ -97,16 +95,38 @@ export const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
   };
 
   return (
-    <div className="flex flex-col bg-slate-900 border-t border-slate-800 shrink-0 select-none transition-all duration-200">
-      {/* タイムラインツールバー */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-slate-900/90 border-b border-slate-800">
-        <div className="flex items-center gap-2">
-          {/* 再生ボタン */}
+    <div className="flex flex-col w-72 sm:w-80 bg-slate-900/95 backdrop-blur-md border-r border-slate-800 text-white h-full overflow-hidden select-none shrink-0 z-10">
+      {/* パネルヘッダー */}
+      <div className="flex items-center justify-between px-3 py-2.5 bg-slate-950 border-b border-slate-800 shrink-0">
+        <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-slate-200">
+          <Film className="w-4 h-4 text-blue-400" />
+          <span>タイムライン・シーン</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-blue-500/20 text-blue-400 font-mono">
+            {scenes.length}
+          </span>
+        </div>
+
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
+            title="タイムラインを閉じる"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* コントロールツールバー (再生・保存・追加・一括) */}
+      <div className="p-3 bg-slate-950/70 border-b border-slate-800 flex flex-col gap-2 shrink-0">
+        <div className="grid grid-cols-2 gap-2">
+          {/* 再生/停止ボタン */}
           <button
             type="button"
             onClick={handlePlay}
             disabled={isExporting || scenes.length <= 1}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs shadow-md transition-all ${
+            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-bold text-xs shadow-md transition-all ${
               isPlaying
                 ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse'
                 : 'bg-emerald-600 hover:bg-emerald-700 text-white'
@@ -114,25 +134,25 @@ export const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
           >
             {isPlaying ? (
               <>
-                <Square className="w-3.5 h-3.5" /> 停止
+                <Square className="w-3.5 h-3.5 fill-white" /> 停止
               </>
             ) : (
               <>
-                <Play className="w-3.5 h-3.5 fill-white" /> 再生
+                <Play className="w-3.5 h-3.5 fill-white" /> 再生 [Space]
               </>
             )}
           </button>
 
-          {/* エクスポートボタン */}
+          {/* 動画保存エクスポート */}
           <button
             type="button"
             onClick={handleExport}
             disabled={isPlaying || isExporting || scenes.length <= 1}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-bold text-xs shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg font-bold text-xs shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isExporting ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> 保存中{' '}
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />{' '}
                 {exportProgress}%
               </>
             ) : (
@@ -141,128 +161,119 @@ export const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
               </>
             )}
           </button>
-
-          {/* 一括設定ボタン */}
-          <button
-            type="button"
-            onClick={() => setIsBatchModalOpen(true)}
-            disabled={isPlaying || isExporting}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition-colors border border-slate-700 disabled:opacity-50"
-            title="全シーンの速度や時間を一括変更"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
-            <span>一括設定</span>
-          </button>
-
-          {exportError && (
-            <span className="text-xs text-red-400 font-medium">
-              {exportError}
-            </span>
-          )}
         </div>
 
-        {/* 右側アクション & 最小化トグル */}
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 gap-2">
+          {/* シーン追加 */}
           <button
             type="button"
             onClick={addScene}
             disabled={isPlaying || isExporting}
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-xs font-medium transition-colors border border-slate-700 disabled:opacity-50"
+            className="flex items-center justify-center gap-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-xs font-semibold transition-colors border border-slate-700 disabled:opacity-50"
           >
-            <Plus className="w-3.5 h-3.5 text-blue-400" /> シーン追加
+            <Plus className="w-3.5 h-3.5 text-blue-400" />
+            <span>シーン追加</span>
           </button>
 
+          {/* 一括設定 */}
           <button
             type="button"
-            onClick={() => setIsTimelineCollapsed(!isTimelineCollapsed)}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg text-xs transition-colors"
-            title={
-              isTimelineCollapsed
-                ? 'タイムラインを展開'
-                : 'タイムラインを最小化'
-            }
+            onClick={() => setIsBatchModalOpen(true)}
+            disabled={isPlaying || isExporting}
+            className="flex items-center justify-center gap-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition-colors border border-slate-700 disabled:opacity-50"
           >
-            {isTimelineCollapsed ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
+            <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
+            <span>一括設定</span>
           </button>
         </div>
+
+        {exportError && (
+          <div className="text-[11px] text-red-400 bg-red-950/50 p-1.5 rounded border border-red-900/60 font-medium">
+            {exportError}
+          </div>
+        )}
       </div>
 
-      {/* シーンサムネイル・タイムライン一覧 */}
-      {!isTimelineCollapsed && (
-        <div className="flex gap-2 overflow-x-auto p-2.5 scrollbar-thin scrollbar-thumb-slate-700">
-          {scenes.map((scene, index) => {
-            const isActive = activeSceneIndex === index;
-            const isLast = index === scenes.length - 1;
-            const currentEasing = scene.easing || defaultEasing;
+      {/* シーンカード縦スクロールリスト */}
+      <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 scrollbar-thin scrollbar-thumb-slate-700">
+        {scenes.map((scene, index) => {
+          const isActive = activeSceneIndex === index;
+          const isLast = index === scenes.length - 1;
+          const currentEasing = scene.easing || defaultEasing;
 
-            return (
-              <div
-                key={scene.id}
-                className={`flex flex-col min-w-[200px] max-w-[210px] bg-slate-950/90 rounded-lg p-2.5 cursor-pointer border transition-all shadow-sm ${
-                  isActive
-                    ? 'border-blue-500 ring-1 ring-blue-500/30 bg-slate-900'
-                    : 'border-slate-800 hover:border-slate-700'
-                }`}
-                onClick={() => {
-                  if (!isPlaying && !isExporting) {
-                    setActiveSceneIndex(index);
-                  }
-                }}
-              >
-                {/* シーンヘッダー */}
-                <div className="flex justify-between items-center mb-1.5 pb-1 border-b border-slate-800/80">
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-slate-200">
-                    <Film className="w-3 h-3 text-blue-400" />
-                    <span>シーン {index + 1}</span>
-                    {isActive && (
-                      <span className="px-1 py-0.1 text-[9px] bg-blue-500/20 text-blue-400 rounded font-normal">
-                        選択中
-                      </span>
-                    )}
+          return (
+            <div
+              key={scene.id}
+              onClick={() => {
+                if (!isPlaying && !isExporting) {
+                  setActiveSceneIndex(index);
+                }
+              }}
+              className={`flex flex-col bg-slate-950/80 rounded-xl p-2.5 cursor-pointer border transition-all shadow-sm ${
+                isActive
+                  ? 'border-blue-500 ring-2 ring-blue-500/40 bg-slate-900/90 shadow-blue-500/10'
+                  : 'border-slate-800 hover:border-slate-700 hover:bg-slate-900/50'
+              }`}
+            >
+              {/* シーンヘッダー */}
+              <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-slate-800/80">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-slate-200">
+                  <div
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-bold ${
+                      isActive
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {index + 1}
                   </div>
+                  <span>シーン {index + 1}</span>
+                  {isActive && (
+                    <span className="px-1.5 py-0.2 text-[9px] bg-blue-500/20 text-blue-400 rounded font-normal">
+                      編集中
+                    </span>
+                  )}
+                </div>
 
-                  <div className="flex items-center gap-0.5">
-                    {/* 複製 */}
+                <div className="flex items-center gap-1">
+                  {/* 複製 */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isPlaying && !isExporting) duplicateScene(index);
+                    }}
+                    className="text-slate-400 hover:text-slate-200 p-1 rounded hover:bg-slate-800 transition-colors"
+                    title="シーンを複製"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* 削除 */}
+                  {scenes.length > 1 && (
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (!isPlaying && !isExporting) duplicateScene(index);
+                        if (!isPlaying && !isExporting) removeScene(index);
                       }}
-                      className="text-slate-400 hover:text-slate-200 p-0.5 rounded hover:bg-slate-800 transition-colors"
-                      title="シーンを複製"
+                      className="text-slate-400 hover:text-rose-400 p-1 rounded hover:bg-slate-800 transition-colors"
+                      title="シーンを削除"
                     >
-                      <Copy className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
-
-                    {/* 削除 */}
-                    {scenes.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!isPlaying && !isExporting) removeScene(index);
-                        }}
-                        className="text-slate-400 hover:text-rose-400 p-0.5 rounded hover:bg-slate-800 transition-colors"
-                        title="シーンを削除"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
+              </div>
 
-                {/* シーン設定 */}
-                {!isLast ? (
-                  <div className="flex flex-col gap-1.5 text-xs">
+              {/* シーン設定 */}
+              {!isLast ? (
+                <div className="flex flex-col gap-2 text-xs">
+                  <div className="grid grid-cols-2 gap-2">
                     {/* 移動時間 */}
-                    <div className="flex items-center justify-between text-slate-300">
-                      <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                        <Clock className="w-2.5 h-2.5 text-blue-400" /> 移動
+                    <div className="flex flex-col gap-1 bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
+                      <span className="flex items-center gap-1 text-[10px] text-slate-400">
+                        <Clock className="w-2.5 h-2.5 text-blue-400" /> 移動時間
                       </span>
                       <div className="flex items-center gap-1">
                         <input
@@ -274,18 +285,19 @@ export const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
                               durationMs: Math.max(100, Number(e.target.value)),
                             })
                           }
-                          className="w-14 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-[11px] text-white text-right font-mono"
+                          className="w-full bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-white text-right font-mono focus:outline-none focus:border-blue-500"
                           step={100}
                           min={100}
                         />
-                        <span className="text-[9px] text-slate-500">ms</span>
+                        <span className="text-[10px] text-slate-500">ms</span>
                       </div>
                     </div>
 
                     {/* 停止時間 */}
-                    <div className="flex items-center justify-between text-slate-300">
-                      <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                        <Clock className="w-2.5 h-2.5 text-amber-400" /> 停止
+                    <div className="flex flex-col gap-1 bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
+                      <span className="flex items-center gap-1 text-[10px] text-slate-400">
+                        <Clock className="w-2.5 h-2.5 text-amber-400" />{' '}
+                        停止時間
                       </span>
                       <div className="flex items-center gap-1">
                         <input
@@ -297,55 +309,66 @@ export const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
                               pauseMs: Math.max(0, Number(e.target.value)),
                             })
                           }
-                          className="w-14 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-[11px] text-white text-right font-mono"
+                          className="w-full bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-white text-right font-mono focus:outline-none focus:border-blue-500"
                           step={100}
                           min={0}
                         />
-                        <span className="text-[9px] text-slate-500">ms</span>
+                        <span className="text-[10px] text-slate-500">ms</span>
                       </div>
                     </div>
+                  </div>
 
-                    {/* 速度変化 (Easing) */}
-                    <div className="flex items-center justify-between text-slate-300 pt-1 border-t border-slate-800/60">
-                      <span
-                        className="flex items-center gap-1 text-[11px] text-slate-400"
-                        title="移動時の速度変化"
-                      >
-                        <Activity className="w-2.5 h-2.5 text-indigo-400" />{' '}
-                        速度
-                      </span>
-                      <select
-                        value={currentEasing}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) =>
-                          updateScene(index, {
-                            easing: e.target.value as EasingType,
-                          })
-                        }
-                        className="bg-slate-900 border border-slate-700 text-slate-200 rounded px-1 py-0.5 text-[11px] focus:outline-none focus:border-blue-500 cursor-pointer"
-                      >
-                        {EASING_OPTIONS.map((opt) => (
-                          <option
-                            key={opt.value}
-                            value={opt.value}
-                            title={opt.description}
-                          >
-                            {opt.shortLabel}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  {/* 速度変化 (Easing) */}
+                  <div className="flex items-center justify-between gap-2 bg-slate-900/80 px-2 py-1.5 rounded-lg border border-slate-800">
+                    <span
+                      className="flex items-center gap-1 text-[11px] text-slate-400 shrink-0"
+                      title="移動時の速度変化"
+                    >
+                      <Activity className="w-3 h-3 text-indigo-400" /> 速度変化
+                    </span>
+                    <select
+                      value={currentEasing}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) =>
+                        updateScene(index, {
+                          easing: e.target.value as EasingType,
+                        })
+                      }
+                      className="bg-slate-950 border border-slate-700 text-slate-200 rounded px-1.5 py-0.5 text-[11px] focus:outline-none focus:border-blue-500 cursor-pointer max-w-[130px] truncate"
+                    >
+                      {EASING_OPTIONS.map((opt) => (
+                        <option
+                          key={opt.value}
+                          value={opt.value}
+                          title={opt.description}
+                        >
+                          {opt.shortLabel}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                ) : (
-                  <div className="py-2 text-center text-[10px] text-slate-500 font-medium">
-                    最終ポーズ位置
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                </div>
+              ) : (
+                <div className="py-2 text-center text-[11px] text-slate-500 font-medium bg-slate-900/40 rounded-lg">
+                  最終ポーズ位置
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* フッター・ショートカット案内 */}
+      <div className="px-3 py-2 bg-slate-950 border-t border-slate-800 text-[10px] text-slate-500 font-mono flex flex-col gap-0.5 shrink-0">
+        <div className="flex justify-between">
+          <span>[Space: 再生/停止]</span>
+          <span>[←/→: シーン切替]</span>
         </div>
-      )}
+        <div className="flex justify-between">
+          <span>[Esc: 選択解除]</span>
+          <span>[Shift+ドラッグ: 範囲選択]</span>
+        </div>
+      </div>
 
       {/* 一括設定モーダル */}
       {isBatchModalOpen && (

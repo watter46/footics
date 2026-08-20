@@ -11,6 +11,7 @@ export interface ExportJobConfig {
   backgroundColor: string;
   exportWidth: number;
   exportHeight: number;
+  teamVisibility?: 'both' | 'home' | 'away';
 }
 
 export type ExportWorkerInMessage =

@@ -73,6 +73,7 @@ export const AnimationPitch = forwardRef<
   } | null>(null);
 
   const orientation = useTacticalAnimationStore((s) => s.orientation);
+  const teamVisibility = useTacticalAnimationStore((s) => s.teamVisibility);
   const activeSceneIndex = useTacticalAnimationStore((s) => s.activeSceneIndex);
   const scenes = useTacticalAnimationStore((s) => s.scenes);
   const isPlaying = useTacticalAnimationStore((s) => s.isPlaying);
@@ -319,6 +320,8 @@ export const AnimationPitch = forwardRef<
           {/* ピッチ上の選手マーカー */}
           {Object.values(activeScene.players).map((p) => {
             if (p.area === 'bench') return null;
+            if (teamVisibility !== 'both' && p.team !== teamVisibility)
+              return null;
 
             const isSelected =
               selectedPlayerIds.includes(p.playerId) ||

@@ -17,8 +17,8 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { mergePlayerId, savePlayerMaster } from '@/lib/db/queries';
-import { normalizePosition } from '@/lib/tactical/player-formatting';
 import { playerKeys } from '@/lib/query-keys';
+import { normalizePosition } from '@/lib/tactical/player-formatting';
 import type { Player, StandardPosition } from '@/types';
 
 export interface EditablePlayerData {
@@ -222,7 +222,11 @@ export const EditPlayerDialog: React.FC<EditPlayerDialogProps> = ({
         {/* Scrollable Body */}
         <div className="p-6 space-y-6 overflow-y-auto">
           {/* Main Edit Form */}
-          <form id="edit-player-form" onSubmit={handleSubmit} className="space-y-4">
+          <form
+            id="edit-player-form"
+            onSubmit={handleSubmit}
+            className="space-y-4"
+          >
             {/* Player Name */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-300">
@@ -241,7 +245,9 @@ export const EditPlayerDialog: React.FC<EditPlayerDialogProps> = ({
             {/* Shirt Number & Position */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">背番号</label>
+                <label className="text-xs font-bold text-slate-300">
+                  背番号
+                </label>
                 <input
                   type="number"
                   min="1"

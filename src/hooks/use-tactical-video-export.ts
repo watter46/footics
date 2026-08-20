@@ -17,6 +17,7 @@ export function useTacticalVideoExport() {
   const setIsExporting = useTacticalAnimationStore((s) => s.setIsExporting);
   const scenes = useTacticalAnimationStore((s) => s.scenes);
   const orientation = useTacticalAnimationStore((s) => s.orientation);
+  const teamVisibility = useTacticalAnimationStore((s) => s.teamVisibility);
 
   const workerRef = useRef<Worker | null>(null);
   const [exportProgress, setExportProgress] = useState<number>(0);
@@ -115,6 +116,7 @@ export function useTacticalVideoExport() {
           backgroundColor: bgColor,
           exportWidth,
           exportHeight,
+          teamVisibility,
         };
 
         // 写真の事前ロード (ImageBitmap 化)

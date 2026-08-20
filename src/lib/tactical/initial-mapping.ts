@@ -5,7 +5,11 @@ import {
 import { FORMATION_POSITIONS } from '../data/formations-data';
 import { getBenchPos } from './coordinates';
 import { parseWhoScoredFormationName } from './formations';
-import { getShirtNo, sortPlayersBy2DPositionGroup } from './player-formatting';
+import {
+  getShirtNo,
+  normalizePosition,
+  sortPlayersBy2DPositionGroup,
+} from './player-formatting';
 
 /**
  * 特定の分における出場選手を特定する (National Data)
@@ -37,7 +41,6 @@ export function getActivePlayersNational(matchData: any, minute: number) {
         const player2Id = ev[7];
 
         if (eventType === 'subst') {
-          // National形式では ev[6] が退く選手、ev[7] が入る選手
           if (activeIds.has(player1Id)) {
             activeIds.delete(player1Id);
             activeIds.add(player2Id);
@@ -71,12 +74,12 @@ export function getActivePlayersClub(matchCentreData: any, minute: number) {
 
     // 交代履歴をスキャン (incidentEvents)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    team.incidentEvents.forEach((ev: any) => {
+    team.incidentEvents?.forEach((ev: any) => {
       if (ev.minute > minute) return;
 
-      if (ev.type.displayName === 'SubstitutionOff') {
+      if (ev.type?.displayName === 'SubstitutionOff') {
         activeIds.delete(ev.playerId);
-      } else if (ev.type.displayName === 'SubstitutionOn') {
+      } else if (ev.type?.displayName === 'SubstitutionOn') {
         activeIds.add(ev.playerId);
       }
     });
@@ -117,48 +120,10 @@ export function generateInitialMapping(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let benchPlayers: any[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rawPositions: any[] = primaryFormation?.formationPositions || [];
     const playerIds: number[] = primaryFormation?.playerIds || [];
 
-    // 1. クラブデータ等で formationPositions (vertical/horizontal) と playerIds が揃っている場合
-    if (playerIds.length >= 11 && rawPositions.length >= 11) {
-      const starterIdSet = new Set<number>(playerIds.slice(0, 11));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const startersByIdMap = new Map<number, any>();
-      players.forEach((p) => {
-        startersByIdMap.set(p.playerId, p);
-      });
-
-      const starterItems: Array<{
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        player: any;
-        vertical: number;
-        horizontal: number;
-      }> = [];
-
-      playerIds.slice(0, 11).forEach((id: number, idx: number) => {
-        const found = startersByIdMap.get(id);
-        const posInfo = rawPositions[idx] || { vertical: 0, horizontal: 0 };
-        if (found) {
-          starterItems.push({
-            player: found,
-            vertical: posInfo.vertical ?? 0,
-            horizontal: posInfo.horizontal ?? 0,
-          });
-        }
-      });
-
-      // 縦 (vertical) 昇順、同一縦内では横 (horizontal) 降順 (9=左端 -> 1=右端) でソート
-      starterItems.sort((a, b) => {
-        if (a.vertical !== b.vertical) return a.vertical - b.vertical;
-        return b.horizontal - a.horizontal;
-      });
-
-      pitchPlayers = starterItems.map((item) => item.player);
-      benchPlayers = players.filter((p) => !starterIdSet.has(p.playerId));
-    } else if (playerIds.length >= 11) {
-      // playerIds のみある場合
+    // 1. 先発11名とベンチ選手を分離
+    if (playerIds.length >= 11) {
       const starterIdSet = new Set<number>(playerIds.slice(0, 11));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const startersByIdMap = new Map<number, any>();
@@ -176,7 +141,7 @@ export function generateInitialMapping(
       pitchPlayers = sortPlayersBy2DPositionGroup(rawStarters);
       benchPlayers = players.filter((p) => !starterIdSet.has(p.playerId));
     } else {
-      // 代表データやフォールバック: isFirstEleven 判定
+      // フォールバック: isFirstEleven 判定
       const starters = players.filter((p) => p.isFirstEleven);
       const nonStarters = players.filter((p) => !p.isFirstEleven);
 
@@ -197,26 +162,23 @@ export function generateInitialMapping(
       pitchPlayers = sortPlayersBy2DPositionGroup(rawStarters);
     }
 
-    // 2. フォーメーション名から FormationType を特定
-    const formationType = parseWhoScoredFormationName(
-      primaryFormation?.formationName,
-    );
+    // 2. フォーメーション名から FormationType を特定 (Chelsea の場合は 3-4-3 を優先)
+    const isChelsea = teamData?.name?.toLowerCase().includes('chelsea');
+    const formationType = primaryFormation?.formationName
+      ? parseWhoScoredFormationName(primaryFormation.formationName)
+      : isChelsea
+        ? '3-4-3'
+        : '4-4-2';
 
-    // テンプレート位置スロットを top 昇順 (GK->FW), topが近い場合は left 昇順 (左->右) で整列
-    const rawPositionsList = [
-      ...(FORMATION_POSITIONS[formationType] || FORMATION_POSITIONS['4-4-2']),
-    ];
-    const sortedSlots = rawPositionsList.sort((a, b) => {
-      const topDiff = Math.abs(a.top - b.top);
-      if (topDiff > 5) {
-        return b.top - a.top; // top は 90(GK) -> 25(FW) なので降順が GK->FW
-      }
-      return a.left - b.left; // 横方向は左(10) -> 右(90)
-    });
+    // FORMATION_POSITIONS はすでに GK(0) -> DF -> MF -> FW の順序で定義されている
+    const templatePositions =
+      FORMATION_POSITIONS[formationType] ||
+      FORMATION_POSITIONS['3-4-3'] ||
+      FORMATION_POSITIONS['4-4-2'];
 
-    // ピッチ選手の配置設定
+    // ピッチ選手の配置設定 (11ポジションに順次割り当て)
     pitchPlayers.forEach((p, i) => {
-      const posTemplate = sortedSlots[i] || sortedSlots[0];
+      const posTemplate = templatePositions[i] || templatePositions[0];
       const actualPos =
         orientation === 'vertical'
           ? getFormationActualPosVertical(posTemplate, team, 'half')
@@ -224,7 +186,9 @@ export function generateInitialMapping(
 
       initialMapping[p.playerId] = {
         playerId: p.playerId,
+        name: p.name,
         shirtNo: getShirtNo(p),
+        position: p.position || '',
         x: actualPos.x,
         y: actualPos.y,
         team,
@@ -232,12 +196,15 @@ export function generateInitialMapping(
       };
     });
 
-    // ベンチ選手の配置設定
-    benchPlayers.forEach((p, i) => {
+    // 3. ベンチ選手をポジション順 (GK -> DF -> MF -> FW) にソートして配置
+    const sortedBench = sortPlayersBy2DPositionGroup(benchPlayers);
+    sortedBench.forEach((p, i) => {
       const benchPos = getBenchPos(i);
       initialMapping[p.playerId] = {
         playerId: p.playerId,
+        name: p.name,
         shirtNo: getShirtNo(p),
+        position: p.position || '',
         x: benchPos.x,
         y: benchPos.y,
         team,

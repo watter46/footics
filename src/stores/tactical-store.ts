@@ -43,7 +43,7 @@ export const useTacticalStore = create<TacticalState>((set) => ({
   benchTeam: 'home',
   savedSettings: {},
   ballPos: { x: 50, y: 50 },
-  homeColor: '#3b82f6',
+  homeColor: '#034694',
   awayColor: '#ef4444',
   activeId: null,
 

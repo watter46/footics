@@ -1,5 +1,6 @@
 import type {
   AnimationOrientation,
+  MarkerOptions,
   TacticalScene,
 } from '@/stores/tactical-animation-store';
 import type { InterpolatedFrameState } from '../interpolation';
@@ -291,13 +292,8 @@ export interface PlayerMetadata {
   playerId: string;
   name: string;
   shirtNo: string;
-  options: {
-    insideContent: 'number' | 'none' | 'photo';
-    photoUrl?: string;
-    bottomLabel: 'name' | 'number' | 'none';
-    color: string;
-    sizeScale?: number;
-  };
+  team: 'home' | 'away';
+  options: MarkerOptions;
 }
 
 /**
@@ -314,6 +310,7 @@ export function extractPlayerMetadataMap(
           playerId: p.playerId,
           name: p.name,
           shirtNo: p.shirtNo,
+          team: p.team,
           options: { ...p.options },
         });
       }
@@ -333,6 +330,7 @@ export function renderPitchFrame(
   width: number,
   height: number,
   photos?: Record<string, ImageBitmap>,
+  teamVisibility?: 'both' | 'home' | 'away',
 ) {
   // 1. 事前キャッシュされたピッチ背景をゼロコピー転送 (超高速 GPU blit)
   ctx.drawImage(bgCanvas, 0, 0, width, height);
@@ -346,6 +344,13 @@ export function renderPitchFrame(
 
     const meta = playerMetadataMap.get(playerId);
     if (!meta) return;
+    if (
+      teamVisibility &&
+      teamVisibility !== 'both' &&
+      meta.team !== teamVisibility
+    ) {
+      return;
+    }
 
     const sizeScale = meta.options.sizeScale ?? 1.0;
     const playerRadius = baseDim * 0.032 * sizeScale;
@@ -361,9 +366,17 @@ export function renderPitchFrame(
     ctx.arc(pxX, pxY, playerRadius, 0, Math.PI * 2);
     ctx.fillStyle = meta.options.color;
     ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = Math.max(1.5, playerRadius * 0.12);
-    ctx.stroke();
+
+    const hasStroke =
+      meta.options.strokeWidth !== 0 && meta.options.strokeColor !== 'none';
+    if (hasStroke) {
+      ctx.strokeStyle = meta.options.strokeColor || '#ffffff';
+      ctx.lineWidth = Math.max(
+        1,
+        (meta.options.strokeWidth ?? 2) * (playerRadius * 0.06),
+      );
+      ctx.stroke();
+    }
 
     // 内部コンテンツ (写真 または 背番号)
     const photoBitmap = photos?.[playerId];
@@ -383,7 +396,8 @@ export function renderPitchFrame(
       );
       ctx.restore();
     } else if (meta.options.insideContent === 'number' && meta.shirtNo) {
-      const fontSize = Math.round(playerRadius * 1.15);
+      const numberScale = meta.options.numberSizeScale ?? 1.0;
+      const fontSize = Math.round(playerRadius * 1.15 * numberScale);
       ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -406,7 +420,11 @@ export function renderPitchFrame(
             : '';
 
       if (labelText) {
-        const labelFontSize = Math.max(11, Math.round(playerRadius * 0.8));
+        const labelScale = meta.options.labelSizeScale ?? 1.0;
+        const labelFontSize = Math.max(
+          8,
+          Math.round(playerRadius * 0.8 * labelScale),
+        );
         ctx.font = `bold ${labelFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -435,73 +453,100 @@ export function renderPitchFrame(
     ctx.restore();
   });
 
-  // 3. ボールマーカーの描画 (リアルな五角形サッカーボール)
+  // 3. ボールマーカーの描画 (リアルなサッカーボール)
   if (frameState.ballPos) {
     const ballPxX = (frameState.ballPos.x / 100) * width;
     const ballPxY = (frameState.ballPos.y / 100) * height;
 
-    ctx.save();
-    // ボール白ベース
-    ctx.beginPath();
-    ctx.arc(ballPxX, ballPxY, ballRadius, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = Math.max(1.2, ballRadius * 0.08);
-    ctx.stroke();
-
-    const centerR = ballRadius * 0.42;
-
-    // 外周黒パッチ
-    ctx.fillStyle = '#0f172a';
-    for (let i = 0; i < 5; i++) {
-      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-      const nextAngle = -Math.PI / 2 + ((i + 1) * 2 * Math.PI) / 5;
-      const midAngle = (angle + nextAngle) / 2;
-      const patchW = (2 * Math.PI) / 10;
-      const p1x = ballPxX + Math.cos(midAngle - patchW * 0.45) * ballRadius;
-      const p1y = ballPxY + Math.sin(midAngle - patchW * 0.45) * ballRadius;
-      const p2x = ballPxX + Math.cos(midAngle + patchW * 0.45) * ballRadius;
-      const p2y = ballPxY + Math.sin(midAngle + patchW * 0.45) * ballRadius;
-      const innerX = ballPxX + Math.cos(midAngle) * (ballRadius * 0.72);
-      const innerY = ballPxY + Math.sin(midAngle) * (ballRadius * 0.72);
-
+    const ballBitmap = photos?.ball || photos?.['ball'];
+    if (ballBitmap) {
+      ctx.drawImage(
+        ballBitmap,
+        ballPxX - ballRadius,
+        ballPxY - ballRadius,
+        ballRadius * 2,
+        ballRadius * 2,
+      );
+    } else {
+      ctx.save();
+      // ボール白ベース
       ctx.beginPath();
-      ctx.moveTo(p1x, p1y);
-      ctx.lineTo(p2x, p2y);
-      ctx.lineTo(innerX, innerY);
+      ctx.arc(ballPxX, ballPxY, ballRadius, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = Math.max(1.2, ballRadius * 0.08);
+      ctx.stroke();
+
+      const centerR = ballRadius * 0.42;
+
+      // 外周黒パッチ
+      ctx.fillStyle = '#0f172a';
+      for (let i = 0; i < 5; i++) {
+        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+        const nextAngle = -Math.PI / 2 + ((i + 1) * 2 * Math.PI) / 5;
+        const midAngle = (angle + nextAngle) / 2;
+        const patchW = (2 * Math.PI) / 10;
+        const p1x = ballPxX + Math.cos(midAngle - patchW * 0.45) * ballRadius;
+        const p1y = ballPxY + Math.sin(midAngle - patchW * 0.45) * ballRadius;
+        const p2x = ballPxX + Math.cos(midAngle + patchW * 0.45) * ballRadius;
+        const p2y = ballPxY + Math.sin(midAngle + patchW * 0.45) * ballRadius;
+        const innerX = ballPxX + Math.cos(midAngle) * (ballRadius * 0.72);
+        const innerY = ballPxY + Math.sin(midAngle) * (ballRadius * 0.72);
+
+        ctx.beginPath();
+        ctx.moveTo(p1x, p1y);
+        ctx.lineTo(p2x, p2y);
+        ctx.lineTo(innerX, innerY);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // 放射ライン
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = Math.max(1, ballRadius * 0.07);
+      for (let i = 0; i < 5; i++) {
+        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+        const cx = ballPxX + Math.cos(angle) * centerR;
+        const cy = ballPxY + Math.sin(angle) * centerR;
+        const ox = ballPxX + Math.cos(angle) * ballRadius;
+        const oy = ballPxY + Math.sin(angle) * ballRadius;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(ox, oy);
+        ctx.stroke();
+      }
+
+      // 中央黒五角形
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+        const cx = ballPxX + Math.cos(angle) * centerR;
+        const cy = ballPxY + Math.sin(angle) * centerR;
+        if (i === 0) ctx.moveTo(cx, cy);
+        else ctx.lineTo(cx, cy);
+      }
       ctx.closePath();
       ctx.fill();
-    }
 
-    // 放射ライン
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = Math.max(1, ballRadius * 0.07);
-    for (let i = 0; i < 5; i++) {
-      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-      const cx = ballPxX + Math.cos(angle) * centerR;
-      const cy = ballPxY + Math.sin(angle) * centerR;
-      const ox = ballPxX + Math.cos(angle) * ballRadius;
-      const oy = ballPxY + Math.sin(angle) * ballRadius;
-
+      // 光沢ハイライト
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(ox, oy);
-      ctx.stroke();
-    }
+      ctx.ellipse(
+        ballPxX - ballRadius * 0.25,
+        ballPxY - ballRadius * 0.35,
+        ballRadius * 0.4,
+        ballRadius * 0.25,
+        -Math.PI / 6,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.fill();
+      ctx.restore();
 
-    // 中央黒五角形
-    ctx.beginPath();
-    for (let i = 0; i < 5; i++) {
-      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-      const cx = ballPxX + Math.cos(angle) * centerR;
-      const cy = ballPxY + Math.sin(angle) * centerR;
-      if (i === 0) ctx.moveTo(cx, cy);
-      else ctx.lineTo(cx, cy);
+      ctx.restore();
     }
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.restore();
   }
 }

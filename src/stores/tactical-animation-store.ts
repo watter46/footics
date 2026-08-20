@@ -21,12 +21,17 @@ export interface MarkerOptions {
   bottomLabel: 'name' | 'number' | 'none';
   color: string;
   sizeScale?: number; // 0.6 〜 1.8 (デフォルト: 1.0)
+  strokeColor?: string; // 枠線の色 (例: '#ffffff', '#000000', etc., デフォルト: '#ffffff')
+  strokeWidth?: number; // 枠線の太さ (0: なし, 1: 細, 2: 標準, 3.5: 太, デフォルト: 2)
+  numberSizeScale?: number; // 内部背番号のサイズ倍率 (0.6 〜 1.8, デフォルト: 1.0)
+  labelSizeScale?: number; // 下部ラベルのサイズ倍率 (0.6 〜 1.8, デフォルト: 1.0)
 }
 
 export interface AnimationPlayerState {
   playerId: string;
   name: string;
   shirtNo: string;
+  position?: string;
   x: number;
   y: number;
   team: 'home' | 'away';
@@ -57,12 +62,14 @@ interface TacticalAnimationState {
   selectedPlayerIds: string[];
   benchTeam: 'home' | 'away';
   isBenchOpen: boolean;
+  teamVisibility: 'both' | 'home' | 'away';
   defaultEasing: EasingType;
   defaultHomeOptions: MarkerOptions;
   defaultAwayOptions: MarkerOptions;
 
   // Actions
   setOrientation: (orientation: AnimationOrientation) => void;
+  setTeamVisibility: (visibility: 'both' | 'home' | 'away') => void;
   setSelectedPlayerId: (id: string | null) => void;
   setSelectedPlayerIds: (ids: string[]) => void;
   toggleSelectPlayerId: (id: string, multiSelect?: boolean) => void;
@@ -151,13 +158,36 @@ interface TacticalAnimationState {
     isFlipped?: boolean,
     boardOrientation?: 'vertical' | 'horizontal',
   ) => void;
+  lastImportedMatch?: any;
   applyPlayerMasters: (masters: Map<number, PlayerMaster>) => void;
   syncPlayerMasters: () => Promise<void>;
   resetScenes: () => void;
 }
 
-const DEFAULT_HOME_COLOR = '#3b82f6';
+const DEFAULT_HOME_COLOR = '#034694'; // Chelsea Royal Blue
 const DEFAULT_AWAY_COLOR = '#ef4444';
+
+const INITIAL_HOME_OPTIONS: MarkerOptions = {
+  insideContent: 'number',
+  bottomLabel: 'name',
+  color: DEFAULT_HOME_COLOR,
+  sizeScale: 1.0,
+  strokeColor: 'none',
+  strokeWidth: 0,
+  numberSizeScale: 1.0,
+  labelSizeScale: 1.0,
+};
+
+const INITIAL_AWAY_OPTIONS: MarkerOptions = {
+  insideContent: 'number',
+  bottomLabel: 'name',
+  color: DEFAULT_AWAY_COLOR,
+  sizeScale: 1.0,
+  strokeColor: 'none',
+  strokeWidth: 0,
+  numberSizeScale: 1.0,
+  labelSizeScale: 1.0,
+};
 
 const createDefaultScene = (
   easing: EasingType = 'easeInOut',
@@ -182,19 +212,10 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
     selectedPlayerIds: [],
     benchTeam: 'home',
     isBenchOpen: false,
+    teamVisibility: 'both',
     defaultEasing: 'easeInOut',
-    defaultHomeOptions: {
-      insideContent: 'number',
-      bottomLabel: 'name',
-      color: DEFAULT_HOME_COLOR,
-      sizeScale: 1.0,
-    },
-    defaultAwayOptions: {
-      insideContent: 'number',
-      bottomLabel: 'name',
-      color: DEFAULT_AWAY_COLOR,
-      sizeScale: 1.0,
-    },
+    defaultHomeOptions: { ...INITIAL_HOME_OPTIONS },
+    defaultAwayOptions: { ...INITIAL_AWAY_OPTIONS },
 
     setOrientation: (newOrientation) =>
       set((state) => {
@@ -251,6 +272,7 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
           scenes: newScenes,
         };
       }),
+    setTeamVisibility: (visibility) => set({ teamVisibility: visibility }),
     setSelectedPlayerId: (id) =>
       set({
         selectedPlayerId: id,
@@ -373,25 +395,24 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
 
     updatePlayerOptions: (playerId, options, applyToAllScenes = true) =>
       set((state) => {
-        const newScenes = [...state.scenes];
-        if (applyToAllScenes) {
-          newScenes.forEach((scene) => {
-            if (scene.players[playerId]) {
-              scene.players[playerId].options = {
-                ...scene.players[playerId].options,
-                ...options,
-              };
-            }
-          });
-        } else {
-          const scene = newScenes[state.activeSceneIndex];
-          if (scene?.players[playerId]) {
-            scene.players[playerId].options = {
-              ...scene.players[playerId].options,
-              ...options,
-            };
-          }
-        }
+        const newScenes = state.scenes.map((scene, idx) => {
+          if (!applyToAllScenes && idx !== state.activeSceneIndex) return scene;
+          const p = scene.players[playerId];
+          if (!p) return scene;
+          return {
+            ...scene,
+            players: {
+              ...scene.players,
+              [playerId]: {
+                ...p,
+                options: {
+                  ...p.options,
+                  ...options,
+                },
+              },
+            },
+          };
+        });
         return { scenes: newScenes };
       }),
 
@@ -401,32 +422,26 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
       applyToAllScenes = true,
     ) =>
       set((state) => {
-        const newScenes = [...state.scenes];
         const idsSet = new Set(playerIds);
-        if (applyToAllScenes) {
-          newScenes.forEach((scene) => {
-            idsSet.forEach((id) => {
-              if (scene.players[id]) {
-                scene.players[id].options = {
-                  ...scene.players[id].options,
+        const newScenes = state.scenes.map((scene, idx) => {
+          if (!applyToAllScenes && idx !== state.activeSceneIndex) return scene;
+          let changed = false;
+          const updatedPlayers = { ...scene.players };
+          idsSet.forEach((id) => {
+            const p = updatedPlayers[id];
+            if (p) {
+              changed = true;
+              updatedPlayers[id] = {
+                ...p,
+                options: {
+                  ...p.options,
                   ...options,
-                };
-              }
-            });
+                },
+              };
+            }
           });
-        } else {
-          const scene = newScenes[state.activeSceneIndex];
-          if (scene) {
-            idsSet.forEach((id) => {
-              if (scene.players[id]) {
-                scene.players[id].options = {
-                  ...scene.players[id].options,
-                  ...options,
-                };
-              }
-            });
-          }
-        }
+          return changed ? { ...scene, players: updatedPlayers } : scene;
+        });
         return { scenes: newScenes };
       }),
 
@@ -458,27 +473,25 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
 
     updatePlayerTrajectory: (playerId, trajectory, applyToAllScenes = false) =>
       set((state) => {
-        const newScenes = [...state.scenes];
-        if (applyToAllScenes) {
-          newScenes.forEach((scene) => {
-            if (scene.players[playerId]) {
-              const prev = scene.players[playerId].trajectory || {
-                type: 'straight',
-                curveOffset: 25,
-              };
-              scene.players[playerId].trajectory = { ...prev, ...trajectory };
-            }
-          });
-        } else {
-          const scene = newScenes[state.activeSceneIndex];
-          if (scene?.players[playerId]) {
-            const prev = scene.players[playerId].trajectory || {
-              type: 'straight',
-              curveOffset: 25,
-            };
-            scene.players[playerId].trajectory = { ...prev, ...trajectory };
-          }
-        }
+        const newScenes = state.scenes.map((scene, idx) => {
+          if (!applyToAllScenes && idx !== state.activeSceneIndex) return scene;
+          const p = scene.players[playerId];
+          if (!p) return scene;
+          const prev = p.trajectory || {
+            type: 'straight',
+            curveOffset: 25,
+          };
+          return {
+            ...scene,
+            players: {
+              ...scene.players,
+              [playerId]: {
+                ...p,
+                trajectory: { ...prev, ...trajectory },
+              },
+            },
+          };
+        });
         return { scenes: newScenes };
       }),
 
@@ -492,16 +505,21 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
           ? { ...state.defaultAwayOptions, ...options }
           : state.defaultAwayOptions;
 
-        const newScenes = [...state.scenes];
-        if (applyToAllExisting) {
-          newScenes.forEach((scene) => {
-            Object.values(scene.players).forEach((p) => {
-              if (p.team === team) {
-                p.options = { ...p.options, ...options };
-              }
-            });
+        const newScenes = state.scenes.map((scene) => {
+          if (!applyToAllExisting) return scene;
+          let changed = false;
+          const updatedPlayers = { ...scene.players };
+          Object.values(updatedPlayers).forEach((p) => {
+            if (p.team === team) {
+              changed = true;
+              updatedPlayers[p.playerId] = {
+                ...p,
+                options: { ...p.options, ...options },
+              };
+            }
           });
-        }
+          return changed ? { ...scene, players: updatedPlayers } : scene;
+        });
 
         return {
           defaultHomeOptions: newDefaultHome,
@@ -640,43 +658,89 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
         return { scenes: newScenes };
       }),
 
-    resetScenes: () =>
+    resetScenes: () => {
+      const match = get().lastImportedMatch;
+      if (match) {
+        set({
+          defaultHomeOptions: { ...INITIAL_HOME_OPTIONS },
+          defaultAwayOptions: { ...INITIAL_AWAY_OPTIONS },
+          teamVisibility: 'both',
+        });
+        get().importFromMatch(match);
+        return;
+      }
+
+      const currentScene0 = get().scenes[0];
+      if (currentScene0 && Object.keys(currentScene0.players).length > 0) {
+        set((state) => ({
+          scenes: [
+            {
+              id: crypto.randomUUID(),
+              durationMs: 1500,
+              pauseMs: 500,
+              easing: state.defaultEasing,
+              players: JSON.parse(JSON.stringify(currentScene0.players)),
+              ballPos: { x: 50, y: 50 },
+            },
+          ],
+          activeSceneIndex: 0,
+          selectedPlayerId: null,
+          selectedPlayerIds: [],
+          teamVisibility: 'both',
+          defaultHomeOptions: { ...INITIAL_HOME_OPTIONS },
+          defaultAwayOptions: { ...INITIAL_AWAY_OPTIONS },
+        }));
+        return;
+      }
+
       set((state) => ({
         scenes: [createDefaultScene(state.defaultEasing)],
         activeSceneIndex: 0,
         selectedPlayerId: null,
         selectedPlayerIds: [],
-      })),
+        teamVisibility: 'both',
+        defaultHomeOptions: { ...INITIAL_HOME_OPTIONS },
+        defaultAwayOptions: { ...INITIAL_AWAY_OPTIONS },
+      }));
+    },
 
     importFromMatch: (match) => {
       const mapping = generateInitialMapping(match, get().orientation);
 
       const newPlayers: Record<string, AnimationPlayerState> = {};
 
-      const getPlayerName = (id: number, team: 'home' | 'away'): string => {
-        if (match.playerIdNameDictionary?.[id]) {
-          return match.playerIdNameDictionary[id];
-        }
+      const getPlayerInfo = (
+        id: number,
+        team: 'home' | 'away',
+      ): { name: string; position: string } => {
+        const dictName = match.playerIdNameDictionary?.[id];
         const t = match.teams[team];
         if (t?.players) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const p = t.players.find((pl: any) => pl.playerId === id);
-          if (p) return p.name;
+          if (p) {
+            return {
+              name: dictName || p.name || `Player ${id}`,
+              position: p.position || '',
+            };
+          }
         }
-        return `Player ${id}`;
+        return { name: dictName || `Player ${id}`, position: '' };
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       Object.values(mapping).forEach((p: any) => {
         const pIdStr = p.playerId.toString();
+        const info = getPlayerInfo(Number(p.playerId), p.team);
         const opts =
           p.team === 'home'
             ? get().defaultHomeOptions
             : get().defaultAwayOptions;
         newPlayers[pIdStr] = {
           playerId: pIdStr,
-          name: getPlayerName(p.playerId, p.team),
+          name: info.name,
           shirtNo: p.shirtNo ? String(p.shirtNo) : '',
+          position: p.position || info.position,
           x: p.x,
           y: p.y,
           team: p.team,
@@ -700,6 +764,7 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
         activeSceneIndex: 0,
         selectedPlayerId: null,
         selectedPlayerIds: [],
+        lastImportedMatch: match,
       });
 
       // IndexedDB から選手マスター (顔写真等) を非同期取得して自動適用
@@ -738,21 +803,28 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
 
       const newPlayers: Record<string, AnimationPlayerState> = {};
 
-      const getPlayerName = (id: number, team: 'home' | 'away'): string => {
-        if (match.playerIdNameDictionary?.[id]) {
-          return match.playerIdNameDictionary[id];
-        }
+      const getPlayerInfo = (
+        id: number,
+        team: 'home' | 'away',
+      ): { name: string; position: string } => {
+        const dictName = match.playerIdNameDictionary?.[id];
         const t = match.teams[team];
         if (t?.players) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const p = t.players.find((pl: any) => pl.playerId === id);
-          if (p) return p.name;
+          if (p) {
+            return {
+              name: dictName || p.name || `Player ${id}`,
+              position: p.position || '',
+            };
+          }
         }
-        return `Player ${id}`;
+        return { name: dictName || `Player ${id}`, position: '' };
       };
 
       Object.values(savedSettings).forEach((p) => {
         const pIdStr = p.playerId.toString();
+        const info = getPlayerInfo(Number(p.playerId), p.team);
         const opts =
           p.team === 'home'
             ? get().defaultHomeOptions
@@ -773,8 +845,9 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
 
         newPlayers[pIdStr] = {
           playerId: pIdStr,
-          name: getPlayerName(p.playerId, p.team),
+          name: info.name,
           shirtNo: p.shirtNo ? String(p.shirtNo) : '',
+          position: (p as any).position || info.position,
           x: posX,
           y: posY,
           team: p.team,

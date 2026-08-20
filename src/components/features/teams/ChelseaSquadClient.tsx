@@ -21,8 +21,8 @@ import { AddPlayerDialog } from '@/components/features/tactical-board/add-player
 import { ChelseaTacticalBoardModal } from '@/components/features/tactical-board/chelsea-tactical-board-modal';
 import { CopySeasonPlayersDialog } from '@/components/features/teams/CopySeasonPlayersDialog';
 import {
-  EditPlayerDialog,
   type EditablePlayerData,
+  EditPlayerDialog,
 } from '@/components/features/teams/EditPlayerDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,7 +64,9 @@ export const ChelseaSquadClient: React.FC = () => {
   const [editingPlayer, setEditingPlayer] = useState<EditablePlayerData | null>(
     null,
   );
-  const [idFilter, setIdFilter] = useState<'all' | 'official' | 'manual'>('all');
+  const [idFilter, setIdFilter] = useState<'all' | 'official' | 'manual'>(
+    'all',
+  );
 
   // 1. 全試合データから利用可能なシーズン一覧を取得
   const matchesQuery = useQuery({
@@ -461,7 +463,7 @@ export const ChelseaSquadClient: React.FC = () => {
                 ? 'このシーズンにはID未登録（手動）の選手はいません。すべての選手がWhoScored公式IDと紐付いています。'
                 : idFilter === 'official'
                   ? 'WhoScored登録済みの選手が見つかりませんでした。'
-                  : 'Sync from presets or add new players to this season\'s squad.'}
+                  : "Sync from presets or add new players to this season's squad."}
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">

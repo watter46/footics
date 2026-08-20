@@ -23,7 +23,7 @@ export function getPhotoCacheSize(): number {
 }
 
 /**
- * 選手写真 (photoBlob / photoUrl) を ImageBitmap として事前ロード
+ * 選手写真 (photoBlob / photoUrl) および サッカーボール を ImageBitmap として事前ロード
  * - 写真を使用していない場合 (insideContent !== 'photo' など) は fetch 処理を完全にスキップ
  * - IndexedDB (players テーブル) に photoBlob が存在する場合は直接 createImageBitmap(blob) を生成 (0ms / 0 fetch)
  * - 外部URLの場合は一度取得した画像を Blob としてメモリにキャッシュし、2回目以降のフェッチを不要化

@@ -122,6 +122,7 @@ async function processExport(
       config.exportWidth,
       config.exportHeight,
       photos,
+      config.teamVisibility,
     );
 
     // ゼロコピー: OffscreenCanvas から直接 VideoFrame を生成してエンコード
