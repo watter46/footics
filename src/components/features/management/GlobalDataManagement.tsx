@@ -44,9 +44,11 @@ export function GlobalDataManagement() {
 
     try {
       const result = await importAllDataZip(file);
+      const photoInfo =
+        result.photoCount > 0 ? `, ${result.photoCount} photos` : '';
       toast.success('Restore complete!', {
         id: toastId,
-        description: `Successfully merged ${result.matchCount} matches and ${result.memoCount} items. Finalizing...`,
+        description: `Successfully restored ${result.matchCount} matches, ${result.playerCount} players${photoInfo}, and ${result.memoCount} memos. Finalizing...`,
         duration: 3500,
       });
 
