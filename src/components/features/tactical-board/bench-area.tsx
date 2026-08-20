@@ -5,13 +5,6 @@ import { ChevronDown, Layout, LayoutGrid, Users } from 'lucide-react';
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   FORMATION_LIST,
   type FormationMode,
   type FormationType,
@@ -24,6 +17,9 @@ interface BenchAreaProps {
   formationMode: FormationMode;
   onFormationModeChange: (mode: FormationMode) => void;
   onFormationChange?: (formation: FormationType) => void;
+  season?: string;
+  onSeasonChange?: (season: string) => void;
+  availableSeasons?: readonly string[];
   children?: React.ReactNode;
 }
 
@@ -38,6 +34,9 @@ export const BenchArea: React.FC<BenchAreaProps> = ({
   formationMode,
   onFormationModeChange,
   onFormationChange,
+  season,
+  onSeasonChange,
+  availableSeasons,
   children,
 }) => {
   const { setNodeRef } = useDroppable({
@@ -59,30 +58,56 @@ export const BenchArea: React.FC<BenchAreaProps> = ({
             </span>
           </div>
 
-          {/* グリッド整列ボタン */}
-          <button
-            type="button"
-            onClick={onAlignGrid}
-            title="Align Grid"
-            className="p-1 px-2 hover:bg-slate-700/50 rounded flex items-center gap-1.5 transition-none group border border-transparent hover:border-slate-600"
-          >
-            <LayoutGrid className="w-2.5 h-2.5 text-slate-400 group-hover:text-blue-400" />
-            <span className="text-[9px] font-bold text-slate-500 group-hover:text-slate-300 uppercase leading-none">
-              Align Grid
-            </span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            {/* グリッド整列ボタン */}
+            <button
+              type="button"
+              onClick={onAlignGrid}
+              title="Align Grid"
+              className="p-1 px-2 hover:bg-slate-700/50 rounded flex items-center gap-1.5 transition-none group border border-transparent hover:border-slate-600"
+            >
+              <LayoutGrid className="w-2.5 h-2.5 text-slate-400 group-hover:text-blue-400" />
+              <span className="text-[9px] font-bold text-slate-500 group-hover:text-slate-300 uppercase leading-none">
+                Align
+              </span>
+            </button>
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onTeamToggle}
-          className="flex items-center justify-between w-full px-2 py-1.5 bg-slate-700/30 hover:bg-slate-700/50 rounded border border-slate-600 transition-none group text-left"
-        >
-          <span className="text-[9px] font-bold text-slate-100 truncate pr-2">
-            {teamName}
-          </span>
-          <ChevronDown className="w-2.5 h-2.5 text-slate-400 shrink-0" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onTeamToggle}
+            className="flex-1 flex items-center justify-between px-2 py-1.5 bg-slate-700/30 hover:bg-slate-700/50 rounded border border-slate-600 transition-none group text-left"
+          >
+            <span className="text-[9px] font-bold text-slate-100 truncate pr-1">
+              {teamName}
+            </span>
+            <ChevronDown className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+          </button>
+
+          {season && onSeasonChange && (
+            <div className="relative shrink-0">
+              <select
+                value={season}
+                onChange={(e) => onSeasonChange(e.target.value)}
+                className="h-[27px] bg-slate-800/80 border border-slate-600 hover:border-slate-500 rounded px-2 text-[9px] font-bold text-blue-400 appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 pr-5 transition-colors"
+                title="シーズン切り替え"
+              >
+                {(availableSeasons || ['26-27', '25-26', '24-25']).map((s) => (
+                  <option
+                    key={s}
+                    value={s}
+                    className="bg-slate-900 text-slate-200"
+                  >
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-2.5 h-2.5 text-slate-400 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          )}
+        </div>
 
         {/* フォーメーション選択 & モード切替 */}
         <div className="flex flex-col gap-2 mt-1">
@@ -115,20 +140,32 @@ export const BenchArea: React.FC<BenchAreaProps> = ({
             </div>
           </div>
 
-          <Select
-            onValueChange={(val) => onFormationChange?.(val as FormationType)}
-          >
-            <SelectTrigger className="w-full h-7 bg-slate-900/50 border-slate-700 hover:bg-slate-800 text-[10px] font-bold text-slate-200">
-              <SelectValue placeholder="Chose Formation..." />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+          <div className="relative w-full">
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                const val = e.target.value as FormationType;
+                if (val && onFormationChange) {
+                  onFormationChange(val);
+                }
+              }}
+              className="w-full h-7 bg-slate-900/80 border border-slate-700 hover:border-slate-600 rounded-md px-2.5 text-[10px] font-bold text-slate-200 appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 pr-7 transition-colors"
+            >
+              <option value="" disabled className="bg-slate-900 text-slate-400">
+                Choose Formation...
+              </option>
               {FORMATION_LIST.map((f) => (
-                <SelectItem key={f} value={f} className="text-[10px] py-1">
+                <option
+                  key={f}
+                  value={f}
+                  className="bg-slate-900 text-slate-200"
+                >
                   {f}
-                </SelectItem>
+                </option>
               ))}
-            </SelectContent>
-          </Select>
+            </select>
+            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
         </div>
       </div>
 

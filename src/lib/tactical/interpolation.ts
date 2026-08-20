@@ -130,11 +130,12 @@ export function getInterpolatedFrameState(
 
     if (startP && endP) {
       if (startP.area === 'pitch' && endP.area === 'pitch') {
+        const trajectory = startP.trajectory || endP.trajectory;
         const pos = calculateBezierPoint(
           { x: startP.x, y: startP.y },
           { x: endP.x, y: endP.y },
           ease,
-          endP.trajectory,
+          trajectory,
         );
         players[playerId] = {
           playerId,

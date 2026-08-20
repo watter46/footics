@@ -3,6 +3,7 @@ import {
   type FormationMode,
   type FormationType,
   getFormationActualPos,
+  getFormationActualPosVertical,
 } from '@/lib/data/formations';
 import { FORMATION_POSITIONS } from '@/lib/data/formations-data';
 import { generateInitialMapping, getBenchPos } from '@/lib/tactical';
@@ -11,6 +12,7 @@ import type { Match } from '@/types';
 
 export function useTacticalFormation(metadata: Match | null) {
   const savedSettings = useTacticalStore((s) => s.savedSettings);
+  const orientation = useTacticalStore((s) => s.orientation);
   const benchTeam = useTacticalStore((s) => s.benchTeam);
   const setSavedSettings = useTacticalStore((s) => s.setSavedSettings);
   const setBallPos = useTacticalStore((s) => s.setBallPos);
@@ -30,10 +32,10 @@ export function useTacticalFormation(metadata: Match | null) {
   }, [savedSettings, benchTeam, setSavedSettings]);
 
   const handleReset = useCallback(() => {
-    const initialMapping = generateInitialMapping(metadata);
+    const initialMapping = generateInitialMapping(metadata, orientation);
     setSavedSettings(initialMapping);
     setBallPos({ x: 50, y: 50 });
-  }, [metadata, setSavedSettings, setBallPos]);
+  }, [metadata, orientation, setSavedSettings, setBallPos]);
 
   const handleApplyFormation = useCallback(
     (
@@ -70,7 +72,10 @@ export function useTacticalFormation(metadata: Match | null) {
       // ピッチ選手への配置適用
       pitchSelection.forEach((p, i) => {
         const pos = positions[i];
-        const actual = getFormationActualPos(pos, team, formationMode);
+        const actual =
+          orientation === 'vertical'
+            ? getFormationActualPosVertical(pos, team, formationMode)
+            : getFormationActualPos(pos, team, formationMode);
         next[p.playerId] = { ...p, area: 'pitch', x: actual.x, y: actual.y };
       });
 
@@ -87,7 +92,7 @@ export function useTacticalFormation(metadata: Match | null) {
 
       setSavedSettings(next);
     },
-    [savedSettings, setSavedSettings],
+    [savedSettings, orientation, setSavedSettings],
   );
 
   return {

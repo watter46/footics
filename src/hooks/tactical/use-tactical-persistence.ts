@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 import { getTacticalSnapshot, putTacticalSnapshot } from '@/lib/db';
-import { generateInitialMapping, getShirtNo } from '@/lib/tactical';
+import {
+  generateInitialMapping,
+  getBenchPos,
+  getShirtNo,
+} from '@/lib/tactical';
 import { type PlayerState, useTacticalStore } from '@/stores/tactical-store';
 import type { Match } from '@/types';
 
@@ -12,6 +16,7 @@ export function useTacticalPersistence(
   const savedSettings = useTacticalStore((s) => s.savedSettings);
   const ballPos = useTacticalStore((s) => s.ballPos);
   const isFlipped = useTacticalStore((s) => s.isFlipped);
+  const orientation = useTacticalStore((s) => s.orientation);
   const setSavedSettings = useTacticalStore((s) => s.setSavedSettings);
   const setBallPos = useTacticalStore((s) => s.setBallPos);
   const setIsFlipped = useTacticalStore((s) => s.setIsFlipped);
@@ -21,7 +26,7 @@ export function useTacticalPersistence(
     if (isOpen && matchId) {
       getTacticalSnapshot(matchId).then((snapshot) => {
         const setupFallback = () => {
-          const initialMapping = generateInitialMapping(metadata);
+          const initialMapping = generateInitialMapping(metadata, orientation);
           if (Object.keys(initialMapping).length === 0) {
             console.log('[footics] Metadata players not ready, skipping setup');
             return;
@@ -58,6 +63,31 @@ export function useTacticalPersistence(
               area: p.area || (p.y > 100 ? 'bench' : 'pitch'),
             };
           });
+
+          // スナップショットにまだ含まれていない選手（手動追加・新加入など）をベンチに自動補完
+          const existingIds = new Set(tactic.players.map((p) => p.playerId));
+          const appendMissing = (team: 'home' | 'away') => {
+            const teamPlayers = metadata?.teams?.[team]?.players || [];
+            teamPlayers.forEach((pm: any) => {
+              if (!existingIds.has(pm.playerId)) {
+                const benchIndex = Object.values(mapping).filter(
+                  (p) => p.area === 'bench' && p.team === team,
+                ).length;
+                const pos = getBenchPos(benchIndex);
+                mapping[pm.playerId] = {
+                  playerId: pm.playerId,
+                  shirtNo: String(pm.shirtNo || 99),
+                  x: pos.x,
+                  y: pos.y,
+                  team,
+                  area: 'bench',
+                };
+              }
+            });
+          };
+          appendMissing('home');
+          appendMissing('away');
+
           setSavedSettings(mapping);
           setBallPos(tactic.assets.ball);
           setIsFlipped(snapshot.isInverted);

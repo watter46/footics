@@ -1,8 +1,17 @@
 'use client';
 
-import { ArrowUpToLine, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import {
+  ArrowUpToLine,
+  ChevronDown,
+  ChevronUp,
+  LayoutGrid,
+  Users,
+} from 'lucide-react';
 import type React from 'react';
+import { useState } from 'react';
+import { getLastName } from '@/lib/tactical/player-formatting';
 import { useTacticalAnimationStore } from '@/stores/tactical-animation-store';
+import { FormationSelectPanel } from './formation-select-panel';
 
 export const AnimationBench: React.FC = () => {
   const isBenchOpen = useTacticalAnimationStore((s) => s.isBenchOpen);
@@ -16,6 +25,14 @@ export const AnimationBench: React.FC = () => {
     (s) => s.setSelectedPlayerId,
   );
   const selectedPlayerId = useTacticalAnimationStore((s) => s.selectedPlayerId);
+  const selectedPlayerIds = useTacticalAnimationStore(
+    (s) => s.selectedPlayerIds,
+  );
+  const toggleSelectPlayerId = useTacticalAnimationStore(
+    (s) => s.toggleSelectPlayerId,
+  );
+
+  const [showFormationModal, setShowFormationModal] = useState(false);
 
   const activeScene = scenes[activeSceneIndex];
   const allPlayers = activeScene ? Object.values(activeScene.players) : [];
@@ -25,7 +42,6 @@ export const AnimationBench: React.FC = () => {
   const pitchPlayers = teamPlayers.filter((p) => p.area === 'pitch');
 
   const handlePutOnPitch = (playerId: string) => {
-    // ピッチの適切な位置（中央付近に少しランダムオフセット）に配置
     const offsetX = 40 + Math.random() * 20;
     const offsetY = 40 + Math.random() * 20;
     movePlayerArea(activeSceneIndex, playerId, 'pitch', {
@@ -33,13 +49,6 @@ export const AnimationBench: React.FC = () => {
       y: offsetY,
     });
     setSelectedPlayerId(playerId);
-  };
-
-  const _handleSendToBench = (playerId: string) => {
-    movePlayerArea(activeSceneIndex, playerId, 'bench');
-    if (selectedPlayerId === playerId) {
-      setSelectedPlayerId(null);
-    }
   };
 
   return (
@@ -92,14 +101,38 @@ export const AnimationBench: React.FC = () => {
           </div>
         </div>
 
-        <div className="text-xs text-slate-400">
-          ベンチ選手数:{' '}
-          <span className="font-semibold text-white">
-            {benchPlayers.length}
-          </span>{' '}
-          人
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowFormationModal(!showFormationModal)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors border ${
+              showFormationModal
+                ? 'bg-blue-600 border-blue-500 text-white'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>フォーメーション配置</span>
+          </button>
+
+          <div className="text-xs text-slate-400 hidden sm:block">
+            ベンチ:{' '}
+            <span className="font-semibold text-white">
+              {benchPlayers.length}
+            </span>{' '}
+            人
+          </div>
         </div>
       </div>
+
+      {/* フォーメーションポップアップ */}
+      {showFormationModal && (
+        <div className="p-3 bg-slate-950 border-b border-slate-800">
+          <div className="max-w-md mx-auto">
+            <FormationSelectPanel defaultTeam={benchTeam} />
+          </div>
+        </div>
+      )}
 
       {/* 開閉コンテンツ */}
       {isBenchOpen && (
@@ -111,11 +144,19 @@ export const AnimationBench: React.FC = () => {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
               {benchPlayers.map((player) => {
-                const isSelected = selectedPlayerId === player.playerId;
+                const isSelected =
+                  selectedPlayerIds.includes(player.playerId) ||
+                  selectedPlayerId === player.playerId;
                 return (
                   <div
                     key={player.playerId}
-                    onClick={() => setSelectedPlayerId(player.playerId)}
+                    onClick={(e) => {
+                      if (e.shiftKey) {
+                        toggleSelectPlayerId(player.playerId, true);
+                      } else {
+                        setSelectedPlayerId(player.playerId);
+                      }
+                    }}
                     className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-blue-950/60 border-blue-500 ring-1 ring-blue-500'
@@ -130,7 +171,7 @@ export const AnimationBench: React.FC = () => {
                         {player.shirtNo || '-'}
                       </div>
                       <div className="truncate text-xs font-medium text-slate-200">
-                        {player.name}
+                        {getLastName(player.name)}
                       </div>
                     </div>
 

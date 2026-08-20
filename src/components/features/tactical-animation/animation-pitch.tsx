@@ -64,16 +64,37 @@ export const AnimationPitch = forwardRef<
   const layerRef = useRef<Konva.Layer>(null);
   const [pitchImage, setPitchImage] = useState<HTMLImageElement | null>(null);
 
+  // 矩形範囲選択（ラバーバンド）用のステート
+  const [selectionBox, setSelectionBox] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
+
   const orientation = useTacticalAnimationStore((s) => s.orientation);
   const activeSceneIndex = useTacticalAnimationStore((s) => s.activeSceneIndex);
   const scenes = useTacticalAnimationStore((s) => s.scenes);
   const isPlaying = useTacticalAnimationStore((s) => s.isPlaying);
   const selectedPlayerId = useTacticalAnimationStore((s) => s.selectedPlayerId);
+  const selectedPlayerIds = useTacticalAnimationStore(
+    (s) => s.selectedPlayerIds,
+  );
   const setSelectedPlayerId = useTacticalAnimationStore(
     (s) => s.setSelectedPlayerId,
   );
+  const setSelectedPlayerIds = useTacticalAnimationStore(
+    (s) => s.setSelectedPlayerIds,
+  );
+  const toggleSelectPlayerId = useTacticalAnimationStore(
+    (s) => s.toggleSelectPlayerId,
+  );
+  const clearSelection = useTacticalAnimationStore((s) => s.clearSelection);
   const updatePlayerPosition = useTacticalAnimationStore(
     (s) => s.updatePlayerPosition,
+  );
+  const moveMultiplePlayersByDelta = useTacticalAnimationStore(
+    (s) => s.moveMultiplePlayersByDelta,
   );
   const updateBallPosition = useTacticalAnimationStore(
     (s) => s.updateBallPosition,
@@ -97,7 +118,6 @@ export const AnimationPitch = forwardRef<
     getStage: () => stageRef.current,
     getCanvas: () => {
       if (!stageRef.current) return null;
-      // Konvaの単一レイヤーから実際のCanvas要素を取得 (captureStream用)
       const container = stageRef.current.container();
       const canvas = container.querySelector('canvas');
       if (canvas) return canvas;
@@ -125,20 +145,118 @@ export const AnimationPitch = forwardRef<
     if (Math.abs(p0.x - p1.x) < 0.5 && Math.abs(p0.y - p1.y) < 0.5) return null;
 
     const pts: number[] = [];
-    const steps = 24; // 24分割で滑らかなカーブ
+    const steps = 24;
+    // 優先して currentScene の trajectory を参照
+    const trajectory = p0.trajectory || p1.trajectory;
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
       const pos = calculateBezierPoint(
         { x: p0.x, y: p0.y },
         { x: p1.x, y: p1.y },
         t,
-        p1.trajectory,
+        trajectory,
       );
       pts.push((pos.x / 100) * width, (pos.y / 100) * height);
     }
 
     return pts;
   }, [selectedPlayerId, isPlaying, scenes, activeSceneIndex, width, height]);
+
+  // 背景クリック・ドラッグ開始（範囲選択）
+  const handleStageMouseDown = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    e: any,
+  ) => {
+    if (isPlaying) return;
+    const isBackground =
+      e.target === e.target.getStage() ||
+      e.target.className === 'Image' ||
+      e.target.className === 'Rect';
+
+    if (isBackground) {
+      const stage = e.target.getStage();
+      const pos = stage?.getPointerPosition();
+      if (!pos) return;
+
+      const isShift = e.evt?.shiftKey;
+      if (!isShift) {
+        clearSelection();
+      }
+
+      setSelectionBox({
+        startX: pos.x,
+        startY: pos.y,
+        currentX: pos.x,
+        currentY: pos.y,
+      });
+    }
+  };
+
+  const handleStageMouseMove = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    e: any,
+  ) => {
+    if (!selectionBox || isPlaying) return;
+    const stage = e.target.getStage();
+    const pos = stage?.getPointerPosition();
+    if (!pos) return;
+
+    setSelectionBox((prev) =>
+      prev ? { ...prev, currentX: pos.x, currentY: pos.y } : null,
+    );
+  };
+
+  const handleStageMouseUp = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    e: any,
+  ) => {
+    if (!selectionBox || isPlaying) {
+      setSelectionBox(null);
+      return;
+    }
+
+    const { startX, startY, currentX, currentY } = selectionBox;
+    const dx = Math.abs(currentX - startX);
+    const dy = Math.abs(currentY - startY);
+
+    // 単なるクリック（5px未満）の場合は終了
+    if (dx < 5 && dy < 5) {
+      setSelectionBox(null);
+      return;
+    }
+
+    const minPxX = Math.min(startX, currentX);
+    const maxPxX = Math.max(startX, currentX);
+    const minPxY = Math.min(startY, currentY);
+    const maxPxY = Math.max(startY, currentY);
+
+    const minX = (minPxX / width) * 100;
+    const maxX = (maxPxX / width) * 100;
+    const minY = (minPxY / height) * 100;
+    const maxY = (maxPxY / height) * 100;
+
+    // 範囲内に含まれるピッチ選手マーカーを抽出
+    if (activeScene) {
+      const selected = Object.values(activeScene.players)
+        .filter((p) => {
+          if (p.area !== 'pitch') return false;
+          return p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY;
+        })
+        .map((p) => p.playerId);
+
+      const isShift = e.evt?.shiftKey;
+      if (isShift) {
+        const combined = Array.from(
+          new Set([...selectedPlayerIds, ...selected]),
+        );
+        setSelectedPlayerIds(combined);
+      } else {
+        setSelectedPlayerIds(selected);
+      }
+    }
+
+    setSelectionBox(null);
+  };
 
   if (!activeScene) return null;
 
@@ -148,25 +266,12 @@ export const AnimationPitch = forwardRef<
         width={width}
         height={height}
         ref={stageRef}
-        onMouseDown={(e) => {
-          // 背景クリックで選択解除
-          if (
-            e.target === e.target.getStage() ||
-            e.target.className === 'Image' ||
-            e.target.className === 'Rect'
-          ) {
-            setSelectedPlayerId(null);
-          }
-        }}
-        onTouchStart={(e) => {
-          if (
-            e.target === e.target.getStage() ||
-            e.target.className === 'Image' ||
-            e.target.className === 'Rect'
-          ) {
-            setSelectedPlayerId(null);
-          }
-        }}
+        onMouseDown={handleStageMouseDown}
+        onMouseMove={handleStageMouseMove}
+        onMouseUp={handleStageMouseUp}
+        onTouchStart={handleStageMouseDown}
+        onTouchMove={handleStageMouseMove}
+        onTouchEnd={handleStageMouseUp}
       >
         {/* 単一Layer構成で高パフォーマンス & ピッチ境界内へのクリッピング */}
         <Layer
@@ -178,7 +283,7 @@ export const AnimationPitch = forwardRef<
             height,
           }}
         >
-          {/* 100% 完全不透明なソリッド黒背景（動画エンコード時の透過色化け防止） */}
+          {/* 100% 完全不透明なソリッド黒背景 */}
           <Rect
             x={0}
             y={0}
@@ -215,6 +320,10 @@ export const AnimationPitch = forwardRef<
           {Object.values(activeScene.players).map((p) => {
             if (p.area === 'bench') return null;
 
+            const isSelected =
+              selectedPlayerIds.includes(p.playerId) ||
+              selectedPlayerId === p.playerId;
+
             return (
               <AnimationMarker
                 key={p.playerId}
@@ -227,11 +336,36 @@ export const AnimationPitch = forwardRef<
                 options={p.options}
                 stageWidth={width}
                 stageHeight={height}
-                isSelected={selectedPlayerId === p.playerId}
+                isSelected={isSelected}
                 draggable={!isPlaying}
-                onClick={(id) => setSelectedPlayerId(id)}
+                onClick={(id, e: any) => {
+                  if (e?.evt?.shiftKey) {
+                    toggleSelectPlayerId(id, true);
+                  } else {
+                    setSelectedPlayerId(id);
+                  }
+                }}
                 onDragEnd={(id, newX, newY) => {
-                  updatePlayerPosition(activeSceneIndex, id, newX, newY);
+                  const origP = activeScene.players[id];
+                  if (!origP) return;
+
+                  const deltaX = newX - origP.x;
+                  const deltaY = newY - origP.y;
+
+                  // 複数選手が選択されており、ドラッグ対象が含まれている場合はまとめて連動移動
+                  if (
+                    selectedPlayerIds.includes(id) &&
+                    selectedPlayerIds.length > 1
+                  ) {
+                    moveMultiplePlayersByDelta(
+                      activeSceneIndex,
+                      selectedPlayerIds,
+                      deltaX,
+                      deltaY,
+                    );
+                  } else {
+                    updatePlayerPosition(activeSceneIndex, id, newX, newY);
+                  }
                 }}
               />
             );
@@ -242,17 +376,19 @@ export const AnimationPitch = forwardRef<
             id="ball"
             x={activeScene.ballPos.x}
             y={activeScene.ballPos.y}
-            color="#f97316"
+            color="#ffffff"
             name="BALL"
             shirtNo=""
             options={{
               insideContent: 'none',
               bottomLabel: 'none',
-              color: '#f97316',
+              color: '#ffffff',
             }}
             stageWidth={width}
             stageHeight={height}
-            isSelected={selectedPlayerId === 'ball'}
+            isSelected={
+              selectedPlayerId === 'ball' || selectedPlayerIds.includes('ball')
+            }
             isBall
             draggable={!isPlaying}
             onClick={(id) => setSelectedPlayerId(id)}
@@ -260,6 +396,22 @@ export const AnimationPitch = forwardRef<
               updateBallPosition(activeSceneIndex, newX, newY);
             }}
           />
+
+          {/* 矩形ドラッグ範囲選択ボックス (ラバーバンド) */}
+          {selectionBox && (
+            <Rect
+              x={Math.min(selectionBox.startX, selectionBox.currentX)}
+              y={Math.min(selectionBox.startY, selectionBox.currentY)}
+              width={Math.abs(selectionBox.currentX - selectionBox.startX)}
+              height={Math.abs(selectionBox.currentY - selectionBox.startY)}
+              fill="rgba(56, 189, 248, 0.15)"
+              stroke="#38bdf8"
+              strokeWidth={1.5}
+              dash={[5, 3]}
+              listening={false}
+              perfectDrawEnabled={false}
+            />
+          )}
         </Layer>
       </Stage>
     </div>

@@ -6,7 +6,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { useCallback } from 'react';
-import { toActualPos } from '@/lib/tactical';
+import { parsePlayerIdFromMarkerId, toActualPos } from '@/lib/tactical';
 import { useTacticalStore } from '@/stores/tactical-store';
 
 export function useTacticalDnd() {
@@ -74,8 +74,7 @@ export function useTacticalDnd() {
       }
 
       // Player drop
-      const [, idValue] = id.split('-');
-      const playerId = idValue ? parseInt(idValue, 10) : null;
+      const playerId = parsePlayerIdFromMarkerId(id);
       if (playerId !== null && savedSettings[playerId]) {
         const p = savedSettings[playerId];
         let finalX = newX;

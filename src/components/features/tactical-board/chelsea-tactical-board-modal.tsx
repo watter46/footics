@@ -6,15 +6,25 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { TacticalAnimationModal } from '@/components/features/tactical-animation/tactical-animation-modal';
+import {
+  CHELSEA_TACTICS_MATCH_ID,
+  useChelseaSquad,
+} from '@/hooks/use-chelsea-squad';
 import { useTacticalBoard } from '@/hooks/use-tactical-board';
 import type { FormationMode, FormationType } from '@/lib/data/formations';
 import {
+  generateInitialMapping,
   getShirtNo,
   parsePlayerIdFromMarkerId,
 } from '@/lib/data/tactical-utils';
+import {
+  AVAILABLE_SEASONS,
+  DEFAULT_SEASON,
+  type Season,
+} from '@/lib/tactical/chelsea-preset';
 import { useTacticalAnimationStore } from '@/stores/tactical-animation-store';
 import { useTacticalStore } from '@/stores/tactical-store';
-import type { Match } from '@/types';
+import type { Player } from '@/types';
 import { BenchArea } from './bench-area';
 import type { TacticalDrawTool } from './drawing/tactical-drawing-canvas';
 import { useTacticalExport } from './hooks/use-tactical-export';
@@ -22,19 +32,18 @@ import { PlayerMarker } from './player-marker';
 import { TacticalHeader } from './tactical-header';
 import { TacticalPitchArea } from './tactical-pitch-area';
 
-interface TacticalBoardModalProps {
+interface ChelseaTacticalBoardModalProps {
   isOpen: boolean;
   onClose: () => void;
-  matchId: string;
-  metadata: Match;
 }
 
-export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
-  isOpen,
-  onClose,
-  matchId,
-  metadata,
-}) => {
+export const ChelseaTacticalBoardModal: React.FC<
+  ChelseaTacticalBoardModalProps
+> = ({ isOpen, onClose }) => {
+  const [selectedSeason, setSelectedSeason] = useState<Season>(DEFAULT_SEASON);
+  const { virtualMatch } = useChelseaSquad(selectedSeason);
+  const matchId = CHELSEA_TACTICS_MATCH_ID;
+
   const savedSettings = useTacticalStore((s) => s.savedSettings);
   const ballPos = useTacticalStore((s) => s.ballPos);
   const isFlipped = useTacticalStore((s) => s.isFlipped);
@@ -43,6 +52,8 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
   const setBenchTeam = useTacticalStore((s) => s.setBenchTeam);
   const homeColor = useTacticalStore((s) => s.homeColor);
   const awayColor = useTacticalStore((s) => s.awayColor);
+  const updatePlayer = useTacticalStore((s) => s.updatePlayer);
+  const setSavedSettings = useTacticalStore((s) => s.setSavedSettings);
 
   const importFromTacticalBoard = useTacticalAnimationStore(
     (s) => s.importFromTacticalBoard,
@@ -65,7 +76,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
     handleAlignBench,
     handleReset,
     handleApplyFormation,
-  } = useTacticalBoard(matchId, metadata, isOpen);
+  } = useTacticalBoard(matchId, virtualMatch, isOpen);
 
   // マーカー操作が開始されたら自動的にコマ操作モードに切り替え
   const handleDragStart = useCallback(
@@ -97,7 +108,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
     importFromTacticalBoard(
       savedSettings,
       ballPos,
-      metadata,
+      virtualMatch,
       isFlipped,
       orientation,
     );
@@ -106,12 +117,50 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
     importFromTacticalBoard,
     savedSettings,
     ballPos,
-    metadata,
+    virtualMatch,
     isFlipped,
     orientation,
   ]);
 
-  // Tactical BoardではEscapeでのモーダル閉じを無効化（誤操作防止のため）
+  const handleSeasonChange = useCallback((newSeason: Season) => {
+    setSelectedSeason(newSeason);
+  }, []);
+
+  // virtualMatch更新時（シーズン切り替えなど）に、配置に含まれていない新選手をベンチに自動配置
+  useEffect(() => {
+    if (!virtualMatch || Object.keys(savedSettings).length === 0) return;
+    const currentKeys = new Set(Object.keys(savedSettings).map(Number));
+    let hasChanges = false;
+    const updated = { ...savedSettings };
+
+    const homePlayers = (virtualMatch.teams.home?.players || []) as Player[];
+    const awayPlayers = (virtualMatch.teams.away?.players || []) as Player[];
+
+    [...homePlayers, ...awayPlayers].forEach((p) => {
+      if (!currentKeys.has(p.playerId)) {
+        hasChanges = true;
+        const currentBenchCount = Object.values(updated).filter(
+          (item) => item.area === 'bench' && item.team === (p.field || 'home'),
+        ).length;
+        const pos = {
+          x: 10 + (currentBenchCount % 4) * 25,
+          y: 10 + Math.floor(currentBenchCount / 4) * 20,
+        };
+        updated[p.playerId] = {
+          playerId: p.playerId,
+          shirtNo: String(p.shirtNo || 99),
+          x: pos.x,
+          y: pos.y,
+          team: (p.field as 'home' | 'away') || 'home',
+          area: 'bench',
+        };
+      }
+    });
+
+    if (hasChanges) {
+      setSavedSettings(updated);
+    }
+  }, [virtualMatch, savedSettings, setSavedSettings]);
 
   const benchPlayers = useMemo(
     () =>
@@ -128,11 +177,11 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
     const p = savedSettings[pId];
     if (!p) return null;
 
-    const playerMeta = metadata?.teams[p.team]?.players?.find(
+    const playerMeta = virtualMatch?.teams[p.team]?.players?.find(
       (pm) => pm.playerId === pId,
     );
     return { p, playerMeta, pId };
-  }, [activeId, savedSettings, metadata]);
+  }, [activeId, savedSettings, virtualMatch]);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -152,7 +201,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
         >
           <div className="relative w-[98vw] h-[98vh] flex flex-col bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden rounded-2xl">
             <TacticalHeader
-              metadata={metadata}
+              metadata={virtualMatch}
               onClose={onClose}
               onReset={handleReset}
               activeDrawTool={activeDrawTool}
@@ -167,7 +216,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
             <div className="flex-1 flex flex-row gap-4 p-4 bg-slate-950/20 overflow-hidden relative">
               <TacticalPitchArea
                 matchId={matchId}
-                metadata={metadata}
+                metadata={virtualMatch}
                 activeDrawTool={activeDrawTool}
                 onMarkerTouch={handleMarkerTouch}
                 onSelectDrawTool={setActiveDrawTool}
@@ -180,7 +229,7 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
               {/* Bench Area (Right 25%) */}
               <div className="flex-[1] min-w-0 h-full flex flex-col min-h-0">
                 <BenchArea
-                  teamName={metadata.teams[benchTeam].name}
+                  teamName={virtualMatch.teams[benchTeam].name}
                   onTeamToggle={() =>
                     setBenchTeam(benchTeam === 'home' ? 'away' : 'home')
                   }
@@ -190,9 +239,12 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
                   onFormationChange={(type: FormationType) =>
                     handleApplyFormation(benchTeam, type, formationMode)
                   }
+                  season={selectedSeason}
+                  onSeasonChange={(s) => handleSeasonChange(s as Season)}
+                  availableSeasons={AVAILABLE_SEASONS}
                 >
                   {benchPlayers.map((p) => {
-                    const playerMeta = metadata.teams[p.team].players.find(
+                    const playerMeta = virtualMatch.teams[p.team].players.find(
                       (pm) => pm.playerId === p.playerId,
                     );
                     return (
@@ -248,11 +300,12 @@ export const TacticalBoardModal: React.FC<TacticalBoardModalProps> = ({
         </DndContext>
       </div>
 
+      {/* 戦術アニメーションモーダル */}
       {isAnimationOpen && (
         <TacticalAnimationModal
           isOpen={isAnimationOpen}
           onClose={() => setIsAnimationOpen(false)}
-          metadata={metadata}
+          metadata={virtualMatch}
           matchId={matchId}
           skipAutoImport={true}
         />

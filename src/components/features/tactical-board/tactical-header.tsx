@@ -4,10 +4,13 @@ import {
   ArrowLeftRight,
   Camera,
   Circle,
+  Clapperboard,
   Eraser,
+  Monitor,
   MousePointer,
   MoveRight,
   RotateCcw,
+  Smartphone,
   X,
 } from 'lucide-react';
 import type React from 'react';
@@ -23,6 +26,7 @@ interface TacticalHeaderProps {
   onSelectDrawTool: (tool: TacticalDrawTool) => void;
   onExportScreenshot: () => void;
   onClearDrawing: () => void;
+  onOpenAnimation?: () => void;
   isExporting?: boolean;
 }
 
@@ -34,10 +38,13 @@ export const TacticalHeader: React.FC<TacticalHeaderProps> = ({
   onSelectDrawTool,
   onExportScreenshot,
   onClearDrawing,
+  onOpenAnimation,
   isExporting = false,
 }) => {
   const isFlipped = useTacticalStore((s) => s.isFlipped);
   const toggleFlipped = useTacticalStore((s) => s.toggleFlipped);
+  const orientation = useTacticalStore((s) => s.orientation);
+  const setOrientation = useTacticalStore((s) => s.setOrientation);
   const homeColor = useTacticalStore((s) => s.homeColor);
   const setHomeColor = useTacticalStore((s) => s.setHomeColor);
   const awayColor = useTacticalStore((s) => s.awayColor);
@@ -58,6 +65,36 @@ export const TacticalHeader: React.FC<TacticalHeaderProps> = ({
             <span className="text-slate-700">|</span>
             <span>{Object.keys(savedSettings).length} Registered</span>
           </div>
+        </div>
+
+        {/* 向き切り替え (縦画面 / 横画面) */}
+        <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+          <button
+            type="button"
+            onClick={() => setOrientation('vertical')}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
+              orientation === 'vertical'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="縦画面モード"
+          >
+            <Smartphone className="w-3 h-3" />
+            <span>縦画面</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setOrientation('horizontal')}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
+              orientation === 'horizontal'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="横画面モード"
+          >
+            <Monitor className="w-3 h-3" />
+            <span>横画面</span>
+          </button>
         </div>
 
         <button
@@ -162,6 +199,19 @@ export const TacticalHeader: React.FC<TacticalHeaderProps> = ({
             <Camera className="w-3.5 h-3.5" />
             <span>{isExporting ? 'COPYING...' : 'COPY IMAGE'}</span>
           </button>
+
+          {/* アニメーション作成へ移行 */}
+          {onOpenAnimation && (
+            <button
+              type="button"
+              title="現在の配置でアニメーションを作成"
+              onClick={onOpenAnimation}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-bold transition-none border bg-purple-600/20 border-purple-500/60 text-purple-300 hover:bg-purple-600/30 hover:border-purple-400 shadow-sm"
+            >
+              <Clapperboard className="w-3.5 h-3.5 text-purple-400" />
+              <span>TO ANIMATION</span>
+            </button>
+          )}
         </div>
       </div>
 

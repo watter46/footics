@@ -31,6 +31,7 @@ export const TacticalPitchArea: React.FC<TacticalPitchAreaProps> = ({
   pitchRef,
 }) => {
   const savedSettings = useTacticalStore((s) => s.savedSettings);
+  const orientation = useTacticalStore((s) => s.orientation);
   const isFlipped = useTacticalStore((s) => s.isFlipped);
   const ballPos = useTacticalStore((s) => s.ballPos);
   const homeColor = useTacticalStore((s) => s.homeColor);
@@ -40,11 +41,17 @@ export const TacticalPitchArea: React.FC<TacticalPitchAreaProps> = ({
     (p) => p.area === 'pitch',
   );
 
+  const isVertical = orientation === 'vertical';
+
   return (
     <div className="flex-[3] flex items-center justify-center relative min-h-0 min-w-0">
       <div
         ref={pitchRef}
-        className="relative max-w-full max-h-full aspect-[105/68] w-full h-auto"
+        className={`relative max-w-full max-h-full ${
+          isVertical
+            ? 'aspect-[68/105] h-full w-auto'
+            : 'aspect-[105/68] w-full h-auto'
+        }`}
       >
         <Pitch>
           {/* Konva 描画オーバーレイ */}

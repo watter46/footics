@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ExportJobConfig } from '@/lib/tactical/export/types';
 import { calculateTotalDuration } from '@/lib/tactical/interpolation';
-import {
-  type TacticalScene,
-  useTacticalAnimationStore,
-} from '@/stores/tactical-animation-store';
+import { useTacticalAnimationStore } from '@/stores/tactical-animation-store';
 
 export interface ExportOptions {
   scale?: number;
@@ -13,47 +10,7 @@ export interface ExportOptions {
   fps?: number;
 }
 
-/**
- * 選手写真 (photoUrl) を ImageBitmap として事前ロード
- */
-async function preloadPlayerPhotos(
-  scenes: TacticalScene[],
-): Promise<Record<string, ImageBitmap>> {
-  const photos: Record<string, ImageBitmap> = {};
-  if (typeof window === 'undefined' || !('createImageBitmap' in window)) {
-    return photos;
-  }
-
-  const uniquePhotos = new Map<string, string>(); // playerId -> photoUrl
-  scenes.forEach((scene) => {
-    Object.values(scene.players).forEach((p) => {
-      if (
-        p.options.insideContent === 'photo' &&
-        p.options.photoUrl &&
-        !uniquePhotos.has(p.playerId)
-      ) {
-        uniquePhotos.set(p.playerId, p.options.photoUrl);
-      }
-    });
-  });
-
-  const promises = Array.from(uniquePhotos.entries()).map(
-    async ([playerId, url]) => {
-      try {
-        const res = await fetch(url, { mode: 'cors' });
-        if (!res.ok) return;
-        const blob = await res.blob();
-        const bitmap = await createImageBitmap(blob);
-        photos[playerId] = bitmap;
-      } catch (e) {
-        console.warn(`Failed to preload photo for player ${playerId}:`, e);
-      }
-    },
-  );
-
-  await Promise.allSettled(promises);
-  return photos;
-}
+import { preloadPlayerPhotos } from '@/lib/tactical/export/photo-loader';
 
 export function useTacticalVideoExport() {
   const isExporting = useTacticalAnimationStore((s) => s.isExporting);

@@ -41,7 +41,9 @@ export function useTacticalAnimation() {
       const nodeCache = new Map<string, Konva.Node>();
       const allPlayerIds = new Set<string>();
       scenes.forEach((sc) => {
-        Object.keys(sc.players).forEach((id) => allPlayerIds.add(id));
+        Object.keys(sc.players).forEach((id) => {
+          allPlayerIds.add(id);
+        });
       });
 
       allPlayerIds.forEach((id) => {

@@ -1,3 +1,40 @@
+import type { StandardPosition } from '@/types';
+
+/**
+ * 任意のポジション文字列を GK / DF / MID / FW / Other の5区分に正規化する
+ */
+export function normalizePosition(position?: string): StandardPosition {
+  if (!position) return 'Other';
+  const pos = position.trim().toUpperCase();
+  if (pos === 'GK') return 'GK';
+  if (
+    ['DF', 'DR', 'DC', 'DL', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'SW'].includes(pos)
+  )
+    return 'DF';
+  if (
+    [
+      'MID',
+      'MF',
+      'DMC',
+      'MC',
+      'AMC',
+      'AMR',
+      'AML',
+      'DM',
+      'CM',
+      'AM',
+      'LM',
+      'RM',
+      'MR',
+      'ML',
+    ].includes(pos)
+  )
+    return 'MID';
+  if (['FW', 'ST', 'SS', 'CF', 'LW', 'RW', 'WF', 'LF', 'RF'].includes(pos))
+    return 'FW';
+  return 'Other';
+}
+
 /**
  * ポジションから横方向の優先度スコア (1: Left, 2: Center, 3: Right) を返す
  */
@@ -50,6 +87,30 @@ export function shortenName(fullName: string): string {
   const last = parts[parts.length - 1];
   const initial = parts[0].charAt(0);
   return `${initial}. ${last}`;
+}
+
+/**
+ * 選手名からラストネーム (姓 / 最後の単語) を抽出する
+ * 例: "Lionel Messi" -> "Messi", "Kaoru Mitoma" -> "Mitoma", "Neymar" -> "Neymar"
+ */
+export function getLastName(fullName: string): string {
+  if (!fullName) return '';
+  const trimmed = fullName.trim();
+  if (!trimmed) return '';
+  const parts = trimmed.split(/\s+/);
+  if (parts.length <= 1) return trimmed;
+  return parts[parts.length - 1];
+}
+
+/**
+ * マーカーID文字列 (例: "chelsea-tactics-board-345003", "match123-10", "10") から playerId を安全に抽出する
+ */
+export function parsePlayerIdFromMarkerId(id: string): number | null {
+  if (!id || id === 'ball') return null;
+  const lastHyphenIndex = id.lastIndexOf('-');
+  const idStr = lastHyphenIndex !== -1 ? id.slice(lastHyphenIndex + 1) : id;
+  const pId = parseInt(idStr, 10);
+  return Number.isNaN(pId) ? null : pId;
 }
 
 /**

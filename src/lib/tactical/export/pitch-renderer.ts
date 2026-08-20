@@ -3,6 +3,7 @@ import type {
   TacticalScene,
 } from '@/stores/tactical-animation-store';
 import type { InterpolatedFrameState } from '../interpolation';
+import { getLastName } from '../player-formatting';
 
 export interface RenderContext2D {
   fillStyle: string | CanvasGradient | CanvasPattern;
@@ -295,6 +296,7 @@ export interface PlayerMetadata {
     photoUrl?: string;
     bottomLabel: 'name' | 'number' | 'none';
     color: string;
+    sizeScale?: number;
   };
 }
 
@@ -336,7 +338,6 @@ export function renderPitchFrame(
   ctx.drawImage(bgCanvas, 0, 0, width, height);
 
   const baseDim = Math.min(width, height);
-  const playerRadius = baseDim * 0.032;
   const ballRadius = baseDim * 0.022;
 
   // 2. 選手マーカーの描画
@@ -345,6 +346,9 @@ export function renderPitchFrame(
 
     const meta = playerMetadataMap.get(playerId);
     if (!meta) return;
+
+    const sizeScale = meta.options.sizeScale ?? 1.0;
+    const playerRadius = baseDim * 0.032 * sizeScale;
 
     const pxX = (pState.x / 100) * width;
     const pxY = (pState.y / 100) * height;
@@ -392,11 +396,11 @@ export function renderPitchFrame(
       ctx.shadowColor = 'transparent';
     }
 
-    // 下部ラベル (選手名 / 背番号: アウトライン縁取り + ドロップシャドウ)
+    // 下部ラベル (ラストネーム / 背番号: アウトライン縁取り + ドロップシャドウ)
     if (meta.options.bottomLabel !== 'none') {
       const labelText =
         meta.options.bottomLabel === 'name'
-          ? meta.name
+          ? getLastName(meta.name)
           : meta.shirtNo
             ? `#${meta.shirtNo}`
             : '';
@@ -431,26 +435,73 @@ export function renderPitchFrame(
     ctx.restore();
   });
 
-  // 3. ボールマーカーの描画
+  // 3. ボールマーカーの描画 (リアルな五角形サッカーボール)
   if (frameState.ballPos) {
     const ballPxX = (frameState.ballPos.x / 100) * width;
     const ballPxY = (frameState.ballPos.y / 100) * height;
 
     ctx.save();
-    // ボール外枠 (白丸 + 濃紺ストローク)
+    // ボール白ベース
     ctx.beginPath();
     ctx.arc(ballPxX, ballPxY, ballRadius, 0, Math.PI * 2);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
     ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = Math.max(1.5, ballRadius * 0.15);
+    ctx.lineWidth = Math.max(1.2, ballRadius * 0.08);
     ctx.stroke();
 
-    // ボール中心アクセント (オレンジ)
+    const centerR = ballRadius * 0.42;
+
+    // 外周黒パッチ
+    ctx.fillStyle = '#0f172a';
+    for (let i = 0; i < 5; i++) {
+      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+      const nextAngle = -Math.PI / 2 + ((i + 1) * 2 * Math.PI) / 5;
+      const midAngle = (angle + nextAngle) / 2;
+      const patchW = (2 * Math.PI) / 10;
+      const p1x = ballPxX + Math.cos(midAngle - patchW * 0.45) * ballRadius;
+      const p1y = ballPxY + Math.sin(midAngle - patchW * 0.45) * ballRadius;
+      const p2x = ballPxX + Math.cos(midAngle + patchW * 0.45) * ballRadius;
+      const p2y = ballPxY + Math.sin(midAngle + patchW * 0.45) * ballRadius;
+      const innerX = ballPxX + Math.cos(midAngle) * (ballRadius * 0.72);
+      const innerY = ballPxY + Math.sin(midAngle) * (ballRadius * 0.72);
+
+      ctx.beginPath();
+      ctx.moveTo(p1x, p1y);
+      ctx.lineTo(p2x, p2y);
+      ctx.lineTo(innerX, innerY);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 放射ライン
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = Math.max(1, ballRadius * 0.07);
+    for (let i = 0; i < 5; i++) {
+      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+      const cx = ballPxX + Math.cos(angle) * centerR;
+      const cy = ballPxY + Math.sin(angle) * centerR;
+      const ox = ballPxX + Math.cos(angle) * ballRadius;
+      const oy = ballPxY + Math.sin(angle) * ballRadius;
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(ox, oy);
+      ctx.stroke();
+    }
+
+    // 中央黒五角形
     ctx.beginPath();
-    ctx.arc(ballPxX, ballPxY, ballRadius * 0.45, 0, Math.PI * 2);
-    ctx.fillStyle = '#f97316';
+    for (let i = 0; i < 5; i++) {
+      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+      const cx = ballPxX + Math.cos(angle) * centerR;
+      const cy = ballPxY + Math.sin(angle) * centerR;
+      if (i === 0) ctx.moveTo(cx, cy);
+      else ctx.lineTo(cx, cy);
+    }
+    ctx.closePath();
     ctx.fill();
+
     ctx.restore();
   }
 }

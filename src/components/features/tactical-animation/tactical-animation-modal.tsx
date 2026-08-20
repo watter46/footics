@@ -2,7 +2,8 @@
 
 import { Film, X } from 'lucide-react';
 import type React from 'react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTacticalAnimationStore } from '@/stores/tactical-animation-store';
 import type { Match } from '@/types';
 import { TacticalAnimationBoard } from './tactical-animation-board';
@@ -11,7 +12,8 @@ interface TacticalAnimationModalProps {
   isOpen: boolean;
   onClose: () => void;
   metadata: Match;
-  matchId: string;
+  matchId?: string;
+  skipAutoImport?: boolean;
 }
 
 export const TacticalAnimationModal: React.FC<TacticalAnimationModalProps> = ({
@@ -19,23 +21,29 @@ export const TacticalAnimationModal: React.FC<TacticalAnimationModalProps> = ({
   onClose,
   metadata,
   matchId: _matchId,
+  skipAutoImport = false,
 }) => {
   const importFromMatch = useTacticalAnimationStore((s) => s.importFromMatch);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (isOpen && metadata) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && metadata && !skipAutoImport) {
       importFromMatch(metadata);
     }
-  }, [isOpen, metadata, importFromMatch]);
+  }, [isOpen, metadata, importFromMatch, skipAutoImport]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const homeName = metadata?.teams?.home?.name || 'Home';
   const awayName = metadata?.teams?.away?.name || 'Away';
   const score = metadata?.score || 'vs';
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md overflow-hidden animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md overflow-hidden animate-in fade-in duration-200">
       <div className="relative w-[98vw] h-[98vh] flex flex-col bg-slate-900 border border-slate-800 shadow-2xl rounded-2xl overflow-hidden">
         {/* モーダルヘッダー */}
         <div className="flex items-center justify-between px-4 py-2.5 bg-slate-950 border-b border-slate-800 shrink-0">
@@ -63,9 +71,14 @@ export const TacticalAnimationModal: React.FC<TacticalAnimationModalProps> = ({
 
         {/* ボード本体 */}
         <div className="flex-1 min-h-0">
-          <TacticalAnimationBoard initialMatch={metadata} onClose={onClose} />
+          <TacticalAnimationBoard
+            initialMatch={metadata}
+            onClose={onClose}
+            skipAutoImport={skipAutoImport}
+          />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

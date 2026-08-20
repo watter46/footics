@@ -2,7 +2,7 @@
 
 import { useDraggable } from '@dnd-kit/core';
 import type React from 'react';
-import { shortenName } from '@/lib/data/tactical-utils';
+import { getLastName } from '@/lib/data/tactical-utils';
 
 interface PlayerMarkerProps {
   id: string; // matchId-playerId または "ball"
@@ -71,7 +71,7 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
       },
     });
 
-  const displayName = shortenName(playerName);
+  const displayName = getLastName(playerName);
 
   // マーカーサイズ
   const markerSize = isBall ? MARKER_SIZES.BALL : MARKER_SIZES.PLAYER;

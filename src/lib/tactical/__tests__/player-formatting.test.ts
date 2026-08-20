@@ -1,23 +1,77 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getLastName,
   getShirtNo,
   getSideScore,
+  normalizePosition,
+  parsePlayerIdFromMarkerId,
   shortenName,
   sortPlayersBy2DPositionGroup,
 } from '../player-formatting';
 
 describe('player-formatting', () => {
-  describe('shortenName', () => {
-    it('shortens first name and keeps last name', () => {
-      expect(shortenName('Enzo Fernandez')).toBe('E. Fernandez');
+  describe('normalizePosition', () => {
+    it('normalizes Goalkeepers to GK', () => {
+      expect(normalizePosition('GK')).toBe('GK');
+      expect(normalizePosition('gk')).toBe('GK');
     });
 
-    it('returns the same string if it is a single word', () => {
-      expect(shortenName('Neymar')).toBe('Neymar');
+    it('normalizes Defenders to DF', () => {
+      expect(normalizePosition('DF')).toBe('DF');
+      expect(normalizePosition('DR')).toBe('DF');
+      expect(normalizePosition('DC')).toBe('DF');
+      expect(normalizePosition('DL')).toBe('DF');
+      expect(normalizePosition('CB')).toBe('DF');
+      expect(normalizePosition('LB')).toBe('DF');
+      expect(normalizePosition('RB')).toBe('DF');
     });
 
-    it('handles multiple names correctly', () => {
-      expect(shortenName('Kevin De Bruyne')).toBe('K. Bruyne');
+    it('normalizes Midfielders to MID', () => {
+      expect(normalizePosition('MID')).toBe('MID');
+      expect(normalizePosition('MF')).toBe('MID');
+      expect(normalizePosition('DMC')).toBe('MID');
+      expect(normalizePosition('MC')).toBe('MID');
+      expect(normalizePosition('AMC')).toBe('MID');
+      expect(normalizePosition('AMR')).toBe('MID');
+      expect(normalizePosition('AML')).toBe('MID');
+      expect(normalizePosition('CM')).toBe('MID');
+      expect(normalizePosition('DM')).toBe('MID');
+    });
+
+    it('normalizes Forwards to FW', () => {
+      expect(normalizePosition('FW')).toBe('FW');
+      expect(normalizePosition('ST')).toBe('FW');
+      expect(normalizePosition('CF')).toBe('FW');
+      expect(normalizePosition('SS')).toBe('FW');
+    });
+
+    it('normalizes undefined, empty, or unknown to Other', () => {
+      expect(normalizePosition(undefined)).toBe('Other');
+      expect(normalizePosition('')).toBe('Other');
+      expect(normalizePosition('Sub')).toBe('Other');
+      expect(normalizePosition('Unknown')).toBe('Other');
+    });
+  });
+  describe('getLastName', () => {
+    it('extracts last name from full name', () => {
+      expect(getLastName('Lionel Messi')).toBe('Messi');
+      expect(getLastName('Kylian Mbappé')).toBe('Mbappé');
+      expect(getLastName('Kaoru Mitoma')).toBe('Mitoma');
+    });
+
+    it('returns single word name as is', () => {
+      expect(getLastName('Neymar')).toBe('Neymar');
+      expect(getLastName('Rodri')).toBe('Rodri');
+    });
+
+    it('handles multiple parts by returning the last part', () => {
+      expect(getLastName('Kevin De Bruyne')).toBe('Bruyne');
+      expect(getLastName('Trent Alexander-Arnold')).toBe('Alexander-Arnold');
+    });
+
+    it('handles empty or whitespace strings', () => {
+      expect(getLastName('')).toBe('');
+      expect(getLastName('   ')).toBe('');
     });
   });
 
@@ -66,6 +120,23 @@ describe('player-formatting', () => {
 
       const sorted = sortPlayersBy2DPositionGroup(players);
       expect(sorted.map((p) => p.id)).toEqual([2, 4, 3, 5, 1]);
+    });
+  });
+
+  describe('parsePlayerIdFromMarkerId', () => {
+    it('extracts playerId from marker id with hyphenated match id', () => {
+      expect(parsePlayerIdFromMarkerId('chelsea-tactics-board-345003')).toBe(
+        345003,
+      );
+      expect(parsePlayerIdFromMarkerId('uuid-1234-5678-999')).toBe(999);
+      expect(parsePlayerIdFromMarkerId('15-10')).toBe(10);
+      expect(parsePlayerIdFromMarkerId('10')).toBe(10);
+    });
+
+    it('returns null for ball id or invalid ids', () => {
+      expect(parsePlayerIdFromMarkerId('ball')).toBeNull();
+      expect(parsePlayerIdFromMarkerId('')).toBeNull();
+      expect(parsePlayerIdFromMarkerId('invalid-string')).toBeNull();
     });
   });
 });

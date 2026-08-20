@@ -2,7 +2,8 @@
 
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { Circle, Group, Image as KonvaImage, Text } from 'react-konva';
+import { Circle, Group, Image as KonvaImage, Line, Text } from 'react-konva';
+import { getLastName } from '@/lib/tactical/player-formatting';
 import type { MarkerOptions } from '@/stores/tactical-animation-store';
 
 interface AnimationMarkerProps {
@@ -18,7 +19,7 @@ interface AnimationMarkerProps {
   isSelected?: boolean;
   isBall?: boolean;
   draggable?: boolean;
-  onClick?: (id: string) => void;
+  onClick?: (id: string, e?: unknown) => void;
   onDragEnd?: (id: string, x: number, y: number) => void;
 }
 
@@ -40,12 +41,16 @@ export const AnimationMarker: React.FC<AnimationMarkerProps> = ({
 }) => {
   const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
 
-  // マーカーサイズ: 縦・横どちらでも適正なサイズになるよう最小基準で計算
+  // マーカーサイズ: sizeScale (デフォルト1.0) を反映
   const baseDim = Math.min(stageWidth, stageHeight);
-  const radius = isBall ? baseDim * 0.022 : baseDim * 0.032;
+  const sizeScale = options.sizeScale ?? 1.0;
+  const radius = (isBall ? baseDim * 0.022 : baseDim * 0.032) * sizeScale;
 
   const pxX = (x / 100) * stageWidth;
   const pxY = (y / 100) * stageHeight;
+
+  // ラストネームを取得
+  const displayName = getLastName(name);
 
   // 顔写真画像のロード
   useEffect(() => {
@@ -61,14 +66,47 @@ export const AnimationMarker: React.FC<AnimationMarkerProps> = ({
   }, [options.insideContent, options.photoUrl]);
 
   if (isBall) {
+    // リアルなサッカーボールの五角形・六角形パターン計算
+    const centerR = radius * 0.42;
+    const centerPentagonPts: number[] = [];
+    const outerLines: Array<{
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+    }> = [];
+    const outerPatches: number[][] = [];
+
+    for (let i = 0; i < 5; i++) {
+      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+      const cx = Math.cos(angle) * centerR;
+      const cy = Math.sin(angle) * centerR;
+      centerPentagonPts.push(cx, cy);
+
+      const ox = Math.cos(angle) * radius;
+      const oy = Math.sin(angle) * radius;
+      outerLines.push({ x1: cx, y1: cy, x2: ox, y2: oy });
+
+      const nextAngle = -Math.PI / 2 + ((i + 1) * 2 * Math.PI) / 5;
+      const midAngle = (angle + nextAngle) / 2;
+      const patchW = (2 * Math.PI) / 10;
+      const p1x = Math.cos(midAngle - patchW * 0.45) * radius;
+      const p1y = Math.sin(midAngle - patchW * 0.45) * radius;
+      const p2x = Math.cos(midAngle + patchW * 0.45) * radius;
+      const p2y = Math.sin(midAngle + patchW * 0.45) * radius;
+      const innerX = Math.cos(midAngle) * (radius * 0.72);
+      const innerY = Math.sin(midAngle) * (radius * 0.72);
+      outerPatches.push([p1x, p1y, p2x, p2y, innerX, innerY]);
+    }
+
     return (
       <Group
         id="marker-ball"
         x={pxX}
         y={pxY}
         draggable={draggable}
-        onClick={() => onClick?.('ball')}
-        onTap={() => onClick?.('ball')}
+        onClick={(e) => onClick?.('ball', e)}
+        onTap={(e) => onClick?.('ball', e)}
         onDragEnd={(e) => {
           if (onDragEnd) {
             const newX = Math.max(
@@ -83,21 +121,51 @@ export const AnimationMarker: React.FC<AnimationMarkerProps> = ({
           }
         }}
       >
-        {/* 外枠 */}
+        {/* 白ベース円 */}
         <Circle
           radius={radius}
           fill="#ffffff"
           stroke="#0f172a"
-          strokeWidth={2}
+          strokeWidth={Math.max(1.2, radius * 0.08)}
           perfectDrawEnabled={false}
         />
-        {/* サッカーボールの中心アクセント */}
-        <Circle
-          radius={radius * 0.45}
-          fill="#f97316"
+
+        {/* 外周黒パッチ */}
+        {outerPatches.map((pts, idx) => (
+          <Line
+            key={`ball-patch-${idx}`}
+            points={pts}
+            closed
+            fill="#0f172a"
+            perfectDrawEnabled={false}
+            listening={false}
+          />
+        ))}
+
+        {/* 外周への放射ライン */}
+        {outerLines.map((line, idx) => (
+          <Line
+            key={`ball-line-${idx}`}
+            points={[line.x1, line.y1, line.x2, line.y2]}
+            stroke="#0f172a"
+            strokeWidth={Math.max(1, radius * 0.07)}
+            perfectDrawEnabled={false}
+            listening={false}
+          />
+        ))}
+
+        {/* 中央黒五角形 */}
+        <Line
+          points={centerPentagonPts}
+          closed
+          fill="#0f172a"
+          stroke="#0f172a"
+          strokeWidth={Math.max(0.5, radius * 0.05)}
           perfectDrawEnabled={false}
           listening={false}
         />
+
+        {/* 選択ハイライト */}
         {isSelected && (
           <Circle
             radius={radius + 4}
@@ -118,8 +186,8 @@ export const AnimationMarker: React.FC<AnimationMarkerProps> = ({
       x={pxX}
       y={pxY}
       draggable={draggable}
-      onClick={() => onClick?.(id)}
-      onTap={() => onClick?.(id)}
+      onClick={(e) => onClick?.(id, e)}
+      onTap={(e) => onClick?.(id, e)}
       onDragEnd={(e) => {
         if (onDragEnd) {
           const newX = Math.max(
@@ -134,7 +202,7 @@ export const AnimationMarker: React.FC<AnimationMarkerProps> = ({
         }
       }}
     >
-      {/* 選択ハイライト */}
+      {/* 選択ハイライト (ゴールドのグロー枠) */}
       {isSelected && (
         <Circle
           radius={radius + 5}
@@ -194,11 +262,15 @@ export const AnimationMarker: React.FC<AnimationMarkerProps> = ({
         />
       ) : null}
 
-      {/* 下部ラベル (選手名 / 背番号: アウトライン縁取り + シャドウで文字つぶれ防止) */}
+      {/* 下部ラベル (ラストネーム / 背番号: アウトライン縁取り + シャドウで文字つぶれ防止) */}
       {options.bottomLabel !== 'none' && (
         <Text
           text={
-            options.bottomLabel === 'name' ? name : shirtNo ? `#${shirtNo}` : ''
+            options.bottomLabel === 'name'
+              ? displayName
+              : shirtNo
+                ? `#${shirtNo}`
+                : ''
           }
           fill="#ffffff"
           stroke="#020617"

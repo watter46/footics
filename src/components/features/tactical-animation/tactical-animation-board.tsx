@@ -21,11 +21,13 @@ import { MarkerOptionsPanel } from './marker-options-panel';
 interface TacticalAnimationBoardProps {
   initialMatch?: Match;
   onClose?: () => void;
+  skipAutoImport?: boolean;
 }
 
 export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
   initialMatch,
   onClose: _onClose,
+  skipAutoImport = false,
 }) => {
   const pitchRef = useRef<AnimationPitchRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,12 +59,12 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
 
   const { playAnimation, stopAnimation } = useTacticalAnimation();
 
-  // 初期マッチデータがある場合は自動インポート
+  // 初期マッチデータがある場合は自動インポート (skipAutoImport が false の場合のみ)
   useEffect(() => {
-    if (initialMatch) {
+    if (initialMatch && !skipAutoImport) {
       importFromMatch(initialMatch);
     }
-  }, [initialMatch, importFromMatch]);
+  }, [initialMatch, importFromMatch, skipAutoImport]);
 
   // キーボードショートカットキー
   useEffect(() => {
@@ -129,19 +131,20 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
       const { clientWidth, clientHeight } = containerRef.current;
       if (clientWidth === 0 || clientHeight === 0) return;
 
-      const padding = 16; // 内側余白
-      const availWidth = clientWidth - padding;
-      const availHeight = clientHeight - padding;
+      // 縦画面時は高さを極限まで活用するためパディングを最小化 (4px)、横画面は 16px
+      const padding = orientation === 'vertical' ? 8 : 16;
+      const availWidth = Math.max(100, clientWidth - padding);
+      const availHeight = Math.max(100, clientHeight - padding);
 
       if (orientation === 'vertical') {
         // 比率 68 : 105
         const targetRatio = 68 / 105;
-        let w = availWidth;
-        let h = w / targetRatio;
+        let h = availHeight;
+        let w = h * targetRatio;
 
-        if (h > availHeight) {
-          h = availHeight;
-          w = h * targetRatio;
+        if (w > availWidth) {
+          w = availWidth;
+          h = w / targetRatio;
         }
         setPitchDimensions({ width: Math.floor(w), height: Math.floor(h) });
       } else {
@@ -174,38 +177,7 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
       resizeObserver.disconnect();
       window.removeEventListener('resize', updateDimensions);
     };
-  }, [orientation]);
-
-  // オプションパネル開閉時にもリサイズを即座に再計算
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const { clientWidth, clientHeight } = containerRef.current;
-    if (clientWidth === 0 || clientHeight === 0) return;
-
-    const padding = 16;
-    const availWidth = clientWidth - padding;
-    const availHeight = clientHeight - padding;
-
-    if (orientation === 'vertical') {
-      const targetRatio = 68 / 105;
-      let w = availWidth;
-      let h = w / targetRatio;
-      if (h > availHeight) {
-        h = availHeight;
-        w = h * targetRatio;
-      }
-      setPitchDimensions({ width: Math.floor(w), height: Math.floor(h) });
-    } else {
-      const targetRatio = 105 / 68;
-      let w = availWidth;
-      let h = w / targetRatio;
-      if (h > availHeight) {
-        h = availHeight;
-        w = h * targetRatio;
-      }
-      setPitchDimensions({ width: Math.floor(w), height: Math.floor(h) });
-    }
-  }, [isOptionsPanelOpen, orientation]);
+  }, [orientation, isOptionsPanelOpen]);
 
   // モックデータ読み込み (テスト用)
   const handleImportMockMatch = () => {
@@ -564,11 +536,13 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
       </div>
 
       {/* メインワークスペース (ピッチ + オプションパネル) */}
-      <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-row min-h-0 overflow-hidden relative">
         {/* ピッチ描画コンテナ */}
         <div
           ref={containerRef}
-          className="flex-1 flex items-center justify-center p-2 sm:p-3 min-h-0 min-w-0 bg-slate-950/40 relative overflow-hidden"
+          className={`flex-1 flex items-center justify-center min-h-0 min-w-0 bg-slate-950/40 relative overflow-hidden ${
+            orientation === 'vertical' ? 'p-1 sm:p-2' : 'p-2 sm:p-3'
+          }`}
         >
           <AnimationPitch
             ref={pitchRef}

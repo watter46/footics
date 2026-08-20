@@ -1,6 +1,11 @@
 import Image from 'next/image';
-import { ImportMatchButton } from '@/components/features/management';
+import Link from 'next/link';
+import {
+  GlobalDataManagement,
+  ImportMatchButton,
+} from '@/components/features/management';
 import { MatchListClient } from '@/components/features/match';
+import { TeamsDropdown } from '@/components/layout/TeamsDropdown';
 import type { Match } from '@/types';
 import logoName from './logo-name.png';
 
@@ -22,7 +27,17 @@ export default async function Home() {
               className="h-12 w-auto"
             />
           </div>
-          <ImportMatchButton />
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/players"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60 hover:border-slate-600 transition-all flex items-center gap-1.5"
+            >
+              Players
+            </Link>
+            <TeamsDropdown />
+            <ImportMatchButton />
+            <GlobalDataManagement />
+          </div>
         </div>
       </header>
 
