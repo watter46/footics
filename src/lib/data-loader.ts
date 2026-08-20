@@ -4,9 +4,11 @@ import type {
   Match,
   MatchEvent,
   NationalMatchRoot,
+  Player,
 } from '@/types';
-import { saveMatchUnified } from './db';
+import { saveMatchUnified, savePlayerMaster } from './db';
 import { NATIONAL_INFO_IDX, parseNationalDate } from './national-match-schema';
+import { getSeasonFromDate } from './tactical/season-utils';
 
 function isClubMatch(data: unknown): data is ClubMatchRoot {
   return (
@@ -109,6 +111,36 @@ async function processClubMatch(rawData: ClubMatchRoot): Promise<string> {
   const events = (center.events ?? []).map((e) => mapEvent(e, matchId));
 
   await saveMatchUnified(match, events);
+
+  // 試合日付からシーズンを導出し、チェルシー選手を PlayerMaster に自動同期
+  const season = getSeasonFromDate(match.date);
+  const isChelsea = (name?: string) => name?.toLowerCase().includes('chelsea');
+
+  const syncPlayers = async (
+    players: Player[] | undefined,
+    teamName: string,
+  ) => {
+    if (!players || players.length === 0) return;
+    for (const p of players) {
+      if (!p.playerId) continue;
+      await savePlayerMaster({
+        playerId: p.playerId,
+        name: p.name || `Player ${p.playerId}`,
+        season,
+        defaultShirtNo: p.shirtNo,
+        position: p.position || 'Sub',
+        teamName,
+      });
+    }
+  };
+
+  if (isChelsea(center.home?.name)) {
+    await syncPlayers(center.home.players as Player[], 'Chelsea');
+  }
+  if (isChelsea(center.away?.name)) {
+    await syncPlayers(center.away.players as Player[], 'Chelsea');
+  }
+
   return matchId;
 }
 

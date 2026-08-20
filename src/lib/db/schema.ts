@@ -13,9 +13,23 @@ export interface KeyValEntry<T = any> {
   updatedAt: number;
 }
 
+export interface PlayerMaster {
+  id: string; // '${season}_${playerId}' (Primary Key)
+  playerId: number;
+  name: string;
+  season: string; // 所属シーズン (例: '26-27', '25-26', '24-25')
+  defaultShirtNo?: number; // 背番号
+  position?: string; // ポジション ('GK', 'DF', 'MID', 'FW', 'Other' など)
+  photoBlob?: Blob; // ローカル保存された画像データ
+  photoUrl?: string; // 外部URL（フォールバック用）
+  teamName?: string; // チーム名 (例: 'Chelsea')
+  isExcluded?: boolean; // 該当シーズンから除外（非表示）フラグ
+  updatedAt: number;
+}
+
 const DB_NAME = 'footics_db';
-// v15: events primary key changed to compound [match_id+id] to prevent cross-match ID collisions
-const _DB_VERSION = 16;
+// v19: drop players store in v18 and recreate with new primary key 'id' in v19 to avoid Dexie UpgradeError
+const _DB_VERSION = 19;
 
 export class FooticsDatabase extends Dexie {
   event_memos!: Table<EventMemo, number>;
@@ -26,6 +40,7 @@ export class FooticsDatabase extends Dexie {
   // Primary key is compound [match_id, id] — queried via match_id index
   events!: Table<EventRow, [number | string, number | string]>;
   keyval!: Table<KeyValEntry, string>;
+  players!: Table<PlayerMaster, string>;
 
   constructor() {
     super(DB_NAME);
@@ -54,6 +69,20 @@ export class FooticsDatabase extends Dexie {
             }
           });
       });
+
+    this.version(17).stores({
+      players: 'playerId, name, updatedAt',
+    });
+
+    // Dexie does not support changing primary keys directly on the same store.
+    // Drop table in v18 and recreate with new primary key 'id' in v19.
+    this.version(18).stores({
+      players: null,
+    });
+
+    this.version(19).stores({
+      players: 'id, playerId, season, name, teamName, updatedAt',
+    });
   }
 }
 

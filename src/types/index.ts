@@ -71,10 +71,12 @@ export interface BasePlayer {
   position?: string;
 }
 
+export type StandardPosition = 'GK' | 'DF' | 'MID' | 'FW' | 'Other';
+
 export interface Player extends BasePlayer {
   shirtNo: number;
   position:
-    | 'GK'
+    | StandardPosition
     | 'DR'
     | 'DC'
     | 'DL'
@@ -83,7 +85,6 @@ export interface Player extends BasePlayer {
     | 'AMC'
     | 'AMR'
     | 'AML'
-    | 'FW'
     | 'Sub';
   height: number;
   weight: number;

@@ -35,7 +35,10 @@ export const MatchMemoUnit: React.FC<MatchMemoUnitProps> = ({
       const el = textareaRef.current;
       if (el) {
         let activeEl: Element | null = document.activeElement;
-        while (activeEl && (activeEl as HTMLElement).shadowRoot?.activeElement) {
+        while (
+          activeEl &&
+          (activeEl as HTMLElement).shadowRoot?.activeElement
+        ) {
           activeEl = (activeEl as HTMLElement).shadowRoot!.activeElement;
         }
         if (activeEl !== el) {

@@ -20,3 +20,19 @@ export const eventKeys = {
   all: ['events'] as const,
   filtered: (filters: any) => [...eventKeys.all, 'filtered', filters] as const,
 };
+
+export const playerKeys = {
+  all: ['players'] as const,
+  lists: () => [...playerKeys.all, 'list'] as const,
+  detail: (playerId: number) =>
+    [...playerKeys.all, 'detail', playerId] as const,
+  batch: (playerIds: number[]) =>
+    [
+      ...playerKeys.all,
+      'batch',
+      playerIds
+        .slice()
+        .sort((a, b) => a - b)
+        .join(','),
+    ] as const,
+};

@@ -2,7 +2,12 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { customEventKeys, eventKeys, matchKeys } from '@/lib/query-keys';
+import {
+  customEventKeys,
+  eventKeys,
+  matchKeys,
+  playerKeys,
+} from '@/lib/query-keys';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
 import { useMemoOverlayStore } from '@/stores/memo-overlay-store';
 
@@ -30,6 +35,9 @@ export function useDataSync() {
 
       // 保存フラグをリセット
       useMemoOverlayStore.getState().setIsSaving(false);
+
+      // 選手マスターのクエリを常に無効化
+      queryClient.invalidateQueries({ queryKey: playerKeys.all });
 
       if (matchId) {
         // 特定の試合に関連するクエリを無効化

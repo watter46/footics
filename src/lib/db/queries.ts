@@ -6,7 +6,7 @@ import type {
   TacticalSnapshot,
 } from '../schema';
 import { SHORTCUT_ACTIONS } from '../shortcuts';
-import { db } from './schema';
+import { db, type PlayerMaster } from './schema';
 
 // ──────────────────────────────────────────────
 // Notification Helper
@@ -218,4 +218,255 @@ export async function setKeyValue<T = any>(
 
 export async function deleteKeyValue(key: string): Promise<void> {
   await db.keyval.delete(key);
+}
+
+// ──────────────────────────────────────────────
+// Player Master Operations (試合横断マスター・シーズン別対応)
+// ──────────────────────────────────────────────
+
+export function generatePlayerMasterId(
+  season: string,
+  playerId: number,
+): string {
+  return `${season}_${playerId}`;
+}
+
+/**
+ * 単一選手のマスター情報を取得 (season指定があれば特定シーズン、無ければ該当playerIdの最新レコード)
+ */
+export async function getPlayerMaster(
+  playerId: number,
+  season?: string,
+): Promise<PlayerMaster | undefined> {
+  if (season) {
+    const id = generatePlayerMasterId(season, playerId);
+    return db.players.get(id);
+  }
+  return db.players.where('playerId').equals(playerId).first();
+}
+
+/**
+ * シーズン別の選手マスター一覧を取得 (除外選手は除く)
+ */
+export async function getPlayerMastersBySeason(
+  season: string,
+  teamName?: string,
+): Promise<PlayerMaster[]> {
+  const query = db.players.where('season').equals(season);
+  if (teamName) {
+    return query
+      .filter((p) => (p.teamName || 'Chelsea') === teamName && !p.isExcluded)
+      .toArray();
+  }
+  return query.filter((p) => !p.isExcluded).toArray();
+}
+
+/**
+ * シーズン別の除外された選手マスター一覧（またはID Set）を取得
+ */
+export async function getExcludedPlayerMastersBySeason(
+  season: string,
+  teamName?: string,
+): Promise<PlayerMaster[]> {
+  const query = db.players.where('season').equals(season);
+  if (teamName) {
+    return query
+      .filter((p) => (p.teamName || 'Chelsea') === teamName && !!p.isExcluded)
+      .toArray();
+  }
+  return query.filter((p) => !!p.isExcluded).toArray();
+}
+
+/**
+ * 選手マスター情報を新規作成 / 更新
+ */
+export async function savePlayerMaster(
+  player: Partial<PlayerMaster> & {
+    playerId: number;
+    name: string;
+    season?: string;
+  },
+): Promise<void> {
+  const season = player.season || '26-27';
+  const id = player.id || generatePlayerMasterId(season, player.playerId);
+
+  const existing = await db.players.get(id);
+  const updated: PlayerMaster = {
+    id,
+    playerId: player.playerId,
+    name: player.name,
+    season,
+    defaultShirtNo: player.defaultShirtNo ?? existing?.defaultShirtNo,
+    position: player.position ?? existing?.position ?? 'Other',
+    photoBlob: player.photoBlob ?? existing?.photoBlob,
+    photoUrl: player.photoUrl ?? existing?.photoUrl,
+    teamName: player.teamName ?? existing?.teamName ?? 'Chelsea',
+    isExcluded: player.isExcluded ?? false,
+    updatedAt: Date.now(),
+  };
+
+  await db.players.put(updated);
+  dispatchRefreshEvent();
+}
+
+/**
+ * 選手の顔写真 (Blob) を保存
+ * 既存レコードがあればそのメタデータを引き継ぎ、無ければ新規作成
+ */
+export async function savePlayerPhoto(
+  playerId: number,
+  blob: Blob,
+  name?: string,
+  season?: string,
+): Promise<void> {
+  const targetSeason = season || '26-27';
+  const id = generatePlayerMasterId(targetSeason, playerId);
+  const existing = await db.players.get(id);
+
+  await db.players.put({
+    id,
+    playerId,
+    name: name || existing?.name || `Player ${playerId}`,
+    season: targetSeason,
+    defaultShirtNo: existing?.defaultShirtNo,
+    position: existing?.position || 'Sub',
+    photoBlob: blob,
+    photoUrl: existing?.photoUrl,
+    teamName: existing?.teamName || 'Chelsea',
+    updatedAt: Date.now(),
+  });
+  dispatchRefreshEvent();
+}
+
+/**
+ * 複数選手のマスター情報を一括取得 (Map<playerId, PlayerMaster> 形式)
+ */
+export async function getPlayersMasterBatch(
+  playerIds: number[],
+  season?: string,
+): Promise<Map<number, PlayerMaster>> {
+  const map = new Map<number, PlayerMaster>();
+  if (!playerIds || playerIds.length === 0) return map;
+
+  const validIds = Array.from(new Set(playerIds)).filter(
+    (id) => typeof id === 'number' && !Number.isNaN(id),
+  );
+  if (validIds.length === 0) return map;
+
+  let results: PlayerMaster[] = [];
+  if (season) {
+    results = await db.players
+      .where('season')
+      .equals(season)
+      .filter((p) => validIds.includes(p.playerId))
+      .toArray();
+  } else {
+    results = await db.players.where('playerId').anyOf(validIds).toArray();
+  }
+
+  for (const player of results) {
+    map.set(player.playerId, player);
+  }
+  return map;
+}
+
+/**
+ * 全ての選手マスター情報を取得
+ */
+export async function getAllPlayerMasters(): Promise<PlayerMaster[]> {
+  return db.players.toArray();
+}
+
+/**
+ * 選手マスター情報を削除またはシーズンから除外
+ * 手動登録選手(ID < 0)は物理削除、プリセット/試合由来選手(ID > 0)はシーズン除外フラグ(isExcluded: true)を設定
+ */
+export async function deletePlayerMaster(
+  playerId: number,
+  season?: string,
+): Promise<void> {
+  const targetSeason = season || '26-27';
+  const id = generatePlayerMasterId(targetSeason, playerId);
+
+  if (playerId < 0) {
+    // 手動追加の仮ID選手は物理削除
+    await db.players.delete(id);
+  } else {
+    // プリセットや試合データ由来の選手は該当シーズンから除外
+    const existing = await db.players.get(id);
+    await db.players.put({
+      id,
+      playerId,
+      name: existing?.name || `Player ${playerId}`,
+      season: targetSeason,
+      defaultShirtNo: existing?.defaultShirtNo,
+      position: existing?.position || 'Other',
+      photoBlob: existing?.photoBlob,
+      photoUrl: existing?.photoUrl,
+      teamName: existing?.teamName || 'Chelsea',
+      isExcluded: true,
+      updatedAt: Date.now(),
+    });
+  }
+  dispatchRefreshEvent();
+}
+
+/**
+ * 手動追加選手（仮ID: tempPlayerId < 0）を正規のWhoScored ID（officialPlayerId > 0）に統合・紐付け
+ */
+export async function mergePlayerId(
+  tempPlayerId: number,
+  officialPlayerId: number,
+  season: string = '26-27',
+  teamName: string = 'Chelsea',
+): Promise<void> {
+  const tempId = generatePlayerMasterId(season, tempPlayerId);
+  const officialId = generatePlayerMasterId(season, officialPlayerId);
+
+  await db.transaction('rw', [db.players], async () => {
+    const tempRecord = await db.players.get(tempId);
+    const officialRecord = await db.players.get(officialId);
+
+    // 写真や背番号、ポジションなど、手動設定されたデータを正規IDへ引き継ぐ
+    await db.players.put({
+      id: officialId,
+      playerId: officialPlayerId,
+      name: officialRecord?.name || tempRecord?.name || `Player ${officialPlayerId}`,
+      season,
+      defaultShirtNo:
+        tempRecord?.defaultShirtNo ?? officialRecord?.defaultShirtNo,
+      position: tempRecord?.position ?? officialRecord?.position ?? 'Other',
+      photoBlob: tempRecord?.photoBlob ?? officialRecord?.photoBlob,
+      photoUrl: tempRecord?.photoUrl ?? officialRecord?.photoUrl,
+      teamName,
+      isExcluded: false,
+      updatedAt: Date.now(),
+    });
+
+    // 旧仮IDのレコードを削除
+    await db.players.delete(tempId);
+  });
+
+  dispatchRefreshEvent();
+}
+
+/**
+ * 選手の登録写真を削除
+ */
+export async function deletePlayerPhoto(
+  playerId: number,
+  season?: string,
+): Promise<void> {
+  const targetSeason = season || '26-27';
+  const id = generatePlayerMasterId(targetSeason, playerId);
+  const existing = await db.players.get(id);
+  if (existing) {
+    await db.players.put({
+      ...existing,
+      photoBlob: undefined,
+      photoUrl: undefined,
+      updatedAt: Date.now(),
+    });
+    dispatchRefreshEvent();
+  }
 }
