@@ -560,7 +560,11 @@ export function preRenderPlayerMarkers(
         playerRadius * 1.7,
       );
       ctx.restore();
-    } else if (meta.options.insideContent === 'number' && meta.shirtNo) {
+    } else if (
+      (meta.options.insideContent === 'number' ||
+        meta.options.insideContent === 'photo') &&
+      meta.shirtNo
+    ) {
       const numberScale = meta.options.numberSizeScale ?? 1.0;
       const fontSize = Math.round(playerRadius * 1.15 * numberScale);
       ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;

@@ -68,6 +68,9 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
     if (isPlaying) {
       stopAnimation(stage);
     } else {
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        onClose?.();
+      }
       setActiveSceneIndex(0);
       requestAnimationFrame(() => {
         if (stage) {

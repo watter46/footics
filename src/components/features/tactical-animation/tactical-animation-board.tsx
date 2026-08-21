@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  ChevronLeft,
+  ChevronRight,
   Film,
   Import,
   Monitor,
@@ -8,9 +10,12 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Play,
+  Plus,
   RotateCcw,
   Settings2,
   Smartphone,
+  Square,
   X,
 } from 'lucide-react';
 import type React from 'react';
@@ -94,8 +99,26 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
   const setSelectedPlayerId = useTacticalAnimationStore(
     (s) => s.setSelectedPlayerId,
   );
+  const addScene = useTacticalAnimationStore((s) => s.addScene);
 
   const { playAnimation, stopAnimation } = useTacticalAnimation();
+
+  // 再生/停止トグル (モバイル時は自動でボトムシートを最小化してピッチを全開表示)
+  const handlePlayToggle = () => {
+    const stage = pitchRef.current?.getStage();
+    if (isPlaying) {
+      stopAnimation(stage);
+    } else {
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setIsTimelineOpen(false);
+        setIsInspectorOpen(false);
+      }
+      setActiveSceneIndex(0);
+      requestAnimationFrame(() => {
+        if (stage) playAnimation(stage);
+      });
+    }
+  };
 
   // 初期マッチデータがある場合は自動インポート (skipAutoImport が false の場合のみ)
   useEffect(() => {
@@ -125,15 +148,7 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
 
       if (e.code === 'Space') {
         e.preventDefault();
-        const stage = pitchRef.current?.getStage();
-        if (isPlaying) {
-          stopAnimation(stage);
-        } else {
-          setActiveSceneIndex(0);
-          requestAnimationFrame(() => {
-            if (stage) playAnimation(stage);
-          });
-        }
+        handlePlayToggle();
       } else if (e.code === 'ArrowLeft') {
         e.preventDefault();
         if (!isPlaying && !isExporting && activeSceneIndex > 0) {
@@ -161,8 +176,7 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
     isExporting,
     activeSceneIndex,
     scenes.length,
-    playAnimation,
-    stopAnimation,
+    handlePlayToggle,
     setActiveSceneIndex,
     setSelectedPlayerId,
   ]);
@@ -692,40 +706,117 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
         {/* 中央カラム: 巨大ピッチ描画コンテナ (画面高さを100%活用) */}
         <div
           ref={containerRef}
-          className="flex-1 flex items-center justify-center min-h-0 min-w-0 bg-slate-950/40 relative overflow-hidden p-1"
+          className="flex-1 flex flex-col items-center justify-center min-h-0 min-w-0 bg-slate-950/40 relative overflow-hidden p-1 pb-16 md:pb-1"
         >
-          {/* 左パネルが閉じている場合のクイック展開フローティングボタン */}
-          {!isTimelineOpen && (
-            <button
-              type="button"
-              onClick={toggleTimeline}
-              className="absolute top-2 left-2 z-20 flex items-center gap-1 px-2.5 py-1.5 bg-slate-900/90 hover:bg-blue-600 border border-slate-700 hover:border-blue-500 text-slate-300 hover:text-white rounded-lg text-xs font-medium shadow-lg backdrop-blur-xs transition-all animate-in fade-in"
-              title="タイムラインを開く"
-            >
-              <PanelLeftOpen className="w-3.5 h-3.5 text-blue-400" />
-              <span className="text-xs">タイムライン</span>
-            </button>
-          )}
-
-          {/* 右パネルが閉じている場合のクイック展開フローティングボタン */}
-          {!isInspectorOpen && (
-            <button
-              type="button"
-              onClick={toggleInspector}
-              className="absolute top-2 right-2 z-20 flex items-center gap-1 px-2.5 py-1.5 bg-slate-900/90 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white rounded-lg text-xs font-medium shadow-lg backdrop-blur-xs transition-all animate-in fade-in"
-              title="インスペクターを開く"
-            >
-              <Settings2 className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-xs">設定</span>
-              <PanelRightOpen className="w-3.5 h-3.5" />
-            </button>
-          )}
-
           <AnimationPitch
             ref={pitchRef}
             width={pitchDimensions.width}
             height={pitchDimensions.height}
           />
+
+          {/* ピッチ常駐ミニプレイヤーバー (常に視認可能なプレビュー再生・シーン操作) */}
+          <div className="absolute bottom-2.5 z-30 flex items-center gap-1 sm:gap-2 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-900/95 border border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-md transition-all select-none max-w-[96vw]">
+            {/* 再生/停止ボタン */}
+            <button
+              type="button"
+              onClick={handlePlayToggle}
+              disabled={isExporting || scenes.length <= 1}
+              className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs shadow-md transition-all ${
+                isPlaying
+                  ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-105 active:scale-95'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              title={isPlaying ? '停止 [Space]' : 'プレビュー再生 [Space]'}
+            >
+              {isPlaying ? (
+                <>
+                  <Square className="w-3.5 h-3.5 fill-white" />
+                  <span>停止</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span>再生</span>
+                </>
+              )}
+            </button>
+
+            <div className="w-[1px] h-4 bg-slate-700/80 shrink-0" />
+
+            {/* 前のシーン */}
+            <button
+              type="button"
+              disabled={isPlaying || isExporting || activeSceneIndex <= 0}
+              onClick={() => setActiveSceneIndex(activeSceneIndex - 1)}
+              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              title="前のシーン [←]"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {/* シーンインジケーター */}
+            <span className="font-mono text-xs font-bold px-1.5 py-0.5 rounded bg-slate-950/80 border border-slate-800 text-blue-400 shrink-0">
+              {activeSceneIndex + 1} / {scenes.length}
+            </span>
+
+            {/* 次のシーン */}
+            <button
+              type="button"
+              disabled={
+                isPlaying ||
+                isExporting ||
+                activeSceneIndex >= scenes.length - 1
+              }
+              onClick={() => setActiveSceneIndex(activeSceneIndex + 1)}
+              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              title="次のシーン [→]"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            {/* シーン追加 */}
+            <button
+              type="button"
+              disabled={isPlaying || isExporting}
+              onClick={addScene}
+              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-50 transition-colors"
+              title="現在のシーンを複製して追加"
+            >
+              <Plus className="w-4 h-4 text-emerald-400" />
+            </button>
+
+            <div className="w-[1px] h-4 bg-slate-700/80 shrink-0" />
+
+            {/* タイムライン トグル */}
+            <button
+              type="button"
+              onClick={toggleTimeline}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors border ${
+                isTimelineOpen
+                  ? 'bg-blue-600 border-blue-500 text-white shadow-sm'
+                  : 'bg-slate-800/90 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'
+              }`}
+              title="タイムライン・シーン一覧"
+            >
+              <Film className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden sm:inline">タイムライン</span>
+            </button>
+
+            {/* 設定（インスペクター） トグル */}
+            <button
+              type="button"
+              onClick={toggleInspector}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors border ${
+                isInspectorOpen
+                  ? 'bg-indigo-600 border-indigo-500 text-white shadow-sm'
+                  : 'bg-slate-800/90 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'
+              }`}
+              title="選手・マーカー設定"
+            >
+              <Settings2 className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden sm:inline">設定</span>
+            </button>
+          </div>
         </div>
 
         {/* 右カラム: インスペクター (マーカー設定 & ベンチ・配置) */}

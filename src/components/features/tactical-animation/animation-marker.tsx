@@ -240,7 +240,7 @@ export const AnimationMarker = React.memo<AnimationMarkerProps>(
           perfectDrawEnabled={false}
         />
 
-        {/* 写真表示 */}
+        {/* 写真表示 または 背番号フォールバック */}
         {options.insideContent === 'photo' && loadedImage ? (
           <Group
             listening={false}
@@ -258,8 +258,8 @@ export const AnimationMarker = React.memo<AnimationMarkerProps>(
               listening={false}
             />
           </Group>
-        ) : options.insideContent === 'number' && shirtNo ? (
-          /* 背番号表示 (太字・高コントラスト・軽量描画) */
+        ) : (options.insideContent === 'number' || options.insideContent === 'photo') && shirtNo ? (
+          /* 背番号表示 (太字・高コントラスト・写真フォールバック含む) */
           <Text
             text={shirtNo}
             x={-radius}
