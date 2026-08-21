@@ -9,7 +9,6 @@ import {
 } from '@/lib/tactical/export/pitch-renderer';
 
 import type {
-
   ExportJobConfig,
   ExportWorkerInMessage,
 } from '@/lib/tactical/export/types';
@@ -67,8 +66,6 @@ async function processExport(
   const ballRadius = baseDim * 0.022;
   const ballCanvas: CanvasImageSource =
     ballBitmap || createSoccerBallCanvas(ballRadius);
-
-
 
   // 3. 選手メタデータの事前キャッシュとマーカーの事前レンダリング
   const playerMetadataMap = extractPlayerMetadataMap(config.scenes);
@@ -227,11 +224,7 @@ workerScope.onmessage = async (event: MessageEvent<ExportWorkerInMessage>) => {
 
   if (message.type === 'start') {
     try {
-      await processExport(
-        message.config,
-        message.photos,
-        message.ballBitmap,
-      );
+      await processExport(message.config, message.photos, message.ballBitmap);
     } catch (err) {
       workerScope.postMessage({
         type: 'error',

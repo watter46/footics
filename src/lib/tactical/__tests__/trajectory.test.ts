@@ -65,4 +65,3 @@ describe('trajectory utility', () => {
     expect(midPt.y).toBeCloseTo(47.5);
   });
 });
-

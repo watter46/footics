@@ -16,7 +16,6 @@ import { preloadPlayerPhotos } from '@/lib/tactical/export/photo-loader';
 import { createSoccerBallImageBitmap } from '@/lib/tactical/soccer-ball-svg';
 
 export function useTacticalVideoExport() {
-
   const isExporting = useTacticalAnimationStore((s) => s.isExporting);
   const setIsExporting = useTacticalAnimationStore((s) => s.setIsExporting);
   const scenes = useTacticalAnimationStore((s) => s.scenes);
@@ -221,7 +220,6 @@ export function useTacticalVideoExport() {
           { type: 'start', config, photos, ballBitmap },
           transferables,
         );
-
       } catch (err) {
         console.error('Failed to start MP4 export:', err);
         setExportError(

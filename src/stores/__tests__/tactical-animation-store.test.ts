@@ -792,5 +792,3 @@ describe('tactical-animation-store', () => {
     });
   });
 });
-
-

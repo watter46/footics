@@ -199,7 +199,7 @@ export const ChelseaTacticalBoardModal: React.FC<
           onDragEnd={handleDragEnd}
           modifiers={[snapCenterToCursor]}
         >
-          <div className="relative w-[98vw] h-[98vh] flex flex-col bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden rounded-2xl">
+          <div className="relative w-[100vw] sm:w-[98vw] h-[100dvh] sm:h-[98vh] flex flex-col bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden rounded-none sm:rounded-2xl">
             <TacticalHeader
               metadata={virtualMatch}
               onClose={onClose}
@@ -213,7 +213,7 @@ export const ChelseaTacticalBoardModal: React.FC<
             />
 
             {/* Main Board Canvas */}
-            <div className="flex-1 flex flex-row gap-4 p-4 bg-slate-950/20 overflow-hidden relative">
+            <div className="flex-1 flex flex-col md:flex-row gap-2 md:gap-4 p-2 md:p-4 bg-slate-950/20 overflow-hidden relative min-h-0">
               <TacticalPitchArea
                 matchId={matchId}
                 metadata={virtualMatch}
@@ -226,8 +226,8 @@ export const ChelseaTacticalBoardModal: React.FC<
                 pitchRef={pitchRef}
               />
 
-              {/* Bench Area (Right 25%) */}
-              <div className="flex-[1] min-w-0 h-full flex flex-col min-h-0">
+              {/* Bench Area (Right on desktop, bottom on mobile) */}
+              <div className="w-full md:w-auto md:flex-[1] min-w-0 h-44 sm:h-52 md:h-full flex flex-col min-h-0 shrink-0">
                 <BenchArea
                   teamName={virtualMatch.teams[benchTeam].name}
                   onTeamToggle={() =>

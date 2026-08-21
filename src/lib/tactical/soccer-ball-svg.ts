@@ -69,7 +69,7 @@ export const SOCCER_BALL_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.
 
 let cachedSoccerBallImage: HTMLImageElement | null = null;
 let cachedSoccerBallDataUrl: string | null = null;
-let cachedSoccerBallBitmap: ImageBitmap | null = null;
+const cachedSoccerBallBitmap: ImageBitmap | null = null;
 
 export function getSoccerBallDataUrl(): string {
   if (!cachedSoccerBallDataUrl) {
@@ -117,5 +117,3 @@ export async function createSoccerBallImageBitmap(
   }
   return createImageBitmap(img);
 }
-
-

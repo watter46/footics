@@ -44,9 +44,37 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
     height: 617,
   });
 
-  // 左右パネルの開閉状態
+  // 左右パネルの開閉状態 (デフォルトは一旦true、useEffectで画面幅判定)
   const [isTimelineOpen, setIsTimelineOpen] = useState(true);
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
+
+  useEffect(() => {
+    // モバイル画面 (md: 768px未満) の場合は初期状態でパネルを閉じる
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsTimelineOpen(false);
+      setIsInspectorOpen(false);
+    }
+  }, []);
+
+  const toggleTimeline = () => {
+    setIsTimelineOpen((prev) => {
+      const next = !prev;
+      if (next && typeof window !== 'undefined' && window.innerWidth < 768) {
+        setIsInspectorOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const toggleInspector = () => {
+    setIsInspectorOpen((prev) => {
+      const next = !prev;
+      if (next && typeof window !== 'undefined' && window.innerWidth < 768) {
+        setIsTimelineOpen(false);
+      }
+      return next;
+    });
+  };
 
   const orientation = useTacticalAnimationStore((s) => s.orientation);
   const setOrientation = useTacticalAnimationStore((s) => s.setOrientation);
@@ -464,12 +492,12 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
   return (
     <div className="flex flex-col w-full h-full bg-slate-950 text-white overflow-hidden select-none">
       {/* スリム型トップヘッダー (高さ 36px〜38px) */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-800 shrink-0 z-20">
-        <div className="flex items-center gap-2.5">
+      <div className="flex items-center justify-between px-2 sm:px-3 py-1.5 bg-slate-900 border-b border-slate-800 shrink-0 z-20">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           {/* 左パネル開閉トグルボタン */}
           <button
             type="button"
-            onClick={() => setIsTimelineOpen(!isTimelineOpen)}
+            onClick={toggleTimeline}
             className={`p-1.5 rounded-lg text-xs font-medium transition-colors border ${
               isTimelineOpen
                 ? 'bg-slate-800 border-slate-700 text-blue-400 hover:text-white'
@@ -489,8 +517,10 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
           </button>
 
           <h2 className="text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-sky-400 bg-clip-text text-transparent flex items-center gap-1.5">
-            <Film className="w-4 h-4 text-blue-400" />
-            <span>戦術アニメーション</span>
+            <Film className="w-4 h-4 text-blue-400 shrink-0" />
+            <span className="hidden xs:inline sm:inline">
+              戦術アニメーション
+            </span>
           </h2>
 
           {/* 向き切り替え (縦画面 デフォルト / 横画面) */}
@@ -498,7 +528,7 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
             <button
               type="button"
               onClick={() => setOrientation('vertical')}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold transition-colors ${
+              className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-semibold transition-colors ${
                 orientation === 'vertical'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
@@ -506,12 +536,12 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
               title="縦画面モード (TikTok/Reels/Shorts向け)"
             >
               <Smartphone className="w-3 h-3" />
-              <span>縦画面</span>
+              <span className="hidden xs:inline">縦</span>
             </button>
             <button
               type="button"
               onClick={() => setOrientation('horizontal')}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold transition-colors ${
+              className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-semibold transition-colors ${
                 orientation === 'horizontal'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
@@ -519,7 +549,7 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
               title="横画面モード (YouTube/PC向け)"
             >
               <Monitor className="w-3 h-3" />
-              <span>横画面</span>
+              <span className="hidden xs:inline">横</span>
             </button>
           </div>
 
@@ -576,12 +606,12 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
         )}
 
         {/* 右側アクション & パネルトグル & 閉じる */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5">
           {!initialMatch && (
             <button
               type="button"
               onClick={handleImportMockMatch}
-              className="flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-xs font-medium transition-colors border border-slate-700"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-xs font-medium transition-colors border border-slate-700"
             >
               <Import className="w-3 h-3 text-blue-400" />
               <span className="hidden sm:inline">サンプル読込</span>
@@ -591,7 +621,7 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
           <button
             type="button"
             onClick={handleReset}
-            className="flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-rose-900/50 text-slate-300 hover:text-rose-200 rounded-lg text-xs font-medium transition-colors border border-slate-700"
+            className="flex items-center gap-1 px-1.5 sm:px-2 py-1 bg-slate-800 hover:bg-rose-900/50 text-slate-300 hover:text-rose-200 rounded-lg text-xs font-medium transition-colors border border-slate-700"
             title="シーンを初期状態にリセット"
           >
             <RotateCcw className="w-3 h-3" />
@@ -601,8 +631,8 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
           {/* 右パネル開閉トグルボタン */}
           <button
             type="button"
-            onClick={() => setIsInspectorOpen(!isInspectorOpen)}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors border ${
+            onClick={toggleInspector}
+            className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg text-xs font-medium transition-colors border ${
               isInspectorOpen
                 ? 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
                 : 'bg-indigo-600 border-indigo-500 text-white shadow'
@@ -628,7 +658,7 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition-colors border border-slate-700 ml-1"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition-colors border border-slate-700 ml-0.5 sm:ml-1"
               title="閉じる"
             >
               <X className="w-3.5 h-3.5" />
@@ -640,6 +670,17 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
 
       {/* 3カラム メインワークスペース (左タイムライン + 中央巨大ピッチ + 右インスペクター) */}
       <div className="flex-1 flex flex-row min-h-0 min-w-0 overflow-hidden relative">
+        {/* モバイル用 バックドロップ (いずれかのパネルが開いている場合) */}
+        {(isTimelineOpen || isInspectorOpen) && (
+          <div
+            className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-40 transition-opacity"
+            onClick={() => {
+              setIsTimelineOpen(false);
+              setIsInspectorOpen(false);
+            }}
+          />
+        )}
+
         {/* 左カラム: タイムライン＆シーン管理 */}
         {isTimelineOpen && (
           <AnimationTimelinePanel
@@ -657,12 +698,12 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
           {!isTimelineOpen && (
             <button
               type="button"
-              onClick={() => setIsTimelineOpen(true)}
+              onClick={toggleTimeline}
               className="absolute top-2 left-2 z-20 flex items-center gap-1 px-2.5 py-1.5 bg-slate-900/90 hover:bg-blue-600 border border-slate-700 hover:border-blue-500 text-slate-300 hover:text-white rounded-lg text-xs font-medium shadow-lg backdrop-blur-xs transition-all animate-in fade-in"
               title="タイムラインを開く"
             >
               <PanelLeftOpen className="w-3.5 h-3.5 text-blue-400" />
-              <span>タイムライン</span>
+              <span className="text-xs">タイムライン</span>
             </button>
           )}
 
@@ -670,12 +711,12 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
           {!isInspectorOpen && (
             <button
               type="button"
-              onClick={() => setIsInspectorOpen(true)}
+              onClick={toggleInspector}
               className="absolute top-2 right-2 z-20 flex items-center gap-1 px-2.5 py-1.5 bg-slate-900/90 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white rounded-lg text-xs font-medium shadow-lg backdrop-blur-xs transition-all animate-in fade-in"
               title="インスペクターを開く"
             >
               <Settings2 className="w-3.5 h-3.5 text-indigo-400" />
-              <span>設定</span>
+              <span className="text-xs">設定</span>
               <PanelRightOpen className="w-3.5 h-3.5" />
             </button>
           )}

@@ -7,7 +7,6 @@ import {
   ChevronRight,
   EyeOff,
   Hash,
-
   Image as ImageIcon,
   LayoutGrid,
   Link2,
@@ -163,7 +162,6 @@ export const AnimationInspectorPanel: React.FC<
     : markerSubTab === 'player'
       ? 'home'
       : markerSubTab;
-
 
   // ベンチ選手とピッチ選手の計算
   const teamPlayers = allPlayers.filter((p) => p.team === benchTeam);
@@ -366,8 +364,6 @@ export const AnimationInspectorPanel: React.FC<
     }
   };
 
-
-
   const processAndSaveFile = async (file: File | Blob) => {
     if (!selectedPlayer) return;
     setIsProcessingPhoto(true);
@@ -519,10 +515,22 @@ export const AnimationInspectorPanel: React.FC<
         type: 'straight',
       };
 
-
-
   return (
-    <div className="flex flex-col w-72 sm:w-80 bg-slate-900/95 backdrop-blur-md border-l border-slate-800 text-white h-full overflow-hidden select-none shrink-0 z-10">
+    <div
+      className={`
+      flex flex-col text-white overflow-hidden select-none shrink-0 z-40
+      md:w-80 md:h-full md:border-l md:border-slate-800 md:relative md:bg-slate-900/95 md:backdrop-blur-md
+      max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:h-[65vh] max-md:bg-slate-900 max-md:rounded-t-2xl max-md:shadow-[0_-10px_40px_rgba(0,0,0,0.5)] max-md:z-50
+    `}
+    >
+      {/* モバイル用 ドラッグハンドル (タップで閉じる補助) */}
+      <div
+        className="md:hidden w-full flex justify-center py-2 bg-slate-950 rounded-t-2xl shrink-0 cursor-pointer"
+        onClick={onClose}
+      >
+        <div className="w-12 h-1.5 bg-slate-700 rounded-full" />
+      </div>
+
       {/* パネルヘッダー */}
       <div className="flex items-center justify-between px-3 py-2.5 bg-slate-950 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-slate-200">
@@ -794,9 +802,7 @@ export const AnimationInspectorPanel: React.FC<
                 <div className="flex items-center gap-1.5 font-semibold text-slate-200 mb-2">
                   <Route className="w-3.5 h-3.5 text-indigo-400" />
                   <span>
-                    {isBallSelected
-                      ? 'ボール移動軌道'
-                      : 'マーカー移動軌道'}
+                    {isBallSelected ? 'ボール移動軌道' : 'マーカー移動軌道'}
                   </span>
                 </div>
 
@@ -842,7 +848,6 @@ export const AnimationInspectorPanel: React.FC<
               </div>
             )}
 
-
             {/* 選手マーカー固有の設定 (ボール選択時は非表示) */}
             {(!isBallSelected || currentSubTab !== 'player') && (
               <>
@@ -865,499 +870,498 @@ export const AnimationInspectorPanel: React.FC<
                   />
                 </div>
 
-
-
-            {/* カラー設定 */}
-            <div className="p-2.5 bg-slate-950/70 rounded-xl border border-slate-800">
-              <div className="flex items-center gap-1.5 font-semibold text-slate-200 mb-2">
-                <Palette className="w-3.5 h-3.5 text-slate-400" />
-                <span>
-                  {currentSubTab === 'player'
-                    ? 'マーカーカラー'
-                    : currentSubTab === 'home'
-                      ? 'HOMEチームカラー'
-                      : currentSubTab === 'away'
-                        ? 'AWAYチームカラー'
-                        : '全体カラー一括'}
-                </span>
-              </div>
-              <div className="grid grid-cols-5 gap-1.5 mb-2">
-                {PRESET_COLORS.map((c) => (
-                  <button
-                    type="button"
-                    key={c}
-                    onClick={() => handleColorChange(c)}
-                    className={`w-full aspect-square rounded-lg border transition-all ${
-                      currentOptions.color === c
-                        ? 'border-white ring-2 ring-blue-500 scale-105'
-                        : 'border-slate-700 hover:border-slate-500'
-                    }`}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={currentOptions.color}
-                  onChange={(e) => handleColorChange(e.target.value)}
-                  className="w-7 h-7 rounded border border-slate-700 bg-transparent cursor-pointer"
-                />
-                <input
-                  type="text"
-                  value={currentOptions.color}
-                  onChange={(e) => handleColorChange(e.target.value)}
-                  className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 font-mono"
-                />
-              </div>
-            </div>
-
-            {/* 枠線設定 (Stroke / Border) */}
-            <div className="p-2.5 bg-slate-950/70 rounded-xl border border-slate-800">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5 font-semibold text-slate-200">
-                  <Square className="w-3.5 h-3.5 text-slate-400" />
-                  <span>
-                    {currentSubTab === 'player'
-                      ? 'マーカー枠線 (縁取り)'
-                      : currentSubTab === 'home'
-                        ? 'HOME枠線 (縁取り)'
-                        : currentSubTab === 'away'
-                          ? 'AWAY枠線 (縁取り)'
-                          : '全体枠線一括'}
-                  </span>
+                {/* カラー設定 */}
+                <div className="p-2.5 bg-slate-950/70 rounded-xl border border-slate-800">
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-200 mb-2">
+                    <Palette className="w-3.5 h-3.5 text-slate-400" />
+                    <span>
+                      {currentSubTab === 'player'
+                        ? 'マーカーカラー'
+                        : currentSubTab === 'home'
+                          ? 'HOMEチームカラー'
+                          : currentSubTab === 'away'
+                            ? 'AWAYチームカラー'
+                            : '全体カラー一括'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5 mb-2">
+                    {PRESET_COLORS.map((c) => (
+                      <button
+                        type="button"
+                        key={c}
+                        onClick={() => handleColorChange(c)}
+                        className={`w-full aspect-square rounded-lg border transition-all ${
+                          currentOptions.color === c
+                            ? 'border-white ring-2 ring-blue-500 scale-105'
+                            : 'border-slate-700 hover:border-slate-500'
+                        }`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={currentOptions.color}
+                      onChange={(e) => handleColorChange(e.target.value)}
+                      className="w-7 h-7 rounded border border-slate-700 bg-transparent cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={currentOptions.color}
+                      onChange={(e) => handleColorChange(e.target.value)}
+                      className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 font-mono"
+                    />
+                  </div>
                 </div>
-                <span className="text-[10px] text-slate-500 font-mono">
-                  {currentOptions.strokeWidth === 0 ||
-                  currentOptions.strokeColor === 'none'
-                    ? '枠線なし'
-                    : `太さ: ${currentOptions.strokeWidth ?? 2}`}
-                </span>
-              </div>
 
-              {/* 太さ / 枠線の有無ボタングループ */}
-              <div className="grid grid-cols-4 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 mb-2.5">
-                <button
-                  type="button"
-                  onClick={() => handleStrokeWidthChange(0)}
-                  className={`py-1.5 rounded flex flex-col items-center gap-0.5 transition-colors ${
-                    !currentOptions.strokeWidth ||
-                    currentOptions.strokeWidth === 0 ||
-                    currentOptions.strokeColor === 'none'
-                      ? 'bg-blue-600 text-white font-semibold shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  title="枠線を非表示（なし）にする"
-                >
-                  <Slash className="w-3.5 h-3.5" />
-                  <span className="text-[9px]">なし</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStrokeWidthChange(1)}
-                  className={`py-1.5 rounded flex flex-col items-center gap-0.5 transition-colors ${
-                    currentOptions.strokeWidth === 1 &&
-                    currentOptions.strokeColor !== 'none'
-                      ? 'bg-blue-600 text-white font-semibold shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  title="細い枠線"
-                >
-                  <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />
-                  <span className="text-[9px]">細め</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStrokeWidthChange(2)}
-                  className={`py-1.5 rounded flex flex-col items-center gap-0.5 transition-colors ${
-                    currentOptions.strokeWidth === 2 &&
-                    currentOptions.strokeColor !== 'none'
-                      ? 'bg-blue-600 text-white font-semibold shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  title="標準の枠線"
-                >
-                  <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300" />
-                  <span className="text-[9px]">標準</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStrokeWidthChange(3.5)}
-                  className={`py-1.5 rounded flex flex-col items-center gap-0.5 transition-colors ${
-                    currentOptions.strokeWidth === 3.5 &&
-                    currentOptions.strokeColor !== 'none'
-                      ? 'bg-blue-600 text-white font-semibold shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  title="太い枠線"
-                >
-                  <div className="w-3.5 h-3.5 rounded-full border-[3px] border-slate-300" />
-                  <span className="text-[9px]">太め</span>
-                </button>
-              </div>
-
-              {/* 枠線カラー選択 (枠線が有効な場合のみ展開) */}
-              {currentOptions.strokeWidth !== 0 &&
-                currentOptions.strokeColor !== 'none' && (
-                  <div>
-                    <div className="text-[10px] text-slate-400 mb-1.5 flex items-center justify-between">
-                      <span>枠線の色</span>
-                      <span className="font-mono text-slate-300">
-                        {currentOptions.strokeColor ?? '#ffffff'}
+                {/* 枠線設定 (Stroke / Border) */}
+                <div className="p-2.5 bg-slate-950/70 rounded-xl border border-slate-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5 font-semibold text-slate-200">
+                      <Square className="w-3.5 h-3.5 text-slate-400" />
+                      <span>
+                        {currentSubTab === 'player'
+                          ? 'マーカー枠線 (縁取り)'
+                          : currentSubTab === 'home'
+                            ? 'HOME枠線 (縁取り)'
+                            : currentSubTab === 'away'
+                              ? 'AWAY枠線 (縁取り)'
+                              : '全体枠線一括'}
                       </span>
                     </div>
-                    <div className="grid grid-cols-6 gap-1.5 mb-2">
-                      {PRESET_STROKE_COLORS.map((c) => (
-                        <button
-                          type="button"
-                          key={c}
-                          onClick={() => handleStrokeColorChange(c)}
-                          className={`w-full aspect-square rounded-md border transition-all ${
-                            (currentOptions.strokeColor ?? '#ffffff') === c
-                              ? 'border-white ring-2 ring-blue-500 scale-105'
-                              : 'border-slate-700 hover:border-slate-500'
-                          }`}
-                          style={{ backgroundColor: c }}
-                        />
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={currentOptions.strokeColor ?? '#ffffff'}
-                        onChange={(e) =>
-                          handleStrokeColorChange(e.target.value)
-                        }
-                        className="w-7 h-7 rounded border border-slate-700 bg-transparent cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={currentOptions.strokeColor ?? '#ffffff'}
-                        onChange={(e) =>
-                          handleStrokeColorChange(e.target.value)
-                        }
-                        className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 font-mono"
-                      />
-                    </div>
-                  </div>
-                )}
-            </div>
-
-            {/* マーカー内部表示 */}
-            <div className="p-2.5 bg-slate-950/70 rounded-xl border border-slate-800">
-              <div className="flex items-center gap-1.5 font-semibold text-slate-200 mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-slate-400" />
-                <span>内部表示</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => handleInsideContentChange('number')}
-                  className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
-                    currentOptions.insideContent === 'number'
-                      ? 'bg-blue-600 text-white font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <Hash className="w-3.5 h-3.5" />
-                  <span className="text-[10px]">背番号</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleInsideContentChange('photo')}
-                  className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
-                    currentOptions.insideContent === 'photo'
-                      ? 'bg-blue-600 text-white font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  <span className="text-[10px]">顔写真</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleInsideContentChange('none')}
-                  className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
-                    currentOptions.insideContent === 'none'
-                      ? 'bg-blue-600 text-white font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <EyeOff className="w-3.5 h-3.5" />
-                  <span className="text-[10px]">なし</span>
-                </button>
-              </div>
-
-              {/* 背番号サイズ調整 (背番号表示時のみ) */}
-              {currentOptions.insideContent === 'number' && (
-                <div className="mt-2.5 pt-2 border-t border-slate-800/80">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      背番号の大きさ
-                    </span>
-                    <span className="font-mono text-[10px] font-semibold text-blue-400">
-                      {Math.round(
-                        (currentOptions.numberSizeScale ?? 1.0) * 100,
-                      )}
-                      %
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {currentOptions.strokeWidth === 0 ||
+                      currentOptions.strokeColor === 'none'
+                        ? '枠線なし'
+                        : `太さ: ${currentOptions.strokeWidth ?? 2}`}
                     </span>
                   </div>
 
-                  {/* プリセットボタン */}
-                  <div className="grid grid-cols-4 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 mb-2">
-                    {[
-                      { label: '小', val: 0.8 },
-                      { label: '標準', val: 1.0 },
-                      { label: '大', val: 1.2 },
-                      { label: '特大', val: 1.4 },
-                    ].map((p) => {
-                      const isSel =
-                        Math.abs(
-                          (currentOptions.numberSizeScale ?? 1.0) - p.val,
-                        ) < 0.05;
-                      return (
-                        <button
-                          key={p.label}
-                          type="button"
-                          onClick={() => handleNumberSizeChange(p.val)}
-                          className={`py-0.5 rounded text-center text-[10px] font-medium transition-colors ${
-                            isSel
-                              ? 'bg-blue-600 text-white font-bold shadow'
-                              : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          {p.label}
-                        </button>
-                      );
-                    })}
+                  {/* 太さ / 枠線の有無ボタングループ */}
+                  <div className="grid grid-cols-4 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 mb-2.5">
+                    <button
+                      type="button"
+                      onClick={() => handleStrokeWidthChange(0)}
+                      className={`py-1.5 rounded flex flex-col items-center gap-0.5 transition-colors ${
+                        !currentOptions.strokeWidth ||
+                        currentOptions.strokeWidth === 0 ||
+                        currentOptions.strokeColor === 'none'
+                          ? 'bg-blue-600 text-white font-semibold shadow'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="枠線を非表示（なし）にする"
+                    >
+                      <Slash className="w-3.5 h-3.5" />
+                      <span className="text-[9px]">なし</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStrokeWidthChange(1)}
+                      className={`py-1.5 rounded flex flex-col items-center gap-0.5 transition-colors ${
+                        currentOptions.strokeWidth === 1 &&
+                        currentOptions.strokeColor !== 'none'
+                          ? 'bg-blue-600 text-white font-semibold shadow'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="細い枠線"
+                    >
+                      <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />
+                      <span className="text-[9px]">細め</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStrokeWidthChange(2)}
+                      className={`py-1.5 rounded flex flex-col items-center gap-0.5 transition-colors ${
+                        currentOptions.strokeWidth === 2 &&
+                        currentOptions.strokeColor !== 'none'
+                          ? 'bg-blue-600 text-white font-semibold shadow'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="標準の枠線"
+                    >
+                      <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300" />
+                      <span className="text-[9px]">標準</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStrokeWidthChange(3.5)}
+                      className={`py-1.5 rounded flex flex-col items-center gap-0.5 transition-colors ${
+                        currentOptions.strokeWidth === 3.5 &&
+                        currentOptions.strokeColor !== 'none'
+                          ? 'bg-blue-600 text-white font-semibold shadow'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="太い枠線"
+                    >
+                      <div className="w-3.5 h-3.5 rounded-full border-[3px] border-slate-300" />
+                      <span className="text-[9px]">太め</span>
+                    </button>
                   </div>
 
-                  <input
-                    type="range"
-                    min={0.6}
-                    max={1.6}
-                    step={0.05}
-                    value={currentOptions.numberSizeScale ?? 1.0}
-                    onChange={(e) =>
-                      handleNumberSizeChange(Number(e.target.value))
-                    }
-                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                  />
-                </div>
-              )}
+                  {/* 枠線カラー選択 (枠線が有効な場合のみ展開) */}
+                  {currentOptions.strokeWidth !== 0 &&
+                    currentOptions.strokeColor !== 'none' && (
+                      <div>
+                        <div className="text-[10px] text-slate-400 mb-1.5 flex items-center justify-between">
+                          <span>枠線の色</span>
+                          <span className="font-mono text-slate-300">
+                            {currentOptions.strokeColor ?? '#ffffff'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-6 gap-1.5 mb-2">
+                          {PRESET_STROKE_COLORS.map((c) => (
+                            <button
+                              type="button"
+                              key={c}
+                              onClick={() => handleStrokeColorChange(c)}
+                              className={`w-full aspect-square rounded-md border transition-all ${
+                                (currentOptions.strokeColor ?? '#ffffff') === c
+                                  ? 'border-white ring-2 ring-blue-500 scale-105'
+                                  : 'border-slate-700 hover:border-slate-500'
+                              }`}
+                              style={{ backgroundColor: c }}
+                            />
+                          ))}
+                        </div>
 
-              {/* 写真アップロード & URL設定 (単一選択時のみ) */}
-              {currentSubTab === 'player' &&
-                selectedPlayer &&
-                effectiveSelectedIds.length === 1 &&
-                currentOptions.insideContent === 'photo' && (
-                  <div className="mt-2.5 flex flex-col gap-2 bg-slate-900 p-2 rounded-lg border border-slate-800">
-                    {selectedPlayer.options.photoUrl ? (
-                      <div className="flex items-center gap-2 p-1.5 bg-slate-950 rounded-md border border-slate-800">
-                        <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-blue-500 shrink-0 bg-slate-800">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={selectedPlayer.options.photoUrl}
-                            alt={selectedPlayer.name}
-                            className="w-full h-full object-cover"
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={currentOptions.strokeColor ?? '#ffffff'}
+                            onChange={(e) =>
+                              handleStrokeColorChange(e.target.value)
+                            }
+                            className="w-7 h-7 rounded border border-slate-700 bg-transparent cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={currentOptions.strokeColor ?? '#ffffff'}
+                            onChange={(e) =>
+                              handleStrokeColorChange(e.target.value)
+                            }
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 font-mono"
                           />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[11px] font-semibold text-slate-200 truncate">
-                            {selectedPlayer.name}
-                          </div>
-                          <div className="text-[9px] text-emerald-400 flex items-center gap-0.5">
-                            <CheckCircle2 className="w-2.5 h-2.5" />
-                            <span>IndexedDB保存済</span>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleDeletePhoto}
-                          disabled={isProcessingPhoto}
-                          className="p-1 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded transition-colors"
-                          title="写真を削除"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
                       </div>
-                    ) : null}
+                    )}
+                </div>
 
-                    <div
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        setIsDraggingFile(true);
-                      }}
-                      onDragLeave={() => setIsDraggingFile(false)}
-                      onDrop={handleFileDrop}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`flex flex-col items-center justify-center p-2.5 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
-                        isDraggingFile
-                          ? 'border-blue-500 bg-blue-500/10'
-                          : 'border-slate-700 hover:border-slate-500 bg-slate-950/50'
+                {/* マーカー内部表示 */}
+                <div className="p-2.5 bg-slate-950/70 rounded-xl border border-slate-800">
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-200 mb-2">
+                    <Sparkles className="w-3.5 h-3.5 text-slate-400" />
+                    <span>内部表示</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => handleInsideContentChange('number')}
+                      className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
+                        currentOptions.insideContent === 'number'
+                          ? 'bg-blue-600 text-white font-semibold'
+                          : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
+                      <Hash className="w-3.5 h-3.5" />
+                      <span className="text-[10px]">背番号</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsideContentChange('photo')}
+                      className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
+                        currentOptions.insideContent === 'photo'
+                          ? 'bg-blue-600 text-white font-semibold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      <span className="text-[10px]">顔写真</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsideContentChange('none')}
+                      className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
+                        currentOptions.insideContent === 'none'
+                          ? 'bg-blue-600 text-white font-semibold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span className="text-[10px]">なし</span>
+                    </button>
+                  </div>
+
+                  {/* 背番号サイズ調整 (背番号表示時のみ) */}
+                  {currentOptions.insideContent === 'number' && (
+                    <div className="mt-2.5 pt-2 border-t border-slate-800/80">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          背番号の大きさ
+                        </span>
+                        <span className="font-mono text-[10px] font-semibold text-blue-400">
+                          {Math.round(
+                            (currentOptions.numberSizeScale ?? 1.0) * 100,
+                          )}
+                          %
+                        </span>
+                      </div>
+
+                      {/* プリセットボタン */}
+                      <div className="grid grid-cols-4 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 mb-2">
+                        {[
+                          { label: '小', val: 0.8 },
+                          { label: '標準', val: 1.0 },
+                          { label: '大', val: 1.2 },
+                          { label: '特大', val: 1.4 },
+                        ].map((p) => {
+                          const isSel =
+                            Math.abs(
+                              (currentOptions.numberSizeScale ?? 1.0) - p.val,
+                            ) < 0.05;
+                          return (
+                            <button
+                              key={p.label}
+                              type="button"
+                              onClick={() => handleNumberSizeChange(p.val)}
+                              className={`py-0.5 rounded text-center text-[10px] font-medium transition-colors ${
+                                isSel
+                                  ? 'bg-blue-600 text-white font-bold shadow'
+                                  : 'text-slate-400 hover:text-slate-200'
+                              }`}
+                            >
+                              {p.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
                       <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileSelect}
-                        className="hidden"
+                        type="range"
+                        min={0.6}
+                        max={1.6}
+                        step={0.05}
+                        value={currentOptions.numberSizeScale ?? 1.0}
+                        onChange={(e) =>
+                          handleNumberSizeChange(Number(e.target.value))
+                        }
+                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
                       />
-                      {isProcessingPhoto ? (
-                        <div className="flex items-center gap-1.5 text-blue-400 py-1">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span className="text-[10px] font-medium">
-                            処理中...
-                          </span>
-                        </div>
-                      ) : (
-                        <>
-                          <Upload className="w-3.5 h-3.5 text-slate-400 mb-0.5" />
-                          <span className="text-[10px] font-medium text-slate-200">
-                            画像ドロップ / 選択
-                          </span>
-                        </>
-                      )}
                     </div>
+                  )}
 
-                    <div className="flex flex-col gap-1 pt-1 border-t border-slate-800">
-                      <div className="flex items-center gap-1 text-[9px] text-slate-400">
-                        <Link2 className="w-2.5 h-2.5" />
-                        <span>URL入力:</span>
-                      </div>
-                      <div className="flex gap-1">
-                        <input
-                          type="text"
-                          placeholder="https://..."
-                          value={photoInput}
-                          onChange={(e) => setPhotoInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSavePhotoUrl();
+                  {/* 写真アップロード & URL設定 (単一選択時のみ) */}
+                  {currentSubTab === 'player' &&
+                    selectedPlayer &&
+                    effectiveSelectedIds.length === 1 &&
+                    currentOptions.insideContent === 'photo' && (
+                      <div className="mt-2.5 flex flex-col gap-2 bg-slate-900 p-2 rounded-lg border border-slate-800">
+                        {selectedPlayer.options.photoUrl ? (
+                          <div className="flex items-center gap-2 p-1.5 bg-slate-950 rounded-md border border-slate-800">
+                            <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-blue-500 shrink-0 bg-slate-800">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={selectedPlayer.options.photoUrl}
+                                alt={selectedPlayer.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[11px] font-semibold text-slate-200 truncate">
+                                {selectedPlayer.name}
+                              </div>
+                              <div className="text-[9px] text-emerald-400 flex items-center gap-0.5">
+                                <CheckCircle2 className="w-2.5 h-2.5" />
+                                <span>IndexedDB保存済</span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleDeletePhoto}
+                              disabled={isProcessingPhoto}
+                              className="p-1 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded transition-colors"
+                              title="写真を削除"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : null}
+
+                        <div
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setIsDraggingFile(true);
                           }}
-                          className="flex-1 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleSavePhotoUrl}
-                          disabled={isProcessingPhoto || !photoInput.trim()}
-                          className="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded text-[10px] text-white transition-colors shrink-0"
-                        >
-                          適用
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-            </div>
-
-            {/* 下部ラベル */}
-            <div className="p-2.5 bg-slate-950/70 rounded-xl border border-slate-800">
-              <div className="flex items-center gap-1.5 font-semibold text-slate-200 mb-2">
-                <Type className="w-3.5 h-3.5 text-slate-400" />
-                <span>下部ラベル</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => handleBottomLabelChange('name')}
-                  className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
-                    currentOptions.bottomLabel === 'name'
-                      ? 'bg-blue-600 text-white font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <User className="w-3.5 h-3.5" />
-                  <span className="text-[10px]">姓(LastName)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleBottomLabelChange('number')}
-                  className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
-                    currentOptions.bottomLabel === 'number'
-                      ? 'bg-blue-600 text-white font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <Hash className="w-3.5 h-3.5" />
-                  <span className="text-[10px]">背番号</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleBottomLabelChange('none')}
-                  className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
-                    currentOptions.bottomLabel === 'none'
-                      ? 'bg-blue-600 text-white font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <EyeOff className="w-3.5 h-3.5" />
-                  <span className="text-[10px]">なし</span>
-                </button>
-              </div>
-
-              {/* ラベルサイズ調整 (ラベル表示時のみ) */}
-              {currentOptions.bottomLabel !== 'none' && (
-                <div className="mt-2.5 pt-2 border-t border-slate-800/80">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      ラベル文字の大きさ
-                    </span>
-                    <span className="font-mono text-[10px] font-semibold text-blue-400">
-                      {Math.round((currentOptions.labelSizeScale ?? 1.0) * 100)}
-                      %
-                    </span>
-                  </div>
-
-                  {/* プリセットボタン */}
-                  <div className="grid grid-cols-4 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 mb-2">
-                    {[
-                      { label: '小', val: 0.8 },
-                      { label: '標準', val: 1.0 },
-                      { label: '大', val: 1.2 },
-                      { label: '特大', val: 1.4 },
-                    ].map((p) => {
-                      const isSel =
-                        Math.abs(
-                          (currentOptions.labelSizeScale ?? 1.0) - p.val,
-                        ) < 0.05;
-                      return (
-                        <button
-                          key={p.label}
-                          type="button"
-                          onClick={() => handleLabelSizeChange(p.val)}
-                          className={`py-0.5 rounded text-center text-[10px] font-medium transition-colors ${
-                            isSel
-                              ? 'bg-blue-600 text-white font-bold shadow'
-                              : 'text-slate-400 hover:text-slate-200'
+                          onDragLeave={() => setIsDraggingFile(false)}
+                          onDrop={handleFileDrop}
+                          onClick={() => fileInputRef.current?.click()}
+                          className={`flex flex-col items-center justify-center p-2.5 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+                            isDraggingFile
+                              ? 'border-blue-500 bg-blue-500/10'
+                              : 'border-slate-700 hover:border-slate-500 bg-slate-950/50'
                           }`}
                         >
-                          {p.label}
-                        </button>
-                      );
-                    })}
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                          />
+                          {isProcessingPhoto ? (
+                            <div className="flex items-center gap-1.5 text-blue-400 py-1">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span className="text-[10px] font-medium">
+                                処理中...
+                              </span>
+                            </div>
+                          ) : (
+                            <>
+                              <Upload className="w-3.5 h-3.5 text-slate-400 mb-0.5" />
+                              <span className="text-[10px] font-medium text-slate-200">
+                                画像ドロップ / 選択
+                              </span>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col gap-1 pt-1 border-t border-slate-800">
+                          <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                            <Link2 className="w-2.5 h-2.5" />
+                            <span>URL入力:</span>
+                          </div>
+                          <div className="flex gap-1">
+                            <input
+                              type="text"
+                              placeholder="https://..."
+                              value={photoInput}
+                              onChange={(e) => setPhotoInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSavePhotoUrl();
+                              }}
+                              className="flex-1 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleSavePhotoUrl}
+                              disabled={isProcessingPhoto || !photoInput.trim()}
+                              className="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded text-[10px] text-white transition-colors shrink-0"
+                            >
+                              適用
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                </div>
+
+                {/* 下部ラベル */}
+                <div className="p-2.5 bg-slate-950/70 rounded-xl border border-slate-800">
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-200 mb-2">
+                    <Type className="w-3.5 h-3.5 text-slate-400" />
+                    <span>下部ラベル</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => handleBottomLabelChange('name')}
+                      className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
+                        currentOptions.bottomLabel === 'name'
+                          ? 'bg-blue-600 text-white font-semibold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <User className="w-3.5 h-3.5" />
+                      <span className="text-[10px]">姓(LastName)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBottomLabelChange('number')}
+                      className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
+                        currentOptions.bottomLabel === 'number'
+                          ? 'bg-blue-600 text-white font-semibold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Hash className="w-3.5 h-3.5" />
+                      <span className="text-[10px]">背番号</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBottomLabelChange('none')}
+                      className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
+                        currentOptions.bottomLabel === 'none'
+                          ? 'bg-blue-600 text-white font-semibold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span className="text-[10px]">なし</span>
+                    </button>
                   </div>
 
-                  <input
-                    type="range"
-                    min={0.6}
-                    max={1.6}
-                    step={0.05}
-                    value={currentOptions.labelSizeScale ?? 1.0}
-                    onChange={(e) =>
-                      handleLabelSizeChange(Number(e.target.value))
-                    }
-                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                  />
+                  {/* ラベルサイズ調整 (ラベル表示時のみ) */}
+                  {currentOptions.bottomLabel !== 'none' && (
+                    <div className="mt-2.5 pt-2 border-t border-slate-800/80">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          ラベル文字の大きさ
+                        </span>
+                        <span className="font-mono text-[10px] font-semibold text-blue-400">
+                          {Math.round(
+                            (currentOptions.labelSizeScale ?? 1.0) * 100,
+                          )}
+                          %
+                        </span>
+                      </div>
+
+                      {/* プリセットボタン */}
+                      <div className="grid grid-cols-4 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 mb-2">
+                        {[
+                          { label: '小', val: 0.8 },
+                          { label: '標準', val: 1.0 },
+                          { label: '大', val: 1.2 },
+                          { label: '特大', val: 1.4 },
+                        ].map((p) => {
+                          const isSel =
+                            Math.abs(
+                              (currentOptions.labelSizeScale ?? 1.0) - p.val,
+                            ) < 0.05;
+                          return (
+                            <button
+                              key={p.label}
+                              type="button"
+                              onClick={() => handleLabelSizeChange(p.val)}
+                              className={`py-0.5 rounded text-center text-[10px] font-medium transition-colors ${
+                                isSel
+                                  ? 'bg-blue-600 text-white font-bold shadow'
+                                  : 'text-slate-400 hover:text-slate-200'
+                              }`}
+                            >
+                              {p.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <input
+                        type="range"
+                        min={0.6}
+                        max={1.6}
+                        step={0.05}
+                        value={currentOptions.labelSizeScale ?? 1.0}
+                        onChange={(e) =>
+                          handleLabelSizeChange(Number(e.target.value))
+                        }
+                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
               </>
             )}
           </>
         ) : (
-
           /* ベンチ & フォーメーション タブ */
           <>
             {/* チーム切り替え */}

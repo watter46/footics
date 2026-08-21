@@ -131,7 +131,6 @@ interface TacticalAnimationState {
   ) => void;
 
   moveMultiplePlayersByDelta: (
-
     sceneIndex: number,
     playerIds: string[],
     deltaX: number,
@@ -359,7 +358,9 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
           pauseMs: 500,
           easing: lastScene?.easing || state.defaultEasing,
           players: clonedPlayers,
-          ballPos: lastScene?.ballPos ? { ...lastScene.ballPos } : { x: 50, y: 50 },
+          ballPos: lastScene?.ballPos
+            ? { ...lastScene.ballPos }
+            : { x: 50, y: 50 },
           ballTrajectory: { type: 'straight' },
         };
         return {
@@ -396,8 +397,6 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
           activeSceneIndex: index + 1,
         };
       }),
-
-
 
     removeScene: (index: number) =>
       set((state) => {
@@ -561,8 +560,6 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
         });
         return { scenes: newScenes };
       }),
-
-
 
     updateTeamOptions: (team, options, applyToAllExisting = true) =>
       set((state) => {

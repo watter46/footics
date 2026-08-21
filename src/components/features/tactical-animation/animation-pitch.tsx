@@ -28,7 +28,6 @@ import {
 import { useTacticalAnimationStore } from '@/stores/tactical-animation-store';
 import { AnimationMarker } from './animation-marker';
 
-
 const horizontalPitchSvg = `<svg viewBox="-1 -1 107 70" xmlns="http://www.w3.org/2000/svg">
   <rect x="-1" y="-1" width="107" height="70" fill="#020617" />
   <rect x="0" y="0" width="105" height="68" fill="#020617" stroke="#e2b48d" stroke-width="0.4" opacity="0.8"/>
@@ -254,8 +253,6 @@ export const AnimationPitch = forwardRef<
     }
   };
 
-
-
   // 背景クリック・ドラッグ開始（範囲選択）
   const handleStageMouseDown = (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -430,7 +427,6 @@ export const AnimationPitch = forwardRef<
                 <Circle
                   x={trajectoryGuide.controlPoint.x}
                   y={trajectoryGuide.controlPoint.y}
-
                   radius={7}
                   fill="#f59e0b"
                   stroke="#ffffff"
@@ -461,7 +457,6 @@ export const AnimationPitch = forwardRef<
               )}
             </Group>
           )}
-
 
           {/* ピッチ上の選手マーカー */}
           {Object.values(activeScene.players).map((p) => {

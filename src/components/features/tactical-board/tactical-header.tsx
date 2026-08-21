@@ -52,7 +52,7 @@ export const TacticalHeader: React.FC<TacticalHeaderProps> = ({
   const savedSettings = useTacticalStore((s) => s.savedSettings);
 
   return (
-    <div className="flex items-center justify-between px-6 py-2 border-b border-slate-800 bg-slate-900/50 h-14 shrink-0 overflow-x-auto">
+    <div className="flex items-center justify-between px-3 sm:px-6 py-2 border-b border-slate-800 bg-slate-900/50 h-14 shrink-0 overflow-x-auto">
       <div className="flex items-center gap-4">
         <div className="flex flex-col shrink-0">
           <h2 className="text-sm font-bold text-slate-100 mb-1 leading-none">

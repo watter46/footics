@@ -44,7 +44,6 @@ export function getBezierControlPoint(
     };
   }
 
-
   const midX = (p0.x + p1.x) / 2;
   const midY = (p0.y + p1.y) / 2;
 

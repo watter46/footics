@@ -25,7 +25,6 @@ export type ExportWorkerInMessage =
       type: 'cancel';
     };
 
-
 export type ExportWorkerOutMessage =
   | {
       type: 'progress';

@@ -501,7 +501,6 @@ export function createSoccerBallCanvas(ballRadius: number): OffscreenCanvas {
   return canvas;
 }
 
-
 /**
  * 選手マーカーをそれぞれ一度だけ事前描画した OffscreenCanvas のマップを生成
  */

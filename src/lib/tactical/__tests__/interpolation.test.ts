@@ -191,5 +191,3 @@ describe('interpolation logic', () => {
     expect(state.ballPos.y).toBeCloseTo(50, 1);
   });
 });
-
-

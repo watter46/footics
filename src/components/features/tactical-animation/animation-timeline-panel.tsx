@@ -100,7 +100,21 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-72 sm:w-80 bg-slate-900/95 backdrop-blur-md border-r border-slate-800 text-white h-full overflow-hidden select-none shrink-0 z-10">
+    <div
+      className={`
+      flex flex-col text-white overflow-hidden select-none shrink-0 z-40
+      md:w-80 md:h-full md:border-r md:border-slate-800 md:relative md:bg-slate-900/95 md:backdrop-blur-md
+      max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:h-[65vh] max-md:bg-slate-900 max-md:rounded-t-2xl max-md:shadow-[0_-10px_40px_rgba(0,0,0,0.5)] max-md:z-50
+    `}
+    >
+      {/* モバイル用 ドラッグハンドル (タップで閉じる補助) */}
+      <div
+        className="md:hidden w-full flex justify-center py-2 bg-slate-950 rounded-t-2xl shrink-0 cursor-pointer"
+        onClick={onClose}
+      >
+        <div className="w-12 h-1.5 bg-slate-700 rounded-full" />
+      </div>
+
       {/* パネルヘッダー */}
       <div className="flex items-center justify-between px-3 py-2.5 bg-slate-950 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-slate-200">

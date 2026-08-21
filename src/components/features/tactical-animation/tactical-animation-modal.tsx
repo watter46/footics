@@ -39,7 +39,7 @@ export const TacticalAnimationModal: React.FC<TacticalAnimationModalProps> = ({
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md overflow-hidden animate-in fade-in duration-200">
-      <div className="relative w-[99vw] h-[99vh] flex flex-col bg-slate-900 border border-slate-800 shadow-2xl rounded-2xl overflow-hidden">
+      <div className="relative w-[100vw] sm:w-[99vw] h-[100dvh] sm:h-[99vh] flex flex-col bg-slate-900 border border-slate-800 shadow-2xl rounded-none sm:rounded-2xl overflow-hidden">
         <TacticalAnimationBoard
           initialMatch={metadata}
           onClose={onClose}

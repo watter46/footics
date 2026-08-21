@@ -183,8 +183,6 @@ export function getInterpolatedFrameState(
     ballTrajectory,
   );
 
-
-
   return {
     players,
     ballPos,
