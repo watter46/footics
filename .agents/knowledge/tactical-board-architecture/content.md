@@ -84,3 +84,13 @@ TacticalBoardModal
 - 新規選手追加モーダル（`AddPlayerDialog`）にもシーズン選択項目を備え、指定したシーズンに紐付けて IndexedDB に保存。
 - シーズン変更時は新シーズンの選手が自動的にベンチへ整列・配置される。
 
+---
+
+## 6. マーカー操作・ドラッグパフォーマンス最適化 (D&D Performance)
+
+### 6.1 ドラッグ遅延の排除
+- **CSS Transition / Blur の排除:** `PlayerMarker` のドラッグ中オーバーレイ（`DragOverlay`）では、CSS の `transition-all` や `filter: blur()` を絶対に付与しない（マウス追従時に遅延やもっさり感を生むため）。
+- **GPU レイヤー合成:** `isDragging` または `isOverlay` 時に `willChange: 'transform'` を適用し、60fps〜120fps の滑らかな追従を実現する。
+- **座標同期:** `style.transition: 'none'` を徹底し、dnd-kit のポインターイベントにリアルタイム追従させる。
+
+

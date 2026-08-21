@@ -11,9 +11,11 @@
 - **モジュール:** `src/lib/tactical/player-formatting.ts` (`getLastName`)
 - **仕様:** フルネーム文字列から最後の単語（Family Name / Surname）を抽出し、ピッチ上マーカーおよびエクスポートフレームの下部ラベルに表示。
 
-### 1.2 リアルなサッカーボール描画
-- **モジュール:** `animation-marker.tsx`, `pitch-renderer.ts`
-- **仕様:** 白ベース円上に幾何学的に正確な黒五角形・外周黒パッチ・放射状境界線をKonvaベクター / Canvas 2Dで描画。拡大縮小してもボケない鮮明なサッカーボールを実現。
+### 1.2 リアルな3D光沢サッカーボール描画 & エクスポート完全同期
+- **モジュール:** `soccer-ball-svg.ts`, `animation-marker.tsx`, `pitch-renderer.ts`, `tactical-export.worker.ts`
+- **仕様:**
+  - 球面ラジアルグラデーション、パネル間のシームライン（縫い目）、陰影、ハイライトを備えた高精細 3D 光沢 SVG (`SOCCER_BALL_SVG`) を採用。
+  - 画面上（Konva `AnimationMarker`）だけでなく、動画エクスポート（Worker / `getSoccerBallBitmap`）でも同一の SVG をラスタライズして Blit し、プレビューとエクスポート結果の 100% 同一品質を実現。
 
 ### 1.3 マーカーサイズ変更（個別 & 一括）
 - **モジュール:** `marker-size-control.tsx`, `tactical-animation-store.ts` (`sizeScale`)
@@ -31,9 +33,18 @@
   - 選択中の選手のうち1人をドラッグすると、選択されている全選手が同じ差分 $(\Delta x, \Delta y)$ だけ連動して移動。
   - 複数選択状態からの一括カラー変更・一括サイズ変更・一括軌道変更・一括ベンチ送り。
 
-### 1.6 移動軌道（カーブ）補間
-- **モジュール:** `src/lib/tactical/trajectory.ts`, `interpolation.ts`
-- **仕様:** シーン $N$ から $N+1$ への移動時、シーン $N$ の trajectory 設定（直線 / 右カーブ / 左カーブ / カーブ強度）を優先参照し、2次ベジェ曲線で滑らかにアニメーション補間およびプレビュー描画。
+### 1.6 移動軌道（カスタム曲げ & 直線）補間 & シーン連動ガイド矢印
+- **モジュール:** `src/lib/tactical/trajectory.ts`, `interpolation.ts`, `animation-pitch.tsx`, `animation-inspector-panel.tsx`
+- **仕様:**
+  - **選手 & ボール両対応:** 選手だけでなくボール（`ballTrajectory`）に対しても直線 / カスタム（曲げ）軌道を設定可能。
+  - **シーン2（目的地）での直感的操作ワークフロー:**
+    - シーン $i \ge 1$（シーン2以降）で選手/ボールを選択した際、「シーン $i-1$（直前の位置）」 $\to$ 「シーン $i$（現在の位置）」を結ぶガイド矢印が表示される。
+    - シーン $i$ 上で「カスタム」を選択し、矢印中間にあるオレンジの曲げポインターをドラッグすると、シーン $i$ の `trajectory.controlPoint` に保存されリアルタイムに矢印が曲がる。
+    - 先頭シーン（シーン0）で選択した場合は、次シーン（シーン1）への矢印が表示・編集される。
+  - **矢印と補間アニメーションの完全一致:** 補間エンジン（`interpolation.ts`）において終点シーンの `trajectory` を最優先参照して `calculateBezierPoint` を実行するため、画面上の矢印の曲線の通りにマーカー・ボールが正確に移動する。
+  - **再生・エクスポート時自動非表示:** ガイド矢印および曲げポインターは編集時のみ表示され、再生時やMP4エクスポート時には自動で非表示となる。
+
+
 
 ### 1.7 縦横画面切り替え時の座標変換 & レスポンシブ最適化
 - **モジュール:** `tactical-animation-store.ts` (`setOrientation`), `tactical-animation-board.tsx`
@@ -87,6 +98,14 @@
   - トップヘッダーに「両チーム」「HOME」「AWAY」の切り替えボタングループを配置。
   - 自チーム（HOME）のみ、または対戦相手（AWAY）のみに表示を絞り込み、片側チームに集中した戦術検討が可能。
   - キャンバス描画および動画エクスポート（Web Worker）の双方で `teamVisibility` によるフィルタリングを完全同期。
+
+### 1.15 キャンバスマルチレイヤー分離 & マーカー高速ドラッグ描画最適化
+- **モジュール:** `animation-pitch.tsx`, `animation-marker.tsx`
+- **仕様:**
+  - **静的背景レイヤーと動的マーカーレイヤーの分離:** ピッチ背景（芝生・白線SVG）を `listening={false}` の独立 `<Layer>` に分離し、ドラッグ時の全画面再描画負荷を完全に排除。
+  - **マーカー描画コスト最小化:** `AnimationMarker` を `React.memo` 化し、全テキストノードの `shadowBlur` 計算負荷を排除、`dragBoundFunc` でピッチ内クランプを高速実行。
+  - **高FPSドラッグレスポンス:** 単一・複数選手の移動操作を滑らかで遅延のない 60fps 追従に最適化。
+
 
 
 

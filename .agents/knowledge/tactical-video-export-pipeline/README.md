@@ -9,19 +9,28 @@
 - **画面上の Konva Stage 非依存**: 画面の Konva Stage をリサイズしたり操作したりせず、独立した専用 Web Worker (`tactical-export.worker.ts`) 内で動画生成を実行。
 - **UI 操作・別タブの完全ノンブロッキング**: エクスポート中もユーザーは戦術ボードの編集やマーカー操作をストレスなく行え、別タブに移動してもスロットリングやタイマー遅延の影響を受けません。
 
-### 2. ピッチ背景の事前キャッシュ (1-Pass Blit)
+### 2. ピッチ背景＆サッカーボールの事前キャッシュ (1-Pass Blit)
 - ピッチの白線・アーク・ペナルティエリアなどのベクターグラフィックを `createPitchBackground` により 1 枚の `OffscreenCanvas` に事前描画。
-- 毎フレームの描画処理は `ctx.drawImage(bgCanvas, 0, 0)` の高速 GPU blit（サブミリ秒）のみ。
+- サッカーボールはプレビューと完全に同一の高品質な 3D 光沢 SVG (`SOCCER_BALL_SVG`) をメインスレッドで `createSoccerBallImageBitmap` により `ImageBitmap` 化して Transferable 転送し、さらに Worker 側の `createSoccerBallCanvas` でも 3D ラジアルグラデーション描画を完全実装。
+- 毎フレームの描画処理は `ctx.drawImage(bgCanvas, 0, 0)` および `ctx.drawImage(ballCanvas, ...)` の高速 GPU blit（サブミリ秒）のみに集約。
+
+
 
 ### 3. Pure Canvas 2D マーカーレンダラ & 選手写真最適化パイプライン (ゼロDOM / ゼロKonva / Zero Fetch Skip)
 - Konva のツリー探索・レイヤー再描画オーバーヘッドを完全排除した純粋な 2D Canvas 直接描画 (`renderPitchFrame`)。
-- 選手マーカー（背番号、写真クリッピング、アウトライン縁取り + ドロップシャドウ）とボールを高精細ラスタライズ。
+- 選手マーカー（背番号、写真クリッピング、高精細アウトライン縁取り）を高速ラスタライズ。
+- 重い `shadowBlur` 演算を排除し、黒ストローク縁取り＋白文字フィルにより視認性と爆速描画を両立。
 - **Zero Fetch Skip**: 写真を使用していない（insideContent !== 'photo'）場合はネットワークフェッチ・非同期待機を完全にスキップ。
 - **In-Memory Blob Caching & Timeout**: 一度取得した選手写真はメモリ（Blob レベル）にキャッシュし、2回目以降のフェッチを不要化。3秒タイムアウト制御により外部CDN遅延によるエクスポート待機を防止。
 - 選手写真（photoUrl）はメインスレッドで `createImageBitmap` し、Transferable オブジェクトとして Worker へゼロコピー転送。
 
 ### 4. WebCodecs (VideoEncoder) + mp4-muxer 直結パイプライン
 - `OffscreenCanvas` から `new VideoFrame(offscreenCanvas, { timestamp, duration })` を生成し、ハードウェアエンコーダ（GPU）に直結。
-- バックプレッシャー閾値（`encodeQueueSize > 24`）によるスループット最適化。
-- 生成された MP4 バッファ (`ArrayBuffer`) を Transferable でメインスレッドに返却し、即座にダウンロード。
-- 数秒〜十数秒のアニメーションを **0.5〜1秒未満** でエクスポート完了。
+- **バッチ最適化 (`latencyMode: 'quality'`)**: オフライン動画書き出しに特化した設定により、GPU エンコーダの並列スループットを最大化。
+- **バックプレッシャー制御の最適化 (`encodeQueueSize > 36` で待機、`<= 12` で即時再開)**: GPU パイプラインを枯渇させず最大効率でフレームを供給。
+- **用途別プリセット対応 (1080p @ 30fps ⚡️爆速 / 60fps 🏆最高品質)**:
+  - 30fps: X (Twitter) / SNS 共有向け。1080p フルHD解像度を完全に保ちながらフレーム数半減で約2倍速エクスポート。
+  - 60fps: YouTube / アーカイブ向け。最高滑らかさを維持。
+- 生成された MP4 バッファ (`ArrayBuffer`) を Transferable でメインスレッドに返却し、即座にダウンロード＆トースト通知。
+
+
