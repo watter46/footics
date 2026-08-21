@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import type { ExportJobConfig } from '@/lib/tactical/export/types';
 import { calculateTotalDuration } from '@/lib/tactical/interpolation';
 import { useTacticalAnimationStore } from '@/stores/tactical-animation-store';
@@ -8,16 +9,20 @@ export interface ExportOptions {
   backgroundColor?: string;
   bitrate?: number;
   fps?: number;
+  photos?: Record<string, ImageBitmap>;
 }
 
 import { preloadPlayerPhotos } from '@/lib/tactical/export/photo-loader';
+import { createSoccerBallImageBitmap } from '@/lib/tactical/soccer-ball-svg';
 
 export function useTacticalVideoExport() {
+
   const isExporting = useTacticalAnimationStore((s) => s.isExporting);
   const setIsExporting = useTacticalAnimationStore((s) => s.setIsExporting);
   const scenes = useTacticalAnimationStore((s) => s.scenes);
   const orientation = useTacticalAnimationStore((s) => s.orientation);
   const teamVisibility = useTacticalAnimationStore((s) => s.teamVisibility);
+  const exportFps = useTacticalAnimationStore((s) => s.exportFps);
 
   const workerRef = useRef<Worker | null>(null);
   const [exportProgress, setExportProgress] = useState<number>(0);
@@ -90,23 +95,21 @@ export function useTacticalVideoExport() {
         }
 
         const bgColor = exportOptions?.backgroundColor ?? '#020617';
-        const fps = exportOptions?.fps ?? 60;
-        const bitrate = exportOptions?.bitrate ?? 16000000;
+        const fps = exportOptions?.fps ?? exportFps;
+        const bitrate =
+          exportOptions?.bitrate ?? (fps <= 30 ? 10000000 : 16000000);
 
-        // フルHD (1080p) ベクター解像度の計算
+        // フルHD (1080p) ベクター解像度の計算 (H.264 GPUハードウェアエンコーダ向け 16ピクセル・アライメント)
+        const align16 = (n: number) => Math.round(n / 16) * 16;
         let exportWidth: number;
         let exportHeight: number;
         if (orientation === 'vertical') {
           exportWidth = 1080;
-          exportHeight = Math.round(1080 * (105 / 68)); // 1668
+          exportHeight = align16(1080 * (105 / 68)); // 1664 (16の倍数)
         } else {
           exportHeight = 1080;
-          exportWidth = Math.round(1080 * (105 / 68)); // 1668
+          exportWidth = align16(1080 * (105 / 68)); // 1664 (16の倍数)
         }
-
-        // H.264 仕様の偶数化
-        if (exportWidth % 2 !== 0) exportWidth++;
-        if (exportHeight % 2 !== 0) exportHeight++;
 
         const config: ExportJobConfig = {
           scenes,
@@ -120,10 +123,13 @@ export function useTacticalVideoExport() {
         };
 
         // 写真の事前ロード (ImageBitmap 化)
-        const photos = await preloadPlayerPhotos(scenes);
-        const transferables = Object.values(photos);
+        const photos =
+          exportOptions?.photos && Object.keys(exportOptions.photos).length > 0
+            ? exportOptions.photos
+            : await preloadPlayerPhotos(scenes);
 
         // 既存 Worker の破棄
+
         if (workerRef.current) {
           workerRef.current.terminate();
           workerRef.current = null;
@@ -168,10 +174,12 @@ export function useTacticalVideoExport() {
               workerRef.current = null;
             }
             setIsExporting(false);
+            toast.success('MP4動画を保存しました');
             if (onComplete) onComplete();
           } else if (data.type === 'error') {
             console.error('Export worker reported error:', data.error);
             setExportError(data.error);
+            toast.error(`動画保存に失敗しました: ${data.error}`);
             if (workerRef.current === worker) {
               worker.terminate();
               workerRef.current = null;
@@ -190,8 +198,30 @@ export function useTacticalVideoExport() {
           setIsExporting(false);
         };
 
+        // サッカーボール 3D 光沢 ImageBitmap の事前生成 (メインスレッドのSVGレンダラーを使用)
+        const baseDim = Math.min(exportWidth, exportHeight);
+        const ballRadius = baseDim * 0.022;
+        let ballBitmap: ImageBitmap | undefined;
+        try {
+          ballBitmap = await createSoccerBallImageBitmap(ballRadius);
+        } catch (e) {
+          console.warn(
+            'Failed to create soccer ball bitmap on main thread:',
+            e,
+          );
+        }
+
+        const transferables: Transferable[] = [...Object.values(photos)];
+        if (ballBitmap) {
+          transferables.push(ballBitmap);
+        }
+
         // Worker にエクスポート開始メッセージを送信 (ImageBitmap をゼロコピー転送)
-        worker.postMessage({ type: 'start', config, photos }, transferables);
+        worker.postMessage(
+          { type: 'start', config, photos, ballBitmap },
+          transferables,
+        );
+
       } catch (err) {
         console.error('Failed to start MP4 export:', err);
         setExportError(
@@ -200,7 +230,14 @@ export function useTacticalVideoExport() {
         setIsExporting(false);
       }
     },
-    [isExporting, setIsExporting, scenes, orientation],
+    [
+      isExporting,
+      setIsExporting,
+      scenes,
+      orientation,
+      exportFps,
+      teamVisibility,
+    ],
   );
 
   return {

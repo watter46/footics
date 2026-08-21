@@ -69,6 +69,7 @@ export const SOCCER_BALL_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.
 
 let cachedSoccerBallImage: HTMLImageElement | null = null;
 let cachedSoccerBallDataUrl: string | null = null;
+let cachedSoccerBallBitmap: ImageBitmap | null = null;
 
 export function getSoccerBallDataUrl(): string {
   if (!cachedSoccerBallDataUrl) {
@@ -95,3 +96,26 @@ export function getSoccerBallImage(): Promise<HTMLImageElement> {
     img.onerror = (err) => reject(err);
   });
 }
+
+/**
+ * メインスレッドで確実に 3D 光沢 SVG をレンダリングし、ImageBitmap を生成（Worker へ転送可能）
+ */
+export async function createSoccerBallImageBitmap(
+  ballRadius: number,
+): Promise<ImageBitmap> {
+  const img = await getSoccerBallImage();
+  const size = Math.max(64, Math.ceil(ballRadius * 4));
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, size, size);
+    return createImageBitmap(canvas);
+  }
+  return createImageBitmap(img);
+}
+
+

@@ -92,6 +92,7 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
     // ドラッグ時の二重表示(残像)を消去。ただしオーバーレイ側の場合は表示する。
     opacity: isDragging && !isOverlay ? 0 : 1,
     transition: 'none',
+    willChange: isDragging || isOverlay ? 'transform' : 'auto',
   };
 
   return (
@@ -109,17 +110,16 @@ export const PlayerMarker: React.FC<PlayerMarkerProps> = ({
       className={`cursor-grab active:cursor-grabbing pointer-events-auto ${isDragging ? 'z-50' : ''}`}
     >
       <div className="relative w-full h-full group select-none">
-        {/* 強調エフェクト (2倍サイズのバブル) */}
+        {/* 強調エフェクト (2倍サイズのバブル - 遅延トランジション・ブラーを排除して高速化) */}
         {isOverlay && (
           <div
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none transition-all duration-200 ease-out"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none"
             style={{
               backgroundColor: color,
               opacity: 0.35,
               width: `${markerSize * MARKER_SIZES.OVERLAY_SCALE}px`,
               height: `${markerSize * MARKER_SIZES.OVERLAY_SCALE}px`,
               zIndex: -1,
-              filter: 'blur(1px)',
             }}
           />
         )}

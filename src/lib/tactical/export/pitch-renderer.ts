@@ -320,6 +320,299 @@ export function extractPlayerMetadataMap(
 }
 
 /**
+ * サッカーボールを一度だけ高精細に事前描画した OffscreenCanvas を生成
+ */
+export function createSoccerBallCanvas(ballRadius: number): OffscreenCanvas {
+  const size = Math.max(64, Math.ceil(ballRadius * 4));
+  const canvas = new OffscreenCanvas(size, size);
+  const ctx = canvas.getContext('2d', { alpha: true });
+  if (!ctx) return canvas;
+
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size * 0.46;
+
+  ctx.save();
+
+  // 1. 球面ベース (3D 光沢ラジアルグラデーション)
+  const ballShine = ctx.createRadialGradient(
+    cx - r * 0.3,
+    cy - r * 0.36,
+    r * 0.05,
+    cx,
+    cy,
+    r,
+  );
+  ballShine.addColorStop(0, '#ffffff');
+  ballShine.addColorStop(0.55, '#f8fafc');
+  ballShine.addColorStop(0.85, '#cbd5e1');
+  ballShine.addColorStop(1, '#64748b');
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = ballShine;
+  ctx.fill();
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = Math.max(1.5, r * 0.05);
+  ctx.stroke();
+
+  // 2. パネル間のシームライン (縫い目)
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = Math.max(1, r * 0.038);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const mapSvg = (x: number, y: number) => ({
+    x: cx + ((x - 50) / 47.5) * r,
+    y: cy + ((y - 50) / 47.5) * r,
+  });
+
+  // シームライン群
+  const seams: [number, number, number, number][] = [
+    [50, 32.5, 50, 16.5],
+    [66.6, 44.6, 80.5, 39.5],
+    [60.3, 64.0, 69.5, 76.5],
+    [39.7, 64.0, 30.5, 76.5],
+    [33.4, 44.6, 19.5, 39.5],
+    [50, 16.5, 68.0, 21.5],
+    [80.5, 39.5, 84.5, 58.5],
+    [69.5, 76.5, 50.0, 84.0],
+    [30.5, 76.5, 15.5, 58.5],
+    [19.5, 39.5, 32.0, 21.5],
+    [32.0, 21.5, 50.0, 16.5],
+    [68.0, 21.5, 80.5, 39.5],
+    [84.5, 58.5, 69.5, 76.5],
+    [50.0, 84.0, 30.5, 76.5],
+    [15.5, 58.5, 19.5, 39.5],
+  ];
+
+  ctx.beginPath();
+  seams.forEach(([x1, y1, x2, y2]) => {
+    const p1 = mapSvg(x1, y1);
+    const p2 = mapSvg(x2, y2);
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+  });
+  ctx.stroke();
+
+  // 3. 黒パッチの陰影ラジアルグラデーション
+  const patchShine = ctx.createRadialGradient(
+    cx - r * 0.3,
+    cy - r * 0.3,
+    r * 0.1,
+    cx,
+    cy,
+    r,
+  );
+  patchShine.addColorStop(0, '#334155');
+  patchShine.addColorStop(0.7, '#1e293b');
+  patchShine.addColorStop(1, '#090d16');
+
+  ctx.fillStyle = patchShine;
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = Math.max(1, r * 0.025);
+
+  // 中央五角形
+  const centerPentagon = [
+    [50, 32.5],
+    [66.6, 44.6],
+    [60.3, 64.0],
+    [39.7, 64.0],
+    [33.4, 44.6],
+  ];
+  ctx.beginPath();
+  centerPentagon.forEach(([x, y], idx) => {
+    const pt = mapSvg(x, y);
+    if (idx === 0) ctx.moveTo(pt.x, pt.y);
+    else ctx.lineTo(pt.x, pt.y);
+  });
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // 外周 5 パッチ
+  const outerPatches = [
+    // Top
+    [
+      [36.5, 5.2],
+      [63.5, 5.2],
+      [68.0, 21.5],
+      [50.0, 16.5],
+      [32.0, 21.5],
+    ],
+    // Top-Right
+    [
+      [87.8, 25.2],
+      [97.2, 50.0],
+      [84.5, 58.5],
+      [80.5, 39.5],
+      [68.0, 21.5],
+    ],
+    // Bottom-Right
+    [
+      [82.5, 76.8],
+      [59.8, 95.5],
+      [50.0, 84.0],
+      [69.5, 76.5],
+      [84.5, 58.5],
+    ],
+    // Bottom-Left
+    [
+      [40.2, 95.5],
+      [17.5, 76.8],
+      [15.5, 58.5],
+      [30.5, 76.5],
+      [50.0, 84.0],
+    ],
+    // Top-Left
+    [
+      [2.8, 50.0],
+      [12.2, 25.2],
+      [32.0, 21.5],
+      [19.5, 39.5],
+      [15.5, 58.5],
+    ],
+  ];
+
+  outerPatches.forEach((pts) => {
+    ctx.beginPath();
+    pts.forEach(([x, y], idx) => {
+      const pt = mapSvg(x, y);
+      if (idx === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  // 4. 球面ハイライト (光沢)
+  ctx.save();
+  const hl = mapSvg(38, 28);
+  ctx.translate(hl.x, hl.y);
+  ctx.rotate((-30 * Math.PI) / 180);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 0.42, r * 0.25, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+  return canvas;
+}
+
+
+/**
+ * 選手マーカーをそれぞれ一度だけ事前描画した OffscreenCanvas のマップを生成
+ */
+export function preRenderPlayerMarkers(
+  playerMetadataMap: Map<string, PlayerMetadata>,
+  width: number,
+  height: number,
+  photos?: Record<string, ImageBitmap>,
+): Map<string, OffscreenCanvas> {
+  const map = new Map<string, OffscreenCanvas>();
+  const baseDim = Math.min(width, height);
+
+  playerMetadataMap.forEach((meta, playerId) => {
+    const sizeScale = meta.options.sizeScale ?? 1.0;
+    const playerRadius = baseDim * 0.032 * sizeScale;
+
+    // マーカーとラベルが収まる十分なサイズを確保
+    const canvasSize = Math.ceil(playerRadius * 8);
+    const canvas = new OffscreenCanvas(canvasSize, canvasSize);
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
+
+    const cx = canvasSize / 2;
+    const cy = canvasSize / 2;
+
+    // マーカー本体サークル (円)
+    ctx.beginPath();
+    ctx.arc(cx, cy, playerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = meta.options.color;
+    ctx.fill();
+
+    const hasStroke =
+      meta.options.strokeWidth !== 0 && meta.options.strokeColor !== 'none';
+    if (hasStroke) {
+      ctx.strokeStyle = meta.options.strokeColor || '#ffffff';
+      ctx.lineWidth = Math.max(
+        1,
+        (meta.options.strokeWidth ?? 2) * (playerRadius * 0.06),
+      );
+      ctx.stroke();
+    }
+
+    // 内部コンテンツ (写真 または 背番号)
+    const photoBitmap = photos?.[playerId];
+    if (meta.options.insideContent === 'photo' && photoBitmap) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, playerRadius * 0.85, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(
+        photoBitmap,
+        cx - playerRadius * 0.85,
+        cy - playerRadius * 0.85,
+        playerRadius * 1.7,
+        playerRadius * 1.7,
+      );
+      ctx.restore();
+    } else if (meta.options.insideContent === 'number' && meta.shirtNo) {
+      const numberScale = meta.options.numberSizeScale ?? 1.0;
+      const fontSize = Math.round(playerRadius * 1.15 * numberScale);
+      ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(meta.shirtNo, cx, cy);
+    }
+
+    // 下部ラベル (ラストネーム / 背番号: 高精細アウトライン縁取り + 白文字フィル)
+    if (meta.options.bottomLabel !== 'none') {
+      const labelText =
+        meta.options.bottomLabel === 'name'
+          ? getLastName(meta.name)
+          : meta.shirtNo
+            ? `#${meta.shirtNo}`
+            : '';
+
+      if (labelText) {
+        const labelScale = meta.options.labelSizeScale ?? 1.0;
+        const labelFontSize = Math.max(
+          8,
+          Math.round(playerRadius * 0.8 * labelScale),
+        );
+        ctx.font = `bold ${labelFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const labelY =
+          cy + playerRadius * 1.3 + Math.round(labelFontSize * 0.5);
+
+        // ストローク縁取り (黒アウトラインで文字つぶれ防止)
+        ctx.strokeStyle = '#020617';
+        ctx.lineWidth = Math.max(2, playerRadius * 0.16);
+        ctx.lineJoin = 'round';
+        ctx.miterLimit = 2;
+        ctx.strokeText(labelText, cx, labelY);
+
+        // 白文字フィル
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(labelText, cx, labelY);
+      }
+    }
+
+    map.set(playerId, canvas);
+  });
+
+  return map;
+}
+
+/**
  * 1フレーム分の全要素（背景・選手マーカー・ボール）を Canvas 2D で直接描画
  */
 export function renderPitchFrame(
@@ -331,6 +624,8 @@ export function renderPitchFrame(
   height: number,
   photos?: Record<string, ImageBitmap>,
   teamVisibility?: 'both' | 'home' | 'away',
+  ballCanvas?: CanvasImageSource,
+  playerCanvasMap?: Map<string, OffscreenCanvas>,
 ) {
   // 1. 事前キャッシュされたピッチ背景をゼロコピー転送 (超高速 GPU blit)
   ctx.drawImage(bgCanvas, 0, 0, width, height);
@@ -361,104 +656,103 @@ export function renderPitchFrame(
     ctx.save();
     ctx.globalAlpha = Math.max(0, Math.min(1, pState.opacity));
 
-    // マーカー本体サークル (円)
-    ctx.beginPath();
-    ctx.arc(pxX, pxY, playerRadius, 0, Math.PI * 2);
-    ctx.fillStyle = meta.options.color;
-    ctx.fill();
-
-    const hasStroke =
-      meta.options.strokeWidth !== 0 && meta.options.strokeColor !== 'none';
-    if (hasStroke) {
-      ctx.strokeStyle = meta.options.strokeColor || '#ffffff';
-      ctx.lineWidth = Math.max(
-        1,
-        (meta.options.strokeWidth ?? 2) * (playerRadius * 0.06),
-      );
-      ctx.stroke();
-    }
-
-    // 内部コンテンツ (写真 または 背番号)
-    const photoBitmap = photos?.[playerId];
-    if (meta.options.insideContent === 'photo' && photoBitmap) {
-      ctx.save();
+    const playerCanvas = playerCanvasMap?.get(playerId);
+    if (playerCanvas) {
+      // 事前レンダリングされた Canvas をそのまま高速描画
+      const cx = playerCanvas.width / 2;
+      const cy = playerCanvas.height / 2;
+      ctx.drawImage(playerCanvas, pxX - cx, pxY - cy);
+    } else {
+      // フォールバック (キャッシュがない場合)
+      // マーカー本体サークル (円)
       ctx.beginPath();
-      ctx.arc(pxX, pxY, playerRadius * 0.85, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(
-        photoBitmap,
-        pxX - playerRadius * 0.85,
-        pxY - playerRadius * 0.85,
-        playerRadius * 1.7,
-        playerRadius * 1.7,
-      );
-      ctx.restore();
-    } else if (meta.options.insideContent === 'number' && meta.shirtNo) {
-      const numberScale = meta.options.numberSizeScale ?? 1.0;
-      const fontSize = Math.round(playerRadius * 1.15 * numberScale);
-      ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#ffffff';
-      ctx.shadowColor = '#000000';
-      ctx.shadowBlur = 2;
-      ctx.shadowOffsetY = 1;
-      ctx.shadowOffsetX = 0;
-      ctx.fillText(meta.shirtNo, pxX, pxY);
-      ctx.shadowColor = 'transparent';
-    }
+      ctx.arc(pxX, pxY, playerRadius, 0, Math.PI * 2);
+      ctx.fillStyle = meta.options.color;
+      ctx.fill();
 
-    // 下部ラベル (ラストネーム / 背番号: アウトライン縁取り + ドロップシャドウ)
-    if (meta.options.bottomLabel !== 'none') {
-      const labelText =
-        meta.options.bottomLabel === 'name'
-          ? getLastName(meta.name)
-          : meta.shirtNo
-            ? `#${meta.shirtNo}`
-            : '';
-
-      if (labelText) {
-        const labelScale = meta.options.labelSizeScale ?? 1.0;
-        const labelFontSize = Math.max(
-          8,
-          Math.round(playerRadius * 0.8 * labelScale),
+      const hasStroke =
+        meta.options.strokeWidth !== 0 && meta.options.strokeColor !== 'none';
+      if (hasStroke) {
+        ctx.strokeStyle = meta.options.strokeColor || '#ffffff';
+        ctx.lineWidth = Math.max(
+          1,
+          (meta.options.strokeWidth ?? 2) * (playerRadius * 0.06),
         );
-        ctx.font = `bold ${labelFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
+        ctx.stroke();
+      }
+
+      // 内部コンテンツ (写真 または 背番号)
+      const photoBitmap = photos?.[playerId];
+      if (meta.options.insideContent === 'photo' && photoBitmap) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(pxX, pxY, playerRadius * 0.85, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(
+          photoBitmap,
+          pxX - playerRadius * 0.85,
+          pxY - playerRadius * 0.85,
+          playerRadius * 1.7,
+          playerRadius * 1.7,
+        );
+        ctx.restore();
+      } else if (meta.options.insideContent === 'number' && meta.shirtNo) {
+        const numberScale = meta.options.numberSizeScale ?? 1.0;
+        const fontSize = Math.round(playerRadius * 1.15 * numberScale);
+        ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-
-        const labelY =
-          pxY + playerRadius * 1.3 + Math.round(labelFontSize * 0.5);
-
-        // 1. ストローク縁取り (黒アウトライン)
-        ctx.strokeStyle = '#020617';
-        ctx.lineWidth = Math.max(2, playerRadius * 0.16);
-        ctx.lineJoin = 'round';
-        ctx.miterLimit = 2;
-        ctx.strokeText(labelText, pxX, labelY);
-
-        // 2. シャドウ + 白文字フィル
-        ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 3;
-        ctx.shadowOffsetY = 1;
-        ctx.shadowOffsetX = 0;
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(labelText, pxX, labelY);
-        ctx.shadowColor = 'transparent';
+        ctx.fillText(meta.shirtNo, pxX, pxY);
+      }
+
+      // 下部ラベル (ラストネーム / 背番号: 高精細アウトライン縁取り + 白文字フィル)
+      if (meta.options.bottomLabel !== 'none') {
+        const labelText =
+          meta.options.bottomLabel === 'name'
+            ? getLastName(meta.name)
+            : meta.shirtNo
+              ? `#${meta.shirtNo}`
+              : '';
+
+        if (labelText) {
+          const labelScale = meta.options.labelSizeScale ?? 1.0;
+          const labelFontSize = Math.max(
+            8,
+            Math.round(playerRadius * 0.8 * labelScale),
+          );
+          ctx.font = `bold ${labelFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          const labelY =
+            pxY + playerRadius * 1.3 + Math.round(labelFontSize * 0.5);
+
+          // ストローク縁取り (黒アウトラインで文字つぶれ防止)
+          ctx.strokeStyle = '#020617';
+          ctx.lineWidth = Math.max(2, playerRadius * 0.16);
+          ctx.lineJoin = 'round';
+          ctx.miterLimit = 2;
+          ctx.strokeText(labelText, pxX, labelY);
+
+          // 白文字フィル
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(labelText, pxX, labelY);
+        }
       }
     }
 
     ctx.restore();
   });
 
-  // 3. ボールマーカーの描画 (リアルなサッカーボール)
+  // 3. ボールマーカーの描画 (事前キャッシュされた Canvas または Bitmap から超高速 blit)
   if (frameState.ballPos) {
     const ballPxX = (frameState.ballPos.x / 100) * width;
     const ballPxY = (frameState.ballPos.y / 100) * height;
 
-    const ballBitmap = photos?.ball || photos?.['ball'];
+    const ballBitmap = photos?.ball || ballCanvas;
     if (ballBitmap) {
       ctx.drawImage(
         ballBitmap,
@@ -469,7 +763,6 @@ export function renderPitchFrame(
       );
     } else {
       ctx.save();
-      // ボール白ベース
       ctx.beginPath();
       ctx.arc(ballPxX, ballPxY, ballRadius, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
@@ -477,75 +770,6 @@ export function renderPitchFrame(
       ctx.strokeStyle = '#0f172a';
       ctx.lineWidth = Math.max(1.2, ballRadius * 0.08);
       ctx.stroke();
-
-      const centerR = ballRadius * 0.42;
-
-      // 外周黒パッチ
-      ctx.fillStyle = '#0f172a';
-      for (let i = 0; i < 5; i++) {
-        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-        const nextAngle = -Math.PI / 2 + ((i + 1) * 2 * Math.PI) / 5;
-        const midAngle = (angle + nextAngle) / 2;
-        const patchW = (2 * Math.PI) / 10;
-        const p1x = ballPxX + Math.cos(midAngle - patchW * 0.45) * ballRadius;
-        const p1y = ballPxY + Math.sin(midAngle - patchW * 0.45) * ballRadius;
-        const p2x = ballPxX + Math.cos(midAngle + patchW * 0.45) * ballRadius;
-        const p2y = ballPxY + Math.sin(midAngle + patchW * 0.45) * ballRadius;
-        const innerX = ballPxX + Math.cos(midAngle) * (ballRadius * 0.72);
-        const innerY = ballPxY + Math.sin(midAngle) * (ballRadius * 0.72);
-
-        ctx.beginPath();
-        ctx.moveTo(p1x, p1y);
-        ctx.lineTo(p2x, p2y);
-        ctx.lineTo(innerX, innerY);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      // 放射ライン
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = Math.max(1, ballRadius * 0.07);
-      for (let i = 0; i < 5; i++) {
-        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-        const cx = ballPxX + Math.cos(angle) * centerR;
-        const cy = ballPxY + Math.sin(angle) * centerR;
-        const ox = ballPxX + Math.cos(angle) * ballRadius;
-        const oy = ballPxY + Math.sin(angle) * ballRadius;
-
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(ox, oy);
-        ctx.stroke();
-      }
-
-      // 中央黒五角形
-      ctx.beginPath();
-      for (let i = 0; i < 5; i++) {
-        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-        const cx = ballPxX + Math.cos(angle) * centerR;
-        const cy = ballPxY + Math.sin(angle) * centerR;
-        if (i === 0) ctx.moveTo(cx, cy);
-        else ctx.lineTo(cx, cy);
-      }
-      ctx.closePath();
-      ctx.fill();
-
-      // 光沢ハイライト
-      ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(
-        ballPxX - ballRadius * 0.25,
-        ballPxY - ballRadius * 0.35,
-        ballRadius * 0.4,
-        ballRadius * 0.25,
-        -Math.PI / 6,
-        0,
-        Math.PI * 2,
-      );
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-      ctx.fill();
-      ctx.restore();
-
       ctx.restore();
     }
   }

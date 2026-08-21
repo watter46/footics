@@ -39,6 +39,7 @@ export function useDrawingInteraction({
   const rotateCenterRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const startMouseAngleRef = useRef(0);
   const startShapeRotationRef = useRef(0);
+  const currentRotationRef = useRef<number | null>(null);
   const isOverRotateZoneRef = useRef(false);
 
   // ResizeObserver for matching canvas size with container
@@ -107,6 +108,7 @@ export function useDrawingInteraction({
         const cy = selectedShape.y + h / 2;
 
         isRotatingRef.current = true;
+        currentRotationRef.current = null;
         rotateCenterRef.current = { x: cx, y: cy };
         startMouseAngleRef.current = Math.atan2(pos.y - cy, pos.x - cx);
         startShapeRotationRef.current = selectedShape.rotation || 0;
@@ -165,7 +167,7 @@ export function useDrawingInteraction({
   };
 
   const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    // カスタム回転ドラッグ中の処理
+    // カスタム回転ドラッグ中の処理 (Konva直接更新で60fps維持)
     if (isRotatingRef.current && selectedId && selectedNodeRef.current) {
       const stage = e.target.getStage();
       const pos = stage?.getPointerPosition();
@@ -179,14 +181,9 @@ export function useDrawingInteraction({
         const newRotation =
           (startShapeRotationRef.current + angleDiffDeg) % 360;
 
+        currentRotationRef.current = newRotation;
         selectedNodeRef.current.rotation(newRotation);
         selectedNodeRef.current.getLayer()?.batchDraw();
-
-        setShapes((prev) =>
-          prev.map((s) =>
-            s.id === selectedId ? { ...s, rotation: newRotation } : s,
-          ),
-        );
         return;
       }
     }
@@ -236,7 +233,14 @@ export function useDrawingInteraction({
   const handleMouseUp = () => {
     if (isRotatingRef.current) {
       isRotatingRef.current = false;
-      saveHistory(shapes);
+      if (currentRotationRef.current !== null && selectedId) {
+        const rot = currentRotationRef.current;
+        const next = shapes.map((s) =>
+          s.id === selectedId ? { ...s, rotation: rot } : s,
+        );
+        setShapes(next);
+        saveHistory(next);
+      }
       return;
     }
 

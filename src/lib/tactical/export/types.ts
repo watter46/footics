@@ -19,10 +19,12 @@ export type ExportWorkerInMessage =
       type: 'start';
       config: ExportJobConfig;
       photos?: Record<string, ImageBitmap>;
+      ballBitmap?: ImageBitmap;
     }
   | {
       type: 'cancel';
     };
+
 
 export type ExportWorkerOutMessage =
   | {
