@@ -5,10 +5,9 @@ import {
   ArrowUpToLine,
   CheckCircle2,
   ChevronRight,
-  CornerUpLeft,
-  CornerUpRight,
   EyeOff,
   Hash,
+
   Image as ImageIcon,
   LayoutGrid,
   Link2,
@@ -115,6 +114,9 @@ export const AnimationInspectorPanel: React.FC<
   const updatePlayerTrajectory = useTacticalAnimationStore(
     (s) => s.updatePlayerTrajectory,
   );
+  const updateBallTrajectory = useTacticalAnimationStore(
+    (s) => s.updateBallTrajectory,
+  );
   const updateTeamOptions = useTacticalAnimationStore(
     (s) => s.updateTeamOptions,
   );
@@ -138,6 +140,9 @@ export const AnimationInspectorPanel: React.FC<
   const activeScene = scenes[activeSceneIndex];
   const allPlayers = activeScene ? Object.values(activeScene.players) : [];
 
+  const isBallSelected =
+    selectedPlayerId === 'ball' || selectedPlayerIds.includes('ball');
+
   const selectedPlayer =
     selectedPlayerId && selectedPlayerId !== 'ball'
       ? activeScene?.players[selectedPlayerId]
@@ -145,19 +150,20 @@ export const AnimationInspectorPanel: React.FC<
 
   const effectiveSelectedIds =
     selectedPlayerIds.length > 0
-      ? selectedPlayerIds
+      ? selectedPlayerIds.filter((id) => id !== 'ball')
       : selectedPlayerId && selectedPlayerId !== 'ball'
         ? [selectedPlayerId]
         : [];
 
-  const hasSelection = effectiveSelectedIds.length > 0;
+  const hasSelection = isBallSelected || effectiveSelectedIds.length > 0;
 
-  // 選択された選手があれば自動でplayerサブタブへ
+  // 選択された選手やボールがあれば自動でplayerサブタブへ
   const currentSubTab = hasSelection
     ? 'player'
     : markerSubTab === 'player'
       ? 'home'
       : markerSubTab;
+
 
   // ベンチ選手とピッチ選手の計算
   const teamPlayers = allPlayers.filter((p) => p.team === benchTeam);
@@ -346,21 +352,21 @@ export const AnimationInspectorPanel: React.FC<
     }
   };
 
+  const targetTrajectorySceneIdx =
+    activeSceneIndex >= 1 ? activeSceneIndex : scenes.length > 1 ? 1 : 0;
+  const targetTrajectoryScene = scenes[targetTrajectorySceneIdx];
+
   const handleTrajectoryTypeChange = (type: TrajectoryType) => {
-    if (effectiveSelectedIds.length > 0) {
+    if (isBallSelected) {
+      updateBallTrajectory({ type }, false, targetTrajectorySceneIdx);
+    } else if (effectiveSelectedIds.length > 0) {
       effectiveSelectedIds.forEach((id) => {
-        updatePlayerTrajectory(id, { type });
+        updatePlayerTrajectory(id, { type }, false, targetTrajectorySceneIdx);
       });
     }
   };
 
-  const handleCurveOffsetChange = (curveOffset: number) => {
-    if (effectiveSelectedIds.length > 0) {
-      effectiveSelectedIds.forEach((id) => {
-        updatePlayerTrajectory(id, { curveOffset });
-      });
-    }
-  };
+
 
   const processAndSaveFile = async (file: File | Blob) => {
     if (!selectedPlayer) return;
@@ -503,10 +509,17 @@ export const AnimationInspectorPanel: React.FC<
           ? defaultAwayOptions
           : defaultHomeOptions;
 
-  const currentTrajectory = selectedPlayer?.trajectory || {
-    type: 'straight',
-    curveOffset: 25,
-  };
+  const currentTrajectory = isBallSelected
+    ? targetTrajectoryScene?.ballTrajectory || {
+        type: 'straight',
+      }
+    : (selectedPlayerId &&
+        targetTrajectoryScene?.players[selectedPlayerId]?.trajectory) ||
+      selectedPlayer?.trajectory || {
+        type: 'straight',
+      };
+
+
 
   return (
     <div className="flex flex-col w-72 sm:w-80 bg-slate-900/95 backdrop-blur-md border-l border-slate-800 text-white h-full overflow-hidden select-none shrink-0 z-10">
@@ -585,7 +598,7 @@ export const AnimationInspectorPanel: React.FC<
       <div className="flex-1 overflow-y-auto p-3 text-xs space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
         {mainTab === 'marker' ? (
           <>
-            {/* サブタブ (選択選手 / HOME / AWAY / 全体) */}
+            {/* サブタブ (選択選手・ボール / HOME / AWAY / 全体) */}
             <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800/80 shrink-0">
               {hasSelection && (
                 <button
@@ -597,16 +610,22 @@ export const AnimationInspectorPanel: React.FC<
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  {effectiveSelectedIds.length > 1 ? (
-                    <Users className="w-3 h-3" />
+                  {isBallSelected ? (
+                    <>
+                      <span>⚽️</span>
+                      <span>ボール</span>
+                    </>
+                  ) : effectiveSelectedIds.length > 1 ? (
+                    <>
+                      <Users className="w-3 h-3" />
+                      <span>{effectiveSelectedIds.length}名</span>
+                    </>
                   ) : (
-                    <User className="w-3 h-3" />
+                    <>
+                      <User className="w-3 h-3" />
+                      <span>選択選手</span>
+                    </>
                   )}
-                  <span>
-                    {effectiveSelectedIds.length > 1
-                      ? `${effectiveSelectedIds.length}名`
-                      : '選択選手'}
-                  </span>
                 </button>
               )}
               <button
@@ -646,10 +665,25 @@ export const AnimationInspectorPanel: React.FC<
               </button>
             </div>
 
-            {/* 選択選手サマリーカード */}
+            {/* 選択選手 / ボール サマリーカード */}
             {currentSubTab === 'player' && hasSelection && (
               <div className="flex items-center gap-2.5 p-2.5 bg-slate-950/80 rounded-xl border border-slate-800">
-                {selectedPlayer && effectiveSelectedIds.length === 1 ? (
+                {isBallSelected ? (
+                  <div className="flex-1 min-w-0 flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white shadow border border-amber-500/40 bg-slate-900 shrink-0 text-base">
+                      ⚽️
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-slate-100 truncate text-xs">
+                        サッカーボール
+                      </div>
+                      <div className="text-[10px] text-amber-400 font-medium">
+                        位置: ({Math.round(activeScene.ballPos.x)}%,{' '}
+                        {Math.round(activeScene.ballPos.y)}%)
+                      </div>
+                    </div>
+                  </div>
+                ) : selectedPlayer && effectiveSelectedIds.length === 1 ? (
                   <>
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white shadow border border-white/20 shrink-0 text-xs"
@@ -672,29 +706,38 @@ export const AnimationInspectorPanel: React.FC<
                         </span>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={handleBenchSelected}
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors shrink-0"
+                      title="選択選手をベンチへ送る"
+                    >
+                      <ArrowDownToLine className="w-4 h-4 text-amber-400" />
+                    </button>
                   </>
                 ) : (
-                  <div className="flex-1 min-w-0 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-blue-400 shrink-0" />
-                    <div>
-                      <div className="font-bold text-slate-100 text-xs">
-                        {effectiveSelectedIds.length} 名を一括選択中
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        一括で色・サイズ・軌道等を変更
+                  <>
+                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                      <Users className="w-5 h-5 text-blue-400 shrink-0" />
+                      <div>
+                        <div className="font-bold text-slate-100 text-xs">
+                          {effectiveSelectedIds.length} 名を一括選択中
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          一括で色・サイズ・軌道等を変更
+                        </div>
                       </div>
                     </div>
-                  </div>
+                    <button
+                      type="button"
+                      onClick={handleBenchSelected}
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors shrink-0"
+                      title="選択選手をベンチへ送る"
+                    >
+                      <ArrowDownToLine className="w-4 h-4 text-amber-400" />
+                    </button>
+                  </>
                 )}
-
-                <button
-                  type="button"
-                  onClick={handleBenchSelected}
-                  className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors shrink-0"
-                  title="選択選手をベンチへ送る"
-                >
-                  <ArrowDownToLine className="w-4 h-4 text-amber-400" />
-                </button>
               </div>
             )}
 
@@ -745,100 +788,84 @@ export const AnimationInspectorPanel: React.FC<
               </div>
             )}
 
-            {/* 移動軌道 (回り込み・カーブ設定) - 選択選手タブのみ */}
+            {/* 移動軌道 (直線・カスタム設定) - 選択中タブのみ */}
             {currentSubTab === 'player' && hasSelection && (
               <div className="p-2.5 bg-slate-950/70 rounded-xl border border-slate-800">
                 <div className="flex items-center gap-1.5 font-semibold text-slate-200 mb-2">
                   <Route className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>移動軌道 (カーブ設定)</span>
+                  <span>
+                    {isBallSelected
+                      ? 'ボール移動軌道'
+                      : 'マーカー移動軌道'}
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-1.5 mb-2">
+                <div className="grid grid-cols-2 gap-1.5 mb-2">
                   <button
                     type="button"
                     onClick={() => handleTrajectoryTypeChange('straight')}
-                    className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
+                    className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
                       currentTrajectory.type === 'straight'
-                        ? 'bg-indigo-600 text-white font-semibold shadow'
+                        ? 'bg-indigo-600 text-white font-bold shadow-md'
                         : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
                     }`}
-                    title="直線的に最短距離で移動"
+                    title="直線的に移動"
                   >
-                    <MoveRight className="w-3.5 h-3.5" />
-                    <span className="text-[10px]">直線</span>
+                    <MoveRight className="w-4 h-4" />
+                    <span className="text-xs">直線</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleTrajectoryTypeChange('arc_right')}
-                    className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
-                      currentTrajectory.type === 'arc_right'
-                        ? 'bg-indigo-600 text-white font-semibold shadow'
+                    onClick={() => handleTrajectoryTypeChange('custom')}
+                    className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                      currentTrajectory.type === 'custom'
+                        ? 'bg-indigo-600 text-white font-bold shadow-md'
                         : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
                     }`}
-                    title="外側 (進行方向から見て右側) に膨らんで回り込む"
+                    title="ピッチ上の矢印ポインターで自由に曲げ具合を設定"
                   >
-                    <CornerUpRight className="w-3.5 h-3.5" />
-                    <span className="text-[10px]">右カーブ</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleTrajectoryTypeChange('arc_left')}
-                    className={`py-1.5 rounded flex flex-col items-center gap-1 transition-colors ${
-                      currentTrajectory.type === 'arc_left'
-                        ? 'bg-indigo-600 text-white font-semibold shadow'
-                        : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
-                    }`}
-                    title="内側 (進行方向から見て左側) に膨らんで回り込む"
-                  >
-                    <CornerUpLeft className="w-3.5 h-3.5" />
-                    <span className="text-[10px]">左カーブ</span>
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs">カスタム (曲げ)</span>
                   </button>
                 </div>
 
-                {currentTrajectory.type !== 'straight' && (
-                  <div className="flex flex-col gap-1 pt-2 border-t border-slate-800/80">
-                    <div className="flex justify-between items-center text-[10px] text-slate-400">
-                      <span>カーブ強度 (膨らみ量):</span>
-                      <span className="font-mono text-white">
-                        {currentTrajectory.curveOffset ?? 25}%
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={5}
-                      max={60}
-                      step={5}
-                      value={currentTrajectory.curveOffset ?? 25}
-                      onChange={(e) =>
-                        handleCurveOffsetChange(Number(e.target.value))
-                      }
-                      className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                    />
+                {currentTrajectory.type === 'custom' && (
+                  <div className="p-2 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-[10px] text-indigo-300 leading-relaxed">
+                    💡 ピッチ上の矢印中間にある
+                    <span className="text-amber-400 font-semibold mx-1">
+                      オレンジのポインター
+                    </span>
+                    をドラッグして、軌道の曲がり具合を自由に調整できます。
                   </div>
                 )}
               </div>
             )}
 
-            {/* マーカーサイズ調整 */}
-            <div className="p-2.5 bg-slate-950/70 rounded-xl border border-slate-800">
-              <MarkerSizeControl
-                value={currentOptions.sizeScale ?? 1.0}
-                onChange={handleSizeChange}
-                title={
-                  currentSubTab === 'player'
-                    ? effectiveSelectedIds.length > 1
-                      ? '選択選手サイズ'
-                      : '選手マーカーサイズ'
-                    : currentSubTab === 'home'
-                      ? 'HOMEマーカーサイズ'
-                      : currentSubTab === 'away'
-                        ? 'AWAYマーカーサイズ'
-                        : '全マーカーサイズ一括'
-                }
-              />
-            </div>
+
+            {/* 選手マーカー固有の設定 (ボール選択時は非表示) */}
+            {(!isBallSelected || currentSubTab !== 'player') && (
+              <>
+                {/* マーカーサイズ調整 */}
+                <div className="p-2.5 bg-slate-950/70 rounded-xl border border-slate-800">
+                  <MarkerSizeControl
+                    value={currentOptions.sizeScale ?? 1.0}
+                    onChange={handleSizeChange}
+                    title={
+                      currentSubTab === 'player'
+                        ? effectiveSelectedIds.length > 1
+                          ? '選択選手サイズ'
+                          : '選手マーカーサイズ'
+                        : currentSubTab === 'home'
+                          ? 'HOMEマーカーサイズ'
+                          : currentSubTab === 'away'
+                            ? 'AWAYマーカーサイズ'
+                            : '全マーカーサイズ一括'
+                    }
+                  />
+                </div>
+
+
 
             {/* カラー設定 */}
             <div className="p-2.5 bg-slate-950/70 rounded-xl border border-slate-800">
@@ -999,13 +1026,17 @@ export const AnimationInspectorPanel: React.FC<
                       <input
                         type="color"
                         value={currentOptions.strokeColor ?? '#ffffff'}
-                        onChange={(e) => handleStrokeColorChange(e.target.value)}
+                        onChange={(e) =>
+                          handleStrokeColorChange(e.target.value)
+                        }
                         className="w-7 h-7 rounded border border-slate-700 bg-transparent cursor-pointer"
                       />
                       <input
                         type="text"
                         value={currentOptions.strokeColor ?? '#ffffff'}
-                        onChange={(e) => handleStrokeColorChange(e.target.value)}
+                        onChange={(e) =>
+                          handleStrokeColorChange(e.target.value)
+                        }
                         className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 font-mono"
                       />
                     </div>
@@ -1066,7 +1097,10 @@ export const AnimationInspectorPanel: React.FC<
                       背番号の大きさ
                     </span>
                     <span className="font-mono text-[10px] font-semibold text-blue-400">
-                      {Math.round((currentOptions.numberSizeScale ?? 1.0) * 100)}%
+                      {Math.round(
+                        (currentOptions.numberSizeScale ?? 1.0) * 100,
+                      )}
+                      %
                     </span>
                   </div>
 
@@ -1271,7 +1305,8 @@ export const AnimationInspectorPanel: React.FC<
                       ラベル文字の大きさ
                     </span>
                     <span className="font-mono text-[10px] font-semibold text-blue-400">
-                      {Math.round((currentOptions.labelSizeScale ?? 1.0) * 100)}%
+                      {Math.round((currentOptions.labelSizeScale ?? 1.0) * 100)}
+                      %
                     </span>
                   </div>
 
@@ -1318,8 +1353,11 @@ export const AnimationInspectorPanel: React.FC<
                 </div>
               )}
             </div>
+              </>
+            )}
           </>
         ) : (
+
           /* ベンチ & フォーメーション タブ */
           <>
             {/* チーム切り替え */}
@@ -1410,7 +1448,9 @@ export const AnimationInspectorPanel: React.FC<
                     <div key={group.key} className="space-y-1.5">
                       {/* ポジションヘッダー */}
                       <div className="flex items-center justify-between px-1 text-[11px] font-bold">
-                        <div className={`flex items-center gap-1.5 ${group.headerColor}`}>
+                        <div
+                          className={`flex items-center gap-1.5 ${group.headerColor}`}
+                        >
                           <span
                             className={`px-1.5 py-0.2 rounded text-[9px] font-mono border font-bold ${group.badgeColor}`}
                           >
@@ -1429,7 +1469,9 @@ export const AnimationInspectorPanel: React.FC<
                           const isSelected =
                             selectedPlayerIds.includes(player.playerId) ||
                             selectedPlayerId === player.playerId;
-                          const posName = player.position || (group.key === 'MID' ? 'MF' : group.key);
+                          const posName =
+                            player.position ||
+                            (group.key === 'MID' ? 'MF' : group.key);
 
                           return (
                             <div

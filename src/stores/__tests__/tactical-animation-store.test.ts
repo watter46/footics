@@ -168,7 +168,10 @@ describe('tactical-animation-store', () => {
     expect(scene.players['1'].options.strokeWidth).toBe(0);
 
     // 2. チーム別変更: HOMEの枠線をゴールド (#fbbf24)・太さ 3.5 に
-    store.updateTeamOptions('home', { strokeColor: '#fbbf24', strokeWidth: 3.5 });
+    store.updateTeamOptions('home', {
+      strokeColor: '#fbbf24',
+      strokeWidth: 3.5,
+    });
     scene = useTacticalAnimationStore.getState().scenes[0];
     expect(scene.players['1'].options.strokeColor).toBe('#fbbf24');
     expect(scene.players['1'].options.strokeWidth).toBe(3.5);
@@ -183,7 +186,10 @@ describe('tactical-animation-store', () => {
     expect(scene.players['2'].options.strokeWidth).toBe(1);
 
     // 4. 背番号サイズおよび下部ラベルサイズの調整テスト
-    store.updatePlayerOptions('1', { numberSizeScale: 1.3, labelSizeScale: 0.85 });
+    store.updatePlayerOptions('1', {
+      numberSizeScale: 1.3,
+      labelSizeScale: 0.85,
+    });
     scene = useTacticalAnimationStore.getState().scenes[0];
     expect(scene.players['1'].options.numberSizeScale).toBe(1.3);
     expect(scene.players['1'].options.labelSizeScale).toBe(0.85);
@@ -480,19 +486,97 @@ describe('tactical-animation-store', () => {
               },
             ],
             players: [
-              { playerId: 1, name: 'Robert Sanchez', position: 'GK', isFirstEleven: true, shirtNo: 1 },
-              { playerId: 2, name: 'Marc Cucurella', position: 'DL', isFirstEleven: true, shirtNo: 3 },
-              { playerId: 3, name: 'Levi Colwill', position: 'DC', isFirstEleven: true, shirtNo: 6 },
-              { playerId: 4, name: 'Wesley Fofana', position: 'DC', isFirstEleven: true, shirtNo: 29 },
-              { playerId: 5, name: 'Malo Gusto', position: 'DR', isFirstEleven: true, shirtNo: 27 },
-              { playerId: 6, name: 'Enzo Fernandez', position: 'MC', isFirstEleven: true, shirtNo: 8 },
-              { playerId: 7, name: 'Moises Caicedo', position: 'DMC', isFirstEleven: true, shirtNo: 25 },
-              { playerId: 8, name: 'Jadon Sancho', position: 'AML', isFirstEleven: true, shirtNo: 19 },
-              { playerId: 9, name: 'Noni Madueke', position: 'AMR', isFirstEleven: true, shirtNo: 11 },
-              { playerId: 10, name: 'Cole Palmer', position: 'AMC', isFirstEleven: true, shirtNo: 20 },
-              { playerId: 11, name: 'Nicolas Jackson', position: 'FW', isFirstEleven: true, shirtNo: 15 },
-              { playerId: 12, name: 'Filip Jorgensen', position: 'GK', isFirstEleven: false, shirtNo: 12 },
-              { playerId: 13, name: 'Benoit Badiashile', position: 'DC', isFirstEleven: false, shirtNo: 5 },
+              {
+                playerId: 1,
+                name: 'Robert Sanchez',
+                position: 'GK',
+                isFirstEleven: true,
+                shirtNo: 1,
+              },
+              {
+                playerId: 2,
+                name: 'Marc Cucurella',
+                position: 'DL',
+                isFirstEleven: true,
+                shirtNo: 3,
+              },
+              {
+                playerId: 3,
+                name: 'Levi Colwill',
+                position: 'DC',
+                isFirstEleven: true,
+                shirtNo: 6,
+              },
+              {
+                playerId: 4,
+                name: 'Wesley Fofana',
+                position: 'DC',
+                isFirstEleven: true,
+                shirtNo: 29,
+              },
+              {
+                playerId: 5,
+                name: 'Malo Gusto',
+                position: 'DR',
+                isFirstEleven: true,
+                shirtNo: 27,
+              },
+              {
+                playerId: 6,
+                name: 'Enzo Fernandez',
+                position: 'MC',
+                isFirstEleven: true,
+                shirtNo: 8,
+              },
+              {
+                playerId: 7,
+                name: 'Moises Caicedo',
+                position: 'DMC',
+                isFirstEleven: true,
+                shirtNo: 25,
+              },
+              {
+                playerId: 8,
+                name: 'Jadon Sancho',
+                position: 'AML',
+                isFirstEleven: true,
+                shirtNo: 19,
+              },
+              {
+                playerId: 9,
+                name: 'Noni Madueke',
+                position: 'AMR',
+                isFirstEleven: true,
+                shirtNo: 11,
+              },
+              {
+                playerId: 10,
+                name: 'Cole Palmer',
+                position: 'AMC',
+                isFirstEleven: true,
+                shirtNo: 20,
+              },
+              {
+                playerId: 11,
+                name: 'Nicolas Jackson',
+                position: 'FW',
+                isFirstEleven: true,
+                shirtNo: 15,
+              },
+              {
+                playerId: 12,
+                name: 'Filip Jorgensen',
+                position: 'GK',
+                isFirstEleven: false,
+                shirtNo: 12,
+              },
+              {
+                playerId: 13,
+                name: 'Benoit Badiashile',
+                position: 'DC',
+                isFirstEleven: false,
+                shirtNo: 5,
+              },
             ],
           },
           away: {
@@ -583,8 +667,20 @@ describe('tactical-animation-store', () => {
           home: {
             name: 'Chelsea',
             players: [
-              { playerId: 1, name: 'Sánchez', isFirstEleven: true, position: 'GK', shirtNo: 1 },
-              { playerId: 2, name: 'Fofana', isFirstEleven: true, position: 'DC', shirtNo: 29 },
+              {
+                playerId: 1,
+                name: 'Sánchez',
+                isFirstEleven: true,
+                position: 'GK',
+                shirtNo: 1,
+              },
+              {
+                playerId: 2,
+                name: 'Fofana',
+                isFirstEleven: true,
+                position: 'DC',
+                shirtNo: 29,
+              },
             ],
             formations: [{ formationName: '3-4-3', playerIds: [1, 2] }],
           },
@@ -596,7 +692,10 @@ describe('tactical-animation-store', () => {
       };
 
       store.importFromMatch(sampleMatch);
-      expect(Object.keys(useTacticalAnimationStore.getState().scenes[0].players).length).toBe(2);
+      expect(
+        Object.keys(useTacticalAnimationStore.getState().scenes[0].players)
+          .length,
+      ).toBe(2);
 
       // Add another scene
       store.addScene();
@@ -623,5 +722,75 @@ describe('tactical-animation-store', () => {
       store.setTeamVisibility('both');
       expect(useTacticalAnimationStore.getState().teamVisibility).toBe('both');
     });
+
+    it('manages exportFps (30 / 60) setting correctly', () => {
+      const store = useTacticalAnimationStore.getState();
+      expect(store.exportFps).toBe(30);
+
+      store.setExportFps(60);
+      expect(useTacticalAnimationStore.getState().exportFps).toBe(60);
+
+      store.setExportFps(30);
+      expect(useTacticalAnimationStore.getState().exportFps).toBe(30);
+    });
+
+    it('updates ballTrajectory and preserves it across scenes', () => {
+      const store = useTacticalAnimationStore.getState();
+
+      useTacticalAnimationStore.setState({
+        scenes: [
+          {
+            id: 'scene-1',
+            durationMs: 1500,
+            pauseMs: 500,
+            players: {},
+            ballPos: { x: 50, y: 50 },
+          },
+          {
+            id: 'scene-2',
+            durationMs: 1500,
+            pauseMs: 500,
+            players: {},
+            ballPos: { x: 70, y: 30 },
+          },
+        ],
+        activeSceneIndex: 0,
+      });
+
+      // Update trajectory on active scene (scene 0)
+      store.updateBallTrajectory({
+        type: 'arc_right',
+        curveOffset: 35,
+      });
+
+      let scenes = useTacticalAnimationStore.getState().scenes;
+      expect(scenes[0].ballTrajectory).toEqual({
+        type: 'arc_right',
+        curveOffset: 35,
+      });
+      expect(scenes[1].ballTrajectory).toBeUndefined();
+
+      // Update custom trajectory with controlPoint
+      store.updateBallTrajectory({
+        type: 'custom',
+        controlPoint: { x: 60, y: 40 },
+      });
+      scenes = useTacticalAnimationStore.getState().scenes;
+      expect(scenes[0].ballTrajectory).toEqual({
+        type: 'custom',
+        curveOffset: 35,
+        controlPoint: { x: 60, y: 40 },
+      });
+
+      // Duplicate scene creates new scene with default straight trajectory
+      store.duplicateScene(0);
+      scenes = useTacticalAnimationStore.getState().scenes;
+      expect(scenes.length).toBe(3);
+      expect(scenes[1].ballTrajectory).toEqual({
+        type: 'straight',
+      });
+    });
   });
 });
+
+

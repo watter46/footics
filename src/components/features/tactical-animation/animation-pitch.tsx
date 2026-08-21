@@ -9,10 +9,25 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Image as KonvaImage, Layer, Line, Rect, Stage } from 'react-konva';
-import { calculateBezierPoint } from '@/lib/tactical/trajectory';
+import {
+  Arrow,
+  Circle,
+  Group,
+  Image as KonvaImage,
+  Layer,
+  Line,
+  Rect,
+  Stage,
+} from 'react-konva';
+import {
+  calculateBezierPoint,
+  getBezierControlPoint,
+  type PlayerTrajectory,
+  type Point2D,
+} from '@/lib/tactical/trajectory';
 import { useTacticalAnimationStore } from '@/stores/tactical-animation-store';
 import { AnimationMarker } from './animation-marker';
+
 
 const horizontalPitchSvg = `<svg viewBox="-1 -1 107 70" xmlns="http://www.w3.org/2000/svg">
   <rect x="-1" y="-1" width="107" height="70" fill="#020617" />
@@ -49,6 +64,7 @@ const verticalPitchSvg = `<svg viewBox="-1 -1 70 107" xmlns="http://www.w3.org/2
 interface AnimationPitchProps {
   width: number;
   height: number;
+  readOnly?: boolean;
 }
 
 export interface AnimationPitchRef {
@@ -59,7 +75,7 @@ export interface AnimationPitchRef {
 export const AnimationPitch = forwardRef<
   AnimationPitchRef,
   AnimationPitchProps
->(({ width, height }, ref) => {
+>(({ width, height, readOnly = false }, ref) => {
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
   const [pitchImage, setPitchImage] = useState<HTMLImageElement | null>(null);
@@ -100,6 +116,12 @@ export const AnimationPitch = forwardRef<
   const updateBallPosition = useTacticalAnimationStore(
     (s) => s.updateBallPosition,
   );
+  const updatePlayerTrajectory = useTacticalAnimationStore(
+    (s) => s.updatePlayerTrajectory,
+  );
+  const updateBallTrajectory = useTacticalAnimationStore(
+    (s) => s.updateBallTrajectory,
+  );
 
   // ピッチSVGのロード
   useEffect(() => {
@@ -130,45 +152,116 @@ export const AnimationPitch = forwardRef<
 
   const activeScene = scenes[activeSceneIndex];
 
-  // 選択中選手の移動軌道プレビュー線の計算 (次シーンへの移動がある場合)
-  const trajectoryPoints = useMemo(() => {
-    if (!selectedPlayerId || isPlaying) return null;
+  // 選択中（選手またはボール）の移動軌道ガイドデータの計算
+  // activeSceneIndex >= 1 (シーン2以降) の場合: 直前シーン (i-1) -> 現在シーン (i) の軌道を表示・編集
+  // activeSceneIndex === 0 (先頭シーン) の場合: 現在シーン (0) -> 次シーン (1) の軌道を表示・編集
+  const trajectoryGuide = useMemo(() => {
+    if (!selectedPlayerId || isPlaying || scenes.length <= 1) return null;
 
-    const currentScene = scenes[activeSceneIndex];
-    const nextScene = scenes[activeSceneIndex + 1];
-    if (!currentScene || !nextScene) return null;
+    let fromSceneIdx = 0;
+    let toSceneIdx = 1;
+    let targetTrajectorySceneIdx = 1;
 
-    const p0 = currentScene.players[selectedPlayerId];
-    const p1 = nextScene.players[selectedPlayerId];
-    if (!p0 || !p1 || p0.area !== 'pitch' || p1.area !== 'pitch') return null;
+    if (activeSceneIndex >= 1) {
+      fromSceneIdx = activeSceneIndex - 1;
+      toSceneIdx = activeSceneIndex;
+      targetTrajectorySceneIdx = activeSceneIndex;
+    } else {
+      fromSceneIdx = 0;
+      toSceneIdx = 1;
+      targetTrajectorySceneIdx = 1;
+    }
 
-    // 移動距離がほぼゼロなら描画しない
-    if (Math.abs(p0.x - p1.x) < 0.5 && Math.abs(p0.y - p1.y) < 0.5) return null;
+    const fromScene = scenes[fromSceneIdx];
+    const toScene = scenes[toSceneIdx];
+    if (!fromScene || !toScene) return null;
+
+    let p0: Point2D | null = null;
+    let p1: Point2D | null = null;
+    let trajectory: PlayerTrajectory | undefined;
+    let isBall = false;
+
+    if (selectedPlayerId === 'ball') {
+      isBall = true;
+      p0 = fromScene.ballPos;
+      p1 = toScene.ballPos;
+      trajectory = toScene.ballTrajectory || fromScene.ballTrajectory;
+    } else {
+      const pl0 = fromScene.players[selectedPlayerId];
+      const pl1 = toScene.players[selectedPlayerId];
+      if (pl0 && pl1 && pl0.area === 'pitch' && pl1.area === 'pitch') {
+        p0 = { x: pl0.x, y: pl0.y };
+        p1 = { x: pl1.x, y: pl1.y };
+        trajectory = pl1.trajectory || pl0.trajectory;
+      }
+    }
+
+    if (!p0 || !p1) return null;
+
+    // 移動距離がほぼゼロ（0.5%未満）なら描画しない
+    const dist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+    if (dist < 0.5) return null;
+
+    // 2次ベジェ制御点を計算
+    const cp = getBezierControlPoint(p0, p1, trajectory);
 
     const pts: number[] = [];
-    const steps = 24;
-    // 優先して currentScene の trajectory を参照
-    const trajectory = p0.trajectory || p1.trajectory;
+    const steps = 30;
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
-      const pos = calculateBezierPoint(
-        { x: p0.x, y: p0.y },
-        { x: p1.x, y: p1.y },
-        t,
-        trajectory,
-      );
+      const pos = calculateBezierPoint(p0, p1, t, trajectory);
       pts.push((pos.x / 100) * width, (pos.y / 100) * height);
     }
 
-    return pts;
+    return {
+      isBall,
+      targetSceneIndex: targetTrajectorySceneIdx,
+      points: pts,
+      controlPoint: {
+        x: (cp.x / 100) * width,
+        y: (cp.y / 100) * height,
+      },
+      trajectoryType: trajectory?.type || 'straight',
+      color: isBall ? '#fbbf24' : '#38bdf8',
+    };
   }, [selectedPlayerId, isPlaying, scenes, activeSceneIndex, width, height]);
+
+  // 制御点（曲げポインター）のドラッグハンドラー
+  const handleControlPointDrag = (pos: { x: number; y: number }) => {
+    if (!selectedPlayerId || !trajectoryGuide || readOnly) return;
+    const normX = Math.max(0, Math.min(100, (pos.x / width) * 100));
+    const normY = Math.max(0, Math.min(100, (pos.y / height) * 100));
+
+    if (selectedPlayerId === 'ball') {
+      updateBallTrajectory(
+        {
+          type: 'custom',
+          controlPoint: { x: normX, y: normY },
+        },
+        false,
+        trajectoryGuide.targetSceneIndex,
+      );
+    } else {
+      updatePlayerTrajectory(
+        selectedPlayerId,
+        {
+          type: 'custom',
+          controlPoint: { x: normX, y: normY },
+        },
+        false,
+        trajectoryGuide.targetSceneIndex,
+      );
+    }
+  };
+
+
 
   // 背景クリック・ドラッグ開始（範囲選択）
   const handleStageMouseDown = (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     e: any,
   ) => {
-    if (isPlaying) return;
+    if (isPlaying || readOnly) return;
     const isBackground =
       e.target === e.target.getStage() ||
       e.target.className === 'Image' ||
@@ -197,7 +290,7 @@ export const AnimationPitch = forwardRef<
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     e: any,
   ) => {
-    if (!selectionBox || isPlaying) return;
+    if (!selectionBox || isPlaying || readOnly) return;
     const stage = e.target.getStage();
     const pos = stage?.getPointerPosition();
     if (!pos) return;
@@ -211,7 +304,7 @@ export const AnimationPitch = forwardRef<
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     e: any,
   ) => {
-    if (!selectionBox || isPlaying) {
+    if (!selectionBox || isPlaying || readOnly) {
       setSelectionBox(null);
       return;
     }
@@ -274,9 +367,9 @@ export const AnimationPitch = forwardRef<
         onTouchMove={handleStageMouseMove}
         onTouchEnd={handleStageMouseUp}
       >
-        {/* 単一Layer構成で高パフォーマンス & ピッチ境界内へのクリッピング */}
+        {/* 1. 静的背景レイヤー (リスニング無効でドラッグ中も完全ゼロ負荷) */}
         <Layer
-          ref={layerRef}
+          listening={false}
           clip={{
             x: 0,
             y: 0,
@@ -303,19 +396,72 @@ export const AnimationPitch = forwardRef<
               perfectDrawEnabled={false}
             />
           )}
+        </Layer>
 
-          {/* 選択選手の移動軌道ガイド線 */}
-          {trajectoryPoints && trajectoryPoints.length > 0 && (
-            <Line
-              points={trajectoryPoints}
-              stroke="#38bdf8"
-              strokeWidth={2.5}
-              dash={[6, 4]}
-              opacity={0.85}
-              listening={false}
-              perfectDrawEnabled={false}
-            />
+        {/* 2. 動的マーカー・操作レイヤー (高FPSでスムーズにドラッグ) */}
+        <Layer
+          ref={layerRef}
+          clip={{
+            x: 0,
+            y: 0,
+            width,
+            height,
+          }}
+        >
+          {/* 選択選手・ボールの移動軌道ガイド矢印 & 曲げポインター */}
+          {trajectoryGuide && trajectoryGuide.points.length > 0 && (
+            <Group>
+              <Arrow
+                points={trajectoryGuide.points}
+                stroke={trajectoryGuide.color}
+                fill={trajectoryGuide.color}
+                strokeWidth={2.5}
+                dash={[6, 4]}
+                opacity={0.85}
+                pointerLength={12}
+                pointerWidth={12}
+                tension={0}
+                listening={false}
+                perfectDrawEnabled={false}
+              />
+
+              {/* カスタム制御点曲げポインター (オレンジの丸ハンドル) */}
+              {!readOnly && trajectoryGuide.trajectoryType === 'custom' && (
+                <Circle
+                  x={trajectoryGuide.controlPoint.x}
+                  y={trajectoryGuide.controlPoint.y}
+
+                  radius={7}
+                  fill="#f59e0b"
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                  shadowColor="#000000"
+                  shadowBlur={4}
+                  shadowOpacity={0.5}
+                  draggable={!isPlaying && !readOnly}
+                  dragBoundFunc={(pos) => ({
+                    x: Math.max(0, Math.min(width, pos.x)),
+                    y: Math.max(0, Math.min(height, pos.y)),
+                  })}
+                  onDragMove={(e) => {
+                    handleControlPointDrag(e.target.position());
+                  }}
+                  onDragEnd={(e) => {
+                    handleControlPointDrag(e.target.position());
+                  }}
+                  onMouseEnter={(e) => {
+                    const container = e.target.getStage()?.container();
+                    if (container) container.style.cursor = 'grab';
+                  }}
+                  onMouseLeave={(e) => {
+                    const container = e.target.getStage()?.container();
+                    if (container) container.style.cursor = 'default';
+                  }}
+                />
+              )}
+            </Group>
           )}
+
 
           {/* ピッチ上の選手マーカー */}
           {Object.values(activeScene.players).map((p) => {
@@ -339,9 +485,10 @@ export const AnimationPitch = forwardRef<
                 options={p.options}
                 stageWidth={width}
                 stageHeight={height}
-                isSelected={isSelected}
-                draggable={!isPlaying}
+                isSelected={!readOnly && isSelected}
+                draggable={!isPlaying && !readOnly}
                 onClick={(id, e: any) => {
+                  if (readOnly) return;
                   if (e?.evt?.shiftKey) {
                     toggleSelectPlayerId(id, true);
                   } else {
@@ -349,6 +496,7 @@ export const AnimationPitch = forwardRef<
                   }
                 }}
                 onDragEnd={(id, newX, newY) => {
+                  if (readOnly) return;
                   const origP = activeScene.players[id];
                   if (!origP) return;
 
@@ -390,12 +538,18 @@ export const AnimationPitch = forwardRef<
             stageWidth={width}
             stageHeight={height}
             isSelected={
-              selectedPlayerId === 'ball' || selectedPlayerIds.includes('ball')
+              !readOnly &&
+              (selectedPlayerId === 'ball' ||
+                selectedPlayerIds.includes('ball'))
             }
             isBall
-            draggable={!isPlaying}
-            onClick={(id) => setSelectedPlayerId(id)}
+            draggable={!isPlaying && !readOnly}
+            onClick={(id) => {
+              if (readOnly) return;
+              setSelectedPlayerId(id);
+            }}
             onDragEnd={(_, newX, newY) => {
+              if (readOnly) return;
               updateBallPosition(activeSceneIndex, newX, newY);
             }}
           />

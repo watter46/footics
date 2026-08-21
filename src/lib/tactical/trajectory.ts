@@ -26,9 +26,24 @@ export function getBezierControlPoint(
     };
   }
 
-  if (trajectory.type === 'custom' && trajectory.controlPoint) {
-    return trajectory.controlPoint;
+  if (trajectory.type === 'custom') {
+    if (trajectory.controlPoint) {
+      return trajectory.controlPoint;
+    }
+    const midX = (p0.x + p1.x) / 2;
+    const midY = (p0.y + p1.y) / 2;
+    const dx = p1.x - p0.x;
+    const dy = p1.y - p0.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist === 0) return { x: midX, y: midY };
+    const normX = -dy / dist;
+    const normY = dx / dist;
+    return {
+      x: midX + normX * (dist * 0.15),
+      y: midY + normY * (dist * 0.15),
+    };
   }
+
 
   const midX = (p0.x + p1.x) / 2;
   const midY = (p0.y + p1.y) / 2;

@@ -47,6 +47,7 @@ export interface TacticalScene {
   easing?: EasingType;
   players: Record<string, AnimationPlayerState>;
   ballPos: { x: number; y: number };
+  ballTrajectory?: PlayerTrajectory;
 }
 
 export type AnimationOrientation = 'vertical' | 'horizontal';
@@ -66,10 +67,12 @@ interface TacticalAnimationState {
   defaultEasing: EasingType;
   defaultHomeOptions: MarkerOptions;
   defaultAwayOptions: MarkerOptions;
+  exportFps: 30 | 60;
 
   // Actions
   setOrientation: (orientation: AnimationOrientation) => void;
   setTeamVisibility: (visibility: 'both' | 'home' | 'away') => void;
+  setExportFps: (fps: 30 | 60) => void;
   setSelectedPlayerId: (id: string | null) => void;
   setSelectedPlayerIds: (ids: string[]) => void;
   toggleSelectPlayerId: (id: string, multiSelect?: boolean) => void;
@@ -106,7 +109,14 @@ interface TacticalAnimationState {
     playerId: string,
     trajectory: Partial<PlayerTrajectory>,
     applyToAllScenes?: boolean,
+    targetSceneIndex?: number,
   ) => void;
+  updateBallTrajectory: (
+    trajectory: Partial<PlayerTrajectory>,
+    applyToAllScenes?: boolean,
+    targetSceneIndex?: number,
+  ) => void;
+
   updateTeamOptions: (
     team: 'home' | 'away',
     options: Partial<MarkerOptions>,
@@ -119,7 +129,9 @@ interface TacticalAnimationState {
     y: number,
     area?: 'pitch' | 'bench',
   ) => void;
+
   moveMultiplePlayersByDelta: (
+
     sceneIndex: number,
     playerIds: string[],
     deltaX: number,
@@ -216,6 +228,7 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
     defaultEasing: 'easeInOut',
     defaultHomeOptions: { ...INITIAL_HOME_OPTIONS },
     defaultAwayOptions: { ...INITIAL_AWAY_OPTIONS },
+    exportFps: 30,
 
     setOrientation: (newOrientation) =>
       set((state) => {
@@ -273,6 +286,7 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
         };
       }),
     setTeamVisibility: (visibility) => set({ teamVisibility: visibility }),
+    setExportFps: (fps) => set({ exportFps: fps }),
     setSelectedPlayerId: (id) =>
       set({
         selectedPlayerId: id,
@@ -329,13 +343,24 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
     addScene: () =>
       set((state) => {
         const lastScene = state.scenes[state.scenes.length - 1];
+        const clonedPlayers: Record<string, AnimationPlayerState> = {};
+        if (lastScene) {
+          for (const [id, p] of Object.entries(lastScene.players)) {
+            clonedPlayers[id] = {
+              ...p,
+              options: { ...p.options },
+              trajectory: { type: 'straight' },
+            };
+          }
+        }
         const newScene: TacticalScene = {
           id: crypto.randomUUID(),
           durationMs: 1500,
           pauseMs: 500,
           easing: lastScene?.easing || state.defaultEasing,
-          players: JSON.parse(JSON.stringify(lastScene.players)), // deep copy
-          ballPos: { ...lastScene.ballPos },
+          players: clonedPlayers,
+          ballPos: lastScene?.ballPos ? { ...lastScene.ballPos } : { x: 50, y: 50 },
+          ballTrajectory: { type: 'straight' },
         };
         return {
           scenes: [...state.scenes, newScene],
@@ -347,13 +372,22 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
       set((state) => {
         const targetScene = state.scenes[index];
         if (!targetScene) return state;
+        const clonedPlayers: Record<string, AnimationPlayerState> = {};
+        for (const [id, p] of Object.entries(targetScene.players)) {
+          clonedPlayers[id] = {
+            ...p,
+            options: { ...p.options },
+            trajectory: { type: 'straight' },
+          };
+        }
         const newScene: TacticalScene = {
           id: crypto.randomUUID(),
           durationMs: targetScene.durationMs,
           pauseMs: targetScene.pauseMs,
           easing: targetScene.easing || state.defaultEasing,
-          players: JSON.parse(JSON.stringify(targetScene.players)),
+          players: clonedPlayers,
           ballPos: { ...targetScene.ballPos },
+          ballTrajectory: { type: 'straight' },
         };
         const newScenes = [...state.scenes];
         newScenes.splice(index + 1, 0, newScene);
@@ -362,6 +396,8 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
           activeSceneIndex: index + 1,
         };
       }),
+
+
 
     removeScene: (index: number) =>
       set((state) => {
@@ -471,15 +507,23 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
         };
       }),
 
-    updatePlayerTrajectory: (playerId, trajectory, applyToAllScenes = false) =>
+    updatePlayerTrajectory: (
+      playerId,
+      trajectory,
+      applyToAllScenes = false,
+      targetSceneIndex,
+    ) =>
       set((state) => {
+        const targetIdx =
+          targetSceneIndex !== undefined
+            ? targetSceneIndex
+            : state.activeSceneIndex;
         const newScenes = state.scenes.map((scene, idx) => {
-          if (!applyToAllScenes && idx !== state.activeSceneIndex) return scene;
+          if (!applyToAllScenes && idx !== targetIdx) return scene;
           const p = scene.players[playerId];
           if (!p) return scene;
           const prev = p.trajectory || {
             type: 'straight',
-            curveOffset: 25,
           };
           return {
             ...scene,
@@ -494,6 +538,31 @@ export const useTacticalAnimationStore = create<TacticalAnimationState>(
         });
         return { scenes: newScenes };
       }),
+
+    updateBallTrajectory: (
+      trajectory,
+      applyToAllScenes = false,
+      targetSceneIndex,
+    ) =>
+      set((state) => {
+        const targetIdx =
+          targetSceneIndex !== undefined
+            ? targetSceneIndex
+            : state.activeSceneIndex;
+        const newScenes = state.scenes.map((scene, idx) => {
+          if (!applyToAllScenes && idx !== targetIdx) return scene;
+          const prev = scene.ballTrajectory || {
+            type: 'straight',
+          };
+          return {
+            ...scene,
+            ballTrajectory: { ...prev, ...trajectory },
+          };
+        });
+        return { scenes: newScenes };
+      }),
+
+
 
     updateTeamOptions: (team, options, applyToAllExisting = true) =>
       set((state) => {

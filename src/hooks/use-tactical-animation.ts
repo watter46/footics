@@ -28,7 +28,8 @@ export function useTacticalAnimation() {
       setIsPlaying(true);
       let startTimestamp: number | null = null;
       let currentSceneIdx = 0;
-      const mainLayer = stage.getLayers()[0];
+      const layers = stage.getLayers();
+      const markerLayer = layers[1] || layers[0];
       const width = stage.width();
       const height = stage.height();
 
@@ -72,7 +73,7 @@ export function useTacticalAnimation() {
             y: (firstScene.ballPos.y / 100) * height,
           });
         }
-        if (mainLayer) mainLayer.batchDraw();
+        if (markerLayer) markerLayer.batchDraw();
       }
 
       const animate = (timestamp: number) => {
@@ -86,7 +87,7 @@ export function useTacticalAnimation() {
         if (!nextScene) {
           setIsPlaying(false);
           setActiveSceneIndex(currentScenes.length - 1);
-          if (mainLayer) mainLayer.batchDraw();
+          if (markerLayer) markerLayer.batchDraw();
           if (onComplete) onComplete();
           return;
         }
@@ -150,8 +151,8 @@ export function useTacticalAnimation() {
           ballNode.position({ x: pxPos.x, y: pxPos.y });
         }
 
-        if (mainLayer) {
-          mainLayer.batchDraw();
+        if (markerLayer) {
+          markerLayer.batchDraw();
         }
 
         animationFrameRef.current = requestAnimationFrame(animate);
@@ -174,8 +175,9 @@ export function useTacticalAnimation() {
         const activeIdx = useTacticalAnimationStore.getState().activeSceneIndex;
         const activeScene =
           useTacticalAnimationStore.getState().scenes[activeIdx];
-        const mainLayer = stage.getLayers()[0];
-        if (activeScene && mainLayer) {
+        const layers = stage.getLayers();
+        const markerLayer = layers[1] || layers[0];
+        if (activeScene && markerLayer) {
           const width = stage.width();
           const height = stage.height();
 
@@ -199,7 +201,7 @@ export function useTacticalAnimation() {
             });
           }
 
-          mainLayer.batchDraw();
+          markerLayer.batchDraw();
         }
       }
     },

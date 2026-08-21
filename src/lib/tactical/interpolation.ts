@@ -130,7 +130,7 @@ export function getInterpolatedFrameState(
 
     if (startP && endP) {
       if (startP.area === 'pitch' && endP.area === 'pitch') {
-        const trajectory = startP.trajectory || endP.trajectory;
+        const trajectory = endP.trajectory || { type: 'straight' };
         const pos = calculateBezierPoint(
           { x: startP.x, y: startP.y },
           { x: endP.x, y: endP.y },
@@ -174,10 +174,16 @@ export function getInterpolatedFrameState(
 
   const ballStart = currentScene.ballPos;
   const ballEnd = nextScene.ballPos;
-  const ballPos = {
-    x: lerp(ballStart.x, ballEnd.x, ease),
-    y: lerp(ballStart.y, ballEnd.y, ease),
-  };
+  const ballTrajectory = nextScene.ballTrajectory || { type: 'straight' };
+
+  const ballPos = calculateBezierPoint(
+    { x: ballStart.x, y: ballStart.y },
+    { x: ballEnd.x, y: ballEnd.y },
+    ease,
+    ballTrajectory,
+  );
+
+
 
   return {
     players,

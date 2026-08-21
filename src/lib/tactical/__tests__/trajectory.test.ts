@@ -48,4 +48,21 @@ describe('trajectory utility', () => {
     expect(midPt.x).toBeCloseTo(11); // 20 - 9 = 11
     expect(midPt.y).toBeCloseTo(50);
   });
+
+  it('uses custom control point directly when trajectory type is custom', () => {
+    const customTraj: PlayerTrajectory = {
+      type: 'custom',
+      controlPoint: { x: 75, y: 45 },
+    };
+    const cp = getBezierControlPoint(p0, p1, customTraj);
+    expect(cp.x).toBe(75);
+    expect(cp.y).toBe(45);
+
+    const midPt = calculateBezierPoint(p0, p1, 0.5, customTraj);
+    // 0.25*20 + 0.5*75 + 0.25*20 = 5 + 37.5 + 5 = 47.5
+    // 0.25*80 + 0.5*45 + 0.25*20 = 20 + 22.5 + 5 = 47.5
+    expect(midPt.x).toBeCloseTo(47.5);
+    expect(midPt.y).toBeCloseTo(47.5);
+  });
 });
+
