@@ -10,6 +10,7 @@ import {
   Loader2,
   Play,
   Plus,
+  Share2,
   SlidersHorizontal,
   Square,
   Trash2,
@@ -22,6 +23,7 @@ import { useTacticalVideoExport } from '@/hooks/use-tactical-video-export';
 import { EASING_OPTIONS, type EasingType } from '@/lib/tactical/easing';
 import { useTacticalAnimationStore } from '@/stores/tactical-animation-store';
 import type { AnimationPitchRef } from './animation-pitch';
+import { TacticalShareExportModal } from './tactical-share-export-modal';
 
 interface AnimationTimelinePanelProps {
   pitchRef: React.RefObject<AnimationPitchRef | null>;
@@ -43,6 +45,8 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
   const setActiveSceneIndex = useTacticalAnimationStore(
     (s) => s.setActiveSceneIndex,
   );
+  const exportFps = useTacticalAnimationStore((s) => s.exportFps);
+  const setExportFps = useTacticalAnimationStore((s) => s.setExportFps);
   const addScene = useTacticalAnimationStore((s) => s.addScene);
   const duplicateScene = useTacticalAnimationStore((s) => s.duplicateScene);
   const removeScene = useTacticalAnimationStore((s) => s.removeScene);
@@ -54,6 +58,7 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
 
   // 一括設定モーダル状態
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [batchDuration, setBatchDuration] = useState<number>(1500);
   const [batchPause, setBatchPause] = useState<number>(500);
   const [batchEasing, setBatchEasing] = useState<EasingType>('easeInOut');
@@ -80,8 +85,8 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
 
     startExport({
       backgroundColor: '#020617',
-      fps: 60,
-      bitrate: 16000000,
+      fps: exportFps,
+      bitrate: exportFps <= 30 ? 10000000 : 16000000,
     });
   };
 
@@ -118,7 +123,7 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
         )}
       </div>
 
-      {/* コントロールツールバー (再生・保存・追加・一括) */}
+      {/* コントロールツールバー (再生・保存・FPS設定・追加・一括) */}
       <div className="p-3 bg-slate-950/70 border-b border-slate-800 flex flex-col gap-2 shrink-0">
         <div className="grid grid-cols-2 gap-2">
           {/* 再生/停止ボタン */}
@@ -149,6 +154,11 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
             onClick={handleExport}
             disabled={isPlaying || isExporting || scenes.length <= 1}
             className="flex items-center justify-center gap-1.5 py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg font-bold text-xs shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title={
+              exportFps === 30
+                ? '30fps (X・SNS向け爆速エクスポート)'
+                : '60fps (YouTube向け最高滑らかさ)'
+            }
           >
             {isExporting ? (
               <>
@@ -161,6 +171,53 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
               </>
             )}
           </button>
+        </div>
+
+        {/* 別端末でエクスポート (共有URL発行) ボタン */}
+        <button
+          type="button"
+          onClick={() => setIsShareModalOpen(true)}
+          disabled={isPlaying || isExporting || scenes.length <= 1}
+          className="w-full py-1.5 px-3 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg font-medium text-xs border border-slate-800 hover:border-slate-700 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+          title="専用URLを発行して、別PC（デスクトップ等）で高速・高画質エクスポート"
+        >
+          <Share2 className="w-3.5 h-3.5 text-blue-400" />
+          <span>別端末で保存 (URL発行)</span>
+        </button>
+
+        {/* 画質・フレームレート (FPS) セレクター */}
+        <div className="flex items-center justify-between bg-slate-900/90 rounded-lg p-1 px-1.5 border border-slate-800 text-[11px]">
+          <span className="text-slate-400 font-medium text-[10px]">
+            画質・速度
+          </span>
+          <div className="flex bg-slate-950 rounded p-0.5 border border-slate-800">
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={() => setExportFps(30)}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                exportFps === 30
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              } disabled:opacity-50`}
+              title="30fps: 1080p フルHD・X/SNS投稿向け爆速書き出し (推奨・約2倍速)"
+            >
+              30fps (高速)
+            </button>
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={() => setExportFps(60)}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                exportFps === 60
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              } disabled:opacity-50`}
+              title="60fps: 1080p フルHD・YouTube向け最高滑らかさ (最高品質)"
+            >
+              60fps (高品位)
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -202,6 +259,8 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
           const currentEasing = scene.easing || defaultEasing;
 
           return (
+            // biome-ignore lint/a11y/useKeyWithClickEvents: Scene card contains interactive child controls
+            // biome-ignore lint/a11y/noStaticElementInteractions: Scene card selects active scene on container click
             <div
               key={scene.id}
               onClick={() => {
@@ -391,11 +450,15 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
             <div className="space-y-4 text-xs">
               {/* 移動時間一括 */}
               <div>
-                <label className="block text-slate-300 font-medium mb-1.5">
+                <label
+                  htmlFor="batch-duration-input"
+                  className="block text-slate-300 font-medium mb-1.5"
+                >
                   移動時間 (Duration)
                 </label>
                 <div className="flex items-center gap-2 mb-1.5">
                   <input
+                    id="batch-duration-input"
                     type="number"
                     value={batchDuration}
                     onChange={(e) =>
@@ -427,11 +490,15 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
 
               {/* 停止時間一括 */}
               <div>
-                <label className="block text-slate-300 font-medium mb-1.5">
+                <label
+                  htmlFor="batch-pause-input"
+                  className="block text-slate-300 font-medium mb-1.5"
+                >
                   停止時間 (Pause)
                 </label>
                 <div className="flex items-center gap-2 mb-1.5">
                   <input
+                    id="batch-pause-input"
                     type="number"
                     value={batchPause}
                     onChange={(e) =>
@@ -463,9 +530,9 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
 
               {/* 速度変化一括 */}
               <div>
-                <label className="block text-slate-300 font-medium mb-1.5">
+                <span className="block text-slate-300 font-medium mb-1.5">
                   速度変化 (Easing)
-                </label>
+                </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {EASING_OPTIONS.map((opt) => (
                     <button
@@ -486,6 +553,47 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
                       </div>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* 動画エクスポート設定 */}
+              <div className="pt-2 border-t border-slate-800">
+                <span className="block text-slate-300 font-medium mb-1.5">
+                  動画エクスポート画質 (FPS)
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExportFps(30)}
+                    className={`p-2 rounded-lg text-left border transition-all ${
+                      exportFps === 30
+                        ? 'bg-blue-950/80 border-blue-500 ring-1 ring-blue-500 text-white'
+                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="font-bold text-xs text-blue-300">
+                      ⚡️ 30 fps (高速・推奨)
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">
+                      1080p フルHD / X・SNS共有向け
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExportFps(60)}
+                    className={`p-2 rounded-lg text-left border transition-all ${
+                      exportFps === 60
+                        ? 'bg-indigo-950/80 border-indigo-500 ring-1 ring-indigo-500 text-white'
+                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="font-bold text-xs text-indigo-300">
+                      🏆 60 fps (最高品質)
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">
+                      1080p フルHD / YouTube向け最高滑らかさ
+                    </div>
+                  </button>
                 </div>
               </div>
             </div>
@@ -509,6 +617,12 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
           </div>
         </div>
       )}
+
+      {/* 別端末エクスポート / 共有URL発行モーダル */}
+      <TacticalShareExportModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+      />
     </div>
   );
 };

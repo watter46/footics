@@ -1,4 +1,5 @@
 import { getPlayersMasterBatch } from '@/lib/db/queries';
+import { SOCCER_BALL_SVG } from '@/lib/tactical/soccer-ball-svg';
 import type { TacticalScene } from '@/stores/tactical-animation-store';
 
 /**
@@ -37,6 +38,18 @@ export async function preloadPlayerPhotos(
     return photos;
   }
 
+  // 0. サッカーボールのリアルな 3D SVG ImageBitmap を事前生成
+  try {
+    const ballBlob = new Blob([SOCCER_BALL_SVG], { type: 'image/svg+xml' });
+    const ballBitmap = await createImageBitmap(ballBlob);
+    photos.ball = ballBitmap;
+  } catch (ballErr) {
+    console.warn(
+      '[photo-loader] Failed to generate ball ImageBitmap:',
+      ballErr,
+    );
+  }
+
   // 写真表示が必要なマーカーのみを抽出 (playerId -> photoUrl)
   const targetPlayers = new Map<string, string | undefined>();
   for (const scene of scenes) {
@@ -53,7 +66,7 @@ export async function preloadPlayerPhotos(
     }
   }
 
-  // 写真が一切使われていない場合は、fetchループや非同期処理を完全スキップ
+  // 写真が一切使われていない場合は、ボール画像のみ返してスキップ
   if (targetPlayers.size === 0) {
     return photos;
   }

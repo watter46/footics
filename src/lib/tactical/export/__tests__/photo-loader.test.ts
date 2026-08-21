@@ -78,7 +78,8 @@ describe('preloadPlayerPhotos', () => {
     const result = await preloadPlayerPhotos(scenes);
 
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(result).toEqual({});
+    expect(result.p1).toBeUndefined();
+    expect(result.ball).toBeDefined();
     expect(getPhotoCacheSize()).toBe(0);
   });
 
@@ -104,7 +105,8 @@ describe('preloadPlayerPhotos', () => {
     const result = await preloadPlayerPhotos(scenes);
 
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(result).toEqual({});
+    expect(result.p1).toBeUndefined();
+    expect(result.ball).toBeDefined();
   });
 
   it('fetches photo on first call and caches it for subsequent calls', async () => {

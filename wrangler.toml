@@ -6,3 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
+
+[[kv_namespaces]]
+binding = "TACTICAL_SHARE_KV"
+id = "24a523b8550b4b62aa5f7187c7bb9e96"
