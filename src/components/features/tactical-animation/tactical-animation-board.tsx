@@ -181,21 +181,24 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
     setSelectedPlayerId,
   ]);
 
-  // ピッチサイズのリサイズ計算 (アスペクト比維持 & 最大化)
+  // ピッチサイズのリサイズ計算 (アスペクト比維持 & 見切れ防止)
   useEffect(() => {
     const updateDimensions = () => {
       if (!containerRef.current) return;
       const { clientWidth, clientHeight } = containerRef.current;
       if (clientWidth === 0 || clientHeight === 0) return;
 
-      // 縦画面時は高さを極限まで活用するためパディングを最小化 (4px)、横画面は 8px
-      const padding = orientation === 'vertical' ? 4 : 8;
-      const availWidth = Math.max(100, clientWidth - padding);
-      const availHeight = Math.max(100, clientHeight - padding);
+      // 下部ミニプレイヤーバー（約52px）および上下左右のセーフエリア余白を確保
+      const bottomBarReserved = 58;
+      const horizontalPadding = 16;
+      const verticalPadding = 16 + bottomBarReserved;
+
+      const availWidth = Math.max(100, clientWidth - horizontalPadding);
+      const availHeight = Math.max(100, clientHeight - verticalPadding);
 
       if (orientation === 'vertical') {
-        // 比率 68 : 105
-        const targetRatio = 68 / 105;
+        // 比率 70 : 107
+        const targetRatio = 70 / 107;
         let h = availHeight;
         let w = h * targetRatio;
 
@@ -205,8 +208,8 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
         }
         setPitchDimensions({ width: Math.floor(w), height: Math.floor(h) });
       } else {
-        // 比率 105 : 68
-        const targetRatio = 105 / 68;
+        // 比率 107 : 70
+        const targetRatio = 107 / 70;
         let w = availWidth;
         let h = w / targetRatio;
 
@@ -706,7 +709,7 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
         {/* 中央カラム: 巨大ピッチ描画コンテナ (画面高さを100%活用) */}
         <div
           ref={containerRef}
-          className="flex-1 flex flex-col items-center justify-center min-h-0 min-w-0 bg-slate-950/40 relative overflow-hidden p-1 pb-16 md:pb-1"
+          className="flex-1 flex flex-col items-center justify-center min-h-0 min-w-0 bg-slate-950/40 relative overflow-hidden p-2 pb-16"
         >
           <AnimationPitch
             ref={pitchRef}
