@@ -38,39 +38,7 @@ interface AnnotationLayerProps {
 
 const ROTATE_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8'/><path d='M21 3v5h-5'/></svg>") 12 12, auto`;
 
-function checkCornerRotate(
-  pos: { x: number; y: number },
-  cx: number,
-  cy: number,
-  w: number,
-  h: number,
-  rotation: number,
-): boolean {
-  if (w <= 0 || h <= 0) return false;
-  const rad = (rotation * Math.PI) / 180;
-  const hw = w / 2;
-  const hh = h / 2;
 
-  const cornersLocal = [
-    { x: -hw, y: -hh },
-    { x: hw, y: -hh },
-    { x: -hw, y: hh },
-    { x: hw, y: hh },
-  ];
-
-  const corners = cornersLocal.map((pt) => ({
-    x: cx + pt.x * Math.cos(rad) - pt.y * Math.sin(rad),
-    y: cy + pt.x * Math.sin(rad) + pt.y * Math.cos(rad),
-  }));
-
-  for (const corner of corners) {
-    const dist = Math.hypot(pos.x - corner.x, pos.y - corner.y);
-    if (dist >= 6 && dist <= 28) {
-      return true;
-    }
-  }
-  return false;
-}
 
 function normX(v: number, w: number) {
   return (v / 100) * w;
@@ -540,7 +508,7 @@ const ZoneObject = React.memo(function ZoneObject({
   const shapeNodeRef = useRef<Konva.Node | null>(null);
   const transformerRef = useRef<Konva.Transformer | null>(null);
 
-  // 回転ドラッグ状態
+  // 角ドラッグ回転状態
   const isRotatingRef = useRef(false);
   const rotateCenterRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const startMouseAngleRef = useRef(0);
@@ -549,8 +517,9 @@ const ZoneObject = React.memo(function ZoneObject({
   useEffect(() => {
     if (!transformerRef.current) return;
     if (isSelected && shapeNodeRef.current && shapeType !== 'polygon') {
-      transformerRef.current.nodes([shapeNodeRef.current]);
-      transformerRef.current.getLayer()?.batchDraw();
+      const tr = transformerRef.current;
+      tr.nodes([shapeNodeRef.current]);
+      tr.getLayer()?.batchDraw();
     } else {
       transformerRef.current.nodes([]);
       transformerRef.current.getLayer()?.batchDraw();
@@ -718,65 +687,71 @@ const ZoneObject = React.memo(function ZoneObject({
   const cy = normY(normPosY, height) + pxH / 2;
   const rotation = zone.rotation || 0;
 
-  const handlePointerDownForRotate = (e: KonvaEventObject<MouseEvent>) => {
-    if (!isSelected) return;
+  // 回転ハンドルの位置（図形の4角をローカル→ワールド変換）
+  const rad = (rotation * Math.PI) / 180;
+  const hw = pxW / 2;
+  const hh = pxH / 2;
+  const cornersLocal = [
+    { x: -hw, y: -hh, label: 'tl' },
+    { x:  hw, y: -hh, label: 'tr' },
+    { x: -hw, y:  hh, label: 'bl' },
+    { x:  hw, y:  hh, label: 'br' },
+  ];
+  const cornerHandles = cornersLocal.map((pt) => ({
+    label: pt.label,
+    x: cx + pt.x * Math.cos(rad) - pt.y * Math.sin(rad),
+    y: cy + pt.x * Math.sin(rad) + pt.y * Math.cos(rad),
+  }));
+
+  // Group レベルの mousemove / mouseup で回転ドラッグを処理
+  const handleGroupMoveForRotate = (e: KonvaEventObject<MouseEvent>) => {
+    if (!isRotatingRef.current || !shapeNodeRef.current) return;
     const stage = e.target.getStage();
     const pos = stage?.getPointerPosition();
     if (!pos) return;
 
-    const isOverRotate = checkCornerRotate(pos, cx, cy, pxW, pxH, rotation);
-    if (isOverRotate) {
-      isRotatingRef.current = true;
-      rotateCenterRef.current = { x: cx, y: cy };
-      startMouseAngleRef.current = Math.atan2(pos.y - cy, pos.x - cx);
-      startShapeRotationRef.current = rotation;
-    }
+    const currentAngle = Math.atan2(
+      pos.y - rotateCenterRef.current.y,
+      pos.x - rotateCenterRef.current.x,
+    );
+    const angleDiffDeg =
+      ((currentAngle - startMouseAngleRef.current) * 180) / Math.PI;
+    const newRot = (startShapeRotationRef.current + angleDiffDeg) % 360;
+
+    shapeNodeRef.current.rotation(newRot);
+    transformerRef.current?.forceUpdate();
+    shapeNodeRef.current.getLayer()?.batchDraw();
   };
 
-  const handlePointerMoveForRotate = (e: KonvaEventObject<MouseEvent>) => {
+  const handleGroupUpForRotate = (e: KonvaEventObject<MouseEvent>) => {
+    if (!isRotatingRef.current) return;
+    isRotatingRef.current = false;
     const stage = e.target.getStage();
-    const pos = stage?.getPointerPosition();
-    if (!pos) return;
+    if (stage) stage.container().style.cursor = 'default';
 
-    if (isRotatingRef.current && shapeNodeRef.current) {
-      const currentAngle = Math.atan2(
-        pos.y - rotateCenterRef.current.y,
-        pos.x - rotateCenterRef.current.x,
-      );
-      const angleDiffDeg =
-        ((currentAngle - startMouseAngleRef.current) * 180) / Math.PI;
-      const newRot = (startShapeRotationRef.current + angleDiffDeg) % 360;
-
-      shapeNodeRef.current.rotation(newRot);
-      shapeNodeRef.current.getLayer()?.batchDraw();
-      return;
-    }
-
-    if (isSelected) {
-      const isOver = checkCornerRotate(pos, cx, cy, pxW, pxH, rotation);
-      const c = stage?.container();
-      if (c) {
-        if (isOver) c.style.cursor = ROTATE_CURSOR;
-        else if (c.style.cursor.includes('data:image/svg+xml')) {
-          c.style.cursor = 'default';
-        }
-      }
-    }
-  };
-
-  const handlePointerUpForRotate = () => {
-    if (isRotatingRef.current && shapeNodeRef.current) {
-      isRotatingRef.current = false;
+    if (shapeNodeRef.current) {
       const newRot = shapeNodeRef.current.rotation();
       updateZone(slideId, zone.id, { rotation: newRot });
     }
   };
 
+  // 角ハンドルの mousedown（回転モード発動）
+  const makeCornerHandleDown = () => (e: KonvaEventObject<MouseEvent>) => {
+    e.cancelBubble = true;
+    isRotatingRef.current = true;
+    const stage = e.target.getStage();
+    const pos = stage?.getPointerPosition();
+    if (!pos || !shapeNodeRef.current) return;
+    rotateCenterRef.current = { x: cx, y: cy };
+    startMouseAngleRef.current = Math.atan2(pos.y - cy, pos.x - cx);
+    startShapeRotationRef.current = shapeNodeRef.current.rotation();
+    if (stage) stage.container().style.cursor = 'grabbing';
+  };
+
   return (
     <Group
-      onMouseDown={handlePointerDownForRotate}
-      onMouseMove={handlePointerMoveForRotate}
-      onMouseUp={handlePointerUpForRotate}
+      onMouseMove={handleGroupMoveForRotate}
+      onMouseUp={handleGroupUpForRotate}
     >
       {shapeType === 'ellipse' ? (
         <Ellipse
@@ -846,6 +821,7 @@ const ZoneObject = React.memo(function ZoneObject({
         />
       )}
 
+      {/* リサイズ用 Transformer（辺アンカーのみ・回転ハンドルなし） */}
       {isSelected && (
         <Transformer
           ref={transformerRef}
@@ -854,20 +830,17 @@ const ZoneObject = React.memo(function ZoneObject({
             return newBox;
           }}
           enabledAnchors={[
-            'top-left',
             'top-center',
-            'top-right',
             'middle-right',
             'middle-left',
-            'bottom-left',
             'bottom-center',
-            'bottom-right',
           ]}
-          rotateEnabled={true}
+          rotateEnabled={false}
           borderStroke="#3b82f6"
           anchorStroke="#3b82f6"
           anchorFill="#ffffff"
-          anchorSize={8}
+          anchorSize={10}
+          anchorCornerRadius={3}
           onTransformEnd={() => {
             const node = shapeNodeRef.current;
             if (!node) return;
