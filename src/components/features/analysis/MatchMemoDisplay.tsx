@@ -36,9 +36,9 @@ export function MatchMemoDisplay({
   return (
     <div
       className={cn(
-        'relative group overflow-hidden transition-all duration-300 mb-6',
+        'relative group overflow-hidden transition-all duration-300 mb-4 sm:mb-6',
         'bg-slate-900/40 hover:bg-slate-900/60 backdrop-blur-md',
-        'border border-slate-800/60 hover:border-blue-500/30 rounded-2xl p-5 shadow-lg',
+        'border border-slate-800/60 hover:border-blue-500/30 rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-lg',
         className,
       )}
     >
@@ -46,11 +46,11 @@ export function MatchMemoDisplay({
       <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-[60px] pointer-events-none" />
 
       <div className="relative z-10">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-lg flex gap-1 align-middle bg-amber-500/10 border border-amber-500/20">
               <Edit3 className="w-4 h-4 text-amber-400" />
-              <h3 className="text-sm font-bold text-amber-400 tracking-wide uppercase">
+              <h3 className="text-xs sm:text-sm font-bold text-amber-400 tracking-wide uppercase">
                 Memo
               </h3>
             </div>
@@ -59,7 +59,7 @@ export function MatchMemoDisplay({
             <button
               type="button"
               onClick={onEdit}
-              className="p-1.5 rounded-lg hover:bg-amber-500/10 text-slate-500 hover:text-amber-400 transition-all opacity-0 group-hover:opacity-100"
+              className="p-1.5 rounded-lg hover:bg-amber-500/10 text-slate-400 hover:text-amber-400 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
               title="マッチメモを編集"
             >
               <Pencil className="w-3.5 h-3.5" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity } from 'lucide-react';
+import { Activity, X } from 'lucide-react';
 import type {
   BasePlayer,
   FilterState,
@@ -30,6 +30,8 @@ interface SidebarProps {
     value: unknown,
   ) => void;
   onTimelineSourceChange: (source: 'all' | 'whoscored' | 'custom') => void;
+  isOpenOnMobile?: boolean;
+  onClose?: () => void;
 }
 
 export function Sidebar({
@@ -42,6 +44,8 @@ export function Sidebar({
   onStrategyToggle,
   onStrategyParamChange,
   onTimelineSourceChange,
+  isOpenOnMobile = false,
+  onClose,
 }: SidebarProps) {
   const { teams } = metadata;
   const {
@@ -60,13 +64,25 @@ export function Sidebar({
         ? teams.home.players
         : teams.away.players;
 
-  return (
-    <aside className="w-80 border-r border-slate-800 bg-slate-900/50 flex flex-col backdrop-blur-sm overflow-hidden">
+  const sidebarContent = (
+    <div className="w-80 max-w-[85vw] lg:w-80 h-full border-r border-slate-800 bg-slate-900 lg:bg-slate-900/50 flex flex-col backdrop-blur-md overflow-hidden shrink-0">
       {/* Fixed Header */}
-      <div className="p-6 pb-0 flex-shrink-0">
-        <div className="flex items-center gap-3 mb-4">
-          <Activity className="h-6 w-6 text-blue-400" />
-          <h1 className="text-xl font-bold tracking-tight">DashBoard</h1>
+      <div className="p-5 sm:p-6 pb-0 flex-shrink-0">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <Activity className="h-6 w-6 text-blue-400" />
+            <h1 className="text-xl font-bold tracking-tight">Filters</h1>
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+              aria-label="Close Filters"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         <TeamFilter
@@ -82,7 +98,7 @@ export function Sidebar({
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
+      <div className="flex-1 overflow-y-auto px-5 sm:px-6 pb-6 space-y-4">
         {/* Player Filter */}
         <div className="space-y-2">
           <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex justify-between items-center">
@@ -138,6 +154,31 @@ export function Sidebar({
           onStrategyParamChange={onStrategyParamChange}
         />
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex h-full shrink-0">{sidebarContent}</aside>
+
+      {/* Mobile Drawer */}
+      {isOpenOnMobile && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          {/* Backdrop */}
+          <button
+            type="button"
+            aria-label="Close drawer"
+            onClick={onClose}
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm cursor-default"
+          />
+
+          {/* Drawer content */}
+          <aside className="relative z-10 h-full shadow-2xl animate-in slide-in-from-left duration-200">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

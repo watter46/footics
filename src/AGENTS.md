@@ -45,5 +45,8 @@ trigger: always_on
 - **Hooks & Data Flow:** データ取得ロジックはコンポーネントに直接書かず、カスタムフック化する。アンマウント時のキャンセル処理（AbortController等）を適切に行う。
 
 ## 7. Performance, UX & Deployment
-- **パフォーマンスとUX:** 重い処理には `Suspense` を使用し Loading UI を表示。画像には `next/image`、フォントには `next/font` を使用して最適化する。
+- **パフォーマンスとUX:**
+    - 重い処理には `Suspense` を使用し Loading UI を表示。画像には `next/image`、フォントには `next/font` を使用して最適化する。
+    - **インタラクション & Canvas 最適化:** ドラッグ中・アニメーション中の `setState` / Zustand ストア更新を禁止（過渡状態は ref / node 直接更新）。Canvas レイヤーは静的背景と動的要素を必ず分離し、マーカーやアイテム要素には `React.memo` を適用する。
+    - **セレクターの細粒度化:** `useStore(s => s.foo)` で必要な最小限のプロパティのみを購読し、親コンポーネントの不要な再レンダリングを徹底防止する。
 - **デプロイメント:** Cloudflare Pages の Edge ランタイム環境の制約を意識し、Node.js 固有の API への依存を避ける。`open-next.config.ts` の設定を遵守する。

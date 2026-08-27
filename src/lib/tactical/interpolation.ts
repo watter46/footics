@@ -2,7 +2,7 @@ import type { TacticalScene } from '@/stores/tactical-animation-store';
 import { applyEasing } from './easing';
 import { calculateBezierPoint } from './trajectory';
 
-function lerp(start: number, end: number, t: number) {
+function _lerp(start: number, end: number, t: number) {
   return start * (1 - t) + end * t;
 }
 

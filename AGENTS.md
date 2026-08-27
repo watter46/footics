@@ -6,6 +6,10 @@ trigger: always_on
 
 このプロジェクトを操作するエージェント（Antigravity）は、以下のルールを **必ず読み込み、例外なく最優先で遵守すること**。
 
+## 0. 開発組織「Regista」とステートマシン (Organization)
+本プロジェクトの開発・保守は、自律型AIエンジニア組織「Regista」のワークフローに則って行われます。
+担当エージェントのドメイン定義、開発ステートマシン（TRIAGE → DESIGN → IMPLEMENTATION → REVIEW_QA → DONE）、およびタスク分解・ループ制御の規約については、必ずプロジェクトルートの **[ORGANIZATION.md](./ORGANIZATION.md)** を参照してください。
+
 ## 1. エージェント行動規範 (Senior Engineer Conduct)
 - **Chain of Thought (CoT) Enforcement**: 浅い思考によるバグを排除し、深く考えてから行動する。複雑な修正やデバッグの際はいきなりコードを修正せず、思考プロセスを出力し、依存関係、副作用、代替案を検討する。
 - **Context Awareness & Cleanup**: 作業のために作成した一時ファイルや一時的なルールは、タスク完了時に必ず削除する。
@@ -33,6 +37,7 @@ trigger: always_on
 ## 5. トークン効率と実行スコープの最適化
 - **RTK の活用**: 全てのシェルコマンド実行には `rtk` ラッパーを介す。500行を超えるファイルには `rtk smart` を使用する。
 - **ターゲット指向の検索**: 検索（grep）や構造把握（ls）を行う際は、プロジェクトルートではなく、必ず**関連する最小単位のディレクトリ**を対象にすること。
+- **スコープ限定テスト・型検証の徹底 (Targeted Verification)**: テスト（Vitest）や型チェックを実行する際は、**プロジェクト全体の無差別実行を禁止する**。必ず変更したファイル、関連モジュール、影響が出る最小範囲のファイル・ディレクトリに絞って実行すること（例: `pnpm vitest run src/components/features/tactical-board/`, `pnpm vitest run path/to/target.test.ts`）。全件実行によるトークン浪費と待機時間の肥大化を防止する。
 
 ## 6. CLI環境およびデプロイ・ビルド運用プロトコル
 - **Auto-Deploy on Push (Web App):** `src/` 配下の変更を `git push` した後は、自動でデプロイ処理（`pnpm run deploy`）を実行すること。
@@ -63,6 +68,7 @@ trigger: always_on
 - **行動指針:**
     - `strict: true` を前提とし `any` 型を禁止。外部データは Zod スキーマで検証し `z.infer` で型を導出する。
     - 複雑なロジックを伴う Custom Hooks や Utility 関数には Vitest によるユニットテストを作成する。
+    - **テスト・検証のスコープ限定**: テスト実行時は `pnpm vitest run <影響対象パス>` を用い、変更影響のある範囲のみを迅速に検証する。
 
 ## 11. Responsibility Segregation (責務の分離)
 - **原則:** 単一ファイルへの知識集中を防ぐ (Single Responsibility Principle)。
@@ -88,6 +94,16 @@ trigger: always_on
 - **行動指針:**
     - 深みのあるモダンな配色、洗練されたダークモード、明確なタイポグラフィを採用する。
     - スムーズなトランジション、マイクロアニメーション、グラスモーフィズム等を活用しプレミアムな外観を表現する。
+
+## 15. Performance-First Guardrails (パフォーマンスファースト原則とアンチパターン禁止)
+- **原則:** 「ただ動く」だけのナイーブな実装を禁止し、常に 60fps〜120fps の滑らかな操作性と低メモリ負荷を保証する。
+- **禁止アンチパターン (即座に REJECT 対象):**
+    - **過渡状態の React State 更新禁止:** ドラッグ中・マウス追従中・描画インタラクション中（`onDragMove`, `onMouseMove` 等）に `setState` や Zustand ストア更新を呼んではならない。過渡状態は Ref や Canvas/Konva ノード直接操作で処理し、完了時（`onDragEnd`, `onMouseUp`）にのみストアへ同期する。
+    - **Zustand 丸ごと購読禁止:** `useStore()` や `useTacticalStore()` のような全プロパティ購読を禁止する。必ず細粒度セレクター (`useStore(s => s.foo)`) を使用する。
+    - **Canvas レイヤー混在禁止:** 静的背景（ピッチ線、グリッド等）と頻繁に動く要素（マーカー、矢印、選択枠等）を同一 Layer に配置してはならない。必ず独立した `<Layer listening={false}>` 等に分離する。
+    - **ドラッグ要素への CSS Transition / Blur 付与禁止:** ドラッグ中の要素（`DragOverlay` やマーカー）に `transition-all` や `filter: blur()` を付与してはならない。必ず `willChange: 'transform'` および `transition: none` を適用する。
+    - **ホットパス・ループ内でのオブジェクト再生成禁止:** アニメーションループ、描画ハンドラ、検索サジェスト関数内で `new Fuse()`, `new OffscreenCanvas()`, 大量オブジェクト生成を行ってはならない（キャッシュまたは事前生成する）。
+    - **頻出子コンポーネントの memo 化省略禁止:** ピッチ上マーカーやリストアイテムなど、大量または頻繁に再描画トリガーがかかるコンポーネントには `React.memo` を適用する。
 
 <!-- BEGIN:nextjs-agent-rules -->
 

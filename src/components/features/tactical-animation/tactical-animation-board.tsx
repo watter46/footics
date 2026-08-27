@@ -19,7 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTacticalAnimation } from '@/hooks/use-tactical-animation';
 import { useTacticalAnimationStore } from '@/stores/tactical-animation-store';
 import type { Match } from '@/types';
@@ -88,7 +88,7 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
     (s) => s.setTeamVisibility,
   );
   const importFromMatch = useTacticalAnimationStore((s) => s.importFromMatch);
-  const resetScenes = useTacticalAnimationStore((s) => s.resetScenes);
+  const _resetScenes = useTacticalAnimationStore((s) => s.resetScenes);
   const isPlaying = useTacticalAnimationStore((s) => s.isPlaying);
   const isExporting = useTacticalAnimationStore((s) => s.isExporting);
   const scenes = useTacticalAnimationStore((s) => s.scenes);
@@ -121,17 +121,6 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
   };
 
   // 初期マッチデータがある場合は自動インポート (skipAutoImport が false の場合のみ)
-  useEffect(() => {
-    if (initialMatch && !skipAutoImport) {
-      importFromMatch(initialMatch);
-    } else if (
-      !initialMatch &&
-      (!scenes[0] || Object.keys(scenes[0].players).length === 0)
-    ) {
-      handleImportMockMatch();
-    }
-  }, [initialMatch, importFromMatch, skipAutoImport]);
-
   // キーボードショートカットキー
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -239,8 +228,7 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
     };
   }, [orientation]);
 
-  // モックデータ読み込み (テスト用・Chelsea 3-4-3)
-  const handleImportMockMatch = () => {
+  const handleImportMockMatch = useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockMatch: any = {
       id: 'mock-match-1',
@@ -273,10 +261,10 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
             },
             {
               playerId: 4,
-              name: 'Tosin Adarabioyo',
+              name: 'Malo Gusto',
               isFirstEleven: true,
-              position: 'DC',
-              shirtNo: 4,
+              position: 'DR',
+              shirtNo: 27,
             },
             {
               playerId: 5,
@@ -289,7 +277,7 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
               playerId: 6,
               name: 'Moisés Caicedo',
               isFirstEleven: true,
-              position: 'DMC',
+              position: 'MC',
               shirtNo: 25,
             },
             {
@@ -301,31 +289,31 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
             },
             {
               playerId: 8,
-              name: 'Reece James',
+              name: 'Romeo Lavia',
               isFirstEleven: true,
-              position: 'DR',
-              shirtNo: 24,
+              position: 'MC',
+              shirtNo: 45,
             },
             {
               playerId: 9,
-              name: 'Jadon Sancho',
+              name: 'Cole Palmer',
               isFirstEleven: true,
-              position: 'AML',
-              shirtNo: 19,
+              position: 'AMC',
+              shirtNo: 20,
             },
             {
               playerId: 10,
+              name: 'Noni Madueke',
+              isFirstEleven: true,
+              position: 'AMR',
+              shirtNo: 11,
+            },
+            {
+              playerId: 11,
               name: 'Nicolas Jackson',
               isFirstEleven: true,
               position: 'FW',
               shirtNo: 15,
-            },
-            {
-              playerId: 11,
-              name: 'Cole Palmer',
-              isFirstEleven: true,
-              position: 'AMR',
-              shirtNo: 20,
             },
             // ベンチ選手
             {
@@ -337,37 +325,30 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
             },
             {
               playerId: 13,
-              name: 'Malo Gusto',
-              isFirstEleven: false,
-              position: 'DR',
-              shirtNo: 27,
-            },
-            {
-              playerId: 14,
-              name: 'Roméo Lavia',
-              isFirstEleven: false,
-              position: 'DMC',
-              shirtNo: 45,
-            },
-            {
-              playerId: 15,
-              name: 'Christopher Nkunku',
+              name: 'João Félix',
               isFirstEleven: false,
               position: 'AMC',
-              shirtNo: 18,
-            },
-            {
-              playerId: 16,
-              name: 'Pedro Neto',
-              isFirstEleven: false,
-              position: 'AMR',
-              shirtNo: 7,
+              shirtNo: 14,
             },
           ],
           formations: [
             {
-              formationName: '3-4-3',
+              formationName: '3-4-3', // 実質の配置
               playerIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+              // ピッチ座標 0~10 (縦 x 横) ※縦は0が自陣ゴール、横は0が左サイド
+              formationPositions: [
+                { vertical: 0, horizontal: 5 }, // GK
+                { vertical: 2, horizontal: 3 }, // RCB (Fofana)
+                { vertical: 2, horizontal: 7 }, // LCB (Colwill)
+                { vertical: 4, horizontal: 1 }, // RWB (Gusto)
+                { vertical: 4, horizontal: 9 }, // LWB (Cucurella)
+                { vertical: 4, horizontal: 4 }, // RCM (Caicedo)
+                { vertical: 4, horizontal: 6 }, // LCM (Lavia)
+                { vertical: 6, horizontal: 5 }, // AM (Fernandez)
+                { vertical: 8, horizontal: 2 }, // RW (Madueke)
+                { vertical: 8, horizontal: 8 }, // LW (Palmer)
+                { vertical: 9, horizontal: 5 }, // ST (Jackson)
+              ],
             },
           ],
         },
@@ -492,7 +473,25 @@ export const TacticalAnimationBoard: React.FC<TacticalAnimationBoardProps> = ({
     };
 
     importFromMatch(mockMatch);
-  };
+  }, [importFromMatch]);
+
+  // 初期マッチデータがある場合は自動インポート (skipAutoImport が false の場合のみ)
+  useEffect(() => {
+    if (initialMatch && !skipAutoImport) {
+      importFromMatch(initialMatch);
+    } else if (
+      !initialMatch &&
+      (!scenes[0] || Object.keys(scenes[0].players).length === 0)
+    ) {
+      handleImportMockMatch();
+    }
+  }, [
+    initialMatch,
+    importFromMatch,
+    skipAutoImport,
+    scenes,
+    handleImportMockMatch,
+  ]);
 
   const handleReset = () => {
     if (initialMatch) {

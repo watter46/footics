@@ -86,20 +86,22 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
             {event.custom_memo}
           </span>
         </div>
-        <div className="flex items-center gap-2 pr-4 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 pr-2 sm:pr-4 shrink-0">
           <button
             type="button"
             onClick={() => onEdit?.(event)}
-            className="p-1.5 text-amber-500/50 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
+            className="p-2 sm:p-1.5 text-amber-500/70 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
             title="Edit Event"
+            aria-label="Edit Event"
           >
             <Pencil className="w-4 h-4" />
           </button>
           <button
             type="button"
             onClick={() => onDelete?.(event.id.toString())}
-            className="p-1.5 text-red-500/50 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+            className="p-2 sm:p-1.5 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
             title="Delete Event"
+            aria-label="Delete Event"
           >
             <Trash2 className="w-4 h-4" />
           </button>

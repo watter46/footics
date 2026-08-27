@@ -2,7 +2,7 @@
 
 import { AlertCircle, Clock } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useKeyboardShortcut } from '@/hooks/use-shortcut';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
 
@@ -15,6 +15,7 @@ interface PhaseTimeInputProps {
   validationError: string | null;
   onTimeChange: (val: string) => void;
   onPeriodChange: (p: number) => void;
+  onCommit?: () => void;
 }
 
 /**
@@ -67,6 +68,7 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
   validationError,
   onTimeChange,
   onPeriodChange,
+  onCommit,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const isComposing = useRef(false);
@@ -109,19 +111,25 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
     ignoreInput: false,
   });
 
+  const normalize = useCallback((val: string) => {
+    // 全角数字を半角に変換し、数字のみ最大5文字
+    return val
+      .replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
+      .replace(/[^0-9]/g, '')
+      .slice(0, 5);
+  }, []);
+
   // フォーカス制御
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // インプット以外にフォーカスがある時、数字キーが押されたらインプットにフォーカスを戻し即時反映
       if (
-        document.activeElement !== inputRef.current &&
-        !(document.activeElement instanceof HTMLInputElement) &&
-        !(document.activeElement instanceof HTMLTextAreaElement) &&
-        e.key >= '0' &&
-        e.key <= '9' &&
-        !e.altKey &&
+        document.activeElement?.tagName !== 'INPUT' &&
+        document.activeElement?.tagName !== 'TEXTAREA' &&
+        e.key.match(/^[0-9]$/) &&
+        !e.ctrlKey &&
         !e.metaKey &&
-        !e.ctrlKey
+        !e.altKey
       ) {
         inputRef.current?.focus();
         e.preventDefault();
@@ -130,27 +138,25 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      // Altキーが離されたらインプットにフォーカスを戻す (ショートカット操作後などの復帰)
-      if (e.key === 'Alt' || e.key === 'AltGraph') {
-        inputRef.current?.focus();
+      if (
+        document.activeElement === inputRef.current &&
+        e.key === 'Enter' &&
+        timeStr.length > 0
+      ) {
+        inputRef.current?.blur();
+        e.preventDefault();
+        onCommit?.();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [timeStr, onTimeChange]);
-
-  const normalize = (val: string) => {
-    // 全角数字を半角に変換し、数字のみ最大5文字
-    return val
-      .replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
-      .replace(/\D/g, '')
-      .slice(0, 5);
-  };
+  }, [timeStr, onTimeChange, normalize, onCommit]);
 
   return (
     <div className="p-6 flex flex-col items-center gap-8">

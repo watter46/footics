@@ -39,7 +39,7 @@ export const MatchMemoUnit: React.FC<MatchMemoUnitProps> = ({
           activeEl &&
           (activeEl as HTMLElement).shadowRoot?.activeElement
         ) {
-          activeEl = (activeEl as HTMLElement).shadowRoot!.activeElement;
+          activeEl = (activeEl as HTMLElement).shadowRoot?.activeElement ?? null;
         }
         if (activeEl !== el) {
           el.focus();
@@ -71,7 +71,7 @@ export const MatchMemoUnit: React.FC<MatchMemoUnitProps> = ({
 
       let activeEl: Element | null = document.activeElement;
       while (activeEl && (activeEl as HTMLElement).shadowRoot?.activeElement) {
-        activeEl = (activeEl as HTMLElement).shadowRoot!.activeElement;
+        activeEl = (activeEl as HTMLElement).shadowRoot?.activeElement ?? null;
       }
 
       // textarea 以外にフォーカスがある時、通常の文字入力キー（修飾キーなし）が押されたら textarea にフォーカス

@@ -1,6 +1,20 @@
 import { Circle, Eye, Minus, Square } from 'lucide-react';
 import type React from 'react';
 
+const DashedLineIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={3}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <line x1="3" y1="12" x2="21" y2="12" strokeDasharray="3 3" />
+  </svg>
+);
+
 export interface ShapeProperties {
   type:
     | 'arrow'
@@ -244,7 +258,7 @@ export const KonvaStylePanel: React.FC<KonvaStylePanelProps> = ({
                   : 'text-slate-400 hover:text-white hover:bg-white/10'
               }`}
             >
-              <Circle className="w-2 h-2" />
+              <DashedLineIcon className="w-3 h-3" />
               DASHED
             </button>
           </div>

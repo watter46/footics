@@ -3,20 +3,66 @@
 import {
   ArrowLeftRight,
   Camera,
-  Circle,
   Clapperboard,
-  Eraser,
   Monitor,
   MousePointer,
   MoveRight,
   RotateCcw,
   Smartphone,
+  Square,
   X,
 } from 'lucide-react';
 import type React from 'react';
 import { useTacticalStore } from '@/stores/tactical-store';
 import type { Match } from '@/types';
 import type { TacticalDrawTool } from './drawing/tactical-drawing-canvas';
+
+const DashedArrowIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M2 12H22" strokeDasharray="3.5 2.5" />
+    <path d="M18 8L22 12L18 16" />
+  </svg>
+);
+
+const CustomPolygonZoneIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.75}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    {/* 四角形ポリゴンパス */}
+    <polygon
+      points="4 7 17 4 20 16 7 19"
+      strokeWidth={1.75}
+      fill="currentColor"
+      fillOpacity={0.15}
+    />
+    {/* 4角の頂点アンカー */}
+    <circle cx="4" cy="7" r="1.5" fill="currentColor" />
+    <circle cx="17" cy="4" r="1.5" fill="currentColor" />
+    <circle cx="20" cy="16" r="1.5" fill="currentColor" />
+    <circle cx="7" cy="19" r="1.5" fill="currentColor" />
+    {/* ペン先モチーフ */}
+    <path
+      d="M12 9l3 3-5 5-2-1 1-2 3-5z"
+      strokeWidth={1.2}
+      fill="currentColor"
+      fillOpacity={0.25}
+    />
+  </svg>
+);
 
 interface TacticalHeaderProps {
   metadata: Match;
@@ -158,23 +204,38 @@ export const TacticalHeader: React.FC<TacticalHeaderProps> = ({
                 : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
             }`}
           >
-            <MoveRight className="w-3 h-3 stroke-dasharray-2" />
+            <DashedArrowIcon className="w-3 h-3" />
             <span>DASH ARROW</span>
           </button>
 
-          {/* ゾーン */}
+          {/* ゾーン (四角/楕円) */}
           <button
             type="button"
-            title="円形ゾーンを描画"
+            title="ゾーンを描画 (四角形/楕円、四隅ホバーで回転可能)"
             onClick={() => onSelectDrawTool('zone_circle')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-none border ${
               activeDrawTool === 'zone_circle'
-                ? 'bg-red-500/20 border-red-500/60 text-red-400'
+                ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-400'
                 : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
             }`}
           >
-            <Circle className="w-3 h-3" />
+            <Square className="w-3 h-3" />
             <span>ZONE</span>
+          </button>
+
+          {/* カスタムゾーン (多角形) */}
+          <button
+            type="button"
+            title="カスタムゾーンを描画 (クリックして頂点を追加、始点クリックで確定)"
+            onClick={() => onSelectDrawTool('polygon_zone')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-none border ${
+              activeDrawTool === 'polygon_zone'
+                ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-400'
+                : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+            }`}
+          >
+            <CustomPolygonZoneIcon className="w-3.5 h-3.5" />
+            <span>FREE ZONE</span>
           </button>
 
           {/* 描画クリア（消しゴムとゴミ箱を1つに統合） */}
@@ -184,7 +245,7 @@ export const TacticalHeader: React.FC<TacticalHeaderProps> = ({
             onClick={onClearDrawing}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-none border bg-slate-800 border-slate-700 text-slate-400 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400"
           >
-            <Eraser className="w-3 h-3" />
+            <RotateCcw className="w-3 h-3" />
             <span>CLEAR</span>
           </button>
 

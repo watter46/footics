@@ -75,7 +75,7 @@ export const EditPlayerDialog: React.FC<EditPlayerDialogProps> = ({
     if (player) {
       setName(player.name || '');
       setShirtNo(
-        typeof player.shirtNo === 'number' && !isNaN(player.shirtNo)
+        typeof player.shirtNo === 'number' && !Number.isNaN(player.shirtNo)
           ? player.shirtNo
           : '',
       );
@@ -112,7 +112,7 @@ export const EditPlayerDialog: React.FC<EditPlayerDialogProps> = ({
     try {
       setIsSubmitting(true);
       const numericShirtNo =
-        typeof shirtNo === 'number' && !isNaN(shirtNo) ? shirtNo : 99;
+        typeof shirtNo === 'number' && !Number.isNaN(shirtNo) ? shirtNo : 99;
 
       await savePlayerMaster({
         playerId: player.playerId,

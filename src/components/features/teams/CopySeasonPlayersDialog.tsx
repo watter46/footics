@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  Check,
-  CheckSquare,
-  Copy,
-  FolderSync,
-  Loader2,
-  Square,
-  Users,
-  X,
-} from 'lucide-react';
+import { Check, Copy, FolderSync, Loader2, X } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -21,7 +12,6 @@ import { useSeasonPlayers } from '@/hooks/use-player-master';
 import { savePlayerMaster, savePlayerPhoto } from '@/lib/db/queries';
 import type { PlayerMaster } from '@/lib/db/schema';
 import { normalizePosition } from '@/lib/tactical/player-formatting';
-import type { Player } from '@/types';
 
 interface CopySeasonPlayersDialogProps {
   isOpen: boolean;
@@ -97,7 +87,7 @@ export const CopySeasonPlayersDialog: React.FC<
       });
       setSelectedPlayerIds(initialSelected);
     }
-  }, [isOpen, fromSeason, mergedSourcePlayers]);
+  }, [isOpen, mergedSourcePlayers]);
 
   if (!isOpen) return null;
 

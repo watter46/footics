@@ -5,8 +5,22 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+const DashedLineIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={3}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <line x1="3" y1="12" x2="21" y2="12" strokeDasharray="3 3" />
+  </svg>
+);
+
 export interface ShapeProperties {
-  type: 'arrow' | 'zone';
+  type: 'arrow' | 'zone' | 'polygon_zone';
   color: string;
   strokeWidth: number;
   dash: number[];
@@ -31,11 +45,11 @@ const COLOR_PALETTE = [
   '#eab308', // Yellow
   '#f97316', // Orange
   '#a855f7', // Purple
-  '#000000', // Black
+  '#06b6d4', // Cyan
 ];
 
 const ARROW_STROKE_WIDTHS = [2, 4, 6, 8];
-const ZONE_STROKE_WIDTHS = [1, 2, 4];
+const ZONE_STROKE_WIDTHS = [1, 2, 4, 6];
 const FILL_OPACITY_PRESETS = [
   { label: '0%', value: 0 },
   { label: '35%', value: 0.35 },
@@ -69,7 +83,11 @@ export const KonvaStylePanel: React.FC<KonvaStylePanelProps> = ({
         <div className="flex flex-col gap-3 p-3 bg-[#1e2028] text-slate-200 rounded-xl shadow-2xl border border-slate-700/60 w-56">
           <div className="flex items-center justify-between border-b border-slate-700/50 pb-1.5">
             <span className="text-xs font-bold text-slate-300 tracking-wider">
-              {properties.type === 'arrow' ? 'ARROW STYLE' : 'ZONE STYLE'}
+              {properties.type === 'arrow'
+                ? 'ARROW STYLE'
+                : properties.type === 'polygon_zone'
+                  ? 'CUSTOM ZONE STYLE'
+                  : 'ZONE STYLE'}
             </span>
           </div>
 
@@ -79,20 +97,37 @@ export const KonvaStylePanel: React.FC<KonvaStylePanelProps> = ({
               Color
             </span>
             <div className="grid grid-cols-4 gap-1.5">
-              {COLOR_PALETTE.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => onChange({ color: c })}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
-                    properties.color.toLowerCase() === c.toLowerCase()
-                      ? 'ring-2 ring-white scale-110 shadow-lg'
-                      : 'hover:scale-105 border border-slate-600/40'
-                  }`}
-                  style={{ backgroundColor: c }}
-                  title={c}
-                />
-              ))}
+              {COLOR_PALETTE.map((c) => {
+                const isSelected = properties.color.toLowerCase() === c.toLowerCase();
+                const isWhite = c.toLowerCase() === '#ffffff';
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => onChange({ color: c })}
+                    className={`w-5 h-5 rounded-full p-0.5 flex items-center justify-center transition-all cursor-pointer relative overflow-hidden ${
+                      isSelected
+                        ? 'ring-2 ring-white scale-110 shadow-lg'
+                        : isWhite
+                          ? 'border border-white/80 hover:scale-105 shadow-xs'
+                          : 'hover:scale-105 border border-slate-600/40'
+                    }`}
+                    style={{
+                      colorScheme: 'only light',
+                      backgroundImage: `linear-gradient(${c}, ${c})`,
+                    }}
+                    title={isWhite ? '白色 (#ffffff)' : c}
+                  >
+                    <svg
+                      className="w-full h-full rounded-full block pointer-events-none"
+                      viewBox="0 0 20 20"
+                      style={{ colorScheme: 'only light' }}
+                    >
+                      <circle cx="10" cy="10" r="9" fill={c} />
+                    </svg>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -191,7 +226,7 @@ export const KonvaStylePanel: React.FC<KonvaStylePanelProps> = ({
                     : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
               >
-                <Circle className="w-2 h-2" />
+                <DashedLineIcon className="w-3 h-3" />
                 DASHED
               </button>
             </div>
@@ -223,8 +258,8 @@ export const KonvaStylePanel: React.FC<KonvaStylePanelProps> = ({
             </div>
           </div>
 
-          {/* Fill Opacity - Only for Zone */}
-          {properties.type === 'zone' && (
+          {/* Fill Opacity - For Zone & Polygon Zone */}
+          {(properties.type === 'zone' || properties.type === 'polygon_zone') && (
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase">
                 Fill Opacity

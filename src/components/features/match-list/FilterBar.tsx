@@ -21,8 +21,8 @@ export function FilterBar({
   resultCount,
 }: FilterBarProps) {
   return (
-    <div className="flex items-center gap-3 flex-wrap relative z-20">
-      <div className="flex items-center gap-1.5 text-slate-500 text-sm font-medium pr-2">
+    <div className="flex items-center gap-2 sm:gap-3 flex-wrap relative z-20">
+      <div className="flex items-center gap-1.5 text-slate-500 text-xs sm:text-sm font-medium pr-1 sm:pr-2">
         <Filter className="w-3.5 h-3.5" />
         <span>Type</span>
       </div>
@@ -31,7 +31,7 @@ export function FilterBar({
           type="button"
           key={t}
           onClick={() => setActiveType(t)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border transition-all duration-200 capitalize ${
+          className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-semibold border transition-all duration-200 capitalize ${
             activeType === t
               ? 'bg-blue-500/20 border-blue-500/60 text-blue-300'
               : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
@@ -41,9 +41,9 @@ export function FilterBar({
         </button>
       ))}
 
-      <div className="w-px h-5 bg-slate-700 mx-2" />
+      <div className="hidden sm:block w-px h-5 bg-slate-700 mx-1 sm:mx-2" />
 
-      <div className="flex items-center gap-1.5 text-slate-500 text-sm font-medium pr-2">
+      <div className="flex items-center gap-1.5 text-slate-500 text-xs sm:text-sm font-medium pr-1 sm:pr-2 ml-1 sm:ml-0">
         <Filter className="w-3.5 h-3.5" />
         <span>Team</span>
       </div>
@@ -54,7 +54,7 @@ export function FilterBar({
             type="button"
             key={f.value}
             onClick={() => setActiveTeam(isActive ? null : f.value)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border transition-all duration-200 ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-semibold border transition-all duration-200 ${
               isActive
                 ? 'bg-blue-500/20 border-blue-500/60 text-blue-300'
                 : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
@@ -66,11 +66,13 @@ export function FilterBar({
         );
       })}
       {activeTeam && (
-        <span className="text-xs text-slate-500 ml-auto mr-4 italic">
+        <span className="text-xs text-slate-500 ml-auto mr-2 sm:mr-4 italic">
           {resultCount} match{resultCount !== 1 ? 'es' : ''} found
         </span>
       )}
-      <div className={activeTeam ? '' : 'ml-auto'}>
+      <div
+        className={activeTeam ? 'hidden sm:block' : 'hidden sm:block ml-auto'}
+      >
         <GlobalDataManagement />
       </div>
     </div>

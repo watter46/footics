@@ -107,7 +107,11 @@ describe('data-loader', () => {
   it('imports batch matches', async () => {
     const validData = {
       matchId: 111,
-      matchCentreData: { home: {}, away: {}, events: [] },
+      matchCentreData: {
+        home: { teamId: 1, name: 'Home' },
+        away: { teamId: 2, name: 'Away' },
+        events: [],
+      },
     };
     const invalidData = { invalid: true };
 

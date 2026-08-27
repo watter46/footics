@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { savePlayerMaster, savePlayerPhoto } from '@/lib/db/queries';
-import { AVAILABLE_SEASONS, type Season } from '@/lib/tactical/chelsea-preset';
+import { AVAILABLE_SEASONS } from '@/lib/tactical/chelsea-preset';
 import type { Player, StandardPosition } from '@/types';
 
 interface AddPlayerDialogProps {

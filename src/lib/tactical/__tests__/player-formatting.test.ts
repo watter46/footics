@@ -5,7 +5,6 @@ import {
   getSideScore,
   normalizePosition,
   parsePlayerIdFromMarkerId,
-  shortenName,
   sortPlayersBy2DPositionGroup,
 } from '../player-formatting';
 

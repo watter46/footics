@@ -15,7 +15,6 @@ import {
   Group,
   Image as KonvaImage,
   Layer,
-  Line,
   Rect,
   Stage,
 } from 'react-konva';

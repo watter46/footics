@@ -498,7 +498,7 @@ export const AnimationInspectorPanel: React.FC<
 
   const currentOptions: MarkerOptions =
     currentSubTab === 'player' && (selectedPlayer || firstSelectedPlayer)
-      ? (selectedPlayer || firstSelectedPlayer)!.options
+      ? ((selectedPlayer || firstSelectedPlayer)?.options ?? defaultHomeOptions)
       : currentSubTab === 'home'
         ? defaultHomeOptions
         : currentSubTab === 'away'

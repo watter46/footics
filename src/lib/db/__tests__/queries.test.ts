@@ -46,7 +46,7 @@ import {
   savePlayerPhoto,
   setKeyValue,
 } from '../queries';
-import { db, type PlayerMaster } from '../schema';
+import { db } from '../schema';
 
 describe('src/lib/db/queries', () => {
   beforeEach(async () => {

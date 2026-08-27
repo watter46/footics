@@ -12,12 +12,11 @@ import {
   CHELSEA_PRESETS_BY_SEASON,
   DEFAULT_OPPONENT_SQUAD,
   DEFAULT_SEASON,
-  type PresetPlayer,
   type Season,
 } from '@/lib/tactical/chelsea-preset';
 import { normalizePosition } from '@/lib/tactical/player-formatting';
 import { getSeasonFromDate } from '@/lib/tactical/season-utils';
-import type { Match, Player, SimplifiedTeam } from '@/types';
+import type { Match, Player } from '@/types';
 
 export const CHELSEA_TACTICS_MATCH_ID = 'chelsea-tactics-board';
 
@@ -109,7 +108,7 @@ export function useChelseaSquad(season: string = DEFAULT_SEASON) {
       const processTeamPlayers = (players?: Player[]) => {
         if (!players) return;
         players.forEach((p) => {
-          if (!p || !p.playerId) return;
+          if (!p?.playerId) return;
           if (excludedIds.has(p.playerId)) return;
           const existing = chelseaMap.get(p.playerId);
           chelseaMap.set(p.playerId, {

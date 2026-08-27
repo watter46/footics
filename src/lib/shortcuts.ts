@@ -51,7 +51,7 @@ export const SHORTCUT_CONFIG: Record<
 export const isInputFocused = () => {
   let activeEl: Element | null = document.activeElement;
   while (activeEl && (activeEl as HTMLElement).shadowRoot?.activeElement) {
-    activeEl = (activeEl as HTMLElement).shadowRoot!.activeElement;
+    activeEl = (activeEl as HTMLElement).shadowRoot?.activeElement ?? null;
   }
   if (!activeEl) return false;
   return (

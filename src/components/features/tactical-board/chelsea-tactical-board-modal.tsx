@@ -13,7 +13,6 @@ import {
 import { useTacticalBoard } from '@/hooks/use-tactical-board';
 import type { FormationMode, FormationType } from '@/lib/data/formations';
 import {
-  generateInitialMapping,
   getShirtNo,
   parsePlayerIdFromMarkerId,
 } from '@/lib/data/tactical-utils';
@@ -52,7 +51,7 @@ export const ChelseaTacticalBoardModal: React.FC<
   const setBenchTeam = useTacticalStore((s) => s.setBenchTeam);
   const homeColor = useTacticalStore((s) => s.homeColor);
   const awayColor = useTacticalStore((s) => s.awayColor);
-  const updatePlayer = useTacticalStore((s) => s.updatePlayer);
+  const _updatePlayer = useTacticalStore((s) => s.updatePlayer);
   const setSavedSettings = useTacticalStore((s) => s.setSavedSettings);
 
   const importFromTacticalBoard = useTacticalAnimationStore(
@@ -99,7 +98,7 @@ export const ChelseaTacticalBoardModal: React.FC<
 
   const handleExportScreenshot = useCallback(() => {
     exportPitchImage(pitchRef.current, matchId);
-  }, [exportPitchImage, matchId]);
+  }, [exportPitchImage]);
 
   const orientation = useTacticalStore((s) => s.orientation);
 

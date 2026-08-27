@@ -5,11 +5,7 @@ import {
 import { FORMATION_POSITIONS } from '../data/formations-data';
 import { getBenchPos } from './coordinates';
 import { parseWhoScoredFormationName } from './formations';
-import {
-  getShirtNo,
-  normalizePosition,
-  sortPlayersBy2DPositionGroup,
-} from './player-formatting';
+import { getShirtNo, sortPlayersBy2DPositionGroup } from './player-formatting';
 
 /**
  * 特定の分における出場選手を特定する (National Data)

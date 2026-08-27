@@ -32,7 +32,7 @@ export const TeamsDropdown: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
+        className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm shrink-0 ${
           isOpen
             ? 'bg-blue-600/20 text-blue-300 border-blue-500/60 ring-2 ring-blue-500/20'
             : 'bg-slate-900/80 hover:bg-slate-800 text-slate-200 border-slate-700/60 hover:border-slate-600'

@@ -16,21 +16,21 @@ export default async function Home() {
     <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col">
       {/* Top Bar */}
       <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/60">
-        <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center shrink-0">
             <Image
               src={logoName}
               alt="Footics Match Center"
               width={160}
               height={40}
               priority
-              className="h-12 w-auto"
+              className="h-8 sm:h-12 w-auto"
             />
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar py-0.5">
             <Link
               href="/players"
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60 hover:border-slate-600 transition-all flex items-center gap-1.5"
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60 hover:border-slate-600 transition-all flex items-center gap-1.5 shrink-0"
             >
               Players
             </Link>
@@ -42,12 +42,12 @@ export default async function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-10 space-y-8">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8">
         <div className="space-y-1">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-100">
             Matches
           </h1>
-          <p className="text-slate-500 text-sm">
+          <p className="text-slate-500 text-xs sm:text-sm">
             Select a match to start analysis or import new data
           </p>
         </div>

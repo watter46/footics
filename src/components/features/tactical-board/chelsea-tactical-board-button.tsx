@@ -1,6 +1,6 @@
 'use client';
 
-import { Shield, Sparkles } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { ChelseaTacticalBoardModal } from './chelsea-tactical-board-modal';

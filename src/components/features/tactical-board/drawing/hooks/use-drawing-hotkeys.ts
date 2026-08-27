@@ -96,6 +96,8 @@ export function useDrawingHotkeys({
                 y: pasted.controlPoint.y + offset,
               };
             }
+          } else if (pasted.type === 'polygon_zone' && pasted.points) {
+            pasted.points = pasted.points.map((pt) => pt + offset);
           } else if (
             pasted.type === 'zone' &&
             pasted.x !== undefined &&
@@ -107,6 +109,48 @@ export function useDrawingHotkeys({
 
           setShapes((prev) => [...prev, pasted]);
           setSelectedId(newId);
+        }
+        return;
+      }
+
+      // Duplicate: Cmd+D / Ctrl+D
+      if (isCmdOrCtrl && e.key.toLowerCase() === 'd') {
+        if (selectedId) {
+          e.preventDefault();
+          const shapeToDuplicate = shapes.find((s) => s.id === selectedId);
+          if (shapeToDuplicate) {
+            const newId = `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const offset = 20;
+            const duplicated: ShapeData = {
+              ...shapeToDuplicate,
+              id: newId,
+            };
+            if (duplicated.type === 'arrow' && duplicated.points) {
+              duplicated.points = [
+                duplicated.points[0] + offset,
+                duplicated.points[1] + offset,
+                duplicated.points[2] + offset,
+                duplicated.points[3] + offset,
+              ];
+              if (duplicated.controlPoint) {
+                duplicated.controlPoint = {
+                  x: duplicated.controlPoint.x + offset,
+                  y: duplicated.controlPoint.y + offset,
+                };
+              }
+            } else if (duplicated.type === 'polygon_zone' && duplicated.points) {
+              duplicated.points = duplicated.points.map((pt) => pt + offset);
+            } else if (
+              duplicated.type === 'zone' &&
+              duplicated.x !== undefined &&
+              duplicated.y !== undefined
+            ) {
+              duplicated.x += offset;
+              duplicated.y += offset;
+            }
+            setShapes((prev) => [...prev, duplicated]);
+            setSelectedId(newId);
+          }
         }
         return;
       }
@@ -129,7 +173,9 @@ export function useDrawingHotkeys({
           onSelectToolRequested('arrow_dash');
         } else if (e.key === 'z' || e.key === 'Z' || e.key === '4') {
           onSelectToolRequested('zone_circle');
-        } else if (e.key === 'e' || e.key === 'E' || e.key === '5') {
+        } else if (e.key === 'p' || e.key === 'P' || e.key === '5') {
+          onSelectToolRequested('polygon_zone');
+        } else if (e.key === 'e' || e.key === 'E' || e.key === '6') {
           onSelectToolRequested('eraser');
         }
       }

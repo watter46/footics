@@ -2,27 +2,17 @@
 
 import type React from 'react';
 import { useState } from 'react';
-import {
-  Arrow,
-  Circle,
-  Ellipse,
-  Group,
-  Layer,
-  Rect,
-  Stage,
-  Transformer,
-} from 'react-konva';
+import { Layer, Stage, Transformer } from 'react-konva';
 import { ArrowShape } from './arrow-shape';
 import { useDrawingHistory } from './hooks/use-drawing-history';
 import { useDrawingHotkeys } from './hooks/use-drawing-hotkeys';
 import { useDrawingInteraction } from './hooks/use-drawing-interaction';
 import { KonvaStylePanel, type ShapeProperties } from './konva-style-panel';
+import { PolygonZoneShape } from './polygon-zone-shape';
 import type { TacticalDrawTool } from './types';
 import { ZoneShape } from './zone-shape';
 
 export type { TacticalDrawTool };
-
-import { getQuadraticBezierPoints } from './utils';
 
 export interface TacticalDrawingCanvasProps {
   matchId: string;
@@ -56,6 +46,8 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
     selectedNodeRef,
     dimensions,
     newShape,
+    activePolygonId,
+    mousePreviewPos,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
@@ -70,7 +62,7 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
     setSelectedId,
     saveHistory,
     onSelectToolRequested,
-    onClearRef: (clearFn) => {
+    onClearRef: (_clearFn) => {
       if (onClearRef) {
         onClearRef(() => {
           clearHistory();
@@ -149,6 +141,23 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                     shape={shape}
                     isSelected={isSelected}
                     activeTool={activeTool}
+                    selectedNodeRef={selectedNodeRef}
+                    handleShapeClick={handleShapeClick}
+                    setShapes={setShapes}
+                    saveHistory={saveHistory}
+                  />
+                );
+              }
+
+              if (shape.type === 'polygon_zone') {
+                return (
+                  <PolygonZoneShape
+                    key={shape.id}
+                    shape={shape}
+                    isSelected={isSelected}
+                    activeTool={activeTool}
+                    activePolygonId={activePolygonId}
+                    mousePreviewPos={mousePreviewPos}
                     handleShapeClick={handleShapeClick}
                     setShapes={setShapes}
                     saveHistory={saveHistory}
@@ -177,7 +186,7 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                 'bottom-right',
               ]}
               rotateEnabled={false} // Default rotation handle off, use custom
-              onTransformEnd={(e) => {
+              onTransformEnd={(_e) => {
                 const node = selectedNodeRef.current;
                 if (!node || !selectedShape) return;
                 handleTransformEnd(selectedShape, node);

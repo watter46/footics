@@ -110,14 +110,16 @@ export function DataManagementMenu({
         type="button"
         disabled={isImporting}
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center px-4 py-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700 hover:border-slate-500 rounded-lg text-sm font-medium text-slate-200 transition-all shadow-sm group disabled:opacity-60 disabled:cursor-not-allowed"
+        className="flex items-center px-2 sm:px-4 py-1.5 sm:py-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700 hover:border-slate-500 rounded-lg text-xs sm:text-sm font-medium text-slate-200 transition-all shadow-sm group disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
       >
         {isImporting ? (
-          <Loader2 className="h-4 w-4 mr-2 text-purple-400 animate-spin" />
+          <Loader2 className="h-3.5 sm:h-4 w-3.5 sm:w-4 mr-1 sm:mr-2 text-purple-400 animate-spin shrink-0" />
         ) : (
-          <Database className="h-4 w-4 mr-2 text-purple-400 group-hover:text-purple-300 transition-colors" />
+          <Database className="h-3.5 sm:h-4 w-3.5 sm:w-4 mr-1 sm:mr-2 text-purple-400 group-hover:text-purple-300 transition-colors shrink-0" />
         )}
-        {isImporting ? 'Importing...' : 'Data'}
+        <span className="hidden xs:inline">
+          {isImporting ? 'Importing...' : 'Data'}
+        </span>
       </button>
 
       {isOpen && (

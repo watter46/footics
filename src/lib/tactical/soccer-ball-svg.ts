@@ -69,7 +69,7 @@ export const SOCCER_BALL_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.
 
 let cachedSoccerBallImage: HTMLImageElement | null = null;
 let cachedSoccerBallDataUrl: string | null = null;
-const cachedSoccerBallBitmap: ImageBitmap | null = null;
+const _cachedSoccerBallBitmap: ImageBitmap | null = null;
 
 export function getSoccerBallDataUrl(): string {
   if (!cachedSoccerBallDataUrl) {
@@ -82,7 +82,7 @@ export function getSoccerBallImage(): Promise<HTMLImageElement> {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('Window not available'));
   }
-  if (cachedSoccerBallImage && cachedSoccerBallImage.complete) {
+  if (cachedSoccerBallImage?.complete) {
     return Promise.resolve(cachedSoccerBallImage);
   }
 

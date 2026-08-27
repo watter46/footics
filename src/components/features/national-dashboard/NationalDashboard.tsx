@@ -1,7 +1,8 @@
 'use client';
 
-import { ChevronLeft, Film } from 'lucide-react';
+import { ChevronLeft, Film, SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
 import { EventTimeline } from '@/components/features/analysis';
 import { Sidebar } from '@/components/features/sidebar';
 import { TacticalAnimationModal } from '@/components/features/tactical-animation/tactical-animation-modal';
@@ -24,6 +25,7 @@ export default function NationalDashboard({
   defaultAway,
   defaultScore,
 }: Props) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const d = useNationalDashboard({
     matchId,
     defaultHome,
@@ -43,6 +45,12 @@ export default function NationalDashboard({
     { isOpen: isTacticalBoardOpen },
   );
 
+  const activeFilterCount =
+    (d.filters.selectedPlayers.size > 0 ? 1 : 0) +
+    (d.filters.selectedTeam !== 'all' ? 1 : 0) +
+    (d.filters.outcomeFilter !== 'all' ? 1 : 0) +
+    d.filters.activeStrategies.size;
+
   return (
     <div className="flex h-screen w-full bg-slate-950 text-slate-50 overflow-hidden font-sans">
       <Sidebar
@@ -55,38 +63,59 @@ export default function NationalDashboard({
         onStrategyToggle={d.handleStrategyToggle}
         onStrategyParamChange={d.handleStrategyParamChange}
         onTimelineSourceChange={d.handleTimelineSourceChange}
+        isOpenOnMobile={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
-      <main className="flex-1 flex flex-col p-6 overflow-y-auto relative">
-        <div className="flex justify-between items-center mb-6 pl-2 pb-4 border-b border-slate-800/60 z-10 shrink-0">
-          <div className="flex items-center gap-4">
+      <main className="flex-1 flex flex-col p-3 sm:p-6 pt-3 sm:pt-4 overflow-y-auto relative min-w-0">
+        <div className="flex justify-between items-center mb-4 sm:mb-6 pl-0 sm:pl-2 pb-3 sm:pb-4 border-b border-slate-800/60 z-10 shrink-0 gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-4 min-w-0">
             <Link
               href="/"
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-200 transition-colors"
+              className="p-1.5 sm:p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-200 transition-colors shrink-0"
+              title="Back to Match List"
             >
               <ChevronLeft className="w-5 h-5" />
             </Link>
-            <div className="flex items-center gap-4 text-slate-200">
-              <span className="font-bold text-lg">
+            <div className="flex items-center gap-1.5 sm:gap-4 text-slate-200 min-w-0">
+              <span className="font-bold text-xs sm:text-lg truncate max-w-[70px] sm:max-w-none">
                 {d.metadata.teams.home.name}
               </span>
-              <div className="px-3 py-1 bg-slate-800/80 rounded-md font-mono text-sm font-bold shadow-inner">
+              <div className="px-2 py-0.5 sm:px-3 sm:py-1 bg-slate-800/80 rounded-md font-mono text-xs sm:text-sm font-bold shadow-inner shrink-0">
                 {d.metadata.score}
               </div>
-              <span className="font-bold text-lg text-slate-300">
+              <span className="font-bold text-xs sm:text-lg text-slate-300 truncate max-w-[70px] sm:max-w-none">
                 {d.metadata.teams.away.name}
               </span>
             </div>
-            <span className="ml-4 px-2 py-1 bg-emerald-900/50 text-emerald-400 text-xs font-bold rounded">
+            <span className="hidden xs:inline ml-1 sm:ml-4 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-emerald-900/50 text-emerald-400 text-[10px] sm:text-xs font-bold rounded shrink-0">
               National
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Mobile Filter Button */}
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden relative flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/60 rounded-lg text-xs font-bold transition-all"
+              aria-label="Open Filters"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden xs:inline">Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-[10px] text-white font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={() => setTacticalAnimationOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-blue-900/20"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-blue-900/20"
+              title="アニメーション作成"
             >
-              <Film className="w-3.5 h-3.5" /> アニメーション作成
+              <Film className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden md:inline">アニメーション作成</span>
             </button>
           </div>
         </div>

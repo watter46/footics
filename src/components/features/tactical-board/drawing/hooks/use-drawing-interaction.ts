@@ -31,6 +31,13 @@ export function useDrawingInteraction({
   const [isDrawing, setIsDrawing] = useState(false);
   const [newShape, setNewShape] = useState<ShapeData | null>(null);
 
+  // Polygon Zone creation state
+  const [activePolygonId, setActivePolygonId] = useState<string | null>(null);
+  const [mousePreviewPos, setMousePreviewPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const selectedNodeRef = useRef<Konva.Node | null>(null);
 
@@ -41,6 +48,15 @@ export function useDrawingInteraction({
   const startShapeRotationRef = useRef(0);
   const currentRotationRef = useRef<number | null>(null);
   const isOverRotateZoneRef = useRef(false);
+
+  // Clean up incomplete polygon when tool changes
+  useEffect(() => {
+    if (activeTool !== 'polygon_zone' && activePolygonId) {
+      setShapes((prev) => prev.filter((s) => s.id !== activePolygonId));
+      setActivePolygonId(null);
+      setMousePreviewPos(null);
+    }
+  }, [activeTool, activePolygonId, setShapes]);
 
   // ResizeObserver for matching canvas size with container
   useEffect(() => {
@@ -61,6 +77,8 @@ export function useDrawingInteraction({
       onClearRef(() => {
         setShapes([]);
         setSelectedId(null);
+        setActivePolygonId(null);
+        setMousePreviewPos(null);
       });
     }
   }, [onClearRef, setShapes, setSelectedId]);
@@ -70,11 +88,11 @@ export function useDrawingInteraction({
     if (!transformerRef.current) return;
     const selectedShape = shapes.find((s) => s.id === selectedId);
 
-    // 矢印にはTransformerを適用しない（カスタムハンドルで操作するため）
+    // Transformer is used for rectangular/elliptical Zone only (polygon_zone and arrows use vertex handles)
     if (
       selectedId &&
       selectedNodeRef.current &&
-      selectedShape?.type !== 'arrow'
+      selectedShape?.type === 'zone'
     ) {
       transformerRef.current.nodes([selectedNodeRef.current]);
       transformerRef.current.getLayer()?.batchDraw();
@@ -130,6 +148,59 @@ export function useDrawingInteraction({
     const pos = stage.getPointerPosition();
     if (!pos) return;
 
+    // Polygon Zone Creation
+    if (activeTool === 'polygon_zone') {
+      if (!activePolygonId) {
+        const id = `poly-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const polyShape: ShapeData = {
+          id,
+          type: 'polygon_zone',
+          points: [pos.x, pos.y],
+          color: '#22c55e',
+          strokeWidth: 2,
+          dash: [],
+          opacity: 1.0,
+          fillOpacity: 0.35,
+          isComplete: false,
+        };
+        setActivePolygonId(id);
+        setShapes((prev) => [...prev, polyShape]);
+      } else {
+        const poly = shapes.find((s) => s.id === activePolygonId);
+        if (!poly?.points) return;
+
+        const pts = poly.points;
+        const startX = pts[0];
+        const startY = pts[1];
+        const numPoints = pts.length / 2;
+
+        // 始点付近をクリックしたらポリゴンを閉じて確定
+        if (numPoints >= 3 && Math.hypot(pos.x - startX, pos.y - startY) < 18) {
+          const nextShapes = shapes.map((s) =>
+            s.id === activePolygonId ? { ...s, isComplete: true } : s,
+          );
+          setShapes(nextShapes);
+          saveHistory(nextShapes);
+          setSelectedId(activePolygonId);
+          setActivePolygonId(null);
+          setMousePreviewPos(null);
+          if (onSelectToolRequested) {
+            onSelectToolRequested('select');
+          }
+          return;
+        }
+
+        // 次の頂点を追加
+        const nextPts = [...pts, pos.x, pos.y];
+        setShapes((prev) =>
+          prev.map((s) =>
+            s.id === activePolygonId ? { ...s, points: nextPts } : s,
+          ),
+        );
+      }
+      return;
+    }
+
     const id = `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     if (activeTool === 'arrow_solid' || activeTool === 'arrow_dash') {
@@ -167,34 +238,37 @@ export function useDrawingInteraction({
   };
 
   const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    const stage = e.target.getStage();
+    if (!stage) return;
+    const pos = stage.getPointerPosition();
+    if (!pos) return;
+
+    if (activePolygonId) {
+      setMousePreviewPos(pos);
+    }
+
     // カスタム回転ドラッグ中の処理 (Konva直接更新で60fps維持)
     if (isRotatingRef.current && selectedId && selectedNodeRef.current) {
-      const stage = e.target.getStage();
-      const pos = stage?.getPointerPosition();
-      if (pos) {
-        const cx = rotateCenterRef.current.x;
-        const cy = rotateCenterRef.current.y;
-        const currentAngle = Math.atan2(pos.y - cy, pos.x - cx);
-        const angleDiffRad = currentAngle - startMouseAngleRef.current;
-        const angleDiffDeg = (angleDiffRad * 180) / Math.PI;
+      const cx = rotateCenterRef.current.x;
+      const cy = rotateCenterRef.current.y;
+      const currentAngle = Math.atan2(pos.y - cy, pos.x - cx);
+      const angleDiffRad = currentAngle - startMouseAngleRef.current;
+      const angleDiffDeg = (angleDiffRad * 180) / Math.PI;
 
-        const newRotation =
-          (startShapeRotationRef.current + angleDiffDeg) % 360;
+      const newRotation =
+        (startShapeRotationRef.current + angleDiffDeg) % 360;
 
-        currentRotationRef.current = newRotation;
-        selectedNodeRef.current.rotation(newRotation);
-        selectedNodeRef.current.getLayer()?.batchDraw();
-        return;
-      }
+      currentRotationRef.current = newRotation;
+      selectedNodeRef.current.rotation(newRotation);
+      selectedNodeRef.current.getLayer()?.batchDraw();
+      return;
     }
 
     // ホバー時：四隅の回転外側ゾーン判定とカーソル切替
     const selectedShape = shapes.find((s) => s.id === selectedId);
     if (activeTool === 'select' && selectedShape?.type === 'zone') {
-      const stage = e.target.getStage();
-      const pos = stage?.getPointerPosition();
       const container = containerRef.current;
-      if (pos && container) {
+      if (container) {
         const isOver = checkCornerRotateZone(pos, selectedShape);
         isOverRotateZoneRef.current = isOver;
         if (isOver) {
@@ -206,11 +280,6 @@ export function useDrawingInteraction({
     }
 
     if (!isDrawing || !newShape) return;
-
-    const stage = e.target.getStage();
-    if (!stage) return;
-    const pos = stage.getPointerPosition();
-    if (!pos) return;
 
     if (newShape.type === 'arrow' && newShape.points) {
       setNewShape({
@@ -343,6 +412,9 @@ export function useDrawingInteraction({
     selectedNodeRef,
     dimensions,
     newShape,
+    activePolygonId,
+    setActivePolygonId,
+    mousePreviewPos,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,

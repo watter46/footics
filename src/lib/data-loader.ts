@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type {
   ClubMatchRoot,
   EventRow,
@@ -10,22 +11,47 @@ import { saveMatchUnified, savePlayerMaster } from './db';
 import { NATIONAL_INFO_IDX, parseNationalDate } from './national-match-schema';
 import { getSeasonFromDate } from './tactical/season-utils';
 
+const ClubMatchRootSchema = z
+  .object({
+    matchId: z.number(),
+    matchCentreData: z
+      .object({
+        startDate: z.string().optional(),
+        score: z.string().optional(),
+        home: z
+          .object({
+            teamId: z.number(),
+            name: z.string(),
+            players: z.array(z.any()).optional(),
+          })
+          .passthrough(),
+        away: z
+          .object({
+            teamId: z.number(),
+            name: z.string(),
+            players: z.array(z.any()).optional(),
+          })
+          .passthrough(),
+        playerIdNameDictionary: z.record(z.string(), z.string()).optional(),
+        events: z.array(z.any()).optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+
+const NationalMatchRootSchema = z
+  .object({
+    matchId: z.number(),
+    initialMatchDataForScrappers: z.array(z.any()),
+  })
+  .passthrough();
+
 function isClubMatch(data: unknown): data is ClubMatchRoot {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    typeof (data as ClubMatchRoot).matchId === 'number' &&
-    typeof (data as ClubMatchRoot).matchCentreData === 'object'
-  );
+  return ClubMatchRootSchema.safeParse(data).success;
 }
 
 function isNationalMatch(data: unknown): data is NationalMatchRoot {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    typeof (data as NationalMatchRoot).matchId === 'number' &&
-    Array.isArray((data as NationalMatchRoot).initialMatchDataForScrappers)
-  );
+  return NationalMatchRootSchema.safeParse(data).success;
 }
 
 function mapEvent(e: MatchEvent, matchId: string): EventRow {

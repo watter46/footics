@@ -11,6 +11,21 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+
+const DashedArrowIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M2 12H22" strokeDasharray="3.5 2.5" />
+    <path d="M18 8L22 12L18 16" />
+  </svg>
+);
 import {
   Arrow,
   Circle,
@@ -1203,7 +1218,7 @@ export const CanvasContainer: React.FC = () => {
 
   // 1. Add Solid Arrow from Marker (Default: White)
   const handleAddMarkerArrowSolid = () => {
-    if (!selectedShape || selectedShape.type !== 'marker') return;
+    if (selectedShape?.type !== 'marker') return;
     const id = `m-arrow-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const arrowShape: ShapeData = {
       id,
@@ -1225,7 +1240,7 @@ export const CanvasContainer: React.FC = () => {
 
   // 2. Add Dashed Arrow from Marker (Default: White)
   const handleAddMarkerArrowDash = () => {
-    if (!selectedShape || selectedShape.type !== 'marker') return;
+    if (selectedShape?.type !== 'marker') return;
     const id = `m-dash-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const arrowShape: ShapeData = {
       id,
@@ -1247,7 +1262,7 @@ export const CanvasContainer: React.FC = () => {
 
   // 3. Add Man Mark from Marker (●─●)
   const handleAddMarkerManMark = () => {
-    if (!selectedShape || selectedShape.type !== 'marker') return;
+    if (selectedShape?.type !== 'marker') return;
     const id = `m-mark-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const manMark: ShapeData = {
       id,
@@ -1270,8 +1285,7 @@ export const CanvasContainer: React.FC = () => {
   // 4. Add FOV from Marker
   const handleAddMarkerFov = () => {
     if (
-      !selectedShape ||
-      selectedShape.type !== 'marker' ||
+      selectedShape?.type !== 'marker' ||
       selectedShape.x === undefined ||
       selectedShape.y === undefined
     )
@@ -1304,13 +1318,13 @@ export const CanvasContainer: React.FC = () => {
 
   // 5. Start Connector Mode
   const handleStartConnector = () => {
-    if (!selectedShape || selectedShape.type !== 'marker') return;
+    if (selectedShape?.type !== 'marker') return;
     setConnectingMarkerId(selectedShape.id);
   };
 
   // 6. Toggle Spotlight
   const handleToggleSpotlight = () => {
-    if (!selectedShape || selectedShape.type !== 'marker') return;
+    if (selectedShape?.type !== 'marker') return;
     handleShapeChange({ isSpotlight: !selectedShape.isSpotlight });
   };
 
@@ -3110,7 +3124,7 @@ export const CanvasContainer: React.FC = () => {
           )}
           title="点線矢印 (D)"
         >
-          <MoveRight className="w-4 h-4" />
+          <DashedArrowIcon className="w-4 h-4" />
           <span className="hidden sm:inline">Dashed</span>
         </button>
 

@@ -97,7 +97,15 @@ export function useTacticalPersistence(
         }
       });
     }
-  }, [isOpen, matchId, metadata, setSavedSettings, setBallPos, setIsFlipped]);
+  }, [
+    isOpen,
+    matchId,
+    metadata,
+    setSavedSettings,
+    setBallPos,
+    setIsFlipped,
+    orientation,
+  ]);
 
   // Persist Data (Auto-save)
   useEffect(() => {

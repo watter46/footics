@@ -96,17 +96,7 @@ export const AnimationMarker = React.memo<AnimationMarkerProps>(
         }
       }, 50);
       return () => clearTimeout(timer);
-    }, [
-      radius,
-      color,
-      displayName,
-      shirtNo,
-      options,
-      isSelected,
-      isBall,
-      loadedImage,
-      ballImage,
-    ]);
+    }, [radius]);
 
     if (isBall) {
       return (
@@ -258,7 +248,9 @@ export const AnimationMarker = React.memo<AnimationMarkerProps>(
               listening={false}
             />
           </Group>
-        ) : (options.insideContent === 'number' || options.insideContent === 'photo') && shirtNo ? (
+        ) : (options.insideContent === 'number' ||
+            options.insideContent === 'photo') &&
+          shirtNo ? (
           /* 背番号表示 (太字・高コントラスト・写真フォールバック含む) */
           <Text
             text={shirtNo}

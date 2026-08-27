@@ -5,13 +5,11 @@ import {
   ChevronDown,
   Edit3,
   FolderSync,
-  LayoutGrid,
   Loader2,
   Plus,
   RefreshCw,
   Shield,
   Trash2,
-  UserPlus,
   Users,
 } from 'lucide-react';
 import type React from 'react';
@@ -37,7 +35,7 @@ import {
   type Season,
 } from '@/lib/tactical/chelsea-preset';
 import { extractAvailableSeasons } from '@/lib/tactical/season-utils';
-import type { Match, Player, StandardPosition } from '@/types';
+import type { Player, StandardPosition } from '@/types';
 import { PlayerPhoto } from './PlayerPhoto';
 
 const POSITION_CATEGORIES: Array<{
@@ -181,7 +179,7 @@ export const ChelseaSquadClient: React.FC = () => {
       if (cat) {
         map[cat.key].push(p);
       } else {
-        map['Other'].push(p);
+        map.Other.push(p);
       }
     });
 
