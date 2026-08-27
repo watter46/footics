@@ -863,7 +863,7 @@ const ZoneObject = React.memo(function ZoneObject({
             'bottom-center',
             'bottom-right',
           ]}
-          rotateEnabled={false}
+          rotateEnabled={true}
           borderStroke="#3b82f6"
           anchorStroke="#3b82f6"
           anchorFill="#ffffff"

@@ -185,16 +185,23 @@ export const TacticalDrawingCanvas: React.FC<TacticalDrawingCanvasProps> = ({
                 'bottom-center',
                 'bottom-right',
               ]}
-              rotateEnabled={false} // Default rotation handle off, use custom
+              rotateEnabled={false}
+              anchorStyleFunc={(anchor) => {
+                if (anchor.hasName('rotater')) {
+                  anchor.visible(false);
+                }
+              }}
               onTransformEnd={(_e) => {
                 const node = selectedNodeRef.current;
                 if (!node || !selectedShape) return;
                 handleTransformEnd(selectedShape, node);
               }}
               borderStroke="#3b82f6"
+              borderDash={[4, 4]}
               anchorStroke="#3b82f6"
               anchorFill="#ffffff"
-              anchorSize={8}
+              anchorSize={10}
+              anchorCornerRadius={2}
             />
           </Layer>
         </Stage>

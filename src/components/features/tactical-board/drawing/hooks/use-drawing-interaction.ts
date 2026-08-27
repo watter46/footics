@@ -372,12 +372,15 @@ export function useDrawingInteraction({
     node.scaleX(1);
     node.scaleY(1);
 
-    const newW = (shape.width || 0) * scaleX;
-    const newH = (shape.height || 0) * scaleY;
+    // Use absolute dimensions to prevent negative-width scale issues
+    const absW = Math.abs(shape.width || 0);
+    const absH = Math.abs(shape.height || 0);
+    const newW = absW * scaleX;
+    const newH = absH * scaleY;
 
     // node.x(), node.y() は中心座標
-    const newX = node.x() - Math.abs(newW) / 2;
-    const newY = node.y() - Math.abs(newH) / 2;
+    const newX = node.x() - newW / 2;
+    const newY = node.y() - newH / 2;
 
     const nextShapes = shapes.map((s) =>
       s.id === shape.id
