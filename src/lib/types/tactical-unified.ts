@@ -93,7 +93,7 @@ export const VisionConeSchema = z.object({
     .min(0)
     .max(Math.PI * 2),
   spreadRad: z.number().min(0.1).max(Math.PI),
-  radius: NormalizedCoordSchema,
+  radius: NormalizedCoordSchema.default(13),
   color: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
@@ -112,7 +112,7 @@ export const ConnectLineSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
     .default('#ffffff'),
-  strokeWidth: z.number().min(1).max(8).default(2),
+  strokeWidth: z.number().min(1).max(8).default(3.5),
   visible: z.boolean().default(true),
 });
 export type ConnectLine = z.infer<typeof ConnectLineSchema>;
@@ -135,6 +135,19 @@ export const PlayerBadgeSchema = z.object({
 });
 export type PlayerBadge = z.infer<typeof PlayerBadgeSchema>;
 
+/** 選手フォーカス (スポットライト強調) */
+export const PlayerFocusSchema = z.object({
+  enabled: z.boolean().default(true),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default('#fbbf24'),
+  radius: z.number().min(1).max(10).default(3),
+  opacity: z.number().min(0.1).max(0.9).default(0.35),
+  style: z.enum(['spotlight', 'ring', 'halo']).default('spotlight'),
+});
+export type PlayerFocus = z.infer<typeof PlayerFocusSchema>;
+
 // ─────────────────────────────────────────
 // § 5. Player オブジェクト
 // ─────────────────────────────────────────
@@ -156,6 +169,7 @@ export const PlayerSchema = z.object({
   visionCone: VisionConeSchema.optional(),
   connectLines: z.array(ConnectLineSchema).default([]),
   badges: z.array(PlayerBadgeSchema).default([]),
+  focus: PlayerFocusSchema.optional(),
 });
 export type Player = z.infer<typeof PlayerSchema>;
 
@@ -166,7 +180,18 @@ export type Player = z.infer<typeof PlayerSchema>;
 export const ArrowAnnotationSchema = z.object({
   id: z.string(),
   annotationType: z.literal('arrow'),
-  arrowType: z.enum(['pass', 'move', 'dribble', 'defend', 'run', 'generic']),
+  arrowType: z
+    .enum([
+      'pass',
+      'move',
+      'dribble',
+      'defend',
+      'run',
+      'line',
+      'route_line',
+      'generic',
+    ])
+    .default('pass'),
   curveType: z.enum(['straight', 'curved', 'arc']).default('straight'),
   points: z.array(NormalizedPointSchema).min(2),
   controlPoint: NormalizedPointSchema.optional(),
@@ -177,6 +202,8 @@ export const ArrowAnnotationSchema = z.object({
   strokeWidth: z.number().min(1).max(10).default(3),
   dashArray: z.array(z.number()).default([]),
   arrowHead: z.boolean().default(true),
+  endMarker: z.enum(['none', 'arrow', 'dot']).optional(),
+  startMarker: z.enum(['none', 'arrow', 'dot']).optional(),
   label: z.string().max(50).optional(),
   sourcePlayerId: z.string().optional(),
   targetPlayerId: z.string().optional(),
@@ -249,6 +276,15 @@ export type BallState = z.infer<typeof BallStateSchema>;
 // § 8. スライド (シーン)
 // ─────────────────────────────────────────
 
+export const BoundaryBoxSchema = z.object({
+  x: NormalizedCoordSchema,
+  y: NormalizedCoordSchema,
+  width: NormalizedCoordSchema,
+  height: NormalizedCoordSchema,
+  enabled: z.boolean().default(true),
+});
+export type BoundaryBox = z.infer<typeof BoundaryBoxSchema>;
+
 export const EasingSchema = z.enum([
   'linear',
   'ease-in',
@@ -276,6 +312,8 @@ export const SlideSchema = z.object({
 
   backgroundImageUrl: z.string().optional(),
   backgroundType: z.enum(['pitch', 'image', 'blank']).optional(),
+
+  boundaryBox: BoundaryBoxSchema.optional(),
 });
 export type Slide = z.infer<typeof SlideSchema>;
 
@@ -313,6 +351,7 @@ export const TacticalProjectSchema = z.object({
   tags: z.array(z.string()).default([]),
 
   screenshotSourceUrl: z.string().optional(),
+  boundaryBox: BoundaryBoxSchema.optional(),
 });
 export type TacticalProject = z.infer<typeof TacticalProjectSchema>;
 
@@ -368,12 +407,25 @@ export const FormationPresetSchema = z.object({
 });
 export type FormationPreset = z.infer<typeof FormationPresetSchema>;
 
+export const SeasonFormationPresetSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  teamName: z.string().optional(),
+  season: z.string().optional(),
+  mode: z.enum(['full', 'half']).default('half'),
+  formation: z.string(),
+  players: z.array(FormationPresetPlayerSchema),
+});
+export type SeasonFormationPreset = z.infer<typeof SeasonFormationPresetSchema>;
+
 // ─────────────────────────────────────────
 // § 12. 描画ツール種別
 // ─────────────────────────────────────────
 
 export const DrawingToolSchema = z.enum([
   'select',
+  'line',
+  'route_line',
   'arrow_solid',
   'arrow_dash',
   'zone_circle',

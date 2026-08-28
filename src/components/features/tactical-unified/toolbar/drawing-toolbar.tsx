@@ -2,21 +2,104 @@
 
 /**
  * drawing-toolbar.tsx
- * Floating & draggable drawing toolbar
+ * Floating & draggable drawing toolbar:
+ *  - Select (V)
+ *  - Line (直線) (L)
+ *  - Route Line (●付きルート線) (R)
+ *  - Solid Arrow (A)
+ *  - Dash Arrow (D)
+ *  - Zone (Z)
+ *  - Free Zone (P)
+ *  - Text (T)
+ *  | (Group divider)
+ *  - Continuous Drawing Lock (連続描画ロック)
+ *  - Eraser (消しゴムモード - 連続消去) (E)
+ *  | (Group divider)
+ *  - Reset (すべてのオブジェクトを削除)
+ *  | (Group divider)
+ *  - Auto-fit Boundary Box (描画境界線自動フィット)
  */
 
 import {
+  Eraser,
   GripVertical,
+  Lock,
+  Maximize2,
   MousePointer,
   MoveRight,
   RotateCcw,
   Square,
   Type,
-  User,
+  Unlock,
 } from 'lucide-react';
+import type React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import type { DrawingTool } from '@/lib/types/tactical-unified';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
+
+function StraightLineIcon({
+  size = 15,
+  className,
+}: {
+  size?: number | string;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <line x1="3" y1="19" x2="21" y2="5" />
+    </svg>
+  );
+}
+
+function RouteLineIcon({
+  size = 15,
+  className,
+}: {
+  size?: number | string;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <line x1="6" y1="18" x2="18" y2="6" />
+      <circle
+        cx="5"
+        cy="19"
+        r="3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <circle
+        cx="19"
+        cy="5"
+        r="3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
 
 function DashedArrowIcon({
   size = 15,
@@ -82,22 +165,40 @@ function CustomPolygonZoneIcon({
   );
 }
 
-const TOOLS: { tool: DrawingTool; icon: React.ElementType; label: string }[] = [
+const PRIMARY_TOOLS: {
+  tool: DrawingTool;
+  icon: React.ElementType;
+  label: string;
+}[] = [
   { tool: 'select', icon: MousePointer, label: '選択・コマ移動 (V)' },
+  { tool: 'line', icon: StraightLineIcon, label: '直線ライン (L)' },
+  {
+    tool: 'route_line',
+    icon: RouteLineIcon,
+    label: 'ルートライン (両端●付き) (R)',
+  },
   { tool: 'arrow_solid', icon: MoveRight, label: '実線矢印 (A)' },
   { tool: 'arrow_dash', icon: DashedArrowIcon, label: '点線矢印 (D)' },
   { tool: 'zone_circle', icon: Square, label: 'ゾーン (四角/楕円) (Z)' },
-  { tool: 'polygon_zone', icon: CustomPolygonZoneIcon, label: 'フリーゾーン (P)' },
+  {
+    tool: 'polygon_zone',
+    icon: CustomPolygonZoneIcon,
+    label: 'フリーゾーン (P)',
+  },
   { tool: 'text', icon: Type, label: 'テキスト (T)' },
-  { tool: 'player', icon: User, label: '選手追加 (M)' },
-  { tool: 'eraser', icon: RotateCcw, label: '描画クリア (E)' },
 ];
 
 export function DrawingToolbar() {
   const activeTool = useTacticalUnifiedStore((s) => s.activeTool);
   const setActiveTool = useTacticalUnifiedStore((s) => s.setActiveTool);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const clearAnnotations = useTacticalUnifiedStore((s) => s.clearAnnotations);
+  const continuousDrawing = useTacticalUnifiedStore((s) => s.continuousDrawing);
+  const toggleContinuousDrawing = useTacticalUnifiedStore(
+    (s) => s.toggleContinuousDrawing,
+  );
+  const autoFitBoundaryBox = useTacticalUnifiedStore(
+    (s) => s.autoFitBoundaryBox,
+  );
+  const resetSlideObjects = useTacticalUnifiedStore((s) => s.resetSlideObjects);
 
   const [position, setPosition] = useState<{ x: number; y: number }>({
     x: 0,
@@ -119,7 +220,6 @@ export function DrawingToolbar() {
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      // ボタン自体のクリック時はドラッグ開始しないようにする（ドラッグハンドルまたは隙間クリックでドラッグ）
       if ((e.target as HTMLElement).closest('button')) return;
 
       e.preventDefault();
@@ -170,7 +270,7 @@ export function DrawingToolbar() {
       style={{
         transform: `translate(calc(-50% + ${position.x}px), ${position.y}px)`,
       }}
-      className="absolute bottom-4 left-1/2 z-40 flex items-center gap-1 px-2 py-1.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/15 shadow-2xl select-none cursor-grab active:cursor-grabbing touch-none"
+      className="absolute bottom-4 left-1/2 z-40 flex items-center gap-1 px-2 py-1.5 rounded-xl bg-black/85 backdrop-blur-md border border-white/15 shadow-2xl select-none cursor-grab active:cursor-grabbing touch-none"
     >
       <div
         className="text-white/40 hover:text-white/80 p-0.5 cursor-grab active:cursor-grabbing"
@@ -178,18 +278,13 @@ export function DrawingToolbar() {
       >
         <GripVertical size={14} />
       </div>
-      {TOOLS.map(({ tool, icon: Icon, label }) => (
+
+      {/* ── 基本描画ツール ── */}
+      {PRIMARY_TOOLS.map(({ tool, icon: Icon, label }) => (
         <button
           type="button"
           key={tool}
-          onClick={() => {
-            if (tool === 'eraser') {
-              clearAnnotations(activeSlideId);
-              setActiveTool('select');
-            } else {
-              setActiveTool(tool);
-            }
-          }}
+          onClick={() => setActiveTool(tool)}
           title={label}
           aria-label={label}
           className={[
@@ -202,6 +297,81 @@ export function DrawingToolbar() {
           <Icon size={15} />
         </button>
       ))}
+
+      {/* ── 区切り線: 連続ロック & 消しゴム ── */}
+      <div className="w-px h-5 bg-white/20 mx-1" />
+
+      {/* 連続描画ロック */}
+      <button
+        type="button"
+        onClick={toggleContinuousDrawing}
+        title={
+          continuousDrawing
+            ? '連続描画ロック: ON (描画後も選択ツールに戻らず連続で描画)'
+            : '連続描画ロック: OFF (クリックしてON)'
+        }
+        aria-label="連続描画ロック"
+        className={[
+          'p-2 rounded-lg transition-all cursor-pointer flex items-center gap-1',
+          continuousDrawing
+            ? 'bg-amber-500 text-black font-bold shadow-md shadow-amber-500/30 ring-1 ring-amber-300'
+            : 'text-white/60 hover:text-white hover:bg-white/10',
+        ].join(' ')}
+      >
+        {continuousDrawing ? <Lock size={15} /> : <Unlock size={15} />}
+      </button>
+
+      {/* 消しゴムモード */}
+      <button
+        type="button"
+        onClick={() => setActiveTool('eraser')}
+        title="消しゴムモード (ドラッグで連続消去) (E)"
+        aria-label="消しゴムモード"
+        className={[
+          'p-2 rounded-lg transition-all cursor-pointer',
+          activeTool === 'eraser'
+            ? 'bg-red-600 text-white shadow-md shadow-red-500/30 ring-1 ring-red-400'
+            : 'text-white/60 hover:text-white hover:bg-white/10',
+        ].join(' ')}
+      >
+        <Eraser size={15} />
+      </button>
+
+      {/* ── 区切り線: リセット ── */}
+      <div className="w-px h-5 bg-white/20 mx-1" />
+
+      {/* 全オブジェクト削除（リセット） */}
+      <button
+        type="button"
+        onClick={() => {
+          if (
+            window.confirm(
+              'すべての描画オブジェクトを削除してリセットしますか？',
+            )
+          ) {
+            resetSlideObjects();
+          }
+        }}
+        title="すべてのオブジェクトを削除 (元に戻す/リセット)"
+        aria-label="すべてのオブジェクトを削除"
+        className="p-2 rounded-lg text-white/60 hover:text-red-400 hover:bg-white/10 transition-all cursor-pointer"
+      >
+        <RotateCcw size={15} />
+      </button>
+
+      {/* ── 区切り線: 境界線自動フィット (一番右) ── */}
+      <div className="w-px h-5 bg-white/20 mx-1" />
+
+      {/* 描画境界線自動フィット */}
+      <button
+        type="button"
+        onClick={() => autoFitBoundaryBox()}
+        title="描画境界線をピッチ全体に自動フィット"
+        aria-label="描画境界線を自動フィット"
+        className="p-2 rounded-lg text-white/60 hover:text-blue-400 hover:bg-white/10 transition-all cursor-pointer"
+      >
+        <Maximize2 size={15} />
+      </button>
     </div>
   );
 }

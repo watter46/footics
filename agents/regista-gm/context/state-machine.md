@@ -1,5 +1,7 @@
 # Regista 開発ワークフロー State Machine
 
+> **注記 (Execution Modes):** 本 State Machine は複数ドメインに跨る大規模機能開発や破壊的変更時（**Orchestrated Mode**）に適用されます。日常の質問、調査、1〜3ファイル以内の機能修正・バグ修正、型エラー対応は **Fast-Track Mode** として単独・即時実行されます。
+
 ## 状態定義 (States)
 
 ### State 1: TRIAGE (トリアージ)

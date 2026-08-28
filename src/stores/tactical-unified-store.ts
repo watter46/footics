@@ -13,15 +13,23 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
+import {
+  type FormationMode,
+  type FormationType,
+  getFormationActualPos,
+} from '@/lib/data/formations';
+import { FORMATION_POSITIONS } from '@/lib/data/formations-data';
 import type {
   ArrowAnnotation,
   AspectRatio,
+  BoundaryBox,
   ConnectLine,
   DrawingTool,
   ExportTarget,
   FormationPreset,
   Player,
   PlayerBadge,
+  PlayerFocus,
   Slide,
   TacticalProject,
   TextAnnotation,
@@ -48,7 +56,35 @@ export type SelectedObjectKind =
   | 'ball'
   | 'vision-cone'
   | 'connect-line'
-  | 'badge';
+  | 'badge'
+  | 'focus';
+
+export type MarkerOptionTab =
+  | 'vision'
+  | 'connect'
+  | 'arrow_solid'
+  | 'arrow_dash'
+  | 'badge'
+  | 'focus'
+  | 'basic';
+
+function isPointInPolygon(
+  point: { x: number; y: number },
+  vs: Array<{ x: number; y: number }>,
+) {
+  let inside = false;
+  for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+    const xi = vs[i].x;
+    const yi = vs[i].y;
+    const xj = vs[j].x;
+    const yj = vs[j].y;
+    const intersect =
+      yi > point.y !== yj > point.y &&
+      point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
 
 export interface SelectedObject {
   id: string;
@@ -64,6 +100,7 @@ export interface SelectedObject {
 export interface PanelState {
   sidebarOpen: boolean;
   inspectorOpen: boolean;
+  rightPanelTab: 'formation_sub' | 'inspector';
   exportModalOpen: boolean;
 }
 
@@ -81,6 +118,13 @@ interface TacticalUnifiedState {
   selectedObjects: SelectedObject[];
   activeTool: DrawingTool;
   connectingPlayerId: string | null;
+  activeMarkerOptionTab: MarkerOptionTab | null;
+  setActiveMarkerOptionTab: (tab: MarkerOptionTab | null) => void;
+  continuousDrawing: boolean;
+  setContinuousDrawing: (val: boolean) => void;
+  toggleContinuousDrawing: () => void;
+  autoFitBoundaryBox: (slideId?: string) => void;
+  resetSlideObjects: (slideId?: string) => void;
 
   // ── パネル
   panels: PanelState;
@@ -99,6 +143,8 @@ interface TacticalUnifiedState {
   setTitle: (title: string) => void;
   setBackgroundType: (type: TacticalProject['backgroundType']) => void;
   setBackgroundImageUrl: (url: string | undefined) => void;
+  restoreDefaultPitch: () => void;
+  setImageBackground: (url: string) => void;
   setTeamColor: (
     team: 'home' | 'away',
     primary: string,
@@ -107,6 +153,12 @@ interface TacticalUnifiedState {
 
   // ─ アスペクト比
   setAspectRatio: (ratio: AspectRatio) => void;
+
+  // ─ ピッチ左右チーム入れ替え
+  swapTeamSides: (slideId: string) => void;
+
+  // ─ エクスポート境界線 (BoundaryBox)
+  setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
 
   // ─ スライド CRUD
   addSlide: () => string;
@@ -120,12 +172,20 @@ interface TacticalUnifiedState {
     params: Partial<Pick<Slide, 'transitionDurationMs' | 'pauseMs' | 'easing'>>,
   ) => void;
 
-  // ─ 選手 CRUD
+  // ─ 選手 & サブメンバー CRUD
   addPlayer: (player: Player) => void;
   addPlayerFromPalette: (
     team: 'home' | 'away' | 'neutral',
     x: number,
     y: number,
+  ) => string;
+  addCustomPlayer: (
+    slideId: string,
+    team: 'home' | 'away' | 'neutral',
+    name?: string,
+    shirtNo?: string,
+    position?: string,
+    area?: 'pitch' | 'bench',
   ) => string;
   updatePlayer: (
     slideId: string,
@@ -133,8 +193,21 @@ interface TacticalUnifiedState {
     patch: Partial<Player>,
   ) => void;
   movePlayer: (slideId: string, playerId: string, x: number, y: number) => void;
+  movePlayerToBench: (slideId: string, playerId: string) => void;
+  movePlayerToPitch: (
+    slideId: string,
+    playerId: string,
+    x?: number,
+    y?: number,
+  ) => void;
   removePlayer: (slideId: string, playerId: string) => void;
   applyFormationPreset: (preset: FormationPreset, slideId: string) => void;
+  applyFormation: (
+    slideId: string,
+    formationName: FormationType,
+    mode: FormationMode,
+    team: 'home' | 'away',
+  ) => void;
 
   // ─ 選手ネスト: VisionCone
   setVisionCone: (
@@ -175,6 +248,11 @@ interface TacticalUnifiedState {
     playerId: string,
     badgeId: string,
   ) => void;
+  setPlayerFocus: (
+    slideId: string,
+    playerId: string,
+    focus: PlayerFocus | undefined,
+  ) => void;
 
   // ─ ボール
   setBallPosition: (slideId: string, x: number, y: number) => void;
@@ -205,6 +283,11 @@ interface TacticalUnifiedState {
   ) => void;
   removeText: (slideId: string, textId: string) => void;
   clearAnnotations: (slideId: string) => void;
+  eraseAtPoint: (
+    slideId: string,
+    point: { x: number; y: number },
+    radius?: number,
+  ) => void;
 
   // ─ 選択
   selectObject: (obj: SelectedObject | null, multi?: boolean) => void;
@@ -215,6 +298,7 @@ interface TacticalUnifiedState {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setInspectorOpen: (open: boolean) => void;
+  setRightPanelTab: (tab: 'formation_sub' | 'inspector') => void;
   openExportModal: (target?: ExportTarget) => void;
   closeExportModal: () => void;
 
@@ -245,6 +329,21 @@ function updateSlideInProject(
   };
 }
 
+function distToSegment(
+  p: { x: number; y: number },
+  v: { x: number; y: number },
+  w: { x: number; y: number },
+): number {
+  const l2 = (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
+  if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
+  let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(
+    p.x - (v.x + t * (w.x - v.x)),
+    p.y - (v.y + t * (w.y - v.y)),
+  );
+}
+
 // ─────────────────────────────────────────
 // § 5. Store 実装
 // ─────────────────────────────────────────
@@ -259,9 +358,12 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     selectedObjects: [],
     activeTool: 'select',
     connectingPlayerId: null,
+    activeMarkerOptionTab: null,
+    continuousDrawing: false,
     panels: {
       sidebarOpen: false,
       inspectorOpen: true,
+      rightPanelTab: 'formation_sub',
       exportModalOpen: false,
     },
     pendingExport: null,
@@ -313,6 +415,176 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         isDirty: true,
       })),
 
+    restoreDefaultPitch: () =>
+      set((s) => ({
+        project: {
+          ...s.project,
+          backgroundType: 'pitch',
+          backgroundImageUrl: undefined,
+          updatedAt: new Date().toISOString(),
+        },
+        isDirty: true,
+      })),
+
+    setImageBackground: (url) =>
+      set((s) => ({
+        project: {
+          ...s.project,
+          backgroundType: 'image',
+          backgroundImageUrl: url,
+          updatedAt: new Date().toISOString(),
+        },
+        isDirty: true,
+      })),
+
+    swapTeamSides: (slideId) =>
+      set((s) => {
+        const isVertical = s.project.aspectRatio === '9:16';
+
+        return {
+          project: updateSlideInProject(s.project, slideId, (sl) => ({
+            ...sl,
+            players: sl.players.map((p) => ({
+              ...p,
+              x: isVertical ? p.x : Math.max(0, Math.min(100, 100 - p.x)),
+              y: isVertical ? Math.max(0, Math.min(100, 100 - p.y)) : p.y,
+            })),
+            arrows: sl.arrows.map((a) => ({
+              ...a,
+              points: a.points.map((pt) => ({
+                x: isVertical ? pt.x : Math.max(0, Math.min(100, 100 - pt.x)),
+                y: isVertical ? Math.max(0, Math.min(100, 100 - pt.y)) : pt.y,
+              })),
+              controlPoint: a.controlPoint
+                ? {
+                    x: isVertical
+                      ? a.controlPoint.x
+                      : Math.max(0, Math.min(100, 100 - a.controlPoint.x)),
+                    y: isVertical
+                      ? Math.max(0, Math.min(100, 100 - a.controlPoint.y))
+                      : a.controlPoint.y,
+                  }
+                : undefined,
+            })),
+            zones: sl.zones.map((z) => {
+              const flippedPoints = z.points.map((pt) => ({
+                x: isVertical ? pt.x : Math.max(0, Math.min(100, 100 - pt.x)),
+                y: isVertical ? Math.max(0, Math.min(100, 100 - pt.y)) : pt.y,
+              }));
+              const flippedX =
+                !isVertical && z.x !== undefined && z.width !== undefined
+                  ? Math.max(0, Math.min(100, 100 - (z.x + z.width)))
+                  : z.x;
+              const flippedY =
+                isVertical && z.y !== undefined && z.height !== undefined
+                  ? Math.max(0, Math.min(100, 100 - (z.y + z.height)))
+                  : z.y;
+              return {
+                ...z,
+                points: flippedPoints,
+                x: flippedX,
+                y: flippedY,
+              };
+            }),
+            texts: sl.texts.map((t) => ({
+              ...t,
+              x: isVertical ? t.x : Math.max(0, Math.min(100, 100 - t.x)),
+              y: isVertical ? Math.max(0, Math.min(100, 100 - t.y)) : t.y,
+            })),
+            ball: {
+              ...sl.ball,
+              x: isVertical
+                ? sl.ball.x
+                : Math.max(0, Math.min(100, 100 - sl.ball.x)),
+              y: isVertical
+                ? Math.max(0, Math.min(100, 100 - sl.ball.y))
+                : sl.ball.y,
+            },
+          })),
+          isDirty: true,
+        };
+      }),
+
+    setBoundaryBox: (slideId, box) =>
+      set((s) => ({
+        project: updateSlideInProject(s.project, slideId, (sl) => ({
+          ...sl,
+          boundaryBox: box,
+        })),
+        isDirty: true,
+      })),
+
+    autoFitBoundaryBox: (slideId) =>
+      set((s) => {
+        const targetSlideId = slideId ?? s.activeSlideId;
+        const isPitchBg =
+          s.project.backgroundType === 'pitch' || !s.project.backgroundType;
+        const isVertical = s.project.aspectRatio === '9:16';
+
+        // ピッチ外枠線（105m x 68m）の周囲に均等な余白（ピクセル換算で上下左右同一）を持たせた境界線
+        let box: BoundaryBox;
+        if (isPitchBg) {
+          if (isVertical) {
+            box = {
+              x: 0.43,
+              y: 7.25,
+              width: 99.14,
+              height: 85.5,
+              enabled: true,
+            };
+          } else {
+            box = {
+              x: 7.25,
+              y: 0.43,
+              width: 85.5,
+              height: 99.14,
+              enabled: true,
+            };
+          }
+        } else {
+          // 画像背景などの場合は全体に対して均等パディング
+          box = {
+            x: 2.0,
+            y: 2.0,
+            width: 96.0,
+            height: 96.0,
+            enabled: true,
+          };
+        }
+
+        return {
+          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
+            ...sl,
+            boundaryBox: box,
+          })),
+          isDirty: true,
+        };
+      }),
+
+    resetSlideObjects: (slideId) =>
+      set((s) => {
+        const targetSlideId = slideId ?? s.activeSlideId;
+        return {
+          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
+            ...sl,
+            arrows: [],
+            zones: [],
+            texts: [],
+            players: sl.players.map((p) => ({
+              ...p,
+              visionCone: undefined,
+              connectLines: [],
+              badges: [],
+              focus: undefined,
+            })),
+            boundaryBox: { x: 0, y: 0, width: 100, height: 100, enabled: true },
+          })),
+          selectedObjects: [],
+          activeMarkerOptionTab: null,
+          isDirty: true,
+        };
+      }),
+
     setTeamColor: (team, primary, secondary) =>
       set((s) => ({
         project: {
@@ -321,6 +593,17 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           ...(team === 'home'
             ? { homeColor: { primary, secondary } }
             : { awayColor: { primary, secondary } }),
+          slides: s.project.slides.map((sl) => ({
+            ...sl,
+            players: sl.players.map((p) =>
+              p.team === team
+                ? {
+                    ...p,
+                    style: { ...p.style, color: primary },
+                  }
+                : p,
+            ),
+          })),
         },
         isDirty: true,
       })),
@@ -568,43 +851,29 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
               };
             }
 
-            if (isStartAttached) {
-              // 終点が別の選手に接続されているかチェック
-              const otherPlayerNearEnd = sl.players.find(
-                (p) =>
-                  p.id !== playerId &&
-                  p.area === 'pitch' &&
-                  arrow.targetPlayerId === p.id,
-              );
-
-              if (otherPlayerNearEnd && p0 && p1) {
-                // 終点は相手選手に固定し、始点のみ移動
-                const newP0 = {
-                  x: Math.max(0, Math.min(100, p0.x + dx)),
-                  y: Math.max(0, Math.min(100, p0.y + dy)),
-                };
-                return {
-                  ...arrow,
-                  points: [newP0, p1],
-                };
-              } else {
-                // 単独矢印: 矢印全体を平行移動
-                const newPoints = arrow.points.map((pt) => ({
-                  x: Math.max(0, Math.min(100, pt.x + dx)),
-                  y: Math.max(0, Math.min(100, pt.y + dy)),
-                }));
-                const newCp = arrow.controlPoint
-                  ? {
-                      x: Math.max(0, Math.min(100, arrow.controlPoint.x + dx)),
-                      y: Math.max(0, Math.min(100, arrow.controlPoint.y + dy)),
-                    }
-                  : undefined;
-                return {
-                  ...arrow,
-                  points: newPoints,
-                  controlPoint: newCp,
-                };
-              }
+            if (isStartAttached && p0 && p1) {
+              // 始点のみ選手に追従し、矢印の先（終点）は動かす前と同じ位置にとどまる
+              const newP0 = {
+                x: Math.max(0, Math.min(100, p0.x + dx)),
+                y: Math.max(0, Math.min(100, p0.y + dy)),
+              };
+              const newCp = arrow.controlPoint
+                ? {
+                    x: Math.max(
+                      0,
+                      Math.min(100, arrow.controlPoint.x + dx / 2),
+                    ),
+                    y: Math.max(
+                      0,
+                      Math.min(100, arrow.controlPoint.y + dy / 2),
+                    ),
+                  }
+                : undefined;
+              return {
+                ...arrow,
+                points: [newP0, p1],
+                controlPoint: newCp,
+              };
             }
 
             if (isEndAttached && p0 && p1) {
@@ -687,11 +956,96 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         isDirty: true,
       })),
 
+    addCustomPlayer: (
+      slideId,
+      team,
+      name,
+      shirtNo,
+      position,
+      area = 'bench',
+    ) => {
+      const primary =
+        team === 'home'
+          ? get().project.homeColor.primary
+          : team === 'away'
+            ? get().project.awayColor.primary
+            : '#6b7280';
+      const player = createDefaultPlayer(team, 50, 50, primary);
+      player.name = name ?? (team === 'home' ? 'Home Player' : 'Away Player');
+      player.shirtNo = shirtNo ?? '0';
+      player.position = position ?? 'SUB';
+      player.area = area;
+
+      set((s) => ({
+        project: updateSlideInProject(s.project, slideId, (sl) => ({
+          ...sl,
+          players: [...sl.players, player],
+        })),
+        isDirty: true,
+      }));
+      return player.id;
+    },
+
+    movePlayerToBench: (slideId, playerId) =>
+      set((s) => ({
+        project: updateSlideInProject(s.project, slideId, (sl) => ({
+          ...sl,
+          // サブに入ったらマーカーオブジェクト(visionCone, badges, connectLines)を削除する
+          players: sl.players.map((p) => {
+            if (p.id === playerId) {
+              return {
+                ...p,
+                area: 'bench',
+                visionCone: undefined,
+                badges: [],
+                connectLines: [],
+                focus: undefined,
+              };
+            }
+            return {
+              ...p,
+              connectLines: p.connectLines.filter(
+                (cl) => cl.toPlayerId !== playerId,
+              ),
+            };
+          }),
+          // 選手に紐づく矢印もクリーンアップ
+          arrows: sl.arrows.filter(
+            (a) =>
+              a.sourcePlayerId !== playerId && a.targetPlayerId !== playerId,
+          ),
+        })),
+        isDirty: true,
+        selectedObjects: s.selectedObjects.filter((o) => o.id !== playerId),
+      })),
+
+    movePlayerToPitch: (slideId, playerId, x = 50, y = 50) =>
+      set((s) => ({
+        project: updateSlideInProject(s.project, slideId, (sl) => ({
+          ...sl,
+          players: sl.players.map((p) =>
+            p.id === playerId ? { ...p, area: 'pitch', x, y } : p,
+          ),
+        })),
+        isDirty: true,
+      })),
+
     removePlayer: (slideId, playerId) =>
       set((s) => ({
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
-          players: sl.players.filter((p) => p.id !== playerId),
+          players: sl.players
+            .filter((p) => p.id !== playerId)
+            .map((p) => ({
+              ...p,
+              connectLines: p.connectLines.filter(
+                (cl) => cl.toPlayerId !== playerId,
+              ),
+            })),
+          arrows: sl.arrows.filter(
+            (a) =>
+              a.sourcePlayerId !== playerId && a.targetPlayerId !== playerId,
+          ),
         })),
         isDirty: true,
         selectedObjects: s.selectedObjects.filter((o) => o.id !== playerId),
@@ -713,7 +1067,6 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         return {
           project: updateSlideInProject(s.project, slideId, (sl) => ({
             ...sl,
-            // 同チームの選手を置き換え、他チームはそのまま
             players: [
               ...sl.players.filter((p) => p.team !== preset.team),
               ...newPlayers,
@@ -722,6 +1075,74 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           isDirty: true,
         };
       }),
+
+    applyFormation: (slideId, formationName, mode, team) =>
+      set((s) => ({
+        project: updateSlideInProject(s.project, slideId, (sl) => {
+          const positions = FORMATION_POSITIONS[formationName];
+          if (!positions) return sl;
+
+          const teamPitchPlayers = sl.players.filter(
+            (p) => p.team === team && p.area === 'pitch',
+          );
+          const teamBenchPlayers = sl.players.filter(
+            (p) => p.team === team && p.area === 'bench',
+          );
+          const otherPlayers = sl.players.filter((p) => p.team !== team);
+
+          const existingPool = [...teamPitchPlayers, ...teamBenchPlayers];
+          const newTeamPitchPlayers: Player[] = [];
+          const primaryColor =
+            team === 'home'
+              ? s.project.homeColor.primary
+              : s.project.awayColor.primary;
+
+          positions.forEach((pos, idx) => {
+            const actualPos = getFormationActualPos(pos, team, mode);
+            let player = existingPool[idx];
+            if (player) {
+              player = {
+                ...player,
+                area: 'pitch',
+                x: Math.max(0, Math.min(100, actualPos.x)),
+                y: Math.max(0, Math.min(100, actualPos.y)),
+                position: pos.position,
+              };
+            } else {
+              player = createDefaultPlayer(
+                team,
+                Math.max(0, Math.min(100, actualPos.x)),
+                Math.max(0, Math.min(100, actualPos.y)),
+                primaryColor,
+              );
+              player.shirtNo = String(pos.id);
+              player.position = pos.position;
+            }
+            newTeamPitchPlayers.push(player);
+          });
+
+          // 残りの選手はサブ(ベンチ)に回す
+          const remainingBench = existingPool
+            .slice(positions.length)
+            .map((p) => ({
+              ...p,
+              area: 'bench' as const,
+              visionCone: undefined,
+              badges: [],
+              connectLines: [],
+            }));
+
+          return {
+            ...sl,
+            players: [
+              ...otherPlayers,
+              ...newTeamPitchPlayers,
+              ...remainingBench,
+            ],
+          };
+        }),
+        isDirty: true,
+      })),
 
     // ══ ネストアノテーション ══════════════
 
@@ -804,6 +1225,17 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             p.id === playerId
               ? { ...p, badges: p.badges.filter((b) => b.id !== badgeId) }
               : p,
+          ),
+        })),
+        isDirty: true,
+      })),
+
+    setPlayerFocus: (slideId, playerId, focus) =>
+      set((s) => ({
+        project: updateSlideInProject(s.project, slideId, (sl) => ({
+          ...sl,
+          players: sl.players.map((p) =>
+            p.id === playerId ? { ...p, focus } : p,
           ),
         })),
         isDirty: true,
@@ -935,13 +1367,132 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         ),
       })),
 
+    eraseAtPoint: (slideId, point, radius = 4.0) =>
+      set((s) => ({
+        project: updateSlideInProject(s.project, slideId, (sl) => {
+          // 1. 矢印・線の消去（プレイヤーは絶対に削除しない）
+          const remainingArrows = sl.arrows.filter((arrow) => {
+            const pts = arrow.points;
+            for (let i = 0; i < pts.length; i++) {
+              const pt = pts[i];
+              if (pt && Math.hypot(pt.x - point.x, pt.y - point.y) <= radius) {
+                return false;
+              }
+            }
+            if (pts.length >= 2) {
+              for (let i = 0; i < pts.length - 1; i++) {
+                const p1 = pts[i];
+                const p2 = pts[i + 1];
+                if (p1 && p2 && distToSegment(point, p1, p2) <= radius) {
+                  return false;
+                }
+              }
+            }
+            return true;
+          });
+
+          // 2. ゾーンの消去 (矩形・楕円・多角形フリーゾーンすべてに対応)
+          const remainingZones = sl.zones.filter((zone) => {
+            const pts = zone.points;
+            if (pts && pts.length >= 2) {
+              // 頂点チェック
+              for (const pt of pts) {
+                if (Math.hypot(pt.x - point.x, pt.y - point.y) <= radius) {
+                  return false;
+                }
+              }
+              // エッジ線分チェック
+              for (let i = 0; i < pts.length; i++) {
+                const p1 = pts[i];
+                const p2 = pts[(i + 1) % pts.length];
+                if (p1 && p2 && distToSegment(point, p1, p2) <= radius) {
+                  return false;
+                }
+              }
+              // 内部チェック（3点以上の多角形）
+              if (pts.length >= 3 && isPointInPolygon(point, pts)) {
+                return false;
+              }
+            }
+            if (
+              zone.x !== undefined &&
+              zone.y !== undefined &&
+              zone.width !== undefined &&
+              zone.height !== undefined
+            ) {
+              if (
+                point.x >= zone.x - radius &&
+                point.x <= zone.x + zone.width + radius &&
+                point.y >= zone.y - radius &&
+                point.y <= zone.y + zone.height + radius
+              ) {
+                return false;
+              }
+            }
+            return true;
+          });
+
+          // 3. テキストの消去
+          const remainingTexts = sl.texts.filter(
+            (t) => Math.hypot(t.x - point.x, t.y - point.y) > radius,
+          );
+
+          // 4. 選手単体は消さないが、マーカーオプション（視野コーン・バッジ・コネクト線）は個別消去可能
+          const updatedPlayers = sl.players.map((player) => {
+            let visionCone = player.visionCone;
+            if (visionCone) {
+              const dist = Math.hypot(player.x - point.x, player.y - point.y);
+              if (dist <= radius + visionCone.radius && dist >= 3.0) {
+                visionCone = undefined;
+              }
+            }
+
+            const badges = player.badges.filter((b) => {
+              const bx = player.x + (b.offsetX || 0) * 0.1;
+              const by = player.y + (b.offsetY || 0) * 0.1;
+              return Math.hypot(bx - point.x, by - point.y) > radius;
+            });
+
+            const connectLines = player.connectLines.filter((cl) => {
+              const target = sl.players.find((p) => p.id === cl.toPlayerId);
+              if (!target) return false;
+              const dist = distToSegment(
+                point,
+                { x: player.x, y: player.y },
+                { x: target.x, y: target.y },
+              );
+              return dist > radius;
+            });
+
+            return {
+              ...player,
+              visionCone,
+              badges,
+              connectLines,
+            };
+          });
+
+          return {
+            ...sl,
+            arrows: remainingArrows,
+            zones: remainingZones,
+            texts: remainingTexts,
+            players: updatedPlayers,
+          };
+        }),
+        isDirty: true,
+      })),
+
     // ══ 選択 ═════════════════════════════
+
+    setActiveMarkerOptionTab: (tab) => set({ activeMarkerOptionTab: tab }),
 
     selectObject: (obj, multi = false) =>
       set((s) => {
         if (!obj)
           return {
             selectedObjects: [],
+            activeMarkerOptionTab: null,
           };
         if (multi) {
           const already = s.selectedObjects.find((o) => o.id === obj.id);
@@ -949,21 +1500,35 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             selectedObjects: already
               ? s.selectedObjects.filter((o) => o.id !== obj.id)
               : [...s.selectedObjects, obj],
-            panels: { ...s.panels, inspectorOpen: true },
+            panels: {
+              ...s.panels,
+              inspectorOpen: true,
+              rightPanelTab: 'inspector',
+            },
           };
         }
         return {
           selectedObjects: [obj],
-          panels: { ...s.panels, inspectorOpen: true },
+          panels: {
+            ...s.panels,
+            inspectorOpen: true,
+            rightPanelTab: 'inspector',
+          },
         };
       }),
 
     clearSelection: () =>
       set({
         selectedObjects: [],
+        activeMarkerOptionTab: null,
       }),
 
     setActiveTool: (tool) => set({ activeTool: tool }),
+
+    setContinuousDrawing: (val) => set({ continuousDrawing: val }),
+
+    toggleContinuousDrawing: () =>
+      set((s) => ({ continuousDrawing: !s.continuousDrawing })),
 
     // ══ パネル ════════════════════════════
 
@@ -977,6 +1542,11 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     setInspectorOpen: (open) =>
       set((s) => ({ panels: { ...s.panels, inspectorOpen: open } })),
+
+    setRightPanelTab: (tab) =>
+      set((s) => ({
+        panels: { ...s.panels, rightPanelTab: tab, inspectorOpen: true },
+      })),
 
     openExportModal: (target) =>
       set((s) => ({

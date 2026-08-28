@@ -39,7 +39,8 @@ export const MatchMemoUnit: React.FC<MatchMemoUnitProps> = ({
           activeEl &&
           (activeEl as HTMLElement).shadowRoot?.activeElement
         ) {
-          activeEl = (activeEl as HTMLElement).shadowRoot?.activeElement ?? null;
+          activeEl =
+            (activeEl as HTMLElement).shadowRoot?.activeElement ?? null;
         }
         if (activeEl !== el) {
           el.focus();

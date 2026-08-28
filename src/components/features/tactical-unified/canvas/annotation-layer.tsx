@@ -36,10 +36,6 @@ interface AnnotationLayerProps {
   mousePreviewPos?: { x: number; y: number } | null;
 }
 
-const ROTATE_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8'/><path d='M21 3v5h-5'/></svg>") 12 12, auto`;
-
-
-
 function normX(v: number, w: number) {
   return (v / 100) * w;
 }
@@ -139,14 +135,61 @@ const ArrowObject = React.memo(function ArrowObject({
     ? normY(arrow.controlPoint.y, height)
     : (sPxY + ePxY) / 2;
 
+  const isDotEnd =
+    arrow.endMarker === 'dot' || arrow.arrowType === 'route_line';
+
+  const dotRadius = Math.max(5, arrow.strokeWidth * 1.6);
+
+  let renderSx = sPxX;
+  let renderSy = sPxY;
+  let renderEx = ePxX;
+  let renderEy = ePxY;
+
+  if (isDotEnd) {
+    if (!isCurved) {
+      const dx = ePxX - sPxX;
+      const dy = ePxY - sPxY;
+      const dist = Math.hypot(dx, dy);
+      if (dist > dotRadius * 2) {
+        const ux = dx / dist;
+        const uy = dy / dist;
+        renderSx = sPxX + ux * dotRadius;
+        renderSy = sPxY + uy * dotRadius;
+        renderEx = ePxX - ux * dotRadius;
+        renderEy = ePxY - uy * dotRadius;
+      }
+    } else {
+      const v0x = cpPxX - sPxX;
+      const v0y = cpPxY - sPxY;
+      const d0 = Math.hypot(v0x, v0y) || 1;
+      renderSx = sPxX + (v0x / d0) * dotRadius;
+      renderSy = sPxY + (v0y / d0) * dotRadius;
+
+      const v1x = ePxX - cpPxX;
+      const v1y = ePxY - cpPxY;
+      const d1 = Math.hypot(v1x, v1y) || 1;
+      renderEx = ePxX - (v1x / d1) * dotRadius;
+      renderEy = ePxY - (v1y / d1) * dotRadius;
+    }
+  }
+
   const renderPoints = isCurved
-    ? getQuadraticBezierPoints(sPxX, sPxY, cpPxX, cpPxY, ePxX, ePxY)
-    : [sPxX, sPxY, ePxX, ePxY];
+    ? getQuadraticBezierPoints(
+        renderSx,
+        renderSy,
+        cpPxX,
+        cpPxY,
+        renderEx,
+        renderEy,
+      )
+    : [renderSx, renderSy, renderEx, renderEy];
 
   const arrowRef = React.useRef<any>(null);
   const startHandleRef = React.useRef<any>(null);
   const endHandleRef = React.useRef<any>(null);
   const controlHandleRef = React.useRef<any>(null);
+  const startDotRef = React.useRef<any>(null);
+  const endDotRef = React.useRef<any>(null);
 
   useEffect(() => {
     if (!nodesRegistryRef) return;
@@ -187,27 +230,71 @@ const ArrowObject = React.memo(function ArrowObject({
           controlHandleRef.current.y() - (sy + ey) / 2,
         ) > 2);
 
+    let rsx = sx;
+    let rsy = sy;
+    let rex = ex;
+    let rey = ey;
+    if (isDotEnd) {
+      if (!isCurrentlyCurved) {
+        const dx = ex - sx;
+        const dy = ey - sy;
+        const dist = Math.hypot(dx, dy);
+        if (dist > dotRadius * 2) {
+          const ux = dx / dist;
+          const uy = dy / dist;
+          rsx = sx + ux * dotRadius;
+          rsy = sy + uy * dotRadius;
+          rex = ex - ux * dotRadius;
+          rey = ey - uy * dotRadius;
+        }
+      } else {
+        const v0x = curCpX - sx;
+        const v0y = curCpY - sy;
+        const d0 = Math.hypot(v0x, v0y) || 1;
+        rsx = sx + (v0x / d0) * dotRadius;
+        rsy = sy + (v0y / d0) * dotRadius;
+
+        const v1x = ex - curCpX;
+        const v1y = ey - curCpY;
+        const d1 = Math.hypot(v1x, v1y) || 1;
+        rex = ex - (v1x / d1) * dotRadius;
+        rey = ey - (v1y / d1) * dotRadius;
+      }
+    }
+
     if (isCurrentlyCurved) {
       arrowRef.current.points(
-        getQuadraticBezierPoints(sx, sy, curCpX, curCpY, ex, ey),
+        getQuadraticBezierPoints(rsx, rsy, curCpX, curCpY, rex, rey),
       );
     } else {
-      arrowRef.current.points([sx, sy, ex, ey]);
+      arrowRef.current.points([rsx, rsy, rex, rey]);
+    }
+    if (startDotRef.current) {
+      startDotRef.current.position({ x: sx, y: sy });
+    }
+    if (endDotRef.current) {
+      endDotRef.current.position({ x: ex, y: ey });
     }
     arrowRef.current.getLayer()?.batchDraw();
   };
+
+  const hasArrowHead =
+    arrow.arrowHead &&
+    arrow.endMarker !== 'none' &&
+    arrow.arrowType !== 'line' &&
+    !isDotEnd;
 
   return (
     <Group>
       <Arrow
         ref={arrowRef}
         points={renderPoints}
-        stroke={isSelected ? '#60a5fa' : arrow.color}
-        fill={isSelected ? '#60a5fa' : arrow.color}
+        stroke={arrow.color}
+        fill={arrow.color}
         strokeWidth={arrow.strokeWidth}
         dash={arrow.dashArray}
-        pointerLength={arrow.arrowHead ? 15 : 0}
-        pointerWidth={arrow.arrowHead ? 15 : 0}
+        pointerLength={hasArrowHead ? 15 : 0}
+        pointerWidth={hasArrowHead ? 15 : 0}
         tension={0}
         onClick={onSelect}
         onTap={onSelect}
@@ -231,6 +318,12 @@ const ArrowObject = React.memo(function ArrowObject({
           if (controlHandleRef.current) {
             controlHandleRef.current.position({ x: cpPxX + dx, y: cpPxY + dy });
           }
+          if (startDotRef.current) {
+            startDotRef.current.position({ x: sPxX + dx, y: sPxY + dy });
+          }
+          if (endDotRef.current) {
+            endDotRef.current.position({ x: ePxX + dx, y: ePxY + dy });
+          }
           node.getLayer()?.batchDraw();
         }}
         onDragEnd={(e) => {
@@ -239,6 +332,12 @@ const ArrowObject = React.memo(function ArrowObject({
           const dxNorm = (node.x() / width) * 100;
           const dyNorm = (node.y() / height) * 100;
           node.position({ x: 0, y: 0 });
+          if (startDotRef.current) {
+            startDotRef.current.position({ x: sPxX, y: sPxY });
+          }
+          if (endDotRef.current) {
+            endDotRef.current.position({ x: ePxX, y: ePxY });
+          }
           const stage = node.getStage();
           if (stage) stage.container().style.cursor = 'default';
 
@@ -263,6 +362,33 @@ const ArrowObject = React.memo(function ArrowObject({
           updateArrow(slideId, arrow.id, patch);
         }}
       />
+
+      {isDotEnd && (
+        <>
+          <Circle
+            ref={startDotRef}
+            x={sPxX}
+            y={sPxY}
+            radius={Math.max(5, arrow.strokeWidth * 1.6)}
+            stroke={arrow.color}
+            strokeWidth={Math.max(2, arrow.strokeWidth)}
+            fill="transparent"
+            perfectDrawEnabled={false}
+            listening={false}
+          />
+          <Circle
+            ref={endDotRef}
+            x={ePxX}
+            y={ePxY}
+            radius={Math.max(5, arrow.strokeWidth * 1.6)}
+            stroke={arrow.color}
+            strokeWidth={Math.max(2, arrow.strokeWidth)}
+            fill="transparent"
+            perfectDrawEnabled={false}
+            listening={false}
+          />
+        </>
+      )}
 
       {isSelected && (
         <Group>
@@ -407,6 +533,9 @@ const ArrowObject = React.memo(function ArrowObject({
               e.cancelBubble = true;
               const stage = e.target.getStage();
               if (stage) stage.container().style.cursor = 'grabbing';
+              if (arrow.curveType !== 'curved') {
+                updateArrow(slideId, arrow.id, { curveType: 'curved' });
+              }
             }}
             onDragMove={(e) => {
               e.cancelBubble = true;
@@ -425,13 +554,43 @@ const ArrowObject = React.memo(function ArrowObject({
               const curEy = endHandleRef.current
                 ? endHandleRef.current.y()
                 : ePxY;
-              updateKonvaPoints(curSx, curSy, curEx, curEy, pos.x, pos.y);
+              const midX = (curSx + curEx) / 2;
+              const midY = (curSy + curEy) / 2;
+              const amplifiedCpX = midX + (pos.x - midX) * 1.8;
+              const amplifiedCpY = midY + (pos.y - midY) * 1.8;
+              updateKonvaPoints(
+                curSx,
+                curSy,
+                curEx,
+                curEy,
+                amplifiedCpX,
+                amplifiedCpY,
+              );
             }}
             onDragEnd={(e) => {
               e.cancelBubble = true;
               const pos = e.target.position();
-              const newNormX = pxToNormX(pos.x, width);
-              const newNormY = pxToNormY(pos.y, height);
+              const curSx =
+                !isAttachedToPlayer && startHandleRef.current
+                  ? startHandleRef.current.x()
+                  : sPxX;
+              const curSy =
+                !isAttachedToPlayer && startHandleRef.current
+                  ? startHandleRef.current.y()
+                  : sPxY;
+              const curEx = endHandleRef.current
+                ? endHandleRef.current.x()
+                : ePxX;
+              const curEy = endHandleRef.current
+                ? endHandleRef.current.y()
+                : ePxY;
+              const midX = (curSx + curEx) / 2;
+              const midY = (curSy + curEy) / 2;
+              const amplifiedCpX = midX + (pos.x - midX) * 1.8;
+              const amplifiedCpY = midY + (pos.y - midY) * 1.8;
+
+              const newNormX = pxToNormX(amplifiedCpX, width);
+              const newNormY = pxToNormY(amplifiedCpY, height);
               const stage = e.target.getStage();
               if (stage) stage.container().style.cursor = 'default';
 
@@ -500,26 +659,17 @@ const ZoneObject = React.memo(function ZoneObject({
     .toString(16)
     .padStart(2, '0');
   const fillRGBA = (zone.color || '#22c55e') + alphaHex;
-  const strokeColor = isSelected ? '#3b82f6' : (zone.strokeColor ?? zone.color);
-  const strokeWidth = isSelected
-    ? Math.max(2, zone.strokeWidth || 2)
-    : (zone.strokeWidth || 2);
+  const strokeColor = zone.strokeColor ?? zone.color ?? '#22c55e';
+  const strokeWidth = zone.strokeWidth || 2;
 
   const shapeNodeRef = useRef<Konva.Node | null>(null);
   const transformerRef = useRef<Konva.Transformer | null>(null);
 
-  // 角ドラッグ回転状態
-  const isRotatingRef = useRef(false);
-  const rotateCenterRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const startMouseAngleRef = useRef(0);
-  const startShapeRotationRef = useRef(0);
-
   useEffect(() => {
     if (!transformerRef.current) return;
     if (isSelected && shapeNodeRef.current && shapeType !== 'polygon') {
-      const tr = transformerRef.current;
-      tr.nodes([shapeNodeRef.current]);
-      tr.getLayer()?.batchDraw();
+      transformerRef.current.nodes([shapeNodeRef.current]);
+      transformerRef.current.getLayer()?.batchDraw();
     } else {
       transformerRef.current.nodes([]);
       transformerRef.current.getLayer()?.batchDraw();
@@ -635,9 +785,9 @@ const ZoneObject = React.memo(function ZoneObject({
                 e.cancelBubble = true;
                 const newPxX = e.target.x();
                 const newPxY = e.target.y();
-                const lineNode = e.target
-                  .getParent()
-                  ?.findOne('Line') as Konva.Line | undefined;
+                const lineNode = e.target.getParent()?.findOne('Line') as
+                  | Konva.Line
+                  | undefined;
                 if (lineNode) {
                   const currentLinePts = [...lineNode.points()];
                   currentLinePts[idx * 2] = newPxX;
@@ -669,14 +819,18 @@ const ZoneObject = React.memo(function ZoneObject({
 
   // 2. 四角形（Rect） & 楕円（Ellipse）
   // 座標・サイズ（正規化からピクセルへ変換）
-  let normPosX = zone.x ?? (zone.points[0]?.x ?? 20);
-  let normPosY = zone.y ?? (zone.points[0]?.y ?? 20);
+  const normPosX = zone.x ?? zone.points[0]?.x ?? 20;
+  const normPosY = zone.y ?? zone.points[0]?.y ?? 20;
   let normW =
     zone.width ??
-    (zone.points.length >= 2 ? Math.abs(zone.points[1].x - zone.points[0].x) : 30);
+    (zone.points.length >= 2
+      ? Math.abs(zone.points[1].x - zone.points[0].x)
+      : 30);
   let normH =
     zone.height ??
-    (zone.points.length >= 4 ? Math.abs(zone.points[2].y - zone.points[0].y) : 20);
+    (zone.points.length >= 4
+      ? Math.abs(zone.points[2].y - zone.points[0].y)
+      : 20);
 
   if (normW <= 0) normW = 20;
   if (normH <= 0) normH = 15;
@@ -687,72 +841,8 @@ const ZoneObject = React.memo(function ZoneObject({
   const cy = normY(normPosY, height) + pxH / 2;
   const rotation = zone.rotation || 0;
 
-  // 回転ハンドルの位置（図形の4角をローカル→ワールド変換）
-  const rad = (rotation * Math.PI) / 180;
-  const hw = pxW / 2;
-  const hh = pxH / 2;
-  const cornersLocal = [
-    { x: -hw, y: -hh, label: 'tl' },
-    { x:  hw, y: -hh, label: 'tr' },
-    { x: -hw, y:  hh, label: 'bl' },
-    { x:  hw, y:  hh, label: 'br' },
-  ];
-  const cornerHandles = cornersLocal.map((pt) => ({
-    label: pt.label,
-    x: cx + pt.x * Math.cos(rad) - pt.y * Math.sin(rad),
-    y: cy + pt.x * Math.sin(rad) + pt.y * Math.cos(rad),
-  }));
-
-  // Group レベルの mousemove / mouseup で回転ドラッグを処理
-  const handleGroupMoveForRotate = (e: KonvaEventObject<MouseEvent>) => {
-    if (!isRotatingRef.current || !shapeNodeRef.current) return;
-    const stage = e.target.getStage();
-    const pos = stage?.getPointerPosition();
-    if (!pos) return;
-
-    const currentAngle = Math.atan2(
-      pos.y - rotateCenterRef.current.y,
-      pos.x - rotateCenterRef.current.x,
-    );
-    const angleDiffDeg =
-      ((currentAngle - startMouseAngleRef.current) * 180) / Math.PI;
-    const newRot = (startShapeRotationRef.current + angleDiffDeg) % 360;
-
-    shapeNodeRef.current.rotation(newRot);
-    transformerRef.current?.forceUpdate();
-    shapeNodeRef.current.getLayer()?.batchDraw();
-  };
-
-  const handleGroupUpForRotate = (e: KonvaEventObject<MouseEvent>) => {
-    if (!isRotatingRef.current) return;
-    isRotatingRef.current = false;
-    const stage = e.target.getStage();
-    if (stage) stage.container().style.cursor = 'default';
-
-    if (shapeNodeRef.current) {
-      const newRot = shapeNodeRef.current.rotation();
-      updateZone(slideId, zone.id, { rotation: newRot });
-    }
-  };
-
-  // 角ハンドルの mousedown（回転モード発動）
-  const makeCornerHandleDown = () => (e: KonvaEventObject<MouseEvent>) => {
-    e.cancelBubble = true;
-    isRotatingRef.current = true;
-    const stage = e.target.getStage();
-    const pos = stage?.getPointerPosition();
-    if (!pos || !shapeNodeRef.current) return;
-    rotateCenterRef.current = { x: cx, y: cy };
-    startMouseAngleRef.current = Math.atan2(pos.y - cy, pos.x - cx);
-    startShapeRotationRef.current = shapeNodeRef.current.rotation();
-    if (stage) stage.container().style.cursor = 'grabbing';
-  };
-
   return (
-    <Group
-      onMouseMove={handleGroupMoveForRotate}
-      onMouseUp={handleGroupUpForRotate}
-    >
+    <Group>
       {shapeType === 'ellipse' ? (
         <Ellipse
           ref={(node) => {
@@ -821,26 +911,27 @@ const ZoneObject = React.memo(function ZoneObject({
         />
       )}
 
-      {/* リサイズ用 Transformer（辺アンカーのみ・回転ハンドルなし） */}
       {isSelected && (
         <Transformer
           ref={transformerRef}
           boundBoxFunc={(oldBox, newBox) => {
-            if (newBox.width < 10 || newBox.height < 10) return oldBox;
+            if (Math.abs(newBox.width) < 10 || Math.abs(newBox.height) < 10)
+              return oldBox;
             return newBox;
           }}
+          keepRatio={false}
           enabledAnchors={[
-            'top-center',
-            'middle-right',
-            'middle-left',
-            'bottom-center',
+            'top-left',
+            'top-right',
+            'bottom-left',
+            'bottom-right',
           ]}
           rotateEnabled={false}
           borderStroke="#3b82f6"
           anchorStroke="#3b82f6"
           anchorFill="#ffffff"
-          anchorSize={10}
-          anchorCornerRadius={3}
+          anchorSize={9}
+          anchorCornerRadius={2}
           onTransformEnd={() => {
             const node = shapeNodeRef.current;
             if (!node) return;
@@ -850,8 +941,8 @@ const ZoneObject = React.memo(function ZoneObject({
             node.scaleX(1);
             node.scaleY(1);
 
-            const newPxW = pxW * scaleX;
-            const newPxH = pxH * scaleY;
+            const newPxW = Math.abs(pxW * scaleX);
+            const newPxH = Math.abs(pxH * scaleY);
             const newPxX = node.x() - newPxW / 2;
             const newPxY = node.y() - newPxH / 2;
 
@@ -1011,4 +1102,3 @@ export function AnnotationLayer({
     </Group>
   );
 }
-

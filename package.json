@@ -15,8 +15,10 @@
     "lint": "rtk biome lint --write .",
     "check": "rtk biome check --write .",
     "type-check": "rtk tsc --noEmit",
+    "type-check:scoped": "node .agents/scripts/type-check-scoped.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify:scoped": "node .agents/scripts/verify-scoped.js",
     "verify": "rtk pnpm check && rtk pnpm type-check && rtk pnpm test"
   },
   "dependencies": {

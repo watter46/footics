@@ -19,7 +19,6 @@ strip_lines_matching = ["^Checked", "^Found", "^Diagnostics not shown"]
 [filters.tsc-dedupe]
 description = "Deduplicate TSC errors"
 match_command = "tsc"
-deduplicate_lines = true
 max_lines = 50
 
 # 依存関係ツリーの圧縮

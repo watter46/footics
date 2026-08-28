@@ -28,7 +28,16 @@
 | E: Browser Extension | extension/ | regista-extension |
 | F: Analysis & Memo | src/components/features/analysis/, memo-overlay/ | regista-frontend |
 
-## State Machine (開発ワークフロー)
+## 実行モード (Execution Modes)
+
+開発効率とトークン消費の最適化のため、Registaはタスク規模に応じて2つのモードを切り替えます。
+
+| モード | 適用条件 | ワークフロー |
+|---|---|---|
+| **Fast-Track Mode**<br>(単独・高速実行) | ・日常の技術相談・質問・調査<br>・1〜3ファイル以内の機能修正・バグ修正<br>・型エラー解消、軽微なリファクタリング | チケット発行・State Machine・QA召喚をスキップし、現在のアシスタント単独で即時実装・最小スコープ検証（対象ファイルのみ）を行って完了する。 |
+| **Orchestrated Mode**<br>(組織的開発) | ・複数ドメイン（Web+Ext+Canvas等）に跨る大型新機能<br>・DBスキーマの破壊的変更<br>・アーキテクチャ刷新 | 下記の State Machine (TRIAGE → DESIGN → IMPLEMENTATION → REVIEW_QA → DONE) に従って分業する。 |
+
+## State Machine (Orchestrated Mode 開発ワークフロー)
 
 ```
   [Request]
@@ -57,11 +66,11 @@
 
 | ステート | Exit Criteria |
 |---|---|
-| TRIAGE | 本質課題記述 / 影響ファイル特定 / ドメイン決定 / 担当アサイン |
+| TRIAGE | 本質課題記述 / 影響ファイル特定 / ドメイン決定 / 担当アサイン / `REGISTA_BOARD.md` へのタスクチケット発行（Task Matrix記載） |
 | DESIGN | 変更ファイルリスト確定 / 型定義明文化 / テスト影響評価 / GM承認 |
-| IMPLEMENTATION | コード実装完了 / lint パス / type-check パス / 対象テスト パス（影響範囲限定） |
+| IMPLEMENTATION | コード実装完了 / lint パス / 高速型チェック パス (`type-check:scoped`) / 対象テスト パス（影響範囲限定） |
 | REVIEW_QA | 全10軸が2点以上 / AGENTS.md規約違反なし |
-| DONE | デプロイ/ビルド成功 / KI更新完了 / オーナーへ報告 |
+| DONE | デプロイ/ビルド成功 / KI更新完了 / オーナーへ報告 / `REGISTA_BOARD.md` ステータス更新 |
 
 ## タスク分解パターン (AAWU)
 

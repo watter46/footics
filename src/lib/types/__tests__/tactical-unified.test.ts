@@ -3,16 +3,16 @@
  * Schema validation and coordinate transform tests
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  TacticalProjectSchema,
-  SlideSchema,
-  PlayerSchema,
-  transformCoord,
-  transformPoints,
+  createDefaultPlayer,
   createDefaultProject,
   createDefaultSlide,
-  createDefaultPlayer,
+  PlayerSchema,
+  SlideSchema,
+  TacticalProjectSchema,
+  transformCoord,
+  transformPoints,
 } from '../tactical-unified';
 
 describe('transformCoord', () => {
@@ -53,7 +53,10 @@ describe('transformCoord', () => {
 
 describe('transformPoints', () => {
   it('複数点を一括変換する', () => {
-    const pts = [{ x: 80, y: 30 }, { x: 50, y: 50 }];
+    const pts = [
+      { x: 80, y: 30 },
+      { x: 50, y: 50 },
+    ];
     const result = transformPoints(pts, '16:9', '9:16');
     expect(result).toHaveLength(2);
     expect(result[0]?.x).toBeCloseTo(30);
@@ -83,7 +86,10 @@ describe('PlayerSchema', () => {
   });
 
   it('x が 0〜100 の範囲外はエラー', () => {
-    const player = { ...createDefaultPlayer('home', 50, 50, '#034694'), x: 110 };
+    const player = {
+      ...createDefaultPlayer('home', 50, 50, '#034694'),
+      x: 110,
+    };
     const result = PlayerSchema.safeParse(player);
     expect(result.success).toBe(false);
   });

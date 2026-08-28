@@ -23,13 +23,43 @@ export function useKonvaExport({
   const setIsExporting = useTacticalUnifiedStore((s) => s.setIsExporting);
   const closeExportModal = useTacticalUnifiedStore((s) => s.closeExportModal);
   const project = useTacticalUnifiedStore((s) => s.project);
+  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
 
   /** Stage → PNG dataURL */
   const captureCurrentSlide = useCallback(
     (scale = 2): string | null => {
-      return stageRef.current?.toDataURL({ pixelRatio: scale }) ?? null;
+      const stage = stageRef.current;
+      if (!stage) return null;
+
+      const activeSlide = project.slides.find((s) => s.id === activeSlideId);
+      const box = activeSlide?.boundaryBox;
+
+      if (
+        box &&
+        box.enabled &&
+        box.width > 0 &&
+        box.height > 0 &&
+        (box.width < 100 || box.height < 100 || box.x > 0 || box.y > 0)
+      ) {
+        const stageW = stage.width();
+        const stageH = stage.height();
+        const cropX = (box.x / 100) * stageW;
+        const cropY = (box.y / 100) * stageH;
+        const cropW = (box.width / 100) * stageW;
+        const cropH = (box.height / 100) * stageH;
+
+        return stage.toDataURL({
+          x: cropX,
+          y: cropY,
+          width: cropW,
+          height: cropH,
+          pixelRatio: scale,
+        });
+      }
+
+      return stage.toDataURL({ pixelRatio: scale }) ?? null;
     },
-    [stageRef],
+    [stageRef, project.slides, activeSlideId],
   );
 
   /** dataURL → Blob */
@@ -40,17 +70,21 @@ export function useKonvaExport({
 
   /** PNG clipboard (📋 ボタン) */
   const copyToClipboard = useCallback(async () => {
-    const dataUrl = captureCurrentSlide(2);
-    if (!dataUrl) return;
+    setIsExporting(true);
+    await new Promise((r) => setTimeout(r, 50));
     try {
+      const dataUrl = captureCurrentSlide(2);
+      if (!dataUrl) return;
       const blob = await dataUrlToBlob(dataUrl);
       await navigator.clipboard.write([
         new ClipboardItem({ 'image/png': blob }),
       ]);
     } catch {
       // clipboard API 非対応は無視
+    } finally {
+      setIsExporting(false);
     }
-  }, [captureCurrentSlide, dataUrlToBlob]);
+  }, [captureCurrentSlide, dataUrlToBlob, setIsExporting]);
 
   /** ファイルダウンロードヘルパー */
   const download = useCallback((blob: Blob, filename: string) => {

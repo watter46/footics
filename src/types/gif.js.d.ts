@@ -12,7 +12,10 @@ declare module 'gif.js' {
 
   class GIF {
     constructor(options?: GIFOptions);
-    addFrame(image: HTMLImageElement | HTMLCanvasElement, options?: { delay?: number; copy?: boolean }): void;
+    addFrame(
+      image: HTMLImageElement | HTMLCanvasElement,
+      options?: { delay?: number; copy?: boolean },
+    ): void;
     on(event: 'finished', callback: (blob: Blob) => void): void;
     on(event: 'progress', callback: (progress: number) => void): void;
     render(): void;

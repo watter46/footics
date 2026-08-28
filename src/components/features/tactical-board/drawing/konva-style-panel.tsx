@@ -98,7 +98,8 @@ export const KonvaStylePanel: React.FC<KonvaStylePanelProps> = ({
             </span>
             <div className="grid grid-cols-4 gap-1.5">
               {COLOR_PALETTE.map((c) => {
-                const isSelected = properties.color.toLowerCase() === c.toLowerCase();
+                const isSelected =
+                  properties.color.toLowerCase() === c.toLowerCase();
                 const isWhite = c.toLowerCase() === '#ffffff';
                 return (
                   <button
@@ -259,7 +260,8 @@ export const KonvaStylePanel: React.FC<KonvaStylePanelProps> = ({
           </div>
 
           {/* Fill Opacity - For Zone & Polygon Zone */}
-          {(properties.type === 'zone' || properties.type === 'polygon_zone') && (
+          {(properties.type === 'zone' ||
+            properties.type === 'polygon_zone') && (
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase">
                 Fill Opacity

@@ -7,8 +7,8 @@
  */
 
 import {
+  ArrowDownLeft,
   Award,
-  ChevronDown,
   Circle,
   Eye,
   Info,
@@ -19,6 +19,7 @@ import {
   Palette,
   Plus,
   Settings,
+  Sparkles,
   Square,
   Trash2,
   X,
@@ -34,6 +35,7 @@ import type {
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
 import {
+  type MarkerOptionTab,
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/stores/tactical-unified-store';
@@ -78,7 +80,7 @@ export function InspectorPanel() {
   const removeZone = useTacticalUnifiedStore((s) => s.removeZone);
   const removeText = useTacticalUnifiedStore((s) => s.removeText);
 
-  const setInspectorOpen = useTacticalUnifiedStore((s) => s.setInspectorOpen);
+  const setRightPanelTab = useTacticalUnifiedStore((s) => s.setRightPanelTab);
   const project = useTacticalUnifiedStore((s) => s.project);
   const setBackgroundType = useTacticalUnifiedStore((s) => s.setBackgroundType);
   const setTeamColor = useTacticalUnifiedStore((s) => s.setTeamColor);
@@ -90,7 +92,9 @@ export function InspectorPanel() {
       <div className="flex flex-col h-full">
         <InspectorHeader
           title="プロジェクト & ピッチ"
-          onClose={() => setInspectorOpen(false)}
+          onClose={() => {
+            setRightPanelTab('formation_sub');
+          }}
         />
         <DefaultInspector
           project={project}
@@ -109,7 +113,6 @@ export function InspectorPanel() {
         <InspectorHeader
           onClose={() => {
             clearSelection();
-            setInspectorOpen(false);
           }}
         />
       );
@@ -117,7 +120,9 @@ export function InspectorPanel() {
       <div className="flex flex-col h-full">
         <InspectorHeader
           title="選手"
-          onClose={() => setInspectorOpen(false)}
+          onClose={() => {
+            clearSelection();
+          }}
           onDeselect={clearSelection}
         />
         <PlayerInspector
@@ -142,15 +147,16 @@ export function InspectorPanel() {
         <InspectorHeader
           onClose={() => {
             clearSelection();
-            setInspectorOpen(false);
           }}
         />
       );
     return (
       <div className="flex flex-col h-full">
         <InspectorHeader
-          title="矢印"
-          onClose={() => setInspectorOpen(false)}
+          title="矢印・ライン"
+          onClose={() => {
+            clearSelection();
+          }}
           onDeselect={clearSelection}
         />
         <ArrowInspector
@@ -173,7 +179,6 @@ export function InspectorPanel() {
         <InspectorHeader
           onClose={() => {
             clearSelection();
-            setInspectorOpen(false);
           }}
         />
       );
@@ -181,7 +186,9 @@ export function InspectorPanel() {
       <div className="flex flex-col h-full">
         <InspectorHeader
           title="ゾーン"
-          onClose={() => setInspectorOpen(false)}
+          onClose={() => {
+            clearSelection();
+          }}
           onDeselect={clearSelection}
         />
         <ZoneInspector
@@ -204,7 +211,6 @@ export function InspectorPanel() {
         <InspectorHeader
           onClose={() => {
             clearSelection();
-            setInspectorOpen(false);
           }}
         />
       );
@@ -212,7 +218,9 @@ export function InspectorPanel() {
       <div className="flex flex-col h-full">
         <InspectorHeader
           title="テキスト"
-          onClose={() => setInspectorOpen(false)}
+          onClose={() => {
+            clearSelection();
+          }}
           onDeselect={clearSelection}
         />
         <TextInspector
@@ -232,7 +240,6 @@ export function InspectorPanel() {
     <InspectorHeader
       onClose={() => {
         clearSelection();
-        setInspectorOpen(false);
       }}
     />
   );
@@ -377,11 +384,12 @@ function DefaultInspector({
           </div>
           <div className="p-2 rounded-lg bg-white/5 border border-white/10">
             <span className="text-[10px] text-white/40 block">
-              矢印 / ゾーン
+              矢印 / ゾーン / 文字
             </span>
             <span className="font-mono font-bold text-white">
               {arrowCount} <span className="text-white/40 font-normal">/</span>{' '}
-              {zoneCount}
+              {zoneCount} <span className="text-white/40 font-normal">/</span>{' '}
+              {textCount}
             </span>
           </div>
         </div>
@@ -437,7 +445,8 @@ function ColorInput({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const normalizedValue = value.startsWith('#') && value.length === 7 ? value : '#ffffff';
+  const normalizedValue =
+    value.startsWith('#') && value.length === 7 ? value : '#ffffff';
 
   return (
     <div className="w-[70%] space-y-1.5" style={{ colorScheme: 'only light' }}>
@@ -596,15 +605,25 @@ function PlayerInspector({
   const upStyle = (s: Partial<Player['style']>) =>
     up({ style: { ...player.style, ...s } });
 
+  const activeMarkerOptionTab = useTacticalUnifiedStore(
+    (s) => s.activeMarkerOptionTab,
+  );
+  const setActiveMarkerOptionTab = useTacticalUnifiedStore(
+    (s) => s.setActiveMarkerOptionTab,
+  );
+  const currentTab = activeMarkerOptionTab || 'vision';
+
   const connectingPlayerId = useTacticalUnifiedStore(
     (s) => s.connectingPlayerId,
   );
   const setConnectingPlayerId = useTacticalUnifiedStore(
     (s) => s.setConnectingPlayerId,
   );
+  const movePlayerToBench = useTacticalUnifiedStore((s) => s.movePlayerToBench);
+  const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
+  const setRightPanelTab = useTacticalUnifiedStore((s) => s.setRightPanelTab);
   const isConnecting = connectingPlayerId === player.id;
 
-  const [basicSettingsOpen, setBasicSettingsOpen] = useState(false);
   const [newBadgeText, setNewBadgeText] = useState('');
 
   // 視野操作
@@ -618,8 +637,8 @@ function PlayerInspector({
           id: crypto.randomUUID(),
           angleRad: 0,
           spreadRad: Math.PI / 3, // 60°
-          radius: 25,
-          color: '#3b82f6',
+          radius: 13,
+          color: player.style.color || '#3b82f6',
           opacity: 0.3,
           visible: true,
         },
@@ -662,6 +681,86 @@ function PlayerInspector({
     up({ connectLines: player.connectLines.filter((l) => l.id !== lineId) });
   };
 
+  // ── アイコン押下時の即時適用 & タブ切替 ──
+  const handleTabClick = (tab: MarkerOptionTab) => {
+    setActiveMarkerOptionTab(tab);
+    if (tab === 'vision') {
+      if (!player.visionCone?.visible) {
+        up({
+          visionCone: {
+            id: crypto.randomUUID(),
+            angleRad: 0,
+            spreadRad: Math.PI / 3,
+            radius: 13,
+            color: player.style.color || '#3b82f6',
+            opacity: 0.3,
+            visible: true,
+          },
+        });
+      }
+    } else if (tab === 'connect') {
+      setConnectingPlayerId(player.id);
+    } else if (tab === 'arrow_solid') {
+      const dir = player.team === 'away' ? -15 : 15;
+      addArrow(slideId, {
+        id: crypto.randomUUID(),
+        annotationType: 'arrow',
+        arrowType: 'pass',
+        curveType: 'straight',
+        sourcePlayerId: player.id,
+        points: [
+          { x: player.x, y: player.y },
+          {
+            x: Math.max(0, Math.min(100, player.x + dir)),
+            y: player.y,
+          },
+        ],
+        color: player.style.color || '#38bdf8',
+        strokeWidth: 3,
+        dashArray: [],
+        arrowHead: true,
+        endMarker: 'arrow',
+      });
+    } else if (tab === 'arrow_dash') {
+      const dir = player.team === 'away' ? -15 : 15;
+      addArrow(slideId, {
+        id: crypto.randomUUID(),
+        annotationType: 'arrow',
+        arrowType: 'move',
+        curveType: 'straight',
+        sourcePlayerId: player.id,
+        points: [
+          { x: player.x, y: player.y },
+          {
+            x: Math.max(0, Math.min(100, player.x + dir)),
+            y: player.y,
+          },
+        ],
+        color: '#fbbf24',
+        strokeWidth: 3,
+        dashArray: [6, 4],
+        arrowHead: true,
+        endMarker: 'arrow',
+      });
+    } else if (tab === 'focus') {
+      if (!player.focus?.enabled) {
+        up({
+          focus: {
+            enabled: true,
+            color: '#fbbf24',
+            radius: 3,
+            opacity: 0.35,
+            style: 'spotlight',
+          },
+        });
+      }
+    } else if (tab === 'badge') {
+      if (player.badges.length === 0) {
+        addBadge('KEY', '#f59e0b', '#000000');
+      }
+    }
+  };
+
   const angleDeg = player.visionCone
     ? Math.round((player.visionCone.angleRad * 180) / Math.PI)
     : 0;
@@ -670,112 +769,179 @@ function PlayerInspector({
     : 60;
 
   return (
-    <div className="flex-1 overflow-y-auto p-3 space-y-4 text-slate-200">
-      {/* ── メイン設定 (色・サイズ・枠線太さ) ── */}
-      <div className="space-y-3">
-        <Row label="色">
-          <ColorInput
-            value={player.style.color}
-            onChange={(v) => upStyle({ color: v })}
-          />
-        </Row>
-        <RangeInput
-          label="サイズ"
-          value={player.style.sizeScale}
-          min={0.4}
-          max={2.0}
-          step={0.1}
-          onChange={(v) => upStyle({ sizeScale: v })}
-        />
-        <RangeInput
-          label="枠線太さ"
-          value={player.style.strokeWidth}
-          min={0}
-          max={5}
-          step={0.5}
-          onChange={(v) => upStyle({ strokeWidth: v })}
-        />
-      </div>
-
-      {/* ── オブジェクト ── */}
-      <div className="pt-3 border-t border-white/10 space-y-3">
-        <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
-          <Layers size={13} className="text-purple-400" />
-          オブジェクト
-        </span>
-
-        {/* 矢印クイック追加 */}
-        <div className="grid grid-cols-2 gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              const dir = player.team === 'away' ? -15 : 15;
-              addArrow(slideId, {
-                id: crypto.randomUUID(),
-                annotationType: 'arrow',
-                arrowType: 'pass',
-                curveType: 'straight',
-                sourcePlayerId: player.id,
-                points: [
-                  { x: player.x, y: player.y },
-                  {
-                    x: Math.max(0, Math.min(100, player.x + dir)),
-                    y: player.y,
-                  },
-                ],
-                color: player.style.color || '#38bdf8',
-                strokeWidth: 3,
-                dashArray: [],
-                arrowHead: true,
-              });
-            }}
-            className="py-1.5 px-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-white/80 hover:text-white transition-all flex items-center justify-center gap-1.5"
-            title="選手から実線矢印（パス）を追加"
+    <div className="flex-1 overflow-y-auto p-3 space-y-3.5 text-slate-200">
+      {/* ── 選手ヘッダー & サブ/ピッチ間ジャンプ ── */}
+      <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10">
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 border border-white/30"
+            style={{ backgroundColor: player.style.color || '#3b82f6' }}
           >
-            <MoveRight size={13} className="text-blue-400" />+ 実線矢印
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              const dir = player.team === 'away' ? -15 : 15;
-              addArrow(slideId, {
-                id: crypto.randomUUID(),
-                annotationType: 'arrow',
-                arrowType: 'move',
-                curveType: 'straight',
-                sourcePlayerId: player.id,
-                points: [
-                  { x: player.x, y: player.y },
-                  {
-                    x: Math.max(0, Math.min(100, player.x + dir)),
-                    y: player.y,
-                  },
-                ],
-                color: '#fbbf24',
-                strokeWidth: 3,
-                dashArray: [6, 4],
-                arrowHead: true,
-              });
-            }}
-            className="py-1.5 px-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-white/80 hover:text-white transition-all flex items-center justify-center gap-1.5"
-            title="選手から点線矢印（移動）を追加"
-          >
-            <DashedArrowIcon size={13} className="text-amber-400" />+ 点線矢印
-          </button>
+            {player.shirtNo || '•'}
+          </span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-bold text-white truncate">
+              {player.name || `選手 ${player.shirtNo || ''}`}
+            </span>
+            <span className="text-[10px] text-white/40 font-mono">
+              {player.area === 'pitch'
+                ? 'ピッチ上 (配置中)'
+                : 'サブメンバー (ベンチ)'}
+            </span>
+          </div>
         </div>
 
-        {/* ── 視野 ── */}
-        <div className="space-y-2 pt-1 border-t border-white/5">
+        {player.area === 'pitch' ? (
+          <button
+            type="button"
+            onClick={() => {
+              movePlayerToBench(slideId, player.id);
+              setRightPanelTab('formation_sub');
+            }}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[10px] font-bold transition-all cursor-pointer shadow-sm"
+            title="ピッチからサブ(ベンチ)へ退避 (マーカーオプション自動解除)"
+          >
+            <ArrowDownLeft size={12} />
+            <span>サブへ送る</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              movePlayerToPitch(slideId, player.id, 50, 50);
+            }}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 text-blue-300 text-[10px] font-bold transition-all cursor-pointer shadow-sm"
+            title="サブからピッチへ配置"
+          >
+            <Plus size={12} />
+            <span>ピッチへ配置</span>
+          </button>
+        )}
+      </div>
+
+      {/* ── 横並びアイコンタブバー (7タブ) ── */}
+      <div className="grid grid-cols-7 gap-1 p-1 rounded-xl bg-white/5 border border-white/10 shrink-0">
+        <button
+          type="button"
+          onClick={() => handleTabClick('vision')}
+          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
+            currentTab === 'vision'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+          title="視野コーン (クリックで即時適用)"
+        >
+          <Eye size={14} />
+          <span className="text-[9px] mt-1 font-medium leading-none">視野</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabClick('connect')}
+          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
+            currentTab === 'connect'
+              ? 'bg-emerald-600 text-white shadow-md'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+          title="コネクト (クリックで対象選択開始)"
+        >
+          <Link size={14} />
+          <span className="text-[9px] mt-1 font-medium leading-none">
+            コネクト
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabClick('arrow_solid')}
+          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
+            currentTab === 'arrow_solid'
+              ? 'bg-sky-600 text-white shadow-md'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+          title="実線矢印 (クリックで即時追加)"
+        >
+          <MoveRight size={14} />
+          <span className="text-[9px] mt-1 font-medium leading-none">
+            実線矢印
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabClick('arrow_dash')}
+          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
+            currentTab === 'arrow_dash'
+              ? 'bg-amber-600 text-white shadow-md'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+          title="点線矢印 (クリックで即時追加)"
+        >
+          <DashedArrowIcon size={14} />
+          <span className="text-[9px] mt-1 font-medium leading-none">
+            点線矢印
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabClick('focus')}
+          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
+            currentTab === 'focus'
+              ? 'bg-yellow-500 text-black font-bold shadow-md'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+          title="フォーカス (スポットライト強調・クリックで即時適用)"
+        >
+          <Sparkles size={14} />
+          <span className="text-[9px] mt-1 leading-none">注目</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabClick('badge')}
+          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
+            currentTab === 'badge'
+              ? 'bg-purple-600 text-white shadow-md'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+          title="バッジ (クリックでKEYバッジ追加)"
+        >
+          <Award size={14} />
+          <span className="text-[9px] mt-1 font-medium leading-none">
+            バッジ
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabClick('basic')}
+          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
+            currentTab === 'basic'
+              ? 'bg-zinc-700 text-white shadow-md'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+          title="基本設定"
+        >
+          <Settings size={14} />
+          <span className="text-[9px] mt-1 font-medium leading-none">基本</span>
+        </button>
+      </div>
+
+      {/* ── 選択されたタブのコンテンツ ── */}
+
+      {/* 1. 視野 (Vision Cone) */}
+      {currentTab === 'vision' && (
+        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/80 flex items-center gap-1.5">
-              <Eye size={13} className="text-blue-400" />
-              視野
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+              <Eye size={14} className="text-blue-400" />
+              視野コーン
             </span>
             <button
               type="button"
               onClick={toggleVisionCone}
-              className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition-all ${
+              className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 hasVisionCone
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-white/10 text-white/50 hover:text-white'
@@ -785,8 +951,12 @@ function PlayerInspector({
             </button>
           </div>
 
-          {hasVisionCone && player.visionCone && (
-            <div className="space-y-2.5 p-2.5 rounded-lg bg-white/5 border border-white/10">
+          {hasVisionCone && player.visionCone ? (
+            <div className="space-y-3 pt-1">
+              <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-200/90 leading-tight">
+                💡
+                キャンバス上の視野コーンハンドルを直接ドラッグして、向き・視野長・広がり角を操作できます。
+              </div>
               <RangeInput
                 label="向き (°)"
                 value={angleDeg}
@@ -811,7 +981,7 @@ function PlayerInspector({
                 label="視野長"
                 value={player.visionCone.radius}
                 min={10}
-                max={50}
+                max={60}
                 step={2}
                 onChange={(rad) => updateVisionCone({ radius: rad })}
               />
@@ -830,15 +1000,21 @@ function PlayerInspector({
                 onChange={(op) => updateVisionCone({ opacity: op })}
               />
             </div>
+          ) : (
+            <div className="py-6 text-center text-xs text-white/40">
+              「ON」をクリックして視野コーンを有効化します
+            </div>
           )}
         </div>
+      )}
 
-        {/* ── コネクタ ── */}
-        <div className="space-y-2 pt-1 border-t border-white/5">
+      {/* 2. コネクタ (Connect Line) */}
+      {currentTab === 'connect' && (
+        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/80 flex items-center gap-1.5">
-              <Link size={13} className="text-emerald-400" />
-              コネクタ
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+              <Link size={14} className="text-emerald-400" />
+              選手間コネクタ
             </span>
             <button
               type="button"
@@ -849,18 +1025,17 @@ function PlayerInspector({
                   setConnectingPlayerId(player.id);
                 }
               }}
-              className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition-all flex items-center gap-1 ${
+              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                 isConnecting
                   ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400 animate-pulse'
-                  : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
+                  : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
               }`}
             >
-              <Plus size={10} />
+              <Plus size={12} />
               {isConnecting ? '対象選択中...' : '追加'}
             </button>
           </div>
 
-          {/* 接続対象選択案内モード */}
           {isConnecting && (
             <div className="p-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-200 flex items-center justify-between">
               <span className="text-[11px] font-medium leading-tight">
@@ -869,27 +1044,38 @@ function PlayerInspector({
               <button
                 type="button"
                 onClick={() => setConnectingPlayerId(null)}
-                className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px] text-white shrink-0 ml-2"
+                className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px] text-white shrink-0 ml-2 cursor-pointer"
               >
                 キャンセル
               </button>
             </div>
           )}
 
-          {/* 既存コネクタ一覧 */}
-          {player.connectLines.length > 0 && (
-            <div className="space-y-1.5">
+          {player.connectLines.length > 0 ? (
+            <div className="space-y-2">
               {player.connectLines.map((line) => {
                 const target = allPlayers.find((p) => p.id === line.toPlayerId);
                 return (
                   <div
                     key={line.id}
-                    className="flex items-center justify-between px-2.5 py-1.5 rounded bg-white/5 border border-white/10 text-xs"
+                    className="p-2 rounded-lg bg-white/5 border border-white/10 space-y-2 text-xs"
                   >
-                    <span className="truncate text-white/80">
-                      → {target?.name || `選手 #${target?.shirtNo || '?'}`}
-                    </span>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-white/90 truncate">
+                        → {target?.name || `選手 #${target?.shirtNo || '?'}`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeConnectLine(line.id)}
+                        className="p-1 rounded hover:bg-white/10 text-red-400 hover:text-red-300 cursor-pointer"
+                        title="コネクタを削除"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                      <span className="text-[10px] text-white/50">線種</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -903,207 +1089,417 @@ function PlayerInspector({
                             ),
                           });
                         }}
-                        className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px] text-white/70 hover:text-white"
-                        title="線種切替 (実線/点線)"
+                        className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[11px] text-white/80 cursor-pointer"
                       >
                         {line.lineStyle === 'dashed' ? '点線' : '実線'}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => removeConnectLine(line.id)}
-                        className="p-1 rounded hover:bg-white/10 text-red-400"
-                        title="コネクタを削除"
-                      >
-                        <Trash2 size={12} />
-                      </button>
                     </div>
+
+                    <Row label="色">
+                      <ColorInput
+                        value={line.color || player.style.color || '#3b82f6'}
+                        onChange={(c) => {
+                          up({
+                            connectLines: player.connectLines.map((l) =>
+                              l.id === line.id ? { ...l, color: c } : l,
+                            ),
+                          });
+                        }}
+                      />
+                    </Row>
                   </div>
                 );
               })}
             </div>
+          ) : (
+            !isConnecting && (
+              <div className="py-6 text-center text-xs text-white/40">
+                「+ 追加」を押して対象選手を選択してください
+              </div>
+            )
           )}
         </div>
-      </div>
+      )}
 
-      {/* ── 基本設定 (トグルアコーディオン: デフォルト閉じ) ── */}
-      <div className="pt-2 border-t border-white/10">
-        <button
-          type="button"
-          onClick={() => setBasicSettingsOpen((v) => !v)}
-          className="flex items-center justify-between w-full py-1.5 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-white/80 hover:text-white transition-all border border-white/5"
-        >
-          <span className="flex items-center gap-1.5">
-            <Settings size={13} className="text-blue-400" />
-            基本設定
+      {/* 3. 実線矢印 (Solid Arrow) */}
+      {currentTab === 'arrow_solid' && (
+        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
+          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+            <MoveRight size={14} className="text-sky-400" />
+            実線矢印（パス・シュート）
           </span>
-          <ChevronDown
-            size={14}
-            className={`transition-transform duration-200 ${
-              basicSettingsOpen ? 'rotate-180' : ''
-            }`}
-          />
-        </button>
 
-        {basicSettingsOpen && (
-          <div className="mt-2.5 p-2.5 rounded-lg bg-white/[0.03] border border-white/10 space-y-3">
-            <Row label="チーム">
-              <select
-                value={player.team}
-                onChange={(e) => up({ team: e.target.value as Player['team'] })}
-                className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value="home">ホーム</option>
-                <option value="away">アウェイ</option>
-                <option value="neutral">ニュートラル</option>
-              </select>
-            </Row>
-            <Row label="背番号">
-              <TextInput
-                value={player.shirtNo ?? ''}
-                onChange={(v) => up({ shirtNo: v })}
-                maxLength={3}
-              />
-            </Row>
-            <Row label="名前">
-              <TextInput
-                value={player.name ?? ''}
-                onChange={(v) => up({ name: v })}
-              />
-            </Row>
-            <Row label="ポジション">
-              <TextInput
-                value={player.position ?? ''}
-                onChange={(v) => up({ position: v })}
-              />
-            </Row>
-            <Row label="ラベル表示">
-              <select
-                value={player.style.bottomLabel}
-                onChange={(e) =>
-                  upStyle({
-                    bottomLabel: e.target
-                      .value as Player['style']['bottomLabel'],
-                  })
-                }
-                className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value="name">名前</option>
-                <option value="number">背番号</option>
-                <option value="none">非表示</option>
-              </select>
-            </Row>
-            <Row label="内部表示">
-              <select
-                value={player.style.insideContent}
-                onChange={(e) =>
-                  upStyle({
-                    insideContent: e.target
-                      .value as Player['style']['insideContent'],
-                  })
-                }
-                className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value="number">背番号</option>
-                <option value="photo">写真</option>
-                <option value="none">なし</option>
-              </select>
-            </Row>
-            {player.style.insideContent === 'photo' && (
-              <Row label="写真URL">
-                <TextInput
-                  value={player.style.photoUrl ?? ''}
-                  onChange={(v) => upStyle({ photoUrl: v })}
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                const dir = player.team === 'away' ? -15 : 15;
+                addArrow(slideId, {
+                  id: crypto.randomUUID(),
+                  annotationType: 'arrow',
+                  arrowType: 'pass',
+                  curveType: 'straight',
+                  sourcePlayerId: player.id,
+                  points: [
+                    { x: player.x, y: player.y },
+                    {
+                      x: Math.max(0, Math.min(100, player.x + dir)),
+                      y: player.y,
+                    },
+                  ],
+                  color: player.style.color || '#38bdf8',
+                  strokeWidth: 3,
+                  dashArray: [],
+                  arrowHead: true,
+                  endMarker: 'arrow',
+                });
+              }}
+              className="w-full py-2 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 text-xs font-bold text-white transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <Plus size={14} />+ 進行方向へ実線矢印を追加
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 4. 点線矢印 (Dashed Arrow) */}
+      {currentTab === 'arrow_dash' && (
+        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
+          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+            <DashedArrowIcon size={14} className="text-amber-400" />
+            点線矢印（移動・ランニング）
+          </span>
+
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                const dir = player.team === 'away' ? -15 : 15;
+                addArrow(slideId, {
+                  id: crypto.randomUUID(),
+                  annotationType: 'arrow',
+                  arrowType: 'move',
+                  curveType: 'straight',
+                  sourcePlayerId: player.id,
+                  points: [
+                    { x: player.x, y: player.y },
+                    {
+                      x: Math.max(0, Math.min(100, player.x + dir)),
+                      y: player.y,
+                    },
+                  ],
+                  color: '#fbbf24',
+                  strokeWidth: 3,
+                  dashArray: [6, 4],
+                  arrowHead: true,
+                  endMarker: 'arrow',
+                });
+              }}
+              className="w-full py-2 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-xs font-bold text-white transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <Plus size={14} />+ 進行方向へ点線矢印を追加
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 5. フォーカス (Focus / Spotlight) */}
+      {currentTab === 'focus' && (
+        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+              <Sparkles size={14} className="text-yellow-400" />
+              フォーカス (スポットライト)
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const nextEnabled = !(player.focus?.enabled ?? false);
+                up({
+                  focus: {
+                    enabled: nextEnabled,
+                    color: player.focus?.color ?? '#fbbf24',
+                    radius: player.focus?.radius ?? 22,
+                    opacity: player.focus?.opacity ?? 0.35,
+                    style: player.focus?.style ?? 'spotlight',
+                  },
+                });
+              }}
+              className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                player.focus?.enabled
+                  ? 'bg-yellow-500 text-black shadow-sm'
+                  : 'bg-white/10 text-white/50 hover:text-white'
+              }`}
+            >
+              {player.focus?.enabled ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          {player.focus?.enabled ? (
+            <div className="space-y-3 pt-1">
+              <div className="p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-[11px] text-yellow-200/90 leading-tight">
+                💡
+                注目選手を戦術解説のようにスポットライトで照らして際立たせます。
+              </div>
+
+              <Row label="スポットライト色">
+                <ColorInput
+                  value={player.focus.color ?? '#fbbf24'}
+                  onChange={(c) =>
+                    up({
+                      focus: {
+                        ...(player.focus ?? {
+                          enabled: true,
+                          radius: 22,
+                          opacity: 0.35,
+                          style: 'spotlight',
+                        }),
+                        color: c,
+                      },
+                    })
+                  }
                 />
               </Row>
-            )}
 
-            {/* ── バッジ設定 ── */}
-            <div className="pt-2.5 border-t border-white/10 space-y-2">
-              <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider flex items-center gap-1">
-                <Award size={13} className="text-amber-400" />
-                バッジ
-              </span>
+              <RangeInput
+                label="照射半径"
+                value={player.focus.radius ?? 3}
+                min={1}
+                max={6}
+                step={0.5}
+                onChange={(rad) =>
+                  up({
+                    focus: {
+                      ...(player.focus ?? {
+                        enabled: true,
+                        color: '#fbbf24',
+                        opacity: 0.35,
+                        style: 'spotlight',
+                      }),
+                      radius: rad,
+                    },
+                  })
+                }
+              />
 
-              {/* 既存バッジ一覧 */}
-              {player.badges.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 py-1">
-                  {player.badges.map((b) => (
-                    <span
-                      key={b.id}
-                      style={{ backgroundColor: b.color, color: b.textColor }}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold shadow-sm"
-                    >
-                      {b.label}
-                      <button
-                        type="button"
-                        onClick={() => removeBadge(b.id)}
-                        className="hover:opacity-70 text-xs leading-none"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* プリセットバッジ */}
-              <div className="flex items-center gap-1 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => addBadge('KEY', '#f59e0b', '#000000')}
-                  className="px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold hover:bg-amber-500/30 transition-all"
-                >
-                  + KEY
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addBadge('★', '#eab308', '#000000')}
-                  className="px-2 py-1 rounded bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-[10px] font-bold hover:bg-yellow-500/30 transition-all"
-                >
-                  + ★
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addBadge('C', '#3b82f6', '#ffffff')}
-                  className="px-2 py-1 rounded bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[10px] font-bold hover:bg-blue-500/30 transition-all"
-                >
-                  + C
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addBadge('TARGET', '#ef4444', '#ffffff')}
-                  className="px-2 py-1 rounded bg-red-500/20 border border-red-500/40 text-red-300 text-[10px] font-bold hover:bg-red-500/30 transition-all"
-                >
-                  + TARGET
-                </button>
-              </div>
-
-              {/* カスタムバッジ追加 */}
-              <div className="flex items-center gap-1 mt-1">
-                <input
-                  type="text"
-                  placeholder="カスタムバッジ名"
-                  value={newBadgeText}
-                  onChange={(e) => setNewBadgeText(e.target.value)}
-                  className="flex-1 px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    addBadge(newBadgeText);
-                    setNewBadgeText('');
-                  }}
-                  disabled={!newBadgeText.trim()}
-                  className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-xs font-medium text-white transition-all"
-                >
-                  追加
-                </button>
-              </div>
+              <RangeInput
+                label="光の強さ (不透明度)"
+                value={player.focus.opacity ?? 0.35}
+                min={0.1}
+                max={0.8}
+                step={0.05}
+                onChange={(op) =>
+                  up({
+                    focus: {
+                      ...(player.focus ?? {
+                        enabled: true,
+                        color: '#fbbf24',
+                        radius: 3,
+                        style: 'spotlight',
+                      }),
+                      opacity: op,
+                    },
+                  })
+                }
+              />
             </div>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="py-6 text-center text-xs text-white/40">
+              「ON」をクリックしてスポットライトを有効化します
+            </div>
+          )}
+        </div>
+      )}
 
+      {/* 6. バッジ (Badge) */}
+      {currentTab === 'badge' && (
+        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
+          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+            <Award size={14} className="text-purple-400" />
+            選手バッジ
+          </span>
+
+          {/* 既存バッジ一覧 */}
+          {player.badges.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 py-1">
+              {player.badges.map((b) => (
+                <span
+                  key={b.id}
+                  style={{ backgroundColor: b.color, color: b.textColor }}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold shadow-sm"
+                >
+                  {b.label}
+                  <button
+                    type="button"
+                    onClick={() => removeBadge(b.id)}
+                    className="hover:opacity-70 text-xs leading-none cursor-pointer"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* プリセットバッジ */}
+          <div className="flex items-center gap-1 flex-wrap">
+            <button
+              type="button"
+              onClick={() => addBadge('KEY', '#f59e0b', '#000000')}
+              className="px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold hover:bg-amber-500/30 transition-all cursor-pointer"
+            >
+              + KEY
+            </button>
+            <button
+              type="button"
+              onClick={() => addBadge('★', '#eab308', '#000000')}
+              className="px-2 py-1 rounded bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-[10px] font-bold hover:bg-yellow-500/30 transition-all cursor-pointer"
+            >
+              + ★
+            </button>
+            <button
+              type="button"
+              onClick={() => addBadge('C', '#3b82f6', '#ffffff')}
+              className="px-2 py-1 rounded bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[10px] font-bold hover:bg-blue-500/30 transition-all cursor-pointer"
+            >
+              + C
+            </button>
+            <button
+              type="button"
+              onClick={() => addBadge('TARGET', '#ef4444', '#ffffff')}
+              className="px-2 py-1 rounded bg-red-500/20 border border-red-500/40 text-red-300 text-[10px] font-bold hover:bg-red-500/30 transition-all cursor-pointer"
+            >
+              + TARGET
+            </button>
+          </div>
+
+          {/* カスタムバッジ追加 */}
+          <div className="flex items-center gap-1 mt-1">
+            <input
+              type="text"
+              placeholder="カスタムバッジ名"
+              value={newBadgeText}
+              onChange={(e) => setNewBadgeText(e.target.value)}
+              className="flex-1 px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-blue-500"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                addBadge(newBadgeText);
+                setNewBadgeText('');
+              }}
+              disabled={!newBadgeText.trim()}
+              className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-xs font-medium text-white transition-all cursor-pointer"
+            >
+              追加
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 6. 基本設定 (Basic) */}
+      {currentTab === 'basic' && (
+        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
+          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+            <Settings size={14} className="text-zinc-400" />
+            基本情報 & 表示スタイル
+          </span>
+
+          <Row label="色">
+            <ColorInput
+              value={player.style.color}
+              onChange={(v) => upStyle({ color: v })}
+            />
+          </Row>
+          <RangeInput
+            label="サイズ"
+            value={player.style.sizeScale}
+            min={0.4}
+            max={2.0}
+            step={0.1}
+            onChange={(v) => upStyle({ sizeScale: v })}
+          />
+          <RangeInput
+            label="枠線太さ"
+            value={player.style.strokeWidth}
+            min={0}
+            max={5}
+            step={0.5}
+            onChange={(v) => upStyle({ strokeWidth: v })}
+          />
+          <Row label="チーム">
+            <select
+              value={player.team}
+              onChange={(e) => up({ team: e.target.value as Player['team'] })}
+              className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
+            >
+              <option value="home">ホーム</option>
+              <option value="away">アウェイ</option>
+              <option value="neutral">ニュートラル</option>
+            </select>
+          </Row>
+          <Row label="背番号">
+            <TextInput
+              value={player.shirtNo ?? ''}
+              onChange={(v) => up({ shirtNo: v })}
+              maxLength={3}
+            />
+          </Row>
+          <Row label="名前">
+            <TextInput
+              value={player.name ?? ''}
+              onChange={(v) => up({ name: v })}
+            />
+          </Row>
+          <Row label="ポジション">
+            <TextInput
+              value={player.position ?? ''}
+              onChange={(v) => up({ position: v })}
+            />
+          </Row>
+          <Row label="ラベル表示">
+            <select
+              value={player.style.bottomLabel}
+              onChange={(e) =>
+                upStyle({
+                  bottomLabel: e.target.value as Player['style']['bottomLabel'],
+                })
+              }
+              className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
+            >
+              <option value="name">名前</option>
+              <option value="number">背番号</option>
+              <option value="none">非表示</option>
+            </select>
+          </Row>
+          <Row label="内部表示">
+            <select
+              value={player.style.insideContent}
+              onChange={(e) =>
+                upStyle({
+                  insideContent: e.target
+                    .value as Player['style']['insideContent'],
+                })
+              }
+              className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
+            >
+              <option value="number">背番号</option>
+              <option value="photo">写真</option>
+              <option value="none">なし</option>
+            </select>
+          </Row>
+          {player.style.insideContent === 'photo' && (
+            <Row label="写真URL">
+              <TextInput
+                value={player.style.photoUrl ?? ''}
+                onChange={(v) => upStyle({ photoUrl: v })}
+              />
+            </Row>
+          )}
+        </div>
+      )}
+
+      {/* ── 削除ボタン ── */}
       <DeleteButton onClick={onRemove} />
     </div>
   );

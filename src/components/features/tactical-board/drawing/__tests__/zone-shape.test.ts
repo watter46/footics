@@ -35,9 +35,13 @@ describe('Tactical Board Drawing Zone Utilities', () => {
 
       // Top-left corner is at (100, 100)
       // Check 15px outside corner
-      expect(checkCornerRotateZone({ x: 100 - 10, y: 100 - 10 }, zoneShape)).toBe(true);
+      expect(
+        checkCornerRotateZone({ x: 100 - 10, y: 100 - 10 }, zoneShape),
+      ).toBe(true);
       // Top-right corner is at (300, 100)
-      expect(checkCornerRotateZone({ x: 300 + 10, y: 100 - 10 }, zoneShape)).toBe(true);
+      expect(
+        checkCornerRotateZone({ x: 300 + 10, y: 100 - 10 }, zoneShape),
+      ).toBe(true);
       // Far away point returns false
       expect(checkCornerRotateZone({ x: 500, y: 500 }, zoneShape)).toBe(false);
     });

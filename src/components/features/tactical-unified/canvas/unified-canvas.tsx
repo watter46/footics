@@ -2,13 +2,20 @@
 
 /**
  * unified-canvas.tsx
- * Central canvas orchestrator — Konva Stage + Pitch + Objects
+ * Central canvas orchestrator — Konva Stage + Pitch + BoundaryBox + Objects
+ *
+ * Features:
+ *  - Line & Route Line (●付き) drag drawing
+ *  - Continuous Eraser mode (dragging erases annotations, preserves players, deletes marker options)
+ *  - Resizable Boundary Box for export area definition
+ *  - Bench player Drag & Drop onto pitch
+ *  - Dynamic cursor handling and screenshot background binding
  */
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Arrow, Layer, Line, Stage } from 'react-konva';
+import { Arrow, Circle, Group, Layer, Line, Stage } from 'react-konva';
 import type { ExportTarget } from '@/lib/types/tactical-unified';
 import {
   selectActiveSlide,
@@ -18,6 +25,7 @@ import { useKonvaExport } from '../hooks/use-konva-export';
 import { DrawingToolbar } from '../toolbar/drawing-toolbar';
 import { AnnotationLayer } from './annotation-layer';
 import { BallObject } from './ball-object';
+import { BoundaryBox } from './boundary-box';
 import { createCanvasNodesRegistry } from './canvas-registry';
 import { PitchBackground } from './pitch-background';
 import { PlayerLayer } from './player-layer';
@@ -28,6 +36,91 @@ export function normToPx(norm: number, size: number): number {
 
 export function pxToNorm(px: number, size: number): number {
   return (px / size) * 100;
+}
+
+const ROTATE_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8'/><path d='M21 3v5h-5'/><path d='M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16'/><path d='M3 21v-5h5'/></svg>") 12 12, crosshair`;
+
+function getZonePixelBounds(
+  zone: {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    rotation?: number;
+    points?: Array<{ x: number; y: number }>;
+  },
+  stageWidth: number,
+  stageHeight: number,
+) {
+  const normPosX = zone.x ?? zone.points?.[0]?.x ?? 20;
+  const normPosY = zone.y ?? zone.points?.[0]?.y ?? 20;
+  let normW =
+    zone.width ??
+    (zone.points && zone.points.length >= 2
+      ? Math.abs(zone.points[1].x - zone.points[0].x)
+      : 30);
+  let normH =
+    zone.height ??
+    (zone.points && zone.points.length >= 4
+      ? Math.abs(zone.points[2].y - zone.points[0].y)
+      : 20);
+
+  if (normW <= 0) normW = 20;
+  if (normH <= 0) normH = 15;
+
+  const pxW = (normW / 100) * stageWidth;
+  const pxH = (normH / 100) * stageHeight;
+  const cx = (normPosX / 100) * stageWidth + pxW / 2;
+  const cy = (normPosY / 100) * stageHeight + pxH / 2;
+  const rotation = zone.rotation || 0;
+
+  return { pxW, pxH, cx, cy, rotation };
+}
+
+function checkCornerRotateZone(
+  pos: { x: number; y: number },
+  zone: {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    rotation?: number;
+    shapeType?: string;
+    points?: Array<{ x: number; y: number }>;
+  },
+  stageWidth: number,
+  stageHeight: number,
+): boolean {
+  if (zone.shapeType === 'polygon') return false;
+  const { pxW, pxH, cx, cy, rotation } = getZonePixelBounds(
+    zone,
+    stageWidth,
+    stageHeight,
+  );
+
+  const rad = (rotation * Math.PI) / 180;
+  const hw = pxW / 2;
+  const hh = pxH / 2;
+
+  const cornersLocal = [
+    { x: -hw, y: -hh },
+    { x: hw, y: -hh },
+    { x: -hw, y: hh },
+    { x: hw, y: hh },
+  ];
+
+  const corners = cornersLocal.map((pt) => ({
+    x: cx + pt.x * Math.cos(rad) - pt.y * Math.sin(rad),
+    y: cy + pt.x * Math.sin(rad) + pt.y * Math.cos(rad),
+  }));
+
+  for (const corner of corners) {
+    const dist = Math.hypot(pos.x - corner.x, pos.y - corner.y);
+    if (dist >= 6 && dist <= 28) {
+      return true;
+    }
+  }
+  return false;
 }
 
 interface DrawingState {
@@ -57,6 +150,7 @@ export function UnifiedCanvas() {
   const clearSelection = useTacticalUnifiedStore((s) => s.clearSelection);
   const activeTool = useTacticalUnifiedStore((s) => s.activeTool);
   const setActiveTool = useTacticalUnifiedStore((s) => s.setActiveTool);
+  const continuousDrawing = useTacticalUnifiedStore((s) => s.continuousDrawing);
   const connectingPlayerId = useTacticalUnifiedStore(
     (s) => s.connectingPlayerId,
   );
@@ -65,6 +159,7 @@ export function UnifiedCanvas() {
     (s) => s.setBackgroundImageUrl,
   );
   const setBackgroundType = useTacticalUnifiedStore((s) => s.setBackgroundType);
+  const isExporting = useTacticalUnifiedStore((s) => s.isExporting);
 
   // Store 描画アクション
   const addArrow = useTacticalUnifiedStore((s) => s.addArrow);
@@ -72,12 +167,14 @@ export function UnifiedCanvas() {
   const updateZone = useTacticalUnifiedStore((s) => s.updateZone);
   const removeZone = useTacticalUnifiedStore((s) => s.removeZone);
   const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
+  const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
   const addText = useTacticalUnifiedStore((s) => s.addText);
-  const addPlayerFromPalette = useTacticalUnifiedStore(
-    (s) => s.addPlayerFromPalette,
-  );
+  const eraseAtPoint = useTacticalUnifiedStore((s) => s.eraseAtPoint);
+  const setBoundaryBox = useTacticalUnifiedStore((s) => s.setBoundaryBox);
+  const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
 
   const [drawingState, setDrawingState] = useState<DrawingState | null>(null);
+  const isErasingRef = useRef(false);
 
   // Polygon Zone 作成状態
   const [activePolygonId, setActivePolygonId] = useState<string | null>(null);
@@ -85,6 +182,19 @@ export function UnifiedCanvas() {
     x: number;
     y: number;
   } | null>(null);
+
+  // 角ホバーカスタム回転用 Refs
+  const isRotatingRef = useRef(false);
+  const rotateCenterRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const startMouseAngleRef = useRef(0);
+  const startShapeRotationRef = useRef(0);
+  const currentRotationRef = useRef<number | null>(null);
+  const isOverRotateZoneRef = useRef(false);
+
+  const selectedZone =
+    selectedObjects.length === 1 && selectedObjects[0].kind === 'zone'
+      ? activeSlide?.zones.find((z) => z.id === selectedObjects[0].id)
+      : null;
 
   // ツール切り替え時に未完了ポリゴンを破棄
   useEffect(() => {
@@ -123,7 +233,7 @@ export function UnifiedCanvas() {
     return () => observer.disconnect();
   }, [aspectRatio]);
 
-  // URLパラメーター ?screenshot=<dataUrl> → 背景バインド
+  // URLパラメーター ?screenshot=<dataUrl> ＆ 拡張機能イベント受付 → 背景バインド＆デフォルトピッチ削除
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
@@ -134,6 +244,37 @@ export function UnifiedCanvas() {
       url.searchParams.delete('screenshot');
       window.history.replaceState({}, '', url.toString());
     }
+
+    const handleScreenshotEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail === 'string') {
+        setBackgroundImageUrl(detail);
+        setBackgroundType('image');
+      } else if (detail?.imageUrl) {
+        setBackgroundImageUrl(detail.imageUrl);
+        setBackgroundType('image');
+      }
+    };
+
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'FOOTICS_SCREENSHOT' && e.data?.imageUrl) {
+        setBackgroundImageUrl(e.data.imageUrl);
+        setBackgroundType('image');
+      }
+    };
+
+    window.addEventListener(
+      'tactical:screenshot-background',
+      handleScreenshotEvent,
+    );
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener(
+        'tactical:screenshot-background',
+        handleScreenshotEvent,
+      );
+      window.removeEventListener('message', handleMessage);
+    };
   }, [setBackgroundImageUrl, setBackgroundType]);
 
   // 📋 PNG clipboard コピー
@@ -164,21 +305,44 @@ export function UnifiedCanvas() {
       const normX = pxToNorm(pos.x, stageSize.width);
       const normY = pxToNorm(pos.y, stageSize.height);
 
-      if (activeTool === 'select') {
-        // 背景クリックで選択解除
-        const isBg =
-          e.target === stage ||
-          e.target.className === 'Rect' ||
-          e.target.className === 'Image';
-        if (isBg) {
-          clearSelection();
-        }
+      if (activeTool === 'eraser') {
+        isErasingRef.current = true;
+        eraseAtPoint(activeSlideId, { x: normX, y: normY }, 4.0);
         return;
       }
 
-      if (activeTool === 'player') {
-        addPlayerFromPalette('home', normX, normY);
-        setActiveTool('select');
+      if (activeTool === 'select') {
+        // 四隅回転エリアでのクリックの場合、カスタム回転モードを開始
+        const isTransformerAnchor =
+          e.target.getParent()?.getClassName() === 'Transformer';
+
+        if (
+          selectedZone &&
+          selectedZone.shapeType !== 'polygon' &&
+          isOverRotateZoneRef.current &&
+          !isTransformerAnchor
+        ) {
+          const { cx, cy, rotation } = getZonePixelBounds(
+            selectedZone,
+            stageSize.width,
+            stageSize.height,
+          );
+          isRotatingRef.current = true;
+          currentRotationRef.current = null;
+          rotateCenterRef.current = { x: cx, y: cy };
+          startMouseAngleRef.current = Math.atan2(pos.y - cy, pos.x - cx);
+          startShapeRotationRef.current = rotation;
+          if (containerRef.current) {
+            containerRef.current.style.cursor = ROTATE_CURSOR;
+          }
+          return;
+        }
+
+        // 背景クリックで選択解除
+        const isBg = e.target === stage;
+        if (isBg) {
+          clearSelection();
+        }
         return;
       }
 
@@ -229,7 +393,9 @@ export function UnifiedCanvas() {
             selectObject({ id: activePolygonId, kind: 'zone' });
             setActivePolygonId(null);
             setMousePreviewPos(null);
-            setActiveTool('select');
+            if (!continuousDrawing) {
+              setActiveTool('select');
+            }
             return;
           }
 
@@ -242,6 +408,8 @@ export function UnifiedCanvas() {
       }
 
       if (
+        activeTool === 'line' ||
+        activeTool === 'route_line' ||
         activeTool === 'arrow_solid' ||
         activeTool === 'arrow_dash' ||
         activeTool === 'zone_circle' ||
@@ -261,17 +429,19 @@ export function UnifiedCanvas() {
     },
     [
       activeTool,
+      selectedZone,
       activeSlideId,
       activeSlide?.zones,
       activePolygonId,
       stageSize,
       clearSelection,
-      addPlayerFromPalette,
+      eraseAtPoint,
       addText,
       addZone,
       updateZone,
       selectObject,
       setActiveTool,
+      continuousDrawing,
     ],
   );
 
@@ -281,8 +451,66 @@ export function UnifiedCanvas() {
       const pos = stage?.getPointerPosition();
       if (!pos) return;
 
+      const normX = pxToNorm(pos.x, stageSize.width);
+      const normY = pxToNorm(pos.y, stageSize.height);
+
+      if (activeTool === 'eraser' && isErasingRef.current) {
+        eraseAtPoint(activeSlideId, { x: normX, y: normY }, 4.0);
+        return;
+      }
+
       if (activePolygonId) {
         setMousePreviewPos(pos);
+      }
+
+      // カスタム回転ドラッグ中の処理
+      if (isRotatingRef.current && selectedZone) {
+        const zoneNode = nodesRegistryRef.current.zoneNodes.get(
+          selectedZone.id,
+        );
+        if (zoneNode) {
+          const cx = rotateCenterRef.current.x;
+          const cy = rotateCenterRef.current.y;
+          const currentAngle = Math.atan2(pos.y - cy, pos.x - cx);
+          const angleDiffRad = currentAngle - startMouseAngleRef.current;
+          const angleDiffDeg = (angleDiffRad * 180) / Math.PI;
+
+          const newRotation =
+            (startShapeRotationRef.current + angleDiffDeg) % 360;
+          currentRotationRef.current = newRotation;
+          zoneNode.rotation(newRotation);
+          zoneNode.getLayer()?.batchDraw();
+          return;
+        }
+      }
+
+      // ホバー時：四隅の回転外側ゾーン判定とカーソル切替
+      if (
+        activeTool === 'select' &&
+        selectedZone &&
+        selectedZone.shapeType !== 'polygon' &&
+        !drawingState?.isDrawing
+      ) {
+        const container = containerRef.current;
+        if (container) {
+          const isTransformerAnchor =
+            e.target.getParent()?.getClassName() === 'Transformer';
+          const isOver =
+            !isTransformerAnchor &&
+            checkCornerRotateZone(
+              pos,
+              selectedZone,
+              stageSize.width,
+              stageSize.height,
+            );
+          isOverRotateZoneRef.current = isOver;
+
+          if (isOver) {
+            container.style.cursor = ROTATE_CURSOR;
+          } else if (container.style.cursor.includes('data:image/svg+xml')) {
+            container.style.cursor = 'default';
+          }
+        }
       }
 
       if (!drawingState?.isDrawing) return;
@@ -297,10 +525,38 @@ export function UnifiedCanvas() {
           : null,
       );
     },
-    [activePolygonId, drawingState?.isDrawing],
+    [
+      activePolygonId,
+      activeTool,
+      selectedZone,
+      stageSize.width,
+      stageSize.height,
+      drawingState?.isDrawing,
+      eraseAtPoint,
+      activeSlideId,
+    ],
   );
 
   const handlePointerUp = useCallback(() => {
+    if (isErasingRef.current) {
+      isErasingRef.current = false;
+      return;
+    }
+
+    if (isRotatingRef.current) {
+      isRotatingRef.current = false;
+      if (currentRotationRef.current !== null && selectedZone) {
+        updateZone(activeSlideId, selectedZone.id, {
+          rotation: currentRotationRef.current,
+        });
+      }
+      const container = containerRef.current;
+      if (container && container.style.cursor.includes('data:image/svg+xml')) {
+        container.style.cursor = 'default';
+      }
+      return;
+    }
+
     if (!drawingState?.isDrawing) return;
 
     const { startX, startY, currentX, currentY, tool } = drawingState;
@@ -325,41 +581,71 @@ export function UnifiedCanvas() {
         Math.min(100, pxToNorm(currentY, stageSize.height)),
       );
 
-      const isArrowTool =
-        tool === 'arrow_solid' ||
-        tool === 'arrow-straight' ||
-        tool === 'arrow_dash' ||
-        tool === 'arrow-curved';
+      const startPoint = { x: sNormX, y: sNormY };
+      const endPoint = { x: cNormX, y: cNormY };
 
-      if (isArrowTool) {
-        const startPoint = { x: sNormX, y: sNormY };
-        const endPoint = { x: cNormX, y: cNormY };
-
-        if (tool === 'arrow_solid' || tool === 'arrow-straight') {
-          addArrow(activeSlideId, {
-            id: crypto.randomUUID(),
-            annotationType: 'arrow',
-            arrowType: 'pass',
-            curveType: 'straight',
-            points: [startPoint, endPoint],
-            color: '#38bdf8',
-            strokeWidth: 3,
-            dashArray: [],
-            arrowHead: true,
-          });
+      if (tool === 'line') {
+        addArrow(activeSlideId, {
+          id: crypto.randomUUID(),
+          annotationType: 'arrow',
+          arrowType: 'line',
+          curveType: 'straight',
+          points: [startPoint, endPoint],
+          color: '#ffffff',
+          strokeWidth: 2.5,
+          dashArray: [],
+          arrowHead: false,
+          endMarker: 'none',
+        });
+        if (!continuousDrawing) {
           setActiveTool('select');
-        } else if (tool === 'arrow_dash' || tool === 'arrow-curved') {
-          addArrow(activeSlideId, {
-            id: crypto.randomUUID(),
-            annotationType: 'arrow',
-            arrowType: 'move',
-            curveType: 'straight',
-            points: [startPoint, endPoint],
-            color: '#fbbf24',
-            strokeWidth: 3,
-            dashArray: [6, 4],
-            arrowHead: true,
-          });
+        }
+      } else if (tool === 'route_line') {
+        addArrow(activeSlideId, {
+          id: crypto.randomUUID(),
+          annotationType: 'arrow',
+          arrowType: 'route_line',
+          curveType: 'straight',
+          points: [startPoint, endPoint],
+          color: '#38bdf8',
+          strokeWidth: 3,
+          dashArray: [],
+          arrowHead: false,
+          endMarker: 'dot',
+        });
+        if (!continuousDrawing) {
+          setActiveTool('select');
+        }
+      } else if (tool === 'arrow_solid' || tool === 'arrow-straight') {
+        addArrow(activeSlideId, {
+          id: crypto.randomUUID(),
+          annotationType: 'arrow',
+          arrowType: 'pass',
+          curveType: 'straight',
+          points: [startPoint, endPoint],
+          color: '#38bdf8',
+          strokeWidth: 3,
+          dashArray: [],
+          arrowHead: true,
+          endMarker: 'arrow',
+        });
+        if (!continuousDrawing) {
+          setActiveTool('select');
+        }
+      } else if (tool === 'arrow_dash' || tool === 'arrow-curved') {
+        addArrow(activeSlideId, {
+          id: crypto.randomUUID(),
+          annotationType: 'arrow',
+          arrowType: 'move',
+          curveType: 'straight',
+          points: [startPoint, endPoint],
+          color: '#fbbf24',
+          strokeWidth: 3,
+          dashArray: [6, 4],
+          arrowHead: true,
+          endMarker: 'arrow',
+        });
+        if (!continuousDrawing) {
           setActiveTool('select');
         }
       } else if (tool === 'zone_circle' || tool === 'zone') {
@@ -394,7 +680,9 @@ export function UnifiedCanvas() {
           isComplete: true,
         });
         selectObject({ id: zoneId, kind: 'zone' });
-        setActiveTool('select');
+        if (!continuousDrawing) {
+          setActiveTool('select');
+        }
       }
     }
 
@@ -407,13 +695,50 @@ export function UnifiedCanvas() {
     addZone,
     selectObject,
     setActiveTool,
+    continuousDrawing,
+    selectedZone,
+    updateZone,
   ]);
+
+  // サブメンバーをピッチへドロップした時のハンドラ
+  const handleContainerDrop = useCallback(
+    (e: React.DragEvent) => {
+      try {
+        const raw = e.dataTransfer.getData('application/json');
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (data.type === 'bench-player' && data.playerId) {
+          const rect = containerRef.current?.getBoundingClientRect();
+          if (rect) {
+            const pxX =
+              e.clientX - rect.left - (rect.width - stageSize.width) / 2;
+            const pxY =
+              e.clientY - rect.top - (rect.height - stageSize.height) / 2;
+            const normX = Math.max(
+              0,
+              Math.min(100, pxToNorm(pxX, stageSize.width)),
+            );
+            const normY = Math.max(
+              0,
+              Math.min(100, pxToNorm(pxY, stageSize.height)),
+            );
+            movePlayerToPitch(activeSlideId, data.playerId, normX, normY);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    },
+    [activeSlideId, stageSize, movePlayerToPitch],
+  );
 
   if (!activeSlide) return null;
 
   return (
     <div
       ref={containerRef}
+      onDrop={handleContainerDrop}
+      onDragOver={(e) => e.preventDefault()}
       className="relative w-full h-full flex items-center justify-center bg-[#0a0a0a]"
     >
       {/* Floating & draggable drawing toolbar */}
@@ -435,8 +760,8 @@ export function UnifiedCanvas() {
             ? 'crosshair'
             : activeTool === 'select'
               ? 'default'
-              : activeTool === 'player'
-                ? 'copy'
+              : activeTool === 'eraser'
+                ? 'pointer'
                 : 'crosshair',
         }}
       >
@@ -469,6 +794,70 @@ export function UnifiedCanvas() {
         {/* 描画中プレビューレイヤー */}
         {drawingState?.isDrawing && (
           <Layer listening={false}>
+            {drawingState.tool === 'line' && (
+              <Line
+                points={[
+                  drawingState.startX,
+                  drawingState.startY,
+                  drawingState.currentX,
+                  drawingState.currentY,
+                ]}
+                stroke="#ffffff"
+                strokeWidth={2.5}
+                opacity={0.85}
+                perfectDrawEnabled={false}
+              />
+            )}
+
+            {drawingState.tool === 'route_line' &&
+              (() => {
+                const dx = drawingState.currentX - drawingState.startX;
+                const dy = drawingState.currentY - drawingState.startY;
+                const dist = Math.hypot(dx, dy);
+                const dotRadius = 6;
+                let sx = drawingState.startX;
+                let sy = drawingState.startY;
+                let ex = drawingState.currentX;
+                let ey = drawingState.currentY;
+                if (dist > dotRadius * 2) {
+                  const ux = dx / dist;
+                  const uy = dy / dist;
+                  sx += ux * dotRadius;
+                  sy += uy * dotRadius;
+                  ex -= ux * dotRadius;
+                  ey -= uy * dotRadius;
+                }
+                return (
+                  <Group>
+                    <Line
+                      points={[sx, sy, ex, ey]}
+                      stroke="#38bdf8"
+                      strokeWidth={3}
+                      opacity={0.85}
+                      perfectDrawEnabled={false}
+                    />
+                    <Circle
+                      x={drawingState.startX}
+                      y={drawingState.startY}
+                      radius={dotRadius}
+                      stroke="#38bdf8"
+                      strokeWidth={2}
+                      fill="transparent"
+                      perfectDrawEnabled={false}
+                    />
+                    <Circle
+                      x={drawingState.currentX}
+                      y={drawingState.currentY}
+                      radius={dotRadius}
+                      stroke="#38bdf8"
+                      strokeWidth={2}
+                      fill="transparent"
+                      perfectDrawEnabled={false}
+                    />
+                  </Group>
+                );
+              })()}
+
             {(drawingState.tool === 'arrow_solid' ||
               drawingState.tool === 'arrow-straight') && (
               <Arrow
@@ -487,6 +876,7 @@ export function UnifiedCanvas() {
                 perfectDrawEnabled={false}
               />
             )}
+
             {(drawingState.tool === 'arrow_dash' ||
               drawingState.tool === 'arrow-curved') && (
               <Arrow
@@ -506,6 +896,7 @@ export function UnifiedCanvas() {
                 perfectDrawEnabled={false}
               />
             )}
+
             {(drawingState.tool === 'zone_circle' ||
               drawingState.tool === 'zone') && (
               <Line
@@ -553,6 +944,16 @@ export function UnifiedCanvas() {
             slide={activeSlide}
             stageSize={stageSize}
             nodesRegistryRef={nodesRegistryRef}
+          />
+        </Layer>
+
+        {/* エクスポート境界線 (BoundaryBox) */}
+        <Layer>
+          <BoundaryBox
+            boundaryBox={activeSlide.boundaryBox}
+            stageSize={stageSize}
+            isExporting={isExporting}
+            onUpdate={(box) => setBoundaryBox(activeSlideId, box)}
           />
         </Layer>
       </Stage>

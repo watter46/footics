@@ -6,15 +6,21 @@ trigger: always_on
 
 このプロジェクトを操作するエージェント（Antigravity）は、以下のルールを **必ず読み込み、例外なく最優先で遵守すること**。
 
-## 0. 開発組織「Regista」とステートマシン (Organization)
-本プロジェクトの開発・保守は、自律型AIエンジニア組織「Regista」のワークフローに則って行われます。
-担当エージェントのドメイン定義、開発ステートマシン（TRIAGE → DESIGN → IMPLEMENTATION → REVIEW_QA → DONE）、およびタスク分解・ループ制御の規約については、必ずプロジェクトルートの **[ORGANIZATION.md](./ORGANIZATION.md)** を参照してください。
+## 0. 開発組織「Regista」と実行モード (Execution Modes)
+本プロジェクトは自律型AIエンジニア組織「Regista」規約に基づいて運用されますが、**トークン浪費を防ぎ迅速に成果を出すため、タスク規模に応じた2つの実行モードを厳格に使い分けます**。
+- **Fast-Track Mode (軽量・単独実行モード - 原則こちらをデフォルト適用):**
+  - **対象:** 日常の質問、技術相談・調査、1〜3ファイル以内の機能追加・修正・バグ修正、型エラー解消、軽微なリファクタリング。
+  - **挙動:** GMによるチケット発行・AAWU分解・独立QAサブエージェント召喚等の重厚な往復フローを**完全にバイパス**し、現在のエージェント単独で即時実装・最小スコープ検証（変更ファイルに対する lint / type-check / 対象テスト）を行って完了する。
+- **Orchestrated Mode (組織的開発モード):**
+  - **対象:** 複数ドメイン（Web + Extension + Canvas + Data等）に跨る大型新機能開発、DB破壊的マイグレーション、アーキテクチャ刷新。
+  - **挙動:** [ORGANIZATION.md](./ORGANIZATION.md) に定義された State Machine (TRIAGE → DESIGN → IMPLEMENTATION → REVIEW_QA → DONE) に従って分業する。
+  - **GMタスク分解・チケット発行 (Board Integration):** GM (`regista-gm`) は要件受領時にタスクを極小AAWU（1〜3ファイル単位）へ分解し、[agents/REGISTA_BOARD.md](./agents/REGISTA_BOARD.md) の Task Matrix にチケット（タスク・担当・対象ファイル・ゴール・ステータス）として書き込んで発行・進捗管理を行う。
 
 ## 1. エージェント行動規範 (Senior Engineer Conduct)
 - **Chain of Thought (CoT) Enforcement**: 浅い思考によるバグを排除し、深く考えてから行動する。複雑な修正やデバッグの際はいきなりコードを修正せず、思考プロセスを出力し、依存関係、副作用、代替案を検討する。
 - **Context Awareness & Cleanup**: 作業のために作成した一時ファイルや一時的なルールは、タスク完了時に必ず削除する。
 - **Self-Correction**: エラーが発生した場合、自律的に原因を分析し、修正を試みる。
-- **Knowledge Maintenance**: タスク着手前に必ず `.agents/knowledge/` の関連KIを確認し、推測による実装を防ぐ。タスク完了後、自律的に `/knowledge-update` ワークフローを実行し KI を更新する。
+- **Knowledge Maintenance**: タスク着手前にタスクに直接関係する `.agents/knowledge/` のKIのみを確認し、推測による実装を防ぐ。タスク完了後、自律的に `/knowledge-update` ワークフローを実行し KI を更新する。
 
 ## 2. プロジェクト構造とコード共有ルール (Architecture)
 本プロジェクトは `pnpm workspaces` を用いたモノレポ構成を採用しています。各パッケージの詳細ルールはそれぞれの `AGENTS.md` を参照してください。
@@ -34,10 +40,11 @@ trigger: always_on
 - **Grep, Don't Guess**: 存在しない関数、型、モジュールを捏造しない。確証がなければ `grep` または `trace-dependencies.sh` で実在確認する。
 - **Verify After Change**: ファイル操作後は `grep` で古い参照が残っていないか確認する。
 
-## 5. トークン効率と実行スコープの最適化
-- **RTK の活用**: 全てのシェルコマンド実行には `rtk` ラッパーを介す。500行を超えるファイルには `rtk smart` を使用する。
-- **ターゲット指向の検索**: 検索（grep）や構造把握（ls）を行う際は、プロジェクトルートではなく、必ず**関連する最小単位のディレクトリ**を対象にすること。
-- **スコープ限定テスト・型検証の徹底 (Targeted Verification)**: テスト（Vitest）や型チェックを実行する際は、**プロジェクト全体の無差別実行を禁止する**。必ず変更したファイル、関連モジュール、影響が出る最小範囲のファイル・ディレクトリに絞って実行すること（例: `pnpm vitest run src/components/features/tactical-board/`, `pnpm vitest run path/to/target.test.ts`）。全件実行によるトークン浪費と待機時間の肥大化を防止する。
+## 5. トークン効率とコンテキストエンジニアリング (Token Efficiency Guardrails)
+- **RTK の完全適用**: 全てのシェルコマンド実行には必ず `rtk` ラッパーを介す（例: `rtk vitest run ...`, `rtk biome check`, `rtk tsc --noEmit`）。
+- **ターゲット指向の検索 & 参照**: 検索（grep）や構造把握（ls/find）を行う際は、プロジェクトルート全体ではなく必ず**関連する最小単位のディレクトリ**を対象にする。`find_by_name` は必ず `MaxDepth` を指定する。
+- **巨大ファイルのピンポイント読み込み**: 300行を超えるファイルに対して無差別な全読み込みを行わない。`grep_search` や `view_file` の `StartLine`/`EndLine` を活用して必要な箇所のみをピンポイントで取得する。
+- **スコープ限定テスト・高速型検証の徹底 (Targeted Verification)**: テスト（Vitest）や型チェックを実行する際は、**プロジェクト全体の無差別実行を禁止する**。必ず変更したファイル、関連モジュール、影響が出る最小範囲のファイル・ディレクトリに絞って実行すること（例: `pnpm type-check:scoped <変更ファイル>`、`rtk vitest run src/components/features/tactical-board/`、`rtk vitest run path/to/target.test.ts`）。全件実行によるトークン浪費と待機時間の肥大化を防止する。
 
 ## 6. CLI環境およびデプロイ・ビルド運用プロトコル
 - **Auto-Deploy on Push (Web App):** `src/` 配下の変更を `git push` した後は、自動でデプロイ処理（`pnpm run deploy`）を実行すること。
@@ -68,7 +75,7 @@ trigger: always_on
 - **行動指針:**
     - `strict: true` を前提とし `any` 型を禁止。外部データは Zod スキーマで検証し `z.infer` で型を導出する。
     - 複雑なロジックを伴う Custom Hooks や Utility 関数には Vitest によるユニットテストを作成する。
-    - **テスト・検証のスコープ限定**: テスト実行時は `pnpm vitest run <影響対象パス>` を用い、変更影響のある範囲のみを迅速に検証する。
+    - **テスト・検証のスコープ限定**: テスト実行時は `rtk vitest run <影響対象パス>`、型チェック時は `pnpm type-check:scoped <変更ファイル>` を用い、変更影響のある範囲のみを迅速に検証する。
 
 ## 11. Responsibility Segregation (責務の分離)
 - **原則:** 単一ファイルへの知識集中を防ぐ (Single Responsibility Principle)。

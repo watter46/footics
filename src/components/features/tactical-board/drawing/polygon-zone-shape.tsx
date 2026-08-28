@@ -139,9 +139,9 @@ export const PolygonZoneShape: React.FC<PolygonZoneShapeProps> = ({
               e.cancelBubble = true;
               const newX = e.target.x();
               const newY = e.target.y();
-              const lineNode = e.target
-                .getParent()
-                ?.findOne('Line') as Konva.Line | undefined;
+              const lineNode = e.target.getParent()?.findOne('Line') as
+                | Konva.Line
+                | undefined;
               if (lineNode) {
                 const updatedPoints = [...pts];
                 updatedPoints[idx * 2] = newX;

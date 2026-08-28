@@ -138,7 +138,10 @@ export function useDrawingHotkeys({
                   y: duplicated.controlPoint.y + offset,
                 };
               }
-            } else if (duplicated.type === 'polygon_zone' && duplicated.points) {
+            } else if (
+              duplicated.type === 'polygon_zone' &&
+              duplicated.points
+            ) {
               duplicated.points = duplicated.points.map((pt) => pt + offset);
             } else if (
               duplicated.type === 'zone' &&

@@ -32,7 +32,9 @@ const DashedArrowIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const CustomPolygonZoneIcon: React.FC<{ className?: string }> = ({ className }) => (
+const CustomPolygonZoneIcon: React.FC<{ className?: string }> = ({
+  className,
+}) => (
   <svg
     viewBox="0 0 24 24"
     fill="none"

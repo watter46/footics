@@ -88,15 +88,43 @@ describe('SyntaxStudioPage integration', () => {
       aiDraft: {
         version: '1.0.0',
         tacticalScenes: [
-          { id: 'scene-1', title: 'Scene 1', description: 'desc 1', players: [], arrows: [], zones: [] },
-          { id: 'scene-2', title: 'Scene 2', description: 'desc 2', players: [], arrows: [], zones: [] },
+          {
+            id: 'scene-1',
+            title: 'Scene 1',
+            description: 'desc 1',
+            players: [],
+            arrows: [],
+            zones: [],
+          },
+          {
+            id: 'scene-2',
+            title: 'Scene 2',
+            description: 'desc 2',
+            players: [],
+            arrows: [],
+            zones: [],
+          },
         ],
       },
       humanGroundTruth: {
         version: '1.0.0',
         tacticalScenes: [
-          { id: 'scene-1', title: 'Scene 1', description: 'desc 1', players: [], arrows: [], zones: [] },
-          { id: 'scene-2', title: 'Scene 2', description: 'desc 2', players: [], arrows: [], zones: [] },
+          {
+            id: 'scene-1',
+            title: 'Scene 1',
+            description: 'desc 1',
+            players: [],
+            arrows: [],
+            zones: [],
+          },
+          {
+            id: 'scene-2',
+            title: 'Scene 2',
+            description: 'desc 2',
+            players: [],
+            arrows: [],
+            zones: [],
+          },
         ],
       },
     });

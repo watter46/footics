@@ -33,6 +33,14 @@ export function useKeyboardShortcuts() {
         setActiveTool('select');
         return;
       }
+      if (e.key === 'l' || e.key === 'L') {
+        setActiveTool('line');
+        return;
+      }
+      if (e.key === 'r' || e.key === 'R') {
+        setActiveTool('route_line');
+        return;
+      }
       if (e.key === 'a' || e.key === 'A') {
         setActiveTool('arrow_solid');
         return;
@@ -53,8 +61,8 @@ export function useKeyboardShortcuts() {
         setActiveTool('text');
         return;
       }
-      if (e.key === 'm' || e.key === 'M') {
-        setActiveTool('player');
+      if (e.key === 'e' || e.key === 'E') {
+        setActiveTool('eraser');
         return;
       }
 
