@@ -669,6 +669,17 @@ export function ExportModal() {
                 className="w-48 h-48"
               />
             </div>
+            {typeof window !== 'undefined' &&
+              (window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1') && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs max-w-md text-center leading-relaxed">
+                  ⚠️ <strong>ローカル環境で実行中:</strong>{' '}
+                  PCの「localhost」はiPhoneから直接開けません。PCのローカルIPアドレス
+                  (例: <code>http://192.168.x.x:3000</code>) または本番サイト (
+                  <code>https://footics.watool.workers.dev</code>)
+                  からアクセスしてQRコードを発行してください。
+                </div>
+              )}
             <div className="flex items-center gap-2 mt-2 w-full max-w-md">
               <input
                 type="text"
