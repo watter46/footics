@@ -159,6 +159,8 @@ export interface VideoExportOptions {
   quality?: 'low' | 'medium' | 'high';
   bitrate?: number;
   h264Profile?: 'baseline' | 'main' | 'high';
+  keyFrameIntervalSec?: number;
+  latencyMode?: 'realtime' | 'quality';
   maxQueueSize?: number;
   transparent?: boolean;
   totalDurationMs: number;
@@ -383,6 +385,8 @@ export async function exportVideoDirect(
     quality: options.quality ?? 'high',
     bitrate: options.bitrate,
     h264Profile: options.h264Profile,
+    keyFrameIntervalSec: options.keyFrameIntervalSec,
+    latencyMode: options.latencyMode,
     maxQueueSize: options.maxQueueSize,
     transparent: options.transparent ?? options.format === 'webm',
     totalDurationMs: options.totalDurationMs,
@@ -471,6 +475,8 @@ export async function exportVideoWithWorker(
       quality: options.quality ?? 'high',
       bitrate: options.bitrate,
       h264Profile: options.h264Profile,
+      keyFrameIntervalSec: options.keyFrameIntervalSec,
+      latencyMode: options.latencyMode,
       maxQueueSize: options.maxQueueSize,
       transparent: options.transparent ?? options.format === 'webm',
       totalDurationMs: options.totalDurationMs,

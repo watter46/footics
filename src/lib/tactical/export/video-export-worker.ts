@@ -36,6 +36,8 @@ export interface VideoExportWorkerRequest {
   quality?: 'low' | 'medium' | 'high';
   bitrate?: number;
   h264Profile?: 'baseline' | 'main' | 'high';
+  keyFrameIntervalSec?: number;
+  latencyMode?: 'realtime' | 'quality';
   maxQueueSize?: number;
   transparent?: boolean;
   totalDurationMs: number;
@@ -229,7 +231,8 @@ export async function getWorkerH264EncoderConfig(
   height: number,
   fps: number,
   bitrate = 12_000_000,
-  profile: 'baseline' | 'main' | 'high' = 'main',
+  profile: 'baseline' | 'main' | 'high' = 'high',
+  preferredLatencyMode: LatencyMode = 'realtime',
 ): Promise<VideoEncoderConfig | null> {
   if (typeof globalThis === 'undefined' || !('VideoEncoder' in globalThis)) {
     return null;
@@ -247,7 +250,10 @@ export async function getWorkerH264EncoderConfig(
     'no-preference',
     'prefer-software',
   ];
-  const latencyModes: LatencyMode[] = ['realtime', 'quality'];
+  const latencyModes: LatencyMode[] =
+    preferredLatencyMode === 'realtime'
+      ? ['realtime', 'quality']
+      : ['quality', 'realtime'];
 
   for (const hardwareAcceleration of accelOptions) {
     for (const latencyMode of latencyModes) {
@@ -280,21 +286,26 @@ export async function getWorkerVP9EncoderConfig(
   fps: number,
   bitrate = 30_000_000,
   alpha = false,
+  preferredLatencyMode: LatencyMode = 'realtime',
 ): Promise<VideoEncoderConfig | null> {
   if (typeof globalThis === 'undefined' || !('VideoEncoder' in globalThis)) {
     return null;
   }
 
+  const candidates = VP9_CODEC_CANDIDATES;
   const accelOptions: HardwareAcceleration[] = [
     'prefer-hardware',
     'no-preference',
     'prefer-software',
   ];
-  const latencyModes: LatencyMode[] = ['realtime', 'quality'];
+  const latencyModes: LatencyMode[] =
+    preferredLatencyMode === 'realtime'
+      ? ['realtime', 'quality']
+      : ['quality', 'realtime'];
 
   for (const hardwareAcceleration of accelOptions) {
     for (const latencyMode of latencyModes) {
-      for (const codec of VP9_CODEC_CANDIDATES) {
+      for (const codec of candidates) {
         try {
           const testConfig: VideoEncoderConfig = {
             codec,
@@ -337,6 +348,8 @@ export async function executeOffThreadVideoExport(
     quality = 'high',
     bitrate: customBitrate,
     h264Profile = 'high',
+    keyFrameIntervalSec = 2,
+    latencyMode = 'realtime',
     maxQueueSize = 60,
     transparent = false,
     totalDurationMs,
@@ -410,6 +423,7 @@ export async function executeOffThreadVideoExport(
       fps,
       bitrate,
       h264Profile,
+      latencyMode,
     );
     if (!encoderConfig) {
       throw new Error('No supported H.264 WebCodecs configuration found.');
@@ -440,6 +454,7 @@ export async function executeOffThreadVideoExport(
       fps,
       bitrate,
       transparent,
+      latencyMode,
     );
     if (!encoderConfig) {
       throw new Error('No supported VP9 WebCodecs configuration found.');
@@ -466,8 +481,12 @@ export async function executeOffThreadVideoExport(
     videoEncoder.configure(encoderConfig);
   }
 
+  const effectiveKeyFrameSec = Math.max(1, keyFrameIntervalSec);
+  const keyFrameInterval = Math.max(fps * effectiveKeyFrameSec, 30);
+
   console.log(
-    `[Footics Turbo Engine] Configured: format=${format.toUpperCase()}, codec=${encoderConfig.codec}, dimensions=${exportWidth}x${exportHeight}, fps=${fps}, frames=${actualFramesCount}, maxQueue=${maxQueueSize}`,
+    `%c[Footics Turbo Engine] Configured: format=${format.toUpperCase()}, codec=${encoderConfig.codec}, dimensions=${exportWidth}x${exportHeight}, fps=${fps}, frames=${actualFramesCount}, keyFrameGOP=${keyFrameInterval}f (${effectiveKeyFrameSec}s), latencyMode=${encoderConfig.latencyMode ?? latencyMode}, maxQueue=${maxQueueSize}`,
+    'color: #10b981; font-weight: bold;',
   );
 
   const offscreenCtx = (offscreenCanvas.getContext('2d', {
@@ -487,7 +506,6 @@ export async function executeOffThreadVideoExport(
   let zoneBFrameMs = 0;
   let zoneCEncodeMs = 0;
   let flushMs = 0;
-  const keyFrameInterval = Math.max(fps * 2, 60);
 
   const highWatermark = Math.max(10, maxQueueSize);
   const lowWatermark = Math.max(5, Math.floor(highWatermark / 3));

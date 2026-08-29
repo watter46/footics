@@ -383,6 +383,8 @@ export const ExportTargetSchema = z.discriminatedUnion('format', [
       .enum(['baseline', 'main', 'high'])
       .default('high')
       .optional(),
+    keyFrameIntervalSec: z.enum(['1', '2', '5', '10']).default('2').optional(),
+    latencyMode: z.enum(['realtime', 'quality']).default('realtime').optional(),
     maxQueueSize: z.enum(['60', '240']).default('60').optional(),
     scale: z.number().min(1).max(4).default(2),
   }),
@@ -393,6 +395,8 @@ export const ExportTargetSchema = z.discriminatedUnion('format', [
     toSlideId: z.string().optional(),
     fps: z.enum(['30', '60']).default('60'),
     transparent: z.boolean().default(true),
+    keyFrameIntervalSec: z.enum(['1', '2', '5', '10']).default('2').optional(),
+    latencyMode: z.enum(['realtime', 'quality']).default('realtime').optional(),
     maxQueueSize: z.enum(['60', '240']).default('60').optional(),
     scale: z.number().min(1).max(4).default(2),
   }),

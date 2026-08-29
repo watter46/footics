@@ -125,13 +125,21 @@ export function useKonvaVideoExport({
         target.format === 'mp4' && 'h264Profile' in target
           ? target.h264Profile
           : undefined;
+      const keyFrameIntervalSec =
+        'keyFrameIntervalSec' in target && target.keyFrameIntervalSec
+          ? Number.parseInt(target.keyFrameIntervalSec, 10)
+          : 2;
+      const latencyMode =
+        'latencyMode' in target && target.latencyMode
+          ? target.latencyMode
+          : 'realtime';
       const maxQueueSize =
         'maxQueueSize' in target && target.maxQueueSize
           ? Number.parseInt(target.maxQueueSize, 10)
           : 60;
 
       console.log(
-        `%c[Footics Export Hook] Triggered video export: ${target.format.toUpperCase()} (${fps}fps, scale=${scale}, bitrate=${bitrate ? `${bitrate / 1_000_000}Mbps` : 'auto'}, profile=${h264Profile ?? 'high'}, maxQueue=${maxQueueSize}, slides=${currentSlides.length}, duration=${totalDurationMs}ms)`,
+        `%c[Footics Export Hook] Triggered video export: ${target.format.toUpperCase()} (${fps}fps, scale=${scale}, bitrate=${bitrate ? `${bitrate / 1_000_000}Mbps` : 'auto'}, profile=${h264Profile ?? 'high'}, keyFrameGOP=${keyFrameIntervalSec}s, latencyMode=${latencyMode}, maxQueue=${maxQueueSize}, slides=${currentSlides.length}, duration=${totalDurationMs}ms)`,
         'color: #0284c7; font-weight: bold;',
       );
 
@@ -143,6 +151,8 @@ export function useKonvaVideoExport({
           quality,
           bitrate,
           h264Profile,
+          keyFrameIntervalSec,
+          latencyMode,
           maxQueueSize,
           transparent,
           totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 3000,

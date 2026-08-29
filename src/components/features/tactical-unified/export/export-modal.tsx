@@ -78,6 +78,12 @@ export function ExportModal() {
     pendingExport?.format ?? 'mp4',
   );
   const [maxQueueSize, setMaxQueueSize] = useState<'60' | '240'>('60');
+  const [keyFrameIntervalSec, setKeyFrameIntervalSec] = useState<
+    '1' | '2' | '5' | '10'
+  >('2');
+  const [latencyMode, setLatencyMode] = useState<'realtime' | 'quality'>(
+    'realtime',
+  );
 
   // Exported video state for post-render preview
   const [completedVideo, setCompletedVideo] = useState<{
@@ -159,6 +165,8 @@ export function ExportModal() {
         quality: 'high',
         bitrateMbps: '24',
         h264Profile: 'high',
+        keyFrameIntervalSec,
+        latencyMode,
         maxQueueSize,
       };
     } else if (selectedFormat === 'webm') {
@@ -168,6 +176,8 @@ export function ExportModal() {
         fps: '60',
         scale: 2,
         transparent: true,
+        keyFrameIntervalSec,
+        latencyMode,
         maxQueueSize,
       };
     } else {
@@ -179,7 +189,7 @@ export function ExportModal() {
     }
 
     console.log(
-      `[ExportModal] Export button clicked: format=${selectedFormat}, queueSize=${maxQueueSize}, fixedSpecs=1080p@60fps/24M/High`,
+      `[ExportModal] Export button clicked: format=${selectedFormat}, queueSize=${maxQueueSize}, keyFrameGOP=${keyFrameIntervalSec}s, latencyMode=${latencyMode}, fixedSpecs=1080p@60fps/24M/High`,
     );
 
     window.dispatchEvent(
@@ -392,14 +402,14 @@ export function ExportModal() {
                         disabled={isExporting}
                         title="60 Frames (推奨・万能 / 長尺・短尺ともに最速)"
                         className={[
-                          'py-2 px-3 text-[11px] rounded-md font-medium transition-all cursor-pointer text-center',
+                          'py-1.5 px-3 text-[10px] rounded-md font-medium transition-all cursor-pointer text-center',
                           maxQueueSize === '60'
                             ? 'bg-blue-600 text-white shadow-sm'
                             : 'text-white/50 hover:text-white',
                         ].join(' ')}
                       >
                         <span className="font-semibold">60 (推奨・最速)</span>
-                        <span className="block text-[9px] opacity-70 mt-0.5">
+                        <span className="block text-[8px] opacity-70 mt-0.5">
                           全動画向け・最高効率
                         </span>
                       </button>
@@ -409,7 +419,7 @@ export function ExportModal() {
                         disabled={isExporting}
                         title="240 Frames (短尺ブースト / 3〜5秒動画の待機ゼロ化)"
                         className={[
-                          'py-2 px-3 text-[11px] rounded-md font-medium transition-all cursor-pointer text-center',
+                          'py-1.5 px-3 text-[10px] rounded-md font-medium transition-all cursor-pointer text-center',
                           maxQueueSize === '240'
                             ? 'bg-blue-600 text-white shadow-sm'
                             : 'text-white/50 hover:text-white',
@@ -418,8 +428,100 @@ export function ExportModal() {
                         <span className="font-semibold">
                           240 (短尺ブースト)
                         </span>
-                        <span className="block text-[9px] opacity-70 mt-0.5">
+                        <span className="block text-[8px] opacity-70 mt-0.5">
                           短尺特化・待機ゼロ
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Keyframe Interval (GOP) Control */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-white/70">
+                        Keyframe Interval (GOP)
+                      </span>
+                      <span className="text-[9px] text-white/40">
+                        Iフレーム生成間隔
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5 rounded-lg bg-black/40 p-0.5 border border-white/10">
+                      {[
+                        { sec: '1', label: '1s (60f)', sub: '高頻度' },
+                        { sec: '2', label: '2s (120f)', sub: '標準' },
+                        { sec: '5', label: '5s (300f)', sub: '推奨・高速' },
+                        { sec: '10', label: '10s (600f)', sub: '最速特化' },
+                      ].map(({ sec, label, sub }) => (
+                        <button
+                          key={sec}
+                          type="button"
+                          onClick={() =>
+                            setKeyFrameIntervalSec(
+                              sec as '1' | '2' | '5' | '10',
+                            )
+                          }
+                          disabled={isExporting}
+                          className={[
+                            'py-1.5 px-2 text-[10px] rounded-md font-medium transition-all cursor-pointer text-center',
+                            keyFrameIntervalSec === sec
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'text-white/50 hover:text-white',
+                          ].join(' ')}
+                        >
+                          <span className="font-semibold">{label}</span>
+                          <span className="block text-[8px] opacity-70 mt-0.5">
+                            {sub}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Latency Mode Control */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-white/70">
+                        Encoder Latency Mode
+                      </span>
+                      <span className="text-[9px] text-white/40">
+                        GPU処理モード
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-black/40 p-0.5 border border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => setLatencyMode('realtime')}
+                        disabled={isExporting}
+                        className={[
+                          'py-1.5 px-2.5 text-[10px] rounded-md font-medium transition-all cursor-pointer text-center',
+                          latencyMode === 'realtime'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-white/50 hover:text-white',
+                        ].join(' ')}
+                      >
+                        <span className="font-semibold">
+                          Realtime (推奨・低遅延)
+                        </span>
+                        <span className="block text-[8px] opacity-70 mt-0.5">
+                          先読み探索スキップで高速化
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLatencyMode('quality')}
+                        disabled={isExporting}
+                        className={[
+                          'py-1.5 px-2.5 text-[10px] rounded-md font-medium transition-all cursor-pointer text-center',
+                          latencyMode === 'quality'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-white/50 hover:text-white',
+                        ].join(' ')}
+                      >
+                        <span className="font-semibold">
+                          Quality (深層圧縮)
+                        </span>
+                        <span className="block text-[8px] opacity-70 mt-0.5">
+                          先読み探索・高圧縮率
                         </span>
                       </button>
                     </div>
