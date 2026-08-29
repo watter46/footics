@@ -1018,3 +1018,21 @@ export function createTenSlideFullSequenceBenchmarkProject(): TacticalProject {
     tags: ['benchmark', '10-slides', 'full-sequence', 'video-export'],
   };
 }
+
+/**
+ * 4. 6-Slide Mid-Range Benchmark Preset (6 Slides, ~9.6 seconds)
+ * Balanced scenario covering build-up, overload, and cutback finish.
+ */
+export function createSixSlideBenchmarkProject(): TacticalProject {
+  const tenSlideProj = createTenSlideFullSequenceBenchmarkProject();
+  return {
+    ...tenSlideProj,
+    id: crypto.randomUUID(),
+    title: 'Benchmark: 6-Slide Overload & Cutback (~9.6s)',
+    slides: tenSlideProj.slides.slice(0, 6).map((s, idx) => ({
+      ...s,
+      index: idx,
+    })),
+    tags: ['benchmark', '6-slides', 'mid-range', 'video-export'],
+  };
+}

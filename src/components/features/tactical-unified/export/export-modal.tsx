@@ -213,7 +213,7 @@ export function ExportModal() {
     );
   }
 
-  const handleRunAutoBenchmark = async () => {
+  const handleRunAutoBenchmark = async (mode: 'full' | 'quick' = 'full') => {
     if (slides.length === 0 || isBenchmarking || isExporting) return;
     setIsBenchmarking(true);
     setBenchmarkReport(null);
@@ -230,6 +230,7 @@ export function ExportModal() {
         boundaryBox,
         stageWidth: 1280,
         stageHeight: 720,
+        mode,
         onProgress: (p) => setBenchmarkProgress(p),
         checkCancelled: () => isBenchmarkCancelledRef.current,
       });
@@ -669,18 +670,30 @@ export function ExportModal() {
         {/* Actions & Progress (Only in selection mode) */}
         {!completedVideo && !isBenchmarking && (
           <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center justify-between gap-3 bg-white/[0.01]">
-            <div>
+            <div className="flex items-center gap-2">
               {isVideoFormat && (
-                <button
-                  type="button"
-                  onClick={handleRunAutoBenchmark}
-                  disabled={isExporting || isBenchmarking}
-                  title="全16パターン（GOP×Latency×Buffer）を自動連続計測してMarkdownレポートを出力します"
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-blue-500/30 bg-blue-600/10 hover:bg-blue-600/20 text-xs text-blue-300 font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <FlaskConical size={14} />
-                  <span>Run Auto Benchmark (16 tests)</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleRunAutoBenchmark('quick')}
+                    disabled={isExporting || isBenchmarking}
+                    title="上位有力4パターン（短尺・長尺最適候補）のみを高速計測（中〜長尺におすすめ）"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-500/30 bg-emerald-600/10 hover:bg-emerald-600/20 text-xs text-emerald-300 font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <FlaskConical size={14} />
+                    <span>⚡ Quick Test (4 tests)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRunAutoBenchmark('full')}
+                    disabled={isExporting || isBenchmarking}
+                    title="全16パターン（GOP×Latency×Buffer）を網羅的に自動連続計測します"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-blue-500/30 bg-blue-600/10 hover:bg-blue-600/20 text-xs text-blue-300 font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <FlaskConical size={14} />
+                    <span>Full Matrix (16 tests)</span>
+                  </button>
+                </>
               )}
             </div>
             <div className="flex items-center gap-3">

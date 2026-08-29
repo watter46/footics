@@ -43,20 +43,7 @@ export interface BenchmarkProgress {
   statusMessage: string;
 }
 
-export interface AutoBenchmarkOptions {
-  slides: Slide[];
-  fps?: number;
-  scale?: number;
-  format?: 'mp4' | 'webm';
-  aspectRatio?: AspectRatio;
-  boundaryBox?: BoundaryBox | null;
-  stageWidth?: number;
-  stageHeight?: number;
-  onProgress?: (progress: BenchmarkProgress) => void;
-  checkCancelled?: () => boolean;
-}
-
-export const DEFAULT_BENCHMARK_PATTERNS: BenchmarkPattern[] = [
+export const FULL_BENCHMARK_PATTERNS: BenchmarkPattern[] = [
   // 1. Buffer: 60 (Standard)
   { keyFrameIntervalSec: 10, latencyMode: 'quality', maxQueueSize: 60 },
   { keyFrameIntervalSec: 5, latencyMode: 'quality', maxQueueSize: 60 },
@@ -79,6 +66,33 @@ export const DEFAULT_BENCHMARK_PATTERNS: BenchmarkPattern[] = [
 ];
 
 /**
+ * Fast 4-Pattern Focus Test for Medium/Long scenarios (6-10+ Slides).
+ * Tests top-tier candidates identified from initial 2/3-slide benchmarks.
+ */
+export const QUICK_BENCHMARK_PATTERNS: BenchmarkPattern[] = [
+  { keyFrameIntervalSec: 1, latencyMode: 'realtime', maxQueueSize: 60 },
+  { keyFrameIntervalSec: 1, latencyMode: 'realtime', maxQueueSize: 240 },
+  { keyFrameIntervalSec: 2, latencyMode: 'realtime', maxQueueSize: 60 },
+  { keyFrameIntervalSec: 10, latencyMode: 'realtime', maxQueueSize: 60 },
+];
+
+export const DEFAULT_BENCHMARK_PATTERNS = FULL_BENCHMARK_PATTERNS;
+
+export interface AutoBenchmarkOptions {
+  slides: Slide[];
+  fps?: number;
+  scale?: number;
+  format?: 'mp4' | 'webm';
+  aspectRatio?: AspectRatio;
+  boundaryBox?: BoundaryBox | null;
+  stageWidth?: number;
+  stageHeight?: number;
+  mode?: 'full' | 'quick';
+  onProgress?: (progress: BenchmarkProgress) => void;
+  checkCancelled?: () => boolean;
+}
+
+/**
  * Runs the full benchmark suite across all patterns sequentially.
  */
 export async function runAutoBenchmark(options: AutoBenchmarkOptions): Promise<{
@@ -94,6 +108,7 @@ export async function runAutoBenchmark(options: AutoBenchmarkOptions): Promise<{
     boundaryBox = null,
     stageWidth = 1280,
     stageHeight = 720,
+    mode = 'full',
     onProgress,
     checkCancelled,
   } = options;
@@ -105,7 +120,8 @@ export async function runAutoBenchmark(options: AutoBenchmarkOptions): Promise<{
   // Calculate duration accurately using the standard interpolation duration helper
   const totalDurationMs = Math.max(1000, calculateUnifiedTotalDuration(slides));
 
-  const patterns = DEFAULT_BENCHMARK_PATTERNS;
+  const patterns =
+    mode === 'quick' ? QUICK_BENCHMARK_PATTERNS : FULL_BENCHMARK_PATTERNS;
   const results: BenchmarkResultItem[] = [];
 
   for (let i = 0; i < patterns.length; i++) {

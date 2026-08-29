@@ -27,6 +27,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   createHighPressBenchmarkProject,
   createLowBlockBenchmarkProject,
+  createSixSlideBenchmarkProject,
   createTenSlideFullSequenceBenchmarkProject,
 } from '@/lib/tactical/benchmark-presets';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
@@ -107,6 +108,12 @@ export function TopBar() {
     setIsPresetMenuOpen(false);
   };
 
+  const handleLoadSixSlides = () => {
+    const project = createSixSlideBenchmarkProject();
+    loadProject(project);
+    setIsPresetMenuOpen(false);
+  };
+
   const handleLoadTenSlides = () => {
     const project = createTenSlideFullSequenceBenchmarkProject();
     loadProject(project);
@@ -142,7 +149,7 @@ export function TopBar() {
           ) : (
             <ArrowLeftRight size={13} className="text-amber-400" />
           )}
-          <span>Swap Sides</span>
+          <span className="hidden sm:inline">Swap Sides</span>
         </button>
 
         {/* Reset Pitch Background */}
@@ -153,18 +160,18 @@ export function TopBar() {
           title="Reset to default pitch background"
         >
           <RotateCcw size={13} className="text-emerald-400" />
-          <span>Reset Pitch</span>
+          <span className="hidden sm:inline">Reset Pitch</span>
         </button>
 
-        {/* Import Image */}
+        {/* Custom Background Image Upload */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs transition-colors cursor-pointer"
-          title="Import image file as background"
+          title="Upload custom background image"
         >
-          <ImagePlus size={13} className="text-sky-400" />
-          <span>Import Image</span>
+          <ImagePlus size={13} className="text-emerald-400" />
+          <span className="hidden sm:inline">Background</span>
         </button>
         <input
           ref={fileInputRef}
@@ -207,12 +214,25 @@ export function TopBar() {
               </button>
               <button
                 type="button"
+                onClick={handleLoadSixSlides}
+                className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 text-white transition-colors cursor-pointer flex flex-col gap-0.5 border-b border-white/5"
+              >
+                <div className="flex items-center gap-1.5 font-medium text-blue-300">
+                  <Sparkles size={12} />
+                  <span>6-Slide Overload & Cutback (9.6s)</span>
+                </div>
+                <span className="text-[10px] text-white/50">
+                  6 Slides • 576 frames benchmark (Mid-Range)
+                </span>
+              </button>
+              <button
+                type="button"
                 onClick={handleLoadLowBlock}
-                className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 text-white transition-colors cursor-pointer flex flex-col gap-0.5"
+                className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 text-white transition-colors cursor-pointer flex flex-col gap-0.5 border-b border-white/5"
               >
                 <div className="flex items-center gap-1.5 font-medium text-purple-300">
                   <Sparkles size={12} />
-                  <span>Low Block Penetration</span>
+                  <span>Low Block Penetration (3.8s)</span>
                 </div>
                 <span className="text-[10px] text-white/50">
                   3 Slides • Flank overload, underlap & cutback
@@ -225,7 +245,7 @@ export function TopBar() {
               >
                 <div className="flex items-center gap-1.5 font-medium text-amber-300">
                   <Sparkles size={12} />
-                  <span>High Press vs Build-up</span>
+                  <span>High Press vs Build-up (1.8s)</span>
                 </div>
                 <span className="text-[10px] text-white/50">
                   2 Slides • Pressing trap bait & turnover
