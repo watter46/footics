@@ -238,12 +238,39 @@ export async function getWorkerH264EncoderConfig(
     return null;
   }
 
+  // Multi-tier H.264 profile & level candidate strings to support any GPU limits & custom resolutions
+  const highCandidates = [
+    'avc1.64002a', // High Level 4.2
+    'avc1.640033', // High Level 5.1
+    'avc1.640028', // High Level 4.0
+    'avc1.64001f', // High Level 3.1
+    'avc1.4d002a', // Main Level 4.2
+    'avc1.4d0028', // Main Level 4.0
+    'avc1.42E01E', // Baseline Level 3.0
+    'avc1.42001f', // Baseline Level 3.1
+  ];
+
+  const mainCandidates = [
+    'avc1.4d002a', // Main Level 4.2
+    'avc1.4d0028', // Main Level 4.0
+    'avc1.4D401F', // Main Level 3.1
+    'avc1.64002a', // High Level 4.2
+    'avc1.42E01E', // Baseline Level 3.0
+  ];
+
+  const baselineCandidates = [
+    'avc1.42E01E', // Baseline Level 3.0
+    'avc1.42001f', // Baseline Level 3.1
+    'avc1.4d002a', // Main Level 4.2
+    'avc1.64002a', // High Level 4.2
+  ];
+
   const candidates =
     profile === 'baseline'
-      ? ['avc1.42E01E', 'avc1.4d002a', 'avc1.64002a']
-      : profile === 'high'
-        ? ['avc1.64002a', 'avc1.4d002a', 'avc1.42E01E']
-        : ['avc1.4d002a', 'avc1.4D401F', 'avc1.64002a', 'avc1.42E01E'];
+      ? baselineCandidates
+      : profile === 'main'
+        ? mainCandidates
+        : highCandidates;
 
   const accelOptions: HardwareAcceleration[] = [
     'prefer-hardware',
