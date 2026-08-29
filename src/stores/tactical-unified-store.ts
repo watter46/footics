@@ -129,6 +129,12 @@ interface TacticalUnifiedState {
   // ── パネル
   panels: PanelState;
 
+  // ── 再生制御 (Playback)
+  isPlaying: boolean;
+  setIsPlaying: (isPlaying: boolean) => void;
+  togglePlayback: () => void;
+  stopPlayback: () => void;
+
   // ── エクスポート
   pendingExport: ExportTarget | null;
   isExporting: boolean;
@@ -161,7 +167,10 @@ interface TacticalUnifiedState {
   setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
 
   // ─ スライド CRUD
-  addSlide: () => string;
+  addSlide: (
+    sourceSlideId?: string,
+    mode?: 'object-free' | 'full' | 'blank',
+  ) => string;
   duplicateSlide: (slideId: string) => string;
   deleteSlide: (slideId: string) => void;
   reorderSlides: (orderedIds: string[]) => void;
@@ -366,6 +375,10 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
       rightPanelTab: 'formation_sub',
       exportModalOpen: false,
     },
+    isPlaying: false,
+    setIsPlaying: (isPlaying) => set({ isPlaying }),
+    togglePlayback: () => set((s) => ({ isPlaying: !s.isPlaying })),
+    stopPlayback: () => set({ isPlaying: false }),
     pendingExport: null,
     isExporting: false,
 
@@ -658,54 +671,88 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     // ══ スライド CRUD ════════════════════
 
-    addSlide: () => {
+    addSlide: (sourceSlideId, mode = 'object-free') => {
       const p = get().project;
-      const newSlide = createDefaultSlide(
-        p.slides.length,
-        undefined,
-        p.homeColor.primary,
-        p.awayColor.primary,
-      );
-      set((s) => ({
-        project: {
-          ...s.project,
-          slides: [...s.project.slides, newSlide].map((sl, i) => ({
-            ...sl,
-            index: i,
-          })),
-          activeSlideId: newSlide.id,
-          updatedAt: new Date().toISOString(),
-        },
-        activeSlideId: newSlide.id,
-        isDirty: true,
-      }));
-      return newSlide.id;
-    },
+      const targetId = sourceSlideId ?? get().activeSlideId;
+      const currentSlide = p.slides.find((sl) => sl.id === targetId);
 
-    duplicateSlide: (slideId) => {
-      const src = getSlide(get().project, slideId);
-      if (!src) return slideId;
-      const newSlide: Slide = {
-        ...(JSON.parse(JSON.stringify(src)) as Slide),
-        id: crypto.randomUUID(),
-        label: `${src.label ?? 'Scene'} (copy)`,
-      };
+      let newSlide: Slide;
+
+      if (!currentSlide || mode === 'blank') {
+        newSlide = createDefaultSlide(
+          p.slides.length,
+          undefined,
+          p.homeColor.primary,
+          p.awayColor.primary,
+        );
+      } else if (mode === 'full') {
+        newSlide = {
+          ...(JSON.parse(JSON.stringify(currentSlide)) as Slide),
+          id: crypto.randomUUID(),
+          label: `${currentSlide.label ?? 'Scene'} (copy)`,
+        };
+      } else {
+        // 'object-free': 選手とボール座標・スタイルを維持し、矢印・ゾーン・テキストなどのアノテーションをクリア
+        const clonedPlayers: Player[] = currentSlide.players.map((pl) => ({
+          ...JSON.parse(JSON.stringify(pl)),
+          connectLines: [],
+          visionCone: undefined,
+          badge: undefined,
+          focus: undefined,
+        }));
+
+        newSlide = {
+          id: crypto.randomUUID(),
+          index: p.slides.length,
+          label: `Scene ${p.slides.length + 1}`,
+          players: clonedPlayers,
+          arrows: [],
+          zones: [],
+          texts: [],
+          ball: currentSlide.ball
+            ? { ...currentSlide.ball }
+            : { x: 50, y: 50, visible: true },
+          boundaryBox: currentSlide.boundaryBox
+            ? { ...currentSlide.boundaryBox }
+            : undefined,
+          transitionDurationMs: currentSlide.transitionDurationMs ?? 1000,
+          pauseMs: currentSlide.pauseMs ?? 500,
+          easing: currentSlide.easing ?? 'ease-in-out',
+          backgroundImageUrl: currentSlide.backgroundImageUrl,
+          backgroundType: currentSlide.backgroundType,
+        };
+      }
+
       set((s) => {
-        const idx = s.project.slides.findIndex((sl) => sl.id === slideId);
-        const next = [...s.project.slides];
-        next.splice(idx + 1, 0, newSlide);
+        const currentIdx = s.project.slides.findIndex(
+          (sl) => sl.id === targetId,
+        );
+        const nextSlides = [...s.project.slides];
+        if (currentIdx !== -1) {
+          nextSlides.splice(currentIdx + 1, 0, newSlide);
+        } else {
+          nextSlides.push(newSlide);
+        }
+        const indexedSlides = nextSlides.map((sl, i) => ({ ...sl, index: i }));
+
         return {
           project: {
             ...s.project,
-            slides: next.map((sl, i) => ({ ...sl, index: i })),
+            slides: indexedSlides,
             activeSlideId: newSlide.id,
             updatedAt: new Date().toISOString(),
           },
           activeSlideId: newSlide.id,
+          selectedObjects: [],
           isDirty: true,
         };
       });
+
       return newSlide.id;
+    },
+
+    duplicateSlide: (slideId) => {
+      return get().addSlide(slideId, 'full');
     },
 
     deleteSlide: (slideId) =>
@@ -1573,6 +1620,12 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 /** アクティブスライドを取得 */
 export const selectActiveSlide = (s: TacticalUnifiedState): Slide | undefined =>
   s.project.slides.find((sl) => sl.id === s.activeSlideId);
+
+/** 直前のスライドを取得 (先頭スライドの場合は null) */
+export const selectPreviousSlide = (s: TacticalUnifiedState): Slide | null => {
+  const idx = s.project.slides.findIndex((sl) => sl.id === s.activeSlideId);
+  return idx > 0 ? (s.project.slides[idx - 1] ?? null) : null;
+};
 
 /** 選択中の単一オブジェクトID */
 export const selectSingleSelectedId = (

@@ -36,7 +36,7 @@ export function RightPanel() {
             }`}
           >
             <Users size={13} />
-            <span>選手・布陣</span>
+            <span>Formation & Squad</span>
           </button>
 
           <button
@@ -49,7 +49,7 @@ export function RightPanel() {
             }`}
           >
             <SlidersHorizontal size={13} />
-            <span>詳細設定</span>
+            <span>Properties</span>
             {selectedCount > 0 && (
               <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold">
                 {selectedCount}

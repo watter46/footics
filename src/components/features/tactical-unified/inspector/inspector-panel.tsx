@@ -2,21 +2,21 @@
 
 /**
  * inspector-panel.tsx
- * Right inspector — 選択オブジェクトのプロパティ詳細
- * 選手・矢印・ゾーン・テキストに対応
+ * Right inspector — Selected Object Properties & Slide Settings
+ * Handles: Slide Settings (when unselected), Player, Arrow, Zone, Text
  */
 
 import {
   ArrowDownLeft,
   Award,
   Circle,
+  Clock,
   Eye,
   Info,
   Layers,
   LayoutGrid,
   Link,
   MoveRight,
-  Palette,
   Plus,
   Settings,
   Sparkles,
@@ -28,6 +28,7 @@ import type React from 'react';
 import { useState } from 'react';
 import type {
   ArrowAnnotation,
+  Easing,
   Player,
   Slide,
   TacticalProject,
@@ -39,6 +40,7 @@ import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/stores/tactical-unified-store';
+import { ColorInput } from '../common-color-input';
 
 function DashedArrowIcon({
   size = 14,
@@ -70,6 +72,7 @@ export function InspectorPanel() {
   const clearSelection = useTacticalUnifiedStore((s) => s.clearSelection);
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+  const slides = useTacticalUnifiedStore((s) => s.project.slides);
   const updatePlayer = useTacticalUnifiedStore((s) => s.updatePlayer);
   const addArrow = useTacticalUnifiedStore((s) => s.addArrow);
   const updateArrow = useTacticalUnifiedStore((s) => s.updateArrow);
@@ -79,38 +82,46 @@ export function InspectorPanel() {
   const removeArrow = useTacticalUnifiedStore((s) => s.removeArrow);
   const removeZone = useTacticalUnifiedStore((s) => s.removeZone);
   const removeText = useTacticalUnifiedStore((s) => s.removeText);
+  const updateSlideTransition = useTacticalUnifiedStore(
+    (s) => s.updateSlideTransition,
+  );
+  const deleteSlide = useTacticalUnifiedStore((s) => s.deleteSlide);
 
   const setRightPanelTab = useTacticalUnifiedStore((s) => s.setRightPanelTab);
   const project = useTacticalUnifiedStore((s) => s.project);
   const setBackgroundType = useTacticalUnifiedStore((s) => s.setBackgroundType);
-  const setTeamColor = useTacticalUnifiedStore((s) => s.setTeamColor);
 
   const single = selectedObjects.length === 1 ? selectedObjects[0] : null;
 
+  // ── Unselected: Slide Settings ──────────────────────────────────────
   if (!single || !activeSlide) {
     return (
       <div className="flex flex-col h-full">
         <InspectorHeader
-          title="プロジェクト & ピッチ"
+          title="Slide Settings"
           onClose={() => {
             setRightPanelTab('formation_sub');
           }}
         />
-        <DefaultInspector
+        <SlideSettingsInspector
           project={project}
           activeSlide={activeSlide}
+          slidesCount={slides.length}
           setBackgroundType={setBackgroundType}
-          setTeamColor={setTeamColor}
+          updateSlideTransition={updateSlideTransition}
+          deleteSlide={deleteSlide}
         />
       </div>
     );
   }
 
+  // ── Player Selected ──────────────────────────────────────────────────
   if (single.kind === 'player') {
     const player = activeSlide.players.find((p) => p.id === single.id);
     if (!player)
       return (
         <InspectorHeader
+          title="Player"
           onClose={() => {
             clearSelection();
           }}
@@ -119,7 +130,7 @@ export function InspectorPanel() {
     return (
       <div className="flex flex-col h-full">
         <InspectorHeader
-          title="選手"
+          title="Player"
           onClose={() => {
             clearSelection();
           }}
@@ -140,11 +151,13 @@ export function InspectorPanel() {
     );
   }
 
+  // ── Arrow Selected ───────────────────────────────────────────────────
   if (single.kind === 'arrow') {
     const arrow = activeSlide.arrows.find((a) => a.id === single.id);
     if (!arrow)
       return (
         <InspectorHeader
+          title="Arrow"
           onClose={() => {
             clearSelection();
           }}
@@ -153,7 +166,7 @@ export function InspectorPanel() {
     return (
       <div className="flex flex-col h-full">
         <InspectorHeader
-          title="矢印・ライン"
+          title="Arrow & Line"
           onClose={() => {
             clearSelection();
           }}
@@ -172,11 +185,13 @@ export function InspectorPanel() {
     );
   }
 
+  // ── Zone Selected ────────────────────────────────────────────────────
   if (single.kind === 'zone') {
     const zone = activeSlide.zones.find((z) => z.id === single.id);
     if (!zone)
       return (
         <InspectorHeader
+          title="Zone"
           onClose={() => {
             clearSelection();
           }}
@@ -185,7 +200,7 @@ export function InspectorPanel() {
     return (
       <div className="flex flex-col h-full">
         <InspectorHeader
-          title="ゾーン"
+          title="Zone"
           onClose={() => {
             clearSelection();
           }}
@@ -204,11 +219,13 @@ export function InspectorPanel() {
     );
   }
 
+  // ── Text Selected ────────────────────────────────────────────────────
   if (single.kind === 'text') {
     const text = activeSlide.texts.find((t) => t.id === single.id);
     if (!text)
       return (
         <InspectorHeader
+          title="Text"
           onClose={() => {
             clearSelection();
           }}
@@ -217,7 +234,7 @@ export function InspectorPanel() {
     return (
       <div className="flex flex-col h-full">
         <InspectorHeader
-          title="テキスト"
+          title="Text"
           onClose={() => {
             clearSelection();
           }}
@@ -259,7 +276,7 @@ function InspectorHeader({
   return (
     <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 shrink-0 bg-white/[0.02]">
       <span className="text-xs font-medium text-white/70">
-        {title ? `インスペクター — ${title}` : 'インスペクター'}
+        {title ? `Properties — ${title}` : 'Properties'}
       </span>
       <div className="flex items-center gap-1">
         {onDeselect && (
@@ -267,17 +284,17 @@ function InspectorHeader({
             type="button"
             onClick={onDeselect}
             className="px-1.5 py-0.5 rounded text-[10px] text-white/40 hover:text-white/80 hover:bg-white/10 transition-colors"
-            title="選択を解除"
+            title="Deselect object"
           >
-            選択解除
+            Deselect
           </button>
         )}
         <button
           type="button"
           onClick={onClose}
           className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors"
-          aria-label="パネルを閉じる"
-          title="閉じる"
+          aria-label="Close panel"
+          title="Close"
         >
           <X size={14} />
         </button>
@@ -286,18 +303,25 @@ function InspectorHeader({
   );
 }
 
-// ── Default / Project Inspector (未選択時) ───────────────────────────
+// ── Slide Settings Inspector (Unselected State) ───────────────────────
 
-function DefaultInspector({
+function SlideSettingsInspector({
   project,
   activeSlide,
+  slidesCount,
   setBackgroundType,
-  setTeamColor,
+  updateSlideTransition,
+  deleteSlide,
 }: {
   project: TacticalProject;
   activeSlide?: Slide;
+  slidesCount: number;
   setBackgroundType: (t: TacticalProject['backgroundType']) => void;
-  setTeamColor: (team: 'home' | 'away', primary: string) => void;
+  updateSlideTransition: (
+    slideId: string,
+    params: Partial<Pick<Slide, 'transitionDurationMs' | 'pauseMs' | 'easing'>>,
+  ) => void;
+  deleteSlide: (slideId: string) => void;
 }) {
   const homeCount =
     activeSlide?.players.filter((p) => p.team === 'home').length ?? 0;
@@ -311,26 +335,127 @@ function DefaultInspector({
     label: string;
     value: TacticalProject['backgroundType'];
   }[] = [
-    { label: 'ピッチ (Pitch)', value: 'pitch' },
-    { label: '画像背景 (Image)', value: 'image' },
-    { label: '無地 (Blank)', value: 'blank' },
+    { label: 'Pitch', value: 'pitch' },
+    { label: 'Image', value: 'image' },
+    { label: 'Blank', value: 'blank' },
   ];
 
+  const easingOptions: { label: string; value: Easing }[] = [
+    { label: 'Ease In Out', value: 'ease-in-out' },
+    { label: 'Ease In', value: 'ease-in' },
+    { label: 'Ease Out', value: 'ease-out' },
+    { label: 'Linear', value: 'linear' },
+  ];
+
+  const durationSec = activeSlide
+    ? (activeSlide.transitionDurationMs / 1000).toFixed(1)
+    : '1.0';
+  const pauseSec = activeSlide
+    ? (activeSlide.pauseMs / 1000).toFixed(1)
+    : '0.5';
+
   return (
-    <div className="flex-1 overflow-y-auto p-3 space-y-4">
-      {/* ピッチ背景設定 */}
-      <div className="space-y-2">
+    <div className="flex-1 overflow-y-auto p-3 space-y-4 text-white select-none custom-scrollbar">
+      {/* 1. Slide Timing & Animation Settings */}
+      {activeSlide && (
+        <div className="space-y-3">
+          <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
+            <Clock size={13} className="text-blue-400" />
+            Slide Timing & Animation
+          </span>
+
+          {/* Duration */}
+          <div className="space-y-1 bg-white/[0.02] p-2.5 rounded-lg border border-white/10">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-white/60">Duration</span>
+              <span className="font-mono text-blue-400 font-bold">
+                {durationSec}s
+              </span>
+            </div>
+            <input
+              type="range"
+              min={200}
+              max={5000}
+              step={100}
+              value={activeSlide.transitionDurationMs}
+              onChange={(e) =>
+                updateSlideTransition(activeSlide.id, {
+                  transitionDurationMs: parseInt(e.target.value, 10),
+                })
+              }
+              className="w-full accent-blue-500 cursor-pointer"
+            />
+            <div className="flex justify-between text-[10px] text-white/30 font-mono">
+              <span>0.2s</span>
+              <span>5.0s</span>
+            </div>
+          </div>
+
+          {/* Pause */}
+          <div className="space-y-1 bg-white/[0.02] p-2.5 rounded-lg border border-white/10">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-white/60">Pause</span>
+              <span className="font-mono text-emerald-400 font-bold">
+                {pauseSec}s
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={3000}
+              step={100}
+              value={activeSlide.pauseMs}
+              onChange={(e) =>
+                updateSlideTransition(activeSlide.id, {
+                  pauseMs: parseInt(e.target.value, 10),
+                })
+              }
+              className="w-full accent-emerald-500 cursor-pointer"
+            />
+            <div className="flex justify-between text-[10px] text-white/30 font-mono">
+              <span>0.0s</span>
+              <span>3.0s</span>
+            </div>
+          </div>
+
+          {/* Easing */}
+          <div className="space-y-1.5 bg-white/[0.02] p-2.5 rounded-lg border border-white/10">
+            <span className="text-xs text-white/60 block">Easing</span>
+            <div className="grid grid-cols-2 gap-1">
+              {easingOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() =>
+                    updateSlideTransition(activeSlide.id, { easing: opt.value })
+                  }
+                  className={`px-2 py-1.5 rounded text-[11px] font-medium border transition-all text-center ${
+                    activeSlide.easing === opt.value
+                      ? 'bg-blue-600 border-blue-500 text-white font-bold shadow-sm'
+                      : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Pitch Background */}
+      <div className="pt-3 border-t border-white/10 space-y-2">
         <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
           <LayoutGrid size={13} className="text-emerald-400" />
-          ピッチ背景
+          Pitch Background
         </span>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5">
           {bgOptions.map((opt) => (
             <button
               key={opt.value}
               type="button"
               onClick={() => setBackgroundType(opt.value)}
-              className={`px-2 py-1.5 rounded-lg text-xs font-medium border transition-all text-left truncate ${
+              className={`px-2 py-1.5 rounded-lg text-xs font-medium border transition-all text-center truncate ${
                 project.backgroundType === opt.value
                   ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
                   : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
@@ -342,40 +467,16 @@ function DefaultInspector({
         </div>
       </div>
 
-      {/* チームカラー設定 */}
-      <div className="pt-3 border-t border-white/10 space-y-2">
-        <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
-          <Palette size={13} className="text-blue-400" />
-          チームカラー
-        </span>
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <span className="text-xs text-white/70 block">ホーム</span>
-            <ColorInput
-              value={project.homeColor.primary}
-              onChange={(c) => setTeamColor('home', c)}
-            />
-          </div>
-          <div className="space-y-1">
-            <span className="text-xs text-white/70 block">アウェイ</span>
-            <ColorInput
-              value={project.awayColor.primary}
-              onChange={(c) => setTeamColor('away', c)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* スライドサマリー */}
+      {/* 3. Slide Elements Summary */}
       <div className="pt-3 border-t border-white/10 space-y-2">
         <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
           <Layers size={13} className="text-purple-400" />
-          スライド要素
+          Slide Elements
         </span>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="p-2 rounded-lg bg-white/5 border border-white/10">
             <span className="text-[10px] text-white/40 block">
-              選手 (H / A)
+              Players (H / A)
             </span>
             <span className="font-mono font-bold text-white">
               {homeCount} <span className="text-white/40 font-normal">/</span>{' '}
@@ -384,7 +485,7 @@ function DefaultInspector({
           </div>
           <div className="p-2 rounded-lg bg-white/5 border border-white/10">
             <span className="text-[10px] text-white/40 block">
-              矢印 / ゾーン / 文字
+              Arrows / Zones / Text
             </span>
             <span className="font-mono font-bold text-white">
               {arrowCount} <span className="text-white/40 font-normal">/</span>{' '}
@@ -395,12 +496,40 @@ function DefaultInspector({
         </div>
       </div>
 
-      {/* ガイド */}
+      {/* 4. Delete Slide Action */}
+      {activeSlide && (
+        <div className="pt-3 border-t border-white/10">
+          <button
+            type="button"
+            onClick={() => {
+              if (slidesCount <= 1) return;
+              if (
+                window.confirm('Are you sure you want to delete this slide?')
+              ) {
+                deleteSlide(activeSlide.id);
+              }
+            }}
+            disabled={slidesCount <= 1}
+            className="w-full py-2 rounded-lg border border-red-500/40 text-xs font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Trash2 size={13} />
+            <span>Delete Slide</span>
+          </button>
+          {slidesCount <= 1 && (
+            <p className="text-[10px] text-white/30 text-center mt-1">
+              At least one slide is required in project.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* 5. Guide / Hints */}
       <div className="pt-3 border-t border-white/10">
         <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-200/80 leading-relaxed flex items-start gap-2">
           <Info size={14} className="shrink-0 text-blue-400 mt-0.5" />
           <span>
-            ピッチ上の選手、矢印、ゾーン、テキストをクリックすると、詳細プロパティ（視野・コネクタ・バッジ等）を編集できます。
+            Click on any player, arrow, zone, or text on the pitch to edit its
+            detailed properties (Vision Cone, Connectors, Badges, etc.).
           </span>
         </div>
       </div>
@@ -419,101 +548,10 @@ function Row({
 }) {
   return (
     <div className="space-y-1">
-      <label className="text-[10px] uppercase tracking-wider text-white/50">
+      <span className="text-[10px] uppercase tracking-wider text-white/50 block">
         {label}
-      </label>
+      </span>
       {children}
-    </div>
-  );
-}
-
-const COLOR_PALETTE = [
-  '#ffffff', // White
-  '#ef4444', // Red
-  '#3b82f6', // Blue
-  '#22c55e', // Green
-  '#eab308', // Yellow
-  '#f97316', // Orange
-  '#a855f7', // Purple
-  '#06b6d4', // Cyan
-];
-
-function ColorInput({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const normalizedValue =
-    value.startsWith('#') && value.length === 7 ? value : '#ffffff';
-
-  return (
-    <div className="w-[70%] space-y-1.5" style={{ colorScheme: 'only light' }}>
-      <div className="grid grid-cols-4 gap-1">
-        {COLOR_PALETTE.map((c) => {
-          const isSelected = value.toLowerCase() === c.toLowerCase();
-          const isWhite = c.toLowerCase() === '#ffffff';
-          return (
-            <button
-              key={c}
-              type="button"
-              onClick={() => onChange(c)}
-              className={`w-full aspect-square rounded-md border p-0.5 transition-all cursor-pointer flex items-center justify-center relative overflow-hidden ${
-                isSelected
-                  ? 'ring-2 ring-blue-500 border-white scale-105 shadow-md z-10'
-                  : isWhite
-                    ? 'border-white/60 hover:border-white hover:scale-105'
-                    : 'border-white/10 hover:border-white/30 hover:scale-105'
-              }`}
-              style={{
-                colorScheme: 'only light',
-                backgroundImage: `linear-gradient(${c}, ${c})`,
-              }}
-              title={isWhite ? '白色 (#ffffff)' : c}
-            >
-              {/* Edge/Chrome強制ダークモードによる背景色黒化反転をSVG rectで100%防止 */}
-              <svg
-                className="w-full h-full rounded-[3px] block pointer-events-none"
-                viewBox="0 0 20 20"
-                style={{ colorScheme: 'only light' }}
-              >
-                <rect width="20" height="20" rx="3" fill={c} />
-              </svg>
-            </button>
-          );
-        })}
-      </div>
-      <div className="flex items-center gap-1.5">
-        <label
-          className="relative w-5 h-5 rounded border border-white/40 cursor-pointer shrink-0 overflow-hidden flex items-center justify-center shadow-xs"
-          style={{
-            colorScheme: 'only light',
-            backgroundImage: `linear-gradient(${normalizedValue}, ${normalizedValue})`,
-          }}
-          title="カラーピッカーを開く"
-        >
-          <svg
-            className="w-full h-full block pointer-events-none"
-            viewBox="0 0 20 20"
-            style={{ colorScheme: 'only light' }}
-          >
-            <rect width="20" height="20" rx="2" fill={normalizedValue} />
-          </svg>
-          <input
-            type="color"
-            value={normalizedValue}
-            onChange={(e) => onChange(e.target.value)}
-            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-          />
-        </label>
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] font-mono text-white/80 focus:outline-none focus:border-blue-500 uppercase"
-        />
-      </div>
     </div>
   );
 }
@@ -555,9 +593,9 @@ function RangeInput({
 }) {
   return (
     <div className="space-y-1">
-      <label className="text-[10px] uppercase tracking-wider text-white/50">
+      <span className="text-[10px] uppercase tracking-wider text-white/50 block">
         {label} {value.toFixed(1)}
-      </label>
+      </span>
       <input
         type="range"
         min={min}
@@ -571,15 +609,21 @@ function RangeInput({
   );
 }
 
-function DeleteButton({ onClick }: { onClick: () => void }) {
+function DeleteButton({
+  onClick,
+  label = 'Delete',
+}: {
+  onClick: () => void;
+  label?: string;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="w-full mt-4 py-1.5 rounded-lg border border-red-500/40 text-xs text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-1.5"
+      className="w-full mt-4 py-1.5 rounded-lg border border-red-500/40 text-xs text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
     >
       <Trash2 size={13} />
-      <span>削除</span>
+      <span>{label}</span>
     </button>
   );
 }
@@ -626,7 +670,7 @@ function PlayerInspector({
 
   const [newBadgeText, setNewBadgeText] = useState('');
 
-  // 視野操作
+  // Vision cone
   const hasVisionCone = !!player.visionCone && player.visionCone.visible;
   const toggleVisionCone = () => {
     if (hasVisionCone) {
@@ -653,7 +697,7 @@ function PlayerInspector({
     up({ visionCone: { ...player.visionCone, ...patch } });
   };
 
-  // バッジ操作
+  // Badges
   const addBadge = (
     label: string,
     color = '#f59e0b',
@@ -676,12 +720,12 @@ function PlayerInspector({
     up({ badges: player.badges.filter((b) => b.id !== badgeId) });
   };
 
-  // コネクタ削除操作
+  // Connect lines
   const removeConnectLine = (lineId: string) => {
     up({ connectLines: player.connectLines.filter((l) => l.id !== lineId) });
   };
 
-  // ── アイコン押下時の即時適用 & タブ切替 ──
+  // Tab click actions
   const handleTabClick = (tab: MarkerOptionTab) => {
     setActiveMarkerOptionTab(tab);
     if (tab === 'vision') {
@@ -769,8 +813,8 @@ function PlayerInspector({
     : 60;
 
   return (
-    <div className="flex-1 overflow-y-auto p-3 space-y-3.5 text-slate-200">
-      {/* ── 選手ヘッダー & サブ/ピッチ間ジャンプ ── */}
+    <div className="flex-1 overflow-y-auto p-3 space-y-3.5 text-slate-200 custom-scrollbar">
+      {/* ── Player Header & Bench/Pitch Jump ── */}
       <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10">
         <div className="flex items-center gap-2 min-w-0">
           <span
@@ -781,12 +825,12 @@ function PlayerInspector({
           </span>
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-bold text-white truncate">
-              {player.name || `選手 ${player.shirtNo || ''}`}
+              {player.name || `Player ${player.shirtNo || ''}`}
             </span>
             <span className="text-[10px] text-white/40 font-mono">
               {player.area === 'pitch'
-                ? 'ピッチ上 (配置中)'
-                : 'サブメンバー (ベンチ)'}
+                ? 'On Pitch (Placed)'
+                : 'Substitute (Bench)'}
             </span>
           </div>
         </div>
@@ -799,10 +843,10 @@ function PlayerInspector({
               setRightPanelTab('formation_sub');
             }}
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[10px] font-bold transition-all cursor-pointer shadow-sm"
-            title="ピッチからサブ(ベンチ)へ退避 (マーカーオプション自動解除)"
+            title="Move player from pitch to bench"
           >
             <ArrowDownLeft size={12} />
-            <span>サブへ送る</span>
+            <span>Send to Bench</span>
           </button>
         ) : (
           <button
@@ -811,15 +855,15 @@ function PlayerInspector({
               movePlayerToPitch(slideId, player.id, 50, 50);
             }}
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 text-blue-300 text-[10px] font-bold transition-all cursor-pointer shadow-sm"
-            title="サブからピッチへ配置"
+            title="Place player on pitch"
           >
             <Plus size={12} />
-            <span>ピッチへ配置</span>
+            <span>Place on Pitch</span>
           </button>
         )}
       </div>
 
-      {/* ── 横並びアイコンタブバー (7タブ) ── */}
+      {/* ── 7-Tab Icon Navigation Bar ── */}
       <div className="grid grid-cols-7 gap-1 p-1 rounded-xl bg-white/5 border border-white/10 shrink-0">
         <button
           type="button"
@@ -829,10 +873,12 @@ function PlayerInspector({
               ? 'bg-blue-600 text-white shadow-md'
               : 'text-white/60 hover:text-white hover:bg-white/5'
           }`}
-          title="視野コーン (クリックで即時適用)"
+          title="Vision Cone (Click to enable)"
         >
           <Eye size={14} />
-          <span className="text-[9px] mt-1 font-medium leading-none">視野</span>
+          <span className="text-[9px] mt-1 font-medium leading-none">
+            Vision
+          </span>
         </button>
 
         <button
@@ -843,11 +889,11 @@ function PlayerInspector({
               ? 'bg-emerald-600 text-white shadow-md'
               : 'text-white/60 hover:text-white hover:bg-white/5'
           }`}
-          title="コネクト (クリックで対象選択開始)"
+          title="Connect (Click to link players)"
         >
           <Link size={14} />
           <span className="text-[9px] mt-1 font-medium leading-none">
-            コネクト
+            Connect
           </span>
         </button>
 
@@ -859,11 +905,11 @@ function PlayerInspector({
               ? 'bg-sky-600 text-white shadow-md'
               : 'text-white/60 hover:text-white hover:bg-white/5'
           }`}
-          title="実線矢印 (クリックで即時追加)"
+          title="Solid Arrow (Click to add)"
         >
           <MoveRight size={14} />
           <span className="text-[9px] mt-1 font-medium leading-none">
-            実線矢印
+            Solid
           </span>
         </button>
 
@@ -875,11 +921,11 @@ function PlayerInspector({
               ? 'bg-amber-600 text-white shadow-md'
               : 'text-white/60 hover:text-white hover:bg-white/5'
           }`}
-          title="点線矢印 (クリックで即時追加)"
+          title="Dashed Arrow (Click to add)"
         >
           <DashedArrowIcon size={14} />
           <span className="text-[9px] mt-1 font-medium leading-none">
-            点線矢印
+            Dashed
           </span>
         </button>
 
@@ -891,10 +937,10 @@ function PlayerInspector({
               ? 'bg-yellow-500 text-black font-bold shadow-md'
               : 'text-white/60 hover:text-white hover:bg-white/5'
           }`}
-          title="フォーカス (スポットライト強調・クリックで即時適用)"
+          title="Focus / Spotlight (Click to highlight)"
         >
           <Sparkles size={14} />
-          <span className="text-[9px] mt-1 leading-none">注目</span>
+          <span className="text-[9px] mt-1 leading-none">Focus</span>
         </button>
 
         <button
@@ -905,11 +951,11 @@ function PlayerInspector({
               ? 'bg-purple-600 text-white shadow-md'
               : 'text-white/60 hover:text-white hover:bg-white/5'
           }`}
-          title="バッジ (クリックでKEYバッジ追加)"
+          title="Badge (Click to add KEY badge)"
         >
           <Award size={14} />
           <span className="text-[9px] mt-1 font-medium leading-none">
-            バッジ
+            Badge
           </span>
         </button>
 
@@ -921,22 +967,24 @@ function PlayerInspector({
               ? 'bg-zinc-700 text-white shadow-md'
               : 'text-white/60 hover:text-white hover:bg-white/5'
           }`}
-          title="基本設定"
+          title="Basic Settings"
         >
           <Settings size={14} />
-          <span className="text-[9px] mt-1 font-medium leading-none">基本</span>
+          <span className="text-[9px] mt-1 font-medium leading-none">
+            Basic
+          </span>
         </button>
       </div>
 
-      {/* ── 選択されたタブのコンテンツ ── */}
+      {/* ── Tab Content ── */}
 
-      {/* 1. 視野 (Vision Cone) */}
+      {/* 1. Vision (Vision Cone) */}
       {currentTab === 'vision' && (
         <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-white flex items-center gap-1.5">
               <Eye size={14} className="text-blue-400" />
-              視野コーン
+              Vision Cone
             </span>
             <button
               type="button"
@@ -954,11 +1002,11 @@ function PlayerInspector({
           {hasVisionCone && player.visionCone ? (
             <div className="space-y-3 pt-1">
               <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-200/90 leading-tight">
-                💡
-                キャンバス上の視野コーンハンドルを直接ドラッグして、向き・視野長・広がり角を操作できます。
+                💡 Drag vision cone handles directly on canvas to adjust
+                direction, length, and spread angle.
               </div>
               <RangeInput
-                label="向き (°)"
+                label="Direction (°)"
                 value={angleDeg}
                 min={0}
                 max={360}
@@ -968,7 +1016,7 @@ function PlayerInspector({
                 }
               />
               <RangeInput
-                label="広がり角 (°)"
+                label="Spread Angle (°)"
                 value={spreadDeg}
                 min={20}
                 max={120}
@@ -978,21 +1026,21 @@ function PlayerInspector({
                 }
               />
               <RangeInput
-                label="視野長"
+                label="Length"
                 value={player.visionCone.radius}
                 min={10}
                 max={60}
                 step={2}
                 onChange={(rad) => updateVisionCone({ radius: rad })}
               />
-              <Row label="色">
+              <Row label="Color">
                 <ColorInput
                   value={player.visionCone.color}
                   onChange={(c) => updateVisionCone({ color: c })}
                 />
               </Row>
               <RangeInput
-                label="不透明度"
+                label="Opacity"
                 value={player.visionCone.opacity}
                 min={0.1}
                 max={0.8}
@@ -1002,19 +1050,19 @@ function PlayerInspector({
             </div>
           ) : (
             <div className="py-6 text-center text-xs text-white/40">
-              「ON」をクリックして視野コーンを有効化します
+              Click "ON" to activate vision cone
             </div>
           )}
         </div>
       )}
 
-      {/* 2. コネクタ (Connect Line) */}
+      {/* 2. Connector (Connect Line) */}
       {currentTab === 'connect' && (
         <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-white flex items-center gap-1.5">
               <Link size={14} className="text-emerald-400" />
-              選手間コネクタ
+              Player Connectors
             </span>
             <button
               type="button"
@@ -1032,21 +1080,21 @@ function PlayerInspector({
               }`}
             >
               <Plus size={12} />
-              {isConnecting ? '対象選択中...' : '追加'}
+              {isConnecting ? 'Selecting...' : 'Add'}
             </button>
           </div>
 
           {isConnecting && (
             <div className="p-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-200 flex items-center justify-between">
               <span className="text-[11px] font-medium leading-tight">
-                ピッチ上の対象選手をクリックしてください
+                Click a target player on pitch
               </span>
               <button
                 type="button"
                 onClick={() => setConnectingPlayerId(null)}
                 className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px] text-white shrink-0 ml-2 cursor-pointer"
               >
-                キャンセル
+                Cancel
               </button>
             </div>
           )}
@@ -1062,20 +1110,22 @@ function PlayerInspector({
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-white/90 truncate">
-                        → {target?.name || `選手 #${target?.shirtNo || '?'}`}
+                        → {target?.name || `Player #${target?.shirtNo || '?'}`}
                       </span>
                       <button
                         type="button"
                         onClick={() => removeConnectLine(line.id)}
                         className="p-1 rounded hover:bg-white/10 text-red-400 hover:text-red-300 cursor-pointer"
-                        title="コネクタを削除"
+                        title="Delete connector"
                       >
                         <Trash2 size={13} />
                       </button>
                     </div>
 
                     <div className="flex items-center justify-between pt-1 border-t border-white/5">
-                      <span className="text-[10px] text-white/50">線種</span>
+                      <span className="text-[10px] text-white/50">
+                        Line Style
+                      </span>
                       <button
                         type="button"
                         onClick={() => {
@@ -1091,11 +1141,11 @@ function PlayerInspector({
                         }}
                         className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[11px] text-white/80 cursor-pointer"
                       >
-                        {line.lineStyle === 'dashed' ? '点線' : '実線'}
+                        {line.lineStyle === 'dashed' ? 'Dashed' : 'Solid'}
                       </button>
                     </div>
 
-                    <Row label="色">
+                    <Row label="Color">
                       <ColorInput
                         value={line.color || player.style.color || '#3b82f6'}
                         onChange={(c) => {
@@ -1114,19 +1164,19 @@ function PlayerInspector({
           ) : (
             !isConnecting && (
               <div className="py-6 text-center text-xs text-white/40">
-                「+ 追加」を押して対象選手を選択してください
+                Click "+ Add" to connect to another player
               </div>
             )
           )}
         </div>
       )}
 
-      {/* 3. 実線矢印 (Solid Arrow) */}
+      {/* 3. Solid Arrow */}
       {currentTab === 'arrow_solid' && (
         <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
           <span className="text-xs font-bold text-white flex items-center gap-1.5">
             <MoveRight size={14} className="text-sky-400" />
-            実線矢印（パス・シュート）
+            Solid Arrow (Pass / Shoot)
           </span>
 
           <div className="space-y-2">
@@ -1156,18 +1206,18 @@ function PlayerInspector({
               }}
               className="w-full py-2 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 text-xs font-bold text-white transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
             >
-              <Plus size={14} />+ 進行方向へ実線矢印を追加
+              <Plus size={14} />+ Add solid arrow in player direction
             </button>
           </div>
         </div>
       )}
 
-      {/* 4. 点線矢印 (Dashed Arrow) */}
+      {/* 4. Dashed Arrow */}
       {currentTab === 'arrow_dash' && (
         <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
           <span className="text-xs font-bold text-white flex items-center gap-1.5">
             <DashedArrowIcon size={14} className="text-amber-400" />
-            点線矢印（移動・ランニング）
+            Dashed Arrow (Movement / Run)
           </span>
 
           <div className="space-y-2">
@@ -1197,19 +1247,19 @@ function PlayerInspector({
               }}
               className="w-full py-2 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-xs font-bold text-white transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
             >
-              <Plus size={14} />+ 進行方向へ点線矢印を追加
+              <Plus size={14} />+ Add dashed arrow in player direction
             </button>
           </div>
         </div>
       )}
 
-      {/* 5. フォーカス (Focus / Spotlight) */}
+      {/* 5. Focus / Spotlight */}
       {currentTab === 'focus' && (
         <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-white flex items-center gap-1.5">
               <Sparkles size={14} className="text-yellow-400" />
-              フォーカス (スポットライト)
+              Focus (Spotlight)
             </span>
             <button
               type="button"
@@ -1238,11 +1288,10 @@ function PlayerInspector({
           {player.focus?.enabled ? (
             <div className="space-y-3 pt-1">
               <div className="p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-[11px] text-yellow-200/90 leading-tight">
-                💡
-                注目選手を戦術解説のようにスポットライトで照らして際立たせます。
+                💡 Highlight key players with spotlight focus effect.
               </div>
 
-              <Row label="スポットライト色">
+              <Row label="Spotlight Color">
                 <ColorInput
                   value={player.focus.color ?? '#fbbf24'}
                   onChange={(c) =>
@@ -1262,7 +1311,7 @@ function PlayerInspector({
               </Row>
 
               <RangeInput
-                label="照射半径"
+                label="Spotlight Radius"
                 value={player.focus.radius ?? 3}
                 min={1}
                 max={6}
@@ -1283,7 +1332,7 @@ function PlayerInspector({
               />
 
               <RangeInput
-                label="光の強さ (不透明度)"
+                label="Intensity (Opacity)"
                 value={player.focus.opacity ?? 0.35}
                 min={0.1}
                 max={0.8}
@@ -1305,21 +1354,21 @@ function PlayerInspector({
             </div>
           ) : (
             <div className="py-6 text-center text-xs text-white/40">
-              「ON」をクリックしてスポットライトを有効化します
+              Click "ON" to activate spotlight focus
             </div>
           )}
         </div>
       )}
 
-      {/* 6. バッジ (Badge) */}
+      {/* 6. Badges */}
       {currentTab === 'badge' && (
         <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
           <span className="text-xs font-bold text-white flex items-center gap-1.5">
             <Award size={14} className="text-purple-400" />
-            選手バッジ
+            Player Badges
           </span>
 
-          {/* 既存バッジ一覧 */}
+          {/* Existing badges */}
           {player.badges.length > 0 && (
             <div className="flex flex-wrap gap-1.5 py-1">
               {player.badges.map((b) => (
@@ -1341,7 +1390,7 @@ function PlayerInspector({
             </div>
           )}
 
-          {/* プリセットバッジ */}
+          {/* Preset Badges */}
           <div className="flex items-center gap-1 flex-wrap">
             <button
               type="button"
@@ -1373,11 +1422,11 @@ function PlayerInspector({
             </button>
           </div>
 
-          {/* カスタムバッジ追加 */}
+          {/* Custom Badge Form */}
           <div className="flex items-center gap-1 mt-1">
             <input
               type="text"
-              placeholder="カスタムバッジ名"
+              placeholder="Custom badge label"
               value={newBadgeText}
               onChange={(e) => setNewBadgeText(e.target.value)}
               className="flex-1 px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-blue-500"
@@ -1391,28 +1440,28 @@ function PlayerInspector({
               disabled={!newBadgeText.trim()}
               className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-xs font-medium text-white transition-all cursor-pointer"
             >
-              追加
+              Add
             </button>
           </div>
         </div>
       )}
 
-      {/* 6. 基本設定 (Basic) */}
+      {/* 7. Basic Settings */}
       {currentTab === 'basic' && (
         <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
           <span className="text-xs font-bold text-white flex items-center gap-1.5">
             <Settings size={14} className="text-zinc-400" />
-            基本情報 & 表示スタイル
+            Basic Info & Display Style
           </span>
 
-          <Row label="色">
+          <Row label="Color">
             <ColorInput
               value={player.style.color}
               onChange={(v) => upStyle({ color: v })}
             />
           </Row>
           <RangeInput
-            label="サイズ"
+            label="Size Scale"
             value={player.style.sizeScale}
             min={0.4}
             max={2.0}
@@ -1420,44 +1469,44 @@ function PlayerInspector({
             onChange={(v) => upStyle({ sizeScale: v })}
           />
           <RangeInput
-            label="枠線太さ"
+            label="Border Width"
             value={player.style.strokeWidth}
             min={0}
             max={5}
             step={0.5}
             onChange={(v) => upStyle({ strokeWidth: v })}
           />
-          <Row label="チーム">
+          <Row label="Team">
             <select
               value={player.team}
               onChange={(e) => up({ team: e.target.value as Player['team'] })}
               className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
             >
-              <option value="home">ホーム</option>
-              <option value="away">アウェイ</option>
-              <option value="neutral">ニュートラル</option>
+              <option value="home">Home</option>
+              <option value="away">Away</option>
+              <option value="neutral">Neutral</option>
             </select>
           </Row>
-          <Row label="背番号">
+          <Row label="Shirt Number">
             <TextInput
               value={player.shirtNo ?? ''}
               onChange={(v) => up({ shirtNo: v })}
               maxLength={3}
             />
           </Row>
-          <Row label="名前">
+          <Row label="Player Name">
             <TextInput
               value={player.name ?? ''}
               onChange={(v) => up({ name: v })}
             />
           </Row>
-          <Row label="ポジション">
+          <Row label="Position">
             <TextInput
               value={player.position ?? ''}
               onChange={(v) => up({ position: v })}
             />
           </Row>
-          <Row label="ラベル表示">
+          <Row label="Label Display">
             <select
               value={player.style.bottomLabel}
               onChange={(e) =>
@@ -1467,12 +1516,12 @@ function PlayerInspector({
               }
               className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
             >
-              <option value="name">名前</option>
-              <option value="number">背番号</option>
-              <option value="none">非表示</option>
+              <option value="name">Name</option>
+              <option value="number">Number</option>
+              <option value="none">Hidden</option>
             </select>
           </Row>
-          <Row label="内部表示">
+          <Row label="Inside Content">
             <select
               value={player.style.insideContent}
               onChange={(e) =>
@@ -1483,13 +1532,13 @@ function PlayerInspector({
               }
               className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
             >
-              <option value="number">背番号</option>
-              <option value="photo">写真</option>
-              <option value="none">なし</option>
+              <option value="number">Number</option>
+              <option value="photo">Photo</option>
+              <option value="none">None</option>
             </select>
           </Row>
           {player.style.insideContent === 'photo' && (
-            <Row label="写真URL">
+            <Row label="Photo URL">
               <TextInput
                 value={player.style.photoUrl ?? ''}
                 onChange={(v) => upStyle({ photoUrl: v })}
@@ -1499,8 +1548,8 @@ function PlayerInspector({
         </div>
       )}
 
-      {/* ── 削除ボタン ── */}
-      <DeleteButton onClick={onRemove} />
+      {/* ── Delete Player Button ── */}
+      <DeleteButton onClick={onRemove} label="Delete Player" />
     </div>
   );
 }
@@ -1521,19 +1570,19 @@ function ArrowInspector({
   const up = (p: Partial<ArrowAnnotation>) => updateArrow(slideId, arrow.id, p);
 
   return (
-    <div className="flex-1 overflow-y-auto p-3 space-y-4">
-      <Row label="色">
+    <div className="flex-1 overflow-y-auto p-3 space-y-4 text-white select-none custom-scrollbar">
+      <Row label="Color">
         <ColorInput value={arrow.color} onChange={(v) => up({ color: v })} />
       </Row>
       <RangeInput
-        label="線の太さ"
+        label="Line Width"
         value={arrow.strokeWidth}
         min={1}
         max={10}
         step={0.5}
         onChange={(v) => up({ strokeWidth: v })}
       />
-      <Row label="カーブ">
+      <Row label="Curve">
         <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/10 w-full">
           <button
             type="button"
@@ -1549,8 +1598,8 @@ function ArrowInspector({
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-white/60 hover:text-white hover:bg-white/10'
             }`}
-            title="直線"
-            aria-label="直線"
+            title="Straight"
+            aria-label="Straight"
           >
             <svg
               className="w-3.5 h-3.5 shrink-0"
@@ -1562,7 +1611,7 @@ function ArrowInspector({
             >
               <line x1="3" y1="12" x2="21" y2="12" />
             </svg>
-            <span>直線</span>
+            <span>Straight</span>
           </button>
           <button
             type="button"
@@ -1592,8 +1641,8 @@ function ArrowInspector({
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-white/60 hover:text-white hover:bg-white/10'
             }`}
-            title="カーブ"
-            aria-label="カーブ"
+            title="Curved"
+            aria-label="Curved"
           >
             <svg
               className="w-3.5 h-3.5 shrink-0"
@@ -1606,11 +1655,11 @@ function ArrowInspector({
             >
               <path d="M4 17 C 8 17, 14 7, 20 7" />
             </svg>
-            <span>カーブ</span>
+            <span>Curved</span>
           </button>
         </div>
       </Row>
-      <Row label="種別">
+      <Row label="Type">
         <select
           value={arrow.arrowType}
           onChange={(e) =>
@@ -1618,15 +1667,15 @@ function ArrowInspector({
           }
           className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
         >
-          <option value="pass">パス</option>
-          <option value="move">移動</option>
-          <option value="dribble">ドリブル</option>
-          <option value="defend">守備</option>
-          <option value="run">ラン</option>
-          <option value="generic">汎用</option>
+          <option value="pass">Pass</option>
+          <option value="move">Move</option>
+          <option value="dribble">Dribble</option>
+          <option value="defend">Defend</option>
+          <option value="run">Run</option>
+          <option value="generic">Generic</option>
         </select>
       </Row>
-      <DeleteButton onClick={onRemove} />
+      <DeleteButton onClick={onRemove} label="Delete Arrow" />
     </div>
   );
 }
@@ -1648,10 +1697,10 @@ function ZoneInspector({
   const isPolygon = zone.shapeType === 'polygon';
 
   return (
-    <div className="flex-1 overflow-y-auto p-3 space-y-4">
-      {/* 形状切替 (四角 / 楕円) */}
+    <div className="flex-1 overflow-y-auto p-3 space-y-4 text-white select-none custom-scrollbar">
+      {/* Shape toggle (Rectangle / Ellipse) */}
       {!isPolygon && (
-        <Row label="形状">
+        <Row label="Shape">
           <div className="grid grid-cols-2 gap-1.5 bg-white/5 p-1 rounded-lg border border-white/10">
             <button
               type="button"
@@ -1663,7 +1712,7 @@ function ZoneInspector({
               }`}
             >
               <Square size={13} />
-              <span>四角形</span>
+              <span>Rectangle</span>
             </button>
             <button
               type="button"
@@ -1675,7 +1724,7 @@ function ZoneInspector({
               }`}
             >
               <Circle size={13} />
-              <span>楕円</span>
+              <span>Ellipse</span>
             </button>
           </div>
         </Row>
@@ -1683,19 +1732,19 @@ function ZoneInspector({
 
       {isPolygon && (
         <div className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center justify-between">
-          <span className="font-medium">フリーゾーン (多角形)</span>
+          <span className="font-medium">Free Zone (Polygon)</span>
           <span className="text-[10px] text-emerald-400/70 font-mono">
-            {zone.points.length} 頂点
+            {zone.points.length} Vertices
           </span>
         </div>
       )}
 
-      <Row label="塗りつぶし色">
+      <Row label="Fill Color">
         <ColorInput value={zone.color} onChange={(v) => up({ color: v })} />
       </Row>
 
       <RangeInput
-        label="不透明度"
+        label="Opacity"
         value={zone.opacity ?? 0.25}
         min={0.05}
         max={1}
@@ -1704,7 +1753,7 @@ function ZoneInspector({
       />
 
       <RangeInput
-        label="枠線の太さ"
+        label="Border Width"
         value={zone.strokeWidth ?? 2}
         min={0}
         max={8}
@@ -1712,14 +1761,14 @@ function ZoneInspector({
         onChange={(v) => up({ strokeWidth: v })}
       />
 
-      <Row label="枠線の色">
+      <Row label="Border Color">
         <ColorInput
           value={zone.strokeColor ?? zone.color}
           onChange={(v) => up({ strokeColor: v })}
         />
       </Row>
 
-      <Row label="種別">
+      <Row label="Type">
         <select
           value={zone.zoneType}
           onChange={(e) =>
@@ -1727,16 +1776,16 @@ function ZoneInspector({
           }
           className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
         >
-          <option value="highlight">ハイライト</option>
-          <option value="space">スペース</option>
-          <option value="danger">危険エリア</option>
-          <option value="pressing">プレッシング</option>
-          <option value="buildup">ビルドアップ</option>
-          <option value="generic">汎用</option>
+          <option value="highlight">Highlight</option>
+          <option value="space">Space</option>
+          <option value="danger">Danger</option>
+          <option value="pressing">Pressing</option>
+          <option value="buildup">Buildup</option>
+          <option value="generic">Generic</option>
         </select>
       </Row>
 
-      <DeleteButton onClick={onRemove} />
+      <DeleteButton onClick={onRemove} label="Delete Zone" />
     </div>
   );
 }
@@ -1757,8 +1806,8 @@ function TextInspector({
   const up = (p: Partial<TextAnnotation>) => updateText(slideId, text.id, p);
 
   return (
-    <div className="flex-1 overflow-y-auto p-3 space-y-4">
-      <Row label="テキスト">
+    <div className="flex-1 overflow-y-auto p-3 space-y-4 text-white select-none custom-scrollbar">
+      <Row label="Text Content">
         <textarea
           value={text.content}
           maxLength={200}
@@ -1767,18 +1816,18 @@ function TextInspector({
           rows={3}
         />
       </Row>
-      <Row label="色">
+      <Row label="Color">
         <ColorInput value={text.color} onChange={(v) => up({ color: v })} />
       </Row>
       <RangeInput
-        label="フォントサイズ"
+        label="Font Size"
         value={text.fontSize}
         min={8}
         max={72}
         step={1}
         onChange={(v) => up({ fontSize: v })}
       />
-      <Row label="スタイル">
+      <Row label="Style">
         <div className="flex gap-2">
           <button
             type="button"
@@ -1796,7 +1845,7 @@ function TextInspector({
           </button>
         </div>
       </Row>
-      <DeleteButton onClick={onRemove} />
+      <DeleteButton onClick={onRemove} label="Delete Text" />
     </div>
   );
 }

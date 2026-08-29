@@ -96,7 +96,7 @@ export function useTacticalVideoExport() {
         const bgColor = exportOptions?.backgroundColor ?? '#020617';
         const fps = exportOptions?.fps ?? exportFps;
         const bitrate =
-          exportOptions?.bitrate ?? (fps <= 30 ? 10000000 : 16000000);
+          exportOptions?.bitrate ?? (fps <= 30 ? 14000000 : 16000000);
 
         // フルHD (1080p) ベクター解像度の計算 (H.264 GPUハードウェアエンコーダ向け 16ピクセル・アライメント)
         const align16 = (n: number) => Math.round(n / 16) * 16;

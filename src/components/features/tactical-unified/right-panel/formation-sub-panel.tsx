@@ -2,10 +2,10 @@
 
 /**
  * formation-sub-panel.tsx
- * Figma-like Right Panel: Formation & Sub-members management
+ * Figma-like Right Panel: Formation & Squad (Sub-members) management
  *
  * Features:
- *  - Home / Away team selection & color customize
+ *  - Home / Away team selection & integrated team color customization
  *  - Full / Half formation presets (from existing Footics formations)
  *  - Extensible season presets (e.g. 2024-25 Season squad)
  *  - Unlimited pitch players list with selection and "Send to Bench"
@@ -15,6 +15,7 @@
 
 import {
   ChevronDown,
+  Palette,
   RotateCcw,
   Search,
   Shield,
@@ -34,8 +35,9 @@ import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/stores/tactical-unified-store';
+import { ColorInput } from '../common-color-input';
 
-// ── シーズンプリセット拡張サンプルデータ ──────────────────────────────────
+// ── Season Preset Sample Data ──────────────────────────────────
 const SAMPLE_SEASON_PRESETS: SeasonFormationPreset[] = [
   {
     id: 'preset-chelsea-2425',
@@ -97,6 +99,7 @@ export function FormationSubPanel() {
   const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
   const addCustomPlayer = useTacticalUnifiedStore((s) => s.addCustomPlayer);
   const removePlayer = useTacticalUnifiedStore((s) => s.removePlayer);
+  const setTeamColor = useTacticalUnifiedStore((s) => s.setTeamColor);
 
   // Local states
   const [activeTeam, setActiveTeam] = useState<'home' | 'away'>('home');
@@ -105,6 +108,7 @@ export function FormationSubPanel() {
     useState<FormationType>('4-3-3');
   const [formationSearch, setFormationSearch] = useState('');
   const [showSeasonPresets, setShowSeasonPresets] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   // New sub player inputs
   const [isAddingSub, setIsAddingSub] = useState(false);
@@ -173,15 +177,13 @@ export function FormationSubPanel() {
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10 shrink-0 bg-[#181818]">
         <div className="flex items-center gap-2">
           <Users size={14} className="text-blue-400" />
-          <span className="font-semibold text-white/90">
-            フォーメーション & 選手
-          </span>
+          <span className="font-semibold text-white/90">Formation & Squad</span>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto divide-y divide-white/5 custom-scrollbar">
-        {/* 1. チーム選択 (Home / Away) */}
-        <div className="p-3">
+        {/* 1. Team Selection (Home / Away) & Integrated Team Color */}
+        <div className="p-3 space-y-2.5">
           <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded-lg bg-white/5 border border-white/10">
             <button
               type="button"
@@ -221,27 +223,64 @@ export function FormationSubPanel() {
               </span>
             </button>
           </div>
+
+          {/* Team Color Quick Customization */}
+          <div className="p-2 rounded-lg bg-white/[0.03] border border-white/10 space-y-2">
+            <button
+              type="button"
+              onClick={() => setShowColorPicker((v) => !v)}
+              className="flex items-center justify-between w-full text-[11px] font-medium text-white/70 hover:text-white"
+            >
+              <span className="flex items-center gap-1.5">
+                <Palette size={12} className="text-blue-400" />
+                <span>
+                  {activeTeam === 'home' ? 'Home' : 'Away'} Team Color
+                </span>
+              </span>
+              <span className="flex items-center gap-1 text-[10px] font-mono text-white/50">
+                <span
+                  className="w-2.5 h-2.5 rounded-full border border-white/30 inline-block"
+                  style={{ backgroundColor: teamColor }}
+                />
+                {teamColor}
+                <ChevronDown
+                  size={11}
+                  className={`transition-transform ${showColorPicker ? 'rotate-180' : ''}`}
+                />
+              </span>
+            </button>
+
+            {showColorPicker && (
+              <div className="pt-2 border-t border-white/5">
+                <ColorInput
+                  value={teamColor}
+                  onChange={(c) => setTeamColor(activeTeam, c)}
+                  className="w-full"
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* 2. フォーメーション展開 (Full / Half ＆ プリセット一覧 ＆ 初期化) */}
+        {/* 2. Formation Presets & Reset */}
         <div className="p-3 space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
-              フォーメーション
+              Formation
             </span>
             <div className="flex items-center gap-1.5">
-              {/* フォーメーション初期化リセットボタン */}
+              {/* Formation Reset */}
               <button
                 type="button"
                 onClick={() => handleApplyFormation(selectedFormation)}
                 className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-white/80 hover:text-white transition-colors"
-                title="現在のフォーメーションの初期配置にリセット"
+                title="Reset to default formation positions"
               >
                 <RotateCcw size={10} className="text-amber-400" />
-                <span>初期配置</span>
+                <span>Reset</span>
               </button>
 
-              {/* Full / Half 切替 */}
+              {/* Full / Half Toggle */}
               <div className="flex items-center bg-black/40 rounded border border-white/10 p-0.5">
                 <button
                   type="button"
@@ -269,7 +308,7 @@ export function FormationSubPanel() {
             </div>
           </div>
 
-          {/* 検索・選択 */}
+          {/* Search */}
           <div className="relative">
             <Search
               size={12}
@@ -277,14 +316,14 @@ export function FormationSubPanel() {
             />
             <input
               type="text"
-              placeholder="フォーメーション検索..."
+              placeholder="Search formations..."
               value={formationSearch}
               onChange={(e) => setFormationSearch(e.target.value)}
               className="w-full pl-7 pr-3 py-1 rounded bg-white/5 border border-white/10 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
             />
           </div>
 
-          {/* クイック選択チップ */}
+          {/* Quick Selection Chips */}
           <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto p-1 bg-black/30 rounded border border-white/5 custom-scrollbar">
             {filteredFormations.map((f) => (
               <button
@@ -302,7 +341,7 @@ export function FormationSubPanel() {
             ))}
           </div>
 
-          {/* シーズンプリセット (拡張性) */}
+          {/* Season Presets (Extensible) */}
           <div>
             <button
               type="button"
@@ -311,7 +350,7 @@ export function FormationSubPanel() {
             >
               <span className="flex items-center gap-1.5">
                 <Shield size={12} className="text-amber-400" />
-                シーズンプリセット ({SAMPLE_SEASON_PRESETS.length})
+                Season Presets ({SAMPLE_SEASON_PRESETS.length})
               </span>
               <ChevronDown
                 size={12}
@@ -339,7 +378,7 @@ export function FormationSubPanel() {
           </div>
         </div>
 
-        {/* 3. サブエリア (グリッド表示 ＆ D&Dでピッチと相互行き来 / マーカー自動削除) */}
+        {/* 3. Substitutes / Bench Area */}
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -365,10 +404,10 @@ export function FormationSubPanel() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
-                サブメンバー ({teamPlayers.bench.length})
+                Substitutes ({teamPlayers.bench.length})
               </span>
               <span className="text-[9px] text-white/40">
-                (D&Dでピッチと入替)
+                (Drag & drop to pitch)
               </span>
             </div>
             <button
@@ -377,11 +416,11 @@ export function FormationSubPanel() {
               className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px] text-white/80 hover:text-white transition-colors"
             >
               <UserPlus size={11} />
-              <span>追加</span>
+              <span>Add</span>
             </button>
           </div>
 
-          {/* 新規サブ追加フォーム */}
+          {/* New Sub Player Form */}
           {isAddingSub && (
             <form
               onSubmit={handleAddSub}
@@ -390,14 +429,14 @@ export function FormationSubPanel() {
               <div className="grid grid-cols-3 gap-1">
                 <input
                   type="text"
-                  placeholder="背番号"
+                  placeholder="No."
                   value={newSubNo}
                   onChange={(e) => setNewSubNo(e.target.value)}
                   className="px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs"
                 />
                 <input
                   type="text"
-                  placeholder="ポジション"
+                  placeholder="Pos"
                   value={newSubPos}
                   onChange={(e) => setNewSubPos(e.target.value)}
                   className="px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs"
@@ -406,12 +445,12 @@ export function FormationSubPanel() {
                   type="submit"
                   className="px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold cursor-pointer"
                 >
-                  登録
+                  Add Player
                 </button>
               </div>
               <input
                 type="text"
-                placeholder="選手名 (例: 選手A)"
+                placeholder="Player Name (e.g. Player A)"
                 value={newSubName}
                 onChange={(e) => setNewSubName(e.target.value)}
                 className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs"
@@ -419,7 +458,7 @@ export function FormationSubPanel() {
             </form>
           )}
 
-          {/* サブメンバー グリッド表示 */}
+          {/* Bench Players Grid */}
           <div className="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto custom-scrollbar p-1 rounded-lg border border-dashed border-white/10 bg-black/20">
             {teamPlayers.bench.map((player) => (
               <div
@@ -433,6 +472,24 @@ export function FormationSubPanel() {
                       type: 'bench-player',
                     }),
                   );
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const defaultX =
+                      activeTeam === 'home'
+                        ? 30 + Math.random() * 15
+                        : 70 - Math.random() * 15;
+                    const defaultY = 30 + Math.random() * 40;
+                    movePlayerToPitch(
+                      activeSlideId,
+                      player.id,
+                      defaultX,
+                      defaultY,
+                    );
+                    selectObject({ id: player.id, kind: 'player' });
+                    setRightPanelTab('inspector');
+                  }
                 }}
                 onClick={() => {
                   const defaultX =
@@ -450,7 +507,7 @@ export function FormationSubPanel() {
                   setRightPanelTab('inspector');
                 }}
                 className="flex items-center gap-1.5 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 cursor-pointer text-white/90 transition-all select-none group relative"
-                title="クリックでピッチへ配置 & プロパティ編集"
+                title="Click to place on pitch & edit properties"
               >
                 <span
                   className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 border border-white/20 opacity-80"
@@ -473,7 +530,7 @@ export function FormationSubPanel() {
                     removePlayer(activeSlideId, player.id);
                   }}
                   className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-opacity"
-                  title="削除"
+                  title="Delete"
                 >
                   <Trash2 size={10} />
                 </button>
@@ -482,7 +539,7 @@ export function FormationSubPanel() {
 
             {teamPlayers.bench.length === 0 && (
               <div className="col-span-2 py-6 text-center text-white/40 text-xs italic">
-                サブメンバーはいません（右上の「追加」から登録）
+                No substitutes yet (Click "+ Add" to create)
               </div>
             )}
           </div>

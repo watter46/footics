@@ -1,0 +1,160 @@
+'use client';
+
+/**
+ * use-konva-video-export.ts
+ * Dedicated React hook for Boundary Video Export (MP4 & Transparent WebM)
+ * utilizing off-thread Web Worker pipeline for zero UI freeze.
+ */
+
+import type Konva from 'konva';
+import { useCallback, useRef, useState } from 'react';
+import {
+  type BoundaryCropInfo,
+  exportTacticalVideo,
+} from '@/lib/tactical/export/video-export-engine';
+import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
+import type {
+  ExportProgress,
+  ExportTarget,
+} from '@/lib/types/tactical-unified';
+import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
+import type { CanvasNodesRegistry } from '../canvas/canvas-registry';
+
+interface UseKonvaVideoExportOptions {
+  stageRef: React.RefObject<Konva.Stage | null>;
+  nodesRegistryRef: React.MutableRefObject<CanvasNodesRegistry>;
+  applyFrameToCanvas: (
+    timeMs: number,
+    registry: CanvasNodesRegistry | undefined,
+    stageWidth: number,
+    stageHeight: number,
+    synchronous?: boolean,
+  ) => void;
+}
+
+export function useKonvaVideoExport({
+  stageRef,
+  nodesRegistryRef,
+  applyFrameToCanvas,
+}: UseKonvaVideoExportOptions) {
+  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+  const [videoProgress, setVideoProgress] = useState<ExportProgress | null>(
+    null,
+  );
+  const isCancelledRef = useRef(false);
+
+  const cancelVideoExport = useCallback(() => {
+    isCancelledRef.current = true;
+  }, []);
+
+  const exportVideo = useCallback(
+    async (
+      target: ExportTarget,
+      onProgressCallback?: (p: ExportProgress) => void,
+    ): Promise<Blob | null> => {
+      const stage = stageRef.current;
+      if (!stage) {
+        throw new Error('Canvas Stage is not available');
+      }
+
+      if (target.format !== 'mp4' && target.format !== 'webm') {
+        throw new Error(`Unsupported video format: ${target.format}`);
+      }
+
+      isCancelledRef.current = false;
+      const currentSlides = useTacticalUnifiedStore.getState().project.slides;
+      if (currentSlides.length === 0) {
+        throw new Error('No slides available to export');
+      }
+
+      const activeSlide = currentSlides.find((s) => s.id === activeSlideId);
+      const boundaryBox = activeSlide?.boundaryBox ?? null;
+
+      const stageWidth = stage.width();
+      const stageHeight = stage.height();
+      const totalDurationMs = calculateUnifiedTotalDuration(currentSlides);
+
+      const fps = Number.parseInt(target.fps, 10) || 30;
+      const scale = target.scale ?? 2;
+
+      const handleProgress = (p: ExportProgress) => {
+        setVideoProgress(p);
+        onProgressCallback?.(p);
+      };
+
+      const handleRenderFrame = async (timeMs: number) => {
+        applyFrameToCanvas(
+          timeMs,
+          nodesRegistryRef.current,
+          stageWidth,
+          stageHeight,
+          true, // Synchronous draw for offline video frame capture fallback
+        );
+      };
+
+      const handleCaptureFrame = (
+        cropInfo: BoundaryCropInfo,
+      ): HTMLCanvasElement | null => {
+        return stage.toCanvas({
+          x: cropInfo.cropX,
+          y: cropInfo.cropY,
+          width: cropInfo.cropW,
+          height: cropInfo.cropH,
+          pixelRatio: scale,
+        });
+      };
+
+      const handleSetBackgroundVisible = (visible: boolean) => {
+        const bgLayer = nodesRegistryRef.current.backgroundLayer;
+        if (bgLayer) {
+          bgLayer.visible(visible);
+          bgLayer.batchDraw();
+        }
+      };
+
+      const aspectRatio =
+        useTacticalUnifiedStore.getState().project.aspectRatio;
+
+      const quality = target.format === 'mp4' ? target.quality : 'high';
+      const transparent = target.format === 'webm' ? target.transparent : false;
+
+      try {
+        return await exportTacticalVideo({
+          format: target.format,
+          fps,
+          scale,
+          quality,
+          transparent,
+          totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 3000,
+          boundaryBox,
+          stageWidth,
+          stageHeight,
+          slides: currentSlides,
+          aspectRatio,
+          onRenderFrame: handleRenderFrame,
+          onCaptureFrame: handleCaptureFrame,
+          onSetBackgroundVisible: handleSetBackgroundVisible,
+          onProgress: handleProgress,
+          checkCancelled: () => isCancelledRef.current,
+        });
+      } finally {
+        // Reset stage state to Slide 0
+        if (currentSlides.length > 0) {
+          applyFrameToCanvas(
+            0,
+            nodesRegistryRef.current,
+            stageWidth,
+            stageHeight,
+          );
+        }
+      }
+    },
+    [stageRef, nodesRegistryRef, applyFrameToCanvas, activeSlideId],
+  );
+
+  return {
+    exportVideo,
+    cancelVideoExport,
+    videoProgress,
+  };
+}

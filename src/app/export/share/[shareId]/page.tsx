@@ -200,7 +200,7 @@ export default function StandaloneExportSharePage() {
       return;
     }
 
-    const bitrate = selectedFps <= 30 ? 10000000 : 16000000;
+    const bitrate = selectedFps <= 30 ? 14000000 : 16000000;
     startExport({
       backgroundColor: '#020617',
       fps: selectedFps,

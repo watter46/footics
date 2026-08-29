@@ -17,7 +17,7 @@ import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
 import { ExportModal } from './export/export-modal';
 import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
 import { RightPanel } from './right-panel/right-panel';
-import { SlideStrip } from './slides/slide-strip';
+import { TimelineBar } from './timeline/timeline-bar';
 import { TopBar } from './toolbar/top-bar';
 
 // Canvas はクライアントサイドのみ (Konva)
@@ -136,8 +136,8 @@ export function TacticalUnifiedPage() {
         <RightPanel />
       </div>
 
-      {/* Slide Strip */}
-      <SlideStrip />
+      {/* Timeline Bar */}
+      <TimelineBar />
 
       {/* Export Modal (Portal) */}
       {exportModalOpen && <ExportModal />}

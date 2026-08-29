@@ -22,6 +22,8 @@ import {
   useTacticalUnifiedStore,
 } from '@/stores/tactical-unified-store';
 import { useKonvaExport } from '../hooks/use-konva-export';
+import { useKonvaVideoExport } from '../hooks/use-konva-video-export';
+import { useTacticalAnimation } from '../hooks/use-tactical-animation';
 import { DrawingToolbar } from '../toolbar/drawing-toolbar';
 import { AnnotationLayer } from './annotation-layer';
 import { BallObject } from './ball-object';
@@ -205,6 +207,22 @@ export function UnifiedCanvas() {
     }
   }, [activeTool, activePolygonId, activeSlideId, removeZone]);
 
+  const isPlaying = useTacticalUnifiedStore((s) => s.isPlaying);
+
+  const { playAnimation, pauseAnimation, applyFrameToCanvas } =
+    useTacticalAnimation({
+      nodesRegistryRef,
+    });
+
+  // 再生状態の同期 (Play / Pause)
+  useEffect(() => {
+    if (isPlaying) {
+      playAnimation();
+    } else {
+      pauseAnimation();
+    }
+  }, [isPlaying, playAnimation, pauseAnimation]);
+
   const { copyToClipboard, runExport } = useKonvaExport({
     stageRef,
     activateSlide: async (slideId) => {
@@ -212,6 +230,14 @@ export function UnifiedCanvas() {
       await new Promise((r) => setTimeout(r, 100));
     },
   });
+
+  const { exportVideo } = useKonvaVideoExport({
+    stageRef,
+    nodesRegistryRef,
+    applyFrameToCanvas,
+  });
+
+  const setIsExporting = useTacticalUnifiedStore((s) => s.setIsExporting);
 
   // コンテナリサイズ → Stage サイズ更新
   useEffect(() => {
@@ -286,13 +312,55 @@ export function UnifiedCanvas() {
 
   // 📤 書き出しイベント受信
   useEffect(() => {
-    const handler = (e: Event) => {
+    const handler = async (e: Event) => {
       const target = (e as CustomEvent).detail as ExportTarget;
-      void runExport(target);
+      if (target.format === 'mp4' || target.format === 'webm') {
+        setIsExporting(true);
+        try {
+          const videoBlob = await exportVideo(target);
+          if (videoBlob) {
+            const ext =
+              target.format === 'mp4'
+                ? videoBlob.type.includes('webm')
+                  ? 'webm'
+                  : 'mp4'
+                : 'webm';
+            const filename =
+              target.format === 'mp4'
+                ? `tactical-animation.${ext}`
+                : 'tactical-overlay-transparent.webm';
+
+            window.dispatchEvent(
+              new CustomEvent('tactical:export-completed', {
+                detail: { blob: videoBlob, filename, format: target.format },
+              }),
+            );
+          } else {
+            window.dispatchEvent(
+              new CustomEvent('tactical:export-error', {
+                detail: { error: 'No video output produced' },
+              }),
+            );
+          }
+        } catch (err) {
+          console.error('Video export error:', err);
+          window.dispatchEvent(
+            new CustomEvent('tactical:export-error', {
+              detail: {
+                error: err instanceof Error ? err.message : String(err),
+              },
+            }),
+          );
+        } finally {
+          setIsExporting(false);
+        }
+      } else {
+        void runExport(target);
+      }
     };
     window.addEventListener('tactical:export', handler);
     return () => window.removeEventListener('tactical:export', handler);
-  }, [runExport]);
+  }, [runExport, exportVideo, setIsExporting]);
 
   // ── マウス / タッチ描画ハンドラ ──────────────────────────────
 
@@ -382,7 +450,7 @@ export function UnifiedCanvas() {
           setActivePolygonId(id);
         } else {
           const poly = activeSlide?.zones.find((z) => z.id === activePolygonId);
-          if (!poly || !poly.points.length) return;
+          if (!poly?.points.length) return;
 
           const startPt = poly.points[0];
           const dist = Math.hypot(normX - startPt.x, normY - startPt.y);
@@ -551,7 +619,7 @@ export function UnifiedCanvas() {
         });
       }
       const container = containerRef.current;
-      if (container && container.style.cursor.includes('data:image/svg+xml')) {
+      if (container?.style.cursor.includes('data:image/svg+xml')) {
         container.style.cursor = 'default';
       }
       return;
@@ -746,7 +814,10 @@ export function UnifiedCanvas() {
 
       <Stage
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ref={stageRef as any}
+        ref={(node: any) => {
+          stageRef.current = node;
+          nodesRegistryRef.current.stage = node;
+        }}
         width={stageSize.width}
         height={stageSize.height}
         onMouseDown={handlePointerDown}
@@ -766,7 +837,12 @@ export function UnifiedCanvas() {
         }}
       >
         {/* 背景ピッチ */}
-        <Layer listening={false}>
+        <Layer
+          listening={false}
+          ref={(node) => {
+            nodesRegistryRef.current.backgroundLayer = node;
+          }}
+        >
           <PitchBackground
             width={stageSize.width}
             height={stageSize.height}

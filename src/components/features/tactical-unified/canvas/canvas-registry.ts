@@ -8,6 +8,7 @@ export interface ArrowNodeEntry {
 }
 
 export interface CanvasNodesRegistry {
+  playerNodes: Map<string, Konva.Group>;
   arrowNodes: Map<string, ArrowNodeEntry>;
   textNodes: Map<string, Konva.Text>;
   zoneNodes: Map<string, Konva.Shape>;
@@ -16,10 +17,13 @@ export interface CanvasNodesRegistry {
   annotationLayer: Konva.Layer | null;
   ballLayer: Konva.Layer | null;
   playerLayer: Konva.Layer | null;
+  backgroundLayer: Konva.Layer | null;
+  stage: Konva.Stage | null;
 }
 
 export function createCanvasNodesRegistry(): CanvasNodesRegistry {
   return {
+    playerNodes: new Map(),
     arrowNodes: new Map(),
     textNodes: new Map(),
     zoneNodes: new Map(),
@@ -28,5 +32,7 @@ export function createCanvasNodesRegistry(): CanvasNodesRegistry {
     annotationLayer: null,
     ballLayer: null,
     playerLayer: null,
+    backgroundLayer: null,
+    stage: null,
   };
 }

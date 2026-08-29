@@ -4,20 +4,20 @@
  * drawing-toolbar.tsx
  * Floating & draggable drawing toolbar:
  *  - Select (V)
- *  - Line (直線) (L)
- *  - Route Line (●付きルート線) (R)
+ *  - Straight Line (L)
+ *  - Route Line (R)
  *  - Solid Arrow (A)
- *  - Dash Arrow (D)
+ *  - Dashed Arrow (D)
  *  - Zone (Z)
  *  - Free Zone (P)
  *  - Text (T)
  *  | (Group divider)
- *  - Continuous Drawing Lock (連続描画ロック)
- *  - Eraser (消しゴムモード - 連続消去) (E)
+ *  - Continuous Drawing Lock
+ *  - Eraser Mode (E)
  *  | (Group divider)
- *  - Reset (すべてのオブジェクトを削除)
+ *  - Reset (Delete all objects)
  *  | (Group divider)
- *  - Auto-fit Boundary Box (描画境界線自動フィット)
+ *  - Auto-fit Boundary Box
  */
 
 import {
@@ -170,22 +170,22 @@ const PRIMARY_TOOLS: {
   icon: React.ElementType;
   label: string;
 }[] = [
-  { tool: 'select', icon: MousePointer, label: '選択・コマ移動 (V)' },
-  { tool: 'line', icon: StraightLineIcon, label: '直線ライン (L)' },
+  { tool: 'select', icon: MousePointer, label: 'Select (V)' },
+  { tool: 'line', icon: StraightLineIcon, label: 'Straight Line (L)' },
   {
     tool: 'route_line',
     icon: RouteLineIcon,
-    label: 'ルートライン (両端●付き) (R)',
+    label: 'Route Line (R)',
   },
-  { tool: 'arrow_solid', icon: MoveRight, label: '実線矢印 (A)' },
-  { tool: 'arrow_dash', icon: DashedArrowIcon, label: '点線矢印 (D)' },
-  { tool: 'zone_circle', icon: Square, label: 'ゾーン (四角/楕円) (Z)' },
+  { tool: 'arrow_solid', icon: MoveRight, label: 'Solid Arrow (A)' },
+  { tool: 'arrow_dash', icon: DashedArrowIcon, label: 'Dashed Arrow (D)' },
+  { tool: 'zone_circle', icon: Square, label: 'Zone (Z)' },
   {
     tool: 'polygon_zone',
     icon: CustomPolygonZoneIcon,
-    label: 'フリーゾーン (P)',
+    label: 'Free Zone (P)',
   },
-  { tool: 'text', icon: Type, label: 'テキスト (T)' },
+  { tool: 'text', icon: Type, label: 'Text (T)' },
 ];
 
 export function DrawingToolbar() {
@@ -274,12 +274,12 @@ export function DrawingToolbar() {
     >
       <div
         className="text-white/40 hover:text-white/80 p-0.5 cursor-grab active:cursor-grabbing"
-        title="ドラッグして移動"
+        title="Drag to reposition toolbar"
       >
         <GripVertical size={14} />
       </div>
 
-      {/* ── 基本描画ツール ── */}
+      {/* ── Primary Drawing Tools ── */}
       {PRIMARY_TOOLS.map(({ tool, icon: Icon, label }) => (
         <button
           type="button"
@@ -298,19 +298,19 @@ export function DrawingToolbar() {
         </button>
       ))}
 
-      {/* ── 区切り線: 連続ロック & 消しゴム ── */}
+      {/* ── Divider: Continuous Lock & Eraser ── */}
       <div className="w-px h-5 bg-white/20 mx-1" />
 
-      {/* 連続描画ロック */}
+      {/* Continuous Drawing Lock */}
       <button
         type="button"
         onClick={toggleContinuousDrawing}
         title={
           continuousDrawing
-            ? '連続描画ロック: ON (描画後も選択ツールに戻らず連続で描画)'
-            : '連続描画ロック: OFF (クリックしてON)'
+            ? 'Continuous Draw: ON (Stays in drawing mode after creation)'
+            : 'Continuous Draw: OFF (Click to toggle)'
         }
-        aria-label="連続描画ロック"
+        aria-label="Continuous Draw Lock"
         className={[
           'p-2 rounded-lg transition-all cursor-pointer flex items-center gap-1',
           continuousDrawing
@@ -321,12 +321,12 @@ export function DrawingToolbar() {
         {continuousDrawing ? <Lock size={15} /> : <Unlock size={15} />}
       </button>
 
-      {/* 消しゴムモード */}
+      {/* Eraser Mode */}
       <button
         type="button"
         onClick={() => setActiveTool('eraser')}
-        title="消しゴムモード (ドラッグで連続消去) (E)"
-        aria-label="消しゴムモード"
+        title="Eraser Mode (Drag to erase objects) (E)"
+        aria-label="Eraser Mode"
         className={[
           'p-2 rounded-lg transition-all cursor-pointer',
           activeTool === 'eraser'
@@ -337,37 +337,37 @@ export function DrawingToolbar() {
         <Eraser size={15} />
       </button>
 
-      {/* ── 区切り線: リセット ── */}
+      {/* ── Divider: Reset ── */}
       <div className="w-px h-5 bg-white/20 mx-1" />
 
-      {/* 全オブジェクト削除（リセット） */}
+      {/* Reset all objects */}
       <button
         type="button"
         onClick={() => {
           if (
             window.confirm(
-              'すべての描画オブジェクトを削除してリセットしますか？',
+              'Are you sure you want to reset and delete all drawing objects on this slide?',
             )
           ) {
             resetSlideObjects();
           }
         }}
-        title="すべてのオブジェクトを削除 (元に戻す/リセット)"
-        aria-label="すべてのオブジェクトを削除"
+        title="Reset all slide objects"
+        aria-label="Reset all slide objects"
         className="p-2 rounded-lg text-white/60 hover:text-red-400 hover:bg-white/10 transition-all cursor-pointer"
       >
         <RotateCcw size={15} />
       </button>
 
-      {/* ── 区切り線: 境界線自動フィット (一番右) ── */}
+      {/* ── Divider: Auto-fit Bounds ── */}
       <div className="w-px h-5 bg-white/20 mx-1" />
 
-      {/* 描画境界線自動フィット */}
+      {/* Auto-fit Boundary Box */}
       <button
         type="button"
         onClick={() => autoFitBoundaryBox()}
-        title="描画境界線をピッチ全体に自動フィット"
-        aria-label="描画境界線を自動フィット"
+        title="Auto-fit boundary box to pitch"
+        aria-label="Auto-fit boundary box"
         className="p-2 rounded-lg text-white/60 hover:text-blue-400 hover:bg-white/10 transition-all cursor-pointer"
       >
         <Maximize2 size={15} />

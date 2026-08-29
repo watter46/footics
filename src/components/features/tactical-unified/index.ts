@@ -11,5 +11,6 @@ export { FormationSubPanel } from './right-panel/formation-sub-panel';
 export { RightPanel } from './right-panel/right-panel';
 export { SlideStrip } from './slides/slide-strip';
 export { TacticalUnifiedPage } from './tactical-unified-page';
+export { TimelineBar } from './timeline/timeline-bar';
 export { DrawingToolbar } from './toolbar/drawing-toolbar';
 export { TopBar } from './toolbar/top-bar';

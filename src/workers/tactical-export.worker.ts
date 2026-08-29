@@ -99,11 +99,10 @@ async function processExport(
 
   // 最適なGPUハードウェアアクセラレーション対応コーデックプロファイルの自動検出
   const codecCandidates = [
-    'avc1.64002a', // High Profile Level 4.2 (最優先・高画質・最高速GPUエンコード)
-    'avc1.640033', // High Profile Level 5.1
+    'avc1.64002a', // High Profile Level 4.2 (GPUネイティブ最高画質)
     'avc1.4d002a', // Main Profile Level 4.2
-    'avc1.42002a', // Baseline Profile Level 4.2
-    'avc1.42001f', // Baseline Profile Level 3.1
+    'avc1.4D401F', // Main Profile Level 3.1
+    'avc1.42E01E', // Baseline Profile Level 3.0 (最終フォールバック)
   ];
 
   let selectedCodec = 'avc1.64002a';
@@ -117,7 +116,8 @@ async function processExport(
           bitrate: config.bitrate,
           framerate: config.fps,
           hardwareAcceleration: 'prefer-hardware',
-          latencyMode: 'quality',
+          bitrateMode: 'variable',
+          latencyMode: 'realtime',
         });
         if (support.supported) {
           selectedCodec = codec;
@@ -136,7 +136,8 @@ async function processExport(
     bitrate: config.bitrate,
     framerate: config.fps,
     hardwareAcceleration: 'prefer-hardware',
-    latencyMode: 'quality',
+    bitrateMode: 'variable',
+    latencyMode: 'realtime',
   });
 
   const totalFrames = Math.max(
@@ -156,11 +157,15 @@ async function processExport(
     }
 
     // ハードウェアエンコーダのバックプレッシャ制御 (GPU並列処理を最大化しつつキュー枯渇・溢れを防止)
-    if (videoEncoder.encodeQueueSize > 36) {
+    if (videoEncoder.encodeQueueSize > 30) {
       await new Promise<void>((resolve) => {
+        if (!videoEncoder || videoEncoder.state === 'closed') {
+          resolve();
+          return;
+        }
         videoEncoder.ondequeue = () => {
-          if (videoEncoder.encodeQueueSize <= 12) {
-            videoEncoder.ondequeue = null;
+          if (!videoEncoder || videoEncoder.encodeQueueSize <= 15) {
+            if (videoEncoder) videoEncoder.ondequeue = null;
             resolve();
           }
         };

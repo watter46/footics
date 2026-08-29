@@ -373,21 +373,37 @@ export const ExportTargetSchema = z.discriminatedUnion('format', [
   }),
   z.object({
     format: z.literal('mp4'),
-    scope: z.enum(['all', 'range']),
+    scope: z.enum(['all', 'range']).default('all'),
     fromSlideId: z.string().optional(),
     toSlideId: z.string().optional(),
     fps: z.enum(['30', '60']).default('30'),
     quality: z.enum(['low', 'medium', 'high']).default('high'),
+    scale: z.number().min(1).max(4).default(2),
+  }),
+  z.object({
+    format: z.literal('webm'),
+    scope: z.enum(['all', 'range']).default('all'),
+    fromSlideId: z.string().optional(),
+    toSlideId: z.string().optional(),
+    fps: z.enum(['30', '60']).default('30'),
+    transparent: z.boolean().default(true),
+    scale: z.number().min(1).max(4).default(2),
   }),
   z.object({
     format: z.literal('gif'),
-    scope: z.enum(['all', 'range']),
+    scope: z.enum(['all', 'range']).default('all'),
     fromSlideId: z.string().optional(),
     toSlideId: z.string().optional(),
     fps: z.enum(['10', '15', '24']).default('15'),
   }),
 ]);
 export type ExportTarget = z.infer<typeof ExportTargetSchema>;
+
+export interface ExportProgress {
+  percent: number;
+  stage: 'rendering' | 'encoding' | 'finalizing' | 'idle';
+  message: string;
+}
 
 // ─────────────────────────────────────────
 // § 11. フォーメーションプリセット用型

@@ -16,7 +16,10 @@ import type {
   TextAnnotation,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
-import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
+import {
+  selectPreviousSlide,
+  useTacticalUnifiedStore,
+} from '@/stores/tactical-unified-store';
 import type { CanvasNodesRegistry } from './canvas-registry';
 
 export interface PlayerLayerProps {
@@ -347,6 +350,7 @@ interface PlayerMarkerProps {
   slide: Slide;
   stageSize: { width: number; height: number };
   isSelected: boolean;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   onSelect: (
     e: KonvaEventObject<MouseEvent> | KonvaEventObject<TouchEvent>,
   ) => void;
@@ -363,6 +367,7 @@ const PlayerMarker = React.memo(function PlayerMarker({
   player,
   stageSize,
   isSelected,
+  nodesRegistryRef,
   onSelect,
   onSelectOption,
   onUpdateVisionCone,
@@ -390,6 +395,15 @@ const PlayerMarker = React.memo(function PlayerMarker({
 
   return (
     <Group
+      ref={(node) => {
+        if (nodesRegistryRef) {
+          if (node) {
+            nodesRegistryRef.current.playerNodes.set(player.id, node);
+          } else {
+            nodesRegistryRef.current.playerNodes.delete(player.id);
+          }
+        }
+      }}
       x={pxX}
       y={pxY}
       listening={isInteractive}
@@ -482,10 +496,10 @@ const PlayerMarker = React.memo(function PlayerMarker({
           isSelected ? '#60a5fa' : (player.style.strokeColor ?? '#ffffff')
         }
         strokeWidth={isSelected ? 3 : (player.style.strokeWidth ?? 2)}
-        shadowColor={isSelected ? '#3b82f6' : 'rgba(0,0,0,0.5)'}
-        shadowBlur={isSelected ? 8 : 4}
-        shadowOffset={{ x: 0, y: 2 }}
-        shadowOpacity={0.4}
+        shadowColor={isSelected ? '#3b82f6' : 'rgba(0,0,0,0)'}
+        shadowBlur={isSelected ? 8 : 0}
+        shadowOffset={{ x: 0, y: isSelected ? 2 : 0 }}
+        shadowOpacity={isSelected ? 0.6 : 0}
         perfectDrawEnabled={false}
       />
       {player.style.insideContent === 'number' && player.shirtNo && (
@@ -510,9 +524,9 @@ const PlayerMarker = React.memo(function PlayerMarker({
           text={displayName}
           fontSize={radius * 0.65 * labelScale}
           fill="#ffffff"
+          stroke="#020617"
+          strokeWidth={1.5}
           align="center"
-          shadowColor="rgba(0,0,0,0.8)"
-          shadowBlur={3}
           listening={false}
           perfectDrawEnabled={false}
         />
@@ -525,9 +539,9 @@ const PlayerMarker = React.memo(function PlayerMarker({
           text={`#${player.shirtNo}`}
           fontSize={radius * 0.65 * labelScale}
           fill="#ffffff"
+          stroke="#020617"
+          strokeWidth={1.5}
           align="center"
-          shadowColor="rgba(0,0,0,0.8)"
-          shadowBlur={3}
           listening={false}
           perfectDrawEnabled={false}
         />
@@ -568,6 +582,15 @@ export function PlayerLayer({
     (s) => s.setActiveMarkerOptionTab,
   );
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+  const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
+
+  // オニオンスキン (前スライドゴースト表示) 用 Refs
+  const ghostGroupRef = useRef<any>(null);
+  const ghostLineRef = useRef<any>(null);
+  const ghostMarkerGroupRef = useRef<any>(null);
+  const ghostCircleRef = useRef<any>(null);
+  const ghostTextRef = useRef<any>(null);
+  const ghostLabelRef = useRef<any>(null);
 
   const dragContextRef = useRef<{
     attachedArrows: Array<{
@@ -595,10 +618,11 @@ export function PlayerLayer({
       initialY: number;
     }>;
     startPx: { x: number; y: number };
+    prevPlayerPx: { x: number; y: number } | null;
   } | null>(null);
 
   const handleDragStart = (
-    e: KonvaEventObject<DragEvent>,
+    _e: KonvaEventObject<DragEvent>,
     draggedPlayer: Player,
   ) => {
     const { width, height } = stageSize;
@@ -606,6 +630,82 @@ export function PlayerLayer({
       x: normX(draggedPlayer.x, width),
       y: normY(draggedPlayer.y, height),
     };
+
+    // 前スライドにおける同一選手のゴースト座標取得
+    const prevPlayer = prevSlide?.players.find(
+      (p) => p.id === draggedPlayer.id,
+    );
+    let prevPlayerPx: { x: number; y: number } | null = null;
+
+    if (prevPlayer && prevPlayer.area !== 'bench') {
+      prevPlayerPx = {
+        x: normX(prevPlayer.x, width),
+        y: normY(prevPlayer.y, height),
+      };
+
+      const baseDim = Math.min(width, height);
+      const sizeScale = prevPlayer.style.sizeScale ?? 1.0;
+      const radius = baseDim * 0.032 * sizeScale;
+      const labelScale = prevPlayer.style.labelSizeScale ?? 1.0;
+      const numScale = prevPlayer.style.numberSizeScale ?? 1.0;
+      const displayName = prevPlayer.name ? getLastName(prevPlayer.name) : '';
+
+      if (ghostMarkerGroupRef.current) {
+        ghostMarkerGroupRef.current.position({
+          x: prevPlayerPx.x,
+          y: prevPlayerPx.y,
+        });
+      }
+      if (ghostCircleRef.current) {
+        ghostCircleRef.current.radius(radius);
+        ghostCircleRef.current.fill(prevPlayer.style.color || '#3b82f6');
+        ghostCircleRef.current.stroke(
+          prevPlayer.style.strokeColor || '#ffffff',
+        );
+        ghostCircleRef.current.strokeWidth(prevPlayer.style.strokeWidth ?? 2);
+      }
+      if (ghostTextRef.current) {
+        const showNum =
+          prevPlayer.style.insideContent === 'number' && prevPlayer.shirtNo;
+        ghostTextRef.current.text(showNum ? prevPlayer.shirtNo : '');
+        ghostTextRef.current.fontSize(radius * 0.9 * numScale);
+        ghostTextRef.current.x(-radius);
+        ghostTextRef.current.y(-radius * 0.55);
+        ghostTextRef.current.width(radius * 2);
+      }
+      if (ghostLabelRef.current) {
+        let labelText = '';
+        if (prevPlayer.style.bottomLabel === 'name' && displayName) {
+          labelText = displayName;
+        } else if (
+          prevPlayer.style.bottomLabel === 'number' &&
+          prevPlayer.shirtNo
+        ) {
+          labelText = `#${prevPlayer.shirtNo}`;
+        }
+        ghostLabelRef.current.text(labelText);
+        ghostLabelRef.current.fontSize(radius * 0.65 * labelScale);
+        ghostLabelRef.current.x(-radius * 2);
+        ghostLabelRef.current.y(radius + 3);
+        ghostLabelRef.current.width(radius * 4);
+      }
+      if (ghostLineRef.current) {
+        ghostLineRef.current.points([
+          prevPlayerPx.x,
+          prevPlayerPx.y,
+          startPx.x,
+          startPx.y,
+        ]);
+      }
+      if (ghostGroupRef.current) {
+        ghostGroupRef.current.visible(true);
+        ghostGroupRef.current.getLayer()?.batchDraw();
+      }
+    } else {
+      if (ghostGroupRef.current) {
+        ghostGroupRef.current.visible(false);
+      }
+    }
 
     const attachedArrows = slide.arrows
       .filter(
@@ -698,23 +798,34 @@ export function PlayerLayer({
       attachedZones,
       attachedTexts,
       startPx,
+      prevPlayerPx,
     };
   };
 
-  const handleDragMove = (e: KonvaEventObject<DragEvent>, player: Player) => {
+  const handleDragMove = (_e: KonvaEventObject<DragEvent>, _player: Player) => {
     const ctx = dragContextRef.current;
     const registry = nodesRegistryRef?.current;
     if (!ctx || !registry) return;
 
-    const node = e.currentTarget;
+    const node = _e.currentTarget;
     const curX = node.x();
     const curY = node.y();
     const dx = curX - ctx.startPx.x;
     const dy = curY - ctx.startPx.y;
 
+    // オニオンスキン軌跡ガイド線の更新
+    if (ctx.prevPlayerPx && ghostLineRef.current) {
+      ghostLineRef.current.points([
+        ctx.prevPlayerPx.x,
+        ctx.prevPlayerPx.y,
+        curX,
+        curY,
+      ]);
+    }
+
     for (const entry of ctx.attachedArrows) {
       const handles = registry.arrowNodes.get(entry.arrow.id);
-      if (!handles || !handles.node) continue;
+      if (!handles?.node) continue;
 
       let sPxX = entry.initialP0.x;
       let sPxY = entry.initialP0.y;
@@ -785,6 +896,12 @@ export function PlayerLayer({
     const ctx = dragContextRef.current;
     const registry = nodesRegistryRef?.current;
 
+    // オニオンスキングループを非表示化
+    if (ghostGroupRef.current) {
+      ghostGroupRef.current.visible(false);
+      ghostGroupRef.current.getLayer()?.batchDraw();
+    }
+
     if (ctx && registry) {
       for (const entry of ctx.attachedZones) {
         const zoneNode = registry.zoneNodes.get(entry.zone.id);
@@ -805,6 +922,59 @@ export function PlayerLayer({
 
   return (
     <>
+      {/* ── ドラッグ中限定オニオンスキン (前スライドゴースト & 軌跡プレビュー) ── */}
+      <Group ref={ghostGroupRef} visible={false} listening={false}>
+        {/* 移動ベクトル・軌跡プレビュー線 */}
+        <Line
+          ref={ghostLineRef}
+          points={[]}
+          stroke="#38bdf8"
+          strokeWidth={2}
+          dash={[5, 4]}
+          opacity={0.65}
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+        {/* 前スライドの半透明ゴーストマーカー */}
+        <Group ref={ghostMarkerGroupRef} listening={false}>
+          <Circle
+            ref={ghostCircleRef}
+            radius={15}
+            fill="#3b82f6"
+            stroke="#ffffff"
+            strokeWidth={1.5}
+            dash={[4, 3]}
+            opacity={0.35}
+            shadowColor="#000000"
+            shadowBlur={4}
+            shadowOpacity={0.3}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+          <Text
+            ref={ghostTextRef}
+            text=""
+            fill="#ffffff"
+            align="center"
+            fontStyle="bold"
+            opacity={0.65}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+          <Text
+            ref={ghostLabelRef}
+            text=""
+            fill="#ffffff"
+            align="center"
+            opacity={0.65}
+            shadowColor="rgba(0,0,0,0.8)"
+            shadowBlur={3}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        </Group>
+      </Group>
+
       <ConnectLinesGroup
         slide={slide}
         stageSize={stageSize}
@@ -827,6 +997,7 @@ export function PlayerLayer({
               slide={slide}
               stageSize={stageSize}
               isSelected={isSelected || isConnectingSource}
+              nodesRegistryRef={nodesRegistryRef}
               onSelect={(e) => {
                 e.cancelBubble = true;
 

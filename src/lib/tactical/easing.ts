@@ -3,7 +3,10 @@ export type EasingType =
   | 'easeInOut'
   | 'cubic'
   | 'easeOut'
-  | 'easeIn';
+  | 'easeIn'
+  | 'ease-in'
+  | 'ease-out'
+  | 'ease-in-out';
 
 export interface EasingOption {
   value: EasingType;
@@ -20,7 +23,7 @@ export const EASING_OPTIONS: EasingOption[] = [
     description: '加減速なし・常に一定速度（パスや機械的な移動向き）',
   },
   {
-    value: 'easeInOut',
+    value: 'ease-in-out',
     label: '滑らか (Ease In/Out)',
     shortLabel: '滑らか',
     description: '自然な加減速（選手の標準的なランニング向き）',
@@ -32,13 +35,13 @@ export const EASING_OPTIONS: EasingOption[] = [
     description: '強弱のはっきりした加減速（ダイナミックな展開向き）',
   },
   {
-    value: 'easeOut',
+    value: 'ease-out',
     label: '減速 (Ease Out)',
     shortLabel: '減速',
     description: '素早く動き出し徐々にストップ（トラップや急停止向き）',
   },
   {
-    value: 'easeIn',
+    value: 'ease-in',
     label: '加速 (Ease In)',
     shortLabel: '加速',
     description: 'ゆっくり動き出し徐々に加速（助走や急加速向き）',
@@ -48,7 +51,10 @@ export const EASING_OPTIONS: EasingOption[] = [
 /**
  * 0.0〜1.0 の正規化時間 t にイージングを適用して補間値を返す
  */
-export function applyEasing(t: number, type: EasingType = 'easeInOut'): number {
+export function applyEasing(
+  t: number,
+  type: EasingType | string = 'ease-in-out',
+): number {
   const clamped = Math.max(0, Math.min(1, t));
 
   switch (type) {
@@ -56,6 +62,7 @@ export function applyEasing(t: number, type: EasingType = 'easeInOut'): number {
       return clamped;
 
     case 'easeInOut':
+    case 'ease-in-out':
       // easeInOutQuad: 滑らかで自然
       return clamped < 0.5
         ? 2 * clamped * clamped
@@ -68,10 +75,12 @@ export function applyEasing(t: number, type: EasingType = 'easeInOut'): number {
         : 1 - (-2 * clamped + 2) ** 3 / 2;
 
     case 'easeOut':
+    case 'ease-out':
       // easeOutQuad: 最初が速く、徐々に止まる
       return 1 - (1 - clamped) * (1 - clamped);
 
     case 'easeIn':
+    case 'ease-in':
       // easeInQuad: 最初が遅く、徐々に加速
       return clamped * clamped;
 

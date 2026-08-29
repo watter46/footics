@@ -41,10 +41,18 @@ trigger: always_on
 - **Verify After Change**: ファイル操作後は `grep` で古い参照が残っていないか確認する。
 
 ## 5. トークン効率とコンテキストエンジニアリング (Token Efficiency Guardrails)
-- **RTK の完全適用**: 全てのシェルコマンド実行には必ず `rtk` ラッパーを介す（例: `rtk vitest run ...`, `rtk biome check`, `rtk tsc --noEmit`）。
+- **RTK の完全適用**: 全てのシェルコマンド実行には必ず `rtk` ラッパーを介す（例: `rtk vitest run ...`, `rtk biome check`）。
 - **ターゲット指向の検索 & 参照**: 検索（grep）や構造把握（ls/find）を行う際は、プロジェクトルート全体ではなく必ず**関連する最小単位のディレクトリ**を対象にする。`find_by_name` は必ず `MaxDepth` を指定する。
 - **巨大ファイルのピンポイント読み込み**: 300行を超えるファイルに対して無差別な全読み込みを行わない。`grep_search` や `view_file` の `StartLine`/`EndLine` を活用して必要な箇所のみをピンポイントで取得する。
-- **スコープ限定テスト・高速型検証の徹底 (Targeted Verification)**: テスト（Vitest）や型チェックを実行する際は、**プロジェクト全体の無差別実行を禁止する**。必ず変更したファイル、関連モジュール、影響が出る最小範囲のファイル・ディレクトリに絞って実行すること（例: `pnpm type-check:scoped <変更ファイル>`、`rtk vitest run src/components/features/tactical-board/`、`rtk vitest run path/to/target.test.ts`）。全件実行によるトークン浪費と待機時間の肥大化を防止する。
+- **スコープ限定テスト・高速型検証の徹底 (Targeted Verification)**:
+  - **型チェック (Type Check):**
+    - ❌ **禁止:** `tsc --noEmit`, `pnpm type-check` (プロジェクト全体の無差別実行は厳禁)
+    - ⭕ **必須:** `pnpm type-check:scoped <変更ファイル>` または `pnpm verify:scoped <変更ファイル>`
+  - **テスト (Vitest):**
+    - ❌ **禁止:** `vitest run`, `pnpm test` (プロジェクト全体の無差別実行は厳禁)
+    - ⭕ **必須:** `rtk vitest run <影響パス/対象テストファイル>`
+  - **Lint / Format (Biome):**
+    - ⭕ **必須:** `rtk biome check <対象ディレクトリ>`
 
 ## 6. CLI環境およびデプロイ・ビルド運用プロトコル
 - **Auto-Deploy on Push (Web App):** `src/` 配下の変更を `git push` した後は、自動でデプロイ処理（`pnpm run deploy`）を実行すること。
@@ -75,7 +83,7 @@ trigger: always_on
 - **行動指針:**
     - `strict: true` を前提とし `any` 型を禁止。外部データは Zod スキーマで検証し `z.infer` で型を導出する。
     - 複雑なロジックを伴う Custom Hooks や Utility 関数には Vitest によるユニットテストを作成する。
-    - **テスト・検証のスコープ限定**: テスト実行時は `rtk vitest run <影響対象パス>`、型チェック時は `pnpm type-check:scoped <変更ファイル>` を用い、変更影響のある範囲のみを迅速に検証する。
+    - **テスト・検証のスコープ限定**: テスト実行時は `rtk vitest run <影響対象パス>`、型チェック時は `pnpm type-check:scoped <変更ファイル>`（全体 `tsc --noEmit` は禁止）を用い、変更影響のある範囲のみを迅速に検証する。
 
 ## 11. Responsibility Segregation (責務の分離)
 - **原則:** 単一ファイルへの知識集中を防ぐ (Single Responsibility Principle)。

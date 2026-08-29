@@ -2,13 +2,28 @@
 
 /**
  * export-modal.tsx
- * Export modal with preview — PNG / ZIP / MP4 / GIF
+ * Export modal with real-time preview & inline post-export video player — PNG / ZIP / MP4 / Transparent WebM / GIF
  */
 
-import { Archive, Clapperboard, Film, Image, X } from 'lucide-react';
-import { useState } from 'react';
+import {
+  Archive,
+  CheckCircle2,
+  Clapperboard,
+  Crop,
+  Film,
+  Image,
+  Layers,
+  Sparkles,
+  X,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import type { ExportTarget } from '@/lib/types/tactical-unified';
-import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
+import {
+  selectActiveSlide,
+  useTacticalUnifiedStore,
+} from '@/stores/tactical-unified-store';
+import { ExportPreviewPlayer } from './export-preview-player';
+import { ExportVideoPlayer } from './export-video-player';
 
 type ExportFormat = ExportTarget['format'];
 
@@ -17,30 +32,39 @@ const FORMAT_OPTIONS: {
   icon: React.ElementType;
   label: string;
   desc: string;
+  badge?: string;
 }[] = [
   {
     format: 'png',
     icon: Image,
-    label: 'PNG (現在のスライド)',
-    desc: '現在表示中のスライドを高画質で保存',
+    label: 'PNG (Current Slide)',
+    desc: 'Export current slide in high resolution (Boundary-aware)',
   },
   {
     format: 'zip',
     icon: Archive,
-    label: 'ZIP (全スライド)',
-    desc: '全スライドをまとめてダウンロード',
+    label: 'ZIP (All Slides)',
+    desc: 'Download all slides as high-res PNG archive',
   },
   {
     format: 'mp4',
     icon: Film,
-    label: 'MP4 フレーム (アニメーション)',
-    desc: 'フレームをZIPで書き出し（mp4変換は外部ツール）',
+    label: 'MP4 Video (H.264)',
+    desc: 'Export smooth video animation for X & YouTube',
+    badge: 'Popular',
+  },
+  {
+    format: 'webm',
+    icon: Layers,
+    label: 'Transparent WebM (VP9)',
+    desc: 'Transparent overlay video for Premiere, DaVinci & FCP',
+    badge: 'Pro Editor',
   },
   {
     format: 'gif',
     icon: Clapperboard,
-    label: 'GIF (アニメーション)',
-    desc: 'ループGIFとして書き出し',
+    label: 'GIF Animation',
+    desc: 'Export lightweight looping tactical GIF',
   },
 ];
 
@@ -48,84 +72,409 @@ export function ExportModal() {
   const closeExportModal = useTacticalUnifiedStore((s) => s.closeExportModal);
   const isExporting = useTacticalUnifiedStore((s) => s.isExporting);
   const pendingExport = useTacticalUnifiedStore((s) => s.pendingExport);
+  const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
+
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>(
-    pendingExport?.format ?? 'png',
+    pendingExport?.format ?? 'mp4',
   );
+  const [fps, setFps] = useState<'30' | '60'>('60');
+  const [scale, setScale] = useState<number>(2);
+  const [quality] = useState<'high' | 'medium'>('high');
+
+  // Exported video state for post-render preview
+  const [completedVideo, setCompletedVideo] = useState<{
+    blob: Blob;
+    filename: string;
+  } | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleCompleted = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        blob: Blob;
+        filename: string;
+      };
+      if (detail?.blob) {
+        setExportError(null);
+        setCompletedVideo(detail);
+      }
+    };
+
+    const handleError = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        error: string;
+      };
+      setExportError(detail?.error || 'Video export failed. Please try again.');
+    };
+
+    window.addEventListener('tactical:export-completed', handleCompleted);
+    window.addEventListener('tactical:export-error', handleError);
+    return () => {
+      window.removeEventListener('tactical:export-completed', handleCompleted);
+      window.removeEventListener('tactical:export-error', handleError);
+    };
+  }, []);
+
+  const boundaryBox = activeSlide?.boundaryBox;
+  const isBoundaryActive =
+    boundaryBox?.enabled &&
+    boundaryBox.width > 0 &&
+    boundaryBox.height > 0 &&
+    (boundaryBox.width < 100 ||
+      boundaryBox.height < 100 ||
+      boundaryBox.x > 0 ||
+      boundaryBox.y > 0);
 
   async function handleExport() {
-    // useKonvaExport は UnifiedCanvas 内の stageRef に依存するため
-    // カスタムイベントで Canvas 側に委譲
+    setCompletedVideo(null);
+    setExportError(null);
+    let detail: ExportTarget;
+
+    if (selectedFormat === 'png') {
+      detail = {
+        format: 'png',
+        scope: 'current',
+        scale,
+      };
+    } else if (selectedFormat === 'zip') {
+      detail = {
+        format: 'zip',
+        scope: 'all',
+        scale,
+      };
+    } else if (selectedFormat === 'mp4') {
+      detail = {
+        format: 'mp4',
+        scope: 'all',
+        fps,
+        scale,
+        quality,
+      };
+    } else if (selectedFormat === 'webm') {
+      detail = {
+        format: 'webm',
+        scope: 'all',
+        fps,
+        scale,
+        transparent: true,
+      };
+    } else {
+      detail = {
+        format: 'gif',
+        scope: 'all',
+        fps: '15',
+      };
+    }
+
     window.dispatchEvent(
       new CustomEvent('tactical:export', {
-        detail: {
-          format: selectedFormat,
-          scope: selectedFormat === 'zip' ? 'all' : 'current',
-        } as ExportTarget,
+        detail,
       }),
     );
   }
 
+  const handleDownloadCompletedVideo = () => {
+    if (!completedVideo) return;
+    const url = URL.createObjectURL(completedVideo.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = completedVideo.filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleReExport = () => {
+    setCompletedVideo(null);
+    setExportError(null);
+  };
+
+  const isVideoFormat = selectedFormat === 'mp4' || selectedFormat === 'webm';
+  const slides = useTacticalUnifiedStore((s) => s.project.slides);
+  const aspectRatio = useTacticalUnifiedStore((s) => s.project.aspectRatio);
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="export-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm select-none p-4"
       onClick={(e) => {
-        if (e.target === e.currentTarget) closeExportModal();
+        if (!isExporting && e.target === e.currentTarget) closeExportModal();
+      }}
+      onKeyDown={(e) => {
+        if (!isExporting && e.key === 'Escape') closeExportModal();
       }}
     >
-      <div className="relative w-full max-w-md mx-4 rounded-2xl bg-[#1a1a1a] border border-white/10 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-4xl rounded-2xl bg-[#121212] border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <h2 className="text-sm font-semibold text-white">書き出し</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0">
+          <div className="flex items-center gap-2">
+            <Sparkles size={16} className="text-blue-400" />
+            <h2
+              id="export-modal-title"
+              className="text-sm font-semibold text-white"
+            >
+              {completedVideo
+                ? 'Export Completed & Preview'
+                : 'Export Scene & Video'}
+            </h2>
+          </div>
           <button
             type="button"
             onClick={closeExportModal}
-            className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white"
+            disabled={isExporting}
+            className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+            aria-label="Close modal"
           >
             <X size={16} />
           </button>
         </div>
 
-        {/* Format selection */}
-        <div className="p-5 space-y-2">
-          {FORMAT_OPTIONS.map(({ format, icon: Icon, label, desc }) => (
+        {/* Error Banner */}
+        {exportError && !completedVideo && (
+          <div className="px-6 py-3 bg-red-500/15 border-b border-red-500/30 text-xs text-red-300 flex items-center justify-between">
+            <span>⚠️ {exportError}</span>
             <button
               type="button"
-              key={format}
-              onClick={() => setSelectedFormat(format)}
-              className={[
-                'w-full flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-all',
-                selectedFormat === format
-                  ? 'border-blue-500 bg-blue-600/15 text-white'
-                  : 'border-white/10 bg-white/5 text-white/60 hover:border-white/30 hover:text-white',
-              ].join(' ')}
+              onClick={() => setExportError(null)}
+              className="text-red-300/70 hover:text-red-200 text-[11px] underline ml-3 cursor-pointer"
             >
-              <Icon size={18} className="mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs font-medium">{label}</p>
-                <p className="text-[11px] text-white/40 mt-0.5">{desc}</p>
-              </div>
+              Dismiss
             </button>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {/* Actions */}
-        <div className="flex items-center gap-3 px-5 pb-5">
-          <button
-            type="button"
-            onClick={closeExportModal}
-            className="flex-1 py-2 rounded-xl border border-white/20 text-sm text-white/60 hover:text-white hover:border-white/40 transition-colors"
-          >
-            キャンセル
-          </button>
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={isExporting}
-            className="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isExporting ? '書き出し中...' : '書き出す'}
-          </button>
-        </div>
+        {/* Modal Body */}
+        {completedVideo ? (
+          /* Completed Video View */
+          <div className="p-6 overflow-y-auto">
+            <ExportVideoPlayer
+              videoBlob={completedVideo.blob}
+              filename={completedVideo.filename}
+              onDownload={handleDownloadCompletedVideo}
+              onReExport={handleReExport}
+            />
+          </div>
+        ) : (
+          /* Standard 2 Columns Layout */
+          <div className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6 overflow-y-auto">
+            {/* Left Column: Live Animation Preview */}
+            <div className="md:col-span-6 space-y-3">
+              <ExportPreviewPlayer
+                slides={slides}
+                aspectRatio={aspectRatio}
+                boundaryBox={boundaryBox}
+              />
+
+              {/* Boundary Crop Indicator */}
+              <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white/60">
+                <Crop
+                  size={15}
+                  className={
+                    isBoundaryActive ? 'text-green-400' : 'text-white/40'
+                  }
+                />
+                <span>
+                  Export Area:
+                  <strong
+                    className={
+                      isBoundaryActive
+                        ? 'ml-1.5 text-green-400 font-semibold'
+                        : 'ml-1.5 text-white/60 font-normal'
+                    }
+                  >
+                    {isBoundaryActive
+                      ? 'Cropped to Boundary Box'
+                      : 'Full Pitch (100%)'}
+                  </strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Right Column: Export Format & Settings */}
+            <div className="md:col-span-6 space-y-4">
+              {/* Format selection */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold tracking-wider text-white/50 uppercase">
+                  Select Export Format
+                </p>
+                <div className="space-y-1.5">
+                  {FORMAT_OPTIONS.map(
+                    ({ format, icon: Icon, label, desc, badge }) => {
+                      const isSelected = selectedFormat === format;
+                      return (
+                        <button
+                          type="button"
+                          key={format}
+                          onClick={() => setSelectedFormat(format)}
+                          disabled={isExporting}
+                          className={[
+                            'w-full flex items-start gap-3 px-3.5 py-2.5 rounded-xl border text-left transition-all cursor-pointer disabled:cursor-not-allowed',
+                            isSelected
+                              ? 'border-blue-500 bg-blue-600/15 text-white shadow-sm ring-1 ring-blue-500/30'
+                              : 'border-white/10 bg-white/5 text-white/60 hover:border-white/25 hover:text-white',
+                          ].join(' ')}
+                        >
+                          <Icon
+                            size={16}
+                            className={`mt-0.5 shrink-0 ${isSelected ? 'text-blue-400' : 'text-white/60'}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-medium text-white">
+                                {label}
+                              </p>
+                              {badge && (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 font-semibold border border-blue-500/30">
+                                  {badge}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-white/40 mt-0.5 leading-snug">
+                              {desc}
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <CheckCircle2
+                              size={15}
+                              className="text-blue-400 mt-0.5 shrink-0"
+                            />
+                          )}
+                        </button>
+                      );
+                    },
+                  )}
+                </div>
+              </div>
+
+              {/* Video Options (FPS, Resolution) */}
+              {isVideoFormat && (
+                <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
+                  <p className="text-[11px] font-semibold tracking-wider text-white/50 uppercase block">
+                    Video Settings
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Framerate */}
+                    <div>
+                      <span className="text-[10px] text-white/70 block mb-1">
+                        Frame Rate
+                      </span>
+                      <div className="flex rounded-lg bg-black/40 p-0.5 border border-white/10">
+                        <button
+                          type="button"
+                          onClick={() => setFps('60')}
+                          disabled={isExporting}
+                          className={[
+                            'flex-1 py-1 text-xs rounded-md font-medium transition-all cursor-pointer',
+                            fps === '60'
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'text-white/50 hover:text-white',
+                          ].join(' ')}
+                        >
+                          60 FPS
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFps('30')}
+                          disabled={isExporting}
+                          className={[
+                            'flex-1 py-1 text-xs rounded-md font-medium transition-all cursor-pointer',
+                            fps === '30'
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'text-white/50 hover:text-white',
+                          ].join(' ')}
+                        >
+                          30 FPS
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Resolution / Scale */}
+                    <div>
+                      <span className="text-[10px] text-white/70 block mb-1">
+                        Resolution
+                      </span>
+                      <div className="flex rounded-lg bg-black/40 p-0.5 border border-white/10 gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setScale(3)}
+                          disabled={isExporting}
+                          title="2K / 1440p (Ultra Quality, 2560x1440)"
+                          className={[
+                            'flex-1 py-1 text-[11px] rounded-md font-medium transition-all cursor-pointer text-center',
+                            scale === 3
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'text-white/50 hover:text-white',
+                          ].join(' ')}
+                        >
+                          2K (1440p)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setScale(2)}
+                          disabled={isExporting}
+                          title="1080p (Full HD, 1920x1080 - Recommended)"
+                          className={[
+                            'flex-1 py-1 text-[11px] rounded-md font-medium transition-all cursor-pointer text-center',
+                            scale === 2
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'text-white/50 hover:text-white',
+                          ].join(' ')}
+                        >
+                          1080p (FHD)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setScale(1)}
+                          disabled={isExporting}
+                          title="720p (HD, 1280x720 - Lightweight)"
+                          className={[
+                            'flex-1 py-1 text-[11px] rounded-md font-medium transition-all cursor-pointer text-center',
+                            scale === 1
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'text-white/50 hover:text-white',
+                          ].join(' ')}
+                        >
+                          720p (HD)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Actions & Progress (Only in selection mode) */}
+        {!completedVideo && (
+          <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center justify-end gap-3 bg-white/[0.01]">
+            <button
+              type="button"
+              onClick={closeExportModal}
+              disabled={isExporting}
+              className="px-5 py-2.5 rounded-xl border border-white/15 text-xs font-medium text-white/70 hover:text-white hover:border-white/30 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={isExporting}
+              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs text-white font-semibold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 min-w-[140px]"
+            >
+              {isExporting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Exporting...</span>
+                </>
+              ) : (
+                <span>Start Export</span>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

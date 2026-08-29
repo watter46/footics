@@ -89,7 +89,7 @@ export const AnimationTimelinePanel: React.FC<AnimationTimelinePanelProps> = ({
     startExport({
       backgroundColor: '#020617',
       fps: exportFps,
-      bitrate: exportFps <= 30 ? 10000000 : 16000000,
+      bitrate: exportFps <= 30 ? 14000000 : 16000000,
     });
   };
 

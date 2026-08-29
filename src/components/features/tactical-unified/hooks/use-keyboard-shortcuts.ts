@@ -17,12 +17,19 @@ export function useKeyboardShortcuts() {
   const removeText = useTacticalUnifiedStore((s) => s.removeText);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const setActiveTool = useTacticalUnifiedStore((s) => s.setActiveTool);
+  const togglePlayback = useTacticalUnifiedStore((s) => s.togglePlayback);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName;
       // input/textarea にフォーカス中はスキップ
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlayback();
+        return;
+      }
 
       if (e.key === 'Escape') {
         clearSelection();
@@ -99,5 +106,6 @@ export function useKeyboardShortcuts() {
     removeText,
     activeSlideId,
     setActiveTool,
+    togglePlayback,
   ]);
 }
