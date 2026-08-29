@@ -376,8 +376,14 @@ export const ExportTargetSchema = z.discriminatedUnion('format', [
     scope: z.enum(['all', 'range']).default('all'),
     fromSlideId: z.string().optional(),
     toSlideId: z.string().optional(),
-    fps: z.enum(['30', '60']).default('30'),
+    fps: z.enum(['30', '60']).default('60'),
     quality: z.enum(['low', 'medium', 'high']).default('high'),
+    bitrateMbps: z.enum(['8', '12', '24']).default('24').optional(),
+    h264Profile: z
+      .enum(['baseline', 'main', 'high'])
+      .default('high')
+      .optional(),
+    maxQueueSize: z.enum(['60', '240']).default('60').optional(),
     scale: z.number().min(1).max(4).default(2),
   }),
   z.object({
@@ -385,8 +391,9 @@ export const ExportTargetSchema = z.discriminatedUnion('format', [
     scope: z.enum(['all', 'range']).default('all'),
     fromSlideId: z.string().optional(),
     toSlideId: z.string().optional(),
-    fps: z.enum(['30', '60']).default('30'),
+    fps: z.enum(['30', '60']).default('60'),
     transparent: z.boolean().default(true),
+    maxQueueSize: z.enum(['60', '240']).default('60').optional(),
     scale: z.number().min(1).max(4).default(2),
   }),
   z.object({

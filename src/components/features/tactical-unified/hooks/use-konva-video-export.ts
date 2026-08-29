@@ -117,13 +117,33 @@ export function useKonvaVideoExport({
 
       const quality = target.format === 'mp4' ? target.quality : 'high';
       const transparent = target.format === 'webm' ? target.transparent : false;
+      const bitrate =
+        target.format === 'mp4' && 'bitrateMbps' in target && target.bitrateMbps
+          ? Number.parseInt(target.bitrateMbps, 10) * 1_000_000
+          : undefined;
+      const h264Profile =
+        target.format === 'mp4' && 'h264Profile' in target
+          ? target.h264Profile
+          : undefined;
+      const maxQueueSize =
+        'maxQueueSize' in target && target.maxQueueSize
+          ? Number.parseInt(target.maxQueueSize, 10)
+          : 60;
+
+      console.log(
+        `%c[Footics Export Hook] Triggered video export: ${target.format.toUpperCase()} (${fps}fps, scale=${scale}, bitrate=${bitrate ? `${bitrate / 1_000_000}Mbps` : 'auto'}, profile=${h264Profile ?? 'high'}, maxQueue=${maxQueueSize}, slides=${currentSlides.length}, duration=${totalDurationMs}ms)`,
+        'color: #0284c7; font-weight: bold;',
+      );
 
       try {
-        return await exportTacticalVideo({
+        const resultBlob = await exportTacticalVideo({
           format: target.format,
           fps,
           scale,
           quality,
+          bitrate,
+          h264Profile,
+          maxQueueSize,
           transparent,
           totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 3000,
           boundaryBox,
@@ -137,6 +157,13 @@ export function useKonvaVideoExport({
           onProgress: handleProgress,
           checkCancelled: () => isCancelledRef.current,
         });
+
+        console.log(
+          `%c[Footics Export Hook] Export successfully finished! Blob size: ${(resultBlob.size / 1024 / 1024).toFixed(2)} MB`,
+          'color: #16a34a; font-weight: bold;',
+        );
+
+        return resultBlob;
       } finally {
         // Reset stage state to Slide 0
         if (currentSlides.length > 0) {

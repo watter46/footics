@@ -77,9 +77,7 @@ export function ExportModal() {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>(
     pendingExport?.format ?? 'mp4',
   );
-  const [fps, setFps] = useState<'30' | '60'>('60');
-  const [scale, setScale] = useState<number>(2);
-  const [quality] = useState<'high' | 'medium'>('high');
+  const [maxQueueSize, setMaxQueueSize] = useState<'60' | '240'>('60');
 
   // Exported video state for post-render preview
   const [completedVideo, setCompletedVideo] = useState<{
@@ -95,6 +93,12 @@ export function ExportModal() {
         filename: string;
       };
       if (detail?.blob) {
+        console.log(
+          '[ExportModal] Received tactical:export-completed event:',
+          detail.filename,
+          detail.blob.size,
+          'bytes',
+        );
         setExportError(null);
         setCompletedVideo(detail);
       }
@@ -104,6 +108,10 @@ export function ExportModal() {
       const detail = (e as CustomEvent).detail as {
         error: string;
       };
+      console.error(
+        '[ExportModal] Received tactical:export-error event:',
+        detail?.error,
+      );
       setExportError(detail?.error || 'Video export failed. Please try again.');
     };
 
@@ -134,29 +142,33 @@ export function ExportModal() {
       detail = {
         format: 'png',
         scope: 'current',
-        scale,
+        scale: 2,
       };
     } else if (selectedFormat === 'zip') {
       detail = {
         format: 'zip',
         scope: 'all',
-        scale,
+        scale: 2,
       };
     } else if (selectedFormat === 'mp4') {
       detail = {
         format: 'mp4',
         scope: 'all',
-        fps,
-        scale,
-        quality,
+        fps: '60',
+        scale: 2,
+        quality: 'high',
+        bitrateMbps: '24',
+        h264Profile: 'high',
+        maxQueueSize,
       };
     } else if (selectedFormat === 'webm') {
       detail = {
         format: 'webm',
         scope: 'all',
-        fps,
-        scale,
+        fps: '60',
+        scale: 2,
         transparent: true,
+        maxQueueSize,
       };
     } else {
       detail = {
@@ -165,6 +177,10 @@ export function ExportModal() {
         fps: '15',
       };
     }
+
+    console.log(
+      `[ExportModal] Export button clicked: format=${selectedFormat}, queueSize=${maxQueueSize}, fixedSpecs=1080p@60fps/24M/High`,
+    );
 
     window.dispatchEvent(
       new CustomEvent('tactical:export', {
@@ -347,98 +363,65 @@ export function ExportModal() {
                 </div>
               </div>
 
-              {/* Video Options (FPS, Resolution) */}
+              {/* Video Settings: Fixed High-Quality Specs + Configurable GPU Queue Buffer */}
               {isVideoFormat && (
                 <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
-                  <p className="text-[11px] font-semibold tracking-wider text-white/50 uppercase block">
-                    Video Settings
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-semibold tracking-wider text-white/50 uppercase">
+                      Video Configuration
+                    </p>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-medium border border-blue-500/20">
+                      1080p FHD • 60 FPS • 24M High
+                    </span>
+                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Framerate */}
-                    <div>
-                      <span className="text-[10px] text-white/70 block mb-1">
-                        Frame Rate
+                  {/* GPU Queue Buffer Watermark Control */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-white/70">
+                        GPU Pipeline Buffer (Queue Size)
                       </span>
-                      <div className="flex rounded-lg bg-black/40 p-0.5 border border-white/10">
-                        <button
-                          type="button"
-                          onClick={() => setFps('60')}
-                          disabled={isExporting}
-                          className={[
-                            'flex-1 py-1 text-xs rounded-md font-medium transition-all cursor-pointer',
-                            fps === '60'
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'text-white/50 hover:text-white',
-                          ].join(' ')}
-                        >
-                          60 FPS
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFps('30')}
-                          disabled={isExporting}
-                          className={[
-                            'flex-1 py-1 text-xs rounded-md font-medium transition-all cursor-pointer',
-                            fps === '30'
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'text-white/50 hover:text-white',
-                          ].join(' ')}
-                        >
-                          30 FPS
-                        </button>
-                      </div>
+                      <span className="text-[9px] text-white/40">
+                        先行投入フレーム数
+                      </span>
                     </div>
-
-                    {/* Resolution / Scale */}
-                    <div>
-                      <span className="text-[10px] text-white/70 block mb-1">
-                        Resolution
-                      </span>
-                      <div className="flex rounded-lg bg-black/40 p-0.5 border border-white/10 gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setScale(3)}
-                          disabled={isExporting}
-                          title="2K / 1440p (Ultra Quality, 2560x1440)"
-                          className={[
-                            'flex-1 py-1 text-[11px] rounded-md font-medium transition-all cursor-pointer text-center',
-                            scale === 3
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'text-white/50 hover:text-white',
-                          ].join(' ')}
-                        >
-                          2K (1440p)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setScale(2)}
-                          disabled={isExporting}
-                          title="1080p (Full HD, 1920x1080 - Recommended)"
-                          className={[
-                            'flex-1 py-1 text-[11px] rounded-md font-medium transition-all cursor-pointer text-center',
-                            scale === 2
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'text-white/50 hover:text-white',
-                          ].join(' ')}
-                        >
-                          1080p (FHD)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setScale(1)}
-                          disabled={isExporting}
-                          title="720p (HD, 1280x720 - Lightweight)"
-                          className={[
-                            'flex-1 py-1 text-[11px] rounded-md font-medium transition-all cursor-pointer text-center',
-                            scale === 1
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'text-white/50 hover:text-white',
-                          ].join(' ')}
-                        >
-                          720p (HD)
-                        </button>
-                      </div>
+                    <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-black/40 p-0.5 border border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => setMaxQueueSize('60')}
+                        disabled={isExporting}
+                        title="60 Frames (推奨・万能 / 長尺・短尺ともに最速)"
+                        className={[
+                          'py-2 px-3 text-[11px] rounded-md font-medium transition-all cursor-pointer text-center',
+                          maxQueueSize === '60'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-white/50 hover:text-white',
+                        ].join(' ')}
+                      >
+                        <span className="font-semibold">60 (推奨・最速)</span>
+                        <span className="block text-[9px] opacity-70 mt-0.5">
+                          全動画向け・最高効率
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMaxQueueSize('240')}
+                        disabled={isExporting}
+                        title="240 Frames (短尺ブースト / 3〜5秒動画の待機ゼロ化)"
+                        className={[
+                          'py-2 px-3 text-[11px] rounded-md font-medium transition-all cursor-pointer text-center',
+                          maxQueueSize === '240'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-white/50 hover:text-white',
+                        ].join(' ')}
+                      >
+                        <span className="font-semibold">
+                          240 (短尺ブースト)
+                        </span>
+                        <span className="block text-[9px] opacity-70 mt-0.5">
+                          短尺特化・待機ゼロ
+                        </span>
+                      </button>
                     </div>
                   </div>
                 </div>

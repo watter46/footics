@@ -135,7 +135,7 @@ describe('video-export-engine & worker pipeline', () => {
       );
       expect(workerResult).not.toBeNull();
       expect(workerResult?.hardwareAcceleration).toBe('prefer-hardware');
-      expect(workerResult?.latencyMode).toBe('quality');
+      expect(workerResult?.latencyMode).toBe('realtime');
 
       delete (globalThis as unknown as { VideoEncoder?: unknown }).VideoEncoder;
     });
@@ -148,6 +148,7 @@ describe('video-export-engine & worker pipeline', () => {
 
   describe('getSupportedVP9EncoderConfig & getWorkerVP9EncoderConfig', () => {
     it('returns null when VideoEncoder is not available', async () => {
+      delete (globalThis as any).VideoEncoder;
       const config = await getSupportedVP9EncoderConfig(
         1920,
         1080,
@@ -367,6 +368,7 @@ describe('video-export-engine & worker pipeline', () => {
         MockOffscreenCanvas;
 
       const progressEvents: number[] = [];
+      const chunks: any[] = [];
       const result = await executeOffThreadVideoExport(
         {
           id: 'test-exp-1',
@@ -492,6 +494,7 @@ describe('video-export-engine & worker pipeline', () => {
         MockOffscreenCanvas;
 
       const progressEvents: number[] = [];
+      const chunks: any[] = [];
       const result = await executeOffThreadVideoExport(
         {
           id: 'test-exp-2',
@@ -827,10 +830,53 @@ describe('video-export-engine & worker pipeline', () => {
               stageHeight: 1080,
               slides: [],
             }),
-          ).rejects.toThrow('Slides data is required for direct video export.');
+          ).rejects.toThrow('Slides data is required for Web Worker video export.');
         });
 
         it('executes direct WebCodecs pipeline with zero-wait async yielding and generates MP4 Blob', async () => {
+
+          class MockWorker {
+            onmessage: any;
+            onerror: any;
+            postMessage(msg: any) {
+              if (msg.type === 'START_EXPORT') {
+                setTimeout(() => {
+                  this.onmessage?.({ data: { id: msg.id, type: 'PROGRESS', progress: { percent: 50, stage: 'rendering', message: 'test' } } });
+                  this.onmessage?.({
+                    data: {
+                      id: msg.id,
+                      type: 'CHUNK_DATA',
+                      chunkType: 'key',
+                      timestamp: 0,
+                      duration: 33333,
+                      buffer: new ArrayBuffer(0),
+                      decoderConfig: {
+                        codec: 'avc1.64002a',
+                        description: new Uint8Array([1, 100, 0, 42, 255, 225, 0, 30, 103, 100, 0, 42, 172, 217, 64, 120, 2, 39, 229, 132, 0, 0, 3, 0, 4, 0, 0, 3, 0, 240, 60, 96, 198, 88, 1, 0, 5, 104, 235, 227, 203, 34, 192]).buffer,
+                        codedWidth: 1920,
+                        codedHeight: 1080,
+                        displayAspectWidth: 1920,
+                        displayAspectHeight: 1080,
+                        colorSpace: {
+                          primaries: 'bt709',
+                          transfer: 'bt709',
+                          matrix: 'bt709',
+                          fullRange: false,
+                        }
+                      }
+                    }
+                  });
+                  setTimeout(() => {
+                    this.onmessage?.({ data: { id: msg.id, type: 'SUCCESS', mimeType: 'video/mp4' } });
+                  }, 10);
+                }, 150);
+              }
+            }
+            terminate() {}
+
+          }
+          (globalThis as any).Worker = MockWorker;
+
           (
             globalThis as unknown as { EncodedVideoChunk: unknown }
           ).EncodedVideoChunk = MockEncodedVideoChunk;
@@ -910,6 +956,49 @@ describe('video-export-engine & worker pipeline', () => {
         });
 
         it('handles backpressure when encodeQueueSize exceeds high watermark and resumes via ondequeue', async () => {
+
+          class MockWorker {
+            onmessage: any;
+            onerror: any;
+            postMessage(msg: any) {
+              if (msg.type === 'START_EXPORT') {
+                setTimeout(() => {
+                  this.onmessage?.({ data: { id: msg.id, type: 'PROGRESS', progress: { percent: 50, stage: 'rendering', message: 'test' } } });
+                  this.onmessage?.({
+                    data: {
+                      id: msg.id,
+                      type: 'CHUNK_DATA',
+                      chunkType: 'key',
+                      timestamp: 0,
+                      duration: 33333,
+                      buffer: new ArrayBuffer(0),
+                      decoderConfig: {
+                        codec: 'avc1.64002a',
+                        description: new Uint8Array([1, 100, 0, 42, 255, 225, 0, 30, 103, 100, 0, 42, 172, 217, 64, 120, 2, 39, 229, 132, 0, 0, 3, 0, 4, 0, 0, 3, 0, 240, 60, 96, 198, 88, 1, 0, 5, 104, 235, 227, 203, 34, 192]).buffer,
+                        codedWidth: 1920,
+                        codedHeight: 1080,
+                        displayAspectWidth: 1920,
+                        displayAspectHeight: 1080,
+                        colorSpace: {
+                          primaries: 'bt709',
+                          transfer: 'bt709',
+                          matrix: 'bt709',
+                          fullRange: false,
+                        }
+                      }
+                    }
+                  });
+                  setTimeout(() => {
+                    this.onmessage?.({ data: { id: msg.id, type: 'SUCCESS', mimeType: 'video/mp4' } });
+                  }, 10);
+                }, 150);
+              }
+            }
+            terminate() {}
+
+          }
+          (globalThis as any).Worker = MockWorker;
+
           class MockQueuedVideoEncoder extends MockVideoEncoder {
             override encode() {
               super.encode();
@@ -957,6 +1046,49 @@ describe('video-export-engine & worker pipeline', () => {
         });
 
         it('cancels video export immediately when checkCancelled returns true', async () => {
+
+          class MockWorker {
+            onmessage: any;
+            onerror: any;
+            postMessage(msg: any) {
+              if (msg.type === 'START_EXPORT') {
+                setTimeout(() => {
+                  this.onmessage?.({ data: { id: msg.id, type: 'PROGRESS', progress: { percent: 50, stage: 'rendering', message: 'test' } } });
+                  this.onmessage?.({
+                    data: {
+                      id: msg.id,
+                      type: 'CHUNK_DATA',
+                      chunkType: 'key',
+                      timestamp: 0,
+                      duration: 33333,
+                      buffer: new ArrayBuffer(0),
+                      decoderConfig: {
+                        codec: 'avc1.64002a',
+                        description: new Uint8Array([1, 100, 0, 42, 255, 225, 0, 30, 103, 100, 0, 42, 172, 217, 64, 120, 2, 39, 229, 132, 0, 0, 3, 0, 4, 0, 0, 3, 0, 240, 60, 96, 198, 88, 1, 0, 5, 104, 235, 227, 203, 34, 192]).buffer,
+                        codedWidth: 1920,
+                        codedHeight: 1080,
+                        displayAspectWidth: 1920,
+                        displayAspectHeight: 1080,
+                        colorSpace: {
+                          primaries: 'bt709',
+                          transfer: 'bt709',
+                          matrix: 'bt709',
+                          fullRange: false,
+                        }
+                      }
+                    }
+                  });
+                  setTimeout(() => {
+                    this.onmessage?.({ data: { id: msg.id, type: 'SUCCESS', mimeType: 'video/mp4' } });
+                  }, 10);
+                }, 150);
+              }
+            }
+            terminate() {}
+
+          }
+          (globalThis as any).Worker = MockWorker;
+
           (
             globalThis as unknown as { EncodedVideoChunk: unknown }
           ).EncodedVideoChunk = MockEncodedVideoChunk;

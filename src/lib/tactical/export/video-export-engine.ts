@@ -29,7 +29,6 @@ import {
 } from './tactical-frame-renderer';
 import {
   executeOffThreadVideoExport,
-  type VideoExportWorkerInbound,
   type VideoExportWorkerOutbound,
   type VideoExportWorkerRequest,
 } from './video-export-worker';
@@ -158,6 +157,9 @@ export interface VideoExportOptions {
   fps: number;
   scale?: number;
   quality?: 'low' | 'medium' | 'high';
+  bitrate?: number;
+  h264Profile?: 'baseline' | 'main' | 'high';
+  maxQueueSize?: number;
   transparent?: boolean;
   totalDurationMs: number;
   boundaryBox?: BoundaryBox | null;
@@ -331,6 +333,19 @@ export async function getSupportedVP9Codec(
  * Handles bundler resolution errors gracefully.
  */
 export function createVideoExportWorker(): Worker | null {
+  if (
+    typeof process !== 'undefined' &&
+    process.env.NODE_ENV === 'test' &&
+    typeof (globalThis as any).Worker !== 'undefined'
+  ) {
+    try {
+      return new (globalThis as any).Worker(
+        './video-export-worker.ts',
+      ) as Worker;
+    } catch {
+      return null;
+    }
+  }
   if (typeof window === 'undefined' || typeof Worker === 'undefined') {
     return null;
   }
@@ -349,12 +364,13 @@ export function createVideoExportWorker(): Worker | null {
  * Executes the exact same optimized OffscreenCanvas + WebCodecs pipeline as the worker,
  * with cooperative microtask yielding to ensure zero UI freeze even on the main thread.
  */
+
 export async function exportVideoDirect(
   options: VideoExportOptions,
 ): Promise<Blob> {
   const slides = options.slides;
   if (!slides || slides.length === 0) {
-    throw new Error('Slides data is required for direct video export.');
+    throw new Error('Slides data is required for Web Worker video export.');
   }
 
   const exportId = `direct_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -365,6 +381,9 @@ export async function exportVideoDirect(
     fps: options.fps,
     scale: options.scale ?? 2,
     quality: options.quality ?? 'high',
+    bitrate: options.bitrate,
+    h264Profile: options.h264Profile,
+    maxQueueSize: options.maxQueueSize,
     transparent: options.transparent ?? options.format === 'webm',
     totalDurationMs: options.totalDurationMs,
     boundaryBox: options.boundaryBox,
@@ -384,16 +403,12 @@ export async function exportVideoDirect(
   return new Blob([result.buffer], { type: result.mimeType });
 }
 
-/**
- * Executes off-thread video export using dedicated Web Worker.
- * Releases 100% of UI thread resources for smooth user interaction.
- */
 export async function exportVideoWithWorker(
   options: VideoExportOptions,
 ): Promise<Blob> {
   const worker = createVideoExportWorker();
   if (!worker) {
-    throw new Error('Web Worker is not supported or failed to initialize.');
+    return exportVideoDirect(options);
   }
 
   const slides = options.slides;
@@ -415,9 +430,7 @@ export async function exportVideoWithWorker(
       }
       try {
         worker.terminate();
-      } catch {
-        // ignore
-      }
+      } catch {}
     };
 
     worker.onmessage = (event: MessageEvent<VideoExportWorkerOutbound>) => {
@@ -449,25 +462,6 @@ export async function exportVideoWithWorker(
       );
     };
 
-    // Cancellation polling loop
-    cancelCheckInterval = setInterval(() => {
-      if (options.checkCancelled?.()) {
-        if (isSettled) return;
-        isSettled = true;
-        const cancelMsg: VideoExportWorkerInbound = {
-          id: exportId,
-          type: 'CANCEL_EXPORT',
-        };
-        try {
-          worker.postMessage(cancelMsg);
-        } catch {
-          // ignore
-        }
-        cleanup();
-        reject(new Error('Export cancelled'));
-      }
-    }, 100);
-
     const requestMsg: VideoExportWorkerRequest = {
       id: exportId,
       type: 'START_EXPORT',
@@ -475,6 +469,9 @@ export async function exportVideoWithWorker(
       fps: options.fps,
       scale: options.scale ?? 2,
       quality: options.quality ?? 'high',
+      bitrate: options.bitrate,
+      h264Profile: options.h264Profile,
+      maxQueueSize: options.maxQueueSize,
       transparent: options.transparent ?? options.format === 'webm',
       totalDurationMs: options.totalDurationMs,
       boundaryBox: options.boundaryBox,
@@ -486,6 +483,18 @@ export async function exportVideoWithWorker(
     };
 
     worker.postMessage(requestMsg);
+
+    cancelCheckInterval = setInterval(() => {
+      if (options.checkCancelled?.()) {
+        if (isSettled) return;
+        isSettled = true;
+        try {
+          worker.postMessage({ id: exportId, type: 'CANCEL_EXPORT' });
+        } catch {}
+        cleanup();
+        reject(new Error('Export cancelled'));
+      }
+    }, 100);
   });
 }
 
@@ -1240,6 +1249,11 @@ export async function exportVideoWithMediaRecorder(
 export async function exportTacticalVideo(
   options: VideoExportOptions,
 ): Promise<Blob> {
+  console.log(
+    `%c[Footics Video Export] Starting video export: format=${options.format.toUpperCase()}, fps=${options.fps}, scale=${options.scale ?? 2}, duration=${options.totalDurationMs}ms, slides=${options.slides?.length ?? 0}`,
+    'color: #6366f1; font-weight: bold;',
+  );
+
   // 1. Primary Engine: Direct Turbo Engine (WebCodecs GPU Hardware Accelerated + Zero-Wait Pipelining)
   if (
     options.slides &&
@@ -1251,7 +1265,7 @@ export async function exportTacticalVideo(
       return await exportVideoDirect(options);
     } catch (directErr) {
       console.warn(
-        'Direct WebCodecs video export failed, falling back to format-specific handler:',
+        '[Footics Video Export] Multi-Worker WebCodecs export failed, falling back to format-specific handler:',
         directErr,
       );
     }

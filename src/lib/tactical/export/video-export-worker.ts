@@ -4,10 +4,8 @@
  *
  * Capabilities:
  *   - 100% off-thread frame rendering with OffscreenCanvas (Zero UI freeze)
- *   - Blazing fast GPU-accelerated H.264 MP4 export (mp4-muxer)
- *   - Blazing fast GPU-accelerated VP9 Transparent WebM export (webm-muxer) with alpha channel
- *   - Automatic transferable buffer zero-copy postMessage
- *   - Graceful cancellation & throttled progress reporting
+ *   - Blazing fast GPU-accelerated H.264 & VP9 WebCodecs encoding
+ *   - Automatic transferable buffer zero-copy postMessage for chunks
  */
 
 import {
@@ -36,6 +34,9 @@ export interface VideoExportWorkerRequest {
   fps: number;
   scale?: number;
   quality?: 'low' | 'medium' | 'high';
+  bitrate?: number;
+  h264Profile?: 'baseline' | 'main' | 'high';
+  maxQueueSize?: number;
   transparent?: boolean;
   totalDurationMs: number;
   boundaryBox?: BoundaryBox | null;
@@ -44,6 +45,8 @@ export interface VideoExportWorkerRequest {
   slides: Slide[];
   aspectRatio?: AspectRatio;
   isMainThread?: boolean;
+  startFrameIdx?: number;
+  endFrameIdx?: number;
 }
 
 export interface VideoExportWorkerCancel {
@@ -67,11 +70,36 @@ export interface VideoExportWorkerProgressMessage {
   progress: ExportProgress;
 }
 
+export interface VideoExportWorkerChunkMessage {
+  id: string;
+  type: 'CHUNK_DATA';
+  chunkType: 'key' | 'delta';
+  timestamp: number;
+  duration: number;
+  buffer: ArrayBuffer;
+  decoderConfig?: VideoDecoderConfig;
+}
+
+export interface WorkerSegmentProfile {
+  startFrame: number;
+  endFrame: number;
+  totalFrames: number;
+  totalMs: number;
+  zoneADrawMs: number;
+  zoneBFrameMs: number;
+  zoneCEncodeMs: number;
+  queueWaitMs: number;
+  flushMs: number;
+  peakQueueSize: number;
+  waitedTimes: number;
+}
+
 export interface VideoExportWorkerSuccessMessage {
   id: string;
   type: 'SUCCESS';
   buffer: ArrayBuffer;
   mimeType: string;
+  profile?: WorkerSegmentProfile;
 }
 
 export interface VideoExportWorkerErrorMessage {
@@ -87,27 +115,18 @@ export interface VideoExportWorkerPongMessage {
 
 export type VideoExportWorkerOutbound =
   | VideoExportWorkerProgressMessage
+  | VideoExportWorkerChunkMessage
   | VideoExportWorkerSuccessMessage
   | VideoExportWorkerErrorMessage
   | VideoExportWorkerPongMessage;
 
-const H264_CODEC_CANDIDATES = [
-  'avc1.42E01E', // Baseline Profile Level 3.0 (Ultra-low GPU compute overhead)
-  'avc1.4d002a', // Main Profile Level 4.2 (High-throughput GPU accelerated)
-  'avc1.4D401F', // Main Profile Level 3.1
-  'avc1.64002a', // High Profile Level 4.2 (Maximum compression)
-];
-
 const VP9_CODEC_CANDIDATES = [
-  'vp09.00.10.08', // Profile 0, 8-bit, 4:2:0
-  'vp09.00.41.08', // Profile 0, Level 4.1
-  'vp09.02.10.10', // Profile 2, 10-bit
+  'vp09.00.10.08',
+  'vp09.00.41.08',
+  'vp09.02.10.10',
   'vp9',
 ];
 
-/**
- * Calculates boundary crop dimensions with even-number snapping.
- */
 export function calculateWorkerBoundaryCrop(
   box: BoundaryBox | undefined | null,
   stageWidth: number,
@@ -133,10 +152,6 @@ export function calculateWorkerBoundaryCrop(
     isCropped = true;
   }
 
-  // Baseline Resolution Guarantee depending on selected scale preset:
-  // scale >= 2.5 (2K / 1440p QHD): 2560x1440 for 16:9, 1440x2560 for 9:16
-  // scale >= 1.5 (1080p Full HD): 1920x1080 for 16:9, 1080x1920 for 9:16
-  // scale < 1.5 (720p HD): 1280x720 for 16:9, 720x1280 for 9:16
   const isVertical = stageHeight > stageWidth;
   const isSquare = stageWidth === stageHeight;
   const isFourThree = Math.abs(stageWidth / stageHeight - 4 / 3) < 0.05;
@@ -145,7 +160,6 @@ export function calculateWorkerBoundaryCrop(
   let baseHeight: number;
 
   if (scale >= 2.5) {
-    // 2K / 1440p (Ultra Quality)
     if (isVertical) {
       baseWidth = 1440;
       baseHeight = 2560;
@@ -160,7 +174,6 @@ export function calculateWorkerBoundaryCrop(
       baseHeight = 1440;
     }
   } else if (scale >= 1.5) {
-    // 1080p (Full HD - Recommended)
     if (isVertical) {
       baseWidth = 1080;
       baseHeight = 1920;
@@ -175,7 +188,6 @@ export function calculateWorkerBoundaryCrop(
       baseHeight = 1080;
     }
   } else {
-    // 720p (HD - Lightweight)
     if (isVertical) {
       baseWidth = 720;
       baseHeight = 1280;
@@ -198,8 +210,6 @@ export function calculateWorkerBoundaryCrop(
   let exportWidth = Math.round(cropW * effectiveScale);
   let exportHeight = Math.round(cropH * effectiveScale);
 
-  // 8-pixel macroblock alignment ensures maximum GPU hardware acceleration throughput
-  // while strictly preserving standard broadcast resolutions (1080p: 1920x1080, 2K: 2560x1440, 720p: 1280x720)
   exportWidth = Math.max(64, Math.round(exportWidth / 8) * 8);
   exportHeight = Math.max(64, Math.round(exportHeight / 8) * 8);
 
@@ -214,32 +224,34 @@ export function calculateWorkerBoundaryCrop(
   };
 }
 
-/**
- * Detects H.264 VideoEncoder configuration.
- */
 export async function getWorkerH264EncoderConfig(
   width: number,
   height: number,
   fps: number,
-  bitrate = 30_000_000,
+  bitrate = 12_000_000,
+  profile: 'baseline' | 'main' | 'high' = 'main',
 ): Promise<VideoEncoderConfig | null> {
   if (typeof globalThis === 'undefined' || !('VideoEncoder' in globalThis)) {
     return null;
   }
+
+  const candidates =
+    profile === 'baseline'
+      ? ['avc1.42E01E', 'avc1.4d002a', 'avc1.64002a']
+      : profile === 'high'
+        ? ['avc1.64002a', 'avc1.4d002a', 'avc1.42E01E']
+        : ['avc1.4d002a', 'avc1.4D401F', 'avc1.64002a', 'avc1.42E01E'];
 
   const accelOptions: HardwareAcceleration[] = [
     'prefer-hardware',
     'no-preference',
     'prefer-software',
   ];
-
-  // Prioritize 'realtime' latencyMode to unleash full GPU hardware encoder throughput
-  // (avoids 1x realtime throttling imposed by 'quality' mode in hardware encoders)
   const latencyModes: LatencyMode[] = ['realtime', 'quality'];
 
   for (const hardwareAcceleration of accelOptions) {
     for (const latencyMode of latencyModes) {
-      for (const codec of H264_CODEC_CANDIDATES) {
+      for (const codec of candidates) {
         try {
           const testConfig: VideoEncoderConfig = {
             codec,
@@ -255,19 +267,13 @@ export async function getWorkerH264EncoderConfig(
           if (support.supported && support.config) {
             return support.config;
           }
-        } catch {
-          // Continue
-        }
+        } catch {}
       }
     }
   }
-
   return null;
 }
 
-/**
- * Detects VP9 VideoEncoder configuration (supports alpha channel).
- */
 export async function getWorkerVP9EncoderConfig(
   width: number,
   height: number,
@@ -284,8 +290,6 @@ export async function getWorkerVP9EncoderConfig(
     'no-preference',
     'prefer-software',
   ];
-
-  // Prioritize 'realtime' latencyMode for high-throughput encoding
   const latencyModes: LatencyMode[] = ['realtime', 'quality'];
 
   for (const hardwareAcceleration of accelOptions) {
@@ -307,37 +311,42 @@ export async function getWorkerVP9EncoderConfig(
           if (support.supported && support.config) {
             return support.config;
           }
-        } catch {
-          // Continue
-        }
+        } catch {}
       }
     }
   }
-
   return null;
 }
 
 /**
- * Core off-thread video export executor.
+ * Main Direct & Off-Thread Turbo Video Export Execution Engine.
  */
 export async function executeOffThreadVideoExport(
-  data: VideoExportWorkerRequest,
-  onProgress?: (p: ExportProgress) => void,
+  request: VideoExportWorkerRequest,
+  onProgress?: (progress: ExportProgress) => void,
   checkCancelled?: () => boolean,
-): Promise<{ buffer: ArrayBuffer; mimeType: string }> {
+): Promise<{
+  buffer: ArrayBuffer;
+  mimeType: string;
+  profile?: WorkerSegmentProfile;
+}> {
   const {
     format,
     fps,
     scale = 2,
     quality = 'high',
-    transparent = format === 'webm',
+    bitrate: customBitrate,
+    h264Profile = 'high',
+    maxQueueSize = 60,
+    transparent = false,
     totalDurationMs,
     boundaryBox,
     stageWidth,
     stageHeight,
     slides,
     aspectRatio = '16:9',
-  } = data;
+    isMainThread = false,
+  } = request;
 
   const cropInfo = calculateWorkerBoundaryCrop(
     boundaryBox,
@@ -348,29 +357,18 @@ export async function executeOffThreadVideoExport(
   const { exportWidth, exportHeight } = cropInfo;
 
   const bitrate =
-    scale >= 2.5
+    customBitrate ??
+    ((scale ?? 2) >= 2.5
       ? quality === 'low'
-        ? 18_000_000
-        : 30_000_000
-      : scale >= 1.5
+        ? 12_000_000
+        : 24_000_000
+      : (scale ?? 2) >= 1.5
         ? quality === 'low'
-          ? 10_000_000
-          : 16_000_000
+          ? 8_000_000
+          : 12_000_000
         : quality === 'low'
-          ? 5_000_000
-          : 8_000_000;
-
-  if (
-    typeof OffscreenCanvas === 'undefined' &&
-    typeof document === 'undefined'
-  ) {
-    throw new Error(
-      'Canvas / OffscreenCanvas is not supported in this environment.',
-    );
-  }
-  if (typeof VideoEncoder === 'undefined') {
-    throw new Error('WebCodecs VideoEncoder is not supported.');
-  }
+          ? 4_000_000
+          : 8_000_000);
 
   const effectiveDurationMs = totalDurationMs > 0 ? totalDurationMs : 3000;
   const totalFrames = Math.max(
@@ -379,21 +377,46 @@ export async function executeOffThreadVideoExport(
   );
   const frameDurationUs = 1_000_000 / fps;
 
+  const startFrameIdx = Math.max(0, request.startFrameIdx ?? 0);
+  const endFrameIdx = Math.min(
+    totalFrames - 1,
+    request.endFrameIdx ?? totalFrames - 1,
+  );
+  const actualFramesCount = endFrameIdx - startFrameIdx + 1;
+
   let encoderError: Error | null = null;
   let videoEncoder: VideoEncoder | null = null;
 
+  const handleError = (e: Error) => {
+    console.error(`[Footics Video Export Engine] VideoEncoder error:`, e);
+    encoderError = e;
+  };
+
+  const offscreenCanvas: HTMLCanvasElement | OffscreenCanvas =
+    typeof OffscreenCanvas !== 'undefined'
+      ? new OffscreenCanvas(exportWidth, exportHeight)
+      : document.createElement('canvas');
+  offscreenCanvas.width = exportWidth;
+  offscreenCanvas.height = exportHeight;
+
+  let encoderConfig: VideoEncoderConfig | null = null;
+  let muxer: Mp4Muxer<Mp4ArrayBufferTarget> | WebmMuxer<WebmArrayBufferTarget>;
+  let mimeType = '';
+
   if (format === 'mp4') {
-    const encoderConfig = await getWorkerH264EncoderConfig(
+    encoderConfig = await getWorkerH264EncoderConfig(
       exportWidth,
       exportHeight,
       fps,
       bitrate,
+      h264Profile,
     );
     if (!encoderConfig) {
       throw new Error('No supported H.264 WebCodecs configuration found.');
     }
+    mimeType = 'video/mp4';
 
-    const muxer = new Mp4Muxer({
+    const mp4Muxer = new Mp4Muxer({
       target: new Mp4ArrayBufferTarget(),
       video: {
         codec: 'avc',
@@ -403,310 +426,127 @@ export async function executeOffThreadVideoExport(
       fastStart: 'in-memory',
       firstTimestampBehavior: 'offset',
     });
+    muxer = mp4Muxer;
 
     videoEncoder = new VideoEncoder({
-      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-      error: (e) => {
-        encoderError = e;
-      },
+      output: (chunk, meta) => mp4Muxer.addVideoChunk(chunk, meta),
+      error: handleError,
     });
     videoEncoder.configure(encoderConfig);
-
-    console.log(
-      `[Video Export Worker] MP4 Encoder Configured: ` +
-        `codec=${encoderConfig.codec}, ` +
-        `accel=${encoderConfig.hardwareAcceleration || 'default'}, ` +
-        `latency=${encoderConfig.latencyMode || 'default'}, ` +
-        `bitrate=${((encoderConfig.bitrate || bitrate) / 1_000_000).toFixed(1)}Mbps, ` +
-        `dimensions=${exportWidth}x${exportHeight}`,
+  } else {
+    encoderConfig = await getWorkerVP9EncoderConfig(
+      exportWidth,
+      exportHeight,
+      fps,
+      bitrate,
+      transparent,
     );
-
-    const offscreenCanvas: HTMLCanvasElement | OffscreenCanvas =
-      typeof OffscreenCanvas !== 'undefined'
-        ? new OffscreenCanvas(exportWidth, exportHeight)
-        : document.createElement('canvas');
-    offscreenCanvas.width = exportWidth;
-    offscreenCanvas.height = exportHeight;
-
-    const offscreenCtx = (offscreenCanvas.getContext('2d', {
-      alpha: false,
-      desynchronized: true,
-      willReadFrequently: false,
-    }) ||
-      offscreenCanvas.getContext('2d')) as AnyCanvasRenderingContext2D | null;
-
-    if (!offscreenCtx) {
-      throw new Error('Failed to create 2D OffscreenCanvas context for MP4');
+    if (!encoderConfig) {
+      throw new Error('No supported VP9 WebCodecs configuration found.');
     }
+    mimeType = 'video/webm';
 
-    let lastReportedTime = 0;
-    let lastReportedPercent = -1;
+    const webmMuxer = new WebmMuxer({
+      target: new WebmArrayBufferTarget(),
+      video: {
+        codec: 'V_VP9',
+        width: exportWidth,
+        height: exportHeight,
+        frameRate: fps,
+        alpha: transparent,
+      },
+      firstTimestampBehavior: 'offset',
+    });
+    muxer = webmMuxer;
 
-    let totalZoneARenderMs = 0;
-    let totalZoneBFrameMs = 0;
-    let totalZoneCEncodeMs = 0;
-    let totalQueueWaitMs = 0;
-    let queueWaitCount = 0;
-    let peakQueueSize = 0;
-    const exportStartTime = performance.now();
-    const keyFrameInterval = Math.max(fps * 2, 60);
-
-    try {
-      for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
-        if (checkCancelled?.()) {
-          throw new Error('Export cancelled');
-        }
-        if (encoderError) {
-          throw encoderError;
-        }
-
-        if (videoEncoder.encodeQueueSize > peakQueueSize) {
-          peakQueueSize = videoEncoder.encodeQueueSize;
-        }
-
-        // Async queue backpressure control (ultra-low latency GPU buffer: up to 24 frames, drains to 8)
-        if (videoEncoder.encodeQueueSize > 24) {
-          queueWaitCount++;
-          const waitStart = performance.now();
-          await new Promise<void>((resolve) => {
-            if (!videoEncoder || videoEncoder.state === 'closed') {
-              resolve();
-              return;
-            }
-            videoEncoder.ondequeue = () => {
-              if (!videoEncoder || videoEncoder.encodeQueueSize <= 8) {
-                if (videoEncoder) videoEncoder.ondequeue = null;
-                resolve();
-              }
-            };
-          });
-          const waitElapsed = performance.now() - waitStart;
-          totalQueueWaitMs += waitElapsed;
-        }
-
-        const timeMs = (frameIdx / fps) * 1000;
-
-        // [Zone A] 2D Canvas 描画
-        const t0 = performance.now();
-        renderTacticalFrameToCanvas(offscreenCtx, {
-          slides,
-          timeMs,
-          width: exportWidth,
-          height: exportHeight,
-          aspectRatio,
-          boundaryBox,
-          transparent: false,
-        });
-        const t1 = performance.now();
-        const zoneARenderMs = t1 - t0;
-        totalZoneARenderMs += zoneARenderMs;
-
-        // [Zone B] VideoFrame 生成 & メモリ確保
-        const timestampUs = Math.round(frameIdx * frameDurationUs);
-        const videoFrame = new VideoFrame(offscreenCanvas, {
-          timestamp: timestampUs,
-          duration: Math.round(frameDurationUs),
-        });
-        const t2 = performance.now();
-        const zoneBFrameMs = t2 - t1;
-        totalZoneBFrameMs += zoneBFrameMs;
-
-        // [Zone C] GPU エンコード投入
-        if (videoEncoder.state === 'configured') {
-          const isKeyFrame =
-            frameIdx === 0 || frameIdx % keyFrameInterval === 0;
-          videoEncoder.encode(videoFrame, {
-            keyFrame: isKeyFrame,
-          });
-        }
-        videoFrame.close();
-        const t3 = performance.now();
-        const zoneCEncodeMs = t3 - t2;
-        totalZoneCEncodeMs += zoneCEncodeMs;
-
-        if (frameIdx % 60 === 0 || frameIdx === totalFrames - 1) {
-          console.log(
-            `[MP4 Export Frame ${frameIdx + 1}/${totalFrames}] ` +
-              `[区画A(Canvas描画): ${zoneARenderMs.toFixed(2)}ms] ` +
-              `[区画B(VideoFrame生成): ${zoneBFrameMs.toFixed(2)}ms] ` +
-              `[区画C(GPUエンコード): ${zoneCEncodeMs.toFixed(2)}ms] ` +
-              `| Queue: ${videoEncoder.encodeQueueSize}`,
-          );
-        }
-
-        const progressPercent = Math.min(
-          95,
-          Math.round(((frameIdx + 1) / totalFrames) * 95),
-        );
-        const now =
-          typeof performance !== 'undefined' ? performance.now() : Date.now();
-        if (
-          progressPercent !== lastReportedPercent &&
-          (now - lastReportedTime >= 60 || frameIdx === totalFrames - 1)
-        ) {
-          lastReportedTime = now;
-          lastReportedPercent = progressPercent;
-          onProgress?.({
-            percent: progressPercent,
-            stage: 'rendering',
-            message: `Rendering MP4 frame ${frameIdx + 1} of ${totalFrames} (${progressPercent}%)`,
-          });
-        }
-      }
-
-      onProgress?.({
-        percent: 96,
-        stage: 'finalizing',
-        message: 'Finalizing MP4 container...',
-      });
-
-      const flushStart = performance.now();
-      if (videoEncoder.state === 'configured') {
-        await videoEncoder.flush();
-      }
-      const flushMs = performance.now() - flushStart;
-      muxer.finalize();
-      const totalExportElapsed = performance.now() - exportStartTime;
-      const exportFps = totalFrames / (totalExportElapsed / 1000);
-      const speedMultiplier = (
-        effectiveDurationMs / totalExportElapsed
-      ).toFixed(1);
-
-      console.log(
-        `%c[3-Zone Profiling Benchmark (MP4)] Total: ${totalExportElapsed.toFixed(1)}ms (${exportFps.toFixed(1)} fps, ${speedMultiplier}x realtime) | Frames: ${totalFrames} | ${exportWidth}x${exportHeight} | ${encoderConfig.codec} (${encoderConfig.hardwareAcceleration || 'default'}, ${encoderConfig.latencyMode || 'default'})\n` +
-          `  - 区画A (Canvas描画): ${totalZoneARenderMs.toFixed(1)}ms (avg: ${(totalZoneARenderMs / totalFrames).toFixed(2)}ms/f, ${((totalZoneARenderMs / totalExportElapsed) * 100).toFixed(1)}%)\n` +
-          `  - 区画B (VideoFrame生成): ${totalZoneBFrameMs.toFixed(1)}ms (avg: ${(totalZoneBFrameMs / totalFrames).toFixed(2)}ms/f, ${((totalZoneBFrameMs / totalExportElapsed) * 100).toFixed(1)}%)\n` +
-          `  - 区画C (GPUエンコード投入/待機): ${(totalZoneCEncodeMs + totalQueueWaitMs + flushMs).toFixed(1)}ms (EncodeCall: ${totalZoneCEncodeMs.toFixed(1)}ms, QueueWait: ${totalQueueWaitMs.toFixed(1)}ms [waited ${queueWaitCount} times, peak queue: ${peakQueueSize}], Flush: ${flushMs.toFixed(1)}ms, ${(((totalZoneCEncodeMs + totalQueueWaitMs + flushMs) / totalExportElapsed) * 100).toFixed(1)}%)`,
-        'color: #38bdf8; font-weight: bold;',
-      );
-
-      onProgress?.({
-        percent: 100,
-        stage: 'idle',
-        message: 'MP4 export completed successfully!',
-      });
-
-      return {
-        buffer: muxer.target.buffer,
-        mimeType: 'video/mp4',
-      };
-    } finally {
-      try {
-        if (videoEncoder && videoEncoder.state !== 'closed') {
-          videoEncoder.close();
-        }
-      } catch {
-        // ignore
-      }
-    }
+    videoEncoder = new VideoEncoder({
+      output: (chunk, meta) => webmMuxer.addVideoChunk(chunk, meta),
+      error: handleError,
+    });
+    videoEncoder.configure(encoderConfig);
   }
-
-  // WebM format (VP9 with alpha transparency)
-  const encoderConfig = await getWorkerVP9EncoderConfig(
-    exportWidth,
-    exportHeight,
-    fps,
-    bitrate,
-    transparent,
-  );
-  if (!encoderConfig) {
-    throw new Error('No supported VP9 WebCodecs configuration found.');
-  }
-
-  const muxer = new WebmMuxer({
-    target: new WebmArrayBufferTarget(),
-    video: {
-      codec: 'V_VP9',
-      width: exportWidth,
-      height: exportHeight,
-      frameRate: fps,
-      alpha: transparent,
-    },
-    firstTimestampBehavior: 'offset',
-  });
-
-  videoEncoder = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-    error: (e) => {
-      encoderError = e;
-    },
-  });
-  videoEncoder.configure(encoderConfig);
 
   console.log(
-    `[Video Export Worker] WebM Encoder Configured: ` +
-      `codec=${encoderConfig.codec}, ` +
-      `accel=${encoderConfig.hardwareAcceleration || 'default'}, ` +
-      `latency=${encoderConfig.latencyMode || 'default'}, ` +
-      `bitrate=${((encoderConfig.bitrate || bitrate) / 1_000_000).toFixed(1)}Mbps, ` +
-      `dimensions=${exportWidth}x${exportHeight}`,
+    `[Footics Turbo Engine] Configured: format=${format.toUpperCase()}, codec=${encoderConfig.codec}, dimensions=${exportWidth}x${exportHeight}, fps=${fps}, frames=${actualFramesCount}, maxQueue=${maxQueueSize}`,
   );
 
-  const offscreenCanvas: HTMLCanvasElement | OffscreenCanvas =
-    typeof OffscreenCanvas !== 'undefined'
-      ? new OffscreenCanvas(exportWidth, exportHeight)
-      : document.createElement('canvas');
-  offscreenCanvas.width = exportWidth;
-  offscreenCanvas.height = exportHeight;
-
   const offscreenCtx = (offscreenCanvas.getContext('2d', {
-    alpha: transparent,
+    alpha: format === 'webm' ? transparent : false,
     desynchronized: true,
     willReadFrequently: false,
   }) || offscreenCanvas.getContext('2d')) as AnyCanvasRenderingContext2D | null;
 
   if (!offscreenCtx) {
-    throw new Error('Failed to create 2D OffscreenCanvas context for WebM');
+    throw new Error('Failed to create 2D OffscreenCanvas context');
   }
 
-  let lastReportedTime = 0;
-  let lastReportedPercent = -1;
-  let totalZoneARenderMs = 0;
-  let totalZoneBFrameMs = 0;
-  let totalZoneCEncodeMs = 0;
-  let totalQueueWaitMs = 0;
-  let queueWaitCount = 0;
   let peakQueueSize = 0;
-  const exportStartTime = performance.now();
+  let waitedTimes = 0;
+  let queueWaitMs = 0;
+  let zoneADrawMs = 0;
+  let zoneBFrameMs = 0;
+  let zoneCEncodeMs = 0;
+  let flushMs = 0;
   const keyFrameInterval = Math.max(fps * 2, 60);
 
+  const highWatermark = Math.max(10, maxQueueSize);
+  const lowWatermark = Math.max(5, Math.floor(highWatermark / 3));
+
+  const startTimeTotal =
+    typeof performance !== 'undefined' ? performance.now() : Date.now();
+
   try {
-    for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
-      if (checkCancelled?.()) {
-        throw new Error('Export cancelled');
-      }
-      if (encoderError) {
-        throw encoderError;
-      }
-
-      if (videoEncoder.encodeQueueSize > peakQueueSize) {
-        peakQueueSize = videoEncoder.encodeQueueSize;
+    for (let frameIdx = startFrameIdx; frameIdx <= endFrameIdx; frameIdx++) {
+      if (checkCancelled?.()) throw new Error('Export cancelled');
+      if (encoderError) throw encoderError;
+      if (videoEncoder.state === 'closed') {
+        throw new Error('VideoEncoder closed unexpectedly');
       }
 
-      // Async queue backpressure control (ultra-low latency GPU buffer: up to 24 frames, drains to 8)
-      if (videoEncoder.encodeQueueSize > 24) {
-        queueWaitCount++;
-        const waitStart = performance.now();
+      peakQueueSize = Math.max(peakQueueSize, videoEncoder.encodeQueueSize);
+
+      // Backpressure management with fast microtask unblocking + safety timeout
+      if (videoEncoder.encodeQueueSize > highWatermark) {
+        const queueStart =
+          typeof performance !== 'undefined' ? performance.now() : Date.now();
+        waitedTimes++;
         await new Promise<void>((resolve) => {
-          if (!videoEncoder || videoEncoder.state === 'closed') {
+          if (
+            !videoEncoder ||
+            videoEncoder.state === 'closed' ||
+            videoEncoder.encodeQueueSize <= lowWatermark
+          ) {
             resolve();
             return;
           }
+          const timer = setTimeout(() => {
+            if (videoEncoder) videoEncoder.ondequeue = null;
+            resolve();
+          }, 50);
           videoEncoder.ondequeue = () => {
-            if (!videoEncoder || videoEncoder.encodeQueueSize <= 8) {
+            if (!videoEncoder || videoEncoder.encodeQueueSize <= lowWatermark) {
+              clearTimeout(timer);
               if (videoEncoder) videoEncoder.ondequeue = null;
               resolve();
             }
           };
         });
-        const waitElapsed = performance.now() - waitStart;
-        totalQueueWaitMs += waitElapsed;
+        queueWaitMs +=
+          (typeof performance !== 'undefined'
+            ? performance.now()
+            : Date.now()) - queueStart;
+      }
+
+      // Microtask yield on main thread to ensure 0% UI freeze
+      if (isMainThread && frameIdx % 15 === 0) {
+        await new Promise((r) => setTimeout(r, 0));
       }
 
       const timeMs = (frameIdx / fps) * 1000;
 
-      // [Zone A] 2D Canvas 描画 (透過)
-      const t0 = performance.now();
+      // Zone A: Canvas 描画
+      const tDrawStart =
+        typeof performance !== 'undefined' ? performance.now() : Date.now();
       renderTacticalFrameToCanvas(offscreenCtx, {
         slides,
         timeMs,
@@ -714,60 +554,63 @@ export async function executeOffThreadVideoExport(
         height: exportHeight,
         aspectRatio,
         boundaryBox,
-        transparent,
+        transparent: format === 'webm' ? transparent : false,
       });
-      const t1 = performance.now();
-      const zoneARenderMs = t1 - t0;
-      totalZoneARenderMs += zoneARenderMs;
+      const tDrawEnd =
+        typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const currentDrawMs = tDrawEnd - tDrawStart;
+      zoneADrawMs += currentDrawMs;
 
-      // [Zone B] VideoFrame 生成 & メモリ確保
+      // Zone B: VideoFrame 生成
+      const tFrameStart =
+        typeof performance !== 'undefined' ? performance.now() : Date.now();
       const timestampUs = Math.round(frameIdx * frameDurationUs);
       const videoFrame = new VideoFrame(offscreenCanvas, {
         timestamp: timestampUs,
         duration: Math.round(frameDurationUs),
       });
-      const t2 = performance.now();
-      const zoneBFrameMs = t2 - t1;
-      totalZoneBFrameMs += zoneBFrameMs;
+      const tFrameEnd =
+        typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const currentFrameMs = tFrameEnd - tFrameStart;
+      zoneBFrameMs += currentFrameMs;
 
-      // [Zone C] GPU エンコード投入
+      // Zone C: GPU エンコード投入
+      const tEncodeStart =
+        typeof performance !== 'undefined' ? performance.now() : Date.now();
       if (videoEncoder.state === 'configured') {
-        const isKeyFrame = frameIdx === 0 || frameIdx % keyFrameInterval === 0;
-        videoEncoder.encode(videoFrame, {
-          keyFrame: isKeyFrame,
-        });
+        const isKeyFrame =
+          frameIdx === startFrameIdx || frameIdx % keyFrameInterval === 0;
+        videoEncoder.encode(videoFrame, { keyFrame: isKeyFrame });
       }
       videoFrame.close();
-      const t3 = performance.now();
-      const zoneCEncodeMs = t3 - t2;
-      totalZoneCEncodeMs += zoneCEncodeMs;
+      const tEncodeEnd =
+        typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const currentEncodeMs = tEncodeEnd - tEncodeStart;
+      zoneCEncodeMs += currentEncodeMs;
 
-      if (frameIdx % 60 === 0 || frameIdx === totalFrames - 1) {
+      if (frameIdx % 30 === 0 || frameIdx === endFrameIdx) {
         console.log(
-          `[WebM Export Frame ${frameIdx + 1}/${totalFrames}] ` +
-            `[区画A(Canvas描画): ${zoneARenderMs.toFixed(2)}ms] ` +
-            `[区画B(VideoFrame生成): ${zoneBFrameMs.toFixed(2)}ms] ` +
-            `[区画C(GPUエンコード): ${zoneCEncodeMs.toFixed(2)}ms] ` +
-            `| Queue: ${videoEncoder.encodeQueueSize}`,
+          `[${format.toUpperCase()} Frame ${frameIdx + 1}/${totalFrames}] ` +
+            `[区画A(描画): ${currentDrawMs.toFixed(2)}ms] ` +
+            `[区画B(Frame): ${currentFrameMs.toFixed(2)}ms] ` +
+            `[区画C(GPU): ${currentEncodeMs.toFixed(2)}ms] | ` +
+            `Queue: ${videoEncoder.encodeQueueSize}/${maxQueueSize} (Buffer Limit: ${maxQueueSize})`,
         );
       }
 
       const progressPercent = Math.min(
         95,
-        Math.round(((frameIdx + 1) / totalFrames) * 95),
+        Math.round(((frameIdx - startFrameIdx + 1) / actualFramesCount) * 95),
       );
-      const now =
-        typeof performance !== 'undefined' ? performance.now() : Date.now();
       if (
-        progressPercent !== lastReportedPercent &&
-        (now - lastReportedTime >= 60 || frameIdx === totalFrames - 1)
+        frameIdx === endFrameIdx ||
+        (frameIdx - startFrameIdx) % 30 === 0 ||
+        frameIdx - startFrameIdx === 0
       ) {
-        lastReportedTime = now;
-        lastReportedPercent = progressPercent;
         onProgress?.({
           percent: progressPercent,
           stage: 'rendering',
-          message: `Rendering WebM frame ${frameIdx + 1} of ${totalFrames} (${progressPercent}%)`,
+          message: `Rendering ${format.toUpperCase()} frame ${frameIdx + 1} of ${totalFrames} (${progressPercent}%)`,
         });
       }
     }
@@ -775,65 +618,84 @@ export async function executeOffThreadVideoExport(
     onProgress?.({
       percent: 96,
       stage: 'finalizing',
-      message: 'Finalizing WebM container...',
+      message: `Finalizing ${format.toUpperCase()} container...`,
     });
 
-    const flushStart = performance.now();
     if (videoEncoder.state === 'configured') {
+      const tFlushStart =
+        typeof performance !== 'undefined' ? performance.now() : Date.now();
       await videoEncoder.flush();
+      flushMs =
+        (typeof performance !== 'undefined' ? performance.now() : Date.now()) -
+        tFlushStart;
     }
-    const flushMs = performance.now() - flushStart;
+
     muxer.finalize();
-    const totalExportElapsed = performance.now() - exportStartTime;
-    const exportFps = totalFrames / (totalExportElapsed / 1000);
-    const speedMultiplier = (effectiveDurationMs / totalExportElapsed).toFixed(
-      1,
-    );
+    const finalBuffer = muxer.target.buffer;
+
+    const totalMs =
+      (typeof performance !== 'undefined' ? performance.now() : Date.now()) -
+      startTimeTotal;
+    const fpsSpeed = actualFramesCount / (totalMs / 1000);
+    const realtimeRatio = effectiveDurationMs / totalMs;
 
     console.log(
-      `%c[3-Zone Profiling Benchmark (WebM)] Total: ${totalExportElapsed.toFixed(1)}ms (${exportFps.toFixed(1)} fps, ${speedMultiplier}x realtime) | Frames: ${totalFrames} | ${exportWidth}x${exportHeight} | ${encoderConfig.codec} (${encoderConfig.hardwareAcceleration || 'default'}, ${encoderConfig.latencyMode || 'default'})\n` +
-        `  - 区画A (Canvas描画): ${totalZoneARenderMs.toFixed(1)}ms (avg: ${(totalZoneARenderMs / totalFrames).toFixed(2)}ms/f, ${((totalZoneARenderMs / totalExportElapsed) * 100).toFixed(1)}%)\n` +
-        `  - 区画B (VideoFrame生成): ${totalZoneBFrameMs.toFixed(1)}ms (avg: ${(totalZoneBFrameMs / totalFrames).toFixed(2)}ms/f, ${((totalZoneBFrameMs / totalExportElapsed) * 100).toFixed(1)}%)\n` +
-        `  - 区画C (GPUエンコード投入/待機): ${(totalZoneCEncodeMs + totalQueueWaitMs + flushMs).toFixed(1)}ms (EncodeCall: ${totalZoneCEncodeMs.toFixed(1)}ms, QueueWait: ${totalQueueWaitMs.toFixed(1)}ms [waited ${queueWaitCount} times, peak queue: ${peakQueueSize}], Flush: ${flushMs.toFixed(1)}ms, ${(((totalZoneCEncodeMs + totalQueueWaitMs + flushMs) / totalExportElapsed) * 100).toFixed(1)}%)`,
-      'color: #38bdf8; font-weight: bold;',
+      `%c[3-Zone Profiling Benchmark (${format.toUpperCase()})] Total: ${totalMs.toFixed(1)}ms (${fpsSpeed.toFixed(1)} fps, ${realtimeRatio.toFixed(1)}x realtime) | Frames: ${actualFramesCount} | Buffer Limit: ${maxQueueSize} | ${exportWidth}x${exportHeight} | ${encoderConfig.codec} (${encoderConfig.hardwareAcceleration || 'default'}, ${encoderConfig.latencyMode || 'default'})\n` +
+        `  - 区画A (Canvas描画): ${zoneADrawMs.toFixed(1)}ms (avg: ${(zoneADrawMs / actualFramesCount).toFixed(2)}ms/f, ${((zoneADrawMs / totalMs) * 100).toFixed(1)}%)\n` +
+        `  - 区画B (VideoFrame生成): ${zoneBFrameMs.toFixed(1)}ms (avg: ${(zoneBFrameMs / actualFramesCount).toFixed(2)}ms/f, ${((zoneBFrameMs / totalMs) * 100).toFixed(1)}%)\n` +
+        `  - 区画C (GPUエンコード投入/待機): ${(zoneCEncodeMs + queueWaitMs + flushMs).toFixed(1)}ms (EncodeCall: ${zoneCEncodeMs.toFixed(1)}ms, QueueWait: ${queueWaitMs.toFixed(1)}ms [waited: ${waitedTimes} times, peak queue: ${peakQueueSize}/${maxQueueSize}], Flush: ${flushMs.toFixed(1)}ms, ${(((zoneCEncodeMs + queueWaitMs + flushMs) / totalMs) * 100).toFixed(1)}%)`,
+      'color: #10b981; font-weight: bold; font-size: 13px;',
     );
 
     onProgress?.({
       percent: 100,
       stage: 'idle',
-      message: 'WebM export completed successfully!',
+      message: `${format.toUpperCase()} export completed successfully!`,
     });
 
-    return {
-      buffer: muxer.target.buffer,
-      mimeType: 'video/webm',
+    const profile: WorkerSegmentProfile = {
+      startFrame: startFrameIdx,
+      endFrame: endFrameIdx,
+      totalFrames: actualFramesCount,
+      totalMs,
+      zoneADrawMs,
+      zoneBFrameMs,
+      zoneCEncodeMs,
+      queueWaitMs,
+      flushMs,
+      peakQueueSize,
+      waitedTimes,
     };
+
+    return { buffer: finalBuffer, mimeType, profile };
   } finally {
     try {
       if (videoEncoder && videoEncoder.state !== 'closed') {
         videoEncoder.close();
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 }
 
-// ── Web Worker Message Handling Loop ──
+// ─────────────────────────────────────────
+// Web Worker Message Listener
+// ─────────────────────────────────────────
+
 if (typeof self !== 'undefined' && typeof window === 'undefined') {
   let activeExportId: string | null = null;
   let isCancelled = false;
 
-  self.onmessage = async (event: MessageEvent<VideoExportWorkerInbound>) => {
+  const handleMessage = async (
+    event: MessageEvent<VideoExportWorkerInbound>,
+  ) => {
     const msg = event.data;
     if (!msg) return;
 
     if (msg.type === 'PING') {
-      const pongMsg: VideoExportWorkerPongMessage = {
+      self.postMessage({
         id: msg.id,
         type: 'PONG',
-      };
-      self.postMessage(pongMsg);
+      } as VideoExportWorkerPongMessage);
       return;
     }
 
@@ -852,37 +714,35 @@ if (typeof self !== 'undefined' && typeof window === 'undefined') {
         const result = await executeOffThreadVideoExport(
           msg,
           (progress) => {
-            const progressMsg: VideoExportWorkerProgressMessage = {
+            self.postMessage({
               id: msg.id,
               type: 'PROGRESS',
               progress,
-            };
-            self.postMessage(progressMsg);
+            } as VideoExportWorkerProgressMessage);
           },
           () => isCancelled,
         );
 
-        const successMsg: VideoExportWorkerSuccessMessage = {
-          id: msg.id,
-          type: 'SUCCESS',
-          buffer: result.buffer,
-          mimeType: result.mimeType,
-        };
         (
           self as unknown as {
-            postMessage: (
-              message: VideoExportWorkerOutbound,
-              transfer?: Transferable[],
-            ) => void;
+            postMessage: (msg: any, transfer?: Transferable[]) => void;
           }
-        ).postMessage(successMsg, [result.buffer]);
+        ).postMessage(
+          {
+            id: msg.id,
+            type: 'SUCCESS',
+            buffer: result.buffer,
+            mimeType: result.mimeType,
+            profile: result.profile,
+          } as VideoExportWorkerSuccessMessage,
+          [result.buffer],
+        );
       } catch (err: unknown) {
-        const errorMsg: VideoExportWorkerErrorMessage = {
+        self.postMessage({
           id: msg.id,
           type: 'ERROR',
           error: err instanceof Error ? err.message : String(err),
-        };
-        self.postMessage(errorMsg);
+        } as VideoExportWorkerErrorMessage);
       } finally {
         if (activeExportId === msg.id) {
           activeExportId = null;
@@ -891,4 +751,7 @@ if (typeof self !== 'undefined' && typeof window === 'undefined') {
       }
     }
   };
+
+  self.addEventListener('message', handleMessage);
+  self.onmessage = handleMessage;
 }
