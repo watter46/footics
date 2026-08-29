@@ -15,10 +15,14 @@ import {
   FlaskConical,
   Image,
   Layers,
+  QrCode,
+  Smartphone,
   Sparkles,
   X,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import {
   type BenchmarkProgress,
   runAutoBenchmark,
@@ -91,13 +95,18 @@ export function ExportModal() {
     'realtime',
   );
 
-  // Auto Benchmark State
+  // Benchmark state
   const [isBenchmarking, setIsBenchmarking] = useState(false);
   const [benchmarkProgress, setBenchmarkProgress] =
     useState<BenchmarkProgress | null>(null);
   const [benchmarkReport, setBenchmarkReport] = useState<string | null>(null);
   const [copiedReport, setCopiedReport] = useState(false);
   const isBenchmarkCancelledRef = useRef(false);
+
+  // iOS Share state
+  const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
   // Exported video state for post-render preview
   const [completedVideo, setCompletedVideo] = useState<{
@@ -212,6 +221,60 @@ export function ExportModal() {
       }),
     );
   }
+
+  const handleCreateShareLink = async () => {
+    if (slides.length <= 1) {
+      setExportError('iPhone Export requires 2 or more scenes.');
+      return;
+    }
+    setIsCreatingShareLink(true);
+    setExportError(null);
+    setShareUrl(null);
+    setQrCodeDataUrl(null);
+
+    try {
+      const { project } = useTacticalUnifiedStore.getState();
+      const payload = {
+        version: 1,
+        createdAt: Date.now(),
+        title: project.title || 'Untitled',
+        orientation: project.aspectRatio === '9:16' ? 'vertical' : 'horizontal',
+        teamVisibility: 'both',
+        exportFps: 60,
+        scenes: project.slides,
+        photos: {}, // Omit photos to keep payload small, or implement packPlayerPhotos if needed
+      };
+
+      const res = await fetch('/api/tactical-export/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create share link');
+      }
+
+      const data = await res.json();
+      const url = `${window.location.origin}${data.shareUrl}`;
+      setShareUrl(url);
+
+      const qrCode = await QRCode.toDataURL(url, {
+        width: 256,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+      });
+      setQrCodeDataUrl(qrCode);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsCreatingShareLink(false);
+    }
+  };
 
   const handleRunAutoBenchmark = async (mode: 'full' | 'quick' = 'full') => {
     if (slides.length === 0 || isBenchmarking || isExporting) return;
@@ -586,6 +649,58 @@ export function ExportModal() {
           </div>
         )}
 
+        {/* iOS Export Share Link Overlay */}
+        {shareUrl && qrCodeDataUrl && (
+          <div className="p-6 flex flex-col items-center justify-center space-y-4 bg-slate-900/50 border-b border-white/10">
+            <div className="flex flex-col items-center gap-2">
+              <QrCode size={24} className="text-emerald-400" />
+              <h3 className="text-sm font-bold text-white">
+                Scan to Export on iPhone
+              </h3>
+              <p className="text-xs text-white/60 text-center max-w-sm">
+                Scan this QR code with your iPhone to open the Footics Export
+                Studio in iOS Safari and render with hardware acceleration.
+              </p>
+            </div>
+            <div className="p-2 bg-white rounded-xl shadow-xl">
+              <img
+                src={qrCodeDataUrl}
+                alt="Export Share QR Code"
+                className="w-48 h-48"
+              />
+            </div>
+            <div className="flex items-center gap-2 mt-2 w-full max-w-md">
+              <input
+                type="text"
+                readOnly
+                value={shareUrl}
+                className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/80 font-mono"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(shareUrl);
+                  toast.success('Link copied to clipboard!');
+                }}
+                className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg border border-emerald-500/30 transition-colors"
+              >
+                <Copy size={14} />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShareUrl(null);
+                setQrCodeDataUrl(null);
+              }}
+              className="mt-4 px-4 py-2 text-xs text-white/50 hover:text-white transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        )}
+
         {/* Benchmark Running Overlay */}
         {isBenchmarking && benchmarkProgress && (
           <div className="p-6 space-y-4 bg-blue-950/20 border-b border-blue-500/20">
@@ -668,30 +783,38 @@ export function ExportModal() {
         )}
 
         {/* Actions & Progress (Only in selection mode) */}
-        {!completedVideo && !isBenchmarking && (
+        {!completedVideo && !isBenchmarking && !shareUrl && (
           <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center justify-between gap-3 bg-white/[0.01]">
             <div className="flex items-center gap-2">
               {isVideoFormat && (
                 <>
                   <button
                     type="button"
-                    onClick={() => handleRunAutoBenchmark('quick')}
-                    disabled={isExporting || isBenchmarking}
-                    title="上位有力4パターン（短尺・長尺最適候補）のみを高速計測（中〜長尺におすすめ）"
+                    onClick={handleCreateShareLink}
+                    disabled={
+                      isExporting || isBenchmarking || isCreatingShareLink
+                    }
+                    title="iPhoneでQRコードを読み取り、HWエンコーダで高速・無劣化出力"
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-500/30 bg-emerald-600/10 hover:bg-emerald-600/20 text-xs text-emerald-300 font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <FlaskConical size={14} />
-                    <span>⚡ Quick Test (4 tests)</span>
+                    {isCreatingShareLink ? (
+                      <span className="w-3 h-3 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
+                    ) : (
+                      <Smartphone size={14} />
+                    )}
+                    <span>iPhone Export</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleRunAutoBenchmark('full')}
-                    disabled={isExporting || isBenchmarking}
-                    title="全16パターン（GOP×Latency×Buffer）を網羅的に自動連続計測します"
+                    onClick={() => handleRunAutoBenchmark('quick')}
+                    disabled={
+                      isExporting || isBenchmarking || isCreatingShareLink
+                    }
+                    title="上位有力4パターン（短尺・長尺最適候補）のみを高速計測（中〜長尺におすすめ）"
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-blue-500/30 bg-blue-600/10 hover:bg-blue-600/20 text-xs text-blue-300 font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <FlaskConical size={14} />
-                    <span>Full Matrix (16 tests)</span>
+                    <span>⚡ Quick Test</span>
                   </button>
                 </>
               )}
@@ -700,7 +823,7 @@ export function ExportModal() {
               <button
                 type="button"
                 onClick={closeExportModal}
-                disabled={isExporting || isBenchmarking}
+                disabled={isExporting || isBenchmarking || isCreatingShareLink}
                 className="px-5 py-2.5 rounded-xl border border-white/15 text-xs font-medium text-white/70 hover:text-white hover:border-white/30 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Cancel
@@ -708,7 +831,7 @@ export function ExportModal() {
               <button
                 type="button"
                 onClick={handleExport}
-                disabled={isExporting || isBenchmarking}
+                disabled={isExporting || isBenchmarking || isCreatingShareLink}
                 className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs text-white font-semibold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 min-w-[140px]"
               >
                 {isExporting ? (
@@ -717,7 +840,7 @@ export function ExportModal() {
                     <span>Exporting...</span>
                   </>
                 ) : (
-                  <span>Start Export</span>
+                  <span>Start PC Export</span>
                 )}
               </button>
             </div>

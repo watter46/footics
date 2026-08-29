@@ -27,6 +27,17 @@ export interface RenderTacticalFrameOptions {
   transparent?: boolean;
 }
 
+/**
+ * Returns true when `timeMs` falls within a `pauseMs` (static freeze) interval
+ * between two slides, meaning the canvas content is identical to the previous frame.
+ * Used by the VideoFrame.clone() static-frame cache to skip redundant GPU re-uploads.
+ */
+export function isPauseFrame(slides: Slide[], timeMs: number): boolean {
+  if (slides.length <= 1) return false;
+  const frame = getInterpolatedUnifiedSlideFrame(slides, timeMs);
+  return frame.isPaused;
+}
+
 export type AnyCanvasRenderingContext2D =
   | CanvasRenderingContext2D
   | OffscreenCanvasRenderingContext2D;

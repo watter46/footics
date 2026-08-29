@@ -24,6 +24,7 @@ import type {
 } from '@/lib/types/tactical-unified';
 import {
   type AnyCanvasRenderingContext2D,
+  isPauseFrame,
   renderTacticalFrameToCanvas,
 } from './tactical-frame-renderer';
 
@@ -94,6 +95,8 @@ export interface WorkerSegmentProfile {
   flushMs: number;
   peakQueueSize: number;
   waitedTimes: number;
+  /** Number of frames skipped via VideoFrame.clone() during pauseMs static intervals */
+  staticFrameSkips?: number;
 }
 
 export interface VideoExportWorkerSuccessMessage {
@@ -533,6 +536,9 @@ export async function executeOffThreadVideoExport(
   let zoneBFrameMs = 0;
   let zoneCEncodeMs = 0;
   let flushMs = 0;
+  // Static-frame cache: VideoFrame.clone() reuse counter
+  let staticFrameSkips = 0;
+  let cachedStaticFrame: VideoFrame | null = null;
 
   const highWatermark = Math.max(10, maxQueueSize);
   const lowWatermark = Math.max(5, Math.floor(highWatermark / 3));
@@ -589,35 +595,70 @@ export async function executeOffThreadVideoExport(
 
       const timeMs = (frameIdx / fps) * 1000;
 
-      // Zone A: Canvas 描画
-      const tDrawStart =
-        typeof performance !== 'undefined' ? performance.now() : Date.now();
-      renderTacticalFrameToCanvas(offscreenCtx, {
-        slides,
-        timeMs,
-        width: exportWidth,
-        height: exportHeight,
-        aspectRatio,
-        boundaryBox,
-        transparent: format === 'webm' ? transparent : false,
-      });
-      const tDrawEnd =
-        typeof performance !== 'undefined' ? performance.now() : Date.now();
-      const currentDrawMs = tDrawEnd - tDrawStart;
-      zoneADrawMs += currentDrawMs;
+      // ─── Static-Frame Cache (VideoFrame.clone()) ───────────────────────────
+      // pauseMs 区間はオブジェクト移動ゼロの静止フレームのため、
+      // Canvas 再描画と GPU 再取り込みを完全スキップし VideoFrame.clone() で再利用する
+      const isStaticPause =
+        frameIdx > startFrameIdx && isPauseFrame(slides, timeMs);
 
-      // Zone B: VideoFrame 生成
-      const tFrameStart =
-        typeof performance !== 'undefined' ? performance.now() : Date.now();
-      const timestampUs = Math.round(frameIdx * frameDurationUs);
-      const videoFrame = new VideoFrame(offscreenCanvas, {
-        timestamp: timestampUs,
-        duration: Math.round(frameDurationUs),
-      });
-      const tFrameEnd =
-        typeof performance !== 'undefined' ? performance.now() : Date.now();
-      const currentFrameMs = tFrameEnd - tFrameStart;
-      zoneBFrameMs += currentFrameMs;
+      let videoFrame: VideoFrame;
+      let currentDrawMs = 0;
+      let currentFrameMs = 0;
+
+      if (isStaticPause && cachedStaticFrame) {
+        // Clone the cached frame with updated timestamp — zero Canvas ops, zero GPU upload
+        const timestampUs = Math.round(frameIdx * frameDurationUs);
+        const tFrameStart =
+          typeof performance !== 'undefined' ? performance.now() : Date.now();
+        const rawClone = cachedStaticFrame.clone();
+        videoFrame = new VideoFrame(rawClone, {
+          timestamp: timestampUs,
+          duration: Math.round(frameDurationUs),
+        });
+        rawClone.close();
+        const tFrameEnd =
+          typeof performance !== 'undefined' ? performance.now() : Date.now();
+        currentFrameMs = tFrameEnd - tFrameStart;
+        zoneBFrameMs += currentFrameMs;
+        staticFrameSkips++;
+      } else {
+        // Zone A: Canvas 描画
+        const tDrawStart =
+          typeof performance !== 'undefined' ? performance.now() : Date.now();
+        renderTacticalFrameToCanvas(offscreenCtx, {
+          slides,
+          timeMs,
+          width: exportWidth,
+          height: exportHeight,
+          aspectRatio,
+          boundaryBox,
+          transparent: format === 'webm' ? transparent : false,
+        });
+        const tDrawEnd =
+          typeof performance !== 'undefined' ? performance.now() : Date.now();
+        currentDrawMs = tDrawEnd - tDrawStart;
+        zoneADrawMs += currentDrawMs;
+
+        // Zone B: VideoFrame 生成
+        const tFrameStart =
+          typeof performance !== 'undefined' ? performance.now() : Date.now();
+        const timestampUs = Math.round(frameIdx * frameDurationUs);
+        videoFrame = new VideoFrame(offscreenCanvas, {
+          timestamp: timestampUs,
+          duration: Math.round(frameDurationUs),
+        });
+        const tFrameEnd =
+          typeof performance !== 'undefined' ? performance.now() : Date.now();
+        currentFrameMs = tFrameEnd - tFrameStart;
+        zoneBFrameMs += currentFrameMs;
+
+        // Update static cache: the last rendered frame becomes the reference for pauseMs
+        if (cachedStaticFrame) {
+          cachedStaticFrame.close();
+          cachedStaticFrame = null;
+        }
+        cachedStaticFrame = videoFrame.clone();
+      }
 
       // Zone C: GPU エンコード投入
       const tEncodeStart =
@@ -639,7 +680,8 @@ export async function executeOffThreadVideoExport(
             `[区画A(描画): ${currentDrawMs.toFixed(2)}ms] ` +
             `[区画B(Frame): ${currentFrameMs.toFixed(2)}ms] ` +
             `[区画C(GPU): ${currentEncodeMs.toFixed(2)}ms] | ` +
-            `Queue: ${videoEncoder.encodeQueueSize}/${maxQueueSize} (Buffer Limit: ${maxQueueSize})`,
+            `Queue: ${videoEncoder.encodeQueueSize}/${maxQueueSize} (Buffer Limit: ${maxQueueSize})` +
+            (isStaticPause ? ' [STATIC CACHE HIT]' : ''),
         );
       }
 
@@ -688,7 +730,8 @@ export async function executeOffThreadVideoExport(
       `%c[3-Zone Profiling Benchmark (${format.toUpperCase()})] Total: ${totalMs.toFixed(1)}ms (${fpsSpeed.toFixed(1)} fps, ${realtimeRatio.toFixed(1)}x realtime) | Frames: ${actualFramesCount} | Buffer Limit: ${maxQueueSize} | ${exportWidth}x${exportHeight} | ${encoderConfig.codec} (${encoderConfig.hardwareAcceleration || 'default'}, ${encoderConfig.latencyMode || 'default'})\n` +
         `  - 区画A (Canvas描画): ${zoneADrawMs.toFixed(1)}ms (avg: ${(zoneADrawMs / actualFramesCount).toFixed(2)}ms/f, ${((zoneADrawMs / totalMs) * 100).toFixed(1)}%)\n` +
         `  - 区画B (VideoFrame生成): ${zoneBFrameMs.toFixed(1)}ms (avg: ${(zoneBFrameMs / actualFramesCount).toFixed(2)}ms/f, ${((zoneBFrameMs / totalMs) * 100).toFixed(1)}%)\n` +
-        `  - 区画C (GPUエンコード投入/待機): ${(zoneCEncodeMs + queueWaitMs + flushMs).toFixed(1)}ms (EncodeCall: ${zoneCEncodeMs.toFixed(1)}ms, QueueWait: ${queueWaitMs.toFixed(1)}ms [waited: ${waitedTimes} times, peak queue: ${peakQueueSize}/${maxQueueSize}], Flush: ${flushMs.toFixed(1)}ms, ${(((zoneCEncodeMs + queueWaitMs + flushMs) / totalMs) * 100).toFixed(1)}%)`,
+        `  - 区画C (GPUエンコード投入/待機): ${(zoneCEncodeMs + queueWaitMs + flushMs).toFixed(1)}ms (EncodeCall: ${zoneCEncodeMs.toFixed(1)}ms, QueueWait: ${queueWaitMs.toFixed(1)}ms [waited: ${waitedTimes} times, peak queue: ${peakQueueSize}/${maxQueueSize}], Flush: ${flushMs.toFixed(1)}ms, ${(((zoneCEncodeMs + queueWaitMs + flushMs) / totalMs) * 100).toFixed(1)}%)\n` +
+        `  - Static-Frame Cache Hits: ${staticFrameSkips}/${actualFramesCount} frames (${((staticFrameSkips / actualFramesCount) * 100).toFixed(1)}% pause frames skipped via VideoFrame.clone())`,
       'color: #10b981; font-weight: bold; font-size: 13px;',
     );
 
@@ -710,10 +753,18 @@ export async function executeOffThreadVideoExport(
       flushMs,
       peakQueueSize,
       waitedTimes,
+      staticFrameSkips,
     };
 
     return { buffer: finalBuffer, mimeType, profile };
   } finally {
+    // Release static frame cache to prevent memory leaks
+    if (cachedStaticFrame) {
+      try {
+        cachedStaticFrame.close();
+      } catch {}
+      cachedStaticFrame = null;
+    }
     try {
       if (videoEncoder && videoEncoder.state !== 'closed') {
         videoEncoder.close();
