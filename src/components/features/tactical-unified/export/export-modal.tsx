@@ -9,14 +9,20 @@ import {
   Archive,
   CheckCircle2,
   Clapperboard,
+  Copy,
   Crop,
   Film,
+  FlaskConical,
   Image,
   Layers,
   Sparkles,
   X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  type BenchmarkProgress,
+  runAutoBenchmark,
+} from '@/lib/tactical/export/auto-benchmark-engine';
 import type { ExportTarget } from '@/lib/types/tactical-unified';
 import {
   selectActiveSlide,
@@ -84,6 +90,14 @@ export function ExportModal() {
   const [latencyMode, setLatencyMode] = useState<'realtime' | 'quality'>(
     'realtime',
   );
+
+  // Auto Benchmark State
+  const [isBenchmarking, setIsBenchmarking] = useState(false);
+  const [benchmarkProgress, setBenchmarkProgress] =
+    useState<BenchmarkProgress | null>(null);
+  const [benchmarkReport, setBenchmarkReport] = useState<string | null>(null);
+  const [copiedReport, setCopiedReport] = useState(false);
+  const isBenchmarkCancelledRef = useRef(false);
 
   // Exported video state for post-render preview
   const [completedVideo, setCompletedVideo] = useState<{
@@ -199,6 +213,44 @@ export function ExportModal() {
     );
   }
 
+  const handleRunAutoBenchmark = async () => {
+    if (slides.length === 0 || isBenchmarking || isExporting) return;
+    setIsBenchmarking(true);
+    setBenchmarkReport(null);
+    setExportError(null);
+    isBenchmarkCancelledRef.current = false;
+
+    try {
+      const { markdownReport } = await runAutoBenchmark({
+        slides,
+        fps: 60,
+        scale: 2,
+        format: selectedFormat === 'webm' ? 'webm' : 'mp4',
+        aspectRatio,
+        boundaryBox,
+        stageWidth: 1280,
+        stageHeight: 720,
+        onProgress: (p) => setBenchmarkProgress(p),
+        checkCancelled: () => isBenchmarkCancelledRef.current,
+      });
+      setBenchmarkReport(markdownReport);
+    } catch (err: unknown) {
+      if ((err as Error).message !== 'Benchmark cancelled by user') {
+        setExportError((err as Error).message || 'Auto benchmark failed');
+      }
+    } finally {
+      setIsBenchmarking(false);
+      setBenchmarkProgress(null);
+    }
+  };
+
+  const handleCopyReport = () => {
+    if (!benchmarkReport) return;
+    navigator.clipboard.writeText(benchmarkReport);
+    setCopiedReport(true);
+    setTimeout(() => setCopiedReport(false), 2000);
+  };
+
   const handleDownloadCompletedVideo = () => {
     if (!completedVideo) return;
     const url = URL.createObjectURL(completedVideo.blob);
@@ -212,6 +264,7 @@ export function ExportModal() {
   const handleReExport = () => {
     setCompletedVideo(null);
     setExportError(null);
+    setBenchmarkReport(null);
   };
 
   const isVideoFormat = selectedFormat === 'mp4' || selectedFormat === 'webm';
@@ -532,32 +585,129 @@ export function ExportModal() {
           </div>
         )}
 
+        {/* Benchmark Running Overlay */}
+        {isBenchmarking && benchmarkProgress && (
+          <div className="p-6 space-y-4 bg-blue-950/20 border-b border-blue-500/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FlaskConical
+                  size={18}
+                  className="text-blue-400 animate-pulse"
+                />
+                <span className="text-sm font-semibold text-white">
+                  Running Auto Matrix Benchmark...
+                </span>
+              </div>
+              <span className="text-xs font-mono text-blue-300">
+                Pattern {benchmarkProgress.currentIndex} /{' '}
+                {benchmarkProgress.totalPatterns} (
+                {benchmarkProgress.currentPercent}%)
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full bg-blue-500 transition-all duration-300 rounded-full"
+                style={{ width: `${benchmarkProgress.currentPercent}%` }}
+              />
+            </div>
+            <p className="text-xs text-white/70 font-mono">
+              {benchmarkProgress.statusMessage}
+            </p>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  isBenchmarkCancelledRef.current = true;
+                }}
+                className="px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 text-xs hover:bg-red-500/10 cursor-pointer"
+              >
+                Stop Benchmark
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Benchmark Result Report Display */}
+        {benchmarkReport && !isBenchmarking && (
+          <div className="p-6 space-y-4 overflow-y-auto max-h-[60vh] bg-black/40 border-b border-white/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={18} className="text-emerald-400" />
+                <h3 className="text-sm font-bold text-white">
+                  Auto Benchmark Complete!
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyReport}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium cursor-pointer transition-colors shadow"
+                >
+                  <Copy size={14} />
+                  <span>
+                    {copiedReport
+                      ? 'Copied to Clipboard!'
+                      : 'Copy Markdown Report'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBenchmarkReport(null)}
+                  className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 rounded-xl bg-black/80 border border-white/10 text-xs font-mono text-white/90 whitespace-pre-wrap leading-relaxed select-text overflow-x-auto max-h-[400px]">
+              {benchmarkReport}
+            </div>
+          </div>
+        )}
+
         {/* Actions & Progress (Only in selection mode) */}
-        {!completedVideo && (
-          <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center justify-end gap-3 bg-white/[0.01]">
-            <button
-              type="button"
-              onClick={closeExportModal}
-              disabled={isExporting}
-              className="px-5 py-2.5 rounded-xl border border-white/15 text-xs font-medium text-white/70 hover:text-white hover:border-white/30 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={isExporting}
-              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs text-white font-semibold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 min-w-[140px]"
-            >
-              {isExporting ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Exporting...</span>
-                </>
-              ) : (
-                <span>Start Export</span>
+        {!completedVideo && !isBenchmarking && (
+          <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center justify-between gap-3 bg-white/[0.01]">
+            <div>
+              {isVideoFormat && (
+                <button
+                  type="button"
+                  onClick={handleRunAutoBenchmark}
+                  disabled={isExporting || isBenchmarking}
+                  title="全16パターン（GOP×Latency×Buffer）を自動連続計測してMarkdownレポートを出力します"
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-blue-500/30 bg-blue-600/10 hover:bg-blue-600/20 text-xs text-blue-300 font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <FlaskConical size={14} />
+                  <span>Run Auto Benchmark (16 tests)</span>
+                </button>
               )}
-            </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={closeExportModal}
+                disabled={isExporting || isBenchmarking}
+                className="px-5 py-2.5 rounded-xl border border-white/15 text-xs font-medium text-white/70 hover:text-white hover:border-white/30 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={isExporting || isBenchmarking}
+                className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs text-white font-semibold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 min-w-[140px]"
+              >
+                {isExporting ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Exporting...</span>
+                  </>
+                ) : (
+                  <span>Start Export</span>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>
