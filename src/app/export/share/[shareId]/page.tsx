@@ -143,7 +143,7 @@ export default function StandaloneExportSharePage() {
     setExportedBlob(null);
 
     try {
-      const blob = await executeOffThreadVideoExport(
+      const result = await executeOffThreadVideoExport(
         {
           id: `export-${Date.now()}`,
           type: 'START_EXPORT',
@@ -171,6 +171,7 @@ export default function StandaloneExportSharePage() {
         () => false,
       );
 
+      const blob = new Blob([result.buffer], { type: result.mimeType });
       setExportedBlob(blob);
       setExportCompleted(true);
       toast.success('エクスポートが完了しました！');
