@@ -22,24 +22,37 @@ interface KVNamespaceLike {
 }
 
 async function getKVBinding(): Promise<KVNamespaceLike | null> {
-  // 1. @opennextjs/cloudflare の getCloudflareContext から取得
+  // 1. 同期呼び出し (本番 Cloudflare Worker 環境)
   try {
-    const { env } = await getCloudflareContext({ async: true });
+    const ctx = getCloudflareContext();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const kv = (env as any)?.TACTICAL_SHARE_KV;
+    const kv = (ctx?.env as any)?.TACTICAL_SHARE_KV;
     if (kv && typeof kv.put === 'function') {
       return kv as KVNamespaceLike;
     }
   } catch (_e) {
-    // OpenNext context が存在しない環境 (Vitest等)
+    // ignore
   }
 
-  // 2. globalThis / process.env フォールバック
+  // 2. 非同期呼び出し (dev / proxy 環境)
+  try {
+    const ctx = await getCloudflareContext({ async: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const kv = (ctx?.env as any)?.TACTICAL_SHARE_KV;
+    if (kv && typeof kv.put === 'function') {
+      return kv as KVNamespaceLike;
+    }
+  } catch (_e) {
+    // ignore
+  }
+
+  // 3. globalThis / process.env フォールバック
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const globalKv =
       (globalThis as any).process?.env?.TACTICAL_SHARE_KV ||
-      (globalThis as any).TACTICAL_SHARE_KV;
+      (globalThis as any).TACTICAL_SHARE_KV ||
+      (globalThis as any).__env__?.TACTICAL_SHARE_KV;
     if (globalKv && typeof globalKv.put === 'function') {
       return globalKv as KVNamespaceLike;
     }
