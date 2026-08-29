@@ -720,3 +720,301 @@ export function createHighPressBenchmarkProject(): TacticalProject {
     tags: ['benchmark', 'high-press', 'defense'],
   };
 }
+
+/**
+ * 3. 10-Slide Full Sequence Benchmark Preset (10 Slides, ~16 seconds)
+ * Comprehensive end-to-end tactical progression from Build-up to Goal:
+ *   1. Deep GK Build-up
+ *   2. Progression to Pivots (DMC)
+ *   3. Wide Switch to RB
+ *   4. Half-space Underlap Entry
+ *   5. Flank Overload (3v2)
+ *   6. Low Cutback Preparation
+ *   7. Box Entry Run & Cross
+ *   8. First-time Volley/Shot
+ *   9. Post-Shot Rebound / Rest Defense Transition
+ *  10. Goal Celebration & Defensive Restructure
+ */
+export function createTenSlideFullSequenceBenchmarkProject(): TacticalProject {
+  const now = new Date().toISOString();
+  const projectId = crypto.randomUUID();
+
+  // 10 slides configuration
+  const slideConfigs = [
+    {
+      label: '1. Deep GK Build-up',
+      ball: { x: 10, y: 50 },
+      text: '1. GK Build-up Distribution',
+    },
+    {
+      label: '2. Pivot Reception',
+      ball: { x: 28, y: 46 },
+      text: '2. DMC Receives Between Lines',
+    },
+    {
+      label: '3. Switch to Right Flank',
+      ball: { x: 45, y: 18 },
+      text: '3. Diagonal Switch to RB',
+    },
+    {
+      label: '4. Half-space Underlap',
+      ball: { x: 62, y: 28 },
+      text: '4. AMR Underlapping Run',
+    },
+    {
+      label: '5. Wide Overload Triangulation',
+      ball: { x: 74, y: 16 },
+      text: '5. 3v2 Wide Triangle Creation',
+    },
+    {
+      label: '6. Cutback Preparation',
+      ball: { x: 86, y: 22 },
+      text: '6. Byline Entry & Head-up',
+    },
+    {
+      label: '7. Low Cutback into Box',
+      ball: { x: 72, y: 46 },
+      text: '7. Driven Pass to Penalty Spot',
+    },
+    {
+      label: '8. First-time Strike',
+      ball: { x: 92, y: 48 },
+      text: '8. CF First-time Finish',
+    },
+    {
+      label: '9. Rest Defense Lock',
+      ball: { x: 94, y: 50 },
+      text: '9. Goal Scored & Rest Defense Shape',
+    },
+    {
+      label: '10. Celebration & Reset',
+      ball: { x: 94, y: 50 },
+      text: '10. Reset & Tactical Overview',
+    },
+  ];
+
+  const slideIds = slideConfigs.map(() => crypto.randomUUID());
+
+  const slides: Slide[] = slideConfigs.map((cfg, idx) => {
+    // Dynamic progressive movement for players across the 10 slides
+    const progress = idx / 9; // 0.0 to 1.0
+
+    const homePlayers = [
+      // GK
+      {
+        ...createDefaultPlayer('home', 8 + progress * 8, 50, HOME_COLOR),
+        shirtNo: '1',
+        position: 'GK',
+      },
+      // RCB / LCB
+      {
+        ...createDefaultPlayer(
+          'home',
+          22 + progress * 24,
+          32 - progress * 4,
+          HOME_COLOR,
+        ),
+        shirtNo: '4',
+        position: 'RCB',
+      },
+      {
+        ...createDefaultPlayer(
+          'home',
+          22 + progress * 24,
+          68 + progress * 4,
+          HOME_COLOR,
+        ),
+        shirtNo: '5',
+        position: 'LCB',
+      },
+      // RB / LB
+      {
+        ...createDefaultPlayer('home', 30 + progress * 42, 14, HOME_COLOR),
+        shirtNo: '2',
+        position: 'RB',
+      },
+      {
+        ...createDefaultPlayer('home', 30 + progress * 35, 86, HOME_COLOR),
+        shirtNo: '3',
+        position: 'LB',
+      },
+      // DMC / CM
+      {
+        ...createDefaultPlayer('home', 28 + progress * 32, 48, HOME_COLOR),
+        shirtNo: '6',
+        position: 'DMC',
+      },
+      {
+        ...createDefaultPlayer('home', 38 + progress * 34, 38, HOME_COLOR),
+        shirtNo: '8',
+        position: 'CM',
+      },
+      {
+        ...createDefaultPlayer('home', 40 + progress * 32, 62, HOME_COLOR),
+        shirtNo: '10',
+        position: 'CM',
+      },
+      // AMR / AMC / AML
+      {
+        ...createDefaultPlayer('home', 52 + progress * 32, 22, HOME_COLOR),
+        shirtNo: '7',
+        position: 'AMR',
+      },
+      {
+        ...createDefaultPlayer('home', 54 + progress * 28, 48, HOME_COLOR),
+        shirtNo: '11',
+        position: 'AML',
+      },
+      // CF
+      {
+        ...createDefaultPlayer('home', 58 + progress * 26, 46, HOME_COLOR),
+        shirtNo: '9',
+        position: 'CF',
+      },
+    ];
+
+    const awayPlayers = [
+      // Opponent 4-4-2 shifting backward defensively
+      {
+        ...createDefaultPlayer('away', 92, 50, AWAY_COLOR),
+        shirtNo: '1',
+        position: 'GK',
+      },
+      {
+        ...createDefaultPlayer('away', 82 - progress * 4, 18, AWAY_COLOR),
+        shirtNo: '2',
+        position: 'RB',
+      },
+      {
+        ...createDefaultPlayer('away', 80 - progress * 5, 38, AWAY_COLOR),
+        shirtNo: '4',
+        position: 'RCB',
+      },
+      {
+        ...createDefaultPlayer('away', 80 - progress * 5, 62, AWAY_COLOR),
+        shirtNo: '5',
+        position: 'LCB',
+      },
+      {
+        ...createDefaultPlayer('away', 82 - progress * 4, 82, AWAY_COLOR),
+        shirtNo: '3',
+        position: 'LB',
+      },
+      {
+        ...createDefaultPlayer('away', 68 - progress * 8, 22, AWAY_COLOR),
+        shirtNo: '7',
+        position: 'RM',
+      },
+      {
+        ...createDefaultPlayer('away', 66 - progress * 8, 42, AWAY_COLOR),
+        shirtNo: '8',
+        position: 'CM',
+      },
+      {
+        ...createDefaultPlayer('away', 66 - progress * 8, 58, AWAY_COLOR),
+        shirtNo: '10',
+        position: 'CM',
+      },
+      {
+        ...createDefaultPlayer('away', 68 - progress * 8, 78, AWAY_COLOR),
+        shirtNo: '11',
+        position: 'LM',
+      },
+      {
+        ...createDefaultPlayer('away', 52 - progress * 8, 44, AWAY_COLOR),
+        shirtNo: '9',
+        position: 'CF',
+      },
+      {
+        ...createDefaultPlayer('away', 52 - progress * 8, 56, AWAY_COLOR),
+        shirtNo: '19',
+        position: 'SS',
+      },
+    ];
+
+    return {
+      id: slideIds[idx],
+      index: idx,
+      label: cfg.label,
+      transitionDurationMs: 1200,
+      pauseMs: 600,
+      easing: 'ease-in-out',
+      ball: { ...cfg.ball, visible: true },
+      boundaryBox: {
+        enabled: true,
+        x: Math.max(0, Math.min(30, progress * 30)),
+        y: 5,
+        width: 70,
+        height: 90,
+      },
+      players: [...homePlayers, ...awayPlayers],
+      arrows:
+        idx < 9
+          ? [
+              {
+                id: crypto.randomUUID(),
+                annotationType: 'arrow',
+                arrowType: 'pass',
+                curveType: 'straight',
+                points: [
+                  { x: cfg.ball.x, y: cfg.ball.y },
+                  {
+                    x: slideConfigs[idx + 1].ball.x,
+                    y: slideConfigs[idx + 1].ball.y,
+                  },
+                ],
+                color: idx === 7 ? '#22c55e' : '#38bdf8',
+                strokeWidth: 3,
+                dashArray: [],
+                arrowHead: true,
+              },
+            ]
+          : [],
+      zones: [
+        {
+          id: crypto.randomUUID(),
+          annotationType: 'zone',
+          zoneType: 'space',
+          shapeType: 'rect',
+          x: Math.max(5, cfg.ball.x - 10),
+          y: Math.max(5, cfg.ball.y - 12),
+          width: 20,
+          height: 24,
+          points: [],
+          color: idx === 7 ? '#22c55e' : '#38bdf8',
+          opacity: 0.18,
+          strokeWidth: 0,
+          label: `Zone ${idx + 1}`,
+        },
+      ],
+      texts: [
+        {
+          id: crypto.randomUUID(),
+          annotationType: 'text',
+          x: 20,
+          y: 10,
+          content: cfg.text,
+          fontSize: 14,
+          color: '#ffffff',
+          bold: true,
+          italic: false,
+        },
+      ],
+    };
+  });
+
+  return {
+    id: projectId,
+    title: 'Benchmark: 10-Slide Full Progression (16s)',
+    version: '2.0.0',
+    createdAt: now,
+    updatedAt: now,
+    aspectRatio: '16:9',
+    backgroundType: 'pitch',
+    homeColor: { primary: HOME_COLOR },
+    awayColor: { primary: AWAY_COLOR },
+    activeSlideId: slideIds[0],
+    slides,
+    tags: ['benchmark', '10-slides', 'full-sequence', 'video-export'],
+  };
+}

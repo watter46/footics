@@ -92,10 +92,10 @@ export type VideoExportWorkerOutbound =
   | VideoExportWorkerPongMessage;
 
 const H264_CODEC_CANDIDATES = [
-  'avc1.64002a', // High Profile Level 4.2 (GPU native maximum quality)
-  'avc1.4d002a', // Main Profile Level 4.2
+  'avc1.42E01E', // Baseline Profile Level 3.0 (Ultra-low GPU compute overhead)
+  'avc1.4d002a', // Main Profile Level 4.2 (High-throughput GPU accelerated)
   'avc1.4D401F', // Main Profile Level 3.1
-  'avc1.42E01E', // Baseline Profile Level 3.0 (Fallback)
+  'avc1.64002a', // High Profile Level 4.2 (Maximum compression)
 ];
 
 const VP9_CODEC_CANDIDATES = [
@@ -233,7 +233,9 @@ export async function getWorkerH264EncoderConfig(
     'prefer-software',
   ];
 
-  const latencyModes: LatencyMode[] = ['quality', 'realtime'];
+  // Prioritize 'realtime' latencyMode to unleash full GPU hardware encoder throughput
+  // (avoids 1x realtime throttling imposed by 'quality' mode in hardware encoders)
+  const latencyModes: LatencyMode[] = ['realtime', 'quality'];
 
   for (const hardwareAcceleration of accelOptions) {
     for (const latencyMode of latencyModes) {
@@ -283,7 +285,8 @@ export async function getWorkerVP9EncoderConfig(
     'prefer-software',
   ];
 
-  const latencyModes: LatencyMode[] = ['quality', 'realtime'];
+  // Prioritize 'realtime' latencyMode for high-throughput encoding
+  const latencyModes: LatencyMode[] = ['realtime', 'quality'];
 
   for (const hardwareAcceleration of accelOptions) {
     for (const latencyMode of latencyModes) {
@@ -443,6 +446,8 @@ export async function executeOffThreadVideoExport(
     let totalZoneBFrameMs = 0;
     let totalZoneCEncodeMs = 0;
     let totalQueueWaitMs = 0;
+    let queueWaitCount = 0;
+    let peakQueueSize = 0;
     const exportStartTime = performance.now();
     const keyFrameInterval = Math.max(fps * 2, 60);
 
@@ -455,8 +460,13 @@ export async function executeOffThreadVideoExport(
           throw encoderError;
         }
 
-        // Async queue backpressure control (pipeline buffer: up to 60 frames, drains to 30)
-        if (videoEncoder.encodeQueueSize > 60) {
+        if (videoEncoder.encodeQueueSize > peakQueueSize) {
+          peakQueueSize = videoEncoder.encodeQueueSize;
+        }
+
+        // Async queue backpressure control (ultra-low latency GPU buffer: up to 24 frames, drains to 8)
+        if (videoEncoder.encodeQueueSize > 24) {
+          queueWaitCount++;
           const waitStart = performance.now();
           await new Promise<void>((resolve) => {
             if (!videoEncoder || videoEncoder.state === 'closed') {
@@ -464,7 +474,7 @@ export async function executeOffThreadVideoExport(
               return;
             }
             videoEncoder.ondequeue = () => {
-              if (!videoEncoder || videoEncoder.encodeQueueSize <= 30) {
+              if (!videoEncoder || videoEncoder.encodeQueueSize <= 8) {
                 if (videoEncoder) videoEncoder.ondequeue = null;
                 resolve();
               }
@@ -514,7 +524,7 @@ export async function executeOffThreadVideoExport(
         const zoneCEncodeMs = t3 - t2;
         totalZoneCEncodeMs += zoneCEncodeMs;
 
-        if (frameIdx % 30 === 0 || frameIdx === totalFrames - 1) {
+        if (frameIdx % 60 === 0 || frameIdx === totalFrames - 1) {
           console.log(
             `[MP4 Export Frame ${frameIdx + 1}/${totalFrames}] ` +
               `[区画A(Canvas描画): ${zoneARenderMs.toFixed(2)}ms] ` +
@@ -557,12 +567,16 @@ export async function executeOffThreadVideoExport(
       const flushMs = performance.now() - flushStart;
       muxer.finalize();
       const totalExportElapsed = performance.now() - exportStartTime;
+      const exportFps = totalFrames / (totalExportElapsed / 1000);
+      const speedMultiplier = (
+        effectiveDurationMs / totalExportElapsed
+      ).toFixed(1);
 
       console.log(
-        `%c[3-Zone Profiling Benchmark (MP4)] Total: ${totalExportElapsed.toFixed(1)}ms (${(totalFrames / (totalExportElapsed / 1000)).toFixed(1)} fps) | Frames: ${totalFrames} | ${exportWidth}x${exportHeight} | ${encoderConfig.codec} (${encoderConfig.hardwareAcceleration || 'default'}, ${encoderConfig.latencyMode || 'default'})\n` +
+        `%c[3-Zone Profiling Benchmark (MP4)] Total: ${totalExportElapsed.toFixed(1)}ms (${exportFps.toFixed(1)} fps, ${speedMultiplier}x realtime) | Frames: ${totalFrames} | ${exportWidth}x${exportHeight} | ${encoderConfig.codec} (${encoderConfig.hardwareAcceleration || 'default'}, ${encoderConfig.latencyMode || 'default'})\n` +
           `  - 区画A (Canvas描画): ${totalZoneARenderMs.toFixed(1)}ms (avg: ${(totalZoneARenderMs / totalFrames).toFixed(2)}ms/f, ${((totalZoneARenderMs / totalExportElapsed) * 100).toFixed(1)}%)\n` +
           `  - 区画B (VideoFrame生成): ${totalZoneBFrameMs.toFixed(1)}ms (avg: ${(totalZoneBFrameMs / totalFrames).toFixed(2)}ms/f, ${((totalZoneBFrameMs / totalExportElapsed) * 100).toFixed(1)}%)\n` +
-          `  - 区画C (GPUエンコード投入/待機): ${(totalZoneCEncodeMs + totalQueueWaitMs + flushMs).toFixed(1)}ms (EncodeCall: ${totalZoneCEncodeMs.toFixed(1)}ms, QueueWait: ${totalQueueWaitMs.toFixed(1)}ms, Flush: ${flushMs.toFixed(1)}ms, ${(((totalZoneCEncodeMs + totalQueueWaitMs + flushMs) / totalExportElapsed) * 100).toFixed(1)}%)`,
+          `  - 区画C (GPUエンコード投入/待機): ${(totalZoneCEncodeMs + totalQueueWaitMs + flushMs).toFixed(1)}ms (EncodeCall: ${totalZoneCEncodeMs.toFixed(1)}ms, QueueWait: ${totalQueueWaitMs.toFixed(1)}ms [waited ${queueWaitCount} times, peak queue: ${peakQueueSize}], Flush: ${flushMs.toFixed(1)}ms, ${(((totalZoneCEncodeMs + totalQueueWaitMs + flushMs) / totalExportElapsed) * 100).toFixed(1)}%)`,
         'color: #38bdf8; font-weight: bold;',
       );
 
@@ -651,6 +665,8 @@ export async function executeOffThreadVideoExport(
   let totalZoneBFrameMs = 0;
   let totalZoneCEncodeMs = 0;
   let totalQueueWaitMs = 0;
+  let queueWaitCount = 0;
+  let peakQueueSize = 0;
   const exportStartTime = performance.now();
   const keyFrameInterval = Math.max(fps * 2, 60);
 
@@ -663,8 +679,13 @@ export async function executeOffThreadVideoExport(
         throw encoderError;
       }
 
-      // Async queue backpressure control (pipeline buffer: up to 60 frames, drains to 30)
-      if (videoEncoder.encodeQueueSize > 60) {
+      if (videoEncoder.encodeQueueSize > peakQueueSize) {
+        peakQueueSize = videoEncoder.encodeQueueSize;
+      }
+
+      // Async queue backpressure control (ultra-low latency GPU buffer: up to 24 frames, drains to 8)
+      if (videoEncoder.encodeQueueSize > 24) {
+        queueWaitCount++;
         const waitStart = performance.now();
         await new Promise<void>((resolve) => {
           if (!videoEncoder || videoEncoder.state === 'closed') {
@@ -672,7 +693,7 @@ export async function executeOffThreadVideoExport(
             return;
           }
           videoEncoder.ondequeue = () => {
-            if (!videoEncoder || videoEncoder.encodeQueueSize <= 30) {
+            if (!videoEncoder || videoEncoder.encodeQueueSize <= 8) {
               if (videoEncoder) videoEncoder.ondequeue = null;
               resolve();
             }
@@ -721,7 +742,7 @@ export async function executeOffThreadVideoExport(
       const zoneCEncodeMs = t3 - t2;
       totalZoneCEncodeMs += zoneCEncodeMs;
 
-      if (frameIdx % 30 === 0 || frameIdx === totalFrames - 1) {
+      if (frameIdx % 60 === 0 || frameIdx === totalFrames - 1) {
         console.log(
           `[WebM Export Frame ${frameIdx + 1}/${totalFrames}] ` +
             `[区画A(Canvas描画): ${zoneARenderMs.toFixed(2)}ms] ` +
@@ -764,12 +785,16 @@ export async function executeOffThreadVideoExport(
     const flushMs = performance.now() - flushStart;
     muxer.finalize();
     const totalExportElapsed = performance.now() - exportStartTime;
+    const exportFps = totalFrames / (totalExportElapsed / 1000);
+    const speedMultiplier = (effectiveDurationMs / totalExportElapsed).toFixed(
+      1,
+    );
 
     console.log(
-      `%c[3-Zone Profiling Benchmark (WebM)] Total: ${totalExportElapsed.toFixed(1)}ms (${(totalFrames / (totalExportElapsed / 1000)).toFixed(1)} fps) | Frames: ${totalFrames} | ${exportWidth}x${exportHeight} | ${encoderConfig.codec} (${encoderConfig.hardwareAcceleration || 'default'}, ${encoderConfig.latencyMode || 'default'})\n` +
+      `%c[3-Zone Profiling Benchmark (WebM)] Total: ${totalExportElapsed.toFixed(1)}ms (${exportFps.toFixed(1)} fps, ${speedMultiplier}x realtime) | Frames: ${totalFrames} | ${exportWidth}x${exportHeight} | ${encoderConfig.codec} (${encoderConfig.hardwareAcceleration || 'default'}, ${encoderConfig.latencyMode || 'default'})\n` +
         `  - 区画A (Canvas描画): ${totalZoneARenderMs.toFixed(1)}ms (avg: ${(totalZoneARenderMs / totalFrames).toFixed(2)}ms/f, ${((totalZoneARenderMs / totalExportElapsed) * 100).toFixed(1)}%)\n` +
         `  - 区画B (VideoFrame生成): ${totalZoneBFrameMs.toFixed(1)}ms (avg: ${(totalZoneBFrameMs / totalFrames).toFixed(2)}ms/f, ${((totalZoneBFrameMs / totalExportElapsed) * 100).toFixed(1)}%)\n` +
-        `  - 区画C (GPUエンコード投入/待機): ${(totalZoneCEncodeMs + totalQueueWaitMs + flushMs).toFixed(1)}ms (EncodeCall: ${totalZoneCEncodeMs.toFixed(1)}ms, QueueWait: ${totalQueueWaitMs.toFixed(1)}ms, Flush: ${flushMs.toFixed(1)}ms, ${(((totalZoneCEncodeMs + totalQueueWaitMs + flushMs) / totalExportElapsed) * 100).toFixed(1)}%)`,
+        `  - 区画C (GPUエンコード投入/待機): ${(totalZoneCEncodeMs + totalQueueWaitMs + flushMs).toFixed(1)}ms (EncodeCall: ${totalZoneCEncodeMs.toFixed(1)}ms, QueueWait: ${totalQueueWaitMs.toFixed(1)}ms [waited ${queueWaitCount} times, peak queue: ${peakQueueSize}], Flush: ${flushMs.toFixed(1)}ms, ${(((totalZoneCEncodeMs + totalQueueWaitMs + flushMs) / totalExportElapsed) * 100).toFixed(1)}%)`,
       'color: #38bdf8; font-weight: bold;',
     );
 

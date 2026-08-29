@@ -27,6 +27,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   createHighPressBenchmarkProject,
   createLowBlockBenchmarkProject,
+  createTenSlideFullSequenceBenchmarkProject,
 } from '@/lib/tactical/benchmark-presets';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
@@ -106,6 +107,12 @@ export function TopBar() {
     setIsPresetMenuOpen(false);
   };
 
+  const handleLoadTenSlides = () => {
+    const project = createTenSlideFullSequenceBenchmarkProject();
+    loadProject(project);
+    setIsPresetMenuOpen(false);
+  };
+
   const nextRatio: AspectRatio = aspectRatio === '16:9' ? '9:16' : '16:9';
 
   return (
@@ -181,10 +188,23 @@ export function TopBar() {
           </button>
 
           {isPresetMenuOpen && (
-            <div className="absolute left-0 top-full mt-1 w-64 rounded-xl bg-[#18181b] border border-white/15 shadow-2xl py-1.5 z-50 overflow-hidden">
+            <div className="absolute left-0 top-full mt-1 w-72 rounded-xl bg-[#18181b] border border-white/15 shadow-2xl py-1.5 z-50 overflow-hidden">
               <div className="px-3 py-1 text-[10px] uppercase font-semibold tracking-wider text-white/40">
                 Benchmark Scenarios
               </div>
+              <button
+                type="button"
+                onClick={handleLoadTenSlides}
+                className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 text-white transition-colors cursor-pointer flex flex-col gap-0.5 border-b border-white/5"
+              >
+                <div className="flex items-center gap-1.5 font-medium text-emerald-300">
+                  <Sparkles size={12} />
+                  <span>10-Slide Full Progression (16s)</span>
+                </div>
+                <span className="text-[10px] text-white/50">
+                  10 Slides • 984 frames benchmark (Build-up to Goal)
+                </span>
+              </button>
               <button
                 type="button"
                 onClick={handleLoadLowBlock}

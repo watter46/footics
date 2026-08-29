@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createHighPressBenchmarkProject,
   createLowBlockBenchmarkProject,
+  createTenSlideFullSequenceBenchmarkProject,
 } from '@/lib/tactical/benchmark-presets';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 
@@ -48,6 +49,26 @@ describe('Benchmark Test Presets', () => {
       // Verify arrows and player counts
       expect(project.slides[0].arrows[0].curveType).toBe('curved');
       expect(project.slides[1].ball.visible).toBe(true);
+    });
+  });
+
+  describe('10-Slide Full Sequence Benchmark Preset', () => {
+    it('creates a valid 10-slide project (~16.2s total duration)', () => {
+      const project = createTenSlideFullSequenceBenchmarkProject();
+
+      expect(project.title).toContain('10-Slide Full Progression');
+      expect(project.slides).toHaveLength(10);
+      expect(project.activeSlideId).toBe(project.slides[0].id);
+
+      // 9 transitions of (1200ms + 600ms) = 16200ms (~16.2s)
+      const totalDuration = calculateUnifiedTotalDuration(project.slides);
+      expect(totalDuration).toBe(16200);
+
+      // Verify players, boundary box and progression
+      expect(project.slides[0].players.length).toBe(22); // 11 vs 11
+      expect(project.slides[9].players.length).toBe(22);
+      expect(project.slides[0].boundaryBox?.enabled).toBe(true);
+      expect(project.slides[0].zones.length).toBeGreaterThan(0);
     });
   });
 });
