@@ -32,7 +32,7 @@
     "next-env.d.ts",
     ".next/types/**/*.ts",
     "src/types/**/*.d.ts",
-    "src/components/features/tactical-unified/export/export-modal.tsx"
+    "src/app/export/share/[shareId]/page.tsx"
   ],
   "exclude": [
     "node_modules",
