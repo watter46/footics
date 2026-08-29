@@ -1,7 +1,18 @@
 # Regista Management Board
 
 ## 1. [Active Focus]
-- **【最重要・Phase 2-A】統合タクティカルキャンバス（Tactical Unified）へのビデオ・アニメーション機能統合 & 英語UI化**:
+- **【Phase 2-A 次期チケット: AAWU 3-6】iPhone 12 (iOS A14) 向けリモートエクスポート & 静止フレームキャッシュ (Bit-Perfect PC Sync)**:
+  - **背景 & 課題**: PC (Surface Pro 6 / Intel UHD 620) では 1080p 60fps 長尺動画（10スライド）の GPU エンコードに約3分（5.6fps）要する。これを Apple A14 Bionic（iPhone 12 / Media Engine）のハードウェアアクセラレーションを活用して 15〜20秒（40〜60fps）で高速レンダリングさせ、生成された最高画質 MP4 をカメラロールの自動再圧縮（劣化）を通さずに無劣化（ビットパーフェクト）で PC 側へ同期・保存する。
+  - **確定仕様**:
+    1. **静止フレーム自動キャッシュ・スキップ (`VideoFrame.clone()`)**:
+       - 各スライドの停止時間（`pauseMs`）におけるオブジェクト移動ゼロを検知し、Canvas 再描画と GPU 再取り込みをスキップ。
+    2. **iPhone 12 (A14 Bionic / iOS Safari) 専用チューニング**:
+       - `UMA ゼロコピーテクスチャ転送` + `maxQueueSize: 30` (iOS WebKit メモリクラッシュ防止) + `H.264 High Profile Level 4.2 (avc1.64002a)`。
+    3. **エクスポート専用 URL / QR コード発行機能 (`/export/share/[shareId]`)**:
+       - PC のエクスポートモーダルから「📱 Export on iPhone」を押すと、ワンタイム共有 URL / QR コードを発行。
+    4. **無劣化ファイル出力 (Bit-Perfect File Sync)**:
+       - iOS カメラロールの強制圧縮を回避し、「ファイルに保存（iCloud Drive/ローカル）」または「PC 画面への直接逆転送」で無劣化 24Mbps MP4 を取得可能に。
+
   - **背景**: `/tactical`（統合キャンバス）一本で静止画（PNG）と動画（MP4/透過WebM）をシームレスに出力可能にし、AI図解エージェント連携およびメディア制作の生産性を最大化する。UIラベルはすべてプロフェッショナルな英語表記（English Labels）に統一。
   - **確定UI & アーキテクチャ仕様 (Video Integration & English UI)**:
     - **全UIの英語ラベル化 (All English UI Labels)**:
