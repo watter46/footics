@@ -32,8 +32,10 @@ export function ExportPreviewPlayer({
   boundaryBox,
 }: ExportPreviewPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const timeLabelRef = useRef<HTMLSpanElement | null>(null);
+  const sliderRef = useRef<HTMLInputElement | null>(null);
+
   const [isPlaying, setIsPlaying] = useState(true);
-  const [currentTimeMs, setCurrentTimeMs] = useState(0);
 
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -67,6 +69,14 @@ export function ExportPreviewPlayer({
         boundaryBox,
         transparent: false,
       });
+
+      // Update UI elements directly without triggering React VDOM diffing
+      if (timeLabelRef.current) {
+        timeLabelRef.current.textContent = `${(timeMs / 1000).toFixed(1)}s`;
+      }
+      if (sliderRef.current) {
+        sliderRef.current.value = String(Math.round(timeMs));
+      }
     },
     [slides, boundaryBox, aspectRatio],
   );
@@ -90,7 +100,6 @@ export function ExportPreviewPlayer({
 
       const elapsed = timestamp - startTimeRef.current;
       currentTimeRef.current = elapsed % totalDurationMs;
-      setCurrentTimeMs(currentTimeRef.current);
 
       drawFrame(currentTimeRef.current);
       animationFrameRef.current = requestAnimationFrame(loop);
@@ -101,14 +110,19 @@ export function ExportPreviewPlayer({
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
     };
   }, [isPlaying, totalDurationMs, drawFrame]);
 
+  // Initial draw
+  useEffect(() => {
+    drawFrame(currentTimeRef.current);
+  }, [drawFrame]);
+
   const handleSeek = (time: number) => {
     currentTimeRef.current = time;
     startTimeRef.current = null;
-    setCurrentTimeMs(time);
     drawFrame(time);
   };
 
@@ -125,7 +139,7 @@ export function ExportPreviewPlayer({
       <div className="flex items-center justify-between text-xs text-white/70">
         <span className="font-semibold text-white/90">Animation Preview</span>
         <div className="flex items-center gap-1 font-mono text-[11px] text-white/50">
-          <span>{(currentTimeMs / 1000).toFixed(1)}s</span>
+          <span ref={timeLabelRef}>0.0s</span>
           <span>/</span>
           <span>{(totalDurationMs / 1000).toFixed(1)}s</span>
         </div>
@@ -175,11 +189,12 @@ export function ExportPreviewPlayer({
 
         {/* Timeline Slider */}
         <input
+          ref={sliderRef}
           type="range"
           min={0}
           max={totalDurationMs}
-          step={50}
-          value={currentTimeMs}
+          step={10}
+          defaultValue={0}
           onChange={(e) => handleSeek(Number(e.target.value))}
           className="flex-1 h-1.5 bg-white/15 rounded-lg appearance-none cursor-pointer accent-blue-500"
         />
