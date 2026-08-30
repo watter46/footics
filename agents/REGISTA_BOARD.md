@@ -1,44 +1,14 @@
 # Regista Management Board
 
 ## 1. [Active Focus]
-- **【Phase 2-A 次期チケット: AAWU 3-6】iPhone 12 (iOS A14) 向けリモートエクスポート & 静止フレームキャッシュ (Bit-Perfect PC Sync)**:
-  - **背景 & 課題**: PC (Surface Pro 6 / Intel UHD 620) では 1080p 60fps 長尺動画（10スライド）の GPU エンコードに約3分（5.6fps）要する。これを Apple A14 Bionic（iPhone 12 / Media Engine）のハードウェアアクセラレーションを活用して 15〜20秒（40〜60fps）で高速レンダリングさせ、生成された最高画質 MP4 をカメラロールの自動再圧縮（劣化）を通さずに無劣化（ビットパーフェクト）で PC 側へ同期・保存する。
-  - **確定仕様**:
-    1. **静止フレーム自動キャッシュ・スキップ (`VideoFrame.clone()`)**:
-       - 各スライドの停止時間（`pauseMs`）におけるオブジェクト移動ゼロを検知し、Canvas 再描画と GPU 再取り込みをスキップ。
-    2. **iPhone 12 (A14 Bionic / iOS Safari) 専用チューニング**:
-       - `UMA ゼロコピーテクスチャ転送` + `maxQueueSize: 30` (iOS WebKit メモリクラッシュ防止) + `H.264 High Profile Level 4.2 (avc1.64002a)`。
-    3. **エクスポート専用 URL / QR コード発行機能 (`/export/share/[shareId]`)**:
-       - PC のエクスポートモーダルから「📱 Export on iPhone」を押すと、ワンタイム共有 URL / QR コードを発行。
-    4. **無劣化ファイル出力 (Bit-Perfect File Sync)**:
-       - iOS カメラロールの強制圧縮を回避し、「ファイルに保存（iCloud Drive/ローカル）」または「PC 画面への直接逆転送」で無劣化 24Mbps MP4 を取得可能に。
-
-  - **背景**: `/tactical`（統合キャンバス）一本で静止画（PNG）と動画（MP4/透過WebM）をシームレスに出力可能にし、AI図解エージェント連携およびメディア制作の生産性を最大化する。UIラベルはすべてプロフェッショナルな英語表記（English Labels）に統一。
-  - **確定UI & アーキテクチャ仕様 (Video Integration & English UI)**:
-    - **全UIの英語ラベル化 (All English UI Labels)**:
-      - ツールバー、ヘッダー、右パネル、インスペクター、タイムラインの全表記を英語化（例: `Formation & Squad`, `Properties`, `Duration`, `Pause`, `Export Video`, `Pitch Background` 等）。
-    - **下部タイムラインバー (Bottom Timeline Bar)**:
-      - ミニマルなバーを常駐（`Play / Pause`, `Add Slide`, スライドサムネイル一覧, 再生時間表示）。
-      - **`[ + ]` スライド追加の左右クリック分岐**:
-        - **左クリック (Left Click)**: **Object-free Copy**（選手・ボール座標のみ引き継ぎ、矢印・ゾーン・テキストは自動クリア）。
-        - **右クリック (Right Click)**: **Full Copy**（選手・ボール＋矢印・ゾーン・テキスト全オブジェクトを完全引き継ぎ）。
-    - **選手ドラッグ時のゴースト表示 (Drag Onion Skinning)**:
-      - 選手マーカーをドラッグ移動中のみ、その選手の前スライド座標に半透明ゴーストマーカーを表示。ドロップ時に自動消滅。
-    - **右パネルの再構成 (Right Panel Restructuring)**:
-      - **`Formation & Squad` タブ**: チームカラー（Home/Away）、フォーメーション、ピッチ上選手/サブメンバー管理を集約。
-      - **`Properties` タブ (未選択時)**: **`Slide Settings`** に昇格。スライド秒数（Duration）、静止秒数（Pause）、イージング（Easing）、スライド削除ボタン、下部にピッチ背景設定（Pitch Background）を配置。
-      - **`Properties` タブ (選択時)**: 選手・矢印・ゾーン・テキストのインスペクター。
-    - **ハイブリッド補間アニメーション & 動画エクスポート**:
-      - 選手・ボールのスムーズ移動（Lerp/Bezier）＋ フリーゾーン/ゾーンの頂点モーフィング（ブロック変形連動）。
-      - 境界線ボックス（Boundary Box）連動の動画エクスポート:
-        - **解像度 & レート**: **1080p (Full HD) / 固定 60fps** (X/YouTube/動画編集素材に最適な標準仕様)。
-        - **描画保証**: エクスポートループ時の同期即時描画（`layer.draw()`）とアルファ合成二重塗り防止（`clearRect`）で、プレビュー完全一致の高画質・滑らかな60fps出力を担保。
-        - **MP4 (H.264 / WebCodecs / ~16Mbps)**: X/YouTube投稿用。
-        - **Transparent WebM (VP9)**: 動画編集ソフト用（透過背景）。
+- **【Phase 2-B】チーム機能のモダン化 & Tactical統合キャンバス連携**:
+  - **背景 & 課題**: 現在のチェルシー専用スカッド画面 (`ChelseaSquadClient.tsx`) をコンポーネント分割・モダン化し、汎用的な動的ルーティング `/teams/[teamId]` へ拡張。スカッド一覧から Tactical 統合キャンバス（`/tactical`）へワンクリックでスタメン・背番号・ポジションを流し込めるシームレスな戦術ボード連携を実現する。
+  - **確定仕様 & AAWU 分解**:
+    1. **AAWU 4-1 (Component Modularization)**: `ChelseaSquadClient.tsx` の責務分割（選手カード、スタッツ要約、スカッドフィルター、フォーメーションビュー）。
+    2. **AAWU 4-2 (Dynamic Routing & Team Data Engine)**: `/teams/[teamId]` 動的ルート対応およびチームデータローダー・型安全基盤の構築。
+    3. **AAWU 4-3 (Tactical Canvas Deep Integration)**: スカッド選択選手・フォーメーションを Tactical 統合キャンバスへ一括注入（Inject into Tactical Canvas）するブリッジ機能。
 
 ## 2. [Backlog / Adopted Roadmaps (オーナー承認済 バックログ)]
-- **【Phase 2-B】チーム機能のモダン化 & Tactical連携適応**:
-  - `ChelseaSquadClient.tsx` 分割、動的ルーティング `/teams/[teamId]` 対応、スカッドからTacticalキャンバスへのワンクリック流し込み連携。
 - **【構造改革】拡張機能の1本化統合 (Unified Extension Pipeline)**:
   - `video-canvas` の Konva 描画エンジンを `extension/` へ統合し、ブラウザ拡張を単一パッケージに集約。
 - **【品質基盤】エージェント性能最大化 3大ルールの徹底運用**:
