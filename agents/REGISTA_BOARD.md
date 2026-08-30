@@ -4,15 +4,25 @@
 - **【Phase 2-B】チーム機能のモダン化 & Tactical統合キャンバス連携**:
   - **背景 & 課題**: 現在のチェルシー専用スカッド画面 (`ChelseaSquadClient.tsx`) をコンポーネント分割・モダン化し、汎用的な動的ルーティング `/teams/[teamId]` へ拡張。スカッド一覧から Tactical 統合キャンバス（`/tactical`）へワンクリックでスタメン・背番号・ポジションを流し込めるシームレスな戦術ボード連携を実現する。
   - **確定仕様 & AAWU 分解**:
-    1. **AAWU 4-1 (Component Modularization)**: `ChelseaSquadClient.tsx` の責務分割（選手カード、スタッツ要約、スカッドフィルター、フォーメーションビュー）。
-    2. **AAWU 4-2 (Dynamic Routing & Team Data Engine)**: `/teams/[teamId]` 動的ルート対応およびチームデータローダー・型安全基盤の構築。
-    3. **AAWU 4-3 (Tactical Canvas Deep Integration)**: スカッド選択選手・フォーメーションを Tactical 統合キャンバスへ一括注入（Inject into Tactical Canvas）するブリッジ機能。
+    1. **AAWU 4-1 (Squad Component Modularization)**: `ChelseaSquadClient.tsx` (692行) の責務分割（`SquadHeader`, `SquadStatsSummary`, `SquadFilterBar`, `SquadPlayerCard`）。
+    2. **AAWU 4-2 (Dynamic Routing & Generic Team Engine)**: `/teams/[teamId]` 動的ルート対応および共通スカッドフック（`useTeamSquad`）の構築。
+    3. **AAWU 4-3 (Inject Squad to Tactical Unified Canvas Bridge)**: スカッド選択選手・フォーメーションを Tactical 統合キャンバス（`/tactical`）へワンクリック注入するブリッジ連携。
 
 ## 2. [Backlog / Adopted Roadmaps (オーナー承認済 バックログ)]
 - **【構造改革】拡張機能の1本化統合 (Unified Extension Pipeline)**:
   - `video-canvas` の Konva 描画エンジンを `extension/` へ統合し、ブラウザ拡張を単一パッケージに集約。
 - **【品質基盤】エージェント性能最大化 3大ルールの徹底運用**:
   - 1. State Machine厳守 / 2. 極小AAWU（1〜3ファイル） / 3. KI自動更新。
+
+## 3. [Task Matrix (AAWU: Team Modernization & Tactical Integration)]
+
+| Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **AAWU 4-1** | 🧩 **Squad Component Modularization** | `regista-frontend` | `src/components/features/teams/*`<br>`src/components/features/teams/ChelseaSquadClient.tsx` | 692行の `ChelseaSquadClient.tsx` を 4 つのサブコンポーネント（`SquadHeader`, `SquadStatsSummary`, `SquadFilterBar`, `SquadPlayerCard`）へ責務分割し、可読性・保守性を向上。 | **READY** 📋 |
+| **AAWU 4-2** | 🌐 **Dynamic Routing & Generic Team Engine (`/teams/[teamId]`)** | `regista-frontend`<br>`regista-data` | `src/app/teams/[teamId]/page.tsx`<br>`src/components/layout/TeamsDropdown.tsx`<br>`src/hooks/use-team-squad.ts` | `/teams/chelsea` を汎用的な動的ルーティング `/teams/[teamId]` へ移行。共通チームフック（`useTeamSquad`）を配備し、チーム一覧ドロップダウンを連動。 | **TODO** ⏳ |
+| **AAWU 4-3** | ⚡ **Inject Squad to Tactical Unified Canvas Bridge** | `regista-frontend`<br>`regista-canvas` | `src/components/features/teams/*`<br>`src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx` | スカッド画面からワンクリックで「Tactical Canvas で開く」ボタンを配置。選択したシーズンの選手名・背番号・ポジションを `/tactical` のピッチおよびサブメンバーへ一括注入する。 | **TODO** ⏳ |
+
+
 
 - **2026-08-30**: [AAWU 3-6 Complete] 全体結合テスト & ルーブリックQA完了。Tacticalエクスポートおよび戦術キャンバス関連のVitest全110件（78件+32件）パス、Scoped TypeScript型チェックエラー0件、Biome lint/format検証パス（エラー0件）を確認。AAWU 3系（動画エクスポート・UI英語化・アニメーション統合）を完全クローズ。
 - **2026-08-29**: [AAWU 3-5-ALIGN Complete] 100% Visual Parity Fix (Pitch Lines & Typography Alignment) 実装・検証完了。
