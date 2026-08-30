@@ -129,3 +129,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## 16. Phase 3.5 ループエンジニアリング (Loop Engineering Guardrails)
+- **原則:** 自律型開発ループのトークン浪費を防ぎ、最速で収束させる。
+- **Executor (実装者) の行動指針:**
+    - **Level 1の自己完結:** 実装直後は、QAに依頼する前に必ず自身で影響範囲の局所検証 (`Biome`, `type-check:scoped`, `vitest --related`) を行い、エラーを自己解決する。
+    - **差分出力の強制:** フルファイルの書き換えではなく、Unified Diffフォーマットでのパッチ提供を優先する。
+- **Architect (進行管理) の行動指針:**
+    - **コンテキストの動的圧縮 (Slicing):** ループ再試行時は過去の全対話履歴を破棄し、「現在のDiff」と「直近のエラーJSON (`EvaluatorFeedback`)」のみを抽出して次ループに渡す。
+- **Skill資産化 (Tool-Maker):**
+    - 3回以上反復されたコンポーネント実装・ボイラープレート・環境構築手順は、自律的に `~/.gemini/config/skills/` または `.agents/skills/` 配下にSkillスクリプトとして抽出・登録すること。

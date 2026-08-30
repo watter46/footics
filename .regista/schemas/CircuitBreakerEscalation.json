@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CircuitBreakerEscalation",
+  "description": "Strict JSON schema for escalating tasks back to the GM when loops fail to converge.",
+  "type": "object",
+  "properties": {
+    "escalation_reason": {
+      "type": "string",
+      "enum": ["LOOP_LIMIT_EXCEEDED", "CRITICAL_ARCHITECTURE_VIOLATION", "UNRESOLVABLE_DEPENDENCY"],
+      "description": "Reason for breaking the loop and escalating."
+    },
+    "loop_count": {
+      "type": "integer",
+      "description": "Number of iterations attempted before escalation."
+    },
+    "failed_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of files that are failing validation."
+    },
+    "gm_action_required": {
+      "type": "string",
+      "description": "Request or context for the GM to resolve the blocker."
+    }
+  },
+  "required": ["escalation_reason", "loop_count", "failed_files", "gm_action_required"],
+  "additionalProperties": false
+}
