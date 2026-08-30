@@ -830,18 +830,29 @@ describe('video-export-engine & worker pipeline', () => {
               stageHeight: 1080,
               slides: [],
             }),
-          ).rejects.toThrow('Slides data is required for Web Worker video export.');
+          ).rejects.toThrow(
+            'Slides data is required for Web Worker video export.',
+          );
         });
 
         it('executes direct WebCodecs pipeline with zero-wait async yielding and generates MP4 Blob', async () => {
-
           class MockWorker {
             onmessage: any;
             onerror: any;
             postMessage(msg: any) {
               if (msg.type === 'START_EXPORT') {
                 setTimeout(() => {
-                  this.onmessage?.({ data: { id: msg.id, type: 'PROGRESS', progress: { percent: 50, stage: 'rendering', message: 'test' } } });
+                  this.onmessage?.({
+                    data: {
+                      id: msg.id,
+                      type: 'PROGRESS',
+                      progress: {
+                        percent: 50,
+                        stage: 'rendering',
+                        message: 'test',
+                      },
+                    },
+                  });
                   this.onmessage?.({
                     data: {
                       id: msg.id,
@@ -852,7 +863,12 @@ describe('video-export-engine & worker pipeline', () => {
                       buffer: new ArrayBuffer(0),
                       decoderConfig: {
                         codec: 'avc1.64002a',
-                        description: new Uint8Array([1, 100, 0, 42, 255, 225, 0, 30, 103, 100, 0, 42, 172, 217, 64, 120, 2, 39, 229, 132, 0, 0, 3, 0, 4, 0, 0, 3, 0, 240, 60, 96, 198, 88, 1, 0, 5, 104, 235, 227, 203, 34, 192]).buffer,
+                        description: new Uint8Array([
+                          1, 100, 0, 42, 255, 225, 0, 30, 103, 100, 0, 42, 172,
+                          217, 64, 120, 2, 39, 229, 132, 0, 0, 3, 0, 4, 0, 0, 3,
+                          0, 240, 60, 96, 198, 88, 1, 0, 5, 104, 235, 227, 203,
+                          34, 192,
+                        ]).buffer,
                         codedWidth: 1920,
                         codedHeight: 1080,
                         displayAspectWidth: 1920,
@@ -862,18 +878,23 @@ describe('video-export-engine & worker pipeline', () => {
                           transfer: 'bt709',
                           matrix: 'bt709',
                           fullRange: false,
-                        }
-                      }
-                    }
+                        },
+                      },
+                    },
                   });
                   setTimeout(() => {
-                    this.onmessage?.({ data: { id: msg.id, type: 'SUCCESS', mimeType: 'video/mp4' } });
+                    this.onmessage?.({
+                      data: {
+                        id: msg.id,
+                        type: 'SUCCESS',
+                        mimeType: 'video/mp4',
+                      },
+                    });
                   }, 10);
                 }, 150);
               }
             }
             terminate() {}
-
           }
           (globalThis as any).Worker = MockWorker;
 
@@ -956,14 +977,23 @@ describe('video-export-engine & worker pipeline', () => {
         });
 
         it('handles backpressure when encodeQueueSize exceeds high watermark and resumes via ondequeue', async () => {
-
           class MockWorker {
             onmessage: any;
             onerror: any;
             postMessage(msg: any) {
               if (msg.type === 'START_EXPORT') {
                 setTimeout(() => {
-                  this.onmessage?.({ data: { id: msg.id, type: 'PROGRESS', progress: { percent: 50, stage: 'rendering', message: 'test' } } });
+                  this.onmessage?.({
+                    data: {
+                      id: msg.id,
+                      type: 'PROGRESS',
+                      progress: {
+                        percent: 50,
+                        stage: 'rendering',
+                        message: 'test',
+                      },
+                    },
+                  });
                   this.onmessage?.({
                     data: {
                       id: msg.id,
@@ -974,7 +1004,12 @@ describe('video-export-engine & worker pipeline', () => {
                       buffer: new ArrayBuffer(0),
                       decoderConfig: {
                         codec: 'avc1.64002a',
-                        description: new Uint8Array([1, 100, 0, 42, 255, 225, 0, 30, 103, 100, 0, 42, 172, 217, 64, 120, 2, 39, 229, 132, 0, 0, 3, 0, 4, 0, 0, 3, 0, 240, 60, 96, 198, 88, 1, 0, 5, 104, 235, 227, 203, 34, 192]).buffer,
+                        description: new Uint8Array([
+                          1, 100, 0, 42, 255, 225, 0, 30, 103, 100, 0, 42, 172,
+                          217, 64, 120, 2, 39, 229, 132, 0, 0, 3, 0, 4, 0, 0, 3,
+                          0, 240, 60, 96, 198, 88, 1, 0, 5, 104, 235, 227, 203,
+                          34, 192,
+                        ]).buffer,
                         codedWidth: 1920,
                         codedHeight: 1080,
                         displayAspectWidth: 1920,
@@ -984,18 +1019,23 @@ describe('video-export-engine & worker pipeline', () => {
                           transfer: 'bt709',
                           matrix: 'bt709',
                           fullRange: false,
-                        }
-                      }
-                    }
+                        },
+                      },
+                    },
                   });
                   setTimeout(() => {
-                    this.onmessage?.({ data: { id: msg.id, type: 'SUCCESS', mimeType: 'video/mp4' } });
+                    this.onmessage?.({
+                      data: {
+                        id: msg.id,
+                        type: 'SUCCESS',
+                        mimeType: 'video/mp4',
+                      },
+                    });
                   }, 10);
                 }, 150);
               }
             }
             terminate() {}
-
           }
           (globalThis as any).Worker = MockWorker;
 
@@ -1046,14 +1086,23 @@ describe('video-export-engine & worker pipeline', () => {
         });
 
         it('cancels video export immediately when checkCancelled returns true', async () => {
-
           class MockWorker {
             onmessage: any;
             onerror: any;
             postMessage(msg: any) {
               if (msg.type === 'START_EXPORT') {
                 setTimeout(() => {
-                  this.onmessage?.({ data: { id: msg.id, type: 'PROGRESS', progress: { percent: 50, stage: 'rendering', message: 'test' } } });
+                  this.onmessage?.({
+                    data: {
+                      id: msg.id,
+                      type: 'PROGRESS',
+                      progress: {
+                        percent: 50,
+                        stage: 'rendering',
+                        message: 'test',
+                      },
+                    },
+                  });
                   this.onmessage?.({
                     data: {
                       id: msg.id,
@@ -1064,7 +1113,12 @@ describe('video-export-engine & worker pipeline', () => {
                       buffer: new ArrayBuffer(0),
                       decoderConfig: {
                         codec: 'avc1.64002a',
-                        description: new Uint8Array([1, 100, 0, 42, 255, 225, 0, 30, 103, 100, 0, 42, 172, 217, 64, 120, 2, 39, 229, 132, 0, 0, 3, 0, 4, 0, 0, 3, 0, 240, 60, 96, 198, 88, 1, 0, 5, 104, 235, 227, 203, 34, 192]).buffer,
+                        description: new Uint8Array([
+                          1, 100, 0, 42, 255, 225, 0, 30, 103, 100, 0, 42, 172,
+                          217, 64, 120, 2, 39, 229, 132, 0, 0, 3, 0, 4, 0, 0, 3,
+                          0, 240, 60, 96, 198, 88, 1, 0, 5, 104, 235, 227, 203,
+                          34, 192,
+                        ]).buffer,
                         codedWidth: 1920,
                         codedHeight: 1080,
                         displayAspectWidth: 1920,
@@ -1074,18 +1128,23 @@ describe('video-export-engine & worker pipeline', () => {
                           transfer: 'bt709',
                           matrix: 'bt709',
                           fullRange: false,
-                        }
-                      }
-                    }
+                        },
+                      },
+                    },
                   });
                   setTimeout(() => {
-                    this.onmessage?.({ data: { id: msg.id, type: 'SUCCESS', mimeType: 'video/mp4' } });
+                    this.onmessage?.({
+                      data: {
+                        id: msg.id,
+                        type: 'SUCCESS',
+                        mimeType: 'video/mp4',
+                      },
+                    });
                   }, 10);
                 }, 150);
               }
             }
             terminate() {}
-
           }
           (globalThis as any).Worker = MockWorker;
 

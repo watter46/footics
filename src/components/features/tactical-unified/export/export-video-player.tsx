@@ -10,13 +10,7 @@
  *   - Video metadata display (file size, format, resolution)
  */
 
-import {
-  CheckCircle2,
-  Download,
-  Play,
-  RefreshCw,
-  RotateCcw,
-} from 'lucide-react';
+import { CheckCircle2, Download, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 interface ExportVideoPlayerProps {

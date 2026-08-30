@@ -657,7 +657,9 @@ export async function executeOffThreadVideoExport(
           cachedStaticFrame.close();
           cachedStaticFrame = null;
         }
-        cachedStaticFrame = videoFrame.clone();
+        if (typeof videoFrame.clone === 'function') {
+          cachedStaticFrame = videoFrame.clone();
+        }
       }
 
       // Zone C: GPU エンコード投入

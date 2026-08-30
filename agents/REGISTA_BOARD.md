@@ -44,6 +44,7 @@
 - **【品質基盤】エージェント性能最大化 3大ルールの徹底運用**:
   - 1. State Machine厳守 / 2. 極小AAWU（1〜3ファイル） / 3. KI自動更新。
 
+- **2026-08-30**: [AAWU 3-6 Complete] 全体結合テスト & ルーブリックQA完了。Tacticalエクスポートおよび戦術キャンバス関連のVitest全110件（78件+32件）パス、Scoped TypeScript型チェックエラー0件、Biome lint/format検証パス（エラー0件）を確認。AAWU 3系（動画エクスポート・UI英語化・アニメーション統合）を完全クローズ。
 - **2026-08-29**: [AAWU 3-5-ALIGN Complete] 100% Visual Parity Fix (Pitch Lines & Typography Alignment) 実装・検証完了。
   1. **ピッチライン色の完全復元**: `pitch-background.tsx` と完全一致する暖色系ゴールド (`#e2b48d`, `stroke-opacity: 0.85`) へピッチ外枠・ハーフウェーライン・センターサークル・ペナルティエリア・スポット全域を復元。
   2. **背番号の黒縁取り全撤廃 & クリーン純白化**: `strokeText` による黒いフチを完全削除し、`player-layer.tsx` と 1:1 完全一致の純白テキスト (`#ffffff`, `insideContent === 'number'`) に統一。
@@ -93,7 +94,7 @@
 | **AAWU 3-5-CODEC** | 🚀 **GPU VideoEncoder Config & High-Throughput Optimization (1~2s Target)** | `regista-canvas` | `src/lib/tactical/export/video-export-engine.ts` | 1. **GPU ハードウェア専有設定**: `hardwareAcceleration: 'prefer-hardware'` を厳格指定<br>2. **スループット優先**: `latencyMode: 'quality'` へ変更し、オフラインレンダリングのバッチ処理効率を最大化<br>3. **広範GPU互換プロファイル**: `avc1.42E01E` (Baseline 3.1) / `avc1.4D401F` (Main 3.1) / `avc1.4d002a` を優先探索<br>4. **ビットレート適正化**: `bitrate: 8_000_000`, `bitrateMode: 'variable'` でGPU負荷を半減し 60fps+（1〜2秒以内出力）を達成 | **DONE** ✅ |
 | **AAWU 3-5-ALIGN** | 🎨 **100% Visual Parity Fix (Pitch Lines & Typography Alignment)** | `regista-canvas` | `src/lib/tactical/export/tactical-frame-renderer.ts` | 1. **ピッチ白線色の完全一致**: `f8fafc` (白) になっていたピッチ線を、ブラウザCanvasと同じ暖色系ゴールド (`#e2b48d`, `stroke-opacity: 0.85`) に完全復元<br>2. **背番号フォントの黒縁取り全撤廃**: ブラウザ上と同じクリーンな純白テキスト (`#ffffff`, `strokeText` 縁取りなし) に戻し、フォントサイズ・太さを `player-layer.tsx` と 1:1 完全一致化<br>3. **選手サークルの二重境界線削除**: 不要な外周ダークボーダーを削除し、ブラウザ上と同じクリーンな円＋白枠線に統一 | **DONE** ✅ |
 | **AAWU 3-5-PARALLEL** | 🏎️ **Multi-Worker Parallel Video Encoding (Chunk & Stitch)** | `regista-canvas` | `src/lib/tactical/export/video-export-worker.ts`<br>`src/lib/tactical/export/video-export-engine.ts` | 1. **Muxerの分離**: 描画・エンコード用WorkerとMuxing用ロジックを分離<br>2. **ゼロコピー転送**: エンコードされたチャンクをMain Threadへ転送<br>3. **セグメント分割**: 複数Workerでフレームを分割並列処理し、Main Threadでタイムスタンプ順に結合(Stitching) | **DONE** ✅ |
-| **AAWU 3-6** | 🛡️ **全体結合テスト & ルーブリックQA** | `regista-qa` | 全体 | Vitestテスト作成・全パス、TypeScript型チェック、Biomeエラー0件の検証完了 | **TODO** ⏳ |
+| **AAWU 3-6** | 🛡️ **全体結合テスト & ルーブリックQA** | `regista-qa` | 全体 | Vitestテスト作成・全パス、TypeScript型チェック、Biomeエラー0件の検証完了 | **DONE** ✅ |
 
 ## 5. [Architecture & Boundaries]
 - **Pure Tactical Asset Provider (純粋な戦術素材プロバイダー方針)**:
