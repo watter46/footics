@@ -120,6 +120,10 @@ interface TacticalUnifiedState {
   project: TacticalProject;
   isDirty: boolean;
 
+  // ── 履歴 (Undo / Redo スタック: 最大50件)
+  past: Slide[][];
+  future: Slide[][];
+
   // ── クリップボード
   clipboard: TacticalClipboard | null;
 
@@ -329,6 +333,11 @@ interface TacticalUnifiedState {
   openExportModal: (target?: ExportTarget) => void;
   closeExportModal: () => void;
 
+  // ─ 履歴 (Undo / Redo)
+  undo: () => void;
+  redo: () => void;
+  pushHistory: () => void;
+
   // ─ エクスポート
   setIsExporting: (val: boolean) => void;
 }
@@ -371,6 +380,23 @@ function distToSegment(
   );
 }
 
+const MAX_HISTORY = 50;
+
+function recordHistory(s: TacticalUnifiedState): {
+  past: Slide[][];
+  future: Slide[][];
+} {
+  const snapshot = structuredClone(s.project.slides);
+  const nextPast = [...s.past, snapshot];
+  if (nextPast.length > MAX_HISTORY) {
+    nextPast.splice(0, nextPast.length - MAX_HISTORY);
+  }
+  return {
+    past: nextPast,
+    future: [],
+  };
+}
+
 // ─────────────────────────────────────────
 // § 5. Store 実装
 // ─────────────────────────────────────────
@@ -381,6 +407,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
   subscribeWithSelector((set, get) => ({
     project: INITIAL_PROJECT,
     isDirty: false,
+    past: [],
+    future: [],
     clipboard: null,
     activeSlideId: INITIAL_PROJECT.activeSlideId,
     selectedObjects: [],
@@ -401,12 +429,84 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     pendingExport: null,
     isExporting: false,
 
+    // ══ 履歴 (Undo / Redo) ═════════════════
+
+    undo: () =>
+      set((s) => {
+        if (s.past.length === 0) return s;
+        const nextPast = [...s.past];
+        const previousSlides = nextPast.pop();
+        if (!previousSlides) return s;
+
+        const currentSlides = structuredClone(s.project.slides);
+        const nextFuture = [currentSlides, ...s.future].slice(0, MAX_HISTORY);
+
+        let nextActiveSlideId = s.activeSlideId;
+        if (!previousSlides.some((sl) => sl.id === nextActiveSlideId)) {
+          nextActiveSlideId = previousSlides[0]?.id ?? '';
+        }
+
+        return {
+          past: nextPast,
+          future: nextFuture,
+          project: {
+            ...s.project,
+            slides: previousSlides,
+            activeSlideId: nextActiveSlideId,
+            updatedAt: new Date().toISOString(),
+          },
+          activeSlideId: nextActiveSlideId,
+          selectedObjects: [],
+          isDirty: true,
+        };
+      }),
+
+    redo: () =>
+      set((s) => {
+        if (s.future.length === 0) return s;
+        const nextFuture = [...s.future];
+        const nextSlides = nextFuture.shift();
+        if (!nextSlides) return s;
+
+        const currentSlides = structuredClone(s.project.slides);
+        const nextPast = [...s.past, currentSlides];
+        if (nextPast.length > MAX_HISTORY) {
+          nextPast.shift();
+        }
+
+        let nextActiveSlideId = s.activeSlideId;
+        if (!nextSlides.some((sl) => sl.id === nextActiveSlideId)) {
+          nextActiveSlideId = nextSlides[0]?.id ?? '';
+        }
+
+        return {
+          past: nextPast,
+          future: nextFuture,
+          project: {
+            ...s.project,
+            slides: nextSlides,
+            activeSlideId: nextActiveSlideId,
+            updatedAt: new Date().toISOString(),
+          },
+          activeSlideId: nextActiveSlideId,
+          selectedObjects: [],
+          isDirty: true,
+        };
+      }),
+
+    pushHistory: () =>
+      set((s) => ({
+        ...recordHistory(s),
+      })),
+
     // ══ プロジェクト ══════════════════════
 
     loadProject: (project) =>
       set({
         project,
         isDirty: false,
+        past: [],
+        future: [],
         clipboard: null,
         activeSlideId: project.activeSlideId,
         selectedObjects: [],
@@ -417,6 +517,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
       set({
         project: p,
         isDirty: false,
+        past: [],
+        future: [],
         clipboard: null,
         activeSlideId: p.activeSlideId,
         selectedObjects: [],
@@ -476,6 +578,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         const isVertical = s.project.aspectRatio === '9:16';
 
         return {
+          ...recordHistory(s),
           project: updateSlideInProject(s.project, slideId, (sl) => ({
             ...sl,
             players: sl.players.map((p) => ({
@@ -533,6 +636,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     setBoundaryBox: (slideId, box) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           boundaryBox: box,
@@ -579,6 +683,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         }
 
         return {
+          ...recordHistory(s),
           project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
             ...sl,
             boundaryBox: box,
@@ -591,6 +696,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
       set((s) => {
         const targetSlideId = slideId ?? s.activeSlideId;
         return {
+          ...recordHistory(s),
           project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
             ...sl,
             arrows: [],
@@ -613,6 +719,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     setTeamColor: (team, primary, secondary) =>
       set((s) => ({
+        ...recordHistory(s),
         project: {
           ...s.project,
           updatedAt: new Date().toISOString(),
@@ -672,6 +779,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         );
 
         return {
+          ...recordHistory(s),
           project: {
             ...s.project,
             aspectRatio: ratio,
@@ -749,6 +857,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         const indexedSlides = nextSlides.map((sl, i) => ({ ...sl, index: i }));
 
         return {
+          ...recordHistory(s),
           project: {
             ...s.project,
             slides: indexedSlides,
@@ -779,6 +888,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             ? (remaining[0]?.id ?? remaining[remaining.length - 1]?.id ?? '')
             : s.activeSlideId;
         return {
+          ...recordHistory(s),
           project: {
             ...s.project,
             slides: remaining,
@@ -803,6 +913,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           })
           .filter((sl): sl is NonNullable<typeof sl> => sl !== null);
         return {
+          ...recordHistory(s),
           project: {
             ...s.project,
             slides,
@@ -817,6 +928,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     updateSlideLabel: (slideId, label) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           label,
@@ -826,6 +938,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     updateSlideTransition: (slideId, params) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           ...params,
@@ -837,6 +950,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     addPlayer: (player) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, s.activeSlideId, (sl) => ({
           ...sl,
           players: [...sl.players, player],
@@ -858,6 +972,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     updatePlayer: (slideId, playerId, patch) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: sl.players.map((p) =>
@@ -877,176 +992,183 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     },
 
     moveMultiplePlayersByDelta: (slideId, playerIds, deltaX, deltaY) =>
-      set((s) => ({
-        project: updateSlideInProject(s.project, slideId, (sl) => {
-          if (playerIds.length === 0 || (deltaX === 0 && deltaY === 0)) {
-            return sl;
-          }
-          const playerIdSet = new Set(playerIds);
-          const targetPlayers = sl.players.filter((p) => playerIdSet.has(p.id));
-          if (targetPlayers.length === 0) return sl;
-
-          // 1. 選手位置更新 (クランプ [0, 100])
-          const updatedPlayers = sl.players.map((p) => {
-            if (!playerIdSet.has(p.id)) return p;
-            return {
-              ...p,
-              x: Math.max(0, Math.min(100, p.x + deltaX)),
-              y: Math.max(0, Math.min(100, p.y + deltaY)),
-            };
-          });
-
-          // 2. 矢印追従
-          const updatedArrows = sl.arrows.map((arrow) => {
-            const p0 = arrow.points[0];
-            const p1 = arrow.points[1];
-            const isStartAttached = Boolean(
-              arrow.sourcePlayerId && playerIdSet.has(arrow.sourcePlayerId),
+      set((s) => {
+        if (playerIds.length === 0 || (deltaX === 0 && deltaY === 0)) {
+          return s;
+        }
+        return {
+          ...recordHistory(s),
+          project: updateSlideInProject(s.project, slideId, (sl) => {
+            const playerIdSet = new Set(playerIds);
+            const targetPlayers = sl.players.filter((p) =>
+              playerIdSet.has(p.id),
             );
-            const isEndAttached = Boolean(
-              arrow.targetPlayerId && playerIdSet.has(arrow.targetPlayerId),
-            );
+            if (targetPlayers.length === 0) return sl;
 
-            if (!isStartAttached && !isEndAttached) return arrow;
-
-            // 始点・終点ともに移動対象選手
-            if (isStartAttached && isEndAttached) {
-              const newPoints = arrow.points.map((pt) => ({
-                x: pt.x + deltaX,
-                y: pt.y + deltaY,
-              }));
-              const newCp = arrow.controlPoint
-                ? {
-                    x: arrow.controlPoint.x + deltaX,
-                    y: arrow.controlPoint.y + deltaY,
-                  }
-                : undefined;
+            // 1. 選手位置更新 (クランプ [0, 100])
+            const updatedPlayers = sl.players.map((p) => {
+              if (!playerIdSet.has(p.id)) return p;
               return {
-                ...arrow,
-                points: newPoints,
-                controlPoint: newCp,
+                ...p,
+                x: Math.max(0, Math.min(100, p.x + deltaX)),
+                y: Math.max(0, Math.min(100, p.y + deltaY)),
               };
-            }
+            });
 
-            if (isStartAttached && p0 && p1) {
-              // 始点のみ追従
-              const newP0 = {
-                x: p0.x + deltaX,
-                y: p0.y + deltaY,
-              };
-              const newCp = arrow.controlPoint
-                ? {
-                    x: arrow.controlPoint.x + deltaX / 2,
-                    y: arrow.controlPoint.y + deltaY / 2,
-                  }
-                : undefined;
-              return {
-                ...arrow,
-                points: [newP0, p1],
-                controlPoint: newCp,
-              };
-            }
+            // 2. 矢印追従
+            const updatedArrows = sl.arrows.map((arrow) => {
+              const p0 = arrow.points[0];
+              const p1 = arrow.points[1];
+              const isStartAttached = Boolean(
+                arrow.sourcePlayerId && playerIdSet.has(arrow.sourcePlayerId),
+              );
+              const isEndAttached = Boolean(
+                arrow.targetPlayerId && playerIdSet.has(arrow.targetPlayerId),
+              );
 
-            if (isEndAttached && p0 && p1) {
-              // 終点のみ追従
-              const newP1 = {
-                x: p1.x + deltaX,
-                y: p1.y + deltaY,
-              };
-              const newCp = arrow.controlPoint
-                ? {
-                    x: arrow.controlPoint.x + deltaX / 2,
-                    y: arrow.controlPoint.y + deltaY / 2,
-                  }
-                : undefined;
-              return {
-                ...arrow,
-                points: [p0, newP1],
-                controlPoint: newCp,
-              };
-            }
+              if (!isStartAttached && !isEndAttached) return arrow;
 
-            return arrow;
-          });
-
-          // 3. テキスト注釈の追従
-          const updatedTexts = sl.texts.map((text) => {
-            const attachedId = (
-              text as unknown as { attachedPlayerId?: string }
-            ).attachedPlayerId;
-            const isAttached = attachedId ? playerIdSet.has(attachedId) : false;
-            const isNear = targetPlayers.some(
-              (tp) => Math.hypot(text.x - tp.x, text.y - tp.y) <= 8,
-            );
-            if (isAttached || isNear) {
-              return {
-                ...text,
-                x: text.x + deltaX,
-                y: text.y + deltaY,
-              };
-            }
-            return text;
-          });
-
-          // 4. ボールの追従
-          let updatedBall = sl.ball;
-          if (
-            sl.ball?.visible &&
-            targetPlayers.some(
-              (tp) =>
-                Math.hypot(
-                  (sl.ball?.x ?? 0) - tp.x,
-                  (sl.ball?.y ?? 0) - tp.y,
-                ) <= 7,
-            )
-          ) {
-            updatedBall = {
-              ...sl.ball,
-              x: sl.ball.x + deltaX,
-              y: sl.ball.y + deltaY,
-            };
-          }
-
-          // 5. ゾーンの追従
-          const updatedZones = sl.zones.map((zone) => {
-            if (zone.points.length === 0) return zone;
-            const isAttached = (
-              (zone as unknown as { attachedPlayerIds?: string[] })
-                .attachedPlayerIds ?? []
-            ).some((id) => playerIdSet.has(id));
-            const cx =
-              zone.points.reduce((sum, pt) => sum + pt.x, 0) /
-              zone.points.length;
-            const cy =
-              zone.points.reduce((sum, pt) => sum + pt.y, 0) /
-              zone.points.length;
-            const isNear = targetPlayers.some(
-              (tp) => Math.hypot(cx - tp.x, cy - tp.y) <= 8,
-            );
-
-            if (isAttached || isNear) {
-              return {
-                ...zone,
-                points: zone.points.map((pt) => ({
+              // 始点・終点ともに移動対象選手
+              if (isStartAttached && isEndAttached) {
+                const newPoints = arrow.points.map((pt) => ({
                   x: pt.x + deltaX,
                   y: pt.y + deltaY,
-                })),
+                }));
+                const newCp = arrow.controlPoint
+                  ? {
+                      x: arrow.controlPoint.x + deltaX,
+                      y: arrow.controlPoint.y + deltaY,
+                    }
+                  : undefined;
+                return {
+                  ...arrow,
+                  points: newPoints,
+                  controlPoint: newCp,
+                };
+              }
+
+              if (isStartAttached && p0 && p1) {
+                // 始点のみ追従
+                const newP0 = {
+                  x: p0.x + deltaX,
+                  y: p0.y + deltaY,
+                };
+                const newCp = arrow.controlPoint
+                  ? {
+                      x: arrow.controlPoint.x + deltaX / 2,
+                      y: arrow.controlPoint.y + deltaY / 2,
+                    }
+                  : undefined;
+                return {
+                  ...arrow,
+                  points: [newP0, p1],
+                  controlPoint: newCp,
+                };
+              }
+
+              if (isEndAttached && p0 && p1) {
+                // 終点のみ追従
+                const newP1 = {
+                  x: p1.x + deltaX,
+                  y: p1.y + deltaY,
+                };
+                const newCp = arrow.controlPoint
+                  ? {
+                      x: arrow.controlPoint.x + deltaX / 2,
+                      y: arrow.controlPoint.y + deltaY / 2,
+                    }
+                  : undefined;
+                return {
+                  ...arrow,
+                  points: [p0, newP1],
+                  controlPoint: newCp,
+                };
+              }
+
+              return arrow;
+            });
+
+            // 3. テキスト注釈の追従
+            const updatedTexts = sl.texts.map((text) => {
+              const attachedId = (
+                text as unknown as { attachedPlayerId?: string }
+              ).attachedPlayerId;
+              const isAttached = attachedId
+                ? playerIdSet.has(attachedId)
+                : false;
+              const isNear = targetPlayers.some(
+                (tp) => Math.hypot(text.x - tp.x, text.y - tp.y) <= 8,
+              );
+              if (isAttached || isNear) {
+                return {
+                  ...text,
+                  x: text.x + deltaX,
+                  y: text.y + deltaY,
+                };
+              }
+              return text;
+            });
+
+            // 4. ボールの追従
+            let updatedBall = sl.ball;
+            if (
+              sl.ball?.visible &&
+              targetPlayers.some(
+                (tp) =>
+                  Math.hypot(
+                    (sl.ball?.x ?? 0) - tp.x,
+                    (sl.ball?.y ?? 0) - tp.y,
+                  ) <= 7,
+              )
+            ) {
+              updatedBall = {
+                ...sl.ball,
+                x: sl.ball.x + deltaX,
+                y: sl.ball.y + deltaY,
               };
             }
-            return zone;
-          });
 
-          return {
-            ...sl,
-            players: updatedPlayers,
-            arrows: updatedArrows,
-            texts: updatedTexts,
-            zones: updatedZones,
-            ball: updatedBall,
-          };
-        }),
-        isDirty: true,
-      })),
+            // 5. ゾーンの追従
+            const updatedZones = sl.zones.map((zone) => {
+              if (zone.points.length === 0) return zone;
+              const isAttached = (
+                (zone as unknown as { attachedPlayerIds?: string[] })
+                  .attachedPlayerIds ?? []
+              ).some((id) => playerIdSet.has(id));
+              const cx =
+                zone.points.reduce((sum, pt) => sum + pt.x, 0) /
+                zone.points.length;
+              const cy =
+                zone.points.reduce((sum, pt) => sum + pt.y, 0) /
+                zone.points.length;
+              const isNear = targetPlayers.some(
+                (tp) => Math.hypot(cx - tp.x, cy - tp.y) <= 8,
+              );
+
+              if (isAttached || isNear) {
+                return {
+                  ...zone,
+                  points: zone.points.map((pt) => ({
+                    x: pt.x + deltaX,
+                    y: pt.y + deltaY,
+                  })),
+                };
+              }
+              return zone;
+            });
+
+            return {
+              ...sl,
+              players: updatedPlayers,
+              arrows: updatedArrows,
+              texts: updatedTexts,
+              zones: updatedZones,
+              ball: updatedBall,
+            };
+          }),
+          isDirty: true,
+        };
+      }),
 
     addCustomPlayer: (
       slideId,
@@ -1069,6 +1191,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
       player.area = area;
 
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: [...sl.players, player],
@@ -1080,6 +1203,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     movePlayerToBench: (slideId, playerId) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           // サブに入ったらマーカーオブジェクト(visionCone, badges, connectLines)を削除する
@@ -1113,6 +1237,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     movePlayerToPitch: (slideId, playerId, x = 50, y = 50) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: sl.players.map((p) =>
@@ -1124,6 +1249,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     removePlayer: (slideId, playerId) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: sl.players
@@ -1157,6 +1283,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           position: pp.position,
         }));
         return {
+          ...recordHistory(s),
           project: updateSlideInProject(s.project, slideId, (sl) => ({
             ...sl,
             players: [
@@ -1170,6 +1297,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     applyFormation: (slideId, formationName, mode, team) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => {
           const positions = FORMATION_POSITIONS[formationName];
           if (!positions) return sl;
@@ -1240,6 +1368,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     setVisionCone: (slideId, playerId, cone) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: sl.players.map((p) =>
@@ -1253,6 +1382,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     addConnectLine: (slideId, playerId, line) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: sl.players.map((p) =>
@@ -1266,6 +1396,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     updateConnectLine: (slideId, playerId, lineId, patch) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: sl.players.map((p) =>
@@ -1284,6 +1415,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     removeConnectLine: (slideId, playerId, lineId) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: sl.players.map((p) =>
@@ -1300,6 +1432,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     addPlayerBadge: (slideId, playerId, badge) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: sl.players.map((p) =>
@@ -1311,6 +1444,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     removePlayerBadge: (slideId, playerId, badgeId) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: sl.players.map((p) =>
@@ -1324,6 +1458,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     setPlayerFocus: (slideId, playerId, focus) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: sl.players.map((p) =>
@@ -1337,6 +1472,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     setBallPosition: (slideId, x, y) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           ball: { ...sl.ball, x, y },
@@ -1346,6 +1482,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     setBallVisible: (slideId, visible) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           ball: { ...sl.ball, visible },
@@ -1357,6 +1494,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     addArrow: (slideId, arrow) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           arrows: [...sl.arrows, arrow],
@@ -1366,6 +1504,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     updateArrow: (slideId, arrowId, patch) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           arrows: sl.arrows.map((a) =>
@@ -1377,6 +1516,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     removeArrow: (slideId, arrowId) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           arrows: sl.arrows.filter((a) => a.id !== arrowId),
@@ -1387,6 +1527,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     addZone: (slideId, zone) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           zones: [...sl.zones, zone],
@@ -1396,6 +1537,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     updateZone: (slideId, zoneId, patch) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           zones: sl.zones.map((z) =>
@@ -1407,6 +1549,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     removeZone: (slideId, zoneId) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           zones: sl.zones.filter((z) => z.id !== zoneId),
@@ -1417,6 +1560,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     addText: (slideId, text) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           texts: [...sl.texts, text],
@@ -1426,6 +1570,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     updateText: (slideId, textId, patch) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           texts: sl.texts.map((t) =>
@@ -1437,6 +1582,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     removeText: (slideId, textId) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           texts: sl.texts.filter((t) => t.id !== textId),
@@ -1447,6 +1593,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     clearAnnotations: (slideId) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           arrows: [],
@@ -1461,6 +1608,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     eraseAtPoint: (slideId, point, radius = 4.0) =>
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => {
           // 1. 矢印・線の消去（プレイヤーは絶対に削除しない）
           const remainingArrows = sl.arrows.filter((arrow) => {
@@ -1823,6 +1971,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
       });
 
       set((s) => ({
+        ...recordHistory(s),
         project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
           ...sl,
           players: [...sl.players, ...newPlayers],
@@ -1899,3 +2048,11 @@ export const selectSingleSelectedId = (
 /** スライドが複数あるか */
 export const selectIsMultiSlide = (s: TacticalUnifiedState): boolean =>
   s.project.slides.length > 1;
+
+/** Undo 可能か */
+export const selectCanUndo = (s: TacticalUnifiedState): boolean =>
+  s.past.length > 0;
+
+/** Redo 可能か */
+export const selectCanRedo = (s: TacticalUnifiedState): boolean =>
+  s.future.length > 0;

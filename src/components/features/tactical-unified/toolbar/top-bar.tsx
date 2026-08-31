@@ -16,9 +16,11 @@ import {
   FlaskConical,
   ImagePlus,
   LayoutTemplate,
+  Redo2,
   RotateCcw,
   SlidersHorizontal,
   Sparkles,
+  Undo2,
   Upload,
   Users,
 } from 'lucide-react';
@@ -46,6 +48,10 @@ export function TopBar() {
     (s) => s.setImageBackground,
   );
   const loadProject = useTacticalUnifiedStore((s) => s.loadProject);
+  const undo = useTacticalUnifiedStore((s) => s.undo);
+  const redo = useTacticalUnifiedStore((s) => s.redo);
+  const canUndo = useTacticalUnifiedStore((s) => s.past.length > 0);
+  const canRedo = useTacticalUnifiedStore((s) => s.future.length > 0);
   const rightPanelTab = useTacticalUnifiedStore((s) => s.panels.rightPanelTab);
   const setRightPanelTab = useTacticalUnifiedStore((s) => s.setRightPanelTab);
 
@@ -126,10 +132,42 @@ export function TopBar() {
     <header className="flex items-center justify-between h-11 px-3 bg-[#111] border-b border-white/10 shrink-0 z-50 select-none">
       {/* Left: Quick Pitch Tools & Benchmark Presets */}
       <div className="flex items-center gap-2">
-        <span className="text-xs font-bold tracking-wide text-white/90 mr-2 flex items-center gap-1.5">
+        <span className="text-xs font-bold tracking-wide text-white/90 mr-1 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-blue-500" />
           Tactical
         </span>
+
+        {/* Undo / Redo */}
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={undo}
+            disabled={!canUndo}
+            className={`p-1.5 rounded transition-colors ${
+              canUndo
+                ? 'text-white/70 hover:text-white hover:bg-white/10 cursor-pointer'
+                : 'text-white/20 cursor-not-allowed'
+            }`}
+            aria-label="Undo"
+            title="Undo (Ctrl+Z / Cmd+Z)"
+          >
+            <Undo2 size={13} />
+          </button>
+          <button
+            type="button"
+            onClick={redo}
+            disabled={!canRedo}
+            className={`p-1.5 rounded transition-colors ${
+              canRedo
+                ? 'text-white/70 hover:text-white hover:bg-white/10 cursor-pointer'
+                : 'text-white/20 cursor-not-allowed'
+            }`}
+            aria-label="Redo"
+            title="Redo (Ctrl+Shift+Z / Cmd+Shift+Z / Ctrl+Y)"
+          >
+            <Redo2 size={13} />
+          </button>
+        </div>
 
         <div className="h-4 w-px bg-white/10" />
 

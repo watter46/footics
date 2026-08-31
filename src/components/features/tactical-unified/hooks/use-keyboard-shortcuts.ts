@@ -19,6 +19,8 @@ export function useKeyboardShortcuts() {
     (s) => s.copySelectedObjects,
   );
   const pasteObjects = useTacticalUnifiedStore((s) => s.pasteObjects);
+  const undo = useTacticalUnifiedStore((s) => s.undo);
+  const redo = useTacticalUnifiedStore((s) => s.redo);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const setActiveTool = useTacticalUnifiedStore((s) => s.setActiveTool);
   const togglePlayback = useTacticalUnifiedStore((s) => s.togglePlayback);
@@ -32,8 +34,26 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Ctrl / Cmd コマンド (Copy & Paste)
+      // Ctrl / Cmd コマンド (Undo, Redo, Copy & Paste)
       if (e.ctrlKey || e.metaKey) {
+        // Redo: Ctrl+Shift+Z / Cmd+Shift+Z / Ctrl+Y (Windows/Linux)
+        if (
+          (e.shiftKey && (e.key === 'z' || e.key === 'Z')) ||
+          e.key === 'y' ||
+          e.key === 'Y'
+        ) {
+          e.preventDefault();
+          redo();
+          return;
+        }
+
+        // Undo: Ctrl+Z / Cmd+Z
+        if (e.key === 'z' || e.key === 'Z') {
+          e.preventDefault();
+          undo();
+          return;
+        }
+
         if (e.key === 'c' || e.key === 'C') {
           e.preventDefault();
           copySelectedObjects(activeSlideId);
@@ -129,6 +149,8 @@ export function useKeyboardShortcuts() {
     removeText,
     copySelectedObjects,
     pasteObjects,
+    undo,
+    redo,
     activeSlideId,
     setActiveTool,
     togglePlayback,

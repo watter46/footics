@@ -238,4 +238,87 @@ describe('useKeyboardShortcuts', () => {
     });
     expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
   });
+
+  it('Ctrl+Z / Cmd+Z で Undo が実行され、Ctrl+Shift+Z / Cmd+Shift+Z / Ctrl+Y で Redo が実行される', () => {
+    renderHook(() => useKeyboardShortcuts());
+    const store = useTacticalUnifiedStore.getState();
+    const slideId = store.activeSlideId;
+    const initialCount =
+      store.project.slides.find((s) => s.id === slideId)?.players.length ?? 0;
+
+    const player = createDefaultPlayer('home', 50, 50, '#034694');
+    act(() => {
+      store.addPlayer(player);
+    });
+
+    const slideAfterAdd = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(slideAfterAdd?.players).toHaveLength(initialCount + 1);
+
+    // 1. Ctrl+Z (Undo)
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'z',
+          ctrlKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+
+    const slideAfterUndo = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(slideAfterUndo?.players).toHaveLength(initialCount);
+
+    // 2. Ctrl+Shift+Z (Redo)
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'z',
+          ctrlKey: true,
+          shiftKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+
+    const slideAfterRedo = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(slideAfterRedo?.players).toHaveLength(initialCount + 1);
+
+    // 3. Cmd+Z (macOS Undo)
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'z',
+          metaKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+    expect(
+      useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId)?.players,
+    ).toHaveLength(initialCount);
+
+    // 4. Ctrl+Y (Windows Redo)
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'y',
+          ctrlKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+    expect(
+      useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId)?.players,
+    ).toHaveLength(initialCount + 1);
+  });
 });
