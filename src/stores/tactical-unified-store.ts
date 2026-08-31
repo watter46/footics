@@ -471,8 +471,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             arrows: sl.arrows.map((a) => ({
               ...a,
               points: a.points.map((pt) => ({
-                x: isVertical ? pt.x : Math.max(0, Math.min(100, 100 - pt.x)),
-                y: isVertical ? Math.max(0, Math.min(100, 100 - pt.y)) : pt.y,
+                x: isVertical ? pt.x : 100 - pt.x,
+                y: isVertical ? 100 - pt.y : pt.y,
               })),
               controlPoint: a.controlPoint
                 ? {
@@ -483,16 +483,16 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             })),
             zones: sl.zones.map((z) => {
               const flippedPoints = z.points.map((pt) => ({
-                x: isVertical ? pt.x : Math.max(0, Math.min(100, 100 - pt.x)),
-                y: isVertical ? Math.max(0, Math.min(100, 100 - pt.y)) : pt.y,
+                x: isVertical ? pt.x : 100 - pt.x,
+                y: isVertical ? 100 - pt.y : pt.y,
               }));
               const flippedX =
                 !isVertical && z.x !== undefined && z.width !== undefined
-                  ? Math.max(0, Math.min(100, 100 - (z.x + z.width)))
+                  ? 100 - (z.x + z.width)
                   : z.x;
               const flippedY =
                 isVertical && z.y !== undefined && z.height !== undefined
-                  ? Math.max(0, Math.min(100, 100 - (z.y + z.height)))
+                  ? 100 - (z.y + z.height)
                   : z.y;
               return {
                 ...z,
@@ -503,17 +503,13 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             }),
             texts: sl.texts.map((t) => ({
               ...t,
-              x: isVertical ? t.x : Math.max(0, Math.min(100, 100 - t.x)),
-              y: isVertical ? Math.max(0, Math.min(100, 100 - t.y)) : t.y,
+              x: isVertical ? t.x : 100 - t.x,
+              y: isVertical ? 100 - t.y : t.y,
             })),
             ball: {
               ...sl.ball,
-              x: isVertical
-                ? sl.ball.x
-                : Math.max(0, Math.min(100, 100 - sl.ball.x)),
-              y: isVertical
-                ? Math.max(0, Math.min(100, 100 - sl.ball.y))
-                : sl.ball.y,
+              x: isVertical ? sl.ball.x : 100 - sl.ball.x,
+              y: isVertical ? 100 - sl.ball.y : sl.ball.y,
             },
           })),
           isDirty: true,
@@ -901,8 +897,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             // 始点・終点ともに移動対象選手
             if (isStartAttached && isEndAttached) {
               const newPoints = arrow.points.map((pt) => ({
-                x: Math.max(0, Math.min(100, pt.x + deltaX)),
-                y: Math.max(0, Math.min(100, pt.y + deltaY)),
+                x: pt.x + deltaX,
+                y: pt.y + deltaY,
               }));
               const newCp = arrow.controlPoint
                 ? {
@@ -920,8 +916,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             if (isStartAttached && p0 && p1) {
               // 始点のみ追従
               const newP0 = {
-                x: Math.max(0, Math.min(100, p0.x + deltaX)),
-                y: Math.max(0, Math.min(100, p0.y + deltaY)),
+                x: p0.x + deltaX,
+                y: p0.y + deltaY,
               };
               const newCp = arrow.controlPoint
                 ? {
@@ -939,8 +935,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             if (isEndAttached && p0 && p1) {
               // 終点のみ追従
               const newP1 = {
-                x: Math.max(0, Math.min(100, p1.x + deltaX)),
-                y: Math.max(0, Math.min(100, p1.y + deltaY)),
+                x: p1.x + deltaX,
+                y: p1.y + deltaY,
               };
               const newCp = arrow.controlPoint
                 ? {
@@ -970,8 +966,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             if (isAttached || isNear) {
               return {
                 ...text,
-                x: Math.max(0, Math.min(100, text.x + deltaX)),
-                y: Math.max(0, Math.min(100, text.y + deltaY)),
+                x: text.x + deltaX,
+                y: text.y + deltaY,
               };
             }
             return text;
@@ -991,8 +987,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           ) {
             updatedBall = {
               ...sl.ball,
-              x: Math.max(0, Math.min(100, sl.ball.x + deltaX)),
-              y: Math.max(0, Math.min(100, sl.ball.y + deltaY)),
+              x: sl.ball.x + deltaX,
+              y: sl.ball.y + deltaY,
             };
           }
 
@@ -1017,8 +1013,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
               return {
                 ...zone,
                 points: zone.points.map((pt) => ({
-                  x: Math.max(0, Math.min(100, pt.x + deltaX)),
-                  y: Math.max(0, Math.min(100, pt.y + deltaY)),
+                  x: pt.x + deltaX,
+                  y: pt.y + deltaY,
                 })),
               };
             }

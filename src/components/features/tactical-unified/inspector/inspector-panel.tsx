@@ -755,7 +755,7 @@ function PlayerInspector({
         points: [
           { x: player.x, y: player.y },
           {
-            x: Math.max(0, Math.min(100, player.x + dir)),
+            x: player.x + dir,
             y: player.y,
           },
         ],
@@ -776,7 +776,7 @@ function PlayerInspector({
         points: [
           { x: player.x, y: player.y },
           {
-            x: Math.max(0, Math.min(100, player.x + dir)),
+            x: player.x + dir,
             y: player.y,
           },
         ],
@@ -1193,7 +1193,7 @@ function PlayerInspector({
                   points: [
                     { x: player.x, y: player.y },
                     {
-                      x: Math.max(0, Math.min(100, player.x + dir)),
+                      x: player.x + dir,
                       y: player.y,
                     },
                   ],
@@ -1234,7 +1234,7 @@ function PlayerInspector({
                   points: [
                     { x: player.x, y: player.y },
                     {
-                      x: Math.max(0, Math.min(100, player.x + dir)),
+                      x: player.x + dir,
                       y: player.y,
                     },
                   ],

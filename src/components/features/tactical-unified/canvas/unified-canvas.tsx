@@ -418,8 +418,8 @@ export function UnifiedCanvas() {
         addText(activeSlideId, {
           id: crypto.randomUUID(),
           annotationType: 'text',
-          x: Math.max(0, Math.min(100, normX)),
-          y: Math.max(0, Math.min(100, normY)),
+          x: normX,
+          y: normY,
           content: 'テキスト',
           fontSize: 16,
           color: '#ffffff',

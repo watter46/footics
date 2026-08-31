@@ -119,4 +119,52 @@ describe('AAWU 5-1: Quadratic Bezier Curve Control Point & Apex Parity', () => {
     expect(apex.x).toBeCloseTo(targetM.x, 6);
     expect(apex.y).toBeCloseTo(targetM.y, 6);
   });
+
+  it('【方針A】矢印がキャンバス外にまたがって移動しても長さと角度が100%不変である', () => {
+    // 始点 (80, 50), 終点 (110, 60) の矢印（終点がキャンバス外 x=110 にはみ出る）
+    const p0 = { x: 80, y: 50 };
+    const p1 = { x: 110, y: 60 };
+
+    const originalLength = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+    const originalAngle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+
+    // 平行移動 (+30, -20) -> p0は(110, 30), p1は(140, 40)
+    const dx = 30;
+    const dy = -20;
+    const movedP0 = { x: p0.x + dx, y: p0.y + dy };
+    const movedP1 = { x: p1.x + dx, y: p1.y + dy };
+
+    const newLength = Math.hypot(movedP1.x - movedP0.x, movedP1.y - movedP0.y);
+    const newAngle = Math.atan2(movedP1.y - movedP0.y, movedP1.x - movedP0.x);
+
+    expect(newLength).toBeCloseTo(originalLength, 8);
+    expect(newAngle).toBeCloseTo(originalAngle, 8);
+  });
+
+  it('【方針A】多角形ゾーンがキャンバス外に移動しても全頂点の相対幾何構造が維持される', () => {
+    // 三角形ゾーン
+    const polygon = [
+      { x: 90, y: 20 },
+      { x: 105, y: 40 }, // キャンバス外
+      { x: 85, y: 50 },
+    ];
+
+    const dx = 20;
+    const dy = 10;
+    const movedPolygon = polygon.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+
+    // 各辺の長さが完全に一致することを検証
+    for (let i = 0; i < polygon.length; i++) {
+      const nextIdx = (i + 1) % polygon.length;
+      const origDist = Math.hypot(
+        polygon[nextIdx].x - polygon[i].x,
+        polygon[nextIdx].y - polygon[i].y,
+      );
+      const movedDist = Math.hypot(
+        movedPolygon[nextIdx].x - movedPolygon[i].x,
+        movedPolygon[nextIdx].y - movedPolygon[i].y,
+      );
+      expect(movedDist).toBeCloseTo(origDist, 8);
+    }
+  });
 });

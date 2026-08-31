@@ -32,32 +32,32 @@ export type NormalizedPoint = z.infer<typeof NormalizedPointSchema>;
 
 /** 正規化座標の幾何変換ロジック（16:9 ⇄ 9:16） */
 export function transformCoord(
-  point: NormalizedPoint,
+  point: { x: number; y: number },
   from: AspectRatio,
   to: AspectRatio,
-): NormalizedPoint {
+): { x: number; y: number } {
   if (from === to) return point;
 
   if (from === '16:9' && to === '9:16') {
     // 横→縦: x_v = y_h, y_v = 100 - x_h
     return {
-      x: Math.max(0, Math.min(100, point.y)),
-      y: Math.max(0, Math.min(100, 100 - point.x)),
+      x: point.y,
+      y: 100 - point.x,
     };
   }
   // 縦→横: x_h = 100 - y_v, y_h = x_v
   return {
-    x: Math.max(0, Math.min(100, 100 - point.y)),
-    y: Math.max(0, Math.min(100, point.x)),
+    x: 100 - point.y,
+    y: point.x,
   };
 }
 
 /** NormalizedPoint 配列に変換を適用 */
 export function transformPoints(
-  points: NormalizedPoint[],
+  points: Array<{ x: number; y: number }>,
   from: AspectRatio,
   to: AspectRatio,
-): NormalizedPoint[] {
+): Array<{ x: number; y: number }> {
   return points.map((p) => transformCoord(p, from, to));
 }
 
@@ -193,7 +193,7 @@ export const ArrowAnnotationSchema = z.object({
     ])
     .default('pass'),
   curveType: z.enum(['straight', 'curved', 'arc']).default('straight'),
-  points: z.array(NormalizedPointSchema).min(2),
+  points: z.array(z.object({ x: z.number(), y: z.number() })).min(2),
   controlPoint: z.object({ x: z.number(), y: z.number() }).optional(),
   color: z
     .string()
@@ -222,14 +222,14 @@ export const ZoneAnnotationSchema = z.object({
     'generic',
   ]),
   shapeType: z.enum(['rect', 'ellipse', 'polygon']).optional(),
-  // 幾何プロパティ (正規化座標 0.0〜100.0)
-  x: z.number().min(0).max(100).optional(),
-  y: z.number().min(0).max(100).optional(),
-  width: z.number().min(0).max(100).optional(),
-  height: z.number().min(0).max(100).optional(),
+  // 幾何プロパティ (自由正規化座標)
+  x: z.number().optional(),
+  y: z.number().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
   rotation: z.number().optional(),
   // 多角形頂点 (polygon 用) または四角形頂点
-  points: z.array(NormalizedPointSchema).default([]),
+  points: z.array(z.object({ x: z.number(), y: z.number() })).default([]),
   isComplete: z.boolean().optional(),
   color: z
     .string()
@@ -248,8 +248,8 @@ export type ZoneAnnotation = z.infer<typeof ZoneAnnotationSchema>;
 export const TextAnnotationSchema = z.object({
   id: z.string(),
   annotationType: z.literal('text'),
-  x: NormalizedCoordSchema,
-  y: NormalizedCoordSchema,
+  x: z.number(),
+  y: z.number(),
   content: z.string().max(200),
   fontSize: z.number().min(8).max(72).default(16),
   color: z
@@ -266,8 +266,8 @@ export type TextAnnotation = z.infer<typeof TextAnnotationSchema>;
 // ─────────────────────────────────────────
 
 export const BallStateSchema = z.object({
-  x: NormalizedCoordSchema,
-  y: NormalizedCoordSchema,
+  x: z.number(),
+  y: z.number(),
   visible: z.boolean().default(true),
 });
 export type BallState = z.infer<typeof BallStateSchema>;

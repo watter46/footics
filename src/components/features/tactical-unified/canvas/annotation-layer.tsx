@@ -43,10 +43,10 @@ function normY(v: number, h: number) {
   return (v / 100) * h;
 }
 function pxToNormX(px: number, w: number) {
-  return Math.max(0, Math.min(100, (px / w) * 100));
+  return (px / w) * 100;
 }
 function pxToNormY(py: number, h: number) {
-  return Math.max(0, Math.min(100, (py / h) * 100));
+  return (py / h) * 100;
 }
 function cpPxToNormX(px: number, w: number) {
   return (px / w) * 100;
@@ -378,12 +378,12 @@ const ArrowObject = React.memo(function ArrowObject({
           if (stage) stage.container().style.cursor = 'default';
 
           const newP0 = {
-            x: Math.max(0, Math.min(100, p0.x + dxNorm)),
-            y: Math.max(0, Math.min(100, p0.y + dyNorm)),
+            x: p0.x + dxNorm,
+            y: p0.y + dyNorm,
           };
           const newP1 = {
-            x: Math.max(0, Math.min(100, p1.x + dxNorm)),
-            y: Math.max(0, Math.min(100, p1.y + dyNorm)),
+            x: p1.x + dxNorm,
+            y: p1.y + dyNorm,
           };
 
           const patch: Partial<ArrowAnnotation> = {
@@ -768,8 +768,8 @@ const ZoneObject = React.memo(function ZoneObject({
           const dyNorm = (dyPx / height) * 100;
 
           const newPts = pts.map((p) => ({
-            x: Math.max(0, Math.min(100, p.x + dxNorm)),
-            y: Math.max(0, Math.min(100, p.y + dyNorm)),
+            x: p.x + dxNorm,
+            y: p.y + dyNorm,
           }));
 
           updateZone(slideId, zone.id, { points: newPts });
