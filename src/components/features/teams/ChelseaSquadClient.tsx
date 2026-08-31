@@ -1,17 +1,8 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import {
-  ChevronDown,
-  Edit3,
-  FolderSync,
-  Loader2,
-  Plus,
-  RefreshCw,
-  Shield,
-  Trash2,
-  Users,
-} from 'lucide-react';
+import { FolderSync, Loader2, Plus, RefreshCw, Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -22,11 +13,23 @@ import {
   type EditablePlayerData,
   EditPlayerDialog,
 } from '@/components/features/teams/EditPlayerDialog';
-import { Badge } from '@/components/ui/badge';
+import {
+  type IdFilterType,
+  SquadFilterBar,
+} from '@/components/features/teams/squad-filter-bar';
+import { SquadHeader } from '@/components/features/teams/squad-header';
+import {
+  type MergedSquadPlayer,
+  SquadPlayerCard,
+} from '@/components/features/teams/squad-player-card';
+import {
+  type PositionCategory,
+  SquadStatsSummary,
+} from '@/components/features/teams/squad-stats-summary';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useChelseaSquad } from '@/hooks/use-chelsea-squad';
 import { useSeasonPlayers } from '@/hooks/use-player-master';
+import { useTeamSquad } from '@/hooks/use-team-squad';
 import { getAllMatches } from '@/lib/db/queries';
 import type { PlayerMaster } from '@/lib/db/schema';
 import {
@@ -35,14 +38,10 @@ import {
   type Season,
 } from '@/lib/tactical/chelsea-preset';
 import { extractAvailableSeasons } from '@/lib/tactical/season-utils';
-import type { Player, StandardPosition } from '@/types';
-import { PlayerPhoto } from './PlayerPhoto';
+import { injectTeamSquadToTactical } from '@/lib/tactical/squad-to-tactical-bridge';
+import type { StandardPosition } from '@/types';
 
-const POSITION_CATEGORIES: Array<{
-  key: StandardPosition;
-  label: string;
-  positions: Array<Player['position']>;
-}> = [
+const POSITION_CATEGORIES: PositionCategory[] = [
   { key: 'GK', label: 'Goalkeepers', positions: ['GK'] },
   { key: 'DF', label: 'Defenders', positions: ['DF', 'DR', 'DC', 'DL'] },
   {
@@ -54,7 +53,14 @@ const POSITION_CATEGORIES: Array<{
   { key: 'Other', label: 'Others', positions: ['Other', 'Sub'] },
 ];
 
-export const ChelseaSquadClient: React.FC = () => {
+export interface TeamSquadClientProps {
+  teamId?: string;
+}
+
+export const ChelseaSquadClient: React.FC<TeamSquadClientProps> = ({
+  teamId = 'chelsea',
+}) => {
+  const router = useRouter();
   const [selectedSeason, setSelectedSeason] = useState<string>(DEFAULT_SEASON);
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState(false);
   const [isCopySeasonOpen, setIsCopySeasonOpen] = useState(false);
@@ -62,9 +68,7 @@ export const ChelseaSquadClient: React.FC = () => {
   const [editingPlayer, setEditingPlayer] = useState<EditablePlayerData | null>(
     null,
   );
-  const [idFilter, setIdFilter] = useState<'all' | 'official' | 'manual'>(
-    'all',
-  );
+  const [idFilter, setIdFilter] = useState<IdFilterType>('all');
 
   // 1. 全試合データから利用可能なシーズン一覧を取得
   const matchesQuery = useQuery({
@@ -78,12 +82,16 @@ export const ChelseaSquadClient: React.FC = () => {
     return extractAvailableSeasons(matches, ['26-27', '25-26', '24-25']);
   }, [matchesQuery.data]);
 
-  // 2. 該当シーズンのチェルシースカッドを取得
+  // 2. 該当チーム・シーズンのスカッドを取得
   const {
-    chelseaPlayers,
+    teamConfig,
+    teamPlayers,
     isLoading: isSquadLoading,
     refetch: refetchSquad,
-  } = useChelseaSquad(selectedSeason);
+  } = useTeamSquad({
+    teamId,
+    season: selectedSeason,
+  });
 
   // 3. PlayerMaster 操作フック
   const {
@@ -93,29 +101,29 @@ export const ChelseaSquadClient: React.FC = () => {
     savePhoto,
     deletePhoto,
     isLoading: isMasterLoading,
-  } = useSeasonPlayers(selectedSeason, 'Chelsea');
+  } = useSeasonPlayers(selectedSeason, teamConfig.shortName);
 
   // 4. マスタ選手情報とスカッド情報を統合したリスト (重複排除・ユニーク化)
-  const mergedPlayers = useMemo(() => {
+  const mergedPlayers: MergedSquadPlayer[] = useMemo(() => {
     const masterMap = new Map<number, PlayerMaster>();
     masterPlayers.forEach((pm) => {
       masterMap.set(pm.playerId, pm);
     });
 
-    const list = chelseaPlayers.map((p) => {
+    const list: MergedSquadPlayer[] = teamPlayers.map((p) => {
       const pm = masterMap.get(p.playerId);
       return {
         ...p,
         name: pm?.name || p.name,
         shirtNo: pm?.defaultShirtNo || p.shirtNo,
-        position: (pm?.position as Player['position']) || p.position,
+        position: (pm?.position as typeof p.position) || p.position,
         photoBlob: pm?.photoBlob,
         photoUrl: pm?.photoUrl,
       };
     });
 
     // 名前および playerId で名寄せ・ユニーク化
-    const uniqueMap = new Map<string, (typeof list)[0]>();
+    const uniqueMap = new Map<string, MergedSquadPlayer>();
     list.forEach((p) => {
       const cleanName = p.name.trim().toLowerCase();
       const existing = uniqueMap.get(cleanName);
@@ -142,7 +150,7 @@ export const ChelseaSquadClient: React.FC = () => {
     });
 
     return Array.from(uniqueMap.values());
-  }, [chelseaPlayers, masterPlayers]);
+  }, [teamPlayers, masterPlayers]);
 
   // フィルター適用後の選手リスト
   const filteredPlayers = useMemo(() => {
@@ -167,7 +175,7 @@ export const ChelseaSquadClient: React.FC = () => {
 
   // ポジションカテゴリ別の選手一覧
   const playersByCategory = useMemo(() => {
-    const map: Record<string, typeof filteredPlayers> = {};
+    const map: Record<string, MergedSquadPlayer[]> = {};
     POSITION_CATEGORIES.forEach((cat) => {
       map[cat.key] = [];
     });
@@ -216,18 +224,19 @@ export const ChelseaSquadClient: React.FC = () => {
       `${selectedSeason} シーズンの選手データを同期中...`,
     );
     try {
-      // プリセット選手を保存
-      const presetSquad =
-        CHELSEA_PRESETS_BY_SEASON[selectedSeason as Season] || [];
-      for (const p of presetSquad) {
-        await savePlayer({
-          playerId: p.playerId,
-          name: p.name,
-          defaultShirtNo: p.shirtNo,
-          position: p.position,
-          season: selectedSeason,
-          teamName: 'Chelsea',
-        });
+      if (teamConfig.id === 'chelsea') {
+        const presetSquad =
+          CHELSEA_PRESETS_BY_SEASON[selectedSeason as Season] || [];
+        for (const p of presetSquad) {
+          await savePlayer({
+            playerId: p.playerId,
+            name: p.name,
+            defaultShirtNo: p.shirtNo,
+            position: p.position,
+            season: selectedSeason,
+            teamName: teamConfig.shortName,
+          });
+        }
       }
 
       refetchSquad();
@@ -240,7 +249,7 @@ export const ChelseaSquadClient: React.FC = () => {
     }
   };
 
-  const handleDeletePlayer = async (player: (typeof mergedPlayers)[0]) => {
+  const handleDeletePlayer = async (player: MergedSquadPlayer) => {
     if (!confirm(`${player.name} を選手リストから削除しますか？`)) {
       return;
     }
@@ -254,196 +263,72 @@ export const ChelseaSquadClient: React.FC = () => {
     }
   };
 
+  const handleEditPlayer = (player: MergedSquadPlayer) => {
+    setEditingPlayer({
+      playerId: player.playerId,
+      name: player.name,
+      shirtNo: player.shirtNo,
+      position: player.position,
+      season: selectedSeason,
+      teamName: teamConfig.shortName,
+    });
+  };
+
+  const handleOpenTacticalCanvas = () => {
+    injectTeamSquadToTactical({
+      teamName: teamConfig.name,
+      team: 'home',
+      players: mergedPlayers,
+      formation: '4-2-3-1',
+      mode: 'half',
+    });
+    toast.success(
+      `${teamConfig.shortName} のスカッドを Tactical Canvas に読み込みました`,
+    );
+    router.push('/tactical');
+  };
+
   const isLoading = isSquadLoading || isMasterLoading;
 
   return (
     <div className="space-y-8">
       {/* Team Header & Control Bar */}
-      <div className="bg-slate-900/70 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-xl shadow-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shadow-inner">
-            <Shield className="w-8 h-8 fill-blue-500/20" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black tracking-tight text-slate-100">
-                Chelsea FC
-              </h1>
-              <Badge
-                variant="outline"
-                className="bg-blue-600/10 border-blue-500/30 text-blue-400 text-[10px] font-bold uppercase tracking-wider"
-              >
-                Premier League
-              </Badge>
-            </div>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">
-              Squad Management & Tactical Preparation
-            </p>
-          </div>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Season Selector */}
-          <div className="relative">
-            <select
-              value={selectedSeason}
-              onChange={(e) => setSelectedSeason(e.target.value)}
-              className="h-10 bg-slate-950/80 border border-slate-700 hover:border-blue-500/60 rounded-xl px-4 text-xs font-bold text-blue-400 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30 pr-9 transition-all shadow-sm"
-              title="シーズン切り替え"
-            >
-              {availableSeasons.map((s) => (
-                <option
-                  key={s}
-                  value={s}
-                  className="bg-slate-900 text-slate-200"
-                >
-                  Season {s}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-
-          {/* Sync from Presets Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSyncSquad}
-            title="プリセット・試合データから選手を再同期"
-            className="h-10 px-3.5 bg-slate-950/80 border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold gap-2"
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden sm:inline">Sync Squad</span>
-          </Button>
-
-          {/* Copy Season Players Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsCopySeasonOpen(true)}
-            title="他のシーズンから選手を引き継ぐ"
-            className="h-10 px-3.5 bg-slate-950/80 border-slate-700 hover:border-blue-500/50 hover:bg-slate-800 text-slate-300 hover:text-blue-300 rounded-xl text-xs font-semibold gap-2 transition-colors"
-          >
-            <FolderSync className="w-3.5 h-3.5 text-blue-400" />
-            <span className="hidden sm:inline">他シーズンから引き継ぐ</span>
-          </Button>
-
-          {/* Tactical Board Modal Button */}
-          <Button
-            size="sm"
-            onClick={() => setIsTacticalBoardOpen(true)}
-            className="h-10 px-4 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 hover:border-blue-400 text-blue-300 rounded-xl text-xs font-bold gap-2 transition-all shadow-sm group"
-          >
-            <Shield className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
-            <span>Tactical Board</span>
-          </Button>
-
-          {/* Add New Player Button */}
-          <Button
-            size="sm"
-            onClick={() => setIsAddPlayerOpen(true)}
-            className="h-10 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold gap-2 shadow-lg shadow-blue-600/25 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Player</span>
-          </Button>
-        </div>
-      </div>
+      <SquadHeader
+        teamName={teamConfig.name}
+        leagueName={teamConfig.league}
+        selectedSeason={selectedSeason}
+        availableSeasons={availableSeasons}
+        onSelectSeason={setSelectedSeason}
+        onSyncSquad={handleSyncSquad}
+        onOpenCopySeason={() => setIsCopySeasonOpen(true)}
+        onOpenTacticalBoard={() => setIsTacticalBoardOpen(true)}
+        onOpenTacticalCanvas={handleOpenTacticalCanvas}
+        onOpenAddPlayer={() => setIsAddPlayerOpen(true)}
+      />
 
       {/* Summary Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <Card className="bg-slate-900/50 border-slate-800/80 p-4 rounded-xl flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-500/20">
-            <Users className="w-4 h-4" />
-          </div>
-          <div>
-            <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">
-              Total Squad
-            </span>
-            <span className="text-xl font-black text-slate-100">
-              {mergedPlayers.length}
-            </span>
-          </div>
-        </Card>
-
-        {POSITION_CATEGORIES.map((cat) => (
-          <Card
-            key={cat.key}
-            className="bg-slate-900/50 border-slate-800/80 p-4 rounded-xl flex items-center gap-3"
-          >
-            <div className="p-2.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700/60">
-              <span className="text-xs font-black">{cat.key}</span>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider truncate">
-                {cat.label}
-              </span>
-              <span className="text-xl font-black text-slate-100">
-                {playersByCategory[cat.key]?.length || 0}
-              </span>
-            </div>
-          </Card>
-        ))}
-      </div>
+      <SquadStatsSummary
+        totalCount={mergedPlayers.length}
+        positionCategories={POSITION_CATEGORIES}
+        playersByCategory={playersByCategory}
+      />
 
       {/* ID Status Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/40 border border-slate-800/60 rounded-xl p-3">
-        <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-          <span>表示フィルター:</span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setIdFilter('all')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
-                idFilter === 'all'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white'
-              }`}
-            >
-              すべて ({mergedPlayers.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setIdFilter('official')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
-                idFilter === 'official'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-slate-800/60 hover:bg-slate-800 text-blue-300 hover:text-blue-200'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-blue-400" />
-              <span>WhoScored 登録済 ({officialCount})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIdFilter('manual')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
-                idFilter === 'manual'
-                  ? 'bg-amber-600 text-white shadow-sm'
-                  : 'bg-slate-800/60 hover:bg-slate-800 text-amber-300 hover:text-amber-200'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <span>ID未登録 (手動) ({manualCount})</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="text-[11px] text-slate-500 font-medium">
-          {idFilter === 'manual' && manualCount > 0 && (
-            <span className="text-amber-400">
-              ※ ID未登録の選手はカードをクリックしてWhoScored IDと紐付けできます
-            </span>
-          )}
-        </div>
-      </div>
+      <SquadFilterBar
+        idFilter={idFilter}
+        onFilterChange={setIdFilter}
+        totalCount={mergedPlayers.length}
+        officialCount={officialCount}
+        manualCount={manualCount}
+      />
 
       {/* Players Categories & Cards Grid */}
       {isLoading ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-          <span className="text-sm font-medium">Loading Chelsea squad...</span>
+          <span className="text-sm font-medium">
+            Loading {teamConfig.shortName} squad...
+          </span>
         </div>
       ) : filteredPlayers.length === 0 ? (
         <Card className="bg-slate-900/30 border-slate-800/60 border-dashed rounded-2xl p-12 text-center space-y-4">
@@ -517,125 +402,29 @@ export const ChelseaSquadClient: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                   {list.map((player) => (
-                    <Card
+                    <SquadPlayerCard
                       key={player.playerId}
-                      onClick={() =>
-                        setEditingPlayer({
+                      player={player}
+                      selectedSeason={selectedSeason}
+                      onEdit={handleEditPlayer}
+                      onDelete={handleDeletePlayer}
+                      onPhotoUpload={async (blob) => {
+                        await savePhoto({
                           playerId: player.playerId,
+                          blob,
                           name: player.name,
-                          shirtNo: player.shirtNo,
-                          position: player.position,
-                          season: selectedSeason,
-                          teamName: 'Chelsea',
-                        })
-                      }
-                      className="bg-slate-900/60 hover:bg-slate-900/90 border-slate-800/80 hover:border-blue-500/50 rounded-2xl p-4 transition-all shadow-md group relative flex items-center justify-between gap-3.5 cursor-pointer hover:shadow-blue-500/5"
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        {/* Player Photo with Upload/Delete Support */}
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <PlayerPhoto
-                            photoBlob={player.photoBlob}
-                            photoUrl={player.photoUrl}
-                            name={player.name}
-                            shirtNo={player.shirtNo}
-                            onPhotoUpload={async (blob) => {
-                              await savePhoto({
-                                playerId: player.playerId,
-                                blob,
-                                name: player.name,
-                              });
+                        });
+                        refetchSquad();
+                      }}
+                      onPhotoDelete={
+                        player.photoBlob || player.photoUrl
+                          ? async () => {
+                              await deletePhoto(player.playerId);
                               refetchSquad();
-                            }}
-                            onPhotoDelete={
-                              player.photoBlob || player.photoUrl
-                                ? async () => {
-                                    await deletePhoto(player.playerId);
-                                    refetchSquad();
-                                  }
-                                : undefined
                             }
-                            size="md"
-                          />
-                        </div>
-
-                        {/* Player Details */}
-                        <div className="min-w-0 flex flex-col">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="font-mono text-xs font-black text-blue-400">
-                              #{player.shirtNo || '99'}
-                            </span>
-                            <Badge
-                              variant="outline"
-                              className="px-1.5 py-0 text-[9px] font-bold uppercase bg-slate-800 text-slate-300 border-slate-700"
-                            >
-                              {player.position}
-                            </Badge>
-                            {player.playerId > 0 ? (
-                              <Badge
-                                variant="outline"
-                                className="px-1.5 py-0 text-[9px] font-mono font-semibold bg-blue-600/10 text-blue-400 border-blue-500/30"
-                                title={`WhoScored 登録選手 (ID: ${player.playerId})`}
-                              >
-                                ID: {player.playerId}
-                              </Badge>
-                            ) : (
-                              <Badge
-                                variant="outline"
-                                className="px-1.5 py-0 text-[9px] font-semibold bg-amber-500/15 text-amber-300 border-amber-500/40"
-                                title="WhoScored未登録の手動追加選手です。クリックしてWhoScored IDを紐付けできます。"
-                              >
-                                ID未登録 (手動)
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 mt-1 min-w-0">
-                            <span
-                              className="text-sm font-bold text-slate-100 truncate group-hover:text-blue-300 transition-colors"
-                              title={player.name}
-                            >
-                              {player.name}
-                            </span>
-                            <Edit3 className="w-3 h-3 text-slate-500 group-hover:text-blue-400 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                          <span className="text-[10px] text-slate-500 font-medium">
-                            Season {selectedSeason}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Action Menu (Edit & Delete) */}
-                      <div
-                        className="flex items-center gap-1 shrink-0"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEditingPlayer({
-                              playerId: player.playerId,
-                              name: player.name,
-                              shirtNo: player.shirtNo,
-                              position: player.position,
-                              season: selectedSeason,
-                              teamName: 'Chelsea',
-                            })
-                          }
-                          title={`${player.name} の情報を編集`}
-                          className="p-2 bg-slate-800/60 hover:bg-blue-600/20 text-slate-400 hover:text-blue-400 rounded-xl transition-all border border-slate-700/50 hover:border-blue-500/40"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeletePlayer(player)}
-                          title={`${player.name} を削除`}
-                          className="p-2 bg-slate-800/60 hover:bg-red-600/20 text-slate-400 hover:text-red-400 rounded-xl transition-all border border-slate-700/50 hover:border-red-500/40 opacity-50 group-hover:opacity-100"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </Card>
+                          : undefined
+                      }
+                    />
                   ))}
                 </div>
               </div>
@@ -679,7 +468,7 @@ export const ChelseaSquadClient: React.FC = () => {
         }}
       />
 
-      {/* Chelsea Tactical Board Modal */}
+      {/* Chelsea / Team Tactical Board Modal */}
       {isTacticalBoardOpen && (
         <ChelseaTacticalBoardModal
           isOpen={isTacticalBoardOpen}

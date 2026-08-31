@@ -1,3 +1,4 @@
+import { ExternalLink } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -27,12 +28,14 @@ export default async function Home() {
               className="h-8 sm:h-12 w-auto"
             />
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar py-0.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 py-0.5">
             <Link
-              href="/players"
-              className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60 hover:border-slate-600 transition-all flex items-center gap-1.5 shrink-0"
+              href="/tactical"
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 hover:border-indigo-400 transition-all flex items-center gap-1.5 shrink-0 shadow-sm"
+              title="Tactical 統合キャンバスを開く"
             >
-              Players
+              <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Tactical</span>
             </Link>
             <TeamsDropdown />
             <ImportMatchButton />

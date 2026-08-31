@@ -4,6 +4,7 @@ import { ChevronDown, Shield, Users } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { SUPPORTED_TEAMS } from '@/lib/tactical/teams-config';
 
 export const TeamsDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,31 +49,34 @@ export const TeamsDropdown: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 rounded-xl shadow-2xl bg-slate-900/95 border border-slate-700/80 backdrop-blur-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-2 w-60 rounded-xl shadow-2xl bg-slate-900/95 border border-slate-700/80 backdrop-blur-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           <div className="px-3.5 py-2 border-b border-slate-800 bg-slate-800/40">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
               Club Teams
             </span>
           </div>
 
-          <div className="p-1.5 flex flex-col gap-1">
-            <Link
-              href="/teams/chelsea"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-200 hover:bg-blue-600/15 hover:text-blue-300 border border-transparent hover:border-blue-500/30 transition-all group"
-            >
-              <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 group-hover:scale-105 group-hover:bg-blue-600/30 transition-all">
-                <Shield className="w-4 h-4 fill-blue-500/20" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-slate-100 group-hover:text-blue-300 transition-colors">
-                  Chelsea FC
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">
-                  Premier League
-                </span>
-              </div>
-            </Link>
+          <div className="p-1.5 flex flex-col gap-1 max-h-72 overflow-y-auto">
+            {SUPPORTED_TEAMS.map((team) => (
+              <Link
+                key={team.id}
+                href={`/teams/${team.id}`}
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-200 hover:bg-blue-600/15 hover:text-blue-300 border border-transparent hover:border-blue-500/30 transition-all group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 group-hover:scale-105 group-hover:bg-blue-600/30 transition-all shrink-0">
+                  <Shield className="w-4 h-4 fill-blue-500/20" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-bold text-slate-100 group-hover:text-blue-300 transition-colors truncate">
+                    {team.name}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium truncate">
+                    {team.league}
+                  </span>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       )}

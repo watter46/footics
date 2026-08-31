@@ -2,12 +2,20 @@
 
 /**
  * player-layer.tsx
- * Konva player markers — D&D / Real-time Attached Objects Follow / Interactive VisionCone / ConnectLine / Badge
+ * Konva player markers — D&D / Real-time Attached Objects Follow / Interactive VisionCone / ConnectLine / Badge / Photo
  */
 
 import type { KonvaEventObject } from 'konva/lib/Node';
-import React, { useRef } from 'react';
-import { Arc, Circle, Group, Line, Rect, Text } from 'react-konva';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Arc,
+  Circle,
+  Group,
+  Image as KonvaImage,
+  Line,
+  Rect,
+  Text,
+} from 'react-konva';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type {
   ArrowAnnotation,
@@ -250,7 +258,7 @@ function BadgeShape({
       <Rect width={bw} height={bh} fill={badge.color} cornerRadius={3} />
       <Text
         x={0}
-        y={1}
+        y={2}
         width={bw}
         text={badge.label}
         fontSize={9}
@@ -262,9 +270,9 @@ function BadgeShape({
   );
 }
 
-// ── ConnectLinesGroup ──────────────────────────────────────────────────
+// ── ConnectLine Group ──────────────────────────────────────────────────
 
-function ConnectLinesGroup({
+function ConnectLineGroup({
   slide,
   stageSize,
   nodesRegistryRef,
@@ -276,64 +284,57 @@ function ConnectLinesGroup({
   onSelectConnectLine?: (playerId: string) => void;
 }) {
   const { width, height } = stageSize;
-  return (
-    <Group>
-      {slide.players
-        .filter((p) => p.area === 'pitch')
-        .flatMap((player) =>
-          player.connectLines
-            .filter((l) => l.visible)
-            .map((line) => {
-              const target = slide.players.find(
-                (p) => p.id === line.toPlayerId,
-              );
-              if (!target || target.area === 'bench') return null;
-              const dash =
-                line.lineStyle === 'dashed'
-                  ? [6, 4]
-                  : line.lineStyle === 'dotted'
-                    ? [2, 4]
-                    : [];
-              const fromX = normX(player.x, width);
-              const fromY = normY(player.y, height);
-              const toX = normX(target.x, width);
-              const toY = normY(target.y, height);
+  const pitchPlayers = slide.players.filter((p) => p.area === 'pitch');
+  const playerMap = new Map(pitchPlayers.map((p) => [p.id, p]));
 
-              const lineColor = line.color || player.style.color || '#3b82f6';
+  return (
+    <Group listening={false}>
+      {pitchPlayers
+        .filter((p) => p.connectLines.length > 0)
+        .flatMap((p) =>
+          p.connectLines
+            .filter((cl) => cl.visible && playerMap.has(cl.toPlayerId))
+            .map((cl) => {
+              const toPlayer = playerMap.get(cl.toPlayerId)!;
+              const x1 = normX(p.x, width);
+              const y1 = normY(p.y, height);
+              const x2 = normX(toPlayer.x, width);
+              const y2 = normY(toPlayer.y, height);
+
+              const dash =
+                cl.lineStyle === 'dashed'
+                  ? [6, 4]
+                  : cl.lineStyle === 'dotted'
+                    ? [2, 3]
+                    : undefined;
 
               return (
                 <Line
-                  key={line.id}
+                  key={cl.id}
                   ref={(node) => {
                     if (nodesRegistryRef) {
                       if (node) {
                         nodesRegistryRef.current.connectLineNodes.set(
-                          line.id,
+                          cl.id,
                           node,
                         );
                       } else {
-                        nodesRegistryRef.current.connectLineNodes.delete(
-                          line.id,
-                        );
+                        nodesRegistryRef.current.connectLineNodes.delete(cl.id);
                       }
                     }
                   }}
-                  points={[fromX, fromY, toX, toY]}
-                  stroke={lineColor}
-                  strokeWidth={line.strokeWidth || 3.5}
-                  shadowColor={lineColor}
-                  shadowBlur={6}
-                  shadowOpacity={0.6}
+                  points={[x1, y1, x2, y2]}
+                  stroke={cl.color}
+                  strokeWidth={cl.strokeWidth ?? 2}
                   dash={dash}
-                  hitStrokeWidth={16}
                   listening={true}
                   onClick={(e) => {
                     e.cancelBubble = true;
-                    onSelectConnectLine?.(player.id);
+                    onSelectConnectLine?.(p.id);
                   }}
                   onTap={(e) => {
                     e.cancelBubble = true;
-                    onSelectConnectLine?.(player.id);
+                    onSelectConnectLine?.(p.id);
                   }}
                 />
               );
@@ -390,6 +391,21 @@ const PlayerMarker = React.memo(function PlayerMarker({
   const displayName = player.name ? getLastName(player.name) : '';
   const labelScale = player.style.labelSizeScale ?? 1.0;
   const numScale = player.style.numberSizeScale ?? 1.0;
+
+  const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
+
+  // 顔写真画像のロード
+  useEffect(() => {
+    if (player.style.insideContent === 'photo' && player.style.photoUrl) {
+      const img = new window.Image();
+      img.src = player.style.photoUrl;
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => setLoadedImage(img);
+      img.onerror = () => setLoadedImage(null);
+    } else {
+      setLoadedImage(null);
+    }
+  }, [player.style.insideContent, player.style.photoUrl]);
 
   const dragGlowRef = useRef<any>(null);
 
@@ -502,20 +518,44 @@ const PlayerMarker = React.memo(function PlayerMarker({
         shadowOpacity={isSelected ? 0.6 : 0}
         perfectDrawEnabled={false}
       />
-      {player.style.insideContent === 'number' && player.shirtNo && (
-        <Text
-          x={-radius}
-          y={-radius * 0.55}
-          width={radius * 2}
-          text={player.shirtNo}
-          fontSize={radius * 0.9 * numScale}
-          fill="#ffffff"
-          align="center"
-          fontStyle="bold"
+
+      {/* 写真表示 (insideContent === 'photo' かつ画像がある場合) */}
+      {player.style.insideContent === 'photo' && loadedImage ? (
+        <Group
           listening={false}
-          perfectDrawEnabled={false}
-        />
+          clipFunc={(ctx) => {
+            ctx.arc(0, 0, radius * 0.88, 0, Math.PI * 2, false);
+          }}
+        >
+          <KonvaImage
+            image={loadedImage}
+            x={-radius * 0.88}
+            y={-radius * 0.88}
+            width={radius * 1.76}
+            height={radius * 1.76}
+            perfectDrawEnabled={false}
+            listening={false}
+          />
+        </Group>
+      ) : (
+        /* 写真がない場合または insideContent === 'number' の場合は背番号を表示 */
+        player.shirtNo && (
+          <Text
+            x={-radius}
+            y={-radius * 0.55}
+            width={radius * 2}
+            text={player.shirtNo}
+            fontSize={radius * 0.9 * numScale}
+            fill="#ffffff"
+            align="center"
+            fontStyle="bold"
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        )
       )}
+
+      {/* プレイヤー名ラベル (白文字 + 黒アウトラインでピッチ上で高視認性) */}
       {player.style.bottomLabel === 'name' && displayName && (
         <Text
           x={-radius * 2}
@@ -525,8 +565,9 @@ const PlayerMarker = React.memo(function PlayerMarker({
           fontSize={radius * 0.65 * labelScale}
           fill="#ffffff"
           stroke="#020617"
-          strokeWidth={1.5}
+          strokeWidth={2}
           align="center"
+          fontStyle="bold"
           listening={false}
           perfectDrawEnabled={false}
         />
@@ -540,8 +581,9 @@ const PlayerMarker = React.memo(function PlayerMarker({
           fontSize={radius * 0.65 * labelScale}
           fill="#ffffff"
           stroke="#020617"
-          strokeWidth={1.5}
+          strokeWidth={2}
           align="center"
+          fontStyle="bold"
           listening={false}
           perfectDrawEnabled={false}
         />
@@ -642,52 +684,11 @@ export function PlayerLayer({
         x: normX(prevPlayer.x, width),
         y: normY(prevPlayer.y, height),
       };
-
-      const baseDim = Math.min(width, height);
-      const sizeScale = prevPlayer.style.sizeScale ?? 1.0;
-      const radius = baseDim * 0.032 * sizeScale;
-      const labelScale = prevPlayer.style.labelSizeScale ?? 1.0;
-      const numScale = prevPlayer.style.numberSizeScale ?? 1.0;
-      const displayName = prevPlayer.name ? getLastName(prevPlayer.name) : '';
-
+      if (ghostGroupRef.current) {
+        ghostGroupRef.current.visible(true);
+      }
       if (ghostMarkerGroupRef.current) {
-        ghostMarkerGroupRef.current.position({
-          x: prevPlayerPx.x,
-          y: prevPlayerPx.y,
-        });
-      }
-      if (ghostCircleRef.current) {
-        ghostCircleRef.current.radius(radius);
-        ghostCircleRef.current.fill(prevPlayer.style.color || '#3b82f6');
-        ghostCircleRef.current.stroke(
-          prevPlayer.style.strokeColor || '#ffffff',
-        );
-        ghostCircleRef.current.strokeWidth(prevPlayer.style.strokeWidth ?? 2);
-      }
-      if (ghostTextRef.current) {
-        const showNum =
-          prevPlayer.style.insideContent === 'number' && prevPlayer.shirtNo;
-        ghostTextRef.current.text(showNum ? prevPlayer.shirtNo : '');
-        ghostTextRef.current.fontSize(radius * 0.9 * numScale);
-        ghostTextRef.current.x(-radius);
-        ghostTextRef.current.y(-radius * 0.55);
-        ghostTextRef.current.width(radius * 2);
-      }
-      if (ghostLabelRef.current) {
-        let labelText = '';
-        if (prevPlayer.style.bottomLabel === 'name' && displayName) {
-          labelText = displayName;
-        } else if (
-          prevPlayer.style.bottomLabel === 'number' &&
-          prevPlayer.shirtNo
-        ) {
-          labelText = `#${prevPlayer.shirtNo}`;
-        }
-        ghostLabelRef.current.text(labelText);
-        ghostLabelRef.current.fontSize(radius * 0.65 * labelScale);
-        ghostLabelRef.current.x(-radius * 2);
-        ghostLabelRef.current.y(radius + 3);
-        ghostLabelRef.current.width(radius * 4);
+        ghostMarkerGroupRef.current.position(prevPlayerPx);
       }
       if (ghostLineRef.current) {
         ghostLineRef.current.points([
@@ -697,41 +698,65 @@ export function PlayerLayer({
           startPx.y,
         ]);
       }
-      if (ghostGroupRef.current) {
-        ghostGroupRef.current.visible(true);
-        ghostGroupRef.current.getLayer()?.batchDraw();
+      if (ghostCircleRef.current) {
+        ghostCircleRef.current.fill(prevPlayer.style.color);
       }
+      if (ghostTextRef.current) {
+        ghostTextRef.current.text(prevPlayer.shirtNo || '');
+      }
+      if (ghostLabelRef.current) {
+        const pName = prevPlayer.name ? getLastName(prevPlayer.name) : '';
+        ghostLabelRef.current.text(pName);
+      }
+      ghostGroupRef.current?.getLayer()?.batchDraw();
     } else {
       if (ghostGroupRef.current) {
         ghostGroupRef.current.visible(false);
+        ghostGroupRef.current.getLayer()?.batchDraw();
       }
     }
 
-    const attachedArrows = slide.arrows
-      .filter(
-        (a) =>
-          a.sourcePlayerId === draggedPlayer.id ||
-          a.targetPlayerId === draggedPlayer.id,
-      )
-      .map((a) => ({
-        arrow: a,
-        isSource: a.sourcePlayerId === draggedPlayer.id,
-        initialP0: {
-          x: normX(a.points[0]?.x ?? 0, width),
-          y: normY(a.points[0]?.y ?? 0, height),
-        },
-        initialP1: {
-          x: normX(a.points[1]?.x ?? 0, width),
-          y: normY(a.points[1]?.y ?? 0, height),
-        },
-        initialCp: a.controlPoint
-          ? {
-              x: normX(a.controlPoint.x, width),
-              y: normY(a.controlPoint.y, height),
-            }
-          : undefined,
-      }));
+    // ドラッグ対象選手に追従する矢印・アノテーションを抽出
+    const attachedArrows: Array<{
+      arrow: ArrowAnnotation;
+      isSource: boolean;
+      initialP0: { x: number; y: number };
+      initialP1: { x: number; y: number };
+      initialCp?: { x: number; y: number };
+    }> = [];
 
+    for (const arrow of slide.arrows) {
+      const isSrc = arrow.sourcePlayerId === draggedPlayer.id;
+      const isTgt = arrow.targetPlayerId === draggedPlayer.id;
+      if (!isSrc && !isTgt) continue;
+
+      const p0 = arrow.points[0] ?? { x: 20, y: 50 };
+      const p1 = arrow.points[1] ?? { x: 40, y: 50 };
+
+      const sPxX = normX(p0.x, width);
+      const sPxY = normY(p0.y, height);
+      const ePxX = normX(p1.x, width);
+      const ePxY = normY(p1.y, height);
+      const cpX = arrow.controlPoint
+        ? normX(arrow.controlPoint.x, width)
+        : undefined;
+      const cpY = arrow.controlPoint
+        ? normY(arrow.controlPoint.y, height)
+        : undefined;
+
+      attachedArrows.push({
+        arrow,
+        isSource: isSrc,
+        initialP0: { x: sPxX, y: sPxY },
+        initialP1: { x: ePxX, y: ePxY },
+        initialCp:
+          cpX !== undefined && cpY !== undefined
+            ? { x: cpX, y: cpY }
+            : undefined,
+      });
+    }
+
+    // ドラッグ対象選手に追従するコネクトラインを抽出
     const attachedConnectLines: Array<{
       lineId: string;
       sourcePlayerId: string;
@@ -849,133 +874,171 @@ export function PlayerLayer({
       }
 
       if (cpX !== undefined && cpY !== undefined) {
-        cpX += dx / 2;
-        cpY += dy / 2;
+        cpX += dx * 0.5;
+        cpY += dy * 0.5;
         if (handles.controlHandleNode) {
           handles.controlHandleNode.position({ x: cpX, y: cpY });
         }
-        handles.node.points(
-          getQuadraticBezierPoints(sPxX, sPxY, cpX, cpY, ePxX, ePxY),
-        );
+      }
+
+      const isDot =
+        entry.arrow.endMarker === 'dot' ||
+        entry.arrow.arrowType === 'route_line';
+      const isCurved =
+        entry.arrow.curveType === 'curved' ||
+        entry.arrow.curveType === 'arc' ||
+        entry.arrow.controlPoint !== undefined;
+
+      if (isDot) {
+        if (!isCurved) {
+          const arrowDx = ePxX - sPxX;
+          const arrowDy = ePxY - sPxY;
+          const len = Math.hypot(arrowDx, arrowDy);
+          const dotR = Math.max(5, entry.arrow.strokeWidth * 1.6);
+          const shortenLen = Math.max(0, len - dotR);
+          const ratio = len > 0 ? shortenLen / len : 0;
+          handles.node.points([
+            sPxX,
+            sPxY,
+            sPxX + arrowDx * ratio,
+            sPxY + arrowDy * ratio,
+          ]);
+        } else if (cpX !== undefined && cpY !== undefined) {
+          const pts = getQuadraticBezierPoints(
+            sPxX,
+            sPxY,
+            cpX,
+            cpY,
+            ePxX,
+            ePxY,
+          );
+          handles.node.points(pts);
+        }
       } else {
-        handles.node.points([sPxX, sPxY, ePxX, ePxY]);
+        if (!isCurved) {
+          handles.node.points([sPxX, sPxY, ePxX, ePxY]);
+        } else if (cpX !== undefined && cpY !== undefined) {
+          const pts = getQuadraticBezierPoints(
+            sPxX,
+            sPxY,
+            cpX,
+            cpY,
+            ePxX,
+            ePxY,
+          );
+          handles.node.points(pts);
+        }
       }
     }
 
-    for (const cl of ctx.attachedConnectLines) {
-      const lineNode = registry.connectLineNodes.get(cl.lineId);
+    // コネクトライン更新
+    for (const entry of ctx.attachedConnectLines) {
+      const lineNode = registry.connectLineNodes.get(entry.lineId);
       if (!lineNode) continue;
-      const pts = [...lineNode.points()];
-      if (cl.isSource) {
-        pts[0] = curX;
-        pts[1] = curY;
+      const pts = lineNode.points();
+      if (pts.length < 4) continue;
+
+      if (entry.isSource) {
+        lineNode.points([curX, curY, pts[2], pts[3]]);
       } else {
-        pts[2] = curX;
-        pts[3] = curY;
+        lineNode.points([pts[0], pts[1], curX, curY]);
       }
-      lineNode.points(pts);
     }
 
+    // ゾーン更新
     for (const entry of ctx.attachedZones) {
-      const zoneNode = registry.zoneNodes.get(entry.zone.id);
-      if (!zoneNode) continue;
-      zoneNode.position({ x: dx, y: dy });
+      const zNode = registry.zoneNodes.get(entry.zone.id);
+      if (!zNode) continue;
+      if (entry.initialX !== undefined && entry.initialY !== undefined) {
+        zNode.position({
+          x: entry.initialX + dx + (zNode.width() ?? 0) / 2,
+          y: entry.initialY + dy + (zNode.height() ?? 0) / 2,
+        });
+      }
     }
 
+    // テキスト更新
     for (const entry of ctx.attachedTexts) {
-      const textNode = registry.textNodes.get(entry.text.id);
-      if (!textNode) continue;
-      textNode.position({ x: entry.initialX + dx, y: entry.initialY + dy });
+      const tNode = registry.textNodes.get(entry.text.id);
+      if (!tNode) continue;
+      tNode.position({
+        x: entry.initialX + dx,
+        y: entry.initialY + dy,
+      });
     }
 
     node.getLayer()?.batchDraw();
-    registry.annotationLayer?.batchDraw();
   };
 
-  const handleDragEnd = (e: KonvaEventObject<DragEvent>, player: Player) => {
-    const ctx = dragContextRef.current;
-    const registry = nodesRegistryRef?.current;
+  const handleDragEnd = (
+    _e: KonvaEventObject<DragEvent>,
+    draggedPlayer: Player,
+  ) => {
+    const { width, height } = stageSize;
+    const node = _e.currentTarget;
+    const finalNormX = Math.max(0, Math.min(100, (node.x() / width) * 100));
+    const finalNormY = Math.max(0, Math.min(100, (node.y() / height) * 100));
 
-    // オニオンスキングループを非表示化
+    movePlayer(activeSlideId, draggedPlayer.id, finalNormX, finalNormY);
+
     if (ghostGroupRef.current) {
       ghostGroupRef.current.visible(false);
       ghostGroupRef.current.getLayer()?.batchDraw();
     }
 
-    if (ctx && registry) {
-      for (const entry of ctx.attachedZones) {
-        const zoneNode = registry.zoneNodes.get(entry.zone.id);
-        if (zoneNode) {
-          zoneNode.position({ x: 0, y: 0 });
-        }
-      }
-    }
     dragContextRef.current = null;
-
-    const node = e.currentTarget;
-    const { width, height } = stageSize;
-    const nx = Math.max(0, Math.min(100, (node.x() / width) * 100));
-    const ny = Math.max(0, Math.min(100, (node.y() / height) * 100));
-
-    movePlayer(activeSlideId, player.id, nx, ny);
   };
 
   return (
     <>
-      {/* ── ドラッグ中限定オニオンスキン (前スライドゴースト & 軌跡プレビュー) ── */}
+      {/* ── オニオンスキン (前スライドゴースト表示 & 軌跡破線) ── */}
       <Group ref={ghostGroupRef} visible={false} listening={false}>
-        {/* 移動ベクトル・軌跡プレビュー線 */}
         <Line
           ref={ghostLineRef}
-          points={[]}
-          stroke="#38bdf8"
-          strokeWidth={2}
-          dash={[5, 4]}
-          opacity={0.65}
-          listening={false}
-          perfectDrawEnabled={false}
+          points={[0, 0, 0, 0]}
+          stroke="#94a3b8"
+          strokeWidth={1.5}
+          dash={[4, 4]}
+          opacity={0.6}
         />
-        {/* 前スライドの半透明ゴーストマーカー */}
-        <Group ref={ghostMarkerGroupRef} listening={false}>
+        <Group ref={ghostMarkerGroupRef} opacity={0.4}>
           <Circle
             ref={ghostCircleRef}
-            radius={15}
-            fill="#3b82f6"
+            radius={Math.min(stageSize.width, stageSize.height) * 0.032}
+            fill="#64748b"
             stroke="#ffffff"
-            strokeWidth={1.5}
-            dash={[4, 3]}
-            opacity={0.35}
-            shadowColor="#000000"
-            shadowBlur={4}
-            shadowOpacity={0.3}
-            listening={false}
-            perfectDrawEnabled={false}
+            strokeWidth={1}
           />
           <Text
             ref={ghostTextRef}
+            x={-Math.min(stageSize.width, stageSize.height) * 0.032}
+            y={-Math.min(stageSize.width, stageSize.height) * 0.032 * 0.55}
+            width={Math.min(stageSize.width, stageSize.height) * 0.032 * 2}
             text=""
+            fontSize={Math.min(stageSize.width, stageSize.height) * 0.032 * 0.9}
             fill="#ffffff"
             align="center"
             fontStyle="bold"
-            opacity={0.65}
-            listening={false}
-            perfectDrawEnabled={false}
           />
           <Text
             ref={ghostLabelRef}
+            x={-Math.min(stageSize.width, stageSize.height) * 0.032 * 2}
+            y={Math.min(stageSize.width, stageSize.height) * 0.032 + 3}
+            width={Math.min(stageSize.width, stageSize.height) * 0.032 * 4}
             text=""
+            fontSize={
+              Math.min(stageSize.width, stageSize.height) * 0.032 * 0.65
+            }
             fill="#ffffff"
+            stroke="#020617"
+            strokeWidth={1.5}
             align="center"
-            opacity={0.65}
-            shadowColor="rgba(0,0,0,0.8)"
-            shadowBlur={3}
-            listening={false}
-            perfectDrawEnabled={false}
           />
         </Group>
       </Group>
 
-      <ConnectLinesGroup
+      {/* ConnectLine Layer */}
+      <ConnectLineGroup
         slide={slide}
         stageSize={stageSize}
         nodesRegistryRef={nodesRegistryRef}

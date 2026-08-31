@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ExternalLink } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -7,9 +7,17 @@ import {
 } from '@/components/features/management';
 import { ChelseaSquadClient } from '@/components/features/teams/ChelseaSquadClient';
 import { TeamsDropdown } from '@/components/layout/TeamsDropdown';
-import logoName from '../logo-name.png';
+import logoName from '../../logo-name.png';
 
-export default function PlayersPage() {
+interface TeamPageProps {
+  params: Promise<{
+    teamId: string;
+  }>;
+}
+
+export default async function TeamDynamicPage({ params }: TeamPageProps) {
+  const { teamId } = await params;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col">
       {/* Top Navigation Bar */}
@@ -38,10 +46,12 @@ export default function PlayersPage() {
 
           <div className="flex items-center gap-2.5">
             <Link
-              href="/players"
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-blue-600/20 text-blue-300 border border-blue-500/60 transition-all"
+              href="/tactical"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 hover:border-indigo-400 transition-all flex items-center gap-1.5 shadow-sm"
+              title="Tactical 統合キャンバスを開く"
             >
-              Players
+              <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Tactical</span>
             </Link>
             <TeamsDropdown />
             <ImportMatchButton />
@@ -52,7 +62,7 @@ export default function PlayersPage() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
-        <ChelseaSquadClient />
+        <ChelseaSquadClient teamId={teamId} />
       </main>
     </div>
   );

@@ -7,7 +7,7 @@
  * Features:
  *  - Home / Away team selection & integrated team color customization
  *  - Full / Half formation presets (from existing Footics formations)
- *  - Extensible season presets (e.g. 2024-25 Season squad)
+ *  - Club presets & Season presets (Chelsea, Man City, Arsenal, etc.)
  *  - Unlimited pitch players list with selection and "Send to Bench"
  *  - Bench/Sub-members list with free D&D to pitch and instant placement
  *  - Add custom sub player
@@ -30,6 +30,12 @@ import {
   type FormationMode,
   type FormationType,
 } from '@/lib/data/formations';
+import {
+  CHELSEA_PRESETS_BY_SEASON,
+  type PresetPlayer,
+} from '@/lib/tactical/chelsea-preset';
+import { injectTeamSquadToTactical } from '@/lib/tactical/squad-to-tactical-bridge';
+import { SUPPORTED_TEAMS } from '@/lib/tactical/teams-config';
 import type { SeasonFormationPreset } from '@/lib/types/tactical-unified';
 import {
   selectActiveSlide,
@@ -153,6 +159,35 @@ export function FormationSubPanel() {
       },
       activeSlideId,
     );
+  };
+
+  const handleApplyClubPreset = (teamSlug: string) => {
+    if (teamSlug === 'chelsea') {
+      const chelseaPreset =
+        CHELSEA_PRESETS_BY_SEASON['26-27'] ||
+        CHELSEA_PRESETS_BY_SEASON['24-25'] ||
+        [];
+      injectTeamSquadToTactical({
+        teamName: 'Chelsea FC',
+        team: activeTeam,
+        players: chelseaPreset.map((p: PresetPlayer) => ({
+          playerId: p.playerId,
+          name: p.name,
+          shirtNo: p.shirtNo,
+          position: p.position,
+          isFirstEleven: !!p.isFirstEleven,
+          field: activeTeam,
+          stats: {},
+          height: 180,
+          weight: 75,
+          age: 24,
+          isManOfTheMatch: false,
+        })),
+        formation: '4-2-3-1',
+        mode: formationMode,
+        slideId: activeSlideId,
+      });
+    }
   };
 
   const handleAddSub = (e: React.FormEvent) => {
@@ -341,8 +376,8 @@ export function FormationSubPanel() {
             ))}
           </div>
 
-          {/* Season Presets (Extensible) */}
-          <div>
+          {/* Registered Club & Season Presets */}
+          <div className="space-y-1.5">
             <button
               type="button"
               onClick={() => setShowSeasonPresets((v) => !v)}
@@ -350,7 +385,7 @@ export function FormationSubPanel() {
             >
               <span className="flex items-center gap-1.5">
                 <Shield size={12} className="text-amber-400" />
-                Season Presets ({SAMPLE_SEASON_PRESETS.length})
+                Club & Season Presets
               </span>
               <ChevronDown
                 size={12}
@@ -359,20 +394,48 @@ export function FormationSubPanel() {
             </button>
 
             {showSeasonPresets && (
-              <div className="space-y-1 mt-1 p-1.5 bg-black/40 rounded border border-white/10">
-                {SAMPLE_SEASON_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handleApplySeasonPreset(preset)}
-                    className="flex items-center justify-between w-full px-2 py-1.5 rounded bg-white/5 hover:bg-white/15 text-left text-[11px] text-white/80 hover:text-white transition-colors"
-                  >
-                    <span className="font-medium">{preset.name}</span>
-                    <span className="text-[10px] text-white/40">
-                      {preset.season}
-                    </span>
-                  </button>
-                ))}
+              <div className="space-y-2 mt-1 p-2 bg-black/40 rounded border border-white/10">
+                {/* Registered Clubs quick load */}
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-white/40 block mb-1">
+                    Registered Clubs
+                  </span>
+                  <div className="grid grid-cols-2 gap-1">
+                    {SUPPORTED_TEAMS.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => handleApplyClubPreset(t.id)}
+                        className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-blue-600/20 hover:text-blue-300 text-left text-[10px] text-white/80 transition-colors truncate"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                        <span className="truncate">{t.shortName}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sample Presets */}
+                <div className="pt-1.5 border-t border-white/5">
+                  <span className="text-[10px] uppercase font-bold text-white/40 block mb-1">
+                    Tactical Presets
+                  </span>
+                  <div className="space-y-1">
+                    {SAMPLE_SEASON_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => handleApplySeasonPreset(preset)}
+                        className="flex items-center justify-between w-full px-2 py-1 rounded bg-white/5 hover:bg-white/15 text-left text-[11px] text-white/80 hover:text-white transition-colors"
+                      >
+                        <span className="font-medium">{preset.name}</span>
+                        <span className="text-[10px] text-white/40">
+                          {preset.season}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -450,7 +513,7 @@ export function FormationSubPanel() {
               </div>
               <input
                 type="text"
-                placeholder="Player Name (e.g. Player A)"
+                placeholder="Player Name"
                 value={newSubName}
                 onChange={(e) => setNewSubName(e.target.value)}
                 className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs"
@@ -458,90 +521,139 @@ export function FormationSubPanel() {
             </form>
           )}
 
-          {/* Bench Players Grid */}
-          <div className="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto custom-scrollbar p-1 rounded-lg border border-dashed border-white/10 bg-black/20">
-            {teamPlayers.bench.map((player) => (
+          {/* Bench Players list */}
+          {teamPlayers.bench.length === 0 ? (
+            <div className="p-3 rounded border border-dashed border-white/10 text-center text-white/30 text-[11px]">
+              No substitutes.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto custom-scrollbar">
+              {teamPlayers.bench.map((player) => (
+                <div
+                  key={player.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(
+                      'application/json',
+                      JSON.stringify({
+                        type: 'sub-player',
+                        playerId: player.id,
+                        shirtNo: player.shirtNo,
+                        name: player.name,
+                      }),
+                    );
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  className="flex items-center justify-between p-1.5 rounded bg-white/5 hover:bg-white/10 border border-white/5 cursor-grab active:cursor-grabbing group transition-all"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] text-white shrink-0 shadow-sm"
+                      style={{ backgroundColor: teamColor }}
+                    >
+                      {player.shirtNo || '—'}
+                    </span>
+                    <span className="font-medium truncate text-white/90">
+                      {player.name ||
+                        player.position ||
+                        `Player ${player.shirtNo}`}
+                    </span>
+                    {player.position && (
+                      <span className="text-[9px] px-1 rounded bg-white/10 text-white/60">
+                        {player.position}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        movePlayerToPitch(activeSlideId, player.id)
+                      }
+                      className="px-1.5 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-[10px] text-white font-medium"
+                      title="Place on pitch"
+                    >
+                      Pitch
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removePlayer(activeSlideId, player.id)}
+                      className="p-1 rounded hover:bg-red-500/20 text-white/40 hover:text-red-400"
+                      title="Remove"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 4. Pitch Players List (Unlimited) */}
+        <div className="p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
+              On Pitch ({teamPlayers.pitch.length})
+            </span>
+          </div>
+
+          <div className="space-y-1 max-h-56 overflow-y-auto custom-scrollbar">
+            {teamPlayers.pitch.map((player) => (
               <div
                 key={player.id}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData(
-                    'application/json',
-                    JSON.stringify({
-                      playerId: player.id,
-                      type: 'bench-player',
-                    }),
-                  );
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    const defaultX =
-                      activeTeam === 'home'
-                        ? 30 + Math.random() * 15
-                        : 70 - Math.random() * 15;
-                    const defaultY = 30 + Math.random() * 40;
-                    movePlayerToPitch(
-                      activeSlideId,
-                      player.id,
-                      defaultX,
-                      defaultY,
-                    );
-                    selectObject({ id: player.id, kind: 'player' });
-                    setRightPanelTab('inspector');
-                  }
-                }}
                 onClick={() => {
-                  const defaultX =
-                    activeTeam === 'home'
-                      ? 30 + Math.random() * 15
-                      : 70 - Math.random() * 15;
-                  const defaultY = 30 + Math.random() * 40;
-                  movePlayerToPitch(
-                    activeSlideId,
-                    player.id,
-                    defaultX,
-                    defaultY,
-                  );
                   selectObject({ id: player.id, kind: 'player' });
                   setRightPanelTab('inspector');
                 }}
-                className="flex items-center gap-1.5 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 cursor-pointer text-white/90 transition-all select-none group relative"
-                title="Click to place on pitch & edit properties"
+                className="flex items-center justify-between p-1.5 rounded bg-white/[0.03] hover:bg-white/10 border border-white/5 cursor-pointer group transition-all"
               >
-                <span
-                  className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 border border-white/20 opacity-80"
-                  style={{ backgroundColor: teamColor }}
-                >
-                  {player.shirtNo || '•'}
-                </span>
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="truncate text-[11px] font-medium leading-tight">
-                    {player.name}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] text-white shrink-0 shadow-sm"
+                    style={{ backgroundColor: teamColor }}
+                  >
+                    {player.shirtNo || '—'}
                   </span>
-                  <span className="text-[9px] text-white/40 font-mono">
-                    {player.position || 'SUB'}
+                  <span className="font-medium truncate text-white/90">
+                    {player.name ||
+                      player.position ||
+                      `Player ${player.shirtNo}`}
                   </span>
+                  {player.position && (
+                    <span className="text-[9px] px-1 rounded bg-white/10 text-white/60">
+                      {player.position}
+                    </span>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removePlayer(activeSlideId, player.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-opacity"
-                  title="Delete"
-                >
-                  <Trash2 size={10} />
-                </button>
+
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      movePlayerToBench(activeSlideId, player.id);
+                    }}
+                    className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px] text-white/70 hover:text-white"
+                    title="Send to bench"
+                  >
+                    Bench
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removePlayer(activeSlideId, player.id);
+                    }}
+                    className="p-1 rounded hover:bg-red-500/20 text-white/40 hover:text-red-400"
+                    title="Remove"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
               </div>
             ))}
-
-            {teamPlayers.bench.length === 0 && (
-              <div className="col-span-2 py-6 text-center text-white/40 text-xs italic">
-                No substitutes yet (Click "+ Add" to create)
-              </div>
-            )}
           </div>
         </div>
       </div>
