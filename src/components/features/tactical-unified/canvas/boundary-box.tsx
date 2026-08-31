@@ -12,7 +12,10 @@
 
 import React, { useCallback } from 'react';
 import { Circle, Group, Rect } from 'react-konva';
-import type { BoundaryBox as BoundaryBoxType } from '@/lib/types/tactical-unified';
+import {
+  type BoundaryBox as BoundaryBoxType,
+  DEFAULT_BOUNDARY_BOX_16_9,
+} from '@/lib/types/tactical-unified';
 import { normToPx, pxToNorm } from './unified-canvas';
 
 interface BoundaryBoxProps {
@@ -30,14 +33,8 @@ export const BoundaryBox = React.memo(function BoundaryBox({
 }: BoundaryBoxProps) {
   const { width, height } = stageSize;
 
-  // Default to full canvas if not set
-  const box: BoundaryBoxType = boundaryBox ?? {
-    x: 0,
-    y: 0,
-    width: 100,
-    height: 100,
-    enabled: true,
-  };
+  // Default to pitch line fit boundary box if not set
+  const box: BoundaryBoxType = boundaryBox ?? DEFAULT_BOUNDARY_BOX_16_9;
 
   const pxX = normToPx(box.x, width);
   const pxY = normToPx(box.y, height);

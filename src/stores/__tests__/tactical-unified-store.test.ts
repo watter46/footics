@@ -568,7 +568,31 @@ describe('tactical-unified-store', () => {
     expect(useTacticalUnifiedStore.getState().continuousDrawing).toBe(false);
   });
 
-  it('autoFitBoundaryBox でピッチの白線の外側に均等な余白を持たせてフィットする', () => {
+  it('初期スライドおよび addSlide 時にピッチ白線フィット境界線がデフォルトで設定される', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const initialSlide = store.project.slides[0];
+    expect(initialSlide?.boundaryBox).toEqual({
+      x: 7.25,
+      y: 0.43,
+      width: 85.5,
+      height: 99.14,
+      enabled: true,
+    });
+
+    const newSlideId = store.addSlide(undefined, 'blank');
+    const newSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === newSlideId);
+    expect(newSlide?.boundaryBox).toEqual({
+      x: 7.25,
+      y: 0.43,
+      width: 85.5,
+      height: 99.14,
+      enabled: true,
+    });
+  });
+
+  it('autoFitBoundaryBox でピッチの白線の外側に均等な余白を持たせてフィットする (横向き・縦向き)', () => {
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.activeSlideId;
     store.setBoundaryBox(slideId, {
@@ -580,7 +604,7 @@ describe('tactical-unified-store', () => {
     });
 
     store.autoFitBoundaryBox(slideId);
-    const slide = useTacticalUnifiedStore
+    let slide = useTacticalUnifiedStore
       .getState()
       .project.slides.find((s) => s.id === slideId);
     expect(slide?.boundaryBox).toEqual({
@@ -588,6 +612,27 @@ describe('tactical-unified-store', () => {
       y: 0.43,
       width: 85.5,
       height: 99.14,
+      enabled: true,
+    });
+
+    // 縦向き (9:16)
+    store.setAspectRatio('9:16');
+    store.setBoundaryBox(slideId, {
+      x: 10,
+      y: 10,
+      width: 50,
+      height: 50,
+      enabled: true,
+    });
+    store.autoFitBoundaryBox(slideId);
+    slide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(slide?.boundaryBox).toEqual({
+      x: 0.43,
+      y: 7.25,
+      width: 99.14,
+      height: 85.5,
       enabled: true,
     });
   });

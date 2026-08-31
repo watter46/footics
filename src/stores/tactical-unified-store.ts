@@ -41,6 +41,8 @@ import {
   createDefaultPlayer,
   createDefaultProject,
   createDefaultSlide,
+  DEFAULT_BOUNDARY_BOX_9_16,
+  DEFAULT_BOUNDARY_BOX_16_9,
   transformCoord,
   transformPoints,
 } from '@/lib/types/tactical-unified';
@@ -922,6 +924,10 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     resetSlideObjects: (slideId) =>
       set((s) => {
         const targetSlideId = slideId ?? s.activeSlideId;
+        const isVertical = s.project.aspectRatio === '9:16';
+        const defaultBox = isVertical
+          ? DEFAULT_BOUNDARY_BOX_9_16
+          : DEFAULT_BOUNDARY_BOX_16_9;
         return {
           ...recordHistory(s),
           project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
@@ -937,7 +943,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
               focus: undefined,
               trajectory: undefined,
             })),
-            boundaryBox: { x: 0, y: 0, width: 100, height: 100, enabled: true },
+            boundaryBox: { ...defaultBox },
           })),
           selectedObjects: [],
           activeMarkerOptionTab: null,
@@ -1039,11 +1045,16 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
       let newSlide: Slide;
 
       if (!currentSlide || mode === 'blank') {
+        const defaultBox =
+          p.aspectRatio === '9:16'
+            ? DEFAULT_BOUNDARY_BOX_9_16
+            : DEFAULT_BOUNDARY_BOX_16_9;
         newSlide = createDefaultSlide(
           p.slides.length,
           undefined,
           p.homeColor.primary,
           p.awayColor.primary,
+          defaultBox,
         );
       } else if (mode === 'full') {
         newSlide = {
@@ -1061,6 +1072,11 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           focus: undefined,
         }));
 
+        const defaultBox =
+          p.aspectRatio === '9:16'
+            ? DEFAULT_BOUNDARY_BOX_9_16
+            : DEFAULT_BOUNDARY_BOX_16_9;
+
         newSlide = {
           id: crypto.randomUUID(),
           index: p.slides.length,
@@ -1074,7 +1090,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             : { x: 50, y: 50, visible: true },
           boundaryBox: currentSlide.boundaryBox
             ? { ...currentSlide.boundaryBox }
-            : undefined,
+            : { ...defaultBox },
           transitionDurationMs: currentSlide.transitionDurationMs ?? 1000,
           pauseMs: currentSlide.pauseMs ?? 500,
           easing: currentSlide.easing ?? 'ease-in-out',

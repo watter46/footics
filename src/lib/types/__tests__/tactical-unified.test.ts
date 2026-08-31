@@ -100,5 +100,12 @@ describe('SlideSchema', () => {
     const slide = createDefaultSlide(0);
     const result = SlideSchema.safeParse(slide);
     expect(result.success).toBe(true);
+    expect(slide.boundaryBox).toEqual({
+      x: 7.25,
+      y: 0.43,
+      width: 85.5,
+      height: 99.14,
+      enabled: true,
+    });
   });
 });

@@ -36,19 +36,24 @@ export function transformCoord(
   from: AspectRatio,
   to: AspectRatio,
 ): { x: number; y: number } {
-  if (from === to) return point;
+  if (from === to) {
+    return {
+      x: Math.max(0, Math.min(100, point.x)),
+      y: Math.max(0, Math.min(100, point.y)),
+    };
+  }
 
   if (from === '16:9' && to === '9:16') {
     // 横→縦: x_v = y_h, y_v = 100 - x_h
     return {
-      x: point.y,
-      y: 100 - point.x,
+      x: Math.max(0, Math.min(100, point.y)),
+      y: Math.max(0, Math.min(100, 100 - point.x)),
     };
   }
   // 縦→横: x_h = 100 - y_v, y_h = x_v
   return {
-    x: 100 - point.y,
-    y: point.x,
+    x: Math.max(0, Math.min(100, 100 - point.y)),
+    y: Math.max(0, Math.min(100, point.x)),
   };
 }
 
@@ -150,7 +155,9 @@ export type PlayerFocus = z.infer<typeof PlayerFocusSchema>;
 
 /** 選手移動軌道 (ベジェ曲線 / 直線) */
 export const PlayerTrajectorySchema = z.object({
-  type: z.enum(['straight', 'arc_left', 'arc_right', 'custom']).default('straight'),
+  type: z
+    .enum(['straight', 'arc_left', 'arc_right', 'custom'])
+    .default('straight'),
   curveOffset: z.number().optional(),
   controlPoint: z.object({ x: z.number(), y: z.number() }).optional(),
 });
@@ -293,6 +300,27 @@ export const BoundaryBoxSchema = z.object({
   enabled: z.boolean().default(true),
 });
 export type BoundaryBox = z.infer<typeof BoundaryBoxSchema>;
+
+/** ピッチ白線フィット境界線のデフォルト値 (16:9 横向き) */
+export const DEFAULT_BOUNDARY_BOX_16_9: BoundaryBox = {
+  x: 7.25,
+  y: 0.43,
+  width: 85.5,
+  height: 99.14,
+  enabled: true,
+};
+
+/** ピッチ白線フィット境界線のデフォルト値 (9:16 縦向き) */
+export const DEFAULT_BOUNDARY_BOX_9_16: BoundaryBox = {
+  x: 0.43,
+  y: 7.25,
+  width: 99.14,
+  height: 85.5,
+  enabled: true,
+};
+
+/** 標準デフォルト境界線 (16:9) */
+export const DEFAULT_BOUNDARY_BOX = DEFAULT_BOUNDARY_BOX_16_9;
 
 export const EasingSchema = z.enum([
   'linear',
@@ -539,6 +567,7 @@ export function createDefaultProject(id: string): TacticalProject {
     homeColor,
     awayColor,
     activeSlideId: slideId,
+    boundaryBox: { ...DEFAULT_BOUNDARY_BOX_16_9 },
     slides: [
       createDefaultSlide(0, slideId, homeColor.primary, awayColor.primary),
     ],
@@ -551,6 +580,7 @@ export function createDefaultSlide(
   id?: string,
   homeColor?: string,
   awayColor?: string,
+  boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_16_9,
 ): Slide {
   return {
     id: id ?? crypto.randomUUID(),
@@ -561,6 +591,7 @@ export function createDefaultSlide(
     zones: [],
     texts: [],
     ball: { x: 50, y: 50, visible: true },
+    boundaryBox: { ...boundaryBox },
     transitionDurationMs: 1000,
     pauseMs: 500,
     easing: 'ease-in-out',
