@@ -1129,19 +1129,6 @@ export function UnifiedCanvas() {
           </Layer>
         )}
 
-        {/* ボール */}
-        <Layer
-          ref={(node) => {
-            nodesRegistryRef.current.ballLayer = node;
-          }}
-        >
-          <BallObject
-            ball={activeSlide.ball}
-            stageSize={stageSize}
-            nodesRegistryRef={nodesRegistryRef}
-          />
-        </Layer>
-
         {/* 選手レイヤー */}
         <Layer
           ref={(node) => {
@@ -1150,6 +1137,19 @@ export function UnifiedCanvas() {
         >
           <PlayerLayer
             slide={activeSlide}
+            stageSize={stageSize}
+            nodesRegistryRef={nodesRegistryRef}
+          />
+        </Layer>
+
+        {/* ボール */}
+        <Layer
+          ref={(node) => {
+            nodesRegistryRef.current.ballLayer = node;
+          }}
+        >
+          <BallObject
+            ball={activeSlide.ball}
             stageSize={stageSize}
             nodesRegistryRef={nodesRegistryRef}
           />

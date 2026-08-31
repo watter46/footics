@@ -33,8 +33,13 @@
 | **AAWU 5-5-A** | 🔀 **Stabilized Multi-Player Drag & Selection UX** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/stores/tactical-unified-store.ts` | 複数選択した選手を1人ドラッグした際、全員が滑らかにデルタ追従移動し、ドロップ時に一括確定する安定したUI/UXへの再構築。 | **DONE** ✅ |
 | **AAWU 5-5-B** | 📊 **4-Position Grouping (GK/DF/MF/FW) & Pitch/Bench Swap** | `regista-frontend` | `src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/lib/tactical/player-formatting.ts` | スカッド/サブメンバー一覧およびピッチ上の選手リストを「GK / DF / MF / FW」の4ポジションにグルーピング表示。ピッチ⇄ベンチ間の入れ替えでもカテゴリを崩さず視覚的に整理。 | **DONE** ✅ |
 | **AAWU 5-5-C** | 🪢 **Interactive Ghost Marker Trajectory with Curve Pointer** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/tactical/trajectory.ts`<br>`src/stores/tactical-unified-store.ts` | 選手マーカー選択中に「前スライドのゴースト位置」と「移動矢印」を常時表示。AAWU 5-1 の汎用曲線ポインタを用いて移動軌道を直感的にドラッグ変形・カスタム補間可能にする。 | **DONE** ✅ |
-| **AAWU 5-6** | ⚽ **Ball Z-Index & Layer Fronting** | `regista-canvas` | `src/components/features/tactical-unified/canvas/unified-canvas.tsx` | ボールレイヤーを最前面（PlayerLayer より上）に配置変更し、ボールが選手マーカーの下に埋もれる視覚的吸着・隠れ問題を解消。 | **READY** 📋 |
+| **AAWU 5-6** | ⚽ **Ball Z-Index & Layer Fronting** | `regista-canvas` | `src/components/features/tactical-unified/canvas/unified-canvas.tsx` | ボールレイヤーを最前面（PlayerLayer より上）に配置変更し、ボールが選手マーカーの下に埋もれる視覚的吸着・隠れ問題を解消。 | **DONE** ✅ |
 | **AAWU 5-7** | 🏹 **Immediate Drag for Lines & Arrows (Direct Grab & Drag)** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx` | Line・矢印系オブジェクトを「未選択状態」からでも直接ドラッグ開始可能にし、ドラッグ開始時に自動選択＋シームレスに移動させる。 | **READY** 📋 |
+
+- **2026-08-31**: [AAWU 5-6 Complete: Ball Z-Index & Layer Fronting]
+  1. **Konva Stage 内レイヤー描画順序の再構成**: `unified-canvas.tsx` 内の `<Layer>` 描画順序を変更し、`<Layer ref={nodesRegistryRef.current.ballLayer}>`（ボール）を `<Layer ref={nodesRegistryRef.current.playerLayer}>`（選手）の後に配置。
+  2. **視覚的吸着・隠れの解消と操作性担保**: ボールが常に選手マーカー（および選択枠・ゴースト軌道）の手前（最前面）に描画されるようにし、選手サークルの下にボールが潜り込む問題を解消。選手マーカーと重なった状態でもボール単体の視認とドラッグ操作が阻害されないUXを確立。
+  3. Scoped 型チェック、Biome チェック、Tactical 関連 Vitest テスト全69件完全パスを達成。
 
 - **2026-08-31**: [AAWU 5-2-DUP Complete: Instant Duplicate on Canvas (Ctrl+D)]
   1. **ストア内 1トランザクション即時複製 (`duplicateSelectedObjects`)**: `tactical-unified-store.ts` に `duplicateSelectedObjects(slideId)` を実装。選択中のオブジェクト（選手・矢印・ゾーン・テキスト）の抽出、一意な新規UUID発行、+3% 座標オフセット配置、同時複製要素間の参照リマップ（`ConnectLine` の `toPlayerId`、矢印の `sourcePlayerId`/`targetPlayerId`）、新規オブジェクトの選択状態同期、Undo履歴保存を単一トランザクションでアトミックに実行。
