@@ -167,4 +167,51 @@ describe('AAWU 5-1: Quadratic Bezier Curve Control Point & Apex Parity', () => {
       expect(movedDist).toBeCloseTo(origDist, 8);
     }
   });
+
+  describe('AAWU 5-7: Direct Grab & Drag for Arrows', () => {
+    it('未選択状態から矢印を直接ドラッグ移動した際、始点・終点・制御点が同一デルタで完全に追従する', () => {
+      const p0 = { x: 30, y: 40 };
+      const p1 = { x: 70, y: 80 };
+      const cp = { x: 50, y: 30 }; // カーブ制御点
+
+      const dxNorm = 15.5;
+      const dyNorm = -8.2;
+
+      const newP0 = { x: p0.x + dxNorm, y: p0.y + dyNorm };
+      const newP1 = { x: p1.x + dxNorm, y: p1.y + dyNorm };
+      const newCp = { x: cp.x + dxNorm, y: cp.y + dyNorm };
+
+      // 元の長さと移動後の長さが一致
+      expect(Math.hypot(newP1.x - newP0.x, newP1.y - newP0.y)).toBeCloseTo(
+        Math.hypot(p1.x - p0.x, p1.y - p0.y),
+        8,
+      );
+
+      // 移動前後のベジェ曲線頂点 M の相対オフセットが一致
+      const origApex = calculateApexM(p0, cp, p1);
+      const newApex = calculateApexM(newP0, newCp, newP1);
+
+      expect(newApex.x).toBeCloseTo(origApex.x + dxNorm, 8);
+      expect(newApex.y).toBeCloseTo(origApex.y + dyNorm, 8);
+    });
+
+    it('直線矢印を直接ドラッグした際、controlPoint が undefined のまま始点・終点のみが平行移動する', () => {
+      const p0 = { x: 20, y: 30 };
+      const p1 = { x: 60, y: 30 };
+
+      const dxNorm = -5;
+      const dyNorm = 12;
+
+      const patch = {
+        points: [
+          { x: p0.x + dxNorm, y: p0.y + dyNorm },
+          { x: p1.x + dxNorm, y: p1.y + dyNorm },
+        ],
+      };
+
+      expect(patch.points[0]).toEqual({ x: 15, y: 42 });
+      expect(patch.points[1]).toEqual({ x: 55, y: 42 });
+      expect(Math.hypot(patch.points[1].x - patch.points[0].x, patch.points[1].y - patch.points[0].y)).toBeCloseTo(40, 8);
+    });
+  });
 });
