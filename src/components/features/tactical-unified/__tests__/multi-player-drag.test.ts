@@ -301,5 +301,58 @@ describe('AAWU 5-5-A: Stabilized Multi-Player Drag & Selection UX', () => {
         { id: p2.id, kind: 'player' },
       ]);
     });
+
+    it('範囲選択 (selectObjects multi=false) で囲まれた複数オブジェクトを一括選択できる', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const p1 = createDefaultPlayer('home', 20, 20, '#034694');
+      const p2 = createDefaultPlayer('home', 35, 35, '#034694');
+      const p3 = createDefaultPlayer('away', 80, 80, '#ef4444');
+      store.addPlayer(p1);
+      store.addPlayer(p2);
+      store.addPlayer(p3);
+
+      // 範囲 (10, 10) 〜 (50, 50) に含まれる p1 と p2 を一括選択
+      store.selectObjects([
+        { id: p1.id, kind: 'player' },
+        { id: p2.id, kind: 'player' },
+      ]);
+
+      expect(useTacticalUnifiedStore.getState().selectedObjects).toEqual([
+        { id: p1.id, kind: 'player' },
+        { id: p2.id, kind: 'player' },
+      ]);
+
+      // 空配列を渡すと選択解除
+      store.selectObjects([]);
+      expect(useTacticalUnifiedStore.getState().selectedObjects).toEqual([]);
+    });
+
+    it('Shift キーを押しながらの範囲選択 (selectObjects multi=true) で既存選択に追加できる', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const p1 = createDefaultPlayer('home', 20, 20, '#034694');
+      const p2 = createDefaultPlayer('home', 40, 40, '#034694');
+      const p3 = createDefaultPlayer('away', 60, 60, '#ef4444');
+      store.addPlayer(p1);
+      store.addPlayer(p2);
+      store.addPlayer(p3);
+
+      // 初期選択: p1
+      store.selectObject({ id: p1.id, kind: 'player' }, false);
+
+      // Shift+範囲選択で p2, p3 を追加
+      store.selectObjects(
+        [
+          { id: p2.id, kind: 'player' },
+          { id: p3.id, kind: 'player' },
+        ],
+        true,
+      );
+
+      expect(useTacticalUnifiedStore.getState().selectedObjects).toEqual([
+        { id: p1.id, kind: 'player' },
+        { id: p2.id, kind: 'player' },
+        { id: p3.id, kind: 'player' },
+      ]);
+    });
   });
 });

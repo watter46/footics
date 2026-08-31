@@ -330,6 +330,7 @@ interface TacticalUnifiedState {
 
   // ─ 選択 & クリップボード
   selectObject: (obj: SelectedObject | null, multi?: boolean) => void;
+  selectObjects: (objects: SelectedObject[], multi?: boolean) => void;
   clearSelection: () => void;
   setActiveTool: (tool: DrawingTool) => void;
   copySelectedObjects: (slideId?: string) => void;
@@ -1852,6 +1853,40 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           panels: {
             ...s.panels,
             inspectorOpen: true,
+            rightPanelTab: 'inspector',
+          },
+        };
+      }),
+
+    selectObjects: (objects, multi = false) =>
+      set((s) => {
+        if (objects.length === 0 && !multi) {
+          return {
+            selectedObjects: [],
+            activeMarkerOptionTab: null,
+          };
+        }
+        if (multi) {
+          const existingIds = new Set(s.selectedObjects.map((o) => o.id));
+          const newItems = objects.filter((o) => !existingIds.has(o.id));
+          return {
+            selectedObjects: [...s.selectedObjects, ...newItems],
+            panels: {
+              ...s.panels,
+              inspectorOpen: objects.length > 0 || s.selectedObjects.length > 0,
+              rightPanelTab: 'inspector',
+            },
+          };
+        }
+        return {
+          selectedObjects: objects,
+          activeMarkerOptionTab:
+            objects.length === 1 && objects[0].kind === 'player'
+              ? 'vision'
+              : null,
+          panels: {
+            ...s.panels,
+            inspectorOpen: objects.length > 0,
             rightPanelTab: 'inspector',
           },
         };

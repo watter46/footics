@@ -15,9 +15,10 @@
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Arrow, Circle, Group, Layer, Line, Stage } from 'react-konva';
+import { Arrow, Circle, Group, Layer, Line, Rect, Stage } from 'react-konva';
 import type { ExportTarget } from '@/lib/types/tactical-unified';
 import {
+  type SelectedObject,
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/stores/tactical-unified-store';
@@ -169,6 +170,7 @@ export function UnifiedCanvas() {
   const updateZone = useTacticalUnifiedStore((s) => s.updateZone);
   const removeZone = useTacticalUnifiedStore((s) => s.removeZone);
   const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
+  const selectObjects = useTacticalUnifiedStore((s) => s.selectObjects);
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
   const addText = useTacticalUnifiedStore((s) => s.addText);
   const eraseAtPoint = useTacticalUnifiedStore((s) => s.eraseAtPoint);
@@ -176,6 +178,13 @@ export function UnifiedCanvas() {
   const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
 
   const [drawingState, setDrawingState] = useState<DrawingState | null>(null);
+  const [selectionBox, setSelectionBox] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    isShift: boolean;
+  } | null>(null);
   const isErasingRef = useRef(false);
 
   // Polygon Zone 作成状態
@@ -406,10 +415,18 @@ export function UnifiedCanvas() {
           return;
         }
 
-        // 背景クリックで選択解除
+        // 背景クリック・ドラッグで範囲選択または選択解除を開始
         const isBg = e.target === stage;
         if (isBg) {
-          clearSelection();
+          const isShift =
+            (e.evt as MouseEvent | TouchEvent as MouseEvent)?.shiftKey ?? false;
+          setSelectionBox({
+            startX: pos.x,
+            startY: pos.y,
+            currentX: pos.x,
+            currentY: pos.y,
+            isShift,
+          });
         }
         return;
       }
@@ -527,6 +544,19 @@ export function UnifiedCanvas() {
         return;
       }
 
+      if (selectionBox) {
+        setSelectionBox((prev) =>
+          prev
+            ? {
+                ...prev,
+                currentX: pos.x,
+                currentY: pos.y,
+              }
+            : null,
+        );
+        return;
+      }
+
       if (activePolygonId) {
         setMousePreviewPos(pos);
       }
@@ -600,6 +630,7 @@ export function UnifiedCanvas() {
       stageSize.width,
       stageSize.height,
       drawingState?.isDrawing,
+      selectionBox,
       eraseAtPoint,
       activeSlideId,
     ],
@@ -622,6 +653,103 @@ export function UnifiedCanvas() {
       if (container?.style.cursor.includes('data:image/svg+xml')) {
         container.style.cursor = 'default';
       }
+      return;
+    }
+
+    if (selectionBox) {
+      const { startX, startY, currentX, currentY, isShift } = selectionBox;
+      const dist = Math.hypot(currentX - startX, currentY - startY);
+
+      if (dist >= 5 && activeSlide) {
+        const minPxX = Math.min(startX, currentX);
+        const maxPxX = Math.max(startX, currentX);
+        const minPxY = Math.min(startY, currentY);
+        const maxPxY = Math.max(startY, currentY);
+
+        const minNormX = pxToNorm(minPxX, stageSize.width);
+        const maxNormX = pxToNorm(maxPxX, stageSize.width);
+        const minNormY = pxToNorm(minPxY, stageSize.height);
+        const maxNormY = pxToNorm(maxPxY, stageSize.height);
+
+        const enclosedObjects: SelectedObject[] = [];
+
+        // 1. ピッチ上の選手
+        for (const player of activeSlide.players) {
+          if (player.area === 'pitch') {
+            if (
+              player.x >= minNormX &&
+              player.x <= maxNormX &&
+              player.y >= minNormY &&
+              player.y <= maxNormY
+            ) {
+              enclosedObjects.push({ id: player.id, kind: 'player' });
+            }
+          }
+        }
+
+        // 2. テキスト注釈
+        for (const text of activeSlide.texts) {
+          if (
+            text.x >= minNormX &&
+            text.x <= maxNormX &&
+            text.y >= minNormY &&
+            text.y <= maxNormY
+          ) {
+            enclosedObjects.push({ id: text.id, kind: 'text' });
+          }
+        }
+
+        // 3. 矢印
+        for (const arrow of activeSlide.arrows) {
+          const isArrowInside = arrow.points.some(
+            (pt) =>
+              pt.x >= minNormX &&
+              pt.x <= maxNormX &&
+              pt.y >= minNormY &&
+              pt.y <= maxNormY,
+          );
+          if (isArrowInside) {
+            enclosedObjects.push({ id: arrow.id, kind: 'arrow' });
+          }
+        }
+
+        // 4. ゾーン
+        for (const zone of activeSlide.zones) {
+          const isZoneInside = zone.points.some(
+            (pt) =>
+              pt.x >= minNormX &&
+              pt.x <= maxNormX &&
+              pt.y >= minNormY &&
+              pt.y <= maxNormY,
+          );
+          if (isZoneInside) {
+            enclosedObjects.push({ id: zone.id, kind: 'zone' });
+          }
+        }
+
+        // 5. ボール
+        if (
+          activeSlide.ball?.visible &&
+          activeSlide.ball.x >= minNormX &&
+          activeSlide.ball.x <= maxNormX &&
+          activeSlide.ball.y >= minNormY &&
+          activeSlide.ball.y <= maxNormY
+        ) {
+          enclosedObjects.push({ id: 'ball', kind: 'ball' });
+        }
+
+        if (isShift) {
+          selectObjects(enclosedObjects, true);
+        } else {
+          selectObjects(enclosedObjects, false);
+        }
+      } else {
+        if (!isShift) {
+          clearSelection();
+        }
+      }
+
+      setSelectionBox(null);
       return;
     }
 
@@ -756,6 +884,10 @@ export function UnifiedCanvas() {
 
     setDrawingState(null);
   }, [
+    selectionBox,
+    activeSlide,
+    selectObjects,
+    clearSelection,
     drawingState,
     stageSize,
     activeSlideId,
@@ -1022,6 +1154,23 @@ export function UnifiedCanvas() {
             nodesRegistryRef={nodesRegistryRef}
           />
         </Layer>
+
+        {/* 範囲選択 (Marquee Box) プレビューレイヤー */}
+        {selectionBox && (
+          <Layer listening={false}>
+            <Rect
+              x={Math.min(selectionBox.startX, selectionBox.currentX)}
+              y={Math.min(selectionBox.startY, selectionBox.currentY)}
+              width={Math.abs(selectionBox.currentX - selectionBox.startX)}
+              height={Math.abs(selectionBox.currentY - selectionBox.startY)}
+              fill="rgba(56, 189, 248, 0.12)"
+              stroke="#38bdf8"
+              strokeWidth={1}
+              dash={[4, 3]}
+              perfectDrawEnabled={false}
+            />
+          </Layer>
+        )}
 
         {/* エクスポート境界線 (BoundaryBox) */}
         <Layer>
