@@ -1,16 +1,19 @@
 # Regista Management Board
 
 ## 1. [Active Focus]
-- **【Phase 3-A】Tactical Canvas UX Polish & Advanced Manipulation (AAWU 5-1 〜 5-5-C)**:
-  - **背景 & 課題**: Tactical 統合キャンバス（`/tactical`）の操作性を大幅に向上させ、矢印・ベジェ曲線の線上ポインタ完全一致、グローバルコピペ、Undo/Redo履歴、片チーム配置、複数選手ドラッグ安定化、4ポジション分類、ゴースト軌道変形ポインタを完備する。
+- **【Phase 3-A】Tactical Canvas UX Polish & Advanced Manipulation (AAWU 5-1 〜 5-7)**:
+  - **背景 & 課題**: Tactical 統合キャンバス（`/tactical`）の操作性を大幅に向上させ、矢印・ベジェ曲線の線上ポインタ完全一致、グローバルコピペ・即時複製（Ctrl+D）、Undo/Redo履歴、片チーム配置、ボール最前面化（z-index）、矢印の未選択からの即時ドラッグ、複数選手ドラッグ安定化、4ポジション分類、ゴースト軌道変形ポインタを完備する。
   - **確定仕様 & AAWU 分解**:
     1. **AAWU 5-1 (Fix Arrow & Curve Control Point Parity)**: 2次ベジェ曲線の頂点逆算による線上完全一致ポインタ（汎用基盤）。
     2. **AAWU 5-2 (Global Object Copy & Paste)**: Ctrl/Cmd+C, Ctrl/Cmd+V によるオブジェクト複製・配置。
-    3. **AAWU 5-3 (Undo / Redo History Management)**: Ctrl+Z, Ctrl+Shift+Z およびツールバーボタンによる履歴管理。
-    4. **AAWU 5-4 (Single Team Quick Placement & Visibility Toggle)**: ワンボタン片チーム配置＆表示切替トグル。
-    5. **AAWU 5-5-A (Stabilized Multi-Player Drag & Selection UX)**: 複数選手選択時のリアルタイム同調ドラッグ再構築。
-    6. **AAWU 5-5-B (4-Position Grouping & Pitch/Bench Swap)**: GK/DF/MF/FW 4分類アコーディオン＆入れ替えUI。
-    7. **AAWU 5-5-C (Interactive Ghost Marker Trajectory with Curve Pointer)**: 選手選択時ゴースト常時表示＆5-1汎用ポインタによる軌道変形。
+    3. **AAWU 5-2-DUP (Instant Duplicate with Ctrl+D)**: Ctrl/Cmd+D によるワンアクション即時複製＆配置（選択オブジェクトをその場でコピー＆ペースト）。
+    4. **AAWU 5-3 (Undo / Redo History Management)**: Ctrl+Z, Ctrl+Shift+Z およびツールバーボタンによる履歴管理。
+    5. **AAWU 5-4 (Single Team Quick Placement & Visibility Toggle)**: ワンボタン片チーム配置＆表示切替トグル。
+    6. **AAWU 5-5-A (Stabilized Multi-Player Drag & Selection UX)**: 複数選手選択時のリアルタイム同調ドラッグ再構築。
+    7. **AAWU 5-5-B (4-Position Grouping & Pitch/Bench Swap)**: GK/DF/MF/FW 4分類アコーディオン＆入れ替えUI。
+    8. **AAWU 5-5-C (Interactive Ghost Marker Trajectory with Curve Pointer)**: 選手選択時ゴースト常時表示＆5-1汎用ポインタによる軌道変形。
+    9. **AAWU 5-6 (Ball Z-Index & Layer Fronting)**: ボールレイヤーを最前面（PlayerLayer より上）に配置し、選手マーカー下に埋もれる吸着・隠れ問題を解消。
+    10. **AAWU 5-7 (Immediate Drag for Lines & Arrows)**: Line・矢印系オブジェクトを「選択状態にしなくても、クリック即ドラッグ」で直感的に移動可能にする。
 
 ## 2. [Backlog / Adopted Roadmaps (オーナー承認済 バックログ)]
 - **【構造改革】拡張機能の1本化統合 (Unified Extension Pipeline)**:
@@ -24,11 +27,14 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **AAWU 5-1** | 🎯 **Fix Arrow & Curve Control Point Parity** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | ベジェ曲線の頂点逆算ロジックを修正し、ドラッグ中・ドロップ後問わずポインタが常に線上（曲線の頂点）に完全に一致して配置されるようにする。 | **DONE** ✅ |
 | **AAWU 5-2** | 📋 **Global Object Copy & Paste (Ctrl+C / Ctrl+V)** | `regista-frontend`<br>`regista-canvas` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts` | 選択中の選手・矢印・ゾーン・テキストを Ctrl/Cmd+C で内部クリップボードにコピーし、Ctrl/Cmd+V でオフセット配置可能にする。 | **DONE** ✅ |
+| **AAWU 5-2-DUP** | ⚡ **Instant Duplicate on Canvas (Ctrl+D)** | `regista-frontend`<br>`regista-canvas` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts` | 選択中のオブジェクトを Ctrl/Cmd+D で即時コピー＆ペースト（1ステップ複製）し、新規配置されたオブジェクトを選択状態にする。 | **READY** 📋 |
 | **AAWU 5-3** | ⏪ **Undo / Redo History Management (Ctrl+Z / Ctrl+Shift+Z)** | `regista-frontend`<br>`regista-data` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | スライド変更・オブジェクト編集の Undo/Redo スタックを構築し、Ctrl+Z, Ctrl+Shift+Z およびツールバーボタンで操作可能にする。 | **TODO** ⏳ |
 | **AAWU 5-4** | 👥 **Single Team Quick Placement & Visibility Toggle** | `regista-frontend` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | 「Homeのみ配置（Away退避）」「Awayのみ配置（Home退避）」のワンクリックアクションおよび Team Visibility 切り替えを実装。 | **TODO** ⏳ |
 | **AAWU 5-5-A** | 🔀 **Stabilized Multi-Player Drag & Selection UX** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/stores/tactical-unified-store.ts` | 複数選択した選手を1人ドラッグした際、全員が滑らかにデルタ追従移動し、ドロップ時に一括確定する安定したUI/UXへの再構築。 | **DONE** ✅ |
 | **AAWU 5-5-B** | 📊 **4-Position Grouping (GK/DF/MF/FW) & Pitch/Bench Swap** | `regista-frontend` | `src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/lib/tactical/player-formatting.ts` | スカッド/サブメンバー一覧およびピッチ上の選手リストを「GK / DF / MF / FW」の4ポジションにグルーピング表示。ピッチ⇄ベンチ間の入れ替えでもカテゴリを崩さず視覚的に整理。 | **TODO** ⏳ |
 | **AAWU 5-5-C** | 🪢 **Interactive Ghost Marker Trajectory with Curve Pointer** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/tactical/trajectory.ts`<br>`src/stores/tactical-unified-store.ts` | 選手マーカー選択中に「前スライドのゴースト位置」と「移動矢印」を常時表示。AAWU 5-1 の汎用曲線ポインタを用いて移動軌道を直感的にドラッグ変形・カスタム補間可能にする。 | **TODO** ⏳ |
+| **AAWU 5-6** | ⚽ **Ball Z-Index & Layer Fronting** | `regista-canvas` | `src/components/features/tactical-unified/canvas/unified-canvas.tsx` | ボールレイヤーを最前面（PlayerLayer より上）に配置変更し、ボールが選手マーカーの下に埋もれる視覚的吸着・隠れ問題を解消。 | **READY** 📋 |
+| **AAWU 5-7** | 🏹 **Immediate Drag for Lines & Arrows (Direct Grab & Drag)** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx` | Line・矢印系オブジェクトを「未選択状態」からでも直接ドラッグ開始可能にし、ドラッグ開始時に自動選択＋シームレスに移動させる。 | **READY** 📋 |
 
 - **2026-08-31**: [AAWU 5-2 Complete: Global Object Copy & Paste]
   1. **ストア内クリップボード・状態スナップショット管理**: `TacticalClipboard`（選手・矢印・ゾーン・テキスト）のディープコピー保存 `copySelectedObjects` およびオフセット配置 `pasteObjects` を `tactical-unified-store.ts` に実装。
