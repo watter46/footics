@@ -804,6 +804,100 @@ describe('tactical-unified-store', () => {
         useTacticalUnifiedStore.getState().project.slides[0]?.players,
       ).toHaveLength(initialPlayerCount);
     });
+
+    it('duplicateSelectedObjects で選択中のオブジェクトを1ステップ即時複製し、新オブジェクトを選択状態にできる', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      const player = createDefaultPlayer('away', 50, 50, '#e11d48');
+      store.addPlayer(player);
+
+      const arrow = {
+        id: 'arrow-dup-1',
+        annotationType: 'arrow' as const,
+        arrowType: 'run' as const,
+        curveType: 'straight' as const,
+        points: [
+          { x: 50, y: 50 },
+          { x: 70, y: 70 },
+        ],
+        color: '#38bdf8',
+        strokeWidth: 3,
+        dashArray: [5, 5],
+        arrowHead: true,
+        sourcePlayerId: player.id,
+      };
+      store.addArrow(slideId, arrow);
+
+      // 選手と矢印を選択
+      store.selectObject({ id: player.id, kind: 'player' }, false);
+      store.selectObject({ id: arrow.id, kind: 'arrow' }, true);
+      expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(
+        2,
+      );
+
+      const pastLengthBefore = useTacticalUnifiedStore.getState().past.length;
+
+      // 即時複製 (Ctrl+D 相当)
+      store.duplicateSelectedObjects(slideId);
+
+      const stateAfter = useTacticalUnifiedStore.getState();
+      const updatedSlide = stateAfter.project.slides.find(
+        (s) => s.id === slideId,
+      );
+      const selectedObjects = stateAfter.selectedObjects;
+
+      // 1. 新規オブジェクトが選択されていること
+      expect(selectedObjects).toHaveLength(2);
+      const newPlayerSelect = selectedObjects.find((o) => o.kind === 'player');
+      const newArrowSelect = selectedObjects.find((o) => o.kind === 'arrow');
+
+      expect(newPlayerSelect?.id).toBeDefined();
+      expect(newPlayerSelect?.id).not.toBe(player.id);
+      expect(newArrowSelect?.id).toBeDefined();
+      expect(newArrowSelect?.id).not.toBe(arrow.id);
+
+      // 2. オフセット配置されていること
+      const newPlayer = updatedSlide?.players.find(
+        (p) => p.id === newPlayerSelect?.id,
+      );
+      expect(newPlayer?.x).toBeCloseTo(53);
+      expect(newPlayer?.y).toBeCloseTo(53);
+
+      const newArrow = updatedSlide?.arrows.find(
+        (a) => a.id === newArrowSelect?.id,
+      );
+      expect(newArrow?.points[0]?.x).toBeCloseTo(53);
+      expect(newArrow?.points[0]?.y).toBeCloseTo(53);
+      expect(newArrow?.points[1]?.x).toBeCloseTo(73);
+      expect(newArrow?.points[1]?.y).toBeCloseTo(73);
+      expect(newArrow?.sourcePlayerId).toBe(newPlayer?.id);
+
+      // 3. 1トランザクション（Undo 1回で複製前に戻る）
+      expect(stateAfter.past.length).toBe(pastLengthBefore + 1);
+      store.undo();
+
+      const stateAfterUndo = useTacticalUnifiedStore.getState();
+      const slideAfterUndo = stateAfterUndo.project.slides.find(
+        (s) => s.id === slideId,
+      );
+      expect(
+        slideAfterUndo?.players.find((p) => p.id === newPlayerSelect?.id),
+      ).toBeUndefined();
+      expect(
+        slideAfterUndo?.arrows.find((a) => a.id === newArrowSelect?.id),
+      ).toBeUndefined();
+    });
+
+    it('選択がない状態で duplicateSelectedObjects を呼んでも何も追加されない', () => {
+      const store = useTacticalUnifiedStore.getState();
+      store.clearSelection();
+      const initialPlayerCount = store.project.slides[0]?.players.length ?? 0;
+      store.duplicateSelectedObjects();
+      expect(
+        useTacticalUnifiedStore.getState().project.slides[0]?.players,
+      ).toHaveLength(initialPlayerCount);
+    });
   });
 
   describe('teamVisibility & single team placement (AAWU 5-4)', () => {

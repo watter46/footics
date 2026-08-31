@@ -2,7 +2,7 @@
 
 /**
  * use-keyboard-shortcuts.ts
- * Keyboard shortcuts: Delete, Escape, Backspace, Copy (Ctrl/Cmd+C), Paste (Ctrl/Cmd+V), Tool switching
+ * Keyboard shortcuts: Delete, Escape, Backspace, Copy (Ctrl/Cmd+C), Paste (Ctrl/Cmd+V), Duplicate (Ctrl/Cmd+D), Tool switching
  */
 
 import { useEffect } from 'react';
@@ -19,6 +19,9 @@ export function useKeyboardShortcuts() {
     (s) => s.copySelectedObjects,
   );
   const pasteObjects = useTacticalUnifiedStore((s) => s.pasteObjects);
+  const duplicateSelectedObjects = useTacticalUnifiedStore(
+    (s) => s.duplicateSelectedObjects,
+  );
   const undo = useTacticalUnifiedStore((s) => s.undo);
   const redo = useTacticalUnifiedStore((s) => s.redo);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
@@ -62,6 +65,11 @@ export function useKeyboardShortcuts() {
         if (e.key === 'v' || e.key === 'V') {
           e.preventDefault();
           pasteObjects(activeSlideId);
+          return;
+        }
+        if (e.key === 'd' || e.key === 'D') {
+          e.preventDefault();
+          duplicateSelectedObjects(activeSlideId);
           return;
         }
         // 他の修飾キー付きショートカットの場合は単独キー処理へ流さない
@@ -149,6 +157,7 @@ export function useKeyboardShortcuts() {
     removeText,
     copySelectedObjects,
     pasteObjects,
+    duplicateSelectedObjects,
     undo,
     redo,
     activeSlideId,

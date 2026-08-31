@@ -239,11 +239,7 @@ interface TacticalUnifiedState {
     x?: number,
     y?: number,
   ) => void;
-  swapPlayers: (
-    slideId: string,
-    playerAId: string,
-    playerBId: string,
-  ) => void;
+  swapPlayers: (slideId: string, playerAId: string, playerBId: string) => void;
   removePlayer: (slideId: string, playerId: string) => void;
   applyFormationPreset: (preset: FormationPreset, slideId: string) => void;
   applyFormation: (
@@ -346,6 +342,7 @@ interface TacticalUnifiedState {
   setActiveTool: (tool: DrawingTool) => void;
   copySelectedObjects: (slideId?: string) => void;
   pasteObjects: (slideId?: string) => void;
+  duplicateSelectedObjects: (slideId?: string) => void;
 
   // ─ パネル
   toggleSidebar: () => void;
@@ -416,6 +413,195 @@ function recordHistory(s: TacticalUnifiedState): {
   return {
     past: nextPast,
     future: [],
+  };
+}
+
+function extractSelectedObjects(
+  slide: Slide,
+  selectedObjects: SelectedObject[],
+): {
+  players: Player[];
+  arrows: ArrowAnnotation[];
+  zones: ZoneAnnotation[];
+  texts: TextAnnotation[];
+} {
+  const selectedSet = new Map<string, SelectedObjectKind>();
+  for (const obj of selectedObjects) {
+    selectedSet.set(obj.id, obj.kind);
+  }
+
+  const players: Player[] = [];
+  const arrows: ArrowAnnotation[] = [];
+  const zones: ZoneAnnotation[] = [];
+  const texts: TextAnnotation[] = [];
+
+  for (const player of slide.players) {
+    if (selectedSet.get(player.id) === 'player') {
+      players.push(structuredClone(player));
+    }
+  }
+
+  for (const arrow of slide.arrows) {
+    if (selectedSet.get(arrow.id) === 'arrow') {
+      arrows.push(structuredClone(arrow));
+    }
+  }
+
+  for (const zone of slide.zones) {
+    if (selectedSet.get(zone.id) === 'zone') {
+      zones.push(structuredClone(zone));
+    }
+  }
+
+  for (const text of slide.texts) {
+    if (selectedSet.get(text.id) === 'text') {
+      texts.push(structuredClone(text));
+    }
+  }
+
+  return { players, arrows, zones, texts };
+}
+
+function cloneAndOffsetObjects(
+  items: {
+    players: Player[];
+    arrows: ArrowAnnotation[];
+    zones: ZoneAnnotation[];
+    texts: TextAnnotation[];
+  },
+  offsetX = 3,
+  offsetY = 3,
+): {
+  newPlayers: Player[];
+  newArrows: ArrowAnnotation[];
+  newZones: ZoneAnnotation[];
+  newTexts: TextAnnotation[];
+  newSelectedObjects: SelectedObject[];
+} {
+  const { players, arrows, zones, texts } = items;
+  const playerIdMap = new Map<string, string>();
+  const newSelectedObjects: SelectedObject[] = [];
+
+  // 1. Players
+  const newPlayers: Player[] = players.map((orig) => {
+    const newId = crypto.randomUUID();
+    playerIdMap.set(orig.id, newId);
+    newSelectedObjects.push({ id: newId, kind: 'player' });
+
+    return {
+      ...structuredClone(orig),
+      id: newId,
+      x: Math.min(98, Math.max(2, orig.x + offsetX)),
+      y: Math.min(98, Math.max(2, orig.y + offsetY)),
+      badges: (orig.badges || []).map((b) => ({
+        ...structuredClone(b),
+        id: crypto.randomUUID(),
+      })),
+      connectLines: (orig.connectLines || []).map((cl) => ({
+        ...structuredClone(cl),
+        id: crypto.randomUUID(),
+      })),
+    };
+  });
+
+  // Update connect lines if target player was also copied
+  for (const np of newPlayers) {
+    np.connectLines = np.connectLines.map((cl) => {
+      const mappedToId = playerIdMap.get(cl.toPlayerId);
+      if (mappedToId) {
+        return { ...cl, toPlayerId: mappedToId };
+      }
+      return cl;
+    });
+  }
+
+  // 2. Arrows
+  const newArrows: ArrowAnnotation[] = arrows.map((orig) => {
+    const newId = crypto.randomUUID();
+    newSelectedObjects.push({ id: newId, kind: 'arrow' });
+
+    const cloned = structuredClone(orig);
+    const points = (cloned.points || []).map((pt) => ({
+      x: Math.min(99, Math.max(1, pt.x + offsetX)),
+      y: Math.min(99, Math.max(1, pt.y + offsetY)),
+    }));
+
+    let controlPoint = cloned.controlPoint;
+    if (controlPoint) {
+      controlPoint = {
+        x: Math.min(99, Math.max(1, controlPoint.x + offsetX)),
+        y: Math.min(99, Math.max(1, controlPoint.y + offsetY)),
+      };
+    }
+
+    let sourcePlayerId = cloned.sourcePlayerId;
+    if (sourcePlayerId && playerIdMap.has(sourcePlayerId)) {
+      sourcePlayerId = playerIdMap.get(sourcePlayerId);
+    }
+    let targetPlayerId = cloned.targetPlayerId;
+    if (targetPlayerId && playerIdMap.has(targetPlayerId)) {
+      targetPlayerId = playerIdMap.get(targetPlayerId);
+    }
+
+    return {
+      ...cloned,
+      id: newId,
+      points,
+      controlPoint,
+      sourcePlayerId,
+      targetPlayerId,
+    };
+  });
+
+  // 3. Zones
+  const newZones: ZoneAnnotation[] = zones.map((orig) => {
+    const newId = crypto.randomUUID();
+    newSelectedObjects.push({ id: newId, kind: 'zone' });
+
+    const cloned = structuredClone(orig);
+    const points = (cloned.points || []).map((pt) => ({
+      x: Math.min(99, Math.max(1, pt.x + offsetX)),
+      y: Math.min(99, Math.max(1, pt.y + offsetY)),
+    }));
+
+    const x =
+      cloned.x !== undefined
+        ? Math.min(98, Math.max(0, cloned.x + offsetX))
+        : undefined;
+    const y =
+      cloned.y !== undefined
+        ? Math.min(98, Math.max(0, cloned.y + offsetY))
+        : undefined;
+
+    return {
+      ...cloned,
+      id: newId,
+      x,
+      y,
+      points,
+    };
+  });
+
+  // 4. Texts
+  const newTexts: TextAnnotation[] = texts.map((orig) => {
+    const newId = crypto.randomUUID();
+    newSelectedObjects.push({ id: newId, kind: 'text' });
+
+    const cloned = structuredClone(orig);
+    return {
+      ...cloned,
+      id: newId,
+      x: Math.min(98, Math.max(0, cloned.x + offsetX)),
+      y: Math.min(98, Math.max(0, cloned.y + offsetY)),
+    };
+  });
+
+  return {
+    newPlayers,
+    newArrows,
+    newZones,
+    newTexts,
+    newSelectedObjects,
   };
 }
 
@@ -2080,39 +2266,10 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
       const slide = getSlide(state.project, targetSlideId);
       if (!slide || state.selectedObjects.length === 0) return;
 
-      const selectedSet = new Map<string, SelectedObjectKind>();
-      for (const obj of state.selectedObjects) {
-        selectedSet.set(obj.id, obj.kind);
-      }
-
-      const players: Player[] = [];
-      const arrows: ArrowAnnotation[] = [];
-      const zones: ZoneAnnotation[] = [];
-      const texts: TextAnnotation[] = [];
-
-      for (const player of slide.players) {
-        if (selectedSet.get(player.id) === 'player') {
-          players.push(structuredClone(player));
-        }
-      }
-
-      for (const arrow of slide.arrows) {
-        if (selectedSet.get(arrow.id) === 'arrow') {
-          arrows.push(structuredClone(arrow));
-        }
-      }
-
-      for (const zone of slide.zones) {
-        if (selectedSet.get(zone.id) === 'zone') {
-          zones.push(structuredClone(zone));
-        }
-      }
-
-      for (const text of slide.texts) {
-        if (selectedSet.get(text.id) === 'text') {
-          texts.push(structuredClone(text));
-        }
-      }
+      const { players, arrows, zones, texts } = extractSelectedObjects(
+        slide,
+        state.selectedObjects,
+      );
 
       if (
         players.length === 0 &&
@@ -2152,128 +2309,59 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
       const slide = getSlide(state.project, targetSlideId);
       if (!slide) return;
 
-      const OFFSET_X = 3;
-      const OFFSET_Y = 3;
-
-      const playerIdMap = new Map<string, string>();
-      const newSelectedObjects: SelectedObject[] = [];
-
-      // 1. Players
-      const newPlayers: Player[] = players.map((orig) => {
-        const newId = crypto.randomUUID();
-        playerIdMap.set(orig.id, newId);
-        newSelectedObjects.push({ id: newId, kind: 'player' });
-
-        return {
-          ...structuredClone(orig),
-          id: newId,
-          x: Math.min(98, Math.max(2, orig.x + OFFSET_X)),
-          y: Math.min(98, Math.max(2, orig.y + OFFSET_Y)),
-          badges: (orig.badges || []).map((b) => ({
-            ...structuredClone(b),
-            id: crypto.randomUUID(),
-          })),
-          connectLines: (orig.connectLines || []).map((cl) => ({
-            ...structuredClone(cl),
-            id: crypto.randomUUID(),
-          })),
-        };
-      });
-
-      // Update connect lines if target player was also copied
-      for (const np of newPlayers) {
-        np.connectLines = np.connectLines.map((cl) => {
-          const mappedToId = playerIdMap.get(cl.toPlayerId);
-          if (mappedToId) {
-            return { ...cl, toPlayerId: mappedToId };
-          }
-          return cl;
-        });
-      }
-
-      // 2. Arrows
-      const newArrows: ArrowAnnotation[] = arrows.map((orig) => {
-        const newId = crypto.randomUUID();
-        newSelectedObjects.push({ id: newId, kind: 'arrow' });
-
-        const cloned = structuredClone(orig);
-        const points = (cloned.points || []).map((pt) => ({
-          x: Math.min(99, Math.max(1, pt.x + OFFSET_X)),
-          y: Math.min(99, Math.max(1, pt.y + OFFSET_Y)),
-        }));
-
-        let controlPoint = cloned.controlPoint;
-        if (controlPoint) {
-          controlPoint = {
-            x: Math.min(99, Math.max(1, controlPoint.x + OFFSET_X)),
-            y: Math.min(99, Math.max(1, controlPoint.y + OFFSET_Y)),
-          };
-        }
-
-        let sourcePlayerId = cloned.sourcePlayerId;
-        if (sourcePlayerId && playerIdMap.has(sourcePlayerId)) {
-          sourcePlayerId = playerIdMap.get(sourcePlayerId);
-        }
-        let targetPlayerId = cloned.targetPlayerId;
-        if (targetPlayerId && playerIdMap.has(targetPlayerId)) {
-          targetPlayerId = playerIdMap.get(targetPlayerId);
-        }
-
-        return {
-          ...cloned,
-          id: newId,
-          points,
-          controlPoint,
-          sourcePlayerId,
-          targetPlayerId,
-        };
-      });
-
-      // 3. Zones
-      const newZones: ZoneAnnotation[] = zones.map((orig) => {
-        const newId = crypto.randomUUID();
-        newSelectedObjects.push({ id: newId, kind: 'zone' });
-
-        const cloned = structuredClone(orig);
-        const points = (cloned.points || []).map((pt) => ({
-          x: Math.min(99, Math.max(1, pt.x + OFFSET_X)),
-          y: Math.min(99, Math.max(1, pt.y + OFFSET_Y)),
-        }));
-
-        const x =
-          cloned.x !== undefined
-            ? Math.min(98, Math.max(0, cloned.x + OFFSET_X))
-            : undefined;
-        const y =
-          cloned.y !== undefined
-            ? Math.min(98, Math.max(0, cloned.y + OFFSET_Y))
-            : undefined;
-
-        return {
-          ...cloned,
-          id: newId,
-          x,
-          y,
-          points,
-        };
-      });
-
-      // 4. Texts
-      const newTexts: TextAnnotation[] = texts.map((orig) => {
-        const newId = crypto.randomUUID();
-        newSelectedObjects.push({ id: newId, kind: 'text' });
-
-        const cloned = structuredClone(orig);
-        return {
-          ...cloned,
-          id: newId,
-          x: Math.min(98, Math.max(0, cloned.x + OFFSET_X)),
-          y: Math.min(98, Math.max(0, cloned.y + OFFSET_Y)),
-        };
-      });
+      const { newPlayers, newArrows, newZones, newTexts, newSelectedObjects } =
+        cloneAndOffsetObjects({ players, arrows, zones, texts });
 
       set((s) => ({
         ...recordHistory(s),
+        project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
+          ...sl,
+          players: [...sl.players, ...newPlayers],
+          arrows: [...sl.arrows, ...newArrows],
+          zones: [...sl.zones, ...newZones],
+          texts: [...sl.texts, ...newTexts],
+        })),
+        isDirty: true,
+        selectedObjects: newSelectedObjects,
+        panels: {
+          ...s.panels,
+          inspectorOpen: true,
+          rightPanelTab: 'inspector',
+        },
+      }));
+    },
+
+    duplicateSelectedObjects: (slideId) => {
+      const state = get();
+      const targetSlideId = slideId ?? state.activeSlideId;
+      const slide = getSlide(state.project, targetSlideId);
+      if (!slide || state.selectedObjects.length === 0) return;
+
+      const { players, arrows, zones, texts } = extractSelectedObjects(
+        slide,
+        state.selectedObjects,
+      );
+
+      if (
+        players.length === 0 &&
+        arrows.length === 0 &&
+        zones.length === 0 &&
+        texts.length === 0
+      ) {
+        return;
+      }
+
+      const { newPlayers, newArrows, newZones, newTexts, newSelectedObjects } =
+        cloneAndOffsetObjects({ players, arrows, zones, texts });
+
+      set((s) => ({
+        ...recordHistory(s),
+        clipboard: {
+          players,
+          arrows,
+          zones,
+          texts,
+        },
         project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
           ...sl,
           players: [...sl.players, ...newPlayers],
