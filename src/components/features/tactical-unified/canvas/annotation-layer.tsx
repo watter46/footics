@@ -519,22 +519,22 @@ const ArrowObject = React.memo(function ArrowObject({
         />
       )}
 
-      {/* 2. 終点（先端）ハンドル: 選択中またはPlayer付属矢印で常時ドラッグ可能 */}
+      {/* 2. 終点（先端）ハンドル: 選択中またはPlayer付属矢印で常時ドラッグ可能（未選択時は透明ヒットエリア） */}
       {(isSelected || isAttachedToPlayer) && (
         <Circle
           ref={endHandleRef}
           x={ePxX}
           y={ePxY}
-          radius={isSelected ? 7 : 6}
-          fill={isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.9)'}
+          radius={7}
+          fill="#ffffff"
           stroke="#3b82f6"
-          strokeWidth={isSelected ? 2.5 : 1.5}
+          strokeWidth={2.5}
           shadowColor="rgba(0,0,0,0.5)"
-          shadowBlur={isSelected ? 4 : 2}
-          opacity={isSelected ? 1 : 0.75}
+          shadowBlur={4}
+          opacity={isSelected ? 1 : 0}
           perfectDrawEnabled={false}
           draggable={isInteractive}
-          hitStrokeWidth={12}
+          hitStrokeWidth={16}
           onMouseEnter={(e) => {
             const stage = e.target.getStage();
             if (stage) stage.container().style.cursor = 'grab';
@@ -600,22 +600,20 @@ const ArrowObject = React.memo(function ArrowObject({
         />
       )}
 
-      {/* 3. カーブ制御ハンドル: 選択中またはPlayer付属矢印かつ曲げ適用時にドラッグ可能 */}
-      {(isSelected || (isAttachedToPlayer && isCurved)) && (
+      {/* 3. カーブ制御ハンドル: 選択時のみ表示 */}
+      {isSelected && (
         <Circle
           ref={controlHandleRef}
           x={midHandlePxX}
           y={midHandlePxY}
-          radius={isSelected ? 6.5 : 5.5}
+          radius={6.5}
           fill="#f59e0b"
           stroke="#ffffff"
-          strokeWidth={isSelected ? 2 : 1.5}
+          strokeWidth={2}
           shadowColor="rgba(0,0,0,0.5)"
-          shadowBlur={isSelected ? 4 : 2}
-          opacity={isSelected ? 1 : 0.75}
+          shadowBlur={4}
           perfectDrawEnabled={false}
           draggable={isInteractive}
-          hitStrokeWidth={12}
           onMouseEnter={(e) => {
             const stage = e.target.getStage();
             if (stage) stage.container().style.cursor = 'grab';
