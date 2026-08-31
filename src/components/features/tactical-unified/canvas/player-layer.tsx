@@ -185,6 +185,7 @@ function SelectedPlayerGhostTrajectory({
             fill="#ffffff"
             stroke="#020617"
             strokeWidth={1.5}
+            fillAfterStrokeEnabled={true}
             align="center"
             fontStyle="bold"
             perfectDrawEnabled={false}
@@ -810,6 +811,7 @@ const PlayerMarker = React.memo(function PlayerMarker({
           fill="#ffffff"
           stroke="#020617"
           strokeWidth={2}
+          fillAfterStrokeEnabled={true}
           align="center"
           fontStyle="bold"
           listening={false}
@@ -826,6 +828,7 @@ const PlayerMarker = React.memo(function PlayerMarker({
           fill="#ffffff"
           stroke="#020617"
           strokeWidth={2}
+          fillAfterStrokeEnabled={true}
           align="center"
           fontStyle="bold"
           listening={false}
@@ -1389,6 +1392,7 @@ export function PlayerLayer({
             fill="#ffffff"
             stroke="#020617"
             strokeWidth={1.5}
+            fillAfterStrokeEnabled={true}
             align="center"
           />
         </Group>
