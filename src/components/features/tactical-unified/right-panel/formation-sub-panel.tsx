@@ -21,7 +21,6 @@ import {
   Search,
   Shield,
   Trash2,
-  UserCheck,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -100,9 +99,6 @@ export function FormationSubPanel() {
 
   // Store actions
   const applyFormation = useTacticalUnifiedStore((s) => s.applyFormation);
-  const applySingleTeamFormation = useTacticalUnifiedStore(
-    (s) => s.applySingleTeamFormation,
-  );
   const applyFormationPreset = useTacticalUnifiedStore(
     (s) => s.applyFormationPreset,
   );
@@ -427,47 +423,6 @@ export function FormationSubPanel() {
                 {f}
               </button>
             ))}
-          </div>
-
-          {/* Single Team Quick Placement (AAWU 5-4) */}
-          <div className="space-y-1.5 pt-1 border-t border-white/5">
-            <span className="text-[10px] font-semibold text-white/50 uppercase tracking-wider block">
-              Deploy Single Team (Opponent to Bench)
-            </span>
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                type="button"
-                onClick={() =>
-                  applySingleTeamFormation(
-                    activeSlideId,
-                    selectedFormation,
-                    formationMode,
-                    'home',
-                  )
-                }
-                className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-[10px] font-medium text-blue-300 hover:text-blue-200 transition-colors shadow-xs"
-                title="Deploy Home Only (Away to Bench)"
-              >
-                <UserCheck size={12} className="text-blue-400 shrink-0" />
-                <span className="truncate">Deploy Home Only</span>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  applySingleTeamFormation(
-                    activeSlideId,
-                    selectedFormation,
-                    formationMode,
-                    'away',
-                  )
-                }
-                className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-[10px] font-medium text-red-300 hover:text-red-200 transition-colors shadow-xs"
-                title="Deploy Away Only (Home to Bench)"
-              >
-                <UserCheck size={12} className="text-red-400 shrink-0" />
-                <span className="truncate">Deploy Away Only</span>
-              </button>
-            </div>
           </div>
 
           {/* Registered Club & Season Presets */}
