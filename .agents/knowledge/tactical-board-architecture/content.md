@@ -117,5 +117,25 @@ TacticalBoardModal
 - **一意UUID再発行と相互参照リマップ:** `pasteObjects` 実行時、新規UUIDを発行し +3% オフセット配置。同時にコピーされた選手群の `ConnectLine` および矢印（`sourcePlayerId`/`targetPlayerId`）の参照先を新選手IDに自動置換。
 - **入力要素の除外ガード:** `INPUT` / `TEXTAREA` / `isContentEditable` フォーカス時はショートカットキーを完全に除外。
 
+---
+
+## 9. オブジェクト直交性・Layer 階層 & 矢印インタラクション設計
+
+### 9.1 ボールレイヤー最前面化 (Ball Z-Index & Layer Fronting)
+- **Konva Stage 描画順序:** `<Layer ref={ballLayer}>` を `<Layer ref={playerLayer}>` の手前（DOM 後方）に配置。
+- **視認性・操作性担保:** ボールが選手マーカーの下に潜り込む視覚的バグを排除し、選手マーカーと重なった場合でもボールの単独クリック・ドラッグ操作を保証。
+
+### 9.2 オブジェクト独立性・近傍吸着排除原則 (Proximity Independence)
+- **暗黙連動の完全禁止:** 選手マーカー移動時に近傍距離判定（`Math.hypot <= 8`）でボール・ゾーン・テキストを自動追従させてはならない。
+- **責務の分離:** 選手移動に追従するのは選手固有オプション（`visionCone`, `badges`, `focus`, `connectLines`, `trajectory`）および明示的に `sourcePlayerId`/`targetPlayerId` が設定された矢印のみ。ピッチ上のフリーオブジェクト（Ball, Zone, Text, 独立Arrow）は完全な直交性（独立性）を維持する。
+
+### 9.3 矢印・ライン系オブジェクトの操作モデル (Direct Grab & Tip Drag)
+- **通常のフリー矢印:** 未選択状態からでも矢印本体（ライン）を直接クリック＆ドラッグで全体平行移動（Direct Grab & Drag）。
+- **Player 付属矢印 (`sourcePlayerId` あり):**
+  - **根元（始点）:** 常に Player マーカーに固定・追従（始点ハンドル非表示、矢印本体のドラッグ移動は禁止）。
+  - **先端（終点）:** 未選択状態からでも先端の透明ヒットエリア（`hitStrokeWidth: 16`）を直接掴むことで即座に選択＋ドラッグ開始され、長さ・向きを直感的に変更可能。
+  - **ポインタ表示制御:** 未選択・非ドラッグ時はポインタ（青丸・黄色丸）を完全非表示（`opacity: 0`）にし、ドラッグ開始時・選択時にのみ出現させてピッチの視認性を最大化する。
+
+
 
 
