@@ -202,6 +202,12 @@ interface TacticalUnifiedState {
     patch: Partial<Player>,
   ) => void;
   movePlayer: (slideId: string, playerId: string, x: number, y: number) => void;
+  moveMultiplePlayersByDelta: (
+    slideId: string,
+    playerIds: string[],
+    deltaX: number,
+    deltaY: number,
+  ) => void;
   movePlayerToBench: (slideId: string, playerId: string) => void;
   movePlayerToPitch: (
     slideId: string,
@@ -854,41 +860,64 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         isDirty: true,
       })),
 
-    movePlayer: (slideId, playerId, x, y) =>
+    movePlayer: (slideId, playerId, x, y) => {
+      const slide = get().project.slides.find((s) => s.id === slideId);
+      const targetPlayer = slide?.players.find((p) => p.id === playerId);
+      if (!targetPlayer) return;
+      const dx = x - targetPlayer.x;
+      const dy = y - targetPlayer.y;
+      get().moveMultiplePlayersByDelta(slideId, [playerId], dx, dy);
+    },
+
+    moveMultiplePlayersByDelta: (slideId, playerIds, deltaX, deltaY) =>
       set((s) => ({
         project: updateSlideInProject(s.project, slideId, (sl) => {
-          const targetPlayer = sl.players.find((p) => p.id === playerId);
-          if (!targetPlayer) return sl;
+          if (playerIds.length === 0 || (deltaX === 0 && deltaY === 0)) {
+            return sl;
+          }
+          const playerIdSet = new Set(playerIds);
+          const targetPlayers = sl.players.filter((p) => playerIdSet.has(p.id));
+          if (targetPlayers.length === 0) return sl;
 
-          const dx = x - targetPlayer.x;
-          const dy = y - targetPlayer.y;
+          // 1. 選手位置更新 (クランプ [0, 100])
+          const updatedPlayers = sl.players.map((p) => {
+            if (!playerIdSet.has(p.id)) return p;
+            return {
+              ...p,
+              x: Math.max(0, Math.min(100, p.x + deltaX)),
+              y: Math.max(0, Math.min(100, p.y + deltaY)),
+            };
+          });
 
-          if (dx === 0 && dy === 0) return sl;
-
-          // 1. 選手位置更新
-          const updatedPlayers = sl.players.map((p) =>
-            p.id === playerId ? { ...p, x, y } : p,
-          );
-
-          // 2. 矢印（明示的に sourcePlayerId / targetPlayerId で選手に紐づく矢印）の追従
+          // 2. 矢印追従
           const updatedArrows = sl.arrows.map((arrow) => {
             const p0 = arrow.points[0];
             const p1 = arrow.points[1];
-            const isStartAttached = arrow.sourcePlayerId === playerId;
-            const isEndAttached = arrow.targetPlayerId === playerId;
+            const isStartAttached = Boolean(
+              arrow.sourcePlayerId && playerIdSet.has(arrow.sourcePlayerId),
+            );
+            const isEndAttached = Boolean(
+              arrow.targetPlayerId && playerIdSet.has(arrow.targetPlayerId),
+            );
 
             if (!isStartAttached && !isEndAttached) return arrow;
 
-            // 始点も終点も同じ選手に紐づいている場合
+            // 始点・終点ともに移動対象選手
             if (isStartAttached && isEndAttached) {
               const newPoints = arrow.points.map((pt) => ({
-                x: Math.max(0, Math.min(100, pt.x + dx)),
-                y: Math.max(0, Math.min(100, pt.y + dy)),
+                x: Math.max(0, Math.min(100, pt.x + deltaX)),
+                y: Math.max(0, Math.min(100, pt.y + deltaY)),
               }));
               const newCp = arrow.controlPoint
                 ? {
-                    x: Math.max(0, Math.min(100, arrow.controlPoint.x + dx)),
-                    y: Math.max(0, Math.min(100, arrow.controlPoint.y + dy)),
+                    x: Math.max(
+                      0,
+                      Math.min(100, arrow.controlPoint.x + deltaX),
+                    ),
+                    y: Math.max(
+                      0,
+                      Math.min(100, arrow.controlPoint.y + deltaY),
+                    ),
                   }
                 : undefined;
               return {
@@ -899,20 +928,20 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             }
 
             if (isStartAttached && p0 && p1) {
-              // 始点のみ選手に追従し、矢印の先（終点）は動かす前と同じ位置にとどまる
+              // 始点のみ追従
               const newP0 = {
-                x: Math.max(0, Math.min(100, p0.x + dx)),
-                y: Math.max(0, Math.min(100, p0.y + dy)),
+                x: Math.max(0, Math.min(100, p0.x + deltaX)),
+                y: Math.max(0, Math.min(100, p0.y + deltaY)),
               };
               const newCp = arrow.controlPoint
                 ? {
                     x: Math.max(
                       0,
-                      Math.min(100, arrow.controlPoint.x + dx / 2),
+                      Math.min(100, arrow.controlPoint.x + deltaX / 2),
                     ),
                     y: Math.max(
                       0,
-                      Math.min(100, arrow.controlPoint.y + dy / 2),
+                      Math.min(100, arrow.controlPoint.y + deltaY / 2),
                     ),
                   }
                 : undefined;
@@ -924,67 +953,94 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             }
 
             if (isEndAttached && p0 && p1) {
-              // 終点のみ移動
+              // 終点のみ追従
               const newP1 = {
-                x: Math.max(0, Math.min(100, p1.x + dx)),
-                y: Math.max(0, Math.min(100, p1.y + dy)),
+                x: Math.max(0, Math.min(100, p1.x + deltaX)),
+                y: Math.max(0, Math.min(100, p1.y + deltaY)),
               };
+              const newCp = arrow.controlPoint
+                ? {
+                    x: Math.max(
+                      0,
+                      Math.min(100, arrow.controlPoint.x + deltaX / 2),
+                    ),
+                    y: Math.max(
+                      0,
+                      Math.min(100, arrow.controlPoint.y + deltaY / 2),
+                    ),
+                  }
+                : undefined;
               return {
                 ...arrow,
                 points: [p0, newP1],
+                controlPoint: newCp,
               };
             }
 
             return arrow;
           });
 
-          // 3. テキスト注釈（選手近傍にあるテキスト）の追従
+          // 3. テキスト注釈の追従
           const updatedTexts = sl.texts.map((text) => {
-            const isNear =
-              Math.hypot(text.x - targetPlayer.x, text.y - targetPlayer.y) <= 8;
-            if (isNear) {
+            const attachedId = (
+              text as unknown as { attachedPlayerId?: string }
+            ).attachedPlayerId;
+            const isAttached = attachedId ? playerIdSet.has(attachedId) : false;
+            const isNear = targetPlayers.some(
+              (tp) => Math.hypot(text.x - tp.x, text.y - tp.y) <= 8,
+            );
+            if (isAttached || isNear) {
               return {
                 ...text,
-                x: Math.max(0, Math.min(100, text.x + dx)),
-                y: Math.max(0, Math.min(100, text.y + dy)),
+                x: Math.max(0, Math.min(100, text.x + deltaX)),
+                y: Math.max(0, Math.min(100, text.y + deltaY)),
               };
             }
             return text;
           });
 
-          // 4. ボール（ボールが選手近傍にある場合）の追従
+          // 4. ボールの追従
           let updatedBall = sl.ball;
           if (
             sl.ball?.visible &&
-            Math.hypot(
-              sl.ball.x - targetPlayer.x,
-              sl.ball.y - targetPlayer.y,
-            ) <= 7
+            targetPlayers.some(
+              (tp) =>
+                Math.hypot(
+                  (sl.ball?.x ?? 0) - tp.x,
+                  (sl.ball?.y ?? 0) - tp.y,
+                ) <= 7,
+            )
           ) {
             updatedBall = {
               ...sl.ball,
-              x: Math.max(0, Math.min(100, sl.ball.x + dx)),
-              y: Math.max(0, Math.min(100, sl.ball.y + dy)),
+              x: Math.max(0, Math.min(100, sl.ball.x + deltaX)),
+              y: Math.max(0, Math.min(100, sl.ball.y + deltaY)),
             };
           }
 
-          // 5. ゾーン（ゾーン重心が選手近傍にある場合）の追従
+          // 5. ゾーンの追従
           const updatedZones = sl.zones.map((zone) => {
             if (zone.points.length === 0) return zone;
+            const isAttached = (
+              (zone as unknown as { attachedPlayerIds?: string[] })
+                .attachedPlayerIds ?? []
+            ).some((id) => playerIdSet.has(id));
             const cx =
               zone.points.reduce((sum, pt) => sum + pt.x, 0) /
               zone.points.length;
             const cy =
               zone.points.reduce((sum, pt) => sum + pt.y, 0) /
               zone.points.length;
-            const isNear =
-              Math.hypot(cx - targetPlayer.x, cy - targetPlayer.y) <= 8;
-            if (isNear) {
+            const isNear = targetPlayers.some(
+              (tp) => Math.hypot(cx - tp.x, cy - tp.y) <= 8,
+            );
+
+            if (isAttached || isNear) {
               return {
                 ...zone,
                 points: zone.points.map((pt) => ({
-                  x: Math.max(0, Math.min(100, pt.x + dx)),
-                  y: Math.max(0, Math.min(100, pt.y + dy)),
+                  x: Math.max(0, Math.min(100, pt.x + deltaX)),
+                  y: Math.max(0, Math.min(100, pt.y + deltaY)),
                 })),
               };
             }

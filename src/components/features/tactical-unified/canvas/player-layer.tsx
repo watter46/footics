@@ -295,7 +295,8 @@ function ConnectLineGroup({
           p.connectLines
             .filter((cl) => cl.visible && playerMap.has(cl.toPlayerId))
             .map((cl) => {
-              const toPlayer = playerMap.get(cl.toPlayerId)!;
+              const toPlayer = playerMap.get(cl.toPlayerId);
+              if (!toPlayer) return null;
               const x1 = normX(p.x, width);
               const y1 = normY(p.y, height);
               const x2 = normX(toPlayer.x, width);
@@ -612,6 +613,9 @@ export function PlayerLayer({
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
   const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
   const movePlayer = useTacticalUnifiedStore((s) => s.movePlayer);
+  const moveMultiplePlayersByDelta = useTacticalUnifiedStore(
+    (s) => s.moveMultiplePlayersByDelta,
+  );
   const connectingPlayerId = useTacticalUnifiedStore(
     (s) => s.connectingPlayerId,
   );
@@ -635,9 +639,19 @@ export function PlayerLayer({
   const ghostLabelRef = useRef<any>(null);
 
   const dragContextRef = useRef<{
+    movingPlayers: Array<{
+      id: string;
+      initialPx: { x: number; y: number };
+      initialNorm: { x: number; y: number };
+    }>;
+    movingPlayerIds: string[];
+    draggedPlayerId: string;
+    startPx: { x: number; y: number };
+    prevPlayerPx: { x: number; y: number } | null;
     attachedArrows: Array<{
       arrow: ArrowAnnotation;
-      isSource: boolean;
+      isSourceMoved: boolean;
+      isTargetMoved: boolean;
       initialP0: { x: number; y: number };
       initialP1: { x: number; y: number };
       initialCp?: { x: number; y: number };
@@ -646,7 +660,10 @@ export function PlayerLayer({
       lineId: string;
       sourcePlayerId: string;
       targetPlayerId: string;
-      isSource: boolean;
+      isSourceMoved: boolean;
+      isTargetMoved: boolean;
+      initialP1: { x: number; y: number };
+      initialP2: { x: number; y: number };
     }>;
     attachedZones: Array<{
       zone: ZoneAnnotation;
@@ -659,8 +676,6 @@ export function PlayerLayer({
       initialX: number;
       initialY: number;
     }>;
-    startPx: { x: number; y: number };
-    prevPlayerPx: { x: number; y: number } | null;
   } | null>(null);
 
   const handleDragStart = (
@@ -673,7 +688,32 @@ export function PlayerLayer({
       y: normY(draggedPlayer.y, height),
     };
 
-    // 前スライドにおける同一選手のゴースト座標取得
+    const selectedPlayerIds = selectedObjects
+      .filter((o) => o.kind === 'player')
+      .map((o) => o.id);
+
+    const isDraggedSelected = selectedPlayerIds.includes(draggedPlayer.id);
+    const movingPlayerIds = isDraggedSelected
+      ? selectedPlayerIds
+      : [draggedPlayer.id];
+
+    if (!isDraggedSelected) {
+      selectObject({ id: draggedPlayer.id, kind: 'player' });
+    }
+
+    const movingSet = new Set(movingPlayerIds);
+    const movingPlayers = slide.players
+      .filter((p) => movingSet.has(p.id) && p.area === 'pitch')
+      .map((p) => ({
+        id: p.id,
+        initialPx: {
+          x: normX(p.x, width),
+          y: normY(p.y, height),
+        },
+        initialNorm: { x: p.x, y: p.y },
+      }));
+
+    // 前スライドにおける同一選手のゴースト座標取得 (オニオンスキン)
     const prevPlayer = prevSlide?.players.find(
       (p) => p.id === draggedPlayer.id,
     );
@@ -716,19 +756,24 @@ export function PlayerLayer({
       }
     }
 
-    // ドラッグ対象選手に追従する矢印・アノテーションを抽出
+    // ドラッグ対象選手群に追従する矢印を抽出
     const attachedArrows: Array<{
       arrow: ArrowAnnotation;
-      isSource: boolean;
+      isSourceMoved: boolean;
+      isTargetMoved: boolean;
       initialP0: { x: number; y: number };
       initialP1: { x: number; y: number };
       initialCp?: { x: number; y: number };
     }> = [];
 
     for (const arrow of slide.arrows) {
-      const isSrc = arrow.sourcePlayerId === draggedPlayer.id;
-      const isTgt = arrow.targetPlayerId === draggedPlayer.id;
-      if (!isSrc && !isTgt) continue;
+      const isSourceMoved = arrow.sourcePlayerId
+        ? movingSet.has(arrow.sourcePlayerId)
+        : false;
+      const isTargetMoved = arrow.targetPlayerId
+        ? movingSet.has(arrow.targetPlayerId)
+        : false;
+      if (!isSourceMoved && !isTargetMoved) continue;
 
       const p0 = arrow.points[0] ?? { x: 20, y: 50 };
       const p1 = arrow.points[1] ?? { x: 40, y: 50 };
@@ -746,7 +791,8 @@ export function PlayerLayer({
 
       attachedArrows.push({
         arrow,
-        isSource: isSrc,
+        isSourceMoved,
+        isTargetMoved,
         initialP0: { x: sPxX, y: sPxY },
         initialP1: { x: ePxX, y: ePxY },
         initialCp:
@@ -756,45 +802,59 @@ export function PlayerLayer({
       });
     }
 
-    // ドラッグ対象選手に追従するコネクトラインを抽出
+    // ドラッグ対象選手群に追従するコネクトラインを抽出
     const attachedConnectLines: Array<{
       lineId: string;
       sourcePlayerId: string;
       targetPlayerId: string;
-      isSource: boolean;
+      isSourceMoved: boolean;
+      isTargetMoved: boolean;
+      initialP1: { x: number; y: number };
+      initialP2: { x: number; y: number };
     }> = [];
 
-    for (const p of slide.players) {
-      if (p.id === draggedPlayer.id) {
-        for (const cl of p.connectLines) {
-          attachedConnectLines.push({
-            lineId: cl.id,
-            sourcePlayerId: p.id,
-            targetPlayerId: cl.toPlayerId,
-            isSource: true,
-          });
-        }
-      } else {
-        for (const cl of p.connectLines) {
-          if (cl.toPlayerId === draggedPlayer.id) {
-            attachedConnectLines.push({
-              lineId: cl.id,
-              sourcePlayerId: p.id,
-              targetPlayerId: cl.toPlayerId,
-              isSource: false,
-            });
-          }
-        }
+    const pitchPlayers = slide.players.filter((p) => p.area === 'pitch');
+    const playerMap = new Map(pitchPlayers.map((p) => [p.id, p]));
+
+    for (const p of pitchPlayers) {
+      for (const cl of p.connectLines) {
+        const targetP = playerMap.get(cl.toPlayerId);
+        if (!targetP) continue;
+
+        const isSourceMoved = movingSet.has(p.id);
+        const isTargetMoved = movingSet.has(cl.toPlayerId);
+        if (!isSourceMoved && !isTargetMoved) continue;
+
+        attachedConnectLines.push({
+          lineId: cl.id,
+          sourcePlayerId: p.id,
+          targetPlayerId: cl.toPlayerId,
+          isSourceMoved,
+          isTargetMoved,
+          initialP1: { x: normX(p.x, width), y: normY(p.y, height) },
+          initialP2: {
+            x: normX(targetP.x, width),
+            y: normY(targetP.y, height),
+          },
+        });
       }
     }
 
     const attachedZones = slide.zones
-      .filter((z) =>
-        (
+      .filter((z) => {
+        const attachedIds =
           (z as unknown as { attachedPlayerIds?: string[] })
-            .attachedPlayerIds ?? []
-        ).includes(draggedPlayer.id),
-      )
+            .attachedPlayerIds ?? [];
+        if (attachedIds.some((id) => movingSet.has(id))) return true;
+        if (z.points.length === 0) return false;
+        const cx =
+          z.points.reduce((sum, pt) => sum + pt.x, 0) / z.points.length;
+        const cy =
+          z.points.reduce((sum, pt) => sum + pt.y, 0) / z.points.length;
+        return movingPlayers.some(
+          (mp) => Math.hypot(cx - mp.initialNorm.x, cy - mp.initialNorm.y) <= 8,
+        );
+      })
       .map((z) => ({
         zone: z,
         initialPts: z.points?.map((pt) => ({
@@ -806,11 +866,15 @@ export function PlayerLayer({
       }));
 
     const attachedTexts = slide.texts
-      .filter(
-        (t) =>
-          (t as unknown as { attachedPlayerId?: string }).attachedPlayerId ===
-          draggedPlayer.id,
-      )
+      .filter((t) => {
+        const attachedId = (t as unknown as { attachedPlayerId?: string })
+          .attachedPlayerId;
+        if (attachedId && movingSet.has(attachedId)) return true;
+        return movingPlayers.some(
+          (mp) =>
+            Math.hypot(t.x - mp.initialNorm.x, t.y - mp.initialNorm.y) <= 8,
+        );
+      })
       .map((t) => ({
         text: t,
         initialX: normX(t.x, width),
@@ -818,19 +882,22 @@ export function PlayerLayer({
       }));
 
     dragContextRef.current = {
+      movingPlayers,
+      movingPlayerIds,
+      draggedPlayerId: draggedPlayer.id,
+      startPx,
+      prevPlayerPx,
       attachedArrows,
       attachedConnectLines,
       attachedZones,
       attachedTexts,
-      startPx,
-      prevPlayerPx,
     };
   };
 
   const handleDragMove = (_e: KonvaEventObject<DragEvent>, _player: Player) => {
     const ctx = dragContextRef.current;
     const registry = nodesRegistryRef?.current;
-    if (!ctx || !registry) return;
+    if (!ctx) return;
 
     const node = _e.currentTarget;
     const curX = node.x();
@@ -838,7 +905,22 @@ export function PlayerLayer({
     const dx = curX - ctx.startPx.x;
     const dy = curY - ctx.startPx.y;
 
-    // オニオンスキン軌跡ガイド線の更新
+    const { width, height } = stageSize;
+
+    // 1. 同時選択されている他の選手ノードを同一 Delta 分だけ滑らかに移動 (画面端クランプ付き)
+    if (registry) {
+      for (const p of ctx.movingPlayers) {
+        if (p.id === ctx.draggedPlayerId) continue;
+        const pNode = registry.playerNodes.get(p.id);
+        if (pNode) {
+          const nextX = Math.max(0, Math.min(width, p.initialPx.x + dx));
+          const nextY = Math.max(0, Math.min(height, p.initialPx.y + dy));
+          pNode.position({ x: nextX, y: nextY });
+        }
+      }
+    }
+
+    // 2. オニオンスキン軌跡ガイド線の更新
     if (ctx.prevPlayerPx && ghostLineRef.current) {
       ghostLineRef.current.points([
         ctx.prevPlayerPx.x,
@@ -848,123 +930,167 @@ export function PlayerLayer({
       ]);
     }
 
-    for (const entry of ctx.attachedArrows) {
-      const handles = registry.arrowNodes.get(entry.arrow.id);
-      if (!handles?.node) continue;
+    // 3. アタッチされている矢印の追従更新
+    if (registry) {
+      for (const entry of ctx.attachedArrows) {
+        const handles = registry.arrowNodes.get(entry.arrow.id);
+        if (!handles?.node) continue;
 
-      let sPxX = entry.initialP0.x;
-      let sPxY = entry.initialP0.y;
-      let ePxX = entry.initialP1.x;
-      let ePxY = entry.initialP1.y;
-      let cpX = entry.initialCp?.x;
-      let cpY = entry.initialCp?.y;
+        let sPxX = entry.initialP0.x;
+        let sPxY = entry.initialP0.y;
+        let ePxX = entry.initialP1.x;
+        let ePxY = entry.initialP1.y;
+        let cpX = entry.initialCp?.x;
+        let cpY = entry.initialCp?.y;
 
-      if (entry.isSource) {
-        sPxX += dx;
-        sPxY += dy;
-        if (handles.startHandleNode) {
-          handles.startHandleNode.position({ x: sPxX, y: sPxY });
+        if (entry.isSourceMoved && entry.isTargetMoved) {
+          sPxX = Math.max(0, Math.min(width, sPxX + dx));
+          sPxY = Math.max(0, Math.min(height, sPxY + dy));
+          ePxX = Math.max(0, Math.min(width, ePxX + dx));
+          ePxY = Math.max(0, Math.min(height, ePxY + dy));
+          if (cpX !== undefined && cpY !== undefined) {
+            cpX = Math.max(0, Math.min(width, cpX + dx));
+            cpY = Math.max(0, Math.min(height, cpY + dy));
+          }
+          if (handles.startHandleNode)
+            handles.startHandleNode.position({ x: sPxX, y: sPxY });
+          if (handles.endHandleNode)
+            handles.endHandleNode.position({ x: ePxX, y: ePxY });
+          if (
+            handles.controlHandleNode &&
+            cpX !== undefined &&
+            cpY !== undefined
+          ) {
+            handles.controlHandleNode.position({ x: cpX, y: cpY });
+          }
+        } else if (entry.isSourceMoved) {
+          sPxX = Math.max(0, Math.min(width, sPxX + dx));
+          sPxY = Math.max(0, Math.min(height, sPxY + dy));
+          if (cpX !== undefined && cpY !== undefined) {
+            cpX = Math.max(0, Math.min(width, cpX + dx * 0.5));
+            cpY = Math.max(0, Math.min(height, cpY + dy * 0.5));
+          }
+          if (handles.startHandleNode)
+            handles.startHandleNode.position({ x: sPxX, y: sPxY });
+          if (
+            handles.controlHandleNode &&
+            cpX !== undefined &&
+            cpY !== undefined
+          ) {
+            handles.controlHandleNode.position({ x: cpX, y: cpY });
+          }
+        } else if (entry.isTargetMoved) {
+          ePxX = Math.max(0, Math.min(width, ePxX + dx));
+          ePxY = Math.max(0, Math.min(height, ePxY + dy));
+          if (cpX !== undefined && cpY !== undefined) {
+            cpX = Math.max(0, Math.min(width, cpX + dx * 0.5));
+            cpY = Math.max(0, Math.min(height, cpY + dy * 0.5));
+          }
+          if (handles.endHandleNode)
+            handles.endHandleNode.position({ x: ePxX, y: ePxY });
+          if (
+            handles.controlHandleNode &&
+            cpX !== undefined &&
+            cpY !== undefined
+          ) {
+            handles.controlHandleNode.position({ x: cpX, y: cpY });
+          }
         }
-      } else {
-        ePxX += dx;
-        ePxY += dy;
-        if (handles.endHandleNode) {
-          handles.endHandleNode.position({ x: ePxX, y: ePxY });
+
+        const isDot =
+          entry.arrow.endMarker === 'dot' ||
+          entry.arrow.arrowType === 'route_line';
+        const isCurved =
+          entry.arrow.curveType === 'curved' ||
+          entry.arrow.curveType === 'arc' ||
+          entry.arrow.controlPoint !== undefined;
+
+        if (isDot) {
+          if (!isCurved) {
+            const arrowDx = ePxX - sPxX;
+            const arrowDy = ePxY - sPxY;
+            const len = Math.hypot(arrowDx, arrowDy);
+            const dotR = Math.max(5, entry.arrow.strokeWidth * 1.6);
+            const shortenLen = Math.max(0, len - dotR);
+            const ratio = len > 0 ? shortenLen / len : 0;
+            handles.node.points([
+              sPxX,
+              sPxY,
+              sPxX + arrowDx * ratio,
+              sPxY + arrowDy * ratio,
+            ]);
+          } else if (cpX !== undefined && cpY !== undefined) {
+            const pts = getQuadraticBezierPoints(
+              sPxX,
+              sPxY,
+              cpX,
+              cpY,
+              ePxX,
+              ePxY,
+            );
+            handles.node.points(pts);
+          }
+        } else {
+          if (!isCurved) {
+            handles.node.points([sPxX, sPxY, ePxX, ePxY]);
+          } else if (cpX !== undefined && cpY !== undefined) {
+            const pts = getQuadraticBezierPoints(
+              sPxX,
+              sPxY,
+              cpX,
+              cpY,
+              ePxX,
+              ePxY,
+            );
+            handles.node.points(pts);
+          }
         }
       }
 
-      if (cpX !== undefined && cpY !== undefined) {
-        cpX += dx * 0.5;
-        cpY += dy * 0.5;
-        if (handles.controlHandleNode) {
-          handles.controlHandleNode.position({ x: cpX, y: cpY });
+      // 4. コネクトライン更新
+      for (const entry of ctx.attachedConnectLines) {
+        const lineNode = registry.connectLineNodes.get(entry.lineId);
+        if (!lineNode) continue;
+        let x1 = entry.initialP1.x;
+        let y1 = entry.initialP1.y;
+        let x2 = entry.initialP2.x;
+        let y2 = entry.initialP2.y;
+
+        if (entry.isSourceMoved) {
+          x1 = Math.max(0, Math.min(width, entry.initialP1.x + dx));
+          y1 = Math.max(0, Math.min(height, entry.initialP1.y + dy));
+        }
+        if (entry.isTargetMoved) {
+          x2 = Math.max(0, Math.min(width, entry.initialP2.x + dx));
+          y2 = Math.max(0, Math.min(height, entry.initialP2.y + dy));
+        }
+        lineNode.points([x1, y1, x2, y2]);
+      }
+
+      // 5. ゾーン更新
+      for (const entry of ctx.attachedZones) {
+        const zNode = registry.zoneNodes.get(entry.zone.id);
+        if (!zNode) continue;
+        if (entry.initialX !== undefined && entry.initialY !== undefined) {
+          zNode.position({
+            x: entry.initialX + dx + (zNode.width() ?? 0) / 2,
+            y: entry.initialY + dy + (zNode.height() ?? 0) / 2,
+          });
         }
       }
 
-      const isDot =
-        entry.arrow.endMarker === 'dot' ||
-        entry.arrow.arrowType === 'route_line';
-      const isCurved =
-        entry.arrow.curveType === 'curved' ||
-        entry.arrow.curveType === 'arc' ||
-        entry.arrow.controlPoint !== undefined;
-
-      if (isDot) {
-        if (!isCurved) {
-          const arrowDx = ePxX - sPxX;
-          const arrowDy = ePxY - sPxY;
-          const len = Math.hypot(arrowDx, arrowDy);
-          const dotR = Math.max(5, entry.arrow.strokeWidth * 1.6);
-          const shortenLen = Math.max(0, len - dotR);
-          const ratio = len > 0 ? shortenLen / len : 0;
-          handles.node.points([
-            sPxX,
-            sPxY,
-            sPxX + arrowDx * ratio,
-            sPxY + arrowDy * ratio,
-          ]);
-        } else if (cpX !== undefined && cpY !== undefined) {
-          const pts = getQuadraticBezierPoints(
-            sPxX,
-            sPxY,
-            cpX,
-            cpY,
-            ePxX,
-            ePxY,
-          );
-          handles.node.points(pts);
-        }
-      } else {
-        if (!isCurved) {
-          handles.node.points([sPxX, sPxY, ePxX, ePxY]);
-        } else if (cpX !== undefined && cpY !== undefined) {
-          const pts = getQuadraticBezierPoints(
-            sPxX,
-            sPxY,
-            cpX,
-            cpY,
-            ePxX,
-            ePxY,
-          );
-          handles.node.points(pts);
-        }
-      }
-    }
-
-    // コネクトライン更新
-    for (const entry of ctx.attachedConnectLines) {
-      const lineNode = registry.connectLineNodes.get(entry.lineId);
-      if (!lineNode) continue;
-      const pts = lineNode.points();
-      if (pts.length < 4) continue;
-
-      if (entry.isSource) {
-        lineNode.points([curX, curY, pts[2], pts[3]]);
-      } else {
-        lineNode.points([pts[0], pts[1], curX, curY]);
-      }
-    }
-
-    // ゾーン更新
-    for (const entry of ctx.attachedZones) {
-      const zNode = registry.zoneNodes.get(entry.zone.id);
-      if (!zNode) continue;
-      if (entry.initialX !== undefined && entry.initialY !== undefined) {
-        zNode.position({
-          x: entry.initialX + dx + (zNode.width() ?? 0) / 2,
-          y: entry.initialY + dy + (zNode.height() ?? 0) / 2,
+      // 6. テキスト更新
+      for (const entry of ctx.attachedTexts) {
+        const tNode = registry.textNodes.get(entry.text.id);
+        if (!tNode) continue;
+        tNode.position({
+          x: entry.initialX + dx,
+          y: entry.initialY + dy,
         });
       }
-    }
 
-    // テキスト更新
-    for (const entry of ctx.attachedTexts) {
-      const tNode = registry.textNodes.get(entry.text.id);
-      if (!tNode) continue;
-      tNode.position({
-        x: entry.initialX + dx,
-        y: entry.initialY + dy,
-      });
+      // 関連レイヤーの再描画
+      registry.annotationLayer?.batchDraw();
     }
 
     node.getLayer()?.batchDraw();
@@ -974,12 +1100,25 @@ export function PlayerLayer({
     _e: KonvaEventObject<DragEvent>,
     draggedPlayer: Player,
   ) => {
+    const ctx = dragContextRef.current;
     const { width, height } = stageSize;
     const node = _e.currentTarget;
-    const finalNormX = Math.max(0, Math.min(100, (node.x() / width) * 100));
-    const finalNormY = Math.max(0, Math.min(100, (node.y() / height) * 100));
 
-    movePlayer(activeSlideId, draggedPlayer.id, finalNormX, finalNormY);
+    if (ctx && ctx.movingPlayerIds.length > 0) {
+      const deltaNormX = ((node.x() - ctx.startPx.x) / width) * 100;
+      const deltaNormY = ((node.y() - ctx.startPx.y) / height) * 100;
+
+      moveMultiplePlayersByDelta(
+        activeSlideId,
+        ctx.movingPlayerIds,
+        deltaNormX,
+        deltaNormY,
+      );
+    } else {
+      const finalNormX = Math.max(0, Math.min(100, (node.x() / width) * 100));
+      const finalNormY = Math.max(0, Math.min(100, (node.y() / height) * 100));
+      movePlayer(activeSlideId, draggedPlayer.id, finalNormX, finalNormY);
+    }
 
     if (ghostGroupRef.current) {
       ghostGroupRef.current.visible(false);

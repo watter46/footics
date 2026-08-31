@@ -26,9 +26,15 @@
 | **AAWU 5-2** | 📋 **Global Object Copy & Paste (Ctrl+C / Ctrl+V)** | `regista-frontend`<br>`regista-canvas` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts` | 選択中の選手・矢印・ゾーン・テキストを Ctrl/Cmd+C で内部クリップボードにコピーし、Ctrl/Cmd+V でオフセット配置可能にする。 | **TODO** ⏳ |
 | **AAWU 5-3** | ⏪ **Undo / Redo History Management (Ctrl+Z / Ctrl+Shift+Z)** | `regista-frontend`<br>`regista-data` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | スライド変更・オブジェクト編集の Undo/Redo スタックを構築し、Ctrl+Z, Ctrl+Shift+Z およびツールバーボタンで操作可能にする。 | **TODO** ⏳ |
 | **AAWU 5-4** | 👥 **Single Team Quick Placement & Visibility Toggle** | `regista-frontend` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | 「Homeのみ配置（Away退避）」「Awayのみ配置（Home退避）」のワンクリックアクションおよび Team Visibility 切り替えを実装。 | **TODO** ⏳ |
-| **AAWU 5-5-A** | 🔀 **Stabilized Multi-Player Drag & Selection UX** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/stores/tactical-unified-store.ts` | 複数選択した選手を1人ドラッグした際、全員が滑らかにデルタ追従移動し、ドロップ時に一括確定する安定したUI/UXへの再構築。 | **TODO** ⏳ |
+| **AAWU 5-5-A** | 🔀 **Stabilized Multi-Player Drag & Selection UX** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/stores/tactical-unified-store.ts` | 複数選択した選手を1人ドラッグした際、全員が滑らかにデルタ追従移動し、ドロップ時に一括確定する安定したUI/UXへの再構築。 | **DONE** ✅ |
 | **AAWU 5-5-B** | 📊 **4-Position Grouping (GK/DF/MF/FW) & Pitch/Bench Swap** | `regista-frontend` | `src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/lib/tactical/player-formatting.ts` | スカッド/サブメンバー一覧およびピッチ上の選手リストを「GK / DF / MF / FW」の4ポジションにグルーピング表示。ピッチ⇄ベンチ間の入れ替えでもカテゴリを崩さず視覚的に整理。 | **TODO** ⏳ |
 | **AAWU 5-5-C** | 🪢 **Interactive Ghost Marker Trajectory with Curve Pointer** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/tactical/trajectory.ts`<br>`src/stores/tactical-unified-store.ts` | 選手マーカー選択中に「前スライドのゴースト位置」と「移動矢印」を常時表示。AAWU 5-1 の汎用曲線ポインタを用いて移動軌道を直感的にドラッグ変形・カスタム補間可能にする。 | **TODO** ⏳ |
+
+- **2026-08-31**: [AAWU 5-5-A Complete: Stabilized Multi-Player Drag & Selection UX]
+  1. **Konva 直接ノード操作による滑らかな複数選手デルタ追従**: 複数選択中のいずれかの選手をドラッグした際、React State 非同期で選択中の全選手マーカー・背番号・ラベル・視界コーンを同一 Delta 分だけリアルタイムに追従移動。
+  2. **アタッチされた矢印・接続線・ゾーン・テキストのリアルタイム同期**: 選手間に架かる矢印（両端追従 / 片端固定追従）、接続線（ConnectLine）、ゾーン・注釈テキストの追従を Konva ノード直接更新で同期。
+  3. **一括アトミック確定 & 境界クランプ**: `onDragEnd` で `moveMultiplePlayersByDelta(slideId, playerIds, deltaX, deltaY)` を1回呼び出し、全選手の [0%〜100%] 境界外飛び出し防止・クランプ処理を適用してアトミックに確定。
+  4. Scoped 型チェック、Biome チェック、Tactical 関連 Vitest テスト全40件完全パスを達成。
 
 - **2026-08-31**: [Phase 2-B Complete: Team Modernization & Tactical Integration]
   1. **AAWU 4-1**: `ChelseaSquadClient.tsx` を `squad-header.tsx`, `squad-stats-summary.tsx`, `squad-filter-bar.tsx`, `squad-player-card.tsx` の4コンポーネントへ責務分割。
