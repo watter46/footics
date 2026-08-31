@@ -17,12 +17,14 @@ import type {
   Player,
   PlayerBadge,
   PlayerFocus,
+  PlayerTrajectory,
   Slide,
   TextAnnotation,
   VisionCone,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
 import { applyEasing } from './easing';
+import { calculateBezierPoint } from './trajectory';
 
 // ─────────────────────────────────────────
 // § 1. ユーティリティ計算
@@ -237,6 +239,7 @@ export interface InterpolatedPlayerState {
   connectLines: ConnectLine[];
   badges: PlayerBadge[];
   focus?: PlayerFocus;
+  trajectory?: PlayerTrajectory;
 }
 
 export interface InterpolatedBallState {
@@ -488,9 +491,20 @@ export function interpolatePlayer(
   let visible = true;
 
   if (startP.area === 'pitch' && endP.area === 'pitch') {
-    // 直線移動補間
-    x = lerp(startP.x, endP.x, ease);
-    y = lerp(startP.y, endP.y, ease);
+    // 軌道設定 (trajectory) に基づくベジェ曲線または直線移動補間
+    if (endP.trajectory && endP.trajectory.type !== 'straight') {
+      const pt = calculateBezierPoint(
+        { x: startP.x, y: startP.y },
+        { x: endP.x, y: endP.y },
+        ease,
+        endP.trajectory,
+      );
+      x = pt.x;
+      y = pt.y;
+    } else {
+      x = lerp(startP.x, endP.x, ease);
+      y = lerp(startP.y, endP.y, ease);
+    }
     opacity = 1;
     visible = true;
   } else if (startP.area === 'pitch' && endP.area === 'bench') {
@@ -555,6 +569,7 @@ export function interpolatePlayer(
     connectLines: endP.connectLines,
     badges: endP.badges,
     focus: endP.focus,
+    trajectory: endP.trajectory,
   };
 }
 
@@ -754,6 +769,7 @@ export function getInterpolatedUnifiedSlideFrame(
         connectLines: p.connectLines,
         badges: p.badges,
         focus: p.focus,
+        trajectory: p.trajectory,
       };
     });
 

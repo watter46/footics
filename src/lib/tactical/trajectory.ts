@@ -110,3 +110,59 @@ export function calculateBezierPoint(
     y: c0 * p0.y + c1 * cp.y + c2 * p1.y,
   };
 }
+
+/**
+ * 2次ベジェ曲線の中間頂点 M (t=0.5) を算出
+ * M = 0.25*P0 + 0.5*CP + 0.25*P1
+ */
+export function getBezierMidpoint(
+  p0: Point2D,
+  p1: Point2D,
+  cp: Point2D,
+): Point2D {
+  return {
+    x: 0.25 * p0.x + 0.5 * cp.x + 0.25 * p1.x,
+    y: 0.25 * p0.y + 0.5 * cp.y + 0.25 * p1.y,
+  };
+}
+
+/**
+ * ハンドル中間位置 M から 2次ベジェ曲線の制御点 CP を逆算
+ * CP = 2*M - 0.5*(P0 + P1)
+ */
+export function getControlPointFromMidpoint(
+  p0: Point2D,
+  p1: Point2D,
+  mid: Point2D,
+): Point2D {
+  return {
+    x: 2 * mid.x - 0.5 * (p0.x + p1.x),
+    y: 2 * mid.y - 0.5 * (p0.y + p1.y),
+  };
+}
+
+/**
+ * Konva Line / Arrow 用に 2次ベジェ曲線の点列配列 [x0, y0, x1, y1, ...] を生成
+ */
+export function getQuadraticBezierPoints(
+  startX: number,
+  startY: number,
+  cpX: number,
+  cpY: number,
+  endX: number,
+  endY: number,
+  steps = 30,
+): number[] {
+  const points: number[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const oneMinusT = 1 - t;
+    const x =
+      oneMinusT * oneMinusT * startX + 2 * oneMinusT * t * cpX + t * t * endX;
+    const y =
+      oneMinusT * oneMinusT * startY + 2 * oneMinusT * t * cpY + t * t * endY;
+    points.push(x, y);
+  }
+  return points;
+}
+

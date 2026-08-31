@@ -9,6 +9,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Arc,
+  Arrow,
   Circle,
   Group,
   Image as KonvaImage,
@@ -17,9 +18,15 @@ import {
   Text,
 } from 'react-konva';
 import { getLastName } from '@/lib/tactical/player-formatting';
+import {
+  getBezierControlPoint,
+  getBezierMidpoint,
+  getQuadraticBezierPoints,
+} from '@/lib/tactical/trajectory';
 import type {
   ArrowAnnotation,
   Player,
+  PlayerTrajectory,
   Slide,
   TextAnnotation,
   ZoneAnnotation,
@@ -43,23 +50,252 @@ function normY(v: number, h: number) {
   return (v / 100) * h;
 }
 
-function getQuadraticBezierPoints(
-  startX: number,
-  startY: number,
-  cpX: number,
-  cpY: number,
-  endX: number,
-  endY: number,
-  steps = 30,
-) {
-  const points: number[] = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const x = (1 - t) * (1 - t) * startX + 2 * (1 - t) * t * cpX + t * t * endX;
-    const y = (1 - t) * (1 - t) * startY + 2 * (1 - t) * t * cpY + t * t * endY;
-    points.push(x, y);
-  }
-  return points;
+// ── Selected Player Ghost & Trajectory with Curve Pointer ───────────────
+
+interface SelectedPlayerGhostTrajectoryProps {
+  player: Player;
+  prevPlayer: Player;
+  stageSize: { width: number; height: number };
+  activeSlideId: string;
+  onUpdateTrajectory: (
+    slideId: string,
+    playerId: string,
+    trajectory: PlayerTrajectory | undefined,
+  ) => void;
+}
+
+function SelectedPlayerGhostTrajectory({
+  player,
+  prevPlayer,
+  stageSize,
+  activeSlideId,
+  onUpdateTrajectory,
+}: SelectedPlayerGhostTrajectoryProps) {
+  const { width, height } = stageSize;
+  const baseDim = Math.min(width, height);
+  const sizeScale = prevPlayer.style.sizeScale ?? 1.0;
+  const radius = baseDim * 0.032 * sizeScale;
+
+  const sPxX = normX(prevPlayer.x, width);
+  const sPxY = normY(prevPlayer.y, height);
+  const ePxX = normX(player.x, width);
+  const ePxY = normY(player.y, height);
+
+  const dist = Math.hypot(ePxX - sPxX, ePxY - sPxY);
+  const isMoved = dist >= 4;
+
+  const p0Norm = { x: prevPlayer.x, y: prevPlayer.y };
+  const p1Norm = { x: player.x, y: player.y };
+  const cpNorm = getBezierControlPoint(p0Norm, p1Norm, player.trajectory);
+  const cpPxX = normX(cpNorm.x, width);
+  const cpPxY = normY(cpNorm.y, height);
+
+  const isCurved =
+    player.trajectory?.type === 'custom' ||
+    player.trajectory?.type === 'arc_left' ||
+    player.trajectory?.type === 'arc_right' ||
+    player.trajectory?.controlPoint !== undefined;
+
+  const midHandlePx = isCurved
+    ? getBezierMidpoint(
+        { x: sPxX, y: sPxY },
+        { x: ePxX, y: ePxY },
+        { x: cpPxX, y: cpPxY },
+      )
+    : { x: (sPxX + ePxX) / 2, y: (sPxY + ePxY) / 2 };
+
+  const arrowRef = useRef<any>(null);
+
+  const calcArrowPoints = (
+    sX: number,
+    sY: number,
+    eX: number,
+    eY: number,
+    cpX?: number,
+    cpY?: number,
+  ) => {
+    if (cpX === undefined || cpY === undefined) {
+      const dx = eX - sX;
+      const dy = eY - sY;
+      const d = Math.hypot(dx, dy);
+      if (d > radius * 2) {
+        const ux = dx / d;
+        const uy = dy / d;
+        return [
+          sX + ux * radius,
+          sY + uy * radius,
+          eX - ux * (radius + 3),
+          eY - uy * (radius + 3),
+        ];
+      }
+      return [sX, sY, eX, eY];
+    } else {
+      const v0x = cpX - sX;
+      const v0y = cpY - sY;
+      const d0 = Math.hypot(v0x, v0y) || 1;
+      const startX = sX + (v0x / d0) * radius;
+      const startY = sY + (v0y / d0) * radius;
+
+      const v1x = eX - cpX;
+      const v1y = eY - cpY;
+      const d1 = Math.hypot(v1x, v1y) || 1;
+      const endX = eX - (v1x / d1) * (radius + 3);
+      const endY = eY - (v1y / d1) * (radius + 3);
+
+      return getQuadraticBezierPoints(startX, startY, cpX, cpY, endX, endY);
+    }
+  };
+
+  const initialPoints = isCurved
+    ? calcArrowPoints(sPxX, sPxY, ePxX, ePxY, cpPxX, cpPxY)
+    : calcArrowPoints(sPxX, sPxY, ePxX, ePxY);
+
+  return (
+    <Group>
+      {/* ── 1つ前のスライドの位置（ゴーストマーカー） ── */}
+      <Group x={sPxX} y={sPxY} opacity={0.45} listening={false}>
+        <Circle
+          radius={radius}
+          fill={prevPlayer.style.color}
+          stroke="#ffffff"
+          strokeWidth={1.5}
+          dash={[3, 2]}
+          perfectDrawEnabled={false}
+        />
+        {prevPlayer.shirtNo && (
+          <Text
+            x={-radius}
+            y={-radius * 0.55}
+            width={radius * 2}
+            text={prevPlayer.shirtNo}
+            fontSize={radius * 0.9 * (prevPlayer.style.numberSizeScale ?? 1.0)}
+            fill="#ffffff"
+            align="center"
+            fontStyle="bold"
+            perfectDrawEnabled={false}
+          />
+        )}
+        {prevPlayer.name && (
+          <Text
+            x={-radius * 2}
+            y={radius + 3}
+            width={radius * 4}
+            text={getLastName(prevPlayer.name)}
+            fontSize={radius * 0.65 * (prevPlayer.style.labelSizeScale ?? 1.0)}
+            fill="#ffffff"
+            stroke="#020617"
+            strokeWidth={1.5}
+            align="center"
+            fontStyle="bold"
+            perfectDrawEnabled={false}
+          />
+        )}
+      </Group>
+
+      {/* ── 移動軌道矢印 ── */}
+      {isMoved && (
+        <Arrow
+          ref={arrowRef}
+          points={initialPoints}
+          stroke="#38bdf8"
+          fill="#38bdf8"
+          strokeWidth={2.5}
+          dash={[5, 3]}
+          pointerLength={8}
+          pointerWidth={6}
+          opacity={0.85}
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      )}
+
+      {/* ── 汎用ベジェ曲線制御ポインタ（黄色の丸ハンドル） ── */}
+      {isMoved && (
+        <Circle
+          x={midHandlePx.x}
+          y={midHandlePx.y}
+          radius={6.5}
+          fill="#f59e0b"
+          stroke="#ffffff"
+          strokeWidth={2}
+          shadowColor="rgba(0,0,0,0.5)"
+          shadowBlur={4}
+          perfectDrawEnabled={false}
+          draggable
+          onMouseEnter={(e) => {
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'grab';
+          }}
+          onMouseLeave={(e) => {
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'default';
+          }}
+          onDragStart={(e) => {
+            e.cancelBubble = true;
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'grabbing';
+          }}
+          onDragMove={(e) => {
+            e.cancelBubble = true;
+            const pos = e.target.position();
+            // 2次ベジェ中間点 M から制御点 CP を逆算: CP = 2*M - 0.5*(P0 + P1)
+            const calcCpX = 2 * pos.x - 0.5 * (sPxX + ePxX);
+            const calcCpY = 2 * pos.y - 0.5 * (sPxY + ePxY);
+
+            if (arrowRef.current) {
+              const pts = calcArrowPoints(
+                sPxX,
+                sPxY,
+                ePxX,
+                ePxY,
+                calcCpX,
+                calcCpY,
+              );
+              arrowRef.current.points(pts);
+              arrowRef.current.getLayer()?.batchDraw();
+            }
+          }}
+          onDragEnd={(e) => {
+            e.cancelBubble = true;
+            const pos = e.target.position();
+            const calcCpX = 2 * pos.x - 0.5 * (sPxX + ePxX);
+            const calcCpY = 2 * pos.y - 0.5 * (sPxY + ePxY);
+
+            const newNormX = Math.max(
+              0,
+              Math.min(100, (calcCpX / width) * 100),
+            );
+            const newNormY = Math.max(
+              0,
+              Math.min(100, (calcCpY / height) * 100),
+            );
+
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'default';
+
+            // 直線との距離判定 (6px未満なら直線へリセット)
+            const midPxX = (sPxX + ePxX) / 2;
+            const midPxY = (sPxY + ePxY) / 2;
+            const distFromMid = Math.hypot(pos.x - midPxX, pos.y - midPxY);
+
+            if (distFromMid < 6.0) {
+              onUpdateTrajectory(activeSlideId, player.id, {
+                type: 'straight',
+              });
+            } else {
+              onUpdateTrajectory(activeSlideId, player.id, {
+                type: 'custom',
+                controlPoint: {
+                  x: Math.round(newNormX * 10) / 10,
+                  y: Math.round(newNormY * 10) / 10,
+                },
+              });
+            }
+          }}
+        />
+      )}
+    </Group>
+  );
 }
 
 // ── VisionCone ──────────────────────────────────────────────────────────
@@ -634,6 +870,9 @@ export function PlayerLayer({
   const setActiveMarkerOptionTab = useTacticalUnifiedStore(
     (s) => s.setActiveMarkerOptionTab,
   );
+  const updatePlayerTrajectory = useTacticalUnifiedStore(
+    (s) => s.updatePlayerTrajectory,
+  );
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
   const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
@@ -1206,6 +1445,33 @@ export function PlayerLayer({
           setActiveMarkerOptionTab('connect');
         }}
       />
+      {/* ── 選択中の選手に対するゴーストマーカー & 軌道矢印 & ベジェハンドル (常時表示: activeSlideIndex >= 1) ── */}
+      {slide.index >= 1 &&
+        prevSlide &&
+        slide.players
+          .filter(
+            (p) =>
+              p.area === 'pitch' &&
+              selectedObjects.some((o) => o.kind === 'player' && o.id === p.id),
+          )
+          .map((player) => {
+            const prevPlayer = prevSlide.players.find(
+              (p) => p.id === player.id,
+            );
+            if (!prevPlayer || prevPlayer.area === 'bench') return null;
+
+            return (
+              <SelectedPlayerGhostTrajectory
+                key={`ghost-traj-${player.id}`}
+                player={player}
+                prevPlayer={prevPlayer}
+                stageSize={stageSize}
+                activeSlideId={activeSlideId}
+                onUpdateTrajectory={updatePlayerTrajectory}
+              />
+            );
+          })}
+
       {slide.players
         .filter(
           (p) =>

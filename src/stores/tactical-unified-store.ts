@@ -30,6 +30,7 @@ import type {
   Player,
   PlayerBadge,
   PlayerFocus,
+  PlayerTrajectory,
   Slide,
   TacticalProject,
   TextAnnotation,
@@ -218,6 +219,11 @@ interface TacticalUnifiedState {
     slideId: string,
     playerId: string,
     patch: Partial<Player>,
+  ) => void;
+  updatePlayerTrajectory: (
+    slideId: string,
+    playerId: string,
+    trajectory: PlayerTrajectory | undefined,
   ) => void;
   movePlayer: (slideId: string, playerId: string, x: number, y: number) => void;
   moveMultiplePlayersByDelta: (
@@ -605,6 +611,21 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
               ...p,
               x: isVertical ? p.x : Math.max(0, Math.min(100, 100 - p.x)),
               y: isVertical ? Math.max(0, Math.min(100, 100 - p.y)) : p.y,
+              trajectory: p.trajectory
+                ? {
+                    ...p.trajectory,
+                    controlPoint: p.trajectory.controlPoint
+                      ? {
+                          x: isVertical
+                            ? p.trajectory.controlPoint.x
+                            : 100 - p.trajectory.controlPoint.x,
+                          y: isVertical
+                            ? 100 - p.trajectory.controlPoint.y
+                            : p.trajectory.controlPoint.y,
+                        }
+                      : undefined,
+                  }
+                : undefined,
             })),
             arrows: sl.arrows.map((a) => ({
               ...a,
@@ -728,6 +749,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
               connectLines: [],
               badges: [],
               focus: undefined,
+              trajectory: undefined,
             })),
             boundaryBox: { x: 0, y: 0, width: 100, height: 100, enabled: true },
           })),
@@ -774,10 +796,21 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             players: slide.players.map((p) => ({
               ...p,
               ...transformCoord({ x: p.x, y: p.y }, from, ratio),
+              trajectory: p.trajectory
+                ? {
+                    ...p.trajectory,
+                    controlPoint: p.trajectory.controlPoint
+                      ? transformCoord(p.trajectory.controlPoint, from, ratio)
+                      : undefined,
+                  }
+                : undefined,
             })),
             arrows: slide.arrows.map((a) => ({
               ...a,
               points: transformPoints(a.points, from, ratio),
+              controlPoint: a.controlPoint
+                ? transformCoord(a.controlPoint, from, ratio)
+                : undefined,
             })),
             zones: slide.zones.map((z) => ({
               ...z,
@@ -1584,6 +1617,18 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             ],
           };
         }),
+        isDirty: true,
+      })),
+
+    updatePlayerTrajectory: (slideId, playerId, trajectory) =>
+      set((s) => ({
+        ...recordHistory(s),
+        project: updateSlideInProject(s.project, slideId, (sl) => ({
+          ...sl,
+          players: sl.players.map((p) =>
+            p.id === playerId ? { ...p, trajectory } : p,
+          ),
+        })),
         isDirty: true,
       })),
 

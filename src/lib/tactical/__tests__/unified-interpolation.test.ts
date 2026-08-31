@@ -287,5 +287,68 @@ describe('unified-interpolation engine', () => {
       expect(frame.ball.y).toBeCloseTo(60, 1);
       expect(frame.isPaused).toBe(true);
     });
+
+    it('interpolates player along custom bezier trajectory', () => {
+      const slidesWithCurve: Slide[] = [
+        {
+          id: 's1',
+          index: 0,
+          transitionDurationMs: 1000,
+          pauseMs: 500,
+          easing: 'linear',
+          players: [
+            {
+              id: 'p1',
+              team: 'home',
+              area: 'pitch',
+              x: 20,
+              y: 80,
+              style: { insideContent: 'number', bottomLabel: 'name', color: '#034694' },
+              connectLines: [],
+              badges: [],
+            },
+          ],
+          arrows: [],
+          zones: [],
+          texts: [],
+          ball: { x: 50, y: 50, visible: true },
+        },
+        {
+          id: 's2',
+          index: 1,
+          transitionDurationMs: 1000,
+          pauseMs: 500,
+          easing: 'linear',
+          players: [
+            {
+              id: 'p1',
+              team: 'home',
+              area: 'pitch',
+              x: 20,
+              y: 20,
+              style: { insideContent: 'number', bottomLabel: 'name', color: '#034694' },
+              connectLines: [],
+              badges: [],
+              trajectory: {
+                type: 'custom',
+                controlPoint: { x: 75, y: 45 },
+              },
+            },
+          ],
+          arrows: [],
+          zones: [],
+          texts: [],
+          ball: { x: 50, y: 50, visible: true },
+        },
+      ];
+
+      // At t=0.5 (500ms), bezier midpoint calculation
+      // x: 0.25*20 + 0.5*75 + 0.25*20 = 47.5
+      // y: 0.25*80 + 0.5*45 + 0.25*20 = 47.5
+      const frame = getInterpolatedUnifiedSlideFrame(slidesWithCurve, 500);
+      expect(frame.players.p1.x).toBeCloseTo(47.5, 1);
+      expect(frame.players.p1.y).toBeCloseTo(47.5, 1);
+    });
   });
 });
+

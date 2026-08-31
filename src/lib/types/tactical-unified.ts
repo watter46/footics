@@ -148,6 +148,14 @@ export const PlayerFocusSchema = z.object({
 });
 export type PlayerFocus = z.infer<typeof PlayerFocusSchema>;
 
+/** 選手移動軌道 (ベジェ曲線 / 直線) */
+export const PlayerTrajectorySchema = z.object({
+  type: z.enum(['straight', 'arc_left', 'arc_right', 'custom']).default('straight'),
+  curveOffset: z.number().optional(),
+  controlPoint: z.object({ x: z.number(), y: z.number() }).optional(),
+});
+export type PlayerTrajectory = z.infer<typeof PlayerTrajectorySchema>;
+
 // ─────────────────────────────────────────
 // § 5. Player オブジェクト
 // ─────────────────────────────────────────
@@ -170,6 +178,7 @@ export const PlayerSchema = z.object({
   connectLines: z.array(ConnectLineSchema).default([]),
   badges: z.array(PlayerBadgeSchema).default([]),
   focus: PlayerFocusSchema.optional(),
+  trajectory: PlayerTrajectorySchema.optional(),
 });
 export type Player = z.infer<typeof PlayerSchema>;
 
