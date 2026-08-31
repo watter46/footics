@@ -48,6 +48,12 @@ function pxToNormX(px: number, w: number) {
 function pxToNormY(py: number, h: number) {
   return Math.max(0, Math.min(100, (py / h) * 100));
 }
+function cpPxToNormX(px: number, w: number) {
+  return (px / w) * 100;
+}
+function cpPxToNormY(py: number, h: number) {
+  return (py / h) * 100;
+}
 
 type KonvaClickEvent =
   | KonvaEventObject<MouseEvent>
@@ -198,6 +204,21 @@ const ArrowObject = React.memo(function ArrowObject({
   const controlHandleRef = React.useRef<any>(null);
   const startDotRef = React.useRef<any>(null);
   const endDotRef = React.useRef<any>(null);
+
+  useEffect(() => {
+    if (controlHandleRef.current) {
+      controlHandleRef.current.position({
+        x: midHandlePxX,
+        y: midHandlePxY,
+      });
+    }
+    if (startHandleRef.current) {
+      startHandleRef.current.position({ x: sPxX, y: sPxY });
+    }
+    if (endHandleRef.current) {
+      endHandleRef.current.position({ x: ePxX, y: ePxY });
+    }
+  }, [midHandlePxX, midHandlePxY, sPxX, sPxY, ePxX, ePxY]);
 
   useEffect(() => {
     if (!nodesRegistryRef) return;
@@ -370,8 +391,8 @@ const ArrowObject = React.memo(function ArrowObject({
           };
           if (arrow.controlPoint) {
             patch.controlPoint = {
-              x: Math.max(0, Math.min(100, arrow.controlPoint.x + dxNorm)),
-              y: Math.max(0, Math.min(100, arrow.controlPoint.y + dyNorm)),
+              x: arrow.controlPoint.x + dxNorm,
+              y: arrow.controlPoint.y + dyNorm,
             };
           }
           updateArrow(slideId, arrow.id, patch);
@@ -576,9 +597,6 @@ const ArrowObject = React.memo(function ArrowObject({
               e.cancelBubble = true;
               const stage = e.target.getStage();
               if (stage) stage.container().style.cursor = 'grabbing';
-              if (arrow.curveType !== 'curved') {
-                updateArrow(slideId, arrow.id, { curveType: 'curved' });
-              }
             }}
             onDragMove={(e) => {
               e.cancelBubble = true;
@@ -624,26 +642,22 @@ const ArrowObject = React.memo(function ArrowObject({
                 ? endHandleRef.current.y()
                 : ePxY;
 
-              // 逆算された制御点 P_control
+              // 逆算された制御点 P_control (クランプなしで広範レンジ保持)
               const calcCpX = 2 * pos.x - 0.5 * (curSx + curEx);
               const calcCpY = 2 * pos.y - 0.5 * (curSy + curEy);
 
-              const newNormX = pxToNormX(calcCpX, width);
-              const newNormY = pxToNormY(calcCpY, height);
+              const newNormX = cpPxToNormX(calcCpX, width);
+              const newNormY = cpPxToNormY(calcCpY, height);
               const stage = e.target.getStage();
               if (stage) stage.container().style.cursor = 'default';
 
-              // 直線に戻すかどうかの判定: ポインタ M (pos) と 中点 (p0 + p1)/2 の距離
-              const midNormX = (p0.x + p1.x) / 2;
-              const midNormY = (p0.y + p1.y) / 2;
-              const posNormX = pxToNormX(pos.x, width);
-              const posNormY = pxToNormY(pos.y, height);
-              const distFromMid = Math.hypot(
-                posNormX - midNormX,
-                posNormY - midNormY,
-              );
+              // 直線に戻すかどうかの判定: ポインタ M (pos) と 中点 (curSx + curEx)/2 のピクセル距離
+              const midPxX = (curSx + curEx) / 2;
+              const midPxY = (curSy + curEy) / 2;
+              const distFromMidPx = Math.hypot(pos.x - midPxX, pos.y - midPxY);
 
-              if (distFromMid < 1.0) {
+              if (distFromMidPx < 6.0) {
+                e.target.position({ x: midPxX, y: midPxY });
                 updateArrow(slideId, arrow.id, {
                   sourcePlayerId: arrow.sourcePlayerId,
                   curveType: 'straight',

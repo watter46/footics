@@ -1626,11 +1626,12 @@ function ArrowInspector({
               const normalX = -dy / len;
               const normalY = dx / len;
               const offset = 8;
+              // 頂点 M を mid + normal * offset に配置するための制御点: P_ctrl = mid + normal * (offset * 2)
               up({
                 curveType: 'curved',
                 controlPoint: arrow.controlPoint ?? {
-                  x: Math.max(0, Math.min(100, midX + normalX * offset)),
-                  y: Math.max(0, Math.min(100, midY + normalY * offset)),
+                  x: midX + normalX * (offset * 2),
+                  y: midY + normalY * (offset * 2),
                 },
               });
             }}

@@ -95,4 +95,28 @@ describe('AAWU 5-1: Quadratic Bezier Curve Control Point & Apex Parity', () => {
     expect(apex).toEqual(mid);
     expect(apex).toEqual({ x: 300, y: 450 });
   });
+
+  it('曲げ幅が非常に大きく制御点が 0% 未満または 100% 超になる場合でも頂点 M は指定位置に完全吸着する', () => {
+    // 0-100% 正規化座標系での極端なカーブテスト
+    const p0 = { x: 20, y: 50 };
+    const p1 = { x: 80, y: 50 };
+
+    // 頂点 M をピッチ上端近く (50, 10) まで大きく曲げる
+    const targetM = { x: 50, y: 10 };
+    const cp = calculateControlPoint(p0, targetM, p1);
+
+    // 制御点 Y は 2*10 - 50 = -30 (負の値) になる
+    expect(cp.x).toEqual(50);
+    expect(cp.y).toEqual(-30);
+
+    // この制御点でベジェ曲線を評価
+    const curveApex = bezierPoint(p0, cp, p1, 0.5);
+    expect(curveApex.x).toBeCloseTo(targetM.x, 6);
+    expect(curveApex.y).toBeCloseTo(targetM.y, 6);
+
+    // 逆算頂点 M も targetM と完全一致
+    const apex = calculateApexM(p0, cp, p1);
+    expect(apex.x).toBeCloseTo(targetM.x, 6);
+    expect(apex.y).toBeCloseTo(targetM.y, 6);
+  });
 });

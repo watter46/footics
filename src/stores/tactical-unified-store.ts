@@ -476,12 +476,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
               })),
               controlPoint: a.controlPoint
                 ? {
-                    x: isVertical
-                      ? a.controlPoint.x
-                      : Math.max(0, Math.min(100, 100 - a.controlPoint.x)),
-                    y: isVertical
-                      ? Math.max(0, Math.min(100, 100 - a.controlPoint.y))
-                      : a.controlPoint.y,
+                    x: isVertical ? a.controlPoint.x : 100 - a.controlPoint.x,
+                    y: isVertical ? 100 - a.controlPoint.y : a.controlPoint.y,
                   }
                 : undefined,
             })),
@@ -910,14 +906,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
               }));
               const newCp = arrow.controlPoint
                 ? {
-                    x: Math.max(
-                      0,
-                      Math.min(100, arrow.controlPoint.x + deltaX),
-                    ),
-                    y: Math.max(
-                      0,
-                      Math.min(100, arrow.controlPoint.y + deltaY),
-                    ),
+                    x: arrow.controlPoint.x + deltaX,
+                    y: arrow.controlPoint.y + deltaY,
                   }
                 : undefined;
               return {
@@ -935,14 +925,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
               };
               const newCp = arrow.controlPoint
                 ? {
-                    x: Math.max(
-                      0,
-                      Math.min(100, arrow.controlPoint.x + deltaX / 2),
-                    ),
-                    y: Math.max(
-                      0,
-                      Math.min(100, arrow.controlPoint.y + deltaY / 2),
-                    ),
+                    x: arrow.controlPoint.x + deltaX / 2,
+                    y: arrow.controlPoint.y + deltaY / 2,
                   }
                 : undefined;
               return {
@@ -960,14 +944,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
               };
               const newCp = arrow.controlPoint
                 ? {
-                    x: Math.max(
-                      0,
-                      Math.min(100, arrow.controlPoint.x + deltaX / 2),
-                    ),
-                    y: Math.max(
-                      0,
-                      Math.min(100, arrow.controlPoint.y + deltaY / 2),
-                    ),
+                    x: arrow.controlPoint.x + deltaX / 2,
+                    y: arrow.controlPoint.y + deltaY / 2,
                   }
                 : undefined;
               return {

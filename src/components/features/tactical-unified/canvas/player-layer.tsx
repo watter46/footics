@@ -949,8 +949,8 @@ export function PlayerLayer({
           ePxX = Math.max(0, Math.min(width, ePxX + dx));
           ePxY = Math.max(0, Math.min(height, ePxY + dy));
           if (cpX !== undefined && cpY !== undefined) {
-            cpX = Math.max(0, Math.min(width, cpX + dx));
-            cpY = Math.max(0, Math.min(height, cpY + dy));
+            cpX = cpX + dx;
+            cpY = cpY + dy;
           }
           if (handles.startHandleNode)
             handles.startHandleNode.position({ x: sPxX, y: sPxY });
@@ -971,8 +971,8 @@ export function PlayerLayer({
           sPxX = Math.max(0, Math.min(width, sPxX + dx));
           sPxY = Math.max(0, Math.min(height, sPxY + dy));
           if (cpX !== undefined && cpY !== undefined) {
-            cpX = Math.max(0, Math.min(width, cpX + dx * 0.5));
-            cpY = Math.max(0, Math.min(height, cpY + dy * 0.5));
+            cpX = cpX + dx * 0.5;
+            cpY = cpY + dy * 0.5;
           }
           if (handles.startHandleNode)
             handles.startHandleNode.position({ x: sPxX, y: sPxY });
@@ -991,8 +991,8 @@ export function PlayerLayer({
           ePxX = Math.max(0, Math.min(width, ePxX + dx));
           ePxY = Math.max(0, Math.min(height, ePxY + dy));
           if (cpX !== undefined && cpY !== undefined) {
-            cpX = Math.max(0, Math.min(width, cpX + dx * 0.5));
-            cpY = Math.max(0, Math.min(height, cpY + dy * 0.5));
+            cpX = cpX + dx * 0.5;
+            cpY = cpY + dy * 0.5;
           }
           if (handles.endHandleNode)
             handles.endHandleNode.position({ x: ePxX, y: ePxY });

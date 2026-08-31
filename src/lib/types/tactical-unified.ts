@@ -194,7 +194,7 @@ export const ArrowAnnotationSchema = z.object({
     .default('pass'),
   curveType: z.enum(['straight', 'curved', 'arc']).default('straight'),
   points: z.array(NormalizedPointSchema).min(2),
-  controlPoint: NormalizedPointSchema.optional(),
+  controlPoint: z.object({ x: z.number(), y: z.number() }).optional(),
   color: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
