@@ -151,13 +151,13 @@ describe('tactical-unified-store', () => {
     expect(awayPlayers).toHaveLength(initialAwayCount);
   });
 
-  it('movePlayer で選手に紐づく矢印・テキスト・ボールが連動追従する', () => {
+  it('movePlayer で選手に紐づく矢印（sourcePlayerId）のみ追従し、テキスト・ボールは連動せず独立性を保つ', () => {
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.activeSlideId;
     const player = createDefaultPlayer('home', 50, 50, '#034694');
     store.addPlayer(player);
 
-    // 選手近傍の矢印を追加
+    // 選手を sourcePlayerId とする矢印を追加
     const arrowId = 'test-arrow-1';
     store.addArrow(slideId, {
       id: arrowId,
@@ -175,7 +175,7 @@ describe('tactical-unified-store', () => {
       arrowHead: true,
     });
 
-    // 選手近傍のテキストを追加
+    // 選手近傍のテキストを追加（独立フリーテキスト）
     const textId = 'test-text-1';
     store.addText(slideId, {
       id: textId,
@@ -210,16 +210,16 @@ describe('tactical-unified-store', () => {
     expect(movedArrow?.points[0]).toEqual({ x: 60, y: 55 });
     expect(movedArrow?.points[1]).toEqual({ x: 70, y: 50 });
 
-    // テキストも +10, +5 平行移動
-    expect(movedText?.x).toBe(62);
-    expect(movedText?.y).toBe(57);
+    // テキストは独立オブジェクトのため勝手に追従せず元の位置 (52, 52) を保つ
+    expect(movedText?.x).toBe(52);
+    expect(movedText?.y).toBe(52);
 
-    // ボールも +10, +5 平行移動
-    expect(ball?.x).toBe(60);
-    expect(ball?.y).toBe(55);
+    // ボールも独立オブジェクトのため選手移動で勝手に追従せず元の位置 (50, 50) を保つ
+    expect(ball?.x).toBe(50);
+    expect(ball?.y).toBe(50);
   });
 
-  it('movePlayer で選手近傍のゾーンも連動追従する', () => {
+  it('movePlayer で選手近傍のゾーンは連動追従せず独立した位置を保つ', () => {
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.activeSlideId;
     const player = createDefaultPlayer('home', 40, 40, '#034694');
@@ -251,10 +251,11 @@ describe('tactical-unified-store', () => {
       .project.slides.find((s) => s.id === slideId);
     const movedZone = slide?.zones.find((z) => z.id === zoneId);
 
-    expect(movedZone?.points[0]).toEqual({ x: 48, y: 43 });
-    expect(movedZone?.points[1]).toEqual({ x: 52, y: 43 });
-    expect(movedZone?.points[2]).toEqual({ x: 52, y: 47 });
-    expect(movedZone?.points[3]).toEqual({ x: 48, y: 47 });
+    // ゾーンは独立オブジェクトのため選手移動で勝手に追従せず元の points を保つ
+    expect(movedZone?.points[0]).toEqual({ x: 38, y: 38 });
+    expect(movedZone?.points[1]).toEqual({ x: 42, y: 38 });
+    expect(movedZone?.points[2]).toEqual({ x: 42, y: 42 });
+    expect(movedZone?.points[3]).toEqual({ x: 38, y: 42 });
   });
 
   it('movePlayer で他選手に繋がるパス矢印は始点のみ追従し終点は相手選手に固定される', () => {

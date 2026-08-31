@@ -1327,82 +1327,13 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
               return arrow;
             });
 
-            // 3. テキスト注釈の追従
-            const updatedTexts = sl.texts.map((text) => {
-              const attachedId = (
-                text as unknown as { attachedPlayerId?: string }
-              ).attachedPlayerId;
-              const isAttached = attachedId
-                ? playerIdSet.has(attachedId)
-                : false;
-              const isNear = targetPlayers.some(
-                (tp) => Math.hypot(text.x - tp.x, text.y - tp.y) <= 8,
-              );
-              if (isAttached || isNear) {
-                return {
-                  ...text,
-                  x: text.x + deltaX,
-                  y: text.y + deltaY,
-                };
-              }
-              return text;
-            });
-
-            // 4. ボールの追従
-            let updatedBall = sl.ball;
-            if (
-              sl.ball?.visible &&
-              targetPlayers.some(
-                (tp) =>
-                  Math.hypot(
-                    (sl.ball?.x ?? 0) - tp.x,
-                    (sl.ball?.y ?? 0) - tp.y,
-                  ) <= 7,
-              )
-            ) {
-              updatedBall = {
-                ...sl.ball,
-                x: sl.ball.x + deltaX,
-                y: sl.ball.y + deltaY,
-              };
-            }
-
-            // 5. ゾーンの追従
-            const updatedZones = sl.zones.map((zone) => {
-              if (zone.points.length === 0) return zone;
-              const isAttached = (
-                (zone as unknown as { attachedPlayerIds?: string[] })
-                  .attachedPlayerIds ?? []
-              ).some((id) => playerIdSet.has(id));
-              const cx =
-                zone.points.reduce((sum, pt) => sum + pt.x, 0) /
-                zone.points.length;
-              const cy =
-                zone.points.reduce((sum, pt) => sum + pt.y, 0) /
-                zone.points.length;
-              const isNear = targetPlayers.some(
-                (tp) => Math.hypot(cx - tp.x, cy - tp.y) <= 8,
-              );
-
-              if (isAttached || isNear) {
-                return {
-                  ...zone,
-                  points: zone.points.map((pt) => ({
-                    x: pt.x + deltaX,
-                    y: pt.y + deltaY,
-                  })),
-                };
-              }
-              return zone;
-            });
-
             return {
               ...sl,
               players: updatedPlayers,
               arrows: updatedArrows,
-              texts: updatedTexts,
-              zones: updatedZones,
-              ball: updatedBall,
+              texts: sl.texts,
+              zones: sl.zones,
+              ball: sl.ball,
             };
           }),
           isDirty: true,

@@ -1087,47 +1087,6 @@ export function PlayerLayer({
       }
     }
 
-    const attachedZones = slide.zones
-      .filter((z) => {
-        const attachedIds =
-          (z as unknown as { attachedPlayerIds?: string[] })
-            .attachedPlayerIds ?? [];
-        if (attachedIds.some((id) => movingSet.has(id))) return true;
-        if (z.points.length === 0) return false;
-        const cx =
-          z.points.reduce((sum, pt) => sum + pt.x, 0) / z.points.length;
-        const cy =
-          z.points.reduce((sum, pt) => sum + pt.y, 0) / z.points.length;
-        return movingPlayers.some(
-          (mp) => Math.hypot(cx - mp.initialNorm.x, cy - mp.initialNorm.y) <= 8,
-        );
-      })
-      .map((z) => ({
-        zone: z,
-        initialPts: z.points?.map((pt) => ({
-          x: normX(pt.x, width),
-          y: normY(pt.y, height),
-        })),
-        initialX: z.x !== undefined ? normX(z.x, width) : undefined,
-        initialY: z.y !== undefined ? normY(z.y, height) : undefined,
-      }));
-
-    const attachedTexts = slide.texts
-      .filter((t) => {
-        const attachedId = (t as unknown as { attachedPlayerId?: string })
-          .attachedPlayerId;
-        if (attachedId && movingSet.has(attachedId)) return true;
-        return movingPlayers.some(
-          (mp) =>
-            Math.hypot(t.x - mp.initialNorm.x, t.y - mp.initialNorm.y) <= 8,
-        );
-      })
-      .map((t) => ({
-        text: t,
-        initialX: normX(t.x, width),
-        initialY: normY(t.y, height),
-      }));
-
     dragContextRef.current = {
       movingPlayers,
       movingPlayerIds,
@@ -1136,8 +1095,8 @@ export function PlayerLayer({
       prevPlayerPx,
       attachedArrows,
       attachedConnectLines,
-      attachedZones,
-      attachedTexts,
+      attachedZones: [],
+      attachedTexts: [],
     };
   };
 

@@ -104,6 +104,8 @@ const ArrowObject = React.memo(function ArrowObject({
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }) {
   const { width, height } = stageSize;
+  const activeTool = useTacticalUnifiedStore((s) => s.activeTool);
+  const isInteractive = activeTool === 'select';
   const rawP0 = arrow.points[0] ?? { x: 20, y: 50 };
   const rawP1 = arrow.points[1] ?? { x: 40, y: 50 };
 
@@ -333,8 +335,19 @@ const ArrowObject = React.memo(function ArrowObject({
         onTap={onSelect}
         hitStrokeWidth={16}
         perfectDrawEnabled={false}
-        draggable={isSelected && !isAttachedToPlayer}
+        draggable={isInteractive}
+        onMouseEnter={(e) => {
+          const stage = e.target.getStage();
+          if (stage) stage.container().style.cursor = 'grab';
+        }}
+        onMouseLeave={(e) => {
+          const stage = e.target.getStage();
+          if (stage) stage.container().style.cursor = 'default';
+        }}
         onDragStart={(e) => {
+          if (!isSelected) {
+            onSelect(e);
+          }
           const stage = e.target.getStage();
           if (stage) stage.container().style.cursor = 'grabbing';
         }}
@@ -388,6 +401,8 @@ const ArrowObject = React.memo(function ArrowObject({
 
           const patch: Partial<ArrowAnnotation> = {
             points: [newP0, newP1],
+            sourcePlayerId: undefined,
+            targetPlayerId: undefined,
           };
           if (arrow.controlPoint) {
             patch.controlPoint = {
@@ -428,77 +443,76 @@ const ArrowObject = React.memo(function ArrowObject({
 
       {isSelected && (
         <Group>
-          {!isAttachedToPlayer && (
-            <Circle
-              ref={startHandleRef}
-              x={sPxX}
-              y={sPxY}
-              radius={7}
-              fill="#ffffff"
-              stroke="#3b82f6"
-              strokeWidth={2.5}
-              shadowColor="rgba(0,0,0,0.5)"
-              shadowBlur={4}
-              perfectDrawEnabled={false}
-              draggable
-              onMouseEnter={(e) => {
-                const stage = e.target.getStage();
-                if (stage) stage.container().style.cursor = 'grab';
-              }}
-              onMouseLeave={(e) => {
-                const stage = e.target.getStage();
-                if (stage) stage.container().style.cursor = 'default';
-              }}
-              onDragStart={(e) => {
-                e.cancelBubble = true;
-                const stage = e.target.getStage();
-                if (stage) stage.container().style.cursor = 'grabbing';
-              }}
-              onDragMove={(e) => {
-                e.cancelBubble = true;
-                const pos = e.target.position();
-                const curEx = endHandleRef.current
-                  ? endHandleRef.current.x()
-                  : ePxX;
-                const curEy = endHandleRef.current
-                  ? endHandleRef.current.y()
-                  : ePxY;
-                if (controlHandleRef.current) {
-                  if (!arrow.controlPoint) {
-                    controlHandleRef.current.position({
-                      x: (pos.x + curEx) / 2,
-                      y: (pos.y + curEy) / 2,
-                    });
-                  } else {
-                    controlHandleRef.current.position({
-                      x: 0.25 * pos.x + 0.5 * cpPxX + 0.25 * curEx,
-                      y: 0.25 * pos.y + 0.5 * cpPxY + 0.25 * curEy,
-                    });
-                  }
+          <Circle
+            ref={startHandleRef}
+            x={sPxX}
+            y={sPxY}
+            radius={7}
+            fill="#ffffff"
+            stroke="#3b82f6"
+            strokeWidth={2.5}
+            shadowColor="rgba(0,0,0,0.5)"
+            shadowBlur={4}
+            perfectDrawEnabled={false}
+            draggable
+            onMouseEnter={(e) => {
+              const stage = e.target.getStage();
+              if (stage) stage.container().style.cursor = 'grab';
+            }}
+            onMouseLeave={(e) => {
+              const stage = e.target.getStage();
+              if (stage) stage.container().style.cursor = 'default';
+            }}
+            onDragStart={(e) => {
+              e.cancelBubble = true;
+              const stage = e.target.getStage();
+              if (stage) stage.container().style.cursor = 'grabbing';
+            }}
+            onDragMove={(e) => {
+              e.cancelBubble = true;
+              const pos = e.target.position();
+              const curEx = endHandleRef.current
+                ? endHandleRef.current.x()
+                : ePxX;
+              const curEy = endHandleRef.current
+                ? endHandleRef.current.y()
+                : ePxY;
+              if (controlHandleRef.current) {
+                if (!arrow.controlPoint) {
+                  controlHandleRef.current.position({
+                    x: (pos.x + curEx) / 2,
+                    y: (pos.y + curEy) / 2,
+                  });
+                } else {
+                  controlHandleRef.current.position({
+                    x: 0.25 * pos.x + 0.5 * cpPxX + 0.25 * curEx,
+                    y: 0.25 * pos.y + 0.5 * cpPxY + 0.25 * curEy,
+                  });
                 }
-                updateKonvaPoints(
-                  pos.x,
-                  pos.y,
-                  curEx,
-                  curEy,
-                  arrow.controlPoint ? cpPxX : undefined,
-                  arrow.controlPoint ? cpPxY : undefined,
-                );
-              }}
-              onDragEnd={(e) => {
-                e.cancelBubble = true;
-                const pos = e.target.position();
-                const newNormX = pxToNormX(pos.x, width);
-                const newNormY = pxToNormY(pos.y, height);
-                const stage = e.target.getStage();
-                if (stage) stage.container().style.cursor = 'default';
+              }
+              updateKonvaPoints(
+                pos.x,
+                pos.y,
+                curEx,
+                curEy,
+                arrow.controlPoint ? cpPxX : undefined,
+                arrow.controlPoint ? cpPxY : undefined,
+              );
+            }}
+            onDragEnd={(e) => {
+              e.cancelBubble = true;
+              const pos = e.target.position();
+              const newNormX = pxToNormX(pos.x, width);
+              const newNormY = pxToNormY(pos.y, height);
+              const stage = e.target.getStage();
+              if (stage) stage.container().style.cursor = 'default';
 
-                updateArrow(slideId, arrow.id, {
-                  points: [{ x: newNormX, y: newNormY }, p1],
-                });
-              }}
-            />
-          )}
+              updateArrow(slideId, arrow.id, {
+                sourcePlayerId: undefined,
+                points: [{ x: newNormX, y: newNormY }, p1],
+              });
+            }}
+          />
 
           <Circle
             ref={endHandleRef}
@@ -528,14 +542,12 @@ const ArrowObject = React.memo(function ArrowObject({
             onDragMove={(e) => {
               e.cancelBubble = true;
               const pos = e.target.position();
-              const curSx =
-                !isAttachedToPlayer && startHandleRef.current
-                  ? startHandleRef.current.x()
-                  : sPxX;
-              const curSy =
-                !isAttachedToPlayer && startHandleRef.current
-                  ? startHandleRef.current.y()
-                  : sPxY;
+              const curSx = startHandleRef.current
+                ? startHandleRef.current.x()
+                : sPxX;
+              const curSy = startHandleRef.current
+                ? startHandleRef.current.y()
+                : sPxY;
               if (controlHandleRef.current) {
                 if (!arrow.controlPoint) {
                   controlHandleRef.current.position({
@@ -567,7 +579,7 @@ const ArrowObject = React.memo(function ArrowObject({
               if (stage) stage.container().style.cursor = 'default';
 
               updateArrow(slideId, arrow.id, {
-                sourcePlayerId: arrow.sourcePlayerId,
+                targetPlayerId: undefined,
                 points: [p0, { x: newNormX, y: newNormY }],
               });
             }}

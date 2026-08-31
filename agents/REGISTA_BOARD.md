@@ -34,7 +34,13 @@
 | **AAWU 5-5-B** | 📊 **4-Position Grouping (GK/DF/MF/FW) & Pitch/Bench Swap** | `regista-frontend` | `src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/lib/tactical/player-formatting.ts` | スカッド/サブメンバー一覧およびピッチ上の選手リストを「GK / DF / MF / FW」の4ポジションにグルーピング表示。ピッチ⇄ベンチ間の入れ替えでもカテゴリを崩さず視覚的に整理。 | **DONE** ✅ |
 | **AAWU 5-5-C** | 🪢 **Interactive Ghost Marker Trajectory with Curve Pointer** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/tactical/trajectory.ts`<br>`src/stores/tactical-unified-store.ts` | 選手マーカー選択中に「前スライドのゴースト位置」と「移動矢印」を常時表示。AAWU 5-1 の汎用曲線ポインタを用いて移動軌道を直感的にドラッグ変形・カスタム補間可能にする。 | **DONE** ✅ |
 | **AAWU 5-6** | ⚽ **Ball Z-Index & Layer Fronting** | `regista-canvas` | `src/components/features/tactical-unified/canvas/unified-canvas.tsx` | ボールレイヤーを最前面（PlayerLayer より上）に配置変更し、ボールが選手マーカーの下に埋もれる視覚的吸着・隠れ問題を解消。 | **DONE** ✅ |
-| **AAWU 5-7** | 🏹 **Immediate Drag for Lines & Arrows (Direct Grab & Drag)** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx` | Line・矢印系オブジェクトを「未選択状態」からでも直接ドラッグ開始可能にし、ドラッグ開始時に自動選択＋シームレスに移動させる。 | **READY** 📋 |
+| **AAWU 5-7** | 🏹 **Immediate Drag for Lines & Arrows (Direct Grab & Drag)** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx` | Line・矢印系オブジェクトを「未選択状態」からでも直接ドラッグ開始可能にし、ドラッグ開始時に自動選択＋シームレスに移動させる。 | **DONE** ✅ |
+
+- **2026-08-31**: [AAWU 5-7 & Architecture Fix: Object Independence & Direct Arrow Drag]
+  1. **暗黙的な近傍吸着ロジックの完全撤廃**: `tactical-unified-store.ts`（`updatePlayerPositions`）および `player-layer.tsx`（`handleDragStart`/`handleDragMove`）から、選手移動時に近傍にあるボール（`Math.hypot <= 7`）やゾーン（`Math.hypot <= 8`）、テキスト（`Math.hypot <= 8`）を勝手に連動させていたロジックを完全排除。独立オブジェクトとして位置の不変性を保証。
+  2. **選手マーカーオプションと独立オブジェクトの責務明確化**: 選手の真正な子要素（`visionCone`, `badges`, `focus`, `connectLines`, `trajectory`）のみを選手に追従させ、ピッチ上のフリーオブジェクト（Ball, Zone, Text, 独立Arrow）の直交性と拡張性を確立。
+  3. **矢印・ライン系の未選択即時ドラッグ（Direct Grab & Drag）**: `annotation-layer.tsx` の `ArrowObject` において、`draggable={isInteractive}`（`activeTool === 'select'`）を適用。未選択状態からでもマウスホバー（`cursor: grab`）およびドラッグ開始時に自動選択（`selectObject`）＋シームレスに全体平行移動可能に改修。始点・終点・カーブ制御ハンドルも独立して操作可能に。
+  4. Scoped 型チェック、Biome チェック、Vitest テスト全パス（Tactical 関連 104件 + lib tactical 113件）を達成。
 
 - **2026-08-31**: [AAWU 5-6 Complete: Ball Z-Index & Layer Fronting]
   1. **Konva Stage 内レイヤー描画順序の再構成**: `unified-canvas.tsx` 内の `<Layer>` 描画順序を変更し、`<Layer ref={nodesRegistryRef.current.ballLayer}>`（ボール）を `<Layer ref={nodesRegistryRef.current.playerLayer}>`（選手）の後に配置。

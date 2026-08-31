@@ -189,7 +189,7 @@ describe('AAWU 5-5-A: Stabilized Multi-Player Drag & Selection UX', () => {
       expect(movedArrow?.points[1]).toEqual({ x: 45, y: 50 });
     });
 
-    it('選手移動時に近傍またはアタッチされたテキスト・ボール・ゾーンも一括追従する', () => {
+    it('選手移動時に独立したテキスト・ボール・ゾーンは連動せず位置を維持する', () => {
       const store = useTacticalUnifiedStore.getState();
       const slideId = store.activeSlideId;
 
@@ -229,11 +229,12 @@ describe('AAWU 5-5-A: Stabilized Multi-Player Drag & Selection UX', () => {
       const movedBall = slide?.ball;
       const movedText = slide?.texts.find((t) => t.id === textId);
 
-      expect(movedBall?.x).toBe(40);
-      expect(movedBall?.y).toBe(40);
+      // ボール・テキストは独立オブジェクトのため選手移動で勝手に追従せず元の位置を維持
+      expect(movedBall?.x).toBe(30);
+      expect(movedBall?.y).toBe(30);
 
-      expect(movedText?.x).toBe(82);
-      expect(movedText?.y).toBe(82);
+      expect(movedText?.x).toBe(72);
+      expect(movedText?.y).toBe(72);
     });
 
     it('movePlayer は moveMultiplePlayersByDelta へ移譲され後方互換性が保たれる', () => {
