@@ -657,4 +657,152 @@ describe('tactical-unified-store', () => {
     expect(resetPlayer?.badges).toEqual([]);
     expect(resetPlayer?.connectLines).toEqual([]);
   });
+
+  describe('クリップボード (copySelectedObjects & pasteObjects)', () => {
+    it('選択中の選手・矢印・ゾーン・テキストをコピーし、オフセット位置に新しいIDでペーストできる', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      const player = createDefaultPlayer('home', 40, 50, '#034694');
+      store.addPlayer(player);
+
+      const arrow = {
+        id: 'arrow-copy-1',
+        annotationType: 'arrow' as const,
+        arrowType: 'pass' as const,
+        curveType: 'straight' as const,
+        points: [
+          { x: 40, y: 50 },
+          { x: 60, y: 70 },
+        ],
+        color: '#ffffff',
+        strokeWidth: 3,
+        dashArray: [],
+        arrowHead: true,
+        sourcePlayerId: player.id,
+      };
+      store.addArrow(slideId, arrow);
+
+      const zone = {
+        id: 'zone-copy-1',
+        annotationType: 'zone' as const,
+        zoneType: 'space' as const,
+        shapeType: 'rect' as const,
+        x: 20,
+        y: 20,
+        width: 15,
+        height: 15,
+        points: [
+          { x: 20, y: 20 },
+          { x: 35, y: 20 },
+          { x: 35, y: 35 },
+          { x: 20, y: 35 },
+        ],
+        color: '#f59e0b',
+        opacity: 0.3,
+        strokeWidth: 0,
+      };
+      store.addZone(slideId, zone);
+
+      const text = {
+        id: 'text-copy-1',
+        annotationType: 'text' as const,
+        x: 10,
+        y: 15,
+        content: 'Tactical Note',
+        fontSize: 16,
+        color: '#ffffff',
+        bold: true,
+        italic: false,
+      };
+      store.addText(slideId, text);
+
+      // 4つのオブジェクトを選択
+      store.selectObject({ id: player.id, kind: 'player' }, false);
+      store.selectObject({ id: arrow.id, kind: 'arrow' }, true);
+      store.selectObject({ id: zone.id, kind: 'zone' }, true);
+      store.selectObject({ id: text.id, kind: 'text' }, true);
+
+      expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(
+        4,
+      );
+
+      // コピー実行
+      store.copySelectedObjects(slideId);
+      const clipboard = useTacticalUnifiedStore.getState().clipboard;
+      expect(clipboard).not.toBeNull();
+      expect(clipboard?.players).toHaveLength(1);
+      expect(clipboard?.arrows).toHaveLength(1);
+      expect(clipboard?.zones).toHaveLength(1);
+      expect(clipboard?.texts).toHaveLength(1);
+
+      // ペースト実行
+      store.pasteObjects(slideId);
+
+      const updatedSlide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      const selectedObjects =
+        useTacticalUnifiedStore.getState().selectedObjects;
+
+      // 新規オブジェクトが選択状態になっていること
+      expect(selectedObjects).toHaveLength(4);
+      const newPlayerSelect = selectedObjects.find((o) => o.kind === 'player');
+      const newArrowSelect = selectedObjects.find((o) => o.kind === 'arrow');
+      const newZoneSelect = selectedObjects.find((o) => o.kind === 'zone');
+      const newTextSelect = selectedObjects.find((o) => o.kind === 'text');
+
+      expect(newPlayerSelect?.id).not.toBe(player.id);
+      expect(newArrowSelect?.id).not.toBe(arrow.id);
+      expect(newZoneSelect?.id).not.toBe(zone.id);
+      expect(newTextSelect?.id).not.toBe(text.id);
+
+      // 座標が +3% オフセットされていること
+      const newPlayer = updatedSlide?.players.find(
+        (p) => p.id === newPlayerSelect?.id,
+      );
+      expect(newPlayer?.x).toBeCloseTo(43);
+      expect(newPlayer?.y).toBeCloseTo(53);
+
+      const newArrow = updatedSlide?.arrows.find(
+        (a) => a.id === newArrowSelect?.id,
+      );
+      expect(newArrow?.points[0]?.x).toBeCloseTo(43);
+      expect(newArrow?.points[0]?.y).toBeCloseTo(53);
+      expect(newArrow?.points[1]?.x).toBeCloseTo(63);
+      expect(newArrow?.points[1]?.y).toBeCloseTo(73);
+      // 一緒にコピーされた選手への sourcePlayerId が新選手IDにリマップされていること
+      expect(newArrow?.sourcePlayerId).toBe(newPlayer?.id);
+
+      const newZone = updatedSlide?.zones.find(
+        (z) => z.id === newZoneSelect?.id,
+      );
+      expect(newZone?.x).toBeCloseTo(23);
+      expect(newZone?.y).toBeCloseTo(23);
+      expect(newZone?.points[0]?.x).toBeCloseTo(23);
+
+      const newText = updatedSlide?.texts.find(
+        (t) => t.id === newTextSelect?.id,
+      );
+      expect(newText?.x).toBeCloseTo(13);
+      expect(newText?.y).toBeCloseTo(18);
+      expect(newText?.content).toBe('Tactical Note');
+    });
+
+    it('選択がない状態で copySelectedObjects を呼んでも clipboard は更新されない', () => {
+      const store = useTacticalUnifiedStore.getState();
+      store.clearSelection();
+      store.copySelectedObjects();
+      expect(useTacticalUnifiedStore.getState().clipboard).toBeNull();
+    });
+
+    it('clipboard が空の状態で pasteObjects を呼んでも何も追加されない', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const initialPlayerCount = store.project.slides[0]?.players.length ?? 0;
+      store.pasteObjects();
+      expect(
+        useTacticalUnifiedStore.getState().project.slides[0]?.players,
+      ).toHaveLength(initialPlayerCount);
+    });
+  });
 });

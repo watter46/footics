@@ -2,7 +2,7 @@
 
 /**
  * use-keyboard-shortcuts.ts
- * Keyboard shortcuts: Delete, Escape, Backspace
+ * Keyboard shortcuts: Delete, Escape, Backspace, Copy (Ctrl/Cmd+C), Paste (Ctrl/Cmd+V), Tool switching
  */
 
 import { useEffect } from 'react';
@@ -15,15 +15,38 @@ export function useKeyboardShortcuts() {
   const removeArrow = useTacticalUnifiedStore((s) => s.removeArrow);
   const removeZone = useTacticalUnifiedStore((s) => s.removeZone);
   const removeText = useTacticalUnifiedStore((s) => s.removeText);
+  const copySelectedObjects = useTacticalUnifiedStore(
+    (s) => s.copySelectedObjects,
+  );
+  const pasteObjects = useTacticalUnifiedStore((s) => s.pasteObjects);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const setActiveTool = useTacticalUnifiedStore((s) => s.setActiveTool);
   const togglePlayback = useTacticalUnifiedStore((s) => s.togglePlayback);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement)?.tagName;
-      // input/textarea にフォーカス中はスキップ
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      // input/textarea/contenteditable にフォーカス中はスキップ
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) {
+        return;
+      }
+
+      // Ctrl / Cmd コマンド (Copy & Paste)
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'c' || e.key === 'C') {
+          e.preventDefault();
+          copySelectedObjects(activeSlideId);
+          return;
+        }
+        if (e.key === 'v' || e.key === 'V') {
+          e.preventDefault();
+          pasteObjects(activeSlideId);
+          return;
+        }
+        // 他の修飾キー付きショートカットの場合は単独キー処理へ流さない
+        return;
+      }
 
       if (e.code === 'Space') {
         e.preventDefault();
@@ -104,6 +127,8 @@ export function useKeyboardShortcuts() {
     removeArrow,
     removeZone,
     removeText,
+    copySelectedObjects,
+    pasteObjects,
     activeSlideId,
     setActiveTool,
     togglePlayback,

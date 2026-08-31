@@ -1,0 +1,241 @@
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createDefaultPlayer } from '@/lib/types/tactical-unified';
+import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
+import { useKeyboardShortcuts } from '../use-keyboard-shortcuts';
+
+describe('useKeyboardShortcuts', () => {
+  beforeEach(() => {
+    const store = useTacticalUnifiedStore.getState();
+    store.resetProject();
+    store.clearSelection();
+  });
+
+  it('Ctrl+C / Cmd+C で選択中オブジェクトがコピーされ、Ctrl+V / Cmd+V でペーストされる', () => {
+    renderHook(() => useKeyboardShortcuts());
+    const store = useTacticalUnifiedStore.getState();
+    const slideId = store.activeSlideId;
+
+    const player = createDefaultPlayer('home', 50, 50, '#034694');
+    act(() => {
+      store.addPlayer(player);
+      store.selectObject({ id: player.id, kind: 'player' });
+    });
+
+    // 1. Ctrl+C (Windows/Linux)
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'c',
+          ctrlKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+
+    expect(useTacticalUnifiedStore.getState().clipboard).not.toBeNull();
+    expect(useTacticalUnifiedStore.getState().clipboard?.players).toHaveLength(
+      1,
+    );
+
+    // 2. Ctrl+V (Windows/Linux)
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'v',
+          ctrlKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+
+    const activeSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    const selectedObjects = useTacticalUnifiedStore.getState().selectedObjects;
+
+    expect(selectedObjects).toHaveLength(1);
+    expect(selectedObjects[0]?.id).not.toBe(player.id);
+    const pastedPlayer = activeSlide?.players.find(
+      (p) => p.id === selectedObjects[0]?.id,
+    );
+    expect(pastedPlayer?.x).toBeCloseTo(53);
+    expect(pastedPlayer?.y).toBeCloseTo(53);
+  });
+
+  it('Cmd+C / Cmd+V (macOS metaKey) でも正常にコピー＆ペーストされる', () => {
+    renderHook(() => useKeyboardShortcuts());
+    const store = useTacticalUnifiedStore.getState();
+    const slideId = store.activeSlideId;
+
+    const player = createDefaultPlayer('away', 30, 40, '#dc2626');
+    act(() => {
+      store.addPlayer(player);
+      store.selectObject({ id: player.id, kind: 'player' });
+    });
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'c',
+          metaKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+
+    expect(useTacticalUnifiedStore.getState().clipboard?.players).toHaveLength(
+      1,
+    );
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'v',
+          metaKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+
+    const activeSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    const selectedObjects = useTacticalUnifiedStore.getState().selectedObjects;
+    expect(selectedObjects).toHaveLength(1);
+    const pastedPlayer = activeSlide?.players.find(
+      (p) => p.id === selectedObjects[0]?.id,
+    );
+    expect(pastedPlayer?.x).toBeCloseTo(33);
+    expect(pastedPlayer?.y).toBeCloseTo(43);
+  });
+
+  it('INPUT / TEXTAREA / isContentEditable にフォーカス中はショートカットが発火しない', () => {
+    renderHook(() => useKeyboardShortcuts());
+    const store = useTacticalUnifiedStore.getState();
+
+    const player = createDefaultPlayer('home', 50, 50, '#034694');
+    act(() => {
+      store.addPlayer(player);
+      store.selectObject({ id: player.id, kind: 'player' });
+    });
+
+    const inputElement = document.createElement('input');
+    document.body.appendChild(inputElement);
+
+    act(() => {
+      inputElement.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'c',
+          ctrlKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+
+    // input 上でのキーイベントのためクリップボードは null のまま
+    expect(useTacticalUnifiedStore.getState().clipboard).toBeNull();
+    document.body.removeChild(inputElement);
+  });
+
+  it('Escape で選択が解除される', () => {
+    renderHook(() => useKeyboardShortcuts());
+    const store = useTacticalUnifiedStore.getState();
+    const player = createDefaultPlayer('home', 50, 50, '#034694');
+    act(() => {
+      store.addPlayer(player);
+      store.selectObject({ id: player.id, kind: 'player' });
+    });
+
+    expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(1);
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          bubbles: true,
+        }),
+      );
+    });
+
+    expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(0);
+  });
+
+  it('Delete / Backspace で選択中のオブジェクトが削除される', () => {
+    renderHook(() => useKeyboardShortcuts());
+    const store = useTacticalUnifiedStore.getState();
+    const slideId = store.activeSlideId;
+
+    const initialCount =
+      useTacticalUnifiedStore.getState().project.slides[0]?.players.length ?? 0;
+
+    const player = createDefaultPlayer('home', 50, 50, '#034694');
+    act(() => {
+      store.addPlayer(player);
+      store.selectObject({ id: player.id, kind: 'player' });
+    });
+
+    expect(
+      useTacticalUnifiedStore.getState().project.slides[0]?.players,
+    ).toHaveLength(initialCount + 1);
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Delete',
+          bubbles: true,
+        }),
+      );
+    });
+
+    const activeSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(activeSlide?.players).toHaveLength(initialCount);
+    expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(0);
+  });
+
+  it('ツールショートカットキー (v, l, r, a, d, z, p, t, e) でアクティブツールが切り替わる', () => {
+    renderHook(() => useKeyboardShortcuts());
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'l', bubbles: true }),
+      );
+    });
+    expect(useTacticalUnifiedStore.getState().activeTool).toBe('line');
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'a', bubbles: true }),
+      );
+    });
+    expect(useTacticalUnifiedStore.getState().activeTool).toBe('arrow_solid');
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'v', bubbles: true }),
+      );
+    });
+    expect(useTacticalUnifiedStore.getState().activeTool).toBe('select');
+  });
+
+  it('Space キーで再生トグルが発火する', () => {
+    renderHook(() => useKeyboardShortcuts());
+    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { code: 'Space', bubbles: true }),
+      );
+    });
+    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { code: 'Space', bubbles: true }),
+      );
+    });
+    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
+  });
+});
