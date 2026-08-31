@@ -1,12 +1,16 @@
 # Regista Management Board
 
 ## 1. [Active Focus]
-- **【Phase 2-B】チーム機能のモダン化 & Tactical統合キャンバス連携**:
-  - **背景 & 課題**: 現在のチェルシー専用スカッド画面 (`ChelseaSquadClient.tsx`) をコンポーネント分割・モダン化し、汎用的な動的ルーティング `/teams/[teamId]` へ拡張。スカッド一覧から Tactical 統合キャンバス（`/tactical`）へワンクリックでスタメン・背番号・ポジションを流し込めるシームレスな戦術ボード連携を実現する。
+- **【Phase 3-A】Tactical Canvas UX Polish & Advanced Manipulation (AAWU 5-1 〜 5-5-C)**:
+  - **背景 & 課題**: Tactical 統合キャンバス（`/tactical`）の操作性を大幅に向上させ、矢印・ベジェ曲線の線上ポインタ完全一致、グローバルコピペ、Undo/Redo履歴、片チーム配置、複数選手ドラッグ安定化、4ポジション分類、ゴースト軌道変形ポインタを完備する。
   - **確定仕様 & AAWU 分解**:
-    1. **AAWU 4-1 (Squad Component Modularization)**: `ChelseaSquadClient.tsx` (692行) の責務分割（`SquadHeader`, `SquadStatsSummary`, `SquadFilterBar`, `SquadPlayerCard`）。
-    2. **AAWU 4-2 (Dynamic Routing & Generic Team Engine)**: `/teams/[teamId]` 動的ルート対応および共通スカッドフック（`useTeamSquad`）の構築。
-    3. **AAWU 4-3 (Inject Squad to Tactical Unified Canvas Bridge)**: スカッド選択選手・フォーメーションを Tactical 統合キャンバス（`/tactical`）へワンクリック注入するブリッジ連携。
+    1. **AAWU 5-1 (Fix Arrow & Curve Control Point Parity)**: 2次ベジェ曲線の頂点逆算による線上完全一致ポインタ（汎用基盤）。
+    2. **AAWU 5-2 (Global Object Copy & Paste)**: Ctrl/Cmd+C, Ctrl/Cmd+V によるオブジェクト複製・配置。
+    3. **AAWU 5-3 (Undo / Redo History Management)**: Ctrl+Z, Ctrl+Shift+Z およびツールバーボタンによる履歴管理。
+    4. **AAWU 5-4 (Single Team Quick Placement & Visibility Toggle)**: ワンボタン片チーム配置＆表示切替トグル。
+    5. **AAWU 5-5-A (Stabilized Multi-Player Drag & Selection UX)**: 複数選手選択時のリアルタイム同調ドラッグ再構築。
+    6. **AAWU 5-5-B (4-Position Grouping & Pitch/Bench Swap)**: GK/DF/MF/FW 4分類アコーディオン＆入れ替えUI。
+    7. **AAWU 5-5-C (Interactive Ghost Marker Trajectory with Curve Pointer)**: 選手選択時ゴースト常時表示＆5-1汎用ポインタによる軌道変形。
 
 ## 2. [Backlog / Adopted Roadmaps (オーナー承認済 バックログ)]
 - **【構造改革】拡張機能の1本化統合 (Unified Extension Pipeline)**:
@@ -14,13 +18,17 @@
 - **【品質基盤】エージェント性能最大化 3大ルールの徹底運用**:
   - 1. State Machine厳守 / 2. 極小AAWU（1〜3ファイル） / 3. KI自動更新。
 
-## 3. [Task Matrix (AAWU: Team Modernization & Tactical Integration)]
+## 3. [Task Matrix (AAWU: Tactical UX Polish & Advanced Manipulation)]
 
 | Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **AAWU 4-1** | 🧩 **Squad Component Modularization** | `regista-frontend` | `src/components/features/teams/*`<br>`src/components/features/teams/ChelseaSquadClient.tsx` | 692行の `ChelseaSquadClient.tsx` を 4 つのサブコンポーネント（`SquadHeader`, `SquadStatsSummary`, `SquadFilterBar`, `SquadPlayerCard`）へ責務分割し、可読性・保守性を向上。 | **DONE** ✅ |
-| **AAWU 4-2** | 🌐 **Dynamic Routing & Generic Team Engine (`/teams/[teamId]`)** | `regista-frontend`<br>`regista-data` | `src/app/teams/[teamId]/page.tsx`<br>`src/components/layout/TeamsDropdown.tsx`<br>`src/hooks/use-team-squad.ts` | `/teams/chelsea` を汎用的な動的ルーティング `/teams/[teamId]` へ移行。共通チームフック（`useTeamSquad`）を配備し、チーム一覧ドロップダウンを連動。 | **DONE** ✅ |
-| **AAWU 4-3** | ⚡ **Inject Squad to Tactical Unified Canvas Bridge** | `regista-frontend`<br>`regista-canvas` | `src/components/features/teams/*`<br>`src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx` | スカッド画面からワンクリックで「Tactical Canvas で開く」ボタンを配置。選択したシーズンの選手名・背番号・ポジションを `/tactical` のピッチおよびサブメンバーへ一括注入する。 | **DONE** ✅ |
+| **AAWU 5-1** | 🎯 **Fix Arrow & Curve Control Point Parity** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | ベジェ曲線の頂点逆算ロジックを修正し、ドラッグ中・ドロップ後問わずポインタが常に線上（曲線の頂点）に完全に一致して配置されるようにする。 | **READY** 📋 |
+| **AAWU 5-2** | 📋 **Global Object Copy & Paste (Ctrl+C / Ctrl+V)** | `regista-frontend`<br>`regista-canvas` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts` | 選択中の選手・矢印・ゾーン・テキストを Ctrl/Cmd+C で内部クリップボードにコピーし、Ctrl/Cmd+V でオフセット配置可能にする。 | **TODO** ⏳ |
+| **AAWU 5-3** | ⏪ **Undo / Redo History Management (Ctrl+Z / Ctrl+Shift+Z)** | `regista-frontend`<br>`regista-data` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | スライド変更・オブジェクト編集の Undo/Redo スタックを構築し、Ctrl+Z, Ctrl+Shift+Z およびツールバーボタンで操作可能にする。 | **TODO** ⏳ |
+| **AAWU 5-4** | 👥 **Single Team Quick Placement & Visibility Toggle** | `regista-frontend` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | 「Homeのみ配置（Away退避）」「Awayのみ配置（Home退避）」のワンクリックアクションおよび Team Visibility 切り替えを実装。 | **TODO** ⏳ |
+| **AAWU 5-5-A** | 🔀 **Stabilized Multi-Player Drag & Selection UX** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/stores/tactical-unified-store.ts` | 複数選択した選手を1人ドラッグした際、全員が滑らかにデルタ追従移動し、ドロップ時に一括確定する安定したUI/UXへの再構築。 | **TODO** ⏳ |
+| **AAWU 5-5-B** | 📊 **4-Position Grouping (GK/DF/MF/FW) & Pitch/Bench Swap** | `regista-frontend` | `src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/lib/tactical/player-formatting.ts` | スカッド/サブメンバー一覧およびピッチ上の選手リストを「GK / DF / MF / FW」の4ポジションにグルーピング表示。ピッチ⇄ベンチ間の入れ替えでもカテゴリを崩さず視覚的に整理。 | **TODO** ⏳ |
+| **AAWU 5-5-C** | 🪢 **Interactive Ghost Marker Trajectory with Curve Pointer** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/tactical/trajectory.ts`<br>`src/stores/tactical-unified-store.ts` | 選手マーカー選択中に「前スライドのゴースト位置」と「移動矢印」を常時表示。AAWU 5-1 の汎用曲線ポインタを用いて移動軌道を直感的にドラッグ変形・カスタム補間可能にする。 | **TODO** ⏳ |
 
 - **2026-08-31**: [Phase 2-B Complete: Team Modernization & Tactical Integration]
   1. **AAWU 4-1**: `ChelseaSquadClient.tsx` を `squad-header.tsx`, `squad-stats-summary.tsx`, `squad-filter-bar.tsx`, `squad-player-card.tsx` の4コンポーネントへ責務分割。
