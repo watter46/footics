@@ -871,4 +871,74 @@ describe('tactical-unified-store', () => {
       expect(homeBench?.length).toBeGreaterThanOrEqual(11);
     });
   });
+
+  describe('swapPlayers', () => {
+    it('ピッチ選手とベンチ選手を入れ替えた際、座標を引き継ぎ、エリアが交換される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      const slideBefore = store.project.slides.find((s) => s.id === slideId);
+      const pitchPlayer = slideBefore?.players.find((p) => p.area === 'pitch');
+      expect(pitchPlayer).toBeDefined();
+
+      const origX = pitchPlayer?.x ?? 0;
+      const origY = pitchPlayer?.y ?? 0;
+
+      // ベンチ選手を追加
+      store.addCustomPlayer(slideId, 'home', 'Bench Hero', '20', 'ST', 'bench');
+      const slideWithBench = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      const benchPlayer = slideWithBench?.players.find(
+        (p) => p.name === 'Bench Hero',
+      );
+      expect(benchPlayer).toBeDefined();
+
+      // スワップ実行
+      store.swapPlayers(slideId, pitchPlayer!.id, benchPlayer!.id);
+
+      const slideAfter = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      const swappedPitch = slideAfter?.players.find(
+        (p) => p.id === pitchPlayer!.id,
+      );
+      const swappedBench = slideAfter?.players.find(
+        (p) => p.id === benchPlayer!.id,
+      );
+
+      expect(swappedPitch?.area).toBe('bench');
+      expect(swappedBench?.area).toBe('pitch');
+      expect(swappedBench?.x).toBe(origX);
+      expect(swappedBench?.y).toBe(origY);
+    });
+
+    it('ピッチ選手同士の座標をスワップする', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      const slideBefore = store.project.slides.find((s) => s.id === slideId);
+      const pitchPlayers =
+        slideBefore?.players.filter((p) => p.area === 'pitch') || [];
+      expect(pitchPlayers.length).toBeGreaterThanOrEqual(2);
+
+      const p1 = pitchPlayers[0];
+      const p2 = pitchPlayers[1];
+      const p1Pos = { x: p1.x, y: p1.y };
+      const p2Pos = { x: p2.x, y: p2.y };
+
+      store.swapPlayers(slideId, p1.id, p2.id);
+
+      const slideAfter = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      const updatedP1 = slideAfter?.players.find((p) => p.id === p1.id);
+      const updatedP2 = slideAfter?.players.find((p) => p.id === p2.id);
+
+      expect(updatedP1?.x).toBe(p2Pos.x);
+      expect(updatedP1?.y).toBe(p2Pos.y);
+      expect(updatedP2?.x).toBe(p1Pos.x);
+      expect(updatedP2?.y).toBe(p1Pos.y);
+    });
+  });
 });

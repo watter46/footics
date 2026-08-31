@@ -233,6 +233,11 @@ interface TacticalUnifiedState {
     x?: number,
     y?: number,
   ) => void;
+  swapPlayers: (
+    slideId: string,
+    playerAId: string,
+    playerBId: string,
+  ) => void;
   removePlayer: (slideId: string, playerId: string) => void;
   applyFormationPreset: (preset: FormationPreset, slideId: string) => void;
   applyFormation: (
@@ -1261,6 +1266,123 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         })),
         isDirty: true,
       })),
+
+    swapPlayers: (slideId, playerAId, playerBId) =>
+      set((s) => {
+        const slide = s.project.slides.find((sl) => sl.id === slideId);
+        if (!slide) return s;
+
+        const playerA = slide.players.find((p) => p.id === playerAId);
+        const playerB = slide.players.find((p) => p.id === playerBId);
+        if (!playerA || !playerB) return s;
+
+        const benchedId =
+          playerA.area === 'pitch' && playerB.area === 'bench'
+            ? playerAId
+            : playerA.area === 'bench' && playerB.area === 'pitch'
+              ? playerBId
+              : null;
+
+        const newPlayers = slide.players.map((p) => {
+          if (p.id === playerAId) {
+            if (playerA.area === 'pitch' && playerB.area === 'bench') {
+              // A moves to bench
+              return {
+                ...p,
+                area: 'bench' as const,
+                visionCone: undefined,
+                badges: [],
+                connectLines: [],
+                focus: undefined,
+              };
+            }
+            if (playerA.area === 'bench' && playerB.area === 'pitch') {
+              // A moves to pitch at B's position
+              return {
+                ...p,
+                area: 'pitch' as const,
+                x: playerB.x,
+                y: playerB.y,
+              };
+            }
+            if (playerA.area === 'pitch' && playerB.area === 'pitch') {
+              // Swap positions
+              return {
+                ...p,
+                x: playerB.x,
+                y: playerB.y,
+              };
+            }
+            return p;
+          }
+          if (p.id === playerBId) {
+            if (playerA.area === 'pitch' && playerB.area === 'bench') {
+              // B moves to pitch at A's position
+              return {
+                ...p,
+                area: 'pitch' as const,
+                x: playerA.x,
+                y: playerA.y,
+              };
+            }
+            if (playerA.area === 'bench' && playerB.area === 'pitch') {
+              // B moves to bench
+              return {
+                ...p,
+                area: 'bench' as const,
+                visionCone: undefined,
+                badges: [],
+                connectLines: [],
+                focus: undefined,
+              };
+            }
+            if (playerA.area === 'pitch' && playerB.area === 'pitch') {
+              // Swap positions
+              return {
+                ...p,
+                x: playerA.x,
+                y: playerA.y,
+              };
+            }
+            return p;
+          }
+
+          // Clean up connect lines if targeting the newly benched player
+          if (
+            benchedId &&
+            p.connectLines.some((cl) => cl.toPlayerId === benchedId)
+          ) {
+            return {
+              ...p,
+              connectLines: p.connectLines.filter(
+                (cl) => cl.toPlayerId !== benchedId,
+              ),
+            };
+          }
+          return p;
+        });
+
+        const newArrows = benchedId
+          ? slide.arrows.filter(
+              (a) =>
+                a.sourcePlayerId !== benchedId &&
+                a.targetPlayerId !== benchedId,
+            )
+          : slide.arrows;
+
+        return {
+          ...recordHistory(s),
+          project: updateSlideInProject(s.project, slideId, (sl) => ({
+            ...sl,
+            players: newPlayers,
+            arrows: newArrows,
+          })),
+          isDirty: true,
+          selectedObjects: benchedId
+            ? s.selectedObjects.filter((o) => o.id !== benchedId)
+            : s.selectedObjects,
+        };
+      }),
 
     removePlayer: (slideId, playerId) =>
       set((s) => ({

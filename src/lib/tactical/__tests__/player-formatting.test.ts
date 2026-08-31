@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   getLastName,
+  getPositionBadgeClass,
+  getPositionGroup,
   getShirtNo,
   getSideScore,
+  groupPlayersByPosition,
   normalizePosition,
   parsePlayerIdFromMarkerId,
   sortPlayersBy2DPositionGroup,
@@ -119,6 +122,89 @@ describe('player-formatting', () => {
 
       const sorted = sortPlayersBy2DPositionGroup(players);
       expect(sorted.map((p) => p.id)).toEqual([2, 4, 3, 5, 1]);
+    });
+  });
+
+  describe('getPositionGroup', () => {
+    it('groups Goalkeepers as GK', () => {
+      expect(getPositionGroup('GK')).toBe('GK');
+      expect(getPositionGroup('gk')).toBe('GK');
+    });
+
+    it('groups Defenders as DF', () => {
+      expect(getPositionGroup('DF')).toBe('DF');
+      expect(getPositionGroup('CB')).toBe('DF');
+      expect(getPositionGroup('LB')).toBe('DF');
+      expect(getPositionGroup('RB')).toBe('DF');
+      expect(getPositionGroup('LWB')).toBe('DF');
+      expect(getPositionGroup('RWB')).toBe('DF');
+    });
+
+    it('groups Midfielders as MF', () => {
+      expect(getPositionGroup('MF')).toBe('MF');
+      expect(getPositionGroup('MID')).toBe('MF');
+      expect(getPositionGroup('DM')).toBe('MF');
+      expect(getPositionGroup('CM')).toBe('MF');
+      expect(getPositionGroup('AM')).toBe('MF');
+      expect(getPositionGroup('LM')).toBe('MF');
+      expect(getPositionGroup('RM')).toBe('MF');
+    });
+
+    it('groups Forwards as FW', () => {
+      expect(getPositionGroup('FW')).toBe('FW');
+      expect(getPositionGroup('ST')).toBe('FW');
+      expect(getPositionGroup('CF')).toBe('FW');
+      expect(getPositionGroup('LW')).toBe('FW');
+      expect(getPositionGroup('RW')).toBe('FW');
+    });
+
+    it('groups undefined, empty or unknown as OTHER', () => {
+      expect(getPositionGroup(undefined)).toBe('OTHER');
+      expect(getPositionGroup('')).toBe('OTHER');
+      expect(getPositionGroup('SUB')).toBe('OTHER');
+    });
+  });
+
+  describe('getPositionBadgeClass', () => {
+    it('returns amber styling for GK', () => {
+      expect(getPositionBadgeClass('GK')).toContain('amber');
+    });
+
+    it('returns blue styling for DF', () => {
+      expect(getPositionBadgeClass('CB')).toContain('blue');
+    });
+
+    it('returns emerald styling for MF', () => {
+      expect(getPositionBadgeClass('CM')).toContain('emerald');
+    });
+
+    it('returns rose styling for FW', () => {
+      expect(getPositionBadgeClass('ST')).toContain('rose');
+    });
+
+    it('returns slate styling for OTHER', () => {
+      expect(getPositionBadgeClass('SUB')).toContain('slate');
+    });
+  });
+
+  describe('groupPlayersByPosition', () => {
+    it('correctly categorizes and 2D-sorts players into 4 groups and other', () => {
+      const players = [
+        { id: 1, position: 'ST' },
+        { id: 2, position: 'GK' },
+        { id: 3, position: 'DR' },
+        { id: 4, position: 'DL' },
+        { id: 5, position: 'MC' },
+        { id: 6, position: 'LW' },
+        { id: 7, position: 'SUB' },
+      ];
+
+      const groups = groupPlayersByPosition(players);
+      expect(groups.GK.map((p) => p.id)).toEqual([2]);
+      expect(groups.DF.map((p) => p.id)).toEqual([4, 3]); // DL (left) before DR (right)
+      expect(groups.MF.map((p) => p.id)).toEqual([5]);
+      expect(groups.FW.map((p) => p.id)).toEqual([6, 1]); // LW (left) before ST (center)
+      expect(groups.OTHER.map((p) => p.id)).toEqual([7]);
     });
   });
 

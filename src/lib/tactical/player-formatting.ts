@@ -1,5 +1,23 @@
 import type { StandardPosition } from '@/types';
 
+export type PositionGroup = 'GK' | 'DF' | 'MF' | 'FW' | 'OTHER';
+
+export const POSITION_GROUPS: PositionGroup[] = [
+  'GK',
+  'DF',
+  'MF',
+  'FW',
+  'OTHER',
+];
+
+export const POSITION_GROUP_LABELS: Record<PositionGroup, string> = {
+  GK: 'Goalkeepers',
+  DF: 'Defenders',
+  MF: 'Midfielders',
+  FW: 'Forwards',
+  OTHER: 'Other',
+};
+
 /**
  * 任意のポジション文字列を GK / DF / MID / FW / Other の5区分に正規化する
  */
@@ -36,34 +54,91 @@ export function normalizePosition(position?: string): StandardPosition {
 }
 
 /**
+ * 任意のポジション文字列を 4ポジション区分 ('GK' | 'DF' | 'MF' | 'FW' | 'OTHER') に分類する
+ */
+export function getPositionGroup(position?: string): PositionGroup {
+  if (!position) return 'OTHER';
+  const pos = position.trim().toUpperCase();
+  if (pos === 'GK') return 'GK';
+  if (
+    ['DF', 'DR', 'DC', 'DL', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'SW'].includes(pos)
+  )
+    return 'DF';
+  if (
+    [
+      'MID',
+      'MF',
+      'DMC',
+      'MC',
+      'AMC',
+      'AMR',
+      'AML',
+      'DM',
+      'CM',
+      'AM',
+      'LM',
+      'RM',
+      'MR',
+      'ML',
+    ].includes(pos)
+  )
+    return 'MF';
+  if (['FW', 'ST', 'SS', 'CF', 'LW', 'RW', 'WF', 'LF', 'RF'].includes(pos))
+    return 'FW';
+  return 'OTHER';
+}
+
+/**
+ * ポジションバッジ用のTailwind CSSクラスを取得する
+ * GK: 黄色/アンバー, DF: 青/シアン, MF: 緑/エメラルド, FW: 赤/ローズ, OTHER: ニュートラル/スレート
+ */
+export function getPositionBadgeClass(position?: string): string {
+  const group = getPositionGroup(position);
+  switch (group) {
+    case 'GK':
+      return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+    case 'DF':
+      return 'bg-blue-500/20 text-blue-300 border-blue-500/40';
+    case 'MF':
+      return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+    case 'FW':
+      return 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+    default:
+      return 'bg-slate-500/20 text-slate-300 border-slate-500/40';
+  }
+}
+
+/**
  * ポジションから横方向の優先度スコア (1: Left, 2: Center, 3: Right) を返す
  */
 export function getSideScore(position?: string): number {
   const pos = (position || '').toUpperCase();
-  if (['DL', 'LWB', 'AML', 'LM', 'LW'].includes(pos)) return 1;
-  if (['DR', 'RWB', 'AMR', 'RM', 'RW'].includes(pos)) return 3;
-  return 2; // Default Center (DC, CB, DMC, MC, AMC, CM, DM, AM, ST, SS, GK, etc.)
+  if (['DL', 'LWB', 'AML', 'LM', 'LW', 'LF'].includes(pos)) return 1;
+  if (['DR', 'RWB', 'AMR', 'RM', 'RW', 'RF'].includes(pos)) return 3;
+  return 2; // Default Center (DC, CB, DMC, MC, AMC, CM, DM, AM, ST, SS, CF, GK, etc.)
 }
 
 /**
- * 選手オブジェクトを 縦グループ (GK->DF->MF->FW) および 横方向 (Left->Center->Right) で2Dソートする
+ * 選手オブジェクトを 縦グループ (GK->DF->MF->FW->OTHER) および 横方向 (Left->Center->Right) で2Dソートする
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function sortPlayersBy2DPositionGroup(players: any[]): any[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getGroupPriority = (p: any): number => {
-    const pos = (p.position || '').toUpperCase();
-    if (pos === 'GK') return 1;
-    if (['DR', 'DC', 'DL', 'CB', 'LB', 'RB', 'LWB', 'RWB'].includes(pos))
-      return 2;
-    if (
-      ['DMC', 'MC', 'AMC', 'AMR', 'AML', 'DM', 'CM', 'AM', 'LM', 'RM'].includes(
-        pos,
-      )
-    )
-      return 3;
-    if (['FW', 'ST', 'SS', 'LW', 'RW'].includes(pos)) return 4;
-    return 5;
+export function sortPlayersBy2DPositionGroup<T extends { position?: string }>(
+  players: T[],
+): T[] {
+  const getGroupPriority = (p: T): number => {
+    const group = getPositionGroup(p.position);
+    switch (group) {
+      case 'GK':
+        return 1;
+      case 'DF':
+        return 2;
+      case 'MF':
+        return 3;
+      case 'FW':
+        return 4;
+      default:
+        return 5;
+    }
   };
 
   return [...players].sort((a, b) => {
@@ -75,6 +150,30 @@ export function sortPlayersBy2DPositionGroup(players: any[]): any[] {
     const sB = getSideScore(b.position);
     return sA - sB;
   });
+}
+
+/**
+ * 選手配列を 4ポジション (GK, DF, MF, FW, OTHER) ごとにグループ分けし、
+ * 各グループ内を 2D (縦・横) ソートして返す
+ */
+export function groupPlayersByPosition<T extends { position?: string }>(
+  players: T[],
+): Record<PositionGroup, T[]> {
+  const sorted = sortPlayersBy2DPositionGroup(players);
+  const groups: Record<PositionGroup, T[]> = {
+    GK: [],
+    DF: [],
+    MF: [],
+    FW: [],
+    OTHER: [],
+  };
+
+  for (const player of sorted) {
+    const group = getPositionGroup(player.position);
+    groups[group].push(player);
+  }
+
+  return groups;
 }
 
 /**
