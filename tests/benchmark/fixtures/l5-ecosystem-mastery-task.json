@@ -1,0 +1,35 @@
+{
+  "task_id": "odin-l5-ecosystem-mastery-001",
+  "name": "Ecosystem Mastery: Pre-Snapshot, Multi-Agent Context Bus, and Active Escalation (White Flag)",
+  "description": "Pre-mutation snapshot creation (L5.2), cross-agent context broadcasting (L5.3), and active graceful escalation / white flag (L5.1) upon detecting unresolvable environment constraints.",
+  "snapshot": {
+    "type": "GIT_BACKUP_SNAPSHOT",
+    "commit_hash": "a7f93c2e1b4d089f65e234a1b0c9876e543210ab",
+    "target_scope": "monorepo-pre-refactor",
+    "snapshot_message": "chore(snapshot): pre-refactor backup before tactical video export pipeline upgrade"
+  },
+  "shared_context": {
+    "bus_file": ".agents/context.json",
+    "knowledge_key": "ENV_CONSTRAINT_WEBCODECS_IOS_SAFARI",
+    "payload": {
+      "constraint_type": "BROWSER_API_INCOMPATIBILITY",
+      "affected_subsystems": [
+        "src/lib/tactical/export/video-export-worker.ts",
+        "video-canvas"
+      ],
+      "severity": "BLOCKING",
+      "details": "iOS Safari WebCodecs VideoEncoder does not support AVC1 High profile in offscreen workers without hardware acceleration fallback."
+    }
+  },
+  "escalation": {
+    "trigger_reason": "UNRESOLVABLE_PLATFORM_CONSTRAINT_NEED_HUMAN_DECISION",
+    "risk_level": "CRITICAL_EXTERNAL_DEPENDENCY",
+    "white_flag": true,
+    "escalation_message": "Detected hardware-level sandbox restriction on iOS Safari worker video encoding. Autonomous fallback to WASM software encoder exceeds memory budget (512MB). Requesting human engineering lead decision on codec degradation vs server-side rendering architecture.",
+    "options_for_human": [
+      "1. Fallback to server-side Remotion rendering pipeline for iOS clients",
+      "2. Restrict export resolution to 720p Baseline profile on mobile Safari",
+      "3. Display explicit unsupported browser alert for iOS tactical export"
+    ]
+  }
+}

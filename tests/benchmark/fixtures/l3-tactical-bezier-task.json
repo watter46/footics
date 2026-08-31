@@ -1,0 +1,22 @@
+{
+  "task_id": "odin-l3-autonomous-repair-001",
+  "name": "Tactical Trajectory Parity & Bezier Inversion Resolution",
+  "description": "Fix the quadratic Bezier control point inversion formula without modifying test assertions.",
+  "target_file": "src/lib/tactical/trajectory.ts",
+  "buggy_code": "export function calculateBezierControlPoint(p0: { x: number; y: number }, p1: { x: number; y: number }, mid: { x: number; y: number }) {\n  return {\n    x: 2 * mid.x - (p0.x + p1.x),\n    y: 2 * mid.y - (p0.y + p1.y),\n  };\n}",
+  "fixed_code": "export function calculateBezierControlPoint(p0: { x: number; y: number }, p1: { x: number; y: number }, mid: { x: number; y: number }) {\n  return {\n    x: 2 * mid.x - 0.5 * (p0.x + p1.x),\n    y: 2 * mid.y - 0.5 * (p0.y + p1.y),\n  };\n}",
+  "test_cases": [
+    {
+      "p0": { "x": 0, "y": 0 },
+      "p1": { "x": 100, "y": 0 },
+      "mid": { "x": 50, "y": 20 },
+      "expected_control_point": { "x": 50, "y": 40 }
+    },
+    {
+      "p0": { "x": 20, "y": 30 },
+      "p1": { "x": 80, "y": 70 },
+      "mid": { "x": 50, "y": 60 },
+      "expected_control_point": { "x": 50, "y": 70 }
+    }
+  ]
+}

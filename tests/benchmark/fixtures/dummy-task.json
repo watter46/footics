@@ -1,0 +1,10 @@
+{
+  "task_id": "dummy-json-repair-001",
+  "description": "Repair the malformed JSON object below.",
+  "input": "{\n  \"name\": \"Odin\",\n  \"role\": \"Auditor\",\n  \"level\": 0,\n}",
+  "expected": {
+    "name": "Odin",
+    "role": "Auditor",
+    "level": 0
+  }
+}

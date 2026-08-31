@@ -1,0 +1,24 @@
+{
+  "task_id": "odin-l4-meta-cognition-self-evolution-001",
+  "name": "Rule Flaw Detection & Generalized Self-Evolution Governance",
+  "description": "Diagnose root-cause system rule flaws, synthesize generalized guardrail patches in unified diff format, and enforce human approval gate with BLOCKED status.",
+  "target_governance_file": "AGENTS.md",
+  "incident": {
+    "id": "INC-2026-PERF-0831",
+    "type": "PERFORMANCE_DEGRADATION",
+    "symptom": "Tactical board marker drag operations caused severe frame drops (30fps) due to continuous global Zustand store mutations inside onMouseMove handlers across multiple feature implementations.",
+    "root_cause_type": "SYSTEM_RULE_DEFECT",
+    "root_cause_analysis": "The system rules in AGENTS.md lacked explicit guardrails forbidding transient React State / Zustand store mutations during high-frequency pointer interaction cycles, leading subagents to write naive store updates."
+  },
+  "generalized_rule": {
+    "section": "15. Performance-First Guardrails",
+    "principle": "過渡状態の React State 更新禁止",
+    "rule_text": "- **過渡状態の React State 更新禁止:** ドラッグ中・マウス追従中・描画インタラクション中（`onDragMove`, `onMouseMove` 等）に `setState` や Zustand ストア更新を呼んではならない。過渡状態は Ref や Canvas/Konva ノード直接操作で処理し、完了時（`onDragEnd`, `onMouseUp`）にのみストアへ同期する。"
+  },
+  "unified_diff_patch": "--- a/AGENTS.md\n+++ b/AGENTS.md\n@@ -150,6 +150,8 @@\n  - **原則:** 「ただ動く」だけのナイーブな実装を禁止し、常に 60fps〜120fps の滑らかな操作性と低メモリ負荷を保証する。\n  - **禁止アンチパターン (即座に REJECT 対象):**\n+    - **過渡状態の React State 更新禁止:** ドラッグ中・マウス追従中・描画インタラクション中（`onDragMove`, `onMouseMove` 等）に `setState` や Zustand ストア更新を呼んではならない。過渡状態は Ref や Canvas/Konva ノード直接操作で処理し、完了時（`onDragEnd`, `onMouseUp`）にのみストアへ同期する。\n     - **Zustand 丸ごと購読禁止:** `useStore()` や `useTacticalStore()` のような全プロパティ購読を禁止する。必ず細粒度セレクター (`useStore(s => s.foo)`) を使用する。\n",
+  "human_approval_gate": {
+    "required": true,
+    "final_status": "BLOCKED",
+    "gate_reason": "Rule modification requires explicit human administrator approval before persisting to disk."
+  }
+}

@@ -1,19 +1,13 @@
 # Regista Management Board
 
 ## 1. [Active Focus]
-- **【Phase 3-A】Tactical Canvas UX Polish & Advanced Manipulation (AAWU 5-1 〜 5-7)**:
-  - **背景 & 課題**: Tactical 統合キャンバス（`/tactical`）の操作性を大幅に向上させ、矢印・ベジェ曲線の線上ポインタ完全一致、グローバルコピペ・即時複製（Ctrl+D）、Undo/Redo履歴、片チーム配置、ボール最前面化（z-index）、矢印の未選択からの即時ドラッグ、複数選手ドラッグ安定化、4ポジション分類、ゴースト軌道変形ポインタを完備する。
+- **【Phase 3-B】Tactical Precision & Squad UX Refinement (AAWU 6-1 〜 6-4)**:
+  - **背景 & 課題**: Tactical キャンバスの境界線デフォルト整合性、選手名ラベルの視認性、チーム読み込み時の顔写真/Inside Content連動、およびFormation & Squadパネルのサブ特化＆ワンボタンピッチ投入UIの刷新を行う。
   - **確定仕様 & AAWU 分解**:
-    1. **AAWU 5-1 (Fix Arrow & Curve Control Point Parity)**: 2次ベジェ曲線の頂点逆算による線上完全一致ポインタ（汎用基盤）。
-    2. **AAWU 5-2 (Global Object Copy & Paste)**: Ctrl/Cmd+C, Ctrl/Cmd+V によるオブジェクト複製・配置。
-    3. **AAWU 5-2-DUP (Instant Duplicate with Ctrl+D)**: Ctrl/Cmd+D によるワンアクション即時複製＆配置（選択オブジェクトをその場でコピー＆ペースト）。
-    4. **AAWU 5-3 (Undo / Redo History Management)**: Ctrl+Z, Ctrl+Shift+Z およびツールバーボタンによる履歴管理。
-    5. **AAWU 5-4 (Single Team Quick Placement & Visibility Toggle)**: ワンボタン片チーム配置＆表示切替トグル。
-    6. **AAWU 5-5-A (Stabilized Multi-Player Drag & Selection UX)**: 複数選手選択時のリアルタイム同調ドラッグ再構築。
-    7. **AAWU 5-5-B (4-Position Grouping & Pitch/Bench Swap)**: GK/DF/MF/FW 4分類アコーディオン＆入れ替えUI。
-    8. **AAWU 5-5-C (Interactive Ghost Marker Trajectory with Curve Pointer)**: 選手選択時ゴースト常時表示＆5-1汎用ポインタによる軌道変形。
-    9. **AAWU 5-6 (Ball Z-Index & Layer Fronting)**: ボールレイヤーを最前面（PlayerLayer より上）に配置し、選手マーカー下に埋もれる吸着・隠れ問題を解消。
-    10. **AAWU 5-7 (Immediate Drag for Lines & Arrows)**: Line・矢印系オブジェクトを「選択状態にしなくても、クリック即ドラッグ」で直感的に移動可能にする。
+    1. **AAWU 6-1 (Default Auto-Fit Pitch Boundary Box)**: 初期作成時およびデフォルトの境界線を「Auto fit boundary box to pitch」適用値に標準化。
+    2. **AAWU 6-2 (Player Label High-Contrast Visibility Fix)**: 選手マーカー下の名前/背番号ラベルの Konva stroke 潰れ解消と高コントラスト化。
+    3. **AAWU 6-3 (Team Squad Photo & Inside Content Sync Fix)**: チーム読み込み時の写真同期・Inside Content（Photo/Number/None）切り替え連動修復。
+    4. **AAWU 6-4 (Sub-Centric Squad Panel & One-Click Pitch Deploy)**: On Pitch 一覧撤廃、サブ専用化、D&D廃止とワンクリックピッチ投入ボタン配備。
 
 ## 2. [Backlog / Adopted Roadmaps (オーナー承認済 バックログ)]
 - **【構造改革】拡張機能の1本化統合 (Unified Extension Pipeline)**:
@@ -21,7 +15,16 @@
 - **【品質基盤】エージェント性能最大化 3大ルールの徹底運用**:
   - 1. State Machine厳守 / 2. 極小AAWU（1〜3ファイル） / 3. KI自動更新。
 
-## 3. [Task Matrix (AAWU: Tactical UX Polish & Advanced Manipulation)]
+## 3. [Task Matrix (AAWU: Tactical Precision & Squad UX Refinement)]
+
+| Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **AAWU 6-1** | 🔲 **Default Auto-Fit Pitch Boundary Box** | `regista-canvas`<br>`regista-frontend` | `src/lib/types/tactical-unified.ts`<br>`src/components/features/tactical-unified/canvas/boundary-box.tsx`<br>`src/stores/tactical-unified-store.ts` | 新規スライド作成時やデフォルトの境界線を「Auto fit boundary box to pitch」適用値（均等余白フィット）に標準化。 | **TODO** ⏳ |
+| **AAWU 6-2** | 🏷️ **Player Label High-Contrast Visibility Fix** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/tactical/export/tactical-frame-renderer.ts` | 選手マーカー下の名前・番号ラベルの Konva stroke 潰れを解消し、ダーク・グリーン等全ピッチ背景で鮮明に読める高コントラスト白文字に修復。 | **TODO** ⏳ |
+| **AAWU 6-3** | 🖼️ **Team Squad Photo & Inside Content Sync Fix** | `regista-frontend`<br>`regista-data` | `src/lib/tactical/squad-to-tactical-bridge.ts`<br>`src/components/features/tactical-unified/inspector/inspector-panel.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | チーム読み込み時の顔写真反映、写真有無に応じた Inside Content 初期値判定、および Photo/Number/None の即時切り替え反映を修復。 | **TODO** ⏳ |
+| **AAWU 6-4** | 👥 **Sub-Centric Squad Panel & One-Click Pitch Deploy** | `regista-frontend`<br>`regista-canvas` | `src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/components/features/tactical-unified/canvas/unified-canvas.tsx` | Formation & Squad パネルから On Pitch リストを削除してサブ特化型に整理。D&D を廃止し、サブ選手一覧の各行に「ワンボタンピッチ投入」ボタンを配備。 | **TODO** ⏳ |
+
+## 4. [Task Matrix (AAWU: Tactical UX Polish & Advanced Manipulation)]
 
 | Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
 | :--- | :--- | :--- | :--- | :--- | :--- |

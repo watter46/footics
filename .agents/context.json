@@ -1,0 +1,11 @@
+{
+  "ENV_CONSTRAINT_WEBCODECS_IOS_SAFARI": {
+    "constraint_type": "BROWSER_API_INCOMPATIBILITY",
+    "affected_subsystems": [
+      "src/lib/tactical/export/video-export-worker.ts",
+      "video-canvas"
+    ],
+    "severity": "BLOCKING",
+    "details": "iOS Safari WebCodecs VideoEncoder does not support AVC1 High profile in offscreen workers without hardware acceleration fallback."
+  }
+}
