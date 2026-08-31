@@ -444,253 +444,270 @@ const ArrowObject = React.memo(function ArrowObject({
         </>
       )}
 
-      {isSelected && (
-        <Group>
-          {!isAttachedToPlayer && (
-            <Circle
-              ref={startHandleRef}
-              x={sPxX}
-              y={sPxY}
-              radius={7}
-              fill="#ffffff"
-              stroke="#3b82f6"
-              strokeWidth={2.5}
-              shadowColor="rgba(0,0,0,0.5)"
-              shadowBlur={4}
-              perfectDrawEnabled={false}
-              draggable
-              onMouseEnter={(e) => {
-                const stage = e.target.getStage();
-                if (stage) stage.container().style.cursor = 'grab';
-              }}
-              onMouseLeave={(e) => {
-                const stage = e.target.getStage();
-                if (stage) stage.container().style.cursor = 'default';
-              }}
-              onDragStart={(e) => {
-                e.cancelBubble = true;
-                const stage = e.target.getStage();
-                if (stage) stage.container().style.cursor = 'grabbing';
-              }}
-              onDragMove={(e) => {
-                e.cancelBubble = true;
-                const pos = e.target.position();
-                const curEx = endHandleRef.current
-                  ? endHandleRef.current.x()
-                  : ePxX;
-                const curEy = endHandleRef.current
-                  ? endHandleRef.current.y()
-                  : ePxY;
-                if (controlHandleRef.current) {
-                  if (!arrow.controlPoint) {
-                    controlHandleRef.current.position({
-                      x: (pos.x + curEx) / 2,
-                      y: (pos.y + curEy) / 2,
-                    });
-                  } else {
-                    controlHandleRef.current.position({
-                      x: 0.25 * pos.x + 0.5 * cpPxX + 0.25 * curEx,
-                      y: 0.25 * pos.y + 0.5 * cpPxY + 0.25 * curEy,
-                    });
-                  }
-                }
-                updateKonvaPoints(
-                  pos.x,
-                  pos.y,
-                  curEx,
-                  curEy,
-                  arrow.controlPoint ? cpPxX : undefined,
-                  arrow.controlPoint ? cpPxY : undefined,
-                );
-              }}
-              onDragEnd={(e) => {
-                e.cancelBubble = true;
-                const pos = e.target.position();
-                const newNormX = pxToNormX(pos.x, width);
-                const newNormY = pxToNormY(pos.y, height);
-                const stage = e.target.getStage();
-                if (stage) stage.container().style.cursor = 'default';
-
-                updateArrow(slideId, arrow.id, {
-                  points: [{ x: newNormX, y: newNormY }, p1],
-                });
-              }}
-            />
-          )}
-
-          <Circle
-            ref={endHandleRef}
-            x={ePxX}
-            y={ePxY}
-            radius={7}
-            fill="#ffffff"
-            stroke="#3b82f6"
-            strokeWidth={2.5}
-            shadowColor="rgba(0,0,0,0.5)"
-            shadowBlur={4}
-            perfectDrawEnabled={false}
-            draggable
-            onMouseEnter={(e) => {
-              const stage = e.target.getStage();
-              if (stage) stage.container().style.cursor = 'grab';
-            }}
-            onMouseLeave={(e) => {
-              const stage = e.target.getStage();
-              if (stage) stage.container().style.cursor = 'default';
-            }}
-            onDragStart={(e) => {
-              e.cancelBubble = true;
-              const stage = e.target.getStage();
-              if (stage) stage.container().style.cursor = 'grabbing';
-            }}
-            onDragMove={(e) => {
-              e.cancelBubble = true;
-              const pos = e.target.position();
-              const curSx = startHandleRef.current
-                ? startHandleRef.current.x()
-                : sPxX;
-              const curSy = startHandleRef.current
-                ? startHandleRef.current.y()
-                : sPxY;
-              if (controlHandleRef.current) {
-                if (!arrow.controlPoint) {
-                  controlHandleRef.current.position({
-                    x: (curSx + pos.x) / 2,
-                    y: (curSy + pos.y) / 2,
-                  });
-                } else {
-                  controlHandleRef.current.position({
-                    x: 0.25 * curSx + 0.5 * cpPxX + 0.25 * pos.x,
-                    y: 0.25 * curSy + 0.5 * cpPxY + 0.25 * pos.y,
-                  });
-                }
-              }
-              updateKonvaPoints(
-                curSx,
-                curSy,
-                pos.x,
-                pos.y,
-                arrow.controlPoint ? cpPxX : undefined,
-                arrow.controlPoint ? cpPxY : undefined,
-              );
-            }}
-            onDragEnd={(e) => {
-              e.cancelBubble = true;
-              const pos = e.target.position();
-              const newNormX = pxToNormX(pos.x, width);
-              const newNormY = pxToNormY(pos.y, height);
-              const stage = e.target.getStage();
-              if (stage) stage.container().style.cursor = 'default';
-
-              updateArrow(slideId, arrow.id, {
-                targetPlayerId: undefined,
-                points: [p0, { x: newNormX, y: newNormY }],
-              });
-            }}
-          />
-
-          <Circle
-            ref={controlHandleRef}
-            x={midHandlePxX}
-            y={midHandlePxY}
-            radius={6.5}
-            fill="#f59e0b"
-            stroke="#ffffff"
-            strokeWidth={2}
-            shadowColor="rgba(0,0,0,0.5)"
-            shadowBlur={4}
-            perfectDrawEnabled={false}
-            draggable
-            onMouseEnter={(e) => {
-              const stage = e.target.getStage();
-              if (stage) stage.container().style.cursor = 'grab';
-            }}
-            onMouseLeave={(e) => {
-              const stage = e.target.getStage();
-              if (stage) stage.container().style.cursor = 'default';
-            }}
-            onDragStart={(e) => {
-              e.cancelBubble = true;
-              const stage = e.target.getStage();
-              if (stage) stage.container().style.cursor = 'grabbing';
-            }}
-            onDragMove={(e) => {
-              e.cancelBubble = true;
-              const pos = e.target.position();
-              const curSx =
-                !isAttachedToPlayer && startHandleRef.current
-                  ? startHandleRef.current.x()
-                  : sPxX;
-              const curSy =
-                !isAttachedToPlayer && startHandleRef.current
-                  ? startHandleRef.current.y()
-                  : sPxY;
-              const curEx = endHandleRef.current
-                ? endHandleRef.current.x()
-                : ePxX;
-              const curEy = endHandleRef.current
-                ? endHandleRef.current.y()
-                : ePxY;
-
-              // 2次ベジェ曲線頂点 M = pos から P_control を逆算:
-              // M = 0.25*P0 + 0.5*P_control + 0.25*P1
-              // ∴ P_control = 2*M - 0.5*(P0 + P1)
-              const calcCpX = 2 * pos.x - 0.5 * (curSx + curEx);
-              const calcCpY = 2 * pos.y - 0.5 * (curSy + curEy);
-
-              updateKonvaPoints(curSx, curSy, curEx, curEy, calcCpX, calcCpY);
-            }}
-            onDragEnd={(e) => {
-              e.cancelBubble = true;
-              const pos = e.target.position();
-              const curSx =
-                !isAttachedToPlayer && startHandleRef.current
-                  ? startHandleRef.current.x()
-                  : sPxX;
-              const curSy =
-                !isAttachedToPlayer && startHandleRef.current
-                  ? startHandleRef.current.y()
-                  : sPxY;
-              const curEx = endHandleRef.current
-                ? endHandleRef.current.x()
-                : ePxX;
-              const curEy = endHandleRef.current
-                ? endHandleRef.current.y()
-                : ePxY;
-
-              // 逆算された制御点 P_control (クランプなしで広範レンジ保持)
-              const calcCpX = 2 * pos.x - 0.5 * (curSx + curEx);
-              const calcCpY = 2 * pos.y - 0.5 * (curSy + curEy);
-
-              const newNormX = cpPxToNormX(calcCpX, width);
-              const newNormY = cpPxToNormY(calcCpY, height);
-              const stage = e.target.getStage();
-              if (stage) stage.container().style.cursor = 'default';
-
-              // 直線に戻すかどうかの判定: ポインタ M (pos) と 中点 (curSx + curEx)/2 のピクセル距離
-              const midPxX = (curSx + curEx) / 2;
-              const midPxY = (curSy + curEy) / 2;
-              const distFromMidPx = Math.hypot(pos.x - midPxX, pos.y - midPxY);
-
-              if (distFromMidPx < 6.0) {
-                e.target.position({ x: midPxX, y: midPxY });
-                updateArrow(slideId, arrow.id, {
-                  sourcePlayerId: arrow.sourcePlayerId,
-                  curveType: 'straight',
-                  controlPoint: undefined,
-                  points: [p0, p1],
+      {/* ── ハンドル群 ── */}
+      {/* 1. 始点ハンドル: フリー矢印かつ選択中のみ表示 */}
+      {isSelected && !isAttachedToPlayer && (
+        <Circle
+          ref={startHandleRef}
+          x={sPxX}
+          y={sPxY}
+          radius={7}
+          fill="#ffffff"
+          stroke="#3b82f6"
+          strokeWidth={2.5}
+          shadowColor="rgba(0,0,0,0.5)"
+          shadowBlur={4}
+          perfectDrawEnabled={false}
+          draggable={isInteractive}
+          onMouseEnter={(e) => {
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'grab';
+          }}
+          onMouseLeave={(e) => {
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'default';
+          }}
+          onDragStart={(e) => {
+            e.cancelBubble = true;
+            if (!isSelected) onSelect(e);
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'grabbing';
+          }}
+          onDragMove={(e) => {
+            e.cancelBubble = true;
+            const pos = e.target.position();
+            const curEx = endHandleRef.current
+              ? endHandleRef.current.x()
+              : ePxX;
+            const curEy = endHandleRef.current
+              ? endHandleRef.current.y()
+              : ePxY;
+            if (controlHandleRef.current) {
+              if (!arrow.controlPoint) {
+                controlHandleRef.current.position({
+                  x: (pos.x + curEx) / 2,
+                  y: (pos.y + curEy) / 2,
                 });
               } else {
-                updateArrow(slideId, arrow.id, {
-                  sourcePlayerId: arrow.sourcePlayerId,
-                  curveType: 'curved',
-                  controlPoint: { x: newNormX, y: newNormY },
-                  points: [p0, p1],
+                controlHandleRef.current.position({
+                  x: 0.25 * pos.x + 0.5 * cpPxX + 0.25 * curEx,
+                  y: 0.25 * pos.y + 0.5 * cpPxY + 0.25 * curEy,
                 });
               }
-            }}
-          />
-        </Group>
+            }
+            updateKonvaPoints(
+              pos.x,
+              pos.y,
+              curEx,
+              curEy,
+              arrow.controlPoint ? cpPxX : undefined,
+              arrow.controlPoint ? cpPxY : undefined,
+            );
+          }}
+          onDragEnd={(e) => {
+            e.cancelBubble = true;
+            const pos = e.target.position();
+            const newNormX = pxToNormX(pos.x, width);
+            const newNormY = pxToNormY(pos.y, height);
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'default';
+
+            updateArrow(slideId, arrow.id, {
+              points: [{ x: newNormX, y: newNormY }, p1],
+            });
+          }}
+        />
+      )}
+
+      {/* 2. 終点（先端）ハンドル: 選択中またはPlayer付属矢印で常時ドラッグ可能 */}
+      {(isSelected || isAttachedToPlayer) && (
+        <Circle
+          ref={endHandleRef}
+          x={ePxX}
+          y={ePxY}
+          radius={isSelected ? 7 : 6}
+          fill={isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.9)'}
+          stroke="#3b82f6"
+          strokeWidth={isSelected ? 2.5 : 1.5}
+          shadowColor="rgba(0,0,0,0.5)"
+          shadowBlur={isSelected ? 4 : 2}
+          opacity={isSelected ? 1 : 0.75}
+          perfectDrawEnabled={false}
+          draggable={isInteractive}
+          hitStrokeWidth={12}
+          onMouseEnter={(e) => {
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'grab';
+          }}
+          onMouseLeave={(e) => {
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'default';
+          }}
+          onDragStart={(e) => {
+            e.cancelBubble = true;
+            if (!isSelected) {
+              onSelect(e);
+            }
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'grabbing';
+          }}
+          onDragMove={(e) => {
+            e.cancelBubble = true;
+            const pos = e.target.position();
+            const curSx =
+              !isAttachedToPlayer && startHandleRef.current
+                ? startHandleRef.current.x()
+                : sPxX;
+            const curSy =
+              !isAttachedToPlayer && startHandleRef.current
+                ? startHandleRef.current.y()
+                : sPxY;
+            if (controlHandleRef.current) {
+              if (!arrow.controlPoint) {
+                controlHandleRef.current.position({
+                  x: (curSx + pos.x) / 2,
+                  y: (curSy + pos.y) / 2,
+                });
+              } else {
+                controlHandleRef.current.position({
+                  x: 0.25 * curSx + 0.5 * cpPxX + 0.25 * pos.x,
+                  y: 0.25 * curSy + 0.5 * cpPxY + 0.25 * pos.y,
+                });
+              }
+            }
+            updateKonvaPoints(
+              curSx,
+              curSy,
+              pos.x,
+              pos.y,
+              arrow.controlPoint ? cpPxX : undefined,
+              arrow.controlPoint ? cpPxY : undefined,
+            );
+          }}
+          onDragEnd={(e) => {
+            e.cancelBubble = true;
+            const pos = e.target.position();
+            const newNormX = pxToNormX(pos.x, width);
+            const newNormY = pxToNormY(pos.y, height);
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'default';
+
+            updateArrow(slideId, arrow.id, {
+              targetPlayerId: undefined,
+              points: [p0, { x: newNormX, y: newNormY }],
+            });
+          }}
+        />
+      )}
+
+      {/* 3. カーブ制御ハンドル: 選択中またはPlayer付属矢印かつ曲げ適用時にドラッグ可能 */}
+      {(isSelected || (isAttachedToPlayer && isCurved)) && (
+        <Circle
+          ref={controlHandleRef}
+          x={midHandlePxX}
+          y={midHandlePxY}
+          radius={isSelected ? 6.5 : 5.5}
+          fill="#f59e0b"
+          stroke="#ffffff"
+          strokeWidth={isSelected ? 2 : 1.5}
+          shadowColor="rgba(0,0,0,0.5)"
+          shadowBlur={isSelected ? 4 : 2}
+          opacity={isSelected ? 1 : 0.75}
+          perfectDrawEnabled={false}
+          draggable={isInteractive}
+          hitStrokeWidth={12}
+          onMouseEnter={(e) => {
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'grab';
+          }}
+          onMouseLeave={(e) => {
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'default';
+          }}
+          onDragStart={(e) => {
+            e.cancelBubble = true;
+            if (!isSelected) {
+              onSelect(e);
+            }
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'grabbing';
+          }}
+          onDragMove={(e) => {
+            e.cancelBubble = true;
+            const pos = e.target.position();
+            const curSx =
+              !isAttachedToPlayer && startHandleRef.current
+                ? startHandleRef.current.x()
+                : sPxX;
+            const curSy =
+              !isAttachedToPlayer && startHandleRef.current
+                ? startHandleRef.current.y()
+                : sPxY;
+            const curEx = endHandleRef.current
+              ? endHandleRef.current.x()
+              : ePxX;
+            const curEy = endHandleRef.current
+              ? endHandleRef.current.y()
+              : ePxY;
+
+            // 2次ベジェ曲線頂点 M = pos から P_control を逆算:
+            // M = 0.25*P0 + 0.5*P_control + 0.25*P1
+            // ∴ P_control = 2*M - 0.5*(P0 + P1)
+            const calcCpX = 2 * pos.x - 0.5 * (curSx + curEx);
+            const calcCpY = 2 * pos.y - 0.5 * (curSy + curEy);
+
+            updateKonvaPoints(curSx, curSy, curEx, curEy, calcCpX, calcCpY);
+          }}
+          onDragEnd={(e) => {
+            e.cancelBubble = true;
+            const pos = e.target.position();
+            const curSx =
+              !isAttachedToPlayer && startHandleRef.current
+                ? startHandleRef.current.x()
+                : sPxX;
+            const curSy =
+              !isAttachedToPlayer && startHandleRef.current
+                ? startHandleRef.current.y()
+                : sPxY;
+            const curEx = endHandleRef.current
+              ? endHandleRef.current.x()
+              : ePxX;
+            const curEy = endHandleRef.current
+              ? endHandleRef.current.y()
+              : ePxY;
+
+            // 逆算された制御点 P_control (クランプなしで広範レンジ保持)
+            const calcCpX = 2 * pos.x - 0.5 * (curSx + curEx);
+            const calcCpY = 2 * pos.y - 0.5 * (curSy + curEy);
+
+            const newNormX = cpPxToNormX(calcCpX, width);
+            const newNormY = cpPxToNormY(calcCpY, height);
+            const stage = e.target.getStage();
+            if (stage) stage.container().style.cursor = 'default';
+
+            // 直線に戻すかどうかの判定: ポインタ M (pos) と 中点 (curSx + curEx)/2 のピクセル距離
+            const midPxX = (curSx + curEx) / 2;
+            const midPxY = (curSy + curEy) / 2;
+            const distFromMidPx = Math.hypot(pos.x - midPxX, pos.y - midPxY);
+
+            if (distFromMidPx < 6.0) {
+              e.target.position({ x: midPxX, y: midPxY });
+              updateArrow(slideId, arrow.id, {
+                sourcePlayerId: arrow.sourcePlayerId,
+                curveType: 'straight',
+                controlPoint: undefined,
+                points: [p0, p1],
+              });
+            } else {
+              updateArrow(slideId, arrow.id, {
+                sourcePlayerId: arrow.sourcePlayerId,
+                curveType: 'curved',
+                controlPoint: { x: newNormX, y: newNormY },
+                points: [p0, p1],
+              });
+            }
+          }}
+        />
       )}
     </Group>
   );
