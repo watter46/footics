@@ -805,4 +805,70 @@ describe('tactical-unified-store', () => {
       ).toHaveLength(initialPlayerCount);
     });
   });
+
+  describe('teamVisibility & single team placement (AAWU 5-4)', () => {
+    it('setTeamVisibility で teamVisibility を切り替えられる', () => {
+      const store = useTacticalUnifiedStore.getState();
+      expect(store.teamVisibility).toBe('both');
+
+      store.setTeamVisibility('home');
+      expect(useTacticalUnifiedStore.getState().teamVisibility).toBe('home');
+
+      store.setTeamVisibility('away');
+      expect(useTacticalUnifiedStore.getState().teamVisibility).toBe('away');
+
+      store.setTeamVisibility('both');
+      expect(useTacticalUnifiedStore.getState().teamVisibility).toBe('both');
+    });
+
+    it('applySingleTeamFormation (home) で Home のみがピッチに配置され、Away は全てベンチに退避される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      store.applySingleTeamFormation(slideId, '4-3-3', 'half', 'home');
+
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+
+      const homePitch = slide?.players.filter(
+        (p) => p.team === 'home' && p.area === 'pitch',
+      );
+      const awayPitch = slide?.players.filter(
+        (p) => p.team === 'away' && p.area === 'pitch',
+      );
+      const awayBench = slide?.players.filter(
+        (p) => p.team === 'away' && p.area === 'bench',
+      );
+
+      expect(homePitch).toHaveLength(11);
+      expect(awayPitch).toHaveLength(0);
+      expect(awayBench?.length).toBeGreaterThanOrEqual(11);
+    });
+
+    it('applySingleTeamFormation (away) で Away のみがピッチに配置され、Home は全てベンチに退避される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      store.applySingleTeamFormation(slideId, '4-4-2', 'half', 'away');
+
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+
+      const homePitch = slide?.players.filter(
+        (p) => p.team === 'home' && p.area === 'pitch',
+      );
+      const awayPitch = slide?.players.filter(
+        (p) => p.team === 'away' && p.area === 'pitch',
+      );
+      const homeBench = slide?.players.filter(
+        (p) => p.team === 'home' && p.area === 'bench',
+      );
+
+      expect(awayPitch).toHaveLength(11);
+      expect(homePitch).toHaveLength(0);
+      expect(homeBench?.length).toBeGreaterThanOrEqual(11);
+    });
+  });
 });

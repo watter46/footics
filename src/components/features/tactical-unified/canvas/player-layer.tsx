@@ -284,7 +284,14 @@ function ConnectLineGroup({
   onSelectConnectLine?: (playerId: string) => void;
 }) {
   const { width, height } = stageSize;
-  const pitchPlayers = slide.players.filter((p) => p.area === 'pitch');
+  const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
+  const pitchPlayers = slide.players.filter(
+    (p) =>
+      p.area === 'pitch' &&
+      (teamVisibility === 'both' ||
+        p.team === teamVisibility ||
+        p.team === 'neutral'),
+  );
   const playerMap = new Map(pitchPlayers.map((p) => [p.id, p]));
 
   return (
@@ -629,6 +636,7 @@ export function PlayerLayer({
   );
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
+  const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
 
   // オニオンスキン (前スライドゴースト表示) 用 Refs
   const ghostGroupRef = useRef<any>(null);
@@ -1199,7 +1207,13 @@ export function PlayerLayer({
         }}
       />
       {slide.players
-        .filter((p) => p.area === 'pitch')
+        .filter(
+          (p) =>
+            p.area === 'pitch' &&
+            (teamVisibility === 'both' ||
+              p.team === teamVisibility ||
+              p.team === 'neutral'),
+        )
         .map((player) => {
           const isSelected = selectedObjects.some((o) => o.id === player.id);
           const isConnectingSource = connectingPlayerId === player.id;

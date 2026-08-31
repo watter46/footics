@@ -15,11 +15,13 @@
 
 import {
   ChevronDown,
+  Eye,
   Palette,
   RotateCcw,
   Search,
   Shield,
   Trash2,
+  UserCheck,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -98,6 +100,9 @@ export function FormationSubPanel() {
 
   // Store actions
   const applyFormation = useTacticalUnifiedStore((s) => s.applyFormation);
+  const applySingleTeamFormation = useTacticalUnifiedStore(
+    (s) => s.applySingleTeamFormation,
+  );
   const applyFormationPreset = useTacticalUnifiedStore(
     (s) => s.applyFormationPreset,
   );
@@ -106,6 +111,8 @@ export function FormationSubPanel() {
   const addCustomPlayer = useTacticalUnifiedStore((s) => s.addCustomPlayer);
   const removePlayer = useTacticalUnifiedStore((s) => s.removePlayer);
   const setTeamColor = useTacticalUnifiedStore((s) => s.setTeamColor);
+  const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
+  const setTeamVisibility = useTacticalUnifiedStore((s) => s.setTeamVisibility);
 
   // Local states
   const [activeTeam, setActiveTeam] = useState<'home' | 'away'>('home');
@@ -295,6 +302,52 @@ export function FormationSubPanel() {
               </div>
             )}
           </div>
+
+          {/* Team Visibility Filter */}
+          <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/[0.03] border border-white/10">
+            <span className="text-[11px] font-medium text-white/70 flex items-center gap-1.5">
+              <Eye size={12} className="text-blue-400" />
+              <span>Pitch Visibility</span>
+            </span>
+            <div className="flex items-center bg-black/40 rounded border border-white/10 p-0.5">
+              <button
+                type="button"
+                onClick={() => setTeamVisibility('both')}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                  teamVisibility === 'both'
+                    ? 'bg-white/20 text-white font-semibold shadow-xs'
+                    : 'text-white/50 hover:text-white'
+                }`}
+                title="Show both teams on pitch"
+              >
+                Both
+              </button>
+              <button
+                type="button"
+                onClick={() => setTeamVisibility('home')}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                  teamVisibility === 'home'
+                    ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                    : 'text-white/50 hover:text-white'
+                }`}
+                title="Show Home team only"
+              >
+                Home
+              </button>
+              <button
+                type="button"
+                onClick={() => setTeamVisibility('away')}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                  teamVisibility === 'away'
+                    ? 'bg-red-600 text-white font-semibold shadow-xs'
+                    : 'text-white/50 hover:text-white'
+                }`}
+                title="Show Away team only"
+              >
+                Away
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* 2. Formation Presets & Reset */}
@@ -374,6 +427,47 @@ export function FormationSubPanel() {
                 {f}
               </button>
             ))}
+          </div>
+
+          {/* Single Team Quick Placement (AAWU 5-4) */}
+          <div className="space-y-1.5 pt-1 border-t border-white/5">
+            <span className="text-[10px] font-semibold text-white/50 uppercase tracking-wider block">
+              Deploy Single Team (Opponent to Bench)
+            </span>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() =>
+                  applySingleTeamFormation(
+                    activeSlideId,
+                    selectedFormation,
+                    formationMode,
+                    'home',
+                  )
+                }
+                className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-[10px] font-medium text-blue-300 hover:text-blue-200 transition-colors shadow-xs"
+                title="Deploy Home Only (Away to Bench)"
+              >
+                <UserCheck size={12} className="text-blue-400 shrink-0" />
+                <span className="truncate">Deploy Home Only</span>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  applySingleTeamFormation(
+                    activeSlideId,
+                    selectedFormation,
+                    formationMode,
+                    'away',
+                  )
+                }
+                className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-[10px] font-medium text-red-300 hover:text-red-200 transition-colors shadow-xs"
+                title="Deploy Away Only (Home to Bench)"
+              >
+                <UserCheck size={12} className="text-red-400 shrink-0" />
+                <span className="truncate">Deploy Away Only</span>
+              </button>
+            </div>
           </div>
 
           {/* Registered Club & Season Presets */}

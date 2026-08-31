@@ -149,6 +149,10 @@ interface TacticalUnifiedState {
   togglePlayback: () => void;
   stopPlayback: () => void;
 
+  // ── チーム表示制御 (Visibility)
+  teamVisibility: 'both' | 'home' | 'away';
+  setTeamVisibility: (visibility: 'both' | 'home' | 'away') => void;
+
   // ── エクスポート
   pendingExport: ExportTarget | null;
   isExporting: boolean;
@@ -232,6 +236,12 @@ interface TacticalUnifiedState {
   removePlayer: (slideId: string, playerId: string) => void;
   applyFormationPreset: (preset: FormationPreset, slideId: string) => void;
   applyFormation: (
+    slideId: string,
+    formationName: FormationType,
+    mode: FormationMode,
+    team: 'home' | 'away',
+  ) => void;
+  applySingleTeamFormation: (
     slideId: string,
     formationName: FormationType,
     mode: FormationMode,
@@ -426,6 +436,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     setIsPlaying: (isPlaying) => set({ isPlaying }),
     togglePlayback: () => set((s) => ({ isPlaying: !s.isPlaying })),
     stopPlayback: () => set({ isPlaying: false }),
+    teamVisibility: 'both',
+    setTeamVisibility: (visibility) => set({ teamVisibility: visibility }),
     pendingExport: null,
     isExporting: false,
 
@@ -510,6 +522,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         clipboard: null,
         activeSlideId: project.activeSlideId,
         selectedObjects: [],
+        teamVisibility: 'both',
       }),
 
     resetProject: () => {
@@ -522,6 +535,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         clipboard: null,
         activeSlideId: p.activeSlideId,
         selectedObjects: [],
+        teamVisibility: 'both',
       });
     },
 
@@ -1356,6 +1370,92 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             ...sl,
             players: [
               ...otherPlayers,
+              ...newTeamPitchPlayers,
+              ...remainingBench,
+            ],
+          };
+        }),
+        isDirty: true,
+      })),
+
+    applySingleTeamFormation: (slideId, formationName, mode, team) =>
+      set((s) => ({
+        ...recordHistory(s),
+        project: updateSlideInProject(s.project, slideId, (sl) => {
+          const positions = FORMATION_POSITIONS[formationName];
+          if (!positions) return sl;
+
+          const otherTeam = team === 'home' ? 'away' : 'home';
+
+          // 相手チームの選手は全選手ピッチからベンチへ一括退避
+          const updatedOtherPlayers = sl.players
+            .filter((p) => p.team === otherTeam)
+            .map((p) => ({
+              ...p,
+              area: 'bench' as const,
+              visionCone: undefined,
+              badges: [],
+              connectLines: [],
+            }));
+
+          // neutral 選手はそのまま保持
+          const neutralPlayers = sl.players.filter((p) => p.team === 'neutral');
+
+          // 指定チームの既存選手
+          const teamPitchPlayers = sl.players.filter(
+            (p) => p.team === team && p.area === 'pitch',
+          );
+          const teamBenchPlayers = sl.players.filter(
+            (p) => p.team === team && p.area === 'bench',
+          );
+          const existingPool = [...teamPitchPlayers, ...teamBenchPlayers];
+
+          const newTeamPitchPlayers: Player[] = [];
+          const primaryColor =
+            team === 'home'
+              ? s.project.homeColor.primary
+              : s.project.awayColor.primary;
+
+          positions.forEach((pos, idx) => {
+            const actualPos = getFormationActualPos(pos, team, mode);
+            let player = existingPool[idx];
+            if (player) {
+              player = {
+                ...player,
+                area: 'pitch',
+                x: Math.max(0, Math.min(100, actualPos.x)),
+                y: Math.max(0, Math.min(100, actualPos.y)),
+                position: pos.position,
+              };
+            } else {
+              player = createDefaultPlayer(
+                team,
+                Math.max(0, Math.min(100, actualPos.x)),
+                Math.max(0, Math.min(100, actualPos.y)),
+                primaryColor,
+              );
+              player.shirtNo = String(pos.id);
+              player.position = pos.position;
+            }
+            newTeamPitchPlayers.push(player);
+          });
+
+          // 指定チームの残りの選手はサブ(ベンチ)に回す
+          const remainingBench = existingPool
+            .slice(positions.length)
+            .map((p) => ({
+              ...p,
+              area: 'bench' as const,
+              visionCone: undefined,
+              badges: [],
+              connectLines: [],
+            }));
+
+          return {
+            ...sl,
+            players: [
+              ...neutralPlayers,
+              ...updatedOtherPlayers,
               ...newTeamPitchPlayers,
               ...remainingBench,
             ],
