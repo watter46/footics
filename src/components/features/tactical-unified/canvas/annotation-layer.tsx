@@ -135,6 +135,14 @@ const ArrowObject = React.memo(function ArrowObject({
     ? normY(arrow.controlPoint.y, height)
     : (sPxY + ePxY) / 2;
 
+  // 2次ベジェ曲線の頂点 M (t=0.5: M = 0.25*P0 + 0.5*P_control + 0.25*P1)
+  const midHandlePxX = arrow.controlPoint
+    ? 0.25 * sPxX + 0.5 * cpPxX + 0.25 * ePxX
+    : (sPxX + ePxX) / 2;
+  const midHandlePxY = arrow.controlPoint
+    ? 0.25 * sPxY + 0.5 * cpPxY + 0.25 * ePxY
+    : (sPxY + ePxY) / 2;
+
   const isDotEnd =
     arrow.endMarker === 'dot' || arrow.arrowType === 'route_line';
 
@@ -215,10 +223,14 @@ const ArrowObject = React.memo(function ArrowObject({
     if (!arrowRef.current) return;
     const curCpX =
       cpx ??
-      (controlHandleRef.current ? controlHandleRef.current.x() : (sx + ex) / 2);
+      (controlHandleRef.current
+        ? 2 * controlHandleRef.current.x() - 0.5 * (sx + ex)
+        : (sx + ex) / 2);
     const curCpY =
       cpy ??
-      (controlHandleRef.current ? controlHandleRef.current.y() : (sy + ey) / 2);
+      (controlHandleRef.current
+        ? 2 * controlHandleRef.current.y() - 0.5 * (sy + ey)
+        : (sy + ey) / 2);
 
     const isCurrentlyCurved =
       isCurved ||
@@ -316,7 +328,10 @@ const ArrowObject = React.memo(function ArrowObject({
             endHandleRef.current.position({ x: ePxX + dx, y: ePxY + dy });
           }
           if (controlHandleRef.current) {
-            controlHandleRef.current.position({ x: cpPxX + dx, y: cpPxY + dy });
+            controlHandleRef.current.position({
+              x: midHandlePxX + dx,
+              y: midHandlePxY + dy,
+            });
           }
           if (startDotRef.current) {
             startDotRef.current.position({ x: sPxX + dx, y: sPxY + dy });
@@ -427,13 +442,27 @@ const ArrowObject = React.memo(function ArrowObject({
                 const curEy = endHandleRef.current
                   ? endHandleRef.current.y()
                   : ePxY;
-                if (!arrow.controlPoint && controlHandleRef.current) {
-                  controlHandleRef.current.position({
-                    x: (pos.x + curEx) / 2,
-                    y: (pos.y + curEy) / 2,
-                  });
+                if (controlHandleRef.current) {
+                  if (!arrow.controlPoint) {
+                    controlHandleRef.current.position({
+                      x: (pos.x + curEx) / 2,
+                      y: (pos.y + curEy) / 2,
+                    });
+                  } else {
+                    controlHandleRef.current.position({
+                      x: 0.25 * pos.x + 0.5 * cpPxX + 0.25 * curEx,
+                      y: 0.25 * pos.y + 0.5 * cpPxY + 0.25 * curEy,
+                    });
+                  }
                 }
-                updateKonvaPoints(pos.x, pos.y, curEx, curEy);
+                updateKonvaPoints(
+                  pos.x,
+                  pos.y,
+                  curEx,
+                  curEy,
+                  arrow.controlPoint ? cpPxX : undefined,
+                  arrow.controlPoint ? cpPxY : undefined,
+                );
               }}
               onDragEnd={(e) => {
                 e.cancelBubble = true;
@@ -486,13 +515,27 @@ const ArrowObject = React.memo(function ArrowObject({
                 !isAttachedToPlayer && startHandleRef.current
                   ? startHandleRef.current.y()
                   : sPxY;
-              if (!arrow.controlPoint && controlHandleRef.current) {
-                controlHandleRef.current.position({
-                  x: (curSx + pos.x) / 2,
-                  y: (curSy + pos.y) / 2,
-                });
+              if (controlHandleRef.current) {
+                if (!arrow.controlPoint) {
+                  controlHandleRef.current.position({
+                    x: (curSx + pos.x) / 2,
+                    y: (curSy + pos.y) / 2,
+                  });
+                } else {
+                  controlHandleRef.current.position({
+                    x: 0.25 * curSx + 0.5 * cpPxX + 0.25 * pos.x,
+                    y: 0.25 * curSy + 0.5 * cpPxY + 0.25 * pos.y,
+                  });
+                }
               }
-              updateKonvaPoints(curSx, curSy, pos.x, pos.y);
+              updateKonvaPoints(
+                curSx,
+                curSy,
+                pos.x,
+                pos.y,
+                arrow.controlPoint ? cpPxX : undefined,
+                arrow.controlPoint ? cpPxY : undefined,
+              );
             }}
             onDragEnd={(e) => {
               e.cancelBubble = true;
@@ -511,8 +554,8 @@ const ArrowObject = React.memo(function ArrowObject({
 
           <Circle
             ref={controlHandleRef}
-            x={cpPxX}
-            y={cpPxY}
+            x={midHandlePxX}
+            y={midHandlePxY}
             radius={6.5}
             fill="#f59e0b"
             stroke="#ffffff"
@@ -554,18 +597,14 @@ const ArrowObject = React.memo(function ArrowObject({
               const curEy = endHandleRef.current
                 ? endHandleRef.current.y()
                 : ePxY;
-              const midX = (curSx + curEx) / 2;
-              const midY = (curSy + curEy) / 2;
-              const amplifiedCpX = midX + (pos.x - midX) * 1.8;
-              const amplifiedCpY = midY + (pos.y - midY) * 1.8;
-              updateKonvaPoints(
-                curSx,
-                curSy,
-                curEx,
-                curEy,
-                amplifiedCpX,
-                amplifiedCpY,
-              );
+
+              // 2次ベジェ曲線頂点 M = pos から P_control を逆算:
+              // M = 0.25*P0 + 0.5*P_control + 0.25*P1
+              // ∴ P_control = 2*M - 0.5*(P0 + P1)
+              const calcCpX = 2 * pos.x - 0.5 * (curSx + curEx);
+              const calcCpY = 2 * pos.y - 0.5 * (curSy + curEy);
+
+              updateKonvaPoints(curSx, curSy, curEx, curEy, calcCpX, calcCpY);
             }}
             onDragEnd={(e) => {
               e.cancelBubble = true;
@@ -584,21 +623,24 @@ const ArrowObject = React.memo(function ArrowObject({
               const curEy = endHandleRef.current
                 ? endHandleRef.current.y()
                 : ePxY;
-              const midX = (curSx + curEx) / 2;
-              const midY = (curSy + curEy) / 2;
-              const amplifiedCpX = midX + (pos.x - midX) * 1.8;
-              const amplifiedCpY = midY + (pos.y - midY) * 1.8;
 
-              const newNormX = pxToNormX(amplifiedCpX, width);
-              const newNormY = pxToNormY(amplifiedCpY, height);
+              // 逆算された制御点 P_control
+              const calcCpX = 2 * pos.x - 0.5 * (curSx + curEx);
+              const calcCpY = 2 * pos.y - 0.5 * (curSy + curEy);
+
+              const newNormX = pxToNormX(calcCpX, width);
+              const newNormY = pxToNormY(calcCpY, height);
               const stage = e.target.getStage();
               if (stage) stage.container().style.cursor = 'default';
 
+              // 直線に戻すかどうかの判定: ポインタ M (pos) と 中点 (p0 + p1)/2 の距離
               const midNormX = (p0.x + p1.x) / 2;
               const midNormY = (p0.y + p1.y) / 2;
+              const posNormX = pxToNormX(pos.x, width);
+              const posNormY = pxToNormY(pos.y, height);
               const distFromMid = Math.hypot(
-                newNormX - midNormX,
-                newNormY - midNormY,
+                posNormX - midNormX,
+                posNormY - midNormY,
               );
 
               if (distFromMid < 1.0) {

@@ -22,13 +22,18 @@
 
 | Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **AAWU 5-1** | 🎯 **Fix Arrow & Curve Control Point Parity** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | ベジェ曲線の頂点逆算ロジックを修正し、ドラッグ中・ドロップ後問わずポインタが常に線上（曲線の頂点）に完全に一致して配置されるようにする。 | **READY** 📋 |
+| **AAWU 5-1** | 🎯 **Fix Arrow & Curve Control Point Parity** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | ベジェ曲線の頂点逆算ロジックを修正し、ドラッグ中・ドロップ後問わずポインタが常に線上（曲線の頂点）に完全に一致して配置されるようにする。 | **DONE** ✅ |
 | **AAWU 5-2** | 📋 **Global Object Copy & Paste (Ctrl+C / Ctrl+V)** | `regista-frontend`<br>`regista-canvas` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts` | 選択中の選手・矢印・ゾーン・テキストを Ctrl/Cmd+C で内部クリップボードにコピーし、Ctrl/Cmd+V でオフセット配置可能にする。 | **TODO** ⏳ |
 | **AAWU 5-3** | ⏪ **Undo / Redo History Management (Ctrl+Z / Ctrl+Shift+Z)** | `regista-frontend`<br>`regista-data` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | スライド変更・オブジェクト編集の Undo/Redo スタックを構築し、Ctrl+Z, Ctrl+Shift+Z およびツールバーボタンで操作可能にする。 | **TODO** ⏳ |
 | **AAWU 5-4** | 👥 **Single Team Quick Placement & Visibility Toggle** | `regista-frontend` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | 「Homeのみ配置（Away退避）」「Awayのみ配置（Home退避）」のワンクリックアクションおよび Team Visibility 切り替えを実装。 | **TODO** ⏳ |
 | **AAWU 5-5-A** | 🔀 **Stabilized Multi-Player Drag & Selection UX** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/stores/tactical-unified-store.ts` | 複数選択した選手を1人ドラッグした際、全員が滑らかにデルタ追従移動し、ドロップ時に一括確定する安定したUI/UXへの再構築。 | **DONE** ✅ |
 | **AAWU 5-5-B** | 📊 **4-Position Grouping (GK/DF/MF/FW) & Pitch/Bench Swap** | `regista-frontend` | `src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/lib/tactical/player-formatting.ts` | スカッド/サブメンバー一覧およびピッチ上の選手リストを「GK / DF / MF / FW」の4ポジションにグルーピング表示。ピッチ⇄ベンチ間の入れ替えでもカテゴリを崩さず視覚的に整理。 | **TODO** ⏳ |
 | **AAWU 5-5-C** | 🪢 **Interactive Ghost Marker Trajectory with Curve Pointer** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/tactical/trajectory.ts`<br>`src/stores/tactical-unified-store.ts` | 選手マーカー選択中に「前スライドのゴースト位置」と「移動矢印」を常時表示。AAWU 5-1 の汎用曲線ポインタを用いて移動軌道を直感的にドラッグ変形・カスタム補間可能にする。 | **TODO** ⏳ |
+
+- **2026-08-31**: [AAWU 5-1 Complete: Fix Arrow & Curve Control Point Parity]
+  1. **2次ベジェ曲線の頂点・制御点幾何学モデルの完全整合化**: $B(t=0.5)$ の頂点 $M = 0.25 P_0 + 0.5 P_{ctrl} + 0.25 P_1$ と、ポインタ位置 $M$ から制御点 $P_{ctrl} = 2 M - 0.5 (P_0 + P_1)$ を逆算するアルゴリズムを `annotation-layer.tsx` および `player-layer.tsx` に導入。
+  2. **制御ハンドル（黄色ポインタ）の線上完全吸着**: 初期描画・始点/終点ハンドルドラッグ追従・矢印全体ドラッグ・選手連動ドラッグ・ハンドル自体のドラッグ時およびドロップ確定後の全フェーズで、黄色ポインタが常に曲線の頂点（線上）に寸分違わず配置・吸着されるように修正。
+  3. **単体テスト拡充 & 全検証パス**: `arrow-curve-control-point.test.ts` を配備し、数学的同一性を検証。Scoped 型チェック、Biome チェック、Tactical 関連 Vitest テスト全44件完全パス達成。
 
 - **2026-08-31**: [AAWU 5-5-A Complete: Stabilized Multi-Player Drag & Selection UX]
   1. **Konva 直接ノード操作による滑らかな複数選手デルタ追従**: 複数選択中のいずれかの選手をドラッグした際、React State 非同期で選択中の全選手マーカー・背番号・ラベル・視界コーンを同一 Delta 分だけリアルタイムに追従移動。

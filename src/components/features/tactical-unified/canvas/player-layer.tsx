@@ -956,12 +956,16 @@ export function PlayerLayer({
             handles.startHandleNode.position({ x: sPxX, y: sPxY });
           if (handles.endHandleNode)
             handles.endHandleNode.position({ x: ePxX, y: ePxY });
-          if (
-            handles.controlHandleNode &&
-            cpX !== undefined &&
-            cpY !== undefined
-          ) {
-            handles.controlHandleNode.position({ x: cpX, y: cpY });
+          if (handles.controlHandleNode) {
+            const midX =
+              cpX !== undefined && cpY !== undefined
+                ? 0.25 * sPxX + 0.5 * cpX + 0.25 * ePxX
+                : (sPxX + ePxX) / 2;
+            const midY =
+              cpX !== undefined && cpY !== undefined
+                ? 0.25 * sPxY + 0.5 * cpY + 0.25 * ePxY
+                : (sPxY + ePxY) / 2;
+            handles.controlHandleNode.position({ x: midX, y: midY });
           }
         } else if (entry.isSourceMoved) {
           sPxX = Math.max(0, Math.min(width, sPxX + dx));
@@ -972,12 +976,16 @@ export function PlayerLayer({
           }
           if (handles.startHandleNode)
             handles.startHandleNode.position({ x: sPxX, y: sPxY });
-          if (
-            handles.controlHandleNode &&
-            cpX !== undefined &&
-            cpY !== undefined
-          ) {
-            handles.controlHandleNode.position({ x: cpX, y: cpY });
+          if (handles.controlHandleNode) {
+            const midX =
+              cpX !== undefined && cpY !== undefined
+                ? 0.25 * sPxX + 0.5 * cpX + 0.25 * ePxX
+                : (sPxX + ePxX) / 2;
+            const midY =
+              cpX !== undefined && cpY !== undefined
+                ? 0.25 * sPxY + 0.5 * cpY + 0.25 * ePxY
+                : (sPxY + ePxY) / 2;
+            handles.controlHandleNode.position({ x: midX, y: midY });
           }
         } else if (entry.isTargetMoved) {
           ePxX = Math.max(0, Math.min(width, ePxX + dx));
@@ -988,12 +996,16 @@ export function PlayerLayer({
           }
           if (handles.endHandleNode)
             handles.endHandleNode.position({ x: ePxX, y: ePxY });
-          if (
-            handles.controlHandleNode &&
-            cpX !== undefined &&
-            cpY !== undefined
-          ) {
-            handles.controlHandleNode.position({ x: cpX, y: cpY });
+          if (handles.controlHandleNode) {
+            const midX =
+              cpX !== undefined && cpY !== undefined
+                ? 0.25 * sPxX + 0.5 * cpX + 0.25 * ePxX
+                : (sPxX + ePxX) / 2;
+            const midY =
+              cpX !== undefined && cpY !== undefined
+                ? 0.25 * sPxY + 0.5 * cpY + 0.25 * ePxY
+                : (sPxY + ePxY) / 2;
+            handles.controlHandleNode.position({ x: midX, y: midY });
           }
         }
 
