@@ -8,57 +8,52 @@ describe('FormationSubPanel Component', () => {
     useTacticalUnifiedStore.getState().resetProject();
   });
 
-  it('renders 4-position group breakdown for On Pitch and Substitutes', () => {
+  it('renders panel header and substitutes section', () => {
     render(<FormationSubPanel />);
 
     // Check panel headers
     expect(screen.getByText('Formation & Squad')).toBeDefined();
-    expect(screen.getAllByText(/On Pitch/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Substitutes/i).length).toBeGreaterThanOrEqual(
       1,
     );
-
-    // Check 4-position group headers exist
-    const gkLabels = screen.getAllByText('Goalkeepers');
-    const dfLabels = screen.getAllByText('Defenders');
-    const mfLabels = screen.getAllByText('Midfielders');
-    const fwLabels = screen.getAllByText('Forwards');
-
-    expect(gkLabels.length).toBeGreaterThanOrEqual(1);
-    expect(dfLabels.length).toBeGreaterThanOrEqual(1);
-    expect(mfLabels.length).toBeGreaterThanOrEqual(1);
-    expect(fwLabels.length).toBeGreaterThanOrEqual(1);
+    // On Pitch section should NOT exist
+    expect(screen.queryByText(/On Pitch/i)).toBeNull();
   });
 
-  it('allows sending a pitch player to the bench and updates counts', () => {
+  it('allows deploying a bench player to pitch with one-button Deploy (投入)', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const activeSlideId = store.activeSlideId;
+
+    // Add a custom bench player
+    store.addCustomPlayer(
+      activeSlideId,
+      'home',
+      'Deploy Sub',
+      '12',
+      'GK',
+      'bench',
+    );
+
     render(<FormationSubPanel />);
 
-    // Default 4-4-2 has 11 home players on pitch
-    const benchButtons = screen.getAllByTitle('Send to bench');
-    expect(benchButtons.length).toBeGreaterThan(0);
+    const deployButtons = screen.getAllByTitle('ピッチに投入');
+    expect(deployButtons.length).toBeGreaterThan(0);
 
-    // Send first player to bench
-    fireEvent.click(benchButtons[0]);
+    // Deploy player to pitch
+    fireEvent.click(deployButtons[0]);
 
     const activeSlide = useTacticalUnifiedStore
       .getState()
       .project.slides.find(
         (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
       );
-    const benchPlayers =
-      activeSlide?.players.filter(
-        (p) => p.team === 'home' && p.area === 'bench',
-      ) || [];
-    const pitchPlayers =
-      activeSlide?.players.filter(
-        (p) => p.team === 'home' && p.area === 'pitch',
-      ) || [];
-
-    expect(benchPlayers.length).toBe(1);
-    expect(pitchPlayers.length).toBe(10);
+    const deployedPlayer = activeSlide?.players.find(
+      (p) => p.name === 'Deploy Sub',
+    );
+    expect(deployedPlayer?.area).toBe('pitch');
   });
 
-  it('opens and closes Swap menu and performs swap between pitch and bench players', () => {
+  it('opens and closes Swap menu and performs swap from bench player', () => {
     const store = useTacticalUnifiedStore.getState();
     const activeSlideId = store.activeSlideId;
 
@@ -74,21 +69,21 @@ describe('FormationSubPanel Component', () => {
 
     render(<FormationSubPanel />);
 
-    // Find Swap buttons on pitch
-    const pitchSwapButtons = screen.getAllByTitle('Swap with bench player');
-    expect(pitchSwapButtons.length).toBeGreaterThan(0);
+    // Find Swap button on bench player
+    const benchSwapButtons = screen.getAllByTitle('Swap with pitch player');
+    expect(benchSwapButtons.length).toBeGreaterThan(0);
 
-    // Open swap menu for first pitch player
-    fireEvent.click(pitchSwapButtons[0]);
+    // Open swap menu for first bench player
+    fireEvent.click(benchSwapButtons[0]);
 
-    // Check if swap target dropdown appeared containing the sub player
-    expect(screen.getAllByText('Super Sub').length).toBeGreaterThanOrEqual(1);
+    // Check if swap target dropdown appeared containing a pitch player
+    const pitchCandidates = screen.getAllByRole('button', {
+      name: /Player 1/i,
+    });
+    expect(pitchCandidates.length).toBeGreaterThan(0);
 
     // Click candidate to perform swap
-    const targetCandidateBtn = screen.getByRole('button', {
-      name: /Super Sub/i,
-    });
-    fireEvent.click(targetCandidateBtn);
+    fireEvent.click(pitchCandidates[0]);
 
     // Verify player area swap
     const updatedSlide = useTacticalUnifiedStore
@@ -101,6 +96,19 @@ describe('FormationSubPanel Component', () => {
   });
 
   it('toggles accordion section visibility when clicking position header', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const activeSlideId = store.activeSlideId;
+
+    // Add a custom bench player
+    store.addCustomPlayer(
+      activeSlideId,
+      'home',
+      'Backup GK',
+      '12',
+      'GK',
+      'bench',
+    );
+
     render(<FormationSubPanel />);
 
     // Find Goalkeepers accordion headers

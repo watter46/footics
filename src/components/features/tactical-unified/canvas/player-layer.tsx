@@ -17,6 +17,7 @@ import {
   Rect,
   Text,
 } from 'react-konva';
+import { getPlayerMaster } from '@/lib/db/queries';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import {
   getBezierControlPoint,
@@ -641,16 +642,57 @@ const PlayerMarker = React.memo(function PlayerMarker({
 
   // 顔写真画像のロード
   useEffect(() => {
-    if (player.style.insideContent === 'photo' && player.style.photoUrl) {
-      const img = new window.Image();
-      img.src = player.style.photoUrl;
-      img.crossOrigin = 'Anonymous';
-      img.onload = () => setLoadedImage(img);
-      img.onerror = () => setLoadedImage(null);
+    let isMounted = true;
+    let localBlobUrl: string | null = null;
+
+    if (player.style.insideContent === 'photo') {
+      if (player.style.photoUrl) {
+        const img = new window.Image();
+        img.src = player.style.photoUrl;
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          if (isMounted) setLoadedImage(img);
+        };
+        img.onerror = () => {
+          if (isMounted) setLoadedImage(null);
+        };
+      } else if (player.playerId && !Number.isNaN(Number(player.playerId))) {
+        getPlayerMaster(Number(player.playerId)).then((master) => {
+          if (!isMounted) return;
+          if (master?.photoBlob) {
+            localBlobUrl = URL.createObjectURL(master.photoBlob);
+            const img = new window.Image();
+            img.src = localBlobUrl;
+            img.onload = () => {
+              if (isMounted) setLoadedImage(img);
+            };
+            img.onerror = () => {
+              if (isMounted) setLoadedImage(null);
+            };
+          } else if (master?.photoUrl) {
+            const img = new window.Image();
+            img.src = master.photoUrl;
+            img.onload = () => {
+              if (isMounted) setLoadedImage(img);
+            };
+            img.onerror = () => {
+              if (isMounted) setLoadedImage(null);
+            };
+          }
+        });
+      } else {
+        setLoadedImage(null);
+      }
     } else {
       setLoadedImage(null);
     }
-  }, [player.style.insideContent, player.style.photoUrl]);
+    return () => {
+      isMounted = false;
+      if (localBlobUrl) {
+        URL.revokeObjectURL(localBlobUrl);
+      }
+    };
+  }, [player.style.insideContent, player.style.photoUrl, player.playerId]);
 
   const dragGlowRef = useRef<any>(null);
 
@@ -750,13 +792,24 @@ const PlayerMarker = React.memo(function PlayerMarker({
       )}
 
       {/* メインの選手サークル */}
+      {/* 写真表示時は周りの境界線（border/stroke）を無くし、選択時のみ選択枠を表示 */}
       <Circle
         radius={radius}
         fill={player.style.color}
         stroke={
-          isSelected ? '#60a5fa' : (player.style.strokeColor ?? '#ffffff')
+          isSelected
+            ? '#60a5fa'
+            : player.style.insideContent === 'photo' && loadedImage
+              ? undefined
+              : (player.style.strokeColor ?? '#ffffff')
         }
-        strokeWidth={isSelected ? 3 : (player.style.strokeWidth ?? 2)}
+        strokeWidth={
+          isSelected
+            ? 3
+            : player.style.insideContent === 'photo' && loadedImage
+              ? 0
+              : (player.style.strokeWidth ?? 2)
+        }
         shadowColor={isSelected ? '#3b82f6' : 'rgba(0,0,0,0)'}
         shadowBlur={isSelected ? 8 : 0}
         shadowOffset={{ x: 0, y: isSelected ? 2 : 0 }}
@@ -764,25 +817,25 @@ const PlayerMarker = React.memo(function PlayerMarker({
         perfectDrawEnabled={false}
       />
 
-      {/* 写真表示 (insideContent === 'photo' かつ画像がある場合) */}
+      {/* 選手サークル内の表示: 写真 (insideContent === 'photo' かつ画像がある場合) */}
       {player.style.insideContent === 'photo' && loadedImage ? (
         <Group
           listening={false}
           clipFunc={(ctx) => {
-            ctx.arc(0, 0, radius * 0.88, 0, Math.PI * 2, false);
+            ctx.arc(0, 0, radius, 0, Math.PI * 2, false);
           }}
         >
           <KonvaImage
             image={loadedImage}
-            x={-radius * 0.88}
-            y={-radius * 0.88}
-            width={radius * 1.76}
-            height={radius * 1.76}
+            x={-radius}
+            y={-radius}
+            width={radius * 2}
+            height={radius * 2}
             perfectDrawEnabled={false}
             listening={false}
           />
         </Group>
-      ) : (
+      ) : player.style.insideContent === 'none' ? null : (
         /* 写真がない場合または insideContent === 'number' の場合は背番号を表示 */
         player.shirtNo && (
           <Text

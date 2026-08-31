@@ -532,8 +532,14 @@ export function preRenderPlayerMarkers(
     ctx.fillStyle = meta.options.color;
     ctx.fill();
 
+    const photoBitmap = photos?.[playerId];
+    const isPhoto =
+      meta.options.insideContent === 'photo' && Boolean(photoBitmap);
+
     const hasStroke =
-      meta.options.strokeWidth !== 0 && meta.options.strokeColor !== 'none';
+      !isPhoto &&
+      meta.options.strokeWidth !== 0 &&
+      meta.options.strokeColor !== 'none';
     if (hasStroke) {
       ctx.strokeStyle = meta.options.strokeColor || '#ffffff';
       ctx.lineWidth = Math.max(
@@ -544,20 +550,19 @@ export function preRenderPlayerMarkers(
     }
 
     // 内部コンテンツ (写真 または 背番号)
-    const photoBitmap = photos?.[playerId];
-    if (meta.options.insideContent === 'photo' && photoBitmap) {
+    if (isPhoto && photoBitmap) {
       ctx.save();
       ctx.beginPath();
-      ctx.arc(cx, cy, playerRadius * 0.85, 0, Math.PI * 2);
+      ctx.arc(cx, cy, playerRadius, 0, Math.PI * 2);
       ctx.clip();
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(
         photoBitmap,
-        cx - playerRadius * 0.85,
-        cy - playerRadius * 0.85,
-        playerRadius * 1.7,
-        playerRadius * 1.7,
+        cx - playerRadius,
+        cy - playerRadius,
+        playerRadius * 2,
+        playerRadius * 2,
       );
       ctx.restore();
     } else if (
@@ -673,8 +678,14 @@ export function renderPitchFrame(
       ctx.fillStyle = meta.options.color;
       ctx.fill();
 
+      const photoBitmap = photos?.[playerId];
+      const isPhoto =
+        meta.options.insideContent === 'photo' && Boolean(photoBitmap);
+
       const hasStroke =
-        meta.options.strokeWidth !== 0 && meta.options.strokeColor !== 'none';
+        !isPhoto &&
+        meta.options.strokeWidth !== 0 &&
+        meta.options.strokeColor !== 'none';
       if (hasStroke) {
         ctx.strokeStyle = meta.options.strokeColor || '#ffffff';
         ctx.lineWidth = Math.max(
@@ -685,20 +696,19 @@ export function renderPitchFrame(
       }
 
       // 内部コンテンツ (写真 または 背番号)
-      const photoBitmap = photos?.[playerId];
-      if (meta.options.insideContent === 'photo' && photoBitmap) {
+      if (isPhoto && photoBitmap) {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(pxX, pxY, playerRadius * 0.85, 0, Math.PI * 2);
+        ctx.arc(pxX, pxY, playerRadius, 0, Math.PI * 2);
         ctx.clip();
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(
           photoBitmap,
-          pxX - playerRadius * 0.85,
-          pxY - playerRadius * 0.85,
-          playerRadius * 1.7,
-          playerRadius * 1.7,
+          pxX - playerRadius,
+          pxY - playerRadius,
+          playerRadius * 2,
+          playerRadius * 2,
         );
         ctx.restore();
       } else if (meta.options.insideContent === 'number' && meta.shirtNo) {

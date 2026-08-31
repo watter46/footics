@@ -244,4 +244,65 @@ describe('squad-to-tactical-bridge', () => {
     // 相手チーム選手が保持されていること
     expect(awayPlayers.length).toBeGreaterThan(0);
   });
+
+  it('correctly sets photoUrl and insideContent for players with and without photos', () => {
+    const squadWithPhotos: SquadPlayerItem[] = [
+      {
+        playerId: 101,
+        name: 'Player With Photo',
+        shirtNo: 10,
+        isFirstEleven: true,
+        photoUrl: 'https://example.com/player.png',
+      },
+      {
+        playerId: 102,
+        name: 'Player Without Photo',
+        shirtNo: 7,
+        isFirstEleven: true,
+      },
+      {
+        playerId: 103,
+        name: 'Sub With Photo',
+        shirtNo: 12,
+        isFirstEleven: false,
+        photoUrl: 'https://example.com/sub.png',
+      },
+      {
+        playerId: 104,
+        name: 'Sub Without Photo',
+        shirtNo: 14,
+        isFirstEleven: false,
+      },
+    ];
+
+    const tacticalPlayers = convertSquadToTacticalPlayers(squadWithPhotos, {
+      team: 'home',
+      primaryColor: '#034694',
+    });
+
+    const withPhoto = tacticalPlayers.find(
+      (p) => p.name === 'Player With Photo',
+    );
+    const withoutPhoto = tacticalPlayers.find(
+      (p) => p.name === 'Player Without Photo',
+    );
+    const subWithPhoto = tacticalPlayers.find(
+      (p) => p.name === 'Sub With Photo',
+    );
+    const subWithoutPhoto = tacticalPlayers.find(
+      (p) => p.name === 'Sub Without Photo',
+    );
+
+    expect(withPhoto?.style.insideContent).toBe('photo');
+    expect(withPhoto?.style.photoUrl).toBe('https://example.com/player.png');
+
+    expect(withoutPhoto?.style.insideContent).toBe('number');
+    expect(withoutPhoto?.style.photoUrl).toBeUndefined();
+
+    expect(subWithPhoto?.style.insideContent).toBe('photo');
+    expect(subWithPhoto?.style.photoUrl).toBe('https://example.com/sub.png');
+
+    expect(subWithoutPhoto?.style.insideContent).toBe('number');
+    expect(subWithoutPhoto?.style.photoUrl).toBeUndefined();
+  });
 });

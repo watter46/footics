@@ -22,6 +22,7 @@ import {
   Sparkles,
   Square,
   Trash2,
+  Users,
   X,
 } from 'lucide-react';
 import type React from 'react';
@@ -93,6 +94,35 @@ export function InspectorPanel() {
 
   const single = selectedObjects.length === 1 ? selectedObjects[0] : null;
 
+  // ── Multiple Players Selected ─────────────────────────────────────────
+  const selectedPlayerObjects = selectedObjects.filter(
+    (o) => o.kind === 'player',
+  );
+  if (selectedObjects.length > 1 && selectedPlayerObjects.length > 0) {
+    const selectedPlayers = selectedPlayerObjects
+      .map((o) => activeSlide?.players.find((p) => p.id === o.id))
+      .filter((p): p is Player => Boolean(p));
+
+    if (selectedPlayers.length > 0) {
+      return (
+        <div className="flex flex-col h-full">
+          <InspectorHeader
+            title={`Multiple Players (${selectedPlayers.length})`}
+            onClose={clearSelection}
+            onDeselect={clearSelection}
+          />
+          <MultiPlayerInspector
+            players={selectedPlayers}
+            slideId={activeSlideId}
+            updatePlayer={updatePlayer}
+            removePlayer={removePlayer}
+            clearSelection={clearSelection}
+          />
+        </div>
+      );
+    }
+  }
+
   // ── Unselected: Slide Settings ──────────────────────────────────────
   if (!single || !activeSlide) {
     return (
@@ -109,6 +139,7 @@ export function InspectorPanel() {
           slidesCount={slides.length}
           setBackgroundType={setBackgroundType}
           updateSlideTransition={updateSlideTransition}
+          updatePlayer={updatePlayer}
           deleteSlide={deleteSlide}
         />
       </div>
@@ -311,6 +342,7 @@ function SlideSettingsInspector({
   slidesCount,
   setBackgroundType,
   updateSlideTransition,
+  updatePlayer,
   deleteSlide,
 }: {
   project: TacticalProject;
@@ -320,6 +352,11 @@ function SlideSettingsInspector({
   updateSlideTransition: (
     slideId: string,
     params: Partial<Pick<Slide, 'transitionDurationMs' | 'pauseMs' | 'easing'>>,
+  ) => void;
+  updatePlayer: (
+    slideId: string,
+    playerId: string,
+    patch: Partial<Player>,
   ) => void;
   deleteSlide: (slideId: string) => void;
 }) {
@@ -443,7 +480,107 @@ function SlideSettingsInspector({
         </div>
       )}
 
-      {/* 2. Pitch Background */}
+      {/* 2. Batch Player Display Settings (一括表示設定) */}
+      {activeSlide && (
+        <div className="pt-3 border-t border-white/10 space-y-2.5">
+          <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
+            <Users size={13} className="text-blue-400" />
+            Batch Player Display
+          </span>
+
+          <div className="space-y-2 bg-white/[0.02] p-2.5 rounded-lg border border-white/10">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-white/60 font-medium">Inside Content</span>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-white/70">All Players</span>
+                <div className="flex items-center gap-1 bg-black/40 rounded border border-white/10 p-0.5">
+                  {(['number', 'photo', 'none'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => {
+                        activeSlide.players.forEach((p) => {
+                          updatePlayer(activeSlide.id, p.id, {
+                            style: { ...p.style, insideContent: mode },
+                          });
+                        });
+                      }}
+                      className="px-2 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium"
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-blue-400 flex items-center gap-1">
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: project.homeColor.primary }}
+                  />
+                  Home
+                </span>
+                <div className="flex items-center gap-1 bg-black/40 rounded border border-white/10 p-0.5">
+                  {(['number', 'photo', 'none'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => {
+                        activeSlide.players
+                          .filter((p) => p.team === 'home')
+                          .forEach((p) => {
+                            updatePlayer(activeSlide.id, p.id, {
+                              style: { ...p.style, insideContent: mode },
+                            });
+                          });
+                      }}
+                      className="px-2 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium"
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-red-400 flex items-center gap-1">
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: project.awayColor.primary }}
+                  />
+                  Away
+                </span>
+                <div className="flex items-center gap-1 bg-black/40 rounded border border-white/10 p-0.5">
+                  {(['number', 'photo', 'none'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => {
+                        activeSlide.players
+                          .filter((p) => p.team === 'away')
+                          .forEach((p) => {
+                            updatePlayer(activeSlide.id, p.id, {
+                              style: { ...p.style, insideContent: mode },
+                            });
+                          });
+                      }}
+                      className="px-2 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium"
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Pitch Background */}
       <div className="pt-3 border-t border-white/10 space-y-2">
         <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
           <LayoutGrid size={13} className="text-emerald-400" />
@@ -625,6 +762,144 @@ function DeleteButton({
       <Trash2 size={13} />
       <span>{label}</span>
     </button>
+  );
+}
+
+// ── Multi-Player Inspector ─────────────────────────────────────────────
+
+function MultiPlayerInspector({
+  players,
+  slideId,
+  updatePlayer,
+  removePlayer,
+  clearSelection,
+}: {
+  players: Player[];
+  slideId: string;
+  updatePlayer: (s: string, id: string, p: Partial<Player>) => void;
+  removePlayer: (s: string, id: string) => void;
+  clearSelection: () => void;
+}) {
+  const handleBatchInsideContent = (
+    insideContent: Player['style']['insideContent'],
+  ) => {
+    players.forEach((p) => {
+      updatePlayer(slideId, p.id, {
+        style: { ...p.style, insideContent },
+      });
+    });
+  };
+
+  const handleBatchBottomLabel = (
+    bottomLabel: Player['style']['bottomLabel'],
+  ) => {
+    players.forEach((p) => {
+      updatePlayer(slideId, p.id, {
+        style: { ...p.style, bottomLabel },
+      });
+    });
+  };
+
+  const handleBatchColor = (color: string) => {
+    players.forEach((p) => {
+      updatePlayer(slideId, p.id, {
+        style: { ...p.style, color },
+      });
+    });
+  };
+
+  const handleBatchSizeScale = (sizeScale: number) => {
+    players.forEach((p) => {
+      updatePlayer(slideId, p.id, {
+        style: { ...p.style, sizeScale },
+      });
+    });
+  };
+
+  const handleRemoveAll = () => {
+    players.forEach((p) => {
+      removePlayer(slideId, p.id);
+    });
+    clearSelection();
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto p-3 space-y-4 text-white select-none custom-scrollbar">
+      <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-200">
+        <span className="font-bold">{players.length} players selected</span>
+        <p className="text-[11px] text-white/50 mt-0.5">
+          Changes applied here will update all selected players simultaneously.
+        </p>
+      </div>
+
+      <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
+        <span className="text-xs font-bold text-white block">Appearance</span>
+
+        <Row label="Inside Content">
+          <div className="grid grid-cols-3 gap-1">
+            <button
+              type="button"
+              onClick={() => handleBatchInsideContent('number')}
+              className="px-2 py-1.5 rounded text-xs font-medium border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white uppercase transition-colors"
+            >
+              number
+            </button>
+            {players.some((p) => Boolean(p.style.photoUrl)) && (
+              <button
+                type="button"
+                onClick={() => handleBatchInsideContent('photo')}
+                className="px-2 py-1.5 rounded text-xs font-medium border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white uppercase transition-colors"
+              >
+                photo
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => handleBatchInsideContent('none')}
+              className="px-2 py-1.5 rounded text-xs font-medium border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white uppercase transition-colors"
+            >
+              none
+            </button>
+          </div>
+        </Row>
+
+        <Row label="Label Display">
+          <div className="grid grid-cols-3 gap-1">
+            {(['name', 'number', 'none'] as const).map((lbl) => (
+              <button
+                key={lbl}
+                type="button"
+                onClick={() => handleBatchBottomLabel(lbl)}
+                className="px-2 py-1.5 rounded text-xs font-medium border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white capitalize transition-colors"
+              >
+                {lbl === 'none' ? 'Hidden' : lbl}
+              </button>
+            ))}
+          </div>
+        </Row>
+
+        <Row label="Player Color">
+          <ColorInput
+            value={players[0]?.style.color || '#3b82f6'}
+            onChange={handleBatchColor}
+          />
+        </Row>
+
+        <RangeInput
+          label="Marker Size"
+          value={players[0]?.style.sizeScale ?? 1.0}
+          min={0.6}
+          max={1.6}
+          step={0.1}
+          onChange={handleBatchSizeScale}
+        />
+      </div>
+
+      <DeleteButton
+        onClick={handleRemoveAll}
+        label={`Delete ${players.length} Players`}
+      />
+    </div>
   );
 }
 
@@ -1533,18 +1808,27 @@ function PlayerInspector({
               className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
             >
               <option value="number">Number</option>
-              <option value="photo">Photo</option>
+              {player.style.photoUrl && <option value="photo">Photo</option>}
               <option value="none">None</option>
             </select>
           </Row>
-          {player.style.insideContent === 'photo' && (
-            <Row label="Photo URL">
-              <TextInput
-                value={player.style.photoUrl ?? ''}
-                onChange={(v) => upStyle({ photoUrl: v })}
-              />
-            </Row>
-          )}
+          <Row label="Photo URL">
+            <TextInput
+              value={player.style.photoUrl ?? ''}
+              onChange={(v) => {
+                const trimmed = v.trim();
+                upStyle({
+                  photoUrl: trimmed || undefined,
+                  insideContent:
+                    !trimmed && player.style.insideContent === 'photo'
+                      ? 'number'
+                      : trimmed && player.style.insideContent !== 'none'
+                        ? 'photo'
+                        : player.style.insideContent,
+                });
+              }}
+            />
+          </Row>
         </div>
       )}
 

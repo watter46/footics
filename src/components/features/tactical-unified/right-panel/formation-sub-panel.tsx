@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Eye,
   Palette,
+  Plus,
   RotateCcw,
   Search,
   Shield,
@@ -33,6 +34,7 @@ import {
   type FormationMode,
   type FormationType,
 } from '@/lib/data/formations';
+import { getPlayerMastersBySeason } from '@/lib/db/queries';
 import {
   CHELSEA_PRESETS_BY_SEASON,
   type PresetPlayer,
@@ -103,15 +105,12 @@ export function FormationSubPanel() {
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const project = useTacticalUnifiedStore((s) => s.project);
-  const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
-  const setRightPanelTab = useTacticalUnifiedStore((s) => s.setRightPanelTab);
 
   // Store actions
   const applyFormation = useTacticalUnifiedStore((s) => s.applyFormation);
   const applyFormationPreset = useTacticalUnifiedStore(
     (s) => s.applyFormationPreset,
   );
-  const movePlayerToBench = useTacticalUnifiedStore((s) => s.movePlayerToBench);
   const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
   const swapPlayers = useTacticalUnifiedStore((s) => s.swapPlayers);
   const addCustomPlayer = useTacticalUnifiedStore((s) => s.addCustomPlayer);
@@ -133,15 +132,6 @@ export function FormationSubPanel() {
   const [activeSwapPlayerId, setActiveSwapPlayerId] = useState<string | null>(
     null,
   );
-  const [openPitchSections, setOpenPitchSections] = useState<
-    Record<PositionGroup, boolean>
-  >({
-    GK: true,
-    DF: true,
-    MF: true,
-    FW: true,
-    OTHER: true,
-  });
   const [openBenchSections, setOpenBenchSections] = useState<
     Record<PositionGroup, boolean>
   >({
@@ -168,11 +158,6 @@ export function FormationSubPanel() {
     );
     return { pitch, bench };
   }, [activeSlide, activeTeam]);
-
-  const pitchGroups = useMemo(
-    () => groupPlayersByPosition(teamPlayers.pitch),
-    [teamPlayers.pitch],
-  );
 
   const benchGroups = useMemo(
     () => groupPlayersByPosition(teamPlayers.bench),
@@ -207,28 +192,47 @@ export function FormationSubPanel() {
     );
   };
 
-  const handleApplyClubPreset = (teamSlug: string) => {
+  const handleApplyClubPreset = async (teamSlug: string) => {
     if (teamSlug === 'chelsea') {
       const chelseaPreset =
         CHELSEA_PRESETS_BY_SEASON['26-27'] ||
         CHELSEA_PRESETS_BY_SEASON['24-25'] ||
         [];
+
+      const masterMap = new Map<
+        number,
+        { photoBlob?: Blob; photoUrl?: string }
+      >();
+      try {
+        const masters = await getPlayerMastersBySeason('26-27', 'Chelsea');
+        masters.forEach((m) => {
+          masterMap.set(m.playerId, m);
+        });
+      } catch (err) {
+        console.warn('Failed to load masters from IndexedDB', err);
+      }
+
       injectTeamSquadToTactical({
         teamName: 'Chelsea FC',
         team: activeTeam,
-        players: chelseaPreset.map((p: PresetPlayer) => ({
-          playerId: p.playerId,
-          name: p.name,
-          shirtNo: p.shirtNo,
-          position: p.position,
-          isFirstEleven: !!p.isFirstEleven,
-          field: activeTeam,
-          stats: {},
-          height: 180,
-          weight: 75,
-          age: 24,
-          isManOfTheMatch: false,
-        })),
+        players: chelseaPreset.map((p: PresetPlayer) => {
+          const m = masterMap.get(p.playerId);
+          return {
+            playerId: p.playerId,
+            name: p.name,
+            shirtNo: p.shirtNo,
+            position: p.position,
+            isFirstEleven: !!p.isFirstEleven,
+            field: activeTeam,
+            stats: {},
+            height: 180,
+            weight: 75,
+            age: 24,
+            isManOfTheMatch: false,
+            photoBlob: m?.photoBlob,
+            photoUrl: m?.photoUrl,
+          };
+        }),
         formation: '4-2-3-1',
         mode: formationMode,
         slideId: activeSlideId,
@@ -534,35 +538,11 @@ export function FormationSubPanel() {
         </div>
 
         {/* 3. Substitutes / Bench Area */}
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            try {
-              const raw = e.dataTransfer.getData('application/json');
-              if (!raw) return;
-              const data = JSON.parse(raw);
-              if (
-                data.type === 'player' ||
-                data.type === 'pitch-player' ||
-                data.playerId
-              ) {
-                movePlayerToBench(activeSlideId, data.playerId);
-              }
-            } catch {}
-          }}
-          className="p-3 space-y-2.5 bg-white/[0.01]"
-        >
+        <div className="p-3 space-y-2.5 bg-white/[0.01]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
                 Substitutes ({teamPlayers.bench.length})
-              </span>
-              <span className="text-[9px] text-white/40">
-                (Drag & drop to pitch)
               </span>
             </div>
             <button
@@ -619,7 +599,7 @@ export function FormationSubPanel() {
               No substitutes.
             </div>
           ) : (
-            <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-0.5">
+            <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-0.5">
               {POSITION_GROUPS.filter(
                 (grp) => grp !== 'OTHER' || benchGroups.OTHER.length > 0,
               ).map((grp) => {
@@ -674,46 +654,29 @@ export function FormationSubPanel() {
                         ) : (
                           groupPlayers.map((player) => (
                             <div key={player.id} className="space-y-1">
-                              <div
-                                draggable
-                                onDragStart={(e) => {
-                                  e.dataTransfer.setData(
-                                    'application/json',
-                                    JSON.stringify({
-                                      type: 'sub-player',
-                                      playerId: player.id,
-                                      shirtNo: player.shirtNo,
-                                      name: player.name,
-                                    }),
-                                  );
-                                  e.dataTransfer.effectAllowed = 'move';
-                                }}
-                                className="flex items-center justify-between p-1.5 rounded bg-white/5 hover:bg-white/10 border border-white/5 cursor-grab active:cursor-grabbing group transition-all"
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex items-center justify-between gap-2 p-1.5 rounded bg-white/5 hover:bg-white/10 border border-white/5 group transition-all">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
                                   <span
                                     className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] text-white shrink-0 shadow-sm"
                                     style={{ backgroundColor: teamColor }}
                                   >
                                     {player.shirtNo || '—'}
                                   </span>
-                                  <span className="font-medium truncate text-white/90">
+                                  <span
+                                    className="font-medium text-white/90 truncate text-xs"
+                                    title={
+                                      player.name ||
+                                      player.position ||
+                                      `Player ${player.shirtNo}`
+                                    }
+                                  >
                                     {player.name ||
                                       player.position ||
                                       `Player ${player.shirtNo}`}
                                   </span>
-                                  {player.position && (
-                                    <span
-                                      className={`text-[9px] px-1 py-0.2 rounded border font-mono ${getPositionBadgeClass(
-                                        player.position,
-                                      )}`}
-                                    >
-                                      {player.position}
-                                    </span>
-                                  )}
                                 </div>
 
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center gap-1 shrink-0">
                                   <button
                                     type="button"
                                     onClick={() =>
@@ -722,10 +685,11 @@ export function FormationSubPanel() {
                                         player.id,
                                       )
                                     }
-                                    className="px-1.5 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-[10px] text-white font-medium"
-                                    title="Place on pitch"
+                                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-[10px] text-white font-medium shadow-xs transition-colors cursor-pointer"
+                                    title="ピッチに投入"
                                   >
-                                    Pitch
+                                    <Plus size={11} />
+                                    <span>投入</span>
                                   </button>
                                   <button
                                     type="button"
@@ -734,22 +698,21 @@ export function FormationSubPanel() {
                                         cur === player.id ? null : player.id,
                                       )
                                     }
-                                    className={`px-1.5 py-0.5 rounded flex items-center gap-0.5 text-[10px] font-medium transition-colors ${
+                                    className={`p-1 rounded flex items-center justify-center transition-colors cursor-pointer ${
                                       activeSwapPlayerId === player.id
                                         ? 'bg-amber-500 text-black font-semibold'
-                                        : 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white'
+                                        : 'bg-white/10 hover:bg-white/20 text-white/70 hover:text-white'
                                     }`}
                                     title="Swap with pitch player"
                                   >
-                                    <ArrowLeftRight size={10} />
-                                    <span>Swap</span>
+                                    <ArrowLeftRight size={11} />
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() =>
                                       removePlayer(activeSlideId, player.id)
                                     }
-                                    className="p-1 rounded hover:bg-red-500/20 text-white/40 hover:text-red-400"
+                                    className="p-1 rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-colors cursor-pointer"
                                     title="Remove"
                                   >
                                     <Trash2 size={11} />
@@ -817,232 +780,6 @@ export function FormationSubPanel() {
                                               )}`}
                                             >
                                               {pitchPlayer.position}
-                                            </span>
-                                          )}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* 4. Pitch Players List (4-Position Grouping) */}
-        <div className="p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
-              On Pitch ({teamPlayers.pitch.length})
-            </span>
-          </div>
-
-          {teamPlayers.pitch.length === 0 ? (
-            <div className="p-3 rounded border border-dashed border-white/10 text-center text-white/30 text-[11px]">
-              No players on pitch.
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-0.5">
-              {POSITION_GROUPS.filter(
-                (grp) => grp !== 'OTHER' || pitchGroups.OTHER.length > 0,
-              ).map((grp) => {
-                const groupPlayers = pitchGroups[grp];
-                const isOpen = openPitchSections[grp];
-                return (
-                  <div
-                    key={`pitch-grp-${grp}`}
-                    className="rounded bg-black/20 border border-white/5 overflow-hidden"
-                  >
-                    {/* Group Accordion Header */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenPitchSections((prev) => ({
-                          ...prev,
-                          [grp]: !prev[grp],
-                        }))
-                      }
-                      className="w-full flex items-center justify-between px-2 py-1.5 bg-white/[0.03] hover:bg-white/[0.06] text-left transition-colors"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`text-[9px] px-1 py-0.2 rounded border font-mono font-semibold ${getPositionBadgeClass(
-                            grp,
-                          )}`}
-                        >
-                          {grp}
-                        </span>
-                        <span className="text-[10px] font-medium text-white/70">
-                          {POSITION_GROUP_LABELS[grp]}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] text-white/40 bg-white/5 px-1.5 py-0.2 rounded-full font-mono">
-                          {groupPlayers.length}
-                        </span>
-                        <ChevronDown
-                          size={11}
-                          className={`text-white/40 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                        />
-                      </div>
-                    </button>
-
-                    {/* Group Items */}
-                    {isOpen && (
-                      <div className="p-1 space-y-1">
-                        {groupPlayers.length === 0 ? (
-                          <div className="py-1 text-center text-[10px] text-white/20 italic">
-                            No {POSITION_GROUP_LABELS[grp].toLowerCase()}
-                          </div>
-                        ) : (
-                          groupPlayers.map((player) => (
-                            <div key={player.id} className="space-y-1">
-                              <div className="flex items-center justify-between p-1.5 rounded bg-white/[0.03] hover:bg-white/10 border border-white/5 group transition-all">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    selectObject({
-                                      id: player.id,
-                                      kind: 'player',
-                                    });
-                                    setRightPanelTab('inspector');
-                                  }}
-                                  className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer"
-                                >
-                                  <span
-                                    className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] text-white shrink-0 shadow-sm"
-                                    style={{ backgroundColor: teamColor }}
-                                  >
-                                    {player.shirtNo || '—'}
-                                  </span>
-                                  <span className="font-medium truncate text-white/90 group-hover:text-white">
-                                    {player.name ||
-                                      player.position ||
-                                      `Player ${player.shirtNo}`}
-                                  </span>
-                                  {player.position && (
-                                    <span
-                                      className={`text-[9px] px-1 py-0.2 rounded border font-mono ${getPositionBadgeClass(
-                                        player.position,
-                                      )}`}
-                                    >
-                                      {player.position}
-                                    </span>
-                                  )}
-                                </button>
-
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      movePlayerToBench(
-                                        activeSlideId,
-                                        player.id,
-                                      )
-                                    }
-                                    className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px] text-white/70 hover:text-white"
-                                    title="Send to bench"
-                                  >
-                                    Bench
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setActiveSwapPlayerId((cur) =>
-                                        cur === player.id ? null : player.id,
-                                      )
-                                    }
-                                    className={`px-1.5 py-0.5 rounded flex items-center gap-0.5 text-[10px] font-medium transition-colors ${
-                                      activeSwapPlayerId === player.id
-                                        ? 'bg-amber-500 text-black font-semibold'
-                                        : 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white'
-                                    }`}
-                                    title="Swap with bench player"
-                                  >
-                                    <ArrowLeftRight size={10} />
-                                    <span>Swap</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      removePlayer(activeSlideId, player.id)
-                                    }
-                                    className="p-1 rounded hover:bg-red-500/20 text-white/40 hover:text-red-400"
-                                    title="Remove"
-                                  >
-                                    <Trash2 size={11} />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Swap Candidate Selection Dropdown for Pitch Player */}
-                              {activeSwapPlayerId === player.id && (
-                                <div className="p-2 rounded bg-[#1c1c1c] border border-amber-500/40 shadow-lg space-y-1.5">
-                                  <div className="flex items-center justify-between text-[10px] text-white/70 font-semibold border-b border-white/10 pb-1">
-                                    <span>
-                                      Swap #{player.shirtNo || '—'}{' '}
-                                      {player.name || 'Player'} with Bench
-                                      Player:
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setActiveSwapPlayerId(null)
-                                      }
-                                      className="text-white/40 hover:text-white"
-                                    >
-                                      <X size={10} />
-                                    </button>
-                                  </div>
-                                  {teamPlayers.bench.length === 0 ? (
-                                    <div className="text-[10px] text-white/40 py-1 text-center">
-                                      No substitutes available to swap
-                                    </div>
-                                  ) : (
-                                    <div className="max-h-32 overflow-y-auto space-y-1 custom-scrollbar">
-                                      {teamPlayers.bench.map((benchPlayer) => (
-                                        <button
-                                          key={benchPlayer.id}
-                                          type="button"
-                                          onClick={() => {
-                                            swapPlayers(
-                                              activeSlideId,
-                                              player.id,
-                                              benchPlayer.id,
-                                            );
-                                            setActiveSwapPlayerId(null);
-                                          }}
-                                          className="flex items-center justify-between w-full px-2 py-1 rounded bg-white/5 hover:bg-amber-500/20 hover:border-amber-500/40 border border-transparent text-left text-[10px] text-white/80 hover:text-white transition-colors"
-                                        >
-                                          <div className="flex items-center gap-1.5 truncate">
-                                            <span
-                                              className="w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] text-white shrink-0"
-                                              style={{
-                                                backgroundColor: teamColor,
-                                              }}
-                                            >
-                                              {benchPlayer.shirtNo || '—'}
-                                            </span>
-                                            <span className="truncate">
-                                              {benchPlayer.name ||
-                                                `Player ${benchPlayer.shirtNo}`}
-                                            </span>
-                                          </div>
-                                          {benchPlayer.position && (
-                                            <span
-                                              className={`text-[9px] px-1 rounded border font-mono ${getPositionBadgeClass(
-                                                benchPlayer.position,
-                                              )}`}
-                                            >
-                                              {benchPlayer.position}
                                             </span>
                                           )}
                                         </button>

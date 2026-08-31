@@ -8,7 +8,6 @@
  *  - Line & Route Line (●付き) drag drawing
  *  - Continuous Eraser mode (dragging erases annotations, preserves players, deletes marker options)
  *  - Resizable Boundary Box for export area definition
- *  - Bench player Drag & Drop onto pitch
  *  - Dynamic cursor handling and screenshot background binding
  */
 
@@ -175,7 +174,6 @@ export function UnifiedCanvas() {
   const addText = useTacticalUnifiedStore((s) => s.addText);
   const eraseAtPoint = useTacticalUnifiedStore((s) => s.eraseAtPoint);
   const setBoundaryBox = useTacticalUnifiedStore((s) => s.setBoundaryBox);
-  const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
 
   const [drawingState, setDrawingState] = useState<DrawingState | null>(null);
   const [selectionBox, setSelectionBox] = useState<{
@@ -900,45 +898,11 @@ export function UnifiedCanvas() {
     updateZone,
   ]);
 
-  // サブメンバーをピッチへドロップした時のハンドラ
-  const handleContainerDrop = useCallback(
-    (e: React.DragEvent) => {
-      try {
-        const raw = e.dataTransfer.getData('application/json');
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        if (data.type === 'bench-player' && data.playerId) {
-          const rect = containerRef.current?.getBoundingClientRect();
-          if (rect) {
-            const pxX =
-              e.clientX - rect.left - (rect.width - stageSize.width) / 2;
-            const pxY =
-              e.clientY - rect.top - (rect.height - stageSize.height) / 2;
-            const normX = Math.max(
-              0,
-              Math.min(100, pxToNorm(pxX, stageSize.width)),
-            );
-            const normY = Math.max(
-              0,
-              Math.min(100, pxToNorm(pxY, stageSize.height)),
-            );
-            movePlayerToPitch(activeSlideId, data.playerId, normX, normY);
-          }
-        }
-      } catch {
-        // ignore
-      }
-    },
-    [activeSlideId, stageSize, movePlayerToPitch],
-  );
-
   if (!activeSlide) return null;
 
   return (
     <div
       ref={containerRef}
-      onDrop={handleContainerDrop}
-      onDragOver={(e) => e.preventDefault()}
       className="relative w-full h-full flex items-center justify-center bg-[#0a0a0a]"
     >
       {/* Floating & draggable drawing toolbar */}

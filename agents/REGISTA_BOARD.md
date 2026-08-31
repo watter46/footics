@@ -1,13 +1,14 @@
 # Regista Management Board
 
 ## 1. [Active Focus]
-- **【Phase 3-B】Tactical Precision & Squad UX Refinement (AAWU 6-1 〜 6-4)**:
-  - **背景 & 課題**: Tactical キャンバスの境界線デフォルト整合性、選手名ラベルの視認性、チーム読み込み時の顔写真/Inside Content連動、およびFormation & Squadパネルのサブ特化＆ワンボタンピッチ投入UIの刷新を行う。
+- **【Phase 3-B】Tactical Precision & Squad UX Refinement (AAWU 6-1 〜 6-5)**:
+  - **背景 & 課題**: Tactical キャンバスの境界線デフォルト整合性、選手名ラベルの視認性、チーム読み込み時の顔写真/Inside Content連動、Formation & Squadパネルのサブ特化＆ワンボタンピッチ投入UIの刷新、および Konva 6+ レイヤー警告の解消と描画パフォーマンス最適化を行う。
   - **確定仕様 & AAWU 分解**:
     1. **AAWU 6-1 (Default Auto-Fit Pitch Boundary Box)**: 初期作成時およびデフォルトの境界線を「Auto fit boundary box to pitch」適用値に標準化。
     2. **AAWU 6-2 (Player Label High-Contrast Visibility Fix)**: 選手マーカー下の名前/背番号ラベルの Konva stroke 潰れ解消と高コントラスト化。
     3. **AAWU 6-3 (Team Squad Photo & Inside Content Sync Fix)**: チーム読み込み時の写真同期・Inside Content（Photo/Number/None）切り替え連動修復。
     4. **AAWU 6-4 (Sub-Centric Squad Panel & One-Click Pitch Deploy)**: On Pitch 一覧撤廃、サブ専用化、D&D廃止とワンクリックピッチ投入ボタン配備。
+    5. **AAWU 6-5 (Konva Layer Consolidation & Performance Optimization)**: 7枚の `<Layer>` を Konva 推奨（3〜4枚以内）へ統合し、ブラウザ警告解消と描画パフォーマンスを最適化。
 
 ## 2. [Backlog / Adopted Roadmaps (オーナー承認済 バックログ)]
 - **【構造改革】拡張機能の1本化統合 (Unified Extension Pipeline)**:
@@ -21,14 +22,21 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **AAWU 6-1** | 🔲 **Default Auto-Fit Pitch Boundary Box** | `regista-canvas`<br>`regista-frontend` | `src/lib/types/tactical-unified.ts`<br>`src/components/features/tactical-unified/canvas/boundary-box.tsx`<br>`src/stores/tactical-unified-store.ts` | 新規スライド作成時やデフォルトの境界線を「Auto fit boundary box to pitch」適用値（均等余白フィット）に標準化。 | **TODO** ⏳ |
 | **AAWU 6-2** | 🏷️ **Player Label High-Contrast Visibility Fix** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/tactical/export/tactical-frame-renderer.ts` | 選手マーカー下の名前・番号ラベルの Konva stroke 潰れを解消し、ダーク・グリーン等全ピッチ背景で鮮明に読める高コントラスト白文字に修復。 | **TODO** ⏳ |
-| **AAWU 6-3** | 🖼️ **Team Squad Photo & Inside Content Sync Fix** | `regista-frontend`<br>`regista-data` | `src/lib/tactical/squad-to-tactical-bridge.ts`<br>`src/components/features/tactical-unified/inspector/inspector-panel.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | チーム読み込み時の顔写真反映、写真有無に応じた Inside Content 初期値判定、および Photo/Number/None の即時切り替え反映を修復。 | **TODO** ⏳ |
+| **AAWU 6-3** | 🖼️ **Team Squad Photo & Inside Content Sync Fix** | `regista-frontend`<br>`regista-data` | `src/lib/tactical/squad-to-tactical-bridge.ts`<br>`src/components/features/tactical-unified/inspector/inspector-panel.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | チーム読み込み時の顔写真反映、写真有無に応じた Inside Content 初期値判定、および Photo/Number/None の即時切り替え反映を修復。 | **DONE** ✅ |
 | **AAWU 6-4** | 👥 **Sub-Centric Squad Panel & One-Click Pitch Deploy** | `regista-frontend`<br>`regista-canvas` | `src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/components/features/tactical-unified/canvas/unified-canvas.tsx` | Formation & Squad パネルから On Pitch リストを削除してサブ特化型に整理。D&D を廃止し、サブ選手一覧の各行に「ワンボタンピッチ投入」ボタンを配備。 | **TODO** ⏳ |
+| **AAWU 6-5** | ⚡ **Konva Layer Consolidation & Performance Optimization** | `regista-canvas` | `src/components/features/tactical-unified/canvas/unified-canvas.tsx`<br>`src/components/features/tactical-unified/canvas/canvas-registry.ts` | 7枚の `<Layer>` を Konva 推奨（3〜4枚以内）に統合し、ブラウザ警告を解消して描画負荷・メモリ消費を削減。 | **TODO** ⏳ |
 
 ## 4. [Task Matrix (AAWU: Tactical UX Polish & Advanced Manipulation)]
 
 | Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **AAWU 5-1** | 🎯 **Fix Arrow & Curve Control Point Parity** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | ベジェ曲線の頂点逆算ロジックを修正し、ドラッグ中・ドロップ後問わずポインタが常に線上（曲線の頂点）に完全に一致して配置されるようにする。 | **DONE** ✅ |
+
+- **2026-09-01**: [AAWU 6-3 Complete: Team Squad Photo & Inside Content Sync Fix]
+  1. **チーム読み込み時の顔写真・Inside Content 初期化**: `squad-to-tactical-bridge.ts` において、`photoUrl`/`photoBlob` の有無を判定し、写真が存在する場合は `photoUrl` をセットして `insideContent: 'photo'` を適用。写真が存在しない場合は `insideContent: 'number'` に初期化（スタメン・サブ両方）。
+  2. **ピッチ上選手マーカー表示連動 & 写真時ボーダーレス化**: `player-layer.tsx` において、`insideContent: 'none'` で背番号が表示されていた問題を完全解消。写真表示時（`insideContent === 'photo'`）は周りの白い枠線（stroke）を非表示にし、全径クリッピングで洗練された丸型写真アイコン表示を実現（選択時のみ青い選択枠を表示）。また `playerId` から IndexedDB の `photoBlob`/`photoUrl` を自動解決してキャンバス上に直接描画可能に。
+  3. **インスペクター＆一括操作機能拡張**: 写真未設定時は Inside Content セレクトボックスから `Photo` 選択肢を非表示化。複数選手選択時の `MultiPlayerInspector` およびスライド未選択時の `SlideSettingsInspector` に一括表示設定を追加。
+  4. Scoped 型チェック、Biome チェック、Vitest テスト全30件完全パスを達成。
 | **AAWU 5-2** | 📋 **Global Object Copy & Paste (Ctrl+C / Ctrl+V)** | `regista-frontend`<br>`regista-canvas` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts` | 選択中の選手・矢印・ゾーン・テキストを Ctrl/Cmd+C で内部クリップボードにコピーし、Ctrl/Cmd+V でオフセット配置可能にする。 | **DONE** ✅ |
 | **AAWU 5-2-DUP** | ⚡ **Instant Duplicate on Canvas (Ctrl+D)** | `regista-frontend`<br>`regista-canvas` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts` | 選択中のオブジェクトを Ctrl/Cmd+D で即時コピー＆ペースト（1ステップ複製）し、新規配置されたオブジェクトを選択状態にする。 | **DONE** ✅ |
 | **AAWU 5-3** | ⏪ **Undo / Redo History Management (Ctrl+Z / Ctrl+Shift+Z)** | `regista-frontend`<br>`regista-data` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | スライド変更・オブジェクト編集の Undo/Redo スタックを構築し、Ctrl+Z, Ctrl+Shift+Z およびツールバーボタンで操作可能にする。 | **DONE** ✅ |
