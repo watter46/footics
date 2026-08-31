@@ -18,9 +18,14 @@
 
 | Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **AAWU 4-1** | 🧩 **Squad Component Modularization** | `regista-frontend` | `src/components/features/teams/*`<br>`src/components/features/teams/ChelseaSquadClient.tsx` | 692行の `ChelseaSquadClient.tsx` を 4 つのサブコンポーネント（`SquadHeader`, `SquadStatsSummary`, `SquadFilterBar`, `SquadPlayerCard`）へ責務分割し、可読性・保守性を向上。 | **READY** 📋 |
-| **AAWU 4-2** | 🌐 **Dynamic Routing & Generic Team Engine (`/teams/[teamId]`)** | `regista-frontend`<br>`regista-data` | `src/app/teams/[teamId]/page.tsx`<br>`src/components/layout/TeamsDropdown.tsx`<br>`src/hooks/use-team-squad.ts` | `/teams/chelsea` を汎用的な動的ルーティング `/teams/[teamId]` へ移行。共通チームフック（`useTeamSquad`）を配備し、チーム一覧ドロップダウンを連動。 | **TODO** ⏳ |
-| **AAWU 4-3** | ⚡ **Inject Squad to Tactical Unified Canvas Bridge** | `regista-frontend`<br>`regista-canvas` | `src/components/features/teams/*`<br>`src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx` | スカッド画面からワンクリックで「Tactical Canvas で開く」ボタンを配置。選択したシーズンの選手名・背番号・ポジションを `/tactical` のピッチおよびサブメンバーへ一括注入する。 | **TODO** ⏳ |
+| **AAWU 4-1** | 🧩 **Squad Component Modularization** | `regista-frontend` | `src/components/features/teams/*`<br>`src/components/features/teams/ChelseaSquadClient.tsx` | 692行の `ChelseaSquadClient.tsx` を 4 つのサブコンポーネント（`SquadHeader`, `SquadStatsSummary`, `SquadFilterBar`, `SquadPlayerCard`）へ責務分割し、可読性・保守性を向上。 | **DONE** ✅ |
+| **AAWU 4-2** | 🌐 **Dynamic Routing & Generic Team Engine (`/teams/[teamId]`)** | `regista-frontend`<br>`regista-data` | `src/app/teams/[teamId]/page.tsx`<br>`src/components/layout/TeamsDropdown.tsx`<br>`src/hooks/use-team-squad.ts` | `/teams/chelsea` を汎用的な動的ルーティング `/teams/[teamId]` へ移行。共通チームフック（`useTeamSquad`）を配備し、チーム一覧ドロップダウンを連動。 | **DONE** ✅ |
+| **AAWU 4-3** | ⚡ **Inject Squad to Tactical Unified Canvas Bridge** | `regista-frontend`<br>`regista-canvas` | `src/components/features/teams/*`<br>`src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx` | スカッド画面からワンクリックで「Tactical Canvas で開く」ボタンを配置。選択したシーズンの選手名・背番号・ポジションを `/tactical` のピッチおよびサブメンバーへ一括注入する。 | **DONE** ✅ |
+
+- **2026-08-31**: [Phase 2-B Complete: Team Modernization & Tactical Integration]
+  1. **AAWU 4-1**: `ChelseaSquadClient.tsx` を `squad-header.tsx`, `squad-stats-summary.tsx`, `squad-filter-bar.tsx`, `squad-player-card.tsx` の4コンポーネントへ責務分割。
+  2. **AAWU 4-2**: 汎用動的ルーティング `/teams/[teamId]` および共通フック `useTeamSquad` / `teams-config.ts` を配備。ヘッダーのチームナビゲーションを連動。
+  3. **AAWU 4-3**: スカッド画面から `/tactical` 戦術ボードへワンクリックでスタメン・背番号・ポジションを流し込む `squad-to-tactical-bridge.ts` を実装。単体テスト全件パス。
 
 
 
