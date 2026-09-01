@@ -119,6 +119,10 @@ export function useKeyboardShortcuts() {
         setActiveTool('text');
         return;
       }
+      if (e.key === 'o' || e.key === 'O') {
+        setActiveTool('player-ring');
+        return;
+      }
       if (e.key === 'e' || e.key === 'E') {
         setActiveTool('eraser');
         return;

@@ -21,9 +21,13 @@
 | Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **AAWU 8-1** | 📸 **Hardened DRM Capture Engine & Precise Video Crop** | `regista-extension` | `extension/features/capture/drm-capture-engine.ts`<br>`extension/features/capture/video-cropper.ts`<br>`extension/features/capture/__tests__/video-cropper.test.ts` | 1. `video-canvas` のDRM回避CSSトリック（`brightness`/`opacity`/`transform`等）を多層化・フォールバック強化。<br>2. 動画生解像度（`videoWidth/Height`）と描画領域から余白黒帯を自動計算し、不要なレターボックスを精密トリミング。<br>3. `requestAnimationFrame` を用いた高速かつちらつきのないUI隠蔽・復元ロジック。 | **DONE** ✅ |
-| **AAWU 8-2** | 🔌 **Extension Integration & Global Shortcut Trigger** | `regista-extension` | `extension/entrypoints/background.ts`<br>`extension/entrypoints/content.ts`<br>`extension/wxt.config.ts` | 1. `extension/` にキャプチャ用ショートカット（`capture-to-tactical`）およびコマンドハンドラーを追加。<br>2. Content Script と Background 間のメッセージングパイプラインを統合し、`extension` 単独で高精度キャプチャを起動可能にする。 | **TODO** ⏳ |
-| **AAWU 8-3** | 🎯 **Direct-to-Tactical Bridge & Instant Canvas Placement** | `regista-extension`<br>`regista-frontend` | `extension/features/capture/tactical-bridge.ts`<br>`src/components/features/tactical-unified/tactical-unified-page.tsx`<br>`src/stores/tactical-unified-store.ts` | 1. キャプチャ完了時、Footicsの `/tactical` タブを探索（無ければ自動オープン）してデータを直接送信。<br>2. Footics Tactical側でキャプチャ画像を即座に受け取り、スライドの背景画像またはピッチ上スナップショットとして自動配置・編集可能にする。 | **TODO** ⏳ |
-| **AAWU 8-4** | 🧹 **Legacy Video-Canvas Deprecation & Workspace Cleanup** | `regista-gm` | `pnpm-workspace.yaml`<br>`package.json`<br>`AGENTS.md` | 1. 独立 `video-canvas` パッケージの役割を `extension` に集約し、ビルドスクリプトと依存関係を最適化。<br>2. 拡張機能のビルド＆Windows同期ターゲットを `extension/` 単一に集約。 | **TODO** ⏳ |
+| **AAWU 8-2** | 🔌 **Extension Integration & Global Shortcut Trigger** | `regista-extension` | `extension/entrypoints/background.ts`<br>`extension/entrypoints/overlay.content.tsx`<br>`extension/types/messaging.ts`<br>`extension/wxt.config.ts` | 1. `extension/` にキャプチャ用ショートカット（`capture-to-tactical`）およびコマンドハンドラーを追加。<br>2. Content Script と Background 間のメッセージングパイプラインを統合し、`extension` 単独で高精度キャプチャを起動可能にする。 | **DONE** ✅ |
+| **AAWU 8-3-A** | 🖼️ **Snapshot Analysis Mode & Clean Canvas Initialization** | `regista-frontend`<br>`regista-canvas` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-tactical-capture-bridge.ts`<br>`src/components/features/tactical-unified/right-panel/right-panel.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | 1. キャプチャ受信時、背景を画像モードに切り替え、ピッチ線を完全非表示、スタメン22人を白紙クリア、ボールも非表示化。<br>2. 境界ボックス（Boundary Box）をデフォルトでスクリーンショット全面に自動フィット。<br>3. 右パネルおよびトップバーを自動で Properties（インスペクター）専用モードへ最適化。 | **DONE** ✅ |
+| **AAWU 8-3-B** | ⭕ **3D Foot Ring & Spotlight Pillar Rendering Integration** | `regista-canvas` | `src/lib/tactical/marker-assets.ts`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/types/tactical-unified.ts` | 1. `video-canvas` の `MARKER_PATHS`（立体足元楕円）および `SPOTLIGHT_BEAM_PATH`（上から注ぐ光の柱）を描画レイヤーに完全移植。<br>2. マーカーのスポットライトUIを光の柱デザインへ統一。<br>3. キャンバス上でのインタラクティブ変形・視野コーン楕円連動・最下部座標位置合わせを完了。 | **DONE** ✅ |
+| **AAWU 8-3-C** | 🛠️ **Ring Placement Toolbar & Snapshot-Centric Right Panel** | `regista-frontend` | `src/components/features/tactical-unified/toolbar/top-bar.tsx`<br>`src/components/features/tactical-unified/right-panel/right-panel.tsx`<br>`src/components/features/tactical-unified/inspector/inspector-panel.tsx` | 1. ツールバーに `[ ⭕ リング ]` 追加ボタンを配置（クリックでキャンバスにリングを配置）。<br>2. スクリーンショット時は右パネルの Formation/Squad を隠し Properties のみに最適化。<br>3. リング選択時に右パネルで矢印・FOV・コネクタ・マンマーク・スポットライト・小型スポイトを操作可能にする。 | **DONE** ✅ |
+| **AAWU 8-3-D** | 📑 **Timeline Right-Click Duplicate & Snapshot Context Carryover** | `regista-frontend`<br>`regista-data` | `src/components/features/tactical-unified/timeline/timeline-bar.tsx`<br>`src/components/features/tactical-unified/timeline/slide-item.tsx`<br>`src/stores/tactical-unified-store.ts` | 1. タイムラインスライドの右クリックで「スクリーンショット背景＋右パネル設定＋リング」を丸ごと引き継ぐ複製アクションを配備。<br>2. 通常の左クリック `+` は新規白紙スライド追加。 | **TODO** ⏳ |
+| **AAWU 8-4** | 🧹 **Legacy Video-Canvas Deprecation & Workspace Cleanup** | `regista-gm` | `pnpm-workspace.yaml`<br>`package.json`<br>`AGENTS.md` | 1. 独立 `video-canvas` パッケージの役割を `extension` に集約し、ビルドスクリプトと依存関係を最適化。<br>2. 拡張機能のビルド＆Windows同期ターゲットを `extension/` 単一に集約。 | **DONE** ✅ |
+
 
 ## 3. [Task Matrix (AAWU: Tactical Formation Precision, Marker UI & Right Panel UX)]
 
@@ -48,6 +52,15 @@
 | Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **AAWU 5-1** | 🎯 **Fix Arrow & Curve Control Point Parity** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | ベジェ曲線の頂点逆算ロジックを修正し、ドラッグ中・ドロップ後問わずポインタが常に線上（曲線の頂点）に完全に一致して配置されるようにする。 | **DONE** ✅ |
+
+- **2026-09-01**: [AAWU 8-4 Complete: Legacy Video-Canvas Deprecation & Workspace Cleanup]
+  1. 独立 `video-canvas` パッケージを完全削除し、全キャプチャ・ショートカット機能を `extension/` 単一パッケージへ完全集約。
+  2. `pnpm-workspace.yaml` および `AGENTS.md` のパッケージ定義を更新。
+
+- **2026-09-01**: [AAWU 8-2 Complete: Extension Integration & Global Shortcut Trigger]
+  1. `extension/wxt.config.ts` に `capture-to-tactical`（`Alt+S`）ショートカットおよび `unlimitedStorage` / `clipboardWrite` 権限を追加。
+  2. `background.ts` と `overlay.content.tsx` 間で `TRIGGER_CAPTURE` / `REQUEST_TAB_CAPTURE` の型安全な双方向メッセージングを配備し、拡張機能単独での高精度DRMキャプチャ＆黒帯クロップパイプラインを確立。
+  3. Scoped型チェック・Biome・Vitest全5件テスト完全パス、Chrome MV3ビルドおよびWindows同期完了。
 
 - **2026-09-01**: [AAWU 8-1 Complete: Hardened DRM Capture Engine & Precise Video Crop]
   1. **スクロールバー完全排除 & 多層GPU合成DRM回避**: `html, body` のオーバーフロー制御と `::-webkit-scrollbar` の非表示、および多層Direct Composition回避CSS（`filter`, `contrast`, `opacity`, `translate3d`, `scale`, `perspective` 等）を整備。

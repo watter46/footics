@@ -11,13 +11,23 @@ import {
   Arc,
   Arrow,
   Circle,
+  Ellipse,
   Group,
   Image as KonvaImage,
   Line,
+  Path,
   Rect,
   Text,
+  Transformer,
 } from 'react-konva';
 import { getPlayerMaster } from '@/lib/db/queries';
+import {
+  MARKER_PATHS,
+  MARKER_VIEWBOX_SIZE,
+  SPOTLIGHT_BEAM_PATH,
+  SPOTLIGHT_VIEWBOX_HEIGHT,
+  SPOTLIGHT_VIEWBOX_WIDTH,
+} from '@/lib/tactical/marker-assets';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import {
   getBezierControlPoint,
@@ -305,6 +315,7 @@ function SelectedPlayerGhostTrajectory({
 function VisionConeShape({
   cone,
   radius,
+  isRing,
   stageSize,
   isSelected,
   onUpdateVisionCone,
@@ -312,6 +323,7 @@ function VisionConeShape({
 }: {
   cone: NonNullable<Player['visionCone']>;
   radius: number;
+  isRing?: boolean;
   stageSize: { width: number; height: number };
   isSelected?: boolean;
   onUpdateVisionCone?: (
@@ -339,28 +351,70 @@ function VisionConeShape({
   const edge2X = pxRadius * 0.85 * Math.cos(edge2Angle);
   const edge2Y = pxRadius * 0.85 * Math.sin(edge2Angle);
 
+  // 3D Foot Ring (足元楕円: rx=radius*1.15, ry=radius*0.55) の境界から視野を展開
+  const rx = isRing ? radius * 1.15 : radius + 2;
+  const ry = isRing ? radius * 0.55 : radius + 2;
+
   return (
     <Group>
-      <Arc
-        x={0}
-        y={0}
-        innerRadius={radius + 2}
-        outerRadius={pxRadius}
-        angle={spreadDeg}
-        rotation={angleDeg}
-        fill={cone.color + alphaHex}
-        stroke={isSelected ? '#38bdf8' : undefined}
-        strokeWidth={isSelected ? 1 : 0}
-        listening={true}
-        onClick={(e) => {
-          e.cancelBubble = true;
-          onSelectOption?.();
-        }}
-        onTap={(e) => {
-          e.cancelBubble = true;
-          onSelectOption?.();
-        }}
-      />
+      {isRing ? (
+        /* 楕円リングの周りを自然に回る視野扇形 */
+        <Line
+          points={(() => {
+            const startA = cone.angleRad - cone.spreadRad / 2;
+            const endA = cone.angleRad + cone.spreadRad / 2;
+            const steps = 36;
+            const pts: number[] = [];
+
+            // 外側円弧 (Outer Arc)
+            for (let i = 0; i <= steps; i++) {
+              const a = startA + (i / steps) * (endA - startA);
+              pts.push(pxRadius * Math.cos(a), pxRadius * Math.sin(a));
+            }
+            // 内側楕円弧 (Inner Ellipse Arc - 逆順で閉じる)
+            for (let i = steps; i >= 0; i--) {
+              const a = startA + (i / steps) * (endA - startA);
+              pts.push(rx * Math.cos(a), ry * Math.sin(a));
+            }
+            return pts;
+          })()}
+          closed={true}
+          fill={cone.color + alphaHex}
+          stroke={isSelected ? '#38bdf8' : undefined}
+          strokeWidth={isSelected ? 1 : 0}
+          listening={true}
+          onClick={(e) => {
+            e.cancelBubble = true;
+            onSelectOption?.();
+          }}
+          onTap={(e) => {
+            e.cancelBubble = true;
+            onSelectOption?.();
+          }}
+        />
+      ) : (
+        /* 通常の正円マーカー用 Arc */
+        <Arc
+          x={0}
+          y={0}
+          innerRadius={radius + 2}
+          outerRadius={pxRadius}
+          angle={spreadDeg}
+          rotation={angleDeg}
+          fill={cone.color + alphaHex}
+          stroke={isSelected ? '#38bdf8' : undefined}
+          strokeWidth={isSelected ? 1 : 0}
+          listening={true}
+          onClick={(e) => {
+            e.cancelBubble = true;
+            onSelectOption?.();
+          }}
+          onTap={(e) => {
+            e.cancelBubble = true;
+            onSelectOption?.();
+          }}
+        />
+      )}
 
       {isSelected && onUpdateVisionCone && (
         <Group>
@@ -605,6 +659,7 @@ interface PlayerMarkerProps {
   onUpdateVisionCone: (
     patch: Partial<NonNullable<Player['visionCone']>>,
   ) => void;
+  onUpdatePlayerStyle?: (stylePatch: Partial<Player['style']>) => void;
   onDragStart: (e: KonvaEventObject<DragEvent>, player: Player) => void;
   onDragMove: (e: KonvaEventObject<DragEvent>, player: Player) => void;
   onDragEnd: (e: KonvaEventObject<DragEvent>, player: Player) => void;
@@ -618,6 +673,7 @@ const PlayerMarker = React.memo(function PlayerMarker({
   onSelect,
   onSelectOption,
   onUpdateVisionCone,
+  onUpdatePlayerStyle,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -695,6 +751,24 @@ const PlayerMarker = React.memo(function PlayerMarker({
   }, [player.style.insideContent, player.style.photoUrl, player.playerId]);
 
   const dragGlowRef = useRef<any>(null);
+  const ringShapeNodeRef = useRef<any>(null);
+  const ringTransformerRef = useRef<any>(null);
+  const spotlightGroupRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!ringTransformerRef.current) return;
+    if (
+      isSelected &&
+      player.style.markerType === 'ring' &&
+      ringShapeNodeRef.current
+    ) {
+      ringTransformerRef.current.nodes([ringShapeNodeRef.current]);
+      ringTransformerRef.current.getLayer()?.batchDraw();
+    } else {
+      ringTransformerRef.current.nodes([]);
+      ringTransformerRef.current.getLayer()?.batchDraw();
+    }
+  }, [isSelected, player.style.markerType, radius]);
 
   return (
     <Group
@@ -718,21 +792,20 @@ const PlayerMarker = React.memo(function PlayerMarker({
       onClick={onSelect}
       onTap={onSelect}
       onDragStart={(e) => {
-        const node = e.currentTarget;
-        node.moveToTop();
+        onDragStart(e as KonvaEventObject<DragEvent>, player);
         if (dragGlowRef.current) {
-          dragGlowRef.current.opacity(0.5);
+          dragGlowRef.current.opacity(1);
           dragGlowRef.current.getLayer()?.batchDraw();
         }
-        const stage = node.getStage();
+        const stage = e.target.getStage();
         if (stage) stage.container().style.cursor = 'grabbing';
-        onDragStart(e as KonvaEventObject<DragEvent>, player);
       }}
       onDragMove={(e) => {
         onDragMove(e as KonvaEventObject<DragEvent>, player);
       }}
       onDragEnd={(e) => {
-        const node = e.currentTarget;
+        const node = e.target;
+        node.scale({ x: 1, y: 1 });
         if (dragGlowRef.current) {
           dragGlowRef.current.opacity(0);
           dragGlowRef.current.getLayer()?.batchDraw();
@@ -741,32 +814,42 @@ const PlayerMarker = React.memo(function PlayerMarker({
         if (stage) stage.container().style.cursor = 'default';
         onDragEnd(e as KonvaEventObject<DragEvent>, player);
       }}
+      onTransform={() => {
+        if (spotlightGroupRef.current) {
+          spotlightGroupRef.current.getLayer()?.batchDraw();
+        }
+      }}
     >
-      {/* ── フォーカス (スポットライト効果: 半径はプレイヤーの3~5倍) ── */}
-      {player.focus?.enabled && (
-        <Group listening={false}>
-          <Circle
-            radius={radius * (player.focus.radius ?? 3)}
-            fill={player.focus.color ?? '#fbbf24'}
-            opacity={(player.focus.opacity ?? 0.35) * 0.7}
-            shadowColor={player.focus.color ?? '#fbbf24'}
-            shadowBlur={22}
-            shadowOpacity={0.8}
-          />
-          <Circle
-            radius={radius * (player.focus.radius ?? 3)}
-            stroke={player.focus.color ?? '#fbbf24'}
-            strokeWidth={1.75}
-            dash={[5, 4]}
-            opacity={0.85}
-          />
-          <Circle
-            radius={radius + 4}
-            fill={player.focus.color ?? '#fbbf24'}
-            opacity={0.25}
-          />
-        </Group>
-      )}
+      {/* ── フォーカス (上から注ぐ光の柱 スポットライトピラー効果) ── */}
+      {player.focus?.enabled &&
+        (() => {
+          const focusColor = player.focus.color ?? '#ffffff';
+          const focusOpacity = player.focus.opacity ?? 0.35;
+          const focusRadiusMultiplier = player.focus.radius ?? 3;
+          const markerW = radius * 2 * (focusRadiusMultiplier / 3);
+          const spotlightScale = (markerW * 1.25) / SPOTLIGHT_VIEWBOX_WIDTH;
+          const tx = -(SPOTLIGHT_VIEWBOX_WIDTH * spotlightScale) / 2;
+          // フォーカスの最下部 (SPOTLIGHT_VIEWBOX_HEIGHT * spotlightScale) をリングの最下部 (radius * 0.55) に正確に一致させる
+          const ty = radius * 0.55 - SPOTLIGHT_VIEWBOX_HEIGHT * spotlightScale;
+
+          return (
+            <Group ref={spotlightGroupRef} listening={false}>
+              {/* 上から注ぐ光の柱 (ビーム) */}
+              <Group
+                x={tx}
+                y={ty}
+                scale={{ x: spotlightScale, y: spotlightScale }}
+              >
+                <Path
+                  data={SPOTLIGHT_BEAM_PATH}
+                  fill={focusColor}
+                  opacity={focusOpacity * 0.85}
+                  perfectDrawEnabled={false}
+                />
+              </Group>
+            </Group>
+          );
+        })()}
 
       {/* ── ドラッグ時オレンジ発光グロー (半径5) ── */}
       <Circle
@@ -784,6 +867,7 @@ const PlayerMarker = React.memo(function PlayerMarker({
         <VisionConeShape
           cone={player.visionCone}
           radius={radius}
+          isRing={player.style.markerType === 'ring'}
           stageSize={stageSize}
           isSelected={isSelected}
           onUpdateVisionCone={onUpdateVisionCone}
@@ -791,66 +875,157 @@ const PlayerMarker = React.memo(function PlayerMarker({
         />
       )}
 
-      {/* メインの選手サークル */}
-      {/* 写真表示時は周りの境界線（border/stroke）を無くし、選択時のみ選択枠を表示 */}
-      <Circle
-        radius={radius}
-        fill={player.style.color}
-        stroke={
-          isSelected
-            ? '#60a5fa'
-            : player.style.insideContent === 'photo' && loadedImage
-              ? undefined
-              : (player.style.strokeColor ?? '#ffffff')
-        }
-        strokeWidth={
-          isSelected
-            ? 3
-            : player.style.insideContent === 'photo' && loadedImage
-              ? 0
-              : (player.style.strokeWidth ?? 2)
-        }
-        shadowColor={isSelected ? '#3b82f6' : 'rgba(0,0,0,0)'}
-        shadowBlur={isSelected ? 8 : 0}
-        shadowOffset={{ x: 0, y: isSelected ? 2 : 0 }}
-        shadowOpacity={isSelected ? 0.6 : 0}
-        perfectDrawEnabled={false}
-      />
-
-      {/* 選手サークル内の表示: 写真 (insideContent === 'photo' かつ画像がある場合) */}
-      {player.style.insideContent === 'photo' && loadedImage ? (
+      {/* ── メインの選手マーカー (2D Circle または 3D Foot Ring) ── */}
+      {player.style.markerType === 'ring' ? (
+        /* 3D Foot Ring (立体足元楕円リング) */
         <Group
-          listening={false}
-          clipFunc={(ctx) => {
-            ctx.arc(0, 0, radius, 0, Math.PI * 2, false);
+          ref={(node) => {
+            ringShapeNodeRef.current = node;
           }}
         >
-          <KonvaImage
-            image={loadedImage}
-            x={-radius}
-            y={-radius}
-            width={radius * 2}
-            height={radius * 2}
-            perfectDrawEnabled={false}
+          {/* 透明ヒットエリア (クリック・ドラッグ・Transformer変形のバウンディングボックス用) */}
+          <Ellipse
+            radiusX={radius * 1.15}
+            radiusY={radius * 0.55}
+            fill="transparent"
+            stroke="transparent"
+            strokeWidth={0}
+            listening={true}
+          />
+
+          {/* 選択時ハイライトリング */}
+          {isSelected && (
+            <Ellipse
+              radiusX={radius * 1.15}
+              radiusY={radius * 0.55}
+              stroke="#60a5fa"
+              strokeWidth={3}
+              shadowColor="#3b82f6"
+              shadowBlur={8}
+              shadowOpacity={0.8}
+              listening={false}
+            />
+          )}
+
+          {/* 立体5パーツSVGパス */}
+          <Group
+            x={
+              -(MARKER_VIEWBOX_SIZE * ((radius * 2) / MARKER_VIEWBOX_SIZE)) / 2
+            }
+            y={
+              -(MARKER_VIEWBOX_SIZE * ((radius * 2) / MARKER_VIEWBOX_SIZE)) / 2
+            }
+            scale={{
+              x: (radius * 2) / MARKER_VIEWBOX_SIZE,
+              y: (radius * 2) / MARKER_VIEWBOX_SIZE,
+            }}
+            listening={false}
+          >
+            {MARKER_PATHS.map((d) => (
+              <Path
+                key={d.slice(0, 20)}
+                data={d}
+                fill={player.style.color}
+                stroke={
+                  isSelected
+                    ? '#60a5fa'
+                    : (player.style.strokeColor ?? '#ffffff')
+                }
+                strokeWidth={0.5}
+                perfectDrawEnabled={false}
+              />
+            ))}
+          </Group>
+
+          {/* リング中央の半透明グロー楕円 */}
+          <Ellipse
+            radiusX={radius * 0.68}
+            radiusY={radius * 0.22}
+            fill={player.style.color}
+            opacity={0.75}
             listening={false}
           />
+
+          {/* リング内背番号表示 */}
+          {player.style.insideContent !== 'none' && player.shirtNo && (
+            <Text
+              x={-radius}
+              y={-radius * 0.35}
+              width={radius * 2}
+              text={player.shirtNo}
+              fontSize={radius * 0.75 * numScale}
+              fill="#ffffff"
+              align="center"
+              fontStyle="bold"
+              listening={false}
+              perfectDrawEnabled={false}
+            />
+          )}
         </Group>
-      ) : player.style.insideContent === 'none' ? null : (
-        /* 写真がない場合または insideContent === 'number' の場合は背番号を表示 */
-        player.shirtNo && (
-          <Text
-            x={-radius}
-            y={-radius * 0.55}
-            width={radius * 2}
-            text={player.shirtNo}
-            fontSize={radius * 0.9 * numScale}
-            fill="#ffffff"
-            align="center"
-            fontStyle="bold"
-            listening={false}
+      ) : (
+        /* 2D Player Circle (標準丸型マーカー) */
+        <Group>
+          {/* 写真表示時は周りの境界線（border/stroke）を無くし、選択時のみ選択枠を表示 */}
+          <Circle
+            radius={radius}
+            fill={player.style.color}
+            stroke={
+              isSelected
+                ? '#60a5fa'
+                : player.style.insideContent === 'photo' && loadedImage
+                  ? undefined
+                  : (player.style.strokeColor ?? '#ffffff')
+            }
+            strokeWidth={
+              isSelected
+                ? 3
+                : player.style.insideContent === 'photo' && loadedImage
+                  ? 0
+                  : (player.style.strokeWidth ?? 2)
+            }
+            shadowColor={isSelected ? '#3b82f6' : 'rgba(0,0,0,0)'}
+            shadowBlur={isSelected ? 8 : 0}
+            shadowOffset={{ x: 0, y: isSelected ? 2 : 0 }}
+            shadowOpacity={isSelected ? 0.6 : 0}
             perfectDrawEnabled={false}
           />
-        )
+
+          {/* 選手サークル内の表示: 写真 (insideContent === 'photo' かつ画像がある場合) */}
+          {player.style.insideContent === 'photo' && loadedImage ? (
+            <Group
+              listening={false}
+              clipFunc={(ctx) => {
+                ctx.arc(0, 0, radius, 0, Math.PI * 2, false);
+              }}
+            >
+              <KonvaImage
+                image={loadedImage}
+                x={-radius}
+                y={-radius}
+                width={radius * 2}
+                height={radius * 2}
+                perfectDrawEnabled={false}
+                listening={false}
+              />
+            </Group>
+          ) : player.style.insideContent === 'none' ? null : (
+            /* 写真がない場合または insideContent === 'number' の場合は背番号を表示 */
+            player.shirtNo && (
+              <Text
+                x={-radius}
+                y={-radius * 0.55}
+                width={radius * 2}
+                text={player.shirtNo}
+                fontSize={radius * 0.9 * numScale}
+                fill="#ffffff"
+                align="center"
+                fontStyle="bold"
+                listening={false}
+                perfectDrawEnabled={false}
+              />
+            )
+          )}
+        </Group>
       )}
 
       {/* プレイヤー名ラベル (白文字 + 黒アウトラインでピッチ上で高視認性) */}
@@ -898,6 +1073,63 @@ const PlayerMarker = React.memo(function PlayerMarker({
           onSelectOption={() => onSelectOption('badge')}
         />
       ))}
+
+      {/* 3D Foot Ring 選択時のキャンバス変形ハンドル (Transformer: 縦横比完全固定) */}
+      {player.style.markerType === 'ring' && isSelected && (
+        <Transformer
+          ref={ringTransformerRef}
+          boundBoxFunc={(oldBox, newBox) => {
+            if (Math.abs(newBox.width) < 15 || Math.abs(newBox.height) < 10)
+              return oldBox;
+            return newBox;
+          }}
+          keepRatio={true}
+          enabledAnchors={[
+            'top-left',
+            'top-right',
+            'bottom-left',
+            'bottom-right',
+          ]}
+          rotateEnabled={false}
+          borderStroke="#3b82f6"
+          anchorStroke="#3b82f6"
+          anchorFill="#ffffff"
+          anchorSize={8}
+          anchorCornerRadius={2}
+          onTransform={() => {
+            const node = ringShapeNodeRef.current;
+            if (!node) return;
+            const sx = node.scaleX();
+            node.position({ x: 0, y: 0 });
+            node.scaleX(1);
+            node.scaleY(1);
+            const currentScale = player.style.sizeScale ?? 1.0;
+            const newScale = Math.max(
+              0.4,
+              Math.min(3.0, currentScale * Math.abs(sx)),
+            );
+            const roundedScale = Math.round(newScale * 10) / 10;
+            if (roundedScale !== currentScale) {
+              onUpdatePlayerStyle?.({ sizeScale: roundedScale });
+            }
+          }}
+          onTransformEnd={() => {
+            const node = ringShapeNodeRef.current;
+            if (!node) return;
+            const sx = node.scaleX();
+            node.position({ x: 0, y: 0 });
+            node.scaleX(1);
+            node.scaleY(1);
+            const currentScale = player.style.sizeScale ?? 1.0;
+            const newScale = Math.max(
+              0.4,
+              Math.min(3.0, currentScale * Math.abs(sx)),
+            );
+            const roundedScale = Math.round(newScale * 10) / 10;
+            onUpdatePlayerStyle?.({ sizeScale: roundedScale });
+          }}
+        />
+      )}
     </Group>
   );
 });
@@ -911,6 +1143,7 @@ export function PlayerLayer({
 }: PlayerLayerProps) {
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
   const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
+  const updatePlayer = useTacticalUnifiedStore((s) => s.updatePlayer);
   const movePlayer = useTacticalUnifiedStore((s) => s.movePlayer);
   const moveMultiplePlayersByDelta = useTacticalUnifiedStore(
     (s) => s.moveMultiplePlayersByDelta,
@@ -1555,6 +1788,11 @@ export function PlayerLayer({
                     ...patch,
                   });
                 }
+              }}
+              onUpdatePlayerStyle={(stylePatch) => {
+                updatePlayer(activeSlideId, player.id, {
+                  style: { ...player.style, ...stylePatch },
+                });
               }}
               onDragStart={handleDragStart}
               onDragMove={handleDragMove}

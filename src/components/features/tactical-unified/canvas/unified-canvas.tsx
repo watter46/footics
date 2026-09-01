@@ -172,6 +172,9 @@ export function UnifiedCanvas() {
   const selectObjects = useTacticalUnifiedStore((s) => s.selectObjects);
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
   const addText = useTacticalUnifiedStore((s) => s.addText);
+  const addPlayerFromPalette = useTacticalUnifiedStore(
+    (s) => s.addPlayerFromPalette,
+  );
   const eraseAtPoint = useTacticalUnifiedStore((s) => s.eraseAtPoint);
   const setBoundaryBox = useTacticalUnifiedStore((s) => s.setBoundaryBox);
 
@@ -429,6 +432,24 @@ export function UnifiedCanvas() {
         return;
       }
 
+      if (activeTool === 'player-ring') {
+        const id = addPlayerFromPalette('home', normX, normY, 'ring');
+        selectObject({ id, kind: 'player' });
+        if (!continuousDrawing) {
+          setActiveTool('select');
+        }
+        return;
+      }
+
+      if (activeTool === 'player') {
+        const id = addPlayerFromPalette('home', normX, normY, 'circle');
+        selectObject({ id, kind: 'player' });
+        if (!continuousDrawing) {
+          setActiveTool('select');
+        }
+        return;
+      }
+
       if (activeTool === 'text') {
         addText(activeSlideId, {
           id: crypto.randomUUID(),
@@ -520,6 +541,7 @@ export function UnifiedCanvas() {
       clearSelection,
       eraseAtPoint,
       addText,
+      addPlayerFromPalette,
       addZone,
       updateZone,
       selectObject,

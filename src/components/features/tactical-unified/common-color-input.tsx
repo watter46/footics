@@ -5,6 +5,8 @@
  * Reusable dark-mode compatible color picker & palette for Tactical Unified
  */
 
+import { Pipette } from 'lucide-react';
+
 export const COLOR_PALETTE = [
   '#ffffff', // White
   '#ef4444', // Red
@@ -90,6 +92,28 @@ export function ColorInput({
             className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
           />
         </label>
+        {typeof window !== 'undefined' && 'EyeDropper' in window && (
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                // @ts-expect-error EyeDropper is a modern browser API
+                const eyeDropper = new window.EyeDropper();
+                const result = await eyeDropper.open();
+                if (result?.sRGBHex) {
+                  onChange(result.sRGBHex);
+                }
+              } catch {
+                // user cancelled or unsupported
+              }
+            }}
+            className="p-1 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white transition-colors cursor-pointer shrink-0"
+            title="Pick color from screen (Eyedropper)"
+            aria-label="Pick color from screen"
+          >
+            <Pipette size={12} />
+          </button>
+        )}
         <input
           type="text"
           value={value}

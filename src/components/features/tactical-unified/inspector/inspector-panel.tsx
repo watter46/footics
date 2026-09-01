@@ -19,6 +19,7 @@ import {
   LayoutGrid,
   Link,
   MoveRight,
+  Pipette,
   Plus,
   Settings,
   Sparkles,
@@ -29,7 +30,7 @@ import {
   X,
 } from 'lucide-react';
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   ArrowAnnotation,
   Easing,
@@ -41,6 +42,7 @@ import type {
 } from '@/lib/types/tactical-unified';
 import {
   type MarkerOptionTab,
+  type SelectedObject,
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/stores/tactical-unified-store';
@@ -97,6 +99,18 @@ export function InspectorPanel() {
 
   const single = selectedObjects.length === 1 ? selectedObjects[0] : null;
 
+  // ── 直近で選択されたオブジェクトの保持 (パネル外クリック時も直近のプロパティを保持) ──
+  const lastSelectedRef = useRef<SelectedObject | null>(null);
+
+  useEffect(() => {
+    if (single) {
+      lastSelectedRef.current = single;
+    }
+  }, [single]);
+
+  // 現在選択中のオブジェクト、または直近で選択されていたオブジェクト
+  const effectiveSingle = single || lastSelectedRef.current;
+
   // ── Multiple Players Selected ─────────────────────────────────────────
   const selectedPlayerObjects = selectedObjects.filter(
     (o) => o.kind === 'player',
@@ -111,187 +125,199 @@ export function InspectorPanel() {
         <div className="flex flex-col h-full">
           <InspectorHeader
             title={`Multiple Players (${selectedPlayers.length})`}
-            onClose={clearSelection}
-            onDeselect={clearSelection}
+            onClose={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+            onDeselect={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
           />
           <MultiPlayerInspector
             players={selectedPlayers}
             slideId={activeSlideId}
             updatePlayer={updatePlayer}
             removePlayer={removePlayer}
-            clearSelection={clearSelection}
+            clearSelection={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
           />
         </div>
       );
     }
   }
 
-  // ── Unselected: Slide Settings ──────────────────────────────────────
-  if (!single || !activeSlide) {
-    return (
-      <div className="flex flex-col h-full">
-        <InspectorHeader
-          title="Slide Settings"
-          onClose={() => {
-            setRightPanelTab('formation');
-          }}
-        />
-        <SlideSettingsInspector
-          project={project}
-          activeSlide={activeSlide}
-          slidesCount={slides.length}
-          setBackgroundType={setBackgroundType}
-          updateSlideTransition={updateSlideTransition}
-          deleteSlide={deleteSlide}
-        />
-      </div>
+  // ── Player Selected (または直近選択された Player) ─────────────────────
+  if (effectiveSingle?.kind === 'player') {
+    const player = activeSlide?.players.find(
+      (p) => p.id === effectiveSingle.id,
     );
+    if (player && activeSlide) {
+      return (
+        <div className="flex flex-col h-full">
+          <InspectorHeader
+            title={player.style.markerType === 'ring' ? 'Ring' : 'Player'}
+            onClose={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+            onDeselect={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+          />
+          <PlayerInspector
+            player={player}
+            allPlayers={activeSlide.players}
+            slideId={activeSlideId}
+            updatePlayer={updatePlayer}
+            addArrow={addArrow}
+            onRemove={() => {
+              removePlayer(activeSlideId, player.id);
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+          />
+        </div>
+      );
+    }
   }
 
-  // ── Player Selected ──────────────────────────────────────────────────
-  if (single.kind === 'player') {
-    const player = activeSlide.players.find((p) => p.id === single.id);
-    if (!player)
+  // ── Arrow Selected (または直近選択された Arrow) ──────────────────────
+  if (effectiveSingle?.kind === 'arrow') {
+    const arrow = activeSlide?.arrows.find((a) => a.id === effectiveSingle.id);
+    if (arrow && activeSlide) {
       return (
-        <InspectorHeader
-          title="Player"
-          onClose={() => {
-            clearSelection();
-          }}
-        />
+        <div className="flex flex-col h-full">
+          <InspectorHeader
+            title="Arrow & Line"
+            onClose={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+            onDeselect={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+          />
+          <ArrowInspector
+            arrow={arrow}
+            slideId={activeSlideId}
+            updateArrow={updateArrow}
+            onRemove={() => {
+              removeArrow(activeSlideId, arrow.id);
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+          />
+        </div>
       );
-    return (
-      <div className="flex flex-col h-full">
-        <InspectorHeader
-          title="Player"
-          onClose={() => {
-            clearSelection();
-          }}
-          onDeselect={clearSelection}
-        />
-        <PlayerInspector
-          player={player}
-          allPlayers={activeSlide.players}
-          slideId={activeSlideId}
-          updatePlayer={updatePlayer}
-          addArrow={addArrow}
-          onRemove={() => {
-            removePlayer(activeSlideId, player.id);
-            clearSelection();
-          }}
-        />
-      </div>
-    );
+    }
   }
 
-  // ── Arrow Selected ───────────────────────────────────────────────────
-  if (single.kind === 'arrow') {
-    const arrow = activeSlide.arrows.find((a) => a.id === single.id);
-    if (!arrow)
+  // ── Zone Selected (または直近選択された Zone) ────────────────────────
+  if (effectiveSingle?.kind === 'zone') {
+    const zone = activeSlide?.zones.find((z) => z.id === effectiveSingle.id);
+    if (zone && activeSlide) {
       return (
-        <InspectorHeader
-          title="Arrow"
-          onClose={() => {
-            clearSelection();
-          }}
-        />
+        <div className="flex flex-col h-full">
+          <InspectorHeader
+            title="Zone"
+            onClose={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+            onDeselect={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+          />
+          <ZoneInspector
+            zone={zone}
+            slideId={activeSlideId}
+            updateZone={updateZone}
+            onRemove={() => {
+              removeZone(activeSlideId, zone.id);
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+          />
+        </div>
       );
-    return (
-      <div className="flex flex-col h-full">
-        <InspectorHeader
-          title="Arrow & Line"
-          onClose={() => {
-            clearSelection();
-          }}
-          onDeselect={clearSelection}
-        />
-        <ArrowInspector
-          arrow={arrow}
-          slideId={activeSlideId}
-          updateArrow={updateArrow}
-          onRemove={() => {
-            removeArrow(activeSlideId, arrow.id);
-            clearSelection();
-          }}
-        />
-      </div>
-    );
+    }
   }
 
-  // ── Zone Selected ────────────────────────────────────────────────────
-  if (single.kind === 'zone') {
-    const zone = activeSlide.zones.find((z) => z.id === single.id);
-    if (!zone)
+  // ── Text Selected (または直近選択された Text) ────────────────────────
+  if (effectiveSingle?.kind === 'text') {
+    const textObj = activeSlide?.texts.find((t) => t.id === effectiveSingle.id);
+    if (textObj && activeSlide) {
       return (
-        <InspectorHeader
-          title="Zone"
-          onClose={() => {
-            clearSelection();
-          }}
-        />
+        <div className="flex flex-col h-full">
+          <InspectorHeader
+            title="Text"
+            onClose={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+            onDeselect={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+          />
+          <TextInspector
+            text={textObj}
+            slideId={activeSlideId}
+            updateText={updateText}
+            onRemove={() => {
+              removeText(activeSlideId, textObj.id);
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+          />
+        </div>
       );
-    return (
-      <div className="flex flex-col h-full">
-        <InspectorHeader
-          title="Zone"
-          onClose={() => {
-            clearSelection();
-          }}
-          onDeselect={clearSelection}
-        />
-        <ZoneInspector
-          zone={zone}
-          slideId={activeSlideId}
-          updateZone={updateZone}
-          onRemove={() => {
-            removeZone(activeSlideId, zone.id);
-            clearSelection();
-          }}
-        />
-      </div>
-    );
+    }
   }
 
-  // ── Text Selected ────────────────────────────────────────────────────
-  if (single.kind === 'text') {
-    const text = activeSlide.texts.find((t) => t.id === single.id);
-    if (!text)
-      return (
-        <InspectorHeader
-          title="Text"
-          onClose={() => {
-            clearSelection();
-          }}
-        />
-      );
+  // ── Ball Selected (または直近選択された Ball) ────────────────────────
+  if (effectiveSingle?.kind === 'ball' && activeSlide) {
     return (
       <div className="flex flex-col h-full">
         <InspectorHeader
-          title="Text"
+          title="Ball"
           onClose={() => {
+            lastSelectedRef.current = null;
             clearSelection();
           }}
-          onDeselect={clearSelection}
-        />
-        <TextInspector
-          text={text}
-          slideId={activeSlideId}
-          updateText={updateText}
-          onRemove={() => {
-            removeText(activeSlideId, text.id);
+          onDeselect={() => {
+            lastSelectedRef.current = null;
             clearSelection();
           }}
         />
+        <BallInspector slideId={activeSlideId} />
       </div>
     );
   }
 
   return (
-    <InspectorHeader
-      onClose={() => {
-        clearSelection();
-      }}
-    />
+    <div className="flex flex-col h-full">
+      <InspectorHeader
+        title="Slide Settings"
+        onClose={() => {
+          setRightPanelTab('formation');
+        }}
+      />
+      <SlideSettingsInspector
+        project={project}
+        activeSlide={activeSlide}
+        slidesCount={slides.length}
+        setBackgroundType={setBackgroundType}
+        updateSlideTransition={updateSlideTransition}
+        deleteSlide={deleteSlide}
+      />
+    </div>
   );
 }
 
@@ -978,7 +1004,7 @@ function PlayerInspector({
         up({
           focus: {
             enabled: true,
-            color: '#fbbf24',
+            color: '#ffffff',
             radius: 3,
             opacity: 0.35,
             style: 'spotlight',
@@ -1001,89 +1027,77 @@ function PlayerInspector({
 
   return (
     <div className="flex-1 overflow-y-auto p-3 space-y-3.5 text-slate-200 custom-scrollbar">
-      {/* ── Player Header & Bench/Pitch Jump ── */}
-      <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10">
-        <div className="flex items-center gap-2 min-w-0">
-          <span
-            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 border border-white/30"
-            style={{ backgroundColor: player.style.color || '#3b82f6' }}
-          >
-            {player.shirtNo || '•'}
-          </span>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold text-white truncate">
-              {player.name || `Player ${player.shirtNo || ''}`}
+      {/* ── Player Header & Bench/Pitch Jump (Ring ではない通常の選手マーカーの場合のみ表示) ── */}
+      {player.style.markerType !== 'ring' && (
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10">
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 border border-white/30"
+              style={{ backgroundColor: player.style.color || '#3b82f6' }}
+            >
+              {player.shirtNo || '•'}
             </span>
-            <span className="text-[10px] text-white/40 font-mono">
-              {player.area === 'pitch'
-                ? 'On Pitch (Placed)'
-                : 'Substitute (Bench)'}
-            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-bold text-white truncate">
+                {player.name || `Player ${player.shirtNo || ''}`}
+              </span>
+              <span className="text-[10px] text-white/40 font-mono">
+                {player.area === 'pitch'
+                  ? 'On Pitch (Placed)'
+                  : 'Substitute (Bench)'}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {player.area === 'pitch' ? (
-          <button
-            type="button"
-            onClick={() => {
-              movePlayerToBench(slideId, player.id);
-              setRightPanelTab('squad');
-            }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[10px] font-bold transition-all cursor-pointer shadow-sm"
-            title="Move player from pitch to bench"
-          >
-            <ArrowDownLeft size={12} />
-            <span>Send to Bench</span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              movePlayerToPitch(slideId, player.id, 50, 50);
-            }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 text-blue-300 text-[10px] font-bold transition-all cursor-pointer shadow-sm"
-            title="Place player on pitch"
-          >
-            <Plus size={12} />
-            <span>Place on Pitch</span>
-          </button>
-        )}
+          {player.area === 'pitch' ? (
+            <button
+              type="button"
+              onClick={() => {
+                movePlayerToBench(slideId, player.id);
+                setRightPanelTab('squad');
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[10px] font-bold transition-all cursor-pointer shadow-sm"
+              title="Move player from pitch to bench"
+            >
+              <ArrowDownLeft size={12} />
+              <span>Send to Bench</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                movePlayerToPitch(slideId, player.id, 50, 50);
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 text-blue-300 text-[10px] font-bold transition-all cursor-pointer shadow-sm"
+              title="Place player on pitch"
+            >
+              <Plus size={12} />
+              <span>Place on Pitch</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Top Row: Basic Settings Toggle ── */}
+      <div className="flex items-center justify-between p-1 rounded-xl bg-white/5 border border-white/10">
+        <button
+          type="button"
+          onClick={() => handleTabClick('basic')}
+          className={`flex items-center justify-center gap-2 w-full py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            currentTab === 'basic'
+              ? 'bg-zinc-700 text-white shadow-md ring-1 ring-white/20'
+              : 'text-white/70 hover:text-white hover:bg-white/5'
+          }`}
+          title="Basic Settings (Inside content, label, style, scale, badges)"
+        >
+          <Settings size={14} className="text-zinc-400" />
+          <span>Basic Settings</span>
+        </button>
       </div>
 
-      {/* ── 7-Tab Icon Navigation Bar ── */}
-      <div className="grid grid-cols-7 gap-1 p-1 rounded-xl bg-white/5 border border-white/10 shrink-0">
-        <button
-          type="button"
-          onClick={() => handleTabClick('vision')}
-          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
-            currentTab === 'vision'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'text-white/60 hover:text-white hover:bg-white/5'
-          }`}
-          title="Vision Cone (Click to enable)"
-        >
-          <Eye size={14} />
-          <span className="text-[9px] mt-1 font-medium leading-none">
-            Vision
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabClick('connect')}
-          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
-            currentTab === 'connect'
-              ? 'bg-emerald-600 text-white shadow-md'
-              : 'text-white/60 hover:text-white hover:bg-white/5'
-          }`}
-          title="Connect (Click to link players)"
-        >
-          <Link size={14} />
-          <span className="text-[9px] mt-1 font-medium leading-none">
-            Connect
-          </span>
-        </button>
-
+      {/* ── 6-Tab Object Action Icons: Solid, Dashed, Connect, Vision, Focus, Spuit ── */}
+      <div className="grid grid-cols-6 gap-1 p-1 rounded-xl bg-white/5 border border-white/10 shrink-0">
+        {/* 1. Solid Arrow */}
         <button
           type="button"
           onClick={() => handleTabClick('arrow_solid')}
@@ -1100,6 +1114,7 @@ function PlayerInspector({
           </span>
         </button>
 
+        {/* 2. Dashed Arrow */}
         <button
           type="button"
           onClick={() => handleTabClick('arrow_dash')}
@@ -1116,6 +1131,41 @@ function PlayerInspector({
           </span>
         </button>
 
+        {/* 3. Connect */}
+        <button
+          type="button"
+          onClick={() => handleTabClick('connect')}
+          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
+            currentTab === 'connect'
+              ? 'bg-emerald-600 text-white shadow-md'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+          title="Connect (Click to link players)"
+        >
+          <Link size={14} />
+          <span className="text-[9px] mt-1 font-medium leading-none">
+            Connect
+          </span>
+        </button>
+
+        {/* 4. Vision Cone */}
+        <button
+          type="button"
+          onClick={() => handleTabClick('vision')}
+          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
+            currentTab === 'vision'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+          title="Vision Cone (Click to enable)"
+        >
+          <Eye size={14} />
+          <span className="text-[9px] mt-1 font-medium leading-none">
+            Vision
+          </span>
+        </button>
+
+        {/* 5. Focus (Spotlight) */}
         <button
           type="button"
           onClick={() => handleTabClick('focus')}
@@ -1130,35 +1180,31 @@ function PlayerInspector({
           <span className="text-[9px] mt-1 leading-none">Focus</span>
         </button>
 
+        {/* 6. Spuit (Eyedropper) */}
         <button
           type="button"
-          onClick={() => handleTabClick('badge')}
-          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
-            currentTab === 'badge'
-              ? 'bg-purple-600 text-white shadow-md'
-              : 'text-white/60 hover:text-white hover:bg-white/5'
-          }`}
-          title="Badge (Click to add KEY badge)"
+          onClick={async () => {
+            if (typeof window !== 'undefined' && 'EyeDropper' in window) {
+              try {
+                // @ts-expect-error EyeDropper is a modern browser API
+                const eyeDropper = new window.EyeDropper();
+                const result = await eyeDropper.open();
+                if (result?.sRGBHex) {
+                  upStyle({ color: result.sRGBHex });
+                }
+              } catch {
+                // user cancelled
+              }
+            } else {
+              handleTabClick('basic');
+            }
+          }}
+          className="flex flex-col items-center justify-center py-2 px-0.5 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+          title="Spuit (Pick color from screen)"
         >
-          <Award size={14} />
+          <Pipette size={14} className="text-pink-400" />
           <span className="text-[9px] mt-1 font-medium leading-none">
-            Badge
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabClick('basic')}
-          className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg transition-all cursor-pointer ${
-            currentTab === 'basic'
-              ? 'bg-zinc-700 text-white shadow-md'
-              : 'text-white/60 hover:text-white hover:bg-white/5'
-          }`}
-          title="Basic Settings"
-        >
-          <Settings size={14} />
-          <span className="text-[9px] mt-1 font-medium leading-none">
-            Basic
+            Spuit
           </span>
         </button>
       </div>
@@ -1492,7 +1538,7 @@ function PlayerInspector({
 
               <Row label="Spotlight Color">
                 <ColorInput
-                  value={player.focus.color ?? '#fbbf24'}
+                  value={player.focus.color ?? '#ffffff'}
                   onChange={(c) =>
                     up({
                       focus: {
@@ -1559,103 +1605,7 @@ function PlayerInspector({
         </div>
       )}
 
-      {/* 6. Badges */}
-      {currentTab === 'badge' && (
-        <div className="space-y-3.5 p-3.5 rounded-xl bg-white/[0.03] border border-white/10">
-          <span className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
-            <Award size={14} className="text-purple-400" />
-            Player Badges
-          </span>
-
-          {/* Existing badges */}
-          {player.badges.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 p-2 rounded-lg bg-black/40 border border-white/10">
-              {player.badges.map((b) => (
-                <span
-                  key={b.id}
-                  style={{ backgroundColor: b.color, color: b.textColor }}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold shadow-sm"
-                >
-                  {b.label}
-                  <button
-                    type="button"
-                    onClick={() => removeBadge(b.id)}
-                    className="hover:opacity-70 text-xs leading-none cursor-pointer"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Preset Badges */}
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase tracking-wider text-white/50 block">
-              Quick Presets
-            </span>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
-                onClick={() => addBadge('KEY', '#f59e0b', '#000000')}
-                className="px-2.5 py-1 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold hover:bg-amber-500/30 transition-all cursor-pointer shadow-xs"
-              >
-                + KEY
-              </button>
-              <button
-                type="button"
-                onClick={() => addBadge('★', '#eab308', '#000000')}
-                className="px-2.5 py-1 rounded-md bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-[10px] font-bold hover:bg-yellow-500/30 transition-all cursor-pointer shadow-xs"
-              >
-                + ★
-              </button>
-              <button
-                type="button"
-                onClick={() => addBadge('C', '#3b82f6', '#ffffff')}
-                className="px-2.5 py-1 rounded-md bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[10px] font-bold hover:bg-blue-500/30 transition-all cursor-pointer shadow-xs"
-              >
-                + C
-              </button>
-              <button
-                type="button"
-                onClick={() => addBadge('TARGET', '#ef4444', '#ffffff')}
-                className="px-2.5 py-1 rounded-md bg-red-500/20 border border-red-500/40 text-red-300 text-[10px] font-bold hover:bg-red-500/30 transition-all cursor-pointer shadow-xs"
-              >
-                + TARGET
-              </button>
-            </div>
-          </div>
-
-          {/* Custom Badge Form */}
-          <div className="pt-2 border-t border-white/5 space-y-1">
-            <span className="text-[10px] uppercase tracking-wider text-white/50 block">
-              Custom Label
-            </span>
-            <div className="flex items-center gap-1.5">
-              <input
-                type="text"
-                placeholder="Custom badge label"
-                value={newBadgeText}
-                onChange={(e) => setNewBadgeText(e.target.value)}
-                className="flex-1 px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  addBadge(newBadgeText);
-                  setNewBadgeText('');
-                }}
-                disabled={!newBadgeText.trim()}
-                className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-xs font-semibold text-white transition-all cursor-pointer"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 7. Basic Settings */}
+      {/* 6. Basic Settings */}
       {currentTab === 'basic' && (
         <div className="space-y-3.5">
           {/* Card: Inside Content (Marker Visual Center) */}
@@ -1822,6 +1772,36 @@ function PlayerInspector({
               Marker Style & Scale
             </span>
 
+            {/* Marker Type Switcher: 2D Circle vs 3D Foot Ring */}
+            <Row label="Marker Type">
+              <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-black/40 border border-white/10 w-full">
+                <button
+                  type="button"
+                  onClick={() => upStyle({ markerType: 'circle' })}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
+                    (player.style.markerType ?? 'circle') === 'circle'
+                      ? 'bg-blue-600 text-white font-bold shadow-sm'
+                      : 'text-white/50 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Circle size={13} />
+                  <span>2D Circle</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => upStyle({ markerType: 'ring' })}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
+                    player.style.markerType === 'ring'
+                      ? 'bg-blue-600 text-white font-bold shadow-sm'
+                      : 'text-white/50 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-sm leading-none">⭕</span>
+                  <span>3D Ring</span>
+                </button>
+              </div>
+            </Row>
+
             <Row label="Player Color">
               <ColorInput
                 value={player.style.color}
@@ -1870,11 +1850,110 @@ function PlayerInspector({
               </div>
             </Row>
           </div>
+
+          {/* Card: Player Badges */}
+          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
+            <span className="text-[11px] font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
+              <Award size={13} className="text-purple-400" />
+              Player Badges
+            </span>
+
+            {/* Existing badges */}
+            {player.badges.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 p-2 rounded-lg bg-black/40 border border-white/10">
+                {player.badges.map((b) => (
+                  <span
+                    key={b.id}
+                    style={{ backgroundColor: b.color, color: b.textColor }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold shadow-sm"
+                  >
+                    {b.label}
+                    <button
+                      type="button"
+                      onClick={() => removeBadge(b.id)}
+                      className="hover:opacity-70 text-xs leading-none cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Preset Badges */}
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase tracking-wider text-white/50 block">
+                Quick Presets
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => addBadge('KEY', '#f59e0b', '#000000')}
+                  className="px-2.5 py-1 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold hover:bg-amber-500/30 transition-all cursor-pointer shadow-xs"
+                >
+                  + KEY
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addBadge('★', '#eab308', '#000000')}
+                  className="px-2.5 py-1 rounded-md bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-[10px] font-bold hover:bg-yellow-500/30 transition-all cursor-pointer shadow-xs"
+                >
+                  + ★
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addBadge('C', '#3b82f6', '#ffffff')}
+                  className="px-2.5 py-1 rounded-md bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[10px] font-bold hover:bg-blue-500/30 transition-all cursor-pointer shadow-xs"
+                >
+                  + C
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addBadge('TARGET', '#ef4444', '#ffffff')}
+                  className="px-2.5 py-1 rounded-md bg-red-500/20 border border-red-500/40 text-red-300 text-[10px] font-bold hover:bg-red-500/30 transition-all cursor-pointer shadow-xs"
+                >
+                  + TARGET
+                </button>
+              </div>
+            </div>
+
+            {/* Custom Badge Form */}
+            <div className="pt-2 border-t border-white/5 space-y-1">
+              <span className="text-[10px] uppercase tracking-wider text-white/50 block">
+                Custom Label
+              </span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  placeholder="Custom badge label"
+                  value={newBadgeText}
+                  onChange={(e) => setNewBadgeText(e.target.value)}
+                  className="flex-1 px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    addBadge(newBadgeText);
+                    setNewBadgeText('');
+                  }}
+                  disabled={!newBadgeText.trim()}
+                  className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-xs font-semibold text-white transition-all cursor-pointer"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* ── Delete Player Button ── */}
-      <DeleteButton onClick={onRemove} label="Delete Player" />
+      {/* ── Delete Button ── */}
+      <DeleteButton
+        onClick={onRemove}
+        label={
+          player.style.markerType === 'ring' ? 'Delete Ring' : 'Delete Player'
+        }
+      />
     </div>
   );
 }
@@ -2172,6 +2251,40 @@ function TextInspector({
         </div>
       </Row>
       <DeleteButton onClick={onRemove} label="Delete Text" />
+    </div>
+  );
+}
+
+// ── Ball Inspector ────────────────────────────────────────────────────
+
+function BallInspector({ slideId }: { slideId: string }) {
+  const ball = useTacticalUnifiedStore((s) => selectActiveSlide(s)?.ball);
+  const setBallVisible = useTacticalUnifiedStore((s) => s.setBallVisible);
+
+  if (!ball) return null;
+
+  return (
+    <div className="flex-1 overflow-y-auto p-3 space-y-4 text-white select-none custom-scrollbar">
+      <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white/70 space-y-1">
+        <span className="font-semibold text-white">Ball Settings</span>
+        <p className="text-[11px] text-white/50">
+          Position: ({Math.round(ball.x)}%, {Math.round(ball.y)}%)
+        </p>
+      </div>
+
+      <Row label="Visibility">
+        <button
+          type="button"
+          onClick={() => setBallVisible(slideId, !ball.visible)}
+          className={`px-3 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+            ball.visible
+              ? 'bg-blue-600 text-white'
+              : 'bg-white/10 text-white/50 hover:text-white'
+          }`}
+        >
+          {ball.visible ? 'Visible' : 'Hidden'}
+        </button>
+      </Row>
     </div>
   );
 }

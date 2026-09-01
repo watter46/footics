@@ -211,7 +211,12 @@ describe('AAWU 5-1: Quadratic Bezier Curve Control Point & Apex Parity', () => {
 
       expect(patch.points[0]).toEqual({ x: 15, y: 42 });
       expect(patch.points[1]).toEqual({ x: 55, y: 42 });
-      expect(Math.hypot(patch.points[1].x - patch.points[0].x, patch.points[1].y - patch.points[0].y)).toBeCloseTo(40, 8);
+      expect(
+        Math.hypot(
+          patch.points[1].x - patch.points[0].x,
+          patch.points[1].y - patch.points[0].y,
+        ),
+      ).toBeCloseTo(40, 8);
     });
   });
 });

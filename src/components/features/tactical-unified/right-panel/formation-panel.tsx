@@ -16,6 +16,7 @@
 import {
   ChevronDown,
   Circle,
+  Eraser,
   Eye,
   Hash,
   ImageIcon,
@@ -98,6 +99,7 @@ export function FormationPanel() {
 
   // Store actions
   const applyFormation = useTacticalUnifiedStore((s) => s.applyFormation);
+  const clearPitchPlayers = useTacticalUnifiedStore((s) => s.clearPitchPlayers);
   const applyFormationPreset = useTacticalUnifiedStore(
     (s) => s.applyFormationPreset,
   );
@@ -541,6 +543,17 @@ export function FormationPanel() {
               >
                 <RotateCcw size={10} className="text-amber-400" />
                 <span>Reset</span>
+              </button>
+
+              {/* Clear Pitch (Move all players to bench) */}
+              <button
+                type="button"
+                onClick={() => clearPitchPlayers(activeSlideId)}
+                className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-white/80 hover:text-white transition-colors cursor-pointer"
+                title="Clear all players from pitch to bench"
+              >
+                <Eraser size={10} className="text-rose-400" />
+                <span>Clear</span>
               </button>
 
               {/* Full / Half Toggle */}

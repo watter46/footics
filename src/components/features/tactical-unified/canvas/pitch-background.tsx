@@ -117,7 +117,7 @@ export function PitchBackground({
         listening={false}
       />
 
-      {/* ピッチ or 背景画像 */}
+      {/* ピッチ or 背景画像 (画像背景は境界線ポインタ用 2% 余白内に配置) */}
       {backgroundType === 'pitch' && pitchImg && (
         <KonvaImage
           image={pitchImg}
@@ -132,10 +132,10 @@ export function PitchBackground({
       {backgroundType === 'image' && bgImg && (
         <KonvaImage
           image={bgImg}
-          x={0}
-          y={0}
-          width={width}
-          height={height}
+          x={width * 0.02}
+          y={height * 0.02}
+          width={width * 0.96}
+          height={height * 0.96}
           listening={false}
           perfectDrawEnabled={false}
         />

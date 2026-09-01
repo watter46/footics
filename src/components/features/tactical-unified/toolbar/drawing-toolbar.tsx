@@ -165,6 +165,38 @@ function CustomPolygonZoneIcon({
   );
 }
 
+function RingMarkerIcon({
+  size = 15,
+  className,
+}: {
+  size?: number | string;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <ellipse cx="12" cy="14" rx="9" ry="5" strokeWidth={2} />
+      <circle
+        cx="12"
+        cy="9"
+        r="3.5"
+        strokeWidth={1.5}
+        fill="currentColor"
+        fillOpacity={0.2}
+      />
+    </svg>
+  );
+}
+
 const PRIMARY_TOOLS: {
   tool: DrawingTool;
   icon: React.ElementType;
@@ -186,6 +218,11 @@ const PRIMARY_TOOLS: {
     label: 'Free Zone (P)',
   },
   { tool: 'text', icon: Type, label: 'Text (T)' },
+  {
+    tool: 'player-ring',
+    icon: RingMarkerIcon,
+    label: '3D Foot Ring (O)',
+  },
 ];
 
 export function DrawingToolbar() {

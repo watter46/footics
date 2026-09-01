@@ -55,6 +55,9 @@ export function TopBar() {
   const canRedo = useTacticalUnifiedStore((s) => s.future.length > 0);
   const rightPanelTab = useTacticalUnifiedStore((s) => s.panels.rightPanelTab);
   const setRightPanelTab = useTacticalUnifiedStore((s) => s.setRightPanelTab);
+  const isImageBackground = useTacticalUnifiedStore(
+    (s) => s.project.backgroundType === 'image',
+  );
   const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
   const setTeamVisibility = useTacticalUnifiedStore((s) => s.setTeamVisibility);
   const homeColor = useTacticalUnifiedStore((s) => s.project.homeColor.primary);
@@ -366,39 +369,43 @@ export function TopBar() {
       <div className="flex items-center gap-1.5">
         {/* Right panel toggle icons */}
         <div className="flex items-center p-0.5 rounded-lg bg-white/5 border border-white/10 mr-1">
-          <button
-            type="button"
-            onClick={() => setRightPanelTab('formation')}
-            className={`p-1.5 rounded transition-colors cursor-pointer ${
-              rightPanelTab === 'formation'
-                ? 'bg-blue-600 text-white shadow'
-                : 'text-white/60 hover:text-white hover:bg-white/10'
-            }`}
-            title="Formation Panel"
-            aria-label="Formation Panel"
-          >
-            <Shield size={14} />
-          </button>
+          {!isImageBackground && (
+            <>
+              <button
+                type="button"
+                onClick={() => setRightPanelTab('formation')}
+                className={`p-1.5 rounded transition-colors cursor-pointer ${
+                  rightPanelTab === 'formation'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+                title="Formation Panel"
+                aria-label="Formation Panel"
+              >
+                <Shield size={14} />
+              </button>
 
-          <button
-            type="button"
-            onClick={() => setRightPanelTab('squad')}
-            className={`p-1.5 rounded transition-colors cursor-pointer ${
-              rightPanelTab === 'squad'
-                ? 'bg-blue-600 text-white shadow'
-                : 'text-white/60 hover:text-white hover:bg-white/10'
-            }`}
-            title="Squad & Bench Panel"
-            aria-label="Squad & Bench Panel"
-          >
-            <Users size={14} />
-          </button>
+              <button
+                type="button"
+                onClick={() => setRightPanelTab('squad')}
+                className={`p-1.5 rounded transition-colors cursor-pointer ${
+                  rightPanelTab === 'squad'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+                title="Squad & Bench Panel"
+                aria-label="Squad & Bench Panel"
+              >
+                <Users size={14} />
+              </button>
+            </>
+          )}
 
           <button
             type="button"
             onClick={() => setRightPanelTab('inspector')}
             className={`p-1.5 rounded transition-colors cursor-pointer ${
-              rightPanelTab === 'inspector'
+              rightPanelTab === 'inspector' || isImageBackground
                 ? 'bg-blue-600 text-white shadow'
                 : 'text-white/60 hover:text-white hover:bg-white/10'
             }`}

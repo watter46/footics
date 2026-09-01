@@ -16,6 +16,7 @@ import { useCallback, useEffect } from 'react';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
 import { ExportModal } from './export/export-modal';
 import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
+import { useTacticalCaptureBridge } from './hooks/use-tactical-capture-bridge';
 import { RightPanel } from './right-panel/right-panel';
 import { TimelineBar } from './timeline/timeline-bar';
 import { TopBar } from './toolbar/top-bar';
@@ -36,6 +37,9 @@ export function TacticalUnifiedPage() {
 
   const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+
+  // 🎯 拡張機能からのダイレクトキャプチャ受信・自動配置
+  useTacticalCaptureBridge();
 
   // キーボードショートカット (Delete/Escape)
   useKeyboardShortcuts();
