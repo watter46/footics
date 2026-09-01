@@ -1,20 +1,29 @@
 # Regista Management Board
 
 ## 1. [Active Focus]
-- **【Phase 3-B】Tactical Precision & Squad UX Refinement (AAWU 6-1 〜 6-5)**:
-  - **背景 & 課題**: Tactical キャンバスの境界線デフォルト整合性、選手名ラベルの視認性、チーム読み込み時の顔写真/Inside Content連動、Formation & Squadパネルのサブ特化＆ワンボタンピッチ投入UIの刷新、および Konva 6+ レイヤー警告の解消と描画パフォーマンス最適化を行う。
+- **【Phase 3-C】Tactical Formation Precision, Marker Customization UI & Right Panel UX Overhaul (AAWU 7-1 〜 7-3)**:
+  - **背景 & 課題**:
+    1. **フォーメーション配置ロジック不整合**: Half選択時にGKがピッチ外（境界外）に押し出される計算バグの解消、およびFull（0〜100%）/ Half（自陣/敵陣 0〜50%）の正確な幾何学マッピング・座標計算の再設計。
+    2. **マーカー内カスタマイズUIの刷新**: 選手マーカーの視覚オプション（Inside Content: Number/Photo/None、ラベル、サイズ、カラー、視界コーン、バッジ等）を直感的でわかりやすいビジュアルUIに刷新。
+    3. **右パネルのUX最適化・タブ再設計**: 幅の適正化（300px -> 340px）、ヘッダーと右パネルの連携整理、肥大化した設定群のタブ分割（Squad / Formation / Properties / Slide Settings 等）による操作体験の劇的向上。
   - **確定仕様 & AAWU 分解**:
-    1. **AAWU 6-1 (Default Auto-Fit Pitch Boundary Box)**: 初期作成時およびデフォルトの境界線を「Auto fit boundary box to pitch」適用値に標準化。
-    2. **AAWU 6-2 (Player Label High-Contrast Visibility Fix)**: 選手マーカー下の名前/背番号ラベルの Konva stroke 潰れ解消と高コントラスト化。
-    3. **AAWU 6-3 (Team Squad Photo & Inside Content Sync Fix)**: チーム読み込み時の写真同期・Inside Content（Photo/Number/None）切り替え連動修復。
-    4. **AAWU 6-4 (Sub-Centric Squad Panel & One-Click Pitch Deploy)**: On Pitch 一覧撤廃、サブ専用化、D&D廃止とワンクリックピッチ投入ボタン配備。
-    5. **AAWU 6-5 (Konva Layer Consolidation & Performance Optimization)**: 7枚の `<Layer>` を Konva 推奨（3〜4枚以内）へ統合し、ブラウザ警告解消と描画パフォーマンスを最適化。
+    1. **AAWU 7-1 (Formation Half/Full Mathematical Geometry & GK Boundary Fix)**: Full / Half の配置座標マッピング関数を刷新し、ピッチ外飛び出しを防止。
+    2. **AAWU 7-2 (Visual Marker Customization & Inside Content Switcher UI)**: 選手マーカー設定・インスペクターを直感的なビジュアルカードUIに刷新。
+    3. **AAWU 7-3 (Right Panel Expansion & Unified Tab UX Architecture)**: 右パネル幅拡張（340px）とタブ構造の最適化（Squad & Formationの分離/再編成、ヘッダー連動の整理）。
 
 ## 2. [Backlog / Adopted Roadmaps (オーナー承認済 バックログ)]
 - **【構造改革】拡張機能の1本化統合 (Unified Extension Pipeline)**:
   - `video-canvas` の Konva 描画エンジンを `extension/` へ統合し、ブラウザ拡張を単一パッケージに集約。
 - **【品質基盤】エージェント性能最大化 3大ルールの徹底運用**:
   - 1. State Machine厳守 / 2. 極小AAWU（1〜3ファイル） / 3. KI自動更新。
+
+## 3. [Task Matrix (AAWU: Tactical Formation Precision, Marker UI & Right Panel UX)]
+
+| Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **AAWU 7-1** | 📐 **Formation Half/Full Geometry & GK Boundary Fix** | `regista-canvas`<br>`regista-data` | `src/lib/data/formations.ts`<br>`src/lib/tactical/__tests__/formations.test.ts`<br>`src/stores/tactical-unified-store.ts` | 1. `getFormationActualPos` の Half 変換ロジックを再設計（GK をペナルティエリア内 x: 4〜8% に安全配置、DF/MF/FW を 0〜50% 内に均等分散）。<br>2. Full / Half 双方での全28フォーメーションの境界内（0〜100% / 0〜50%）収容を単体テストで数学的に保証。 | **DONE** ✅ |
+| **AAWU 7-2** | 🎨 **Visual Marker Customization UI & Inside Content Switcher** | `regista-frontend` | `src/components/features/tactical-unified/inspector/inspector-panel.tsx`<br>`src/components/features/tactical-unified/common-color-input.tsx` | 1. 選手インスペクター内の「Inside Content（Photo / Number / None）」および表示スタイルを、アイコン＋プレビュー付きの視覚的なセグメントUIへ刷新。<br>2. 7つのアノテーション（Vision, Connect, Arrow, Dash, Focus, Badge, Basic）のアイコンタブ・設定パネルをカード形式に整理し、アニメーション編集時のような直感的なUIを提供。 | **DONE** ✅ |
+| **AAWU 7-3** | 🗂️ **Right Panel Width Expansion & UX Tab Architecture** | `regista-frontend` | `src/components/features/tactical-unified/right-panel/right-panel.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx`<br>`src/components/features/tactical-unified/right-panel/formation-panel.tsx`<br>`src/components/features/tactical-unified/right-panel/squad-sub-panel.tsx`<br>`src/components/features/tactical-unified/inspector/inspector-panel.tsx`<br>`src/stores/tactical-unified-store.ts` | 1. 右パネルの幅を 300px から 340px に拡張し、視認性と操作性を向上。<br>2. タブ構造を「Formation」「Squad」「Properties」に3分割再設計し、ヘッダー（TopBar）のアイコンスイッチと完全連動。<br>3. Batch Player Display を Formation タブのチーム設定エリアへ統合。 | **DONE** ✅ |
 
 ## 3. [Task Matrix (AAWU: Tactical Precision & Squad UX Refinement)]
 
@@ -31,6 +40,25 @@
 | Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **AAWU 5-1** | 🎯 **Fix Arrow & Curve Control Point Parity** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | ベジェ曲線の頂点逆算ロジックを修正し、ドラッグ中・ドロップ後問わずポインタが常に線上（曲線の頂点）に完全に一致して配置されるようにする。 | **DONE** ✅ |
+
+- **2026-09-01**: [AAWU 7-3 Complete: Right Panel Width Expansion & UX Tab Architecture]
+  1. **右パネル幅の拡張 (300px → 340px)**: 視認性と操作性を向上させ、各種設定・カラーピッカー・アノテーション調整が快適に行える幅を確保。
+  2. **タブ構造の3分割 (`Formation` / `Squad` / `Properties`)**:
+     - `Formation` ([`formation-panel.tsx`](file:///home/watter46/src/footics/src/components/features/tactical-unified/right-panel/formation-panel.tsx)): チーム選択・カラー設定・ピッチ表示切替・フォーメーション選択・リセット・プリセット読込に加え、`Batch Player Display` を統合。
+     - `Squad` ([`squad-sub-panel.tsx`](file:///home/watter46/src/footics/src/components/features/tactical-unified/right-panel/squad-sub-panel.tsx)): 4ポジション分類・ワンクリック投入・選手交代（Swap）・サブ選手追加フォームを完備。
+     - `Properties` ([`inspector-panel.tsx`](file:///home/watter46/src/footics/src/components/features/tactical-unified/inspector/inspector-panel.tsx)): 選択要素インスペクター / スライド背景・トランジション設定。
+  3. **ヘッダー連動**: `top-bar.tsx` に Shield / Users / SlidersHorizontal の3つのクイック切り替えボタンを配備し、双方向でシームレスにタブ切替可能に。
+  4. Scoped 型チェック、Biome チェック、Vitest 単体テスト全20件完全パス。
+
+- **2026-09-01**: [AAWU 7-2 Complete: Visual Marker Customization UI & Inside Content Switcher]
+  1. **Inside Marker Content ビジュアルスイッチャー**: `inspector-panel.tsx` の選手インスペクター、複数選手インスペクター（`MultiPlayerInspector`）、およびスライド全体設定（`SlideSettingsInspector`）において、`Number` / `Photo` / `Empty` の Inside Content 切り替えをアイコン付きの直感的なビジュアルセグメントUIへ刷新。写真未設定時の自動無効化および Photo URL プレビューと完全連動。
+  2. **7大アノテーション設定タブのカードUI統一**: `Vision Cone` / `Connectors` / `Solid Arrow` / `Dashed Arrow` / `Focus (Spotlight)` / `Badge` / `Basic` の各設定項目をカード構造に整理。アニメーション編集時のような視認性の高いUI/UXを提供。
+  3. Scoped 型チェック、Biome チェック、Vitest 単体テスト全103件完全パスを達成。
+
+- **2026-09-01**: [AAWU 7-1 Complete: Formation Half/Full Mathematical Geometry & GK Boundary Fix]
+  1. **ピッチ実白線領域（16:9 / 9:16）に完全連動する幾何学マッピング基盤**: `formations.ts` に `PITCH_BOUNDS_16_9`（Left Goal Line: 7.81%, Right Goal Line: 92.19%, Halfway Line: 50.0%, Touchlines: 1.43%〜98.57%）および `PITCH_BOUNDS_9_16` を配備。GK がゴールライン外側（ピッチ外）へ飛び出す幾何学計算バグを完全解消。
+  2. **DF・FW 固定アンカー ＆ MID 均等線形配置ロジック (`getHalfCourtPitchPos`)**: GK（6ヤードボックス内 x: 11.19%）、DF（ペナルティエリア境界 x: 20.47%）、FW（ハーフウェーライン手前 x: 44.94%）のアンカー座標を固定。中間ライン（MID）を DF〜FW 間で線形補間することにより、3列（4-3-3, 4-4-2 等）・4列（4-2-3-1, 3-2-4-1 等）いずれのフォーメーションでもライン間隔が完全に均等・綺麗に配置される数理モデルを確立。
+  3. **全28フォーメーションの数学的収容単体テスト完備**: `formations.test.ts` において、全28フォーメーション × 11選手 × (Full/Half × 横/縦) の全組み合わせでピッチ白線内および各守備陣地内（Home: 7.81%〜50.0%, Away: 50.0%〜92.19%）に厳格に収容されることを数学的テストで保証。Scoped 型チェック、Biome チェック、Vitest テスト全12件完全パスを達成。
 
 - **2026-09-01**: [AAWU 6-3 Complete: Team Squad Photo & Inside Content Sync Fix]
   1. **チーム読み込み時の顔写真・Inside Content 初期化**: `squad-to-tactical-bridge.ts` において、`photoUrl`/`photoBlob` の有無を判定し、写真が存在する場合は `photoUrl` をセットして `insideContent: 'photo'` を適用。写真が存在しない場合は `insideContent: 'number'` に初期化（スタメン・サブ両方）。

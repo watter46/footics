@@ -110,7 +110,7 @@ export interface TacticalClipboard {
 export interface PanelState {
   sidebarOpen: boolean;
   inspectorOpen: boolean;
-  rightPanelTab: 'formation_sub' | 'inspector';
+  rightPanelTab: 'formation' | 'squad' | 'inspector';
   exportModalOpen: boolean;
 }
 
@@ -350,7 +350,7 @@ interface TacticalUnifiedState {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setInspectorOpen: (open: boolean) => void;
-  setRightPanelTab: (tab: 'formation_sub' | 'inspector') => void;
+  setRightPanelTab: (tab: 'formation' | 'squad' | 'inspector') => void;
   openExportModal: (target?: ExportTarget) => void;
   closeExportModal: () => void;
 
@@ -629,7 +629,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     panels: {
       sidebarOpen: false,
       inspectorOpen: true,
-      rightPanelTab: 'formation_sub',
+      rightPanelTab: 'formation',
       exportModalOpen: false,
     },
     isPlaying: false,

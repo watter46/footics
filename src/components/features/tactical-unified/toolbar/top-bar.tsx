@@ -18,6 +18,7 @@ import {
   LayoutTemplate,
   Redo2,
   RotateCcw,
+  Shield,
   SlidersHorizontal,
   Sparkles,
   Undo2,
@@ -367,14 +368,28 @@ export function TopBar() {
         <div className="flex items-center p-0.5 rounded-lg bg-white/5 border border-white/10 mr-1">
           <button
             type="button"
-            onClick={() => setRightPanelTab('formation_sub')}
+            onClick={() => setRightPanelTab('formation')}
             className={`p-1.5 rounded transition-colors cursor-pointer ${
-              rightPanelTab === 'formation_sub'
+              rightPanelTab === 'formation'
                 ? 'bg-blue-600 text-white shadow'
                 : 'text-white/60 hover:text-white hover:bg-white/10'
             }`}
-            title="Formation & Squad Panel"
-            aria-label="Formation & Squad Panel"
+            title="Formation Panel"
+            aria-label="Formation Panel"
+          >
+            <Shield size={14} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRightPanelTab('squad')}
+            className={`p-1.5 rounded transition-colors cursor-pointer ${
+              rightPanelTab === 'squad'
+                ? 'bg-blue-600 text-white shadow'
+                : 'text-white/60 hover:text-white hover:bg-white/10'
+            }`}
+            title="Squad & Bench Panel"
+            aria-label="Squad & Bench Panel"
           >
             <Users size={14} />
           </button>
@@ -387,8 +402,8 @@ export function TopBar() {
                 ? 'bg-blue-600 text-white shadow'
                 : 'text-white/60 hover:text-white hover:bg-white/10'
             }`}
-            title="Properties & Settings Panel"
-            aria-label="Properties & Settings Panel"
+            title="Properties & Slide Settings Panel"
+            aria-label="Properties & Slide Settings Panel"
           >
             <SlidersHorizontal size={14} />
           </button>

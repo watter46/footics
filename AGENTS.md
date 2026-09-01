@@ -16,9 +16,10 @@ trigger: always_on
   - **挙動:** [ORGANIZATION.md](./ORGANIZATION.md) に定義された State Machine (TRIAGE → DESIGN → IMPLEMENTATION → REVIEW_QA → DONE) に従って分業する。
   - **GMタスク分解・チケット発行 (Board Integration):** GM (`regista-gm`) は要件受領時にタスクを極小AAWU（1〜3ファイル単位）へ分解し、[agents/REGISTA_BOARD.md](./agents/REGISTA_BOARD.md) の Task Matrix にチケットとして書き込んで発行・進捗管理を行う。
 - **チケット出力・運用プロトコル (Ticket Formatting & Execution Standard):**
-  - **1. チケット一覧表の出力形式:** 表には「チケット番号」「タスク名」「変更後のユーザー体験（変更したらどう変わるかを短く明瞭に）」の3列のみを出力する（対象ファイル列や技術的な要約はノイズとなるため記載しない）。
-  - **2. 実行プロンプトの個別コードブロック化:** チケット一覧の後には、チャットで即時実行できるように各チケットのプロンプトを個別のテキストコードブロックで出力する。
-  - **3. ユーザー完了合図の絶対厳守 (Strict User Confirmation Protocol):** エージェントは実装・検証完了後にユーザーへ報告し、**ユーザーから「完了」「OK」等の明示的な合図を受けるまで、勝手にチケットステータスを DONE に更新したり git commit を実行してはならない**（※修正・手戻り要望を受け付けられるクリーンな状態を保つ）。
+  - **1. ボードへの自己完結型チケット記録 (Self-Contained Ticket in Board):** チケット発行時は、[agents/REGISTA_BOARD.md](./agents/REGISTA_BOARD.md) 内に対象ファイル、詳細要件、検証手順、および実行用プロンプトを完全自己完結した状態で記載する。
+  - **2. 番号指定による即時開発・自動起動 (Ticket Trigger by Number):** ユーザーが「AAWU X-X」「チケット AAWU X-X」のようにチケット番号のみ、または番号を含むメッセージを入力した場合、エージェントは確認を挟まず即座に [agents/REGISTA_BOARD.md](./agents/REGISTA_BOARD.md) から該当チケットの仕様・対象ファイル・検証手順を読み込み、Fast-Track Mode で自律的に実装およびスコープ限定検証（型チェック・テスト）を開始すること。
+  - **3. チャットへのチケット一覧表出力:** 発行時はチャット上に「チケット番号」「タスク名」「変更後のユーザー体験（変更したらどう変わるかを短く明瞭に）」の3列一覧表を出力する。
+  - **4. ユーザー完了合図の絶対厳守 (Strict User Confirmation Protocol):** エージェントは実装・検証完了後にユーザーへ報告し、**ユーザーから「完了」「OK」等の明示的な合図を受けるまで、勝手にチケットステータスを DONE に更新したり git commit を実行してはならない**（※修正・手戻り要望を受け付けられるクリーンな状態を保つ）。
 
 ## 1. エージェント行動規範 (Senior Engineer Conduct)
 - **Chain of Thought (CoT) Enforcement**: 浅い思考によるバグを排除し、深く考えてから行動する。複雑な修正やデバッグの際はいきなりコードを修正せず、思考プロセスを出力し、依存関係、副作用、代替案を検討する。

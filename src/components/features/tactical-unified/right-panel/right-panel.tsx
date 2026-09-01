@@ -2,17 +2,19 @@
 
 /**
  * right-panel.tsx
- * Persistent Figma-like Right Panel
+ * Persistent Figma-like Right Panel (Width: 340px)
  *
  * Houses:
- *  - Formation & Sub-members management tab
- *  - Inspector / Properties tab
+ *  - Formation Presets Tab (Shield)
+ *  - Squad & Bench Tab (Users)
+ *  - Inspector / Properties Tab (SlidersHorizontal)
  */
 
-import { SlidersHorizontal, Users } from 'lucide-react';
+import { Shield, SlidersHorizontal, Users } from 'lucide-react';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
 import { InspectorPanel } from '../inspector/inspector-panel';
-import { FormationSubPanel } from './formation-sub-panel';
+import { FormationPanel } from './formation-panel';
+import { SquadSubPanel } from './squad-sub-panel';
 
 export function RightPanel() {
   const rightPanelTab = useTacticalUnifiedStore((s) => s.panels.rightPanelTab);
@@ -22,31 +24,47 @@ export function RightPanel() {
   );
 
   return (
-    <aside className="w-[300px] min-w-[300px] h-full bg-[#141414] border-l border-white/10 flex flex-col shrink-0 z-30 overflow-hidden">
+    <aside className="w-[340px] min-w-[340px] h-full bg-[#141414] border-l border-white/10 flex flex-col shrink-0 z-30 overflow-hidden">
       {/* Top Segmented Tab Switcher */}
       <div className="flex items-center p-1.5 bg-[#111] border-b border-white/10 shrink-0">
-        <div className="grid grid-cols-2 gap-1 w-full p-0.5 rounded-lg bg-white/5 border border-white/10">
+        <div className="grid grid-cols-3 gap-1 w-full p-0.5 rounded-lg bg-white/5 border border-white/10">
           <button
             type="button"
-            onClick={() => setRightPanelTab('formation_sub')}
-            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
-              rightPanelTab === 'formation_sub'
-                ? 'bg-blue-600 text-white shadow-sm'
+            onClick={() => setRightPanelTab('formation')}
+            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
+              rightPanelTab === 'formation'
+                ? 'bg-blue-600 text-white shadow-sm font-semibold'
                 : 'text-white/60 hover:text-white hover:bg-white/5'
             }`}
+            title="Formation Presets"
+          >
+            <Shield size={13} />
+            <span>Formation</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRightPanelTab('squad')}
+            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
+              rightPanelTab === 'squad'
+                ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+            }`}
+            title="Squad & Bench Management"
           >
             <Users size={13} />
-            <span>Formation & Squad</span>
+            <span>Squad</span>
           </button>
 
           <button
             type="button"
             onClick={() => setRightPanelTab('inspector')}
-            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
+            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
               rightPanelTab === 'inspector'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-sm font-semibold'
                 : 'text-white/60 hover:text-white hover:bg-white/5'
             }`}
+            title="Properties & Slide Settings"
           >
             <SlidersHorizontal size={13} />
             <span>Properties</span>
@@ -61,11 +79,9 @@ export function RightPanel() {
 
       {/* Tab Body */}
       <div className="flex-1 overflow-hidden">
-        {rightPanelTab === 'formation_sub' ? (
-          <FormationSubPanel />
-        ) : (
-          <InspectorPanel />
-        )}
+        {rightPanelTab === 'formation' && <FormationPanel />}
+        {rightPanelTab === 'squad' && <SquadSubPanel />}
+        {rightPanelTab === 'inspector' && <InspectorPanel />}
       </div>
     </aside>
   );

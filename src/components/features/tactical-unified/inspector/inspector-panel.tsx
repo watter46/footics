@@ -12,6 +12,8 @@ import {
   Circle,
   Clock,
   Eye,
+  Hash,
+  Image as ImageIcon,
   Info,
   Layers,
   LayoutGrid,
@@ -21,8 +23,9 @@ import {
   Settings,
   Sparkles,
   Square,
+  Tag,
   Trash2,
-  Users,
+  User,
   X,
 } from 'lucide-react';
 import type React from 'react';
@@ -130,7 +133,7 @@ export function InspectorPanel() {
         <InspectorHeader
           title="Slide Settings"
           onClose={() => {
-            setRightPanelTab('formation_sub');
+            setRightPanelTab('formation');
           }}
         />
         <SlideSettingsInspector
@@ -139,7 +142,6 @@ export function InspectorPanel() {
           slidesCount={slides.length}
           setBackgroundType={setBackgroundType}
           updateSlideTransition={updateSlideTransition}
-          updatePlayer={updatePlayer}
           deleteSlide={deleteSlide}
         />
       </div>
@@ -342,7 +344,6 @@ function SlideSettingsInspector({
   slidesCount,
   setBackgroundType,
   updateSlideTransition,
-  updatePlayer,
   deleteSlide,
 }: {
   project: TacticalProject;
@@ -352,11 +353,6 @@ function SlideSettingsInspector({
   updateSlideTransition: (
     slideId: string,
     params: Partial<Pick<Slide, 'transitionDurationMs' | 'pauseMs' | 'easing'>>,
-  ) => void;
-  updatePlayer: (
-    slideId: string,
-    playerId: string,
-    patch: Partial<Player>,
   ) => void;
   deleteSlide: (slideId: string) => void;
 }) {
@@ -475,106 +471,6 @@ function SlideSettingsInspector({
                   {opt.label}
                 </button>
               ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2. Batch Player Display Settings (一括表示設定) */}
-      {activeSlide && (
-        <div className="pt-3 border-t border-white/10 space-y-2.5">
-          <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
-            <Users size={13} className="text-blue-400" />
-            Batch Player Display
-          </span>
-
-          <div className="space-y-2 bg-white/[0.02] p-2.5 rounded-lg border border-white/10">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-white/60 font-medium">Inside Content</span>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-white/70">All Players</span>
-                <div className="flex items-center gap-1 bg-black/40 rounded border border-white/10 p-0.5">
-                  {(['number', 'photo', 'none'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => {
-                        activeSlide.players.forEach((p) => {
-                          updatePlayer(activeSlide.id, p.id, {
-                            style: { ...p.style, insideContent: mode },
-                          });
-                        });
-                      }}
-                      className="px-2 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium"
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-blue-400 flex items-center gap-1">
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: project.homeColor.primary }}
-                  />
-                  Home
-                </span>
-                <div className="flex items-center gap-1 bg-black/40 rounded border border-white/10 p-0.5">
-                  {(['number', 'photo', 'none'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => {
-                        activeSlide.players
-                          .filter((p) => p.team === 'home')
-                          .forEach((p) => {
-                            updatePlayer(activeSlide.id, p.id, {
-                              style: { ...p.style, insideContent: mode },
-                            });
-                          });
-                      }}
-                      className="px-2 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium"
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-red-400 flex items-center gap-1">
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: project.awayColor.primary }}
-                  />
-                  Away
-                </span>
-                <div className="flex items-center gap-1 bg-black/40 rounded border border-white/10 p-0.5">
-                  {(['number', 'photo', 'none'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => {
-                        activeSlide.players
-                          .filter((p) => p.team === 'away')
-                          .forEach((p) => {
-                            updatePlayer(activeSlide.id, p.id, {
-                              style: { ...p.style, insideContent: mode },
-                            });
-                          });
-                      }}
-                      className="px-2 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium"
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -832,45 +728,61 @@ function MultiPlayerInspector({
         </p>
       </div>
 
-      <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
-        <span className="text-xs font-bold text-white block">Appearance</span>
+      <div className="space-y-3.5 p-3 rounded-xl bg-white/[0.03] border border-white/10">
+        <span className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+          <Sparkles size={13} className="text-amber-400" />
+          Batch Appearance
+        </span>
 
-        <Row label="Inside Content">
-          <div className="grid grid-cols-3 gap-1">
+        <Row label="Inside Marker Content">
+          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-lg bg-black/40 border border-white/10">
             <button
               type="button"
               onClick={() => handleBatchInsideContent('number')}
-              className="px-2 py-1.5 rounded text-xs font-medium border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white uppercase transition-colors"
+              className="flex flex-col items-center justify-center py-2 px-1 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             >
-              number
+              <Hash size={15} />
+              <span className="text-[10px] mt-1 font-medium">Number</span>
             </button>
-            {players.some((p) => Boolean(p.style.photoUrl)) && (
+            {players.some((p) => Boolean(p.style.photoUrl)) ? (
               <button
                 type="button"
                 onClick={() => handleBatchInsideContent('photo')}
-                className="px-2 py-1.5 rounded text-xs font-medium border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white uppercase transition-colors"
+                className="flex flex-col items-center justify-center py-2 px-1 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               >
-                photo
+                <ImageIcon size={15} />
+                <span className="text-[10px] mt-1 font-medium">Photo</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="flex flex-col items-center justify-center py-2 px-1 rounded-md opacity-30 text-white/40 cursor-not-allowed"
+                title="No photos configured on selected players"
+              >
+                <ImageIcon size={15} />
+                <span className="text-[10px] mt-1 font-medium">Photo</span>
               </button>
             )}
             <button
               type="button"
               onClick={() => handleBatchInsideContent('none')}
-              className="px-2 py-1.5 rounded text-xs font-medium border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white uppercase transition-colors"
+              className="flex flex-col items-center justify-center py-2 px-1 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             >
-              none
+              <Circle size={15} />
+              <span className="text-[10px] mt-1 font-medium">Empty</span>
             </button>
           </div>
         </Row>
 
-        <Row label="Label Display">
-          <div className="grid grid-cols-3 gap-1">
+        <Row label="Bottom Label Display">
+          <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-black/40 border border-white/10">
             {(['name', 'number', 'none'] as const).map((lbl) => (
               <button
                 key={lbl}
                 type="button"
                 onClick={() => handleBatchBottomLabel(lbl)}
-                className="px-2 py-1.5 rounded text-xs font-medium border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white capitalize transition-colors"
+                className="py-1.5 px-1 rounded-md text-[10px] font-medium uppercase text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               >
                 {lbl === 'none' ? 'Hidden' : lbl}
               </button>
@@ -1115,7 +1027,7 @@ function PlayerInspector({
             type="button"
             onClick={() => {
               movePlayerToBench(slideId, player.id);
-              setRightPanelTab('formation_sub');
+              setRightPanelTab('squad');
             }}
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[10px] font-bold transition-all cursor-pointer shadow-sm"
             title="Move player from pitch to bench"
@@ -1255,9 +1167,9 @@ function PlayerInspector({
 
       {/* 1. Vision (Vision Cone) */}
       {currentTab === 'vision' && (
-        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
+        <div className="space-y-3 p-3.5 rounded-xl bg-white/[0.03] border border-white/10">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
               <Eye size={14} className="text-blue-400" />
               Vision Cone
             </span>
@@ -1266,7 +1178,7 @@ function PlayerInspector({
               onClick={toggleVisionCone}
               className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 hasVisionCone
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400'
                   : 'bg-white/10 text-white/50 hover:text-white'
               }`}
             >
@@ -1276,7 +1188,7 @@ function PlayerInspector({
 
           {hasVisionCone && player.visionCone ? (
             <div className="space-y-3 pt-1">
-              <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-200/90 leading-tight">
+              <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-200/90 leading-tight">
                 💡 Drag vision cone handles directly on canvas to adjust
                 direction, length, and spread angle.
               </div>
@@ -1325,7 +1237,7 @@ function PlayerInspector({
             </div>
           ) : (
             <div className="py-6 text-center text-xs text-white/40">
-              Click "ON" to activate vision cone
+              Click &quot;ON&quot; to activate player vision cone
             </div>
           )}
         </div>
@@ -1333,9 +1245,9 @@ function PlayerInspector({
 
       {/* 2. Connector (Connect Line) */}
       {currentTab === 'connect' && (
-        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
+        <div className="space-y-3 p-3.5 rounded-xl bg-white/[0.03] border border-white/10">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
               <Link size={14} className="text-emerald-400" />
               Player Connectors
             </span>
@@ -1355,7 +1267,7 @@ function PlayerInspector({
               }`}
             >
               <Plus size={12} />
-              {isConnecting ? 'Selecting...' : 'Add'}
+              {isConnecting ? 'Selecting...' : 'Add Link'}
             </button>
           </div>
 
@@ -1381,11 +1293,15 @@ function PlayerInspector({
                 return (
                   <div
                     key={line.id}
-                    className="p-2 rounded-lg bg-white/5 border border-white/10 space-y-2 text-xs"
+                    className="p-2.5 rounded-lg bg-black/40 border border-white/10 space-y-2 text-xs"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-white/90 truncate">
-                        → {target?.name || `Player #${target?.shirtNo || '?'}`}
+                      <span className="font-medium text-white/90 truncate flex items-center gap-1">
+                        <Link size={12} className="text-emerald-400 shrink-0" />
+                        <span>
+                          →{' '}
+                          {target?.name || `Player #${target?.shirtNo || '?'}`}
+                        </span>
                       </span>
                       <button
                         type="button"
@@ -1439,7 +1355,7 @@ function PlayerInspector({
           ) : (
             !isConnecting && (
               <div className="py-6 text-center text-xs text-white/40">
-                Click "+ Add" to connect to another player
+                Click &quot;+ Add Link&quot; to connect to another player
               </div>
             )
           )}
@@ -1448,11 +1364,15 @@ function PlayerInspector({
 
       {/* 3. Solid Arrow */}
       {currentTab === 'arrow_solid' && (
-        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
-          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+        <div className="space-y-3 p-3.5 rounded-xl bg-white/[0.03] border border-white/10">
+          <span className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
             <MoveRight size={14} className="text-sky-400" />
             Solid Arrow (Pass / Shoot)
           </span>
+
+          <div className="p-2.5 rounded-lg bg-sky-500/10 border border-sky-500/20 text-[11px] text-sky-200 leading-relaxed">
+            Attach a direct pass or shot vector from this player.
+          </div>
 
           <div className="space-y-2">
             <button
@@ -1479,7 +1399,7 @@ function PlayerInspector({
                   endMarker: 'arrow',
                 });
               }}
-              className="w-full py-2 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 text-xs font-bold text-white transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+              className="w-full py-2.5 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 text-xs font-bold text-white transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
             >
               <Plus size={14} />+ Add solid arrow in player direction
             </button>
@@ -1489,11 +1409,15 @@ function PlayerInspector({
 
       {/* 4. Dashed Arrow */}
       {currentTab === 'arrow_dash' && (
-        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
-          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+        <div className="space-y-3 p-3.5 rounded-xl bg-white/[0.03] border border-white/10">
+          <span className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
             <DashedArrowIcon size={14} className="text-amber-400" />
             Dashed Arrow (Movement / Run)
           </span>
+
+          <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200 leading-relaxed">
+            Attach an off-the-ball run or tactical trajectory vector.
+          </div>
 
           <div className="space-y-2">
             <button
@@ -1520,7 +1444,7 @@ function PlayerInspector({
                   endMarker: 'arrow',
                 });
               }}
-              className="w-full py-2 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-xs font-bold text-white transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+              className="w-full py-2.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-xs font-bold text-white transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
             >
               <Plus size={14} />+ Add dashed arrow in player direction
             </button>
@@ -1530,9 +1454,9 @@ function PlayerInspector({
 
       {/* 5. Focus / Spotlight */}
       {currentTab === 'focus' && (
-        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
+        <div className="space-y-3 p-3.5 rounded-xl bg-white/[0.03] border border-white/10">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
               <Sparkles size={14} className="text-yellow-400" />
               Focus (Spotlight)
             </span>
@@ -1552,7 +1476,7 @@ function PlayerInspector({
               }}
               className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 player.focus?.enabled
-                  ? 'bg-yellow-500 text-black shadow-sm'
+                  ? 'bg-yellow-500 text-black shadow-sm ring-1 ring-yellow-300'
                   : 'bg-white/10 text-white/50 hover:text-white'
               }`}
             >
@@ -1562,7 +1486,7 @@ function PlayerInspector({
 
           {player.focus?.enabled ? (
             <div className="space-y-3 pt-1">
-              <div className="p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-[11px] text-yellow-200/90 leading-tight">
+              <div className="p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-[11px] text-yellow-200/90 leading-tight">
                 💡 Highlight key players with spotlight focus effect.
               </div>
 
@@ -1629,7 +1553,7 @@ function PlayerInspector({
             </div>
           ) : (
             <div className="py-6 text-center text-xs text-white/40">
-              Click "ON" to activate spotlight focus
+              Click &quot;ON&quot; to activate spotlight focus
             </div>
           )}
         </div>
@@ -1637,15 +1561,15 @@ function PlayerInspector({
 
       {/* 6. Badges */}
       {currentTab === 'badge' && (
-        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
-          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+        <div className="space-y-3.5 p-3.5 rounded-xl bg-white/[0.03] border border-white/10">
+          <span className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
             <Award size={14} className="text-purple-400" />
             Player Badges
           </span>
 
           {/* Existing badges */}
           {player.badges.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 py-1">
+            <div className="flex flex-wrap gap-1.5 p-2 rounded-lg bg-black/40 border border-white/10">
               {player.badges.map((b) => (
                 <span
                   key={b.id}
@@ -1666,169 +1590,286 @@ function PlayerInspector({
           )}
 
           {/* Preset Badges */}
-          <div className="flex items-center gap-1 flex-wrap">
-            <button
-              type="button"
-              onClick={() => addBadge('KEY', '#f59e0b', '#000000')}
-              className="px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold hover:bg-amber-500/30 transition-all cursor-pointer"
-            >
-              + KEY
-            </button>
-            <button
-              type="button"
-              onClick={() => addBadge('★', '#eab308', '#000000')}
-              className="px-2 py-1 rounded bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-[10px] font-bold hover:bg-yellow-500/30 transition-all cursor-pointer"
-            >
-              + ★
-            </button>
-            <button
-              type="button"
-              onClick={() => addBadge('C', '#3b82f6', '#ffffff')}
-              className="px-2 py-1 rounded bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[10px] font-bold hover:bg-blue-500/30 transition-all cursor-pointer"
-            >
-              + C
-            </button>
-            <button
-              type="button"
-              onClick={() => addBadge('TARGET', '#ef4444', '#ffffff')}
-              className="px-2 py-1 rounded bg-red-500/20 border border-red-500/40 text-red-300 text-[10px] font-bold hover:bg-red-500/30 transition-all cursor-pointer"
-            >
-              + TARGET
-            </button>
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase tracking-wider text-white/50 block">
+              Quick Presets
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => addBadge('KEY', '#f59e0b', '#000000')}
+                className="px-2.5 py-1 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold hover:bg-amber-500/30 transition-all cursor-pointer shadow-xs"
+              >
+                + KEY
+              </button>
+              <button
+                type="button"
+                onClick={() => addBadge('★', '#eab308', '#000000')}
+                className="px-2.5 py-1 rounded-md bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-[10px] font-bold hover:bg-yellow-500/30 transition-all cursor-pointer shadow-xs"
+              >
+                + ★
+              </button>
+              <button
+                type="button"
+                onClick={() => addBadge('C', '#3b82f6', '#ffffff')}
+                className="px-2.5 py-1 rounded-md bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[10px] font-bold hover:bg-blue-500/30 transition-all cursor-pointer shadow-xs"
+              >
+                + C
+              </button>
+              <button
+                type="button"
+                onClick={() => addBadge('TARGET', '#ef4444', '#ffffff')}
+                className="px-2.5 py-1 rounded-md bg-red-500/20 border border-red-500/40 text-red-300 text-[10px] font-bold hover:bg-red-500/30 transition-all cursor-pointer shadow-xs"
+              >
+                + TARGET
+              </button>
+            </div>
           </div>
 
           {/* Custom Badge Form */}
-          <div className="flex items-center gap-1 mt-1">
-            <input
-              type="text"
-              placeholder="Custom badge label"
-              value={newBadgeText}
-              onChange={(e) => setNewBadgeText(e.target.value)}
-              className="flex-1 px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-blue-500"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                addBadge(newBadgeText);
-                setNewBadgeText('');
-              }}
-              disabled={!newBadgeText.trim()}
-              className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-xs font-medium text-white transition-all cursor-pointer"
-            >
-              Add
-            </button>
+          <div className="pt-2 border-t border-white/5 space-y-1">
+            <span className="text-[10px] uppercase tracking-wider text-white/50 block">
+              Custom Label
+            </span>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                placeholder="Custom badge label"
+                value={newBadgeText}
+                onChange={(e) => setNewBadgeText(e.target.value)}
+                className="flex-1 px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  addBadge(newBadgeText);
+                  setNewBadgeText('');
+                }}
+                disabled={!newBadgeText.trim()}
+                className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-xs font-semibold text-white transition-all cursor-pointer"
+              >
+                Add
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* 7. Basic Settings */}
       {currentTab === 'basic' && (
-        <div className="space-y-3 p-3 rounded-xl bg-white/[0.02] border border-white/10">
-          <span className="text-xs font-bold text-white flex items-center gap-1.5">
-            <Settings size={14} className="text-zinc-400" />
-            Basic Info & Display Style
-          </span>
+        <div className="space-y-3.5">
+          {/* Card: Inside Content (Marker Visual Center) */}
+          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
+            <span className="text-[11px] font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
+              <Sparkles size={13} className="text-amber-400" />
+              Inside Marker Content
+            </span>
 
-          <Row label="Color">
-            <ColorInput
-              value={player.style.color}
-              onChange={(v) => upStyle({ color: v })}
+            <div className="grid grid-cols-3 gap-1.5 p-1 rounded-lg bg-black/40 border border-white/10">
+              <button
+                type="button"
+                onClick={() => upStyle({ insideContent: 'number' })}
+                className={`flex flex-col items-center justify-center py-2 px-1 rounded-md transition-all cursor-pointer ${
+                  player.style.insideContent === 'number'
+                    ? 'bg-blue-600 text-white font-bold shadow-md ring-1 ring-white/30'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Hash size={16} />
+                <span className="text-[10px] mt-1">Number</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (player.style.photoUrl) {
+                    upStyle({ insideContent: 'photo' });
+                  }
+                }}
+                disabled={!player.style.photoUrl}
+                className={`flex flex-col items-center justify-center py-2 px-1 rounded-md transition-all cursor-pointer ${
+                  player.style.insideContent === 'photo'
+                    ? 'bg-blue-600 text-white font-bold shadow-md ring-1 ring-white/30'
+                    : !player.style.photoUrl
+                      ? 'opacity-30 text-white/40 cursor-not-allowed'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+                title={
+                  player.style.photoUrl
+                    ? 'Display face photo'
+                    : 'Set Photo URL below to enable'
+                }
+              >
+                <ImageIcon size={16} />
+                <span className="text-[10px] mt-1">Photo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => upStyle({ insideContent: 'none' })}
+                className={`flex flex-col items-center justify-center py-2 px-1 rounded-md transition-all cursor-pointer ${
+                  player.style.insideContent === 'none'
+                    ? 'bg-blue-600 text-white font-bold shadow-md ring-1 ring-white/30'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Circle size={16} />
+                <span className="text-[10px] mt-1">Empty</span>
+              </button>
+            </div>
+
+            {/* Photo URL Input / Preview */}
+            <div className="pt-2 border-t border-white/5 space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-white/50">
+                <span>Photo URL</span>
+                {player.style.photoUrl && (
+                  <span className="text-emerald-400 font-mono text-[9px]">
+                    Linked
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {player.style.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={player.style.photoUrl}
+                    alt={player.name || 'Player'}
+                    className="w-7 h-7 rounded-full object-cover border border-white/20 shrink-0 bg-slate-800"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full border border-dashed border-white/20 flex items-center justify-center shrink-0 bg-white/5 text-white/30">
+                    <User size={12} />
+                  </div>
+                )}
+                <TextInput
+                  value={player.style.photoUrl ?? ''}
+                  onChange={(v) => {
+                    const trimmed = v.trim();
+                    upStyle({
+                      photoUrl: trimmed || undefined,
+                      insideContent:
+                        !trimmed && player.style.insideContent === 'photo'
+                          ? 'number'
+                          : trimmed && player.style.insideContent !== 'none'
+                            ? 'photo'
+                            : player.style.insideContent,
+                    });
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Card: Bottom Label & Identity */}
+          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
+            <span className="text-[11px] font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
+              <Tag size={13} className="text-sky-400" />
+              Name & Label Display
+            </span>
+
+            {/* Label Display Segmented Buttons */}
+            <Row label="Bottom Label Display">
+              <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-black/40 border border-white/10">
+                {(['name', 'number', 'none'] as const).map((lbl) => (
+                  <button
+                    key={lbl}
+                    type="button"
+                    onClick={() => upStyle({ bottomLabel: lbl })}
+                    className={`py-1.5 px-1 rounded-md text-[10px] font-medium uppercase transition-all cursor-pointer ${
+                      player.style.bottomLabel === lbl
+                        ? 'bg-white/20 text-white font-bold shadow-sm'
+                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {lbl === 'none' ? 'Hidden' : lbl}
+                  </button>
+                ))}
+              </div>
+            </Row>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-1">
+                <Row label="Number">
+                  <TextInput
+                    value={player.shirtNo ?? ''}
+                    onChange={(v) => up({ shirtNo: v })}
+                    maxLength={3}
+                  />
+                </Row>
+              </div>
+              <div className="col-span-2">
+                <Row label="Position">
+                  <TextInput
+                    value={player.position ?? ''}
+                    onChange={(v) => up({ position: v })}
+                  />
+                </Row>
+              </div>
+            </div>
+
+            <Row label="Player Name">
+              <TextInput
+                value={player.name ?? ''}
+                onChange={(v) => up({ name: v })}
+              />
+            </Row>
+          </div>
+
+          {/* Card: Style & Geometry */}
+          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
+            <span className="text-[11px] font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
+              <Settings size={13} className="text-zinc-400" />
+              Marker Style & Scale
+            </span>
+
+            <Row label="Player Color">
+              <ColorInput
+                value={player.style.color}
+                onChange={(v) => upStyle({ color: v })}
+              />
+            </Row>
+
+            <RangeInput
+              label="Marker Scale"
+              value={player.style.sizeScale}
+              min={0.4}
+              max={2.0}
+              step={0.1}
+              onChange={(v) => upStyle({ sizeScale: v })}
             />
-          </Row>
-          <RangeInput
-            label="Size Scale"
-            value={player.style.sizeScale}
-            min={0.4}
-            max={2.0}
-            step={0.1}
-            onChange={(v) => upStyle({ sizeScale: v })}
-          />
-          <RangeInput
-            label="Border Width"
-            value={player.style.strokeWidth}
-            min={0}
-            max={5}
-            step={0.5}
-            onChange={(v) => upStyle({ strokeWidth: v })}
-          />
-          <Row label="Team">
-            <select
-              value={player.team}
-              onChange={(e) => up({ team: e.target.value as Player['team'] })}
-              className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="home">Home</option>
-              <option value="away">Away</option>
-              <option value="neutral">Neutral</option>
-            </select>
-          </Row>
-          <Row label="Shirt Number">
-            <TextInput
-              value={player.shirtNo ?? ''}
-              onChange={(v) => up({ shirtNo: v })}
-              maxLength={3}
+
+            <RangeInput
+              label="Border Width"
+              value={player.style.strokeWidth}
+              min={0}
+              max={5}
+              step={0.5}
+              onChange={(v) => upStyle({ strokeWidth: v })}
             />
-          </Row>
-          <Row label="Player Name">
-            <TextInput
-              value={player.name ?? ''}
-              onChange={(v) => up({ name: v })}
-            />
-          </Row>
-          <Row label="Position">
-            <TextInput
-              value={player.position ?? ''}
-              onChange={(v) => up({ position: v })}
-            />
-          </Row>
-          <Row label="Label Display">
-            <select
-              value={player.style.bottomLabel}
-              onChange={(e) =>
-                upStyle({
-                  bottomLabel: e.target.value as Player['style']['bottomLabel'],
-                })
-              }
-              className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="name">Name</option>
-              <option value="number">Number</option>
-              <option value="none">Hidden</option>
-            </select>
-          </Row>
-          <Row label="Inside Content">
-            <select
-              value={player.style.insideContent}
-              onChange={(e) =>
-                upStyle({
-                  insideContent: e.target
-                    .value as Player['style']['insideContent'],
-                })
-              }
-              className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="number">Number</option>
-              {player.style.photoUrl && <option value="photo">Photo</option>}
-              <option value="none">None</option>
-            </select>
-          </Row>
-          <Row label="Photo URL">
-            <TextInput
-              value={player.style.photoUrl ?? ''}
-              onChange={(v) => {
-                const trimmed = v.trim();
-                upStyle({
-                  photoUrl: trimmed || undefined,
-                  insideContent:
-                    !trimmed && player.style.insideContent === 'photo'
-                      ? 'number'
-                      : trimmed && player.style.insideContent !== 'none'
-                        ? 'photo'
-                        : player.style.insideContent,
-                });
-              }}
-            />
-          </Row>
+
+            <Row label="Team Assignment">
+              <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-black/40 border border-white/10">
+                {(['home', 'away', 'neutral'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => up({ team: t })}
+                    className={`py-1.5 px-1 rounded-md text-[10px] font-medium capitalize transition-all cursor-pointer ${
+                      player.team === t
+                        ? t === 'home'
+                          ? 'bg-blue-600 text-white font-bold shadow-sm'
+                          : t === 'away'
+                            ? 'bg-red-600 text-white font-bold shadow-sm'
+                            : 'bg-zinc-600 text-white font-bold shadow-sm'
+                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </Row>
+          </div>
         </div>
       )}
 
