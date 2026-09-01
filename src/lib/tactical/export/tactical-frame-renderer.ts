@@ -9,6 +9,13 @@
  *   - Snapshot / GIF frame rendering
  */
 
+import {
+  MARKER_PATHS,
+  MARKER_VIEWBOX_SIZE,
+  SPOTLIGHT_BEAM_PATH,
+  SPOTLIGHT_VIEWBOX_HEIGHT,
+  SPOTLIGHT_VIEWBOX_WIDTH,
+} from '@/lib/tactical/marker-assets';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
 import type {
@@ -548,19 +555,65 @@ export function renderTacticalFrameToCanvas(
     ctx.save();
     ctx.globalAlpha = p.opacity;
 
+    // Spotlight Beam (Focus)
+    if (p.focus?.enabled) {
+      const focusColor = p.focus.color || '#ffffff';
+      const focusOpacity = (p.focus.opacity ?? 0.35) * p.opacity;
+      const focusRadiusMultiplier = p.focus.radius ?? 3;
+      const markerW = radius * 2 * (focusRadiusMultiplier / 3);
+      const spotlightScale = (markerW * 1.25) / SPOTLIGHT_VIEWBOX_WIDTH;
+      const tx = px - (SPOTLIGHT_VIEWBOX_WIDTH * spotlightScale) / 2;
+      // フォーカスの最下部をリング最下部 (py + radius * 0.55) に一致させる
+      const ty = py + radius * 0.55 - SPOTLIGHT_VIEWBOX_HEIGHT * spotlightScale;
+
+      ctx.save();
+      // 1. Spotlight Beam (光の柱)
+      if (typeof Path2D !== 'undefined') {
+        const beamPath = new Path2D(SPOTLIGHT_BEAM_PATH);
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.scale(spotlightScale, spotlightScale);
+        ctx.fillStyle = focusColor;
+        ctx.globalAlpha = focusOpacity * 0.85;
+        ctx.fill(beamPath);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
     // Vision Cone
     if (p.visionCone?.visible) {
       const cone = p.visionCone;
       const coneRadius = snap(toScreenSizeX(cone.radius || 20));
       const startAngle = cone.angleRad - cone.spreadRad / 2;
       const endAngle = cone.angleRad + cone.spreadRad / 2;
+      const isRing = p.style?.markerType === 'ring';
+      const rx = isRing ? radius * 1.15 : radius + 2;
+      const ry = isRing ? radius * 0.55 : radius + 2;
 
       ctx.save();
       ctx.globalAlpha = (cone.opacity ?? 0.25) * p.opacity;
       ctx.fillStyle = cone.color || p.style?.color || '#3b82f6';
       ctx.beginPath();
-      ctx.moveTo(px, py);
-      ctx.arc(px, py, coneRadius, startAngle, endAngle);
+      if (isRing) {
+        const steps = 36;
+        for (let i = 0; i <= steps; i++) {
+          const a = startAngle + (i / steps) * (endAngle - startAngle);
+          const x = px + coneRadius * Math.cos(a);
+          const y = py + coneRadius * Math.sin(a);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        for (let i = steps; i >= 0; i--) {
+          const a = startAngle + (i / steps) * (endAngle - startAngle);
+          const x = px + rx * Math.cos(a);
+          const y = py + ry * Math.sin(a);
+          ctx.lineTo(x, y);
+        }
+      } else {
+        ctx.moveTo(px, py);
+        ctx.arc(px, py, coneRadius, startAngle, endAngle);
+      }
       ctx.closePath();
       ctx.fill();
 
@@ -571,33 +624,80 @@ export function renderTacticalFrameToCanvas(
     }
 
     // ── 100% Visual Parity with player-layer.tsx ──
-    // 1. Player Main Body (Team Color)
-    ctx.beginPath();
-    ctx.arc(px, py, radius, 0, Math.PI * 2);
-    ctx.fillStyle =
-      p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
-    ctx.fill();
+    const isRingMarker = p.style?.markerType === 'ring';
 
-    // 2. Player Standard Stroke (White Ring)
-    const strokeWidth = p.style?.strokeWidth ?? 2;
-    ctx.lineWidth = Math.max(1.5, Math.round(strokeWidth * (w / 800)));
-    ctx.strokeStyle = p.style?.strokeColor || '#ffffff';
-    ctx.stroke();
+    if (isRingMarker) {
+      // ── 3D Foot Ring (立体足元楕円リング) ──
+      const ringScale = (radius * 2) / MARKER_VIEWBOX_SIZE;
+      const rtx = px - (MARKER_VIEWBOX_SIZE * ringScale) / 2;
+      const rty = py - (MARKER_VIEWBOX_SIZE * ringScale) / 2;
 
-    // 3. Shirt Number (Clean pure white text matching player-layer.tsx without strokeText)
-    const showInsideNumber =
-      (p.style?.insideContent === 'number' ||
-        p.style?.insideContent === undefined) &&
-      p.shirtNo;
+      if (typeof Path2D !== 'undefined') {
+        ctx.save();
+        ctx.translate(rtx, rty);
+        ctx.scale(ringScale, ringScale);
+        ctx.fillStyle =
+          p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
+        ctx.strokeStyle = p.style?.strokeColor || '#ffffff';
+        ctx.lineWidth = 0.5;
 
-    if (showInsideNumber && p.shirtNo) {
-      const numScale = p.style?.numberSizeScale ?? 1.0;
-      const numFontSize = Math.max(8, Math.round(radius * 0.9 * numScale));
-      ctx.font = `bold ${numFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(p.shirtNo, px, py);
+        for (const pathStr of MARKER_PATHS) {
+          const pathObj = new Path2D(pathStr);
+          ctx.fill(pathObj);
+          ctx.stroke(pathObj);
+        }
+        ctx.restore();
+      }
+
+      // Ring Center Glow Ellipse
+      ctx.beginPath();
+      ctx.ellipse(px, py, radius * 0.68, radius * 0.22, 0, 0, Math.PI * 2);
+      ctx.fillStyle =
+        p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
+      ctx.globalAlpha = p.opacity * 0.75;
+      ctx.fill();
+      ctx.globalAlpha = p.opacity;
+
+      // Shirt Number in Ring
+      if (p.style?.insideContent !== 'none' && p.shirtNo) {
+        const numScale = p.style?.numberSizeScale ?? 1.0;
+        const numFontSize = Math.max(8, Math.round(radius * 0.75 * numScale));
+        ctx.font = `bold ${numFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(p.shirtNo, px, py - radius * 0.1);
+      }
+    } else {
+      // ── 2D Player Circle ──
+      // 1. Player Main Body (Team Color)
+      ctx.beginPath();
+      ctx.arc(px, py, radius, 0, Math.PI * 2);
+      ctx.fillStyle =
+        p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
+      ctx.fill();
+
+      // 2. Player Standard Stroke (White Ring)
+      const strokeWidth = p.style?.strokeWidth ?? 2;
+      ctx.lineWidth = Math.max(1.5, Math.round(strokeWidth * (w / 800)));
+      ctx.strokeStyle = p.style?.strokeColor || '#ffffff';
+      ctx.stroke();
+
+      // 3. Shirt Number (Clean pure white text matching player-layer.tsx without strokeText)
+      const showInsideNumber =
+        (p.style?.insideContent === 'number' ||
+          p.style?.insideContent === undefined) &&
+        p.shirtNo;
+
+      if (showInsideNumber && p.shirtNo) {
+        const numScale = p.style?.numberSizeScale ?? 1.0;
+        const numFontSize = Math.max(8, Math.round(radius * 0.9 * numScale));
+        ctx.font = `bold ${numFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(p.shirtNo, px, py);
+      }
     }
 
     // 4. Player Name / Number Label (Matching player-layer.tsx bottom label)

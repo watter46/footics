@@ -71,6 +71,7 @@ export function transformPoints(
 // ─────────────────────────────────────────
 
 export const MarkerStyleSchema = z.object({
+  markerType: z.enum(['circle', 'ring']).default('circle'),
   insideContent: z.enum(['number', 'photo', 'none']).default('number'),
   photoUrl: z.string().url().optional(),
   bottomLabel: z.enum(['name', 'number', 'none']).default('name'),
@@ -146,7 +147,7 @@ export const PlayerFocusSchema = z.object({
   color: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
-    .default('#fbbf24'),
+    .default('#ffffff'),
   radius: z.number().min(1).max(10).default(3),
   opacity: z.number().min(0.1).max(0.9).default(0.35),
   style: z.enum(['spotlight', 'ring', 'halo']).default('spotlight'),
@@ -316,6 +317,15 @@ export const DEFAULT_BOUNDARY_BOX_9_16: BoundaryBox = {
   y: 7.25,
   width: 99.14,
   height: 85.5,
+  enabled: true,
+};
+
+/** スクリーンショット / 画像背景時のフィット境界線（周囲にポインタハンドル用 2% の余白を持たせて配置） */
+export const DEFAULT_BOUNDARY_BOX_SCREENSHOT: BoundaryBox = {
+  x: 2.0,
+  y: 2.0,
+  width: 96.0,
+  height: 96.0,
   enabled: true,
 };
 
@@ -496,6 +506,7 @@ export const DrawingToolSchema = z.enum([
   'polygon_zone',
   'eraser',
   'player',
+  'player-ring',
   'arrow-straight',
   'arrow-curved',
   'zone',
@@ -592,6 +603,7 @@ export function createDefaultSlide(
     texts: [],
     ball: { x: 50, y: 50, visible: true },
     boundaryBox: { ...boundaryBox },
+    backgroundType: 'pitch',
     transitionDurationMs: 1000,
     pauseMs: 500,
     easing: 'ease-in-out',
@@ -611,6 +623,7 @@ export function createDefaultPlayer(
     x,
     y,
     style: {
+      markerType: 'circle',
       insideContent: 'number',
       bottomLabel: 'name',
       color: primaryColor,

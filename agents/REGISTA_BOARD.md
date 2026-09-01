@@ -25,7 +25,7 @@
 | **AAWU 8-3-A** | 🖼️ **Snapshot Analysis Mode & Clean Canvas Initialization** | `regista-frontend`<br>`regista-canvas` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-tactical-capture-bridge.ts`<br>`src/components/features/tactical-unified/right-panel/right-panel.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | 1. キャプチャ受信時、背景を画像モードに切り替え、ピッチ線を完全非表示、スタメン22人を白紙クリア、ボールも非表示化。<br>2. 境界ボックス（Boundary Box）をデフォルトでスクリーンショット全面に自動フィット。<br>3. 右パネルおよびトップバーを自動で Properties（インスペクター）専用モードへ最適化。 | **DONE** ✅ |
 | **AAWU 8-3-B** | ⭕ **3D Foot Ring & Spotlight Pillar Rendering Integration** | `regista-canvas` | `src/lib/tactical/marker-assets.ts`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/types/tactical-unified.ts` | 1. `video-canvas` の `MARKER_PATHS`（立体足元楕円）および `SPOTLIGHT_BEAM_PATH`（上から注ぐ光の柱）を描画レイヤーに完全移植。<br>2. マーカーのスポットライトUIを光の柱デザインへ統一。<br>3. キャンバス上でのインタラクティブ変形・視野コーン楕円連動・最下部座標位置合わせを完了。 | **DONE** ✅ |
 | **AAWU 8-3-C** | 🛠️ **Ring Placement Toolbar & Snapshot-Centric Right Panel** | `regista-frontend` | `src/components/features/tactical-unified/toolbar/top-bar.tsx`<br>`src/components/features/tactical-unified/right-panel/right-panel.tsx`<br>`src/components/features/tactical-unified/inspector/inspector-panel.tsx` | 1. ツールバーに `[ ⭕ リング ]` 追加ボタンを配置（クリックでキャンバスにリングを配置）。<br>2. スクリーンショット時は右パネルの Formation/Squad を隠し Properties のみに最適化。<br>3. リング選択時に右パネルで矢印・FOV・コネクタ・マンマーク・スポットライト・小型スポイトを操作可能にする。 | **DONE** ✅ |
-| **AAWU 8-3-D** | 📑 **Timeline Right-Click Duplicate & Snapshot Context Carryover** | `regista-frontend`<br>`regista-data` | `src/components/features/tactical-unified/timeline/timeline-bar.tsx`<br>`src/components/features/tactical-unified/timeline/slide-item.tsx`<br>`src/stores/tactical-unified-store.ts` | 1. タイムラインスライドの右クリックで「スクリーンショット背景＋右パネル設定＋リング」を丸ごと引き継ぐ複製アクションを配備。<br>2. 通常の左クリック `+` は新規白紙スライド追加。 | **TODO** ⏳ |
+| **AAWU 8-3-D** | 📑 **Timeline Right-Click Duplicate & Snapshot Context Carryover** | `regista-frontend`<br>`regista-data` | `src/components/features/tactical-unified/timeline/timeline-bar.tsx`<br>`src/components/features/tactical-unified/timeline/slide-item.tsx`<br>`src/stores/tactical-unified-store.ts` | 1. タイムラインスライドの右クリックで「スクリーンショット背景＋右パネル設定＋リング」を丸ごと引き継ぐ複製アクションを配備。<br>2. 通常の左クリック `+` は新規白紙スライド追加（完全デフォルト初期化）。 | **DONE** ✅ |
 | **AAWU 8-4** | 🧹 **Legacy Video-Canvas Deprecation & Workspace Cleanup** | `regista-gm` | `pnpm-workspace.yaml`<br>`package.json`<br>`AGENTS.md` | 1. 独立 `video-canvas` パッケージの役割を `extension` に集約し、ビルドスクリプトと依存関係を最適化。<br>2. 拡張機能のビルド＆Windows同期ターゲットを `extension/` 単一に集約。 | **DONE** ✅ |
 
 
@@ -52,6 +52,12 @@
 | Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **AAWU 5-1** | 🎯 **Fix Arrow & Curve Control Point Parity** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | ベジェ曲線の頂点逆算ロジックを修正し、ドラッグ中・ドロップ後問わずポインタが常に線上（曲線の頂点）に完全に一致して配置されるようにする。 | **DONE** ✅ |
+
+- **2026-09-01**: [AAWU 8-3-D Complete: Timeline Right-Click Duplicate & Snapshot Context Carryover]
+  1. **`+` ボタン 左クリック（完全デフォルト初期化）**: スナップショット背景を引き継がず、通常のピッチ背景（`backgroundType: 'pitch'`）、4-4-2スタメン22人、センターボール、標準ピッチ境界ボックス、および `Formation` パネルへ完全初期化した新規白紙スライドを作成。
+  2. **`+` ボタン / スライド右クリック（完全引き継ぎ複製）**: スナップショット画像背景（`backgroundImageUrl` / `backgroundType: 'image'`）、リングマーカー（`style.markerType === 'ring'`）、スポットライト（光の柱）、アノテーション、および `Properties` インスペクターパネル設定を丸ごと引き継ぐ複製パイプラインを確立。
+  3. **タイムラインスライド切り替え（`setActiveSlide`）連動**: スライドごとの背景種別（`pitch` / `image`）および右パネル状態（`formation` / `inspector`）の自動双方向同期を実装。
+  4. Scoped 型チェック、Biome チェック、Vitest 単体テスト全158件完全パス。
 
 - **2026-09-01**: [AAWU 8-4 Complete: Legacy Video-Canvas Deprecation & Workspace Cleanup]
   1. 独立 `video-canvas` パッケージを完全削除し、全キャプチャ・ショートカット機能を `extension/` 単一パッケージへ完全集約。

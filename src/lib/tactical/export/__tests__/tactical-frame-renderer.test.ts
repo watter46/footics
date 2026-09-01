@@ -273,6 +273,69 @@ describe('Tactical Frame Renderer', () => {
     expect(ctx.arc).toHaveBeenCalled();
   });
 
+  it('renders 3D Foot Ring (markerType: ring) and Spotlight Pillar (focus: enabled)', () => {
+    const ringSlide: Slide = SlideSchema.parse({
+      id: 'slide-ring',
+      index: 0,
+      transitionDurationMs: 1000,
+      pauseMs: 500,
+      players: [
+        {
+          id: 'p-ring',
+          x: 40,
+          y: 50,
+          team: 'home',
+          shirtNo: '8',
+          name: 'Iniesta',
+          area: 'pitch',
+          style: {
+            markerType: 'ring',
+            insideContent: 'number',
+            bottomLabel: 'name',
+            color: '#3b82f6',
+            strokeColor: '#ffffff',
+            strokeWidth: 2,
+            sizeScale: 1,
+            numberSizeScale: 1,
+            labelSizeScale: 1,
+          },
+          focus: {
+            enabled: true,
+            color: '#fbbf24',
+            radius: 3,
+            opacity: 0.5,
+            style: 'spotlight',
+          },
+          connectLines: [],
+          badges: [],
+        },
+      ],
+      arrows: [],
+      zones: [],
+      texts: [],
+      ball: { x: 50, y: 50, visible: true },
+    });
+
+    const ctx = createMockContext();
+    renderTacticalFrameToCanvas(ctx, {
+      slides: [ringSlide],
+      timeMs: 0,
+      width: 1920,
+      height: 1080,
+      aspectRatio: '16:9',
+      transparent: false,
+    });
+
+    // Verify ellipse called for ring and spotlight puddle
+    expect(ctx.ellipse).toHaveBeenCalled();
+    // Verify shirt number rendered inside ring
+    expect(ctx.fillText).toHaveBeenCalledWith(
+      '8',
+      expect.any(Number),
+      expect.any(Number),
+    );
+  });
+
   it('benchmarks 180 frames (3s @ 60fps) CPU interpolation and draw generation', () => {
     const ctx = createMockContext();
     const frameCount = 180;

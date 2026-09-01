@@ -36,6 +36,49 @@ export default defineBackground(() => {
   browser.commands.onCommand.addListener(async (command, tab) => {
     console.info('🚀 [Footics BG] Command received:', command);
 
+    let activeTab = tab;
+    if (!activeTab || !activeTab.id) {
+      const tabs = await browser.tabs.query({
+        active: true,
+        lastFocusedWindow: true,
+      });
+      activeTab = tabs[0];
+    }
+    if (!activeTab || !activeTab.id) {
+      const tabs = await browser.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      activeTab = tabs[0];
+    }
+
+    // ── 1. Tactical キャプチャコマンドの処理 ──
+    if (command === 'capture-to-tactical') {
+      if (activeTab?.id) {
+        console.log(
+          '📸 [Footics BG] Sending TRIGGER_CAPTURE to active tab:',
+          activeTab.id,
+          activeTab.url,
+        );
+        try {
+          await sendMessage(
+            'TRIGGER_CAPTURE',
+            {},
+            `content-script@${activeTab.id}`,
+          );
+        } catch (err) {
+          console.error(
+            '❌ [Footics BG] Failed to send TRIGGER_CAPTURE to content script:',
+            err,
+          );
+        }
+      } else {
+        console.warn('❌ [Footics BG] No active tab found for capture');
+      }
+      return;
+    }
+
+    // ── 2. メモオーバーレイコマンドの処理 ──
     if (command !== 'toggle-match-memo' && command !== 'toggle-event-memo')
       return;
 
@@ -43,11 +86,6 @@ export default defineBackground(() => {
       command === 'toggle-match-memo' ? 'MATCH' : 'EVENT';
 
     const footicsTab = await findFooticsTab();
-
-    // 分析対象タブ（動画視聴中など、コマンドが押されたタブ）
-    const activeTab =
-      tab ||
-      (await browser.tabs.query({ active: true, currentWindow: true }))[0];
 
     const stored = await browser.storage.local.get(
       STORAGE_KEYS.LAST_ACTIVE_MATCH_ID,
@@ -110,6 +148,99 @@ export default defineBackground(() => {
         },
         `content-script@${activeTab.id}`,
       );
+    }
+  });
+
+  onMessage('REQUEST_TAB_CAPTURE', async () => {
+    try {
+      const dataUrl = await browser.tabs.captureVisibleTab({
+        format: 'png',
+      });
+      if (!dataUrl) {
+        return { success: false, error: 'captureVisibleTab returned empty' };
+      }
+      return { success: true, dataUrl };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('[Footics BG] Capture visible tab error:', errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  });
+
+  onMessage('SEND_CAPTURE_TO_TACTICAL', async ({ data }) => {
+    try {
+      console.log('🎯 [Footics BG] Routing capture to Tactical canvas:', data.payload?.id);
+
+      // 二重安全: Background 側でも確実に storage.local に保存
+      if (data.payload) {
+        await browser.storage.local.set({
+          [STORAGE_KEYS.TACTICAL_PENDING_CAPTURE]: data.payload,
+        });
+      }
+
+      const allTabs = await browser.tabs.query({});
+
+      // 1. 既存の /tactical タブを優先探索
+      const tacticalTab = allTabs.find(
+        (t) =>
+          t.url?.includes('/tactical') &&
+          FOOTICS_APP_URLS.some((url) => t.url?.includes(url)),
+      );
+
+      if (tacticalTab?.id) {
+        console.log(
+          '[Footics BG] Found existing /tactical tab:',
+          tacticalTab.id,
+        );
+        await browser.tabs.update(tacticalTab.id, { active: true });
+        if (tacticalTab.windowId) {
+          await browser.windows.update(tacticalTab.windowId, { focused: true });
+        }
+        try {
+          await sendMessage(
+            'TACTICAL_CAPTURE_RECEIVED',
+            data.payload,
+            `content-script@${tacticalTab.id}`,
+          );
+        } catch (msgErr) {
+          console.warn(
+            '[Footics BG] Failed to send direct message to tactical tab:',
+            msgErr,
+          );
+        }
+        return { success: true, tabId: tacticalTab.id, created: false };
+      }
+
+      // 2. /tactical 以外の Footics タブがあればそのオリジンで /tactical を開く
+      const footicsTab = allTabs.find((t) =>
+        FOOTICS_APP_URLS.some((url) => t.url?.includes(url)),
+      );
+
+      let targetUrl = 'http://localhost:3000/tactical';
+      if (footicsTab?.url) {
+        try {
+          const origin = new URL(footicsTab.url).origin;
+          targetUrl = `${origin}/tactical`;
+        } catch {}
+      }
+
+      console.log('[Footics BG] Creating new /tactical tab:', targetUrl);
+      const newTab = await browser.tabs.create({
+        url: targetUrl,
+        active: true,
+      });
+      if (newTab.windowId) {
+        await browser.windows.update(newTab.windowId, { focused: true });
+      }
+
+      return { success: true, tabId: newTab.id, created: true };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error(
+        '❌ [Footics BG] Failed to send capture to tactical:',
+        errorMsg,
+      );
+      return { success: false, error: errorMsg, created: false };
     }
   });
 

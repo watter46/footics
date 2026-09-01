@@ -79,6 +79,73 @@ export default defineContentScript({
       await addToSaveQueue(payload as Parameters<typeof addToSaveQueue>[0]);
     });
 
+    // ── Tactical キャプチャデータの中継パイプライン (Push & Pull) ──
+
+    const dispatchCaptureToApp = (payload: any) => {
+      if (!payload || !payload.dataUrl) return;
+      console.log(
+        '🎯 [ContentScript] Dispatching capture payload to Web App:',
+        payload.id,
+      );
+      // 1. window.postMessage による Main World への安全なシリアライズ転送
+      window.postMessage(
+        {
+          type: 'FOOTICS_TACTICAL_CAPTURE_PAYLOAD',
+          payload,
+        },
+        '*',
+      );
+      // 2. CustomEvent による二重通知
+      window.dispatchEvent(
+        new CustomEvent('footics-tactical-capture-received', {
+          detail: payload,
+        }),
+      );
+    };
+
+    // Background からの Tactical キャプチャデータ受信 (Push)
+    onMessage('TACTICAL_CAPTURE_RECEIVED', async ({ data: payload }) => {
+      if (!payload) return;
+      console.log(
+        '🎯 [ContentScript] Received TACTICAL_CAPTURE_RECEIVED via onMessage:',
+        payload.id,
+      );
+      dispatchCaptureToApp(payload);
+    });
+
+    // Web アプリ側からの「最新キャプチャデータちょうだい」リクエスト (Pull)
+    const handleCapturePullRequest = async () => {
+      try {
+        const stored = await browser.storage.local.get(
+          STORAGE_KEYS.TACTICAL_PENDING_CAPTURE,
+        );
+        const pending = stored[STORAGE_KEYS.TACTICAL_PENDING_CAPTURE];
+        if (pending && pending.dataUrl) {
+          if (Date.now() - (pending.timestamp || 0) < 60000) {
+            console.log(
+              '🎯 [ContentScript] Replying to app pull request with pending capture:',
+              pending.id,
+            );
+            dispatchCaptureToApp(pending);
+          }
+        }
+      } catch (err) {
+        console.warn('[ContentScript] handleCapturePullRequest failed:', err);
+      }
+    };
+
+    window.addEventListener('footics-request-pending-capture', handleCapturePullRequest);
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'FOOTICS_REQUEST_PENDING_CAPTURE') {
+        handleCapturePullRequest();
+      }
+    });
+
+    // 初期ロード時にも即時・遅延で pending capture をチェックしてディスパッチ
+    handleCapturePullRequest();
+    setTimeout(handleCapturePullRequest, 500);
+    setTimeout(handleCapturePullRequest, 1500);
+
     // ── Storage Queue の監視 ──
 
     browser.storage.onChanged.addListener(async (changes, areaName) => {

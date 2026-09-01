@@ -520,15 +520,31 @@ describe('tactical-unified-store', () => {
     expect(slide?.players.find((p) => p.id === player.id)).toBeDefined();
   });
 
-  it('restoreDefaultPitch と setImageBackground で背景が正しく切り替わる', () => {
+  it('restoreDefaultPitch と setImageBackground で背景が正しく切り替わり、選手が白紙クリアされ、境界線が全面フィットする', () => {
     const store = useTacticalUnifiedStore.getState();
+    expect(
+      store.project.slides[0]?.players.filter((p) => p.area === 'pitch'),
+    ).toHaveLength(22);
+
     store.setImageBackground('data:image/png;base64,sample');
-    expect(useTacticalUnifiedStore.getState().project.backgroundType).toBe(
-      'image',
-    );
-    expect(useTacticalUnifiedStore.getState().project.backgroundImageUrl).toBe(
+    const imageState = useTacticalUnifiedStore.getState();
+    expect(imageState.project.backgroundType).toBe('image');
+    expect(imageState.project.backgroundImageUrl).toBe(
       'data:image/png;base64,sample',
     );
+    expect(
+      imageState.project.slides[0]?.players.filter((p) => p.area === 'pitch'),
+    ).toHaveLength(0);
+    expect(
+      imageState.project.slides[0]?.players.filter((p) => p.area === 'bench'),
+    ).toHaveLength(22);
+    expect(imageState.project.slides[0]?.boundaryBox).toEqual({
+      x: 2.0,
+      y: 2.0,
+      width: 96.0,
+      height: 96.0,
+      enabled: true,
+    });
 
     store.restoreDefaultPitch();
     expect(useTacticalUnifiedStore.getState().project.backgroundType).toBe(
@@ -537,6 +553,21 @@ describe('tactical-unified-store', () => {
     expect(
       useTacticalUnifiedStore.getState().project.backgroundImageUrl,
     ).toBeUndefined();
+  });
+
+  it('clearPitchPlayers でピッチ上の選手が全員ベンチに退避され、ピッチが白紙クリアされる', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const slideId = store.activeSlideId;
+    expect(
+      store.project.slides[0]?.players.filter((p) => p.area === 'pitch'),
+    ).toHaveLength(22);
+
+    store.clearPitchPlayers(slideId);
+    const slide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(slide?.players.filter((p) => p.area === 'pitch')).toHaveLength(0);
+    expect(slide?.players.filter((p) => p.area === 'bench')).toHaveLength(22);
   });
 
   it('applyFormation で 4-3-3 が 11 選手に正しく適用される', () => {
@@ -635,6 +666,77 @@ describe('tactical-unified-store', () => {
       height: 85.5,
       enabled: true,
     });
+
+    // スクリーンショット / 画像背景モードのときは画像境界（2%余白内）にフィットする
+    store.setImageBackground('data:image/png;base64,sample');
+    slide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(slide?.boundaryBox).toEqual({
+      x: 2.0,
+      y: 2.0,
+      width: 96.0,
+      height: 96.0,
+      enabled: true,
+    });
+
+    // 境界線を変更した後に autoFitBoundaryBox を実行しても画像境界にフィットする
+    store.setBoundaryBox(slideId, {
+      x: 10,
+      y: 10,
+      width: 50,
+      height: 50,
+      enabled: true,
+    });
+    store.autoFitBoundaryBox(slideId);
+    slide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(slide?.boundaryBox).toEqual({
+      x: 2.0,
+      y: 2.0,
+      width: 96.0,
+      height: 96.0,
+      enabled: true,
+    });
+  });
+
+  it('addPlayerFromPalette で markerType: ring を指定して立体足元リング選手（デフォルト1.5倍）を追加でき、Eraser / Reset で削除できる', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const slideId = store.activeSlideId;
+    const playerId = store.addPlayerFromPalette('home', 45, 55, 'ring');
+
+    let slide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    const player = slide?.players.find((p) => p.id === playerId);
+    expect(player).toBeDefined();
+    expect(player?.style.markerType).toBe('ring');
+    expect(player?.style.sizeScale).toBe(1.5);
+    expect(player?.x).toBe(45);
+    expect(player?.y).toBe(55);
+
+    // 消しゴム (eraseAtPoint) でリングマーカーが削除される
+    store.eraseAtPoint(slideId, { x: 45, y: 55 }, 5.0);
+    slide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(slide?.players.find((p) => p.id === playerId)).toBeUndefined();
+
+    // 再度追加して resetSlideObjects で削除されることを検証
+    const newRingId = store.addPlayerFromPalette('home', 40, 60, 'ring');
+    expect(
+      useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId)
+        ?.players.find((p) => p.id === newRingId),
+    ).toBeDefined();
+
+    store.resetSlideObjects(slideId);
+    slide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(slide?.players.find((p) => p.id === newRingId)).toBeUndefined();
   });
 
   it('setPlayerFocus で選手のフォーカス（スポットライト）が正しく設定される', () => {
@@ -1035,16 +1137,19 @@ describe('tactical-unified-store', () => {
       expect(benchPlayer).toBeDefined();
 
       // スワップ実行
-      store.swapPlayers(slideId, pitchPlayer!.id, benchPlayer!.id);
+      if (!pitchPlayer || !benchPlayer) {
+        throw new Error('Players must be defined');
+      }
+      store.swapPlayers(slideId, pitchPlayer.id, benchPlayer.id);
 
       const slideAfter = useTacticalUnifiedStore
         .getState()
         .project.slides.find((s) => s.id === slideId);
       const swappedPitch = slideAfter?.players.find(
-        (p) => p.id === pitchPlayer!.id,
+        (p) => p.id === pitchPlayer.id,
       );
       const swappedBench = slideAfter?.players.find(
-        (p) => p.id === benchPlayer!.id,
+        (p) => p.id === benchPlayer.id,
       );
 
       expect(swappedPitch?.area).toBe('bench');

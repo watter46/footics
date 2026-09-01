@@ -35,10 +35,10 @@ export function AddSlideButton() {
     };
   }, [menuOpen]);
 
-  // 左クリック: Object-free Copy
+  // 左クリック: Blank Scene (白紙スライド追加)
   const handleLeftClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    addSlide(activeSlideId, 'object-free');
+    addSlide(activeSlideId, 'blank');
     setMenuOpen(false);
   };
 
@@ -53,20 +53,20 @@ export function AddSlideButton() {
   return (
     <div className="relative flex items-center shrink-0" ref={menuRef}>
       <div className="flex items-center rounded-lg border border-dashed border-white/20 bg-white/5 hover:border-blue-500/50 hover:bg-blue-500/10 transition-all">
-        {/* Main Add Button (L-Click: Object-free, R-Click: Full Copy) */}
+        {/* Main Add Button (L-Click: Blank Scene, R-Click: Full Copy) */}
         <button
           type="button"
           onClick={handleLeftClick}
           onContextMenu={handleContextMenu}
           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-white/70 hover:text-white transition-colors cursor-pointer group select-none"
-          title="Left Click: Add Step (Keep Pos, Clear Drawings)&#10;Right Click: Duplicate Full Scene"
-          aria-label="Add scene (Left-click: Keep Pos, Right-click: Duplicate Full)"
+          title="Left Click: Add Blank Scene&#10;Right Click: Duplicate Full Scene"
+          aria-label="Add scene (Left-click: Blank Scene, Right-click: Duplicate Full)"
         >
           <Plus
             size={14}
             className="text-blue-400 group-hover:scale-110 transition-transform"
           />
-          <span className="font-medium text-[11px]">Add Step</span>
+          <span className="font-medium text-[11px]">Add Scene</span>
         </button>
 
         {/* Dropdown toggle for options */}
@@ -94,28 +94,27 @@ export function AddSlideButton() {
             Add New Scene
           </div>
 
-          {/* Option 1: Object-free Copy (Default) */}
+          {/* Option 1: Blank Scene (Default Left Click) */}
           <button
             type="button"
             onClick={() => {
-              addSlide(activeSlideId, 'object-free');
+              addSlide(activeSlideId, 'blank');
               setMenuOpen(false);
             }}
-            className="w-full flex items-start gap-2 px-2 py-2 rounded-lg text-left hover:bg-blue-600/20 text-white transition-colors cursor-pointer group"
+            className="w-full flex items-start gap-2 px-2 py-2 rounded-lg text-left hover:bg-white/10 text-white transition-colors cursor-pointer group"
           >
-            <Sparkles size={14} className="text-blue-400 mt-0.5 shrink-0" />
+            <SquareDashed size={14} className="text-white/80 mt-0.5 shrink-0" />
             <div>
-              <div className="text-xs font-semibold text-white group-hover:text-blue-300">
-                Next Step (Keep Pos)
+              <div className="text-xs font-semibold text-white/90 group-hover:text-white">
+                Blank Scene (Left Click)
               </div>
-              <div className="text-[10px] text-white/50 leading-tight mt-0.5">
-                Copies player & ball positions, clears arrows & zones (Left
-                Click)
+              <div className="text-[10px] text-white/40 leading-tight mt-0.5">
+                Fresh default formation setup
               </div>
             </div>
           </button>
 
-          {/* Option 2: Full Duplicate */}
+          {/* Option 2: Full Duplicate (Right Click) */}
           <button
             type="button"
             onClick={() => {
@@ -127,30 +126,30 @@ export function AddSlideButton() {
             <Copy size={14} className="text-purple-400 mt-0.5 shrink-0" />
             <div>
               <div className="text-xs font-semibold text-white group-hover:text-purple-300">
-                Duplicate Full Scene
+                Duplicate Full Scene (Right Click)
               </div>
               <div className="text-[10px] text-white/50 leading-tight mt-0.5">
-                Exact clone of players and all drawings (Right Click)
+                Exact clone of background, rings, players & drawings
               </div>
             </div>
           </button>
 
-          {/* Option 3: Blank 4-4-2 Scene */}
+          {/* Option 3: Next Step (Keep Pos) */}
           <button
             type="button"
             onClick={() => {
-              addSlide(activeSlideId, 'blank');
+              addSlide(activeSlideId, 'object-free');
               setMenuOpen(false);
             }}
-            className="w-full flex items-start gap-2 px-2 py-2 rounded-lg text-left hover:bg-white/10 text-white transition-colors cursor-pointer group mt-1"
+            className="w-full flex items-start gap-2 px-2 py-2 rounded-lg text-left hover:bg-blue-600/20 text-white transition-colors cursor-pointer group mt-1"
           >
-            <SquareDashed size={14} className="text-white/60 mt-0.5 shrink-0" />
+            <Sparkles size={14} className="text-blue-400 mt-0.5 shrink-0" />
             <div>
-              <div className="text-xs font-semibold text-white/80 group-hover:text-white">
-                Blank Scene
+              <div className="text-xs font-semibold text-white group-hover:text-blue-300">
+                Next Step (Keep Pos)
               </div>
-              <div className="text-[10px] text-white/40 leading-tight mt-0.5">
-                Fresh default formation setup
+              <div className="text-[10px] text-white/50 leading-tight mt-0.5">
+                Copies player & ball positions, clears arrows & zones
               </div>
             </div>
           </button>

@@ -76,7 +76,7 @@ export function TimelineBar() {
           <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/70 font-mono text-[9px]">
             L-Click
           </span>
-          <span>Next Step</span>
+          <span>Add Scene</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/70 font-mono text-[9px]">

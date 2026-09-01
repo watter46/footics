@@ -43,6 +43,7 @@ import {
   createDefaultSlide,
   DEFAULT_BOUNDARY_BOX_9_16,
   DEFAULT_BOUNDARY_BOX_16_9,
+  DEFAULT_BOUNDARY_BOX_SCREENSHOT,
   transformCoord,
   transformPoints,
 } from '@/lib/types/tactical-unified';
@@ -208,6 +209,7 @@ interface TacticalUnifiedState {
     team: 'home' | 'away' | 'neutral',
     x: number,
     y: number,
+    markerType?: 'circle' | 'ring',
   ) => string;
   addCustomPlayer: (
     slideId: string,
@@ -235,6 +237,7 @@ interface TacticalUnifiedState {
     deltaY: number,
   ) => void;
   movePlayerToBench: (slideId: string, playerId: string) => void;
+  clearPitchPlayers: (slideId?: string) => void;
   movePlayerToPitch: (
     slideId: string,
     playerId: string,
@@ -777,15 +780,49 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
       })),
 
     setImageBackground: (url) =>
-      set((s) => ({
-        project: {
-          ...s.project,
-          backgroundType: 'image',
-          backgroundImageUrl: url,
-          updatedAt: new Date().toISOString(),
-        },
-        isDirty: true,
-      })),
+      set((s) => {
+        const targetSlideId = s.activeSlideId;
+        const screenshotBox: BoundaryBox = {
+          ...DEFAULT_BOUNDARY_BOX_SCREENSHOT,
+        };
+
+        return {
+          ...recordHistory(s),
+          project: {
+            ...s.project,
+            backgroundType: 'image',
+            backgroundImageUrl: url,
+            updatedAt: new Date().toISOString(),
+            slides: s.project.slides.map((sl) => {
+              if (sl.id !== targetSlideId) return sl;
+              return {
+                ...sl,
+                backgroundType: 'image',
+                backgroundImageUrl: url,
+                boundaryBox: screenshotBox,
+                ball: { ...sl.ball, visible: false },
+                players: sl.players.map((p) => ({
+                  ...p,
+                  area: 'bench' as const,
+                  visionCone: undefined,
+                  badges: [],
+                  connectLines: [],
+                  focus: undefined,
+                })),
+                arrows: sl.arrows.filter(
+                  (a) => !a.sourcePlayerId && !a.targetPlayerId,
+                ),
+              };
+            }),
+          },
+          panels: {
+            ...s.panels,
+            rightPanelTab: 'inspector',
+          },
+          selectedObjects: [],
+          isDirty: true,
+        };
+      }),
 
     swapTeamSides: (slideId) =>
       set((s) => {
@@ -876,11 +913,13 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     autoFitBoundaryBox: (slideId) =>
       set((s) => {
         const targetSlideId = slideId ?? s.activeSlideId;
+        const slide = s.project.slides.find((sl) => sl.id === targetSlideId);
         const isPitchBg =
-          s.project.backgroundType === 'pitch' || !s.project.backgroundType;
+          (slide?.backgroundType ?? s.project.backgroundType ?? 'pitch') ===
+          'pitch';
         const isVertical = s.project.aspectRatio === '9:16';
 
-        // ピッチ外枠線（105m x 68m）の周囲に均等な余白（ピクセル換算で上下左右同一）を持たせた境界線
+        // ピッチ外枠線（105m x 68m）またはスクリーンショット（余白2%）に合わせた境界線
         let box: BoundaryBox;
         if (isPitchBg) {
           if (isVertical) {
@@ -901,13 +940,9 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             };
           }
         } else {
-          // 画像背景などの場合は全体に対して均等パディング
+          // スクリーンショット / 画像背景モードのときは画像境界に合わせたフィット
           box = {
-            x: 2.0,
-            y: 2.0,
-            width: 96.0,
-            height: 96.0,
-            enabled: true,
+            ...DEFAULT_BOUNDARY_BOX_SCREENSHOT,
           };
         }
 
@@ -935,14 +970,16 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             arrows: [],
             zones: [],
             texts: [],
-            players: sl.players.map((p) => ({
-              ...p,
-              visionCone: undefined,
-              connectLines: [],
-              badges: [],
-              focus: undefined,
-              trajectory: undefined,
-            })),
+            players: sl.players
+              .filter((p) => p.style.markerType !== 'ring')
+              .map((p) => ({
+                ...p,
+                visionCone: undefined,
+                connectLines: [],
+                badges: [],
+                focus: undefined,
+                trajectory: undefined,
+              })),
             boundaryBox: { ...defaultBox },
           })),
           selectedObjects: [],
@@ -1061,6 +1098,10 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           ...(JSON.parse(JSON.stringify(currentSlide)) as Slide),
           id: crypto.randomUUID(),
           label: `${currentSlide.label ?? 'Scene'} (copy)`,
+          backgroundImageUrl:
+            currentSlide.backgroundImageUrl ?? p.backgroundImageUrl,
+          backgroundType:
+            currentSlide.backgroundType ?? p.backgroundType ?? 'pitch',
         };
       } else {
         // 'object-free': 選手とボール座標・スタイルを維持し、矢印・ゾーン・テキストなどのアノテーションをクリア
@@ -1094,8 +1135,10 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           transitionDurationMs: currentSlide.transitionDurationMs ?? 1000,
           pauseMs: currentSlide.pauseMs ?? 500,
           easing: currentSlide.easing ?? 'ease-in-out',
-          backgroundImageUrl: currentSlide.backgroundImageUrl,
-          backgroundType: currentSlide.backgroundType,
+          backgroundImageUrl:
+            currentSlide.backgroundImageUrl ?? p.backgroundImageUrl,
+          backgroundType:
+            currentSlide.backgroundType ?? p.backgroundType ?? 'pitch',
         };
       }
 
@@ -1110,14 +1153,25 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           nextSlides.push(newSlide);
         }
         const indexedSlides = nextSlides.map((sl, i) => ({ ...sl, index: i }));
+        const isImageBg = newSlide.backgroundType === 'image';
 
         return {
           ...recordHistory(s),
           project: {
             ...s.project,
+            backgroundType: newSlide.backgroundType ?? 'pitch',
+            backgroundImageUrl: newSlide.backgroundImageUrl,
             slides: indexedSlides,
             activeSlideId: newSlide.id,
             updatedAt: new Date().toISOString(),
+          },
+          panels: {
+            ...s.panels,
+            rightPanelTab: isImageBg
+              ? 'inspector'
+              : mode === 'blank'
+                ? 'formation'
+                : s.panels.rightPanelTab,
           },
           activeSlideId: newSlide.id,
           selectedObjects: [],
@@ -1142,13 +1196,25 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           s.activeSlideId === slideId
             ? (remaining[0]?.id ?? remaining[remaining.length - 1]?.id ?? '')
             : s.activeSlideId;
+        const activeSlideObj = remaining.find((sl) => sl.id === newActive);
+        const isImageBg = activeSlideObj?.backgroundType === 'image';
         return {
           ...recordHistory(s),
           project: {
             ...s.project,
+            backgroundType: activeSlideObj?.backgroundType ?? 'pitch',
+            backgroundImageUrl: activeSlideObj?.backgroundImageUrl,
             slides: remaining,
             activeSlideId: newActive,
             updatedAt: new Date().toISOString(),
+          },
+          panels: {
+            ...s.panels,
+            rightPanelTab: isImageBg
+              ? 'inspector'
+              : s.panels.rightPanelTab === 'inspector'
+                ? 'formation'
+                : s.panels.rightPanelTab,
           },
           activeSlideId: newActive,
           isDirty: true,
@@ -1179,7 +1245,27 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
       }),
 
     setActiveSlide: (slideId) =>
-      set({ activeSlideId: slideId, selectedObjects: [] }),
+      set((s) => {
+        const targetSlide = s.project.slides.find((sl) => sl.id === slideId);
+        const isImageBg = targetSlide?.backgroundType === 'image';
+        return {
+          activeSlideId: slideId,
+          selectedObjects: [],
+          project: {
+            ...s.project,
+            backgroundType: targetSlide?.backgroundType ?? 'pitch',
+            backgroundImageUrl: targetSlide?.backgroundImageUrl,
+          },
+          panels: {
+            ...s.panels,
+            rightPanelTab: isImageBg
+              ? 'inspector'
+              : s.panels.rightPanelTab === 'inspector'
+                ? 'formation'
+                : s.panels.rightPanelTab,
+          },
+        };
+      }),
 
     updateSlideLabel: (slideId, label) =>
       set((s) => ({
@@ -1213,7 +1299,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         isDirty: true,
       })),
 
-    addPlayerFromPalette: (team, x, y) => {
+    addPlayerFromPalette: (team, x, y, markerType = 'circle') => {
       const primary =
         team === 'home'
           ? get().project.homeColor.primary
@@ -1221,6 +1307,10 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             ? get().project.awayColor.primary
             : '#6b7280';
       const player = createDefaultPlayer(team, x, y, primary);
+      player.style.markerType = markerType;
+      if (markerType === 'ring') {
+        player.style.sizeScale = 1.5;
+      }
       get().addPlayer(player);
       return player.id;
     },
@@ -1420,6 +1510,30 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         isDirty: true,
         selectedObjects: s.selectedObjects.filter((o) => o.id !== playerId),
       })),
+
+    clearPitchPlayers: (slideId) =>
+      set((s) => {
+        const targetSlideId = slideId ?? s.activeSlideId;
+        return {
+          ...recordHistory(s),
+          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
+            ...sl,
+            players: sl.players.map((p) => ({
+              ...p,
+              area: 'bench' as const,
+              visionCone: undefined,
+              badges: [],
+              connectLines: [],
+              focus: undefined,
+            })),
+            arrows: sl.arrows.filter(
+              (a) => !a.sourcePlayerId && !a.targetPlayerId,
+            ),
+          })),
+          isDirty: true,
+          selectedObjects: [],
+        };
+      }),
 
     movePlayerToPitch: (slideId, playerId, x = 50, y = 50) =>
       set((s) => ({
@@ -2078,40 +2192,49 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             (t) => Math.hypot(t.x - point.x, t.y - point.y) > radius,
           );
 
-          // 4. 選手単体は消さないが、マーカーオプション（視野コーン・バッジ・コネクト線）は個別消去可能
-          const updatedPlayers = sl.players.map((player) => {
-            let visionCone = player.visionCone;
-            if (visionCone) {
-              const dist = Math.hypot(player.x - point.x, player.y - point.y);
-              if (dist <= radius + visionCone.radius && dist >= 3.0) {
-                visionCone = undefined;
+          // 4. リングマーカー（描画オブジェクトとしての3D足元リング）は消しゴムで削除可能、通常選手はマーカーオプション（視野コーン・バッジ・コネクト線）を個別消去
+          const updatedPlayers = sl.players
+            .filter((player) => {
+              if (player.style.markerType === 'ring') {
+                return (
+                  Math.hypot(player.x - point.x, player.y - point.y) > radius
+                );
               }
-            }
+              return true;
+            })
+            .map((player) => {
+              let visionCone = player.visionCone;
+              if (visionCone) {
+                const dist = Math.hypot(player.x - point.x, player.y - point.y);
+                if (dist <= radius + visionCone.radius && dist >= 3.0) {
+                  visionCone = undefined;
+                }
+              }
 
-            const badges = player.badges.filter((b) => {
-              const bx = player.x + (b.offsetX || 0) * 0.1;
-              const by = player.y + (b.offsetY || 0) * 0.1;
-              return Math.hypot(bx - point.x, by - point.y) > radius;
+              const badges = player.badges.filter((b) => {
+                const bx = player.x + (b.offsetX || 0) * 0.1;
+                const by = player.y + (b.offsetY || 0) * 0.1;
+                return Math.hypot(bx - point.x, by - point.y) > radius;
+              });
+
+              const connectLines = player.connectLines.filter((cl) => {
+                const target = sl.players.find((p) => p.id === cl.toPlayerId);
+                if (!target) return false;
+                const dist = distToSegment(
+                  point,
+                  { x: player.x, y: player.y },
+                  { x: target.x, y: target.y },
+                );
+                return dist > radius;
+              });
+
+              return {
+                ...player,
+                visionCone,
+                badges,
+                connectLines,
+              };
             });
-
-            const connectLines = player.connectLines.filter((cl) => {
-              const target = sl.players.find((p) => p.id === cl.toPlayerId);
-              if (!target) return false;
-              const dist = distToSegment(
-                point,
-                { x: player.x, y: player.y },
-                { x: target.x, y: target.y },
-              );
-              return dist > radius;
-            });
-
-            return {
-              ...player,
-              visionCone,
-              badges,
-              connectLines,
-            };
-          });
 
           return {
             ...sl,

@@ -154,6 +154,109 @@ describe('AAWU 3-2: Timeline & Slide Operations Store', () => {
     expect(newSlide.texts[0].content).toBe('Cover space');
   });
 
+  it('AAWU 8-3-D: duplicateSlide carries over snapshot background, ring markers, and inspector settings', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const slide1Id = store.activeSlideId;
+
+    // 1. スナップショット画像を背景に設定
+    store.setImageBackground('data:image/png;base64,mock-capture-frame');
+
+    // 2. リングマーカーを追加
+    const ringPlayerId = store.addPlayerFromPalette('home', 35, 60, 'ring');
+
+    // 3. スポットライト（光の柱）やコネクタを設定
+    store.setPlayerFocus(slide1Id, ringPlayerId, {
+      enabled: true,
+      color: '#38bdf8',
+      radius: 4,
+      opacity: 0.5,
+      style: 'spotlight',
+    });
+
+    // 現在の状態確認
+    const stateBefore = useTacticalUnifiedStore.getState();
+    expect(stateBefore.project.backgroundType).toBe('image');
+    expect(stateBefore.project.backgroundImageUrl).toBe(
+      'data:image/png;base64,mock-capture-frame',
+    );
+    expect(stateBefore.panels.rightPanelTab).toBe('inspector');
+
+    // 4. 右クリック複製（duplicateSlide）を実行
+    const dupSlideId = store.duplicateSlide(slide1Id);
+
+    const stateAfter = useTacticalUnifiedStore.getState();
+    expect(stateAfter.project.slides.length).toBe(2);
+    expect(stateAfter.activeSlideId).toBe(dupSlideId);
+    expect(stateAfter.panels.rightPanelTab).toBe('inspector');
+
+    const duplicatedSlide = stateAfter.project.slides.find(
+      (sl) => sl.id === dupSlideId,
+    )!;
+    expect(duplicatedSlide.backgroundType).toBe('image');
+    expect(duplicatedSlide.backgroundImageUrl).toBe(
+      'data:image/png;base64,mock-capture-frame',
+    );
+
+    // リングマーカーとスポットライトがそのまま複製されていることを検証
+    const duplicatedRing = duplicatedSlide.players.find(
+      (p) => p.id === ringPlayerId,
+    );
+    expect(duplicatedRing).toBeDefined();
+    expect(duplicatedRing?.style.markerType).toBe('ring');
+    expect(duplicatedRing?.focus?.style).toBe('spotlight');
+    expect(duplicatedRing?.x).toBe(35);
+    expect(duplicatedRing?.y).toBe(60);
+  });
+
+  it('AAWU 8-3-D: addSlide with blank mode creates a fresh 4-4-2 scene with pitch background and resets everything to default', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const slide1Id = store.activeSlideId;
+
+    // スナップショットモードにしておく
+    store.setImageBackground('data:image/png;base64,snapshot');
+    expect(useTacticalUnifiedStore.getState().project.backgroundType).toBe('image');
+    expect(useTacticalUnifiedStore.getState().panels.rightPanelTab).toBe('inspector');
+
+    // 左クリック「+」相当 (blank mode)
+    const blankSlideId = store.addSlide(slide1Id, 'blank');
+
+    const state = useTacticalUnifiedStore.getState();
+    expect(state.project.slides.length).toBe(2);
+    expect(state.activeSlideId).toBe(blankSlideId);
+    // すべてにおいてデフォルトに戻る
+    expect(state.project.backgroundType).toBe('pitch');
+    expect(state.project.backgroundImageUrl).toBeUndefined();
+    expect(state.panels.rightPanelTab).toBe('formation');
+
+    const blankSlide = state.project.slides.find(
+      (sl) => sl.id === blankSlideId,
+    )!;
+    expect(blankSlide.backgroundType).toBe('pitch');
+    expect(blankSlide.backgroundImageUrl).toBeUndefined();
+    expect(blankSlide.players.length).toBe(22);
+    expect(blankSlide.players.every((p) => p.area === 'pitch')).toBe(true);
+    expect(blankSlide.players.every((p) => p.style.markerType === 'circle')).toBe(true);
+    expect(blankSlide.arrows.length).toBe(0);
+    expect(blankSlide.zones.length).toBe(0);
+    expect(blankSlide.texts.length).toBe(0);
+    expect(blankSlide.ball.visible).toBe(true);
+    expect(blankSlide.ball.x).toBe(50);
+    expect(blankSlide.ball.y).toBe(50);
+
+    // スライド1（スナップショット）に切り替えるとスナップショット表示に戻る
+    store.setActiveSlide(slide1Id);
+    const slide1State = useTacticalUnifiedStore.getState();
+    expect(slide1State.project.backgroundType).toBe('image');
+    expect(slide1State.project.backgroundImageUrl).toBe('data:image/png;base64,snapshot');
+    expect(slide1State.panels.rightPanelTab).toBe('inspector');
+
+    // 再度スライド2（白紙デフォルト）に切り替えるとデフォルトに戻る
+    store.setActiveSlide(blankSlideId);
+    const slide2State = useTacticalUnifiedStore.getState();
+    expect(slide2State.project.backgroundType).toBe('pitch');
+    expect(slide2State.panels.rightPanelTab).toBe('formation');
+  });
+
   it('handles playback toggling and stopping', () => {
     const store = useTacticalUnifiedStore.getState();
     expect(store.isPlaying).toBe(false);

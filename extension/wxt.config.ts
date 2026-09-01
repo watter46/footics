@@ -34,9 +34,22 @@ export default defineConfig({
   manifest: {
     name: 'Footics Sidepanel',
     version: '0.0.0',
-    permissions: ['sidePanel', 'storage', 'tabs', 'activeTab'],
+    permissions: [
+      'sidePanel',
+      'storage',
+      'tabs',
+      'activeTab',
+      'clipboardWrite',
+      'unlimitedStorage',
+    ],
     host_permissions: ['<all_urls>'],
     commands: {
+      'capture-to-tactical': {
+        suggested_key: {
+          default: 'Alt+S',
+        },
+        description: 'Capture video frame and send to Footics Tactical',
+      },
       'toggle-match-memo': {
         suggested_key: {
           default: 'Alt+W',

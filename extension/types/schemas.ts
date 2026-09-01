@@ -91,3 +91,19 @@ export const SaveQueueSchema = z.array(SaveQueueItemSchema);
 
 export type SaveQueueItem = z.infer<typeof SaveQueueItemSchema>;
 export type SaveQueue = z.infer<typeof SaveQueueSchema>;
+
+/**
+ * Tactical Direct Import Payload Schema
+ */
+export const TacticalCapturePayloadSchema = z.object({
+  id: z.string(),
+  dataUrl: z.string(),
+  timestamp: z.number(),
+  sourceUrl: z.string().optional(),
+  title: z.string().optional(),
+});
+
+export type TacticalCapturePayload = z.infer<
+  typeof TacticalCapturePayloadSchema
+>;
+

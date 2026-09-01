@@ -38,6 +38,24 @@ declare module 'webext-bridge' {
 
     /** 本体アプリのデータ更新を要求（Main Worldへの通知） */
     REFRESH_APP: { matchId: string };
+
+    /** 動画キャプチャトリガー（Background -> Content Script） */
+    TRIGGER_CAPTURE: Record<string, never>;
+
+    /** タブキャプチャ要求（Content Script -> Background） */
+    REQUEST_TAB_CAPTURE: ProtocolWithReturn<
+      Record<string, never>,
+      { success: boolean; dataUrl?: string; error?: string }
+    >;
+
+    /** キャプチャデータを Tactical 画面へ転送（Content Script -> Background） */
+    SEND_CAPTURE_TO_TACTICAL: ProtocolWithReturn<
+      { payload: import('./schemas').TacticalCapturePayload },
+      { success: boolean; tabId?: number; created: boolean; error?: string }
+    >;
+
+    /** キャプチャデータ受信通知（Background -> Content Script） */
+    TACTICAL_CAPTURE_RECEIVED: import('./schemas').TacticalCapturePayload;
   }
 }
 
@@ -45,4 +63,6 @@ export type {
   ExtensionMessage,
   MatchInfoResponse,
   MemoMode,
+  TacticalCapturePayload,
 } from './schemas';
+

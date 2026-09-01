@@ -16,16 +16,16 @@ describe('TimelineBar Component', () => {
     expect(screen.getByText('1')).toBeDefined();
     expect(
       screen.getByRole('button', {
-        name: /add scene \(left-click: keep pos, right-click: duplicate full\)/i,
+        name: /add scene/i,
       }),
     ).toBeDefined();
   });
 
-  it('adds an object-free scene on left click', () => {
+  it('adds a blank scene on left click', () => {
     render(<TimelineBar />);
 
     const addBtn = screen.getByRole('button', {
-      name: /add scene \(left-click: keep pos, right-click: duplicate full\)/i,
+      name: /add scene/i,
     });
 
     fireEvent.click(addBtn);
@@ -39,7 +39,7 @@ describe('TimelineBar Component', () => {
     render(<TimelineBar />);
 
     const addBtn = screen.getByRole('button', {
-      name: /add scene \(left-click: keep pos, right-click: duplicate full\)/i,
+      name: /add scene/i,
     });
 
     fireEvent.contextMenu(addBtn);

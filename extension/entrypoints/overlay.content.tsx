@@ -1,12 +1,22 @@
 import { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
-import { onMessage } from 'webext-bridge/content-script';
+import { onMessage, sendMessage } from 'webext-bridge/content-script';
 import { SuccessToast } from '../components/ui/SuccessToast';
+import {
+  findVideoElement,
+  prepareDRMHardenedUI,
+  waitForNextFrames,
+} from '../features/capture/drm-capture-engine';
+import { sendCaptureToTactical } from '../features/capture/tactical-bridge';
+import {
+  calculateContainVideoCrop,
+  cropCapturedImage,
+} from '../features/capture/video-cropper';
 import { MemoOverlayBridge } from '../features/memo-overlay/memo-overlay-bridge';
+
 import { useOverlayShortcutInterceptor } from '../hooks/use-overlay-shortcut-interceptor';
 import { useOverlayStore } from '../stores/useOverlayStore';
 import { cn } from '../utils/cn';
-import { findVideoElement } from '../utils/video';
 import '../assets/overlay.css';
 
 export default defineContentScript({
@@ -49,6 +59,74 @@ export default defineContentScript({
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     ctx.onInvalidated(() => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    });
+
+    // ── キャプチャパイプラインのハンドラ ──
+    onMessage('TRIGGER_CAPTURE', async () => {
+      console.log('📸 [Footics Capture] Capture trigger received');
+      const video = findVideoElement();
+      const cleanup = video ? prepareDRMHardenedUI(video).cleanup : () => {};
+
+      try {
+        if (video) {
+          // GPU合成とスタイル適用が確実に完了するまで待機
+          await waitForNextFrames(3);
+        }
+
+        const res = await sendMessage('REQUEST_TAB_CAPTURE', {}, 'background');
+        if (res?.success && res.dataUrl) {
+          let finalDataUrl = res.dataUrl;
+
+          if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+            const cropRect = calculateContainVideoCrop({
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight,
+              viewportWidth: window.innerWidth,
+              viewportHeight: window.innerHeight,
+              devicePixelRatio: window.devicePixelRatio,
+            });
+
+            try {
+              finalDataUrl = await cropCapturedImage(
+                res.dataUrl,
+                cropRect,
+                'image/png',
+              );
+            } catch (cropErr) {
+              console.warn(
+                '⚠️ [Footics Capture] Auto crop failed, using original dataUrl:',
+                cropErr,
+              );
+            }
+          }
+
+          console.log(
+            '✅ [Footics Capture] Frame captured & cropped successfully:',
+            { dataLength: finalDataUrl.length },
+          );
+
+          // Tactical 画面への直接転送パイプラインを実行
+          const bridgeResult = await sendCaptureToTactical(finalDataUrl, {
+            sourceUrl: window.location.href,
+            title: document.title,
+          });
+
+          if (bridgeResult.success) {
+            useOverlayStore
+              .getState()
+              .setToast('🎯 Tactical画面へ転送しました');
+          }
+        } else {
+          console.error(
+            '❌ [Footics Capture] Tab capture returned no data:',
+            res?.error,
+          );
+        }
+      } catch (err) {
+        console.error('❌ [Footics Capture] Capture execution failed:', err);
+      } finally {
+        cleanup();
+      }
     });
   },
 });
