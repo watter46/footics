@@ -79,8 +79,10 @@ export class AgentRuntime {
     return this.toolExecutor;
   }
 
-  registerTool(tool: AgentTool): void {
-    this.toolExecutor.registerTool(tool);
+  registerTool<TParams extends Record<string, unknown> = Record<string, unknown>, TResult = unknown>(
+    tool: AgentTool<TParams, TResult>,
+  ): void {
+    this.toolExecutor.registerTool(tool as unknown as AgentTool);
   }
 
   async executeTurn(params: TurnExecutionParams): Promise<TurnExecutionResult> {

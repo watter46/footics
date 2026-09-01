@@ -4,6 +4,10 @@ import {
   MessageTypes,
   type RequestTabCaptureMessage,
 } from '../lib/message-types';
+import {
+  calculateContainVideoCrop,
+  cropCapturedImage,
+} from '../lib/video-cropper';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -59,14 +63,31 @@ export default defineContentScript({
         )) as any;
 
         if (response?.success) {
+          // 余白黒帯（レターボックス / ピラーボックス）の精密自動計算
+          const cropRect = calculateContainVideoCrop({
+            videoWidth: video.videoWidth,
+            videoHeight: video.videoHeight,
+            viewportWidth: window.innerWidth,
+            viewportHeight: window.innerHeight,
+            devicePixelRatio: window.devicePixelRatio,
+          });
+
+          // 黒帯部分を自動トリミング
+          let croppedDataUrl = response.dataUrl;
+          try {
+            croppedDataUrl = await cropCapturedImage(response.dataUrl, cropRect, 'image/png');
+          } catch (cropErr) {
+            console.warn('[Video Canvas] Auto crop failed, fallback to original:', cropErr);
+          }
+
           const resultMessage: CaptureResultMessage = {
             type: MessageTypes.CAPTURE_RESULT,
-            dataUrl: response.dataUrl,
+            dataUrl: croppedDataUrl,
             rect: {
               x: 0,
               y: 0,
-              width: window.innerWidth,
-              height: window.innerHeight,
+              width: cropRect.width,
+              height: cropRect.height,
               devicePixelRatio: window.devicePixelRatio,
               videoWidth: video.videoWidth,
               videoHeight: video.videoHeight,
@@ -96,6 +117,15 @@ export default defineContentScript({
       const style = document.createElement('style');
       style.id = styleId;
       style.textContent = `
+        html, body {
+          overflow: hidden !important;
+          scrollbar-width: none !important;
+        }
+        ::-webkit-scrollbar {
+          display: none !important;
+          width: 0 !important;
+          height: 0 !important;
+        }
         * { visibility: hidden !important; }
         video, video * { 
           visibility: visible !important; 
@@ -108,11 +138,12 @@ export default defineContentScript({
           object-fit: contain !important;
           background: black !important;
           /* DRM回避のためのGPU合成強制トリック */
-          filter: brightness(1.001) !important;
-          opacity: 0.999 !important;
-          transform: translateZ(0) !important;
+          filter: brightness(1.001) contrast(1.0005) !important;
+          opacity: 0.9999 !important;
+          transform: translate3d(0, 0, 0) scale(1.0001) !important;
           will-change: transform, opacity, filter !important;
           backface-visibility: hidden !important;
+          perspective: 1000px !important;
         }
         video *:not(video) { position: absolute !important; }
       `;

@@ -198,7 +198,7 @@ describe('Tactical Unified Store - Undo / Redo History Stack', () => {
     const initialHomePlayers =
       initialSlide?.players.filter((p) => p.team === 'home') ?? [];
 
-    store.applyFormation(slideId, '4-3-3', 'attack', 'home');
+    store.applyFormation(slideId, '4-3-3', 'full', 'home');
     let state = useTacticalUnifiedStore.getState();
     expect(
       state.project.slides[0]?.players.filter(

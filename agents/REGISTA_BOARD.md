@@ -1,21 +1,29 @@
 # Regista Management Board
 
 ## 1. [Active Focus]
-- **【Phase 3-C】Tactical Formation Precision, Marker Customization UI & Right Panel UX Overhaul (AAWU 7-1 〜 7-3)**:
+- **【Phase 8】Unified Extension & Direct-to-Tactical DRM Capture Pipeline (AAWU 8-1 〜 8-4)**:
   - **背景 & 課題**:
-    1. **フォーメーション配置ロジック不整合**: Half選択時にGKがピッチ外（境界外）に押し出される計算バグの解消、およびFull（0〜100%）/ Half（自陣/敵陣 0〜50%）の正確な幾何学マッピング・座標計算の再設計。
-    2. **マーカー内カスタマイズUIの刷新**: 選手マーカーの視覚オプション（Inside Content: Number/Photo/None、ラベル、サイズ、カラー、視界コーン、バッジ等）を直感的でわかりやすいビジュアルUIに刷新。
-    3. **右パネルのUX最適化・タブ再設計**: 幅の適正化（300px -> 340px）、ヘッダーと右パネルの連携整理、肥大化した設定群のタブ分割（Squad / Formation / Properties / Slide Settings 等）による操作体験の劇的向上。
+    1. **拡張機能の二重管理解消**: `video-canvas` と `extension` の2つの拡張機能が存在し、インストールや運用の手間が発生していた。
+    2. **Tactical画面へのシームレス編集移譲**: キャプチャ後に専用の `editor.html` を開くのではなく、Footics本体の新しいTactical（`/tactical`）画面へ直接画像とメタデータを転送して配置・編集するワークフローの確立。
+    3. **DRM回避・高精度キャプチャエンジンの強化**: CSS合成トリック（`filter`, `opacity`, `transform`等）の堅牢化、黒帯（レターボックス）自動トリミング、UI非表示処理の高速化・フリッカー防止。
   - **確定仕様 & AAWU 分解**:
-    1. **AAWU 7-1 (Formation Half/Full Mathematical Geometry & GK Boundary Fix)**: Full / Half の配置座標マッピング関数を刷新し、ピッチ外飛び出しを防止。
-    2. **AAWU 7-2 (Visual Marker Customization & Inside Content Switcher UI)**: 選手マーカー設定・インスペクターを直感的なビジュアルカードUIに刷新。
-    3. **AAWU 7-3 (Right Panel Expansion & Unified Tab UX Architecture)**: 右パネル幅拡張（340px）とタブ構造の最適化（Squad & Formationの分離/再編成、ヘッダー連動の整理）。
+    1. **AAWU 8-1 (Hardened DRM Video Capture Engine & Precise Crop)**: DRM回避トリックの強化、アスペクト比連動の黒帯自動クロップ計算、安全なUI非表示エンジンの作成。
+    2. **AAWU 8-2 (Extension Consolidation & Shortcut Trigger Pipeline)**: `extension/` パッケージへキャプチャ機能（Content Script / Background Handler）を完全統合・ショートカット登録。
+    3. **AAWU 8-3 (Tactical Direct Import Bridge & Background Storage)**: キャプチャデータの保存・Footics Webタブ検知/アクティブ化、および `/tactical` でのスナップショット背景・画像レイヤー即時配置。
+    4. **AAWU 8-4 (Legacy Video-Canvas Cleanup & Workspace Harmonization)**: 不要となった独立 `video-canvas` パッケージの整理とビルドスクリプト・ワークスペース同期の最適化。
 
 ## 2. [Backlog / Adopted Roadmaps (オーナー承認済 バックログ)]
-- **【構造改革】拡張機能の1本化統合 (Unified Extension Pipeline)**:
-  - `video-canvas` の Konva 描画エンジンを `extension/` へ統合し、ブラウザ拡張を単一パッケージに集約。
 - **【品質基盤】エージェント性能最大化 3大ルールの徹底運用**:
   - 1. State Machine厳守 / 2. 極小AAWU（1〜3ファイル） / 3. KI自動更新。
+
+## 3. [Task Matrix (Phase 8: Unified Extension & Direct-to-Tactical DRM Capture Pipeline)]
+
+| Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **AAWU 8-1** | 📸 **Hardened DRM Capture Engine & Precise Video Crop** | `regista-extension` | `extension/features/capture/drm-capture-engine.ts`<br>`extension/features/capture/video-cropper.ts`<br>`extension/features/capture/__tests__/video-cropper.test.ts` | 1. `video-canvas` のDRM回避CSSトリック（`brightness`/`opacity`/`transform`等）を多層化・フォールバック強化。<br>2. 動画生解像度（`videoWidth/Height`）と描画領域から余白黒帯を自動計算し、不要なレターボックスを精密トリミング。<br>3. `requestAnimationFrame` を用いた高速かつちらつきのないUI隠蔽・復元ロジック。 | **DONE** ✅ |
+| **AAWU 8-2** | 🔌 **Extension Integration & Global Shortcut Trigger** | `regista-extension` | `extension/entrypoints/background.ts`<br>`extension/entrypoints/content.ts`<br>`extension/wxt.config.ts` | 1. `extension/` にキャプチャ用ショートカット（`capture-to-tactical`）およびコマンドハンドラーを追加。<br>2. Content Script と Background 間のメッセージングパイプラインを統合し、`extension` 単独で高精度キャプチャを起動可能にする。 | **TODO** ⏳ |
+| **AAWU 8-3** | 🎯 **Direct-to-Tactical Bridge & Instant Canvas Placement** | `regista-extension`<br>`regista-frontend` | `extension/features/capture/tactical-bridge.ts`<br>`src/components/features/tactical-unified/tactical-unified-page.tsx`<br>`src/stores/tactical-unified-store.ts` | 1. キャプチャ完了時、Footicsの `/tactical` タブを探索（無ければ自動オープン）してデータを直接送信。<br>2. Footics Tactical側でキャプチャ画像を即座に受け取り、スライドの背景画像またはピッチ上スナップショットとして自動配置・編集可能にする。 | **TODO** ⏳ |
+| **AAWU 8-4** | 🧹 **Legacy Video-Canvas Deprecation & Workspace Cleanup** | `regista-gm` | `pnpm-workspace.yaml`<br>`package.json`<br>`AGENTS.md` | 1. 独立 `video-canvas` パッケージの役割を `extension` に集約し、ビルドスクリプトと依存関係を最適化。<br>2. 拡張機能のビルド＆Windows同期ターゲットを `extension/` 単一に集約。 | **TODO** ⏳ |
 
 ## 3. [Task Matrix (AAWU: Tactical Formation Precision, Marker UI & Right Panel UX)]
 
@@ -40,6 +48,11 @@
 | Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **AAWU 5-1** | 🎯 **Fix Arrow & Curve Control Point Parity** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | ベジェ曲線の頂点逆算ロジックを修正し、ドラッグ中・ドロップ後問わずポインタが常に線上（曲線の頂点）に完全に一致して配置されるようにする。 | **DONE** ✅ |
+
+- **2026-09-01**: [AAWU 8-1 Complete: Hardened DRM Capture Engine & Precise Video Crop]
+  1. **スクロールバー完全排除 & 多層GPU合成DRM回避**: `html, body` のオーバーフロー制御と `::-webkit-scrollbar` の非表示、および多層Direct Composition回避CSS（`filter`, `contrast`, `opacity`, `translate3d`, `scale`, `perspective` 等）を整備。
+  2. **アスペクト比連動の黒帯自動トリミング**: 動画生解像度とビューポートのアスペクト比差からレターボックス／ピラーボックスを精密逆算し、ピッチ動画部分のみを `createImageBitmap` / OffscreenCanvas で超高速トリミング。
+  3. `video-canvas` および `extension` の双方に完全適用し、Scoped 型チェック・全5件単体テスト完全パス。
 
 - **2026-09-01**: [AAWU 7-3 Complete: Right Panel Width Expansion & UX Tab Architecture]
   1. **右パネル幅の拡張 (300px → 340px)**: 視認性と操作性を向上させ、各種設定・カラーピッカー・アノテーション調整が快適に行える幅を確保。
