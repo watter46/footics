@@ -17,7 +17,6 @@ import {
   ChevronDown,
   Circle,
   Eraser,
-  Eye,
   Hash,
   ImageIcon,
   Palette,
@@ -92,6 +91,15 @@ const SAMPLE_SEASON_PRESETS: SeasonFormationPreset[] = [
   },
 ];
 
+// ── Common Quick Formations ────────────────────────────────────
+const QUICK_FORMATIONS: FormationType[] = [
+  '4-3-3',
+  '4-2-3-1',
+  '3-4-2-1',
+  '3-5-2',
+  '4-4-2',
+];
+
 export function FormationPanel() {
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
@@ -114,8 +122,20 @@ export function FormationPanel() {
   const [selectedFormation, setSelectedFormation] =
     useState<FormationType>('4-3-3');
   const [formationSearch, setFormationSearch] = useState('');
-  const [showSeasonPresets, setShowSeasonPresets] = useState(false);
+
+  // Accordion sections
+  const [openSections, setOpenSections] = useState({
+    allFormations: false,
+    batchDisplay: false,
+    presets: false,
+  });
   const [showColorPicker, setShowColorPicker] = useState(false);
+
+  const toggleSection = (
+    section: 'allFormations' | 'batchDisplay' | 'presets',
+  ) => {
+    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const teamPlayersCount = useMemo(() => {
     if (!activeSlide) return { home: 0, away: 0 };
@@ -207,152 +227,290 @@ export function FormationPanel() {
   return (
     <div className="flex flex-col h-full bg-[#141414] text-white text-xs select-none">
       {/* Panel Header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10 shrink-0 bg-[#181818]">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 shrink-0 bg-[#181818]">
         <div className="flex items-center gap-2">
           <Shield size={14} className="text-blue-400" />
           <span className="font-semibold text-white/90">Formation Presets</span>
         </div>
+        <div className="flex items-center gap-1">
+          {/* Half / Full Pitch Toggle */}
+          <div className="flex items-center bg-black/40 rounded border border-white/10 p-0.5">
+            <button
+              type="button"
+              onClick={() => setFormationMode('half')}
+              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                formationMode === 'half'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-white/50 hover:text-white'
+              }`}
+            >
+              Half
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormationMode('full')}
+              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                formationMode === 'full'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-white/50 hover:text-white'
+              }`}
+            >
+              Full
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto divide-y divide-white/5 custom-scrollbar">
-        {/* 1. Team Selection (Home / Away) & Integrated Team Color */}
-        <div className="p-3 space-y-2.5">
-          <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded-lg bg-white/5 border border-white/10">
-            <button
-              type="button"
-              onClick={() => setActiveTeam('home')}
-              className={`flex items-center justify-center gap-2 py-1.5 px-3 rounded-md font-medium transition-all cursor-pointer ${
-                activeTeam === 'home'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <span
-                className="w-2.5 h-2.5 rounded-full border border-white/30"
-                style={{ backgroundColor: project.homeColor.primary }}
-              />
-              <span>HOME</span>
-              <span className="text-[10px] opacity-70">
-                ({teamPlayersCount.home})
-              </span>
-            </button>
+        {/* 1. Compact Team Control Bar (Home/Away + Color Picker + Pitch Visibility) */}
+        <div className="p-2.5 space-y-2">
+          <div className="flex items-center justify-between gap-1.5">
+            {/* Team Toggle Buttons */}
+            <div className="grid grid-cols-2 gap-1 flex-1 p-0.5 rounded-lg bg-white/5 border border-white/10">
+              <button
+                type="button"
+                onClick={() => setActiveTeam('home')}
+                className={`flex items-center justify-center gap-1.5 py-1 px-2 rounded-md font-medium text-[11px] transition-all cursor-pointer ${
+                  activeTeam === 'home'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <span
+                  className="w-2 h-2 rounded-full border border-white/30 shrink-0"
+                  style={{ backgroundColor: project.homeColor.primary }}
+                />
+                <span>HOME</span>
+                <span className="text-[10px] opacity-70">
+                  ({teamPlayersCount.home})
+                </span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTeam('away')}
-              className={`flex items-center justify-center gap-2 py-1.5 px-3 rounded-md font-medium transition-all cursor-pointer ${
-                activeTeam === 'away'
-                  ? 'bg-red-600 text-white shadow-sm'
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <span
-                className="w-2.5 h-2.5 rounded-full border border-white/30"
-                style={{ backgroundColor: project.awayColor.primary }}
-              />
-              <span>AWAY</span>
-              <span className="text-[10px] opacity-70">
-                ({teamPlayersCount.away})
-              </span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => setActiveTeam('away')}
+                className={`flex items-center justify-center gap-1.5 py-1 px-2 rounded-md font-medium text-[11px] transition-all cursor-pointer ${
+                  activeTeam === 'away'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <span
+                  className="w-2 h-2 rounded-full border border-white/30 shrink-0"
+                  style={{ backgroundColor: project.awayColor.primary }}
+                />
+                <span>AWAY</span>
+                <span className="text-[10px] opacity-70">
+                  ({teamPlayersCount.away})
+                </span>
+              </button>
+            </div>
 
-          {/* Team Color Quick Customization */}
-          <div className="p-2 rounded-lg bg-white/[0.03] border border-white/10 space-y-2">
+            {/* Color Picker Popover Toggle */}
             <button
               type="button"
               onClick={() => setShowColorPicker((v) => !v)}
-              className="flex items-center justify-between w-full text-[11px] font-medium text-white/70 hover:text-white cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-colors cursor-pointer shrink-0"
+              title={`${activeTeam === 'home' ? 'Home' : 'Away'} Color`}
             >
-              <span className="flex items-center gap-1.5">
-                <Palette size={12} className="text-blue-400" />
-                <span>
-                  {activeTeam === 'home' ? 'Home' : 'Away'} Team Color
-                </span>
-              </span>
-              <span className="flex items-center gap-1 text-[10px] font-mono text-white/50">
-                <span
-                  className="w-2.5 h-2.5 rounded-full border border-white/30 inline-block"
-                  style={{ backgroundColor: teamColor }}
-                />
-                {teamColor}
-                <ChevronDown
-                  size={11}
-                  className={`transition-transform ${showColorPicker ? 'rotate-180' : ''}`}
-                />
-              </span>
+              <Palette size={12} className="text-blue-400" />
+              <span
+                className="w-2.5 h-2.5 rounded-full border border-white/30 inline-block"
+                style={{ backgroundColor: teamColor }}
+              />
             </button>
 
-            {showColorPicker && (
-              <div className="pt-2 border-t border-white/5">
-                <ColorInput
-                  value={teamColor}
-                  onChange={(c) => setTeamColor(activeTeam, c)}
-                  className="w-full"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Team Visibility Filter */}
-          <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/[0.03] border border-white/10">
-            <span className="text-[11px] font-medium text-white/70 flex items-center gap-1.5">
-              <Eye size={12} className="text-blue-400" />
-              <span>Pitch Visibility</span>
-            </span>
-            <div className="flex items-center bg-black/40 rounded border border-white/10 p-0.5">
+            {/* Pitch Visibility Filter */}
+            <div className="flex items-center bg-black/40 rounded-lg border border-white/10 p-0.5 shrink-0">
               <button
                 type="button"
                 onClick={() => setTeamVisibility('both')}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer ${
+                className={`px-1.5 py-1 rounded text-[10px] font-medium transition-colors cursor-pointer ${
                   teamVisibility === 'both'
                     ? 'bg-white/20 text-white font-semibold shadow-xs'
-                    : 'text-white/50 hover:text-white'
+                    : 'text-white/40 hover:text-white'
                 }`}
-                title="Show both teams on pitch"
+                title="Show both teams"
               >
-                Both
+                All
               </button>
               <button
                 type="button"
                 onClick={() => setTeamVisibility('home')}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer ${
+                className={`px-1.5 py-1 rounded text-[10px] font-medium transition-colors cursor-pointer ${
                   teamVisibility === 'home'
                     ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                    : 'text-white/50 hover:text-white'
+                    : 'text-white/40 hover:text-white'
                 }`}
-                title="Show Home team only"
+                title="Home only"
               >
-                Home
+                H
               </button>
               <button
                 type="button"
                 onClick={() => setTeamVisibility('away')}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer ${
+                className={`px-1.5 py-1 rounded text-[10px] font-medium transition-colors cursor-pointer ${
                   teamVisibility === 'away'
                     ? 'bg-red-600 text-white font-semibold shadow-xs'
-                    : 'text-white/50 hover:text-white'
+                    : 'text-white/40 hover:text-white'
                 }`}
-                title="Show Away team only"
+                title="Away only"
               >
-                Away
+                A
               </button>
             </div>
           </div>
 
-          {/* Batch Player Display Settings (Inside Content: Number / Photo / Empty) */}
-          {activeSlide && (
-            <div className="p-2 rounded-lg bg-white/[0.03] border border-white/10 space-y-2">
-              <span className="text-[11px] font-semibold text-white/80 flex items-center gap-1.5">
+          {/* Inline Color Picker Accordion */}
+          {showColorPicker && (
+            <div className="p-2 rounded-lg bg-black/40 border border-white/10 space-y-1.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between text-[10px] text-white/60">
+                <span>
+                  {activeTeam === 'home' ? 'Home' : 'Away'} Team Color
+                </span>
+                <span className="font-mono text-white/40">{teamColor}</span>
+              </div>
+              <ColorInput
+                value={teamColor}
+                onChange={(c) => setTeamColor(activeTeam, c)}
+                className="w-full"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* 2. Quick Formations & Pitch Actions */}
+        <div className="p-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
+              Quick Formations
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => handleApplyFormation(selectedFormation)}
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+                title="Reset to default formation positions"
+              >
+                <RotateCcw size={10} className="text-amber-400" />
+                <span>Reset</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => clearPitchPlayers(activeSlideId)}
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+                title="Clear all players from pitch to bench"
+              >
+                <Eraser size={10} className="text-rose-400" />
+                <span>Clear</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 5 High-Frequency Chips */}
+          <div className="grid grid-cols-5 gap-1">
+            {QUICK_FORMATIONS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => handleApplyFormation(f)}
+                className={`py-1 rounded text-[10.5px] font-mono text-center transition-all cursor-pointer truncate ${
+                  selectedFormation === f
+                    ? 'bg-blue-600 text-white font-bold shadow-xs'
+                    : 'bg-white/5 text-white/70 hover:bg-white/15 hover:text-white'
+                }`}
+                title={`Apply ${f}`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {/* Collapsible: All 28 Formations & Search */}
+          <div className="pt-0.5">
+            <button
+              type="button"
+              onClick={() => toggleSection('allFormations')}
+              className="flex items-center justify-between w-full py-1 text-[11px] text-white/60 hover:text-white transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5">
+                <Search size={11} className="text-white/40" />
+                <span>More Formations ({FORMATION_LIST.length})</span>
+              </span>
+              <div className="flex items-center gap-1">
+                {selectedFormation && (
+                  <span className="text-[10px] font-mono text-blue-400">
+                    {selectedFormation}
+                  </span>
+                )}
+                <ChevronDown
+                  size={12}
+                  className={`transition-transform duration-150 ${openSections.allFormations ? 'rotate-180' : ''}`}
+                />
+              </div>
+            </button>
+
+            {openSections.allFormations && (
+              <div className="mt-1.5 space-y-1.5 p-2 bg-black/40 rounded-lg border border-white/10">
+                <div className="relative">
+                  <Search
+                    size={11}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 text-white/40"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search formations..."
+                    value={formationSearch}
+                    onChange={(e) => setFormationSearch(e.target.value)}
+                    className="w-full pl-6 pr-2 py-1 rounded bg-white/5 border border-white/10 text-white text-[11px] placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-1 max-h-36 overflow-y-auto p-1 bg-black/20 rounded border border-white/5 custom-scrollbar">
+                  {filteredFormations.map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => handleApplyFormation(f)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-all cursor-pointer ${
+                        selectedFormation === f
+                          ? 'bg-blue-600 text-white font-bold shadow-xs'
+                          : 'bg-white/5 text-white/70 hover:bg-white/15 hover:text-white'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 3. Collapsible: Batch Player Display (Number / Photo / Empty) */}
+        {activeSlide && (
+          <div className="p-2.5">
+            <button
+              type="button"
+              onClick={() => toggleSection('batchDisplay')}
+              className="flex items-center justify-between w-full text-[11px] font-semibold text-white/70 hover:text-white transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5">
                 <Users size={12} className="text-blue-400" />
                 <span>Batch Player Display</span>
               </span>
+              <ChevronDown
+                size={12}
+                className={`transition-transform duration-150 ${openSections.batchDisplay ? 'rotate-180' : ''}`}
+              />
+            </button>
 
-              <div className="space-y-1.5">
+            {openSections.batchDisplay && (
+              <div className="mt-2 space-y-1.5 p-2 rounded-lg bg-black/40 border border-white/10">
                 {/* All Players */}
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-white/60 font-medium">All Players</span>
-                  <div className="flex items-center gap-1 bg-black/40 rounded-md border border-white/10 p-0.5">
+                  <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/10 p-0.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -362,10 +520,10 @@ export function FormationPanel() {
                           });
                         });
                       }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
                       title="Set Number for all players"
                     >
-                      <Hash size={10} />
+                      <Hash size={9} />
                       <span>Num</span>
                     </button>
                     <button
@@ -377,10 +535,10 @@ export function FormationPanel() {
                           });
                         });
                       }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
-                      title="Set Photo for all players (where photo exists)"
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
+                      title="Set Photo for all players"
                     >
-                      <ImageIcon size={10} />
+                      <ImageIcon size={9} />
                       <span>Photo</span>
                     </button>
                     <button
@@ -392,10 +550,10 @@ export function FormationPanel() {
                           });
                         });
                       }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
                       title="Set Empty for all players"
                     >
-                      <Circle size={10} />
+                      <Circle size={9} />
                       <span>Empty</span>
                     </button>
                   </div>
@@ -405,12 +563,12 @@ export function FormationPanel() {
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-blue-400 flex items-center gap-1.5 font-medium">
                     <span
-                      className="w-2 h-2 rounded-full shadow-xs"
+                      className="w-1.5 h-1.5 rounded-full shadow-xs"
                       style={{ backgroundColor: project.homeColor.primary }}
                     />
                     Home
                   </span>
-                  <div className="flex items-center gap-1 bg-black/40 rounded-md border border-white/10 p-0.5">
+                  <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/10 p-0.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -422,9 +580,9 @@ export function FormationPanel() {
                             });
                           });
                       }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
                     >
-                      <Hash size={10} />
+                      <Hash size={9} />
                       <span>Num</span>
                     </button>
                     <button
@@ -438,9 +596,9 @@ export function FormationPanel() {
                             });
                           });
                       }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
                     >
-                      <ImageIcon size={10} />
+                      <ImageIcon size={9} />
                       <span>Photo</span>
                     </button>
                     <button
@@ -454,9 +612,9 @@ export function FormationPanel() {
                             });
                           });
                       }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
                     >
-                      <Circle size={10} />
+                      <Circle size={9} />
                       <span>Empty</span>
                     </button>
                   </div>
@@ -466,12 +624,12 @@ export function FormationPanel() {
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-red-400 flex items-center gap-1.5 font-medium">
                     <span
-                      className="w-2 h-2 rounded-full shadow-xs"
+                      className="w-1.5 h-1.5 rounded-full shadow-xs"
                       style={{ backgroundColor: project.awayColor.primary }}
                     />
                     Away
                   </span>
-                  <div className="flex items-center gap-1 bg-black/40 rounded-md border border-white/10 p-0.5">
+                  <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/10 p-0.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -483,9 +641,9 @@ export function FormationPanel() {
                             });
                           });
                       }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
                     >
-                      <Hash size={10} />
+                      <Hash size={9} />
                       <span>Num</span>
                     </button>
                     <button
@@ -499,9 +657,9 @@ export function FormationPanel() {
                             });
                           });
                       }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
                     >
-                      <ImageIcon size={10} />
+                      <ImageIcon size={9} />
                       <span>Photo</span>
                     </button>
                     <button
@@ -515,171 +673,80 @@ export function FormationPanel() {
                             });
                           });
                       }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
                     >
-                      <Circle size={10} />
+                      <Circle size={9} />
                       <span>Empty</span>
                     </button>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* 2. Formation Presets & Reset */}
-        <div className="p-3 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
-              Formation
-            </span>
-            <div className="flex items-center gap-1.5">
-              {/* Formation Reset */}
-              <button
-                type="button"
-                onClick={() => handleApplyFormation(selectedFormation)}
-                className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-white/80 hover:text-white transition-colors cursor-pointer"
-                title="Reset to default formation positions"
-              >
-                <RotateCcw size={10} className="text-amber-400" />
-                <span>Reset</span>
-              </button>
-
-              {/* Clear Pitch (Move all players to bench) */}
-              <button
-                type="button"
-                onClick={() => clearPitchPlayers(activeSlideId)}
-                className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-white/80 hover:text-white transition-colors cursor-pointer"
-                title="Clear all players from pitch to bench"
-              >
-                <Eraser size={10} className="text-rose-400" />
-                <span>Clear</span>
-              </button>
-
-              {/* Full / Half Toggle */}
-              <div className="flex items-center bg-black/40 rounded border border-white/10 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setFormationMode('half')}
-                  className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                    formationMode === 'half'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-white/50 hover:text-white'
-                  }`}
-                >
-                  Half
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormationMode('full')}
-                  className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                    formationMode === 'full'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-white/50 hover:text-white'
-                  }`}
-                >
-                  Full
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Search */}
-          <div className="relative">
-            <Search
-              size={12}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40"
-            />
-            <input
-              type="text"
-              placeholder="Search formations..."
-              value={formationSearch}
-              onChange={(e) => setFormationSearch(e.target.value)}
-              className="w-full pl-7 pr-3 py-1 rounded bg-white/5 border border-white/10 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
-            />
-          </div>
-
-          {/* Quick Selection Chips */}
-          <div className="flex flex-wrap gap-1 max-h-36 overflow-y-auto p-1 bg-black/30 rounded border border-white/5 custom-scrollbar">
-            {filteredFormations.map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => handleApplyFormation(f)}
-                className={`px-2 py-1 rounded text-[11px] font-mono transition-all cursor-pointer ${
-                  selectedFormation === f
-                    ? 'bg-blue-600 text-white font-bold shadow'
-                    : 'bg-white/5 text-white/70 hover:bg-white/15 hover:text-white'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-
-          {/* Registered Club & Season Presets */}
-          <div className="space-y-1.5 pt-1">
-            <button
-              type="button"
-              onClick={() => setShowSeasonPresets((v) => !v)}
-              className="flex items-center justify-between w-full text-[11px] text-white/60 hover:text-white py-1 cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5">
-                <Shield size={12} className="text-amber-400" />
-                <span>Club & Season Presets</span>
-              </span>
-              <ChevronDown
-                size={12}
-                className={`transition-transform ${showSeasonPresets ? 'rotate-180' : ''}`}
-              />
-            </button>
-
-            {showSeasonPresets && (
-              <div className="space-y-2 mt-1 p-2 bg-black/40 rounded border border-white/10">
-                {/* Registered Clubs quick load */}
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-white/40 block mb-1">
-                    Registered Clubs
-                  </span>
-                  <div className="grid grid-cols-2 gap-1">
-                    {SUPPORTED_TEAMS.map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => handleApplyClubPreset(t.id)}
-                        className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-blue-600/20 hover:text-blue-300 text-left text-[10px] text-white/80 transition-colors truncate cursor-pointer"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
-                        <span className="truncate">{t.shortName}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Sample Presets */}
-                <div className="pt-1.5 border-t border-white/5">
-                  <span className="text-[10px] uppercase font-bold text-white/40 block mb-1">
-                    Tactical Presets
-                  </span>
-                  <div className="space-y-1">
-                    {SAMPLE_SEASON_PRESETS.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => handleApplySeasonPreset(preset)}
-                        className="flex items-center justify-between w-full px-2 py-1 rounded bg-white/5 hover:bg-white/15 text-left text-[11px] text-white/80 hover:text-white transition-colors cursor-pointer"
-                      >
-                        <span className="font-medium">{preset.name}</span>
-                        <span className="text-[10px] text-white/40">
-                          {preset.season}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
             )}
           </div>
+        )}
+
+        {/* 4. Collapsible: Registered Club & Season Presets */}
+        <div className="p-2.5">
+          <button
+            type="button"
+            onClick={() => toggleSection('presets')}
+            className="flex items-center justify-between w-full text-[11px] font-semibold text-white/70 hover:text-white transition-colors cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5">
+              <Shield size={12} className="text-amber-400" />
+              <span>Club & Season Presets</span>
+            </span>
+            <ChevronDown
+              size={12}
+              className={`transition-transform duration-150 ${openSections.presets ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {openSections.presets && (
+            <div className="mt-2 space-y-2.5 p-2 bg-black/40 rounded-lg border border-white/10">
+              {/* Registered Clubs quick load */}
+              <div>
+                <span className="text-[10px] uppercase font-bold text-white/40 block mb-1">
+                  Registered Clubs
+                </span>
+                <div className="grid grid-cols-2 gap-1">
+                  {SUPPORTED_TEAMS.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => handleApplyClubPreset(t.id)}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-blue-600/20 hover:text-blue-300 text-left text-[10px] text-white/80 transition-colors truncate cursor-pointer"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                      <span className="truncate">{t.shortName}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sample Presets */}
+              <div className="pt-2 border-t border-white/5">
+                <span className="text-[10px] uppercase font-bold text-white/40 block mb-1">
+                  Tactical Presets
+                </span>
+                <div className="space-y-1">
+                  {SAMPLE_SEASON_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => handleApplySeasonPreset(preset)}
+                      className="flex items-center justify-between w-full px-2 py-1 rounded bg-white/5 hover:bg-white/15 text-left text-[11px] text-white/80 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <span className="font-medium">{preset.name}</span>
+                      <span className="text-[10px] text-white/40">
+                        {preset.season}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

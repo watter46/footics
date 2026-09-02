@@ -108,28 +108,40 @@ export function SquadSubPanel() {
   return (
     <div className="flex flex-col h-full bg-[#141414] text-white text-xs select-none">
       {/* Panel Header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10 shrink-0 bg-[#181818]">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 shrink-0 bg-[#181818]">
         <div className="flex items-center gap-2">
           <Users size={14} className="text-blue-400" />
           <span className="font-semibold text-white/90">Squad & Bench</span>
         </div>
+        <button
+          type="button"
+          onClick={() => setIsAddingSub((v) => !v)}
+          className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors cursor-pointer ${
+            isAddingSub
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white'
+          }`}
+        >
+          <UserPlus size={11} />
+          <span>Add Player</span>
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto divide-y divide-white/5 custom-scrollbar">
         {/* 1. Team Switcher */}
-        <div className="p-3 space-y-2">
-          <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded-lg bg-white/5 border border-white/10">
+        <div className="p-2.5 space-y-2">
+          <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-white/5 border border-white/10">
             <button
               type="button"
               onClick={() => setActiveTeam('home')}
-              className={`flex items-center justify-center gap-2 py-1.5 px-3 rounded-md font-medium transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 py-1 px-2 rounded-md font-medium text-[11px] transition-all cursor-pointer ${
                 activeTeam === 'home'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
               }`}
             >
               <span
-                className="w-2.5 h-2.5 rounded-full border border-white/30"
+                className="w-2 h-2 rounded-full border border-white/30 shrink-0"
                 style={{ backgroundColor: project.homeColor.primary }}
               />
               <span>HOME</span>
@@ -141,14 +153,14 @@ export function SquadSubPanel() {
             <button
               type="button"
               onClick={() => setActiveTeam('away')}
-              className={`flex items-center justify-center gap-2 py-1.5 px-3 rounded-md font-medium transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 py-1 px-2 rounded-md font-medium text-[11px] transition-all cursor-pointer ${
                 activeTeam === 'away'
                   ? 'bg-red-600 text-white shadow-sm'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
               }`}
             >
               <span
-                className="w-2.5 h-2.5 rounded-full border border-white/30"
+                className="w-2 h-2 rounded-full border border-white/30 shrink-0"
                 style={{ backgroundColor: project.awayColor.primary }}
               />
               <span>AWAY</span>
@@ -160,19 +172,11 @@ export function SquadSubPanel() {
         </div>
 
         {/* 2. Substitutes / Bench Area */}
-        <div className="p-3 space-y-2.5">
+        <div className="p-2.5 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
               Substitutes ({teamPlayers.bench.length})
             </span>
-            <button
-              type="button"
-              onClick={() => setIsAddingSub((v) => !v)}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-[10px] text-white/80 hover:text-white transition-colors cursor-pointer"
-            >
-              <UserPlus size={11} />
-              <span>Add Player</span>
-            </button>
           </div>
 
           {/* New Sub Player Form */}

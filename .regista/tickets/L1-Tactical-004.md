@@ -1,7 +1,7 @@
 ---
 id: L1-Tactical-004
 title: 右パネル内部のUI/UX改善（情報階層の整理・アコーディオン化）
-status: TODO
+status: DONE
 depends_on: []
 model: Gemini 3.8 Flash
 effort: medium
