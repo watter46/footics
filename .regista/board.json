@@ -1,0 +1,734 @@
+{
+  "version": "2.0.0",
+  "last_updated": "2026-09-02T17:50:09.681Z",
+  "active_focus": {
+    "phase_id": "Phase 11",
+    "phase_name": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
+    "objective": "スライドD&D並び替え、WebCodecs MP4自動トランジション動画エクスポート、Dexie複数プロジェクト管理、Syntax戦術JSON連携、およびストア・描画レイヤー・共通型定義の徹底リファクタリング。"
+  },
+  "tickets": [
+    {
+      "id": "AAWU-6-1",
+      "title": "🔲 Default Auto-Fit Pitch Boundary Box",
+      "phase": "Phase 6: Tactical Precision",
+      "domain": "B: Tactical Board & Animation / Video",
+      "assignee": "regista-canvas",
+      "status": "DONE",
+      "target_files": [
+        "src/lib/types/tactical-unified.ts",
+        "src/components/features/tactical-unified/canvas/boundary-box.tsx",
+        "src/stores/tactical-unified-store.ts"
+      ],
+      "user_experience_impact": "新規スライド作成時やリセット時に、境界線ボックスが常にピッチ白線外周の均等余白に自動フィットするようになります。",
+      "detailed_spec": [
+        "tactical-unified.ts に定義されたデフォルト境界ボックス座標をピッチ実白線連動値（均等余白）に標準化",
+        "boundary-box.tsx での初期レンダリング時のアスペクト比追従",
+        "スライド作成時の初期化ロジックに自動フィットを適用"
+      ],
+      "acceptance_criteria": [
+        "新規スライド追加時に境界線がピッチ白線に綺麗にフィットしていること",
+        "type-check:scoped と biome check がパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/tactical-unified/canvas/boundary-box.tsx",
+        "type_check": "pnpm type-check:scoped src/components/features/tactical-unified/canvas/boundary-box.tsx",
+        "vitest": "rtk vitest run src/components/features/tactical-unified/canvas/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-6-1: Default Auto-Fit Pitch Boundary Box を実装してください。新規スライド追加時の境界線ボックス初期値をピッチ白線均等余白に自動フィットさせます。",
+      "completed_at": "2026-09-01T13:58:16.602Z",
+      "completion_summary": [
+        "ピッチ白線フィット境界線のデフォルト値 (16:9 / 9:16 / スクリーンショット) を tactical-unified.ts および boundary-box.tsx に配備済"
+      ]
+    },
+    {
+      "id": "AAWU-6-2",
+      "title": "🏷️ Player Label High-Contrast Visibility Fix",
+      "phase": "Phase 6: Tactical Precision",
+      "domain": "B: Tactical Board & Animation / Video",
+      "assignee": "regista-canvas",
+      "status": "DONE",
+      "target_files": [
+        "src/components/features/tactical-unified/canvas/player-layer.tsx",
+        "src/lib/tactical/export/tactical-frame-renderer.ts"
+      ],
+      "user_experience_impact": "暗いピッチ背景やスナップショット写真上でも、選手名と背番号ラベルがくっきり白文字＋アウトラインで視認できるようになります。",
+      "detailed_spec": [
+        "Konva Text の stroke 潰れを解消し、ダーク・グリーン・写真背景問わずクッキリ読める白文字アウトラインまたはバッジ背景を適用",
+        "動画エクスポート用 renderer (tactical-frame-renderer.ts) との描画完全同期"
+      ],
+      "acceptance_criteria": [
+        "ピッチ上および動画エクスポート後の選手名・背番号ラベルが高コントラストで視認できること",
+        "type-check:scoped と biome check がパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/tactical-unified/canvas/player-layer.tsx",
+        "type_check": "pnpm type-check:scoped src/components/features/tactical-unified/canvas/player-layer.tsx",
+        "vitest": "rtk vitest run src/lib/tactical/__tests__/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-6-2: Player Label High-Contrast Visibility Fix を実装してください。選手ラベルのストローク潰れを解消し高コントラスト化します。",
+      "completed_at": "2026-09-01T13:58:20.899Z",
+      "completion_summary": [
+        "選手マーカー下ラベルおよび動画エクスポート用 renderer で #ffffff + stroke=#020617 (strokeWidth=2) による高コントラスト白文字描画を適用済"
+      ]
+    },
+    {
+      "id": "AAWU-6-4",
+      "title": "👥 Sub-Centric Squad Panel & One-Click Pitch Deploy",
+      "phase": "Phase 6: Tactical Precision",
+      "domain": "A: Web App Core & UI",
+      "assignee": "regista-frontend",
+      "status": "DONE",
+      "target_files": [
+        "src/components/features/tactical-unified/right-panel/squad-sub-panel.tsx",
+        "src/components/features/tactical-unified/canvas/unified-canvas.tsx"
+      ],
+      "user_experience_impact": "右パネルのSquadタブから、サブ選手をドラッグ＆ドロップせずともワンクリックでピッチ上の空きスペースへ投入できるようになります。",
+      "detailed_spec": [
+        "squad-sub-panel.tsx のサブ選手一覧の各行にワンクリックピッチ投入ボタンを配備",
+        "投入時にピッチ上の適切な空きポジション（またはフォーメーション基準位置）へ自動配置しUndo履歴へ保存"
+      ],
+      "acceptance_criteria": [
+        "サブ選手行の投入ボタンをクリックしてピッチ上にマーカーが出現すること",
+        "type-check:scoped と biome check がパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/tactical-unified/right-panel/squad-sub-panel.tsx",
+        "type_check": "pnpm type-check:scoped src/components/features/tactical-unified/right-panel/squad-sub-panel.tsx",
+        "vitest": "rtk vitest run src/components/features/tactical-unified/right-panel/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-6-4: Sub-Centric Squad Panel & One-Click Pitch Deploy を実装してください。サブ選手のワンクリックピッチ投入UIを配備します。",
+      "completed_at": "2026-09-01T13:58:24.865Z",
+      "completion_summary": [
+        "SquadSubPanel にワンクリックピッチ投入ボタン ([+] 投入) を完備し、各ポジション別アコーディオンから即時投入可能に実装済"
+      ]
+    },
+    {
+      "id": "AAWU-9-1",
+      "title": "🧩 Tactical Unified Store Slice Pattern Refactoring",
+      "phase": "Phase 9: Tactical Board Polish & Presenter Architecture",
+      "domain": "C: Data Layer, State & Contracts",
+      "assignee": "regista-data",
+      "status": "DONE",
+      "target_files": [
+        "src/stores/tactical-unified-store.ts",
+        "src/stores/slices/slide-slice.ts",
+        "src/stores/slices/history-slice.ts",
+        "src/stores/slices/clipboard-slice.ts"
+      ],
+      "user_experience_impact": "ストアが機能別にモジュール化され、大量のスライドや複雑な戦術操作時でも高速な型推論と安定した状態同期が保証されます。",
+      "detailed_spec": [
+        "tactical-unified-store.ts の肥大化した状態管理を Zustand Slice Pattern（SlideSlice, HistorySlice, ClipboardSlice）に分離",
+        "既存の公開インターフェースおよびUndo/Redoスタックの挙動を100%完全維持",
+        "単体テストでの全回帰テスト完全パス"
+      ],
+      "acceptance_criteria": [
+        "既存の全テスト（tactical-unified-store.test.ts等）が修正なしでパスすること",
+        "type-check:scoped および biome check がエラー0件であること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/stores/",
+        "type_check": "pnpm type-check:scoped src/stores/tactical-unified-store.ts",
+        "vitest": "rtk vitest run src/stores/__tests__/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-9-1: Tactical Unified Store Slice Pattern Refactoring を実装してください。tactical-unified-store.ts を Slice Pattern に安全にリファクタリングします。",
+      "completed_at": "2026-09-01T14:16:14.141Z",
+      "completion_summary": [
+        "Refactored to Slice Pattern",
+        "Tests passed"
+      ]
+    },
+    {
+      "id": "AAWU-8-1",
+      "title": "📸 Hardened DRM Capture Engine & Precise Video Crop",
+      "phase": "Phase 8: Unified Extension & Tactical Capture Pipeline",
+      "domain": "D: Browser Extension (Unified)",
+      "assignee": "regista-extension",
+      "status": "DONE",
+      "target_files": [
+        "extension/features/capture/drm-capture-engine.ts",
+        "extension/features/capture/video-cropper.ts",
+        "extension/features/capture/__tests__/video-cropper.test.ts"
+      ],
+      "user_experience_impact": "DRM保護された動画配信サイトでも黒画面にならず、上下左右の不要な黒帯を自動トリミングして試合ピッチ映像のみを瞬時にキャプチャできます。",
+      "detailed_spec": [
+        "多層Direct Composition回避CSS（filter, opacity, translate3d, scale等）によるDRM黒画面化防止",
+        "動画生解像度とビューポート比率から余白レターボックスを自動計算しOffscreenCanvasで精密トリミング"
+      ],
+      "acceptance_criteria": [
+        "単体テスト全件パス",
+        "Scoped型チェックパス"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check extension/features/capture/",
+        "type_check": "pnpm type-check:scoped extension/features/capture/drm-capture-engine.ts",
+        "vitest": "rtk vitest run extension/features/capture/__tests__/video-cropper.test.ts"
+      },
+      "execution_prompt": "AAWU-8-1の実装",
+      "completed_at": "2026-09-01T20:00:00.000Z",
+      "completion_summary": [
+        "多層GPU合成DRM回避CSSトリックを整備しスクロールバーを完全隠蔽",
+        "アスペクト比連動の黒帯自動トリミングエンジンを構築し単体テスト全5件パス"
+      ]
+    },
+    {
+      "id": "AAWU-8-2",
+      "title": "🔌 Extension Integration & Global Shortcut Trigger",
+      "phase": "Phase 8: Unified Extension & Tactical Capture Pipeline",
+      "domain": "D: Browser Extension (Unified)",
+      "assignee": "regista-extension",
+      "status": "DONE",
+      "target_files": [
+        "extension/entrypoints/background.ts",
+        "extension/entrypoints/overlay.content.tsx",
+        "extension/types/messaging.ts",
+        "extension/wxt.config.ts"
+      ],
+      "user_experience_impact": "ブラウザ上の動画視聴中に Alt+S を押すだけで、拡張機能単独で高精度キャプチャが即座に起動します。",
+      "detailed_spec": [
+        "extension/wxt.config.ts に capture-to-tactical (Alt+S) ショートカットを登録",
+        "background.ts と overlay.content.tsx 間の型安全双方向メッセージング配備"
+      ],
+      "acceptance_criteria": [
+        "WXT拡張機能ビルド成功",
+        "型チェックパス"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check extension/entrypoints/",
+        "type_check": "pnpm type-check:scoped extension/entrypoints/background.ts"
+      },
+      "execution_prompt": "AAWU-8-2の実装",
+      "completed_at": "2026-09-01T20:30:00.000Z",
+      "completion_summary": [
+        "Alt+S グローバルショートカットとメッセージングパイプラインを extension/ 単一パッケージに完全集約",
+        "Chrome MV3 ビルドおよび Windows 側への sync-extension 完了"
+      ]
+    },
+    {
+      "id": "AAWU-8-3-A",
+      "title": "🖼️ Snapshot Analysis Mode & Clean Canvas Initialization",
+      "phase": "Phase 8: Unified Extension & Tactical Capture Pipeline",
+      "domain": "A: Web App Core & UI",
+      "assignee": "regista-frontend",
+      "status": "DONE",
+      "target_files": [
+        "src/stores/tactical-unified-store.ts",
+        "src/components/features/tactical-unified/hooks/use-tactical-capture-bridge.ts",
+        "src/components/features/tactical-unified/right-panel/right-panel.tsx",
+        "src/components/features/tactical-unified/toolbar/top-bar.tsx"
+      ],
+      "user_experience_impact": "拡張機能からキャプチャを受信した際、自動で白紙・画像モードに切り替わり、画面全体にキャプチャ画像がフィットして即座に戦術描画を開始できます。",
+      "detailed_spec": [
+        "キャプチャ受信時にピッチ線非表示、スタメン22人白紙化、ボール非表示",
+        "境界ボックスを画像全域に自動フィットし、右パネルをPropertiesへ最適化"
+      ],
+      "acceptance_criteria": [
+        "型チェックパス",
+        "Vitestパス"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/tactical-unified/",
+        "type_check": "pnpm type-check:scoped src/stores/tactical-unified-store.ts"
+      },
+      "execution_prompt": "AAWU-8-3-Aの実装",
+      "completed_at": "2026-09-01T21:00:00.000Z",
+      "completion_summary": [
+        "スナップショット解析モードへの自動初期化とクリーンキャンバス切り替えを実装",
+        "右パネルの自動 Properties 最適化完了"
+      ]
+    },
+    {
+      "id": "AAWU-8-3-B",
+      "title": "⭕ 3D Foot Ring & Spotlight Pillar Rendering Integration",
+      "phase": "Phase 8: Unified Extension & Tactical Capture Pipeline",
+      "domain": "B: Tactical Board & Animation / Video",
+      "assignee": "regista-canvas",
+      "status": "DONE",
+      "target_files": [
+        "src/lib/tactical/marker-assets.ts",
+        "src/components/features/tactical-unified/canvas/player-layer.tsx",
+        "src/lib/types/tactical-unified.ts"
+      ],
+      "user_experience_impact": "動画キャプチャ上の選手足元にリアルな立体リングマーカーや、上空から照らす光の柱（スポットライト）を描画できるようになります。",
+      "detailed_spec": [
+        "立体足元楕円パスおよび光の柱ベクターパスを描画レイヤーに移植",
+        "視野コーンおよびスポットライト変形と連動"
+      ],
+      "acceptance_criteria": [
+        "型チェックパス",
+        "Vitestパス"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/tactical-unified/canvas/",
+        "type_check": "pnpm type-check:scoped src/components/features/tactical-unified/canvas/player-layer.tsx"
+      },
+      "execution_prompt": "AAWU-8-3-Bの実装",
+      "completed_at": "2026-09-01T21:30:00.000Z",
+      "completion_summary": [
+        "3D足元リングおよび光の柱（スポットライトビーム）のKonva描画レイヤー完全統合",
+        "視野コーン楕円連動および単体テスト全パス"
+      ]
+    },
+    {
+      "id": "AAWU-8-3-C",
+      "title": "🛠️ Ring Placement Toolbar & Snapshot-Centric Right Panel",
+      "phase": "Phase 8: Unified Extension & Tactical Capture Pipeline",
+      "domain": "A: Web App Core & UI",
+      "assignee": "regista-frontend",
+      "status": "DONE",
+      "target_files": [
+        "src/components/features/tactical-unified/toolbar/top-bar.tsx",
+        "src/components/features/tactical-unified/right-panel/right-panel.tsx",
+        "src/components/features/tactical-unified/inspector/inspector-panel.tsx"
+      ],
+      "user_experience_impact": "ツールバーの「⭕ リング」ボタンからワンクリックでリングを配置し、右パネルで色・矢印・スポットライトを直感的に設定できます。",
+      "detailed_spec": [
+        "TopBar に [ ⭕ リング ] 追加ボタン配置",
+        "スナップショット時の右パネルProperties専用最適化とアノテーション設定UI連動"
+      ],
+      "acceptance_criteria": [
+        "型チェックパス",
+        "Vitestパス"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/tactical-unified/toolbar/",
+        "type_check": "pnpm type-check:scoped src/components/features/tactical-unified/toolbar/top-bar.tsx"
+      },
+      "execution_prompt": "AAWU-8-3-Cの実装",
+      "completed_at": "2026-09-01T21:45:00.000Z",
+      "completion_summary": [
+        "ツールバーにリング配置ボタンを新設し、右パネルインスペクターでの全アノテーション操作を完備"
+      ]
+    },
+    {
+      "id": "AAWU-8-3-D",
+      "title": "📑 Timeline Right-Click Duplicate & Snapshot Context Carryover",
+      "phase": "Phase 8: Unified Extension & Tactical Capture Pipeline",
+      "domain": "C: Data Layer, State & Contracts",
+      "assignee": "regista-data",
+      "status": "DONE",
+      "target_files": [
+        "src/components/features/tactical-unified/timeline/timeline-bar.tsx",
+        "src/components/features/tactical-unified/timeline/slide-item.tsx",
+        "src/stores/tactical-unified-store.ts"
+      ],
+      "user_experience_impact": "タイムラインスライドを右クリック複製すると、キャプチャ画像やリング設定をそのまま次のシーンに引き継いで連続解説を作成できます（左クリック+は通常ピッチ白紙追加）。",
+      "detailed_spec": [
+        "+ ボタン左クリック（通常ピッチ白紙スライド初期化）と右クリック（スナップショット＋リング完全引き継ぎ複製）の明確な分岐",
+        "setActiveSlide 切り替え時のスライド個別背景・パネル同期"
+      ],
+      "acceptance_criteria": [
+        "Vitest全件パス",
+        "Scoped型チェックパス"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/tactical-unified/timeline/",
+        "type_check": "pnpm type-check:scoped src/stores/tactical-unified-store.ts",
+        "vitest": "rtk vitest run src/stores/__tests__/tactical-unified-store.test.ts"
+      },
+      "execution_prompt": "AAWU-8-3-Dの実装",
+      "completed_at": "2026-09-01T22:00:00.000Z",
+      "completion_summary": [
+        "+ ボタン左クリック白紙初期化と右クリック完全引き継ぎ複製を実装",
+        "スライド切り替え連動とVitest全158件パス達成"
+      ]
+    },
+    {
+      "id": "AAWU-8-4",
+      "title": "🧹 Legacy Video-Canvas Deprecation & Workspace Cleanup",
+      "phase": "Phase 8: Unified Extension & Tactical Capture Pipeline",
+      "domain": "Cross-cutting: QA/Review",
+      "assignee": "regista-gm",
+      "status": "DONE",
+      "target_files": [
+        "pnpm-workspace.yaml",
+        "package.json",
+        "AGENTS.md"
+      ],
+      "user_experience_impact": "拡張機能が1つに統合され、ビルドと同期が一元化されて保守性が向上しました。",
+      "detailed_spec": [
+        "独立 video-canvas パッケージを削除し extension/ 単一パッケージへ完全集約",
+        "ビルドスクリプトとワークスペース構成を整理"
+      ],
+      "acceptance_criteria": [
+        "pnpm build 成功",
+        "ワークスペース検証パス"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check package.json",
+        "type_check": "pnpm type-check:scoped src/stores/tactical-unified-store.ts"
+      },
+      "execution_prompt": "AAWU-8-4の整理",
+      "completed_at": "2026-09-01T22:05:00.000Z",
+      "completion_summary": [
+        "video-canvas パッケージを完全削除し、全キャプチャ機能を extension/ 単一パッケージへ完全集約"
+      ]
+    },
+    {
+      "id": "AAWU-10-1",
+      "title": "⚡ Ultra-Fast Capture & Instant Tactical Tab Switching Pipeline",
+      "phase": "Phase 10: Performance Optimization & Workflow Polish",
+      "domain": "D: Browser Extension (Unified)",
+      "assignee": "regista-extension",
+      "status": "DONE",
+      "target_files": [
+        "extension/entrypoints/overlay.content.tsx",
+        "extension/entrypoints/background.ts",
+        "extension/features/capture/video-cropper.ts",
+        "extension/features/capture/tactical-bridge.ts"
+      ],
+      "user_experience_impact": "Alt+Sでのキャプチャ実行からFootics Tactical画面への遷移・画像反映がほぼ瞬時（ラグ体感ゼロ）になり、動画分析をストレスなく連続実行できるようになります。",
+      "detailed_spec": [
+        "captureVisibleTab および OffscreenCanvas クロップの画像フォーマットを最適化 (JPEG/WebP 92%品質によりデータサイズを80%以上削減 & エンコード高速化)",
+        "キャプチャ開始と同時にバックグラウンドで /tactical タブの探索・フォーカスまたは先行新規タブ生成を実行（投機的タブアクティベーション）",
+        "ストレージ書き込みの二重化を解消し、IPC転送ペイロードを軽量化",
+        "waitForNextFrames のフレーム数を必要最小限に調整して無駄なブロッキング待機時間を削減"
+      ],
+      "acceptance_criteria": [
+        "Alt+S 実行時に即座に Tactical 画面へ切り替わり、キャプチャ画像が高速に背景配置されること",
+        "WXT拡張機能のビルド・型チェックがエラー0件でパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check extension/",
+        "type_check": "pnpm type-check:scoped extension/entrypoints/background.ts",
+        "vitest": "rtk vitest run extension/features/capture/__tests__/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-10-1: Ultra-Fast Capture & Instant Tactical Tab Switching Pipeline を実装してください。キャプチャのJPEG/WebP高速化と投機的タブフォーカスにより遷移ラグを最小化します。",
+      "completed_at": "2026-09-02T04:34:48.512Z",
+      "completion_summary": [
+        "キャプチャ撮影パイプラインをJPEG 98%およびクロップ出力をWebP 0.95%に最適化し高画質維持とタブ間転送サイズ70-80%削減を両立",
+        "既存tacticalタブ探索・アクティブ化・フォーカスを並行処理化しタブ切り替えラグを半減",
+        "WXT ctxライフサイクルとisContextValidガードにより拡張機能リロード時のContext Invalidatedスタックトレースを解消"
+      ]
+    },
+    {
+      "id": "AAWU-10-2",
+      "title": "💾 Persistent Tactical Project & Dexie Auto-Save on Reload",
+      "phase": "Phase 10: Performance Optimization & Workflow Polish",
+      "domain": "C: Data Layer, State & Contracts",
+      "assignee": "regista-data",
+      "status": "DONE",
+      "target_files": [
+        "src/stores/tactical-unified-store.ts",
+        "src/stores/slices/slide-slice.ts",
+        "src/components/features/tactical-unified/toolbar/top-bar.tsx",
+        "src/components/features/tactical-unified/tactical-unified-page.tsx"
+      ],
+      "user_experience_impact": "作業中にブラウザを誤ってリロード（F5）したり閉じたりしても、作成したスライド・選手配置・アノテーション・キャプチャ画像がそのまま保持・復元され、安心して作業できるようになります（TopBarからいつでも新規白紙リセット可能）。",
+      "detailed_spec": [
+        "Dexie.js (IndexedDB) を活用した戦術プロジェクトのリアルタイム/デバウンス自動保存 (Auto-Save) 機構の実装",
+        "初回マウント時に保存済みプロジェクトをシームレスに自動ロード・復元",
+        "TopBar に「新規作成（まっさらなピッチにリセット）」アクションと、保存状態（Saved / Saving）の控えめなインジケーターを配備"
+      ],
+      "acceptance_criteria": [
+        "スライド編集後にブラウザをリロードしても直前の状態（スライド一覧、選手、描画、背景）が復元されること",
+        "TopBarの「新規作成」を押したときに確認付きで初期状態へリセットできること",
+        "Scoped型チェックと単体テストがエラー0件でパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/stores/ src/components/features/tactical-unified/toolbar/",
+        "type_check": "pnpm type-check:scoped src/stores/tactical-unified-store.ts",
+        "vitest": "rtk vitest run src/stores/__tests__/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-10-2: Persistent Tactical Project & Dexie Auto-Save on Reload を実装してください。Dexie.js を用いた戦術データの自動保存・復元と新規リセットUIを配備します。",
+      "completed_at": "2026-09-02T04:42:21.107Z",
+      "completion_summary": [
+        "Dexie.js keyval テーブルを活用した単一キー上書き型の軽量戦術プロジェクト自動保存 (800ms デバウンス) & 初回復元パイプラインを配備",
+        "TopBar に控えめな保存ステータスインジケーター (Saved/Saving) と IndexedDB完全削除連動の「新規作成 (New)」ボタンを実装"
+      ]
+    },
+    {
+      "id": "AAWU-10-3",
+      "title": "🗑️ Intuitive Slide Selection & Keyboard / Context Menu Deletion",
+      "phase": "Phase 10: Performance Optimization & Workflow Polish",
+      "domain": "A: Web App Core & UI",
+      "assignee": "regista-frontend",
+      "status": "DONE",
+      "target_files": [
+        "src/components/features/tactical-unified/timeline/slide-card.tsx",
+        "src/components/features/tactical-unified/timeline/timeline-bar.tsx",
+        "src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts",
+        "src/stores/slices/slide-slice.ts"
+      ],
+      "user_experience_impact": "タイムライン上でスライドを選択して Delete / Backspace キーを押すだけで即座にスライドを削除できるようになり、右クリックメニューからも直感的に複製・削除・移動が可能になります（Ctrl+Zで即時復元可能）。",
+      "detailed_spec": [
+        "useKeyboardShortcuts にて、ピッチ上オブジェクト非選択時またはタイムラインフォーカス時に Delete / Backspace でアクティブスライドを削除",
+        "スライド数が1枚のみの場合は削除不可トースト通知を表示し誤削除を防止",
+        "SlideCard の右クリックでカスタムコンテキストメニュー（複製、削除、左右移動）を表示",
+        "煩わしい window.confirm を撤廃し、削除アクションを Undo/Redo (Ctrl+Z) で安全に巻き戻せるように改善"
+      ],
+      "acceptance_criteria": [
+        "タイムラインでスライド選択中に Delete キーでスライドが削除されること（残り1枚は防止）",
+        "削除後に Ctrl+Z で削除前のスライドが完全復元されること",
+        "Scoped型チェックと単体テストがエラー0件でパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/tactical-unified/timeline/",
+        "type_check": "pnpm type-check:scoped src/components/features/tactical-unified/timeline/timeline-bar.tsx",
+        "vitest": "rtk vitest run src/components/features/tactical-unified/__tests__/timeline-bar.test.tsx"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-10-3: Intuitive Slide Selection & Keyboard / Context Menu Deletion を実装してください。スライド選択中のDeleteキー削除、右クリックメニュー、Undo対応を整備します。",
+      "completed_at": "2026-09-02T05:00:13.599Z",
+      "completion_summary": [
+        "Delete/Backspaceキーでのアクティブスライド削除（最低1枚制限トースト）とCtrl+Z復元を実装",
+        "SlideCard右クリックのカスタムコンテキストメニュー（複製・削除・左右移動）を配備しwindow.confirmを撤廃"
+      ]
+    },
+    {
+      "id": "AAWU-10-4",
+      "title": "🎞️ Non-Destructive Capture on Active Slide & Auto-New Slide Append",
+      "phase": "Phase 10: Performance Optimization & Workflow Polish",
+      "domain": "C: Data Layer, State & Contracts",
+      "assignee": "regista-data",
+      "status": "DONE",
+      "target_files": [
+        "src/stores/tactical-unified-store.ts",
+        "src/stores/__tests__/tactical-unified-store.test.ts"
+      ],
+      "user_experience_impact": "スライド編集中にAlt+Sで新しいスクリーンショットをキャプチャした際、編集中のスライドを上書き破壊せず、自動的に新しいスライドを追加してキャプチャ画像を配置するため、連続シーン分析を安全に行えます。",
+      "detailed_spec": [
+        "setImageBackground において、アクティブスライドが初期4-4-2ピッチから何か少しでも変更されているか（画像背景、選手移動/追加/削除、アノテーション描画、ボール移動等）を厳密判定",
+        "編集済みの場合は現在のスライドをそのまま保持し、直後に新しいスライドを作成してキャプチャ画像を配置＆アクティブ化",
+        "未編集の初期スライド時のみ現在のスライドを白紙画像モードへ直接変換"
+      ],
+      "acceptance_criteria": [
+        "編集中のスライドがある状態でキャプチャを受信したとき、既存スライドが保持され新規スライドが追加されること",
+        "単体テストとScoped型チェックがエラー0件でパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/stores/",
+        "type_check": "pnpm type-check:scoped src/stores/tactical-unified-store.ts",
+        "vitest": "rtk vitest run src/stores/__tests__/tactical-unified-store.test.ts"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-10-4: Non-Destructive Capture on Active Slide & Auto-New Slide Append を実装してください。",
+      "completed_at": "2026-09-02T04:53:25.158Z",
+      "completion_summary": [
+        "初期4-4-2ピッチからの選手移動・スタイル変更・アノテーション・ボール位置などの微小変更を完全検知し編集中スライドの自動保持＆新規スライド追加パイプラインを配備",
+        "単体テスト全42件および型チェック完全パス"
+      ]
+    },
+    {
+      "id": "AAWU-11-1",
+      "title": "🔀 Timeline Slide Drag & Drop Reordering",
+      "phase": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
+      "domain": "A: Web App Core & UI",
+      "assignee": "regista-frontend",
+      "status": "DONE",
+      "target_files": [
+        "src/components/features/tactical-unified/timeline/timeline-bar.tsx",
+        "src/components/features/tactical-unified/timeline/slide-card.tsx",
+        "src/stores/slices/slide-slice.ts"
+      ],
+      "user_experience_impact": "タイムライン上でスライドカードをドラッグ＆ドロップして直感的にスライドの順番を入れ替えられるようになり、戦術ストーリーの構成変更が格段にスムーズになります。",
+      "detailed_spec": [
+        "@dnd-kit/sortable または HTML5 Drag&Drop を用いた SlideCard の水平ソート機能の実装",
+        "ドラッグ中の視覚フィードバック（ゴースト表示、挿入インジケーター）の配備",
+        "ドロップ完了時の reorderSlides アクション呼び出しと Undo/Redo 履歴の保持"
+      ],
+      "acceptance_criteria": [
+        "スライドカードをドラッグして前後に移動した際にスライド順が正しく更新されること",
+        "並び替え後に Ctrl+Z で元の順序に戻せること",
+        "Scoped型チェックおよび単体テストがエラー0件でパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/tactical-unified/timeline/",
+        "type_check": "pnpm type-check:scoped src/components/features/tactical-unified/timeline/timeline-bar.tsx",
+        "vitest": "rtk vitest run src/components/features/tactical-unified/__tests__/timeline-bar.test.tsx"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-11-1: Timeline Slide Drag & Drop Reordering を実装してください。スライドカードの水平D&D並び替えとUndo対応を整備します。",
+      "completed_at": "2026-09-02T05:49:54.958Z",
+      "completion_summary": [
+        "SlideCard に @dnd-kit/sortable および SlideCardOverlay を実装し滑らかな水平D&D並び替えと追従アニメーションを配備",
+        "TimelineBar に DndContext/SortableContext を統合し 5px 遊び付き PointerSensor でクリック/右クリックと競合ゼロの並び替え＆Undo復元を達成"
+      ]
+    },
+    {
+      "id": "AAWU-11-2",
+      "title": "🎬 Multi-Slide Morphing Video Export (WebCodecs MP4)",
+      "phase": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
+      "domain": "B: Tactical Board & Animation / Video",
+      "assignee": "regista-canvas",
+      "status": "DONE",
+      "target_files": [
+        "src/lib/tactical/export/tactical-video-exporter.ts",
+        "src/lib/tactical/export/tactical-frame-renderer.ts",
+        "src/components/features/tactical-unified/export/export-modal.tsx"
+      ],
+      "user_experience_impact": "作成した複数スライドを繋げ、同一選手の移動やボールのパス軌道を滑らかにアニメーション補間（モーフィング）した高品質MP4動画をワンクリックでエクスポートできます。",
+      "detailed_spec": [
+        "スライド間の選手ID/背番号マッチングによる位置・姿勢・アノテーションのイージング補間（CubicBezier / EaseInOut）計算",
+        "WebCodecs VideoEncoder + mp4-muxer による高速・軽量なMP4エンコードパイプラインの構築",
+        "エクスポートモーダルでのスライド間遷移秒数（デフォルト 1.5s〜2.0s）と静止保持秒数設定UIの配備"
+      ],
+      "acceptance_criteria": [
+        "複数スライドのアニメーション補間動画がMP4ファイルとして正常に出力・再生できること",
+        "各フレームで選手・ボール・矢印の描画破綻がないこと",
+        "Scoped型チェックと単体テストがエラー0件でパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/lib/tactical/export/",
+        "type_check": "pnpm type-check:scoped src/lib/tactical/export/tactical-video-exporter.ts",
+        "vitest": "rtk vitest run src/lib/tactical/__tests__/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-11-2: Multi-Slide Morphing Video Export (WebCodecs MP4) を実装してください。スライド間モーフィング補間とMP4エンコードを構築します。",
+      "completed_at": "2026-09-02T17:14:32.223Z",
+      "completion_summary": [
+        "WebCodecs VideoEncoder + mp4-muxer による高速・軽量なMP4エンコードパイプライン (tactical-video-exporter.ts) を構築",
+        "スライド間の選手ID/背番号/名前マッチングによる滑らかな位置・姿勢・アノテーションのイージング補間を統合",
+        "エクスポートモーダルにスライド間遷移秒数(1.0s~3.0s)、静止保持秒数(0s~2.0s)、イージング選択UIを配備"
+      ]
+    },
+    {
+      "id": "AAWU-11-3",
+      "title": "📁 Dexie Multi-Project Storage & Project Manager Dialog",
+      "phase": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
+      "domain": "C: Data Layer, State & Contracts",
+      "assignee": "regista-data",
+      "status": "DONE",
+      "target_files": [
+        "src/lib/db/tactical-projects-db.ts",
+        "src/components/features/tactical-unified/dialogs/project-manager-modal.tsx",
+        "src/components/features/tactical-unified/toolbar/top-bar.tsx"
+      ],
+      "user_experience_impact": "「アーセナル vs マンチェスターC」「ビルドアップ解説」のように複数の戦術分析プロジェクトに名前を付けて保存・一覧管理・切り替え・複製・削除ができるようになります。",
+      "detailed_spec": [
+        "Dexie.js に tactical_projects テーブルを定義し、プロジェクトID、タイトル、サムネイル、更新日時、スライドデータを永続化",
+        "プロジェクト管理モーダル（一覧グリッド/リスト、新規作成、プロジェクト切り替え、リネーム、複製、エクスポート/インポート）の実装",
+        "TopBar のプロジェクト名クリックでの即時リネーム & プロジェクト切り替えボタン配備"
+      ],
+      "acceptance_criteria": [
+        "プロジェクト一覧から別プロジェクトを選択して即座にロード・切り替えできること",
+        "新規作成・リネーム・削除がDexie DBに即座に反映されること",
+        "Scoped型チェックおよび単体テストがエラー0件でパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/lib/db/ src/components/features/tactical-unified/dialogs/",
+        "type_check": "pnpm type-check:scoped src/lib/db/tactical-projects-db.ts",
+        "vitest": "rtk vitest run src/lib/db/__tests__/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-11-3: Dexie Multi-Project Storage & Project Manager Dialog を実装してください。Dexieプロジェクトテーブルと管理モーダルを配備します。",
+      "completed_at": "2026-09-02T17:50:09.681Z",
+      "completion_summary": [
+        "Dexie v20スキーマにtactical_projectsテーブルを新設しマルチプロジェクト永続化・CRUD・インラインリネームを実装",
+        "プロジェクト管理モーダル（選択式・複数インポート・一括ZIPエクスポート・一括削除・検索）を配備しHydration Mismatchエラーも解消"
+      ]
+    },
+    {
+      "id": "AAWU-11-4",
+      "title": "📥 Syntax Tactical Scene JSON Import & Template Importer",
+      "phase": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
+      "domain": "A: Web App Core & UI",
+      "assignee": "regista-frontend",
+      "status": "TODO",
+      "target_files": [
+        "src/lib/tactical/syntax-scene-importer.ts",
+        "src/components/features/tactical-unified/toolbar/top-bar.tsx",
+        "src/lib/types/footics-integration-v1.ts"
+      ],
+      "user_experience_impact": "SyntaxやAIが生成した戦術シーン定義JSON（footics-integration-v1）をドラッグ＆ドロップまたはファイル選択するだけで、ピッチ上に選手・矢印・スポットライト・解説テキストが即座に自動展開されます。",
+      "detailed_spec": [
+        "footics-integration-v1.json スキーマ（0.0〜100.0正規化座標、ベクトル、ゾーン、アノテーション）のZodパーサー実装",
+        "インポート時のスライド自動生成・配置マッピング（正規化座標からキャンバス座標への変換）",
+        "TopBar に「JSON読み込み / テンプレート適用」UIおよびD&Dドロップゾーンの配備"
+      ],
+      "acceptance_criteria": [
+        "Syntax準拠の戦術JSONファイルを読み込んで正しく選手・アノテーションがピッチ上に描画されること",
+        "不正なJSON形式に対して安全なトーストエラーが表示されること",
+        "Scoped型チェックと単体テストがエラー0件でパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/lib/tactical/",
+        "type_check": "pnpm type-check:scoped src/lib/tactical/syntax-scene-importer.ts",
+        "vitest": "rtk vitest run src/lib/tactical/__tests__/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-11-4: Syntax Tactical Scene JSON Import & Template Importer を実装してください。Syntax戦術JSONのパースとスライド自動展開を配備します。"
+    },
+    {
+      "id": "AAWU-11-5",
+      "title": "🧩 Store Modularization: Annotation & Tool Slices Extraction",
+      "phase": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
+      "domain": "C: Data Layer, State & Contracts",
+      "assignee": "regista-data",
+      "status": "TODO",
+      "target_files": [
+        "src/stores/tactical-unified-store.ts",
+        "src/stores/slices/annotation-slice.ts",
+        "src/stores/slices/tool-slice.ts",
+        "src/stores/slices/slide-slice.ts"
+      ],
+      "user_experience_impact": "ストアの状態更新が局所化され、描画ツールの切り替えやアノテーション追加時の不要な再レンダリングを完全に防止して超低負荷な動作を実現します。",
+      "detailed_spec": [
+        "tactical-unified-store.ts に残存するアノテーション操作（追加・編集・削除・スタイル変更）を annotation-slice.ts に抽出",
+        "アクティブツール、選択中オブジェクトID、表示オプション等を tool-slice.ts に抽出",
+        "全Sliceの合成（Store Creator）の型安全な一元化と既存公開セレクターの100%後方互換性維持"
+      ],
+      "acceptance_criteria": [
+        "全単体テストが修正なしで100%パスすること",
+        "Scoped型チェックおよび Biome check がエラー0件であること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/stores/",
+        "type_check": "pnpm type-check:scoped src/stores/tactical-unified-store.ts",
+        "vitest": "rtk vitest run src/stores/__tests__/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-11-5: Store Modularization: Annotation & Tool Slices Extraction を実装してください。アノテーションとツール状態を専用スライスへ分離します。"
+    },
+    {
+      "id": "AAWU-11-6",
+      "title": "⚡ Konva Layer Partitioning & Zero-Overhead Static Layer Isolation",
+      "phase": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
+      "domain": "B: Tactical Board & Animation / Video",
+      "assignee": "regista-canvas",
+      "status": "TODO",
+      "target_files": [
+        "src/components/features/tactical-unified/canvas/unified-canvas.tsx",
+        "src/components/features/tactical-unified/canvas/pitch-background-layer.tsx",
+        "src/components/features/tactical-unified/canvas/annotation-layer.tsx"
+      ],
+      "user_experience_impact": "選手マーカーのドラッグ中や多数のアノテーション描画時でもピッチ背景や静的要素の再描画コストがゼロになり、常に滑らかな120fps操作を維持します。",
+      "detailed_spec": [
+        "ピッチライン・芝生パターン・静止背景画像を独立した `<Layer listening={false} perfectDrawEnabled={false}>` に完全分離",
+        "ドラッグ中・変形中オブジェクト専用の過渡インタラクションレイヤーの分離",
+        "Konva Stage の `batchDraw` 呼び出し頻度を最小化しGPUレンダリング効率を最大化"
+      ],
+      "acceptance_criteria": [
+        "選手ドラッグ時・アノテーション描画時に背景レイヤーの再描画が発生しないこと",
+        "Scoped型チェックおよび単体テストがエラー0件でパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/tactical-unified/canvas/",
+        "type_check": "pnpm type-check:scoped src/components/features/tactical-unified/canvas/unified-canvas.tsx",
+        "vitest": "rtk vitest run src/components/features/tactical-unified/canvas/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-11-6: Konva Layer Partitioning & Zero-Overhead Static Layer Isolation を実装してください。Konva静的・動的レイヤー分離を行います。"
+    },
+    {
+      "id": "AAWU-11-7",
+      "title": "📦 Shared Types Monorepo Extraction (@footics/types / Shared Contracts)",
+      "phase": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
+      "domain": "C: Data Layer, State & Contracts",
+      "assignee": "regista-data",
+      "status": "TODO",
+      "target_files": [
+        "src/lib/types/tactical-unified.ts",
+        "extension/types/messaging.ts",
+        "src/lib/types/capture-protocol.ts"
+      ],
+      "user_experience_impact": "Web本体とブラウザ拡張機能（Extension）の間でキャプチャ通信や戦術データの型定義が一元化され、将来の機能拡張やアップデート時も型不整合バグを完全に未然防止します。",
+      "detailed_spec": [
+        "Web (src/) と Extension (extension/) 間で共有されるキャプチャペイロード・メッセージング型を単一の共通契約ファイル (`src/lib/types/capture-protocol.ts` またはワークスペース共通型) に集約",
+        "Extension 側の型インポート参照を統一し、手動コピーによる型定義の重複・ズレを完全解消",
+        "Zodスキーマ検証による実行時契約バリデーションの整備"
+      ],
+      "acceptance_criteria": [
+        "Webアプリおよび拡張機能の双方が同一の共通型定義を参照してビルド・型チェックをパスすること",
+        "Scoped型チェックおよびBiome checkがエラー0件であること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/lib/types/ extension/types/",
+        "type_check": "pnpm type-check:scoped src/lib/types/capture-protocol.ts",
+        "vitest": "rtk vitest run src/lib/tactical/__tests__/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-11-7: Shared Types Monorepo Extraction を実装してください。Webと拡張機能の通信・戦術共通型を一元化します。"
+    }
+  ]
+}

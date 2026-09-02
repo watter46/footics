@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import type { TacticalProject } from '@/lib/types/tactical-unified';
 import type { EventRow, Match } from '@/types';
 import type {
   CustomEvent,
@@ -29,7 +30,8 @@ export interface PlayerMaster {
 
 const DB_NAME = 'footics_db';
 // v19: drop players store in v18 and recreate with new primary key 'id' in v19 to avoid Dexie UpgradeError
-const _DB_VERSION = 19;
+// v20: add tactical_projects store for multi-project storage & manager
+const _DB_VERSION = 20;
 
 export class FooticsDatabase extends Dexie {
   event_memos!: Table<EventMemo, number>;
@@ -41,6 +43,7 @@ export class FooticsDatabase extends Dexie {
   events!: Table<EventRow, [number | string, number | string]>;
   keyval!: Table<KeyValEntry, string>;
   players!: Table<PlayerMaster, string>;
+  tactical_projects!: Table<TacticalProject, string>;
 
   constructor() {
     super(DB_NAME);
@@ -82,6 +85,10 @@ export class FooticsDatabase extends Dexie {
 
     this.version(19).stores({
       players: 'id, playerId, season, name, teamName, updatedAt',
+    });
+
+    this.version(20).stores({
+      tactical_projects: 'id, title, updatedAt, createdAt',
     });
   }
 }

@@ -71,7 +71,7 @@ export function transformPoints(
 // ─────────────────────────────────────────
 
 export const MarkerStyleSchema = z.object({
-  markerType: z.enum(['circle', 'ring']).default('circle'),
+  markerType: z.enum(['circle', 'ring']).optional().default('circle'),
   insideContent: z.enum(['number', 'photo', 'none']).default('number'),
   photoUrl: z.string().url().optional(),
   bottomLabel: z.enum(['name', 'number', 'none']).default('name'),
@@ -397,6 +397,7 @@ export const TacticalProjectSchema = z.object({
   matchId: z.string().optional(),
   tags: z.array(z.string()).default([]),
 
+  thumbnail: z.string().optional(),
   screenshotSourceUrl: z.string().optional(),
   boundaryBox: BoundaryBoxSchema.optional(),
 });
@@ -571,6 +572,7 @@ export function createDefaultProject(id: string): TacticalProject {
   return {
     id,
     version: '2.0.0',
+    title: 'Untitled Project',
     createdAt: now,
     updatedAt: now,
     aspectRatio: '16:9',

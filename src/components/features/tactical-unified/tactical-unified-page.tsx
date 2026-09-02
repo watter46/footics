@@ -14,8 +14,10 @@ import dynamic from 'next/dynamic';
 import type React from 'react';
 import { useCallback, useEffect } from 'react';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
+import { ProjectManagerModal } from './dialogs/project-manager-modal';
 import { ExportModal } from './export/export-modal';
 import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
+import { useTacticalAutoSave } from './hooks/use-tactical-auto-save';
 import { useTacticalCaptureBridge } from './hooks/use-tactical-capture-bridge';
 import { RightPanel } from './right-panel/right-panel';
 import { TimelineBar } from './timeline/timeline-bar';
@@ -28,8 +30,17 @@ const UnifiedCanvas = dynamic(
 );
 
 export function TacticalUnifiedPage() {
+  // 💾 プロジェクト自動保存 & リロード時自動復元 (Dexie IndexedDB)
+  useTacticalAutoSave();
+
   const exportModalOpen = useTacticalUnifiedStore(
     (s) => s.panels.exportModalOpen,
+  );
+  const projectManagerModalOpen = useTacticalUnifiedStore(
+    (s) => s.panels.projectManagerModalOpen,
+  );
+  const closeProjectManagerModal = useTacticalUnifiedStore(
+    (s) => s.closeProjectManagerModal,
   );
   const setImageBackground = useTacticalUnifiedStore(
     (s) => s.setImageBackground,
@@ -145,6 +156,14 @@ export function TacticalUnifiedPage() {
 
       {/* Export Modal (Portal) */}
       {exportModalOpen && <ExportModal />}
+
+      {/* Project Manager Modal */}
+      {projectManagerModalOpen && (
+        <ProjectManagerModal
+          isOpen={projectManagerModalOpen}
+          onClose={closeProjectManagerModal}
+        />
+      )}
     </div>
   );
 }

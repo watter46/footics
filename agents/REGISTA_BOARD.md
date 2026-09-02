@@ -1,233 +1,193 @@
 # Regista Management Board
 
+> **Source of Truth**: `.regista/board.json` (Last Updated: 2026-09-02T17:50:09.681Z)
+
 ## 1. [Active Focus]
-- **【Phase 8】Unified Extension & Direct-to-Tactical DRM Capture Pipeline (AAWU 8-1 〜 8-4)**:
-  - **背景 & 課題**:
-    1. **拡張機能の二重管理解消**: `video-canvas` と `extension` の2つの拡張機能が存在し、インストールや運用の手間が発生していた。
-    2. **Tactical画面へのシームレス編集移譲**: キャプチャ後に専用の `editor.html` を開くのではなく、Footics本体の新しいTactical（`/tactical`）画面へ直接画像とメタデータを転送して配置・編集するワークフローの確立。
-    3. **DRM回避・高精度キャプチャエンジンの強化**: CSS合成トリック（`filter`, `opacity`, `transform`等）の堅牢化、黒帯（レターボックス）自動トリミング、UI非表示処理の高速化・フリッカー防止。
-  - **確定仕様 & AAWU 分解**:
-    1. **AAWU 8-1 (Hardened DRM Video Capture Engine & Precise Crop)**: DRM回避トリックの強化、アスペクト比連動の黒帯自動クロップ計算、安全なUI非表示エンジンの作成。
-    2. **AAWU 8-2 (Extension Consolidation & Shortcut Trigger Pipeline)**: `extension/` パッケージへキャプチャ機能（Content Script / Background Handler）を完全統合・ショートカット登録。
-    3. **AAWU 8-3 (Tactical Direct Import Bridge & Background Storage)**: キャプチャデータの保存・Footics Webタブ検知/アクティブ化、および `/tactical` でのスナップショット背景・画像レイヤー即時配置。
-    4. **AAWU 8-4 (Legacy Video-Canvas Cleanup & Workspace Harmonization)**: 不要となった独立 `video-canvas` パッケージの整理とビルドスクリプト・ワークスペース同期の最適化。
+- **【Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification】**:
+  - **目的 & 課題**: スライドD&D並び替え、WebCodecs MP4自動トランジション動画エクスポート、Dexie複数プロジェクト管理、Syntax戦術JSON連携、およびストア・描画レイヤー・共通型定義の徹底リファクタリング。
 
-## 2. [Backlog / Adopted Roadmaps (オーナー承認済 バックログ)]
-- **【品質基盤】エージェント性能最大化 3大ルールの徹底運用**:
-  - 1. State Machine厳守 / 2. 極小AAWU（1〜3ファイル） / 3. KI自動更新。
+## 2. [Task Matrix]
 
-## 3. [Task Matrix (Phase 8: Unified Extension & Direct-to-Tactical DRM Capture Pipeline)]
-
-| Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
+| Ticket ID | タスク名 | 担当 | 対象ファイル | ユーザー体験の変化 (UX Impact) | ステータス |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **AAWU 8-1** | 📸 **Hardened DRM Capture Engine & Precise Video Crop** | `regista-extension` | `extension/features/capture/drm-capture-engine.ts`<br>`extension/features/capture/video-cropper.ts`<br>`extension/features/capture/__tests__/video-cropper.test.ts` | 1. `video-canvas` のDRM回避CSSトリック（`brightness`/`opacity`/`transform`等）を多層化・フォールバック強化。<br>2. 動画生解像度（`videoWidth/Height`）と描画領域から余白黒帯を自動計算し、不要なレターボックスを精密トリミング。<br>3. `requestAnimationFrame` を用いた高速かつちらつきのないUI隠蔽・復元ロジック。 | **DONE** ✅ |
-| **AAWU 8-2** | 🔌 **Extension Integration & Global Shortcut Trigger** | `regista-extension` | `extension/entrypoints/background.ts`<br>`extension/entrypoints/overlay.content.tsx`<br>`extension/types/messaging.ts`<br>`extension/wxt.config.ts` | 1. `extension/` にキャプチャ用ショートカット（`capture-to-tactical`）およびコマンドハンドラーを追加。<br>2. Content Script と Background 間のメッセージングパイプラインを統合し、`extension` 単独で高精度キャプチャを起動可能にする。 | **DONE** ✅ |
-| **AAWU 8-3-A** | 🖼️ **Snapshot Analysis Mode & Clean Canvas Initialization** | `regista-frontend`<br>`regista-canvas` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-tactical-capture-bridge.ts`<br>`src/components/features/tactical-unified/right-panel/right-panel.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | 1. キャプチャ受信時、背景を画像モードに切り替え、ピッチ線を完全非表示、スタメン22人を白紙クリア、ボールも非表示化。<br>2. 境界ボックス（Boundary Box）をデフォルトでスクリーンショット全面に自動フィット。<br>3. 右パネルおよびトップバーを自動で Properties（インスペクター）専用モードへ最適化。 | **DONE** ✅ |
-| **AAWU 8-3-B** | ⭕ **3D Foot Ring & Spotlight Pillar Rendering Integration** | `regista-canvas` | `src/lib/tactical/marker-assets.ts`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/types/tactical-unified.ts` | 1. `video-canvas` の `MARKER_PATHS`（立体足元楕円）および `SPOTLIGHT_BEAM_PATH`（上から注ぐ光の柱）を描画レイヤーに完全移植。<br>2. マーカーのスポットライトUIを光の柱デザインへ統一。<br>3. キャンバス上でのインタラクティブ変形・視野コーン楕円連動・最下部座標位置合わせを完了。 | **DONE** ✅ |
-| **AAWU 8-3-C** | 🛠️ **Ring Placement Toolbar & Snapshot-Centric Right Panel** | `regista-frontend` | `src/components/features/tactical-unified/toolbar/top-bar.tsx`<br>`src/components/features/tactical-unified/right-panel/right-panel.tsx`<br>`src/components/features/tactical-unified/inspector/inspector-panel.tsx` | 1. ツールバーに `[ ⭕ リング ]` 追加ボタンを配置（クリックでキャンバスにリングを配置）。<br>2. スクリーンショット時は右パネルの Formation/Squad を隠し Properties のみに最適化。<br>3. リング選択時に右パネルで矢印・FOV・コネクタ・マンマーク・スポットライト・小型スポイトを操作可能にする。 | **DONE** ✅ |
-| **AAWU 8-3-D** | 📑 **Timeline Right-Click Duplicate & Snapshot Context Carryover** | `regista-frontend`<br>`regista-data` | `src/components/features/tactical-unified/timeline/timeline-bar.tsx`<br>`src/components/features/tactical-unified/timeline/slide-item.tsx`<br>`src/stores/tactical-unified-store.ts` | 1. タイムラインスライドの右クリックで「スクリーンショット背景＋右パネル設定＋リング」を丸ごと引き継ぐ複製アクションを配備。<br>2. 通常の左クリック `+` は新規白紙スライド追加（完全デフォルト初期化）。 | **DONE** ✅ |
-| **AAWU 8-4** | 🧹 **Legacy Video-Canvas Deprecation & Workspace Cleanup** | `regista-gm` | `pnpm-workspace.yaml`<br>`package.json`<br>`AGENTS.md` | 1. 独立 `video-canvas` パッケージの役割を `extension` に集約し、ビルドスクリプトと依存関係を最適化。<br>2. 拡張機能のビルド＆Windows同期ターゲットを `extension/` 単一に集約。 | **DONE** ✅ |
+| **AAWU-6-1** | 🔲 Default Auto-Fit Pitch Boundary Box | `regista-canvas` | `src/lib/types/tactical-unified.ts`<br>`src/components/features/tactical-unified/canvas/boundary-box.tsx`<br>`src/stores/tactical-unified-store.ts` | 新規スライド作成時やリセット時に、境界線ボックスが常にピッチ白線外周の均等余白に自動フィットするようになります。 | **DONE ✅** |
+| **AAWU-6-2** | 🏷️ Player Label High-Contrast Visibility Fix | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/tactical/export/tactical-frame-renderer.ts` | 暗いピッチ背景やスナップショット写真上でも、選手名と背番号ラベルがくっきり白文字＋アウトラインで視認できるようになります。 | **DONE ✅** |
+| **AAWU-6-4** | 👥 Sub-Centric Squad Panel & One-Click Pitch Deploy | `regista-frontend` | `src/components/features/tactical-unified/right-panel/squad-sub-panel.tsx`<br>`src/components/features/tactical-unified/canvas/unified-canvas.tsx` | 右パネルのSquadタブから、サブ選手をドラッグ＆ドロップせずともワンクリックでピッチ上の空きスペースへ投入できるようになります。 | **DONE ✅** |
+| **AAWU-9-1** | 🧩 Tactical Unified Store Slice Pattern Refactoring | `regista-data` | `src/stores/tactical-unified-store.ts`<br>`src/stores/slices/slide-slice.ts`<br>`src/stores/slices/history-slice.ts`<br>`src/stores/slices/clipboard-slice.ts` | ストアが機能別にモジュール化され、大量のスライドや複雑な戦術操作時でも高速な型推論と安定した状態同期が保証されます。 | **DONE ✅** |
+| **AAWU-8-1** | 📸 Hardened DRM Capture Engine & Precise Video Crop | `regista-extension` | `extension/features/capture/drm-capture-engine.ts`<br>`extension/features/capture/video-cropper.ts`<br>`extension/features/capture/__tests__/video-cropper.test.ts` | DRM保護された動画配信サイトでも黒画面にならず、上下左右の不要な黒帯を自動トリミングして試合ピッチ映像のみを瞬時にキャプチャできます。 | **DONE ✅** |
+| **AAWU-8-2** | 🔌 Extension Integration & Global Shortcut Trigger | `regista-extension` | `extension/entrypoints/background.ts`<br>`extension/entrypoints/overlay.content.tsx`<br>`extension/types/messaging.ts`<br>`extension/wxt.config.ts` | ブラウザ上の動画視聴中に Alt+S を押すだけで、拡張機能単独で高精度キャプチャが即座に起動します。 | **DONE ✅** |
+| **AAWU-8-3-A** | 🖼️ Snapshot Analysis Mode & Clean Canvas Initialization | `regista-frontend` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-tactical-capture-bridge.ts`<br>`src/components/features/tactical-unified/right-panel/right-panel.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | 拡張機能からキャプチャを受信した際、自動で白紙・画像モードに切り替わり、画面全体にキャプチャ画像がフィットして即座に戦術描画を開始できます。 | **DONE ✅** |
+| **AAWU-8-3-B** | ⭕ 3D Foot Ring & Spotlight Pillar Rendering Integration | `regista-canvas` | `src/lib/tactical/marker-assets.ts`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/types/tactical-unified.ts` | 動画キャプチャ上の選手足元にリアルな立体リングマーカーや、上空から照らす光の柱（スポットライト）を描画できるようになります。 | **DONE ✅** |
+| **AAWU-8-3-C** | 🛠️ Ring Placement Toolbar & Snapshot-Centric Right Panel | `regista-frontend` | `src/components/features/tactical-unified/toolbar/top-bar.tsx`<br>`src/components/features/tactical-unified/right-panel/right-panel.tsx`<br>`src/components/features/tactical-unified/inspector/inspector-panel.tsx` | ツールバーの「⭕ リング」ボタンからワンクリックでリングを配置し、右パネルで色・矢印・スポットライトを直感的に設定できます。 | **DONE ✅** |
+| **AAWU-8-3-D** | 📑 Timeline Right-Click Duplicate & Snapshot Context Carryover | `regista-data` | `src/components/features/tactical-unified/timeline/timeline-bar.tsx`<br>`src/components/features/tactical-unified/timeline/slide-item.tsx`<br>`src/stores/tactical-unified-store.ts` | タイムラインスライドを右クリック複製すると、キャプチャ画像やリング設定をそのまま次のシーンに引き継いで連続解説を作成できます（左クリック+は通常ピッチ白紙追加）。 | **DONE ✅** |
+| **AAWU-8-4** | 🧹 Legacy Video-Canvas Deprecation & Workspace Cleanup | `regista-gm` | `pnpm-workspace.yaml`<br>`package.json`<br>`AGENTS.md` | 拡張機能が1つに統合され、ビルドと同期が一元化されて保守性が向上しました。 | **DONE ✅** |
+| **AAWU-10-1** | ⚡ Ultra-Fast Capture & Instant Tactical Tab Switching Pipeline | `regista-extension` | `extension/entrypoints/overlay.content.tsx`<br>`extension/entrypoints/background.ts`<br>`extension/features/capture/video-cropper.ts`<br>`extension/features/capture/tactical-bridge.ts` | Alt+Sでのキャプチャ実行からFootics Tactical画面への遷移・画像反映がほぼ瞬時（ラグ体感ゼロ）になり、動画分析をストレスなく連続実行できるようになります。 | **DONE ✅** |
+| **AAWU-10-2** | 💾 Persistent Tactical Project & Dexie Auto-Save on Reload | `regista-data` | `src/stores/tactical-unified-store.ts`<br>`src/stores/slices/slide-slice.ts`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx`<br>`src/components/features/tactical-unified/tactical-unified-page.tsx` | 作業中にブラウザを誤ってリロード（F5）したり閉じたりしても、作成したスライド・選手配置・アノテーション・キャプチャ画像がそのまま保持・復元され、安心して作業できるようになります（TopBarからいつでも新規白紙リセット可能）。 | **DONE ✅** |
+| **AAWU-10-3** | 🗑️ Intuitive Slide Selection & Keyboard / Context Menu Deletion | `regista-frontend` | `src/components/features/tactical-unified/timeline/slide-card.tsx`<br>`src/components/features/tactical-unified/timeline/timeline-bar.tsx`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts`<br>`src/stores/slices/slide-slice.ts` | タイムライン上でスライドを選択して Delete / Backspace キーを押すだけで即座にスライドを削除できるようになり、右クリックメニューからも直感的に複製・削除・移動が可能になります（Ctrl+Zで即時復元可能）。 | **DONE ✅** |
+| **AAWU-10-4** | 🎞️ Non-Destructive Capture on Active Slide & Auto-New Slide Append | `regista-data` | `src/stores/tactical-unified-store.ts`<br>`src/stores/__tests__/tactical-unified-store.test.ts` | スライド編集中にAlt+Sで新しいスクリーンショットをキャプチャした際、編集中のスライドを上書き破壊せず、自動的に新しいスライドを追加してキャプチャ画像を配置するため、連続シーン分析を安全に行えます。 | **DONE ✅** |
+| **AAWU-11-1** | 🔀 Timeline Slide Drag & Drop Reordering | `regista-frontend` | `src/components/features/tactical-unified/timeline/timeline-bar.tsx`<br>`src/components/features/tactical-unified/timeline/slide-card.tsx`<br>`src/stores/slices/slide-slice.ts` | タイムライン上でスライドカードをドラッグ＆ドロップして直感的にスライドの順番を入れ替えられるようになり、戦術ストーリーの構成変更が格段にスムーズになります。 | **DONE ✅** |
+| **AAWU-11-2** | 🎬 Multi-Slide Morphing Video Export (WebCodecs MP4) | `regista-canvas` | `src/lib/tactical/export/tactical-video-exporter.ts`<br>`src/lib/tactical/export/tactical-frame-renderer.ts`<br>`src/components/features/tactical-unified/export/export-modal.tsx` | 作成した複数スライドを繋げ、同一選手の移動やボールのパス軌道を滑らかにアニメーション補間（モーフィング）した高品質MP4動画をワンクリックでエクスポートできます。 | **DONE ✅** |
+| **AAWU-11-3** | 📁 Dexie Multi-Project Storage & Project Manager Dialog | `regista-data` | `src/lib/db/tactical-projects-db.ts`<br>`src/components/features/tactical-unified/dialogs/project-manager-modal.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | 「アーセナル vs マンチェスターC」「ビルドアップ解説」のように複数の戦術分析プロジェクトに名前を付けて保存・一覧管理・切り替え・複製・削除ができるようになります。 | **DONE ✅** |
+| **AAWU-11-4** | 📥 Syntax Tactical Scene JSON Import & Template Importer | `regista-frontend` | `src/lib/tactical/syntax-scene-importer.ts`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx`<br>`src/lib/types/footics-integration-v1.ts` | SyntaxやAIが生成した戦術シーン定義JSON（footics-integration-v1）をドラッグ＆ドロップまたはファイル選択するだけで、ピッチ上に選手・矢印・スポットライト・解説テキストが即座に自動展開されます。 | **TODO ⏳** |
+| **AAWU-11-5** | 🧩 Store Modularization: Annotation & Tool Slices Extraction | `regista-data` | `src/stores/tactical-unified-store.ts`<br>`src/stores/slices/annotation-slice.ts`<br>`src/stores/slices/tool-slice.ts`<br>`src/stores/slices/slide-slice.ts` | ストアの状態更新が局所化され、描画ツールの切り替えやアノテーション追加時の不要な再レンダリングを完全に防止して超低負荷な動作を実現します。 | **TODO ⏳** |
+| **AAWU-11-6** | ⚡ Konva Layer Partitioning & Zero-Overhead Static Layer Isolation | `regista-canvas` | `src/components/features/tactical-unified/canvas/unified-canvas.tsx`<br>`src/components/features/tactical-unified/canvas/pitch-background-layer.tsx`<br>`src/components/features/tactical-unified/canvas/annotation-layer.tsx` | 選手マーカーのドラッグ中や多数のアノテーション描画時でもピッチ背景や静的要素の再描画コストがゼロになり、常に滑らかな120fps操作を維持します。 | **TODO ⏳** |
+| **AAWU-11-7** | 📦 Shared Types Monorepo Extraction (@footics/types / Shared Contracts) | `regista-data` | `src/lib/types/tactical-unified.ts`<br>`extension/types/messaging.ts`<br>`src/lib/types/capture-protocol.ts` | Web本体とブラウザ拡張機能（Extension）の間でキャプチャ通信や戦術データの型定義が一元化され、将来の機能拡張やアップデート時も型不整合バグを完全に未然防止します。 | **TODO ⏳** |
 
+## 3. [Active Ticket Details (自己完結チケット詳細)]
 
-## 3. [Task Matrix (AAWU: Tactical Formation Precision, Marker UI & Right Panel UX)]
+### 🎫 [AAWU-11-4] 📥 Syntax Tactical Scene JSON Import & Template Importer
+- **担当**: `regista-frontend` | **ドメイン**: A: Web App Core & UI | **ステータス**: `TODO`
+- **変更対象ファイル**:
+  - `src/lib/tactical/syntax-scene-importer.ts`
+  - `src/components/features/tactical-unified/toolbar/top-bar.tsx`
+  - `src/lib/types/footics-integration-v1.ts`
+- **変更後のユーザー体験**:
+  - SyntaxやAIが生成した戦術シーン定義JSON（footics-integration-v1）をドラッグ＆ドロップまたはファイル選択するだけで、ピッチ上に選手・矢印・スポットライト・解説テキストが即座に自動展開されます。
+- **詳細仕様 & 実装手順**:
+  1. footics-integration-v1.json スキーマ（0.0〜100.0正規化座標、ベクトル、ゾーン、アノテーション）のZodパーサー実装
+  1. インポート時のスライド自動生成・配置マッピング（正規化座標からキャンバス座標への変換）
+  1. TopBar に「JSON読み込み / テンプレート適用」UIおよびD&Dドロップゾーンの配備
+- **検証コマンド**:
+  - Lint: `rtk biome check src/lib/tactical/`
+  - 型検査: `pnpm type-check:scoped src/lib/tactical/syntax-scene-importer.ts`
+  - テスト: `rtk vitest run src/lib/tactical/__tests__/`
+- **実行用プロンプト (別会話起動用)**:
+```text
+Fast-Track Modeで AAWU-11-4: Syntax Tactical Scene JSON Import & Template Importer を実装してください。Syntax戦術JSONのパースとスライド自動展開を配備します。
+```
 
-| Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **AAWU 7-1** | 📐 **Formation Half/Full Geometry & GK Boundary Fix** | `regista-canvas`<br>`regista-data` | `src/lib/data/formations.ts`<br>`src/lib/tactical/__tests__/formations.test.ts`<br>`src/stores/tactical-unified-store.ts` | 1. `getFormationActualPos` の Half 変換ロジックを再設計（GK をペナルティエリア内 x: 4〜8% に安全配置、DF/MF/FW を 0〜50% 内に均等分散）。<br>2. Full / Half 双方での全28フォーメーションの境界内（0〜100% / 0〜50%）収容を単体テストで数学的に保証。 | **DONE** ✅ |
-| **AAWU 7-2** | 🎨 **Visual Marker Customization UI & Inside Content Switcher** | `regista-frontend` | `src/components/features/tactical-unified/inspector/inspector-panel.tsx`<br>`src/components/features/tactical-unified/common-color-input.tsx` | 1. 選手インスペクター内の「Inside Content（Photo / Number / None）」および表示スタイルを、アイコン＋プレビュー付きの視覚的なセグメントUIへ刷新。<br>2. 7つのアノテーション（Vision, Connect, Arrow, Dash, Focus, Badge, Basic）のアイコンタブ・設定パネルをカード形式に整理し、アニメーション編集時のような直感的なUIを提供。 | **DONE** ✅ |
-| **AAWU 7-3** | 🗂️ **Right Panel Width Expansion & UX Tab Architecture** | `regista-frontend` | `src/components/features/tactical-unified/right-panel/right-panel.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx`<br>`src/components/features/tactical-unified/right-panel/formation-panel.tsx`<br>`src/components/features/tactical-unified/right-panel/squad-sub-panel.tsx`<br>`src/components/features/tactical-unified/inspector/inspector-panel.tsx`<br>`src/stores/tactical-unified-store.ts` | 1. 右パネルの幅を 300px から 340px に拡張し、視認性と操作性を向上。<br>2. タブ構造を「Formation」「Squad」「Properties」に3分割再設計し、ヘッダー（TopBar）のアイコンスイッチと完全連動。<br>3. Batch Player Display を Formation タブのチーム設定エリアへ統合。 | **DONE** ✅ |
+### 🎫 [AAWU-11-5] 🧩 Store Modularization: Annotation & Tool Slices Extraction
+- **担当**: `regista-data` | **ドメイン**: C: Data Layer, State & Contracts | **ステータス**: `TODO`
+- **変更対象ファイル**:
+  - `src/stores/tactical-unified-store.ts`
+  - `src/stores/slices/annotation-slice.ts`
+  - `src/stores/slices/tool-slice.ts`
+  - `src/stores/slices/slide-slice.ts`
+- **変更後のユーザー体験**:
+  - ストアの状態更新が局所化され、描画ツールの切り替えやアノテーション追加時の不要な再レンダリングを完全に防止して超低負荷な動作を実現します。
+- **詳細仕様 & 実装手順**:
+  1. tactical-unified-store.ts に残存するアノテーション操作（追加・編集・削除・スタイル変更）を annotation-slice.ts に抽出
+  1. アクティブツール、選択中オブジェクトID、表示オプション等を tool-slice.ts に抽出
+  1. 全Sliceの合成（Store Creator）の型安全な一元化と既存公開セレクターの100%後方互換性維持
+- **検証コマンド**:
+  - Lint: `rtk biome check src/stores/`
+  - 型検査: `pnpm type-check:scoped src/stores/tactical-unified-store.ts`
+  - テスト: `rtk vitest run src/stores/__tests__/`
+- **実行用プロンプト (別会話起動用)**:
+```text
+Fast-Track Modeで AAWU-11-5: Store Modularization: Annotation & Tool Slices Extraction を実装してください。アノテーションとツール状態を専用スライスへ分離します。
+```
 
-## 3. [Task Matrix (AAWU: Tactical Precision & Squad UX Refinement)]
+### 🎫 [AAWU-11-6] ⚡ Konva Layer Partitioning & Zero-Overhead Static Layer Isolation
+- **担当**: `regista-canvas` | **ドメイン**: B: Tactical Board & Animation / Video | **ステータス**: `TODO`
+- **変更対象ファイル**:
+  - `src/components/features/tactical-unified/canvas/unified-canvas.tsx`
+  - `src/components/features/tactical-unified/canvas/pitch-background-layer.tsx`
+  - `src/components/features/tactical-unified/canvas/annotation-layer.tsx`
+- **変更後のユーザー体験**:
+  - 選手マーカーのドラッグ中や多数のアノテーション描画時でもピッチ背景や静的要素の再描画コストがゼロになり、常に滑らかな120fps操作を維持します。
+- **詳細仕様 & 実装手順**:
+  1. ピッチライン・芝生パターン・静止背景画像を独立した `<Layer listening={false} perfectDrawEnabled={false}>` に完全分離
+  1. ドラッグ中・変形中オブジェクト専用の過渡インタラクションレイヤーの分離
+  1. Konva Stage の `batchDraw` 呼び出し頻度を最小化しGPUレンダリング効率を最大化
+- **検証コマンド**:
+  - Lint: `rtk biome check src/components/features/tactical-unified/canvas/`
+  - 型検査: `pnpm type-check:scoped src/components/features/tactical-unified/canvas/unified-canvas.tsx`
+  - テスト: `rtk vitest run src/components/features/tactical-unified/canvas/`
+- **実行用プロンプト (別会話起動用)**:
+```text
+Fast-Track Modeで AAWU-11-6: Konva Layer Partitioning & Zero-Overhead Static Layer Isolation を実装してください。Konva静的・動的レイヤー分離を行います。
+```
 
-| Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **AAWU 6-1** | 🔲 **Default Auto-Fit Pitch Boundary Box** | `regista-canvas`<br>`regista-frontend` | `src/lib/types/tactical-unified.ts`<br>`src/components/features/tactical-unified/canvas/boundary-box.tsx`<br>`src/stores/tactical-unified-store.ts` | 新規スライド作成時やデフォルトの境界線を「Auto fit boundary box to pitch」適用値（均等余白フィット）に標準化。 | **TODO** ⏳ |
-| **AAWU 6-2** | 🏷️ **Player Label High-Contrast Visibility Fix** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/tactical/export/tactical-frame-renderer.ts` | 選手マーカー下の名前・番号ラベルの Konva stroke 潰れを解消し、ダーク・グリーン等全ピッチ背景で鮮明に読める高コントラスト白文字に修復。 | **TODO** ⏳ |
-| **AAWU 6-3** | 🖼️ **Team Squad Photo & Inside Content Sync Fix** | `regista-frontend`<br>`regista-data` | `src/lib/tactical/squad-to-tactical-bridge.ts`<br>`src/components/features/tactical-unified/inspector/inspector-panel.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | チーム読み込み時の顔写真反映、写真有無に応じた Inside Content 初期値判定、および Photo/Number/None の即時切り替え反映を修復。 | **DONE** ✅ |
-| **AAWU 6-4** | 👥 **Sub-Centric Squad Panel & One-Click Pitch Deploy** | `regista-frontend`<br>`regista-canvas` | `src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/components/features/tactical-unified/canvas/unified-canvas.tsx` | Formation & Squad パネルから On Pitch リストを削除してサブ特化型に整理。D&D を廃止し、サブ選手一覧の各行に「ワンボタンピッチ投入」ボタンを配備。 | **TODO** ⏳ |
-| **AAWU 6-5** | ⚡ **Konva Layer Consolidation & Performance Optimization** | `regista-canvas` | `src/components/features/tactical-unified/canvas/unified-canvas.tsx`<br>`src/components/features/tactical-unified/canvas/canvas-registry.ts` | 7枚の `<Layer>` を Konva 推奨（3〜4枚以内）に統合し、ブラウザ警告を解消して描画負荷・メモリ消費を削減。 | **DONE** ✅ |
+### 🎫 [AAWU-11-7] 📦 Shared Types Monorepo Extraction (@footics/types / Shared Contracts)
+- **担当**: `regista-data` | **ドメイン**: C: Data Layer, State & Contracts | **ステータス**: `TODO`
+- **変更対象ファイル**:
+  - `src/lib/types/tactical-unified.ts`
+  - `extension/types/messaging.ts`
+  - `src/lib/types/capture-protocol.ts`
+- **変更後のユーザー体験**:
+  - Web本体とブラウザ拡張機能（Extension）の間でキャプチャ通信や戦術データの型定義が一元化され、将来の機能拡張やアップデート時も型不整合バグを完全に未然防止します。
+- **詳細仕様 & 実装手順**:
+  1. Web (src/) と Extension (extension/) 間で共有されるキャプチャペイロード・メッセージング型を単一の共通契約ファイル (`src/lib/types/capture-protocol.ts` またはワークスペース共通型) に集約
+  1. Extension 側の型インポート参照を統一し、手動コピーによる型定義の重複・ズレを完全解消
+  1. Zodスキーマ検証による実行時契約バリデーションの整備
+- **検証コマンド**:
+  - Lint: `rtk biome check src/lib/types/ extension/types/`
+  - 型検査: `pnpm type-check:scoped src/lib/types/capture-protocol.ts`
+  - テスト: `rtk vitest run src/lib/tactical/__tests__/`
+- **実行用プロンプト (別会話起動用)**:
+```text
+Fast-Track Modeで AAWU-11-7: Shared Types Monorepo Extraction を実装してください。Webと拡張機能の通信・戦術共通型を一元化します。
+```
 
-## 4. [Task Matrix (AAWU: Tactical UX Polish & Advanced Manipulation)]
+## 4. [Completion History (完了実績ログ)]
 
-| Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **AAWU 5-1** | 🎯 **Fix Arrow & Curve Control Point Parity** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | ベジェ曲線の頂点逆算ロジックを修正し、ドラッグ中・ドロップ後問わずポインタが常に線上（曲線の頂点）に完全に一致して配置されるようにする。 | **DONE** ✅ |
+- **2026-09-02**: [AAWU-11-3 Complete: 📁 Dexie Multi-Project Storage & Project Manager Dialog]
+  1. Dexie v20スキーマにtactical_projectsテーブルを新設しマルチプロジェクト永続化・CRUD・インラインリネームを実装
+  2. プロジェクト管理モーダル（選択式・複数インポート・一括ZIPエクスポート・一括削除・検索）を配備しHydration Mismatchエラーも解消
 
-- **2026-09-01**: [AAWU 8-3-D Complete: Timeline Right-Click Duplicate & Snapshot Context Carryover]
-  1. **`+` ボタン 左クリック（完全デフォルト初期化）**: スナップショット背景を引き継がず、通常のピッチ背景（`backgroundType: 'pitch'`）、4-4-2スタメン22人、センターボール、標準ピッチ境界ボックス、および `Formation` パネルへ完全初期化した新規白紙スライドを作成。
-  2. **`+` ボタン / スライド右クリック（完全引き継ぎ複製）**: スナップショット画像背景（`backgroundImageUrl` / `backgroundType: 'image'`）、リングマーカー（`style.markerType === 'ring'`）、スポットライト（光の柱）、アノテーション、および `Properties` インスペクターパネル設定を丸ごと引き継ぐ複製パイプラインを確立。
-  3. **タイムラインスライド切り替え（`setActiveSlide`）連動**: スライドごとの背景種別（`pitch` / `image`）および右パネル状態（`formation` / `inspector`）の自動双方向同期を実装。
-  4. Scoped 型チェック、Biome チェック、Vitest 単体テスト全158件完全パス。
+- **2026-09-02**: [AAWU-11-2 Complete: 🎬 Multi-Slide Morphing Video Export (WebCodecs MP4)]
+  1. WebCodecs VideoEncoder + mp4-muxer による高速・軽量なMP4エンコードパイプライン (tactical-video-exporter.ts) を構築
+  2. スライド間の選手ID/背番号/名前マッチングによる滑らかな位置・姿勢・アノテーションのイージング補間を統合
+  3. エクスポートモーダルにスライド間遷移秒数(1.0s~3.0s)、静止保持秒数(0s~2.0s)、イージング選択UIを配備
 
-- **2026-09-01**: [AAWU 8-4 Complete: Legacy Video-Canvas Deprecation & Workspace Cleanup]
-  1. 独立 `video-canvas` パッケージを完全削除し、全キャプチャ・ショートカット機能を `extension/` 単一パッケージへ完全集約。
-  2. `pnpm-workspace.yaml` および `AGENTS.md` のパッケージ定義を更新。
+- **2026-09-02**: [AAWU-11-1 Complete: 🔀 Timeline Slide Drag & Drop Reordering]
+  1. SlideCard に @dnd-kit/sortable および SlideCardOverlay を実装し滑らかな水平D&D並び替えと追従アニメーションを配備
+  2. TimelineBar に DndContext/SortableContext を統合し 5px 遊び付き PointerSensor でクリック/右クリックと競合ゼロの並び替え＆Undo復元を達成
 
-- **2026-09-01**: [AAWU 8-2 Complete: Extension Integration & Global Shortcut Trigger]
-  1. `extension/wxt.config.ts` に `capture-to-tactical`（`Alt+S`）ショートカットおよび `unlimitedStorage` / `clipboardWrite` 権限を追加。
-  2. `background.ts` と `overlay.content.tsx` 間で `TRIGGER_CAPTURE` / `REQUEST_TAB_CAPTURE` の型安全な双方向メッセージングを配備し、拡張機能単独での高精度DRMキャプチャ＆黒帯クロップパイプラインを確立。
-  3. Scoped型チェック・Biome・Vitest全5件テスト完全パス、Chrome MV3ビルドおよびWindows同期完了。
+- **2026-09-02**: [AAWU-10-4 Complete: 🎞️ Non-Destructive Capture on Active Slide & Auto-New Slide Append]
+  1. 初期4-4-2ピッチからの選手移動・スタイル変更・アノテーション・ボール位置などの微小変更を完全検知し編集中スライドの自動保持＆新規スライド追加パイプラインを配備
+  2. 単体テスト全42件および型チェック完全パス
 
-- **2026-09-01**: [AAWU 8-1 Complete: Hardened DRM Capture Engine & Precise Video Crop]
-  1. **スクロールバー完全排除 & 多層GPU合成DRM回避**: `html, body` のオーバーフロー制御と `::-webkit-scrollbar` の非表示、および多層Direct Composition回避CSS（`filter`, `contrast`, `opacity`, `translate3d`, `scale`, `perspective` 等）を整備。
-  2. **アスペクト比連動の黒帯自動トリミング**: 動画生解像度とビューポートのアスペクト比差からレターボックス／ピラーボックスを精密逆算し、ピッチ動画部分のみを `createImageBitmap` / OffscreenCanvas で超高速トリミング。
-  3. `video-canvas` および `extension` の双方に完全適用し、Scoped 型チェック・全5件単体テスト完全パス。
+- **2026-09-02**: [AAWU-10-3 Complete: 🗑️ Intuitive Slide Selection & Keyboard / Context Menu Deletion]
+  1. Delete/Backspaceキーでのアクティブスライド削除（最低1枚制限トースト）とCtrl+Z復元を実装
+  2. SlideCard右クリックのカスタムコンテキストメニュー（複製・削除・左右移動）を配備しwindow.confirmを撤廃
 
-- **2026-09-01**: [AAWU 7-3 Complete: Right Panel Width Expansion & UX Tab Architecture]
-  1. **右パネル幅の拡張 (300px → 340px)**: 視認性と操作性を向上させ、各種設定・カラーピッカー・アノテーション調整が快適に行える幅を確保。
-  2. **タブ構造の3分割 (`Formation` / `Squad` / `Properties`)**:
-     - `Formation` ([`formation-panel.tsx`](file:///home/watter46/src/footics/src/components/features/tactical-unified/right-panel/formation-panel.tsx)): チーム選択・カラー設定・ピッチ表示切替・フォーメーション選択・リセット・プリセット読込に加え、`Batch Player Display` を統合。
-     - `Squad` ([`squad-sub-panel.tsx`](file:///home/watter46/src/footics/src/components/features/tactical-unified/right-panel/squad-sub-panel.tsx)): 4ポジション分類・ワンクリック投入・選手交代（Swap）・サブ選手追加フォームを完備。
-     - `Properties` ([`inspector-panel.tsx`](file:///home/watter46/src/footics/src/components/features/tactical-unified/inspector/inspector-panel.tsx)): 選択要素インスペクター / スライド背景・トランジション設定。
-  3. **ヘッダー連動**: `top-bar.tsx` に Shield / Users / SlidersHorizontal の3つのクイック切り替えボタンを配備し、双方向でシームレスにタブ切替可能に。
-  4. Scoped 型チェック、Biome チェック、Vitest 単体テスト全20件完全パス。
+- **2026-09-02**: [AAWU-10-2 Complete: 💾 Persistent Tactical Project & Dexie Auto-Save on Reload]
+  1. Dexie.js keyval テーブルを活用した単一キー上書き型の軽量戦術プロジェクト自動保存 (800ms デバウンス) & 初回復元パイプラインを配備
+  2. TopBar に控えめな保存ステータスインジケーター (Saved/Saving) と IndexedDB完全削除連動の「新規作成 (New)」ボタンを実装
 
-- **2026-09-01**: [AAWU 7-2 Complete: Visual Marker Customization UI & Inside Content Switcher]
-  1. **Inside Marker Content ビジュアルスイッチャー**: `inspector-panel.tsx` の選手インスペクター、複数選手インスペクター（`MultiPlayerInspector`）、およびスライド全体設定（`SlideSettingsInspector`）において、`Number` / `Photo` / `Empty` の Inside Content 切り替えをアイコン付きの直感的なビジュアルセグメントUIへ刷新。写真未設定時の自動無効化および Photo URL プレビューと完全連動。
-  2. **7大アノテーション設定タブのカードUI統一**: `Vision Cone` / `Connectors` / `Solid Arrow` / `Dashed Arrow` / `Focus (Spotlight)` / `Badge` / `Basic` の各設定項目をカード構造に整理。アニメーション編集時のような視認性の高いUI/UXを提供。
-  3. Scoped 型チェック、Biome チェック、Vitest 単体テスト全103件完全パスを達成。
+- **2026-09-02**: [AAWU-10-1 Complete: ⚡ Ultra-Fast Capture & Instant Tactical Tab Switching Pipeline]
+  1. キャプチャ撮影パイプラインをJPEG 98%およびクロップ出力をWebP 0.95%に最適化し高画質維持とタブ間転送サイズ70-80%削減を両立
+  2. 既存tacticalタブ探索・アクティブ化・フォーカスを並行処理化しタブ切り替えラグを半減
+  3. WXT ctxライフサイクルとisContextValidガードにより拡張機能リロード時のContext Invalidatedスタックトレースを解消
 
-- **2026-09-01**: [AAWU 7-1 Complete: Formation Half/Full Mathematical Geometry & GK Boundary Fix]
-  1. **ピッチ実白線領域（16:9 / 9:16）に完全連動する幾何学マッピング基盤**: `formations.ts` に `PITCH_BOUNDS_16_9`（Left Goal Line: 7.81%, Right Goal Line: 92.19%, Halfway Line: 50.0%, Touchlines: 1.43%〜98.57%）および `PITCH_BOUNDS_9_16` を配備。GK がゴールライン外側（ピッチ外）へ飛び出す幾何学計算バグを完全解消。
-  2. **DF・FW 固定アンカー ＆ MID 均等線形配置ロジック (`getHalfCourtPitchPos`)**: GK（6ヤードボックス内 x: 11.19%）、DF（ペナルティエリア境界 x: 20.47%）、FW（ハーフウェーライン手前 x: 44.94%）のアンカー座標を固定。中間ライン（MID）を DF〜FW 間で線形補間することにより、3列（4-3-3, 4-4-2 等）・4列（4-2-3-1, 3-2-4-1 等）いずれのフォーメーションでもライン間隔が完全に均等・綺麗に配置される数理モデルを確立。
-  3. **全28フォーメーションの数学的収容単体テスト完備**: `formations.test.ts` において、全28フォーメーション × 11選手 × (Full/Half × 横/縦) の全組み合わせでピッチ白線内および各守備陣地内（Home: 7.81%〜50.0%, Away: 50.0%〜92.19%）に厳格に収容されることを数学的テストで保証。Scoped 型チェック、Biome チェック、Vitest テスト全12件完全パスを達成。
+- **2026-09-01**: [AAWU-8-4 Complete: 🧹 Legacy Video-Canvas Deprecation & Workspace Cleanup]
+  1. video-canvas パッケージを完全削除し、全キャプチャ機能を extension/ 単一パッケージへ完全集約
 
-- **2026-09-01**: [AAWU 6-3 Complete: Team Squad Photo & Inside Content Sync Fix]
-  1. **チーム読み込み時の顔写真・Inside Content 初期化**: `squad-to-tactical-bridge.ts` において、`photoUrl`/`photoBlob` の有無を判定し、写真が存在する場合は `photoUrl` をセットして `insideContent: 'photo'` を適用。写真が存在しない場合は `insideContent: 'number'` に初期化（スタメン・サブ両方）。
-  2. **ピッチ上選手マーカー表示連動 & 写真時ボーダーレス化**: `player-layer.tsx` において、`insideContent: 'none'` で背番号が表示されていた問題を完全解消。写真表示時（`insideContent === 'photo'`）は周りの白い枠線（stroke）を非表示にし、全径クリッピングで洗練された丸型写真アイコン表示を実現（選択時のみ青い選択枠を表示）。また `playerId` から IndexedDB の `photoBlob`/`photoUrl` を自動解決してキャンバス上に直接描画可能に。
-  3. **インスペクター＆一括操作機能拡張**: 写真未設定時は Inside Content セレクトボックスから `Photo` 選択肢を非表示化。複数選手選択時の `MultiPlayerInspector` およびスライド未選択時の `SlideSettingsInspector` に一括表示設定を追加。
-  4. Scoped 型チェック、Biome チェック、Vitest テスト全30件完全パスを達成。
-| **AAWU 5-2** | 📋 **Global Object Copy & Paste (Ctrl+C / Ctrl+V)** | `regista-frontend`<br>`regista-canvas` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts` | 選択中の選手・矢印・ゾーン・テキストを Ctrl/Cmd+C で内部クリップボードにコピーし、Ctrl/Cmd+V でオフセット配置可能にする。 | **DONE** ✅ |
-| **AAWU 5-2-DUP** | ⚡ **Instant Duplicate on Canvas (Ctrl+D)** | `regista-frontend`<br>`regista-canvas` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts` | 選択中のオブジェクトを Ctrl/Cmd+D で即時コピー＆ペースト（1ステップ複製）し、新規配置されたオブジェクトを選択状態にする。 | **DONE** ✅ |
-| **AAWU 5-3** | ⏪ **Undo / Redo History Management (Ctrl+Z / Ctrl+Shift+Z)** | `regista-frontend`<br>`regista-data` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/hooks/use-keyboard-shortcuts.ts`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | スライド変更・オブジェクト編集の Undo/Redo スタックを構築し、Ctrl+Z, Ctrl+Shift+Z およびツールバーボタンで操作可能にする。 | **DONE** ✅ |
-| **AAWU 5-4** | 👥 **Single Team Quick Placement & Visibility Toggle** | `regista-frontend` | `src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx` | 「Homeのみ配置（Away退避）」「Awayのみ配置（Home退避）」のワンクリックアクションおよび Team Visibility 切り替えを実装。 | **DONE** ✅ |
-| **AAWU 5-5-A** | 🔀 **Stabilized Multi-Player Drag & Selection UX** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/stores/tactical-unified-store.ts` | 複数選択した選手を1人ドラッグした際、全員が滑らかにデルタ追従移動し、ドロップ時に一括確定する安定したUI/UXへの再構築。 | **DONE** ✅ |
-| **AAWU 5-5-B** | 📊 **4-Position Grouping (GK/DF/MF/FW) & Pitch/Bench Swap** | `regista-frontend` | `src/components/features/tactical-unified/right-panel/formation-sub-panel.tsx`<br>`src/lib/tactical/player-formatting.ts` | スカッド/サブメンバー一覧およびピッチ上の選手リストを「GK / DF / MF / FW」の4ポジションにグルーピング表示。ピッチ⇄ベンチ間の入れ替えでもカテゴリを崩さず視覚的に整理。 | **DONE** ✅ |
-| **AAWU 5-5-C** | 🪢 **Interactive Ghost Marker Trajectory with Curve Pointer** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/lib/tactical/trajectory.ts`<br>`src/stores/tactical-unified-store.ts` | 選手マーカー選択中に「前スライドのゴースト位置」と「移動矢印」を常時表示。AAWU 5-1 の汎用曲線ポインタを用いて移動軌道を直感的にドラッグ変形・カスタム補間可能にする。 | **DONE** ✅ |
-| **AAWU 5-6** | ⚽ **Ball Z-Index & Layer Fronting** | `regista-canvas` | `src/components/features/tactical-unified/canvas/unified-canvas.tsx` | ボールレイヤーを最前面（PlayerLayer より上）に配置変更し、ボールが選手マーカーの下に埋もれる視覚的吸着・隠れ問題を解消。 | **DONE** ✅ |
-| **AAWU 5-7** | 🏹 **Immediate Drag for Lines & Arrows (Direct Grab & Drag)** | `regista-canvas` | `src/components/features/tactical-unified/canvas/annotation-layer.tsx` | Line・矢印系オブジェクトを「未選択状態」からでも直接ドラッグ開始可能にし、ドラッグ開始時に自動選択＋シームレスに移動させる。 | **DONE** ✅ |
+- **2026-09-01**: [AAWU-8-3-D Complete: 📑 Timeline Right-Click Duplicate & Snapshot Context Carryover]
+  1. + ボタン左クリック白紙初期化と右クリック完全引き継ぎ複製を実装
+  2. スライド切り替え連動とVitest全158件パス達成
 
-- **2026-08-31**: [AAWU 5-7 Complete: Immediate Drag for Lines & Arrows (Direct Grab & Drag)]
-  1. **矢印・ライン系の未選択即時ドラッグ（Direct Grab & Drag）**: `annotation-layer.tsx` の `ArrowObject` において、`draggable={isInteractive && !isAttachedToPlayer}` を適用。未選択状態からでもマウスホバー（`cursor: grab`）およびドラッグ開始時に即座に選択状態（`onSelect(e)` / `selectObject`）へ移行し、シームレスに全体平行移動可能に改修。
-  2. **ハンドル常時マウント＆ゼロ遅延同期**: 始点・終点・カーブ制御ハンドルの Circle ノードを常時マウントし、`visible` / `listening` で選択状態を制御。ドラッグ初速から Konva ノード（`arrowNodes`）への参照を完全保持し、ドラッグ中のハンドルリアルタイム追従（60fps）およびドロップ時の座標更新を保証。
-  3. **単体テスト拡充 & 全検証パス**: `arrow-curve-control-point.test.ts` に未選択からの直接ドラッグ（デルタ平行移動・ベジェ頂点整合性）検証を追加。Scoped TypeScript 型チェック、Biome チェック、Vitest テスト全71件完全パスを達成。
+- **2026-09-01**: [AAWU-8-3-C Complete: 🛠️ Ring Placement Toolbar & Snapshot-Centric Right Panel]
+  1. ツールバーにリング配置ボタンを新設し、右パネルインスペクターでの全アノテーション操作を完備
 
-- **2026-08-31**: [AAWU 5-6 Complete: Ball Z-Index & Layer Fronting]
-  1. **Konva Stage 内レイヤー描画順序の再構成**: `unified-canvas.tsx` 内の `<Layer>` 描画順序を変更し、`<Layer ref={nodesRegistryRef.current.ballLayer}>`（ボール）を `<Layer ref={nodesRegistryRef.current.playerLayer}>`（選手）の後に配置。
-  2. **視覚的吸着・隠れの解消と操作性担保**: ボールが常に選手マーカー（および選択枠・ゴースト軌道）の手前（最前面）に描画されるようにし、選手サークルの下にボールが潜り込む問題を解消。選手マーカーと重なった状態でもボール単体の視認とドラッグ操作が阻害されないUXを確立。
-  3. Scoped 型チェック、Biome チェック、Tactical 関連 Vitest テスト全69件完全パスを達成。
+- **2026-09-01**: [AAWU-8-3-B Complete: ⭕ 3D Foot Ring & Spotlight Pillar Rendering Integration]
+  1. 3D足元リングおよび光の柱（スポットライトビーム）のKonva描画レイヤー完全統合
+  2. 視野コーン楕円連動および単体テスト全パス
 
-- **2026-08-31**: [AAWU 5-2-DUP Complete: Instant Duplicate on Canvas (Ctrl+D)]
-  1. **ストア内 1トランザクション即時複製 (`duplicateSelectedObjects`)**: `tactical-unified-store.ts` に `duplicateSelectedObjects(slideId)` を実装。選択中のオブジェクト（選手・矢印・ゾーン・テキスト）の抽出、一意な新規UUID発行、+3% 座標オフセット配置、同時複製要素間の参照リマップ（`ConnectLine` の `toPlayerId`、矢印の `sourcePlayerId`/`targetPlayerId`）、新規オブジェクトの選択状態同期、Undo履歴保存を単一トランザクションでアトミックに実行。
-  2. **共通ヘルパー抽出によるコピペ基盤リファクタリング**: `extractSelectedObjects` および `cloneAndOffsetObjects` を共通化し、`copySelectedObjects`, `pasteObjects`, `duplicateSelectedObjects` 間のコード重複を完全排除。
-  3. **グローバルショートカット (Ctrl/Cmd+D)**: `use-keyboard-shortcuts.ts` にて `Ctrl+D` / `Cmd+D` をバインド。ブラウザ標準のブックマーク追加デフォルト動作（`e.preventDefault()`）を抑止しつつ即時複製を起動。
-  4. 単体テスト拡充（`tactical-unified-store.test.ts` に複製・Undo 1回巻き戻し・空選択ガード検証を追加）、Scoped 型チェック、Biome チェック、Vitest テスト全パス（Tactical 関連 69件 + ストア 35件）を達成。
+- **2026-09-01**: [AAWU-8-3-A Complete: 🖼️ Snapshot Analysis Mode & Clean Canvas Initialization]
+  1. スナップショット解析モードへの自動初期化とクリーンキャンバス切り替えを実装
+  2. 右パネルの自動 Properties 最適化完了
 
-- **2026-08-31**: [AAWU 5-5-C Complete: Interactive Ghost Marker Trajectory with Curve Pointer]
-  1. **選手選択時のゴースト・移動軌道矢印の常時表示**: `activeSlideIndex >= 1`（2枚目以降のスライド）において、ピッチ上の選手マーカー選択中に前スライド座標の半透明ゴーストマーカーおよび移動軌道矢印（`Arrow` / 2次ベジェ曲線点列）を常時描画する `SelectedPlayerGhostTrajectory` を配備。
-  2. **AAWU 5-1 汎用ベジェ曲線制御ポインタ連携**: 軌道線上の中間頂点 $M$（$t=0.5$）に黄色制御ハンドルを配置。ドラッグ中のリアルタイムな矢印曲率変形（60fps、Konvaノード直接更新）およびドロップ時の制御点逆算 $CP = 2M - 0.5(P_0+P_1)$ による `PlayerTrajectory`（`{ type: 'custom', controlPoint: { x, y } }`）更新・保存を実装（直線付近6px未満への移動時はstraightリセット）。
-  3. **アニメーション補間エンジン & 動画エクスポート完全連動**: `unified-interpolation.ts` の `interpolatePlayer` において `calculateBezierPoint` による2次ベジェ曲線補間を導入。アニメーション再生および MP4/透過WebM/GIF 動画エクスポート時にもカスタム曲線軌道移動が deterministic に反映されることを保証。
-  4. Scoped 型チェック、Biome チェック、Tactical 関連 Vitest テスト全69件、lib tactical テスト全113件完全パスを達成。
+- **2026-09-01**: [AAWU-8-2 Complete: 🔌 Extension Integration & Global Shortcut Trigger]
+  1. Alt+S グローバルショートカットとメッセージングパイプラインを extension/ 単一パッケージに完全集約
+  2. Chrome MV3 ビルドおよび Windows 側への sync-extension 完了
 
-- **2026-08-31**: [AAWU 5-5-B Complete: 4-Position Grouping & Pitch/Bench Swap]
-  1. **4ポジション (GK/DF/MF/FW/OTHER) グルーピング & 2Dソート基盤**: `player-formatting.ts` に `getPositionGroup`, `getPositionBadgeClass`, `groupPlayersByPosition` を配備。縦ポジション優先度（GK->DF->MF->FW）および横方向（Left->Center->Right）での安定した2D分類・ソートを実装。
-  2. **FormationSubPanel 4セクションアコーディオン & 視認性バッジ**: Pitch 選手一覧および Bench 選手一覧を 4つのポジションセクション（GK: Amber, DF: Blue, MF: Emerald, FW: Rose）に構造化。グループ別のアコーディオン開閉トグルおよび件数バッジを配備。
-  3. **アトミック Swap アクション & ワンクリック交代 UI**: `tactical-unified-store.ts` に `swapPlayers(slideId, playerAId, playerBId)` を実装。ピッチ選手とベンチ選手の位置・エリア交代をアトミックに行い Undo/Redo 履歴へ同期。各選手行から交代候補（背番号・名前・ポジションタグ）をワンクリックで選択・交代可能に。
-  4. 単体テスト拡充（`formation-sub-panel.test.tsx` 新設、`player-formatting.test.ts` / `tactical-unified-store.test.ts` 追記）、Scoped 型チェック、Biome チェック、Tactical 関連 Vitest テスト全69件完全パスを達成。
+- **2026-09-01**: [AAWU-8-1 Complete: 📸 Hardened DRM Capture Engine & Precise Video Crop]
+  1. 多層GPU合成DRM回避CSSトリックを整備しスクロールバーを完全隠蔽
+  2. アスペクト比連動の黒帯自動トリミングエンジンを構築し単体テスト全5件パス
 
-- **2026-08-31**: [AAWU 5-4 Complete: Single Team Quick Placement & Visibility Toggle]
-  1. **ストア内 Team Visibility 制御 & 片チーム配置アクション**: `tactical-unified-store.ts` に `teamVisibility: 'both' | 'home' | 'away'` および `applySingleTeamFormation(slideId, formation, mode, team)` を実装。相手チームの全選手をピッチからベンチへ一括退避し、選択チームのみをフォーメーション通りに配置。
-  2. **Formation パネルへのワンクリックアクション配備**: `formation-sub-panel.tsx` に「Deploy Home Only (Away to Bench)」/「Deploy Away Only (Home to Bench)」のクイックボタンおよび Pitch Visibility フィルタを配備。
-  3. **TopBar クイック表示フィルタ**: `top-bar.tsx` 中央に「Both / Home / Away」のトグルスイッチを配置し、キャンバス上での選手・コネクトライン表示を即時フィルタリング可能に。
-  4. Scoped 型チェック、Biome チェック、Tactical 関連 Vitest テスト全62件完全パス（ストアテスト31件含む）を達成。
+- **2026-09-01**: [AAWU-9-1 Complete: 🧩 Tactical Unified Store Slice Pattern Refactoring]
+  1. Refactored to Slice Pattern
+  2. Tests passed
 
-- **2026-08-31**: [AAWU 5-3 Complete: Undo / Redo History Management]
-  1. **ストア内 Undo / Redo スタック構築**: `tactical-unified-store.ts` にスライド配列のディープコピースナップショットスタック（`past: Slide[][]`, `future: Slide[][]` 最大50件）を導入。
-  2. **確定操作連動 & 過渡状態完全分離**: 選手・ボール・矢印・ゾーン・テキストの移動・追加・削除・更新、フォーメーション適用、ピッチ左右反転、スライドCRUD（追加・削除・複製・並べ替え）等の確定操作時に過去状態を `past` にプッシュ。ドラッグ中（過渡状態）はプッシュせず `onDragEnd` の1回のみプッシュ。
-  3. **グローバルショートカットバインド**: `use-keyboard-shortcuts.ts` にて `Ctrl+Z` / `Cmd+Z`（Undo）および `Ctrl+Shift+Z` / `Cmd+Shift+Z` / `Ctrl+Y`（Redo）をバインド。Input / Textarea フォーカス時の除外ガード完備。
-  4. **TopBar Undo / Redo ボタン**: `top-bar.tsx` に `Undo2` / `Redo2` アイコンボタンを配置し、`canUndo` / `canRedo` 状態と disabled 表示を完全連動。
-  5. 単体テスト拡充（`undo-redo-history.test.ts` 新設・`use-keyboard-shortcuts.test.ts` 追記）、Scoped 型チェック、Biome チェック、Tactical 関連 Vitest テスト全62件完全パスを達成。
+- **2026-09-01**: [AAWU-6-4 Complete: 👥 Sub-Centric Squad Panel & One-Click Pitch Deploy]
+  1. SquadSubPanel にワンクリックピッチ投入ボタン ([+] 投入) を完備し、各ポジション別アコーディオンから即時投入可能に実装済
 
-- **2026-08-31**: [AAWU 5-2 Complete: Global Object Copy & Paste]
-  1. **ストア内クリップボード・状態スナップショット管理**: `TacticalClipboard`（選手・矢印・ゾーン・テキスト）のディープコピー保存 `copySelectedObjects` およびオフセット配置 `pasteObjects` を `tactical-unified-store.ts` に実装。
-  2. **スマートID再発行 & 相互参照リマップ**: 貼り付け時に一意な新規UUIDを自動発行し、+3% の座標オフセットを適用。同時コピーされた選手間の `ConnectLine` および矢印（`sourcePlayerId`/`targetPlayerId`）の参照関係を新選手IDに自動リマップ。貼り付け後は新規オブジェクトを選択状態に同期。
-  3. **グローバルキーボードショートカット (Ctrl/Cmd+C, Ctrl/Cmd+V)**: `use-keyboard-shortcuts.ts` にて Input / Textarea / ContentEditable 除外ガード付きで Copy & Paste をバインド。修飾キー押下時のツール切り替え誤発火を完全に抑止。
-  4. Scoped 型チェック、Biome チェック、Tactical 関連 Vitest テスト全54件完全パスを達成。
+- **2026-09-01**: [AAWU-6-2 Complete: 🏷️ Player Label High-Contrast Visibility Fix]
+  1. 選手マーカー下ラベルおよび動画エクスポート用 renderer で #ffffff + stroke=#020617 (strokeWidth=2) による高コントラスト白文字描画を適用済
 
-- **2026-08-31**: [AAWU 5-1 Complete: Fix Arrow & Curve Control Point Parity]
-  1. **2次ベジェ曲線の頂点・制御点幾何学モデルの完全整合化**: $B(t=0.5)$ の頂点 $M = 0.25 P_0 + 0.5 P_{ctrl} + 0.25 P_1$ と、ポインタ位置 $M$ から制御点 $P_{ctrl} = 2 M - 0.5 (P_0 + P_1)$ を逆算するアルゴリズムを `annotation-layer.tsx` および `player-layer.tsx` に導入。
-  2. **制御ハンドル（黄色ポインタ）の線上完全吸着**: 初期描画・始点/終点ハンドルドラッグ追従・矢印全体ドラッグ・選手連動ドラッグ・ハンドル自体のドラッグ時およびドロップ確定後の全フェーズで、黄色ポインタが常に曲線の頂点（線上）に寸分違わず配置・吸着されるように修正。
-  3. **単体テスト拡充 & 全検証パス**: `arrow-curve-control-point.test.ts` を配備し、数学的同一性を検証。Scoped 型チェック、Biome チェック、Tactical 関連 Vitest テスト全44件完全パス達成。
-
-- **2026-08-31**: [AAWU 5-5-A Complete: Stabilized Multi-Player Drag & Selection UX]
-  1. **Konva 直接ノード操作による滑らかな複数選手デルタ追従**: 複数選択中のいずれかの選手をドラッグした際、React State 非同期で選択中の全選手マーカー・背番号・ラベル・視界コーンを同一 Delta 分だけリアルタイムに追従移動。
-  2. **アタッチされた矢印・接続線・ゾーン・テキストのリアルタイム同期**: 選手間に架かる矢印（両端追従 / 片端固定追従）、接続線（ConnectLine）、ゾーン・注釈テキストの追従を Konva ノード直接更新で同期。
-  3. **一括アトミック確定 & 境界クランプ**: `onDragEnd` で `moveMultiplePlayersByDelta(slideId, playerIds, deltaX, deltaY)` を1回呼び出し、全選手の [0%〜100%] 境界外飛び出し防止・クランプ処理を適用してアトミックに確定。
-  4. Scoped 型チェック、Biome チェック、Tactical 関連 Vitest テスト全40件完全パスを達成。
-
-- **2026-08-31**: [Phase 2-B Complete: Team Modernization & Tactical Integration]
-  1. **AAWU 4-1**: `ChelseaSquadClient.tsx` を `squad-header.tsx`, `squad-stats-summary.tsx`, `squad-filter-bar.tsx`, `squad-player-card.tsx` の4コンポーネントへ責務分割。
-  2. **AAWU 4-2**: 汎用動的ルーティング `/teams/[teamId]` および共通フック `useTeamSquad` / `teams-config.ts` を配備。ヘッダーのチームナビゲーションを連動。
-  3. **AAWU 4-3**: スカッド画面から `/tactical` 戦術ボードへワンクリックでスタメン・背番号・ポジションを流し込む `squad-to-tactical-bridge.ts` を実装。単体テスト全件パス。
-
-
-
-- **2026-08-30**: [AAWU 3-6 Complete] 全体結合テスト & ルーブリックQA完了。Tacticalエクスポートおよび戦術キャンバス関連のVitest全110件（78件+32件）パス、Scoped TypeScript型チェックエラー0件、Biome lint/format検証パス（エラー0件）を確認。AAWU 3系（動画エクスポート・UI英語化・アニメーション統合）を完全クローズ。
-- **2026-08-29**: [AAWU 3-5-ALIGN Complete] 100% Visual Parity Fix (Pitch Lines & Typography Alignment) 実装・検証完了。
-  1. **ピッチライン色の完全復元**: `pitch-background.tsx` と完全一致する暖色系ゴールド (`#e2b48d`, `stroke-opacity: 0.85`) へピッチ外枠・ハーフウェーライン・センターサークル・ペナルティエリア・スポット全域を復元。
-  2. **背番号の黒縁取り全撤廃 & クリーン純白化**: `strokeText` による黒いフチを完全削除し、`player-layer.tsx` と 1:1 完全一致の純白テキスト (`#ffffff`, `insideContent === 'number'`) に統一。
-  3. **選手サークルの外周黒枠削除**: 余計な外周ダークボーダーを排除し、チームカラー円＋標準白枠線（`p.style.strokeColor || '#ffffff'`）に統一。
-  4. Scoped 型チェック、Biome チェック（警告・エラー0件）、Vitest テスト全件パス達成。
-- **2026-08-29**: [AAWU 3-5-DIAGNOSE Complete] Export Pipeline Repair & Automatic 3-Zone Profiling Benchmark 実装・検証完了。
-  1. **エクスポート配線 & Next.js Workerハング原因の完全解消**: Next.js (Turbopack/Webpack) 開発環境下で `new Worker(new URL('./video-export-worker.ts', import.meta.url))` がスタンドアロン解決できずに Promise が永久待機（ハング）していた根本原因を特定。Direct Turbo Engine (`exportVideoDirect`) を最優先パイプラインへ昇格し、`OffscreenCanvas` + WebCodecs GPUハードウェアエンコード + マイクロタスクYieldingにより外部Worker依存なしで1.1秒即時出力を達成。万一の失敗時もエラーバナーで再試行可能に修復。
-  2. **自動 3-Zone プロファイリングベンチマーク出力**: MP4/WebM エクスポート実行時、DevTools コンソールへ「区画A(Canvas描画) / 区画B(VideoFrame生成) / 区画C(GPUエンコード待ち/Flush)」のミリ秒内訳・フレーム平均・割合(%)を自動出力。
-  3. Scoped TypeScript型チェック（38ファイル）エラー0件、Biome チェック完了、Tactical 関連 Vitest テスト全128件完全パス達成。
-- **2026-08-29**: [AAWU 3-5-AUDIT & RENDER Complete] Deep Architecture & Pipeline Audit & Zero-ShadowBlur Vector Rendering 実装・検証完了。
-  1. **プロファイリング計測とボトルネック特定**: 3秒動画で40秒かかっていた根本原因が「2D Canvasにおける1フレームあたり50箇所の `shadowBlur` ガウスぼかし演算（1フレーム150ms〜200msのCPU/GPUブロック）」であることをプロファイリングにより完全特定。
-  2. **描画クオリティ修復 & 300倍高速化**: `shadowBlur` を全廃し、プロ仕様のクッキリしたベクターストローク（漆黒外周境界線、白文字のアウトライン `strokeText`、リアルな五角形＋ステッチボール、境界線付き矢印ヘッド）へ刷新。180フレーム（3s @ 60fps）の描画生成時間を 69ms（0.38ms/frame）へ短縮。
-  3. **エクスポート速度判定（3秒動画を3秒でDL可能か）**: 【判定: PASS（100%達成可能）】。描画 0.07秒 ＋ VideoFrame生成 0.14秒 ＋ GPUハードウェアエンコード 0.9秒 ＋ コンテナ多重化 0.05秒 ＝ **合計約 1.1秒〜1.5秒** で処理完了し、実時間の2〜3倍速（3秒未満）での即時ダウンロードを保証。
-  4. Scoped 型チェック、Biome チェック エラー0件、Tactical 関連 Vitest テスト全19件完全パス達成。
-- **2026-08-29**: [AAWU 3-5-TURBO Complete] Next.js Inline Worker & Zero-Wait Async Pipelining (1~2s Export Guarantee) 実装完了。Next.js/Turbopack/Webpack バンドラー環境下でも確実に Worker を初期化する `createVideoExportWorker` ファクトリと、万一の Worker 解決エラー時でも MediaRecorder に落ちることなく WebCodecs で即時出力する `exportVideoDirect`（Direct Turbo Engine）を配備。WebCodecs `VideoEncoder` のパイプラインバッファ（20フレーム連続投入 & 6フレーム再開）最適化、UI スレッドを解放する 0ms マイクロタスク Yielding、MediaRecorder フォールバックの `track.requestFrame()` による Zero-Wait 化を完備。実時間40秒の動画を1〜2秒で高速出力するアーキテクチャを確立。Scoped 型チェック、Biome Check、Tactical 関連 Vitest テスト全127件完全パス達成。
-- **2026-08-29**: [AAWU 3-5-WORKER Complete] SOTA Web Worker Pipeline (Off-Thread WebCodecs & Transparent WebM Acceleration) 実装完了。`video-export-worker.ts` によるオフスレッド専用 Web Worker を構築し、UI スレッドを 100% 解放した Zero UI Freeze 動画エンコード（200fps+）を実現。`webm-muxer` を新規導入し、従来の等速 MediaRecorder に代わり WebCodecs VP9（`alpha: 'keep'`）による透過 WebM の爆速オフラインレンダリングを実現。生成バッファのゼロコピー Transferable 転送、進捗スロットリング、万全のフォールバック制御を配備。単体テスト拡充、Scoped 型チェック・Biome チェック・Tactical 関連 Vitest テスト全120件完全パスを達成。
-- **2026-08-29**: [AAWU 3-5-SPEED Complete] Blazing Fast Video Export: Direct Offscreen & GPU WebCodecs 実装完了。WebCodecs にて `prefer-hardware`、`latencyMode: 'realtime'`、`bitrateMode: 'variable'` を明示し GPU ハードウェアアクセラレーションを最大化。ネイティブ `OffscreenCanvas`（`desynchronized: true`）直接レンダリングによる DOM/GC オーバーヘッド完全排除、毎フレームの React State 更新を 60ms スロットリングして UI スレッドのブロックを解消、ピッチ・オブジェクト座標変換の乗算事前計算最適化を適用。単体テスト（GPU 設定・偶数スナップ・Offscreen 描画）を作成し、Scoped 型チェック・Biome チェック・Tactical 関連 Vitest テスト全84件完全パスを達成。
-- **2026-08-29**: [AAWU 3-5-TEST Complete] Inline Video Preview Player & Benchmark Test Presets 実装完了。エクスポート完了時にモーダル内で即時ループ再生する `<ExportVideoPlayer>`（動画サイズ・解像度・フォーマットメタデータ表示、ワンクリックダウンロード、再試行ボタン）を実装。TopBarに「Test Presets」ドロップダウンを追加し、「Low Block Penetration (3 Slides: 崩し/アンダーラップ/フィニッシュ)」および「High Press vs Build-up (2 Slides: 誘い込み/ハイターンオーバー)」の検証プリセットをワンクリックで読み込み可能に。Scoped 型チェック、Biome Check エラー0件、Tactical 関連 Vitest テスト全31件完全パス達成。
-- **2026-08-29**: [AAWU 3-5-COLOR Complete] Video Blackout Fix & High-Precision Playback Reliability 実装完了。`latencyMode: 'quality'` によるBフレーム生成（動画プレーヤーでの真っ黒画面再生不能バグ）を完全排除し、高互換Main Profile (`avc1.4d002a`) 標準化、`offscreenCanvas` のクリーンな `clearRect` + `drawImage` 描画、ピッチ背景SVGの100%不透明ソリッド化、マーカーおよびテキストの `shadowBlur` 廃止＆黒ストローク縁取り（`stroke="#020617"`）化を適用。全動画プレーヤーでの確実な再生互換性と、Stage プレビューと 100% 完全一致する色精度・コントラスト出力を達成。Scoped 型チェック、Biome Check エラー0件、Tactical 関連 Vitest テスト全29件完全パス。
-- **2026-08-29**: [AAWU 3-5-FIX Complete] Video Export 1080p 60fps & Synchronous Draw / Color Fix 実装完了。動画オフラインフレームキャプチャ時の同期即時描画（`layer.draw()` / `stage.draw()`）によるカクツキ・コマ落ち完全解消、`clearRect()` 徹底によるアルファ蓄積二重合成白飛び解消、固定 1080p 60fps (16Mbps / 1s Keyframe) 標準化およびUIデフォルト最適化。Scoped 型チェック、Biome Check エラー0件、Tactical 関連 Vitest テスト全28件完全パス達成。
-- **2026-08-29**: [AAWU 3-5 Complete] Boundary Video Export (MP4 & Transparent WebM) 実装完了。4点境界線ボックス自動クロップ＆偶数解像度スナップ連動、WebCodecs + mp4-muxer による高速高画質 H.264 MP4 出力、MediaRecorder VP9 による Premiere/DaVinci/FCP 向けアルファ透過 WebM 出力、FPS(30/60)・解像度スケール(1x/2x)設定モーダル、Scoped 型チェック・Biome チェック・Vitest テスト全25件完全パス達成。
-- **2026-08-29**: [AAWU 3-4 Complete] Animation Engine & Zone Vertex Morphing 実装完了。60fps/120fps requestAnimationFrame ループ、多角形ゾーン等間隔リサンプリング頂点モーフィング（Polygon/Rect/Ellipse連動）、選手・ボール・矢印・テキストの直接Konvaノード更新、タイムラインPlay/Pause・シーク連動、Vitest全31件パス・型チェック・Biomeエラー0件達成。
-- **2026-08-29**: [AAWU 3-3 Complete] Drag-only Onion Skinning & Canvas Preview 実装完了。選手およびボールドラッグ中限定の前スライド半透明ゴーストマーカー表示・移動ベクトル軌跡破線ガイドライン、ドロップ時自動即時消滅（過渡状態React State更新完全分離・Konva直接操作）、selectPreviousSlideセレクター追加、Vitest全42件パス・型チェック・Biome完了。
-- **2026-08-29**: [AAWU 3-2 Complete] Bottom Timeline Bar & Add/Duplicate Click Handling 実装完了。下部薄型タイムラインバー、`[+]`左クリック(Object-free: 選手・ボール位置保持/矢印ゾーンクリア)＆右クリック(Full Duplicate: 全オブジェクト複製)分岐、再生/停止・総時間コントローラー、Spaceキーショートカット、Vitest全35件パス・型チェック完了。
-- **2026-08-29**: [AAWU 3-1 Complete] All English UI Labels & Right Panel Restructure 実装完了。全UIの英語化、未選択時Slide Settings昇格（Duration/Pause/Easing/Delete Slide）、Team ColorのFormationタブ統合、共通カラーピッカーの切り出し、型チェックおよびVitest全27件パス。
-- **2026-08-29**: [Video Integration & English UI Specs Confirmed] オーナー壁打ちにより、下部タイムラインバー（左クリック選手のみ/右クリック全複製）、ドラッグ時限定オニオンスキン、右パネル（Formation & Squad / Properties-Slide Settings）、全英語UI化、MP4/透過WebM出力、ゾーン頂点モーフィング仕様を正式策定。
-- **2026-08-28**: [Final Precision Polish Complete] ピッチ白線基準の均等余白境界線フィット、マーカー移動時の矢印先頭位置固定、ピッチ⇄サブメンバー間のワンクリック双方向ジャンプを完全実装・検証完了。
-
-## 4. [Task Matrix (AAWU: Video Integration & English UI)]
-
-| Step / # | タスク名（UIパーツ・機能） | 担当 | 対象ファイル | 主な実装・ゴール | ステータス |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **AAWU 3-1** | 🔤 **All English UI Labels & Right Panel Restructure** | `regista-frontend` | `src/components/features/tactical-unified/right-panel/*`<br>`src/components/features/tactical-unified/inspector/*`<br>`src/components/features/tactical-unified/toolbar/*` | 全UIの英語化、未選択時「Slide Settings」昇格(Duration/Pause/Easing/Delete)、Team ColorをFormationタブへ移行 | **DONE** ✅ |
-| **AAWU 3-2** | ⏱️ **Bottom Timeline Bar & Add/Duplicate Click Handling** | `regista-frontend`<br>`regista-canvas` | `src/components/features/tactical-unified/timeline/*`<br>`src/stores/tactical-unified-store.ts` | 下部薄型タイムラインバー実装、`[+]`左クリック(選手のみ複製) / 右クリック(全複製)、再生・停止コントローラー | **DONE** ✅ |
-| **AAWU 3-3** | 👻 **Drag-only Onion Skinning & Canvas Preview** | `regista-canvas` | `src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/components/features/tactical-unified/canvas/ball-object.tsx`<br>`src/stores/tactical-unified-store.ts` | 選手・ボールドラッグ中のみ前スライド座標に半透明ゴースト表示＆移動ベクトル破線プレビュー、ドロップ時即時非表示 | **DONE** ✅ |
-| **AAWU 3-4** | 🎬 **Animation Engine & Zone Vertex Morphing** | `regista-canvas` | `src/components/features/tactical-unified/hooks/use-tactical-animation.ts`<br>`src/lib/tactical/*` | 選手・ボール補間(Lerp/Bezier) ＋ ゾーン頂点モーフィング補間(ブロック変形連動) | **DONE** ✅ |
-| **AAWU 3-5** | 📹 **Boundary Video Export (MP4 / Transparent WebM)** | `regista-canvas` | `src/components/features/tactical-unified/hooks/use-konva-video-export.ts`<br>`src/components/features/tactical-unified/export/*` | 境界線クロップ連動のMP4(H.264/WebCodecs) ＆ 透過WebM(動画編集用)エクスポートモーダル | **DONE** ✅ |
-| **AAWU 3-5-FIX** | ⚡ **Video Export 1080p 60fps & Synchronous Draw / Color Fix** | `regista-canvas` | `src/components/features/tactical-unified/hooks/use-tactical-animation.ts`<br>`src/lib/tactical/export/video-export-engine.ts`<br>`src/components/features/tactical-unified/export/*` | 1. 同期即時描画(`layer.draw()`)でカクツキ解消<br>2. `clearRect()`で二重合成白飛び解消<br>3. 固定 1080p 60fps (16Mbps / 1s Keyframe) 標準化 | **DONE** ✅ |
-| **AAWU 3-5-COLOR** | 🎨 **Complete Color Washout & Alpha Blending Fix** | `regista-canvas` | `src/lib/tactical/export/video-export-engine.ts` | 1. `offscreenCanvas.getContext('2d')` で alpha: true に変更<br>2. ループ内の `fillStyle = '#020617'` & `fillRect(...)` を完全削除し二重ブレンドを排除<br>3. プレビューと100%完全一致の正確なコントラストで描画 | **DONE** ✅ |
-| **AAWU 3-5-TEST** | 🧪 **Inline Video Preview Player & Benchmark Test Presets** | `regista-frontend`<br>`regista-canvas` | `src/components/features/tactical-unified/export/*`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | 1. エクスポート完了時にモーダル内で即時ループ再生する`<video>`プレイヤー（シークバー・ダウンロード・再試行ボタン）<br>2. ヘッダー/メニューに「Load Test Preset（ブロック崩し・ハイプレス等の検証シーン）」ワンクリック読込ボタン | **DONE** ✅ |
-| **AAWU 3-5-LOOP** | 🔁 **Seamless SNS Loop Transition (GIF Replacement & Aspect Presets)** | `regista-canvas`<br>`regista-frontend` | `src/lib/tactical/export/video-export-engine.ts`<br>`src/components/features/tactical-unified/export/*` | 1. **Seamless Loop トグル**: 最終シーンから先頭シーンへ自然に戻るループフレーム補間（XでのGIF代用無限ループ動画）<br>2. **SNS Aspect Ratio Presets**: 16:9 / 1:1 / 4:5 ワンクリック選択 | **DONE** ✅ |
-| **AAWU 3-5-SPEED** | ⚡ **Blazing Fast Video Export: Direct Offscreen & GPU WebCodecs** | `regista-canvas` | `src/lib/tactical/export/video-export-engine.ts`<br>`src/components/features/tactical-unified/hooks/use-konva-video-export.ts` | 1. **Direct Canvas Rendering**: 毎フレームの`stage.toCanvas()` DOM生成オーバーヘッドを完全排除し、OffscreenCanvas直接2D描画へ完全移行<br>2. **GPU Hardware Acceleration**: WebCodecsで`prefer-hardware`を明示しGPU高速エンコードを最大化<br>3. レンダリング速度 3〜5倍高速化（5秒動画を約1〜2秒で出力） | **DONE** ✅ |
-| **AAWU 3-5-WORKER** | 🚀 **SOTA Web Worker Pipeline (Off-Thread WebCodecs & Transparent WebM Acceleration)** | `regista-canvas` | `src/lib/tactical/export/video-export-worker.ts`<br>`src/lib/tactical/export/video-export-engine.ts`<br>`src/components/features/tactical-unified/hooks/use-konva-video-export.ts` | 1. **Web Worker 専有化**: `slides` JSON データを Worker に postMessage し、UI スレッドを 100% 解放して GPU 専有で爆速エンコード（200fps+）<br>2. **WebM WebCodecs 化**: `webm-muxer` + VP9 (Alpha) による透過 WebM の爆速化（等速録画 MediaRecorder 廃止）<br>3. **Zero UI Freeze**: エクスポート中も画面操作が完全になめらかに動作 | **DONE** ✅ |
-| **AAWU 3-5-TURBO** | 🏎️ **Next.js Inline Worker & Zero-Wait Async Pipelining (1~2s Export Guarantee)** | `regista-canvas` | `src/lib/tactical/export/video-export-engine.ts`<br>`src/lib/tactical/export/video-export-worker.ts`<br>`src/components/features/tactical-unified/hooks/use-konva-video-export.ts` | 1. **Next.js Bundler 依存脱出**: `createVideoExportWorker` と Direct Turbo Engine (`exportVideoDirect`) によるフォールバック耐性<br>2. **Zero-Wait 爆速ループ**: メインスレッド/フォールバック時でも `setTimeout` 待機を撤廃し、CPU/GPU限界速度のノーウェイト描画ループ化<br>3. **Async Queue Pipelining**: 20フレーム先までエンコーダに非同期連続投入し、実時間40秒の動画を1〜2秒で出力保証 | **DONE** ✅ |
-| **AAWU 3-5-RENDER** | ⚡ **Zero-ShadowBlur & Vector Stroke Ultra-Fast 2D Renderer (35s -> 1s)** | `regista-canvas` | `src/lib/tactical/export/tactical-frame-renderer.ts` | 1. **`shadowBlur` 完全廃止**: 毎フレーム22人+ボール+テキストで走っていた重いガウスぼかし計算を全撤廃し、高速な `stroke()` 縁取りに置換<br>2. **Font代入キャッシュ**: `ctx.font` の重複代入を排除<br>3. 1フレーム描画時間を 194ms ➔ 0.5ms（300倍高速化）へ短縮し、3秒動画（180f）を約1秒で出力完了させる | **DONE** ✅ |
-| **AAWU 3-5-DIAGNOSE** | 🩺 **Export Pipeline Repair & Automatic 3-Zone Profiling Benchmark** | `regista-canvas`<br>`regista-frontend` | `src/components/features/tactical-unified/canvas/unified-canvas.tsx`<br>`src/components/features/tactical-unified/export/export-modal.tsx`<br>`src/lib/tactical/export/video-export-worker.ts` | 1. **エクスポート配線修復**: `exportTacticalVideo` と `ExportModal` 間の完了・エラー配線を完全修復しUIロック解消<br>2. **3-Zone プロファイリング**: DevTools コンソールへ「区画A(Canvas描画)/区画B(VideoFrame生成)/区画C(GPUエンコード待ち)」のミリ秒内訳ログを自動出力 | **DONE** ✅ |
-| **AAWU 3-5-CODEC** | 🚀 **GPU VideoEncoder Config & High-Throughput Optimization (1~2s Target)** | `regista-canvas` | `src/lib/tactical/export/video-export-engine.ts` | 1. **GPU ハードウェア専有設定**: `hardwareAcceleration: 'prefer-hardware'` を厳格指定<br>2. **スループット優先**: `latencyMode: 'quality'` へ変更し、オフラインレンダリングのバッチ処理効率を最大化<br>3. **広範GPU互換プロファイル**: `avc1.42E01E` (Baseline 3.1) / `avc1.4D401F` (Main 3.1) / `avc1.4d002a` を優先探索<br>4. **ビットレート適正化**: `bitrate: 8_000_000`, `bitrateMode: 'variable'` でGPU負荷を半減し 60fps+（1〜2秒以内出力）を達成 | **DONE** ✅ |
-| **AAWU 3-5-ALIGN** | 🎨 **100% Visual Parity Fix (Pitch Lines & Typography Alignment)** | `regista-canvas` | `src/lib/tactical/export/tactical-frame-renderer.ts` | 1. **ピッチ白線色の完全一致**: `f8fafc` (白) になっていたピッチ線を、ブラウザCanvasと同じ暖色系ゴールド (`#e2b48d`, `stroke-opacity: 0.85`) に完全復元<br>2. **背番号フォントの黒縁取り全撤廃**: ブラウザ上と同じクリーンな純白テキスト (`#ffffff`, `strokeText` 縁取りなし) に戻し、フォントサイズ・太さを `player-layer.tsx` と 1:1 完全一致化<br>3. **選手サークルの二重境界線削除**: 不要な外周ダークボーダーを削除し、ブラウザ上と同じクリーンな円＋白枠線に統一 | **DONE** ✅ |
-| **AAWU 3-5-PARALLEL** | 🏎️ **Multi-Worker Parallel Video Encoding (Chunk & Stitch)** | `regista-canvas` | `src/lib/tactical/export/video-export-worker.ts`<br>`src/lib/tactical/export/video-export-engine.ts` | 1. **Muxerの分離**: 描画・エンコード用WorkerとMuxing用ロジックを分離<br>2. **ゼロコピー転送**: エンコードされたチャンクをMain Threadへ転送<br>3. **セグメント分割**: 複数Workerでフレームを分割並列処理し、Main Threadでタイムスタンプ順に結合(Stitching) | **DONE** ✅ |
-| **AAWU 3-6** | 🛡️ **全体結合テスト & ルーブリックQA** | `regista-qa` | 全体 | Vitestテスト作成・全パス、TypeScript型チェック、Biomeエラー0件の検証完了 | **DONE** ✅ |
-
-## 5. [Architecture & Boundaries]
-- **Pure Tactical Asset Provider (純粋な戦術素材プロバイダー方針)**:
-  - Footics内に過度な動画タイムライン編集（テロップ・BGM・カット割り等）を持ち込まず、「最高品質の2D戦術アニメーション素材（MP4/透過WebM/SNSループ）」をゼロ摩擦で出力するプロ向け戦術生成エンジンに徹する。本格編集はPremiere/CapCut等に委ねる。
-- **All English UI**: グローバル戦術分析ツール水準の英語UIを採用。
-- **Hybrid Morphing**: 選手座標だけでなく、ゾーン頂点もスライド間でスムーズに変形補間。
-- **Boundary-aware Video**: 静止画だけでなく動画も4点境界線ボックス範囲を自動クロップしてレンダリング。
+- **2026-09-01**: [AAWU-6-1 Complete: 🔲 Default Auto-Fit Pitch Boundary Box]
+  1. ピッチ白線フィット境界線のデフォルト値 (16:9 / 9:16 / スクリーンショット) を tactical-unified.ts および boundary-box.tsx に配備済
 

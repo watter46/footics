@@ -41,12 +41,19 @@ import {
   createDefaultPlayer,
   createDefaultProject,
   createDefaultSlide,
+  DEFAULT_442_HOME,
   DEFAULT_BOUNDARY_BOX_9_16,
   DEFAULT_BOUNDARY_BOX_16_9,
   DEFAULT_BOUNDARY_BOX_SCREENSHOT,
   transformCoord,
   transformPoints,
 } from '@/lib/types/tactical-unified';
+import {
+  type ClipboardSlice,
+  createClipboardSlice,
+} from './slices/clipboard-slice';
+import { createHistorySlice, type HistorySlice } from './slices/history-slice';
+import { createSlideSlice, type SlideSlice } from './slices/slide-slice';
 
 // ─────────────────────────────────────────
 // § 1. 選択オブジェクト型
@@ -72,7 +79,7 @@ export type MarkerOptionTab =
   | 'focus'
   | 'basic';
 
-function isPointInPolygon(
+export function isPointInPolygon(
   point: { x: number; y: number },
   vs: Array<{ x: number; y: number }>,
 ) {
@@ -113,24 +120,27 @@ export interface PanelState {
   inspectorOpen: boolean;
   rightPanelTab: 'formation' | 'squad' | 'inspector';
   exportModalOpen: boolean;
+  projectManagerModalOpen: boolean;
 }
 
 // ─────────────────────────────────────────
 // § 3. Store State 型
 // ─────────────────────────────────────────
 
-interface TacticalUnifiedState {
+export interface TacticalUnifiedState
+  extends HistorySlice,
+    ClipboardSlice,
+    SlideSlice {
   // ── データ
   project: TacticalProject;
   isDirty: boolean;
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error';
+  lastSavedAt: number | null;
+  setSaveStatus: (status: 'idle' | 'saving' | 'saved' | 'error') => void;
+  setLastSavedAt: (timestamp: number | null) => void;
 
   // ── 履歴 (Undo / Redo スタック: 最大50件)
-  past: Slide[][];
-  future: Slide[][];
-
   // ── クリップボード
-  clipboard: TacticalClipboard | null;
-
   // ── 選択
   activeSlideId: string;
   selectedObjects: SelectedObject[];
@@ -189,166 +199,18 @@ interface TacticalUnifiedState {
   setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
 
   // ─ スライド CRUD
-  addSlide: (
-    sourceSlideId?: string,
-    mode?: 'object-free' | 'full' | 'blank',
-  ) => string;
-  duplicateSlide: (slideId: string) => string;
-  deleteSlide: (slideId: string) => void;
-  reorderSlides: (orderedIds: string[]) => void;
-  setActiveSlide: (slideId: string) => void;
-  updateSlideLabel: (slideId: string, label: string) => void;
-  updateSlideTransition: (
-    slideId: string,
-    params: Partial<Pick<Slide, 'transitionDurationMs' | 'pauseMs' | 'easing'>>,
-  ) => void;
-
   // ─ 選手 & サブメンバー CRUD
-  addPlayer: (player: Player) => void;
-  addPlayerFromPalette: (
-    team: 'home' | 'away' | 'neutral',
-    x: number,
-    y: number,
-    markerType?: 'circle' | 'ring',
-  ) => string;
-  addCustomPlayer: (
-    slideId: string,
-    team: 'home' | 'away' | 'neutral',
-    name?: string,
-    shirtNo?: string,
-    position?: string,
-    area?: 'pitch' | 'bench',
-  ) => string;
-  updatePlayer: (
-    slideId: string,
-    playerId: string,
-    patch: Partial<Player>,
-  ) => void;
-  updatePlayerTrajectory: (
-    slideId: string,
-    playerId: string,
-    trajectory: PlayerTrajectory | undefined,
-  ) => void;
-  movePlayer: (slideId: string, playerId: string, x: number, y: number) => void;
-  moveMultiplePlayersByDelta: (
-    slideId: string,
-    playerIds: string[],
-    deltaX: number,
-    deltaY: number,
-  ) => void;
-  movePlayerToBench: (slideId: string, playerId: string) => void;
-  clearPitchPlayers: (slideId?: string) => void;
-  movePlayerToPitch: (
-    slideId: string,
-    playerId: string,
-    x?: number,
-    y?: number,
-  ) => void;
-  swapPlayers: (slideId: string, playerAId: string, playerBId: string) => void;
-  removePlayer: (slideId: string, playerId: string) => void;
-  applyFormationPreset: (preset: FormationPreset, slideId: string) => void;
-  applyFormation: (
-    slideId: string,
-    formationName: FormationType,
-    mode: FormationMode,
-    team: 'home' | 'away',
-  ) => void;
-  applySingleTeamFormation: (
-    slideId: string,
-    formationName: FormationType,
-    mode: FormationMode,
-    team: 'home' | 'away',
-  ) => void;
-
   // ─ 選手ネスト: VisionCone
-  setVisionCone: (
-    slideId: string,
-    playerId: string,
-    cone: VisionCone | undefined,
-  ) => void;
-
   // ─ コネクタ選択モード
-  setConnectingPlayerId: (id: string | null) => void;
-
   // ─ 選手ネスト: ConnectLine
-  addConnectLine: (
-    slideId: string,
-    playerId: string,
-    line: ConnectLine,
-  ) => void;
-  updateConnectLine: (
-    slideId: string,
-    playerId: string,
-    lineId: string,
-    patch: Partial<ConnectLine>,
-  ) => void;
-  removeConnectLine: (
-    slideId: string,
-    playerId: string,
-    lineId: string,
-  ) => void;
-
   // ─ 選手ネスト: Badge
-  addPlayerBadge: (
-    slideId: string,
-    playerId: string,
-    badge: PlayerBadge,
-  ) => void;
-  removePlayerBadge: (
-    slideId: string,
-    playerId: string,
-    badgeId: string,
-  ) => void;
-  setPlayerFocus: (
-    slideId: string,
-    playerId: string,
-    focus: PlayerFocus | undefined,
-  ) => void;
-
   // ─ ボール
-  setBallPosition: (slideId: string, x: number, y: number) => void;
-  setBallVisible: (slideId: string, visible: boolean) => void;
-
   // ─ アノテーション CRUD
-  addArrow: (slideId: string, arrow: ArrowAnnotation) => void;
-  updateArrow: (
-    slideId: string,
-    arrowId: string,
-    patch: Partial<ArrowAnnotation>,
-  ) => void;
-  removeArrow: (slideId: string, arrowId: string) => void;
-
-  addZone: (slideId: string, zone: ZoneAnnotation) => void;
-  updateZone: (
-    slideId: string,
-    zoneId: string,
-    patch: Partial<ZoneAnnotation>,
-  ) => void;
-  removeZone: (slideId: string, zoneId: string) => void;
-
-  addText: (slideId: string, text: TextAnnotation) => void;
-  updateText: (
-    slideId: string,
-    textId: string,
-    patch: Partial<TextAnnotation>,
-  ) => void;
-  removeText: (slideId: string, textId: string) => void;
-  clearAnnotations: (slideId: string) => void;
-  eraseAtPoint: (
-    slideId: string,
-    point: { x: number; y: number },
-    radius?: number,
-  ) => void;
-
   // ─ 選択 & クリップボード
   selectObject: (obj: SelectedObject | null, multi?: boolean) => void;
   selectObjects: (objects: SelectedObject[], multi?: boolean) => void;
   clearSelection: () => void;
   setActiveTool: (tool: DrawingTool) => void;
-  copySelectedObjects: (slideId?: string) => void;
-  pasteObjects: (slideId?: string) => void;
-  duplicateSelectedObjects: (slideId?: string) => void;
-
   // ─ パネル
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
@@ -356,12 +218,10 @@ interface TacticalUnifiedState {
   setRightPanelTab: (tab: 'formation' | 'squad' | 'inspector') => void;
   openExportModal: (target?: ExportTarget) => void;
   closeExportModal: () => void;
+  openProjectManagerModal: () => void;
+  closeProjectManagerModal: () => void;
 
   // ─ 履歴 (Undo / Redo)
-  undo: () => void;
-  redo: () => void;
-  pushHistory: () => void;
-
   // ─ エクスポート
   setIsExporting: (val: boolean) => void;
 }
@@ -370,14 +230,14 @@ interface TacticalUnifiedState {
 // § 4. ヘルパー
 // ─────────────────────────────────────────
 
-function getSlide(
+export function getSlide(
   project: TacticalProject,
   slideId: string,
 ): Slide | undefined {
   return project.slides.find((s) => s.id === slideId);
 }
 
-function updateSlideInProject(
+export function updateSlideInProject(
   project: TacticalProject,
   slideId: string,
   updater: (slide: Slide) => Slide,
@@ -389,7 +249,7 @@ function updateSlideInProject(
   };
 }
 
-function distToSegment(
+export function distToSegment(
   p: { x: number; y: number },
   v: { x: number; y: number },
   w: { x: number; y: number },
@@ -404,9 +264,9 @@ function distToSegment(
   );
 }
 
-const MAX_HISTORY = 50;
+export const MAX_HISTORY = 50;
 
-function recordHistory(s: TacticalUnifiedState): {
+export function recordHistory(s: TacticalUnifiedState): {
   past: Slide[][];
   future: Slide[][];
 } {
@@ -421,7 +281,7 @@ function recordHistory(s: TacticalUnifiedState): {
   };
 }
 
-function extractSelectedObjects(
+export function extractSelectedObjects(
   slide: Slide,
   selectedObjects: SelectedObject[],
 ): {
@@ -467,7 +327,7 @@ function extractSelectedObjects(
   return { players, arrows, zones, texts };
 }
 
-function cloneAndOffsetObjects(
+export function cloneAndOffsetObjects(
   items: {
     players: Player[];
     arrows: ArrowAnnotation[];
@@ -617,12 +477,17 @@ function cloneAndOffsetObjects(
 const INITIAL_PROJECT = createDefaultProject(crypto.randomUUID());
 
 export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector((set, get, store) => ({
+    ...createHistorySlice(set, get, store),
+    ...createClipboardSlice(set, get, store),
+    ...createSlideSlice(set, get, store),
+
     project: INITIAL_PROJECT,
     isDirty: false,
-    past: [],
-    future: [],
-    clipboard: null,
+    saveStatus: 'idle',
+    lastSavedAt: null,
+    setSaveStatus: (status) => set({ saveStatus: status }),
+    setLastSavedAt: (timestamp) => set({ lastSavedAt: timestamp }),
     activeSlideId: INITIAL_PROJECT.activeSlideId,
     selectedObjects: [],
     activeTool: 'select',
@@ -634,6 +499,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
       inspectorOpen: true,
       rightPanelTab: 'formation',
       exportModalOpen: false,
+      projectManagerModalOpen: false,
     },
     isPlaying: false,
     setIsPlaying: (isPlaying) => set({ isPlaying }),
@@ -645,74 +511,6 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     isExporting: false,
 
     // ══ 履歴 (Undo / Redo) ═════════════════
-
-    undo: () =>
-      set((s) => {
-        if (s.past.length === 0) return s;
-        const nextPast = [...s.past];
-        const previousSlides = nextPast.pop();
-        if (!previousSlides) return s;
-
-        const currentSlides = structuredClone(s.project.slides);
-        const nextFuture = [currentSlides, ...s.future].slice(0, MAX_HISTORY);
-
-        let nextActiveSlideId = s.activeSlideId;
-        if (!previousSlides.some((sl) => sl.id === nextActiveSlideId)) {
-          nextActiveSlideId = previousSlides[0]?.id ?? '';
-        }
-
-        return {
-          past: nextPast,
-          future: nextFuture,
-          project: {
-            ...s.project,
-            slides: previousSlides,
-            activeSlideId: nextActiveSlideId,
-            updatedAt: new Date().toISOString(),
-          },
-          activeSlideId: nextActiveSlideId,
-          selectedObjects: [],
-          isDirty: true,
-        };
-      }),
-
-    redo: () =>
-      set((s) => {
-        if (s.future.length === 0) return s;
-        const nextFuture = [...s.future];
-        const nextSlides = nextFuture.shift();
-        if (!nextSlides) return s;
-
-        const currentSlides = structuredClone(s.project.slides);
-        const nextPast = [...s.past, currentSlides];
-        if (nextPast.length > MAX_HISTORY) {
-          nextPast.shift();
-        }
-
-        let nextActiveSlideId = s.activeSlideId;
-        if (!nextSlides.some((sl) => sl.id === nextActiveSlideId)) {
-          nextActiveSlideId = nextSlides[0]?.id ?? '';
-        }
-
-        return {
-          past: nextPast,
-          future: nextFuture,
-          project: {
-            ...s.project,
-            slides: nextSlides,
-            activeSlideId: nextActiveSlideId,
-            updatedAt: new Date().toISOString(),
-          },
-          activeSlideId: nextActiveSlideId,
-          selectedObjects: [],
-          isDirty: true,
-        };
-      }),
-
-    pushHistory: () =>
-      set((s) => ({
-        ...recordHistory(s),
-      })),
 
     // ══ プロジェクト ══════════════════════
 
@@ -782,10 +580,100 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     setImageBackground: (url) =>
       set((s) => {
         const targetSlideId = s.activeSlideId;
+        const currentSlide = s.project.slides.find(
+          (sl) => sl.id === targetSlideId,
+        );
         const screenshotBox: BoundaryBox = {
           ...DEFAULT_BOUNDARY_BOX_SCREENSHOT,
         };
 
+        // 現在のスライドが一度でも編集されているか（画像背景がある、アノテーションがある、選手が移動/追加/削除/カスタムされている等）を判定
+        const isDefault442 =
+          currentSlide &&
+          currentSlide.backgroundType === 'pitch' &&
+          !currentSlide.backgroundImageUrl &&
+          (!currentSlide.arrows || currentSlide.arrows.length === 0) &&
+          (!currentSlide.zones || currentSlide.zones.length === 0) &&
+          (!currentSlide.texts || currentSlide.texts.length === 0) &&
+          currentSlide.ball.x === 50 &&
+          currentSlide.ball.y === 50 &&
+          currentSlide.ball.visible &&
+          currentSlide.players.length === 22 &&
+          currentSlide.players.every((p) => {
+            if (p.area !== 'pitch' || p.focus || p.visionCone || p.badges.length > 0 || p.connectLines.length > 0 || p.style.markerType !== 'circle') {
+              return false;
+            }
+            const expectedPos = DEFAULT_442_HOME.find((def) => def.shirtNo === p.shirtNo);
+            if (!expectedPos) return false;
+            const expectedX = p.team === 'home' ? expectedPos.x : 100 - expectedPos.x;
+            const expectedY = expectedPos.y;
+            return Math.abs(p.x - expectedX) < 0.01 && Math.abs(p.y - expectedY) < 0.01;
+          });
+
+        const isCurrentSlideEdited = currentSlide && !isDefault442;
+
+        if (isCurrentSlideEdited) {
+          // すでに編集中の場合は、現在のスライドをそのまま保持し、新しいスライドを追加してキャプチャ画像を適用
+          const newSlideId = crypto.randomUUID();
+          const newSlide: Slide = {
+            id: newSlideId,
+            index: s.project.slides.length,
+            label: `Scene ${s.project.slides.length + 1}`,
+            players: currentSlide.players.map((p) => ({
+              ...p,
+              area: 'bench' as const,
+              visionCone: undefined,
+              badges: [],
+              connectLines: [],
+              focus: undefined,
+            })),
+            arrows: [],
+            zones: [],
+            texts: [],
+            ball: { x: 50, y: 50, visible: false },
+            boundaryBox: screenshotBox,
+            transitionDurationMs: 1000,
+            pauseMs: 500,
+            easing: 'ease-in-out',
+            backgroundType: 'image',
+            backgroundImageUrl: url,
+          };
+
+          const currentIdx = s.project.slides.findIndex(
+            (sl) => sl.id === targetSlideId,
+          );
+          const nextSlides = [...s.project.slides];
+          if (currentIdx !== -1) {
+            nextSlides.splice(currentIdx + 1, 0, newSlide);
+          } else {
+            nextSlides.push(newSlide);
+          }
+          const indexedSlides = nextSlides.map((sl, i) => ({
+            ...sl,
+            index: i,
+          }));
+
+          return {
+            ...recordHistory(s),
+            project: {
+              ...s.project,
+              backgroundType: 'image',
+              backgroundImageUrl: url,
+              updatedAt: new Date().toISOString(),
+              slides: indexedSlides,
+              activeSlideId: newSlideId,
+            },
+            panels: {
+              ...s.panels,
+              rightPanelTab: 'inspector',
+            },
+            activeSlideId: newSlideId,
+            selectedObjects: [],
+            isDirty: true,
+          };
+        }
+
+        // まだ未編集（初期スライドなど）の場合は現在のアクティブスライドに適用
         return {
           ...recordHistory(s),
           project: {
@@ -1074,1178 +962,13 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     // ══ スライド CRUD ════════════════════
 
-    addSlide: (sourceSlideId, mode = 'object-free') => {
-      const p = get().project;
-      const targetId = sourceSlideId ?? get().activeSlideId;
-      const currentSlide = p.slides.find((sl) => sl.id === targetId);
-
-      let newSlide: Slide;
-
-      if (!currentSlide || mode === 'blank') {
-        const defaultBox =
-          p.aspectRatio === '9:16'
-            ? DEFAULT_BOUNDARY_BOX_9_16
-            : DEFAULT_BOUNDARY_BOX_16_9;
-        newSlide = createDefaultSlide(
-          p.slides.length,
-          undefined,
-          p.homeColor.primary,
-          p.awayColor.primary,
-          defaultBox,
-        );
-      } else if (mode === 'full') {
-        newSlide = {
-          ...(JSON.parse(JSON.stringify(currentSlide)) as Slide),
-          id: crypto.randomUUID(),
-          label: `${currentSlide.label ?? 'Scene'} (copy)`,
-          backgroundImageUrl:
-            currentSlide.backgroundImageUrl ?? p.backgroundImageUrl,
-          backgroundType:
-            currentSlide.backgroundType ?? p.backgroundType ?? 'pitch',
-        };
-      } else {
-        // 'object-free': 選手とボール座標・スタイルを維持し、矢印・ゾーン・テキストなどのアノテーションをクリア
-        const clonedPlayers: Player[] = currentSlide.players.map((pl) => ({
-          ...JSON.parse(JSON.stringify(pl)),
-          connectLines: [],
-          visionCone: undefined,
-          badge: undefined,
-          focus: undefined,
-        }));
-
-        const defaultBox =
-          p.aspectRatio === '9:16'
-            ? DEFAULT_BOUNDARY_BOX_9_16
-            : DEFAULT_BOUNDARY_BOX_16_9;
-
-        newSlide = {
-          id: crypto.randomUUID(),
-          index: p.slides.length,
-          label: `Scene ${p.slides.length + 1}`,
-          players: clonedPlayers,
-          arrows: [],
-          zones: [],
-          texts: [],
-          ball: currentSlide.ball
-            ? { ...currentSlide.ball }
-            : { x: 50, y: 50, visible: true },
-          boundaryBox: currentSlide.boundaryBox
-            ? { ...currentSlide.boundaryBox }
-            : { ...defaultBox },
-          transitionDurationMs: currentSlide.transitionDurationMs ?? 1000,
-          pauseMs: currentSlide.pauseMs ?? 500,
-          easing: currentSlide.easing ?? 'ease-in-out',
-          backgroundImageUrl:
-            currentSlide.backgroundImageUrl ?? p.backgroundImageUrl,
-          backgroundType:
-            currentSlide.backgroundType ?? p.backgroundType ?? 'pitch',
-        };
-      }
-
-      set((s) => {
-        const currentIdx = s.project.slides.findIndex(
-          (sl) => sl.id === targetId,
-        );
-        const nextSlides = [...s.project.slides];
-        if (currentIdx !== -1) {
-          nextSlides.splice(currentIdx + 1, 0, newSlide);
-        } else {
-          nextSlides.push(newSlide);
-        }
-        const indexedSlides = nextSlides.map((sl, i) => ({ ...sl, index: i }));
-        const isImageBg = newSlide.backgroundType === 'image';
-
-        return {
-          ...recordHistory(s),
-          project: {
-            ...s.project,
-            backgroundType: newSlide.backgroundType ?? 'pitch',
-            backgroundImageUrl: newSlide.backgroundImageUrl,
-            slides: indexedSlides,
-            activeSlideId: newSlide.id,
-            updatedAt: new Date().toISOString(),
-          },
-          panels: {
-            ...s.panels,
-            rightPanelTab: isImageBg
-              ? 'inspector'
-              : mode === 'blank'
-                ? 'formation'
-                : s.panels.rightPanelTab,
-          },
-          activeSlideId: newSlide.id,
-          selectedObjects: [],
-          isDirty: true,
-        };
-      });
-
-      return newSlide.id;
-    },
-
-    duplicateSlide: (slideId) => {
-      return get().addSlide(slideId, 'full');
-    },
-
-    deleteSlide: (slideId) =>
-      set((s) => {
-        if (s.project.slides.length <= 1) return s;
-        const remaining = s.project.slides
-          .filter((sl) => sl.id !== slideId)
-          .map((sl, i) => ({ ...sl, index: i }));
-        const newActive =
-          s.activeSlideId === slideId
-            ? (remaining[0]?.id ?? remaining[remaining.length - 1]?.id ?? '')
-            : s.activeSlideId;
-        const activeSlideObj = remaining.find((sl) => sl.id === newActive);
-        const isImageBg = activeSlideObj?.backgroundType === 'image';
-        return {
-          ...recordHistory(s),
-          project: {
-            ...s.project,
-            backgroundType: activeSlideObj?.backgroundType ?? 'pitch',
-            backgroundImageUrl: activeSlideObj?.backgroundImageUrl,
-            slides: remaining,
-            activeSlideId: newActive,
-            updatedAt: new Date().toISOString(),
-          },
-          panels: {
-            ...s.panels,
-            rightPanelTab: isImageBg
-              ? 'inspector'
-              : s.panels.rightPanelTab === 'inspector'
-                ? 'formation'
-                : s.panels.rightPanelTab,
-          },
-          activeSlideId: newActive,
-          isDirty: true,
-        };
-      }),
-
-    reorderSlides: (orderedIds) =>
-      set((s) => {
-        const idToSlide = Object.fromEntries(
-          s.project.slides.map((sl) => [sl.id, sl]),
-        );
-        const slides = orderedIds
-          .map((id, i) => {
-            const sl = idToSlide[id];
-            if (!sl) return null;
-            return { ...sl, index: i };
-          })
-          .filter((sl): sl is NonNullable<typeof sl> => sl !== null);
-        return {
-          ...recordHistory(s),
-          project: {
-            ...s.project,
-            slides,
-            updatedAt: new Date().toISOString(),
-          },
-          isDirty: true,
-        };
-      }),
-
-    setActiveSlide: (slideId) =>
-      set((s) => {
-        const targetSlide = s.project.slides.find((sl) => sl.id === slideId);
-        const isImageBg = targetSlide?.backgroundType === 'image';
-        return {
-          activeSlideId: slideId,
-          selectedObjects: [],
-          project: {
-            ...s.project,
-            backgroundType: targetSlide?.backgroundType ?? 'pitch',
-            backgroundImageUrl: targetSlide?.backgroundImageUrl,
-          },
-          panels: {
-            ...s.panels,
-            rightPanelTab: isImageBg
-              ? 'inspector'
-              : s.panels.rightPanelTab === 'inspector'
-                ? 'formation'
-                : s.panels.rightPanelTab,
-          },
-        };
-      }),
-
-    updateSlideLabel: (slideId, label) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          label,
-        })),
-        isDirty: true,
-      })),
-
-    updateSlideTransition: (slideId, params) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          ...params,
-        })),
-        isDirty: true,
-      })),
-
     // ══ 選手 CRUD ════════════════════════
-
-    addPlayer: (player) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, s.activeSlideId, (sl) => ({
-          ...sl,
-          players: [...sl.players, player],
-        })),
-        isDirty: true,
-      })),
-
-    addPlayerFromPalette: (team, x, y, markerType = 'circle') => {
-      const primary =
-        team === 'home'
-          ? get().project.homeColor.primary
-          : team === 'away'
-            ? get().project.awayColor.primary
-            : '#6b7280';
-      const player = createDefaultPlayer(team, x, y, primary);
-      player.style.markerType = markerType;
-      if (markerType === 'ring') {
-        player.style.sizeScale = 1.5;
-      }
-      get().addPlayer(player);
-      return player.id;
-    },
-
-    updatePlayer: (slideId, playerId, patch) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players.map((p) =>
-            p.id === playerId ? { ...p, ...patch } : p,
-          ),
-        })),
-        isDirty: true,
-      })),
-
-    movePlayer: (slideId, playerId, x, y) => {
-      const slide = get().project.slides.find((s) => s.id === slideId);
-      const targetPlayer = slide?.players.find((p) => p.id === playerId);
-      if (!targetPlayer) return;
-      const dx = x - targetPlayer.x;
-      const dy = y - targetPlayer.y;
-      get().moveMultiplePlayersByDelta(slideId, [playerId], dx, dy);
-    },
-
-    moveMultiplePlayersByDelta: (slideId, playerIds, deltaX, deltaY) =>
-      set((s) => {
-        if (playerIds.length === 0 || (deltaX === 0 && deltaY === 0)) {
-          return s;
-        }
-        return {
-          ...recordHistory(s),
-          project: updateSlideInProject(s.project, slideId, (sl) => {
-            const playerIdSet = new Set(playerIds);
-            const targetPlayers = sl.players.filter((p) =>
-              playerIdSet.has(p.id),
-            );
-            if (targetPlayers.length === 0) return sl;
-
-            // 1. 選手位置更新 (クランプ [0, 100])
-            const updatedPlayers = sl.players.map((p) => {
-              if (!playerIdSet.has(p.id)) return p;
-              return {
-                ...p,
-                x: Math.max(0, Math.min(100, p.x + deltaX)),
-                y: Math.max(0, Math.min(100, p.y + deltaY)),
-              };
-            });
-
-            // 2. 矢印追従
-            const updatedArrows = sl.arrows.map((arrow) => {
-              const p0 = arrow.points[0];
-              const p1 = arrow.points[1];
-              const isStartAttached = Boolean(
-                arrow.sourcePlayerId && playerIdSet.has(arrow.sourcePlayerId),
-              );
-              const isEndAttached = Boolean(
-                arrow.targetPlayerId && playerIdSet.has(arrow.targetPlayerId),
-              );
-
-              if (!isStartAttached && !isEndAttached) return arrow;
-
-              // 始点・終点ともに移動対象選手
-              if (isStartAttached && isEndAttached) {
-                const newPoints = arrow.points.map((pt) => ({
-                  x: pt.x + deltaX,
-                  y: pt.y + deltaY,
-                }));
-                const newCp = arrow.controlPoint
-                  ? {
-                      x: arrow.controlPoint.x + deltaX,
-                      y: arrow.controlPoint.y + deltaY,
-                    }
-                  : undefined;
-                return {
-                  ...arrow,
-                  points: newPoints,
-                  controlPoint: newCp,
-                };
-              }
-
-              if (isStartAttached && p0 && p1) {
-                // 始点のみ追従
-                const newP0 = {
-                  x: p0.x + deltaX,
-                  y: p0.y + deltaY,
-                };
-                const newCp = arrow.controlPoint
-                  ? {
-                      x: arrow.controlPoint.x + deltaX / 2,
-                      y: arrow.controlPoint.y + deltaY / 2,
-                    }
-                  : undefined;
-                return {
-                  ...arrow,
-                  points: [newP0, p1],
-                  controlPoint: newCp,
-                };
-              }
-
-              if (isEndAttached && p0 && p1) {
-                // 終点のみ追従
-                const newP1 = {
-                  x: p1.x + deltaX,
-                  y: p1.y + deltaY,
-                };
-                const newCp = arrow.controlPoint
-                  ? {
-                      x: arrow.controlPoint.x + deltaX / 2,
-                      y: arrow.controlPoint.y + deltaY / 2,
-                    }
-                  : undefined;
-                return {
-                  ...arrow,
-                  points: [p0, newP1],
-                  controlPoint: newCp,
-                };
-              }
-
-              return arrow;
-            });
-
-            return {
-              ...sl,
-              players: updatedPlayers,
-              arrows: updatedArrows,
-              texts: sl.texts,
-              zones: sl.zones,
-              ball: sl.ball,
-            };
-          }),
-          isDirty: true,
-        };
-      }),
-
-    addCustomPlayer: (
-      slideId,
-      team,
-      name,
-      shirtNo,
-      position,
-      area = 'bench',
-    ) => {
-      const primary =
-        team === 'home'
-          ? get().project.homeColor.primary
-          : team === 'away'
-            ? get().project.awayColor.primary
-            : '#6b7280';
-      const player = createDefaultPlayer(team, 50, 50, primary);
-      player.name = name ?? (team === 'home' ? 'Home Player' : 'Away Player');
-      player.shirtNo = shirtNo ?? '0';
-      player.position = position ?? 'SUB';
-      player.area = area;
-
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: [...sl.players, player],
-        })),
-        isDirty: true,
-      }));
-      return player.id;
-    },
-
-    movePlayerToBench: (slideId, playerId) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          // サブに入ったらマーカーオブジェクト(visionCone, badges, connectLines)を削除する
-          players: sl.players.map((p) => {
-            if (p.id === playerId) {
-              return {
-                ...p,
-                area: 'bench',
-                visionCone: undefined,
-                badges: [],
-                connectLines: [],
-                focus: undefined,
-              };
-            }
-            return {
-              ...p,
-              connectLines: p.connectLines.filter(
-                (cl) => cl.toPlayerId !== playerId,
-              ),
-            };
-          }),
-          // 選手に紐づく矢印もクリーンアップ
-          arrows: sl.arrows.filter(
-            (a) =>
-              a.sourcePlayerId !== playerId && a.targetPlayerId !== playerId,
-          ),
-        })),
-        isDirty: true,
-        selectedObjects: s.selectedObjects.filter((o) => o.id !== playerId),
-      })),
-
-    clearPitchPlayers: (slideId) =>
-      set((s) => {
-        const targetSlideId = slideId ?? s.activeSlideId;
-        return {
-          ...recordHistory(s),
-          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
-            ...sl,
-            players: sl.players.map((p) => ({
-              ...p,
-              area: 'bench' as const,
-              visionCone: undefined,
-              badges: [],
-              connectLines: [],
-              focus: undefined,
-            })),
-            arrows: sl.arrows.filter(
-              (a) => !a.sourcePlayerId && !a.targetPlayerId,
-            ),
-          })),
-          isDirty: true,
-          selectedObjects: [],
-        };
-      }),
-
-    movePlayerToPitch: (slideId, playerId, x = 50, y = 50) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players.map((p) =>
-            p.id === playerId ? { ...p, area: 'pitch', x, y } : p,
-          ),
-        })),
-        isDirty: true,
-      })),
-
-    swapPlayers: (slideId, playerAId, playerBId) =>
-      set((s) => {
-        const slide = s.project.slides.find((sl) => sl.id === slideId);
-        if (!slide) return s;
-
-        const playerA = slide.players.find((p) => p.id === playerAId);
-        const playerB = slide.players.find((p) => p.id === playerBId);
-        if (!playerA || !playerB) return s;
-
-        const benchedId =
-          playerA.area === 'pitch' && playerB.area === 'bench'
-            ? playerAId
-            : playerA.area === 'bench' && playerB.area === 'pitch'
-              ? playerBId
-              : null;
-
-        const newPlayers = slide.players.map((p) => {
-          if (p.id === playerAId) {
-            if (playerA.area === 'pitch' && playerB.area === 'bench') {
-              // A moves to bench
-              return {
-                ...p,
-                area: 'bench' as const,
-                visionCone: undefined,
-                badges: [],
-                connectLines: [],
-                focus: undefined,
-              };
-            }
-            if (playerA.area === 'bench' && playerB.area === 'pitch') {
-              // A moves to pitch at B's position
-              return {
-                ...p,
-                area: 'pitch' as const,
-                x: playerB.x,
-                y: playerB.y,
-              };
-            }
-            if (playerA.area === 'pitch' && playerB.area === 'pitch') {
-              // Swap positions
-              return {
-                ...p,
-                x: playerB.x,
-                y: playerB.y,
-              };
-            }
-            return p;
-          }
-          if (p.id === playerBId) {
-            if (playerA.area === 'pitch' && playerB.area === 'bench') {
-              // B moves to pitch at A's position
-              return {
-                ...p,
-                area: 'pitch' as const,
-                x: playerA.x,
-                y: playerA.y,
-              };
-            }
-            if (playerA.area === 'bench' && playerB.area === 'pitch') {
-              // B moves to bench
-              return {
-                ...p,
-                area: 'bench' as const,
-                visionCone: undefined,
-                badges: [],
-                connectLines: [],
-                focus: undefined,
-              };
-            }
-            if (playerA.area === 'pitch' && playerB.area === 'pitch') {
-              // Swap positions
-              return {
-                ...p,
-                x: playerA.x,
-                y: playerA.y,
-              };
-            }
-            return p;
-          }
-
-          // Clean up connect lines if targeting the newly benched player
-          if (
-            benchedId &&
-            p.connectLines.some((cl) => cl.toPlayerId === benchedId)
-          ) {
-            return {
-              ...p,
-              connectLines: p.connectLines.filter(
-                (cl) => cl.toPlayerId !== benchedId,
-              ),
-            };
-          }
-          return p;
-        });
-
-        const newArrows = benchedId
-          ? slide.arrows.filter(
-              (a) =>
-                a.sourcePlayerId !== benchedId &&
-                a.targetPlayerId !== benchedId,
-            )
-          : slide.arrows;
-
-        return {
-          ...recordHistory(s),
-          project: updateSlideInProject(s.project, slideId, (sl) => ({
-            ...sl,
-            players: newPlayers,
-            arrows: newArrows,
-          })),
-          isDirty: true,
-          selectedObjects: benchedId
-            ? s.selectedObjects.filter((o) => o.id !== benchedId)
-            : s.selectedObjects,
-        };
-      }),
-
-    removePlayer: (slideId, playerId) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players
-            .filter((p) => p.id !== playerId)
-            .map((p) => ({
-              ...p,
-              connectLines: p.connectLines.filter(
-                (cl) => cl.toPlayerId !== playerId,
-              ),
-            })),
-          arrows: sl.arrows.filter(
-            (a) =>
-              a.sourcePlayerId !== playerId && a.targetPlayerId !== playerId,
-          ),
-        })),
-        isDirty: true,
-        selectedObjects: s.selectedObjects.filter((o) => o.id !== playerId),
-      })),
-
-    applyFormationPreset: (preset, slideId) =>
-      set((s) => {
-        const primaryColor =
-          preset.team === 'home'
-            ? s.project.homeColor.primary
-            : preset.team === 'away'
-              ? s.project.awayColor.primary
-              : '#6b7280';
-        const newPlayers: Player[] = preset.players.map((pp) => ({
-          ...createDefaultPlayer(preset.team, pp.x, pp.y, primaryColor),
-          shirtNo: pp.shirtNo,
-          position: pp.position,
-        }));
-        return {
-          ...recordHistory(s),
-          project: updateSlideInProject(s.project, slideId, (sl) => ({
-            ...sl,
-            players: [
-              ...sl.players.filter((p) => p.team !== preset.team),
-              ...newPlayers,
-            ],
-          })),
-          isDirty: true,
-        };
-      }),
-
-    applyFormation: (slideId, formationName, mode, team) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => {
-          const positions = FORMATION_POSITIONS[formationName];
-          if (!positions) return sl;
-
-          const teamPitchPlayers = sl.players.filter(
-            (p) => p.team === team && p.area === 'pitch',
-          );
-          const teamBenchPlayers = sl.players.filter(
-            (p) => p.team === team && p.area === 'bench',
-          );
-          const otherPlayers = sl.players.filter((p) => p.team !== team);
-
-          const existingPool = [...teamPitchPlayers, ...teamBenchPlayers];
-          const newTeamPitchPlayers: Player[] = [];
-          const primaryColor =
-            team === 'home'
-              ? s.project.homeColor.primary
-              : s.project.awayColor.primary;
-
-          positions.forEach((pos, idx) => {
-            const actualPos = getFormationActualPos(pos, team, mode);
-            let player = existingPool[idx];
-            if (player) {
-              player = {
-                ...player,
-                area: 'pitch',
-                x: Math.max(0, Math.min(100, actualPos.x)),
-                y: Math.max(0, Math.min(100, actualPos.y)),
-                position: pos.position,
-              };
-            } else {
-              player = createDefaultPlayer(
-                team,
-                Math.max(0, Math.min(100, actualPos.x)),
-                Math.max(0, Math.min(100, actualPos.y)),
-                primaryColor,
-              );
-              player.shirtNo = String(pos.id);
-              player.position = pos.position;
-            }
-            newTeamPitchPlayers.push(player);
-          });
-
-          // 残りの選手はサブ(ベンチ)に回す
-          const remainingBench = existingPool
-            .slice(positions.length)
-            .map((p) => ({
-              ...p,
-              area: 'bench' as const,
-              visionCone: undefined,
-              badges: [],
-              connectLines: [],
-            }));
-
-          return {
-            ...sl,
-            players: [
-              ...otherPlayers,
-              ...newTeamPitchPlayers,
-              ...remainingBench,
-            ],
-          };
-        }),
-        isDirty: true,
-      })),
-
-    applySingleTeamFormation: (slideId, formationName, mode, team) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => {
-          const positions = FORMATION_POSITIONS[formationName];
-          if (!positions) return sl;
-
-          const otherTeam = team === 'home' ? 'away' : 'home';
-
-          // 相手チームの選手は全選手ピッチからベンチへ一括退避
-          const updatedOtherPlayers = sl.players
-            .filter((p) => p.team === otherTeam)
-            .map((p) => ({
-              ...p,
-              area: 'bench' as const,
-              visionCone: undefined,
-              badges: [],
-              connectLines: [],
-            }));
-
-          // neutral 選手はそのまま保持
-          const neutralPlayers = sl.players.filter((p) => p.team === 'neutral');
-
-          // 指定チームの既存選手
-          const teamPitchPlayers = sl.players.filter(
-            (p) => p.team === team && p.area === 'pitch',
-          );
-          const teamBenchPlayers = sl.players.filter(
-            (p) => p.team === team && p.area === 'bench',
-          );
-          const existingPool = [...teamPitchPlayers, ...teamBenchPlayers];
-
-          const newTeamPitchPlayers: Player[] = [];
-          const primaryColor =
-            team === 'home'
-              ? s.project.homeColor.primary
-              : s.project.awayColor.primary;
-
-          positions.forEach((pos, idx) => {
-            const actualPos = getFormationActualPos(pos, team, mode);
-            let player = existingPool[idx];
-            if (player) {
-              player = {
-                ...player,
-                area: 'pitch',
-                x: Math.max(0, Math.min(100, actualPos.x)),
-                y: Math.max(0, Math.min(100, actualPos.y)),
-                position: pos.position,
-              };
-            } else {
-              player = createDefaultPlayer(
-                team,
-                Math.max(0, Math.min(100, actualPos.x)),
-                Math.max(0, Math.min(100, actualPos.y)),
-                primaryColor,
-              );
-              player.shirtNo = String(pos.id);
-              player.position = pos.position;
-            }
-            newTeamPitchPlayers.push(player);
-          });
-
-          // 指定チームの残りの選手はサブ(ベンチ)に回す
-          const remainingBench = existingPool
-            .slice(positions.length)
-            .map((p) => ({
-              ...p,
-              area: 'bench' as const,
-              visionCone: undefined,
-              badges: [],
-              connectLines: [],
-            }));
-
-          return {
-            ...sl,
-            players: [
-              ...neutralPlayers,
-              ...updatedOtherPlayers,
-              ...newTeamPitchPlayers,
-              ...remainingBench,
-            ],
-          };
-        }),
-        isDirty: true,
-      })),
-
-    updatePlayerTrajectory: (slideId, playerId, trajectory) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players.map((p) =>
-            p.id === playerId ? { ...p, trajectory } : p,
-          ),
-        })),
-        isDirty: true,
-      })),
 
     // ══ ネストアノテーション ══════════════
 
-    setVisionCone: (slideId, playerId, cone) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players.map((p) =>
-            p.id === playerId ? { ...p, visionCone: cone } : p,
-          ),
-        })),
-        isDirty: true,
-      })),
-
-    setConnectingPlayerId: (id) => set({ connectingPlayerId: id }),
-
-    addConnectLine: (slideId, playerId, line) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players.map((p) =>
-            p.id === playerId
-              ? { ...p, connectLines: [...p.connectLines, line] }
-              : p,
-          ),
-        })),
-        isDirty: true,
-      })),
-
-    updateConnectLine: (slideId, playerId, lineId, patch) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  connectLines: p.connectLines.map((l) =>
-                    l.id === lineId ? { ...l, ...patch } : l,
-                  ),
-                }
-              : p,
-          ),
-        })),
-        isDirty: true,
-      })),
-
-    removeConnectLine: (slideId, playerId, lineId) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  connectLines: p.connectLines.filter((l) => l.id !== lineId),
-                }
-              : p,
-          ),
-        })),
-        isDirty: true,
-      })),
-
-    addPlayerBadge: (slideId, playerId, badge) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players.map((p) =>
-            p.id === playerId ? { ...p, badges: [...p.badges, badge] } : p,
-          ),
-        })),
-        isDirty: true,
-      })),
-
-    removePlayerBadge: (slideId, playerId, badgeId) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players.map((p) =>
-            p.id === playerId
-              ? { ...p, badges: p.badges.filter((b) => b.id !== badgeId) }
-              : p,
-          ),
-        })),
-        isDirty: true,
-      })),
-
-    setPlayerFocus: (slideId, playerId, focus) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players.map((p) =>
-            p.id === playerId ? { ...p, focus } : p,
-          ),
-        })),
-        isDirty: true,
-      })),
-
     // ══ ボール ════════════════════════════
 
-    setBallPosition: (slideId, x, y) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          ball: { ...sl.ball, x, y },
-        })),
-        isDirty: true,
-      })),
-
-    setBallVisible: (slideId, visible) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          ball: { ...sl.ball, visible },
-        })),
-        isDirty: true,
-      })),
-
     // ══ アノテーション CRUD ═══════════════
-
-    addArrow: (slideId, arrow) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          arrows: [...sl.arrows, arrow],
-        })),
-        isDirty: true,
-      })),
-
-    updateArrow: (slideId, arrowId, patch) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          arrows: sl.arrows.map((a) =>
-            a.id === arrowId ? { ...a, ...patch } : a,
-          ),
-        })),
-        isDirty: true,
-      })),
-
-    removeArrow: (slideId, arrowId) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          arrows: sl.arrows.filter((a) => a.id !== arrowId),
-        })),
-        isDirty: true,
-        selectedObjects: s.selectedObjects.filter((o) => o.id !== arrowId),
-      })),
-
-    addZone: (slideId, zone) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          zones: [...sl.zones, zone],
-        })),
-        isDirty: true,
-      })),
-
-    updateZone: (slideId, zoneId, patch) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          zones: sl.zones.map((z) =>
-            z.id === zoneId ? { ...z, ...patch } : z,
-          ),
-        })),
-        isDirty: true,
-      })),
-
-    removeZone: (slideId, zoneId) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          zones: sl.zones.filter((z) => z.id !== zoneId),
-        })),
-        isDirty: true,
-        selectedObjects: s.selectedObjects.filter((o) => o.id !== zoneId),
-      })),
-
-    addText: (slideId, text) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          texts: [...sl.texts, text],
-        })),
-        isDirty: true,
-      })),
-
-    updateText: (slideId, textId, patch) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          texts: sl.texts.map((t) =>
-            t.id === textId ? { ...t, ...patch } : t,
-          ),
-        })),
-        isDirty: true,
-      })),
-
-    removeText: (slideId, textId) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          texts: sl.texts.filter((t) => t.id !== textId),
-        })),
-        isDirty: true,
-        selectedObjects: s.selectedObjects.filter((o) => o.id !== textId),
-      })),
-
-    clearAnnotations: (slideId) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          arrows: [],
-          zones: [],
-          texts: [],
-        })),
-        isDirty: true,
-        selectedObjects: s.selectedObjects.filter(
-          (o) => o.kind === 'player' || o.kind === 'ball',
-        ),
-      })),
-
-    eraseAtPoint: (slideId, point, radius = 4.0) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => {
-          // 1. 矢印・線の消去（プレイヤーは絶対に削除しない）
-          const remainingArrows = sl.arrows.filter((arrow) => {
-            const pts = arrow.points;
-            for (let i = 0; i < pts.length; i++) {
-              const pt = pts[i];
-              if (pt && Math.hypot(pt.x - point.x, pt.y - point.y) <= radius) {
-                return false;
-              }
-            }
-            if (pts.length >= 2) {
-              for (let i = 0; i < pts.length - 1; i++) {
-                const p1 = pts[i];
-                const p2 = pts[i + 1];
-                if (p1 && p2 && distToSegment(point, p1, p2) <= radius) {
-                  return false;
-                }
-              }
-            }
-            return true;
-          });
-
-          // 2. ゾーンの消去 (矩形・楕円・多角形フリーゾーンすべてに対応)
-          const remainingZones = sl.zones.filter((zone) => {
-            const pts = zone.points;
-            if (pts && pts.length >= 2) {
-              // 頂点チェック
-              for (const pt of pts) {
-                if (Math.hypot(pt.x - point.x, pt.y - point.y) <= radius) {
-                  return false;
-                }
-              }
-              // エッジ線分チェック
-              for (let i = 0; i < pts.length; i++) {
-                const p1 = pts[i];
-                const p2 = pts[(i + 1) % pts.length];
-                if (p1 && p2 && distToSegment(point, p1, p2) <= radius) {
-                  return false;
-                }
-              }
-              // 内部チェック（3点以上の多角形）
-              if (pts.length >= 3 && isPointInPolygon(point, pts)) {
-                return false;
-              }
-            }
-            if (
-              zone.x !== undefined &&
-              zone.y !== undefined &&
-              zone.width !== undefined &&
-              zone.height !== undefined
-            ) {
-              if (
-                point.x >= zone.x - radius &&
-                point.x <= zone.x + zone.width + radius &&
-                point.y >= zone.y - radius &&
-                point.y <= zone.y + zone.height + radius
-              ) {
-                return false;
-              }
-            }
-            return true;
-          });
-
-          // 3. テキストの消去
-          const remainingTexts = sl.texts.filter(
-            (t) => Math.hypot(t.x - point.x, t.y - point.y) > radius,
-          );
-
-          // 4. リングマーカー（描画オブジェクトとしての3D足元リング）は消しゴムで削除可能、通常選手はマーカーオプション（視野コーン・バッジ・コネクト線）を個別消去
-          const updatedPlayers = sl.players
-            .filter((player) => {
-              if (player.style.markerType === 'ring') {
-                return (
-                  Math.hypot(player.x - point.x, player.y - point.y) > radius
-                );
-              }
-              return true;
-            })
-            .map((player) => {
-              let visionCone = player.visionCone;
-              if (visionCone) {
-                const dist = Math.hypot(player.x - point.x, player.y - point.y);
-                if (dist <= radius + visionCone.radius && dist >= 3.0) {
-                  visionCone = undefined;
-                }
-              }
-
-              const badges = player.badges.filter((b) => {
-                const bx = player.x + (b.offsetX || 0) * 0.1;
-                const by = player.y + (b.offsetY || 0) * 0.1;
-                return Math.hypot(bx - point.x, by - point.y) > radius;
-              });
-
-              const connectLines = player.connectLines.filter((cl) => {
-                const target = sl.players.find((p) => p.id === cl.toPlayerId);
-                if (!target) return false;
-                const dist = distToSegment(
-                  point,
-                  { x: player.x, y: player.y },
-                  { x: target.x, y: target.y },
-                );
-                return dist > radius;
-              });
-
-              return {
-                ...player,
-                visionCone,
-                badges,
-                connectLines,
-              };
-            });
-
-          return {
-            ...sl,
-            arrows: remainingArrows,
-            zones: remainingZones,
-            texts: remainingTexts,
-            players: updatedPlayers,
-          };
-        }),
-        isDirty: true,
-      })),
 
     // ══ 選択 ═════════════════════════════
 
@@ -2330,125 +1053,6 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     // ══ クリップボード ════════════════════
 
-    copySelectedObjects: (slideId) => {
-      const state = get();
-      const targetSlideId = slideId ?? state.activeSlideId;
-      const slide = getSlide(state.project, targetSlideId);
-      if (!slide || state.selectedObjects.length === 0) return;
-
-      const { players, arrows, zones, texts } = extractSelectedObjects(
-        slide,
-        state.selectedObjects,
-      );
-
-      if (
-        players.length === 0 &&
-        arrows.length === 0 &&
-        zones.length === 0 &&
-        texts.length === 0
-      ) {
-        return;
-      }
-
-      set({
-        clipboard: {
-          players,
-          arrows,
-          zones,
-          texts,
-        },
-      });
-    },
-
-    pasteObjects: (slideId) => {
-      const state = get();
-      const clipboard = state.clipboard;
-      if (!clipboard) return;
-
-      const { players, arrows, zones, texts } = clipboard;
-      if (
-        players.length === 0 &&
-        arrows.length === 0 &&
-        zones.length === 0 &&
-        texts.length === 0
-      ) {
-        return;
-      }
-
-      const targetSlideId = slideId ?? state.activeSlideId;
-      const slide = getSlide(state.project, targetSlideId);
-      if (!slide) return;
-
-      const { newPlayers, newArrows, newZones, newTexts, newSelectedObjects } =
-        cloneAndOffsetObjects({ players, arrows, zones, texts });
-
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
-          ...sl,
-          players: [...sl.players, ...newPlayers],
-          arrows: [...sl.arrows, ...newArrows],
-          zones: [...sl.zones, ...newZones],
-          texts: [...sl.texts, ...newTexts],
-        })),
-        isDirty: true,
-        selectedObjects: newSelectedObjects,
-        panels: {
-          ...s.panels,
-          inspectorOpen: true,
-          rightPanelTab: 'inspector',
-        },
-      }));
-    },
-
-    duplicateSelectedObjects: (slideId) => {
-      const state = get();
-      const targetSlideId = slideId ?? state.activeSlideId;
-      const slide = getSlide(state.project, targetSlideId);
-      if (!slide || state.selectedObjects.length === 0) return;
-
-      const { players, arrows, zones, texts } = extractSelectedObjects(
-        slide,
-        state.selectedObjects,
-      );
-
-      if (
-        players.length === 0 &&
-        arrows.length === 0 &&
-        zones.length === 0 &&
-        texts.length === 0
-      ) {
-        return;
-      }
-
-      const { newPlayers, newArrows, newZones, newTexts, newSelectedObjects } =
-        cloneAndOffsetObjects({ players, arrows, zones, texts });
-
-      set((s) => ({
-        ...recordHistory(s),
-        clipboard: {
-          players,
-          arrows,
-          zones,
-          texts,
-        },
-        project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
-          ...sl,
-          players: [...sl.players, ...newPlayers],
-          arrows: [...sl.arrows, ...newArrows],
-          zones: [...sl.zones, ...newZones],
-          texts: [...sl.texts, ...newTexts],
-        })),
-        isDirty: true,
-        selectedObjects: newSelectedObjects,
-        panels: {
-          ...s.panels,
-          inspectorOpen: true,
-          rightPanelTab: 'inspector',
-        },
-      }));
-    },
-
     // ══ パネル ════════════════════════════
 
     toggleSidebar: () =>
@@ -2477,6 +1081,16 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
       set((s) => ({
         panels: { ...s.panels, exportModalOpen: false },
         pendingExport: null,
+      })),
+
+    openProjectManagerModal: () =>
+      set((s) => ({
+        panels: { ...s.panels, projectManagerModalOpen: true },
+      })),
+
+    closeProjectManagerModal: () =>
+      set((s) => ({
+        panels: { ...s.panels, projectManagerModalOpen: false },
       })),
 
     // ══ エクスポート ══════════════════════

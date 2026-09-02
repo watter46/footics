@@ -14,6 +14,7 @@
       },
       "a11y": {
         "noSvgWithoutTitle": "off",
+        "useSemanticElements": "off",
         "noStaticElementInteractions": "warn",
         "useKeyWithClickEvents": "warn",
         "useButtonType": "warn",
