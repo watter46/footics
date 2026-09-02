@@ -21,6 +21,7 @@ import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/stores/tactical-unified-store';
+import { ContextHud } from '../context-hud';
 import { useKonvaExport } from '../hooks/use-konva-export';
 import { useKonvaVideoExport } from '../hooks/use-konva-video-export';
 import { useTacticalAnimation } from '../hooks/use-tactical-animation';
@@ -930,237 +931,245 @@ export function UnifiedCanvas() {
       {/* Floating & draggable drawing toolbar */}
       <DrawingToolbar />
 
-      <Stage
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ref={(node: any) => {
-          stageRef.current = node;
-          nodesRegistryRef.current.stage = node;
-        }}
-        width={stageSize.width}
-        height={stageSize.height}
-        onMouseDown={handlePointerDown}
-        onMouseMove={handlePointerMove}
-        onMouseUp={handlePointerUp}
-        onTouchStart={handlePointerDown}
-        onTouchMove={handlePointerMove}
-        onTouchEnd={handlePointerUp}
-        style={{
-          cursor: connectingPlayerId
-            ? 'crosshair'
-            : activeTool === 'select'
-              ? 'default'
-              : activeTool === 'eraser'
-                ? 'pointer'
-                : 'crosshair',
-        }}
+      <div
+        className="relative"
+        style={{ width: stageSize.width, height: stageSize.height }}
       >
-        {/* Layer 1: 背景レイヤー */}
-        <Layer
-          listening={false}
-          ref={(node) => {
-            nodesRegistryRef.current.backgroundLayer = node;
+        <Stage
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ref={(node: any) => {
+            stageRef.current = node;
+            nodesRegistryRef.current.stage = node;
+          }}
+          width={stageSize.width}
+          height={stageSize.height}
+          onMouseDown={handlePointerDown}
+          onMouseMove={handlePointerMove}
+          onMouseUp={handlePointerUp}
+          onTouchStart={handlePointerDown}
+          onTouchMove={handlePointerMove}
+          onTouchEnd={handlePointerUp}
+          style={{
+            cursor: connectingPlayerId
+              ? 'crosshair'
+              : activeTool === 'select'
+                ? 'default'
+                : activeTool === 'eraser'
+                  ? 'pointer'
+                  : 'crosshair',
           }}
         >
-          <PitchBackground
-            width={stageSize.width}
-            height={stageSize.height}
-            aspectRatio={aspectRatio}
-            backgroundType={backgroundType}
-            backgroundImageUrl={backgroundImageUrl}
-          />
-        </Layer>
-
-        {/* Layer 2: アノテーションレイヤー */}
-        <Layer
-          ref={(node) => {
-            nodesRegistryRef.current.annotationLayer = node;
-          }}
-        >
-          <AnnotationLayer
-            slide={activeSlide}
-            stageSize={stageSize}
-            nodesRegistryRef={nodesRegistryRef}
-            activePolygonId={activePolygonId}
-            mousePreviewPos={mousePreviewPos}
-          />
-        </Layer>
-
-        {/* Layer 3: メイン要素レイヤー（選手 + ボール） */}
-        <Layer
-          ref={(node) => {
-            nodesRegistryRef.current.playerLayer = node;
-            nodesRegistryRef.current.ballLayer = node;
-          }}
-        >
-          <PlayerLayer
-            slide={activeSlide}
-            stageSize={stageSize}
-            nodesRegistryRef={nodesRegistryRef}
-          />
-          <BallObject
-            ball={activeSlide.ball}
-            stageSize={stageSize}
-            nodesRegistryRef={nodesRegistryRef}
-          />
-        </Layer>
-
-        {/* Layer 4: UI & プレビューレイヤー（描画中プレビュー + 範囲選択 Marquee + BoundaryBox） */}
-        <Layer>
-          {/* 描画中プレビュー */}
-          {drawingState?.isDrawing && (
-            <Group listening={false}>
-              {drawingState.tool === 'line' && (
-                <Line
-                  points={[
-                    drawingState.startX,
-                    drawingState.startY,
-                    drawingState.currentX,
-                    drawingState.currentY,
-                  ]}
-                  stroke="#ffffff"
-                  strokeWidth={2.5}
-                  opacity={0.85}
-                  perfectDrawEnabled={false}
-                />
-              )}
-
-              {drawingState.tool === 'route_line' &&
-                (() => {
-                  const dx = drawingState.currentX - drawingState.startX;
-                  const dy = drawingState.currentY - drawingState.startY;
-                  const dist = Math.hypot(dx, dy);
-                  const dotRadius = 6;
-                  let sx = drawingState.startX;
-                  let sy = drawingState.startY;
-                  let ex = drawingState.currentX;
-                  let ey = drawingState.currentY;
-                  if (dist > dotRadius * 2) {
-                    const ux = dx / dist;
-                    const uy = dy / dist;
-                    sx += ux * dotRadius;
-                    sy += uy * dotRadius;
-                    ex -= ux * dotRadius;
-                    ey -= uy * dotRadius;
-                  }
-                  return (
-                    <Group>
-                      <Line
-                        points={[sx, sy, ex, ey]}
-                        stroke="#38bdf8"
-                        strokeWidth={3}
-                        opacity={0.85}
-                        perfectDrawEnabled={false}
-                      />
-                      <Circle
-                        x={drawingState.startX}
-                        y={drawingState.startY}
-                        radius={dotRadius}
-                        stroke="#38bdf8"
-                        strokeWidth={2}
-                        fill="transparent"
-                        perfectDrawEnabled={false}
-                      />
-                      <Circle
-                        x={drawingState.currentX}
-                        y={drawingState.currentY}
-                        radius={dotRadius}
-                        stroke="#38bdf8"
-                        strokeWidth={2}
-                        fill="transparent"
-                        perfectDrawEnabled={false}
-                      />
-                    </Group>
-                  );
-                })()}
-
-              {(drawingState.tool === 'arrow_solid' ||
-                drawingState.tool === 'arrow-straight') && (
-                <Arrow
-                  points={[
-                    drawingState.startX,
-                    drawingState.startY,
-                    drawingState.currentX,
-                    drawingState.currentY,
-                  ]}
-                  stroke="#38bdf8"
-                  fill="#38bdf8"
-                  strokeWidth={3}
-                  pointerLength={15}
-                  pointerWidth={15}
-                  opacity={0.85}
-                  perfectDrawEnabled={false}
-                />
-              )}
-
-              {(drawingState.tool === 'arrow_dash' ||
-                drawingState.tool === 'arrow-curved') && (
-                <Arrow
-                  points={[
-                    drawingState.startX,
-                    drawingState.startY,
-                    drawingState.currentX,
-                    drawingState.currentY,
-                  ]}
-                  stroke="#fbbf24"
-                  fill="#fbbf24"
-                  strokeWidth={3}
-                  dash={[6, 4]}
-                  pointerLength={15}
-                  pointerWidth={15}
-                  opacity={0.85}
-                  perfectDrawEnabled={false}
-                />
-              )}
-
-              {(drawingState.tool === 'zone_circle' ||
-                drawingState.tool === 'zone') && (
-                <Line
-                  points={[
-                    Math.min(drawingState.startX, drawingState.currentX),
-                    Math.min(drawingState.startY, drawingState.currentY),
-                    Math.max(drawingState.startX, drawingState.currentX),
-                    Math.min(drawingState.startY, drawingState.currentY),
-                    Math.max(drawingState.startX, drawingState.currentX),
-                    Math.max(drawingState.startY, drawingState.currentY),
-                    Math.min(drawingState.startX, drawingState.currentX),
-                    Math.max(drawingState.startY, drawingState.currentY),
-                  ]}
-                  closed
-                  fill="rgba(239, 68, 68, 0.25)"
-                  stroke="#ef4444"
-                  strokeWidth={1.5}
-                  dash={[4, 4]}
-                  perfectDrawEnabled={false}
-                />
-              )}
-            </Group>
-          )}
-
-          {/* 範囲選択 (Marquee Box) プレビュー */}
-          {selectionBox && (
-            <Rect
-              x={Math.min(selectionBox.startX, selectionBox.currentX)}
-              y={Math.min(selectionBox.startY, selectionBox.currentY)}
-              width={Math.abs(selectionBox.currentX - selectionBox.startX)}
-              height={Math.abs(selectionBox.currentY - selectionBox.startY)}
-              fill="rgba(56, 189, 248, 0.12)"
-              stroke="#38bdf8"
-              strokeWidth={1}
-              dash={[4, 3]}
-              listening={false}
-              perfectDrawEnabled={false}
+          {/* Layer 1: 背景レイヤー */}
+          <Layer
+            listening={false}
+            ref={(node) => {
+              nodesRegistryRef.current.backgroundLayer = node;
+            }}
+          >
+            <PitchBackground
+              width={stageSize.width}
+              height={stageSize.height}
+              aspectRatio={aspectRatio}
+              backgroundType={backgroundType}
+              backgroundImageUrl={backgroundImageUrl}
             />
-          )}
+          </Layer>
 
-          {/* エクスポート境界線 (BoundaryBox) */}
-          <BoundaryBox
-            boundaryBox={activeSlide.boundaryBox}
-            stageSize={stageSize}
-            isExporting={isExporting}
-            onUpdate={(box) => setBoundaryBox(activeSlideId, box)}
-          />
-        </Layer>
-      </Stage>
+          {/* Layer 2: アノテーションレイヤー */}
+          <Layer
+            ref={(node) => {
+              nodesRegistryRef.current.annotationLayer = node;
+            }}
+          >
+            <AnnotationLayer
+              slide={activeSlide}
+              stageSize={stageSize}
+              nodesRegistryRef={nodesRegistryRef}
+              activePolygonId={activePolygonId}
+              mousePreviewPos={mousePreviewPos}
+            />
+          </Layer>
+
+          {/* Layer 3: メイン要素レイヤー（選手 + ボール） */}
+          <Layer
+            ref={(node) => {
+              nodesRegistryRef.current.playerLayer = node;
+              nodesRegistryRef.current.ballLayer = node;
+            }}
+          >
+            <PlayerLayer
+              slide={activeSlide}
+              stageSize={stageSize}
+              nodesRegistryRef={nodesRegistryRef}
+            />
+            <BallObject
+              ball={activeSlide.ball}
+              stageSize={stageSize}
+              nodesRegistryRef={nodesRegistryRef}
+            />
+          </Layer>
+
+          {/* Layer 4: UI & プレビューレイヤー（描画中プレビュー + 範囲選択 Marquee + BoundaryBox） */}
+          <Layer>
+            {/* 描画中プレビュー */}
+            {drawingState?.isDrawing && (
+              <Group listening={false}>
+                {drawingState.tool === 'line' && (
+                  <Line
+                    points={[
+                      drawingState.startX,
+                      drawingState.startY,
+                      drawingState.currentX,
+                      drawingState.currentY,
+                    ]}
+                    stroke="#ffffff"
+                    strokeWidth={2.5}
+                    opacity={0.85}
+                    perfectDrawEnabled={false}
+                  />
+                )}
+
+                {drawingState.tool === 'route_line' &&
+                  (() => {
+                    const dx = drawingState.currentX - drawingState.startX;
+                    const dy = drawingState.currentY - drawingState.startY;
+                    const dist = Math.hypot(dx, dy);
+                    const dotRadius = 6;
+                    let sx = drawingState.startX;
+                    let sy = drawingState.startY;
+                    let ex = drawingState.currentX;
+                    let ey = drawingState.currentY;
+                    if (dist > dotRadius * 2) {
+                      const ux = dx / dist;
+                      const uy = dy / dist;
+                      sx += ux * dotRadius;
+                      sy += uy * dotRadius;
+                      ex -= ux * dotRadius;
+                      ey -= uy * dotRadius;
+                    }
+                    return (
+                      <Group>
+                        <Line
+                          points={[sx, sy, ex, ey]}
+                          stroke="#38bdf8"
+                          strokeWidth={3}
+                          opacity={0.85}
+                          perfectDrawEnabled={false}
+                        />
+                        <Circle
+                          x={drawingState.startX}
+                          y={drawingState.startY}
+                          radius={dotRadius}
+                          stroke="#38bdf8"
+                          strokeWidth={2}
+                          fill="transparent"
+                          perfectDrawEnabled={false}
+                        />
+                        <Circle
+                          x={drawingState.currentX}
+                          y={drawingState.currentY}
+                          radius={dotRadius}
+                          stroke="#38bdf8"
+                          strokeWidth={2}
+                          fill="transparent"
+                          perfectDrawEnabled={false}
+                        />
+                      </Group>
+                    );
+                  })()}
+
+                {(drawingState.tool === 'arrow_solid' ||
+                  drawingState.tool === 'arrow-straight') && (
+                  <Arrow
+                    points={[
+                      drawingState.startX,
+                      drawingState.startY,
+                      drawingState.currentX,
+                      drawingState.currentY,
+                    ]}
+                    stroke="#38bdf8"
+                    fill="#38bdf8"
+                    strokeWidth={3}
+                    pointerLength={15}
+                    pointerWidth={15}
+                    opacity={0.85}
+                    perfectDrawEnabled={false}
+                  />
+                )}
+
+                {(drawingState.tool === 'arrow_dash' ||
+                  drawingState.tool === 'arrow-curved') && (
+                  <Arrow
+                    points={[
+                      drawingState.startX,
+                      drawingState.startY,
+                      drawingState.currentX,
+                      drawingState.currentY,
+                    ]}
+                    stroke="#fbbf24"
+                    fill="#fbbf24"
+                    strokeWidth={3}
+                    dash={[6, 4]}
+                    pointerLength={15}
+                    pointerWidth={15}
+                    opacity={0.85}
+                    perfectDrawEnabled={false}
+                  />
+                )}
+
+                {(drawingState.tool === 'zone_circle' ||
+                  drawingState.tool === 'zone') && (
+                  <Line
+                    points={[
+                      Math.min(drawingState.startX, drawingState.currentX),
+                      Math.min(drawingState.startY, drawingState.currentY),
+                      Math.max(drawingState.startX, drawingState.currentX),
+                      Math.min(drawingState.startY, drawingState.currentY),
+                      Math.max(drawingState.startX, drawingState.currentX),
+                      Math.max(drawingState.startY, drawingState.currentY),
+                      Math.min(drawingState.startX, drawingState.currentX),
+                      Math.max(drawingState.startY, drawingState.currentY),
+                    ]}
+                    closed
+                    fill="rgba(239, 68, 68, 0.25)"
+                    stroke="#ef4444"
+                    strokeWidth={1.5}
+                    dash={[4, 4]}
+                    perfectDrawEnabled={false}
+                  />
+                )}
+              </Group>
+            )}
+
+            {/* 範囲選択 (Marquee Box) プレビュー */}
+            {selectionBox && (
+              <Rect
+                x={Math.min(selectionBox.startX, selectionBox.currentX)}
+                y={Math.min(selectionBox.startY, selectionBox.currentY)}
+                width={Math.abs(selectionBox.currentX - selectionBox.startX)}
+                height={Math.abs(selectionBox.currentY - selectionBox.startY)}
+                fill="rgba(56, 189, 248, 0.12)"
+                stroke="#38bdf8"
+                strokeWidth={1}
+                dash={[4, 3]}
+                listening={false}
+                perfectDrawEnabled={false}
+              />
+            )}
+
+            {/* エクスポート境界線 (BoundaryBox) */}
+            <BoundaryBox
+              boundaryBox={activeSlide.boundaryBox}
+              stageSize={stageSize}
+              isExporting={isExporting}
+              onUpdate={(box) => setBoundaryBox(activeSlideId, box)}
+            />
+          </Layer>
+        </Stage>
+
+        {/* Contextual Floating HUD */}
+        <ContextHud stageSize={stageSize} nodesRegistryRef={nodesRegistryRef} />
+      </div>
     </div>
   );
 }

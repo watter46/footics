@@ -25,10 +25,10 @@ context_files:
 5. `unified-canvas.tsx` 内で、選択オブジェクトのスクリーン座標をストアまたはReact Stateに送る仕組みを構築（もしくはHUDコンポーネントがStageの参照を持って計算する）。
 
 ## Acceptance Criteria & Verification Commands
-- [ ] 選手や図形を選択すると、画面上のその要素の近くにHUDが表示される。
-- [ ] 選択を解除するとHUDが消える。
-- [ ] 画面のズームやパン（もしあれば）に対応してHUDが追従する、もしくは再計算される。
-- [ ] HUD内のUIが、Figmaなどのような小さく洗練されたピル型（角丸のフローティングバー）であること。
+- [x] 選手や図形を選択すると、画面上のその要素の近くにHUDが表示される。
+- [x] 選択を解除するとHUDが消える。
+- [x] 画面のズームやパン（もしあれば）に対応してHUDが追従する、もしくは再計算される。
+- [x] HUD内のUIが、Figmaなどのような小さく洗練されたピル型（角丸のフローティングバー）であること。
 
 ### Verification
 `rtk biome check src/components/features/tactical-unified/context-hud.tsx`
