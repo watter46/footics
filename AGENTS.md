@@ -14,12 +14,27 @@ trigger: always_on
 - **Orchestrated Mode (組織的開発モード):**
   - **対象:** 複数ドメイン（Web + Extension + Canvas + Data等）に跨る大型新機能開発、DB破壊的マイグレーション、アーキテクチャ刷新。
   - **挙動:** [ORGANIZATION.md](./ORGANIZATION.md) に定義された State Machine (TRIAGE → DESIGN → IMPLEMENTATION → REVIEW_QA → DONE) に従って分業する。
-  - **GMタスク分解・チケット発行 (Board Integration):** GM (`regista-gm`) は要件受領時にタスクを極小AAWU（1〜3ファイル単位）へ分解し、[agents/REGISTA_BOARD.md](./agents/REGISTA_BOARD.md) の Task Matrix にチケットとして書き込んで発行・進捗管理を行う。
-- **チケット出力・運用プロトコル (Ticket Formatting & Execution Standard):**
-  - **1. ボードへの自己完結型チケット記録 (Self-Contained Ticket in Board):** チケット発行時は、[agents/REGISTA_BOARD.md](./agents/REGISTA_BOARD.md) 内に対象ファイル、詳細要件、検証手順、および実行用プロンプトを完全自己完結した状態で記載する。
-  - **2. 番号指定による即時開発・自動起動 (Ticket Trigger by Number):** ユーザーが「AAWU X-X」「チケット AAWU X-X」のようにチケット番号のみ、または番号を含むメッセージを入力した場合、エージェントは確認を挟まず即座に [agents/REGISTA_BOARD.md](./agents/REGISTA_BOARD.md) から該当チケットの仕様・対象ファイル・検証手順を読み込み、Fast-Track Mode で自律的に実装およびスコープ限定検証（型チェック・テスト）を開始すること。
-  - **3. チャットへのチケット一覧表出力:** 発行時はチャット上に「チケット番号」「タスク名」「変更後のユーザー体験（変更したらどう変わるかを短く明瞭に）」の3列一覧表を出力する。
-  - **4. ユーザー完了合図の絶対厳守 (Strict User Confirmation Protocol):** エージェントは実装・検証完了後にユーザーへ報告し、**ユーザーから「完了」「OK」等の明示的な合図を受けるまで、勝手にチケットステータスを DONE に更新したり git commit を実行してはならない**（※修正・手戻り要望を受け付けられるクリーンな状態を保つ）。
+  - **GMタスク分解・チケット発行 (DAG & Markdown Tickets):** GM (`regista-gm`) は要件受領時にタスクを極小AAWU（1〜3ファイル単位）へ分解し、並列実行可能なDAG構造として `.regista/tickets/[ID].md` にチケットを発行する。
+- **チケット出力・運用プロトコル (DAG & Markdown Distribution Standard):**
+  - **1. 分散Markdownファイル管理 (`.regista/tickets/[ID].md`):**
+    - 単一JSONファイルによる管理を廃止し、「1チケット = 1Markdownファイル」の分散管理を行う。
+    - 各チケットは `.regista/tickets/[ID].md` として作成され、YAMLフロントマター（`id`, `title`, `status`, `depends_on`, `model`, `effort`, `context_files`）と本文（UX Impact, Detailed Spec, Acceptance Criteria & Verification Commands）を持つ。
+  - **2. Layer-Based DAG ID体系:**
+    - フォーマット: `L{深度}-{ドメイン名}-{連番3桁}`
+    - `L1`: 他のチケットに依存せず即時並列実行可能。`L2`: L1完了に依存。`L3`: L2完了に依存... と続く。
+  - **3. モデルとEffortの選定 (ホワイトリスト):**
+    - 高速・軽量タスク用: `Gemini 3.8 Flash` [low/medium/high] (基本), `Gemini 3.7 Flash`, `Gemini 3.6 Flash`
+    - 複雑なアーキテクチャ・難解バグ用: `Gemini 3.1 Pro` [low/high], `Claude Sonnet 4.6` (thinking), `Claude Opus 4.6` (thinking)
+    - 独自処理用: `GPT-oss 120B` (Medium)
+  - **4. 会話分離の原則 (Cross-Conversation Execution Isolation):**
+    - チケット一覧の展開・企画・チケット発行は「企画/GM Conversation」で行う。
+    - **各チケット（AAWU）の実際の実装・テスト・検証は、必ず「別（新規）のConversation」を作成して実施する**（コンテキスト汚染とトークン浪費の防止）。
+    - Workerエージェントは `context_files` に指定されたファイルのみをコンテキストに読み込み、効率的に実装する。
+  - **5. チャットへの厳格なチケット一覧表出力:**
+    - チケット発行時、GMはCLIのチャット上に以下の厳格なMarkdownテーブルを1つだけ出力して報告を完了する（余計な解説は不要）。
+      `| Ticket ID | タスク名 | モデル / Effort | 変更後の体験 (UX Impact要約) |`
+  - **6. ユーザー完了合図の絶対厳守 (Strict User Confirmation Protocol):**
+    - エージェントは実装・検証完了後にユーザーへ報告し、**ユーザーから「完了」「OK」等の明示的な合図を受けるまで、勝手にチケットステータスを DONE に更新したり git commit を実行してはならない**。
 
 ## 1. エージェント行動規範 (Senior Engineer Conduct)
 - **Chain of Thought (CoT) Enforcement**: 浅い思考によるバグを排除し、深く考えてから行動する。複雑な修正やデバッグの際はいきなりコードを修正せず、思考プロセスを出力し、依存関係、副作用、代替案を検討する。
@@ -60,7 +75,7 @@ trigger: always_on
 
 ## 6. CLI環境およびデプロイ・ビルド運用プロトコル
 - **Auto-Deploy on Push (Web App):** `src/` 配下の変更を `git push` した後は、自動でデプロイ処理（`pnpm run deploy`）を実行すること。
-- **Auto-Build & Sync (Extension / Video-Canvas):** `extension/` または `video-canvas/` 配下を変更した後は、該当パッケージ内で `pnpm run build`（ビルドおよび Windows 側への `sync-extension`）を実行すること。
+- **Auto-Build & Sync (Extension):** `extension/` 配下を変更した後は、該当パッケージ内で `pnpm run build`（ビルドおよび Windows 側への `sync-extension`）を実行すること。
 - **CLI Output Optimization:** Mermaid 図などの視覚的ダイヤグラムを出力しない。結論ファーストでプレーンテキスト、箇条書き、シンプルなテキストコードブロックのみで記述する。
 - **CLI Log & Task Notification:** コマンド実行の大量ログは上位エラー原因のみ要約して報告し、ワンラインステータス通知（例: `[STATUS] Build completed`）を徹底する。
 
