@@ -1,7 +1,7 @@
 ---
 id: L1-Tactical-001
 title: 右パネルの開閉状態とスマート切替（Store層）
-status: TODO
+status: DONE
 depends_on: []
 model: Gemini 3.8 Flash
 effort: low

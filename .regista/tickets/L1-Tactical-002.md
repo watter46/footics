@@ -1,7 +1,7 @@
 ---
 id: L1-Tactical-002
 title: 選択要素のコンテキストHUD（フローティングパレット）基盤作成
-status: TODO
+status: DONE
 depends_on: []
 model: Gemini 3.8 Flash
 effort: medium
