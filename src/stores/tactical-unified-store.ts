@@ -13,34 +13,19 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import {
-  type FormationMode,
-  type FormationType,
-  getFormationActualPos,
-} from '@/lib/data/formations';
-import { FORMATION_POSITIONS } from '@/lib/data/formations-data';
 import type {
   ArrowAnnotation,
   AspectRatio,
   BoundaryBox,
-  ConnectLine,
-  DrawingTool,
   ExportTarget,
-  FormationPreset,
   Player,
-  PlayerBadge,
-  PlayerFocus,
-  PlayerTrajectory,
   Slide,
   TacticalProject,
   TextAnnotation,
-  VisionCone,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
 import {
-  createDefaultPlayer,
   createDefaultProject,
-  createDefaultSlide,
   DEFAULT_442_HOME,
   DEFAULT_BOUNDARY_BOX_9_16,
   DEFAULT_BOUNDARY_BOX_16_9,
@@ -49,35 +34,36 @@ import {
   transformPoints,
 } from '@/lib/types/tactical-unified';
 import {
+  type AnnotationSlice,
+  createAnnotationSlice,
+} from './slices/annotation-slice';
+import {
   type ClipboardSlice,
   createClipboardSlice,
 } from './slices/clipboard-slice';
 import { createHistorySlice, type HistorySlice } from './slices/history-slice';
 import { createSlideSlice, type SlideSlice } from './slices/slide-slice';
+import {
+  createToolSlice,
+  type MarkerOptionTab,
+  type PanelState,
+  type SelectedObject,
+  type SelectedObjectKind,
+  type ToolSlice,
+} from './slices/tool-slice';
 
 // ─────────────────────────────────────────
-// § 1. 選択オブジェクト型
+// § 1. 選択オブジェクト & ツール型 (Re-export for 100% backward compatibility)
 // ─────────────────────────────────────────
 
-export type SelectedObjectKind =
-  | 'player'
-  | 'arrow'
-  | 'zone'
-  | 'text'
-  | 'ball'
-  | 'vision-cone'
-  | 'connect-line'
-  | 'badge'
-  | 'focus';
-
-export type MarkerOptionTab =
-  | 'vision'
-  | 'connect'
-  | 'arrow_solid'
-  | 'arrow_dash'
-  | 'badge'
-  | 'focus'
-  | 'basic';
+export type {
+  AnnotationSlice,
+  MarkerOptionTab,
+  PanelState,
+  SelectedObject,
+  SelectedObjectKind,
+  ToolSlice,
+};
 
 export function isPointInPolygon(
   point: { x: number; y: number },
@@ -97,13 +83,6 @@ export function isPointInPolygon(
   return inside;
 }
 
-export interface SelectedObject {
-  id: string;
-  kind: SelectedObjectKind;
-  /** 親選手ID (ネストアノテーションの場合) */
-  parentPlayerId?: string;
-}
-
 export interface TacticalClipboard {
   players: Player[];
   arrows: ArrowAnnotation[];
@@ -112,25 +91,15 @@ export interface TacticalClipboard {
 }
 
 // ─────────────────────────────────────────
-// § 2. パネル表示状態
-// ─────────────────────────────────────────
-
-export interface PanelState {
-  sidebarOpen: boolean;
-  inspectorOpen: boolean;
-  rightPanelTab: 'formation' | 'squad' | 'inspector';
-  exportModalOpen: boolean;
-  projectManagerModalOpen: boolean;
-}
-
-// ─────────────────────────────────────────
-// § 3. Store State 型
+// § 2. Store State 型
 // ─────────────────────────────────────────
 
 export interface TacticalUnifiedState
   extends HistorySlice,
     ClipboardSlice,
-    SlideSlice {
+    SlideSlice,
+    AnnotationSlice,
+    ToolSlice {
   // ── データ
   project: TacticalProject;
   isDirty: boolean;
@@ -140,22 +109,10 @@ export interface TacticalUnifiedState
   setLastSavedAt: (timestamp: number | null) => void;
 
   // ── 履歴 (Undo / Redo スタック: 最大50件)
-  // ── クリップボード
-  // ── 選択
+  // ── スライド選択
   activeSlideId: string;
-  selectedObjects: SelectedObject[];
-  activeTool: DrawingTool;
-  connectingPlayerId: string | null;
-  activeMarkerOptionTab: MarkerOptionTab | null;
-  setActiveMarkerOptionTab: (tab: MarkerOptionTab | null) => void;
-  continuousDrawing: boolean;
-  setContinuousDrawing: (val: boolean) => void;
-  toggleContinuousDrawing: () => void;
   autoFitBoundaryBox: (slideId?: string) => void;
   resetSlideObjects: (slideId?: string) => void;
-
-  // ── パネル
-  panels: PanelState;
 
   // ── 再生制御 (Playback)
   isPlaying: boolean;
@@ -163,13 +120,10 @@ export interface TacticalUnifiedState
   togglePlayback: () => void;
   stopPlayback: () => void;
 
-  // ── チーム表示制御 (Visibility)
-  teamVisibility: 'both' | 'home' | 'away';
-  setTeamVisibility: (visibility: 'both' | 'home' | 'away') => void;
-
   // ── エクスポート
   pendingExport: ExportTarget | null;
   isExporting: boolean;
+  setIsExporting: (val: boolean) => void;
 
   // ══════════════════════════════════════
   // ACTIONS
@@ -197,33 +151,6 @@ export interface TacticalUnifiedState
 
   // ─ エクスポート境界線 (BoundaryBox)
   setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
-
-  // ─ スライド CRUD
-  // ─ 選手 & サブメンバー CRUD
-  // ─ 選手ネスト: VisionCone
-  // ─ コネクタ選択モード
-  // ─ 選手ネスト: ConnectLine
-  // ─ 選手ネスト: Badge
-  // ─ ボール
-  // ─ アノテーション CRUD
-  // ─ 選択 & クリップボード
-  selectObject: (obj: SelectedObject | null, multi?: boolean) => void;
-  selectObjects: (objects: SelectedObject[], multi?: boolean) => void;
-  clearSelection: () => void;
-  setActiveTool: (tool: DrawingTool) => void;
-  // ─ パネル
-  toggleSidebar: () => void;
-  setSidebarOpen: (open: boolean) => void;
-  setInspectorOpen: (open: boolean) => void;
-  setRightPanelTab: (tab: 'formation' | 'squad' | 'inspector') => void;
-  openExportModal: (target?: ExportTarget) => void;
-  closeExportModal: () => void;
-  openProjectManagerModal: () => void;
-  closeProjectManagerModal: () => void;
-
-  // ─ 履歴 (Undo / Redo)
-  // ─ エクスポート
-  setIsExporting: (val: boolean) => void;
 }
 
 // ─────────────────────────────────────────
@@ -481,6 +408,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     ...createHistorySlice(set, get, store),
     ...createClipboardSlice(set, get, store),
     ...createSlideSlice(set, get, store),
+    ...createAnnotationSlice(set, get, store),
+    ...createToolSlice(set, get, store),
 
     project: INITIAL_PROJECT,
     isDirty: false,
@@ -489,24 +418,10 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     setSaveStatus: (status) => set({ saveStatus: status }),
     setLastSavedAt: (timestamp) => set({ lastSavedAt: timestamp }),
     activeSlideId: INITIAL_PROJECT.activeSlideId,
-    selectedObjects: [],
-    activeTool: 'select',
-    connectingPlayerId: null,
-    activeMarkerOptionTab: null,
-    continuousDrawing: false,
-    panels: {
-      sidebarOpen: false,
-      inspectorOpen: true,
-      rightPanelTab: 'formation',
-      exportModalOpen: false,
-      projectManagerModalOpen: false,
-    },
     isPlaying: false,
     setIsPlaying: (isPlaying) => set({ isPlaying }),
     togglePlayback: () => set((s) => ({ isPlaying: !s.isPlaying })),
     stopPlayback: () => set({ isPlaying: false }),
-    teamVisibility: 'both',
-    setTeamVisibility: (visibility) => set({ teamVisibility: visibility }),
     pendingExport: null,
     isExporting: false,
 
@@ -600,14 +515,27 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           currentSlide.ball.visible &&
           currentSlide.players.length === 22 &&
           currentSlide.players.every((p) => {
-            if (p.area !== 'pitch' || p.focus || p.visionCone || p.badges.length > 0 || p.connectLines.length > 0 || p.style.markerType !== 'circle') {
+            if (
+              p.area !== 'pitch' ||
+              p.focus ||
+              p.visionCone ||
+              p.badges.length > 0 ||
+              p.connectLines.length > 0 ||
+              p.style.markerType !== 'circle'
+            ) {
               return false;
             }
-            const expectedPos = DEFAULT_442_HOME.find((def) => def.shirtNo === p.shirtNo);
+            const expectedPos = DEFAULT_442_HOME.find(
+              (def) => def.shirtNo === p.shirtNo,
+            );
             if (!expectedPos) return false;
-            const expectedX = p.team === 'home' ? expectedPos.x : 100 - expectedPos.x;
+            const expectedX =
+              p.team === 'home' ? expectedPos.x : 100 - expectedPos.x;
             const expectedY = expectedPos.y;
-            return Math.abs(p.x - expectedX) < 0.01 && Math.abs(p.y - expectedY) < 0.01;
+            return (
+              Math.abs(p.x - expectedX) < 0.01 &&
+              Math.abs(p.y - expectedY) < 0.01
+            );
           });
 
         const isCurrentSlideEdited = currentSlide && !isDefault442;
@@ -666,6 +594,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             panels: {
               ...s.panels,
               rightPanelTab: 'inspector',
+              isRightPanelOpen: false,
             },
             activeSlideId: newSlideId,
             selectedObjects: [],
@@ -706,6 +635,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           panels: {
             ...s.panels,
             rightPanelTab: 'inspector',
+            isRightPanelOpen: false,
           },
           selectedObjects: [],
           isDirty: true,
@@ -782,6 +712,21 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
               ...sl.ball,
               x: isVertical ? sl.ball.x : 100 - sl.ball.x,
               y: isVertical ? 100 - sl.ball.y : sl.ball.y,
+              trajectory: sl.ball.trajectory
+                ? {
+                    ...sl.ball.trajectory,
+                    controlPoint: sl.ball.trajectory.controlPoint
+                      ? {
+                          x: isVertical
+                            ? sl.ball.trajectory.controlPoint.x
+                            : 100 - sl.ball.trajectory.controlPoint.x,
+                          y: isVertical
+                            ? 100 - sl.ball.trajectory.controlPoint.y
+                            : sl.ball.trajectory.controlPoint.y,
+                        }
+                      : undefined,
+                  }
+                : undefined,
             },
           })),
           isDirty: true,
@@ -944,6 +889,18 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
                 from,
                 ratio,
               ),
+              trajectory: slide.ball.trajectory
+                ? {
+                    ...slide.ball.trajectory,
+                    controlPoint: slide.ball.trajectory.controlPoint
+                      ? transformCoord(
+                          slide.ball.trajectory.controlPoint,
+                          from,
+                          ratio,
+                        )
+                      : undefined,
+                  }
+                : undefined,
             },
           }),
         );
@@ -969,129 +926,6 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     // ══ ボール ════════════════════════════
 
     // ══ アノテーション CRUD ═══════════════
-
-    // ══ 選択 ═════════════════════════════
-
-    setActiveMarkerOptionTab: (tab) => set({ activeMarkerOptionTab: tab }),
-
-    selectObject: (obj, multi = false) =>
-      set((s) => {
-        if (!obj)
-          return {
-            selectedObjects: [],
-            activeMarkerOptionTab: null,
-          };
-        if (multi) {
-          const already = s.selectedObjects.find((o) => o.id === obj.id);
-          return {
-            selectedObjects: already
-              ? s.selectedObjects.filter((o) => o.id !== obj.id)
-              : [...s.selectedObjects, obj],
-            panels: {
-              ...s.panels,
-              inspectorOpen: true,
-              rightPanelTab: 'inspector',
-            },
-          };
-        }
-        return {
-          selectedObjects: [obj],
-          panels: {
-            ...s.panels,
-            inspectorOpen: true,
-            rightPanelTab: 'inspector',
-          },
-        };
-      }),
-
-    selectObjects: (objects, multi = false) =>
-      set((s) => {
-        if (objects.length === 0 && !multi) {
-          return {
-            selectedObjects: [],
-            activeMarkerOptionTab: null,
-          };
-        }
-        if (multi) {
-          const existingIds = new Set(s.selectedObjects.map((o) => o.id));
-          const newItems = objects.filter((o) => !existingIds.has(o.id));
-          return {
-            selectedObjects: [...s.selectedObjects, ...newItems],
-            panels: {
-              ...s.panels,
-              inspectorOpen: objects.length > 0 || s.selectedObjects.length > 0,
-              rightPanelTab: 'inspector',
-            },
-          };
-        }
-        return {
-          selectedObjects: objects,
-          activeMarkerOptionTab:
-            objects.length === 1 && objects[0].kind === 'player'
-              ? 'vision'
-              : null,
-          panels: {
-            ...s.panels,
-            inspectorOpen: objects.length > 0,
-            rightPanelTab: 'inspector',
-          },
-        };
-      }),
-
-    clearSelection: () =>
-      set({
-        selectedObjects: [],
-        activeMarkerOptionTab: null,
-      }),
-
-    setActiveTool: (tool) => set({ activeTool: tool }),
-
-    setContinuousDrawing: (val) => set({ continuousDrawing: val }),
-
-    toggleContinuousDrawing: () =>
-      set((s) => ({ continuousDrawing: !s.continuousDrawing })),
-
-    // ══ クリップボード ════════════════════
-
-    // ══ パネル ════════════════════════════
-
-    toggleSidebar: () =>
-      set((s) => ({
-        panels: { ...s.panels, sidebarOpen: !s.panels.sidebarOpen },
-      })),
-
-    setSidebarOpen: (open) =>
-      set((s) => ({ panels: { ...s.panels, sidebarOpen: open } })),
-
-    setInspectorOpen: (open) =>
-      set((s) => ({ panels: { ...s.panels, inspectorOpen: open } })),
-
-    setRightPanelTab: (tab) =>
-      set((s) => ({
-        panels: { ...s.panels, rightPanelTab: tab, inspectorOpen: true },
-      })),
-
-    openExportModal: (target) =>
-      set((s) => ({
-        pendingExport: target ?? null,
-        panels: { ...s.panels, exportModalOpen: true },
-      })),
-
-    closeExportModal: () =>
-      set((s) => ({
-        panels: { ...s.panels, exportModalOpen: false },
-        pendingExport: null,
-      })),
-
-    openProjectManagerModal: () =>
-      set((s) => ({
-        panels: { ...s.panels, projectManagerModalOpen: true },
-      })),
-
-    closeProjectManagerModal: () =>
-      set((s) => ({
-        panels: { ...s.panels, projectManagerModalOpen: false },
-      })),
 
     // ══ エクスポート ══════════════════════
 

@@ -25,10 +25,10 @@ context_files:
    - 展開時、パネル上部や境界に「閉じる（Collapse）」ボタンまたはトグルボタンを配置する。
 
 ## Acceptance Criteria & Verification Commands
-- [ ] Zustandストアに右パネルの開閉状態が定義されている。
-- [ ] 右パネルが幅48pxの折りたたみ状態と、幅340pxの展開状態を切り替えられる。
-- [ ] 背景を画像モードに切り替えた時、自動で右パネルが閉じる。
-- [ ] アニメーション（幅のtransition等）がスムーズに動く。
+- [x] Zustandストアに右パネルの開閉状態が定義されている。
+- [x] 右パネルが幅48pxの折りたたみ状態と、幅340pxの展開状態を切り替えられる。
+- [x] 背景を画像モードに切り替えた時、自動で右パネルが閉じる。
+- [x] アニメーション（幅のtransition等）がスムーズに動く。
 
 ### Verification
 `rtk biome check src/components/features/tactical-unified/right-panel`

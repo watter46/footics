@@ -70,7 +70,12 @@ export function TopBar() {
   const canUndo = useTacticalUnifiedStore((s) => s.past.length > 0);
   const canRedo = useTacticalUnifiedStore((s) => s.future.length > 0);
   const rightPanelTab = useTacticalUnifiedStore((s) => s.panels.rightPanelTab);
+  const isRightPanelOpen = useTacticalUnifiedStore(
+    (s) => s.panels.isRightPanelOpen,
+  );
   const setRightPanelTab = useTacticalUnifiedStore((s) => s.setRightPanelTab);
+  const toggleRightPanel = useTacticalUnifiedStore((s) => s.toggleRightPanel);
+  const setRightPanelOpen = useTacticalUnifiedStore((s) => s.setRightPanelOpen);
   const isImageBackground = useTacticalUnifiedStore(
     (s) => s.project.backgroundType === 'image',
   );
@@ -528,9 +533,16 @@ export function TopBar() {
             <>
               <button
                 type="button"
-                onClick={() => setRightPanelTab('formation')}
+                onClick={() => {
+                  if (rightPanelTab === 'formation' && isRightPanelOpen) {
+                    toggleRightPanel();
+                  } else {
+                    setRightPanelTab('formation');
+                    setRightPanelOpen(true);
+                  }
+                }}
                 className={`p-1.5 rounded transition-colors cursor-pointer ${
-                  rightPanelTab === 'formation'
+                  rightPanelTab === 'formation' && isRightPanelOpen
                     ? 'bg-blue-600 text-white shadow'
                     : 'text-white/60 hover:text-white hover:bg-white/10'
                 }`}
@@ -542,9 +554,16 @@ export function TopBar() {
 
               <button
                 type="button"
-                onClick={() => setRightPanelTab('squad')}
+                onClick={() => {
+                  if (rightPanelTab === 'squad' && isRightPanelOpen) {
+                    toggleRightPanel();
+                  } else {
+                    setRightPanelTab('squad');
+                    setRightPanelOpen(true);
+                  }
+                }}
                 className={`p-1.5 rounded transition-colors cursor-pointer ${
-                  rightPanelTab === 'squad'
+                  rightPanelTab === 'squad' && isRightPanelOpen
                     ? 'bg-blue-600 text-white shadow'
                     : 'text-white/60 hover:text-white hover:bg-white/10'
                 }`}
@@ -558,9 +577,20 @@ export function TopBar() {
 
           <button
             type="button"
-            onClick={() => setRightPanelTab('inspector')}
+            onClick={() => {
+              if (
+                (rightPanelTab === 'inspector' || isImageBackground) &&
+                isRightPanelOpen
+              ) {
+                toggleRightPanel();
+              } else {
+                setRightPanelTab('inspector');
+                setRightPanelOpen(true);
+              }
+            }}
             className={`p-1.5 rounded transition-colors cursor-pointer ${
-              rightPanelTab === 'inspector' || isImageBackground
+              (rightPanelTab === 'inspector' || isImageBackground) &&
+              isRightPanelOpen
                 ? 'bg-blue-600 text-white shadow'
                 : 'text-white/60 hover:text-white hover:bg-white/10'
             }`}

@@ -10,15 +10,17 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
     useTacticalUnifiedStore.getState().resetProject();
   });
 
-  it('renders RightPanel with 3 tabs and switches views correctly', () => {
+  it('renders RightPanel collapsed by default and opens tabs correctly', () => {
     render(<RightPanel />);
 
-    // Check tab buttons
+    // Initially collapsed: rail icons exist
     expect(screen.getByRole('button', { name: /formation/i })).toBeDefined();
     expect(screen.getByRole('button', { name: /squad/i })).toBeDefined();
     expect(screen.getByRole('button', { name: /properties/i })).toBeDefined();
+    expect(screen.queryByText('Formation Presets')).toBeNull();
 
-    // Default is Formation tab
+    // Clicking formation rail button expands panel and shows content
+    fireEvent.click(screen.getByRole('button', { name: /formation/i }));
     expect(screen.getByText('Formation Presets')).toBeDefined();
 
     // Switch to Squad tab
@@ -28,6 +30,10 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
     // Switch to Properties tab
     fireEvent.click(screen.getByRole('button', { name: /properties/i }));
     expect(screen.getByText(/Properties — Slide Settings/i)).toBeDefined();
+
+    // Collapse panel with collapse button
+    fireEvent.click(screen.getByRole('button', { name: /collapse panel/i }));
+    expect(screen.queryByText(/Properties — Slide Settings/i)).toBeNull();
   });
 
   it('FormationPanel allows applying formation and changing team', () => {
