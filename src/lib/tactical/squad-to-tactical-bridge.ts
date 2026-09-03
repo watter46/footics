@@ -6,10 +6,14 @@ import {
 } from '@/lib/data/formations';
 import { FORMATION_POSITIONS } from '@/lib/data/formations-data';
 import type {
+  AspectRatio,
   Player as TacticalPlayer,
   TacticalProject,
 } from '@/lib/types/tactical-unified';
-import { createDefaultPlayer } from '@/lib/types/tactical-unified';
+import {
+  createDefaultPlayer,
+  isVerticalAspectRatio,
+} from '@/lib/types/tactical-unified';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
 import type { Player } from '@/types';
 
@@ -43,7 +47,7 @@ export function convertSquadToTacticalPlayers(
     formation?: FormationType;
     mode?: FormationMode;
     primaryColor: string;
-    aspectRatio?: '16:9' | '9:16';
+    aspectRatio?: AspectRatio;
   },
 ): TacticalPlayer[] {
   const {
@@ -56,7 +60,7 @@ export function convertSquadToTacticalPlayers(
 
   const positions =
     FORMATION_POSITIONS[formation] || FORMATION_POSITIONS['4-2-3-1'] || [];
-  const isVertical = aspectRatio === '9:16';
+  const isVertical = isVerticalAspectRatio(aspectRatio);
 
   // 1. スタメン候補の選出 (isFirstEleven 優先、または先頭11人)
   const starters: SquadPlayerItem[] = [];

@@ -15,9 +15,30 @@ import { z } from 'zod';
 /** 正規化座標 0.0 ～ 100.0 */
 export const NormalizedCoordSchema = z.number().min(0).max(100);
 
-/** アスペクト比 */
-export const AspectRatioSchema = z.enum(['16:9', '9:16']);
+/** アスペクト比: 16:9 (横), 9:16 (縦), 4:5 (縦長タイムライン), 1:1 (正方形) */
+export const AspectRatioSchema = z.enum(['16:9', '9:16', '4:5', '1:1']);
 export type AspectRatio = z.infer<typeof AspectRatioSchema>;
+
+export const ASPECT_RATIOS: Record<AspectRatio, number> = {
+  '16:9': 16 / 9,
+  '9:16': 9 / 16,
+  '4:5': 4 / 5,
+  '1:1': 1,
+};
+
+export function isVerticalAspectRatio(ratio: AspectRatio): boolean {
+  return ratio === '9:16' || ratio === '4:5';
+}
+
+export function isHorizontalAspectRatio(ratio: AspectRatio): boolean {
+  return ratio === '16:9' || ratio === '1:1';
+}
+
+export function getAspectRatioOrientation(
+  ratio: AspectRatio,
+): 'horizontal' | 'vertical' {
+  return isVerticalAspectRatio(ratio) ? 'vertical' : 'horizontal';
+}
 
 /** 正規化座標点 */
 export const NormalizedPointSchema = z.object({
@@ -30,30 +51,45 @@ export type NormalizedPoint = z.infer<typeof NormalizedPointSchema>;
 // § 2. 幾何変換ユーティリティ型
 // ─────────────────────────────────────────
 
-/** 正規化座標の幾何変換ロジック（16:9 ⇄ 9:16） */
+/** 正規化座標の幾何変換ロジック（16:9, 9:16, 4:5, 1:1 間） */
 export function transformCoord(
   point: { x: number; y: number },
   from: AspectRatio,
   to: AspectRatio,
 ): { x: number; y: number } {
+  const clampedX = Math.max(0, Math.min(100, point.x));
+  const clampedY = Math.max(0, Math.min(100, point.y));
+
   if (from === to) {
     return {
-      x: Math.max(0, Math.min(100, point.x)),
-      y: Math.max(0, Math.min(100, point.y)),
+      x: clampedX,
+      y: clampedY,
     };
   }
 
-  if (from === '16:9' && to === '9:16') {
-    // 横→縦: x_v = y_h, y_v = 100 - x_h
+  const fromVertical = isVerticalAspectRatio(from);
+  const toVertical = isVerticalAspectRatio(to);
+
+  // 同系統（横同士: 16:9 ⇄ 1:1、縦同士: 9:16 ⇄ 4:5）の場合、向きは変わらないためそのまま維持
+  if (fromVertical === toVertical) {
     return {
-      x: Math.max(0, Math.min(100, point.y)),
-      y: Math.max(0, Math.min(100, 100 - point.x)),
+      x: clampedX,
+      y: clampedY,
     };
   }
+
+  // 横→縦: x_v = y_h, y_v = 100 - x_h
+  if (!fromVertical && toVertical) {
+    return {
+      x: clampedY,
+      y: Math.max(0, Math.min(100, 100 - clampedX)),
+    };
+  }
+
   // 縦→横: x_h = 100 - y_v, y_h = x_v
   return {
-    x: Math.max(0, Math.min(100, 100 - point.y)),
-    y: Math.max(0, Math.min(100, point.x)),
+    x: Math.max(0, Math.min(100, 100 - clampedY)),
+    y: clampedX,
   };
 }
 
@@ -341,6 +377,7 @@ export const X_MEDIA_RATIOS = {
   '4:5': 4 / 5, // 画像1枚: TL最大高さ・Dwell Time最大化 (0.80)
   '9:16': 9 / 16, // 画像2枚カルーセル / 動画: スマホ全画面 (0.5625)
   '16:9': 16 / 9, // ピッチ全体横画像: 俯瞰配置の絶対安全圏 (1.777...)
+  '1:1': 1 / 1, // 正方形 (1.00)
 } as const;
 
 export type XMediaRatio = keyof typeof X_MEDIA_RATIOS;
@@ -402,8 +439,8 @@ export const X_MEDIA_PRESETS: Record<XMediaPresetKey, XMediaPresetConfig> = {
 
 /**
  * Xメディア比率に基づいて、キャンバスの中央に収まる BoundaryBox を正規化座標 (0-100) で算出
- * @param ratio Xメディア比率（'4:5' | '9:16' | '16:9' または数値）
- * @param canvasAspect キャンバスのアスペクト比（'16:9' または '9:16'）
+ * @param ratio Xメディア比率（'4:5' | '9:16' | '16:9' | '1:1' または数値）
+ * @param canvasAspect キャンバスのアスペクト比（'16:9' | '9:16' | '4:5' | '1:1'）
  */
 export function createXBoundaryBox(
   ratio: XMediaRatio | number,
@@ -411,7 +448,8 @@ export function createXBoundaryBox(
 ): BoundaryBox {
   const targetAspect =
     typeof ratio === 'number' ? ratio : (X_MEDIA_RATIOS[ratio] ?? 16 / 9);
-  const stageAspect = canvasAspect === '16:9' ? 16 / 9 : 9 / 16;
+  const stageAspect =
+    ASPECT_RATIOS[canvasAspect] ?? (canvasAspect === '16:9' ? 16 / 9 : 9 / 16);
 
   let normWidth: number;
   let normHeight: number;
