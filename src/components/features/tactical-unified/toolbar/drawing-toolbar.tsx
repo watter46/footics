@@ -24,7 +24,6 @@ import {
   Eraser,
   GripVertical,
   Lock,
-  Maximize2,
   MousePointer,
   MoveRight,
   RotateCcw,
@@ -36,7 +35,6 @@ import type React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import type { DrawingTool } from '@/lib/types/tactical-unified';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
-import { XMediaPresetMenu } from './x-media-preset-menu';
 
 function StraightLineIcon({
   size = 15,
@@ -263,10 +261,14 @@ export function DrawingToolbar() {
   const toggleContinuousDrawing = useTacticalUnifiedStore(
     (s) => s.toggleContinuousDrawing,
   );
-  const autoFitBoundaryBox = useTacticalUnifiedStore(
-    (s) => s.autoFitBoundaryBox,
-  );
   const resetSlideObjects = useTacticalUnifiedStore((s) => s.resetSlideObjects);
+  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+  const togglePitchLock = useTacticalUnifiedStore((s) => s.togglePitchLock);
+  const isPitchLocked = useTacticalUnifiedStore(
+    (s) =>
+      s.project.slides.find((sl) => sl.id === s.activeSlideId)?.pitchTransform
+        ?.isLocked ?? false,
+  );
 
   const [position, setPosition] = useState<{ x: number; y: number }>({
     x: 0,
@@ -427,21 +429,27 @@ export function DrawingToolbar() {
         <RotateCcw size={15} />
       </button>
 
-      {/* ── Divider: Bounds & Ratio ── */}
+      {/* ── Divider: Pitch Lock ── */}
       <div className="w-px h-5 bg-white/20 mx-1" />
 
-      {/* X Media Ratio Preset Menu */}
-      <XMediaPresetMenu />
-
-      {/* Auto-fit Boundary Box */}
+      {/* Pitch Lock toggle */}
       <button
         type="button"
-        onClick={() => autoFitBoundaryBox()}
-        title="Auto-fit boundary box to pitch"
-        aria-label="Auto-fit boundary box"
-        className="p-2 rounded-lg text-white/60 hover:text-blue-400 hover:bg-white/10 transition-all cursor-pointer"
+        onClick={() => togglePitchLock(activeSlideId)}
+        title={
+          isPitchLocked
+            ? 'ピッチ固定解除 (Pitch Locked - 移動可能に切り替え)'
+            : 'ピッチを固定 (Lock Pitch - 誤操作防止)'
+        }
+        aria-label="Pitch Lock"
+        className={[
+          'p-2 rounded-lg transition-all cursor-pointer',
+          isPitchLocked
+            ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/30 ring-1 ring-blue-300'
+            : 'text-white/60 hover:text-white hover:bg-white/10',
+        ].join(' ')}
       >
-        <Maximize2 size={15} />
+        {isPitchLocked ? <Lock size={15} /> : <Unlock size={15} />}
       </button>
     </div>
   );
