@@ -1,7 +1,7 @@
 ---
 id: L1-Tactical-012
 title: リングマーカーにおける接続線・矢印の接続点オフセット調整（リング外周接続）
-status: TODO
+status: DONE
 depends_on: []
 model: Gemini 3.8 Flash
 effort: low

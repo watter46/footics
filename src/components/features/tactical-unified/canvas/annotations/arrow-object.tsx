@@ -8,6 +8,7 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useEffect } from 'react';
 import { Arrow, Circle, Group } from 'react-konva';
+import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import type { ArrowAnnotation, Slide } from '@/lib/types/tactical-unified';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
 import type { CanvasNodesRegistry } from '../canvas-registry';
@@ -103,36 +104,68 @@ export const ArrowObject = React.memo(function ArrowObject({
 
   const dotRadius = Math.max(5, arrow.strokeWidth * 1.6);
 
-  let renderSx = sPxX;
-  let renderSy = sPxY;
-  let renderEx = ePxX;
-  let renderEy = ePxY;
+  // リングマーカー等の外周オフセット計算（中心からではなく外周から自然に伸ばす）
+  let baseSx = sPxX;
+  let baseSy = sPxY;
+  let baseEx = ePxX;
+  let baseEy = ePxY;
+
+  if (sourcePlayer) {
+    const targetPt = isCurved ? { x: cpPxX, y: cpPxY } : { x: ePxX, y: ePxY };
+    const bStart = getMarkerBoundaryPoint(
+      { x: sPxX, y: sPxY },
+      targetPt,
+      sourcePlayer,
+      stageSize,
+      true,
+    );
+    baseSx = bStart.x;
+    baseSy = bStart.y;
+  }
+
+  if (targetPlayer) {
+    const sourcePt = isCurved ? { x: cpPxX, y: cpPxY } : { x: sPxX, y: sPxY };
+    const bEnd = getMarkerBoundaryPoint(
+      { x: ePxX, y: ePxY },
+      sourcePt,
+      targetPlayer,
+      stageSize,
+      true,
+    );
+    baseEx = bEnd.x;
+    baseEy = bEnd.y;
+  }
+
+  let renderSx = baseSx;
+  let renderSy = baseSy;
+  let renderEx = baseEx;
+  let renderEy = baseEy;
 
   if (isDotEnd) {
     if (!isCurved) {
-      const dx = ePxX - sPxX;
-      const dy = ePxY - sPxY;
+      const dx = baseEx - baseSx;
+      const dy = baseEy - baseSy;
       const dist = Math.hypot(dx, dy);
       if (dist > dotRadius * 2) {
         const ux = dx / dist;
         const uy = dy / dist;
-        renderSx = sPxX + ux * dotRadius;
-        renderSy = sPxY + uy * dotRadius;
-        renderEx = ePxX - ux * dotRadius;
-        renderEy = ePxY - uy * dotRadius;
+        renderSx = baseSx + ux * dotRadius;
+        renderSy = baseSy + uy * dotRadius;
+        renderEx = baseEx - ux * dotRadius;
+        renderEy = baseEy - uy * dotRadius;
       }
     } else {
-      const v0x = cpPxX - sPxX;
-      const v0y = cpPxY - sPxY;
+      const v0x = cpPxX - baseSx;
+      const v0y = cpPxY - baseSy;
       const d0 = Math.hypot(v0x, v0y) || 1;
-      renderSx = sPxX + (v0x / d0) * dotRadius;
-      renderSy = sPxY + (v0y / d0) * dotRadius;
+      renderSx = baseSx + (v0x / d0) * dotRadius;
+      renderSy = baseSy + (v0y / d0) * dotRadius;
 
-      const v1x = ePxX - cpPxX;
-      const v1y = ePxY - cpPxY;
+      const v1x = baseEx - cpPxX;
+      const v1y = baseEy - cpPxY;
       const d1 = Math.hypot(v1x, v1y) || 1;
-      renderEx = ePxX - (v1x / d1) * dotRadius;
-      renderEy = ePxY - (v1y / d1) * dotRadius;
+      renderEx = baseEx - (v1x / d1) * dotRadius;
+      renderEy = baseEy - (v1y / d1) * dotRadius;
     }
   }
 
@@ -216,35 +249,70 @@ export const ArrowObject = React.memo(function ArrowObject({
           controlHandleRef.current.y() - (sy + ey) / 2,
         ) > 2);
 
-    let rsx = sx;
-    let rsy = sy;
-    let rex = ex;
-    let rey = ey;
+    let effSx = sx;
+    let effSy = sy;
+    let effEx = ex;
+    let effEy = ey;
+
+    if (sourcePlayer) {
+      const targetPt = isCurrentlyCurved
+        ? { x: curCpX, y: curCpY }
+        : { x: ex, y: ey };
+      const bStart = getMarkerBoundaryPoint(
+        { x: sx, y: sy },
+        targetPt,
+        sourcePlayer,
+        stageSize,
+        true,
+      );
+      effSx = bStart.x;
+      effSy = bStart.y;
+    }
+
+    if (targetPlayer) {
+      const sourcePt = isCurrentlyCurved
+        ? { x: curCpX, y: curCpY }
+        : { x: sx, y: sy };
+      const bEnd = getMarkerBoundaryPoint(
+        { x: ex, y: ey },
+        sourcePt,
+        targetPlayer,
+        stageSize,
+        true,
+      );
+      effEx = bEnd.x;
+      effEy = bEnd.y;
+    }
+
+    let rsx = effSx;
+    let rsy = effSy;
+    let rex = effEx;
+    let rey = effEy;
     if (isDotEnd) {
       if (!isCurrentlyCurved && !isWavy) {
-        const dx = ex - sx;
-        const dy = ey - sy;
+        const dx = effEx - effSx;
+        const dy = effEy - effSy;
         const dist = Math.hypot(dx, dy);
         if (dist > dotRadius * 2) {
           const ux = dx / dist;
           const uy = dy / dist;
-          rsx = sx + ux * dotRadius;
-          rsy = sy + uy * dotRadius;
-          rex = ex - ux * dotRadius;
-          rey = ey - uy * dotRadius;
+          rsx = effSx + ux * dotRadius;
+          rsy = effSy + uy * dotRadius;
+          rex = effEx - ux * dotRadius;
+          rey = effEy - uy * dotRadius;
         }
       } else {
-        const v0x = curCpX - sx;
-        const v0y = curCpY - sy;
+        const v0x = curCpX - effSx;
+        const v0y = curCpY - effSy;
         const d0 = Math.hypot(v0x, v0y) || 1;
-        rsx = sx + (v0x / d0) * dotRadius;
-        rsy = sy + (v0y / d0) * dotRadius;
+        rsx = effSx + (v0x / d0) * dotRadius;
+        rsy = effSy + (v0y / d0) * dotRadius;
 
-        const v1x = ex - curCpX;
-        const v1y = ey - curCpY;
+        const v1x = effEx - curCpX;
+        const v1y = effEy - curCpY;
         const d1 = Math.hypot(v1x, v1y) || 1;
-        rex = ex - (v1x / d1) * dotRadius;
-        rey = ey - (v1y / d1) * dotRadius;
+        rex = effEx - (v1x / d1) * dotRadius;
+        rey = effEy - (v1y / d1) * dotRadius;
       }
     }
 

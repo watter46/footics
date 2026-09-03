@@ -2,6 +2,7 @@
 
 import type React from 'react';
 import { Group, Line } from 'react-konva';
+import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import type { Slide } from '@/lib/types/tactical-unified';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
 import type { CanvasNodesRegistry } from './canvas-registry';
@@ -47,10 +48,30 @@ export function PlayerConnectLines({
             .map((cl) => {
               const toPlayer = playerMap.get(cl.toPlayerId);
               if (!toPlayer) return null;
-              const x1 = normX(p.x, width);
-              const y1 = normY(p.y, height);
-              const x2 = normX(toPlayer.x, width);
-              const y2 = normY(toPlayer.y, height);
+              const rawP1 = { x: normX(p.x, width), y: normY(p.y, height) };
+              const rawP2 = {
+                x: normX(toPlayer.x, width),
+                y: normY(toPlayer.y, height),
+              };
+
+              const p1 = getMarkerBoundaryPoint(
+                rawP1,
+                rawP2,
+                p,
+                stageSize,
+                true,
+              );
+              const p2 = getMarkerBoundaryPoint(
+                rawP2,
+                rawP1,
+                toPlayer,
+                stageSize,
+                true,
+              );
+              const x1 = p1.x;
+              const y1 = p1.y;
+              const x2 = p2.x;
+              const y2 = p2.y;
 
               const dash =
                 cl.lineStyle === 'dashed'
@@ -63,6 +84,28 @@ export function PlayerConnectLines({
                 <Group key={cl.id}>
                   {/* 外側拡散ネオングロー層 (程よく上品な淡い光) */}
                   <Line
+                    ref={(node) => {
+                      if (nodesRegistryRef) {
+                        const entry =
+                          nodesRegistryRef.current.connectLineNodes.get(
+                            cl.id,
+                          ) || {};
+                        if (node) {
+                          entry.glowNode = node;
+                          nodesRegistryRef.current.connectLineNodes.set(
+                            cl.id,
+                            entry,
+                          );
+                        } else {
+                          entry.glowNode = null;
+                          if (!entry.highlightNode && !entry.coreNode) {
+                            nodesRegistryRef.current.connectLineNodes.delete(
+                              cl.id,
+                            );
+                          }
+                        }
+                      }
+                    }}
                     points={[x1, y1, x2, y2]}
                     stroke={cl.color}
                     strokeWidth={(cl.strokeWidth ?? 2) + 4}
@@ -76,6 +119,28 @@ export function PlayerConnectLines({
                   />
                   {/* ネオン管中心の白熱コア (繊細なハイライト) */}
                   <Line
+                    ref={(node) => {
+                      if (nodesRegistryRef) {
+                        const entry =
+                          nodesRegistryRef.current.connectLineNodes.get(
+                            cl.id,
+                          ) || {};
+                        if (node) {
+                          entry.highlightNode = node;
+                          nodesRegistryRef.current.connectLineNodes.set(
+                            cl.id,
+                            entry,
+                          );
+                        } else {
+                          entry.highlightNode = null;
+                          if (!entry.glowNode && !entry.coreNode) {
+                            nodesRegistryRef.current.connectLineNodes.delete(
+                              cl.id,
+                            );
+                          }
+                        }
+                      }
+                    }}
                     points={[x1, y1, x2, y2]}
                     stroke="#ffffff"
                     strokeWidth={Math.max(0.75, (cl.strokeWidth ?? 2) * 0.4)}
@@ -88,15 +153,23 @@ export function PlayerConnectLines({
                   <Line
                     ref={(node) => {
                       if (nodesRegistryRef) {
+                        const entry =
+                          nodesRegistryRef.current.connectLineNodes.get(
+                            cl.id,
+                          ) || {};
                         if (node) {
+                          entry.coreNode = node;
                           nodesRegistryRef.current.connectLineNodes.set(
                             cl.id,
-                            node,
+                            entry,
                           );
                         } else {
-                          nodesRegistryRef.current.connectLineNodes.delete(
-                            cl.id,
-                          );
+                          entry.coreNode = null;
+                          if (!entry.glowNode && !entry.highlightNode) {
+                            nodesRegistryRef.current.connectLineNodes.delete(
+                              cl.id,
+                            );
+                          }
                         }
                       }
                     }}
