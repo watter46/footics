@@ -4,6 +4,33 @@ import { LayoutTemplate } from 'lucide-react';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
 
+const ASPECT_RATIO_OPTIONS: {
+  ratio: AspectRatio;
+  label: string;
+  title: string;
+}[] = [
+  {
+    ratio: '16:9',
+    label: '16:9',
+    title: '横長 (16:9) - ピッチ全体俯瞰・YouTube / PC',
+  },
+  {
+    ratio: '9:16',
+    label: '9:16',
+    title: '縦長 (9:16) - カルーセル・スマホ全画面・リール',
+  },
+  {
+    ratio: '4:5',
+    label: '4:5',
+    title: '縦長 (4:5) - X単体画像・TL最大高さ',
+  },
+  {
+    ratio: '1:1',
+    label: '1:1',
+    title: '正方形 (1:1) - Instagram・スクエア',
+  },
+];
+
 export function TopBarCenter() {
   const aspectRatio = useTacticalUnifiedStore((s) => s.project.aspectRatio);
   const setAspectRatio = useTacticalUnifiedStore((s) => s.setAspectRatio);
@@ -11,8 +38,6 @@ export function TopBarCenter() {
   const setTeamVisibility = useTacticalUnifiedStore((s) => s.setTeamVisibility);
   const homeColor = useTacticalUnifiedStore((s) => s.project.homeColor.primary);
   const awayColor = useTacticalUnifiedStore((s) => s.project.awayColor.primary);
-
-  const nextRatio: AspectRatio = aspectRatio === '16:9' ? '9:16' : '16:9';
 
   return (
     <div className="flex items-center gap-2">
@@ -64,17 +89,34 @@ export function TopBarCenter() {
         </button>
       </div>
 
-      {/* Aspect Ratio */}
-      <button
-        type="button"
-        onClick={() => setAspectRatio(nextRatio)}
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono text-white/80 hover:text-white transition-colors cursor-pointer"
-        aria-label="Switch aspect ratio"
-        title="Switch Aspect Ratio (16:9 / 9:16)"
+      {/* Aspect Ratio 4-Tab Segmented Control */}
+      <div
+        className="flex items-center bg-white/5 rounded-md border border-white/10 p-0.5 text-xs font-mono"
+        role="group"
+        aria-label="Aspect Ratio Selector"
       >
-        <LayoutTemplate size={13} className="text-blue-400" />
-        <span>{aspectRatio}</span>
-      </button>
+        <LayoutTemplate size={12} className="text-blue-400 mx-1 shrink-0" />
+        {ASPECT_RATIO_OPTIONS.map(({ ratio, label, title }) => {
+          const isActive = aspectRatio === ratio;
+          return (
+            <button
+              key={ratio}
+              type="button"
+              onClick={() => setAspectRatio(ratio)}
+              className={`px-2 py-0.5 rounded transition-colors text-[11px] font-medium cursor-pointer ${
+                isActive
+                  ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                  : 'text-white/50 hover:text-white/80'
+              }`}
+              title={title}
+              aria-label={`Aspect ratio ${label}`}
+              aria-pressed={isActive}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

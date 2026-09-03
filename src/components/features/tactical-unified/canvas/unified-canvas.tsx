@@ -23,6 +23,7 @@ import { ContextHud } from '../context-hud';
 import { useKonvaExport } from '../hooks/use-konva-export';
 import { useKonvaVideoExport } from '../hooks/use-konva-video-export';
 import { useTacticalAnimation } from '../hooks/use-tactical-animation';
+import { BoundaryBoxHud } from '../toolbar/boundary-box-hud';
 import { DrawingToolbar } from '../toolbar/drawing-toolbar';
 import { AnnotationLayer } from './annotation-layer';
 import { BallObject } from './ball-object';
@@ -127,7 +128,8 @@ export function UnifiedCanvas() {
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const observer = new ResizeObserver(() => {
+
+    const updateStageSize = () => {
       const { width, height } = el.getBoundingClientRect();
       if (width === 0 || height === 0) return;
       const [wR, hR] = aspectRatio.split(':').map(Number) as [number, number];
@@ -138,7 +140,10 @@ export function UnifiedCanvas() {
         sw = (sh * wR) / hR;
       }
       setStageSize({ width: Math.floor(sw), height: Math.floor(sh) });
-    });
+    };
+
+    updateStageSize();
+    const observer = new ResizeObserver(updateStageSize);
     observer.observe(el);
     return () => observer.disconnect();
   }, [aspectRatio]);
@@ -355,6 +360,9 @@ export function UnifiedCanvas() {
 
         {/* Contextual Floating HUD */}
         <ContextHud stageSize={stageSize} nodesRegistryRef={nodesRegistryRef} />
+
+        {/* Boundary Box Ratio & Snap HUD */}
+        <BoundaryBoxHud stageSize={stageSize} />
 
         {/* ── ピッチ上インラインテキストエディタ ── */}
         <PitchInlineTextEditor

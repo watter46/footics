@@ -22,6 +22,7 @@ import {
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ASPECT_RATIOS,
   type AspectRatio,
   type BoundaryBox,
   X_MEDIA_PRESETS,
@@ -78,7 +79,7 @@ function detectActivePreset(
   canvasAspect: AspectRatio,
 ): XMediaPresetKey | 'pitch_fit' | null {
   if (!boundaryBox?.enabled) return null;
-  const stageAspect = canvasAspect === '16:9' ? 16 / 9 : 9 / 16;
+  const stageAspect = ASPECT_RATIOS[canvasAspect] ?? 16 / 9;
   const currentAspect = (boundaryBox.width / boundaryBox.height) * stageAspect;
 
   for (const item of PRESET_ITEMS) {
