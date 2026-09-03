@@ -60,34 +60,65 @@ export function PlayerConnectLines({
                     : undefined;
 
               return (
-                <Line
-                  key={cl.id}
-                  ref={(node) => {
-                    if (nodesRegistryRef) {
-                      if (node) {
-                        nodesRegistryRef.current.connectLineNodes.set(
-                          cl.id,
-                          node,
-                        );
-                      } else {
-                        nodesRegistryRef.current.connectLineNodes.delete(cl.id);
+                <Group key={cl.id}>
+                  {/* 外側拡散ネオングロー層 (程よく上品な淡い光) */}
+                  <Line
+                    points={[x1, y1, x2, y2]}
+                    stroke={cl.color}
+                    strokeWidth={(cl.strokeWidth ?? 2) + 4}
+                    dash={dash}
+                    opacity={0.35}
+                    shadowColor={cl.color}
+                    shadowBlur={8}
+                    shadowOpacity={0.6}
+                    listening={false}
+                    perfectDrawEnabled={false}
+                  />
+                  {/* ネオン管中心の白熱コア (繊細なハイライト) */}
+                  <Line
+                    points={[x1, y1, x2, y2]}
+                    stroke="#ffffff"
+                    strokeWidth={Math.max(0.75, (cl.strokeWidth ?? 2) * 0.4)}
+                    dash={dash}
+                    opacity={0.5}
+                    listening={false}
+                    perfectDrawEnabled={false}
+                  />
+                  {/* コアライン本体 (クリック・タップ受付用) */}
+                  <Line
+                    ref={(node) => {
+                      if (nodesRegistryRef) {
+                        if (node) {
+                          nodesRegistryRef.current.connectLineNodes.set(
+                            cl.id,
+                            node,
+                          );
+                        } else {
+                          nodesRegistryRef.current.connectLineNodes.delete(
+                            cl.id,
+                          );
+                        }
                       }
-                    }
-                  }}
-                  points={[x1, y1, x2, y2]}
-                  stroke={cl.color}
-                  strokeWidth={cl.strokeWidth ?? 2}
-                  dash={dash}
-                  listening={true}
-                  onClick={(e) => {
-                    e.cancelBubble = true;
-                    onSelectConnectLine?.(p.id);
-                  }}
-                  onTap={(e) => {
-                    e.cancelBubble = true;
-                    onSelectConnectLine?.(p.id);
-                  }}
-                />
+                    }}
+                    points={[x1, y1, x2, y2]}
+                    stroke={cl.color}
+                    strokeWidth={cl.strokeWidth ?? 2}
+                    dash={dash}
+                    opacity={0.9}
+                    shadowColor={cl.color}
+                    shadowBlur={3}
+                    shadowOpacity={0.5}
+                    listening={true}
+                    onClick={(e) => {
+                      e.cancelBubble = true;
+                      onSelectConnectLine?.(p.id);
+                    }}
+                    onTap={(e) => {
+                      e.cancelBubble = true;
+                      onSelectConnectLine?.(p.id);
+                    }}
+                  />
+                </Group>
               );
             }),
         )}

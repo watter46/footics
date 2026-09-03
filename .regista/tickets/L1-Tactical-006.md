@@ -1,7 +1,7 @@
 ---
 id: L1-Tactical-006
 title: 足元リングとコネクタのデフォルト色統一＆発光グロー演出
-status: TODO
+status: DONE
 depends_on: []
 model: Gemini 3.8 Flash
 effort: low

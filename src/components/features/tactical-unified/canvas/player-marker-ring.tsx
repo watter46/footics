@@ -49,7 +49,7 @@ export function PlayerMarkerRing({
         />
       )}
 
-      {/* 立体5パーツSVGパス */}
+      {/* 立体5パーツSVGパス (各パーツの形状に沿った外側グロー層) */}
       <Group
         x={-(MARKER_VIEWBOX_SIZE * ((radius * 2) / MARKER_VIEWBOX_SIZE)) / 2}
         y={-(MARKER_VIEWBOX_SIZE * ((radius * 2) / MARKER_VIEWBOX_SIZE)) / 2}
@@ -59,26 +59,66 @@ export function PlayerMarkerRing({
         }}
         listening={false}
       >
+        {/* 外側拡散ネオングロー層 (程よい広がりと上品な淡い光) */}
+        {MARKER_PATHS.map((d) => (
+          <Path
+            key={`wide-glow-${d.slice(0, 20)}`}
+            data={d}
+            stroke={player.style.color}
+            strokeWidth={4}
+            shadowColor={player.style.color}
+            shadowBlur={10}
+            shadowOpacity={0.6}
+            opacity={0.4}
+            perfectDrawEnabled={false}
+          />
+        ))}
+
+        {/* 各パーツ本体 (高輝度ネオンチューブ本体) */}
         {MARKER_PATHS.map((d) => (
           <Path
             key={d.slice(0, 20)}
             data={d}
             fill={player.style.color}
-            stroke={
-              isSelected ? '#60a5fa' : (player.style.strokeColor ?? '#ffffff')
-            }
+            stroke={isSelected ? '#60a5fa' : undefined}
+            strokeWidth={isSelected ? 1 : 0}
+            shadowColor={player.style.color}
+            shadowBlur={5}
+            shadowOpacity={0.7}
+            perfectDrawEnabled={false}
+          />
+        ))}
+
+        {/* ネオン管の中心白熱ハイライト (ネオン特有の高輝度ホワイトコア) */}
+        {MARKER_PATHS.map((d) => (
+          <Path
+            key={`core-${d.slice(0, 20)}`}
+            data={d}
+            stroke="#ffffff"
             strokeWidth={0.5}
+            opacity={0.45}
             perfectDrawEnabled={false}
           />
         ))}
       </Group>
 
-      {/* リング中央の半透明グロー楕円 */}
+      {/* リング中央の半透明ネオン発光楕円 (床に投影された淡いネオンライトプール) */}
+      <Ellipse
+        radiusX={radius * 0.72}
+        radiusY={radius * 0.24}
+        stroke={player.style.color}
+        strokeWidth={1.5}
+        shadowColor={player.style.color}
+        shadowBlur={8}
+        shadowOpacity={0.6}
+        opacity={0.45}
+        listening={false}
+      />
       <Ellipse
         radiusX={radius * 0.68}
         radiusY={radius * 0.22}
         fill={player.style.color}
-        opacity={0.75}
+        opacity={0.2}
         listening={false}
       />
 
