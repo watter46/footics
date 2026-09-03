@@ -366,6 +366,31 @@ export const DEFAULT_BOUNDARY_BOX_SCREENSHOT: BoundaryBox = {
   enabled: true,
 };
 
+/** 対象比率の全画面フィット境界線 (フル領域 100x100) */
+export const DEFAULT_BOUNDARY_BOX_FULL: BoundaryBox = {
+  x: 0,
+  y: 0,
+  width: 100,
+  height: 100,
+  enabled: true,
+};
+
+/** アスペクト比に応じたデフォルト境界線を取得 */
+export function getDefaultBoundaryBoxForAspect(
+  aspectRatio: AspectRatio,
+): BoundaryBox {
+  switch (aspectRatio) {
+    case '9:16':
+      return { ...DEFAULT_BOUNDARY_BOX_9_16 };
+    case '16:9':
+      return { ...DEFAULT_BOUNDARY_BOX_16_9 };
+    case '4:5':
+    case '1:1':
+    default:
+      return { ...DEFAULT_BOUNDARY_BOX_FULL };
+  }
+}
+
 /** 標準デフォルト境界線 (16:9) */
 export const DEFAULT_BOUNDARY_BOX = DEFAULT_BOUNDARY_BOX_16_9;
 
@@ -508,6 +533,7 @@ export const SlideSchema = z.object({
   backgroundType: z.enum(['pitch', 'image', 'blank']).optional(),
 
   boundaryBox: BoundaryBoxSchema.optional(),
+  aspectRatio: AspectRatioSchema.optional(),
 });
 export type Slide = z.infer<typeof SlideSchema>;
 
@@ -742,11 +768,13 @@ export function createDefaultSlide(
   homeColor?: string,
   awayColor?: string,
   boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_16_9,
+  aspectRatio: AspectRatio = '16:9',
 ): Slide {
   return {
     id: id ?? crypto.randomUUID(),
     index,
     label: `Scene ${index + 1}`,
+    aspectRatio,
     players: createDefault442Players(homeColor, awayColor),
     arrows: [],
     zones: [],

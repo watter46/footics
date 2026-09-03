@@ -1344,4 +1344,124 @@ describe('tactical-unified-store', () => {
       expect(updatedSlide?.boundaryBox?.height).toBe(100);
     });
   });
+
+  describe('L2-Tactical-021: アスペクト比即時変更と可変境界線ハイブリッド連動', () => {
+    it('4種のアスペクト比変更 (16:9, 9:16, 4:5, 1:1) で project.aspectRatio が正しく更新される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const ratios: AspectRatio[] = ['9:16', '4:5', '1:1', '16:9'];
+
+      for (const ratio of ratios) {
+        store.setAspectRatio(ratio);
+        const state = useTacticalUnifiedStore.getState();
+        expect(state.project.aspectRatio).toBe(ratio);
+        const activeSlide = state.project.slides.find(
+          (s) => s.id === state.activeSlideId,
+        );
+        expect(activeSlide?.aspectRatio).toBe(ratio);
+      }
+    });
+
+    it('アスペクト比切り替え時に境界線が即座に全体フィット(100x100)にリセット初期化される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      // 事前に境界線をカスタム値に変更
+      store.setBoundaryBox(slideId, {
+        x: 15,
+        y: 15,
+        width: 60,
+        height: 60,
+        enabled: true,
+      });
+
+      let slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      expect(slide?.boundaryBox).toEqual({
+        x: 15,
+        y: 15,
+        width: 60,
+        height: 60,
+        enabled: true,
+      });
+
+      // 4:5 にアスペクト比変更
+      store.setAspectRatio('4:5');
+
+      slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      expect(slide?.boundaryBox).toEqual({
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        enabled: true,
+      });
+      expect(useTacticalUnifiedStore.getState().project.boundaryBox).toEqual({
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        enabled: true,
+      });
+    });
+
+    it('アスペクト比切り替え後も、四方ポインタによる境界線の可変リサイズ・移動が通常通り動作する', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      // 1:1 に切り替え
+      store.setAspectRatio('1:1');
+      let slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      expect(slide?.boundaryBox).toEqual({
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        enabled: true,
+      });
+
+      // ユーザーによる四方ハンドルの個別リサイズ操作
+      store.setBoundaryBox(slideId, {
+        x: 5,
+        y: 10,
+        width: 80,
+        height: 75,
+        enabled: true,
+      });
+
+      slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      expect(slide?.boundaryBox).toEqual({
+        x: 5,
+        y: 10,
+        width: 80,
+        height: 75,
+        enabled: true,
+      });
+    });
+
+    it('addSlide 時に現在の project.aspectRatio の比率と境界線が継承される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      store.setAspectRatio('4:5');
+
+      const newSlideId = store.addSlide(undefined, 'blank');
+      const newSlide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === newSlideId);
+
+      expect(newSlide?.aspectRatio).toBe('4:5');
+      expect(newSlide?.boundaryBox).toEqual({
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        enabled: true,
+      });
+    });
+  });
 });

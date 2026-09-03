@@ -31,6 +31,7 @@ import {
   DEFAULT_442_HOME,
   DEFAULT_BOUNDARY_BOX_9_16,
   DEFAULT_BOUNDARY_BOX_16_9,
+  DEFAULT_BOUNDARY_BOX_FULL,
   DEFAULT_BOUNDARY_BOX_SCREENSHOT,
   transformCoord,
   transformPoints,
@@ -890,6 +891,8 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         const transformedSlides = s.project.slides.map(
           (slide): Slide => ({
             ...slide,
+            aspectRatio: ratio,
+            boundaryBox: { ...DEFAULT_BOUNDARY_BOX_FULL },
             players: slide.players.map((p) => ({
               ...p,
               ...transformCoord({ x: p.x, y: p.y }, from, ratio),
@@ -945,6 +948,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           project: {
             ...s.project,
             aspectRatio: ratio,
+            boundaryBox: { ...DEFAULT_BOUNDARY_BOX_FULL },
             slides: transformedSlides,
             updatedAt: new Date().toISOString(),
           },
