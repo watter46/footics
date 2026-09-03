@@ -555,6 +555,41 @@ describe('tactical-unified-store', () => {
     ).toBeUndefined();
   });
 
+  it('すでに編集中または画像背景のスライドがある状態で setImageBackground すると、既存スライドを破壊せず新規スライドが追加される', () => {
+    const store = useTacticalUnifiedStore.getState();
+    // 1枚目キャプチャ適用
+    store.setImageBackground('data:image/png;base64,capture1');
+    expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(1);
+    const firstSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+
+    // 1枚目のピッチ上にリングマーカーまたは選手を配置して編集
+    store.addPlayerFromPalette('home', 40, 50, 'ring');
+
+    // 2枚目のキャプチャを実行
+    store.setImageBackground('data:image/png;base64,capture2');
+
+    const state = useTacticalUnifiedStore.getState();
+    // スライドが2枚に増加していること
+    expect(state.project.slides).toHaveLength(2);
+    // 1枚目のスライドは capture1 のまま保持され、リングマーカーも残っていること
+    const firstSlide = state.project.slides.find((s) => s.id === firstSlideId);
+    expect(firstSlide?.backgroundImageUrl).toBe(
+      'data:image/png;base64,capture1',
+    );
+    expect(firstSlide?.players.some((p) => p.style.markerType === 'ring')).toBe(
+      true,
+    );
+
+    // 新規アクティブスライドは capture2 で初期化されていること
+    expect(state.activeSlideId).not.toBe(firstSlideId);
+    const activeSlide = state.project.slides.find(
+      (s) => s.id === state.activeSlideId,
+    );
+    expect(activeSlide?.backgroundImageUrl).toBe(
+      'data:image/png;base64,capture2',
+    );
+  });
+
   it('clearPitchPlayers でピッチ上の選手が全員ベンチに退避され、ピッチが白紙クリアされる', () => {
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.activeSlideId;
@@ -669,9 +704,10 @@ describe('tactical-unified-store', () => {
 
     // スクリーンショット / 画像背景モードのときは画像境界（2%余白内）にフィットする
     store.setImageBackground('data:image/png;base64,sample');
+    const imageSlideId = useTacticalUnifiedStore.getState().activeSlideId;
     slide = useTacticalUnifiedStore
       .getState()
-      .project.slides.find((s) => s.id === slideId);
+      .project.slides.find((s) => s.id === imageSlideId);
     expect(slide?.boundaryBox).toEqual({
       x: 2.0,
       y: 2.0,
@@ -681,17 +717,17 @@ describe('tactical-unified-store', () => {
     });
 
     // 境界線を変更した後に autoFitBoundaryBox を実行しても画像境界にフィットする
-    store.setBoundaryBox(slideId, {
+    store.setBoundaryBox(imageSlideId, {
       x: 10,
       y: 10,
       width: 50,
       height: 50,
       enabled: true,
     });
-    store.autoFitBoundaryBox(slideId);
+    store.autoFitBoundaryBox(imageSlideId);
     slide = useTacticalUnifiedStore
       .getState()
-      .project.slides.find((s) => s.id === slideId);
+      .project.slides.find((s) => s.id === imageSlideId);
     expect(slide?.boundaryBox).toEqual({
       x: 2.0,
       y: 2.0,
@@ -1184,6 +1220,128 @@ describe('tactical-unified-store', () => {
       expect(updatedP1?.y).toBe(p2Pos.y);
       expect(updatedP2?.x).toBe(p1Pos.x);
       expect(updatedP2?.y).toBe(p1Pos.y);
+    });
+  });
+
+  describe('saveStatus & auto-save state', () => {
+    it('初期状態は saveStatus: idle, lastSavedAt: null', () => {
+      const store = useTacticalUnifiedStore.getState();
+      expect(store.saveStatus).toBe('idle');
+      expect(store.lastSavedAt).toBeNull();
+    });
+
+    it('setSaveStatus と setLastSavedAt で保存状態とタイムスタンプが更新される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      store.setSaveStatus('saving');
+      expect(useTacticalUnifiedStore.getState().saveStatus).toBe('saving');
+
+      const now = Date.now();
+      store.setLastSavedAt(now);
+      expect(useTacticalUnifiedStore.getState().lastSavedAt).toBe(now);
+
+      store.setSaveStatus('saved');
+      expect(useTacticalUnifiedStore.getState().saveStatus).toBe('saved');
+    });
+
+    it('resetProject で初期プロジェクトが生成され選択状態がリセットされる', () => {
+      const store = useTacticalUnifiedStore.getState();
+      store.addSlide();
+      expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(2);
+
+      store.resetProject();
+      expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(1);
+      expect(useTacticalUnifiedStore.getState().isDirty).toBe(false);
+    });
+  });
+
+  describe('applyXMediaPreset', () => {
+    it('横画面(16:9)で single_image_4_5 (4:5) を適用した際に中央配置された BoundaryBox が計算される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      store.applyXMediaPreset('single_image_4_5');
+
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find(
+          (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
+        );
+      expect(slide?.boundaryBox).toBeDefined();
+      expect(slide?.boundaryBox?.enabled).toBe(true);
+      // 16:9キャンバスで4:5(0.8)はキャンバスより縦長なので高さ100%
+      expect(slide?.boundaryBox?.height).toBe(100);
+      expect(slide?.boundaryBox?.y).toBe(0);
+      // width = 100 * 0.8 / (16/9) = 45
+      expect(slide?.boundaryBox?.width).toBe(45);
+      expect(slide?.boundaryBox?.x).toBe(27.5);
+    });
+
+    it('横画面(16:9)で pitch_overview_16_9 (16:9) を適用した際に全画面(100x100)の BoundaryBox になる', () => {
+      const store = useTacticalUnifiedStore.getState();
+      store.applyXMediaPreset('pitch_overview_16_9');
+
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find(
+          (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
+        );
+      expect(slide?.boundaryBox).toEqual({
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        enabled: true,
+      });
+    });
+
+    it('縦画面(9:16)で feed_video_9_16 (9:16) を適用した際に全画面(100x100)の BoundaryBox になる', () => {
+      const store = useTacticalUnifiedStore.getState();
+      store.setAspectRatio('9:16');
+      store.applyXMediaPreset('feed_video_9_16');
+
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find(
+          (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
+        );
+      expect(slide?.boundaryBox).toEqual({
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        enabled: true,
+      });
+    });
+
+    it('pitch_fit を適用した際にピッチ外枠線に合わせた BoundaryBox が設定される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      store.applyXMediaPreset('pitch_fit');
+
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find(
+          (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
+        );
+      expect(slide?.boundaryBox).toEqual({
+        x: 7.25,
+        y: 0.43,
+        width: 85.5,
+        height: 99.14,
+        enabled: true,
+      });
+    });
+
+    it('特定のスライドIDを指定してプリセットを適用できる', () => {
+      const store = useTacticalUnifiedStore.getState();
+      store.addSlide();
+      const slides = useTacticalUnifiedStore.getState().project.slides;
+      const targetSlide = slides[1];
+
+      store.applyXMediaPreset('single_image_4_5', targetSlide.id);
+
+      const updatedSlide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === targetSlide.id);
+      expect(updatedSlide?.boundaryBox?.width).toBe(45);
+      expect(updatedSlide?.boundaryBox?.height).toBe(100);
     });
   });
 });

@@ -22,16 +22,19 @@ import type {
   Slide,
   TacticalProject,
   TextAnnotation,
+  XMediaPresetKey,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
 import {
   createDefaultProject,
+  createXBoundaryBox,
   DEFAULT_442_HOME,
   DEFAULT_BOUNDARY_BOX_9_16,
   DEFAULT_BOUNDARY_BOX_16_9,
   DEFAULT_BOUNDARY_BOX_SCREENSHOT,
   transformCoord,
   transformPoints,
+  X_MEDIA_PRESETS,
 } from '@/lib/types/tactical-unified';
 import {
   type AnnotationSlice,
@@ -112,6 +115,10 @@ export interface TacticalUnifiedState
   // ── スライド選択
   activeSlideId: string;
   autoFitBoundaryBox: (slideId?: string) => void;
+  applyXMediaPreset: (
+    presetKey: XMediaPresetKey | 'pitch_fit',
+    slideId?: string,
+  ) => void;
   resetSlideObjects: (slideId?: string) => void;
 
   // ── 再生制御 (Playback)
@@ -252,6 +259,31 @@ export function extractSelectedObjects(
   }
 
   return { players, arrows, zones, texts };
+}
+
+export function computePitchFitBoundaryBox(
+  isPitchBg: boolean,
+  isVertical: boolean,
+): BoundaryBox {
+  if (!isPitchBg) {
+    return { ...DEFAULT_BOUNDARY_BOX_SCREENSHOT };
+  }
+  if (isVertical) {
+    return {
+      x: 0.43,
+      y: 7.25,
+      width: 99.14,
+      height: 85.5,
+      enabled: true,
+    };
+  }
+  return {
+    x: 7.25,
+    y: 0.43,
+    width: 85.5,
+    height: 99.14,
+    enabled: true,
+  };
 }
 
 export function cloneAndOffsetObjects(
@@ -752,32 +784,34 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           (slide?.backgroundType ?? s.project.backgroundType ?? 'pitch') ===
           'pitch';
         const isVertical = s.project.aspectRatio === '9:16';
+        const box = computePitchFitBoundaryBox(isPitchBg, isVertical);
 
-        // ピッチ外枠線（105m x 68m）またはスクリーンショット（余白2%）に合わせた境界線
+        return {
+          ...recordHistory(s),
+          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
+            ...sl,
+            boundaryBox: box,
+          })),
+          isDirty: true,
+        };
+      }),
+
+    applyXMediaPreset: (presetKey, slideId) =>
+      set((s) => {
+        const targetSlideId = slideId ?? s.activeSlideId;
         let box: BoundaryBox;
-        if (isPitchBg) {
-          if (isVertical) {
-            box = {
-              x: 0.43,
-              y: 7.25,
-              width: 99.14,
-              height: 85.5,
-              enabled: true,
-            };
-          } else {
-            box = {
-              x: 7.25,
-              y: 0.43,
-              width: 85.5,
-              height: 99.14,
-              enabled: true,
-            };
-          }
+
+        if (presetKey === 'pitch_fit') {
+          const slide = s.project.slides.find((sl) => sl.id === targetSlideId);
+          const isPitchBg =
+            (slide?.backgroundType ?? s.project.backgroundType ?? 'pitch') ===
+            'pitch';
+          const isVertical = s.project.aspectRatio === '9:16';
+          box = computePitchFitBoundaryBox(isPitchBg, isVertical);
         } else {
-          // スクリーンショット / 画像背景モードのときは画像境界に合わせたフィット
-          box = {
-            ...DEFAULT_BOUNDARY_BOX_SCREENSHOT,
-          };
+          const preset = X_MEDIA_PRESETS[presetKey];
+          const ratio = preset?.ratio ?? '16:9';
+          box = createXBoundaryBox(ratio, s.project.aspectRatio);
         }
 
         return {
