@@ -12,9 +12,10 @@
 import {
   MARKER_PATHS,
   MARKER_VIEWBOX_SIZE,
+  SPOTLIGHT_BEAM_BOTTOM_CENTER_X,
+  SPOTLIGHT_BEAM_BOTTOM_MAX_Y,
+  SPOTLIGHT_BEAM_BOTTOM_WIDTH,
   SPOTLIGHT_BEAM_PATH,
-  SPOTLIGHT_VIEWBOX_HEIGHT,
-  SPOTLIGHT_VIEWBOX_WIDTH,
 } from '@/lib/tactical/marker-assets';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
@@ -455,13 +456,37 @@ export function renderTacticalFrameToCanvas(
       const px2 = snap(toScreenX(targetPlayer.x));
       const py2 = snap(toScreenY(targetPlayer.y));
 
-      ctx.save();
-      ctx.strokeStyle = conn.color || p.style?.color || '#3b82f6';
-      ctx.lineWidth = Math.max(
+      const lineColor = conn.color || p.style?.color || '#3b82f6';
+      const baseWidth = Math.max(
         2,
         Math.round((conn.strokeWidth || 2) * (w / 800)),
       );
+
+      // 外側グロー層
+      ctx.save();
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = baseWidth + Math.round(4 * (w / 800));
+      ctx.globalAlpha = Math.min(p.opacity, targetPlayer.opacity) * 0.6;
+      ctx.shadowColor = lineColor;
+      ctx.shadowBlur = Math.round(8 * (w / 800));
+      if (conn.lineStyle === 'dashed') {
+        ctx.setLineDash([8, 5]);
+      } else if (conn.lineStyle === 'dotted') {
+        ctx.setLineDash([3, 4]);
+      }
+      ctx.beginPath();
+      ctx.moveTo(px1, py1);
+      ctx.lineTo(px2, py2);
+      ctx.stroke();
+      ctx.restore();
+
+      // コアライン本体
+      ctx.save();
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = baseWidth;
       ctx.globalAlpha = Math.min(p.opacity, targetPlayer.opacity) * 0.85;
+      ctx.shadowColor = lineColor;
+      ctx.shadowBlur = Math.round(4 * (w / 800));
       if (conn.lineStyle === 'dashed') {
         ctx.setLineDash([8, 5]);
       } else if (conn.lineStyle === 'dotted') {
@@ -559,23 +584,52 @@ export function renderTacticalFrameToCanvas(
     if (p.focus?.enabled) {
       const focusColor = p.focus.color || '#ffffff';
       const focusOpacity = (p.focus.opacity ?? 0.35) * p.opacity;
-      const focusRadiusMultiplier = p.focus.radius ?? 3;
-      const markerW = radius * 2 * (focusRadiusMultiplier / 3);
-      const spotlightScale = (markerW * 1.25) / SPOTLIGHT_VIEWBOX_WIDTH;
-      const tx = px - (SPOTLIGHT_VIEWBOX_WIDTH * spotlightScale) / 2;
+      const focusRadiusMultiplier = (p.focus.radius ?? 3) / 3;
+      const ringWidth = radius * 2.3 * focusRadiusMultiplier;
+      const spotlightScale = ringWidth / SPOTLIGHT_BEAM_BOTTOM_WIDTH;
+      const tx = px - SPOTLIGHT_BEAM_BOTTOM_CENTER_X * spotlightScale;
       // フォーカスの最下部をリング最下部 (py + radius * 0.55) に一致させる
-      const ty = py + radius * 0.55 - SPOTLIGHT_VIEWBOX_HEIGHT * spotlightScale;
+      const ringBottomY = py + radius * 0.55 * focusRadiusMultiplier;
+      const ty = ringBottomY - SPOTLIGHT_BEAM_BOTTOM_MAX_Y * spotlightScale;
 
       ctx.save();
-      // 1. Spotlight Beam (光の柱)
       if (typeof Path2D !== 'undefined') {
         const beamPath = new Path2D(SPOTLIGHT_BEAM_PATH);
         ctx.save();
         ctx.translate(tx, ty);
         ctx.scale(spotlightScale, spotlightScale);
-        ctx.fillStyle = focusColor;
-        ctx.globalAlpha = focusOpacity * 0.85;
+
+        // 1. 光の柱（中央が透けるソフトグラデーションビーム）
+        const grad = ctx.createLinearGradient(31.36, 5, 31.36, 100);
+        const hex = focusColor.replace('#', '');
+        const cr = Number.parseInt(hex.substring(0, 2), 16) || 255;
+        const cg = Number.parseInt(hex.substring(2, 4), 16) || 255;
+        const cb = Number.parseInt(hex.substring(4, 6), 16) || 255;
+
+        grad.addColorStop(
+          0,
+          `rgba(${cr}, ${cg}, ${cb}, ${(focusOpacity * 0.95).toFixed(3)})`,
+        );
+        grad.addColorStop(
+          0.25,
+          `rgba(${cr}, ${cg}, ${cb}, ${(focusOpacity * 0.5).toFixed(3)})`,
+        );
+        grad.addColorStop(
+          0.6,
+          `rgba(${cr}, ${cg}, ${cb}, ${(focusOpacity * 0.22).toFixed(3)})`,
+        );
+        grad.addColorStop(
+          0.9,
+          `rgba(${cr}, ${cg}, ${cb}, ${(focusOpacity * 0.65).toFixed(3)})`,
+        );
+        grad.addColorStop(
+          1,
+          `rgba(${cr}, ${cg}, ${cb}, ${(focusOpacity * 0.95).toFixed(3)})`,
+        );
+
+        ctx.fillStyle = grad;
         ctx.fill(beamPath);
+
         ctx.restore();
       }
       ctx.restore();
@@ -632,31 +686,58 @@ export function renderTacticalFrameToCanvas(
       const rtx = px - (MARKER_VIEWBOX_SIZE * ringScale) / 2;
       const rty = py - (MARKER_VIEWBOX_SIZE * ringScale) / 2;
 
+      const ringColor =
+        p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
+
       if (typeof Path2D !== 'undefined') {
         ctx.save();
         ctx.translate(rtx, rty);
         ctx.scale(ringScale, ringScale);
-        ctx.fillStyle =
-          p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
-        ctx.strokeStyle = p.style?.strokeColor || '#ffffff';
-        ctx.lineWidth = 0.5;
 
+        // 各パーツから外側にふんわり光が漏れ出るグロー層
+        ctx.strokeStyle = ringColor;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = ringColor;
+        ctx.shadowBlur = Math.round(8 * (w / 800));
+        ctx.globalAlpha = p.opacity * 0.6;
+        for (const pathStr of MARKER_PATHS) {
+          const pathObj = new Path2D(pathStr);
+          ctx.stroke(pathObj);
+        }
+
+        // 各パーツ本体 (シャープな発光コア)
+        ctx.fillStyle = ringColor;
+        ctx.shadowColor = ringColor;
+        ctx.shadowBlur = Math.round(4 * (w / 800));
+        ctx.globalAlpha = p.opacity;
         for (const pathStr of MARKER_PATHS) {
           const pathObj = new Path2D(pathStr);
           ctx.fill(pathObj);
-          ctx.stroke(pathObj);
         }
         ctx.restore();
       }
 
-      // Ring Center Glow Ellipse
+      // Ring Center Glow Ellipse (各パーツと同じ発光グロー効果)
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(px, py, radius * 0.72, radius * 0.24, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = ringColor;
+      ctx.lineWidth = Math.round(2 * (w / 800));
+      ctx.globalAlpha = p.opacity * 0.6;
+      ctx.shadowColor = ringColor;
+      ctx.shadowBlur = Math.round(8 * (w / 800));
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
       ctx.beginPath();
       ctx.ellipse(px, py, radius * 0.68, radius * 0.22, 0, 0, Math.PI * 2);
-      ctx.fillStyle =
-        p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
-      ctx.globalAlpha = p.opacity * 0.75;
+      ctx.fillStyle = ringColor;
+      ctx.globalAlpha = p.opacity * 0.45;
+      ctx.shadowColor = ringColor;
+      ctx.shadowBlur = Math.round(4 * (w / 800));
       ctx.fill();
-      ctx.globalAlpha = p.opacity;
+      ctx.restore();
 
       // Shirt Number in Ring
       if (p.style?.insideContent !== 'none' && p.shirtNo) {

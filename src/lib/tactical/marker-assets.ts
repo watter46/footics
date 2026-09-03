@@ -37,5 +37,10 @@ export const MARKER_CENTER = { x: 32, y: 32 };
 export const SPOTLIGHT_VIEWBOX_WIDTH = 62.7;
 export const SPOTLIGHT_VIEWBOX_HEIGHT = 104.61;
 
+/** スポットライト底面円弧の寸法（正確なフィッティング用） */
+export const SPOTLIGHT_BEAM_BOTTOM_WIDTH = 52.7;
+export const SPOTLIGHT_BEAM_BOTTOM_MAX_Y = 99.66;
+export const SPOTLIGHT_BEAM_BOTTOM_CENTER_X = 31.36;
+
 /** スポットライト足元プールの中心Y座標 */
 export const SPOTLIGHT_PUDDLE_CENTER_Y = 96;

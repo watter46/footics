@@ -645,8 +645,8 @@ export function PlayerMarkerOptionsSection({
                 up({
                   focus: {
                     enabled: nextEnabled,
-                    color: player.focus?.color ?? '#fbbf24',
-                    radius: player.focus?.radius ?? 22,
+                    color: player.focus?.color ?? '#ffffff',
+                    radius: player.focus?.radius ?? 3,
                     opacity: player.focus?.opacity ?? 0.35,
                     style: player.focus?.style ?? 'spotlight',
                   },
@@ -676,7 +676,7 @@ export function PlayerMarkerOptionsSection({
                       focus: {
                         ...(player.focus ?? {
                           enabled: true,
-                          radius: 22,
+                          radius: 3,
                           opacity: 0.35,
                           style: 'spotlight',
                         }),
@@ -698,7 +698,7 @@ export function PlayerMarkerOptionsSection({
                     focus: {
                       ...(player.focus ?? {
                         enabled: true,
-                        color: '#fbbf24',
+                        color: '#ffffff',
                         opacity: 0.35,
                         style: 'spotlight',
                       }),
@@ -719,7 +719,7 @@ export function PlayerMarkerOptionsSection({
                     focus: {
                       ...(player.focus ?? {
                         enabled: true,
-                        color: '#fbbf24',
+                        color: '#ffffff',
                         radius: 3,
                         style: 'spotlight',
                       }),

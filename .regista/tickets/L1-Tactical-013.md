@@ -1,7 +1,7 @@
 ---
 id: L1-Tactical-013
 title: スポットライト（Focus）のサイズ・底面位置のリング整合およびデフォルト白設定
-status: TODO
+status: DONE
 depends_on: []
 model: Gemini 3.8 Flash
 effort: low

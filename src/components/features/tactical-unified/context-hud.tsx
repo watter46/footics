@@ -611,8 +611,8 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
                     updatePlayer(activeSlideId, player.id, {
                       focus: {
                         enabled: nextEnabled,
-                        color: player.focus?.color ?? '#fbbf24',
-                        radius: player.focus?.radius ?? 22,
+                        color: player.focus?.color ?? '#ffffff',
+                        radius: player.focus?.radius ?? 3,
                         opacity: player.focus?.opacity ?? 0.35,
                         style: player.focus?.style ?? 'spotlight',
                       },
