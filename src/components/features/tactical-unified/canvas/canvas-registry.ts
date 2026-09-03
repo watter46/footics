@@ -7,12 +7,18 @@ export interface ArrowNodeEntry {
   controlHandleNode?: Konva.Circle | null;
 }
 
+export interface ConnectLineNodeEntry {
+  glowNode?: Konva.Line | null;
+  highlightNode?: Konva.Line | null;
+  coreNode?: Konva.Line | null;
+}
+
 export interface CanvasNodesRegistry {
   playerNodes: Map<string, Konva.Group>;
   arrowNodes: Map<string, ArrowNodeEntry>;
   textNodes: Map<string, Konva.Text>;
   zoneNodes: Map<string, Konva.Shape>;
-  connectLineNodes: Map<string, Konva.Line>;
+  connectLineNodes: Map<string, ConnectLineNodeEntry>;
   ballNode: Konva.Group | null;
   annotationLayer: Konva.Layer | null;
   ballLayer: Konva.Layer | null;

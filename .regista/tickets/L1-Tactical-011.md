@@ -1,7 +1,7 @@
 ---
 id: L1-Tactical-011
 title: マーカー移動中のコネクタ追従修正と多重線分岐の解消
-status: TODO
+status: DONE
 depends_on: []
 model: Gemini 3.8 Flash
 effort: low
