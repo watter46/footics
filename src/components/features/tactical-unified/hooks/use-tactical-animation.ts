@@ -69,7 +69,9 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
 
       // 1. 選手ノード (Player Nodes) のダイレクト更新
       Object.entries(frame.players).forEach(([playerId, pState]) => {
-        const playerGroup = registry.playerNodes.get(playerId);
+        const playerGroup =
+          registry.playerNodes.get(playerId) ||
+          (pState.id ? registry.playerNodes.get(pState.id) : undefined);
         if (playerGroup) {
           const pxX = (pState.x / 100) * stageWidth;
           const pxY = (pState.y / 100) * stageHeight;

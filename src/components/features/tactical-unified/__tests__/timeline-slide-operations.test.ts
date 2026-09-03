@@ -214,8 +214,12 @@ describe('AAWU 3-2: Timeline & Slide Operations Store', () => {
 
     // スナップショットモードにしておく
     store.setImageBackground('data:image/png;base64,snapshot');
-    expect(useTacticalUnifiedStore.getState().project.backgroundType).toBe('image');
-    expect(useTacticalUnifiedStore.getState().panels.rightPanelTab).toBe('inspector');
+    expect(useTacticalUnifiedStore.getState().project.backgroundType).toBe(
+      'image',
+    );
+    expect(useTacticalUnifiedStore.getState().panels.rightPanelTab).toBe(
+      'inspector',
+    );
 
     // 左クリック「+」相当 (blank mode)
     const blankSlideId = store.addSlide(slide1Id, 'blank');
@@ -235,7 +239,9 @@ describe('AAWU 3-2: Timeline & Slide Operations Store', () => {
     expect(blankSlide.backgroundImageUrl).toBeUndefined();
     expect(blankSlide.players.length).toBe(22);
     expect(blankSlide.players.every((p) => p.area === 'pitch')).toBe(true);
-    expect(blankSlide.players.every((p) => p.style.markerType === 'circle')).toBe(true);
+    expect(
+      blankSlide.players.every((p) => p.style.markerType === 'circle'),
+    ).toBe(true);
     expect(blankSlide.arrows.length).toBe(0);
     expect(blankSlide.zones.length).toBe(0);
     expect(blankSlide.texts.length).toBe(0);
@@ -247,7 +253,9 @@ describe('AAWU 3-2: Timeline & Slide Operations Store', () => {
     store.setActiveSlide(slide1Id);
     const slide1State = useTacticalUnifiedStore.getState();
     expect(slide1State.project.backgroundType).toBe('image');
-    expect(slide1State.project.backgroundImageUrl).toBe('data:image/png;base64,snapshot');
+    expect(slide1State.project.backgroundImageUrl).toBe(
+      'data:image/png;base64,snapshot',
+    );
     expect(slide1State.panels.rightPanelTab).toBe('inspector');
 
     // 再度スライド2（白紙デフォルト）に切り替えるとデフォルトに戻る

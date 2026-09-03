@@ -126,6 +126,31 @@ function DashedArrowIcon({
   );
 }
 
+function WavyArrowIcon({
+  size = 15,
+  className,
+}: {
+  size?: number | string;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M2 12 C 5 7, 7 17, 10 12 C 13 7, 15 17, 18 12 H 22" />
+      <path d="M18 8L22 12L18 16" />
+    </svg>
+  );
+}
+
 function CustomPolygonZoneIcon({
   size = 15,
   className,
@@ -211,6 +236,11 @@ const PRIMARY_TOOLS: {
   },
   { tool: 'arrow_solid', icon: MoveRight, label: 'Solid Arrow (A)' },
   { tool: 'arrow_dash', icon: DashedArrowIcon, label: 'Dashed Arrow (D)' },
+  {
+    tool: 'arrow_wavy',
+    icon: WavyArrowIcon,
+    label: 'Wavy Arrow / Dribble (W)',
+  },
   { tool: 'zone_circle', icon: Square, label: 'Zone (Z)' },
   {
     tool: 'polygon_zone',

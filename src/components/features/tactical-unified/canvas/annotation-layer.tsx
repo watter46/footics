@@ -34,6 +34,8 @@ interface AnnotationLayerProps {
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   activePolygonId?: string | null;
   mousePreviewPos?: { x: number; y: number } | null;
+  editingTextId?: string | null;
+  onStartEditText?: (textId: string) => void;
 }
 
 function normX(v: number, w: number) {
@@ -75,6 +77,45 @@ function getQuadraticBezierPoints(
     const y = (1 - t) * (1 - t) * startY + 2 * (1 - t) * t * cpY + t * t * endY;
     points.push(x, y);
   }
+  return points;
+}
+
+export function getWavyPoints(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  wavelength = 24,
+  amplitude = 7,
+) {
+  const dx = endX - startX;
+  const dy = endY - startY;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 5) return [startX, startY, endX, endY];
+
+  const ux = dx / dist;
+  const uy = dy / dist;
+  const perpX = -uy;
+  const perpY = ux;
+
+  // 始点と終点付近は振幅をスムーズに減衰
+  const numCycles = Math.max(1, Math.round(dist / wavelength));
+  const steps = numCycles * 16;
+  const points: number[] = [];
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const baseDist = t * dist;
+    const bx = startX + ux * baseDist;
+    const by = startY + uy * baseDist;
+
+    // 端部でのテーパー (0 -> 1 -> 0)
+    const envelope = Math.sin(t * Math.PI);
+    const wave = Math.sin(t * numCycles * Math.PI * 2) * amplitude * envelope;
+
+    points.push(bx + perpX * wave, by + perpY * wave);
+  }
+
   return points;
 }
 
@@ -189,16 +230,20 @@ const ArrowObject = React.memo(function ArrowObject({
     }
   }
 
-  const renderPoints = isCurved
-    ? getQuadraticBezierPoints(
-        renderSx,
-        renderSy,
-        cpPxX,
-        cpPxY,
-        renderEx,
-        renderEy,
-      )
-    : [renderSx, renderSy, renderEx, renderEy];
+  const isWavy = arrow.arrowType === 'dribble';
+
+  const renderPoints = isWavy
+    ? getWavyPoints(renderSx, renderSy, renderEx, renderEy)
+    : isCurved
+      ? getQuadraticBezierPoints(
+          renderSx,
+          renderSy,
+          cpPxX,
+          cpPxY,
+          renderEx,
+          renderEy,
+        )
+      : [renderSx, renderSy, renderEx, renderEy];
 
   const arrowRef = React.useRef<any>(null);
   const startHandleRef = React.useRef<any>(null);
@@ -270,7 +315,7 @@ const ArrowObject = React.memo(function ArrowObject({
     let rex = ex;
     let rey = ey;
     if (isDotEnd) {
-      if (!isCurrentlyCurved) {
+      if (!isCurrentlyCurved && !isWavy) {
         const dx = ex - sx;
         const dy = ey - sy;
         const dist = Math.hypot(dx, dy);
@@ -297,7 +342,9 @@ const ArrowObject = React.memo(function ArrowObject({
       }
     }
 
-    if (isCurrentlyCurved) {
+    if (isWavy) {
+      arrowRef.current.points(getWavyPoints(rsx, rsy, rex, rey));
+    } else if (isCurrentlyCurved) {
       arrowRef.current.points(
         getQuadraticBezierPoints(rsx, rsy, curCpX, curCpY, rex, rey),
       );
@@ -597,7 +644,7 @@ const ArrowObject = React.memo(function ArrowObject({
         }}
       />
 
-      {/* 3. カーブ制御ハンドル: 選択時のみ表示 */}
+      {/* 3. カーブ制御ハンドル: 選択時のみ表示 (波線矢印ではカーブハンドルは不要) */}
       <Circle
         ref={controlHandleRef}
         x={midHandlePxX}
@@ -609,8 +656,8 @@ const ArrowObject = React.memo(function ArrowObject({
         shadowColor="rgba(0,0,0,0.5)"
         shadowBlur={4}
         perfectDrawEnabled={false}
-        visible={isSelected}
-        listening={isInteractive && isSelected}
+        visible={isSelected && !isWavy}
+        listening={isInteractive && isSelected && !isWavy}
         draggable={isInteractive}
         onMouseEnter={(e) => {
           const stage = e.target.getStage();
@@ -1054,7 +1101,9 @@ const TextObject = React.memo(function TextObject({
   slideId,
   stageSize,
   isSelected,
+  isEditing,
   onSelect,
+  onDblClick,
   updateText,
   nodesRegistryRef,
 }: {
@@ -1062,7 +1111,9 @@ const TextObject = React.memo(function TextObject({
   slideId: string;
   stageSize: { width: number; height: number };
   isSelected: boolean;
+  isEditing: boolean;
   onSelect: (e: KonvaClickEvent) => void;
+  onDblClick: (e: KonvaClickEvent) => void;
   updateText: (
     slideId: string,
     textId: string,
@@ -1091,14 +1142,19 @@ const TextObject = React.memo(function TextObject({
       y={normY(text.y, height)}
       text={text.content}
       fontSize={text.fontSize}
+      fontFamily="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
       fill={isSelected ? '#60a5fa' : text.color}
       fontStyle={fontStyle}
       stroke="#020617"
-      strokeWidth={text.fontSize > 20 ? 2 : 1}
+      strokeWidth={text.fontSize > 24 ? 2 : 1}
+      fillAfterStrokeEnabled={true}
+      visible={!isEditing}
       onClick={onSelect}
       onTap={onSelect}
+      onDblClick={onDblClick}
+      onDblTap={onDblClick}
       perfectDrawEnabled={false}
-      draggable={isSelected}
+      draggable={isSelected && !isEditing}
       onDragEnd={(e) => {
         e.cancelBubble = true;
         const node = e.target;
@@ -1118,12 +1174,16 @@ export function AnnotationLayer({
   nodesRegistryRef,
   activePolygonId,
   mousePreviewPos,
+  editingTextId,
+  onStartEditText,
 }: AnnotationLayerProps) {
   const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
   const updateArrow = useTacticalUnifiedStore((s) => s.updateArrow);
   const updateZone = useTacticalUnifiedStore((s) => s.updateZone);
   const updateText = useTacticalUnifiedStore((s) => s.updateText);
+  const setRightPanelTab = useTacticalUnifiedStore((s) => s.setRightPanelTab);
+  const setRightPanelOpen = useTacticalUnifiedStore((s) => s.setRightPanelOpen);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
 
   function makeSelectHandler(id: string, kind: 'arrow' | 'zone' | 'text') {
@@ -1134,46 +1194,72 @@ export function AnnotationLayer({
     };
   }
 
+  function handleDblClick(e: KonvaClickEvent) {
+    e.cancelBubble = true;
+    setRightPanelTab('inspector');
+    setRightPanelOpen(true);
+  }
+
   return (
     <Group>
       {slide.zones.map((zone) => (
-        <ZoneObject
+        <Group
           key={zone.id}
-          zone={zone}
-          slideId={activeSlideId}
-          stageSize={stageSize}
-          isSelected={selectedObjects.some((o) => o.id === zone.id)}
-          onSelect={makeSelectHandler(zone.id, 'zone')}
-          updateZone={updateZone}
-          nodesRegistryRef={nodesRegistryRef}
-          isCreatingThis={zone.id === activePolygonId}
-          mousePreviewPos={mousePreviewPos}
-        />
+          onDblClick={handleDblClick}
+          onDblTap={handleDblClick}
+        >
+          <ZoneObject
+            zone={zone}
+            slideId={activeSlideId}
+            stageSize={stageSize}
+            isSelected={selectedObjects.some((o) => o.id === zone.id)}
+            onSelect={makeSelectHandler(zone.id, 'zone')}
+            updateZone={updateZone}
+            nodesRegistryRef={nodesRegistryRef}
+            isCreatingThis={zone.id === activePolygonId}
+            mousePreviewPos={mousePreviewPos}
+          />
+        </Group>
       ))}
       {slide.arrows.map((arrow) => (
-        <ArrowObject
+        <Group
           key={arrow.id}
-          arrow={arrow}
-          slide={slide}
-          slideId={activeSlideId}
-          stageSize={stageSize}
-          isSelected={selectedObjects.some((o) => o.id === arrow.id)}
-          onSelect={makeSelectHandler(arrow.id, 'arrow')}
-          updateArrow={updateArrow}
-          nodesRegistryRef={nodesRegistryRef}
-        />
+          onDblClick={handleDblClick}
+          onDblTap={handleDblClick}
+        >
+          <ArrowObject
+            arrow={arrow}
+            slide={slide}
+            slideId={activeSlideId}
+            stageSize={stageSize}
+            isSelected={selectedObjects.some((o) => o.id === arrow.id)}
+            onSelect={makeSelectHandler(arrow.id, 'arrow')}
+            updateArrow={updateArrow}
+            nodesRegistryRef={nodesRegistryRef}
+          />
+        </Group>
       ))}
       {slide.texts.map((text) => (
-        <TextObject
-          key={text.id}
-          text={text}
-          slideId={activeSlideId}
-          stageSize={stageSize}
-          isSelected={selectedObjects.some((o) => o.id === text.id)}
-          onSelect={makeSelectHandler(text.id, 'text')}
-          updateText={updateText}
-          nodesRegistryRef={nodesRegistryRef}
-        />
+        <Group key={text.id}>
+          <TextObject
+            text={text}
+            slideId={activeSlideId}
+            stageSize={stageSize}
+            isSelected={selectedObjects.some((o) => o.id === text.id)}
+            isEditing={editingTextId === text.id}
+            onSelect={makeSelectHandler(text.id, 'text')}
+            onDblClick={(e) => {
+              e.cancelBubble = true;
+              if (onStartEditText) {
+                onStartEditText(text.id);
+              } else {
+                handleDblClick(e);
+              }
+            }}
+            updateText={updateText}
+            nodesRegistryRef={nodesRegistryRef}
+          />
+        </Group>
       ))}
     </Group>
   );

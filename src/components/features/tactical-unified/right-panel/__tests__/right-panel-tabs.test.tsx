@@ -40,6 +40,9 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
     render(<FormationPanel />);
 
     expect(screen.getByText('Formation Presets')).toBeDefined();
+    // Open More Formations accordion
+    const moreBtn = screen.getByText(/More Formations/i);
+    fireEvent.click(moreBtn);
     expect(screen.getByPlaceholderText('Search formations...')).toBeDefined();
 
     // Switch team to AWAY using text match
@@ -48,7 +51,7 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
     if (awayBtn) fireEvent.click(awayBtn);
 
     // Apply a formation like 4-4-2
-    const formation442 = screen.getByRole('button', { name: '4-4-2' });
+    const formation442 = screen.getAllByRole('button', { name: '4-4-2' })[0];
     fireEvent.click(formation442);
 
     const activeSlide = useTacticalUnifiedStore

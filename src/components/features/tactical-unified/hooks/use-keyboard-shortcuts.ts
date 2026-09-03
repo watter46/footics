@@ -6,6 +6,7 @@
  */
 
 import { useEffect } from 'react';
+import { toast } from 'sonner';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
 
 export function useKeyboardShortcuts() {
@@ -130,23 +131,34 @@ export function useKeyboardShortcuts() {
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
-        for (const obj of selectedObjects) {
-          switch (obj.kind) {
-            case 'player':
-              removePlayer(activeSlideId, obj.id);
-              break;
-            case 'arrow':
-              removeArrow(activeSlideId, obj.id);
-              break;
-            case 'zone':
-              removeZone(activeSlideId, obj.id);
-              break;
-            case 'text':
-              removeText(activeSlideId, obj.id);
-              break;
+        if (selectedObjects.length > 0) {
+          for (const obj of selectedObjects) {
+            switch (obj.kind) {
+              case 'player':
+                removePlayer(activeSlideId, obj.id);
+                break;
+              case 'arrow':
+                removeArrow(activeSlideId, obj.id);
+                break;
+              case 'zone':
+                removeZone(activeSlideId, obj.id);
+                break;
+              case 'text':
+                removeText(activeSlideId, obj.id);
+                break;
+            }
           }
+          clearSelection();
+        } else {
+          // ピッチ上オブジェクト非選択時はアクティブスライドを削除
+          const project = useTacticalUnifiedStore.getState().project;
+          if (project.slides.length <= 1) {
+            toast.error('これ以上スライドを削除できません（最低1枚必要です）');
+            return;
+          }
+          useTacticalUnifiedStore.getState().deleteSlide(activeSlideId);
+          toast.success('スライドを削除しました（Ctrl+Zで復元可能）');
         }
-        clearSelection();
       }
     }
 

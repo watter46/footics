@@ -83,6 +83,11 @@ export function ExportModal() {
   const isExporting = useTacticalUnifiedStore((s) => s.isExporting);
   const pendingExport = useTacticalUnifiedStore((s) => s.pendingExport);
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
+  const slides = useTacticalUnifiedStore((s) => s.project.slides);
+  const aspectRatio = useTacticalUnifiedStore((s) => s.project.aspectRatio);
+  const updateSlideTransition = useTacticalUnifiedStore(
+    (s) => s.updateSlideTransition,
+  );
 
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>(
     pendingExport?.format ?? 'mp4',
@@ -94,6 +99,69 @@ export function ExportModal() {
   const [latencyMode, setLatencyMode] = useState<'realtime' | 'quality'>(
     'realtime',
   );
+
+  // Transition duration, hold/pause duration, and easing states
+  const [transitionSec, setTransitionSec] = useState<
+    '1.0' | '1.5' | '2.0' | '3.0'
+  >(() => {
+    const firstSlide = activeSlide ?? slides[0];
+    if (firstSlide?.transitionDurationMs) {
+      const sec = (firstSlide.transitionDurationMs / 1000).toFixed(1);
+      if (['1.0', '1.5', '2.0', '3.0'].includes(sec)) {
+        return sec as '1.0' | '1.5' | '2.0' | '3.0';
+      }
+    }
+    return '1.5';
+  });
+
+  const [pauseSec, setPauseSec] = useState<'0' | '0.5' | '1.0' | '2.0'>(() => {
+    const firstSlide = activeSlide ?? slides[0];
+    if (firstSlide?.pauseMs !== undefined) {
+      const sec = (firstSlide.pauseMs / 1000).toFixed(1).replace('.0', '');
+      if (['0', '0.5', '1.0', '2.0'].includes(sec)) {
+        return sec as '0' | '0.5' | '1.0' | '2.0';
+      }
+    }
+    return '0.5';
+  });
+
+  const [selectedEasing, setSelectedEasing] = useState<
+    'ease-in-out' | 'ease-out' | 'ease-in' | 'linear'
+  >(() => {
+    const firstSlide = activeSlide ?? slides[0];
+    return (
+      (firstSlide?.easing as
+        | 'ease-in-out'
+        | 'ease-out'
+        | 'ease-in'
+        | 'linear') ?? 'ease-in-out'
+    );
+  });
+
+  const handleTransitionSecChange = (val: '1.0' | '1.5' | '2.0' | '3.0') => {
+    setTransitionSec(val);
+    const ms = Math.round(Number.parseFloat(val) * 1000);
+    slides.forEach((sl) => {
+      updateSlideTransition(sl.id, { transitionDurationMs: ms });
+    });
+  };
+
+  const handlePauseSecChange = (val: '0' | '0.5' | '1.0' | '2.0') => {
+    setPauseSec(val);
+    const ms = Math.round(Number.parseFloat(val) * 1000);
+    slides.forEach((sl) => {
+      updateSlideTransition(sl.id, { pauseMs: ms });
+    });
+  };
+
+  const handleEasingChange = (
+    val: 'ease-in-out' | 'ease-out' | 'ease-in' | 'linear',
+  ) => {
+    setSelectedEasing(val);
+    slides.forEach((sl) => {
+      updateSlideTransition(sl.id, { easing: val });
+    });
+  };
 
   // Benchmark state
   const [isBenchmarking, setIsBenchmarking] = useState(false);
@@ -332,8 +400,6 @@ export function ExportModal() {
   };
 
   const isVideoFormat = selectedFormat === 'mp4' || selectedFormat === 'webm';
-  const slides = useTacticalUnifiedStore((s) => s.project.slides);
-  const aspectRatio = useTacticalUnifiedStore((s) => s.project.aspectRatio);
 
   return (
     <div
@@ -492,14 +558,156 @@ export function ExportModal() {
 
               {/* Video Settings: Fixed High-Quality Specs + Configurable GPU Queue Buffer */}
               {isVideoFormat && (
-                <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
+                <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-[11px] font-semibold tracking-wider text-white/50 uppercase">
-                      Video Configuration
+                      Video & Morphing Configuration
                     </p>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-medium border border-blue-500/20">
                       1080p FHD • 60 FPS • 24M High
                     </span>
+                  </div>
+
+                  {/* Slide Transition Duration (Morphing Speed) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-white/70">
+                        Slide Transition Duration
+                      </span>
+                      <span className="text-[9px] text-white/40">
+                        スライド間移動秒数
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5 rounded-lg bg-black/40 p-0.5 border border-white/10">
+                      {[
+                        { sec: '1.0', label: '1.0s', sub: '高速' },
+                        { sec: '1.5', label: '1.5s', sub: '推奨・標準' },
+                        { sec: '2.0', label: '2.0s', sub: 'ゆったり' },
+                        { sec: '3.0', label: '3.0s', sub: '長尺' },
+                      ].map(({ sec, label, sub }) => (
+                        <button
+                          key={sec}
+                          type="button"
+                          onClick={() =>
+                            handleTransitionSecChange(
+                              sec as '1.0' | '1.5' | '2.0' | '3.0',
+                            )
+                          }
+                          disabled={isExporting}
+                          className={[
+                            'py-1.5 px-2 text-[10px] rounded-md font-medium transition-all cursor-pointer text-center',
+                            transitionSec === sec
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'text-white/50 hover:text-white',
+                          ].join(' ')}
+                        >
+                          <span className="font-semibold">{label}</span>
+                          <span className="block text-[8px] opacity-70 mt-0.5">
+                            {sub}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Slide Hold / Pause Duration */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-white/70">
+                        Slide Hold Duration
+                      </span>
+                      <span className="text-[9px] text-white/40">
+                        各スライド静止保持
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5 rounded-lg bg-black/40 p-0.5 border border-white/10">
+                      {[
+                        { sec: '0', label: '0s', sub: 'なし・連続' },
+                        { sec: '0.5', label: '0.5s', sub: '推奨・標準' },
+                        { sec: '1.0', label: '1.0s', sub: '1秒保持' },
+                        { sec: '2.0', label: '2.0s', sub: '2秒保持' },
+                      ].map(({ sec, label, sub }) => (
+                        <button
+                          key={sec}
+                          type="button"
+                          onClick={() =>
+                            handlePauseSecChange(
+                              sec as '0' | '0.5' | '1.0' | '2.0',
+                            )
+                          }
+                          disabled={isExporting}
+                          className={[
+                            'py-1.5 px-2 text-[10px] rounded-md font-medium transition-all cursor-pointer text-center',
+                            pauseSec === sec
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'text-white/50 hover:text-white',
+                          ].join(' ')}
+                        >
+                          <span className="font-semibold">{label}</span>
+                          <span className="block text-[8px] opacity-70 mt-0.5">
+                            {sub}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Animation Easing Curve */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-white/70">
+                        Animation Easing Curve
+                      </span>
+                      <span className="text-[9px] text-white/40">
+                        補間イージング
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5 rounded-lg bg-black/40 p-0.5 border border-white/10">
+                      {[
+                        {
+                          val: 'ease-in-out',
+                          label: 'EaseInOut',
+                          sub: '推奨・滑らか',
+                        },
+                        {
+                          val: 'ease-out',
+                          label: 'EaseOut',
+                          sub: '減速・急停止',
+                        },
+                        {
+                          val: 'ease-in',
+                          label: 'EaseIn',
+                          sub: '加速・助走',
+                        },
+                        { val: 'linear', label: 'Linear', sub: '等速直線' },
+                      ].map(({ val, label, sub }) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() =>
+                            handleEasingChange(
+                              val as
+                                | 'ease-in-out'
+                                | 'ease-out'
+                                | 'ease-in'
+                                | 'linear',
+                            )
+                          }
+                          disabled={isExporting}
+                          className={[
+                            'py-1.5 px-2 text-[10px] rounded-md font-medium transition-all cursor-pointer text-center',
+                            selectedEasing === val
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'text-white/50 hover:text-white',
+                          ].join(' ')}
+                        >
+                          <span className="font-semibold">{label}</span>
+                          <span className="block text-[8px] opacity-70 mt-0.5">
+                            {sub}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* GPU Queue Buffer Watermark Control */}

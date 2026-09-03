@@ -26,7 +26,7 @@ import { useKonvaExport } from '../hooks/use-konva-export';
 import { useKonvaVideoExport } from '../hooks/use-konva-video-export';
 import { useTacticalAnimation } from '../hooks/use-tactical-animation';
 import { DrawingToolbar } from '../toolbar/drawing-toolbar';
-import { AnnotationLayer } from './annotation-layer';
+import { AnnotationLayer, getWavyPoints } from './annotation-layer';
 import { BallObject } from './ball-object';
 import { BoundaryBox } from './boundary-box';
 import { createCanvasNodesRegistry } from './canvas-registry';
@@ -173,6 +173,8 @@ export function UnifiedCanvas() {
   const selectObjects = useTacticalUnifiedStore((s) => s.selectObjects);
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
   const addText = useTacticalUnifiedStore((s) => s.addText);
+  const updateText = useTacticalUnifiedStore((s) => s.updateText);
+  const removeText = useTacticalUnifiedStore((s) => s.removeText);
   const addPlayerFromPalette = useTacticalUnifiedStore(
     (s) => s.addPlayerFromPalette,
   );
@@ -188,6 +190,9 @@ export function UnifiedCanvas() {
     isShift: boolean;
   } | null>(null);
   const isErasingRef = useRef(false);
+
+  // インラインテキスト編集状態
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   // Polygon Zone 作成状態
   const [activePolygonId, setActivePolygonId] = useState<string | null>(null);
@@ -208,6 +213,10 @@ export function UnifiedCanvas() {
     selectedObjects.length === 1 && selectedObjects[0].kind === 'zone'
       ? activeSlide?.zones.find((z) => z.id === selectedObjects[0].id)
       : null;
+
+  const editingText = editingTextId
+    ? activeSlide?.texts.find((t) => t.id === editingTextId)
+    : null;
 
   // ツール切り替え時に未完了ポリゴンを破棄
   useEffect(() => {
@@ -452,17 +461,20 @@ export function UnifiedCanvas() {
       }
 
       if (activeTool === 'text') {
+        const newTextId = crypto.randomUUID();
         addText(activeSlideId, {
-          id: crypto.randomUUID(),
+          id: newTextId,
           annotationType: 'text',
           x: normX,
           y: normY,
-          content: 'テキスト',
+          content: '',
           fontSize: 16,
           color: '#ffffff',
           bold: false,
           italic: false,
         });
+        selectObject({ id: newTextId, kind: 'text' });
+        setEditingTextId(newTextId);
         setActiveTool('select');
         return;
       }
@@ -517,6 +529,7 @@ export function UnifiedCanvas() {
         activeTool === 'route_line' ||
         activeTool === 'arrow_solid' ||
         activeTool === 'arrow_dash' ||
+        activeTool === 'arrow_wavy' ||
         activeTool === 'zone_circle' ||
         activeTool === 'arrow-straight' ||
         activeTool === 'arrow-curved' ||
@@ -808,7 +821,7 @@ export function UnifiedCanvas() {
           arrowType: 'line',
           curveType: 'straight',
           points: [startPoint, endPoint],
-          color: '#ffffff',
+          color: '#ef4444',
           strokeWidth: 2.5,
           dashArray: [],
           arrowHead: false,
@@ -856,9 +869,25 @@ export function UnifiedCanvas() {
           arrowType: 'move',
           curveType: 'straight',
           points: [startPoint, endPoint],
-          color: '#fbbf24',
+          color: '#ffffff',
           strokeWidth: 3,
           dashArray: [6, 4],
+          arrowHead: true,
+          endMarker: 'arrow',
+        });
+        if (!continuousDrawing) {
+          setActiveTool('select');
+        }
+      } else if (tool === 'arrow_wavy') {
+        addArrow(activeSlideId, {
+          id: crypto.randomUUID(),
+          annotationType: 'arrow',
+          arrowType: 'dribble',
+          curveType: 'straight',
+          points: [startPoint, endPoint],
+          color: '#fbbf24',
+          strokeWidth: 3,
+          dashArray: [],
           arrowHead: true,
           endMarker: 'arrow',
         });
@@ -987,6 +1016,8 @@ export function UnifiedCanvas() {
               nodesRegistryRef={nodesRegistryRef}
               activePolygonId={activePolygonId}
               mousePreviewPos={mousePreviewPos}
+              editingTextId={editingTextId}
+              onStartEditText={(textId) => setEditingTextId(textId)}
             />
           </Layer>
 
@@ -1022,7 +1053,7 @@ export function UnifiedCanvas() {
                       drawingState.currentX,
                       drawingState.currentY,
                     ]}
-                    stroke="#ffffff"
+                    stroke="#ef4444"
                     strokeWidth={2.5}
                     opacity={0.85}
                     perfectDrawEnabled={false}
@@ -1106,10 +1137,28 @@ export function UnifiedCanvas() {
                       drawingState.currentX,
                       drawingState.currentY,
                     ]}
+                    stroke="#ffffff"
+                    fill="#ffffff"
+                    strokeWidth={3}
+                    dash={[6, 4]}
+                    pointerLength={15}
+                    pointerWidth={15}
+                    opacity={0.85}
+                    perfectDrawEnabled={false}
+                  />
+                )}
+
+                {drawingState.tool === 'arrow_wavy' && (
+                  <Arrow
+                    points={getWavyPoints(
+                      drawingState.startX,
+                      drawingState.startY,
+                      drawingState.currentX,
+                      drawingState.currentY,
+                    )}
                     stroke="#fbbf24"
                     fill="#fbbf24"
                     strokeWidth={3}
-                    dash={[6, 4]}
                     pointerLength={15}
                     pointerWidth={15}
                     opacity={0.85}
@@ -1169,6 +1218,75 @@ export function UnifiedCanvas() {
 
         {/* Contextual Floating HUD */}
         <ContextHud stageSize={stageSize} nodesRegistryRef={nodesRegistryRef} />
+
+        {/* ── ピッチ上インラインテキストエディタ ── */}
+        {editingText && (
+          <textarea
+            ref={(el) => {
+              if (el) {
+                el.focus();
+                el.select();
+              }
+            }}
+            defaultValue={editingText.content}
+            style={{
+              position: 'absolute',
+              left: `${(editingText.x / 100) * stageSize.width}px`,
+              top: `${(editingText.y / 100) * stageSize.height}px`,
+              fontSize: `${editingText.fontSize}px`,
+              color: editingText.color,
+              fontWeight: editingText.bold ? 'bold' : 'normal',
+              fontStyle: editingText.italic ? 'italic' : 'normal',
+              fontFamily:
+                "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+              backgroundColor: 'rgba(0, 0, 0, 0.75)',
+              border: '1.5px solid #38bdf8',
+              borderRadius: '4px',
+              padding: '2px 6px',
+              margin: 0,
+              minWidth: '120px',
+              minHeight: '32px',
+              outline: 'none',
+              resize: 'both',
+              zIndex: 30,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+              lineHeight: 1.25,
+            }}
+            onFocus={(e) => {
+              e.currentTarget.select();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const val = e.currentTarget.value.trim();
+                if (val) {
+                  updateText(activeSlideId, editingText.id, { content: val });
+                } else {
+                  removeText(activeSlideId, editingText.id);
+                  clearSelection();
+                }
+                setEditingTextId(null);
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                if (!editingText.content.trim()) {
+                  removeText(activeSlideId, editingText.id);
+                  clearSelection();
+                }
+                setEditingTextId(null);
+              }
+            }}
+            onBlur={(e) => {
+              const val = e.currentTarget.value.trim();
+              if (val) {
+                updateText(activeSlideId, editingText.id, { content: val });
+              } else {
+                removeText(activeSlideId, editingText.id);
+                clearSelection();
+              }
+              setEditingTextId(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );

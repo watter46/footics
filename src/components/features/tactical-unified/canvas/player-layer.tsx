@@ -29,11 +29,7 @@ import {
   SPOTLIGHT_VIEWBOX_WIDTH,
 } from '@/lib/tactical/marker-assets';
 import { getLastName } from '@/lib/tactical/player-formatting';
-import {
-  getBezierControlPoint,
-  getBezierMidpoint,
-  getQuadraticBezierPoints,
-} from '@/lib/tactical/trajectory';
+import { getQuadraticBezierPoints } from '@/lib/tactical/trajectory';
 import type {
   ArrowAnnotation,
   Player,
@@ -47,6 +43,7 @@ import {
   useTacticalUnifiedStore,
 } from '@/stores/tactical-unified-store';
 import type { CanvasNodesRegistry } from './canvas-registry';
+import { GhostTrajectoryArrow } from './ghost-trajectory-arrow';
 
 export interface PlayerLayerProps {
   slide: Slide;
@@ -89,77 +86,6 @@ function SelectedPlayerGhostTrajectory({
 
   const sPxX = normX(prevPlayer.x, width);
   const sPxY = normY(prevPlayer.y, height);
-  const ePxX = normX(player.x, width);
-  const ePxY = normY(player.y, height);
-
-  const dist = Math.hypot(ePxX - sPxX, ePxY - sPxY);
-  const isMoved = dist >= 4;
-
-  const p0Norm = { x: prevPlayer.x, y: prevPlayer.y };
-  const p1Norm = { x: player.x, y: player.y };
-  const cpNorm = getBezierControlPoint(p0Norm, p1Norm, player.trajectory);
-  const cpPxX = normX(cpNorm.x, width);
-  const cpPxY = normY(cpNorm.y, height);
-
-  const isCurved =
-    player.trajectory?.type === 'custom' ||
-    player.trajectory?.type === 'arc_left' ||
-    player.trajectory?.type === 'arc_right' ||
-    player.trajectory?.controlPoint !== undefined;
-
-  const midHandlePx = isCurved
-    ? getBezierMidpoint(
-        { x: sPxX, y: sPxY },
-        { x: ePxX, y: ePxY },
-        { x: cpPxX, y: cpPxY },
-      )
-    : { x: (sPxX + ePxX) / 2, y: (sPxY + ePxY) / 2 };
-
-  const arrowRef = useRef<any>(null);
-
-  const calcArrowPoints = (
-    sX: number,
-    sY: number,
-    eX: number,
-    eY: number,
-    cpX?: number,
-    cpY?: number,
-  ) => {
-    if (cpX === undefined || cpY === undefined) {
-      const dx = eX - sX;
-      const dy = eY - sY;
-      const d = Math.hypot(dx, dy);
-      if (d > radius * 2) {
-        const ux = dx / d;
-        const uy = dy / d;
-        return [
-          sX + ux * radius,
-          sY + uy * radius,
-          eX - ux * (radius + 3),
-          eY - uy * (radius + 3),
-        ];
-      }
-      return [sX, sY, eX, eY];
-    } else {
-      const v0x = cpX - sX;
-      const v0y = cpY - sY;
-      const d0 = Math.hypot(v0x, v0y) || 1;
-      const startX = sX + (v0x / d0) * radius;
-      const startY = sY + (v0y / d0) * radius;
-
-      const v1x = eX - cpX;
-      const v1y = eY - cpY;
-      const d1 = Math.hypot(v1x, v1y) || 1;
-      const endX = eX - (v1x / d1) * (radius + 3);
-      const endY = eY - (v1y / d1) * (radius + 3);
-
-      return getQuadraticBezierPoints(startX, startY, cpX, cpY, endX, endY);
-    }
-  };
-
-  const initialPoints = isCurved
-    ? calcArrowPoints(sPxX, sPxY, ePxX, ePxY, cpPxX, cpPxY)
-    : calcArrowPoints(sPxX, sPxY, ePxX, ePxY);
 
   return (
     <Group>
@@ -204,108 +130,17 @@ function SelectedPlayerGhostTrajectory({
         )}
       </Group>
 
-      {/* ── 移動軌道矢印 ── */}
-      {isMoved && (
-        <Arrow
-          ref={arrowRef}
-          points={initialPoints}
-          stroke="#38bdf8"
-          fill="#38bdf8"
-          strokeWidth={2.5}
-          dash={[5, 3]}
-          pointerLength={8}
-          pointerWidth={6}
-          opacity={0.85}
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      )}
-
-      {/* ── 汎用ベジェ曲線制御ポインタ（黄色の丸ハンドル） ── */}
-      {isMoved && (
-        <Circle
-          x={midHandlePx.x}
-          y={midHandlePx.y}
-          radius={6.5}
-          fill="#f59e0b"
-          stroke="#ffffff"
-          strokeWidth={2}
-          shadowColor="rgba(0,0,0,0.5)"
-          shadowBlur={4}
-          perfectDrawEnabled={false}
-          draggable
-          onMouseEnter={(e) => {
-            const stage = e.target.getStage();
-            if (stage) stage.container().style.cursor = 'grab';
-          }}
-          onMouseLeave={(e) => {
-            const stage = e.target.getStage();
-            if (stage) stage.container().style.cursor = 'default';
-          }}
-          onDragStart={(e) => {
-            e.cancelBubble = true;
-            const stage = e.target.getStage();
-            if (stage) stage.container().style.cursor = 'grabbing';
-          }}
-          onDragMove={(e) => {
-            e.cancelBubble = true;
-            const pos = e.target.position();
-            // 2次ベジェ中間点 M から制御点 CP を逆算: CP = 2*M - 0.5*(P0 + P1)
-            const calcCpX = 2 * pos.x - 0.5 * (sPxX + ePxX);
-            const calcCpY = 2 * pos.y - 0.5 * (sPxY + ePxY);
-
-            if (arrowRef.current) {
-              const pts = calcArrowPoints(
-                sPxX,
-                sPxY,
-                ePxX,
-                ePxY,
-                calcCpX,
-                calcCpY,
-              );
-              arrowRef.current.points(pts);
-              arrowRef.current.getLayer()?.batchDraw();
-            }
-          }}
-          onDragEnd={(e) => {
-            e.cancelBubble = true;
-            const pos = e.target.position();
-            const calcCpX = 2 * pos.x - 0.5 * (sPxX + ePxX);
-            const calcCpY = 2 * pos.y - 0.5 * (sPxY + ePxY);
-
-            const newNormX = Math.max(
-              0,
-              Math.min(100, (calcCpX / width) * 100),
-            );
-            const newNormY = Math.max(
-              0,
-              Math.min(100, (calcCpY / height) * 100),
-            );
-
-            const stage = e.target.getStage();
-            if (stage) stage.container().style.cursor = 'default';
-
-            // 直線との距離判定 (6px未満なら直線へリセット)
-            const midPxX = (sPxX + ePxX) / 2;
-            const midPxY = (sPxY + ePxY) / 2;
-            const distFromMid = Math.hypot(pos.x - midPxX, pos.y - midPxY);
-
-            if (distFromMid < 6.0) {
-              onUpdateTrajectory(activeSlideId, player.id, {
-                type: 'straight',
-              });
-            } else {
-              onUpdateTrajectory(activeSlideId, player.id, {
-                type: 'custom',
-                controlPoint: {
-                  x: Math.round(newNormX * 10) / 10,
-                  y: Math.round(newNormY * 10) / 10,
-                },
-              });
-            }
-          }}
-        />
-      )}
+      {/* ── 移動軌道矢印 & 制御ポインタ (ツールバー矢印と完全同一の安定仕様) ── */}
+      <GhostTrajectoryArrow
+        startPos={{ x: prevPlayer.x, y: prevPlayer.y }}
+        endPos={{ x: player.x, y: player.y }}
+        trajectory={player.trajectory}
+        stageSize={stageSize}
+        color="#38bdf8"
+        onUpdateTrajectory={(traj) =>
+          onUpdateTrajectory(activeSlideId, player.id, traj)
+        }
+      />
     </Group>
   );
 }
@@ -682,6 +517,8 @@ const PlayerMarker = React.memo(function PlayerMarker({
   const connectingPlayerId = useTacticalUnifiedStore(
     (s) => s.connectingPlayerId,
   );
+  const setRightPanelTab = useTacticalUnifiedStore((s) => s.setRightPanelTab);
+  const setRightPanelOpen = useTacticalUnifiedStore((s) => s.setRightPanelOpen);
   const isInteractive = activeTool === 'select' || connectingPlayerId !== null;
 
   const { width, height } = stageSize;
@@ -791,6 +628,16 @@ const PlayerMarker = React.memo(function PlayerMarker({
       })}
       onClick={onSelect}
       onTap={onSelect}
+      onDblClick={(e) => {
+        e.cancelBubble = true;
+        setRightPanelTab('inspector');
+        setRightPanelOpen(true);
+      }}
+      onDblTap={(e) => {
+        e.cancelBubble = true;
+        setRightPanelTab('inspector');
+        setRightPanelOpen(true);
+      }}
       onDragStart={(e) => {
         onDragStart(e as KonvaEventObject<DragEvent>, player);
         if (dragGlowRef.current) {

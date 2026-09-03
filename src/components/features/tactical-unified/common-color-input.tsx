@@ -9,8 +9,10 @@ import { Pipette } from 'lucide-react';
 
 export const COLOR_PALETTE = [
   '#ffffff', // White
+  '#000000', // Black
   '#ef4444', // Red
   '#3b82f6', // Blue
+  '#034694', // Chelsea Blue
   '#22c55e', // Green
   '#eab308', // Yellow
   '#f97316', // Orange
@@ -35,7 +37,7 @@ export function ColorInput({
       className={`space-y-1.5 ${className}`}
       style={{ colorScheme: 'only light' }}
     >
-      <div className="grid grid-cols-4 gap-1">
+      <div className="grid grid-cols-5 gap-1">
         {COLOR_PALETTE.map((c) => {
           const isSelected = value.toLowerCase() === c.toLowerCase();
           const isWhite = c.toLowerCase() === '#ffffff';

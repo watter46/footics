@@ -10,10 +10,12 @@ import { Circle, Group, Image as KonvaImage, Line } from 'react-konva';
 import { getSoccerBallImage } from '@/lib/tactical/soccer-ball-svg';
 import type { BallState } from '@/lib/types/tactical-unified';
 import {
+  selectActiveSlide,
   selectPreviousSlide,
   useTacticalUnifiedStore,
 } from '@/stores/tactical-unified-store';
 import type { CanvasNodesRegistry } from './canvas-registry';
+import { GhostTrajectoryArrow } from './ghost-trajectory-arrow';
 import { normToPx } from './unified-canvas';
 
 interface BallObjectProps {
@@ -28,8 +30,16 @@ export const BallObject = React.memo(function BallObject({
   nodesRegistryRef,
 }: BallObjectProps) {
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+  const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
   const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
   const setBallPosition = useTacticalUnifiedStore((s) => s.setBallPosition);
+  const updateBallTrajectory = useTacticalUnifiedStore(
+    (s) => s.updateBallTrajectory,
+  );
+  const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
+  const isSelected = useTacticalUnifiedStore((s) =>
+    s.selectedObjects.some((o) => o.kind === 'ball'),
+  );
   const [ballImage, setBallImage] = useState<HTMLImageElement | null>(null);
 
   const ghostGroupRef = useRef<any>(null);
@@ -49,8 +59,59 @@ export const BallObject = React.memo(function BallObject({
   const px = normToPx(ball.x, stageSize.width);
   const py = normToPx(ball.y, stageSize.height);
 
+  const prevBall = prevSlide?.ball;
+  const hasPrevBall =
+    (activeSlide?.index ?? 0) >= 1 &&
+    Boolean(prevBall?.visible) &&
+    ball.visible;
+  const prevPxX = prevBall ? normToPx(prevBall.x, stageSize.width) : 0;
+  const prevPxY = prevBall ? normToPx(prevBall.y, stageSize.height) : 0;
+  const isBallMoved = prevBall
+    ? Math.hypot(px - prevPxX, py - prevPxY) >= 4
+    : false;
+
   return (
     <>
+      {/* ── ボール選択時のゴーストボール & 追跡矢印 & ベジェハンドル (常時表示: activeSlideIndex >= 1) ── */}
+      {isSelected && hasPrevBall && prevBall && isBallMoved && (
+        <Group>
+          {/* ── 1つ前のスライドの位置（ゴーストボール） ── */}
+          <Group x={prevPxX} y={prevPxY} opacity={0.45} listening={false}>
+            {ballImage ? (
+              <KonvaImage
+                image={ballImage}
+                x={-radius}
+                y={-radius}
+                width={radius * 2}
+                height={radius * 2}
+                perfectDrawEnabled={false}
+              />
+            ) : (
+              <Circle
+                radius={radius}
+                fill="#ffffff"
+                stroke="#0f172a"
+                strokeWidth={1.5}
+                dash={[3, 2]}
+                perfectDrawEnabled={false}
+              />
+            )}
+          </Group>
+
+          {/* ── ボール追跡矢印 & 制御ポインタ ── */}
+          <GhostTrajectoryArrow
+            startPos={{ x: prevBall.x, y: prevBall.y }}
+            endPos={{ x: ball.x, y: ball.y }}
+            trajectory={ball.trajectory}
+            stageSize={stageSize}
+            color="#38bdf8"
+            onUpdateTrajectory={(traj) =>
+              updateBallTrajectory(activeSlideId, traj)
+            }
+          />
+        </Group>
+      )}
+
       {/* ── ボールドラッグ中限定オニオンスキン (前スライドゴースト & 軌跡プレビュー) ── */}
       <Group ref={ghostGroupRef} visible={false} listening={false}>
         <Line
@@ -91,7 +152,17 @@ export const BallObject = React.memo(function BallObject({
           x: Math.max(0, Math.min(stageSize.width, pos.x)),
           y: Math.max(0, Math.min(stageSize.height, pos.y)),
         })}
+        onClick={(e) => {
+          e.cancelBubble = true;
+          const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
+          selectObject({ id: 'ball', kind: 'ball' }, isShift);
+        }}
+        onTap={(e) => {
+          e.cancelBubble = true;
+          selectObject({ id: 'ball', kind: 'ball' }, false);
+        }}
         onDragStart={(e) => {
+          selectObject({ id: 'ball', kind: 'ball' }, false);
           const node = e.currentTarget;
           node.scale({ x: 1.25, y: 1.25 });
           node.moveToTop();
@@ -99,17 +170,17 @@ export const BallObject = React.memo(function BallObject({
           if (stage) stage.container().style.cursor = 'grabbing';
 
           // 前スライドにおけるボール座標を取得
-          const prevBall = prevSlide?.ball;
-          if (prevBall?.visible) {
-            const prevPxX = normToPx(prevBall.x, stageSize.width);
-            const prevPxY = normToPx(prevBall.y, stageSize.height);
-            prevBallPxRef.current = { x: prevPxX, y: prevPxY };
+          const prevB = prevSlide?.ball;
+          if (prevB?.visible) {
+            const pPxX = normToPx(prevB.x, stageSize.width);
+            const pPxY = normToPx(prevB.y, stageSize.height);
+            prevBallPxRef.current = { x: pPxX, y: pPxY };
 
             if (ghostGroupRef.current) {
-              ghostGroupRef.current.position({ x: prevPxX, y: prevPxY });
+              ghostGroupRef.current.position({ x: pPxX, y: pPxY });
             }
             if (ghostLineRef.current) {
-              ghostLineRef.current.points([prevPxX, prevPxY, px, py]);
+              ghostLineRef.current.points([pPxX, pPxY, px, py]);
             }
             if (ghostGroupRef.current) {
               ghostGroupRef.current.visible(true);
@@ -164,6 +235,21 @@ export const BallObject = React.memo(function BallObject({
           listening={true}
           perfectDrawEnabled={false}
         />
+
+        {/* 選択中のハイライトリング */}
+        {isSelected && (
+          <Circle
+            radius={radius + 3.5}
+            stroke="#38bdf8"
+            strokeWidth={1.5}
+            dash={[3, 2]}
+            shadowColor="#38bdf8"
+            shadowBlur={4}
+            shadowOpacity={0.6}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        )}
 
         {/* リアルなサッカーボール画像 (SVG) */}
         {ballImage ? (

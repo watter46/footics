@@ -11,7 +11,15 @@
  *  - Text: font size, color, delete
  */
 
-import { Circle, Minus, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
+import {
+  Eye,
+  Link,
+  Minus,
+  MoveRight,
+  Plus,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -72,6 +80,26 @@ function SolidLineIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+function DashedArrowIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="3" y1="12" x2="6" y2="12" />
+      <line x1="10" y1="12" x2="13" y2="12" />
+      <line x1="17" y1="12" x2="19" y2="12" />
+      <polyline points="15 8 19 12 15 16" />
+    </svg>
+  );
+}
+
 interface MiniColorPickerProps {
   value: string;
   onChange: (color: string) => void;
@@ -124,12 +152,12 @@ function MiniColorPicker({
           role="dialog"
           aria-label="カラーパレット"
           tabIndex={-1}
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#1b1b1b] border border-white/20 rounded-xl shadow-2xl z-50 flex flex-col gap-1.5 w-36"
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#1b1b1b] border border-white/20 rounded-xl shadow-2xl z-50 flex flex-col gap-1.5 w-44"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <div className="grid grid-cols-4 gap-1">
+          <div className="grid grid-cols-5 gap-1">
             {COLOR_PALETTE.map((c) => (
               <button
                 key={c}
@@ -190,9 +218,13 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
   const removeZone = useTacticalUnifiedStore((s) => s.removeZone);
   const updateText = useTacticalUnifiedStore((s) => s.updateText);
   const removeText = useTacticalUnifiedStore((s) => s.removeText);
-  const setInspectorOpen = useTacticalUnifiedStore((s) => s.setInspectorOpen);
-  const setRightPanelTab = useTacticalUnifiedStore((s) => s.setRightPanelTab);
-  const setRightPanelOpen = useTacticalUnifiedStore((s) => s.setRightPanelOpen);
+  const addArrow = useTacticalUnifiedStore((s) => s.addArrow);
+  const connectingPlayerId = useTacticalUnifiedStore(
+    (s) => s.connectingPlayerId,
+  );
+  const setConnectingPlayerId = useTacticalUnifiedStore(
+    (s) => s.setConnectingPlayerId,
+  );
 
   // ドラッグ中は直接DOM参照で一時的にHUDを非表示にしてRule 15に適合
   useEffect(() => {
@@ -325,12 +357,6 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
     ? pxY + elementHeight / 2 + 12
     : pxY - elementHeight / 2 - 12;
 
-  const openInspector = () => {
-    setRightPanelOpen(true);
-    setInspectorOpen(true);
-    setRightPanelTab('inspector');
-  };
-
   return (
     <div
       ref={hudRef}
@@ -357,32 +383,41 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
             );
             if (!player) return null;
 
+            const isRing = player.style?.markerType === 'ring';
+            const currentScale = player.style?.sizeScale ?? 1.0;
+            const hasVisionCone = player.visionCone?.visible ?? false;
+            const hasFocus = player.focus?.enabled ?? false;
+            const isConnecting = connectingPlayerId === player.id;
+
             return (
               <>
-                {/* 背番号入力 */}
-                <div className="flex items-center bg-white/10 rounded-md px-1.5 py-0.5 text-xs text-white">
-                  <span className="text-white/40 font-semibold text-[10px] select-none mr-1">
-                    #
-                  </span>
-                  <input
-                    type="text"
-                    value={player.shirtNo ?? ''}
-                    onChange={(e) => {
-                      updatePlayer(activeSlideId, player.id, {
-                        shirtNo: e.target.value,
-                      });
-                    }}
-                    className="w-6 bg-transparent text-white font-mono text-xs text-center focus:outline-none focus:bg-white/10 rounded"
-                    maxLength={3}
-                    placeholder="-"
-                    title="背番号"
-                    aria-label="背番号"
-                  />
-                </div>
+                {/* 1. 背番号入力 (サークルマーカー時のみ表示) */}
+                {!isRing && (
+                  <>
+                    <div className="flex items-center bg-white/10 rounded-md px-1.5 py-0.5 text-xs text-white">
+                      <span className="text-white/40 font-semibold text-[10px] select-none mr-1">
+                        #
+                      </span>
+                      <input
+                        type="text"
+                        value={player.shirtNo ?? ''}
+                        onChange={(e) => {
+                          updatePlayer(activeSlideId, player.id, {
+                            shirtNo: e.target.value,
+                          });
+                        }}
+                        className="w-6 bg-transparent text-white font-mono text-xs text-center focus:outline-none focus:bg-white/10 rounded"
+                        maxLength={3}
+                        placeholder="-"
+                        title="背番号"
+                        aria-label="背番号"
+                      />
+                    </div>
+                    <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+                  </>
+                )}
 
-                <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
-
-                {/* メインカラー */}
+                {/* 2. メインカラー (サークル/リング共通) */}
                 <MiniColorPicker
                   value={player.style?.color ?? '#ef4444'}
                   onChange={(color) => {
@@ -390,50 +425,235 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
                       style: { ...player.style, color },
                     });
                   }}
-                  title="メインカラー (塗り)"
+                  title="メインカラー"
                 />
 
-                {/* 枠線/リングカラー */}
-                <MiniColorPicker
-                  value={player.style?.strokeColor ?? '#ffffff'}
-                  onChange={(strokeColor) => {
-                    updatePlayer(activeSlideId, player.id, {
-                      style: { ...player.style, strokeColor },
-                    });
-                  }}
-                  title="枠線カラー (リング)"
-                  isRing
-                />
+                {/* 3. 枠線/リングカラー (サークルマーカー時のみ表示) */}
+                {!isRing && (
+                  <MiniColorPicker
+                    value={player.style?.strokeColor ?? '#ffffff'}
+                    onChange={(strokeColor) => {
+                      updatePlayer(activeSlideId, player.id, {
+                        style: { ...player.style, strokeColor },
+                      });
+                    }}
+                    title="枠線カラー"
+                    isRing
+                  />
+                )}
 
                 <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
 
-                {/* マーカー形状切替 (サークル / 3Dリング) */}
+                {/* 4. スケール変更 (縮小 / 拡大) */}
+                <div className="flex items-center bg-white/10 rounded-md px-1 py-0.5 gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = Math.max(
+                        0.6,
+                        Number((currentScale - 0.1).toFixed(1)),
+                      );
+                      updatePlayer(activeSlideId, player.id, {
+                        style: { ...player.style, sizeScale: next },
+                      });
+                    }}
+                    className="p-0.5 rounded text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    title="マーカースケール縮小 (-0.1)"
+                  >
+                    <Minus size={11} />
+                  </button>
+                  <span className="text-[10px] font-mono text-white/90 px-0.5 select-none">
+                    {currentScale.toFixed(1)}x
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = Math.min(
+                        2.0,
+                        Number((currentScale + 0.1).toFixed(1)),
+                      );
+                      updatePlayer(activeSlideId, player.id, {
+                        style: { ...player.style, sizeScale: next },
+                      });
+                    }}
+                    className="p-0.5 rounded text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    title="マーカースケール拡大 (+0.1)"
+                  >
+                    <Plus size={11} />
+                  </button>
+                </div>
+
+                <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+
+                {/* 5. マーカーオプション群 */}
+                {/* 5a. Vision Cone */}
                 <button
                   type="button"
                   onClick={() => {
-                    const nextType =
-                      player.style?.markerType === 'ring' ? 'circle' : 'ring';
+                    const nextVisible = !hasVisionCone;
                     updatePlayer(activeSlideId, player.id, {
-                      style: { ...player.style, markerType: nextType },
+                      visionCone: {
+                        id: player.visionCone?.id ?? crypto.randomUUID(),
+                        angleRad: player.visionCone?.angleRad ?? 0,
+                        spreadRad:
+                          player.visionCone?.spreadRad ?? (60 * Math.PI) / 180,
+                        radius: player.visionCone?.radius ?? 13,
+                        color:
+                          player.visionCone?.color ??
+                          player.style?.color ??
+                          '#38bdf8',
+                        opacity: player.visionCone?.opacity ?? 0.25,
+                        visible: nextVisible,
+                      },
+                    });
+                  }}
+                  className={`p-1 rounded-md transition-colors cursor-pointer ${
+                    hasVisionCone
+                      ? 'text-sky-400 bg-sky-500/20'
+                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                  }`}
+                  title={
+                    hasVisionCone
+                      ? '視野コーンON (クリックでOFF)'
+                      : '視野コーンを追加'
+                  }
+                >
+                  <Eye size={13} />
+                </button>
+
+                {/* 5b. Connect Line */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isConnecting) {
+                      setConnectingPlayerId(null);
+                    } else {
+                      setConnectingPlayerId(player.id);
+                    }
+                  }}
+                  className={`p-1 rounded-md transition-colors cursor-pointer ${
+                    isConnecting
+                      ? 'text-emerald-400 bg-emerald-500/30 animate-pulse'
+                      : player.connectLines?.length > 0
+                        ? 'text-emerald-400 bg-emerald-500/20'
+                        : 'text-white/70 hover:text-white hover:bg-white/10'
+                  }`}
+                  title={
+                    isConnecting
+                      ? '対象選手を選択中 (クリックでキャンセル)'
+                      : 'コネクトラインを追加 (クリック後に対象選手を選択)'
+                  }
+                >
+                  <Link size={13} />
+                </button>
+
+                {/* 5c. Solid Arrow */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const dir = player.team === 'away' ? -15 : 15;
+                    addArrow(activeSlideId, {
+                      id: crypto.randomUUID(),
+                      annotationType: 'arrow',
+                      arrowType: 'pass',
+                      curveType: 'straight',
+                      sourcePlayerId: player.id,
+                      points: [
+                        { x: player.x, y: player.y },
+                        { x: player.x + dir, y: player.y },
+                      ],
+                      color: player.style?.color || '#38bdf8',
+                      strokeWidth: 3,
+                      dashArray: [],
+                      arrowHead: true,
+                      endMarker: 'arrow',
                     });
                   }}
                   className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  title="実線矢印を追加 (パス/シュート)"
+                >
+                  <MoveRight size={13} />
+                </button>
+
+                {/* 5d. Dashed Arrow */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const dir = player.team === 'away' ? -15 : 15;
+                    addArrow(activeSlideId, {
+                      id: crypto.randomUUID(),
+                      annotationType: 'arrow',
+                      arrowType: 'move',
+                      curveType: 'straight',
+                      sourcePlayerId: player.id,
+                      points: [
+                        { x: player.x, y: player.y },
+                        { x: player.x + dir, y: player.y },
+                      ],
+                      color: '#ffffff',
+                      strokeWidth: 3,
+                      dashArray: [6, 4],
+                      arrowHead: true,
+                      endMarker: 'arrow',
+                    });
+                  }}
+                  className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  title="点線矢印を追加 (フリーラン/移動)"
+                >
+                  <DashedArrowIcon size={13} />
+                </button>
+
+                {/* 5e. Focus / Spotlight */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextEnabled = !hasFocus;
+                    updatePlayer(activeSlideId, player.id, {
+                      focus: {
+                        enabled: nextEnabled,
+                        color: player.focus?.color ?? '#fbbf24',
+                        radius: player.focus?.radius ?? 22,
+                        opacity: player.focus?.opacity ?? 0.35,
+                        style: player.focus?.style ?? 'spotlight',
+                      },
+                    });
+                  }}
+                  className={`p-1 rounded-md transition-colors cursor-pointer ${
+                    hasFocus
+                      ? 'text-yellow-400 bg-yellow-500/20'
+                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                  }`}
                   title={
-                    player.style?.markerType === 'ring'
-                      ? '3Dフットリング表示中 (サークルへ切替)'
-                      : 'サークルマーカー表示中 (3Dリングへ切替)'
+                    hasFocus
+                      ? 'スポットライトON (クリックでOFF)'
+                      : 'スポットライトを追加'
                   }
                 >
-                  {player.style?.markerType === 'ring' ? (
-                    <RingMarkerIcon size={14} />
-                  ) : (
-                    <Circle size={14} />
-                  )}
+                  <Sparkles size={13} />
                 </button>
+
+                {/* 6. マーカー形状切替 (サークルマーカー時のみ表示) */}
+                {!isRing && (
+                  <>
+                    <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updatePlayer(activeSlideId, player.id, {
+                          style: { ...player.style, markerType: 'ring' },
+                        });
+                      }}
+                      className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                      title="3Dリングへ切替"
+                    >
+                      <RingMarkerIcon size={14} />
+                    </button>
+                  </>
+                )}
 
                 <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
 
-                {/* 削除ボタン */}
+                {/* 7. 削除ボタン */}
                 <button
                   type="button"
                   onClick={() => {
@@ -680,17 +900,6 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
               </>
             );
           })()}
-
-        {/* ── 詳細インスペクターを開く ── */}
-        <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
-        <button
-          type="button"
-          onClick={openInspector}
-          className="p-1 rounded-md text-white/50 hover:text-sky-400 hover:bg-white/10 transition-colors cursor-pointer"
-          title="詳細インスペクターを開く"
-        >
-          <SlidersHorizontal size={13} />
-        </button>
       </div>
     </div>
   );

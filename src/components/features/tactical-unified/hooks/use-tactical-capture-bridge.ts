@@ -10,17 +10,18 @@
 
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import {
+  TACTICAL_BRIDGE_CHANNEL,
+  TACTICAL_CAPTURE_CUSTOM_EVENT,
+  TACTICAL_CAPTURE_PULL_CUSTOM_EVENT,
+  TACTICAL_CAPTURE_PULL_WINDOW_MESSAGE,
+  TACTICAL_CAPTURE_WINDOW_MESSAGE,
+  type TacticalCaptureEventPayload,
+  TacticalCapturePayloadSchema,
+} from '@/lib/types/capture-protocol';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
 
-const TACTICAL_BRIDGE_CHANNEL = 'footics-tactical-bridge';
-
-export interface TacticalCaptureEventPayload {
-  id: string;
-  dataUrl: string;
-  timestamp: number;
-  sourceUrl?: string;
-  title?: string;
-}
+export type { TacticalCaptureEventPayload };
 
 export function useTacticalCaptureBridge() {
   const setImageBackground = useTacticalUnifiedStore(
@@ -29,8 +30,13 @@ export function useTacticalCaptureBridge() {
   const processedIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const handleCaptureData = (payload: TacticalCaptureEventPayload) => {
-      if (!payload?.dataUrl || processedIdsRef.current.has(payload.id)) {
+    const handleCaptureData = (rawPayload: unknown) => {
+      const parsed = TacticalCapturePayloadSchema.safeParse(rawPayload);
+      if (!parsed.success) {
+        return;
+      }
+      const payload = parsed.data;
+      if (!payload.dataUrl || processedIdsRef.current.has(payload.id)) {
         return;
       }
       processedIdsRef.current.add(payload.id);
@@ -49,7 +55,7 @@ export function useTacticalCaptureBridge() {
     // 1. window.addEventListener('message') による受信 (Isolated World -> Main World)
     const handleWindowMessage = (event: MessageEvent) => {
       if (
-        event.data?.type === 'FOOTICS_TACTICAL_CAPTURE_PAYLOAD' &&
+        event.data?.type === TACTICAL_CAPTURE_WINDOW_MESSAGE &&
         event.data?.payload
       ) {
         console.log(
@@ -63,24 +69,20 @@ export function useTacticalCaptureBridge() {
 
     // 2. CustomEvent からの受信（Content Script -> Main World）
     const handleCustomEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<TacticalCaptureEventPayload>;
+      const customEvent = e as CustomEvent<unknown>;
       if (customEvent.detail) {
         console.log(
-          '🎯 [TacticalBridge] Received capture via footics-tactical-capture-received CustomEvent:',
-          customEvent.detail.id,
+          '🎯 [TacticalBridge] Received capture via footics-tactical-capture-received CustomEvent',
         );
         handleCaptureData(customEvent.detail);
       }
     };
-    window.addEventListener(
-      'footics-tactical-capture-received',
-      handleCustomEvent,
-    );
+    window.addEventListener(TACTICAL_CAPTURE_CUSTOM_EVENT, handleCustomEvent);
 
     // 3. 拡張機能 (Content Script) へ「最新キャプチャデータ」を能動的に Pull 要求
     const requestPendingCapture = () => {
-      window.dispatchEvent(new CustomEvent('footics-request-pending-capture'));
-      window.postMessage({ type: 'FOOTICS_REQUEST_PENDING_CAPTURE' }, '*');
+      window.dispatchEvent(new CustomEvent(TACTICAL_CAPTURE_PULL_CUSTOM_EVENT));
+      window.postMessage({ type: TACTICAL_CAPTURE_PULL_WINDOW_MESSAGE }, '*');
     };
 
     // マウント直後、および 100ms, 300ms, 800ms, 1500ms 後に能動的に Pull 要求を送信
@@ -122,7 +124,7 @@ export function useTacticalCaptureBridge() {
       }
       window.removeEventListener('message', handleWindowMessage);
       window.removeEventListener(
-        'footics-tactical-capture-received',
+        TACTICAL_CAPTURE_CUSTOM_EVENT,
         handleCustomEvent,
       );
       window.removeEventListener('focus', handleFocus);

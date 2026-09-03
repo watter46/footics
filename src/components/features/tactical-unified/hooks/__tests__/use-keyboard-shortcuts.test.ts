@@ -321,4 +321,69 @@ describe('useKeyboardShortcuts', () => {
         .project.slides.find((s) => s.id === slideId)?.players,
     ).toHaveLength(initialCount + 1);
   });
+
+  it('オブジェクト非選択時に Delete キーでアクティブスライドが削除され、Ctrl+Z で復元される', () => {
+    renderHook(() => useKeyboardShortcuts());
+    const store = useTacticalUnifiedStore.getState();
+
+    // スライドを追加して2枚にする
+    act(() => {
+      store.addSlide();
+    });
+
+    expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(2);
+    const addedSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+
+    // オブジェクト非選択状態で Delete キーを押す
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Delete',
+          bubbles: true,
+        }),
+      );
+    });
+
+    // スライドが1枚に減る
+    expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(1);
+    expect(
+      useTacticalUnifiedStore
+        .getState()
+        .project.slides.some((s) => s.id === addedSlideId),
+    ).toBe(false);
+
+    // Ctrl+Z で削除前のスライドが完全復元される
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'z',
+          ctrlKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+
+    expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(2);
+    expect(
+      useTacticalUnifiedStore
+        .getState()
+        .project.slides.some((s) => s.id === addedSlideId),
+    ).toBe(true);
+  });
+
+  it('スライドが1枚のみのときに Delete キーを押しても削除されない（最低1枚制限）', () => {
+    renderHook(() => useKeyboardShortcuts());
+    expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(1);
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Delete',
+          bubbles: true,
+        }),
+      );
+    });
+
+    expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(1);
+  });
 });

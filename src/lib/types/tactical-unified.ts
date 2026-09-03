@@ -286,6 +286,7 @@ export const BallStateSchema = z.object({
   x: z.number(),
   y: z.number(),
   visible: z.boolean().default(true),
+  trajectory: PlayerTrajectorySchema.optional(),
 });
 export type BallState = z.infer<typeof BallStateSchema>;
 
@@ -503,6 +504,7 @@ export const DrawingToolSchema = z.enum([
   'route_line',
   'arrow_solid',
   'arrow_dash',
+  'arrow_wavy',
   'zone_circle',
   'polygon_zone',
   'eraser',
@@ -639,3 +641,37 @@ export function createDefaultPlayer(
     badges: [],
   };
 }
+
+// ─────────────────────────────────────────
+// § 16. Capture Protocol Contracts (Web <-> Extension)
+// ─────────────────────────────────────────
+
+export {
+  createTacticalCapturePayload,
+  type FooticsRequestPendingCaptureMessage,
+  FooticsRequestPendingCaptureMessageSchema,
+  type FooticsTacticalCaptureMessage,
+  FooticsTacticalCaptureMessageSchema,
+  isTacticalCapturePayload,
+  type RequestTabCaptureResponse,
+  RequestTabCaptureResponseSchema,
+  type SendCaptureToTacticalRequest,
+  SendCaptureToTacticalRequestSchema,
+  type SendCaptureToTacticalResponse,
+  SendCaptureToTacticalResponseSchema,
+  safeParseTacticalCapturePayload,
+  TACTICAL_BRIDGE_CHANNEL,
+  TACTICAL_BRIDGE_MESSAGE_TYPES,
+  TACTICAL_CAPTURE_CUSTOM_EVENT,
+  TACTICAL_CAPTURE_PULL_CUSTOM_EVENT,
+  TACTICAL_CAPTURE_PULL_WINDOW_MESSAGE,
+  TACTICAL_CAPTURE_WINDOW_MESSAGE,
+  TACTICAL_STORAGE_KEYS,
+  type TacticalBroadcastMessage,
+  TacticalBroadcastMessageSchema,
+  type TacticalCaptureEventPayload,
+  TacticalCaptureEventPayloadSchema,
+  type TacticalCapturePayload,
+  TacticalCapturePayloadSchema,
+  validateTacticalCapturePayload,
+} from './capture-protocol';
