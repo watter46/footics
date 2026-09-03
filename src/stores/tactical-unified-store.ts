@@ -147,7 +147,7 @@ export interface TacticalUnifiedState
   setAspectRatio: (ratio: AspectRatio) => void;
 
   // ─ ピッチ左右チーム入れ替え
-  swapTeamSides: (slideId: string) => void;
+  swapTeamSides: (slideId?: string) => void;
 
   // ─ エクスポート境界線 (BoundaryBox)
   setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
@@ -644,11 +644,12 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
 
     swapTeamSides: (slideId) =>
       set((s) => {
+        const targetSlideId = slideId ?? s.activeSlideId;
         const isVertical = s.project.aspectRatio === '9:16';
 
         return {
           ...recordHistory(s),
-          project: updateSlideInProject(s.project, slideId, (sl) => ({
+          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
             ...sl,
             players: sl.players.map((p) => ({
               ...p,

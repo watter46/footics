@@ -1,7 +1,7 @@
 ---
 id: L2-Tactical-003
 title: トップヘッダーの大掃除（Figma調の洗練）とパフォーマンス改善
-status: TODO
+status: DONE
 depends_on:
   - L1-Tactical-001
 model: Gemini 3.8 Flash
