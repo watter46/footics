@@ -85,32 +85,10 @@ description: Footics開発組織「Regista」の統括GM。プロダクトロー
 - 独立検証性: 単体で合否判定可能
 - ロールバック容易性: 失敗時に単独で破棄可能
 
-### 2. チケットファイル形式（Markdown + YAML Frontmatter）
-各チケットは `.regista/tickets/` ディレクトリ配下に `[ID].md` として作成する。
-先頭にYAMLフロントマターを含め、本文で仕様を定義する。
-
-```markdown
----
-id: "L1-UI-001"
-title: "ユーザープロフィールのUI実装"
-status: "TODO"
-depends_on: []
-model: "Gemini 3.8 Flash"
-effort: "medium"
-context_files: ["src/components/Profile.tsx", "src/types/user.ts"]
----
-### UX Impact
-ユーザーが自身のプロフィール画像をアップロードし、即座にプレビューできるようになる。
-
-### Detailed Spec
-1. ...
-2. ...
-
-### Acceptance Criteria & Verification Commands
-- [ ] UIコンポーネントが描画されること
-- コマンド: `pnpm type-check`
-```
-*(※ `context_files`: 別チャットで起動するWorkerエージェントが、プロジェクト全体ではなく「このファイルだけ」を読めば実装できるようにコンテキストを限定するための項目)*
+### 2. チケットファイル形式（`.regista/templates/task-ticket.md` 準拠）
+各チケットは `.regista/templates/task-ticket.md` を雛形とし、`.regista/tickets/[ID].md` として作成する。
+先頭にYAMLフロントマターを含め、本文で仕様・受入基準・検証コマンドを定義する。
+*(※ `context_files`: 別チャットで起動するWorkerエージェントが、プロジェクト全体ではなく「このファイルだけ」を読めば実装できるようにコンテキストを限定するための最重要項目)*
 
 ### 3. モデルとEffortの選定リスト（ホワイトリスト）
 タスクの難易度に応じて、以下のリストから最適なモデルと推論(Effort/Thinking)を選択しフロントマターに記載する。
@@ -128,21 +106,32 @@ context_files: ["src/components/Profile.tsx", "src/types/user.ts"]
 【独自処理・特定用途用】
 - `GPT-oss 120B` (Medium)
 
-### 4. 人間向けチャット出力フォーマット (チケット発行時)
-チケット発行時、GMはCLIのチャット上に以下の厳格なMarkdownテーブルを1つだけ出力して報告を完了すること。余計な解説は一切不要。
+### 4. 人間向けチャット出力フォーマット (`.regista/templates/board-summary.md` 準拠)
+チケット発行時および進捗確認時、GMはCLIのチャット上に `.regista/templates/board-summary.md` に準拠した厳格なMarkdownテーブルを1つだけ出力して報告を完了すること。余計な解説は一切不要。
+※ CLIから `pnpm tickets` を実行することで最新の未完了・完了チケット一覧を即座に確認可能。
 
-| Ticket ID | タスク名 | モデル / Effort | 変更後の体験 (UX Impact要約) |
-| :--- | :--- | :--- | :--- |
-| **L1-UI-001** | プロフィールUI実装 | `Gemini 3.8 Flash` / `medium` | 画像プレビューが可能になる |
-| **L2-API-001** | 画像保存API接続 | `Gemini 3.1 Pro` / `low` | 設定が永続化される |
+| Ticket ID | タスク名 | レイヤー | 推奨モデル / Effort | 変更後の体験 (UX Impact要約) | チケットファイル |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 🟢 **L1-UI-001** | プロフィールUI実装 | L1 (即時並列可能) | `Gemini 3.8 Flash` / `medium` | 画像プレビューが可能になる | `.regista/tickets/L1-UI-001.md` |
+| 🟡 **L2-API-001** | 画像保存API接続 | L2 (L1-UI-001完了後) | `Gemini 3.1 Pro` / `low` | 設定が永続化される | `.regista/tickets/L2-API-001.md` |
 
-※ `L1` から始まるタスクは即時並列実行が可能であることを意味する。
+### 5. チケット実装完了時の超凝縮チャット報告フォーマット (`.regista/templates/completion-report.md` 準拠)
+タスク実装完了時のチャット出力について、Workerエージェントは `.regista/templates/completion-report.md` に準拠した「YAML（機械可読）＋ 超凝縮Markdown（人間向け）」形式で報告する。
+内部実装（関数名やCSSプロパティ等）の冗長な出力は原則禁止とし、ユーザー目線の挙動変化、変更ファイル、検証結果のみを出力して確認待ち状態に移行する。ユーザーからの明示的な合図（「OK」「完了」等）を受けるまでコミットやチケットクローズを行ってはならない。
 
-### 5. チケット実装完了時の超凝縮チャット報告フォーマット
-タスク実装完了時のチャット出力について、冗長なコード解説や思考プロセスの出力を【原則禁止】とし、スクロール不要で動作確認が即座に行える超凝縮フォーマットへ統一する。
-内部実装（関数名やCSSプロパティ等）は記述せず、ユーザー目線の挙動変化、変更ファイル、検証結果のみを出力して確認待ち状態に移行する。ユーザーからの明示的な合図（「OK」「完了」等）を受けるまでコミットやチケットクローズを行ってはならない。
+````markdown
+```yaml
+ticket_id: "{Ticket ID}"
+status: "COMPLETED"
+files_changed:
+  - "{変更ファイル1}"
+verification:
+  biome: PASS
+  type_check: PASS
+  vitest: PASS
+  vitest_count: 0
+```
 
-```markdown
 ## ✅ 完了報告: {Ticket ID} ({タスク名})
 
 - **挙動の変化**:
@@ -152,7 +141,7 @@ context_files: ["src/components/Profile.tsx", "src/types/user.ts"]
 - **検証**: Biome: `{PASS/FAIL}` | TypeCheck: `{PASS/FAIL}` | Vitest: `{PASS (件数) / SKIP / FAIL}`
 
 > 問題なければ「**OK**」または「**完了**」と入力してください（チケットのステータス更新・コミットを実行します）。
-```
+````
 
 ## Generator-Critic ループ制御
 - **最大3ループ**: 同一タスクでのGenerator-Critic往復を3回に制限

@@ -18,10 +18,11 @@ trigger: always_on
 - **チケット出力・運用プロトコル (DAG & Markdown Distribution Standard):**
   - **1. 分散Markdownファイル管理 (`.regista/tickets/[ID].md`):**
     - 単一JSONファイルによる管理を廃止し、「1チケット = 1Markdownファイル」の分散管理を行う。
-    - 各チケットは `.regista/tickets/[ID].md` として作成され、YAMLフロントマター（`id`, `title`, `status`, `depends_on`, `model`, `effort`, `context_files`）と本文（UX Impact, Detailed Spec, Acceptance Criteria & Verification Commands）を持つ。
+    - 各チケットは `.regista/templates/task-ticket.md` テンプレートを参照して `.regista/tickets/[ID].md` として作成され、YAMLフロントマター（`id`, `title`, `status`, `depends_on`, `model`, `effort`, `context_files`）と本文（UX Impact, Detailed Spec, Acceptance Criteria & Verification Commands）を持つ。
   - **2. Layer-Based DAG ID体系:**
     - フォーマット: `L{深度}-{ドメイン名}-{連番3桁}`
     - `L1`: 他のチケットに依存せず即時並列実行可能。`L2`: L1完了に依存。`L3`: L2完了に依存... と続く。
+    - CLIからの進捗・依存確認には `pnpm tickets` を使用する。
   - **3. モデルとEffortの選定 (ホワイトリスト):**
     - 高速・軽量タスク用: `Gemini 3.8 Flash` [low/medium/high] (基本), `Gemini 3.7 Flash`, `Gemini 3.6 Flash`
     - 複雑なアーキテクチャ・難解バグ用: `Gemini 3.1 Pro` [low/high], `Claude Sonnet 4.6` (thinking), `Claude Opus 4.6` (thinking)
@@ -30,16 +31,27 @@ trigger: always_on
     - チケット一覧の展開・企画・チケット発行は「企画/GM Conversation」で行う。
     - **各チケット（AAWU）の実際の実装・テスト・検証は、必ず「別（新規）のConversation」を作成して実施する**（コンテキスト汚染とトークン浪費の防止）。
     - Workerエージェントは `context_files` に指定されたファイルのみをコンテキストに読み込み、効率的に実装する。
-  - **5. チャットへの厳格なチケット一覧表出力 (絵文字バッジ & 残存チケット表示):**
-    - チケット発行時および進捗確認時、GMはCLIのチャット上に以下の厳格なMarkdownテーブル（未完了の残存チケット一覧）を1つだけ出力する（余計な解説は不要）。
+  - **5. チャットへの厳格なチケット一覧表出力 (`.regista/templates/board-summary.md` 準拠):**
+    - チケット発行時および進捗確認時、GMはCLIのチャット上に `.regista/templates/board-summary.md` に準拠したMarkdownテーブル（未完了の残存チケット一覧）を1つだけ出力する（余計な解説は不要）。
     - 並列着手の可否を識別するため、Ticket IDの左隣にレイヤーに応じた絵文字（`🟢 L1` 即時並列可能, `🟡 L2` 待機, `🔴 L3+` 深層ブロック）を必ず付与する。
-      `| Ticket ID | タスク名 | モデル / Effort | 変更後の体験 (UX Impact要約) |`
-  - **6. チケット実装完了時の超凝縮チャット報告フォーマット (Condensed Completion Report Protocol):**
-    - タスク実装完了時のチャット出力について、冗長なコード解説や思考プロセスの出力を【原則禁止】とし、スクロール不要で動作確認が即座に行える「超凝縮フォーマット」へ統一する。
-    - 内部実装（関数名やCSSプロパティ詳細等）は記述せず、「ユーザー目線での挙動の変化（1〜2行）」と「検証結果」「変更ファイル」のみを出力して確認待ち状態に移行すること。
-    - **ユーザー完了合図の絶対厳守**: エージェントは実装・検証完了後に下記テンプレートで報告し、**ユーザーから「完了」「OK」等の明示的な合図を受けるまで、勝手にチケットステータスを DONE に更新したり git commit を実行してはならない**。
+  - **6. チケット実装完了時の超凝縮チャット報告フォーマット (`.regista/templates/completion-report.md` 準拠):**
+    - タスク実装完了時、Workerは `.regista/templates/completion-report.md` に準拠した「YAML（機械可読）＋ 超凝縮Markdown（人間向け）」形式でチャット出力する。
+    - 冗長なコード解説や思考プロセスの出力を【原則禁止】とし、ユーザー目線での挙動変化（1〜2行）と変更ファイル、検証結果のみを出力して確認待ち状態に移行すること。
+    - **ユーザー完了合図の絶対厳守**: エージェントは報告後、**ユーザーから「完了」「OK」等の明示的な合図を受けるまで、勝手にチケットステータスを DONE に更新したり git commit を実行してはならない**。合図受領後、チケットファイルの `status: DONE` 更新とコミットを行う。
     - **完了報告テンプレート (厳格遵守):**
-      ```markdown
+      ````markdown
+      ```yaml
+      ticket_id: "{Ticket ID}"
+      status: "COMPLETED"
+      files_changed:
+        - "{変更ファイル1}"
+      verification:
+        biome: PASS
+        type_check: PASS
+        vitest: PASS
+        vitest_count: 0
+      ```
+
       ## ✅ 完了報告: {Ticket ID} ({タスク名})
 
       - **挙動の変化**:
@@ -49,7 +61,7 @@ trigger: always_on
       - **検証**: Biome: `{PASS/FAIL}` | TypeCheck: `{PASS/FAIL}` | Vitest: `{PASS (件数) / SKIP / FAIL}`
 
       > 問題なければ「**OK**」または「**完了**」と入力してください（チケットのステータス更新・コミットを実行します）。
-      ```
+      ````
 
 ## 1. エージェント行動規範 (Senior Engineer Conduct)
 - **Chain of Thought (CoT) Enforcement**: 浅い思考によるバグを排除し、深く考えてから行動する。複雑な修正やデバッグの際はいきなりコードを修正せず、思考プロセスを出力し、依存関係、副作用、代替案を検討する。
