@@ -5,14 +5,17 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  BoundaryBoxSchema,
   createDefaultPlayer,
   createDefaultProject,
   createDefaultSlide,
+  createXBoundaryBox,
   PlayerSchema,
   SlideSchema,
   TacticalProjectSchema,
   transformCoord,
   transformPoints,
+  X_MEDIA_PRESETS,
 } from '../tactical-unified';
 
 describe('transformCoord', () => {
@@ -107,5 +110,74 @@ describe('SlideSchema', () => {
       height: 99.14,
       enabled: true,
     });
+  });
+});
+
+describe('BoundaryBoxSchema & X Media Presets', () => {
+  it('BoundaryBoxSchema が境界線プロパティを安全に検証する', () => {
+    const box = {
+      x: 10,
+      y: 10,
+      width: 80,
+      height: 80,
+      enabled: true,
+    };
+    const parsed = BoundaryBoxSchema.parse(box);
+    expect(parsed.enabled).toBe(true);
+    expect(parsed.width).toBe(80);
+
+    const defaultParsed = BoundaryBoxSchema.parse({
+      x: 10,
+      y: 10,
+      width: 80,
+      height: 80,
+    });
+    expect(defaultParsed.enabled).toBe(true);
+  });
+
+  it('X_MEDIA_PRESETS に要件の主要4プリセットが定義されている', () => {
+    expect(X_MEDIA_PRESETS.single_image_4_5).toBeDefined();
+    expect(X_MEDIA_PRESETS.single_image_4_5.ratio).toBe('4:5');
+    expect(X_MEDIA_PRESETS.carousel_image_9_16).toBeDefined();
+    expect(X_MEDIA_PRESETS.carousel_image_9_16.ratio).toBe('9:16');
+    expect(X_MEDIA_PRESETS.feed_video_9_16).toBeDefined();
+    expect(X_MEDIA_PRESETS.feed_video_9_16.ratio).toBe('9:16');
+    expect(X_MEDIA_PRESETS.pitch_overview_16_9).toBeDefined();
+    expect(X_MEDIA_PRESETS.pitch_overview_16_9.ratio).toBe('16:9');
+  });
+
+  it('createXBoundaryBox: 16:9キャンバス上で4:5比率を中央配置する', () => {
+    const box = createXBoundaryBox('4:5', '16:9');
+    expect(box.enabled).toBe(true);
+    // 4:5 はキャンバス (16:9) より縦長のため、高さ100%になり幅が (100 * 0.8 / (16/9)) = 45%
+    expect(box.height).toBe(100);
+    expect(box.width).toBe(45);
+    expect(box.x).toBe(27.5);
+    expect(box.y).toBe(0);
+  });
+
+  it('createXBoundaryBox: 16:9キャンバス上で16:9比率の場合は全画面フィット', () => {
+    const box = createXBoundaryBox('16:9', '16:9');
+    expect(box.width).toBe(100);
+    expect(box.height).toBe(100);
+    expect(box.x).toBe(0);
+    expect(box.y).toBe(0);
+  });
+
+  it('createXBoundaryBox: 9:16キャンバス上で9:16比率の場合は全画面フィット', () => {
+    const box = createXBoundaryBox('9:16', '9:16');
+    expect(box.width).toBe(100);
+    expect(box.height).toBe(100);
+    expect(box.x).toBe(0);
+    expect(box.y).toBe(0);
+  });
+
+  it('createXBoundaryBox: 9:16キャンバス上で4:5比率（横長）を配置した場合は幅100%にフィット', () => {
+    const box = createXBoundaryBox('4:5', '9:16');
+    // 4:5 (0.8) > 9:16 (0.5625) なので幅100%、高さは (100 * (9/16) / 0.8) = 70.31%
+    expect(box.width).toBe(100);
+    expect(box.height).toBeCloseTo(70.31, 1);
+    expect(box.x).toBe(0);
+    expect(box.y).toBeCloseTo(14.84, 1);
   });
 });

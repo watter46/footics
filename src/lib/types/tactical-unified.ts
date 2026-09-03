@@ -333,6 +333,114 @@ export const DEFAULT_BOUNDARY_BOX_SCREENSHOT: BoundaryBox = {
 /** 標準デフォルト境界線 (16:9) */
 export const DEFAULT_BOUNDARY_BOX = DEFAULT_BOUNDARY_BOX_16_9;
 
+// ─────────────────────────────────────────
+// § 8.1. X (Twitter) 最適化メディア比率 & プリセット
+// ─────────────────────────────────────────
+
+export const X_MEDIA_RATIOS = {
+  '4:5': 4 / 5, // 画像1枚: TL最大高さ・Dwell Time最大化 (0.80)
+  '9:16': 9 / 16, // 画像2枚カルーセル / 動画: スマホ全画面 (0.5625)
+  '16:9': 16 / 9, // ピッチ全体横画像: 俯瞰配置の絶対安全圏 (1.777...)
+} as const;
+
+export type XMediaRatio = keyof typeof X_MEDIA_RATIOS;
+
+export type XMediaPresetKey =
+  | 'single_image_4_5'
+  | 'carousel_image_9_16'
+  | 'feed_video_9_16'
+  | 'pitch_overview_16_9';
+
+export interface XMediaPresetConfig {
+  id: XMediaPresetKey;
+  name: string;
+  category: 'single_image' | 'carousel' | 'video' | 'overview';
+  description: string;
+  recommendedSize: string;
+  ratio: XMediaRatio;
+  numericRatio: number;
+}
+
+export const X_MEDIA_PRESETS: Record<XMediaPresetKey, XMediaPresetConfig> = {
+  single_image_4_5: {
+    id: 'single_image_4_5',
+    name: '画像1枚 (4:5)',
+    category: 'single_image',
+    description: '上下切断ゼロ・TL最大高さ・Dwell Time最大化',
+    recommendedSize: '1080×1350px',
+    ratio: '4:5',
+    numericRatio: X_MEDIA_RATIOS['4:5'],
+  },
+  carousel_image_9_16: {
+    id: 'carousel_image_9_16',
+    name: '画像2枚カルーセル (9:16)',
+    category: 'carousel',
+    description: '新カルーセル横スワイプ・画面完全ジャック',
+    recommendedSize: '1080×1920px',
+    ratio: '9:16',
+    numericRatio: X_MEDIA_RATIOS['9:16'],
+  },
+  feed_video_9_16: {
+    id: 'feed_video_9_16',
+    name: '動画1本 (9:16)',
+    category: 'video',
+    description: 'おすすめ全画面縦フィード',
+    recommendedSize: '1080×1920px',
+    ratio: '9:16',
+    numericRatio: X_MEDIA_RATIOS['9:16'],
+  },
+  pitch_overview_16_9: {
+    id: 'pitch_overview_16_9',
+    name: 'ピッチ全体横画像 (16:9)',
+    category: 'overview',
+    description: '22人配置・ピッチ俯瞰の絶対安全圏',
+    recommendedSize: '1200×675px',
+    ratio: '16:9',
+    numericRatio: X_MEDIA_RATIOS['16:9'],
+  },
+};
+
+/**
+ * Xメディア比率に基づいて、キャンバスの中央に収まる BoundaryBox を正規化座標 (0-100) で算出
+ * @param ratio Xメディア比率（'4:5' | '9:16' | '16:9' または数値）
+ * @param canvasAspect キャンバスのアスペクト比（'16:9' または '9:16'）
+ */
+export function createXBoundaryBox(
+  ratio: XMediaRatio | number,
+  canvasAspect: AspectRatio = '16:9',
+): BoundaryBox {
+  const targetAspect =
+    typeof ratio === 'number' ? ratio : (X_MEDIA_RATIOS[ratio] ?? 16 / 9);
+  const stageAspect = canvasAspect === '16:9' ? 16 / 9 : 9 / 16;
+
+  let normWidth: number;
+  let normHeight: number;
+
+  if (targetAspect <= stageAspect) {
+    // ターゲットがキャンバスより縦長（または同じ）: 高さ100%にフィット
+    normHeight = 100;
+    normWidth = (normHeight * targetAspect) / stageAspect;
+  } else {
+    // ターゲットがキャンバスより横長: 幅100%にフィット
+    normWidth = 100;
+    normHeight = (normWidth * stageAspect) / targetAspect;
+  }
+
+  // 小数点第2位に丸めて正規化座標を中央揃え
+  const width = Math.round(normWidth * 100) / 100;
+  const height = Math.round(normHeight * 100) / 100;
+  const x = Math.round(((100 - width) / 2) * 100) / 100;
+  const y = Math.round(((100 - height) / 2) * 100) / 100;
+
+  return {
+    x: Math.max(0, Math.min(100, x)),
+    y: Math.max(0, Math.min(100, y)),
+    width: Math.max(0, Math.min(100, width)),
+    height: Math.max(0, Math.min(100, height)),
+    enabled: true,
+  };
+}
+
 export const EasingSchema = z.enum([
   'linear',
   'ease-in',
