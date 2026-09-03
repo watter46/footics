@@ -132,23 +132,48 @@ export function useKeyboardShortcuts() {
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
         if (selectedObjects.length > 0) {
+          const slide = useTacticalUnifiedStore
+            .getState()
+            .project.slides.find((s) => s.id === activeSlideId);
+          let hasLockedObject = false;
+
           for (const obj of selectedObjects) {
+            let isLocked = false;
             switch (obj.kind) {
               case 'player':
-                removePlayer(activeSlideId, obj.id);
+                isLocked = Boolean(
+                  slide?.players.find((p) => p.id === obj.id)?.locked,
+                );
+                if (!isLocked) removePlayer(activeSlideId, obj.id);
                 break;
               case 'arrow':
-                removeArrow(activeSlideId, obj.id);
+                isLocked = Boolean(
+                  slide?.arrows.find((a) => a.id === obj.id)?.locked,
+                );
+                if (!isLocked) removeArrow(activeSlideId, obj.id);
                 break;
               case 'zone':
-                removeZone(activeSlideId, obj.id);
+                isLocked = Boolean(
+                  slide?.zones.find((z) => z.id === obj.id)?.locked,
+                );
+                if (!isLocked) removeZone(activeSlideId, obj.id);
                 break;
               case 'text':
-                removeText(activeSlideId, obj.id);
+                isLocked = Boolean(
+                  slide?.texts.find((t) => t.id === obj.id)?.locked,
+                );
+                if (!isLocked) removeText(activeSlideId, obj.id);
                 break;
             }
+            if (isLocked) {
+              hasLockedObject = true;
+            }
           }
-          clearSelection();
+          if (hasLockedObject) {
+            toast.info('ロック中のオブジェクトは保護されています');
+          } else {
+            clearSelection();
+          }
         } else {
           // ピッチ上オブジェクト非選択時はアクティブスライドを削除
           const project = useTacticalUnifiedStore.getState().project;

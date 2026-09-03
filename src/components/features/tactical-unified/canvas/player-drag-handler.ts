@@ -109,7 +109,7 @@ export function createPlayerDragContext({
 
   const movingSet = new Set(movingPlayerIds);
   const movingPlayers = slide.players
-    .filter((p) => movingSet.has(p.id) && p.area === 'pitch')
+    .filter((p) => movingSet.has(p.id) && p.area === 'pitch' && !p.locked)
     .map((p) => ({
       id: p.id,
       initialPx: {

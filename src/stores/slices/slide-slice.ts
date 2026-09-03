@@ -20,7 +20,11 @@ import {
   getDefaultBoundaryBoxForAspect,
 } from '@/lib/types/tactical-unified';
 import type { TacticalUnifiedState } from '../tactical-unified-store';
-import { recordHistory, updateSlideInProject } from '../tactical-unified-store';
+import {
+  getSlide,
+  recordHistory,
+  updateSlideInProject,
+} from '../tactical-unified-store';
 
 export interface SlideSlice {
   addSlide: (
@@ -367,20 +371,25 @@ export const createSlideSlice: StateCreator<
     return player.id;
   },
   updatePlayer: (slideId, playerId, patch) =>
-    set((s) => ({
-      ...recordHistory(s),
-      project: updateSlideInProject(s.project, slideId, (sl) => ({
-        ...sl,
-        players: sl.players.map((p) =>
-          p.id === playerId ? { ...p, ...patch } : p,
-        ),
-      })),
-      isDirty: true,
-    })),
+    set((s) => {
+      const slide = getSlide(s.project, slideId);
+      const existingPlayer = slide?.players.find((p) => p.id === playerId);
+      if (existingPlayer?.locked && !('locked' in patch)) return s;
+      return {
+        ...recordHistory(s),
+        project: updateSlideInProject(s.project, slideId, (sl) => ({
+          ...sl,
+          players: sl.players.map((p) =>
+            p.id === playerId ? { ...p, ...patch } : p,
+          ),
+        })),
+        isDirty: true,
+      };
+    }),
   movePlayer: (slideId, playerId, x, y) => {
     const slide = get().project.slides.find((s) => s.id === slideId);
     const targetPlayer = slide?.players.find((p) => p.id === playerId);
-    if (!targetPlayer) return;
+    if (!targetPlayer || targetPlayer.locked) return;
     const dx = x - targetPlayer.x;
     const dy = y - targetPlayer.y;
     get().moveMultiplePlayersByDelta(slideId, [playerId], dx, dy);
@@ -394,12 +403,14 @@ export const createSlideSlice: StateCreator<
         ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => {
           const playerIdSet = new Set(playerIds);
-          const targetPlayers = sl.players.filter((p) => playerIdSet.has(p.id));
+          const targetPlayers = sl.players.filter(
+            (p) => playerIdSet.has(p.id) && !p.locked,
+          );
           if (targetPlayers.length === 0) return sl;
 
           // 1. 選手位置更新 (クランプ [0, 100])
           const updatedPlayers = sl.players.map((p) => {
-            if (!playerIdSet.has(p.id)) return p;
+            if (!playerIdSet.has(p.id) || p.locked) return p;
             return {
               ...p,
               x: Math.max(0, Math.min(100, p.x + deltaX)),
@@ -697,25 +708,31 @@ export const createSlideSlice: StateCreator<
       };
     }),
   removePlayer: (slideId, playerId) =>
-    set((s) => ({
-      ...recordHistory(s),
-      project: updateSlideInProject(s.project, slideId, (sl) => ({
-        ...sl,
-        players: sl.players
-          .filter((p) => p.id !== playerId)
-          .map((p) => ({
-            ...p,
-            connectLines: p.connectLines.filter(
-              (cl) => cl.toPlayerId !== playerId,
-            ),
-          })),
-        arrows: sl.arrows.filter(
-          (a) => a.sourcePlayerId !== playerId && a.targetPlayerId !== playerId,
-        ),
-      })),
-      isDirty: true,
-      selectedObjects: s.selectedObjects.filter((o) => o.id !== playerId),
-    })),
+    set((s) => {
+      const slide = getSlide(s.project, slideId);
+      const targetPlayer = slide?.players.find((p) => p.id === playerId);
+      if (targetPlayer?.locked) return s;
+      return {
+        ...recordHistory(s),
+        project: updateSlideInProject(s.project, slideId, (sl) => ({
+          ...sl,
+          players: sl.players
+            .filter((p) => p.id !== playerId)
+            .map((p) => ({
+              ...p,
+              connectLines: p.connectLines.filter(
+                (cl) => cl.toPlayerId !== playerId,
+              ),
+            })),
+          arrows: sl.arrows.filter(
+            (a) =>
+              a.sourcePlayerId !== playerId && a.targetPlayerId !== playerId,
+          ),
+        })),
+        isDirty: true,
+        selectedObjects: s.selectedObjects.filter((o) => o.id !== playerId),
+      };
+    }),
   applyFormationPreset: (preset, slideId) =>
     set((s) => {
       const primaryColor =
@@ -995,14 +1012,18 @@ export const createSlideSlice: StateCreator<
       isDirty: true,
     })),
   setBallPosition: (slideId, x, y) =>
-    set((s) => ({
-      ...recordHistory(s),
-      project: updateSlideInProject(s.project, slideId, (sl) => ({
-        ...sl,
-        ball: { ...sl.ball, x, y },
-      })),
-      isDirty: true,
-    })),
+    set((s) => {
+      const slide = getSlide(s.project, slideId);
+      if (slide?.ball.locked) return s;
+      return {
+        ...recordHistory(s),
+        project: updateSlideInProject(s.project, slideId, (sl) => ({
+          ...sl,
+          ball: { ...sl.ball, x, y },
+        })),
+        isDirty: true,
+      };
+    }),
   setBallVisible: (slideId, visible) =>
     set((s) => ({
       ...recordHistory(s),

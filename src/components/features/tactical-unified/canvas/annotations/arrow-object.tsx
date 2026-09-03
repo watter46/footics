@@ -356,7 +356,7 @@ export const ArrowObject = React.memo(function ArrowObject({
         onTap={onSelect}
         hitStrokeWidth={16}
         perfectDrawEnabled={false}
-        draggable={isInteractive && !isAttachedToPlayer}
+        draggable={isInteractive && !isAttachedToPlayer && !arrow.locked}
         onMouseEnter={(e) => {
           const stage = e.target.getStage();
           if (stage) {
@@ -480,8 +480,8 @@ export const ArrowObject = React.memo(function ArrowObject({
         shadowBlur={4}
         perfectDrawEnabled={false}
         visible={isSelected && !isAttachedToPlayer}
-        listening={isInteractive && isSelected && !isAttachedToPlayer}
-        draggable={isInteractive}
+        listening={isInteractive && isSelected && !isAttachedToPlayer && !arrow.locked}
+        draggable={isInteractive && !arrow.locked}
         onMouseEnter={(e) => {
           const stage = e.target.getStage();
           if (stage) stage.container().style.cursor = 'grab';
@@ -550,9 +550,11 @@ export const ArrowObject = React.memo(function ArrowObject({
         shadowBlur={4}
         opacity={isSelected ? 1 : 0}
         visible={isSelected || isAttachedToPlayer}
-        listening={isInteractive && (isSelected || isAttachedToPlayer)}
+        listening={
+          isInteractive && (isSelected || isAttachedToPlayer) && !arrow.locked
+        }
         perfectDrawEnabled={false}
-        draggable={isInteractive}
+        draggable={isInteractive && !arrow.locked}
         hitStrokeWidth={16}
         onMouseEnter={(e) => {
           const stage = e.target.getStage();
@@ -631,8 +633,8 @@ export const ArrowObject = React.memo(function ArrowObject({
         shadowBlur={4}
         perfectDrawEnabled={false}
         visible={isSelected && !isWavy}
-        listening={isInteractive && isSelected && !isWavy}
-        draggable={isInteractive}
+        listening={isInteractive && isSelected && !isWavy && !arrow.locked}
+        draggable={isInteractive && !arrow.locked}
         onMouseEnter={(e) => {
           const stage = e.target.getStage();
           if (stage) stage.container().style.cursor = 'grab';

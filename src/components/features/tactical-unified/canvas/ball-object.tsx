@@ -147,7 +147,7 @@ export const BallObject = React.memo(function BallObject({
         }}
         x={px}
         y={py}
-        draggable
+        draggable={!ball.locked}
         dragBoundFunc={(pos) => ({
           x: Math.max(0, Math.min(stageSize.width, pos.x)),
           y: Math.max(0, Math.min(stageSize.height, pos.y)),

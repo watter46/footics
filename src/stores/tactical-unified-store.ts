@@ -159,6 +159,10 @@ export interface TacticalUnifiedState
 
   // ─ エクスポート境界線 (BoundaryBox)
   setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
+
+  // ─ ロック制御 (Pitch & Objects)
+  togglePitchLock: (slideId?: string) => void;
+  toggleObjectLock: (objectId: string, kind: SelectedObjectKind) => void;
 }
 
 // ─────────────────────────────────────────
@@ -836,23 +840,114 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           ...recordHistory(s),
           project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
             ...sl,
-            arrows: [],
-            zones: [],
-            texts: [],
+            arrows: sl.arrows.filter((a) => a.locked),
+            zones: sl.zones.filter((z) => z.locked),
+            texts: sl.texts.filter((t) => t.locked),
             players: sl.players
-              .filter((p) => p.style.markerType !== 'ring')
-              .map((p) => ({
-                ...p,
-                visionCone: undefined,
-                connectLines: [],
-                badges: [],
-                focus: undefined,
-                trajectory: undefined,
-              })),
-            boundaryBox: { ...defaultBox },
+              .filter((p) => p.locked || p.style.markerType !== 'ring')
+              .map((p) => {
+                if (p.locked) return p;
+                return {
+                  ...p,
+                  visionCone: undefined,
+                  connectLines: [],
+                  badges: [],
+                  focus: undefined,
+                  trajectory: undefined,
+                };
+              }),
+            boundaryBox: sl.boundaryBox ?? { ...defaultBox },
           })),
-          selectedObjects: [],
+          selectedObjects: s.selectedObjects.filter((o) => {
+            const slide = getSlide(s.project, targetSlideId);
+            if (!slide) return false;
+            if (o.kind === 'player')
+              return slide.players.find((p) => p.id === o.id)?.locked;
+            if (o.kind === 'arrow')
+              return slide.arrows.find((a) => a.id === o.id)?.locked;
+            if (o.kind === 'zone')
+              return slide.zones.find((z) => z.id === o.id)?.locked;
+            if (o.kind === 'text')
+              return slide.texts.find((t) => t.id === o.id)?.locked;
+            return false;
+          }),
           activeMarkerOptionTab: null,
+          isDirty: true,
+        };
+      }),
+
+    togglePitchLock: (slideId) =>
+      set((s) => {
+        const targetSlideId = slideId ?? s.activeSlideId;
+        const slide = getSlide(s.project, targetSlideId);
+        if (!slide) return s;
+
+        const currentLocked = slide.pitchTransform?.isLocked ?? false;
+        const newTransform = {
+          panX: slide.pitchTransform?.panX ?? 0,
+          panY: slide.pitchTransform?.panY ?? 0,
+          zoom: slide.pitchTransform?.zoom ?? 1,
+          tilt: slide.pitchTransform?.tilt ?? 0,
+          isLocked: !currentLocked,
+        };
+
+        return {
+          ...recordHistory(s),
+          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
+            ...sl,
+            pitchTransform: newTransform,
+          })),
+          isDirty: true,
+        };
+      }),
+
+    toggleObjectLock: (objectId, kind) =>
+      set((s) => {
+        const targetSlideId = s.activeSlideId;
+        const slide = getSlide(s.project, targetSlideId);
+        if (!slide) return s;
+
+        return {
+          ...recordHistory(s),
+          project: updateSlideInProject(s.project, targetSlideId, (sl) => {
+            switch (kind) {
+              case 'player':
+                return {
+                  ...sl,
+                  players: sl.players.map((p) =>
+                    p.id === objectId ? { ...p, locked: !p.locked } : p,
+                  ),
+                };
+              case 'arrow':
+                return {
+                  ...sl,
+                  arrows: sl.arrows.map((a) =>
+                    a.id === objectId ? { ...a, locked: !a.locked } : a,
+                  ),
+                };
+              case 'zone':
+                return {
+                  ...sl,
+                  zones: sl.zones.map((z) =>
+                    z.id === objectId ? { ...z, locked: !z.locked } : z,
+                  ),
+                };
+              case 'text':
+                return {
+                  ...sl,
+                  texts: sl.texts.map((t) =>
+                    t.id === objectId ? { ...t, locked: !t.locked } : t,
+                  ),
+                };
+              case 'ball':
+                return {
+                  ...sl,
+                  ball: { ...sl.ball, locked: !sl.ball.locked },
+                };
+              default:
+                return sl;
+            }
+          }),
           isDirty: true,
         };
       }),

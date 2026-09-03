@@ -14,11 +14,13 @@
 import {
   Eye,
   Link,
+  Lock,
   Minus,
   MoveRight,
   Plus,
   Sparkles,
   Trash2,
+  Unlock,
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -225,6 +227,7 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
   const setConnectingPlayerId = useTacticalUnifiedStore(
     (s) => s.setConnectingPlayerId,
   );
+  const toggleObjectLock = useTacticalUnifiedStore((s) => s.toggleObjectLock);
 
   // ドラッグ中は直接DOM参照で一時的にHUDを非表示にしてRule 15に適合
   useEffect(() => {
@@ -345,6 +348,20 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
         // Fallback
       }
     }
+  } else if (selected.kind === 'ball') {
+    const ball = activeSlide.ball;
+    pxX = (ball.x / 100) * stageSize.width;
+    pxY = (ball.y / 100) * stageSize.height;
+
+    const ballNode = nodesRegistryRef?.current?.ballNode;
+    if (ballNode) {
+      const pos = ballNode.position();
+      if (typeof pos.x === 'number' && typeof pos.y === 'number') {
+        pxX = pos.x;
+        pxY = pos.y;
+      }
+    }
+    elementHeight = 24;
   } else {
     return null;
   }
@@ -653,6 +670,22 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
 
                 <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
 
+                {/* ロック / ロック解除 */}
+                <button
+                  type="button"
+                  onClick={() => toggleObjectLock(player.id, 'player')}
+                  className={`p-1 rounded-md transition-colors cursor-pointer ${
+                    player.locked
+                      ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                  }`}
+                  title={player.locked ? 'ロック解除' : 'ロック (固定)'}
+                >
+                  {player.locked ? <Lock size={13} /> : <Unlock size={13} />}
+                </button>
+
+                <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+
                 {/* 7. 削除ボタン */}
                 <button
                   type="button"
@@ -751,6 +784,22 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
 
                 <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
 
+                {/* ロック / ロック解除 */}
+                <button
+                  type="button"
+                  onClick={() => toggleObjectLock(arrow.id, 'arrow')}
+                  className={`p-1 rounded-md transition-colors cursor-pointer ${
+                    arrow.locked
+                      ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                  }`}
+                  title={arrow.locked ? 'ロック解除' : 'ロック (固定)'}
+                >
+                  {arrow.locked ? <Lock size={13} /> : <Unlock size={13} />}
+                </button>
+
+                <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+
                 {/* 削除ボタン */}
                 <button
                   type="button"
@@ -805,6 +854,22 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
                   title="不透明度 (クリックで切替)"
                 >
                   {Math.round((zone.opacity ?? 0.25) * 100)}%
+                </button>
+
+                <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+
+                {/* ロック / ロック解除 */}
+                <button
+                  type="button"
+                  onClick={() => toggleObjectLock(zone.id, 'zone')}
+                  className={`p-1 rounded-md transition-colors cursor-pointer ${
+                    zone.locked
+                      ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                  }`}
+                  title={zone.locked ? 'ロック解除' : 'ロック (固定)'}
+                >
+                  {zone.locked ? <Lock size={13} /> : <Unlock size={13} />}
                 </button>
 
                 <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
@@ -885,6 +950,22 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
 
                 <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
 
+                {/* ロック / ロック解除 */}
+                <button
+                  type="button"
+                  onClick={() => toggleObjectLock(text.id, 'text')}
+                  className={`p-1 rounded-md transition-colors cursor-pointer ${
+                    text.locked
+                      ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                  }`}
+                  title={text.locked ? 'ロック解除' : 'ロック (固定)'}
+                >
+                  {text.locked ? <Lock size={13} /> : <Unlock size={13} />}
+                </button>
+
+                <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+
                 {/* 削除ボタン */}
                 <button
                   type="button"
@@ -896,6 +977,30 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
                   title="削除 (Delete)"
                 >
                   <Trash2 size={13} />
+                </button>
+              </>
+            );
+          })()}
+
+        {/* ── ボールHUD ── */}
+        {selected.kind === 'ball' &&
+          (() => {
+            const ball = activeSlide.ball;
+            return (
+              <>
+                <button
+                  type="button"
+                  onClick={() => toggleObjectLock('ball', 'ball')}
+                  className={`p-1 rounded-md transition-colors cursor-pointer ${
+                    ball.locked
+                      ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                  }`}
+                  title={
+                    ball.locked ? 'ボールのロック解除' : 'ボールをロック (固定)'
+                  }
+                >
+                  {ball.locked ? <Lock size={13} /> : <Unlock size={13} />}
                 </button>
               </>
             );

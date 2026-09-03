@@ -161,7 +161,7 @@ export const PlayerMarker = React.memo(function PlayerMarker({
       x={pxX}
       y={pxY}
       listening={isInteractive}
-      draggable={isInteractive}
+      draggable={isInteractive && !player.locked}
       dragBoundFunc={(pos) => ({
         x: Math.max(0, Math.min(width, pos.x)),
         y: Math.max(0, Math.min(height, pos.y)),

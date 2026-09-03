@@ -76,7 +76,7 @@ export const TextObject = React.memo(function TextObject({
       onDblClick={onDblClick}
       onDblTap={onDblClick}
       perfectDrawEnabled={false}
-      draggable={isSelected && !isEditing}
+      draggable={isSelected && !isEditing && !text.locked}
       onDragEnd={(e) => {
         e.cancelBubble = true;
         const node = e.target;

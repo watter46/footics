@@ -223,6 +223,7 @@ export const PlayerSchema = z.object({
   badges: z.array(PlayerBadgeSchema).default([]),
   focus: PlayerFocusSchema.optional(),
   trajectory: PlayerTrajectorySchema.optional(),
+  locked: z.boolean().optional(),
 });
 export type Player = z.infer<typeof PlayerSchema>;
 
@@ -260,6 +261,7 @@ export const ArrowAnnotationSchema = z.object({
   label: z.string().max(50).optional(),
   sourcePlayerId: z.string().optional(),
   targetPlayerId: z.string().optional(),
+  locked: z.boolean().optional(),
 });
 export type ArrowAnnotation = z.infer<typeof ArrowAnnotationSchema>;
 
@@ -295,6 +297,7 @@ export const ZoneAnnotationSchema = z.object({
     .optional(),
   strokeWidth: z.number().min(0).max(8).default(0),
   label: z.string().max(50).optional(),
+  locked: z.boolean().optional(),
 });
 export type ZoneAnnotation = z.infer<typeof ZoneAnnotationSchema>;
 
@@ -311,6 +314,7 @@ export const TextAnnotationSchema = z.object({
     .default('#ffffff'),
   bold: z.boolean().default(false),
   italic: z.boolean().default(false),
+  locked: z.boolean().optional(),
 });
 export type TextAnnotation = z.infer<typeof TextAnnotationSchema>;
 
@@ -323,6 +327,7 @@ export const BallStateSchema = z.object({
   y: z.number(),
   visible: z.boolean().default(true),
   trajectory: PlayerTrajectorySchema.optional(),
+  locked: z.boolean().optional(),
 });
 export type BallState = z.infer<typeof BallStateSchema>;
 
@@ -512,6 +517,15 @@ export const EasingSchema = z.enum([
 ]);
 export type Easing = z.infer<typeof EasingSchema>;
 
+export const PitchTransformSchema = z.object({
+  panX: z.number().default(0),
+  panY: z.number().default(0),
+  zoom: z.number().default(1),
+  tilt: z.number().default(0),
+  isLocked: z.boolean().default(false),
+});
+export type PitchTransform = z.infer<typeof PitchTransformSchema>;
+
 export const SlideSchema = z.object({
   id: z.string(),
   index: z.number().int().min(0),
@@ -534,8 +548,10 @@ export const SlideSchema = z.object({
 
   boundaryBox: BoundaryBoxSchema.optional(),
   aspectRatio: AspectRatioSchema.optional(),
+  pitchTransform: PitchTransformSchema.optional(),
 });
 export type Slide = z.infer<typeof SlideSchema>;
+export type TacticalSlide = Slide;
 
 // ─────────────────────────────────────────
 // § 9. プロジェクト全体

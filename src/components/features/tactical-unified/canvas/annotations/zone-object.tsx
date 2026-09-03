@@ -88,7 +88,7 @@ export const ZoneObject = React.memo(function ZoneObject({
 
     return (
       <Group
-        draggable={isSelected}
+        draggable={isSelected && !zone.locked}
         onDragStart={(e) => {
           if (e.target.name() === 'control-handle') {
             e.cancelBubble = true;
@@ -160,7 +160,7 @@ export const ZoneObject = React.memo(function ZoneObject({
               fill="#ffffff"
               stroke="#3b82f6"
               strokeWidth={2.5}
-              draggable
+              draggable={!zone.locked}
               onMouseEnter={(e) => {
                 const c = e.target.getStage()?.container();
                 if (c) c.style.cursor = 'grab';
@@ -253,7 +253,7 @@ export const ZoneObject = React.memo(function ZoneObject({
           fill={fillRGBA}
           stroke={strokeColor}
           strokeWidth={strokeWidth}
-          draggable={isSelected}
+          draggable={isSelected && !zone.locked}
           onClick={onSelect}
           onTap={onSelect}
           onDragEnd={(e) => {
@@ -287,7 +287,7 @@ export const ZoneObject = React.memo(function ZoneObject({
           fill={fillRGBA}
           stroke={strokeColor}
           strokeWidth={strokeWidth}
-          draggable={isSelected}
+          draggable={isSelected && !zone.locked}
           onClick={onSelect}
           onTap={onSelect}
           onDragEnd={(e) => {
@@ -304,7 +304,7 @@ export const ZoneObject = React.memo(function ZoneObject({
         />
       )}
 
-      {isSelected && (
+      {isSelected && !zone.locked && (
         <Transformer
           ref={transformerRef}
           boundBoxFunc={(oldBox, newBox) => {

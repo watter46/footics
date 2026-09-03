@@ -1464,4 +1464,223 @@ describe('tactical-unified-store', () => {
       });
     });
   });
+
+  describe('L1-Tactical-025: 全オブジェクトおよびピッチの汎用ロック機能', () => {
+    it('togglePitchLock でピッチの isLocked がトグルされる', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      expect(store.project.slides[0]?.pitchTransform?.isLocked ?? false).toBe(
+        false,
+      );
+
+      store.togglePitchLock(slideId);
+      expect(
+        useTacticalUnifiedStore.getState().project.slides[0]?.pitchTransform
+          ?.isLocked,
+      ).toBe(true);
+
+      store.togglePitchLock(slideId);
+      expect(
+        useTacticalUnifiedStore.getState().project.slides[0]?.pitchTransform
+          ?.isLocked,
+      ).toBe(false);
+    });
+
+    it('toggleObjectLock で各オブジェクトの locked 状態がトグルされる', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      // 1. Player
+      const player = createDefaultPlayer('home', 40, 40, '#ff0000');
+      store.addPlayer(player);
+      expect(
+        useTacticalUnifiedStore
+          .getState()
+          .project.slides[0]?.players.find((p) => p.id === player.id)?.locked,
+      ).toBeFalsy();
+
+      store.toggleObjectLock(player.id, 'player');
+      expect(
+        useTacticalUnifiedStore
+          .getState()
+          .project.slides[0]?.players.find((p) => p.id === player.id)?.locked,
+      ).toBe(true);
+
+      store.toggleObjectLock(player.id, 'player');
+      expect(
+        useTacticalUnifiedStore
+          .getState()
+          .project.slides[0]?.players.find((p) => p.id === player.id)?.locked,
+      ).toBe(false);
+
+      // 2. Ball
+      expect(
+        useTacticalUnifiedStore.getState().project.slides[0]?.ball.locked,
+      ).toBeFalsy();
+      store.toggleObjectLock('ball', 'ball');
+      expect(
+        useTacticalUnifiedStore.getState().project.slides[0]?.ball.locked,
+      ).toBe(true);
+      store.toggleObjectLock('ball', 'ball');
+      expect(
+        useTacticalUnifiedStore.getState().project.slides[0]?.ball.locked,
+      ).toBe(false);
+
+      // 3. Arrow
+      const arrow = {
+        id: 'arrow-1',
+        annotationType: 'arrow' as const,
+        arrowType: 'pass' as const,
+        curveType: 'straight' as const,
+        points: [
+          { x: 10, y: 10 },
+          { x: 20, y: 20 },
+        ],
+        color: '#ffffff',
+        strokeWidth: 3,
+        dashArray: [],
+        arrowHead: true,
+      };
+      store.addArrow(slideId, arrow);
+      store.toggleObjectLock(arrow.id, 'arrow');
+      expect(
+        useTacticalUnifiedStore
+          .getState()
+          .project.slides[0]?.arrows.find((a) => a.id === arrow.id)?.locked,
+      ).toBe(true);
+
+      // 4. Zone
+      const zone = {
+        id: 'zone-1',
+        annotationType: 'zone' as const,
+        zoneType: 'generic' as const,
+        color: '#f59e0b',
+        opacity: 0.25,
+        strokeWidth: 0,
+        points: [],
+      };
+      store.addZone(slideId, zone);
+      store.toggleObjectLock(zone.id, 'zone');
+      expect(
+        useTacticalUnifiedStore
+          .getState()
+          .project.slides[0]?.zones.find((z) => z.id === zone.id)?.locked,
+      ).toBe(true);
+
+      // 5. Text
+      const text = {
+        id: 'text-1',
+        annotationType: 'text' as const,
+        x: 30,
+        y: 30,
+        content: 'Tactics',
+        fontSize: 16,
+        color: '#ffffff',
+        bold: false,
+        italic: false,
+      };
+      store.addText(slideId, text);
+      store.toggleObjectLock(text.id, 'text');
+      expect(
+        useTacticalUnifiedStore
+          .getState()
+          .project.slides[0]?.texts.find((t) => t.id === text.id)?.locked,
+      ).toBe(true);
+    });
+
+    it('locked なオブジェクトは削除 (remove) されない', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      const player = createDefaultPlayer('home', 40, 40, '#ff0000');
+      store.addPlayer(player);
+      store.toggleObjectLock(player.id, 'player');
+
+      store.removePlayer(slideId, player.id);
+      expect(
+        useTacticalUnifiedStore
+          .getState()
+          .project.slides[0]?.players.some((p) => p.id === player.id),
+      ).toBe(true);
+
+      // ロック解除後は削除できる
+      store.toggleObjectLock(player.id, 'player');
+      store.removePlayer(slideId, player.id);
+      expect(
+        useTacticalUnifiedStore
+          .getState()
+          .project.slides[0]?.players.some((p) => p.id === player.id),
+      ).toBe(false);
+    });
+
+    it('locked なオブジェクトは移動・更新されない', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      const player = createDefaultPlayer('home', 40, 40, '#ff0000');
+      store.addPlayer(player);
+      store.toggleObjectLock(player.id, 'player');
+
+      // movePlayer
+      store.movePlayer(slideId, player.id, 60, 60);
+      let p = useTacticalUnifiedStore
+        .getState()
+        .project.slides[0]?.players.find((pl) => pl.id === player.id);
+      expect(p?.x).toBe(40);
+      expect(p?.y).toBe(40);
+
+      // updatePlayer (patch with non-lock property)
+      store.updatePlayer(slideId, player.id, { x: 70, y: 70 });
+      p = useTacticalUnifiedStore
+        .getState()
+        .project.slides[0]?.players.find((pl) => pl.id === player.id);
+      expect(p?.x).toBe(40);
+
+      // setBallPosition
+      const initialBallX = store.project.slides[0]?.ball.x ?? 50;
+      store.toggleObjectLock('ball', 'ball');
+      store.setBallPosition(slideId, 80, 80);
+      expect(useTacticalUnifiedStore.getState().project.slides[0]?.ball.x).toBe(
+        initialBallX,
+      );
+    });
+
+    it('resetSlideObjects で locked な要素は削除されず保持される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      const lockedPlayer = createDefaultPlayer('home', 30, 30, '#00ff00');
+      const normalPlayer = createDefaultPlayer('home', 40, 40, '#ff0000');
+      store.addPlayer(lockedPlayer);
+      store.addPlayer(normalPlayer);
+      store.toggleObjectLock(lockedPlayer.id, 'player');
+
+      const lockedArrow = {
+        id: 'locked-arrow',
+        annotationType: 'arrow' as const,
+        arrowType: 'pass' as const,
+        curveType: 'straight' as const,
+        points: [
+          { x: 10, y: 10 },
+          { x: 20, y: 20 },
+        ],
+        color: '#ffffff',
+        strokeWidth: 3,
+        dashArray: [],
+        arrowHead: true,
+      };
+      const normalArrow = { ...lockedArrow, id: 'normal-arrow' };
+      store.addArrow(slideId, lockedArrow);
+      store.addArrow(slideId, normalArrow);
+      store.toggleObjectLock(lockedArrow.id, 'arrow');
+
+      store.resetSlideObjects(slideId);
+
+      const slide = useTacticalUnifiedStore.getState().project.slides[0];
+      expect(slide?.arrows.some((a) => a.id === 'locked-arrow')).toBe(true);
+      expect(slide?.arrows.some((a) => a.id === 'normal-arrow')).toBe(false);
+      expect(slide?.players.some((p) => p.id === lockedPlayer.id)).toBe(true);
+    });
+  });
 });
