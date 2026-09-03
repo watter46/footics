@@ -36,6 +36,7 @@ import type React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import type { DrawingTool } from '@/lib/types/tactical-unified';
 import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
+import { XMediaPresetMenu } from './x-media-preset-menu';
 
 function StraightLineIcon({
   size = 15,
@@ -426,8 +427,11 @@ export function DrawingToolbar() {
         <RotateCcw size={15} />
       </button>
 
-      {/* ── Divider: Auto-fit Bounds ── */}
+      {/* ── Divider: Bounds & Ratio ── */}
       <div className="w-px h-5 bg-white/20 mx-1" />
+
+      {/* X Media Ratio Preset Menu */}
+      <XMediaPresetMenu />
 
       {/* Auto-fit Boundary Box */}
       <button
