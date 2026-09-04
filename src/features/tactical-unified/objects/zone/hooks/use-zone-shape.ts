@@ -2,12 +2,13 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Box } from 'konva/lib/shapes/Transformer';
 import { useCallback, useEffect, useRef } from 'react';
-import { pxToNormX, pxToNormY } from './math-utils';
+import type { ZoneObjectProps } from '../types';
 import {
   computeTransformedZonePatch,
   computeZoneShapeMetrics,
+  pxToNormX,
+  pxToNormY,
 } from './zone-shape-geometry';
-import type { ZoneObjectProps } from './zone-types';
 
 export function useZoneShape({
   zone,

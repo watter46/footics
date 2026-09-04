@@ -5,7 +5,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useCallback } from 'react';
 import { Circle } from 'react-konva';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
-import { pxToNormX, pxToNormY } from './math-utils';
+import { pxToNormX, pxToNormY } from '../hooks/zone-shape-geometry';
 
 export interface VertexPair {
   normX: number;

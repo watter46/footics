@@ -1,9 +1,9 @@
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCallback } from 'react';
-import { normX, normY } from './math-utils';
-import type { ZonePolygonHandlesProps } from './zone-polygon-handles';
-import type { ZoneObjectProps } from './zone-types';
+import type { ZonePolygonHandlesProps } from '../components/zone-polygon-handles';
+import type { ZoneObjectProps } from '../types';
+import { normX, normY } from './zone-shape-geometry';
 
 export function useZonePolygon({
   zone,

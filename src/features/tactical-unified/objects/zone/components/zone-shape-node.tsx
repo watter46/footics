@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { Ellipse, Group, Rect, Transformer } from 'react-konva';
-import { useZoneShape } from './use-zone-shape';
-import { getZoneStyle, type ZoneObjectProps } from './zone-types';
+import { useZoneShape } from '../hooks/use-zone-shape';
+import { getZoneStyle, type ZoneObjectProps } from '../types';
 
 export const ZoneShapeNode = React.memo(function ZoneShapeNode(
   props: ZoneObjectProps,

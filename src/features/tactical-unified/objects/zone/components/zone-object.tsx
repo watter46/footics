@@ -6,11 +6,11 @@
  */
 
 import React from 'react';
+import type { ZoneObjectProps } from '../types';
 import { ZonePolygonNode } from './zone-polygon-node';
 import { ZoneShapeNode } from './zone-shape-node';
-import type { ZoneObjectProps } from './zone-types';
 
-export type { ZoneObjectProps } from './zone-types';
+export type { ZoneObjectProps } from '../types';
 
 export const ZoneObject = React.memo(function ZoneObject(
   props: ZoneObjectProps,

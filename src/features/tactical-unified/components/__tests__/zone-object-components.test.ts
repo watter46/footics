@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { getZoneStyle } from '@/features/tactical-unified/objects/zone';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
-import { getZoneStyle } from '../canvas/annotations/zone-types';
 
 describe('ZoneObject components & helpers', () => {
   const sampleZone: ZoneAnnotation = {

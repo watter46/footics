@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { Group, Line } from 'react-konva';
-import { useZonePolygon } from './use-zone-polygon';
+import { useZonePolygon } from '../hooks/use-zone-polygon';
+import { getZoneStyle, type ZoneObjectProps } from '../types';
 import { ZonePolygonHandles } from './zone-polygon-handles';
-import { getZoneStyle, type ZoneObjectProps } from './zone-types';
 
 export const ZonePolygonNode = React.memo(function ZonePolygonNode(
   props: ZoneObjectProps,
