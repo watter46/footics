@@ -16,11 +16,10 @@ import { useKonvaExport } from '@/features/tactical-unified/hooks/use-konva-expo
 import { useKonvaVideoExport } from '@/features/tactical-unified/hooks/use-konva-video-export';
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
 import { PlayerLayer } from '../../objects/player';
-import { ContextHud } from '../context-hud';
-import { BoundaryBoxHud } from '../toolbar/boundary-box-hud';
-import { DrawingToolbar } from '../toolbar/drawing-toolbar';
+import { ContextHud } from '../../panels/hud';
+import { BoundaryBoxHud, DrawingToolbar } from '../../panels/toolbar';
 import { AnnotationLayer } from './annotation-layer';
-import { BallObject } from './ball-object';
+import { BallObject } from '../../objects/ball';
 import { BoundaryBox } from './boundary-box';
 import { DrawingPreviewLayer } from './drawing-preview-layer';
 import {
