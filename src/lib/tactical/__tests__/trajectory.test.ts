@@ -67,8 +67,14 @@ describe('trajectory utility', () => {
 
   it('calculates midpoint and reverses control point correctly', () => {
     const cp = { x: 80, y: 30 };
-    const mid = getBezierControlPoint(p0, p1, { type: 'custom', controlPoint: cp });
-    const midPt = calculateBezierPoint(p0, p1, 0.5, { type: 'custom', controlPoint: cp });
+    const mid = getBezierControlPoint(p0, p1, {
+      type: 'custom',
+      controlPoint: cp,
+    });
+    const midPt = calculateBezierPoint(p0, p1, 0.5, {
+      type: 'custom',
+      controlPoint: cp,
+    });
 
     const reversedCp = {
       x: 2 * midPt.x - 0.5 * (p0.x + p1.x),
@@ -78,4 +84,3 @@ describe('trajectory utility', () => {
     expect(reversedCp.y).toBeCloseTo(cp.y);
   });
 });
-

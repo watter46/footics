@@ -12,7 +12,15 @@ import {
   addToSaveQueue,
   processSaveQueue,
 } from '../features/storage-sync/save-queue';
-import { SaveQueueSchema } from '../types/schemas';
+import {
+  SaveQueueSchema,
+  TACTICAL_CAPTURE_CUSTOM_EVENT,
+  TACTICAL_CAPTURE_PULL_CUSTOM_EVENT,
+  TACTICAL_CAPTURE_PULL_WINDOW_MESSAGE,
+  TACTICAL_CAPTURE_WINDOW_MESSAGE,
+  type TacticalCapturePayload,
+  TacticalCapturePayloadSchema,
+} from '../types/schemas';
 import { detectMatchId } from '../utils/match';
 
 export default defineContentScript({
@@ -81,8 +89,8 @@ export default defineContentScript({
 
     // ── Tactical キャプチャデータの中継パイプライン (Push & Pull) ──
 
-    const dispatchCaptureToApp = (payload: any) => {
-      if (!payload || !payload.dataUrl) return;
+    const dispatchCaptureToApp = (payload: TacticalCapturePayload) => {
+      if (!payload?.dataUrl) return;
       console.log(
         '🎯 [ContentScript] Dispatching capture payload to Web App:',
         payload.id,
@@ -90,14 +98,14 @@ export default defineContentScript({
       // 1. window.postMessage による Main World への安全なシリアライズ転送
       window.postMessage(
         {
-          type: 'FOOTICS_TACTICAL_CAPTURE_PAYLOAD',
+          type: TACTICAL_CAPTURE_WINDOW_MESSAGE,
           payload,
         },
         '*',
       );
       // 2. CustomEvent による二重通知
       window.dispatchEvent(
-        new CustomEvent('footics-tactical-capture-received', {
+        new CustomEvent(TACTICAL_CAPTURE_CUSTOM_EVENT, {
           detail: payload,
         }),
       );
@@ -116,12 +124,14 @@ export default defineContentScript({
     // Web アプリ側からの「最新キャプチャデータちょうだい」リクエスト (Pull)
     const handleCapturePullRequest = async () => {
       try {
-        const stored = await browser.storage.local.get(
+        const stored = (await browser.storage.local.get(
           STORAGE_KEYS.TACTICAL_PENDING_CAPTURE,
-        );
-        const pending = stored[STORAGE_KEYS.TACTICAL_PENDING_CAPTURE];
-        if (pending && pending.dataUrl) {
-          if (Date.now() - (pending.timestamp || 0) < 60000) {
+        )) as Record<string, unknown>;
+        const rawPending = stored[STORAGE_KEYS.TACTICAL_PENDING_CAPTURE];
+        const parsed = TacticalCapturePayloadSchema.safeParse(rawPending);
+        if (parsed.success) {
+          const pending = parsed.data;
+          if (Date.now() - pending.timestamp < 60000) {
             console.log(
               '🎯 [ContentScript] Replying to app pull request with pending capture:',
               pending.id,
@@ -134,9 +144,13 @@ export default defineContentScript({
       }
     };
 
-    window.addEventListener('footics-request-pending-capture', handleCapturePullRequest);
+    window.addEventListener(
+      TACTICAL_CAPTURE_PULL_CUSTOM_EVENT,
+      handleCapturePullRequest,
+    );
     window.addEventListener('message', (e) => {
-      if (e.data?.type === 'FOOTICS_REQUEST_PENDING_CAPTURE') {
+      const msgEvent = e as MessageEvent;
+      if (msgEvent.data?.type === TACTICAL_CAPTURE_PULL_WINDOW_MESSAGE) {
         handleCapturePullRequest();
       }
     });

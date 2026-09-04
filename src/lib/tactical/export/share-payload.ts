@@ -1,15 +1,19 @@
 import { z } from 'zod';
 import { getPlayersMasterBatch } from '@/lib/db/queries';
-import type {
-  AnimationOrientation,
-  TacticalScene,
-} from '@/stores/tactical-animation-store';
+
+export type AnimationOrientation = 'vertical' | 'horizontal';
+
+export interface TacticalSceneLike {
+  id?: string;
+  players?: Record<string, any> | any[];
+  [key: string]: any;
+}
 
 export const TacticalExportSharePayloadSchema = z.object({
   version: z.number().default(1),
   createdAt: z.number(),
   title: z.string().optional(),
-  scenes: z.array(z.any()), // TacticalScene[]
+  scenes: z.array(z.any()), // Slide[] or TacticalScene[]
   orientation: z.enum(['vertical', 'horizontal']),
   teamVisibility: z.enum(['both', 'home', 'away']).optional().default('both'),
   photos: z.record(z.string(), z.string()).optional().default({}), // playerId -> base64 DataURL or Image URL
@@ -22,7 +26,7 @@ export const TacticalExportSharePayloadSchema = z.object({
 export type TacticalExportSharePayload = z.infer<
   typeof TacticalExportSharePayloadSchema
 > & {
-  scenes: TacticalScene[];
+  scenes: any[];
   orientation: AnimationOrientation;
   exportFps: 30 | 60;
 };
@@ -72,7 +76,7 @@ export async function createBitmapFromUrlOrBase64(
  * IndexedDB の photoBlob または指定 URL から Base64 / URL の辞書を作成する
  */
 export async function packPlayerPhotos(
-  scenes: TacticalScene[],
+  scenes: any[],
 ): Promise<Record<string, string>> {
   const photoMap: Record<string, string> = {};
 
@@ -80,13 +84,19 @@ export async function packPlayerPhotos(
   const targetPlayers = new Map<string, string | undefined>();
   for (const scene of scenes) {
     if (!scene.players) continue;
-    for (const p of Object.values(scene.players)) {
+    const playerList = Array.isArray(scene.players)
+      ? scene.players
+      : Object.values(scene.players);
+    for (const p of playerList) {
+      const options = p.options || p;
+      const pid = String(p.playerId || p.id || '');
       if (
-        p.options?.insideContent === 'photo' &&
-        !targetPlayers.has(p.playerId)
+        (options.insideContent === 'photo' || p.insideContent === 'photo') &&
+        pid &&
+        !targetPlayers.has(pid)
       ) {
-        const url = p.options.photoUrl?.trim() || undefined;
-        targetPlayers.set(p.playerId, url);
+        const url = (p.photoUrl || options.photoUrl || '').trim() || undefined;
+        targetPlayers.set(pid, url);
       }
     }
   }

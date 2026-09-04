@@ -164,11 +164,12 @@ describe('SlideSchema', () => {
     const slide = createDefaultSlide(0);
     const result = SlideSchema.safeParse(slide);
     expect(result.success).toBe(true);
+    expect(slide.aspectRatio).toBe('4:5');
     expect(slide.boundaryBox).toEqual({
-      x: 7.25,
-      y: 0.43,
-      width: 85.5,
-      height: 99.14,
+      x: 3.0,
+      y: 3.0,
+      width: 94.0,
+      height: 94.0,
       enabled: true,
     });
   });

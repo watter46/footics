@@ -38,12 +38,14 @@ export function useCanvasZoomPan({
   const pitchTransformRef = useRef<PitchTransform>(pitchTransform);
 
   const applyPitchTransformToNodes = useCallback(
-    (panX: number, panY: number, zoom: number) => {
+    (panX: number, panY: number, zoom: number, tilt?: number) => {
+      const currentTilt = tilt ?? pitchTransformRef.current.tilt ?? 0;
       pitchTransformRef.current = {
         ...pitchTransformRef.current,
         panX,
         panY,
         zoom,
+        tilt: currentTilt,
       };
       if (pitchGroupsRef?.current) {
         applyPitchTransformToGroups(
@@ -52,6 +54,7 @@ export function useCanvasZoomPan({
           panX,
           panY,
           zoom,
+          currentTilt,
         );
       }
     },
@@ -64,6 +67,7 @@ export function useCanvasZoomPan({
       pitchTransform.panX ?? 0,
       pitchTransform.panY ?? 0,
       pitchTransform.zoom ?? 1,
+      pitchTransform.tilt ?? 0,
     );
   }, [pitchTransform, applyPitchTransformToNodes]);
 

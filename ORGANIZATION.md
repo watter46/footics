@@ -10,23 +10,22 @@
 
 | エージェント名 | 役割 | タイプ | 担当ドメイン | スキルパス |
 |---|---|---|---|---|
-| regista-gm | 統括GM・オーケストレーター | Leader/GM | 全体統括 | `~/.gemini/config/skills/regista-gm/` |
-| regista-frontend | フロントエンド/UIスペシャリスト | Specialist | A: Web App Core, F: Analysis & Memo | `~/.gemini/config/skills/regista-frontend/` |
-| regista-canvas | Canvas/2Dグラフィックススペシャリスト | Specialist | B: Tactical Board, C: Video & Export | `~/.gemini/config/skills/regista-canvas/` |
-| regista-data | Data & Stateスペシャリスト | Specialist | D: Data Layer | `~/.gemini/config/skills/regista-data/` |
-| regista-extension | Extension/Platformスペシャリスト | Specialist | E: Browser Extension | `~/.gemini/config/skills/regista-extension/` |
-| regista-qa | Quality Sentinel (Critic) | Specialist (独立) | Cross-cutting: 全パッケージQA | `~/.gemini/config/skills/regista-qa/` |
+| regista-gm | 統括GM・オーケストレーター | Leader/GM | 全体統括 | `.agents/skills/regista-gm/` |
+| regista-frontend | フロントエンド/UIスペシャリスト | Specialist | A: Web App Core & UI, E: Analysis & Memo | `.agents/skills/regista-frontend/` |
+| regista-canvas | Canvas/2Dグラフィックス・動画出力スペシャリスト | Specialist | B: Tactical Board & Animation / Video | `.agents/skills/regista-canvas/` |
+| regista-data | Data, State & Contractスペシャリスト | Specialist | C: Data Layer, State & Type Contracts | `.agents/skills/regista-data/` |
+| regista-extension | Extension/Platformスペシャリスト | Specialist | D: Browser Extension (Unified) | `.agents/skills/regista-extension/` |
+| regista-qa | Quality Sentinel (Critic) | Specialist (独立) | Cross-cutting: 全パッケージQA | `.agents/skills/regista-qa/` |
 
 ## 開発ドメインマッピング
 
 | ドメイン | 対象ディレクトリ | 担当エージェント |
 |---|---|---|
-| A: Web App Core | src/app/, src/components/ui/, layout/ | regista-frontend |
-| B: Tactical Board & Animation | src/components/features/tactical-* | regista-canvas |
-| C: Video & Export Pipeline | video-canvas/, src/lib/tactical/export/ | regista-canvas |
-| D: Data Layer | src/lib/db/, src/lib/data/, src/hooks/ | regista-data |
-| E: Browser Extension | extension/ | regista-extension |
-| F: Analysis & Memo | src/components/features/analysis/, memo-overlay/ | regista-frontend |
+| A: Web App Core & UI | src/app/, src/components/ui/, layout/, src/components/features/tactical-unified/right-panel/, toolbar/, inspector/ | regista-frontend |
+| B: Tactical Board & Animation / Video | src/components/features/tactical-unified/canvas/, src/lib/tactical/export/, src/lib/tactical/marker-assets.ts | regista-canvas |
+| C: Data Layer, State & Contracts | src/lib/db/, src/lib/data/, src/lib/types/, src/stores/, src/hooks/ | regista-data |
+| D: Browser Extension (Unified) | extension/ | regista-extension |
+| E: Analysis & Memo | src/components/features/analysis/, src/components/features/memo-overlay/, src/components/features/sidebar/ | regista-frontend |
 
 ## 実行モード (Execution Modes)
 
@@ -35,7 +34,7 @@
 | モード | 適用条件 | ワークフロー |
 |---|---|---|
 | **Fast-Track Mode**<br>(単独・高速実行) | ・日常の技術相談・質問・調査<br>・1〜3ファイル以内の機能修正・バグ修正<br>・型エラー解消、軽微なリファクタリング | チケット発行・State Machine・QA召喚をスキップし、現在のアシスタント単独で即時実装・最小スコープ検証（対象ファイルのみ）を行って完了する。 |
-| **Orchestrated Mode**<br>(組織的開発) | ・複数ドメイン（Web+Ext+Canvas等）に跨る大型新機能<br>・DBスキーマの破壊的変更<br>・アーキテクチャ刷新 | 下記の State Machine (TRIAGE → DESIGN → IMPLEMENTATION → REVIEW_QA → DONE) に従って分業する。 |
+| **Orchestrated Mode**<br>(組織的開発) | ・複数ドメイン（Web+Ext等）に跨る大型新機能<br>・DBスキーマの破壊的変更<br>・アーキテクチャ刷新 | 下記の State Machine (TRIAGE → DESIGN → IMPLEMENTATION → REVIEW_QA → DONE) に従って分業する。 |
 
 ## State Machine (Orchestrated Mode 開発ワークフロー)
 
@@ -89,7 +88,7 @@
 
 ## パッケージ間境界ルール
 
-- `src/` ⇔ `extension/` ⇔ `video-canvas/` 間の直接インポート禁止
+- `src/` ⇔ `extension/` 間の直接インポート禁止
 - TypeScript 型定義（Type/Interface）のみ共有可能
 - 循環参照の絶対禁止
 
@@ -99,7 +98,6 @@
 |---|---|
 | `src/` (Web App) | `pnpm run deploy` |
 | `extension/` (WXT拡張) | `cd extension && pnpm run build` |
-| `video-canvas/` (Konvaエディタ) | `cd video-canvas && pnpm run build` |
 
 ## 関連組織
 
@@ -110,15 +108,21 @@
 
 ```
 footics/
-├── agents/                     # エージェント組織資産
-│   └── regista-gm/
-│       ├── context/            # コードベース分析、State Machine定義
-│       ├── practices/          # 実務原則
-│       ├── sources/            # リサーチ結果
-│       └── standards/          # ルーブリック
+├── .agents/                    # プロジェクト内カプセル化エージェント・スキル
+│   ├── skills/                 # 各専門エージェントのSKILL定義
+│   │   ├── regista-gm/
+│   │   ├── regista-frontend/
+│   │   ├── regista-canvas/
+│   │   ├── regista-data/
+│   │   ├── regista-extension/
+│   │   └── regista-qa/
+│   ├── knowledge/              # Knowledge Items (KI)
+│   └── scripts/                # 型チェック・テスト検証スクリプト
+├── agents/                     # エージェント組織資産・ボード
+│   ├── REGISTA_BOARD.md        # タスクボード・チケット管理
+│   └── regista-gm/             # GM運用資産
 ├── ORGANIZATION.md             # 本ファイル（組織全体の運用規約）
 ├── AGENTS.md                   # プロジェクト全体のコード規約
 ├── src/AGENTS.md               # Web App固有の規約
-├── extension/AGENTS.md         # Extension固有の規約
-└── video-canvas/AGENTS.md      # Video Canvas固有の規約
+└── extension/AGENTS.md         # Extension固有の規約
 ```

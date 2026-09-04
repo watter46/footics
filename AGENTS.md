@@ -29,9 +29,12 @@ trigger: always_on
     - `L1`: 他のチケットに依存せず即時並列実行可能。`L2`: L1完了に依存。`L3`: L2完了に依存... と続く。
     - CLIからの進捗・依存確認には `pnpm tickets` を使用する。
   - **3. モデルとEffortの選定 (ホワイトリスト):**
-    - 高速・軽量タスク用: `Gemini 3.8 Flash` [low/medium/high] (基本), `Gemini 3.7 Flash`, `Gemini 3.6 Flash`
+    - **チケット発行 (GM)**: `Gemini 3.8 Flash` [high] 固定（タスク設計・分解は常にこれを使用）
+    - **`Gemini 3.7 Flash` [low / medium / high]** ← **実装Workerのデフォルト（原則こちらを使用）**: 型修正・rename・import整理・定型UI実装・既存ロジックの拡張など、設計が明確なタスク全般
+    - **`Gemini 3.8 Flash` [low / medium / high]**: 3.7 Highでも難しい場合のみ使用。新規コンポーネント/Hook設計・Zustand Store新設・Canvas/WebCodecs処理・複数ファイル跨ぎの状態設計など、新規設計を伴うタスク
     - 複雑なアーキテクチャ・難解バグ用: `Gemini 3.1 Pro` [low/high], `Claude Sonnet 4.6` (thinking), `Claude Opus 4.6` (thinking)
     - 独自処理用: `GPT-oss 120B` (Medium)
+    - **判定基準（GM用）**: チケット発行 → 3.8 Flash High固定 / 実装: 既存拡張・設計明確 → 3.7 Flash [low〜high] / 新規設計・難しい → 3.8 Flash [low〜high] / クロスドメイン・アーキテクチャ刷新 → Pro/Sonnet
   - **4. 会話分離の原則 (Cross-Conversation Execution Isolation):**
     - チケット一覧の展開・企画・チケット発行は「企画/GM Conversation」で行う。
     - **各チケット（AAWU）の実際の実装・テスト・検証は、必ず「別（新規）のConversation」を作成して実施する**（コンテキスト汚染とトークン浪費の防止）。

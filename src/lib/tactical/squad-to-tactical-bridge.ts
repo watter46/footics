@@ -1,3 +1,4 @@
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   type FormationMode,
   type FormationType,
@@ -14,7 +15,6 @@ import {
   createDefaultPlayer,
   isVerticalAspectRatio,
 } from '@/lib/types/tactical-unified';
-import { useTacticalUnifiedStore } from '@/stores/tactical-unified-store';
 import type { Player } from '@/types';
 
 export interface SquadPlayerItem extends Partial<Player> {

@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "last_updated": "2026-09-02T17:50:09.681Z",
+  "last_updated": "2026-09-02T20:09:30.935Z",
   "active_focus": {
     "phase_id": "Phase 11",
     "phase_name": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
@@ -132,10 +132,7 @@
       },
       "execution_prompt": "Fast-Track Modeで AAWU-9-1: Tactical Unified Store Slice Pattern Refactoring を実装してください。tactical-unified-store.ts を Slice Pattern に安全にリファクタリングします。",
       "completed_at": "2026-09-01T14:16:14.141Z",
-      "completion_summary": [
-        "Refactored to Slice Pattern",
-        "Tests passed"
-      ]
+      "completion_summary": ["Refactored to Slice Pattern", "Tests passed"]
     },
     {
       "id": "AAWU-8-1",
@@ -154,10 +151,7 @@
         "多層Direct Composition回避CSS（filter, opacity, translate3d, scale等）によるDRM黒画面化防止",
         "動画生解像度とビューポート比率から余白レターボックスを自動計算しOffscreenCanvasで精密トリミング"
       ],
-      "acceptance_criteria": [
-        "単体テスト全件パス",
-        "Scoped型チェックパス"
-      ],
+      "acceptance_criteria": ["単体テスト全件パス", "Scoped型チェックパス"],
       "verification_commands": {
         "biome": "rtk biome check extension/features/capture/",
         "type_check": "pnpm type-check:scoped extension/features/capture/drm-capture-engine.ts",
@@ -188,10 +182,7 @@
         "extension/wxt.config.ts に capture-to-tactical (Alt+S) ショートカットを登録",
         "background.ts と overlay.content.tsx 間の型安全双方向メッセージング配備"
       ],
-      "acceptance_criteria": [
-        "WXT拡張機能ビルド成功",
-        "型チェックパス"
-      ],
+      "acceptance_criteria": ["WXT拡張機能ビルド成功", "型チェックパス"],
       "verification_commands": {
         "biome": "rtk biome check extension/entrypoints/",
         "type_check": "pnpm type-check:scoped extension/entrypoints/background.ts"
@@ -221,10 +212,7 @@
         "キャプチャ受信時にピッチ線非表示、スタメン22人白紙化、ボール非表示",
         "境界ボックスを画像全域に自動フィットし、右パネルをPropertiesへ最適化"
       ],
-      "acceptance_criteria": [
-        "型チェックパス",
-        "Vitestパス"
-      ],
+      "acceptance_criteria": ["型チェックパス", "Vitestパス"],
       "verification_commands": {
         "biome": "rtk biome check src/components/features/tactical-unified/",
         "type_check": "pnpm type-check:scoped src/stores/tactical-unified-store.ts"
@@ -253,10 +241,7 @@
         "立体足元楕円パスおよび光の柱ベクターパスを描画レイヤーに移植",
         "視野コーンおよびスポットライト変形と連動"
       ],
-      "acceptance_criteria": [
-        "型チェックパス",
-        "Vitestパス"
-      ],
+      "acceptance_criteria": ["型チェックパス", "Vitestパス"],
       "verification_commands": {
         "biome": "rtk biome check src/components/features/tactical-unified/canvas/",
         "type_check": "pnpm type-check:scoped src/components/features/tactical-unified/canvas/player-layer.tsx"
@@ -285,10 +270,7 @@
         "TopBar に [ ⭕ リング ] 追加ボタン配置",
         "スナップショット時の右パネルProperties専用最適化とアノテーション設定UI連動"
       ],
-      "acceptance_criteria": [
-        "型チェックパス",
-        "Vitestパス"
-      ],
+      "acceptance_criteria": ["型チェックパス", "Vitestパス"],
       "verification_commands": {
         "biome": "rtk biome check src/components/features/tactical-unified/toolbar/",
         "type_check": "pnpm type-check:scoped src/components/features/tactical-unified/toolbar/top-bar.tsx"
@@ -316,10 +298,7 @@
         "+ ボタン左クリック（通常ピッチ白紙スライド初期化）と右クリック（スナップショット＋リング完全引き継ぎ複製）の明確な分岐",
         "setActiveSlide 切り替え時のスライド個別背景・パネル同期"
       ],
-      "acceptance_criteria": [
-        "Vitest全件パス",
-        "Scoped型チェックパス"
-      ],
+      "acceptance_criteria": ["Vitest全件パス", "Scoped型チェックパス"],
       "verification_commands": {
         "biome": "rtk biome check src/components/features/tactical-unified/timeline/",
         "type_check": "pnpm type-check:scoped src/stores/tactical-unified-store.ts",
@@ -339,20 +318,13 @@
       "domain": "Cross-cutting: QA/Review",
       "assignee": "regista-gm",
       "status": "DONE",
-      "target_files": [
-        "pnpm-workspace.yaml",
-        "package.json",
-        "AGENTS.md"
-      ],
+      "target_files": ["pnpm-workspace.yaml", "package.json", "AGENTS.md"],
       "user_experience_impact": "拡張機能が1つに統合され、ビルドと同期が一元化されて保守性が向上しました。",
       "detailed_spec": [
         "独立 video-canvas パッケージを削除し extension/ 単一パッケージへ完全集約",
         "ビルドスクリプトとワークスペース構成を整理"
       ],
-      "acceptance_criteria": [
-        "pnpm build 成功",
-        "ワークスペース検証パス"
-      ],
+      "acceptance_criteria": ["pnpm build 成功", "ワークスペース検証パス"],
       "verification_commands": {
         "biome": "rtk biome check package.json",
         "type_check": "pnpm type-check:scoped src/stores/tactical-unified-store.ts"
@@ -613,42 +585,12 @@
       ]
     },
     {
-      "id": "AAWU-11-4",
-      "title": "📥 Syntax Tactical Scene JSON Import & Template Importer",
-      "phase": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
-      "domain": "A: Web App Core & UI",
-      "assignee": "regista-frontend",
-      "status": "TODO",
-      "target_files": [
-        "src/lib/tactical/syntax-scene-importer.ts",
-        "src/components/features/tactical-unified/toolbar/top-bar.tsx",
-        "src/lib/types/footics-integration-v1.ts"
-      ],
-      "user_experience_impact": "SyntaxやAIが生成した戦術シーン定義JSON（footics-integration-v1）をドラッグ＆ドロップまたはファイル選択するだけで、ピッチ上に選手・矢印・スポットライト・解説テキストが即座に自動展開されます。",
-      "detailed_spec": [
-        "footics-integration-v1.json スキーマ（0.0〜100.0正規化座標、ベクトル、ゾーン、アノテーション）のZodパーサー実装",
-        "インポート時のスライド自動生成・配置マッピング（正規化座標からキャンバス座標への変換）",
-        "TopBar に「JSON読み込み / テンプレート適用」UIおよびD&Dドロップゾーンの配備"
-      ],
-      "acceptance_criteria": [
-        "Syntax準拠の戦術JSONファイルを読み込んで正しく選手・アノテーションがピッチ上に描画されること",
-        "不正なJSON形式に対して安全なトーストエラーが表示されること",
-        "Scoped型チェックと単体テストがエラー0件でパスすること"
-      ],
-      "verification_commands": {
-        "biome": "rtk biome check src/lib/tactical/",
-        "type_check": "pnpm type-check:scoped src/lib/tactical/syntax-scene-importer.ts",
-        "vitest": "rtk vitest run src/lib/tactical/__tests__/"
-      },
-      "execution_prompt": "Fast-Track Modeで AAWU-11-4: Syntax Tactical Scene JSON Import & Template Importer を実装してください。Syntax戦術JSONのパースとスライド自動展開を配備します。"
-    },
-    {
       "id": "AAWU-11-5",
       "title": "🧩 Store Modularization: Annotation & Tool Slices Extraction",
       "phase": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
       "domain": "C: Data Layer, State & Contracts",
       "assignee": "regista-data",
-      "status": "TODO",
+      "status": "DONE",
       "target_files": [
         "src/stores/tactical-unified-store.ts",
         "src/stores/slices/annotation-slice.ts",
@@ -670,36 +612,12 @@
         "type_check": "pnpm type-check:scoped src/stores/tactical-unified-store.ts",
         "vitest": "rtk vitest run src/stores/__tests__/"
       },
-      "execution_prompt": "Fast-Track Modeで AAWU-11-5: Store Modularization: Annotation & Tool Slices Extraction を実装してください。アノテーションとツール状態を専用スライスへ分離します。"
-    },
-    {
-      "id": "AAWU-11-6",
-      "title": "⚡ Konva Layer Partitioning & Zero-Overhead Static Layer Isolation",
-      "phase": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
-      "domain": "B: Tactical Board & Animation / Video",
-      "assignee": "regista-canvas",
-      "status": "TODO",
-      "target_files": [
-        "src/components/features/tactical-unified/canvas/unified-canvas.tsx",
-        "src/components/features/tactical-unified/canvas/pitch-background-layer.tsx",
-        "src/components/features/tactical-unified/canvas/annotation-layer.tsx"
-      ],
-      "user_experience_impact": "選手マーカーのドラッグ中や多数のアノテーション描画時でもピッチ背景や静的要素の再描画コストがゼロになり、常に滑らかな120fps操作を維持します。",
-      "detailed_spec": [
-        "ピッチライン・芝生パターン・静止背景画像を独立した `<Layer listening={false} perfectDrawEnabled={false}>` に完全分離",
-        "ドラッグ中・変形中オブジェクト専用の過渡インタラクションレイヤーの分離",
-        "Konva Stage の `batchDraw` 呼び出し頻度を最小化しGPUレンダリング効率を最大化"
-      ],
-      "acceptance_criteria": [
-        "選手ドラッグ時・アノテーション描画時に背景レイヤーの再描画が発生しないこと",
-        "Scoped型チェックおよび単体テストがエラー0件でパスすること"
-      ],
-      "verification_commands": {
-        "biome": "rtk biome check src/components/features/tactical-unified/canvas/",
-        "type_check": "pnpm type-check:scoped src/components/features/tactical-unified/canvas/unified-canvas.tsx",
-        "vitest": "rtk vitest run src/components/features/tactical-unified/canvas/"
-      },
-      "execution_prompt": "Fast-Track Modeで AAWU-11-6: Konva Layer Partitioning & Zero-Overhead Static Layer Isolation を実装してください。Konva静的・動的レイヤー分離を行います。"
+      "execution_prompt": "Fast-Track Modeで AAWU-11-5: Store Modularization: Annotation & Tool Slices Extraction を実装してください。アノテーションとツール状態を専用スライスへ分離します。",
+      "completed_at": "2026-09-02T19:56:00.967Z",
+      "completion_summary": [
+        "アノテーションCRUDおよび消しゴム操作をannotation-slice.tsへ、描画ツール・オブジェクト選択・パネル状態をtool-slice.tsへ完全分離",
+        "tactical-unified-storeへの型安全なスライス合成と公開型・セレクターの100%後方互換性を維持し全単体テスト59件完全パス"
+      ]
     },
     {
       "id": "AAWU-11-7",
@@ -707,7 +625,7 @@
       "phase": "Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification",
       "domain": "C: Data Layer, State & Contracts",
       "assignee": "regista-data",
-      "status": "TODO",
+      "status": "DONE",
       "target_files": [
         "src/lib/types/tactical-unified.ts",
         "extension/types/messaging.ts",
@@ -728,7 +646,132 @@
         "type_check": "pnpm type-check:scoped src/lib/types/capture-protocol.ts",
         "vitest": "rtk vitest run src/lib/tactical/__tests__/"
       },
-      "execution_prompt": "Fast-Track Modeで AAWU-11-7: Shared Types Monorepo Extraction を実装してください。Webと拡張機能の通信・戦術共通型を一元化します。"
+      "execution_prompt": "Fast-Track Modeで AAWU-11-7: Shared Types Monorepo Extraction を実装してください。Webと拡張機能の通信・戦術共通型を一元化します。",
+      "completed_at": "2026-09-02T20:09:30.935Z",
+      "completion_summary": [
+        "Web本体とExtension間のキャプチャ通信契約をsrc/lib/types/capture-protocol.tsへ集約しZod検証・定数・型安全パイプラインを確立",
+        "ExtensionおよびWebアプリ側の重複手動定義を撤廃し単一契約参照への一本化とScoped型チェック・Biome・Vitest全テスト完全パス"
+      ]
+    },
+    {
+      "id": "AAWU-12-1",
+      "title": "🧹 Workspace & Legacy Component Purge",
+      "phase": "Phase 12: Core Cleanup & Squad Architecture",
+      "domain": "A: Web App Core & UI",
+      "assignee": "regista-frontend",
+      "status": "DONE",
+      "target_files": [
+        "src/stores/tactical-unified-store.ts.bak",
+        "src/app/animation-test/page.tsx",
+        "src/components/features/dashboard/Dashboard.tsx",
+        "src/stores/ui-store.ts",
+        "src/stores/tactical-animation-store.ts",
+        "src/stores/tactical-store.ts"
+      ],
+      "user_experience_impact": "レガシーコード・不要モーダルが完全撤廃され、アプリ全体のバンドルサイズが削減され、ダッシュボードから最新の /tactical 画面へ迷わず遷移できるようになります。",
+      "detailed_spec": [
+        "src/stores/tactical-unified-store.ts.bak などの残存バックアップファイルを削除",
+        "src/app/animation-test/ および src/app/extension/quick-event/ の不要ルーティングディレクトリを削除",
+        "Dashboard.tsx および NationalDashboard.tsx から TacticalBoardModal, TacticalAnimationModal のインポートと呼び出しを削除し、TopBarの /tactical リンクまたは戦術ボード導線に一本化",
+        "未使用となった旧コンポーネント群（src/components/features/tactical-board/, tactical-animation/）および旧ストア（tactical-animation-store.ts, tactical-store.ts）を安全に削除",
+        "ui-store.ts から旧モーダル用の状態（isTacticalBoardOpen, isTacticalAnimationOpen 等）をクリーンアップ"
+      ],
+      "acceptance_criteria": [
+        "旧戦術コンポーネント・ストア・一時ファイルが削除され、型チェック（type-check:scoped）およびビルド（pnpm build）がエラー0件で成功すること",
+        "Dashboard 画面がエラーなく正常にレンダリングされること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/dashboard/ src/stores/ui-store.ts",
+        "type_check": "pnpm type-check:scoped src/components/features/dashboard/Dashboard.tsx",
+        "vitest": "rtk vitest run src/stores/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-12-1: Workspace & Legacy Component Purge を実装してください。一時ファイル(.bak)の削除、旧戦術コンポーネント(tactical-board, tactical-animation)とストアの完全撤廃、およびDashboard.tsxからの旧モーダル参照排除を行います。",
+      "completed_at": "2026-09-02T19:46:20.325Z",
+      "completion_summary": [
+        "旧戦術コンポーネント(tactical-board, tactical-animation)および旧ストア・フック・補間ワーカーを完全撤廃",
+        "AddPlayerDialogをteamsディレクトリへ移設しDashboard/NationalDashboardから統合戦術ボード(/tactical)への導線に一本化",
+        "pnpm buildおよび全単体テスト・型チェックがエラー0件でパス"
+      ]
+    },
+    {
+      "id": "AAWU-12-2",
+      "title": "👥 Unified Multi-Team Squad Architecture",
+      "phase": "Phase 12: Core Cleanup & Squad Architecture",
+      "domain": "A: Web App Core & UI",
+      "assignee": "regista-frontend",
+      "status": "DONE",
+      "target_files": [
+        "src/components/features/teams/ChelseaSquadClient.tsx",
+        "src/app/teams/[teamId]/page.tsx",
+        "src/app/teams/chelsea/page.tsx",
+        "src/components/features/teams/squad-header.tsx"
+      ],
+      "user_experience_impact": "チーム管理画面が全クラブ（アーセナル、マンC、レアル等）で一貫した設計になり、重複ルートが解消されてURLとコンポーネントの整合性が保たれます。",
+      "detailed_spec": [
+        "ChelseaSquadClient.tsx を TeamSquadClient.tsx にリネームし、コンポーネント名およびエクスポートを TeamSquadClient に統一",
+        "src/app/teams/chelsea/page.tsx の静的ルートを削除し、/teams/chelsea へのアクセスも動的ルート src/app/teams/[teamId]/page.tsx で一元処理",
+        "TeamSquadClient.tsx 内の旧チェルシー専用モーダル（ChelseaTacticalBoardModal）のインポート・呼び出しを削除し、統合戦術ボード /tactical への連携（injectTeamSquadToTactical 経由での遷移）に統一",
+        "squad-header.tsx や関連コンポーネント内のハードコードされたチェルシー固有の文言・スタイルを teamConfig 準拠の動的表現に統一"
+      ],
+      "acceptance_criteria": [
+        "/teams/chelsea および /teams/arsenal などの各チームURLで正常にスカッド画面が表示・編集できること",
+        "Scoped型チェックおよび Biome check がエラー0件でパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/teams/ src/app/teams/",
+        "type_check": "pnpm type-check:scoped src/components/features/teams/TeamSquadClient.tsx",
+        "vitest": "rtk vitest run src/components/features/teams/"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-12-2: Unified Multi-Team Squad Architecture を実装してください。ChelseaSquadClient の汎用 TeamSquadClient へのリファクタリング、静的ルートの削除・動的ルート一本化、旧戦術モーダル依存の排除を行います。",
+      "completed_at": "2026-09-02T19:45:46.445Z",
+      "completion_summary": [
+        "ChelseaSquadClient を汎用 TeamSquadClient にリファクタリングし、旧戦術モーダル依存を完全排除して統合戦術ボード (/tactical) 連携へ統一",
+        "src/app/teams/chelsea/page.tsx の静的ルートを削除し、動的ルート (/teams/[teamId]) で全クラブを一元処理。squad-header/ダイアログのクラブ動的対応とテスト作成完了"
+      ]
+    },
+    {
+      "id": "AAWU-12-3",
+      "title": "🎯 Trajectory Tracking Arrow Parity & Ball Trajectory Engine",
+      "phase": "Phase 12: Core Cleanup & Squad Architecture",
+      "domain": "B: Tactical Board & Animation / Video",
+      "assignee": "regista-canvas",
+      "status": "DONE",
+      "target_files": [
+        "src/lib/types/tactical-unified.ts",
+        "src/lib/tactical/unified-interpolation.ts",
+        "src/stores/slices/slide-slice.ts",
+        "src/stores/tactical-unified-store.ts",
+        "src/components/features/tactical-unified/canvas/ghost-trajectory-arrow.tsx",
+        "src/components/features/tactical-unified/canvas/player-layer.tsx",
+        "src/components/features/tactical-unified/canvas/ball-object.tsx"
+      ],
+      "user_experience_impact": "スライド間の追跡矢印でポインタを動かした際に矢印が常にポインタ上に吸着し、枠外へのドラッグでも挙動が安定します。またボールも選手同様に追跡矢印が表示され、ベジェ曲線による直感的な弾道編集・アニメーション移動が可能になります。",
+      "detailed_spec": [
+        "ツールバー矢印（annotation-layer.tsx）と完全同一の2次ベジェ曲線式・ハンドル逆算・非クランプ座標系に準拠した共通追跡矢印コンポーネント（ghost-trajectory-arrow.tsx）を新設",
+        "選手ゴースト矢印（SelectedPlayerGhostTrajectory）を共通コンポーネントへリファクタリングし、半径オフセット起因のポインタズレと0-100%境界クランプを解消",
+        "BallStateSchema に trajectory を追加し、updateBallTrajectory アクションおよび左右反転・アスペクト比追従変換を実装",
+        "ボール選択時（Slide Index >= 1）に前スライド位置のゴーストボールおよび追跡矢印（ベジェ曲線操作ハンドル付き）を描画",
+        "interpolateBall にベジェ曲線移動補間を組み込み、動画・アニメーション再生時にもボールが設定された曲線軌道に沿って移動するよう連携"
+      ],
+      "acceptance_criteria": [
+        "追跡矢印の黄色丸ハンドルを動かしたとき、ドラッグ中・静止時ともに矢印線が常にハンドルの中心を通過すること",
+        "キャンバス範囲外にハンドルを引っ張ってもクランプされず安定して曲率が保持されること",
+        "ボール選択時に追跡矢印が出現し、ハンドル操作で弾道をベジェ曲線に変更でき、スライド補間でも曲線移動すること",
+        "Scoped型チェック、Biome check、Vitest（tracking-arrow-and-ball-trajectory.test.ts 含む全テスト）がパスすること"
+      ],
+      "verification_commands": {
+        "biome": "rtk biome check src/components/features/tactical-unified/canvas/ghost-trajectory-arrow.tsx src/components/features/tactical-unified/canvas/ball-object.tsx src/components/features/tactical-unified/canvas/player-layer.tsx",
+        "type_check": "pnpm type-check:scoped src/components/features/tactical-unified/canvas/ghost-trajectory-arrow.tsx src/components/features/tactical-unified/canvas/ball-object.tsx",
+        "vitest": "rtk vitest run src/components/features/tactical-unified/__tests__/tracking-arrow-and-ball-trajectory.test.ts"
+      },
+      "execution_prompt": "Fast-Track Modeで AAWU-12-3: Trajectory Tracking Arrow Parity & Ball Trajectory Engine を実装してください。スライド間の追跡矢印をツールバー矢印と同一のポインタ吸着・非クランプ仕様に統一し、ボールにも追跡矢印とベジェ軌道補間を適用します。",
+      "completed_at": "2026-09-03T03:15:00.000Z",
+      "completion_summary": [
+        "ツールバー矢印と完全同一の2次ベジェ曲線・制御点逆算・非クランプ共通コンポーネント (GhostTrajectoryArrow) を実装し、ポインタ上への完全吸着と範囲外許容を実現",
+        "BallStateSchema に trajectory を追加し、ボール選択時のゴーストボール表示・追跡矢印描画・ベジェ曲線弾道操作を完全実装",
+        "interpolateBall におけるベジェ曲線補間移動、および左右反転・アスペクト比変更時の制御点変換に対応",
+        "専用テスト (tracking-arrow-and-ball-trajectory.test.ts) を含む全32件の関連Vitest・型チェック・Biomeをパス"
+      ]
     }
   ]
 }

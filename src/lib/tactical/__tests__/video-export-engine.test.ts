@@ -226,6 +226,7 @@ describe('video-export-engine & worker pipeline', () => {
           x: 45,
           y: 40,
           style: {
+            markerType: 'circle',
             insideContent: 'number',
             bottomLabel: 'name',
             color: '#2563eb',
@@ -544,6 +545,7 @@ describe('video-export-engine & worker pipeline', () => {
           x: 45,
           y: 40,
           style: {
+            markerType: 'circle',
             insideContent: 'number',
             bottomLabel: 'name',
             color: '#2563eb',
@@ -667,6 +669,7 @@ describe('video-export-engine & worker pipeline', () => {
             x: 45,
             y: 40,
             style: {
+              markerType: 'circle',
               insideContent: 'number',
               bottomLabel: 'name',
               color: '#2563eb',

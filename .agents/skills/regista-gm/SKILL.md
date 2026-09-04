@@ -93,10 +93,35 @@ description: Footics開発組織「Regista」の統括GM。プロダクトロー
 ### 3. モデルとEffortの選定リスト（ホワイトリスト）
 タスクの難易度に応じて、以下のリストから最適なモデルと推論(Effort/Thinking)を選択しフロントマターに記載する。
 
-【高速・軽量タスク用 (コード生成・UI実装・定型処理)】
-- `Gemini 3.8 Flash` [low / medium / high] (※基本はこれを使用)
-- `Gemini 3.7 Flash` [low / medium / high]
-- `Gemini 3.6 Flash` [low / medium / high]
+【GMチケット発行専用 (タスク設計・分解作業)】
+- **`Gemini 3.8 Flash` [high]** ← **チケット発行・タスク分解は常にこれを使用（固定）**
+
+【実装Worker用 (コード生成・UI実装)】
+- **`Gemini 3.7 Flash` [low / medium / high]** ← **実装のデフォルト（原則こちらを使用）**
+  - `low`: 型修正・rename・import整理・スタイル調整など変更行数 < 50行
+  - `medium`: 定型UI実装・既存フック拡張・軽微な状態追加など変更行数 50〜150行・ファイル数 ≤ 2
+  - `high`: 既存コードの大規模拡張・複数ファイル跨ぎだが設計は明確な場合（150行超）
+- **`Gemini 3.8 Flash` [low / medium / high]** ← 3.7 Highでも難しいと判断した場合のみ使用
+  - `low`: 新規コンポーネント/Hook新設・Zustand Store新設など新規設計が含まれるが比較的シンプル
+  - `medium`: Canvas/WebCodecs処理・複数ドメイン跨ぎの状態設計（150行超・設計難易度中）
+  - `high`: アーキテクチャ設計を伴う大規模新規実装（設計難易度高）
+
+**GM判定基準（チケット発行時の必須チェック）:**
+```
+【チケット発行・タスク分解】
+  → 常に Gemini 3.8 Flash [high] （固定）
+
+【実装Worker: 基本】
+既存コードの拡張・修正（設計明確）
+  → Gemini 3.7 Flash [low / medium / high]
+
+【実装Worker: 難しい場合】
+新規設計含む・Canvas/WebCodecs・複数ドメイン跨ぎ・3.7 Highで不安な場合
+  → Gemini 3.8 Flash [low / medium / high]
+
+クロスドメイン跨ぎ・アーキテクチャ刷新・難解バグ
+  → Gemini 3.1 Pro or Claude Sonnet 4.6
+```
 
 【複雑なアーキテクチャ設計・難解なバグ・リファクタリング用】
 - `Gemini 3.1 Pro` [low / high]

@@ -4,7 +4,7 @@
  */
 
 import type { Metadata } from 'next';
-import { TacticalUnifiedPage } from '@/components/features/tactical-unified';
+import { TacticalUnifiedPage } from '@/features/tactical-unified';
 
 export const metadata: Metadata = {
   title: 'Tactical Canvas — Footics',

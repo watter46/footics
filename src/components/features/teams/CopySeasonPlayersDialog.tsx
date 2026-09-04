@@ -7,8 +7,8 @@ import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useChelseaSquad } from '@/hooks/use-chelsea-squad';
 import { useSeasonPlayers } from '@/hooks/use-player-master';
+import { useTeamSquad } from '@/hooks/use-team-squad';
 import { savePlayerMaster, savePlayerPhoto } from '@/lib/db/queries';
 import type { PlayerMaster } from '@/lib/db/schema';
 import { normalizePosition } from '@/lib/tactical/player-formatting';
@@ -16,6 +16,8 @@ import { normalizePosition } from '@/lib/tactical/player-formatting';
 interface CopySeasonPlayersDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  teamId?: string;
+  teamName?: string;
   targetSeason: string;
   availableSeasons: string[];
   currentSeasonPlayerIds: Set<number>;
@@ -27,6 +29,8 @@ export const CopySeasonPlayersDialog: React.FC<
 > = ({
   isOpen,
   onClose,
+  teamId = 'chelsea',
+  teamName = 'Chelsea',
   targetSeason,
   availableSeasons,
   currentSeasonPlayerIds,
@@ -47,10 +51,13 @@ export const CopySeasonPlayersDialog: React.FC<
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // コピー元シーズンの選手一覧を取得
-  const { chelseaPlayers: sourceSquad, isLoading: isSquadLoading } =
-    useChelseaSquad(fromSeason);
+  const { teamPlayers: sourceSquad, isLoading: isSquadLoading } = useTeamSquad({
+    teamId,
+    teamName,
+    season: fromSeason,
+  });
   const { players: sourceMasters, isLoading: isMasterLoading } =
-    useSeasonPlayers(fromSeason, 'Chelsea');
+    useSeasonPlayers(fromSeason, teamName);
 
   // ソース選手の統合リスト
   const mergedSourcePlayers = useMemo(() => {
@@ -113,7 +120,9 @@ export const CopySeasonPlayersDialog: React.FC<
 
   const handleSelectAll = () => {
     const next = new Set<number>();
-    mergedSourcePlayers.forEach((p) => next.add(p.playerId));
+    mergedSourcePlayers.forEach((p) => {
+      next.add(p.playerId);
+    });
     setSelectedPlayerIds(next);
   };
 
@@ -145,7 +154,7 @@ export const CopySeasonPlayersDialog: React.FC<
           defaultShirtNo: p.shirtNo,
           position: p.position,
           season: targetSeason,
-          teamName: 'Chelsea',
+          teamName,
           updatedAt: Date.now(),
         });
 

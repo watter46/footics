@@ -3,8 +3,8 @@
 import {
   ChevronLeft,
   Database,
+  ExternalLink,
   FileJson,
-  Film,
   Loader2,
   Plus,
   SlidersHorizontal,
@@ -16,24 +16,13 @@ import { EventTimeline } from '@/components/features/analysis';
 import { DataManagementMenu } from '@/components/features/management';
 import { MemoOverlayModal } from '@/components/features/memo-overlay/MemoOverlayModal';
 import { Sidebar } from '@/components/features/sidebar';
-import { TacticalAnimationModal } from '@/components/features/tactical-animation/tactical-animation-modal';
-import { TacticalBoardModal } from '@/components/features/tactical-board/tactical-board-modal';
 import { Card } from '@/components/ui/card';
 import { useDashboard } from '@/hooks/features/dashboard/use-dashboard';
-import { useModalToggleShortcut } from '@/hooks/use-shortcut';
-import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
 import { useMemoOverlayStore } from '@/stores/memo-overlay-store';
-import { useUIStore } from '@/stores/ui-store';
 
 export default function Dashboard({ matchId }: { matchId: string }) {
   const d = useDashboard(matchId);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const isTacticalBoardOpen = useUIStore((s) => s.isTacticalBoardOpen);
-  const setTacticalBoardOpen = useUIStore((s) => s.setTacticalBoardOpen);
-  const isTacticalAnimationOpen = useUIStore((s) => s.isTacticalAnimationOpen);
-  const setTacticalAnimationOpen = useUIStore(
-    (s) => s.setTacticalAnimationOpen,
-  );
   const reset = useMemoOverlayStore((state) => state.reset);
   const setModalOpen = useMemoOverlayStore((state) => state.setModalOpen);
 
@@ -46,12 +35,6 @@ export default function Dashboard({ matchId }: { matchId: string }) {
     reset('MATCH');
     setModalOpen(true);
   }, [reset, setModalOpen]);
-
-  useModalToggleShortcut(
-    SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD,
-    setTacticalBoardOpen,
-    { isOpen: isTacticalBoardOpen },
-  );
 
   // Loading States
   if (
@@ -226,15 +209,14 @@ export default function Dashboard({ matchId }: { matchId: string }) {
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setTacticalAnimationOpen(true)}
+            <Link
+              href="/tactical"
               className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-blue-900/20"
-              title="アニメーション作成"
+              title="Tactical 戦術ボードを開く"
             >
-              <Film className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden md:inline">アニメーション作成</span>
-            </button>
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden md:inline">戦術ボード</span>
+            </Link>
             <button
               type="button"
               onClick={handleAddEvent}
@@ -261,20 +243,6 @@ export default function Dashboard({ matchId }: { matchId: string }) {
           onEditCustomEvent={d.handleEditCustomEvent}
           onDeleteCustomEvent={d.handleDeleteCustomEvent}
           onEditMatchMemo={handleEditMatchMemo}
-        />
-
-        <TacticalBoardModal
-          matchId={matchId}
-          isOpen={isTacticalBoardOpen}
-          onClose={() => setTacticalBoardOpen(false)}
-          metadata={d.metadata}
-        />
-
-        <TacticalAnimationModal
-          matchId={matchId}
-          isOpen={isTacticalAnimationOpen}
-          onClose={() => setTacticalAnimationOpen(false)}
-          metadata={d.metadata}
         />
 
         <MemoOverlayModal matchId={matchId} />

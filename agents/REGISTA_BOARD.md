@@ -1,6 +1,6 @@
 # Regista Management Board
 
-> **Source of Truth**: `.regista/board.json` (Last Updated: 2026-09-02T17:50:09.681Z)
+> **Source of Truth**: `.regista/board.json` (Last Updated: 2026-09-02T20:09:30.935Z)
 
 ## 1. [Active Focus]
 - **【Phase 11: Workflow Evolution, Video Pipeline & Architecture Solidification】**:
@@ -28,99 +28,38 @@
 | **AAWU-11-1** | 🔀 Timeline Slide Drag & Drop Reordering | `regista-frontend` | `src/components/features/tactical-unified/timeline/timeline-bar.tsx`<br>`src/components/features/tactical-unified/timeline/slide-card.tsx`<br>`src/stores/slices/slide-slice.ts` | タイムライン上でスライドカードをドラッグ＆ドロップして直感的にスライドの順番を入れ替えられるようになり、戦術ストーリーの構成変更が格段にスムーズになります。 | **DONE ✅** |
 | **AAWU-11-2** | 🎬 Multi-Slide Morphing Video Export (WebCodecs MP4) | `regista-canvas` | `src/lib/tactical/export/tactical-video-exporter.ts`<br>`src/lib/tactical/export/tactical-frame-renderer.ts`<br>`src/components/features/tactical-unified/export/export-modal.tsx` | 作成した複数スライドを繋げ、同一選手の移動やボールのパス軌道を滑らかにアニメーション補間（モーフィング）した高品質MP4動画をワンクリックでエクスポートできます。 | **DONE ✅** |
 | **AAWU-11-3** | 📁 Dexie Multi-Project Storage & Project Manager Dialog | `regista-data` | `src/lib/db/tactical-projects-db.ts`<br>`src/components/features/tactical-unified/dialogs/project-manager-modal.tsx`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx` | 「アーセナル vs マンチェスターC」「ビルドアップ解説」のように複数の戦術分析プロジェクトに名前を付けて保存・一覧管理・切り替え・複製・削除ができるようになります。 | **DONE ✅** |
-| **AAWU-11-4** | 📥 Syntax Tactical Scene JSON Import & Template Importer | `regista-frontend` | `src/lib/tactical/syntax-scene-importer.ts`<br>`src/components/features/tactical-unified/toolbar/top-bar.tsx`<br>`src/lib/types/footics-integration-v1.ts` | SyntaxやAIが生成した戦術シーン定義JSON（footics-integration-v1）をドラッグ＆ドロップまたはファイル選択するだけで、ピッチ上に選手・矢印・スポットライト・解説テキストが即座に自動展開されます。 | **TODO ⏳** |
-| **AAWU-11-5** | 🧩 Store Modularization: Annotation & Tool Slices Extraction | `regista-data` | `src/stores/tactical-unified-store.ts`<br>`src/stores/slices/annotation-slice.ts`<br>`src/stores/slices/tool-slice.ts`<br>`src/stores/slices/slide-slice.ts` | ストアの状態更新が局所化され、描画ツールの切り替えやアノテーション追加時の不要な再レンダリングを完全に防止して超低負荷な動作を実現します。 | **TODO ⏳** |
-| **AAWU-11-6** | ⚡ Konva Layer Partitioning & Zero-Overhead Static Layer Isolation | `regista-canvas` | `src/components/features/tactical-unified/canvas/unified-canvas.tsx`<br>`src/components/features/tactical-unified/canvas/pitch-background-layer.tsx`<br>`src/components/features/tactical-unified/canvas/annotation-layer.tsx` | 選手マーカーのドラッグ中や多数のアノテーション描画時でもピッチ背景や静的要素の再描画コストがゼロになり、常に滑らかな120fps操作を維持します。 | **TODO ⏳** |
-| **AAWU-11-7** | 📦 Shared Types Monorepo Extraction (@footics/types / Shared Contracts) | `regista-data` | `src/lib/types/tactical-unified.ts`<br>`extension/types/messaging.ts`<br>`src/lib/types/capture-protocol.ts` | Web本体とブラウザ拡張機能（Extension）の間でキャプチャ通信や戦術データの型定義が一元化され、将来の機能拡張やアップデート時も型不整合バグを完全に未然防止します。 | **TODO ⏳** |
+| **AAWU-11-5** | 🧩 Store Modularization: Annotation & Tool Slices Extraction | `regista-data` | `src/stores/tactical-unified-store.ts`<br>`src/stores/slices/annotation-slice.ts`<br>`src/stores/slices/tool-slice.ts`<br>`src/stores/slices/slide-slice.ts` | ストアの状態更新が局所化され、描画ツールの切り替えやアノテーション追加時の不要な再レンダリングを完全に防止して超低負荷な動作を実現します。 | **DONE ✅** |
+| **AAWU-11-7** | 📦 Shared Types Monorepo Extraction (@footics/types / Shared Contracts) | `regista-data` | `src/lib/types/tactical-unified.ts`<br>`extension/types/messaging.ts`<br>`src/lib/types/capture-protocol.ts` | Web本体とブラウザ拡張機能（Extension）の間でキャプチャ通信や戦術データの型定義が一元化され、将来の機能拡張やアップデート時も型不整合バグを完全に未然防止します。 | **DONE ✅** |
+| **AAWU-12-1** | 🧹 Workspace & Legacy Component Purge | `regista-frontend` | `src/stores/tactical-unified-store.ts.bak`<br>`src/app/animation-test/page.tsx`<br>`src/components/features/dashboard/Dashboard.tsx`<br>`src/stores/ui-store.ts`<br>`src/stores/tactical-animation-store.ts`<br>`src/stores/tactical-store.ts` | レガシーコード・不要モーダルが完全撤廃され、アプリ全体のバンドルサイズが削減され、ダッシュボードから最新の /tactical 画面へ迷わず遷移できるようになります。 | **DONE ✅** |
+| **AAWU-12-2** | 👥 Unified Multi-Team Squad Architecture | `regista-frontend` | `src/components/features/teams/ChelseaSquadClient.tsx`<br>`src/app/teams/[teamId]/page.tsx`<br>`src/app/teams/chelsea/page.tsx`<br>`src/components/features/teams/squad-header.tsx` | チーム管理画面が全クラブ（アーセナル、マンC、レアル等）で一貫した設計になり、重複ルートが解消されてURLとコンポーネントの整合性が保たれます。 | **DONE ✅** |
+| **AAWU-12-3** | 🎯 Trajectory Tracking Arrow Parity & Ball Trajectory Engine | `regista-canvas` | `src/lib/types/tactical-unified.ts`<br>`src/lib/tactical/unified-interpolation.ts`<br>`src/stores/slices/slide-slice.ts`<br>`src/stores/tactical-unified-store.ts`<br>`src/components/features/tactical-unified/canvas/ghost-trajectory-arrow.tsx`<br>`src/components/features/tactical-unified/canvas/player-layer.tsx`<br>`src/components/features/tactical-unified/canvas/ball-object.tsx` | スライド間の追跡矢印でポインタを動かした際に矢印が常にポインタ上に吸着し、枠外へのドラッグでも挙動が安定します。またボールも選手同様に追跡矢印が表示され、ベジェ曲線による直感的な弾道編集・アニメーション移動が可能になります。 | **DONE ✅** |
 
 ## 3. [Active Ticket Details (自己完結チケット詳細)]
 
-### 🎫 [AAWU-11-4] 📥 Syntax Tactical Scene JSON Import & Template Importer
-- **担当**: `regista-frontend` | **ドメイン**: A: Web App Core & UI | **ステータス**: `TODO`
-- **変更対象ファイル**:
-  - `src/lib/tactical/syntax-scene-importer.ts`
-  - `src/components/features/tactical-unified/toolbar/top-bar.tsx`
-  - `src/lib/types/footics-integration-v1.ts`
-- **変更後のユーザー体験**:
-  - SyntaxやAIが生成した戦術シーン定義JSON（footics-integration-v1）をドラッグ＆ドロップまたはファイル選択するだけで、ピッチ上に選手・矢印・スポットライト・解説テキストが即座に自動展開されます。
-- **詳細仕様 & 実装手順**:
-  1. footics-integration-v1.json スキーマ（0.0〜100.0正規化座標、ベクトル、ゾーン、アノテーション）のZodパーサー実装
-  1. インポート時のスライド自動生成・配置マッピング（正規化座標からキャンバス座標への変換）
-  1. TopBar に「JSON読み込み / テンプレート適用」UIおよびD&Dドロップゾーンの配備
-- **検証コマンド**:
-  - Lint: `rtk biome check src/lib/tactical/`
-  - 型検査: `pnpm type-check:scoped src/lib/tactical/syntax-scene-importer.ts`
-  - テスト: `rtk vitest run src/lib/tactical/__tests__/`
-- **実行用プロンプト (別会話起動用)**:
-```text
-Fast-Track Modeで AAWU-11-4: Syntax Tactical Scene JSON Import & Template Importer を実装してください。Syntax戦術JSONのパースとスライド自動展開を配備します。
-```
-
-### 🎫 [AAWU-11-5] 🧩 Store Modularization: Annotation & Tool Slices Extraction
-- **担当**: `regista-data` | **ドメイン**: C: Data Layer, State & Contracts | **ステータス**: `TODO`
-- **変更対象ファイル**:
-  - `src/stores/tactical-unified-store.ts`
-  - `src/stores/slices/annotation-slice.ts`
-  - `src/stores/slices/tool-slice.ts`
-  - `src/stores/slices/slide-slice.ts`
-- **変更後のユーザー体験**:
-  - ストアの状態更新が局所化され、描画ツールの切り替えやアノテーション追加時の不要な再レンダリングを完全に防止して超低負荷な動作を実現します。
-- **詳細仕様 & 実装手順**:
-  1. tactical-unified-store.ts に残存するアノテーション操作（追加・編集・削除・スタイル変更）を annotation-slice.ts に抽出
-  1. アクティブツール、選択中オブジェクトID、表示オプション等を tool-slice.ts に抽出
-  1. 全Sliceの合成（Store Creator）の型安全な一元化と既存公開セレクターの100%後方互換性維持
-- **検証コマンド**:
-  - Lint: `rtk biome check src/stores/`
-  - 型検査: `pnpm type-check:scoped src/stores/tactical-unified-store.ts`
-  - テスト: `rtk vitest run src/stores/__tests__/`
-- **実行用プロンプト (別会話起動用)**:
-```text
-Fast-Track Modeで AAWU-11-5: Store Modularization: Annotation & Tool Slices Extraction を実装してください。アノテーションとツール状態を専用スライスへ分離します。
-```
-
-### 🎫 [AAWU-11-6] ⚡ Konva Layer Partitioning & Zero-Overhead Static Layer Isolation
-- **担当**: `regista-canvas` | **ドメイン**: B: Tactical Board & Animation / Video | **ステータス**: `TODO`
-- **変更対象ファイル**:
-  - `src/components/features/tactical-unified/canvas/unified-canvas.tsx`
-  - `src/components/features/tactical-unified/canvas/pitch-background-layer.tsx`
-  - `src/components/features/tactical-unified/canvas/annotation-layer.tsx`
-- **変更後のユーザー体験**:
-  - 選手マーカーのドラッグ中や多数のアノテーション描画時でもピッチ背景や静的要素の再描画コストがゼロになり、常に滑らかな120fps操作を維持します。
-- **詳細仕様 & 実装手順**:
-  1. ピッチライン・芝生パターン・静止背景画像を独立した `<Layer listening={false} perfectDrawEnabled={false}>` に完全分離
-  1. ドラッグ中・変形中オブジェクト専用の過渡インタラクションレイヤーの分離
-  1. Konva Stage の `batchDraw` 呼び出し頻度を最小化しGPUレンダリング効率を最大化
-- **検証コマンド**:
-  - Lint: `rtk biome check src/components/features/tactical-unified/canvas/`
-  - 型検査: `pnpm type-check:scoped src/components/features/tactical-unified/canvas/unified-canvas.tsx`
-  - テスト: `rtk vitest run src/components/features/tactical-unified/canvas/`
-- **実行用プロンプト (別会話起動用)**:
-```text
-Fast-Track Modeで AAWU-11-6: Konva Layer Partitioning & Zero-Overhead Static Layer Isolation を実装してください。Konva静的・動的レイヤー分離を行います。
-```
-
-### 🎫 [AAWU-11-7] 📦 Shared Types Monorepo Extraction (@footics/types / Shared Contracts)
-- **担当**: `regista-data` | **ドメイン**: C: Data Layer, State & Contracts | **ステータス**: `TODO`
-- **変更対象ファイル**:
-  - `src/lib/types/tactical-unified.ts`
-  - `extension/types/messaging.ts`
-  - `src/lib/types/capture-protocol.ts`
-- **変更後のユーザー体験**:
-  - Web本体とブラウザ拡張機能（Extension）の間でキャプチャ通信や戦術データの型定義が一元化され、将来の機能拡張やアップデート時も型不整合バグを完全に未然防止します。
-- **詳細仕様 & 実装手順**:
-  1. Web (src/) と Extension (extension/) 間で共有されるキャプチャペイロード・メッセージング型を単一の共通契約ファイル (`src/lib/types/capture-protocol.ts` またはワークスペース共通型) に集約
-  1. Extension 側の型インポート参照を統一し、手動コピーによる型定義の重複・ズレを完全解消
-  1. Zodスキーマ検証による実行時契約バリデーションの整備
-- **検証コマンド**:
-  - Lint: `rtk biome check src/lib/types/ extension/types/`
-  - 型検査: `pnpm type-check:scoped src/lib/types/capture-protocol.ts`
-  - テスト: `rtk vitest run src/lib/tactical/__tests__/`
-- **実行用プロンプト (別会話起動用)**:
-```text
-Fast-Track Modeで AAWU-11-7: Shared Types Monorepo Extraction を実装してください。Webと拡張機能の通信・戦術共通型を一元化します。
-```
-
 ## 4. [Completion History (完了実績ログ)]
+
+- **2026-09-03**: [AAWU-12-3 Complete: 🎯 Trajectory Tracking Arrow Parity & Ball Trajectory Engine]
+  1. ツールバー矢印と完全同一の2次ベジェ曲線・制御点逆算・非クランプ共通コンポーネント (GhostTrajectoryArrow) を実装し、ポインタ上への完全吸着と範囲外許容を実現
+  2. BallStateSchema に trajectory を追加し、ボール選択時のゴーストボール表示・追跡矢印描画・ベジェ曲線弾道操作を完全実装
+  3. interpolateBall におけるベジェ曲線補間移動、および左右反転・アスペクト比変更時の制御点変換に対応
+  4. 専用テスト (tracking-arrow-and-ball-trajectory.test.ts) を含む全32件の関連Vitest・型チェック・Biomeをパス
+
+- **2026-09-02**: [AAWU-12-2 Complete: 👥 Unified Multi-Team Squad Architecture]
+  1. ChelseaSquadClient を汎用 TeamSquadClient にリファクタリングし、旧戦術モーダル依存を完全排除して統合戦術ボード (/tactical) 連携へ統一
+  2. src/app/teams/chelsea/page.tsx の静的ルートを削除し、動的ルート (/teams/[teamId]) で全クラブを一元処理。squad-header/ダイアログのクラブ動的対応とテスト作成完了
+
+- **2026-09-02**: [AAWU-12-1 Complete: 🧹 Workspace & Legacy Component Purge]
+  1. 旧戦術コンポーネント(tactical-board, tactical-animation)および旧ストア・フック・補間ワーカーを完全撤廃
+  2. AddPlayerDialogをteamsディレクトリへ移設しDashboard/NationalDashboardから統合戦術ボード(/tactical)への導線に一本化
+  3. pnpm buildおよび全単体テスト・型チェックがエラー0件でパス
+
+- **2026-09-02**: [AAWU-11-7 Complete: 📦 Shared Types Monorepo Extraction (@footics/types / Shared Contracts)]
+  1. Web本体とExtension間のキャプチャ通信契約をsrc/lib/types/capture-protocol.tsへ集約しZod検証・定数・型安全パイプラインを確立
+  2. ExtensionおよびWebアプリ側の重複手動定義を撤廃し単一契約参照への一本化とScoped型チェック・Biome・Vitest全テスト完全パス
+
+- **2026-09-02**: [AAWU-11-5 Complete: 🧩 Store Modularization: Annotation & Tool Slices Extraction]
+  1. アノテーションCRUDおよび消しゴム操作をannotation-slice.tsへ、描画ツール・オブジェクト選択・パネル状態をtool-slice.tsへ完全分離
+  2. tactical-unified-storeへの型安全なスライス合成と公開型・セレクターの100%後方互換性を維持し全単体テスト59件完全パス
 
 - **2026-09-02**: [AAWU-11-3 Complete: 📁 Dexie Multi-Project Storage & Project Manager Dialog]
   1. Dexie v20スキーマにtactical_projectsテーブルを新設しマルチプロジェクト永続化・CRUD・インラインリネームを実装

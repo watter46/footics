@@ -3,7 +3,7 @@ id: {{TICKET_ID}}
 title: {{TITLE}}
 status: TODO # TODO | IN_PROGRESS | DONE
 depends_on: [] # 例: ["L1-Tactical-001"]
-model: {{RECOMMENDED_MODEL}} # Gemini 3.8 Flash | Gemini 3.1 Pro | Claude Sonnet 4.6
+model: {{RECOMMENDED_MODEL}} # [GM発行時] Gemini 3.8 Flash high (固定) | [Worker実装: 基本] Gemini 3.7 Flash (low/medium/high: 既存拡張・設計明確) | [Worker実装: 難しい場合] Gemini 3.8 Flash (low/medium/high: 新規設計・Canvas・複数ドメイン跨ぎ) | [複雑系] Gemini 3.1 Pro / Claude Sonnet 4.6
 effort: {{RECOMMENDED_EFFORT}} # low | medium | high
 context_files:
   - {{CONTEXT_FILE_1}}

@@ -175,6 +175,7 @@ describe('unified-interpolation engine', () => {
             x: 10,
             y: 20,
             style: {
+              markerType: 'circle',
               insideContent: 'number',
               bottomLabel: 'name',
               color: '#034694',
@@ -223,6 +224,7 @@ describe('unified-interpolation engine', () => {
             x: 50,
             y: 60,
             style: {
+              markerType: 'circle',
               insideContent: 'number',
               bottomLabel: 'name',
               color: '#034694',
@@ -304,6 +306,7 @@ describe('unified-interpolation engine', () => {
               x: 20,
               y: 80,
               style: {
+                markerType: 'circle',
                 insideContent: 'number',
                 bottomLabel: 'name',
                 color: '#034694',
@@ -336,6 +339,7 @@ describe('unified-interpolation engine', () => {
               x: 20,
               y: 20,
               style: {
+                markerType: 'circle',
                 insideContent: 'number',
                 bottomLabel: 'name',
                 color: '#034694',
@@ -369,4 +373,3 @@ describe('unified-interpolation engine', () => {
     });
   });
 });
-

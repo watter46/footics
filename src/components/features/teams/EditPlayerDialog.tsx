@@ -129,6 +129,7 @@ export const EditPlayerDialog: React.FC<EditPlayerDialogProps> = ({
       });
       await queryClient.invalidateQueries({ queryKey: playerKeys.all });
       await queryClient.invalidateQueries({ queryKey: ['chelsea-squad'] });
+      await queryClient.invalidateQueries({ queryKey: ['team-squad'] });
 
       toast.success(`${name.trim()} の情報を更新しました`);
       onSuccess();
@@ -165,6 +166,7 @@ export const EditPlayerDialog: React.FC<EditPlayerDialogProps> = ({
       });
       await queryClient.invalidateQueries({ queryKey: playerKeys.all });
       await queryClient.invalidateQueries({ queryKey: ['chelsea-squad'] });
+      await queryClient.invalidateQueries({ queryKey: ['team-squad'] });
 
       toast.success(`${name} を ${targetName} に統合・紐付けました！`);
       onSuccess();

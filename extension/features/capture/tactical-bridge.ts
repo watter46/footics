@@ -8,7 +8,10 @@
 
 import { sendMessage } from 'webext-bridge/content-script';
 import { STORAGE_KEYS, TACTICAL_BRIDGE_CHANNEL } from '../../constants';
-import type { TacticalCapturePayload } from '../../types/schemas';
+import {
+  createTacticalCapturePayload,
+  type TacticalCapturePayload,
+} from '../../types/schemas';
 
 /**
  * キャプチャペイロードを生成
@@ -17,18 +20,7 @@ export function createCapturePayload(
   dataUrl: string,
   meta?: { sourceUrl?: string; title?: string },
 ): TacticalCapturePayload {
-  const id = `capture_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  return {
-    id,
-    dataUrl,
-    timestamp: Date.now(),
-    sourceUrl:
-      meta?.sourceUrl ||
-      (typeof window !== 'undefined' ? window.location.href : undefined),
-    title:
-      meta?.title ||
-      (typeof document !== 'undefined' ? document.title : undefined),
-  };
+  return createTacticalCapturePayload(dataUrl, meta);
 }
 
 /**

@@ -5,7 +5,6 @@ import {
   sendCaptureToTactical,
 } from '../tactical-bridge';
 
-
 // webext-bridge のモック
 const mockSendMessage = vi.fn();
 vi.mock('webext-bridge/content-script', () => ({

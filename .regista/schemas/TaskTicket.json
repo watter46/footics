@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TaskTicket",
+  "description": "Strict JSON schema for a self-contained AAWU task ticket in Regista board",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^AAWU-[0-9]+(-[0-9]+)?(-[A-Z0-9]+)?$",
+      "description": "Unique ticket ID (e.g., AAWU-9-1, AAWU-9-2-A)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable short title with emoji"
+    },
+    "phase": {
+      "type": "string",
+      "description": "Target phase name (e.g., Phase 9: Tactical Inspector UX)"
+    },
+    "domain": {
+      "type": "string",
+      "enum": [
+        "A: Web App Core & UI",
+        "B: Tactical Board & Animation / Video",
+        "C: Data Layer, State & Contracts",
+        "D: Browser Extension (Unified)",
+        "E: Analysis & Memo",
+        "Cross-cutting: QA/Review"
+      ]
+    },
+    "assignee": {
+      "type": "string",
+      "enum": [
+        "regista-gm",
+        "regista-frontend",
+        "regista-canvas",
+        "regista-data",
+        "regista-extension",
+        "regista-qa"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["TODO", "IN_PROGRESS", "REVIEW_QA", "DONE"],
+      "default": "TODO"
+    },
+    "target_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "maxItems": 4,
+      "description": "List of files to modify (Strictly 1-3 files, max 4 for tests)"
+    },
+    "user_experience_impact": {
+      "type": "string",
+      "description": "Short explanation of how user experience changes after this task"
+    },
+    "detailed_spec": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Concrete specifications and step-by-step requirements"
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Deterministic pass criteria and verification steps"
+    },
+    "verification_commands": {
+      "type": "object",
+      "properties": {
+        "biome": { "type": "string" },
+        "type_check": { "type": "string" },
+        "vitest": { "type": "string" },
+        "build": { "type": "string" }
+      },
+      "required": ["biome", "type_check"],
+      "additionalProperties": false
+    },
+    "execution_prompt": {
+      "type": "string",
+      "description": "Self-contained copy-paste prompt to launch implementation in a fresh conversation"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when the ticket was marked as DONE"
+    },
+    "completion_summary": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Bullet points of completed work and verification proof recorded upon DONE"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "phase",
+    "domain",
+    "assignee",
+    "status",
+    "target_files",
+    "user_experience_impact",
+    "detailed_spec",
+    "acceptance_criteria",
+    "verification_commands",
+    "execution_prompt"
+  ],
+  "additionalProperties": false
+}

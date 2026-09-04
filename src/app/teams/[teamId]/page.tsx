@@ -5,7 +5,7 @@ import {
   GlobalDataManagement,
   ImportMatchButton,
 } from '@/components/features/management';
-import { ChelseaSquadClient } from '@/components/features/teams/ChelseaSquadClient';
+import { TeamSquadClient } from '@/components/features/teams/TeamSquadClient';
 import { TeamsDropdown } from '@/components/layout/TeamsDropdown';
 import logoName from '../../logo-name.png';
 
@@ -62,7 +62,7 @@ export default async function TeamDynamicPage({ params }: TeamPageProps) {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
-        <ChelseaSquadClient teamId={teamId} />
+        <TeamSquadClient teamId={teamId} />
       </main>
     </div>
   );

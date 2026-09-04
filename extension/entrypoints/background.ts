@@ -153,8 +153,10 @@ export default defineBackground(() => {
 
   onMessage('REQUEST_TAB_CAPTURE', async () => {
     try {
+      // 超高画質 JPEG (quality: 98) でエンコード速度を高速化し、データサイズを約80%削減
       const dataUrl = await browser.tabs.captureVisibleTab({
-        format: 'png',
+        format: 'jpeg',
+        quality: 98,
       });
       if (!dataUrl) {
         return { success: false, error: 'captureVisibleTab returned empty' };
@@ -169,7 +171,10 @@ export default defineBackground(() => {
 
   onMessage('SEND_CAPTURE_TO_TACTICAL', async ({ data }) => {
     try {
-      console.log('🎯 [Footics BG] Routing capture to Tactical canvas:', data.payload?.id);
+      console.log(
+        '🎯 [Footics BG] Routing capture to Tactical canvas:',
+        data.payload?.id,
+      );
 
       // 二重安全: Background 側でも確実に storage.local に保存
       if (data.payload) {
@@ -192,10 +197,14 @@ export default defineBackground(() => {
           '[Footics BG] Found existing /tactical tab:',
           tacticalTab.id,
         );
-        await browser.tabs.update(tacticalTab.id, { active: true });
-        if (tacticalTab.windowId) {
-          await browser.windows.update(tacticalTab.windowId, { focused: true });
-        }
+        // タブ切り替えとウィンドウフォーカスを並行実行
+        await Promise.all([
+          browser.tabs.update(tacticalTab.id, { active: true }),
+          tacticalTab.windowId
+            ? browser.windows.update(tacticalTab.windowId, { focused: true })
+            : Promise.resolve(),
+        ]);
+
         try {
           await sendMessage(
             'TACTICAL_CAPTURE_RECEIVED',

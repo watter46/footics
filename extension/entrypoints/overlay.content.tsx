@@ -90,7 +90,7 @@ export default defineContentScript({
               finalDataUrl = await cropCapturedImage(
                 res.dataUrl,
                 cropRect,
-                'image/png',
+                'image/webp',
               );
             } catch (cropErr) {
               console.warn(

@@ -1,16 +1,11 @@
 'use client';
 
-import { ChevronLeft, Film, SlidersHorizontal } from 'lucide-react';
+import { ChevronLeft, ExternalLink, SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { EventTimeline } from '@/components/features/analysis';
 import { Sidebar } from '@/components/features/sidebar';
-import { TacticalAnimationModal } from '@/components/features/tactical-animation/tactical-animation-modal';
-import { TacticalBoardModal } from '@/components/features/tactical-board/tactical-board-modal';
 import { useNationalDashboard } from '@/hooks/features/national-dashboard/use-national-dashboard';
-import { useModalToggleShortcut } from '@/hooks/use-shortcut';
-import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
-import { useUIStore } from '@/stores/ui-store';
 
 interface Props {
   matchId: string;
@@ -32,18 +27,6 @@ export default function NationalDashboard({
     defaultAway,
     defaultScore,
   });
-  const isTacticalBoardOpen = useUIStore((s) => s.isTacticalBoardOpen);
-  const setTacticalBoardOpen = useUIStore((s) => s.setTacticalBoardOpen);
-  const isTacticalAnimationOpen = useUIStore((s) => s.isTacticalAnimationOpen);
-  const setTacticalAnimationOpen = useUIStore(
-    (s) => s.setTacticalAnimationOpen,
-  );
-
-  useModalToggleShortcut(
-    SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD,
-    setTacticalBoardOpen,
-    { isOpen: isTacticalBoardOpen },
-  );
 
   const activeFilterCount =
     (d.filters.selectedPlayers.size > 0 ? 1 : 0) +
@@ -108,15 +91,14 @@ export default function NationalDashboard({
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setTacticalAnimationOpen(true)}
+            <Link
+              href="/tactical"
               className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-blue-900/20"
-              title="アニメーション作成"
+              title="Tactical 戦術ボードを開く"
             >
-              <Film className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden md:inline">アニメーション作成</span>
-            </button>
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden md:inline">戦術ボード</span>
+            </Link>
           </div>
         </div>
 
@@ -129,20 +111,6 @@ export default function NationalDashboard({
           activeStrategyParams={d.filters.activeStrategyParams}
           onEditCustomEvent={d.handleEditCustomEvent}
           onDeleteCustomEvent={d.handleDeleteCustomEvent}
-        />
-
-        <TacticalBoardModal
-          matchId={matchId}
-          isOpen={isTacticalBoardOpen}
-          onClose={() => setTacticalBoardOpen(false)}
-          metadata={d.metadata}
-        />
-
-        <TacticalAnimationModal
-          matchId={matchId}
-          isOpen={isTacticalAnimationOpen}
-          onClose={() => setTacticalAnimationOpen(false)}
-          metadata={d.metadata}
         />
       </main>
     </div>

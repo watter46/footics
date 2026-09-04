@@ -1,5 +1,11 @@
 import type { ProtocolWithReturn } from 'webext-bridge';
-import type { MatchInfoResponse, MemoMode } from './schemas';
+import type {
+  MatchInfoResponse,
+  MemoMode,
+  RequestTabCaptureResponse,
+  SendCaptureToTacticalResponse,
+  TacticalCapturePayload,
+} from './schemas';
 
 /**
  * Footics Extension Messaging Protocol
@@ -45,17 +51,17 @@ declare module 'webext-bridge' {
     /** タブキャプチャ要求（Content Script -> Background） */
     REQUEST_TAB_CAPTURE: ProtocolWithReturn<
       Record<string, never>,
-      { success: boolean; dataUrl?: string; error?: string }
+      RequestTabCaptureResponse
     >;
 
     /** キャプチャデータを Tactical 画面へ転送（Content Script -> Background） */
     SEND_CAPTURE_TO_TACTICAL: ProtocolWithReturn<
-      { payload: import('./schemas').TacticalCapturePayload },
-      { success: boolean; tabId?: number; created: boolean; error?: string }
+      { payload: TacticalCapturePayload },
+      SendCaptureToTacticalResponse
     >;
 
     /** キャプチャデータ受信通知（Background -> Content Script） */
-    TACTICAL_CAPTURE_RECEIVED: import('./schemas').TacticalCapturePayload;
+    TACTICAL_CAPTURE_RECEIVED: TacticalCapturePayload;
   }
 }
 
@@ -63,6 +69,9 @@ export type {
   ExtensionMessage,
   MatchInfoResponse,
   MemoMode,
+  RequestTabCaptureResponse,
+  SendCaptureToTacticalRequest,
+  SendCaptureToTacticalResponse,
+  TacticalCaptureEventPayload,
   TacticalCapturePayload,
 } from './schemas';
-

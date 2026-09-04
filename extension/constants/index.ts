@@ -49,4 +49,3 @@ export const STORAGE_KEYS = {
 } as const;
 
 export const TACTICAL_BRIDGE_CHANNEL = 'footics-tactical-bridge';
-

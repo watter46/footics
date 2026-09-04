@@ -432,6 +432,85 @@ export function interpolateZone(
   };
 }
 
+export interface MatchedPlayerPair {
+  key: string;
+  playerA?: Player;
+  playerB?: Player;
+}
+
+/**
+ * Matches players across two slides by:
+ * 1. Exact ID match
+ * 2. Team + Shirt Number match (if shirtNo is defined and non-empty)
+ * 3. Team + Player Name match (if name is defined and non-empty)
+ * 4. Unmatched players in Slide A (fade out)
+ * 5. Unmatched players in Slide B (fade in)
+ */
+export function matchSlidePlayers(
+  playersA: Player[],
+  playersB: Player[],
+): MatchedPlayerPair[] {
+  const result: MatchedPlayerPair[] = [];
+  const unmatchedA = new Map(playersA.map((p) => [p.id, p]));
+  const unmatchedB = new Map(playersB.map((p) => [p.id, p]));
+
+  // 1. Exact ID matching
+  for (const [id, pA] of Array.from(unmatchedA.entries())) {
+    if (unmatchedB.has(id)) {
+      const pB = unmatchedB.get(id)!;
+      result.push({ key: id, playerA: pA, playerB: pB });
+      unmatchedA.delete(id);
+      unmatchedB.delete(id);
+    }
+  }
+
+  // 2. Team + Shirt Number matching
+  for (const [idA, pA] of Array.from(unmatchedA.entries())) {
+    if (!pA.shirtNo || !pA.shirtNo.trim()) continue;
+    const shirtNoA = pA.shirtNo.trim();
+    const matchEntry = Array.from(unmatchedB.entries()).find(
+      ([, pB]) =>
+        pB.team === pA.team && pB.shirtNo && pB.shirtNo.trim() === shirtNoA,
+    );
+    if (matchEntry) {
+      const [idB, pB] = matchEntry;
+      result.push({ key: idA, playerA: pA, playerB: pB });
+      unmatchedA.delete(idA);
+      unmatchedB.delete(idB);
+    }
+  }
+
+  // 3. Team + Name matching
+  for (const [idA, pA] of Array.from(unmatchedA.entries())) {
+    if (!pA.name || !pA.name.trim()) continue;
+    const nameA = pA.name.trim().toLowerCase();
+    const matchEntry = Array.from(unmatchedB.entries()).find(
+      ([, pB]) =>
+        pB.team === pA.team &&
+        pB.name &&
+        pB.name.trim().toLowerCase() === nameA,
+    );
+    if (matchEntry) {
+      const [idB, pB] = matchEntry;
+      result.push({ key: idA, playerA: pA, playerB: pB });
+      unmatchedA.delete(idA);
+      unmatchedB.delete(idB);
+    }
+  }
+
+  // 4. Remaining in A (disappearing)
+  for (const [idA, pA] of unmatchedA.entries()) {
+    result.push({ key: idA, playerA: pA });
+  }
+
+  // 5. Remaining in B (appearing)
+  for (const [idB, pB] of unmatchedB.entries()) {
+    result.push({ key: idB, playerB: pB });
+  }
+
+  return result;
+}
+
 /**
  * 選手の補間（座標、視野コーン、コネクトライン、出入りフェード）
  */
@@ -604,9 +683,25 @@ export function interpolateBall(
     return { x: 50, y: 50, visible: true, opacity: 1 };
   }
 
+  let x: number;
+  let y: number;
+  if (ballB.trajectory && ballB.trajectory.type !== 'straight') {
+    const pt = calculateBezierPoint(
+      { x: ballA.x, y: ballA.y },
+      { x: ballB.x, y: ballB.y },
+      ease,
+      ballB.trajectory,
+    );
+    x = pt.x;
+    y = pt.y;
+  } else {
+    x = lerp(ballA.x, ballB.x, ease);
+    y = lerp(ballA.y, ballB.y, ease);
+  }
+
   return {
-    x: lerp(ballA.x, ballB.x, ease),
-    y: lerp(ballA.y, ballB.y, ease),
+    x,
+    y,
     visible: ballA.visible || ballB.visible,
     opacity: 1,
   };
@@ -879,17 +974,15 @@ export function getInterpolatedUnifiedSlideFrame(
 
   const ease = applyEasing(rawT, segmentSlide.easing ?? 'ease-in-out');
 
-  // 1. Players 補間
+  // 1. Players 補間 (ID / 背番号 / 名前マッチングによるスムーズモーフィング)
   const players: Record<string, InterpolatedPlayerState> = {};
-  const playerMapA = new Map(slideA.players.map((p) => [p.id, p]));
-  const playerMapB = new Map(slideB.players.map((p) => [p.id, p]));
-  const allPlayerIds = new Set([...playerMapA.keys(), ...playerMapB.keys()]);
+  const matchedPairs = matchSlidePlayers(slideA.players, slideB.players);
 
-  allPlayerIds.forEach((id) => {
-    const pA = playerMapA.get(id);
-    const pB = playerMapB.get(id);
-    const interpolated = interpolatePlayer(pA, pB, ease);
-    if (interpolated) players[id] = interpolated;
+  matchedPairs.forEach(({ key, playerA, playerB }) => {
+    const interpolated = interpolatePlayer(playerA, playerB, ease);
+    if (interpolated) {
+      players[key] = interpolated;
+    }
   });
 
   // 2. Ball 補間

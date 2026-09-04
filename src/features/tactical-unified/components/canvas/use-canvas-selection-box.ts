@@ -74,11 +74,19 @@ export function useCanvasSelectionBox({
         const panX = pitchTransformRef.current.panX ?? 0;
         const panY = pitchTransformRef.current.panY ?? 0;
         const zoom = pitchTransformRef.current.zoom ?? 1;
+        const tilt = pitchTransformRef.current.tilt ?? 0;
+        const safeTilt = Math.max(0, Math.min(85, tilt));
+        const tiltRad = (safeTilt * Math.PI) / 180;
+        const cosTilt = Math.max(0.05, Math.cos(tiltRad));
+        const scaleY = zoom * cosTilt;
+        const deltaY = (effectivePitch.height * zoom * (1 - cosTilt)) / 2;
 
         const minPitchX = (minPxX - effectivePitch.x - panX) / zoom;
         const maxPitchX = (maxPxX - effectivePitch.x - panX) / zoom;
-        const minPitchY = (minPxY - effectivePitch.y - panY) / zoom;
-        const maxPitchY = (maxPxY - effectivePitch.y - panY) / zoom;
+        const minPitchY =
+          (minPxY - (effectivePitch.y + panY + deltaY)) / scaleY;
+        const maxPitchY =
+          (maxPxY - (effectivePitch.y + panY + deltaY)) / scaleY;
 
         const minNormX = pxToNorm(minPitchX, effectivePitch.width);
         const maxNormX = pxToNorm(maxPitchX, effectivePitch.width);
