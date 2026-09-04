@@ -72,3 +72,4 @@ biome_output*.txt
 biome_error*.txt
 *error*.txt
 *_output.txt
+.agents/logs/

@@ -67,7 +67,7 @@ describe('trajectory utility', () => {
 
   it('calculates midpoint and reverses control point correctly', () => {
     const cp = { x: 80, y: 30 };
-    const mid = getBezierControlPoint(p0, p1, {
+    const _mid = getBezierControlPoint(p0, p1, {
       type: 'custom',
       controlPoint: cp,
     });

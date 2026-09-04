@@ -1,16 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   selectActiveSlide,
-  selectPreviousSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
-import {
-  calculateBezierPoint,
-  getBezierControlPoint,
-  getBezierMidpoint,
-  getControlPointFromMidpoint,
-  getQuadraticBezierPoints,
-} from '@/lib/tactical/trajectory';
 import { interpolateBall } from '@/lib/tactical/unified-interpolation';
 
 describe('Tracking Trajectory Arrow & Ball Trajectory Parity', () => {

@@ -2,8 +2,6 @@ import type Konva from 'konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getPitchAndNormPos,
-  normToPx,
-  pxToNorm,
   screenToPitch,
 } from '@/features/tactical-unified/components/canvas/canvas-coordinates';
 import {

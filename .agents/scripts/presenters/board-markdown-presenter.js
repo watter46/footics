@@ -1,13 +1,13 @@
 /**
  * board-markdown-presenter.js
- * 
+ *
  * GitHub / プロジェクト内 REGISTA_BOARD.md 向けのマークダウンを生成するプレゼンター
  */
 
 function presentBoardMarkdown(board) {
   let md = `# Regista Management Board\n\n`;
   md += `> **Source of Truth**: \`.regista/board.json\` (Last Updated: ${board.last_updated})\n\n`;
-  
+
   md += `## 1. [Active Focus]\n`;
   md += `- **【${board.active_focus.phase_name}】**:\n`;
   md += `  - **目的 & 課題**: ${board.active_focus.objective}\n\n`;
@@ -17,8 +17,15 @@ function presentBoardMarkdown(board) {
   md += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
 
   for (const t of board.tickets) {
-    const statusEmoji = t.status === 'DONE' ? 'DONE ✅' : (t.status === 'IN_PROGRESS' ? 'IN_PROGRESS 🔄' : (t.status === 'REVIEW_QA' ? 'REVIEW_QA 🔍' : 'TODO ⏳'));
-    const files = t.target_files.map(f => `\`${f}\``).join('<br>');
+    const statusEmoji =
+      t.status === 'DONE'
+        ? 'DONE ✅'
+        : t.status === 'IN_PROGRESS'
+          ? 'IN_PROGRESS 🔄'
+          : t.status === 'REVIEW_QA'
+            ? 'REVIEW_QA 🔍'
+            : 'TODO ⏳';
+    const files = t.target_files.map((f) => `\`${f}\``).join('<br>');
     md += `| **${t.id}** | ${t.title} | \`${t.assignee}\` | ${files} | ${t.user_experience_impact} | **${statusEmoji}** |\n`;
   }
   md += `\n`;
@@ -50,7 +57,9 @@ function presentBoardMarkdown(board) {
   }
 
   md += `## 4. [Completion History (完了実績ログ)]\n\n`;
-  const completedTickets = board.tickets.filter(t => t.status === 'DONE' && t.completed_at).reverse();
+  const completedTickets = board.tickets
+    .filter((t) => t.status === 'DONE' && t.completed_at)
+    .reverse();
   for (const t of completedTickets) {
     md += `- **${t.completed_at.slice(0, 10)}**: [${t.id} Complete: ${t.title}]\n`;
     if (t.completion_summary && t.completion_summary.length > 0) {

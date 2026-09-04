@@ -12,8 +12,8 @@
  *   node .agents/scripts/sync-board.js update <id> <status> [summary...] # Update ticket status
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   presentBoardMarkdown,
 } = require('./presenters/board-markdown-presenter');
@@ -33,7 +33,7 @@ function saveBoardJson(board) {
   board.last_updated = new Date().toISOString();
   fs.writeFileSync(
     BOARD_JSON_PATH,
-    JSON.stringify(board, null, 2) + '\n',
+    `${JSON.stringify(board, null, 2)}\n`,
     'utf-8',
   );
 }

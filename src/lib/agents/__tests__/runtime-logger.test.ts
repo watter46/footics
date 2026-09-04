@@ -1,8 +1,6 @@
 import * as fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { AgentRuntime } from '../runtime';
-import { AgentLogger } from '../logger';
-import { ToolExecutor } from '../tool-executor';
 import type { AgentTool } from '../types';
 
 describe('Agent Runtime & Logger Real Wiring Test', () => {

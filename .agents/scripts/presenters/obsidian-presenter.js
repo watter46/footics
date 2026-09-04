@@ -1,6 +1,6 @@
 /**
  * obsidian-presenter.js
- * 
+ *
  * Obsidian Vault 向けの Frontmatter / Callout 付きマークダウンを生成するプレゼンター
  */
 

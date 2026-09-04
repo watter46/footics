@@ -5,6 +5,7 @@ try {
   const data = JSON.parse(input);
 
   const cmd = data.toolCall?.args?.CommandLine || '';
+  const forbiddenCommandRegex = /(?:^|&&|\|\||;|&|\|)\s*(pnpm|npm|yarn|npx|biome|tsc|vitest)\b/;
 
   if (
     cmd.includes('rm -rf') ||
@@ -16,6 +17,14 @@ try {
         decision: 'ask',
         reason:
           'Destructive command detected. Please confirm before proceeding.',
+      }),
+    );
+  } else if (forbiddenCommandRegex.test(cmd)) {
+    console.log(
+      JSON.stringify({
+        decision: 'deny',
+        reason:
+          '[RULE VIOLATION] Raw execution of pnpm/npm/yarn/npx/biome/tsc/vitest is strictly prohibited. You MUST wrap the command with rtk (e.g., "rtk pnpm ..."). Please correct your command and try again.',
       }),
     );
   } else {

@@ -37,14 +37,14 @@ export default defineBackground(() => {
     console.info('🚀 [Footics BG] Command received:', command);
 
     let activeTab = tab;
-    if (!activeTab || !activeTab.id) {
+    if (!activeTab?.id) {
       const tabs = await browser.tabs.query({
         active: true,
         lastFocusedWindow: true,
       });
       activeTab = tabs[0];
     }
-    if (!activeTab || !activeTab.id) {
+    if (!activeTab?.id) {
       const tabs = await browser.tabs.query({
         active: true,
         currentWindow: true,

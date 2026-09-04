@@ -50,7 +50,8 @@ export interface TelemetryComputeOptions {
 
 export function computeTelemetry(options: TelemetryComputeOptions): Telemetry {
   const promptTokens =
-    options.promptTokens ?? (options.promptText ? estimateTokens(options.promptText) : 0);
+    options.promptTokens ??
+    (options.promptText ? estimateTokens(options.promptText) : 0);
   const completionTokens =
     options.completionTokens ??
     (options.completionText ? estimateTokens(options.completionText) : 0);

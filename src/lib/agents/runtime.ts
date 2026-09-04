@@ -2,7 +2,6 @@ import { AgentLogger } from './logger';
 import { LatencyTimer } from './telemetry';
 import { ToolExecutor } from './tool-executor';
 import type {
-  Action,
   AgentStatus,
   AgentTool,
   AgentTrace,
@@ -59,11 +58,9 @@ export class AgentRuntime {
     tools?: AgentTool[];
     logDir?: string;
   }) {
-    this.sessionId =
-      options?.sessionId || `agent-session-${Date.now()}`;
+    this.sessionId = options?.sessionId || `agent-session-${Date.now()}`;
     this.logger =
-      options?.logger ||
-      new AgentLogger(this.sessionId, options?.logDir);
+      options?.logger || new AgentLogger(this.sessionId, options?.logDir);
     this.toolExecutor = new ToolExecutor(options?.tools || []);
   }
 
@@ -79,9 +76,10 @@ export class AgentRuntime {
     return this.toolExecutor;
   }
 
-  registerTool<TParams extends Record<string, unknown> = Record<string, unknown>, TResult = unknown>(
-    tool: AgentTool<TParams, TResult>,
-  ): void {
+  registerTool<
+    TParams extends Record<string, unknown> = Record<string, unknown>,
+    TResult = unknown,
+  >(tool: AgentTool<TParams, TResult>): void {
     this.toolExecutor.registerTool(tool as unknown as AgentTool);
   }
 
@@ -154,7 +152,8 @@ export class AgentRuntime {
         };
       }
 
-      finalStatus = evalStatus || (evalObservation?.exit_code === 0 ? 'SUCCESS' : 'FAILED');
+      finalStatus =
+        evalStatus || (evalObservation?.exit_code === 0 ? 'SUCCESS' : 'FAILED');
 
       evaluationTrace = this.logger.logEvaluation(
         turn,
@@ -180,7 +179,9 @@ export class AgentRuntime {
     };
   }
 
-  async executeTurns(turns: TurnExecutionParams[]): Promise<TurnExecutionResult[]> {
+  async executeTurns(
+    turns: TurnExecutionParams[],
+  ): Promise<TurnExecutionResult[]> {
     const results: TurnExecutionResult[] = [];
     for (const turnParams of turns) {
       const result = await this.executeTurn(turnParams);

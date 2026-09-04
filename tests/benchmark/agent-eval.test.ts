@@ -1,6 +1,8 @@
+// biome-ignore lint/style/noExcessiveLinesPerFile: Benchmark test file is intentionally long
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Benchmark tests have long blocks
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   AgentRuntime,
   type AgentTool,
@@ -319,7 +321,10 @@ describe('L4 Agent Benchmark: Meta-Cognition & Self-Evolution (Level 4 Audit)', 
     } = fixtureData;
 
     // Register Tools in runtime
-    const analyzeIncidentTool: AgentTool<{ incident_id: string; target_file: string }> = {
+    const analyzeIncidentTool: AgentTool<{
+      incident_id: string;
+      target_file: string;
+    }> = {
       name: 'analyze_incident_root_cause',
       description: 'Analyze incident root cause',
       execute: () => ({
@@ -438,7 +443,8 @@ describe('L4 Agent Benchmark: Meta-Cognition & Self-Evolution (Level 4 Audit)', 
           patch: unified_diff_patch,
           gate_reason: human_approval_gate.gate_reason,
         },
-        thought: 'Submitting rule modification proposal to human approval gate.',
+        thought:
+          'Submitting rule modification proposal to human approval gate.',
         promptTokens: 340,
         completionTokens: 50,
       },
@@ -621,8 +627,7 @@ describe('L5 Agent Benchmark: Ecosystem Mastery (Level 5 Audit)', () => {
         completionTokens: 55,
       },
       evaluation: {
-        thought:
-          'Escalation completed. Agent stopped gracefully without loop.',
+        thought: 'Escalation completed. Agent stopped gracefully without loop.',
         status: 'BLOCKED',
         promptTokens: 290,
         completionTokens: 40,

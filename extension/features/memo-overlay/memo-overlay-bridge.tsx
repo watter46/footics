@@ -24,6 +24,8 @@ import { useOverlayStore } from './stores/use-overlay-store';
  * - Content Script が `storage.onChanged` でキューを監視し、
  *   IndexedDB への実書き込みと REFRESH_APP の通知を担う。
  */
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Intentional complexity for extension bridge
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Intentional complexity
 export const MemoOverlayBridge: React.FC = () => {
   const {
     isVisible,

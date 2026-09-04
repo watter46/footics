@@ -9,7 +9,6 @@ import {
   FolderOpen,
   Info,
   Loader2,
-  Monitor,
   ShieldAlert,
   Smartphone,
   Sparkles,
@@ -17,7 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import type { TacticalExportSharePayload } from '@/lib/tactical/export/share-payload';
 import { executeOffThreadVideoExport } from '@/lib/tactical/export/video-export-worker';
@@ -124,7 +123,7 @@ export default function StandaloneExportSharePage() {
   }, [shareId]);
 
   const handleExportClick = async () => {
-    if (!shareData || !shareData.scenes || shareData.scenes.length === 0) {
+    if (!shareData?.scenes || shareData.scenes.length === 0) {
       toast.error('エクスポート対象のシーンがありません。');
       return;
     }

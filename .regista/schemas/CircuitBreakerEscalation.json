@@ -6,7 +6,11 @@
   "properties": {
     "escalation_reason": {
       "type": "string",
-      "enum": ["LOOP_LIMIT_EXCEEDED", "CRITICAL_ARCHITECTURE_VIOLATION", "UNRESOLVABLE_DEPENDENCY"],
+      "enum": [
+        "LOOP_LIMIT_EXCEEDED",
+        "CRITICAL_ARCHITECTURE_VIOLATION",
+        "UNRESOLVABLE_DEPENDENCY"
+      ],
       "description": "Reason for breaking the loop and escalating."
     },
     "loop_count": {
@@ -25,6 +29,11 @@
       "description": "Request or context for the GM to resolve the blocker."
     }
   },
-  "required": ["escalation_reason", "loop_count", "failed_files", "gm_action_required"],
+  "required": [
+    "escalation_reason",
+    "loop_count",
+    "failed_files",
+    "gm_action_required"
+  ],
   "additionalProperties": false
 }

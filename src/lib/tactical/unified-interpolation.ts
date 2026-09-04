@@ -466,7 +466,7 @@ export function matchSlidePlayers(
 
   // 2. Team + Shirt Number matching
   for (const [idA, pA] of Array.from(unmatchedA.entries())) {
-    if (!pA.shirtNo || !pA.shirtNo.trim()) continue;
+    if (!pA.shirtNo?.trim()) continue;
     const shirtNoA = pA.shirtNo.trim();
     const matchEntry = Array.from(unmatchedB.entries()).find(
       ([, pB]) =>
@@ -482,7 +482,7 @@ export function matchSlidePlayers(
 
   // 3. Team + Name matching
   for (const [idA, pA] of Array.from(unmatchedA.entries())) {
-    if (!pA.name || !pA.name.trim()) continue;
+    if (!pA.name?.trim()) continue;
     const nameA = pA.name.trim().toLowerCase();
     const matchEntry = Array.from(unmatchedB.entries()).find(
       ([, pB]) =>

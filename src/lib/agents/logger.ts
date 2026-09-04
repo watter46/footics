@@ -1,17 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import {
-  type Action,
-  type AgentStatus,
-  type AgentStep,
-  type AgentTrace,
-  type Observation,
-  type Telemetry,
+import { computeTelemetry, type TelemetryComputeOptions } from './telemetry';
+import type {
+  Action,
+  AgentStatus,
+  AgentTrace,
+  Observation,
+  Telemetry,
 } from './types';
-import {
-  computeTelemetry,
-  type TelemetryComputeOptions,
-} from './telemetry';
 
 export class AgentLogger {
   private logDir: string;
@@ -20,8 +16,7 @@ export class AgentLogger {
 
   constructor(sessionId: string, customLogDir?: string) {
     this.sessionId = sessionId;
-    this.logDir =
-      customLogDir || path.join(process.cwd(), '.agents', 'logs');
+    this.logDir = customLogDir || path.join(process.cwd(), '.agents', 'logs');
 
     if (!fs.existsSync(this.logDir)) {
       fs.mkdirSync(this.logDir, { recursive: true });
@@ -39,7 +34,9 @@ export class AgentLogger {
     return this.logFilePath;
   }
 
-  log(trace: Omit<AgentTrace, 'timestamp'> & { timestamp?: string }): AgentTrace {
+  log(
+    trace: Omit<AgentTrace, 'timestamp'> & { timestamp?: string },
+  ): AgentTrace {
     const fullTrace: AgentTrace = {
       ...trace,
       timestamp: trace.timestamp || new Date().toISOString(),

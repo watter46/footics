@@ -25,7 +25,6 @@ export function getEasingFunction(easing?: string): (t: number) => number {
       return easeOutQuad;
     case 'ease-in-out':
       return easeInOutQuad;
-    case 'linear':
     default:
       return (t) => t;
   }

@@ -166,11 +166,12 @@ describe('SlideSchema', () => {
     expect(result.success).toBe(true);
     expect(slide.aspectRatio).toBe('4:5');
     expect(slide.boundaryBox).toEqual({
-      x: 3.0,
-      y: 3.0,
-      width: 94.0,
-      height: 94.0,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
       enabled: true,
+      fitTarget: 'pitch',
     });
   });
 });

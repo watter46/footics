@@ -1,5 +1,5 @@
-import { LatencyTimer, computeTelemetry } from './telemetry';
 import type { AgentLogger } from './logger';
+import { LatencyTimer } from './telemetry';
 import type {
   Action,
   AgentTool,
@@ -88,8 +88,7 @@ export class ToolExecutor {
     try {
       result = (await tool.execute(parameters, context)) as ToolResult<T>;
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : String(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
       result = {
         success: false,
         exit_code: 1,
@@ -99,7 +98,9 @@ export class ToolExecutor {
 
     const observation: Observation = {
       exit_code: result.exit_code,
-      output: result.output || (result.data ? JSON.stringify(result.data) : undefined),
+      output:
+        result.output ||
+        (result.data ? JSON.stringify(result.data) : undefined),
       error: result.error,
     };
 

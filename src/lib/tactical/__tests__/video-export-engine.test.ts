@@ -369,7 +369,7 @@ describe('video-export-engine & worker pipeline', () => {
         MockOffscreenCanvas;
 
       const progressEvents: number[] = [];
-      const chunks: any[] = [];
+      const _chunks: any[] = [];
       const result = await executeOffThreadVideoExport(
         {
           id: 'test-exp-1',
@@ -495,7 +495,7 @@ describe('video-export-engine & worker pipeline', () => {
         MockOffscreenCanvas;
 
       const progressEvents: number[] = [];
-      const chunks: any[] = [];
+      const _chunks: any[] = [];
       const result = await executeOffThreadVideoExport(
         {
           id: 'test-exp-2',
