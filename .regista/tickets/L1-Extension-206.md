@@ -2,7 +2,7 @@
 id: L1-Extension-206
 emoji: 📌
 title: メモオーバーレイ フローティングミニモード (PIP風省スペース表示)
-status: TODO
+status: DONE
 depends_on: ["L1-Extension-204", "L1-Extension-205"]
 model: Gemini 3.7 Flash
 effort: medium
@@ -27,10 +27,10 @@ context_files:
 4. キーボードショートカット `Alt+M`（`wxt.config.ts` の `commands` へ追加）でフル⇔ミニのトグルを実現。
 
 ## Acceptance Criteria & Verification Commands
-- [ ] `Alt+M` でフルモードとミニモードが切り替わること
-- [ ] ミニモード時に動画コンテンツが遮られないこと（右下固定）
-- [ ] ミニモードで入力した内容がフルモードに戻しても保持されること
-- [ ] `wxt.config.ts` に `toggle-mini-mode` コマンドが追加されていること
+- [x] `Alt+M` でフルモードとミニモードが切り替わること
+- [x] ミニモード時に動画コンテンツが遮られないこと（右下固定）
+- [x] ミニモードで入力した内容がフルモードに戻しても保持されること
+- [x] `wxt.config.ts` に `toggle-mini-mode` コマンドが追加されていること
 
 ### Verification
 ```
