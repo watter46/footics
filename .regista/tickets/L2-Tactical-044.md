@@ -9,6 +9,7 @@ context_files:
   - src/features/tactical-unified/components/canvas/player-drag-handler.ts
   - src/features/tactical-unified/components/canvas/player-layer.tsx
   - src/features/tactical-unified/components/canvas/ghost-trajectory-arrow.tsx
+status: DONE
 ---
 
 # ✨ L2-Tactical-044: ドラッグ中の軌跡矢印リアルタイム追従機能の実装
@@ -19,7 +20,7 @@ context_files:
 ## Detailed Spec
 1. 現在、`player-drag-handler.ts` の `handlePlayerDragMove` では実マーカー（Konvaノード）のみが移動し、StoreのReact Stateは更新されないため、`PlayerGhostTrajectory`（およびその中の `GhostTrajectoryArrow`）の先端位置がドラッグ中に更新されない。
 2. `player-drag-handler.ts` 内の `handlePlayerDragMove` で、ドラッグ中のプレイヤーに対応する `GhostTrajectoryArrow`（軌跡矢印）の終端座標（`points`）をリアルタイムで命令的に更新する処理を追加する。
-3. （推奨案）`CanvasNodesRegistry`（`canvas-registry.ts`）に `trajectoryArrowNodes` などのMapを追加し、`GhostTrajectoryArrow` がマウント時に自身を登録するようにする。ドラッグ中にそのノード群を参照して先端を追従させるか、あるいはオニオンスキンのようにRefを渡して更新する。status: DONE
+3. （推奨案）`CanvasNodesRegistry`（`canvas-registry.ts`）に `trajectoryArrowNodes` などのMapを追加し、`GhostTrajectoryArrow` がマウント時に自身を登録するようにする。ドラッグ中にそのノード群を参照して先端を追従させるか、あるいはオニオンスキンのようにRefを渡して更新する。
 
 ## Acceptance Criteria & Verification Commands
 - [x] プレイヤーマーカーをドラッグ中、過去のゴーストから伸びる矢印の先端が、ドラッグ中のマーカーにぴったり追従すること。
