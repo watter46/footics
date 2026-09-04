@@ -226,6 +226,7 @@ export const PlayerSchema = z.object({
   locked: z.boolean().optional(),
 });
 export type Player = z.infer<typeof PlayerSchema>;
+export type TacticalPlayer = Player;
 
 // ─────────────────────────────────────────
 // § 6. フリーアノテーション群
@@ -264,6 +265,7 @@ export const ArrowAnnotationSchema = z.object({
   locked: z.boolean().optional(),
 });
 export type ArrowAnnotation = z.infer<typeof ArrowAnnotationSchema>;
+export type Arrow = ArrowAnnotation;
 
 export const ZoneAnnotationSchema = z.object({
   id: z.string(),
@@ -300,6 +302,7 @@ export const ZoneAnnotationSchema = z.object({
   locked: z.boolean().optional(),
 });
 export type ZoneAnnotation = z.infer<typeof ZoneAnnotationSchema>;
+export type Zone = ZoneAnnotation;
 
 export const TextAnnotationSchema = z.object({
   id: z.string(),
