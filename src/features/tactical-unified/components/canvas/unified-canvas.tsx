@@ -15,11 +15,12 @@ import { Group, Layer, Rect, Stage } from 'react-konva';
 import { useKonvaExport } from '@/features/tactical-unified/hooks/use-konva-export';
 import { useKonvaVideoExport } from '@/features/tactical-unified/hooks/use-konva-video-export';
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
+import { BallObject } from '../../objects/ball';
+import { PitchBackground, PitchInlineTextEditor } from '../../objects/pitch';
 import { PlayerLayer } from '../../objects/player';
 import { ContextHud } from '../../panels/hud';
 import { BoundaryBoxHud, DrawingToolbar } from '../../panels/toolbar';
 import { AnnotationLayer } from './annotation-layer';
-import { BallObject } from '../../objects/ball';
 import { BoundaryBox } from './boundary-box';
 import { DrawingPreviewLayer } from './drawing-preview-layer';
 import {
@@ -28,8 +29,6 @@ import {
   createCanvasNodesRegistry,
 } from './helpers';
 import { useCanvasEventListeners, useCanvasPointerInteraction } from './hooks';
-import { PitchBackground } from './pitch-background';
-import { PitchInlineTextEditor } from './pitch-inline-text-editor';
 import { useUnifiedCanvasState } from './use-unified-canvas-state';
 
 export { normToPx, pxToNorm } from './hooks';
@@ -341,10 +340,10 @@ export function UnifiedCanvas() {
           stageSize={stageSize}
           pitchRect={pitchRect}
           pitchTransform={pitchTransform}
-          onSave={(textId, content) => {
+          onSave={(textId: string, content: string) => {
             updateText(activeSlideId, textId, { content });
           }}
-          onRemove={(textId) => {
+          onRemove={(textId: string) => {
             removeText(activeSlideId, textId);
             clearSelection();
           }}

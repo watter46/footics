@@ -8,7 +8,9 @@ model: Gemini 3.7 Flash # 必須: [GM発行] Gemini 3.1 Pro または Gemini 3.8
 effort: low # 必須: low | medium | high
 context_files:
   - src/features/tactical-unified/components/canvas/pitch-background.tsx
-  - src/features/tactical-unified/components/canvas/pitch-inline-text-editor.tsx\n  - src/features/tactical-unified/components/canvas/unified-canvas.tsx
+  - src/features/tactical-unified/components/canvas/pitch-inline-text-editor.tsx
+  - src/features/tactical-unified/components/canvas/unified-canvas.tsx
+status: DONE
 ---
 
 # 🟠 L3-Arch-005: [Phase 3] tactical-unified: objects/pitch/ の垂直スライス化
@@ -21,8 +23,8 @@ context_files:
 2. `pitch-background.tsx` 等を移動する。
 3. `unified-canvas.tsx` のインポートを更新する。
 ## Acceptance Criteria & Verification Commands
-- [ ] <!-- 受入基準1 -->
-- [ ] <!-- 受入基準2 -->
+- [x] <!-- 受入基準1 -->
+- [x] <!-- 受入基準2 -->
 
 ### Verification
 `rtk biome check <対象ディレクトリ>`
