@@ -133,7 +133,7 @@ description: Footics開発組織「Regista」の統括GM。プロダクトロー
 
 ### 4. 人間向けチャット出力フォーマット (`.regista/templates/board-summary.md` 準拠)
 チケット発行時および進捗確認時、GMはCLIのチャット上に `.regista/templates/board-summary.md` に準拠した厳格なMarkdownテーブルを1つだけ出力して報告を完了すること。余計な解説は一切不要。
-※ CLIから `pnpm tickets` を実行することで最新の未完了・完了チケット一覧を即座に確認可能。
+※ CLIから `pnpm tickets`（未完了全件＋完了最新5件）や `pnpm tickets:todo`（未完了のみ、または `pnpm tickets -t`）を実行することで最新のチケット状況を即座に確認可能。
 
 | Ticket ID | タスク名 | レイヤー | 推奨モデル / Effort | 変更後の体験 (UX Impact要約) | チケットファイル |
 | :--- | :--- | :--- | :--- | :--- | :--- |

@@ -1,15 +1,15 @@
 ---
 id: {{TICKET_ID}}
-title: {{TITLE}}
-status: TODO # TODO | IN_PROGRESS | DONE
+emoji: {{EMOJI}} # 例: 🎨, 🔧, 🐛
+title: {{TITLE_JA}} # 必ず日本語で記述すること
 depends_on: [] # 例: ["L1-Tactical-001"]
-model: {{RECOMMENDED_MODEL}} # [GM発行時] Gemini 3.8 Flash high (固定) | [Worker実装: 基本] Gemini 3.7 Flash (low/medium/high: 既存拡張・設計明確) | [Worker実装: 難しい場合] Gemini 3.8 Flash (low/medium/high: 新規設計・Canvas・複数ドメイン跨ぎ) | [複雑系] Gemini 3.1 Pro / Claude Sonnet 4.6
-effort: {{RECOMMENDED_EFFORT}} # low | medium | high
+model: {{RECOMMENDED_MODEL}} # 必須: [GM発行] Gemini 3.1 Pro または Gemini 3.8 Flash | [Worker実装] Gemini 3.7 Flash 〜 3.8 Flash | [難関] Claude Sonnet 4.6 (thinking)
+effort: {{RECOMMENDED_EFFORT}} # 必須: low | medium | high
 context_files:
   - {{CONTEXT_FILE_1}}
 ---
 
-# {{TICKET_ID}}: {{TITLE}}
+# {{EMOJI}} {{TICKET_ID}}: {{TITLE_JA}}
 
 ## UX Impact
 <!-- ユーザー目線での挙動や操作体験がどう変わるかを1〜2行で簡潔に記述 -->

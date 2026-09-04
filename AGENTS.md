@@ -23,8 +23,11 @@ trigger: always_on
 - **1. 分散Markdownファイル管理 (`.regista/tickets/[ID].md`):**
   - 各チケットは `.regista/templates/task-ticket.md` テンプレートを参照して作成し、YAMLフロントマターと本文を持つ。
   - ファイル構成案（純粋関数と状態の分離など）を必ず明記すること。
-- **2. Layer-Based DAG ID体系:** `L{深度}-{ドメイン名}-{連番3桁}`。進捗確認は `pnpm tickets`。
-- **3. モデルとEffortの選定 (ホワイトリスト):** GMチケット発行は `Gemini 3.8 Flash [high]`、実装Workerは原則 `Gemini 3.7 Flash`（設計が難しい場合のみ 3.8 Flash）。
+- **2. Layer-Based DAG ID体系:** `L{深度}-{ドメイン名}-{連番3桁}`。進捗確認は `pnpm tickets`（未完了チケットのみは `pnpm tickets:todo` または `pnpm tickets -t`、完了全件は `pnpm tickets --all`）。
+- **3. モデルとEffortの選定 (ホワイトリスト):**
+  - **チケット発行 (GM)**: `Gemini 3.1 Pro [high]` または `Gemini 3.8 Flash [high]`。
+  - **実装Worker (基本)**: `Gemini 3.7 Flash` を基本とし、タスク規模に応じて `Gemini 3.7 Flash` 〜 `Gemini 3.8 Flash` の6段階（各 low / medium / high）で使い分ける。
+  - **実装Worker (難関)**: それでも難しい場合（アーキテクチャ刷新や難解バグ等）は `Claude Sonnet 4.6 (thinking)` などのSonnet系モデルを使用する。
 - **4. 会話分離の原則 (Cross-Conversation Execution Isolation):** チケット発行は「企画/GM Conversation」、実装は必ず「別の新規Conversation」で実施する。
 - **5. チャットへの厳格なチケット一覧表出力:** `.regista/templates/board-summary.md` 準拠のMarkdownテーブル1つのみ出力。
 - **6. チケット実装完了時の超凝縮チャット報告フォーマット:** `.regista/templates/completion-report.md` 準拠のみ出力（YAMLや変更ファイル一覧出力の厳格禁止）。ユーザー完了合図の絶対厳守。
