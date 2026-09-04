@@ -15,7 +15,7 @@ import { ArrowObject } from './annotations/arrow-object';
 import { TextObject } from './annotations/text-object';
 import { getWavyPoints } from './annotations/wavy-arrow-math';
 import { ZoneObject } from './annotations/zone-object';
-import type { CanvasNodesRegistry } from './canvas-registry';
+import type { CanvasNodesRegistry } from './helpers/canvas-registry';
 
 export { getWavyPoints };
 

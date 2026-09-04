@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getPitchAndNormPos,
   screenToPitch,
-} from '@/features/tactical-unified/components/canvas/canvas-coordinates';
+} from '@/features/tactical-unified/components/canvas/helpers/canvas-coordinates';
 import {
   applyPitchTransformToGroups,
   calculatePitchTransform,
-} from '@/features/tactical-unified/components/canvas/canvas-pitch-transform-helper';
+} from '@/features/tactical-unified/components/canvas/helpers/canvas-pitch-transform-helper';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 
 describe('L3-Tactical-028: Pitch Tilt (2.5D) Transform & Coordinate Mapping', () => {

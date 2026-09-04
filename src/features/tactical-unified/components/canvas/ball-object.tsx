@@ -15,8 +15,8 @@ import {
 } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getSoccerBallImage } from '@/lib/tactical/soccer-ball-svg';
 import type { BallState } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from './canvas-registry';
 import { GhostTrajectoryArrow } from './ghost-trajectory-arrow';
+import type { CanvasNodesRegistry } from './helpers/canvas-registry';
 import { normToPx } from './unified-canvas';
 import { useNodePositionTransition } from './use-node-position-transition';
 

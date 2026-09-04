@@ -5,7 +5,7 @@ import { Circle, Group, Line } from 'react-konva';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import type { Slide } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from './canvas-registry';
+import type { CanvasNodesRegistry } from './helpers/canvas-registry';
 
 function normX(v: number, w: number) {
   return (v / 100) * w;

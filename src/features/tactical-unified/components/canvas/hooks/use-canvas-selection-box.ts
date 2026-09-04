@@ -3,9 +3,9 @@
 import { useCallback, useState } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { PitchTransform, Slide } from '@/lib/types/tactical-unified';
-import { pxToNorm } from './canvas-coordinates';
-import type { SelectionBox } from './canvas-interaction-types';
-import { getEnclosedObjects } from './canvas-selection-helpers';
+import type { SelectionBox } from '../canvas-interaction-types';
+import { pxToNorm } from '../helpers/canvas-coordinates';
+import { getEnclosedObjects } from '../helpers/canvas-selection-helpers';
 
 interface UseCanvasSelectionBoxOptions {
   effectivePitch: { x: number; y: number; width: number; height: number };

@@ -21,20 +21,22 @@ import { DrawingToolbar } from '../toolbar/drawing-toolbar';
 import { AnnotationLayer } from './annotation-layer';
 import { BallObject } from './ball-object';
 import { BoundaryBox } from './boundary-box';
+import { DrawingPreviewLayer } from './drawing-preview-layer';
 import {
   calculatePitchRect,
   calculatePitchTransform,
-} from './canvas-pitch-transform-helper';
-import { createCanvasNodesRegistry } from './canvas-registry';
-import { DrawingPreviewLayer } from './drawing-preview-layer';
+  createCanvasNodesRegistry,
+} from './helpers';
+import {
+  useCanvasEventListeners,
+  useCanvasPointerInteraction,
+} from './hooks';
 import { PitchBackground } from './pitch-background';
 import { PitchInlineTextEditor } from './pitch-inline-text-editor';
 import { PlayerLayer } from './player-layer';
-import { useCanvasEventListeners } from './use-canvas-event-listeners';
-import { useCanvasPointerInteraction } from './use-canvas-pointer-interaction';
 import { useUnifiedCanvasState } from './use-unified-canvas-state';
 
-export { normToPx, pxToNorm } from './use-canvas-pointer-interaction';
+export { normToPx, pxToNorm } from './hooks';
 
 export function UnifiedCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);

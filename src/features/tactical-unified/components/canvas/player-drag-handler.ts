@@ -1,5 +1,5 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
-import type { CanvasNodesRegistry } from './canvas-registry';
+import type { CanvasNodesRegistry } from './helpers/canvas-registry';
 import { updateAttachedArrows } from './player-drag-arrow-updater';
 import { createPlayerDragContext } from './player-drag-context';
 import {

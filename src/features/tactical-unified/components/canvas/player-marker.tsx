@@ -7,7 +7,7 @@ import { Circle, Group, Text } from 'react-konva';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { Player, Slide } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from './canvas-registry';
+import type { CanvasNodesRegistry } from './helpers/canvas-registry';
 import { PlayerBadge } from './player-badge';
 import { PlayerFocusSpotlight } from './player-focus-spotlight';
 import { PlayerMarkerCircle } from './player-marker-circle';

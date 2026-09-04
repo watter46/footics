@@ -18,7 +18,7 @@ import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
-import type { CanvasNodesRegistry } from './canvas/canvas-registry';
+import type { CanvasNodesRegistry } from './canvas/helpers/canvas-registry';
 import {
   ArrowHud,
   BallHud,

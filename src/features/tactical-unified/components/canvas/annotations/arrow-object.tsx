@@ -11,7 +11,7 @@ import React, { useRef } from 'react';
 import { Group } from 'react-konva';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { ArrowAnnotation, Slide } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from '../canvas-registry';
+import type { CanvasNodesRegistry } from '../helpers/canvas-registry';
 import { ArrowHandlesGroup } from './arrow-handles-group';
 import { ArrowHeadNode } from './arrow-head-node';
 import { ArrowLineNode } from './arrow-line-node';

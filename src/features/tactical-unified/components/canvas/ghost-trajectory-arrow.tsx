@@ -15,7 +15,7 @@ import {
   getQuadraticBezierPoints,
 } from '@/lib/tactical/trajectory';
 import type { PlayerTrajectory } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from './canvas-registry';
+import type { CanvasNodesRegistry } from './helpers/canvas-registry';
 
 function normX(v: number, w: number) {
   return (v / 100) * w;

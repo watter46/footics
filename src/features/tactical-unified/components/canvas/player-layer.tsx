@@ -14,7 +14,7 @@ import {
 } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { SelectedObjectKind } from '@/features/tactical-unified/stores/tool-slice';
 import type { Player, Slide } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from './canvas-registry';
+import type { CanvasNodesRegistry } from './helpers/canvas-registry';
 import { PlayerConnectLines } from './player-connect-lines';
 import {
   createPlayerDragContext,

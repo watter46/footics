@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/canvas-registry';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import {

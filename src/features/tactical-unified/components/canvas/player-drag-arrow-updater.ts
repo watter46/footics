@@ -1,6 +1,6 @@
 import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import { getQuadraticBezierPoints } from '@/lib/tactical/trajectory';
-import type { CanvasNodesRegistry } from './canvas-registry';
+import type { CanvasNodesRegistry } from './helpers/canvas-registry';
 import type { AttachedArrowEntry } from './player-drag-types';
 
 interface ArrowCoords {

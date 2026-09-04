@@ -9,7 +9,7 @@ import type Konva from 'konva';
 import { useCallback } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { ExportTarget, Slide } from '@/lib/types/tactical-unified';
-import { calculatePitchRect } from '../components/canvas/canvas-pitch-transform-helper';
+import { calculatePitchRect } from '../components/canvas/helpers/canvas-pitch-transform-helper';
 
 interface UseKonvaExportOptions {
   stageRef: React.RefObject<Konva.Stage | null>;

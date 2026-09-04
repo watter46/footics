@@ -3,13 +3,13 @@
 import { useCallback, useRef } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from './canvas-registry';
+import type { CanvasNodesRegistry } from '../helpers/canvas-registry';
 import {
   applyZoneNodeRotation,
   checkAndStartRotation,
   checkCornerRotateZone,
   updateRotateCursor,
-} from './canvas-zone-rotation-helpers';
+} from '../helpers/canvas-zone-rotation-helpers';
 
 interface UseCanvasZoneRotationOptions {
   selectedZone: ZoneAnnotation | null | undefined;

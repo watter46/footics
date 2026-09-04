@@ -4,8 +4,8 @@ import type {
   ArrowAnnotation,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
+import type { DrawingState } from '../canvas-interaction-types';
 import { pxToNorm } from './canvas-coordinates';
-import type { DrawingState } from './canvas-interaction-types';
 import { createDrawnArrow, createDrawnZone } from './drawing-shape-factory';
 
 export function commitShapeToSlide(

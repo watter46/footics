@@ -1,7 +1,7 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from '../canvas-registry';
+import type { CanvasNodesRegistry } from '../helpers/canvas-registry';
 
 export type KonvaClickEvent =
   | KonvaEventObject<MouseEvent>

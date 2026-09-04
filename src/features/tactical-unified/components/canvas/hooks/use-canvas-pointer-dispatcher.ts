@@ -2,7 +2,7 @@
 
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCallback } from 'react';
-import { getPitchAndNormPos } from './canvas-coordinates';
+import { getPitchAndNormPos } from '../helpers/canvas-coordinates';
 import type { useCanvasDrawingInteraction } from './use-canvas-drawing-interaction';
 import type { useCanvasSelectionBox } from './use-canvas-selection-box';
 import type { useCanvasZoneRotation } from './use-canvas-zone-rotation';

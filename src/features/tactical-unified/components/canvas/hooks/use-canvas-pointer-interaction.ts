@@ -3,8 +3,8 @@
 import type Konva from 'konva';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Slide } from '@/lib/types/tactical-unified';
-import { normToPx, pxToNorm } from './canvas-coordinates';
-import type { CanvasNodesRegistry } from './canvas-registry';
+import { normToPx, pxToNorm } from '../helpers/canvas-coordinates';
+import type { CanvasNodesRegistry } from '../helpers/canvas-registry';
 import { useCanvasDrawingInteraction } from './use-canvas-drawing-interaction';
 import { useCanvasPointerDispatcher } from './use-canvas-pointer-dispatcher';
 import { useCanvasSelectionBox } from './use-canvas-selection-box';

@@ -4,7 +4,7 @@ import type Konva from 'konva';
 import { useCallback, useEffect, useRef } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { PitchTransform, Slide } from '@/lib/types/tactical-unified';
-import { applyPitchTransformToGroups } from './canvas-pitch-transform-helper';
+import { applyPitchTransformToGroups } from '../helpers/canvas-pitch-transform-helper';
 import { useCanvasPitchPan } from './use-canvas-pitch-pan';
 import { useCanvasWheelZoom } from './use-canvas-wheel-zoom';
 
