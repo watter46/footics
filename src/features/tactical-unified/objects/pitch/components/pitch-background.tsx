@@ -7,31 +7,13 @@
  * 余白3%でセンターサークルが歪みのない厳密真円を維持するSVGを描画。
  */
 
-import { useEffect, useState } from 'react';
 import { Group, Image as KonvaImage, Rect } from 'react-konva';
 import {
   calculatePitchGeometryForAspect,
   DEFAULT_PITCH_MARGIN_PERCENT,
 } from '@/lib/tactical/pitch-geometry';
-import {
-  getCachedPitchSvgImage,
-  loadPitchSvgImage,
-  preloadAllPitchSvgImages,
-} from '@/lib/tactical/pitch-svg';
-import type { AspectRatio } from '@/lib/types/tactical-unified';
-
-export interface PitchBackgroundProps {
-  width: number;
-  height: number;
-  aspectRatio: AspectRatio;
-  /** 背景画像URL (スクショバインド等) */
-  backgroundImageUrl?: string;
-  backgroundType?: 'pitch' | 'image' | 'blank';
-  marginPercent?: number;
-  grass?: boolean;
-  draggable?: boolean;
-  onDragEnd?: (pos: { x: number; y: number }) => void;
-}
+import { usePitchImage } from '../hooks/use-pitch-image';
+import type { PitchBackgroundProps } from '../types';
 
 export function PitchBackground({
   width,
@@ -44,53 +26,13 @@ export function PitchBackground({
   draggable = false,
   onDragEnd,
 }: PitchBackgroundProps) {
-  // 初期化時にキャッシュがあれば即時適用（アスペクト比切替時のチラつき・引き伸ばし防止）
-  const [pitchImg, setPitchImg] = useState<HTMLImageElement | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return getCachedPitchSvgImage(aspectRatio, { marginPercent, grass });
+  const { pitchImg, bgImg } = usePitchImage({
+    aspectRatio,
+    marginPercent,
+    grass,
+    backgroundType,
+    backgroundImageUrl,
   });
-  const [bgImg, setBgImg] = useState<HTMLImageElement | null>(null);
-
-  // マウント時に全アスペクト比のピッチSVG画像を先行ロード
-  useEffect(() => {
-    preloadAllPitchSvgImages();
-  }, []);
-
-  // ピッチSVG ロード（キャッシュ優先で即時同期）
-  useEffect(() => {
-    if (backgroundType !== 'pitch') return;
-
-    const cached = getCachedPitchSvgImage(aspectRatio, {
-      marginPercent,
-      grass,
-    });
-    if (cached) {
-      setPitchImg(cached);
-      return;
-    }
-
-    let cancelled = false;
-    loadPitchSvgImage(aspectRatio, { marginPercent, grass })
-      .then((img) => {
-        if (!cancelled) setPitchImg(img);
-      })
-      .catch((err) => {
-        console.error('Failed to load pitch SVG image:', err);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [aspectRatio, backgroundType, marginPercent, grass]);
-
-  // 背景画像ロード (スクショバインド)
-  useEffect(() => {
-    if (backgroundType !== 'image' || !backgroundImageUrl) return;
-    const img = new window.Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => setBgImg(img);
-    img.src = backgroundImageUrl;
-  }, [backgroundImageUrl, backgroundType]);
 
   return (
     <>

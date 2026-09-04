@@ -34,7 +34,7 @@ export const PitchInlineTextEditor: React.FC<PitchInlineTextEditorProps> = ({
   const cosTilt = Math.max(0.05, Math.cos(tiltRad));
   const scaleY = zoom * cosTilt;
   const pitchHeight = pitchRect?.height ?? stageSize.height;
-  const deltaY = (pitchHeight * zoom * (1 - cosTilt)) / 2;
+  const deltaY = pitchHeight * zoom * (1 - cosTilt);
 
   const baseLeft = pitchRect
     ? pitchRect.x + (editingText.x / 100) * pitchRect.width
