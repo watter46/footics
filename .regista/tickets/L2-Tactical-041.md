@@ -2,7 +2,7 @@
 id: L2-Tactical-041
 title: "HUD Color Picker Fix"
 effort: "Low"
-status: "TODO"
+status: "DONE"
 dependencies: []
 assignee: "regista-frontend"
 ---
