@@ -25,8 +25,45 @@
     - ロジック（Custom Hooks）、状態解決（Zustand）、UI描画（React/Tailwind）を明確に分ける。
     - コンポーネントは一つの役割のみを持つように極力小さく保つ。
     - **ファイル配置のコロケーション原則**: ドメイン固有（Tactical, Match, Syntax-Studio等）のコードは、共通ディレクトリ（`src/components/`, `src/hooks/`）ではなく、対象ドメインの配下にまとめる。
-      - 例: `src/features/tactical/{components, hooks, stores, types}/` に閉じる。
+      - 例: `src/features/tactical/{objects, panels, hooks, stores, types}/` に閉じる。
       - `src/components/ui/` は shadcn などの純粋なドメイン非依存コンポーネントのみ配置する。
+
+## 4.5 Feature 内部ドメイン別サブディレクトリ命名仕様 (Domain-Specific Subdirectory Standard)
+各 Feature は、ドメインの性質に応じたサブディレクトリ名を用いて垂直スライス化する。水平レイヤー（`components/`, `hooks/` のみ）への一律化を禁止し、以下の命名仕様に従うこと。
+
+### サブディレクトリ命名マップ
+| Feature | ドメイン特性別ディレクトリ名 | サブモジュール例 |
+|---|---|---|
+| `tactical-unified` | `objects/` | `player/`, `arrow/`, `zone/`, `pitch/`, `ball/`, `canvas/` |
+| `match` | `panels/` | `video-player/`, `timeline/`, `memo-overlay/`, `event-logger/` |
+| `management` | `entities/` | `squad/`, `players/`, `formations/` |
+| `syntax-studio` | `sections/` | `script-editor/`, `scene-generator/`, `x-thread-preview/` |
+| `dashboard`, `national-dashboard` | `widgets/` | `national-stats/`, `team-summary/`, `kpi-cards/` |
+
+### 各サブモジュールの自己完結 4 要素（必須）
+```
+{feature}/objects/{name}/    # または panels/, entities/, sections/, widgets/
+├── components/              # UI描画コンポーネント
+├── hooks/                   # インタラクション・状態フック
+├── types.ts                 # ローカル型定義
+└── index.ts                 # 公開 API（外部はここのみ参照）
+```
+- 粒度が小さすぎる要素（単一ファイルで完結する描画部品等）は無理にサブモジュール化しない。
+- Feature をまたいだ直接 import を禁止する。共有が必要な型は `src/types/` へ昇格させる。
+
+### `tactical-unified` の詳細構造ルール
+- `objects/canvas/` はキャンバス統合レイヤー（`unified-canvas.tsx`, `player-layer.tsx` 等）を置く特別ディレクトリとして存続させる。
+  - Canvas 操作フック (`use-canvas-*.ts`) は `objects/canvas/hooks/` に配置する。
+  - Canvas ヘルパー関数 (`canvas-*-helpers.ts`, `*-helpers.ts`) は `objects/canvas/helpers/` に配置する。
+- Feature レベルのフック（アニメーション・エクスポート・キーボードショートカット等）は `hooks/` に配置し、特定オブジェクトに依存しない横断的ロジックを担う。
+- `stores/` は Zustand の slice 分割構造を維持する（オブジェクト固有の局所状態は各 `objects/*/hooks/` で管理）。
+- `types/index.ts` に Feature 全体で共有する型を集約する（空のままにしない）。
+- UIパネル群（`inspector/`, `toolbar/`, `hud/`, `slides/`, `right-panel/`, `dialogs/`, `export/`, `timeline/`）は `panels/` 配下に配置する。
+
+### Feature 間の境界ルール（厳格）
+- `features/{A}` から `features/{B}` への直接 import を絶対禁止する。
+- `src/components/ui/` にドメイン固有ロジックを置かない。
+- 共有ユーティリティは `src/lib/`、共有型は `src/types/` のみに配置する。
 
 ## 5. Naming Conventions & Code Style (命名規則とコードスタイル)
 - **原則:** 一貫した命名とスタイルで予測可能なコード構造を保つ。
