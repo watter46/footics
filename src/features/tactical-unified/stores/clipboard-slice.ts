@@ -1,15 +1,11 @@
 import type { StateCreator } from 'zustand';
-import type {
-  TacticalClipboard,
-  TacticalUnifiedState,
-} from './tactical-unified-store';
 import {
   cloneAndOffsetObjects,
   extractSelectedObjects,
-  getSlide,
-  recordHistory,
-  updateSlideInProject,
-} from './tactical-unified-store';
+  type TacticalClipboard,
+} from './clipboard-helpers';
+import { getSlide, recordHistory, updateSlideInProject } from './store-helpers';
+import type { TacticalUnifiedState } from './tactical-unified-store';
 
 export interface ClipboardSlice {
   clipboard: TacticalClipboard | null;
