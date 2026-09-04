@@ -11,7 +11,7 @@ import {
 import { useState } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { ArrowAnnotation, Player } from '@/lib/types/tactical-unified';
-import { ColorInput } from '../common-color-input';
+import { ColorInput } from '../../components/common-color-input';
 import {
   DeleteButton,
   RangeInput,

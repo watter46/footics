@@ -2,7 +2,7 @@
 
 import { Palette } from 'lucide-react';
 import { useState } from 'react';
-import { ColorInput } from '../common-color-input';
+import { ColorInput } from '../../components/common-color-input';
 
 interface FormationTeamToggleProps {
   activeTeam: 'home' | 'away';

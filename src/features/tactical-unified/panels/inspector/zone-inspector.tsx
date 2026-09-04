@@ -2,7 +2,7 @@
 
 import { Circle, Square } from 'lucide-react';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
-import { ColorInput } from '../common-color-input';
+import { ColorInput } from '../../components/common-color-input';
 import { DeleteButton, RangeInput, Row } from './inspector-shared-controls';
 
 export function ZoneInspector({

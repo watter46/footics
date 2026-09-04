@@ -17,9 +17,9 @@ import { useKeyboardShortcuts } from '@/features/tactical-unified/hooks/use-keyb
 import { useTacticalAutoSave } from '@/features/tactical-unified/hooks/use-tactical-auto-save';
 import { useTacticalCaptureBridge } from '@/features/tactical-unified/hooks/use-tactical-capture-bridge';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { RightPanel } from '../panels/right-panel/right-panel';
 import { ProjectManagerModal } from './dialogs/project-manager-modal';
 import { ExportModal } from './export/export-modal';
-import { RightPanel } from './right-panel/right-panel';
 import { TimelineBar } from './timeline/timeline-bar';
 import { TopBar } from './toolbar/top-bar';
 

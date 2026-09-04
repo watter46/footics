@@ -1,5 +1,6 @@
 ---
 id: L1-Arch-008
+status: DONE
 emoji: 🟢 # 例: 🎨, 🔧, 🐛
 title: [Phase 1] management: entities/squad/ の垂直スライス化 # 必ず日本語で記述すること
 depends_on: [] # 例: ["L1-Tactical-001"]
@@ -8,7 +9,8 @@ model: Gemini 3.7 Flash # 必須: [GM発行] Gemini 3.1 Pro または Gemini 3.8
 effort: low # 必須: low | medium | high
 context_files:
   - src/features/management/components/DataManagementMenu.tsx
-  - src/features/management/components/GlobalDataManagement.tsx\n  - .agents/knowledge/architecture-and-guidelines.md
+  - src/features/management/components/GlobalDataManagement.tsx
+  - .agents/knowledge/architecture-and-guidelines.md
 ---
 
 # 🟢 L1-Arch-008: [Phase 1] management: entities/squad/ の垂直スライス化
@@ -21,8 +23,8 @@ context_files:
 2. `components/` 以下のファイルを責務ごとに適切に `entities/` 以下へ移動する。
 3. 必要に応じて `types.ts` 等を整備し、インポートを修正する。
 ## Acceptance Criteria & Verification Commands
-- [ ] <!-- 受入基準1 -->
-- [ ] <!-- 受入基準2 -->
+- [x] `src/features/management/entities/squad/` と `entities/players/` への垂直スライス化
+- [x] 型チェック及び静的解析パス
 
 ### Verification
 `rtk biome check <対象ディレクトリ>`

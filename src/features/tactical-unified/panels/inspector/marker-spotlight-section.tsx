@@ -2,7 +2,7 @@
 
 import { Sparkles } from 'lucide-react';
 import type { Player } from '@/lib/types/tactical-unified';
-import { ColorInput } from '../common-color-input';
+import { ColorInput } from '../../components/common-color-input';
 import { RangeInput, Row } from './inspector-shared-controls';
 
 export interface MarkerSpotlightSectionProps {
