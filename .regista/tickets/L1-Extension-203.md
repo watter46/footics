@@ -2,7 +2,7 @@
 id: L1-Extension-203
 emoji: 🔗
 title: SidepanelView の双方向同期 (save-queue & IndexedDB 連携)
-status: TODO
+status: DONE
 depends_on: ["L1-Extension-201", "L1-Extension-202"]
 model: Gemini 3.7 Flash
 effort: medium

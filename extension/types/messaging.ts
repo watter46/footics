@@ -39,6 +39,9 @@ declare module 'webext-bridge' {
     /** オーバーレイを表示する */
     OPEN_OVERLAY: OpenOverlayPayload;
 
+    /** ミニモード/フルモードのトグル（Background -> Content Script） */
+    TOGGLE_MINI_MODE: Record<string, never>;
+
     /** サイドパネルを閉じるリクエスト（Escキー等） */
     CLOSE_SIDEPANEL: Record<string, never>;
 

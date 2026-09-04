@@ -62,6 +62,12 @@ export default defineConfig({
         },
         description: 'Toggle Event Memo Overlay',
       },
+      'toggle-mini-mode': {
+        suggested_key: {
+          default: 'Alt+M',
+        },
+        description: 'Toggle Memo Overlay Mini/Full Mode',
+      },
     },
     side_panel: {
       default_path: 'entrypoints/sidepanel/index.html',

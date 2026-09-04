@@ -80,7 +80,27 @@ export default defineBackground(() => {
       return;
     }
 
-    // ── 2. メモオーバーレイコマンドの処理 ──
+    // ── 2. ミニモードトグルコマンドの処理 ──
+    if (command === 'toggle-mini-mode') {
+      if (activeTab?.id) {
+        console.log(
+          '📌 [Footics BG] Sending TOGGLE_MINI_MODE to active tab:',
+          activeTab.id,
+        );
+        try {
+          await sendMessage(
+            'TOGGLE_MINI_MODE',
+            {},
+            `content-script@${activeTab.id}`,
+          );
+        } catch (err) {
+          console.warn('[Footics BG] Failed to send TOGGLE_MINI_MODE:', err);
+        }
+      }
+      return;
+    }
+
+    // ── 3. メモオーバーレイコマンドの処理 ──
     if (command !== 'toggle-match-memo' && command !== 'toggle-event-memo')
       return;
 

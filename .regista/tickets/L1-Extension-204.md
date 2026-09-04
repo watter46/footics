@@ -2,7 +2,7 @@
 id: L1-Extension-204
 emoji: ⏸️
 title: メモオーバーレイ開閉時の動画自動一時停止/再開オプション
-status: TODO
+status: DONE
 depends_on: []
 model: Gemini 3.7 Flash
 effort: low
