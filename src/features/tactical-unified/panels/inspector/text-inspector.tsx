@@ -1,7 +1,7 @@
 'use client';
 
 import type { TextAnnotation } from '@/lib/types/tactical-unified';
-import { ColorInput } from '../../components/common-color-input';
+import { ColorInput } from './common-color-input';
 import { DeleteButton, RangeInput, Row } from './inspector-shared-controls';
 
 export function TextInspector({

@@ -3,7 +3,7 @@
 import { Link, Plus, Trash2 } from 'lucide-react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Player } from '@/lib/types/tactical-unified';
-import { ColorInput } from '../../components/common-color-input';
+import { ColorInput } from './common-color-input';
 import { Row } from './inspector-shared-controls';
 
 export interface MarkerConnectorSectionProps {

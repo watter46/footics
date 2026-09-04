@@ -2,7 +2,7 @@ export { BoundaryBoxHud } from './boundary-box-hud';
 export { BoundaryBoxTiltControls } from './boundary-box-tilt-controls';
 export { PRIMARY_TOOLS } from './drawing-tool-config';
 export { DrawingToolbar } from './drawing-toolbar';
-export { TopBar } from './top-bar';
+export { TopBar, TopBar as TopHeader } from './top-bar';
 export { TopBarCenter } from './top-bar-center';
 export { TopBarHistory } from './top-bar-history';
 export { TopBarMoreMenu } from './top-bar-more-menu';

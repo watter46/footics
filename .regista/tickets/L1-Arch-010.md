@@ -9,6 +9,7 @@ context_files:
   - src/features/tactical-unified/components/canvas/ghost-trajectory-arrow.tsx
   - src/features/tactical-unified/components/canvas/unified-canvas.tsx
 status: DONE
+---
 
 # 🟢 L1-Arch-010: tactical-unified: objects/arrow/ の垂直スライス化（矢印・軌跡レイヤー分離）
 

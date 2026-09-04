@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { COLOR_PALETTE } from '../../components/common-color-input';
+import { COLOR_PALETTE } from '../inspector/common-color-input';
 
 export interface MiniColorPickerProps {
   value: string;

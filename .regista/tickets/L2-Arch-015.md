@@ -2,6 +2,7 @@
 id: L2-Arch-015
 emoji: 🟡
 title: "tactical-unified: components/ 残存ファイルの整理（page, header, common-inputs の移管）"
+status: DONE
 depends_on: ["L1-Arch-010", "L1-Arch-011", "L1-Arch-012", "L1-Arch-013"]
 model: Gemini 3.7 Flash
 effort: low
