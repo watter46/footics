@@ -9,7 +9,7 @@ import {
 import { useMemoOverlayStore } from '@/stores/memo-overlay-store';
 import { DEBUG_CONFIG } from '../../constants';
 import { addToSaveQueue } from '../../features/storage-sync/save-queue';
-import { useOverlayStore } from '../../stores/useOverlayStore';
+import { useOverlayStore } from './stores/use-overlay-store';
 
 /**
  * MemoOverlayBridge (Extension Adapter Layer)

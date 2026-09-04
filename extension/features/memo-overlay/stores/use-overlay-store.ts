@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { OVERLAY_TRANSITION_DURATION } from '../constants';
-import type { MemoMode } from '../types/schemas';
+import { OVERLAY_TRANSITION_DURATION } from '../../../constants';
+import type { MemoMode } from '../../../types/schemas';
 
 interface ToastState {
   message: string;

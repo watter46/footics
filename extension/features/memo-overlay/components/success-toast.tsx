@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react';
 import type React from 'react';
-import { Z_INDEX } from '../../constants';
-import { cn } from '../../utils/cn';
+import { Z_INDEX } from '../../../constants';
+import { cn } from '../../../utils/cn';
 
 interface SuccessToastProps {
   message: string;

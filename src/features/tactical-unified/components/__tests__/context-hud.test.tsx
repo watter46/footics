@@ -137,14 +137,22 @@ describe('ContextHud Controls for Zone, Text, and Ball', () => {
 
     state.addZone(activeSlideId, {
       id: 'test-zone-1',
-      name: 'Zone 14',
-      zoneType: 'box',
+      annotationType: 'zone',
+      label: 'Zone 14',
+      zoneType: 'generic',
+      points: [
+        { x: 30, y: 30 },
+        { x: 50, y: 30 },
+        { x: 50, y: 50 },
+        { x: 30, y: 50 },
+      ],
       x: 30,
       y: 30,
       width: 20,
       height: 20,
       color: '#f59e0b',
       opacity: 0.25,
+      strokeWidth: 0,
     });
 
     state.selectObject({ id: 'test-zone-1', kind: 'zone' });
@@ -176,11 +184,14 @@ describe('ContextHud Controls for Zone, Text, and Ball', () => {
 
     state.addText(activeSlideId, {
       id: 'test-text-1',
-      text: 'Tactics Note',
+      annotationType: 'text',
+      content: 'Tactics Note',
       x: 50,
       y: 50,
       fontSize: 16,
       color: '#ffffff',
+      bold: false,
+      italic: false,
     });
 
     state.selectObject({ id: 'test-text-1', kind: 'text' });
