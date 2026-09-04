@@ -65,7 +65,9 @@ function runScopedTypeCheck(files) {
         ],
       };
       fs.writeFileSync(tempConfigPath, JSON.stringify(scopedConfig, null, 2));
-      execSync(`rtk tsc --noEmit -p ${tempConfigPath}`, { stdio: 'inherit' });
+      execSync(`rtk tsc --noEmit --pretty false -p ${tempConfigPath}`, {
+        stdio: 'inherit',
+      });
     } finally {
       if (fs.existsSync(tempConfigPath)) {
         fs.unlinkSync(tempConfigPath);
@@ -75,12 +77,16 @@ function runScopedTypeCheck(files) {
 
   // 2. Extension Check
   if (extensionFiles.length > 0) {
-    execSync('cd extension && rtk tsc --noEmit', { stdio: 'inherit' });
+    execSync('cd extension && rtk tsc --noEmit --pretty false', {
+      stdio: 'inherit',
+    });
   }
 
   // 3. Video Canvas Check
   if (videoCanvasFiles.length > 0) {
-    execSync('cd video-canvas && rtk tsc --noEmit', { stdio: 'inherit' });
+    execSync('cd video-canvas && rtk tsc --noEmit --pretty false', {
+      stdio: 'inherit',
+    });
   }
 }
 
