@@ -2,6 +2,7 @@
 id: L2-Tactical-040
 title: "Player 2D UI & Independent Ring Attributes"
 effort: "High"
+model: "Claude Sonnet 4.6 (thinking)"
 status: "DONE"
 completed_at: "2026-09-04T18:16:08+09:00"
 dependencies: []

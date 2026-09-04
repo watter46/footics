@@ -2,6 +2,7 @@
 id: L2-Tactical-039
 title: "Boundary Box Refactoring"
 effort: "Low"
+model: "Gemini 3.8 Flash"
 status: "DONE"
 dependencies: []
 assignee: "regista-canvas"

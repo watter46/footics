@@ -2,6 +2,7 @@
 id: L2-Tactical-041
 title: "HUD Color Picker Fix"
 effort: "Low"
+model: "Gemini 3.8 Flash"
 status: "DONE"
 dependencies: []
 assignee: "regista-frontend"

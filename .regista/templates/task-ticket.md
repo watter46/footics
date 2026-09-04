@@ -3,6 +3,7 @@ id: {{TICKET_ID}}
 emoji: {{EMOJI}} # 例: 🎨, 🔧, 🐛
 title: {{TITLE_JA}} # 必ず日本語で記述すること
 depends_on: [] # 例: ["L1-Tactical-001"]
+# 【警告】以下の model と effort は絶対に省略したり、CLIツール等のデフォルトに依存してはならない。必ず明記すること。
 model: {{RECOMMENDED_MODEL}} # 必須: [GM発行] Gemini 3.1 Pro または Gemini 3.8 Flash | [Worker実装] Gemini 3.7 Flash 〜 3.8 Flash | [難関] Claude Sonnet 4.6 (thinking)
 effort: {{RECOMMENDED_EFFORT}} # 必須: low | medium | high
 context_files:

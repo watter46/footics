@@ -21,7 +21,7 @@ trigger: always_on
 
 ## 1. チケット出力・運用プロトコル (DAG & Markdown Distribution Standard)
 - **1. 分散Markdownファイル管理 (`.regista/tickets/[ID].md`):**
-  - 各チケットは `.regista/templates/task-ticket.md` テンプレートを参照して作成し、YAMLフロントマターと本文を持つ。
+  - 各チケットは **必ず** `.regista/templates/task-ticket.md` を読み込み、それをベースに生成すること。YAMLフロントマター内の `model`, `effort` などの必須フィールドを絶対に省略してはならない。
   - ファイル構成案（純粋関数と状態の分離など）を必ず明記すること。
 - **2. Layer-Based DAG ID体系:** `L{深度}-{ドメイン名}-{連番3桁}`。進捗確認は `pnpm tickets`（未完了チケットのみは `pnpm tickets:todo` または `pnpm tickets -t`、完了全件は `pnpm tickets --all`）。
 - **3. モデルとEffortの選定 (ホワイトリスト):**
@@ -29,8 +29,10 @@ trigger: always_on
   - **実装Worker (基本)**: `Gemini 3.7 Flash` を基本とし、タスク規模に応じて `Gemini 3.7 Flash` 〜 `Gemini 3.8 Flash` の6段階（各 low / medium / high）で使い分ける。
   - **実装Worker (難関)**: それでも難しい場合（アーキテクチャ刷新や難解バグ等）は `Claude Sonnet 4.6 (thinking)` などのSonnet系モデルを使用する。
 - **4. 会話分離の原則 (Cross-Conversation Execution Isolation):** チケット発行は「企画/GM Conversation」、実装は必ず「別の新規Conversation」で実施する。
-- **5. チャットへの厳格なチケット一覧表出力:** `.regista/templates/board-summary.md` 準拠のMarkdownテーブル1つのみ出力。
-- **6. チケット実装完了時の超凝縮チャット報告フォーマット:** `.regista/templates/completion-report.md` 準拠のみ出力（YAMLや変更ファイル一覧出力の厳格禁止）。ユーザー完了合図の絶対厳守。
+- **5. 出力の完全テンプレート化 (No Hardcoding):** 
+  - エージェントがチャットに出力する全ての報告（チケット一覧、実装完了、コミット完了、引継ぎ等）は、**エージェント自身でハードコードした独自フォーマットを使ってはならない。**
+  - 必ず事前に `.regista/templates/` 配下の該当テンプレート（`board-summary.md`, `completion-report.md`, `ticket-done-report.md`, `handover.md` 等）を読み込み、指定された変数のみを埋め込んで出力すること。
+  - YAMLの内容をそのままチャットに出力したり、不要な挨拶や「〜を修正しました」等の冗長なまとめを付加することを厳格に禁止する。ユーザーへの出力はテンプレートに沿った最小限のものに留める。
 
 ## 2. エージェント行動規範とナレッジの遅延読み込み
 - **Chain of Thought (CoT) Enforcement**: 浅い思考によるバグを排除し、深く考えてから行動する。複雑な修正やデバッグの際はいきなりコードを修正せず、思考プロセスを出力し、依存関係、副作用、代替案を検討する。
@@ -56,8 +58,9 @@ trigger: always_on
 - コミット完了後のチャット報告は `.regista/templates/ticket-done-report.md` に準拠し、「実施内容まとめ」等の冗長出力を厳格に禁止する。
 
 ## 6. 作業のサイレント実行規約 (Silent Execution & Indicator)
-- **着手時のインジケーター表示**: タスク着手時は `⏳ [RUNNING] {Task/Ticket}` のインジケーター1行のみを表示する。
+- **着手時のインジケーター表示**: タスク着手時は必ず `.regista/templates/task-indicator.md` を読み込み、`{{TASK_OR_TICKET_NAME}}` を置換して1行のみを表示すること。ハードコードは禁止。
 - **実況中継・コマンド発言の厳格禁止**: 「〇〇コマンドを実行します」「型チェック中...」等の途中経過やおしゃべりをチャットへ出力してはならない。ツール呼び出しにより裏で静かに実行を完遂すること。
+- **Fast-Track完了報告**: Fast-Trackで完了した際は `.regista/templates/fast-track-report.md` を読み込んで出力すること。
 - **差分出力の強制:** フルファイルの書き換えではなく、Unified Diffフォーマットでのパッチ提供を優先する。
 
 ## 7. 厳格なファイル生成制約と Type & Skeleton-First Driven Development (TSFDD)
