@@ -206,6 +206,7 @@ export function PlayerLayer({
                 prevPlayer={prevPlayer}
                 stageSize={stageSize}
                 activeSlideId={activeSlideId}
+                nodesRegistryRef={nodesRegistryRef}
                 onUpdateTrajectory={updatePlayerTrajectory}
               />
             );

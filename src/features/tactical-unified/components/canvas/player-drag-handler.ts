@@ -1,7 +1,11 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import { getLastName } from '@/lib/tactical/player-formatting';
-import { getQuadraticBezierPoints } from '@/lib/tactical/trajectory';
+import {
+  getBezierControlPoint,
+  getBezierMidpoint,
+  getQuadraticBezierPoints,
+} from '@/lib/tactical/trajectory';
 import type {
   ArrowAnnotation,
   Player,
@@ -286,7 +290,77 @@ export function handlePlayerDragMove({
     }
   }
 
-  // 2. オニオンスキン軌跡ガイド線の更新
+  // 2. 軌跡矢印 (GhostTrajectoryArrow) の追従更新
+  if (registry) {
+    for (const p of ctx.movingPlayers) {
+      const trajEntry = registry.trajectoryArrowNodes.get(p.id);
+      if (!trajEntry) continue;
+
+      const pX =
+        p.id === ctx.draggedPlayerId
+          ? curX
+          : Math.max(0, Math.min(width, p.initialPx.x + dx));
+      const pY =
+        p.id === ctx.draggedPlayerId
+          ? curY
+          : Math.max(0, Math.min(height, p.initialPx.y + dy));
+
+      const sPxX = trajEntry.startPx.x;
+      const sPxY = trajEntry.startPx.y;
+      const dist = Math.hypot(pX - sPxX, pY - sPxY);
+
+      if (dist < 4) {
+        if (trajEntry.groupNode) trajEntry.groupNode.visible(false);
+        if (trajEntry.arrowNode) trajEntry.arrowNode.visible(false);
+        if (trajEntry.controlHandleNode)
+          trajEntry.controlHandleNode.visible(false);
+        continue;
+      }
+
+      if (trajEntry.groupNode) trajEntry.groupNode.visible(true);
+      if (trajEntry.arrowNode) trajEntry.arrowNode.visible(true);
+      if (trajEntry.controlHandleNode)
+        trajEntry.controlHandleNode.visible(true);
+
+      const isCurved =
+        trajEntry.trajectory?.type === 'custom' ||
+        trajEntry.trajectory?.type === 'arc_left' ||
+        trajEntry.trajectory?.type === 'arc_right' ||
+        trajEntry.trajectory?.controlPoint !== undefined;
+
+      if (isCurved) {
+        const curNorm = {
+          x: (pX / width) * 100,
+          y: (pY / height) * 100,
+        };
+        const cpNorm = getBezierControlPoint(
+          trajEntry.startPos,
+          curNorm,
+          trajEntry.trajectory,
+        );
+        const cpPxX = normX(cpNorm.x, width);
+        const cpPxY = normY(cpNorm.y, height);
+
+        const pts = getQuadraticBezierPoints(sPxX, sPxY, cpPxX, cpPxY, pX, pY);
+        trajEntry.arrowNode?.points(pts);
+
+        const midHandlePx = getBezierMidpoint(
+          { x: sPxX, y: sPxY },
+          { x: pX, y: pY },
+          { x: cpPxX, y: cpPxY },
+        );
+        trajEntry.controlHandleNode?.position(midHandlePx);
+      } else {
+        trajEntry.arrowNode?.points([sPxX, sPxY, pX, pY]);
+        trajEntry.controlHandleNode?.position({
+          x: (sPxX + pX) / 2,
+          y: (sPxY + pY) / 2,
+        });
+      }
+    }
+  }
+
+  // 3. オニオンスキン軌跡ガイド線の更新
   if (ctx.prevPlayerPx && onionSkinGhostLine) {
     onionSkinGhostLine.points([
       ctx.prevPlayerPx.x,
@@ -296,7 +370,7 @@ export function handlePlayerDragMove({
     ]);
   }
 
-  // 3. アタッチされている矢印の追従更新
+  // 4. アタッチされている矢印の追従更新
   if (registry) {
     for (const entry of ctx.attachedArrows) {
       const handles = registry.arrowNodes.get(entry.arrow.id);

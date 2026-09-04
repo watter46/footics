@@ -19,11 +19,11 @@ context_files:
 ## Detailed Spec
 1. 現在、`player-drag-handler.ts` の `handlePlayerDragMove` では実マーカー（Konvaノード）のみが移動し、StoreのReact Stateは更新されないため、`PlayerGhostTrajectory`（およびその中の `GhostTrajectoryArrow`）の先端位置がドラッグ中に更新されない。
 2. `player-drag-handler.ts` 内の `handlePlayerDragMove` で、ドラッグ中のプレイヤーに対応する `GhostTrajectoryArrow`（軌跡矢印）の終端座標（`points`）をリアルタイムで命令的に更新する処理を追加する。
-3. （推奨案）`CanvasNodesRegistry`（`canvas-registry.ts`）に `trajectoryArrowNodes` などのMapを追加し、`GhostTrajectoryArrow` がマウント時に自身を登録するようにする。ドラッグ中にそのノード群を参照して先端を追従させるか、あるいはオニオンスキンのようにRefを渡して更新する。
+3. （推奨案）`CanvasNodesRegistry`（`canvas-registry.ts`）に `trajectoryArrowNodes` などのMapを追加し、`GhostTrajectoryArrow` がマウント時に自身を登録するようにする。ドラッグ中にそのノード群を参照して先端を追従させるか、あるいはオニオンスキンのようにRefを渡して更新する。status: DONE
 
 ## Acceptance Criteria & Verification Commands
-- [ ] プレイヤーマーカーをドラッグ中、過去のゴーストから伸びる矢印の先端が、ドラッグ中のマーカーにぴったり追従すること。
-- [ ] ドラッグ終了時にStoreが更新され、矢印が正しい位置で確定すること。
+- [x] プレイヤーマーカーをドラッグ中、過去のゴーストから伸びる矢印の先端が、ドラッグ中のマーカーにぴったり追従すること。
+- [x] ドラッグ終了時にStoreが更新され、矢印が正しい位置で確定すること。
 
 ### Verification
 `rtk biome check src/features/tactical-unified/components/canvas/`

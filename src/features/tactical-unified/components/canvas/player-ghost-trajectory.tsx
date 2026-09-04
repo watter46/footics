@@ -1,8 +1,10 @@
 'use client';
 
+import type React from 'react';
 import { Circle, Group, Text } from 'react-konva';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { Player, PlayerTrajectory } from '@/lib/types/tactical-unified';
+import type { CanvasNodesRegistry } from './canvas-registry';
 import { GhostTrajectoryArrow } from './ghost-trajectory-arrow';
 
 function normX(v: number, w: number) {
@@ -17,6 +19,7 @@ export interface PlayerGhostTrajectoryProps {
   prevPlayer: Player;
   stageSize: { width: number; height: number };
   activeSlideId: string;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   onUpdateTrajectory: (
     slideId: string,
     playerId: string,
@@ -29,6 +32,7 @@ export function PlayerGhostTrajectory({
   prevPlayer,
   stageSize,
   activeSlideId,
+  nodesRegistryRef,
   onUpdateTrajectory,
 }: PlayerGhostTrajectoryProps) {
   const { width, height } = stageSize;
@@ -84,6 +88,8 @@ export function PlayerGhostTrajectory({
 
       {/* ── 移動軌道矢印 & 制御ポインタ (ツールバー矢印と完全同一の安定仕様) ── */}
       <GhostTrajectoryArrow
+        playerId={player.id}
+        nodesRegistryRef={nodesRegistryRef}
         startPos={{ x: prevPlayer.x, y: prevPlayer.y }}
         endPos={{ x: player.x, y: player.y }}
         trajectory={player.trajectory}

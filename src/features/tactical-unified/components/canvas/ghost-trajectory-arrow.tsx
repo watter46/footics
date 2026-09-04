@@ -6,6 +6,7 @@
  * ツールバーの矢印と同一の2次ベジェ曲線・ハンドル逆算・非クランプ座標系に準拠
  */
 
+import type Konva from 'konva';
 import React, { useEffect, useRef } from 'react';
 import { Arrow, Circle, Group } from 'react-konva';
 import {
@@ -14,6 +15,7 @@ import {
   getQuadraticBezierPoints,
 } from '@/lib/tactical/trajectory';
 import type { PlayerTrajectory } from '@/lib/types/tactical-unified';
+import type { CanvasNodesRegistry } from './canvas-registry';
 
 function normX(v: number, w: number) {
   return (v / 100) * w;
@@ -23,6 +25,8 @@ function normY(v: number, h: number) {
 }
 
 export interface GhostTrajectoryArrowProps {
+  playerId?: string;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   startPos: { x: number; y: number };
   endPos: { x: number; y: number };
   trajectory?: PlayerTrajectory;
@@ -32,6 +36,8 @@ export interface GhostTrajectoryArrowProps {
 }
 
 export const GhostTrajectoryArrow = React.memo(function GhostTrajectoryArrow({
+  playerId,
+  nodesRegistryRef,
   startPos,
   endPos,
   trajectory,
@@ -68,8 +74,25 @@ export const GhostTrajectoryArrow = React.memo(function GhostTrajectoryArrow({
       )
     : { x: (sPxX + ePxX) / 2, y: (sPxY + ePxY) / 2 };
 
-  const arrowRef = useRef<any>(null);
-  const controlHandleRef = useRef<any>(null);
+  const arrowRef = useRef<Konva.Arrow | null>(null);
+  const controlHandleRef = useRef<Konva.Circle | null>(null);
+  const groupRef = useRef<Konva.Group | null>(null);
+
+  // CanvasNodesRegistry に登録してドラッグ中の直接命令更新を可能にする
+  useEffect(() => {
+    if (!nodesRegistryRef?.current || !playerId) return;
+    nodesRegistryRef.current.trajectoryArrowNodes.set(playerId, {
+      groupNode: groupRef.current,
+      arrowNode: arrowRef.current,
+      controlHandleNode: controlHandleRef.current,
+      startPx: { x: sPxX, y: sPxY },
+      startPos,
+      trajectory,
+    });
+    return () => {
+      nodesRegistryRef.current?.trajectoryArrowNodes.delete(playerId);
+    };
+  }, [nodesRegistryRef, playerId, sPxX, sPxY, startPos, trajectory]);
 
   // コンポーネント更新時に Konva ノード座標を厳密に同期
   useEffect(() => {
@@ -81,14 +104,12 @@ export const GhostTrajectoryArrow = React.memo(function GhostTrajectoryArrow({
     }
   }, [midHandlePx.x, midHandlePx.y]);
 
-  if (!isMoved) return null;
-
   const initialPoints = isCurved
     ? getQuadraticBezierPoints(sPxX, sPxY, cpPxX, cpPxY, ePxX, ePxY)
     : [sPxX, sPxY, ePxX, ePxY];
 
   return (
-    <Group>
+    <Group ref={groupRef} visible={isMoved}>
       {/* ── 移動軌道矢印 ── */}
       <Arrow
         ref={arrowRef}
