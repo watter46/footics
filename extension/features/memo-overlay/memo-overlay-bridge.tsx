@@ -5,12 +5,8 @@ import {
   useMemoOverlayEventBridge,
   useMemoOverlayStore,
 } from '@/features/memo-overlay';
-import {
-  createSavePayload,
-  getValidationError,
-} from '@/lib/features/memo-overlay/memoOverlayLogic';
-import { DEBUG_CONFIG } from '../../constants';
-import { addToSaveQueue } from '../../features/storage-sync/save-queue';
+import { QuickTagBar } from './components/QuickTagBar';
+import { useMemoSave } from './hooks/use-memo-save';
 import { useOverlayStore } from './stores/use-overlay-store';
 
 /**
@@ -24,19 +20,9 @@ import { useOverlayStore } from './stores/use-overlay-store';
  * - Content Script が `storage.onChanged` でキューを監視し、
  *   IndexedDB への実書き込みと REFRESH_APP の通知を担う。
  */
-// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Intentional complexity for extension bridge
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Intentional complexity
 export const MemoOverlayBridge: React.FC = () => {
-  const {
-    isVisible,
-    mode,
-    matchId,
-    initialData,
-    initialError,
-    open,
-    close,
-    setToast,
-  } = useOverlayStore();
+  const { isVisible, mode, matchId, initialData, initialError, open, close } =
+    useOverlayStore();
 
   const reset = useMemoOverlayStore((s) => s.reset);
   const setError = useMemoOverlayStore((s) => s.setError);
@@ -46,9 +32,9 @@ export const MemoOverlayBridge: React.FC = () => {
   const setEventId = useMemoOverlayStore((s) => s.setEventId);
   const setPeriod = useMemoOverlayStore((s) => s.setPeriod);
   const forceSetPhase = useMemoOverlayStore((s) => s.forceSetPhase);
-  const setIsSaving = useMemoOverlayStore((s) => s.setIsSaving);
 
   // ── ストアの初期化 ──
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Initialization logic handles multi-phase restoration
   useEffect(() => {
     if (!isVisible) return;
 
@@ -98,92 +84,7 @@ export const MemoOverlayBridge: React.FC = () => {
     forceSetPhase,
   ]);
 
-  // ── バリデーションヘルパー ──
-  const validate = (state: ReturnType<typeof useMemoOverlayStore.getState>) => {
-    if (state.mode === 'EVENT') {
-      // Phase 0: 時間のチェック
-      const timeErr = getValidationError({ ...state, phase: 0 });
-      if (timeErr) {
-        setError(timeErr);
-        forceSetPhase(0);
-        return false;
-      }
-      // Phase 1: ラベルのチェック
-      const labelErr = getValidationError({ ...state, phase: 1 });
-      if (labelErr) {
-        setError(labelErr);
-        forceSetPhase(1);
-        return false;
-      }
-    }
-    return true;
-  };
-
-  // ── 保存処理（Storage Queue への書き込み） ──
-  const handleSave = async () => {
-    const currentState = useMemoOverlayStore.getState();
-
-    // 二重実行防止（保存処理中は入力を受け付けない）
-    if (currentState.isSaving) return;
-
-    if (!DEBUG_CONFIG.DRY_RUN && !matchId) {
-      setError('保存先の試合情報が見つかりません。');
-      return;
-    }
-
-    if (!validate(currentState)) return;
-
-    const payload = createSavePayload({
-      mode: currentState.mode,
-      period: currentState.period,
-      timeStr: currentState.timeStr,
-      selectedLabels: currentState.selectedLabels,
-      memo: currentState.memo,
-    });
-
-    if (!payload) return;
-
-    setIsSaving(true);
-    try {
-      if (DEBUG_CONFIG.DRY_RUN) {
-        console.info('🚀 [DRY RUN] Save Payload:', { matchId, ...payload });
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        setToast('Dry Run: Saved');
-        reset();
-        return;
-      }
-
-      // Save Queue に追加（共通サービスに委譲）
-      await addToSaveQueue({
-        mode: currentState.mode,
-        matchId: matchId!,
-        period: currentState.period,
-        memo: payload.memo,
-        entityId: currentState.eventId,
-        ...(payload.type === 'EVENT'
-          ? {
-              minute: payload.minute,
-              second: payload.second,
-              labels: payload.labels,
-            }
-          : {}),
-      });
-
-      // キューへの書き込み完了をもってUIに成功フィードバックを返す
-      // 実際のDB書き込みはContent Scriptが担う
-      close();
-      setToast(
-        currentState.mode === 'MATCH'
-          ? 'Match Memo Saved'
-          : 'Saved Successfully',
-      );
-    } catch (err) {
-      console.error('[MemoOverlayBridge] Queue write failed:', err);
-      setError('保存キューへの書き込みに失敗しました。');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const { handleSave } = useMemoSave();
 
   // ストア連携
   useMemoOverlayEventBridge(close, handleSave, open, isVisible);
@@ -191,11 +92,15 @@ export const MemoOverlayBridge: React.FC = () => {
   if (!isVisible) return null;
 
   return (
-    <MemoOverlayView
-      matchId={matchId}
-      onClose={close}
-      onSave={handleSave}
-      readOnly={false}
-    />
+    <div className="fixed top-6 right-6 flex flex-col gap-2 z-50 pointer-events-auto">
+      {mode === 'EVENT' && <QuickTagBar />}
+      <MemoOverlayView
+        matchId={matchId}
+        onClose={close}
+        onSave={handleSave}
+        readOnly={false}
+        className="static top-auto right-auto"
+      />
+    </div>
   );
 };

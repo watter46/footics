@@ -1,18 +1,19 @@
 import hotkeys from 'hotkeys-js';
 import { useEffect } from 'react';
+import { useMemoOverlayStore } from '@/features/memo-overlay';
+import { QUICK_TAGS } from '../../../constants/quick-tags';
+import { useOverlayStore } from '../stores/use-overlay-store';
 
 /**
  * useOverlayShortcutInterceptor
  *
- * 責務: グローバルなキーボードショートカットを最小限に登録する。
- * - Escape: オーバーレイを閉じる（入力フィールド以外でのみ発火）
+ * 責務: グローバルなキーボードショートカットを登録する。
+ * - Escape: オーバーレイを閉じる
+ * - Ctrl+Enter / Cmd+Enter: メモ保存
+ * - 1〜4: EVENT モード時にプリセットクイックタグをトグル選択（input/textarea外のみ）
  *
  * 各フェーズの詳細なキー操作（Backspace, Arrow, Enter等）は、
  * 各フェーズコンポーネントのローカルな onKeyDown ハンドラに委譲する。
- * これにより textarea 等での標準ブラウザ挙動を妨げない。
- *
- * Note: hotkeys-js のデフォルトフィルターは input/textarea/select に
- * フォーカスがある場合にイベントを発火しない。この仕様を活用している。
  */
 export function useOverlayShortcutInterceptor() {
   useEffect(() => {
@@ -20,9 +21,15 @@ export function useOverlayShortcutInterceptor() {
     const originalFilter = hotkeys.filter;
     hotkeys.filter = () => true;
 
-    // hotkeys-js のデフォルトフィルター:
-    // input, textarea, select にフォーカスがある場合はイベントを発火しない
-    // → Escape はフォーカスが input 外にある場合のみ発火する（安全）
+    const isInputFocused = (e: KeyboardEvent) => {
+      const target = (e.target || (e as any).srcElement) as HTMLElement | null;
+      return (
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.tagName === 'SELECT' ||
+        target?.isContentEditable
+      );
+    };
 
     hotkeys('escape', (e) => {
       e.preventDefault();
@@ -42,11 +49,45 @@ export function useOverlayShortcutInterceptor() {
       );
     });
 
+    hotkeys('alt+m', (e) => {
+      e.preventDefault();
+      window.dispatchEvent(
+        new CustomEvent('footics-action', {
+          detail: { action: 'TOGGLE_DISPLAY_MODE' },
+        }),
+      );
+    });
+
+    // 数字キー (1〜4) によるタグクイック選択
+    for (const tag of QUICK_TAGS) {
+      hotkeys(tag.shortcut, (e) => {
+        if (isInputFocused(e)) return;
+
+        const overlayState = useOverlayStore.getState();
+        if (!overlayState.isVisible || overlayState.mode !== 'EVENT') return;
+
+        e.preventDefault();
+        const memoStore = useMemoOverlayStore.getState();
+        const currentLabels = memoStore.selectedLabels;
+        if (currentLabels.includes(tag.label)) {
+          memoStore.setSelectedLabels(
+            currentLabels.filter((l) => l !== tag.label),
+          );
+        } else {
+          memoStore.addLabel(tag.label);
+        }
+      });
+    }
+
     return () => {
       hotkeys.filter = originalFilter;
       hotkeys.unbind('escape');
       hotkeys.unbind('ctrl+enter');
       hotkeys.unbind('command+enter');
+      hotkeys.unbind('alt+m');
+      for (const tag of QUICK_TAGS) {
+        hotkeys.unbind(tag.shortcut);
+      }
     };
   }, []);
 }

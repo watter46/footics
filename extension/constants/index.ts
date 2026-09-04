@@ -47,6 +47,9 @@ export const STORAGE_KEYS = {
   MATCH_MEMO_CACHE_PREFIX: 'match_memo_cache_',
   TACTICAL_PENDING_CAPTURE: 'tactical_pending_capture',
   TACTICAL_RECENT_CAPTURES: 'tactical_recent_captures',
+  AUTO_PAUSE_VIDEO: 'autoPauseVideo',
 } as const;
 
 export const TACTICAL_BRIDGE_CHANNEL = 'footics-tactical-bridge';
+
+export * from './quick-tags';

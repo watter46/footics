@@ -2,7 +2,7 @@
 id: L1-Extension-205
 emoji: 🏷️
 title: メモオーバーレイ タグクイック選択UI (数字キーショートカット)
-status: TODO
+status: DONE
 depends_on: ["L1-Extension-204"]
 model: Gemini 3.7 Flash
 effort: medium
@@ -24,10 +24,10 @@ context_files:
 3. `use-overlay-shortcut-interceptor.ts` に数字キー (`1`〜`4`) の keydown ハンドラを追加：オーバーレイ表示中かつ EVENT モード時に対応するプリセットタグを `setSelectedLabels` へ即時適用するロジックを実装。既存の `hotkeys-js` を活用。
 
 ## Acceptance Criteria & Verification Commands
-- [ ] EVENT モードでオーバーレイ表示中に数字キー 1〜4 でタグが選択されること
-- [ ] `QuickTagBar` にプリセットタグが横並びで表示されること
-- [ ] 選択中のタグがハイライト（amber系）で視覚的に識別できること
-- [ ] `QUICK_TAGS` 定数が `extension/constants/` に分離定義されていること
+- [x] EVENT モードでオーバーレイ表示中に数字キー 1〜4 でタグが選択されること
+- [x] `QuickTagBar` にプリセットタグが横並びで表示されること
+- [x] 選択中のタグがハイライト（amber系）で視覚的に識別できること
+- [x] `QUICK_TAGS` 定数が `extension/constants/` に分離定義されていること
 
 ### Verification
 ```
