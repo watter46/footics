@@ -4,7 +4,7 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { useCallback, useRef } from 'react';
-import { normToPx } from '@/features/tactical-unified/components/canvas/hooks';
+import { normToPx } from '@/features/tactical-unified/objects/canvas';
 import {
   selectPreviousSlide,
   useTacticalUnifiedStore,

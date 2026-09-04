@@ -18,7 +18,7 @@ export function screenToPitch(
   const tiltRad = (safeTilt * Math.PI) / 180;
   const cosTilt = Math.max(0.05, Math.cos(tiltRad));
   const scaleY = zoom * cosTilt;
-  const deltaY = (pitchRect.height * zoom * (1 - cosTilt)) / 2;
+  const deltaY = pitchRect.height * zoom * (1 - cosTilt);
 
   return {
     x: (pos.x - pitchRect.x - panX) / zoom,

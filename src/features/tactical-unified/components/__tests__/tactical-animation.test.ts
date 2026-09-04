@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
+import { createCanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   createDefaultProject,

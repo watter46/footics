@@ -8,7 +8,7 @@
 
 import type Konva from 'konva';
 import { useCallback, useRef, useState } from 'react';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   type BoundaryCropInfo,

@@ -1,10 +1,10 @@
 import type React from 'react';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import type {
   ArrowAnnotation,
   TextAnnotation,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from '../../components/canvas/helpers/canvas-registry';
 import type { HudRect, HudTarget } from './hud-marker-targets';
 
 export function getArrowTarget(

@@ -9,7 +9,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Text as KonvaText } from 'react-konva';
 import type { TextAnnotation } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from '../helpers/canvas-registry';
+import type { CanvasNodesRegistry } from '../../helpers/canvas-registry';
 import { normX, normY, pxToNormX, pxToNormY } from './math-utils';
 
 type KonvaClickEvent =

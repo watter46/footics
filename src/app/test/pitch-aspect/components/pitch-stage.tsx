@@ -49,6 +49,73 @@ const SAMPLE_PLAYERS_H = [
   { id: 'A-CF', x: 44, y: 50, num: '9', name: 'CF', color: '#f43f5e' },
 ];
 
+function SamplePlayersOverlay({
+  isHorizontal,
+  marginRatio,
+  usableRatio,
+}: {
+  isHorizontal: boolean;
+  marginRatio: number;
+  usableRatio: number;
+}) {
+  return (
+    <div className="absolute inset-0 pointer-events-none z-10">
+      {SAMPLE_PLAYERS_H.map((player) => {
+        const normX = isHorizontal ? player.x : player.y;
+        const normY = isHorizontal ? player.y : 100 - player.x;
+        const leftPercent = (marginRatio + (normX / 100) * usableRatio) * 100;
+        const topPercent = (marginRatio + (normY / 100) * usableRatio) * 100;
+
+        return (
+          <div
+            key={player.id}
+            className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group transition-all duration-300"
+            style={{
+              left: `${leftPercent}%`,
+              top: `${topPercent}%`,
+            }}
+          >
+            <div
+              className="size-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-md border-2 border-slate-900"
+              style={{ backgroundColor: player.color }}
+            >
+              {player.num}
+            </div>
+            <span className="text-[9px] font-medium text-slate-300 drop-shadow-sm px-1 rounded bg-black/60 mt-0.5">
+              {player.name}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BoundaryIndicatorOverlay({
+  configId,
+  marginPercent,
+}: {
+  configId: string;
+  marginPercent: number;
+}) {
+  return (
+    <>
+      <div className="no-export absolute inset-0 pointer-events-none border-2 border-cyan-400 shadow-[0_0_24px_rgba(56,189,248,0.3)] z-20">
+        <div className="absolute -top-[2px] -left-[2px] size-3 border-t-2 border-l-2 border-white" />
+        <div className="absolute -top-[2px] -right-[2px] size-3 border-t-2 border-r-2 border-white" />
+        <div className="absolute -bottom-[2px] -left-[2px] size-3 border-b-2 border-l-2 border-white" />
+        <div className="absolute -bottom-[2px] -right-[2px] size-3 border-b-2 border-r-2 border-white" />
+      </div>
+
+      <div className="no-export absolute top-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-900/90 text-cyan-300 border border-cyan-500/40 shadow-md pointer-events-none z-20">
+        <span className="size-2 rounded-full bg-cyan-400 animate-pulse" />
+        <span>切り取り指標: {configId}</span>
+        <span className="text-slate-400">余白 {marginPercent}%</span>
+      </div>
+    </>
+  );
+}
+
 export function PitchStage({
   exportRef,
   config,
@@ -127,25 +194,26 @@ export function PitchStage({
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseLeave}
-      style={{ perspective: '1200px' }}
     >
-      {/* 3Dチルト & パン & ズーム適用コンテナ */}
+      {/* ─── 境界線マスターフレーム (この要素の矩形範囲がPNGとして100%出力される。境界線は正対固定) ─── */}
       <div
-        className="relative origin-center shadow-2xl rounded-xl flex items-center justify-center"
+        ref={exportRef}
+        className="relative overflow-hidden bg-slate-950 rounded-xl shadow-2xl transition-[width,height] duration-150 flex items-center justify-center"
         style={{
-          transform: `translate3d(${pan.x}px, ${pan.y}px, 0px) scale(${zoom}) rotateX(${tilt}deg)`,
-          transformStyle: 'preserve-3d',
-          transition: isDragging ? 'none' : 'transform 0.08s ease-out',
+          width: `${dimensions.width}px`,
+          height: `${dimensions.height}px`,
+          aspectRatio: `${config.widthPx} / ${config.heightPx}`,
+          perspective: '1200px',
         }}
       >
-        {/* ─── 境界線マスターフレーム (この要素の矩形範囲がPNGとして100%出力される) ─── */}
+        {/* 3Dチルト & パン & ズーム適用ピッチコンテナ (ピッチ中央を基準に奥へ倒す) */}
         <div
-          ref={exportRef}
-          className="relative overflow-hidden bg-slate-950 transition-[width,height] duration-150"
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
           style={{
-            width: `${dimensions.width}px`,
-            height: `${dimensions.height}px`,
-            aspectRatio: `${config.widthPx} / ${config.heightPx}`,
+            transformOrigin: '50% 50%',
+            transform: `translate3d(${pan.x}px, ${pan.y}px, 0px) scale(${zoom}) rotateX(${tilt}deg)`,
+            transformStyle: 'preserve-3d',
+            transition: isDragging ? 'none' : 'transform 0.08s ease-out',
           }}
         >
           {/* ピッチSVG (境界線内に上下左右5%余白で配置) */}
@@ -157,57 +225,19 @@ export function PitchStage({
 
           {/* サンプル選手マーカー */}
           {showSamplePlayers && (
-            <div className="absolute inset-0 pointer-events-none z-10">
-              {SAMPLE_PLAYERS_H.map((player) => {
-                const normX = isHorizontal ? player.x : player.y;
-                const normY = isHorizontal ? player.y : 100 - player.x;
-
-                // 5%余白の内側に配置
-                const leftPercent =
-                  (marginRatio + (normX / 100) * usableRatio) * 100;
-                const topPercent =
-                  (marginRatio + (normY / 100) * usableRatio) * 100;
-
-                return (
-                  <div
-                    key={player.id}
-                    className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group transition-all duration-300"
-                    style={{
-                      left: `${leftPercent}%`,
-                      top: `${topPercent}%`,
-                    }}
-                  >
-                    <div
-                      className="size-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-md border-2 border-slate-900"
-                      style={{ backgroundColor: player.color }}
-                    >
-                      {player.num}
-                    </div>
-                    <span className="text-[9px] font-medium text-slate-300 drop-shadow-sm px-1 rounded bg-black/60 mt-0.5">
-                      {player.name}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            <SamplePlayersOverlay
+              isHorizontal={isHorizontal}
+              marginRatio={marginRatio}
+              usableRatio={usableRatio}
+            />
           )}
-
-          {/* ─── 境界線インジケーター (PNG切り取り指標: no-export のためPNGには一切映らない) ─── */}
-          <div className="no-export absolute inset-0 pointer-events-none border-2 border-cyan-400 shadow-[0_0_24px_rgba(56,189,248,0.3)] z-20">
-            {/* クロップガイドコーナー */}
-            <div className="absolute -top-[2px] -left-[2px] size-3 border-t-2 border-l-2 border-white" />
-            <div className="absolute -top-[2px] -right-[2px] size-3 border-t-2 border-r-2 border-white" />
-            <div className="absolute -bottom-[2px] -left-[2px] size-3 border-b-2 border-l-2 border-white" />
-            <div className="absolute -bottom-[2px] -right-[2px] size-3 border-b-2 border-r-2 border-white" />
-          </div>
-
-          {/* 境界線ラベルバッジ (キャプチャ時除外マーク) */}
-          <div className="no-export absolute top-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-900/90 text-cyan-300 border border-cyan-500/40 shadow-md pointer-events-none z-20">
-            <span className="size-2 rounded-full bg-cyan-400 animate-pulse" />
-            <span>切り取り指標: {config.id}</span>
-            <span className="text-slate-400">余白 {marginPercent}%</span>
-          </div>
         </div>
+
+        {/* ─── 境界線インジケーター & ラベルバッジ (正対固定: no-export) ─── */}
+        <BoundaryIndicatorOverlay
+          configId={config.id}
+          marginPercent={marginPercent}
+        />
       </div>
 
       {/* 画面右下の操作ガイドHUD */}

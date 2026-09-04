@@ -2,8 +2,8 @@
 
 import { useCallback, useState } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import type { DrawingState } from '../canvas-interaction-types';
 import { commitShapeToSlide } from '../helpers/drawing-shape-commit';
+import type { DrawingState } from '../types';
 
 interface UseCanvasShapeDrawingOptions {
   effectivePitch: { x: number; y: number; width: number; height: number };

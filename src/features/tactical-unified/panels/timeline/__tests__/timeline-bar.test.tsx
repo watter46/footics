@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { TimelineBar } from '../timeline/timeline-bar';
+import { TimelineBar } from '../timeline-bar';
 
 describe('TimelineBar Component', () => {
   beforeEach(() => {

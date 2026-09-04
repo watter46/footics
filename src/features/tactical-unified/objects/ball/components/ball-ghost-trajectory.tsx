@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Group } from 'react-konva';
-import { GhostTrajectoryArrow } from '@/features/tactical-unified/components/canvas/ghost-trajectory-arrow';
+import { GhostTrajectoryArrow } from '@/features/tactical-unified/objects/arrow';
 import type { BallState, PlayerTrajectory } from '@/lib/types/tactical-unified';
 import { BallGhost } from './ball-ghost';
 

@@ -14,11 +14,11 @@
 
 import type React from 'react';
 import { useEffect, useRef } from 'react';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
-import type { CanvasNodesRegistry } from '../../components/canvas/helpers/canvas-registry';
 import { ArrowHud } from './arrow-hud';
 import { BallHud } from './ball-hud';
 import { PlayerHud } from './player-hud';

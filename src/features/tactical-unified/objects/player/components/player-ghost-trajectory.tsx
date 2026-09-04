@@ -2,8 +2,8 @@
 
 import type React from 'react';
 import { Circle, Group, Text } from 'react-konva';
-import { GhostTrajectoryArrow } from '@/features/tactical-unified/components/canvas/ghost-trajectory-arrow';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
+import { GhostTrajectoryArrow } from '@/features/tactical-unified/objects/arrow';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { Player, PlayerTrajectory } from '@/lib/types/tactical-unified';
 import { normX, normY } from '../types';

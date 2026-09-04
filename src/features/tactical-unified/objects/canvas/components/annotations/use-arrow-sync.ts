@@ -1,6 +1,6 @@
 import type Konva from 'konva';
 import { useEffect } from 'react';
-import type { CanvasNodesRegistry } from '../helpers/canvas-registry';
+import type { CanvasNodesRegistry } from '../../helpers/canvas-registry';
 import { resolveDynamicArrowPoints } from './arrow-geometry';
 import type { useArrowCurve } from './use-arrow-curve';
 

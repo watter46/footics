@@ -4,7 +4,7 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useRef } from 'react';
 import { Circle, Group } from 'react-konva';
-import { useNodePositionTransition } from '@/features/tactical-unified/components/canvas/use-node-position-transition';
+import { useNodePositionTransition } from '@/features/tactical-unified/objects/canvas';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import { usePlayerPhoto } from '../hooks/use-player-photo';

@@ -1,4 +1,4 @@
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import {
   getBezierControlPoint,

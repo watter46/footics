@@ -3,7 +3,7 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { useRef } from 'react';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Player, Slide } from '@/lib/types/tactical-unified';
 import type { OnionSkinRefs, PlayerDragContext } from '../types';

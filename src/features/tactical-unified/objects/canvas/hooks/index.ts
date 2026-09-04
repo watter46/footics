@@ -15,3 +15,8 @@ export { useCanvasSpaceKey } from './use-canvas-space-key';
 export { useCanvasWheelZoom } from './use-canvas-wheel-zoom';
 export { useCanvasZoneRotation } from './use-canvas-zone-rotation';
 export { useCanvasZoomPan } from './use-canvas-zoom-pan';
+export {
+  type UseNodePositionTransitionOptions,
+  useNodePositionTransition,
+} from './use-node-position-transition';
+export { useUnifiedCanvasState } from './use-unified-canvas-state';

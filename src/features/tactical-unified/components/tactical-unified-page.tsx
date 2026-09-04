@@ -18,14 +18,14 @@ import { useTacticalAutoSave } from '@/features/tactical-unified/hooks/use-tacti
 import { useTacticalCaptureBridge } from '@/features/tactical-unified/hooks/use-tactical-capture-bridge';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { RightPanel } from '../panels/right-panel/right-panel';
-import { ProjectManagerModal } from './dialogs/project-manager-modal';
-import { ExportModal } from './export/export-modal';
-import { TimelineBar } from './timeline/timeline-bar';
+import { ProjectManagerModal } from '../panels/dialogs/project-manager-modal';
+import { ExportModal } from '../panels/export/export-modal';
+import { TimelineBar } from '../panels/timeline/timeline-bar';
 import { TopBar } from '../panels/toolbar';
 
 // Canvas はクライアントサイドのみ (Konva)
 const UnifiedCanvas = dynamic(
-  () => import('./canvas/unified-canvas').then((m) => m.UnifiedCanvas),
+  () => import('../objects/canvas/components/unified-canvas').then((m) => m.UnifiedCanvas),
   { ssr: false },
 );
 

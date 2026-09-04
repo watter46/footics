@@ -51,7 +51,7 @@ for (const file of files) {
   if (!parsedMeta.success) {
     console.warn(`[WARN] Invalid frontmatter in ${file}:`);
     const issues = parsedMeta.error.issues || parsedMeta.error.errors || [];
-    issues.forEach(e => {
+    issues.forEach((e) => {
       const pathStr = Array.isArray(e.path) ? e.path.join('.') : '';
       console.warn(`  - ${pathStr}: ${e.message}`);
     });

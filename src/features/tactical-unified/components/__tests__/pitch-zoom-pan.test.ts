@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  normToPx,
-  pxToNorm,
-} from '@/features/tactical-unified/components/canvas/hooks/use-canvas-pointer-interaction';
+import { normToPx, pxToNorm } from '@/features/tactical-unified/objects/canvas';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 

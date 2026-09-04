@@ -2,7 +2,7 @@
 
 import type React from 'react';
 import { Circle, Group, Line } from 'react-konva';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import type { Slide } from '@/lib/types/tactical-unified';

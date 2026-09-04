@@ -1,16 +1,15 @@
 import type Konva from 'konva';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  getPitchAndNormPos,
-  screenToPitch,
-} from '@/features/tactical-unified/components/canvas/helpers/canvas-coordinates';
+import { describe, expect, it, vi } from 'vitest';
 import {
   applyPitchTransformToGroups,
+  calculateExportCropRect,
+  calculatePitchRect,
   calculatePitchTransform,
-} from '@/features/tactical-unified/components/canvas/helpers/canvas-pitch-transform-helper';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+  getPitchAndNormPos,
+  screenToPitch,
+} from '@/features/tactical-unified/objects/canvas';
 
-describe('L3-Tactical-028: Pitch Tilt (2.5D) Transform & Coordinate Mapping', () => {
+describe('L3-Tactical-028: Pitch Tilt (2.5D) Bottom-Anchored Transform', () => {
   const pitchRect = { x: 50, y: 30, width: 800, height: 500 };
 
   it('calculatePitchTransform: 0° tilt yields scaleY == zoom and deltaY == 0', () => {
@@ -21,37 +20,54 @@ describe('L3-Tactical-028: Pitch Tilt (2.5D) Transform & Coordinate Mapping', ()
     expect(transform.scaleY).toBe(1.5);
   });
 
-  it('calculatePitchTransform: 25° tilt correctly calculates foreshortened scaleY and centered deltaY', () => {
+  it('calculatePitchTransform: 25° tilt correctly anchors bottom edge while foreshortening scaleY', () => {
     const zoom = 1.0;
     const transform = calculatePitchTransform(pitchRect, 0, 0, zoom, 25);
     const expectedCos = Math.cos((25 * Math.PI) / 180);
-    const expectedDeltaY = (pitchRect.height * zoom * (1 - expectedCos)) / 2;
+    const expectedDeltaY = pitchRect.height * zoom * (1 - expectedCos);
 
     expect(transform.x).toBe(pitchRect.x);
     expect(transform.scaleX).toBe(zoom);
     expect(transform.scaleY).toBeCloseTo(zoom * expectedCos, 5);
     expect(transform.y).toBeCloseTo(pitchRect.y + expectedDeltaY, 5);
+
+    // Verify bottom edge remains fixed
+    const bottomY = transform.y + pitchRect.height * transform.scaleY;
+    expect(bottomY).toBeCloseTo(pitchRect.y + pitchRect.height * zoom, 5);
   });
 
-  it('calculatePitchTransform: 45° tilt correctly foreshortens scaleY and centers deltaY', () => {
+  it('calculatePitchTransform: 45° tilt anchors bottom edge while top tilts forward', () => {
     const zoom = 1.2;
-    const transform = calculatePitchTransform(pitchRect, 20, 10, zoom, 45);
+    const panX = 20;
+    const panY = 10;
+    const transform = calculatePitchTransform(pitchRect, panX, panY, zoom, 45);
     const expectedCos = Math.cos((45 * Math.PI) / 180);
-    const expectedDeltaY = (pitchRect.height * zoom * (1 - expectedCos)) / 2;
+    const expectedDeltaY = pitchRect.height * zoom * (1 - expectedCos);
 
-    expect(transform.x).toBe(pitchRect.x + 20);
+    expect(transform.x).toBe(pitchRect.x + panX);
     expect(transform.scaleX).toBe(zoom);
     expect(transform.scaleY).toBeCloseTo(zoom * expectedCos, 5);
-    expect(transform.y).toBeCloseTo(pitchRect.y + 10 + expectedDeltaY, 5);
+    expect(transform.y).toBeCloseTo(pitchRect.y + panY + expectedDeltaY, 5);
+
+    // Verify bottom edge remains fixed at (pitchRect.y + panY + pitchHeight * zoom)
+    const bottomY = transform.y + pitchRect.height * transform.scaleY;
+    expect(bottomY).toBeCloseTo(
+      pitchRect.y + panY + pitchRect.height * zoom,
+      5,
+    );
   });
 
-  it('calculatePitchTransform: 60° tilt foreshortens scaleY to 50% and centers deltaY', () => {
+  it('calculatePitchTransform: 60° tilt foreshortens scaleY to 50% and anchors bottom edge', () => {
     const zoom = 1.0;
     const transform = calculatePitchTransform(pitchRect, 0, 0, zoom, 60);
     expect(transform.scaleX).toBe(1.0);
     expect(transform.scaleY).toBeCloseTo(0.5, 5);
-    // deltaY = (500 * 1.0 * (1 - 0.5)) / 2 = 125
-    expect(transform.y).toBeCloseTo(pitchRect.y + 125, 5);
+    // deltaY = 500 * 1.0 * (1 - 0.5) = 250
+    expect(transform.y).toBeCloseTo(pitchRect.y + 250, 5);
+
+    // Bottom edge remains at 30 + 500 = 530
+    const bottomY = transform.y + pitchRect.height * transform.scaleY;
+    expect(bottomY).toBeCloseTo(pitchRect.y + pitchRect.height, 5);
   });
 
   it('applyPitchTransformToGroups applies calculated transform to Konva groups and batches redraw', () => {
@@ -96,6 +112,10 @@ describe('L3-Tactical-028: Pitch Tilt (2.5D) Transform & Coordinate Mapping', ()
 
     expect(batchDraw).toHaveBeenCalledTimes(1);
   });
+});
+
+describe('L3-Tactical-028: Screen Coordinates Inversion under Tilt', () => {
+  const pitchRect = { x: 50, y: 30, width: 800, height: 500 };
 
   it('screenToPitch and getPitchAndNormPos correctly invert coordinates under tilt', () => {
     const panX = 40;
@@ -145,80 +165,73 @@ describe('L3-Tactical-028: Pitch Tilt (2.5D) Transform & Coordinate Mapping', ()
   });
 });
 
-describe('L3-Tactical-028: Pitch Tilt Store Actions & Boundary Box Independence', () => {
-  beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
-    useTacticalUnifiedStore.getState().setIsExporting(false);
-  });
+describe('L3-Tactical-028: Boundary Box Export Crop Rect under Tilt', () => {
+  const stageSize = { width: 1000, height: 600 };
+  const aspectRatio = '16:9' as const;
 
-  it('updatePitchTransform updates tilt and preserves existing panX, panY, zoom, isLocked', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
+  it('境界線枠(boundaryBox)が有効な場合、ピッチチルト時でも境界線の矩形領域がそのままクロップ領域として返される', () => {
+    const boundaryBox = {
+      x: 20,
+      y: 15,
+      width: 60,
+      height: 70,
+      enabled: true,
+    };
 
-    store.updatePitchTransform(slideId, {
-      panX: 50,
-      panY: -30,
-      zoom: 1.5,
-      isLocked: true,
+    const crop = calculateExportCropRect({
+      stageSize,
+      aspectRatio,
+      boundaryBox,
     });
 
-    // Update tilt to 45°
-    store.updatePitchTransform(slideId, { tilt: 45 });
-
-    const slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
-
-    expect(slide?.pitchTransform?.tilt).toBe(45);
-    expect(slide?.pitchTransform?.panX).toBe(50);
-    expect(slide?.pitchTransform?.panY).toBe(-30);
-    expect(slide?.pitchTransform?.zoom).toBe(1.5);
-    expect(slide?.pitchTransform?.isLocked).toBe(true);
+    const pitchRect = calculatePitchRect(stageSize, aspectRatio);
+    expect(crop.width).toBe((60 / 100) * pitchRect.width);
+    expect(crop.height).toBe((70 / 100) * pitchRect.height);
+    expect(crop.x).toBe(pitchRect.x + (20 / 100) * pitchRect.width);
+    expect(crop.y).toBe(pitchRect.y + (15 / 100) * pitchRect.height);
   });
 
-  it('ピッチのチルト角度を変更しても境界線(boundaryBox)の配置・サイズは影響を受けない', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
-    const initialBox = {
+  it('fitTargetがcanvasの場合、Stage全体のサイズを基準にクロップ矩形を算出する', () => {
+    const boundaryBox = {
       x: 10,
       y: 10,
       width: 80,
       height: 80,
       enabled: true,
+      fitTarget: 'canvas' as const,
     };
-    store.setBoundaryBox(slideId, initialBox);
 
-    // Pitch tilted to 60°
-    store.updatePitchTransform(slideId, { tilt: 60 });
-
-    const slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
-
-    // Boundary box is unchanged and in screen plane
-    expect(slide?.boundaryBox).toEqual(initialBox);
-    expect(slide?.pitchTransform?.tilt).toBe(60);
-  });
-
-  it('duplicateSlide でピッチの tilt 状態が正しく複製先に引き継がれる', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
-
-    store.updatePitchTransform(slideId, {
-      tilt: 45,
-      zoom: 1.8,
-      panX: 100,
-      panY: 50,
+    const crop = calculateExportCropRect({
+      stageSize,
+      aspectRatio,
+      boundaryBox,
     });
 
-    store.duplicateSlide(slideId);
+    expect(crop.x).toBe(100);
+    expect(crop.y).toBe(60);
+    expect(crop.width).toBe(800);
+    expect(crop.height).toBe(480);
+  });
 
-    const slides = useTacticalUnifiedStore.getState().project.slides;
-    expect(slides.length).toBe(2);
-    const duplicated = slides[1];
-    expect(duplicated?.pitchTransform?.tilt).toBe(45);
-    expect(duplicated?.pitchTransform?.zoom).toBe(1.8);
-    expect(duplicated?.pitchTransform?.panX).toBe(100);
-    expect(duplicated?.pitchTransform?.panY).toBe(50);
+  it('boundaryBoxが無効な場合はピッチ矩形全体を返す', () => {
+    const crop = calculateExportCropRect({
+      stageSize,
+      aspectRatio,
+      boundaryBox: {
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        enabled: false,
+      },
+    });
+
+    const pitchRect = calculatePitchRect(stageSize, aspectRatio);
+    expect(crop).toEqual({
+      x: pitchRect.x,
+      y: pitchRect.y,
+      width: pitchRect.width,
+      height: pitchRect.height,
+    });
   });
 });

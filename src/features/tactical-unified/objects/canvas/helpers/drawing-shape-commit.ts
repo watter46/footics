@@ -4,7 +4,7 @@ import type {
   ArrowAnnotation,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
-import type { DrawingState } from '../canvas-interaction-types';
+import type { DrawingState } from '../types';
 import { pxToNorm } from './canvas-coordinates';
 import { createDrawnArrow, createDrawnZone } from './drawing-shape-factory';
 

@@ -3,9 +3,9 @@
 import { useCallback, useState } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { PitchTransform, Slide } from '@/lib/types/tactical-unified';
-import type { SelectionBox } from '../canvas-interaction-types';
 import { pxToNorm } from '../helpers/canvas-coordinates';
 import { getEnclosedObjects } from '../helpers/canvas-selection-helpers';
+import type { SelectionBox } from '../types';
 
 interface UseCanvasSelectionBoxOptions {
   effectivePitch: { x: number; y: number; width: number; height: number };
@@ -79,7 +79,7 @@ export function useCanvasSelectionBox({
         const tiltRad = (safeTilt * Math.PI) / 180;
         const cosTilt = Math.max(0.05, Math.cos(tiltRad));
         const scaleY = zoom * cosTilt;
-        const deltaY = (effectivePitch.height * zoom * (1 - cosTilt)) / 2;
+        const deltaY = effectivePitch.height * zoom * (1 - cosTilt);
 
         const minPitchX = (minPxX - effectivePitch.x - panX) / zoom;
         const maxPitchX = (maxPxX - effectivePitch.x - panX) / zoom;

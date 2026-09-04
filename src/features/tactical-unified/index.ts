@@ -3,14 +3,13 @@
  * Public API barrel exports
  */
 
-export { BoundaryBox } from './components/canvas/boundary-box';
-export { UnifiedCanvas } from './components/canvas/unified-canvas';
-export { ExportModal } from './components/export/export-modal';
-export { SlideStrip } from './components/slides/slide-strip';
 export { TacticalUnifiedPage } from './components/tactical-unified-page';
-export { TimelineBar } from './components/timeline/timeline-bar';
-export { DrawingToolbar } from './panels/toolbar/drawing-toolbar';
-export { TopBar } from './panels/toolbar/top-bar';
+export { BoundaryBox, UnifiedCanvas } from './objects/canvas';
+export { ExportModal } from './panels/export/export-modal';
 export { InspectorPanel } from './panels/inspector/inspector-panel';
 export { FormationSubPanel } from './panels/right-panel/formation-sub-panel';
 export { RightPanel } from './panels/right-panel/right-panel';
+export { SlideStrip } from './panels/slides/slide-strip';
+export { TimelineBar } from './panels/timeline/timeline-bar';
+export { DrawingToolbar } from './panels/toolbar/drawing-toolbar';
+export { TopBar } from './panels/toolbar/top-bar';

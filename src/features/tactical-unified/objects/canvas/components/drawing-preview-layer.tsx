@@ -2,8 +2,8 @@
 
 import type React from 'react';
 import { Arrow, Circle, Group, Line, Rect } from 'react-konva';
+import type { DrawingState, SelectionBox } from '../types';
 import { getWavyPoints } from './annotation-layer';
-import type { DrawingState, SelectionBox } from './canvas-interaction-types';
 
 interface DrawingPreviewLayerProps {
   drawingState: DrawingState | null;

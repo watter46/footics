@@ -4,7 +4,6 @@ import { FOOTICS_APP_URLS, STORAGE_KEYS } from '../constants';
 
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Main background entrypoint
 export default defineBackground(() => {
-
   console.log('Footics Background Script loaded');
 
   // Footics 本体タブを特定するヘルパー

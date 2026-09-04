@@ -15,9 +15,9 @@ export interface BoundaryBoxTiltControlsProps {
 
 export const TILT_PRESETS: { angle: number; label: string }[] = [
   { angle: 0, label: '0°' },
-  { angle: 25, label: '25°' },
+  { angle: 15, label: '15°' },
+  { angle: 30, label: '30°' },
   { angle: 45, label: '45°' },
-  { angle: 60, label: '60°' },
 ];
 
 export const BoundaryBoxTiltControls = React.memo(
@@ -85,7 +85,7 @@ export const BoundaryBoxTiltControls = React.memo(
         <input
           type="range"
           min={0}
-          max={60}
+          max={45}
           step={5}
           value={tilt}
           onChange={handleSliderChange}

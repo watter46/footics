@@ -5,7 +5,8 @@ try {
   const data = JSON.parse(input);
 
   const cmd = data.toolCall?.args?.CommandLine || '';
-  const forbiddenCommandRegex = /(?:^|&&|\|\||;|&|\|)\s*(pnpm|npm|yarn|npx|biome|tsc|vitest)\b/;
+  const forbiddenCommandRegex =
+    /(?:^|&&|\|\||;|&|\|)\s*(pnpm|npm|yarn|npx|biome|tsc|vitest)\b/;
 
   if (
     cmd.includes('rm -rf') ||

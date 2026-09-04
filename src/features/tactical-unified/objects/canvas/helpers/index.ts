@@ -7,8 +7,11 @@ export {
 
 export {
   applyPitchTransformToGroups,
+  calculateExportCropRect,
   calculatePitchRect,
   calculatePitchTransform,
+  type ExportCropRect,
+  type ExportCropRectOptions,
   type PitchTransformValues,
 } from './canvas-pitch-transform-helper';
 export {

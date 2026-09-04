@@ -1,7 +1,7 @@
 import type React from 'react';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import type { SelectedObject } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Slide } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from '../../components/canvas/helpers/canvas-registry';
 import {
   getArrowTarget,
   getTextTarget,

@@ -9,13 +9,13 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { Group } from 'react-konva';
+import { ZoneObject } from '@/features/tactical-unified/objects/zone';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Slide } from '@/lib/types/tactical-unified';
+import type { CanvasNodesRegistry } from '../helpers/canvas-registry';
 import { ArrowObject } from './annotations/arrow-object';
 import { TextObject } from './annotations/text-object';
 import { getWavyPoints } from './annotations/wavy-arrow-math';
-import { ZoneObject } from './annotations/zone-object';
-import type { CanvasNodesRegistry } from './helpers/canvas-registry';
 
 export { getWavyPoints };
 
