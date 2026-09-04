@@ -18,15 +18,13 @@ import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
-import type { CanvasNodesRegistry } from './canvas/helpers/canvas-registry';
-import {
-  ArrowHud,
-  BallHud,
-  PlayerHud,
-  TextHud,
-  useHudPosition,
-  ZoneHud,
-} from './hud';
+import type { CanvasNodesRegistry } from '../../components/canvas/helpers/canvas-registry';
+import { ArrowHud } from './arrow-hud';
+import { BallHud } from './ball-hud';
+import { PlayerHud } from './player-hud';
+import { TextHud } from './text-hud';
+import { useHudPosition } from './use-hud-position';
+import { ZoneHud } from './zone-hud';
 
 export interface ContextHudProps {
   stageSize: { width: number; height: number };

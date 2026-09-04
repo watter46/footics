@@ -4,7 +4,7 @@ import type {
   TextAnnotation,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from '../canvas/helpers/canvas-registry';
+import type { CanvasNodesRegistry } from '../../components/canvas/helpers/canvas-registry';
 import type { HudRect, HudTarget } from './hud-marker-targets';
 
 export function getArrowTarget(

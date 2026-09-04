@@ -21,7 +21,7 @@ import { RightPanel } from '../panels/right-panel/right-panel';
 import { ProjectManagerModal } from './dialogs/project-manager-modal';
 import { ExportModal } from './export/export-modal';
 import { TimelineBar } from './timeline/timeline-bar';
-import { TopBar } from './toolbar/top-bar';
+import { TopBar } from '../panels/toolbar';
 
 // Canvas はクライアントサイドのみ (Konva)
 const UnifiedCanvas = dynamic(
