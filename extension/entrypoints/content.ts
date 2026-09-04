@@ -8,6 +8,7 @@ import {
   gcExpiredMatchMemoCaches,
   syncMatchMemoCacheToStorage,
 } from '../features/storage-sync/cache-sync';
+import { replayOfflineQueue } from '../features/storage-sync/offline-queue';
 import {
   addToSaveQueue,
   processSaveQueue,
@@ -31,6 +32,7 @@ export default defineContentScript({
     '*://127.0.0.1/*',
     '*://footics.watool.workers.dev/*',
   ],
+  // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Main content script entrypoint sets up multiple event listeners
   async main() {
     console.log('💎 [Footics Isolated Bridge] Content Script loaded');
 
@@ -85,6 +87,12 @@ export default defineContentScript({
       if (!payload) return;
       console.log('[ContentScript] Received relayed save request:', payload);
       await addToSaveQueue(payload as Parameters<typeof addToSaveQueue>[0]);
+    });
+
+    // オフラインキューのリカバリー同期要求
+    onMessage('REPLAY_OFFLINE_QUEUE', async () => {
+      console.log('[ContentScript] Triggered REPLAY_OFFLINE_QUEUE message');
+      return await replayOfflineQueue(dispatchCaptureToApp);
     });
 
     // ── Tactical キャプチャデータの中継パイプライン (Push & Pull) ──
@@ -161,6 +169,16 @@ export default defineContentScript({
     setTimeout(handleCapturePullRequest, 1500);
 
     // ── Storage Queue の監視 ──
+    let saveQueueDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedProcessSaveQueue = (delay = 300) => {
+      if (saveQueueDebounceTimer) {
+        clearTimeout(saveQueueDebounceTimer);
+      }
+      saveQueueDebounceTimer = setTimeout(() => {
+        saveQueueDebounceTimer = null;
+        processSaveQueue();
+      }, delay);
+    };
 
     browser.storage.onChanged.addListener(async (changes, areaName) => {
       if (areaName !== 'local') return;
@@ -170,14 +188,26 @@ export default defineContentScript({
       const parsed = SaveQueueSchema.safeParse(newValue);
       if (!parsed.success) return;
 
-      const hasPending = parsed.data.some((item) => item.status === 'pending');
+      const hasPending = parsed.data.some(
+        (item) =>
+          item.status === 'pending' ||
+          (item.status === 'error' && (item.retryCount ?? 0) < 3),
+      );
       if (hasPending) {
-        processSaveQueue();
+        debouncedProcessSaveQueue();
       }
     });
 
-    // 初期ロード時にも未処理キューがあれば処理する
+    // 初期ロード時にも未処理キューおよびオフラインデータをリカバリー
     processSaveQueue();
+    replayOfflineQueue(dispatchCaptureToApp);
+
+    // タブが可視状態になった際にもリプレイ同期を試行
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        replayOfflineQueue(dispatchCaptureToApp);
+      }
+    });
 
     // ── グローバルショートカット監視（Capture Phase） ──
     // アプリ側の stopPropagation を越えてキーを拾い、コマンドとして再配送する

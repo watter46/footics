@@ -75,7 +75,7 @@ export type MemoMode = z.infer<typeof MemoModeSchema>;
  */
 export const SaveQueueItemSchema = z.object({
   id: z.string(),
-  status: z.enum(['pending', 'done', 'error']),
+  status: z.enum(['pending', 'done', 'error', 'failed']),
   mode: MemoModeSchema,
   matchId: z.string(),
   period: z.number().int().optional(),
@@ -84,6 +84,8 @@ export const SaveQueueItemSchema = z.object({
   second: z.number().int().optional(),
   labels: z.array(z.string()).optional(),
   entityId: z.string().optional(),
+  retryCount: z.number().int().default(0),
+  errorMessage: z.string().optional(),
   createdAt: z.number(),
 });
 

@@ -2,7 +2,7 @@
 id: L1-Extension-201
 emoji: 🔄
 title: save-queue のリトライ & エラーリカバリー強化
-status: TODO
+status: DONE
 depends_on: []
 model: Gemini 3.7 Flash
 effort: medium
@@ -23,10 +23,10 @@ IndexedDB 書き込みエラー発生時も自動リトライによりメモが�
 3. Content Script の `storage.onChanged` リスナーにデバウンス（300ms）を追加し、`processSaveQueue` の多重呼び出し競合を防止。
 
 ## Acceptance Criteria & Verification Commands
-- [ ] `SaveQueueItemSchema` に `retryCount` フィールドが追加されていること
-- [ ] IndexedDB書き込みエラー時に最大3回まで自動リトライすること
-- [ ] 3回失敗した `failed` アイテムはキューから除去されること
-- [ ] デバウンス処理で `processSaveQueue` の多重呼び出しが抑制されること
+- [x] `SaveQueueItemSchema` に `retryCount` フィールドが追加されていること
+- [x] IndexedDB書き込みエラー時に最大3回まで自動リトライすること
+- [x] 3回失敗した `failed` アイテムはキューから除去されること
+- [x] デバウンス処理で `processSaveQueue` の多重呼び出しが抑制されること
 
 ### Verification
 ```
