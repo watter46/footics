@@ -3,45 +3,18 @@
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useRef } from 'react';
-import { Circle, Group, Text } from 'react-konva';
+import { Circle, Group } from 'react-konva';
+import { useNodePositionTransition } from '@/features/tactical-unified/components/canvas/use-node-position-transition';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getLastName } from '@/lib/tactical/player-formatting';
-import type { Player, Slide } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from './helpers/canvas-registry';
+import { usePlayerPhoto } from '../hooks/use-player-photo';
+import { normX, normY, type PlayerMarkerProps } from '../types';
 import { PlayerBadge } from './player-badge';
 import { PlayerFocusSpotlight } from './player-focus-spotlight';
 import { PlayerMarkerCircle } from './player-marker-circle';
+import { PlayerMarkerLabel } from './player-marker-label';
 import { PlayerMarkerRing } from './player-marker-ring';
 import { PlayerVisionCone } from './player-vision-cone';
-import { useNodePositionTransition } from './use-node-position-transition';
-import { usePlayerPhoto } from './use-player-photo';
-
-function normX(v: number, w: number) {
-  return (v / 100) * w;
-}
-function normY(v: number, h: number) {
-  return (v / 100) * h;
-}
-
-export interface PlayerMarkerProps {
-  player: Player;
-  slide: Slide;
-  stageSize: { width: number; height: number };
-  isSelected: boolean;
-  isVisionConeSelected?: boolean;
-  isFocusSelected?: boolean;
-  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
-  onSelect: (
-    e: KonvaEventObject<MouseEvent> | KonvaEventObject<TouchEvent>,
-  ) => void;
-  onSelectOption: (tab: 'vision' | 'connect' | 'badge' | 'focus') => void;
-  onUpdateVisionCone: (
-    patch: Partial<NonNullable<Player['visionCone']>>,
-  ) => void;
-  onDragStart: (e: KonvaEventObject<DragEvent>, player: Player) => void;
-  onDragMove: (e: KonvaEventObject<DragEvent>, player: Player) => void;
-  onDragEnd: (e: KonvaEventObject<DragEvent>, player: Player) => void;
-}
 
 export const PlayerMarker = React.memo(function PlayerMarker({
   player,
@@ -75,7 +48,6 @@ export const PlayerMarker = React.memo(function PlayerMarker({
   const labelScale = player.style.labelSizeScale ?? 1.0;
   const numScale = player.style.numberSizeScale ?? 1.0;
 
-  // 顔写真ロード (カスタムフック)
   const loadedImage = usePlayerPhoto({
     insideContent: player.style.insideContent,
     photoUrl: player.style.photoUrl,
@@ -93,6 +65,34 @@ export const PlayerMarker = React.memo(function PlayerMarker({
     x: pxX,
     y: pxY,
   });
+
+  const handleDblClick = (e: { cancelBubble: boolean }) => {
+    e.cancelBubble = true;
+    setRightPanelTab('inspector');
+    setRightPanelOpen(true);
+  };
+
+  const handleStartDrag = (e: KonvaEventObject<DragEvent>) => {
+    onDragStart(e, player);
+    if (dragGlowRef.current) {
+      dragGlowRef.current.opacity(1);
+      dragGlowRef.current.getLayer()?.batchDraw();
+    }
+    const stage = e.target.getStage();
+    if (stage) stage.container().style.cursor = 'grabbing';
+  };
+
+  const handleEndDrag = (e: KonvaEventObject<DragEvent>) => {
+    const node = e.target;
+    node.scale({ x: 1, y: 1 });
+    if (dragGlowRef.current) {
+      dragGlowRef.current.opacity(0);
+      dragGlowRef.current.getLayer()?.batchDraw();
+    }
+    const stage = node.getStage();
+    if (stage) stage.container().style.cursor = 'default';
+    onDragEnd(e, player);
+  };
 
   return (
     <Group
@@ -123,46 +123,14 @@ export const PlayerMarker = React.memo(function PlayerMarker({
       }}
       onClick={onSelect}
       onTap={onSelect}
-      onDblClick={(e) => {
-        e.cancelBubble = true;
-        setRightPanelTab('inspector');
-        setRightPanelOpen(true);
-      }}
-      onDblTap={(e) => {
-        e.cancelBubble = true;
-        setRightPanelTab('inspector');
-        setRightPanelOpen(true);
-      }}
-      onDragStart={(e) => {
-        onDragStart(e as KonvaEventObject<DragEvent>, player);
-        if (dragGlowRef.current) {
-          dragGlowRef.current.opacity(1);
-          dragGlowRef.current.getLayer()?.batchDraw();
-        }
-        const stage = e.target.getStage();
-        if (stage) stage.container().style.cursor = 'grabbing';
-      }}
-      onDragMove={(e) => {
-        onDragMove(e as KonvaEventObject<DragEvent>, player);
-      }}
-      onDragEnd={(e) => {
-        const node = e.target;
-        node.scale({ x: 1, y: 1 });
-        if (dragGlowRef.current) {
-          dragGlowRef.current.opacity(0);
-          dragGlowRef.current.getLayer()?.batchDraw();
-        }
-        const stage = node.getStage();
-        if (stage) stage.container().style.cursor = 'default';
-        onDragEnd(e as KonvaEventObject<DragEvent>, player);
-      }}
-      onTransform={() => {
-        if (spotlightGroupRef.current) {
-          spotlightGroupRef.current.getLayer()?.batchDraw();
-        }
-      }}
+      onDblClick={handleDblClick}
+      onDblTap={handleDblClick}
+      onDragStart={handleStartDrag}
+      onDragMove={(e) => onDragMove(e as KonvaEventObject<DragEvent>, player)}
+      onDragEnd={handleEndDrag}
+      onTransform={() => spotlightGroupRef.current?.getLayer()?.batchDraw()}
     >
-      {/* ── フォーカス (スポットライトピラー効果 / 2Dネオングロー) ── */}
+      {/* ── フォーカス ── */}
       {player.focus && (
         <PlayerFocusSpotlight
           focus={player.focus}
@@ -198,7 +166,7 @@ export const PlayerMarker = React.memo(function PlayerMarker({
         />
       )}
 
-      {/* ── メインの選手マーカー (3Dリング または 2Dサークル) ── */}
+      {/* ── メインの選手マーカー ── */}
       {player.style.markerType === 'ring' ? (
         <PlayerMarkerRing
           player={player}
@@ -216,43 +184,13 @@ export const PlayerMarker = React.memo(function PlayerMarker({
         />
       )}
 
-      {/* プレイヤー名ラベル */}
-      {player.style.bottomLabel === 'name' && displayName && (
-        <Text
-          x={-radius * 2}
-          y={radius + 3}
-          width={radius * 4}
-          text={displayName}
-          fontSize={radius * 0.65 * labelScale}
-          fill="#ffffff"
-          stroke="#020617"
-          strokeWidth={2}
-          fillAfterStrokeEnabled={true}
-          align="center"
-          fontStyle="bold"
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      )}
-      {player.style.bottomLabel === 'number' && player.shirtNo && (
-        <Text
-          x={-radius * 2}
-          y={radius + 3}
-          width={radius * 4}
-          text={`#${player.shirtNo}`}
-          fontSize={radius * 0.65 * labelScale}
-          fill="#ffffff"
-          stroke="#020617"
-          strokeWidth={2}
-          fillAfterStrokeEnabled={true}
-          align="center"
-          fontStyle="bold"
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      )}
+      <PlayerMarkerLabel
+        player={player}
+        radius={radius}
+        displayName={displayName}
+        labelScale={labelScale}
+      />
 
-      {/* バッジ */}
       {player.badges.map((badge) => (
         <PlayerBadge
           key={badge.id}

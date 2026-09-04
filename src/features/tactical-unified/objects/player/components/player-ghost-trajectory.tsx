@@ -2,17 +2,11 @@
 
 import type React from 'react';
 import { Circle, Group, Text } from 'react-konva';
+import { GhostTrajectoryArrow } from '@/features/tactical-unified/components/canvas/ghost-trajectory-arrow';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { Player, PlayerTrajectory } from '@/lib/types/tactical-unified';
-import { GhostTrajectoryArrow } from './ghost-trajectory-arrow';
-import type { CanvasNodesRegistry } from './helpers/canvas-registry';
-
-function normX(v: number, w: number) {
-  return (v / 100) * w;
-}
-function normY(v: number, h: number) {
-  return (v / 100) * h;
-}
+import { normX, normY } from '../types';
 
 export interface PlayerGhostTrajectoryProps {
   player: Player;

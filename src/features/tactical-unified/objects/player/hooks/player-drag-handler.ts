@@ -1,5 +1,7 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
-import type { CanvasNodesRegistry } from './helpers/canvas-registry';
+import type React from 'react';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
+import type { OnionSkinRefs, PlayerDragContext } from '../types';
 import { updateAttachedArrows } from './player-drag-arrow-updater';
 import { createPlayerDragContext } from './player-drag-context';
 import {
@@ -9,7 +11,6 @@ import {
   updateOnionSkinGhostLine,
   updatePlayerTrajectoryArrows,
 } from './player-drag-node-updater';
-import type { OnionSkinRefs, PlayerDragContext } from './player-drag-types';
 
 export type { OnionSkinRefs, PlayerDragContext };
 export { createPlayerDragContext };
@@ -25,6 +26,7 @@ export function handlePlayerDragMove({
   ctx: PlayerDragContext;
   stageSize: { width: number; height: number };
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onionSkinGhostLine: any;
 }): void {
   const registry = nodesRegistryRef?.current;

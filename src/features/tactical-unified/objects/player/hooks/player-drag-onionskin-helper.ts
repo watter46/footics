@@ -1,6 +1,6 @@
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { Player } from '@/lib/types/tactical-unified';
-import { normX, normY, type OnionSkinRefs } from './player-drag-types';
+import { normX, normY, type OnionSkinRefs } from '../types';
 
 export function setupOnionSkinGhost(
   prevPlayer: Player | undefined,

@@ -1,11 +1,11 @@
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
 import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import {
   getBezierControlPoint,
   getBezierMidpoint,
   getQuadraticBezierPoints,
 } from '@/lib/tactical/trajectory';
-import type { CanvasNodesRegistry } from './helpers/canvas-registry';
-import { normX, normY, type PlayerDragContext } from './player-drag-types';
+import { normX, normY, type PlayerDragContext } from '../types';
 
 export function updateMovingPlayerNodes(
   ctx: PlayerDragContext,
@@ -102,6 +102,7 @@ export function updatePlayerTrajectoryArrows(
 
 export function updateOnionSkinGhostLine(
   prevPlayerPx: { x: number; y: number } | null,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onionSkinGhostLine: any,
   curX: number,
   curY: number,

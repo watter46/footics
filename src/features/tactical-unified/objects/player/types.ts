@@ -1,6 +1,10 @@
+import type { KonvaEventObject } from 'konva/lib/Node';
+import type React from 'react';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
 import type {
   ArrowAnnotation,
   Player,
+  Slide,
   TextAnnotation,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
@@ -62,10 +66,42 @@ export interface PlayerDragContext {
 }
 
 export interface OnionSkinRefs {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostGroup: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostLine: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostMarkerGroup: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostCircle: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostText: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostLabel: any;
+}
+
+export interface PlayerMarkerProps {
+  player: Player;
+  slide: Slide;
+  stageSize: { width: number; height: number };
+  isSelected: boolean;
+  isVisionConeSelected?: boolean;
+  isFocusSelected?: boolean;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
+  onSelect: (
+    e: KonvaEventObject<MouseEvent> | KonvaEventObject<TouchEvent>,
+  ) => void;
+  onSelectOption: (tab: 'vision' | 'connect' | 'badge' | 'focus') => void;
+  onUpdateVisionCone: (
+    patch: Partial<NonNullable<Player['visionCone']>>,
+  ) => void;
+  onDragStart: (e: KonvaEventObject<DragEvent>, player: Player) => void;
+  onDragMove: (e: KonvaEventObject<DragEvent>, player: Player) => void;
+  onDragEnd: (e: KonvaEventObject<DragEvent>, player: Player) => void;
+}
+
+export interface PlayerLayerProps {
+  slide: Slide;
+  stageSize: { width: number; height: number };
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }

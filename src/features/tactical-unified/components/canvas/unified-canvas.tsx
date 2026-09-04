@@ -15,6 +15,7 @@ import { Group, Layer, Rect, Stage } from 'react-konva';
 import { useKonvaExport } from '@/features/tactical-unified/hooks/use-konva-export';
 import { useKonvaVideoExport } from '@/features/tactical-unified/hooks/use-konva-video-export';
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
+import { PlayerLayer } from '../../objects/player';
 import { ContextHud } from '../context-hud';
 import { BoundaryBoxHud } from '../toolbar/boundary-box-hud';
 import { DrawingToolbar } from '../toolbar/drawing-toolbar';
@@ -27,13 +28,9 @@ import {
   calculatePitchTransform,
   createCanvasNodesRegistry,
 } from './helpers';
-import {
-  useCanvasEventListeners,
-  useCanvasPointerInteraction,
-} from './hooks';
+import { useCanvasEventListeners, useCanvasPointerInteraction } from './hooks';
 import { PitchBackground } from './pitch-background';
 import { PitchInlineTextEditor } from './pitch-inline-text-editor';
-import { PlayerLayer } from './player-layer';
 import { useUnifiedCanvasState } from './use-unified-canvas-state';
 
 export { normToPx, pxToNorm } from './hooks';

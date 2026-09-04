@@ -2,17 +2,11 @@
 
 import type React from 'react';
 import { Circle, Group, Line } from 'react-konva';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import type { Slide } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from './helpers/canvas-registry';
-
-function normX(v: number, w: number) {
-  return (v / 100) * w;
-}
-function normY(v: number, h: number) {
-  return (v / 100) * h;
-}
+import { normX, normY } from '../types';
 
 export interface PlayerConnectLinesProps {
   slide: Slide;

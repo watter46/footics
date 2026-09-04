@@ -5,11 +5,17 @@ import { Circle, Group, Line, Text } from 'react-konva';
 
 export interface PlayerOnionskinProps {
   stageSize: { width: number; height: number };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostGroupRef: React.Ref<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostLineRef: React.Ref<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostMarkerGroupRef: React.Ref<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostCircleRef: React.Ref<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostTextRef: React.Ref<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostLabelRef: React.Ref<any>;
 }
 

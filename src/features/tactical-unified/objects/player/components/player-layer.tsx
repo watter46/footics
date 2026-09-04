@@ -5,31 +5,19 @@
  * Orchestrates player markers, ghost trajectories, onionskins, and attached objects follow-up.
  */
 
-import type { KonvaEventObject } from 'konva/lib/Node';
-import type React from 'react';
-import { useRef } from 'react';
 import {
   selectPreviousSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { SelectedObjectKind } from '@/features/tactical-unified/stores/tool-slice';
-import type { Player, Slide } from '@/lib/types/tactical-unified';
-import type { CanvasNodesRegistry } from './helpers/canvas-registry';
+import { usePlayerLayerDrag } from '../hooks/use-player-layer-drag';
+import type { PlayerLayerProps } from '../types';
 import { PlayerConnectLines } from './player-connect-lines';
-import {
-  createPlayerDragContext,
-  handlePlayerDragMove,
-  type PlayerDragContext,
-} from './player-drag-handler';
 import { PlayerGhostTrajectory } from './player-ghost-trajectory';
 import { PlayerMarker } from './player-marker';
 import { PlayerOnionskin } from './player-onionskin';
 
-export interface PlayerLayerProps {
-  slide: Slide;
-  stageSize: { width: number; height: number };
-  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
-}
+export type { PlayerLayerProps };
 
 export function PlayerLayer({
   slide,
@@ -38,10 +26,6 @@ export function PlayerLayer({
 }: PlayerLayerProps) {
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
   const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
-  const movePlayer = useTacticalUnifiedStore((s) => s.movePlayer);
-  const moveMultiplePlayersByDelta = useTacticalUnifiedStore(
-    (s) => s.moveMultiplePlayersByDelta,
-  );
   const connectingPlayerId = useTacticalUnifiedStore(
     (s) => s.connectingPlayerId,
   );
@@ -59,86 +43,26 @@ export function PlayerLayer({
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
   const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
-
-  // オニオンスキン (前スライドゴースト表示) 用 Refs
-  const ghostGroupRef = useRef<any>(null);
-  const ghostLineRef = useRef<any>(null);
-  const ghostMarkerGroupRef = useRef<any>(null);
-  const ghostCircleRef = useRef<any>(null);
-  const ghostTextRef = useRef<any>(null);
-  const ghostLabelRef = useRef<any>(null);
-
-  const dragContextRef = useRef<PlayerDragContext | null>(null);
-
-  const handleDragStart = (
-    _e: KonvaEventObject<DragEvent>,
-    draggedPlayer: Player,
-  ) => {
-    dragContextRef.current = createPlayerDragContext({
-      draggedPlayer,
-      slide,
-      prevSlide,
-      stageSize,
-      selectedObjects,
-      selectObject,
-      onionSkinRefs: {
-        ghostGroup: ghostGroupRef.current,
-        ghostLine: ghostLineRef.current,
-        ghostMarkerGroup: ghostMarkerGroupRef.current,
-        ghostCircle: ghostCircleRef.current,
-        ghostText: ghostTextRef.current,
-        ghostLabel: ghostLabelRef.current,
-      },
-    });
-  };
-
-  const handleDragMove = (e: KonvaEventObject<DragEvent>, _player: Player) => {
-    const ctx = dragContextRef.current;
-    if (!ctx) return;
-    handlePlayerDragMove({
-      e,
-      ctx,
-      stageSize,
-      nodesRegistryRef,
-      onionSkinGhostLine: ghostLineRef.current,
-    });
-  };
-
-  const handleDragEnd = (
-    e: KonvaEventObject<DragEvent>,
-    draggedPlayer: Player,
-  ) => {
-    const ctx = dragContextRef.current;
-    const { width, height } = stageSize;
-    const node = e.currentTarget;
-
-    if (ctx && ctx.movingPlayerIds.length > 0) {
-      const deltaNormX = ((node.x() - ctx.startPx.x) / width) * 100;
-      const deltaNormY = ((node.y() - ctx.startPx.y) / height) * 100;
-
-      moveMultiplePlayersByDelta(
-        activeSlideId,
-        ctx.movingPlayerIds,
-        deltaNormX,
-        deltaNormY,
-      );
-    } else {
-      const finalNormX = Math.max(0, Math.min(100, (node.x() / width) * 100));
-      const finalNormY = Math.max(0, Math.min(100, (node.y() / height) * 100));
-      movePlayer(activeSlideId, draggedPlayer.id, finalNormX, finalNormY);
-    }
-
-    if (ghostGroupRef.current) {
-      ghostGroupRef.current.visible(false);
-      ghostGroupRef.current.getLayer()?.batchDraw();
-    }
-
-    dragContextRef.current = null;
-  };
-
   const activeMarkerOptionTab = useTacticalUnifiedStore(
     (s) => s.activeMarkerOptionTab,
   );
+
+  const {
+    ghostGroupRef,
+    ghostLineRef,
+    ghostMarkerGroupRef,
+    ghostCircleRef,
+    ghostTextRef,
+    ghostLabelRef,
+    handleDragStart,
+    handleDragMove,
+    handleDragEnd,
+  } = usePlayerLayerDrag({
+    slide,
+    prevSlide,
+    stageSize,
+    nodesRegistryRef,
+  });
 
   const selectedVisionConePlayerIds = new Set(
     selectedObjects

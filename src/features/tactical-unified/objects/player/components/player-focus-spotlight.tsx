@@ -14,6 +14,7 @@ export interface PlayerFocusSpotlightProps {
   focus: NonNullable<Player['focus']>;
   radius: number;
   isRing?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   spotlightGroupRef?: React.Ref<any>;
   isSelected?: boolean;
   onSelectOption?: () => void;
@@ -92,7 +93,7 @@ export function PlayerFocusSpotlight({
     );
   }
 
-  // 2D マーカー用のネオングロー (さらに70%に絞り込んだタイトで鮮烈なネオン)
+  // 2D マーカー用のネオングロー
   const glowThickness = Math.max(4, Math.min(12, (focus.radius ?? 3) * 1.7));
   const centerRadius = radius + glowThickness * 0.45;
   const outerRadius = radius + glowThickness;

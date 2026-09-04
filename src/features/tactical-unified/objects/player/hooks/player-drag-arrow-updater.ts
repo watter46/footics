@@ -1,7 +1,7 @@
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/helpers/canvas-registry';
 import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import { getQuadraticBezierPoints } from '@/lib/tactical/trajectory';
-import type { CanvasNodesRegistry } from './helpers/canvas-registry';
-import type { AttachedArrowEntry } from './player-drag-types';
+import type { AttachedArrowEntry } from '../types';
 
 interface ArrowCoords {
   sPxX: number;
@@ -57,6 +57,7 @@ function computeMovedArrowCoords(
 }
 
 function updateArrowHandlePositions(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handles: any,
   entry: AttachedArrowEntry,
   coords: ArrowCoords,
@@ -129,6 +130,7 @@ function computeEffectiveEndpoints(
 }
 
 function renderArrowNodePoints(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handles: any,
   entry: AttachedArrowEntry,
   coords: ArrowCoords,

@@ -1,5 +1,6 @@
 ---
 id: L1-Arch-003
+status: DONE
 emoji: 🟢 # 例: 🎨, 🔧, 🐛
 title: [Phase 1] tactical-unified: objects/player/ の垂直スライス化 # 必ず日本語で記述すること
 depends_on: [] # 例: ["L1-Tactical-001"]
@@ -21,10 +22,14 @@ context_files:
 2. `player-marker.tsx`, `player-layer.tsx` 等のプレイヤー関連コンポーネントと依存フックを `objects/player/components/` および `hooks/` に移動する。
 3. `unified-canvas.tsx` などのインポートパスを `objects/player` 経由に修正する。
 ## Acceptance Criteria & Verification Commands
-- [ ] <!-- 受入基準1 -->
-- [ ] <!-- 受入基準2 -->
+- [x] `src/features/tactical-unified/objects/player/` 配下に `components/`, `hooks/`, `types.ts`, `index.ts` の4要素が配置されている
+- [x] プレイヤー関連コンポーネント（`player-layer.tsx`, `player-marker.tsx` 等）とフック・ヘルパーが `objects/player/` 配下に移動され、旧パスのファイルが削除されている
+- [x] `unified-canvas.tsx` のインポートパスが `objects/player` 経由に更新されている
+- [x] scoped type-check / Biome check / Vitest 全テストがパスしている
 
 ### Verification
-`rtk biome check <対象ディレクトリ>`
-`pnpm type-check:scoped <変更ファイル>`
-`rtk vitest run <テストファイル>` # テストがある場合
+```
+rtk biome check src/features/tactical-unified/objects/player/ src/features/tactical-unified/components/canvas/unified-canvas.tsx
+rtk pnpm type-check:scoped src/features/tactical-unified/objects/player/index.ts src/features/tactical-unified/components/canvas/unified-canvas.tsx
+rtk vitest run src/features/tactical-unified/
+```

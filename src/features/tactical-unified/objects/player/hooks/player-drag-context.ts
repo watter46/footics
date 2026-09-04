@@ -1,5 +1,4 @@
 import type { Player, Slide } from '@/lib/types/tactical-unified';
-import { setupOnionSkinGhost } from './player-drag-onionskin-helper';
 import {
   type AttachedArrowEntry,
   type AttachedConnectLineEntry,
@@ -7,7 +6,8 @@ import {
   normY,
   type OnionSkinRefs,
   type PlayerDragContext,
-} from './player-drag-types';
+} from '../types';
+import { setupOnionSkinGhost } from './player-drag-onionskin-helper';
 
 function toAttachedArrowEntry(
   arrow: Slide['arrows'][number],
