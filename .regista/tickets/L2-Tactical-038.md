@@ -2,7 +2,7 @@
 id: L2-Tactical-038
 title: "Pitch Aspect Ratio & Transition Animation"
 effort: "Mid"
-status: "TODO"
+status: "DONE"
 dependencies: []
 assignee: "regista-canvas"
 ---
