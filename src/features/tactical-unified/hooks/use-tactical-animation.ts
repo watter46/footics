@@ -14,14 +14,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/canvas-registry';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import {
   calculateUnifiedTotalDuration,
   getInterpolatedUnifiedSlideFrame,
 } from '@/lib/tactical/unified-interpolation';
-import {
-  calculatePitchRect,
-  type PitchTransformValues,
-} from '@/lib/tactical/pitch-geometry';
 import {
   batchDrawLayers,
   updateArrowNodes,

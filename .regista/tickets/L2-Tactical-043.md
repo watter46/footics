@@ -2,6 +2,7 @@
 id: L2-Tactical-043
 emoji: 🐛
 title: スライド再生時のフォーメーション画面外バグ修正
+status: DONE
 depends_on: []
 model: Gemini 3.7 Flash
 effort: low
