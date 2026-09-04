@@ -29,10 +29,9 @@ import {
   createDefaultProject,
   createXBoundaryBox,
   DEFAULT_442_HOME,
-  DEFAULT_BOUNDARY_BOX_9_16,
-  DEFAULT_BOUNDARY_BOX_16_9,
   DEFAULT_BOUNDARY_BOX_FULL,
   DEFAULT_BOUNDARY_BOX_SCREENSHOT,
+  getDefaultBoundaryBoxForAspect,
   transformCoord,
   transformPoints,
   X_MEDIA_PRESETS,
@@ -268,17 +267,26 @@ export function extractSelectedObjects(
 
 export function computePitchFitBoundaryBox(
   isPitchBg: boolean,
-  isVertical: boolean,
+  aspectRatio: AspectRatio = '16:9',
 ): BoundaryBox {
   if (!isPitchBg) {
     return { ...DEFAULT_BOUNDARY_BOX_SCREENSHOT };
   }
-  if (isVertical) {
+  if (aspectRatio === '9:16') {
     return {
       x: 0.43,
       y: 7.25,
       width: 99.14,
       height: 85.5,
+      enabled: true,
+    };
+  }
+  if (aspectRatio === '4:5' || aspectRatio === '1:1') {
+    return {
+      x: 3.0,
+      y: 3.0,
+      width: 94.0,
+      height: 94.0,
       enabled: true,
     };
   }
@@ -788,8 +796,10 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         const isPitchBg =
           (slide?.backgroundType ?? s.project.backgroundType ?? 'pitch') ===
           'pitch';
-        const isVertical = s.project.aspectRatio === '9:16';
-        const box = computePitchFitBoundaryBox(isPitchBg, isVertical);
+        const box = computePitchFitBoundaryBox(
+          isPitchBg,
+          s.project.aspectRatio,
+        );
 
         return {
           ...recordHistory(s),
@@ -811,8 +821,7 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           const isPitchBg =
             (slide?.backgroundType ?? s.project.backgroundType ?? 'pitch') ===
             'pitch';
-          const isVertical = s.project.aspectRatio === '9:16';
-          box = computePitchFitBoundaryBox(isPitchBg, isVertical);
+          box = computePitchFitBoundaryBox(isPitchBg, s.project.aspectRatio);
         } else {
           const preset = X_MEDIA_PRESETS[presetKey];
           const ratio = preset?.ratio ?? '16:9';
@@ -832,10 +841,9 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
     resetSlideObjects: (slideId) =>
       set((s) => {
         const targetSlideId = slideId ?? s.activeSlideId;
-        const isVertical = s.project.aspectRatio === '9:16';
-        const defaultBox = isVertical
-          ? DEFAULT_BOUNDARY_BOX_9_16
-          : DEFAULT_BOUNDARY_BOX_16_9;
+        const defaultBox = getDefaultBoundaryBoxForAspect(
+          s.project.aspectRatio,
+        );
         return {
           ...recordHistory(s),
           project: updateSlideInProject(s.project, targetSlideId, (sl) => ({

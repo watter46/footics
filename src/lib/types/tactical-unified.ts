@@ -362,6 +362,15 @@ export const DEFAULT_BOUNDARY_BOX_9_16: BoundaryBox = {
   enabled: true,
 };
 
+/** ピッチ白線フィット境界線のデフォルト値 (4:5 縦長・上下3%余白) */
+export const DEFAULT_BOUNDARY_BOX_4_5: BoundaryBox = {
+  x: 3.0,
+  y: 3.0,
+  width: 94.0,
+  height: 94.0,
+  enabled: true,
+};
+
 /** スクリーンショット / 画像背景時のフィット境界線（周囲にポインタハンドル用 2% の余白を持たせて配置） */
 export const DEFAULT_BOUNDARY_BOX_SCREENSHOT: BoundaryBox = {
   x: 2.0,
@@ -385,19 +394,19 @@ export function getDefaultBoundaryBoxForAspect(
   aspectRatio: AspectRatio,
 ): BoundaryBox {
   switch (aspectRatio) {
+    case '4:5':
+      return { ...DEFAULT_BOUNDARY_BOX_4_5 };
     case '9:16':
       return { ...DEFAULT_BOUNDARY_BOX_9_16 };
     case '16:9':
       return { ...DEFAULT_BOUNDARY_BOX_16_9 };
-    case '4:5':
-    case '1:1':
     default:
       return { ...DEFAULT_BOUNDARY_BOX_FULL };
   }
 }
 
-/** 標準デフォルト境界線 (16:9) */
-export const DEFAULT_BOUNDARY_BOX = DEFAULT_BOUNDARY_BOX_16_9;
+/** 標準デフォルト境界線 (4:5) */
+export const DEFAULT_BOUNDARY_BOX = DEFAULT_BOUNDARY_BOX_4_5;
 
 // ─────────────────────────────────────────
 // § 8.1. X (Twitter) 最適化メディア比率 & プリセット
@@ -765,14 +774,21 @@ export function createDefaultProject(id: string): TacticalProject {
     title: 'Untitled Project',
     createdAt: now,
     updatedAt: now,
-    aspectRatio: '16:9',
+    aspectRatio: '4:5',
     backgroundType: 'pitch',
     homeColor,
     awayColor,
     activeSlideId: slideId,
-    boundaryBox: { ...DEFAULT_BOUNDARY_BOX_16_9 },
+    boundaryBox: { ...DEFAULT_BOUNDARY_BOX_4_5 },
     slides: [
-      createDefaultSlide(0, slideId, homeColor.primary, awayColor.primary),
+      createDefaultSlide(
+        0,
+        slideId,
+        homeColor.primary,
+        awayColor.primary,
+        DEFAULT_BOUNDARY_BOX_4_5,
+        '4:5',
+      ),
     ],
     tags: [],
   };
@@ -783,8 +799,8 @@ export function createDefaultSlide(
   id?: string,
   homeColor?: string,
   awayColor?: string,
-  boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_16_9,
-  aspectRatio: AspectRatio = '16:9',
+  boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_4_5,
+  aspectRatio: AspectRatio = '4:5',
 ): Slide {
   return {
     id: id ?? crypto.randomUUID(),
