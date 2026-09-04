@@ -137,6 +137,10 @@ export interface SlideSlice {
     slideId: string,
     trajectory: PlayerTrajectory | undefined,
   ) => void;
+  setPitchPosition: (
+    slideId: string,
+    pos: { x: number; y: number } | undefined,
+  ) => void;
 }
 
 export const createSlideSlice: StateCreator<
@@ -200,6 +204,12 @@ export const createSlideSlice: StateCreator<
         boundaryBox: currentSlide.boundaryBox
           ? { ...currentSlide.boundaryBox }
           : { ...defaultBox },
+        pitchTransform: currentSlide.pitchTransform
+          ? { ...currentSlide.pitchTransform }
+          : undefined,
+        pitchPosition: currentSlide.pitchPosition
+          ? { ...currentSlide.pitchPosition }
+          : undefined,
         transitionDurationMs: currentSlide.transitionDurationMs ?? 1000,
         pauseMs: currentSlide.pauseMs ?? 500,
         easing: currentSlide.easing ?? 'ease-in-out',
@@ -1039,6 +1049,28 @@ export const createSlideSlice: StateCreator<
       project: updateSlideInProject(s.project, slideId, (sl) => ({
         ...sl,
         ball: { ...sl.ball, trajectory },
+      })),
+      isDirty: true,
+    })),
+  setPitchPosition: (slideId, pos) =>
+    set((s) => ({
+      ...recordHistory(s),
+      project: updateSlideInProject(s.project, slideId, (sl) => ({
+        ...sl,
+        pitchPosition: pos ? { ...pos } : undefined,
+        pitchTransform: sl.pitchTransform
+          ? {
+              ...sl.pitchTransform,
+              panX: pos?.x ?? 0,
+              panY: pos?.y ?? 0,
+            }
+          : {
+              panX: pos?.x ?? 0,
+              panY: pos?.y ?? 0,
+              zoom: 1,
+              tilt: 0,
+              isLocked: false,
+            },
       })),
       isDirty: true,
     })),

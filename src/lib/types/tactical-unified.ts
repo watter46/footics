@@ -558,6 +558,7 @@ export const SlideSchema = z.object({
   boundaryBox: BoundaryBoxSchema.optional(),
   aspectRatio: AspectRatioSchema.optional(),
   pitchTransform: PitchTransformSchema.optional(),
+  pitchPosition: z.object({ x: z.number(), y: z.number() }).optional(),
 });
 export type Slide = z.infer<typeof SlideSchema>;
 export type TacticalSlide = Slide;

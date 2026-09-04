@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Image as KonvaImage, Rect } from 'react-konva';
+import { Group, Image as KonvaImage, Rect } from 'react-konva';
 import {
   calculatePitchGeometryForAspect,
   DEFAULT_PITCH_MARGIN_PERCENT,
@@ -29,6 +29,8 @@ export interface PitchBackgroundProps {
   backgroundType?: 'pitch' | 'image' | 'blank';
   marginPercent?: number;
   grass?: boolean;
+  draggable?: boolean;
+  onDragEnd?: (pos: { x: number; y: number }) => void;
 }
 
 export function PitchBackground({
@@ -39,6 +41,8 @@ export function PitchBackground({
   backgroundType = 'pitch',
   marginPercent = DEFAULT_PITCH_MARGIN_PERCENT,
   grass = true,
+  draggable = false,
+  onDragEnd,
 }: PitchBackgroundProps) {
   // 初期化時にキャッシュがあれば即時適用（アスペクト比切替時のチラつき・引き伸ばし防止）
   const [pitchImg, setPitchImg] = useState<HTMLImageElement | null>(() => {
@@ -101,28 +105,37 @@ export function PitchBackground({
       />
 
       {/* ピッチ or 背景画像 (画像背景は境界線ポインタ用 2% 余白内に配置) */}
-      {backgroundType === 'pitch' && pitchImg && (
-        <KonvaImage
-          image={pitchImg}
-          x={0}
-          y={0}
-          width={width}
-          height={height}
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      )}
-      {backgroundType === 'image' && bgImg && (
-        <KonvaImage
-          image={bgImg}
-          x={width * 0.02}
-          y={height * 0.02}
-          width={width * 0.96}
-          height={height * 0.96}
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      )}
+      <Group
+        draggable={draggable}
+        onDragEnd={(e) => {
+          if (!onDragEnd) return;
+          const node = e.target;
+          onDragEnd({ x: node.x(), y: node.y() });
+        }}
+      >
+        {backgroundType === 'pitch' && pitchImg && (
+          <KonvaImage
+            image={pitchImg}
+            x={0}
+            y={0}
+            width={width}
+            height={height}
+            listening={draggable}
+            perfectDrawEnabled={false}
+          />
+        )}
+        {backgroundType === 'image' && bgImg && (
+          <KonvaImage
+            image={bgImg}
+            x={width * 0.02}
+            y={height * 0.02}
+            width={width * 0.96}
+            height={height * 0.96}
+            listening={draggable}
+            perfectDrawEnabled={false}
+          />
+        )}
+      </Group>
     </>
   );
 }

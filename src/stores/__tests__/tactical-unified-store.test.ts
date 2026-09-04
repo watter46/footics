@@ -4,7 +4,10 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { TacticalProject } from '@/lib/types/tactical-unified';
+import type {
+  AspectRatio,
+  TacticalProject,
+} from '@/lib/types/tactical-unified';
 import {
   createDefaultPlayer,
   createDefaultProject,
@@ -66,6 +69,7 @@ describe('tactical-unified-store', () => {
 
   it('setAspectRatio で座標が変換される (16:9 → 9:16)', () => {
     const store = useTacticalUnifiedStore.getState();
+    store.setAspectRatio('16:9');
     const player = createDefaultPlayer('home', 80, 30, '#034694');
     store.addPlayer(player);
     store.setAspectRatio('9:16');
@@ -638,10 +642,10 @@ describe('tactical-unified-store', () => {
     const store = useTacticalUnifiedStore.getState();
     const initialSlide = store.project.slides[0];
     expect(initialSlide?.boundaryBox).toEqual({
-      x: 7.25,
-      y: 0.43,
-      width: 85.5,
-      height: 99.14,
+      x: 3.0,
+      y: 3.0,
+      width: 94.0,
+      height: 94.0,
       enabled: true,
     });
 
@@ -650,10 +654,10 @@ describe('tactical-unified-store', () => {
       .getState()
       .project.slides.find((s) => s.id === newSlideId);
     expect(newSlide?.boundaryBox).toEqual({
-      x: 7.25,
-      y: 0.43,
-      width: 85.5,
-      height: 99.14,
+      x: 3.0,
+      y: 3.0,
+      width: 94.0,
+      height: 94.0,
       enabled: true,
     });
   });
@@ -671,6 +675,27 @@ describe('tactical-unified-store', () => {
 
     store.autoFitBoundaryBox(slideId);
     let slide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(slide?.boundaryBox).toEqual({
+      x: 3.0,
+      y: 3.0,
+      width: 94.0,
+      height: 94.0,
+      enabled: true,
+    });
+
+    // 横向き (16:9)
+    store.setAspectRatio('16:9');
+    store.setBoundaryBox(slideId, {
+      x: 10,
+      y: 10,
+      width: 50,
+      height: 50,
+      enabled: true,
+    });
+    store.autoFitBoundaryBox(slideId);
+    slide = useTacticalUnifiedStore
       .getState()
       .project.slides.find((s) => s.id === slideId);
     expect(slide?.boundaryBox).toEqual({
@@ -1257,6 +1282,7 @@ describe('tactical-unified-store', () => {
   describe('applyXMediaPreset', () => {
     it('横画面(16:9)で single_image_4_5 (4:5) を適用した際に中央配置された BoundaryBox が計算される', () => {
       const store = useTacticalUnifiedStore.getState();
+      store.setAspectRatio('16:9');
       store.applyXMediaPreset('single_image_4_5');
 
       const slide = useTacticalUnifiedStore
@@ -1276,6 +1302,7 @@ describe('tactical-unified-store', () => {
 
     it('横画面(16:9)で pitch_overview_16_9 (16:9) を適用した際に全画面(100x100)の BoundaryBox になる', () => {
       const store = useTacticalUnifiedStore.getState();
+      store.setAspectRatio('16:9');
       store.applyXMediaPreset('pitch_overview_16_9');
 
       const slide = useTacticalUnifiedStore
@@ -1313,6 +1340,7 @@ describe('tactical-unified-store', () => {
 
     it('pitch_fit を適用した際にピッチ外枠線に合わせた BoundaryBox が設定される', () => {
       const store = useTacticalUnifiedStore.getState();
+      store.setAspectRatio('16:9');
       store.applyXMediaPreset('pitch_fit');
 
       const slide = useTacticalUnifiedStore
@@ -1331,6 +1359,7 @@ describe('tactical-unified-store', () => {
 
     it('特定のスライドIDを指定してプリセットを適用できる', () => {
       const store = useTacticalUnifiedStore.getState();
+      store.setAspectRatio('16:9');
       store.addSlide();
       const slides = useTacticalUnifiedStore.getState().project.slides;
       const targetSlide = slides[1];
@@ -1385,8 +1414,8 @@ describe('tactical-unified-store', () => {
         enabled: true,
       });
 
-      // 4:5 にアスペクト比変更
-      store.setAspectRatio('4:5');
+      // 16:9 にアスペクト比変更 (4:5 → 16:9)
+      store.setAspectRatio('16:9');
 
       slide = useTacticalUnifiedStore
         .getState()
@@ -1447,19 +1476,20 @@ describe('tactical-unified-store', () => {
 
     it('addSlide 時に現在の project.aspectRatio の比率と境界線が継承される', () => {
       const store = useTacticalUnifiedStore.getState();
-      store.setAspectRatio('4:5');
+      // 16:9に変更して全体フィット(100x100)になる状態を作る
+      store.setAspectRatio('16:9');
 
       const newSlideId = store.addSlide(undefined, 'blank');
       const newSlide = useTacticalUnifiedStore
         .getState()
         .project.slides.find((s) => s.id === newSlideId);
 
-      expect(newSlide?.aspectRatio).toBe('4:5');
+      expect(newSlide?.aspectRatio).toBe('16:9');
       expect(newSlide?.boundaryBox).toEqual({
-        x: 0,
-        y: 0,
-        width: 100,
-        height: 100,
+        x: 7.25,
+        y: 0.43,
+        width: 85.5,
+        height: 99.14,
         enabled: true,
       });
     });
@@ -1485,6 +1515,59 @@ describe('tactical-unified-store', () => {
         useTacticalUnifiedStore.getState().project.slides[0]?.pitchTransform
           ?.isLocked,
       ).toBe(false);
+    });
+
+    it('updatePitchTransform でピッチの panX, panY, zoom が更新される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      store.updatePitchTransform(slideId, {
+        panX: 25,
+        panY: -40,
+        zoom: 1.5,
+      });
+      const transform =
+        useTacticalUnifiedStore.getState().project.slides[0]?.pitchTransform;
+      expect(transform?.panX).toBe(25);
+      expect(transform?.panY).toBe(-40);
+      expect(transform?.zoom).toBe(1.5);
+      expect(transform?.isLocked).toBe(false);
+    });
+
+    it('addSlide / duplicateSlide で pitchTransform が引き継がれる', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      store.updatePitchTransform(slideId, { panX: 50, panY: 30, zoom: 2 });
+      const newSlideId = store.duplicateSlide(slideId);
+      const newSlide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((sl) => sl.id === newSlideId);
+      expect(newSlide?.pitchTransform?.panX).toBe(50);
+      expect(newSlide?.pitchTransform?.panY).toBe(30);
+      expect(newSlide?.pitchTransform?.zoom).toBe(2);
+    });
+
+    it('setPitchPosition で pitchPosition と pitchTransform が更新され、autoFitBoundaryBox に反映される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      store.setPitchPosition(slideId, { x: 10, y: -5 });
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((sl) => sl.id === slideId);
+      expect(slide?.pitchPosition?.x).toBe(10);
+      expect(slide?.pitchPosition?.y).toBe(-5);
+      expect(slide?.pitchTransform?.panX).toBe(10);
+      expect(slide?.pitchTransform?.panY).toBe(-5);
+
+      // autoFitBoundaryBox がピッチ移動オフセットに追従することを確認 (デフォルトは 4:5 で base.x = 3.0, base.y = 3.0)
+      store.autoFitBoundaryBox(slideId);
+      const updatedSlide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((sl) => sl.id === slideId);
+      expect(updatedSlide?.boundaryBox?.x).toBeCloseTo(3.0 + 10, 2);
+      expect(updatedSlide?.boundaryBox?.y).toBeCloseTo(3.0 - 5, 2);
     });
 
     it('toggleObjectLock で各オブジェクトの locked 状態がトグルされる', () => {

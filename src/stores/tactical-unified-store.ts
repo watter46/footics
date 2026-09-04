@@ -18,6 +18,7 @@ import type {
   AspectRatio,
   BoundaryBox,
   ExportTarget,
+  PitchTransform,
   Player,
   Slide,
   TacticalProject,
@@ -161,6 +162,14 @@ export interface TacticalUnifiedState
 
   // ─ ロック制御 (Pitch & Objects)
   togglePitchLock: (slideId?: string) => void;
+  updatePitchTransform: (
+    slideId: string | undefined,
+    patch: Partial<PitchTransform>,
+  ) => void;
+  setPitchPosition: (
+    slideId: string | undefined,
+    pos: { x: number; y: number } | undefined,
+  ) => void;
   toggleObjectLock: (objectId: string, kind: SelectedObjectKind) => void;
 }
 
@@ -268,35 +277,48 @@ export function extractSelectedObjects(
 export function computePitchFitBoundaryBox(
   isPitchBg: boolean,
   aspectRatio: AspectRatio = '16:9',
+  pitchPosition?: { x: number; y: number },
 ): BoundaryBox {
   if (!isPitchBg) {
-    return { ...DEFAULT_BOUNDARY_BOX_SCREENSHOT };
+    const base = { ...DEFAULT_BOUNDARY_BOX_SCREENSHOT };
+    if (pitchPosition) {
+      base.x = Math.round((base.x + pitchPosition.x) * 100) / 100;
+      base.y = Math.round((base.y + pitchPosition.y) * 100) / 100;
+    }
+    return base;
   }
+  let base: BoundaryBox;
   if (aspectRatio === '9:16') {
-    return {
+    base = {
       x: 0.43,
       y: 7.25,
       width: 99.14,
       height: 85.5,
       enabled: true,
     };
-  }
-  if (aspectRatio === '4:5' || aspectRatio === '1:1') {
-    return {
+  } else if (aspectRatio === '4:5' || aspectRatio === '1:1') {
+    base = {
       x: 3.0,
       y: 3.0,
       width: 94.0,
       height: 94.0,
       enabled: true,
     };
+  } else {
+    base = {
+      x: 7.25,
+      y: 0.43,
+      width: 85.5,
+      height: 99.14,
+      enabled: true,
+    };
   }
-  return {
-    x: 7.25,
-    y: 0.43,
-    width: 85.5,
-    height: 99.14,
-    enabled: true,
-  };
+
+  if (pitchPosition) {
+    base.x = Math.round((base.x + pitchPosition.x) * 100) / 100;
+    base.y = Math.round((base.y + pitchPosition.y) * 100) / 100;
+  }
+  return base;
 }
 
 export function cloneAndOffsetObjects(
@@ -796,9 +818,15 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
         const isPitchBg =
           (slide?.backgroundType ?? s.project.backgroundType ?? 'pitch') ===
           'pitch';
+        const pitchPos =
+          slide?.pitchPosition ??
+          (slide?.pitchTransform
+            ? { x: slide.pitchTransform.panX, y: slide.pitchTransform.panY }
+            : undefined);
         const box = computePitchFitBoundaryBox(
           isPitchBg,
           s.project.aspectRatio,
+          pitchPos,
         );
 
         return {
@@ -821,7 +849,16 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           const isPitchBg =
             (slide?.backgroundType ?? s.project.backgroundType ?? 'pitch') ===
             'pitch';
-          box = computePitchFitBoundaryBox(isPitchBg, s.project.aspectRatio);
+          const pitchPos =
+            slide?.pitchPosition ??
+            (slide?.pitchTransform
+              ? { x: slide.pitchTransform.panX, y: slide.pitchTransform.panY }
+              : undefined);
+          box = computePitchFitBoundaryBox(
+            isPitchBg,
+            s.project.aspectRatio,
+            pitchPos,
+          );
         } else {
           const preset = X_MEDIA_PRESETS[presetKey];
           const ratio = preset?.ratio ?? '16:9';
@@ -903,6 +940,68 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
           ...recordHistory(s),
           project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
             ...sl,
+            pitchTransform: newTransform,
+          })),
+          isDirty: true,
+        };
+      }),
+
+    updatePitchTransform: (slideId, patch) =>
+      set((s) => {
+        const targetSlideId = slideId ?? s.activeSlideId;
+        const slide = getSlide(s.project, targetSlideId);
+        if (!slide) return s;
+
+        const current = slide.pitchTransform ?? {
+          panX: 0,
+          panY: 0,
+          zoom: 1,
+          tilt: 0,
+          isLocked: false,
+        };
+
+        const newTransform: PitchTransform = {
+          panX: patch.panX ?? current.panX,
+          panY: patch.panY ?? current.panY,
+          zoom: patch.zoom ?? current.zoom,
+          tilt: patch.tilt ?? current.tilt,
+          isLocked: patch.isLocked ?? current.isLocked,
+        };
+
+        return {
+          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
+            ...sl,
+            pitchTransform: newTransform,
+          })),
+          isDirty: true,
+        };
+      }),
+
+    setPitchPosition: (slideId, pos) =>
+      set((s) => {
+        const targetSlideId = slideId ?? s.activeSlideId;
+        const slide = getSlide(s.project, targetSlideId);
+        if (!slide) return s;
+
+        const current = slide.pitchTransform ?? {
+          panX: 0,
+          panY: 0,
+          zoom: 1,
+          tilt: 0,
+          isLocked: false,
+        };
+
+        const newTransform: PitchTransform = {
+          ...current,
+          panX: pos?.x ?? 0,
+          panY: pos?.y ?? 0,
+        };
+
+        return {
+          ...recordHistory(s),
+          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
+            ...sl,
+            pitchPosition: pos ? { ...pos } : undefined,
             pitchTransform: newTransform,
           })),
           isDirty: true,
