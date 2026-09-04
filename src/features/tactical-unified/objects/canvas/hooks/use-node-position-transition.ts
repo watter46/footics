@@ -37,10 +37,14 @@ export function useNodePositionTransition({
     }
 
     if (
-      disabled ||
-      (typeof (node as any).isDragging === 'function' &&
-        (node as any).isDragging())
+      typeof (node as any).isDragging === 'function' &&
+      (node as any).isDragging()
     ) {
+      prevPosRef.current = { x, y };
+      return;
+    }
+
+    if (disabled) {
       prevPosRef.current = { x, y };
       node.position({ x, y });
       return;
