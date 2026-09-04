@@ -12,15 +12,23 @@ import {
 
 export function useUnifiedCanvasState() {
   const aspectRatio = useTacticalUnifiedStore((s) => s.project.aspectRatio);
-  const backgroundType = useTacticalUnifiedStore((s) => s.project.backgroundType);
-  const backgroundImageUrl = useTacticalUnifiedStore((s) => s.project.backgroundImageUrl);
+  const backgroundType = useTacticalUnifiedStore(
+    (s) => s.project.backgroundType,
+  );
+  const backgroundImageUrl = useTacticalUnifiedStore(
+    (s) => s.project.backgroundImageUrl,
+  );
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
   const clearSelection = useTacticalUnifiedStore((s) => s.clearSelection);
   const activeTool = useTacticalUnifiedStore((s) => s.activeTool);
-  const connectingPlayerId = useTacticalUnifiedStore((s) => s.connectingPlayerId);
+  const connectingPlayerId = useTacticalUnifiedStore(
+    (s) => s.connectingPlayerId,
+  );
   const setActiveSlide = useTacticalUnifiedStore((s) => s.setActiveSlide);
-  const setBackgroundImageUrl = useTacticalUnifiedStore((s) => s.setBackgroundImageUrl);
+  const setBackgroundImageUrl = useTacticalUnifiedStore(
+    (s) => s.setBackgroundImageUrl,
+  );
   const setBackgroundType = useTacticalUnifiedStore((s) => s.setBackgroundType);
   const isExporting = useTacticalUnifiedStore((s) => s.isExporting);
   const setIsExporting = useTacticalUnifiedStore((s) => s.setIsExporting);

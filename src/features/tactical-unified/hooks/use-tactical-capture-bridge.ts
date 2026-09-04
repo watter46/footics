@@ -10,6 +10,7 @@
 
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   TACTICAL_BRIDGE_CHANNEL,
   TACTICAL_CAPTURE_CUSTOM_EVENT,
@@ -19,7 +20,6 @@ import {
   type TacticalCaptureEventPayload,
   TacticalCapturePayloadSchema,
 } from '@/lib/types/capture-protocol';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 
 export type { TacticalCaptureEventPayload };
 

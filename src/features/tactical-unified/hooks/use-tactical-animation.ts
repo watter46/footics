@@ -12,12 +12,16 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/canvas-registry';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   calculateUnifiedTotalDuration,
   getInterpolatedUnifiedSlideFrame,
 } from '@/lib/tactical/unified-interpolation';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/canvas-registry';
+import {
+  calculatePitchRect,
+  type PitchTransformValues,
+} from '@/lib/tactical/pitch-geometry';
 import {
   batchDrawLayers,
   updateArrowNodes,
@@ -29,6 +33,7 @@ import {
 
 interface UseTacticalAnimationOptions {
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
+  pitchSize?: { width: number; height: number };
   loop?: boolean;
 }
 
@@ -81,6 +86,26 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
     [setActiveSlide],
   );
 
+  const getPitchDimensions = useCallback(() => {
+    if (options?.pitchSize) {
+      return options.pitchSize;
+    }
+    const registry = options?.nodesRegistryRef?.current;
+    const stage = registry?.stage;
+    if (stage) {
+      const stageWidth = stage.width();
+      const stageHeight = stage.height();
+      const aspectRatio =
+        useTacticalUnifiedStore.getState().project.aspectRatio || '16:9';
+      const rect = calculatePitchRect(
+        { width: stageWidth, height: stageHeight },
+        aspectRatio,
+      );
+      return { width: rect.width, height: rect.height };
+    }
+    return { width: 800, height: 450 };
+  }, [options?.pitchSize, options?.nodesRegistryRef]);
+
   const playAnimation = useCallback(
     (onComplete?: () => void) => {
       const currentSlides = useTacticalUnifiedStore.getState().project.slides;
@@ -93,14 +118,13 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
       startTimestampRef.current = null;
 
       const registry = options?.nodesRegistryRef?.current;
-      const stage = registry?.stage;
-      const stageWidth = stage ? stage.width() : 800;
-      const stageHeight = stage ? stage.height() : 450;
+      const { width: pitchWidth, height: pitchHeight } = getPitchDimensions();
       const totalDuration = calculateUnifiedTotalDuration(currentSlides);
 
       const animate = (timestamp: number) => {
         if (!startTimestampRef.current) {
-          startTimestampRef.current = timestamp - currentPlaybackTimeRef.current;
+          startTimestampRef.current =
+            timestamp - currentPlaybackTimeRef.current;
         }
 
         const elapsed = timestamp - startTimestampRef.current;
@@ -111,24 +135,30 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
           startTimestampRef.current = null;
 
           if (options?.loop) {
-            applyFrameToCanvas(0, registry, stageWidth, stageHeight);
+            applyFrameToCanvas(0, registry, pitchWidth, pitchHeight);
             animationFrameRef.current = requestAnimationFrame(animate);
             return;
           }
 
           setIsPlaying(false);
-          applyFrameToCanvas(totalDuration, registry, stageWidth, stageHeight);
+          applyFrameToCanvas(totalDuration, registry, pitchWidth, pitchHeight);
           onComplete?.();
           return;
         }
 
-        applyFrameToCanvas(elapsed, registry, stageWidth, stageHeight);
+        applyFrameToCanvas(elapsed, registry, pitchWidth, pitchHeight);
         animationFrameRef.current = requestAnimationFrame(animate);
       };
 
       animationFrameRef.current = requestAnimationFrame(animate);
     },
-    [applyFrameToCanvas, setIsPlaying, options?.loop, options?.nodesRegistryRef],
+    [
+      applyFrameToCanvas,
+      setIsPlaying,
+      options?.loop,
+      options?.nodesRegistryRef,
+      getPitchDimensions,
+    ],
   );
 
   const pauseAnimation = useCallback(() => {
@@ -151,30 +181,45 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
     setIsPlaying(false);
 
     const registry = options?.nodesRegistryRef?.current;
-    const stage = registry?.stage;
-    const stageWidth = stage ? stage.width() : 800;
-    const stageHeight = stage ? stage.height() : 450;
+    const { width: pitchWidth, height: pitchHeight } = getPitchDimensions();
 
     const currentSlides = useTacticalUnifiedStore.getState().project.slides;
     if (currentSlides.length > 0) {
       setActiveSlide(currentSlides[0].id);
-      applyFrameToCanvas(0, registry, stageWidth, stageHeight);
+      applyFrameToCanvas(0, registry, pitchWidth, pitchHeight);
     }
-  }, [applyFrameToCanvas, setIsPlaying, setActiveSlide, options?.nodesRegistryRef]);
+  }, [
+    applyFrameToCanvas,
+    setIsPlaying,
+    setActiveSlide,
+    options?.nodesRegistryRef,
+    getPitchDimensions,
+  ]);
 
   const seekTo = useCallback(
     (timeMs: number) => {
-      currentPlaybackTimeRef.current = Math.max(0, Math.min(totalDurationMs, timeMs));
+      currentPlaybackTimeRef.current = Math.max(
+        0,
+        Math.min(totalDurationMs, timeMs),
+      );
       startTimestampRef.current = null;
 
       const registry = options?.nodesRegistryRef?.current;
-      const stage = registry?.stage;
-      const stageWidth = stage ? stage.width() : 800;
-      const stageHeight = stage ? stage.height() : 450;
+      const { width: pitchWidth, height: pitchHeight } = getPitchDimensions();
 
-      applyFrameToCanvas(currentPlaybackTimeRef.current, registry, stageWidth, stageHeight);
+      applyFrameToCanvas(
+        currentPlaybackTimeRef.current,
+        registry,
+        pitchWidth,
+        pitchHeight,
+      );
     },
-    [applyFrameToCanvas, totalDurationMs, options?.nodesRegistryRef],
+    [
+      applyFrameToCanvas,
+      totalDurationMs,
+      options?.nodesRegistryRef,
+      getPitchDimensions,
+    ],
   );
 
   useEffect(() => {

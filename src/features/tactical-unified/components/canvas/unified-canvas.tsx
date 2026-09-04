@@ -121,7 +121,7 @@ export function UnifiedCanvas() {
   });
 
   const { playAnimation, pauseAnimation, applyFrameToCanvas } =
-    useTacticalAnimation({ nodesRegistryRef });
+    useTacticalAnimation({ nodesRegistryRef, pitchSize });
 
   // 再生状態の同期
   useEffect(() => {
@@ -192,8 +192,6 @@ export function UnifiedCanvas() {
       ref={containerRef}
       className="relative w-full h-full flex items-center justify-center bg-[#0a0a0a] overflow-hidden"
     >
-      <DrawingToolbar />
-
       <div className="relative w-full h-full">
         <Stage
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -332,6 +330,7 @@ export function UnifiedCanvas() {
           </Layer>
         </Stage>
 
+        <DrawingToolbar />
         <ContextHud
           stageSize={stageSize}
           pitchRect={pitchRect}

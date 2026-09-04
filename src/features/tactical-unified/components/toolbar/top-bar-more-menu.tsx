@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   createHighPressBenchmarkProject,
   createLowBlockBenchmarkProject,
@@ -18,7 +19,6 @@ import {
   createTenSlideFullSequenceBenchmarkProject,
 } from '@/lib/tactical/benchmark-presets';
 import { clearActiveProjectFromDb } from '@/lib/tactical/tactical-storage';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 
 interface PitchSectionProps {
   onImportClick: () => void;

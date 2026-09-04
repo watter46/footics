@@ -40,7 +40,7 @@ const PRESET_RATIOS: { ratio: XMediaRatio; label: string }[] = [
 
 export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
   stageSize,
-  pitchRect,
+  pitchRect: _pitchRect,
 }: BoundaryBoxHudProps) {
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
@@ -80,24 +80,6 @@ export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
     return null;
   }
 
-  // Pixel coordinates relative to stage container
-  const baseRect =
-    box.fitTarget === 'canvas'
-      ? { x: 0, y: 0, width: stageSize.width, height: stageSize.height }
-      : (pitchRect ?? {
-          x: 0,
-          y: 0,
-          width: stageSize.width,
-          height: stageSize.height,
-        });
-  const pxX = baseRect.x + (box.x / 100) * baseRect.width;
-  const pxY = baseRect.y + (box.y / 100) * baseRect.height;
-  const pxW = (box.width / 100) * baseRect.width;
-
-  // Position HUD centered above the top edge of the box (or inside if near top edge)
-  const top = pxY > 36 ? pxY - 34 : pxY + 8;
-  const left = Math.max(120, Math.min(stageSize.width - 120, pxX + pxW / 2));
-
   const handleApplyRatio = (ratio: XMediaRatio) => {
     const newBox = createXBoundaryBox(ratio, canvasAspect);
     setBoundaryBox(activeSlideId, newBox);
@@ -114,11 +96,7 @@ export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
   return (
     <aside
       aria-label="Boundary Box Ratio HUD"
-      className="absolute z-40 pointer-events-auto flex items-center gap-1.5 px-2 py-1 rounded-lg bg-neutral-900/90 backdrop-blur-md border border-white/20 shadow-xl select-none -translate-x-1/2 transition-[top,left] duration-75 text-xs text-white"
-      style={{
-        top: `${Math.round(top)}px`,
-        left: `${Math.round(left)}px`,
-      }}
+      className="absolute top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-900/90 backdrop-blur-md border border-white/20 shadow-xl select-none text-xs text-white"
     >
       <div className="flex items-center gap-1 text-sky-400 font-medium shrink-0">
         <Crop size={13} />

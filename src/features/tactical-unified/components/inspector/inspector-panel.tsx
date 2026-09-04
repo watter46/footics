@@ -16,13 +16,13 @@ import type { Player } from '@/lib/types/tactical-unified';
 import { ArrowInspector } from './arrow-inspector';
 import { BallInspector } from './ball-inspector';
 import { InspectorHeader } from './inspector-shared-controls';
+import { MarkerConnectorSection } from './marker-connector-section';
+import { MarkerSpotlightSection } from './marker-spotlight-section';
+import { MarkerVisionSection } from './marker-vision-section';
 import { MultiPlayerInspector, PlayerInspector } from './player-inspector';
 import { SlideSettingsInspector } from './slide-inspector';
 import { TextInspector } from './text-inspector';
 import { ZoneInspector } from './zone-inspector';
-import { MarkerVisionSection } from './marker-vision-section';
-import { MarkerConnectorSection } from './marker-connector-section';
-import { MarkerSpotlightSection } from './marker-spotlight-section';
 
 export function InspectorPanel() {
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);

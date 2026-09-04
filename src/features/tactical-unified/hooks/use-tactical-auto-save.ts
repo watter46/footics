@@ -6,11 +6,11 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   loadActiveProjectFromDb,
   saveActiveProjectToDb,
 } from '@/lib/tactical/tactical-storage';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 
 const AUTO_SAVE_DEBOUNCE_MS = 800;
 

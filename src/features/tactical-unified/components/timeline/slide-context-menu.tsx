@@ -69,7 +69,10 @@ export function SlideContextMenu({
     >
       <button
         type="button"
-        onClick={() => { onClose(); onDuplicate(slideId); }}
+        onClick={() => {
+          onClose();
+          onDuplicate(slideId);
+        }}
         className="flex items-center gap-2 w-full px-3 py-1.5 text-left hover:bg-white/10 hover:text-white cursor-pointer"
       >
         <Copy size={13} className="text-purple-400" />
@@ -79,7 +82,10 @@ export function SlideContextMenu({
       {canMoveLeft && (
         <button
           type="button"
-          onClick={() => { onClose(); onMoveLeft(); }}
+          onClick={() => {
+            onClose();
+            onMoveLeft();
+          }}
           className="flex items-center gap-2 w-full px-3 py-1.5 text-left hover:bg-white/10 hover:text-white cursor-pointer"
         >
           <ArrowLeft size={13} className="text-blue-400" />
@@ -90,7 +96,10 @@ export function SlideContextMenu({
       {canMoveRight && (
         <button
           type="button"
-          onClick={() => { onClose(); onMoveRight(); }}
+          onClick={() => {
+            onClose();
+            onMoveRight();
+          }}
           className="flex items-center gap-2 w-full px-3 py-1.5 text-left hover:bg-white/10 hover:text-white cursor-pointer"
         >
           <ArrowRight size={13} className="text-blue-400" />
@@ -103,7 +112,10 @@ export function SlideContextMenu({
           <div className="h-px bg-white/10 my-1" />
           <button
             type="button"
-            onClick={() => { onClose(); onDelete(slideId); }}
+            onClick={() => {
+              onClose();
+              onDelete(slideId);
+            }}
             className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-red-400 hover:bg-red-500/20 hover:text-red-300 cursor-pointer"
           >
             <Trash2 size={13} />

@@ -58,7 +58,9 @@ export function updateZoneNodes(
     if (!zoneShape) continue;
 
     const opacity = zState.opacity ?? 0.25;
-    const alphaHex = Math.round(opacity * 255).toString(16).padStart(2, '0');
+    const alphaHex = Math.round(opacity * 255)
+      .toString(16)
+      .padStart(2, '0');
     const fillRGBA = (zState.color || '#22c55e') + alphaHex;
     const strokeColor = zState.strokeColor ?? zState.color ?? '#22c55e';
 

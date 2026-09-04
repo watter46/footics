@@ -34,7 +34,10 @@ export function SlideCardActions({
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onMoveLeft(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveLeft();
+          }}
           className="flex items-center justify-center w-4 h-4 rounded text-white/60 hover:text-white hover:bg-white/15 cursor-pointer"
           title="Move left"
           aria-label="Move left"
@@ -47,7 +50,10 @@ export function SlideCardActions({
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onMoveRight(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveRight();
+          }}
           className="flex items-center justify-center w-4 h-4 rounded text-white/60 hover:text-white hover:bg-white/15 cursor-pointer"
           title="Move right"
           aria-label="Move right"
@@ -59,7 +65,10 @@ export function SlideCardActions({
       <button
         type="button"
         onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); onDuplicate(slideId); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDuplicate(slideId);
+        }}
         className="flex items-center justify-center w-4 h-4 rounded text-white/60 hover:text-purple-300 hover:bg-purple-500/20 cursor-pointer"
         title="Duplicate scene"
         aria-label="Duplicate scene"
@@ -71,7 +80,10 @@ export function SlideCardActions({
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onDelete(slideId); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(slideId);
+          }}
           className="flex items-center justify-center w-4 h-4 rounded text-white/60 hover:text-red-400 hover:bg-red-500/20 cursor-pointer"
           title="Delete scene"
           aria-label="Delete scene"

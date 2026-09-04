@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  selectCanRedo,
+  selectCanUndo,
+  useTacticalUnifiedStore,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
   type ArrowAnnotation,
   createDefaultPlayer,
   type TextAnnotation,
   type ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
-import {
-  selectCanRedo,
-  selectCanUndo,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
 
 describe('Tactical Unified Store - Undo / Redo History Stack', () => {
   beforeEach(() => {

@@ -1,16 +1,16 @@
+import type Konva from 'konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  calculatePitchTransform,
-  applyPitchTransformToGroups,
-} from '@/features/tactical-unified/components/canvas/canvas-pitch-transform-helper';
-import {
-  screenToPitch,
   getPitchAndNormPos,
   normToPx,
   pxToNorm,
+  screenToPitch,
 } from '@/features/tactical-unified/components/canvas/canvas-coordinates';
+import {
+  applyPitchTransformToGroups,
+  calculatePitchTransform,
+} from '@/features/tactical-unified/components/canvas/canvas-pitch-transform-helper';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import type Konva from 'konva';
 
 describe('L3-Tactical-028: Pitch Tilt (2.5D) Transform & Coordinate Mapping', () => {
   const pitchRect = { x: 50, y: 30, width: 800, height: 500 };
@@ -105,7 +105,13 @@ describe('L3-Tactical-028: Pitch Tilt (2.5D) Transform & Coordinate Mapping', ()
     const zoom = 1.4;
     const tilt = 30;
 
-    const transform = calculatePitchTransform(pitchRect, panX, panY, zoom, tilt);
+    const transform = calculatePitchTransform(
+      pitchRect,
+      panX,
+      panY,
+      zoom,
+      tilt,
+    );
 
     // Pick a point on the pitch (e.g. at pitch center: 400, 250)
     const pitchInternalX = 400;

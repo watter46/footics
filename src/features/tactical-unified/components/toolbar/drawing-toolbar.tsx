@@ -32,18 +32,18 @@ export function DrawingToolbar() {
     <div
       onPointerDown={handlePointerDown}
       style={{
-        transform: `translate(calc(-50% + ${position.x}px), ${position.y}px)`,
+        transform: `translate(${position.x}px, calc(-50% + ${position.y}px))`,
       }}
-      className="absolute bottom-4 left-1/2 z-40 flex items-center gap-1 px-2 py-1.5 rounded-xl bg-black/85 backdrop-blur-md border border-white/15 shadow-2xl select-none cursor-grab active:cursor-grabbing touch-none"
+      className="absolute right-3 top-1/2 z-40 max-h-[calc(100%-1.5rem)] overflow-y-auto no-scrollbar flex flex-col items-center gap-1 p-1.5 rounded-xl bg-black/85 backdrop-blur-md border border-white/15 shadow-2xl select-none cursor-grab active:cursor-grabbing touch-none"
     >
       <div
-        className="text-white/40 hover:text-white/80 p-0.5 cursor-grab active:cursor-grabbing"
+        className="text-white/40 hover:text-white/80 p-0.5 cursor-grab active:cursor-grabbing shrink-0"
         title="Drag to reposition toolbar"
       >
-        <GripVertical size={14} />
+        <GripVertical size={14} className="rotate-90" />
       </div>
 
-      {/* ── Primary Drawing Tools ── */}
+      {/* ── Primary Drawing Tools (Single Column) ── */}
       {PRIMARY_TOOLS.map(({ tool, icon: Icon, label }) => (
         <button
           type="button"
@@ -52,18 +52,18 @@ export function DrawingToolbar() {
           title={label}
           aria-label={label}
           className={[
-            'p-2 rounded-lg transition-all cursor-pointer',
+            'p-1.5 rounded-lg transition-all cursor-pointer shrink-0',
             activeTool === tool
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-1 ring-blue-400'
               : 'text-white/60 hover:text-white hover:bg-white/10',
           ].join(' ')}
         >
-          <Icon size={15} />
+          <Icon size={16} />
         </button>
       ))}
 
       {/* ── Divider: Continuous Lock & Eraser ── */}
-      <div className="w-px h-5 bg-white/20 mx-1" />
+      <div className="h-px w-4 bg-white/20 my-0.5 shrink-0" />
 
       {/* Continuous Drawing Lock */}
       <button
@@ -76,13 +76,13 @@ export function DrawingToolbar() {
         }
         aria-label="Continuous Draw Lock"
         className={[
-          'p-2 rounded-lg transition-all cursor-pointer flex items-center gap-1',
+          'p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center shrink-0',
           continuousDrawing
             ? 'bg-amber-500 text-black font-bold shadow-md shadow-amber-500/30 ring-1 ring-amber-300'
             : 'text-white/60 hover:text-white hover:bg-white/10',
         ].join(' ')}
       >
-        {continuousDrawing ? <Lock size={15} /> : <Unlock size={15} />}
+        {continuousDrawing ? <Lock size={16} /> : <Unlock size={16} />}
       </button>
 
       {/* Eraser Mode */}
@@ -92,17 +92,17 @@ export function DrawingToolbar() {
         title="Eraser Mode (Drag to erase objects) (E)"
         aria-label="Eraser Mode"
         className={[
-          'p-2 rounded-lg transition-all cursor-pointer',
+          'p-1.5 rounded-lg transition-all cursor-pointer shrink-0',
           activeTool === 'eraser'
             ? 'bg-red-600 text-white shadow-md shadow-red-500/30 ring-1 ring-red-400'
             : 'text-white/60 hover:text-white hover:bg-white/10',
         ].join(' ')}
       >
-        <Eraser size={15} />
+        <Eraser size={16} />
       </button>
 
       {/* ── Divider: Reset ── */}
-      <div className="w-px h-5 bg-white/20 mx-1" />
+      <div className="h-px w-4 bg-white/20 my-0.5 shrink-0" />
 
       {/* Reset all objects */}
       <button
@@ -118,13 +118,13 @@ export function DrawingToolbar() {
         }}
         title="Reset all slide objects"
         aria-label="Reset all slide objects"
-        className="p-2 rounded-lg text-white/60 hover:text-red-400 hover:bg-white/10 transition-all cursor-pointer"
+        className="p-1.5 rounded-lg text-white/60 hover:text-red-400 hover:bg-white/10 transition-all cursor-pointer shrink-0"
       >
-        <RotateCcw size={15} />
+        <RotateCcw size={16} />
       </button>
 
       {/* ── Divider: Pitch Lock ── */}
-      <div className="w-px h-5 bg-white/20 mx-1" />
+      <div className="h-px w-4 bg-white/20 my-0.5 shrink-0" />
 
       {/* Pitch Lock toggle */}
       <button
@@ -137,13 +137,13 @@ export function DrawingToolbar() {
         }
         aria-label="Pitch Lock"
         className={[
-          'p-2 rounded-lg transition-all cursor-pointer',
+          'p-1.5 rounded-lg transition-all cursor-pointer shrink-0',
           isPitchLocked
             ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/30 ring-1 ring-blue-300'
             : 'text-white/60 hover:text-white hover:bg-white/10',
         ].join(' ')}
       >
-        {isPitchLocked ? <Lock size={15} /> : <Unlock size={15} />}
+        {isPitchLocked ? <Lock size={16} /> : <Unlock size={16} />}
       </button>
     </div>
   );

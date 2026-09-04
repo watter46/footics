@@ -50,13 +50,18 @@ export function SlideCard({
     isDragging,
   } = useSortable({ id: slide.id });
 
-  const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [contextMenuPos, setContextMenuPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   const durationSec = (slide.transitionDurationMs ?? 1000) / 1000;
   const pauseSec = (slide.pauseMs ?? 500) / 1000;
   const totalSceneSec = durationSec + pauseSec;
   const annotationCount =
-    (slide.arrows?.length ?? 0) + (slide.zones?.length ?? 0) + (slide.texts?.length ?? 0);
+    (slide.arrows?.length ?? 0) +
+    (slide.zones?.length ?? 0) +
+    (slide.texts?.length ?? 0);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -94,7 +99,9 @@ export function SlideCard({
         aria-label={`Scene ${index + 1}`}
       >
         <div className="flex items-center justify-between w-full">
-          <span className={`text-[11px] font-bold font-mono ${isActive ? 'text-blue-300' : 'text-white/90'}`}>
+          <span
+            className={`text-[11px] font-bold font-mono ${isActive ? 'text-blue-300' : 'text-white/90'}`}
+          >
             {index + 1}
           </span>
           <span className="text-[9px] text-white/50 truncate max-w-[50px]">
@@ -108,7 +115,10 @@ export function SlideCard({
             {totalSceneSec.toFixed(1)}s
           </span>
           {annotationCount > 0 && (
-            <span className="flex items-center gap-0.5 text-blue-400/80" title={`${annotationCount} drawings`}>
+            <span
+              className="flex items-center gap-0.5 text-blue-400/80"
+              title={`${annotationCount} drawings`}
+            >
               <Layers size={8} />
               {annotationCount}
             </span>
@@ -161,12 +171,16 @@ export function SlideCardOverlay({
   const pauseSec = (slide.pauseMs ?? 500) / 1000;
   const totalSceneSec = durationSec + pauseSec;
   const annotationCount =
-    (slide.arrows?.length ?? 0) + (slide.zones?.length ?? 0) + (slide.texts?.length ?? 0);
+    (slide.arrows?.length ?? 0) +
+    (slide.zones?.length ?? 0) +
+    (slide.texts?.length ?? 0);
 
   return (
     <div className="flex flex-col justify-between w-24 h-12 px-2 py-1.5 rounded-lg border border-blue-500 bg-[#161b26] text-white shadow-2xl shadow-blue-500/30 ring-2 ring-blue-500 scale-105 cursor-grabbing relative overflow-hidden select-none">
       <div className="flex items-center justify-between w-full">
-        <span className="text-[11px] font-bold font-mono text-blue-300">{index + 1}</span>
+        <span className="text-[11px] font-bold font-mono text-blue-300">
+          {index + 1}
+        </span>
         <span className="text-[9px] text-white/50 truncate max-w-[50px]">
           {slide.label ? slide.label : `Scene ${index + 1}`}
         </span>
@@ -177,7 +191,10 @@ export function SlideCardOverlay({
           {totalSceneSec.toFixed(1)}s
         </span>
         {annotationCount > 0 && (
-          <span className="flex items-center gap-0.5 text-blue-400/80" title={`${annotationCount} drawings`}>
+          <span
+            className="flex items-center gap-0.5 text-blue-400/80"
+            title={`${annotationCount} drawings`}
+          >
             <Layers size={8} />
             {annotationCount}
           </span>

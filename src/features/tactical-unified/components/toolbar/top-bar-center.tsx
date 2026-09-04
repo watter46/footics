@@ -1,8 +1,8 @@
 'use client';
 
 import { LayoutTemplate } from 'lucide-react';
-import type { AspectRatio } from '@/lib/types/tactical-unified';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import type { AspectRatio } from '@/lib/types/tactical-unified';
 
 const ASPECT_RATIO_OPTIONS: {
   ratio: AspectRatio;

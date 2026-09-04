@@ -2,11 +2,11 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/canvas-registry';
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   createDefaultProject,
   createDefaultSlide,
 } from '@/lib/types/tactical-unified';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 
 describe('useTacticalAnimation hook', () => {
   beforeEach(() => {

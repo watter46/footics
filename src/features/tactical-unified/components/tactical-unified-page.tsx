@@ -13,12 +13,12 @@
 import dynamic from 'next/dynamic';
 import type React from 'react';
 import { useCallback, useEffect } from 'react';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { ProjectManagerModal } from './dialogs/project-manager-modal';
-import { ExportModal } from './export/export-modal';
 import { useKeyboardShortcuts } from '@/features/tactical-unified/hooks/use-keyboard-shortcuts';
 import { useTacticalAutoSave } from '@/features/tactical-unified/hooks/use-tactical-auto-save';
 import { useTacticalCaptureBridge } from '@/features/tactical-unified/hooks/use-tactical-capture-bridge';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { ProjectManagerModal } from './dialogs/project-manager-modal';
+import { ExportModal } from './export/export-modal';
 import { RightPanel } from './right-panel/right-panel';
 import { TimelineBar } from './timeline/timeline-bar';
 import { TopBar } from './toolbar/top-bar';

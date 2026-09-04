@@ -6,8 +6,8 @@
  */
 
 import { X } from 'lucide-react';
-import type { Player } from '@/lib/types/tactical-unified';
 import { getPositionBadgeClass } from '@/lib/tactical/player-formatting';
+import type { Player } from '@/lib/types/tactical-unified';
 
 interface BenchSwapSelectorProps {
   benchPlayer: Player;
@@ -28,8 +28,8 @@ export function BenchSwapSelector({
     <div className="p-2 rounded-lg bg-[#1c1c1c] border border-amber-500/40 shadow-lg space-y-1.5">
       <div className="flex items-center justify-between text-[10px] text-white/70 font-semibold border-b border-white/10 pb-1">
         <span>
-          Swap #{benchPlayer.shirtNo || '—'}{' '}
-          {benchPlayer.name || 'Player'} with Pitch Player:
+          Swap #{benchPlayer.shirtNo || '—'} {benchPlayer.name || 'Player'} with
+          Pitch Player:
         </span>
         <button
           type="button"

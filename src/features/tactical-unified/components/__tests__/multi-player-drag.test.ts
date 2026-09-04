@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 
 describe('AAWU 5-5-A: Stabilized Multi-Player Drag & Selection UX', () => {
   beforeEach(() => {

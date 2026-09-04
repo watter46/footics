@@ -6,7 +6,7 @@
  */
 
 export function StraightLineIcon({
-  size = 15,
+  size = 16,
   className,
 }: {
   size?: number | string;
@@ -30,7 +30,7 @@ export function StraightLineIcon({
 }
 
 export function RouteLineIcon({
-  size = 15,
+  size = 16,
   className,
 }: {
   size?: number | string;
@@ -70,7 +70,7 @@ export function RouteLineIcon({
 }
 
 export function DashedArrowIcon({
-  size = 15,
+  size = 16,
   className,
 }: {
   size?: number | string;
@@ -95,7 +95,7 @@ export function DashedArrowIcon({
 }
 
 export function WavyArrowIcon({
-  size = 15,
+  size = 16,
   className,
 }: {
   size?: number | string;
@@ -120,7 +120,7 @@ export function WavyArrowIcon({
 }
 
 export function CustomPolygonZoneIcon({
-  size = 15,
+  size = 16,
   className,
 }: {
   size?: number | string;
@@ -159,7 +159,7 @@ export function CustomPolygonZoneIcon({
 }
 
 export function RingMarkerIcon({
-  size = 15,
+  size = 16,
   className,
 }: {
   size?: number | string;

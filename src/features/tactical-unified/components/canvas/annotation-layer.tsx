@@ -9,8 +9,8 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { Group } from 'react-konva';
-import type { Slide } from '@/lib/types/tactical-unified';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import type { Slide } from '@/lib/types/tactical-unified';
 import { ArrowObject } from './annotations/arrow-object';
 import { TextObject } from './annotations/text-object';
 import { getWavyPoints } from './annotations/wavy-arrow-math';

@@ -8,6 +8,8 @@
 
 import type Konva from 'konva';
 import { useCallback, useRef, useState } from 'react';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/canvas-registry';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   type BoundaryCropInfo,
   exportTacticalVideo,
@@ -17,8 +19,6 @@ import type {
   ExportProgress,
   ExportTarget,
 } from '@/lib/types/tactical-unified';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/components/canvas/canvas-registry';
 
 interface UseKonvaVideoExportOptions {
   stageRef: React.RefObject<Konva.Stage | null>;

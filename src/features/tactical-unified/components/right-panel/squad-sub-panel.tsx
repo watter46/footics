@@ -32,9 +32,17 @@ export function SquadSubPanel() {
   const removePlayer = useTacticalUnifiedStore((s) => s.removePlayer);
 
   const [activeTeam, setActiveTeam] = useState<'home' | 'away'>('home');
-  const [activeSwapPlayerId, setActiveSwapPlayerId] = useState<string | null>(null);
-  const [openBenchSections, setOpenBenchSections] = useState<Record<PositionGroup, boolean>>({
-    GK: true, DF: true, MF: true, FW: true, OTHER: true,
+  const [activeSwapPlayerId, setActiveSwapPlayerId] = useState<string | null>(
+    null,
+  );
+  const [openBenchSections, setOpenBenchSections] = useState<
+    Record<PositionGroup, boolean>
+  >({
+    GK: true,
+    DF: true,
+    MF: true,
+    FW: true,
+    OTHER: true,
   });
   const [isAddingSub, setIsAddingSub] = useState(false);
   const [newSubName, setNewSubName] = useState('');
@@ -43,8 +51,12 @@ export function SquadSubPanel() {
 
   const teamPlayers = useMemo(() => {
     if (!activeSlide) return { pitch: [], bench: [] };
-    const pitch = activeSlide.players.filter((p) => p.team === activeTeam && p.area === 'pitch');
-    const bench = activeSlide.players.filter((p) => p.team === activeTeam && p.area === 'bench');
+    const pitch = activeSlide.players.filter(
+      (p) => p.team === activeTeam && p.area === 'pitch',
+    );
+    const bench = activeSlide.players.filter(
+      (p) => p.team === activeTeam && p.area === 'bench',
+    );
     return { pitch, bench };
   }, [activeSlide, activeTeam]);
 
@@ -53,12 +65,22 @@ export function SquadSubPanel() {
     [teamPlayers.bench],
   );
 
-  const teamColor = activeTeam === 'home' ? project.homeColor.primary : project.awayColor.primary;
+  const teamColor =
+    activeTeam === 'home'
+      ? project.homeColor.primary
+      : project.awayColor.primary;
 
   const handleAddSub = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubName.trim() && !newSubNo.trim()) return;
-    addCustomPlayer(activeSlideId, activeTeam, newSubName.trim() || undefined, newSubNo.trim() || undefined, newSubPos.trim() || undefined, 'bench');
+    addCustomPlayer(
+      activeSlideId,
+      activeTeam,
+      newSubName.trim() || undefined,
+      newSubNo.trim() || undefined,
+      newSubPos.trim() || undefined,
+      'bench',
+    );
     setNewSubName('');
     setNewSubNo('');
     setIsAddingSub(false);
@@ -99,9 +121,14 @@ export function SquadSubPanel() {
                   : 'text-white/60 hover:text-white hover:bg-white/5'
               }`}
             >
-              <span className="w-2 h-2 rounded-full border border-white/30 shrink-0" style={{ backgroundColor: project.homeColor.primary }} />
+              <span
+                className="w-2 h-2 rounded-full border border-white/30 shrink-0"
+                style={{ backgroundColor: project.homeColor.primary }}
+              />
               <span>HOME</span>
-              <span className="text-[10px] opacity-70">({teamPlayers.bench.length} Sub)</span>
+              <span className="text-[10px] opacity-70">
+                ({teamPlayers.bench.length} Sub)
+              </span>
             </button>
 
             <button
@@ -113,9 +140,14 @@ export function SquadSubPanel() {
                   : 'text-white/60 hover:text-white hover:bg-white/5'
               }`}
             >
-              <span className="w-2 h-2 rounded-full border border-white/30 shrink-0" style={{ backgroundColor: project.awayColor.primary }} />
+              <span
+                className="w-2 h-2 rounded-full border border-white/30 shrink-0"
+                style={{ backgroundColor: project.awayColor.primary }}
+              />
               <span>AWAY</span>
-              <span className="text-[10px] opacity-70">({teamPlayers.bench.length} Sub)</span>
+              <span className="text-[10px] opacity-70">
+                ({teamPlayers.bench.length} Sub)
+              </span>
             </button>
           </div>
         </div>
@@ -130,13 +162,39 @@ export function SquadSubPanel() {
 
           {/* New Sub Player Form */}
           {isAddingSub && (
-            <form onSubmit={handleAddSub} className="p-2.5 rounded-lg bg-black/40 border border-white/10 space-y-2">
+            <form
+              onSubmit={handleAddSub}
+              className="p-2.5 rounded-lg bg-black/40 border border-white/10 space-y-2"
+            >
               <div className="grid grid-cols-3 gap-1.5">
-                <input type="text" placeholder="No." value={newSubNo} onChange={(e) => setNewSubNo(e.target.value)} className="px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50" />
-                <input type="text" placeholder="Pos" value={newSubPos} onChange={(e) => setNewSubPos(e.target.value)} className="px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50" />
-                <button type="submit" className="px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold cursor-pointer shadow-sm transition-colors">Add</button>
+                <input
+                  type="text"
+                  placeholder="No."
+                  value={newSubNo}
+                  onChange={(e) => setNewSubNo(e.target.value)}
+                  className="px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+                />
+                <input
+                  type="text"
+                  placeholder="Pos"
+                  value={newSubPos}
+                  onChange={(e) => setNewSubPos(e.target.value)}
+                  className="px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+                />
+                <button
+                  type="submit"
+                  className="px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold cursor-pointer shadow-sm transition-colors"
+                >
+                  Add
+                </button>
               </div>
-              <input type="text" placeholder="Player Name" value={newSubName} onChange={(e) => setNewSubName(e.target.value)} className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50" />
+              <input
+                type="text"
+                placeholder="Player Name"
+                value={newSubName}
+                onChange={(e) => setNewSubName(e.target.value)}
+                className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+              />
             </form>
           )}
 
@@ -147,26 +205,45 @@ export function SquadSubPanel() {
             </div>
           ) : (
             <div className="space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar pr-0.5">
-              {POSITION_GROUPS.filter((grp) => grp !== 'OTHER' || benchGroups.OTHER.length > 0).map((grp) => {
+              {POSITION_GROUPS.filter(
+                (grp) => grp !== 'OTHER' || benchGroups.OTHER.length > 0,
+              ).map((grp) => {
                 const groupPlayers = benchGroups[grp];
                 const isOpen = openBenchSections[grp];
                 return (
-                  <div key={`bench-grp-${grp}`} className="rounded-lg bg-black/20 border border-white/5 overflow-hidden">
+                  <div
+                    key={`bench-grp-${grp}`}
+                    className="rounded-lg bg-black/20 border border-white/5 overflow-hidden"
+                  >
                     {/* Group Accordion Header */}
                     <button
                       type="button"
-                      onClick={() => setOpenBenchSections((prev) => ({ ...prev, [grp]: !prev[grp] }))}
+                      onClick={() =>
+                        setOpenBenchSections((prev) => ({
+                          ...prev,
+                          [grp]: !prev[grp],
+                        }))
+                      }
                       className="w-full flex items-center justify-between px-2.5 py-1.5 bg-white/[0.03] hover:bg-white/[0.06] text-left transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className={`text-[9px] px-1 py-0.2 rounded border font-mono font-semibold ${getPositionBadgeClass(grp)}`}>
+                        <span
+                          className={`text-[9px] px-1 py-0.2 rounded border font-mono font-semibold ${getPositionBadgeClass(grp)}`}
+                        >
                           {grp}
                         </span>
-                        <span className="text-[10px] font-medium text-white/70">{POSITION_GROUP_LABELS[grp]}</span>
+                        <span className="text-[10px] font-medium text-white/70">
+                          {POSITION_GROUP_LABELS[grp]}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] text-white/40 bg-white/5 px-1.5 py-0.2 rounded-full font-mono">{groupPlayers.length}</span>
-                        <ChevronDown size={11} className={`text-white/40 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                        <span className="text-[9px] text-white/40 bg-white/5 px-1.5 py-0.2 rounded-full font-mono">
+                          {groupPlayers.length}
+                        </span>
+                        <ChevronDown
+                          size={11}
+                          className={`text-white/40 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                        />
                       </div>
                     </button>
 
@@ -186,9 +263,17 @@ export function SquadSubPanel() {
                               pitchPlayers={teamPlayers.pitch}
                               teamColor={teamColor}
                               isSwapActive={activeSwapPlayerId === player.id}
-                              onDeploy={(id) => movePlayerToPitch(activeSlideId, id)}
-                              onToggleSwap={(id) => setActiveSwapPlayerId((cur) => cur === id ? null : id)}
-                              onSwap={(benchId, pitchId) => swapPlayers(activeSlideId, benchId, pitchId)}
+                              onDeploy={(id) =>
+                                movePlayerToPitch(activeSlideId, id)
+                              }
+                              onToggleSwap={(id) =>
+                                setActiveSwapPlayerId((cur) =>
+                                  cur === id ? null : id,
+                                )
+                              }
+                              onSwap={(benchId, pitchId) =>
+                                swapPlayers(activeSlideId, benchId, pitchId)
+                              }
                               onRemove={(id) => removePlayer(activeSlideId, id)}
                               onCloseSwap={() => setActiveSwapPlayerId(null)}
                             />

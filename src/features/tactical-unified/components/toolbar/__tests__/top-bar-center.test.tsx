@@ -17,10 +17,18 @@ describe('TopBarCenter aspect ratio selector', () => {
     });
     expect(ratioGroup).toBeDefined();
 
-    expect(screen.getByRole('button', { name: 'Aspect ratio 16:9' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Aspect ratio 9:16' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Aspect ratio 4:5' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Aspect ratio 1:1' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Aspect ratio 16:9' }),
+    ).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Aspect ratio 9:16' }),
+    ).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Aspect ratio 4:5' }),
+    ).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Aspect ratio 1:1' }),
+    ).toBeDefined();
   });
 
   it('defaults to 16:9 as active and allows switching to 9:16, 4:5, 1:1', () => {

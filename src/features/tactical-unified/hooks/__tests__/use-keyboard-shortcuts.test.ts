@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { useKeyboardShortcuts } from '../use-keyboard-shortcuts';
 
 describe('useKeyboardShortcuts', () => {

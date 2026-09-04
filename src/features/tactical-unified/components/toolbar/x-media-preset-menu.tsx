@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   ASPECT_RATIOS,
   type AspectRatio,
@@ -28,7 +29,6 @@ import {
   X_MEDIA_PRESETS,
   type XMediaPresetKey,
 } from '@/lib/types/tactical-unified';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 
 interface PresetItem {
   id: XMediaPresetKey | 'pitch_fit';

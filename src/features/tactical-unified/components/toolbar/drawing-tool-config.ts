@@ -3,8 +3,8 @@
  * Static tool list definition for DrawingToolbar
  */
 
-import type React from 'react';
 import { MousePointer, MoveRight, Square, Type } from 'lucide-react';
+import type React from 'react';
 import type { DrawingTool } from '@/lib/types/tactical-unified';
 import {
   CustomPolygonZoneIcon,
