@@ -42,12 +42,24 @@ export function MiniColorPicker({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         title={title}
-        className={`w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-110 shadow-xs flex items-center justify-center shrink-0 ${
+        className={`w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-110 shadow-xs flex items-center justify-center shrink-0 overflow-hidden ${
           isRing ? 'border-2 border-white/80' : 'border border-white/30'
         }`}
-        style={{ backgroundColor: normalizedValue }}
+        style={{
+          colorScheme: 'only light',
+          backgroundImage: `linear-gradient(${normalizedValue}, ${normalizedValue})`,
+        }}
       >
-        {isRing && <div className="w-1.5 h-1.5 rounded-full bg-neutral-900" />}
+        <svg
+          className="w-full h-full block pointer-events-none"
+          viewBox="0 0 20 20"
+          style={{ colorScheme: 'only light' }}
+        >
+          <rect width="20" height="20" fill={normalizedValue} />
+        </svg>
+        {isRing && (
+          <div className="absolute w-1.5 h-1.5 rounded-full bg-neutral-900 pointer-events-none" />
+        )}
       </button>
 
       {isOpen && (
@@ -59,33 +71,62 @@ export function MiniColorPicker({
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
+          style={{ colorScheme: 'only light' }}
         >
           <div className="grid grid-cols-5 gap-1">
-            {COLOR_PALETTE.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => {
-                  onChange(c);
-                  setIsOpen(false);
-                }}
-                className={`w-6 h-6 rounded-md border p-0.5 cursor-pointer transition-transform hover:scale-105 flex items-center justify-center ${
-                  normalizedValue.toLowerCase() === c.toLowerCase()
-                    ? 'ring-2 ring-sky-400 border-white'
-                    : 'border-white/10 hover:border-white/30'
-                }`}
-                style={{ backgroundColor: c }}
-                title={c}
-              />
-            ))}
+            {COLOR_PALETTE.map((c) => {
+              const isSelected =
+                normalizedValue.toLowerCase() === c.toLowerCase();
+              const isWhite = c.toLowerCase() === '#ffffff';
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => {
+                    onChange(c);
+                    setIsOpen(false);
+                  }}
+                  className={`w-6 h-6 rounded-md border p-0.5 cursor-pointer transition-transform hover:scale-105 flex items-center justify-center relative overflow-hidden ${
+                    isSelected
+                      ? 'ring-2 ring-sky-400 border-white scale-105 shadow-md z-10'
+                      : isWhite
+                        ? 'border-white/60 hover:border-white'
+                        : 'border-white/10 hover:border-white/30'
+                  }`}
+                  style={{
+                    colorScheme: 'only light',
+                    backgroundImage: `linear-gradient(${c}, ${c})`,
+                  }}
+                  title={isWhite ? 'White (#ffffff)' : c}
+                >
+                  <svg
+                    className="w-full h-full rounded-[3px] block pointer-events-none"
+                    viewBox="0 0 20 20"
+                    style={{ colorScheme: 'only light' }}
+                  >
+                    <rect width="20" height="20" rx="3" fill={c} />
+                  </svg>
+                </button>
+              );
+            })}
           </div>
           <div className="flex items-center justify-between pt-1 border-t border-white/10 px-0.5">
             <span className="text-[10px] text-white/50">カスタム</span>
             <label
               className="relative w-5 h-5 rounded border border-white/30 cursor-pointer overflow-hidden flex items-center justify-center"
-              style={{ backgroundColor: normalizedValue }}
+              style={{
+                colorScheme: 'only light',
+                backgroundImage: `linear-gradient(${normalizedValue}, ${normalizedValue})`,
+              }}
               title="カラーピッカー"
             >
+              <svg
+                className="w-full h-full block pointer-events-none"
+                viewBox="0 0 20 20"
+                style={{ colorScheme: 'only light' }}
+              >
+                <rect width="20" height="20" rx="2" fill={normalizedValue} />
+              </svg>
               <input
                 type="color"
                 value={normalizedValue}

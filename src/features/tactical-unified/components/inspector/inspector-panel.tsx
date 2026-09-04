@@ -20,6 +20,9 @@ import { MultiPlayerInspector, PlayerInspector } from './player-inspector';
 import { SlideSettingsInspector } from './slide-inspector';
 import { TextInspector } from './text-inspector';
 import { ZoneInspector } from './zone-inspector';
+import { MarkerVisionSection } from './marker-vision-section';
+import { MarkerConnectorSection } from './marker-connector-section';
+import { MarkerSpotlightSection } from './marker-spotlight-section';
 
 export function InspectorPanel() {
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
@@ -247,6 +250,66 @@ export function InspectorPanel() {
         <BallInspector slideId={activeSlideId} />
       </div>
     );
+  }
+
+  // ── Attached Elements (Vision Cone, Connect Line, Focus) ────────────────────────
+  if (
+    (effectiveSingle?.kind === 'vision-cone' ||
+      effectiveSingle?.kind === 'connect-line' ||
+      effectiveSingle?.kind === 'focus') &&
+    effectiveSingle.parentPlayerId &&
+    activeSlide
+  ) {
+    const player = activeSlide.players.find(
+      (p) => p.id === effectiveSingle.parentPlayerId,
+    );
+    if (player) {
+      return (
+        <div className="flex flex-col h-full">
+          <InspectorHeader
+            title={
+              effectiveSingle.kind === 'vision-cone'
+                ? 'Vision Cone'
+                : effectiveSingle.kind === 'connect-line'
+                  ? 'Connect Line'
+                  : 'Focus Spotlight'
+            }
+            onClose={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+            onDeselect={() => {
+              lastSelectedRef.current = null;
+              clearSelection();
+            }}
+          />
+          <div className="flex-1 overflow-y-auto p-3 space-y-3.5 text-slate-200 custom-scrollbar">
+            {effectiveSingle.kind === 'vision-cone' && (
+              <MarkerVisionSection
+                player={player}
+                slideId={activeSlideId}
+                updatePlayer={updatePlayer}
+              />
+            )}
+            {effectiveSingle.kind === 'connect-line' && (
+              <MarkerConnectorSection
+                player={player}
+                allPlayers={activeSlide.players}
+                slideId={activeSlideId}
+                updatePlayer={updatePlayer}
+              />
+            )}
+            {effectiveSingle.kind === 'focus' && (
+              <MarkerSpotlightSection
+                player={player}
+                slideId={activeSlideId}
+                updatePlayer={updatePlayer}
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
   }
 
   return (

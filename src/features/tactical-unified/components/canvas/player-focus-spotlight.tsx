@@ -14,6 +14,8 @@ export interface PlayerFocusSpotlightProps {
   focus: NonNullable<Player['focus']>;
   radius: number;
   spotlightGroupRef?: React.Ref<any>;
+  isSelected?: boolean;
+  onSelectOption?: () => void;
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
@@ -28,6 +30,8 @@ export function PlayerFocusSpotlight({
   focus,
   radius,
   spotlightGroupRef,
+  isSelected,
+  onSelectOption,
 }: PlayerFocusSpotlightProps) {
   if (!focus.enabled) return null;
 
@@ -65,7 +69,18 @@ export function PlayerFocusSpotlight({
   ];
 
   return (
-    <Group ref={spotlightGroupRef} listening={false}>
+    <Group
+      ref={spotlightGroupRef}
+      listening={true}
+      onClick={(e) => {
+        e.cancelBubble = true;
+        onSelectOption?.();
+      }}
+      onTap={(e) => {
+        e.cancelBubble = true;
+        onSelectOption?.();
+      }}
+    >
       <Group x={tx} y={ty} scale={{ x: spotlightScale, y: spotlightScale }}>
         {/* 光の柱（中央が透けるソフトグラデーションビーム） */}
         <Path
@@ -75,6 +90,8 @@ export function PlayerFocusSpotlight({
           fillLinearGradientEndPoint={{ x: 31.36, y: 100 }}
           fillLinearGradientColorStops={colorStops}
           perfectDrawEnabled={false}
+          stroke={isSelected ? '#38bdf8' : undefined}
+          strokeWidth={isSelected ? 1 / spotlightScale : 0}
         />
       </Group>
     </Group>

@@ -165,10 +165,16 @@ const BoundaryBoxFrame = React.memo(function BoundaryBoxFrame({
         height={pxH}
         stroke="#38bdf8"
         strokeWidth={1.5}
-        hitStrokeWidth={8}
+        hitStrokeWidth={10}
         dash={[6, 4]}
         listening={true}
         perfectDrawEnabled={false}
+        hitFunc={(context, shape) => {
+          context.beginPath();
+          context.rect(0, 0, shape.width(), shape.height());
+          context.closePath();
+          context.strokeShape(shape);
+        }}
         onMouseEnter={(e) => {
           const stage = e.target.getStage();
           if (stage) stage.container().style.cursor = 'move';

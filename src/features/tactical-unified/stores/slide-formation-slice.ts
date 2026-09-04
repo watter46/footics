@@ -1,7 +1,11 @@
 import type { StateCreator } from 'zustand';
 import type { FormationMode, FormationType } from '@/lib/data/formations';
 import type { FormationPreset, Player } from '@/lib/types/tactical-unified';
-import { createDefaultPlayer } from '@/lib/types/tactical-unified';
+import {
+  createDefaultPlayer,
+  isVerticalAspectRatio,
+  transformCoord,
+} from '@/lib/types/tactical-unified';
 import {
   computeSlideAfterFormation,
   computeSlideAfterSingleTeamFormation,
@@ -39,11 +43,21 @@ export const createSlideFormationSlice: StateCreator<
           : preset.team === 'away'
             ? s.project.awayColor.primary
             : '#6b7280';
-      const newPlayers: Player[] = preset.players.map((pp) => ({
-        ...createDefaultPlayer(preset.team, pp.x, pp.y, primaryColor),
-        shirtNo: pp.shirtNo,
-        position: pp.position,
-      }));
+      const targetSlide = s.project.slides.find((sl) => sl.id === slideId);
+      const aspect =
+        targetSlide?.aspectRatio ?? s.project.aspectRatio ?? '16:9';
+      const isVertical = isVerticalAspectRatio(aspect);
+      const newPlayers: Player[] = preset.players.map((pp) => {
+        const rawPos = { x: pp.x, y: pp.y };
+        const pos = isVertical
+          ? transformCoord(rawPos, '16:9', aspect)
+          : rawPos;
+        return {
+          ...createDefaultPlayer(preset.team, pos.x, pos.y, primaryColor),
+          shirtNo: pp.shirtNo,
+          position: pp.position,
+        };
+      });
       return {
         ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({

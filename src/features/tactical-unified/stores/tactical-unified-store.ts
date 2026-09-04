@@ -33,6 +33,7 @@ import {
   DEFAULT_BOUNDARY_BOX_FULL,
   DEFAULT_BOUNDARY_BOX_SCREENSHOT,
   getDefaultBoundaryBoxForAspect,
+  isVerticalAspectRatio,
   transformCoord,
   transformPoints,
   X_MEDIA_PRESETS,
@@ -561,17 +562,25 @@ export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
             ) {
               return false;
             }
-            const expectedPos = DEFAULT_442_HOME.find(
+            const expectedDef = DEFAULT_442_HOME.find(
               (def) => def.shirtNo === p.shirtNo,
             );
-            if (!expectedPos) return false;
-            const expectedX =
-              p.team === 'home' ? expectedPos.x : 100 - expectedPos.x;
-            const expectedY = expectedPos.y;
-            return (
-              Math.abs(p.x - expectedX) < 0.01 &&
-              Math.abs(p.y - expectedY) < 0.01
+            if (!expectedDef) return false;
+            const isVertical = isVerticalAspectRatio(
+              currentSlide.aspectRatio ?? s.project.aspectRatio,
             );
+            const rawPos =
+              p.team === 'home'
+                ? { x: expectedDef.x, y: expectedDef.y }
+                : { x: 100 - expectedDef.x, y: expectedDef.y };
+            const pos = isVertical
+              ? transformCoord(
+                  rawPos,
+                  '16:9',
+                  currentSlide.aspectRatio ?? s.project.aspectRatio,
+                )
+              : rawPos;
+            return Math.abs(p.x - pos.x) < 0.01 && Math.abs(p.y - pos.y) < 0.01;
           });
 
         const isCurrentSlideEdited = currentSlide && !isDefault442;

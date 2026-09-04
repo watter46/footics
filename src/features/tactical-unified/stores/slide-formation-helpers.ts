@@ -2,11 +2,16 @@ import type { FormationMode, FormationType } from '@/lib/data/formations';
 import { getFormationActualPos } from '@/lib/data/formations';
 import { FORMATION_POSITIONS } from '@/lib/data/formations-data';
 import type {
+  AspectRatio,
   Player,
   Slide,
   TacticalProject,
 } from '@/lib/types/tactical-unified';
-import { createDefaultPlayer } from '@/lib/types/tactical-unified';
+import {
+  createDefaultPlayer,
+  isVerticalAspectRatio,
+  transformCoord,
+} from '@/lib/types/tactical-unified';
 
 /**
  * 指定チームの選手プールをフォーメーション位置に合わせて再構成
@@ -17,15 +22,20 @@ export function buildTeamFormationPlayers(
   mode: FormationMode,
   existingPool: Player[],
   primaryColor: string,
+  aspectRatio: AspectRatio = '16:9',
 ): { pitchPlayers: Player[]; benchPlayers: Player[] } {
   const positions = FORMATION_POSITIONS[formationName];
   if (!positions) {
     return { pitchPlayers: [], benchPlayers: existingPool };
   }
 
+  const isVertical = isVerticalAspectRatio(aspectRatio);
   const pitchPlayers: Player[] = [];
   positions.forEach((pos, idx) => {
-    const actualPos = getFormationActualPos(pos, team, mode);
+    const rawPos = getFormationActualPos(pos, team, mode);
+    const actualPos = isVertical
+      ? transformCoord(rawPos, '16:9', aspectRatio)
+      : rawPos;
     let player = existingPool[idx];
     if (player) {
       player = {
@@ -82,12 +92,14 @@ export function computeSlideAfterFormation(
   const primaryColor =
     team === 'home' ? project.homeColor.primary : project.awayColor.primary;
 
+  const aspect = slide.aspectRatio ?? project.aspectRatio ?? '16:9';
   const { pitchPlayers, benchPlayers } = buildTeamFormationPlayers(
     team,
     formationName,
     mode,
     existingPool,
     primaryColor,
+    aspect,
   );
 
   return {
@@ -128,12 +140,14 @@ export function computeSlideAfterSingleTeamFormation(
   const primaryColor =
     team === 'home' ? project.homeColor.primary : project.awayColor.primary;
 
+  const aspect = slide.aspectRatio ?? project.aspectRatio ?? '16:9';
   const { pitchPlayers, benchPlayers } = buildTeamFormationPlayers(
     team,
     formationName,
     mode,
     existingPool,
     primaryColor,
+    aspect,
   );
 
   return {

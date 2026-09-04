@@ -203,47 +203,18 @@ export function PlayerInspector({
       <div className="p-3 rounded-xl bg-white/[0.04] border border-white/10 space-y-2.5">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold text-white uppercase tracking-wider">
-            {player.style.markerType === 'ring'
-              ? 'Ring Settings'
-              : 'Quick Settings'}
+            Quick Settings
           </span>
-          {/* マーカー形状切替 (2Dサークル / 3Dリング) */}
-          <div className="flex items-center bg-black/40 rounded-lg p-0.5 border border-white/10">
-            <button
-              type="button"
-              onClick={() => upStyle({ markerType: 'circle' })}
-              className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all cursor-pointer ${
-                (player.style.markerType ?? 'circle') === 'circle'
-                  ? 'bg-blue-600 text-white font-bold'
-                  : 'text-white/50 hover:text-white'
-              }`}
-            >
-              Circle
-            </button>
-            <button
-              type="button"
-              onClick={() => upStyle({ markerType: 'ring' })}
-              className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all cursor-pointer ${
-                player.style.markerType === 'ring'
-                  ? 'bg-blue-600 text-white font-bold'
-                  : 'text-white/50 hover:text-white'
-              }`}
-            >
-              Ring
-            </button>
-          </div>
         </div>
 
-        {player.style.markerType !== 'ring' && (
-          <Row label="Shirt Number">
-            <TextInput
-              value={player.shirtNo ?? ''}
-              onChange={(v) => up({ shirtNo: v })}
-              maxLength={3}
-              placeholder="-"
-            />
-          </Row>
-        )}
+        <Row label="Shirt Number">
+          <TextInput
+            value={player.shirtNo ?? ''}
+            onChange={(v) => up({ shirtNo: v })}
+            maxLength={3}
+            placeholder="-"
+          />
+        </Row>
 
         <Row label="Main Color">
           <ColorInput
@@ -252,14 +223,12 @@ export function PlayerInspector({
           />
         </Row>
 
-        {player.style.markerType !== 'ring' && (
-          <Row label="Border Color">
-            <ColorInput
-              value={player.style.strokeColor || '#ffffff'}
-              onChange={(v) => upStyle({ strokeColor: v })}
-            />
-          </Row>
-        )}
+        <Row label="Border Color">
+          <ColorInput
+            value={player.style.strokeColor || '#ffffff'}
+            onChange={(v) => upStyle({ strokeColor: v })}
+          />
+        </Row>
 
         <RangeInput
           label="Marker Scale"
@@ -271,9 +240,8 @@ export function PlayerInspector({
         />
       </div>
 
-      {/* ── Player Header & Bench/Pitch Jump (Ring ではない通常の選手マーカーの場合のみ表示) ── */}
-      {player.style.markerType !== 'ring' && (
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10">
+      {/* ── Player Header & Bench/Pitch Jump ── */}
+      <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10">
           <div className="flex items-center gap-2 min-w-0">
             <span
               className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 border border-white/30"
@@ -320,8 +288,6 @@ export function PlayerInspector({
             </button>
           )}
         </div>
-      )}
-
       {/* ── Marker Option Tabs & Sub-controls ── */}
       <PlayerMarkerOptionsSection
         player={player}
@@ -333,12 +299,9 @@ export function PlayerInspector({
         setNewBadgeText={setNewBadgeText}
       />
 
-      {/* ── Delete Button ── */}
       <DeleteButton
         onClick={onRemove}
-        label={
-          player.style.markerType === 'ring' ? 'Delete Ring' : 'Delete Player'
-        }
+        label="Delete Player"
       />
     </div>
   );

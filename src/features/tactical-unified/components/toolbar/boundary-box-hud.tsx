@@ -153,7 +153,7 @@ export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
           title="AutoFitPitch (ピッチ外枠にフィット)"
           aria-label="AutoFitPitch"
         >
-          <Expand size={12} />
+          <Maximize2 size={12} />
         </button>
         <button
           type="button"
@@ -162,7 +162,7 @@ export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
           title="AutoFitCanvas (全画面フィット 100% × 100%)"
           aria-label="AutoFitCanvas"
         >
-          <Maximize2 size={12} />
+          <Expand size={12} />
         </button>
       </div>
 

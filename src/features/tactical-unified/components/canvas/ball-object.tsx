@@ -5,18 +5,20 @@
  * Draggable realistic 3D soccer ball on the pitch
  */
 
+import type Konva from 'konva';
 import React, { useEffect, useRef, useState } from 'react';
 import { Circle, Group, Image as KonvaImage, Line } from 'react-konva';
-import { getSoccerBallImage } from '@/lib/tactical/soccer-ball-svg';
-import type { BallState } from '@/lib/types/tactical-unified';
 import {
   selectActiveSlide,
   selectPreviousSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { getSoccerBallImage } from '@/lib/tactical/soccer-ball-svg';
+import type { BallState } from '@/lib/types/tactical-unified';
 import type { CanvasNodesRegistry } from './canvas-registry';
 import { GhostTrajectoryArrow } from './ghost-trajectory-arrow';
 import { normToPx } from './unified-canvas';
+import { useNodePositionTransition } from './use-node-position-transition';
 
 interface BallObjectProps {
   ball: BallState;
@@ -45,6 +47,7 @@ export const BallObject = React.memo(function BallObject({
   const ghostGroupRef = useRef<any>(null);
   const ghostLineRef = useRef<any>(null);
   const prevBallPxRef = useRef<{ x: number; y: number } | null>(null);
+  const ballGroupRef = useRef<Konva.Group | null>(null);
 
   useEffect(() => {
     getSoccerBallImage()
@@ -52,12 +55,18 @@ export const BallObject = React.memo(function BallObject({
       .catch(() => {});
   }, []);
 
-  if (!ball.visible) return null;
-
   const baseDim = Math.min(stageSize.width, stageSize.height);
   const radius = Math.max(8, baseDim * 0.022);
   const px = normToPx(ball.x, stageSize.width);
   const py = normToPx(ball.y, stageSize.height);
+
+  useNodePositionTransition({
+    nodeRef: ballGroupRef,
+    x: px,
+    y: py,
+  });
+
+  if (!ball.visible) return null;
 
   const prevBall = prevSlide?.ball;
   const hasPrevBall =
@@ -141,6 +150,7 @@ export const BallObject = React.memo(function BallObject({
 
       <Group
         ref={(node) => {
+          ballGroupRef.current = node;
           if (nodesRegistryRef) {
             nodesRegistryRef.current.ballNode = node;
           }

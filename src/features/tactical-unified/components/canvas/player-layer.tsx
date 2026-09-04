@@ -13,6 +13,7 @@ import {
   selectPreviousSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
+import type { SelectedObjectKind } from '@/features/tactical-unified/stores/tool-slice';
 import type { CanvasNodesRegistry } from './canvas-registry';
 import { PlayerConnectLines } from './player-connect-lines';
 import {
@@ -155,8 +156,7 @@ export function PlayerLayer({
         stageSize={stageSize}
         nodesRegistryRef={nodesRegistryRef}
         onSelectConnectLine={(playerId) => {
-          selectObject({ id: playerId, kind: 'player' });
-          setActiveMarkerOptionTab('connect');
+          selectObject({ id: `${playerId}-connect-line`, kind: 'connect-line', parentPlayerId: playerId });
         }}
       />
 
@@ -244,8 +244,16 @@ export function PlayerLayer({
                 }
               }}
               onSelectOption={(tab) => {
-                selectObject({ id: player.id, kind: 'player' });
-                setActiveMarkerOptionTab(tab);
+                const kindMap: Record<string, SelectedObjectKind> = {
+                  vision: 'vision-cone',
+                  connect: 'connect-line',
+                  badge: 'badge',
+                  focus: 'focus',
+                };
+                const kind = kindMap[tab];
+                if (kind) {
+                  selectObject({ id: `${player.id}-${kind}`, kind, parentPlayerId: player.id });
+                }
               }}
               onUpdateVisionCone={(patch) => {
                 if (player.visionCone) {
@@ -254,11 +262,6 @@ export function PlayerLayer({
                     ...patch,
                   });
                 }
-              }}
-              onUpdatePlayerStyle={(stylePatch) => {
-                updatePlayer(activeSlideId, player.id, {
-                  style: { ...player.style, ...stylePatch },
-                });
               }}
               onDragStart={handleDragStart}
               onDragMove={handleDragMove}

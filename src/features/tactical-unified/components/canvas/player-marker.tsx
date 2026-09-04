@@ -1,19 +1,19 @@
 'use client';
 
+import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useRef } from 'react';
-import { Circle, Group, Text, Transformer } from 'react-konva';
+import { Circle, Group, Text } from 'react-konva';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { Player, Slide } from '@/lib/types/tactical-unified';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { CanvasNodesRegistry } from './canvas-registry';
 import { PlayerBadge } from './player-badge';
 import { PlayerFocusSpotlight } from './player-focus-spotlight';
 import { PlayerMarkerCircle } from './player-marker-circle';
-import { PlayerMarkerRing } from './player-marker-ring';
 import { PlayerVisionCone } from './player-vision-cone';
+import { useNodePositionTransition } from './use-node-position-transition';
 import { usePlayerPhoto } from './use-player-photo';
-import { useRingTransformer } from './use-ring-transformer';
 
 function normX(v: number, w: number) {
   return (v / 100) * w;
@@ -35,7 +35,6 @@ export interface PlayerMarkerProps {
   onUpdateVisionCone: (
     patch: Partial<NonNullable<Player['visionCone']>>,
   ) => void;
-  onUpdatePlayerStyle?: (stylePatch: Partial<Player['style']>) => void;
   onDragStart: (e: KonvaEventObject<DragEvent>, player: Player) => void;
   onDragMove: (e: KonvaEventObject<DragEvent>, player: Player) => void;
   onDragEnd: (e: KonvaEventObject<DragEvent>, player: Player) => void;
@@ -49,7 +48,6 @@ export const PlayerMarker = React.memo(function PlayerMarker({
   onSelect,
   onSelectOption,
   onUpdateVisionCone,
-  onUpdatePlayerStyle,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -79,21 +77,22 @@ export const PlayerMarker = React.memo(function PlayerMarker({
     playerId: player.playerId,
   });
 
-  // Ring Transformer バインド (カスタムフック)
-  const { ringShapeNodeRef, ringTransformerRef } = useRingTransformer({
-    isSelected,
-    markerType: player.style.markerType,
-    radius,
-  });
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dragGlowRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const spotlightGroupRef = useRef<any>(null);
+  const groupRef = useRef<Konva.Group | null>(null);
+
+  useNodePositionTransition({
+    nodeRef: groupRef,
+    x: pxX,
+    y: pxY,
+  });
 
   return (
     <Group
       ref={(node) => {
+        groupRef.current = node;
         if (nodesRegistryRef) {
           if (node) {
             nodesRegistryRef.current.playerNodes.set(player.id, node);
@@ -164,6 +163,8 @@ export const PlayerMarker = React.memo(function PlayerMarker({
           focus={player.focus}
           radius={radius}
           spotlightGroupRef={spotlightGroupRef}
+          isSelected={isSelected}
+          onSelectOption={() => onSelectOption('focus')}
         />
       )}
 
@@ -183,7 +184,6 @@ export const PlayerMarker = React.memo(function PlayerMarker({
         <PlayerVisionCone
           cone={player.visionCone}
           radius={radius}
-          isRing={player.style.markerType === 'ring'}
           stageSize={stageSize}
           isSelected={isSelected}
           onUpdateVisionCone={onUpdateVisionCone}
@@ -192,23 +192,13 @@ export const PlayerMarker = React.memo(function PlayerMarker({
       )}
 
       {/* ── メインの選手マーカー ── */}
-      {player.style.markerType === 'ring' ? (
-        <PlayerMarkerRing
-          player={player}
-          radius={radius}
-          numScale={numScale}
-          isSelected={isSelected}
-          shapeRef={ringShapeNodeRef}
-        />
-      ) : (
-        <PlayerMarkerCircle
-          player={player}
-          radius={radius}
-          numScale={numScale}
-          isSelected={isSelected}
-          loadedImage={loadedImage}
-        />
-      )}
+      <PlayerMarkerCircle
+        player={player}
+        radius={radius}
+        numScale={numScale}
+        isSelected={isSelected}
+        loadedImage={loadedImage}
+      />
 
       {/* プレイヤー名ラベル */}
       {player.style.bottomLabel === 'name' && displayName && (
@@ -255,52 +245,6 @@ export const PlayerMarker = React.memo(function PlayerMarker({
           onSelectOption={() => onSelectOption('badge')}
         />
       ))}
-
-      {/* 3D Foot Ring Transformer */}
-      {player.style.markerType === 'ring' && isSelected && (
-        <Transformer
-          ref={ringTransformerRef}
-          boundBoxFunc={(oldBox, newBox) => {
-            if (Math.abs(newBox.width) < 15 || Math.abs(newBox.height) < 10)
-              return oldBox;
-            return newBox;
-          }}
-          keepRatio={true}
-          enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
-          rotateEnabled={false}
-          borderStroke="#3b82f6"
-          anchorStroke="#3b82f6"
-          anchorFill="#ffffff"
-          anchorSize={8}
-          anchorCornerRadius={2}
-          onTransform={() => {
-            const node = ringShapeNodeRef.current;
-            if (!node) return;
-            const sx = node.scaleX();
-            node.position({ x: 0, y: 0 });
-            node.scaleX(1);
-            node.scaleY(1);
-            const currentScale = player.style.sizeScale ?? 1.0;
-            const newScale = Math.max(0.4, Math.min(3.0, currentScale * Math.abs(sx)));
-            const roundedScale = Math.round(newScale * 10) / 10;
-            if (roundedScale !== currentScale) {
-              onUpdatePlayerStyle?.({ sizeScale: roundedScale });
-            }
-          }}
-          onTransformEnd={() => {
-            const node = ringShapeNodeRef.current;
-            if (!node) return;
-            const sx = node.scaleX();
-            node.position({ x: 0, y: 0 });
-            node.scaleX(1);
-            node.scaleY(1);
-            const currentScale = player.style.sizeScale ?? 1.0;
-            const newScale = Math.max(0.4, Math.min(3.0, currentScale * Math.abs(sx)));
-            const roundedScale = Math.round(newScale * 10) / 10;
-            onUpdatePlayerStyle?.({ sizeScale: roundedScale });
-          }}
-        />
-      )}
     </Group>
   );
 });

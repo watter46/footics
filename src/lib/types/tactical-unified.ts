@@ -748,16 +748,26 @@ export const DEFAULT_442_HOME: Array<{
 export function createDefault442Players(
   homeColor = '#034694',
   awayColor = '#ef4444',
+  aspectRatio: AspectRatio = '16:9',
 ): Player[] {
+  const isVertical = isVerticalAspectRatio(aspectRatio);
   const homePlayers: Player[] = DEFAULT_442_HOME.map((p) => {
-    const pl = createDefaultPlayer('home', p.x, p.y, homeColor);
+    const rawPos = { x: p.x, y: p.y };
+    const pos = isVertical
+      ? transformCoord(rawPos, '16:9', aspectRatio)
+      : rawPos;
+    const pl = createDefaultPlayer('home', pos.x, pos.y, homeColor);
     pl.shirtNo = p.shirtNo;
     pl.position = p.position;
     return pl;
   });
 
   const awayPlayers: Player[] = DEFAULT_442_HOME.map((p) => {
-    const pl = createDefaultPlayer('away', 100 - p.x, p.y, awayColor);
+    const rawPos = { x: 100 - p.x, y: p.y };
+    const pos = isVertical
+      ? transformCoord(rawPos, '16:9', aspectRatio)
+      : rawPos;
+    const pl = createDefaultPlayer('away', pos.x, pos.y, awayColor);
     pl.shirtNo = p.shirtNo;
     pl.position = p.position;
     return pl;
@@ -811,7 +821,7 @@ export function createDefaultSlide(
     index,
     label: `Scene ${index + 1}`,
     aspectRatio,
-    players: createDefault442Players(homeColor, awayColor),
+    players: createDefault442Players(homeColor, awayColor, aspectRatio),
     arrows: [],
     zones: [],
     texts: [],

@@ -5,7 +5,6 @@ import { MarkerAppearanceSection } from './marker-appearance-section';
 import { MarkerArrowSection } from './marker-arrow-section';
 import { MarkerBadgeSection } from './marker-badge-section';
 import { MarkerConnectorSection } from './marker-connector-section';
-import { MarkerFootRingSection } from './marker-foot-ring-section';
 import type { PlayerMarkerOptionsSectionProps } from './marker-options-types';
 import { MarkerSpotlightSection } from './marker-spotlight-section';
 import { MarkerTabBar } from './marker-tab-bar';
@@ -71,11 +70,6 @@ export function PlayerMarkerOptionsSection({
       {currentTab === 'basic' && (
         <div className="space-y-3.5">
           <MarkerAppearanceSection
-            player={player}
-            slideId={slideId}
-            updatePlayer={updatePlayer}
-          />
-          <MarkerFootRingSection
             player={player}
             slideId={slideId}
             updatePlayer={updatePlayer}
