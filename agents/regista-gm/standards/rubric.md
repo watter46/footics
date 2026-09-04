@@ -35,9 +35,9 @@ Regista GMの出力物（タスクチケット、エージェント指示書、�
 ## 3. AAWU分解 (Agent-Assignable Work Units)
 | # | AAWU名 | 担当エージェント | 変更ファイル | Exit Criteria |
 |---|---|---|---|---|
-| 1 | [型定義] | regista-data | [ファイル] | tsc --noEmit パス |
-| 2 | [ロジック] | [担当] | [ファイル] | vitest run パス |
-| 3 | [UI] | [担当] | [ファイル] | biome check パス |
+| 1 | [型定義] | regista-data | [ファイル] | `rtk tsc --noEmit` パス |
+| 2 | [ロジック] | [担当] | [ファイル] | `rtk vitest run` パス |
+| 3 | [UI] | [担当] | [ファイル] | `rtk biome check` パス |
 
 ## 4. 指示書 (各AAWU)
 ### AAWU-1: [名前]
@@ -47,7 +47,7 @@ Regista GMの出力物（タスクチケット、エージェント指示書、�
 - **納品基準**: [Exit Criteria + 検証コマンド]
 
 ## 5. レビュー・QA計画
-- Deterministic: [biome check, tsc --noEmit, vitest run]
+- Deterministic: [`rtk biome check`, `rtk tsc --noEmit`, `rtk vitest run`]
 - Semantic: [AGENTS.md準拠チェック項目]
 - ループ上限: 3回
 - エスカレーション先: [オーナー or 仕様緩和]

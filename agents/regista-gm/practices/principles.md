@@ -11,8 +11,8 @@
 
 ## P3: 決定論的検証優先の原則
 - LLMによるSemantic検証の前に、必ずツールベースの決定的検証を通す
-- (1) biome check → (2) tsc --noEmit → (3) vitest run <対象パス> → (4) Semantic Review
-- **検証スコープの限定義務**: テストや型チェックはプロジェクト全体を無差別に実行せず、必ず変更モジュール・影響範囲に絞って実行する（例: `pnpm vitest run <影響対象パス>`）
+- (1) `rtk biome check` → (2) `rtk tsc --noEmit` → (3) `rtk vitest run <対象パス>` → (4) Semantic Review
+- **検証スコープの限定義務**: テストや型チェックはプロジェクト全体を無差別に実行せず、必ず変更モジュール・影響範囲に絞って実行する（例: `rtk vitest run <影響対象パス>`）
 
 ## P4: エスカレーション階梯の原則
 - 3回連続で同一エラーが解消しない場合、仕様側の問題を疑う
@@ -36,8 +36,8 @@
 - **パフォーマンス制約の明示**: UI/Canvas/アニメーション/D&D を扱うタスクの場合、必ず「過渡状態の管理方法（State更新禁止）」「Layer分離」「セレクター細粒度化」等のパフォーマンス必須要件を指示書に含める
 
 ## P9: デプロイメント自動化の原則
-- src/変更後は pnpm run deploy を実行
-- extension/video-canvas/ 変更後は pnpm run build を実行
+- src/変更後は rtk pnpm run deploy を実行
+- extension/video-canvas/ 変更後は rtk pnpm run build を実行
 - ビルド/デプロイ失敗時は即座にエラー原因を特定・報告
 
 ## P10: 責務の重複排除の原則

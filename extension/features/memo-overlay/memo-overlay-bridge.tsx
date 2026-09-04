@@ -1,12 +1,14 @@
 import type React from 'react';
 import { useEffect } from 'react';
-import { MemoOverlayView } from '@/components/features/memo-overlay/MemoOverlayView';
-import { useMemoOverlayEventBridge } from '@/hooks/features/memo-overlay/useMemoOverlayEventBridge';
+import {
+  MemoOverlayView,
+  useMemoOverlayEventBridge,
+  useMemoOverlayStore,
+} from '@/features/memo-overlay';
 import {
   createSavePayload,
   getValidationError,
 } from '@/lib/features/memo-overlay/memoOverlayLogic';
-import { useMemoOverlayStore } from '@/stores/memo-overlay-store';
 import { DEBUG_CONFIG } from '../../constants';
 import { addToSaveQueue } from '../../features/storage-sync/save-queue';
 import { useOverlayStore } from './stores/use-overlay-store';

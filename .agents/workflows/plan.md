@@ -44,7 +44,7 @@ description: 計画を立てる
   - **Target:** 変更対象ファイルのフルパス。
   - **I/O Details:** 参照すべき型 (Input) と、期待される変更結果 (Output)。
   - **Logic:** 具体的な変更内容（必要に応じて擬似コードやインターフェース定義を含む）。
-  - **Verification Loop (検証と自己修正):** 単に修正するだけでなく、修正直後に `pnpm verify`（または `tsc` 等）を実行し、エラーが出た場合は**報告前に自己修正（Self-Correct）を行う**プロセスを各ステップに明記する。
+  - **Verification Loop (検証と自己修正):** 単に修正するだけでなく、修正直後に `rtk pnpm verify`（または `rtk tsc` 等）を実行し、エラーが出た場合は**報告前に自己修正（Self-Correct）を行う**プロセスを各ステップに明記する。
   - **Checkpoint:** まとまりごとの広範な検証（`quality-harness` 等の実行）。
 
 ## 3. ワークフローの進行

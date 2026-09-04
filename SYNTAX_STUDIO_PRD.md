@@ -117,7 +117,7 @@
 #### AAWU 1: データ層・スキーマ連携 (担当: `regista-data` / `flash`)
 - **ファイル**: `src/lib/types/syntax-integration.ts`, `src/app/api/syntax/save-tuning/route.ts`
 - **タスク**: `footics-integration-v1.json` の型定義配備および対照ペアJSON保存エンドポイントの実装。
-- **Exit Criteria**: `tsc --noEmit` パス、JSONパースおよび保存処理のユニットテスト通過。
+- **Exit Criteria**: `rtk tsc --noEmit` パス、JSONパースおよび保存処理のユニットテスト通過。
 
 #### AAWU 2: Canvas 2画面バインディング (担当: `regista-canvas` / `flash`)
 - **ファイル**: `src/components/features/syntax-studio/syntax-pitch-canvas.tsx`

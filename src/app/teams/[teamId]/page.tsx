@@ -4,8 +4,8 @@ import Link from 'next/link';
 import {
   GlobalDataManagement,
   ImportMatchButton,
-} from '@/components/features/management';
-import { TeamSquadClient } from '@/components/features/teams/TeamSquadClient';
+} from '@/features/management';
+import { TeamSquadClient } from '@/features/teams';
 import { TeamsDropdown } from '@/components/layout/TeamsDropdown';
 import logoName from '../../logo-name.png';
 

@@ -9,7 +9,7 @@ import {
   playerKeys,
 } from '@/lib/query-keys';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
-import { useMemoOverlayStore } from '@/stores/memo-overlay-store';
+import { useMemoOverlayStore } from '@/features/memo-overlay';
 
 /**
  * useDataSync

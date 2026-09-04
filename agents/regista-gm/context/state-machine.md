@@ -43,9 +43,9 @@
   - セルフチェック (lint, type-check)
 - **Exit Criteria**:
   - [ ] コードが実装完了
-  - [ ] `pnpm lint` パス
-  - [ ] `pnpm type-check` パス
-  - [ ] 該当テストがパス (`pnpm test`)
+  - [ ] `rtk pnpm lint` パス
+  - [ ] `rtk pnpm type-check` パス
+  - [ ] 該当テストがパス (`rtk pnpm test`)
   - [ ] 古い参照が残っていないことをgrepで確認
 
 ### State 4: REVIEW_QA (レビュー・QA)

@@ -96,8 +96,8 @@
 
 | 変更パッケージ | コマンド |
 |---|---|
-| `src/` (Web App) | `pnpm run deploy` |
-| `extension/` (WXT拡張) | `cd extension && pnpm run build` |
+| `src/` (Web App) | `rtk pnpm run deploy` |
+| `extension/` (WXT拡張) | `cd extension && rtk pnpm run build` |
 
 ## 関連組織
 

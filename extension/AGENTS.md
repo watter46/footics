@@ -49,4 +49,4 @@ trigger: always_on
     - プレミアムな外観（トースト通知、アニメーション）を維持し、拡張機能であることを意識させないシームレスな体験を目指す。
 
 ## 7. Build & Deployment (ビルドと同期)
-- **ビルド・同期実行:** 実装完了時や更新時は `pnpm run build` を実行する（WXT ビルドおよび `sync-extension` による Windows 側への成果物コピーが自動実行されます）。
+- **ビルド・同期実行:** 実装完了時や更新時は `rtk pnpm run build` を実行する（WXT ビルドおよび `sync-extension` による Windows 側への成果物コピーが自動実行されます）。
