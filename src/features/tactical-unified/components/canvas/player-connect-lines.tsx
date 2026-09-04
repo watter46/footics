@@ -1,10 +1,10 @@
 'use client';
 
 import type React from 'react';
-import { Group, Line } from 'react-konva';
+import { Circle, Group, Line } from 'react-konva';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import type { Slide } from '@/lib/types/tactical-unified';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { CanvasNodesRegistry } from './canvas-registry';
 
 function normX(v: number, w: number) {
@@ -19,6 +19,7 @@ export interface PlayerConnectLinesProps {
   stageSize: { width: number; height: number };
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   onSelectConnectLine?: (playerId: string) => void;
+  selectedPlayerIds?: Set<string>;
 }
 
 export function PlayerConnectLines({
@@ -26,6 +27,7 @@ export function PlayerConnectLines({
   stageSize,
   nodesRegistryRef,
   onSelectConnectLine,
+  selectedPlayerIds,
 }: PlayerConnectLinesProps) {
   const { width, height } = stageSize;
   const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
@@ -80,8 +82,51 @@ export function PlayerConnectLines({
                     ? [2, 3]
                     : undefined;
 
+              const isLineSelected =
+                Boolean(selectedPlayerIds?.has(p.id)) ||
+                Boolean(selectedPlayerIds?.has(toPlayer.id)) ||
+                Boolean(selectedPlayerIds?.has(cl.id));
+
               return (
                 <Group key={cl.id}>
+                  {/* 選択状態ハイライト (シアンのネオングロー層 & 両端アンカードット) */}
+                  {isLineSelected && (
+                    <>
+                      <Line
+                        points={[x1, y1, x2, y2]}
+                        stroke="#38bdf8"
+                        strokeWidth={(cl.strokeWidth ?? 2) + 6}
+                        dash={dash}
+                        opacity={0.7}
+                        shadowColor="#38bdf8"
+                        shadowBlur={10}
+                        shadowOpacity={0.9}
+                        listening={false}
+                      />
+                      <Circle
+                        x={x1}
+                        y={y1}
+                        radius={4.5}
+                        fill="#38bdf8"
+                        stroke="#ffffff"
+                        strokeWidth={1.5}
+                        shadowColor="#38bdf8"
+                        shadowBlur={4}
+                        listening={false}
+                      />
+                      <Circle
+                        x={x2}
+                        y={y2}
+                        radius={4.5}
+                        fill="#38bdf8"
+                        stroke="#ffffff"
+                        strokeWidth={1.5}
+                        shadowColor="#38bdf8"
+                        shadowBlur={4}
+                        listening={false}
+                      />
+                    </>
+                  )}
                   {/* 外側拡散ネオングロー層 (程よく上品な淡い光) */}
                   <Line
                     ref={(node) => {

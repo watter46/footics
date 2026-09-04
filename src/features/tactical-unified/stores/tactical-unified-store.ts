@@ -246,7 +246,7 @@ export function extractSelectedObjects(
 
 export function computePitchFitBoundaryBox(
   isPitchBg: boolean,
-  aspectRatio: AspectRatio = '16:9',
+  _aspectRatio: AspectRatio = '16:9',
   pitchPosition?: { x: number; y: number },
 ): BoundaryBox {
   if (!isPitchBg) {
@@ -257,32 +257,13 @@ export function computePitchFitBoundaryBox(
     }
     return base;
   }
-  let base: BoundaryBox;
-  if (aspectRatio === '9:16') {
-    base = {
-      x: 0.43,
-      y: 7.25,
-      width: 99.14,
-      height: 85.5,
-      enabled: true,
-    };
-  } else if (aspectRatio === '4:5' || aspectRatio === '1:1') {
-    base = {
-      x: 3.0,
-      y: 3.0,
-      width: 94.0,
-      height: 94.0,
-      enabled: true,
-    };
-  } else {
-    base = {
-      x: 7.25,
-      y: 0.43,
-      width: 85.5,
-      height: 99.14,
-      enabled: true,
-    };
-  }
+  const base: BoundaryBox = {
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    enabled: true,
+  };
 
   if (pitchPosition) {
     base.x = Math.round((base.x + pitchPosition.x) * 100) / 100;

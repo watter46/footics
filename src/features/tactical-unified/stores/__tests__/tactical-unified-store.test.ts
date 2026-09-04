@@ -642,10 +642,10 @@ describe('tactical-unified-store', () => {
     const store = useTacticalUnifiedStore.getState();
     const initialSlide = store.project.slides[0];
     expect(initialSlide?.boundaryBox).toEqual({
-      x: 3.0,
-      y: 3.0,
-      width: 94.0,
-      height: 94.0,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
       enabled: true,
     });
 
@@ -654,10 +654,10 @@ describe('tactical-unified-store', () => {
       .getState()
       .project.slides.find((s) => s.id === newSlideId);
     expect(newSlide?.boundaryBox).toEqual({
-      x: 3.0,
-      y: 3.0,
-      width: 94.0,
-      height: 94.0,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
       enabled: true,
     });
   });
@@ -678,10 +678,10 @@ describe('tactical-unified-store', () => {
       .getState()
       .project.slides.find((s) => s.id === slideId);
     expect(slide?.boundaryBox).toEqual({
-      x: 3.0,
-      y: 3.0,
-      width: 94.0,
-      height: 94.0,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
       enabled: true,
     });
 
@@ -699,10 +699,10 @@ describe('tactical-unified-store', () => {
       .getState()
       .project.slides.find((s) => s.id === slideId);
     expect(slide?.boundaryBox).toEqual({
-      x: 7.25,
-      y: 0.43,
-      width: 85.5,
-      height: 99.14,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
       enabled: true,
     });
 
@@ -720,10 +720,10 @@ describe('tactical-unified-store', () => {
       .getState()
       .project.slides.find((s) => s.id === slideId);
     expect(slide?.boundaryBox).toEqual({
-      x: 0.43,
-      y: 7.25,
-      width: 99.14,
-      height: 85.5,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
       enabled: true,
     });
 
@@ -1349,10 +1349,10 @@ describe('tactical-unified-store', () => {
           (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
         );
       expect(slide?.boundaryBox).toEqual({
-        x: 7.25,
-        y: 0.43,
-        width: 85.5,
-        height: 99.14,
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
         enabled: true,
       });
     });
@@ -1486,10 +1486,10 @@ describe('tactical-unified-store', () => {
 
       expect(newSlide?.aspectRatio).toBe('16:9');
       expect(newSlide?.boundaryBox).toEqual({
-        x: 7.25,
-        y: 0.43,
-        width: 85.5,
-        height: 99.14,
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
         enabled: true,
       });
     });
@@ -1561,13 +1561,13 @@ describe('tactical-unified-store', () => {
       expect(slide?.pitchTransform?.panX).toBe(10);
       expect(slide?.pitchTransform?.panY).toBe(-5);
 
-      // autoFitBoundaryBox がピッチ移動オフセットに追従することを確認 (デフォルトは 4:5 で base.x = 3.0, base.y = 3.0)
+      // autoFitBoundaryBox がピッチ移動オフセットに追従することを確認 (デフォルトは base.x = 0, base.y = 0)
       store.autoFitBoundaryBox(slideId);
       const updatedSlide = useTacticalUnifiedStore
         .getState()
         .project.slides.find((sl) => sl.id === slideId);
-      expect(updatedSlide?.boundaryBox?.x).toBeCloseTo(3.0 + 10, 2);
-      expect(updatedSlide?.boundaryBox?.y).toBeCloseTo(3.0 - 5, 2);
+      expect(updatedSlide?.boundaryBox?.x).toBeCloseTo(10, 2);
+      expect(updatedSlide?.boundaryBox?.y).toBeCloseTo(-5, 2);
     });
 
     it('toggleObjectLock で各オブジェクトの locked 状態がトグルされる', () => {

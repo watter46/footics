@@ -5,7 +5,6 @@ import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { RingMarkerIcon } from './hud-icons';
 import { MiniColorPicker } from './mini-color-picker';
 import { PlayerQuickActions } from './player-quick-actions';
 
@@ -119,25 +118,6 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
 
       {/* 5. マーカーオプション群 (Vision Cone, Connect Line, 矢印, Spotlight) */}
       <PlayerQuickActions player={player} activeSlideId={activeSlideId} />
-
-      {/* 6. マーカー形状切替 (サークルマーカー時のみ表示) */}
-      {!isRing && (
-        <>
-          <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
-          <button
-            type="button"
-            onClick={() => {
-              updatePlayer(activeSlideId, player.id, {
-                style: { ...player.style, markerType: 'ring' },
-              });
-            }}
-            className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-            title="3Dリングへ切替"
-          >
-            <RingMarkerIcon size={14} />
-          </button>
-        </>
-      )}
 
       <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
 

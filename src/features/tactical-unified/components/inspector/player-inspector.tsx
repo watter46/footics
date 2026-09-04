@@ -197,24 +197,28 @@ export function PlayerInspector({
 
   const [newBadgeText, setNewBadgeText] = useState('');
 
+  const isRing = player.style.markerType === 'ring';
+
   return (
     <div className="flex-1 overflow-y-auto p-3 space-y-3.5 text-slate-200 custom-scrollbar">
       {/* ── Quick Style & Controls (HUD 同等機能) ── */}
       <div className="p-3 rounded-xl bg-white/[0.04] border border-white/10 space-y-2.5">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold text-white uppercase tracking-wider">
-            Quick Settings
+            {isRing ? 'Ring Settings' : 'Quick Settings'}
           </span>
         </div>
 
-        <Row label="Shirt Number">
-          <TextInput
-            value={player.shirtNo ?? ''}
-            onChange={(v) => up({ shirtNo: v })}
-            maxLength={3}
-            placeholder="-"
-          />
-        </Row>
+        {!isRing && (
+          <Row label="Shirt Number">
+            <TextInput
+              value={player.shirtNo ?? ''}
+              onChange={(v) => up({ shirtNo: v })}
+              maxLength={3}
+              placeholder="-"
+            />
+          </Row>
+        )}
 
         <Row label="Main Color">
           <ColorInput
@@ -223,12 +227,14 @@ export function PlayerInspector({
           />
         </Row>
 
-        <Row label="Border Color">
-          <ColorInput
-            value={player.style.strokeColor || '#ffffff'}
-            onChange={(v) => upStyle({ strokeColor: v })}
-          />
-        </Row>
+        {!isRing && (
+          <Row label="Border Color">
+            <ColorInput
+              value={player.style.strokeColor || '#ffffff'}
+              onChange={(v) => upStyle({ strokeColor: v })}
+            />
+          </Row>
+        )}
 
         <RangeInput
           label="Marker Scale"
@@ -240,8 +246,9 @@ export function PlayerInspector({
         />
       </div>
 
-      {/* ── Player Header & Bench/Pitch Jump ── */}
-      <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10">
+      {/* ── Player Header & Bench/Pitch Jump (サークル選手時のみ表示) ── */}
+      {!isRing && (
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10">
           <div className="flex items-center gap-2 min-w-0">
             <span
               className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 border border-white/30"
@@ -288,6 +295,8 @@ export function PlayerInspector({
             </button>
           )}
         </div>
+      )}
+
       {/* ── Marker Option Tabs & Sub-controls ── */}
       <PlayerMarkerOptionsSection
         player={player}
@@ -301,7 +310,7 @@ export function PlayerInspector({
 
       <DeleteButton
         onClick={onRemove}
-        label="Delete Player"
+        label={isRing ? 'Delete Ring' : 'Delete Player'}
       />
     </div>
   );

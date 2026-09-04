@@ -11,6 +11,7 @@ import type { CanvasNodesRegistry } from './canvas-registry';
 import { PlayerBadge } from './player-badge';
 import { PlayerFocusSpotlight } from './player-focus-spotlight';
 import { PlayerMarkerCircle } from './player-marker-circle';
+import { PlayerMarkerRing } from './player-marker-ring';
 import { PlayerVisionCone } from './player-vision-cone';
 import { useNodePositionTransition } from './use-node-position-transition';
 import { usePlayerPhoto } from './use-player-photo';
@@ -27,6 +28,8 @@ export interface PlayerMarkerProps {
   slide: Slide;
   stageSize: { width: number; height: number };
   isSelected: boolean;
+  isVisionConeSelected?: boolean;
+  isFocusSelected?: boolean;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   onSelect: (
     e: KonvaEventObject<MouseEvent> | KonvaEventObject<TouchEvent>,
@@ -44,6 +47,8 @@ export const PlayerMarker = React.memo(function PlayerMarker({
   player,
   stageSize,
   isSelected,
+  isVisionConeSelected,
+  isFocusSelected,
   nodesRegistryRef,
   onSelect,
   onSelectOption,
@@ -157,13 +162,14 @@ export const PlayerMarker = React.memo(function PlayerMarker({
         }
       }}
     >
-      {/* ── フォーカス (スポットライトピラー効果) ── */}
+      {/* ── フォーカス (スポットライトピラー効果 / 2Dネオングロー) ── */}
       {player.focus && (
         <PlayerFocusSpotlight
           focus={player.focus}
           radius={radius}
+          isRing={player.style.markerType === 'ring'}
           spotlightGroupRef={spotlightGroupRef}
-          isSelected={isSelected}
+          isSelected={isFocusSelected}
           onSelectOption={() => onSelectOption('focus')}
         />
       )}
@@ -184,21 +190,31 @@ export const PlayerMarker = React.memo(function PlayerMarker({
         <PlayerVisionCone
           cone={player.visionCone}
           radius={radius}
+          isRing={player.style.markerType === 'ring'}
           stageSize={stageSize}
-          isSelected={isSelected}
+          isSelected={isVisionConeSelected}
           onUpdateVisionCone={onUpdateVisionCone}
           onSelectOption={() => onSelectOption('vision')}
         />
       )}
 
-      {/* ── メインの選手マーカー ── */}
-      <PlayerMarkerCircle
-        player={player}
-        radius={radius}
-        numScale={numScale}
-        isSelected={isSelected}
-        loadedImage={loadedImage}
-      />
+      {/* ── メインの選手マーカー (3Dリング または 2Dサークル) ── */}
+      {player.style.markerType === 'ring' ? (
+        <PlayerMarkerRing
+          player={player}
+          radius={radius}
+          numScale={numScale}
+          isSelected={isSelected}
+        />
+      ) : (
+        <PlayerMarkerCircle
+          player={player}
+          radius={radius}
+          numScale={numScale}
+          isSelected={isSelected}
+          loadedImage={loadedImage}
+        />
+      )}
 
       {/* プレイヤー名ラベル */}
       {player.style.bottomLabel === 'name' && displayName && (

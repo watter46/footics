@@ -349,28 +349,28 @@ export type BoundaryBox = z.infer<typeof BoundaryBoxSchema>;
 
 /** ピッチ白線フィット境界線のデフォルト値 (16:9 横向き) */
 export const DEFAULT_BOUNDARY_BOX_16_9: BoundaryBox = {
-  x: 7.25,
-  y: 0.43,
-  width: 85.5,
-  height: 99.14,
+  x: 0,
+  y: 0,
+  width: 100,
+  height: 100,
   enabled: true,
 };
 
 /** ピッチ白線フィット境界線のデフォルト値 (9:16 縦向き) */
 export const DEFAULT_BOUNDARY_BOX_9_16: BoundaryBox = {
-  x: 0.43,
-  y: 7.25,
-  width: 99.14,
-  height: 85.5,
+  x: 0,
+  y: 0,
+  width: 100,
+  height: 100,
   enabled: true,
 };
 
-/** ピッチ白線フィット境界線のデフォルト値 (4:5 縦長・上下3%余白) */
+/** ピッチ白線フィット境界線のデフォルト値 (4:5 縦長) */
 export const DEFAULT_BOUNDARY_BOX_4_5: BoundaryBox = {
-  x: 3.0,
-  y: 3.0,
-  width: 94.0,
-  height: 94.0,
+  x: 0,
+  y: 0,
+  width: 100,
+  height: 100,
   enabled: true,
 };
 

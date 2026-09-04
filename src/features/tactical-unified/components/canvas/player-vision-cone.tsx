@@ -78,7 +78,10 @@ export function PlayerVisionCone({
           closed={true}
           fill={cone.color + alphaHex}
           stroke={isSelected ? '#38bdf8' : undefined}
-          strokeWidth={isSelected ? 1 : 0}
+          strokeWidth={isSelected ? 2 : 0}
+          shadowColor={isSelected ? '#38bdf8' : undefined}
+          shadowBlur={isSelected ? 8 : 0}
+          shadowOpacity={isSelected ? 0.8 : 0}
           listening={true}
           onClick={(e) => {
             e.cancelBubble = true;
@@ -100,7 +103,10 @@ export function PlayerVisionCone({
           rotation={angleDeg}
           fill={cone.color + alphaHex}
           stroke={isSelected ? '#38bdf8' : undefined}
-          strokeWidth={isSelected ? 1 : 0}
+          strokeWidth={isSelected ? 2 : 0}
+          shadowColor={isSelected ? '#38bdf8' : undefined}
+          shadowBlur={isSelected ? 8 : 0}
+          shadowOpacity={isSelected ? 0.8 : 0}
           listening={true}
           onClick={(e) => {
             e.cancelBubble = true;

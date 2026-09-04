@@ -8,12 +8,12 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { useRef } from 'react';
-import type { Player, Slide } from '@/lib/types/tactical-unified';
 import {
   selectPreviousSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { SelectedObjectKind } from '@/features/tactical-unified/stores/tool-slice';
+import type { Player, Slide } from '@/lib/types/tactical-unified';
 import type { CanvasNodesRegistry } from './canvas-registry';
 import { PlayerConnectLines } from './player-connect-lines';
 import {
@@ -38,7 +38,6 @@ export function PlayerLayer({
 }: PlayerLayerProps) {
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
   const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
-  const updatePlayer = useTacticalUnifiedStore((s) => s.updatePlayer);
   const movePlayer = useTacticalUnifiedStore((s) => s.movePlayer);
   const moveMultiplePlayersByDelta = useTacticalUnifiedStore(
     (s) => s.moveMultiplePlayersByDelta,
@@ -137,9 +136,29 @@ export function PlayerLayer({
     dragContextRef.current = null;
   };
 
+  const activeMarkerOptionTab = useTacticalUnifiedStore(
+    (s) => s.activeMarkerOptionTab,
+  );
+
+  const selectedVisionConePlayerIds = new Set(
+    selectedObjects
+      .filter((o) => o.kind === 'vision-cone')
+      .map((o) => o.parentPlayerId ?? o.id.replace(/-vision-cone$/, '')),
+  );
+  const selectedFocusPlayerIds = new Set(
+    selectedObjects
+      .filter((o) => o.kind === 'focus')
+      .map((o) => o.parentPlayerId ?? o.id.replace(/-focus$/, '')),
+  );
+  const selectedConnectLinePlayerIds = new Set(
+    selectedObjects
+      .filter((o) => o.kind === 'connect-line')
+      .map((o) => o.parentPlayerId ?? o.id.replace(/-connect-line$/, '')),
+  );
+
   return (
     <>
-      {/* ── オニオンスキン (前スライドゴースト表示 & 軌跡破線) ── */}
+      {/* プレビューステージ用ゴースト描画 */}
       <PlayerOnionskin
         stageSize={stageSize}
         ghostGroupRef={ghostGroupRef}
@@ -155,8 +174,13 @@ export function PlayerLayer({
         slide={slide}
         stageSize={stageSize}
         nodesRegistryRef={nodesRegistryRef}
+        selectedPlayerIds={selectedConnectLinePlayerIds}
         onSelectConnectLine={(playerId) => {
-          selectObject({ id: `${playerId}-connect-line`, kind: 'connect-line', parentPlayerId: playerId });
+          selectObject({
+            id: `${playerId}-connect-line`,
+            kind: 'connect-line',
+            parentPlayerId: playerId,
+          });
         }}
       />
 
@@ -196,8 +220,17 @@ export function PlayerLayer({
               p.team === 'neutral'),
         )
         .map((player) => {
+          const isPlayerSelected = selectedObjects.some(
+            (o) => o.kind === 'player' && o.id === player.id,
+          );
           const isSelected = selectedObjects.some((o) => o.id === player.id);
           const isConnectingSource = connectingPlayerId === player.id;
+          const isVisionConeSelected =
+            selectedVisionConePlayerIds.has(player.id) ||
+            (isPlayerSelected && activeMarkerOptionTab === 'vision');
+          const isFocusSelected =
+            selectedFocusPlayerIds.has(player.id) ||
+            (isPlayerSelected && activeMarkerOptionTab === 'focus');
 
           return (
             <PlayerMarker
@@ -206,6 +239,8 @@ export function PlayerLayer({
               slide={slide}
               stageSize={stageSize}
               isSelected={isSelected || isConnectingSource}
+              isVisionConeSelected={isVisionConeSelected}
+              isFocusSelected={isFocusSelected}
               nodesRegistryRef={nodesRegistryRef}
               onSelect={(e) => {
                 e.cancelBubble = true;
@@ -252,7 +287,11 @@ export function PlayerLayer({
                 };
                 const kind = kindMap[tab];
                 if (kind) {
-                  selectObject({ id: `${player.id}-${kind}`, kind, parentPlayerId: player.id });
+                  selectObject({
+                    id: `${player.id}-${kind}`,
+                    kind,
+                    parentPlayerId: player.id,
+                  });
                 }
               }}
               onUpdateVisionCone={(patch) => {

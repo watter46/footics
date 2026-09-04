@@ -2,7 +2,8 @@
 id: L2-Tactical-040
 title: "Player 2D UI & Independent Ring Attributes"
 effort: "High"
-status: "TODO"
+status: "DONE"
+completed_at: "2026-09-04T18:16:08+09:00"
 dependencies: []
 assignee: "regista-canvas"
 ---
@@ -17,3 +18,6 @@ assignee: "regista-canvas"
 2. `src/features/tactical-unified/components/canvas/player-vision-cone.tsx`, `player-connect-lines.tsx`, `player-focus-spotlight.tsx`
    - クリックイベントを追加し、Store内で選択された時に個別のオブジェクト (`kind: 'visionCone'`, `kind: 'connectLine'`, `kind: 'focus'`) として認識されるようにする。
    - `tactical-unified-store.ts` および `inspector-panel.tsx` にて、これらが個別に選択された時のプロパティ変更UIを提供する。
+
+## Completed At
+- 2026-09-04T18:16:08+09:00

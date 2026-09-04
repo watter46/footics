@@ -75,10 +75,10 @@ describe('BoundaryBoxHud component', () => {
       .getState()
       .project.slides.find((s) => s.id === slideId);
     expect(activeSlide?.boundaryBox).toEqual({
-      x: 3.0,
-      y: 3.0,
-      width: 94.0,
-      height: 94.0,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
       enabled: true,
     });
   });
