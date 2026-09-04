@@ -2,7 +2,7 @@
 id: L2-Tactical-039
 title: "Boundary Box Refactoring"
 effort: "Low"
-status: "TODO"
+status: "DONE"
 dependencies: []
 assignee: "regista-canvas"
 ---

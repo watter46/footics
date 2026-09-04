@@ -80,6 +80,7 @@ describe('BoundaryBoxHud component', () => {
       width: 100,
       height: 100,
       enabled: true,
+      fitTarget: 'pitch',
     });
   });
 
@@ -110,6 +111,7 @@ describe('BoundaryBoxHud component', () => {
       width: 100,
       height: 100,
       enabled: true,
+      fitTarget: 'canvas',
     });
   });
 
@@ -151,7 +153,9 @@ describe('BoundaryBoxHud component', () => {
     render(<BoundaryBoxHud stageSize={{ width: 800, height: 450 }} />);
 
     // Check that tilt controls are rendered
-    expect(screen.getByRole('group', { name: 'Pitch Tilt Controls' })).toBeDefined();
+    expect(
+      screen.getByRole('group', { name: 'Pitch Tilt Controls' }),
+    ).toBeDefined();
     const btn0 = screen.getByRole('button', { name: 'Set pitch tilt to 0°' });
     const btn25 = screen.getByRole('button', { name: 'Set pitch tilt to 25°' });
     const btn45 = screen.getByRole('button', { name: 'Set pitch tilt to 45°' });
@@ -190,7 +194,9 @@ describe('BoundaryBoxHud component', () => {
     fireEvent.change(slider, { target: { value: '35' } });
 
     const state = useTacticalUnifiedStore.getState();
-    const slide = state.project.slides.find((s) => s.id === state.activeSlideId);
+    const slide = state.project.slides.find(
+      (s) => s.id === state.activeSlideId,
+    );
     expect(slide?.pitchTransform?.tilt).toBe(35);
   });
 });

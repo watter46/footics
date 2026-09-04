@@ -548,6 +548,7 @@ describe('tactical-unified-store', () => {
       width: 96.0,
       height: 96.0,
       enabled: true,
+      fitTarget: 'pitch',
     });
 
     store.restoreDefaultPitch();
@@ -647,6 +648,7 @@ describe('tactical-unified-store', () => {
       width: 100,
       height: 100,
       enabled: true,
+      fitTarget: 'pitch',
     });
 
     const newSlideId = store.addSlide(undefined, 'blank');
@@ -659,6 +661,7 @@ describe('tactical-unified-store', () => {
       width: 100,
       height: 100,
       enabled: true,
+      fitTarget: 'pitch',
     });
   });
 
@@ -683,6 +686,7 @@ describe('tactical-unified-store', () => {
       width: 100,
       height: 100,
       enabled: true,
+      fitTarget: 'pitch',
     });
 
     // 横向き (16:9)
@@ -704,6 +708,7 @@ describe('tactical-unified-store', () => {
       width: 100,
       height: 100,
       enabled: true,
+      fitTarget: 'pitch',
     });
 
     // 縦向き (9:16)
@@ -725,6 +730,7 @@ describe('tactical-unified-store', () => {
       width: 100,
       height: 100,
       enabled: true,
+      fitTarget: 'pitch',
     });
 
     // スクリーンショット / 画像背景モードのときは画像境界（2%余白内）にフィットする
@@ -739,6 +745,7 @@ describe('tactical-unified-store', () => {
       width: 96.0,
       height: 96.0,
       enabled: true,
+      fitTarget: 'pitch',
     });
 
     // 境界線を変更した後に autoFitBoundaryBox を実行しても画像境界にフィットする
@@ -759,6 +766,7 @@ describe('tactical-unified-store', () => {
       width: 96.0,
       height: 96.0,
       enabled: true,
+      fitTarget: 'pitch',
     });
   });
 
@@ -1316,6 +1324,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        fitTarget: 'pitch',
       });
     });
 
@@ -1335,6 +1344,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        fitTarget: 'pitch',
       });
     });
 
@@ -1354,6 +1364,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        fitTarget: 'pitch',
       });
     });
 
@@ -1426,6 +1437,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        fitTarget: 'canvas',
       });
       expect(useTacticalUnifiedStore.getState().project.boundaryBox).toEqual({
         x: 0,
@@ -1433,6 +1445,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        fitTarget: 'canvas',
       });
     });
 
@@ -1451,6 +1464,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        fitTarget: 'canvas',
       });
 
       // ユーザーによる四方ハンドルの個別リサイズ操作
@@ -1491,6 +1505,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        fitTarget: 'pitch',
       });
     });
   });

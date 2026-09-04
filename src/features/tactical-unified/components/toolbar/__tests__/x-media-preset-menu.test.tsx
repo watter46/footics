@@ -6,6 +6,7 @@ import { XMediaPresetMenu } from '../x-media-preset-menu';
 describe('XMediaPresetMenu rendering and toggle', () => {
   beforeEach(() => {
     useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.getState().setAspectRatio('16:9');
   });
 
   it('renders trigger button and toggles menu on click', () => {
@@ -59,6 +60,7 @@ describe('XMediaPresetMenu rendering and toggle', () => {
 describe('XMediaPresetMenu preset selection actions', () => {
   beforeEach(() => {
     useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.getState().setAspectRatio('16:9');
   });
 
   it('applies 4:5 preset when clicked and updates slide boundaryBox', () => {
@@ -104,7 +106,9 @@ describe('XMediaPresetMenu preset selection actions', () => {
     activeSlide = state.project.slides.find(
       (s) => s.id === state.activeSlideId,
     );
-    expect(activeSlide?.boundaryBox?.x).toBe(7.25);
-    expect(activeSlide?.boundaryBox?.y).toBe(0.43);
+    expect(activeSlide?.boundaryBox?.x).toBe(0);
+    expect(activeSlide?.boundaryBox?.y).toBe(0);
+    expect(activeSlide?.boundaryBox?.width).toBe(100);
+    expect(activeSlide?.boundaryBox?.height).toBe(100);
   });
 });

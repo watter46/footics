@@ -9,6 +9,7 @@ import type Konva from 'konva';
 import { useCallback } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { ExportTarget, Slide } from '@/lib/types/tactical-unified';
+import { calculatePitchRect } from '../components/canvas/canvas-pitch-transform-helper';
 
 interface UseKonvaExportOptions {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -41,18 +42,23 @@ export function useKonvaExport({
       );
       const box = activeSlide?.boundaryBox;
 
-      if (
-        box?.enabled &&
-        box.width > 0 &&
-        box.height > 0 &&
-        (box.width !== 100 || box.height !== 100 || box.x !== 0 || box.y !== 0)
-      ) {
-        const stageW = stage.width();
-        const stageH = stage.height();
-        const cropX = (box.x / 100) * stageW;
-        const cropY = (box.y / 100) * stageH;
-        const cropW = (box.width / 100) * stageW;
-        const cropH = (box.height / 100) * stageH;
+      const stageW = stage.width();
+      const stageH = stage.height();
+      const pitchRect = calculatePitchRect(
+        { width: stageW, height: stageH },
+        currentProject.aspectRatio,
+      );
+
+      const baseRect =
+        box?.fitTarget === 'canvas'
+          ? { x: 0, y: 0, width: stageW, height: stageH }
+          : pitchRect;
+
+      if (box?.enabled && box.width > 0 && box.height > 0) {
+        const cropX = baseRect.x + (box.x / 100) * baseRect.width;
+        const cropY = baseRect.y + (box.y / 100) * baseRect.height;
+        const cropW = (box.width / 100) * baseRect.width;
+        const cropH = (box.height / 100) * baseRect.height;
 
         return stage.toDataURL({
           x: cropX,
@@ -63,7 +69,15 @@ export function useKonvaExport({
         });
       }
 
-      return stage.toDataURL({ pixelRatio: scale }) ?? null;
+      return (
+        stage.toDataURL({
+          x: pitchRect.x,
+          y: pitchRect.y,
+          width: pitchRect.width,
+          height: pitchRect.height,
+          pixelRatio: scale,
+        }) ?? null
+      );
     },
     [stageRef, activeSlideId],
   );

@@ -6,6 +6,7 @@ import { TopBarCenter } from '../top-bar-center';
 describe('TopBarCenter aspect ratio selector', () => {
   beforeEach(() => {
     useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.getState().setAspectRatio('16:9');
   });
 
   it('renders all 4 aspect ratio tabs (16:9, 9:16, 4:5, 1:1)', () => {

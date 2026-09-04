@@ -263,6 +263,7 @@ export function computePitchFitBoundaryBox(
     width: 100,
     height: 100,
     enabled: true,
+    fitTarget: 'pitch',
   };
 
   if (pitchPosition) {

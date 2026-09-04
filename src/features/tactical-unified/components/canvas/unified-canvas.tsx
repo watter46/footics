@@ -21,7 +21,10 @@ import { DrawingToolbar } from '../toolbar/drawing-toolbar';
 import { AnnotationLayer } from './annotation-layer';
 import { BallObject } from './ball-object';
 import { BoundaryBox } from './boundary-box';
-import { calculatePitchTransform } from './canvas-pitch-transform-helper';
+import {
+  calculatePitchRect,
+  calculatePitchTransform,
+} from './canvas-pitch-transform-helper';
 import { createCanvasNodesRegistry } from './canvas-registry';
 import { DrawingPreviewLayer } from './drawing-preview-layer';
 import { PitchBackground } from './pitch-background';
@@ -64,20 +67,10 @@ export function UnifiedCanvas() {
     ? (activeSlide?.texts.find((t) => t.id === editingTextId) ?? null)
     : null;
 
-  const pitchRect = useMemo(() => {
-    const [wR, hR] = aspectRatio.split(':').map(Number) as [number, number];
-    let pw = stageSize.width;
-    let ph = (pw * hR) / wR;
-    if (ph > stageSize.height) {
-      ph = stageSize.height;
-      pw = (ph * wR) / hR;
-    }
-    pw = Math.max(1, Math.floor(pw));
-    ph = Math.max(1, Math.floor(ph));
-    const px = Math.floor((stageSize.width - pw) / 2);
-    const py = Math.floor((stageSize.height - ph) / 2);
-    return { x: px, y: py, width: pw, height: ph };
-  }, [aspectRatio, stageSize.width, stageSize.height]);
+  const pitchRect = useMemo(
+    () => calculatePitchRect(stageSize, aspectRatio),
+    [aspectRatio, stageSize.width, stageSize.height],
+  );
 
   const pitchSize = useMemo(
     () => ({ width: pitchRect.width, height: pitchRect.height }),
@@ -87,7 +80,11 @@ export function UnifiedCanvas() {
   const pitchGroupsRef = useRef<(Konva.Group | null)[]>([]);
 
   const pitchTransform = activeSlide?.pitchTransform ?? {
-    panX: 0, panY: 0, zoom: 1, tilt: 0, isLocked: false,
+    panX: 0,
+    panY: 0,
+    zoom: 1,
+    tilt: 0,
+    isLocked: false,
   };
   const panX = pitchTransform.panX ?? 0;
   const panY = pitchTransform.panY ?? 0;
@@ -218,15 +215,26 @@ export function UnifiedCanvas() {
           {/* Layer 1: 背景レイヤー */}
           <Layer
             listening={false}
-            ref={(node) => { nodesRegistryRef.current.backgroundLayer = node; }}
+            ref={(node) => {
+              nodesRegistryRef.current.backgroundLayer = node;
+            }}
           >
-            <Rect x={0} y={0} width={stageSize.width} height={stageSize.height} fill="#0a0a0a" listening={false} />
+            <Rect
+              x={0}
+              y={0}
+              width={stageSize.width}
+              height={stageSize.height}
+              fill="#0a0a0a"
+              listening={false}
+            />
             <Group
               x={pitchTransformValues.x}
               y={pitchTransformValues.y}
               scaleX={pitchTransformValues.scaleX}
               scaleY={pitchTransformValues.scaleY}
-              ref={(node) => { pitchGroupsRef.current[0] = node; }}
+              ref={(node) => {
+                pitchGroupsRef.current[0] = node;
+              }}
             >
               <PitchBackground
                 width={pitchRect.width}
@@ -239,13 +247,19 @@ export function UnifiedCanvas() {
           </Layer>
 
           {/* Layer 2: アノテーションレイヤー */}
-          <Layer ref={(node) => { nodesRegistryRef.current.annotationLayer = node; }}>
+          <Layer
+            ref={(node) => {
+              nodesRegistryRef.current.annotationLayer = node;
+            }}
+          >
             <Group
               x={pitchTransformValues.x}
               y={pitchTransformValues.y}
               scaleX={pitchTransformValues.scaleX}
               scaleY={pitchTransformValues.scaleY}
-              ref={(node) => { pitchGroupsRef.current[1] = node; }}
+              ref={(node) => {
+                pitchGroupsRef.current[1] = node;
+              }}
             >
               <AnnotationLayer
                 slide={activeSlide}
@@ -271,10 +285,20 @@ export function UnifiedCanvas() {
               y={pitchTransformValues.y}
               scaleX={pitchTransformValues.scaleX}
               scaleY={pitchTransformValues.scaleY}
-              ref={(node) => { pitchGroupsRef.current[2] = node; }}
+              ref={(node) => {
+                pitchGroupsRef.current[2] = node;
+              }}
             >
-              <PlayerLayer slide={activeSlide} stageSize={pitchSize} nodesRegistryRef={nodesRegistryRef} />
-              <BallObject ball={activeSlide.ball} stageSize={pitchSize} nodesRegistryRef={nodesRegistryRef} />
+              <PlayerLayer
+                slide={activeSlide}
+                stageSize={pitchSize}
+                nodesRegistryRef={nodesRegistryRef}
+              />
+              <BallObject
+                ball={activeSlide.ball}
+                stageSize={pitchSize}
+                nodesRegistryRef={nodesRegistryRef}
+              />
             </Group>
           </Layer>
 
@@ -285,30 +309,48 @@ export function UnifiedCanvas() {
               y={pitchTransformValues.y}
               scaleX={pitchTransformValues.scaleX}
               scaleY={pitchTransformValues.scaleY}
-              ref={(node) => { pitchGroupsRef.current[3] = node; }}
+              ref={(node) => {
+                pitchGroupsRef.current[3] = node;
+              }}
             >
-              <DrawingPreviewLayer drawingState={drawingState} selectionBox={null} />
-              <DrawingPreviewLayer drawingState={null} selectionBox={selectionBox} />
+              <DrawingPreviewLayer
+                drawingState={drawingState}
+                selectionBox={null}
+              />
+              <DrawingPreviewLayer
+                drawingState={null}
+                selectionBox={selectionBox}
+              />
             </Group>
             <BoundaryBox
               boundaryBox={activeSlide.boundaryBox}
               stageSize={stageSize}
+              pitchRect={pitchRect}
               isExporting={isExporting}
               onUpdate={(box) => setBoundaryBox(activeSlideId, box)}
             />
           </Layer>
         </Stage>
 
-        <ContextHud stageSize={stageSize} pitchRect={pitchRect} nodesRegistryRef={nodesRegistryRef} />
-        <BoundaryBoxHud stageSize={stageSize} />
+        <ContextHud
+          stageSize={stageSize}
+          pitchRect={pitchRect}
+          nodesRegistryRef={nodesRegistryRef}
+        />
+        <BoundaryBoxHud stageSize={stageSize} pitchRect={pitchRect} />
 
         <PitchInlineTextEditor
           editingText={editingText}
           stageSize={stageSize}
           pitchRect={pitchRect}
           pitchTransform={pitchTransform}
-          onSave={(textId, content) => { updateText(activeSlideId, textId, { content }); }}
-          onRemove={(textId) => { removeText(activeSlideId, textId); clearSelection(); }}
+          onSave={(textId, content) => {
+            updateText(activeSlideId, textId, { content });
+          }}
+          onRemove={(textId) => {
+            removeText(activeSlideId, textId);
+            clearSelection();
+          }}
           onClose={() => setEditingTextId(null)}
         />
       </div>

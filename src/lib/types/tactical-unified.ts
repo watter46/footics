@@ -344,6 +344,7 @@ export const BoundaryBoxSchema = z.object({
   width: NormalizedCoordSchema,
   height: NormalizedCoordSchema,
   enabled: z.boolean().default(true),
+  fitTarget: z.enum(['pitch', 'canvas', 'custom']).optional(),
 });
 export type BoundaryBox = z.infer<typeof BoundaryBoxSchema>;
 
@@ -354,6 +355,7 @@ export const DEFAULT_BOUNDARY_BOX_16_9: BoundaryBox = {
   width: 100,
   height: 100,
   enabled: true,
+  fitTarget: 'pitch',
 };
 
 /** ピッチ白線フィット境界線のデフォルト値 (9:16 縦向き) */
@@ -363,6 +365,7 @@ export const DEFAULT_BOUNDARY_BOX_9_16: BoundaryBox = {
   width: 100,
   height: 100,
   enabled: true,
+  fitTarget: 'pitch',
 };
 
 /** ピッチ白線フィット境界線のデフォルト値 (4:5 縦長) */
@@ -372,6 +375,7 @@ export const DEFAULT_BOUNDARY_BOX_4_5: BoundaryBox = {
   width: 100,
   height: 100,
   enabled: true,
+  fitTarget: 'pitch',
 };
 
 /** スクリーンショット / 画像背景時のフィット境界線（周囲にポインタハンドル用 2% の余白を持たせて配置） */
@@ -381,6 +385,7 @@ export const DEFAULT_BOUNDARY_BOX_SCREENSHOT: BoundaryBox = {
   width: 96.0,
   height: 96.0,
   enabled: true,
+  fitTarget: 'pitch',
 };
 
 /** 対象比率の全画面フィット境界線 (フル領域 100x100) */
@@ -390,6 +395,7 @@ export const DEFAULT_BOUNDARY_BOX_FULL: BoundaryBox = {
   width: 100,
   height: 100,
   enabled: true,
+  fitTarget: 'canvas',
 };
 
 /** アスペクト比に応じたデフォルト境界線を取得 */
@@ -518,6 +524,7 @@ export function createXBoundaryBox(
     width: Math.max(0, Math.min(100, width)),
     height: Math.max(0, Math.min(100, height)),
     enabled: true,
+    fitTarget: 'pitch',
   };
 }
 

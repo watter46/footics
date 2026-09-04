@@ -21,6 +21,7 @@ import { normToPx, pxToNorm } from './unified-canvas';
 interface BoundaryBoxProps {
   boundaryBox?: BoundaryBoxType;
   stageSize: { width: number; height: number };
+  pitchRect?: { x: number; y: number; width: number; height: number };
   onUpdate: (box: BoundaryBoxType) => void;
   isExporting?: boolean;
 }
@@ -125,18 +126,6 @@ function calculateCornerResize(
   };
 }
 
-function calculateGroupDrag(
-  curX: number,
-  curY: number,
-  width: number,
-  height: number,
-) {
-  return {
-    normX: pxToNorm(curX, width),
-    normY: pxToNorm(curY, height),
-  };
-}
-
 interface BoundaryBoxFrameProps {
   pxW: number;
   pxH: number;
@@ -202,16 +191,26 @@ const BoundaryBoxFrame = React.memo(function BoundaryBoxFrame({
 export const BoundaryBox = React.memo(function BoundaryBox({
   boundaryBox,
   stageSize,
+  pitchRect,
   onUpdate,
   isExporting = false,
 }: BoundaryBoxProps) {
-  const { width, height } = stageSize;
-
   // Default to pitch line fit boundary box if not set
   const box: BoundaryBoxType = boundaryBox ?? DEFAULT_BOUNDARY_BOX_4_5;
 
-  const rawPxX = normToPx(box.x, width);
-  const rawPxY = normToPx(box.y, height);
+  const baseRect =
+    box.fitTarget === 'canvas'
+      ? { x: 0, y: 0, width: stageSize.width, height: stageSize.height }
+      : (pitchRect ?? {
+          x: 0,
+          y: 0,
+          width: stageSize.width,
+          height: stageSize.height,
+        });
+  const { width, height } = baseRect;
+
+  const rawPxX = baseRect.x + normToPx(box.x, width);
+  const rawPxY = baseRect.y + normToPx(box.y, height);
   const rawPxW = normToPx(box.width, width);
   const rawPxH = normToPx(box.height, height);
 
@@ -237,14 +236,14 @@ export const BoundaryBox = React.memo(function BoundaryBox({
 
       onUpdate({
         ...box,
-        x: pxToNorm(newX, width),
-        y: pxToNorm(newY, height),
+        x: pxToNorm(newX - baseRect.x, width),
+        y: pxToNorm(newY - baseRect.y, height),
         width: pxToNorm(newW, width),
         height: pxToNorm(newH, height),
         enabled: true,
       });
     },
-    [box, pxX, pxY, pxW, pxH, width, height, onUpdate],
+    [box, pxX, pxY, pxW, pxH, width, height, baseRect.x, baseRect.y, onUpdate],
   );
 
   const handleGroupDrag = useCallback(
@@ -253,12 +252,8 @@ export const BoundaryBox = React.memo(function BoundaryBox({
       e.cancelBubble = true;
       if (width <= 0 || height <= 0) return;
 
-      const { normX, normY } = calculateGroupDrag(
-        e.target.x(),
-        e.target.y(),
-        width,
-        height,
-      );
+      const normX = pxToNorm(e.target.x() - baseRect.x, width);
+      const normY = pxToNorm(e.target.y() - baseRect.y, height);
 
       onUpdate({
         ...box,
@@ -267,7 +262,7 @@ export const BoundaryBox = React.memo(function BoundaryBox({
         enabled: true,
       });
     },
-    [box, width, height, onUpdate],
+    [box, width, height, baseRect.x, baseRect.y, onUpdate],
   );
 
   if (isExporting || !box.enabled) return null;

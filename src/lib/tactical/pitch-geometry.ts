@@ -217,3 +217,24 @@ export function calculatePitchGeometryForAspect(
     config,
   };
 }
+
+/**
+ * ステージサイズとアスペクト比から、画面内に収まるピッチ外枠矩形（中央揃え）を算出
+ */
+export function calculatePitchRect(
+  stageSize: { width: number; height: number },
+  aspectRatio: AspectRatio | string,
+): { x: number; y: number; width: number; height: number } {
+  const [wR, hR] = aspectRatio.split(':').map(Number) as [number, number];
+  let pw = stageSize.width;
+  let ph = (pw * hR) / wR;
+  if (ph > stageSize.height) {
+    ph = stageSize.height;
+    pw = (ph * wR) / hR;
+  }
+  pw = Math.max(1, Math.floor(pw));
+  ph = Math.max(1, Math.floor(ph));
+  const px = Math.floor((stageSize.width - pw) / 2);
+  const py = Math.floor((stageSize.height - ph) / 2);
+  return { x: px, y: py, width: pw, height: ph };
+}

@@ -61,3 +61,5 @@ export function applyPitchTransformToGroups(
     layer.batchDraw();
   }
 }
+
+export { calculatePitchRect } from '@/lib/tactical/pitch-geometry';

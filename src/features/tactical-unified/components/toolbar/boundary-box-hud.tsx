@@ -28,6 +28,7 @@ import { BoundaryBoxTiltControls } from './boundary-box-tilt-controls';
 
 export interface BoundaryBoxHudProps {
   stageSize: { width: number; height: number };
+  pitchRect?: { x: number; y: number; width: number; height: number };
 }
 
 const PRESET_RATIOS: { ratio: XMediaRatio; label: string }[] = [
@@ -39,6 +40,7 @@ const PRESET_RATIOS: { ratio: XMediaRatio; label: string }[] = [
 
 export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
   stageSize,
+  pitchRect,
 }: BoundaryBoxHudProps) {
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
@@ -79,9 +81,18 @@ export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
   }
 
   // Pixel coordinates relative to stage container
-  const pxX = (box.x / 100) * stageSize.width;
-  const pxY = (box.y / 100) * stageSize.height;
-  const pxW = (box.width / 100) * stageSize.width;
+  const baseRect =
+    box.fitTarget === 'canvas'
+      ? { x: 0, y: 0, width: stageSize.width, height: stageSize.height }
+      : (pitchRect ?? {
+          x: 0,
+          y: 0,
+          width: stageSize.width,
+          height: stageSize.height,
+        });
+  const pxX = baseRect.x + (box.x / 100) * baseRect.width;
+  const pxY = baseRect.y + (box.y / 100) * baseRect.height;
+  const pxW = (box.width / 100) * baseRect.width;
 
   // Position HUD centered above the top edge of the box (or inside if near top edge)
   const top = pxY > 36 ? pxY - 34 : pxY + 8;

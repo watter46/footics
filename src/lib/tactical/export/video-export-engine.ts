@@ -23,6 +23,7 @@ import type {
   ExportProgress,
   Slide,
 } from '@/lib/types/tactical-unified';
+import { calculatePitchRect } from '../pitch-geometry';
 import {
   type AnyCanvasRenderingContext2D,
   renderTacticalFrameToCanvas,
@@ -51,24 +52,40 @@ export function calculateBoundaryCrop(
   stageWidth: number,
   stageHeight: number,
   scale = 2,
+  pitchRect?: { x: number; y: number; width: number; height: number },
 ): BoundaryCropInfo {
-  let cropX = 0;
-  let cropY = 0;
-  let cropW = stageWidth;
-  let cropH = stageHeight;
+  const rect = pitchRect ?? {
+    x: 0,
+    y: 0,
+    width: stageWidth,
+    height: stageHeight,
+  };
+  let cropX = rect.x;
+  let cropY = rect.y;
+  let cropW = rect.width;
+  let cropH = rect.height;
   let isCropped = false;
 
-  if (
-    box?.enabled &&
-    box.width > 0 &&
-    box.height > 0 &&
-    (box.width < 100 || box.height < 100 || box.x > 0 || box.y > 0)
-  ) {
-    cropX = (box.x / 100) * stageWidth;
-    cropY = (box.y / 100) * stageHeight;
-    cropW = (box.width / 100) * stageWidth;
-    cropH = (box.height / 100) * stageHeight;
-    isCropped = true;
+  const hasCustomPitchRect =
+    rect.x !== 0 ||
+    rect.y !== 0 ||
+    rect.width !== stageWidth ||
+    rect.height !== stageHeight;
+  const isBoxCropped =
+    Boolean(box?.enabled) &&
+    (box?.width ?? 0) > 0 &&
+    (box?.height ?? 0) > 0 &&
+    ((box?.width ?? 100) < 100 ||
+      (box?.height ?? 100) < 100 ||
+      (box?.x ?? 0) > 0 ||
+      (box?.y ?? 0) > 0);
+
+  if (box?.enabled && box.width > 0 && box.height > 0) {
+    cropX = rect.x + (box.x / 100) * rect.width;
+    cropY = rect.y + (box.y / 100) * rect.height;
+    cropW = (box.width / 100) * rect.width;
+    cropH = (box.height / 100) * rect.height;
+    isCropped = hasCustomPitchRect || isBoxCropped;
   }
 
   // Baseline Resolution Guarantee depending on selected scale preset:
@@ -527,11 +544,20 @@ export async function exportMp4Video(
     checkCancelled,
   } = options;
 
+  const pitchRect = calculatePitchRect(
+    { width: stageWidth, height: stageHeight },
+    aspectRatio,
+  );
+  const baseRect =
+    boundaryBox?.fitTarget === 'canvas'
+      ? { x: 0, y: 0, width: stageWidth, height: stageHeight }
+      : pitchRect;
   const cropInfo = calculateBoundaryCrop(
     boundaryBox,
     stageWidth,
     stageHeight,
     scale,
+    baseRect,
   );
   const { exportWidth, exportHeight } = cropInfo;
 
@@ -785,11 +811,20 @@ export async function exportTransparentWebm(
     checkCancelled,
   } = options;
 
+  const pitchRect = calculatePitchRect(
+    { width: stageWidth, height: stageHeight },
+    aspectRatio,
+  );
+  const baseRect =
+    boundaryBox?.fitTarget === 'canvas'
+      ? { x: 0, y: 0, width: stageWidth, height: stageHeight }
+      : pitchRect;
   const cropInfo = calculateBoundaryCrop(
     boundaryBox,
     stageWidth,
     stageHeight,
     scale,
+    baseRect,
   );
   const { exportWidth, exportHeight } = cropInfo;
 
@@ -1059,11 +1094,20 @@ export async function exportVideoWithMediaRecorder(
     throw new Error('MediaRecorder API is not supported in this browser.');
   }
 
+  const pitchRect = calculatePitchRect(
+    { width: stageWidth, height: stageHeight },
+    aspectRatio,
+  );
+  const baseRect =
+    boundaryBox?.fitTarget === 'canvas'
+      ? { x: 0, y: 0, width: stageWidth, height: stageHeight }
+      : pitchRect;
   const cropInfo = calculateBoundaryCrop(
     boundaryBox,
     stageWidth,
     stageHeight,
     scale,
+    baseRect,
   );
   const { exportWidth, exportHeight } = cropInfo;
 

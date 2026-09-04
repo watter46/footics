@@ -68,6 +68,7 @@ describe('useTacticalCaptureBridge', () => {
       width: 96,
       height: 96,
       enabled: true,
+      fitTarget: 'pitch',
     });
   });
 
