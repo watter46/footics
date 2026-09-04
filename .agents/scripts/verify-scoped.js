@@ -46,6 +46,19 @@ function run() {
     });
   }
 
+  // 3. Related Tests Check
+  const testableFiles = changedFiles.filter((f) =>
+    /\.(ts|tsx|js|jsx)$/.test(f),
+  );
+  if (testableFiles.length > 0) {
+    console.log(
+      `[Fast Verify] Running related tests for ${testableFiles.length} file(s)...`,
+    );
+    execSync(`rtk vitest related --run --passWithNoTests ${testableFiles.join(' ')}`, {
+      stdio: 'inherit',
+    });
+  }
+
   console.log('[Fast Verify] All scoped checks passed successfully.');
 }
 
