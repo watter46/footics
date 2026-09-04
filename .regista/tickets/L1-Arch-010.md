@@ -1,32 +1,35 @@
 ---
 id: L1-Arch-010
-emoji: 🟢 # 例: 🎨, 🔧, 🐛
-title: [Phase 1] tactical-unified: panels/inspector/ 等のスライス化 # 必ず日本語で記述すること
-status: DONE
-depends_on: [] # 例: ["L1-Tactical-001"]
-# 【警告】以下の model と effort は絶対に省略したり、CLIツール等のデフォルトに依存してはならない。必ず明記すること。
-model: Gemini 3.7 Flash # 必須: [GM発行] Gemini 3.1 Pro または Gemini 3.8 Flash | [Worker実装] Gemini 3.7 Flash 〜 3.8 Flash | [難関] Claude Sonnet 4.6 (thinking)
-effort: medium # 必須: low | medium | high
+emoji: 🟢
+title: "tactical-unified: objects/arrow/ の垂直スライス化（矢印・軌跡レイヤー分離）"
+depends_on: []
+model: Gemini 3.7 Flash
+effort: medium
 context_files:
-  - src/features/tactical-unified/components/inspector/
-  - src/features/tactical-unified/components/right-panel/
-  - src/features/tactical-unified/components/tactical-unified-page.tsx
----
+  - src/features/tactical-unified/components/canvas/ghost-trajectory-arrow.tsx
+  - src/features/tactical-unified/components/canvas/unified-canvas.tsx
+status: DONE
 
-# 🟢 L1-Arch-010: [Phase 1] tactical-unified: panels/inspector/ 等のスライス化
+# 🟢 L1-Arch-010: tactical-unified: objects/arrow/ の垂直スライス化（矢印・軌跡レイヤー分離）
 
 ## UX Impact
-UIパネルが独立し、Tactical画面の保守性が向上する。
+矢印・軌跡描画ロジックが独立したサブモジュールとなり、拡張・修正時の影響範囲が明確になる。
 
 ## Detailed Spec
-1. `src/features/tactical-unified/panels/inspector/` および `panels/right-panel/` を作成する。
-2. 該当ディレクトリを `panels/` 配下に移動する。
-3. `tactical-unified-page.tsx` のインポートを更新する。
+1. `src/features/tactical-unified/objects/arrow/` ディレクトリを作成し、自己完結4要素（`components/`, `hooks/`, `types.ts`, `index.ts`）を配置する。
+2. 以下のファイルを `objects/arrow/components/` へ移動する:
+   - `components/canvas/ghost-trajectory-arrow.tsx`
+3. 矢印描画に関連するフックがあれば `objects/arrow/hooks/` へ切り出す（現時点では `drawing-preview-layer.tsx` 内に混在している可能性があるため要確認）。
+4. `objects/arrow/types.ts` に矢印固有の型を集約する（`stores/` や `canvas-interaction-types.ts` から移植）。
+5. `objects/arrow/index.ts` で公開APIを定義する。
+6. `unified-canvas.tsx` 等のインポートパスを新パスへ更新する。
+
 ## Acceptance Criteria & Verification Commands
-- [x] `src/features/tactical-unified/panels/inspector/` および `panels/right-panel/` へのスライス化
-- [x] `tactical-unified-page.tsx` および `index.ts` のインポート/エクスポート更新完了
+- [x] `src/features/tactical-unified/objects/arrow/` が `components/`, `hooks/`, `types.ts`, `index.ts` の4要素で構成されている
+- [x] `components/canvas/ghost-trajectory-arrow.tsx` が旧パスに存在しない
+- [x] `unified-canvas.tsx` 等のインポートが新パスを参照している
+- [x] 型エラーがない
 
 ### Verification
-`rtk biome check <対象ディレクトリ>`
-`pnpm type-check:scoped <変更ファイル>`
-`rtk vitest run <テストファイル>` # テストがある場合
+`rtk biome check src/features/tactical-unified/objects/arrow/`
+`rtk pnpm type-check:scoped src/features/tactical-unified/objects/arrow/index.ts src/features/tactical-unified/components/canvas/unified-canvas.tsx`
