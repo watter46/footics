@@ -6,6 +6,7 @@ import type { PitchTransform } from '@/lib/types/tactical-unified';
 
 interface UseCanvasWheelZoomOptions {
   stageSize: { width: number; height: number };
+  effectivePitch?: { x: number; y: number; width?: number; height?: number };
   pitchTransformRef: React.MutableRefObject<PitchTransform>;
   activeSlideId: string;
   updatePitchTransform: (
@@ -21,6 +22,7 @@ interface UseCanvasWheelZoomOptions {
 
 export function useCanvasWheelZoom({
   stageSize,
+  effectivePitch,
   pitchTransformRef,
   activeSlideId,
   updatePitchTransform,
@@ -51,9 +53,14 @@ export function useCanvasWheelZoom({
       const nextZoom = Math.max(0.2, Math.min(5.0, oldZoom * zoomFactor));
       if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
 
+      const pitchOffsetX = effectivePitch?.x ?? 0;
+      const pitchOffsetY = effectivePitch?.y ?? 0;
+      const relX = pos.x - pitchOffsetX;
+      const relY = pos.y - pitchOffsetY;
+
       const scaleRatio = nextZoom / oldZoom;
-      const nextPanX = pos.x - (pos.x - oldPanX) * scaleRatio;
-      const nextPanY = pos.y - (pos.y - oldPanY) * scaleRatio;
+      const nextPanX = relX - (relX - oldPanX) * scaleRatio;
+      const nextPanY = relY - (relY - oldPanY) * scaleRatio;
       applyPitchTransformToNodes(nextPanX, nextPanY, nextZoom);
 
       if (wheelTimeoutRef.current) {
@@ -69,6 +76,7 @@ export function useCanvasWheelZoom({
     },
     [
       stageSize,
+      effectivePitch,
       activeSlideId,
       updatePitchTransform,
       applyPitchTransformToNodes,

@@ -69,6 +69,7 @@ export function useCanvasZoomPan({
 
   const { handleWheel } = useCanvasWheelZoom({
     stageSize,
+    effectivePitch,
     pitchTransformRef,
     activeSlideId,
     updatePitchTransform,
