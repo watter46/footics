@@ -7,11 +7,11 @@ import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useSeasonPlayers } from '../hooks/use-player-master';
-import { useTeamSquad } from '../hooks/use-team-squad';
 import { savePlayerMaster, savePlayerPhoto } from '@/lib/db/queries';
 import type { PlayerMaster } from '@/lib/db/schema';
 import { normalizePosition } from '@/lib/tactical/player-formatting';
+import { useSeasonPlayers } from '../hooks/use-player-master';
+import { useTeamSquad } from '../hooks/use-team-squad';
 
 interface CopySeasonPlayersDialogProps {
   isOpen: boolean;

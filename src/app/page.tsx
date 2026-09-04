@@ -1,12 +1,9 @@
 import { ExternalLink } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import {
-  GlobalDataManagement,
-  ImportMatchButton,
-} from '@/features/management';
-import { MatchListClient } from '@/features/match';
 import { TeamsDropdown } from '@/components/layout/TeamsDropdown';
+import { GlobalDataManagement, ImportMatchButton } from '@/features/management';
+import { MatchListClient } from '@/features/match';
 import type { Match } from '@/types';
 import logoName from './logo-name.png';
 

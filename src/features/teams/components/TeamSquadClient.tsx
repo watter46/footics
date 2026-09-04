@@ -6,28 +6,8 @@ import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { CopySeasonPlayersDialog } from './CopySeasonPlayersDialog';
-import {
-  type EditablePlayerData,
-  EditPlayerDialog,
-} from './EditPlayerDialog';
-import {
-  type IdFilterType,
-  SquadFilterBar,
-} from './squad-filter-bar';
-import { SquadHeader } from './squad-header';
-import {
-  type MergedSquadPlayer,
-  SquadPlayerCard,
-} from './squad-player-card';
-import {
-  type PositionCategory,
-  SquadStatsSummary,
-} from './squad-stats-summary';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useSeasonPlayers } from '../hooks/use-player-master';
-import { useTeamSquad } from '../hooks/use-team-squad';
 import { getAllMatches } from '@/lib/db/queries';
 import type { PlayerMaster } from '@/lib/db/schema';
 import {
@@ -38,7 +18,18 @@ import {
 import { extractAvailableSeasons } from '@/lib/tactical/season-utils';
 import { injectTeamSquadToTactical } from '@/lib/tactical/squad-to-tactical-bridge';
 import type { StandardPosition } from '@/types';
+import { useSeasonPlayers } from '../hooks/use-player-master';
+import { useTeamSquad } from '../hooks/use-team-squad';
 import { AddPlayerDialog } from './AddPlayerDialog';
+import { CopySeasonPlayersDialog } from './CopySeasonPlayersDialog';
+import { type EditablePlayerData, EditPlayerDialog } from './EditPlayerDialog';
+import { type IdFilterType, SquadFilterBar } from './squad-filter-bar';
+import { SquadHeader } from './squad-header';
+import { type MergedSquadPlayer, SquadPlayerCard } from './squad-player-card';
+import {
+  type PositionCategory,
+  SquadStatsSummary,
+} from './squad-stats-summary';
 
 const POSITION_CATEGORIES: PositionCategory[] = [
   { key: 'GK', label: 'Goalkeepers', positions: ['GK'] },

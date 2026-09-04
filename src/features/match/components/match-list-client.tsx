@@ -1,8 +1,8 @@
 'use client';
 
 import { Filter } from 'lucide-react';
-import { useMatchList } from '../hooks/use-match-list';
 import type { Match } from '@/types';
+import { useMatchList } from '../hooks/use-match-list';
 import { FilterBar } from './match-list/FilterBar';
 import { MatchCard } from './match-list/MatchCard';
 

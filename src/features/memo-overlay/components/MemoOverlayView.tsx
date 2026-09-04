@@ -11,7 +11,7 @@ import { useEffect, useRef } from 'react';
 import { getMatchMemo } from '@/lib/db';
 import { cn } from '@/lib/utils';
 import {
-  type MemoOverlayState,
+  useMemoOverlayDerived,
   useMemoOverlayStore,
 } from '../stores/memo-overlay-store';
 import { MatchMemoUnit } from './parts/MatchMemoUnit';

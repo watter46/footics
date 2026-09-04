@@ -3,10 +3,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import hotkeys from 'hotkeys-js';
 import { useCallback, useEffect } from 'react';
-import { useMemoOverlayEventBridge } from '../hooks/useMemoOverlayEventBridge';
 import { putMatchMemo, saveCustomEvent } from '@/lib/db';
 import { createSavePayload } from '@/lib/features/memo-overlay/memoOverlayLogic';
 import { customEventKeys, eventKeys, matchKeys } from '@/lib/query-keys';
+import { useMemoOverlayEventBridge } from '../hooks/useMemoOverlayEventBridge';
 import { useMemoOverlayStore } from '../stores/memo-overlay-store';
 import { MemoOverlayView } from './MemoOverlayView';
 

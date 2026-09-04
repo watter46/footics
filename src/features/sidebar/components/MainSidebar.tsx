@@ -1,16 +1,13 @@
 'use client';
 
 import { Activity, X } from 'lucide-react';
+import { FlatPlayerBadges, PlayerBadgeGroup } from '@/features/analysis';
 import type {
   BasePlayer,
   FilterState,
   Match,
   OutcomeFilter as OutcomeType,
 } from '@/types';
-import {
-  FlatPlayerBadges,
-  PlayerBadgeGroup,
-} from '../analysis/PlayerBadgeGroup';
 import { OutcomeFilter } from './OutcomeFilter';
 import { StrategyFilter } from './StrategyFilter';
 import { TeamFilter } from './TeamFilter';

@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { eventStrategies } from '@/registry';
 import type { EventRow, Match } from '@/types';
+import { MatchMemoDisplay } from './MatchMemoDisplay';
 import { TimelineHeader } from './timeline/TimelineHeader';
 import { TimelineRow } from './timeline/TimelineRow';
-import { MatchMemoDisplay } from './MatchMemoDisplay';
 
 interface EventTimelineProps {
   events: EventRow[];

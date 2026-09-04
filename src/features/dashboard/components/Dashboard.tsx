@@ -12,13 +12,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
+import { Card } from '@/components/ui/card';
 import { EventTimeline } from '@/features/analysis';
 import { DataManagementMenu } from '@/features/management';
-import { MemoOverlayModal } from '@/features/memo-overlay';
+import { MemoOverlayModal, useMemoOverlayStore } from '@/features/memo-overlay';
 import { Sidebar } from '@/features/sidebar';
-import { Card } from '@/components/ui/card';
 import { useDashboard } from '../hooks/use-dashboard';
-import { useMemoOverlayStore } from '@/features/memo-overlay';
 
 export default function Dashboard({ matchId }: { matchId: string }) {
   const d = useDashboard(matchId);

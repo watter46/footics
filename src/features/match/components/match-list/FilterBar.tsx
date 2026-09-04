@@ -1,7 +1,7 @@
 'use client';
 
 import { Filter, X } from 'lucide-react';
-import { GlobalDataManagement } from '../management';
+import { GlobalDataManagement } from '@/features/management';
 
 interface FilterBarProps {
   activeType: 'all' | 'club' | 'national';

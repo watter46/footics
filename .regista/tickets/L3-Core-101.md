@@ -5,6 +5,7 @@ title: Featuresディレクトリ以外のドメインコードの移行（synta
 depends_on: ["L2-Extension-101"]
 model: Gemini 3.8 Flash
 effort: high
+status: DONE
 context_files:
   - src/components/features/
   - src/hooks/
@@ -22,9 +23,9 @@ context_files:
 3. 移動に伴う各種 import パスを修正する。
 
 ## Acceptance Criteria & Verification Commands
-- [ ] syntax 以外のドメインコードが `src/features/` 以下にコロケーションされていること。
-- [ ] syntax 関連コードは元の場所に残っていること。
-- [ ] 移動したファイル群の Type Check と Lint が通ること。
+- [x] syntax 以外のドメインコードが `src/features/` 以下にコロケーションされていること。
+- [x] syntax 関連コードは元の場所に残っていること。
+- [x] 移動したファイル群の Type Check と Lint が通ること。
 
 ### Verification
 `rtk biome check src/`

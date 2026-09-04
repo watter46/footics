@@ -4,9 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useEvents } from '@/features/analysis';
+import { useMemoOverlayStore } from '@/features/memo-overlay';
 import { cleanupOldCache, importMatchJsonFile } from '@/lib/data-loader';
 import { deleteCustomEvent, getMatch } from '@/lib/db';
-import { useMemoOverlayStore } from '@/features/memo-overlay';
 import type { EventRow } from '@/types';
 import { useDashboardFilters } from './use-dashboard-filters';
 

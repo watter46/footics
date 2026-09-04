@@ -2,6 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { useMemoOverlayStore } from '@/features/memo-overlay';
 import {
   customEventKeys,
   eventKeys,
@@ -9,7 +10,6 @@ import {
   playerKeys,
 } from '@/lib/query-keys';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
-import { useMemoOverlayStore } from '@/features/memo-overlay';
 
 /**
  * useDataSync
