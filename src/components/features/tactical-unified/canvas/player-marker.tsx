@@ -162,10 +162,16 @@ export const PlayerMarker = React.memo(function PlayerMarker({
       y={pxY}
       listening={isInteractive}
       draggable={isInteractive && !player.locked}
-      dragBoundFunc={(pos) => ({
-        x: Math.max(0, Math.min(width, pos.x)),
-        y: Math.max(0, Math.min(height, pos.y)),
-      })}
+      dragBoundFunc={function (this: any, pos) {
+        const parentPos = this.getParent()?.getAbsolutePosition() ?? {
+          x: 0,
+          y: 0,
+        };
+        return {
+          x: Math.max(parentPos.x, Math.min(parentPos.x + width, pos.x)),
+          y: Math.max(parentPos.y, Math.min(parentPos.y + height, pos.y)),
+        };
+      }}
       onClick={onSelect}
       onTap={onSelect}
       onDblClick={(e) => {

@@ -148,10 +148,22 @@ export const BallObject = React.memo(function BallObject({
         x={px}
         y={py}
         draggable={!ball.locked}
-        dragBoundFunc={(pos) => ({
-          x: Math.max(0, Math.min(stageSize.width, pos.x)),
-          y: Math.max(0, Math.min(stageSize.height, pos.y)),
-        })}
+        dragBoundFunc={function (this: any, pos) {
+          const parentPos = this.getParent()?.getAbsolutePosition() ?? {
+            x: 0,
+            y: 0,
+          };
+          return {
+            x: Math.max(
+              parentPos.x,
+              Math.min(parentPos.x + stageSize.width, pos.x),
+            ),
+            y: Math.max(
+              parentPos.y,
+              Math.min(parentPos.y + stageSize.height, pos.y),
+            ),
+          };
+        }}
         onClick={(e) => {
           e.cancelBubble = true;
           const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;

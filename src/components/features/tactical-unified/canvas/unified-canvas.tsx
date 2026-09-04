@@ -12,8 +12,8 @@
  */
 
 import type Konva from 'konva';
-import { useEffect, useRef, useState } from 'react';
-import { Layer, Stage } from 'react-konva';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Group, Layer, Rect, Stage } from 'react-konva';
 import type { ExportTarget } from '@/lib/types/tactical-unified';
 import {
   selectActiveSlide,
@@ -77,21 +77,61 @@ export function UnifiedCanvas() {
     ? (activeSlide?.texts.find((t) => t.id === editingTextId) ?? null)
     : null;
 
+  // コンテナサイズと現在のアスペクト比から中央に収まるピッチ矩形を算出
+  const pitchRect = useMemo(() => {
+    const [wR, hR] = aspectRatio.split(':').map(Number) as [number, number];
+    let pw = stageSize.width;
+    let ph = (pw * hR) / wR;
+    if (ph > stageSize.height) {
+      ph = stageSize.height;
+      pw = (ph * wR) / hR;
+    }
+    pw = Math.max(1, Math.floor(pw));
+    ph = Math.max(1, Math.floor(ph));
+    const px = Math.floor((stageSize.width - pw) / 2);
+    const py = Math.floor((stageSize.height - ph) / 2);
+    return { x: px, y: py, width: pw, height: ph };
+  }, [aspectRatio, stageSize.width, stageSize.height]);
+
+  const pitchSize = useMemo(
+    () => ({ width: pitchRect.width, height: pitchRect.height }),
+    [pitchRect.width, pitchRect.height],
+  );
+
+  const pitchGroupsRef = useRef<(Konva.Group | null)[]>([]);
+
+  const pitchTransform = activeSlide?.pitchTransform ?? {
+    panX: 0,
+    panY: 0,
+    zoom: 1,
+    tilt: 0,
+    isLocked: false,
+  };
+  const panX = pitchTransform.panX ?? 0;
+  const panY = pitchTransform.panY ?? 0;
+  const zoom = pitchTransform.zoom ?? 1;
+
   // Pointer イベント＆描画・選択・回転インタラクションフック
   const {
     drawingState,
     selectionBox,
     activePolygonId,
     mousePreviewPos,
+    isPitchLocked,
+    isPanning,
+    isSpacePressed,
+    handleWheel,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
   } = useCanvasPointerInteraction({
     stageSize,
+    pitchRect,
     activeSlide,
     activeSlideId,
     containerRef,
     nodesRegistryRef,
+    pitchGroupsRef,
     editingTextId,
     setEditingTextId,
   });
@@ -124,7 +164,7 @@ export function UnifiedCanvas() {
     applyFrameToCanvas,
   });
 
-  // コンテナリサイズ → Stage サイズ更新
+  // コンテナリサイズ → Stage サイズ更新 (全画面キャンバス)
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -132,21 +172,14 @@ export function UnifiedCanvas() {
     const updateStageSize = () => {
       const { width, height } = el.getBoundingClientRect();
       if (width === 0 || height === 0) return;
-      const [wR, hR] = aspectRatio.split(':').map(Number) as [number, number];
-      let sw = width;
-      let sh = (sw * hR) / wR;
-      if (sh > height) {
-        sh = height;
-        sw = (sh * wR) / hR;
-      }
-      setStageSize({ width: Math.floor(sw), height: Math.floor(sh) });
+      setStageSize({ width: Math.floor(width), height: Math.floor(height) });
     };
 
     updateStageSize();
     const observer = new ResizeObserver(updateStageSize);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [aspectRatio]);
+  }, []);
 
   // URLパラメーター ?screenshot=<dataUrl> ＆ 拡張機能イベント受付 → 背景バインド＆デフォルトピッチ削除
   useEffect(() => {
@@ -256,15 +289,12 @@ export function UnifiedCanvas() {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full flex items-center justify-center bg-[#0a0a0a]"
+      className="relative w-full h-full flex items-center justify-center bg-[#0a0a0a] overflow-hidden"
     >
       {/* Floating & draggable drawing toolbar */}
       <DrawingToolbar />
 
-      <div
-        className="relative"
-        style={{ width: stageSize.width, height: stageSize.height }}
-      >
+      <div className="relative w-full h-full">
         <Stage
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ref={(node: any) => {
@@ -279,14 +309,21 @@ export function UnifiedCanvas() {
           onTouchStart={handlePointerDown}
           onTouchMove={handlePointerMove}
           onTouchEnd={handlePointerUp}
+          onWheel={handleWheel}
           style={{
             cursor: connectingPlayerId
               ? 'crosshair'
-              : activeTool === 'select'
-                ? 'default'
-                : activeTool === 'eraser'
-                  ? 'pointer'
-                  : 'crosshair',
+              : isPanning
+                ? 'grabbing'
+                : isSpacePressed
+                  ? 'grab'
+                  : activeTool === 'select'
+                    ? isPitchLocked
+                      ? 'default'
+                      : 'grab'
+                    : activeTool === 'eraser'
+                      ? 'pointer'
+                      : 'crosshair',
           }}
         >
           {/* Layer 1: 背景レイヤー */}
@@ -296,13 +333,32 @@ export function UnifiedCanvas() {
               nodesRegistryRef.current.backgroundLayer = node;
             }}
           >
-            <PitchBackground
+            {/* キャンバス全体の黒背景（余白・レターボックス領域） */}
+            <Rect
+              x={0}
+              y={0}
               width={stageSize.width}
               height={stageSize.height}
-              aspectRatio={aspectRatio}
-              backgroundType={backgroundType}
-              backgroundImageUrl={backgroundImageUrl}
+              fill="#0a0a0a"
+              listening={false}
             />
+            <Group
+              x={pitchRect.x + panX}
+              y={pitchRect.y + panY}
+              scaleX={zoom}
+              scaleY={zoom}
+              ref={(node) => {
+                pitchGroupsRef.current[0] = node;
+              }}
+            >
+              <PitchBackground
+                width={pitchRect.width}
+                height={pitchRect.height}
+                aspectRatio={aspectRatio}
+                backgroundType={backgroundType}
+                backgroundImageUrl={backgroundImageUrl}
+              />
+            </Group>
           </Layer>
 
           {/* Layer 2: アノテーションレイヤー */}
@@ -311,15 +367,25 @@ export function UnifiedCanvas() {
               nodesRegistryRef.current.annotationLayer = node;
             }}
           >
-            <AnnotationLayer
-              slide={activeSlide}
-              stageSize={stageSize}
-              nodesRegistryRef={nodesRegistryRef}
-              activePolygonId={activePolygonId}
-              mousePreviewPos={mousePreviewPos}
-              editingTextId={editingTextId}
-              onStartEditText={(textId) => setEditingTextId(textId)}
-            />
+            <Group
+              x={pitchRect.x + panX}
+              y={pitchRect.y + panY}
+              scaleX={zoom}
+              scaleY={zoom}
+              ref={(node) => {
+                pitchGroupsRef.current[1] = node;
+              }}
+            >
+              <AnnotationLayer
+                slide={activeSlide}
+                stageSize={pitchSize}
+                nodesRegistryRef={nodesRegistryRef}
+                activePolygonId={activePolygonId}
+                mousePreviewPos={mousePreviewPos}
+                editingTextId={editingTextId}
+                onStartEditText={(textId) => setEditingTextId(textId)}
+              />
+            </Group>
           </Layer>
 
           {/* Layer 3: メイン要素レイヤー（選手 + ボール） */}
@@ -329,26 +395,51 @@ export function UnifiedCanvas() {
               nodesRegistryRef.current.ballLayer = node;
             }}
           >
-            <PlayerLayer
-              slide={activeSlide}
-              stageSize={stageSize}
-              nodesRegistryRef={nodesRegistryRef}
-            />
-            <BallObject
-              ball={activeSlide.ball}
-              stageSize={stageSize}
-              nodesRegistryRef={nodesRegistryRef}
-            />
+            <Group
+              x={pitchRect.x + panX}
+              y={pitchRect.y + panY}
+              scaleX={zoom}
+              scaleY={zoom}
+              ref={(node) => {
+                pitchGroupsRef.current[2] = node;
+              }}
+            >
+              <PlayerLayer
+                slide={activeSlide}
+                stageSize={pitchSize}
+                nodesRegistryRef={nodesRegistryRef}
+              />
+              <BallObject
+                ball={activeSlide.ball}
+                stageSize={pitchSize}
+                nodesRegistryRef={nodesRegistryRef}
+              />
+            </Group>
           </Layer>
 
           {/* Layer 4: UI & プレビューレイヤー（描画中プレビュー + 範囲選択 Marquee + BoundaryBox） */}
           <Layer>
+            <Group
+              x={pitchRect.x + panX}
+              y={pitchRect.y + panY}
+              scaleX={zoom}
+              scaleY={zoom}
+              ref={(node) => {
+                pitchGroupsRef.current[3] = node;
+              }}
+            >
+              <DrawingPreviewLayer
+                drawingState={drawingState}
+                selectionBox={null}
+              />
+            </Group>
+
             <DrawingPreviewLayer
-              drawingState={drawingState}
+              drawingState={null}
               selectionBox={selectionBox}
             />
 
-            {/* エクスポート境界線 (BoundaryBox) */}
+            {/* エクスポート境界線 (BoundaryBox) - Stage 直下でキャンバス全体を自由にはみ出し移動・リサイズ可能 */}
             <BoundaryBox
               boundaryBox={activeSlide.boundaryBox}
               stageSize={stageSize}
@@ -359,7 +450,11 @@ export function UnifiedCanvas() {
         </Stage>
 
         {/* Contextual Floating HUD */}
-        <ContextHud stageSize={stageSize} nodesRegistryRef={nodesRegistryRef} />
+        <ContextHud
+          stageSize={stageSize}
+          pitchRect={pitchRect}
+          nodesRegistryRef={nodesRegistryRef}
+        />
 
         {/* Boundary Box Ratio & Snap HUD */}
         <BoundaryBoxHud stageSize={stageSize} />
@@ -368,6 +463,8 @@ export function UnifiedCanvas() {
         <PitchInlineTextEditor
           editingText={editingText}
           stageSize={stageSize}
+          pitchRect={pitchRect}
+          pitchTransform={pitchTransform}
           onSave={(textId, content) => {
             updateText(activeSlideId, textId, { content });
           }}

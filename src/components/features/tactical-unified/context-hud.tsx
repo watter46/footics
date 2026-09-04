@@ -201,10 +201,15 @@ function MiniColorPicker({
 
 export interface ContextHudProps {
   stageSize: { width: number; height: number };
+  pitchRect?: { x: number; y: number; width: number; height: number };
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
-export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
+export function ContextHud({
+  stageSize,
+  pitchRect,
+  nodesRegistryRef,
+}: ContextHudProps) {
   const hudRef = useRef<HTMLDivElement>(null);
 
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
@@ -253,6 +258,12 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
   }
 
   const selected = selectedObjects[0];
+  const offset = pitchRect ?? {
+    x: 0,
+    y: 0,
+    width: stageSize.width,
+    height: stageSize.height,
+  };
 
   let pxX = stageSize.width / 2;
   let pxY = stageSize.height / 2;
@@ -262,12 +273,15 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
     const player = activeSlide.players.find((p) => p.id === selected.id);
     if (!player) return null;
 
-    pxX = (player.x / 100) * stageSize.width;
-    pxY = (player.y / 100) * stageSize.height;
+    pxX = offset.x + (player.x / 100) * offset.width;
+    pxY = offset.y + (player.y / 100) * offset.height;
 
     const konvaNode = nodesRegistryRef?.current?.playerNodes.get(player.id);
     if (konvaNode) {
-      const pos = konvaNode.position();
+      const pos =
+        typeof konvaNode.getAbsolutePosition === 'function'
+          ? konvaNode.getAbsolutePosition()
+          : konvaNode.position();
       if (
         typeof pos.x === 'number' &&
         typeof pos.y === 'number' &&
@@ -278,7 +292,7 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
       }
     }
 
-    const baseDim = Math.min(stageSize.width, stageSize.height);
+    const baseDim = Math.min(offset.width, offset.height);
     const radius = baseDim * 0.032 * (player.style?.sizeScale ?? 1.0);
     elementHeight = radius * 2;
   } else if (selected.kind === 'arrow') {
@@ -296,13 +310,13 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
         // Fallback below
       }
     } else if (arrow.points && arrow.points.length >= 2) {
-      const sX = (arrow.points[0].x / 100) * stageSize.width;
-      const sY = (arrow.points[0].y / 100) * stageSize.height;
-      const eX = (arrow.points[1].x / 100) * stageSize.width;
-      const eY = (arrow.points[1].y / 100) * stageSize.height;
+      const sX = offset.x + (arrow.points[0].x / 100) * offset.width;
+      const sY = offset.y + (arrow.points[0].y / 100) * offset.height;
+      const eX = offset.x + (arrow.points[1].x / 100) * offset.width;
+      const eY = offset.y + (arrow.points[1].y / 100) * offset.height;
       if (arrow.controlPoint) {
-        pxX = (arrow.controlPoint.x / 100) * stageSize.width;
-        pxY = (arrow.controlPoint.y / 100) * stageSize.height;
+        pxX = offset.x + (arrow.controlPoint.x / 100) * offset.width;
+        pxY = offset.y + (arrow.controlPoint.y / 100) * offset.height;
       } else {
         pxX = (sX + eX) / 2;
         pxY = (sY + eY) / 2;
@@ -326,16 +340,16 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
       const normPosX = zone.x ?? zone.points?.[0]?.x ?? 20;
       const normPosY = zone.y ?? zone.points?.[0]?.y ?? 20;
       const normH = zone.height ?? 20;
-      pxX = (normPosX / 100) * stageSize.width + 30;
-      pxY = (normPosY / 100) * stageSize.height;
-      elementHeight = (normH / 100) * stageSize.height;
+      pxX = offset.x + (normPosX / 100) * offset.width + 30;
+      pxY = offset.y + (normPosY / 100) * offset.height;
+      elementHeight = (normH / 100) * offset.height;
     }
   } else if (selected.kind === 'text') {
     const text = activeSlide.texts.find((t) => t.id === selected.id);
     if (!text) return null;
 
-    pxX = (text.x / 100) * stageSize.width;
-    pxY = (text.y / 100) * stageSize.height;
+    pxX = offset.x + (text.x / 100) * offset.width;
+    pxY = offset.y + (text.y / 100) * offset.height;
 
     const textNode = nodesRegistryRef?.current?.textNodes.get(text.id);
     if (textNode) {
@@ -350,12 +364,15 @@ export function ContextHud({ stageSize, nodesRegistryRef }: ContextHudProps) {
     }
   } else if (selected.kind === 'ball') {
     const ball = activeSlide.ball;
-    pxX = (ball.x / 100) * stageSize.width;
-    pxY = (ball.y / 100) * stageSize.height;
+    pxX = offset.x + (ball.x / 100) * offset.width;
+    pxY = offset.y + (ball.y / 100) * offset.height;
 
     const ballNode = nodesRegistryRef?.current?.ballNode;
     if (ballNode) {
-      const pos = ballNode.position();
+      const pos =
+        typeof ballNode.getAbsolutePosition === 'function'
+          ? ballNode.getAbsolutePosition()
+          : ballNode.position();
       if (typeof pos.x === 'number' && typeof pos.y === 'number') {
         pxX = pos.x;
         pxY = pos.y;

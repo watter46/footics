@@ -1,8 +1,9 @@
 'use client';
 
+import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Slide } from '@/lib/types/tactical-unified';
+import type { PitchTransform, Slide } from '@/lib/types/tactical-unified';
 import {
   type SelectedObject,
   useTacticalUnifiedStore,
@@ -103,24 +104,47 @@ function checkCornerRotateZone(
   return false;
 }
 
+function screenToPitch(
+  pos: { x: number; y: number },
+  pitchRect: { x: number; y: number; width: number; height: number },
+  panX: number,
+  panY: number,
+  zoom: number,
+) {
+  return {
+    x: (pos.x - pitchRect.x - panX) / zoom,
+    y: (pos.y - pitchRect.y - panY) / zoom,
+  };
+}
+
 interface UseCanvasPointerInteractionOptions {
   stageSize: { width: number; height: number };
+  pitchRect?: { x: number; y: number; width: number; height: number };
   activeSlide: Slide | null | undefined;
   activeSlideId: string;
   containerRef: React.RefObject<HTMLDivElement | null>;
   nodesRegistryRef: React.RefObject<CanvasNodesRegistry>;
+  pitchGroupsRef?: React.RefObject<(Konva.Group | null)[]>;
   editingTextId: string | null;
   setEditingTextId: (id: string | null) => void;
 }
 
 export function useCanvasPointerInteraction({
   stageSize,
+  pitchRect,
   activeSlide,
   activeSlideId,
   containerRef,
   nodesRegistryRef,
+  pitchGroupsRef,
   setEditingTextId,
 }: UseCanvasPointerInteractionOptions) {
+  const effectivePitch = pitchRect ?? {
+    x: 0,
+    y: 0,
+    width: stageSize.width,
+    height: stageSize.height,
+  };
   const activeTool = useTacticalUnifiedStore((s) => s.activeTool);
   const setActiveTool = useTacticalUnifiedStore((s) => s.setActiveTool);
   const continuousDrawing = useTacticalUnifiedStore((s) => s.continuousDrawing);
@@ -139,6 +163,153 @@ export function useCanvasPointerInteraction({
     (s) => s.addPlayerFromPalette,
   );
   const eraseAtPoint = useTacticalUnifiedStore((s) => s.eraseAtPoint);
+  const updatePitchTransform = useTacticalUnifiedStore(
+    (s) => s.updatePitchTransform,
+  );
+
+  const pitchTransform = activeSlide?.pitchTransform ?? {
+    panX: 0,
+    panY: 0,
+    zoom: 1,
+    tilt: 0,
+    isLocked: false,
+  };
+  const isPitchLocked = pitchTransform.isLocked ?? false;
+  const pitchTransformRef = useRef<PitchTransform>(pitchTransform);
+  const [isPanning, setIsPanning] = useState(false);
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const isSpacePressedRef = useRef(false);
+  const panStateRef = useRef<{
+    isPanning: boolean;
+    startX: number;
+    startY: number;
+    startPanX: number;
+    startPanY: number;
+    hasMoved: boolean;
+  } | null>(null);
+  const wheelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const applyPitchTransformToNodes = useCallback(
+    (panX: number, panY: number, zoom: number) => {
+      pitchTransformRef.current = {
+        ...pitchTransformRef.current,
+        panX,
+        panY,
+        zoom,
+      };
+
+      if (pitchGroupsRef?.current) {
+        const layersToRedraw = new Set<Konva.Layer>();
+        for (const group of pitchGroupsRef.current) {
+          if (group) {
+            group.x(effectivePitch.x + panX);
+            group.y(effectivePitch.y + panY);
+            group.scaleX(zoom);
+            group.scaleY(zoom);
+            const l = group.getLayer();
+            if (l) layersToRedraw.add(l);
+          }
+        }
+        for (const layer of layersToRedraw) {
+          layer.batchDraw();
+        }
+      }
+    },
+    [pitchGroupsRef, effectivePitch.x, effectivePitch.y],
+  );
+
+  useEffect(() => {
+    pitchTransformRef.current = pitchTransform;
+    applyPitchTransformToNodes(
+      pitchTransform.panX ?? 0,
+      pitchTransform.panY ?? 0,
+      pitchTransform.zoom ?? 1,
+    );
+  }, [pitchTransform, applyPitchTransformToNodes]);
+
+  useEffect(() => {
+    return () => {
+      if (wheelTimeoutRef.current) {
+        clearTimeout(wheelTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.code === 'Space' && !e.repeat) {
+        isSpacePressedRef.current = true;
+        setIsSpacePressed(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        isSpacePressedRef.current = false;
+        setIsSpacePressed(false);
+      }
+    };
+
+    const handleBlur = () => {
+      isSpacePressedRef.current = false;
+      setIsSpacePressed(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  const handleWheel = useCallback(
+    (e: KonvaEventObject<WheelEvent>) => {
+      e.evt.preventDefault();
+      const stage = e.target.getStage();
+      const pos = stage?.getPointerPosition() ?? {
+        x: stageSize.width / 2,
+        y: stageSize.height / 2,
+      };
+
+      const oldZoom = pitchTransformRef.current.zoom ?? 1;
+      const oldPanX = pitchTransformRef.current.panX ?? 0;
+      const oldPanY = pitchTransformRef.current.panY ?? 0;
+
+      const zoomFactor = e.evt.deltaY < 0 ? 1.08 : 1 / 1.08;
+      const nextZoom = Math.max(0.2, Math.min(5.0, oldZoom * zoomFactor));
+      if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
+
+      const scaleRatio = nextZoom / oldZoom;
+      const nextPanX = pos.x - (pos.x - oldPanX) * scaleRatio;
+      const nextPanY = pos.y - (pos.y - oldPanY) * scaleRatio;
+
+      applyPitchTransformToNodes(nextPanX, nextPanY, nextZoom);
+
+      if (wheelTimeoutRef.current) {
+        clearTimeout(wheelTimeoutRef.current);
+      }
+      wheelTimeoutRef.current = setTimeout(() => {
+        updatePitchTransform(activeSlideId, {
+          zoom: pitchTransformRef.current.zoom,
+          panX: pitchTransformRef.current.panX,
+          panY: pitchTransformRef.current.panY,
+        });
+      }, 150);
+    },
+    [stageSize, activeSlideId, updatePitchTransform, applyPitchTransformToNodes],
+  );
 
   const [drawingState, setDrawingState] = useState<DrawingState | null>(null);
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
@@ -179,8 +350,31 @@ export function useCanvasPointerInteraction({
       const pos = stage?.getPointerPosition();
       if (!pos) return;
 
-      const normX = pxToNorm(pos.x, stageSize.width);
-      const normY = pxToNorm(pos.y, stageSize.height);
+      const panX = pitchTransformRef.current.panX ?? 0;
+      const panY = pitchTransformRef.current.panY ?? 0;
+      const zoom = pitchTransformRef.current.zoom ?? 1;
+
+      const pitchPos = screenToPitch(pos, effectivePitch, panX, panY, zoom);
+      const normX = pxToNorm(pitchPos.x, effectivePitch.width);
+      const normY = pxToNorm(pitchPos.y, effectivePitch.height);
+
+      const isBg = e.target === stage;
+      const isSpace = isSpacePressedRef.current;
+      const shouldPan =
+        isSpace || (activeTool === 'select' && !isPitchLocked && isBg);
+
+      if (shouldPan) {
+        panStateRef.current = {
+          isPanning: true,
+          startX: pos.x,
+          startY: pos.y,
+          startPanX: panX,
+          startPanY: panY,
+          hasMoved: false,
+        };
+        setIsPanning(true);
+        return;
+      }
 
       if (activeTool === 'eraser') {
         isErasingRef.current = true;
@@ -201,13 +395,19 @@ export function useCanvasPointerInteraction({
         ) {
           const { cx, cy, rotation } = getZonePixelBounds(
             selectedZone,
-            stageSize.width,
-            stageSize.height,
+            effectivePitch.width,
+            effectivePitch.height,
           );
           isRotatingRef.current = true;
           currentRotationRef.current = null;
-          rotateCenterRef.current = { x: cx, y: cy };
-          startMouseAngleRef.current = Math.atan2(pos.y - cy, pos.x - cx);
+          rotateCenterRef.current = {
+            x: cx,
+            y: cy,
+          };
+          startMouseAngleRef.current = Math.atan2(
+            pitchPos.y - cy,
+            pitchPos.x - cx,
+          );
           startShapeRotationRef.current = rotation;
           if (containerRef.current) {
             containerRef.current.style.cursor = ROTATE_CURSOR;
@@ -215,8 +415,7 @@ export function useCanvasPointerInteraction({
           return;
         }
 
-        // 背景クリック・ドラッグで範囲選択または選択解除を開始
-        const isBg = e.target === stage;
+        // 背景クリック・ドラッグで範囲選択または選択解除を開始 (ピッチロック時)
         if (isBg) {
           const isShift =
             (e.evt as MouseEvent | TouchEvent as MouseEvent)?.shiftKey ?? false;
@@ -327,20 +526,24 @@ export function useCanvasPointerInteraction({
         setDrawingState({
           isDrawing: true,
           tool: activeTool,
-          startX: pos.x,
-          startY: pos.y,
-          currentX: pos.x,
-          currentY: pos.y,
+          startX: pitchPos.x,
+          startY: pitchPos.y,
+          currentX: pitchPos.x,
+          currentY: pitchPos.y,
         });
       }
     },
     [
       activeTool,
+      isPitchLocked,
       selectedZone,
       activeSlideId,
       activeSlide?.zones,
       activePolygonId,
-      stageSize,
+      effectivePitch.x,
+      effectivePitch.y,
+      effectivePitch.width,
+      effectivePitch.height,
       clearSelection,
       eraseAtPoint,
       addText,
@@ -361,8 +564,29 @@ export function useCanvasPointerInteraction({
       const pos = stage?.getPointerPosition();
       if (!pos) return;
 
-      const normX = pxToNorm(pos.x, stageSize.width);
-      const normY = pxToNorm(pos.y, stageSize.height);
+      if (panStateRef.current?.isPanning) {
+        const dx = pos.x - panStateRef.current.startX;
+        const dy = pos.y - panStateRef.current.startY;
+        if (!panStateRef.current.hasMoved && Math.hypot(dx, dy) >= 4) {
+          panStateRef.current.hasMoved = true;
+        }
+        const newPanX = panStateRef.current.startPanX + dx;
+        const newPanY = panStateRef.current.startPanY + dy;
+        applyPitchTransformToNodes(
+          newPanX,
+          newPanY,
+          pitchTransformRef.current.zoom ?? 1,
+        );
+        return;
+      }
+
+      const panX = pitchTransformRef.current.panX ?? 0;
+      const panY = pitchTransformRef.current.panY ?? 0;
+      const zoom = pitchTransformRef.current.zoom ?? 1;
+
+      const pitchPos = screenToPitch(pos, effectivePitch, panX, panY, zoom);
+      const normX = pxToNorm(pitchPos.x, effectivePitch.width);
+      const normY = pxToNorm(pitchPos.y, effectivePitch.height);
 
       if (activeTool === 'eraser' && isErasingRef.current) {
         eraseAtPoint(activeSlideId, { x: normX, y: normY }, 4.0);
@@ -383,7 +607,7 @@ export function useCanvasPointerInteraction({
       }
 
       if (activePolygonId) {
-        setMousePreviewPos(pos);
+        setMousePreviewPos({ x: pitchPos.x, y: pitchPos.y });
       }
 
       // カスタム回転ドラッグ中の処理
@@ -394,7 +618,7 @@ export function useCanvasPointerInteraction({
         if (zoneNode) {
           const cx = rotateCenterRef.current.x;
           const cy = rotateCenterRef.current.y;
-          const currentAngle = Math.atan2(pos.y - cy, pos.x - cx);
+          const currentAngle = Math.atan2(pitchPos.y - cy, pitchPos.x - cx);
           const angleDiffRad = currentAngle - startMouseAngleRef.current;
           const angleDiffDeg = (angleDiffRad * 180) / Math.PI;
 
@@ -412,7 +636,8 @@ export function useCanvasPointerInteraction({
         activeTool === 'select' &&
         selectedZone &&
         selectedZone.shapeType !== 'polygon' &&
-        !drawingState?.isDrawing
+        !drawingState?.isDrawing &&
+        !panStateRef.current?.isPanning
       ) {
         const container = containerRef.current;
         if (container) {
@@ -421,10 +646,10 @@ export function useCanvasPointerInteraction({
           const isOver =
             !isTransformerAnchor &&
             checkCornerRotateZone(
-              pos,
+              pitchPos,
               selectedZone,
-              stageSize.width,
-              stageSize.height,
+              effectivePitch.width,
+              effectivePitch.height,
             );
           isOverRotateZoneRef.current = isOver;
 
@@ -442,8 +667,8 @@ export function useCanvasPointerInteraction({
         prev
           ? {
               ...prev,
-              currentX: pos.x,
-              currentY: pos.y,
+              currentX: pitchPos.x,
+              currentY: pitchPos.y,
             }
           : null,
       );
@@ -452,18 +677,37 @@ export function useCanvasPointerInteraction({
       activePolygonId,
       activeTool,
       selectedZone,
-      stageSize.width,
-      stageSize.height,
+      effectivePitch.x,
+      effectivePitch.y,
+      effectivePitch.width,
+      effectivePitch.height,
       drawingState?.isDrawing,
       selectionBox,
       eraseAtPoint,
       activeSlideId,
       containerRef,
       nodesRegistryRef,
+      applyPitchTransformToNodes,
     ],
   );
 
   const handlePointerUp = useCallback(() => {
+    if (panStateRef.current?.isPanning) {
+      const { hasMoved } = panStateRef.current;
+      panStateRef.current = null;
+      setIsPanning(false);
+
+      if (hasMoved) {
+        updatePitchTransform(activeSlideId, {
+          panX: pitchTransformRef.current.panX,
+          panY: pitchTransformRef.current.panY,
+        });
+      } else {
+        clearSelection();
+      }
+      return;
+    }
+
     if (isErasingRef.current) {
       isErasingRef.current = false;
       return;
@@ -493,10 +737,19 @@ export function useCanvasPointerInteraction({
         const minPxY = Math.min(startY, currentY);
         const maxPxY = Math.max(startY, currentY);
 
-        const minNormX = pxToNorm(minPxX, stageSize.width);
-        const maxNormX = pxToNorm(maxPxX, stageSize.width);
-        const minNormY = pxToNorm(minPxY, stageSize.height);
-        const maxNormY = pxToNorm(maxPxY, stageSize.height);
+        const panX = pitchTransformRef.current.panX ?? 0;
+        const panY = pitchTransformRef.current.panY ?? 0;
+        const zoom = pitchTransformRef.current.zoom ?? 1;
+
+        const minPitchX = (minPxX - effectivePitch.x - panX) / zoom;
+        const maxPitchX = (maxPxX - effectivePitch.x - panX) / zoom;
+        const minPitchY = (minPxY - effectivePitch.y - panY) / zoom;
+        const maxPitchY = (maxPxY - effectivePitch.y - panY) / zoom;
+
+        const minNormX = pxToNorm(minPitchX, effectivePitch.width);
+        const maxNormX = pxToNorm(maxPitchX, effectivePitch.width);
+        const minNormY = pxToNorm(minPitchY, effectivePitch.height);
+        const maxNormY = pxToNorm(maxPitchY, effectivePitch.height);
 
         const enclosedObjects: SelectedObject[] = [];
 
@@ -589,19 +842,19 @@ export function useCanvasPointerInteraction({
     if (dist >= 5) {
       const sNormX = Math.max(
         0,
-        Math.min(100, pxToNorm(startX, stageSize.width)),
+        Math.min(100, pxToNorm(startX, effectivePitch.width)),
       );
       const sNormY = Math.max(
         0,
-        Math.min(100, pxToNorm(startY, stageSize.height)),
+        Math.min(100, pxToNorm(startY, effectivePitch.height)),
       );
       const cNormX = Math.max(
         0,
-        Math.min(100, pxToNorm(currentX, stageSize.width)),
+        Math.min(100, pxToNorm(currentX, effectivePitch.width)),
       );
       const cNormY = Math.max(
         0,
-        Math.min(100, pxToNorm(currentY, stageSize.height)),
+        Math.min(100, pxToNorm(currentY, effectivePitch.height)),
       );
 
       const startPoint = { x: sNormX, y: sNormY };
@@ -732,7 +985,10 @@ export function useCanvasPointerInteraction({
     selectObjects,
     clearSelection,
     drawingState,
-    stageSize,
+    effectivePitch.x,
+    effectivePitch.y,
+    effectivePitch.width,
+    effectivePitch.height,
     activeSlideId,
     addArrow,
     addZone,
@@ -742,6 +998,7 @@ export function useCanvasPointerInteraction({
     selectedZone,
     updateZone,
     containerRef,
+    updatePitchTransform,
   ]);
 
   return {
@@ -749,6 +1006,10 @@ export function useCanvasPointerInteraction({
     selectionBox,
     activePolygonId,
     mousePreviewPos,
+    isPitchLocked,
+    isPanning,
+    isSpacePressed,
+    handleWheel,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
