@@ -62,6 +62,12 @@ declare module 'webext-bridge' {
 
     /** キャプチャデータ受信通知（Background -> Content Script） */
     TACTICAL_CAPTURE_RECEIVED: TacticalCapturePayload;
+
+    /** オフラインキューのリプレイ同期を要求 */
+    REPLAY_OFFLINE_QUEUE: ProtocolWithReturn<
+      Record<string, never>,
+      { replayedSaves: number; replayedCaptures: number }
+    >;
   }
 }
 

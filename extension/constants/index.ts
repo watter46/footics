@@ -43,6 +43,7 @@ export const Z_INDEX = {
 export const STORAGE_KEYS = {
   LAST_ACTIVE_MATCH_ID: 'lastActiveMatchId',
   SAVE_QUEUE: 'saveQueue',
+  OFFLINE_QUEUE: 'offlineQueue',
   MATCH_MEMO_CACHE_PREFIX: 'match_memo_cache_',
   TACTICAL_PENDING_CAPTURE: 'tactical_pending_capture',
   TACTICAL_RECENT_CAPTURES: 'tactical_recent_captures',

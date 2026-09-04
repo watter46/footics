@@ -2,7 +2,9 @@ import { onMessage, sendMessage } from 'webext-bridge/background';
 import { z } from 'zod';
 import { FOOTICS_APP_URLS, STORAGE_KEYS } from '../constants';
 
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Main background entrypoint
 export default defineBackground(() => {
+
   console.log('Footics Background Script loaded');
 
   // Footics 本体タブを特定するヘルパー
@@ -255,5 +257,29 @@ export default defineBackground(() => {
 
   onMessage('CLOSE_SIDEPANEL', () => {
     // 必要に応じて処理を追加
+  });
+
+  // ── 3. Footics App タブ検出時のオフラインキュー同期トリガー ──
+  const notifyTabForOfflineReplay = (tabId: number, url?: string) => {
+    if (!url || !FOOTICS_APP_URLS.some((appUrl) => url.includes(appUrl)))
+      return;
+    sendMessage('REPLAY_OFFLINE_QUEUE', {}, `content-script@${tabId}`).catch(
+      () => {},
+    );
+  };
+
+  browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url) {
+      notifyTabForOfflineReplay(tabId, tab.url);
+    }
+  });
+
+  browser.tabs.onActivated.addListener(async (activeInfo) => {
+    try {
+      const tab = await browser.tabs.get(activeInfo.tabId);
+      if (tab.url) {
+        notifyTabForOfflineReplay(activeInfo.tabId, tab.url);
+      }
+    } catch {}
   });
 });

@@ -2,7 +2,7 @@
 id: L1-Extension-202
 emoji: 🗄️
 title: IndexedDB (Dexie.js) 一次保存 & オフライン同期層の整備
-status: TODO
+status: DONE
 depends_on: ["L1-Extension-201"]
 model: Gemini 3.7 Flash
 effort: medium
