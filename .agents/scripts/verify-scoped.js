@@ -54,9 +54,64 @@ function run() {
     console.log(
       `[Fast Verify] Running related tests for ${testableFiles.length} file(s)...`,
     );
-    execSync(`rtk vitest related --run --passWithNoTests ${testableFiles.join(' ')}`, {
-      stdio: 'inherit',
-    });
+    execSync(
+      `rtk vitest related --run --passWithNoTests ${testableFiles.join(' ')}`,
+      {
+        stdio: 'inherit',
+      },
+    );
+  }
+
+  // 4. Rule & Skill Frontmatter Check
+  const mdFiles = changedFiles.filter((f) => f.endsWith('.md'));
+  if (mdFiles.length > 0) {
+    const { z } = require('zod');
+    const matter = require('gray-matter');
+
+    const SkillSchema = z.object({
+      name: z.string().optional(),
+      description: z.string().optional()
+    }).passthrough();
+
+    const RuleSchema = z.object({
+      trigger: z.string({ required_error: "trigger is required in rule frontmatter" }),
+    }).passthrough();
+
+    let mdErrors = 0;
+    
+    for (const f of mdFiles) {
+      if (f.includes('SKILL.md') || f === 'AGENTS.md' || f.includes('.agents/rules/')) {
+        try {
+          const content = fs.readFileSync(f, 'utf-8');
+          const parsed = matter(content);
+          
+          let result;
+          if (f.includes('SKILL.md')) {
+            result = SkillSchema.safeParse(parsed.data);
+          } else {
+            result = RuleSchema.safeParse(parsed.data);
+          }
+
+          if (!result.success) {
+            console.error(`[Fast Verify] Invalid frontmatter in ${f}:`);
+            const issues = result.error.issues || [];
+            issues.forEach(e => {
+              const pathStr = Array.isArray(e.path) ? e.path.join('.') : '';
+              console.error(`  - ${pathStr}: ${e.message}`);
+            });
+            mdErrors++;
+          }
+        } catch (e) {
+           console.error(`[Fast Verify] Failed to parse ${f}: ${e.message}`);
+           mdErrors++;
+        }
+      }
+    }
+    
+    if (mdErrors > 0) {
+      console.error(`[Fast Verify] Markdown Frontmatter validation failed. Please fix the errors above.`);
+      process.exit(1);
+    }
   }
 
   console.log('[Fast Verify] All scoped checks passed successfully.');

@@ -1,5 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const matter = require('gray-matter');
+const { z } = require('zod');
 
 const TICKETS_DIR = path.join(__dirname, '../../.regista/tickets');
 
@@ -15,50 +17,57 @@ if (files.length === 0) {
   process.exit(0);
 }
 
-function parseYamlFrontmatter(content) {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!match) return {};
-  const yamlText = match[1];
-  const data = {};
-
-  for (const line of yamlText.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const colonIndex = trimmed.indexOf(':');
-    if (colonIndex === -1) continue;
-    const key = trimmed.slice(0, colonIndex).trim();
-    let val = trimmed.slice(colonIndex + 1).trim();
-    // remove quotes
-    val = val.replace(/^["'](.*)["']$/, '$1');
-    if (val.startsWith('[') && val.endsWith(']')) {
-      const arrayItems = val
-        .slice(1, -1)
-        .split(',')
-        .map((s) => s.trim().replace(/^["'](.*)["']$/, '$1'))
-        .filter(Boolean);
-      data[key] = arrayItems;
-    } else {
-      data[key] = val;
-    }
-  }
-  return data;
-}
+const TicketSchema = z
+  .object({
+    id: z.string().optional(),
+    title: z.string().optional(),
+    status: z
+      .enum(['TODO', 'IN_PROGRESS', 'REVIEW_QA', 'DONE'])
+      .default('TODO'),
+    depends_on: z.array(z.string()).default([]),
+    model: z.string().default('Gemini 3.8 Flash'),
+    effort: z.enum(['low', 'medium', 'high']).default('low'),
+  })
+  .passthrough();
 
 const tickets = [];
 
 for (const file of files) {
   const filePath = path.join(TICKETS_DIR, file);
   const content = fs.readFileSync(filePath, 'utf-8');
-  const meta = parseYamlFrontmatter(content);
+
+  let meta = {};
+  try {
+    const parsed = matter(content);
+    meta = parsed.data;
+  } catch (err) {
+    console.warn(
+      `[WARN] Failed to parse frontmatter in ${file}: ${err.message}`,
+    );
+  }
+
+  // バリデーション
+  const parsedMeta = TicketSchema.safeParse(meta);
+  if (!parsedMeta.success) {
+    console.warn(`[WARN] Invalid frontmatter in ${file}:`);
+    const issues = parsedMeta.error.issues || parsedMeta.error.errors || [];
+    issues.forEach(e => {
+      const pathStr = Array.isArray(e.path) ? e.path.join('.') : '';
+      console.warn(`  - ${pathStr}: ${e.message}`);
+    });
+  }
+
+  const validMeta = parsedMeta.success ? parsedMeta.data : meta;
   const stat = fs.statSync(filePath);
+
   tickets.push({
     file,
-    id: meta.id || path.basename(file, '.md'),
-    title: meta.title || '(No title)',
-    status: meta.status || 'TODO',
-    depends_on: meta.depends_on || [],
-    model: meta.model || 'Gemini 3.8 Flash',
-    effort: meta.effort || 'low',
+    id: validMeta.id || path.basename(file, '.md'),
+    title: validMeta.title || '(No title)',
+    status: validMeta.status || 'TODO',
+    depends_on: Array.isArray(validMeta.depends_on) ? validMeta.depends_on : [],
+    model: validMeta.model || 'Gemini 3.8 Flash',
+    effort: validMeta.effort || 'low',
     mtime: stat.mtimeMs,
   });
 }
@@ -83,7 +92,7 @@ for (let i = 0; i < args.length; i++) {
       doneLimit = Infinity;
     } else {
       const parsed = parseInt(val, 10);
-      doneLimit = isNaN(parsed) ? 5 : parsed;
+      doneLimit = Number.isNaN(parsed) ? 5 : parsed;
     }
   } else if (arg === '--done' && args[i + 1] !== undefined) {
     const val = args[++i];
@@ -91,7 +100,7 @@ for (let i = 0; i < args.length; i++) {
       doneLimit = Infinity;
     } else {
       const parsed = parseInt(val, 10);
-      doneLimit = isNaN(parsed) ? 5 : parsed;
+      doneLimit = Number.isNaN(parsed) ? 5 : parsed;
     }
   }
 }
@@ -111,7 +120,9 @@ const doneTickets = tickets.filter((t) => t.status === 'DONE');
 
 if (showTodo) {
   if (todoTickets.length > 0) {
-    console.log(`--- 未完了チケット (Pending Tasks: ${todoTickets.length}件) ---`);
+    console.log(
+      `--- 未完了チケット (Pending Tasks: ${todoTickets.length}件) ---`,
+    );
     for (const t of todoTickets) {
       const isL1 = t.id.startsWith('L1');
       const blocked =
