@@ -46,7 +46,13 @@ trigger: always_on
 
 ## 3. トークン効率とコンテキスト防衛ガードレール (MANDATORY)
 トークンの爆発的消費を防ぐため、以下のルールを厳格に守ること。
-- **コマンド実行の `rtk` ラップ義務化**: エージェントがCLIコマンド（`pnpm`, `npm`, `yarn`, `npx`, `biome`, `tsc`, `vitest` 等）を実行する際は、コンテキストの肥大化を防ぐため**必ず `rtk` (Regista Toolkit) 経由で実行すること**（例: `rtk pnpm ...`, `rtk biome check`, `rtk vitest`）。裸でのコマンド実行は固く禁ずる。※現在、安全フック（PreToolUse）により `rtk` を経由しない生のコマンドは**強制的に実行ブロック（deny）される**ようになっています。
+- **コマンド実行の `rtk` ラップ義務化**: エージェントがCLIコマンドを実行する際は、コンテキストの肥大化を防ぐため**必ず `rtk` (Regista Toolkit) 経由で実行すること**。裸でのコマンド実行は固く禁ずる。
+  - **ビルド・テスト・Lint**: `rtk pnpm`, `rtk vitest`, `rtk tsc`, `rtk biome` など
+  - **Git操作**: `rtk git diff`, `rtk git status`, `rtk git log`, `rtk gh` など
+  - **ファイル・ディレクトリ調査**: `rtk ls`, `rtk tree`, `rtk find`, `rtk grep`, `rtk read <file>`, `rtk smart <file>` など
+  - **データ・ネットワークデバッグ**: `rtk json`, `rtk curl`, `rtk env` など
+  - **汎用エラー/ログ抽出**: `rtk err <command>`, `rtk test <command>`, `rtk log` など
+  ※現在、安全フック（PreToolUse）により `rtk` を経由しない生のコマンド（特に `pnpm`, `vitest`, `tsc`, `biome` 等）は**強制的に実行ブロック（deny）される**ようになっています。Gitやファイル操作等の日常コマンドにおいても、上記に挙げた `rtk` サブコマンドを優先的に使用し、トークン消費を最小化してください。
 - **ツール入力制約の厳格化 (view_file & 検索)**: 
   - **view_file制約**: 100行を超えるファイルに対し、引数なしでの全行読み込みを禁止する。構造把握が目的の場合は、必ず `StartLine` と `EndLine` を指定し、50行程度のチャンクに分割して読み込むこと。
   - **検索制約**: `grep_search` や `find_by_name` を実行する際は、必ず `SearchPath` を指定し、プロジェクトルート(`.`)での全域検索を禁止する。また `MaxDepth` を適切に設定すること。
