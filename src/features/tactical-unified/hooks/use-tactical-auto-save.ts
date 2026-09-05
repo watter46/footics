@@ -14,7 +14,12 @@ import {
 
 const AUTO_SAVE_DEBOUNCE_MS = 800;
 
-export function useTacticalAutoSave() {
+export interface UseTacticalAutoSaveOptions {
+  skipRestore?: boolean;
+}
+
+export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
+  const { skipRestore = false } = options;
   const isLoadedRef = useRef(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -26,6 +31,11 @@ export function useTacticalAutoSave() {
 
   // 1. Initial Load from Dexie IndexedDB
   useEffect(() => {
+    if (skipRestore) {
+      isLoadedRef.current = true;
+      return;
+    }
+
     let isMounted = true;
 
     async function initProject() {
@@ -54,7 +64,7 @@ export function useTacticalAutoSave() {
     return () => {
       isMounted = false;
     };
-  }, [loadProject, setSaveStatus]);
+  }, [loadProject, setSaveStatus, skipRestore]);
 
   // 2. Debounced Auto-Save
   useEffect(() => {

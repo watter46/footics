@@ -11,11 +11,11 @@
  */
 
 import dynamic from 'next/dynamic';
-import type React from 'react';
-import { useCallback, useEffect } from 'react';
 import { useKeyboardShortcuts } from '@/features/tactical-unified/hooks/use-keyboard-shortcuts';
 import { useTacticalAutoSave } from '@/features/tactical-unified/hooks/use-tactical-auto-save';
 import { useTacticalCaptureBridge } from '@/features/tactical-unified/hooks/use-tactical-capture-bridge';
+import { useTacticalDropPaste } from '@/features/tactical-unified/hooks/use-tactical-drop-paste';
+import { useTacticalMatchInit } from '@/features/tactical-unified/hooks/use-tactical-match-init';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { ProjectManagerModal } from './panels/dialogs/project-manager-modal';
 import { ExportModal } from './panels/export/export-modal';
@@ -32,9 +32,23 @@ const UnifiedCanvas = dynamic(
   { ssr: false },
 );
 
-export function TacticalUnifiedPage() {
+export interface TacticalUnifiedPageProps {
+  initialMatchId?: string;
+  initialMinute?: number;
+}
+
+export function TacticalUnifiedPage({
+  initialMatchId,
+  initialMinute,
+}: TacticalUnifiedPageProps = {}) {
+  // 🎯 URLクエリ or Props (matchId, minute) による試合データの初期配置
+  const { hasMatchQuery } = useTacticalMatchInit({
+    initialMatchId,
+    initialMinute,
+  });
+
   // 💾 プロジェクト自動保存 & リロード時自動復元 (Dexie IndexedDB)
-  useTacticalAutoSave();
+  useTacticalAutoSave({ skipRestore: hasMatchQuery });
 
   const exportModalOpen = useTacticalUnifiedStore(
     (s) => s.panels.exportModalOpen,
@@ -45,12 +59,6 @@ export function TacticalUnifiedPage() {
   const closeProjectManagerModal = useTacticalUnifiedStore(
     (s) => s.closeProjectManagerModal,
   );
-  const setImageBackground = useTacticalUnifiedStore(
-    (s) => s.setImageBackground,
-  );
-
-  const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
 
   // 🎯 拡張機能からのダイレクトキャプチャ受信・自動配置
   useTacticalCaptureBridge();
@@ -58,84 +66,13 @@ export function TacticalUnifiedPage() {
   // キーボードショートカット (Delete/Escape)
   useKeyboardShortcuts();
 
-  // 📋 クリップボード画像貼り付け (Ctrl+V / Paste)
-  useEffect(() => {
-    const handlePaste = (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.type.indexOf('image') !== -1) {
-          const file = item.getAsFile();
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              const dataUrl = event.target?.result as string;
-              if (dataUrl) {
-                setImageBackground(dataUrl);
-              }
-            };
-            reader.readAsDataURL(file);
-          }
-        }
-      }
-    };
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
-  }, [setImageBackground]);
-
-  // 📂 ファイルドラッグ＆ドロップ対応 & サブ選手ピッチ投入対応
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const files = e.dataTransfer.files;
-      if (files && files.length > 0) {
-        const file = files[0];
-        if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            const dataUrl = event.target?.result as string;
-            if (dataUrl) {
-              setImageBackground(dataUrl);
-            }
-          };
-          reader.readAsDataURL(file);
-        }
-        return;
-      }
-
-      // サブメンバーのピッチへのドロップ処理
-      const rawJson = e.dataTransfer.getData('application/json');
-      if (rawJson) {
-        try {
-          const data = JSON.parse(rawJson);
-          if (data.type === 'bench-player' && data.playerId) {
-            const canvasEl = document.querySelector('canvas');
-            if (canvasEl) {
-              const rect = canvasEl.getBoundingClientRect();
-              const nx = Math.max(
-                0,
-                Math.min(100, ((e.clientX - rect.left) / rect.width) * 100),
-              );
-              const ny = Math.max(
-                0,
-                Math.min(100, ((e.clientY - rect.top) / rect.height) * 100),
-              );
-              movePlayerToPitch(activeSlideId, data.playerId, nx, ny);
-            }
-          }
-        } catch {}
-      }
-    },
-    [setImageBackground, movePlayerToPitch, activeSlideId],
-  );
+  // 📋 クリップボード画像貼り付け & 📂 ファイルドラッグ＆ドロップ対応
+  const { handleDragOver, handleDrop } = useTacticalDropPaste();
 
   return (
     <div
+      role="application"
+      aria-label="Tactical Canvas Workspace"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       className="flex flex-col h-screen w-screen bg-[#0a0a0a] overflow-hidden select-none"

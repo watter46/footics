@@ -362,27 +362,14 @@ export function UnifiedCanvas() {
         </div>
         {/* end stageTiltStyle */}
 
-        {/* BoundaryBox 専用 Stage: チルト外側・正対固定 */}
-        <Stage
-          width={stageSize.width}
-          height={stageSize.height}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            pointerEvents: isExporting ? 'none' : 'auto',
-          }}
-        >
-          <Layer>
-            <BoundaryBox
-              boundaryBox={activeSlide.boundaryBox}
-              stageSize={stageSize}
-              pitchRect={pitchRect}
-              isExporting={isExporting}
-              onUpdate={(box) => setBoundaryBox(activeSlideId, box)}
-            />
-          </Layer>
-        </Stage>
+        {/* BoundaryBox: チルト外側・正対固定 DOM/SVG オーバーレイ */}
+        <BoundaryBox
+          boundaryBox={activeSlide.boundaryBox}
+          stageSize={stageSize}
+          pitchRect={pitchRect}
+          isExporting={isExporting}
+          onUpdate={(box) => setBoundaryBox(activeSlideId, box)}
+        />
 
         <DrawingToolbar />
         <ContextHud

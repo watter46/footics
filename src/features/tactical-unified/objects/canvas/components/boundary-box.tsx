@@ -2,23 +2,21 @@
 
 /**
  * boundary-box.tsx
- * Resizable Export Boundary Box with 4 corner drag handles.
+ * DOM/SVG-based Resizable Export Boundary Box with 4 corner drag handles.
  *
- * Features:
- *  - Visual crop rectangle for export
- *  - 4 corner drag handles to freely resize and move
- *  - Hidden automatically during export
+ * Designed with pointer-events: none on container and pointer-events: auto on handles/stroke
+ * to avoid blocking clicks and pointer events on the underlying Konva Stage.
  */
 
-import React, { useCallback } from 'react';
-import { Circle, Group, Rect } from 'react-konva';
+import React from 'react';
 import {
   type BoundaryBox as BoundaryBoxType,
   DEFAULT_BOUNDARY_BOX_4_5,
 } from '@/lib/types/tactical-unified';
-import { normToPx, pxToNorm } from './unified-canvas';
+import { normToPx } from '../helpers';
+import { type CornerId, useBoundaryBoxDrag } from '../hooks';
 
-interface BoundaryBoxProps {
+export interface BoundaryBoxProps {
   boundaryBox?: BoundaryBoxType;
   stageSize: { width: number; height: number };
   pitchRect?: { x: number; y: number; width: number; height: number };
@@ -27,164 +25,46 @@ interface BoundaryBoxProps {
 }
 
 interface CornerHandleProps {
-  id: string;
+  id: CornerId;
   x: number;
   y: number;
-  onDrag: (id: string, e: any) => void;
+  onPointerDown: (id: CornerId, e: React.PointerEvent) => void;
 }
+
+const CORNER_CURSORS: Record<CornerId, string> = {
+  tl: 'nwse-resize',
+  tr: 'nesw-resize',
+  br: 'nwse-resize',
+  bl: 'nesw-resize',
+};
 
 const CornerHandle = React.memo(function CornerHandle({
   id,
   x,
   y,
-  onDrag,
+  onPointerDown,
 }: CornerHandleProps) {
-  const cursor = id === 'tl' || id === 'br' ? 'nwse-resize' : 'nesw-resize';
-
   return (
-    <Circle
-      x={x}
-      y={y}
-      radius={6}
-      fill="#ffffff"
-      stroke="#0284c7"
-      strokeWidth={2}
-      shadowColor="rgba(0,0,0,0.5)"
-      shadowBlur={3}
-      draggable
-      perfectDrawEnabled={false}
-      onMouseEnter={(e) => {
-        const stage = e.target.getStage();
-        if (stage) stage.container().style.cursor = cursor;
+    <div
+      role="button"
+      tabIndex={-1}
+      aria-label={`Resize handle ${id}`}
+      style={{
+        position: 'absolute',
+        left: x - 6,
+        top: y - 6,
+        width: 12,
+        height: 12,
+        borderRadius: '50%',
+        backgroundColor: '#ffffff',
+        border: '2px solid #0284c7',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
+        cursor: CORNER_CURSORS[id],
+        pointerEvents: 'auto',
+        touchAction: 'none',
       }}
-      onMouseLeave={(e) => {
-        const stage = e.target.getStage();
-        if (stage) stage.container().style.cursor = 'default';
-      }}
-      onDragStart={(e) => {
-        e.cancelBubble = true;
-      }}
-      onDragMove={(e) => {
-        e.cancelBubble = true;
-        onDrag(id, e);
-      }}
-      onDragEnd={(e) => {
-        e.cancelBubble = true;
-        onDrag(id, e);
-      }}
+      onPointerDown={(e) => onPointerDown(id, e)}
     />
-  );
-});
-
-function calculateCornerResize(
-  cornerId: string,
-  curX: number,
-  curY: number,
-  pxX: number,
-  pxY: number,
-  pxW: number,
-  pxH: number,
-) {
-  if (cornerId === 'tl') {
-    const clampedCurX = Math.min(curX, pxW - 20);
-    const clampedCurY = Math.min(curY, pxH - 20);
-    return {
-      newX: pxX + clampedCurX,
-      newY: pxY + clampedCurY,
-      newW: pxW - clampedCurX,
-      newH: pxH - clampedCurY,
-    };
-  }
-  if (cornerId === 'tr') {
-    const clampedCurX = Math.max(20, curX);
-    const clampedCurY = Math.min(curY, pxH - 20);
-    return {
-      newX: pxX,
-      newY: pxY + clampedCurY,
-      newW: clampedCurX,
-      newH: pxH - clampedCurY,
-    };
-  }
-  if (cornerId === 'br') {
-    const clampedCurX = Math.max(20, curX);
-    const clampedCurY = Math.max(20, curY);
-    return {
-      newX: pxX,
-      newY: pxY,
-      newW: clampedCurX,
-      newH: clampedCurY,
-    };
-  }
-  // cornerId === 'bl'
-  const clampedCurX = Math.min(curX, pxW - 20);
-  const clampedCurY = Math.max(20, curY);
-  return {
-    newX: pxX + clampedCurX,
-    newY: pxY,
-    newW: pxW - clampedCurX,
-    newH: clampedCurY,
-  };
-}
-
-interface BoundaryBoxFrameProps {
-  pxW: number;
-  pxH: number;
-  onCornerDrag: (id: string, e: any) => void;
-}
-
-const BoundaryBoxFrame = React.memo(function BoundaryBoxFrame({
-  pxW,
-  pxH,
-  onCornerDrag,
-}: BoundaryBoxFrameProps) {
-  const corners = [
-    { id: 'tl', x: 0, y: 0 },
-    { id: 'tr', x: pxW, y: 0 },
-    { id: 'br', x: pxW, y: pxH },
-    { id: 'bl', x: 0, y: pxH },
-  ];
-
-  return (
-    <>
-      {/* 境界線枠（エクスポート範囲） - 境界線自体を掴んだ時のみドラッグ可能 */}
-      <Rect
-        x={0}
-        y={0}
-        width={pxW}
-        height={pxH}
-        stroke="#38bdf8"
-        strokeWidth={1.5}
-        hitStrokeWidth={10}
-        dash={[6, 4]}
-        listening={true}
-        perfectDrawEnabled={false}
-        hitFunc={(context, shape) => {
-          context.beginPath();
-          context.rect(0, 0, shape.width(), shape.height());
-          context.closePath();
-          context.strokeShape(shape);
-        }}
-        onMouseEnter={(e) => {
-          const stage = e.target.getStage();
-          if (stage) stage.container().style.cursor = 'move';
-        }}
-        onMouseLeave={(e) => {
-          const stage = e.target.getStage();
-          if (stage) stage.container().style.cursor = 'default';
-        }}
-      />
-
-      {/* 4隅のドラッグハンドル - Group直下で境界線とリアルタイム完全同期 */}
-      {corners.map((c) => (
-        <CornerHandle
-          key={c.id}
-          id={c.id}
-          x={c.x}
-          y={c.y}
-          onDrag={onCornerDrag}
-        />
-      ))}
-    </>
   );
 });
 
@@ -195,7 +75,6 @@ export const BoundaryBox = React.memo(function BoundaryBox({
   onUpdate,
   isExporting = false,
 }: BoundaryBoxProps) {
-  // Default to pitch line fit boundary box if not set
   const box: BoundaryBoxType = boundaryBox ?? DEFAULT_BOUNDARY_BOX_4_5;
 
   const baseRect =
@@ -207,80 +86,103 @@ export const BoundaryBox = React.memo(function BoundaryBox({
           width: stageSize.width,
           height: stageSize.height,
         });
-  const { width, height } = baseRect;
 
-  const rawPxX = baseRect.x + normToPx(box.x, width);
-  const rawPxY = baseRect.y + normToPx(box.y, height);
-  const rawPxW = normToPx(box.width, width);
-  const rawPxH = normToPx(box.height, height);
+  const pxX = baseRect.x + normToPx(box.x, baseRect.width);
+  const pxY = baseRect.y + normToPx(box.y, baseRect.height);
+  const pxW = Math.max(20, normToPx(box.width, baseRect.width));
+  const pxH = Math.max(20, normToPx(box.height, baseRect.height));
 
-  // キャンバス領域外への自由な移動・リサイズを許容（最小幅・高さ20pxのみ担保）
-  const pxX = rawPxX;
-  const pxY = rawPxY;
-  const pxW = Math.max(20, rawPxW);
-  const pxH = Math.max(20, rawPxH);
-
-  const handleCornerDrag = useCallback(
-    (cornerId: string, e: any) => {
-      e.cancelBubble = true;
-      const node = e.target;
-      const { newX, newY, newW, newH } = calculateCornerResize(
-        cornerId,
-        node.x(),
-        node.y(),
-        pxX,
-        pxY,
-        pxW,
-        pxH,
-      );
-
-      onUpdate({
-        ...box,
-        x: pxToNorm(newX - baseRect.x, width),
-        y: pxToNorm(newY - baseRect.y, height),
-        width: pxToNorm(newW, width),
-        height: pxToNorm(newH, height),
-        enabled: true,
-      });
-    },
-    [box, pxX, pxY, pxW, pxH, width, height, baseRect.x, baseRect.y, onUpdate],
-  );
-
-  const handleGroupDrag = useCallback(
-    (e: any) => {
-      if (e.target !== e.currentTarget) return;
-      e.cancelBubble = true;
-      if (width <= 0 || height <= 0) return;
-
-      const normX = pxToNorm(e.target.x() - baseRect.x, width);
-      const normY = pxToNorm(e.target.y() - baseRect.y, height);
-
-      onUpdate({
-        ...box,
-        x: normX,
-        y: normY,
-        enabled: true,
-      });
-    },
-    [box, width, height, baseRect.x, baseRect.y, onUpdate],
-  );
+  const { handleCornerPointerDown, handleBoxPointerDown } = useBoundaryBoxDrag({
+    box,
+    baseRect,
+    pxX,
+    pxY,
+    pxW,
+    pxH,
+    onUpdate,
+  });
 
   if (isExporting || !box.enabled) return null;
 
+  const corners: { id: CornerId; x: number; y: number }[] = [
+    { id: 'tl', x: 0, y: 0 },
+    { id: 'tr', x: pxW, y: 0 },
+    { id: 'br', x: pxW, y: pxH },
+    { id: 'bl', x: 0, y: pxH },
+  ];
+
   return (
-    <Group
-      x={pxX}
-      y={pxY}
-      draggable
-      listening={true}
-      onDragStart={(e) => {
-        if (e.target !== e.currentTarget) return;
-        e.cancelBubble = true;
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: stageSize.width,
+        height: stageSize.height,
+        pointerEvents: 'none',
       }}
-      onDragMove={handleGroupDrag}
-      onDragEnd={handleGroupDrag}
     >
-      <BoundaryBoxFrame pxW={pxW} pxH={pxH} onCornerDrag={handleCornerDrag} />
-    </Group>
+      <div
+        style={{
+          position: 'absolute',
+          left: pxX,
+          top: pxY,
+          width: pxW,
+          height: pxH,
+          pointerEvents: 'none',
+        }}
+      >
+        <svg
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: pxW,
+            height: pxH,
+            overflow: 'visible',
+            pointerEvents: 'none',
+          }}
+        >
+          {/* Hit area for dragging whole box */}
+          <rect
+            x={0}
+            y={0}
+            width={pxW}
+            height={pxH}
+            fill="none"
+            stroke="transparent"
+            strokeWidth={14}
+            style={{
+              pointerEvents: 'stroke',
+              cursor: 'move',
+              touchAction: 'none',
+            }}
+            onPointerDown={handleBoxPointerDown}
+          />
+          {/* Visible dashed boundary line */}
+          <rect
+            x={0}
+            y={0}
+            width={pxW}
+            height={pxH}
+            fill="none"
+            stroke="#38bdf8"
+            strokeWidth={1.5}
+            strokeDasharray="6 4"
+            style={{ pointerEvents: 'none' }}
+          />
+        </svg>
+
+        {corners.map((c) => (
+          <CornerHandle
+            key={c.id}
+            id={c.id}
+            x={c.x}
+            y={c.y}
+            onPointerDown={handleCornerPointerDown}
+          />
+        ))}
+      </div>
+    </div>
   );
 });

@@ -157,20 +157,20 @@ describe('BoundaryBoxHud component', () => {
       screen.getByRole('group', { name: 'Pitch Tilt Controls' }),
     ).toBeDefined();
     const btn0 = screen.getByRole('button', { name: 'Set pitch tilt to 0°' });
-    const btn25 = screen.getByRole('button', { name: 'Set pitch tilt to 25°' });
+    const btn15 = screen.getByRole('button', { name: 'Set pitch tilt to 15°' });
+    const btn30 = screen.getByRole('button', { name: 'Set pitch tilt to 30°' });
     const btn45 = screen.getByRole('button', { name: 'Set pitch tilt to 45°' });
-    const btn60 = screen.getByRole('button', { name: 'Set pitch tilt to 60°' });
 
     expect(btn0).toBeDefined();
-    expect(btn25).toBeDefined();
+    expect(btn15).toBeDefined();
+    expect(btn30).toBeDefined();
     expect(btn45).toBeDefined();
-    expect(btn60).toBeDefined();
 
-    // Click 25°
-    fireEvent.click(btn25);
+    // Click 15°
+    fireEvent.click(btn15);
     let state = useTacticalUnifiedStore.getState();
     let slide = state.project.slides.find((s) => s.id === state.activeSlideId);
-    expect(slide?.pitchTransform?.tilt).toBe(25);
+    expect(slide?.pitchTransform?.tilt).toBe(15);
 
     // Click 45°
     fireEvent.click(btn45);

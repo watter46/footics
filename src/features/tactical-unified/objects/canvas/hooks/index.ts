@@ -1,3 +1,7 @@
+export {
+  type CornerId,
+  useBoundaryBoxDrag,
+} from './use-boundary-box-drag';
 export { useCanvasDrawingInteraction } from './use-canvas-drawing-interaction';
 export { useCanvasEventListeners } from './use-canvas-event-listeners';
 export { useCanvasPitchPan } from './use-canvas-pitch-pan';
