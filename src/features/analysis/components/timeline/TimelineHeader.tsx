@@ -24,6 +24,9 @@ export const TimelineHeader: React.FC = () => {
         <div className="w-24 text-slate-400 font-medium tracking-wider text-xs uppercase">
           Outcome
         </div>
+        <div className="w-10 text-slate-400 font-medium tracking-wider text-xs uppercase text-center">
+          Tactical
+        </div>
       </div>
     </div>
   );
