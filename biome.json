@@ -30,7 +30,8 @@
         }
       },
       "correctness": {
-        "noUnusedVariables": "warn"
+        "noUnusedVariables": "warn",
+        "useExhaustiveDependencies": "warn"
       },
       "a11y": {
         "noSvgWithoutTitle": "off",
@@ -41,7 +42,7 @@
         "noLabelWithoutControl": "warn"
       },
       "suspicious": {
-        "noExplicitAny": "off",
+        "noExplicitAny": "warn",
         "noArrayIndexKey": "warn"
       }
     }
