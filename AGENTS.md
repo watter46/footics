@@ -42,7 +42,7 @@ trigger: always_on
 - **Self-Correction & Cleanup**: エラーが発生した場合は自律的に修正し、一時ファイルはタスク完了時に削除する。
 - **Knowledge Maintenance (遅延読み込みの徹底)**: トークン浪費を防ぐため、詳細なアーキテクチャやコーディング規約は以下から必要に応じて `view_file` で読み込むこと。
   - **プロジェクト全体の設計・実装ルール:** `.agents/knowledge/architecture-and-guidelines.md`
-  - 構造把握: `indexing-awareness` スキルを活用する。捏造せず `grep` や `trace-dependencies.sh` で実在確認する。
+  - 構造把握: `rtk find` や `rtk grep`、内蔵検索ツールを活用する。捏造せず実在確認する。
 
 ## 3. トークン効率とコンテキスト防衛ガードレール (MANDATORY)
 トークンの爆発的消費を防ぐため、以下のルールを厳格に守ること。
