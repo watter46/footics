@@ -73,3 +73,5 @@ biome_error*.txt
 *error*.txt
 *_output.txt
 .agents/logs/
+.agy/
+
