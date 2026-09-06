@@ -1,6 +1,7 @@
 ---
 id: L1-Arch-015
 emoji: 🔧
+status: DONE
 title: "[LINT] biome.json パフォーマンス・品質ルールの強化"
 depends_on: []
 model: Gemini 3.7 Flash
