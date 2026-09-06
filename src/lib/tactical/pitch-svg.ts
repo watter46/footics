@@ -6,7 +6,7 @@
  * - 16:9 (horizontal)
  * - 9:16 (vertical)
  * - 4:5  (vertical)
- * - 1:1  (horizontal)
+ * - 1:1  (vertical)
  *
  * Guarantees:
  * - Default 3% margin

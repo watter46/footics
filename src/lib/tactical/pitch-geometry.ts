@@ -3,8 +3,8 @@
  * Pitch geometry and circle scaling calculations for all supported aspect ratios.
  *
  * Support for 4 aspect ratios:
- * - Horizontal: 16:9, 1:1
- * - Vertical: 9:16, 4:5
+ * - Horizontal: 16:9
+ * - Vertical: 9:16, 4:5, 1:1
  *
  * Default margin: 3% (marginPercent = 3.0)
  * Center circle guarantees true isotropic circle (distortion-free).
@@ -90,7 +90,7 @@ export const PITCH_BOUNDARY_CONFIGS: Record<AspectRatio, PitchBoundaryConfig> =
       ratio: 1 / 1,
       widthPx: 1080,
       heightPx: 1080,
-      orientation: 'horizontal',
+      orientation: 'vertical',
       viewBox: '0 0 1080 1080',
     },
   };

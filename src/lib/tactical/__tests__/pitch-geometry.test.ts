@@ -27,7 +27,7 @@ describe('pitch-geometry & 3% default boundary margin geometry', () => {
     }
 
     expect(PITCH_BOUNDARY_CONFIGS['16:9'].orientation).toBe('horizontal');
-    expect(PITCH_BOUNDARY_CONFIGS['1:1'].orientation).toBe('horizontal');
+    expect(PITCH_BOUNDARY_CONFIGS['1:1'].orientation).toBe('vertical');
     expect(PITCH_BOUNDARY_CONFIGS['9:16'].orientation).toBe('vertical');
     expect(PITCH_BOUNDARY_CONFIGS['4:5'].orientation).toBe('vertical');
   });
