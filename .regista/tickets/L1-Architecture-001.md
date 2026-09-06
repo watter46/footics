@@ -1,4 +1,5 @@
 ---
+status: DONE
 id: L1-Architecture-001
 emoji: 🔧
 title: ExtensionとWebアプリ間の依存関係分離とリファクタリング (本番ビルドエラー修正)
@@ -10,6 +11,7 @@ context_files:
   - extension/features/storage-sync/save-queue.ts
   - src/lib/db/index.ts
 ---
+status: DONE
 
 # 🔧 L1-Architecture-001: ExtensionとWebアプリ間の依存関係分離とリファクタリング (本番ビルドエラー修正)
 

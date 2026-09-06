@@ -1,7 +1,7 @@
 ---
 id: L2-Arch-011
 emoji: 🟡 # 例: 🎨, 🔧, 🐛
-title: [Phase 2] tactical-unified: panels/hud/ 等のスライス化 # 必ず日本語で記述すること
+title: "[Phase 2] tactical-unified: panels/hud/ 等のスライス化"
 depends_on: ["L1-Arch-010"] # 例: ["L1-Tactical-001"]
 status: DONE
 # 【警告】以下の model と effort は絶対に省略したり、CLIツール等のデフォルトに依存してはならない。必ず明記すること。

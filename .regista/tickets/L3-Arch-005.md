@@ -1,7 +1,7 @@
 ---
 id: L3-Arch-005
 emoji: 🟠 # 例: 🎨, 🔧, 🐛
-title: [Phase 3] tactical-unified: objects/pitch/ の垂直スライス化 # 必ず日本語で記述すること
+title: "[Phase 3] tactical-unified: objects/pitch/ の垂直スライス化"
 depends_on: ["L2-Arch-004"] # 例: ["L1-Tactical-001"]
 # 【警告】以下の model と effort は絶対に省略したり、CLIツール等のデフォルトに依存してはならない。必ず明記すること。
 model: Gemini 3.7 Flash # 必須: [GM発行] Gemini 3.1 Pro または Gemini 3.8 Flash | [Worker実装] Gemini 3.7 Flash 〜 3.8 Flash | [難関] Claude Sonnet 4.6 (thinking)

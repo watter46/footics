@@ -1,10 +1,10 @@
 ---
 id: L2-Tactical-038
 title: "Pitch Aspect Ratio & Transition Animation"
-effort: "Mid"
+effort: medium
 model: "Gemini 3.8 Flash"
 status: DONE
-dependencies: []
+depends_on: []
 assignee: "regista-canvas"
 ---
 

@@ -26,6 +26,7 @@
     "board:update": "node .agents/scripts/sync-board.js update",
     "tickets": "node .agents/scripts/list-tickets.js",
     "tickets:todo": "node .agents/scripts/list-tickets.js --todo",
+    "tickets:validate": "node .agents/scripts/validate-tickets.js",
     "gen:component": "node scripts/gen-skeleton.mjs --type component",
     "gen:hook": "node scripts/gen-skeleton.mjs --type hook",
     "gen:feature": "node scripts/gen-skeleton.mjs --type feature"

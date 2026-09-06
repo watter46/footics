@@ -1,4 +1,5 @@
 ---
+status: DONE
 id: L3-Tactical-028
 emoji: 🔵
 title: ピッチ単体チルト(2.5D)変形と境界線固定エクスポート(PNG)の統合【アーキテクチャ適用完了後に着手】
@@ -10,6 +11,7 @@ context_files:
   - src/features/tactical-unified/hooks/use-konva-export.ts
   - src/features/tactical-unified/panels/toolbar/boundary-box-tilt-controls.tsx
 ---
+status: DONE
 
 # 🔵 L3-Tactical-028: ピッチ単体チルト(2.5D)変形と境界線固定エクスポート(PNG)の統合
 
