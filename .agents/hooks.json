@@ -29,5 +29,12 @@
         "command": "node -e 'require(require(\"fs\").existsSync(\"./scripts/verify-gate.js\") ? \"./scripts/verify-gate.js\" : \"./.agents/scripts/verify-gate.js\")'"
       }
     ]
+  },
+  "token-metrics": {
+    "Stop": [
+      {
+        "command": "node -e 'require(require(\"fs\").existsSync(\"./scripts/metrics/collect-tokens.js\") ? \"./scripts/metrics/collect-tokens.js\" : \"./.agents/scripts/metrics/collect-tokens.js\")'"
+      }
+    ]
   }
 }
