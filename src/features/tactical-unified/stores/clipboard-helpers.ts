@@ -62,35 +62,25 @@ function cloneAndOffsetPlayers(
   playerIdMap: Map<string, string>,
   newSelectedObjects: SelectedObject[],
 ): Player[] {
-  const newPlayers: Player[] = players.map((orig) => {
+  return players.map((orig) => {
     const newId = crypto.randomUUID();
     playerIdMap.set(orig.id, newId);
     newSelectedObjects.push({ id: newId, kind: 'player' });
 
+    const cloned = structuredClone(orig);
+
     return {
-      ...structuredClone(orig),
+      ...cloned,
       id: newId,
       x: Math.min(98, Math.max(2, orig.x + offsetX)),
       y: Math.min(98, Math.max(2, orig.y + offsetY)),
-      badges: (orig.badges || []).map((b) => ({
-        ...structuredClone(b),
-        id: crypto.randomUUID(),
-      })),
-      connectLines: (orig.connectLines || []).map((cl) => ({
-        ...structuredClone(cl),
-        id: crypto.randomUUID(),
-      })),
+      visionCone: undefined,
+      connectLines: [],
+      badges: [],
+      focus: undefined,
+      trajectory: undefined,
     };
   });
-
-  for (const np of newPlayers) {
-    np.connectLines = np.connectLines.map((cl) => {
-      const mappedToId = playerIdMap.get(cl.toPlayerId);
-      return mappedToId ? { ...cl, toPlayerId: mappedToId } : cl;
-    });
-  }
-
-  return newPlayers;
 }
 
 function cloneAndOffsetArrows(
