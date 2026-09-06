@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useMemoOverlayStore } from '@/features/memo-overlay';
+import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
 import { QUICK_TAGS } from '../../../constants/quick-tags';
 import { QuickTagBar } from '../components/QuickTagBar';
 import { useOverlayShortcutInterceptor } from '../hooks/use-overlay-shortcut-interceptor';

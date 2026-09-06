@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useMemoOverlayStore } from '@/features/memo-overlay';
+import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
 import { QUICK_TAGS, type QuickTag } from '../../../constants/quick-tags';
 import { cn } from '../../../utils/cn';
 

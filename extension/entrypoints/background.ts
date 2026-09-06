@@ -246,7 +246,7 @@ export default defineBackground(() => {
         FOOTICS_APP_URLS.some((url) => t.url?.includes(url)),
       );
 
-      let targetUrl = 'http://localhost:3000/tactical';
+      let targetUrl = 'https://footics.watool.workers.dev/tactical';
       if (footicsTab?.url) {
         try {
           const origin = new URL(footicsTab.url).origin;

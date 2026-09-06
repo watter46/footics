@@ -1,4 +1,4 @@
-import { useMemoOverlayStore } from '@/features/memo-overlay';
+import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
 import {
   createSavePayload,
   getValidationError,

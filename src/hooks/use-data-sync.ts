@@ -23,13 +23,8 @@ export function useDataSync() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const handleAction = (event: Event) => {
-      const customEvent = event as CustomEvent<{
-        action: string;
-        matchId?: string;
-      }>;
-      const { action, matchId } = customEvent.detail ?? {};
-
+    const handleDetail = (detail: { action?: string; matchId?: string }) => {
+      const { action, matchId } = detail;
       if (action !== SHORTCUT_ACTIONS.REFRESH_DATA) return;
       console.log('[useDataSync] REFRESH_DATA received, matchId:', matchId);
 
@@ -61,9 +56,25 @@ export function useDataSync() {
       }
     };
 
+    const handleAction = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        action: string;
+        matchId?: string;
+      }>;
+      handleDetail(customEvent.detail ?? {});
+    };
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'footics-action') {
+        handleDetail(event.data.detail ?? {});
+      }
+    };
+
     window.addEventListener('footics-action', handleAction);
+    window.addEventListener('message', handleMessage);
     return () => {
       window.removeEventListener('footics-action', handleAction);
+      window.removeEventListener('message', handleMessage);
     };
   }, [queryClient]);
 }

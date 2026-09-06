@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import { getMatchMemo } from '@/lib/db';
+import { getMatchMemo } from '@/lib/db/extension-db-queries';
 import { cn } from '@/lib/utils';
 import {
   useMemoOverlayDerived,

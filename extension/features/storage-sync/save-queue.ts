@@ -1,4 +1,4 @@
-import { putMatchMemo, saveCustomEvent } from '@/lib/db';
+import { putMatchMemo, saveCustomEvent } from '@/lib/db/extension-db-queries';
 import { STORAGE_KEYS } from '../../constants';
 import {
   type SaveQueueItem,
@@ -114,11 +114,14 @@ export async function addToSaveQueue(
  * 複数タブが開いている場合でも、一つのタブだけが書き込みを担当する。
  */
 export async function processSaveQueue(): Promise<void> {
-  await navigator.locks.request('footics_save_queue', async () => {
+  const doProcess = async () => {
     // 最新のキューを取得
     const stored = await browser.storage.local.get(STORAGE_KEYS.SAVE_QUEUE);
     const parsed = SaveQueueSchema.safeParse(stored[STORAGE_KEYS.SAVE_QUEUE]);
-    if (!parsed.success) return;
+    if (!parsed.success) {
+      console.warn('[save-queue] Invalid queue data in storage:', stored);
+      return;
+    }
 
     const queue = parsed.data;
     const pendingItems = queue.filter(
@@ -129,7 +132,7 @@ export async function processSaveQueue(): Promise<void> {
     if (pendingItems.length === 0) return;
 
     console.log(
-      `[save-queue] Processing ${pendingItems.length} pending item(s) with lock`,
+      `[save-queue] Processing ${pendingItems.length} pending item(s)...`,
     );
 
     const updatedQueue = [...queue];
@@ -142,8 +145,11 @@ export async function processSaveQueue(): Promise<void> {
         await executeSaveItem(item);
         // 処理済みとしてマーク
         updatedQueue[idx] = { ...updatedQueue[idx], status: 'done' };
-        console.info(`[save-queue] Processed: ${item.id} (${item.mode})`);
+        console.info(
+          `[save-queue] Processed successfully: ${item.id} (${item.mode})`,
+        );
       } catch (e) {
+        console.error(`[save-queue] Execution failed for ${item.id}:`, e);
         updatedQueue[idx] = handleSaveError(updatedQueue[idx], e);
       }
     }
@@ -154,8 +160,27 @@ export async function processSaveQueue(): Promise<void> {
         q.status === 'pending' ||
         (q.status === 'error' && (q.retryCount ?? 0) < MAX_QUEUE_RETRIES),
     );
+
     await browser.storage.local.set({
       [STORAGE_KEYS.SAVE_QUEUE]: cleanedQueue,
     });
-  });
+  };
+
+  try {
+    if (typeof navigator !== 'undefined' && navigator.locks) {
+      await navigator.locks.request('footics_save_queue', doProcess);
+    } else {
+      console.warn(
+        '[save-queue] navigator.locks not available, processing without lock',
+      );
+      await doProcess();
+    }
+  } catch (err) {
+    console.error(
+      '[save-queue] Failed to process queue (lock error or execution error):',
+      err,
+    );
+    // Fallback: execute without lock if lock request failed
+    await doProcess();
+  }
 }

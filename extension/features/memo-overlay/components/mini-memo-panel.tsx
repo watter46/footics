@@ -1,7 +1,7 @@
 import { AlertCircle, Maximize2, MessageSquare, Save, X } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import { useMemoOverlayStore } from '@/features/memo-overlay';
+import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
 import { cn } from '../../../utils/cn';
 import { useMemoSave } from '../hooks/use-memo-save';
 import { useOverlayStore } from '../stores/use-overlay-store';

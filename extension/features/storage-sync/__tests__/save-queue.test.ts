@@ -5,7 +5,7 @@ import { addToSaveQueue, processSaveQueue } from '../save-queue';
 // Mock DB
 const mockPutMatchMemo = vi.fn();
 const mockSaveCustomEvent = vi.fn();
-vi.mock('@/lib/db', () => ({
+vi.mock('@/lib/db/extension-db-queries', () => ({
   putMatchMemo: (...args: unknown[]) => mockPutMatchMemo(...args),
   saveCustomEvent: (...args: unknown[]) => mockSaveCustomEvent(...args),
 }));

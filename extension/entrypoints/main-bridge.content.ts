@@ -4,9 +4,12 @@ export default defineContentScript({
   matches: [
     '*://localhost/*',
     '*://footics.com/*',
+    '*://*.footics.com/*',
     '*://10.255.255.254/*',
     '*://127.0.0.1/*',
     '*://footics.watool.workers.dev/*',
+    '*://*.watool.workers.dev/*',
+    '*://*.pages.dev/*',
   ],
   runAt: 'document_start',
   world: 'MAIN',

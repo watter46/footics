@@ -7,6 +7,8 @@ export const FOOTICS_APP_URLS = [
   '127.0.0.1',
   'footics.com',
   'footics.watool.workers.dev',
+  'workers.dev',
+  'pages.dev',
 ] as const;
 
 export const OVERLAY_TRANSITION_DURATION = 3000;

@@ -1,10 +1,8 @@
 import type React from 'react';
 import { useEffect } from 'react';
-import {
-  MemoOverlayView,
-  useMemoOverlayEventBridge,
-  useMemoOverlayStore,
-} from '@/features/memo-overlay';
+import { MemoOverlayView } from '@/features/memo-overlay/components/MemoOverlayView';
+import { useMemoOverlayEventBridge } from '@/features/memo-overlay/hooks/useMemoOverlayEventBridge';
+import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
 import { QuickTagBar } from './components/QuickTagBar';
 import { useMemoSave } from './hooks/use-memo-save';
 import { useOverlayStore } from './stores/use-overlay-store';

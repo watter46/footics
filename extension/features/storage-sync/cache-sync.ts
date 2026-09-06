@@ -1,4 +1,4 @@
-import { getMatchMemo } from '@/lib/db';
+import { getMatchMemo } from '@/lib/db/extension-db-queries';
 import { STORAGE_KEYS } from '../../constants';
 
 /**

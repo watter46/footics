@@ -5,30 +5,15 @@ import type {
   MatchMemo,
   TacticalSnapshot,
 } from '../schema';
-import { SHORTCUT_ACTIONS } from '../shortcuts';
+import {
+  dispatchRefreshEvent,
+  getMatchMemo,
+  putMatchMemo,
+  saveCustomEvent,
+} from './extension-db-queries';
 import { db, type PlayerMaster } from './schema';
 
-// ──────────────────────────────────────────────
-// Notification Helper
-// ──────────────────────────────────────────────
-
-/**
- * データの変更をアプリ全体に通知する。
- * Web本体の useDataSync フックがこのイベントを購読してキャッシュを無効化する。
- */
-export function dispatchRefreshEvent(matchId?: string | number): void {
-  if (typeof window === 'undefined') return;
-
-  console.log('[db] Dispatching REFRESH_DATA event, matchId:', matchId);
-  window.dispatchEvent(
-    new CustomEvent('footics-action', {
-      detail: {
-        action: SHORTCUT_ACTIONS.REFRESH_DATA,
-        matchId: matchId ? String(matchId) : undefined,
-      },
-    }),
-  );
-}
+export { dispatchRefreshEvent, getMatchMemo, putMatchMemo, saveCustomEvent };
 
 // ──────────────────────────────────────────────
 // Event Memo Operations (TanStack Query 用)
@@ -53,11 +38,6 @@ export async function getAllEventMemos(): Promise<EventMemo[]> {
 // Custom Event Operations
 // ──────────────────────────────────────────────
 
-export async function saveCustomEvent(event: CustomEvent): Promise<void> {
-  await db.custom_events.put(event);
-  dispatchRefreshEvent(event.match_id);
-}
-
 export async function getCustomEventsByMatch(
   matchId: string,
 ): Promise<CustomEvent[]> {
@@ -78,16 +58,6 @@ export async function getAllCustomEvents(): Promise<CustomEvent[]> {
 // ──────────────────────────────────────────────
 // Match Memo Operations
 // ──────────────────────────────────────────────
-
-export async function getMatchMemo(matchId: string): Promise<MatchMemo | null> {
-  const data = await db.match_memos.get(matchId);
-  return data ?? null;
-}
-
-export async function putMatchMemo(memo: MatchMemo): Promise<void> {
-  await db.match_memos.put(memo);
-  dispatchRefreshEvent(memo.matchId);
-}
 
 export async function getAllMatchMemos(): Promise<MatchMemo[]> {
   return db.match_memos.toArray();

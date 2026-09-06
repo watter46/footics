@@ -11,6 +11,7 @@ import {
   cropCapturedImage,
 } from '../features/capture/video-cropper';
 import { OverlayApp, useOverlayStore } from '../features/memo-overlay';
+import { setupFooticsAppBridge } from '../features/storage-sync/footics-app-bridge';
 import '../assets/overlay.css';
 
 export default defineContentScript({
@@ -19,6 +20,9 @@ export default defineContentScript({
 
   async main(ctx) {
     console.log('💎 [Footics] Overlay Content Script Injected');
+
+    // Footics Web App 向けの通信・同期ブリッジを初期化
+    setupFooticsAppBridge();
 
     const ui = await createShadowRootUi(ctx, {
       name: 'footics-memo-overlay',

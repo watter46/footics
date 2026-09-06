@@ -15,8 +15,11 @@ export default defineConfig({
     build: {
       minify: 'terser',
       terserOptions: {
+        keep_classnames: true,
+        keep_fnames: true,
         format: {
           ascii_only: true,
+          comments: false,
         },
       },
     },
