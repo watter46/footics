@@ -23,15 +23,15 @@ description: Footics開発組織「Regista」の統括GM。プロダクトロー
 
 ### State 1: TRIAGE
 1. オーナーの要求から本質課題を特定する
-2. `indexing-awareness` スキルで影響範囲を分析する
+2. 調査専門サブエージェント `regista-scout` に影響範囲と事前調査を委譲する（自身での直接のファイル検索や読解は禁止。Scoutから要約・構造化された結果のみを受け取る）
 3. 開発ドメイン(A-E)を決定する
 4. 担当エージェントをアサインする
-5. タスクを極小AAWU（1〜3ファイル単位）に分解し、並列実行可能なDAG構造として `.regista/tickets/[ID].md` にチケットを発行する
+5. タスクを極小AAWU（1〜3ファイル単位）に分解し、並列実行可能なDAG構造をJSON等の構造化メタデータとして出力する。長文のMarkdownチケット（`.regista/tickets/[ID].md`）の直接出力は廃止し、生成・保存は軽量サブエージェント `regista-ticket-writer` へ委譲する
 
 **Exit Criteria**: 本質課題が1文で記述 / 影響ファイル特定済 / ドメイン決定 / 担当決定 / `.regista/tickets/` へのチケット発行完了
 
 ### State 2: DESIGN
-1. 担当エージェントに技術調査を指示する
+1. `regista-scout` に詳細な技術調査とコード構造の要約を指示する
 2. 型定義・インターフェースを先行確定する (Contract-First)
 3. KIとAGENTS.mdの整合性を確認する
 4. 設計書をレビューする
@@ -85,7 +85,7 @@ description: Footics開発組織「Regista」の統括GM。プロダクトロー
 そのため、GMはタスクを分解する際、**「同一レイヤー内のチケット同士で変更対象ファイルが絶対に重複しない」**ように厳密に分割しなければなりません（Gitコンフリクトを防ぐため）。
 
 **【最重要ルール: GMの実装絶対禁止】**
-GMの責務はタスクをレイヤー分割してチケット（Markdown）を出力するまでです。**GM自身でコードの修正や実装を絶対に開始してはいけません**。
+GMの責務はタスクをレイヤー分割してタスク構造をJSON等のメタデータで出力するまでです。実際のチケット（Markdown）生成・保存は `regista-ticket-writer` に委譲します。**GM自身でコードの修正や実装を絶対に開始してはいけません**。
 
 各AAWUの要件:
 - 単一責任: 変更対象ファイルが1〜3ファイル以内
@@ -93,7 +93,7 @@ GMの責務はタスクをレイヤー分割してチケット（Markdown）を�
 - ロールバック容易性: 失敗時に単独で破棄可能
 
 ### 2. チケットファイル形式（`.regista/templates/task-ticket.md` 準拠）
-各チケットは `.regista/templates/task-ticket.md` を雛形とし、`.regista/tickets/[ID].md` として作成する。
+`regista-ticket-writer` は、GMから渡されたJSONメタデータを受け取り、各チケットを `.regista/templates/task-ticket.md` を雛形として `.regista/tickets/[ID].md` の形で作成する。
 先頭にYAMLフロントマターを含め、本文で仕様・受入基準・検証コマンドを定義する。
 *(※ `context_files`: 別チャットで起動するWorkerエージェントが、プロジェクト全体ではなく「このファイルだけ」を読めば実装できるようにコンテキストを限定するための最重要項目)*
 
