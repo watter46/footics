@@ -5,6 +5,9 @@ title: {{TITLE_JA}} # 必ず日本語で記述すること
 status: TODO # TODO | IN_PROGRESS | DONE | BLOCKED
 depends_on: [] # 例: ["L1-DB-001"]
 
+# コードのスナップショット（Ticket Freshness Guard用 - 絶対省略禁止）
+code_snapshot: {{GIT_HASH}} # チケット発行時のgit hash（例: "abc1234"）
+
 # 推奨実行環境（ホワイトリストから選定）
 model: {{RECOMMENDED_MODEL}} # [GM発行] Gemini 3.1 Pro / Gemini 3.8 Flash | [Worker実装] Gemini 3.7 Flash 〜 3.8 Flash | [難関] Claude Sonnet 4.6 (thinking)
 effort: {{RECOMMENDED_EFFORT}} # low | medium | high
@@ -17,6 +20,7 @@ target_files:
 reference_files:
   - {{REFERENCE_FILE_1}} # 参照のみ（変更禁止）
 ---
+
 
 # {{EMOJI}} {{TICKET_ID}}: {{TITLE_JA}}
 

@@ -11,6 +11,18 @@
       }
     ]
   },
+  "oracle-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "view_file|grep_search",
+        "hooks": [
+          {
+            "command": "node -e 'require(require(\"fs\").existsSync(\"./scripts/oracle-guard.js\") ? \"./scripts/oracle-guard.js\" : \"./.agents/scripts/oracle-guard.js\")'"
+          }
+        ]
+      }
+    ]
+  },
   "auto-format": {
     "PostToolUse": [
       {
@@ -38,3 +50,4 @@
     ]
   }
 }
+

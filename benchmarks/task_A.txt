@@ -1,0 +1,6 @@
+Feature Request: Data Export Panel
+Add a new panel component that allows users to export the tactical data as JSON or CSV.
+- Location: src/features/tactical-unified/panels/export/
+- Functionality: Button to trigger export, dropdown for format (JSON/CSV).
+- It should integrate with the existing useExportStore.
+Please decompose this task into DAG tickets and generate the markdown tickets.

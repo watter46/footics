@@ -113,3 +113,43 @@ QAレビュー時に、以下のビルド品質も併せて検証すること:
 - **src/変更時**: `pnpm run build` が正常終了すること（Cloudflare Edge Runtime互換性）
 - **extension/変更時**: `cd extension && pnpm run build` が正常終了すること
 - **パッケージ境界検証**: import文の静的解析により、パッケージ間の直接インポートがないことを確認（grep -r "from '../../extension" src/ 等）
+
+## Quality Ratchet プロトコル (MANDATORY Write-back)
+
+### Phase 4: 採点結果の記録義務
+採点が完了したら（PASS/REJECT問わず）、**必ず** `.regista/metrics/quality-history.json` に結果を追記すること。
+
+追記フォーマット（配列の末尾へ追加）:
+```json
+{
+  "ticket_id": "L1-UI-001",
+  "evaluated_at": "2026-09-07T00:00:00Z",
+  "status": "PASS",
+  "total_score": 24,
+  "rubric_scores": {"1": 3, "2": 3, "3": 2, "4": 2, "5": 2, "6": 2, "7": 3, "8": 3, "9": 2, "10": 2}
+}
+```
+
+### Phase 5: Quality Ratchet チェック
+採点結果を記録した後、以下の劣化検知チェックを実行する：
+
+1. `quality-history.json` から直近3件のエントリを読み込む
+2. 3件の `total_score` の平均を計算する
+3. 今回の `total_score` が「平均 − 3点」を下回る場合 → `ratchet_triggered: true` を出力JSONに追加してGMに通知する
+4. 通常範囲内の場合 → `ratchet_triggered: false`
+
+```json
+{
+  "status": "PASS",
+  "rubric_scores": {...},
+  "errors": [],
+  "ratchet_triggered": false,
+  "ratchet_detail": {
+    "current_score": 24,
+    "recent_avg": 25.3,
+    "threshold": 22.3
+  }
+}
+```
+
+`ratchet_triggered: true` の場合、GMは品質劣化をオーナーに報告しWorkerへの再実装指示を発行する義務がある。

@@ -7,21 +7,20 @@ trigger: always_on
 このプロジェクトを操作するエージェント（Antigravity）は、以下のルールを **必ず読み込み、例外なく最優先で遵守すること**。
 
 ## 0. 開発組織「Regista」と実行モード (Execution Modes)
-本プロジェクトは自律型AIエンジニア組織「Regista」規約に基づいて運用されますが、**トークン浪費を防ぎ迅速に成果を出すため、タスク規模に応じた2つの実行モードを厳格に使い分けます**。
-- **Fast-Track Mode (軽量・単独実行モード - 原則こちらをデフォルト適用):**
-  - **対象:** 日常の質問、技術相談・調査、1〜3ファイル以内の機能追加・修正・バグ修正、型エラー解消、軽微なリファクタリング。
-  - **挙動:** GMによるチケット発行・AAWU分解・独立QAサブエージェント召喚等の重厚な往復フローを**完全にバイパス**する。
-    - **コード変更を伴う場合:** 現在のエージェント単独で即時実装し、最小スコープ検証（変更ファイルに対する lint / type-check / 対象テスト）を行って完了する。
-    - **コード変更を伴わない場合 (質問・調査・設計相談等):** テスト・型チェック・Biomeなどの検証コマンドは**一切実行せず、即座に回答を出力して完了**する。
-  - **肥大化防止ガードレール (STOP & PROPOSE):** Fast-Track実行中であっても、修正によって対象ファイルが **コンポーネントで200行、フックで150行** を超過する見込みの場合、または1ファイルに「UI描画」と「複雑な状態管理・副作用」が混在する場合は、**即座に実装を停止**すること。独自にコードを書き進めず、ユーザーに対して「カスタムフック等への即時分割」または「Orchestratedモードへの昇格（チケット発行）」を提案せよ。
-- **Orchestrated Mode (組織的開発モード):**
-  - **対象:** 複数ドメイン（Web + Extension + Canvas + Data等）に跨る大型新機能開発、DB破壊的マイグレーション、アーキテクチャ刷新。
-  - **挙動:** [ORGANIZATION.md](./ORGANIZATION.md) に定義された State Machine (TRIAGE → DESIGN → IMPLEMENTATION → REVIEW_QA → DONE) に従って分業する。
+本プロジェクトは自律型AIエンジニア組織「Regista」規約に基づいて運用されます。**コード変更を伴う全タスクは規模に関わらず例外なくOrchestrated Modeで実行すること（Fast-Track廃止）。**
+
+- **質問・相談・設計壁打ち (即時回答モード):**
+  - **対象:** 日常の質問、技術相談・調査、設計の壁打ち、方針確認。コード変更を伴わないもの全般。
+  - **挙動:** テスト・型チェック・Biomeなどの検証コマンドは**一切実行せず、即座に回答を出力して完了**する。サブエージェントの召喚も不要。
+
+- **Orchestrated Mode (全コード変更タスク共通・唯一の実行モード):**
+  - **対象:** コード変更を伴う**全て**のタスク（1行修正・typo修正・大型機能追加を問わず例外なし）。
+  - **挙動:** [ORGANIZATION.md](./ORGANIZATION.md) に定義された State Machine (TRIAGE → DESIGN → IMPLEMENTATION → REVIEW_QA → DONE) に従って分業する。GMは必ずScoutへ探索を委譲し、チケットを発行してWorkerに実装させる。GMが直接コードに触れることを絶対に禁ずる。
   - **GMタスク分解・チケット発行 (DAG & Markdown Tickets):** GM (`regista-gm`) は要件受領時にタスクを極小AAWU（1〜3ファイル単位）へ分解し、並列実行可能なDAG構造として `.regista/tickets/[ID].md` にチケットを発行する。
 
 ## 1. チケット出力・運用プロトコル (DAG & Markdown Distribution Standard)
 - **1. 分散Markdownファイル管理 (`.regista/tickets/[ID].md`):**
-  - 各チケットは **必ず** `.regista/templates/task-ticket.md` を読み込み、それをベースに生成すること。YAMLフロントマター内の `model`, `effort` などの必須フィールドを絶対に省略してはならない。
+  - 各チケットは **必ず** `.regista/templates/task-ticket.md` を読み込み、それをベースに生成すること。YAMLフロントマター内の `model`, `effort`, `code_snapshot` などの必須フィールドを絶対に省略してはならない。
   - ファイル構成案（純粋関数と状態の分離など）を必ず明記すること。
   - **チケット発行後バリデーション義務 (MANDATORY GATE):** GMはチケットファイルを保存した直後に、必ず `rtk pnpm tickets:validate` を実行し、スキーマ・DAG検証を通過させること。エラーが残る場合は通過するまでチケットを修正し、**バリデーション合格前にWorkerへの実行指示を絶対に行ってはならない**。
 - **2. Layer-Based DAG ID体系と並列実行の厳格化:** `L{深度}-{ドメイン名}-{連番3桁}`。進捗確認は `pnpm tickets`。
@@ -83,7 +82,6 @@ trigger: always_on
 ## 6. 作業のサイレント実行規約 (Silent Execution & Indicator)
 - **着手時のインジケーター表示**: タスク着手時は必ず `.regista/templates/task-indicator.md` を読み込み、`{{TASK_OR_TICKET_NAME}}` を置換して1行のみを表示すること。ハードコードは禁止。
 - **実況中継・コマンド発言の厳格禁止**: 「〇〇コマンドを実行します」「型チェック中...」等の途中経過やおしゃべりをチャットへ出力してはならない。ツール呼び出しにより裏で静かに実行を完遂すること。
-- **Fast-Track完了報告**: Fast-Trackで完了した際は `.regista/templates/fast-track-report.md` を読み込んで出力すること。
 - **差分出力の強制:** フルファイルの書き換えではなく、Unified Diffフォーマットでのパッチ提供を優先する。
 
 ## 7. 厳格なファイル生成制約と Type & Skeleton-First Driven Development (TSFDD)
@@ -91,17 +89,74 @@ trigger: always_on
 - **テンプレート・スケルトンの先行配置:** 新規作成・大規模分割時は、まず「型定義・インターフェース・空のスタブ」のみの骨組みを配置する。その状態で `rtk pnpm type-check:scoped` を実行し、型の安全性が確認されてからロジックやUIの詳細を個別に埋めていくこと。
 - **事前宣言:** 3ファイル以上または合計200行を超える実装を行う場合、コード生成前に作成・修正予定の「ファイル一覧とそれぞれの責務（1行）」を箇条書きで宣言すること。
 
-## 8. トークン削減とオーケストレーション最適化 (Token & Orchestration Optimization)
-今回のアーキテクチャ検証で実証された「エージェント・タックスの極小化」と「継続的改善」を担保するため、以下の3大必須ルールを厳守すること。
+## 8. Pure Orchestration アーキテクチャ規約 (MANDATORY)
 
-### ① Adaptive Routing（適応型ルーティング）の明文化
-- タスクチケット発行にあたり、無条件にScout（探索サブエージェント）を起動することを禁止する。
-- **局所タスク（変更ファイルが明確かつ3ファイル以内）:** GMが直接ピンポイント読み込み（`view_file` で50行チャンク指定）を行い、即座にタスク分解・チケット化を行う（エージェント・タックスの回避）。
-- **探索型タスク（影響範囲不明、DB/型定義変更、複数モジュール横断）:** 必ずScoutを起動し、探索フェーズを使い捨てコンテキストにオフロードしてメインコンテキストを保護する。
+### ① GM Oracle Layer（GMの参照許可範囲の3階層定義）
+GMが参照できるファイルは以下の3レイヤーで厳格に管理される。**レイヤー2は物理的アクセスを行わず、必ずScoutへ委譲すること。**
 
-### ② Compact Protocol（軽量委譲プロトコル）の標準化
-- GMとサブエージェント（Scout / Worker / Ticket-Writer等）間のやり取りにおいて、冗長な自然言語（挨拶、前置き、長文解説）を完全に禁止する。
-- 指示および報告は、必要最小限のキー（`target_paths`, `objective`, `constraints`, `findings` 等）を持つコンパクトなJSONまたはフラットなKey-Valueフォーマットに限定し、Input/Outputトークンを極小化する。
+```
+Layer 0 — 常時参照可能 (GMのコア知識):
+  AGENTS.md, ORGANIZATION.md,
+  .agents/knowledge/architecture-and-guidelines.md,
+  .regista/contracts/*.json          ← Contract Registryのみ（型のサブセット）
 
-### ③ Observability First（計測規範とベースライン維持）
-- プロンプトやエージェントアーキテクチャの大幅な改修を行う際は、推測で進めず、必ず `.agy/metrics/` 等を用いて改修前後のベースライン（Input/Output/ツール呼出数）を同一プロンプト（Task A/B等）で定量比較し、改善効果を実証すること。
+Layer 1 — 必要時参照可能 (チケット・キャッシュ管理):
+  .regista/tickets/*.md,
+  .regista/scout-cache/*.json,       ← Scoutが生成したキャッシュ
+  .regista/templates/*.md,
+  .regista/metrics/quality-history.json
+
+Layer 2 — 完全禁止 (コード本体・実装詳細):
+  src/**,  extension/**
+  *.ts, *.tsx, *.js, *.jsx (AGENTS.md, SKILL.md等のエージェント設定ファイルを除く)
+```
+
+**Layer 2へのアクセス違反はフック（`oracle-guard.js`）がログ警告を記録する。**
+
+### ② Scout強制委譲（100% Explorer Delegation）
+- コード変更タスクを受けたGMは、**例外なくScoutへ探索を委譲してからチケット発行を行う**こと。
+- 局所タスク（3ファイル以内）であっても、GMは自身でコードを読まずにScoutへ委譲する（Adaptive Routingは廃止）。
+- Scout起動前に必ず `.regista/scout-cache/` を確認し、有効なキャッシュ（gitハッシュ一致）があれば Scout起動をスキップしてキャッシュから取得する。
+- 複数ドメイン横断タスクは **Parallel Scout Cluster** を使用し、ドメイン別に複数Scoutを並列起動して結果をマージする。
+
+### ③ Scout Knowledge Cache プロトコル
+- Scoutは探索完了後、結果を `.regista/scout-cache/{domain}-{git-hash}.json` として保存する（義務）。
+- キャッシュの有効期限はgit hashで管理。コードが変更されたら自動的に無効化される。
+- GMはチケット発行前に `rtk git rev-parse HEAD` でgit hashを取得し、キャッシュファイルの存在を確認してからScoutを起動するかどうか判断する。
+
+### ④ Contract Registry（型インターフェースの仲介レイヤー）
+- `.regista/contracts/*.json` にはドメイン間の公開型インターフェースのサブセットをJSON Schemaとして保持する。
+- ScoutはコードベースのTypeScript型定義から公開インターフェースを抽出し、contractファイルを最新化する（チケット完了時の必須Write-back）。
+- GMはWorker間のインターフェース整合性を、コードを読む代わりにこのcontractを参照して確認する。
+
+### ⑤ Worker Escalation Protocol（自律エスカレーション）
+実装中に想定外の状況が発生した場合、Workerは以下の3段階で自律対応する：
+
+```
+Level 1 (自律解決):   影響が担当チケットのファイル内に収まる → 自己判断で解決
+Level 2 (Scout追加):  担当外ファイルへの副作用を発見      → Scoutに追加調査委譲してから継続
+Level 3 (GM差し戻し): チケット前提が根本的に誤っている    → GMにチケット再分解を要求（実装停止）
+```
+
+Level 3エスカレーション時のWorkerからGMへの報告形式：
+```json
+{"escalation": 3, "ticket_id": "L1-UI-001", "reason": "前提の型変更が3つの追加ファイルに波及", "impacted_files": ["path/a", "path/b", "path/c"]}
+```
+
+### ⑥ Ticket Freshness Guard（チケット鮮度管理）
+- 全チケットのYAMLフロントマターには `code_snapshot` フィールド（チケット発行時のgit hash）が必須。
+- Workerは実装開始時に `rtk git rev-parse HEAD` で現在のgit hashを取得し、`code_snapshot` と照合する。
+- 差異がある場合、Workerは自動的にScoutへ「差分チェック」を依頼してから実装を開始する（実装の前提が変わっていないか確認）。
+
+### ⑦ Quality Ratchet（品質劣化自動検知）
+- QAは採点結果を `.regista/metrics/quality-history.json` に蓄積する（Write-back義務）。
+- 新チケットのQAスコア合計が「過去3チケットの平均合計 − 3点」を下回った場合、自動的に再実装フラグを立てる。
+- GMは `pnpm tickets` 実行時に品質トレンドを確認し、劣化傾向がある場合はオーナーに報告する。
+
+### ⑧ Compact Protocol（軽量通信の標準化）
+- GM、Scout、Ticket-Writer間のやり取りは必要最小限のJSONまたはKey-Valueのみ。
+- 挨拶・前置き・自然言語による長文説明を厳格に禁止する。
+- Scoutへの指示には必ず `user_intent`（ユーザーの意図を2文以内で抜粋）を含めること。
+
+### ⑨ Observability First（計測規範）
+- アーキテクチャの大幅改修を行う際は、`.regista/metrics/` を用いて改修前後のベースラインを定量比較し、改善効果を実証すること。
