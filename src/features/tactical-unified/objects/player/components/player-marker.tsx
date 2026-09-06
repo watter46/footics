@@ -59,6 +59,7 @@ export const PlayerMarker = React.memo(function PlayerMarker({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const spotlightGroupRef = useRef<any>(null);
   const groupRef = useRef<Konva.Group | null>(null);
+  const isDraggingRef = useRef(false);
 
   useNodePositionTransition({
     nodeRef: groupRef,
@@ -73,6 +74,7 @@ export const PlayerMarker = React.memo(function PlayerMarker({
   };
 
   const handleStartDrag = (e: KonvaEventObject<DragEvent>) => {
+    isDraggingRef.current = true;
     onDragStart(e, player);
     if (dragGlowRef.current) {
       dragGlowRef.current.opacity(1);
@@ -92,6 +94,17 @@ export const PlayerMarker = React.memo(function PlayerMarker({
     const stage = node.getStage();
     if (stage) stage.container().style.cursor = 'default';
     onDragEnd(e, player);
+    // ドラッグ直後の誤クリック判定を防止
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 50);
+  };
+
+  const handleClick = (
+    e: KonvaEventObject<MouseEvent> | KonvaEventObject<TouchEvent>,
+  ) => {
+    if (isDraggingRef.current) return;
+    onSelect(e);
   };
 
   return (
@@ -121,8 +134,8 @@ export const PlayerMarker = React.memo(function PlayerMarker({
           y: Math.max(parentPos.y, Math.min(parentPos.y + height, pos.y)),
         };
       }}
-      onClick={onSelect}
-      onTap={onSelect}
+      onClick={handleClick}
+      onTap={handleClick}
       onDblClick={handleDblClick}
       onDblTap={handleDblClick}
       onDragStart={handleStartDrag}

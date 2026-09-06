@@ -26,7 +26,7 @@ export function usePlayerLayerDrag({
   nodesRegistryRef,
 }: UsePlayerLayerDragOptions) {
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
-  const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
+  const clearSelection = useTacticalUnifiedStore((s) => s.clearSelection);
   const movePlayer = useTacticalUnifiedStore((s) => s.movePlayer);
   const moveMultiplePlayersByDelta = useTacticalUnifiedStore(
     (s) => s.moveMultiplePlayersByDelta,
@@ -59,7 +59,6 @@ export function usePlayerLayerDrag({
       prevSlide,
       stageSize,
       selectedObjects,
-      selectObject,
       onionSkinRefs: {
         ghostGroup: ghostGroupRef.current,
         ghostLine: ghostLineRef.current,
@@ -112,6 +111,7 @@ export function usePlayerLayerDrag({
       ghostGroupRef.current.getLayer()?.batchDraw();
     }
 
+    clearSelection();
     dragContextRef.current = null;
   };
 

@@ -16,6 +16,25 @@ describe('ContextHud Selection & Visibility', () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it('renders nothing after clearing selection (e.g. after dragging)', () => {
+    const state = useTacticalUnifiedStore.getState();
+    const activeSlide =
+      state.project.slides.find((s) => s.id === state.activeSlideId) ??
+      state.project.slides[0];
+    const player = activeSlide.players[0];
+
+    state.selectObject({ id: player.id, kind: 'player' });
+    const { container, rerender } = render(
+      <ContextHud stageSize={{ width: 800, height: 450 }} />,
+    );
+    expect(container.firstChild).not.toBeNull();
+
+    // ドラッグ完了時など選択解除された場合
+    state.clearSelection();
+    rerender(<ContextHud stageSize={{ width: 800, height: 450 }} />);
+    expect(container.firstChild).toBeNull();
+  });
+
   it('renders nothing when multiple objects are selected', () => {
     const state = useTacticalUnifiedStore.getState();
     const activeSlide =

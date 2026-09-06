@@ -101,7 +101,6 @@ export function createPlayerDragContext({
   prevSlide,
   stageSize,
   selectedObjects,
-  selectObject,
   onionSkinRefs,
 }: {
   draggedPlayer: Player;
@@ -109,7 +108,6 @@ export function createPlayerDragContext({
   prevSlide: Slide | null | undefined;
   stageSize: { width: number; height: number };
   selectedObjects: Array<{ id: string; kind: string }>;
-  selectObject: (obj: { id: string; kind: 'player' }) => void;
   onionSkinRefs: OnionSkinRefs;
 }): PlayerDragContext {
   const { width, height } = stageSize;
@@ -122,7 +120,6 @@ export function createPlayerDragContext({
     .map((o) => o.id);
   const isSelected = selIds.includes(draggedPlayer.id);
   const movingPlayerIds = isSelected ? selIds : [draggedPlayer.id];
-  if (!isSelected) selectObject({ id: draggedPlayer.id, kind: 'player' });
 
   const movingSet = new Set(movingPlayerIds);
   const movingPlayers = slide.players
