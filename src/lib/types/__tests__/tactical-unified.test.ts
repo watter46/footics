@@ -149,13 +149,13 @@ describe('PlayerSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('x が 0〜100 の範囲外はエラー', () => {
+  it('x が 0〜100 の範囲外（ピッチ外）でも許容される', () => {
     const player = {
       ...createDefaultPlayer('home', 50, 50, '#034694'),
       x: 110,
     };
     const result = PlayerSchema.safeParse(player);
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 });
 

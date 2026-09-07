@@ -12,8 +12,8 @@ import { z } from 'zod';
 // § 1. Primitives
 // ─────────────────────────────────────────
 
-/** 正規化座標 0.0 ～ 100.0 */
-export const NormalizedCoordSchema = z.number().min(0).max(100);
+/** 正規化座標 (ピッチ外・オーバーフロー許容) */
+export const NormalizedCoordSchema = z.number();
 
 /** アスペクト比: 16:9 (横), 9:16 (縦), 4:5 (縦長タイムライン), 1:1 (正方形) */
 export const AspectRatioSchema = z.enum(['16:9', '9:16', '4:5', '1:1']);
