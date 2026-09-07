@@ -77,7 +77,10 @@ export const BoundaryBox = React.memo(function BoundaryBox({
   onCommit,
   isExporting = false,
 }: BoundaryBoxProps) {
-  const box: BoundaryBoxType = boundaryBox ?? DEFAULT_BOUNDARY_BOX_4_5;
+  const [dragBox, setDragBox] = React.useState<BoundaryBoxType | null>(null);
+
+  const box: BoundaryBoxType =
+    dragBox ?? boundaryBox ?? DEFAULT_BOUNDARY_BOX_4_5;
 
   const baseRect =
     box.fitTarget === 'canvas'
@@ -94,6 +97,18 @@ export const BoundaryBox = React.memo(function BoundaryBox({
   const pxW = Math.max(20, normToPx(box.width, baseRect.width));
   const pxH = Math.max(20, normToPx(box.height, baseRect.height));
 
+  const handleDragUpdate = React.useCallback((nextBox: BoundaryBoxType) => {
+    setDragBox(nextBox);
+  }, []);
+
+  const handleDragCommit = React.useCallback(
+    (finalBox: BoundaryBoxType) => {
+      setDragBox(null);
+      (onCommit ?? onUpdate)?.(finalBox);
+    },
+    [onCommit, onUpdate],
+  );
+
   const { handleCornerPointerDown, handleBoxPointerDown } = useBoundaryBoxDrag({
     box,
     baseRect,
@@ -101,8 +116,8 @@ export const BoundaryBox = React.memo(function BoundaryBox({
     pxY,
     pxW,
     pxH,
-    onUpdate,
-    onCommit,
+    onUpdate: handleDragUpdate,
+    onCommit: handleDragCommit,
   });
 
   if (isExporting || !box.enabled) return null;

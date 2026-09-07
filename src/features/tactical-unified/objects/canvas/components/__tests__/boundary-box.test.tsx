@@ -74,7 +74,7 @@ describe('BoundaryBox dragging & commit', () => {
   };
   const stageSize = { width: 800, height: 450 };
 
-  it('handles corner drag to resize the boundary box and calls onCommit on release', () => {
+  it('handles corner drag to resize locally during move and calls onCommit on release', () => {
     const onUpdate = vi.fn();
     const onCommit = vi.fn();
     render(
@@ -101,7 +101,7 @@ describe('BoundaryBox dragging & commit', () => {
     });
     handleBr.dispatchEvent(moveEvent);
 
-    expect(onUpdate).toHaveBeenCalled();
+    expect(onUpdate).not.toHaveBeenCalled();
     expect(onCommit).not.toHaveBeenCalled();
 
     const upEvent = new PointerEvent('pointerup');
@@ -112,9 +112,10 @@ describe('BoundaryBox dragging & commit', () => {
         enabled: true,
       }),
     );
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 
-  it('handles box move drag and calls onCommit on release', () => {
+  it('handles box move drag locally during move and calls onCommit on release', () => {
     const onUpdate = vi.fn();
     const onCommit = vi.fn();
     const { container } = render(
@@ -142,13 +143,52 @@ describe('BoundaryBox dragging & commit', () => {
     });
     dragRect.dispatchEvent(moveEvent);
 
-    expect(onUpdate).toHaveBeenCalled();
+    expect(onUpdate).not.toHaveBeenCalled();
     expect(onCommit).not.toHaveBeenCalled();
 
     const upEvent = new PointerEvent('pointerup');
     dragRect.dispatchEvent(upEvent);
 
     expect(onCommit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+      }),
+    );
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+
+  it('falls back to calling onUpdate on release when onCommit is not provided', () => {
+    const onUpdate = vi.fn();
+    const { container } = render(
+      <BoundaryBox
+        boundaryBox={defaultBox}
+        stageSize={stageSize}
+        onUpdate={onUpdate}
+      />,
+    );
+
+    const rects = container.querySelectorAll('rect');
+    const dragRect = rects[0];
+    dragRect.setPointerCapture = vi.fn();
+
+    fireEvent.pointerDown(dragRect, {
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    });
+
+    const moveEvent = new PointerEvent('pointermove', {
+      clientX: 120,
+      clientY: 130,
+    });
+    dragRect.dispatchEvent(moveEvent);
+
+    expect(onUpdate).not.toHaveBeenCalled();
+
+    const upEvent = new PointerEvent('pointerup');
+    dragRect.dispatchEvent(upEvent);
+
+    expect(onUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         enabled: true,
       }),
