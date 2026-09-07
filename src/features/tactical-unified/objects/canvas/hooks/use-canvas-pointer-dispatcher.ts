@@ -31,20 +31,19 @@ export function useCanvasPointerDispatcher({
       if (!pos) return;
 
       const isBg = e.target === stage;
-      const isInsidePitch =
-        pos.x >= effectivePitch.x &&
-        pos.x <= effectivePitch.x + effectivePitch.width &&
-        pos.y >= effectivePitch.y &&
-        pos.y <= effectivePitch.y + effectivePitch.height;
-
-      if (zoomPan.handlePointerDown(pos, isBg, isInsidePitch)) return;
-      if (isBg && !isInsidePitch) return;
-
       const { pitchPos, normPos } = getPitchAndNormPos(
         pos,
         effectivePitch,
         zoomPan.pitchTransformRef.current,
       );
+      const isInsidePitch =
+        pitchPos.x >= 0 &&
+        pitchPos.x <= effectivePitch.width &&
+        pitchPos.y >= 0 &&
+        pitchPos.y <= effectivePitch.height;
+
+      if (zoomPan.handlePointerDown(pos, isBg, isInsidePitch)) return;
+      if (isBg && !isInsidePitch) return;
       const isAnchor = e.target.getParent()?.getClassName() === 'Transformer';
       if (zoneRotation.handlePointerDown(pitchPos, isAnchor)) return;
 
