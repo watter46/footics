@@ -20,17 +20,28 @@ try {
 
   const filePath = args.AbsolutePath || args.TargetFile || args.SearchPath || '';
 
-  // Token Guard: view_fileの行数制限 (最大50行)
-  if (toolName === 'view_file') {
+  // Token Guard: view_fileの行数制限 (最大100行、全行読み込み禁止)
+  if (toolName === "view_file") {
     const startLine = args.StartLine;
     const endLine = args.EndLine;
 
     if (startLine === undefined || endLine === undefined) {
       console.log(
         JSON.stringify({
-          decision: 'deny',
+          decision: "deny",
           reason:
-            '[TOKEN GUARD] view_fileでの全行読み込みは禁止されています。必ず StartLine と EndLine を指定して最大50行に制限するか、AST抽出には `rtk smart <file>` を使用してください。',
+            "[TOKEN GUARD] view_fileでの全行読み込みは禁止されています。ファイル全体の閲覧には `rtk read <file>`、構造把握には `rtk smart <file>` を使用してください。コード置換（replace_file_content）直前のピンポイント確認の場合のみ StartLine と EndLine を指定してください。",
+        }),
+      );
+      process.exit(0);
+    }
+
+    if (endLine - startLine > 100) {
+      console.log(
+        JSON.stringify({
+          decision: "deny",
+          reason:
+            "[TOKEN GUARD] view_file はコード置換前のピンポイント確認用です（最大100行）。ファイル全体の閲覧には `rtk read <file>` または `rtk smart <file>` を使用してください。",
         }),
       );
       process.exit(0);
@@ -55,6 +66,7 @@ try {
 
   // 例外許可パターン（エージェント設定ファイル、規約等）
   const ALLOWED_EXCEPTIONS = [
+    /\.agents\/scripts\//,
     /\.agents\/skills\//,
     /\.agents\/knowledge\//,
     /AGENTS\.md$/,
