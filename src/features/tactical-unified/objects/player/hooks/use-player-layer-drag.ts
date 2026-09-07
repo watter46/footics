@@ -4,6 +4,10 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { useRef } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
+import {
+  clampNorm,
+  pxToNorm,
+} from '@/features/tactical-unified/objects/canvas/helpers/canvas-coordinates';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Player, Slide } from '@/lib/types/tactical-unified';
 import type { OnionSkinRefs, PlayerDragContext } from '../types';
@@ -126,8 +130,8 @@ export function usePlayerLayerDrag({
     const node = e.currentTarget;
 
     if (ctx && ctx.movingPlayerIds.length > 0) {
-      const deltaNormX = ((node.x() - ctx.startPx.x) / width) * 100;
-      const deltaNormY = ((node.y() - ctx.startPx.y) / height) * 100;
+      const deltaNormX = pxToNorm(node.x() - ctx.startPx.x, width);
+      const deltaNormY = pxToNorm(node.y() - ctx.startPx.y, height);
 
       moveMultiplePlayersByDelta(
         activeSlideId,
@@ -138,8 +142,8 @@ export function usePlayerLayerDrag({
     } else {
       const clampedPxX = Math.max(-width, Math.min(width * 2, node.x()));
       const clampedPxY = Math.max(-height, Math.min(height * 2, node.y()));
-      const finalNormX = (clampedPxX / width) * 100;
-      const finalNormY = (clampedPxY / height) * 100;
+      const finalNormX = clampNorm(pxToNorm(clampedPxX, width), -100, 200);
+      const finalNormY = clampNorm(pxToNorm(clampedPxY, height), -100, 200);
       movePlayer(activeSlideId, draggedPlayer.id, finalNormX, finalNormY);
     }
 

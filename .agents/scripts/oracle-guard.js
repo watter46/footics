@@ -77,7 +77,50 @@ try {
   const isLayer2 = LAYER2_PATTERNS.some((p) => p.test(filePath));
   const isAllowed = ALLOWED_EXCEPTIONS.some((p) => p.test(filePath));
 
+  // チケットの target_files / reference_files に含まれるかチェック（Workerの正当な操作を許可）
+  let isTicketAllowed = false;
   if (isLayer2 && !isAllowed) {
+    try {
+      const ticketsDir = path.join(__dirname, '../../.regista/tickets');
+      if (fs.existsSync(ticketsDir)) {
+        const ticketFiles = fs.readdirSync(ticketsDir).filter((f) => f.endsWith('.md'));
+        for (const tf of ticketFiles) {
+          const content = fs.readFileSync(path.join(ticketsDir, tf), 'utf-8');
+          // target_files / reference_files の抽出
+          const targetMatch = content.match(/target_files:\s*\n((?:\s*-\s*[^\n]+\n)+)/);
+          const refMatch = content.match(/reference_files:\s*\n((?:\s*-\s*[^\n]+\n)+)/);
+          const targetFiles = targetMatch
+            ? targetMatch[1].split('\n').map((l) => l.replace(/^\s*-\s*/, '').trim()).filter(Boolean)
+            : [];
+          const refFiles = refMatch
+            ? refMatch[1].split('\n').map((l) => l.replace(/^\s*-\s*/, '').trim()).filter(Boolean)
+            : [];
+
+          const relPath = path.relative(path.join(__dirname, '../../'), filePath);
+          const normalizedPath = relPath.startsWith('/') ? relPath.slice(1) : relPath;
+
+          if (toolName === 'write_to_file' || toolName === 'replace_file_content') {
+            if (targetFiles.some((f) => normalizedPath.endsWith(f) || f.endsWith(normalizedPath))) {
+              isTicketAllowed = true;
+              break;
+            }
+          } else if (toolName === 'view_file') {
+            if (
+              targetFiles.some((f) => normalizedPath.endsWith(f) || f.endsWith(normalizedPath)) ||
+              refFiles.some((f) => normalizedPath.endsWith(f) || f.endsWith(normalizedPath))
+            ) {
+              isTicketAllowed = true;
+              break;
+            }
+          }
+        }
+      }
+    } catch (_ticketErr) {
+      // チケット読み込みエラーはフォールスルー
+    }
+  }
+
+  if (isLayer2 && !isAllowed && !isTicketAllowed) {
     // ログ記録
     const logDir = path.join(__dirname, '../../.regista/metrics');
     const logFile = path.join(logDir, 'oracle-violations.jsonl');

@@ -25,11 +25,20 @@ export function useCanvasPointerDispatcher({
 }: UseCanvasPointerDispatcherOptions) {
   const handlePointerDown = useCallback(
     (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
-      const pos = e.target.getStage()?.getPointerPosition();
+      const stage = e.target.getStage();
+      const pos =
+        stage?.getRelativePointerPosition() ?? stage?.getPointerPosition();
       if (!pos) return;
 
-      const isBg = e.target === e.target.getStage();
-      if (zoomPan.handlePointerDown(pos, isBg)) return;
+      const isBg = e.target === stage;
+      const isInsidePitch =
+        pos.x >= effectivePitch.x &&
+        pos.x <= effectivePitch.x + effectivePitch.width &&
+        pos.y >= effectivePitch.y &&
+        pos.y <= effectivePitch.y + effectivePitch.height;
+
+      if (zoomPan.handlePointerDown(pos, isBg, isInsidePitch)) return;
+      if (isBg && !isInsidePitch) return;
 
       const { pitchPos, normPos } = getPitchAndNormPos(
         pos,
@@ -55,7 +64,9 @@ export function useCanvasPointerDispatcher({
 
   const handlePointerMove = useCallback(
     (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
-      const pos = e.target.getStage()?.getPointerPosition();
+      const stage = e.target.getStage();
+      const pos =
+        stage?.getRelativePointerPosition() ?? stage?.getPointerPosition();
       if (!pos) return;
 
       if (zoomPan.handlePointerMove(pos)) return;
