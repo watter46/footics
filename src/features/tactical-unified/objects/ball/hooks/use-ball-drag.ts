@@ -82,6 +82,14 @@ export function useBallDrag({
     [ghostLineRef],
   );
 
+  const dragBoundFunc = useCallback(
+    (pos: { x: number; y: number }) => ({
+      x: Math.max(-stageSize.width, Math.min(stageSize.width * 2, pos.x)),
+      y: Math.max(-stageSize.height, Math.min(stageSize.height * 2, pos.y)),
+    }),
+    [stageSize.width, stageSize.height],
+  );
+
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
       const node = e.currentTarget as Konva.Group;
@@ -92,8 +100,16 @@ export function useBallDrag({
       hideGhostGroup(ghostGroupRef.current);
       prevBallPxRef.current = null;
 
-      const x = Math.max(0, Math.min(100, (node.x() / stageSize.width) * 100));
-      const y = Math.max(0, Math.min(100, (node.y() / stageSize.height) * 100));
+      const clampedPxX = Math.max(
+        -stageSize.width,
+        Math.min(stageSize.width * 2, node.x()),
+      );
+      const clampedPxY = Math.max(
+        -stageSize.height,
+        Math.min(stageSize.height * 2, node.y()),
+      );
+      const x = (clampedPxX / stageSize.width) * 100;
+      const y = (clampedPxY / stageSize.height) * 100;
       setBallPosition(activeSlideId, x, y);
     },
     [
@@ -106,6 +122,7 @@ export function useBallDrag({
   );
 
   return {
+    dragBoundFunc,
     handleDragStart,
     handleDragMove,
     handleDragEnd,

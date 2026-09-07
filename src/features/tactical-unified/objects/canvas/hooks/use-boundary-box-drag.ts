@@ -14,6 +14,7 @@ interface UseBoundaryBoxDragParams {
   pxW: number;
   pxH: number;
   onUpdate: (box: BoundaryBoxType) => void;
+  onCommit?: (box: BoundaryBoxType) => void;
 }
 
 function calculateNewBox(
@@ -47,6 +48,31 @@ function calculateNewBox(
   return { x, y, w, h };
 }
 
+type DragContext = {
+  pointerX: number;
+  pointerY: number;
+  box: BoundaryBoxType;
+  px: { x: number; y: number; w: number; h: number };
+  latestBox: BoundaryBoxType;
+};
+
+function attachDragListeners(
+  target: HTMLElement | SVGElement,
+  onMove: (evt: PointerEvent) => void,
+  onEnd: () => void,
+) {
+  const moveHandler = (evt: Event) => onMove(evt as PointerEvent);
+  const upHandler = () => {
+    target.removeEventListener('pointermove', moveHandler);
+    target.removeEventListener('pointerup', upHandler);
+    target.removeEventListener('pointercancel', upHandler);
+    onEnd();
+  };
+  target.addEventListener('pointermove', moveHandler);
+  target.addEventListener('pointerup', upHandler);
+  target.addEventListener('pointercancel', upHandler);
+}
+
 export function useBoundaryBoxDrag({
   box,
   baseRect,
@@ -55,14 +81,10 @@ export function useBoundaryBoxDrag({
   pxW,
   pxH,
   onUpdate,
+  onCommit,
 }: UseBoundaryBoxDragParams) {
   const { width, height } = baseRect;
-  const dragStartRef = useRef<{
-    pointerX: number;
-    pointerY: number;
-    box: BoundaryBoxType;
-    px: { x: number; y: number; w: number; h: number };
-  } | null>(null);
+  const dragStartRef = useRef<DragContext | null>(null);
 
   const handleCornerPointerDown = useCallback(
     (cornerId: CornerId, e: React.PointerEvent) => {
@@ -76,43 +98,51 @@ export function useBoundaryBoxDrag({
         pointerY: e.clientY,
         box,
         px: { x: pxX, y: pxY, w: pxW, h: pxH },
+        latestBox: box,
       };
 
-      const handlePointerMove = (evt: Event) => {
-        if (!dragStartRef.current || width <= 0 || height <= 0) return;
-        const moveEvent = evt as PointerEvent;
-        const deltaX = moveEvent.clientX - dragStartRef.current.pointerX;
-        const deltaY = moveEvent.clientY - dragStartRef.current.pointerY;
-
-        const next = calculateNewBox(
-          cornerId,
-          deltaX,
-          deltaY,
-          dragStartRef.current.px,
-        );
-
-        onUpdate({
-          ...dragStartRef.current.box,
-          x: pxToNorm(next.x - baseRect.x, width),
-          y: pxToNorm(next.y - baseRect.y, height),
-          width: pxToNorm(next.w, width),
-          height: pxToNorm(next.h, height),
-          enabled: true,
-        });
-      };
-
-      const handlePointerUp = () => {
-        target.removeEventListener('pointermove', handlePointerMove);
-        target.removeEventListener('pointerup', handlePointerUp);
-        target.removeEventListener('pointercancel', handlePointerUp);
-        dragStartRef.current = null;
-      };
-
-      target.addEventListener('pointermove', handlePointerMove);
-      target.addEventListener('pointerup', handlePointerUp);
-      target.addEventListener('pointercancel', handlePointerUp);
+      attachDragListeners(
+        target,
+        (moveEvent) => {
+          if (!dragStartRef.current || width <= 0 || height <= 0) return;
+          const next = calculateNewBox(
+            cornerId,
+            moveEvent.clientX - dragStartRef.current.pointerX,
+            moveEvent.clientY - dragStartRef.current.pointerY,
+            dragStartRef.current.px,
+          );
+          const updated: BoundaryBoxType = {
+            ...dragStartRef.current.box,
+            x: pxToNorm(next.x - baseRect.x, width),
+            y: pxToNorm(next.y - baseRect.y, height),
+            width: pxToNorm(next.w, width),
+            height: pxToNorm(next.h, height),
+            enabled: true,
+          };
+          dragStartRef.current.latestBox = updated;
+          onUpdate(updated);
+        },
+        () => {
+          if (dragStartRef.current && onCommit) {
+            onCommit(dragStartRef.current.latestBox);
+          }
+          dragStartRef.current = null;
+        },
+      );
     },
-    [box, pxX, pxY, pxW, pxH, width, height, baseRect.x, baseRect.y, onUpdate],
+    [
+      box,
+      pxX,
+      pxY,
+      pxW,
+      pxH,
+      width,
+      height,
+      baseRect.x,
+      baseRect.y,
+      onUpdate,
+      onCommit,
+    ],
   );
 
   const handleBoxPointerDown = useCallback(
@@ -127,37 +157,33 @@ export function useBoundaryBoxDrag({
         pointerY: e.clientY,
         box,
         px: { x: pxX, y: pxY, w: pxW, h: pxH },
+        latestBox: box,
       };
 
-      const handlePointerMove = (evt: Event) => {
-        if (!dragStartRef.current || width <= 0 || height <= 0) return;
-        const moveEvent = evt as PointerEvent;
-        const deltaX = moveEvent.clientX - dragStartRef.current.pointerX;
-        const deltaY = moveEvent.clientY - dragStartRef.current.pointerY;
-
-        const deltaNormX = pxToNorm(deltaX, width);
-        const deltaNormY = pxToNorm(deltaY, height);
-
-        onUpdate({
-          ...dragStartRef.current.box,
-          x: dragStartRef.current.box.x + deltaNormX,
-          y: dragStartRef.current.box.y + deltaNormY,
-          enabled: true,
-        });
-      };
-
-      const handlePointerUp = () => {
-        target.removeEventListener('pointermove', handlePointerMove);
-        target.removeEventListener('pointerup', handlePointerUp);
-        target.removeEventListener('pointercancel', handlePointerUp);
-        dragStartRef.current = null;
-      };
-
-      target.addEventListener('pointermove', handlePointerMove);
-      target.addEventListener('pointerup', handlePointerUp);
-      target.addEventListener('pointercancel', handlePointerUp);
+      attachDragListeners(
+        target,
+        (moveEvent) => {
+          if (!dragStartRef.current || width <= 0 || height <= 0) return;
+          const deltaX = moveEvent.clientX - dragStartRef.current.pointerX;
+          const deltaY = moveEvent.clientY - dragStartRef.current.pointerY;
+          const updated: BoundaryBoxType = {
+            ...dragStartRef.current.box,
+            x: dragStartRef.current.box.x + pxToNorm(deltaX, width),
+            y: dragStartRef.current.box.y + pxToNorm(deltaY, height),
+            enabled: true,
+          };
+          dragStartRef.current.latestBox = updated;
+          onUpdate(updated);
+        },
+        () => {
+          if (dragStartRef.current && onCommit) {
+            onCommit(dragStartRef.current.latestBox);
+          }
+          dragStartRef.current = null;
+        },
+      );
     },
-    [box, width, height, onUpdate, pxX, pxY, pxW, pxH],
+    [box, width, height, onUpdate, onCommit, pxX, pxY, pxW, pxH],
   );
 
   return {

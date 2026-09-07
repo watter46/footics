@@ -50,7 +50,7 @@ Layer 2へのアクセスを試みた場合、そのGMセッションは即時�
 2. **Scout Cache確認 (MANDATORY FIRST STEP)**:
    - `rtk git rev-parse HEAD` でgit hashを取得する
    - `.regista/scout-cache/{domain}-{hash}.json` の存在を確認する
-   - キャッシュが有効（hash一致）→ キャッシュから情報取得、Scout起動スキップ
+   - キャッシュが有効（hash一致）→ **`rtk read .regista/scout-cache/{domain}-{hash}.json` で情報を直接読み込み**、トークンを節約しつつScout起動をスキップする
    - キャッシュが無効または存在しない → Scoutを起動して探索を委譲
 3. **Scout委譲 (キャッシュヒットしなかった場合)**:
    - 単一ドメインタスク: Scout 1体を起動してCompact JSON指示を送信

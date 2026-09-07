@@ -44,7 +44,7 @@ describe('AAWU 5-5-A: Stabilized Multi-Player Drag & Selection UX', () => {
       expect(unmovedP3?.y).toBe(70);
     });
 
-    it('画面端 (0%〜100%) の境界外への飛び出し防止・クランプ処理が全選手に適用される', () => {
+    it('画面端 (ピッチ外) への移動が許容され、セーフティリミット (-100%〜200%) が適用される', () => {
       const store = useTacticalUnifiedStore.getState();
       const slideId = store.activeSlideId;
 
@@ -53,7 +53,7 @@ describe('AAWU 5-5-A: Stabilized Multi-Player Drag & Selection UX', () => {
       store.addPlayer(pLeftTop);
       store.addPlayer(pRightBottom);
 
-      // -20, -20 移動 ➔ pLeftTop は (0, 0) にクランプ、pRightBottom は (75, 75)
+      // -20, -20 移動 ➔ pLeftTop は (-15, -15) （ピッチ外へ移動）、pRightBottom は (75, 75)
       store.moveMultiplePlayersByDelta(
         slideId,
         [pLeftTop.id, pRightBottom.id],
@@ -67,12 +67,12 @@ describe('AAWU 5-5-A: Stabilized Multi-Player Drag & Selection UX', () => {
       let resLeftTop = slide?.players.find((p) => p.id === pLeftTop.id);
       let resRightBottom = slide?.players.find((p) => p.id === pRightBottom.id);
 
-      expect(resLeftTop?.x).toBe(0);
-      expect(resLeftTop?.y).toBe(0);
+      expect(resLeftTop?.x).toBe(-15);
+      expect(resLeftTop?.y).toBe(-15);
       expect(resRightBottom?.x).toBe(75);
       expect(resRightBottom?.y).toBe(75);
 
-      // +50, +50 移動 ➔ pRightBottom は (100, 100) にクランプ、pLeftTop は (50, 50)
+      // +50, +50 移動 ➔ pRightBottom は (125, 125) （ピッチ外へ移動）、pLeftTop は (35, 35)
       store.moveMultiplePlayersByDelta(
         slideId,
         [pLeftTop.id, pRightBottom.id],
@@ -86,10 +86,10 @@ describe('AAWU 5-5-A: Stabilized Multi-Player Drag & Selection UX', () => {
       resLeftTop = slide?.players.find((p) => p.id === pLeftTop.id);
       resRightBottom = slide?.players.find((p) => p.id === pRightBottom.id);
 
-      expect(resLeftTop?.x).toBe(50);
-      expect(resLeftTop?.y).toBe(50);
-      expect(resRightBottom?.x).toBe(100);
-      expect(resRightBottom?.y).toBe(100);
+      expect(resLeftTop?.x).toBe(35);
+      expect(resLeftTop?.y).toBe(35);
+      expect(resRightBottom?.x).toBe(125);
+      expect(resRightBottom?.y).toBe(125);
     });
 
     it('選択中の2選手間に架かるパス矢印は、両端とも同一 Delta 分だけ平行移動する', () => {

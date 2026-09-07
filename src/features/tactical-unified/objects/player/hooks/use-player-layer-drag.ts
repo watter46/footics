@@ -19,6 +19,40 @@ interface UsePlayerLayerDragOptions {
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
+function usePlayerGhostRefs() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ghostGroupRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ghostLineRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ghostMarkerGroupRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ghostCircleRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ghostTextRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ghostLabelRef = useRef<any>(null);
+
+  const onionSkinRefs: OnionSkinRefs = {
+    ghostGroup: ghostGroupRef.current,
+    ghostLine: ghostLineRef.current,
+    ghostMarkerGroup: ghostMarkerGroupRef.current,
+    ghostCircle: ghostCircleRef.current,
+    ghostText: ghostTextRef.current,
+    ghostLabel: ghostLabelRef.current,
+  };
+
+  return {
+    ghostGroupRef,
+    ghostLineRef,
+    ghostMarkerGroupRef,
+    ghostCircleRef,
+    ghostTextRef,
+    ghostLabelRef,
+    onionSkinRefs,
+  };
+}
+
 export function usePlayerLayerDrag({
   slide,
   prevSlide,
@@ -33,19 +67,15 @@ export function usePlayerLayerDrag({
   );
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
 
-  // オニオンスキン (前スライドゴースト表示) 用 Refs
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ghostGroupRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ghostLineRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ghostMarkerGroupRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ghostCircleRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ghostTextRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ghostLabelRef = useRef<any>(null);
+  const {
+    ghostGroupRef,
+    ghostLineRef,
+    ghostMarkerGroupRef,
+    ghostCircleRef,
+    ghostTextRef,
+    ghostLabelRef,
+    onionSkinRefs,
+  } = usePlayerGhostRefs();
 
   const dragContextRef = useRef<PlayerDragContext | null>(null);
 
@@ -82,6 +112,11 @@ export function usePlayerLayerDrag({
     });
   };
 
+  const dragBoundFunc = (pos: { x: number; y: number }) => ({
+    x: Math.max(-stageSize.width, Math.min(stageSize.width * 2, pos.x)),
+    y: Math.max(-stageSize.height, Math.min(stageSize.height * 2, pos.y)),
+  });
+
   const handleDragEnd = (
     e: KonvaEventObject<DragEvent>,
     draggedPlayer: Player,
@@ -101,8 +136,10 @@ export function usePlayerLayerDrag({
         deltaNormY,
       );
     } else {
-      const finalNormX = Math.max(0, Math.min(100, (node.x() / width) * 100));
-      const finalNormY = Math.max(0, Math.min(100, (node.y() / height) * 100));
+      const clampedPxX = Math.max(-width, Math.min(width * 2, node.x()));
+      const clampedPxY = Math.max(-height, Math.min(height * 2, node.y()));
+      const finalNormX = (clampedPxX / width) * 100;
+      const finalNormY = (clampedPxY / height) * 100;
       movePlayer(activeSlideId, draggedPlayer.id, finalNormX, finalNormY);
     }
 
@@ -115,15 +152,6 @@ export function usePlayerLayerDrag({
     dragContextRef.current = null;
   };
 
-  const onionSkinRefs: OnionSkinRefs = {
-    ghostGroup: ghostGroupRef.current,
-    ghostLine: ghostLineRef.current,
-    ghostMarkerGroup: ghostMarkerGroupRef.current,
-    ghostCircle: ghostCircleRef.current,
-    ghostText: ghostTextRef.current,
-    ghostLabel: ghostLabelRef.current,
-  };
-
   return {
     ghostGroupRef,
     ghostLineRef,
@@ -132,6 +160,7 @@ export function usePlayerLayerDrag({
     ghostTextRef,
     ghostLabelRef,
     onionSkinRefs,
+    dragBoundFunc,
     handleDragStart,
     handleDragMove,
     handleDragEnd,

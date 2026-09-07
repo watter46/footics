@@ -27,11 +27,11 @@ export const ASPECT_RATIOS: Record<AspectRatio, number> = {
 };
 
 export function isVerticalAspectRatio(ratio: AspectRatio): boolean {
-  return ratio === '9:16' || ratio === '4:5';
+  return ratio === '9:16' || ratio === '4:5' || ratio === '1:1';
 }
 
 export function isHorizontalAspectRatio(ratio: AspectRatio): boolean {
-  return ratio === '16:9' || ratio === '1:1';
+  return ratio === '16:9';
 }
 
 export function getAspectRatioOrientation(
@@ -70,7 +70,7 @@ export function transformCoord(
   const fromVertical = isVerticalAspectRatio(from);
   const toVertical = isVerticalAspectRatio(to);
 
-  // 同系統（横同士: 16:9 ⇄ 1:1、縦同士: 9:16 ⇄ 4:5）の場合、向きは変わらないためそのまま維持
+  // 同系統（横同士: 16:9、縦同士: 9:16 ⇄ 4:5 ⇄ 1:1）の場合、向きは変わらないためそのまま維持
   if (fromVertical === toVertical) {
     return {
       x: clampedX,

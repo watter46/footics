@@ -25,18 +25,21 @@ export function commitShapeToSlide(
   );
   if (dist < 5) return;
 
-  const sNormX = Math.max(0, Math.min(100, pxToNorm(state.startX, pitchWidth)));
+  const sNormX = Math.max(
+    -100,
+    Math.min(200, pxToNorm(state.startX, pitchWidth)),
+  );
   const sNormY = Math.max(
-    0,
-    Math.min(100, pxToNorm(state.startY, pitchHeight)),
+    -100,
+    Math.min(200, pxToNorm(state.startY, pitchHeight)),
   );
   const cNormX = Math.max(
-    0,
-    Math.min(100, pxToNorm(state.currentX, pitchWidth)),
+    -100,
+    Math.min(200, pxToNorm(state.currentX, pitchWidth)),
   );
   const cNormY = Math.max(
-    0,
-    Math.min(100, pxToNorm(state.currentY, pitchHeight)),
+    -100,
+    Math.min(200, pxToNorm(state.currentY, pitchHeight)),
   );
 
   if (state.tool === 'zone_circle' || state.tool === 'zone') {

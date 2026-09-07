@@ -15,13 +15,13 @@ export function computeSlideAfterPlayerMoveByDelta(
   );
   if (targetPlayers.length === 0) return slide;
 
-  // 1. 選手位置更新 (クランプ [0, 100])
+  // 1. 選手位置更新 (クランプ [-100, 200] セーフティリミット)
   const updatedPlayers = slide.players.map((p) => {
     if (!playerIdSet.has(p.id) || p.locked) return p;
     return {
       ...p,
-      x: Math.max(0, Math.min(100, p.x + deltaX)),
-      y: Math.max(0, Math.min(100, p.y + deltaY)),
+      x: Math.max(-100, Math.min(200, p.x + deltaX)),
+      y: Math.max(-100, Math.min(200, p.y + deltaY)),
     };
   });
 

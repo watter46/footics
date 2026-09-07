@@ -1,3 +1,4 @@
+// biome-ignore lint/style/noExcessiveLinesPerFile: Canvas orchestrator coordinates Konva stages, layers, overlays, and editors
 'use client';
 
 /**
@@ -32,6 +33,7 @@ import {
   BoundaryBoxHud,
   DrawingToolbar,
 } from '@/features/tactical-unified/panels/toolbar';
+import { usePitchTransition } from '@/features/tactical-unified/stores/slide-aspect-helpers';
 import {
   calculatePitchRect,
   calculatePitchTransform,
@@ -48,6 +50,8 @@ import { DrawingPreviewLayer } from './drawing-preview-layer';
 
 export { normToPx, pxToNorm } from '../hooks';
 
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Canvas orchestrator coordinates Konva stages, overlays, and editors
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Canvas orchestrator coordinates Konva stages, overlays, and editors
 export function UnifiedCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
@@ -73,6 +77,7 @@ export function UnifiedCanvas() {
     updateText,
     removeText,
     setBoundaryBox,
+    updateBoundaryBox,
   } = useUnifiedCanvasState();
 
   const editingText = editingTextId
@@ -81,17 +86,21 @@ export function UnifiedCanvas() {
 
   const pitchRect = useMemo(
     () => calculatePitchRect(stageSize, aspectRatio),
-    [aspectRatio, stageSize.width, stageSize.height],
+    [aspectRatio, stageSize],
   );
 
-  const pitchSize = useMemo(
-    () => ({ width: pitchRect.width, height: pitchRect.height }),
-    [pitchRect.width, pitchRect.height],
-  );
+  const { effectivePitchRect, effectiveSlide, effectivePitchSize } =
+    usePitchTransition({
+      aspectRatio,
+      activeSlideId,
+      activeSlide,
+      pitchRect,
+      isExporting,
+    });
 
   const pitchGroupsRef = useRef<(Konva.Group | null)[]>([]);
 
-  const pitchTransform = activeSlide?.pitchTransform ?? {
+  const pitchTransform = effectiveSlide?.pitchTransform ?? {
     panX: 0,
     panY: 0,
     zoom: 1,
@@ -105,8 +114,8 @@ export function UnifiedCanvas() {
 
   const pitchTransformValues = useMemo(
     // tilt は CSS 3D (rotateX) 側で処理するため Konva には渡さない
-    () => calculatePitchTransform(pitchRect, panX, panY, zoom, 0),
-    [pitchRect, panX, panY, zoom],
+    () => calculatePitchTransform(effectivePitchRect, panX, panY, zoom, 0),
+    [effectivePitchRect, panX, panY, zoom],
   );
 
   const {
@@ -123,8 +132,8 @@ export function UnifiedCanvas() {
     handlePointerUp,
   } = useCanvasPointerInteraction({
     stageSize,
-    pitchRect,
-    activeSlide,
+    pitchRect: effectivePitchRect,
+    activeSlide: effectiveSlide,
     activeSlideId,
     containerRef,
     nodesRegistryRef,
@@ -134,7 +143,7 @@ export function UnifiedCanvas() {
   });
 
   const { playAnimation, pauseAnimation, applyFrameToCanvas } =
-    useTacticalAnimation({ nodesRegistryRef, pitchSize });
+    useTacticalAnimation({ nodesRegistryRef, pitchSize: effectivePitchSize });
 
   // 再生状態の同期
   useEffect(() => {
@@ -184,7 +193,7 @@ export function UnifiedCanvas() {
     exportVideo,
   });
 
-  if (!activeSlide) return null;
+  if (!activeSlide || !effectiveSlide) return null;
 
   const cursorStyle = connectingPlayerId
     ? 'crosshair'
@@ -231,8 +240,7 @@ export function UnifiedCanvas() {
         {/* チルト適用レイヤー: Konva Stage のみがここで傾く */}
         <div style={stageTiltStyle}>
           <Stage
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ref={(node: any) => {
+            ref={(node: Konva.Stage | null) => {
               stageRef.current = node;
               nodesRegistryRef.current.stage = node;
             }}
@@ -272,8 +280,8 @@ export function UnifiedCanvas() {
                 }}
               >
                 <PitchBackground
-                  width={pitchRect.width}
-                  height={pitchRect.height}
+                  width={effectivePitchRect.width}
+                  height={effectivePitchRect.height}
                   aspectRatio={aspectRatio}
                   backgroundType={backgroundType}
                   backgroundImageUrl={backgroundImageUrl}
@@ -297,8 +305,8 @@ export function UnifiedCanvas() {
                 }}
               >
                 <AnnotationLayer
-                  slide={activeSlide}
-                  stageSize={pitchSize}
+                  slide={effectiveSlide}
+                  stageSize={effectivePitchSize}
                   nodesRegistryRef={nodesRegistryRef}
                   activePolygonId={activePolygonId}
                   mousePreviewPos={mousePreviewPos}
@@ -325,13 +333,13 @@ export function UnifiedCanvas() {
                 }}
               >
                 <PlayerLayer
-                  slide={activeSlide}
-                  stageSize={pitchSize}
+                  slide={effectiveSlide}
+                  stageSize={effectivePitchSize}
                   nodesRegistryRef={nodesRegistryRef}
                 />
                 <BallObject
-                  ball={activeSlide.ball}
-                  stageSize={pitchSize}
+                  ball={effectiveSlide.ball}
+                  stageSize={effectivePitchSize}
                   nodesRegistryRef={nodesRegistryRef}
                 />
               </Group>
@@ -364,25 +372,26 @@ export function UnifiedCanvas() {
 
         {/* BoundaryBox: チルト外側・正対固定 DOM/SVG オーバーレイ */}
         <BoundaryBox
-          boundaryBox={activeSlide.boundaryBox}
+          boundaryBox={effectiveSlide.boundaryBox}
           stageSize={stageSize}
-          pitchRect={pitchRect}
+          pitchRect={effectivePitchRect}
           isExporting={isExporting}
-          onUpdate={(box) => setBoundaryBox(activeSlideId, box)}
+          onUpdate={(box) => updateBoundaryBox(activeSlideId, box)}
+          onCommit={(box) => setBoundaryBox(activeSlideId, box)}
         />
 
         <DrawingToolbar />
         <ContextHud
           stageSize={stageSize}
-          pitchRect={pitchRect}
+          pitchRect={effectivePitchRect}
           nodesRegistryRef={nodesRegistryRef}
         />
-        <BoundaryBoxHud stageSize={stageSize} pitchRect={pitchRect} />
+        <BoundaryBoxHud stageSize={stageSize} pitchRect={effectivePitchRect} />
 
         <PitchInlineTextEditor
           editingText={editingText}
           stageSize={stageSize}
-          pitchRect={pitchRect}
+          pitchRect={effectivePitchRect}
           pitchTransform={pitchTransform}
           onSave={(textId: string, content: string) => {
             updateText(activeSlideId, textId, { content });

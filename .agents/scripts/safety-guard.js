@@ -28,6 +28,14 @@ try {
           '[RULE VIOLATION] Raw execution of pnpm/npm/yarn/npx/biome/tsc/vitest is strictly prohibited. You MUST wrap the command with rtk (e.g., "rtk pnpm ..."). Please correct your command and try again.',
       }),
     );
+  } else if (/(?:^|&&|\|\||;|&|\|)\s*git\s+(status|add|commit|push|pull)\b(?!.*>.*\/dev\/null)/.test(cmd)) {
+    console.log(
+      JSON.stringify({
+        decision: 'deny',
+        reason:
+          '[TOKEN GUARD] Raw execution of noisy git commands (status, add, etc.) is prohibited to save tokens. Please use "rtk git" OR append "> /dev/null 2>&1" to your command.',
+      }),
+    );
   } else {
     console.log(JSON.stringify({ decision: 'allow' }));
   }

@@ -24,28 +24,45 @@ export function useNodePositionTransition({
 }: UseNodePositionTransitionOptions): void {
   const isFirstMount = useRef(true);
   const prevPosRef = useRef({ x, y });
+  const tweenRef = useRef<Konva.Tween | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (tweenRef.current) {
+        tweenRef.current.destroy();
+        tweenRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const node = nodeRef.current;
     if (!node) return;
 
+    const stopTween = () => {
+      if (tweenRef.current) {
+        tweenRef.current.destroy();
+        tweenRef.current = null;
+      }
+    };
+
     if (isFirstMount.current) {
       isFirstMount.current = false;
       prevPosRef.current = { x, y };
+      stopTween();
       node.position({ x, y });
       return;
     }
 
-    if (
-      typeof (node as any).isDragging === 'function' &&
-      (node as any).isDragging()
-    ) {
+    if (typeof node.isDragging === 'function' && node.isDragging()) {
       prevPosRef.current = { x, y };
+      stopTween();
       return;
     }
 
     if (disabled) {
       prevPosRef.current = { x, y };
+      stopTween();
       node.position({ x, y });
       return;
     }
@@ -54,13 +71,24 @@ export function useNodePositionTransition({
     const dist = Math.hypot(x - prev.x, y - prev.y);
     prevPosRef.current = { x, y };
 
+    stopTween();
+
     if (dist > 1) {
-      node.to({
+      const tween = new Konva.Tween({
+        node,
         x,
         y,
         duration,
         easing: Konva.Easings.EaseInOut,
+        onFinish: () => {
+          if (tweenRef.current === tween) {
+            tween.destroy();
+            tweenRef.current = null;
+          }
+        },
       });
+      tweenRef.current = tween;
+      tween.play();
     } else {
       node.position({ x, y });
     }

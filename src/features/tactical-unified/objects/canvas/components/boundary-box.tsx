@@ -21,6 +21,7 @@ export interface BoundaryBoxProps {
   stageSize: { width: number; height: number };
   pitchRect?: { x: number; y: number; width: number; height: number };
   onUpdate: (box: BoundaryBoxType) => void;
+  onCommit?: (box: BoundaryBoxType) => void;
   isExporting?: boolean;
 }
 
@@ -73,6 +74,7 @@ export const BoundaryBox = React.memo(function BoundaryBox({
   stageSize,
   pitchRect,
   onUpdate,
+  onCommit,
   isExporting = false,
 }: BoundaryBoxProps) {
   const box: BoundaryBoxType = boundaryBox ?? DEFAULT_BOUNDARY_BOX_4_5;
@@ -100,6 +102,7 @@ export const BoundaryBox = React.memo(function BoundaryBox({
     pxW,
     pxH,
     onUpdate,
+    onCommit,
   });
 
   if (isExporting || !box.enabled) return null;

@@ -36,6 +36,7 @@ export function useUnifiedCanvasState() {
   const updateText = useTacticalUnifiedStore((s) => s.updateText);
   const removeText = useTacticalUnifiedStore((s) => s.removeText);
   const setBoundaryBox = useTacticalUnifiedStore((s) => s.setBoundaryBox);
+  const updateBoundaryBox = useTacticalUnifiedStore((s) => s.updateBoundaryBox);
 
   return {
     aspectRatio,
@@ -55,5 +56,6 @@ export function useUnifiedCanvasState() {
     updateText,
     removeText,
     setBoundaryBox,
+    updateBoundaryBox,
   };
 }

@@ -21,8 +21,8 @@ export function updateMovingPlayerNodes(
     const pNode = registry.playerNodes.get(p.id);
     if (pNode) {
       pNode.position({
-        x: Math.max(0, Math.min(width, p.initialPx.x + dx)),
-        y: Math.max(0, Math.min(height, p.initialPx.y + dy)),
+        x: Math.max(-width, Math.min(width * 2, p.initialPx.x + dx)),
+        y: Math.max(-height, Math.min(height * 2, p.initialPx.y + dy)),
       });
     }
   }
@@ -47,11 +47,11 @@ export function updatePlayerTrajectoryArrows(
     const pX =
       p.id === ctx.draggedPlayerId
         ? curX
-        : Math.max(0, Math.min(width, p.initialPx.x + dx));
+        : Math.max(-width, Math.min(width * 2, p.initialPx.x + dx));
     const pY =
       p.id === ctx.draggedPlayerId
         ? curY
-        : Math.max(0, Math.min(height, p.initialPx.y + dy));
+        : Math.max(-height, Math.min(height * 2, p.initialPx.y + dy));
     const { x: sPxX, y: sPxY } = entry.startPx;
 
     if (Math.hypot(pX - sPxX, pY - sPxY) < 4) {

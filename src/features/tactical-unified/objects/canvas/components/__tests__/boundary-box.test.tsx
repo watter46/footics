@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { BoundaryBox as BoundaryBoxType } from '@/lib/types/tactical-unified';
 import { BoundaryBox } from '../boundary-box';
 
-describe('BoundaryBox component', () => {
+describe('BoundaryBox rendering', () => {
   const defaultBox: BoundaryBoxType = {
     x: 10,
     y: 10,
@@ -11,7 +11,6 @@ describe('BoundaryBox component', () => {
     height: 80,
     enabled: true,
   };
-
   const stageSize = { width: 800, height: 450 };
 
   it('renders null when isExporting is true', () => {
@@ -63,14 +62,27 @@ describe('BoundaryBox component', () => {
       screen.getByRole('button', { name: 'Resize handle bl' }),
     ).toBeDefined();
   });
+});
 
-  it('handles corner drag to resize the boundary box', () => {
+describe('BoundaryBox dragging & commit', () => {
+  const defaultBox: BoundaryBoxType = {
+    x: 10,
+    y: 10,
+    width: 80,
+    height: 80,
+    enabled: true,
+  };
+  const stageSize = { width: 800, height: 450 };
+
+  it('handles corner drag to resize the boundary box and calls onCommit on release', () => {
     const onUpdate = vi.fn();
+    const onCommit = vi.fn();
     render(
       <BoundaryBox
         boundaryBox={defaultBox}
         stageSize={stageSize}
         onUpdate={onUpdate}
+        onCommit={onCommit}
       />,
     );
 
@@ -83,18 +95,63 @@ describe('BoundaryBox component', () => {
       pointerId: 1,
     });
 
-    fireEvent(
-      handleBr,
-      new CustomEvent('pointermove', {
-        detail: {},
-      }),
-    );
-
-    const moveEvent = new Event('pointermove') as any;
-    moveEvent.clientX = 740;
-    moveEvent.clientY = 420;
+    const moveEvent = new PointerEvent('pointermove', {
+      clientX: 740,
+      clientY: 420,
+    });
     handleBr.dispatchEvent(moveEvent);
 
     expect(onUpdate).toHaveBeenCalled();
+    expect(onCommit).not.toHaveBeenCalled();
+
+    const upEvent = new PointerEvent('pointerup');
+    handleBr.dispatchEvent(upEvent);
+
+    expect(onCommit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+      }),
+    );
+  });
+
+  it('handles box move drag and calls onCommit on release', () => {
+    const onUpdate = vi.fn();
+    const onCommit = vi.fn();
+    const { container } = render(
+      <BoundaryBox
+        boundaryBox={defaultBox}
+        stageSize={stageSize}
+        onUpdate={onUpdate}
+        onCommit={onCommit}
+      />,
+    );
+
+    const rects = container.querySelectorAll('rect');
+    const dragRect = rects[0];
+    dragRect.setPointerCapture = vi.fn();
+
+    fireEvent.pointerDown(dragRect, {
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    });
+
+    const moveEvent = new PointerEvent('pointermove', {
+      clientX: 120,
+      clientY: 130,
+    });
+    dragRect.dispatchEvent(moveEvent);
+
+    expect(onUpdate).toHaveBeenCalled();
+    expect(onCommit).not.toHaveBeenCalled();
+
+    const upEvent = new PointerEvent('pointerup');
+    dragRect.dispatchEvent(upEvent);
+
+    expect(onCommit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+      }),
+    );
   });
 });

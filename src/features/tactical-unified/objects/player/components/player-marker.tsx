@@ -2,7 +2,7 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import React, { useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Circle, Group } from 'react-konva';
 import { useNodePositionTransition } from '@/features/tactical-unified/objects/canvas';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
@@ -54,10 +54,8 @@ export const PlayerMarker = React.memo(function PlayerMarker({
     playerId: player.playerId,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dragGlowRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const spotlightGroupRef = useRef<any>(null);
+  const dragGlowRef = useRef<Konva.Circle | null>(null);
+  const spotlightGroupRef = useRef<Konva.Group | null>(null);
   const groupRef = useRef<Konva.Group | null>(null);
   const isDraggingRef = useRef(false);
 
@@ -67,81 +65,129 @@ export const PlayerMarker = React.memo(function PlayerMarker({
     y: pxY,
   });
 
-  const handleDblClick = (e: { cancelBubble: boolean }) => {
-    e.cancelBubble = true;
-    setRightPanelTab('inspector');
-    setRightPanelOpen(true);
-  };
+  const handleDblClick = useCallback(
+    (e: { cancelBubble: boolean }) => {
+      e.cancelBubble = true;
+      setRightPanelTab('inspector');
+      setRightPanelOpen(true);
+    },
+    [setRightPanelTab, setRightPanelOpen],
+  );
 
-  const handleStartDrag = (e: KonvaEventObject<DragEvent>) => {
-    isDraggingRef.current = true;
-    onDragStart(e, player);
-    if (dragGlowRef.current) {
-      dragGlowRef.current.opacity(1);
-      dragGlowRef.current.getLayer()?.batchDraw();
-    }
-    const stage = e.target.getStage();
-    if (stage) stage.container().style.cursor = 'grabbing';
-  };
+  const handleStartDrag = useCallback(
+    (e: KonvaEventObject<DragEvent>) => {
+      isDraggingRef.current = true;
+      onDragStart(e, player);
+      if (dragGlowRef.current) {
+        dragGlowRef.current.opacity(1);
+        dragGlowRef.current.getLayer()?.batchDraw();
+      }
+      const stage = e.target.getStage();
+      if (stage) stage.container().style.cursor = 'grabbing';
+    },
+    [onDragStart, player],
+  );
 
-  const handleEndDrag = (e: KonvaEventObject<DragEvent>) => {
-    const node = e.target;
-    node.scale({ x: 1, y: 1 });
-    if (dragGlowRef.current) {
-      dragGlowRef.current.opacity(0);
-      dragGlowRef.current.getLayer()?.batchDraw();
-    }
-    const stage = node.getStage();
-    if (stage) stage.container().style.cursor = 'default';
-    onDragEnd(e, player);
-    // ドラッグ直後の誤クリック判定を防止
-    setTimeout(() => {
-      isDraggingRef.current = false;
-    }, 50);
-  };
+  const handleEndDrag = useCallback(
+    (e: KonvaEventObject<DragEvent>) => {
+      const node = e.target;
+      node.scale({ x: 1, y: 1 });
+      if (dragGlowRef.current) {
+        dragGlowRef.current.opacity(0);
+        dragGlowRef.current.getLayer()?.batchDraw();
+      }
+      const stage = node.getStage();
+      if (stage) stage.container().style.cursor = 'default';
+      onDragEnd(e, player);
+      // ドラッグ直後の誤クリック判定を防止
+      setTimeout(() => {
+        isDraggingRef.current = false;
+      }, 50);
+    },
+    [onDragEnd, player],
+  );
 
-  const handleClick = (
-    e: KonvaEventObject<MouseEvent> | KonvaEventObject<TouchEvent>,
-  ) => {
-    if (isDraggingRef.current) return;
-    onSelect(e);
-  };
+  const handleClick = useCallback(
+    (e: KonvaEventObject<MouseEvent> | KonvaEventObject<TouchEvent>) => {
+      if (isDraggingRef.current) return;
+      onSelect(e);
+    },
+    [onSelect],
+  );
+
+  const handleDragMove = useCallback(
+    (e: KonvaEventObject<DragEvent>) => {
+      onDragMove(e, player);
+    },
+    [onDragMove, player],
+  );
+
+  const handleTransform = useCallback(() => {
+    spotlightGroupRef.current?.getLayer()?.batchDraw();
+  }, []);
+
+  const handleSelectFocus = useCallback(() => {
+    onSelectOption('focus');
+  }, [onSelectOption]);
+
+  const handleSelectVision = useCallback(() => {
+    onSelectOption('vision');
+  }, [onSelectOption]);
+
+  const handleSelectBadge = useCallback(() => {
+    onSelectOption('badge');
+  }, [onSelectOption]);
+
+  const dragBoundFunc = useCallback(
+    function (this: Konva.Node, pos: Konva.Vector2d) {
+      const parentPos = this.getParent()?.getAbsolutePosition() ?? {
+        x: 0,
+        y: 0,
+      };
+      return {
+        x: Math.max(
+          parentPos.x - width,
+          Math.min(parentPos.x + width * 2, pos.x),
+        ),
+        y: Math.max(
+          parentPos.y - height,
+          Math.min(parentPos.y + height * 2, pos.y),
+        ),
+      };
+    },
+    [width, height],
+  );
+
+  const setGroupRef = useCallback(
+    (node: Konva.Group | null) => {
+      groupRef.current = node;
+      if (nodesRegistryRef) {
+        if (node) {
+          nodesRegistryRef.current.playerNodes.set(player.id, node);
+        } else {
+          nodesRegistryRef.current.playerNodes.delete(player.id);
+        }
+      }
+    },
+    [nodesRegistryRef, player.id],
+  );
 
   return (
     <Group
-      ref={(node) => {
-        groupRef.current = node;
-        if (nodesRegistryRef) {
-          if (node) {
-            nodesRegistryRef.current.playerNodes.set(player.id, node);
-          } else {
-            nodesRegistryRef.current.playerNodes.delete(player.id);
-          }
-        }
-      }}
+      ref={setGroupRef}
       x={pxX}
       y={pxY}
       listening={isInteractive}
       draggable={isInteractive && !player.locked}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      dragBoundFunc={function (this: any, pos) {
-        const parentPos = this.getParent()?.getAbsolutePosition() ?? {
-          x: 0,
-          y: 0,
-        };
-        return {
-          x: Math.max(parentPos.x, Math.min(parentPos.x + width, pos.x)),
-          y: Math.max(parentPos.y, Math.min(parentPos.y + height, pos.y)),
-        };
-      }}
+      dragBoundFunc={dragBoundFunc}
       onClick={handleClick}
       onTap={handleClick}
       onDblClick={handleDblClick}
       onDblTap={handleDblClick}
       onDragStart={handleStartDrag}
-      onDragMove={(e) => onDragMove(e as KonvaEventObject<DragEvent>, player)}
+      onDragMove={handleDragMove}
       onDragEnd={handleEndDrag}
-      onTransform={() => spotlightGroupRef.current?.getLayer()?.batchDraw()}
+      onTransform={handleTransform}
     >
       {/* ── フォーカス ── */}
       {player.focus && (
@@ -151,7 +197,7 @@ export const PlayerMarker = React.memo(function PlayerMarker({
           isRing={player.style.markerType === 'ring'}
           spotlightGroupRef={spotlightGroupRef}
           isSelected={isFocusSelected}
-          onSelectOption={() => onSelectOption('focus')}
+          onSelectOption={handleSelectFocus}
         />
       )}
 
@@ -175,7 +221,7 @@ export const PlayerMarker = React.memo(function PlayerMarker({
           stageSize={stageSize}
           isSelected={isVisionConeSelected}
           onUpdateVisionCone={onUpdateVisionCone}
-          onSelectOption={() => onSelectOption('vision')}
+          onSelectOption={handleSelectVision}
         />
       )}
 
@@ -209,7 +255,7 @@ export const PlayerMarker = React.memo(function PlayerMarker({
           key={badge.id}
           badge={badge}
           radius={radius}
-          onSelectOption={() => onSelectOption('badge')}
+          onSelectOption={handleSelectBadge}
         />
       ))}
     </Group>

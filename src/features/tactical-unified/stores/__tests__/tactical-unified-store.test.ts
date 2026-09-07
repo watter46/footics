@@ -1508,6 +1508,56 @@ describe('tactical-unified-store', () => {
         fitTarget: 'pitch',
       });
     });
+
+    it('updateBoundaryBox は履歴を積まずに境界線を更新し、setBoundaryBox は履歴を積む', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.project.slides[0].id;
+      const initialPastLength = useTacticalUnifiedStore.getState().past.length;
+
+      // ドラッグ中の更新 (updateBoundaryBox)
+      store.updateBoundaryBox(slideId, {
+        x: 15,
+        y: 20,
+        width: 70,
+        height: 60,
+        enabled: true,
+      });
+
+      let slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      expect(slide?.boundaryBox?.x).toBe(15);
+      expect(useTacticalUnifiedStore.getState().past.length).toBe(
+        initialPastLength,
+      );
+
+      // ドラッグ終了時・確定の更新 (setBoundaryBox)
+      store.setBoundaryBox(slideId, {
+        x: 20,
+        y: 25,
+        width: 60,
+        height: 50,
+        enabled: true,
+      });
+
+      slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      expect(slide?.boundaryBox?.x).toBe(20);
+      expect(useTacticalUnifiedStore.getState().past.length).toBe(
+        initialPastLength + 1,
+      );
+
+      // Undo するとドラッグ確定直前(updateBoundaryBox時の状態 = 15)に戻り、履歴が小刻みにならず1回のUndoで戻る
+      store.undo();
+      slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      expect(slide?.boundaryBox?.x).toBe(15);
+      expect(useTacticalUnifiedStore.getState().past.length).toBe(
+        initialPastLength,
+      );
+    });
   });
 
   describe('L1-Tactical-025: 全オブジェクトおよびピッチの汎用ロック機能', () => {

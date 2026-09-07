@@ -33,19 +33,19 @@ describe('AspectRatioSchema & Orientations', () => {
     expect(() => AspectRatioSchema.parse('invalid')).toThrow();
   });
 
-  it('向き判定（横: 16:9, 1:1 / 縦: 9:16, 4:5）が正確に機能する', () => {
+  it('向き判定（横: 16:9 / 縦: 9:16, 4:5, 1:1）が正確に機能する', () => {
     expect(isHorizontalAspectRatio('16:9')).toBe(true);
-    expect(isHorizontalAspectRatio('1:1')).toBe(true);
+    expect(isHorizontalAspectRatio('1:1')).toBe(false);
     expect(isHorizontalAspectRatio('9:16')).toBe(false);
     expect(isHorizontalAspectRatio('4:5')).toBe(false);
 
     expect(isVerticalAspectRatio('9:16')).toBe(true);
     expect(isVerticalAspectRatio('4:5')).toBe(true);
+    expect(isVerticalAspectRatio('1:1')).toBe(true);
     expect(isVerticalAspectRatio('16:9')).toBe(false);
-    expect(isVerticalAspectRatio('1:1')).toBe(false);
 
     expect(getAspectRatioOrientation('16:9')).toBe('horizontal');
-    expect(getAspectRatioOrientation('1:1')).toBe('horizontal');
+    expect(getAspectRatioOrientation('1:1')).toBe('vertical');
     expect(getAspectRatioOrientation('9:16')).toBe('vertical');
     expect(getAspectRatioOrientation('4:5')).toBe('vertical');
   });
@@ -60,12 +60,14 @@ describe('transformCoord', () => {
     expect(transformCoord(p, '1:1', '1:1')).toEqual(p);
   });
 
-  it('同系統比率間（横同士: 16:9 ⇄ 1:1, 縦同士: 9:16 ⇄ 4:5）では回転せず維持される', () => {
+  it('同系統比率間（横: 16:9, 縦同士: 9:16 ⇄ 4:5 ⇄ 1:1）では回転せず維持される', () => {
     const p = { x: 80, y: 30 };
-    expect(transformCoord(p, '16:9', '1:1')).toEqual(p);
-    expect(transformCoord(p, '1:1', '16:9')).toEqual(p);
     expect(transformCoord(p, '9:16', '4:5')).toEqual(p);
     expect(transformCoord(p, '4:5', '9:16')).toEqual(p);
+    expect(transformCoord(p, '9:16', '1:1')).toEqual(p);
+    expect(transformCoord(p, '1:1', '9:16')).toEqual(p);
+    expect(transformCoord(p, '4:5', '1:1')).toEqual(p);
+    expect(transformCoord(p, '1:1', '4:5')).toEqual(p);
   });
 
   it('16:9 → 4:5 変換 (横→縦): x_v=y_h, y_v=100-x_h', () => {
@@ -74,8 +76,8 @@ describe('transformCoord', () => {
     expect(result.y).toBeCloseTo(20);
   });
 
-  it('1:1 → 9:16 変換 (横→縦): x_v=y_h, y_v=100-x_h', () => {
-    const result = transformCoord({ x: 80, y: 30 }, '1:1', '9:16');
+  it('16:9 → 1:1 変換 (横→縦): x_v=y_h, y_v=100-x_h', () => {
+    const result = transformCoord({ x: 80, y: 30 }, '16:9', '1:1');
     expect(result.x).toBeCloseTo(30);
     expect(result.y).toBeCloseTo(20);
   });

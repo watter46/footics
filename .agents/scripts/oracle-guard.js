@@ -18,6 +18,22 @@ try {
     process.exit(0);
   }
 
+  // Token Guard: view_fileの行数制限 (最大50行)
+  if (toolName === 'view_file') {
+    const startLine = data.toolCall?.args?.StartLine;
+    const endLine = data.toolCall?.args?.EndLine;
+    
+    if (startLine === undefined || endLine === undefined) {
+       console.log(JSON.stringify({ decision: 'deny', reason: '[TOKEN GUARD] view_fileでの全行読み込みは禁止されています。必ず StartLine と EndLine を指定して最大50行に制限するか、AST抽出には `rtk smart <file>` を使用してください。' }));
+       process.exit(0);
+    }
+    
+    if (endLine - startLine > 50) {
+       console.log(JSON.stringify({ decision: 'deny', reason: '[TOKEN GUARD] 1回の view_file 読み込みは50行以内に制限されています。範囲を絞るか、AST抽出には `rtk smart <file>` を使用してください。' }));
+       process.exit(0);
+    }
+  }
+
   // Layer 2 パターン: src/ または extension/ 配下のソースファイル
   const LAYER2_PATTERNS = [
     /\/src\/(?!\.agents|AGENTS\.md)/,

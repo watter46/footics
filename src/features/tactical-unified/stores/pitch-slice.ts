@@ -14,6 +14,7 @@ import type { TacticalUnifiedState } from './tactical-unified-store';
 
 export interface PitchSlice {
   setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
+  updateBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
   autoFitBoundaryBox: (slideId?: string) => void;
   applyXMediaPreset: (
     presetKey: XMediaPresetKey | 'pitch_fit',
@@ -41,6 +42,15 @@ function createPitchBoundaryActions(set: SetState) {
     setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) =>
       set((s) => ({
         ...recordHistory(s),
+        project: updateSlideInProject(s.project, slideId, (sl) => ({
+          ...sl,
+          boundaryBox: box,
+        })),
+        isDirty: true,
+      })),
+
+    updateBoundaryBox: (slideId: string, box: BoundaryBox | undefined) =>
+      set((s) => ({
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           boundaryBox: box,

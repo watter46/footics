@@ -6,7 +6,8 @@
  */
 
 import type Konva from 'konva';
-import React, { useRef } from 'react';
+import type { KonvaEventObject } from 'konva/lib/Node';
+import React, { useCallback, useRef } from 'react';
 import { Group } from 'react-konva';
 import {
   normToPx,
@@ -42,8 +43,8 @@ export const BallObject = React.memo(function BallObject({
 
   const ballImage = useBallImage();
 
-  const ghostGroupRef = useRef<any>(null);
-  const ghostLineRef = useRef<any>(null);
+  const ghostGroupRef = useRef<Konva.Group | null>(null);
+  const ghostLineRef = useRef<Konva.Line | null>(null);
   const ballGroupRef = useRef<Konva.Group | null>(null);
 
   const { handleDragStart, handleDragMove, handleDragEnd } = useBallDrag({
@@ -62,6 +63,60 @@ export const BallObject = React.memo(function BallObject({
     x: px,
     y: py,
   });
+
+  const handleUpdateTrajectory = useCallback(
+    (traj: Parameters<typeof updateBallTrajectory>[1]) => {
+      updateBallTrajectory(activeSlideId, traj);
+    },
+    [updateBallTrajectory, activeSlideId],
+  );
+
+  const handleClick = useCallback(
+    (e: KonvaEventObject<MouseEvent>) => {
+      e.cancelBubble = true;
+      const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
+      selectObject({ id: 'ball', kind: 'ball' }, isShift);
+    },
+    [selectObject],
+  );
+
+  const handleTap = useCallback(
+    (e: KonvaEventObject<TouchEvent>) => {
+      e.cancelBubble = true;
+      selectObject({ id: 'ball', kind: 'ball' }, false);
+    },
+    [selectObject],
+  );
+
+  const dragBoundFunc = useCallback(
+    function (this: Konva.Node, pos: Konva.Vector2d) {
+      const parentPos = this.getParent()?.getAbsolutePosition() ?? {
+        x: 0,
+        y: 0,
+      };
+      return {
+        x: Math.max(
+          parentPos.x - stageSize.width,
+          Math.min(parentPos.x + stageSize.width * 2, pos.x),
+        ),
+        y: Math.max(
+          parentPos.y - stageSize.height,
+          Math.min(parentPos.y + stageSize.height * 2, pos.y),
+        ),
+      };
+    },
+    [stageSize.width, stageSize.height],
+  );
+
+  const setBallGroupRef = useCallback(
+    (node: Konva.Group | null) => {
+      ballGroupRef.current = node;
+      if (nodesRegistryRef?.current) {
+        nodesRegistryRef.current.ballNode = node;
+      }
+    },
+    [nodesRegistryRef],
+  );
 
   if (!ball.visible) return null;
 
@@ -90,7 +145,7 @@ export const BallObject = React.memo(function BallObject({
         radius={radius}
         ballImage={ballImage}
         stageSize={stageSize}
-        onUpdateTrajectory={(traj) => updateBallTrajectory(activeSlideId, traj)}
+        onUpdateTrajectory={handleUpdateTrajectory}
       />
 
       {/* ── ボールドラッグ中限定オニオンスキン ── */}
@@ -101,40 +156,13 @@ export const BallObject = React.memo(function BallObject({
       />
 
       <Group
-        ref={(node) => {
-          ballGroupRef.current = node;
-          if (nodesRegistryRef) {
-            nodesRegistryRef.current.ballNode = node;
-          }
-        }}
+        ref={setBallGroupRef}
         x={px}
         y={py}
         draggable={!ball.locked}
-        dragBoundFunc={function (this: any, pos) {
-          const parentPos = this.getParent()?.getAbsolutePosition() ?? {
-            x: 0,
-            y: 0,
-          };
-          return {
-            x: Math.max(
-              parentPos.x,
-              Math.min(parentPos.x + stageSize.width, pos.x),
-            ),
-            y: Math.max(
-              parentPos.y,
-              Math.min(parentPos.y + stageSize.height, pos.y),
-            ),
-          };
-        }}
-        onClick={(e) => {
-          e.cancelBubble = true;
-          const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
-          selectObject({ id: 'ball', kind: 'ball' }, isShift);
-        }}
-        onTap={(e) => {
-          e.cancelBubble = true;
-          selectObject({ id: 'ball', kind: 'ball' }, false);
-        }}
+        dragBoundFunc={dragBoundFunc}
+        onClick={handleClick}
+        onTap={handleTap}
         onDragStart={handleDragStart}
         onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
