@@ -75,3 +75,9 @@ biome_error*.txt
 .agents/logs/
 .agy/
 
+# Regista Ephemeral Caches, Handovers & Dynamic Logs
+.regista/scout-cache/
+.regista/handover/
+.regista/metrics/oracle-violations.jsonl
+
+
