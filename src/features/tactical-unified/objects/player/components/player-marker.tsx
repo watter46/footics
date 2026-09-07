@@ -4,11 +4,14 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useCallback, useRef } from 'react';
 import { Circle, Group } from 'react-konva';
-import { useNodePositionTransition } from '@/features/tactical-unified/objects/canvas';
+import {
+  normToPx,
+  useNodePositionTransition,
+} from '@/features/tactical-unified/objects/canvas';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import { usePlayerPhoto } from '../hooks/use-player-photo';
-import { normX, normY, type PlayerMarkerProps } from '../types';
+import type { PlayerMarkerProps } from '../types';
 import { PlayerBadge } from './player-badge';
 import { PlayerFocusSpotlight } from './player-focus-spotlight';
 import { PlayerMarkerCircle } from './player-marker-circle';
@@ -42,8 +45,8 @@ export const PlayerMarker = React.memo(function PlayerMarker({
   const baseDim = Math.min(width, height);
   const sizeScale = player.style.sizeScale ?? 1.0;
   const radius = baseDim * 0.032 * sizeScale;
-  const pxX = normX(player.x, width);
-  const pxY = normY(player.y, height);
+  const pxX = normToPx(player.x, width);
+  const pxY = normToPx(player.y, height);
   const displayName = player.name ? getLastName(player.name) : '';
   const labelScale = player.style.labelSizeScale ?? 1.0;
   const numScale = player.style.numberSizeScale ?? 1.0;
@@ -177,6 +180,8 @@ export const PlayerMarker = React.memo(function PlayerMarker({
       ref={setGroupRef}
       x={pxX}
       y={pxY}
+      offsetX={0}
+      offsetY={0}
       listening={isInteractive}
       draggable={isInteractive && !player.locked}
       dragBoundFunc={dragBoundFunc}
