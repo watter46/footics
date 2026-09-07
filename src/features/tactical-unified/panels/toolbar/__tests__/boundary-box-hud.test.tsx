@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { BoundaryBoxHud } from '../boundary-box-hud';
 
-describe('BoundaryBoxHud component', () => {
+describe('BoundaryBoxHud Ratio Snap Presets', () => {
   beforeEach(() => {
     useTacticalUnifiedStore.getState().resetProject();
     useTacticalUnifiedStore.getState().setIsExporting(false);
@@ -16,11 +16,13 @@ describe('BoundaryBoxHud component', () => {
       name: /Boundary Box Ratio HUD/i,
     });
     expect(hud).toBeDefined();
-
-    // Default 4:5 full boundary box matches 4:5
     expect(screen.getAllByText('4:5').length).toBeGreaterThanOrEqual(1);
 
-    // Has snap buttons for all 4 ratios
+    const trigger = screen.getByRole('button', {
+      name: 'Toggle Boundary Box Settings',
+    });
+    fireEvent.click(trigger);
+
     expect(
       screen.getByRole('button', { name: 'Snap boundary to 16:9' }),
     ).toBeDefined();
@@ -33,12 +35,15 @@ describe('BoundaryBoxHud component', () => {
     expect(
       screen.getByRole('button', { name: 'Snap boundary to 1:1' }),
     ).toBeDefined();
-    expect(screen.getByRole('button', { name: 'AutoFitPitch' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'AutoFitCanvas' })).toBeDefined();
   });
 
   it('snaps boundary box to 4:5 when 4:5 button is clicked', () => {
     render(<BoundaryBoxHud stageSize={{ width: 800, height: 450 }} />);
+
+    const trigger = screen.getByRole('button', {
+      name: 'Toggle Boundary Box Settings',
+    });
+    fireEvent.click(trigger);
 
     const btn45 = screen.getByRole('button', { name: 'Snap boundary to 4:5' });
     fireEvent.click(btn45);
@@ -48,16 +53,21 @@ describe('BoundaryBoxHud component', () => {
       (s) => s.id === state.activeSlideId,
     );
     expect(activeSlide?.boundaryBox?.enabled).toBe(true);
-    // On 4:5 canvas, 4:5 snap occupies 100% width and 100% height
     expect(activeSlide?.boundaryBox?.height).toBe(100);
     expect(activeSlide?.boundaryBox?.width).toBe(100);
+  });
+});
+
+describe('BoundaryBoxHud Fit Actions', () => {
+  beforeEach(() => {
+    useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.getState().setIsExporting(false);
   });
 
   it('snaps boundary box to pitch outer boundary when AutoFitPitch is clicked', () => {
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.activeSlideId;
 
-    // Set custom box
     store.setBoundaryBox(slideId, {
       x: 20,
       y: 20,
@@ -67,6 +77,11 @@ describe('BoundaryBoxHud component', () => {
     });
 
     render(<BoundaryBoxHud stageSize={{ width: 800, height: 450 }} />);
+
+    const trigger = screen.getByRole('button', {
+      name: 'Toggle Boundary Box Settings',
+    });
+    fireEvent.click(trigger);
 
     const pitchFitBtn = screen.getByRole('button', { name: 'AutoFitPitch' });
     fireEvent.click(pitchFitBtn);
@@ -88,7 +103,6 @@ describe('BoundaryBoxHud component', () => {
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.activeSlideId;
 
-    // Set custom box
     store.setBoundaryBox(slideId, {
       x: 20,
       y: 20,
@@ -98,6 +112,11 @@ describe('BoundaryBoxHud component', () => {
     });
 
     render(<BoundaryBoxHud stageSize={{ width: 800, height: 450 }} />);
+
+    const trigger = screen.getByRole('button', {
+      name: 'Toggle Boundary Box Settings',
+    });
+    fireEvent.click(trigger);
 
     const fitBtn = screen.getByRole('button', { name: 'AutoFitCanvas' });
     fireEvent.click(fitBtn);
@@ -113,6 +132,13 @@ describe('BoundaryBoxHud component', () => {
       enabled: true,
       fitTarget: 'canvas',
     });
+  });
+});
+
+describe('BoundaryBoxHud Visibility & Tilt Controls', () => {
+  beforeEach(() => {
+    useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.getState().setIsExporting(false);
   });
 
   it('does not render when boundary box is disabled or exporting', () => {
@@ -130,10 +156,11 @@ describe('BoundaryBoxHud component', () => {
       <BoundaryBoxHud stageSize={{ width: 800, height: 450 }} />,
     );
     expect(
-      screen.queryByRole('complementary', { name: /Boundary Box Ratio HUD/i }),
+      screen.queryByRole('complementary', {
+        name: /Boundary Box Ratio HUD/i,
+      }),
     ).toBeNull();
 
-    // Enable boundary box but set isExporting = true
     store.setBoundaryBox(slideId, {
       x: 0,
       y: 0,
@@ -145,40 +172,49 @@ describe('BoundaryBoxHud component', () => {
 
     rerender(<BoundaryBoxHud stageSize={{ width: 800, height: 450 }} />);
     expect(
-      screen.queryByRole('complementary', { name: /Boundary Box Ratio HUD/i }),
+      screen.queryByRole('complementary', {
+        name: /Boundary Box Ratio HUD/i,
+      }),
     ).toBeNull();
   });
 
   it('renders tilt controls and clicking preset buttons updates pitchTransform.tilt', () => {
     render(<BoundaryBoxHud stageSize={{ width: 800, height: 450 }} />);
 
-    // Check that tilt controls are rendered
+    const trigger = screen.getByRole('button', {
+      name: 'Toggle Boundary Box Settings',
+    });
+    fireEvent.click(trigger);
+
     expect(
       screen.getByRole('group', { name: 'Pitch Tilt Controls' }),
     ).toBeDefined();
     const btn0 = screen.getByRole('button', { name: 'Set pitch tilt to 0°' });
-    const btn15 = screen.getByRole('button', { name: 'Set pitch tilt to 15°' });
-    const btn30 = screen.getByRole('button', { name: 'Set pitch tilt to 30°' });
-    const btn45 = screen.getByRole('button', { name: 'Set pitch tilt to 45°' });
+    const btn15 = screen.getByRole('button', {
+      name: 'Set pitch tilt to 15°',
+    });
+    const btn30 = screen.getByRole('button', {
+      name: 'Set pitch tilt to 30°',
+    });
+    const btn45 = screen.getByRole('button', {
+      name: 'Set pitch tilt to 45°',
+    });
 
     expect(btn0).toBeDefined();
     expect(btn15).toBeDefined();
     expect(btn30).toBeDefined();
     expect(btn45).toBeDefined();
 
-    // Click 15°
     fireEvent.click(btn15);
     let state = useTacticalUnifiedStore.getState();
     let slide = state.project.slides.find((s) => s.id === state.activeSlideId);
     expect(slide?.pitchTransform?.tilt).toBe(15);
 
-    // Click 45°
     fireEvent.click(btn45);
     state = useTacticalUnifiedStore.getState();
     slide = state.project.slides.find((s) => s.id === state.activeSlideId);
     expect(slide?.pitchTransform?.tilt).toBe(45);
 
-    // Click 0°
     fireEvent.click(btn0);
     state = useTacticalUnifiedStore.getState();
     slide = state.project.slides.find((s) => s.id === state.activeSlideId);
@@ -187,6 +223,11 @@ describe('BoundaryBoxHud component', () => {
 
   it('changing the tilt slider updates pitchTransform.tilt', () => {
     render(<BoundaryBoxHud stageSize={{ width: 800, height: 450 }} />);
+
+    const trigger = screen.getByRole('button', {
+      name: 'Toggle Boundary Box Settings',
+    });
+    fireEvent.click(trigger);
 
     const slider = screen.getByRole('slider', { name: 'Pitch tilt slider' });
     expect(slider).toBeDefined();
