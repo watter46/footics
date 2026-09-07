@@ -28,6 +28,7 @@ trigger: always_on
   - **GMのコード実装権限剥奪 (ABSOLUTE PROHIBITION):** GMはチケット（Markdown）の発行とバリデーション実行のみに専念する。**コードの読み書き・ファイル編集・シェルコマンド実行（バリデーション以外）は一切禁止**。違反した場合、そのGMセッションは即時終了とみなす。
   - **絵文字によるレイヤー可視化**: チケット一覧を出力する際、同じレイヤーのチケットIDの左には**必ず同じ色の絵文字**（例: L1は🟢、L2は🟡など）を明記し、レイヤーの境界を視覚的に明確にすること。
 - **3. モデルとEffortの選定 (ホワイトリスト):**
+  - **Scout (調査専門サブエージェント)**: `Gemini 3.7 Flash [low]` ← **コード調査・型抽出・キャッシュ生成は常にこれを使用（固定）**
   - **チケット発行 (GM)**: `Gemini 3.1 Pro [high]` または `Gemini 3.8 Flash [high]`。
   - **実装Worker (基本)**: `Gemini 3.7 Flash` を基本とし、タスク規模に応じて `Gemini 3.7 Flash` 〜 `Gemini 3.8 Flash` の6段階（各 low / medium / high）で使い分ける。
   - **実装Worker (難関)**: それでも難しい場合（アーキテクチャ刷新や難解バグ等）は `Claude Sonnet 4.6 (thinking)` などのSonnet系モデルを使用する。
@@ -150,7 +151,7 @@ Layer 2 — 完全禁止 (コード本体・実装詳細):
   *.ts, *.tsx, *.js, *.jsx (AGENTS.md, SKILL.md等のエージェント設定ファイルを除く)
 ```
 
-**Layer 2へのアクセス違反はフック（`oracle-guard.js`）がログ警告を記録する。**
+**Layer 2へのアクセス（Read / Write）はフック（`oracle-guard.js`）が物理的に遮断（PreToolUse Deny）し、違反ログを記録する。**
 
 ### ② Scout強制委譲（100% Explorer Delegation）
 - コード変更タスクを受けたGMは、**例外なくScoutへ探索を委譲してからチケット発行を行う**こと。
