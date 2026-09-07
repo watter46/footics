@@ -259,6 +259,45 @@ GM → Scout-C (domain: extension)         ─┘
   2. チャットに `.regista/templates/handover-report.md` 準拠でチケットID、引継ぎファイル絶対パスリンク、引き継ぎプロンプトを出力する。
   3. 手詰まり解消のため、引き継ぎ先の推奨モデルとして `Gemini 3.8 Flash (High)` または `Gemini 3.1 Pro` への昇格を提案する。
 
+### 11. `retry {ID}` 自律リカバリプロトコル
+
+**発動キーワード**: `retry {チケットID}` または `retry`（IDなしで全BLOCKED一括処理）
+
+**GMの自律実行フロー（完全自動・サイレント実行）:**
+
+```
+[受信] retry L1-Tactical-045
+  ↓
+1. .regista/tickets/{ID}.md を読み込む（Layer 1参照）
+2. 「### ⚠️ Escalation & Missing Info」セクションから「Missing for Scout」を抽出
+3. Scoutへピンポイント調査指示（Compact JSON）を発行
+   - 不足情報に直接対応するtarget_pathsのみ指定（広域探索は禁止）
+4. Scout結果（JSON）を受け取り、Ticket-Writerへ以下の更新指示を発行:
+   - チケット本文の「Detailed Spec」に型定義の抜粋・関数シグネチャを直接埋め込む
+   - チケット本文に「対象テストファイルの絶対パス」を明記
+   - status を BLOCKED → TODO に戻す
+   - Write-backログのEscalationセクションをクリア（DONE時のサマリー欄を残す）
+5. rtk pnpm tickets:validate を実行
+6. バリデーション通過後、「✅ {ID} の詳細化完了。新規Workerで再実行可能です。」と1行報告
+```
+
+**`retry`（IDなし）の場合:**
+- `.regista/tickets/*.md` を走査して `status: BLOCKED` のチケットを全件抽出
+- 各チケットに対して上記フローを順次または並列実行する
+
+**Scoutへの発行フォーマット（`retry`時の限定指示）:**
+```json
+{
+  "action": "explore",
+  "domain": "{チケットのドメイン}",
+  "target_paths": ["チケットのtarget_filesとreference_filesに限定"],
+  "objective": "Escalation & Missing Infoの不足情報を特定・取得する",
+  "user_intent": "Worker差し戻し（Level 3）によるチケット詳細化リカバリ",
+  "constraints": "target_paths外の探索禁止。型定義の抜粋と対象テストパスの特定のみ行うこと",
+  "cache_key": "{domain}-{git-hash}"
+}
+```
+
 ## Generator-Critic ループ制御
 - **最大3ループ**: 同一タスクでのGenerator-Critic往復を3回に制限
 - **Deterministic検証優先**: テスト/型チェック不合格時は、Semantic評価を行わず即差し戻し

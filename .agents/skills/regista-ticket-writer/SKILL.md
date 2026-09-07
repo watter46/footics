@@ -57,3 +57,34 @@ code_snapshot: "abc1234"  # チケット発行時のgit hash（GMから渡され
 - **code_snapshotの省略禁止**: `code_snapshot` フィールドが無いチケットは絶対に保存しない。GMに値の提供を要求すること。
 - **コード変更の禁止**: チケットファイルの作成・保存以外のコードベースの変更を行ってはなりません。
 - **回答の簡潔性 (Compact Protocol)**: GMからJSONで指示を受けた場合、必ず処理完了の旨を最小限のJSONのみで回答すること。不要な挨拶や自然言語の解説は**厳格に禁止**する。
+
+## retry リカバリ時の追加フォーマット（Ticket詳細化更新）
+GMから `retry` リカバリ指示を受け取った場合（通常の新規チケット生成とは別フロー）、以下のフォーマットで受信する:
+
+```json
+{
+  "action": "update_blocked_ticket",
+  "ticket_id": "L1-Tactical-045",
+  "scout_findings": {
+    "type_definitions": "// 型定義の抜粋コード",
+    "target_test_files": ["src/features/tactical-unified/stores/__tests__/tactical-unified-store.test.ts"],
+    "function_signatures": "// 関数シグネチャの抜粋コード"
+  }
+}
+```
+
+**更新手順（retry時）:**
+1. 指定チケット（`.regista/tickets/{ticket_id}.md`）を開く
+2. `status: BLOCKED` → `status: TODO` に変更する
+3. `## Detailed Spec` セクションに `scout_findings` の型定義・関数シグネチャ・テストパスを直接埋め込む
+4. `### ⚠️ Escalation & Missing Info` セクションをクリア（空欄プレースホルダーに戻す）
+5. 完了をGMへJSON報告する:
+```json
+{"status": "success", "updated_ticket": "L1-Tactical-045", "new_status": "TODO"}
+```
+
+## チケット生成時の必須事項（Context埋め込みルール）
+GMから渡されたJSONにScoutが発見した以下の情報が含まれている場合、必ずチケット本文の `Detailed Spec` セクションに埋め込むこと（Workerが後から探索しないで済むように）:
+- **変更対象の関数シグネチャ**（関数名・引数・返り値の型）
+- **関連する型定義の抜粋**（`interface`/`type` の該当部分のみ）
+- **対象テストファイルのパス**（`verification_commands` の `vitest run` 行に明記）

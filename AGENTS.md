@@ -67,6 +67,36 @@ trigger: always_on
   1. `.regista/templates/handover.md` に基づき、`.regista/handover/[ID]-handover.md` を **ファイルとして作成・保存 (write_to_file)** する。
   2. チャット画面（ユーザーへの返答）には、作成したファイルの中身や「新規チャット用プロンプト」等を **絶対にダラダラと出力してはならない**。必ず `.regista/templates/handover-report.md` を読み込み、ファイルへのリンクのみを記載した最小限のメッセージで完了すること。
 
+## 4.5. Worker Fail-Fast 差し戻しプロトコル (MANDATORY)
+実装Workerは、チケット（`.regista/tickets/[ID].md`）に記載された情報だけで実装が完結できない場合、以下のプロトコルを厳格に遵守すること。
+
+### Worker に許可された探索操作（スコープ制限）
+- `target_files` / `reference_files` に明記されたファイルへの `view_file`（ピンポイントの行範囲指定必須）
+- 同一ファイル内での `grep_search`（SearchPathを該当ファイルパスに限定）
+- **絶対禁止**: `src/`、`src/features/` 等のルートディレクトリを `SearchPath` に指定した広域検索
+- **絶対禁止**: チケットの `target_files` / `reference_files` 外のディレクトリへのアクセス
+
+### 情報不足を検知した場合の正しい挙動（Fail-Fast 中断）
+1. **実装・探索を即座に停止する**（Search連打・推測での実装は厳禁）
+2. **チケットの `status` を `BLOCKED` に更新する**
+3. **Write-back Log の `### ⚠️ Escalation & Missing Info` セクションに以下を記入して保存する**:
+   - `Blocked Reason`: 不足している情報を1〜2行で記述
+   - `Missing for Scout`: Scoutが調査すべき具体的な情報を箇条書き
+4. チャットに以下の1行を出力して **即座に終了する**:
+   ```
+   ⚠️ チケット前提不備のため作業を中断しました。オーナーは「retry {チケットID}」でGMにリカバリを指示してください。
+   ```
+
+### Worker の探索禁止ルール（絶対遵守）
+- Workerは自力でのコードベース広域探索を行わない。必要な情報はすべてチケットに記載されているはず。
+- 「チケットに書いていない情報を探しに行く」行為は規約違反とみなす。
+- Scoutを自律的に呼び出すことも禁止（Workerチャットのコンテキスト汚染・肥大化を引き起こすため）。
+- 情報が足りない場合の唯一の正しい行動は「Fail-Fast中断（BLOCKED更新）」のみ。
+
+### `retry {チケットID}` リカバリフロー
+Workerが差し戻した後、オーナーがGMのチャットで `retry {チケットID}` を入力すると、GMが自律的にチケット詳細化（Scout再調査→チケット更新）を完遂する。
+詳細は `regista-gm` スキルの「### 11. retry {ID} 自律リカバリプロトコル」を参照。
+
 ## 5. 完了事務作業の分離 (The Closure Agent Protocol)
 - 実装作業が完了し、ユーザーから「OK/完了」の合図をもらった際、**同一の肥大化したチャット内で `git commit` や `.regista/tickets/` のファイル更新を直接行わないこと。**
 - 完了事務は、軽量なモデルを用いた**使い捨てのサブエージェント（`self` または `regista-gm` 等）を呼び出し、そのサブエージェントに「コミットメッセージの作成とチケットステータス（DONE）の更新タスク」を委譲して完了させる**こと。
