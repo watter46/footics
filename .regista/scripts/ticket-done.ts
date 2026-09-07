@@ -295,7 +295,7 @@ function validateAndResolveFiles(
     const gitRelativePath = path.normalize(path.relative(rootDir, fullPath));
     if (!fs.existsSync(fullPath) && !gitDeletedFiles.has(gitRelativePath)) {
       console.error(
-        `❌ Error: Changed file specified in ticket '${ticketId}' does not exist: ${relPath}`,
+        `❌ エラー: チケット '${ticketId}' に指定された変更ファイルが存在しません: ${relPath}`,
       );
       process.exit(1);
     }
@@ -305,12 +305,10 @@ function validateAndResolveFiles(
 }
 
 function showHelpAndExit(exitCode: number): never {
-  console.log('Usage: tsx .regista/scripts/ticket-done.ts <ID...>');
-  console.log(
-    'Example: tsx .regista/scripts/ticket-done.ts L1-CLI-001 L1-CLI-002',
-  );
-  console.log('Options:');
-  console.log('  --help, -h    Show help information');
+  console.log('使用法: tsx .regista/scripts/ticket-done.ts <ID...>');
+  console.log('例: tsx .regista/scripts/ticket-done.ts L1-CLI-001 L1-CLI-002');
+  console.log('オプション:');
+  console.log('  --help, -h    ヘルプを表示');
   process.exit(exitCode);
 }
 
@@ -343,7 +341,9 @@ function loadTicket(
       };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`❌ Error reading ticket '${cleanInputId}': ${message}`);
+      console.error(
+        `❌ チケット '${cleanInputId}' の読み込みエラー: ${message}`,
+      );
       process.exit(1);
     }
   }
@@ -366,7 +366,7 @@ function loadTicket(
 
   if (!handoverFilePath) {
     console.error(
-      `❌ Error: Ticket or handover file not found for ID '${cleanInputId}': neither '${ticketPath}' nor candidates in '${handoverDir}' exist`,
+      `❌ エラー: ID '${cleanInputId}' に対応するチケットまたは引継ぎファイルが見つかりません ('${ticketPath}' および '${handoverDir}' 配下に存在しません)`,
     );
     process.exit(1);
   }
@@ -394,7 +394,9 @@ function loadTicket(
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`❌ Error reading handover '${cleanInputId}': ${message}`);
+    console.error(
+      `❌ 引継ぎファイル '${cleanInputId}' の読み込みエラー: ${message}`,
+    );
     process.exit(1);
   }
 }
@@ -405,7 +407,7 @@ function markTicketDone(ticket: TicketInfo): void {
     if (ticket.type === 'ticket') {
       if (!/^status:\s*[A-Za-z_-]+/m.test(content)) {
         console.error(
-          `❌ Error: 'status' field not found in frontmatter for ticket '${ticket.id}'`,
+          `❌ エラー: チケット '${ticket.id}' のフロントマターに 'status' フィールドが見つかりません`,
         );
         process.exit(1);
       }
@@ -433,7 +435,7 @@ function markTicketDone(ticket: TicketInfo): void {
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`❌ Error updating ticket '${ticket.id}': ${message}`);
+    console.error(`❌ チケット '${ticket.id}' の更新エラー: ${message}`);
     process.exit(1);
   }
 }
@@ -444,7 +446,9 @@ function rollbackTickets(backups: Map<string, string>): void {
       fs.writeFileSync(filePath, content, 'utf-8');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`⚠️ Failed to rollback ticket file '${filePath}': ${msg}`);
+      console.error(
+        `⚠️ チケットファイル '${filePath}' のロールバックに失敗しました: ${msg}`,
+      );
     }
   }
 }
@@ -510,12 +514,14 @@ function validateDiffGate(tickets: TicketInfo[], rootDir: string): void {
 }
 
 function runValidation(validatorPath: string, rootDir: string): void {
-  console.log('Validating tickets...');
   try {
-    execSync(`node "${validatorPath}"`, { stdio: 'inherit', cwd: rootDir });
+    execSync(`node "${validatorPath}" --quiet`, {
+      stdio: 'inherit',
+      cwd: rootDir,
+    });
   } catch {
     console.error(
-      '❌ Ticket validation failed. Please check validation output and fix tickets.',
+      '❌ チケットのバリデーションに失敗しました。バリデーションエラーを修正してください。',
     );
     process.exit(1);
   }
@@ -557,7 +563,7 @@ function commitTickets(
     }).trim();
   } catch (err: unknown) {
     const messageText = err instanceof Error ? err.message : String(err);
-    console.error(`❌ Git commit failed: ${messageText}`);
+    console.error(`❌ Git コミットに失敗しました: ${messageText}`);
     throw err;
   }
 }
@@ -606,8 +612,6 @@ function main(): void {
       rollbackTickets(ticketBackups);
       process.exit(1);
     }
-  } else {
-    console.log('Skipping ticket validation for handover files.');
   }
 
   const filesToStage = new Set<string>();
@@ -632,7 +636,7 @@ function main(): void {
   }
 
   const idsList = tickets.map((t) => t.id).join(', ');
-  console.log(`✅ Done: ${idsList} committed as ${commitHash}`);
+  console.log(`✅ 完了: ${idsList} (コミット: ${commitHash})`);
 }
 
 main();

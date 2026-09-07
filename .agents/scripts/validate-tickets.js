@@ -160,16 +160,7 @@ function validate() {
   }
 
   // --- Step 3: レポート出力 ---
-  console.log('🔍 [Regista Ticket Validator]');
-  console.log(`Validated ${tickets.size} tickets in .regista/tickets/\n`);
-
-  if (warnings.length > 0) {
-    console.log(`⚠️  Warnings (${warnings.length} issues):`);
-    for (const w of warnings) {
-      console.log(`  ${w}`);
-    }
-    console.log('');
-  }
+  const isQuiet = process.argv.includes('--quiet') || process.argv.includes('-q');
 
   if (errors.length > 0) {
     console.error(`❌ Validation Failed with ${errors.length} error(s):`);
@@ -180,7 +171,20 @@ function validate() {
     process.exit(1);
   }
 
-  console.log('✅ All tickets passed schema and DAG validation successfully.');
+  if (!isQuiet) {
+    console.log('🔍 [Regista Ticket Validator]');
+    console.log(`Validated ${tickets.size} tickets in .regista/tickets/\n`);
+
+    if (warnings.length > 0) {
+      console.log(`⚠️  Warnings (${warnings.length} issues):`);
+      for (const w of warnings) {
+        console.log(`  ${w}`);
+      }
+      console.log('');
+    }
+
+    console.log('✅ All tickets passed schema and DAG validation successfully.');
+  }
 }
 
 validate();
