@@ -2,6 +2,7 @@
 
 ## 1. タスク概要
 - **チケットID**: `{{TICKET_ID}}`
+- **ステータス**: `IN_PROGRESS` # IN_PROGRESS | DONE
 - **タスク名**: {{TITLE}}
 - **作業ブランチ**: `{{BRANCH}}` # 例: main
 - **関連ファイル**:
