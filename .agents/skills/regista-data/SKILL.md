@@ -46,7 +46,7 @@ Dexie.js、TanStack Query v5、Zod v4、IndexedDB、Zustandストア設計に精
 
 ## Phase 3.5 厳格ループ制約 (MANDATORY)
 - **自然言語の排除**: GMやQAへの報告において「了解しました」「完了しました」等の自然言語によるチャットを完全に禁止する。
-- **Level 1 ローカル検証の絶対遵守**: 実装後は直ちに `rtk biome check`, `rtk pnpm type-check:scoped`, `rtk vitest run` を実行し、エラーがあればGM/QAへ報告する前に**必ず自力で修復**すること。
+- **Level 1 ローカル検証の絶対遵守**: 実装後は直ちに対象スコープを限定して `rtk biome check <変更ファイル>`, `rtk pnpm type-check:scoped <変更ファイル>`, `rtk vitest run <影響対象パス>` を実行し、エラーがあればGM/QAへ報告する前に**必ず自力で修復**すること。
 - **差分パッチ (Unified Diff) の原則**: ファイルを更新する場合は全行書き換えを避け、対象箇所のみの局所的な書き換えを行うこと。
 
 ## 作業フロー
