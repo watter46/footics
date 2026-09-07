@@ -54,12 +54,16 @@ rtk biome check {{TARGET_FILE_1}}
 ### 1. 変更内容サマリー
 - 
 
-### 2. 検証結果
+### 2. 変更ファイル一覧（make done の git add 対象）
+<!-- Workerが実際に変更したファイルを記入。target_filesと差異がある場合は必ず更新すること -->
+- `path/to/file`
+
+### 3. 検証結果
 - [ ] `pnpm type-check:scoped` パス
 - [ ] `rtk biome check` パス
 - [ ] テスト実行（対象テストがある場合）: PASS
 
-### 3. レビュー・引継ぎ特記事項（あれば）
+### 4. レビュー・引継ぎ特記事項（あれば）
 - なし
 
 ---

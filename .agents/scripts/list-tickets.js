@@ -22,7 +22,7 @@ const TicketSchema = z
     id: z.string().optional(),
     title: z.string().optional(),
     status: z
-      .enum(['TODO', 'IN_PROGRESS', 'REVIEW_QA', 'DONE'])
+      .enum(['TODO', 'IN_PROGRESS', 'REVIEW_QA', 'DONE', 'BLOCKED'])
       .default('TODO'),
     depends_on: z.array(z.string()).default([]),
     model: z.string().default('Gemini 3.8 Flash'),

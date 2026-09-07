@@ -108,7 +108,7 @@ function validate() {
       // テンプレートそのままの未記入検知
       const isUnfilled = body.includes('<!-- Workerは作業完了後') && body.includes('### 1. 変更内容サマリー\n-\n');
       if (hasWriteBackHeader && isUnfilled) {
-        warnings.push(`[${meta.id}] Write-back incomplete: status is 'DONE' but Implementation Log is empty template.`);
+        errors.push(`[${meta.id}] Write-back incomplete: status is 'DONE' but Implementation Log is empty template. Please fill out Write-back Log.`);
       }
     }
 
