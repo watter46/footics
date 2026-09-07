@@ -27,6 +27,7 @@ export interface PitchSlice {
   updatePitchTransform: (
     slideId: string | undefined,
     patch: Partial<PitchTransform>,
+    recordHistory?: boolean,
   ) => void;
   setPitchPosition: (slideId?: string, pos?: { x: number; y: number }) => void;
 }
@@ -165,6 +166,7 @@ function createPitchTransformActions(set: SetState) {
     updatePitchTransform: (
       slideId: string | undefined,
       patch: Partial<PitchTransform>,
+      shouldRecordHistory = false,
     ) =>
       set((s) => {
         const targetSlideId = slideId ?? s.activeSlideId;
@@ -185,6 +187,7 @@ function createPitchTransformActions(set: SetState) {
           isLocked: patch.isLocked ?? current.isLocked,
         };
         return {
+          ...(shouldRecordHistory ? recordHistory(s) : {}),
           project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
             ...sl,
             pitchTransform: newTransform,

@@ -1,46 +1,36 @@
 ---
 id: L1-TACTICAL-001
-emoji: 🔧
-title: 座標変換ヘルパーの純粋関数化と単体テスト
+emoji: 🟢
+title: ピッチ操作の履歴（Undo/Redo）管理への統合
 status: DONE
 depends_on: []
-
-# コードのスナップショット（Ticket Freshness Guard用 - 絶対省略禁止）
-code_snapshot: 1938680aa6835a87f2301a183d53d18ba3d08117
-
-# 推奨実行環境（ホワイトリストから選定）
-model: Gemini 3.7 Flash [high]
-effort: medium
-
-# 変更対象ファイル（1〜3ファイル以内の極小AAWU単位）
+code_snapshot: "f9cc9359b75da82f362762167d60e476d3fac384"
+model: Gemini 3.7 Flash
+effort: low
 target_files:
-  - src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts
-  - src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts
-
-# 参照専用ファイル（Workerが探索でトークンを浪費するのを防ぐためのヒント）
+  - src/features/tactical-unified/stores/pitch-slice.ts
 reference_files:
-  - src/features/tactical-unified/types/index.ts
+  - src/features/tactical-unified/stores/history-slice.ts
+  - src/lib/types/tactical-unified.ts
 ---
 
-
-# 🔧 L1-TACTICAL-001: 座標変換ヘルパーの純粋関数化と単体テスト
+# 🟢 L1-TACTICAL-001: ピッチ操作の履歴（Undo/Redo）管理への統合
 
 ## UX Impact
-なし（内部ロジックのリファクタリング）
+ピッチに対する操作（移動やズーム等）後、Ctrl+Zなどで元の状態に戻すことができるようになる。
 
 ## Detailed Spec
-1. 0.0〜100.0% のピッチ正規化座標とCanvas実座標の相互変換を完全に純粋関数化する。
-2. KonvaのZoom/Pan状態（scaleX, scaleY, x, y）に依存せず、絶対的な0-100%からCanvasの実幅(Stage width/height)に対する比率計算へ整理する。
-3. Vitestを用いた単体テストを実装する。※引継ぎでは `src/lib/tactical/` と言及があるが、既存の `helpers/` ディレクトリ内でまずは責務を純粋関数に分離することを優先する。
+1. `pitch-slice.ts` 内のピッチのTransformを変更するアクション（`updatePitchTransform` や `setPitchPosition` 等）において、変更が完了したタイミングで履歴を追加できるようにする。
+2. 連続するドラッグ操作などでは細かな変更毎に保存せず、ドラッグ完了時など確定したタイミングで履歴を記録できるような設計とする（必要に応じて `recordHistory` 的なものをエクスポートして呼び出すか、状態更新時に一括で処理する）。
 
 ## Acceptance Criteria
-- [x] 座標変換ヘルパーが外部状態に依存しない純粋関数になっていること
-- [x] 対象の単体テストがパスすること
+- [ ] ピッチの操作状態を管理するSliceで、操作完了をトリガーに履歴状態へ状態を保存可能になる。
+- [ ] 型エラーが発生しないこと。
 
 ## Verification Commands
 ```bash
-rtk pnpm type-check:scoped src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts
-rtk biome check src/features/tactical-unified/objects/canvas/helpers/
+rtk pnpm type-check:scoped src/features/tactical-unified/stores/pitch-slice.ts
+rtk biome check src/features/tactical-unified/stores/pitch-slice.ts
 ```
 
 ---
@@ -48,17 +38,15 @@ rtk biome check src/features/tactical-unified/objects/canvas/helpers/
 ## 📝 Implementation & Write-back Log (Worker記入欄)
 
 ### 1. 変更内容サマリー
-- 座標変換関数（`normToPx`, `pxToNorm`, `normToPitch`, `pitchToNorm`, `screenToPitch`, `pitchToScreen`, `getPitchAndNormPos`, `normToScreen`, `clampNorm`, `clampNormPoint`）を外部状態に依存しない純粋関数として整理・定義。
-- Vitest による網羅的な単体テスト（`canvas-coordinates.test.ts`, 15テストケース）を新規作成し、正規化変換、境界値clamp、Zoom/Pan/Tilt時の相互変換の数学的正確性を検証。
+- `PitchSlice` の `updatePitchTransform` アクションにオプショナルな `shouldRecordHistory` パラメータを追加し、操作完了時や確定時の履歴記録（`recordHistory`）をサポート。
 
 ### 2. 変更ファイル一覧（make done の git add 対象）
-- `src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts`
-- `src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.test.ts`
+- `src/features/tactical-unified/stores/pitch-slice.ts`
 
 ### 3. 検証結果
 - [x] `pnpm type-check:scoped` パス
 - [x] `rtk biome check` パス
-- [x] テスト実行（対象テストがある場合）: PASS (15 passed)
+- [x] テスト実行（対象テストがある場合）: PASS
 
 ### 4. レビュー・引継ぎ特記事項（あれば）
 - なし
@@ -66,7 +54,6 @@ rtk biome check src/features/tactical-unified/objects/canvas/helpers/
 ---
 
 ### ⚠️ Escalation & Missing Info (差し戻し時のみ記入)
-
 - **Blocked Reason**: 
 - **Missing for Scout**:
   1. 
