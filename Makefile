@@ -1,4 +1,4 @@
-.PHONY: help metrics metrics-summary metrics-tail metrics-raw metrics-clean tickets tickets-todo verify check type-check test
+.PHONY: help metrics metrics-summary metrics-tail metrics-raw metrics-clean tickets tickets-todo verify check type-check test done
 
 help:
 	@echo "Footics Development & Metrics Commands"
@@ -9,6 +9,7 @@ help:
 	@echo "  make metrics-clean                    : Clear token usage logs"
 	@echo "  make tickets                          : List all Regista tickets"
 	@echo "  make tickets-todo                     : List actionable (TODO) tickets"
+	@echo "  make done <ID...>                     : Complete tickets and commit (e.g. make done L1-CLI-001)"
 	@echo "  make verify                           : Run full project verification (check + type-check + test)"
 	@echo "  make check                            : Run Biome check"
 	@echo "  make type-check                       : Run TypeScript type check"
@@ -34,6 +35,9 @@ tickets:
 tickets-todo:
 	@node .agents/scripts/list-tickets.js --todo
 
+done: ## チケットをDONEにしてコミット (例: make done L1-UI-001 L1-UI-002)
+	@pnpm ticket:done $(filter-out $@,$(MAKECMDGOALS))
+
 verify:
 	@rtk pnpm verify
 
@@ -45,3 +49,6 @@ type-check:
 
 test:
 	@rtk pnpm test
+
+%:
+	@:

@@ -27,6 +27,7 @@
     "tickets": "node .agents/scripts/list-tickets.js",
     "tickets:todo": "node .agents/scripts/list-tickets.js --todo",
     "tickets:validate": "node .agents/scripts/validate-tickets.js",
+    "ticket:done": "tsx .regista/scripts/ticket-done.ts",
     "gen:component": "node scripts/gen-skeleton.mjs --type component",
     "gen:hook": "node scripts/gen-skeleton.mjs --type hook",
     "gen:feature": "node scripts/gen-skeleton.mjs --type feature"
@@ -81,6 +82,7 @@
     "happy-dom": "^20.11.2",
     "jsdom": "^29.0.1",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
     "typescript": "^5",
     "vitest": "^4.1.10",
     "wrangler": "^4.80.1"
