@@ -500,29 +500,13 @@ function validateDiffGate(tickets: TicketInfo[], rootDir: string): void {
 
   if (unrecordedFiles.length === 0) return;
 
-  const hasHandover = tickets.some((t) => t.type === 'handover');
-  if (hasHandover) {
-    console.warn(
-      '⚠️ Warning: Handover対象のため、未記載の変更ファイルが存在しますがコミットを継続します。',
-    );
-    console.warn('未記載の変更ファイル (ステージングから除外):');
-    for (const f of unrecordedFiles) {
-      console.warn(`  - ${f}`);
-    }
-    return;
-  }
-
-  console.error(
-    '❌ Error: Write-back の変更ファイル一覧と Git の実際の変更に乖離があります。',
+  console.warn(
+    '⚠️ Warning: 対象外の変更ファイルが存在しますが、指定チケットのみコミットを継続します。',
   );
-  console.error('未記載の変更ファイル:');
+  console.warn('スキップした他変更ファイル (ステージングから除外):');
   for (const f of unrecordedFiles) {
-    console.error(`  - ${f}`);
+    console.warn(`  - ${f}`);
   }
-  console.error(
-    'Workerに Write-back を追記させるか、チケットを更新してください。',
-  );
-  process.exit(1);
 }
 
 function runValidation(validatorPath: string, rootDir: string): void {
