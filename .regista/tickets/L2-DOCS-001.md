@@ -2,7 +2,7 @@
 id: L2-DOCS-001
 emoji: 📝
 title: AGENTS.md セクション5 CLIフロー方式へ改訂
-status: TODO # TODO | IN_PROGRESS | DONE | BLOCKED
+status: DONE # TODO | IN_PROGRESS | DONE | BLOCKED
 depends_on: ["L1-CLI-001", "L1-CLI-002"]
 
 # コードのスナップショット（Ticket Freshness Guard用 - 絶対省略禁止）
@@ -68,12 +68,13 @@ rtk grep 'サブエージェント' AGENTS.md
 <!-- 差し戻し（Level 3 Escalation）の場合は status を BLOCKED に更新し、Escalationセクションを記入すること -->
 
 ### 1. 変更内容サマリー
-- 
+- AGENTS.md のセクション5を「5. 完了事務作業のCLI実行方式 (CLI-First Closure Protocol)」に置換
+- サブエージェント委譲や手動合図のフローを廃止し、`make done {チケットID}` の案内とWorker Write-backプロトコルに更新
 
 ### 2. 検証結果
-- [ ] `pnpm type-check:scoped` パス
-- [ ] `rtk biome check` パス
-- [ ] テスト実行（対象テストがある場合）: PASS
+- [x] `rtk grep 'make done' AGENTS.md` パス (2箇所ヒット)
+- [x] `rtk grep 'サブエージェント' AGENTS.md` パス (セクション5内から除去確認)
+- [x] `rtk git diff AGENTS.md` でセクション5以外の変更がないことを確認
 
 ### 3. レビュー・引継ぎ特記事項（あれば）
 - なし

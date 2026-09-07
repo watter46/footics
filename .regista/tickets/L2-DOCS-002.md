@@ -2,7 +2,7 @@
 id: L2-DOCS-002
 emoji: 🗑️
 title: 不要テンプレート削除 & GM SKILL.md更新
-status: TODO # TODO | IN_PROGRESS | DONE | BLOCKED
+status: DONE # TODO | IN_PROGRESS | DONE | BLOCKED
 depends_on: ["L1-CLI-001"]
 
 # コードのスナップショット（Ticket Freshness Guard用 - 絶対省略禁止）
@@ -62,12 +62,14 @@ rtk grep 'completion-report' /home/watter46/src/footics/.agents/skills/regista-g
 <!-- 差し戻し（Level 3 Escalation）の場合は status を BLOCKED に更新し、Escalationセクションを記入すること -->
 
 ### 1. 変更内容サマリー
-- 
+- 不要となった `.regista/templates/completion-report.md` および `.regista/templates/ticket-done-report.md` を削除
+- `.agents/skills/regista-gm/SKILL.md` のセクション8をCLI方式の1行完了案内に置換し、旧セクション9（手動コミット案内）を削除
 
 ### 2. 検証結果
-- [ ] `pnpm type-check:scoped` パス
-- [ ] `rtk biome check` パス
-- [ ] テスト実行（対象テストがある場合）: PASS
+- [x] `completion-report.md` / `ticket-done-report.md` 削除確認
+- [x] `handover-report.md` 存続確認
+- [x] `rtk grep` によるGM SKILL.md内の不要記述削除確認
+- [x] `rtk pnpm tickets:validate` パス
 
 ### 3. レビュー・引継ぎ特記事項（あれば）
 - なし
