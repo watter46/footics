@@ -157,7 +157,7 @@ function calculateRatioInfo(
 
 export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
   stageSize,
-  pitchRect: _pitchRect,
+  pitchRect,
 }: BoundaryBoxHudProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -250,7 +250,7 @@ export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
             const newBox = createXBoundaryBox(ratio, canvasAspect);
             setBoundaryBox(activeSlideId, newBox);
           }}
-          onPitchFit={() => autoFitBoundaryBox(activeSlideId)}
+          onPitchFit={() => autoFitBoundaryBox(activeSlideId, pitchRect)}
           onCanvasFit={() =>
             setBoundaryBox(activeSlideId, { ...DEFAULT_BOUNDARY_BOX_FULL })
           }

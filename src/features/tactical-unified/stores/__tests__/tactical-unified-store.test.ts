@@ -1617,22 +1617,59 @@ describe('tactical-unified-store', () => {
       const store = useTacticalUnifiedStore.getState();
       const slideId = store.activeSlideId;
 
-      store.setPitchPosition(slideId, { x: 10, y: -5 });
+      // 4:5 (1080x1350) において panX=108 (10%), panY=-135 (-10%)
+      store.setPitchPosition(slideId, { x: 108, y: -135 });
       const slide = useTacticalUnifiedStore
         .getState()
         .project.slides.find((sl) => sl.id === slideId);
-      expect(slide?.pitchPosition?.x).toBe(10);
-      expect(slide?.pitchPosition?.y).toBe(-5);
-      expect(slide?.pitchTransform?.panX).toBe(10);
-      expect(slide?.pitchTransform?.panY).toBe(-5);
+      expect(slide?.pitchPosition?.x).toBe(108);
+      expect(slide?.pitchPosition?.y).toBe(-135);
+      expect(slide?.pitchTransform?.panX).toBe(108);
+      expect(slide?.pitchTransform?.panY).toBe(-135);
 
-      // autoFitBoundaryBox がピッチ移動オフセットに追従することを確認 (デフォルトは base.x = 0, base.y = 0)
+      // autoFitBoundaryBox がピッチ移動オフセットに正規化%で追従することを確認
       store.autoFitBoundaryBox(slideId);
       const updatedSlide = useTacticalUnifiedStore
         .getState()
         .project.slides.find((sl) => sl.id === slideId);
       expect(updatedSlide?.boundaryBox?.x).toBeCloseTo(10, 2);
-      expect(updatedSlide?.boundaryBox?.y).toBeCloseTo(-5, 2);
+      expect(updatedSlide?.boundaryBox?.y).toBeCloseTo(-10, 2);
+    });
+
+    it('updatePitchTransform でズーム・パン移動後に autoFitBoundaryBox を実行するとズーム後のピッチ外枠にフィットする', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      store.setAspectRatio('16:9'); // 1920x1080
+      store.updatePitchTransform(slideId, { panX: 192, panY: 108, zoom: 1.5 });
+      store.autoFitBoundaryBox(slideId);
+
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((sl) => sl.id === slideId);
+      expect(slide?.boundaryBox?.x).toBeCloseTo(10, 2);
+      expect(slide?.boundaryBox?.y).toBeCloseTo(10, 2);
+      expect(slide?.boundaryBox?.width).toBeCloseTo(150, 2);
+      expect(slide?.boundaryBox?.height).toBeCloseTo(150, 2);
+      expect(slide?.boundaryBox?.fitTarget).toBe('pitch');
+    });
+
+    it('autoFitBoundaryBox に pitchRect (可変Stageサイズ) を渡した場合に正確なピッチ外枠にフィットする', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      store.setAspectRatio('16:9');
+      store.updatePitchTransform(slideId, { panX: 120, panY: 67.5, zoom: 1.2 });
+      store.autoFitBoundaryBox(slideId, { width: 1200, height: 675 });
+
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((sl) => sl.id === slideId);
+      expect(slide?.boundaryBox?.x).toBeCloseTo(10, 2);
+      expect(slide?.boundaryBox?.y).toBeCloseTo(10, 2);
+      expect(slide?.boundaryBox?.width).toBeCloseTo(120, 2);
+      expect(slide?.boundaryBox?.height).toBeCloseTo(120, 2);
+      expect(slide?.boundaryBox?.fitTarget).toBe('pitch');
     });
 
     it('toggleObjectLock で各オブジェクトの locked 状態がトグルされる', () => {
