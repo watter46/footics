@@ -370,11 +370,11 @@ export function UnifiedCanvas() {
                   drawingState={drawingState}
                   selectionBox={null}
                 />
-                <DrawingPreviewLayer
-                  drawingState={null}
-                  selectionBox={selectionBox}
-                />
               </Group>
+              <DrawingPreviewLayer
+                drawingState={null}
+                selectionBox={selectionBox}
+              />
             </Layer>
           </Stage>
         </div>
