@@ -3,6 +3,7 @@ import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import type {
   AspectRatio,
   BoundaryBox as BoundaryBoxType,
+  PitchTransform,
 } from '@/lib/types/tactical-unified';
 
 export interface PitchTransformValues {
@@ -72,6 +73,8 @@ export interface ExportCropRectOptions {
   stageSize: { width: number; height: number };
   aspectRatio: AspectRatio;
   boundaryBox?: BoundaryBoxType;
+  pitchBounds?: { x: number; y: number; width: number; height: number };
+  pitchTransform?: PitchTransform;
 }
 
 export interface ExportCropRect {
@@ -86,14 +89,51 @@ export function calculateExportCropRect({
   stageSize,
   aspectRatio,
   boundaryBox,
+  pitchBounds,
+  pitchTransform,
 }: ExportCropRectOptions): ExportCropRect {
-  const pitchRect = calculatePitchRect(stageSize, aspectRatio);
+  const defaultPitchRect = calculatePitchRect(stageSize, aspectRatio);
+  let effectivePitchRect: ExportCropRect = {
+    x: defaultPitchRect.x,
+    y: defaultPitchRect.y,
+    width: defaultPitchRect.width,
+    height: defaultPitchRect.height,
+  };
+
+  if (pitchBounds) {
+    effectivePitchRect = {
+      x: pitchBounds.x,
+      y: pitchBounds.y,
+      width: pitchBounds.width,
+      height: pitchBounds.height,
+    };
+  } else if (pitchTransform) {
+    const transform = calculatePitchTransform(
+      defaultPitchRect,
+      pitchTransform.panX,
+      pitchTransform.panY,
+      pitchTransform.zoom,
+      pitchTransform.tilt,
+    );
+    effectivePitchRect = {
+      x: transform.x,
+      y: transform.y,
+      width: defaultPitchRect.width * transform.scaleX,
+      height: defaultPitchRect.height * transform.scaleY,
+    };
+  }
+
   const baseRect =
     boundaryBox?.fitTarget === 'canvas'
       ? { x: 0, y: 0, width: stageSize.width, height: stageSize.height }
-      : pitchRect;
+      : effectivePitchRect;
 
-  if (boundaryBox?.enabled && boundaryBox.width > 0 && boundaryBox.height > 0) {
+  if (
+    boundaryBox?.enabled &&
+    boundaryBox.visible &&
+    boundaryBox.width > 0 &&
+    boundaryBox.height > 0
+  ) {
     return {
       x: baseRect.x + (boundaryBox.x / 100) * baseRect.width,
       y: baseRect.y + (boundaryBox.y / 100) * baseRect.height,
@@ -102,10 +142,5 @@ export function calculateExportCropRect({
     };
   }
 
-  return {
-    x: pitchRect.x,
-    y: pitchRect.y,
-    width: pitchRect.width,
-    height: pitchRect.height,
-  };
+  return effectivePitchRect;
 }

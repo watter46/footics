@@ -69,6 +69,61 @@ const CornerHandle = React.memo(function CornerHandle({
   );
 });
 
+interface BoundaryBoxOutlineProps {
+  width: number;
+  height: number;
+  onPointerDown: (e: React.PointerEvent) => void;
+}
+
+const BoundaryBoxOutline = React.memo(function BoundaryBoxOutline({
+  width,
+  height,
+  onPointerDown,
+}: BoundaryBoxOutlineProps) {
+  return (
+    <svg
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width,
+        height,
+        overflow: 'visible',
+        pointerEvents: 'none',
+      }}
+    >
+      {/* Hit area for dragging whole box */}
+      <rect
+        x={0}
+        y={0}
+        width={width}
+        height={height}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={14}
+        style={{
+          pointerEvents: 'stroke',
+          cursor: 'move',
+          touchAction: 'none',
+        }}
+        onPointerDown={onPointerDown}
+      />
+      {/* Visible dashed boundary line */}
+      <rect
+        x={0}
+        y={0}
+        width={width}
+        height={height}
+        fill="none"
+        stroke="#38bdf8"
+        strokeWidth={1.5}
+        strokeDasharray="6 4"
+        style={{ pointerEvents: 'none' }}
+      />
+    </svg>
+  );
+});
+
 export const BoundaryBox = React.memo(function BoundaryBox({
   boundaryBox,
   stageSize,
@@ -120,7 +175,7 @@ export const BoundaryBox = React.memo(function BoundaryBox({
     onCommit: handleDragCommit,
   });
 
-  if (isExporting || !box.enabled) return null;
+  if (isExporting || !box.enabled || !box.visible) return null;
 
   const corners: { id: CornerId; x: number; y: number }[] = [
     { id: 'tl', x: 0, y: 0 },
@@ -150,46 +205,11 @@ export const BoundaryBox = React.memo(function BoundaryBox({
           pointerEvents: 'none',
         }}
       >
-        <svg
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: pxW,
-            height: pxH,
-            overflow: 'visible',
-            pointerEvents: 'none',
-          }}
-        >
-          {/* Hit area for dragging whole box */}
-          <rect
-            x={0}
-            y={0}
-            width={pxW}
-            height={pxH}
-            fill="none"
-            stroke="transparent"
-            strokeWidth={14}
-            style={{
-              pointerEvents: 'stroke',
-              cursor: 'move',
-              touchAction: 'none',
-            }}
-            onPointerDown={handleBoxPointerDown}
-          />
-          {/* Visible dashed boundary line */}
-          <rect
-            x={0}
-            y={0}
-            width={pxW}
-            height={pxH}
-            fill="none"
-            stroke="#38bdf8"
-            strokeWidth={1.5}
-            strokeDasharray="6 4"
-            style={{ pointerEvents: 'none' }}
-          />
-        </svg>
+        <BoundaryBoxOutline
+          width={pxW}
+          height={pxH}
+          onPointerDown={handleBoxPointerDown}
+        />
 
         {corners.map((c) => (
           <CornerHandle
