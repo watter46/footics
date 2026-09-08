@@ -6,6 +6,7 @@ import type {
 } from '@/lib/types/tactical-unified';
 import {
   createXBoundaryBox,
+  getDefaultBoundaryBoxForAspect,
   X_MEDIA_PRESETS,
 } from '@/lib/types/tactical-unified';
 import { computePitchFitBoundaryBox } from './boundary-box-helpers';
@@ -13,6 +14,9 @@ import { getSlide, recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 
 export interface PitchSlice {
+  isPitchBoundaryLinked: boolean;
+  togglePitchBoundaryLink: () => void;
+  centerPitchAndBoundary: (slideId?: string) => void;
   setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
   updateBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
   autoFitBoundaryBox: (
@@ -232,6 +236,37 @@ export const createPitchSlice: StateCreator<
   [],
   PitchSlice
 > = (set) => ({
+  isPitchBoundaryLinked: true,
+  togglePitchBoundaryLink: () =>
+    set((s) => ({
+      isPitchBoundaryLinked: !s.isPitchBoundaryLinked,
+    })),
+  centerPitchAndBoundary: (slideId?: string) =>
+    set((s) => {
+      const targetSlideId = slideId ?? s.activeSlideId;
+      const slide = getSlide(s.project, targetSlideId);
+      if (!slide) return s;
+      const defaultBox = getDefaultBoundaryBoxForAspect(
+        slide.aspectRatio ?? s.project.aspectRatio,
+      );
+      const resetTransform: PitchTransform = {
+        panX: 0,
+        panY: 0,
+        zoom: 1,
+        tilt: 0,
+        isLocked: slide.pitchTransform?.isLocked ?? true,
+      };
+      return {
+        ...recordHistory(s),
+        project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
+          ...sl,
+          pitchPosition: undefined,
+          pitchTransform: resetTransform,
+          boundaryBox: defaultBox,
+        })),
+        isDirty: true,
+      };
+    }),
   ...createPitchBoundaryActions(set),
   ...createPitchTransformActions(set),
 });

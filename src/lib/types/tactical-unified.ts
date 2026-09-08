@@ -541,7 +541,7 @@ export const PitchTransformSchema = z.object({
   panY: z.number().default(0),
   zoom: z.number().default(1),
   tilt: z.number().default(0),
-  isLocked: z.boolean().default(false),
+  isLocked: z.boolean().default(true),
 });
 export type PitchTransform = z.infer<typeof PitchTransformSchema>;
 
