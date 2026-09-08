@@ -30,6 +30,63 @@ const TicketSchema = z
   })
   .passthrough();
 
+const LAYER_EMOJIS = {
+  1: '🔴',
+  2: '🟡',
+  3: '🟢',
+  4: '🔵',
+  5: '🟣',
+  6: '🟠',
+  7: '🟤',
+  8: '⚫',
+  9: '⚪',
+};
+
+function getLayerEmoji(ticketId) {
+  const match = ticketId.match(/^L(\d+)/i);
+  if (match) {
+    const layerNum = parseInt(match[1], 10);
+    return LAYER_EMOJIS[layerNum] || '⚪';
+  }
+  return '📋';
+}
+
+function extractUxImpact(body) {
+  if (!body) return 'なし';
+  const lines = body.split('\n');
+  let inUxImpact = false;
+  const impactLines = [];
+
+  for (const line of lines) {
+    if (line.trim().startsWith('## UX Impact')) {
+      inUxImpact = true;
+      continue;
+    }
+    if (inUxImpact && line.trim().startsWith('## ')) {
+      break;
+    }
+    if (inUxImpact) {
+      const trimmed = line.trim();
+      // HTMLコメント行を除外
+      if (trimmed.startsWith('<!--') && trimmed.endsWith('-->')) {
+        continue;
+      }
+      if (trimmed.startsWith('<!--')) {
+        continue;
+      }
+      if (trimmed.endsWith('-->')) {
+        continue;
+      }
+      if (trimmed) {
+        impactLines.push(trimmed);
+      }
+    }
+  }
+
+  const result = impactLines.join(' ').replace(/<!--[\s\S]*?-->/g, '').trim();
+  return result || 'なし';
+}
+
 const tickets = [];
 
 for (const file of files) {
@@ -37,9 +94,11 @@ for (const file of files) {
   const content = fs.readFileSync(filePath, 'utf-8');
 
   let meta = {};
+  let body = '';
   try {
     const parsed = matter(content);
     meta = parsed.data;
+    body = parsed.content;
   } catch (err) {
     console.warn(
       `[WARN] Failed to parse frontmatter in ${file}: ${err.message}`,
@@ -68,6 +127,7 @@ for (const file of files) {
     depends_on: Array.isArray(validMeta.depends_on) ? validMeta.depends_on : [],
     model: validMeta.model || 'Gemini 3.8 Flash',
     effort: validMeta.effort || 'low',
+    uxImpact: extractUxImpact(body),
     mtime: stat.mtimeMs,
   });
 }
@@ -105,11 +165,6 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 
-// 完了チケットのID一覧
-const completedIds = new Set(
-  tickets.filter((t) => t.status === 'DONE').map((t) => t.id),
-);
-
 // レイヤー順・ID順でソート
 tickets.sort((a, b) => a.id.localeCompare(b.id));
 
@@ -121,34 +176,14 @@ const doneTickets = tickets.filter((t) => t.status === 'DONE');
 if (showTodo) {
   if (todoTickets.length > 0) {
     console.log(
-      `--- 未完了チケット (Pending Tasks: ${todoTickets.length}件) ---`,
+      `--- 未完了チケット (Pending Tasks: ${todoTickets.length}件) ---\n`,
     );
     for (const t of todoTickets) {
-      const isL1 = t.id.startsWith('L1');
-      const blocked =
-        Array.isArray(t.depends_on) &&
-        t.depends_on.some((dep) => !completedIds.has(dep));
-
-      let badge = '🟢';
-      let readyText = '即時着手可能';
-      if (
-        blocked ||
-        (!isL1 &&
-          t.depends_on.length > 0 &&
-          t.depends_on.some((dep) => !completedIds.has(dep)))
-      ) {
-        badge = '🟡';
-        readyText = `待機中 (依存: ${t.depends_on.join(', ')})`;
-      } else if (!isL1 && t.depends_on.length === 0) {
-        badge = '🟢';
-        readyText = '着手可能';
-      }
-
-      console.log(
-        `${badge} ${t.id.padEnd(16)} | [${t.status.padEnd(5)}] | ${t.title}`,
-      );
-      console.log(`   └─ 状態: ${readyText} | 推奨: ${t.model} (${t.effort})`);
-      console.log(`   └─ パス: .regista/tickets/${t.file}\n`);
+      const emoji = getLayerEmoji(t.id);
+      console.log(`[${emoji} ${t.id}]`);
+      console.log(`- **タスク名**: ${t.title}`);
+      console.log(`- **推奨モデル / Effort**: \`${t.model}\` / \`${t.effort}\``);
+      console.log(`- **実装後**: ${t.uxImpact}\n`);
     }
   } else {
     console.log('--- 未完了チケット (Pending Tasks) ---');
