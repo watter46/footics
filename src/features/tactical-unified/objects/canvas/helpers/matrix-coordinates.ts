@@ -1,15 +1,26 @@
 import { mat4, vec4 } from 'gl-matrix';
 
 export type CameraParams = {
-  tilt: number; // チルト角度（度数法, 例: 0〜60）
+  tilt?: number; // チルト角度（度数法, 例: 0〜60）。0または未指定時は2Dバイパス
   zoom: number; // ズーム倍率（例: 1.0 = 100%）
-  panX: number; // パン X（ピッチ正規化座標系、-1〜1）
-  panY: number; // パン Y（ピッチ正規化座標系、-1〜1）
+  panX: number; // パン X（px: Stage ピクセル空間でのオフセット）
+  panY: number; // パン Y（px: Stage ピクセル空間でのオフセット）
   stageWidth: number;
   stageHeight: number;
+  pitchWidth?: number; // ピッチ矩形の幅（px）
+  pitchHeight?: number; // ピッチ矩形の高さ（px）
+  pitchX?: number; // ピッチ矩形の左上 X（px）
+  pitchY?: number; // ピッチ矩形の左上 Y（px）
+  pitchRect?: {
+    width: number;
+    height: number;
+    x?: number;
+    y?: number;
+  };
   fov?: number; // 視野角（度数法, デフォルト 60）
   near?: number;
   far?: number;
+  clamp?: boolean; // ピッチ外領域を [0, 1] に clamp するか（デフォルト: false = 外挿）
 };
 
 export type ProjectedPoint = { x: number; y: number }; // 画面座標（px）
@@ -18,6 +29,63 @@ export type NormPoint = { x: number; y: number }; // ピッチ正規化座標（
 export const DEFAULT_FOV = 60;
 export const DEFAULT_NEAR = 0.1;
 export const DEFAULT_FAR = 1000.0;
+
+interface PitchGeometry {
+  pitchWidth: number;
+  pitchHeight: number;
+  cx: number;
+  cy: number;
+  scaleX: number;
+  scaleY: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+function resolvePitchGeometry(params: CameraParams): PitchGeometry {
+  const stageWidth = Math.max(1, params.stageWidth);
+  const stageHeight = Math.max(1, params.stageHeight);
+
+  const rect = params.pitchRect;
+  const hasCustomPitch =
+    params.pitchWidth !== undefined ||
+    params.pitchHeight !== undefined ||
+    rect !== undefined;
+
+  const pitchWidth = params.pitchWidth ?? rect?.width ?? stageHeight;
+  const pitchHeight = params.pitchHeight ?? rect?.height ?? stageHeight;
+
+  let cx = stageWidth / 2;
+  let cy = stageHeight / 2;
+
+  if (params.pitchX !== undefined && params.pitchWidth !== undefined) {
+    cx = params.pitchX + params.pitchWidth / 2;
+  } else if (rect?.x !== undefined && rect?.width !== undefined) {
+    cx = rect.x + rect.width / 2;
+  }
+
+  if (params.pitchY !== undefined && params.pitchHeight !== undefined) {
+    cy = params.pitchY + params.pitchHeight / 2;
+  } else if (rect?.y !== undefined && rect?.height !== undefined) {
+    cy = rect.y + rect.height / 2;
+  }
+
+  const offsetX = cx - stageWidth / 2;
+  const offsetY = cy - stageHeight / 2;
+
+  const scaleX = hasCustomPitch ? pitchWidth / stageHeight : 1.0;
+  const scaleY = hasCustomPitch ? pitchHeight / stageHeight : 1.0;
+
+  return {
+    pitchWidth,
+    pitchHeight,
+    cx,
+    cy,
+    scaleX,
+    scaleY,
+    offsetX,
+    offsetY,
+  };
+}
 
 /**
  * MVP行列を生成する（Model=ピッチ平面, View=カメラ, Projection=透視投影）
@@ -42,21 +110,30 @@ export function buildMVPMatrix(params: CameraParams): mat4 {
   const view = mat4.create();
   mat4.lookAt(view, [0, 0, distance], [0, 0, 0], [0, 1, 0]);
 
-  // 3. Model Matrix (Scale(zoom) -> RotateX(tilt) -> Translate(pan))
+  // 3. Model Matrix (Scale(zoom * aspect) -> RotateX(tilt) -> Translate(pan + offset))
+  const geo = resolvePitchGeometry(params);
   const model = mat4.create();
   mat4.identity(model);
 
-  // Translate (panX, panY)
-  // ピッチ正規化座標系で Y軸下向きを 3D空間の Y軸上向きに合わせるため -panY
-  mat4.translate(model, model, [params.panX, -params.panY, 0]);
+  // Translate (panX, panY in Stage px + offset of pitch center)
+  // Stage ピクセル空間でのオフセットをワールド座標系にマッピング (1 world unit = stageHeight px)
+  // ピッチ正規化座標系で Y軸下向きを 3D空間の Y軸上向きに合わせるため -Y
+  const tx = (params.panX + geo.offsetX) / stageHeight;
+  const ty = -(params.panY + geo.offsetY) / stageHeight;
+  mat4.translate(model, model, [tx, ty, 0]);
 
   // RotateX (tilt: チルト角度)
-  const tiltRad = (params.tilt * Math.PI) / 180;
+  const tilt = params.tilt ?? 0;
+  const tiltRad = (tilt * Math.PI) / 180;
   mat4.rotateX(model, model, -tiltRad);
 
-  // Scale (zoom)
+  // Scale (zoom & pitch dimensions)
   const safeZoom = Math.max(0.0001, params.zoom);
-  mat4.scale(model, model, [safeZoom, safeZoom, safeZoom]);
+  mat4.scale(model, model, [
+    safeZoom * geo.scaleX,
+    safeZoom * geo.scaleY,
+    safeZoom,
+  ]);
 
   // MVP = Projection * View * Model
   const mvp = mat4.create();
@@ -73,6 +150,20 @@ export function projectPitchToScreen(
   norm: NormPoint,
   params: CameraParams,
 ): ProjectedPoint {
+  const tilt = params.tilt ?? 0;
+  if (Math.abs(tilt) < 1e-5) {
+    // 2D 線形変換バイパス
+    const geo = resolvePitchGeometry(params);
+    const safeZoom = Math.max(0.0001, params.zoom);
+    const localX = (norm.x - 0.5) * geo.pitchWidth;
+    const localY = (norm.y - 0.5) * geo.pitchHeight;
+
+    const screenX = geo.cx + params.panX + localX * safeZoom;
+    const screenY = geo.cy + params.panY + localY * safeZoom;
+
+    return { x: screenX, y: screenY };
+  }
+
   const mvp = buildMVPMatrix(params);
 
   // ピッチ正規化座標 (0..1, 0..1) をモデル空間 (-0.5..0.5, 0.5..-0.5, 0) にマッピング
@@ -101,12 +192,36 @@ export function projectPitchToScreen(
 
 /**
  * 画面座標（px）→ ピッチ正規化座標（Raycasting / Unproject）
- * ピッチ平面（z=0）との交点を求める。ピッチ外は null を返す。
+ * ピッチ平面（z=0）との交点を求める。
+ * 地平線より上で交点がない場合は null を返す。
  */
 export function unprojectScreenToPitch(
   screen: ProjectedPoint,
   params: CameraParams,
 ): NormPoint | null {
+  const tilt = params.tilt ?? 0;
+  if (Math.abs(tilt) < 1e-5) {
+    // 2D 線形逆変換バイパス
+    const geo = resolvePitchGeometry(params);
+    const safeZoom = Math.max(0.0001, params.zoom);
+    if (geo.pitchWidth <= 0 || geo.pitchHeight <= 0) {
+      return null;
+    }
+
+    const localX = (screen.x - geo.cx - params.panX) / safeZoom;
+    const localY = (screen.y - geo.cy - params.panY) / safeZoom;
+
+    let normX = 0.5 + localX / geo.pitchWidth;
+    let normY = 0.5 + localY / geo.pitchHeight;
+
+    if (params.clamp) {
+      normX = Math.max(0, Math.min(1, normX));
+      normY = Math.max(0, Math.min(1, normY));
+    }
+
+    return { x: normX, y: normY };
+  }
+
   const mvp = buildMVPMatrix(params);
   const invMvp = mat4.create();
   if (!mat4.invert(invMvp, mvp)) {
@@ -150,17 +265,21 @@ export function unprojectScreenToPitch(
 
   // 直線 P(t) = Near + t * (Far - Near) と z=0 の交点
   const t = -pNearZ / dz;
+  if (t < 0) {
+    // 地平線より上（カメラの後方でしか交差しない）
+    return null;
+  }
 
   const modelX = pNearX + t * (pFarX - pNearX);
   const modelY = pNearY + t * (pFarY - pNearY);
 
   // モデル空間 (-0.5..0.5, 0.5..-0.5) をピッチ正規化座標 (0..1, 0..1) に逆変換
-  const normX = modelX + 0.5;
-  const normY = 0.5 - modelY;
+  let normX = modelX + 0.5;
+  let normY = 0.5 - modelY;
 
-  // ピッチ外判定 (0..1 の範囲外は null)
-  if (normX < 0 || normX > 1 || normY < 0 || normY > 1) {
-    return null;
+  if (params.clamp) {
+    normX = Math.max(0, Math.min(1, normX));
+    normY = Math.max(0, Math.min(1, normY));
   }
 
   return { x: normX, y: normY };
