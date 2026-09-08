@@ -82,3 +82,29 @@ GM/QAへの報告は、以下のJSON Schemaに準拠した形式でのみ行う�
   "diff_summary": "PlayerLayerでの過渡状態State更新を排除しRefベースに修正。"
 }
 ```
+
+## 3D射影変換・gl-matrix規約（MANDATORY）
+
+### 基本原則
+- **チルト（tilt）を伴う全ての座標変換は `unprojectScreenToPitch` を使用すること**（手動三角関数近似の禁止）
+- 2D平面のみ（tilt=0）の場合も、将来の拡張を考慮し `unprojectScreenToPitch` で統一することを推奨する
+- gl-matrix の `mat4`, `vec3`, `vec4` を直接インポートして使用する（ラッパー禁止）
+
+### 参照すべき純粋関数（Single Source of Truth）
+- `buildMVPMatrix(params: CameraParams): mat4` — MVP行列生成
+- `projectPitchToScreen(norm, params): ProjectedPoint` — ピッチ→画面変換
+- `unprojectScreenToPitch(screen, params): NormPoint | null` — 画面→ピッチ逆変換
+
+ファイル: `src/features/tactical-unified/objects/canvas/helpers/matrix-coordinates.ts`
+
+### 禁止事項
+- `screenToPitch`, `pitchToScreen`（`canvas-coordinates.ts`）をチルト環境で使用することを禁止
+- 手動の `Math.cos(tilt)` / `Math.sin(tilt)` による座標補正を禁止
+- 動画エクスポート時に画面と異なる行列パラメータを渡すことを禁止
+
+### CameraParams の取得方法
+```ts
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store'
+const { pitchTransform } = useTacticalUnifiedStore()
+// pitchTransform: { panX, panY, zoom, tilt, ... }
+```
