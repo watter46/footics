@@ -44,6 +44,7 @@ export function computePitchFitBoundaryBox(
       height:
         Math.round(DEFAULT_BOUNDARY_BOX_SCREENSHOT.height * zoom * 100) / 100,
       enabled: true,
+      visible: false,
       fitTarget: 'pitch',
     };
   }
@@ -54,6 +55,7 @@ export function computePitchFitBoundaryBox(
     width: Math.round(100 * zoom * 100) / 100,
     height: Math.round(100 * zoom * 100) / 100,
     enabled: true,
+    visible: false,
     fitTarget: 'pitch',
   };
 }

@@ -344,6 +344,7 @@ export const BoundaryBoxSchema = z.object({
   width: NormalizedCoordSchema,
   height: NormalizedCoordSchema,
   enabled: z.boolean().default(true),
+  visible: z.boolean().default(false).optional(),
   fitTarget: z.enum(['pitch', 'canvas', 'custom']).optional(),
 });
 export type BoundaryBox = z.infer<typeof BoundaryBoxSchema>;
@@ -355,6 +356,7 @@ export const DEFAULT_BOUNDARY_BOX_16_9: BoundaryBox = {
   width: 100,
   height: 100,
   enabled: true,
+  visible: false,
   fitTarget: 'pitch',
 };
 
@@ -365,6 +367,7 @@ export const DEFAULT_BOUNDARY_BOX_9_16: BoundaryBox = {
   width: 100,
   height: 100,
   enabled: true,
+  visible: false,
   fitTarget: 'pitch',
 };
 
@@ -375,6 +378,7 @@ export const DEFAULT_BOUNDARY_BOX_4_5: BoundaryBox = {
   width: 100,
   height: 100,
   enabled: true,
+  visible: false,
   fitTarget: 'pitch',
 };
 
@@ -385,6 +389,7 @@ export const DEFAULT_BOUNDARY_BOX_SCREENSHOT: BoundaryBox = {
   width: 96.0,
   height: 96.0,
   enabled: true,
+  visible: false,
   fitTarget: 'pitch',
 };
 
@@ -395,6 +400,7 @@ export const DEFAULT_BOUNDARY_BOX_FULL: BoundaryBox = {
   width: 100,
   height: 100,
   enabled: true,
+  visible: false,
   fitTarget: 'canvas',
 };
 
@@ -524,6 +530,7 @@ export function createXBoundaryBox(
     width: Math.max(0, Math.min(100, width)),
     height: Math.max(0, Math.min(100, height)),
     enabled: true,
+    visible: false,
     fitTarget: 'pitch',
   };
 }

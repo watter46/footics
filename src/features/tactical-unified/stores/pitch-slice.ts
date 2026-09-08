@@ -14,8 +14,6 @@ import { getSlide, recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 
 export interface PitchSlice {
-  isPitchBoundaryLinked: boolean;
-  togglePitchBoundaryLink: () => void;
   centerPitchAndBoundary: (slideId?: string) => void;
   setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
   updateBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
@@ -236,11 +234,6 @@ export const createPitchSlice: StateCreator<
   [],
   PitchSlice
 > = (set) => ({
-  isPitchBoundaryLinked: true,
-  togglePitchBoundaryLink: () =>
-    set((s) => ({
-      isPitchBoundaryLinked: !s.isPitchBoundaryLinked,
-    })),
   centerPitchAndBoundary: (slideId?: string) =>
     set((s) => {
       const targetSlideId = slideId ?? s.activeSlideId;
