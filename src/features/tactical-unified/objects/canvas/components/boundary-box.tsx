@@ -69,6 +69,7 @@ const CornerHandle = React.memo(function CornerHandle({
   );
 });
 
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: BoundaryBox overlay combines DOM/SVG styling, coordinate mapping, and drag handlers
 export const BoundaryBox = React.memo(function BoundaryBox({
   boundaryBox,
   stageSize,
