@@ -2,6 +2,7 @@ export {
   clampNorm,
   clampNormPoint,
   getPitchAndNormPos,
+  getStagePitchAndNormPos,
   normToPitch,
   normToPx,
   normToScreen,
@@ -10,8 +11,10 @@ export {
   type PitchTransformState,
   pitchToNorm,
   pitchToScreen,
+  pitchToStage,
   pxToNorm,
   screenToPitch,
+  stageToPitch,
 } from './canvas-coordinates';
 
 export {
@@ -49,3 +52,4 @@ export {
   createDrawnZone,
   type Point2D,
 } from './drawing-shape-factory';
+export * from './matrix-coordinates';
