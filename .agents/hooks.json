@@ -2,7 +2,7 @@
   "safety-guard": {
     "PreToolUse": [
       {
-        "matcher": "run_command",
+        "matcher": "run_command|manage_task",
         "hooks": [
           {
             "command": "node -e 'require(require(\"fs\").existsSync(\"./scripts/safety-guard.js\") ? \"./scripts/safety-guard.js\" : \"./.agents/scripts/safety-guard.js\")'"

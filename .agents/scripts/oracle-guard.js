@@ -66,9 +66,7 @@ try {
 
   // 例外許可パターン（エージェント設定ファイル、規約等）
   const ALLOWED_EXCEPTIONS = [
-    /\.agents\/scripts\//,
-    /\.agents\/skills\//,
-    /\.agents\/knowledge\//,
+    /\.agents\//,
     /AGENTS\.md$/,
     /ORGANIZATION\.md$/,
     /\.regista\//,
