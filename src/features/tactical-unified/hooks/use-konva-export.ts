@@ -50,6 +50,7 @@ export function useKonvaExport({
         stageSize: { width: stage.width(), height: stage.height() },
         aspectRatio: currentProject.aspectRatio,
         boundaryBox: activeSlide?.boundaryBox,
+        pitchTransform: activeSlide?.pitchTransform,
       });
 
       return stage.toDataURL({

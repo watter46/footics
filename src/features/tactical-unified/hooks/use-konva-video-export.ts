@@ -10,10 +10,7 @@ import type Konva from 'konva';
 import { useCallback, useRef, useState } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import {
-  type BoundaryCropInfo,
-  exportTacticalVideo,
-} from '@/lib/tactical/export/video-export-engine';
+import { exportTacticalVideo } from '@/lib/tactical/export/video-export-engine';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 import type {
   ExportProgress,
@@ -30,6 +27,125 @@ interface UseKonvaVideoExportOptions {
     stageHeight: number,
     synchronous?: boolean,
   ) => void;
+}
+
+type VideoExportTarget = Extract<ExportTarget, { format: 'mp4' | 'webm' }>;
+
+function extractTargetOptions(target: VideoExportTarget) {
+  const quality = target.format === 'mp4' ? target.quality : 'high';
+  const transparent = target.format === 'webm' ? target.transparent : false;
+  const bitrate =
+    target.format === 'mp4' && 'bitrateMbps' in target && target.bitrateMbps
+      ? Number.parseInt(target.bitrateMbps, 10) * 1_000_000
+      : undefined;
+  const h264Profile =
+    target.format === 'mp4' && 'h264Profile' in target
+      ? target.h264Profile
+      : undefined;
+  const keyFrameIntervalSec =
+    'keyFrameIntervalSec' in target && target.keyFrameIntervalSec
+      ? Number.parseInt(target.keyFrameIntervalSec, 10)
+      : 2;
+  const latencyMode =
+    'latencyMode' in target && target.latencyMode
+      ? target.latencyMode
+      : 'realtime';
+  const maxQueueSize =
+    'maxQueueSize' in target && target.maxQueueSize
+      ? Number.parseInt(target.maxQueueSize, 10)
+      : 60;
+  return {
+    quality,
+    transparent,
+    bitrate,
+    h264Profile,
+    keyFrameIntervalSec,
+    latencyMode,
+    maxQueueSize,
+  };
+}
+
+function validateVideoExportParams(
+  stage: Konva.Stage | null,
+  target: ExportTarget,
+  slidesCount: number,
+): { stage: Konva.Stage; videoTarget: VideoExportTarget } {
+  if (!stage) {
+    throw new Error('Canvas Stage is not available');
+  }
+  if (target.format !== 'mp4' && target.format !== 'webm') {
+    throw new Error(`Unsupported video format: ${target.format}`);
+  }
+  if (slidesCount === 0) {
+    throw new Error('No slides available to export');
+  }
+  return { stage, videoTarget: target };
+}
+
+interface ExecuteVideoExportParams {
+  target: VideoExportTarget;
+  currentSlides: import('@/lib/types/tactical-unified').Slide[];
+  activeSlideId: string | null;
+  stage: Konva.Stage;
+  nodesRegistry: CanvasNodesRegistry;
+  applyFrameToCanvas: UseKonvaVideoExportOptions['applyFrameToCanvas'];
+  onProgress: (p: ExportProgress) => void;
+  isCancelled: () => boolean;
+}
+
+async function executeVideoExport({
+  target,
+  currentSlides,
+  activeSlideId,
+  stage,
+  nodesRegistry,
+  applyFrameToCanvas,
+  onProgress,
+  isCancelled,
+}: ExecuteVideoExportParams): Promise<Blob> {
+  const activeSlide = currentSlides.find((s) => s.id === activeSlideId);
+  const boundaryBox = activeSlide?.boundaryBox ?? null;
+  const stageWidth = stage.width();
+  const stageHeight = stage.height();
+  const totalDurationMs = calculateUnifiedTotalDuration(currentSlides);
+  const fps = Number.parseInt(target.fps, 10) || 30;
+  const scale = target.scale ?? 2;
+
+  const targetOptions = extractTargetOptions(target);
+  const aspectRatio = useTacticalUnifiedStore.getState().project.aspectRatio;
+
+  return exportTacticalVideo({
+    format: target.format,
+    fps,
+    scale,
+    ...targetOptions,
+    totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 3000,
+    boundaryBox,
+    stageWidth,
+    stageHeight,
+    slides: currentSlides,
+    aspectRatio,
+    onRenderFrame: async (timeMs) => {
+      applyFrameToCanvas(timeMs, nodesRegistry, stageWidth, stageHeight, true);
+    },
+    onCaptureFrame: (cropInfo) =>
+      stage.toCanvas({
+        x: cropInfo.cropX,
+        y: cropInfo.cropY,
+        width: cropInfo.cropW,
+        height: cropInfo.cropH,
+        pixelRatio: scale,
+      }),
+    onSetBackgroundVisible: (visible) => {
+      const bgLayer = nodesRegistry.backgroundLayer;
+      if (bgLayer) {
+        bgLayer.visible(visible);
+        bgLayer.batchDraw();
+      }
+    },
+    onProgress,
+    checkCancelled: isCancelled,
+  });
 }
 
 export function useKonvaVideoExport({
@@ -52,130 +168,32 @@ export function useKonvaVideoExport({
       target: ExportTarget,
       onProgressCallback?: (p: ExportProgress) => void,
     ): Promise<Blob | null> => {
-      const stage = stageRef.current;
-      if (!stage) {
-        throw new Error('Canvas Stage is not available');
-      }
-
-      if (target.format !== 'mp4' && target.format !== 'webm') {
-        throw new Error(`Unsupported video format: ${target.format}`);
-      }
-
-      isCancelledRef.current = false;
       const currentSlides = useTacticalUnifiedStore.getState().project.slides;
-      if (currentSlides.length === 0) {
-        throw new Error('No slides available to export');
-      }
-
-      const activeSlide = currentSlides.find((s) => s.id === activeSlideId);
-      const boundaryBox = activeSlide?.boundaryBox ?? null;
-
-      const stageWidth = stage.width();
-      const stageHeight = stage.height();
-      const totalDurationMs = calculateUnifiedTotalDuration(currentSlides);
-
-      const fps = Number.parseInt(target.fps, 10) || 30;
-      const scale = target.scale ?? 2;
-
-      const handleProgress = (p: ExportProgress) => {
-        setVideoProgress(p);
-        onProgressCallback?.(p);
-      };
-
-      const handleRenderFrame = async (timeMs: number) => {
-        applyFrameToCanvas(
-          timeMs,
-          nodesRegistryRef.current,
-          stageWidth,
-          stageHeight,
-          true, // Synchronous draw for offline video frame capture fallback
-        );
-      };
-
-      const handleCaptureFrame = (
-        cropInfo: BoundaryCropInfo,
-      ): HTMLCanvasElement | null => {
-        return stage.toCanvas({
-          x: cropInfo.cropX,
-          y: cropInfo.cropY,
-          width: cropInfo.cropW,
-          height: cropInfo.cropH,
-          pixelRatio: scale,
-        });
-      };
-
-      const handleSetBackgroundVisible = (visible: boolean) => {
-        const bgLayer = nodesRegistryRef.current.backgroundLayer;
-        if (bgLayer) {
-          bgLayer.visible(visible);
-          bgLayer.batchDraw();
-        }
-      };
-
-      const aspectRatio =
-        useTacticalUnifiedStore.getState().project.aspectRatio;
-
-      const quality = target.format === 'mp4' ? target.quality : 'high';
-      const transparent = target.format === 'webm' ? target.transparent : false;
-      const bitrate =
-        target.format === 'mp4' && 'bitrateMbps' in target && target.bitrateMbps
-          ? Number.parseInt(target.bitrateMbps, 10) * 1_000_000
-          : undefined;
-      const h264Profile =
-        target.format === 'mp4' && 'h264Profile' in target
-          ? target.h264Profile
-          : undefined;
-      const keyFrameIntervalSec =
-        'keyFrameIntervalSec' in target && target.keyFrameIntervalSec
-          ? Number.parseInt(target.keyFrameIntervalSec, 10)
-          : 2;
-      const latencyMode =
-        'latencyMode' in target && target.latencyMode
-          ? target.latencyMode
-          : 'realtime';
-      const maxQueueSize =
-        'maxQueueSize' in target && target.maxQueueSize
-          ? Number.parseInt(target.maxQueueSize, 10)
-          : 60;
-
-      console.log(
-        `%c[Footics Export Hook] Triggered video export: ${target.format.toUpperCase()} (${fps}fps, scale=${scale}, bitrate=${bitrate ? `${bitrate / 1_000_000}Mbps` : 'auto'}, profile=${h264Profile ?? 'high'}, keyFrameGOP=${keyFrameIntervalSec}s, latencyMode=${latencyMode}, maxQueue=${maxQueueSize}, slides=${currentSlides.length}, duration=${totalDurationMs}ms)`,
-        'color: #0284c7; font-weight: bold;',
+      const { stage, videoTarget } = validateVideoExportParams(
+        stageRef.current,
+        target,
+        currentSlides.length,
       );
 
+      isCancelledRef.current = false;
+      const stageWidth = stage.width();
+      const stageHeight = stage.height();
+
       try {
-        const resultBlob = await exportTacticalVideo({
-          format: target.format,
-          fps,
-          scale,
-          quality,
-          bitrate,
-          h264Profile,
-          keyFrameIntervalSec,
-          latencyMode,
-          maxQueueSize,
-          transparent,
-          totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 3000,
-          boundaryBox,
-          stageWidth,
-          stageHeight,
-          slides: currentSlides,
-          aspectRatio,
-          onRenderFrame: handleRenderFrame,
-          onCaptureFrame: handleCaptureFrame,
-          onSetBackgroundVisible: handleSetBackgroundVisible,
-          onProgress: handleProgress,
-          checkCancelled: () => isCancelledRef.current,
+        return await executeVideoExport({
+          target: videoTarget,
+          currentSlides,
+          activeSlideId,
+          stage,
+          nodesRegistry: nodesRegistryRef.current,
+          applyFrameToCanvas,
+          onProgress: (p) => {
+            setVideoProgress(p);
+            onProgressCallback?.(p);
+          },
+          isCancelled: () => isCancelledRef.current,
         });
-
-        console.log(
-          `%c[Footics Export Hook] Export successfully finished! Blob size: ${(resultBlob.size / 1024 / 1024).toFixed(2)} MB`,
-          'color: #16a34a; font-weight: bold;',
-        );
-
-        return resultBlob;
       } finally {
-        // Reset stage state to Slide 0
         if (currentSlides.length > 0) {
           applyFrameToCanvas(
             0,

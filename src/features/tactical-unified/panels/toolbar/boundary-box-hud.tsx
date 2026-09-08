@@ -196,7 +196,12 @@ export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
     [box, canvasAspect],
   );
 
-  if (isExporting || !box?.enabled || stageSize.width === 0) {
+  if (
+    isExporting ||
+    !box?.enabled ||
+    box?.visible === false ||
+    stageSize.width === 0
+  ) {
     return null;
   }
 
@@ -248,11 +253,25 @@ export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
           currentTilt={currentTilt}
           onApplyRatio={(ratio) => {
             const newBox = createXBoundaryBox(ratio, canvasAspect);
-            setBoundaryBox(activeSlideId, newBox);
+            setBoundaryBox(activeSlideId, { ...newBox, visible: true });
           }}
-          onPitchFit={() => autoFitBoundaryBox(activeSlideId, pitchRect)}
+          onPitchFit={() => {
+            autoFitBoundaryBox(activeSlideId, pitchRect);
+            setBoundaryBox(activeSlideId, {
+              x: 0,
+              y: 0,
+              width: 100,
+              height: 100,
+              enabled: true,
+              visible: true,
+              fitTarget: 'pitch',
+            });
+          }}
           onCanvasFit={() =>
-            setBoundaryBox(activeSlideId, { ...DEFAULT_BOUNDARY_BOX_FULL })
+            setBoundaryBox(activeSlideId, {
+              ...DEFAULT_BOUNDARY_BOX_FULL,
+              visible: true,
+            })
           }
           updatePitchTransform={updatePitchTransform}
         />

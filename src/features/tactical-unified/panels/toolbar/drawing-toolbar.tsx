@@ -5,11 +5,19 @@
  * Floating & draggable drawing toolbar
  */
 
-import { Eraser, GripVertical, Lock, RotateCcw, Unlock } from 'lucide-react';
+import {
+  Crop,
+  Eraser,
+  GripVertical,
+  Lock,
+  RotateCcw,
+  Unlock,
+} from 'lucide-react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { PRIMARY_TOOLS } from './drawing-tool-config';
 import { useToolbarDrag } from './use-toolbar-drag';
 
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Toolbar coordinates multiple tool buttons and action handlers
 export function DrawingToolbar() {
   const activeTool = useTacticalUnifiedStore((s) => s.activeTool);
   const setActiveTool = useTacticalUnifiedStore((s) => s.setActiveTool);
@@ -25,6 +33,38 @@ export function DrawingToolbar() {
       s.project.slides.find((sl) => sl.id === s.activeSlideId)?.pitchTransform
         ?.isLocked ?? false,
   );
+  const boundaryBox = useTacticalUnifiedStore(
+    (s) =>
+      s.project.slides.find((sl) => sl.id === s.activeSlideId)?.boundaryBox,
+  );
+  const setBoundaryBox = useTacticalUnifiedStore((s) => s.setBoundaryBox);
+  const autoFitBoundaryBox = useTacticalUnifiedStore(
+    (s) => s.autoFitBoundaryBox,
+  );
+  const isBoundaryBoxVisible =
+    boundaryBox?.enabled && (boundaryBox?.visible ?? false);
+
+  const handleToggleBoundaryBox = () => {
+    if (isBoundaryBoxVisible) {
+      if (boundaryBox) {
+        setBoundaryBox(activeSlideId, {
+          ...boundaryBox,
+          visible: false,
+        });
+      }
+    } else {
+      autoFitBoundaryBox(activeSlideId);
+      setBoundaryBox(activeSlideId, {
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        enabled: true,
+        visible: true,
+        fitTarget: 'pitch',
+      });
+    }
+  };
 
   const { position, handlePointerDown } = useToolbarDrag();
 
@@ -144,6 +184,26 @@ export function DrawingToolbar() {
         ].join(' ')}
       >
         {isPitchLocked ? <Lock size={16} /> : <Unlock size={16} />}
+      </button>
+
+      {/* Boundary Box toggle */}
+      <button
+        type="button"
+        onClick={handleToggleBoundaryBox}
+        title={
+          isBoundaryBoxVisible
+            ? '境界線枠を非表示 (Hide Boundary Box - AutoFit エクスポート)'
+            : '境界線枠を表示 (Show Boundary Box - クロップ範囲指定)'
+        }
+        aria-label="Toggle Boundary Box"
+        className={[
+          'p-1.5 rounded-lg transition-all cursor-pointer shrink-0',
+          isBoundaryBoxVisible
+            ? 'bg-sky-600 text-white font-bold shadow-md shadow-sky-500/30 ring-1 ring-sky-300'
+            : 'text-white/60 hover:text-white hover:bg-white/10',
+        ].join(' ')}
+      >
+        <Crop size={16} />
       </button>
     </div>
   );

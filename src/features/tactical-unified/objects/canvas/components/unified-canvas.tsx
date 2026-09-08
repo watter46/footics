@@ -118,6 +118,16 @@ export function UnifiedCanvas() {
     [effectivePitchRect, panX, panY, zoom],
   );
 
+  const transformedPitchRect = useMemo(
+    () => ({
+      x: pitchTransformValues.x,
+      y: pitchTransformValues.y,
+      width: effectivePitchRect.width * pitchTransformValues.scaleX,
+      height: effectivePitchRect.height * pitchTransformValues.scaleY,
+    }),
+    [pitchTransformValues, effectivePitchRect],
+  );
+
   const {
     drawingState,
     selectionBox,
@@ -374,7 +384,7 @@ export function UnifiedCanvas() {
         <BoundaryBox
           boundaryBox={effectiveSlide.boundaryBox}
           stageSize={stageSize}
-          pitchRect={effectivePitchRect}
+          pitchRect={transformedPitchRect}
           isExporting={isExporting}
           onUpdate={(box) => updateBoundaryBox(activeSlideId, box)}
           onCommit={(box) => setBoundaryBox(activeSlideId, box)}
@@ -383,10 +393,13 @@ export function UnifiedCanvas() {
         <DrawingToolbar />
         <ContextHud
           stageSize={stageSize}
-          pitchRect={effectivePitchRect}
+          pitchRect={transformedPitchRect}
           nodesRegistryRef={nodesRegistryRef}
         />
-        <BoundaryBoxHud stageSize={stageSize} pitchRect={effectivePitchRect} />
+        <BoundaryBoxHud
+          stageSize={stageSize}
+          pitchRect={transformedPitchRect}
+        />
 
         <PitchInlineTextEditor
           editingText={editingText}
