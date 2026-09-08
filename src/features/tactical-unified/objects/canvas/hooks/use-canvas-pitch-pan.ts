@@ -40,10 +40,11 @@ export function useCanvasPitchPan({
   } | null>(null);
 
   const handlePointerDown = useCallback(
-    (pos: { x: number; y: number }, isBg: boolean) => {
+    (pos: { x: number; y: number }, isBg: boolean, isInsidePitch = true) => {
       const isSpace = isSpacePressedRef.current;
       const shouldPan =
-        isSpace || (activeTool === 'select' && !isPitchLocked && isBg);
+        isSpace ||
+        (activeTool === 'select' && !isPitchLocked && isBg && isInsidePitch);
       if (shouldPan) {
         const panX = pitchTransformRef.current.panX ?? 0;
         const panY = pitchTransformRef.current.panY ?? 0;
@@ -91,10 +92,14 @@ export function useCanvasPitchPan({
       panStateRef.current = null;
       setIsPanning(false);
       if (hasMoved) {
-        updatePitchTransform(activeSlideId, {
-          panX: pitchTransformRef.current.panX,
-          panY: pitchTransformRef.current.panY,
-        });
+        updatePitchTransform(
+          activeSlideId,
+          {
+            panX: pitchTransformRef.current.panX,
+            panY: pitchTransformRef.current.panY,
+          },
+          true,
+        );
       } else {
         clearSelection();
       }
