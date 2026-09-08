@@ -1,6 +1,15 @@
 export {
+  clampNorm,
+  clampNormPoint,
   getPitchAndNormPos,
+  normToPitch,
   normToPx,
+  normToScreen,
+  type PitchRectBounds,
+  type PitchRectSize,
+  type PitchTransformState,
+  pitchToNorm,
+  pitchToScreen,
   pxToNorm,
   screenToPitch,
 } from './canvas-coordinates';
