@@ -16,7 +16,6 @@ import { toggleSlideObjectLock } from './slide-lock-helpers';
 import {
   filterLockedSelectedObjects,
   resetSlideObjectsData,
-  resetSlideTacticsData,
 } from './slide-reset-helpers';
 import { getSlide, recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
@@ -52,7 +51,6 @@ export interface ProjectSlice {
   setAspectRatio: (ratio: AspectRatio) => void;
   swapTeamSides: (slideId?: string) => void;
   resetSlideObjects: (slideId?: string) => void;
-  resetTactics: (slideId?: string) => void;
   toggleObjectLock: (objectId: string, kind: SelectedObjectKind) => void;
 }
 
@@ -185,27 +183,6 @@ function createProjectConfigActions(set: SetState) {
             s.selectedObjects,
             getSlide(s.project, targetSlideId),
           ),
-          activeMarkerOptionTab: null,
-          isDirty: true,
-        };
-      }),
-
-    resetTactics: (slideId?: string) =>
-      set((s) => {
-        const targetSlideId = slideId ?? s.activeSlideId;
-        const defaultBox = getDefaultBoundaryBoxForAspect(
-          s.project.aspectRatio,
-        );
-        return {
-          ...recordHistory(s),
-          project: updateSlideInProject(s.project, targetSlideId, (sl) =>
-            resetSlideTacticsData(
-              sl,
-              defaultBox,
-              sl.aspectRatio ?? s.project.aspectRatio,
-            ),
-          ),
-          selectedObjects: [],
           activeMarkerOptionTab: null,
           isDirty: true,
         };
