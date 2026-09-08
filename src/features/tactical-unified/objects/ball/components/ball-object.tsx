@@ -18,6 +18,7 @@ import {
   selectPreviousSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
+import type { BallState, Slide } from '@/lib/types/tactical-unified';
 import { useBallDrag } from '../hooks/use-ball-drag';
 import { useBallImage } from '../hooks/use-ball-image';
 import type { BallObjectProps } from '../types';
@@ -25,9 +26,28 @@ import { BallGhostTrajectory } from './ball-ghost-trajectory';
 import { BallOnionskin } from './ball-onionskin';
 import { BallVisual } from './ball-visual';
 
-export const BallObject = React.memo(function BallObject({
-  ball,
+function getPrevBallInfo(
+  prevSlide: Slide | null | undefined,
+  activeSlideIndex: number,
+  ball: BallState,
+  stageSize: { width: number; height: number },
+  px: number,
+  py: number,
+) {
+  const prevBall = prevSlide?.ball;
+  const hasPrevBall =
+    activeSlideIndex >= 1 && Boolean(prevBall?.visible) && ball.visible;
+  const prevPxX = prevBall ? normToPx(prevBall.x, stageSize.width) : 0;
+  const prevPxY = prevBall ? normToPx(prevBall.y, stageSize.height) : 0;
+  const isBallMoved = prevBall
+    ? Math.hypot(px - prevPxX, py - prevPxY) >= 4
+    : false;
+  return { prevBall, hasPrevBall, prevPxX, prevPxY, isBallMoved };
+}
+
+function useBallObjectState({
   stageSize,
+  ball,
   nodesRegistryRef,
 }: BallObjectProps) {
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
@@ -42,12 +62,11 @@ export const BallObject = React.memo(function BallObject({
   );
 
   const ballImage = useBallImage();
-
   const ghostGroupRef = useRef<Konva.Group | null>(null);
   const ghostLineRef = useRef<Konva.Line | null>(null);
   const ballGroupRef = useRef<Konva.Group | null>(null);
 
-  const { handleDragStart, handleDragMove, handleDragEnd } = useBallDrag({
+  const drag = useBallDrag({
     stageSize,
     ghostGroupRef,
     ghostLineRef,
@@ -71,41 +90,13 @@ export const BallObject = React.memo(function BallObject({
     [updateBallTrajectory, activeSlideId],
   );
 
-  const handleClick = useCallback(
-    (e: KonvaEventObject<MouseEvent>) => {
+  const handleSelect = useCallback(
+    (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
       e.cancelBubble = true;
       const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
       selectObject({ id: 'ball', kind: 'ball' }, isShift);
     },
     [selectObject],
-  );
-
-  const handleTap = useCallback(
-    (e: KonvaEventObject<TouchEvent>) => {
-      e.cancelBubble = true;
-      selectObject({ id: 'ball', kind: 'ball' }, false);
-    },
-    [selectObject],
-  );
-
-  const dragBoundFunc = useCallback(
-    function (this: Konva.Node, pos: Konva.Vector2d) {
-      const parentPos = this.getParent()?.getAbsolutePosition() ?? {
-        x: 0,
-        y: 0,
-      };
-      return {
-        x: Math.max(
-          parentPos.x - stageSize.width,
-          Math.min(parentPos.x + stageSize.width * 2, pos.x),
-        ),
-        y: Math.max(
-          parentPos.y - stageSize.height,
-          Math.min(parentPos.y + stageSize.height * 2, pos.y),
-        ),
-      };
-    },
-    [stageSize.width, stageSize.height],
   );
 
   const setBallGroupRef = useCallback(
@@ -118,30 +109,65 @@ export const BallObject = React.memo(function BallObject({
     [nodesRegistryRef],
   );
 
+  const prevInfo = getPrevBallInfo(
+    prevSlide,
+    activeSlide?.index ?? 0,
+    ball,
+    stageSize,
+    px,
+    py,
+  );
+
+  return {
+    isSelected,
+    ballImage,
+    ghostGroupRef,
+    ghostLineRef,
+    drag,
+    radius,
+    px,
+    py,
+    handleUpdateTrajectory,
+    handleSelect,
+    setBallGroupRef,
+    prevInfo,
+  };
+}
+
+export const BallObject = React.memo(function BallObject(
+  props: BallObjectProps,
+) {
+  const { ball, stageSize } = props;
+  const state = useBallObjectState(props);
+
   if (!ball.visible) return null;
 
-  const prevBall = prevSlide?.ball;
-  const hasPrevBall =
-    (activeSlide?.index ?? 0) >= 1 &&
-    Boolean(prevBall?.visible) &&
-    ball.visible;
-  const prevPxX = prevBall ? normToPx(prevBall.x, stageSize.width) : 0;
-  const prevPxY = prevBall ? normToPx(prevBall.y, stageSize.height) : 0;
-  const isBallMoved = prevBall
-    ? Math.hypot(px - prevPxX, py - prevPxY) >= 4
-    : false;
+  const {
+    isSelected,
+    ballImage,
+    ghostGroupRef,
+    ghostLineRef,
+    drag,
+    radius,
+    px,
+    py,
+    handleUpdateTrajectory,
+    handleSelect,
+    setBallGroupRef,
+    prevInfo,
+  } = state;
 
   return (
     <>
       {/* ── ボール選択時のゴーストボール & 追跡矢印 & ベジェハンドル ── */}
       <BallGhostTrajectory
-        isSelected={isSelected}
-        hasPrevBall={hasPrevBall}
-        prevBall={prevBall}
+        isSelected={isSelected && !drag.isDragging}
+        hasPrevBall={prevInfo.hasPrevBall}
+        prevBall={prevInfo.prevBall}
         ball={ball}
-        isBallMoved={isBallMoved}
-        prevPxX={prevPxX}
-        prevPxY={prevPxY}
+        isBallMoved={prevInfo.isBallMoved}
+        prevPxX={prevInfo.prevPxX}
+        prevPxY={prevInfo.prevPxY}
         radius={radius}
         ballImage={ballImage}
         stageSize={stageSize}
@@ -160,17 +186,17 @@ export const BallObject = React.memo(function BallObject({
         x={px}
         y={py}
         draggable={!ball.locked}
-        dragBoundFunc={dragBoundFunc}
-        onClick={handleClick}
-        onTap={handleTap}
-        onDragStart={handleDragStart}
-        onDragMove={handleDragMove}
-        onDragEnd={handleDragEnd}
+        dragBoundFunc={drag.dragBoundFunc}
+        onClick={handleSelect}
+        onTap={handleSelect}
+        onDragStart={drag.handleDragStart}
+        onDragMove={drag.handleDragMove}
+        onDragEnd={drag.handleDragEnd}
       >
         <BallVisual
           radius={radius}
           ballImage={ballImage}
-          isSelected={isSelected}
+          isSelected={isSelected && !drag.isDragging}
         />
       </Group>
     </>
