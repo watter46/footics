@@ -193,6 +193,7 @@ export const BoundaryBox = React.memo(function BoundaryBox({
         width: stageSize.width,
         height: stageSize.height,
         pointerEvents: 'none',
+        zIndex: 20,
       }}
     >
       <div

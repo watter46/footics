@@ -11,22 +11,14 @@
  */
 
 import type Konva from 'konva';
-import {
-  type CSSProperties,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { Group, Layer, Rect, Stage } from 'react-konva';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Group, Layer, Stage } from 'react-konva';
 import { useKonvaExport } from '@/features/tactical-unified/hooks/use-konva-export';
 import { useKonvaVideoExport } from '@/features/tactical-unified/hooks/use-konva-video-export';
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
 import { BallObject } from '@/features/tactical-unified/objects/ball';
-import {
-  PitchBackground,
-  PitchInlineTextEditor,
-} from '@/features/tactical-unified/objects/pitch';
+import { PitchInlineTextEditor } from '@/features/tactical-unified/objects/pitch';
+import { PitchBackgroundDom } from '@/features/tactical-unified/objects/pitch/components/pitch-background-dom';
 import { PlayerLayer } from '@/features/tactical-unified/objects/player';
 import { ContextHud } from '@/features/tactical-unified/panels/hud';
 import {
@@ -219,203 +211,165 @@ export function UnifiedCanvas() {
             ? 'pointer'
             : 'crosshair';
 
-  // CSS 3D チルト: ピッチ中央基準で perspective + rotateX
-  const stageWrapperStyle: CSSProperties =
-    tilt > 0
-      ? {
-          perspective: '1200px',
-          transformStyle: 'preserve-3d',
-        }
-      : {};
-
-  const stageTiltStyle: CSSProperties =
-    tilt > 0
-      ? {
-          transformOrigin: '50% 50%',
-          transform: `rotateX(${tilt}deg)`,
-          transformStyle: 'preserve-3d',
-          transition: 'transform 0.12s ease-out',
-          width: '100%',
-          height: '100%',
-        }
-      : { width: '100%', height: '100%' };
-
   return (
     <div
       ref={containerRef}
       className="relative w-full h-full flex items-center justify-center bg-[#0a0a0a] overflow-hidden"
     >
-      {/* perspective コンテナ: BoundaryBox 等のオーバーレイはこの外側で正対固定 */}
-      <div className="relative w-full h-full" style={stageWrapperStyle}>
-        {/* チルト適用レイヤー: Konva Stage のみがここで傾く */}
-        <div style={stageTiltStyle}>
-          <Stage
-            ref={(node: Konva.Stage | null) => {
-              stageRef.current = node;
-              nodesRegistryRef.current.stage = node;
+      {/* DOM ピッチ背景: absolute z-0, CSS 3D tilt はこちらで処理 */}
+      <PitchBackgroundDom
+        width={stageSize.width}
+        height={stageSize.height}
+        tilt={tilt}
+        panX={panX}
+        panY={panY}
+        zoom={zoom}
+        aspectRatio={aspectRatio}
+        backgroundType={backgroundType}
+        backgroundImageUrl={backgroundImageUrl}
+        style={{ zIndex: 0 }}
+      />
+      {/* 正対 2D Konva Stage: CSS 3D なし, z-10 */}
+      <Stage
+        ref={(node: Konva.Stage | null) => {
+          stageRef.current = node;
+          nodesRegistryRef.current.stage = node;
+        }}
+        width={stageSize.width}
+        height={stageSize.height}
+        onMouseDown={handlePointerDown}
+        onMouseMove={handlePointerMove}
+        onMouseUp={handlePointerUp}
+        onTouchStart={handlePointerDown}
+        onTouchMove={handlePointerMove}
+        onTouchEnd={handlePointerUp}
+        onWheel={handleWheel}
+        style={{
+          cursor: cursorStyle,
+          position: 'absolute',
+          inset: 0,
+          zIndex: 10,
+        }}
+      >
+        {/* Layer 1: 背景レイヤー */}
+        <Layer
+          listening={false}
+          ref={(node) => {
+            nodesRegistryRef.current.backgroundLayer = node;
+          }}
+        />
+
+        {/* Layer 2: アノテーションレイヤー */}
+        <Layer
+          ref={(node) => {
+            nodesRegistryRef.current.annotationLayer = node;
+          }}
+        >
+          <Group
+            x={pitchTransformValues.x}
+            y={pitchTransformValues.y}
+            scaleX={pitchTransformValues.scaleX}
+            scaleY={pitchTransformValues.scaleY}
+            ref={(node) => {
+              pitchGroupsRef.current[1] = node;
             }}
-            width={stageSize.width}
-            height={stageSize.height}
-            onMouseDown={handlePointerDown}
-            onMouseMove={handlePointerMove}
-            onMouseUp={handlePointerUp}
-            onTouchStart={handlePointerDown}
-            onTouchMove={handlePointerMove}
-            onTouchEnd={handlePointerUp}
-            onWheel={handleWheel}
-            style={{ cursor: cursorStyle }}
           >
-            {/* Layer 1: 背景レイヤー */}
-            <Layer
-              listening={false}
-              ref={(node) => {
-                nodesRegistryRef.current.backgroundLayer = node;
-              }}
-            >
-              <Rect
-                x={0}
-                y={0}
-                width={stageSize.width}
-                height={stageSize.height}
-                fill="#0a0a0a"
-                listening={false}
-              />
-              <Group
-                x={pitchTransformValues.x}
-                y={pitchTransformValues.y}
-                scaleX={pitchTransformValues.scaleX}
-                scaleY={pitchTransformValues.scaleY}
-                ref={(node) => {
-                  pitchGroupsRef.current[0] = node;
-                }}
-              >
-                <PitchBackground
-                  width={effectivePitchRect.width}
-                  height={effectivePitchRect.height}
-                  aspectRatio={aspectRatio}
-                  backgroundType={backgroundType}
-                  backgroundImageUrl={backgroundImageUrl}
-                />
-              </Group>
-            </Layer>
+            <AnnotationLayer
+              slide={effectiveSlide}
+              stageSize={effectivePitchSize}
+              nodesRegistryRef={nodesRegistryRef}
+              activePolygonId={activePolygonId}
+              mousePreviewPos={mousePreviewPos}
+              editingTextId={editingTextId}
+              onStartEditText={(textId) => setEditingTextId(textId)}
+            />
+          </Group>
+        </Layer>
 
-            {/* Layer 2: アノテーションレイヤー */}
-            <Layer
-              ref={(node) => {
-                nodesRegistryRef.current.annotationLayer = node;
-              }}
-            >
-              <Group
-                x={pitchTransformValues.x}
-                y={pitchTransformValues.y}
-                scaleX={pitchTransformValues.scaleX}
-                scaleY={pitchTransformValues.scaleY}
-                ref={(node) => {
-                  pitchGroupsRef.current[1] = node;
-                }}
-              >
-                <AnnotationLayer
-                  slide={effectiveSlide}
-                  stageSize={effectivePitchSize}
-                  nodesRegistryRef={nodesRegistryRef}
-                  activePolygonId={activePolygonId}
-                  mousePreviewPos={mousePreviewPos}
-                  editingTextId={editingTextId}
-                  onStartEditText={(textId) => setEditingTextId(textId)}
-                />
-              </Group>
-            </Layer>
-
-            {/* Layer 3: 選手 + ボールレイヤー */}
-            <Layer
-              ref={(node) => {
-                nodesRegistryRef.current.playerLayer = node;
-                nodesRegistryRef.current.ballLayer = node;
-              }}
-            >
-              <Group
-                x={pitchTransformValues.x}
-                y={pitchTransformValues.y}
-                scaleX={pitchTransformValues.scaleX}
-                scaleY={pitchTransformValues.scaleY}
-                ref={(node) => {
-                  pitchGroupsRef.current[2] = node;
-                }}
-              >
-                <PlayerLayer
-                  slide={effectiveSlide}
-                  stageSize={effectivePitchSize}
-                  nodesRegistryRef={nodesRegistryRef}
-                />
-                <BallObject
-                  ball={effectiveSlide.ball}
-                  stageSize={effectivePitchSize}
-                  nodesRegistryRef={nodesRegistryRef}
-                />
-              </Group>
-            </Layer>
-
-            {/* Layer 4: UI & プレビューレイヤー (チルトに追従) */}
-            <Layer>
-              <Group
-                x={pitchTransformValues.x}
-                y={pitchTransformValues.y}
-                scaleX={pitchTransformValues.scaleX}
-                scaleY={pitchTransformValues.scaleY}
-                ref={(node) => {
-                  pitchGroupsRef.current[3] = node;
-                }}
-              >
-                <DrawingPreviewLayer
-                  drawingState={drawingState}
-                  selectionBox={null}
-                />
-              </Group>
-              <DrawingPreviewLayer
-                drawingState={null}
-                selectionBox={selectionBox}
-              />
-            </Layer>
-          </Stage>
-        </div>
-        {/* end stageTiltStyle */}
-
-        {/* BoundaryBox: チルト外側・正対固定 DOM/SVG オーバーレイ */}
-        <BoundaryBox
-          boundaryBox={effectiveSlide.boundaryBox}
-          stageSize={stageSize}
-          pitchRect={transformedPitchRect}
-          isExporting={isExporting}
-          onUpdate={(box) => updateBoundaryBox(activeSlideId, box)}
-          onCommit={(box) => setBoundaryBox(activeSlideId, box)}
-        />
-
-        <DrawingToolbar />
-        <ContextHud
-          stageSize={stageSize}
-          pitchRect={transformedPitchRect}
-          nodesRegistryRef={nodesRegistryRef}
-        />
-        <BoundaryBoxHud
-          stageSize={stageSize}
-          pitchRect={transformedPitchRect}
-        />
-
-        <PitchInlineTextEditor
-          editingText={editingText}
-          stageSize={stageSize}
-          pitchRect={effectivePitchRect}
-          pitchTransform={pitchTransform}
-          onSave={(textId: string, content: string) => {
-            updateText(activeSlideId, textId, { content });
+        {/* Layer 3: 選手 + ボールレイヤー */}
+        <Layer
+          ref={(node) => {
+            nodesRegistryRef.current.playerLayer = node;
+            nodesRegistryRef.current.ballLayer = node;
           }}
-          onRemove={(textId: string) => {
-            removeText(activeSlideId, textId);
-            clearSelection();
-          }}
-          onClose={() => setEditingTextId(null)}
-        />
-      </div>
+        >
+          <Group
+            x={pitchTransformValues.x}
+            y={pitchTransformValues.y}
+            scaleX={pitchTransformValues.scaleX}
+            scaleY={pitchTransformValues.scaleY}
+            ref={(node) => {
+              pitchGroupsRef.current[2] = node;
+            }}
+          >
+            <PlayerLayer
+              slide={effectiveSlide}
+              stageSize={effectivePitchSize}
+              nodesRegistryRef={nodesRegistryRef}
+            />
+            <BallObject
+              ball={effectiveSlide.ball}
+              stageSize={effectivePitchSize}
+              nodesRegistryRef={nodesRegistryRef}
+            />
+          </Group>
+        </Layer>
+
+        {/* Layer 4: UI & プレビューレイヤー (チルトに追従) */}
+        <Layer>
+          <Group
+            x={pitchTransformValues.x}
+            y={pitchTransformValues.y}
+            scaleX={pitchTransformValues.scaleX}
+            scaleY={pitchTransformValues.scaleY}
+            ref={(node) => {
+              pitchGroupsRef.current[3] = node;
+            }}
+          >
+            <DrawingPreviewLayer
+              drawingState={drawingState}
+              selectionBox={null}
+            />
+          </Group>
+          <DrawingPreviewLayer
+            drawingState={null}
+            selectionBox={selectionBox}
+          />
+        </Layer>
+      </Stage>
+
+      {/* BoundaryBox: 正対固定 DOM/SVG オーバーレイ */}
+      <BoundaryBox
+        boundaryBox={effectiveSlide.boundaryBox}
+        stageSize={stageSize}
+        pitchRect={transformedPitchRect}
+        isExporting={isExporting}
+        onUpdate={(box) => updateBoundaryBox(activeSlideId, box)}
+        onCommit={(box) => setBoundaryBox(activeSlideId, box)}
+      />
+
+      <DrawingToolbar />
+      <ContextHud
+        stageSize={stageSize}
+        pitchRect={transformedPitchRect}
+        nodesRegistryRef={nodesRegistryRef}
+      />
+      <BoundaryBoxHud stageSize={stageSize} pitchRect={transformedPitchRect} />
+
+      <PitchInlineTextEditor
+        editingText={editingText}
+        stageSize={stageSize}
+        pitchRect={effectivePitchRect}
+        pitchTransform={pitchTransform}
+        onSave={(textId: string, content: string) => {
+          updateText(activeSlideId, textId, { content });
+        }}
+        onRemove={(textId: string) => {
+          removeText(activeSlideId, textId);
+          clearSelection();
+        }}
+        onClose={() => setEditingTextId(null)}
+      />
     </div>
   );
 }
