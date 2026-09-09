@@ -26,6 +26,7 @@ export interface PitchBackgroundDomProps {
   marginPercent?: number;
   grass?: boolean;
   className?: string;
+  style?: CSSProperties;
 }
 
 export function PitchBackgroundDom({
@@ -42,6 +43,7 @@ export function PitchBackgroundDom({
   marginPercent,
   grass = true,
   className,
+  style,
 }: PitchBackgroundDomProps) {
   const { pitchImg, bgImg } = usePitchImage({
     aspectRatio,
@@ -61,8 +63,9 @@ export function PitchBackgroundDom({
       pointerEvents: 'none',
       backgroundColor: '#020617',
       perspective: tilt !== 0 && perspective ? `${perspective}px` : undefined,
+      ...style,
     };
-  }, [width, height, tilt, perspective]);
+  }, [width, height, tilt, perspective, style]);
 
   const transformStyle: CSSProperties = useMemo(() => {
     const transform =
