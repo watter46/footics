@@ -9,41 +9,19 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useCallback, useRef } from 'react';
 import { Group } from 'react-konva';
-import {
-  normToPx,
-  useNodePositionTransition,
-} from '@/features/tactical-unified/objects/canvas';
+import { normToPx } from '@/features/tactical-unified/objects/canvas';
+import { useNodePositionTransition } from '@/features/tactical-unified/objects/canvas/hooks/use-node-position-transition';
 import {
   selectActiveSlide,
   selectPreviousSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
-import type { BallState, Slide } from '@/lib/types/tactical-unified';
 import { useBallDrag } from '../hooks/use-ball-drag';
 import { useBallImage } from '../hooks/use-ball-image';
 import type { BallObjectProps } from '../types';
 import { BallGhostTrajectory } from './ball-ghost-trajectory';
 import { BallOnionskin } from './ball-onionskin';
 import { BallVisual } from './ball-visual';
-
-function getPrevBallInfo(
-  prevSlide: Slide | null | undefined,
-  activeSlideIndex: number,
-  ball: BallState,
-  stageSize: { width: number; height: number },
-  px: number,
-  py: number,
-) {
-  const prevBall = prevSlide?.ball;
-  const hasPrevBall =
-    activeSlideIndex >= 1 && Boolean(prevBall?.visible) && ball.visible;
-  const prevPxX = prevBall ? normToPx(prevBall.x, stageSize.width) : 0;
-  const prevPxY = prevBall ? normToPx(prevBall.y, stageSize.height) : 0;
-  const isBallMoved = prevBall
-    ? Math.hypot(px - prevPxX, py - prevPxY) >= 4
-    : false;
-  return { prevBall, hasPrevBall, prevPxX, prevPxY, isBallMoved };
-}
 
 function useBallObjectState({
   stageSize,
@@ -109,14 +87,16 @@ function useBallObjectState({
     [nodesRegistryRef],
   );
 
-  const prevInfo = getPrevBallInfo(
-    prevSlide,
-    activeSlide?.index ?? 0,
-    ball,
-    stageSize,
-    px,
-    py,
-  );
+  const prevBall = prevSlide?.ball;
+  const hasPrevBall =
+    (activeSlide?.index ?? 0) >= 1 &&
+    Boolean(prevBall?.visible) &&
+    ball.visible;
+  const prevPxX = prevBall ? normToPx(prevBall.x, stageSize.width) : 0;
+  const prevPxY = prevBall ? normToPx(prevBall.y, stageSize.height) : 0;
+  const isBallMoved = prevBall
+    ? Math.hypot(px - prevPxX, py - prevPxY) >= 4
+    : false;
 
   return {
     isSelected,
@@ -130,7 +110,7 @@ function useBallObjectState({
     handleUpdateTrajectory,
     handleSelect,
     setBallGroupRef,
-    prevInfo,
+    prevInfo: { prevBall, hasPrevBall, prevPxX, prevPxY, isBallMoved },
   };
 }
 

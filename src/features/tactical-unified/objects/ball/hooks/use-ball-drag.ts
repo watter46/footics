@@ -4,74 +4,16 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { useCallback, useRef, useState } from 'react';
-import { normToPx } from '@/features/tactical-unified/objects/canvas';
 import {
-  type CameraParams,
-  type NormPoint,
-  unprojectScreenToPitch,
-} from '@/features/tactical-unified/objects/canvas/helpers/matrix-coordinates';
+  clampNorm,
+  normToPx,
+  pxToNorm,
+} from '@/features/tactical-unified/objects/canvas';
 import {
-  selectActiveSlide,
   selectPreviousSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
-import type { PitchTransform } from '@/lib/types/tactical-unified';
 import { hideGhostGroup, setupGhostGroup } from './ball-drag-helper';
-
-function getDragPointerClientPos(
-  e: KonvaEventObject<DragEvent>,
-): { x: number; y: number } | null {
-  const evt = e.evt;
-  if (!evt || typeof evt !== 'object') return null;
-
-  if ('clientX' in evt && typeof (evt as MouseEvent).clientX === 'number') {
-    return {
-      x: (evt as MouseEvent).clientX,
-      y: (evt as MouseEvent).clientY,
-    };
-  }
-  if (
-    'touches' in evt &&
-    (evt as unknown as TouchEvent).touches &&
-    (evt as unknown as TouchEvent).touches.length > 0
-  ) {
-    const touch = (evt as unknown as TouchEvent).touches[0];
-    return { x: touch.clientX, y: touch.clientY };
-  }
-  return null;
-}
-
-function resolveBallUnprojectPos(
-  e: KonvaEventObject<DragEvent>,
-  pitchTransform: PitchTransform | undefined,
-  stageSize: { width: number; height: number },
-): NormPoint | null {
-  const node = e.currentTarget as Konva.Group;
-  const stage = node.getStage();
-  const containerEl = stage?.container();
-  if (!containerEl) return null;
-
-  const clientPos = getDragPointerClientPos(e);
-  if (!clientPos) return null;
-
-  const rect = containerEl.getBoundingClientRect();
-  const screenX = clientPos.x - rect.left;
-  const screenY = clientPos.y - rect.top;
-
-  const cameraParams: CameraParams = {
-    tilt: pitchTransform?.tilt ?? 0,
-    zoom: pitchTransform?.zoom ?? 1,
-    panX: pitchTransform?.panX ?? 0,
-    panY: pitchTransform?.panY ?? 0,
-    stageWidth: stageSize.width,
-    stageHeight: stageSize.height,
-    pitchWidth: stageSize.width,
-    pitchHeight: stageSize.height,
-    pitchRect: { x: 0, y: 0, width: stageSize.width, height: stageSize.height },
-  };
-
-  return unprojectScreenToPitch({ x: screenX, y: screenY }, cameraParams);
-}
 
 function computeFallbackNormPos(
   node: Konva.Group,
@@ -86,8 +28,8 @@ function computeFallbackNormPos(
     Math.min(stageSize.height * 2, node.y()),
   );
   return {
-    x: (clampedPxX / stageSize.width) * 100,
-    y: (clampedPxY / stageSize.height) * 100,
+    x: clampNorm(pxToNorm(clampedPxX, stageSize.width), -100, 200),
+    y: clampNorm(pxToNorm(clampedPxY, stageSize.height), -100, 200),
   };
 }
 
@@ -108,26 +50,6 @@ function setupBallGhostOnDragStart(
   return null;
 }
 
-function updateBallDragMovePosition(
-  node: Konva.Group,
-  e: KonvaEventObject<DragEvent>,
-  pitchTransform: PitchTransform | undefined,
-  stageSize: { width: number; height: number },
-) {
-  const tilt = pitchTransform?.tilt ?? 0;
-  const is3D = Math.abs(tilt) >= 1e-5;
-
-  if (is3D) {
-    const normPoint = resolveBallUnprojectPos(e, pitchTransform, stageSize);
-    if (normPoint) {
-      node.position({
-        x: normPoint.x * stageSize.width,
-        y: normPoint.y * stageSize.height,
-      });
-    }
-  }
-}
-
 function updateBallGhostLine(
   ghostLine: Konva.Line | null,
   prevBallPx: { x: number; y: number } | null,
@@ -137,24 +59,6 @@ function updateBallGhostLine(
     ghostLine.points([prevBallPx.x, prevBallPx.y, node.x(), node.y()]);
     node.getLayer()?.batchDraw();
   }
-}
-
-function resolveBallFinalNormPos(
-  node: Konva.Group,
-  e: KonvaEventObject<DragEvent>,
-  pitchTransform: PitchTransform | undefined,
-  stageSize: { width: number; height: number },
-): { x: number; y: number } {
-  const tilt = pitchTransform?.tilt ?? 0;
-  const is3D = Math.abs(tilt) >= 1e-5;
-
-  if (is3D) {
-    const normPoint = resolveBallUnprojectPos(e, pitchTransform, stageSize);
-    return normPoint
-      ? { x: normPoint.x * 100, y: normPoint.y * 100 }
-      : computeFallbackNormPos(node, stageSize);
-  }
-  return computeFallbackNormPos(node, stageSize);
 }
 
 interface UseBallDragProps {
@@ -169,7 +73,6 @@ export function useBallDrag({
   ghostLineRef,
 }: UseBallDragProps) {
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
   const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
   const setBallPosition = useTacticalUnifiedStore((s) => s.setBallPosition);
 
@@ -199,22 +102,28 @@ export function useBallDrag({
   const handleDragMove = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
       const node = e.currentTarget as Konva.Group;
-      updateBallDragMovePosition(
-        node,
-        e,
-        activeSlide?.pitchTransform,
-        stageSize,
-      );
       updateBallGhostLine(ghostLineRef.current, prevBallPxRef.current, node);
     },
-    [ghostLineRef, activeSlide?.pitchTransform, stageSize],
+    [ghostLineRef],
   );
 
   const dragBoundFunc = useCallback(
-    (pos: { x: number; y: number }) => ({
-      x: Math.max(-stageSize.width, Math.min(stageSize.width * 2, pos.x)),
-      y: Math.max(-stageSize.height, Math.min(stageSize.height * 2, pos.y)),
-    }),
+    function (this: Konva.Node, pos: Konva.Vector2d) {
+      const parentPos = this.getParent()?.getAbsolutePosition() ?? {
+        x: 0,
+        y: 0,
+      };
+      return {
+        x: Math.max(
+          parentPos.x - stageSize.width,
+          Math.min(parentPos.x + stageSize.width * 2, pos.x),
+        ),
+        y: Math.max(
+          parentPos.y - stageSize.height,
+          Math.min(parentPos.y + stageSize.height * 2, pos.y),
+        ),
+      };
+    },
     [stageSize.width, stageSize.height],
   );
 
@@ -229,22 +138,10 @@ export function useBallDrag({
       hideGhostGroup(ghostGroupRef.current);
       prevBallPxRef.current = null;
 
-      const finalPos = resolveBallFinalNormPos(
-        node,
-        e,
-        activeSlide?.pitchTransform,
-        stageSize,
-      );
-
+      const finalPos = computeFallbackNormPos(node, stageSize);
       setBallPosition(activeSlideId, finalPos.x, finalPos.y);
     },
-    [
-      activeSlideId,
-      setBallPosition,
-      stageSize,
-      ghostGroupRef,
-      activeSlide?.pitchTransform,
-    ],
+    [activeSlideId, setBallPosition, stageSize, ghostGroupRef],
   );
 
   return {
