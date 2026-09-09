@@ -5,24 +5,36 @@
  * Orchestrates player markers, ghost trajectories, onionskins, and attached objects follow-up.
  */
 
+import type { PitchRectBounds } from '@/features/tactical-unified/objects/canvas/helpers/canvas-coordinates';
 import {
   selectPreviousSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { SelectedObjectKind } from '@/features/tactical-unified/stores/tool-slice';
 import { usePlayerLayerDrag } from '../hooks/use-player-layer-drag';
-import type { PlayerLayerProps } from '../types';
+import type { PlayerLayerProps as BasePlayerLayerProps } from '../types';
 import { PlayerConnectLines } from './player-connect-lines';
 import { PlayerGhostTrajectory } from './player-ghost-trajectory';
 import { PlayerMarker } from './player-marker';
 import { PlayerOnionskin } from './player-onionskin';
 
-export type { PlayerLayerProps };
+export interface PlayerLayerProps extends BasePlayerLayerProps {
+  tilt?: number;
+  panX?: number;
+  panY?: number;
+  zoom?: number;
+  pitchRect?: PitchRectBounds;
+}
 
 export function PlayerLayer({
   slide,
   stageSize,
   nodesRegistryRef,
+  tilt,
+  panX,
+  panY,
+  zoom,
+  pitchRect,
 }: PlayerLayerProps) {
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
   const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
@@ -163,6 +175,11 @@ export function PlayerLayer({
               player={player}
               slide={slide}
               stageSize={stageSize}
+              pitchRect={pitchRect}
+              panX={panX}
+              panY={panY}
+              zoom={zoom}
+              tilt={tilt}
               isSelected={isSelected || isConnectingSource}
               isVisionConeSelected={isVisionConeSelected}
               isFocusSelected={isFocusSelected}
