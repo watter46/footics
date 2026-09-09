@@ -5,13 +5,15 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useCallback, useRef } from 'react';
 import { Circle, Group } from 'react-konva';
 import {
-  normToPx,
-  useNodePositionTransition,
-} from '@/features/tactical-unified/objects/canvas';
+  DEFAULT_PITCH_PERSPECTIVE,
+  normToScreen,
+  type PitchRectBounds,
+} from '@/features/tactical-unified/objects/canvas/helpers/canvas-coordinates';
+import { useNodePositionTransition } from '@/features/tactical-unified/objects/canvas/hooks/use-node-position-transition';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import { usePlayerPhoto } from '../hooks/use-player-photo';
-import type { PlayerMarkerProps } from '../types';
+import type { PlayerMarkerProps as BasePlayerMarkerProps } from '../types';
 import { PlayerBadge } from './player-badge';
 import { PlayerFocusSpotlight } from './player-focus-spotlight';
 import { PlayerMarkerCircle } from './player-marker-circle';
@@ -19,9 +21,24 @@ import { PlayerMarkerLabel } from './player-marker-label';
 import { PlayerMarkerRing } from './player-marker-ring';
 import { PlayerVisionCone } from './player-vision-cone';
 
+export interface PlayerMarkerProps extends BasePlayerMarkerProps {
+  pitchRect?: PitchRectBounds;
+  panX?: number;
+  panY?: number;
+  zoom?: number;
+  tilt?: number;
+  perspective?: number;
+}
+
 export const PlayerMarker = React.memo(function PlayerMarker({
   player,
   stageSize,
+  pitchRect,
+  panX = 0,
+  panY = 0,
+  zoom = 1,
+  tilt = 0,
+  perspective = DEFAULT_PITCH_PERSPECTIVE,
   isSelected,
   isVisionConeSelected,
   isFocusSelected,
@@ -45,8 +62,21 @@ export const PlayerMarker = React.memo(function PlayerMarker({
   const baseDim = Math.min(width, height);
   const sizeScale = player.style.sizeScale ?? 1.0;
   const radius = baseDim * 0.032 * sizeScale;
-  const pxX = normToPx(player.x, width);
-  const pxY = normToPx(player.y, height);
+  const effectivePitchRect: PitchRectBounds = pitchRect ?? {
+    x: 0,
+    y: 0,
+    width,
+    height,
+  };
+  const { x: pxX, y: pxY } = normToScreen(
+    { x: player.x, y: player.y },
+    effectivePitchRect,
+    panX,
+    panY,
+    zoom,
+    tilt,
+    perspective ?? DEFAULT_PITCH_PERSPECTIVE,
+  );
   const displayName = player.name ? getLastName(player.name) : '';
   const labelScale = player.style.labelSizeScale ?? 1.0;
   const numScale = player.style.numberSizeScale ?? 1.0;
