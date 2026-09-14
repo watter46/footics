@@ -5,7 +5,7 @@
         "matcher": "run_command|manage_task",
         "hooks": [
           {
-            "command": "node -e 'require(require(\"fs\").existsSync(\"./scripts/safety-guard.js\") ? \"./scripts/safety-guard.js\" : \"./.agents/scripts/safety-guard.js\")'"
+            "command": "node -e 'require(require(\"fs\").existsSync(\"./guards/safety-guard.js\") ? \"./guards/safety-guard.js\" : \"./.agents/guards/safety-guard.js\")'"
           }
         ]
       }
@@ -17,7 +17,7 @@
         "matcher": "view_file|grep_search|write_to_file|replace_file_content",
         "hooks": [
           {
-            "command": "node -e 'require(require(\"fs\").existsSync(\"./scripts/oracle-guard.js\") ? \"./scripts/oracle-guard.js\" : \"./.agents/scripts/oracle-guard.js\")'"
+            "command": "node -e 'require(require(\"fs\").existsSync(\"./guards/oracle-guard.js\") ? \"./guards/oracle-guard.js\" : \"./.agents/guards/oracle-guard.js\")'"
           }
         ]
       }
@@ -29,7 +29,7 @@
         "matcher": "write_to_file|replace_file_content",
         "hooks": [
           {
-            "command": "node -e 'require(require(\"fs\").existsSync(\"./scripts/auto-format.js\") ? \"./scripts/auto-format.js\" : \"./.agents/scripts/auto-format.js\")'"
+            "command": "node -e 'require(require(\"fs\").existsSync(\"./guards/auto-format.js\") ? \"./guards/auto-format.js\" : \"./.agents/guards/auto-format.js\")'"
           }
         ]
       }
@@ -38,7 +38,7 @@
   "verify-gate": {
     "Stop": [
       {
-        "command": "node -e 'require(require(\"fs\").existsSync(\"./scripts/verify-gate.js\") ? \"./scripts/verify-gate.js\" : \"./.agents/scripts/verify-gate.js\")'"
+        "command": "node -e 'require(require(\"fs\").existsSync(\"./guards/verify-gate.js\") ? \"./guards/verify-gate.js\" : \"./.agents/guards/verify-gate.js\")'"
       }
     ]
   },
@@ -50,4 +50,3 @@
     ]
   }
 }
-
