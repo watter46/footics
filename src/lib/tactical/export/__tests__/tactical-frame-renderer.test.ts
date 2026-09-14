@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Slide } from '@/lib/types/tactical-unified';
+import { buildExportMVPMatrix } from '@/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper';
+import {
+  type AspectRatio,
+  type PitchTransform,
+  type Slide,
+  SlideSchema,
+} from '@/lib/types/tactical-unified';
 import {
   type AnyCanvasRenderingContext2D,
   renderTacticalFrameToCanvas,
@@ -11,6 +17,8 @@ function createMockContext(): AnyCanvasRenderingContext2D {
     fillRect: vi.fn(),
     strokeRect: vi.fn(),
     beginPath: vi.fn(),
+    rect: vi.fn(),
+    clip: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
     arc: vi.fn(),
@@ -20,6 +28,8 @@ function createMockContext(): AnyCanvasRenderingContext2D {
     stroke: vi.fn(),
     save: vi.fn(),
     restore: vi.fn(),
+    scale: vi.fn(),
+    translate: vi.fn(),
     fillText: vi.fn(),
     strokeText: vi.fn(),
     setLineDash: vi.fn(),
@@ -37,8 +47,6 @@ function createMockContext(): AnyCanvasRenderingContext2D {
     shadowOffsetY: 0,
   } as unknown as AnyCanvasRenderingContext2D;
 }
-
-import { SlideSchema } from '@/lib/types/tactical-unified';
 
 const sampleSlide: Slide = SlideSchema.parse({
   id: 'slide-1',
@@ -360,5 +368,347 @@ describe('Tactical Frame Renderer', () => {
       `\n[BENCHMARK] 180 frames rendering time in JS runtime: ${totalMs.toFixed(2)}ms (${(totalMs / frameCount).toFixed(4)}ms/frame)`,
     );
     expect(totalMs).toBeLessThan(3000);
+  });
+
+  describe('3D Perspective Pitch and Zones (mvpMatrix)', () => {
+    it('renders 3D projected pitch markings and zones when mvpMatrix is provided', () => {
+      const pitchTransform: PitchTransform = {
+        tilt: 45,
+        zoom: 1.2,
+        panX: 50,
+        panY: -30,
+      };
+      const mvpMatrix = buildExportMVPMatrix(
+        pitchTransform,
+        1920,
+        1080,
+        '16:9',
+      ) as unknown as Float32Array;
+
+      const ctx = createMockContext();
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [sampleSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        transparent: false,
+        mvpMatrix,
+      });
+
+      // Background fill
+      expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 1920, 1080);
+      // In 3D mode, pitch lines are drawn with lineTo/moveTo quads and arcs instead of strokeRect
+      expect(ctx.moveTo).toHaveBeenCalled();
+      expect(ctx.lineTo).toHaveBeenCalled();
+      expect(ctx.stroke).toHaveBeenCalled();
+      expect(ctx.fill).toHaveBeenCalled();
+      // Texts, players, ball rendered
+      expect(ctx.fillText).toHaveBeenCalledWith(
+        'Messi',
+        expect.any(Number),
+        expect.any(Number),
+      );
+    });
+
+    it.each<AspectRatio>(['16:9', '9:16', '4:5', '1:1'])(
+      'renders pitch markings and zones correctly for aspect ratio %s in 3D mode',
+      (aspectRatio) => {
+        const dimensions: Record<
+          AspectRatio,
+          { width: number; height: number }
+        > = {
+          '16:9': { width: 1920, height: 1080 },
+          '9:16': { width: 1080, height: 1920 },
+          '4:5': { width: 1080, height: 1350 },
+          '1:1': { width: 1080, height: 1080 },
+        };
+        const { width, height } = dimensions[aspectRatio];
+
+        const pitchTransform: PitchTransform = {
+          tilt: 30,
+          zoom: 1.0,
+          panX: 0,
+          panY: 0,
+        };
+        const mvpMatrix = buildExportMVPMatrix(
+          pitchTransform,
+          width,
+          height,
+          aspectRatio,
+        ) as unknown as Float32Array;
+
+        const ctx = createMockContext();
+        renderTacticalFrameToCanvas(ctx, {
+          slides: [sampleSlide],
+          timeMs: 0,
+          width,
+          height,
+          aspectRatio,
+          transparent: false,
+          mvpMatrix,
+        });
+
+        expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, width, height);
+        expect(ctx.moveTo).toHaveBeenCalled();
+        expect(ctx.lineTo).toHaveBeenCalled();
+        expect(ctx.stroke).toHaveBeenCalled();
+      },
+    );
+
+    it.each<AspectRatio>(['16:9', '9:16', '4:5', '1:1'])(
+      'renders pitch markings correctly for aspect ratio %s in 2D fallback mode',
+      (aspectRatio) => {
+        const dimensions: Record<
+          AspectRatio,
+          { width: number; height: number }
+        > = {
+          '16:9': { width: 1920, height: 1080 },
+          '9:16': { width: 1080, height: 1920 },
+          '4:5': { width: 1080, height: 1350 },
+          '1:1': { width: 1080, height: 1080 },
+        };
+        const { width, height } = dimensions[aspectRatio];
+
+        const ctx = createMockContext();
+        renderTacticalFrameToCanvas(ctx, {
+          slides: [sampleSlide],
+          timeMs: 0,
+          width,
+          height,
+          aspectRatio,
+          transparent: false,
+        });
+
+        expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, width, height);
+        expect(ctx.strokeRect).toHaveBeenCalled();
+      },
+    );
+
+    it('renders polygon, rect, and ellipse zones in 3D projection', () => {
+      const zoneSlide: Slide = SlideSchema.parse({
+        id: 'slide-zones',
+        index: 0,
+        transitionDurationMs: 1000,
+        pauseMs: 500,
+        players: [],
+        ball: { x: 50, y: 50, visible: true },
+        arrows: [],
+        texts: [],
+        zones: [
+          {
+            id: 'z-poly',
+            annotationType: 'zone',
+            zoneType: 'space',
+            shapeType: 'polygon',
+            points: [
+              { x: 10, y: 10 },
+              { x: 40, y: 10 },
+              { x: 30, y: 30 },
+            ],
+            color: '#3b82f6',
+            opacity: 0.3,
+            strokeColor: '#1d4ed8',
+            strokeWidth: 2,
+          },
+          {
+            id: 'z-rect',
+            annotationType: 'zone',
+            zoneType: 'space',
+            shapeType: 'rect',
+            x: 50,
+            y: 50,
+            width: 30,
+            height: 20,
+            color: '#22c55e',
+            opacity: 0.4,
+            strokeColor: '#15803d',
+            strokeWidth: 2,
+          },
+          {
+            id: 'z-ellipse',
+            annotationType: 'zone',
+            zoneType: 'space',
+            shapeType: 'ellipse',
+            x: 20,
+            y: 60,
+            width: 25,
+            height: 15,
+            color: '#eab308',
+            opacity: 0.5,
+            strokeColor: '#a16207',
+            strokeWidth: 2,
+          },
+        ],
+      });
+
+      const pitchTransform: PitchTransform = {
+        tilt: 40,
+        zoom: 1.1,
+        panX: 10,
+        panY: 10,
+      };
+      const mvpMatrix = buildExportMVPMatrix(
+        pitchTransform,
+        1920,
+        1080,
+        '16:9',
+      ) as unknown as Float32Array;
+
+      const ctx = createMockContext();
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [zoneSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        transparent: false,
+        mvpMatrix,
+      });
+
+      expect(ctx.fill).toHaveBeenCalled();
+      expect(ctx.stroke).toHaveBeenCalled();
+      expect(ctx.moveTo).toHaveBeenCalled();
+      expect(ctx.lineTo).toHaveBeenCalled();
+    });
+
+    it('applies 3D pitch boundary polygon clipping and fills surface with dark pitch color', () => {
+      const pitchTransform: PitchTransform = {
+        tilt: 35,
+        zoom: 1.0,
+        panX: 0,
+        panY: 0,
+      };
+      const mvpMatrix = buildExportMVPMatrix(
+        pitchTransform,
+        1920,
+        1080,
+        '16:9',
+      ) as unknown as Float32Array;
+
+      const ctx = createMockContext();
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [sampleSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        transparent: false,
+        mvpMatrix,
+      });
+
+      expect(ctx.clip).toHaveBeenCalled();
+      expect(ctx.closePath).toHaveBeenCalled();
+      expect(ctx.save).toHaveBeenCalled();
+      expect(ctx.restore).toHaveBeenCalled();
+    });
+
+    it('applies 2D pitch boundary rect clipping and restores context at end of render', () => {
+      const ctx = createMockContext();
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [sampleSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        transparent: false,
+      });
+
+      expect(ctx.rect).toHaveBeenCalled();
+      expect(ctx.clip).toHaveBeenCalled();
+      expect(ctx.save).toHaveBeenCalled();
+      expect(ctx.restore).toHaveBeenCalled();
+    });
+
+    it('applies boundaryBox crop and zoom viewport transform in 2D mode', () => {
+      const boundaryBox = {
+        enabled: true,
+        x: 20,
+        y: 20,
+        width: 40,
+        height: 40,
+      };
+
+      const ctx2d = createMockContext();
+      renderTacticalFrameToCanvas(ctx2d, {
+        slides: [sampleSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        boundaryBox,
+        transparent: false,
+      });
+
+      // Canvas boundary safe clipping
+      expect(ctx2d.rect).toHaveBeenCalledWith(0, 0, 1920, 1080);
+      expect(ctx2d.clip).toHaveBeenCalled();
+      expect(ctx2d.save).toHaveBeenCalled();
+
+      // Viewport transform (Scale & Translate):
+      // cropX_px = (20/100)*1920 = 384, cropY_px = (20/100)*1080 = 216
+      // cropW_px = (40/100)*1920 = 768, cropH_px = (40/100)*1080 = 432
+      // scaleX = 1920 / 768 = 2.5, scaleY = 1080 / 432 = 2.5
+      expect(ctx2d.scale).toHaveBeenCalledWith(2.5, 2.5);
+      expect(ctx2d.translate).toHaveBeenCalledWith(-384, -216);
+
+      // Player p1 rendered at raw screen coordinate (x: (30/100)*1920 = 576, y: (40/100)*1080 = 432)
+      const arcMock = ctx2d.arc as unknown as ReturnType<typeof vi.fn>;
+      const playerArcCalls = arcMock.mock.calls.filter(
+        (call: unknown[]) => call[0] === 576 && call[1] === 432,
+      );
+      expect(playerArcCalls.length).toBeGreaterThan(0);
+
+      expect(ctx2d.restore).toHaveBeenCalled();
+    });
+
+    it('applies boundaryBox crop and zoom viewport transform in 3D mode', () => {
+      const pitchTransform: PitchTransform = {
+        tilt: 45,
+        zoom: 1.0,
+        panX: 0,
+        panY: 0,
+      };
+      const mvpMatrix = buildExportMVPMatrix(
+        pitchTransform,
+        1920,
+        1080,
+        '16:9',
+      ) as unknown as Float32Array;
+
+      const boundaryBox = {
+        enabled: true,
+        x: 20,
+        y: 20,
+        width: 40,
+        height: 40,
+      };
+      const ctx3d = createMockContext();
+      renderTacticalFrameToCanvas(ctx3d, {
+        slides: [sampleSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        boundaryBox,
+        transparent: false,
+        mvpMatrix,
+      });
+
+      // Canvas boundary safe clipping
+      expect(ctx3d.rect).toHaveBeenCalledWith(0, 0, 1920, 1080);
+      expect(ctx3d.clip).toHaveBeenCalled();
+      expect(ctx3d.save).toHaveBeenCalled();
+
+      // Viewport transform (Scale & Translate) applied identically in 3D mode
+      expect(ctx3d.scale).toHaveBeenCalledWith(2.5, 2.5);
+      expect(ctx3d.translate).toHaveBeenCalledWith(-384, -216);
+
+      // Player p1 projected with 3D matrix in raw uncropped coordinate space
+      const arcMock = ctx3d.arc as unknown as ReturnType<typeof vi.fn>;
+      expect(arcMock.mock.calls.length).toBeGreaterThan(0);
+
+      expect(ctx3d.restore).toHaveBeenCalled();
+    });
   });
 });

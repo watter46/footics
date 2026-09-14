@@ -12,7 +12,7 @@ import {
 } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { SelectedObjectKind } from '@/features/tactical-unified/stores/tool-slice';
 import { usePlayerLayerDrag } from '../hooks/use-player-layer-drag';
-import type { PlayerLayerProps as BasePlayerLayerProps } from '../types';
+import type { BasePlayerLayerProps } from '../types';
 import { PlayerConnectLines } from './player-connect-lines';
 import { PlayerGhostTrajectory } from './player-ghost-trajectory';
 import { PlayerMarker } from './player-marker';

@@ -1,0 +1,114 @@
+{
+  "impacted_files": [
+    "src/lib/types/tactical-unified.ts",
+    "src/features/tactical-unified/stores/boundary-box-helpers.ts",
+    "src/features/tactical-unified/stores/pitch-slice.ts",
+    "src/features/tactical-unified/stores/project-slice.ts",
+    "src/features/tactical-unified/stores/slide-helpers.ts",
+    "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+    "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+    "src/features/tactical-unified/hooks/konva-export-helpers.ts",
+    "src/features/tactical-unified/hooks/use-konva-export.ts",
+    "src/features/tactical-unified/hooks/use-konva-video-export.ts",
+    "src/features/tactical-unified/panels/toolbar/boundary-box-hud.tsx",
+    "src/features/tactical-unified/panels/toolbar/drawing-toolbar.tsx",
+    "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx"
+  ],
+  "dag_dependencies": [
+    {
+      "file": "src/lib/types/tactical-unified.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/features/tactical-unified/stores/boundary-box-helpers.ts",
+      "depends_on": [
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/stores/pitch-slice.ts",
+      "depends_on": [
+        "src/lib/types/tactical-unified.ts",
+        "src/features/tactical-unified/stores/boundary-box-helpers.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/stores/slide-helpers.ts",
+      "depends_on": [
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/stores/project-slice.ts",
+      "depends_on": [
+        "src/lib/types/tactical-unified.ts",
+        "src/features/tactical-unified/stores/slide-helpers.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+      "depends_on": [
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+      "depends_on": [
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/hooks/konva-export-helpers.ts",
+      "depends_on": [
+        "src/lib/types/tactical-unified.ts",
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/hooks/use-konva-export.ts",
+      "depends_on": [
+        "src/features/tactical-unified/hooks/konva-export-helpers.ts",
+        "src/features/tactical-unified/stores/pitch-slice.ts",
+        "src/features/tactical-unified/stores/boundary-box-helpers.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/hooks/use-konva-video-export.ts",
+      "depends_on": [
+        "src/features/tactical-unified/stores/pitch-slice.ts",
+        "src/features/tactical-unified/stores/boundary-box-helpers.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/panels/toolbar/boundary-box-hud.tsx",
+      "depends_on": [
+        "src/lib/types/tactical-unified.ts",
+        "src/features/tactical-unified/stores/pitch-slice.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/panels/toolbar/drawing-toolbar.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/stores/pitch-slice.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+        "src/features/tactical-unified/panels/toolbar/boundary-box-hud.tsx",
+        "src/features/tactical-unified/panels/toolbar/drawing-toolbar.tsx",
+        "src/features/tactical-unified/hooks/use-konva-export.ts",
+        "src/features/tactical-unified/hooks/use-konva-video-export.ts"
+      ]
+    }
+  ],
+  "public_interfaces": [
+    "export type BoundaryBox = { x: number; y: number; width: number; height: number; enabled?: boolean; visible?: boolean; fitTarget?: 'pitch' | 'canvas' | 'custom' };",
+    "export function computePitchFitBoundaryBox(isPitchBg: boolean, aspectRatio?: AspectRatio, pitchPosition?: { x: number; y: number }, pitchTransform?: PitchTransform, pitchRect?: { width: number; height: number }): BoundaryBox;",
+    "export function calculateExportCropRect(options: ExportCropRectOptions): ExportCropRect;",
+    "export interface PitchSlice { isPitchBoundaryLinked: boolean; togglePitchBoundaryLink: () => void; setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void; autoFitBoundaryBox: (slideId?: string, pitchRect?: { width: number; height: number }) => void; ... }"
+  ],
+  "summary": "BoundaryBox通常非表示化(visible: false)・表示トグルUI・ピッチ移動連動解除、およびエクスポート実行時に現在のピッチ位置でAutoFitPitchを動的適用するパイプライン修正",
+  "cache_key": "canvas-boundary-autofit-9eb891c421c769d09e6114b732d3533bf49903b9"
+}

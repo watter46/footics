@@ -1,0 +1,9 @@
+{
+  "title": "拡張機能 保存中継・キューアーキテクチャ (Extension Save Relay)",
+  "summary": "Main World と Isolated World 間のメッセージング、および navigator.locks と Storage Queue を用いた保存時の排他制御アーキテクチャ。",
+  "lastUpdated": "2026-05-02T06:00:00Z",
+  "sourceFiles": [
+    "../../extension/entrypoints/main-bridge.content.ts",
+    "../../extension/features/storage-sync/save-queue.ts"
+  ]
+}

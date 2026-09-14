@@ -1,6 +1,7 @@
 'use client';
 
 import type React from 'react';
+import { normToScreen } from '@/features/tactical-unified/objects/canvas/helpers/canvas-coordinates';
 import type { TextAnnotation } from '@/lib/types/tactical-unified';
 
 interface PitchInlineTextEditorProps {
@@ -29,22 +30,24 @@ export const PitchInlineTextEditor: React.FC<PitchInlineTextEditorProps> = ({
   const zoom = pitchTransform?.zoom ?? 1;
   const tilt = pitchTransform?.tilt ?? 0;
 
-  const safeTilt = Math.max(0, Math.min(85, tilt));
-  const tiltRad = (safeTilt * Math.PI) / 180;
-  const cosTilt = Math.max(0.05, Math.cos(tiltRad));
-  const scaleY = zoom * cosTilt;
-  const pitchHeight = pitchRect?.height ?? stageSize.height;
-  const deltaY = pitchHeight * zoom * (1 - cosTilt);
+  const effectivePitchRect = pitchRect ?? {
+    x: 0,
+    y: 0,
+    width: stageSize.width,
+    height: stageSize.height,
+  };
 
-  const baseLeft = pitchRect
-    ? pitchRect.x + (editingText.x / 100) * pitchRect.width
-    : (editingText.x / 100) * stageSize.width;
-  const baseTop = pitchRect
-    ? pitchRect.y + (editingText.y / 100) * pitchRect.height
-    : (editingText.y / 100) * stageSize.height;
+  const screenPos = normToScreen(
+    { x: editingText.x, y: editingText.y },
+    effectivePitchRect,
+    panX,
+    panY,
+    zoom,
+    tilt,
+  );
 
-  const left = baseLeft * zoom + panX;
-  const top = baseTop * scaleY + panY + deltaY;
+  const left = screenPos.x;
+  const top = screenPos.y;
   const fontSize = editingText.fontSize * zoom;
 
   return (

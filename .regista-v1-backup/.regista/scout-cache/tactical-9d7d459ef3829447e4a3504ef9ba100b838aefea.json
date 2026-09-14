@@ -1,0 +1,102 @@
+{
+  "impacted_files": [
+    "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+    "src/features/tactical-unified/objects/canvas/hooks/use-boundary-box-drag.ts",
+    "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pitch-pan.ts",
+    "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-dispatcher.ts",
+    "src/features/tactical-unified/panels/toolbar/boundary-box-hud.tsx",
+    "src/features/tactical-unified/stores/boundary-box-helpers.ts",
+    "src/features/tactical-unified/stores/pitch-slice.ts",
+    "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx"
+  ],
+  "dag_dependencies": [
+    {
+      "file": "src/features/tactical-unified/stores/boundary-box-helpers.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/features/tactical-unified/stores/pitch-slice.ts",
+      "depends_on": [
+        "src/features/tactical-unified/stores/boundary-box-helpers.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-boundary-box-drag.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/hooks/use-boundary-box-drag.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pitch-pan.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-dispatcher.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pitch-pan.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/panels/toolbar/boundary-box-hud.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/stores/pitch-slice.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-dispatcher.ts",
+        "src/features/tactical-unified/panels/toolbar/boundary-box-hud.tsx"
+      ]
+    }
+  ],
+  "public_interfaces": [
+    {
+      "name": "computePitchFitBoundaryBox",
+      "file": "src/features/tactical-unified/stores/boundary-box-helpers.ts",
+      "definition": "export function computePitchFitBoundaryBox(isPitchBg: boolean, _aspectRatio?: AspectRatio, pitchPosition?: { x: number; y: number }): BoundaryBox"
+    },
+    {
+      "name": "autoFitBoundaryBox",
+      "file": "src/features/tactical-unified/stores/pitch-slice.ts",
+      "definition": "autoFitBoundaryBox: (slideId?: string, pitchRect?: { width: number; height: number }) => void"
+    },
+    {
+      "name": "updateBoundaryBox",
+      "file": "src/features/tactical-unified/stores/pitch-slice.ts",
+      "definition": "updateBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void"
+    },
+    {
+      "name": "useBoundaryBoxDrag",
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-boundary-box-drag.ts",
+      "definition": "export function useBoundaryBoxDrag(params: UseBoundaryBoxDragParams): { handleCornerPointerDown: (cornerId: CornerId, e: React.PointerEvent) => void; handleBoxPointerDown: (e: React.PointerEvent) => void; }"
+    },
+    {
+      "name": "useCanvasPitchPan",
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pitch-pan.ts",
+      "definition": "export function useCanvasPitchPan(options: UseCanvasPitchPanOptions): { isPanning: boolean; isSpacePressed: boolean; handlePointerDown: (pos: { x: number; y: number }, isBg: boolean) => boolean; handlePointerMove: (pos: { x: number; y: number }) => boolean; handlePointerUp: () => boolean; }"
+    },
+    {
+      "name": "useCanvasPointerDispatcher",
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-dispatcher.ts",
+      "definition": "export function useCanvasPointerDispatcher(options: UseCanvasPointerDispatcherOptions): { handlePointerDown: (e: KonvaEventObject<MouseEvent | TouchEvent>) => void; handlePointerMove: (e: KonvaEventObject<MouseEvent | TouchEvent>) => void; handlePointerUp: (e: KonvaEventObject<MouseEvent | TouchEvent>) => void; }"
+    },
+    {
+      "name": "BoundaryBox",
+      "file": "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+      "definition": "export const BoundaryBox: React.NamedExoticComponent<BoundaryBoxProps>"
+    },
+    {
+      "name": "BoundaryBoxHud",
+      "file": "src/features/tactical-unified/panels/toolbar/boundary-box-hud.tsx",
+      "definition": "export const BoundaryBoxHud: React.NamedExoticComponent<BoundaryBoxHudProps>"
+    }
+  ],
+  "summary": "1:ドラッグ中updateBoundaryBoxによるisDirty更新がauto-saveを即時誘発。2:ピッチ外クリックでもisBg=trueとなりpitch-panが誤作動。3:AutoFitPitchでピッチ位置(px)をBoundaryBox(正規化%)に直接加算しzoomも欠落。",
+  "cache_key": "tactical-9d7d459ef3829447e4a3504ef9ba100b838aefea"
+}

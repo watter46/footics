@@ -1,0 +1,173 @@
+{
+  "cache_key": "tactical-tilt-242dfc980594ec4466aae6e797b996fcba3dce16",
+  "domain": "tactical-tilt",
+  "git_hash": "242dfc980594ec4466aae6e797b996fcba3dce16",
+  "created_at": "2026-09-08T10:32:00+09:00",
+  "impacted_files": [
+    "src/lib/types/tactical-unified.ts",
+    "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+    "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+    "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx",
+    "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+    "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-dispatcher.ts",
+    "src/features/tactical-unified/objects/canvas/hooks/use-canvas-zoom-pan.ts",
+    "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pitch-pan.ts",
+    "src/features/tactical-unified/objects/canvas/hooks/use-canvas-wheel-zoom.ts",
+    "src/features/tactical-unified/objects/canvas/hooks/use-canvas-selection-box.ts",
+    "src/features/tactical-unified/objects/pitch/components/pitch-inline-text-editor.tsx",
+    "src/features/tactical-unified/panels/toolbar/boundary-box-tilt-controls.tsx",
+    "src/features/tactical-unified/panels/toolbar/boundary-box-hud.tsx",
+    "src/features/tactical-unified/hooks/use-konva-export.ts",
+    "src/features/tactical-unified/hooks/konva-export-helpers.ts",
+    "src/app/test/pitch-aspect/components/pitch-stage.tsx",
+    "src/features/tactical-unified/__tests__/pitch-tilt-export.test.ts",
+    "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.test.ts"
+  ],
+  "dag_dependencies": [
+    {
+      "file": "src/lib/types/tactical-unified.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+      "depends_on": [
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-wheel-zoom.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pitch-pan.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-zoom-pan.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pitch-pan.ts",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-wheel-zoom.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-selection-box.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-dispatcher.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-zoom-pan.ts",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-selection-box.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/pitch/components/pitch-inline-text-editor.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/panels/toolbar/boundary-box-tilt-controls.tsx",
+      "depends_on": [
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/panels/toolbar/boundary-box-hud.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/panels/toolbar/boundary-box-tilt-controls.tsx"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/hooks/konva-export-helpers.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/hooks/use-konva-export.ts",
+      "depends_on": [
+        "src/features/tactical-unified/hooks/konva-export-helpers.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-dispatcher.ts",
+        "src/features/tactical-unified/objects/pitch/components/pitch-inline-text-editor.tsx",
+        "src/features/tactical-unified/panels/toolbar/boundary-box-hud.tsx",
+        "src/features/tactical-unified/hooks/use-konva-export.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/__tests__/pitch-tilt-export.test.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.test.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts"
+      ]
+    }
+  ],
+  "public_interfaces": [
+    {
+      "name": "PitchTransform",
+      "file": "src/lib/types/tactical-unified.ts",
+      "definition": "export interface PitchTransform { panX: number; panY: number; zoom: number; tilt: number; isLocked: boolean; }"
+    },
+    {
+      "name": "PitchTransformValues",
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+      "definition": "export interface PitchTransformValues { x: number; y: number; scaleX: number; scaleY: number; }"
+    },
+    {
+      "name": "PitchRectBounds",
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+      "definition": "export interface PitchRectBounds extends PitchRectSize { x: number; y: number; }"
+    },
+    {
+      "name": "PitchTransformState",
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+      "definition": "export interface PitchTransformState { panX?: number; panY?: number; zoom?: number; tilt?: number; }"
+    },
+    {
+      "name": "ExportCropRect",
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+      "definition": "export interface ExportCropRect { x: number; y: number; width: number; height: number; }"
+    }
+  ],
+  "summary": "/test/pitch-aspect準拠のピッチ中心基準(50% 50%)3Dチルト・パン・ズーム一元化コンテナ構造と、正対固定を維持する境界線(BoundaryBox/HUD)およびCSS 3D透視投影に対応したポインター逆変換計算の依存関係と影響範囲を特定。",
+  "cache_key": "tactical-tilt-242dfc980594ec4466aae6e797b996fcba3dce16"
+}

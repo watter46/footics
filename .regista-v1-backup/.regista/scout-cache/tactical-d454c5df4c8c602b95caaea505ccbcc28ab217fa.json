@@ -1,0 +1,127 @@
+{
+  "impacted_files": [
+    "src/features/tactical-unified/objects/ball/hooks/use-ball-drag.ts",
+    "src/features/tactical-unified/objects/ball/components/ball-object.tsx",
+    "src/features/tactical-unified/objects/ball/components/ball-ghost-trajectory.tsx",
+    "src/features/tactical-unified/panels/hud/context-hud.tsx",
+    "src/features/tactical-unified/panels/hud/ball-hud.tsx",
+    "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx",
+    "src/features/tactical-unified/objects/canvas/components/drawing-preview-layer.tsx",
+    "src/features/tactical-unified/objects/canvas/hooks/use-canvas-selection-box.ts",
+    "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-dispatcher.ts"
+  ],
+  "dag_dependencies": [
+    {
+      "file": "src/features/tactical-unified/objects/ball/types.ts",
+      "depends_on": ["src/lib/types/tactical-unified.ts"]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/ball/hooks/use-ball-drag.ts",
+      "depends_on": [
+        "src/features/tactical-unified/stores/tactical-unified-store.ts",
+        "src/features/tactical-unified/objects/canvas/index.ts",
+        "src/features/tactical-unified/objects/ball/hooks/ball-drag-helper.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/ball/components/ball-ghost-trajectory.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/arrow/index.ts",
+        "src/lib/types/tactical-unified.ts",
+        "src/features/tactical-unified/objects/ball/components/ball-ghost.tsx"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/ball/components/ball-object.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/index.ts",
+        "src/features/tactical-unified/stores/tactical-unified-store.ts",
+        "src/features/tactical-unified/objects/ball/hooks/use-ball-drag.ts",
+        "src/features/tactical-unified/objects/ball/hooks/use-ball-image.ts",
+        "src/features/tactical-unified/objects/ball/components/ball-ghost-trajectory.tsx",
+        "src/features/tactical-unified/objects/ball/components/ball-onionskin.tsx",
+        "src/features/tactical-unified/objects/ball/components/ball-visual.tsx",
+        "src/features/tactical-unified/objects/ball/types.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/panels/hud/ball-hud.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/stores/tactical-unified-store.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/panels/hud/context-hud.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/stores/tactical-unified-store.ts",
+        "src/features/tactical-unified/panels/hud/ball-hud.tsx",
+        "src/features/tactical-unified/panels/hud/use-hud-position.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-selection-box.ts",
+      "depends_on": [
+        "src/features/tactical-unified/stores/tactical-unified-store.ts",
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-selection-helpers.ts",
+        "src/features/tactical-unified/objects/canvas/types.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-dispatcher.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-selection-box.ts",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-drawing-interaction.ts",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-zoom-pan.ts",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-zone-rotation.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/components/drawing-preview-layer.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/types.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/stores/tactical-unified-store.ts",
+        "src/features/tactical-unified/objects/ball/index.ts",
+        "src/features/tactical-unified/objects/player/index.ts",
+        "src/features/tactical-unified/panels/hud/index.ts",
+        "src/features/tactical-unified/objects/canvas/components/drawing-preview-layer.tsx",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-interaction.ts"
+      ]
+    }
+  ],
+  "public_interfaces": [
+    {
+      "name": "BallState",
+      "file": "src/lib/types/tactical-unified.ts",
+      "definition": "export interface BallState { x: number; y: number; visible: boolean; trajectory?: PlayerTrajectory; locked?: boolean; }"
+    },
+    {
+      "name": "BallObjectProps",
+      "file": "src/features/tactical-unified/objects/ball/types.ts",
+      "definition": "export interface BallObjectProps { ball: BallState; stageSize: { width: number; height: number }; nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>; }"
+    },
+    {
+      "name": "SelectionBox",
+      "file": "src/features/tactical-unified/types/index.ts",
+      "definition": "export interface SelectionBox { startX: number; startY: number; currentX: number; currentY: number; isShift: boolean; }"
+    },
+    {
+      "name": "SelectedObject",
+      "file": "src/features/tactical-unified/stores/tool-slice.ts",
+      "definition": "export interface SelectedObject { id: string; kind: SelectedObjectKind; parentPlayerId?: string; }"
+    },
+    {
+      "name": "SelectedObjectKind",
+      "file": "src/features/tactical-unified/stores/tool-slice.ts",
+      "definition": "export type SelectedObjectKind = 'player' | 'arrow' | 'zone' | 'text' | 'ball' | 'vision-cone' | 'connect-line' | 'badge' | 'focus';"
+    }
+  ],
+  "summary": "ボールのインタラクタ表示問題は、useBallDragでのドラッグ開始時selectObject呼び出しとドラッグ終了時clearSelection未実行、およびball-objectでのドラッグ判定ガード不足が原因です（PlayerMarkerのisDraggingRefとL1-Tactical-047仕様に統一して解決）。範囲選択UIの右ずれは、Stage座標系のselectionBoxプレビューがunified-canvas内でピッチ変位(pitchTransformValues)を持つGroup内にネスト描画されていることが原因です。",
+  "cache_key": "tactical-d454c5df4c8c602b95caaea505ccbcc28ab217fa"
+}

@@ -1,0 +1,6 @@
+{
+  "title": "TanStack Query キャッシュキー管理と構造",
+  "summary": "ハードコードを避けるためのクエリキーファクトリパターンと、階層化されたキャッシュ構造の仕様。",
+  "lastUpdated": "2026-05-02T06:00:00Z",
+  "sourceFiles": ["../../src/lib/query-keys.ts"]
+}

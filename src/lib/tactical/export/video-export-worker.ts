@@ -50,6 +50,7 @@ export interface VideoExportWorkerRequest {
   isMainThread?: boolean;
   startFrameIdx?: number;
   endFrameIdx?: number;
+  mvpMatrix?: Float32Array | null;
 }
 
 export interface VideoExportWorkerCancel {
@@ -389,6 +390,7 @@ export async function executeOffThreadVideoExport(
     slides,
     aspectRatio = '16:9',
     isMainThread = false,
+    mvpMatrix,
   } = request;
 
   const cropInfo = calculateWorkerBoundaryCrop(
@@ -633,6 +635,7 @@ export async function executeOffThreadVideoExport(
           aspectRatio,
           boundaryBox,
           transparent: format === 'webm' ? transparent : false,
+          mvpMatrix,
         });
         const tDrawEnd =
           typeof performance !== 'undefined' ? performance.now() : Date.now();

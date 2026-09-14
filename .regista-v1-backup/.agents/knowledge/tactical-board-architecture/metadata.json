@@ -1,0 +1,16 @@
+{
+  "title": "Tactical Board コンポーネントモジュール化とフック設計",
+  "summary": "戦術ボード (Tactical Board) の UI コンポーネント階層構造、React-Konva 描画レイヤーの責務分離、Zustand ストアとカスタムフック（描画操作、履歴、ショートカット、エクスポート）の設計規約。",
+  "lastUpdated": "2026-08-16T05:40:00Z",
+  "sourceFiles": [
+    "../../src/components/features/tactical-board/tactical-board-modal.tsx",
+    "../../src/components/features/tactical-board/tactical-header.tsx",
+    "../../src/components/features/tactical-board/tactical-pitch-area.tsx",
+    "../../src/components/features/tactical-board/hooks/use-tactical-export.ts",
+    "../../src/components/features/tactical-board/drawing/tactical-drawing-canvas.tsx",
+    "../../src/components/features/tactical-board/drawing/hooks/use-drawing-interaction.ts",
+    "../../src/components/features/tactical-board/drawing/hooks/use-drawing-history.ts",
+    "../../src/components/features/tactical-board/drawing/hooks/use-drawing-hotkeys.ts",
+    "../../src/stores/tactical-store.ts"
+  ]
+}

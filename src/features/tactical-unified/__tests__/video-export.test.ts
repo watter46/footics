@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { buildExportMVPMatrix } from '@/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper';
 import {
   calculateBoundaryCrop,
   getSupportedH264Codec,
 } from '@/lib/tactical/export/video-export-engine';
 import {
+  type AspectRatio,
   type BoundaryBox,
   ExportTargetSchema,
+  type PitchTransform,
 } from '@/lib/types/tactical-unified';
 
 describe('Video Export Engine & Boundary Crop', () => {
@@ -149,4 +152,36 @@ describe('Video Export Engine & Boundary Crop', () => {
       expect(crop.exportWidth / crop.exportHeight).toBeCloseTo(1000 / 600);
     });
   });
+});
+
+describe('buildExportMVPMatrix for 4 Aspect Ratios', () => {
+  const pitchTransform: PitchTransform = {
+    tilt: 25,
+    zoom: 1.2,
+    panX: 30,
+    panY: -15,
+    isLocked: false,
+  };
+
+  const aspectCases: Array<{
+    aspect: AspectRatio;
+    width: number;
+    height: number;
+  }> = [
+    { aspect: '16:9', width: 640, height: 360 },
+    { aspect: '9:16', width: 360, height: 640 },
+    { aspect: '4:5', width: 360, height: 450 },
+    { aspect: '1:1', width: 360, height: 360 },
+  ];
+
+  it.each(aspectCases)(
+    'generates a valid 16-element Float32Array MVP matrix for $aspect ($width x $height)',
+    ({ aspect, width, height }) => {
+      const mvp = buildExportMVPMatrix(pitchTransform, width, height, aspect);
+      expect(mvp).toHaveLength(16);
+      for (let i = 0; i < 16; i++) {
+        expect(Number.isNaN(mvp[i])).toBe(false);
+      }
+    },
+  );
 });

@@ -17,10 +17,12 @@ import {
   ArrayBufferTarget as WebmArrayBufferTarget,
   Muxer as WebmMuxer,
 } from 'webm-muxer';
+import { buildExportMVPMatrix } from '@/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper';
 import type {
   AspectRatio,
   BoundaryBox,
   ExportProgress,
+  PitchTransform,
   Slide,
 } from '@/lib/types/tactical-unified';
 import { calculatePitchRect } from '../pitch-geometry';
@@ -186,6 +188,8 @@ export interface VideoExportOptions {
   stageHeight: number;
   slides?: Slide[];
   aspectRatio?: AspectRatio;
+  pitchTransform?: PitchTransform | null;
+  mvpMatrix?: Float32Array | null;
   onRenderFrame?: (timeMs: number) => Promise<void> | void;
   onCaptureFrame?: (cropInfo: BoundaryCropInfo) => HTMLCanvasElement | null;
   onSetBackgroundVisible?: (visible: boolean) => void;
@@ -392,6 +396,32 @@ export async function exportVideoDirect(
     throw new Error('Slides data is required for Web Worker video export.');
   }
 
+  const pitchRect = calculatePitchRect(
+    { width: options.stageWidth, height: options.stageHeight },
+    options.aspectRatio ?? '16:9',
+  );
+  const baseRect =
+    options.boundaryBox?.fitTarget === 'canvas'
+      ? { x: 0, y: 0, width: options.stageWidth, height: options.stageHeight }
+      : pitchRect;
+  const cropInfo = calculateBoundaryCrop(
+    options.boundaryBox,
+    options.stageWidth,
+    options.stageHeight,
+    options.scale ?? 2,
+    baseRect,
+  );
+  const { exportWidth, exportHeight } = cropInfo;
+
+  const mvpMatrix = options.pitchTransform
+    ? (buildExportMVPMatrix(
+        options.pitchTransform,
+        exportWidth,
+        exportHeight,
+        options.aspectRatio ?? '16:9',
+      ) as unknown as Float32Array)
+    : (options.mvpMatrix ?? null);
+
   const exportId = `direct_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   const request: VideoExportWorkerRequest = {
     id: exportId,
@@ -413,6 +443,7 @@ export async function exportVideoDirect(
     slides,
     aspectRatio: options.aspectRatio ?? '16:9',
     isMainThread: true,
+    mvpMatrix,
   };
 
   const result = await executeOffThreadVideoExport(
@@ -483,6 +514,32 @@ export async function exportVideoWithWorker(
       );
     };
 
+    const pitchRect = calculatePitchRect(
+      { width: options.stageWidth, height: options.stageHeight },
+      options.aspectRatio ?? '16:9',
+    );
+    const baseRect =
+      options.boundaryBox?.fitTarget === 'canvas'
+        ? { x: 0, y: 0, width: options.stageWidth, height: options.stageHeight }
+        : pitchRect;
+    const cropInfo = calculateBoundaryCrop(
+      options.boundaryBox,
+      options.stageWidth,
+      options.stageHeight,
+      options.scale ?? 2,
+      baseRect,
+    );
+    const { exportWidth, exportHeight } = cropInfo;
+
+    const mvpMatrix = options.pitchTransform
+      ? (buildExportMVPMatrix(
+          options.pitchTransform,
+          exportWidth,
+          exportHeight,
+          options.aspectRatio ?? '16:9',
+        ) as unknown as Float32Array)
+      : (options.mvpMatrix ?? null);
+
     const requestMsg: VideoExportWorkerRequest = {
       id: exportId,
       type: 'START_EXPORT',
@@ -503,6 +560,7 @@ export async function exportVideoWithWorker(
       slides,
       aspectRatio: options.aspectRatio ?? '16:9',
       isMainThread: false,
+      mvpMatrix,
     };
 
     worker.postMessage(requestMsg);
@@ -560,6 +618,15 @@ export async function exportMp4Video(
     baseRect,
   );
   const { exportWidth, exportHeight } = cropInfo;
+
+  const mvpMatrix = options.pitchTransform
+    ? (buildExportMVPMatrix(
+        options.pitchTransform,
+        exportWidth,
+        exportHeight,
+        aspectRatio,
+      ) as unknown as Float32Array)
+    : (options.mvpMatrix ?? null);
 
   const bitrate =
     (scale ?? 2) >= 2.5
@@ -697,6 +764,7 @@ export async function exportMp4Video(
           aspectRatio,
           boundaryBox,
           transparent: false,
+          mvpMatrix,
         });
       } else {
         // Fallback to Konva Stage snapshot only if slides are not passed
@@ -827,6 +895,15 @@ export async function exportTransparentWebm(
     baseRect,
   );
   const { exportWidth, exportHeight } = cropInfo;
+
+  const mvpMatrix = options.pitchTransform
+    ? (buildExportMVPMatrix(
+        options.pitchTransform,
+        exportWidth,
+        exportHeight,
+        aspectRatio,
+      ) as unknown as Float32Array)
+    : (options.mvpMatrix ?? null);
 
   const bitrate =
     (scale ?? 2) >= 2.5
@@ -969,6 +1046,7 @@ export async function exportTransparentWebm(
           aspectRatio,
           boundaryBox,
           transparent,
+          mvpMatrix,
         });
       } else {
         await onRenderFrame?.(timeMs);
@@ -1111,6 +1189,15 @@ export async function exportVideoWithMediaRecorder(
   );
   const { exportWidth, exportHeight } = cropInfo;
 
+  const mvpMatrix = options.pitchTransform
+    ? (buildExportMVPMatrix(
+        options.pitchTransform,
+        exportWidth,
+        exportHeight,
+        aspectRatio,
+      ) as unknown as Float32Array)
+    : (options.mvpMatrix ?? null);
+
   const streamCanvas = document.createElement('canvas');
   streamCanvas.width = exportWidth;
   streamCanvas.height = exportHeight;
@@ -1210,6 +1297,7 @@ export async function exportVideoWithMediaRecorder(
           aspectRatio,
           boundaryBox,
           transparent,
+          mvpMatrix,
         });
       } else {
         await onRenderFrame?.(timeMs);

@@ -1,0 +1,79 @@
+{
+  "cache_key": "tactical-export-a7894f57b68f2b151d7cd75e1ff4d9cf8b7dfe68",
+  "domain": "tactical-export",
+  "git_hash": "a7894f57b68f2b151d7cd75e1ff4d9cf8b7dfe68",
+  "created_at": "2026-09-10T08:59:00+09:00",
+  "impacted_files": [
+    "src/lib/tactical/export/tactical-frame-renderer.ts",
+    "src/lib/tactical/export/video-export-worker.ts",
+    "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+    "src/lib/tactical/export/video-export-engine.ts"
+  ],
+  "dag_dependencies": [
+    {
+      "file": "src/lib/tactical/export/tactical-frame-renderer.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/lib/tactical/export/video-export-worker.ts",
+      "depends_on": [
+        "src/lib/tactical/export/tactical-frame-renderer.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/lib/tactical/export/video-export-engine.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+        "src/lib/tactical/export/video-export-worker.ts",
+        "src/lib/tactical/export/tactical-frame-renderer.ts"
+      ]
+    }
+  ],
+  "ticket_decomposition": {
+    "ticket_1_worker_renderer": {
+      "name": "L3-3D-001A (Worker & FrameRenderer 行列受信・透視投影描画対応)",
+      "target_files": [
+        "src/lib/tactical/export/tactical-frame-renderer.ts",
+        "src/lib/tactical/export/video-export-worker.ts"
+      ],
+      "depends_on": ["L2-3D-001", "L2-3D-002"],
+      "summary": "VideoExportWorkerRequestとRenderTacticalFrameOptionsにmvpMatrixを追加し、Worker受信ループからOffscreenCanvas描画への行列受け渡しおよび透視投影座標変換(projectObjToScreen)を実装"
+    },
+    "ticket_2_helper_engine": {
+      "name": "L3-3D-001B (Helper & VideoExportEngine 行列生成・Worker送信同期対応)",
+      "target_files": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+        "src/lib/tactical/export/video-export-engine.ts"
+      ],
+      "depends_on": ["L3-3D-001A"],
+      "summary": "buildExportMVPMatrixヘルパーを追加し、VideoExportEngine側でpitchTransformからMVP行列を生成してWorkerへのpostMessage/Direct実行パイプラインへ注入"
+    }
+  },
+  "public_interfaces": [
+    {
+      "name": "RenderTacticalFrameOptions",
+      "file": "src/lib/tactical/export/tactical-frame-renderer.ts",
+      "definition": "export interface RenderTacticalFrameOptions { slides: Slide[]; timeMs: number; width: number; height: number; aspectRatio: AspectRatio; boundaryBox?: BoundaryBox | null; transparent?: boolean; mvpMatrix?: Float32Array | null; }"
+    },
+    {
+      "name": "VideoExportWorkerRequest",
+      "file": "src/lib/tactical/export/video-export-worker.ts",
+      "definition": "export interface VideoExportWorkerRequest { id: string; type: 'START_EXPORT'; format: 'mp4' | 'webm'; fps: number; scale?: number; quality?: 'low' | 'medium' | 'high'; bitrate?: number; h264Profile?: 'baseline' | 'main' | 'high'; keyFrameIntervalSec?: number; latencyMode?: 'realtime' | 'quality'; maxQueueSize?: number; transparent?: boolean; totalDurationMs: number; boundaryBox?: BoundaryBox | null; stageWidth: number; stageHeight: number; slides: Slide[]; aspectRatio?: AspectRatio; isMainThread?: boolean; startFrameIdx?: number; endFrameIdx?: number; mvpMatrix?: Float32Array | null; }"
+    },
+    {
+      "name": "buildExportMVPMatrix",
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+      "definition": "export function buildExportMVPMatrix(pitchTransform: PitchTransform, exportWidth: number, exportHeight: number, aspectRatio?: AspectRatio): mat4"
+    },
+    {
+      "name": "VideoExportOptions",
+      "file": "src/lib/tactical/export/video-export-engine.ts",
+      "definition": "export interface VideoExportOptions { format: 'mp4' | 'webm'; fps: number; scale?: number; quality?: 'low' | 'medium' | 'high'; bitrate?: number; h264Profile?: 'baseline' | 'main' | 'high'; keyFrameIntervalSec?: number; latencyMode?: 'realtime' | 'quality'; maxQueueSize?: number; transparent?: boolean; totalDurationMs: number; boundaryBox?: BoundaryBox | null; stageWidth: number; stageHeight: number; slides?: Slide[]; aspectRatio?: AspectRatio; pitchTransform?: PitchTransform | null; mvpMatrix?: Float32Array | null; onRenderFrame?: (timeMs: number) => Promise<void> | void; onCaptureFrame?: (cropInfo: BoundaryCropInfo) => HTMLCanvasElement | null; onSetBackgroundVisible?: (visible: boolean) => void; onProgress?: (progress: ExportProgress) => void; checkCancelled?: () => boolean; }"
+    }
+  ],
+  "summary": "動画エクスポートパイプラインはWorker(video-export-worker)とRenderer(tactical-frame-renderer)の受信・描画側2ファイルと、Helper(canvas-pitch-transform-helper)とEngine(video-export-engine)の生成・送信側2ファイルの合計4ファイルで構成され、2チケットに完全分割可能。"
+}

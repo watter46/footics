@@ -8,7 +8,8 @@ import { applyPitchTransformToGroups } from '../helpers/canvas-pitch-transform-h
 import { useCanvasPitchPan } from './use-canvas-pitch-pan';
 import { useCanvasWheelZoom } from './use-canvas-wheel-zoom';
 
-interface UseCanvasZoomPanOptions {
+export interface UseCanvasZoomPanOptions {
+  containerRef?: React.RefObject<HTMLDivElement | null>;
   stageSize: { width: number; height: number };
   effectivePitch: { x: number; y: number; width: number; height: number };
   activeSlide: Slide | null | undefined;
@@ -17,6 +18,7 @@ interface UseCanvasZoomPanOptions {
 }
 
 export function useCanvasZoomPan({
+  containerRef,
   stageSize,
   effectivePitch,
   activeSlide,
@@ -72,6 +74,7 @@ export function useCanvasZoomPan({
   }, [pitchTransform, applyPitchTransformToNodes]);
 
   const { handleWheel } = useCanvasWheelZoom({
+    containerRef,
     stageSize,
     effectivePitch,
     pitchTransformRef,
@@ -91,6 +94,8 @@ export function useCanvasZoomPan({
     isPitchLocked,
     pitchTransformRef,
     applyPitchTransformToNodes,
+    stageSize,
+    effectivePitch,
   });
 
   return {

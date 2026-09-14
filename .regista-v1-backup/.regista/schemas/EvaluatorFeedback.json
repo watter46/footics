@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EvaluatorFeedback",
+  "description": "Strict JSON schema for Regista QA Evaluator feedback to Executors. Natural language feedback is prohibited.",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["PASS", "REJECT"],
+      "description": "The final decision of the evaluation."
+    },
+    "rubric_scores": {
+      "type": "object",
+      "description": "10-axis rubric scores, each 0-10.",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 10
+      }
+    },
+    "errors": {
+      "type": "array",
+      "description": "List of specific errors or violations.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "File path where the error occurred."
+          },
+          "line": {
+            "type": "integer",
+            "description": "Line number of the error."
+          },
+          "message": {
+            "type": "string",
+            "description": "Actionable error description."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "Severity of the error."
+          }
+        },
+        "required": ["file", "message", "severity"],
+        "additionalProperties": false
+      }
+    },
+    "suggested_diff": {
+      "type": "string",
+      "description": "Optional. Unified diff format string containing suggested fixes."
+    }
+  },
+  "required": ["status", "rubric_scores", "errors"],
+  "additionalProperties": false
+}

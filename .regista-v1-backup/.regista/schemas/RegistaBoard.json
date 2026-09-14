@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RegistaBoard",
+  "description": "Strict JSON schema for the entire Regista project management board data",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "default": "2.0.0"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "active_focus": {
+      "type": "object",
+      "properties": {
+        "phase_id": { "type": "string" },
+        "phase_name": { "type": "string" },
+        "objective": { "type": "string" }
+      },
+      "required": ["phase_id", "phase_name", "objective"],
+      "additionalProperties": false
+    },
+    "tickets": {
+      "type": "array",
+      "items": {
+        "$ref": "./TaskTicket.json"
+      }
+    }
+  },
+  "required": ["version", "last_updated", "active_focus", "tickets"],
+  "additionalProperties": false
+}

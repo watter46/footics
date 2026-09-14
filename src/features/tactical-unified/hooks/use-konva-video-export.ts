@@ -125,6 +125,7 @@ async function executeVideoExport({
     stageHeight,
     slides: currentSlides,
     aspectRatio,
+    pitchTransform: activeSlide?.pitchTransform,
     onRenderFrame: async (timeMs) => {
       applyFrameToCanvas(timeMs, nodesRegistry, stageWidth, stageHeight, true);
     },

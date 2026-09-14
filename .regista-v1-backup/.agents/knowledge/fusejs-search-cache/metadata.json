@@ -1,0 +1,6 @@
+{
+  "title": "Fuse.js ラベル検索とキャッシュ機構 (Fuzzy Search Cache)",
+  "summary": "イベント入力のサジェストにおいて、Fuse.jsインスタンスをキャッシュし、リスト変更時のみ再生成するパフォーマンス最適化パターンの仕様。",
+  "lastUpdated": "2026-05-02T06:30:00Z",
+  "sourceFiles": ["../../src/lib/features/MemoOverlay/memoOverlayLogic.ts"]
+}

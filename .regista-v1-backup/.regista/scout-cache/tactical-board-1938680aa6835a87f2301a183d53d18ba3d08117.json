@@ -1,0 +1,82 @@
+{
+  "impacted_files": [
+    "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-interaction.ts",
+    "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-dispatcher.ts",
+    "src/features/tactical-unified/objects/canvas/hooks/use-canvas-zoom-pan.ts",
+    "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+    "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+    "src/features/tactical-unified/objects/player/hooks/use-player-layer-drag.ts",
+    "src/features/tactical-unified/objects/player/components/player-marker.tsx",
+    "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx",
+    "src/features/tactical-unified/types/index.ts"
+  ],
+  "dag_dependencies": [
+    {
+      "file": "src/features/tactical-unified/types/index.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-dispatcher.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-zoom-pan.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-interaction.ts",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-dispatcher.ts",
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-zoom-pan.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/player/hooks/use-player-layer-drag.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/features/tactical-unified/objects/player/components/player-marker.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/player/hooks/use-player-layer-drag.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/hooks/use-canvas-pointer-interaction.ts"
+      ]
+    }
+  ],
+  "public_interfaces": [
+    {
+      "name": "DrawingState",
+      "file": "src/features/tactical-unified/types/index.ts",
+      "definition": "export interface DrawingState { isDrawing: boolean; tool: string; startX: number; startY: number; currentX: number; currentY: number; }"
+    },
+    {
+      "name": "SelectionBox",
+      "file": "src/features/tactical-unified/types/index.ts",
+      "definition": "export interface SelectionBox { startX: number; startY: number; currentX: number; currentY: number; isShift: boolean; }"
+    },
+    {
+      "name": "PitchTransformValues",
+      "file": "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+      "definition": "export interface PitchTransformValues { x: number; y: number; scaleX: number; scaleY: number; }"
+    }
+  ],
+  "summary": "Canvasの純粋座標変換(0-100%)とKonvaネイティブドラッグが、dispatcherとzoom-pan hookを境界に混在している状況を特定。",
+  "cache_key": "tactical-board-1938680aa6835a87f2301a183d53d18ba3d08117"
+}

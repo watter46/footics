@@ -1,0 +1,120 @@
+{
+  "cache_key": "pitch-3d-sync-a7894f57b68f2b151d7cd75e1ff4d9cf8b7dfe68",
+  "domain": "pitch-3d-sync",
+  "git_hash": "a7894f57b68f2b151d7cd75e1ff4d9cf8b7dfe68",
+  "created_at": "2026-09-10T10:19:00+09:00",
+  "impacted_files": [
+    "src/lib/tactical/export/tactical-frame-renderer.ts",
+    "src/features/tactical-unified/panels/export/export-preview-player.tsx",
+    "src/lib/tactical/export/__tests__/tactical-frame-renderer.test.ts"
+  ],
+  "investigation_findings": {
+    "item_1_tactical_frame_renderer_investigation": {
+      "file": "src/lib/tactical/export/tactical-frame-renderer.ts",
+      "findings": [
+        {
+          "issue": "mvpMatrix がピッチ描画ロジックで一切利用されていない",
+          "details": "L3-3D-001A で RenderTacticalFrameOptions に mvpMatrix?: Float32Array | null が追加され、projectObjToScreen (L113-146) が実装されたが、この射影関数は選手 (players)、矢印 (arrows)、ボール (ball)、コネクトライン (connectLines)、テキスト (texts) の座標変換にのみ適用されている。ピッチ描画ブロック (Section 1: Background & Pitch Markings, L151-427) では mvpMatrix が完全に無視されており、従来の 2D 線形変換 (toScreenX, toScreenY) で strokeRect や ellipse を直立平面上に描画している。",
+          "lines": "src/lib/tactical/export/tactical-frame-renderer.ts#L96-L100, #L151-L427"
+        },
+        {
+          "issue": "ピッチ向き (orientation) のアスペクト比判定が 9:16 のみで不完全",
+          "details": "L169 で `if (aspectRatio === '9:16')` とハードコードされているため、4:5 や 1:1 といった他の縦向きアスペクト比（pitch-geometry.ts の PITCH_BOUNDARY_CONFIGS では vertical 定義）がすべて else (16:9 横向き) にフォールバックし、縦長・正方形キャンバス上に横向きピッチが歪んで描画される。",
+          "lines": "src/lib/tactical/export/tactical-frame-renderer.ts#L169, #L297"
+        },
+        {
+          "issue": "ピッチ幾何パラメータが古い固定値変換に依存している",
+          "details": "toNormX/toNormY で 70.0 や 124.444 等の過去の SVG viewBox 固定値がハードコードされており、pitch-geometry.ts の最新幾何定義 (calculatePitchGeometryForAspect) と乖離している。",
+          "lines": "src/lib/tactical/export/tactical-frame-renderer.ts#L172-L175, #L300-L303"
+        }
+      ]
+    },
+    "item_2_normal_canvas_pitch_rendering_investigation": {
+      "file": "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx",
+      "findings": [
+        {
+          "mechanism": "ピッチ背景は Konva (Canvas) ではなく DOM 要素 (PitchBackgroundDom) として描画",
+          "details": "unified-canvas.tsx L220-231 において、<PitchBackgroundDom> が zIndex: 0 の DOM レイヤーとして配置されている。Konva Stage 内の Layer 1 (backgroundLayer) は空であり、Konva 側にはピッチは描画されていない。",
+          "code_reference": "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx#L220-L231"
+        },
+        {
+          "mechanism": "CSS 3D トランスフォームによるピッチチルト・パン・ズームの実現",
+          "details": "PitchBackgroundDom (pitch-background-dom.tsx L65, L70-86) において、外側ラッパーに perspective: 1000px、内側要素に transform: translate3d(panX, panY, 0) scale(zoom) rotateX(tilt deg) および transformStyle: preserve-3d を適用。ブラウザの 3D CSS レンダリングでピッチ全体（芝生＋ライン）を傾けている。",
+          "code_reference": "src/features/tactical-unified/objects/pitch/components/pitch-background-dom.tsx#L56-L87"
+        },
+        {
+          "mechanism": "アスペクト比・ピッチ向き (orientation) の同期",
+          "details": "PitchBackgroundDom は usePitchImage(aspectRatio) を通じて pitch-svg.ts の loadPitchSvgImage を呼び出し、calculatePitchGeometryForAspect(aspectRatio) の config.orientation に基づく SVG (16:9 は横向き、9:16 / 4:5 / 1:1 は縦向き) を <img> で表示している。",
+          "code_reference": "src/features/tactical-unified/objects/pitch/components/pitch-background-dom.tsx#L48-L54"
+        },
+        {
+          "mechanism": "選手・オブジェクトの同期配置 (Billboard 方式)",
+          "details": "Konva Stage (zIndex: 10) 上の選手マーカー (player-marker.tsx) やボール (ball-object.tsx) は、normToScreen (canvas-coordinates.ts) により panX, panY, zoom, tilt, perspective からピッチ平面上の 3D 透視投影スクリーン座標 (x, y) を算出して 2D マーカーを配置している。このため、CSS 3D で傾いたピッチ上に選手が正しく立っているように見える。",
+          "code_reference": "src/features/tactical-unified/objects/player/components/player-marker.tsx#L71-L79"
+        }
+      ]
+    },
+    "item_3_renderer_vs_object_projection_discrepancy": {
+      "findings": [
+        {
+          "component": "選手・ボール・矢印・テキスト",
+          "coordinate_function": "projectObjToScreen (L113-146)",
+          "behavior": "mvpMatrix がある場合、モデル空間座標 (-0.5..0.5, 0.5..-0.5, 0) から Column-major MVP 行列ベクトル積でクリップ座標・NDC を計算し、チルト・ズーム・パンが反映された画面座標 (px) を算出。プレビュー上でもキャンバスと完全に同期する。",
+          "result": "OK (ユーザー報告「プレビューで選手はキャンバスと同じになっている」と一致)"
+        },
+        {
+          "component": "ピッチ背景およびピッチライン",
+          "coordinate_function": "toScreenX / toScreenY (L96-100)",
+          "behavior": "cropX/cropY (BoundaryBox) のみの 2D 線形スケーリング。mvpMatrix (チルト・ズーム・パン) は一切参照されない。描画も ctx.strokeRect や ctx.ellipse による 2D 軸並行描画。",
+          "result": "NG (ピッチがチルトせず 2D 平面のまま直立し、選手とピッチが分離する)"
+        },
+        {
+          "component": "ゾーン (Zones)",
+          "coordinate_function": "toScreenX / toScreenY (L447, L462, L471)",
+          "behavior": "ピッチラインと同様に toScreenX/toScreenY を使用しており、チルト時に 3D 変換されない。",
+          "result": "NG"
+        }
+      ]
+    }
+  },
+  "root_cause": "tactical-frame-renderer.ts 内のピッチ描画処理（L151-427）が、渡された mvpMatrix を一切利用せず、toScreenX/toScreenY と ctx.strokeRect/ctx.ellipse による固定 2D 平面描画を行っているため。また、アスペクト比判定が 9:16 以外を横向きとみなしているため、4:5 や 1:1 での縦向きピッチ描画が破綻している。",
+  "proposed_modifications": [
+    {
+      "file": "src/lib/tactical/export/tactical-frame-renderer.ts",
+      "description": "ピッチ描画処理を calculatePitchGeometryForAspect および projectObjToScreen を用いた 3D 透視投影（Quad / Polyline / Line）に対応させ、mvpMatrix 有効時にキャンバスと完全同期させる",
+      "specific_changes": [
+        {
+          "location": "L20-L27 付近",
+          "action": "calculatePitchGeometryForAspect を @/lib/tactical/pitch-geometry からインポート",
+          "code": "import { calculatePitchGeometryForAspect } from '@/lib/tactical/pitch-geometry';"
+        },
+        {
+          "location": "L151-L427 (ピッチ背景・マーキング描画ブロック)",
+          "action": "3D ピッチ描画プリミティブ (draw3DQuad, draw3DLine, draw3DArc, draw3DSpot) を導入し、calculatePitchGeometryForAspect(aspectRatio) に基づく全 4 アスペクト比 (16:9, 9:16, 4:5, 1:1) の 3D 描画を実装。mvpMatrix なしの場合は既存の 2D strokeRect/ellipse へのフォールバックで後方互換性を保持する。",
+          "implementation_details": "1. geom = calculatePitchGeometryForAspect(aspectRatio)\n2. toNormX = (vx) => (vx / geom.config.widthPx) * 100, toNormY = (vy) => (vy / geom.config.heightPx) * 100\n3. proj = (vx, vy) => projectObjToScreen(toNormX(vx), toNormY(vy))\n4. mvpMatrix がある場合: ピッチ芝生背景を 4 頂点 Quad で塗りつぶし (#080e1e)、外枠・ペナルティエリア・ゴールエリアを draw3DQuad、ハーフウェイラインを draw3DLine、センターサークル・ペナルティ弧・コーナーアークを分割サンプリング draw3DArc で描画\n5. isHorizontal (16:9) と isVertical (9:16, 4:5, 1:1) の両方の FIFA 規格配置に完全対応"
+        },
+        {
+          "location": "L444-L489 (ゾーン描画ブロック)",
+          "action": "ゾーンの座標変換を toScreenX/toScreenY から projectObjToScreen に統一し、Polygon, Rect, Ellipse がチルト時に 3D 射影されるように修正"
+        }
+      ]
+    },
+    {
+      "file": "src/lib/tactical/export/__tests__/tactical-frame-renderer.test.ts",
+      "description": "mvpMatrix 渡下時の 3D ピッチ描画テスト、および 4:5 / 1:1 アスペクト比のピッチ描画テストを追加",
+      "specific_changes": [
+        {
+          "location": "新規テストケース追加",
+          "action": "mvpMatrix を渡した際に 3D ピッチ描画（beginPath, lineTo, stroke/fill）が実行されること、および 4:5, 1:1 アスペクト比で縦向きピッチが描画されることを検証"
+        }
+      ]
+    }
+  ],
+  "verification_commands": [
+    "pnpm vitest run src/lib/tactical/export/__tests__/tactical-frame-renderer.test.ts",
+    "pnpm vitest run src/features/tactical-unified/__tests__/video-export.test.ts",
+    "pnpm vitest run src/features/tactical-unified/__tests__/pitch-tilt-export.test.ts",
+    "rtk pnpm type-check:scoped src/lib/tactical/export/tactical-frame-renderer.ts",
+    "rtk biome check src/lib/tactical/export/tactical-frame-renderer.ts"
+  ]
+}

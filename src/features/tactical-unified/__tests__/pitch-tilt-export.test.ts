@@ -6,68 +6,44 @@ import {
   calculatePitchRect,
   calculatePitchTransform,
   getPitchAndNormPos,
+  pitchToScreen,
   screenToPitch,
 } from '@/features/tactical-unified/objects/canvas';
 
-describe('L3-Tactical-028: Pitch Tilt (2.5D) Bottom-Anchored Transform', () => {
+describe('Pitch Center-Anchored Transform & Tilt 3D Inversion', () => {
   const pitchRect = { x: 50, y: 30, width: 800, height: 500 };
 
-  it('calculatePitchTransform: 0° tilt yields scaleY == zoom and deltaY == 0', () => {
-    const transform = calculatePitchTransform(pitchRect, 100, -40, 1.5, 0);
-    expect(transform.x).toBe(150); // 50 + 100
-    expect(transform.y).toBe(-10); // 30 - 40
-    expect(transform.scaleX).toBe(1.5);
-    expect(transform.scaleY).toBe(1.5);
-  });
+  it('calculatePitchTransform: ピッチ幾何学中心基準で deltaX / deltaY が算出され、scaleX/scaleY が等倍 zoom となる', () => {
+    const zoom = 1.5;
+    const panX = 100;
+    const panY = -40;
+    const transform = calculatePitchTransform(pitchRect, panX, panY, zoom, 0);
 
-  it('calculatePitchTransform: 25° tilt correctly anchors bottom edge while foreshortening scaleY', () => {
-    const zoom = 1.0;
-    const transform = calculatePitchTransform(pitchRect, 0, 0, zoom, 25);
-    const expectedCos = Math.cos((25 * Math.PI) / 180);
-    const expectedDeltaY = pitchRect.height * zoom * (1 - expectedCos);
+    const expectedDeltaX = (pitchRect.width / 2) * (1 - zoom); // 400 * (-0.5) = -200
+    const expectedDeltaY = (pitchRect.height / 2) * (1 - zoom); // 250 * (-0.5) = -125
 
-    expect(transform.x).toBe(pitchRect.x);
+    expect(transform.x).toBe(pitchRect.x + panX + expectedDeltaX); // 50 + 100 - 200 = -50
+    expect(transform.y).toBe(pitchRect.y + panY + expectedDeltaY); // 30 - 40 - 125 = -135
     expect(transform.scaleX).toBe(zoom);
-    expect(transform.scaleY).toBeCloseTo(zoom * expectedCos, 5);
-    expect(transform.y).toBeCloseTo(pitchRect.y + expectedDeltaY, 5);
+    expect(transform.scaleY).toBe(zoom);
 
-    // Verify bottom edge remains fixed
-    const bottomY = transform.y + pitchRect.height * transform.scaleY;
-    expect(bottomY).toBeCloseTo(pitchRect.y + pitchRect.height * zoom, 5);
+    // ピッチ幾何学中心の位置が (pitchRect.center + pan) と一致することを確認
+    const centerX = transform.x + (pitchRect.width / 2) * transform.scaleX;
+    const centerY = transform.y + (pitchRect.height / 2) * transform.scaleY;
+    expect(centerX).toBe(pitchRect.x + pitchRect.width / 2 + panX);
+    expect(centerY).toBe(pitchRect.y + pitchRect.height / 2 + panY);
   });
 
-  it('calculatePitchTransform: 45° tilt anchors bottom edge while top tilts forward', () => {
-    const zoom = 1.2;
-    const panX = 20;
-    const panY = 10;
-    const transform = calculatePitchTransform(pitchRect, panX, panY, zoom, 45);
-    const expectedCos = Math.cos((45 * Math.PI) / 180);
-    const expectedDeltaY = pitchRect.height * zoom * (1 - expectedCos);
+  it('calculatePitchTransform: 複数ズームレベルでの中心基準維持', () => {
+    const zoomLevels = [0.5, 1.0, 1.5, 2.0];
+    for (const zoom of zoomLevels) {
+      const transform = calculatePitchTransform(pitchRect, 0, 0, zoom, 0);
+      const centerX = transform.x + (pitchRect.width / 2) * transform.scaleX;
+      const centerY = transform.y + (pitchRect.height / 2) * transform.scaleY;
 
-    expect(transform.x).toBe(pitchRect.x + panX);
-    expect(transform.scaleX).toBe(zoom);
-    expect(transform.scaleY).toBeCloseTo(zoom * expectedCos, 5);
-    expect(transform.y).toBeCloseTo(pitchRect.y + panY + expectedDeltaY, 5);
-
-    // Verify bottom edge remains fixed at (pitchRect.y + panY + pitchHeight * zoom)
-    const bottomY = transform.y + pitchRect.height * transform.scaleY;
-    expect(bottomY).toBeCloseTo(
-      pitchRect.y + panY + pitchRect.height * zoom,
-      5,
-    );
-  });
-
-  it('calculatePitchTransform: 60° tilt foreshortens scaleY to 50% and anchors bottom edge', () => {
-    const zoom = 1.0;
-    const transform = calculatePitchTransform(pitchRect, 0, 0, zoom, 60);
-    expect(transform.scaleX).toBe(1.0);
-    expect(transform.scaleY).toBeCloseTo(0.5, 5);
-    // deltaY = 500 * 1.0 * (1 - 0.5) = 250
-    expect(transform.y).toBeCloseTo(pitchRect.y + 250, 5);
-
-    // Bottom edge remains at 30 + 500 = 530
-    const bottomY = transform.y + pitchRect.height * transform.scaleY;
-    expect(bottomY).toBeCloseTo(pitchRect.y + pitchRect.height, 5);
+      expect(centerX).toBeCloseTo(pitchRect.x + pitchRect.width / 2, 5);
+      expect(centerY).toBeCloseTo(pitchRect.y + pitchRect.height / 2, 5);
+    }
   });
 
   it('applyPitchTransformToGroups applies calculated transform to Konva groups and batches redraw', () => {
@@ -96,10 +72,10 @@ describe('L3-Tactical-028: Pitch Tilt (2.5D) Bottom-Anchored Transform', () => {
       50,
       20,
       1.5,
-      45,
+      0,
     );
 
-    const expected = calculatePitchTransform(pitchRect, 50, 20, 1.5, 45);
+    const expected = calculatePitchTransform(pitchRect, 50, 20, 1.5, 0);
     expect(mockGroup1.x).toHaveBeenCalledWith(expected.x);
     expect(mockGroup1.y).toHaveBeenCalledWith(expected.y);
     expect(mockGroup1.scaleX).toHaveBeenCalledWith(expected.scaleX);
@@ -114,16 +90,21 @@ describe('L3-Tactical-028: Pitch Tilt (2.5D) Bottom-Anchored Transform', () => {
   });
 });
 
-describe('L3-Tactical-028: Screen Coordinates Inversion under Tilt', () => {
+describe('Screen Coordinates Inversion under Tilt & Zoom', () => {
   const pitchRect = { x: 50, y: 30, width: 800, height: 500 };
 
-  it('screenToPitch and getPitchAndNormPos correctly invert coordinates under tilt', () => {
+  it('screenToPitch and getPitchAndNormPos correctly invert coordinates under tilt and zoom', () => {
     const panX = 40;
     const panY = 20;
     const zoom = 1.4;
     const tilt = 30;
 
-    const transform = calculatePitchTransform(
+    // Pick a point on the pitch (e.g. at pitch center: 400, 250)
+    const pitchInternalX = 400;
+    const pitchInternalY = 250;
+
+    const screenPoint = pitchToScreen(
+      { x: pitchInternalX, y: pitchInternalY },
       pitchRect,
       panX,
       panY,
@@ -131,17 +112,9 @@ describe('L3-Tactical-028: Screen Coordinates Inversion under Tilt', () => {
       tilt,
     );
 
-    // Pick a point on the pitch (e.g. at pitch center: 400, 250)
-    const pitchInternalX = 400;
-    const pitchInternalY = 250;
-
-    // Projected screen position
-    const screenX = transform.x + pitchInternalX * transform.scaleX;
-    const screenY = transform.y + pitchInternalY * transform.scaleY;
-
     // Invert using screenToPitch
     const inverted = screenToPitch(
-      { x: screenX, y: screenY },
+      screenPoint,
       pitchRect,
       panX,
       panY,
@@ -153,11 +126,12 @@ describe('L3-Tactical-028: Screen Coordinates Inversion under Tilt', () => {
     expect(inverted.y).toBeCloseTo(pitchInternalY, 5);
 
     // Verify getPitchAndNormPos
-    const { pitchPos, normPos } = getPitchAndNormPos(
-      { x: screenX, y: screenY },
-      pitchRect,
-      { panX, panY, zoom, tilt },
-    );
+    const { pitchPos, normPos } = getPitchAndNormPos(screenPoint, pitchRect, {
+      panX,
+      panY,
+      zoom,
+      tilt,
+    });
     expect(pitchPos.x).toBeCloseTo(pitchInternalX, 5);
     expect(pitchPos.y).toBeCloseTo(pitchInternalY, 5);
     expect(normPos.x).toBeCloseTo((pitchInternalX / pitchRect.width) * 100, 5);
@@ -165,11 +139,11 @@ describe('L3-Tactical-028: Screen Coordinates Inversion under Tilt', () => {
   });
 });
 
-describe('L3-Tactical-028: Boundary Box Export Crop Rect under Tilt', () => {
+describe('Boundary Box Export Crop Rect under Zoom & Tilt', () => {
   const stageSize = { width: 1000, height: 600 };
   const aspectRatio = '16:9' as const;
 
-  it('境界線枠(boundaryBox)が有効な場合、ピッチチルト時でも境界線の矩形領域がそのままクロップ領域として返される', () => {
+  it('境界線枠(boundaryBox)が有効な場合、境界線の矩形領域がそのままクロップ領域として返される', () => {
     const boundaryBox = {
       x: 20,
       y: 15,

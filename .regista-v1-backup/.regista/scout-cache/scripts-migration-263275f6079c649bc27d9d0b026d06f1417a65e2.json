@@ -1,0 +1,28 @@
+{
+  "cache_key": "scripts-migration-263275f6079c649bc27d9d0b026d06f1417a65e2",
+  "domain": "scripts-migration",
+  "git_hash": "263275f6079c649bc27d9d0b026d06f1417a65e2",
+  "impacted_files": [
+    "package.json",
+    "Makefile",
+    ".agents/hooks.json",
+    "ORGANIZATION.md",
+    ".agents/scripts/oracle-guard.js",
+    ".agents/scripts/safety-guard.js",
+    ".agents/scripts/auto-format.js",
+    ".agents/scripts/verify-gate.js",
+    ".agents/scripts/list-tickets.js",
+    ".agents/scripts/validate-tickets.js",
+    ".agents/scripts/sync-board.js",
+    ".agents/scripts/presenters/board-markdown-presenter.js",
+    ".agents/scripts/presenters/chat-presenter.js",
+    ".agents/scripts/presenters/obsidian-presenter.js",
+    ".agents/scripts/type-check-scoped.js",
+    ".agents/scripts/verify-scoped.js",
+    ".regista/scripts/ticket-done.ts",
+    "scripts/gen-skeleton.mjs",
+    "scripts/metrics/collect-tokens.js",
+    "scripts/metrics/summary-tokens.js",
+    "scripts/create_tactical_tickets.sh"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "ticket_id": "L3-3D-004",
+  "domain": "tactical-export",
+  "analyzed_at": "2026-09-10T10:55:00+09:00",
+  "feedback": "境界線の中を表示するのがプレビューの役割です。このチケットでは見当違いのタスクになっている",
+  "root_cause": {
+    "summary": "BoundaryBoxをピッチ内の一部をマスク切り抜きする枠と誤認し、画面全体に拡大（Crop & Zoom）表示すべきプレビューで、縮小ピッチの一部だけを小さくctx.clip()して外側を暗黒化したことによる仕様の見当違い",
+    "discrepancy_2d_vs_3d": "2DではtoScreenX/YによりBoundaryBox領域が出力キャンバス全体(0,0,w,h)に拡大フィットされていたが、3DではMVP行列が常にピッチ全体を投影しCropが未適用だった。そこにWorkerが3D透視投影上の小枠でctx.clip()を適用したため画面の大部分が暗黒化した"
+  },
+  "target_files": [
+    "src/lib/tactical/export/tactical-frame-renderer.ts",
+    "src/lib/tactical/export/__tests__/tactical-frame-renderer.test.ts"
+  ],
+  "reference_files": [
+    "src/features/tactical-unified/panels/export/export-modal-body.tsx",
+    "src/features/tactical-unified/panels/export/export-preview-player.tsx",
+    "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+    "src/lib/tactical/export/video-export-engine.ts"
+  ],
+  "redesign_spec": {
+    "title": "エクスポート描画エンジンおよびプレビューにおける境界線（BoundaryBox）領域の3D/2Dクロップ＆フィット拡大表示（Crop Viewport Transform）対応",
+    "required_changes": [
+      "tactical-frame-renderer.ts 内の誤った透視投影4頂点 ctx.clip() を撤去",
+      "3D透視投影時において、BoundaryBoxが有効な場合は指定領域が出力キャンバス(w, h)全体に拡大フィット（Crop & Zoom）されるViewport Transformを実装",
+      "キャンバス外枠 [0, 0, w, h] に対する ctx.clip() による画面外マーカーのはみ出し防止",
+      "2D/3Dともに境界線内部の映像がプレビュー画面全体にフル表示されることを検証する単体テストの追加"
+    ]
+  }
+}

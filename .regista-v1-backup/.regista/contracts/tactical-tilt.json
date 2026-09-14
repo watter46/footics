@@ -1,0 +1,82 @@
+{
+  "domain": "tactical-tilt",
+  "updated_at": "2026-09-08T10:32:00+09:00",
+  "git_hash": "242dfc980594ec4466aae6e797b996fcba3dce16",
+  "interfaces": [
+    {
+      "name": "PitchTransform",
+      "source_file": "src/lib/types/tactical-unified.ts",
+      "description": "3Dチルト・パン・ズームおよび操作ロック状態を保持するピッチ変換状態型",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "panX": { "type": "number", "description": "X軸パンオフセット (px)" },
+          "panY": { "type": "number", "description": "Y軸パンオフセット (px)" },
+          "zoom": { "type": "number", "description": "ズーム倍率 (0.2 - 5.0)" },
+          "tilt": { "type": "number", "description": "X軸チルト角度 (deg: 0 - 85)" },
+          "isLocked": { "type": "boolean", "description": "ピッチ操作ロックフラグ" }
+        },
+        "required": ["panX", "panY", "zoom", "tilt", "isLocked"]
+      }
+    },
+    {
+      "name": "PitchTransformValues",
+      "source_file": "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+      "description": "2D/3Dハイブリッド座標系におけるピッチグループ変換値",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "x": { "type": "number" },
+          "y": { "type": "number" },
+          "scaleX": { "type": "number" },
+          "scaleY": { "type": "number" }
+        },
+        "required": ["x", "y", "scaleX", "scaleY"]
+      }
+    },
+    {
+      "name": "PitchRectBounds",
+      "source_file": "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+      "description": "ステージ内ピッチ矩形領域の境界と寸法",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "x": { "type": "number" },
+          "y": { "type": "number" },
+          "width": { "type": "number" },
+          "height": { "type": "number" }
+        },
+        "required": ["x", "y", "width", "height"]
+      }
+    },
+    {
+      "name": "PitchTransformState",
+      "source_file": "src/features/tactical-unified/objects/canvas/helpers/canvas-coordinates.ts",
+      "description": "逆座標変換に渡されるオプショナルな変換パラメータ",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "panX": { "type": "number" },
+          "panY": { "type": "number" },
+          "zoom": { "type": "number" },
+          "tilt": { "type": "number" }
+        }
+      }
+    },
+    {
+      "name": "ExportCropRect",
+      "source_file": "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+      "description": "正対固定境界線またはピッチ矩形に基づく画像出力クロップ領域",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "x": { "type": "number" },
+          "y": { "type": "number" },
+          "width": { "type": "number" },
+          "height": { "type": "number" }
+        },
+        "required": ["x", "y", "width", "height"]
+      }
+    }
+  ]
+}

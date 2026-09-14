@@ -3,12 +3,13 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCallback } from 'react';
 import type { PitchTransform } from '@/lib/types/tactical-unified';
-import { getPitchAndNormPos } from '../helpers/canvas-coordinates';
 import {
-  type CameraParams,
-  type NormPoint,
-  unprojectScreenToPitch,
-} from '../helpers/matrix-coordinates';
+  DEFAULT_PITCH_PERSPECTIVE,
+  getPitchAndNormPos,
+  type Point2D,
+  pitchToNorm,
+  unprojectScreenYToCssRotateX,
+} from '../helpers/canvas-coordinates';
 import type { useCanvasDrawingInteraction } from './use-canvas-drawing-interaction';
 import type { useCanvasSelectionBox } from './use-canvas-selection-box';
 import type { useCanvasZoneRotation } from './use-canvas-zone-rotation';
@@ -48,7 +49,7 @@ function resolvePointerPositions(
   effectivePitch: { x: number; y: number; width: number; height: number },
   stageSize?: { width: number; height: number },
 ): {
-  normPoint: NormPoint | null;
+  normPoint: Point2D | null;
   normPos: { x: number; y: number } | null;
   pitchPos: { x: number; y: number } | null;
 } {
@@ -71,32 +72,46 @@ function resolvePointerPositions(
   const stageHeight =
     stageSize?.height ?? effectivePitch.y * 2 + effectivePitch.height;
 
-  const cameraParams: CameraParams = {
-    tilt,
-    zoom: pitchTransform.zoom ?? 1,
-    panX: pitchTransform.panX ?? 0,
-    panY: pitchTransform.panY ?? 0,
-    stageWidth,
-    stageHeight,
-    pitchWidth: effectivePitch.width,
-    pitchHeight: effectivePitch.height,
-    pitchX: effectivePitch.x,
-    pitchY: effectivePitch.y,
-    pitchRect: effectivePitch,
-  };
+  const effPerspective = DEFAULT_PITCH_PERSPECTIVE;
+  const panX = pitchTransform.panX ?? 0;
+  const panY = pitchTransform.panY ?? 0;
+  const zoom = Math.max(0.001, pitchTransform.zoom ?? 1);
 
-  const normPoint = unprojectScreenToPitch(screenPos, cameraParams);
-  if (!normPoint) {
-    return { normPoint: null, normPos: null, pitchPos: null };
-  }
+  const stageCenterY = stageHeight / 2;
+
+  // CSS 3D rotateX の逆変換でスクリーンY→ピッチローカルY を算出
+  // null は地平線より上（不定域）→ y=0（ステージ上端）にクランプして処理継続
+  const pitchLocalYRaw = unprojectScreenYToCssRotateX(
+    screenPos.y,
+    stageCenterY,
+    tilt,
+    effPerspective,
+  );
+  const pitchLocalY = pitchLocalYRaw ?? 0;
+
+  // X座標: screenToPitch の perspective branch と同等の計算
+  // z3d を求めるには pitchLocalY (= tilt逆変換後のステージ中心相対Y) が必要
+  const safeTilt = Math.max(0, Math.min(85, tilt));
+  const tiltRad = (safeTilt * Math.PI) / 180;
+  const sinTilt = Math.sin(tiltRad);
+  const z3d = zoom * pitchLocalY * sinTilt;
+  const invScale = 1 - z3d / effPerspective;
+
+  const stageOffsetX = (stageWidth - effectivePitch.width) / 2;
+  const relX = screenPos.x - (stageOffsetX + effectivePitch.width / 2);
+  const localX = (relX * invScale - panX) / zoom;
+  const localY = (pitchLocalY - panY) / zoom;
+
+  const pitchPos: Point2D = {
+    x: localX + effectivePitch.width / 2,
+    y: localY + effectivePitch.height / 2,
+  };
+  const normPos = pitchToNorm(pitchPos, effectivePitch);
 
   return {
-    normPoint,
-    normPos: { x: normPoint.x * 100, y: normPoint.y * 100 },
-    pitchPos: {
-      x: normPoint.x * effectivePitch.width,
-      y: normPoint.y * effectivePitch.height,
-    },
+    normPoint: { x: normPos.x / 100, y: normPos.y / 100 },
+    normPos,
+    pitchPos,
   };
 }
 

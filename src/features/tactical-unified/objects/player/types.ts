@@ -100,7 +100,7 @@ export interface PlayerMarkerProps {
   onDragEnd: (e: KonvaEventObject<DragEvent>, player: Player) => void;
 }
 
-export interface PlayerLayerProps {
+export interface BasePlayerLayerProps {
   slide: Slide;
   stageSize: { width: number; height: number };
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;

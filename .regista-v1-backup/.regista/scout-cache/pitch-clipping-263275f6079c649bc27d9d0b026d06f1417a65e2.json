@@ -1,0 +1,121 @@
+{
+  "cache_key": "pitch-clipping-263275f6079c649bc27d9d0b026d06f1417a65e2",
+  "domain": "pitch-clipping",
+  "git_hash": "263275f6079c649bc27d9d0b026d06f1417a65e2",
+  "created_at": "2026-09-10T10:39:00+09:00",
+  "user_issue": {
+    "raw": "L3-3D-003まで実装したがプレビューでピッチ内の動きは再現されているが、境界線の内側だけをプレビューにしてほしい。現時点では境界線が意識されていないプレビューになっている",
+    "summary": "L3-3D-003 で 3D 透視投影 (mvpMatrix) が導入されピッチラインや選手が 3D 描画されるようになったが、境界線（白線タッチライン外枠 / BoundaryBox）の内側へのクリッピングが行われておらず、外側の余白や範囲外オブジェクトがそのまま露出している。"
+  },
+  "impacted_files": [
+    "src/lib/tactical/export/tactical-frame-renderer.ts",
+    "src/features/tactical-unified/panels/export/export-preview-player.tsx",
+    "src/lib/tactical/pitch-geometry.ts",
+    "src/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper.ts",
+    "src/lib/tactical/export/__tests__/tactical-frame-renderer.test.ts"
+  ],
+  "investigation_analysis": {
+    "pitch_boundary_definition": {
+      "pitch_touchlines": {
+        "description": "calculatePitchGeometryForAspect(aspectRatio) で定義される FIFA 規格の白線外枠（タッチライン・ゴールライン）",
+        "margins": "DEFAULT_PITCH_MARGIN_PERCENT = 3.0% (ピッチキャンバス 0..100 に対し、3%〜97% の範囲に白線が配置される)",
+        "normalized_coords": {
+          "xMin": 3.0,
+          "yMin": 3.0,
+          "xMax": 97.0,
+          "yMax": 97.0,
+          "width": 94.0,
+          "height": 94.0
+        },
+        "file_reference": "src/lib/tactical/pitch-geometry.ts#L110-L128"
+      },
+      "boundary_box": {
+        "description": "スライドごとに保持される出力境界枠 (BoundaryBox)。デフォルトはピッチ白線フィット境界線 (0, 0, 100, 100, enabled: true, fitTarget: 'pitch')",
+        "custom_crop": "ユーザーが編集画面でリサイズ可能 (例: ハーフコート x: 0, y: 0, width: 50, height: 100)",
+        "file_reference": "src/lib/types/tactical-unified.ts#L352-L384"
+      }
+    },
+    "current_flaws_why_boundary_is_ignored": [
+      {
+        "flaw_id": "NO_CANVAS_CLIPPING",
+        "severity": "CRITICAL",
+        "description": "tactical-frame-renderer.ts 内で ctx.clip() が一切呼ばれていない。ctx.fillRect(0, 0, w, h) でキャンバス全体を塗りつぶした後、ピッチ外枠の外側に存在する選手、ボール、矢印、ゾーン、ビジョンコーン、フォーカスビームがそのまま描画される。",
+        "location": "src/lib/tactical/export/tactical-frame-renderer.ts#L580-L602, #L848-L920"
+      },
+      {
+        "flaw_id": "MVP_MATRIX_IGNORES_BOUNDARY_BOX",
+        "severity": "CRITICAL",
+        "description": "renderTacticalFrameToCanvas において、mvpMatrix が指定されている 3D モードでは projectObjToScreen が norm100X / 100 のみを行い、boundaryBox の cropX, cropY, cropW, cropH を完全に無視して 0..100 全体を射影している。そのため境界線枠が有効でも 3D 描画に一切反映されない。",
+        "location": "src/lib/tactical/export/tactical-frame-renderer.ts#L543-L575"
+      },
+      {
+        "flaw_id": "NO_PITCH_SURFACE_FILL_IN_3D",
+        "severity": "HIGH",
+        "description": "3D モードで drawPitchMarkings は白線・ゴールド線 (draw3DQuad, draw3DLine, draw3DArc) のみを描画し、ピッチ表面（芝生エリア）を塗りつぶしていない。背景は 2D の黒色 (#020617) のままであるため、ピッチ境界線とその外側の境界が視覚的に存在せず、線だけが黒い空間に浮いている。",
+        "location": "src/lib/tactical/export/tactical-frame-renderer.ts#L108-L114, #L196"
+      },
+      {
+        "flaw_id": "MOCK_CONTEXT_LACKS_CLIP",
+        "severity": "MEDIUM",
+        "description": "tactical-frame-renderer.test.ts の createMockContext に clip: vi.fn() が定義されておらず、テストでクリッピング呼び出しを検証できない状態になっている。",
+        "location": "src/lib/tactical/export/__tests__/tactical-frame-renderer.test.ts#L14-L45"
+      }
+    ]
+  },
+  "required_changes": {
+    "solution_design": {
+      "clipping_strategy": "ピッチ境界線（BoundaryBox またはピッチ白線外枠）の 4 頂点をスクリーン座標系に射影し、Canvas 2D の ctx.save() -> ctx.beginPath() -> 4頂点 moveTo/lineTo -> ctx.closePath() -> ctx.clip() を実行する。以降の全描画（ピッチ芝生・マーキング・ゾーン・矢印・選手・ボール・テキスト等）をこのクリップパス内で行い、最後に ctx.restore() で解除する。",
+      "boundary_quad_coordinates": {
+        "3D_mode": "境界線矩形 [bx, by, bw, bh]（boundaryBox または FIFA 白線外枠 leftNorm, topNorm, widthNorm, heightNorm）の 4 頂点を projectObjToScreen でスクリーン座標 pTL, pTR, pBR, pBL に変換してパスを作成",
+        "2D_mode": "ctx.rect(toScreenX(bx), toScreenY(by), toScreenSizeX(bw), toScreenSizeY(bh)) で 2D 矩形クリップパスを作成"
+      },
+      "surface_fill": "ctx.clip() 直後に、ピッチ面として芝生色 (#080e1e または芝生ストライプ) を ctx.fill() / fillRect で塗りつぶし、境界線の内外で明確な明暗・境界を表現する。"
+    },
+    "file_modifications": [
+      {
+        "file": "src/lib/tactical/export/tactical-frame-renderer.ts",
+        "locations": [
+          {
+            "lines": "L504-L535",
+            "action": "境界線領域 [bx, by, bw, bh] の決定ロジック整備 (isBoundaryActive 時は boundaryBox、それ以外はピッチ白線外枠 geom から算出した leftNorm, topNorm, widthNorm, heightNorm または 0..100)"
+          },
+          {
+            "lines": "L580-L602",
+            "action": "ctx.save() を行い、3D または 2D で境界線の 4 頂点による ctx.clip() を適用。クリップ内にピッチ背景塗りつぶし (#080e1e) を実行してから drawPitchMarkings を描画"
+          },
+          {
+            "lines": "L1170 付近 (描画完了直後)",
+            "action": "ctx.restore() を呼び出してクリップ状態をクリーンアップ"
+          }
+        ]
+      },
+      {
+        "file": "src/features/tactical-unified/panels/export/export-preview-player.tsx",
+        "locations": [
+          {
+            "lines": "L129-L140, L300-L316",
+            "action": "プレビュープレイヤーで境界線クリップが適用されたキャンバスをアスペクト比コンテナ内で確実に表示・中央配置"
+          }
+        ]
+      },
+      {
+        "file": "src/lib/tactical/export/__tests__/tactical-frame-renderer.test.ts",
+        "locations": [
+          {
+            "lines": "L14-L45",
+            "action": "createMockContext に clip: vi.fn() を追加"
+          },
+          {
+            "lines": "新規テスト追加",
+            "action": "3D モードおよび 2D モードにおいて、境界線 quad の ctx.clip() が正しく呼び出されることを検証するテストケースを追加"
+          }
+        ]
+      }
+    ]
+  },
+  "verification_plan": {
+    "vitest": "pnpm vitest run src/lib/tactical/export/__tests__/tactical-frame-renderer.test.ts",
+    "type_check": "pnpm type-check:scoped src/lib/tactical/export/tactical-frame-renderer.ts",
+    "biome": "pnpm biome check src/lib/tactical/export/tactical-frame-renderer.ts"
+  }
+}

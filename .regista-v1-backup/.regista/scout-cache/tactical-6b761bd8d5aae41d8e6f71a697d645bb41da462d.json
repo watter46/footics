@@ -1,0 +1,62 @@
+{
+  "impacted_files": [
+    "src/features/tactical-unified/objects/canvas/hooks/use-boundary-box-drag.ts",
+    "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+    "src/features/tactical-unified/stores/pitch-slice.ts",
+    "src/features/tactical-unified/objects/canvas/hooks/use-node-position-transition.ts",
+    "src/features/tactical-unified/objects/player/components/player-marker.tsx",
+    "src/features/tactical-unified/objects/ball/components/ball-object.tsx",
+    "src/lib/types/tactical-unified.ts",
+    "src/lib/tactical/squad-to-tactical-bridge.ts"
+  ],
+  "dag_dependencies": [
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-boundary-box-drag.ts",
+      "depends_on": ["src/lib/types/tactical-unified.ts"]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+      "depends_on": ["src/features/tactical-unified/objects/canvas/hooks/use-boundary-box-drag.ts"]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/hooks/use-node-position-transition.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/features/tactical-unified/objects/player/components/player-marker.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/hooks/use-node-position-transition.ts",
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/features/tactical-unified/objects/ball/components/ball-object.tsx",
+      "depends_on": [
+        "src/features/tactical-unified/objects/canvas/hooks/use-node-position-transition.ts",
+        "src/lib/types/tactical-unified.ts"
+      ]
+    },
+    {
+      "file": "src/lib/types/tactical-unified.ts",
+      "depends_on": []
+    },
+    {
+      "file": "src/lib/tactical/squad-to-tactical-bridge.ts",
+      "depends_on": ["src/lib/types/tactical-unified.ts"]
+    },
+    {
+      "file": "src/features/tactical-unified/stores/pitch-slice.ts",
+      "depends_on": ["src/lib/types/tactical-unified.ts"]
+    }
+  ],
+  "public_interfaces": [
+    "BoundaryBox",
+    "UseNodePositionTransitionOptions",
+    "isVerticalAspectRatio",
+    "isHorizontalAspectRatio",
+    "TacticalUnifiedState",
+    "Player"
+  ],
+  "summary": "1:境界線ドラッグ時の小刻み保存は use-boundary-box-drag と pitch-slice の状態同期に起因。2:トランジションの重さは use-node-position-transition での過剰なTween生成に起因。3:1:1ピッチの配置バグは isVerticalAspectRatio が 1:1 を除外していることに起因。",
+  "cache_key": "tactical-6b761bd8d5aae41d8e6f71a697d645bb41da462d"
+}

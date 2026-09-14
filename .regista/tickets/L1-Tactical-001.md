@@ -2,7 +2,7 @@
 id: L1-Tactical-001
 emoji: 🔧
 title: 3Dパース対応ポインター逆変換およびTransform計算の実装
-status: BLOCKED
+status: DONE
 cancelled_by: L1-3D-001  # gl-matrixアーキテクチャへの移行により廃棄
 cancelled_at: 2026-09-08
 depends_on: []

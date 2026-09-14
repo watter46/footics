@@ -1,0 +1,48 @@
+{
+  "bugs_found": [
+    {
+      "file": "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx",
+      "line": 260,
+      "issue": "Konva Stage の Layer 1 に画面全域を塗りつぶす不透明な黒色 Rect (<Rect fill=\"#020617\"/>) が描画されている",
+      "root_cause": "L2-CANVAS-003 の仕様に従いピッチ背景を DOM レイヤー（PitchBackgroundDom）に分離した際、Konva Stage の Layer 1 に <Rect fill=\"#020617\"/> を残したため、Stage (zIndex: 10) が完全な不透明黒キャンバスとなり、背後の PitchBackgroundDom を 100% 遮蔽している。"
+    },
+    {
+      "file": "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+      "line": 188,
+      "issue": "BoundaryBox のルート div に z-index が指定されていない (z-index: auto)",
+      "root_cause": "Konva Stage が style で zIndex: 10 を持つのに対し、BoundaryBox のラッパー div は z-index が未指定（auto）。CSS Stacking Context のルールにより zIndex: 10 の Stage よりも背面に配置され、Stage の黒色 Rect に覆い隠されて画面上に一切表示されない。"
+    },
+    {
+      "file": "src/features/tactical-unified/objects/pitch/components/pitch-background-dom.tsx",
+      "line": 86,
+      "issue": "PitchBackgroundDom に z-index が明示されていない",
+      "root_cause": "containerStyle に zIndex がなく z-index: auto となっている。Stage (zIndex: 10) の背面レイヤーとして確実に機能させるため、z-0 などの階層明示が望ましい。"
+    }
+  ],
+  "pitch_background_dom_state": "問題あり。コンポーネント自体のピッチ SVG/画像描画および CSS 3D transform ロジックは正常に実装されているが、手前にある Konva Stage (zIndex: 10) の Layer 1 に不透明な黒色 Rect (<Rect fill=\"#020617\"/>) が配置されているため、2D/3D ともに Stage の黒キャンバスに覆い隠されて画面上に一切表示されない。",
+  "boundary_box_state": "問題あり。boundary-box.tsx のルート div に z-index が未指定 (auto) のため、zIndex: 10 の Konva Stage の背面に配置されている。さらに Stage の Layer 1 に全面黒 Rect があるため完全に遮蔽されている。",
+  "konva_stage_state": "問題あり（非透明・不透明黒）。Layer 1 (backgroundLayer) に width={stageSize.width} height={stageSize.height} fill=\"#020617\" の Rect が描画されており、Stage 全体が真っ黒な Canvas となって背後の DOM レイヤーを遮断している。",
+  "3d_mode_state": "ロジック自体は正常だが視覚的に確認不能。unified-canvas.tsx から PitchBackgroundDom に tilt 値が渡され、内部で tilt !== 0 時に rotateX(${tilt}deg) と perspective が適用されるよう実装されている。Konva 側は正対 2D (tilt=0) を維持する設計。しかし Stage 全面が黒 Rect で塗りつぶされているため、3D 傾きが視覚的に見えない状態になっている。",
+  "fix_recommendations": [
+    {
+      "priority": 1,
+      "action": "Konva Stage の Layer 1 から黒色 Rect を削除し、Stage を透明にする",
+      "target_file": "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx",
+      "details": "Layer 1 内の <Rect x={0} y={0} width={stageSize.width} height={stageSize.height} fill=\"#020617\" listening={false} /> を削除する（nodesRegistryRef 参照を維持する場合は空の <Layer listening={false} ref={...} /> に留める）。"
+    },
+    {
+      "priority": 2,
+      "action": "BoundaryBox のルート div に zIndex: 20 を設定し、Stage の前面に配置する",
+      "target_file": "src/features/tactical-unified/objects/canvas/components/boundary-box.tsx",
+      "details": "ルート div の style に zIndex: 20 を追加する。"
+    },
+    {
+      "priority": 3,
+      "action": "PitchBackgroundDom に style={{ zIndex: 0 }} を明示する",
+      "target_file": "src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx",
+      "details": "<PitchBackgroundDom style={{ zIndex: 0 }} .../> を指定し、DOM の重なり順（PitchBackgroundDom [z-0] < Stage [z-10] < BoundaryBox [z-20]）を確定させる。"
+    }
+  ],
+  "summary": "L2-CANVAS-003 でピッチ背景を DOM に移行した際、Konva Stage の Layer 1 に画面全域の黒 Rect を残したため Stage が不透明な黒キャンバスとなり PitchBackgroundDom を完全に遮蔽していた。さらに BoundaryBox に z-index が未指定だったため Stage 背面に潜り込み非表示になっていた。",
+  "cache_key": "canvas-3d-pitch-debug-f51caaf9"
+}

@@ -11,77 +11,60 @@
  */
 
 import { Pause, Play, RotateCcw } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { buildExportMVPMatrix } from '@/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 import type {
   AspectRatio,
   BoundaryBox,
+  PitchTransform,
   Slide,
 } from '@/lib/types/tactical-unified';
+
+const PREVIEW_DIMENSIONS: Record<
+  AspectRatio,
+  { width: number; height: number }
+> = {
+  '16:9': { width: 640, height: 360 },
+  '9:16': { width: 360, height: 640 },
+  '4:5': { width: 360, height: 450 },
+  '1:1': { width: 360, height: 360 },
+};
+
+const ASPECT_CONTAINER_CLASSES: Record<AspectRatio, string> = {
+  '16:9': 'aspect-video',
+  '9:16': 'aspect-[9/16] max-h-[340px]',
+  '4:5': 'aspect-[4/5] max-h-[340px]',
+  '1:1': 'aspect-square max-h-[340px]',
+};
 
 interface ExportPreviewPlayerProps {
   slides: Slide[];
   aspectRatio: AspectRatio;
   boundaryBox?: BoundaryBox | null;
+  pitchTransform?: PitchTransform | null;
 }
 
-export function ExportPreviewPlayer({
-  slides,
-  aspectRatio,
-  boundaryBox,
-}: ExportPreviewPlayerProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const timeLabelRef = useRef<HTMLSpanElement | null>(null);
-  const sliderRef = useRef<HTMLInputElement | null>(null);
+interface UseExportPreviewAnimationParams {
+  slides: Slide[];
+  aspectRatio: AspectRatio;
+  boundaryBox?: BoundaryBox | null;
+  pitchTransform?: PitchTransform | null;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  timeLabelRef: React.RefObject<HTMLSpanElement | null>;
+  sliderRef: React.RefObject<HTMLInputElement | null>;
+}
 
-  const [isPlaying, setIsPlaying] = useState(true);
-
+function useAnimationFrameLoop(
+  isPlaying: boolean,
+  totalDurationMs: number,
+  onFrame: (timeMs: number) => void,
+) {
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const currentTimeRef = useRef<number>(0);
 
-  const totalDurationMs = calculateUnifiedTotalDuration(slides) || 1000;
-
-  const isBoundaryActive =
-    boundaryBox?.enabled &&
-    boundaryBox.width > 0 &&
-    boundaryBox.height > 0 &&
-    (boundaryBox.width < 100 ||
-      boundaryBox.height < 100 ||
-      boundaryBox.x > 0 ||
-      boundaryBox.y > 0);
-
-  // ── Canvas Frame Drawing ──
-  const drawFrame = useCallback(
-    (timeMs: number) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      renderTacticalFrameToCanvas(ctx, {
-        slides,
-        timeMs,
-        width: canvas.width,
-        height: canvas.height,
-        aspectRatio,
-        boundaryBox,
-        transparent: false,
-      });
-
-      // Update UI elements directly without triggering React VDOM diffing
-      if (timeLabelRef.current) {
-        timeLabelRef.current.textContent = `${(timeMs / 1000).toFixed(1)}s`;
-      }
-      if (sliderRef.current) {
-        sliderRef.current.value = String(Math.round(timeMs));
-      }
-    },
-    [slides, boundaryBox, aspectRatio],
-  );
-
-  // ── Animation Loop ──
   useEffect(() => {
     if (!isPlaying) {
       if (animationFrameRef.current) {
@@ -101,7 +84,7 @@ export function ExportPreviewPlayer({
       const elapsed = timestamp - startTimeRef.current;
       currentTimeRef.current = elapsed % totalDurationMs;
 
-      drawFrame(currentTimeRef.current);
+      onFrame(currentTimeRef.current);
       animationFrameRef.current = requestAnimationFrame(loop);
     };
 
@@ -113,26 +96,193 @@ export function ExportPreviewPlayer({
         animationFrameRef.current = null;
       }
     };
-  }, [isPlaying, totalDurationMs, drawFrame]);
+  }, [isPlaying, totalDurationMs, onFrame]);
 
-  // Initial draw
   useEffect(() => {
-    drawFrame(currentTimeRef.current);
-  }, [drawFrame]);
+    onFrame(currentTimeRef.current);
+  }, [onFrame]);
 
-  const handleSeek = (time: number) => {
-    currentTimeRef.current = time;
-    startTimeRef.current = null;
-    drawFrame(time);
-  };
+  const seek = useCallback(
+    (time: number) => {
+      currentTimeRef.current = time;
+      startTimeRef.current = null;
+      onFrame(time);
+    },
+    [onFrame],
+  );
 
-  const togglePlay = () => {
+  return { seek };
+}
+
+function useExportPreviewAnimation({
+  slides,
+  aspectRatio,
+  boundaryBox,
+  pitchTransform,
+  canvasRef,
+  timeLabelRef,
+  sliderRef,
+}: UseExportPreviewAnimationParams) {
+  const [isPlaying, setIsPlaying] = useState(true);
+  const totalDurationMs = calculateUnifiedTotalDuration(slides) || 1000;
+
+  const { width: previewWidth, height: previewHeight } =
+    PREVIEW_DIMENSIONS[aspectRatio] ?? PREVIEW_DIMENSIONS['16:9'];
+
+  const mvpMatrix = useMemo(() => {
+    if (!pitchTransform) return null;
+    return buildExportMVPMatrix(
+      pitchTransform,
+      previewWidth,
+      previewHeight,
+      aspectRatio,
+    ) as unknown as Float32Array;
+  }, [pitchTransform, previewWidth, previewHeight, aspectRatio]);
+
+  // ── Canvas Frame Drawing ──
+  const drawFrame = useCallback(
+    (timeMs: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      renderTacticalFrameToCanvas(ctx, {
+        slides,
+        timeMs,
+        width: canvas.width,
+        height: canvas.height,
+        aspectRatio,
+        boundaryBox,
+        transparent: false,
+        mvpMatrix,
+      });
+
+      if (timeLabelRef.current) {
+        timeLabelRef.current.textContent = `${(timeMs / 1000).toFixed(1)}s`;
+      }
+      if (sliderRef.current) {
+        sliderRef.current.value = String(Math.round(timeMs));
+      }
+    },
+    [
+      slides,
+      boundaryBox,
+      aspectRatio,
+      mvpMatrix,
+      canvasRef,
+      timeLabelRef,
+      sliderRef,
+    ],
+  );
+
+  const { seek } = useAnimationFrameLoop(isPlaying, totalDurationMs, drawFrame);
+
+  const togglePlay = useCallback(() => {
     setIsPlaying((prev) => !prev);
-  };
+  }, []);
 
-  const handleReset = () => {
-    handleSeek(0);
+  const handleReset = useCallback(() => {
+    seek(0);
+  }, [seek]);
+
+  return {
+    isPlaying,
+    totalDurationMs,
+    previewWidth,
+    previewHeight,
+    togglePlay,
+    handleReset,
+    handleSeek: seek,
   };
+}
+
+interface ExportPreviewControlsProps {
+  isPlaying: boolean;
+  onTogglePlay: () => void;
+  onReset: () => void;
+  onSeek: (time: number) => void;
+  sliderRef: React.RefObject<HTMLInputElement | null>;
+  totalDurationMs: number;
+}
+
+function ExportPreviewControls({
+  isPlaying,
+  onTogglePlay,
+  onReset,
+  onSeek,
+  sliderRef,
+  totalDurationMs,
+}: ExportPreviewControlsProps) {
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      <button
+        type="button"
+        onClick={onTogglePlay}
+        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+        aria-label={isPlaying ? 'Pause preview' : 'Play preview'}
+      >
+        {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+      </button>
+      <button
+        type="button"
+        onClick={onReset}
+        className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+        aria-label="Reset preview"
+      >
+        <RotateCcw size={14} />
+      </button>
+
+      <input
+        ref={sliderRef}
+        type="range"
+        min={0}
+        max={totalDurationMs}
+        step={10}
+        defaultValue={0}
+        onChange={(e) => onSeek(Number(e.target.value))}
+        className="flex-1 h-1.5 bg-white/15 rounded-lg appearance-none cursor-pointer accent-blue-500"
+      />
+    </div>
+  );
+}
+
+export function ExportPreviewPlayer({
+  slides,
+  aspectRatio,
+  boundaryBox,
+  pitchTransform,
+}: ExportPreviewPlayerProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const timeLabelRef = useRef<HTMLSpanElement | null>(null);
+  const sliderRef = useRef<HTMLInputElement | null>(null);
+
+  const {
+    isPlaying,
+    totalDurationMs,
+    previewWidth,
+    previewHeight,
+    togglePlay,
+    handleReset,
+    handleSeek,
+  } = useExportPreviewAnimation({
+    slides,
+    aspectRatio,
+    boundaryBox,
+    pitchTransform,
+    canvasRef,
+    timeLabelRef,
+    sliderRef,
+  });
+
+  const isBoundaryActive =
+    boundaryBox?.enabled &&
+    boundaryBox.width > 0 &&
+    boundaryBox.height > 0 &&
+    (boundaryBox.width < 100 ||
+      boundaryBox.height < 100 ||
+      boundaryBox.x > 0 ||
+      boundaryBox.y > 0);
 
   return (
     <div className="flex flex-col gap-2 rounded-xl bg-black/50 border border-white/10 p-3 overflow-hidden">
@@ -148,15 +298,13 @@ export function ExportPreviewPlayer({
       {/* Canvas Viewport */}
       <div
         className={`relative w-full ${
-          aspectRatio === '9:16'
-            ? 'aspect-[9/16] max-h-[340px]'
-            : 'aspect-video'
+          ASPECT_CONTAINER_CLASSES[aspectRatio] ?? 'aspect-video'
         } rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center`}
       >
         <canvas
           ref={canvasRef}
-          width={aspectRatio === '9:16' ? 360 : 640}
-          height={aspectRatio === '9:16' ? 640 : 360}
+          width={previewWidth}
+          height={previewHeight}
           className="w-full h-full object-contain"
         />
 
@@ -168,37 +316,14 @@ export function ExportPreviewPlayer({
         )}
       </div>
 
-      {/* Controls Bar */}
-      <div className="flex items-center gap-2 pt-1">
-        <button
-          type="button"
-          onClick={togglePlay}
-          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-          aria-label={isPlaying ? 'Pause preview' : 'Play preview'}
-        >
-          {isPlaying ? <Pause size={14} /> : <Play size={14} />}
-        </button>
-        <button
-          type="button"
-          onClick={handleReset}
-          className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
-          aria-label="Reset preview"
-        >
-          <RotateCcw size={14} />
-        </button>
-
-        {/* Timeline Slider */}
-        <input
-          ref={sliderRef}
-          type="range"
-          min={0}
-          max={totalDurationMs}
-          step={10}
-          defaultValue={0}
-          onChange={(e) => handleSeek(Number(e.target.value))}
-          className="flex-1 h-1.5 bg-white/15 rounded-lg appearance-none cursor-pointer accent-blue-500"
-        />
-      </div>
+      <ExportPreviewControls
+        isPlaying={isPlaying}
+        onTogglePlay={togglePlay}
+        onReset={handleReset}
+        onSeek={handleSeek}
+        sliderRef={sliderRef}
+        totalDurationMs={totalDurationMs}
+      />
     </div>
   );
 }

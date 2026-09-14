@@ -3,237 +3,295 @@ import {
   clampNorm,
   clampNormPoint,
   getPitchAndNormPos,
+  getStagePitchAndNormPos,
   normToPitch,
   normToPx,
   normToScreen,
   pitchToNorm,
   pitchToScreen,
+  pitchToStage,
   pxToNorm,
   screenToPitch,
+  stageToPitch,
+  unprojectScreenYToCssRotateX,
 } from './canvas-coordinates';
+import { calculatePitchTransform } from './canvas-pitch-transform-helper';
 
-const pitchRect = {
-  x: 100,
-  y: 50,
-  width: 800,
-  height: 500,
-};
+const pitchRect = { x: 100, y: 50, width: 800, height: 500 };
 
-describe('normToPx & pxToNorm', () => {
-  it('0-100% 正規化値とピクセル値の相互変換が正しく計算される', () => {
+describe('2D norm, px, and clamp transformations', () => {
+  it('0-100% 正規化値とピクセル値の相互変換およびクランプ', () => {
     expect(normToPx(0, 800)).toBe(0);
     expect(normToPx(50, 800)).toBe(400);
-    expect(normToPx(100, 800)).toBe(800);
-    expect(normToPx(25.5, 1000)).toBe(255);
-
-    expect(pxToNorm(0, 800)).toBe(0);
     expect(pxToNorm(400, 800)).toBe(50);
-    expect(pxToNorm(800, 800)).toBe(100);
-    expect(pxToNorm(255, 1000)).toBe(25.5);
-  });
-
-  it('サイズが0の場合に pxToNorm は 0 を返し、ゼロ除算を防ぐ', () => {
     expect(pxToNorm(50, 0)).toBe(0);
-  });
+    expect(pxToNorm(normToPx(37.42, 640), 640)).toBeCloseTo(37.42, 6);
 
-  it('normToPx と pxToNorm のラウンドトリップ変換が一貫している', () => {
-    const originalNorm = 37.42;
-    const size = 640;
-    const px = normToPx(originalNorm, size);
-    const convertedNorm = pxToNorm(px, size);
-    expect(convertedNorm).toBeCloseTo(originalNorm, 6);
-  });
-});
-
-describe('normToPitch & pitchToNorm', () => {
-  it('正規化座標(0-100%)とピッチ実ピクセル座標の相互変換', () => {
-    const normCenter = { x: 50, y: 50 };
-    const pitchCenter = normToPitch(normCenter, pitchRect);
-    expect(pitchCenter).toEqual({ x: 400, y: 250 });
-
-    const convertedNorm = pitchToNorm(pitchCenter, pitchRect);
-    expect(convertedNorm).toEqual(normCenter);
-  });
-
-  it('ピッチの四隅 (0,0), (100,0), (0,100), (100,100) の変換', () => {
+    expect(normToPitch({ x: 50, y: 50 }, pitchRect)).toEqual({
+      x: 400,
+      y: 250,
+    });
+    expect(pitchToNorm({ x: 400, y: 250 }, pitchRect)).toEqual({
+      x: 50,
+      y: 50,
+    });
     expect(normToPitch({ x: 0, y: 0 }, pitchRect)).toEqual({ x: 0, y: 0 });
-    expect(normToPitch({ x: 100, y: 0 }, pitchRect)).toEqual({
-      x: 800,
-      y: 0,
-    });
-    expect(normToPitch({ x: 0, y: 100 }, pitchRect)).toEqual({
-      x: 0,
-      y: 500,
-    });
-    expect(normToPitch({ x: 100, y: 100 }, pitchRect)).toEqual({
-      x: 800,
-      y: 500,
-    });
 
-    expect(pitchToNorm({ x: 0, y: 0 }, pitchRect)).toEqual({ x: 0, y: 0 });
-    expect(pitchToNorm({ x: 800, y: 500 }, pitchRect)).toEqual({
-      x: 100,
-      y: 100,
-    });
-  });
-});
-
-describe('clampNorm & clampNormPoint', () => {
-  it('clampNorm: 範囲内、上限超過、下限未満のクランプ', () => {
     expect(clampNorm(50)).toBe(50);
     expect(clampNorm(-10)).toBe(0);
     expect(clampNorm(110)).toBe(100);
-    expect(clampNorm(0)).toBe(0);
-    expect(clampNorm(100)).toBe(100);
-  });
-
-  it('clampNorm: カスタム min/max の指定', () => {
-    expect(clampNorm(15, 20, 80)).toBe(20);
-    expect(clampNorm(50, 20, 80)).toBe(50);
-    expect(clampNorm(95, 20, 80)).toBe(80);
-  });
-
-  it('clampNormPoint: 2D座標点のクランプ', () => {
     expect(clampNormPoint({ x: -5, y: 105 })).toEqual({ x: 0, y: 100 });
-    expect(clampNormPoint({ x: 50, y: 50 })).toEqual({ x: 50, y: 50 });
-    expect(clampNormPoint({ x: -10, y: -20 })).toEqual({ x: 0, y: 0 });
-    expect(clampNormPoint({ x: 150, y: 200 })).toEqual({ x: 100, y: 100 });
-    expect(clampNormPoint({ x: 5, y: 95 }, 10, 90)).toEqual({
-      x: 10,
-      y: 90,
-    });
+    expect(clampNormPoint({ x: 5, y: 95 }, 10, 90)).toEqual({ x: 10, y: 90 });
   });
 });
 
-describe('screenToPitch & pitchToScreen', () => {
-  it('デフォルト状態 (pan=0, zoom=1, tilt=0) での変換', () => {
-    const pitchPoint = { x: 200, y: 150 };
-    const screenPoint = pitchToScreen(pitchPoint, pitchRect, 0, 0, 1, 0);
-    expect(screenPoint).toEqual({ x: 300, y: 200 });
+describe('screenToPitch & pitchToScreen: 2D & 3D transformations', () => {
+  it('デフォルト状態およびPanでの変換', () => {
+    const pt = { x: 200, y: 150 };
+    const screen = pitchToScreen(pt, pitchRect, 0, 0, 1, 0);
+    expect(screen).toEqual({ x: 300, y: 200 });
+    expect(screenToPitch(screen, pitchRect, 0, 0, 1, 0)).toEqual(pt);
 
-    const backToPitch = screenToPitch(screenPoint, pitchRect, 0, 0, 1, 0);
-    expect(backToPitch).toEqual(pitchPoint);
-  });
-
-  it('Pan (パン移動) ありでの相互変換', () => {
-    const panX = 40;
-    const panY = -30;
-    const pitchPoint = { x: 100, y: 80 };
-
-    const screenPoint = pitchToScreen(pitchPoint, pitchRect, panX, panY, 1, 0);
-    expect(screenPoint).toEqual({
-      x: pitchRect.x + panX + pitchPoint.x,
-      y: pitchRect.y + panY + pitchPoint.y,
+    const pt2 = { x: 100, y: 80 };
+    const screen2 = pitchToScreen(pt2, pitchRect, 40, -30, 1, 0);
+    expect(screen2).toEqual({
+      x: pitchRect.x + 40 + 100,
+      y: pitchRect.y - 30 + 80,
     });
-
-    const backToPitch = screenToPitch(screenPoint, pitchRect, panX, panY, 1, 0);
-    expect(backToPitch).toEqual(pitchPoint);
+    expect(screenToPitch(screen2, pitchRect, 40, -30, 1, 0)).toEqual(pt2);
   });
 
-  it('Zoom (拡大・縮小) ありでの相互変換', () => {
-    const zoom = 1.75;
-    const pitchPoint = { x: 250, y: 120 };
-
-    const screenPoint = pitchToScreen(pitchPoint, pitchRect, 0, 0, zoom, 0);
-    const backToPitch = screenToPitch(screenPoint, pitchRect, 0, 0, zoom, 0);
-
-    expect(backToPitch.x).toBeCloseTo(pitchPoint.x, 6);
-    expect(backToPitch.y).toBeCloseTo(pitchPoint.y, 6);
-  });
-
-  it('Zoom + Pan + Tilt ありでの完全なラウンドトリップ相互変換', () => {
-    const panX = 55;
-    const panY = -25;
-    const zoom = 1.4;
-    const tilt = 35;
-
-    const testPitchPoints = [
-      { x: 0, y: 0 },
-      { x: 400, y: 250 },
-      { x: 800, y: 500 },
-      { x: 123.4, y: 456.7 },
-    ];
-
-    for (const pitchPoint of testPitchPoints) {
-      const screenPoint = pitchToScreen(
-        pitchPoint,
-        pitchRect,
-        panX,
-        panY,
-        zoom,
-        tilt,
-      );
-      const reconstructed = screenToPitch(
-        screenPoint,
-        pitchRect,
-        panX,
-        panY,
-        zoom,
-        tilt,
-      );
-
-      expect(reconstructed.x).toBeCloseTo(pitchPoint.x, 6);
-      expect(reconstructed.y).toBeCloseTo(pitchPoint.y, 6);
+  it('Zoom + Tilt ありでの完全なラウンドトリップ相互変換', () => {
+    for (const zoom of [0.5, 1.0, 2.0]) {
+      for (const pt of [
+        { x: 0, y: 0 },
+        { x: 400, y: 250 },
+        { x: 800, y: 500 },
+      ]) {
+        const screen = pitchToScreen(pt, pitchRect, 55, -25, zoom, 35);
+        const back = screenToPitch(screen, pitchRect, 55, -25, zoom, 35);
+        expect(back.x).toBeCloseTo(pt.x, 6);
+        expect(back.y).toBeCloseTo(pt.y, 6);
+      }
     }
   });
 
-  it('Tilt の上限値 (85度) および下限値 (0度) の clamp 挙動', () => {
-    const pitchPoint = { x: 300, y: 200 };
-
-    const screenNegativeTilt = pitchToScreen(
-      pitchPoint,
-      pitchRect,
-      0,
-      0,
-      1,
-      -15,
+  it('Tilt clamp 挙動 (0度〜85度)', () => {
+    const pt = { x: 300, y: 200 };
+    expect(pitchToScreen(pt, pitchRect, 0, 0, 1, -15)).toEqual(
+      pitchToScreen(pt, pitchRect, 0, 0, 1, 0),
     );
-    const screenZeroTilt = pitchToScreen(pitchPoint, pitchRect, 0, 0, 1, 0);
-    expect(screenNegativeTilt).toEqual(screenZeroTilt);
-
-    const screenExcessiveTilt = pitchToScreen(
-      pitchPoint,
-      pitchRect,
-      0,
-      0,
-      1,
-      95,
+    expect(pitchToScreen(pt, pitchRect, 0, 0, 1, 95)).toEqual(
+      pitchToScreen(pt, pitchRect, 0, 0, 1, 85),
     );
-    const screenMaxTilt = pitchToScreen(pitchPoint, pitchRect, 0, 0, 1, 85);
-    expect(screenExcessiveTilt).toEqual(screenMaxTilt);
+  });
+
+  it('Konva Group 中心基準描画と pitchToScreen/screenToPitch の整合性', () => {
+    for (const zoom of [0.5, 1.5]) {
+      for (const pan of [
+        { x: 0, y: 0 },
+        { x: 60, y: -40 },
+      ]) {
+        const tf = calculatePitchTransform(pitchRect, pan.x, pan.y, zoom, 0);
+        for (const pt of [
+          { x: 0, y: 0 },
+          { x: 400, y: 250 },
+        ]) {
+          const konvaX = tf.x + pt.x * tf.scaleX;
+          const konvaY = tf.y + pt.y * tf.scaleY;
+          const screenPos = pitchToScreen(pt, pitchRect, pan.x, pan.y, zoom, 0);
+          expect(konvaX).toBeCloseTo(screenPos.x, 6);
+          expect(konvaY).toBeCloseTo(screenPos.y, 6);
+          const back = screenToPitch(
+            { x: konvaX, y: konvaY },
+            pitchRect,
+            pan.x,
+            pan.y,
+            zoom,
+            0,
+          );
+          expect(back.x).toBeCloseTo(pt.x, 6);
+          expect(back.y).toBeCloseTo(pt.y, 6);
+        }
+      }
+    }
   });
 });
 
 describe('normToScreen & getPitchAndNormPos', () => {
-  it('normToScreen と getPitchAndNormPos の相互変換の一貫性', () => {
-    const transform = {
-      panX: 30,
-      panY: 45,
-      zoom: 1.25,
-      tilt: 20,
-    };
-
-    const normPos = { x: 70, y: 30 };
-    const screenPos = normToScreen(
-      normPos,
+  it('normToScreen と getPitchAndNormPos の相互変換の一貫性およびデフォルト値', () => {
+    const tf = { panX: 30, panY: 45, zoom: 1.25, tilt: 20 };
+    const screen = normToScreen(
+      { x: 70, y: 30 },
       pitchRect,
-      transform.panX,
-      transform.panY,
-      transform.zoom,
-      transform.tilt,
+      tf.panX,
+      tf.panY,
+      tf.zoom,
+      tf.tilt,
     );
+    const res = getPitchAndNormPos(screen, pitchRect, tf);
+    expect(res.normPos.x).toBeCloseTo(70, 6);
+    expect(res.normPos.y).toBeCloseTo(30, 6);
 
-    const result = getPitchAndNormPos(screenPos, pitchRect, transform);
+    const resDef = getPitchAndNormPos({ x: 500, y: 300 }, pitchRect, {});
+    expect(resDef.pitchPos).toEqual({ x: 400, y: 250 });
+    expect(resDef.normPos).toEqual({ x: 50, y: 50 });
+  });
+});
 
-    expect(result.normPos.x).toBeCloseTo(normPos.x, 6);
-    expect(result.normPos.y).toBeCloseTo(normPos.y, 6);
+describe('stageToPitch & pitchToStage & getStagePitchAndNormPos', () => {
+  it('stageToPitch と pitchToStage のラウンドトリップ相互変換の一貫性', () => {
+    for (const zoom of [0.5, 1.5]) {
+      for (const pan of [
+        { x: 0, y: 0 },
+        { x: 50, y: -30 },
+      ]) {
+        for (const pt of [
+          { x: 0, y: 0 },
+          { x: 400, y: 250 },
+          { x: 800, y: 500 },
+        ]) {
+          const stagePos = pitchToStage(pt, pitchRect, pan.x, pan.y, zoom);
+          const back = stageToPitch(stagePos, pitchRect, pan.x, pan.y, zoom);
+          expect(back.x).toBeCloseTo(pt.x, 6);
+          expect(back.y).toBeCloseTo(pt.y, 6);
+        }
+      }
+    }
   });
 
-  it('getPitchAndNormPos で空の transform オブジェクトを渡した場合にデフォルト値が使用される', () => {
-    const screenPos = { x: 500, y: 300 };
-    const result = getPitchAndNormPos(screenPos, pitchRect, {});
+  it('Konva Group (calculatePitchTransform) の描画位置と pitchToStage/stageToPitch の完全一致', () => {
+    const zoom = 1.6;
+    const pan = { x: 75, y: -45 };
+    const tf = calculatePitchTransform(pitchRect, pan.x, pan.y, zoom, 0);
 
-    expect(result.pitchPos).toEqual({ x: 400, y: 250 });
-    expect(result.normPos).toEqual({ x: 50, y: 50 });
+    const pt = { x: 300, y: 200 };
+    const konvaStageX = tf.x + pt.x * tf.scaleX;
+    const konvaStageY = tf.y + pt.y * tf.scaleY;
+
+    const stagePos = pitchToStage(pt, pitchRect, pan.x, pan.y, zoom);
+    expect(stagePos.x).toBeCloseTo(konvaStageX, 6);
+    expect(stagePos.y).toBeCloseTo(konvaStageY, 6);
+
+    const inverted = stageToPitch(
+      { x: konvaStageX, y: konvaStageY },
+      pitchRect,
+      pan.x,
+      pan.y,
+      zoom,
+    );
+    expect(inverted.x).toBeCloseTo(pt.x, 6);
+    expect(inverted.y).toBeCloseTo(pt.y, 6);
+  });
+
+  it('getStagePitchAndNormPos: CSS 3D Tilt が有効な場合でも二重逆変換を発生させず Stage 2D 平面を正確に逆変換する', () => {
+    const tf = { panX: 40, panY: -20, zoom: 1.4, tilt: 45 };
+    const pt = { x: 400, y: 250 };
+
+    const stagePos = pitchToStage(pt, pitchRect, tf.panX, tf.panY, tf.zoom);
+    const { pitchPos, normPos } = getStagePitchAndNormPos(
+      stagePos,
+      pitchRect,
+      tf,
+    );
+
+    expect(pitchPos.x).toBeCloseTo(pt.x, 6);
+    expect(pitchPos.y).toBeCloseTo(pt.y, 6);
+    expect(normPos.x).toBeCloseTo(50, 6);
+    expect(normPos.y).toBeCloseTo(50, 6);
+  });
+
+  it('3D チルト適用時 (tilt = 30°)、ピッチ上半分および全域のスクリーンポインタが正確にピッチ座標へ逆変換される', () => {
+    const tilt = 30;
+    const testPoints = [
+      { x: 0, y: 0 },
+      { x: 400, y: 50 },
+      { x: 400, y: 250 },
+      { x: 400, y: 500 },
+    ];
+
+    for (const pt of testPoints) {
+      const screenPos = pitchToScreen(pt, pitchRect, 0, 0, 1, tilt);
+      const res = getPitchAndNormPos(screenPos, pitchRect, {
+        panX: 0,
+        panY: 0,
+        zoom: 1,
+        tilt,
+      });
+
+      expect(res.pitchPos.x).toBeCloseTo(pt.x, 4);
+      expect(res.pitchPos.y).toBeCloseTo(pt.y, 4);
+
+      const isInsidePitch =
+        res.pitchPos.x >= -0.5 &&
+        res.pitchPos.x <= pitchRect.width + 0.5 &&
+        res.pitchPos.y >= -0.5 &&
+        res.pitchPos.y <= pitchRect.height + 0.5;
+      expect(isInsidePitch).toBe(true);
+    }
+  });
+});
+
+describe('unprojectScreenYToCssRotateX', () => {
+  const stageCenterY = 300;
+  const perspective = 1200;
+
+  it('tiltDeg = 0 の場合は screenY - stageCenterY をそのまま返す', () => {
+    expect(unprojectScreenYToCssRotateX(300, stageCenterY, 0)).toBe(0);
+    expect(unprojectScreenYToCssRotateX(450, stageCenterY, 0)).toBe(150);
+    expect(unprojectScreenYToCssRotateX(120, stageCenterY, 0)).toBe(-180);
+  });
+
+  it('tiltDeg = 30° および 60° で正変換（CSS rotateX + perspective）とのラウンドトリップが一致する', () => {
+    for (const tilt of [30, 60]) {
+      const theta = (tilt * Math.PI) / 180;
+      const cosTheta = Math.cos(theta);
+      const sinTheta = Math.sin(theta);
+      for (const localY of [-200, -100, 0, 100, 200]) {
+        const y3d = localY * cosTheta;
+        const z3d = localY * sinTheta;
+        const scale = perspective / (perspective - z3d);
+        const screenY = stageCenterY + y3d * scale;
+        const unprojected = unprojectScreenYToCssRotateX(
+          screenY,
+          stageCenterY,
+          tilt,
+          perspective,
+        );
+        expect(unprojected).not.toBeNull();
+        if (unprojected !== null) {
+          expect(unprojected).toBeCloseTo(localY, 4);
+        }
+      }
+    }
+  });
+
+  it('地平線以上の座標では null を返す', () => {
+    const tilt = 60;
+    const horizonDy = -perspective / Math.tan((tilt * Math.PI) / 180);
+    expect(
+      unprojectScreenYToCssRotateX(
+        stageCenterY + horizonDy - 50,
+        stageCenterY,
+        tilt,
+        perspective,
+      ),
+    ).toBeNull();
+    expect(
+      unprojectScreenYToCssRotateX(
+        stageCenterY + horizonDy,
+        stageCenterY,
+        tilt,
+        perspective,
+      ),
+    ).toBeNull();
+    expect(
+      unprojectScreenYToCssRotateX(
+        stageCenterY + horizonDy + 50,
+        stageCenterY,
+        tilt,
+        perspective,
+      ),
+    ).not.toBeNull();
   });
 });

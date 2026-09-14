@@ -1,3 +1,4 @@
+import type { mat4 } from 'gl-matrix';
 import type Konva from 'konva';
 import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import type {
@@ -5,6 +6,7 @@ import type {
   BoundaryBox as BoundaryBoxType,
   PitchTransform,
 } from '@/lib/types/tactical-unified';
+import { buildMVPMatrix, type CameraParams } from './matrix-coordinates';
 
 export interface PitchTransformValues {
   x: number;
@@ -13,33 +15,47 @@ export interface PitchTransformValues {
   scaleY: number;
 }
 
-export function calculatePitchTransform(
-  effectivePitch: { x: number; y: number; height?: number },
+export const DEFAULT_PITCH_PERSPECTIVE = 1200;
+export const DEFAULT_PITCH_TRANSFORM_ORIGIN = '50% 50%';
+
+/**
+ * CSS 3D Transform 文字列を生成するヘルパー (pitch-aspect / unified-canvas 準拠)
+ */
+export function getCssPitchTransform(
   panX: number,
   panY: number,
   zoom: number,
   tilt = 0,
+): string {
+  return `translate3d(${panX}px, ${panY}px, 0px) scale(${zoom}) rotateX(${tilt}deg)`;
+}
+
+export function calculatePitchTransform(
+  effectivePitch: { x: number; y: number; width?: number; height?: number },
+  panX: number,
+  panY: number,
+  zoom: number,
+  _tilt = 0,
 ): PitchTransformValues {
-  const safeTilt = Math.max(0, Math.min(85, tilt));
-  const tiltRad = (safeTilt * Math.PI) / 180;
-  const cosTilt = Math.max(0.05, Math.cos(tiltRad));
-  const scaleX = zoom;
-  const scaleY = zoom * cosTilt;
+  const pitchWidth = effectivePitch.width ?? 0;
   const pitchHeight = effectivePitch.height ?? 0;
-  // Anchor at bottom edge: bottom edge stays fixed, top (far side) tilts forward
-  const deltaY = pitchHeight * zoom * (1 - cosTilt);
+
+  // ピッチ幾何学中心（50% 50%）を基準にズームおよびパンされるようオフセットを算出
+  // (CSS 3D / unified-canvas 側の stageTiltStyle と対称な中心アンカー)
+  const deltaX = (pitchWidth / 2) * (1 - zoom);
+  const deltaY = (pitchHeight / 2) * (1 - zoom);
 
   return {
-    x: effectivePitch.x + panX,
+    x: effectivePitch.x + panX + deltaX,
     y: effectivePitch.y + panY + deltaY,
-    scaleX,
-    scaleY,
+    scaleX: zoom,
+    scaleY: zoom,
   };
 }
 
 export function applyPitchTransformToGroups(
   groups: (Konva.Group | null)[],
-  effectivePitch: { x: number; y: number; height?: number },
+  effectivePitch: { x: number; y: number; width?: number; height?: number },
   panX: number,
   panY: number,
   zoom: number,
@@ -130,7 +146,7 @@ export function calculateExportCropRect({
 
   if (
     boundaryBox?.enabled &&
-    boundaryBox.visible &&
+    boundaryBox.visible !== false &&
     boundaryBox.width > 0 &&
     boundaryBox.height > 0
   ) {
@@ -143,4 +159,46 @@ export function calculateExportCropRect({
   }
 
   return effectivePitchRect;
+}
+
+/**
+ * エクスポート用MVPマトリクスを生成する。
+ *
+ * OffscreenCanvas/WebWorkerはCSS 3D（perspective/rotateX）が使えないため、
+ * 画面表示と同一のカメラパラメータ（tilt/zoom/pan）を持つMVP行列を数学的に生成し、
+ * `projectPitchToScreen` に渡すことで透視投影パースを再現する。
+ *
+ * @param pitchTransform - 画面のカメラ状態（tilt/zoom/panX/panY）
+ * @param exportWidth - エクスポートキャンバスの幅（px）
+ * @param exportHeight - エクスポートキャンバスの高さ（px）
+ * @param aspectRatio - アスペクト比（ピッチ矩形の算出に使用）
+ * @returns MVP行列（Float32Array, 16要素）
+ */
+export function buildExportMVPMatrix(
+  pitchTransform: PitchTransform,
+  exportWidth: number,
+  exportHeight: number,
+  aspectRatio: AspectRatio = '16:9',
+): mat4 {
+  const pitchRect = calculatePitchRect(
+    { width: exportWidth, height: exportHeight },
+    aspectRatio,
+  );
+
+  const cameraParams: CameraParams = {
+    tilt: pitchTransform.tilt,
+    zoom: pitchTransform.zoom,
+    panX: pitchTransform.panX,
+    panY: pitchTransform.panY,
+    stageWidth: exportWidth,
+    stageHeight: exportHeight,
+    pitchRect: {
+      x: pitchRect.x,
+      y: pitchRect.y,
+      width: pitchRect.width,
+      height: pitchRect.height,
+    },
+  };
+
+  return buildMVPMatrix(cameraParams);
 }

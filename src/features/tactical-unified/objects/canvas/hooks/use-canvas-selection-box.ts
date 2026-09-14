@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { PitchTransform, Slide } from '@/lib/types/tactical-unified';
-import { pxToNorm } from '../helpers/canvas-coordinates';
+import { pitchToNorm, screenToPitch } from '../helpers/canvas-coordinates';
 import { getEnclosedObjects } from '../helpers/canvas-selection-helpers';
 import type { SelectionBox } from '../types';
 
@@ -75,23 +75,31 @@ export function useCanvasSelectionBox({
         const panY = pitchTransformRef.current.panY ?? 0;
         const zoom = pitchTransformRef.current.zoom ?? 1;
         const tilt = pitchTransformRef.current.tilt ?? 0;
-        const safeTilt = Math.max(0, Math.min(85, tilt));
-        const tiltRad = (safeTilt * Math.PI) / 180;
-        const cosTilt = Math.max(0.05, Math.cos(tiltRad));
-        const scaleY = zoom * cosTilt;
-        const deltaY = effectivePitch.height * zoom * (1 - cosTilt);
 
-        const minPitchX = (minPxX - effectivePitch.x - panX) / zoom;
-        const maxPitchX = (maxPxX - effectivePitch.x - panX) / zoom;
-        const minPitchY =
-          (minPxY - (effectivePitch.y + panY + deltaY)) / scaleY;
-        const maxPitchY =
-          (maxPxY - (effectivePitch.y + panY + deltaY)) / scaleY;
+        const p1 = screenToPitch(
+          { x: minPxX, y: minPxY },
+          effectivePitch,
+          panX,
+          panY,
+          zoom,
+          tilt,
+        );
+        const p2 = screenToPitch(
+          { x: maxPxX, y: maxPxY },
+          effectivePitch,
+          panX,
+          panY,
+          zoom,
+          tilt,
+        );
 
-        const minNormX = pxToNorm(minPitchX, effectivePitch.width);
-        const maxNormX = pxToNorm(maxPitchX, effectivePitch.width);
-        const minNormY = pxToNorm(minPitchY, effectivePitch.height);
-        const maxNormY = pxToNorm(maxPitchY, effectivePitch.height);
+        const n1 = pitchToNorm(p1, effectivePitch);
+        const n2 = pitchToNorm(p2, effectivePitch);
+
+        const minNormX = Math.min(n1.x, n2.x);
+        const maxNormX = Math.max(n1.x, n2.x);
+        const minNormY = Math.min(n1.y, n2.y);
+        const maxNormY = Math.max(n1.y, n2.y);
 
         const enclosed = getEnclosedObjects(activeSlide, {
           minNormX,

@@ -49,6 +49,7 @@ export function useCanvasPointerInteraction({
       : null;
 
   const zoomPan = useCanvasZoomPan({
+    containerRef,
     stageSize,
     effectivePitch,
     activeSlide,
@@ -81,6 +82,7 @@ export function useCanvasPointerInteraction({
 
   const { handlePointerDown, handlePointerMove, handlePointerUp } =
     useCanvasPointerDispatcher({
+      containerRef,
       effectivePitch,
       zoomPan,
       zoneRotation,

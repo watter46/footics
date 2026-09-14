@@ -38,6 +38,7 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
           slides={slides}
           aspectRatio={aspectRatio}
           boundaryBox={box}
+          pitchTransform={activeSlide?.pitchTransform}
         />
         <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white/60">
           <Crop
