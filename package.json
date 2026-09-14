@@ -11,19 +11,10 @@
     "deploy": "rm -rf .next .open-next && pnpm build:cf && npx wrangler deploy",
     "preinstall": "npx only-allow pnpm",
     "devs": "npx next dev --experimental-https",
-    "type-check:scoped": "node .agents/scripts/dev/type-check-scoped.js",
-    "test:benchmark": "rtk vitest run tests/benchmark/agent-eval.test.ts --reporter=basic",
-    "verify:scoped": "node .agents/scripts/dev/verify-scoped.js",
-    "board:render": "node .agents/scripts/tickets/sync-board.js render",
-    "board:check": "node .agents/scripts/tickets/sync-board.js check",
-    "board:update": "node .agents/scripts/tickets/sync-board.js update",
-    "tickets": "node .agents/scripts/tickets/list.js",
-    "tickets:todo": "node .agents/scripts/tickets/list.js --todo",
-    "tickets:validate": "node .agents/scripts/tickets/validate.js",
-    "ticket:done": "tsx .agents/scripts/tickets/done.ts",
-    "gen:component": "node .agents/scripts/dev/gen-skeleton.mjs --type component",
-    "gen:hook": "node .agents/scripts/dev/gen-skeleton.mjs --type hook",
-    "gen:feature": "node .agents/scripts/dev/gen-skeleton.mjs --type feature"
+    "type-check:scoped": "tsx scripts/verify/type-check-scoped.ts",
+    "verify": "tsx scripts/verify/scoped-check.ts",
+    "verify:scoped": "tsx scripts/verify/scoped-check.ts",
+    "test:benchmark": "rtk vitest run tests/benchmark/agent-eval.test.ts --reporter=basic"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

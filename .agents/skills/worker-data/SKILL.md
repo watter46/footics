@@ -19,4 +19,5 @@ description: State / DB / Type Specialist。状態管理、IndexedDB、型定義
 ## 実装の鉄則
 - Zustand 5 における状態更新は必ずイミュータブルに行い、購読最適化（`useShallow`）を適切に使用する。
 - データのマイグレーション互換性を常に担保し、Zodスキーマ等による検証を怠らない。
-- 編集完了後は必ず型チェック（`rtk tsc --noEmit` 相当）が通ることを確認して終了すること。
+- コマンド実行（検索・テスト・検証等）は必ず `rtk` ラッパー（例: `rtk tsc --noEmit`, `rtk vitest`, `rtk rg` 等）を使用すること。
+- 編集完了後は必ず型チェック・検証（`rtk tsc --noEmit` 等）が通ることを確認して終了すること。

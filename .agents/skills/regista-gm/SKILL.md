@@ -13,9 +13,11 @@ description: Regista v2の総指揮官。仕様書の解釈、AST抽出、Worker
 
 ## 実行ワークフロー
 1. `specs/active/` 内の仕様書を読み込み、タスクを領域別（frontend/canvas/data/extension）に分解。
-2. `tsx scripts/ast/extract-types.ts` で関連ファイルの型シグネチャを抽出 (ゼロトークン処理)。
-3. `invoke_subagent` を使い、必要な Worker を同時並列起動（Model: inherit または flash）。
-4. 全 Worker の完了後、`pnpm verify` (rtk経由) を実行して結合テストをパスさせる。
+2. `rtk tsx scripts/ast/extract-types.ts` で関連ファイルの型シグネチャを抽出 (ゼロトークン処理)。
+3. `invoke_subagent` を使い、必要な Worker を同時並列起動。
+   - **Model指定**: **基本は必ず `Model: 'flash'` を明示指定**して高速起動すること。仕様書等で明示的に高精度モデルの要求がある場合のみ `Model: 'inherit'` を使用。
+   - **指示内容**: Workerへの指示にはコマンド・検証・検索に必ず `rtk` ラッパー（`rtk <cmd>`）を使用するよう明記すること。
+4. 全 Worker の完了後、`rtk pnpm verify` を実行して結合テストをパスさせる。
 5. 問題なければ Conventional Commits 形式でローカルコミットを作成 (`feat(scope): ...`)。
 6. 仕様書を `specs/archive/` へ移動。
 7. 以下の完了テンプレートを出力して終了。
@@ -29,3 +31,4 @@ description: Regista v2の総指揮官。仕様書の解釈、AST抽出、Worker
 ### 📦 コミットハッシュ
 `xxxxxxx` - [feat: ...]
 ```
+

@@ -17,4 +17,5 @@ description: Browser Extension Specialist。Chrome拡張機能の実装を担当
 
 ## 実装の鉄則
 - 拡張機能特有の非同期処理や権限エラーのハンドリングを正確に行うこと。
-- 編集完了後は拡張機能用のビルド・検証スクリプトを通すこと。
+- コマンド実行（検索・テスト・検証等）は必ず `rtk` ラッパー（例: `rtk pnpm run build`, `rtk vitest`, `rtk rg` 等）を使用すること。
+- 編集完了後は拡張機能用のビルド・検証スクリプト（`rtk pnpm run build` 等）を通すこと。

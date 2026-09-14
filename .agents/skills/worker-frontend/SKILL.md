@@ -20,4 +20,5 @@ description: Web UI / React Specialist。UIコンポーネント、レイアウ�
 ## 実装の鉄則
 - React 19 の最新機能 (`use()`, Server Actions) を活用し、古いフック構成を避ける。
 - Tailwind v4 の CSS-first アプローチ（`@theme`）に則り、インラインクラスを最適化する。
-- 編集完了後は必ず `tsx scripts/lint/check-file-size.ts` で行数を自己チェックすること。
+- コマンド実行（検索・テスト・検証等）は必ず `rtk` ラッパー（例: `rtk biome check`, `rtk vitest`, `rtk rg` 等）を使用すること。
+- 編集完了後は必ず `rtk tsx scripts/lint/check-file-size.ts` で行数を自己チェックすること。
