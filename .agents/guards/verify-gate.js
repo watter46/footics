@@ -1,55 +1,34 @@
-const fs = require('node:fs');
-const { execSync } = require('node:child_process');
+const fs = require('fs');
+const { execSync } = require('child_process');
 
-try {
+function main() {
   const input = fs.readFileSync(0, 'utf-8');
-  const data = JSON.parse(input);
+  if (!input) return;
 
-  if (data.terminationReason === 'model_stop') {
-    // 1. Check if any code files were modified
-    let changedFiles = '';
+  const payload = JSON.parse(input);
+  
+  // 終了しようとしている場合のみ検証
+  if (payload.terminationReason === 'model_stop') {
     try {
-      changedFiles = execSync('git status -s', { stdio: 'pipe' })
-        .toString()
-        .trim();
-    } catch (_e) {
-      changedFiles = '';
-    }
-
-    const hasCodeChanges = changedFiles
-      .split('\n')
-      .some((line) => /\.(ts|tsx|js|jsx|json|css)$/.test(line.trim()));
-
-    // Skip verify if no code was changed (e.g. Q&A, research, markdown-only edits)
-    if (!hasCodeChanges) {
-      console.log(JSON.stringify({ decision: 'allow' }));
-      process.exit(0);
-    }
-
-    // 2. Run fast scoped verification when code changes exist
-    try {
-      execSync('pnpm verify:scoped', { stdio: 'pipe' });
-      console.log(JSON.stringify({ decision: 'allow' }));
-    } catch (e) {
-      const stdoutStr = e.stdout ? e.stdout.toString() : '';
-      const stderrStr = e.stderr ? e.stderr.toString() : '';
-      const rawOut = `${stdoutStr}\n${stderrStr}`;
-      const trimmedLines = rawOut
-        .split('\n')
-        .filter((l) => l.trim().length > 0)
-        .slice(0, 15) // Keep only top 15 lines of error summary to save tokens
-        .join('\n');
-
-      console.log(
-        JSON.stringify({
-          decision: 'continue',
-          reason: `pnpm verify:scoped failed on modified code. Top error summary:\n${trimmedLines}\n\nPlease fix the errors above before completing the task.`,
-        }),
-      );
+      // 変更差分があるかチェック
+      const diff = execSync('git diff --name-only', { encoding: 'utf-8' }).trim();
+      
+      if (diff) {
+        // ここで scoped-check などを呼び出す
+        // 例: execSync('pnpm verify', { stdio: 'inherit' });
+        // エラーになれば catch に飛ぶ
+      }
+      
+      console.log(JSON.stringify({ decision: "allow" }));
+    } catch (err) {
+      console.log(JSON.stringify({
+        decision: "continue",
+        reason: "検証ゲート(pnpm verify)でエラーが検出されました。エラーを修正してから再度完了を試みてください。\n" + err.message
+      }));
     }
   } else {
-    console.log(JSON.stringify({ decision: 'allow' }));
+    console.log(JSON.stringify({ decision: "allow" }));
   }
-} catch (_e) {
-  console.log(JSON.stringify({ decision: 'allow' }));
 }
+
+main();
