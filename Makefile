@@ -14,22 +14,22 @@ help:
 metrics: metrics-summary
 
 metrics-summary:
-	@node scripts/metrics/summary-tokens.js summary
+	@node .agents/scripts/metrics/summary-tokens.js summary
 
 metrics-tail:
-	@node scripts/metrics/summary-tokens.js tail $(if $(N),$(N),5)
+	@node .agents/scripts/metrics/summary-tokens.js tail $(if $(N),$(N),5)
 
 metrics-raw:
-	@node scripts/metrics/summary-tokens.js raw
+	@node .agents/scripts/metrics/summary-tokens.js raw
 
 metrics-clean:
-	@node scripts/metrics/summary-tokens.js clean
+	@node .agents/scripts/metrics/summary-tokens.js clean
 
 tickets:
-	@node .agents/scripts/list-tickets.js
+	@node .agents/scripts/tickets/list.js
 
 tickets-todo:
-	@node .agents/scripts/list-tickets.js --todo
+	@node .agents/scripts/tickets/list.js --todo
 
 done: ## チケットをDONEにしてコミット (例: make done L1-UI-001 L1-UI-002)
 	@pnpm ticket:done $(filter-out $@,$(MAKECMDGOALS))

@@ -108,19 +108,26 @@
 
 ```
 footics/
-├── .agents/                    # プロジェクト内カプセル化エージェント・スキル
-│   ├── skills/                 # 各専門エージェントのSKILL定義
-│   │   ├── regista-gm/
-│   │   ├── regista-frontend/
-│   │   ├── regista-canvas/
-│   │   ├── regista-data/
-│   │   ├── regista-extension/
-│   │   └── regista-qa/
+├── .agents/                    # プロジェクト内カプセル化エージェント・スキル・ガード・スクリプト
+│   ├── guards/                 # 安全ガードフック
 │   ├── knowledge/              # Knowledge Items (KI)
-│   └── scripts/                # 型チェック・テスト検証スクリプト
-├── agents/                     # エージェント組織資産・ボード
-│   ├── REGISTA_BOARD.md        # タスクボード・チケット管理
-│   └── regista-gm/             # GM運用資産
+│   ├── scripts/                # 運用・検証スクリプト
+│   │   ├── dev/                # 開発・型検査スクリプト
+│   │   ├── metrics/            # メトリクス収集・集計
+│   │   └── tickets/            # チケット・ボード運用スクリプト
+│   └── skills/                 # 各専門エージェントのSKILL定義
+│       ├── regista-gm/
+│       ├── regista-frontend/
+│       ├── regista-canvas/
+│       ├── regista-data/
+│       ├── regista-extension/
+│       └── regista-qa/
+├── .regista/                   # 開発組織「Regista」運用データ
+│   ├── contracts/              # 型定義コントラクト
+│   ├── metrics/                # 品質・メトリクス履歴
+│   ├── scout-cache/            # Scoutキャッシュ
+│   ├── templates/              # テンプレート集
+│   └── tickets/                # チケット (Markdown)
 ├── ORGANIZATION.md             # 本ファイル（組織全体の運用規約）
 ├── AGENTS.md                   # プロジェクト全体のコード規約
 ├── src/AGENTS.md               # Web App固有の規約
