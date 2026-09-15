@@ -34,44 +34,58 @@ try {
 }
 
 const currentBranch = execSync("git rev-parse --abbrev-ref HEAD", { encoding: "utf8" }).trim();
-if (currentBranch === "main") {
-  console.error("❌ Already on main branch. Please run ship from a feature branch.");
-  process.exit(1);
-}
+const isMain = currentBranch === "main";
+
+console.log(`📌 Current branch: ${currentBranch} (${isMain ? "Direct main workflow" : "Feature branch workflow"})`);
 
 // 2. Production build verification
 run("pnpm build", "Build Verification");
 
-// 3. Merge to main
-run("git checkout main", "Checkout Main");
-run("git pull origin main", "Pull Main");
-run(`git merge ${currentBranch} --no-ff -m "Merge ${currentBranch} into main"`, "Merge Branch");
-
-// 4. Push to origin
-run("git push origin main", "Push Main");
-
-// 5. Delete feature branch
-run(`git branch -d ${currentBranch}`, "Delete Local Branch");
-try {
-  execSync(`git push origin --delete ${currentBranch}`);
-} catch (e) {
-  console.log(`⚠️ Could not delete remote branch ${currentBranch} (it might not exist).`);
-}
-
-// 6. Archive specification (assuming specs/active/*.md matching the feature)
+// 3. Archive specification if any exists
 const activeSpecsDir = "specs/active";
 const archiveSpecsDir = "specs/archive";
+let archivedCount = 0;
 if (fs.existsSync(activeSpecsDir)) {
   if (!fs.existsSync(archiveSpecsDir)) {
     fs.mkdirSync(archiveSpecsDir, { recursive: true });
   }
   const specs = fs.readdirSync(activeSpecsDir);
-  // Just moving all active specs to archive for now (or could match by branch name)
   for (const spec of specs) {
     if (spec.endsWith(".md")) {
       fs.renameSync(path.join(activeSpecsDir, spec), path.join(archiveSpecsDir, spec));
       console.log(`📦 Archived spec: ${spec}`);
+      archivedCount++;
     }
+  }
+}
+
+if (archivedCount > 0) {
+  try {
+    execSync("git add specs/", { stdio: "inherit" });
+    execSync(`git commit -m "docs: archive completed active specs"`, { stdio: "inherit" });
+  } catch (e) {
+    // nothing to commit or failed
+  }
+}
+
+// 4. Merge & Push process
+if (isMain) {
+  console.log("\n🚀 Direct main ship: pulling latest and pushing...");
+  run("git pull --rebase origin main", "Pull Latest Main");
+  run("git push origin main", "Push Main");
+} else {
+  console.log(`\n🚀 Merging feature branch '${currentBranch}' into main...`);
+  run("git checkout main", "Checkout Main");
+  run("git pull origin main", "Pull Main");
+  run(`git merge ${currentBranch} --no-ff -m "Merge ${currentBranch} into main"`, "Merge Branch");
+  run("git push origin main", "Push Main");
+
+  // Delete local & remote feature branch
+  run(`git branch -d ${currentBranch}`, "Delete Local Branch");
+  try {
+    execSync(`git push origin --delete ${currentBranch}`);
+  } catch (e) {
+    console.log(`⚠️ Could not delete remote branch ${currentBranch} (it might not exist on remote).`);
   }
 }
 
