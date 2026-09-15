@@ -548,6 +548,7 @@ describe('tactical-unified-store', () => {
       width: 96.0,
       height: 96.0,
       enabled: true,
+      visible: false,
       fitTarget: 'pitch',
     });
 
@@ -648,6 +649,7 @@ describe('tactical-unified-store', () => {
       width: 100,
       height: 100,
       enabled: true,
+      visible: false,
       fitTarget: 'pitch',
     });
 
@@ -661,6 +663,7 @@ describe('tactical-unified-store', () => {
       width: 100,
       height: 100,
       enabled: true,
+      visible: false,
       fitTarget: 'pitch',
     });
   });
@@ -686,6 +689,7 @@ describe('tactical-unified-store', () => {
       width: 100,
       height: 100,
       enabled: true,
+      visible: false,
       fitTarget: 'pitch',
     });
 
@@ -708,6 +712,7 @@ describe('tactical-unified-store', () => {
       width: 100,
       height: 100,
       enabled: true,
+      visible: false,
       fitTarget: 'pitch',
     });
 
@@ -730,6 +735,7 @@ describe('tactical-unified-store', () => {
       width: 100,
       height: 100,
       enabled: true,
+      visible: false,
       fitTarget: 'pitch',
     });
 
@@ -745,6 +751,7 @@ describe('tactical-unified-store', () => {
       width: 96.0,
       height: 96.0,
       enabled: true,
+      visible: false,
       fitTarget: 'pitch',
     });
 
@@ -766,6 +773,7 @@ describe('tactical-unified-store', () => {
       width: 96.0,
       height: 96.0,
       enabled: true,
+      visible: false,
       fitTarget: 'pitch',
     });
   });
@@ -1324,6 +1332,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        visible: false,
         fitTarget: 'pitch',
       });
     });
@@ -1344,6 +1353,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        visible: false,
         fitTarget: 'pitch',
       });
     });
@@ -1364,6 +1374,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        visible: false,
         fitTarget: 'pitch',
       });
     });
@@ -1437,6 +1448,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        visible: false,
         fitTarget: 'canvas',
       });
       expect(useTacticalUnifiedStore.getState().project.boundaryBox).toEqual({
@@ -1445,6 +1457,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        visible: false,
         fitTarget: 'canvas',
       });
     });
@@ -1464,6 +1477,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        visible: false,
         fitTarget: 'canvas',
       });
 
@@ -1505,6 +1519,7 @@ describe('tactical-unified-store', () => {
         width: 100,
         height: 100,
         enabled: true,
+        visible: false,
         fitTarget: 'pitch',
       });
     });
@@ -1868,21 +1883,6 @@ describe('tactical-unified-store', () => {
       expect(slide?.players.some((p) => p.id === lockedPlayer.id)).toBe(true);
     });
 
-    it('isPitchBoundaryLinked の初期値が true であり togglePitchBoundaryLink でトグルされる', () => {
-      const store = useTacticalUnifiedStore.getState();
-      expect(store.isPitchBoundaryLinked).toBe(true);
-
-      store.togglePitchBoundaryLink();
-      expect(useTacticalUnifiedStore.getState().isPitchBoundaryLinked).toBe(
-        false,
-      );
-
-      store.togglePitchBoundaryLink();
-      expect(useTacticalUnifiedStore.getState().isPitchBoundaryLinked).toBe(
-        true,
-      );
-    });
-
     it('centerPitchAndBoundary でピッチ・境界線が中央・初期倍率に戻り、選手座標は維持される', () => {
       const store = useTacticalUnifiedStore.getState();
       const slideId = store.activeSlideId;
@@ -1893,6 +1893,7 @@ describe('tactical-unified-store', () => {
         y: 20,
         width: 60,
         height: 60,
+        enabled: true,
         fitTarget: 'custom',
       });
       store.movePlayer(slideId, store.project.slides[0]?.players[0]?.id ?? '', 77, 88);
@@ -1910,13 +1911,9 @@ describe('tactical-unified-store', () => {
       expect(slide?.players[0]?.y).toBe(88);
     });
 
-    it('resetTactics で選手座標がフォーメーション初期配置に再計算され、アノテーションとピッチ設定が一括リセットされる', () => {
+    it('resetSlideObjects でロックされていないアノテーションがリセットされる', () => {
       const store = useTacticalUnifiedStore.getState();
       const slideId = store.activeSlideId;
-
-      // 選手を移動
-      const firstPlayerId = store.project.slides[0]?.players[0]?.id ?? '';
-      store.movePlayer(slideId, firstPlayerId, 99, 99);
 
       // アノテーションを追加
       store.addArrow(slideId, {
@@ -1934,34 +1931,17 @@ describe('tactical-unified-store', () => {
         arrowHead: true,
       });
 
-      // ピッチ移動
-      store.updatePitchTransform(slideId, { panX: 150, panY: 75, zoom: 1.8 });
-
-      // resetTactics 実行
-      store.resetTactics(slideId);
+      // resetSlideObjects 実行
+      store.resetSlideObjects(slideId);
 
       const slide = useTacticalUnifiedStore
         .getState()
         .project.slides.find((sl) => sl.id === slideId);
 
-      // 選手は初期フォーメーション位置 (4:5縦向き GK: x=50, y=90) にリセット
-      const resetFirstPlayer = slide?.players.find(
-        (p) => p.id === firstPlayerId,
-      );
-      expect(resetFirstPlayer?.x).toBe(50);
-      expect(resetFirstPlayer?.y).toBe(90);
-
-      // アノテーションは全削除
+      // アノテーションは削除される
       expect(slide?.arrows.length).toBe(0);
       expect(slide?.zones.length).toBe(0);
       expect(slide?.texts.length).toBe(0);
-
-      // ピッチ・境界線も初期状態
-      expect(slide?.pitchTransform?.panX).toBe(0);
-      expect(slide?.pitchTransform?.panY).toBe(0);
-      expect(slide?.pitchTransform?.zoom).toBe(1);
-      expect(slide?.pitchTransform?.isLocked).toBe(true);
-      expect(slide?.pitchPosition).toBeUndefined();
     });
   });
 });

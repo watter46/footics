@@ -377,6 +377,7 @@ describe('Tactical Frame Renderer', () => {
         zoom: 1.2,
         panX: 50,
         panY: -30,
+        isLocked: false,
       };
       const mvpMatrix = buildExportMVPMatrix(
         pitchTransform,
@@ -430,6 +431,7 @@ describe('Tactical Frame Renderer', () => {
           zoom: 1.0,
           panX: 0,
           panY: 0,
+          isLocked: false,
         };
         const mvpMatrix = buildExportMVPMatrix(
           pitchTransform,
@@ -547,6 +549,7 @@ describe('Tactical Frame Renderer', () => {
         zoom: 1.1,
         panX: 10,
         panY: 10,
+        isLocked: false,
       };
       const mvpMatrix = buildExportMVPMatrix(
         pitchTransform,
@@ -578,6 +581,7 @@ describe('Tactical Frame Renderer', () => {
         zoom: 1.0,
         panX: 0,
         panY: 0,
+        isLocked: false,
       };
       const mvpMatrix = buildExportMVPMatrix(
         pitchTransform,
@@ -668,6 +672,7 @@ describe('Tactical Frame Renderer', () => {
         zoom: 1.0,
         panX: 0,
         panY: 0,
+        isLocked: false,
       };
       const mvpMatrix = buildExportMVPMatrix(
         pitchTransform,
