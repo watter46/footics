@@ -1,14 +1,152 @@
-const fs = require('fs');
+const fs = require('node:fs');
+
+function isSystemPath(targetFile) {
+  return (
+    targetFile.includes('/.agents/') ||
+    targetFile.includes('/scripts/') ||
+    targetFile.endsWith('/AGENTS.md') ||
+    targetFile.endsWith('AGENTS.md') ||
+    targetFile.includes('Makefile') ||
+    targetFile.endsWith('/biome.json') ||
+    targetFile.endsWith('biome.json') ||
+    targetFile.endsWith('/package.json') ||
+    targetFile.endsWith('package.json') ||
+    targetFile.endsWith('/tsconfig.json') ||
+    targetFile.endsWith('tsconfig.json')
+  );
+}
+
+function checkWorkerScope(targetFile, normalizedRole) {
+  if (normalizedRole.includes('gm')) {
+    if (!targetFile.includes('/specs/') && !targetFile.startsWith('specs/')) {
+      return '[Regista Security] Regista-GM はプロダクトコードを直接編集できません。仕様書 (specs/**) を策定してください。';
+    }
+  } else if (normalizedRole.includes('canvas')) {
+    if (
+      !targetFile.includes('/canvas/') &&
+      !targetFile.includes('/video-canvas/')
+    ) {
+      return `[Regista Security] worker-canvas の担当外 (${targetFile}) への書き込みは拒否されました。`;
+    }
+  } else if (normalizedRole.includes('data')) {
+    if (
+      !targetFile.includes('/lib/') &&
+      !targetFile.includes('/stores/') &&
+      !targetFile.includes('/types/')
+    ) {
+      return `[Regista Security] worker-data の担当外 (${targetFile}) への書き込みは拒否されました。`;
+    }
+  } else if (normalizedRole.includes('extension')) {
+    if (
+      !targetFile.includes('/extension/') &&
+      !targetFile.startsWith('extension/')
+    ) {
+      return `[Regista Security] worker-extension の担当外 (${targetFile}) への書き込みは拒否されました。`;
+    }
+  } else if (normalizedRole.includes('frontend')) {
+    if (
+      !targetFile.includes('/app/') &&
+      !targetFile.includes('/components/ui/') &&
+      !targetFile.includes('/styles/')
+    ) {
+      return `[Regista Security] worker-frontend の担当外 (${targetFile}) への書き込みは拒否されました。`;
+    }
+  }
+  return null;
+}
+
+function checkFileEditGuard(targetFile, role, isSubagent) {
+  const normalizedRole = role.toLowerCase();
+  const isMetaAgent =
+    !isSubagent ||
+    normalizedRole.includes('meta-agent') ||
+    normalizedRole.includes('meta');
+
+  if (isSystemPath(targetFile) && !isMetaAgent) {
+    return {
+      decision: 'deny',
+      reason: `[Regista Security] システムファイル (${targetFile}) の編集は拒否されました。権限: メタエージェントのみ`,
+    };
+  }
+
+  if (role) {
+    const errorMsg = checkWorkerScope(targetFile, normalizedRole);
+    if (errorMsg) {
+      return { decision: 'deny', reason: errorMsg };
+    }
+  }
+
+  return { decision: 'allow' };
+}
+
+function checkCommandGuard(cmd) {
+  if (
+    cmd.includes('rm -rf /') ||
+    cmd.includes('git reset --hard') ||
+    cmd.includes('git push --force') ||
+    cmd.includes('git clean -fdx')
+  ) {
+    return {
+      decision: 'deny',
+      reason: '[Regista Security] 破壊的コマンドの実行はブロックされました。',
+    };
+  }
+
+  const isBareTest =
+    /^(rtk\s+)?(vitest(\s+run)?|pnpm\s+test|npm\s+test|yarn\s+test)$/.test(cmd);
+  if (isBareTest) {
+    return {
+      decision: 'deny',
+      reason:
+        '[Regista Token Guard] 引数なしの全体テスト実行は禁止されています。対象ファイルを指定してください (例: rtk vitest run <file>)。',
+    };
+  }
+
+  if (/find\s+(\/|\/home|~|\.\.)/.test(cmd)) {
+    return {
+      decision: 'deny',
+      reason:
+        '[Regista Token Guard] 広域 find はブロックされました。rtk find <path> -name <pattern> で絞り込んでください。',
+    };
+  }
+
+  const targetsNeedingRtk = [
+    /^vitest\b/,
+    /^pnpm\s+(test|verify|biome|type-check)/,
+    /^tsc\b/,
+    /^biome\b/,
+    /^rg\b/,
+    /^grep\b/,
+    /^find\b/,
+    /^git\s+(diff|status|log)\b/,
+  ];
+
+  if (
+    targetsNeedingRtk.some((pattern) => pattern.test(cmd)) &&
+    !cmd.startsWith('rtk ')
+  ) {
+    return {
+      decision: 'allow',
+      overwrite: { CommandLine: `rtk ${cmd}` }
+    };
+  }
+
+  return { decision: 'allow' };
+}
 
 function main() {
-  const input = fs.readFileSync(0, 'utf-8');
+  let input = '';
+  try {
+    input = fs.readFileSync(0, 'utf-8');
+  } catch {
+    return;
+  }
   if (!input) return;
 
   const payload = JSON.parse(input);
   const toolCall = payload.toolCall || {};
   const args = toolCall.args || {};
 
-  // エージェント情報の抽出
   const role =
     payload.subagentRole ||
     payload.role ||
@@ -19,146 +157,15 @@ function main() {
     payload.isSubagent || payload.subagentConversationId || role,
   );
 
-  const response = {
-    decision: 'allow',
-  };
+  let response = { decision: 'allow' };
 
-  // 1. ファイル編集・作成ガード (write_to_file / replace_file_content)
   if (
     toolCall.name === 'write_to_file' ||
     toolCall.name === 'replace_file_content'
   ) {
-    const targetFile = args.TargetFile || '';
-
-    // システムパス定義 (メタエージェント専権)
-    const isSystemPath =
-      targetFile.includes('/.agents/') ||
-      targetFile.includes('/scripts/') ||
-      targetFile.includes('Makefile') ||
-      targetFile.endsWith('/biome.json') ||
-      targetFile.endsWith('/package.json') ||
-      targetFile.endsWith('/tsconfig.json');
-
-    // A. サブエージェントによるシステムファイル改変の絶対拒否 (Deny)
-    if (isSystemPath && isSubagent) {
-      response.decision = 'deny';
-      response.reason = `[Regista Security] サブエージェント (${role || 'Worker/GM'}) からのシステムファイル (${targetFile}) 編集は拒否されました。システム構成やスクリプトの変更権限は最高システムアーキテクト（メタエージェント）のみに制限されています。`;
-      console.log(JSON.stringify(response));
-      return;
-    }
-
-    // B. Worker / GM ごとのスコープ境界（ホワイトリスト）検証
-    if (role) {
-      const normalizedRole = role.toLowerCase();
-
-      // regista-gm: specs/ のみ編集可能
-      if (
-        normalizedRole.includes('gm') ||
-        normalizedRole.includes('regista-gm')
-      ) {
-        const isSpecPath =
-          targetFile.includes('/specs/') || targetFile.startsWith('specs/');
-        if (!isSpecPath) {
-          response.decision = 'deny';
-          response.reason = `[Regista Security] Regista-GM はプロダクトコード (${targetFile}) を直接編集できません。仕様書 (specs/**) の策定と Worker へのタスク委譲を行ってください。`;
-          console.log(JSON.stringify(response));
-          return;
-        }
-      }
-
-      // worker-canvas: canvas / 2d描画領域のみ
-      if (normalizedRole.includes('canvas')) {
-        const isCanvasPath =
-          targetFile.includes('/canvas/') ||
-          targetFile.includes('/video-canvas/');
-        if (!isCanvasPath) {
-          response.decision = 'deny';
-          response.reason = `[Regista Security] worker-canvas の担当スコープ外 (${targetFile}) への書き込みは拒否されました。許可パス: canvas関連ディレクトリ`;
-          console.log(JSON.stringify(response));
-          return;
-        }
-      }
-
-      // worker-data: db / store / types / lib 領域のみ
-      if (normalizedRole.includes('data')) {
-        const isDataPath =
-          targetFile.includes('/lib/') ||
-          targetFile.includes('/stores/') ||
-          targetFile.includes('/types/');
-        if (!isDataPath) {
-          response.decision = 'deny';
-          response.reason = `[Regista Security] worker-data の担当スコープ外 (${targetFile}) への書き込みは拒否されました。許可パス: src/lib/**, src/stores/**, src/types/**`;
-          console.log(JSON.stringify(response));
-          return;
-        }
-      }
-
-      // worker-extension: extension/ 領域のみ
-      if (normalizedRole.includes('extension')) {
-        const isExtensionPath =
-          targetFile.includes('/extension/') ||
-          targetFile.startsWith('extension/');
-        if (!isExtensionPath) {
-          response.decision = 'deny';
-          response.reason = `[Regista Security] worker-extension の担当スコープ外 (${targetFile}) への書き込みは拒否されました。許可パス: extension/**`;
-          console.log(JSON.stringify(response));
-          return;
-        }
-      }
-
-      // worker-frontend: app / ui / components 領域
-      if (normalizedRole.includes('frontend')) {
-        const isFrontendPath =
-          targetFile.includes('/app/') ||
-          targetFile.includes('/components/ui/') ||
-          targetFile.includes('/styles/');
-        if (!isFrontendPath) {
-          response.decision = 'deny';
-          response.reason = `[Regista Security] worker-frontend の担当スコープ外 (${targetFile}) への書き込みは拒否されました。許可パス: src/app/**, src/components/ui/**, src/styles/**`;
-          console.log(JSON.stringify(response));
-          return;
-        }
-      }
-    }
-  }
-
-  // 2. コマンド実行ガード (run_command)
-  if (toolCall.name === 'run_command') {
-    const cmd = (args.CommandLine || '').trim();
-
-    // A. 破壊的コマンドの完全拒否
-    if (
-      cmd.includes('rm -rf /') ||
-      cmd.includes('git reset --hard') ||
-      cmd.includes('git push --force') ||
-      cmd.includes('git clean -fdx')
-    ) {
-      response.decision = 'deny';
-      response.reason =
-        '[Regista Security] 破壊的コマンドの実行はブロックされました。';
-      console.log(JSON.stringify(response));
-      return;
-    }
-
-    // B. サブエージェントにおける rtk ラッパー強制 (vitest, biome, tsc, pnpm verify 等)
-    if (isSubagent) {
-      const targetsNeedingRtk = [
-        /^vitest\b/,
-        /^pnpm\s+(test|verify|biome|type-check)/,
-        /^tsc\b/,
-        /^biome\b/,
-        /^rg\b/,
-        /^git\s+(diff|status|log)\b/,
-      ];
-
-      const needsRtk = targetsNeedingRtk.some((pattern) => pattern.test(cmd));
-      if (needsRtk && !cmd.startsWith('rtk ')) {
-        response.decision = 'deny';
-        response.reason = `[Regista Token Guard] トークン最適化のため、コマンド実行は必ず 'rtk' 経由で行ってください。(推奨: 'rtk ${cmd}')`;
-        console.log(JSON.stringify(response));
-        return;
-      }
-    }
+    response = checkFileEditGuard(args.TargetFile || '', role, isSubagent);
+  } else if (toolCall.name === 'run_command') {
+    response = checkCommandGuard((args.CommandLine || '').trim());
   }
 
   console.log(JSON.stringify(response));

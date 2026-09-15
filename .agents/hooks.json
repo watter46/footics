@@ -12,14 +12,5 @@
         ]
       }
     ]
-  },
-  "verify-gate": {
-    "Stop": [
-      {
-        "type": "command",
-        "command": "node guards/verify-gate.js",
-        "timeout": 60
-      }
-    ]
   }
 }

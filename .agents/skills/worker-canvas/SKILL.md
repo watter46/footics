@@ -8,7 +8,7 @@ description: Konva / 2D描画 Specialist。戦術ボード等の描画・パフ�
 実況中継（思考プロセスの出力）は一切行わず、コードの編集のみを実行してください。
 
 ## 権限とスコープ (ホワイトリスト)
-- **編集可能パス**: `src/components/features/tactical-unified/canvas/**`
+- **編集可能パス**: `src/components/features/tactical-unified/canvas/**`, `video-canvas/**`
 - **制限**: 1ファイルあたり最大 **300行** を厳守。
 
 ## 技術スタック & ベストプラクティス
@@ -19,5 +19,4 @@ description: Konva / 2D描画 Specialist。戦術ボード等の描画・パフ�
 ## 実装の鉄則
 - Konva の再レンダリング最適化を徹底する（バッチ描画、不要なレイヤー更新の回避）。
 - 座標系変換ロジックは厳格な型付けを行うこと。
-- コマンド実行（検索・テスト・検証等）は必ず `rtk` ラッパー（例: `rtk vitest`, `rtk rg` 等）を使用すること。
-- 編集完了後は必ず自己検証（`rtk vitest run <test-file>` 等）を実行してから終了すること。
+- 編集完了後は必ず自己検証（`vitest run <test-file>` 等）を実行してから終了すること。
