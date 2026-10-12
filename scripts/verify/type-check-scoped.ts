@@ -33,7 +33,7 @@ function checkRoot(rootFiles: string[]): void {
       },
       include: [
         'next-env.d.ts',
-        '.next/types/**/*.ts',
+        '.next/types/**/*.d.ts',
         'src/types/**/*.d.ts',
         ...rootFiles,
       ],

@@ -35,18 +35,38 @@ const jsTsFiles = changedFiles.filter((f) => /\.(js|jsx|ts|tsx)$/.test(f));
 if (jsTsFiles.length > 0) {
   console.log('Changed files:', jsTsFiles);
 
+  // 1. AST-Grep: Auto-refactor and token reduction (e.g., removing debug statements)
+  // This reduces LLM token usage by cleaning up the code automatically before any other checks.
+  console.log('\n--- Running AST-Grep Auto Refactor ---');
+  try {
+    // Example: remove console.log to save tokens in production code
+    // run(`bunx ast-grep run --pattern 'console.log($$$)' --rewrite '' --update-all ${jsTsFiles.join(' ')}`);
+    console.log(
+      'AST-Grep rules can be defined here for automatic token reduction.',
+    );
+  } catch (_e) {
+    console.warn('AST-Grep refactor step had minor issues, continuing...');
+  }
+
   // 2. Biome check
   const biomeFiles = jsTsFiles.join(' ');
-  run(`pnpm exec biome check ${biomeFiles}`);
+  run(`bunx biome check ${biomeFiles}`);
 
   // 3. Size check
-  run(`pnpm exec tsx scripts/lint/check-file-size.ts ${biomeFiles}`);
+  run(`bun scripts/lint/check-file-size.ts ${biomeFiles}`);
 
-  // 4. Vitest related
-  run(`pnpm exec vitest run related ${biomeFiles} --passWithNoTests`);
+  // 4. Vitest related (Logic verification)
+  run(`bun vitest run related ${biomeFiles} --passWithNoTests`);
 
   // 5. Scoped Type check
-  run(`pnpm exec tsx scripts/verify/type-check-scoped.ts ${biomeFiles}`);
+  run(`bun scripts/verify/type-check-scoped.ts ${biomeFiles}`);
+
+  // 6. Playwright E2E verification placeholder
+  // Check if E2E tests are affected
+  console.log('\n--- Playwright E2E Check ---');
+  console.log(
+    'If UI components changed, consider running: pnpm exec playwright test',
+  );
 } else {
   console.log('No JS/TS changed files found. Skipping code checks.');
 }

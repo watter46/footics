@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+node_modules/**
 /.pnp
 .pnp.*
 .yarn/*
@@ -12,9 +13,11 @@ node_modules/
 
 # testing
 /coverage
+.vitest/
 
 # next.js
 .next/
+.next/**
 /out/
 
 # wxt (extensions)
@@ -47,6 +50,8 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+.*.tsbuildinfo
+**/*.tsbuildinfo
 next-env.d.ts
 .tsconfig.scoped.tmp.json
 
@@ -62,7 +67,6 @@ public/national_data/
 public/preview/
 public/static/
 upload/
-docs/
 .open-next/
 .wrangler/
 certificates/
@@ -80,4 +84,20 @@ biome_error*.txt
 .regista/handover/
 .regista/metrics/oracle-violations.jsonl
 
+# Agent scratchpad & research sources
+scratch/
+.ecc/
+.ecc/**
+.ecc-files.txt
+.agents/.cache/
+.agents/logs/**
+.agents_backup_*/
+.agents/.backup_archive/
+
+# Package managers / runtime caches
+*.lockb
+
+# Build & distribution outputs
+dist/
+dist/*
 
