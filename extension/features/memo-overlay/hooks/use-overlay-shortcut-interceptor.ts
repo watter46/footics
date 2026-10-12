@@ -58,6 +58,11 @@ export function useOverlayShortcutInterceptor() {
       );
     });
 
+    hotkeys('alt+s', (e) => {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('footics-trigger-capture'));
+    });
+
     // 数字キー (1〜4) によるタグクイック選択
     for (const tag of QUICK_TAGS) {
       hotkeys(tag.shortcut, (e) => {
@@ -85,6 +90,7 @@ export function useOverlayShortcutInterceptor() {
       hotkeys.unbind('ctrl+enter');
       hotkeys.unbind('command+enter');
       hotkeys.unbind('alt+m');
+      hotkeys.unbind('alt+s');
       for (const tag of QUICK_TAGS) {
         hotkeys.unbind(tag.shortcut);
       }

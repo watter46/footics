@@ -50,10 +50,23 @@ function setupMatchSync() {
   };
 
   const observer = new MutationObserver(() => syncMatchIdToStorage());
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-match-id'],
-  });
+  const observeDocumentElement = () => {
+    if (document.documentElement) {
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-match-id'],
+      });
+    }
+  };
+
+  if (document.documentElement) {
+    observeDocumentElement();
+  } else {
+    document.addEventListener('DOMContentLoaded', observeDocumentElement, {
+      once: true,
+    });
+  }
+
   syncMatchIdToStorage();
 
   window.addEventListener('footics-action', async (e) => {

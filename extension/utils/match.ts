@@ -13,7 +13,8 @@ export function detectMatchId(): string | undefined {
 
   // 1. Dataset から取得
   let matchId =
-    document.documentElement.dataset.matchId || document.body.dataset.matchId;
+    document.documentElement?.dataset?.matchId ||
+    document.body?.dataset?.matchId;
 
   if (matchId) return matchId;
 

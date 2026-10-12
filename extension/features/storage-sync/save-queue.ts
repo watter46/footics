@@ -117,9 +117,13 @@ export async function processSaveQueue(): Promise<void> {
   const doProcess = async () => {
     // 最新のキューを取得
     const stored = await browser.storage.local.get(STORAGE_KEYS.SAVE_QUEUE);
-    const parsed = SaveQueueSchema.safeParse(stored[STORAGE_KEYS.SAVE_QUEUE]);
+    const rawQueue = stored[STORAGE_KEYS.SAVE_QUEUE];
+    if (rawQueue === undefined || rawQueue === null) {
+      return;
+    }
+    const parsed = SaveQueueSchema.safeParse(rawQueue);
     if (!parsed.success) {
-      console.warn('[save-queue] Invalid queue data in storage:', stored);
+      console.warn('[save-queue] Invalid queue data in storage:', rawQueue);
       return;
     }
 

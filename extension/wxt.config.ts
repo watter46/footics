@@ -13,15 +13,8 @@ export default defineConfig({
       charset: 'ascii',
     },
     build: {
-      minify: 'terser',
-      terserOptions: {
-        keep_classnames: true,
-        keep_fnames: true,
-        format: {
-          ascii_only: true,
-          comments: false,
-        },
-      },
+      sourcemap: 'inline',
+      minify: false,
     },
     resolve: {
       alias: {
