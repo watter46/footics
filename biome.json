@@ -71,7 +71,7 @@
   },
   "overrides": [
     {
-      "includes": ["**/extension/**/*", "**/video-canvas/**/*"],
+      "includes": ["**/extension/**/*"],
       "javascript": {
         "globals": [
           "browser",

@@ -1,90 +1,36 @@
----
-trigger: always_on
----
+# Footics — エージェント行動指針
 
-# 👑 Footics Architecture & Agent Guidelines
+> Footics は **プレミアリーグ中心のフットボール戦術分析コンテンツ制作プラットフォーム**（個人用、Local-first）です。
 
-## 💡 コア理念: 「安全性・品質」×「高速・低トークン」の両立
-Footicsの開発体制は、**最高水準の安全性・品質を前提とし、無駄な手戻り・試行錯誤・コンテキスト肥大化を極限まで削ぎ落とすことで、高速かつ最小トークンでの開発サイクルを実現する**ことを基本思想とします。
-- **事前規約準拠**: [`.agents/research/extracted/*`](file:///home/watter46/src/footics/.agents/research/extracted/) に抽出済みの最新ベストプラクティスを一発適用し、手戻りを防止。
-- **Fail-Fast 検証**: `rtk` (Rust Token Compressor) を介してテスト・型チェックを実行し、ログを圧縮しながら100%の品質を保証。
-- **的確な粒度ルーティング**: 局所改修は直接編集で最小トークン完結、複合改修はGM＋専門Workerで安全境界を保護し並列推進。
+## コア原則
 
----
+1. **極限のトークン最適化** — 標準コマンド（`ls`, `cat`, `grep` 等）は `guard.ts` により自動最適化。探索初手は `repo_map.txt` (または `make map`) を参照し、`rtk` 系コマンドを使用すること
+2. **高品質な実装の担保** — TDD 厳守、Biome v2 strict、TypeScript strict
+3. **3層分離パイプライン** — Planner(Pro) → Worker(Flash) → Reviewer(Pro) によるタスク駆動開発
+4. **推論の排除とスクリプト化** — `agent:check-worker` / `agent:check-reviewer` による自動検証
 
-## 1. 開発セッションと組織体制
+## 開発運用の基本フロー
 
-- **メインセッション（Primary Session / デフォルト）**:
-  - **通常の開発者・ペアプログラマー**として動作。
-  - 通常の会話、壁打ち、コードの直接編集、単体テスト・型チェックを安全・確実に最小トークンで実行。
-- **Regista-GM（Orchestration Subagent / 明示指示時のみ）**:
-  - ユーザーから明示的に依頼された場合（または放置して並列実行したい場合）のみ、仕様書（`specs/active/`）を作成して起動。
-- **Workerエージェント群（Specialist Workers）**:
-  - **Worker-Data**: `src/lib/**`, `src/stores/**`, `src/types/**`
-  - **Worker-Canvas**: `src/components/features/tactical-unified/canvas/**`, `video-canvas/**`
-  - **Worker-Frontend**: `src/app/**`, `src/components/ui/**`, `src/styles/**`
-  - **Worker-Extension**: `extension/**`
+- **起点**: すべての実装・変更は `tasks/TASK-*.md` を唯一の真実源（Single Source of Truth）として行います。
+- **ルール自動適用**: ディレクトリ・ファイル編集時に `.agents/rules/`（コーディング規約、テスト規約、データアクセス規約）が自動適用されます。ドキュメントを明示的に読みに行く必要はありません。
+- **オンデマンド手順**: Dexie, Zustand, Konva 等の固有実装は `.agents/skills/` を必要時にロードして参照します。
 
-※ エージェント組織・スキル・ルール自体の保守・改修は、別枠のオンデマンドスキル（`/meta-agent`）を使用します。
+## 行動制約 (Guardrails)
 
----
+- **ライブラリ無断追加の禁止**: `package.json` への新規依存追加はユーザーの明示的承認を得ること。
+- **未決定事項（Open Decisions）の勝手な実装禁止**: 仕様が未定の領域は推測で実装せず、ユーザーへ確認すること。
+- **DB スキーマ変更時のマイグレーション必須**: `src/lib/db/schema.ts` のバージョンアップと `.upgrade()` ブロックの記述が必須。
+- **`biome-ignore` の新規追加は原則禁止**。
 
-## 2. タスク実行方針
+## 設計思想・詳細仕様（リファレンス）
 
-ユーザーからのリクエスト規模・性質に応じて、以下の2モードで実行します。
+- 設計思想・仕様リファレンス（辞書）: `docs/README.md`（必要時のみ参照）
 
-```text
-+-------------------------------------------------+
-| タスク要求 (規模・影響度の判定)                 |
-+------------------------+------------------------+
-                         |
-       +-----------------+-----------------+
-       | 1〜3ファイル / 局所的             | 4ファイル以上 / 複合領域 / 明示指示
-       v                                   v
-+-------------------------+      +-------------------------+
-| 🚀 Direct Mode (デフォルト)|     | 🏛️ GM Orchestration     |
-| ・事前規約を参照        |      | ・specs/active/仕様書作成|
-| ・コード直接編集        |      | ・regista-gm 起動       |
-| ・rtk 単体テスト/型検証  |      | ・Worker並列実装 & 検証  |
-+-------------------------+      +-------------------------+
-```
+## 詳細規約
 
-1. **🚀 Direct Mode（即時実装モード / デフォルト）**:
-   - **対象**: 1〜3ファイル以内の変更、局所的なバグ修正、UIスタイルの微調整、ストアのフィールド追加など。
-   - **手順**:
-     1. 該当領域のベストプラクティス（[`.agents/research/extracted/*`](file:///home/watter46/src/footics/.agents/research/extracted/)）を参照。
-     2. 最小限の差分でファイルを直接編集。
-     3. `vitest run <file>` や `tsc --noEmit` 等で即時自己検証して完了。
-2. **🏛️ GM Orchestration Mode（並列委譲モード / 明示指示時）**:
-   - **対象**: ユーザーが「GMでやって」「並列実行で」と明示した場合、または4ファイル以上の複合領域改修。
-   - **手順**:
-     1. `specs/active/YYYY-MM-[feature-name].md` を作成。
-     2. `invoke_subagent` で `regista-gm` を起動。
-     3. GMが専門Workerを並列指揮し、全体結合検証（`rtk pnpm verify`）まで自律完遂。
-
----
-
-## 3. 厳格なルールと機械的ガード (`safety-guard.js`)
-
-- **システム保護**: サブエージェントによる `.agents/`, `scripts/`, `Makefile` 等の変更は即時 Deny されます。
-- **Worker境界**: 各Workerは自身の担当パス外への書き込みが禁止されています。
-- **`rtk` 自動補完**: コマンド実行（`vitest`, `tsc`, `biome` 等）はフックにより透過的に `rtk` が補完され実行されます。そのままコマンドを実行してください。
-- **全体テスト禁止**: 引数なしの全体テスト（`vitest run` / `pnpm test` 等）は機械的にブロックされます。必ずファイル単位で指定してください。
-
----
-
-## 4. 探索・読解パイプライン（未知領域の探索時限定）
-
-未知の領域を探索する際は以下の4ステップを推奨しますが、対象ファイルが既知の場合は直接編集・読解へスキップし、不要な探索（tree/find等）によるトークン浪費を省いてください。
-
-```text
-Step 1: ディレクトリ構造把握  ➜  tree <dir> -L 2
-Step 2: 対象ファイル特定 ➜  ネイティブツール (find_by_name / grep_search) を利用
-Step 3: 型・シグネチャ抽出 (AST) ➜  pnpm tsx scripts/ast/extract-types.ts <file|directory>
-Step 4: 局所編集・読解 (必要な場合のみ) ➜ view_file (StartLine, EndLine 指定)
-```
-
-## 5. 出力フォーマット規約（CLI最適化）
-
-- **ASCIIアート推奨**: フローチャートや構造図を出力する場合は、CLI端末で直接視認しやすいASCIIテキストボックス形式（`+---+`, `| `, `-->` 等）を使用する（Mermaid記法は使用しない）。
-- **表形式**: Markdownの標準テーブル形式（`| ... | ... |`）を使用する。
+スコープ付きルールが `.agents/rules/` に配置済み：
+- `efficient-exploration.md` — ディレクトリ走査・ファイル探索時に常時適用（トークン最適化プロトコル）
+- `coding-standards.md` — `src/**`, `tests/**` アクセス時に自動適用
+- `testing-standards.md` — `**/*.test.ts(x)`, `tests/**` アクセス時に自動適用
+- `data-access.md` — `src/lib/db/**`, `src/stores/**` 等アクセス時に自動適用
+- `agent-delegation.md` — サブエージェント委任時の完了回収・成果物契約を規定

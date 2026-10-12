@@ -1,13 +1,17 @@
-.PHONY: ast lint-size verify ship
+.PHONY: ast lint-size verify ship map
+
+map:
+	bun run /home/watter46/.local/scripts/generate_repo_map.ts $(CURDIR)
 
 ast:
-	npx tsx scripts/ast/extract-types.ts $(FILE)
+	bun scripts/ast/extract-types.ts $(FILE)
 
 lint-size:
-	npx tsx scripts/lint/check-file-size.ts $(FILES)
+	bun scripts/lint/check-file-size.ts $(FILES)
 
 verify:
-	npx tsx scripts/verify/scoped-check.ts
+	bun scripts/verify/scoped-check.ts
 
 ship:
-	npx tsx scripts/git/ship.ts
+	bun scripts/git/ship.ts
+
