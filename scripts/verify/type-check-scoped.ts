@@ -59,16 +59,28 @@ export function runScopedTypeCheck(files: string[] = []): void {
       : getChangedTsFiles();
 
   if (targetFiles.length === 0) {
-    console.log('TypeScript: No TypeScript files to check. Skipping.');
+    console.log(
+      'TypeScript: No changed TypeScript files. Scoped check skipped.',
+    );
+    console.log(
+      "[HINT] To check specific files, run 'bun run typecheck <path>'. To check the entire project, run 'bun run typecheck:all'.",
+    );
     return;
   }
 
   console.log(`TypeScript: Checking ${targetFiles.length} scoped file(s)...`);
 
   const rootFiles = targetFiles.filter(
-    (f) => !f.startsWith('extension/') && !f.startsWith('video-canvas/'),
+    (f) =>
+      (f.startsWith('src/') || f.startsWith('tests/')) &&
+      !f.startsWith('extension/') &&
+      !f.startsWith('video-canvas/'),
   );
-  checkRoot(rootFiles);
+  if (rootFiles.length > 0) {
+    checkRoot(rootFiles);
+  } else {
+    console.log('TypeScript: No app (src/tests) TypeScript files to check.');
+  }
 }
 
 // CLI direct execution

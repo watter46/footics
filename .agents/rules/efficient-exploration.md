@@ -16,9 +16,8 @@ trigger: always_on
 ファイルを漫然と探さず、必ず以下の順序で絞り込む。
 
 1. **【検索】マップから一発で対象ファイル・シンボルを特定する（最優先・1手完了）**
-   - **ピンポイント検索**: `rtk grep '<keyword>' .agents/.cache/repo_map.txt`
-     - 最少トークン（数行）かつ1手で目的のファイルパスと `export` されたシンボルが特定できる。広域検索（生 `find` や手当たり次第の `ls`）を固く禁ずる。
-   - **全体把握時のみ**: `rtk read .agents/.cache/repo_map.txt`（無ければ `make map`）
+   - **全体把握・初手**: `rtk read .agents/.cache/repo_summary.txt`（高レベル地図。30行程度でアーキテクチャ・モジュール・エントリーポイントを最少トークンで把握）
+   - **ピンポイント検索**: `rtk grep '<keyword>' .agents/.cache/repo_map.txt`（詳細シンボル地図。特定機能・関数のファイルパスを1手で特定）
 2. **【特定】該当箇所を行番号レベルで検索する**
    - テキスト検索: `rtk grep '<keyword>' <file>`
    - 構文/AST検索: `ast-grep run -p '<pattern>' -l <lang> <file>`
@@ -51,25 +50,28 @@ trigger: always_on
 
 ## 3. コマンドルーティング (Command Map)
 
-各アクションで必ず **Best** を選択し、必要時のみ **Fallback** を使用する。
+**スコープ原則の厳守**: 通常時は必ず **通常（スコープ付き・既定）** を使用する。
+**全体対象コマンド**（`:all` 系）は、ユーザーから「全体をチェックして」と明示指示された場合のみ使用が許可される。
 
-| アクション | Best (最優先) | Fallback / 制限 |
+| アクション | 通常（スコープ付き・既定） | 全体（ユーザー明示時のみ） / Fallback |
 | :--- | :--- | :--- |
-| **ファイル・シンボル特定（一発探索）** | `rtk grep '<keyword>' .agents/.cache/repo_map.txt` (最速・数行で特定) | `fd -t f '<pattern>' <dir>` / `rtk find <dir> -name '<glob>'` |
-| **全体把握 / 初手** | `rtk read .agents/.cache/repo_map.txt` (全体俯瞰時) | `make map` |
+| **全体把握 / 初手** | `rtk read .agents/.cache/repo_summary.txt` (高レベル地図) | `make map` |
+| **ファイル・シンボル特定** | `rtk grep '<keyword>' .agents/.cache/repo_map.txt` | `fd -t f '<pattern>' <dir>` |
+| **静的解析 (Biome)** | `bun run lint [path]` (差分または指定パス) | `bun run lint:all` (明示時のみ) |
+| **型チェック** | `bun run typecheck [path]` (差分または指定パス) | `bun run typecheck:all` (明示時のみ) |
+| **一括検証 (Lint+Type)** | `bun run check [path]` (差分または指定パス) | `bun run check:all` (明示時のみ) |
+| **Worker実装時検証** | `bun run agent:check-worker <files>` | — |
+| **コミット前一括検証** | `bun run agent:preflight` | `bun run verify` |
 | **依存・スクリプト把握** | `rtk deps <path>` / `rtk json --keys-only package.json` | `jq -c '.scripts' package.json` |
 | **ディレクトリ把握** | `rtk ls <dir>` | `eza -T -L 2 --git-ignore <dir>` |
-| **ファイル名探索** | `fd -t f '<pattern>' <dir>` | `rtk git ls-files '<pattern>'` / `rtk find <dir> -name '<glob>'` |
+| **ファイル名探索** | `fd -t f '<pattern>' <dir>` | `rtk git ls-files '<pattern>'` |
 | **内容検索（テキスト）** | `rtk grep '<pattern>' <path>` | `rg -n -m 5 '<pattern>' <path>` |
 | **構造検索（AST）** | `ast-grep run -p '<pat>' -l <lang>` | `rtk grep -t <lang> '<pattern>' <path>` |
-| **JSONデータ抽出** | `rtk json --keys-only <file>` / `jq -c 'keys' <file>` | `jq -c '.[0:5]' <file>` / `rtk json -d 2 <file>` |
+| **JSONデータ抽出** | `rtk json --keys-only <file>` / `jq -c 'keys' <file>` | `jq -c '.[0:5]' <file>` |
 | **Git差分確認** | `GIT_EXTERNAL_DIFF=difft rtk git diff` | `rtk git diff -U0` |
 | **Git状態・履歴** | `rtk git status` / `rtk git log -n 10 --oneline` | `git status -s` |
-| **コミット前一括検証** | `bun run agent:preflight` | `bun run verify` |
 | **アプリ単体テスト** | `rtk vitest run <path>` | `rtk err "vitest run ..."` |
 | **エージェントテスト** | `bun test ./.agents` | `bun test ./<test-path>` |
-| **型チェック** | `bun scripts/verify/type-check-scoped.ts` | `rtk tsc <args>` |
-| **静的解析 (Biome)** | `biome check <path>` (自動フラグ付与) | `rtk lint` (ESLint専用) |
 | **ログセッション分析** | `bun run agent:session-report [id|latest]` | `rtk log <file>` |
 
 ---

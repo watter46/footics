@@ -13,20 +13,27 @@ function run(command: string) {
 
 console.log('=== Scoped Verification ===');
 
-// 1. Get changed files (staged and unstaged) that actually exist on disk
-let changedFiles: string[] = [];
-try {
-  const output = execSync('git diff --name-only HEAD', { encoding: 'utf8' });
-  changedFiles = output
-    .split('\n')
-    .map((f) => f.trim())
-    .filter((f) => f.length > 0 && fs.existsSync(f));
-} catch (_e) {
-  // If not a git repo or no HEAD, just continue or exit
+// 1. Get changed files (staged and unstaged) that actually exist on disk, or use arguments
+const args = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+let changedFiles: string[] = args.filter((f) => fs.existsSync(f));
+
+if (changedFiles.length === 0) {
+  try {
+    const output = execSync('git diff --name-only HEAD', { encoding: 'utf8' });
+    changedFiles = output
+      .split('\n')
+      .map((f) => f.trim())
+      .filter((f) => f.length > 0 && fs.existsSync(f));
+  } catch (_e) {
+    // If not a git repo or no HEAD, just continue or exit
+  }
 }
 
 if (changedFiles.length === 0) {
   console.log('No changed files found on disk. Skipping scoped check.');
+  console.log(
+    "[HINT] No uncommitted changes detected. To check specific files, run 'bun run lint <path>' or 'bun run agent:check-worker <path>'.",
+  );
   process.exit(0);
 }
 

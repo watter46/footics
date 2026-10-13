@@ -154,6 +154,18 @@ function checkTokenGuard(
         };
       }
     }
+    // 全体検証コマンド (:all) の無断実行抑止 (Scope-First Guard: ユーザー承認必須)
+    if (
+      args.some(
+        (a) => a === 'check:all' || a === 'lint:all' || a === 'typecheck:all',
+      )
+    ) {
+      return {
+        decision: 'force_ask',
+        reason:
+          '[GUARD] Running full codebase verification (:all) is costly. Please confirm if full check is explicitly intended.',
+      };
+    }
   }
 
   // 6. 透過的コマンド書き換え (overwrite) - 原文 rawSubCmd を維持して安全に置換

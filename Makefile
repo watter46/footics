@@ -1,7 +1,7 @@
 .PHONY: ast lint-size verify ship map
 
 map:
-	bun run /home/watter46/.local/scripts/generate_repo_map.ts $(CURDIR)
+	bun scripts/map/generate-repo-map.ts $(CURDIR)
 
 ast:
 	bun scripts/ast/extract-types.ts $(FILE)

@@ -210,6 +210,9 @@ export function runPreflight(args: string[], cwd = process.cwd()): number {
   const { files, untracked } = collectFiles(args, cwd);
   if (files.length === 0) {
     console.log('PREFLIGHT ok | files=0 | nothing to commit');
+    console.log(
+      "[HINT] No uncommitted changes detected. To check specific files, run 'bun run lint <path>' or 'bun run agent:check-worker <path>'.",
+    );
     return 0;
   }
   const plan = classify(files, cwd);

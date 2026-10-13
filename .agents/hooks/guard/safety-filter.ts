@@ -222,5 +222,5 @@ function checkSafetyGuard(
   return null;
 }
 
+export type { GuardDecision, ParsedCommand };
 export { checkSafetyGuard };
-export type { ParsedCommand, GuardDecision };
