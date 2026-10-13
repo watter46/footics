@@ -1,7 +1,10 @@
 import { onMessage, sendMessage } from 'webext-bridge/background';
 import { z } from 'zod';
 import { FOOTICS_APP_URLS, STORAGE_KEYS } from '../constants';
-import { createTacticalCapturePayload, type TacticalCapturePayload } from '../types/schemas';
+import {
+  createTacticalCapturePayload,
+  type TacticalCapturePayload,
+} from '../types/schemas';
 
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Main background entrypoint
 export default defineBackground(() => {
@@ -80,10 +83,7 @@ export default defineBackground(() => {
     );
 
     if (tacticalTab?.id) {
-      console.log(
-        '[Footics BG] Found existing /tactical tab:',
-        tacticalTab.id,
-      );
+      console.log('[Footics BG] Found existing /tactical tab:', tacticalTab.id);
       // タブ切り替えとウィンドウフォーカスを並行実行
       await Promise.all([
         browser.tabs.update(tacticalTab.id, { active: true }),
@@ -188,7 +188,9 @@ export default defineBackground(() => {
         // ── 自律フォールバック: Content Script 未応答時でも確実にキャプチャ実行 ──
         if (!captureHandledByContentScript) {
           try {
-            console.log('⚡ [Footics BG] Executing direct captureVisibleTab fallback...');
+            console.log(
+              '⚡ [Footics BG] Executing direct captureVisibleTab fallback...',
+            );
             const dataUrl = await browser.tabs.captureVisibleTab({
               format: 'jpeg',
               quality: 98,
@@ -199,7 +201,9 @@ export default defineBackground(() => {
                 title: activeTab.title,
               });
               await routeCaptureToTactical(payload);
-              console.log('✅ [Footics BG] Autonomous direct capture & routing succeeded!');
+              console.log(
+                '✅ [Footics BG] Autonomous direct capture & routing succeeded!',
+              );
             }
           } catch (bgCaptureErr) {
             console.error(

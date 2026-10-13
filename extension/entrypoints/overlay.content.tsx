@@ -1,5 +1,5 @@
-import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import { onMessage, sendMessage } from 'webext-bridge/content-script';
 import {
   findVideoElement,
