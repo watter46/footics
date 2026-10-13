@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "dexie": "^4.4.5",
     "hotkeys-js": "^4.0.3",
     "lucide-react": "^1.31.0",
     "react": "^19.0.0",

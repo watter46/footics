@@ -67,16 +67,20 @@ export default defineContentScript({
             { dataLength: finalDataUrl.length },
           );
 
-          // Tactical 画面への直接転送パイプラインを実行
-          const bridgeResult = await sendCaptureToTactical(finalDataUrl, {
-            sourceUrl: window.location.href,
-            title: document.title,
-          });
+          // Quick Canvas パイプラインを実行
+          const canvasResult = await sendMessage(
+            'SAVE_AND_OPEN_CANVAS',
+            {
+              imageDataUrl: finalDataUrl,
+              videoUrl: window.location.href,
+              videoTitle: document.title,
+              videoTime: video ? Math.floor(video.currentTime) : 0,
+            },
+            'background',
+          );
 
-          if (bridgeResult.success) {
-            useOverlayStore
-              .getState()
-              .setToast('🎯 Tactical画面へ転送しました');
+          if (canvasResult?.success) {
+            useOverlayStore.getState().setToast('🎨 Quick Canvasを開きました');
           }
         } else {
           console.error(

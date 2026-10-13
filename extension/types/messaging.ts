@@ -71,6 +71,43 @@ declare module 'webext-bridge' {
       Record<string, never>,
       { replayedSaves: number; replayedCaptures: number }
     >;
+
+    /** キャプチャ保存＆Quick Canvasタブオープン要求 */
+    SAVE_AND_OPEN_CANVAS: ProtocolWithReturn<
+      {
+        imageDataUrl: string;
+        videoUrl?: string;
+        videoTitle?: string;
+        videoTime?: number;
+      },
+      { success: boolean; id?: string; tabId?: number; error?: string }
+    >;
+
+    /** 動画URL別のスクリーンショット一覧取得（将来連携API） */
+    GET_SCREENSHOTS_BY_VIDEO: ProtocolWithReturn<
+      { videoUrl: string },
+      {
+        success: boolean;
+        screenshots: import('../features/capture/db/screenshot-db').CapturedScreenshot[];
+        error?: string;
+      }
+    >;
+
+    /** 単体スクリーンショット取得（将来連携API） */
+    GET_SCREENSHOT_DATA: ProtocolWithReturn<
+      { id: string },
+      {
+        success: boolean;
+        screenshot?: import('../features/capture/db/screenshot-db').CapturedScreenshot;
+        error?: string;
+      }
+    >;
+
+    /** スクリーンショット削除（将来連携API） */
+    DELETE_SCREENSHOT: ProtocolWithReturn<
+      { id: string },
+      { success: boolean; error?: string }
+    >;
   }
 }
 

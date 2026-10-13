@@ -1,6 +1,12 @@
 import { onMessage, sendMessage } from 'webext-bridge/background';
 import { z } from 'zod';
 import { FOOTICS_APP_URLS, STORAGE_KEYS } from '../constants';
+import { processAndOpenCanvas } from '../features/capture/capture-pipeline';
+import {
+  deleteScreenshot,
+  getScreenshotById,
+  getScreenshotsByVideo,
+} from '../features/capture/db/screenshot-db';
 import {
   createTacticalCapturePayload,
   type TacticalCapturePayload,
@@ -196,13 +202,14 @@ export default defineBackground(() => {
               quality: 98,
             });
             if (dataUrl) {
-              const payload = createTacticalCapturePayload(dataUrl, {
-                sourceUrl: activeTab.url,
-                title: activeTab.title,
+              const res = await processAndOpenCanvas({
+                imageDataUrl: dataUrl,
+                videoUrl: activeTab.url,
+                videoTitle: activeTab.title,
               });
-              await routeCaptureToTactical(payload);
               console.log(
-                '✅ [Footics BG] Autonomous direct capture & routing succeeded!',
+                '✅ [Footics BG] Autonomous direct capture & Quick Canvas opened!',
+                res.id,
               );
             }
           } catch (bgCaptureErr) {
@@ -344,6 +351,56 @@ export default defineBackground(() => {
 
   onMessage('CLOSE_SIDEPANEL', () => {
     // 必要に応じて処理を追加
+  });
+
+  // ── 4. Quick Canvas & スクリーンショット連携 API ハンドラ ──
+  onMessage('SAVE_AND_OPEN_CANVAS', async ({ data }) => {
+    try {
+      const result = await processAndOpenCanvas({
+        imageDataUrl: data.imageDataUrl,
+        videoUrl: data.videoUrl,
+        videoTitle: data.videoTitle,
+        videoTime: data.videoTime,
+      });
+      return { success: true, id: result.id, tabId: result.tabId };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('[Footics BG] SAVE_AND_OPEN_CANVAS error:', errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  });
+
+  onMessage('GET_SCREENSHOTS_BY_VIDEO', async ({ data }) => {
+    try {
+      const screenshots = await getScreenshotsByVideo(data.videoUrl);
+      return { success: true, screenshots };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('[Footics BG] GET_SCREENSHOTS_BY_VIDEO error:', errorMsg);
+      return { success: false, screenshots: [], error: errorMsg };
+    }
+  });
+
+  onMessage('GET_SCREENSHOT_DATA', async ({ data }) => {
+    try {
+      const screenshot = await getScreenshotById(data.id);
+      return { success: true, screenshot };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('[Footics BG] GET_SCREENSHOT_DATA error:', errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  });
+
+  onMessage('DELETE_SCREENSHOT', async ({ data }) => {
+    try {
+      await deleteScreenshot(data.id);
+      return { success: true };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('[Footics BG] DELETE_SCREENSHOT error:', errorMsg);
+      return { success: false, error: errorMsg };
+    }
   });
 
   // ── 3. Footics App タブ検出時のオフラインキュー同期トリガー ──
