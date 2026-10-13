@@ -13,7 +13,6 @@
 import dynamic from 'next/dynamic';
 import { useKeyboardShortcuts } from '@/features/tactical-unified/hooks/use-keyboard-shortcuts';
 import { useTacticalAutoSave } from '@/features/tactical-unified/hooks/use-tactical-auto-save';
-import { useTacticalCaptureBridge } from '@/features/tactical-unified/hooks/use-tactical-capture-bridge';
 import { useTacticalDropPaste } from '@/features/tactical-unified/hooks/use-tactical-drop-paste';
 import { useTacticalMatchInit } from '@/features/tactical-unified/hooks/use-tactical-match-init';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
@@ -59,9 +58,6 @@ export function TacticalUnifiedPage({
   const closeProjectManagerModal = useTacticalUnifiedStore(
     (s) => s.closeProjectManagerModal,
   );
-
-  // 🎯 拡張機能からのダイレクトキャプチャ受信・自動配置
-  useTacticalCaptureBridge();
 
   // キーボードショートカット (Delete/Escape)
   useKeyboardShortcuts();

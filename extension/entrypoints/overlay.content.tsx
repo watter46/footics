@@ -6,7 +6,6 @@ import {
   prepareDRMHardenedUI,
   waitForNextFrames,
 } from '../features/capture/drm-capture-engine';
-import { sendCaptureToTactical } from '../features/capture/tactical-bridge';
 import {
   calculateContainVideoCrop,
   cropCapturedImage,

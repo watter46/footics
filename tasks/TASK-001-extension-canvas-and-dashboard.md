@@ -70,8 +70,17 @@
   - `GET_SCREENSHOTS_BY_VIDEO`, `GET_SCREENSHOT_DATA`, `DELETE_SCREENSHOT` のハンドラ定義
 - [x] 10. **クリーンアップ対象の精査・ユーザー提示**:
   - 削除・修正するファイルと差分を提示し、ユーザーの承認を得る
-- [ ] 11. **承認後のクリーンアップ実行**:
-  - （※ユーザー承認後に別ステップで実行するため現在は保留が正しい仕様）
+- [x] 11. **承認後のクリーンアップ実行**:
+  - Footics 本体側:
+    - `src/features/tactical-unified/hooks/use-tactical-capture-bridge.ts` の削除
+    - `src/features/tactical-unified/hooks/__tests__/use-tactical-capture-bridge.test.ts` の削除
+    - `src/features/tactical-unified/tactical-unified-page.tsx` から `useTacticalCaptureBridge` インポートおよび呼び出しの削除
+  - Extension 側:
+    - `extension/features/capture/tactical-bridge.ts` の削除
+    - `extension/features/capture/__tests__/tactical-bridge.test.ts` の削除
+    - `extension/entrypoints/background.ts` から `routeCaptureToTactical` および `SEND_CAPTURE_TO_TACTICAL` の削除
+    - `extension/entrypoints/overlay.content.tsx` から `sendCaptureToTactical` の未使用インポート削除
+  - 検証: 全体テスト、Biome lint、TypeCheck が PASS することを確認
 
 ## 5. Worker Verification (Worker 自己検証)
 - [x] すべての Testing Strategy に基づきテストを書き、失敗(RED)を確認してから実装(GREEN)したこと
@@ -79,7 +88,7 @@
 - [x] `bun run agent:check-worker <対象ファイル>` がエラーなく(exit code 0) PASS すること
 
 ## 6. Reviewer Checklist (Reviewer 審査基準)
-- [x] 自動検証チェック（Biome / TypeCheck / Vitest 全19件 PASS / depcruise 循環依存なし）
+- [x] 自動検証チェック（Biome / TypeCheck / Vitest 全18件 PASS / depcruise 循環依存なし）
 - [x] Requirements (要件) が漏れなく実装されていること
 - [x] 余計なファイルの削除や、意図しないアーキテクチャの破壊がないこと
 - [x] エラーハンドリングや型定義が適切であること
@@ -87,8 +96,9 @@
 ## 7. Reviewer Assessment (審査結果)
 - **判定**: `LGTM`
 - **総評**:
-  - 要件1〜4の実装が極めて高品質に完了している。
-  - テストは5ファイル19件すべてがPASS（Dexie CRUD、保持・自動パージ、キャプチャパイプライン、グルーピング、描画・履歴）。
+  - 要件1〜5のすべての実装および不要ロジックのクリーンアップ（Step 11）が完全に完了。
+  - 承認リスト通りの4ファイル削除（`use-tactical-capture-bridge.ts`, そのテスト, `tactical-bridge.ts`, そのテスト）および3ファイル修正（`background.ts`, `overlay.content.tsx`, `tactical-unified-page.tsx`）が安全に実施されたことを確認。
+  - 余計なファイルの削除や意図しない変更、型エラー、回帰は一切なし。
+  - テストは Extension 側全18件、tactical-unified hooks 全12件すべてが PASS。
   - Biome（Lint/Format）および TypeScript 型チェックもエラー0件。
   - アーキテクチャ・依存関係検証も循環参照等の問題なし。
-  - Phase 4 のクリーンアップ保留は指示通りの正常仕様。

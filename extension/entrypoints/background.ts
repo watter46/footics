@@ -7,10 +7,6 @@ import {
   getScreenshotById,
   getScreenshotsByVideo,
 } from '../features/capture/db/screenshot-db';
-import {
-  createTacticalCapturePayload,
-  type TacticalCapturePayload,
-} from '../types/schemas';
 
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Main background entrypoint
 export default defineBackground(() => {
@@ -42,100 +38,6 @@ export default defineBackground(() => {
       );
     }
     return tab;
-  };
-
-  // ── Tactical キャプチャのルーティング処理 ──
-  const routeCaptureToTactical = async (payload: TacticalCapturePayload) => {
-    console.log(
-      '🎯 [Footics BG] Routing capture to Tactical canvas:',
-      payload?.id,
-    );
-
-    // 1. chrome.storage.local に未処理キャプチャとして保存（新規タブ起動時にも即座に復元可能にする）
-    if (payload) {
-      await browser.storage.local.set({
-        [STORAGE_KEYS.TACTICAL_PENDING_CAPTURE]: payload,
-      });
-
-      // 直近キャプチャ履歴にも追記（最大10件）
-      try {
-        const existing = await browser.storage.local.get(
-          STORAGE_KEYS.TACTICAL_RECENT_CAPTURES,
-        );
-        const rawRecent = existing[STORAGE_KEYS.TACTICAL_RECENT_CAPTURES];
-        const recentList: TacticalCapturePayload[] = Array.isArray(rawRecent)
-          ? (rawRecent as TacticalCapturePayload[])
-          : [];
-
-        const updatedRecent = [
-          payload,
-          ...recentList.filter((item) => item.id !== payload.id),
-        ].slice(0, 10);
-        await browser.storage.local.set({
-          [STORAGE_KEYS.TACTICAL_RECENT_CAPTURES]: updatedRecent,
-        });
-      } catch (e) {
-        console.warn('[Footics BG] Failed to update recent captures cache:', e);
-      }
-    }
-
-    const allTabs = await browser.tabs.query({});
-
-    // 2. 既存の /tactical タブを優先探索
-    const tacticalTab = allTabs.find(
-      (t) =>
-        t.url?.includes('/tactical') &&
-        FOOTICS_APP_URLS.some((url) => t.url?.includes(url)),
-    );
-
-    if (tacticalTab?.id) {
-      console.log('[Footics BG] Found existing /tactical tab:', tacticalTab.id);
-      // タブ切り替えとウィンドウフォーカスを並行実行
-      await Promise.all([
-        browser.tabs.update(tacticalTab.id, { active: true }),
-        tacticalTab.windowId
-          ? browser.windows.update(tacticalTab.windowId, { focused: true })
-          : Promise.resolve(),
-      ]);
-
-      try {
-        await sendMessage(
-          'TACTICAL_CAPTURE_RECEIVED',
-          payload,
-          `content-script@${tacticalTab.id}`,
-        );
-      } catch (msgErr) {
-        console.warn(
-          '[Footics BG] Failed to send direct message to tactical tab:',
-          msgErr,
-        );
-      }
-      return { success: true, tabId: tacticalTab.id, created: false };
-    }
-
-    // 3. /tactical 以外の Footics タブがあればそのオリジンで /tactical を開く
-    const footicsTab = allTabs.find((t) =>
-      FOOTICS_APP_URLS.some((url) => t.url?.includes(url)),
-    );
-
-    let targetUrl = 'https://footics.watool.workers.dev/tactical';
-    if (footicsTab?.url) {
-      try {
-        const origin = new URL(footicsTab.url).origin;
-        targetUrl = `${origin}/tactical`;
-      } catch {}
-    }
-
-    console.log('[Footics BG] Creating new /tactical tab:', targetUrl);
-    const newTab = await browser.tabs.create({
-      url: targetUrl,
-      active: true,
-    });
-    if (newTab.windowId) {
-      await browser.windows.update(newTab.windowId, { focused: true });
-    }
-
-    return { success: true, tabId: newTab.id, created: true };
   };
 
   browser.commands.onCommand.addListener(async (command, tab) => {
@@ -333,19 +235,6 @@ export default defineBackground(() => {
       const errorMsg = err instanceof Error ? err.message : String(err);
       console.error('[Footics BG] Capture visible tab error:', errorMsg);
       return { success: false, error: errorMsg };
-    }
-  });
-
-  onMessage('SEND_CAPTURE_TO_TACTICAL', async ({ data }) => {
-    try {
-      return await routeCaptureToTactical(data.payload);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error(
-        '❌ [Footics BG] Failed to send capture to tactical:',
-        errorMsg,
-      );
-      return { success: false, error: errorMsg, created: false };
     }
   });
 
