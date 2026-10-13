@@ -65,6 +65,14 @@ function splitCommands(cmdLine: string) {
       }
 
       const nextChar = cmdLine[i + 1];
+      // リダイレクト (2>&1, >&2, &>file) の & はコマンド区切りではない
+      if (
+        ch === '&' &&
+        (cmdLine[i - 1] === '>' || cmdLine[i - 1] === '<' || nextChar === '>')
+      ) {
+        current += ch;
+        continue;
+      }
       if (ch === ';' || ch === '\n') {
         if (current.trim()) commands.push(current.trim());
         current = '';

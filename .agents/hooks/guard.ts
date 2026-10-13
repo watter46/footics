@@ -3,6 +3,47 @@ import { parseExecutable, splitCommands, tokenize } from './guard/parser';
 import { checkSafetyGuard } from './guard/safety-filter';
 import { checkTokenGuard } from './guard/token-filter';
 
+interface Rewrite {
+  raw: string;
+  next: string;
+  executable: string;
+}
+
+/** パイプの受け側では標準入力を読むため、ファイル引数前提の rtk 書き換えを適用しない */
+const STDIN_CONSUMERS = new Set([
+  'cat',
+  'less',
+  'more',
+  'head',
+  'tail',
+  'grep',
+  'rg',
+]);
+
+function isPipeTarget(cmdLine: string, idx: number): boolean {
+  const before = cmdLine.slice(0, idx).trimEnd();
+  return before.endsWith('|') && !before.endsWith('||');
+}
+
+/**
+ * 各サブコマンドの書き換えを元のコマンドライン全体に合成する。
+ * 以前は最後の1サブコマンドの書き換え結果でコマンドライン全体を置換していたため、
+ * `a && b` や `x | head -n 5` が壊れていた。
+ */
+function composeRewrites(cmdLine: string, rewrites: Rewrite[]): string | null {
+  let out = '';
+  let cursor = 0;
+  for (const { raw, next, executable } of rewrites) {
+    const idx = cmdLine.indexOf(raw, cursor);
+    if (idx === -1) continue;
+    if (STDIN_CONSUMERS.has(executable) && isPipeTarget(cmdLine, idx)) continue;
+    out += cmdLine.slice(cursor, idx) + next;
+    cursor = idx + raw.length;
+  }
+  out += cmdLine.slice(cursor);
+  return out === cmdLine ? null : out;
+}
+
 function evaluateCommand(cmdLine: string): any {
   if (!cmdLine || typeof cmdLine !== 'string' || !cmdLine.trim()) {
     return { decision: 'allow' };
@@ -10,6 +51,7 @@ function evaluateCommand(cmdLine: string): any {
 
   const subCommands = splitCommands(cmdLine);
   let highestDecision: any = null;
+  const rewrites: Rewrite[] = [];
 
   for (const rawSubCmd of subCommands) {
     const tokens = tokenize(rawSubCmd);
@@ -57,15 +99,23 @@ function evaluateCommand(cmdLine: string): any {
         (!highestDecision || highestDecision.decision !== 'deny')
       ) {
         highestDecision = tokenRes;
-      } else if (
-        tokenRes.overwrite &&
-        (!highestDecision || highestDecision.decision === 'allow')
-      ) {
-        highestDecision = tokenRes;
+      } else if (tokenRes.overwrite?.CommandLine) {
+        rewrites.push({
+          raw: rawSubCmd,
+          next: tokenRes.overwrite.CommandLine,
+          executable: parsed.executable,
+        });
       }
     }
   }
 
+  if (highestDecision && highestDecision.decision !== 'allow') {
+    return highestDecision;
+  }
+  const composed = composeRewrites(cmdLine, rewrites);
+  if (composed) {
+    return { decision: 'allow', overwrite: { CommandLine: composed } };
+  }
   return highestDecision || { decision: 'allow' };
 }
 
@@ -76,6 +126,26 @@ function evaluatePayload(payload: any): any {
       payload.toolCall.name === 'write_to_file')
   ) {
     return checkGateguard(payload);
+  }
+
+  if (payload.toolCall && payload.toolCall.name === 'view_file') {
+    const args = payload.toolCall.args || {};
+    const absPath = args.AbsolutePath || '';
+    if (/\.log$/i.test(absPath) || absPath.includes('/rtk/tee/')) {
+      const hasSlice =
+        typeof args.StartLine === 'number' || typeof args.EndLine === 'number';
+      const range =
+        typeof args.StartLine === 'number' && typeof args.EndLine === 'number'
+          ? args.EndLine - args.StartLine
+          : 999;
+      if (!hasSlice || range > 100) {
+        return {
+          decision: 'deny',
+          reason: `[GUARD] Reading entire log files with 'view_file' causes token explosion (${absPath}). Use 'rtk log <file>' or specify StartLine/EndLine with a range under 100 lines.`,
+        };
+      }
+    }
+    return { decision: 'allow' };
   }
 
   let cmd = '';

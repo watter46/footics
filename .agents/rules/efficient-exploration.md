@@ -50,6 +50,7 @@ trigger: always_on
 | アクション | Best (最優先) | Fallback / 制限 |
 | :--- | :--- | :--- |
 | **全体把握 / 初手** | `rtk read .agents/.cache/repo_map.txt` | `make map` |
+| **依存・スクリプト把握** | `rtk deps <path>` / `rtk json --keys-only package.json` | `jq -c '.scripts' package.json` |
 | **ディレクトリ把握** | `rtk ls <dir>` | `eza -T -L 2 --git-ignore <dir>` |
 | **ファイル名探索** | `fd -t f '<pattern>' <dir>` | `rtk git ls-files '<pattern>'` / `rtk find <dir> -name '<glob>'` |
 | **内容検索（テキスト）** | `rtk grep '<pattern>' <path>` | `rg -n -m 5 '<pattern>' <path>` |
@@ -57,15 +58,24 @@ trigger: always_on
 | **JSONデータ抽出** | `rtk json --keys-only <file>` / `jq -c 'keys' <file>` | `jq -c '.[0:5]' <file>` / `rtk json -d 2 <file>` |
 | **Git差分確認** | `GIT_EXTERNAL_DIFF=difft rtk git diff` | `rtk git diff -U0` |
 | **Git状態・履歴** | `rtk git status` / `rtk git log -n 10 --oneline` | `git status -s` |
-| **テスト/ビルドエラー** | `rtk err <cmd>` / `rtk test <cmd>` | `rtk log <file>` |
+| **コミット前一括検証** | `bun run agent:preflight` | `bun run verify` |
+| **アプリ単体テスト** | `rtk vitest run <path>` | `rtk err "vitest run ..."` |
+| **エージェントテスト** | `bun test ./.agents` | `bun test ./<test-path>` |
+| **型チェック** | `bun scripts/verify/type-check-scoped.ts` | `rtk tsc <args>` |
+| **静的解析 (Biome)** | `biome check <path>` (自動フラグ付与) | `rtk lint` (ESLint専用) |
+| **ログセッション分析** | `bun run agent:session-report [id|latest]` | `rtk log <file>` |
 
 ---
 
-## 4. 制約・ガードレール
+## 4. ターン予算と並列化 (Turn Budget & Parallelism)
 
-1. **生コマンドの原則禁止**: `ls`, `cat`, `grep`, `find`, `tree`, `git` の直接実行は禁止。必ず上記ルーティングに従う。
-2. **`sg` コマンドの使用禁止**: 他ツール（Semgrep等）との衝突防止のため、AST検索は必ずフルネーム `ast-grep` で実行する。
-3. **トークン爆発オプションの排除**:
-   - `fd` での `-H`（隠しファイル走査）は禁止（除外指定時は `-I -E .git -E node_modules`）。
-   - `jq -c .` などの全量ダンプは禁止。必ず `keys` や要素スライス（`.[0:5]`）で構造を絞る。
-   - 出力が切り詰められた際は生コマンドへ逃げず、パターン・パス・`-m`（件数）・`-L`（深度）を絞って再実行する。
+1. **独立した調査の並列実行**:
+   - 互いに依存しないコマンド（例: `git status`, `git log`, `view_file`）は、**同一ターン内で複数のツール呼び出しを発行**してターン数を削減する。
+2. **コマンドの連鎖 (`&&`)**:
+   - 順序依存のあるシェル操作（例: `git add <files> && git commit -m "..." && git status -sb`）は、`&&` で1回の `run_command` にまとめて実行する。
+3. **コミット前は手探りせず `preflight`**:
+   - 個別に vitest, bun test, biome などを手動試行せず、`bun run agent:preflight` で一括検証する。
+4. **非可逆フィルタの誤用禁止**:
+   - `rtk test` / `rtk err` はテストランナー専用の末尾抽出フィルタである。汎用スクリプトやログ確認に適用してはならない。
+5. **自己評価**:
+   - 必要に応じて `bun run agent:session-report latest` を実行し、自身のターン数・再試行数・トークン予算をチェックできる。詳細仕様は `notes/agent-ideal-trace.md` を参照。

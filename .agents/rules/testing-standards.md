@@ -56,4 +56,4 @@ test('returns correctly formatted string', () => {
 
 ## 6. エージェントの検証責務
 
-タスク完了の宣言を行う前に、必ず統合検証コマンド（`pnpm run agent:check-worker` 等）または `vitest run` を実行し、すべてのテストが PASS することを確認してください。検証せずに推測で完了報告を行ってはなりません。
+タスク完了の宣言を行う前に、必ず統合検証コマンド（`bun run agent:check-worker` 等）または `rtk vitest run` を実行し、すべてのテストが PASS することを確認してください。検証せずに推測で完了報告を行ってはなりません。

@@ -15,6 +15,10 @@ function checkGateguard(payload: any): any {
   const targetFile = path.resolve(rawTargetFile);
   const targetBasename = path.basename(targetFile);
 
+  if (!fs.existsSync(targetFile)) {
+    return { decision: 'allow' };
+  }
+
   try {
     if (payload.transcriptPath && fs.existsSync(payload.transcriptPath)) {
       const transcript = fs.readFileSync(payload.transcriptPath, 'utf8');
@@ -35,7 +39,8 @@ function checkGateguard(payload: any): any {
                 tc.name === 'rtk'
               ) {
                 const tcArgs = tc.args || {};
-                const viewedPath = tcArgs.AbsolutePath || tcArgs.TargetFile || '';
+                const viewedPath =
+                  tcArgs.AbsolutePath || tcArgs.TargetFile || '';
                 if (viewedPath && path.resolve(viewedPath) === targetFile) {
                   viewed = true;
                   break;

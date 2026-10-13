@@ -1,5 +1,31 @@
 import type { GuardDecision, ParsedCommand } from './safety-filter';
 
+const BIOME_REWRITE_SUBCMDS = ['check', 'lint', 'ci'];
+const BIOME_COMPACT_FLAGS: [string, string][] = [
+  ['--diagnostic-level', '--diagnostic-level=error'],
+  ['--max-diagnostics', '--max-diagnostics=20'],
+  ['--reporter', '--reporter=concise'],
+];
+const TEST_RUNNER_RE =
+  /\b(vitest|jest|playwright|pytest|mocha|bun\s+test|cargo\s+test|go\s+test)\b/;
+
+/**
+ * biome check/lint/ci に、未指定のコンパクト出力フラグだけを末尾付与する。
+ * (rtk lint は ESLint 向けフィルタのため Biome 出力には使わない)
+ */
+function rewriteBiome(args: string[], rawSubCmd: string): GuardDecision | null {
+  if (!BIOME_REWRITE_SUBCMDS.includes(args[0] ?? '')) return null;
+  if (args.includes('--help') || args.includes('-h')) return null;
+  const missing = BIOME_COMPACT_FLAGS.filter(
+    ([name]) => !args.some((a) => a === name || a.startsWith(`${name}=`)),
+  ).map(([, flag]) => flag);
+  if (missing.length === 0) return null;
+  return {
+    decision: 'allow',
+    overwrite: { CommandLine: `${rawSubCmd} ${missing.join(' ')}` },
+  };
+}
+
 function checkTokenGuard(
   parsed: ParsedCommand,
   rawSubCmd: string,
@@ -14,6 +40,30 @@ function checkTokenGuard(
       reason:
         "[GUARD] Ad-hoc script execution (python, node, etc.) is prohibited to prevent guard bypass. Use 'rtk' commands.",
     };
+  }
+
+  // 1b. bun -e / --eval / -p の遮断 (node -e と同等の抜け穴)。正規手段を案内する。
+  if (
+    executable === 'bun' &&
+    ['-e', '--eval', '-p', '--print'].includes(args[0] ?? '')
+  ) {
+    return {
+      decision: 'deny',
+      reason:
+        "[GUARD] Ad-hoc 'bun -e' is prohibited (same as node -e). For agent logs use 'bun run agent:session-report [<conversation-id>|latest]'; for verification use 'bun run agent:preflight'.",
+    };
+  }
+
+  // 1c. rtk test は「失敗のみ・末尾数行」のロッシーフィルタ。テストランナー以外への使用を遮断。
+  if (executable === 'rtk' && args[0] === 'test') {
+    const inner = args.slice(1).join(' ');
+    if (!TEST_RUNNER_RE.test(inner)) {
+      return {
+        decision: 'deny',
+        reason:
+          "[GUARD] 'rtk test' keeps only failures / the last lines of output (lossy) and is for test runners only. Run the command directly, or use 'bun run agent:preflight' / 'bun run agent:session-report'.",
+      };
+    }
   }
 
   // 2. 重要ルール・設計書に対する rtk smart の遮断
@@ -118,7 +168,7 @@ function checkTokenGuard(
   // 6b. tree -> eza -T -L 2 --git-ignore
   if (executable === 'tree') {
     const targetDir = args.filter((a) => !a.startsWith('-')).join(' ');
-    const newCmd = `eza -T -L 2 --git-ignore${targetDir ? ' ' + targetDir : ''}`;
+    const newCmd = `eza -T -L 2 --git-ignore${targetDir ? ` ${targetDir}` : ''}`;
     return {
       decision: 'allow',
       overwrite: { CommandLine: newCmd },
@@ -216,54 +266,57 @@ function checkTokenGuard(
 
   // 6j. tsc -> rtk tsc
   if (executable === 'tsc') {
+    const runnerRe = /^(?:(?:bunx|npx|pnpm\s+exec|bun\s+run)\s+)?tsc\b/;
     return {
       decision: 'allow',
-      overwrite: { CommandLine: rawSubCmd.replace(/^tsc\b/, 'rtk tsc') },
+      overwrite: { CommandLine: rawSubCmd.replace(runnerRe, 'rtk tsc') },
     };
   }
 
-  // 6k. biome / eslint -> rtk lint
+  // 6k. biome -> コンパクト出力フラグ付与 (rtk lint は ESLint 向けのため使わない) / eslint -> rtk lint
   if (executable === 'biome') {
-    return {
-      decision: 'allow',
-      overwrite: { CommandLine: rawSubCmd.replace(/^biome\b/, 'rtk lint') },
-    };
+    return rewriteBiome(args, rawSubCmd);
   }
   if (executable === 'eslint') {
+    const runnerRe = /^(?:(?:bunx|npx|pnpm\s+exec)\s+)?eslint\b/;
     return {
       decision: 'allow',
-      overwrite: { CommandLine: rawSubCmd.replace(/^eslint\b/, 'rtk lint') },
+      overwrite: { CommandLine: rawSubCmd.replace(runnerRe, 'rtk lint') },
     };
   }
 
   // 6l. vitest -> rtk vitest / jest -> rtk test
   if (executable === 'vitest') {
+    const runnerRe = /^(?:(?:bunx|npx|pnpm\s+exec)\s+)?vitest\b/;
     return {
       decision: 'allow',
-      overwrite: { CommandLine: rawSubCmd.replace(/^vitest\b/, 'rtk vitest') },
+      overwrite: { CommandLine: rawSubCmd.replace(runnerRe, 'rtk vitest') },
     };
   }
   if (executable === 'jest') {
+    const runnerRe = /^(?:(?:bunx|npx|pnpm\s+exec)\s+)?jest\b/;
     return {
       decision: 'allow',
-      overwrite: { CommandLine: rawSubCmd.replace(/^jest\b/, 'rtk test') },
+      overwrite: { CommandLine: rawSubCmd.replace(runnerRe, 'rtk test') },
     };
   }
 
   // 6m. next -> rtk next
   if (executable === 'next') {
+    const runnerRe = /^(?:(?:bunx|npx|pnpm\s+exec)\s+)?next\b/;
     return {
       decision: 'allow',
-      overwrite: { CommandLine: rawSubCmd.replace(/^next\b/, 'rtk next') },
+      overwrite: { CommandLine: rawSubCmd.replace(runnerRe, 'rtk next') },
     };
   }
 
   // 6n. playwright -> rtk playwright
   if (executable === 'playwright') {
+    const runnerRe = /^(?:(?:bunx|npx|pnpm\s+exec)\s+)?playwright\b/;
     return {
       decision: 'allow',
       overwrite: {
-        CommandLine: rawSubCmd.replace(/^playwright\b/, 'rtk playwright'),
+        CommandLine: rawSubCmd.replace(runnerRe, 'rtk playwright'),
       },
     };
   }

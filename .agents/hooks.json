@@ -2,7 +2,7 @@
   "token-guard": {
     "PreToolUse": [
       {
-        "matcher": "run_command|replace_file_content|write_to_file",
+        "matcher": "run_command|replace_file_content|write_to_file|view_file",
         "hooks": [
           {
             "type": "command",

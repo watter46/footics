@@ -46,14 +46,16 @@ try {
   }
 
   // 1. Biome (Lint & Format)
-  run(`pnpm --silent exec biome check ${fileArgs}`);
+  run(
+    `./node_modules/.bin/biome check --diagnostic-level=error --max-diagnostics=20 ${fileArgs}`,
+  );
 
   // 2. Type Check (Scoped)
-  run(`pnpm --silent exec tsx scripts/verify/type-check-scoped.ts ${fileArgs}`);
+  run(`bun scripts/verify/type-check-scoped.ts ${fileArgs}`);
 
   // 3. Vitest (Test)
   run(
-    `pnpm --silent exec vitest run related ${fileArgs} --passWithNoTests --reporter=default --no-color`,
+    `./node_modules/.bin/vitest run related ${fileArgs} --passWithNoTests --reporter=default --no-color`,
   );
 
   console.log('\n✅ Worker checks passed.');

@@ -18,6 +18,9 @@
     "verify:scoped": "bun scripts/verify/scoped-check.ts",
     "test:benchmark": "rtk vitest run tests/benchmark/agent-eval.test.ts --reporter=basic",
     "test:e2e": "rtk playwright test",
+    "test:agents": "bun test ./.agents",
+    "agent:preflight": "bun .agents/scripts/preflight.ts",
+    "agent:session-report": "bun .agents/scripts/session-report.ts",
     "agent:check-worker": "bun .agents/scripts/check-worker.ts",
     "agent:check-reviewer": "bun .agents/scripts/check-reviewer.ts"
   },
