@@ -169,6 +169,119 @@ describe('guard.ts Security & Token Guard Tests', () => {
       });
       expect(resNewFile.decision).toBe('allow');
     });
+
+    test('view_file denies guessing non-existent files (Ghost Path Guard)', () => {
+      const res = evaluatePayload({
+        toolCall: {
+          name: 'view_file',
+          args: {
+            AbsolutePath:
+              '/home/watter46/src/footics/.agents/hooks/guard/token-rewriter.ts',
+          },
+        },
+      });
+      expect(res.decision).toBe('deny');
+      expect(res.reason).toContain('File not found');
+      expect(res.reason).toContain('Guessing file paths');
+    });
+
+    test('view_file denies slicing small files (<= 400 lines)', () => {
+      // token-filter.ts is 339 lines (<= 400 lines)
+      const resSliced = evaluatePayload({
+        toolCall: {
+          name: 'view_file',
+          args: {
+            AbsolutePath:
+              '/home/watter46/src/footics/.agents/hooks/guard/token-filter.ts',
+            StartLine: 1,
+            EndLine: 60,
+          },
+        },
+      });
+      expect(resSliced.decision).toBe('deny');
+      expect(resSliced.reason).toContain('Slicing small files is prohibited');
+      expect(resSliced.reason).toContain(
+        "Call 'view_file' with ONLY 'AbsolutePath'",
+      );
+
+      // view_file without slice is allowed
+      const resWhole = evaluatePayload({
+        toolCall: {
+          name: 'view_file',
+          args: {
+            AbsolutePath:
+              '/home/watter46/src/footics/.agents/hooks/guard/token-filter.ts',
+          },
+        },
+      });
+      expect(resWhole.decision).toBe('allow');
+    });
+
+    test('view_file denies sequential slicing loop using transcriptPath', () => {
+      const tmpTranscript = '/tmp/test-transcript-loop.jsonl';
+      const tmpLargeFile = '/tmp/test-large-file-500.txt';
+      const fs = require('fs');
+
+      // Create a 500-line file (> 400 lines)
+      fs.writeFileSync(
+        tmpLargeFile,
+        Array.from({ length: 500 }, (_, i) => `line ${i + 1}`).join('\n'),
+      );
+
+      // Simulate a previous slice view in transcript
+      fs.writeFileSync(
+        tmpTranscript,
+        `${JSON.stringify({
+          step_index: 10,
+          tool_calls: [
+            {
+              name: 'view_file',
+              args: {
+                AbsolutePath: tmpLargeFile,
+                StartLine: 1,
+                EndLine: 50,
+              },
+            },
+          ],
+        })}\n`,
+      );
+
+      // Attempting another slice on the same file is denied
+      const res = evaluatePayload({
+        toolCall: {
+          name: 'view_file',
+          args: {
+            AbsolutePath: tmpLargeFile,
+            StartLine: 50,
+            EndLine: 100,
+          },
+        },
+        transcriptPath: tmpTranscript,
+      });
+      expect(res.decision).toBe('deny');
+      expect(res.reason).toContain('Sequential slicing loop detected');
+
+      try {
+        fs.unlinkSync(tmpTranscript);
+        fs.unlinkSync(tmpLargeFile);
+      } catch (_e) {}
+    });
+
+    test('view_file handles quotes in arguments safely', () => {
+      const res = evaluatePayload({
+        toolCall: {
+          name: 'view_file',
+          args: {
+            AbsolutePath:
+              '"/home/watter46/src/footics/.agents/hooks/guard/token-filter.ts"',
+            StartLine: '"1"',
+            EndLine: '"60"',
+          },
+        },
+      });
+      expect(res.decision).toBe('deny');
+      expect(res.reason).toContain('Slicing small files is prohibited');
+    });
   });
 
   describe('3. Token Guard - Hard Denials (Token Explosion & Ad-hoc Scripts)', () => {

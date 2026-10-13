@@ -2,6 +2,7 @@ import { checkGateguard } from './guard/gateguard-filter';
 import { parseExecutable, splitCommands, tokenize } from './guard/parser';
 import { checkSafetyGuard } from './guard/safety-filter';
 import { checkTokenGuard } from './guard/token-filter';
+import { checkViewGuard } from './guard/view-filter';
 
 interface Rewrite {
   raw: string;
@@ -129,22 +130,8 @@ function evaluatePayload(payload: any): any {
   }
 
   if (payload.toolCall && payload.toolCall.name === 'view_file') {
-    const args = payload.toolCall.args || {};
-    const absPath = args.AbsolutePath || '';
-    if (/\.log$/i.test(absPath) || absPath.includes('/rtk/tee/')) {
-      const hasSlice =
-        typeof args.StartLine === 'number' || typeof args.EndLine === 'number';
-      const range =
-        typeof args.StartLine === 'number' && typeof args.EndLine === 'number'
-          ? args.EndLine - args.StartLine
-          : 999;
-      if (!hasSlice || range > 100) {
-        return {
-          decision: 'deny',
-          reason: `[GUARD] Reading entire log files with 'view_file' causes token explosion (${absPath}). Use 'rtk log <file>' or specify StartLine/EndLine with a range under 100 lines.`,
-        };
-      }
-    }
+    const viewRes = checkViewGuard(payload);
+    if (viewRes) return viewRes;
     return { decision: 'allow' };
   }
 
