@@ -1896,7 +1896,12 @@ describe('tactical-unified-store', () => {
         enabled: true,
         fitTarget: 'custom',
       });
-      store.movePlayer(slideId, store.project.slides[0]?.players[0]?.id ?? '', 77, 88);
+      store.movePlayer(
+        slideId,
+        store.project.slides[0]?.players[0]?.id ?? '',
+        77,
+        88,
+      );
 
       store.centerPitchAndBoundary(slideId);
 

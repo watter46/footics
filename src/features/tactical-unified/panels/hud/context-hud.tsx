@@ -61,12 +61,8 @@ export function ContextHud({
     };
   }, [nodesRegistryRef]);
 
-  // 単一選択時のみ表示
-  if (selectedObjects.length !== 1 || !activeSlide || activeTool === 'eraser') {
-    return null;
-  }
-
-  const selected = selectedObjects[0];
+  const selected =
+    selectedObjects.length === 1 ? selectedObjects[0] : undefined;
   const position = useHudPosition({
     selected,
     activeSlide,
@@ -75,7 +71,10 @@ export function ContextHud({
     nodesRegistryRef,
   });
 
-  if (!position) return null;
+  // 単一選択時のみ表示
+  if (!selected || !activeSlide || activeTool === 'eraser' || !position) {
+    return null;
+  }
 
   return (
     <div
