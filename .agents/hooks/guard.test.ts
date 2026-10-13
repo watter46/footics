@@ -128,6 +128,9 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(evaluateCommand('playwright test').overwrite?.CommandLine).toBe(
         'rtk playwright test',
       );
+      expect(evaluateCommand('bun test ./.agents').overwrite?.CommandLine).toBe(
+        'rtk test bun test ./.agents',
+      );
     });
 
     test('evaluates payload for view_file on log files and write_to_file for new files', () => {
@@ -244,7 +247,7 @@ describe('guard.ts Security & Token Guard Tests', () => {
     });
 
     test('does not rewrite stdin-consuming head/tail/grep after a pipe', () => {
-      const res = evaluateCommand('bun test ./a.test.ts | tail -n 5');
+      const res = evaluateCommand('bun run ./a.ts | tail -n 5');
       expect(res.overwrite).toBeUndefined();
       const res2 = evaluateCommand('ls src | grep foo');
       expect(res2.overwrite?.CommandLine).toBe('rtk ls src | grep foo');

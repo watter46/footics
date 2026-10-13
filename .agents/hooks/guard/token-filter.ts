@@ -321,9 +321,19 @@ function checkTokenGuard(
     };
   }
 
-  // 6m. package managers (install / add) -> rtk <executable>
+  // 6o. package managers (install / add) -> rtk <executable>
   if (['pnpm', 'npm', 'yarn', 'bun'].includes(executable)) {
     const subCmd = args[0] || '';
+    if (
+      executable === 'bun' &&
+      subCmd === 'test' &&
+      !rawSubCmd.startsWith('rtk test')
+    ) {
+      return {
+        decision: 'allow',
+        overwrite: { CommandLine: `rtk test ${rawSubCmd}` },
+      };
+    }
     if (['install', 'i', 'add'].includes(subCmd)) {
       return {
         decision: 'allow',

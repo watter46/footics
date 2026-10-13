@@ -6,7 +6,7 @@
 
 1. **極限のトークン最適化** — 標準コマンド（`ls`, `cat`, `grep` 等）は `guard.ts` により自動最適化。探索初手は `repo_map.txt` (または `make map`) を参照し、`rtk` 系コマンドを使用すること
 2. **高品質な実装の担保** — TDD 厳守、Biome v2 strict、TypeScript strict
-3. **3層分離パイプライン** — Planner(Pro) → Worker(Flash) → Reviewer(Pro) によるタスク駆動開発
+3. **3層分離パイプライン** — Planner(Flash High) → Worker(タスク難易度に応じて Flash / Flash-Lite を切り替え) → Reviewer(Flash High) によるタスク駆動開発
 4. **推論の排除とスクリプト化** — `agent:check-worker` / `agent:check-reviewer` による自動検証
 
 ## 開発運用の基本フロー
