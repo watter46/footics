@@ -140,4 +140,22 @@ describe('segments and rendering', () => {
       1,
     );
   });
+
+  test('handles subagent transcripts starting with SYSTEM_MESSAGE', () => {
+    const records = [
+      {
+        step_index: 0,
+        type: 'SYSTEM_MESSAGE',
+        source: 'SYSTEM',
+        content:
+          'The following is a <SYSTEM_MESSAGE>Implement Phase 1</SYSTEM_MESSAGE>',
+      },
+      planner(1, 'rtk ls'),
+      result(2, 'The command exited with code 0.\n'),
+    ];
+    const segs = analyze(records);
+    expect(segs.length).toBe(1);
+    expect(segs[0].request).toContain('Implement Phase 1');
+    expect(segs[0].totals.turns).toBe(1);
+  });
 });

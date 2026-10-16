@@ -12,7 +12,7 @@ description: >-
 
 このスキルを実行する前に、必ず以下のチェックコマンドが PASS していることを確認してください。
 ```bash
-rtk pnpm run agent:check-worker <変更したファイルパスのスペース区切り>
+bun run agent:check-worker <変更したファイルパスのスペース区切り>
 ```
 
 ## 5軸評価基準 (The 5-Axis Rubric)

@@ -198,9 +198,20 @@ function evaluate(
 
 export function analyze(records: TranscriptRecord[]): SegmentReport[] {
   const segments: TranscriptRecord[][] = [];
+  const hasUserInput = records.some((r) => r.type === 'USER_INPUT');
+
   for (const r of records) {
-    if (r.type === 'USER_INPUT') segments.push([r]);
-    else if (segments.length > 0) segments[segments.length - 1].push(r);
+    if (hasUserInput) {
+      if (r.type === 'USER_INPUT') segments.push([r]);
+      else if (segments.length > 0) segments[segments.length - 1].push(r);
+    } else {
+      // サブエージェント形式ログ（USER_INPUT が存在しない場合）
+      if (r.type === 'SYSTEM_MESSAGE' || segments.length === 0) {
+        segments.push([r]);
+      } else {
+        segments[segments.length - 1].push(r);
+      }
+    }
   }
   return segments.map((seg, index) => {
     const planners = seg.filter((r) => r.type === 'PLANNER_RESPONSE');
@@ -208,11 +219,19 @@ export function analyze(records: TranscriptRecord[]): SegmentReport[] {
     const ev = evaluate(rows);
     const sum = (k: 'input' | 'cache' | 'output') =>
       rows.reduce((a, r) => a + r[k], 0);
-    const request = (seg[0].content ?? '')
+    const rawReq = seg[0]?.content ?? '';
+    const cleanReq = rawReq
+      .replace(
+        /^The following is a <SYSTEM_MESSAGE>[\s\S]*?pay attention to\./gi,
+        '',
+      )
+      .replace(/^The following is a\s+/gi, '')
+      .replace(/<\/?(?:SYSTEM_MESSAGE|USER_REQUEST)[^>]*>/gi, ' ')
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 40);
+    const request = cleanReq || '(subagent task)';
     return {
       index: index + 1,
       request,

@@ -31,26 +31,34 @@ enable_subagent_tools: true
 2. ユーザーに対して作成したタスクファイルの概要・スコープ・Testing Strategy を提示し、実装着手への承認（「進めてください」「OK」など）を求めます。
 3. ユーザーからの明示的な承認シグナルを受信した後に、次の Worker への委譲ステップへ進みます。
 
-### 3. Workerへの委譲 (実装)
-1. タスクの難易度・性質に応じて `invoke_subagent` の `Model` 引数を切り替えて `TypeName: "worker"` を起動します：
-   - **`Model: "flash_lite"` (軽量・定型タスク)**:
-     - 既存関数の軽微な修正、文言変更、定数追加、定型的なCRUD・設定値の反映など、影響範囲が小さく推論がほぼ不要な作業。
-   - **`Model: "flash"` (標準・中規模実装タスク)**:
-     - TDDサイクル（新規テスト作成と実装）、型定義の拡張、複数ファイルにまたがるロジック修正、Dexie/Zustandストア連携など、型チェックやテストの検証を伴う通常の実装。
-2. ツールの `Prompt` 引数に以下のメッセージ（プロトコル）を直接記述してタスクを依頼します。
+### 3. Workerへの委譲 (Phase別直列リレー方式)
+タスクの肥大化・推論劣化およびコンテキスト爆発（数万〜数百万トークンのキャッシュ再読込）を防止するため、**1つの Worker を最後まで使い回すことは厳禁**です。
+各 Phase ごとに独立した Worker を起動し、完了ごとに破棄（kill）するリレー方式を厳格に徹底します。
+
+1. **Phase ごとの直列パイプライン実行**:
+   - タスクファイル（`tasks/TASK-*.md`）に定義された各 Phase（Phase 1, Phase 2, ...）を1つずつ順番に処理します。
+   - タスクファイルの該当 Phase に指定された `Worker Model`（`flash` または `flash_lite`）に従い、`invoke_subagent` ツールで `TypeName: "worker"` を新規起動します。
+2. **起動プロトコル (Prompt)**:
+   ツールの `Prompt` 引数に対象 Phase を明記して依頼します。
    ```markdown
    ---
    type: "TASK_ASSIGN"
    target_file: "tasks/TASK-XXX.md"
+   target_phase: 1
    ---
    
-   タスクの実装を開始してください。
+   Phase 1 の実装を開始してください。
    ```
-3. Workerから `TASK_COMPLETE` のメッセージが返ってくるまで、ツール呼び出しを停止して待機（Wait）します。
+3. **完了待機と即時破棄 (Kill)**:
+   - Worker から `TASK_COMPLETE`（phase: 1）のメッセージを受信したら、タスクファイルに `Worker Handoff Log` が記載されていることを確認します。
+   - **直ちに `manage_subagents` ツール（`Action: "kill"`, `ConversationIds: [worker_id]`）を実行し、その Worker を破棄します。**
+4. **次の Phase への引き継ぎ (リレー)**:
+   - 次の Phase 2 用に、再び新しい Worker を新規起動して同様に委譲・完了待機・破棄を行います。
+   - 全 Phase が完了するまでこのリレーを繰り返します。
 
 ### 4. Reviewerへの委譲 (審査)
-1. Worker から完了報告を受けたら、`invoke_subagent` ツールで `TypeName: "reviewer"` のエージェントを起動します。
-2. その際、ツールの `Prompt` 引数に以下のメッセージを直接記述して依頼します。
+1. すべての Phase が完了し全チェックボックスが埋まったら、`invoke_subagent` ツールで `TypeName: "reviewer"` のエージェントを **`Model: "pro"`**（Flash High 相当）で起動します。
+2. ツールの `Prompt` 引数に以下のメッセージを直接記述して依頼します。
    ```markdown
    ---
    type: "REVIEW_REQUEST"
@@ -63,13 +71,14 @@ enable_subagent_tools: true
 
 ### 5. 判定と差し戻し (Rejection)
 - **LGTM の場合**: 
-  1. タスクファイルの `Implementation Steps` に記載された対象ファイル（およびタスクファイル自身）**のみ**を `git add <ファイルパス>` でステージングします（意図しないファイルの混入を防ぐため `git add .` は使用しないでください）。
+  1. タスクファイルの各 Phase に記載された対象ファイル（およびタスクファイル自身）**のみ**を `git add <ファイルパス>` でステージングします（意図しないファイルの混入を防ぐため `git add .` は使用禁止）。
   2. タスクファイルのタイトルを元に、`git commit -m "feat: [TASK-XXX] タスクのタイトル"` のようにコミットを実行します。
   3. タスク完了として、ユーザーに成功を報告し、セッションを終了します。
 - **REJECTED の場合**: 
-  1. タスクファイルの `7. Rejections / Additional Tasks` に追記された修正内容を確認します。
-  2. `send_message` ツールを使用して、**すでに起動済みの Worker（対象の conversationId）** に対して再度 `TASK_ASSIGN` プロトコルを送信し、修正を指示します。
-  3. **差し戻し上限**: 差し戻し（REJECTED）は原則 **1回** までです。2回目のレビューでも REJECTED となった場合は、Worker に再実行させず、現在の状況（エラー内容等）をユーザーに報告して指示を仰いでください。
+  1. タスクファイルの `## 5. Rejections / Additional Tasks` に追記された修正内容（Fix 1 等）を確認します。
+  2. **過去の Worker は再利用せず、修正用に新規 Worker を起動**して `Fix 1` の指示を委譲します。
+  3. 修正完了後にその Worker を `kill` し、再度 Reviewer（`Model: "pro"`）に再審査を依頼します。
+  4. **差し戻し上限**: 差し戻し（REJECTED）は原則 **1回** までです。2回目のレビューでも REJECTED となった場合は、Worker に再実行させず、現在の状況（エラー内容等）をユーザーに報告して指示を仰いでください。
 
 ## 制約事項
 - 決して Planner 自身がコード本体（`src/**` や `tests/**` など）を直接編集しないこと。コードの編集とテストの実行はすべて Worker に委譲します。

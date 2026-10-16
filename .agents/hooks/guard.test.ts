@@ -330,6 +330,7 @@ describe('guard.ts Security & Token Guard Tests', () => {
     });
 
     test('enforces scope on agent:check-worker and agent:check-reviewer', () => {
+      // pnpm runner
       expect(evaluateCommand('pnpm run agent:check-worker').decision).toBe(
         'deny',
       );
@@ -341,6 +342,20 @@ describe('guard.ts Security & Token Guard Tests', () => {
       );
       expect(
         evaluateCommand('pnpm run agent:check-reviewer src/foo.ts').decision,
+      ).toBe('allow');
+
+      // bun runner
+      expect(evaluateCommand('bun run agent:check-worker').decision).toBe(
+        'deny',
+      );
+      expect(
+        evaluateCommand('bun run agent:check-worker src/foo.ts').decision,
+      ).toBe('allow');
+      expect(evaluateCommand('bun run agent:check-reviewer').decision).toBe(
+        'deny',
+      );
+      expect(
+        evaluateCommand('bun run agent:check-reviewer src/foo.ts').decision,
       ).toBe('allow');
     });
   });

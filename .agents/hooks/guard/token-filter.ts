@@ -139,7 +139,7 @@ function checkTokenGuard(
         return {
           decision: 'deny',
           reason:
-            "[GUARD] 'agent:check-worker' requires target file paths to minimize scope. Example: pnpm run agent:check-worker src/foo.ts",
+            "[GUARD] 'agent:check-worker' requires target file paths to minimize scope. Example: bun run agent:check-worker src/foo.ts",
         };
       }
     }
@@ -150,7 +150,7 @@ function checkTokenGuard(
         return {
           decision: 'deny',
           reason:
-            "[GUARD] 'agent:check-reviewer' requires target file paths to minimize scope. Example: pnpm run agent:check-reviewer src/foo.ts",
+            "[GUARD] 'agent:check-reviewer' requires target file paths to minimize scope. Example: bun run agent:check-reviewer src/foo.ts",
         };
       }
     }

@@ -1,0 +1,116 @@
+---
+name: writing-plans
+description: 仕様や要件から、Worker（Flash）が推論なしで実装できる高解像度なタスクファイル（tasks/TASK-*.md）を作成するスキル
+---
+
+# Writing Plans (実装計画立案スキル)
+
+## 概要 (Overview)
+
+要件・仕様から詳細な実装計画（タスクファイル）を作成するためのスキルです。
+推論能力の低い Worker エージェント（Flash モデル）でも手戻りなく迷わず実装作業に集中できるよう、対象ファイル、TypeScript 型シグネチャ、テストケース、検証手順を極小粒度で規定します。
+Footics の「極限のトークン最適化」「3層分離パイプライン（Planner → Worker → Reviewer）」の設計思想に基づいています。
+
+**開始時の宣言:** `📝 実装計画（TASKファイル）の作成を開始します。`
+
+## 計画の保存先 (Single Source of Truth)
+
+計画ファイルは必ず以下の場所に保存します：
+- 保存先: `tasks/TASK-<連番>-<feature-name>.md` (例: `tasks/TASK-001-player-marker.md`)
+- 連番は既存の `tasks/` を確認して決定します（001, 002 等）。
+
+## 事前探索プロトコル (Exploration Protocol)
+
+計画立案に必要な既存コードベースの調査には、以下の手順と `rtk` ラッパーを厳格に使用します：
+1. **全体像・配置把握**: まず `.agents/.cache/repo_summary.txt` または `.agents/.cache/repo_map.txt` を確認。
+2. **対象絞り込み**: `rtk git ls-files -c -o --exclude-standard "<パターン>"`
+3. **行・構造特定**: `rtk grep -n "<キーワード>"` または `ast-grep`
+4. **精読・確認**: 標準ツールの `view_file` (StartLine / EndLine 指定で無加工読み込み)
+※ 生の `ls`, `cat`, `grep`, `find`, `tree` などの直接実行は Hook により自動書き換えまたは遮断されます。
+
+## タスク分割と指示の鉄則 (Task Right-Sizing)
+
+1. **チケットの肥大化防止**:
+   - 変更ファイル目安5件以上、またはレイヤーが異なる場合は別タスク（TASK-001, TASK-002）に分離してください。
+2. **Phase の本質定義**:
+   - 開発工程（「型定義だけ」「テストだけ」）の分割ではなく、**「機能・サブシステムごとの完結した段階」** として分割します。
+   - 各 Phase 内で Worker が単独で **TDD（テスト作成 ➔ 実装 ➔ スコープ検証）を一通り完結** させます。
+3. **具体的な型シグネチャ・契約の明記**:
+   - Worker（Flashモデル）は抽象的な推論が苦手です。「トリミングを実装する」ではなく、具体的な関数シグネチャや入出力の型定義をタスクファイルに直接記述してください。
+
+## TASK-*.md 正式テンプレート
+
+タスクファイルは以下のフォーマットに**厳密に準拠**して生成してください：
+
+```markdown
+# TASK-XXX: [タイトル]
+
+## 1. Metadata
+- **Status**: `TODO` | `IN_PROGRESS` | `IN_REVIEW` | `REJECTED` | `DONE`
+- **Created**: YYYY-MM-DD
+- **Target**: `対象スコープディレクトリ`
+
+## 2. Requirements (要件)
+<!-- Reviewerはこの要件が満たされているかを厳密に審査する -->
+- [要件1: 明確かつ客観的に検証可能な振る舞い]
+- [要件2: 型定義や制約事項]
+
+## 3. Implementation Phases (Worker 実装手順)
+
+### Phase 1: [サブシステム名]
+- **Worker Model**: `flash` | `flash_lite`
+- **対象スコープ**: `src/.../types.ts`, `src/.../service.ts`
+- **契約 (Interface)**:
+  \`\`\`ts
+  export function doSomething(param: string): Promise<Result>;
+  \`\`\`
+- **Testing Strategy**:
+  - 対象: `src/.../__tests__/service.test.ts`
+  - ケース: 入力Xに対して結果Yを返すこと、異常系でエラーハンドリングされること
+- **Steps**:
+  - [ ] 1. 失敗するテスト作成 (RED)
+  - [ ] 2. 最小限の実装を行う (GREEN)
+- **Phase Verification**:
+  - [ ] `bun run agent:check-worker <対象ファイル群>` が exit code 0 で全PASS
+- **Worker Handoff Log** (完了時にWorkerが1〜2行で追記):
+  <!-- 確定したexportシンボル名や実装上の注意点(Gotcha)のみを記録。「〜を作成した」などの冗長な事実列挙は禁止 -->
+
+## 4. Reviewer Checklist & Assessment
+
+### 4.1 Automated Gates (自動検証)
+- [ ] すべての Phase のチェックボックス (`- [x]`) が完了していること
+- [ ] `bun run agent:check-reviewer <全変更ファイルパス>` が exit code 0 で全PASS
+
+### 4.2 Quality & Spec Audit (仕様・品質審査)
+- [ ] 要件網羅性: Requirements に記載された振る舞いが完全に実装されているか
+- [ ] 変更スコープの厳守: 不要な設定変更・無関係なファイル破壊がないか
+- [ ] 型・安全性の確保: any禁止、null安全
+- [ ] デグレ防止: 既存機能（Footics本体側・Extension側など）に副作用がないか
+
+### 4.3 Reviewer Decision
+- **Status**: `LGTM` | `REJECTED`
+- **Reviewed At**: YYYY-MM-DD HH:mm
+- **Reviewer Model**: `flash` (Flash Medium)
+- **Summary**: [判定理由を1〜2行で簡潔に記載]
+
+## 5. Rejections / Additional Tasks (不可逆修正欄)
+<!-- 既存のタスクやPhaseは絶対に消去・上書きせず、追記のみ行う -->
+### Fix 1 (YYYY-MM-DD)
+- **Worker Model**: `flash`
+- **Rejection Reason**: [不合格理由]
+- **Target Files**: `対象ファイルパス`
+- **Required Steps**:
+  - [ ] 1. [具体的な修正指示]
+  - [ ] 2. `bun run agent:check-worker <ファイル>` で PASS 確認
+```
+
+## Planner 最終出力フォーマット
+
+計画（`tasks/TASK-*.md`）の保存が完了したら、チャットへの最終出力を以下の**定型フォーマット**で出力し、ターンを終了してください：
+
+```markdown
+📝 **[PLANNING COMPLETE]**
+タスクファイルを生成しました。内容を確認し、承認してください。
+- **Task**: [TASK-XXX.md](file:///path/to/tasks/TASK-XXX.md)
+- **Target**: `対象となる主なファイルパス`
+```
