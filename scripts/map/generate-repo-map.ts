@@ -153,10 +153,10 @@ Total Tracked Files: ${relFiles.length}
 
 ## Verification & Execution Protocol
 1. Exploration: Read this file first. Use 'rtk grep <term> .agents/.cache/repo_map.txt' for symbol lookup.
-2. Scoped Check: 'bun run lint [path]', 'bun run typecheck [path]', 'bun run check [path]'.
-3. Worker Loop: 'bun run agent:check-worker <files>'.
-4. Preflight: 'bun run agent:preflight' (strictly before git commit).
-5. Full Check: 'bun run check:all' (ONLY when explicitly instructed by user).
+2. Implementation Loop: 'bun run ai:check [files]' (Lint + TypeCheck + Vitest related in one shot).
+3. Review Audit: 'bun run ai:reviewer:check <files>' (Full check + Architecture boundary audit).
+4. Preflight: 'bun run ai:preflight' (strictly before git commit).
+5. TDD Unit Red: 'rtk vitest run <path>'.
 `;
 }
 

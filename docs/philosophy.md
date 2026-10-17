@@ -34,9 +34,9 @@
 - 会話履歴（コンテキスト）を引き回して作業しない。
 - エージェント間のバトンタッチは、状態（State）を持つ**「タスクファイル (`tasks/TASK-*.md`)」**と**「Git差分」**のみを介して行い、コンテキスト汚染による幻覚と品質低下を完全に防ぐ。
 
-### SuperPowers 互換とクリーン・オーバーライド
-- 基盤となる `SuperPowers` プラグイン本体は**無改変のまま**維持する。
-- Footics 固有の制約やワークフロー調整は、すべて `.agents/skills/`（スキルオーバーライド）および `.agents/rules/`（スコープルール）のレイヤーに閉じ込める。
+### プロジェクトネイティブ集約（SuperPowers プラグインの廃止）
+- 外部プラグイン `.agents/plugins/superpowers` は完全廃止し、有用スキルは `.agents/skills/` 直下へプロジェクトネイティブ集約・完全日本語化する。
+- Footics 固有の制約やワークフロー調整は、すべて `.agents/skills/`（特化スキル）および `.agents/rules/`（スコープルール）のレイヤーで自律運用する。
 
 ---
 
@@ -48,7 +48,7 @@
 User (要件指示)
   │
   ▼
-[ Planner (Pro) ] ─────── タスク分解・仕様策定
+[ Planner (Flash High) ] ─── タスク分解・仕様策定
   │                       Single Source of Truth: tasks/TASK-*.md 生成
   ▼
 [ Worker (Flash) ] ────── TDD実装・全ステップ消化
@@ -74,4 +74,4 @@ User (要件指示)
 | **行動ルール (Rules)** | `.agents/rules/` | `coding-standards.md`, `agent-communication.md`, `testing-standards.md` 等 |
 | **開発技術・ワークフロースキル** | `.agents/skills/` | `knowledge-integration`, `large-codebase-research`, `writing-plans` 等 |
 | **エージェント定義** | `.agents/agents/` | `planner.md`, `worker.md`, `reviewer.md` |
-| **ガードレール設定** | `.agents/hooks/guard.js` | 危険コマンドおよびトークン浪費コマンドの遮断・誘導ロジック |
+| **ガードレール設定** | `.agents/hooks/guard.ts` | 危険コマンドおよびトークン浪費コマンドの遮断・誘導ロジック |

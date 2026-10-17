@@ -33,6 +33,13 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(evaluateCommand('git push origin main -f').decision).toBe('deny');
     });
 
+    test('denies direct git commit and suggests bun run ai:commit', () => {
+      const res = evaluateCommand('git commit -m "feat: test"');
+      expect(res.decision).toBe('deny');
+      expect(res.reason).toContain("Direct 'git commit' is prohibited");
+      expect(res.reason).toContain('bun run ai:commit');
+    });
+
     test('denies git commit --no-verify and git push --no-verify', () => {
       expect(
         evaluateCommand('git commit -m "bypass" --no-verify').decision,
@@ -329,33 +336,21 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(res.decision).toBe('deny');
     });
 
-    test('enforces scope on agent:check-worker and agent:check-reviewer', () => {
+    test('enforces scope on ai:reviewer:check', () => {
       // pnpm runner
-      expect(evaluateCommand('pnpm run agent:check-worker').decision).toBe(
+      expect(evaluateCommand('pnpm run ai:reviewer:check').decision).toBe(
         'deny',
       );
       expect(
-        evaluateCommand('pnpm run agent:check-worker src/foo.ts').decision,
-      ).toBe('allow');
-      expect(evaluateCommand('pnpm run agent:check-reviewer').decision).toBe(
-        'deny',
-      );
-      expect(
-        evaluateCommand('pnpm run agent:check-reviewer src/foo.ts').decision,
+        evaluateCommand('pnpm run ai:reviewer:check src/foo.ts').decision,
       ).toBe('allow');
 
       // bun runner
-      expect(evaluateCommand('bun run agent:check-worker').decision).toBe(
+      expect(evaluateCommand('bun run ai:reviewer:check').decision).toBe(
         'deny',
       );
       expect(
-        evaluateCommand('bun run agent:check-worker src/foo.ts').decision,
-      ).toBe('allow');
-      expect(evaluateCommand('bun run agent:check-reviewer').decision).toBe(
-        'deny',
-      );
-      expect(
-        evaluateCommand('bun run agent:check-reviewer src/foo.ts').decision,
+        evaluateCommand('bun run ai:reviewer:check src/foo.ts').decision,
       ).toBe('allow');
     });
   });
@@ -429,10 +424,10 @@ describe('guard.ts Security & Token Guard Tests', () => {
     test('denies bun -e / bun --eval ad-hoc scripts like node -e', () => {
       const res = evaluateCommand('bun -e "console.log(1)"');
       expect(res.decision).toBe('deny');
-      expect(res.reason).toContain('agent:session-report');
+      expect(res.reason).toContain('ai:report');
       expect(evaluateCommand('bun --eval "1"').decision).toBe('deny');
       expect(evaluateCommand('bun test ./a.test.ts').decision).toBe('allow');
-      expect(evaluateCommand('bun run agent:preflight').decision).toBe('allow');
+      expect(evaluateCommand('bun run ai:preflight').decision).toBe('allow');
     });
   });
 });

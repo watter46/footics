@@ -133,8 +133,11 @@ export function bunTestSummary(output: string): string {
   return countSummary(output, /(\d+) pass\b/);
 }
 
-function runBiome(files: string[]): StepResult {
-  if (files.length === 0) return skippedStep('biome', 'no files');
+const CODE_FILE_RE = /\.(jsx?|tsx?|jsonc?|css)$/;
+
+function runBiome(files: string[]): Promise<StepResult> {
+  if (files.length === 0)
+    return Promise.resolve(skippedStep('biome', 'no files'));
   return runStep(
     'biome',
     [
@@ -150,8 +153,8 @@ function runBiome(files: string[]): StepResult {
   );
 }
 
-function runTypes(files: string[]): StepResult {
-  if (files.length === 0) return skippedStep('tsc', 'no ts');
+function runTypes(files: string[]): Promise<StepResult> {
+  if (files.length === 0) return Promise.resolve(skippedStep('tsc', 'no ts'));
   return runStep('tsc', [
     'bun',
     'scripts/verify/type-check-scoped.ts',
@@ -159,8 +162,8 @@ function runTypes(files: string[]): StepResult {
   ]);
 }
 
-function runTests(plan: PreflightPlan): StepResult[] {
-  const steps: StepResult[] = [];
+function runTests(plan: PreflightPlan): Promise<StepResult>[] {
+  const steps: Promise<StepResult>[] = [];
   if (plan.bunTests.length > 0) {
     steps.push(
       runStep('bun-test', ['bun', 'test', ...plan.bunTests], {
@@ -185,7 +188,9 @@ function runTests(plan: PreflightPlan): StepResult[] {
       ),
     );
   }
-  if (steps.length === 0) steps.push(skippedStep('tests', 'none'));
+  if (steps.length === 0) {
+    steps.push(Promise.resolve(skippedStep('tests', 'none')));
+  }
   return steps;
 }
 
@@ -206,25 +211,96 @@ function collectFiles(
   return { files, untracked };
 }
 
-export function runPreflight(args: string[], cwd = process.cwd()): number {
+function runSize(files: string[]): Promise<StepResult> {
+  const codeFiles = files.filter((f) => /\.(tsx?|jsx?)$/.test(f));
+  if (codeFiles.length === 0)
+    return Promise.resolve(skippedStep('size', 'no code'));
+  return runStep('size', [
+    'bun',
+    'scripts/lint/check-file-size.ts',
+    ...codeFiles,
+  ]);
+}
+
+export interface PreflightResult {
+  ok: boolean;
+  code: number;
+  results: StepResult[];
+  files: string[];
+  untracked: number;
+  verdict: string;
+}
+
+export async function executePreflight(
+  args: string[],
+  cwd = process.cwd(),
+): Promise<PreflightResult> {
   const { files, untracked } = collectFiles(args, cwd);
   if (files.length === 0) {
-    console.log('PREFLIGHT ok | files=0 | nothing to commit');
-    console.log(
-      "[HINT] No uncommitted changes detected. To check specific files, run 'bun run lint <path>' or 'bun run agent:check-worker <path>'.",
-    );
-    return 0;
+    const verdict = 'PREFLIGHT ok | files=0 | nothing to commit';
+    return {
+      ok: true,
+      code: 0,
+      results: [],
+      files: [],
+      untracked: 0,
+      verdict,
+    };
   }
+
+  // Fast-Path: 非コードファイルのみ（Markdown, テキスト等）の場合は静的解析・テストをスキップ
+  if (!files.some((f) => CODE_FILE_RE.test(f))) {
+    const verdict = `PREFLIGHT ok | files=${files.length}(+${untracked} untracked) | fast-path(non-code only)`;
+    return {
+      ok: true,
+      code: 0,
+      results: [skippedStep('all', 'non-code only')],
+      files,
+      untracked,
+      verdict,
+    };
+  }
+
   const plan = classify(files, cwd);
-  const results = [runBiome(plan.biome), runTypes(plan.tsc), ...runTests(plan)];
-  console.log(
-    formatVerdict(results, `files=${files.length}(+${untracked} untracked)`),
+  const results = await Promise.all([
+    runSize(files),
+    runBiome(plan.biome),
+    runTypes(plan.tsc),
+    ...runTests(plan),
+  ]);
+
+  const ok = results.every((r) => r.ok);
+  const verdict = formatVerdict(
+    results,
+    `files=${files.length}(+${untracked} untracked)`,
   );
-  return results.every((r) => r.ok) ? 0 : 1;
+
+  return {
+    ok,
+    code: ok ? 0 : 1,
+    results,
+    files,
+    untracked,
+    verdict,
+  };
+}
+
+export async function runPreflight(
+  args: string[],
+  cwd = process.cwd(),
+): Promise<number> {
+  const result = await executePreflight(args, cwd);
+  console.log(result.verdict);
+  if (result.files.length === 0) {
+    console.log(
+      "[HINT] No uncommitted changes detected. To check specific files, run 'bun run ai:check <path>'.",
+    );
+  }
+  return result.code;
 }
 
 if (import.meta.main) {
-  process.exit(
-    runPreflight(process.argv.slice(2).filter((a) => !a.startsWith('-'))),
+  runPreflight(process.argv.slice(2).filter((a) => !a.startsWith('-'))).then(
+    (code) => process.exit(code),
   );
 }

@@ -18,7 +18,7 @@ Plannerから依頼されたタスクファイル（`tasks/TASK-*.md`）を読�
 3. `rtk diff` などのコマンドを使用して、Workerが行った変更（ワークツリーの差分）を確認します。（※生の `git diff` はガードレールにブロックされる可能性があるため、必ず `rtk` コマンドを使用してください）
 
 ### 2. 自動検証 (Automated Checks)
-1. ターミナルで `bun run agent:check-reviewer <タスクで変更された全ファイルパス>` を実行します。（※ファイルパスはタスクファイルに記載された変更対象ファイルを列挙する）
+1. ターミナルで `bun run ai:reviewer:check <タスクで変更された全ファイルパス>` を実行します。（※ファイルパスはタスクファイルに記載された変更対象ファイルを列挙する）
 2. これにより、型検査 (TypeScript)、Lint (Biome)、テスト (Vitest)、依存関係グラフ検証 (Dependency Cruiser) が一括実行されます。
 3. コマンドがエラー（exit code 非ゼロ）を返した場合は、無条件で REJECTED と判定します。
 
@@ -58,7 +58,7 @@ status: "LGTM"
 target_file: "tasks/TASK-XXX.md"
 ---
 
-すべての要件が満たされており、bun run agent:check-reviewer も全PASSしました。
+すべての要件が満たされており、bun run ai:reviewer:check も全PASSしました。
 ```
 
 #### パターンB: 差し戻し (REJECTED)
@@ -72,7 +72,7 @@ target_file: "tasks/TASK-XXX.md"
    - **Target Files**: `対象ファイルパス`
    - **Required Steps**:
      - [ ] 1. [具体的な修正指示]
-     - [ ] 2. `bun run agent:check-worker <ファイル>` で PASS 確認
+     - [ ] 2. `bun run ai:check <ファイル>` で PASS 確認
    ```
 2. タスクファイル内の Metadata の Status を `REJECTED` に更新して保存します。
 3. Plannerに対して、`send_message` ツールで以下のメッセージを送信します。

@@ -50,7 +50,7 @@ function checkTokenGuard(
     return {
       decision: 'deny',
       reason:
-        "[GUARD] Ad-hoc 'bun -e' is prohibited (same as node -e). For agent logs use 'bun run agent:session-report [<conversation-id>|latest]'; for verification use 'bun run agent:preflight'.",
+        "[GUARD] Ad-hoc 'bun -e' is prohibited (same as node -e). For agent logs use 'bun run ai:report [<conversation-id>|latest]'; for verification use 'bun run ai:preflight'.",
     };
   }
 
@@ -61,7 +61,7 @@ function checkTokenGuard(
       return {
         decision: 'deny',
         reason:
-          "[GUARD] 'rtk test' keeps only failures / the last lines of output (lossy) and is for test runners only. Run the command directly, or use 'bun run agent:preflight' / 'bun run agent:session-report'.",
+          "[GUARD] 'rtk test' keeps only failures / the last lines of output (lossy) and is for test runners only. Run the command directly, or use 'bun run ai:preflight' / 'bun run ai:report'.",
       };
     }
   }
@@ -130,27 +130,21 @@ function checkTokenGuard(
     };
   }
 
-  // 5. 検証コマンドのスコープ強制 (agent:check-worker / agent:check-reviewer)
+  // 5. 検証コマンドのスコープ強制 (ai:check / ai:reviewer:check)
   if (['pnpm', 'npm', 'yarn', 'bun'].includes(executable)) {
-    if (args.includes('agent:check-worker')) {
-      const idx = args.indexOf('agent:check-worker');
+    if (
+      args.includes('ai:reviewer:check') ||
+      args.includes('agent:check-reviewer')
+    ) {
+      const idx = args.findIndex(
+        (a) => a === 'ai:reviewer:check' || a === 'agent:check-reviewer',
+      );
       const targetFiles = args.slice(idx + 1);
       if (targetFiles.length === 0 || targetFiles[0].startsWith('-')) {
         return {
           decision: 'deny',
           reason:
-            "[GUARD] 'agent:check-worker' requires target file paths to minimize scope. Example: bun run agent:check-worker src/foo.ts",
-        };
-      }
-    }
-    if (args.includes('agent:check-reviewer')) {
-      const idx = args.indexOf('agent:check-reviewer');
-      const targetFiles = args.slice(idx + 1);
-      if (targetFiles.length === 0 || targetFiles[0].startsWith('-')) {
-        return {
-          decision: 'deny',
-          reason:
-            "[GUARD] 'agent:check-reviewer' requires target file paths to minimize scope. Example: bun run agent:check-reviewer src/foo.ts",
+            "[GUARD] 'ai:reviewer:check' requires target file paths to minimize scope. Example: bun run ai:reviewer:check src/foo.ts",
         };
       }
     }

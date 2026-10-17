@@ -29,6 +29,7 @@ import { BoundaryBoxTiltControls } from './boundary-box-tilt-controls';
 export interface BoundaryBoxHudProps {
   stageSize: { width: number; height: number };
   pitchRect?: { x: number; y: number; width: number; height: number };
+  showTiltControls?: boolean;
 }
 
 const PRESET_RATIOS: { ratio: XMediaRatio; label: string }[] = [
@@ -42,6 +43,7 @@ interface BoundaryBoxDropdownProps {
   activeSlideId: string;
   matchedRatio: XMediaRatio | null;
   currentTilt: number;
+  showTiltControls?: boolean;
   onApplyRatio: (ratio: XMediaRatio) => void;
   onPitchFit: () => void;
   onCanvasFit: () => void;
@@ -55,6 +57,7 @@ const BoundaryBoxDropdown = React.memo(function BoundaryBoxDropdown({
   activeSlideId,
   matchedRatio,
   currentTilt,
+  showTiltControls = true,
   onApplyRatio,
   onPitchFit,
   onCanvasFit,
@@ -116,19 +119,21 @@ const BoundaryBoxDropdown = React.memo(function BoundaryBoxDropdown({
         </div>
       </div>
 
-      <div className="w-full h-px bg-white/15" />
-
-      {/* Row 2: 2.5D Tilt Controls */}
-      <div className="flex flex-col gap-1.5">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
-          Pitch 2.5D Tilt
-        </div>
-        <BoundaryBoxTiltControls
-          activeSlideId={activeSlideId}
-          tilt={currentTilt}
-          updatePitchTransform={updatePitchTransform}
-        />
-      </div>
+      {showTiltControls && (
+        <>
+          <div className="w-full h-px bg-white/15" />
+          <div className="flex flex-col gap-1.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+              Pitch 2.5D Tilt
+            </div>
+            <BoundaryBoxTiltControls
+              activeSlideId={activeSlideId}
+              tilt={currentTilt}
+              updatePitchTransform={updatePitchTransform}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 });
@@ -158,6 +163,7 @@ function calculateRatioInfo(
 export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
   stageSize,
   pitchRect,
+  showTiltControls = true,
 }: BoundaryBoxHudProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -229,7 +235,7 @@ export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
           </span>
         </div>
 
-        {currentTilt > 0 && (
+        {showTiltControls && currentTilt > 0 && (
           <>
             <span className="text-white/30 text-[10px]">|</span>
             <span className="font-mono text-[11px] text-sky-300 font-medium">
@@ -251,6 +257,7 @@ export const BoundaryBoxHud = React.memo(function BoundaryBoxHud({
           activeSlideId={activeSlideId}
           matchedRatio={matchedRatio}
           currentTilt={currentTilt}
+          showTiltControls={showTiltControls}
           onApplyRatio={(ratio) => {
             const newBox = createXBoundaryBox(ratio, canvasAspect);
             setBoundaryBox(activeSlideId, { ...newBox, visible: true });

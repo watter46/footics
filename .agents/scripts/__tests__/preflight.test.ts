@@ -13,6 +13,7 @@ import {
   biomeSummary,
   bunTestSummary,
   classify,
+  executePreflight,
   findBunTests,
   parsePorcelain,
   vitestSummary,
@@ -107,8 +108,8 @@ describe('summaries', () => {
 });
 
 describe('runStep / formatVerdict', () => {
-  test('success returns summary only and tees full log', () => {
-    const r = runStep('t-ok', ['node', '-e', 'console.log("hello")'], {
+  test('success returns summary only and tees full log', async () => {
+    const r = await runStep('t-ok', ['node', '-e', 'console.log("hello")'], {
       logDir: path.join(root, 'logs'),
     });
     expect(r.ok).toBe(true);
@@ -116,8 +117,8 @@ describe('runStep / formatVerdict', () => {
     expect(fs.readFileSync(r.logPath, 'utf8')).toContain('hello');
   });
 
-  test('failure returns head lines and exit code', () => {
-    const r = runStep(
+  test('failure returns head lines and exit code', async () => {
+    const r = await runStep(
       't-fail',
       ['node', '-e', 'console.error("src/a.ts:3 error boom");process.exit(2)'],
       { logDir: path.join(root, 'logs') },
@@ -154,5 +155,21 @@ describe('runStep / formatVerdict', () => {
     expect(ng).toContain('PREFLIGHT FAIL');
     expect(ng).toContain('[biome] a.ts:1:1 format F');
     expect(ng).toContain('full log: /l.log');
+  });
+});
+
+describe('executePreflight', () => {
+  test('fast-path passes immediately for markdown files', async () => {
+    const res = await executePreflight(['notes/a.md'], root);
+    expect(res.ok).toBe(true);
+    expect(res.code).toBe(0);
+    expect(res.verdict).toContain('fast-path(non-code only)');
+    expect(res.files).toEqual(['notes/a.md']);
+  });
+
+  test('empty files returns ok with 0 files', async () => {
+    const res = await executePreflight([], root);
+    expect(res.ok).toBe(true);
+    expect(res.code).toBe(0);
   });
 });

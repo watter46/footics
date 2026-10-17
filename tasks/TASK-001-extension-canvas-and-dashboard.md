@@ -1,104 +1,111 @@
-# TASK-001: Extension クイック編集キャンバス & 動画別ダッシュボード実装
+# TASK-001: Extension クイック編集キャンバス刷新・共通設計 & バグ修正
 
 ## 1. Metadata
 - **Status**: `DONE`
 - **Created**: 2026-10-14
-- **Target**: `extension/`, `src/features/tactical-unified/`
+- **Target**: `src/features/tactical-unified/`, `extension/`
 
 ## 2. Requirements (要件)
-- [x] [要件1: Extension 内部 DB (Dexie / IndexedDB)]
-  - `CapturedScreenshot` スキーマ（id, timestamp, videoUrl, videoTitle, videoTime, imageDataUrl, thumbnailDataUrl, canvasAnnotations, isFavorite, syncedToFootics）を管理するテーブル `captured_screenshots` を構築する。
-  - 基本保持期間（90日）および自動削除条件（「90日以上経過」AND「総保存件数が100件以上」）に基づき、古い順（timestamp昇順）に削除するクリーンアップロジックを実装する。お気に入り（`isFavorite === true`）は自動削除から除外する。
-- [x] [要件2: クイック編集タブ (`canvas.html`)]
-  - スクショ撮影完了時に即座に `canvas.html?id=[capture_id]` を新規タブで開く。
-  - キャプチャ画像を背景として読み込み、戦術描画（ペン、矢印、直線、テキスト、サークル、矩形）を行える。
-  - クリップボードコピー、PNG画像保存、X(Twitter)ポスト誘導、ダッシュボード遷移のアクションバーを備える。
-- [x] [要件3: 動画別ダッシュボードタブ (`dashboard.html`)]
-  - 保存されたスクショを動画（URL / タイトル）ごとにグループ化して一覧表示する。
-  - 動画内の一括ダウンロード、一括削除、各スクショの再編集（`canvas.html` への遷移）、単体ダウンロード、単体削除、お気に入り切り替えを行える。
-- [x] [要件4: 将来のFootics連携用疎結合APIハンドラ]
-  - Background 側で `GET_SCREENSHOTS_BY_VIDEO`, `GET_SCREENSHOT_DATA`, `DELETE_SCREENSHOT` メッセージハンドラを定義する。
-- [x] [要件5: 既存不要ロジックの調査・提示・承認後クリーンアップ]
-  - Phase 1〜3 完了後、Footics本体を自動で開いていた不要ロジックを精査・提示し、ユーザー承認を得てから削除する。（※ユーザー承認待ちのため削除コードは未実行が正常）
+- [x] [要件1: Extension context invalidated エラーの根絶]
+  - `extension/features/storage-sync/footics-app-bridge.ts` にホスト判定ガードを導入し、Footics Web App（`localhost:3000`, `footics-*.pages.dev`, `footics.app` 等）以外のページ（YouTube 等）ではブリッジを起動しない。
+  - `extension/utils/context.ts` で `isExtensionContextValid()` を定義し、`offline-queue.ts` および `save-queue.ts` でのストレージアクセス前にコンテキスト有効性をガードして無効化エラーをサイレントに安全終了する。
+  - `extension/entrypoints/overlay.content.tsx` の `ctx.onInvalidated` でリスナーやタイマーを確実に解除する。
+- [x] [要件2: Tactical Core 描画エンジンの拡張・2重管理排除]
+  - `src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx` の `Layer 1 (backgroundLayer)` に `PitchBackground` を配置し、`backgroundType === 'image'` かつ `backgroundImageUrl` 指定時に Konva Stage 内に画像を直接描画する（`stage.toDataURL()` で背景画像＋描画が完全に合成される）。
+  - `src/features/tactical-unified/panels/toolbar/drawing-toolbar.tsx` に `markerMode?: '2d-only' | '3d-only' | 'all'`（デフォルト: `'2d-only'`）を追加し、戦術ボード（Footics本体）では 2Dサークルマーカーのみ、Extension クイックキャンバスでは 3D足元リングマーカー（`player-ring`）のみを表示する。
+  - `src/features/tactical-unified/hooks/use-standalone-canvas-session.ts` を作成し、Extension 向けにストア初期化（スクショ画像バインド、選手初期非配置、3Dマーカーモード、アノテーション復元・変更監視）を提供する。
+- [x] [要件3: 画像トリミング境界線（BoundaryBox）と Ratio 切替機能]
+  - スクリーンショット編集画面で `BoundaryBox`（ドラッグ可能な境界線枠）と `BoundaryBoxHud`（比率切替 HUD）を有効化する。
+  - `16:9`, `9:16`, `4:5`, `1:1`, フリー比率（ドラッグ変更）のスナップ・切替を可能にする。
+  - クリップボードコピー（`tactical:copy-png`）および PNG ダウンロード時、`boundaryBox` のトリミング枠の範囲を正確にクロップして出力する。
+- [x] [要件4: Extension 独自素 Canvas の全廃 & QuickTacticalCanvas 実装]
+  - `extension/features/canvas/components/QuickCanvasView.tsx`（旧素Canvas）、`canvas-renderer.ts`, `canvas-history.ts` およびそのテストを完全削除する。
+  - `extension/features/canvas/components/QuickCanvasTopBar.tsx` を新規作成（動画タイトル・YouTube元リンク、タイムスタンプ、Undo/Redo、⭐お気に入り、📋コピー、💾保存、🚀X共有、📊ダッシュボードリンク）。
+  - `extension/features/canvas/components/QuickTacticalCanvas.tsx` を新規作成（`UnifiedCanvas (markerMode="3d-only")` をマウントし、`screenshot-db.ts` と自動同期）。
+  - `extension/entrypoints/canvas/main.tsx` で `QuickTacticalCanvas` をマウントする。
 
 ## 3. Testing Strategy (Worker用テスト実装指示)
 - **対象テストファイル**:
-  1. `extension/features/capture/db/__tests__/screenshot-db.test.ts`
+  1. `extension/features/storage-sync/__tests__/context-guard.test.ts`
+     - コンテキスト無効化時のガード動作検証（例外をスローせず安全に終了すること）
+  2. `src/features/tactical-unified/panels/toolbar/__tests__/drawing-toolbar-marker-mode.test.tsx`
+     - `markerMode === '2d-only'` の時、2Dマーカーのみが表示され 3Dリングマーカーが非表示であること
+     - `markerMode === '3d-only'` の時、3D足元リングマーカー（`player-ring`）のみが表示されること
+  3. `extension/features/capture/db/__tests__/screenshot-db.test.ts`
      - スキーマ保存・取得・更新・削除の正常系
-     - 90日経過 & 100件超過時の古い順削除クリーンアップ（100件未満なら削除されないこと、isFavoriteが除外されること）
-  2. `extension/features/capture/__tests__/capture-pipeline.test.ts`
-     - キャプチャ完了時に DB 保存と `canvas.html` オープンが正しくトリガーされること
-  3. `extension/features/dashboard/__tests__/grouping.test.ts`
-     - スクショ一覧を videoUrl ごとに正しくグルーピングし統計を算出できること
 - **検証コマンド**:
-  - `rtk vitest run extension/features/capture/db/__tests__/screenshot-db.test.ts`
-  - `rtk vitest run extension/features/dashboard/__tests__/grouping.test.ts`
-  - `bun run agent:check-worker <対象ファイル>`
+  - `bun test extension/features/storage-sync/__tests__/`
+  - `bun test src/features/tactical-unified/panels/toolbar/__tests__/`
+  - `bun run typecheck`
+  - `bun run lint`
+  - `bun run --cwd extension compile`
+  - `bun run --cwd extension build`
 
 ## 4. Implementation Steps (Worker 実装手順)
 
-### Phase 1: Extension 内部 DB & クリーンアップロジックの実装
-- [x] 1. **`extension/features/capture/db/screenshot-db.ts`**:
-  - Dexie インスタンス `ScreenshotDatabase` および `CapturedScreenshot` インターフェース定義
-  - CRUD操作関数（`saveCapturedScreenshot`, `getScreenshotById`, `getAllScreenshots`, `getScreenshotsByVideo`, `updateScreenshot`, `deleteScreenshot`, `deleteScreenshotsByVideo`）
-  - クリーンアップロジック `purgeOldScreenshots()` の実装
-- [x] 2. **`extension/features/capture/db/__tests__/screenshot-db.test.ts`**:
-  - TDD によるテスト作成・RED 確認・実装・GREEN 確認
+### Phase 1: コンテキスト無効化バグの根絶
+- [x] 1. **`extension/utils/context.ts`**:
+  - `isExtensionContextValid(): boolean` の実装
+- [x] 2. **`extension/features/storage-sync/footics-app-bridge.ts`**:
+  - ホスト判定ガード（Footics Web App 以外では早期リターン）
+  - クリーンアップハンドラ（リスナー解除）の提供
+- [x] 3. **`extension/features/storage-sync/offline-queue.ts` & `save-queue.ts`**:
+  - `isExtensionContextValid()` ガードの追加
+- [x] 4. **`extension/entrypoints/overlay.content.tsx`**:
+  - `ctx.onInvalidated` でのブリッジクリーンアップ呼び出し
 
-### Phase 2: クイック編集タブ (`entrypoints/canvas/index.html`) の復元・実装
-- [x] 3. **`extension/entrypoints/canvas/index.html` & `main.tsx`**:
-  - エントリーポイント HTML & React マウントファイル作成
-- [x] 4. **`extension/features/canvas/components/QuickCanvasView.tsx`**:
-  - Canvas 描画エンジン（Konva または Canvas API）による背景画像表示、ツールバー（ペン、矢印、テキスト、サークル等）、色・太さ選択、Undo/Redo
-  - アクションバー（クリップボードコピー、ダウンロード、Xポスト、ダッシュボード遷移）
-- [x] 5. **`extension/entrypoints/background.ts` & キャプチャ動線の結合**:
-  - キャプチャ実行時に DB 保存を行い、`canvas.html?id=...` を開く処理への切り替え
+### Phase 2: Tactical Core 描画エンジンの拡張・2重管理排除
+- [x] 5. **`src/features/tactical-unified/panels/toolbar/drawing-toolbar.tsx`**:
+  - `markerMode?: '2d-only' | '3d-only' | 'all'` プロパティ追加とフィルタリング
+- [x] 6. **`src/features/tactical-unified/objects/canvas/components/unified-canvas.tsx`**:
+  - `markerMode` のプロパティ受け取りと `DrawingToolbar` への伝播
+  - `Layer 1 (backgroundLayer)` に `PitchBackground` を配置し、画像背景の Konva Stage 内レンダリングを開通
+- [x] 7. **`src/features/tactical-unified/hooks/use-standalone-canvas-session.ts`**:
+  - スタンドアロン用セッション管理フックの実装
 
-### Phase 3: 動画別ダッシュボードタブ (`entrypoints/dashboard/index.html`) の実装
-- [x] 6. **`extension/entrypoints/dashboard/index.html` & `main.tsx`**:
-  - エントリーポイント HTML & React マウントファイル作成
-- [x] 7. **`extension/features/dashboard/components/DashboardView.tsx`**:
-  - 動画別グルーピングロジック (`extension/features/dashboard/utils/grouping.ts`)
-  - 動画アコーディオン / カード表示（動画タイトル、URL、サムネイル一覧、枚数）
-  - 一括操作（一括ダウンロード、一括削除）
-  - 単体操作（再編集、ダウンロード、削除、お気に入り切り替え）
-- [x] 8. **`extension/features/dashboard/__tests__/grouping.test.ts`**:
-  - グルーピングと統計の単体テスト
+### Phase 3: Extension クイック編集キャンバスの実装 & 旧コード削除
+- [x] 8. **旧素Canvas関連ファイルの完全削除**:
+  - `extension/features/canvas/components/QuickCanvasView.tsx`
+  - `extension/features/canvas/utils/canvas-renderer.ts`
+  - `extension/features/canvas/utils/canvas-history.ts`
+  - `extension/features/canvas/__tests__/canvas-renderer.test.ts`
+  - `extension/features/canvas/__tests__/canvas-history.test.ts`
+- [x] 9. **`extension/features/canvas/components/QuickCanvasTopBar.tsx`**:
+  - 動画情報、Undo/Redo、⭐お気に入り、📋コピー、💾保存、🚀X共有、📊ダッシュボードリンク
+- [x] 10. **`extension/features/canvas/components/QuickTacticalCanvas.tsx`**:
+  - `UnifiedCanvas (markerMode="3d-only")` マウント
+  - `screenshot-db.ts` 自動同期
+  - BoundaryBox（トリミング境界線）および BoundaryBoxHud（比率切替）の有効化
+- [x] 11. **`extension/entrypoints/canvas/main.tsx`**:
+  - `QuickTacticalCanvas` をマウント
 
-### Phase 4: 将来連携 API & 既存ロジッククリーンアップ（調査・提示・承認・削除）
-- [x] 9. **Background 側の疎結合 API 実装**:
-  - `GET_SCREENSHOTS_BY_VIDEO`, `GET_SCREENSHOT_DATA`, `DELETE_SCREENSHOT` のハンドラ定義
-- [x] 10. **クリーンアップ対象の精査・ユーザー提示**:
-  - 削除・修正するファイルと差分を提示し、ユーザーの承認を得る
-- [x] 11. **承認後のクリーンアップ実行**:
-  - Footics 本体側:
-    - `src/features/tactical-unified/hooks/use-tactical-capture-bridge.ts` の削除
-    - `src/features/tactical-unified/hooks/__tests__/use-tactical-capture-bridge.test.ts` の削除
-    - `src/features/tactical-unified/tactical-unified-page.tsx` から `useTacticalCaptureBridge` インポートおよび呼び出しの削除
-  - Extension 側:
-    - `extension/features/capture/tactical-bridge.ts` の削除
-    - `extension/features/capture/__tests__/tactical-bridge.test.ts` の削除
-    - `extension/entrypoints/background.ts` から `routeCaptureToTactical` および `SEND_CAPTURE_TO_TACTICAL` の削除
-    - `extension/entrypoints/overlay.content.tsx` から `sendCaptureToTactical` の未使用インポート削除
-  - 検証: 全体テスト、Biome lint、TypeCheck が PASS することを確認
+### Phase 4: 一括検証 & ビルド
+- [x] 12. **検証 & ビルド**:
+  - `bun run typecheck`
+  - `bun run lint`
+  - `bun run --cwd extension compile`
+  - `bun run --cwd extension build`
+  - 全自動テスト PASS 確認
 
 ## 5. Worker Verification (Worker 自己検証)
-- [x] すべての Testing Strategy に基づきテストを書き、失敗(RED)を確認してから実装(GREEN)したこと
+- [x] すべての Testing Strategy に基づきテストが PASS すること
 - [x] すべての Implementation Steps が完了していること
-- [x] `bun run agent:check-worker <対象ファイル>` がエラーなく(exit code 0) PASS すること
+- [x] `bun run typecheck` と `bun run lint` がエラー0件であること
+- [x] `bun run --cwd extension build` が exit code 0 で成功すること
 
 ## 6. Reviewer Checklist (Reviewer 審査基準)
-- [x] 自動検証チェック（Biome / TypeCheck / Vitest 全18件 PASS / depcruise 循環依存なし）
-- [x] Requirements (要件) が漏れなく実装されていること
-- [x] 余計なファイルの削除や、意図しないアーキテクチャの破壊がないこと
-- [x] エラーハンドリングや型定義が適切であること
+- [x] コンテキスト無効化エラー（Extension context invalidated）の対策が完全であること
+- [x] 独自 Canvas 実装が削除され、Footics 本体の Konva 基盤（`UnifiedCanvas`）が再利用されていること（2重管理ゼロ）
+- [x] 戦術ボードでは 2D マーカーのみ、Extension では 3D マーカー（足元リング）のみが表示されること
+- [x] 画像トリミング境界線（BoundaryBox）と比率切替（16:9, 9:16, 4:5, 1:1, フリー）が動作し、トリミングされた画像がエクスポートされること
+- [x] Biome / TypeCheck / Extension Build がすべて PASS すること
 
-## 7. Reviewer Assessment (審査結果)
-- **判定**: `LGTM`
+---
+
+## 7. Reviewer Assessment
+- **判定**: `LGTM` (承認)
+- **審査日**: 2026-10-14
 - **総評**:
-  - 要件1〜5のすべての実装および不要ロジックのクリーンアップ（Step 11）が完全に完了。
-  - 承認リスト通りの4ファイル削除（`use-tactical-capture-bridge.ts`, そのテスト, `tactical-bridge.ts`, そのテスト）および3ファイル修正（`background.ts`, `overlay.content.tsx`, `tactical-unified-page.tsx`）が安全に実施されたことを確認。
-  - 余計なファイルの削除や意図しない変更、型エラー、回帰は一切なし。
-  - テストは Extension 側全18件、tactical-unified hooks 全12件すべてが PASS。
-  - Biome（Lint/Format）および TypeScript 型チェックもエラー0件。
-  - アーキテクチャ・依存関係検証も循環参照等の問題なし。
+  - 要件1〜4の全項目が漏れなく高品質に実装されています。
+  - 旧素Canvas実装が完全に排除され、Konvaベースの `UnifiedCanvas` への統一（2重管理ゼロ）が達成されました。
+  - 2Dマーカーと3Dリングマーカーの厳密分離、BoundaryBox トリミングエクスポート、Extension context invalidated ガードの安全終了、および手厚いテストコード（context-guard, marker-mode, screenshot-db）の動作を確認しました。

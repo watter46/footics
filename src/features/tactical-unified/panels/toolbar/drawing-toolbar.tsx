@@ -13,12 +13,19 @@ import {
   RotateCcw,
   Unlock,
 } from 'lucide-react';
+import { useMemo } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { PRIMARY_TOOLS } from './drawing-tool-config';
 import { useToolbarDrag } from './use-toolbar-drag';
 
+export interface DrawingToolbarProps {
+  markerMode?: '2d-only' | '3d-only' | 'all';
+}
+
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Toolbar coordinates multiple tool buttons and action handlers
-export function DrawingToolbar() {
+export function DrawingToolbar({
+  markerMode = '2d-only',
+}: DrawingToolbarProps = {}) {
   const activeTool = useTacticalUnifiedStore((s) => s.activeTool);
   const setActiveTool = useTacticalUnifiedStore((s) => s.setActiveTool);
   const continuousDrawing = useTacticalUnifiedStore((s) => s.continuousDrawing);
@@ -68,6 +75,18 @@ export function DrawingToolbar() {
 
   const { position, handlePointerDown } = useToolbarDrag();
 
+  const visibleTools = useMemo(() => {
+    return PRIMARY_TOOLS.filter(({ tool }) => {
+      if (markerMode === '2d-only') {
+        return tool !== 'player-ring';
+      }
+      if (markerMode === '3d-only') {
+        return tool !== 'player';
+      }
+      return true;
+    });
+  }, [markerMode]);
+
   return (
     <div
       onPointerDown={handlePointerDown}
@@ -84,10 +103,12 @@ export function DrawingToolbar() {
       </div>
 
       {/* ── Primary Drawing Tools (Single Column) ── */}
-      {PRIMARY_TOOLS.map(({ tool, icon: Icon, label }) => (
+      {visibleTools.map(({ tool, icon: Icon, label }) => (
         <button
           type="button"
           key={tool}
+          data-tool={tool}
+          data-testid={`tool-${tool}`}
           onClick={() => setActiveTool(tool)}
           title={label}
           aria-label={label}

@@ -3,6 +3,7 @@
  * Public API barrel exports
  */
 
+export { useStandaloneCanvasSession } from './hooks/use-standalone-canvas-session';
 export { BoundaryBox, UnifiedCanvas } from './objects/canvas';
 export { ExportModal } from './panels/export/export-modal';
 export { InspectorPanel } from './panels/inspector/inspector-panel';

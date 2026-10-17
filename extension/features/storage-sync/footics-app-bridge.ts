@@ -13,6 +13,7 @@ import {
   type TacticalCapturePayload,
   TacticalCapturePayloadSchema,
 } from '../../types/schemas';
+import { isExtensionContextValid } from '../../utils/context';
 import { detectMatchId } from '../../utils/match';
 import {
   gcExpiredMatchMemoCaches,
@@ -20,6 +21,28 @@ import {
 } from './cache-sync';
 import { replayOfflineQueue } from './offline-queue';
 import { addToSaveQueue, processSaveQueue } from './save-queue';
+
+/**
+ * Footics Web App のホスト名であるかを判定する。
+ * localhost, 127.0.0.1, footics.app, footics.com, pages.dev, watool.workers.dev 等を許可。
+ */
+export function isFooticsAppHost(hostname?: string): boolean {
+  if (!hostname) {
+    if (typeof window === 'undefined') return false;
+    hostname = window.location.hostname;
+  }
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '10.255.255.254' ||
+    hostname === 'footics.app' ||
+    hostname.endsWith('.footics.app') ||
+    hostname === 'footics.com' ||
+    hostname.endsWith('.footics.com') ||
+    hostname.endsWith('.pages.dev') ||
+    hostname.endsWith('.watool.workers.dev')
+  );
+}
 
 function dispatchCaptureToApp(payload: TacticalCapturePayload) {
   if (!payload?.dataUrl) return;
@@ -37,8 +60,9 @@ function dispatchCaptureToApp(payload: TacticalCapturePayload) {
   );
 }
 
-function setupMatchSync() {
+function setupMatchSync(): () => void {
   const syncMatchIdToStorage = async () => {
+    if (!isExtensionContextValid()) return;
     const matchId = detectMatchId();
     if (matchId) {
       await browser.storage.local.set({
@@ -69,27 +93,35 @@ function setupMatchSync() {
 
   syncMatchIdToStorage();
 
-  window.addEventListener('footics-action', async (e) => {
+  const handleFooticsAction = async (e: Event) => {
     const customEvent = e as CustomEvent<{ action?: string; matchId?: string }>;
     const { action, matchId } = customEvent.detail ?? {};
     if (action === 'REFRESH_DATA' && matchId) {
       await syncMatchMemoCacheToStorage(matchId);
     }
-  });
+  };
+  window.addEventListener('footics-action', handleFooticsAction);
 
   onMessage('GET_ACTIVE_MATCH_INFO', async () => {
     const matchId = detectMatchId();
     return { matchId };
   });
+
+  return () => {
+    observer.disconnect();
+    document.removeEventListener('DOMContentLoaded', observeDocumentElement);
+    window.removeEventListener('footics-action', handleFooticsAction);
+  };
 }
 
-function setupTacticalCaptureBridge() {
+function setupTacticalCaptureBridge(): () => void {
   onMessage('TACTICAL_CAPTURE_RECEIVED', async ({ data: payload }) => {
     if (!payload) return;
     dispatchCaptureToApp(payload);
   });
 
   const handleCapturePullRequest = async () => {
+    if (!isExtensionContextValid()) return;
     try {
       const stored = (await browser.storage.local.get(
         STORAGE_KEYS.TACTICAL_PENDING_CAPTURE,
@@ -107,22 +139,33 @@ function setupTacticalCaptureBridge() {
     }
   };
 
-  window.addEventListener(
-    TACTICAL_CAPTURE_PULL_CUSTOM_EVENT,
-    handleCapturePullRequest,
-  );
-  window.addEventListener('message', (e) => {
+  const handleMessage = (e: MessageEvent) => {
     const msgEvent = e as MessageEvent<{ type?: string }>;
     if (msgEvent.data?.type === TACTICAL_CAPTURE_PULL_WINDOW_MESSAGE) {
       handleCapturePullRequest();
     }
-  });
+  };
+
+  window.addEventListener(
+    TACTICAL_CAPTURE_PULL_CUSTOM_EVENT,
+    handleCapturePullRequest,
+  );
+  window.addEventListener('message', handleMessage);
 
   handleCapturePullRequest();
-  setTimeout(handleCapturePullRequest, 500);
+  const timer = setTimeout(handleCapturePullRequest, 500);
+
+  return () => {
+    clearTimeout(timer);
+    window.removeEventListener(
+      TACTICAL_CAPTURE_PULL_CUSTOM_EVENT,
+      handleCapturePullRequest,
+    );
+    window.removeEventListener('message', handleMessage);
+  };
 }
 
-function setupSaveQueueSync() {
+function setupSaveQueueSync(): () => void {
   onMessage('SAVE_MEMO_RELAY', async ({ data: payload }) => {
     if (!payload) return;
     await addToSaveQueue(payload as Parameters<typeof addToSaveQueue>[0]);
@@ -143,7 +186,11 @@ function setupSaveQueueSync() {
     }, delay);
   };
 
-  browser.storage.onChanged.addListener(async (changes, areaName) => {
+  const handleStorageChange = async (
+    changes: Record<string, { oldValue?: unknown; newValue?: unknown }>,
+    areaName: string,
+  ) => {
+    if (!isExtensionContextValid()) return;
     if (areaName !== 'local' || !(STORAGE_KEYS.SAVE_QUEUE in changes)) return;
     const newValue = changes[STORAGE_KEYS.SAVE_QUEUE]?.newValue;
     const parsed = SaveQueueSchema.safeParse(newValue);
@@ -157,44 +204,66 @@ function setupSaveQueueSync() {
     if (hasPending) {
       debouncedProcessSaveQueue();
     }
-  });
+  };
+
+  browser.storage.onChanged.addListener(handleStorageChange);
 
   processSaveQueue();
   replayOfflineQueue(dispatchCaptureToApp);
 
-  window.addEventListener('visibilitychange', () => {
+  const handleVisibilityChange = () => {
     if (document.visibilityState === 'visible') {
       processSaveQueue();
       replayOfflineQueue(dispatchCaptureToApp);
     }
-  });
+  };
+  window.addEventListener('visibilitychange', handleVisibilityChange);
+
+  return () => {
+    if (saveQueueDebounceTimer) {
+      clearTimeout(saveQueueDebounceTimer);
+      saveQueueDebounceTimer = null;
+    }
+    browser.storage.onChanged.removeListener(handleStorageChange);
+    window.removeEventListener('visibilitychange', handleVisibilityChange);
+  };
 }
 
 /**
  * Footics Web App 向けの通信・同期ブリッジを初期化する
+ * クリーンアップ関数を返し、拡張機能リロード時やアンマウント時に全リスナーを確実に解除する。
  */
-export function setupFooticsAppBridge() {
+export function setupFooticsAppBridge(): () => void {
+  if (!isFooticsAppHost()) {
+    return () => {};
+  }
+
   try {
     allowWindowMessaging('footics-app');
   } catch (e) {
     console.debug('[FooticsBridge] allowWindowMessaging info:', e);
   }
 
-  setupMatchSync();
-  setupTacticalCaptureBridge();
-  setupSaveQueueSync();
+  const cleanupMatch = setupMatchSync();
+  const cleanupCapture = setupTacticalCaptureBridge();
+  const cleanupSave = setupSaveQueueSync();
 
-  window.addEventListener(
-    'keydown',
-    (e) => {
-      if (e.key !== 'Escape') return;
-      window.dispatchEvent(
-        new CustomEvent('footics-action', {
-          detail: { action: 'CLOSE_OVERLAY' },
-        }),
-      );
-      sendMessage('CLOSE_SIDEPANEL', {}, 'background').catch(() => {});
-    },
-    true,
-  );
+  const handleKeydown = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape') return;
+    window.dispatchEvent(
+      new CustomEvent('footics-action', {
+        detail: { action: 'CLOSE_OVERLAY' },
+      }),
+    );
+    sendMessage('CLOSE_SIDEPANEL', {}, 'background').catch(() => {});
+  };
+
+  window.addEventListener('keydown', handleKeydown, true);
+
+  return () => {
+    cleanupMatch();
+    cleanupCapture();
+    cleanupSave();
+    window.removeEventListener('keydown', handleKeydown, true);
+  };
 }

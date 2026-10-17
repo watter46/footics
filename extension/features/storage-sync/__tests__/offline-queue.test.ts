@@ -24,6 +24,17 @@ describe('offline-queue', () => {
     storageMap = {};
 
     (globalThis as any).browser = {
+      runtime: {
+        id: 'test-extension-id',
+        connect: () => ({
+          onMessage: { addListener: vi.fn(), removeListener: vi.fn() },
+          onDisconnect: { addListener: vi.fn(), removeListener: vi.fn() },
+          postMessage: vi.fn(),
+          disconnect: vi.fn(),
+        }),
+        onMessage: { addListener: vi.fn(), removeListener: vi.fn() },
+        sendMessage: vi.fn().mockResolvedValue(undefined),
+      },
       storage: {
         local: {
           get: vi.fn().mockImplementation(async (key: string | null) => {

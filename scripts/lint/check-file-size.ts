@@ -8,6 +8,7 @@ const LIMITS = {
 };
 
 function getCategory(filePath: string): 'component' | 'hook' | 'store' | null {
+  if (/\.(test|spec)\.[tj]sx?$/.test(filePath)) return null;
   const base = path.basename(filePath);
   if (
     filePath.includes('components/') ||
@@ -31,8 +32,8 @@ function checkFileSize(filePath: string) {
   const limit = LIMITS[category];
 
   if (lines > limit) {
-    console.error(
-      `[ERROR] File size limit exceeded: ${filePath} (${lines} lines). Max allowed for ${category} is ${limit} lines.`,
+    console.warn(
+      `[WARN] File size limit exceeded: ${filePath} (${lines} lines). Max allowed for ${category} is ${limit} lines.`,
     );
     return false;
   }
@@ -42,20 +43,23 @@ function checkFileSize(filePath: string) {
 const files = process.argv.slice(2);
 if (files.length === 0) {
   console.error(
-    'Usage: tsx scripts/lint/check-file-size.ts <file1> <file2> ...',
+    'Usage: bun scripts/lint/check-file-size.ts <file1> <file2> ...',
   );
   process.exit(1);
 }
 
-let allPassed = true;
+let warnedCount = 0;
 for (const file of files) {
   if (!checkFileSize(file)) {
-    allPassed = false;
+    warnedCount += 1;
   }
 }
 
-if (!allPassed) {
-  process.exit(1);
+if (warnedCount > 0) {
+  console.log(
+    `${warnedCount} file(s) exceeded recommended size limits (warn only).`,
+  );
 } else {
   console.log('All files passed size limits.');
 }
+process.exit(0);

@@ -31,6 +31,8 @@ export interface UseCanvasWheelZoomOptions {
     zoom: number,
     tilt?: number,
   ) => void;
+  isPitchLocked?: boolean;
+  disabled?: boolean;
 }
 
 function resolvePitchBounds(
@@ -173,6 +175,8 @@ export function useCanvasWheelZoom({
   activeSlideId,
   updatePitchTransform,
   applyPitchTransformToNodes,
+  isPitchLocked = false,
+  disabled = false,
 }: UseCanvasWheelZoomOptions) {
   const wheelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -187,6 +191,7 @@ export function useCanvasWheelZoom({
   const handleWheel = useCallback(
     (e: KonvaEventObject<WheelEvent>) => {
       e.evt.preventDefault();
+      if (disabled || isPitchLocked) return;
       const pos = getWheelPointerPos(
         e,
         containerRef?.current ?? null,
@@ -243,6 +248,8 @@ export function useCanvasWheelZoom({
       updatePitchTransform,
       applyPitchTransformToNodes,
       pitchTransformRef,
+      disabled,
+      isPitchLocked,
     ],
   );
 

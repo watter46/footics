@@ -157,6 +157,13 @@ function checkSafetyGuard(
           '[GUARD] Force deleting a git branch requires user confirmation.',
       };
     }
+    if (subCmd === 'commit') {
+      return {
+        decision: 'deny',
+        reason:
+          "[GUARD] Direct 'git commit' is prohibited. Use 'bun run ai:commit -m \"<message>\" [files...]' to run preflight and commit safely in 1 step.",
+      };
+    }
     if (
       args.includes('--no-verify') ||
       (args.includes('-n') && subCmd === 'commit')

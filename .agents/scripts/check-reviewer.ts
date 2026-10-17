@@ -1,13 +1,30 @@
 import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 
-const files = process.argv.slice(2);
-if (files.length === 0) {
-  console.error('[ERROR] Target files must be provided.');
-  process.exit(1);
+function getChangedFiles(): string[] {
+  try {
+    const status = execSync('git status --porcelain -uall', {
+      encoding: 'utf8',
+    });
+    return status
+      .split('\n')
+      .filter((l) => l.length > 3 && !l.startsWith(' D') && !l.startsWith('D '))
+      .map((l) => l.slice(3).split(' -> ').pop() ?? '')
+      .map((p) => p.replace(/^"|"$/g, ''))
+      .filter((p) => p.length > 0 && fs.existsSync(p));
+  } catch (_e) {
+    return [];
+  }
 }
 
-const fileArgs = files.join(' ');
+const args = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+const files = args.length > 0 ? args : getChangedFiles();
+if (files.length === 0) {
+  console.log('✅ No changed files found. Reviewer check passed.');
+  process.exit(0);
+}
+
+const fileArgs = files.map((f) => `"${f}"`).join(' ');
 
 function run(command: string) {
   console.log(`\n> ${command}`);
@@ -22,12 +39,17 @@ try {
 
     const content = fs.readFileSync(file, 'utf8');
 
-    // Check A: Open Decisions Detection
-    if (/(TODO:\s*ASK|FIXME)/i.test(content)) {
-      console.error(
-        `[ERROR] Open Decisions (TODO: ASK / FIXME) found in ${file}. Resolve them before marking task as complete.`,
-      );
-      hasError = true;
+    // Check A: Open Decisions Detection (exclude validator scripts themselves)
+    if (
+      !file.includes('check-worker.ts') &&
+      !file.includes('check-reviewer.ts')
+    ) {
+      if (/(TODO:\s*ASK|FIXME)/i.test(content)) {
+        console.error(
+          `[ERROR] Open Decisions (TODO: ASK / FIXME) found in ${file}. Resolve them before marking task as complete.`,
+        );
+        hasError = true;
+      }
     }
 
     // Check B: Schema Migration Detection

@@ -6,7 +6,7 @@
 
 ## 1. 採点基準 (Quality Budget)
 
-エージェントセッションの評価スクリプト `bun run agent:session-report` は、各タスクセグメント（ユーザープロンプトごとの単位）に対して以下の指標で合否（ok / NG）を判定します。
+エージェントセッションの評価スクリプト `bun run ai:report` は、各タスクセグメント（ユーザープロンプトごとの単位）に対して以下の指標で合否（ok / NG）を判定します。
 
 | 評価指標 | 許容上限 (Budget) | 説明 |
 |---|---|---|
@@ -20,16 +20,26 @@
 
 ## 2. タスク別ゴールデントレース
 
-### パターン A: コミット依頼 (3ターン)
+### パターン A: コミット依頼 (2〜3ターン)
 
 変更内容のコミットを依頼された場合の理想的な進行例です。
 
+**ケース 1: 新規セッション（変更内容を把握していない場合: 3ターン）**
 ```text
-Turn 1: [run_command] bun run agent:preflight
-        → 出力: "PREFLIGHT ok | files=8 | biome 0e/12w | tsc ok | tests bun:24✓ | log=.agents/logs/preflight-...log"
-Turn 2: [run_command] git add <paths> && git commit -m "<msg>" && git status -sb
-        → 出力: "[main 2baed55] ... / ## main...origin/main"
-Turn 3: 最終報告 (コミットSHA、差分の概要、検証ステータスを端的に伝達)
+Turn 1: [run_command] rtk git status
+        → 出力: 変更ファイル一覧を軽量確認し、コミットメッセージと対象パスを判定
+Turn 2: [run_command] bun run ai:commit -m "<msg>" [paths]
+        → 出力: "PREFLIGHT ok | files=3 | biome 0e/0w | tsc ok | bun-test 12✓"
+               "[COMMIT OK] a1b2c3d feat: add feature"
+               "## main...origin/main [ahead 1]"
+Turn 3: 最終報告 (コミットSHA、検証ステータスを端的に伝達)
+```
+
+**ケース 2: 作業継続セッション（すでに変更内容を把握している場合: 2ターン）**
+```text
+Turn 1: [run_command] bun run ai:commit -m "feat: [TASK-001] <title>"
+        → 出力: Preflight並列検証 + ステージング + コミット + ブランチ状態が1手で完了
+Turn 2: 最終報告 (コミットSHA、完了ステータスを端的に伝達)
 ```
 
 ### パターン B: 調査・Q&A (≦ 4ターン)
@@ -49,7 +59,7 @@ Turn 2: 調査結果の回答 (解決策・提案の提示)
 
 1. **手探りでの個別検証（直列ループ）**:
    - `vitest` → `bun test` → `biome` と個別に実行し、それぞれでエラーやログを確認すると、ターン数が増えてキャッシュトークンが数百K単位で累積します。
-   - **対策**: `bun run agent:preflight` でリポジトリ全体の検証（Biome, Scoped TSC, 関連テスト）を1手で完結させます。
+   - **対策**: `bun run ai:commit` または `bun run ai:preflight` でリポジトリ全体の検証（Biome, Scoped TSC, 関連テスト）を1手で完結させます。
 2. **ロッシーフィルタ（`rtk test` / `rtk err`）の誤用**:
    - 本来テスト結果の末尾行だけを抽出するコマンドを汎用スクリプトに適用すると、情報欠落による「再実行・試行錯誤ループ」を引き起こします。
 3. **独立した調査コマンドの直列実行**:

@@ -1,7 +1,42 @@
 import '@testing-library/jest-dom/vitest';
 import 'fake-indexeddb/auto';
 import { cleanup } from '@testing-library/react';
+import Dexie from 'dexie';
+import { IDBKeyRange, indexedDB } from 'fake-indexeddb';
 import { afterEach } from 'vitest';
+
+Dexie.dependencies.indexedDB = indexedDB;
+Dexie.dependencies.IDBKeyRange = IDBKeyRange;
+(globalThis as any).indexedDB = indexedDB;
+(globalThis as any).IDBKeyRange = IDBKeyRange;
+if (typeof window !== 'undefined') {
+  (window as any).indexedDB = indexedDB;
+  (window as any).IDBKeyRange = IDBKeyRange;
+}
+
+// Default mock for Chrome/Browser extension environment in tests
+const defaultRuntimeMock = {
+  id: 'footics-test-extension-id',
+  connect: () => ({
+    onMessage: { addListener: () => {}, removeListener: () => {} },
+    onDisconnect: { addListener: () => {}, removeListener: () => {} },
+    postMessage: () => {},
+    disconnect: () => {},
+  }),
+  onMessage: { addListener: () => {}, removeListener: () => {} },
+  sendMessage: async () => {},
+};
+
+if (typeof (globalThis as any).chrome === 'undefined') {
+  (globalThis as any).chrome = {
+    runtime: defaultRuntimeMock,
+  };
+}
+if (typeof (globalThis as any).browser === 'undefined') {
+  (globalThis as any).browser = {
+    runtime: defaultRuntimeMock,
+  };
+}
 
 // Happy-DOM の Blob は Node.js の structuredClone でプロトタイプが失われるため
 // fake-indexeddb 用に Blob を保護する structuredClone パッチを適用

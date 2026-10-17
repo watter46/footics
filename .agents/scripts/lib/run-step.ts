@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -70,46 +70,69 @@ function writeLog(name: string, output: string, logDir: string): string {
 }
 
 /**
- * コマンドを実行し、出力全文をログファイルへ退避、標準出力用には要約のみ返す。
+ * コマンドを非同期実行し、出力全文をログファイルへ退避、標準出力用には要約のみ返す。
  * シェルを介さない (argv 直渡し) ため、クォート崩れ・パイプ分割によるフック誤判定を受けない。
  */
 export function runStep(
   name: string,
   cmd: string[],
   opts: RunStepOptions = {},
-): StepResult {
+): Promise<StepResult> {
   const cwd = opts.cwd ?? process.cwd();
   const logDir = opts.logDir ?? path.join(cwd, '.agents/logs');
   const maxHead = opts.maxHead ?? 20;
-  const proc = spawnSync(cmd[0], cmd.slice(1), {
-    cwd,
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
+
+  return new Promise((resolve) => {
+    let stdout = '';
+    let stderr = '';
+    let error: any = null;
+
+    const child = spawn(cmd[0], cmd.slice(1), {
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+    });
+    child.on('error', (err) => {
+      error = err;
+    });
+
+    child.on('close', (code) => {
+      const output = stripAnsi(
+        `${stdout}${stderr}${error ? String(error) : ''}`,
+      );
+      const logPath = writeLog(name, output, logDir);
+      const ok = code === 0 && !error;
+      if (ok) {
+        resolve({
+          name,
+          ok,
+          skipped: false,
+          summary: opts.summarize ? opts.summarize(output) : 'ok',
+          head: [],
+          logPath,
+        });
+      } else {
+        const extract = opts.extractHead ?? defaultExtractHead;
+        resolve({
+          name,
+          ok,
+          skipped: false,
+          summary: `fail(exit ${code ?? 'spawn'})`,
+          head: extract(output, maxHead),
+          logPath,
+        });
+      }
+    });
   });
-  const output = stripAnsi(
-    `${proc.stdout ?? ''}${proc.stderr ?? ''}${proc.error ? String(proc.error) : ''}`,
-  );
-  const logPath = writeLog(name, output, logDir);
-  const ok = proc.status === 0 && !proc.error;
-  if (ok) {
-    return {
-      name,
-      ok,
-      skipped: false,
-      summary: opts.summarize ? opts.summarize(output) : 'ok',
-      head: [],
-      logPath,
-    };
-  }
-  const extract = opts.extractHead ?? defaultExtractHead;
-  return {
-    name,
-    ok,
-    skipped: false,
-    summary: `fail(exit ${proc.status ?? 'spawn'})`,
-    head: extract(output, maxHead),
-    logPath,
-  };
 }
 
 /** 全ステップの 1行判定 + 失敗ステップの先頭行 + ログパス */

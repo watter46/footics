@@ -7,6 +7,19 @@ describe('BoundaryBoxHud Ratio Snap Presets', () => {
   beforeEach(() => {
     useTacticalUnifiedStore.getState().resetProject();
     useTacticalUnifiedStore.getState().setIsExporting(false);
+    const slideId = useTacticalUnifiedStore.getState().activeSlideId;
+    const currentBox = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId)?.boundaryBox;
+    useTacticalUnifiedStore.getState().updateBoundaryBox(slideId, {
+      x: currentBox?.x ?? 0,
+      y: currentBox?.y ?? 0,
+      width: currentBox?.width ?? 100,
+      height: currentBox?.height ?? 100,
+      fitTarget: currentBox?.fitTarget ?? 'pitch',
+      enabled: true,
+      visible: true,
+    });
   });
 
   it('renders boundary box HUD with matched aspect ratio and snap buttons', () => {
@@ -95,6 +108,7 @@ describe('BoundaryBoxHud Fit Actions', () => {
       width: 100,
       height: 100,
       enabled: true,
+      visible: true,
       fitTarget: 'pitch',
     });
   });
@@ -109,6 +123,7 @@ describe('BoundaryBoxHud Fit Actions', () => {
       width: 60,
       height: 60,
       enabled: true,
+      visible: true,
     });
 
     render(<BoundaryBoxHud stageSize={{ width: 800, height: 450 }} />);
@@ -130,6 +145,7 @@ describe('BoundaryBoxHud Fit Actions', () => {
       width: 100,
       height: 100,
       enabled: true,
+      visible: true,
       fitTarget: 'canvas',
     });
   });
@@ -139,6 +155,19 @@ describe('BoundaryBoxHud Visibility & Tilt Controls', () => {
   beforeEach(() => {
     useTacticalUnifiedStore.getState().resetProject();
     useTacticalUnifiedStore.getState().setIsExporting(false);
+    const slideId = useTacticalUnifiedStore.getState().activeSlideId;
+    const currentBox = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId)?.boundaryBox;
+    useTacticalUnifiedStore.getState().updateBoundaryBox(slideId, {
+      x: currentBox?.x ?? 0,
+      y: currentBox?.y ?? 0,
+      width: currentBox?.width ?? 100,
+      height: currentBox?.height ?? 100,
+      fitTarget: currentBox?.fitTarget ?? 'pitch',
+      enabled: true,
+      visible: true,
+    });
   });
 
   it('does not render when boundary box is disabled or exporting', () => {

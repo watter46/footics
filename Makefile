@@ -10,7 +10,7 @@ lint-size:
 	bun scripts/lint/check-file-size.ts $(FILES)
 
 verify:
-	bun scripts/verify/scoped-check.ts
+	bun .agents/scripts/preflight.ts
 
 ship:
 	bun scripts/git/ship.ts

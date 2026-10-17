@@ -18,6 +18,7 @@ import { useKonvaVideoExport } from '@/features/tactical-unified/hooks/use-konva
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
 import { BallObject } from '@/features/tactical-unified/objects/ball';
 import { PitchInlineTextEditor } from '@/features/tactical-unified/objects/pitch';
+import { PitchBackground } from '@/features/tactical-unified/objects/pitch/components/pitch-background';
 import { PitchBackgroundDom } from '@/features/tactical-unified/objects/pitch/components/pitch-background-dom';
 import { PlayerLayer } from '@/features/tactical-unified/objects/player';
 import { ContextHud } from '@/features/tactical-unified/panels/hud';
@@ -42,9 +43,15 @@ import { DrawingPreviewLayer } from './drawing-preview-layer';
 
 export { normToPx, pxToNorm } from '../hooks';
 
+export interface UnifiedCanvasProps {
+  markerMode?: '2d-only' | '3d-only' | 'all';
+}
+
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Canvas orchestrator coordinates Konva stages, overlays, and editors
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Canvas orchestrator coordinates Konva stages, overlays, and editors
-export function UnifiedCanvas() {
+export function UnifiedCanvas({
+  markerMode = '2d-only',
+}: UnifiedCanvasProps = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
   const nodesRegistryRef = useRef(createCanvasNodesRegistry());
@@ -257,7 +264,17 @@ export function UnifiedCanvas() {
           ref={(node) => {
             nodesRegistryRef.current.backgroundLayer = node;
           }}
-        />
+        >
+          {backgroundType === 'image' && backgroundImageUrl && (
+            <PitchBackground
+              width={stageSize.width}
+              height={stageSize.height}
+              aspectRatio={aspectRatio}
+              backgroundType={backgroundType}
+              backgroundImageUrl={backgroundImageUrl}
+            />
+          )}
+        </Layer>
 
         {/* Layer 2: アノテーションレイヤー */}
         <Layer
@@ -348,13 +365,17 @@ export function UnifiedCanvas() {
         onCommit={(box) => setBoundaryBox(activeSlideId, box)}
       />
 
-      <DrawingToolbar />
+      <DrawingToolbar markerMode={markerMode} />
       <ContextHud
         stageSize={stageSize}
         pitchRect={transformedPitchRect}
         nodesRegistryRef={nodesRegistryRef}
       />
-      <BoundaryBoxHud stageSize={stageSize} pitchRect={transformedPitchRect} />
+      <BoundaryBoxHud
+        stageSize={stageSize}
+        pitchRect={transformedPitchRect}
+        showTiltControls={markerMode !== '3d-only'}
+      />
 
       <PitchInlineTextEditor
         editingText={editingText}

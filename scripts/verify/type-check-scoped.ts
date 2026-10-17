@@ -4,10 +4,14 @@ import path from 'node:path';
 
 function getChangedTsFiles(): string[] {
   try {
-    const status = execSync('git status -s', { stdio: 'pipe' }).toString();
+    const status = execSync('git status --porcelain -uall', {
+      encoding: 'utf8',
+    });
     return status
       .split('\n')
-      .map((line) => line.trim().split(/\s+/)[1])
+      .filter((l) => l.length > 3 && !l.startsWith(' D') && !l.startsWith('D '))
+      .map((l) => l.slice(3).split(' -> ').pop() ?? '')
+      .map((p) => p.replace(/^"|"$/g, ''))
       .filter(
         (file): file is string =>
           Boolean(file) &&
@@ -49,6 +53,14 @@ function checkRoot(rootFiles: string[]): void {
   }
 }
 
+function checkExtension(extFiles: string[]): void {
+  if (extFiles.length === 0) return;
+  console.log(`TypeScript (Extension): Checking ${extFiles.length} file(s)...`);
+  execSync('rtk tsc --noEmit --pretty false -p extension/tsconfig.json', {
+    stdio: 'inherit',
+  });
+}
+
 export function runScopedTypeCheck(files: string[] = []): void {
   const targetFiles =
     files.length > 0
@@ -62,9 +74,6 @@ export function runScopedTypeCheck(files: string[] = []): void {
     console.log(
       'TypeScript: No changed TypeScript files. Scoped check skipped.',
     );
-    console.log(
-      "[HINT] To check specific files, run 'bun run typecheck <path>'. To check the entire project, run 'bun run typecheck:all'.",
-    );
     return;
   }
 
@@ -76,10 +85,17 @@ export function runScopedTypeCheck(files: string[] = []): void {
       !f.startsWith('extension/') &&
       !f.startsWith('video-canvas/'),
   );
+  const extFiles = targetFiles.filter((f) => f.startsWith('extension/'));
+
   if (rootFiles.length > 0) {
     checkRoot(rootFiles);
-  } else {
-    console.log('TypeScript: No app (src/tests) TypeScript files to check.');
+  }
+  if (extFiles.length > 0) {
+    checkExtension(extFiles);
+  }
+
+  if (rootFiles.length === 0 && extFiles.length === 0) {
+    console.log('TypeScript: No app or extension TypeScript files to check.');
   }
 }
 

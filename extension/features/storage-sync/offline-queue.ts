@@ -6,6 +6,7 @@ import {
   type TacticalCapturePayload,
   TacticalCapturePayloadSchema,
 } from '../../types/schemas';
+import { isExtensionContextValid } from '../../utils/context';
 
 export const OfflineStatusSchema = z.enum(['pending', 'synced', 'failed']);
 export type OfflineStatus = z.infer<typeof OfflineStatusSchema>;
@@ -128,11 +129,17 @@ export async function markOfflineCaptureStatus(
 }
 
 export async function syncOfflineQueueToStorage(): Promise<void> {
+  if (!isExtensionContextValid()) {
+    return;
+  }
   try {
     const [pendingSaves, pendingCaptures] = await Promise.all([
       offlineDb.saveRequests.where('status').equals('pending').count(),
       offlineDb.captures.where('status').equals('pending').count(),
     ]);
+    if (!isExtensionContextValid()) {
+      return;
+    }
     await browser.storage.local.set({
       [STORAGE_KEYS.OFFLINE_QUEUE]: {
         pendingSaves,
@@ -141,6 +148,9 @@ export async function syncOfflineQueueToStorage(): Promise<void> {
       },
     });
   } catch (err) {
+    if (!isExtensionContextValid()) {
+      return;
+    }
     console.warn('[offline-queue] Failed to sync state to storage:', err);
   }
 }
@@ -148,6 +158,9 @@ export async function syncOfflineQueueToStorage(): Promise<void> {
 export async function replayOfflineQueue(
   dispatchCapture?: (payload: TacticalCapturePayload) => void,
 ): Promise<{ replayedSaves: number; replayedCaptures: number }> {
+  if (!isExtensionContextValid()) {
+    return { replayedSaves: 0, replayedCaptures: 0 };
+  }
   let replayedSaves = 0;
   let replayedCaptures = 0;
 
@@ -157,6 +170,7 @@ export async function replayOfflineQueue(
     .toArray();
 
   for (const item of pendingSaves) {
+    if (!isExtensionContextValid()) break;
     try {
       const { addToSaveQueue } = await import('./save-queue');
       await addToSaveQueue({
@@ -189,6 +203,7 @@ export async function replayOfflineQueue(
     .toArray();
 
   for (const cap of pendingCaptures) {
+    if (!isExtensionContextValid()) break;
     try {
       if (dispatchCapture) {
         dispatchCapture({

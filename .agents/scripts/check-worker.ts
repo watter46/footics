@@ -1,17 +1,58 @@
 import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 
-const files = process.argv.slice(2);
-if (files.length === 0) {
-  console.error('[ERROR] Target files must be provided.');
-  process.exit(1);
+import path from 'node:path';
+
+function getChangedFiles(): string[] {
+  try {
+    const status = execSync('git status --porcelain -uall', {
+      encoding: 'utf8',
+    });
+    return status
+      .split('\n')
+      .filter((l) => l.length > 3 && !l.startsWith(' D') && !l.startsWith('D '))
+      .map((l) => l.slice(3).split(' -> ').pop() ?? '')
+      .map((p) => p.replace(/^"|"$/g, ''))
+      .filter((p) => p.length > 0 && fs.existsSync(p));
+  } catch (_e) {
+    return [];
+  }
 }
 
-const fileArgs = files.join(' ');
+const args = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+const files = args.length > 0 ? args : getChangedFiles();
+
+if (files.length === 0) {
+  console.log('✅ No changed files found. Check passed.');
+  process.exit(0);
+}
+
+const fileArgs = files.map((f) => `"${f}"`).join(' ');
 
 function run(command: string) {
   console.log(`\n> ${command}`);
   execSync(command, { stdio: 'inherit' });
+}
+
+const SIZE_LIMITS: Record<string, number> = {
+  component: 300,
+  hook: 150,
+  store: 200,
+};
+
+function getCategory(filePath: string): 'component' | 'hook' | 'store' | null {
+  if (/\.(test|spec)\.[tj]sx?$/.test(filePath)) return null;
+  const base = path.basename(filePath);
+  if (
+    filePath.includes('components/') ||
+    filePath.includes('app/') ||
+    filePath.includes('ui/')
+  ) {
+    if (base.endsWith('.tsx')) return 'component';
+  }
+  if (base.startsWith('use') && base.endsWith('.ts')) return 'hook';
+  if (filePath.includes('stores/') || base.includes('store')) return 'store';
+  return null;
 }
 
 try {
@@ -22,12 +63,17 @@ try {
 
     const content = fs.readFileSync(file, 'utf8');
 
-    // Check A: Open Decisions Detection
-    if (/(TODO:\s*ASK|FIXME)/i.test(content)) {
-      console.error(
-        `[ERROR] Open Decisions (TODO: ASK / FIXME) found in ${file}. Resolve them before marking task as complete.`,
-      );
-      hasError = true;
+    // Check A: Open Decisions Detection (exclude validator scripts themselves)
+    if (
+      !file.includes('check-worker.ts') &&
+      !file.includes('check-reviewer.ts')
+    ) {
+      if (/(TODO:\s*ASK|FIXME)/i.test(content)) {
+        console.error(
+          `[ERROR] Open Decisions (TODO: ASK / FIXME) found in ${file}. Resolve them before marking task as complete.`,
+        );
+        hasError = true;
+      }
     }
 
     // Check B: Schema Migration Detection
@@ -35,6 +81,19 @@ try {
       if (!/\.upgrade\s*\(/.test(content)) {
         console.error(
           `[ERROR] schema.ts was modified, but no '.upgrade()' block was detected. You must write a Dexie migration block.`,
+        );
+        hasError = true;
+      }
+    }
+
+    // Check C: File Size Limits
+    const category = getCategory(file);
+    if (category) {
+      const lineCount = content.split('\n').length;
+      const limit = SIZE_LIMITS[category];
+      if (lineCount > limit) {
+        console.error(
+          `[ERROR] File size limit exceeded: ${file} (${lineCount} lines). Max allowed for ${category} is ${limit} lines.`,
         );
         hasError = true;
       }

@@ -107,8 +107,9 @@ export default defineContentScript({
     }
 
     // Footics Web App 向けの通信・同期ブリッジを初期化
+    let cleanupBridge: (() => void) | undefined;
     try {
-      setupFooticsAppBridge();
+      cleanupBridge = setupFooticsAppBridge();
     } catch (bridgeErr) {
       console.warn('[Footics] App bridge init skipped/failed:', bridgeErr);
     }
@@ -167,6 +168,7 @@ export default defineContentScript({
     mountUiWhenReady();
 
     ctx.onInvalidated(() => {
+      cleanupBridge?.();
       window.removeEventListener('footics-trigger-capture', executeCapture);
       if (typeof browser !== 'undefined' && browser.runtime?.onMessage) {
         browser.runtime.onMessage.removeListener(nativeMessageListener);

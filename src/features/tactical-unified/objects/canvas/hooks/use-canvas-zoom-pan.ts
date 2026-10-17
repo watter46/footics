@@ -81,6 +81,8 @@ export function useCanvasZoomPan({
     activeSlideId,
     updatePitchTransform,
     applyPitchTransformToNodes,
+    isPitchLocked,
+    disabled: isPitchLocked,
   });
 
   const {

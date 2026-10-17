@@ -7,6 +7,7 @@ import { MousePointer, MoveRight, Square, Type } from 'lucide-react';
 import type React from 'react';
 import type { DrawingTool } from '@/lib/types/tactical-unified';
 import {
+  CircleMarkerIcon,
   CustomPolygonZoneIcon,
   DashedArrowIcon,
   RingMarkerIcon,
@@ -37,5 +38,6 @@ export const PRIMARY_TOOLS: {
     label: 'Free Zone (P)',
   },
   { tool: 'text', icon: Type, label: 'Text (T)' },
+  { tool: 'player', icon: CircleMarkerIcon, label: '2D Player Marker (M)' },
   { tool: 'player-ring', icon: RingMarkerIcon, label: '3D Foot Ring (O)' },
 ];

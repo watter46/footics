@@ -50,18 +50,19 @@ trigger: always_on
 
 ## 3. コマンドルーティング (Command Map)
 
-**スコープ原則の厳守**: 通常時は必ず **通常（スコープ付き・既定）** を使用する。
-**全体対象コマンド**（`:all` 系）は、ユーザーから「全体をチェックして」と明示指示された場合のみ使用が許可される。
+**スコープ原則の厳守**: 通常時は必ず **通常（差分スコープ・セット実行）** を使用する。
 
-| アクション | 通常（スコープ付き・既定） | 全体（ユーザー明示時のみ） / Fallback |
+| アクション | 通常（スコープ付き・既定） | Fallback |
 | :--- | :--- | :--- |
-| **全体把握 / 初手** | `rtk read .agents/.cache/repo_summary.txt` (高レベル地図) | `make map` |
+| **全体把握 / 初手** | `rtk read .agents/.cache/repo_summary.txt` (高レベル地図) | `bun run map` |
 | **ファイル・シンボル特定** | `rtk grep '<keyword>' .agents/.cache/repo_map.txt` | `fd -t f '<pattern>' <dir>` |
-| **静的解析 (Biome)** | `bun run lint [path]` (差分または指定パス) | `bun run lint:all` (明示時のみ) |
-| **型チェック** | `bun run typecheck [path]` (差分または指定パス) | `bun run typecheck:all` (明示時のみ) |
-| **一括検証 (Lint+Type)** | `bun run check [path]` (差分または指定パス) | `bun run check:all` (明示時のみ) |
-| **Worker実装時検証** | `bun run agent:check-worker <files>` | — |
-| **コミット前一括検証** | `bun run agent:preflight` | `bun run verify` |
+| **実装中セット検証 (Lint+型+テスト)** | `bun run ai:check [files]` (差分または指定パス) | — |
+| **コミット一括実行 (検証+ステージング+コミット)** | `bun run ai:commit -m "<msg>" [files]` | — |
+| **コミット前一括検証 (検証のみ)** | `bun run ai:preflight [files]` | — |
+| **自動フォーマット・Lint修正** | `bun run lint:fix` | — |
+| **アプリ単体テスト (TDD RED)** | `rtk vitest run <path>` | `rtk err "vitest run ..."` |
+| **エージェントテスト** | `bun test ./.agents` | `bun test ./<test-path>` |
+| **ログセッション分析** | `bun run ai:report [id|latest]` | `rtk log <file>` |
 | **依存・スクリプト把握** | `rtk deps <path>` / `rtk json --keys-only package.json` | `jq -c '.scripts' package.json` |
 | **ディレクトリ把握** | `rtk ls <dir>` | `eza -T -L 2 --git-ignore <dir>` |
 | **ファイル名探索** | `fd -t f '<pattern>' <dir>` | `rtk git ls-files '<pattern>'` |
@@ -70,9 +71,6 @@ trigger: always_on
 | **JSONデータ抽出** | `rtk json --keys-only <file>` / `jq -c 'keys' <file>` | `jq -c '.[0:5]' <file>` |
 | **Git差分確認** | `GIT_EXTERNAL_DIFF=difft rtk git diff` | `rtk git diff -U0` |
 | **Git状態・履歴** | `rtk git status` / `rtk git log -n 10 --oneline` | `git status -s` |
-| **アプリ単体テスト** | `rtk vitest run <path>` | `rtk err "vitest run ..."` |
-| **エージェントテスト** | `bun test ./.agents` | `bun test ./<test-path>` |
-| **ログセッション分析** | `bun run agent:session-report [id|latest]` | `rtk log <file>` |
 
 ---
 
@@ -82,9 +80,9 @@ trigger: always_on
    - 互いに依存しないコマンド（例: `git status`, `git log`, `view_file`）は、**同一ターン内で複数のツール呼び出しを発行**してターン数を削減する。
 2. **コマンドの連鎖 (`&&`)**:
    - 順序依存のあるシェル操作（例: `git add <files> && git commit -m "..." && git status -sb`）は、`&&` で1回の `run_command` にまとめて実行する。
-3. **コミット前は手探りせず `preflight`**:
-   - 個別に vitest, bun test, biome などを手動試行せず、`bun run agent:preflight` で一括検証する。
+3. **コミットは手動操作せず `ai:commit` で1手完結**:
+   - 個別に vitest, bun test, biome などを手動試行したり生 `git commit` を叩かず、`bun run ai:commit -m "<msg>" [paths]` で検証・ステージング・コミットを1手で完結させる（生 `git commit` はガードレールにより遮断される）。
 4. **非可逆フィルタの誤用禁止**:
    - `rtk test` / `rtk err` はテストランナー専用の末尾抽出フィルタである。汎用スクリプトやログ確認に適用してはならない。
 5. **自己評価**:
-   - 必要に応じて `bun run agent:session-report latest` を実行し、自身のターン数・再試行数・トークン予算をチェックできる。詳細仕様は `notes/agent-ideal-trace.md` を参照。
+   - 必要に応じて `bun run ai:report latest` を実行し、自身のターン数・再試行数・トークン予算をチェックできる。詳細仕様は `notes/agent-ideal-trace.md` を参照。

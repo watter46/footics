@@ -5,6 +5,7 @@ import {
   SaveQueueItemSchema,
   SaveQueueSchema,
 } from '../../types/schemas';
+import { isExtensionContextValid } from '../../utils/context';
 import { syncMatchMemoCacheToStorage } from './cache-sync';
 
 export const MAX_QUEUE_RETRIES = 3;
@@ -86,6 +87,9 @@ export async function addToSaveQueue(
     errorMessage?: string;
   },
 ): Promise<void> {
+  if (!isExtensionContextValid()) {
+    return;
+  }
   const newItem: SaveQueueItem = SaveQueueItemSchema.parse({
     id: crypto.randomUUID(),
     status: 'pending',
@@ -95,6 +99,9 @@ export async function addToSaveQueue(
   });
 
   const stored = await browser.storage.local.get(STORAGE_KEYS.SAVE_QUEUE);
+  if (!isExtensionContextValid()) {
+    return;
+  }
   const rawQueue = stored[STORAGE_KEYS.SAVE_QUEUE];
   const parsed = SaveQueueSchema.safeParse(rawQueue);
   const currentQueue = parsed.success ? parsed.data : [];
@@ -114,9 +121,19 @@ export async function addToSaveQueue(
  * 複数タブが開いている場合でも、一つのタブだけが書き込みを担当する。
  */
 export async function processSaveQueue(): Promise<void> {
+  if (!isExtensionContextValid()) {
+    return;
+  }
+
   const doProcess = async () => {
+    if (!isExtensionContextValid()) {
+      return;
+    }
     // 最新のキューを取得
     const stored = await browser.storage.local.get(STORAGE_KEYS.SAVE_QUEUE);
+    if (!isExtensionContextValid()) {
+      return;
+    }
     const rawQueue = stored[STORAGE_KEYS.SAVE_QUEUE];
     if (rawQueue === undefined || rawQueue === null) {
       return;
@@ -142,6 +159,7 @@ export async function processSaveQueue(): Promise<void> {
     const updatedQueue = [...queue];
 
     for (const item of pendingItems) {
+      if (!isExtensionContextValid()) return;
       const idx = updatedQueue.findIndex((q) => q.id === item.id);
       if (idx === -1) continue;
 
@@ -156,6 +174,10 @@ export async function processSaveQueue(): Promise<void> {
         console.error(`[save-queue] Execution failed for ${item.id}:`, e);
         updatedQueue[idx] = handleSaveError(updatedQueue[idx], e);
       }
+    }
+
+    if (!isExtensionContextValid()) {
+      return;
     }
 
     // 完了・失敗（上限到達）アイテムを除去し、未処理またはリトライ可能なアイテムのみ残す
@@ -180,11 +202,20 @@ export async function processSaveQueue(): Promise<void> {
       await doProcess();
     }
   } catch (err) {
+    if (
+      !isExtensionContextValid() ||
+      (err instanceof Error &&
+        err.message.includes('Extension context invalidated'))
+    ) {
+      return;
+    }
     console.error(
       '[save-queue] Failed to process queue (lock error or execution error):',
       err,
     );
-    // Fallback: execute without lock if lock request failed
-    await doProcess();
+    if (isExtensionContextValid()) {
+      // Fallback: execute without lock if lock request failed
+      await doProcess();
+    }
   }
 }
