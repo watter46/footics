@@ -29,14 +29,18 @@ globs:
 - **抽象化レイヤー**: データアクセスは必ず `src/lib/db/repositories/` 配下に抽象化された Repository クラス（または関数）を経由してください。
 - **Atomicity**: 複数の関連する更新（例：イベント追加とメモ更新）は、必ず `db.transaction('rw', ...)` ブロック内にまとめ、部分的な失敗を防いでください。
 
-## 4. 高頻度更新に対する例外処理 (Tactical Board パターン)
+## 4. 高頻度更新に対する例外処理 (Tactical Board パターン & Store Provider)
 
 戦術ボードの選手移動（ドラッグ操作）など、**60fps で発生する超高頻度の状態更新** に関しては、毎回 IndexedDB に書き込むとブラウザのパフォーマンスが崩壊します。このエッジケースに限り、以下の**ハイブリッド同期モデル**を許可します。
 
 1. **Zustand での一時管理**: ドラッグ中の現在座標などは例外的に Zustand (インメモリ) で管理し、UI を Optimistic（楽観的）かつ高速に更新します。
-2. **デバウンス永続化**: Zustand の変更を subscribe し、操作終了時またはデバウンス（例: 500ms）をかけて Repository を経由し IndexedDB に書き戻します。
+2. **Store Provider による初期値注入 (Flicker ゼロ保証)**:
+   - Web と Extension で共用する機能や独立したキャンバスセッションでは、グローバル単一のストアインスタンスを使わず、**Store Provider パターン（Vanilla Store Factory + React Context）** を採用してください。
+   - レベル 3（Feature View）で IndexedDB からロードしたデータをマウント時の `initialState`（Props）として確定注入し、初回レンダリングから正しい状態で描画することで、初期チラつき（Flicker）を完全に根絶します。
+3. **デバウンス永続化**: Zustand の変更を subscribe し、操作終了時またはデバウンス（例: 500ms）をかけて Repository を経由し IndexedDB に書き戻します。
 
 ## 5. スキーマとバリデーション (Contract-First)
 
 - **Zod による堅牢化**: IndexedDB は型を持たないため、Repository の入出力境界で必ず Zod スキーマを通した検証（`.parse()` / `.safeParse()`）を行ってください。
 - **マイグレーション**: ローカルファーストアプリでは「DBのリセット」はユーザーのデータ喪失を意味します。スキーマを変更する場合は必ず `src/lib/db/schema.ts` で Dexie のバージョンを上げ、非破壊的な（Additive な）マイグレーションを `.upgrade()` ブロックに記述してください。
+

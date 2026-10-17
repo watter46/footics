@@ -1,157 +1,67 @@
+'use client';
+
 import { LayoutDashboard } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useEffect, useState } from 'react';
-import {
-  UnifiedCanvas,
-  useStandaloneCanvasSession,
-} from '@/features/tactical-unified';
+import { useEffect, useRef, useState } from 'react';
+import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
 import {
   type CapturedScreenshot,
   getScreenshotById,
-  toggleFavorite,
-  updateScreenshot,
 } from '../../capture/db/screenshot-db';
+import { useQuickCanvasActions } from '../hooks/use-quick-canvas-actions';
+import { useQuickCanvasShortcuts } from '../hooks/use-quick-canvas-shortcuts';
+import { QuickAnnotationCanvas } from './QuickAnnotationCanvas';
 import { QuickCanvasTopBar } from './QuickCanvasTopBar';
 
-export const QuickTacticalCanvas: React.FC = () => {
+export interface QuickTacticalCanvasProps {
+  screenshotId?: string;
+}
+
+export function QuickTacticalCanvas({
+  screenshotId,
+}: QuickTacticalCanvasProps = {}): React.ReactElement {
+  const canvasRef = useRef<CanvasCoreHandle | null>(null);
   const [screenshot, setScreenshot] = useState<CapturedScreenshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const showToast = useCallback((msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 3000);
-  }, []);
-
-  // Fetch screenshot metadata and image data from IndexedDB
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
-
+    const id =
+      screenshotId ?? new URLSearchParams(window.location.search).get('id');
     if (!id) {
       setError('スクリーンショットIDが指定されていません');
       setLoading(false);
       return;
     }
-
     getScreenshotById(id)
       .then((data) => {
         if (!data) {
           setError('スクリーンショットが見つかりませんでした');
-          setLoading(false);
-          return;
+        } else {
+          setScreenshot(data);
         }
-        setScreenshot(data);
-        setIsFavorite(data.isFavorite ?? false);
         setLoading(false);
       })
       .catch((err) => {
-        setError(`データ取得エラー: ${err.message}`);
+        setError(
+          `データ取得エラー: ${err instanceof Error ? err.message : String(err)}`,
+        );
         setLoading(false);
       });
-  }, []);
+  }, [screenshotId]);
 
-  // Initialize Footics Tactical session for Extension
-  const { undo, redo, canUndo, canRedo } = useStandaloneCanvasSession({
-    imageDataUrl: screenshot?.imageDataUrl,
-    initialAnnotations: screenshot?.canvasAnnotations,
-    onSaveAnnotations: async (annotationsJson) => {
-      if (!screenshot?.id) return;
-      try {
-        await updateScreenshot(screenshot.id, {
-          canvasAnnotations: annotationsJson,
-        });
-      } catch (err) {
-        console.warn('[QuickTacticalCanvas] Auto-save failed:', err);
-      }
-    },
-    debounceMs: 500,
-  });
+  useQuickCanvasShortcuts(canvasRef);
 
-  // Global Keyboard shortcuts: Undo / Redo
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        if (e.shiftKey) {
-          e.preventDefault();
-          if (canRedo) redo();
-        } else {
-          e.preventDefault();
-          if (canUndo) undo();
-        }
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        if (canRedo) redo();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, canUndo, canRedo]);
-
-  const handleToggleFavorite = async () => {
-    if (!screenshot) return;
-    try {
-      const nextFav = await toggleFavorite(screenshot.id);
-      setIsFavorite(nextFav);
-      showToast(
-        nextFav ? '⭐ お気に入りに追加しました' : 'お気に入りを解除しました',
-      );
-    } catch (err) {
-      console.warn('Favorite toggle error:', err);
-    }
-  };
-
-  const handleCopyClipboard = () => {
-    window.dispatchEvent(new CustomEvent('tactical:copy-png'));
-    showToast('📋 画像をクリップボードにコピーしました！');
-  };
-
-  const handleDownload = () => {
-    window.dispatchEvent(
-      new CustomEvent('tactical:export', {
-        detail: { format: 'png', scope: 'current', scale: 2 },
-      }),
-    );
-    showToast('💾 画像を保存しました');
-  };
-
-  const handleShareX = () => {
-    handleCopyClipboard();
-    const title = screenshot?.videoTitle || 'Footics Tactics Note';
-    const text = encodeURIComponent(
-      `⚽ 戦術分析メモ [${title}] #Footics #Tactics`,
-    );
-    const xUrl = `https://twitter.com/intent/tweet?text=${text}`;
-
-    if (typeof browser !== 'undefined' && browser.tabs?.create) {
-      browser.tabs.create({ url: xUrl, active: true });
-    } else {
-      window.open(xUrl, '_blank');
-    }
-
-    showToast(
-      '🚀 Xを開きました！クリップボードの画像を Ctrl+V で貼り付けてください',
-    );
-  };
-
-  const handleOpenDashboard = () => {
-    if (
-      typeof browser !== 'undefined' &&
-      browser.runtime?.getURL &&
-      browser.tabs?.create
-    ) {
-      browser.tabs.create({
-        url: browser.runtime.getURL('/dashboard.html'),
-        active: true,
-      });
-    } else {
-      window.location.href = 'dashboard.html';
-    }
-  };
+  const {
+    isFavorite,
+    toastMessage,
+    handleAutoSave,
+    handleToggleFavorite,
+    handleCopyClipboard,
+    handleDownload,
+    handleShareX,
+    handleOpenDashboard,
+  } = useQuickCanvasActions({ screenshot, canvasRef });
 
   if (loading) {
     return (
@@ -162,12 +72,14 @@ export const QuickTacticalCanvas: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error || !screenshot) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-zinc-300 p-6">
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl max-w-md text-center">
           <p className="font-semibold text-lg mb-2">エラー</p>
-          <p className="text-sm">{error}</p>
+          <p className="text-sm">
+            {error ?? 'スクリーンショットが見つかりませんでした'}
+          </p>
         </div>
         <button
           type="button"
@@ -185,10 +97,7 @@ export const QuickTacticalCanvas: React.FC = () => {
     <div className="flex flex-col h-screen w-screen bg-zinc-950 text-zinc-100 select-none overflow-hidden font-sans">
       <QuickCanvasTopBar
         screenshot={screenshot}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onUndo={undo}
-        onRedo={redo}
+        canvasRef={canvasRef}
         isFavorite={isFavorite}
         onToggleFavorite={handleToggleFavorite}
         onCopyClipboard={handleCopyClipboard}
@@ -196,12 +105,13 @@ export const QuickTacticalCanvas: React.FC = () => {
         onShareX={handleShareX}
         onOpenDashboard={handleOpenDashboard}
       />
-
       <main className="relative flex-1 w-full h-[calc(100vh-2.75rem)] overflow-hidden">
-        <UnifiedCanvas markerMode="3d-only" />
+        <QuickAnnotationCanvas
+          ref={canvasRef}
+          screenshot={screenshot}
+          onAutoSave={handleAutoSave}
+        />
       </main>
-
-      {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-zinc-900/95 text-white border border-zinc-700/80 px-4 py-2.5 rounded-xl shadow-2xl backdrop-blur text-sm flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
           <span>{toastMessage}</span>
@@ -209,4 +119,4 @@ export const QuickTacticalCanvas: React.FC = () => {
       )}
     </div>
   );
-};
+}

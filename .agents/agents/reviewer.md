@@ -27,13 +27,18 @@ Plannerから依頼されたタスクファイル（`tasks/TASK-*.md`）を読�
 
 **【審査前の必須参照】**
 以下のプロジェクト規約を審査の基準として使用してください：
-- `.agents/rules/coding-standards.md` — コーディング規約（命名規則、import規約、Immutability等）
+- `.agents/rules/component-architecture.md` — コンポーネント規約（4層モデル、ホスト境界、プラグイン拡張性、Flickerゼロ）
+- `.agents/rules/coding-standards.md` — コーディング規約（命名規則、import規約、Immutability、行数250行制限等）
 - `.agents/rules/testing-standards.md` — テスト規約（TDD、カバレッジ、RTL等）
-- `.agents/rules/data-access.md` — データアクセス規約（Dexie Repository、Zustand用途制限等）
+- `.agents/rules/data-access.md` — データアクセス規約（Dexie Repository、Store Provider等）
 
 **【審査基準】**
 - **全 Phase の完了確認**: すべての Phase のチェックボックス (`- [x]`) が完了し、Worker Handoff Log が記載されているか。
 - **要件網羅性**: タスクファイル冒頭の `2. Requirements` に記載された振る舞いが完全に実装されているか。
+- **4層モデル & ホスト境界の審査**: Level 2 以下の共用コンポーネントに `chrome.*` や Web専用ストア等のホスト依存が混入していないか。
+- **初期チラつき (Flicker) リスク審査**: マウント後の `useEffect` による非同期上書きで初期チラつきが発生する構造になっていないか（Store Provider による初期値Props確定注入が行われているか）。
+- **開放閉鎖原則 (OCP) 審査**: ツールや機能追加で既存のコアコンポーネントに `if-else` が増殖していないか（自律的なプラグインとしてカプセル化されているか）。
+- **行数・肥大化審査**: 1ファイル 250行を超えているコンポーネントがないか（God Component の早期遮断）。
 - **変更スコープの厳守**: 指示外の設定変更・無関係なファイル破壊がないか。
 - **型・安全性の確保**: `any` 禁止、null 安全、Hooks のルール遵守、イミュータビリティ確保。
 - **デグレ防止**: 既存機能や他機能（Footics本体側・Extension側）に副作用がないか。

@@ -69,3 +69,15 @@ Zustand の `subscribeWithSelector` ミドルウェアが全体の `create` レ�
 
 スライス内での状態更新（`set`）はスプレッド構文などを用いてイミュータブルに行います。
 また、Undo/Redo に対応するアクションは、更新前に `store-helpers.ts` の `recordHistory(get(), set())` を呼び出してスナップショットを保存する実装が Footics の標準です。
+
+## 5. グローバルシングルトン vs Store Provider パターン
+
+Zustand はデフォルトでグローバル単一インスタンス（`create(...)`）として動作しますが、**以下のユースケースでは単一グローバルストアの直接参照を固く禁じます**。
+
+- **Web と Chrome Extension で共用する機能**: ホストアプリごとにライフサイクルや初期データ（スクショ画像 vs 試合ピッチ）が異なるため。
+- **初期チラつき（Flicker）を根絶すべきコンポーネント**: マウント後に `useEffect` で非同期上書きすると、数フレーム前の状態が画面にフラッシュするため。
+- **複数インスタンスが存在しうる機能**: モーダル、独立したタブ、プレビューキャンバス等。
+
+### 推奨パターン: Vanilla Store Factory + React Context
+共用・独立した機能では、`zustand/vanilla` の `createStore` ファクトリと React Context を組み合わせ、**マウント時に初期状態（Props）を確定注入** してください（詳細は `.agents/skills/cross-platform-component-design/SKILL.md` 参照）。
+

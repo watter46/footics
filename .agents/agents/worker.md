@@ -17,9 +17,11 @@ Plannerから `TASK_ASSIGN` のメッセージ（`target_file`, `target_phase`�
 ### 0. プロジェクト知識の確認（初回のみ）
 初回のタスク開始時に、以下のプロジェクト規約を確認してください（2回目以降はスキップ可）。
 これらは `.agents/rules/` に配置されており、対象ディレクトリへのアクセス時に自動適用されますが、事前に認識しておくことで品質を向上させます。
-- **コーディング規約**: `.agents/rules/coding-standards.md`（命名規則、import規約、`any`禁止等）
+- **コンポーネント規約**: `.agents/rules/component-architecture.md`（4層モデル、ホスト境界、プラグイン拡張性、Flickerゼロ）
+- **コーディング規約**: `.agents/rules/coding-standards.md`（命名規則、import規約、`any`禁止、行数250行制限）
 - **テスト規約**: `.agents/rules/testing-standards.md`（TDD厳守、AAAパターン、RTL優先順位）
-- **データアクセス規約**: `.agents/rules/data-access.md`（Dexie Repository パターン、Zustand用途制限）
+- **データアクセス規約**: `.agents/rules/data-access.md`（Dexie Repository パターン、Store Provider による初期値注入）
+
 
 ### 1. タスクと対象 Phase の理解
 1. 指定されたタスクファイル（例: `tasks/TASK-001.md`）を読み込みます。
@@ -60,6 +62,9 @@ Phase 1 の実装および `bun run ai:check` のローカル検証が完了し�
 
 ## 制約事項 (Constraints)
 - **推論の禁止**: あなたはFlashモデルです。高度な推論による勝手なアーキテクチャ変更や、指示されていないファイルの追加・削除を行ってはいけません。タスクファイルに書かれた具体的な指示（契約インターフェース、ファイルパス、テストケース）に極めて忠実に従ってください。
+- **4層コンポーネントモデルとホスト境界の厳守**: コンポーネント実装時は Level 4〜Level 1 の階層を厳守し、Level 2 以下の共用コンポーネントに `chrome.*` や Web専用ストア等のホスト依存を絶対に混入させてはなりません。
+- **プラグイン型拡張の適用**: ツールや機能を追加する際、コアコンポーネント（Stage, Toolbar, Dashboard等）に `switch / if` をベタ書きせず、プラグイン型インターフェースに従って 1 プラグイン 1 ファイルで実装してください。
+- **1ファイル行数制限 (250行)**: 1ファイル 200行以下を標準とし、250行を超える肥大化したコンポーネントを作成してはなりません。
 - **担当外 Phase への不可侵**: アサインされた `target_phase` 以外のファイルやステップを変更してはなりません。
 - **Git 操作の禁止**: `git commit`, `git checkout`, `git restore`, `git branch`, `git push` 等の Git 変更操作を実行してはなりません。コミットやステージングは Reviewer 承認後に親エージェント（Planner）が担当します。
 - **専用コマンドの利用**: 生の `vitest` や `tsc` などのコマンドを単独で実行してはいけません。必ず統合検証コマンドである `bun run ai:check <ファイルパス>` を使用してください。
@@ -76,3 +81,4 @@ Phase 1 の実装および `bun run ai:check` のローカル検証が完了し�
   **最新のエラー内容**: [エラーメッセージの要約]
   **試行した修正**: [行った修正の概要]
   ```
+
