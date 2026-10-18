@@ -28,8 +28,16 @@ export default defineConfig({
     },
   }),
   manifest: {
-    name: 'Footics Sidepanel',
-    version: '0.0.0',
+    name: 'Footics Tactical',
+    version: '1.0.0',
+    description:
+      'Premier League tactical analysis, video frame capture, and interactive tactical board.',
+    icons: {
+      16: 'icons/icon-16.png',
+      32: 'icons/icon-32.png',
+      48: 'icons/icon-48.png',
+      128: 'icons/icon-128.png',
+    },
     permissions: [
       'sidePanel',
       'storage',

@@ -13,6 +13,8 @@
     "deploy": "rm -rf .next .open-next && bunx @opennextjs/cloudflare build && bunx wrangler deploy",
     "extension:dev": "bun --cwd extension dev",
     "extension:build": "bun --cwd extension build",
+    "extension:sync": "bun scripts/extension/sync-windows.ts",
+    "extension:dev:sync": "bun scripts/extension/sync-windows.ts --watch",
     "ai:check": "bun .agents/scripts/check-worker.ts",
     "ai:check:red": "bun scripts/verify/check-worker-red.ts",
     "ai:reviewer:check": "bun .agents/scripts/check-reviewer.ts",

@@ -1,11 +1,13 @@
 {
   "name": "footics-extension",
   "private": true,
-  "version": "0.0.5",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
+    "sync": "bun ../scripts/extension/sync-windows.ts",
+    "dev:sync": "bun ../scripts/extension/sync-windows.ts --watch",
     "typecheck": "tsc --noEmit",
     "compile": "tsc --noEmit",
     "zip": "wxt zip",
