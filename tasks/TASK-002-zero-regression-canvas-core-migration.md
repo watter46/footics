@@ -4,6 +4,16 @@
 - **Status**: `DONE`
 - **Created**: 2026-10-18
 - **Target**: `src/features/tactical-unified/core/`, `extension/features/canvas/`
+- **Conversation IDs (エージェントログ参照用)**:
+  - Planner (Parent): `3f6a692c-43d4-40cc-bb61-7a06dd66640f`
+  - Phase 1 Worker: `d00ae9a2-9f95-4707-8947-1300e426370f`
+  - Phase 2 Worker: `1c0c953e-0d44-4369-86c0-3236bf727b01`
+  - Phase 3 Worker: `ef7996cf-047e-4380-8e0a-4ab3714f18fc`
+  - Phase 4 Worker: `d08ed682-b71e-4848-ad15-3e6c5eed617e`
+  - Phase 5 Worker: `6fa3a630-4d7a-493e-98d7-6c8ba5546194`
+  - Phase 6 Worker: `c592aba0-5577-4df8-9fcb-1d6e0eb62225`
+  - Reviewer: `c4da4cc4-529c-43a7-acbb-81dd3d53046d`
+
 
 ## 2. Requirements (要件)
 <!-- Reviewerはこの要件が満たされているかを厳密に審査する -->
