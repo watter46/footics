@@ -5,14 +5,15 @@
 - **Created**: 2026-10-18
 - **Target**: `src/features/tactical-unified/core/`, `extension/features/canvas/`
 - **Conversation IDs (エージェントログ参照用)**:
-  - Planner (Parent): `3f6a692c-43d4-40cc-bb61-7a06dd66640f`
+  - Planner (Parent): `b0b1383a-b5f6-4471-b589-a8960a78b4db`
   - Phase 1 Worker: `d00ae9a2-9f95-4707-8947-1300e426370f`
   - Phase 2 Worker: `1c0c953e-0d44-4369-86c0-3236bf727b01`
   - Phase 3 Worker: `ef7996cf-047e-4380-8e0a-4ab3714f18fc`
   - Phase 4 Worker: `d08ed682-b71e-4848-ad15-3e6c5eed617e`
   - Phase 5 Worker: `6fa3a630-4d7a-493e-98d7-6c8ba5546194`
   - Phase 6 Worker: `c592aba0-5577-4df8-9fcb-1d6e0eb62225`
-  - Reviewer: `c4da4cc4-529c-43a7-acbb-81dd3d53046d`
+  - Phase 7 Worker: `cceed807-c9f0-448c-8dc2-f2f56e68b221`
+  - Phase 7 Reviewer: `f80388ee-7dba-4119-bead-dd5546769518`
 
 
 ## 2. Requirements (要件)
@@ -234,32 +235,58 @@
   - 確定export: `QuickAnnotationCanvas`, `QuickAnnotationCanvasProps`, `QuickAnnotationCanvasHandle`
   - 注意点: `QuickAnnotationCanvas` が刷新された `CanvasStoreProvider` および `CanvasStageContainer` に完全接続。45件の全テスト通過、Scoped TypeCheck・Lint・Extension WXT Build 全ゲート通過。
 
+### Phase 7: ツールバー Compound Component 化 & 描画バグ修正 & マーカーオプション復元
+- **Worker Model**: `flash`
+- **対象スコープ**: `src/features/tactical-unified/core/`, `extension/features/canvas/`
+- **遵守ルール**:
+  1. コンポーネント内に `isExtension` や `process.env` 等による環境分岐を書かない（ホスト境界厳守）。
+  2. [機能一覧の差分] プラグイン・レジストリ方式を採用し、`DrawingToolPlugin[]` を外側から注入する。
+  3. [UIパーツの有無] Slot / Compound Component 方式を採用し、不要な側（Extension）には渡さない／組み立てない。
+- **Testing Strategy**:
+  - 対象: `src/features/tactical-unified/core/`, `extension/features/canvas/`
+  - ケース:
+    - `commitDrawingShape` で Straight Line, Route Line, Wavy Arrow, Dashed Arrow が正確な属性でコミットされること
+    - 3Dマーカー生成時に背番号が空・非表示（`insideContent: 'none'`, `bottomLabel: 'none'`）であること
+    - Text に縁取り（stroke）がつかないこと
+    - 未選択オブジェクトのドラッグ開始時に即座に選択され、ドラッグできること
+    - `DraggableToolbar` が画面外に出ないようクランプされ、Extension 側で PitchLock 等の不要パーツなしで動作すること
+- **Steps**:
+  - [x] 1. 描画バグ修正 & Text 縁取り削除 & 3D マーカー背番号削除 (`canvas-drawing-factory.ts`, `use-zone-polygon.ts`, `TextObject.tsx`)
+  - [x] 2. オブジェクト即時ドラッグ可能化 & リアクティブ追従 (`ZoneShapeNode.tsx`, `ZonePolygonNode.tsx`, `TextObject.tsx`, `PlayerLayer.tsx`, `use-hud-position.ts`)
+  - [x] 3. 3D Player Marker オプション復元 (`player-quick-actions.tsx`, `player-hud.tsx`, `PlayerLayer.tsx`)
+  - [x] 4. プラグイン・レジストリ & Compound Component ツールバー構築 (`drawing-tool-plugin.ts`, `core-toolbar-icons.tsx`, `DraggableToolbar.tsx`, `ToolbarToolsGroup.tsx`, 各種アクションパーツ, `CanvasStageContainer.tsx`)
+  - [x] 5. Extension (`QuickAnnotationCanvas.tsx`) への組み込み & テスト更新
+- **Phase Verification**:
+  - [x] `bun run ai:check src/features/tactical-unified/core/ extension/features/canvas/` が exit code 0 で全PASS (13 test files, 53 tests passed)
+  - [x] `bun run --cwd extension compile && bun run --cwd extension build` が exit code 0 で全PASS
+- **Worker Handoff Log**:
+  - 確定export: `DraggableToolbar`, `ToolbarToolsGroup`, `ToolbarContinuousLock`, `ToolbarEraser`, `ToolbarResetButton`, `ToolbarPitchLock`, `ToolbarBoundaryBoxToggle`, `ToolbarDivider`, `EXTENSION_DRAWING_TOOLS`, `WEB_DRAWING_TOOLS`, `DRAWING_TOOLS_CORE`, `PlayerQuickActions`
+  - 注意点: プラグイン・レジストリ方式および Compound Component ツールバーを導入し、Web と Extension で環境分岐（`isExtension` 等）をゼロに保ちながら機能差分とUIパーツ有無を安全に分離。全13テストファイル53テストPASS、Extension ビルド成功。全ファイル200行（最大250行）規約を厳守。
+
 ---
 
 ## 4. Reviewer Checklist & Assessment
 
 ### 4.1 Automated Gates (自動検証)
 - [x] すべての Phase のチェックボックス (`- [x]`) が完了していること
-- [x] `bun run ai:check src/features/tactical-unified/core/ extension/features/canvas/` が exit code 0 で全PASS (11 test files, 45 tests passed)
+- [x] `bun run ai:check src/features/tactical-unified/core/ extension/features/canvas/` が exit code 0 で全PASS (13 test files, 53 tests passed)
 - [x] `bun run --cwd extension typecheck && bun run --cwd extension build` が exit code 0 で全PASS (WXT 0.20.27 build passed)
 
 ### 4.2 Quality & Spec Audit (仕様・品質審査)
 - [x] 要件網羅性: 15 の操作シナリオ（パンズーム、多角形、テキスト編集、HUD、ショートカット、範囲選択、回転、波線、消しゴム等）が 1 つも欠落せず動作すること
 - [x] 非機能要件: Zero Flicker（初期チラつきゼロ）、Zero Black Margin（余白0%）が保たれていること
-- [x] 境界厳守: `core/` 内に `chrome.*` 等のホスト依存が一切存在しないこと
+- [x] 境界厳守: `core/` 内に `chrome.*` や `isExtension` 等のホスト依存・環境分岐が一切存在しないこと
 - [x] 行数規約: 各コンポーネントが 200行以内（最大250行以内）であること
+- [x] 3大設計指示: プラグイン・レジストリ、Compound Component / Slot、即時ドラッグ・描画バグ修正が完全実装されていること
 
 ### 4.3 Reviewer Decision
 - **Status**: `LGTM`
-- **Reviewed At**: 2026-10-18 11:32
+- **Reviewed At**: 2026-10-18 14:10
 - **Reviewer Model**: `flash`
-- **Summary**: 
-  - 要件1〜5の全項目が完全に達成されていることを確認しました。
-  - `bun run ai:reviewer:check`（Biome check, Scoped type check, Vitest related, depcruise）および `bun run ai:check`、Extension typecheck & build、全体 typecheck & lint の全自動検証ゲートを exit code 0 でクリア。
-  - レイヤー構造（Level 2: `tactical-unified/core/`）内に `chrome.*` や Web 専用依存は混入しておらず、依存ルールも完全に準拠。
-  - `createCanvasStore` および `CanvasStoreProvider` による初期 Props 確定注入による Zero Flicker、仮想キャンバス座標系レターボックス計算による Zero Black Margin、Imperative Ref API 高DPIクロップ出力が確実に機能しています。
-  - コード行数規約（250行未満）もすべての本番ファイルで達成されています。LGTMと判定します。
+- **Summary**: Phase 7 における Compound Component 化、プラグイン・レジストリ方式、描画バグ修正、即時ドラッグ選択、マーカーオプション復元がすべて要件および規約通りに実装されており、全自動検証ゲートを通過していることを確認しました。LGTMとして承認します。
 
 ---
 
 ## 5. Rejections / Additional Tasks (不可逆修正欄)
+- Phase 7: ブラウザ検証で判明したツールバー・描画バグ・即時ドラッグ・マーカーオプションの修正と Compound Component 化
+

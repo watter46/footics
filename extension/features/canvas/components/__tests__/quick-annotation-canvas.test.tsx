@@ -68,4 +68,27 @@ describe('QuickAnnotationCanvas', () => {
       });
     }).not.toThrow();
   });
+
+  it('Extensionツールバーに 3D リングが含まれ、PitchLock や BoundaryBox が含まれないこと', () => {
+    const { queryByTitle, getByTitle } = render(
+      <div style={{ width: 800, height: 600 }}>
+        <QuickAnnotationCanvas
+          screenshot={mockScreenshot}
+          imageAspect={16 / 9}
+        />
+      </div>,
+    );
+
+    // 3D Foot Ring should be present
+    expect(getByTitle('3D Foot Ring (O)')).toBeDefined();
+
+    // 2D Player Marker should NOT be present
+    expect(queryByTitle('2D Player Marker (M)')).toBeNull();
+
+    // Pitch Lock should NOT be present
+    expect(queryByTitle(/Pitch Lock/i)).toBeNull();
+
+    // Boundary Box button should NOT be present
+    expect(queryByTitle(/Boundary Box/i)).toBeNull();
+  });
 });

@@ -1,5 +1,4 @@
-'use client';
-
+import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Ellipse, Group, Rect, Transformer } from 'react-konva';
 import { useZoneShape } from './use-zone-shape';
@@ -9,7 +8,7 @@ import { getZoneStyle } from './zone-geometry';
 export const ZoneShapeNode = React.memo(function ZoneShapeNode(
   props: ZoneNodeProps,
 ) {
-  const { zone, isSelected, onSelect } = props;
+  const { zone, isSelected, onSelect, isInteractive = true } = props;
   const { fillRGBA, strokeColor, strokeWidth } = getZoneStyle(zone);
   const {
     shapeType,
@@ -25,6 +24,16 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
     handleTransformEnd,
   } = useZoneShape(props);
 
+  const handleDragStart = (e: KonvaEventObject<DragEvent>) => {
+    if (!isSelected) {
+      onSelect(e);
+    }
+  };
+
+  const handleDragMove = () => {
+    transformerRef.current?.getLayer()?.batchDraw();
+  };
+
   return (
     <Group>
       {shapeType === 'ellipse' ? (
@@ -39,9 +48,11 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
           opacity={zone.opacity ?? 0.25}
           stroke={isSelected ? '#60a5fa' : strokeColor}
           strokeWidth={isSelected ? strokeWidth + 1 : strokeWidth}
-          draggable={isSelected && !zone.locked}
+          draggable={isInteractive && !zone.locked}
           onClick={onSelect}
           onTap={onSelect}
+          onDragStart={handleDragStart}
+          onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
         />
       ) : (
@@ -58,9 +69,11 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
           opacity={zone.opacity ?? 0.25}
           stroke={isSelected ? '#60a5fa' : strokeColor}
           strokeWidth={isSelected ? strokeWidth + 1 : strokeWidth}
-          draggable={isSelected && !zone.locked}
+          draggable={isInteractive && !zone.locked}
           onClick={onSelect}
           onTap={onSelect}
+          onDragStart={handleDragStart}
+          onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
         />
       )}

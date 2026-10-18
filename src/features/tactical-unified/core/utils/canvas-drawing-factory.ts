@@ -10,7 +10,7 @@ export function createRingMarker(
   x: number,
   y: number,
   color: string,
-  shirtNo: string,
+  _shirtNo = '',
 ): Player {
   return {
     id: `marker-${Date.now()}`,
@@ -18,7 +18,7 @@ export function createRingMarker(
     x,
     y,
     team: 'neutral',
-    shirtNo,
+    shirtNo: '',
     style: {
       markerType: 'ring',
       color,
@@ -27,8 +27,8 @@ export function createRingMarker(
       sizeScale: 1.0,
       numberSizeScale: 1.0,
       labelSizeScale: 1.0,
-      insideContent: 'number',
-      bottomLabel: 'number',
+      insideContent: 'none',
+      bottomLabel: 'none',
     },
     badges: [],
     connectLines: [],
@@ -107,13 +107,48 @@ export function commitDrawingShape(
   ].includes(tool as string);
 
   if (isArrowTool && dist > 1.5) {
-    const isDash = tool === 'arrow_dash' || (tool as string) === 'dribble';
     const isCurve = tool === 'arrow-curved';
+    let arrowType: ArrowAnnotation['arrowType'] = 'pass';
+    let arrowHead = true;
+    let dashArray: number[] = [];
+    let endMarker: ArrowAnnotation['endMarker'] = 'arrow';
+
+    if (tool === 'line') {
+      arrowType = 'line';
+      arrowHead = false;
+      dashArray = [];
+      endMarker = 'none';
+    } else if (tool === 'route_line') {
+      arrowType = 'route_line';
+      arrowHead = false;
+      dashArray = [];
+      endMarker = 'dot';
+    } else if (tool === 'arrow_solid') {
+      arrowType = 'pass';
+      arrowHead = true;
+      dashArray = [];
+      endMarker = 'arrow';
+    } else if (tool === 'arrow_dash') {
+      arrowType = 'pass';
+      arrowHead = true;
+      dashArray = [6, 4];
+      endMarker = 'arrow';
+    } else if (tool === 'arrow_wavy') {
+      arrowType = 'dribble';
+      arrowHead = true;
+      dashArray = [];
+      endMarker = 'arrow';
+    } else if ((tool as string) === 'dribble') {
+      arrowType = 'dribble';
+      arrowHead = true;
+      dashArray = [6, 4];
+      endMarker = 'arrow';
+    }
 
     addArrow({
       id: `arrow-${Date.now()}`,
       annotationType: 'arrow',
-      arrowType: isDash ? 'dribble' : 'pass',
+      arrowType,
       curveType: isCurve ? 'curved' : 'straight',
       points: [
         { x: startX, y: startY },
@@ -121,8 +156,9 @@ export function commitDrawingShape(
       ],
       color,
       strokeWidth,
-      dashArray: isDash ? [6, 4] : [],
-      arrowHead: true,
+      dashArray,
+      arrowHead,
+      endMarker,
     });
   } else if (
     ((tool as string) === 'zone' || (tool as string) === 'zone_circle') &&

@@ -55,16 +55,18 @@ export const TextObject = React.memo(function TextObject({
       fontFamily="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
       fill={isSelected ? '#60a5fa' : text.color}
       fontStyle={fontStyle}
-      stroke="#020617"
-      strokeWidth={text.fontSize > 24 ? 2 : 1}
-      fillAfterStrokeEnabled={true}
       visible={!isEditing}
       onClick={onSelect}
       onTap={onSelect}
       onDblClick={onDblClick}
       onDblTap={onDblClick}
       perfectDrawEnabled={false}
-      draggable={isInteractive && isSelected && !isEditing && !text.locked}
+      draggable={isInteractive && !isEditing && !text.locked}
+      onDragStart={(e) => {
+        if (!isSelected) {
+          onSelect(e);
+        }
+      }}
       onDragEnd={(e) => {
         e.cancelBubble = true;
         const node = e.target;

@@ -5,6 +5,13 @@ import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
 import {
   CanvasStageContainer,
   CanvasStoreProvider,
+  DraggableToolbar,
+  EXTENSION_DRAWING_TOOLS,
+  ToolbarContinuousLock,
+  ToolbarDivider,
+  ToolbarEraser,
+  ToolbarResetButton,
+  ToolbarToolsGroup,
   useCanvasStore,
 } from '@/features/tactical-unified/core';
 import type {
@@ -82,6 +89,16 @@ function QuickAnnotationCanvasInner(
       ref={stageRef}
       className={className}
       imageAspect={imageAspect}
+      toolbar={
+        <DraggableToolbar>
+          <ToolbarToolsGroup tools={EXTENSION_DRAWING_TOOLS} />
+          <ToolbarDivider />
+          <ToolbarContinuousLock />
+          <ToolbarEraser />
+          <ToolbarDivider />
+          <ToolbarResetButton />
+        </DraggableToolbar>
+      }
     />
   );
 }

@@ -12,6 +12,7 @@ export interface ZoneNodeProps {
   zone: ZoneAnnotation;
   stageSize: { width: number; height: number };
   isSelected: boolean;
+  isInteractive?: boolean;
   onSelect: (e: KonvaEventObject<MouseEvent | TouchEvent>) => void;
   updateZone: (zoneId: string, patch: Partial<ZoneAnnotation>) => void;
   nodesRegistryRef?: React.MutableRefObject<any>;
@@ -22,7 +23,7 @@ export interface ZoneNodeProps {
 export const ZonePolygonNode = React.memo(function ZonePolygonNode(
   props: ZoneNodeProps,
 ) {
-  const { zone, isSelected, onSelect } = props;
+  const { zone, isSelected, onSelect, isInteractive = true } = props;
   const { fillRGBA, strokeColor, strokeWidth } = getZoneStyle(zone);
   const {
     isComplete,
@@ -35,8 +36,13 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
 
   return (
     <Group
-      draggable={isSelected && !zone.locked}
-      onDragStart={handleGroupDragStart}
+      draggable={isInteractive && isComplete && !zone.locked}
+      onDragStart={(e) => {
+        if (!isSelected) {
+          onSelect(e);
+        }
+        handleGroupDragStart(e);
+      }}
       onDragEnd={handleGroupDragEnd}
     >
       <Line

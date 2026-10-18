@@ -3,6 +3,7 @@
 import { Lock, Minus, Plus, Trash2, Unlock } from 'lucide-react';
 import { useCanvasStore } from '../../hooks/use-canvas-store';
 import { MiniColorPicker } from './mini-color-picker';
+import { PlayerQuickActions } from './player-quick-actions';
 
 export interface PlayerHudProps {
   playerId: string;
@@ -106,6 +107,11 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
           <Plus size={11} />
         </button>
       </div>
+
+      <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+
+      {/* 5. マーカーオプション群 (Vision Cone, Connect Line, 矢印, Spotlight) */}
+      <PlayerQuickActions player={player} />
 
       <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
 

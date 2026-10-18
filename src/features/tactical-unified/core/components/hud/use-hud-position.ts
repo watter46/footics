@@ -45,7 +45,7 @@ export function useHudPosition({
 
   if (!target) return null;
 
-  const clampedX = Math.max(120, Math.min(stageSize.width - 120, target.x));
+  const clampedX = Math.max(160, Math.min(stageSize.width - 160, target.x));
   const isBelow = target.y - target.height / 2 - 50 < 10;
   const clampedY = isBelow
     ? target.y + target.height / 2 + 12

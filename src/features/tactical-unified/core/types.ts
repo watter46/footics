@@ -174,4 +174,5 @@ export interface CanvasStageProps {
   className?: string;
   imageAspect?: number;
   onAutoSave?: (json: string) => void;
+  toolbar?: React.ReactNode;
 }

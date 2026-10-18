@@ -27,7 +27,11 @@ export function useZonePolygon({
 
   let renderPts = pts.flatMap((p) => [normX(p.x, width), normY(p.y, height)]);
   if (isCreatingThis && mousePreviewPos) {
-    renderPts = [...renderPts, mousePreviewPos.x, mousePreviewPos.y];
+    renderPts = [
+      ...renderPts,
+      normX(mousePreviewPos.x, width),
+      normY(mousePreviewPos.y, height),
+    ];
   }
 
   const vertexPairs = pts.map((p) => ({

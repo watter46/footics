@@ -65,6 +65,7 @@ export function AnnotationLayer({
             zone={zone}
             stageSize={stageSize}
             isSelected={selectedIds.includes(zone.id)}
+            isInteractive={isInteractive}
             onSelect={makeSelectHandler(zone.id, 'zone')}
             updateZone={updateZone}
             nodesRegistryRef={nodesRegistryRef}

@@ -48,6 +48,7 @@ export {
   PlayerLayer,
   type PlayerLayerProps,
 } from './components/PlayerLayer';
+export * from './components/toolbar';
 export {
   type UseCanvasExportOptions,
   useCanvasExport,

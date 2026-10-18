@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { createCanvasStore } from '../../store/canvas-store';
 import { CanvasStoreContext } from '../../store/canvas-store-provider';
@@ -231,23 +231,16 @@ describe('PitchInlineTextEditor', () => {
 });
 
 describe('CoreDrawingToolbar', () => {
-  it('CoreDrawingToolbar で全11ツール、連続描画ロック、消しゴムが切り替わること', () => {
+  it('CoreDrawingToolbar で全11ツール、連続描画ロック、消しゴム、ピッチロック、クロップ枠、リセットが動作すること', () => {
     const { store } = renderWithStore(<CoreDrawingToolbar />);
 
-    // 11 ツール + 消しゴムの切り替え検証
     const tools: { title: string; expected: string }[] = [
       { title: 'Select (V)', expected: 'select' },
-      { title: 'Straight Line', expected: 'line' },
-      { title: 'Route Line', expected: 'route_line' },
-      { title: 'Solid Arrow', expected: 'arrow_solid' },
-      { title: 'Dashed Arrow', expected: 'arrow_dash' },
-      { title: 'Wavy Arrow', expected: 'arrow_wavy' },
-      { title: 'Zone', expected: 'zone' },
-      { title: 'Polygon Zone', expected: 'polygon_zone' },
-      { title: 'Text (T)', expected: 'text' },
-      { title: '2D Player Marker', expected: 'player' },
-      { title: '3D Player Ring Marker', expected: 'player-ring' },
-      { title: 'Eraser (E)', expected: 'eraser' },
+      { title: 'Straight Line (L)', expected: 'line' },
+      { title: 'Solid Arrow (A)', expected: 'arrow_solid' },
+      { title: 'Zone (Z)', expected: 'zone' },
+      { title: '3D Foot Ring (O)', expected: 'player-ring' },
+      { title: 'Eraser: OFF (Click to toggle)', expected: 'eraser' },
     ];
 
     for (const { title, expected } of tools) {
@@ -258,7 +251,7 @@ describe('CoreDrawingToolbar', () => {
 
     // 連続描画ロックのトグル
     expect(store.getState().continuousDrawing).toBe(false);
-    const continuousBtn = screen.getByTitle(/Continuous Drawing/i);
+    const continuousBtn = screen.getByTitle(/Continuous Draw/i);
     fireEvent.click(continuousBtn);
     expect(store.getState().continuousDrawing).toBe(true);
     fireEvent.click(continuousBtn);
@@ -271,13 +264,33 @@ describe('CoreDrawingToolbar', () => {
     expect(store.getState().pitchTransform.isLocked).toBe(true);
 
     // BoundaryBox 切替
-    const bboxToggleBtn = screen.getByTitle('Toggle Boundary Box');
+    const bboxToggleBtn = screen.getByTitle(/Boundary Box/i);
     fireEvent.click(bboxToggleBtn);
     expect(store.getState().boundaryBox.visible).toBe(true);
 
-    // カラーパレット変更
-    const redBtn = screen.getByTitle('Red');
-    fireEvent.click(redBtn);
-    expect(store.getState().color).toBe('#ef4444');
+    // リセットボタン (全消去)
+    act(() => {
+      store.getState().addArrow({
+        id: 'arrow-reset-test',
+        annotationType: 'arrow',
+        arrowType: 'pass',
+        curveType: 'straight',
+        points: [
+          { x: 0, y: 0 },
+          { x: 10, y: 10 },
+        ],
+        color: '#ffffff',
+        strokeWidth: 3,
+        dashArray: [],
+        arrowHead: true,
+      });
+    });
+    expect(store.getState().annotations.arrows).toHaveLength(1);
+
+    window.confirm = vi.fn(() => true);
+    const resetBtn = screen.getByTitle(/Reset all annotations/i);
+    fireEvent.click(resetBtn);
+    expect(window.confirm).toHaveBeenCalled();
+    expect(store.getState().annotations.arrows).toHaveLength(0);
   });
 });

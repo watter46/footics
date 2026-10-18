@@ -51,7 +51,10 @@ function useContainerResize(
 export const CanvasStageContainer = forwardRef<
   CanvasCoreHandle,
   CanvasStageProps
->(function CanvasStageContainer({ className = '', imageAspect = 16 / 9 }, ref) {
+>(function CanvasStageContainer(
+  { className = '', imageAspect = 16 / 9, toolbar },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
@@ -159,9 +162,7 @@ export const CanvasStageContainer = forwardRef<
         </div>
       )}
 
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
-        <CoreDrawingToolbar />
-      </div>
+      {toolbar ?? <CoreDrawingToolbar />}
     </div>
   );
 });
