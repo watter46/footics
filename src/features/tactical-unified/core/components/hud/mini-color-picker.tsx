@@ -88,7 +88,13 @@ export function MiniColorPicker({
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
-          style={{ colorScheme: 'only light' }}
+          style={{
+            width: 192,
+            maxWidth: 200,
+            backgroundColor: '#222222',
+            borderColor: '#383838',
+            colorScheme: 'only light',
+          }}
         >
           <div className="grid grid-cols-5 gap-1.5">
             {HUD_COLOR_PALETTE.map((c) => {
@@ -111,8 +117,15 @@ export function MiniColorPicker({
                         : 'border-white/10 hover:border-white/30'
                   }`}
                   style={{
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
                     colorScheme: 'only light',
                     backgroundImage: `linear-gradient(${c}, ${c})`,
+                    boxShadow: isSelected
+                      ? '0 0 0 2px #0d99ff, 0 0 0 4px #222222'
+                      : undefined,
                   }}
                   title={isWhite ? 'White (#ffffff)' : c}
                 >
@@ -127,8 +140,14 @@ export function MiniColorPicker({
               );
             })}
           </div>
-          <div className="pt-2 border-t border-[#383838] flex flex-col gap-1.5">
-            <div className="flex items-center gap-2 p-1.5 rounded-lg bg-[#2a2a2a] border border-[#383838] hover:border-[#4a4a4a] transition-colors relative">
+          <div
+            className="pt-2 border-t border-[#383838] flex flex-col gap-1.5"
+            style={{ borderColor: '#383838' }}
+          >
+            <div
+              className="flex items-center gap-2 p-1.5 rounded-lg bg-[#2a2a2a] border border-[#383838] hover:border-[#4a4a4a] transition-colors relative"
+              style={{ backgroundColor: '#2a2a2a', borderColor: '#383838' }}
+            >
               <button
                 type="button"
                 onClick={() => {

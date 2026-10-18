@@ -67,6 +67,7 @@ export function ZoneHud({ zoneId }: ZoneHudProps) {
             cur < 0.25 ? 0.35 : cur < 0.45 ? 0.6 : cur < 0.7 ? 0.15 : 0.25;
           updateZone(zone.id, { opacity: next });
         }}
+        style={{ backgroundColor: '#2a2a2a', color: '#ffffff' }}
         className="px-1.5 py-0.5 rounded bg-[#2a2a2a] text-[11px] text-white/80 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer font-mono"
         title="不透明度 (クリックで切替)"
       >
@@ -79,6 +80,11 @@ export function ZoneHud({ zoneId }: ZoneHudProps) {
       <button
         type="button"
         onClick={() => updateZone(zone.id, { locked: !zone.locked })}
+        style={
+          zone.locked
+            ? { backgroundColor: 'rgba(245, 158, 11, 0.25)', color: '#fbbf24' }
+            : undefined
+        }
         className={`p-1 rounded-md transition-colors cursor-pointer ${
           zone.locked
             ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'

@@ -25,6 +25,7 @@ export interface ShortcutActions {
   copy: () => void;
   paste: () => void;
   duplicate: () => void;
+  cancelConnecting?: () => void;
 }
 
 export function isEditableTarget(target: HTMLElement | null): boolean {
@@ -85,6 +86,7 @@ function handleStandardShortcuts(
   }
   if (e.key === 'Escape') {
     e.preventDefault();
+    actions.cancelConnecting?.();
     actions.clearSelection();
     actions.setActiveTool('select');
     return;

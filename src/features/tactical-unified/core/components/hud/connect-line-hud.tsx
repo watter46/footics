@@ -55,7 +55,16 @@ export function ConnectLineHud({
             lineStyle: isDashed ? 'solid' : 'dashed',
           });
         }}
-        className="p-1 rounded-md text-white/70 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
+        style={
+          isDashed
+            ? { backgroundColor: '#0d99ff', color: '#ffffff' }
+            : undefined
+        }
+        className={`p-1 rounded-md transition-colors cursor-pointer ${
+          isDashed
+            ? 'bg-[#0d99ff] text-white'
+            : 'text-white/70 hover:text-white hover:bg-[#333333]'
+        }`}
         title={isDashed ? '点線 (実線に切替)' : '実線 (点線に切替)'}
       >
         {isDashed ? <DashedLineIcon size={14} /> : <SolidLineIcon size={14} />}

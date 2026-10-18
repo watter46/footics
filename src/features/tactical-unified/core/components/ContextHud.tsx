@@ -15,7 +15,7 @@ import {
 export interface ContextHudProps {
   stageSize: { width: number; height: number };
   pitchRect?: { x: number; y: number; width: number; height: number };
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<unknown>;
 }
 
 export function ContextHud({
@@ -30,7 +30,15 @@ export function ContextHud({
   const isHudOpen = useCanvasStore((s) => s.isHudOpen);
 
   useEffect(() => {
-    const stage = nodesRegistryRef?.current?.stage;
+    const reg = nodesRegistryRef?.current as
+      | {
+          stage?: {
+            on: (event: string, fn: () => void) => void;
+            off: (event: string, fn: () => void) => void;
+          };
+        }
+      | undefined;
+    const stage = reg?.stage;
     if (!stage) return;
     const handleDragStart = () => {
       if (hudRef.current) hudRef.current.style.opacity = '0';
@@ -84,7 +92,14 @@ export function ContextHud({
       }}
       className="absolute z-40 transition-opacity duration-150 select-none pointer-events-auto animate-in fade-in zoom-in-95 duration-100"
     >
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#222222] border border-[#383838] shadow-xl text-xs text-white">
+      <div
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#222222] border border-[#383838] shadow-xl text-xs text-white"
+        style={{
+          backgroundColor: '#222222',
+          borderColor: '#383838',
+          color: '#ffffff',
+        }}
+      >
         {selected.kind === 'player' && <PlayerHud playerId={selected.id} />}
         {selected.kind === 'arrow' && <ArrowHud arrowId={selected.id} />}
         {selected.kind === 'zone' && <ZoneHud zoneId={selected.id} />}

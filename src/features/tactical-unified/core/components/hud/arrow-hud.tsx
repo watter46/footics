@@ -31,7 +31,16 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
             dashArray: isDashed ? [] : [6, 4],
           });
         }}
-        className="p-1 rounded-md text-white/70 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
+        style={
+          isDashed
+            ? { backgroundColor: '#0d99ff', color: '#ffffff' }
+            : undefined
+        }
+        className={`p-1 rounded-md transition-colors cursor-pointer ${
+          isDashed
+            ? 'bg-[#0d99ff] text-white'
+            : 'text-white/70 hover:text-white hover:bg-[#333333]'
+        }`}
         title={isDashed ? '点線 (実線に切替)' : '実線 (点線に切替)'}
       >
         {isDashed ? <DashedLineIcon size={14} /> : <SolidLineIcon size={14} />}
@@ -91,6 +100,11 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
       <button
         type="button"
         onClick={() => updateArrow(arrow.id, { locked: !arrow.locked })}
+        style={
+          arrow.locked
+            ? { backgroundColor: 'rgba(245, 158, 11, 0.25)', color: '#fbbf24' }
+            : undefined
+        }
         className={`p-1 rounded-md transition-colors cursor-pointer ${
           arrow.locked
             ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'

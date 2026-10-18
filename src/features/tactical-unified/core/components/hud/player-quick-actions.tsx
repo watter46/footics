@@ -31,9 +31,14 @@ export function VisionConeAction({ player }: PlayerQuickActionsProps) {
     <button
       type="button"
       onClick={toggleVisionCone}
+      style={
+        hasVisionCone
+          ? { backgroundColor: '#0d99ff', color: '#ffffff' }
+          : undefined
+      }
       className={`p-1 rounded-md transition-all cursor-pointer ${
         hasVisionCone
-          ? 'text-sky-300 bg-sky-500/30 ring-1 ring-sky-400/60 shadow-sm'
+          ? 'bg-[#0d99ff] text-white ring-1 ring-sky-400 shadow-sm'
           : 'text-white/80 hover:text-white hover:bg-[#333333]'
       }`}
       title={
@@ -94,11 +99,18 @@ export function ConnectLineAction({ player }: PlayerQuickActionsProps) {
     <button
       type="button"
       onClick={toggleConnectLine}
+      style={
+        isConnecting
+          ? { backgroundColor: '#0d99ff', color: '#ffffff' }
+          : hasLines
+            ? { backgroundColor: '#10b981', color: '#ffffff' }
+            : undefined
+      }
       className={`p-1 rounded-md transition-all cursor-pointer ${
         isConnecting
-          ? 'text-sky-300 bg-sky-500/40 ring-2 ring-sky-400 animate-pulse shadow-md'
+          ? 'bg-[#0d99ff] text-white animate-pulse shadow-md'
           : hasLines
-            ? 'text-emerald-300 bg-emerald-500/30 ring-1 ring-emerald-400/60 shadow-sm'
+            ? 'bg-emerald-500 text-white shadow-sm'
             : 'text-white/80 hover:text-white hover:bg-[#333333]'
       }`}
       title={
@@ -179,9 +191,12 @@ export function SpotlightAction({ player }: PlayerQuickActionsProps) {
     <button
       type="button"
       onClick={toggleSpotlight}
+      style={
+        hasFocus ? { backgroundColor: '#f59e0b', color: '#ffffff' } : undefined
+      }
       className={`p-1 rounded-md transition-all cursor-pointer ${
         hasFocus
-          ? 'text-amber-300 bg-amber-500/30 ring-1 ring-amber-400/60 shadow-sm'
+          ? 'bg-amber-500 text-white shadow-sm'
           : 'text-white/80 hover:text-white hover:bg-[#333333]'
       }`}
       title={

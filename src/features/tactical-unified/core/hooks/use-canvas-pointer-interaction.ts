@@ -49,6 +49,9 @@ export function useCanvasPointerInteraction({
 
       const isStage = e.target === e.target.getStage();
       const isShift = Boolean(e.evt?.shiftKey);
+      if (s.connectingPlayerId && isStage) {
+        s.setConnectingPlayerId(null);
+      }
       if (s.activeTool === 'select') {
         selectionBoxHook.handleSelectionDown(pixelPos, isStage, isShift);
         return;

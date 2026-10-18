@@ -5,24 +5,20 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { ReactNode } from 'react';
 import { useCallback, useRef } from 'react';
-import { Group, Layer } from 'react-konva';
-import { PlayerFocusSpotlight } from '@/features/tactical-unified/objects/player/components/player-focus-spotlight';
-import { PlayerMarkerCircle } from '@/features/tactical-unified/objects/player/components/player-marker-circle';
-import { PlayerMarkerLabel } from '@/features/tactical-unified/objects/player/components/player-marker-label';
-import { PlayerMarkerRing } from '@/features/tactical-unified/objects/player/components/player-marker-ring';
-import { PlayerVisionCone } from '@/features/tactical-unified/objects/player/components/player-vision-cone';
-import { getLastName } from '@/lib/tactical/player-formatting';
+import { Layer } from 'react-konva';
 import type { Player } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
+import { PlayerConnectingGuide } from './PlayerConnectingGuide';
 import {
   PlayerConnectLines,
   updateConnectLinePositions,
 } from './PlayerConnectLines';
+import { PlayerMarkerItem } from './PlayerMarkerItem';
 
 export interface PlayerLayerProps {
   width: number;
   height: number;
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<unknown>;
 }
 
 export function PlayerLayer({
@@ -65,18 +61,19 @@ export function PlayerLayer({
   const handleMarkerClick = useCallback(
     (markerId: string, isShift: boolean) => {
       if (connectingPlayerId && connectingPlayerId !== markerId) {
-        const source = markers.find((m) => m.id === connectingPlayerId);
-        if (source) {
-          updateMarker(source.id, {
+        const src = markers.find((m) => m.id === connectingPlayerId);
+        if (src) {
+          const lines = (src.connectLines ?? []).filter(
+            (c) => c.toPlayerId !== markerId,
+          );
+          updateMarker(src.id, {
             connectLines: [
-              ...(source.connectLines ?? []).filter(
-                (cl) => cl.toPlayerId !== markerId,
-              ),
+              ...lines,
               {
                 id: `cl-${Date.now()}`,
                 toPlayerId: markerId,
                 lineStyle: 'solid',
-                color: source.style?.color ?? '#3b82f6',
+                color: src.style?.color ?? '#3b82f6',
                 strokeWidth: 2,
                 visible: true,
               },
@@ -103,16 +100,23 @@ export function PlayerLayer({
     (e: KonvaEventObject<DragEvent>, marker: Player) => {
       setIsDragging(false);
       setIsHudOpen(false);
-      const node = e.target;
-      const newNormX = (node.x() / width) * 100;
-      const newNormY = (node.y() / height) * 100;
-
-      updateMarker(marker.id, {
-        x: Math.max(0, Math.min(100, newNormX)),
-        y: Math.max(0, Math.min(100, newNormY)),
-      });
+      const nx = Math.max(0, Math.min(100, (e.target.x() / width) * 100));
+      const ny = Math.max(0, Math.min(100, (e.target.y() / height) * 100));
+      updateMarker(marker.id, { x: nx, y: ny });
     },
     [width, height, updateMarker, setIsDragging, setIsHudOpen],
+  );
+
+  const handleDragStart = useCallback(
+    (e: KonvaEventObject<DragEvent>, markerId: string) => {
+      setIsDragging(true);
+      setIsHudOpen(false);
+      if (!selectedIds.includes(markerId)) {
+        const isShift = Boolean((e.evt as MouseEvent)?.shiftKey);
+        selectObject(markerId, isShift);
+      }
+    },
+    [selectedIds, selectObject, setIsDragging, setIsHudOpen],
   );
 
   return (
@@ -134,105 +138,41 @@ export function PlayerLayer({
         }}
       />
 
-      {markers.map((marker) => {
-        const pxX = (marker.x / 100) * width;
-        const pxY = (marker.y / 100) * height;
-        const sizeScale = marker.style?.sizeScale ?? 1.0;
-        const radius = baseDim * 0.032 * sizeScale;
-        const numScale = marker.style?.numberSizeScale ?? 1.0;
-        const labelScale = marker.style?.labelSizeScale ?? 1.0;
-        const isSelected = selectedIds.includes(marker.id);
-        const displayName = marker.name ? getLastName(marker.name) : '';
+      {connectingPlayerId && (
+        <PlayerConnectingGuide
+          connectingPlayerId={connectingPlayerId}
+          markers={markers}
+          width={width}
+          height={height}
+          baseDim={baseDim}
+        />
+      )}
 
-        const is3D =
-          markerMode === '3d-only' ||
-          (markerMode !== '2d-only' && marker.style?.markerType === 'ring');
-
-        return (
-          <Group
-            key={marker.id}
-            ref={(node) => {
-              if (nodesRegistryRef?.current?.playerNodes) {
-                if (node)
-                  nodesRegistryRef.current.playerNodes.set(marker.id, node);
-                else nodesRegistryRef.current.playerNodes.delete(marker.id);
-              }
-            }}
-            x={pxX}
-            y={pxY}
-            draggable={isInteractive && !marker.locked}
-            onDragStart={(e) => {
-              setIsDragging(true);
-              setIsHudOpen(false);
-              if (!isSelected) {
-                const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
-                selectObject(marker.id, isShift);
-              }
-            }}
-            onDragMove={(e) => handleMarkerDragMove(e, marker.id)}
-            onClick={(e) => {
-              e.cancelBubble = true;
-              const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
-              handleMarkerClick(marker.id, isShift);
-            }}
-            onTap={(e) => {
-              e.cancelBubble = true;
-              handleMarkerClick(marker.id, false);
-            }}
-            onDragEnd={(e) => handleDragEnd(e, marker)}
-          >
-            {marker.focus && (
-              <PlayerFocusSpotlight
-                focus={marker.focus}
-                radius={radius}
-                isRing={is3D}
-                isSelected={isSelected}
-              />
-            )}
-
-            {marker.visionCone && (
-              <PlayerVisionCone
-                cone={marker.visionCone}
-                radius={radius}
-                isRing={is3D}
-                stageSize={{ width, height }}
-                isSelected={isSelected}
-                onUpdateVisionCone={(patch) =>
-                  updateMarker(marker.id, {
-                    visionCone: marker.visionCone
-                      ? { ...marker.visionCone, ...patch }
-                      : undefined,
-                  })
-                }
-              />
-            )}
-
-            {is3D ? (
-              <PlayerMarkerRing
-                player={marker}
-                radius={radius}
-                numScale={numScale}
-                isSelected={isSelected}
-              />
-            ) : (
-              <PlayerMarkerCircle
-                player={marker}
-                radius={radius}
-                numScale={numScale}
-                isSelected={isSelected}
-                loadedImage={null}
-              />
-            )}
-
-            <PlayerMarkerLabel
-              player={marker}
-              radius={radius}
-              displayName={displayName}
-              labelScale={labelScale}
-            />
-          </Group>
-        );
-      })}
+      {markers.map((marker) => (
+        <PlayerMarkerItem
+          key={marker.id}
+          marker={marker}
+          width={width}
+          height={height}
+          baseDim={baseDim}
+          markerMode={markerMode}
+          isSelected={selectedIds.includes(marker.id)}
+          isInteractive={isInteractive}
+          connectingPlayerId={connectingPlayerId}
+          nodesRegistryRef={nodesRegistryRef}
+          onDragStart={handleDragStart}
+          onDragMove={handleMarkerDragMove}
+          onDragEnd={handleDragEnd}
+          onClick={handleMarkerClick}
+          onUpdateVisionCone={(patch) =>
+            updateMarker(marker.id, {
+              visionCone: marker.visionCone
+                ? { ...marker.visionCone, ...patch }
+                : undefined,
+            })
+          }
+        />
+      ))}
     </Layer>
   );
 }

@@ -24,6 +24,11 @@ export function ToolbarToolsGroup({ tools }: ToolbarToolsGroupProps) {
             onClick={() => setActiveTool(id)}
             title={label}
             aria-label={label}
+            style={
+              isActive
+                ? { backgroundColor: '#0d99ff', color: '#ffffff' }
+                : undefined
+            }
             className={`p-1.5 rounded-lg transition-all cursor-pointer shrink-0 ${
               isActive
                 ? 'bg-[#0d99ff] text-white shadow-xs'

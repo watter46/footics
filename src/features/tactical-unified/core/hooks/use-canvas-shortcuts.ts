@@ -27,6 +27,7 @@ export function useCanvasShortcuts({
       copy: () => store.getState().copySelectedObjects(),
       paste: () => store.getState().pasteObjects(),
       duplicate: () => store.getState().duplicateSelectedObjects(),
+      cancelConnecting: () => store.getState().setConnectingPlayerId(null),
       selectAll: () => {
         const { arrows, zones, texts, markers } = store.getState().annotations;
         const all: SelectedObject[] = [

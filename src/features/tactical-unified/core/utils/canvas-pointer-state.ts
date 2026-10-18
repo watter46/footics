@@ -14,6 +14,8 @@ export function useCanvasPointerStore() {
   const addText = useCanvasStore((s) => s.addText);
   const addMarker = useCanvasStore((s) => s.addMarker);
   const eraseAtPoint = useCanvasStore((s) => s.eraseAtPoint);
+  const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
+  const setConnectingPlayerId = useCanvasStore((s) => s.setConnectingPlayerId);
 
   return {
     activeTool,
@@ -29,5 +31,7 @@ export function useCanvasPointerStore() {
     addText,
     addMarker,
     eraseAtPoint,
+    connectingPlayerId,
+    setConnectingPlayerId,
   };
 }

@@ -18,6 +18,9 @@ export function FixedToolbar({
   return (
     <div
       style={{
+        backgroundColor: '#222222',
+        borderColor: '#383838',
+        color: '#ffffff',
         right: 'var(--toolbar-right, 12px)',
         transform: 'var(--toolbar-transform, translateY(-50%))',
         ...style,
