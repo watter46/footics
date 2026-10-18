@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { Arc, Group, Line } from 'react-konva';
 import type { Player } from '@/lib/types/tactical-unified';
 import { normX } from '../types';
@@ -17,7 +18,7 @@ export interface PlayerVisionConeProps {
   onSelectOption?: () => void;
 }
 
-function computeRingConePoints(
+export function computeRingConePoints(
   angleRad: number,
   spreadRad: number,
   pxRadius: number,
@@ -49,8 +50,8 @@ export function PlayerVisionCone({
   stageSize,
   isSelected,
   onUpdateVisionCone,
-  onSelectOption,
 }: PlayerVisionConeProps) {
+  const coneShapeRef = useRef<any>(null);
   if (!cone.visible) return null;
   const pxRadius = normX(cone.radius, stageSize.width);
   const spreadDeg = (cone.spreadRad * 180) / Math.PI;
@@ -63,15 +64,13 @@ export function PlayerVisionCone({
   const rx = isRing ? radius * 1.15 : radius + 2;
   const ry = isRing ? radius * 0.55 : radius + 2;
 
-  const handleClick = (e: { cancelBubble: boolean }) => {
-    e.cancelBubble = true;
-    onSelectOption?.();
-  };
-
   return (
     <Group>
       {isRing ? (
         <Line
+          ref={(node) => {
+            coneShapeRef.current = node;
+          }}
           points={computeRingConePoints(
             cone.angleRad,
             cone.spreadRad,
@@ -86,12 +85,13 @@ export function PlayerVisionCone({
           shadowColor={isSelected ? '#38bdf8' : undefined}
           shadowBlur={isSelected ? 8 : 0}
           shadowOpacity={isSelected ? 0.8 : 0}
-          listening={true}
-          onClick={handleClick}
-          onTap={handleClick}
+          listening={false}
         />
       ) : (
         <Arc
+          ref={(node) => {
+            coneShapeRef.current = node;
+          }}
           x={0}
           y={0}
           innerRadius={radius + 2}
@@ -104,9 +104,7 @@ export function PlayerVisionCone({
           shadowColor={isSelected ? '#38bdf8' : undefined}
           shadowBlur={isSelected ? 8 : 0}
           shadowOpacity={isSelected ? 0.8 : 0}
-          listening={true}
-          onClick={handleClick}
-          onTap={handleClick}
+          listening={false}
         />
       )}
 
@@ -115,6 +113,11 @@ export function PlayerVisionCone({
           cone={cone}
           pxRadius={pxRadius}
           stageSize={stageSize}
+          isRing={isRing}
+          radius={radius}
+          rx={rx}
+          ry={ry}
+          coneShapeRef={coneShapeRef}
           onUpdateVisionCone={onUpdateVisionCone}
         />
       )}
