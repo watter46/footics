@@ -318,11 +318,66 @@
 
 ---
 
+### Phase 9: Figma風UI/UX刷新・オブジェクトデフォルト色更新・グローバルカスタム色・Zone円楕円オプション & コネクタ接続・グロー白枠改善
+- **Worker Model**: `flash`
+- **対象スコープ**: `src/features/tactical-unified/core/`, `extension/features/canvas/`
+- **要件 & 設計方針**:
+  1. **ツールバー & HUD の Figma 風 UI/UX 化（不透明背景）**:
+     - ツールバー（`DraggableToolbar.tsx` / `FixedToolbar.tsx`）および HUD（`ContextHud.tsx`、各ポップオーバー）の背景を透明・半透明（`bg-black/85`, `bg-neutral-900/90`）から完全不透明な Figma ダーク（`bg-[#222222]`）に変更。
+     - Figma 風デザイン: `border-[#383838]`, `shadow-xl`, `rounded-xl`、Figma ブルーアクセント（`#0d99ff`）、ホバー時 `hover:bg-[#333333]`。
+  2. **オブジェクトデフォルト色の更新**:
+     - Zone 全般: 赤 (`#ef4444`)
+     - Wavy Arrow: 黄色 (`#eab308`)
+     - RouteLine: 水色 (`#38bdf8`)
+     - マーカー: 青 (`#3b82f6`)
+     - その他（Straight Line, Arrow Solid, Dashed, Text）: 白 (`#ffffff`)
+     - 描画プレビュー（`DrawingPreviewLayer.tsx`）と描画コミット（`canvas-drawing-factory.ts`、`use-canvas-polygon-zone.ts`、`zone-hud.tsx`）の完全一致。
+  3. **カラーオプションの「カスタム」欄改善 & グローバル化**:
+     - `canvas-store`: `customColor: string`（デフォルト `#ffffff`）および `setCustomColor: (c: string) => void` を追加。
+     - `MiniColorPicker`: 押しづらい極小カラーピッカーを廃止し、Figma風に HEX 入力/表示と押しやすいカラーサンプル・ピッカーボタンを一体化した UI へ刷新。
+     - ピッカーで色を取得したら `customColor` を更新し、次に操作する全オブジェクトのカスタム色として即時利用可能にする。
+  4. **Zone の円/楕円（○）オプション追加 & 自由拡大縮小**:
+     - `ZoneHud` に形状切り替え（矩形 `Square` ↔ 円/楕円 `Circle`）トグルボタンを追加。
+     - `ZoneShapeNode.tsx` の Transformer で自由な拡大縮小（`keepRatio={false}`）により、正円から縦長・横長の楕円への滑らかな変形をサポート。
+  5. **3D Marker コネクタの改善（選択接続 & グロー白枠 & デフォルト色連動）**:
+     - **相手マーカー選択接続**: Link ボタン押下時に接続待機モード（`connectingPlayerId`）となり、相手マーカーをクリック/選択した段階で接続する。
+     - **グロー＋うっすら白枠**: `PlayerConnectLines.tsx` で下地にうっすら白枠（`rgba(255, 255, 255, 0.4)`）、メイン線に発光グロー（`shadowBlur: 6`, `shadowColor: color`）を付与。
+     - **デフォルト色連動**: コネクタの初期色を接続元マーカーの色（`player.style?.color ?? '#3b82f6'`）とする。
+- **Testing Strategy**:
+  - 対象: `src/features/tactical-unified/core/`, `extension/features/canvas/`
+  - ケース:
+    - ツールバーおよび HUD が不透明な Figma 風背景スタイルを持つこと
+    - 新規作成時の各オブジェクトデフォルト色（Zone: 赤、Wavy: 黄、RouteLine: 水色、Marker: 青）が正確に適用されること
+    - `MiniColorPicker` で選択したカスタム色がグローバルに保持され、別オブジェクトで参照できること
+    - `ZoneHud` で矩形から円/楕円への切り替えが機能し、楕円変形ができること
+    - コネクタが相手マーカー選択で接続され、白枠＋グロー描画およびマーカー色デフォルトを持つこと
+- **Steps**:
+  - [x] 1. ストア拡張 & カスタム色グローバル化 (`canvas-store.ts`, `types.ts`, `mini-color-picker.tsx`)
+  - [x] 2. ツールバー & HUD の Figma 風スタイル刷新 (`DraggableToolbar.tsx`, `ContextHud.tsx`, 各HUDコンポーネント)
+  - [x] 3. オブジェクトデフォルト色更新 & 描画プレビュー同期 (`canvas-drawing-factory.ts`, `DrawingPreviewLayer.tsx`, `use-canvas-polygon-zone.ts`, `zone-hud.tsx`)
+  - [x] 4. Zone 円/楕円トグル追加 & 自由変形 (`zone-hud.tsx`, `ZoneShapeNode.tsx`)
+  - [x] 5. コネクタ改善（選択接続モード・グロー白枠・色連動） (`PlayerConnectLines.tsx`, `player-quick-actions.tsx`, `PlayerLayer.tsx`, `canvas-store.ts`)
+  - [x] 6. 単体テスト追加 & Scoped ai:check 通過 & Extension ビルド通過
+- **Phase Verification**:
+  - [x] `bun run ai:check src/features/tactical-unified/core/ extension/features/canvas/` が exit code 0 で全PASS
+  - [x] `bun run --cwd extension compile && bun run --cwd extension build` が exit code 0 で全PASS
+- **Worker Handoff Log**:
+  - 確定export: `customColor`, `connectingPlayerId`, `setCustomColor`, `setConnectingPlayerId`, `updateConnectLinePositions`
+  - 注意点:
+    - ツールバー & HUD の Figma ダーク化: 背景半透明を完全廃止し、不透明な Figma ダーク（`bg-[#222222]`、`border-[#383838]`、`shadow-xl`、`rounded-xl`）へ刷新。アクティブ時 Figma Blue（`#0d99ff`）、ホバー時 `hover:bg-[#333333]`。
+    - オブジェクトデフォルト色の更新: Zone全般（`#ef4444` 赤）、Wavy Arrow（`#eab308` 黄）、RouteLine（`#38bdf8` 水色）、Marker（`#3b82f6` 青）。描画プレビュー（`DrawingPreviewLayer.tsx`）およびコミット処理で完全同期。
+    - グローバルカスタム色: `MiniColorPicker` に幅広 Figma スタイルのカスタム色行（スウォッチ＋HEX表示＋ピッカー）を新設。ピッカー取得色が全オブジェクトで即座に再利用可能。
+    - Zone 円/楕円オプション & 自由変形: `ZoneHud` に形状切替トグル（矩形 ↔ 円/楕円）を追加。Transformer の 8 箇所アンカー（`keepRatio={false}`）により、正円から縦長・横長の楕円への滑らかな変形をサポート。
+    - 3D Marker コネクタ改善: 相手マーカー選択接続（待機モード `connectingPlayerId`）へ移行し、初期色を接続元マーカーの色と連動。`PlayerConnectLines` で下地白枠（`rgba(255, 255, 255, 0.45)`）＋メイン発光グロー（`shadowBlur: 6/12`）の 2 重構造 Konva 描画を実装。
+    - コード規約厳守: `canvas-store.ts` は 187行、`DrawingPreviewLayer.tsx` は 198行、`PlayerConnectLines.tsx` は 153行、`PlayerLayer.tsx` は 239行とすべて 200行（上限250行）ルールを厳守。全15テストファイル65件テスト全PASS、Extension WXT Build 通過。
+
+---
+
 ## 4. Reviewer Checklist & Assessment
 
 ### 4.1 Automated Gates (自動検証)
 - [x] すべての Phase のチェックボックス (`- [x]`) が完了していること
-- [x] `bun run ai:check src/features/tactical-unified/core/ extension/features/canvas/` が exit code 0 で全PASS (14 test files, 60 tests passed)
+- [x] `bun run ai:check src/features/tactical-unified/core/ extension/features/canvas/` が exit code 0 で全PASS (15 test files, 65 tests passed)
 - [x] `bun run --cwd extension compile && bun run --cwd extension build` が exit code 0 で全PASS (WXT 0.20.27 build passed)
 - [x] `bun run typecheck && bun run lint` が exit code 0 で全PASS
 
@@ -331,18 +386,20 @@
 - [x] 非機能要件: Zero Flicker（初期チラつきゼロ）、Zero Black Margin（余白0%）が保たれていること
 - [x] 境界厳守: `core/` 内に `chrome.*` や `isExtension` 等のホスト依存・環境分岐が一切存在しないこと
 - [x] 行数規約: 各コンポーネントが 200行以内（最大250行以内）であること
-- [x] 追従・HUD・デフォルト値: オブジェクト追従、HUD表示分離、ツールバー右固定、デフォルト値復元、3Dマーカー付属要素が完全実装されていること
+- [x] Figma風UI & コネクタ・Zone改善: ツールバー/HUD不透明化、デフォルト色更新、カスタム色グローバル化、Zone円楕円、コネクタ相手選択接続・白枠グローが完全実装されていること
 
 ### 4.3 Reviewer Decision
 - **Status**: `LGTM`
-- **Reviewed At**: 2026-10-18 15:35
+- **Reviewed At**: 2026-10-18 16:48
 - **Reviewer Model**: `flash`
-- **Summary**: Phase 8 におけるオブジェクト追従最適化、ドラッグ中HUD非表示＆クリック選択時HUD表示分離、ツールバー右側黒帯中央固定化、オブジェクト種別ごとのデフォルト値復元（白/琥珀/青/シアン）、コネクトライン単独選択・HUD編集＆リアルタイム追従、視野扇形誤ドラッグ防止＆ハンドルリアルタイム変形追従、HUDトグルボタンON時アクセント強調の全要件が完全実装されていることを確認しました。行数制限および自動検証ゲートも全PASSしており、LGTMとして承認します。
+- **Summary**: Phase 9 における Figma 風 UI/UX 刷新（完全不透明 bg-[#222222]、border-[#383838]）、ツールごとのデフォルト色更新（Zone: 赤、Wavy: 黄、RouteLine: 水色、Marker: 青）とプレビュー・コミットの完全同期、カラーピッカーのカスタム色グローバル化、Zone の円/楕円切替トグルおよび自由変形、3D Marker コネクタの相手マーカー選択接続・白枠グロー描画・マーカー色連動の全要件が完全に満たされていることを確認しました。全15テストファイル65件テスト全PASS、Extension ビルド成功、行数・コード規約も厳守されており、LGTMとして承認します。
 
 ---
 
 ## 5. Rejections / Additional Tasks (不可逆修正欄)
 - Phase 7: ブラウザ検証で判明したツールバー・描画バグ・即時ドラッグ・マーカーオプションの修正と Compound Component 化
 - Phase 8: オブジェクト追従最適化・HUD分離・ツールバー右固定・デフォルト値復元 & 3Dマーカー付属要素刷新
+- Phase 9: Figma風UI/UX刷新・オブジェクトデフォルト色更新・グローバルカスタム色・Zone円楕円オプション & コネクタ接続・グロー白枠改善
+
 
 

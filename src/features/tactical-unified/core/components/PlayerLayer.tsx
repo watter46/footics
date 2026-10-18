@@ -11,11 +11,13 @@ import { PlayerMarkerCircle } from '@/features/tactical-unified/objects/player/c
 import { PlayerMarkerLabel } from '@/features/tactical-unified/objects/player/components/player-marker-label';
 import { PlayerMarkerRing } from '@/features/tactical-unified/objects/player/components/player-marker-ring';
 import { PlayerVisionCone } from '@/features/tactical-unified/objects/player/components/player-vision-cone';
-import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { Player } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
-import { PlayerConnectLines } from './PlayerConnectLines';
+import {
+  PlayerConnectLines,
+  updateConnectLinePositions,
+} from './PlayerConnectLines';
 
 export interface PlayerLayerProps {
   width: number;
@@ -36,6 +38,8 @@ export function PlayerLayer({
   const updateMarker = useCanvasStore((s) => s.updateMarker);
   const setIsDragging = useCanvasStore((s) => s.setIsDragging);
   const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
+  const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
+  const setConnectingPlayerId = useCanvasStore((s) => s.setConnectingPlayerId);
 
   const connectLineNodesRef = useRef<Map<string, Konva.Line>>(new Map());
 
@@ -44,47 +48,55 @@ export function PlayerLayer({
 
   const handleMarkerDragMove = useCallback(
     (e: KonvaEventObject<DragEvent>, markerId: string) => {
-      const curX = e.target.x();
-      const curY = e.target.y();
-      for (const p of markers) {
-        for (const cl of p.connectLines ?? []) {
-          if (p.id === markerId || cl.toPlayerId === markerId) {
-            const lineNode = connectLineNodesRef.current.get(cl.id);
-            if (!lineNode) continue;
-            const targetMarker = markers.find((m) => m.id === cl.toPlayerId);
-            if (!targetMarker) continue;
-            const isSource = p.id === markerId;
-            const sPos = isSource
-              ? { x: curX, y: curY }
-              : { x: (p.x / 100) * width, y: (p.y / 100) * height };
-            const tPos =
-              cl.toPlayerId === markerId
-                ? { x: curX, y: curY }
-                : {
-                    x: (targetMarker.x / 100) * width,
-                    y: (targetMarker.y / 100) * height,
-                  };
-            const p1 = getMarkerBoundaryPoint(
-              sPos,
-              tPos,
-              p,
-              { width, height },
-              true,
-            );
-            const p2 = getMarkerBoundaryPoint(
-              tPos,
-              sPos,
-              targetMarker,
-              { width, height },
-              true,
-            );
-            lineNode.points([p1.x, p1.y, p2.x, p2.y]);
-          }
-        }
-      }
+      updateConnectLinePositions(
+        connectLineNodesRef.current,
+        markers,
+        markerId,
+        e.target.x(),
+        e.target.y(),
+        width,
+        height,
+      );
       e.target.getLayer()?.batchDraw();
     },
     [markers, width, height],
+  );
+
+  const handleMarkerClick = useCallback(
+    (markerId: string, isShift: boolean) => {
+      if (connectingPlayerId && connectingPlayerId !== markerId) {
+        const source = markers.find((m) => m.id === connectingPlayerId);
+        if (source) {
+          updateMarker(source.id, {
+            connectLines: [
+              ...(source.connectLines ?? []).filter(
+                (cl) => cl.toPlayerId !== markerId,
+              ),
+              {
+                id: `cl-${Date.now()}`,
+                toPlayerId: markerId,
+                lineStyle: 'solid',
+                color: source.style?.color ?? '#3b82f6',
+                strokeWidth: 2,
+                visible: true,
+              },
+            ],
+          });
+          setConnectingPlayerId(null);
+          return;
+        }
+      }
+      selectObject(markerId, isShift);
+      setIsHudOpen(true);
+    },
+    [
+      connectingPlayerId,
+      markers,
+      updateMarker,
+      setConnectingPlayerId,
+      selectObject,
+      setIsHudOpen,
+    ],
   );
 
   const handleDragEnd = useCallback(
@@ -161,13 +173,11 @@ export function PlayerLayer({
             onClick={(e) => {
               e.cancelBubble = true;
               const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
-              selectObject(marker.id, isShift);
-              setIsHudOpen(true);
+              handleMarkerClick(marker.id, isShift);
             }}
             onTap={(e) => {
               e.cancelBubble = true;
-              selectObject(marker.id, false);
-              setIsHudOpen(true);
+              handleMarkerClick(marker.id, false);
             }}
             onDragEnd={(e) => handleDragEnd(e, marker)}
           >

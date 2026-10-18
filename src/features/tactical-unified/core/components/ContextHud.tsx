@@ -84,7 +84,7 @@ export function ContextHud({
       }}
       className="absolute z-40 transition-opacity duration-150 select-none pointer-events-auto animate-in fade-in zoom-in-95 duration-100"
     >
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-neutral-900/90 backdrop-blur-md border border-white/15 shadow-2xl shadow-black/80 text-xs text-white">
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#222222] border border-[#383838] shadow-xl text-xs text-white">
         {selected.kind === 'player' && <PlayerHud playerId={selected.id} />}
         {selected.kind === 'arrow' && <ArrowHud arrowId={selected.id} />}
         {selected.kind === 'zone' && <ZoneHud zoneId={selected.id} />}

@@ -99,6 +99,8 @@ export interface CanvasState {
   drawingPreview: DrawingPreviewState | null;
   isDragging: boolean;
   isHudOpen: boolean;
+  customColor: string;
+  connectingPlayerId: string | null;
   history: {
     past: CanvasHistorySnapshot[];
     future: CanvasHistorySnapshot[];
@@ -111,6 +113,7 @@ export interface CanvasActions {
   setContinuousDrawing: (continuous: boolean) => void;
   toggleContinuousDrawing: () => void;
   setColor: (color: string) => void;
+  setCustomColor: (color: string) => void;
   setStrokeWidth: (width: number) => void;
   setFontSize: (size: number) => void;
   setMarkerMode: (mode: '2d-only' | '3d-only' | 'all') => void;
@@ -118,6 +121,7 @@ export interface CanvasActions {
   setDrawingPreview: (preview: DrawingPreviewState | null) => void;
   setIsDragging: (isDragging: boolean) => void;
   setIsHudOpen: (isOpen: boolean) => void;
+  setConnectingPlayerId: (id: string | null) => void;
 
   // 選択操作
   setSelectedIds: (ids: string[]) => void;

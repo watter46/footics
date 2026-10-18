@@ -1,5 +1,5 @@
 import { createStore } from 'zustand/vanilla';
-import type { BoundaryBox, DrawingTool } from '@/lib/types/tactical-unified';
+import type { DrawingTool } from '@/lib/types/tactical-unified';
 import type {
   AnnotationsData,
   CanvasConfig,
@@ -14,38 +14,23 @@ import { createClipboardActions } from './canvas-store-clipboard';
 import { createHistoryActions } from './canvas-store-history';
 import {
   createPitchActions,
+  DEFAULT_BOUNDARY_BOX,
   DEFAULT_PITCH_TRANSFORM,
+  EMPTY_ANNOTATIONS,
 } from './canvas-store-pitch';
-
-const DEFAULT_BOUNDARY_BOX: BoundaryBox = {
-  x: 0,
-  y: 0,
-  width: 100,
-  height: 100,
-  enabled: true,
-  visible: false,
-  fitTarget: 'canvas',
-};
-
-const EMPTY_ANNOTATIONS: AnnotationsData = {
-  arrows: [],
-  zones: [],
-  texts: [],
-  markers: [],
-};
 
 function parseInitialAnnotations(json?: string): AnnotationsData {
   if (!json) return EMPTY_ANNOTATIONS;
   try {
-    const parsed = JSON.parse(json);
+    const p = JSON.parse(json);
+    const arr = (v: unknown) => (Array.isArray(v) ? v : []);
     return {
-      arrows: Array.isArray(parsed.arrows) ? parsed.arrows : [],
-      zones: Array.isArray(parsed.zones) ? parsed.zones : [],
-      texts: Array.isArray(parsed.texts) ? parsed.texts : [],
-      markers: Array.isArray(parsed.markers) ? parsed.markers : [],
+      arrows: arr(p.arrows),
+      zones: arr(p.zones),
+      texts: arr(p.texts),
+      markers: arr(p.markers),
     };
-  } catch (err) {
-    console.warn('[canvas-store] Failed to parse initialAnnotations:', err);
+  } catch {
     return EMPTY_ANNOTATIONS;
   }
 }
@@ -108,6 +93,7 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
       annotations: initialAnnotations,
       clipboard: null,
       color: '#ffffff',
+      customColor: '#ffffff',
       strokeWidth: 3,
       fontSize: 16,
       markerMode,
@@ -115,14 +101,17 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
       drawingPreview: null,
       isDragging: false,
       isHudOpen: false,
+      connectingPlayerId: null,
       history: { past: [], future: [] },
 
-      setActiveTool: (tool: DrawingTool) => set({ activeTool: tool }),
+      setActiveTool: (tool: DrawingTool) =>
+        set({ activeTool: tool, connectingPlayerId: null }),
       setContinuousDrawing: (continuous: boolean) =>
         set({ continuousDrawing: continuous }),
       toggleContinuousDrawing: () =>
         set((s) => ({ continuousDrawing: !s.continuousDrawing })),
       setColor: (color: string) => set({ color }),
+      setCustomColor: (color: string) => set({ customColor: color }),
       setStrokeWidth: (width: number) => set({ strokeWidth: width }),
       setFontSize: (size: number) => set({ fontSize: size }),
       setMarkerMode: (mode) => set({ markerMode: mode }),
@@ -131,6 +120,8 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
         set({ drawingPreview: preview }),
       setIsDragging: (isDragging: boolean) => set({ isDragging }),
       setIsHudOpen: (isHudOpen: boolean) => set({ isHudOpen }),
+      setConnectingPlayerId: (id: string | null) =>
+        set({ connectingPlayerId: id }),
 
       setSelectedIds: (ids: string[]) => {
         const objs = ids.map(resolveObject);
@@ -179,7 +170,12 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
         });
       },
       clearSelection: () =>
-        set({ selectedObjects: [], selectedIds: [], isHudOpen: false }),
+        set({
+          selectedObjects: [],
+          selectedIds: [],
+          isHudOpen: false,
+          connectingPlayerId: null,
+        }),
 
       ...annotationActions,
       ...pitchActions,

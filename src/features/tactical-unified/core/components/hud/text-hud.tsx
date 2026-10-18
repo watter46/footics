@@ -31,7 +31,7 @@ export function TextHud({ textId }: TextHudProps) {
             }
           }}
           disabled={(text.fontSize ?? 16) <= 10}
-          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 cursor-pointer"
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-[#333333] disabled:opacity-30 cursor-pointer"
           title="文字を小さく"
         >
           <Minus size={11} />
@@ -48,14 +48,14 @@ export function TextHud({ textId }: TextHudProps) {
             }
           }}
           disabled={(text.fontSize ?? 16) >= 64}
-          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 cursor-pointer"
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-[#333333] disabled:opacity-30 cursor-pointer"
           title="文字を大きく"
         >
           <Plus size={11} />
         </button>
       </div>
 
-      <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
 
       {/* 文字色 */}
       <MiniColorPicker
@@ -66,7 +66,7 @@ export function TextHud({ textId }: TextHudProps) {
         title="文字色"
       />
 
-      <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
 
       {/* ロック / ロック解除 */}
       <button
@@ -75,14 +75,14 @@ export function TextHud({ textId }: TextHudProps) {
         className={`p-1 rounded-md transition-colors cursor-pointer ${
           text.locked
             ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'
-            : 'text-white/60 hover:text-white hover:bg-white/10'
+            : 'text-white/60 hover:text-white hover:bg-[#333333]'
         }`}
         title={text.locked ? 'ロック解除' : 'ロック (固定)'}
       >
         {text.locked ? <Lock size={13} /> : <Unlock size={13} />}
       </button>
 
-      <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
 
       {/* 削除ボタン */}
       <button

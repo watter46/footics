@@ -22,7 +22,7 @@ export function ToolbarContinuousLock() {
       className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center shrink-0 ${
         continuousDrawing
           ? 'bg-amber-600 text-white shadow-md shadow-amber-500/30 ring-1 ring-amber-400'
-          : 'text-white/60 hover:text-white hover:bg-white/10'
+          : 'text-white/80 hover:text-white hover:bg-[#333333]'
       }`}
     >
       <Pin size={16} />

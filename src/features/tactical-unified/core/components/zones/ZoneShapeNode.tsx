@@ -91,8 +91,12 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
           keepRatio={false}
           enabledAnchors={[
             'top-left',
+            'top-center',
             'top-right',
+            'middle-right',
+            'middle-left',
             'bottom-left',
+            'bottom-center',
             'bottom-right',
           ]}
           rotateEnabled={false}

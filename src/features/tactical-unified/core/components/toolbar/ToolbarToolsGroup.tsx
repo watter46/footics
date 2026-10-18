@@ -26,8 +26,8 @@ export function ToolbarToolsGroup({ tools }: ToolbarToolsGroupProps) {
             aria-label={label}
             className={`p-1.5 rounded-lg transition-all cursor-pointer shrink-0 ${
               isActive
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-1 ring-blue-400'
-                : 'text-white/60 hover:text-white hover:bg-white/10'
+                ? 'bg-[#0d99ff] text-white shadow-xs'
+                : 'text-white/80 hover:text-white hover:bg-[#333333]'
             }`}
           >
             <Icon size={16} />

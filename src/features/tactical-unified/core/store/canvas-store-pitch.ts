@@ -16,6 +16,23 @@ export const DEFAULT_PITCH_TRANSFORM: PitchTransform = {
   isLocked: false,
 };
 
+export const DEFAULT_BOUNDARY_BOX: BoundaryBox = {
+  x: 0,
+  y: 0,
+  width: 100,
+  height: 100,
+  enabled: true,
+  visible: false,
+  fitTarget: 'canvas',
+};
+
+export const EMPTY_ANNOTATIONS = {
+  arrows: [],
+  zones: [],
+  texts: [],
+  markers: [],
+};
+
 export function createPitchActions(
   set: SetState,
   pushHistory: () => void,

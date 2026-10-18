@@ -44,7 +44,7 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
               aria-label="背番号"
             />
           </div>
-          <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+          <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
         </>
       )}
 
@@ -73,10 +73,10 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
         />
       )}
 
-      <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
 
       {/* 4. スケール変更 */}
-      <div className="flex items-center bg-white/10 rounded-md px-1 py-0.5 gap-0.5">
+      <div className="flex items-center bg-[#2a2a2a] border border-[#383838] rounded-md px-1 py-0.5 gap-0.5">
         <button
           type="button"
           onClick={() => {
@@ -85,7 +85,7 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
               style: { ...player.style, sizeScale: next },
             });
           }}
-          className="p-0.5 rounded text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+          className="p-0.5 rounded text-white/70 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
           title="マーカースケール縮小 (-0.1)"
         >
           <Minus size={11} />
@@ -101,19 +101,19 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
               style: { ...player.style, sizeScale: next },
             });
           }}
-          className="p-0.5 rounded text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+          className="p-0.5 rounded text-white/70 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
           title="マーカースケール拡大 (+0.1)"
         >
           <Plus size={11} />
         </button>
       </div>
 
-      <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
 
       {/* 5. マーカーオプション群 (Vision Cone, Connect Line, 矢印, Spotlight) */}
       <PlayerQuickActions player={player} />
 
-      <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
 
       {/* ロック / ロック解除 */}
       <button
@@ -129,7 +129,7 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
         {player.locked ? <Lock size={13} /> : <Unlock size={13} />}
       </button>
 
-      <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
 
       {/* 削除ボタン */}
       <button

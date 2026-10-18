@@ -145,6 +145,12 @@ export function commitDrawingShape(
       endMarker = 'arrow';
     }
 
+    let finalColor = color || '#ffffff';
+    if (color === '#ffffff' || !color) {
+      if (tool === 'arrow_wavy') finalColor = '#eab308';
+      else if (tool === 'route_line') finalColor = '#38bdf8';
+    }
+
     addArrow({
       id: `arrow-${Date.now()}`,
       annotationType: 'arrow',
@@ -154,7 +160,7 @@ export function commitDrawingShape(
         { x: startX, y: startY },
         { x: currentX, y: currentY },
       ],
-      color,
+      color: finalColor,
       strokeWidth,
       dashArray,
       arrowHead,
@@ -168,6 +174,7 @@ export function commitDrawingShape(
     const minY = Math.min(startY, currentY);
     const width = Math.abs(currentX - startX);
     const height = Math.abs(currentY - startY);
+    const zoneColor = color && color !== '#ffffff' ? color : '#ef4444';
 
     addZone({
       id: `zone-${Date.now()}`,
@@ -184,7 +191,7 @@ export function commitDrawingShape(
         { x: minX + width, y: minY + height },
         { x: minX, y: minY + height },
       ],
-      color: '#f59e0b',
+      color: zoneColor,
       opacity: 0.25,
       strokeWidth: 2,
     });

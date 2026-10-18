@@ -21,7 +21,7 @@ export function ToolbarBoundaryBoxToggle() {
       className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center shrink-0 ${
         isVisible
           ? 'bg-sky-600 text-white shadow-md shadow-sky-500/30 ring-1 ring-sky-400'
-          : 'text-white/60 hover:text-white hover:bg-white/10'
+          : 'text-white/80 hover:text-white hover:bg-[#333333]'
       }`}
     >
       <Crop size={16} />

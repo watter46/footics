@@ -66,6 +66,7 @@ describe('canvas-drawing-factory', () => {
         arrowHead: false,
         dashArray: [],
         endMarker: 'dot',
+        color: '#38bdf8',
       }),
     );
   });
@@ -95,6 +96,7 @@ describe('canvas-drawing-factory', () => {
         arrowHead: true,
         dashArray: [],
         endMarker: 'arrow',
+        color: '#ffffff',
       }),
     );
 
@@ -119,6 +121,7 @@ describe('canvas-drawing-factory', () => {
         arrowHead: true,
         dashArray: [6, 4],
         endMarker: 'arrow',
+        color: '#ffffff',
       }),
     );
 
@@ -143,11 +146,12 @@ describe('canvas-drawing-factory', () => {
         arrowHead: true,
         dashArray: [],
         endMarker: 'arrow',
+        color: '#eab308',
       }),
     );
   });
 
-  it('commitDrawingShape がゾーンを琥珀イエロー(#f59e0b)・透明度0.25でコミットすること', () => {
+  it('commitDrawingShape がゾーンを赤色(#ef4444)・透明度0.25でコミットすること', () => {
     const addArrow = vi.fn<(a: ArrowAnnotation) => void>();
     const addZone = vi.fn<(z: ZoneAnnotation) => void>();
 
@@ -169,7 +173,7 @@ describe('canvas-drawing-factory', () => {
     expect(addZone).toHaveBeenCalledWith(
       expect.objectContaining({
         annotationType: 'zone',
-        color: '#f59e0b',
+        color: '#ef4444',
         opacity: 0.25,
       }),
     );

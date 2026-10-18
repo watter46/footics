@@ -37,6 +37,15 @@ export function DrawingPreviewLayer({
   const cPxX = dp ? (dp.currentX / 100) * width : 0;
   const cPxY = dp ? (dp.currentY / 100) * height : 0;
 
+  const getToolColor = (tool: string) => {
+    if (color && color !== '#ffffff') return color;
+    if (tool === 'route_line') return '#38bdf8';
+    if (tool === 'arrow_wavy') return '#eab308';
+    if (tool === 'zone' || tool === 'zone_circle') return '#ef4444';
+    return '#ffffff';
+  };
+  const previewColor = dp ? getToolColor(dp.tool as string) : color;
+
   return (
     <Layer listening={false}>
       {/* 範囲選択矩形 */}
@@ -61,7 +70,7 @@ export function DrawingPreviewLayer({
           {dp.tool === 'line' && (
             <KonvaLine
               points={[sPxX, sPxY, cPxX, cPxY]}
-              stroke={color}
+              stroke={previewColor}
               strokeWidth={strokeWidth}
               opacity={0.85}
               perfectDrawEnabled={false}
@@ -72,7 +81,7 @@ export function DrawingPreviewLayer({
             <Group>
               <KonvaLine
                 points={[sPxX, sPxY, cPxX, cPxY]}
-                stroke={color}
+                stroke={previewColor}
                 strokeWidth={strokeWidth}
                 opacity={0.85}
                 perfectDrawEnabled={false}
@@ -81,7 +90,7 @@ export function DrawingPreviewLayer({
                 x={sPxX}
                 y={sPxY}
                 radius={6}
-                stroke={color}
+                stroke={previewColor}
                 strokeWidth={2}
                 fill="transparent"
                 perfectDrawEnabled={false}
@@ -90,7 +99,7 @@ export function DrawingPreviewLayer({
                 x={cPxX}
                 y={cPxY}
                 radius={6}
-                stroke={color}
+                stroke={previewColor}
                 strokeWidth={2}
                 fill="transparent"
                 perfectDrawEnabled={false}
@@ -101,9 +110,9 @@ export function DrawingPreviewLayer({
           {(dp.tool === 'arrow_solid' || dp.tool === 'arrow-straight') && (
             <KonvaArrow
               points={[sPxX, sPxY, cPxX, cPxY]}
-              stroke={color}
+              stroke={previewColor}
               strokeWidth={strokeWidth}
-              fill={color}
+              fill={previewColor}
               pointerLength={15}
               pointerWidth={15}
               opacity={0.85}
@@ -114,9 +123,9 @@ export function DrawingPreviewLayer({
           {(dp.tool === 'arrow_dash' || dp.tool === 'arrow-curved') && (
             <KonvaArrow
               points={[sPxX, sPxY, cPxX, cPxY]}
-              stroke={color}
+              stroke={previewColor}
               strokeWidth={strokeWidth}
-              fill={color}
+              fill={previewColor}
               dash={[6, 4]}
               pointerLength={15}
               pointerWidth={15}
@@ -128,9 +137,9 @@ export function DrawingPreviewLayer({
           {dp.tool === 'arrow_wavy' && (
             <KonvaArrow
               points={getWavyPoints(sPxX, sPxY, cPxX, cPxY)}
-              stroke={color}
+              stroke={previewColor}
               strokeWidth={strokeWidth}
-              fill={color}
+              fill={previewColor}
               pointerLength={15}
               pointerWidth={15}
               opacity={0.85}
@@ -144,9 +153,9 @@ export function DrawingPreviewLayer({
               y={(sPxY + cPxY) / 2}
               radiusX={Math.abs(cPxX - sPxX) / 2}
               radiusY={Math.abs(cPxY - sPxY) / 2}
-              fill={color}
+              fill={previewColor}
               opacity={0.25}
-              stroke={color}
+              stroke={previewColor}
               strokeWidth={1.5}
               dash={[4, 4]}
               perfectDrawEnabled={false}
@@ -159,9 +168,9 @@ export function DrawingPreviewLayer({
               y={Math.min(sPxY, cPxY)}
               width={Math.abs(cPxX - sPxX)}
               height={Math.abs(cPxY - sPxY)}
-              fill={color}
+              fill={previewColor}
               opacity={0.25}
-              stroke={color}
+              stroke={previewColor}
               strokeWidth={1.5}
               dash={[4, 4]}
               cornerRadius={4}
@@ -174,7 +183,7 @@ export function DrawingPreviewLayer({
               points={dp.points.map((p, i) =>
                 i % 2 === 0 ? (p / 100) * width : (p / 100) * height,
               )}
-              stroke={color}
+              stroke={previewColor}
               strokeWidth={strokeWidth}
               lineCap="round"
               lineJoin="round"

@@ -22,7 +22,7 @@ export function FixedToolbar({
         transform: 'var(--toolbar-transform, translateY(-50%))',
         ...style,
       }}
-      className={`absolute top-1/2 z-40 max-h-[calc(100%-1.5rem)] overflow-y-auto no-scrollbar flex flex-col items-center gap-1 p-1.5 rounded-xl bg-black/85 backdrop-blur-md border border-white/15 shadow-2xl select-none ${className}`}
+      className={`absolute top-1/2 z-40 max-h-[calc(100%-1.5rem)] overflow-y-auto no-scrollbar flex flex-col items-center gap-1 p-1.5 rounded-xl bg-[#222222] border border-[#383838] shadow-2xl select-none ${className}`}
     >
       {children}
     </div>

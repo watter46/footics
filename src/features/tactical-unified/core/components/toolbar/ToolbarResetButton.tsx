@@ -25,7 +25,7 @@ export function ToolbarResetButton() {
       onClick={handleReset}
       title="Reset all annotations"
       aria-label="Reset annotations"
-      className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-white/10 transition-all cursor-pointer flex items-center justify-center shrink-0"
+      className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-[#333333] transition-all cursor-pointer flex items-center justify-center shrink-0"
     >
       <RotateCcw size={16} />
     </button>

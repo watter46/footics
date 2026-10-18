@@ -34,7 +34,7 @@ export function useCanvasPolygonZone() {
 
       if (!activePolygonId) {
         const id = crypto.randomUUID();
-        const stroke = '#f59e0b';
+        const stroke = color && color !== '#ffffff' ? color : '#ef4444';
         addZone({
           id,
           annotationType: 'zone',

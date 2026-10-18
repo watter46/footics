@@ -34,7 +34,7 @@ export function VisionConeAction({ player }: PlayerQuickActionsProps) {
       className={`p-1 rounded-md transition-all cursor-pointer ${
         hasVisionCone
           ? 'text-sky-300 bg-sky-500/30 ring-1 ring-sky-400/60 shadow-sm'
-          : 'text-white/70 hover:text-white hover:bg-white/10'
+          : 'text-white/80 hover:text-white hover:bg-[#333333]'
       }`}
       title={
         hasVisionCone ? '視野コーンON (クリックでOFF)' : '視野コーンを追加'
@@ -49,37 +49,45 @@ export function ConnectLineAction({ player }: PlayerQuickActionsProps) {
   const markers = useCanvasStore((s) => s.annotations.markers);
   const selectedIds = useCanvasStore((s) => s.selectedIds);
   const updateMarker = useCanvasStore((s) => s.updateMarker);
+  const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
+  const setConnectingPlayerId = useCanvasStore((s) => s.setConnectingPlayerId);
+
   const hasLines = (player.connectLines ?? []).length > 0;
+  const isConnecting = connectingPlayerId === player.id;
+  const lineColor = player.style?.color ?? '#3b82f6';
 
   const toggleConnectLine = () => {
+    if (isConnecting) {
+      setConnectingPlayerId(null);
+      return;
+    }
     if (hasLines) {
       updateMarker(player.id, { connectLines: [] });
+      setConnectingPlayerId(null);
       return;
     }
     const otherMarkers = markers.filter((m) => m.id !== player.id);
     if (otherMarkers.length === 0) return;
 
     const selectedOther = otherMarkers.find((m) => selectedIds.includes(m.id));
-    const target =
-      selectedOther ??
-      otherMarkers.reduce((prev, curr) => {
-        const dPrev = Math.hypot(prev.x - player.x, prev.y - player.y);
-        const dCurr = Math.hypot(curr.x - player.x, curr.y - player.y);
-        return dCurr < dPrev ? curr : prev;
+    if (selectedOther) {
+      updateMarker(player.id, {
+        connectLines: [
+          ...(player.connectLines ?? []),
+          {
+            id: `cl-${Date.now()}`,
+            toPlayerId: selectedOther.id,
+            lineStyle: 'solid',
+            color: lineColor,
+            strokeWidth: 2,
+            visible: true,
+          },
+        ],
       });
+      return;
+    }
 
-    updateMarker(player.id, {
-      connectLines: [
-        {
-          id: `cl-${Date.now()}`,
-          toPlayerId: target.id,
-          lineStyle: 'solid',
-          color: '#38bdf8',
-          strokeWidth: 2,
-          visible: true,
-        },
-      ],
-    });
+    setConnectingPlayerId(player.id);
   };
 
   return (
@@ -87,12 +95,18 @@ export function ConnectLineAction({ player }: PlayerQuickActionsProps) {
       type="button"
       onClick={toggleConnectLine}
       className={`p-1 rounded-md transition-all cursor-pointer ${
-        hasLines
-          ? 'text-emerald-300 bg-emerald-500/30 ring-1 ring-emerald-400/60 shadow-sm'
-          : 'text-white/70 hover:text-white hover:bg-white/10'
+        isConnecting
+          ? 'text-sky-300 bg-sky-500/40 ring-2 ring-sky-400 animate-pulse shadow-md'
+          : hasLines
+            ? 'text-emerald-300 bg-emerald-500/30 ring-1 ring-emerald-400/60 shadow-sm'
+            : 'text-white/80 hover:text-white hover:bg-[#333333]'
       }`}
       title={
-        hasLines ? 'コネクトラインON (クリックでOFF)' : 'コネクトラインを追加'
+        isConnecting
+          ? '接続先マーカーをクリックしてください (クリックで解除)'
+          : hasLines
+            ? 'コネクトラインON (クリックでOFF)'
+            : 'コネクトラインを追加 (相手マーカー選択)'
       }
     >
       <Link size={13} />
@@ -128,7 +142,7 @@ export function ArrowActionGroup({ player }: PlayerQuickActionsProps) {
       <button
         type="button"
         onClick={() => createArrow(false)}
-        className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+        className="p-1 rounded-md text-white/80 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
         title="実線矢印を追加 (パス/シュート)"
       >
         <MoveRight size={13} />
@@ -136,7 +150,7 @@ export function ArrowActionGroup({ player }: PlayerQuickActionsProps) {
       <button
         type="button"
         onClick={() => createArrow(true)}
-        className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+        className="p-1 rounded-md text-white/80 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
         title="点線矢印を追加 (フリーラン/移動)"
       >
         <DashedArrowIcon size={13} />
@@ -168,7 +182,7 @@ export function SpotlightAction({ player }: PlayerQuickActionsProps) {
       className={`p-1 rounded-md transition-all cursor-pointer ${
         hasFocus
           ? 'text-amber-300 bg-amber-500/30 ring-1 ring-amber-400/60 shadow-sm'
-          : 'text-white/70 hover:text-white hover:bg-white/10'
+          : 'text-white/80 hover:text-white hover:bg-[#333333]'
       }`}
       title={
         hasFocus ? 'スポットライトON (クリックでOFF)' : 'スポットライトを追加'

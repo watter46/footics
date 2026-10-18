@@ -1,6 +1,8 @@
 'use client';
 
+import { Pipette } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useCanvasStore } from '../../hooks/use-canvas-store';
 
 export const HUD_COLOR_PALETTE = [
   '#ffffff',
@@ -30,6 +32,8 @@ export function MiniColorPicker({
 }: MiniColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const customColor = useCanvasStore((s) => s.customColor);
+  const setCustomColor = useCanvasStore((s) => s.setCustomColor);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -71,7 +75,7 @@ export function MiniColorPicker({
           <rect width="20" height="20" fill={normalizedValue} />
         </svg>
         {isRing && (
-          <div className="absolute w-1.5 h-1.5 rounded-full bg-neutral-900 pointer-events-none" />
+          <div className="absolute w-1.5 h-1.5 rounded-full bg-[#222222] pointer-events-none" />
         )}
       </button>
 
@@ -80,13 +84,13 @@ export function MiniColorPicker({
           role="dialog"
           aria-label="カラーパレット"
           tabIndex={-1}
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#1b1b1b] border border-white/20 rounded-xl shadow-2xl z-50 flex flex-col gap-1.5 w-44"
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2.5 bg-[#222222] border border-[#383838] rounded-xl shadow-2xl z-50 flex flex-col gap-2 w-48"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           style={{ colorScheme: 'only light' }}
         >
-          <div className="grid grid-cols-5 gap-1">
+          <div className="grid grid-cols-5 gap-1.5">
             {HUD_COLOR_PALETTE.map((c) => {
               const isSelected =
                 normalizedValue.toLowerCase() === c.toLowerCase();
@@ -101,7 +105,7 @@ export function MiniColorPicker({
                   }}
                   className={`w-6 h-6 rounded-md border p-0.5 cursor-pointer transition-transform hover:scale-105 flex items-center justify-center relative overflow-hidden ${
                     isSelected
-                      ? 'ring-2 ring-sky-400 border-white scale-105 shadow-md z-10'
+                      ? 'ring-2 ring-[#0d99ff] border-white scale-105 shadow-md z-10'
                       : isWhite
                         ? 'border-white/60 hover:border-white'
                         : 'border-white/10 hover:border-white/30'
@@ -123,30 +127,42 @@ export function MiniColorPicker({
               );
             })}
           </div>
-          <div className="flex items-center justify-between pt-1 border-t border-white/10 px-0.5">
-            <span className="text-[10px] text-white/50">カスタム</span>
-            <label
-              className="relative w-5 h-5 rounded border border-white/30 cursor-pointer overflow-hidden flex items-center justify-center"
-              style={{
-                colorScheme: 'only light',
-                backgroundImage: `linear-gradient(${normalizedValue}, ${normalizedValue})`,
-              }}
-              title="カラーピッカー"
-            >
-              <svg
-                className="w-full h-full block pointer-events-none"
-                viewBox="0 0 20 20"
-                style={{ colorScheme: 'only light' }}
+          <div className="pt-2 border-t border-[#383838] flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 p-1.5 rounded-lg bg-[#2a2a2a] border border-[#383838] hover:border-[#4a4a4a] transition-colors relative">
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(customColor);
+                  setIsOpen(false);
+                }}
+                title={`カスタム色 (${customColor}) を適用`}
+                className="flex items-center gap-2 flex-1 text-left cursor-pointer overflow-hidden"
               >
-                <rect width="20" height="20" rx="2" fill={normalizedValue} />
-              </svg>
-              <input
-                type="color"
-                value={normalizedValue}
-                onChange={(e) => onChange(e.target.value)}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              />
-            </label>
+                <div
+                  className="w-5 h-5 rounded border border-white/20 shrink-0"
+                  style={{ backgroundColor: customColor }}
+                />
+                <span className="font-mono text-[11px] uppercase text-white/90 truncate">
+                  {customColor}
+                </span>
+              </button>
+              <label
+                title="カラーピッカー"
+                className="relative p-1 rounded hover:bg-[#383838] cursor-pointer text-white/70 hover:text-white shrink-0 flex items-center justify-center"
+              >
+                <Pipette size={14} />
+                <input
+                  type="color"
+                  value={customColor}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomColor(val);
+                    onChange(val);
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+              </label>
+            </div>
           </div>
         </div>
       )}

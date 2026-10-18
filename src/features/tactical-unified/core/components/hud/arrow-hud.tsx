@@ -31,13 +31,13 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
             dashArray: isDashed ? [] : [6, 4],
           });
         }}
-        className="p-1 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+        className="p-1 rounded-md text-white/70 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
         title={isDashed ? '点線 (実線に切替)' : '実線 (点線に切替)'}
       >
         {isDashed ? <DashedLineIcon size={14} /> : <SolidLineIcon size={14} />}
       </button>
 
-      <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
 
       {/* 線の太さ */}
       <div className="flex items-center gap-0.5">
@@ -50,7 +50,7 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
             }
           }}
           disabled={(arrow.strokeWidth ?? 3) <= 1}
-          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 cursor-pointer"
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-[#333333] disabled:opacity-30 cursor-pointer"
           title="線を細く"
         >
           <Minus size={11} />
@@ -67,14 +67,14 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
             }
           }}
           disabled={(arrow.strokeWidth ?? 3) >= 10}
-          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 cursor-pointer"
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-[#333333] disabled:opacity-30 cursor-pointer"
           title="線を太く"
         >
           <Plus size={11} />
         </button>
       </div>
 
-      <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
 
       {/* 線の色 */}
       <MiniColorPicker
@@ -85,7 +85,7 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
         title="線の色"
       />
 
-      <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
 
       {/* ロック / ロック解除 */}
       <button
@@ -94,14 +94,14 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
         className={`p-1 rounded-md transition-colors cursor-pointer ${
           arrow.locked
             ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'
-            : 'text-white/60 hover:text-white hover:bg-white/10'
+            : 'text-white/60 hover:text-white hover:bg-[#333333]'
         }`}
         title={arrow.locked ? 'ロック解除' : 'ロック (固定)'}
       >
         {arrow.locked ? <Lock size={13} /> : <Unlock size={13} />}
       </button>
 
-      <div className="w-px h-3.5 bg-white/15 mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
 
       {/* 削除ボタン */}
       <button
