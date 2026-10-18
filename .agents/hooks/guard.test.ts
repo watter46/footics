@@ -430,4 +430,202 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(evaluateCommand('bun run ai:preflight').decision).toBe('allow');
     });
   });
+
+  describe('6. Agent Access Guard - Role-based file write restrictions', () => {
+    const fs = require('fs');
+
+    function makeTranscript(file: string, firstLineObj: any) {
+      fs.writeFileSync(file, `${JSON.stringify(firstLineObj)}\n`);
+    }
+
+    test('Planner (parent session starting with USER_INPUT) can write tasks and .agents but not source code', () => {
+      const transcript = '/tmp/test-planner-access.jsonl';
+      makeTranscript(transcript, {
+        step_index: 0,
+        type: 'USER_INPUT',
+        content: 'hello',
+      });
+
+      // tasks/** is allowed
+      expect(
+        evaluatePayload({
+          toolCall: {
+            name: 'write_to_file',
+            args: { TargetFile: 'tasks/TASK-003.md' },
+          },
+          transcriptPath: transcript,
+        }).decision,
+      ).toBe('allow');
+
+      // .agents/** is allowed
+      expect(
+        evaluatePayload({
+          toolCall: {
+            name: 'write_to_file',
+            args: { TargetFile: '.agents/hooks/guard/agent-access-guard.ts' },
+          },
+          transcriptPath: transcript,
+        }).decision,
+      ).toBe('allow');
+
+      // src/** is denied
+      const resSrc = evaluatePayload({
+        toolCall: {
+          name: 'replace_file_content',
+          args: { TargetFile: 'src/features/foo.ts' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resSrc.decision).toBe('deny');
+      expect(resSrc.reason).toContain('Planner is prohibited');
+
+      // extension/** is denied
+      const resExt = evaluatePayload({
+        toolCall: {
+          name: 'write_to_file',
+          args: { TargetFile: 'extension/src/content.ts' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resExt.decision).toBe('deny');
+
+      // tests/** is denied
+      const resTest = evaluatePayload({
+        toolCall: {
+          name: 'write_to_file',
+          args: { TargetFile: 'tests/unit/foo.test.ts' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resTest.decision).toBe('deny');
+
+      try {
+        fs.unlinkSync(transcript);
+      } catch (_e) {}
+    });
+
+    test('Reviewer (starting with REVIEW_REQUEST) can only write tasks/**', () => {
+      const transcript = '/tmp/test-reviewer-access.jsonl';
+      makeTranscript(transcript, {
+        step_index: 0,
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "REVIEW_REQUEST"\ntarget_file: "tasks/TASK-001.md"',
+      });
+
+      // tasks/** is allowed
+      expect(
+        evaluatePayload({
+          toolCall: {
+            name: 'write_to_file',
+            args: { TargetFile: 'tasks/TASK-001.md' },
+          },
+          transcriptPath: transcript,
+        }).decision,
+      ).toBe('allow');
+
+      // src/** is denied
+      const resSrc = evaluatePayload({
+        toolCall: {
+          name: 'replace_file_content',
+          args: { TargetFile: 'src/features/foo.ts' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resSrc.decision).toBe('deny');
+      expect(resSrc.reason).toContain('Reviewer is prohibited');
+
+      // .agents/** is denied
+      const resAgents = evaluatePayload({
+        toolCall: {
+          name: 'write_to_file',
+          args: { TargetFile: '.agents/rules/foo.md' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resAgents.decision).toBe('deny');
+
+      try {
+        fs.unlinkSync(transcript);
+      } catch (_e) {}
+    });
+
+    test('Worker (starting with TASK_ASSIGN) can write src, extension, tests, tasks but not .agents or package.json', () => {
+      const transcript = '/tmp/test-worker-access.jsonl';
+      makeTranscript(transcript, {
+        step_index: 0,
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "TASK_ASSIGN"\ntarget_file: "tasks/TASK-001.md"',
+      });
+
+      // src/** allowed
+      expect(
+        evaluatePayload({
+          toolCall: {
+            name: 'write_to_file',
+            args: { TargetFile: 'src/foo.ts' },
+          },
+          transcriptPath: transcript,
+        }).decision,
+      ).toBe('allow');
+
+      // extension/** allowed
+      expect(
+        evaluatePayload({
+          toolCall: {
+            name: 'write_to_file',
+            args: { TargetFile: 'extension/foo.ts' },
+          },
+          transcriptPath: transcript,
+        }).decision,
+      ).toBe('allow');
+
+      // tests/** allowed
+      expect(
+        evaluatePayload({
+          toolCall: {
+            name: 'write_to_file',
+            args: { TargetFile: 'tests/foo.test.ts' },
+          },
+          transcriptPath: transcript,
+        }).decision,
+      ).toBe('allow');
+
+      // tasks/** allowed
+      expect(
+        evaluatePayload({
+          toolCall: {
+            name: 'replace_file_content',
+            args: { TargetFile: 'tasks/TASK-001.md' },
+          },
+          transcriptPath: transcript,
+        }).decision,
+      ).toBe('allow');
+
+      // .agents/** denied
+      const resAgents = evaluatePayload({
+        toolCall: {
+          name: 'write_to_file',
+          args: { TargetFile: '.agents/rules/foo.md' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resAgents.decision).toBe('deny');
+      expect(resAgents.reason).toContain('modifying agent definitions');
+
+      // package.json denied
+      const resPkg = evaluatePayload({
+        toolCall: {
+          name: 'replace_file_content',
+          args: { TargetFile: 'package.json' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resPkg.decision).toBe('deny');
+      expect(resPkg.reason).toContain('explicit user confirmation');
+
+      try {
+        fs.unlinkSync(transcript);
+      } catch (_e) {}
+    });
+  });
 });

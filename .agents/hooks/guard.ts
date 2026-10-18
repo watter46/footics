@@ -1,3 +1,4 @@
+import { checkAgentAccessGuard } from './guard/agent-access-guard';
 import { checkGateguard } from './guard/gateguard-filter';
 import { parseExecutable, splitCommands, tokenize } from './guard/parser';
 import { checkSafetyGuard } from './guard/safety-filter';
@@ -126,6 +127,10 @@ function evaluatePayload(payload: any): any {
     (payload.toolCall.name === 'replace_file_content' ||
       payload.toolCall.name === 'write_to_file')
   ) {
+    const accessRes = checkAgentAccessGuard(payload);
+    if (accessRes && accessRes.decision === 'deny') {
+      return accessRes;
+    }
     return checkGateguard(payload);
   }
 
