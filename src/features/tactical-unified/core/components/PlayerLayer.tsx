@@ -8,6 +8,7 @@ import { useCallback, useRef } from 'react';
 import { Layer } from 'react-konva';
 import type { Player } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
+import { updateAttachedArrowPositions } from './annotations/arrow-drag-updater';
 import { PlayerConnectingGuide } from './PlayerConnectingGuide';
 import {
   PlayerConnectLines,
@@ -27,6 +28,7 @@ export function PlayerLayer({
   nodesRegistryRef,
 }: PlayerLayerProps): ReactNode {
   const markers = useCanvasStore((s) => s.annotations.markers);
+  const arrows = useCanvasStore((s) => s.annotations.arrows);
   const markerMode = useCanvasStore((s) => s.markerMode);
   const selectedIds = useCanvasStore((s) => s.selectedIds);
   const activeTool = useCanvasStore((s) => s.activeTool);
@@ -44,18 +46,33 @@ export function PlayerLayer({
 
   const handleMarkerDragMove = useCallback(
     (e: KonvaEventObject<DragEvent>, markerId: string) => {
+      const curX = e.target.x();
+      const curY = e.target.y();
       updateConnectLinePositions(
         connectLineNodesRef.current,
         markers,
         markerId,
-        e.target.x(),
-        e.target.y(),
+        curX,
+        curY,
+        width,
+        height,
+      );
+      const reg = nodesRegistryRef?.current as
+        | { arrowNodes?: Map<string, any> }
+        | undefined;
+      updateAttachedArrowPositions(
+        reg?.arrowNodes,
+        arrows,
+        markers,
+        markerId,
+        curX,
+        curY,
         width,
         height,
       );
       e.target.getLayer()?.batchDraw();
     },
-    [markers, width, height],
+    [markers, arrows, width, height, nodesRegistryRef],
   );
 
   const handleMarkerClick = useCallback(
@@ -73,7 +90,7 @@ export function PlayerLayer({
                 id: `cl-${Date.now()}`,
                 toPlayerId: markerId,
                 lineStyle: 'solid',
-                color: src.style?.color ?? '#3b82f6',
+                color: src.style?.color ?? '#034694',
                 strokeWidth: 2,
                 visible: true,
               },
@@ -99,7 +116,7 @@ export function PlayerLayer({
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>, marker: Player) => {
       setIsDragging(false);
-      setIsHudOpen(false);
+      setIsHudOpen(true);
       const nx = Math.max(0, Math.min(100, (e.target.x() / width) * 100));
       const ny = Math.max(0, Math.min(100, (e.target.y() / height) * 100));
       updateMarker(marker.id, { x: nx, y: ny });

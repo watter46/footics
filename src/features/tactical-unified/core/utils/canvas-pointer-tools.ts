@@ -70,13 +70,13 @@ export function handleToolPointerDown(
         ? createRingMarker(
             normPos.x,
             normPos.y,
-            '#3b82f6',
+            '#034694',
             `${markers.length + 1}`,
           )
         : create2DPlayerMarker(
             normPos.x,
             normPos.y,
-            '#3b82f6',
+            '#034694',
             `${markers.length + 1}`,
           );
     addMarker(marker);

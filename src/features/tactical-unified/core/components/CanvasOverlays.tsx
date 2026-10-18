@@ -10,6 +10,7 @@ import { PitchInlineTextEditor } from './PitchInlineTextEditor';
 export interface CanvasOverlaysProps {
   vRect: { width: number; height: number };
   editingText: TextAnnotation | null;
+  nodesRegistryRef?: React.MutableRefObject<unknown>;
   onSaveText: (id: string, content: string) => void;
   onRemoveText: (id: string) => void;
   onCloseText: () => void;
@@ -18,6 +19,7 @@ export interface CanvasOverlaysProps {
 export function CanvasOverlays({
   vRect,
   editingText,
+  nodesRegistryRef,
   onSaveText,
   onRemoveText,
   onCloseText,
@@ -43,7 +45,7 @@ export function CanvasOverlays({
         </div>
       )}
       <BoundaryBoxOverlay width={vRect.width} height={vRect.height} />
-      <ContextHud stageSize={stageSize} />
+      <ContextHud stageSize={stageSize} nodesRegistryRef={nodesRegistryRef} />
       <BoundaryBoxHud stageSize={stageSize} />
       <PitchInlineTextEditor
         editingText={editingText}

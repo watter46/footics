@@ -6,6 +6,7 @@ import { useCanvasStore } from '../hooks/use-canvas-store';
 import {
   ArrowHud,
   ConnectLineHud,
+  computeClampedHudPos,
   PlayerHud,
   TextHud,
   useHudPosition,
@@ -26,33 +27,7 @@ export function ContextHud({
   const hudRef = useRef<HTMLDivElement>(null);
   const selectedObjects = useCanvasStore((s) => s.selectedObjects);
   const activeTool = useCanvasStore((s) => s.activeTool);
-  const isDragging = useCanvasStore((s) => s.isDragging);
   const isHudOpen = useCanvasStore((s) => s.isHudOpen);
-
-  useEffect(() => {
-    const reg = nodesRegistryRef?.current as
-      | {
-          stage?: {
-            on: (event: string, fn: () => void) => void;
-            off: (event: string, fn: () => void) => void;
-          };
-        }
-      | undefined;
-    const stage = reg?.stage;
-    if (!stage) return;
-    const handleDragStart = () => {
-      if (hudRef.current) hudRef.current.style.opacity = '0';
-    };
-    const handleDragEnd = () => {
-      if (hudRef.current) hudRef.current.style.opacity = '1';
-    };
-    stage.on('dragstart', handleDragStart);
-    stage.on('dragend', handleDragEnd);
-    return () => {
-      stage.off('dragstart', handleDragStart);
-      stage.off('dragend', handleDragEnd);
-    };
-  }, [nodesRegistryRef]);
 
   const selected =
     selectedObjects.length === 1 ? selectedObjects[0] : undefined;
@@ -63,13 +38,111 @@ export function ContextHud({
     nodesRegistryRef,
   });
 
-  if (
-    !selected ||
-    activeTool === 'eraser' ||
-    isDragging ||
-    !isHudOpen ||
-    !position
-  ) {
+  useEffect(() => {
+    const reg = nodesRegistryRef?.current as
+      | {
+          stage?: {
+            on: (event: string, fn: () => void) => void;
+            off: (event: string, fn: () => void) => void;
+          };
+          playerNodes?: Map<
+            string,
+            {
+              getClientRect: () => {
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+              };
+            }
+          >;
+          arrowNodes?: Map<
+            string,
+            {
+              node?: {
+                getClientRect: () => {
+                  x: number;
+                  y: number;
+                  width: number;
+                  height: number;
+                };
+              };
+            }
+          >;
+          zoneNodes?: Map<
+            string,
+            {
+              getClientRect: () => {
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+              };
+            }
+          >;
+          textNodes?: Map<
+            string,
+            {
+              getClientRect: () => {
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+              };
+            }
+          >;
+        }
+      | undefined;
+    const stage = reg?.stage;
+    if (!stage || !selected) return;
+
+    const handleDragMove = () => {
+      if (!hudRef.current) return;
+      let node:
+        | {
+            getClientRect: () => {
+              x: number;
+              y: number;
+              width: number;
+              height: number;
+            };
+          }
+        | undefined;
+      if (selected.kind === 'player') node = reg.playerNodes?.get(selected.id);
+      else if (selected.kind === 'arrow')
+        node = reg.arrowNodes?.get(selected.id)?.node;
+      else if (selected.kind === 'zone') node = reg.zoneNodes?.get(selected.id);
+      else if (selected.kind === 'text') node = reg.textNodes?.get(selected.id);
+
+      if (!node) return;
+      try {
+        const rect = node.getClientRect();
+        const targetX = rect.x + rect.width / 2;
+        const targetY = rect.y;
+        const targetHeight = rect.height || 30;
+        const next = computeClampedHudPos(
+          targetX,
+          targetY,
+          targetHeight,
+          stageSize,
+        );
+        hudRef.current.style.left = `${next.clampedX}px`;
+        hudRef.current.style.top = `${next.clampedY}px`;
+        hudRef.current.style.transform = next.isBelow
+          ? 'translate(-50%, 0)'
+          : 'translate(-50%, -100%)';
+      } catch {
+        // fallback
+      }
+    };
+
+    stage.on('dragmove', handleDragMove);
+    return () => {
+      stage.off('dragmove', handleDragMove);
+    };
+  }, [nodesRegistryRef, selected, stageSize]);
+
+  if (!selected || activeTool === 'eraser' || !isHudOpen || !position) {
     return null;
   }
 

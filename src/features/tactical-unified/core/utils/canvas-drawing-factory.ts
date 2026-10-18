@@ -9,7 +9,7 @@ import type { DrawingPreviewState } from '../types';
 export function createRingMarker(
   x: number,
   y: number,
-  color = '#3b82f6',
+  color = '#034694',
   _shirtNo = '',
 ): Player {
   return {
@@ -21,7 +21,7 @@ export function createRingMarker(
     shirtNo: '',
     style: {
       markerType: 'ring',
-      color: color || '#3b82f6',
+      color: color || '#034694',
       strokeColor: '#ffffff',
       strokeWidth: 2,
       sizeScale: 1.0,
@@ -38,7 +38,7 @@ export function createRingMarker(
 export function create2DPlayerMarker(
   x: number,
   y: number,
-  color = '#3b82f6',
+  color = '#034694',
   shirtNo: string,
 ): Player {
   return {
@@ -52,7 +52,7 @@ export function create2DPlayerMarker(
     position: 'SUB',
     style: {
       markerType: 'circle',
-      color: color || '#3b82f6',
+      color: color || '#034694',
       strokeColor: '#ffffff',
       strokeWidth: 2,
       sizeScale: 1.0,

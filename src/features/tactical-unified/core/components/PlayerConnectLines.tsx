@@ -61,7 +61,7 @@ export function PlayerConnectLines({
                     ? [2, 3]
                     : undefined;
               const isClSelected = selectedIds.includes(cl.id);
-              const lineColor = cl.color || p.style?.color || '#3b82f6';
+              const lineColor = cl.color || p.style?.color || '#034694';
               const strokeWidth = cl.strokeWidth ?? 2;
               return (
                 <Fragment key={cl.id}>

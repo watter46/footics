@@ -3,6 +3,7 @@
 import { Eye, Link, MoveRight, Sparkles } from 'lucide-react';
 import type { Player } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../../hooks/use-canvas-store';
+import { WavyArrowIcon } from '../toolbar/core-toolbar-icons';
 import { DashedArrowIcon } from './hud-icons';
 
 export interface PlayerQuickActionsProps {
@@ -11,7 +12,7 @@ export interface PlayerQuickActionsProps {
 
 export function VisionConeAction({ player }: PlayerQuickActionsProps) {
   const updateMarker = useCanvasStore((s) => s.updateMarker);
-  const hasVisionCone = player.visionCone?.visible ?? false;
+  const visible = player.visionCone?.visible ?? false;
 
   const toggleVisionCone = () => {
     updateMarker(player.id, {
@@ -20,9 +21,9 @@ export function VisionConeAction({ player }: PlayerQuickActionsProps) {
         angleRad: player.visionCone?.angleRad ?? 0,
         spreadRad: player.visionCone?.spreadRad ?? (60 * Math.PI) / 180,
         radius: player.visionCone?.radius ?? 13,
-        color: player.visionCone?.color ?? '#3b82f6',
+        color: player.visionCone?.color ?? '#034694',
         opacity: player.visionCone?.opacity ?? 0.3,
-        visible: !hasVisionCone,
+        visible: !visible,
       },
     });
   };
@@ -32,18 +33,14 @@ export function VisionConeAction({ player }: PlayerQuickActionsProps) {
       type="button"
       onClick={toggleVisionCone}
       style={
-        hasVisionCone
-          ? { backgroundColor: '#0d99ff', color: '#ffffff' }
-          : undefined
+        visible ? { backgroundColor: '#0d99ff', color: '#ffffff' } : undefined
       }
       className={`p-1 rounded-md transition-all cursor-pointer ${
-        hasVisionCone
+        visible
           ? 'bg-[#0d99ff] text-white ring-1 ring-sky-400 shadow-sm'
           : 'text-white/80 hover:text-white hover:bg-[#333333]'
       }`}
-      title={
-        hasVisionCone ? '視野コーンON (クリックでOFF)' : '視野コーンを追加'
-      }
+      title={visible ? '視野コーンON (クリックでOFF)' : '視野コーンを追加'}
     >
       <Eye size={13} />
     </button>
@@ -59,21 +56,15 @@ export function ConnectLineAction({ player }: PlayerQuickActionsProps) {
 
   const hasLines = (player.connectLines ?? []).length > 0;
   const isConnecting = connectingPlayerId === player.id;
-  const lineColor = player.style?.color ?? '#3b82f6';
 
   const toggleConnectLine = () => {
-    if (isConnecting) {
-      setConnectingPlayerId(null);
-      return;
-    }
+    if (isConnecting) return setConnectingPlayerId(null);
     if (hasLines) {
       updateMarker(player.id, { connectLines: [] });
-      setConnectingPlayerId(null);
-      return;
+      return setConnectingPlayerId(null);
     }
     const otherMarkers = markers.filter((m) => m.id !== player.id);
     if (otherMarkers.length === 0) return;
-
     const selectedOther = otherMarkers.find((m) => selectedIds.includes(m.id));
     if (selectedOther) {
       updateMarker(player.id, {
@@ -83,7 +74,7 @@ export function ConnectLineAction({ player }: PlayerQuickActionsProps) {
             id: `cl-${Date.now()}`,
             toPlayerId: selectedOther.id,
             lineStyle: 'solid',
-            color: lineColor,
+            color: player.style?.color ?? '#034694',
             strokeWidth: 2,
             visible: true,
           },
@@ -91,21 +82,20 @@ export function ConnectLineAction({ player }: PlayerQuickActionsProps) {
       });
       return;
     }
-
     setConnectingPlayerId(player.id);
   };
+
+  const btnStyle = isConnecting
+    ? { backgroundColor: '#0d99ff', color: '#ffffff' }
+    : hasLines
+      ? { backgroundColor: '#10b981', color: '#ffffff' }
+      : undefined;
 
   return (
     <button
       type="button"
       onClick={toggleConnectLine}
-      style={
-        isConnecting
-          ? { backgroundColor: '#0d99ff', color: '#ffffff' }
-          : hasLines
-            ? { backgroundColor: '#10b981', color: '#ffffff' }
-            : undefined
-      }
+      style={btnStyle}
       className={`p-1 rounded-md transition-all cursor-pointer ${
         isConnecting
           ? 'bg-[#0d99ff] text-white animate-pulse shadow-md'
@@ -130,20 +120,24 @@ export function ArrowActionGroup({ player }: PlayerQuickActionsProps) {
   const addArrow = useCanvasStore((s) => s.addArrow);
   const dir = player.team === 'away' ? -15 : 15;
 
-  const createArrow = (isDashed: boolean) => {
+  const addPlayerArrow = (
+    arrowType: 'pass' | 'move' | 'dribble',
+    color: string,
+    dashArray: number[],
+  ) => {
     addArrow({
       id: `arrow-${Date.now()}`,
       annotationType: 'arrow',
-      arrowType: isDashed ? 'move' : 'pass',
+      arrowType,
       curveType: 'straight',
       sourcePlayerId: player.id,
       points: [
         { x: player.x, y: player.y },
         { x: player.x + dir, y: player.y },
       ],
-      color: '#ffffff',
+      color,
       strokeWidth: 3,
-      dashArray: isDashed ? [6, 4] : [],
+      dashArray,
       arrowHead: true,
       endMarker: 'arrow',
     });
@@ -153,7 +147,7 @@ export function ArrowActionGroup({ player }: PlayerQuickActionsProps) {
     <>
       <button
         type="button"
-        onClick={() => createArrow(false)}
+        onClick={() => addPlayerArrow('pass', '#ffffff', [])}
         className="p-1 rounded-md text-white/80 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
         title="実線矢印を追加 (パス/シュート)"
       >
@@ -161,11 +155,19 @@ export function ArrowActionGroup({ player }: PlayerQuickActionsProps) {
       </button>
       <button
         type="button"
-        onClick={() => createArrow(true)}
+        onClick={() => addPlayerArrow('move', '#ffffff', [6, 4])}
         className="p-1 rounded-md text-white/80 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
         title="点線矢印を追加 (フリーラン/移動)"
       >
         <DashedArrowIcon size={13} />
+      </button>
+      <button
+        type="button"
+        onClick={() => addPlayerArrow('dribble', '#eab308', [])}
+        className="p-1 rounded-md text-white/80 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
+        title="波線矢印を追加 (ドリブル/波線)"
+      >
+        <WavyArrowIcon size={13} />
       </button>
     </>
   );

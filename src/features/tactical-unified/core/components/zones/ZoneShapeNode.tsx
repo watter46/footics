@@ -22,7 +22,7 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
     rotation,
     transformerRef,
     setShapeNodeRef,
-    handleDragEnd,
+    handleDragEnd: rawHandleDragEnd,
     boundBoxFunc,
     handleTransformEnd,
   } = useZoneShape(props);
@@ -38,6 +38,12 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
 
   const handleDragMove = () => {
     transformerRef.current?.getLayer()?.batchDraw();
+  };
+
+  const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
+    rawHandleDragEnd(e);
+    setIsDragging(false);
+    setIsHudOpen(true);
   };
 
   return (

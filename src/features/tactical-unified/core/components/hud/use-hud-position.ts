@@ -16,6 +16,28 @@ export interface HudPosition {
   isBelow: boolean;
 }
 
+export function computeClampedHudPos(
+  targetX: number,
+  targetY: number,
+  targetHeight: number,
+  stageSize: { width: number; height: number },
+): HudPosition {
+  const clampedX = Math.max(160, Math.min(stageSize.width - 160, targetX));
+  const MARGIN = 32;
+  const HUD_HEIGHT = 44;
+  const PADDING = 10;
+
+  const targetTop = targetY - targetHeight / 2;
+  const targetBottom = targetY + targetHeight / 2;
+
+  const isBelow = targetTop - MARGIN - HUD_HEIGHT < PADDING;
+  const clampedY = isBelow
+    ? Math.min(stageSize.height - HUD_HEIGHT - PADDING, targetBottom + MARGIN)
+    : Math.max(HUD_HEIGHT + PADDING, targetTop - MARGIN);
+
+  return { clampedX, clampedY, isBelow };
+}
+
 export function useHudPosition({
   selected,
   stageSize,
@@ -45,18 +67,5 @@ export function useHudPosition({
 
   if (!target) return null;
 
-  const clampedX = Math.max(160, Math.min(stageSize.width - 160, target.x));
-  const MARGIN = 32;
-  const HUD_HEIGHT = 44;
-  const PADDING = 10;
-
-  const targetTop = target.y - target.height / 2;
-  const targetBottom = target.y + target.height / 2;
-
-  const isBelow = targetTop - MARGIN - HUD_HEIGHT < PADDING;
-  const clampedY = isBelow
-    ? Math.min(stageSize.height - HUD_HEIGHT - PADDING, targetBottom + MARGIN)
-    : Math.max(HUD_HEIGHT + PADDING, targetTop - MARGIN);
-
-  return { clampedX, clampedY, isBelow };
+  return computeClampedHudPos(target.x, target.y, target.height, stageSize);
 }

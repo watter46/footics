@@ -21,6 +21,7 @@ export {
 } from './player-quick-actions';
 export { TextHud, type TextHudProps } from './text-hud';
 export {
+  computeClampedHudPos,
   type HudPosition,
   type UseHudPositionProps,
   useHudPosition,

@@ -33,9 +33,15 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
     renderPts,
     vertexPairs,
     handleGroupDragStart,
-    handleGroupDragEnd,
+    handleGroupDragEnd: rawHandleGroupDragEnd,
     setLineRef,
   } = useZonePolygon(props);
+
+  const handleGroupDragEnd = (e: KonvaEventObject<DragEvent>) => {
+    rawHandleGroupDragEnd(e);
+    setIsDragging(false);
+    setIsHudOpen(true);
+  };
 
   return (
     <Group

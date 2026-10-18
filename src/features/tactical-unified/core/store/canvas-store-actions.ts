@@ -1,5 +1,9 @@
 import type { StoreApi } from 'zustand/vanilla';
 import type { AnnotationsData, CanvasActions, CanvasStore } from '../types';
+import {
+  cascadeRemoveMarker,
+  cascadeRemoveSelected,
+} from './canvas-store-cascade';
 import { eraseAnnotationsAtPoint } from './canvas-store-eraser';
 
 type SetState = StoreApi<CanvasStore>['setState'];
@@ -139,10 +143,7 @@ export function createAnnotationActions(
     removeMarker: (id) => {
       pushHistory();
       set((s) => ({
-        annotations: {
-          ...s.annotations,
-          markers: removeItem(s.annotations.markers, id),
-        },
+        annotations: cascadeRemoveMarker(s.annotations, id),
       }));
     },
     removeSelected: () => {
@@ -155,19 +156,7 @@ export function createAnnotationActions(
       if (idSet.size === 0) return;
       pushHistory();
       set({
-        annotations: {
-          arrows: annotations.arrows.filter((a) => !idSet.has(a.id)),
-          zones: annotations.zones.filter((z) => !idSet.has(z.id)),
-          texts: annotations.texts.filter((t) => !idSet.has(t.id)),
-          markers: annotations.markers
-            .filter((m) => !idSet.has(m.id))
-            .map((m) => ({
-              ...m,
-              connectLines: (m.connectLines ?? []).filter(
-                (cl) => !idSet.has(cl.id),
-              ),
-            })),
-        },
+        annotations: cascadeRemoveSelected(annotations, idSet),
         selectedIds: [],
         selectedObjects: [],
       });

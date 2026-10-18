@@ -105,6 +105,18 @@ export const CanvasStageContainer = forwardRef<
     [exportPng, copyToClipboard, undo, redo, canUndo, canRedo],
   );
 
+  const nodesRegistryRef = useRef({
+    playerNodes: new Map<string, Konva.Group>(),
+    arrowNodes: new Map<string, unknown>(),
+    zoneNodes: new Map<string, Konva.Shape>(),
+    textNodes: new Map<string, Konva.Text>(),
+    stage: null as Konva.Stage | null,
+  });
+
+  useEffect(() => {
+    nodesRegistryRef.current.stage = stageRef.current;
+  });
+
   const editingText = editingTextId
     ? (texts.find((t) => t.id === editingTextId) ?? null)
     : null;
@@ -143,6 +155,7 @@ export const CanvasStageContainer = forwardRef<
             ref={stageRef}
             width={vRect.width}
             height={vRect.height}
+            dragDistance={3}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -153,7 +166,6 @@ export const CanvasStageContainer = forwardRef<
             }}
             onDragEnd={() => {
               setIsDragging(false);
-              setIsHudOpen(false);
             }}
           >
             <BackgroundImageLayer width={vRect.width} height={vRect.height} />
@@ -164,8 +176,13 @@ export const CanvasStageContainer = forwardRef<
               mousePreviewPos={mousePreviewPos}
               editingTextId={editingTextId}
               onStartEditText={setEditingTextId}
+              nodesRegistryRef={nodesRegistryRef}
             />
-            <PlayerLayer width={vRect.width} height={vRect.height} />
+            <PlayerLayer
+              width={vRect.width}
+              height={vRect.height}
+              nodesRegistryRef={nodesRegistryRef}
+            />
             <DrawingPreviewLayer
               width={vRect.width}
               height={vRect.height}
@@ -178,6 +195,7 @@ export const CanvasStageContainer = forwardRef<
           <CanvasOverlays
             vRect={vRect}
             editingText={editingText}
+            nodesRegistryRef={nodesRegistryRef}
             onSaveText={(textId, content) => updateText(textId, { content })}
             onRemoveText={(textId) => {
               removeText(textId);

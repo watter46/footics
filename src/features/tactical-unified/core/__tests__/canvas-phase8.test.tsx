@@ -36,12 +36,12 @@ describe('Phase 8: Defaults & Fixed Toolbar', () => {
     expect(state.fontSize).toBe(16);
 
     const ring = createRingMarker(10, 10);
-    expect(ring.style.color).toBe('#3b82f6');
+    expect(ring.style.color).toBe('#034694');
     expect(ring.style.strokeColor).toBe('#ffffff');
     expect(ring.style.strokeWidth).toBe(2);
 
     const player2d = create2DPlayerMarker(20, 20, '', '10');
-    expect(player2d.style.color).toBe('#3b82f6');
+    expect(player2d.style.color).toBe('#034694');
 
     const text = createTextAnnotation(30, 30);
     expect(text.color).toBe('#ffffff');
@@ -173,6 +173,6 @@ describe('Phase 8: HUD Separation & Connect Lines', () => {
 
     const activeVisionBtn = screen.getByTitle('視野コーンON (クリックでOFF)');
     expect(activeVisionBtn.className).toContain('ring-sky-400');
-    expect(updatedPlayer.visionCone?.color).toBe('#3b82f6');
+    expect(updatedPlayer.visionCone?.color).toBe('#034694');
   });
 });
