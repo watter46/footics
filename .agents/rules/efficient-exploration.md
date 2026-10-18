@@ -15,15 +15,17 @@ trigger: always_on
 
 ファイルを漫然と探さず、必ず以下の順序で絞り込む。
 
-1. **【検索】マップから一発で対象ファイル・シンボルを特定する（最優先・1手完了）**
-   - **全体把握・初手**: `rtk read .agents/.cache/repo_summary.txt`（高レベル地図。30行程度でアーキテクチャ・モジュール・エントリーポイントを最少トークンで把握）
-   - **ピンポイント検索**: `rtk grep '<keyword>' .agents/.cache/repo_map.txt`（詳細シンボル地図。特定機能・関数のファイルパスを1手で特定）
-2. **【特定】該当箇所を行番号レベルで検索する**
+1. **【特定・構造抽出】マップとシグネチャから一発で対象を絞り込む（最優先・1手完了）**
+   - **全体把握・初手**: `rtk read .agents/.cache/repo_summary.txt`（高レベル地図。30行程度でアーキテクチャ・モジュールを最少トークンで把握）
+   - **シンボル地図検索**: `rtk grep '<keyword>' .agents/.cache/repo_map.txt`（特定機能・関数のファイルパスを1手で特定）
+   - **シグネチャ抽出（全文読込の代替・90%削減）**: `bun run ai:outline <file>`（exportされた型、interface、関数シグネチャを行番号付きで最少トークン抽出）
+   - **広範囲調査の委譲**: 調査が複数ファイルに及ぶ場合は、自前で読まず使い捨ての `Scout`（`TypeName: "scout"`）に委譲し、結果受領後に即破棄する。
+2. **【ピンポイント検索】該当箇所を行番号レベルで検索する**
    - テキスト検索: `rtk grep '<keyword>' <file>`
    - 構文/AST検索: `ast-grep run -p '<pattern>' -l <lang> <file>`
    - 関数やクラスの位置を行番号で特定する。生コマンドでの無制限検索は禁止。
 3. **【読込】目的に応じて読み分ける**
-   - **調査・把握目的**: `rtk read -m <StartLine:EndLine> <file>`（または `rtk grep`）
+   - **調査・把握目的**: `bun run ai:outline <file>` または `rtk read -m <StartLine:EndLine> <file>`
    - **編集・実装目的**: 標準ツール `view_file` を使用。
      - **400行以下の小型ファイル**: 分割せず `StartLine`/`EndLine` を省略して **1回で全文取得**する（Guardによりスライスは強制遮断される）。
      - **400行超のファイル**: `rtk grep` / `ast-grep` で特定した対象行の**前後5〜10行（親スコープ・インデント構造）を含めたのりしろ範囲**を無加工で正確に取得する。
@@ -55,6 +57,7 @@ trigger: always_on
 | アクション | 通常（スコープ付き・既定） | Fallback |
 | :--- | :--- | :--- |
 | **全体把握 / 初手** | `rtk read .agents/.cache/repo_summary.txt` (高レベル地図) | `bun run map` |
+| **型・シグネチャ高速把握 (90%削減)** | `bun run ai:outline [files]` (export・型抽出) | `ast-grep outline --view signatures` |
 | **ファイル・シンボル特定** | `rtk grep '<keyword>' .agents/.cache/repo_map.txt` | `fd -t f '<pattern>' <dir>` |
 | **実装中セット検証 (Lint+型+テスト)** | `bun run ai:check [files]` (差分または指定パス) | — |
 | **コミット一括実行 (検証+ステージング+コミット)** | `bun run ai:commit -m "<msg>" [files]` | — |

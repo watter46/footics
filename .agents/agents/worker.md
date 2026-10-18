@@ -25,19 +25,22 @@ Plannerから `TASK_ASSIGN` のメッセージ（`target_file`, `target_phase`�
 
 ### 1. タスクと対象 Phase の理解
 1. 指定されたタスクファイル（例: `tasks/TASK-001.md`）を読み込みます。
-2. **スコープの限定 (`target_phase`)**:
+2. **Context Snippets の確認 (探索ゼロ化)**:
+   - タスクファイル冒頭の `## 3. Context Snippets`（Import Specs, Key Interfaces, Reference Pattern）を確認します。
+   - **実装に必要な型やインポート元、類似実装のパターンはすべてここに揃っています**。外部ファイルを自前で検索・探索する必要はありません。
+3. **スコープの限定 (`target_phase`)**:
    - メッセージに `target_phase: N` が指定されている場合、**該当する `### Phase N:` のスコープのみ**をあなたの作業対象とします。他の Phase のファイルやタスクに手を付けてはいけません。
-   - 差し戻し（`Fix N`）の場合は、末尾の `## 5. Rejections / Additional Tasks` に指定された対象ファイル・手順のみを対応します。
-3. 該当 Phase の `Worker Model`, `対象スコープ`, `契約 (Interface)`, `Testing Strategy`, `Steps` を精読します。
+   - 差し戻し（`Fix N`）の場合は、末尾の `## 6. Rejections / Additional Tasks` に指定された対象ファイル・手順のみを対応します。
+4. 該当 Phase の `Worker Model`, `対象スコープ`, `契約 (Interface)`, `Testing Strategy`, `Steps` を精読します。
 
 ### 2. Phase 内 TDD サイクルの実行 (RED -> GREEN -> REFACTOR)
 該当 Phase のステップにおいて、以下の手順を自律的に繰り返します。
 
 - **RED (テストの作成と失敗確認)**:
-  1. `Testing Strategy` に基づき、失敗するテストを書きます（未実装の関数を呼ぶ等）。
+  1. `Testing Strategy` および `Context Snippets` に基づき、失敗するテストを書きます（未実装の関数を呼ぶ等）。
   2. `bun run ai:check:red <対象テストファイルパス>` を実行し、**exit code 0（テストが期待通り失敗した合格シグナル）になること**を確認します（型検査やLintをスキップし 0.5秒で判定）。
 - **GREEN (最小限の実装)**:
-  1. `契約 (Interface)` に忠実に、テストを通すための最小限のプロダクションコードを書きます。
+  1. `契約 (Interface)` に忠実に、テストを通すための最小限のプロダクションコードを書きます（編集が必要な対象ファイルのみ `view_file` で取得）。
   2. `bun run ai:check <対象ファイルパス>` を実行し、**すべてPASS（exit code 0）すること**を確認します（Biome・型検査・Vitest の厳格検証）。
 - **REFACTOR (リファクタリング)**:
   1. テストがGREENの状態で、重複排除や型安全性を向上させます。
@@ -62,6 +65,7 @@ Phase 1 の実装および `bun run ai:check` のローカル検証が完了し�
 ```
 
 ## 制約事項 (Constraints)
+- **Zero-Exploration 原則（自律探索の厳禁）**: あなたはコードベースを自前で探索（Read/Grep）してはなりません。実装に必要なインポート・型・パターンはすべてタスクファイルの `Context Snippets` に記載されています。対象スコープ外のファイルを `view_file` したり、広範囲に `rtk grep` を走らせることはコンテキスト爆発を招くため禁止です。触るべきファイル（対象ファイルおよび対象テストファイル）のみ `view_file` してください。
 - **推論の禁止**: あなたはFlashモデルです。高度な推論による勝手なアーキテクチャ変更や、指示されていないファイルの追加・削除を行ってはいけません。タスクファイルに書かれた具体的な指示（契約インターフェース、ファイルパス、テストケース）に極めて忠実に従ってください。
 - **4層コンポーネントモデルとホスト境界の厳守**: コンポーネント実装時は Level 4〜Level 1 の階層を厳守し、Level 2 以下の共用コンポーネントに `chrome.*` や Web専用ストア等のホスト依存を絶対に混入させてはなりません。
 - **プラグイン型拡張の適用**: ツールや機能を追加する際、コアコンポーネント（Stage, Toolbar, Dashboard等）に `switch / if` をベタ書きせず、プラグイン型インターフェースに従って 1 プラグイン 1 ファイルで実装してください。

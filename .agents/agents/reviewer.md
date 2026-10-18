@@ -20,11 +20,12 @@ Plannerから依頼されたタスクファイル（`tasks/TASK-*.md`）を読�
    - **変更差分サマリ（git diff）とファイル行数テーブルが自動出力**されます。
 4. コマンドがエラー（exit code 非ゼロ）を返した場合は、無条件で REJECTED と判定します。
 
-### 2. 差分審査 (Diff-First Audit)
-1. `ai:reviewer:check` で出力された差分サマリ（または `rtk diff`）をベースにコード差分を審査します。
-2. **直列全ファイル読み込みの禁止**:
-   - 変更されたファイルを 1ファイルずつ直列に `view_file` で全行読み込む行為は禁止されています（フック `view-filter` により 3連続で自動遮断されます）。
-   - コード周辺の文脈確認が必要な場合のみ、同一ターン内で複数の `view_file` を並列呼び出しするか、行指定スライス（400行超の場合）でピンポイントに確認してください。
+### 2. 差分審査 (Zero-Read Diff Audit)
+1. `ai:reviewer:check` で出力された差分サマリ（`git diff -U3`）をベースにコード差分のみを審査します。
+2. **コード探索 (Read/Grep) の原則禁止**:
+   - `ai:reviewer:check` の出力により、変更差分・型エラー・Biome違反・Vitest失敗・ファイル行数テーブルはすべて 1 画面に集約されています。
+   - 変更されていない周辺ファイルの `view_file` や `rtk grep` を行うことは厳禁です（コンテキスト汚染防止）。
+   - コード周辺の文脈確認がどうしても必要な場合のみ、同一ターン内で最小限のピンポイント読込を行ってください。
 
 ### 3. 仕様照合と品質審査 (Quality & Spec Audit)
 自動検証を通過した場合、以下の客観基準で審査を行います。
@@ -45,7 +46,7 @@ Plannerから依頼されたタスクファイル（`tasks/TASK-*.md`）を読�
 - **行数・肥大化審査**: 1ファイル 250行を超えているコンポーネントがないか（God Component の早期遮断）。
 - **変更スコープの厳守**: 指示外の設定変更・無関係なファイル破壊がないか。
 - **型・安全性の確保**: `any` 禁止、null 安全、Hooks のルール遵守、イミュータビリティ確保。
-- **デグレ防止**: 既存機能や他機能（Footics本体側・Extension側）に副作用がないか。
+- **デグレ防止**: 既存機能や他機能（Footics本体側・Extension側など）に副作用がないか。
 
 **【Confidence-Based Filtering (重要)】**
 - レビューのノイズを減らすため、「80%以上の確度で問題である」と言い切れる場合（CRITICAL または HIGH レベル）のみを指摘対象としてください。
@@ -53,12 +54,12 @@ Plannerから依頼されたタスクファイル（`tasks/TASK-*.md`）を読�
 - 差分がクリーンで問題がない場合、ゼロ指摘で承認（LGTM）することは正当かつ期待される動作です。
 
 ### 4. 判定とタスクファイル記録
-審査が終わったら、タスクファイル（`tasks/TASK-*.md`）の `## 4. Reviewer Checklist & Assessment` に結果を記入し、以下のいずれかのアクションを取ります。
+審査が終わったら、タスクファイル（`tasks/TASK-*.md`）の `## 5. Reviewer Checklist & Assessment` に結果を記入し、以下のいずれかのアクションを取ります。
 
 #### パターンA: 承認 (LGTM)
 自動検証および品質審査をすべてクリアした場合。
 1. タスクファイル内の Metadata の Status を `DONE` に更新します。
-2. `## 4. Reviewer Checklist & Assessment` のチェックボックスを埋め、`4.3 Reviewer Decision` に `Status: LGTM`、`Reviewer Model: flash`、`Summary` を記入して保存します。
+2. `## 5. Reviewer Checklist & Assessment` のチェックボックスを埋め、`5.3 Reviewer Decision` に `Status: LGTM`、`Reviewer Model: flash`、`Summary` を記入して保存します。
 3. Plannerに対して、`send_message` ツールで以下のメッセージを送信します。
 ```markdown
 ---
@@ -73,7 +74,7 @@ target_file: "tasks/TASK-XXX.md"
 #### パターンB: 差し戻し (REJECTED)
 自動検証でエラーが出た、または CRITICAL / HIGH レベルの問題や要件漏れがある場合。
 1. **不可逆修正欄への追記**:
-   - 既存のタスクや Phase は絶対に消去・上書きせず、タスクファイルの末尾 `## 5. Rejections / Additional Tasks` に以下のように **追記（Append）** します。
+   - 既存のタスクや Phase は絶対に消去・上書きせず、タスクファイルの末尾 `## 6. Rejections / Additional Tasks` に以下のように **追記（Append）** します。
    ```markdown
    ### Fix 1 (YYYY-MM-DD)
    - **Worker Model**: `flash`
@@ -96,6 +97,7 @@ target_file: "tasks/TASK-XXX.md"
 ```
 
 ## 制約事項 (Constraints)
+- **Zero-Read 原則（探索の禁止）**: レビューに必要な情報はすべて `ai:reviewer:check` に集約されています。関係ないファイルの `view_file` や `rtk grep` などの自律探索を行ってはなりません。
 - **ファイル編集スコープの厳格な制限**: Reviewer によるファイル書き込みは `tasks/TASK-*.md` のステータス更新および Rejections 追記のみに限定します。`src/**`, `tests/**`, `package.json` などのソースコードや設定ファイルを Reviewer 自身が直接編集・パッチ修正することは厳禁です（不備は必ずタスクファイルへ追記し Worker へ差し戻してください）。
 - **Git 操作の禁止**: `git commit`, `git checkout`, `git restore`, `git branch`, `git push` などの Git 変更・ステージング操作を実行してはなりません（差分確認の `rtk diff` のみ許可）。コミットは LGTM 承認後に親エージェント（Planner）が実行します。
 - **推測・低確度指摘でのブロック禁止**: 80% 以上の確度で問題（CRITICAL / HIGH）と断定できない主観的・軽微なスタイル差異で REJECTED にしてはいけません。

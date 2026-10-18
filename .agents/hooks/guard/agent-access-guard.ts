@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export type AgentRole = 'planner' | 'worker' | 'reviewer' | 'unknown';
+export type AgentRole = 'planner' | 'worker' | 'reviewer' | 'scout' | 'unknown';
 
 export interface AgentAccessDecision {
   decision: 'allow' | 'deny';
@@ -11,7 +11,7 @@ export interface AgentAccessDecision {
 /**
  * transcript.jsonl の先頭（初回メッセージ）を読み取り、実行中のエージェントロールを判別する。
  * サブエージェントの場合、親から送られた初回メッセージ（SYSTEM_MESSAGE）に
- * type: "TASK_ASSIGN" (Worker) または type: "REVIEW_REQUEST" (Reviewer) が含まれる。
+ * type: "TASK_ASSIGN" (Worker), type: "REVIEW_REQUEST" (Reviewer), または type: "SCOUT_REQUEST" (Scout) が含まれる。
  * transcriptPath が存在しないか未指定の場合は、テスト環境やスタンドアロン実行とみなして 'unknown' を返す。
  * USER_INPUT から開始している場合は親セッション（Planner）と判定する。
  */
@@ -32,6 +32,12 @@ export function detectAgentRole(transcriptPath?: string): AgentRole {
     }
 
     const content = firstStep.content || '';
+    if (
+      content.includes('type: "SCOUT_REQUEST"') ||
+      content.includes("type: 'SCOUT_REQUEST'")
+    ) {
+      return 'scout';
+    }
     if (
       content.includes('type: "REVIEW_REQUEST"') ||
       content.includes("type: 'REVIEW_REQUEST'")
@@ -122,6 +128,14 @@ export function checkAgentAccessGuard(
       };
     }
     return { decision: 'allow' };
+  }
+
+  // 2b. Scout の書き込み制限: 完全読み取り専用（いかなるファイルも編集不可）
+  if (role === 'scout') {
+    return {
+      decision: 'deny',
+      reason: `[GUARD] Access Denied: Scout is a read-only reconnaissance agent and cannot modify any files ('${relPath}'). Return extracted Context Snippets to Planner via message.`,
+    };
   }
 
   // 3. Worker の書き込み権限

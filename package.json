@@ -16,6 +16,7 @@
     "ai:check": "bun .agents/scripts/check-worker.ts",
     "ai:check:red": "bun scripts/verify/check-worker-red.ts",
     "ai:reviewer:check": "bun .agents/scripts/check-reviewer.ts",
+    "ai:outline": "bun scripts/ast/extract-types.ts",
     "ai:preflight": "bun .agents/scripts/preflight.ts",
     "ai:commit": "bun .agents/scripts/commit.ts",
     "ai:report": "bun .agents/scripts/session-report.ts",

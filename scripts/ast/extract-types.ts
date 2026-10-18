@@ -108,10 +108,14 @@ function processTarget(targetPath: string) {
   }
 }
 
-const target = process.argv[2];
-if (!target) {
-  console.error('Usage: tsx scripts/ast/extract-types.ts <file|directory>');
+const targets = process.argv.slice(2).filter((arg) => !arg.startsWith('-'));
+if (targets.length === 0) {
+  console.error(
+    'Usage: bun scripts/ast/extract-types.ts <file|directory> [files...]',
+  );
   process.exit(1);
 }
 
-processTarget(target);
+for (const t of targets) {
+  processTarget(t);
+}
