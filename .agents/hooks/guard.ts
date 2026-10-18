@@ -2,6 +2,8 @@ import { checkAgentAccessGuard } from './guard/agent-access-guard';
 import { checkGateguard } from './guard/gateguard-filter';
 import { parseExecutable, splitCommands, tokenize } from './guard/parser';
 import { checkSafetyGuard } from './guard/safety-filter';
+import { checkSubagentGuard } from './guard/subagent-guard';
+import { checkTaskSizeGuard } from './guard/task-size-guard';
 import { checkTokenGuard } from './guard/token-filter';
 import { checkViewGuard } from './guard/view-filter';
 
@@ -131,12 +133,22 @@ function evaluatePayload(payload: any): any {
     if (accessRes && accessRes.decision === 'deny') {
       return accessRes;
     }
+    const taskSizeRes = checkTaskSizeGuard(payload);
+    if (taskSizeRes && taskSizeRes.decision === 'deny') {
+      return taskSizeRes;
+    }
     return checkGateguard(payload);
   }
 
   if (payload.toolCall && payload.toolCall.name === 'view_file') {
     const viewRes = checkViewGuard(payload);
     if (viewRes) return viewRes;
+    return { decision: 'allow' };
+  }
+
+  if (payload.toolCall && payload.toolCall.name === 'send_message') {
+    const subagentRes = checkSubagentGuard(payload);
+    if (subagentRes) return subagentRes;
     return { decision: 'allow' };
   }
 

@@ -35,12 +35,13 @@ Plannerから `TASK_ASSIGN` のメッセージ（`target_file`, `target_phase`�
 
 - **RED (テストの作成と失敗確認)**:
   1. `Testing Strategy` に基づき、失敗するテストを書きます（未実装の関数を呼ぶ等）。
-  2. `bun run ai:check <対象ファイルパス>` を実行し、**意図通りにエラー（exit code 非ゼロ）になること**を確認します。
+  2. `bun run ai:check:red <対象テストファイルパス>` を実行し、**exit code 0（テストが期待通り失敗した合格シグナル）になること**を確認します（型検査やLintをスキップし 0.5秒で判定）。
 - **GREEN (最小限の実装)**:
   1. `契約 (Interface)` に忠実に、テストを通すための最小限のプロダクションコードを書きます。
-  2. `bun run ai:check <対象ファイルパス>` を実行し、**すべてPASS（exit code 0）すること**を確認します。
+  2. `bun run ai:check <対象ファイルパス>` を実行し、**すべてPASS（exit code 0）すること**を確認します（Biome・型検査・Vitest の厳格検証）。
 - **REFACTOR (リファクタリング)**:
   1. テストがGREENの状態で、重複排除や型安全性を向上させます。
+  2. 再度 `bun run ai:check <対象ファイルパス>` で全PASSを確認します。
 - **進捗の記録**:
   1. 該当 Phase 内のステップチェックボックス `- [ ]` を `- [x]` に変更し、タスクファイルを保存します。
 

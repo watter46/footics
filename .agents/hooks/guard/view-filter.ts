@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { detectAgentRole } from './agent-access-guard';
 import type { GuardDecision } from './safety-filter';
 
 const SMALL_FILE_LINE_LIMIT = 400;
@@ -62,6 +63,42 @@ function hasRecentSliceRead(
         }
       } catch (_e) {}
     }
+  } catch (_e) {}
+
+  return false;
+}
+
+/**
+ * Reviewer セッションにおいて、直列に view_file が連続実行されているかを判定する
+ */
+function hasSequentialSingleViewLoop(
+  transcriptPath: string | undefined,
+): boolean {
+  if (!transcriptPath || !fs.existsSync(transcriptPath)) return false;
+
+  try {
+    const transcript = fs.readFileSync(transcriptPath, 'utf8');
+    const lines = transcript.trim().split('\n');
+    let consecutiveViews = 0;
+    const startIndex = Math.max(0, lines.length - 15);
+
+    for (let i = lines.length - 1; i >= startIndex; i--) {
+      if (!lines[i]) continue;
+      try {
+        const step = JSON.parse(lines[i]);
+        if (step.tool_calls) {
+          const hasView = step.tool_calls.some(
+            (tc: any) => tc.name === 'view_file',
+          );
+          if (hasView) {
+            consecutiveViews++;
+          } else if (step.type === 'PLANNER_RESPONSE') {
+            break;
+          }
+        }
+      } catch (_e) {}
+    }
+    return consecutiveViews >= 3;
   } catch (_e) {}
 
   return false;
@@ -140,6 +177,20 @@ function checkViewGuard(payload: any): GuardDecision | null {
       return {
         decision: 'deny',
         reason: `[GUARD] Sequential slicing loop detected for '${baseName}'.\nReason: Reading the same file in small chunks across multiple turns is prohibited.\nAction: If you need to view the implementation, call 'view_file' without StartLine/EndLine (up to 800 lines), or pinpoint exact lines using 'rtk grep <pattern> <file>' / 'ast-grep' first.`,
+      };
+    }
+  }
+
+  // 5. Reviewer による直列全ファイル読込ループの検知 (Reviewer View Loop Guard)
+  const role = detectAgentRole(payload.transcriptPath);
+  if (role === 'reviewer') {
+    const isSequentialLoop = hasSequentialSingleViewLoop(
+      payload.transcriptPath,
+    );
+    if (isSequentialLoop) {
+      return {
+        decision: 'deny',
+        reason: `[GUARD] Sequential full-file reading loop detected in Reviewer session (3+ consecutive view_file calls).\nReason: Reading entire files sequentially causes extreme token explosion (>3M tokens).\nAction: Inspect diffs via 'bun run ai:reviewer:check' or 'rtk diff', or pass multiple files in parallel in a single turn.`,
       };
     }
   }

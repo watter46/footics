@@ -110,6 +110,45 @@ try {
     : '--no-config';
   run(`bunx depcruise ${depcruiseConfig} ${fileArgs}`);
 
+  // 5. Reviewer Audit Bundle (Line limits & Git Diff)
+  console.log('\n📊 === Reviewer Audit Summary ===');
+
+  // A. File Size & Line Limit Check Table
+  console.log('\n[File Metrics]');
+  for (const file of files) {
+    if (!fs.existsSync(file)) continue;
+    const content = fs.readFileSync(file, 'utf8');
+    const lines = content.split('\n').length;
+    const status =
+      lines > 200 ? `⚠️ (${lines} lines > 200)` : `✅ (${lines} lines)`;
+    console.log(`  - ${file}: ${status}`);
+  }
+
+  // B. Git Diff Summary
+  console.log('\n[Changes Summary (git diff --stat)]');
+  try {
+    const diffStat = execSync(`git diff --stat ${fileArgs}`, {
+      encoding: 'utf8',
+    });
+    console.log(diffStat || '  (No working tree diff)');
+  } catch (_e) {}
+
+  console.log('\n[Diff Snippet (git diff -U3)]');
+  try {
+    const diff = execSync(`git diff -U3 ${fileArgs}`, { encoding: 'utf8' });
+    if (diff.trim()) {
+      const diffLines = diff.split('\n');
+      if (diffLines.length > 150) {
+        console.log(diffLines.slice(0, 150).join('\n'));
+        console.log(`\n... +${diffLines.length - 150} more diff lines`);
+      } else {
+        console.log(diff);
+      }
+    } else {
+      console.log('  (No working tree diff)');
+    }
+  } catch (_e) {}
+
   console.log('\n✅ Reviewer checks passed.');
 } catch (err) {
   console.error('\n❌ Reviewer checks failed.');
