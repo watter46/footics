@@ -136,7 +136,7 @@ function checkViewGuard(payload: any): GuardDecision | null {
   if (!fs.existsSync(resolvedPath)) {
     return {
       decision: 'deny',
-      reason: `[GUARD] File not found: '${rawPath}'. Guessing file paths without verifying is strictly prohibited.\nAction: Locate the target file using 'rtk grep <keyword> .agents/.cache/repo_map.txt' or 'rtk find . -name "<glob>"' first.`,
+      reason: `[GUARD] File not found: '${rawPath}'. Guessing file paths without verifying is strictly prohibited.\nAction: Locate the target file using 'bun run ai:find <keyword>' or 'rtk find . -name "<glob>"' first.`,
     };
   }
 

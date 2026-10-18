@@ -22,9 +22,9 @@ Footics の「極限のトークン最適化」「4層分離パイプライン�
 ## 事前探索プロトコル (Exploration Protocol)
 
 計画立案に必要な既存コードベースの調査には、以下の手順とツールを厳格に使用します：
-1. **シグネチャ・型抽出 (最優先・第1手)**: `bun run ai:outline <ファイルパス>` で export シンボル・interface を最少トークン（90%削減）で把握。
-2. **全体像・配置把握**: `.agents/.cache/repo_summary.txt` または `.agents/.cache/repo_map.txt` を確認。
-3. **対象絞り込み**: `rtk git ls-files "<パターン>"`
+1. **全体像把握**: `rtk read .agents/.cache/repo_summary.txt`（高レベル地図）
+2. **シンボル・ファイル特定**: `bun run ai:find <キーワード>`（repo_map.txt から一発検索・次手ガイド付き）
+3. **シグネチャ・型抽出**: `bun run ai:outline <ファイルパス>` で export シンボル・interface を最少トークン（90%削減）で抽出
 4. **行・構造特定**: `rtk grep "<キーワード>" <ファイル>` または `ast-grep`
 5. **使い捨て調査 (Scout) の活用**: 調査範囲が複数ファイルに及ぶ場合は、自前で読まず Scout サブエージェント（`TypeName: "scout"`）を起動して Context Snippets を抽出させ、回収後に即 kill すること。
 ※ 生の `ls`, `cat`, `grep`, `find`, `tree` などの直接実行は Hook により自動書き換えまたは遮断されます。

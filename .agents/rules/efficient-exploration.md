@@ -17,7 +17,7 @@ trigger: always_on
 
 1. **【特定・構造抽出】マップとシグネチャから一発で対象を絞り込む（最優先・1手完了）**
    - **全体把握・初手**: `rtk read .agents/.cache/repo_summary.txt`（高レベル地図。30行程度でアーキテクチャ・モジュールを最少トークンで把握）
-   - **シンボル地図検索**: `rtk grep '<keyword>' .agents/.cache/repo_map.txt`（特定機能・関数のファイルパスを1手で特定）
+   - **シンボル地図検索**: `bun run ai:find <keyword>`（全体マップから該当ファイルパスを1手で特定・次手ガイド付き）
    - **シグネチャ抽出（全文読込の代替・90%削減）**: `bun run ai:outline <file>`（exportされた型、interface、関数シグネチャを行番号付きで最少トークン抽出）
    - **広範囲調査の委譲**: 調査が複数ファイルに及ぶ場合は、自前で読まず使い捨ての `Scout`（`TypeName: "scout"`）に委譲し、結果受領後に即破棄する。
 2. **【ピンポイント検索】該当箇所を行番号レベルで検索する**
@@ -58,7 +58,7 @@ trigger: always_on
 | :--- | :--- | :--- |
 | **全体把握 / 初手** | `rtk read .agents/.cache/repo_summary.txt` (高レベル地図) | `bun run map` |
 | **型・シグネチャ高速把握 (90%削減)** | `bun run ai:outline [files]` (export・型抽出) | `ast-grep outline --view signatures` |
-| **ファイル・シンボル特定** | `rtk grep '<keyword>' .agents/.cache/repo_map.txt` | `fd -t f '<pattern>' <dir>` |
+| **ファイル・シンボル特定** | `bun run ai:find <keyword>` | `rtk grep '<keyword>' .agents/.cache/repo_map.txt` |
 | **実装中セット検証 (Lint+型+テスト)** | `bun run ai:check [files]` (差分または指定パス) | — |
 | **コミット一括実行 (検証+ステージング+コミット)** | `bun run ai:commit -m "<msg>" [files]` | — |
 | **コミット前一括検証 (検証のみ)** | `bun run ai:preflight [files]` | — |

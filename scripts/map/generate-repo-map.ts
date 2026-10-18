@@ -152,7 +152,7 @@ Total Tracked Files: ${relFiles.length}
 - tests/: Benchmark fixtures and E2E specs
 
 ## Verification & Execution Protocol
-1. Exploration: Read this file first. Use 'rtk grep <term> .agents/.cache/repo_map.txt' for symbol lookup.
+1. Exploration: Read this file first. Use 'bun run ai:find <term>' for symbol lookup.
 2. Implementation Loop: 'bun run ai:check [files]' (Lint + TypeCheck + Vitest related in one shot).
 3. Review Audit: 'bun run ai:reviewer:check <files>' (Full check + Architecture boundary audit).
 4. Preflight: 'bun run ai:preflight' (strictly before git commit).
