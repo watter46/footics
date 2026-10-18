@@ -19,7 +19,9 @@ trigger: always_on
    - **全体把握・初手**: `rtk read .agents/.cache/repo_summary.txt`（高レベル地図。30行程度でアーキテクチャ・モジュールを最少トークンで把握）
    - **シンボル地図検索**: `bun run ai:find <keyword>`（全体マップから該当ファイルパスを1手で特定・次手ガイド付き）
    - **シグネチャ抽出（全文読込の代替・90%削減）**: `bun run ai:outline <file>`（exportされた型、interface、関数シグネチャを行番号付きで最少トークン抽出）
-   - **広範囲調査の委譲**: 調査が複数ファイルに及ぶ場合は、自前で読まず使い捨ての `Scout`（`TypeName: "scout"`）に委譲し、結果受領後に即破棄する。
+   - **広範囲調査の委譲（事前判定とScout必須起動）**:
+     - **事前判定ルール**: 初手 `bun run ai:find <keyword>` 等で **関連ファイルが3件以上ヒットした場合**、Planner は自前で `view_file` を1件も開いてはならない。初手から直ちに使い捨ての `Scout`（`TypeName: "scout"`）に調査を一括委譲し、Context Snippets 受領後に即 kill する。
+     - **物理遮断ガード**: Planner が自前で 3 ファイル以上のソースコードを `view_file` しようとすると、フック（`view-filter`）により物理遮断（deny）される。1〜2件で完結する極小タスクのみ `ai:outline` や直接確認を許可。
 2. **【ピンポイント検索】該当箇所を行番号レベルで検索する**
    - テキスト検索: `rtk grep '<keyword>' <file>`
    - 構文/AST検索: `ast-grep run -p '<pattern>' -l <lang> <file>`

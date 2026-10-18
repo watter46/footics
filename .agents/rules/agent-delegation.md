@@ -20,7 +20,10 @@ globs:
 2. **Phase ごとの即時破棄（Kill）とリレー実行 (ゾンビ化・コンテキスト肥大化の完全防止)**:
    - **単一 Worker の再利用・使い回しは厳禁**です。完了済Workerへの `send_message` はフック（`subagent-guard`）により物理的に遮断（deny）されます。
    - 各 Phase の完了メッセージを受領したら、親エージェントは直ちに `manage_subagents` ツール（`Action: "kill"`）を実行して該当 Worker を破棄しなければなりません。
-   - **Scout の即時破棄**: 調査を担当した Scout エージェントも同様に、Context Snippets を受領した直後に親エージェントが直ちに kill し、調査コンテキストをセッションに残さないようにします。
+   - **Scout の必須委譲と即時破棄（調査コンテキスト分離）**:
+     - **事前判定**: 初動探索（`ai:find` 等）で関連ファイルが 3 件以上検出された場合、Planner は自前で `view_file` を1件も開いてはならず、直ちに Scout（`TypeName: "scout"`）に調査を一括委任しなければなりません。
+     - **物理遮断**: 同一指示内で Planner が 3 ファイル以上のソースコードを `view_file` しようとした場合、フック（`view-filter`）により即座に deny されます。
+     - Context Snippets を受領した直後に親エージェントが直ちに Scout を kill し、調査コンテキストを親セッションに残さないようにします。
    - 次の Phase は、前 Phase の成果物と Worker Handoff Log を元に新しい Worker を新規起動して引き継ぎます。
    - 1タスクあたりの Phase 数は最大 5 Phase（行数 250 行以内）。追加要件は新チケットへ分離します（フック `task-size-guard` により強制）。
 3. **放置プロセスの即時回収**:

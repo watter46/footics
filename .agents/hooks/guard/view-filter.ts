@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { detectAgentRole } from './agent-access-guard';
+import { detectAgentRole, normalizeRelativePath } from './agent-access-guard';
 import type { GuardDecision } from './safety-filter';
 
 const SMALL_FILE_LINE_LIMIT = 400;
@@ -104,6 +104,90 @@ function hasSequentialSingleViewLoop(
   return false;
 }
 
+/**
+ * ファイルがコードベース調査の対象（ソースコード、テスト、スクリプト等）かを判定する。
+ * tasks/, docs/, .agents/, notes/, ルート設定ファイル等は除外する。
+ */
+function isInvestigationTarget(relPath: string): boolean {
+  const normalized = relPath.replace(/\\/g, '/').replace(/^\.\//, '');
+  if (
+    normalized.startsWith('tasks/') ||
+    normalized.startsWith('.agents/') ||
+    normalized.startsWith('docs/') ||
+    normalized.startsWith('notes/') ||
+    normalized.startsWith('.git/') ||
+    normalized.startsWith('node_modules/')
+  ) {
+    return false;
+  }
+
+  // ルートの設定ファイル・ドキュメントも除外
+  if (!normalized.includes('/')) {
+    if (
+      normalized.endsWith('.json') ||
+      normalized.endsWith('.md') ||
+      normalized.endsWith('.yaml') ||
+      normalized.endsWith('.yml') ||
+      normalized.endsWith('.toml') ||
+      normalized.endsWith('.lock')
+    ) {
+      return false;
+    }
+  }
+
+  // 調査対象: src/, extension/, tests/, scripts/ またはコード拡張子
+  return (
+    normalized.startsWith('src/') ||
+    normalized.startsWith('extension/') ||
+    normalized.startsWith('tests/') ||
+    normalized.startsWith('scripts/') ||
+    /\.(ts|tsx|js|jsx|vue|svelte|css|scss|html)$/i.test(normalized)
+  );
+}
+
+/**
+ * 直近の USER_INPUT 以降に、Planner が view_file でアクセスした調査対象ファイルのユニークパス集合を取得する。
+ */
+function getRecentInvestigatedFiles(
+  transcriptPath: string | undefined,
+  workspacePath?: string,
+): Set<string> {
+  const viewedFiles = new Set<string>();
+  if (!transcriptPath || !fs.existsSync(transcriptPath)) return viewedFiles;
+
+  try {
+    const transcript = fs.readFileSync(transcriptPath, 'utf8');
+    const lines = transcript.trim().split('\n');
+
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (!lines[i]) continue;
+      try {
+        const step = JSON.parse(lines[i]);
+        if (step.type === 'USER_INPUT') {
+          // 直近のユーザー入力境界に到達したら終了
+          break;
+        }
+
+        if (step.tool_calls) {
+          for (const tc of step.tool_calls) {
+            if (tc.name === 'view_file' && tc.args) {
+              const rawTcPath = cleanString(tc.args.AbsolutePath || '');
+              if (rawTcPath) {
+                const rel = normalizeRelativePath(rawTcPath, workspacePath);
+                if (isInvestigationTarget(rel)) {
+                  viewedFiles.add(path.resolve(rawTcPath));
+                }
+              }
+            }
+          }
+        }
+      } catch (_e) {}
+    }
+  } catch (_e) {}
+
+  return viewedFiles;
+}
+
 function checkViewGuard(payload: any): GuardDecision | null {
   const toolCall = payload.toolCall;
   if (!toolCall || toolCall.name !== 'view_file' || !toolCall.args) {
@@ -195,7 +279,33 @@ function checkViewGuard(payload: any): GuardDecision | null {
     }
   }
 
+  // 6. Planner による 3 ファイル以上の調査用ソースコード直接読込の遮断 (Planner Investigation Guard)
+  if (role === 'planner') {
+    const workspacePath = payload.workspacePaths?.[0];
+    const relPath = normalizeRelativePath(resolvedPath, workspacePath);
+
+    if (isInvestigationTarget(relPath)) {
+      const recentTargets = getRecentInvestigatedFiles(
+        payload.transcriptPath,
+        workspacePath,
+      );
+
+      // すでに読んだファイルでなく、かつ既に2ファイル以上の調査対象を読んでいる場合は 3ファイル目となるため遮断
+      if (!recentTargets.has(resolvedPath) && recentTargets.size >= 2) {
+        return {
+          decision: 'deny',
+          reason: `[GUARD] Codebase investigation limit reached (Planner is attempting to read 3+ source files directly: '${baseName}').\nReason: Reading multiple source files directly inflates Planner's context (>50K tokens) and causes severe token explosion.\nAction: You MUST delegate codebase investigation to Scout.\n1. Invoke subagent with TypeName: "scout" (Model: "flash") to extract types, signatures, and patterns.\n2. Scout will return Context Snippets (Import Specs, Interfaces & Types, Reference Pattern).\n3. Terminate the Scout immediately via manage_subagents(Action: "kill", ConversationIds: [...]) and embed the snippets into 'tasks/TASK-XXX.md'.`,
+        };
+      }
+    }
+  }
+
   return { decision: 'allow' };
 }
 
-export { checkViewGuard, SMALL_FILE_LINE_LIMIT };
+export {
+  checkViewGuard,
+  getRecentInvestigatedFiles,
+  isInvestigationTarget,
+  SMALL_FILE_LINE_LIMIT,
+};
