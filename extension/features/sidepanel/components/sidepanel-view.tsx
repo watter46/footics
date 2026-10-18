@@ -1,4 +1,4 @@
-import { AlertCircle, FileText, Send } from 'lucide-react';
+import { AlertCircle, FileText, LayoutDashboard, Send } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { cn } from '../../../utils/cn';
@@ -54,24 +54,41 @@ export const SidepanelView: React.FC = () => {
           </h1>
         </div>
 
-        {matchId ? (
-          <span
+        <div className={cn('flex items-center gap-2')}>
+          <button
+            type="button"
+            onClick={() => {
+              browser.tabs.create({
+                url: browser.runtime.getURL('/dashboard.html'),
+              });
+            }}
+            title="Footics Dashboardを開く"
             className={cn(
-              'text-[10px] bg-slate-800/80 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-mono truncate max-w-[140px]',
-            )}
-            title={`Match: ${matchId}`}
-          >
-            Match: {matchId}
-          </span>
-        ) : (
-          <span
-            className={cn(
-              'text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-mono',
+              'p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800/80 rounded-lg transition-colors cursor-pointer',
             )}
           >
-            試合未選択
-          </span>
-        )}
+            <LayoutDashboard className={cn('w-4 h-4')} />
+          </button>
+
+          {matchId ? (
+            <span
+              className={cn(
+                'text-[10px] bg-slate-800/80 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-mono truncate max-w-[140px]',
+              )}
+              title={`Match: ${matchId}`}
+            >
+              Match: {matchId}
+            </span>
+          ) : (
+            <span
+              className={cn(
+                'text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-mono',
+              )}
+            >
+              試合未選択
+            </span>
+          )}
+        </div>
       </div>
 
       <div

@@ -45,9 +45,7 @@ export function checkSubagentGuard(payload: any): GuardDecision | null {
 
           // 該当Workerからの完了報告を検知
           const isFromRecipient =
-            source === recipientId ||
-            content.includes(recipientId) ||
-            (step.type === 'GENERIC' && content.includes('TASK_COMPLETE'));
+            source === recipientId || content.includes(recipientId);
 
           if (isFromRecipient && /TASK_COMPLETE/i.test(content)) {
             return {

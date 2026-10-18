@@ -73,6 +73,9 @@ export default defineConfig({
         description: 'Toggle Memo Overlay Mini/Full Mode',
       },
     },
+    action: {
+      default_title: 'Footics Dashboardを開く',
+    },
     side_panel: {
       default_path: 'entrypoints/sidepanel/index.html',
     },

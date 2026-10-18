@@ -51,6 +51,7 @@ export const MemoOverlayHeader: React.FC<MemoOverlayHeaderProps> = ({
       <button
         type="button"
         onClick={onClose}
+        aria-label="Close"
         className="p-2 hover:bg-slate-800 rounded-lg text-slate-600 transition-all"
       >
         <X className="w-5 h-5" />

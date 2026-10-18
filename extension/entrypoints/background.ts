@@ -12,6 +12,44 @@ import {
 export default defineBackground(() => {
   console.log('Footics Background Script loaded');
 
+  // Action クリック時にサイドパネルではなく拡張機能アイコンのアクション（Dashboardオープン）を優先
+  browser.sidePanel
+    ?.setPanelBehavior?.({ openPanelOnActionClick: false })
+    .catch(() => {});
+
+  // Dashboard 画面を既存タブまたは新規タブでスマートに開く/フォーカスする
+  const openOrFocusDashboard = async () => {
+    const dashboardUrl = browser.runtime.getURL('/dashboard.html');
+    const tabs = await browser.tabs.query({});
+    const existingTab = tabs.find(
+      (t) =>
+        t.url &&
+        (t.url === dashboardUrl ||
+          t.url.startsWith(dashboardUrl) ||
+          t.url.includes('/dashboard.html')),
+    );
+    if (existingTab?.id) {
+      if (existingTab.windowId !== undefined) {
+        await browser.windows
+          .update(existingTab.windowId, { focused: true })
+          .catch(() => {});
+      }
+      await browser.tabs.update(existingTab.id, { active: true });
+      return existingTab;
+    }
+    return await browser.tabs.create({ url: dashboardUrl });
+  };
+
+  browser.action.onClicked.addListener(() => {
+    void openOrFocusDashboard();
+  });
+
+  browser.runtime.onMessage.addListener((message) => {
+    if (message?.type === 'OPEN_DASHBOARD') {
+      void openOrFocusDashboard();
+    }
+  });
+
   // Footics 本体タブを特定するヘルパー
   const findFooticsTab = async () => {
     const allTabs = await browser.tabs.query({});
@@ -240,6 +278,16 @@ export default defineBackground(() => {
 
   onMessage('CLOSE_SIDEPANEL', () => {
     // 必要に応じて処理を追加
+  });
+
+  onMessage('OPEN_DASHBOARD', async () => {
+    try {
+      await openOrFocusDashboard();
+      return { success: true };
+    } catch (err) {
+      console.error('[Footics BG] OPEN_DASHBOARD error:', err);
+      return { success: false };
+    }
   });
 
   // ── 4. Quick Canvas & スクリーンショット連携 API ハンドラ ──

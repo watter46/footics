@@ -1,6 +1,14 @@
-import { AlertCircle, Maximize2, MessageSquare, Save, X } from 'lucide-react';
+import {
+  AlertCircle,
+  LayoutDashboard,
+  Maximize2,
+  MessageSquare,
+  Save,
+  X,
+} from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
+import { sendMessage } from 'webext-bridge/content-script';
 import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
 import { cn } from '../../../utils/cn';
 import { useMemoSave } from '../hooks/use-memo-save';
@@ -68,6 +76,16 @@ export const MiniMemoPanel: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              sendMessage('OPEN_DASHBOARD', {}, 'background').catch(() => {});
+            }}
+            title="Dashboard を開く"
+            className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-slate-200 transition-colors"
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+          </button>
           <button
             type="button"
             onClick={toggleDisplayMode}

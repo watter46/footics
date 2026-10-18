@@ -4,48 +4,11 @@ import {
   type EventPhase,
   filterSuggestions,
   getValidationError,
-  type MemoMode,
-  parseTimeStr,
 } from '@/lib/features/memo-overlay/memoOverlayLogic';
+import type { MemoOverlayState } from './memo-overlay-types';
 
-interface MemoOverlayState {
-  mode: MemoMode;
-  phase: EventPhase;
-  timeStr: string;
-  selectedLabels: string[];
-  labelInput: string;
-  suggestionIndex: number;
-  isListMode: boolean;
-  memo: string;
-  period: number;
-  error: string | undefined;
-  isSaving: boolean;
-  eventId: string | undefined;
-  isModalOpen: boolean;
-
-  // Actions
-  reset: (mode?: MemoMode) => void;
-  setPeriod: (val: number) => void;
-  setTimeStr: (val: string) => void;
-  appendTimeDigit: (digit: string) => void;
-  backspaceTimeStr: () => void;
-  setLabelInput: (val: string) => void;
-  addLabel: (label: string) => void;
-  removeLabel: (index: number) => void;
-  backspaceLabel: () => void;
-  navigateSuggestion: (direction: 1 | -1) => void;
-  confirmSuggestion: () => void;
-  setMemo: (val: string) => void;
-  nextPhase: () => 'OK' | 'BLOCKED';
-  prevPhase: () => void;
-  forceSetPhase: (phase: EventPhase) => void;
-  setError: (err: string | undefined) => void;
-  setIsSaving: (val: boolean) => void;
-  filterByCategory: (categoryIndex: number) => void;
-  setSelectedLabels: (labels: string[]) => void;
-  setEventId: (id: string | undefined) => void;
-  setModalOpen: (val: boolean) => void;
-}
+export { useMemoOverlayDerived } from '../hooks/useMemoOverlayDerived';
+export type { MemoOverlayState };
 
 export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
   mode: 'EVENT',
@@ -72,7 +35,6 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
       suggestionIndex: 0,
       isListMode: false,
       memo: '',
-      // period はリセットせず、前の値を引き継ぐ（インテリジェント・デフォルト）
       error: undefined,
       isSaving: false,
       eventId: undefined,
@@ -80,7 +42,6 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
     })),
 
   setPeriod: (val) => set({ period: val, error: undefined }),
-
   setTimeStr: (val) => set({ timeStr: val, error: undefined }),
 
   appendTimeDigit: (digit) =>
@@ -123,7 +84,8 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
     set((state) => {
       if (state.labelInput !== '') {
         return { labelInput: state.labelInput.slice(0, -1), error: undefined };
-      } else if (state.selectedLabels.length > 0) {
+      }
+      if (state.selectedLabels.length > 0) {
         const labels = [...state.selectedLabels];
         const last = labels.pop();
         return {
@@ -163,9 +125,7 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
     const { labelInput, suggestionIndex, addLabel } = get();
     const suggestions = filterSuggestions(labelInput, getFlattenedEvents());
     const target = suggestions[suggestionIndex];
-    if (target) {
-      addLabel(target.label);
-    }
+    if (target) addLabel(target.label);
   },
 
   setMemo: (val) => set({ memo: val }),
@@ -214,9 +174,7 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
     })),
 
   forceSetPhase: (phase) => set({ phase, error: undefined }),
-
   setError: (err) => set({ error: err }),
-
   setIsSaving: (val) => set({ isSaving: val }),
 
   filterByCategory: (categoryIndex) => {
@@ -231,39 +189,7 @@ export const useMemoOverlayStore = create<MemoOverlayState>((set, get) => ({
   },
 
   setSelectedLabels: (labels) =>
-    set({
-      selectedLabels: labels,
-      error: undefined,
-    }),
-
+    set({ selectedLabels: labels, error: undefined }),
   setEventId: (id) => set({ eventId: id }),
-
   setModalOpen: (val) => set({ isModalOpen: val }),
 }));
-
-/**
- * Derived State Selectors (Optional for convenience)
- */
-export const useMemoOverlayDerived = () => {
-  const store = useMemoOverlayStore();
-  const flattenedEvents = getFlattenedEvents();
-
-  const formattedTime = parseTimeStr(store.timeStr, store.period);
-  const suggestions = filterSuggestions(store.labelInput, flattenedEvents);
-
-  const isInvalidLabel = store.labelInput
-    ? !suggestions.some(
-        (s) => s.label.toLowerCase() === store.labelInput.toLowerCase(),
-      )
-    : false;
-
-  const clearError = () => store.setError(undefined);
-
-  return {
-    ...store,
-    formattedTime,
-    suggestions,
-    isInvalidLabel,
-    clearError,
-  };
-};

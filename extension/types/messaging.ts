@@ -45,6 +45,12 @@ declare module 'webext-bridge' {
     /** サイドパネルを閉じるリクエスト（Escキー等） */
     CLOSE_SIDEPANEL: Record<string, never>;
 
+    /** Dashboard を開く、または既存タブにフォーカスする */
+    OPEN_DASHBOARD: ProtocolWithReturn<
+      Record<string, never>,
+      { success: boolean }
+    >;
+
     /** 本体アプリのデータ更新を要求（Main Worldへの通知） */
     REFRESH_APP: { matchId: string };
 

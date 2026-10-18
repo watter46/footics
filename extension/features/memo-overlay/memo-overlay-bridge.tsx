@@ -4,19 +4,17 @@ import { MemoOverlayView } from '@/features/memo-overlay/components/MemoOverlayV
 import { useMemoOverlayEventBridge } from '@/features/memo-overlay/hooks/useMemoOverlayEventBridge';
 import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
 import { QuickTagBar } from './components/QuickTagBar';
+import { useMatchMemoLoader } from './hooks/use-match-memo-loader';
 import { useMemoSave } from './hooks/use-memo-save';
 import { useOverlayStore } from './stores/use-overlay-store';
 
 /**
- * MemoOverlayBridge (Extension Adapter Layer)
+ * MemoOverlayBridge (Extension Adapter Layer - Level 3 Feature View)
  *
  * 責務: 拡張機能固有のI/Oをコア（Hook + View）に繋ぐ「接着剤」。
- *
- * フェーズ2の変更点:
- * - 保存処理を `sendMessage('SAVE_MEMO_RELAY')` から
- *   `chrome.storage.local` のキューへの書き込みに変更。
- * - Content Script が `storage.onChanged` でキューを監視し、
- *   IndexedDB への実書き込みと REFRESH_APP の通知を担う。
+ * - キャッシュや IndexedDB から初期メモを非同期解決
+ * - MemoOverlayView（Level 2 Domain UI）へ Props 確定注入
+ * - ショートカット・イベントブリッジ・保存キュー連携
  */
 export const MemoOverlayBridge: React.FC = () => {
   const { isVisible, mode, matchId, initialData, initialError, open, close } =
@@ -30,6 +28,14 @@ export const MemoOverlayBridge: React.FC = () => {
   const setEventId = useMemoOverlayStore((s) => s.setEventId);
   const setPeriod = useMemoOverlayStore((s) => s.setPeriod);
   const forceSetPhase = useMemoOverlayStore((s) => s.forceSetPhase);
+
+  // キャッシュおよびDBから初期メモを非同期解決
+  const resolvedMemo = useMatchMemoLoader({
+    matchId,
+    mode,
+    initialMemo: initialData?.memo,
+    isVisible,
+  });
 
   // ── ストアの初期化 ──
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Initialization logic handles multi-phase restoration
@@ -54,12 +60,10 @@ export const MemoOverlayBridge: React.FC = () => {
           const m = initialData.minute;
           const s = initialData.second ?? 0;
           setTimeStr(`${m}:${s.toString().padStart(2, '0')}`);
-          // 時間が入力された状態なのでフェーズを進める
           forceSetPhase(1);
         }
         if (initialData.labels) {
           setSelectedLabels(initialData.labels);
-          // ラベルも入力済みならメモフェーズへ
           forceSetPhase(2);
         }
       }
@@ -94,6 +98,8 @@ export const MemoOverlayBridge: React.FC = () => {
       {mode === 'EVENT' && <QuickTagBar />}
       <MemoOverlayView
         matchId={matchId}
+        initialMemo={resolvedMemo}
+        initialData={initialData}
         onClose={close}
         onSave={handleSave}
         readOnly={false}
