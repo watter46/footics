@@ -35,12 +35,19 @@ export default defineConfig({
       version: '1.0.0',
       description:
         'Premier League tactical analysis, video frame capture, and interactive tactical board.',
-      icons: {
-        16: 'icons/icon-16.png',
-        32: 'icons/icon-32.png',
-        48: 'icons/icon-48.png',
-        128: 'icons/icon-128.png',
-      },
+      icons: isDev
+        ? {
+            16: 'icons/dev/icon-16.png',
+            32: 'icons/dev/icon-32.png',
+            48: 'icons/dev/icon-48.png',
+            128: 'icons/dev/icon-128.png',
+          }
+        : {
+            16: 'icons/icon-16.png',
+            32: 'icons/icon-32.png',
+            48: 'icons/icon-48.png',
+            128: 'icons/icon-128.png',
+          },
       permissions: [
         'sidePanel',
         'storage',
