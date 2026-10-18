@@ -1,5 +1,5 @@
 import { createStore } from 'zustand/vanilla';
-import type { BoundaryBox } from '@/lib/types/tactical-unified';
+import type { BoundaryBox, DrawingTool } from '@/lib/types/tactical-unified';
 import type {
   AnnotationsData,
   CanvasConfig,
@@ -7,9 +7,15 @@ import type {
   CanvasStore,
   CanvasStoreApi,
   DrawingPreviewState,
+  SelectedObject,
 } from '../types';
 import { createAnnotationActions } from './canvas-store-actions';
+import { createClipboardActions } from './canvas-store-clipboard';
 import { createHistoryActions } from './canvas-store-history';
+import {
+  createPitchActions,
+  DEFAULT_PITCH_TRANSFORM,
+} from './canvas-store-pitch';
 
 const DEFAULT_BOUNDARY_BOX: BoundaryBox = {
   x: 0,
@@ -50,13 +56,15 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
   const markerMode =
     config.markerMode ??
     (config.mode === 'screenshot-edit' ? '3d-only' : 'all');
+  const aspectRatio = config.aspectRatio ?? '16:9';
 
   return createStore<CanvasStore>()((set, get) => {
     const pushHistory = () => {
-      const { annotations, boundaryBox, history } = get();
+      const { annotations, boundaryBox, pitchTransform, history } = get();
       const snapshot: CanvasHistorySnapshot = {
         annotations: JSON.parse(JSON.stringify(annotations)),
         boundaryBox: { ...boundaryBox },
+        pitchTransform: { ...pitchTransform },
       };
       set({
         history: {
@@ -67,51 +75,108 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
     };
 
     const annotationActions = createAnnotationActions(set, get, pushHistory);
+    const pitchActions = createPitchActions(set, pushHistory);
     const historyActions = createHistoryActions(set, get);
+    const clipboardActions = createClipboardActions(set, get, pushHistory);
+
+    const resolveObject = (target: string | SelectedObject): SelectedObject => {
+      if (typeof target !== 'string') return target;
+      const { annotations } = get();
+      if (annotations.arrows.some((a) => a.id === target))
+        return { id: target, kind: 'arrow' };
+      if (annotations.zones.some((z) => z.id === target))
+        return { id: target, kind: 'zone' };
+      if (annotations.texts.some((t) => t.id === target))
+        return { id: target, kind: 'text' };
+      return { id: target, kind: 'player' };
+    };
 
     return {
       config,
       activeTool: 'select',
+      continuousDrawing: false,
+      selectedObjects: [],
       selectedIds: [],
+      pitchTransform: { ...DEFAULT_PITCH_TRANSFORM },
+      boundaryBox,
+      aspectRatio,
+      annotations: initialAnnotations,
+      clipboard: null,
       color: '#ef4444',
       strokeWidth: 3,
       fontSize: 16,
       markerMode,
       backgroundImageUrl: config.backgroundImageUrl,
-      boundaryBox,
-      annotations: initialAnnotations,
       drawingPreview: null,
-      history: {
-        past: [],
-        future: [],
-      },
+      history: { past: [], future: [] },
 
-      setActiveTool: (tool) => set({ activeTool: tool }),
-      setColor: (color) => set({ color }),
-      setStrokeWidth: (width) => set({ strokeWidth: width }),
-      setFontSize: (size) => set({ fontSize: size }),
+      setActiveTool: (tool: DrawingTool) => set({ activeTool: tool }),
+      setContinuousDrawing: (continuous: boolean) =>
+        set({ continuousDrawing: continuous }),
+      toggleContinuousDrawing: () =>
+        set((s) => ({ continuousDrawing: !s.continuousDrawing })),
+      setColor: (color: string) => set({ color }),
+      setStrokeWidth: (width: number) => set({ strokeWidth: width }),
+      setFontSize: (size: number) => set({ fontSize: size }),
       setMarkerMode: (mode) => set({ markerMode: mode }),
       setBackgroundImageUrl: (url) => set({ backgroundImageUrl: url }),
-      setSelectedIds: (ids) => set({ selectedIds: ids }),
-      selectObject: (id, isShift = false) => {
-        set((state) => ({
-          selectedIds: isShift
-            ? state.selectedIds.includes(id)
-              ? state.selectedIds.filter((i) => i !== id)
-              : [...state.selectedIds, id]
-            : [id],
-        }));
-      },
-      clearSelection: () => set({ selectedIds: [] }),
-      setBoundaryBox: (box) => {
-        pushHistory();
-        set({ boundaryBox: box });
-      },
       setDrawingPreview: (preview: DrawingPreviewState | null) =>
         set({ drawingPreview: preview }),
 
+      setSelectedIds: (ids: string[]) => {
+        const { annotations } = get();
+        const objs: SelectedObject[] = ids.map((id) => {
+          if (annotations.arrows.some((a) => a.id === id))
+            return { id, kind: 'arrow' };
+          if (annotations.zones.some((z) => z.id === id))
+            return { id, kind: 'zone' };
+          if (annotations.texts.some((t) => t.id === id))
+            return { id, kind: 'text' };
+          return { id, kind: 'player' };
+        });
+        set({ selectedIds: ids, selectedObjects: objs });
+      },
+      setSelectedObjects: (objects: SelectedObject[]) =>
+        set({
+          selectedObjects: objects,
+          selectedIds: objects.map((o) => o.id),
+        }),
+      selectObject: (target, isShiftOrMulti = false) => {
+        if (!target) {
+          set({ selectedObjects: [], selectedIds: [] });
+          return;
+        }
+        const obj = resolveObject(target);
+        set((s) => {
+          const exists = s.selectedObjects.some((o) => o.id === obj.id);
+          const nextObjs = isShiftOrMulti
+            ? exists
+              ? s.selectedObjects.filter((o) => o.id !== obj.id)
+              : [...s.selectedObjects, obj]
+            : [obj];
+          return {
+            selectedObjects: nextObjs,
+            selectedIds: nextObjs.map((o) => o.id),
+          };
+        });
+      },
+      selectObjects: (objects, multi = false) => {
+        set((s) => {
+          const nextObjs = multi
+            ? [...s.selectedObjects, ...objects]
+            : [...objects];
+          return {
+            selectedObjects: nextObjs,
+            selectedIds: nextObjs.map((o) => o.id),
+          };
+        });
+      },
+      clearSelection: () => set({ selectedObjects: [], selectedIds: [] }),
+
       ...annotationActions,
+      ...pitchActions,
       ...historyActions,
+      ...clipboardActions,
     };
   });
 }

@@ -18,7 +18,9 @@
     "ai:preflight": "bun .agents/scripts/preflight.ts",
     "ai:commit": "bun .agents/scripts/commit.ts",
     "ai:report": "bun .agents/scripts/session-report.ts",
+    "lint": "bun scripts/verify/lint.ts",
     "lint:fix": "bun scripts/verify/lint.ts --fix",
+    "typecheck": "bun scripts/verify/type-check-scoped.ts",
     "test": "rtk vitest run",
     "test:agents": "bun test ./.agents",
     "map": "bun scripts/map/generate-repo-map.ts"

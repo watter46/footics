@@ -14,7 +14,7 @@ export function createHistoryActions(
 ): Pick<CanvasActions, 'undo' | 'redo' | 'canUndo' | 'canRedo'> {
   return {
     undo: () => {
-      const { history, annotations, boundaryBox } = get();
+      const { history, annotations, boundaryBox, pitchTransform } = get();
       if (history.past.length === 0) return;
       const previous = history.past[history.past.length - 1];
       if (!previous) return;
@@ -23,11 +23,15 @@ export function createHistoryActions(
       const currentSnapshot: CanvasHistorySnapshot = {
         annotations: JSON.parse(JSON.stringify(annotations)),
         boundaryBox: { ...boundaryBox },
+        pitchTransform: { ...pitchTransform },
       };
 
       set({
         annotations: previous.annotations,
         boundaryBox: previous.boundaryBox,
+        pitchTransform: previous.pitchTransform
+          ? { ...previous.pitchTransform }
+          : pitchTransform,
         history: {
           past: newPast,
           future: [currentSnapshot, ...history.future],
@@ -35,7 +39,7 @@ export function createHistoryActions(
       });
     },
     redo: () => {
-      const { history, annotations, boundaryBox } = get();
+      const { history, annotations, boundaryBox, pitchTransform } = get();
       if (history.future.length === 0) return;
       const next = history.future[0];
       if (!next) return;
@@ -44,11 +48,15 @@ export function createHistoryActions(
       const currentSnapshot: CanvasHistorySnapshot = {
         annotations: JSON.parse(JSON.stringify(annotations)),
         boundaryBox: { ...boundaryBox },
+        pitchTransform: { ...pitchTransform },
       };
 
       set({
         annotations: next.annotations,
         boundaryBox: next.boundaryBox,
+        pitchTransform: next.pitchTransform
+          ? { ...next.pitchTransform }
+          : pitchTransform,
         history: {
           past: [...history.past, currentSnapshot],
           future: newFuture,

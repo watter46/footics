@@ -1,9 +1,11 @@
-import { render } from '@testing-library/react';
-import React, { createRef } from 'react';
+import { act, render } from '@testing-library/react';
+import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
-import type { CanvasCoreHandle } from '@/features/tactical-unified/core/types';
 import type { CapturedScreenshot } from '../../../capture/db/screenshot-db';
-import { QuickAnnotationCanvas } from '../QuickAnnotationCanvas';
+import {
+  QuickAnnotationCanvas,
+  type QuickAnnotationCanvasHandle,
+} from '../QuickAnnotationCanvas';
 
 const mockScreenshot: CapturedScreenshot = {
   id: 'shot-canvas-1',
@@ -21,7 +23,7 @@ const mockScreenshot: CapturedScreenshot = {
 
 describe('QuickAnnotationCanvas', () => {
   it('mounts without crash and forwards CanvasCoreHandle ref', () => {
-    const canvasRef = createRef<CanvasCoreHandle>();
+    const canvasRef = createRef<QuickAnnotationCanvasHandle>();
 
     const { container } = render(
       <div style={{ width: 800, height: 600 }}>
@@ -39,5 +41,31 @@ describe('QuickAnnotationCanvas', () => {
     expect(typeof canvasRef.current?.copyToClipboard).toBe('function');
     expect(typeof canvasRef.current?.undo).toBe('function');
     expect(typeof canvasRef.current?.redo).toBe('function');
+  });
+
+  it('supports applyRatio for boundaryBox aspect ratio presets', () => {
+    const canvasRef = createRef<QuickAnnotationCanvasHandle>();
+
+    render(
+      <div style={{ width: 800, height: 600 }}>
+        <QuickAnnotationCanvas
+          ref={canvasRef}
+          screenshot={mockScreenshot}
+          imageAspect={16 / 9}
+        />
+      </div>,
+    );
+
+    expect(typeof canvasRef.current?.applyRatio).toBe('function');
+    expect(() => {
+      act(() => {
+        canvasRef.current?.applyRatio?.('4:5');
+      });
+    }).not.toThrow();
+    expect(() => {
+      act(() => {
+        canvasRef.current?.applyRatio?.('full');
+      });
+    }).not.toThrow();
   });
 });

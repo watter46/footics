@@ -35,6 +35,37 @@ export function createRingMarker(
   };
 }
 
+export function create2DPlayerMarker(
+  x: number,
+  y: number,
+  color: string,
+  shirtNo: string,
+): Player {
+  return {
+    id: `player-${Date.now()}`,
+    area: 'pitch',
+    x,
+    y,
+    team: 'home',
+    shirtNo,
+    name: `Player ${shirtNo}`,
+    position: 'SUB',
+    style: {
+      markerType: 'circle',
+      color,
+      strokeColor: '#ffffff',
+      strokeWidth: 2,
+      sizeScale: 1.0,
+      numberSizeScale: 1.0,
+      labelSizeScale: 1.0,
+      insideContent: 'number',
+      bottomLabel: 'number',
+    },
+    badges: [],
+    connectLines: [],
+  };
+}
+
 export function createTextAnnotation(
   x: number,
   y: number,
@@ -63,22 +94,40 @@ export function commitDrawingShape(
   const { tool, startX, startY, currentX, currentY } = preview;
   const dist = Math.hypot(currentX - startX, currentY - startY);
 
-  if (['pass', 'dribble'].includes(tool) && dist > 1.5) {
+  const isArrowTool = [
+    'arrow_solid',
+    'arrow_dash',
+    'arrow_wavy',
+    'arrow-straight',
+    'arrow-curved',
+    'line',
+    'route_line',
+    'pass',
+    'dribble',
+  ].includes(tool as string);
+
+  if (isArrowTool && dist > 1.5) {
+    const isDash = tool === 'arrow_dash' || (tool as string) === 'dribble';
+    const isCurve = tool === 'arrow-curved';
+
     addArrow({
       id: `arrow-${Date.now()}`,
       annotationType: 'arrow',
-      arrowType: tool === 'dribble' ? 'dribble' : 'pass',
-      curveType: 'straight',
+      arrowType: isDash ? 'dribble' : 'pass',
+      curveType: isCurve ? 'curved' : 'straight',
       points: [
         { x: startX, y: startY },
         { x: currentX, y: currentY },
       ],
       color,
       strokeWidth,
-      dashArray: tool === 'dribble' ? [6, 4] : [],
+      dashArray: isDash ? [6, 4] : [],
       arrowHead: true,
     });
-  } else if (tool === 'zone' && dist > 1.5) {
+  } else if (
+    ((tool as string) === 'zone' || (tool as string) === 'zone_circle') &&
+    dist > 1.5
+  ) {
     const minX = Math.min(startX, currentX);
     const minY = Math.min(startY, currentY);
     const width = Math.abs(currentX - startX);
@@ -88,6 +137,7 @@ export function commitDrawingShape(
       id: `zone-${Date.now()}`,
       annotationType: 'zone',
       zoneType: 'highlight',
+      shapeType: (tool as string) === 'zone_circle' ? 'ellipse' : 'rect',
       x: minX,
       y: minY,
       width,

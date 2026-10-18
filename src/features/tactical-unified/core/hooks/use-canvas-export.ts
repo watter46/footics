@@ -10,9 +10,10 @@ import { useCanvasStore } from './use-canvas-store';
 
 export interface UseCanvasExportOptions {
   stageRef: React.RefObject<Konva.Stage | null>;
+  vRect?: { x: number; y: number; width: number; height: number };
 }
 
-export function useCanvasExport({ stageRef }: UseCanvasExportOptions) {
+export function useCanvasExport({ stageRef, vRect }: UseCanvasExportOptions) {
   const boundaryBox = useCanvasStore((s) => s.boundaryBox);
 
   const exportPng = useCallback(
@@ -25,9 +26,9 @@ export function useCanvasExport({ stageRef }: UseCanvasExportOptions) {
       const pixelRatio = options?.scale ?? 2;
       const shouldCrop = options?.crop ?? true;
 
-      if (shouldCrop && boundaryBox.enabled !== false) {
-        const stageW = stage.width();
-        const stageH = stage.height();
+      if (shouldCrop && boundaryBox?.enabled !== false) {
+        const stageW = vRect?.width ?? stage.width();
+        const stageH = vRect?.height ?? stage.height();
         const x = (boundaryBox.x / 100) * stageW;
         const y = (boundaryBox.y / 100) * stageH;
         const width = (boundaryBox.width / 100) * stageW;
@@ -44,7 +45,7 @@ export function useCanvasExport({ stageRef }: UseCanvasExportOptions) {
 
       return stage.toDataURL({ pixelRatio });
     },
-    [stageRef, boundaryBox],
+    [stageRef, boundaryBox, vRect],
   );
 
   const copyToClipboard = useCallback(
@@ -52,6 +53,9 @@ export function useCanvasExport({ stageRef }: UseCanvasExportOptions) {
       const dataUrl = await exportPng(options);
       const blob = await dataUrlToBlob(dataUrl);
       try {
+        if (typeof navigator === 'undefined' || !navigator.clipboard?.write) {
+          throw new Error('Clipboard API not available');
+        }
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob }),
         ]);

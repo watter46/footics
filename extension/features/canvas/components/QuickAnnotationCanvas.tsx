@@ -1,6 +1,7 @@
 'use client';
 
-import React, { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import type React from 'react';
+import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
 import {
   CanvasStageContainer,
   CanvasStoreProvider,

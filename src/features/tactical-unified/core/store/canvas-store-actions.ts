@@ -1,5 +1,6 @@
 import type { StoreApi } from 'zustand/vanilla';
 import type { AnnotationsData, CanvasActions, CanvasStore } from '../types';
+import { eraseAnnotationsAtPoint } from './canvas-store-eraser';
 
 type SetState = StoreApi<CanvasStore>['setState'];
 type GetState = StoreApi<CanvasStore>['getState'];
@@ -33,6 +34,7 @@ export function createAnnotationActions(
   | 'removeMarker'
   | 'removeSelected'
   | 'setAnnotations'
+  | 'eraseAtPoint'
 > {
   return {
     addArrow: (arrow) => {
@@ -144,24 +146,39 @@ export function createAnnotationActions(
       }));
     },
     removeSelected: () => {
-      const { selectedIds, annotations } = get();
-      if (selectedIds.length === 0) return;
+      const { selectedIds, selectedObjects, annotations } = get();
+      const idSet = new Set(
+        selectedObjects.length > 0
+          ? selectedObjects.map((o) => o.id)
+          : selectedIds,
+      );
+      if (idSet.size === 0) return;
       pushHistory();
       set({
         annotations: {
-          arrows: annotations.arrows.filter((a) => !selectedIds.includes(a.id)),
-          zones: annotations.zones.filter((z) => !selectedIds.includes(z.id)),
-          texts: annotations.texts.filter((t) => !selectedIds.includes(t.id)),
-          markers: annotations.markers.filter(
-            (m) => !selectedIds.includes(m.id),
-          ),
+          arrows: annotations.arrows.filter((a) => !idSet.has(a.id)),
+          zones: annotations.zones.filter((z) => !idSet.has(z.id)),
+          texts: annotations.texts.filter((t) => !idSet.has(t.id)),
+          markers: annotations.markers.filter((m) => !idSet.has(m.id)),
         },
         selectedIds: [],
+        selectedObjects: [],
       });
     },
     setAnnotations: (annotations: AnnotationsData) => {
       pushHistory();
       set({ annotations });
+    },
+    eraseAtPoint: (point, radius = 4.0) => {
+      const { annotations } = get();
+      const { nextAnnotations, hasChanged } = eraseAnnotationsAtPoint(
+        annotations,
+        point,
+        radius,
+      );
+      if (!hasChanged) return;
+      pushHistory();
+      set({ annotations: nextAnnotations });
     },
   };
 }

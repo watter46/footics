@@ -19,8 +19,31 @@ function getChangedFiles(): string[] {
   }
 }
 
+function expandFiles(filePaths: string[]): string[] {
+  const result: string[] = [];
+  for (const p of filePaths) {
+    if (!fs.existsSync(p)) continue;
+    if (fs.statSync(p).isDirectory()) {
+      const entries = fs.readdirSync(p, {
+        withFileTypes: true,
+        recursive: true,
+      });
+      for (const entry of entries) {
+        if (entry.isFile()) {
+          const parent = entry.parentPath || (entry as any).path;
+          result.push(path.join(parent, entry.name));
+        }
+      }
+    } else {
+      result.push(p);
+    }
+  }
+  return result;
+}
+
 const args = process.argv.slice(2).filter((a) => !a.startsWith('-'));
-const files = args.length > 0 ? args : getChangedFiles();
+const rawFiles = args.length > 0 ? args : getChangedFiles();
+const files = expandFiles(rawFiles);
 
 if (files.length === 0) {
   console.log('✅ No changed files found. Check passed.');
@@ -119,6 +142,6 @@ try {
 
   console.log('\n✅ Worker checks passed.');
 } catch (err) {
-  console.error('\n❌ Worker checks failed.');
+  console.error('\n❌ Worker checks failed:', err);
   process.exit(1);
 }
