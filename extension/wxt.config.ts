@@ -27,57 +27,61 @@ export default defineConfig({
       },
     },
   }),
-  manifest: {
-    name: 'Footics Tactical',
-    version: '1.0.0',
-    description:
-      'Premier League tactical analysis, video frame capture, and interactive tactical board.',
-    icons: {
-      16: 'icons/icon-16.png',
-      32: 'icons/icon-32.png',
-      48: 'icons/icon-48.png',
-      128: 'icons/icon-128.png',
-    },
-    permissions: [
-      'sidePanel',
-      'storage',
-      'tabs',
-      'activeTab',
-      'clipboardWrite',
-      'unlimitedStorage',
-    ],
-    host_permissions: ['<all_urls>'],
-    commands: {
-      'capture-to-tactical': {
-        suggested_key: {
-          default: 'Alt+S',
-        },
-        description: 'Capture video frame and send to Footics Tactical',
+  manifest: (env) => {
+    const isDev = env.command === 'serve';
+
+    return {
+      name: isDev ? '[DEV] Footics Tactical' : 'Footics Tactical',
+      version: '1.0.0',
+      description:
+        'Premier League tactical analysis, video frame capture, and interactive tactical board.',
+      icons: {
+        16: 'icons/icon-16.png',
+        32: 'icons/icon-32.png',
+        48: 'icons/icon-48.png',
+        128: 'icons/icon-128.png',
       },
-      'toggle-match-memo': {
-        suggested_key: {
-          default: 'Alt+W',
+      permissions: [
+        'sidePanel',
+        'storage',
+        'tabs',
+        'activeTab',
+        'clipboardWrite',
+        'unlimitedStorage',
+      ],
+      host_permissions: ['<all_urls>'],
+      commands: {
+        'capture-to-tactical': {
+          suggested_key: {
+            default: 'Alt+S',
+          },
+          description: 'Capture video frame and send to Footics Tactical',
         },
-        description: 'Toggle Match Memo Overlay',
-      },
-      'toggle-event-memo': {
-        suggested_key: {
-          default: 'Alt+E',
+        'toggle-match-memo': {
+          suggested_key: {
+            default: 'Alt+W',
+          },
+          description: 'Toggle Match Memo Overlay',
         },
-        description: 'Toggle Event Memo Overlay',
-      },
-      'toggle-mini-mode': {
-        suggested_key: {
-          default: 'Alt+M',
+        'toggle-event-memo': {
+          suggested_key: {
+            default: 'Alt+E',
+          },
+          description: 'Toggle Event Memo Overlay',
         },
-        description: 'Toggle Memo Overlay Mini/Full Mode',
+        'toggle-mini-mode': {
+          suggested_key: {
+            default: 'Alt+M',
+          },
+          description: 'Toggle Memo Overlay Mini/Full Mode',
+        },
       },
-    },
-    action: {
-      default_title: 'Footics Dashboardを開く',
-    },
-    side_panel: {
-      default_path: 'entrypoints/sidepanel/index.html',
-    },
+      action: {
+        default_title: 'Footics Dashboardを開く',
+      },
+      side_panel: {
+        default_path: 'entrypoints/sidepanel/index.html',
+      },
+    };
   },
 });
