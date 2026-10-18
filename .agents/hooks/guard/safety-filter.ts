@@ -45,6 +45,42 @@ function checkSafetyGuard(
     };
   }
 
+  // インラインファイル書き換え・改ざんコマンドの遮断 (write_to_file / replace_file_content への一本化)
+  if (
+    executable === 'sed' &&
+    args.some(
+      (a) => a === '-i' || /^-[a-zA-Z]*i/.test(a) || a.startsWith('--in-place'),
+    )
+  ) {
+    return {
+      decision: 'deny',
+      reason:
+        "[GUARD] Inline editing with 'sed -i' is prohibited to prevent guard bypass and syntax errors. Use 'replace_file_content' or 'write_to_file' instead.",
+    };
+  }
+
+  if (
+    executable === 'perl' &&
+    args.some((a) => a === '-i' || /^-[a-zA-Z]*i/.test(a))
+  ) {
+    return {
+      decision: 'deny',
+      reason:
+        "[GUARD] Inline editing with 'perl -i' is prohibited. Use 'replace_file_content' or 'write_to_file' instead.",
+    };
+  }
+
+  // リダイレクトによる重要ファイルの上書き遮断 (> file, >> file)
+  if (
+    />\s*(\.agents\/|\.git\/|package\.json|src\/|extension\/)/.test(fullCmdLine)
+  ) {
+    return {
+      decision: 'deny',
+      reason:
+        "[GUARD] Shell redirection directly into source or configuration files is prohibited. Use 'write_to_file' or 'replace_file_content' instead.",
+    };
+  }
+
   if (executable === 'chmod') {
     if (
       args.some(

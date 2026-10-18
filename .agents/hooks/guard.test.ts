@@ -53,6 +53,27 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(evaluateCommand('sudo apt-get update').decision).toBe('deny');
       expect(evaluateCommand(':(){ :|:& };:').decision).toBe('deny');
     });
+
+    test('denies inline file editing via sed -i and perl -i', () => {
+      const resSed = evaluateCommand("sed -i 's/foo/bar/g' src/file.ts");
+      expect(resSed.decision).toBe('deny');
+      expect(resSed.reason).toContain("'sed -i' is prohibited");
+
+      const resPerl = evaluateCommand("perl -i -pe 's/foo/bar/' src/file.ts");
+      expect(resPerl.decision).toBe('deny');
+      expect(resPerl.reason).toContain("'perl -i' is prohibited");
+    });
+
+    test('denies shell redirection into source/config files', () => {
+      const resRedir = evaluateCommand('echo "export const a = 1;" > src/a.ts');
+      expect(resRedir.decision).toBe('deny');
+      expect(resRedir.reason).toContain(
+        'Shell redirection directly into source',
+      );
+
+      const resAppend = evaluateCommand('echo "test" >> package.json');
+      expect(resAppend.decision).toBe('deny');
+    });
   });
 
   describe('2. Token Guard - Transparent Rewriting (overwrite)', () => {
