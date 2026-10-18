@@ -71,6 +71,9 @@ export const CanvasStageContainer = forwardRef<
   const canUndo = useCanvasStore((s) => s.canUndo);
   const canRedo = useCanvasStore((s) => s.canRedo);
 
+  const setIsDragging = useCanvasStore((s) => s.setIsDragging);
+  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
+
   useCanvasShortcuts();
 
   const {
@@ -106,9 +109,24 @@ export const CanvasStageContainer = forwardRef<
     ? (texts.find((t) => t.id === editingTextId) ?? null)
     : null;
 
+  const rightMargin =
+    containerSize.width > 0
+      ? Math.max(0, containerSize.width - (vRect.x + vRect.width))
+      : 0;
+  const toolbarRight =
+    rightMargin >= 64 ? `${Math.round(rightMargin / 2)}px` : '12px';
+  const toolbarTransform =
+    rightMargin >= 64 ? 'translate(50%, -50%)' : 'translateY(-50%)';
+
   return (
     <div
       ref={containerRef}
+      style={
+        {
+          '--toolbar-right': toolbarRight,
+          '--toolbar-transform': toolbarTransform,
+        } as React.CSSProperties
+      }
       className={`relative w-full h-full overflow-hidden select-none bg-zinc-950 ${className}`}
     >
       {vRect.width > 0 && vRect.height > 0 && (
@@ -129,6 +147,14 @@ export const CanvasStageContainer = forwardRef<
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onWheel={handleWheel}
+            onDragStart={() => {
+              setIsDragging(true);
+              setIsHudOpen(false);
+            }}
+            onDragEnd={() => {
+              setIsDragging(false);
+              setIsHudOpen(false);
+            }}
           >
             <BackgroundImageLayer width={vRect.width} height={vRect.height} />
             <AnnotationLayer

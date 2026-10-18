@@ -4,6 +4,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Group, Line } from 'react-konva';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
+import { useCanvasStore } from '../../hooks/use-canvas-store';
 import { useZonePolygon } from './use-zone-polygon';
 import { ZonePolygonHandles } from './ZonePolygonHandles';
 import { getZoneStyle } from './zone-geometry';
@@ -25,6 +26,8 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
 ) {
   const { zone, isSelected, onSelect, isInteractive = true } = props;
   const { fillRGBA, strokeColor, strokeWidth } = getZoneStyle(zone);
+  const setIsDragging = useCanvasStore((s) => s.setIsDragging);
+  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
   const {
     isComplete,
     renderPts,
@@ -38,8 +41,11 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
     <Group
       draggable={isInteractive && isComplete && !zone.locked}
       onDragStart={(e) => {
+        setIsDragging(true);
+        setIsHudOpen(false);
         if (!isSelected) {
           onSelect(e);
+          setIsHudOpen(false);
         }
         handleGroupDragStart(e);
       }}

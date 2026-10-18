@@ -146,4 +146,32 @@ describe('canvas-drawing-factory', () => {
       }),
     );
   });
+
+  it('commitDrawingShape がゾーンを琥珀イエロー(#f59e0b)・透明度0.25でコミットすること', () => {
+    const addArrow = vi.fn<(a: ArrowAnnotation) => void>();
+    const addZone = vi.fn<(z: ZoneAnnotation) => void>();
+
+    commitDrawingShape(
+      {
+        isDrawing: true,
+        tool: 'zone',
+        startX: 10,
+        startY: 10,
+        currentX: 60,
+        currentY: 60,
+      },
+      '#ffffff',
+      3,
+      addArrow,
+      addZone,
+    );
+
+    expect(addZone).toHaveBeenCalledWith(
+      expect.objectContaining({
+        annotationType: 'zone',
+        color: '#f59e0b',
+        opacity: 0.25,
+      }),
+    );
+  });
 });

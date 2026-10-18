@@ -41,6 +41,7 @@ export function AnnotationLayer({
   const updateZone = useCanvasStore((s) => s.updateZone);
   const updateArrow = useCanvasStore((s) => s.updateArrow);
   const updateText = useCanvasStore((s) => s.updateText);
+  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
 
   const isInteractive = activeTool === 'select';
   const stageSize = { width, height };
@@ -51,9 +52,10 @@ export function AnnotationLayer({
         e.cancelBubble = true;
         const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
         selectObject({ id, kind }, isShift);
+        setIsHudOpen(true);
       };
     },
-    [selectObject],
+    [selectObject, setIsHudOpen],
   );
 
   return (

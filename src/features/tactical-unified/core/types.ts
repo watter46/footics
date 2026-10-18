@@ -97,6 +97,8 @@ export interface CanvasState {
   markerMode: '2d-only' | '3d-only' | 'all';
   backgroundImageUrl?: string;
   drawingPreview: DrawingPreviewState | null;
+  isDragging: boolean;
+  isHudOpen: boolean;
   history: {
     past: CanvasHistorySnapshot[];
     future: CanvasHistorySnapshot[];
@@ -114,6 +116,8 @@ export interface CanvasActions {
   setMarkerMode: (mode: '2d-only' | '3d-only' | 'all') => void;
   setBackgroundImageUrl: (url: string | undefined) => void;
   setDrawingPreview: (preview: DrawingPreviewState | null) => void;
+  setIsDragging: (isDragging: boolean) => void;
+  setIsHudOpen: (isOpen: boolean) => void;
 
   // 選択操作
   setSelectedIds: (ids: string[]) => void;

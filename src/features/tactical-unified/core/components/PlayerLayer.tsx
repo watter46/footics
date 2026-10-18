@@ -1,10 +1,11 @@
 'use client';
 
+import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { ReactNode } from 'react';
-import { useCallback } from 'react';
-import { Group, Layer, Line } from 'react-konva';
+import { useCallback, useRef } from 'react';
+import { Group, Layer } from 'react-konva';
 import { PlayerFocusSpotlight } from '@/features/tactical-unified/objects/player/components/player-focus-spotlight';
 import { PlayerMarkerCircle } from '@/features/tactical-unified/objects/player/components/player-marker-circle';
 import { PlayerMarkerLabel } from '@/features/tactical-unified/objects/player/components/player-marker-label';
@@ -14,6 +15,7 @@ import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { Player } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
+import { PlayerConnectLines } from './PlayerConnectLines';
 
 export interface PlayerLayerProps {
   width: number;
@@ -32,74 +34,93 @@ export function PlayerLayer({
   const activeTool = useCanvasStore((s) => s.activeTool);
   const selectObject = useCanvasStore((s) => s.selectObject);
   const updateMarker = useCanvasStore((s) => s.updateMarker);
+  const setIsDragging = useCanvasStore((s) => s.setIsDragging);
+  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
+
+  const connectLineNodesRef = useRef<Map<string, Konva.Line>>(new Map());
 
   const isInteractive = activeTool === 'select';
   const baseDim = Math.min(width, height);
 
+  const handleMarkerDragMove = useCallback(
+    (e: KonvaEventObject<DragEvent>, markerId: string) => {
+      const curX = e.target.x();
+      const curY = e.target.y();
+      for (const p of markers) {
+        for (const cl of p.connectLines ?? []) {
+          if (p.id === markerId || cl.toPlayerId === markerId) {
+            const lineNode = connectLineNodesRef.current.get(cl.id);
+            if (!lineNode) continue;
+            const targetMarker = markers.find((m) => m.id === cl.toPlayerId);
+            if (!targetMarker) continue;
+            const isSource = p.id === markerId;
+            const sPos = isSource
+              ? { x: curX, y: curY }
+              : { x: (p.x / 100) * width, y: (p.y / 100) * height };
+            const tPos =
+              cl.toPlayerId === markerId
+                ? { x: curX, y: curY }
+                : {
+                    x: (targetMarker.x / 100) * width,
+                    y: (targetMarker.y / 100) * height,
+                  };
+            const p1 = getMarkerBoundaryPoint(
+              sPos,
+              tPos,
+              p,
+              { width, height },
+              true,
+            );
+            const p2 = getMarkerBoundaryPoint(
+              tPos,
+              sPos,
+              targetMarker,
+              { width, height },
+              true,
+            );
+            lineNode.points([p1.x, p1.y, p2.x, p2.y]);
+          }
+        }
+      }
+      e.target.getLayer()?.batchDraw();
+    },
+    [markers, width, height],
+  );
+
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>, marker: Player) => {
+      setIsDragging(false);
+      setIsHudOpen(false);
       const node = e.target;
-      const newPxX = node.x();
-      const newPxY = node.y();
-      const newNormX = (newPxX / width) * 100;
-      const newNormY = (newPxY / height) * 100;
+      const newNormX = (node.x() / width) * 100;
+      const newNormY = (node.y() / height) * 100;
 
       updateMarker(marker.id, {
         x: Math.max(0, Math.min(100, newNormX)),
         y: Math.max(0, Math.min(100, newNormY)),
       });
     },
-    [width, height, updateMarker],
+    [width, height, updateMarker, setIsDragging, setIsHudOpen],
   );
 
   return (
     <Layer>
-      {/* ── Connect Lines (選手間コネクトライン) ── */}
-      {markers
-        .filter((p) => p.connectLines && p.connectLines.length > 0)
-        .flatMap((p) =>
-          (p.connectLines ?? [])
-            .filter((cl) => cl.visible)
-            .map((cl) => {
-              const toPlayer = markers.find((m) => m.id === cl.toPlayerId);
-              if (!toPlayer) return null;
-              const rawP1 = { x: (p.x / 100) * width, y: (p.y / 100) * height };
-              const rawP2 = {
-                x: (toPlayer.x / 100) * width,
-                y: (toPlayer.y / 100) * height,
-              };
-              const p1 = getMarkerBoundaryPoint(
-                rawP1,
-                rawP2,
-                p,
-                { width, height },
-                true,
-              );
-              const p2 = getMarkerBoundaryPoint(
-                rawP2,
-                rawP1,
-                toPlayer,
-                { width, height },
-                true,
-              );
-              const dash =
-                cl.lineStyle === 'dashed'
-                  ? [6, 4]
-                  : cl.lineStyle === 'dotted'
-                    ? [2, 3]
-                    : undefined;
-              return (
-                <Line
-                  key={cl.id}
-                  points={[p1.x, p1.y, p2.x, p2.y]}
-                  stroke={cl.color || '#38bdf8'}
-                  strokeWidth={cl.strokeWidth ?? 2}
-                  dash={dash}
-                  listening={false}
-                />
-              );
-            }),
-        )}
+      <PlayerConnectLines
+        markers={markers}
+        width={width}
+        height={height}
+        selectedIds={selectedIds}
+        isInteractive={isInteractive}
+        connectLineNodesRef={connectLineNodesRef}
+        onSelectConnectLine={(id, parentPlayerId) => {
+          selectObject({
+            id,
+            kind: 'connect-line',
+            parentPlayerId,
+          });
+          setIsHudOpen(true);
+        }}
+      />
 
       {markers.map((marker) => {
         const pxX = (marker.x / 100) * width;
@@ -129,19 +150,24 @@ export function PlayerLayer({
             y={pxY}
             draggable={isInteractive && !marker.locked}
             onDragStart={(e) => {
+              setIsDragging(true);
+              setIsHudOpen(false);
               if (!isSelected) {
                 const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
                 selectObject(marker.id, isShift);
               }
             }}
+            onDragMove={(e) => handleMarkerDragMove(e, marker.id)}
             onClick={(e) => {
               e.cancelBubble = true;
               const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
               selectObject(marker.id, isShift);
+              setIsHudOpen(true);
             }}
             onTap={(e) => {
               e.cancelBubble = true;
               selectObject(marker.id, false);
+              setIsHudOpen(true);
             }}
             onDragEnd={(e) => handleDragEnd(e, marker)}
           >

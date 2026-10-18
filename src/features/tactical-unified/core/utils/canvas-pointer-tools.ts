@@ -29,7 +29,6 @@ export function handleToolPointerDown(
 ): void {
   const {
     activeTool,
-    color,
     markers,
     continuousDrawing,
     onStartEditText,
@@ -58,7 +57,7 @@ export function handleToolPointerDown(
   }
 
   if (activeTool === 'text') {
-    const text = createTextAnnotation(normPos.x, normPos.y, color);
+    const text = createTextAnnotation(normPos.x, normPos.y, '#ffffff');
     addText(text);
     onStartEditText?.(text.id);
     if (!continuousDrawing) setActiveTool('select');
@@ -68,11 +67,16 @@ export function handleToolPointerDown(
   if (activeTool === 'player-ring' || activeTool === 'player') {
     const marker =
       activeTool === 'player-ring'
-        ? createRingMarker(normPos.x, normPos.y, color, `${markers.length + 1}`)
+        ? createRingMarker(
+            normPos.x,
+            normPos.y,
+            '#3b82f6',
+            `${markers.length + 1}`,
+          )
         : create2DPlayerMarker(
             normPos.x,
             normPos.y,
-            color,
+            '#3b82f6',
             `${markers.length + 1}`,
           );
     addMarker(marker);

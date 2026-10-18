@@ -265,28 +265,84 @@
 
 ---
 
+### Phase 8: オブジェクト追従最適化・HUD分離・ツールバー右固定・デフォルト値復元 & 3Dマーカー付属要素刷新
+- **Worker Model**: `flash`
+- **対象スコープ**: `src/features/tactical-unified/core/`, `extension/features/canvas/`
+- **要件 & 設計方針**:
+  1. **デフォルト値の復元**:
+     - 矢印・ライン全般: 色 `#ffffff` (白), 太さ `3`
+     - ゾーン全般: 色 `#f59e0b` (琥珀イエロー), 透明度 `0.25`
+     - テキスト: 色 `#ffffff` (白), サイズ `16`
+     - 3D マーカー: 色 `#3b82f6` (ブルー), リング `#ffffff`
+     - コネクトライン: 色 `#38bdf8` (シアン), 太さ `2`
+     - 視野コーン: 色 `#3b82f6` (ブルー)
+     - スポットライト: 色 `#ffffff` (白)
+     - `canvas-store.ts` の一括初期値 `#ef4444` を撤廃し、オブジェクト種別ごとの本来のデフォルト値を反映
+  2. **ツールバーの右側黒帯中央固定配置**:
+     - スクリーンショットの両脇にある黒い余白（レターボックス領域）の右側中央に配置
+     - ドラッグハンドルおよびドラッグ可動機能を撤廃し、固定配置スタイルを採用
+  3. **ドラッグ状態と選択状態の分離 & HUD 表示制御**:
+     - ドラッグ中およびドラッグ直後は HUD（オプションメニュー）を表示せず、配置・移動操作に専念
+     - クリック選択時（非ドラッグタップ）に初めて HUD を表示
+     - HUD 表示位置はオブジェクト上部（32px 余白）を基本とし、ビューポート外にはみ出さないよう画面内にクランプ
+     - ライン制御点やマーカー視野ハンドルに重なって操作を妨げない配置
+  4. **3D Marker 付属要素の改善**:
+     - **コネクタ（Connect Line）**: クリック選択可能化、色・太さオプション HUD の追加、マーカー移動時のリアルタイム同期
+     - **視野（Vision Cone）**: 扇形に `listening={false}` を適用して誤ドラッグを防止。視野ハンドル操作時のリアルタイム変形追従（`batchDraw()`）
+     - **HUD アイコン強調**: マーカー HUD 内の Vision Cone / Connect Line / Spotlight トグルボタンで、ON 時にアクティブ状態（背景色・アクセントカラー等）を明示
+- **Testing Strategy**:
+  - 対象: `src/features/tactical-unified/core/`, `extension/features/canvas/`
+  - ケース:
+    - 各ツールのデフォルト描画オブジェクトが赤ではなく復元されたデフォルト値（白・琥珀・青等）を持つこと
+    - ドラッグ移動中に HUD が非表示となり、クリック選択時にのみ表示されること
+    - マーカー HUD で Vision Cone / Connect Line / Spotlight の有効状態が視覚的に識別できること
+    - コネクタラインが選択可能で色・太さを変更できること
+    - 視野の扇形クリックでマーカー移動が誤発火しないこと
+- **Steps**:
+  - [x] 1. オブジェクトデフォルト値の復元 (`canvas-store.ts`, `tool-slice.ts`, `canvas-drawing-factory.ts`)
+  - [x] 2. ツールバーの右側黒帯中央固定化 (`DraggableToolbar.tsx` / `FixedToolbar.tsx`, `CanvasStageContainer.tsx`, `QuickAnnotationCanvas.tsx`)
+  - [x] 3. ドラッグ状態と選択状態の分離 & HUD 表示制御 (`use-hud-position.ts`, `ContextHud.tsx`, 各オブジェクトノード)
+  - [x] 4. 3D Marker 付属要素のリアクティブ追従 & コネクタ選択・HUDアイコン強調 (`PlayerLayer.tsx`, `PlayerQuickActions.tsx`, `player-vision-cone.tsx`, `player-vision-cone-handles.tsx`, `player-hud.tsx`)
+  - [x] 5. 単体テスト作成 & Scoped ai:check 通過 & Extension ビルド通過
+- **Phase Verification**:
+  - [x] `bun run ai:check src/features/tactical-unified/core/ extension/features/canvas/` が exit code 0 で全PASS
+  - [x] `bun run --cwd extension compile && bun run --cwd extension build` が exit code 0 で全PASS
+- **Worker Handoff Log**:
+  - 確定export: `FixedToolbar`, `DraggableToolbar`, `PlayerConnectLines`, `ConnectLineHud`, `resolveHudTarget`, `useHudPosition`
+  - 注意点:
+    - デフォルト値の復元: 矢印・ライン(`#ffffff`, 太さ`3`)、ゾーン(`#f59e0b`, 不透明度`0.25`)、テキスト(`#ffffff`, サイズ`16`)、3Dマーカー(`#3b82f6`, リング`#ffffff`)、コネクトライン(`#38bdf8`, 太さ`2`)。一括赤色フォールバックを完全撤廃。
+    - ツールバー固定配置: `DraggableToolbar` を `FixedToolbar` へ刷新し、キャンバス右側レターボックス領域中央に固定配置（CSS変数 `--toolbar-right`, `--toolbar-transform` 制御）。
+    - ドラッグ中 HUD 分離: `isDragging` フラグおよび `isHudOpen` フラグをストアで管理。ドラッグ移動中は HUD を完全非表示にし、クリック選択時のみ 32px マージン・画面内クランプで表示。
+    - 3Dマーカー付属要素刷新: コネクトラインを単独選択・HUD編集可能にし、ドラッグ移動中に `batchDraw()` でリアルタイム追従。Vision Cone に `listening={false}` を適用して誤ドラッグを防止し、ハンドル操作中のリアルタイム変形を実現。HUD トグルボタンの ON 状態を強調表示。
+    - コード規約厳守: `PlayerConnectLines.tsx` (93行) へのロジック分離により `PlayerLayer.tsx` (216行) を 250行以下に抑え、`canvas-store.ts` (191行) も 200行以下を厳守。全14テストファイル60件テスト全PASS、Extension WXT Build 通過。
+
+---
+
 ## 4. Reviewer Checklist & Assessment
 
 ### 4.1 Automated Gates (自動検証)
 - [x] すべての Phase のチェックボックス (`- [x]`) が完了していること
-- [x] `bun run ai:check src/features/tactical-unified/core/ extension/features/canvas/` が exit code 0 で全PASS (13 test files, 53 tests passed)
-- [x] `bun run --cwd extension typecheck && bun run --cwd extension build` が exit code 0 で全PASS (WXT 0.20.27 build passed)
+- [x] `bun run ai:check src/features/tactical-unified/core/ extension/features/canvas/` が exit code 0 で全PASS (14 test files, 60 tests passed)
+- [x] `bun run --cwd extension compile && bun run --cwd extension build` が exit code 0 で全PASS (WXT 0.20.27 build passed)
+- [x] `bun run typecheck && bun run lint` が exit code 0 で全PASS
 
 ### 4.2 Quality & Spec Audit (仕様・品質審査)
 - [x] 要件網羅性: 15 の操作シナリオ（パンズーム、多角形、テキスト編集、HUD、ショートカット、範囲選択、回転、波線、消しゴム等）が 1 つも欠落せず動作すること
 - [x] 非機能要件: Zero Flicker（初期チラつきゼロ）、Zero Black Margin（余白0%）が保たれていること
 - [x] 境界厳守: `core/` 内に `chrome.*` や `isExtension` 等のホスト依存・環境分岐が一切存在しないこと
 - [x] 行数規約: 各コンポーネントが 200行以内（最大250行以内）であること
-- [x] 3大設計指示: プラグイン・レジストリ、Compound Component / Slot、即時ドラッグ・描画バグ修正が完全実装されていること
+- [x] 追従・HUD・デフォルト値: オブジェクト追従、HUD表示分離、ツールバー右固定、デフォルト値復元、3Dマーカー付属要素が完全実装されていること
 
 ### 4.3 Reviewer Decision
 - **Status**: `LGTM`
-- **Reviewed At**: 2026-10-18 14:10
+- **Reviewed At**: 2026-10-18 15:35
 - **Reviewer Model**: `flash`
-- **Summary**: Phase 7 における Compound Component 化、プラグイン・レジストリ方式、描画バグ修正、即時ドラッグ選択、マーカーオプション復元がすべて要件および規約通りに実装されており、全自動検証ゲートを通過していることを確認しました。LGTMとして承認します。
+- **Summary**: Phase 8 におけるオブジェクト追従最適化、ドラッグ中HUD非表示＆クリック選択時HUD表示分離、ツールバー右側黒帯中央固定化、オブジェクト種別ごとのデフォルト値復元（白/琥珀/青/シアン）、コネクトライン単独選択・HUD編集＆リアルタイム追従、視野扇形誤ドラッグ防止＆ハンドルリアルタイム変形追従、HUDトグルボタンON時アクセント強調の全要件が完全実装されていることを確認しました。行数制限および自動検証ゲートも全PASSしており、LGTMとして承認します。
 
 ---
 
 ## 5. Rejections / Additional Tasks (不可逆修正欄)
 - Phase 7: ブラウザ検証で判明したツールバー・描画バグ・即時ドラッグ・マーカーオプションの修正と Compound Component 化
+- Phase 8: オブジェクト追従最適化・HUD分離・ツールバー右固定・デフォルト値復元 & 3Dマーカー付属要素刷新
+
 

@@ -3,7 +3,14 @@
 import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { useCanvasStore } from '../hooks/use-canvas-store';
-import { ArrowHud, PlayerHud, TextHud, useHudPosition, ZoneHud } from './hud';
+import {
+  ArrowHud,
+  ConnectLineHud,
+  PlayerHud,
+  TextHud,
+  useHudPosition,
+  ZoneHud,
+} from './hud';
 
 export interface ContextHudProps {
   stageSize: { width: number; height: number };
@@ -19,6 +26,8 @@ export function ContextHud({
   const hudRef = useRef<HTMLDivElement>(null);
   const selectedObjects = useCanvasStore((s) => s.selectedObjects);
   const activeTool = useCanvasStore((s) => s.activeTool);
+  const isDragging = useCanvasStore((s) => s.isDragging);
+  const isHudOpen = useCanvasStore((s) => s.isHudOpen);
 
   useEffect(() => {
     const stage = nodesRegistryRef?.current?.stage;
@@ -46,7 +55,13 @@ export function ContextHud({
     nodesRegistryRef,
   });
 
-  if (!selected || activeTool === 'eraser' || !position) {
+  if (
+    !selected ||
+    activeTool === 'eraser' ||
+    isDragging ||
+    !isHudOpen ||
+    !position
+  ) {
     return null;
   }
 
@@ -74,6 +89,12 @@ export function ContextHud({
         {selected.kind === 'arrow' && <ArrowHud arrowId={selected.id} />}
         {selected.kind === 'zone' && <ZoneHud zoneId={selected.id} />}
         {selected.kind === 'text' && <TextHud textId={selected.id} />}
+        {selected.kind === 'connect-line' && (
+          <ConnectLineHud
+            connectLineId={selected.id}
+            parentPlayerId={selected.parentPlayerId}
+          />
+        )}
       </div>
     </div>
   );

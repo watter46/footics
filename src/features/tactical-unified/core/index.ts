@@ -41,9 +41,17 @@ export {
   type FootRingLayerProps,
 } from './components/FootRingLayer';
 export {
+  ConnectLineHud,
+  type ConnectLineHudProps,
+} from './components/hud';
+export {
   PitchInlineTextEditor,
   type PitchInlineTextEditorProps,
 } from './components/PitchInlineTextEditor';
+export {
+  PlayerConnectLines,
+  type PlayerConnectLinesProps,
+} from './components/PlayerConnectLines';
 export {
   PlayerLayer,
   type PlayerLayerProps,

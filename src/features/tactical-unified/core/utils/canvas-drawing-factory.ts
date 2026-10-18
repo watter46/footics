@@ -9,7 +9,7 @@ import type { DrawingPreviewState } from '../types';
 export function createRingMarker(
   x: number,
   y: number,
-  color: string,
+  color = '#3b82f6',
   _shirtNo = '',
 ): Player {
   return {
@@ -21,7 +21,7 @@ export function createRingMarker(
     shirtNo: '',
     style: {
       markerType: 'ring',
-      color,
+      color: color || '#3b82f6',
       strokeColor: '#ffffff',
       strokeWidth: 2,
       sizeScale: 1.0,
@@ -38,7 +38,7 @@ export function createRingMarker(
 export function create2DPlayerMarker(
   x: number,
   y: number,
-  color: string,
+  color = '#3b82f6',
   shirtNo: string,
 ): Player {
   return {
@@ -52,7 +52,7 @@ export function create2DPlayerMarker(
     position: 'SUB',
     style: {
       markerType: 'circle',
-      color,
+      color: color || '#3b82f6',
       strokeColor: '#ffffff',
       strokeWidth: 2,
       sizeScale: 1.0,
@@ -69,7 +69,7 @@ export function create2DPlayerMarker(
 export function createTextAnnotation(
   x: number,
   y: number,
-  color: string,
+  color = '#ffffff',
 ): TextAnnotation {
   return {
     id: `text-${Date.now()}`,
@@ -77,8 +77,8 @@ export function createTextAnnotation(
     content: 'Tactics Note',
     x,
     y,
-    color,
-    fontSize: 18,
+    color: color || '#ffffff',
+    fontSize: 16,
     bold: false,
     italic: false,
   };
@@ -184,8 +184,8 @@ export function commitDrawingShape(
         { x: minX + width, y: minY + height },
         { x: minX, y: minY + height },
       ],
-      color,
-      opacity: 0.3,
+      color: '#f59e0b',
+      opacity: 0.25,
       strokeWidth: 2,
     });
   }

@@ -50,7 +50,7 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
 
       {/* 2. メインカラー */}
       <MiniColorPicker
-        value={player.style?.color ?? '#ef4444'}
+        value={player.style?.color ?? '#3b82f6'}
         onChange={(color) => {
           updateMarker(player.id, {
             style: { ...player.style, color },

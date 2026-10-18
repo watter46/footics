@@ -10,6 +10,8 @@ export {
 export {
   DraggableToolbar,
   type DraggableToolbarProps,
+  FixedToolbar,
+  type FixedToolbarProps,
 } from './DraggableToolbar';
 export {
   DRAWING_TOOLS_CORE,

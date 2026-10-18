@@ -1,5 +1,9 @@
 export { ArrowHud, type ArrowHudProps } from './arrow-hud';
 export {
+  ConnectLineHud,
+  type ConnectLineHudProps,
+} from './connect-line-hud';
+export {
   DashedArrowIcon,
   DashedLineIcon,
   RingMarkerIcon,

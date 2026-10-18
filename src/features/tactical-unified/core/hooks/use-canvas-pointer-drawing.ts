@@ -60,11 +60,11 @@ export function useCanvasPointerDrawing({
           currentY: normY,
         });
       } else if (activeTool === 'text') {
-        addText(createTextAnnotation(normX, normY, color));
+        addText(createTextAnnotation(normX, normY, '#ffffff'));
         setActiveTool('select');
       } else if (activeTool === 'player-ring') {
         addMarker(
-          createRingMarker(normX, normY, color, `${markers.length + 1}`),
+          createRingMarker(normX, normY, '#3b82f6', `${markers.length + 1}`),
         );
         setActiveTool('select');
       }

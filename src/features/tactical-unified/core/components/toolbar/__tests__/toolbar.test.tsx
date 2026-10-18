@@ -7,6 +7,7 @@ import type { CanvasStoreApi } from '../../../types';
 import {
   DraggableToolbar,
   EXTENSION_DRAWING_TOOLS,
+  FixedToolbar,
   ToolbarBoundaryBoxToggle,
   ToolbarContinuousLock,
   ToolbarDivider,
@@ -119,5 +120,20 @@ describe('Toolbar Compound Components & Registry', () => {
     const bboxBtn = screen.getByTitle(/Boundary Box/i);
     fireEvent.click(bboxBtn);
     expect(store.getState().boundaryBox.visible).toBe(true);
+  });
+
+  it('FixedToolbar が右側固定配置スタイルを持つこと', () => {
+    const { container } = renderWithStore(
+      <FixedToolbar>
+        <span data-testid="child">item</span>
+      </FixedToolbar>,
+    );
+
+    const toolbarEl = container.firstChild as HTMLElement;
+    expect(toolbarEl).toBeDefined();
+    expect(toolbarEl.style.right).toBe('var(--toolbar-right, 12px)');
+    expect(toolbarEl.style.transform).toBe(
+      'var(--toolbar-transform, translateY(-50%))',
+    );
   });
 });

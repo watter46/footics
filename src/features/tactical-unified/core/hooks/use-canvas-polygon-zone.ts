@@ -34,7 +34,7 @@ export function useCanvasPolygonZone() {
 
       if (!activePolygonId) {
         const id = crypto.randomUUID();
-        const stroke = color || '#22c55e';
+        const stroke = '#f59e0b';
         addZone({
           id,
           annotationType: 'zone',
@@ -43,7 +43,7 @@ export function useCanvasPolygonZone() {
           rotation: 0,
           points: [{ x: normPos.x, y: normPos.y }],
           color: stroke,
-          opacity: 0.35,
+          opacity: 0.25,
           strokeColor: stroke,
           strokeWidth: 2,
           isComplete: false,

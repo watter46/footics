@@ -159,7 +159,14 @@ export function createAnnotationActions(
           arrows: annotations.arrows.filter((a) => !idSet.has(a.id)),
           zones: annotations.zones.filter((z) => !idSet.has(z.id)),
           texts: annotations.texts.filter((t) => !idSet.has(t.id)),
-          markers: annotations.markers.filter((m) => !idSet.has(m.id)),
+          markers: annotations.markers
+            .filter((m) => !idSet.has(m.id))
+            .map((m) => ({
+              ...m,
+              connectLines: (m.connectLines ?? []).filter(
+                (cl) => !idSet.has(cl.id),
+              ),
+            })),
         },
         selectedIds: [],
         selectedObjects: [],

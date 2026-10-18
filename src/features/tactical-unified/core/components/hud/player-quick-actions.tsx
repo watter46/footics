@@ -20,8 +20,8 @@ export function VisionConeAction({ player }: PlayerQuickActionsProps) {
         angleRad: player.visionCone?.angleRad ?? 0,
         spreadRad: player.visionCone?.spreadRad ?? (60 * Math.PI) / 180,
         radius: player.visionCone?.radius ?? 13,
-        color: player.visionCone?.color ?? player.style?.color ?? '#38bdf8',
-        opacity: player.visionCone?.opacity ?? 0.25,
+        color: player.visionCone?.color ?? '#3b82f6',
+        opacity: player.visionCone?.opacity ?? 0.3,
         visible: !hasVisionCone,
       },
     });
@@ -31,9 +31,9 @@ export function VisionConeAction({ player }: PlayerQuickActionsProps) {
     <button
       type="button"
       onClick={toggleVisionCone}
-      className={`p-1 rounded-md transition-colors cursor-pointer ${
+      className={`p-1 rounded-md transition-all cursor-pointer ${
         hasVisionCone
-          ? 'text-sky-400 bg-sky-500/20'
+          ? 'text-sky-300 bg-sky-500/30 ring-1 ring-sky-400/60 shadow-sm'
           : 'text-white/70 hover:text-white hover:bg-white/10'
       }`}
       title={
@@ -74,7 +74,7 @@ export function ConnectLineAction({ player }: PlayerQuickActionsProps) {
           id: `cl-${Date.now()}`,
           toPlayerId: target.id,
           lineStyle: 'solid',
-          color: player.style?.color ?? '#38bdf8',
+          color: '#38bdf8',
           strokeWidth: 2,
           visible: true,
         },
@@ -86,9 +86,9 @@ export function ConnectLineAction({ player }: PlayerQuickActionsProps) {
     <button
       type="button"
       onClick={toggleConnectLine}
-      className={`p-1 rounded-md transition-colors cursor-pointer ${
+      className={`p-1 rounded-md transition-all cursor-pointer ${
         hasLines
-          ? 'text-emerald-400 bg-emerald-500/20'
+          ? 'text-emerald-300 bg-emerald-500/30 ring-1 ring-emerald-400/60 shadow-sm'
           : 'text-white/70 hover:text-white hover:bg-white/10'
       }`}
       title={
@@ -115,7 +115,7 @@ export function ArrowActionGroup({ player }: PlayerQuickActionsProps) {
         { x: player.x, y: player.y },
         { x: player.x + dir, y: player.y },
       ],
-      color: isDashed ? '#ffffff' : player.style?.color || '#38bdf8',
+      color: '#ffffff',
       strokeWidth: 3,
       dashArray: isDashed ? [6, 4] : [],
       arrowHead: true,
@@ -165,9 +165,9 @@ export function SpotlightAction({ player }: PlayerQuickActionsProps) {
     <button
       type="button"
       onClick={toggleSpotlight}
-      className={`p-1 rounded-md transition-colors cursor-pointer ${
+      className={`p-1 rounded-md transition-all cursor-pointer ${
         hasFocus
-          ? 'text-yellow-400 bg-yellow-500/20'
+          ? 'text-amber-300 bg-amber-500/30 ring-1 ring-amber-400/60 shadow-sm'
           : 'text-white/70 hover:text-white hover:bg-white/10'
       }`}
       title={

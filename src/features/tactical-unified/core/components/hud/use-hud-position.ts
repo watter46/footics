@@ -46,10 +46,17 @@ export function useHudPosition({
   if (!target) return null;
 
   const clampedX = Math.max(160, Math.min(stageSize.width - 160, target.x));
-  const isBelow = target.y - target.height / 2 - 50 < 10;
+  const MARGIN = 32;
+  const HUD_HEIGHT = 44;
+  const PADDING = 10;
+
+  const targetTop = target.y - target.height / 2;
+  const targetBottom = target.y + target.height / 2;
+
+  const isBelow = targetTop - MARGIN - HUD_HEIGHT < PADDING;
   const clampedY = isBelow
-    ? target.y + target.height / 2 + 12
-    : target.y - target.height / 2 - 12;
+    ? Math.min(stageSize.height - HUD_HEIGHT - PADDING, targetBottom + MARGIN)
+    : Math.max(HUD_HEIGHT + PADDING, targetTop - MARGIN);
 
   return { clampedX, clampedY, isBelow };
 }

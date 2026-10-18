@@ -1,6 +1,7 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Ellipse, Group, Rect, Transformer } from 'react-konva';
+import { useCanvasStore } from '../../hooks/use-canvas-store';
 import { useZoneShape } from './use-zone-shape';
 import type { ZoneNodeProps } from './ZonePolygonNode';
 import { getZoneStyle } from './zone-geometry';
@@ -10,6 +11,8 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
 ) {
   const { zone, isSelected, onSelect, isInteractive = true } = props;
   const { fillRGBA, strokeColor, strokeWidth } = getZoneStyle(zone);
+  const setIsDragging = useCanvasStore((s) => s.setIsDragging);
+  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
   const {
     shapeType,
     cx,
@@ -25,8 +28,11 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
   } = useZoneShape(props);
 
   const handleDragStart = (e: KonvaEventObject<DragEvent>) => {
+    setIsDragging(true);
+    setIsHudOpen(false);
     if (!isSelected) {
       onSelect(e);
+      setIsHudOpen(false);
     }
   };
 

@@ -131,6 +131,28 @@ function resolveTextTarget(
   };
 }
 
+function resolveConnectLineTarget(
+  selectedId: string,
+  parentPlayerId: string | undefined,
+  offset: HudOffsetRect,
+  markers: Player[],
+): HudTarget | null {
+  const p1 = parentPlayerId
+    ? markers.find((m) => m.id === parentPlayerId)
+    : markers.find((m) => m.connectLines?.some((cl) => cl.id === selectedId));
+  if (!p1) return null;
+  const cl = p1.connectLines?.find((c) => c.id === selectedId);
+  if (!cl) return null;
+  const p2 = markers.find((m) => m.id === cl.toPlayerId);
+  if (!p2) return null;
+
+  const sX = offset.x + (p1.x / 100) * offset.width;
+  const sY = offset.y + (p1.y / 100) * offset.height;
+  const eX = offset.x + (p2.x / 100) * offset.width;
+  const eY = offset.y + (p2.y / 100) * offset.height;
+  return { x: (sX + eX) / 2, y: (sY + eY) / 2, height: 16 };
+}
+
 export function resolveHudTarget({
   selected,
   offset,
@@ -164,6 +186,14 @@ export function resolveHudTarget({
   if (selected.kind === 'text') {
     const text = data.texts.find((t) => t.id === selected.id);
     return text ? resolveTextTarget(text, offset, nodesRegistryRef) : null;
+  }
+  if (selected.kind === 'connect-line') {
+    return resolveConnectLineTarget(
+      selected.id,
+      selected.parentPlayerId,
+      offset,
+      data.markers,
+    );
   }
   return null;
 }

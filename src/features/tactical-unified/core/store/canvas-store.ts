@@ -88,6 +88,11 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
         return { id: target, kind: 'zone' };
       if (annotations.texts.some((t) => t.id === target))
         return { id: target, kind: 'text' };
+      for (const m of annotations.markers) {
+        if (m.connectLines?.some((cl) => cl.id === target)) {
+          return { id: target, kind: 'connect-line', parentPlayerId: m.id };
+        }
+      }
       return { id: target, kind: 'player' };
     };
 
@@ -102,12 +107,14 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
       aspectRatio,
       annotations: initialAnnotations,
       clipboard: null,
-      color: '#ef4444',
+      color: '#ffffff',
       strokeWidth: 3,
       fontSize: 16,
       markerMode,
       backgroundImageUrl: config.backgroundImageUrl,
       drawingPreview: null,
+      isDragging: false,
+      isHudOpen: false,
       history: { past: [], future: [] },
 
       setActiveTool: (tool: DrawingTool) => set({ activeTool: tool }),
@@ -122,28 +129,26 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
       setBackgroundImageUrl: (url) => set({ backgroundImageUrl: url }),
       setDrawingPreview: (preview: DrawingPreviewState | null) =>
         set({ drawingPreview: preview }),
+      setIsDragging: (isDragging: boolean) => set({ isDragging }),
+      setIsHudOpen: (isHudOpen: boolean) => set({ isHudOpen }),
 
       setSelectedIds: (ids: string[]) => {
-        const { annotations } = get();
-        const objs: SelectedObject[] = ids.map((id) => {
-          if (annotations.arrows.some((a) => a.id === id))
-            return { id, kind: 'arrow' };
-          if (annotations.zones.some((z) => z.id === id))
-            return { id, kind: 'zone' };
-          if (annotations.texts.some((t) => t.id === id))
-            return { id, kind: 'text' };
-          return { id, kind: 'player' };
+        const objs = ids.map(resolveObject);
+        set({
+          selectedIds: ids,
+          selectedObjects: objs,
+          isHudOpen: ids.length > 0,
         });
-        set({ selectedIds: ids, selectedObjects: objs });
       },
       setSelectedObjects: (objects: SelectedObject[]) =>
         set({
           selectedObjects: objects,
           selectedIds: objects.map((o) => o.id),
+          isHudOpen: objects.length > 0,
         }),
       selectObject: (target, isShiftOrMulti = false) => {
         if (!target) {
-          set({ selectedObjects: [], selectedIds: [] });
+          set({ selectedObjects: [], selectedIds: [], isHudOpen: false });
           return;
         }
         const obj = resolveObject(target);
@@ -157,6 +162,7 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
           return {
             selectedObjects: nextObjs,
             selectedIds: nextObjs.map((o) => o.id),
+            isHudOpen: nextObjs.length > 0,
           };
         });
       },
@@ -168,10 +174,12 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
           return {
             selectedObjects: nextObjs,
             selectedIds: nextObjs.map((o) => o.id),
+            isHudOpen: true,
           };
         });
       },
-      clearSelection: () => set({ selectedObjects: [], selectedIds: [] }),
+      clearSelection: () =>
+        set({ selectedObjects: [], selectedIds: [], isHudOpen: false }),
 
       ...annotationActions,
       ...pitchActions,

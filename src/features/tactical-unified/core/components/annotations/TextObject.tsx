@@ -4,6 +4,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Text as KonvaText } from 'react-konva';
 import type { TextAnnotation } from '@/lib/types/tactical-unified';
+import { useCanvasStore } from '../../hooks/use-canvas-store';
 import { normX, normY, pxToNormX, pxToNormY } from './math-utils';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
@@ -32,6 +33,8 @@ export const TextObject = React.memo(function TextObject({
   nodesRegistryRef,
 }: TextObjectProps) {
   const { width, height } = stageSize;
+  const setIsDragging = useCanvasStore((s) => s.setIsDragging);
+  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
   const fontStyle =
     [text.bold ? 'bold' : '', text.italic ? 'italic' : '']
       .filter(Boolean)
@@ -63,11 +66,16 @@ export const TextObject = React.memo(function TextObject({
       perfectDrawEnabled={false}
       draggable={isInteractive && !isEditing && !text.locked}
       onDragStart={(e) => {
+        setIsDragging(true);
+        setIsHudOpen(false);
         if (!isSelected) {
           onSelect(e);
+          setIsHudOpen(false);
         }
       }}
       onDragEnd={(e) => {
+        setIsDragging(false);
+        setIsHudOpen(false);
         e.cancelBubble = true;
         const node = e.target;
         const newX = pxToNormX(node.x(), width);
