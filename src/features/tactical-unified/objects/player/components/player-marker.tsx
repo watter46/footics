@@ -8,8 +8,8 @@ import {
   DEFAULT_PITCH_PERSPECTIVE,
   normToScreen,
   type PitchRectBounds,
-} from '@/features/tactical-unified/objects/canvas/helpers/canvas-coordinates';
-import { useNodePositionTransition } from '@/features/tactical-unified/objects/canvas/hooks/use-node-position-transition';
+  useNodePositionTransition,
+} from '@/features/tactical-unified/core';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import { usePlayerPhoto } from '../hooks/use-player-photo';

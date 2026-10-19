@@ -5,61 +5,15 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import {
-  clampNorm,
-  normToPx,
-  pxToNorm,
-} from '@/features/tactical-unified/objects/canvas';
-import {
   selectPreviousSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { hideGhostGroup, setupGhostGroup } from './ball-drag-helper';
-
-function computeFallbackNormPos(
-  node: Konva.Group,
-  stageSize: { width: number; height: number },
-): { x: number; y: number } {
-  const clampedPxX = Math.max(
-    -stageSize.width,
-    Math.min(stageSize.width * 2, node.x()),
-  );
-  const clampedPxY = Math.max(
-    -stageSize.height,
-    Math.min(stageSize.height * 2, node.y()),
-  );
-  return {
-    x: clampNorm(pxToNorm(clampedPxX, stageSize.width), -100, 200),
-    y: clampNorm(pxToNorm(clampedPxY, stageSize.height), -100, 200),
-  };
-}
-
-function setupBallGhostOnDragStart(
-  prevSlideBall: { x: number; y: number; visible?: boolean } | undefined,
-  stageSize: { width: number; height: number },
-  node: Konva.Group,
-  ghostGroup: Konva.Group | null,
-  ghostLine: Konva.Line | null,
-): { x: number; y: number } | null {
-  if (prevSlideBall?.visible) {
-    const pPxX = normToPx(prevSlideBall.x, stageSize.width);
-    const pPxY = normToPx(prevSlideBall.y, stageSize.height);
-    setupGhostGroup(ghostGroup, ghostLine, pPxX, pPxY, node.x(), node.y());
-    return { x: pPxX, y: pPxY };
-  }
-  hideGhostGroup(ghostGroup);
-  return null;
-}
-
-function updateBallGhostLine(
-  ghostLine: Konva.Line | null,
-  prevBallPx: { x: number; y: number } | null,
-  node: Konva.Group,
-) {
-  if (prevBallPx && ghostLine) {
-    ghostLine.points([prevBallPx.x, prevBallPx.y, node.x(), node.y()]);
-    node.getLayer()?.batchDraw();
-  }
-}
+import {
+  computeFallbackNormPos,
+  hideGhostGroup,
+  setupBallGhostOnDragStart,
+  updateBallGhostLine,
+} from './ball-drag-helper';
 
 interface UseBallDragProps {
   stageSize: { width: number; height: number };

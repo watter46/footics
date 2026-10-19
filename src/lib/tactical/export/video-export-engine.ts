@@ -17,7 +17,7 @@ import {
   ArrayBufferTarget as WebmArrayBufferTarget,
   Muxer as WebmMuxer,
 } from 'webm-muxer';
-import { buildExportMVPMatrix } from '@/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper';
+import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import type {
   AspectRatio,
   BoundaryBox,

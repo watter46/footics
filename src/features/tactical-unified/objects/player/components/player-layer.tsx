@@ -5,7 +5,7 @@
  * Orchestrates player markers, ghost trajectories, onionskins, and attached objects follow-up.
  */
 
-import type { PitchRectBounds } from '@/features/tactical-unified/objects/canvas/helpers/canvas-coordinates';
+import type { PitchRectBounds } from '@/features/tactical-unified/core';
 import {
   selectPreviousSlide,
   useTacticalUnifiedStore,

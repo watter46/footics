@@ -1,87 +1,70 @@
 import { act, renderHook } from '@testing-library/react';
+import type { KonvaEventObject } from 'konva/lib/Node';
+import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useCanvasPitchPan } from '@/features/tactical-unified/objects/canvas/hooks/use-canvas-pitch-pan';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  type CanvasStoreApi,
+  CanvasStoreContext,
+  createCanvasStore,
+  useCanvasZoomPan,
+} from '@/features/tactical-unified/core';
 
-describe('L1-Tactical-051: Pitch Outer Margin Pan Guard', () => {
+function createMockKonvaPointerEvent(
+  pos: { x: number; y: number },
+  button = 0,
+) {
+  const stage = {
+    getPointerPosition: () => ({ x: pos.x, y: pos.y }),
+    getStage: () => stage,
+  };
+  return {
+    target: stage,
+    evt: {
+      clientX: pos.x,
+      clientY: pos.y,
+      button,
+      preventDefault: vi.fn(),
+    },
+  } as unknown as KonvaEventObject<PointerEvent>;
+}
+
+describe('L1-Tactical-051: Pitch Pan Control & Lock Guard', () => {
+  let store: CanvasStoreApi;
+
   beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
+    store = createCanvasStore({ mode: 'tactical-board' });
   });
 
-  it('選択ツール時、ピッチ外枠の内側 (isInsidePitch = true) をクリックするとパンが開始される', () => {
-    const store = useTacticalUnifiedStore.getState();
-    store.setActiveTool('select');
-
-    const pitchTransformRef = {
-      current: { panX: 0, panY: 0, zoom: 1, tilt: 0, isLocked: false },
-    };
-    const applyPitchTransformToNodes = vi.fn();
-
-    const { result } = renderHook(() =>
-      useCanvasPitchPan({
-        activeSlideId: store.activeSlideId,
-        isPitchLocked: false,
-        pitchTransformRef,
-        applyPitchTransformToNodes,
-      }),
-    );
-
-    let handled = false;
-    act(() => {
-      handled = result.current.handlePointerDown(
-        { x: 100, y: 100 },
-        true,
-        true,
+  const createWrapper =
+    (canvasStore: CanvasStoreApi) =>
+    ({ children }: { children: React.ReactNode }) =>
+      React.createElement(
+        CanvasStoreContext.Provider,
+        { value: canvasStore },
+        children,
       );
-    });
 
-    expect(handled).toBe(true);
-    expect(result.current.isPanning).toBe(true);
-  });
-
-  it('選択ツール時、ピッチ外枠の外側 (isInsidePitch = false) をクリックしてもパンが開始されない', () => {
-    const store = useTacticalUnifiedStore.getState();
-    store.setActiveTool('select');
-
-    const pitchTransformRef = {
-      current: { panX: 0, panY: 0, zoom: 1, tilt: 0, isLocked: false },
-    };
-    const applyPitchTransformToNodes = vi.fn();
-
-    const { result } = renderHook(() =>
-      useCanvasPitchPan({
-        activeSlideId: store.activeSlideId,
-        isPitchLocked: false,
-        pitchTransformRef,
-        applyPitchTransformToNodes,
-      }),
+  it('スペースキー未押下の通常クリックではパンが開始されない', () => {
+    const { result } = renderHook(
+      () => useCanvasZoomPan({ vRect: { width: 1000, height: 600 } }),
+      { wrapper: createWrapper(store) },
     );
 
     let handled = false;
     act(() => {
-      handled = result.current.handlePointerDown({ x: 10, y: 10 }, true, false);
+      handled = result.current.handlePanPointerDown(
+        createMockKonvaPointerEvent({ x: 100, y: 100 }, 0),
+      );
     });
 
     expect(handled).toBe(false);
     expect(result.current.isPanning).toBe(false);
   });
 
-  it('スペースキー押下中はピッチ外枠の外側 (isInsidePitch = false) でもパンが開始される', () => {
-    const store = useTacticalUnifiedStore.getState();
-    store.setActiveTool('select');
-
-    const pitchTransformRef = {
-      current: { panX: 0, panY: 0, zoom: 1, tilt: 0, isLocked: false },
-    };
-    const applyPitchTransformToNodes = vi.fn();
-
-    const { result } = renderHook(() =>
-      useCanvasPitchPan({
-        activeSlideId: store.activeSlideId,
-        isPitchLocked: false,
-        pitchTransformRef,
-        applyPitchTransformToNodes,
-      }),
+  it('スペースキー押下中はポインタダウンでパンが開始される', () => {
+    const { result } = renderHook(
+      () => useCanvasZoomPan({ vRect: { width: 1000, height: 600 } }),
+      { wrapper: createWrapper(store) },
     );
 
     act(() => {
@@ -92,11 +75,44 @@ describe('L1-Tactical-051: Pitch Outer Margin Pan Guard', () => {
 
     let handled = false;
     act(() => {
-      handled = result.current.handlePointerDown({ x: 10, y: 10 }, true, false);
+      handled = result.current.handlePanPointerDown(
+        createMockKonvaPointerEvent({ x: 100, y: 100 }, 0),
+      );
     });
 
     expect(handled).toBe(true);
     expect(result.current.isPanning).toBe(true);
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keyup', { code: 'Space', key: ' ' }),
+      );
+    });
+  });
+
+  it('ピッチがロック状態 (isLocked = true) の場合はスペースキー押下中でもパンが開始されない', () => {
+    store.getState().setPitchTransform({ isLocked: true });
+
+    const { result } = renderHook(
+      () => useCanvasZoomPan({ vRect: { width: 1000, height: 600 } }),
+      { wrapper: createWrapper(store) },
+    );
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { code: 'Space', key: ' ' }),
+      );
+    });
+
+    let handled = false;
+    act(() => {
+      handled = result.current.handlePanPointerDown(
+        createMockKonvaPointerEvent({ x: 100, y: 100 }, 0),
+      );
+    });
+
+    expect(handled).toBe(false);
+    expect(result.current.isPanning).toBe(false);
 
     act(() => {
       window.dispatchEvent(

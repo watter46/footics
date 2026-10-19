@@ -9,8 +9,10 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useCallback, useRef } from 'react';
 import { Group } from 'react-konva';
-import { normToPx } from '@/features/tactical-unified/objects/canvas';
-import { useNodePositionTransition } from '@/features/tactical-unified/objects/canvas/hooks/use-node-position-transition';
+import {
+  normToPx,
+  useNodePositionTransition,
+} from '@/features/tactical-unified/core';
 import {
   selectActiveSlide,
   selectPreviousSlide,

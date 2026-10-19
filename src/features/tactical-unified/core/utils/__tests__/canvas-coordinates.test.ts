@@ -14,8 +14,8 @@ import {
   screenToPitch,
   stageToPitch,
   unprojectScreenYToCssRotateX,
-} from './canvas-coordinates';
-import { calculatePitchTransform } from './canvas-pitch-transform-helper';
+} from '../canvas-coordinates';
+import { calculatePitchTransform } from '../canvas-pitch-transform-helper';
 
 const pitchRect = { x: 100, y: 50, width: 800, height: 500 };
 

@@ -8,7 +8,7 @@ import {
   getPitchAndNormPos,
   pitchToScreen,
   screenToPitch,
-} from '@/features/tactical-unified/objects/canvas';
+} from '@/features/tactical-unified/core';
 
 describe('Pitch Center-Anchored Transform & Tilt 3D Inversion', () => {
   const pitchRect = { x: 50, y: 30, width: 800, height: 500 };

@@ -4,7 +4,10 @@
  */
 
 export * from './core';
-export { BoundaryBox, UnifiedCanvas } from './objects/canvas';
+export {
+  BoundaryBoxOverlay as BoundaryBox,
+  CanvasStageContainer as UnifiedCanvas,
+} from './core';
 export { ExportModal } from './panels/export/export-modal';
 export { InspectorPanel } from './panels/inspector/inspector-panel';
 export { FormationSubPanel } from './panels/right-panel/formation-sub-panel';

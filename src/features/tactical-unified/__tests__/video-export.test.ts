@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildExportMVPMatrix } from '@/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper';
+import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import {
   calculateBoundaryCrop,
   getSupportedH264Codec,

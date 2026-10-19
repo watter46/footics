@@ -3,11 +3,11 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { useRef } from 'react';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import {
+  type CanvasNodesRegistry,
   clampNorm,
   pxToNorm,
-} from '@/features/tactical-unified/objects/canvas/helpers/canvas-coordinates';
+} from '@/features/tactical-unified/core';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Player, Slide } from '@/lib/types/tactical-unified';
 import type { OnionSkinRefs, PlayerDragContext } from '../types';
@@ -23,39 +23,7 @@ interface UsePlayerLayerDragOptions {
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
-function usePlayerGhostRefs() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ghostGroupRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ghostLineRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ghostMarkerGroupRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ghostCircleRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ghostTextRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ghostLabelRef = useRef<any>(null);
-
-  const onionSkinRefs: OnionSkinRefs = {
-    ghostGroup: ghostGroupRef.current,
-    ghostLine: ghostLineRef.current,
-    ghostMarkerGroup: ghostMarkerGroupRef.current,
-    ghostCircle: ghostCircleRef.current,
-    ghostText: ghostTextRef.current,
-    ghostLabel: ghostLabelRef.current,
-  };
-
-  return {
-    ghostGroupRef,
-    ghostLineRef,
-    ghostMarkerGroupRef,
-    ghostCircleRef,
-    ghostTextRef,
-    ghostLabelRef,
-    onionSkinRefs,
-  };
-}
+import { usePlayerGhostRefs } from './use-player-ghost-refs';
 
 export function usePlayerLayerDrag({
   slide,

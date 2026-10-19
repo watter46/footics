@@ -4,7 +4,7 @@
  * (Zero React re-render: imperatively mutates Konva node properties)
  */
 
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import type {
   InterpolatedArrowState,
   InterpolatedBallState,

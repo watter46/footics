@@ -12,7 +12,7 @@
 
 import { Pause, Play, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { buildExportMVPMatrix } from '@/features/tactical-unified/objects/canvas/helpers/canvas-pitch-transform-helper';
+import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 import type {

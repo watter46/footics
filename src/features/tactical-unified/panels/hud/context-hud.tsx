@@ -9,6 +9,7 @@
 import type React from 'react';
 import { useContext, useEffect, useMemo, useRef } from 'react';
 import {
+  type CanvasNodesRegistry,
   CanvasStoreContext,
   CanvasStoreProvider,
   ContextHud as CoreContextHud,
@@ -18,7 +19,6 @@ import {
   type SelectedObject,
   type SelectedObjectKind,
 } from '@/features/tactical-unified/core';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import {
   selectActiveSlide,
   useTacticalUnifiedStore,

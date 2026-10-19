@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import type { BallState, Player } from '@/lib/types/tactical-unified';
 
 export interface HudRect {

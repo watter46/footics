@@ -2,11 +2,11 @@
 
 import type { ReactNode } from 'react';
 import { useCallback, useState } from 'react';
+import type { BoundaryBox as BoundaryBoxType } from '@/lib/types/tactical-unified';
 import {
   type CornerId,
   useBoundaryBoxDrag,
-} from '@/features/tactical-unified/objects/canvas/hooks/use-boundary-box-drag';
-import type { BoundaryBox as BoundaryBoxType } from '@/lib/types/tactical-unified';
+} from '../hooks/use-boundary-box-drag';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 
 export interface BoundaryBoxOverlayProps {

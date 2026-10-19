@@ -1,8 +1,7 @@
 'use client';
 
-import type React from 'react';
-import { normToScreen } from '@/features/tactical-unified/objects/canvas/helpers/canvas-coordinates';
 import type { TextAnnotation } from '@/lib/types/tactical-unified';
+import { normToScreen } from '../utils/canvas-coordinates';
 
 export interface PitchInlineTextEditorProps {
   editingText: TextAnnotation | null;

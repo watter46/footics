@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import type { SelectedObject } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Slide } from '@/lib/types/tactical-unified';
 import {

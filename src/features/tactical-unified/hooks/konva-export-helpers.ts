@@ -10,7 +10,7 @@ export {
   calculateExportCropRect,
   type ExportCropRect,
   type ExportCropRectOptions,
-} from '../objects/canvas/helpers/canvas-pitch-transform-helper';
+} from '../core';
 
 export async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   const res = await fetch(dataUrl);

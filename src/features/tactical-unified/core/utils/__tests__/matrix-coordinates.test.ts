@@ -4,7 +4,7 @@ import {
   type CameraParams,
   projectPitchToScreen,
   unprojectScreenToPitch,
-} from './matrix-coordinates';
+} from '../matrix-coordinates';
 
 const baseParams: CameraParams = {
   tilt: 0,

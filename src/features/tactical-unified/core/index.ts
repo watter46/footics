@@ -61,6 +61,10 @@ export {
 } from './components/PlayerLayer';
 export * from './components/toolbar';
 export {
+  type CornerId,
+  useBoundaryBoxDrag,
+} from './hooks/use-boundary-box-drag';
+export {
   type UseCanvasExportOptions,
   useCanvasExport,
 } from './hooks/use-canvas-export';
@@ -69,6 +73,14 @@ export {
   useCanvasShortcuts,
 } from './hooks/use-canvas-shortcuts';
 export { useCanvasStore, useCanvasStoreApi } from './hooks/use-canvas-store';
+export {
+  type UseCanvasZoomPanOptions,
+  useCanvasZoomPan,
+} from './hooks/use-canvas-zoom-pan';
+export {
+  type UseNodePositionTransitionOptions,
+  useNodePositionTransition,
+} from './hooks/use-node-position-transition';
 export { createCanvasStore } from './store/canvas-store';
 export {
   CanvasStoreContext,
@@ -90,6 +102,57 @@ export type {
   SelectedObject,
   SelectedObjectKind,
 } from './types';
+export {
+  clampNorm,
+  clampNormPoint,
+  DEFAULT_PITCH_PERSPECTIVE,
+  getPitchAndNormPos,
+  getStagePitchAndNormPos,
+  normToPitch,
+  normToPx,
+  normToScreen,
+  type PitchRectBounds,
+  type PitchRectSize,
+  type PitchTransformState,
+  type Point2D,
+  pitchToNorm,
+  pitchToScreen,
+  pitchToStage,
+  pxToNorm,
+  screenToPitch,
+  stageToPitch,
+  unprojectScreenYToCssRotateX,
+} from './utils/canvas-coordinates';
+export {
+  applyPitchTransformToGroups,
+  buildExportMVPMatrix,
+  calculateExportCropRect,
+  calculatePitchRect,
+  calculatePitchTransform,
+  DEFAULT_PITCH_TRANSFORM_ORIGIN,
+  type ExportCropRect,
+  type ExportCropRectOptions,
+  getCssPitchTransform,
+  type PitchTransformValues,
+} from './utils/canvas-pitch-transform-helper';
+export {
+  type ArrowNodeEntry,
+  type CanvasNodesRegistry,
+  type ConnectLineNodeEntry,
+  createCanvasNodesRegistry,
+  type TrajectoryArrowNodeEntry,
+} from './utils/canvas-registry';
+export {
+  buildMVPMatrix,
+  type CameraParams,
+  DEFAULT_FAR,
+  DEFAULT_FOV,
+  DEFAULT_NEAR,
+  type NormPoint,
+  type ProjectedPoint,
+  projectPitchToScreen,
+  unprojectScreenToPitch,
+} from './utils/matrix-coordinates';
 export {
   calculateVirtualCanvasRect,
   type VirtualCanvasRect,

@@ -1,4 +1,4 @@
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import { getQuadraticBezierPoints } from '@/lib/tactical/trajectory';
 import type { AttachedArrowEntry } from '../types';
