@@ -137,9 +137,98 @@ export function validateTaskFile(filePath: string): ValidationResult {
   return result;
 }
 
+export interface BatchValidationResult {
+  total: number;
+  passed: number;
+  failed: number;
+  results: ValidationResult[];
+}
+
+export function validateAllTasks(options?: {
+  tasksDir?: string;
+  from?: number;
+}): BatchValidationResult {
+  const tasksDir = options?.tasksDir ?? path.join(process.cwd(), 'tasks');
+  const fromNum = options?.from ?? 7; // デフォルトは新仕様パイプライン対象の TASK-007 以降
+
+  if (!fs.existsSync(tasksDir)) {
+    return { total: 0, passed: 0, failed: 0, results: [] };
+  }
+
+  const files = fs
+    .readdirSync(tasksDir)
+    .filter((f) => f.startsWith('TASK-') && f.endsWith('.md'))
+    .filter((f) => {
+      const match = f.match(/^TASK-(\d+)/);
+      if (!match) return false;
+      const num = parseInt(match[1], 10);
+      return num >= fromNum;
+    })
+    .sort();
+
+  const results: ValidationResult[] = [];
+  let passed = 0;
+  let failed = 0;
+
+  for (const file of files) {
+    const fullPath = path.join(tasksDir, file);
+    const res = validateTaskFile(fullPath);
+    results.push(res);
+    if (res.valid) {
+      passed++;
+    } else {
+      failed++;
+    }
+  }
+
+  return {
+    total: files.length,
+    passed,
+    failed,
+    results,
+  };
+}
+
 // CLI 実行時
 if (import.meta.main) {
-  let targetFile = process.argv[2];
+  const args = process.argv.slice(2);
+  const isAll = args.includes('--all');
+  const fromArgIdx = args.indexOf('--from');
+  const fromNum =
+    fromArgIdx !== -1 && args[fromArgIdx + 1]
+      ? parseInt(args[fromArgIdx + 1], 10)
+      : 7;
+
+  if (isAll) {
+    console.log(
+      `\n📋 === Batch Task Validation Report (from TASK-${String(fromNum).padStart(3, '0')}) ===`,
+    );
+    const batch = validateAllTasks({ from: fromNum });
+
+    for (const res of batch.results) {
+      const base = path.basename(res.taskPath);
+      if (res.valid) {
+        console.log(`  ✅ ${base}`);
+      } else {
+        console.log(`  ❌ ${base} (${res.errors.length} error(s))`);
+        for (const e of res.errors) {
+          console.log(`     - ${e}`);
+        }
+      }
+    }
+
+    console.log(
+      `\nSummary: ${batch.passed}/${batch.total} tasks PASSED (${batch.failed} failed).`,
+    );
+
+    if (batch.failed > 0) {
+      process.exit(1);
+    } else {
+      process.exit(0);
+    }
+  }
+
+  let targetFile = args.find((a) => !a.startsWith('--'));
 
   if (!targetFile) {
     // tasks/ 配下の最新ファイルを自動特定

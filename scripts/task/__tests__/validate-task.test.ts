@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { validateTaskFile } from '../validate-task';
+import { validateAllTasks, validateTaskFile } from '../validate-task';
 
 describe('validateTaskFile', () => {
   const tmpDir = path.join(process.cwd(), 'scripts/task/__tests__/fixtures');
@@ -61,7 +61,7 @@ import { foo } from '@/bar';
 - **Summary**:
 `;
 
-    const filePath = path.join(tmpDir, 'valid-todo.md');
+    const filePath = path.join(tmpDir, 'TASK-100-valid-todo.md');
     fs.writeFileSync(filePath, validTodo, 'utf8');
 
     const result = validateTaskFile(filePath);
@@ -103,7 +103,7 @@ import { foo } from '@/bar';
 - **Summary**: LGTM
 `;
 
-    const filePath = path.join(tmpDir, 'invalid-done-unchecked.md');
+    const filePath = path.join(tmpDir, 'TASK-101-invalid-done-unchecked.md');
     fs.writeFileSync(filePath, invalidDone, 'utf8');
 
     const result = validateTaskFile(filePath);
@@ -144,7 +144,7 @@ import { foo } from '@/bar';
 - **Summary**:
 `;
 
-    const filePath = path.join(tmpDir, 'invalid-done-decision.md');
+    const filePath = path.join(tmpDir, 'TASK-102-invalid-done-decision.md');
     fs.writeFileSync(filePath, invalidDoneDecision, 'utf8');
 
     const result = validateTaskFile(filePath);
@@ -164,7 +164,7 @@ import { foo } from '@/bar';
 適当な説明
 `;
 
-    const filePath = path.join(tmpDir, 'unformatted.md');
+    const filePath = path.join(tmpDir, 'TASK-103-unformatted.md');
     fs.writeFileSync(filePath, unformatted, 'utf8');
 
     const result = validateTaskFile(filePath);
@@ -172,5 +172,29 @@ import { foo } from '@/bar';
     expect(
       result.errors.some((e) => e.includes('Missing required section')),
     ).toBe(true);
+  });
+
+  describe('validateAllTasks', () => {
+    it('should validate all tasks in directory and filter by from number', () => {
+      const batch = validateAllTasks({
+        tasksDir: tmpDir,
+        from: 100,
+      });
+
+      expect(batch.total).toBe(4); // 100, 101, 102, 103
+      expect(batch.passed).toBe(1); // valid-todo (100)
+      expect(batch.failed).toBe(3); // 101, 102, 103
+      expect(batch.results).toHaveLength(4);
+    });
+
+    it('should filter tasks prior to from number', () => {
+      const batch = validateAllTasks({
+        tasksDir: tmpDir,
+        from: 102,
+      });
+
+      expect(batch.total).toBe(2); // 102, 103
+      expect(batch.failed).toBe(2);
+    });
   });
 });
