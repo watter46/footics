@@ -27,6 +27,39 @@ describe('checkSubagentGuard', () => {
     expect(checkSubagentGuard(payload)).toEqual({ decision: 'allow' });
   });
 
+  it('allows worker or subagent to send messages to parent planner', () => {
+    const testDir = path.resolve('.agents/hooks/guard/__tests__/fixtures');
+    fs.mkdirSync(testDir, { recursive: true });
+    const childTranscript = path.join(testDir, 'child-transcript.jsonl');
+
+    // 子エージェント（Worker）のログ: 初回メッセージに TASK_ASSIGN がある
+    fs.writeFileSync(
+      childTranscript,
+      JSON.stringify({
+        step_index: 0,
+        source: 'SYSTEM',
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "TASK_ASSIGN"\ntarget_file: "tasks/TASK-001.md"',
+      }) + '\n',
+    );
+
+    const payload = {
+      transcriptPath: childTranscript,
+      toolCall: {
+        name: 'send_message',
+        args: {
+          Recipient: 'parent-planner-id',
+          Message: 'Phase 1 is complete',
+        },
+      },
+    };
+
+    const res = checkSubagentGuard(payload);
+    expect(res).toEqual({ decision: 'allow' });
+
+    fs.rmSync(testDir, { recursive: true, force: true });
+  });
+
   it('denies send_message to a worker that has already completed its task', () => {
     const testDir = path.resolve('.agents/hooks/guard/__tests__/fixtures');
     fs.mkdirSync(testDir, { recursive: true });

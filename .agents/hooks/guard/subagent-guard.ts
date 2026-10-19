@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { detectAgentRole } from './agent-access-guard';
 
 export interface GuardDecision {
   decision: 'allow' | 'deny';
@@ -21,6 +22,12 @@ export function checkSubagentGuard(payload: any): GuardDecision | null {
   const toolCall = payload.toolCall;
   if (!toolCall || toolCall.name !== 'send_message' || !toolCall.args) {
     return null;
+  }
+
+  // 子エージェント（Worker / Reviewer / Scout）から親エージェントへの完了・差し戻し報告は常に許可
+  const senderRole = detectAgentRole(payload.transcriptPath);
+  if (senderRole !== 'planner') {
+    return { decision: 'allow' };
   }
 
   const recipient = toolCall.args.Recipient;
