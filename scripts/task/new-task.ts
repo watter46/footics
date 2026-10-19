@@ -1,40 +1,40 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-function printUsage() {
-  console.log(`
-Usage:
-  bun run task:new <id> <slug> [title]
-
-Examples:
-  bun run task:new 010 inspector-refactor
-  bun run task:new 011 player-radar-sync "選手レーダーチャート同期"
-`);
+export interface TaskScaffoldOptions {
+  id: string;
+  slug: string;
+  title?: string;
+  tasksDir?: string;
+  now?: Date;
 }
 
-const args = process.argv.slice(2);
-if (args.length < 2) {
-  printUsage();
-  process.exit(1);
+export interface TaskScaffoldResult {
+  filePath: string;
+  fileName: string;
+  content: string;
 }
 
-const rawId = args[0];
-const slug = args[1];
-const title = args[2] || slug;
+export function generateTaskScaffold(
+  options: TaskScaffoldOptions,
+): TaskScaffoldResult {
+  const id = options.id.padStart(3, '0');
+  const slug = options.slug;
+  const title = options.title || slug;
+  const fileName = `TASK-${id}-${slug}.md`;
+  const tasksDir = options.tasksDir || path.join(process.cwd(), 'tasks');
+  const targetPath = path.join(tasksDir, fileName);
 
-const id = rawId.padStart(3, '0');
-const fileName = `TASK-${id}-${slug}.md`;
-const targetPath = path.join(process.cwd(), 'tasks', fileName);
+  if (fs.existsSync(targetPath)) {
+    throw new Error(
+      `Task file already exists: ${path.relative(process.cwd(), targetPath)}`,
+    );
+  }
 
-if (fs.existsSync(targetPath)) {
-  console.error(`❌ Error: Task file already exists: tasks/${fileName}`);
-  process.exit(1);
-}
+  const now = options.now || new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-const now = new Date();
-const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-const template = `# TASK-${id}: ${title}
+  const template = `# TASK-${id}: ${title}
 
 ## 1. Metadata
 - **Status**: \`TODO\`
@@ -99,13 +99,53 @@ const template = `# TASK-${id}: ${title}
 <!-- 既存のタスクやPhaseは絶対に消去・上書きせず、追記のみ行う -->
 `;
 
-const tasksDir = path.join(process.cwd(), 'tasks');
-if (!fs.existsSync(tasksDir)) {
-  fs.mkdirSync(tasksDir, { recursive: true });
+  if (!fs.existsSync(tasksDir)) {
+    fs.mkdirSync(tasksDir, { recursive: true });
+  }
+
+  fs.writeFileSync(targetPath, template, 'utf8');
+
+  return {
+    filePath: targetPath,
+    fileName,
+    content: template,
+  };
 }
 
-fs.writeFileSync(targetPath, template, 'utf8');
+function printUsage() {
+  console.log(`
+Usage:
+  bun run task:new <id> <slug> [title]
 
-console.log(`✅ Task scaffold generated successfully!`);
-console.log(`   File: tasks/${fileName}`);
-console.log(`   Link: file://${targetPath}`);
+Examples:
+  bun run task:new 010 inspector-refactor
+  bun run task:new 011 player-radar-sync "選手レーダーチャート同期"
+`);
+}
+
+if (import.meta.main) {
+  const args = process.argv.slice(2);
+  if (args.length < 2) {
+    printUsage();
+    process.exit(1);
+  }
+
+  const rawId = args[0];
+  const slug = args[1];
+  const title = args[2] || slug;
+
+  try {
+    const result = generateTaskScaffold({
+      id: rawId,
+      slug,
+      title,
+    });
+    console.log(`✅ Task scaffold generated successfully!`);
+    console.log(`   File: tasks/${result.fileName}`);
+    console.log(`   Link: file://${result.filePath}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`❌ Error: ${message}`);
+    process.exit(1);
+  }
+}

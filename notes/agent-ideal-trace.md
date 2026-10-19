@@ -53,6 +53,31 @@ Turn 1: [並列呼び出し]
 Turn 2: 調査結果の回答 (解決策・提案の提示)
 ```
 
+### パターン C: タスク駆動開発ライフサイクル (TASK-*.md)
+
+新機能の実装やリファクタリングをタスクファイル（`tasks/TASK-*.md`）駆動で進める場合の理想的な進行例です。
+
+```text
+1. [Planner] 起草 (Scaffold & Inject)
+   - run_command: bun run task:new <num> <slug> [title]
+   - replace_file_content: Context Snippets (Import Specs / Interfaces / Reference Pattern) & Phases 注入
+   - ユーザーへ計画承認を要請 (HITL)
+
+2. [Worker] 実装 (Zero-Exploration TDD)
+   - invoke_subagent: worker (Model: flash)
+   - Worker 内部: ai:check:red <test> ➔ コード実装 ➔ ai:check <file> PASS
+   - Worker: Phase チェック [x] & Handoff Log を記入して親へ報告 ➔ Planner が Worker を即時 kill
+
+3. [Reviewer] 審査 (Zero-Command 4大定性監査)
+   - invoke_subagent: reviewer (Model: flash)
+   - Reviewer: コマンドは実行せず git diff のみを閲覧。
+     4大定性監査（要件網羅性、ホスト境界/Flicker、OCP設計負債、サイレント破壊）をチェックし Decision: LGTM を記入
+
+4. [Planner] コミット & 完了報告
+   - run_command: bun run ai:commit -m "feat: [TASK-XXX] <title>" [paths]
+     → 内部で task:validate ＆ Preflight が自動検証され、1手で安全にコミット完了
+```
+
 ---
 
 ## 3. なぜトークンが積み上がるのか（アンチパターン）

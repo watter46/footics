@@ -7,7 +7,7 @@
 1. **極限のトークン最適化** — 標準コマンド（`ls`, `cat`, `grep` 等）は `guard.ts` により自動最適化。探索初手は `repo_summary.txt`（高レベル把握）を参照し、シンボル特定は `bun run ai:find <symbol>` を使用すること
 2. **高品質な実装の担保** — TDD 厳守、Biome v2 strict、TypeScript strict
 3. **4層分離パイプライン** — Scout(Flash Lite/Flash) → Planner(Flash High) → Worker(タスク難易度に応じて Flash / Flash-Lite を切り替え) → Reviewer(Flash High) によるタスク駆動開発
-4. **推論の排除とスクリプト化** — `ai:check` / `ai:reviewer:check` による自動検証
+4. **推論の排除とスクリプト化** — Worker TDD（`ai:check`）とコミットゲート（`ai:commit` / `task:validate`）による機械検証の徹底。Reviewer はコマンドを実行せず 4大定性監査（要件ハック・ホスト境界/Flicker・OCP・サイレント破壊）に専念
 5. **4層コンポーネントモデルとホスト境界の厳守** — Web と Extension で共用するコードは Level 2（Domain UI Block）以下に配置し、`chrome.*` や Web専用ストア等のホスト依存を絶対に混入させないこと。Store Provider パターンにより初期チラつき（Flicker）を根絶すること。
 6. **プラグイン型拡張設計（OCP 厳守）** — ツールや機能追加でコアコンポーネント（Stage, Toolbar, DashboardView等）に `switch / if` をベタ書きすることを禁止し、自律的なプラグインと自己申告型オプション（`OptionsComponent`）で拡張すること。
 
