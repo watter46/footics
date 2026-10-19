@@ -41,4 +41,5 @@
 - `testing-standards.md` — `**/*.test.ts(x)`, `tests/**` アクセス時に自動適用
 - `data-access.md` — `src/lib/db/**`, `src/stores/**` 等アクセス時に自動適用
 - `agent-delegation.md` — サブエージェント委任時の完了回収・成果物契約を規定
+- `plan-artifact.md` — 設計計画立案時（`/plan`, `tasks/**`, `.agents/**`）の Artifact 構成規約（Mermaid/コード/ファイルパス排除）
 
