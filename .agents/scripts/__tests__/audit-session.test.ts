@@ -1,12 +1,14 @@
 import { describe, expect, test } from 'bun:test';
 import {
   type AuditReport,
-  auditSession,
   detectBypasses,
   detectHookDenials,
   detectSubagentContracts,
+  extractStepSummaries,
   extractTimeBreakdown,
   findChildSubagentIds,
+  renderComparisonTable,
+  renderStepSummaries,
   type TranscriptRecord,
 } from '../audit-session';
 
@@ -165,5 +167,86 @@ describe('findChildSubagentIds', () => {
 
     const ids = findChildSubagentIds(records, 10);
     expect(ids).toEqual(['child-123']);
+  });
+});
+
+describe('renderComparisonTable and extractStepSummaries', () => {
+  test('renders comparison table between two audit reports', () => {
+    const reportA: AuditReport = {
+      sessionId: 'session-a-1234',
+      role: 'Worker',
+      summary: {
+        totalTurns: 100,
+        time: { thinkSec: 10, toolSec: 90, totalSec: 100 },
+        tokens: { input: 100000, cache: 900000, output: 5000 },
+      },
+      hookDenials: [],
+      bypasses: [],
+      subagentContracts: [],
+      inefficiencies: [],
+      childIds: [],
+    };
+
+    const reportB: AuditReport = {
+      sessionId: 'session-b-5678',
+      role: 'Worker',
+      summary: {
+        totalTurns: 40,
+        time: { thinkSec: 5, toolSec: 35, totalSec: 40 },
+        tokens: { input: 50000, cache: 350000, output: 2500 },
+      },
+      hookDenials: [],
+      bypasses: [],
+      subagentContracts: [],
+      inefficiencies: [],
+      childIds: [],
+    };
+
+    const table = renderComparisonTable(reportA, reportB);
+    expect(table).toContain('=== SESSION COMPARISON ===');
+    expect(table).toContain('| **Turns (ターン数)** | 100 | 40 | -60% |');
+    expect(table).toContain(
+      '| **Tokens (Total In+Cache)** | 1000K | 400K | -60% |',
+    );
+  });
+
+  test('extracts step summaries and flags hook denials or errors', () => {
+    const records: TranscriptRecord[] = [
+      {
+        step_index: 1,
+        type: 'USER_INPUT',
+        content: 'Phase 1 を着手してください',
+      },
+      {
+        step_index: 2,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          { name: 'run_command', args: { CommandLine: 'cat file.ts' } },
+        ],
+      },
+      {
+        step_index: 3,
+        type: 'GENERIC',
+        content:
+          'tool call denied by pre-tool hook: [GUARD] Direct cat is prohibited',
+      },
+      {
+        step_index: 4,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          { name: 'view_file', args: { AbsolutePath: '/src/file.ts' } },
+        ],
+      },
+    ];
+
+    const summaries = extractStepSummaries(records, { start: 1, end: 3 });
+    expect(summaries.length).toBe(2);
+    expect(summaries[0].type).toBe('USER_INPUT');
+    expect(summaries[1].tool).toBe('run_command');
+    expect(summaries[1].flag).toBe('DENIED');
+
+    const rendered = renderStepSummaries(summaries);
+    expect(rendered).toContain('Step | Tool / Type | Target / Command | Flag');
+    expect(rendered).toContain('2 | run_command | cat file.ts | **DENIED**');
   });
 });

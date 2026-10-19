@@ -540,9 +540,225 @@ export function renderAuditReport(report: AuditReport): string {
   return lines.join('\n');
 }
 
+export function renderComparisonTable(a: AuditReport, b: AuditReport): string {
+  const sa = a.summary;
+  const sb = b.summary;
+
+  const totalTokensA = sa.tokens.input + sa.tokens.cache;
+  const totalTokensB = sb.tokens.input + sb.tokens.cache;
+
+  const calcDiff = (vA: number, vB: number) => {
+    if (vA === 0) return '-';
+    const pct = Math.round(((vB - vA) / vA) * 100);
+    return pct > 0 ? `+${pct}%` : `${pct}%`;
+  };
+
+  const rows: [string, string, string, string][] = [
+    ['Session ID', a.sessionId.slice(0, 8), b.sessionId.slice(0, 8), '—'],
+    ['Role', a.role ?? 'Unknown', b.role ?? 'Unknown', '—'],
+    [
+      'Turns (ターン数)',
+      `${sa.totalTurns}`,
+      `${sb.totalTurns}`,
+      calcDiff(sa.totalTurns, sb.totalTurns),
+    ],
+    [
+      'Duration (所要時間)',
+      `${sa.time.totalSec}s (Think: ${sa.time.thinkSec}s / Tool: ${sa.time.toolSec}s)`,
+      `${sb.time.totalSec}s (Think: ${sb.time.thinkSec}s / Tool: ${sb.time.toolSec}s)`,
+      calcDiff(sa.time.totalSec, sb.time.totalSec),
+    ],
+    [
+      'Tokens (Total In+Cache)',
+      `${k(totalTokensA)}`,
+      `${k(totalTokensB)}`,
+      calcDiff(totalTokensA, totalTokensB),
+    ],
+    [
+      'Tokens (Out)',
+      `${sa.tokens.output}`,
+      `${sb.tokens.output}`,
+      calcDiff(sa.tokens.output, sb.tokens.output),
+    ],
+    [
+      'Hook Denials (遮断)',
+      `${a.hookDenials.length}件`,
+      `${b.hookDenials.length}件`,
+      '—',
+    ],
+    [
+      'Inefficiencies (Redo/Loops)',
+      `${a.inefficiencies.length}件`,
+      `${b.inefficiencies.length}件`,
+      '—',
+    ],
+    [
+      'Bypasses (回避)',
+      `${a.bypasses.length}件`,
+      `${b.bypasses.length}件`,
+      '—',
+    ],
+  ];
+
+  const header =
+    '| 指標 (Metric) | Session A (Before) | Session B (After) | 差分 (Diff) |\n| :--- | :--- | :--- | :--- |';
+  const body = rows
+    .map(
+      ([metric, valA, valB, diff]) =>
+        `| **${metric}** | ${valA} | ${valB} | ${diff} |`,
+    )
+    .join('\n');
+
+  return `=== SESSION COMPARISON ===\n\n${header}\n${body}\n`;
+}
+
+export interface StepSummary {
+  step: number;
+  type: string;
+  tool?: string;
+  target?: string;
+  flag?: string;
+}
+
+export function extractStepSummaries(
+  records: TranscriptRecord[],
+  range?: { start?: number; end?: number },
+): StepSummary[] {
+  const filtered = records.filter((r) => {
+    if (range?.start !== undefined && r.step_index < range.start) return false;
+    if (range?.end !== undefined && r.step_index > range.end) return false;
+    return true;
+  });
+
+  const summaries: StepSummary[] = [];
+
+  for (let i = 0; i < filtered.length; i++) {
+    const r = filtered[i];
+    if (
+      r.type === 'PLANNER_RESPONSE' &&
+      r.tool_calls &&
+      r.tool_calls.length > 0
+    ) {
+      const tc = r.tool_calls[0];
+      const target = String(
+        tc.args?.CommandLine ??
+          tc.args?.AbsolutePath ??
+          tc.args?.TargetFile ??
+          tc.args?.TypeName ??
+          '',
+      ).slice(0, 90);
+
+      const nxt = records.find((x) => x.step_index === r.step_index + 1);
+      let flag: string | undefined;
+      if (nxt?.content) {
+        if (
+          nxt.content.includes('denied by pre-tool hook') ||
+          nxt.content.includes('[GUARD]') ||
+          nxt.content.includes('[GATEGUARD]')
+        ) {
+          flag = 'DENIED';
+        } else if (
+          nxt.content.includes('Encountered error') ||
+          nxt.content.includes('exited with code 1')
+        ) {
+          flag = 'FAIL';
+        }
+      }
+
+      summaries.push({
+        step: r.step_index,
+        type: r.type,
+        tool: tc.name,
+        target,
+        flag,
+      });
+    } else if (r.type === 'USER_INPUT') {
+      summaries.push({
+        step: r.step_index,
+        type: 'USER_INPUT',
+        target: (r.content ?? '').slice(0, 90),
+      });
+    }
+  }
+
+  return summaries;
+}
+
+export function renderStepSummaries(summaries: StepSummary[]): string {
+  const lines: string[] = [
+    'Step | Tool / Type | Target / Command | Flag',
+    '---|---|---|---',
+  ];
+  for (const s of summaries) {
+    const tool = s.tool ?? s.type;
+    const flag = s.flag ? `**${s.flag}**` : '';
+    lines.push(`${s.step} | ${tool} | ${s.target ?? ''} | ${flag}`);
+  }
+  return lines.join('\n');
+}
+
 export function main(argv: string[]): number {
   const flags = argv.filter((a) => a.startsWith('--'));
   const pos = argv.filter((a) => !a.startsWith('--'));
+
+  // 1. --compare モード
+  if (flags.includes('--compare')) {
+    if (pos.length < 2) {
+      console.error(
+        '[ERROR] --compare requires two session IDs. Example: bun run ai:audit --compare <id1> <id2>',
+      );
+      return 1;
+    }
+    const file1 = resolveTranscript(pos[0]);
+    const file2 = resolveTranscript(pos[1]);
+    if (!file1 || !file2) {
+      console.error(
+        `[ERROR] One or both transcripts not found: ${pos[0]} / ${pos[1]}`,
+      );
+      return 1;
+    }
+    const report1 = auditSession(parseJsonl(fs.readFileSync(file1, 'utf8')), {
+      sessionId: pos[0],
+    });
+    const report2 = auditSession(parseJsonl(fs.readFileSync(file2, 'utf8')), {
+      sessionId: pos[1],
+    });
+    console.log(renderComparisonTable(report1, report2));
+    return 0;
+  }
+
+  // 2. --steps モード
+  if (flags.includes('--steps')) {
+    const targetArg = pos[0];
+    const file = resolveTranscript(targetArg);
+    if (!file) {
+      console.error(
+        `[ERROR] transcript not found for: ${targetArg ?? 'latest'}`,
+      );
+      return 1;
+    }
+    let start: number | undefined;
+    let end: number | undefined;
+    const rangeFlag = flags.find((f) => f.startsWith('--range='));
+    const rangeVal = rangeFlag
+      ? rangeFlag.slice('--range='.length)
+      : flags.includes('--range')
+        ? pos[1]
+        : undefined;
+
+    if (rangeVal) {
+      const parts = rangeVal
+        .split(':')
+        .map((p) => Number.parseInt(p.trim(), 10));
+      if (!Number.isNaN(parts[0])) start = parts[0];
+      if (!Number.isNaN(parts[1])) end = parts[1];
+    }
+
+    const records = parseJsonl(fs.readFileSync(file, 'utf8'));
+    const summaries = extractStepSummaries(records, { start, end });
+    console.log(renderStepSummaries(summaries));
+    return 0;
+  }
 
   const targetArg = pos[0];
   const file = resolveTranscript(targetArg);
