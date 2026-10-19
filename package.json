@@ -28,6 +28,8 @@
     "typecheck": "bun scripts/verify/type-check-scoped.ts",
     "test": "rtk vitest run",
     "test:agents": "bun test ./.agents",
+    "task:new": "bun scripts/task/new-task.ts",
+    "task:validate": "bun scripts/task/validate-task.ts",
     "map": "bun scripts/map/generate-repo-map.ts"
   },
   "dependencies": {

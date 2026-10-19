@@ -56,6 +56,22 @@ function run(command: string) {
 }
 
 try {
+  // -1. Task File Integrity Check (Odin Strict)
+  const taskFiles = files.filter(
+    (f) => f.includes('tasks/TASK-') && f.endsWith('.md'),
+  );
+  if (taskFiles.length > 0) {
+    for (const tf of taskFiles) {
+      run(`bun scripts/task/validate-task.ts "${tf}"`);
+    }
+  } else {
+    try {
+      run(`bun scripts/task/validate-task.ts`);
+    } catch (_e) {
+      // タスクファイルがない場合は無視
+    }
+  }
+
   // 0. Custom Validations (Odin Strict)
   let hasError = false;
   for (const file of files) {

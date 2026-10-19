@@ -45,14 +45,12 @@ Plannerから `TASK_ASSIGN` のメッセージ（`target_file`, `target_phase`�
 - **REFACTOR (リファクタリング)**:
   1. テストがGREENの状態で、重複排除や型安全性を向上させます。
   2. 再度 `bun run ai:check <対象ファイルパス>` で全PASSを確認します。
-- **進捗の記録**:
-  1. 該当 Phase 内のステップチェックボックス `- [ ]` を `- [x]` に変更し、タスクファイルを保存します。
+- **進捗の記録と Handoff Log 追記**:
+  1. 該当 Phase 内のタスクチェックボックス `- [ ] 1. TDD実装: ...` を `- [x]` に変更します。
+  2. 該当 Phase の `Worker Handoff Log` 欄に、**確定した export シンボル名や実装上の注意点（Gotcha）のみを 1〜2 行で記録**します。（「〜を作成した」などの冗長な事実列挙は禁止）
 
-### 3. Phase 完了条件の確認・Handoff Log 追記と報告
-1. 該当 Phase の `Phase Verification` コマンド `bun run ai:check <対象ファイル群>` を実行し、exit code 0 で全PASSすることを確認します。
-2. **Worker Handoff Log の追記**:
-   - タスクファイル内の該当 Phase の `Worker Handoff Log` 欄に、**確定した export シンボル名や実装上の注意点（Gotcha）のみを 1〜2 行で記録**します。（「〜を作成した」などの冗長な事実列挙は禁止）
-3. 親エージェント（Planner）に対して、`send_message` ツールを使用して以下のフォーマットでメッセージを送信し、完了を報告します。報告後、あなたの役目は完了です（Planner により破棄されます）。
+### 3. Phase 完了の報告
+親エージェント（Planner）に対して、`send_message` ツールを使用して以下のフォーマットでメッセージを送信し、完了を報告します。報告後、あなたの役目は完了です（Planner により破棄されます）。
 
 ```markdown
 ---

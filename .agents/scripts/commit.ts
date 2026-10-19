@@ -57,7 +57,7 @@ export function getDeletedFiles(cwd: string): string[] {
       }).stdout ?? '';
     return status
       .split('\n')
-      .filter((l) => l.startsWith(' D') || l.startsWith('D '))
+      .filter((l) => l.startsWith(' D'))
       .map((l) => l.slice(3).split(' -> ').pop() ?? '')
       .map((p) => p.replace(/^"|"$/g, '').trim())
       .filter(Boolean);
@@ -78,6 +78,19 @@ export async function runCommit(
     console.error('Usage: bun run ai:commit -m "<message>" [files...]');
     console.error(
       'Hint: If tasks/TASK-*.md exists, its title will be used as fallback.',
+    );
+    return 1;
+  }
+
+  // 0. Task File Validation (コミット前にタスクファイルの整合性を検査)
+  const taskCheckProc = spawnSync('bun', ['scripts/task/validate-task.ts'], {
+    cwd,
+    encoding: 'utf8',
+  });
+  if (taskCheckProc.status !== 0) {
+    console.error(taskCheckProc.stdout || taskCheckProc.stderr);
+    console.error(
+      '\n[COMMIT ABORTED] Task file validation failed. All checklist items and reviewer decisions must be consistent.',
     );
     return 1;
   }
@@ -105,13 +118,31 @@ export async function runCommit(
       ? targetFiles
       : [...new Set([...preflightRes.files, ...deletedFiles])];
 
-  if (filesToAdd.length > 0) {
-    const addRes = spawnSync('git', ['add', '--', ...filesToAdd], {
+  const existingFiles = filesToAdd.filter((f) =>
+    fs.existsSync(path.join(cwd, f)),
+  );
+  const missingFiles = filesToAdd.filter(
+    (f) => !fs.existsSync(path.join(cwd, f)),
+  );
+
+  if (existingFiles.length > 0) {
+    const addRes = spawnSync('git', ['add', '--', ...existingFiles], {
       cwd,
       encoding: 'utf8',
     });
     if (addRes.status !== 0) {
       console.error(`[ERROR] git add failed: ${addRes.stderr}`);
+      return 1;
+    }
+  }
+
+  if (missingFiles.length > 0) {
+    const rmRes = spawnSync('git', ['add', '-u', '--', ...missingFiles], {
+      cwd,
+      encoding: 'utf8',
+    });
+    if (rmRes.status !== 0) {
+      console.error(`[ERROR] git add -u failed: ${rmRes.stderr}`);
       return 1;
     }
   }

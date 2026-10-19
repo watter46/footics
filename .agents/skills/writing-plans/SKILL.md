@@ -46,7 +46,7 @@ Footics の「極限のトークン最適化」「4層分離パイプライン�
 
 ## TASK-*.md 正式テンプレート
 
-タスクファイルは以下のフォーマットに**厳密に準拠**して生成してください：
+タスクファイルは以下のフォーマットに**厳密に準拠**して生成してください（`bun run task:new <num> <slug>` で自動生成されます）：
 
 ```markdown
 # TASK-XXX: [タイトル]
@@ -54,12 +54,14 @@ Footics の「極限のトークン最適化」「4層分離パイプライン�
 ## 1. Metadata
 - **Status**: `TODO` | `IN_PROGRESS` | `IN_REVIEW` | `REJECTED` | `DONE`
 - **Created**: YYYY-MM-DD
-- **Target**: `対象スコープディレクトリ`
+- **Target Files**:
+  - `src/.../target-a.ts` (NEW)
+  - `src/.../target-b.ts` (MODIFY)
 
-## 2. Requirements (要件)
-<!-- Reviewerはこの要件が満たされているかを厳密に審査する -->
-- [要件1: 明確かつ客観的に検証可能な振る舞い]
-- [要件2: 型定義や制約事項]
+## 2. Requirements & Acceptance Criteria (受入要件)
+<!-- Reviewer が審査時に要件充足を確認してチェックする -->
+- [ ] 要件1: [明確かつ客観的に検証可能な振る舞い]
+- [ ] 要件2: [型定義や制約事項]
 
 ## 3. Context Snippets (参照コード・型定義・import)
 <!-- Workerが自律探索（Read/Grep）を行わずに実装できるよう、必要な文脈を過不足なく事前注入する -->
@@ -86,39 +88,31 @@ export interface TargetProps { ... }
 
 ### Phase 1: [サブシステム名]
 - **Worker Model**: `flash` | `flash_lite`
-- **対象スコープ**: `src/.../types.ts`, `src/.../service.ts`
+- **対象ファイル**: `src/.../service.ts`, `src/.../__tests__/service.test.ts`
 - **契約 (Interface)**:
   \`\`\`ts
   export function doSomething(param: string): Promise<Result>;
   \`\`\`
-- **Testing Strategy**:
-  - 対象: `src/.../__tests__/service.test.ts`
-  - ケース: 入力Xに対して結果Yを返すこと、異常系でエラーハンドリングされること
-- **Steps**:
-  - [ ] 1. 失敗するテスト作成 (RED) - `bun run ai:check:red <テストファイル>`
-  - [ ] 2. 最小限の実装を行う (GREEN)
-- **Phase Verification**:
-  - [ ] `bun run ai:check <対象ファイル群>` が exit code 0 で全PASS
-- **Worker Handoff Log** (完了時にWorkerが1〜2行で追記):
-  <!-- 確定したexportシンボル名や実装上の注意点(Gotcha)のみを記録。「〜を作成した」などの冗長な事実列挙は禁止 -->
+- **Testing Strategy**: [テストファイルパス、入力と期待値]
+- **Tasks**:
+  - [ ] 1. TDD実装: `bun run ai:check:red <テストファイル>` ➔ 実装 ➔ `bun run ai:check <対象ファイル>` PASS
+- **Worker Handoff Log**:
+  <!-- 確定したexportシンボルや注意点のみを1〜2行で記録 -->
 
-## 5. Reviewer Checklist & Assessment
+---
 
-### 5.1 Automated Gates (自動検証)
-- [ ] すべての Phase のチェックボックス (`- [x]`) が完了していること
-- [ ] `bun run ai:reviewer:check <全変更ファイルパス>` が exit code 0 で全PASS (差分サマリと行数テーブルを確認)
-
-### 5.2 Quality & Spec Audit (仕様・品質審査)
-- [ ] 要件網羅性: Requirements に記載された振る舞いが完全に実装されているか
-- [ ] 変更スコープの厳守: 不要な設定変更・無関係なファイル破壊がないか
-- [ ] 型・安全性の確保: any禁止、null安全
-- [ ] デグレ防止: 既存機能（Footics本体側・Extension側など）に副作用がないか
-
-### 5.3 Reviewer Decision
-- **Status**: `LGTM` | `REJECTED`
+## 5. Reviewer Assessment (コード差分監査)
+<!-- 機械的チェック（型・Lint・Vitest・depcruise）はスクリプトが自動検証。Reviewer はコード差分の意味を監査する -->
+- **Reviewer Model**: `flash`
 - **Reviewed At**: YYYY-MM-DD HH:mm
-- **Reviewer Model**: `flash` (Flash Medium)
-- **Summary**: [判定理由を1〜2行で簡潔に記載]
+- **Decision**: `TODO` | `LGTM` | `REJECTED`
+- **Audit Checklist**:
+  - [ ] 要件網羅性: Requirements の仕様が手抜きなくコードに実在するか（テストのハリボテ化がないか）
+  - [ ] 境界と副作用: Level 2 core にホスト依存（chrome.*, Web専用ストア）の混入がないか、useEffectによるFlickerがないか
+  - [ ] 設計負債防止: switch/ifの増殖（OCP違反）がなく、1ファイル250行以内に収まっているか
+  - [ ] サイレント破壊防止: 指示外ファイルの変更や既存コード・テストの勝手な削除がないか
+- **Summary**:
+  <!-- 判定理由または改善指示を簡潔に記載 -->
 
 ## 6. Rejections / Additional Tasks (不可逆修正欄)
 <!-- 既存のタスクやPhaseは絶対に消去・上書きせず、追記のみ行う -->

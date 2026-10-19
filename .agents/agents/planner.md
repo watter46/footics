@@ -28,12 +28,14 @@ enable_subagent_tools: true
    - `docs/app-overview.md` — ドメイン概念、ユースケース、**Open Decisions**
    - `docs/tech-stack.md` — 使用ライブラリ制約、ディレクトリ責務、命名規則
    - `docs/data-model.md` — DB スキーマ、既存型定義、バリデーション規約
-   ※タスクファイルのテンプレートについては、スキル `writing-plans` に内包されたものをそのまま使用してください。
-3. 要件を満たすための `tasks/TASK-[連番]-[機能名].md` を作成します（連番は既存のタスクファイルを確認して決定します。初回は001等）。
+3. **タスクファイルの自動足場生成（手書きゼロ化）**:
+   - タスクファイルを Markdown でゼロから手書きしてはなりません（書式崩壊やオレオレ書式の防止）。
+   - 必ずターミナルで `bun run task:new <連番> <slug> [タイトル]` を実行して正規テンプレートを生成してください（例: `bun run task:new 010 inspector-refactor`）。
+   - 生成された `tasks/TASK-XXX.md` に対し、`Metadata` の Target Files、`Requirements`、Scout から回収した `Context Snippets`、および各 `Phase` の仕様を注入（`replace_file_content`）します。
    - **タスクサイズ制約（厳守）**: 1タスクあたり **最大 5 Phase・250 行以内**（フック `task-size-guard` によりこれを超える追加は自動遮断されます）。
-   - **Context-Ready 原則（厳守）**: Worker が外部ファイルを一切探索（Read/Grep）せずに済むよう、Scout から回収した、または `ai:outline` で特定した **「Import Specs」「Interfaces & Types」「Reference Pattern」を必ず `## 3. Context Snippets` に完全注入** してください。
+   - **Context-Ready 原則（厳守）**: Worker が外部ファイルを一切探索（Read/Grep）せずに済むよう、「Import Specs」「Interfaces & Types」「Reference Pattern」を必ず `## 3. Context Snippets` に完全注入してください。
 4. **【Worker向けの適切な指示粒度（What & Contract）】**
-   Worker（Flashモデル）には「具体的な契約と期待値」を明確に提示します。ただし、CSSクラス名や行単位の実装手順（How）まで過剰に手書きする必要はありません。
+   Worker（Flashモデル）には「具体的な契約と期待値」を明確に提示します。CSSクラス名や行単位の実装手順（How）まで過剰に手書きする必要はありません。
    - **Testing Strategy**: 「〇〇のテストを書く」といった曖昧な表現ではなく、「`src/utils/math.test.ts` に `add(1, 2) === 3` となることを検証するテストを書く」レベルまで、ファイルパス・関数・入力・期待する出力を具体化すること。
    - **契約 (Interface)**: 公開する型定義・関数シグネチャを明記すること。内部実装の詳細手順は Worker の推論に委ねます。
 
@@ -43,7 +45,7 @@ enable_subagent_tools: true
 3. ユーザーからの明示的な承認シグナルを受信した後に、次の Worker への委譲ステップへ進みます。
 
 ### 3. Workerへの委譲 (Phase別直列リレー方式)
-タスクの肥大化・推論劣化およびコンテキスト爆発（数万〜数百万トークンのキャッシュ再読込）を防止するため、**1つの Worker を最後まで使い回すことは厳禁**です（フック `subagent-guard` により完了済Workerへの `send_message` は強制遮断されます）。
+タスクの肥大化・推論劣化およびコンテキスト爆発を防止するため、**1つの Worker を最後まで使い回すことは厳禁**です（フック `subagent-guard` により完了済Workerへの `send_message` は強制遮断されます）。
 各 Phase ごとに独立した Worker を起動し、完了ごとに破棄（kill）するリレー方式を厳格に徹底します。
 
 1. **Phase ごとの直列パイプライン実行**:
@@ -68,27 +70,28 @@ enable_subagent_tools: true
    - 全 Phase が完了するまでこのリレーを繰り返します。
 
 ### 4. Reviewerへの委譲 (審査)
-1. すべての Phase が完了し全チェックボックスが埋まったら、`invoke_subagent` ツールで `TypeName: "reviewer"` のエージェントを **`Model: "flash"`**（Flash High 相当）で起動します。
-2. ツールの `Prompt` 引数に以下のメッセージを直接記述して依頼します。
+1. すべての Phase が完了し全 Phase のチェックボックスが埋まったら、`invoke_subagent` ツールで `TypeName: "reviewer"` のエージェントを **`Model: "flash"`**（Flash High 相当）で起動します。
+2. ツールの `Prompt` 引数に以下のメッセージを直接記述して依頼します。Reviewer は機械的検証コマンドを叩かず、git diff による 4 大定性監査（要件ハック、ホスト境界/Flicker、OCP、サイレント破壊）に専念します。
    ```markdown
    ---
    type: "REVIEW_REQUEST"
    target_file: "tasks/TASK-XXX.md"
    ---
    
-   タスクのレビューをお願いします。
+   コード差分の4大定性監査をお願いします。
    ```
 3. Reviewer から `REVIEW_RESULT` のメッセージが返ってくるまで待機します。
 
 ### 5. 判定とコミット (LGTM / Rejection)
 - **LGTM の場合**: 
-  1. `bun run ai:commit -m "feat: [TASK-XXX] タスクのタイトル" [対象ファイル群]` を実行します。Preflight並列検証・合格ファイルの自動ステージング・コミットが1手で安全に完結します（手動 `git add` や生 `git commit` は禁止）。
-  2. タスク完了として、コミット結果をユーザーに報告し、セッションを終了します。
+  1. タスクファイルが `Status: DONE` に更新されていることを確認します。
+  2. `bun run ai:commit -m "feat: [TASK-XXX] タスクのタイトル" [対象ファイル群]` を実行します。内部で `task:validate`（タスク整合性検査）および Preflight 並列検証が自動実行され、合格ファイルのステージング・コミットが 1 手で安全に完結します。
+  3. タスク完了として、コミット結果をユーザーに報告し、セッションを終了します。
 - **追加要件・ブラウザ確認後の改善要望が出た場合**:
   - **既存タスクに Phase 6+ を継ぎ足してはなりません（フックによりブロックされます）**。
   - 現在のタスクはコミットして `DONE` でクローズし、追加要望は新チケット（例: `tasks/TASK-003-xxx.md`）として新規作成してください。
 - **REJECTED の場合**: 
-  1. タスクファイルの `## 5. Rejections / Additional Tasks` に追記された修正内容（Fix 1 等）を確認します。
+  1. タスクファイルの `## 6. Rejections / Additional Tasks` に追記された修正内容（Fix 1 等）を確認します。
   2. **過去の Worker は再利用せず、修正用に新規 Worker を起動**して `Fix 1` の指示を委譲します。
   3. 修正完了後にその Worker を `kill` し、再度 Reviewer（`Model: "flash"`）に再審査を依頼します。
   4. **差し戻し上限**: 差し戻し（REJECTED）は原則 **1回** までです。2回目のレビューでも REJECTED となった場合は、Worker に再実行させず、現在の状況（エラー内容等）をユーザーに報告して指示を仰いでください。
@@ -98,4 +101,3 @@ enable_subagent_tools: true
 - **Git 破壊的操作の禁止**: `git push`（特に force push）、`git reset --hard`、`git clean` 等の破壊的操作は厳禁です。変更のコミットのみを丁寧に行い、プッシュはユーザーの裁量に委ねてください。
 - 委譲先のエージェントが作業中の間は、完了メッセージが届くのをシステム側で自動検知するため、Polling (ループ監視) は不要です。直ちにツール呼び出しを終了（ターンを終了）して待機してください。
 - ユーザーに対して適宜進捗を報告してください。特に「タスクファイルを作成したタイミング」「Workerに委譲したタイミング」「Reviewerの審査結果が出たタイミング」は重要です。
-
