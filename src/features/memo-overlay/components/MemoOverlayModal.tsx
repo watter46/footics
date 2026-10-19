@@ -7,15 +7,21 @@ import { putMatchMemo, saveCustomEvent } from '@/lib/db/extension-db-queries';
 import { createSavePayload } from '@/lib/features/memo-overlay/memoOverlayLogic';
 import { customEventKeys, eventKeys, matchKeys } from '@/lib/query-keys';
 import { useMemoOverlayEventBridge } from '../hooks/useMemoOverlayEventBridge';
+import { MemoOverlayStoreProvider } from '../stores/memo-overlay-provider';
 import { useMemoOverlayStore } from '../stores/memo-overlay-store';
+import type { MemoMode } from '../stores/memo-overlay-types';
 import { MemoOverlayView } from './MemoOverlayView';
 
 interface MemoOverlayModalProps {
   matchId: string;
+  initialMemo?: string;
+  mode?: MemoMode;
 }
 
 export const MemoOverlayModal: React.FC<MemoOverlayModalProps> = ({
   matchId,
+  initialMemo,
+  mode = 'EVENT',
 }) => {
   const queryClient = useQueryClient();
   const isModalOpen = useMemoOverlayStore((s) => s.isModalOpen);
@@ -53,18 +59,14 @@ export const MemoOverlayModal: React.FC<MemoOverlayModalProps> = ({
         queryClient.invalidateQueries({
           queryKey: customEventKeys.byMatch(matchId),
         });
-        queryClient.invalidateQueries({
-          queryKey: eventKeys.all,
-        });
+        queryClient.invalidateQueries({ queryKey: eventKeys.all });
       } else {
         await putMatchMemo({
-          matchId: matchId,
+          matchId,
           memo: payload.memo,
           updatedAt: Date.now(),
         });
-        queryClient.invalidateQueries({
-          queryKey: matchKeys.memo(matchId),
-        });
+        queryClient.invalidateQueries({ queryKey: matchKeys.memo(matchId) });
       }
       handleClose();
     } catch (err) {
@@ -74,30 +76,21 @@ export const MemoOverlayModal: React.FC<MemoOverlayModalProps> = ({
     }
   }, [matchId, eventId, queryClient, handleClose, isSaving, setIsSaving]);
 
-  // footics-action イベントを useMemoOverlayStore のアクションへ橋渡し
-  // CLOSE_OVERLAY → handleClose, SAVE_MEMO → handleSave が機能する
+  // footics-action イベント連携（外部からの操作をハンドラへ繋ぐ）
   useMemoOverlayEventBridge(handleClose, handleSave, undefined, isModalOpen);
 
-  // モーダルが開いている間だけ hotkeys を登録（拡張機能と同等の操作感を提供）
-  // ※ input/textarea にフォーカスがある場合は PhaseMemoInput 側の onKeyDown が対応するため、
-  //   ここでは hotkeys.filter を上書きせず、フォーカス外の補完として機能させる
+  // モーダル表示中の hotkeys 登録（直接ハンドラ呼出）
   useEffect(() => {
     if (!isModalOpen) return;
 
     hotkeys('escape', (e) => {
-      e.preventDefault();
-      window.dispatchEvent(
-        new CustomEvent('footics-action', {
-          detail: { action: 'CLOSE_OVERLAY' },
-        }),
-      );
+      e?.preventDefault?.();
+      handleClose();
     });
 
     hotkeys('ctrl+enter,command+enter', (e) => {
-      e.preventDefault();
-      window.dispatchEvent(
-        new CustomEvent('footics-action', { detail: { action: 'SAVE_MEMO' } }),
-      );
+      e?.preventDefault?.();
+      handleSave();
     });
 
     return () => {
@@ -105,25 +98,30 @@ export const MemoOverlayModal: React.FC<MemoOverlayModalProps> = ({
       hotkeys.unbind('ctrl+enter');
       hotkeys.unbind('command+enter');
     };
-  }, [isModalOpen]);
+  }, [isModalOpen, handleClose, handleSave]);
 
   if (!isModalOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) handleClose();
-      }}
+    <MemoOverlayStoreProvider
+      initialState={{ isModalOpen: true, mode, memo: initialMemo ?? '' }}
     >
-      <div className="relative w-full max-w-[420px] aspect-[1/1.3] shadow-2xl rounded-xl overflow-hidden">
-        <MemoOverlayView
-          matchId={matchId}
-          onClose={handleClose}
-          onSave={handleSave}
-          className="static w-full h-full min-w-0 aspect-auto shadow-none border-none animate-in zoom-in-95 duration-200"
-        />
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) handleClose();
+        }}
+      >
+        <div className="relative w-full max-w-[420px] aspect-[1/1.3] shadow-2xl rounded-xl overflow-hidden">
+          <MemoOverlayView
+            matchId={matchId}
+            onClose={handleClose}
+            onSave={handleSave}
+            initialMemo={initialMemo}
+            className="static w-full h-full min-w-0 aspect-auto shadow-none border-none animate-in zoom-in-95 duration-200"
+          />
+        </div>
       </div>
-    </div>
+    </MemoOverlayStoreProvider>
   );
 };

@@ -3,6 +3,8 @@ import type {
   MemoMode,
 } from '@/lib/features/memo-overlay/memoOverlayLogic';
 
+export type { EventPhase, MemoMode };
+
 export interface MemoOverlayInitialState {
   mode?: MemoMode;
   phase?: EventPhase;
@@ -13,6 +15,7 @@ export interface MemoOverlayInitialState {
   period?: number;
   eventId?: string;
   isModalOpen?: boolean;
+  error?: string;
 }
 
 export interface MemoOverlayState {
