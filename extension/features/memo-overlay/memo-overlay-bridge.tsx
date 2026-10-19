@@ -1,10 +1,8 @@
 import type React from 'react';
-import { useEffect } from 'react';
 import {
   type EventPhase,
   type MemoOverlayInitialState,
   MemoOverlayStoreProvider,
-  useMemoOverlayStore,
 } from '@/features/memo-overlay';
 import { MemoOverlayView } from '@/features/memo-overlay/components/MemoOverlayView';
 import { useMemoOverlayEventBridge } from '@/features/memo-overlay/hooks/useMemoOverlayEventBridge';
@@ -26,15 +24,6 @@ export const MemoOverlayBridge: React.FC = () => {
   const { isVisible, mode, matchId, initialData, initialError, open, close } =
     useOverlayStore();
 
-  const reset = useMemoOverlayStore((s) => s.reset);
-  const setError = useMemoOverlayStore((s) => s.setError);
-  const setTimeStr = useMemoOverlayStore((s) => s.setTimeStr);
-  const setSelectedLabels = useMemoOverlayStore((s) => s.setSelectedLabels);
-  const setMemo = useMemoOverlayStore((s) => s.setMemo);
-  const setEventId = useMemoOverlayStore((s) => s.setEventId);
-  const setPeriod = useMemoOverlayStore((s) => s.setPeriod);
-  const forceSetPhase = useMemoOverlayStore((s) => s.forceSetPhase);
-
   // キャッシュおよびDBから初期メモを非同期解決
   const resolvedMemo = useMatchMemoLoader({
     matchId,
@@ -42,55 +31,6 @@ export const MemoOverlayBridge: React.FC = () => {
     initialMemo: initialData?.memo,
     isVisible,
   });
-
-  // ── ストアの初期化（シングルトン同期: 既存フック・テストとの互換性維持） ──
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Initialization logic handles multi-phase restoration
-  useEffect(() => {
-    if (!isVisible) return;
-
-    reset(mode);
-
-    if (initialError) {
-      setError(initialError);
-    }
-
-    if (initialData) {
-      if (mode === 'EVENT') {
-        if (initialData.id) {
-          setEventId(initialData.id);
-        }
-        if (initialData.period) {
-          setPeriod(initialData.period);
-        }
-        if (initialData.minute !== undefined) {
-          const m = initialData.minute;
-          const s = initialData.second ?? 0;
-          setTimeStr(`${m}:${s.toString().padStart(2, '0')}`);
-          forceSetPhase(1);
-        }
-        if (initialData.labels) {
-          setSelectedLabels(initialData.labels);
-          forceSetPhase(2);
-        }
-      }
-      if (initialData.memo) {
-        setMemo(initialData.memo);
-      }
-    }
-  }, [
-    isVisible,
-    mode,
-    initialData,
-    initialError,
-    reset,
-    setError,
-    setTimeStr,
-    setSelectedLabels,
-    setMemo,
-    setEventId,
-    setPeriod,
-    forceSetPhase,
-  ]);
 
   const { handleSave } = useMemoSave();
 

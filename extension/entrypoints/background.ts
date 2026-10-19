@@ -1,12 +1,19 @@
 import { onMessage, sendMessage } from 'webext-bridge/background';
-import { z } from 'zod';
-import { FOOTICS_APP_URLS, STORAGE_KEYS } from '../constants';
+import { FOOTICS_APP_URLS } from '../constants';
 import { processAndOpenCanvas } from '../features/capture/capture-pipeline';
 import {
   deleteScreenshot,
   getScreenshotById,
   getScreenshotsByVideo,
 } from '../features/capture/db/screenshot-db';
+import { CaptureCommand } from './background/commands/capture-command';
+import {
+  EventMemoCommand,
+  MatchMemoCommand,
+} from './background/commands/memo-command';
+import { MiniModeCommand } from './background/commands/mini-mode-command';
+import { CommandRegistry } from './background/commands/registry';
+import type { BackgroundCommandContext } from './background/commands/types';
 
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Main background entrypoint
 export default defineBackground(() => {
@@ -78,6 +85,13 @@ export default defineBackground(() => {
     return tab;
   };
 
+  const commandRegistry = new CommandRegistry();
+  commandRegistry
+    .register(new CaptureCommand())
+    .register(new MiniModeCommand())
+    .register(new MatchMemoCommand())
+    .register(new EventMemoCommand());
+
   browser.commands.onCommand.addListener(async (command, tab) => {
     console.info('🚀 [Footics BG] Command received:', command);
 
@@ -97,165 +111,31 @@ export default defineBackground(() => {
       activeTab = tabs[0];
     }
 
-    // ── 1. Tactical キャプチャコマンドの処理 ──
-    if (command === 'capture-to-tactical') {
-      if (activeTab?.id) {
+    const ctx: BackgroundCommandContext = {
+      activeTab,
+      findFooticsTab,
+      sendBridgeMessage: <T = unknown>(
+        msg: string,
+        data: unknown,
+        dest: string,
+      ): Promise<T> =>
+        sendMessage(msg as any, data as any, dest as any) as Promise<T>,
+      storage: browser.storage.local,
+      captureTab: (options) => browser.tabs.captureVisibleTab(options),
+      processCanvas: async (dataUrl, targetTab) => {
+        const res = await processAndOpenCanvas({
+          imageDataUrl: dataUrl,
+          videoUrl: targetTab?.url,
+          videoTitle: targetTab?.title,
+        });
         console.log(
-          '📸 [Footics BG] Sending TRIGGER_CAPTURE to active tab:',
-          activeTab.id,
-          activeTab.url,
+          '✅ [Footics BG] Autonomous direct capture & Quick Canvas opened!',
+          res.id,
         );
-        let captureHandledByContentScript = false;
-        try {
-          await sendMessage(
-            'TRIGGER_CAPTURE',
-            {},
-            `content-script@${activeTab.id}`,
-          );
-          captureHandledByContentScript = true;
-        } catch (err) {
-          console.warn(
-            '⚠️ [Footics BG] webext-bridge failed, trying native chrome.tabs.sendMessage fallback:',
-            err,
-          );
-          try {
-            await browser.tabs.sendMessage(activeTab.id, {
-              type: 'TRIGGER_CAPTURE',
-            });
-            captureHandledByContentScript = true;
-          } catch (nativeErr) {
-            console.warn(
-              '⚠️ [Footics BG] Content script messaging unavailable, falling back to autonomous Background Tab Capture:',
-              nativeErr,
-            );
-          }
-        }
+      },
+    };
 
-        // ── 自律フォールバック: Content Script 未応答時でも確実にキャプチャ実行 ──
-        if (!captureHandledByContentScript) {
-          try {
-            console.log(
-              '⚡ [Footics BG] Executing direct captureVisibleTab fallback...',
-            );
-            const dataUrl = await browser.tabs.captureVisibleTab({
-              format: 'jpeg',
-              quality: 98,
-            });
-            if (dataUrl) {
-              const res = await processAndOpenCanvas({
-                imageDataUrl: dataUrl,
-                videoUrl: activeTab.url,
-                videoTitle: activeTab.title,
-              });
-              console.log(
-                '✅ [Footics BG] Autonomous direct capture & Quick Canvas opened!',
-                res.id,
-              );
-            }
-          } catch (bgCaptureErr) {
-            console.error(
-              '❌ [Footics BG] Direct background tab capture failed:',
-              bgCaptureErr,
-            );
-          }
-        }
-      } else {
-        console.warn('❌ [Footics BG] No active tab found for capture');
-      }
-      return;
-    }
-
-    // ── 2. ミニモードトグルコマンドの処理 ──
-    if (command === 'toggle-mini-mode') {
-      if (activeTab?.id) {
-        console.log(
-          '📌 [Footics BG] Sending TOGGLE_MINI_MODE to active tab:',
-          activeTab.id,
-        );
-        try {
-          await sendMessage(
-            'TOGGLE_MINI_MODE',
-            {},
-            `content-script@${activeTab.id}`,
-          );
-        } catch (err) {
-          console.warn('[Footics BG] Failed to send TOGGLE_MINI_MODE:', err);
-        }
-      }
-      return;
-    }
-
-    // ── 3. メモオーバーレイコマンドの処理 ──
-    if (command !== 'toggle-match-memo' && command !== 'toggle-event-memo')
-      return;
-
-    const mode: 'MATCH' | 'EVENT' =
-      command === 'toggle-match-memo' ? 'MATCH' : 'EVENT';
-
-    const footicsTab = await findFooticsTab();
-
-    const stored = await browser.storage.local.get(
-      STORAGE_KEYS.LAST_ACTIVE_MATCH_ID,
-    );
-    let matchId = z
-      .string()
-      .safeParse(stored[STORAGE_KEYS.LAST_ACTIVE_MATCH_ID]).data;
-
-    if (!matchId && footicsTab?.id) {
-      try {
-        const response = await sendMessage(
-          'GET_ACTIVE_MATCH_INFO',
-          {},
-          `content-script@${footicsTab.id}`,
-        );
-        matchId = response?.matchId;
-      } catch (err) {
-        console.warn('[Footics BG] GET_ACTIVE_MATCH_INFO relay failed:', err);
-      }
-    }
-
-    if (!matchId && !footicsTab) {
-      console.warn(
-        '❌ [Footics BG] Footics App tab not found and no ID in storage.',
-      );
-      if (activeTab?.id) {
-        sendMessage(
-          'OPEN_OVERLAY',
-          {
-            mode,
-            error: 'Footics本体のタブを開いて試合を特定してください',
-          },
-          `content-script@${activeTab.id}`,
-        );
-      }
-      return;
-    }
-
-    // 3. オーバレイを開く
-    if (activeTab?.id) {
-      let cachedMemo = '';
-      if (mode === 'MATCH' && matchId) {
-        try {
-          const cacheKey = `${STORAGE_KEYS.MATCH_MEMO_CACHE_PREFIX}${matchId}`;
-          const stored = await browser.storage.local.get(cacheKey);
-          if (typeof stored[cacheKey] === 'string') {
-            cachedMemo = stored[cacheKey];
-          }
-        } catch (e) {
-          console.warn('[Footics BG] Failed to read match memo cache:', e);
-        }
-      }
-
-      sendMessage(
-        'OPEN_OVERLAY',
-        {
-          mode,
-          matchId: matchId || undefined,
-          initialData: mode === 'MATCH' ? { memo: cachedMemo } : undefined,
-        },
-        `content-script@${activeTab.id}`,
-      );
-    }
+    await commandRegistry.execute(command, activeTab, ctx);
   });
 
   onMessage('REQUEST_TAB_CAPTURE', async () => {

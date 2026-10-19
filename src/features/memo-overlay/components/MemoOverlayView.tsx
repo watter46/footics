@@ -1,10 +1,8 @@
 import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import {
-  useMemoOverlayDerived,
-  useMemoOverlayStore,
-} from '../stores/memo-overlay-store';
+import { useMemoOverlayStoreContext } from '../stores/memo-overlay-provider';
+import { useMemoOverlayDerived } from '../stores/memo-overlay-store';
 import { MatchMemoUnit } from './parts/MatchMemoUnit';
 import { MemoOverlayEventContent } from './parts/MemoOverlayEventContent';
 import { MemoOverlayFloatingError } from './parts/MemoOverlayFloatingError';
@@ -78,14 +76,15 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
   } = useMemoOverlayDerived();
 
   const initialMemoText = initialMemo ?? initialData?.memo;
+  const currentMemo = useMemoOverlayStoreContext((s) => s.memo);
 
   // Props 確定注入: 初期メモをストアへ同期（Flickerゼロ）
   useEffect(() => {
-    if (initialMemoText !== undefined && !useMemoOverlayStore.getState().memo) {
+    if (initialMemoText !== undefined && !currentMemo) {
       setMemo(initialMemoText);
     }
     isInitialRef.current = false;
-  }, [initialMemoText, setMemo]);
+  }, [initialMemoText, setMemo, currentMemo]);
 
   const activeMemo =
     isInitialRef.current && !memo ? (initialMemoText ?? '') : memo;

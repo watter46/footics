@@ -65,4 +65,24 @@ describe('MemoOverlayBridge', () => {
       screen.getByDisplayValue('Tactical analysis note'),
     ).toBeInTheDocument();
   });
+
+  it('MemoOverlayStoreProvider によりシングルトン store を汚染せず初期化されること', () => {
+    useMemoOverlayStore.getState().reset('MATCH');
+    useMemoOverlayStore.getState().setMemo('Global Singleton Memo');
+
+    useOverlayStore.getState().open({
+      mode: 'MATCH',
+      matchId: 'm3',
+      initialData: {
+        memo: 'Isolated Provider Memo',
+      },
+    });
+
+    render(<MemoOverlayBridge />);
+
+    expect(
+      screen.getByDisplayValue('Isolated Provider Memo'),
+    ).toBeInTheDocument();
+    expect(useMemoOverlayStore.getState().memo).toBe('Global Singleton Memo');
+  });
 });

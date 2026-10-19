@@ -6,8 +6,6 @@ import {
 import { STORAGE_KEYS } from '../../constants';
 import {
   SaveQueueSchema,
-  TACTICAL_CAPTURE_CUSTOM_EVENT,
-  TACTICAL_CAPTURE_PULL_CUSTOM_EVENT,
   TACTICAL_CAPTURE_PULL_WINDOW_MESSAGE,
   TACTICAL_CAPTURE_WINDOW_MESSAGE,
   type TacticalCapturePayload,
@@ -44,7 +42,7 @@ export function isFooticsAppHost(hostname?: string): boolean {
   );
 }
 
-function dispatchCaptureToApp(payload: TacticalCapturePayload) {
+export function dispatchCaptureToApp(payload: TacticalCapturePayload) {
   if (!payload?.dataUrl) return;
   window.postMessage(
     {
@@ -52,11 +50,6 @@ function dispatchCaptureToApp(payload: TacticalCapturePayload) {
       payload,
     },
     '*',
-  );
-  window.dispatchEvent(
-    new CustomEvent(TACTICAL_CAPTURE_CUSTOM_EVENT, {
-      detail: payload,
-    }),
   );
 }
 
@@ -114,7 +107,7 @@ function setupMatchSync(): () => void {
   };
 }
 
-function setupTacticalCaptureBridge(): () => void {
+export function setupTacticalCaptureBridge(): () => void {
   onMessage('TACTICAL_CAPTURE_RECEIVED', async ({ data: payload }) => {
     if (!payload) return;
     dispatchCaptureToApp(payload);
@@ -146,10 +139,6 @@ function setupTacticalCaptureBridge(): () => void {
     }
   };
 
-  window.addEventListener(
-    TACTICAL_CAPTURE_PULL_CUSTOM_EVENT,
-    handleCapturePullRequest,
-  );
   window.addEventListener('message', handleMessage);
 
   handleCapturePullRequest();
@@ -157,10 +146,6 @@ function setupTacticalCaptureBridge(): () => void {
 
   return () => {
     clearTimeout(timer);
-    window.removeEventListener(
-      TACTICAL_CAPTURE_PULL_CUSTOM_EVENT,
-      handleCapturePullRequest,
-    );
     window.removeEventListener('message', handleMessage);
   };
 }
