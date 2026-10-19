@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { EventTimeline } from '@/features/analysis';
+import { DataManagementMenu } from '@/features/management';
 import { MemoOverlayModal, useMemoOverlayStore } from '@/features/memo-overlay';
 import { Sidebar } from '@/features/sidebar';
 import { useDashboard } from '../hooks/use-dashboard';
@@ -77,10 +78,14 @@ export default function Dashboard({ matchId }: { matchId: string }) {
         <TeamSummaryHeader
           metadata={d.metadata}
           activeFilterCount={activeFilterCount}
-          matchId={matchId}
           onOpenSidebar={() => setIsSidebarOpen(true)}
           onAddEvent={handleAddEvent}
-          onRefreshCustomEvents={d.handleRefreshCustomEvents}
+          actionSlot={
+            <DataManagementMenu
+              matchId={matchId}
+              onRefresh={d.handleRefreshCustomEvents}
+            />
+          }
         />
 
         <EventTimeline

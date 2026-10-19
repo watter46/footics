@@ -7,16 +7,14 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import Link from 'next/link';
-import { DataManagementMenu } from '@/features/management';
 import type { TeamSummaryHeaderProps } from '../types';
 
 export function TeamSummaryHeader({
   metadata,
   activeFilterCount,
-  matchId,
   onOpenSidebar,
   onAddEvent,
-  onRefreshCustomEvents,
+  actionSlot,
 }: TeamSummaryHeaderProps) {
   return (
     <div className="flex justify-between items-center mb-4 sm:mb-6 pl-0 sm:pl-2 pb-3 sm:pb-4 border-b border-slate-800/60 z-10 shrink-0 gap-2">
@@ -31,11 +29,7 @@ export function TeamSummaryHeader({
         <div className="flex items-center gap-1.5 sm:gap-4 text-slate-200 min-w-0">
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             <img
-              src={
-                'https://d2zywfiolv4f83.cloudfront.net/img/teams/' +
-                metadata.teams.home.teamId +
-                '.png'
-              }
+              src={`https://d2zywfiolv4f83.cloudfront.net/img/teams/${metadata.teams.home.teamId}.png`}
               alt={metadata.teams.home.name}
               className="w-5 h-5 sm:w-7 sm:h-7 object-contain shrink-0"
             />
@@ -51,11 +45,7 @@ export function TeamSummaryHeader({
               {metadata.teams.away.name}
             </span>
             <img
-              src={
-                'https://d2zywfiolv4f83.cloudfront.net/img/teams/' +
-                metadata.teams.away.teamId +
-                '.png'
-              }
+              src={`https://d2zywfiolv4f83.cloudfront.net/img/teams/${metadata.teams.away.teamId}.png`}
               alt={metadata.teams.away.name}
               className="w-5 h-5 sm:w-7 sm:h-7 object-contain shrink-0"
             />
@@ -96,10 +86,7 @@ export function TeamSummaryHeader({
           <Plus className="w-3.5 h-3.5 shrink-0" />
           <span className="hidden sm:inline">Add Event</span>
         </button>
-        <DataManagementMenu
-          matchId={matchId}
-          onRefresh={onRefreshCustomEvents}
-        />
+        {actionSlot}
       </div>
     </div>
   );
