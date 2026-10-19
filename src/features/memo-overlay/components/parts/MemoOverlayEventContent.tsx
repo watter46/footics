@@ -5,7 +5,7 @@ import { PhaseLabelSelection } from './PhaseLabelSelection';
 import { PhaseMemoInput } from './PhaseMemoInput';
 import { PhaseTimeInput } from './PhaseTimeInput';
 
-interface MemoOverlayEventContentProps {
+export interface MemoOverlayEventContentProps {
   phase: EventPhase;
   timeStr: string;
   displayTime: string;
@@ -23,6 +23,11 @@ interface MemoOverlayEventContentProps {
   onLabelInputChange: (val: string) => void;
   onAddLabel: (label: string) => void;
   onMemoChange: (val: string) => void;
+  onClose?: () => void;
+  onSave?: () => void;
+  onNextPhase?: () => void;
+  onPrevPhase?: () => void;
+  onNavigateSuggestion?: (direction: 1 | -1) => void;
 }
 
 export const MemoOverlayEventContent: React.FC<
@@ -45,6 +50,11 @@ export const MemoOverlayEventContent: React.FC<
   onLabelInputChange,
   onAddLabel,
   onMemoChange,
+  onClose,
+  onSave,
+  onNextPhase,
+  onPrevPhase,
+  onNavigateSuggestion,
 }) => {
   switch (phase) {
     case 0:
@@ -52,12 +62,13 @@ export const MemoOverlayEventContent: React.FC<
         <PhaseTimeInput
           timeStr={timeStr}
           displayTime={displayTime}
-          isEmpty={isEmptyTime}
-          phase={phase}
+          isEmptyTime={isEmptyTime}
           period={period}
-          validationError={error || null}
+          error={error}
           onTimeChange={onTimeChange}
           onPeriodChange={onPeriodChange}
+          onClose={onClose}
+          onNextPhase={onNextPhase}
         />
       );
     case 1:
@@ -72,10 +83,22 @@ export const MemoOverlayEventContent: React.FC<
           validationError={error || null}
           onLabelInputChange={onLabelInputChange}
           onAddLabel={onAddLabel}
+          onClose={onClose}
+          onNextPhase={onNextPhase}
+          onPrevPhase={onPrevPhase}
+          onNavigateSuggestion={onNavigateSuggestion}
         />
       );
     case 2:
-      return <PhaseMemoInput memo={memo} onMemoChange={onMemoChange} />;
+      return (
+        <PhaseMemoInput
+          memo={memo}
+          onMemoChange={onMemoChange}
+          onClose={onClose}
+          onSave={onSave}
+          onPrevPhase={onPrevPhase}
+        />
+      );
     default:
       return null;
   }

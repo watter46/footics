@@ -4,13 +4,14 @@ import { Loader2, Save } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
 
-interface MatchMemoUnitProps {
+export interface MatchMemoUnitProps {
   memo: string;
   isSaving: boolean;
   hasMatchId: boolean;
+  readOnly?: boolean;
   onMemoChange: (val: string) => void;
   onSave: () => void;
-  readOnly?: boolean;
+  onClose?: () => void;
 }
 
 /**
@@ -25,6 +26,7 @@ export const MatchMemoUnit: React.FC<MatchMemoUnitProps> = ({
   onMemoChange,
   onSave,
   readOnly = false,
+  onClose,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -124,11 +126,7 @@ export const MatchMemoUnit: React.FC<MatchMemoUnitProps> = ({
           if (e.key === 'Escape') {
             e.preventDefault();
             e.stopPropagation();
-            window.dispatchEvent(
-              new CustomEvent('footics-action', {
-                detail: { action: 'CLOSE_OVERLAY' },
-              }),
-            );
+            onClose?.();
             return;
           }
           if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {

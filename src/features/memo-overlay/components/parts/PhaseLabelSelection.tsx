@@ -5,7 +5,7 @@ import type React from 'react';
 import { useEffect, useRef } from 'react';
 import type { FlattenedEvent } from '@/lib/event-definitions';
 
-interface PhaseLabelSelectionProps {
+export interface PhaseLabelSelectionProps {
   labelInput: string;
   suggestions: FlattenedEvent[];
   suggestionIndex: number;
@@ -15,6 +15,10 @@ interface PhaseLabelSelectionProps {
   validationError: string | null;
   onLabelInputChange: (val: string) => void;
   onAddLabel: (label: string) => void;
+  onClose?: () => void;
+  onNextPhase?: () => void;
+  onPrevPhase?: () => void;
+  onNavigateSuggestion?: (direction: 1 | -1) => void;
 }
 
 /**
@@ -32,6 +36,10 @@ export const PhaseLabelSelection: React.FC<PhaseLabelSelectionProps> = ({
   validationError,
   onLabelInputChange,
   onAddLabel,
+  onClose,
+  onNextPhase,
+  onPrevPhase,
+  onNavigateSuggestion,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsContainerRef = useRef<HTMLDivElement>(null);
@@ -99,33 +107,20 @@ export const PhaseLabelSelection: React.FC<PhaseLabelSelectionProps> = ({
             // Shift+Tab: 前のフェーズへ（ArrowDown/Up の前に判定すること）
             if (e.key === 'Tab' && e.shiftKey) {
               e.preventDefault();
-              window.dispatchEvent(
-                new CustomEvent('footics-action', {
-                  detail: { action: 'PREV_PHASE' },
-                }),
-              );
-            } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+              onPrevPhase?.();
+            } else if (e.key === 'ArrowDown') {
               e.preventDefault();
-              window.dispatchEvent(
-                new CustomEvent('footics-action', {
-                  detail: { action: 'NAVIGATE_SUGGESTION', key: e.key },
-                }),
-              );
+              onNavigateSuggestion?.(1);
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              onNavigateSuggestion?.(-1);
             } else if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
               e.preventDefault();
               // サジェストリストが表示されている、または入力がある場合は確定
-              window.dispatchEvent(
-                new CustomEvent('footics-action', {
-                  detail: { action: 'NEXT_PHASE' },
-                }),
-              );
+              onNextPhase?.();
             } else if (e.key === 'Escape') {
               e.preventDefault();
-              window.dispatchEvent(
-                new CustomEvent('footics-action', {
-                  detail: { action: 'CLOSE_OVERLAY' },
-                }),
-              );
+              onClose?.();
             }
           }}
         />

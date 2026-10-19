@@ -130,4 +130,125 @@ describe('MemoOverlayView Refactor & Host Isolation', () => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('サブコンポーネント コールバック透過連携 (dispatchEvent 全廃)', () => {
+    it('MATCH モード: Escape で onClose、Ctrl+Enter で onSave が呼ばれる', () => {
+      useMemoOverlayStore.getState().reset('MATCH');
+      render(
+        <MemoOverlayView
+          matchId="test-match-1"
+          onClose={onClose}
+          onSave={onSave}
+        />,
+      );
+
+      const textarea = screen.getByPlaceholderText(/試合全体の総括を記録/i);
+      fireEvent.keyDown(textarea, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
+
+      fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+      expect(onSave).toHaveBeenCalledTimes(1);
+    });
+
+    it('EVENT Phase 0 (PhaseTimeInput): Escape で onClose、Enter で nextPhase が実行される', () => {
+      useMemoOverlayStore.getState().reset('EVENT');
+      render(
+        <MemoOverlayView
+          matchId="test-match-1"
+          onClose={onClose}
+          onSave={onSave}
+        />,
+      );
+
+      const timeInput = screen.getByPlaceholderText('MMSS');
+      fireEvent.keyDown(timeInput, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        useMemoOverlayStore.getState().setTimeStr('12:00');
+      });
+      fireEvent.keyDown(timeInput, { key: 'Enter' });
+      expect(useMemoOverlayStore.getState().phase).toBe(1);
+    });
+
+    it('EVENT Phase 1 (PhaseLabelSelection): Escape で onClose、Shift+Tab で prevPhase、ArrowDown で navigateSuggestion、Enter で nextPhase', () => {
+      useMemoOverlayStore.getState().reset('EVENT');
+      act(() => {
+        useMemoOverlayStore.getState().setTimeStr('12:00');
+        useMemoOverlayStore.getState().forceSetPhase(1);
+        useMemoOverlayStore.getState().setLabelInput('Pass');
+      });
+
+      render(
+        <MemoOverlayView
+          matchId="test-match-1"
+          onClose={onClose}
+          onSave={onSave}
+        />,
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search match events...');
+
+      // Escape -> onClose
+      fireEvent.keyDown(searchInput, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
+
+      // ArrowDown -> isListMode が true になり、さらに ArrowDown で suggestionIndex が進む
+      expect(useMemoOverlayStore.getState().isListMode).toBe(false);
+      fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
+      expect(useMemoOverlayStore.getState().isListMode).toBe(true);
+      fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
+      expect(useMemoOverlayStore.getState().suggestionIndex).toBe(1);
+
+      // Shift+Tab -> prevPhase (Phase 0)
+      fireEvent.keyDown(searchInput, { key: 'Tab', shiftKey: true });
+      expect(useMemoOverlayStore.getState().phase).toBe(0);
+
+      // 再び Phase 1 に戻して Enter -> nextPhase (Phase 2)
+      act(() => {
+        useMemoOverlayStore.getState().forceSetPhase(1);
+        useMemoOverlayStore.getState().addLabel('Pass');
+      });
+      const reSearchInput = screen.getByPlaceholderText(
+        'Search match events...',
+      );
+      fireEvent.keyDown(reSearchInput, { key: 'Enter' });
+      expect(useMemoOverlayStore.getState().phase).toBe(2);
+    });
+
+    it('EVENT Phase 2 (PhaseMemoInput): Escape で onClose、Ctrl+Enter で onSave、Shift+Tab で prevPhase', () => {
+      useMemoOverlayStore.getState().reset('EVENT');
+      act(() => {
+        useMemoOverlayStore.getState().setTimeStr('12:00');
+        useMemoOverlayStore.getState().addLabel('Pass');
+        useMemoOverlayStore.getState().forceSetPhase(2);
+      });
+
+      render(
+        <MemoOverlayView
+          matchId="test-match-1"
+          onClose={onClose}
+          onSave={onSave}
+        />,
+      );
+
+      let memoTextarea = screen.getByPlaceholderText('補足メモを入力...');
+
+      // Escape -> onClose
+      fireEvent.keyDown(memoTextarea, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
+
+      // Shift+Tab -> prevPhase (Phase 1)
+      fireEvent.keyDown(memoTextarea, { key: 'Tab', shiftKey: true });
+      expect(useMemoOverlayStore.getState().phase).toBe(1);
+
+      // Phase 2 に戻して Ctrl+Enter -> onSave
+      act(() => {
+        useMemoOverlayStore.getState().forceSetPhase(2);
+      });
+      memoTextarea = screen.getByPlaceholderText('補足メモを入力...');
+      fireEvent.keyDown(memoTextarea, { key: 'Enter', ctrlKey: true });
+      expect(onSave).toHaveBeenCalledTimes(1);
+    });
+  });
 });

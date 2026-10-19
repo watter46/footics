@@ -6,21 +6,18 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useKeyboardShortcut } from '@/hooks/use-shortcut';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
 
-interface PhaseTimeInputProps {
+export interface PhaseTimeInputProps {
   timeStr: string;
   displayTime: string;
-  isEmpty: boolean;
-  phase: number;
+  isEmptyTime: boolean;
   period: number;
-  validationError: string | null;
+  error: string | undefined;
   onTimeChange: (val: string) => void;
-  onPeriodChange: (p: number) => void;
-  onCommit?: () => void;
+  onPeriodChange: (val: number) => void;
+  onClose?: () => void;
+  onNextPhase?: () => void;
 }
 
-/**
- * Period colors mapping
- */
 const PERIOD_COLORS = {
   1: {
     active: 'text-indigo-400',
@@ -54,28 +51,34 @@ const PERIOD_COLORS = {
   },
 } as const;
 
+const PERIOD_TABS = [
+  { id: 1, label: '1st' },
+  { id: 2, label: '2nd' },
+  { id: 3, label: 'ET1' },
+  { id: 4, label: 'ET2' },
+  { id: 5, label: 'PK' },
+] as const;
+
 /**
  * PhaseTimeInput
  * 責務: 時間入力フェーズ（Phase 0）のUI。
- * 数字入力・バリデーションフィードバック・パース結果の表示を担う。
+ * 数字入力・ピリオド選択・パース結果の表示を担う。
  */
 export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
   timeStr,
   displayTime,
-  isEmpty,
-  phase,
+  isEmptyTime,
   period,
-  validationError,
+  error,
   onTimeChange,
   onPeriodChange,
-  onCommit,
+  onClose,
+  onNextPhase,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const isComposing = useRef(false);
 
-  // フェーズ表示時にフォーカスを確実に当てる
   useEffect(() => {
-    if (phase !== 0) return;
     const focusInput = () => {
       if (inputRef.current && document.activeElement !== inputRef.current) {
         inputRef.current.focus();
@@ -92,9 +95,8 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
       clearTimeout(t2);
       clearTimeout(t3);
     };
-  }, [phase]);
+  }, []);
 
-  // キーボードショートカット管理 (ライブラリを使用)
   useKeyboardShortcut(SHORTCUT_ACTIONS.SET_PERIOD_1, () => onPeriodChange(1), {
     ignoreInput: false,
   });
@@ -112,17 +114,14 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
   });
 
   const normalize = useCallback((val: string) => {
-    // 全角数字を半角に変換し、数字のみ最大5文字
     return val
       .replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
       .replace(/[^0-9]/g, '')
       .slice(0, 5);
   }, []);
 
-  // フォーカス制御
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // インプット以外にフォーカスがある時、数字キーが押されたらインプットにフォーカスを戻し即時反映
       if (
         document.activeElement?.tagName !== 'INPUT' &&
         document.activeElement?.tagName !== 'TEXTAREA' &&
@@ -137,42 +136,21 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
       }
     };
 
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (
-        document.activeElement === inputRef.current &&
-        e.key === 'Enter' &&
-        timeStr.length > 0
-      ) {
-        inputRef.current?.blur();
-        e.preventDefault();
-        onCommit?.();
-      }
-    };
-
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [timeStr, onTimeChange, normalize]);
 
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [timeStr, onTimeChange, normalize, onCommit]);
+  const activePeriodConfig =
+    PERIOD_COLORS[period as keyof typeof PERIOD_COLORS] ?? PERIOD_COLORS[1];
 
   return (
     <div className="p-6 flex flex-col items-center gap-8">
-      {/* ── Period Selector (Segmented Control) ── */}
+      {/* Period Selector */}
       <div className="w-full flex p-1 bg-slate-950/40 backdrop-blur-md border border-slate-800/30 rounded-xl relative overflow-hidden group">
-        {/* 背景のグロー効果 */}
         <div
-          className={`absolute inset-0 bg-gradient-to-r ${PERIOD_COLORS[period as keyof typeof PERIOD_COLORS].glow} opacity-20 transition-all duration-500`}
+          className={`absolute inset-0 bg-gradient-to-r ${activePeriodConfig.glow} opacity-20 transition-all duration-500`}
         />
-        {[
-          { id: 1, label: '1st' },
-          { id: 2, label: '2nd' },
-          { id: 3, label: 'ET1' },
-          { id: 4, label: 'ET2' },
-          { id: 5, label: 'PK' },
-        ].map((p) => {
+        {PERIOD_TABS.map((p) => {
           const config = PERIOD_COLORS[p.id as keyof typeof PERIOD_COLORS];
           const isActive = period === p.id;
           return (
@@ -195,6 +173,7 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
         })}
       </div>
 
+      {/* Input & Display */}
       <div className="flex flex-col items-center gap-2">
         <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
           <Clock className="w-3 h-3" /> Step 1: Timestamp
@@ -209,84 +188,44 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
           }}
           onCompositionEnd={(e) => {
             isComposing.current = false;
-            // 確定した値を正規化して反映
-            const val = (e.target as HTMLInputElement).value;
-            onTimeChange(normalize(val));
+            onTimeChange(normalize((e.target as HTMLInputElement).value));
           }}
-          onBlur={(e) => {
-            // フォーカスが外れた際にも念のため正規化
-            onTimeChange(normalize(e.target.value));
-          }}
+          onBlur={(e) => onTimeChange(normalize(e.target.value))}
           onChange={(e) => {
             const val = e.target.value;
-            if (isComposing.current) {
-              // 変換中はストアにそのまま流す（バリデーションは一時的に無効になるが、入力体験を優先）
-              onTimeChange(val);
-            } else {
-              onTimeChange(normalize(val));
-            }
+            onTimeChange(isComposing.current ? val : normalize(val));
           }}
           placeholder="MMSS"
           className="w-full text-center text-6xl font-mono bg-transparent outline-none text-slate-200 placeholder:text-slate-800 tracking-widest"
           onKeyDown={(e) => {
-            // 修飾キーを伴うショートカット（Alt+1-5やCtrl+M等）はバブリングさせてライブラリに拾わせる。
-            // それ以外の単体キー（数字入力等）は、動画プレイヤー側のショートカットとの干渉を防ぐため伝播を止める。
             if (!e.altKey && !e.ctrlKey && !e.metaKey) {
               e.stopPropagation();
             }
 
-            // Shift+Tab: 前のフェーズへ（Tab の前に判定すること）
-            if (e.key === 'Tab' && e.shiftKey) {
-              e.preventDefault();
-              window.dispatchEvent(
-                new CustomEvent('footics-action', {
-                  detail: { action: 'PREV_PHASE' },
-                }),
-              );
-            } else if (
+            if (
               (e.key === 'Enter' || e.key === 'Tab') &&
               !e.ctrlKey &&
               !e.metaKey
             ) {
-              if (isComposing.current) return; // 変換確定の Enter は無視
+              if (isComposing.current) return;
               e.preventDefault();
-              window.dispatchEvent(
-                new CustomEvent('footics-action', {
-                  detail: { action: 'NEXT_PHASE' },
-                }),
-              );
-            } else if (e.key === 'Backspace') {
-              // input の値が空の場合のみ BACKSPACE アクションを発行（文字削除はブラウザ標準に任せる）
-              if (timeStr === '') {
-                e.preventDefault();
-                window.dispatchEvent(
-                  new CustomEvent('footics-action', {
-                    detail: { action: 'BACKSPACE' },
-                  }),
-                );
-              }
+              onNextPhase?.();
             } else if (e.key === 'Escape') {
               e.preventDefault();
-              window.dispatchEvent(
-                new CustomEvent('footics-action', {
-                  detail: { action: 'CLOSE_OVERLAY' },
-                }),
-              );
+              onClose?.();
             }
           }}
         />
         <div
           className={`text-sm font-mono h-6 transition-colors ${
-            validationError && phase === 0
-              ? 'text-red-500 font-bold animate-pulse'
-              : 'text-slate-300'
+            error ? 'text-red-500 font-bold animate-pulse' : 'text-slate-300'
           }`}
         >
-          {validationError && phase === 0 ? (
+          {error ? (
             <span className="flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" /> {validationError}
+              <AlertCircle className="w-3 h-3" /> {error}
             </span>
-          ) : isEmpty ? (
+          ) : isEmptyTime ? (
             'Enter numbers (e.g. 12345)'
           ) : (
             `Parsed: ${displayTime}`

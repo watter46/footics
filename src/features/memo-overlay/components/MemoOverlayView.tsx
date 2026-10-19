@@ -73,6 +73,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
     setMemo,
     nextPhase,
     prevPhase,
+    navigateSuggestion,
     clearError,
   } = useMemoOverlayDerived();
 
@@ -137,6 +138,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
             onMemoChange={setMemo}
             onSave={onSave}
             readOnly={readOnly}
+            onClose={onClose}
           />
         ) : (
           <MemoOverlayEventContent
@@ -157,6 +159,11 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
             onLabelInputChange={setLabelInput}
             onAddLabel={addLabel}
             onMemoChange={setMemo}
+            onClose={onClose}
+            onSave={onSave}
+            onNextPhase={nextPhase}
+            onPrevPhase={prevPhase}
+            onNavigateSuggestion={navigateSuggestion}
           />
         )}
       </div>

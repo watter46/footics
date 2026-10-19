@@ -4,9 +4,12 @@ import { MessageSquare } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
 
-interface PhaseMemoInputProps {
+export interface PhaseMemoInputProps {
   memo: string;
   onMemoChange: (val: string) => void;
+  onClose?: () => void;
+  onSave?: () => void;
+  onPrevPhase?: () => void;
 }
 
 /**
@@ -17,6 +20,9 @@ interface PhaseMemoInputProps {
 export const PhaseMemoInput: React.FC<PhaseMemoInputProps> = ({
   memo,
   onMemoChange,
+  onClose,
+  onSave,
+  onPrevPhase,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -58,35 +64,21 @@ export const PhaseMemoInput: React.FC<PhaseMemoInputProps> = ({
           if (e.key === 'Escape') {
             e.preventDefault();
             e.stopPropagation();
-            window.dispatchEvent(
-              new CustomEvent('footics-action', {
-                detail: { action: 'CLOSE_OVERLAY' },
-              }),
-            );
+            onClose?.();
             return;
           }
           // Ctrl+Enter / Cmd+Enter: 保存
-          // Note: ここで dispatch した後は stopPropagation() により
-          // グローバルな (hotkeys-js等の) リスナーへの伝播を防止し、二重発火を防ぐ。
           if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             e.stopPropagation();
-            window.dispatchEvent(
-              new CustomEvent('footics-action', {
-                detail: { action: 'SAVE_MEMO' },
-              }),
-            );
+            onSave?.();
             return;
           }
           // Shift+Tab: 前のフェーズへ
           if (e.key === 'Tab' && e.shiftKey) {
             e.preventDefault();
             e.stopPropagation();
-            window.dispatchEvent(
-              new CustomEvent('footics-action', {
-                detail: { action: 'PREV_PHASE' },
-              }),
-            );
+            onPrevPhase?.();
             return;
           }
           // それ以外は動画プレイヤー等への伝播を防ぐ
