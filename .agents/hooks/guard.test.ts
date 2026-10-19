@@ -213,8 +213,8 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(res.reason).toContain('Guessing file paths');
     });
 
-    test('view_file denies slicing small files (<= 400 lines)', () => {
-      // token-filter.ts is 339 lines (<= 400 lines)
+    test('view_file transparently rewrites slicing for small files (<= 400 lines)', () => {
+      // token-filter.ts is 354 lines (<= 400 lines)
       const resSliced = evaluatePayload({
         toolCall: {
           name: 'view_file',
@@ -226,11 +226,11 @@ describe('guard.ts Security & Token Guard Tests', () => {
           },
         },
       });
-      expect(resSliced.decision).toBe('deny');
-      expect(resSliced.reason).toContain('Slicing small files is prohibited');
-      expect(resSliced.reason).toContain(
-        "Call 'view_file' with ONLY 'AbsolutePath'",
-      );
+      expect(resSliced.decision).toBe('allow');
+      expect(resSliced.overwrite).toEqual({
+        StartLine: 1,
+        EndLine: 355,
+      });
 
       // view_file without slice is allowed
       const resWhole = evaluatePayload({
@@ -307,8 +307,11 @@ describe('guard.ts Security & Token Guard Tests', () => {
           },
         },
       });
-      expect(res.decision).toBe('deny');
-      expect(res.reason).toContain('Slicing small files is prohibited');
+      expect(res.decision).toBe('allow');
+      expect(res.overwrite).toEqual({
+        StartLine: 1,
+        EndLine: 355,
+      });
     });
   });
 

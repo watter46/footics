@@ -238,8 +238,9 @@ function checkViewGuard(payload: any): GuardDecision | null {
   const endLine = parseLineNum(toolCall.args.EndLine);
   const hasSlice = startLine !== undefined || endLine !== undefined;
 
-  // 3a. 小型ファイル (400行以下) のスライス読込遮断
-  // view_file は最大 800 行まで一括取得可能。400行以下の小型ファイルを小刻みに読むのはターン・トークンの浪費。
+  // 3a. 小型ファイル (400行以下) のスライス読込の自動補正 (Transparent Overwrite)
+  // view_file は最大 800 行まで一括取得可能。小型ファイルに対するスライス指定は
+  // deny で弾いてエージェントに事前 wc -l を強要するのではなく、自動で全文読込に書き換えて許可する。
   if (totalLines <= SMALL_FILE_LINE_LIMIT && hasSlice) {
     const isWholeFile =
       (startLine === undefined || startLine <= 1) &&
@@ -247,8 +248,11 @@ function checkViewGuard(payload: any): GuardDecision | null {
 
     if (!isWholeFile) {
       return {
-        decision: 'deny',
-        reason: `[GUARD] Slicing small files is prohibited ('${baseName}' has ${totalLines} lines <= ${SMALL_FILE_LINE_LIMIT} lines).\nReason: Paging small files causes severe token waste, context fragmentation, and lost imports.\nAction: Call 'view_file' with ONLY 'AbsolutePath' (omit 'StartLine' and 'EndLine') to retrieve the entire file in 1 turn (view_file supports up to 800 lines).`,
+        decision: 'allow',
+        overwrite: {
+          StartLine: 1,
+          EndLine: totalLines,
+        },
       };
     }
   }

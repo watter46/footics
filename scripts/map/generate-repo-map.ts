@@ -43,10 +43,16 @@ function getGitFiles(targetDir: string): string[] | null {
   }
 }
 
-async function extractSummary(fullPath: string): Promise<string | null> {
+interface FileInfo {
+  summary: string | null;
+  lineCount: number;
+}
+
+async function extractFileInfo(fullPath: string): Promise<FileInfo> {
   try {
     const content = await readFile(fullPath, 'utf-8');
     const lines = content.split('\n');
+    const lineCount = lines.length;
 
     // 1. Frontmatter
     let inFrontmatter = false;
@@ -57,7 +63,10 @@ async function extractSummary(fullPath: string): Promise<string | null> {
         continue;
       }
       if (inFrontmatter && trimmed.startsWith('description:')) {
-        return trimmed.replace('description:', '').trim();
+        return {
+          summary: trimmed.replace('description:', '').trim(),
+          lineCount,
+        };
       }
       if (!inFrontmatter && trimmed !== '') break;
     }
@@ -66,13 +75,14 @@ async function extractSummary(fullPath: string): Promise<string | null> {
     for (const line of lines) {
       const trimmed = line.trim();
       if (trimmed === '' || trimmed === '---') continue;
-      if (trimmed.startsWith('//')) return trimmed.replace(/^\/\/\s*/, '');
+      if (trimmed.startsWith('//'))
+        return { summary: trimmed.replace(/^\/\/\s*/, ''), lineCount };
       if (trimmed.startsWith('#') && !trimmed.startsWith('#!')) {
-        return trimmed.replace(/^#\s*/, '');
+        return { summary: trimmed.replace(/^#\s*/, ''), lineCount };
       }
       if (trimmed.startsWith('/*')) {
         const match = trimmed.match(/\/\*\s*(.*?)\s*(\*\/)?$/);
-        if (match && match[1]) return match[1];
+        if (match && match[1]) return { summary: match[1], lineCount };
       }
       break;
     }
@@ -104,13 +114,16 @@ async function extractSummary(fullPath: string): Promise<string | null> {
       }
       if (exports.length > 0) {
         const unique = Array.from(new Set(exports));
-        return `exports: ${unique.slice(0, 8).join(', ')}${unique.length > 8 ? '...' : ''}`;
+        return {
+          summary: `exports: ${unique.slice(0, 8).join(', ')}${unique.length > 8 ? '...' : ''}`,
+          lineCount,
+        };
       }
     }
 
-    return null;
+    return { summary: null, lineCount };
   } catch (_e) {
-    return null;
+    return { summary: null, lineCount: 0 };
   }
 }
 
@@ -185,11 +198,12 @@ async function main() {
   const mapLines: string[] = [];
   for (const relPath of relFiles) {
     const fullPath = join(targetDir, relPath);
-    const summary = await extractSummary(fullPath);
-    if (summary) {
-      mapLines.push(`${relPath}: ${summary}`);
+    const info = await extractFileInfo(fullPath);
+    const lineLabel = info.lineCount > 0 ? `[${info.lineCount}L]` : '';
+    if (info.summary) {
+      mapLines.push(`${relPath} ${lineLabel}: ${info.summary}`);
     } else {
-      mapLines.push(relPath);
+      mapLines.push(`${relPath} ${lineLabel}`.trim());
     }
   }
   mapLines.sort();

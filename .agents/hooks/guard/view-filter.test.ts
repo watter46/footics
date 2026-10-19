@@ -288,3 +288,38 @@ describe('view-filter: planner investigation guard', () => {
     expect(resScout?.decision).toBe('allow');
   });
 });
+
+describe('view-filter: small file transparent overwrite', () => {
+  const testDir = path.resolve(
+    '.agents/hooks/guard/__tests__/fixtures-small-view',
+  );
+
+  beforeEach(() => {
+    fs.mkdirSync(testDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('transparently overwrites slice arguments to whole file for small files (<=400 lines)', () => {
+    const smallFile = path.join(testDir, 'small.ts');
+    fs.writeFileSync(
+      smallFile,
+      Array.from({ length: 50 }, (_, i) => `// line ${i + 1}`).join('\n'),
+    );
+
+    const res = checkViewGuard({
+      toolCall: {
+        name: 'view_file',
+        args: { AbsolutePath: smallFile, StartLine: 10, EndLine: 30 },
+      },
+    });
+
+    expect(res?.decision).toBe('allow');
+    expect(res?.overwrite).toEqual({
+      StartLine: 1,
+      EndLine: 50,
+    });
+  });
+});

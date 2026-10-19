@@ -105,7 +105,8 @@ function runCli() {
   }
 
   // 1件〜3件程度の場合、次のアクション（outline）をガイド
-  const firstFile = results[0]?.split(':')[0]?.trim();
+  const rawFile = results[0]?.split(':')[0]?.trim();
+  const firstFile = rawFile?.replace(/\s*\[\d+L\]$/, '').trim();
   if (firstFile) {
     console.log('\nSuggested Next Step:');
     console.log(`  bun run ai:outline ${firstFile}`);
