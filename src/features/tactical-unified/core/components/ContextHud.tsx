@@ -3,10 +3,13 @@
 import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { useCanvasStore } from '../hooks/use-canvas-store';
+import type { SelectedObject } from '../types';
 import {
   ArrowHud,
   ConnectLineHud,
   computeClampedHudPos,
+  type HudOffsetRect,
+  type HudTarget,
   PlayerHud,
   TextHud,
   useHudPosition,
@@ -17,12 +20,19 @@ export interface ContextHudProps {
   stageSize: { width: number; height: number };
   pitchRect?: { x: number; y: number; width: number; height: number };
   nodesRegistryRef?: React.MutableRefObject<unknown>;
+  renderExtraHud?: (selected: SelectedObject) => React.ReactNode;
+  resolveExtraTarget?: (
+    selected: SelectedObject,
+    offset: HudOffsetRect,
+  ) => HudTarget | null;
 }
 
 export function ContextHud({
   stageSize,
   pitchRect,
   nodesRegistryRef,
+  renderExtraHud,
+  resolveExtraTarget,
 }: ContextHudProps) {
   const hudRef = useRef<HTMLDivElement>(null);
   const selectedObjects = useCanvasStore((s) => s.selectedObjects);
@@ -35,7 +45,8 @@ export function ContextHud({
     selected,
     stageSize,
     pitchRect,
-    nodesRegistryRef,
+    nodesRegistryRef: nodesRegistryRef as any,
+    resolveExtraTarget,
   });
 
   useEffect(() => {
@@ -91,6 +102,14 @@ export function ContextHud({
               };
             }
           >;
+          ballNode?: {
+            getClientRect: () => {
+              x: number;
+              y: number;
+              width: number;
+              height: number;
+            };
+          };
         }
       | undefined;
     const stage = reg?.stage;
@@ -113,6 +132,7 @@ export function ContextHud({
         node = reg.arrowNodes?.get(selected.id)?.node;
       else if (selected.kind === 'zone') node = reg.zoneNodes?.get(selected.id);
       else if (selected.kind === 'text') node = reg.textNodes?.get(selected.id);
+      else if (selected.kind === 'ball') node = reg.ballNode;
 
       if (!node) return;
       try {
@@ -183,6 +203,7 @@ export function ContextHud({
             parentPlayerId={selected.parentPlayerId}
           />
         )}
+        {renderExtraHud?.(selected)}
       </div>
     </div>
   );

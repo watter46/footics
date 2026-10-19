@@ -158,6 +158,7 @@ export function resolveHudTarget({
   offset,
   nodesRegistryRef,
   data,
+  resolveExtraTarget,
 }: {
   selected: SelectedObject;
   offset: HudOffsetRect;
@@ -168,7 +169,33 @@ export function resolveHudTarget({
     zones: ZoneAnnotation[];
     texts: TextAnnotation[];
   };
+  resolveExtraTarget?: (
+    selected: SelectedObject,
+    offset: HudOffsetRect,
+  ) => HudTarget | null;
 }): HudTarget | null {
+  if (resolveExtraTarget) {
+    const extra = resolveExtraTarget(selected, offset);
+    if (extra) return extra;
+  }
+
+  if (selected.kind === 'ball') {
+    const ballNode = nodesRegistryRef?.current?.ballNode;
+    if (ballNode) {
+      try {
+        const rect = ballNode.getClientRect();
+        return {
+          x: rect.x + rect.width / 2,
+          y: rect.y,
+          height: rect.height || 24,
+        };
+      } catch {
+        // fallback
+      }
+    }
+    return null;
+  }
+
   if (selected.kind === 'player') {
     const player = data.markers.find((p) => p.id === selected.id);
     return player

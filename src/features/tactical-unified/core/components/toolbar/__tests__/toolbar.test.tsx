@@ -4,10 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { createCanvasStore } from '../../../store/canvas-store';
 import { CanvasStoreContext } from '../../../store/canvas-store-provider';
 import type { CanvasStoreApi } from '../../../types';
+import { CoreDrawingToolbar } from '../../CoreDrawingToolbar';
 import {
   DraggableToolbar,
   EXTENSION_DRAWING_TOOLS,
   FixedToolbar,
+  getDrawingTools,
   ToolbarBoundaryBoxToggle,
   ToolbarContinuousLock,
   ToolbarDivider,
@@ -135,5 +137,53 @@ describe('Toolbar Compound Components & Registry', () => {
     expect(toolbarEl.style.transform).toBe(
       'var(--toolbar-transform, translateY(-50%))',
     );
+  });
+
+  describe('getDrawingTools and CoreDrawingToolbar markerMode filtering', () => {
+    it('getDrawingTools が markerMode に応じてツールリストを生成すること', () => {
+      const defaultTools = getDrawingTools();
+      const defaultIds = defaultTools.map((t) => t.id);
+      expect(defaultIds).toContain('player');
+      expect(defaultIds).not.toContain('player-ring');
+
+      const tools2d = getDrawingTools('2d-only');
+      const ids2d = tools2d.map((t) => t.id);
+      expect(ids2d).toContain('player');
+      expect(ids2d).not.toContain('player-ring');
+
+      const tools3d = getDrawingTools('3d-only');
+      const ids3d = tools3d.map((t) => t.id);
+      expect(ids3d).not.toContain('player');
+      expect(ids3d).toContain('player-ring');
+
+      const toolsAll = getDrawingTools('all');
+      const idsAll = toolsAll.map((t) => t.id);
+      expect(idsAll).toContain('player');
+      expect(idsAll).toContain('player-ring');
+    });
+
+    it('CoreDrawingToolbar で markerMode="2d-only" 時に 2D マーカーのみ表示されること', () => {
+      renderWithStore(<CoreDrawingToolbar markerMode="2d-only" />);
+      expect(screen.getByTestId('tool-player')).toBeDefined();
+      expect(screen.queryByTestId('tool-player-ring')).toBeNull();
+    });
+
+    it('CoreDrawingToolbar で markerMode 省略時にデフォルトで 2D マーカーのみ表示されること', () => {
+      renderWithStore(<CoreDrawingToolbar />);
+      expect(screen.getByTestId('tool-player')).toBeDefined();
+      expect(screen.queryByTestId('tool-player-ring')).toBeNull();
+    });
+
+    it('CoreDrawingToolbar で markerMode="3d-only" 時に 3D リングのみ表示されること', () => {
+      renderWithStore(<CoreDrawingToolbar markerMode="3d-only" />);
+      expect(screen.getByTestId('tool-player-ring')).toBeDefined();
+      expect(screen.queryByTestId('tool-player')).toBeNull();
+    });
+
+    it('CoreDrawingToolbar で markerMode="all" 時に 2D マーカーと 3D リングの両方が表示されること', () => {
+      renderWithStore(<CoreDrawingToolbar markerMode="all" />);
+      expect(screen.getByTestId('tool-player')).toBeDefined();
+      expect(screen.getByTestId('tool-player-ring')).toBeDefined();
+    });
   });
 });

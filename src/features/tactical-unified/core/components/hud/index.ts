@@ -10,6 +10,11 @@ export {
   SolidLineIcon,
 } from './hud-icons';
 export {
+  type HudOffsetRect,
+  type HudTarget,
+  resolveHudTarget,
+} from './hud-targets';
+export {
   HUD_COLOR_PALETTE,
   MiniColorPicker,
   type MiniColorPickerProps,

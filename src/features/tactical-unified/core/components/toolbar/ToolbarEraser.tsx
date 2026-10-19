@@ -17,7 +17,7 @@ export function ToolbarEraser() {
           ? 'Eraser: ON (Drag over objects to erase)'
           : 'Eraser: OFF (Click to toggle)'
       }
-      aria-label="Eraser"
+      aria-label="Eraser Mode"
       className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center shrink-0 ${
         isEraser
           ? 'bg-rose-600 text-white shadow-md shadow-rose-500/30 ring-1 ring-rose-400'

@@ -43,6 +43,9 @@ export {
 export {
   ConnectLineHud,
   type ConnectLineHudProps,
+  type HudOffsetRect,
+  type HudTarget,
+  resolveHudTarget,
 } from './components/hud';
 export {
   PitchInlineTextEditor,

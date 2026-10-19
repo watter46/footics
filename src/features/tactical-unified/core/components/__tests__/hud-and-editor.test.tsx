@@ -232,7 +232,7 @@ describe('PitchInlineTextEditor', () => {
 
 describe('CoreDrawingToolbar', () => {
   it('CoreDrawingToolbar で全11ツール、連続描画ロック、消しゴム、ピッチロック、クロップ枠、リセットが動作すること', () => {
-    const { store } = renderWithStore(<CoreDrawingToolbar />);
+    const { store } = renderWithStore(<CoreDrawingToolbar markerMode="all" />);
 
     const tools: { title: string; expected: string }[] = [
       { title: 'Select (V)', expected: 'select' },

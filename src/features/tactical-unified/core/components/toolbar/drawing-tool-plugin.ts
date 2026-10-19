@@ -55,3 +55,19 @@ export const WEB_DRAWING_TOOLS: DrawingToolPlugin[] = [
   TOOL_PLUGIN_PLAYER_2D,
   TOOL_PLUGIN_PLAYER_3D_RING,
 ];
+
+export function getDrawingTools(
+  markerMode: '2d-only' | '3d-only' | 'all' = '2d-only',
+): DrawingToolPlugin[] {
+  if (markerMode === '3d-only') {
+    return [...DRAWING_TOOLS_CORE, TOOL_PLUGIN_PLAYER_3D_RING];
+  }
+  if (markerMode === 'all') {
+    return [
+      ...DRAWING_TOOLS_CORE,
+      TOOL_PLUGIN_PLAYER_2D,
+      TOOL_PLUGIN_PLAYER_3D_RING,
+    ];
+  }
+  return [...DRAWING_TOOLS_CORE, TOOL_PLUGIN_PLAYER_2D];
+}

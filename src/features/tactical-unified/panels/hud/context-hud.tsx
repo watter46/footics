@@ -2,29 +2,29 @@
 
 /**
  * context-hud.tsx
- * Floating Contextual Action Bar (HUD) for selected canvas objects.
- *
- * Provides instant on-pitch editing for:
- *  - Player: shirtNo, fill color, ring/stroke color, circle/ring toggle, delete
- *  - Arrow: stroke width, solid/dash toggle, color, delete
- *  - Zone: color, opacity, delete
- *  - Text: font size, color, delete
- *  - Ball: lock/unlock
+ * Web-layer wrapper around core/components/ContextHud.
+ * Bridges CanvasStoreContext with useTacticalUnifiedStore and provides BallHud plugin.
  */
 
 import type React from 'react';
-import { useEffect, useRef } from 'react';
+import { useContext, useEffect, useMemo, useRef } from 'react';
+import {
+  CanvasStoreContext,
+  CanvasStoreProvider,
+  ContextHud as CoreContextHud,
+  createCanvasStore,
+  type HudOffsetRect,
+  type HudTarget,
+  type SelectedObject,
+  type SelectedObjectKind,
+} from '@/features/tactical-unified/core';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/objects/canvas';
 import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { ArrowHud } from './arrow-hud';
 import { BallHud } from './ball-hud';
-import { PlayerHud } from './player-hud';
-import { TextHud } from './text-hud';
-import { useHudPosition } from './use-hud-position';
-import { ZoneHud } from './zone-hud';
+import { getBallTarget } from './hud-marker-targets';
 
 export interface ContextHudProps {
   stageSize: { width: number; height: number };
@@ -32,76 +32,225 @@ export interface ContextHudProps {
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
-export function ContextHud({
+function createSyncedCanvasStore(
+  activeSlide: ReturnType<typeof selectActiveSlide>,
+  activeSlideIdRef: React.MutableRefObject<string>,
+) {
+  const store = createCanvasStore({
+    mode: 'tactical-board',
+    markerMode: 'all',
+    initialAnnotations: activeSlide
+      ? JSON.stringify({
+          markers: activeSlide.players ?? [],
+          arrows: activeSlide.arrows ?? [],
+          zones: activeSlide.zones ?? [],
+          texts: activeSlide.texts ?? [],
+        })
+      : undefined,
+  });
+
+  const origUpdateMarker = store.getState().updateMarker;
+  store.getState().updateMarker = (id, patch) => {
+    origUpdateMarker(id, patch);
+    if (activeSlideIdRef.current) {
+      useTacticalUnifiedStore
+        .getState()
+        .updatePlayer(activeSlideIdRef.current, id, patch);
+    }
+  };
+
+  const origRemoveMarker = store.getState().removeMarker;
+  store.getState().removeMarker = (id) => {
+    origRemoveMarker(id);
+    if (activeSlideIdRef.current) {
+      useTacticalUnifiedStore
+        .getState()
+        .removePlayer(activeSlideIdRef.current, id);
+    }
+  };
+
+  const origUpdateArrow = store.getState().updateArrow;
+  store.getState().updateArrow = (id, patch) => {
+    origUpdateArrow(id, patch);
+    if (activeSlideIdRef.current) {
+      useTacticalUnifiedStore
+        .getState()
+        .updateArrow(activeSlideIdRef.current, id, patch);
+    }
+  };
+
+  const origRemoveArrow = store.getState().removeArrow;
+  store.getState().removeArrow = (id) => {
+    origRemoveArrow(id);
+    if (activeSlideIdRef.current) {
+      useTacticalUnifiedStore
+        .getState()
+        .removeArrow(activeSlideIdRef.current, id);
+    }
+  };
+
+  const origUpdateZone = store.getState().updateZone;
+  store.getState().updateZone = (id, patch) => {
+    origUpdateZone(id, patch);
+    if (activeSlideIdRef.current) {
+      useTacticalUnifiedStore
+        .getState()
+        .updateZone(activeSlideIdRef.current, id, patch);
+    }
+  };
+
+  const origRemoveZone = store.getState().removeZone;
+  store.getState().removeZone = (id) => {
+    origRemoveZone(id);
+    if (activeSlideIdRef.current) {
+      useTacticalUnifiedStore
+        .getState()
+        .removeZone(activeSlideIdRef.current, id);
+    }
+  };
+
+  const origUpdateText = store.getState().updateText;
+  store.getState().updateText = (id, patch) => {
+    origUpdateText(id, patch);
+    if (activeSlideIdRef.current) {
+      useTacticalUnifiedStore
+        .getState()
+        .updateText(activeSlideIdRef.current, id, patch);
+    }
+  };
+
+  const origRemoveText = store.getState().removeText;
+  store.getState().removeText = (id) => {
+    origRemoveText(id);
+    if (activeSlideIdRef.current) {
+      useTacticalUnifiedStore
+        .getState()
+        .removeText(activeSlideIdRef.current, id);
+    }
+  };
+
+  const origClearSelection = store.getState().clearSelection;
+  store.getState().clearSelection = () => {
+    origClearSelection();
+    useTacticalUnifiedStore.getState().clearSelection();
+  };
+
+  return store;
+}
+
+function ContextHudWithAdapter({
   stageSize,
   pitchRect,
   nodesRegistryRef,
 }: ContextHudProps) {
-  const hudRef = useRef<HTMLDivElement>(null);
-
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
+  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const activeTool = useTacticalUnifiedStore((s) => s.activeTool);
 
-  // ドラッグ中は直接DOM参照で一時的にHUDを非表示にしてRule 15に適合
+  const activeSlideRef = useRef(activeSlide);
+  activeSlideRef.current = activeSlide;
+  const activeSlideIdRef = useRef(activeSlideId);
+  activeSlideIdRef.current = activeSlideId;
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Initialize store once (state updates handled by useEffect)
+  const storeApi = useMemo(() => {
+    const store = createSyncedCanvasStore(activeSlide, activeSlideIdRef);
+    store.setState({
+      selectedObjects: selectedObjects.map((s) => ({
+        id: s.id,
+        kind: s.kind as SelectedObjectKind,
+        parentPlayerId: (s as { parentPlayerId?: string }).parentPlayerId,
+      })),
+      selectedIds: selectedObjects.map((s) => s.id),
+      activeTool,
+      isHudOpen: true,
+    });
+    return store;
+  }, []);
+
+  // Sync TacticalUnifiedStore to CanvasStore
   useEffect(() => {
-    const stage = nodesRegistryRef?.current?.stage;
-    if (!stage) return;
-    const handleDragStart = () => {
-      if (hudRef.current) hudRef.current.style.opacity = '0';
-    };
-    const handleDragEnd = () => {
-      if (hudRef.current) hudRef.current.style.opacity = '1';
-    };
-    stage.on('dragstart', handleDragStart);
-    stage.on('dragend', handleDragEnd);
-    return () => {
-      stage.off('dragstart', handleDragStart);
-      stage.off('dragend', handleDragEnd);
-    };
-  }, [nodesRegistryRef]);
+    storeApi.setState({
+      selectedObjects: selectedObjects.map((s) => ({
+        id: s.id,
+        kind: s.kind as SelectedObjectKind,
+        parentPlayerId: (s as { parentPlayerId?: string }).parentPlayerId,
+      })),
+      selectedIds: selectedObjects.map((s) => s.id),
+      activeTool,
+      isHudOpen: true,
+      annotations: {
+        markers: activeSlide?.players ?? [],
+        arrows: activeSlide?.arrows ?? [],
+        zones: activeSlide?.zones ?? [],
+        texts: activeSlide?.texts ?? [],
+      },
+    });
+  }, [storeApi, selectedObjects, activeTool, activeSlide]);
 
-  const selected =
-    selectedObjects.length === 1 ? selectedObjects[0] : undefined;
-  const position = useHudPosition({
-    selected,
-    activeSlide,
-    stageSize,
-    pitchRect,
-    nodesRegistryRef,
-  });
-
-  // 単一選択時のみ表示
-  if (!selected || !activeSlide || activeTool === 'eraser' || !position) {
+  const resolveExtraTarget = (
+    selected: SelectedObject,
+    offset: HudOffsetRect,
+  ): HudTarget | null => {
+    if (selected.kind === 'ball' && activeSlideRef.current?.ball) {
+      return getBallTarget(
+        activeSlideRef.current.ball,
+        offset,
+        nodesRegistryRef,
+      );
+    }
     return null;
-  }
+  };
+
+  const renderExtraHud = (selected: SelectedObject): React.ReactNode => {
+    if (selected.kind === 'ball') {
+      return <BallHud />;
+    }
+    return null;
+  };
 
   return (
-    <div
-      ref={hudRef}
-      role="toolbar"
-      aria-label="コンテキスト操作ツールバー"
-      tabIndex={-1}
-      onPointerDown={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
-      style={{
-        left: `${position.clampedX}px`,
-        top: `${position.clampedY}px`,
-        transform: position.isBelow
-          ? 'translate(-50%, 0)'
-          : 'translate(-50%, -100%)',
-      }}
-      className="absolute z-40 transition-opacity duration-150 select-none pointer-events-auto animate-in fade-in zoom-in-95 duration-100"
-    >
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-neutral-900/90 backdrop-blur-md border border-white/15 shadow-2xl shadow-black/80 text-xs text-white">
-        {selected.kind === 'player' && <PlayerHud playerId={selected.id} />}
-        {selected.kind === 'arrow' && <ArrowHud arrowId={selected.id} />}
-        {selected.kind === 'zone' && <ZoneHud zoneId={selected.id} />}
-        {selected.kind === 'text' && <TextHud textId={selected.id} />}
-        {selected.kind === 'ball' && <BallHud />}
-      </div>
-    </div>
+    <CanvasStoreProvider store={storeApi}>
+      <CoreContextHud
+        stageSize={stageSize}
+        pitchRect={pitchRect}
+        nodesRegistryRef={nodesRegistryRef}
+        renderExtraHud={renderExtraHud}
+        resolveExtraTarget={resolveExtraTarget}
+      />
+    </CanvasStoreProvider>
   );
+}
+
+export function ContextHud(props: ContextHudProps) {
+  const storeContext = useContext(CanvasStoreContext);
+
+  if (storeContext) {
+    const activeSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find(
+        (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
+      );
+    return (
+      <CoreContextHud
+        {...props}
+        renderExtraHud={(selected) =>
+          selected.kind === 'ball' ? <BallHud /> : null
+        }
+        resolveExtraTarget={(selected, offset) => {
+          if (selected.kind === 'ball' && activeSlide?.ball) {
+            return getBallTarget(
+              activeSlide.ball,
+              offset,
+              props.nodesRegistryRef,
+            );
+          }
+          return null;
+        }}
+      />
+    );
+  }
+
+  return <ContextHudWithAdapter {...props} />;
 }

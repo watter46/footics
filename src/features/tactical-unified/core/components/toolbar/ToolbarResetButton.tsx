@@ -24,7 +24,7 @@ export function ToolbarResetButton() {
       type="button"
       onClick={handleReset}
       title="Reset all annotations"
-      aria-label="Reset annotations"
+      aria-label="Reset all slide objects"
       className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-[#333333] transition-all cursor-pointer flex items-center justify-center shrink-0"
     >
       <RotateCcw size={16} />

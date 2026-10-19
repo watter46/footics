@@ -1,13 +1,21 @@
 import type React from 'react';
 import { useCanvasStore } from '../../hooks/use-canvas-store';
 import type { SelectedObject } from '../../types';
-import { resolveHudTarget } from './hud-targets';
+import {
+  type HudOffsetRect,
+  type HudTarget,
+  resolveHudTarget,
+} from './hud-targets';
 
 export interface UseHudPositionProps {
   selected?: SelectedObject;
   stageSize: { width: number; height: number };
   pitchRect?: { x: number; y: number; width: number; height: number };
   nodesRegistryRef?: React.MutableRefObject<any>;
+  resolveExtraTarget?: (
+    selected: SelectedObject,
+    offset: HudOffsetRect,
+  ) => HudTarget | null;
 }
 
 export interface HudPosition {
@@ -43,6 +51,7 @@ export function useHudPosition({
   stageSize,
   pitchRect,
   nodesRegistryRef,
+  resolveExtraTarget,
 }: UseHudPositionProps): HudPosition | null {
   const arrows = useCanvasStore((s) => s.annotations.arrows);
   const zones = useCanvasStore((s) => s.annotations.zones);
@@ -63,6 +72,7 @@ export function useHudPosition({
     offset,
     nodesRegistryRef,
     data: { markers, arrows, zones, texts },
+    resolveExtraTarget,
   });
 
   if (!target) return null;
