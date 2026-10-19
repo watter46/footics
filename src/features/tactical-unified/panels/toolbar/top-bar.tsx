@@ -9,6 +9,8 @@
  */
 
 import { Copy, Upload } from 'lucide-react';
+import type React from 'react';
+import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { TopBarCenter } from './top-bar-center';
 import { TopBarHistory } from './top-bar-history';
@@ -16,11 +18,15 @@ import { TopBarMoreMenu } from './top-bar-more-menu';
 import { TopBarPanels } from './top-bar-panels';
 import { TopBarTitle } from './top-bar-title';
 
-export function TopBar() {
+export interface TopBarProps {
+  canvasRef?: React.RefObject<CanvasCoreHandle | null>;
+}
+
+export function TopBar({ canvasRef }: TopBarProps = {}): React.ReactElement {
   const openExportModal = useTacticalUnifiedStore((s) => s.openExportModal);
 
   function handleCopy() {
-    window.dispatchEvent(new CustomEvent('tactical:copy-png'));
+    canvasRef?.current?.copyToClipboard();
   }
 
   return (

@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand';
+import type { Slide } from '@/lib/types/tactical-unified';
 import { createSlideForMode, resolvePanelStateForSlide } from './slide-helpers';
 import { recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
@@ -13,6 +14,7 @@ export interface SlideCrudSlice {
   reorderSlides: (orderedIds: string[]) => void;
   setActiveSlide: (slideId: string) => void;
   updateSlideLabel: (slideId: string, label: string) => void;
+  updateSlide: (slideId: string, patch: Partial<Slide>) => void;
 }
 
 export const createSlideCrudSlice: StateCreator<
@@ -135,6 +137,16 @@ export const createSlideCrudSlice: StateCreator<
       project: updateSlideInProject(s.project, slideId, (sl) => ({
         ...sl,
         label,
+      })),
+      isDirty: true,
+    })),
+
+  updateSlide: (slideId, patch) =>
+    set((s) => ({
+      ...recordHistory(s),
+      project: updateSlideInProject(s.project, slideId, (sl) => ({
+        ...sl,
+        ...patch,
       })),
       isDirty: true,
     })),

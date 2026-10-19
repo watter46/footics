@@ -11,6 +11,8 @@
  */
 
 import dynamic from 'next/dynamic';
+import { useRef } from 'react';
+import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
 import { useKeyboardShortcuts } from '@/features/tactical-unified/hooks/use-keyboard-shortcuts';
 import { useTacticalAutoSave } from '@/features/tactical-unified/hooks/use-tactical-auto-save';
 import { useTacticalDropPaste } from '@/features/tactical-unified/hooks/use-tactical-drop-paste';
@@ -23,11 +25,8 @@ import { TimelineBar } from './panels/timeline/timeline-bar';
 import { TopBar } from './panels/toolbar';
 
 // Canvas はクライアントサイドのみ (Konva)
-const UnifiedCanvas = dynamic(
-  () =>
-    import('./objects/canvas/components/unified-canvas').then(
-      (m) => m.UnifiedCanvas,
-    ),
+const FullTacticalCanvas = dynamic(
+  () => import('./views/FullTacticalCanvas').then((m) => m.FullTacticalCanvas),
   { ssr: false },
 );
 
@@ -65,6 +64,8 @@ export function TacticalUnifiedPage({
   // 📋 クリップボード画像貼り付け & 📂 ファイルドラッグ＆ドロップ対応
   const { handleDragOver, handleDrop } = useTacticalDropPaste();
 
+  const canvasRef = useRef<CanvasCoreHandle | null>(null);
+
   return (
     <div
       role="application"
@@ -74,13 +75,13 @@ export function TacticalUnifiedPage({
       className="flex flex-col h-screen w-screen bg-[#0a0a0a] overflow-hidden select-none"
     >
       {/* Top Bar */}
-      <TopBar />
+      <TopBar canvasRef={canvasRef} />
 
       {/* Main Area */}
       <div className="flex flex-1 min-h-0 relative">
         {/* Canvas — 最大化 */}
         <main className="flex-1 relative overflow-hidden flex flex-col bg-[#0a0a0a]">
-          <UnifiedCanvas />
+          <FullTacticalCanvas ref={canvasRef} />
         </main>
 
         {/* Right Panel (常時表示 / アニメーションなし) */}

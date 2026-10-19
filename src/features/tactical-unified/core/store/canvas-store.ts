@@ -87,7 +87,9 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
       continuousDrawing: false,
       selectedObjects: [],
       selectedIds: [],
-      pitchTransform: { ...DEFAULT_PITCH_TRANSFORM },
+      pitchTransform: config.defaultPitchTransform
+        ? { ...config.defaultPitchTransform }
+        : { ...DEFAULT_PITCH_TRANSFORM },
       boundaryBox,
       aspectRatio,
       annotations: initialAnnotations,

@@ -8,20 +8,28 @@ import { createCanvasStore } from './canvas-store';
 export const CanvasStoreContext = createContext<CanvasStoreApi | null>(null);
 
 export interface CanvasStoreProviderProps {
-  config: CanvasConfig;
+  config?: CanvasConfig;
+  store?: CanvasStoreApi;
   onAutoSave?: (json: string) => void;
   children: React.ReactNode;
 }
 
 export function CanvasStoreProvider({
   config,
+  store,
   onAutoSave,
   children,
 }: CanvasStoreProviderProps): React.ReactNode {
-  const storeRef = useRef<CanvasStoreApi | null>(null);
+  const storeRef = useRef<CanvasStoreApi | null>(store ?? null);
+
+  if (store) {
+    storeRef.current = store;
+  } else if (!storeRef.current && config) {
+    storeRef.current = createCanvasStore(config);
+  }
 
   if (!storeRef.current) {
-    storeRef.current = createCanvasStore(config);
+    throw new Error('CanvasStoreProvider requires either config or store');
   }
 
   // 自動保存の購読

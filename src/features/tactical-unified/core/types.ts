@@ -36,6 +36,7 @@ export interface CanvasConfig {
   markerMode?: '2d-only' | '3d-only' | 'all';
   defaultBoundaryBox?: BoundaryBox;
   aspectRatio?: AspectRatio;
+  defaultPitchTransform?: PitchTransform;
 }
 
 export interface CanvasCoreHandle {
