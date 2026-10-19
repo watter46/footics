@@ -23,6 +23,7 @@
     "ai:preflight": "bun .agents/scripts/preflight.ts",
     "ai:commit": "bun .agents/scripts/commit.ts",
     "ai:report": "bun .agents/scripts/session-report.ts",
+    "ai:audit": "bun .agents/scripts/audit-session.ts",
     "lint": "bun scripts/verify/lint.ts",
     "lint:fix": "bun scripts/verify/lint.ts --fix",
     "typecheck": "bun scripts/verify/type-check-scoped.ts",

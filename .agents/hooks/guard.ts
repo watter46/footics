@@ -152,6 +152,14 @@ function evaluatePayload(payload: any): any {
     return { decision: 'allow' };
   }
 
+  if (payload.toolCall && payload.toolCall.name === 'define_subagent') {
+    return {
+      decision: 'deny',
+      reason:
+        "[GUARD] Dynamic subagent definition with 'define_subagent' is prohibited. You MUST use project-standard predefined agents via invoke_subagent (TypeName: 'worker' | 'scout' | 'reviewer') to ensure rule enforcement and token reduction.",
+    };
+  }
+
   let cmd = '';
   if (payload.toolCall && payload.toolCall.args) {
     cmd = (

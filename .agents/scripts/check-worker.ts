@@ -58,9 +58,9 @@ function run(command: string) {
 }
 
 const SIZE_LIMITS: Record<string, number> = {
-  component: 300,
-  hook: 150,
-  store: 200,
+  component: 500, // JSX・Tailwind・Biome改行を許容 (God Component のみ遮断)
+  hook: 300,
+  store: 350,
 };
 
 function getCategory(filePath: string): 'component' | 'hook' | 'store' | null {
