@@ -1,12 +1,11 @@
 'use client';
 
 import { Database, Download, FileUp, Loader2, Upload } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { toast } from 'sonner';
-import { importMatchesBatch } from '@/lib/data-loader';
-import { exportMemosAsJson, importMemosFromJson } from '@/lib/db';
+import { useState } from 'react';
+import { useMatchDataImport } from '../hooks/use-match-data-import';
+import { useMemoDataIO } from '../hooks/use-memo-data-io';
 
-interface DataManagementMenuProps {
+export interface DataManagementMenuProps {
   matchId: string;
   onRefresh: () => void;
 }
@@ -16,96 +15,39 @@ export function DataManagementMenu({
   onRefresh,
 }: DataManagementMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const matchFilesRef = useRef<HTMLInputElement>(null);
-  const memoFileRef = useRef<HTMLInputElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const {
+    fileInputRef: matchFilesRef,
+    isLoading: isMatchLoading,
+    openFileDialog: openMatchDialog,
+    handleFileChange: handleImportMatches,
+  } = useMatchDataImport();
 
-  // ──────────────────────────────────────────────
-  // Handlers
-  // ──────────────────────────────────────────────
+  const {
+    memoFileInputRef,
+    openMemoFileDialog,
+    handleExportMemos,
+    handleImportMemos,
+  } = useMemoDataIO(matchId, onRefresh);
 
-  /**
-   * Whoscored JSON ファイルを複数選択して一括インポートする。
-   * 進捗を toast で逐次表示し、完了後にページをリロードする。
-   */
-  const handleImportMatches = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const files = Array.from(e.target.files ?? []);
-    if (files.length === 0) return;
+  const isImporting = isMatchLoading;
 
+  const onSelectMatchFiles = () => {
     setIsOpen(false);
-    setIsImporting(true);
-    const toastId = toast.loading(`Importing 0 / ${files.length} matches...`);
-
-    try {
-      const result = await importMatchesBatch(files, (current, total) => {
-        toast.loading(`Importing ${current} / ${total} matches...`, {
-          id: toastId,
-        });
-      });
-
-      if (result.failed === 0) {
-        toast.success(
-          `${result.success} match${result.success !== 1 ? 'es' : ''} imported successfully!`,
-          { id: toastId, duration: 4000 },
-        );
-      } else {
-        const errorSummary = result.errors
-          .map((e) => `• ${e.filename}: ${e.message}`)
-          .join('\n');
-        toast.warning(
-          `${result.success} succeeded, ${result.failed} failed.\n${errorSummary}`,
-          { id: toastId, duration: 8000 },
-        );
-      }
-
-      // Reload so the match list reflects the newly imported matches
-      setTimeout(() => window.location.reload(), 1500);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Import failed: ${message}`, { id: toastId });
-    } finally {
-      setIsImporting(false);
-      if (matchFilesRef.current) matchFilesRef.current.value = '';
-    }
+    openMatchDialog();
   };
 
-  const handleExportMemos = async () => {
-    try {
-      await exportMemosAsJson(matchId);
-      toast.success('Memos exported successfully');
-      setIsOpen(false);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Failed to export memos: ${message}`);
-    }
+  const onSelectMemoFile = () => {
+    setIsOpen(false);
+    openMemoFileDialog();
   };
 
-  const handleImportMemos = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const count = await importMemosFromJson(file, matchId);
-      toast.success(`${count} memos imported successfully`);
-      onRefresh();
-      setIsOpen(false);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Failed to import memos: ${message}`);
-    } finally {
-      if (memoFileRef.current) memoFileRef.current.value = '';
-    }
+  const onExportMemos = async () => {
+    await handleExportMemos();
+    setIsOpen(false);
   };
-
-  // ──────────────────────────────────────────────
-  // Render
-  // ──────────────────────────────────────────────
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative">
       <button
         type="button"
         disabled={isImporting}
@@ -139,11 +81,10 @@ export function DataManagementMenu({
             </div>
 
             <div className="p-1.5 flex flex-col gap-0.5">
-              {/* Import Matches (multi-select) */}
               <button
                 type="button"
                 className="flex items-center w-full px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors group"
-                onClick={() => matchFilesRef.current?.click()}
+                onClick={onSelectMatchFiles}
               >
                 <FileUp className="mr-3 h-4 w-4 text-blue-400 group-hover:scale-110 transition-transform flex-shrink-0" />
                 <div className="flex flex-col items-start leading-tight">
@@ -164,21 +105,19 @@ export function DataManagementMenu({
             </div>
 
             <div className="p-1.5 flex flex-col gap-0.5">
-              {/* Import Memos */}
               <button
                 type="button"
                 className="flex items-center w-full px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors group"
-                onClick={() => memoFileRef.current?.click()}
+                onClick={onSelectMemoFile}
               >
                 <Upload className="mr-3 h-4 w-4 text-green-400 group-hover:scale-110 transition-transform flex-shrink-0" />
                 <span className="font-medium text-slate-200">Import Memos</span>
               </button>
 
-              {/* Export Memos */}
               <button
                 type="button"
                 className="flex items-center w-full px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors group"
-                onClick={handleExportMemos}
+                onClick={onExportMemos}
               >
                 <Download className="mr-3 h-4 w-4 text-orange-400 group-hover:scale-110 transition-transform flex-shrink-0" />
                 <span className="font-medium text-slate-200">Export Memos</span>
@@ -200,11 +139,14 @@ export function DataManagementMenu({
       />
       <input
         type="file"
-        ref={memoFileRef}
+        ref={memoFileInputRef}
         accept=".json"
         className="hidden"
         id="memo-json-import"
-        onChange={handleImportMemos}
+        onChange={async (e) => {
+          await handleImportMemos(e);
+          setIsOpen(false);
+        }}
       />
     </div>
   );

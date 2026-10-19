@@ -1,73 +1,34 @@
 'use client';
 
 import { Archive, Database, RefreshCw, Settings, Upload } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { exportAllDataZip, importAllDataZip } from '@/lib/data-management';
+import { useGlobalDataBackup } from '../hooks/use-global-data-backup';
 
 export function GlobalDataManagement() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const {
+    backupFileInputRef,
+    isProcessing,
+    openBackupFileDialog,
+    handleExportBackup,
+    handleImportBackup,
+  } = useGlobalDataBackup();
 
-  // Close menu when clicking outside (standard behavior)
-  const toggleMenu = () => setIsOpen(!isOpen);
+  const toggleMenu = () => setIsOpen((prev) => !prev);
 
-  const handleExport = async () => {
-    setIsProcessing(true);
-    const toastId = toast.loading('Preparing backup file...', {
-      description: 'Compressing all matches and memos into a ZIP archive.',
-    });
-
-    try {
-      await exportAllDataZip();
-      toast.success('Backup downloaded successfully!', { id: toastId });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Export failed: ${message}`, { id: toastId });
-    } finally {
-      setIsProcessing(false);
-      setIsOpen(false);
-    }
+  const onExport = async () => {
+    await handleExportBackup();
+    setIsOpen(false);
   };
 
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsProcessing(true);
-    const toastId = toast.loading('Restoring data...', {
-      description: 'Decoding archive and merging into IndexedDB.',
-    });
-
-    try {
-      const result = await importAllDataZip(file);
-      const photoInfo =
-        result.photoCount > 0 ? `, ${result.photoCount} photos` : '';
-      toast.success('Restore complete!', {
-        id: toastId,
-        description: `Successfully restored ${result.matchCount} matches, ${result.playerCount} players${photoInfo}, and ${result.memoCount} memos. Finalizing...`,
-        duration: 3500,
-      });
-
-      // Give the browser a bit more time to flush to disk and the user to read the message
-      setTimeout(() => {
-        window.location.reload();
-      }, 2500);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Restore failed: ${message}`, { id: toastId });
-    } finally {
-      setIsProcessing(false);
-      setIsOpen(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+  const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await handleImportBackup(e);
+    setIsOpen(false);
   };
 
   return (
-    <div className="relative inline-block" ref={menuRef}>
+    <div className="relative inline-block">
       <Button
         variant="ghost"
         size="sm"
@@ -100,7 +61,7 @@ export function GlobalDataManagement() {
               <button
                 type="button"
                 disabled={isProcessing}
-                onClick={handleExport}
+                onClick={onExport}
                 className="flex items-center w-full px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors group disabled:opacity-50"
               >
                 <Archive className="mr-3 h-4 w-4 text-orange-400 group-hover:scale-110 transition-transform" />
@@ -120,7 +81,7 @@ export function GlobalDataManagement() {
               <button
                 type="button"
                 disabled={isProcessing}
-                onClick={() => fileInputRef.current?.click()}
+                onClick={openBackupFileDialog}
                 className="flex items-center w-full px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors group disabled:opacity-50"
               >
                 <div className="flex items-center justify-center w-4 h-4 mr-3">
@@ -149,10 +110,10 @@ export function GlobalDataManagement() {
       {/* Hidden input for ZIP file */}
       <input
         type="file"
-        ref={fileInputRef}
+        ref={backupFileInputRef}
         accept=".zip"
         className="hidden"
-        onChange={handleImport}
+        onChange={onImport}
       />
     </div>
   );
