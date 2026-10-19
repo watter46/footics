@@ -1,7 +1,7 @@
 # TASK-020: use-dashboard God Hook 解体 & 単一責務フック分割
 
 ## 1. Metadata
-- **Status**: `READY_FOR_REVIEW`
+- **Status**: `DONE`
 - **Created**: 2026-10-19
 - **Target Files**:
   - `src/features/dashboard/hooks/use-match-metadata.ts` (NEW)
@@ -161,13 +161,17 @@ export function useCustomEventOperations() {
 
 ## 5. Reviewer Assessment (コード差分監査)
 - **Reviewer Model**: `inherit`
-- **Reviewed At**: 
-- **Decision**: `PENDING`
+- **Reviewed At**: 2026-10-19
+- **Decision**: `LGTM`
 - **Audit Checklist**:
-  - [ ] 要件網羅性: 3つのフックが単一責務で抽出され、useDashboard が 70行以内にスリム化されているか
-  - [ ] 境界と副作用: cleanup や DB 更新等の副作用が各フック内に適切にカプセル化されているか
-  - [ ] 設計負債防止: 全フック <= 100行を遵守し、型定義が厳格か
-  - [ ] サイレント破壊防止: Dashboard.tsx への返り値インターフェースが等価に維持されているか
+  - [x] 要件網羅性: 3つのフックが単一責務で抽出され、useDashboard が 70行以内にスリム化されているか
+  - [x] 境界と副作用: cleanup や DB 更新等の副作用が各フック内に適切にカプセル化されているか
+  - [x] 設計負債防止: 全フック <= 100行を遵守し、型定義が厳格か
+  - [x] サイレント破壊防止: Dashboard.tsx への返り値インターフェースが等価に維持されているか
 - **Summary**:
+  - **要件網羅性 & 行数制約**: `useMatchMetadata` (38行), `useMatchCacheRecovery` (47行), `useCustomEventOperations` (65行) の3つの単一責務フックへ綺麗に分解され、`useDashboard` は 39行の薄い Facade Hook としてスリム化を達成。
+  - **副作用のカプセル化**: キャッシュクリーンアップ・JSON復元・カスタムイベント削除確認および Zustand（useMemoOverlayStore）連携が各専門フック内に適切にカプセル化されている。
+  - **型安全・設計負債防止**: `DashboardStatus` 型の明確化、依存配列の完全性、および TDD による 9件のユニットテストが追加され、全件グリーン。
+  - **サイレント破壊防止**: `Dashboard.tsx` が消費する返り値インターフェース（メタデータ、ステータス、キャッシュ復元、フィルタ、カスタムイベント操作、events、isQuerying）が完全等価に維持されていることを確認。
 
 ## 6. Rejections / Additional Tasks (不可逆修正欄)
