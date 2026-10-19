@@ -13,11 +13,17 @@ Footics の「極限のトークン最適化」「4層分離パイプライン�
 
 **開始時の宣言:** `📝 実装計画（TASKファイル）の作成を開始します。`
 
-## 計画の保存先 (Single Source of Truth)
+## 計画の保存先と二重管理の解消 (Artifact vs Task File)
 
-計画ファイルは必ず以下の場所に保存します：
-- 保存先: `tasks/TASK-<連番>-<feature-name>.md` (例: `tasks/TASK-001-player-marker.md`)
-- 連番は既存の `tasks/` を確認して決定します（001, 002 等）。
+設計計画と作業タスクは、対象読者に応じて完全に分離します：
+1. **ユーザー向け設計合意 (Plan Artifact)**:
+   - 保存先: `<appDataDir>/brain/<conversation-id>/plan.md` (Artifact)
+   - 目的: ユーザーとの設計・アーキテクチャ・振る舞いの合意形成。
+   - 制約: **コードスニペット、ファイルパス、テスト手順、Mermaid、横長テーブルは一切禁止**。`~/.gemini/config/rules/plan-artifact.md` のテンプレート（Alerts + 縦型リスト）を厳格に適用すること。
+2. **Worker向け内部指示書 (Task File)**:
+   - 保存先: `tasks/TASK-<連番>-<feature-name>.md` (例: `tasks/TASK-001-player-marker.md`)
+   - 目的: Worker (Flash) が迷わず実装するためのコンテキスト注入（型・import・テスト期待値・ファイルパス）。
+   - ユーザーはこのファイルの中身を直接見ません。
 
 ## 事前探索プロトコル (Exploration Protocol)
 
@@ -126,12 +132,12 @@ export interface TargetProps { ... }
 ```
 
 ## Planner 最終出力フォーマット
-
-計画（`tasks/TASK-*.md`）の保存が完了したら、チャットへの最終出力を以下の**定型フォーマット**で出力し、ターンを終了してください：
-
-```markdown
-📝 **[PLANNING COMPLETE]**
-タスクファイルを生成しました。内容を確認し、承認してください。
-- **Task**: [TASK-XXX.md](file:///path/to/tasks/TASK-XXX.md)
-- **Target**: `対象となる主なファイルパス`
-```
+ 
+ 計画（`tasks/TASK-*.md`）およびユーザー向け Plan Artifact の保存が完了したら、チャットへの最終出力を以下の**定型フォーマット**で出力し、ターンを終了してください：
+ 
+ ```markdown
+ 📝 **[PLANNING COMPLETE]**
+ 設計計画（Artifact）を作成しました。内容を確認し、承認してください。
+ - **Plan Artifact**: [plan.md](file:///<appDataDir>/brain/<conversation-id>/plan.md)
+ - **Target Task**: [TASK-XXX.md](file:///path/to/tasks/TASK-XXX.md) (Worker実装用)
+ ```
