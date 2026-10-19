@@ -57,3 +57,10 @@ test('returns correctly formatted string', () => {
 ## 6. エージェントの検証責務
 
 タスク完了の宣言を行う前に、必ず統合検証コマンド（`bun run agent:check-worker` 等）または `rtk vitest run` を実行し、すべてのテストが PASS することを確認してください。検証せずに推測で完了報告を行ってはなりません。
+
+## 7. WXT エントリポイントのテスタビリティ規約
+
+- **インライン実装の禁止**: `defineBackground` や `defineContentScript` 内に全処理を無名クロージャでベタ書きすることを禁じます。
+- **実ロジックの export と DI**: タブ制御、コマンドディスパッチ、IPC リレー等の実ロジックは独立した関数・クラス・サービスクラスとして export し、Chrome API を引数やインターフェース経由で注入可能（DI）にしてください。
+- **単体テストの必須化**: これにより、拡張機能エントリポイント周り（`extension/entrypoints/__tests__/` 等）にも Vitest による単体テストを作成し、カバレッジを担保してください。
+
