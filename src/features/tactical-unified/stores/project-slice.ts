@@ -1,4 +1,10 @@
 import type { StateCreator } from 'zustand';
+import {
+  getPitchRectNormalized,
+  mapPlayersToPitchRect,
+  pitchToStageCoord,
+  stageToPitchCoord,
+} from '@/lib/tactical/pitch-stage-mapping';
 import type {
   AspectRatio,
   ExportTarget,
@@ -8,6 +14,7 @@ import {
   createDefaultProject,
   DEFAULT_BOUNDARY_BOX_FULL,
   getDefaultBoundaryBoxForAspect,
+  transformCoord,
 } from '@/lib/types/tactical-unified';
 import { transformSlideAspectRatio } from './slide-aspect-helpers';
 import { applyImageBackgroundToProject } from './slide-background-helpers';
@@ -29,6 +36,11 @@ export interface ProjectSlice {
   setSaveStatus: (status: 'idle' | 'saving' | 'saved' | 'error') => void;
   setLastSavedAt: (timestamp: number | null) => void;
   activeSlideId: string;
+  /** Stage(コンテナ全面)の width/height。未計測は null（非永続・履歴対象外） */
+  stageAspect: number | null;
+  /** 既定配置(ピッチ基準)が Stage 座標へ未写像か。初回計測時に一度だけ写像する */
+  pitchFitPending: boolean;
+  setStageAspect: (aspect: number) => void;
   isPlaying: boolean;
   setIsPlaying: (isPlaying: boolean) => void;
   togglePlayback: () => void;
@@ -65,6 +77,20 @@ type SetState = Parameters<
   >
 >[0];
 
+function fitProjectPlayers(
+  project: TacticalProject,
+  stageAspect: number | null,
+): TacticalProject {
+  const rect = getPitchRectNormalized(stageAspect, project.aspectRatio);
+  return {
+    ...project,
+    slides: project.slides.map((sl) => ({
+      ...sl,
+      players: mapPlayersToPitchRect(sl.players, rect),
+    })),
+  };
+}
+
 function createProjectMetaActions(set: SetState) {
   return {
     loadProject: (project: TacticalProject) =>
@@ -77,21 +103,37 @@ function createProjectMetaActions(set: SetState) {
         activeSlideId: project.activeSlideId,
         selectedObjects: [],
         teamVisibility: 'both',
+        pitchFitPending: false,
       }),
 
-    resetProject: () => {
-      const p = createDefaultProject(crypto.randomUUID());
-      set({
-        project: p,
-        isDirty: false,
-        past: [],
-        future: [],
-        clipboard: null,
-        activeSlideId: p.activeSlideId,
-        selectedObjects: [],
-        teamVisibility: 'both',
-      });
-    },
+    resetProject: () =>
+      set((s) => {
+        const base = createDefaultProject(crypto.randomUUID());
+        const known = s.stageAspect !== null;
+        const p = known ? fitProjectPlayers(base, s.stageAspect) : base;
+        return {
+          project: p,
+          pitchFitPending: !known,
+          isDirty: false,
+          past: [],
+          future: [],
+          clipboard: null,
+          activeSlideId: p.activeSlideId,
+          selectedObjects: [],
+          teamVisibility: 'both',
+        };
+      }),
+
+    setStageAspect: (aspect: number) =>
+      set((s) => {
+        if (s.stageAspect === aspect) return s;
+        if (!s.pitchFitPending) return { stageAspect: aspect };
+        return {
+          stageAspect: aspect,
+          pitchFitPending: false,
+          project: fitProjectPlayers(s.project, aspect),
+        };
+      }),
 
     setTitle: (title: string) =>
       set((s) => ({
@@ -231,9 +273,26 @@ function createProjectConfigActions(set: SetState) {
       set((s) => {
         const from = s.project.aspectRatio;
         if (from === ratio) return s;
-        const transformedSlides = s.project.slides.map((slide) =>
-          transformSlideAspectRatio(slide, from, ratio),
-        );
+        const fromRect = getPitchRectNormalized(s.stageAspect, from);
+        const toRect = getPitchRectNormalized(s.stageAspect, ratio);
+        const transformedSlides = s.project.slides.map((slide) => {
+          const transformed = transformSlideAspectRatio(slide, from, ratio);
+          // マーカーはピッチ基準で変換し、新ピッチ矩形内へ再配置（他オブジェクトは従来どおり）
+          return {
+            ...transformed,
+            players: slide.players.map((p, i) => ({
+              ...(transformed.players[i] ?? p),
+              ...pitchToStageCoord(
+                transformCoord(
+                  stageToPitchCoord({ x: p.x, y: p.y }, fromRect),
+                  from,
+                  ratio,
+                ),
+                toRect,
+              ),
+            })),
+          };
+        });
         return {
           ...recordHistory(s),
           project: {
@@ -262,6 +321,8 @@ export const createProjectSlice: StateCreator<
   setSaveStatus: (status) => set({ saveStatus: status }),
   setLastSavedAt: (timestamp) => set({ lastSavedAt: timestamp }),
   activeSlideId: INITIAL_PROJECT.activeSlideId,
+  stageAspect: null,
+  pitchFitPending: true,
   isPlaying: false,
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   togglePlayback: () => set((s) => ({ isPlaying: !s.isPlaying })),

@@ -40,13 +40,13 @@ export function TacticalUnifiedPage({
   initialMinute,
 }: TacticalUnifiedPageProps = {}) {
   // 🎯 URLクエリ or Props (matchId, minute) による試合データの初期配置
-  const { hasMatchQuery } = useTacticalMatchInit({
+  const { matchId } = useTacticalMatchInit({
     initialMatchId,
     initialMinute,
   });
 
   // 💾 プロジェクト自動保存 & リロード時自動復元 (Dexie IndexedDB)
-  useTacticalAutoSave({ skipRestore: hasMatchQuery });
+  useTacticalAutoSave({ matchId });
 
   const exportModalOpen = useTacticalUnifiedStore(
     (s) => s.panels.exportModalOpen,

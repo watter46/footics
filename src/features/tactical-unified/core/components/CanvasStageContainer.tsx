@@ -15,6 +15,10 @@ import { useCanvasPointerInteraction } from '../hooks/use-canvas-pointer-interac
 import { useCanvasShortcuts } from '../hooks/use-canvas-shortcuts';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { CanvasCoreHandle, CanvasStageProps } from '../types';
+import {
+  type CanvasNodesRegistry,
+  createCanvasNodesRegistry,
+} from '../utils/canvas-registry';
 import { calculateVirtualCanvasRect } from '../utils/virtual-canvas-rect';
 import { AnnotationLayer } from './AnnotationLayer';
 import { BackgroundImageLayer } from './BackgroundImageLayer';
@@ -51,7 +55,13 @@ export const CanvasStageContainer = forwardRef<
   CanvasCoreHandle,
   CanvasStageProps
 >(function CanvasStageContainer(
-  { className = '', imageAspect = 16 / 9, toolbar },
+  {
+    className = '',
+    imageAspect,
+    nodesRegistryRef: injectedRegistryRef,
+    onStageSizeChange,
+    toolbar,
+  },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -59,7 +69,20 @@ export const CanvasStageContainer = forwardRef<
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   const containerSize = useContainerResize(containerRef);
-  const vRect = calculateVirtualCanvasRect(containerSize, imageAspect);
+  const vRect = calculateVirtualCanvasRect(
+    containerSize,
+    // Stage は常にコンテナ全面。imageAspect 明示時のみ比率フィット
+    imageAspect ??
+      (containerSize.height > 0
+        ? containerSize.width / containerSize.height
+        : 1),
+  );
+
+  useEffect(() => {
+    if (vRect.width > 0 && vRect.height > 0) {
+      onStageSizeChange?.({ width: vRect.width, height: vRect.height });
+    }
+  }, [vRect.width, vRect.height, onStageSizeChange]);
 
   const texts = useCanvasStore((s) => s.annotations.texts);
   const updateText = useCanvasStore((s) => s.updateText);
@@ -104,13 +127,10 @@ export const CanvasStageContainer = forwardRef<
     [exportPng, copyToClipboard, undo, redo, canUndo, canRedo],
   );
 
-  const nodesRegistryRef = useRef({
-    playerNodes: new Map<string, Konva.Group>(),
-    arrowNodes: new Map<string, unknown>(),
-    zoneNodes: new Map<string, Konva.Shape>(),
-    textNodes: new Map<string, Konva.Text>(),
-    stage: null as Konva.Stage | null,
-  });
+  const internalRegistryRef = useRef<CanvasNodesRegistry>(
+    createCanvasNodesRegistry(),
+  );
+  const nodesRegistryRef = injectedRegistryRef ?? internalRegistryRef;
 
   useEffect(() => {
     nodesRegistryRef.current.stage = stageRef.current;

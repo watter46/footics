@@ -2,6 +2,10 @@ import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tact
 import { getTeamFormationAtMinute } from '@/lib/data/formation-utils';
 import { parseWhoScoredFormationName } from '@/lib/tactical/formations';
 import {
+  getPitchRectNormalized,
+  mapPlayersToPitchRect,
+} from '@/lib/tactical/pitch-stage-mapping';
+import {
   convertSquadToTacticalPlayers,
   type SquadPlayerItem,
 } from '@/lib/tactical/squad-to-tactical-bridge';
@@ -131,7 +135,15 @@ export function injectMatchToTactical({
   const neutralPlayers = targetSlide.players.filter(
     (p) => p.team === 'neutral',
   );
-  const updatedPlayers = [...neutralPlayers, ...allPlayers];
+  // ピッチ基準の配置を Stage 全面基準の座標へ写像（ピッチ矩形内に収める）
+  const pitchRect = getPitchRectNormalized(
+    store.stageAspect,
+    project.aspectRatio,
+  );
+  const updatedPlayers = [
+    ...neutralPlayers,
+    ...mapPlayersToPitchRect(allPlayers, pitchRect),
+  ];
 
   const updatedSlides = project.slides.map((s) =>
     s.id === targetSlideId ? { ...s, players: updatedPlayers } : s,

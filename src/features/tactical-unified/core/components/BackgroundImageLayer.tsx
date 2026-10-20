@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Image as KonvaImage, Layer, Rect } from 'react-konva';
+import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import {
   getCachedPitchSvgImage,
   loadPitchSvgImage,
@@ -79,6 +80,12 @@ export function BackgroundImageLayer({
 
   const displayImage = backgroundImageUrl ? customImage : pitchImage;
 
+  // Stage は常にコンテナ全面。ピッチのみ aspectRatio 通りの矩形で中央に contain 描画
+  // (比率固定のため円は真円を保つ)。カスタム背景画像は従来どおり全面。
+  const imageRect = backgroundImageUrl
+    ? { x: 0, y: 0, width, height }
+    : calculatePitchRect({ width, height }, aspectRatio);
+
   return (
     <Layer listening={false}>
       {/* ソリッド背景 */}
@@ -94,10 +101,10 @@ export function BackgroundImageLayer({
       {displayImage && (
         <KonvaImage
           image={displayImage}
-          x={0}
-          y={0}
-          width={width}
-          height={height}
+          x={imageRect.x}
+          y={imageRect.y}
+          width={imageRect.width}
+          height={imageRect.height}
           listening={false}
           perfectDrawEnabled={false}
         />

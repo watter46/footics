@@ -1,7 +1,9 @@
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { db } from '@/lib/db';
 import { injectMatchToTactical } from '@/lib/tactical/match-to-tactical-bridge';
+import { loadActiveProjectFromDb } from '@/lib/tactical/tactical-storage';
 
 export interface UseTacticalMatchInitOptions {
   initialMatchId?: string;
@@ -11,6 +13,7 @@ export interface UseTacticalMatchInitOptions {
 export interface UseTacticalMatchInitResult {
   isLoading: boolean;
   hasMatchQuery: boolean;
+  matchId: string | null;
   error: Error | null;
 }
 
@@ -20,9 +23,14 @@ async function loadAndInjectMatch(
 ): Promise<void> {
   const match =
     (await db.matches.get(matchId)) || (await db.matches.get(String(matchId)));
-  if (match) {
-    injectMatchToTactical({ match, minute });
+  if (!match) return;
+  // 保存済みの同一試合プロジェクトがあれば既存スライドを優先し上書きしない
+  const saved = await loadActiveProjectFromDb(String(match.id));
+  if (saved) {
+    useTacticalUnifiedStore.getState().loadProject(saved);
+    return;
   }
+  injectMatchToTactical({ match, minute });
 }
 
 /**
@@ -89,5 +97,5 @@ export function useTacticalMatchInit(
     };
   }, [matchIdParam, minute]);
 
-  return { isLoading, hasMatchQuery, error };
+  return { isLoading, hasMatchQuery, matchId: matchIdParam ?? null, error };
 }

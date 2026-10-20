@@ -9,14 +9,24 @@ import type { TacticalProject } from '@/lib/types/tactical-unified';
 export const TACTICAL_PROJECT_STORAGE_KEY = 'tactical_active_project';
 
 /**
+ * matchId ありなら試合専用キー、なしならサンドボックス用の従来キーを返す。
+ */
+export function getTacticalProjectStorageKey(matchId?: string | null): string {
+  return matchId
+    ? `${TACTICAL_PROJECT_STORAGE_KEY}:${matchId}`
+    : TACTICAL_PROJECT_STORAGE_KEY;
+}
+
+/**
  * Save active tactical project to Dexie IndexedDB keyval store and tactical_projects table.
  */
 export async function saveActiveProjectToDb(
   project: TacticalProject,
+  matchId?: string | null,
 ): Promise<void> {
   try {
     await db.keyval.put({
-      key: TACTICAL_PROJECT_STORAGE_KEY,
+      key: getTacticalProjectStorageKey(matchId),
       value: project,
       updatedAt: Date.now(),
     });
@@ -33,9 +43,11 @@ export async function saveActiveProjectToDb(
 /**
  * Load active tactical project from Dexie IndexedDB.
  */
-export async function loadActiveProjectFromDb(): Promise<TacticalProject | null> {
+export async function loadActiveProjectFromDb(
+  matchId?: string | null,
+): Promise<TacticalProject | null> {
   try {
-    const entry = await db.keyval.get(TACTICAL_PROJECT_STORAGE_KEY);
+    const entry = await db.keyval.get(getTacticalProjectStorageKey(matchId));
     if (
       entry?.value &&
       typeof entry.value === 'object' &&
@@ -54,9 +66,11 @@ export async function loadActiveProjectFromDb(): Promise<TacticalProject | null>
 /**
  * Clear active tactical project from Dexie IndexedDB.
  */
-export async function clearActiveProjectFromDb(): Promise<void> {
+export async function clearActiveProjectFromDb(
+  matchId?: string | null,
+): Promise<void> {
   try {
-    await db.keyval.delete(TACTICAL_PROJECT_STORAGE_KEY);
+    await db.keyval.delete(getTacticalProjectStorageKey(matchId));
   } catch (error) {
     console.error('Failed to clear tactical project from Dexie:', error);
   }

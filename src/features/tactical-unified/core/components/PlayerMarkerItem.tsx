@@ -71,6 +71,11 @@ export function PlayerMarkerItem({
       x={pxX}
       y={pxY}
       draggable={isInteractive && !marker.locked}
+      // マーカーはキャンバス(Stage)外へはみ出さない
+      dragBoundFunc={(pos) => ({
+        x: Math.max(0, Math.min(width, pos.x)),
+        y: Math.max(0, Math.min(height, pos.y)),
+      })}
       onMouseEnter={(e) => {
         if (connectingPlayerId && connectingPlayerId !== marker.id) {
           e.target

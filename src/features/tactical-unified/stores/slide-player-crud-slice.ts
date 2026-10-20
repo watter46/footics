@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand';
+import { clampPercent } from '@/lib/tactical/pitch-stage-mapping';
 import type { Player } from '@/lib/types/tactical-unified';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { getSlide, recordHistory, updateSlideInProject } from './store-helpers';
@@ -91,12 +92,18 @@ export const createSlidePlayerCrudSlice: StateCreator<
       const slide = getSlide(s.project, slideId);
       const existingPlayer = slide?.players.find((p) => p.id === playerId);
       if (existingPlayer?.locked && !('locked' in patch)) return s;
+      // マーカーはキャンバス外へはみ出さない（x/y は 0-100 に clamp）
+      const safePatch: typeof patch = {
+        ...patch,
+        ...(patch.x !== undefined && { x: clampPercent(patch.x) }),
+        ...(patch.y !== undefined && { y: clampPercent(patch.y) }),
+      };
       return {
         ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: sl.players.map((p) =>
-            p.id === playerId ? { ...p, ...patch } : p,
+            p.id === playerId ? { ...p, ...safePatch } : p,
           ),
         })),
         isDirty: true,

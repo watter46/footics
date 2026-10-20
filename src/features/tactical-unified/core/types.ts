@@ -9,6 +9,7 @@ import type {
   TextAnnotation,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
+import type { CanvasNodesRegistry } from './utils/canvas-registry';
 
 export type { AspectRatio, DrawingTool, PitchTransform };
 
@@ -181,7 +182,12 @@ export type CanvasStoreApi = StoreApi<CanvasStore>;
 
 export interface CanvasStageProps {
   className?: string;
+  /** 明示指定時のみ Stage 矩形を比率で contain フィット。未指定ならコンテナ全面。 */
   imageAspect?: number;
+  /** 親(Level3)から注入するノードレジストリ（アニメーション hook と共有） */
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
+  /** Stage 実サイズ(px)の変化通知。親が座標写像（ピッチ矩形）に用いる */
+  onStageSizeChange?: (size: { width: number; height: number }) => void;
   onAutoSave?: (json: string) => void;
   toolbar?: React.ReactNode;
 }
