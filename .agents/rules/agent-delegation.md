@@ -41,7 +41,7 @@ globs:
 | **Scout** | `Model: "flash"` / `"flash_lite"` | **Gemini 3.8 Flash Low/Med 相当** | 先遣調査・文脈抽出（Read-Only）。`ai:outline` や Grep で型・シグネチャ・既存パターンを抽出し即破棄 |
 | **Worker (標準)** | `Model: "flash"` | **Gemini 3.8 Flash Medium 相当** | Zero-Exploration TDDサイクル（テスト作成・実装）。タスクの Context Snippets を元に対象ファイルのみ編集 |
 | **Worker (定型)** | `Model: "flash_lite"` | **Gemini 3.8 Flash Low 相当** | 文言・メッセージ修正、定数追加、軽微なCSS/スタイル修正、単一関数の単純な修正 |
-| **Reviewer** | `Model: "flash"` | **Gemini 3.8 Flash Medium 相当** | Zero-Command コード差分監査（コマンド実行なし。git diff を読み、要件ハック・ホスト境界/Flicker・OCP・サイレント破壊の 4大定性監査を実施） |
+| **Reviewer** | `Model: "flash"` | **Gemini 3.8 Flash Medium 相当** | Zero-Command コード差分監査（コマンド実行なし。git diff を読み、要件網羅性/テスタビリティ・境界/StoreProvider/Flicker/RAII・OCP/SLAP/ShellPurity・サイレント破壊の 4大定性監査を実施） |
 
 ---
 
