@@ -17,17 +17,7 @@ class MockResizeObserver {
       [
         {
           target,
-          contentRect: {
-            width: 800,
-            height: 450,
-            top: 0,
-            left: 0,
-            bottom: 450,
-            right: 800,
-            x: 0,
-            y: 0,
-            toJSON: () => {},
-          },
+          contentRect: { width: 800, height: 450 } as DOMRectReadOnly,
         } as unknown as ResizeObserverEntry,
       ],
       this,
@@ -290,5 +280,19 @@ describe('CanvasStageContainer Action & History Shortcuts', () => {
       fireEvent.keyDown(textarea, { key: 'a' });
     });
     expect(store.getState().activeTool).toBe('select');
+  });
+
+  it('toolbar prop が渡されない場合はツールバーを描画せず、渡された場合にのみスロット描画すること', () => {
+    const { container: emptyContainer } = renderWithStore(
+      <CanvasStageContainer />,
+    );
+    expect(emptyContainer.querySelector('.shadow-2xl.rounded-xl')).toBeNull();
+
+    const { getByTestId } = renderWithStore(
+      <CanvasStageContainer
+        toolbar={<div data-testid="custom-injected-toolbar">Toolbar</div>}
+      />,
+    );
+    expect(getByTestId('custom-injected-toolbar')).toBeDefined();
   });
 });

@@ -11,7 +11,6 @@ export {
   PlayerGhostTrajectory,
   type PlayerGhostTrajectoryProps,
 } from './player-ghost-trajectory';
-export { PlayerLayer, type PlayerLayerProps } from './player-layer';
 export { PlayerMarker } from './player-marker';
 export {
   PlayerMarkerCircle,

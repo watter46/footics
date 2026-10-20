@@ -13,5 +13,4 @@ export {
   updatePlayerTrajectoryArrows,
 } from './player-drag-node-updater';
 export { setupOnionSkinGhost } from './player-drag-onionskin-helper';
-export { usePlayerLayerDrag } from './use-player-layer-drag';
 export { usePlayerPhoto } from './use-player-photo';

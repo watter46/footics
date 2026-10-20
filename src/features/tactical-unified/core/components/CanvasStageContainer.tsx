@@ -19,7 +19,6 @@ import { calculateVirtualCanvasRect } from '../utils/virtual-canvas-rect';
 import { AnnotationLayer } from './AnnotationLayer';
 import { BackgroundImageLayer } from './BackgroundImageLayer';
 import { CanvasOverlays } from './CanvasOverlays';
-import { CoreDrawingToolbar } from './CoreDrawingToolbar';
 import { DrawingPreviewLayer } from './DrawingPreviewLayer';
 import { PlayerLayer } from './PlayerLayer';
 
@@ -206,7 +205,7 @@ export const CanvasStageContainer = forwardRef<
         </div>
       )}
 
-      {toolbar ?? <CoreDrawingToolbar />}
+      {toolbar}
     </div>
   );
 });

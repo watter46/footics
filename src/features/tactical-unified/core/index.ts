@@ -37,10 +37,6 @@ export {
   type DrawingPreviewLayerProps,
 } from './components/DrawingPreviewLayer';
 export {
-  FootRingLayer,
-  type FootRingLayerProps,
-} from './components/FootRingLayer';
-export {
   ConnectLineHud,
   type ConnectLineHudProps,
   type HudOffsetRect,

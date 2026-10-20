@@ -124,4 +124,38 @@ describe('FullTacticalCanvas (Level 3 Feature View)', () => {
     });
     expect(writeMock).toHaveBeenCalled();
   });
+
+  it('マスターストアで選手が動いた時、キャンバスが即座に最新選手情報を参照できること', async () => {
+    const handleRef = createRef<CanvasCoreHandle>();
+    render(
+      <div style={{ width: 800, height: 450 }}>
+        <FullTacticalCanvas ref={handleRef} imageAspect={16 / 9} />
+      </div>,
+    );
+
+    const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+    const initialPlayers =
+      useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === activeSlideId)?.players ?? [];
+
+    expect(initialPlayers.length).toBeGreaterThan(0);
+    const targetPlayer = initialPlayers[0];
+
+    // マスターストアを直接更新（フォーメーション変更やドラッグ等）
+    act(() => {
+      useTacticalUnifiedStore
+        .getState()
+        .updatePlayer(activeSlideId, targetPlayer.id, { x: 99, y: 99 });
+    });
+
+    const updatedSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === activeSlideId);
+    const updatedPlayer = updatedSlide?.players.find(
+      (p) => p.id === targetPlayer.id,
+    );
+    expect(updatedPlayer?.x).toBe(99);
+    expect(updatedPlayer?.y).toBe(99);
+  });
 });
