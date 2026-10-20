@@ -1,3 +1,4 @@
+import { generateId } from '@/lib/id';
 import type {
   Player,
   Slide,
@@ -32,7 +33,7 @@ export function createSlideForMode(
   if (mode === 'full') {
     return {
       ...(JSON.parse(JSON.stringify(currentSlide)) as Slide),
-      id: crypto.randomUUID(),
+      id: generateId('slide'),
       label: `${currentSlide.label ?? 'Scene'} (copy)`,
       aspectRatio: currentSlide.aspectRatio ?? project.aspectRatio,
       backgroundImageUrl:
@@ -54,7 +55,7 @@ export function createSlideForMode(
   const defaultBox = getDefaultBoundaryBoxForAspect(project.aspectRatio);
 
   return {
-    id: crypto.randomUUID(),
+    id: generateId('slide'),
     index: project.slides.length,
     label: `Scene ${project.slides.length + 1}`,
     aspectRatio: currentSlide.aspectRatio ?? project.aspectRatio,

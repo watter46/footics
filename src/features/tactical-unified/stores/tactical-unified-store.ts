@@ -6,6 +6,7 @@
  * 統合し、単一のStoreインスタンスとして提供する。
  */
 
+import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import {
@@ -99,13 +100,22 @@ export interface TacticalUnifiedState
 // ─────────────────────────────────────────
 
 export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
-  subscribeWithSelector((set, get, store) => ({
-    ...createHistorySlice(set, get, store),
-    ...createClipboardSlice(set, get, store),
-    ...createSlideSlice(set, get, store),
-    ...createAnnotationSlice(set, get, store),
-    ...createToolSlice(set, get, store),
-    ...createPitchSlice(set, get, store),
-    ...createProjectSlice(set, get, store),
-  })),
+  temporal(
+    subscribeWithSelector((set, get, store) => ({
+      ...createHistorySlice(set, get, store),
+      ...createClipboardSlice(set, get, store),
+      ...createSlideSlice(set, get, store),
+      ...createAnnotationSlice(set, get, store),
+      ...createToolSlice(set, get, store),
+      ...createPitchSlice(set, get, store),
+      ...createProjectSlice(set, get, store),
+    })),
+    {
+      limit: MAX_HISTORY,
+      partialize: (state) => ({
+        project: state.project,
+        activeSlideId: state.activeSlideId,
+      }),
+    },
+  ),
 );

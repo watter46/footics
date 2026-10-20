@@ -4,6 +4,7 @@ import type {
   TextAnnotation,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
+import { updateSlideImmer } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 import {
   distToSegment,
@@ -52,10 +53,9 @@ export const createAnnotationSlice: StateCreator<
   addArrow: (slideId, arrow) =>
     set((s) => ({
       ...recordHistory(s),
-      project: updateSlideInProject(s.project, slideId, (sl) => ({
-        ...sl,
-        arrows: [...sl.arrows, arrow],
-      })),
+      project: updateSlideImmer(s.project, slideId, (draft) => {
+        draft.arrows.push(arrow);
+      }),
       isDirty: true,
     })),
 
@@ -95,10 +95,9 @@ export const createAnnotationSlice: StateCreator<
   addZone: (slideId, zone) =>
     set((s) => ({
       ...recordHistory(s),
-      project: updateSlideInProject(s.project, slideId, (sl) => ({
-        ...sl,
-        zones: [...sl.zones, zone],
-      })),
+      project: updateSlideImmer(s.project, slideId, (draft) => {
+        draft.zones.push(zone);
+      }),
       isDirty: true,
     })),
 
@@ -138,10 +137,9 @@ export const createAnnotationSlice: StateCreator<
   addText: (slideId, text) =>
     set((s) => ({
       ...recordHistory(s),
-      project: updateSlideInProject(s.project, slideId, (sl) => ({
-        ...sl,
-        texts: [...sl.texts, text],
-      })),
+      project: updateSlideImmer(s.project, slideId, (draft) => {
+        draft.texts.push(text);
+      }),
       isDirty: true,
     })),
 

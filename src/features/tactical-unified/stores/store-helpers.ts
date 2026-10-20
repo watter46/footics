@@ -1,3 +1,4 @@
+import { produce } from 'immer';
 import type { Slide, TacticalProject } from '@/lib/types/tactical-unified';
 
 export const MAX_HISTORY = 50;
@@ -19,6 +20,20 @@ export function updateSlideInProject(
     updatedAt: new Date().toISOString(),
     slides: project.slides.map((s) => (s.id === slideId ? updater(s) : s)),
   };
+}
+
+export function updateSlideImmer(
+  project: TacticalProject,
+  slideId: string,
+  recipe: (draft: Slide) => void,
+): TacticalProject {
+  return produce(project, (draft) => {
+    const slide = draft.slides.find((s) => s.id === slideId);
+    if (slide) {
+      recipe(slide as unknown as Slide);
+      draft.updatedAt = new Date().toISOString();
+    }
+  });
 }
 
 export function recordHistory(s: {
