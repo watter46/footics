@@ -19,7 +19,7 @@ enable_subagent_tools: true
    - Planner 自身のコンテキスト肥大化（>50K）を根絶するため、**Planner 自身が複数のソースコードを `view_file` で読み込んではなりません**。
    - **事前判定ルール（初手Scout義務）**:
      - 初手の探索（`bun run ai:find <keyword>` や `rtk grep`）で **関連ファイルが 3 件以上ヒットした場合**、または複数モジュール跨ぎの調査が必要な場合、Planner は自前で `view_file` を1ファイルも開いてはなりません。
-     - 自前で読み始めず、初手から直ちに `invoke_subagent` で `TypeName: "scout"`（Model: `flash`）を起動し、必要な型や既存パターンの抽出を一括委譲してください。
+     - 自前で読み始めず、初手から直ちに `invoke_subagent` で `TypeName: "scout"`（Model: `flash`）を起動し、必要な型・既存パターン・アーキテクチャ層（Level 1〜4）および Store Provider の有無の抽出を一括委譲してください。
      - 結果受領後、**直ちにその Scout を kill** します（調査コンテキストを親セッションに残さない）。
    - **物理遮断ガード（防壁）**:
      - 単一モジュール・極小タスク（1〜2ファイル）のみ `bun run ai:outline` や直接確認が許可されます。
@@ -28,16 +28,21 @@ enable_subagent_tools: true
    - `docs/app-overview.md` — ドメイン概念、ユースケース、**Open Decisions**
    - `docs/tech-stack.md` — 使用ライブラリ制約、ディレクトリ責務、命名規則
    - `docs/data-model.md` — DB スキーマ、既存型定義、バリデーション規約
+   - `.agents/rules/component-architecture.md` — 4層コンポーネントモデル、6大設計品質原則
 3. **タスクファイルの自動足場生成（手書きゼロ化）**:
    - タスクファイルを Markdown でゼロから手書きしてはなりません（書式崩壊やオレオレ書式の防止）。
    - 必ずターミナルで `bun run task:new <連番> <slug> [タイトル]` を実行して正規テンプレートを生成してください（例: `bun run task:new 010 inspector-refactor`）。
    - 生成された `tasks/TASK-XXX.md` に対し、`Metadata` の Target Files、`Requirements`、Scout から回収した `Context Snippets`、および各 `Phase` の仕様を注入（`replace_file_content`）します。
    - **タスクサイズ制約（厳守）**: 1タスクあたり **最大 5 Phase・250 行以内**（フック `task-size-guard` によりこれを超える追加は自動遮断されます）。
    - **Context-Ready 原則（厳守）**: Worker が外部ファイルを一切探索（Read/Grep）せずに済むよう、「Import Specs」「Interfaces & Types」「Reference Pattern」を必ず `## 3. Context Snippets` に完全注入してください。
-4. **【Worker向けの適切な指示粒度（What & Contract）】**
-   Worker（Flashモデル）には「具体的な契約と期待値」を明確に提示します。CSSクラス名や行単位の実装手順（How）まで過剰に手書きする必要はありません。
-   - **Testing Strategy**: 「〇〇のテストを書く」といった曖昧な表現ではなく、「`src/utils/math.test.ts` に `add(1, 2) === 3` となることを検証するテストを書く」レベルまで、ファイルパス・関数・入力・期待する出力を具体化すること。
-   - **契約 (Interface)**: 公開する型定義・関数シグネチャを明記すること。内部実装の詳細手順は Worker の推論に委ねます。
+4. **【4層モデル & 6大設計原則に基づくタスク設計指針（厳守）】**
+   Worker（Flashモデル）が Reviewer の 4大定性監査で即時 REJECTED されるのを防ぐため、Planner は以下の設計原則を契約・仕様に明確に組み込んで指示してください：
+   - **4層モデル配置の明記**: 実装対象コンポーネントが Level 1（Primitive）〜 Level 4（Shell）のどの階層に属するかを明記すること。
+   - **Store Provider 経由の契約**: Level 2 以下のコンポーネントでは、グローバルシングルトン（`useXxxStore` 直呼び出し）を禁止し、必ず Context 購読フック（`useXxxStoreContext` 等）または Props 確定注入で状態を取得させる契約とすること。
+   - **Shell Purity（純粋マウンター原則）**: Level 4 コンポーネント（Content Script、HTML main 等）には複合ロジックやデータフェッチを直書きさせず、マウントと配線のみに限定し、Service 層に委任させること。
+   - **OCP プラグイン設計**: ツールやコマンド等の拡張ポイントは `switch / if` を増やすのではなく、レジストリ登録形式で 1 機能 1 ファイルとして設計すること。
+   - **RAII 副作用クリーンアップ**: リスナーやタイマー等の副作用を伴う機能は、必ず原状回復を行うクリーンアップ関数の実装をテスト要件に含めること。
+   - **Testing Strategy（具体的契約）**: 「〇〇のテストを書く」といった曖昧な表現ではなく、テストファイルパス、対象関数・コンポーネント、モック注入仕様、入力と期待値を具体化すること。
 
 ### 2. 計画承認ゲート (HITL: ユーザー確認・承認)
 1. タスクファイル（`tasks/TASK-*.md`）を作成すると同時に、ユーザー向け設計合意ドキュメントとして **Plan Artifact**（`<appDataDir>/brain/<conversation-id>/plan.md`）を作成してください。
@@ -72,7 +77,7 @@ enable_subagent_tools: true
 
 ### 4. Reviewerへの委譲 (審査)
 1. すべての Phase が完了し全 Phase のチェックボックスが埋まったら、`invoke_subagent` ツールで `TypeName: "reviewer"` のエージェントを **`Model: "flash"`**（Flash High 相当）で起動します。
-2. ツールの `Prompt` 引数に以下のメッセージを直接記述して依頼します。Reviewer は機械的検証コマンドを叩かず、git diff による 4 大定性監査（要件ハック、ホスト境界/Flicker、OCP、サイレント破壊）に専念します。
+2. ツールの `Prompt` 引数に以下のメッセージを直接記述して依頼します。Reviewer は機械的検証コマンドを叩かず、git diff による 4 大定性監査（要件網羅性/テスタビリティ、ホスト境界/StoreProvider/Zero-Flicker/RAII、設計負債/OCP/SLAP/ShellPurity、サイレント破壊）に専念します。
    ```markdown
    ---
    type: "REVIEW_REQUEST"

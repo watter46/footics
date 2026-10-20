@@ -35,7 +35,9 @@ Plannerから `SCOUT_REQUEST` のメッセージを受け取ったら、以下�
 **含めるべき 3 大要素:**
 1. **Import Specs**: どのモジュールからどの型・関数を import すべきか。
 2. **Interface & Types**: 関連する正確な型定義。
-3. **Reference Pattern**: 類似機能の既存テストや呼び出しコードの最小限の抜粋（3〜10行程度）。
+3. **Reference Pattern (最新設計の優先抜粋)**:
+   - 類似機能の既存テストや呼び出しコードの最小限の抜粋（3〜10行程度）。
+   - **最新設計原則の厳守**: 4層モデル（Level 1〜4）、Store Provider（Context Hook経由取得）、プラグインレジストリパターンに準拠したコードを優先抽出すること。
 
 ### 3. 結果の返却
 親エージェント（Planner）に対して、以下の定型フォーマットでメッセージを送信し、ターンを終了します。
@@ -45,12 +47,16 @@ Plannerから `SCOUT_REQUEST` のメッセージを受け取ったら、以下�
 type: "SCOUT_RESULT"
 ---
 
+### Architecture & Placement
+- **Target Tier**: Level 2 (Domain UI Block) / Level 3 (Feature View) など
+- **Existing Store/Provider**: `FeatureStoreProvider` / `useFeatureStoreContext` 等の有無
+
 ### Context Snippets
 
 #### 1. Import Specs
 ```ts
 import type { PlayerMarkerProps } from '@/features/tactical-unified/objects/player/types';
-import { useTacticalStore } from '@/features/tactical-unified/stores/tactical-store';
+import { useTacticalStoreContext } from '@/features/tactical-unified/core/store';
 ```
 
 #### 2. Interface & Types
@@ -73,6 +79,7 @@ const renderComponent = (props: Partial<PlayerMarkerProps> = {}) => {
 
 ## 制約事項 (Constraints)
 - **ファイル編集の禁止**: あなたには書き込み権限がありません。調査のみに専念してください。
+- **旧アンチパターンの抽出禁止**: 既存コードに残存する古いパターン（Store Provider 導入前の `useTacticalStore` グローバルシングルトン直参照、Level 4 へのインラインロジック混入、`switch/if` 直書き等）を Reference Pattern として抽出してはなりません。Worker が真似をして Reviewer で即時 REJECTED される原因となります。
 - **5ターン以内の完了契約**: あなたは使い捨ての高速スナイパーです。`ai:find` (1手) → `ai:outline` (1手) → 必要箇所の限定確認 (1〜2手) → 返却 (1手) の**最大5ターン以内**に必ず作業を完了してください。
 - **view_file の直列連打禁止**: ソースコードを漫然と 1 ファイルずつ直列に `view_file` し続けることを禁止します。必ず `bun run ai:outline` でシグネチャを抽出してください。
 - **スライスパトロールの禁止**: 400行以下の小型ファイルは `view_file` で全文一括取得し、小刻みなスライス指定を繰り返してはなりません。また `repo_map.txt` や過去タスクの全文読込を行ってはなりません。

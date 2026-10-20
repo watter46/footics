@@ -42,13 +42,18 @@ Footics の「極限のトークン最適化」「4層分離パイプライン�
    - **上限制約**: 1タスクあたり **最大 5 Phase・250 行以内**（フック `task-size-guard` によりこれを超える追加は自動遮断されます）。
 2. **Context-Ready 原則（Worker の探索ゼロ化）**:
    - Worker（Flashモデル）が外部ファイルを自前で Read / Grep 探索しなくて済むよう、実装に必要な **Import Specs、関連 Interface/Types、既存コードの参照パターン（抜粋）を必ず `## 3. Context Snippets` に明記** すること。
+   - **最新設計パターンの抽出**: 参照コードには Store Provider、レジストリ、4層モデルに準拠した最新パターンを注入し、古いアンチパターン（シングルトン直接参照等）を持ち込まないこと。
 3. **Phase の本質定義**:
    - 開発工程（「型定義だけ」「テストだけ」）の分割ではなく、**「機能・サブシステムごとの完結した段階」** として分割します。
    - 各 Phase 内で Worker が単独で **TDD（テスト作成 ➔ 実装 ➔ スコープ検証）を一通り完結** させます。
-4. **適切な指示粒度（What & Contract）**:
-   - Worker には「具体的な契約とテスト期待値」を明確に提示します。行単位の擬似コードやCSSクラス名などの過剰なHowの手書きは不要です。
+4. **4層モデル & 6大設計品質原則の反映（What & Contract）**:
+   Worker に指示する契約とテスト戦略には、以下の原則を反映させます：
+   - **階層配置 (Level 1〜4)**: コンポーネントが属する階層を明記。
+   - **Store Provider 契約**: Level 2 以下ではグローバルストア直接参照を禁止し、Context Hook 経由または Props 確定注入を指定。
+   - **Shell Purity**: Level 4（Shell）は組み立て専用とし、低レベル複合ロジックやデータフェッチを直書きさせない。
+   - **OCP プラグイン設計**: 拡張ポイントはレジストリ登録形式とする。
+   - **RAII 副作用クリーンアップ**: リスナーやタイマー等の副作用は `cleanup()` 関数を必須とする。
    - **Testing Strategy**: 具体的なテストファイルパスと入力・期待値を明記。
-   - **契約 (Interface)**: 公開する型定義・関数シグネチャを明記。内部実装は Worker に委任します。
 
 ## TASK-*.md 正式テンプレート
 
@@ -66,8 +71,8 @@ Footics の「極限のトークン最適化」「4層分離パイプライン�
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
 <!-- Reviewer が審査時に要件充足を確認してチェックする -->
-- [ ] 要件1: [明確かつ客観的に検証可能な振る舞い]
-- [ ] 要件2: [型定義や制約事項]
+- [ ] 1. [明確かつ客観的に検証可能な振る舞い]
+- [ ] 2. [型定義や制約事項]
 
 ## 3. Context Snippets (参照コード・型定義・import)
 <!-- Workerが自律探索（Read/Grep）を行わずに実装できるよう、必要な文脈を過不足なく事前注入する -->
@@ -110,13 +115,13 @@ export interface TargetProps { ... }
 ## 5. Reviewer Assessment (コード差分監査)
 <!-- 機械的チェック（型・Lint・Vitest・depcruise）はスクリプトが自動検証。Reviewer はコード差分の意味を監査する -->
 - **Reviewer Model**: `flash`
-- **Reviewed At**: YYYY-MM-DD HH:mm
+- **Reviewed At**: 
 - **Decision**: `TODO` | `LGTM` | `REJECTED`
 - **Audit Checklist**:
-  - [ ] 要件網羅性: Requirements の仕様が手抜きなくコードに実在するか（テストのハリボテ化がないか）
-  - [ ] 境界と副作用: Level 2 core にホスト依存（chrome.*, Web専用ストア）の混入がないか、useEffectによるFlickerがないか
-  - [ ] 設計負債防止: switch/ifの増殖（OCP違反）がなく、1ファイル250行以内に収まっているか
-  - [ ] サイレント破壊防止: 指示外ファイルの変更や既存コード・テストの勝手な削除がないか
+  - [ ] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
+  - [ ] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
+  - [ ] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
+  - [ ] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
 - **Summary**:
   <!-- 判定理由または改善指示を簡潔に記載 -->
 
@@ -133,11 +138,11 @@ export interface TargetProps { ... }
 
 ## Planner 最終出力フォーマット
  
- 計画（`tasks/TASK-*.md`）およびユーザー向け Plan Artifact の保存が完了したら、チャットへの最終出力を以下の**定型フォーマット**で出力し、ターンを終了してください：
+計画（`tasks/TASK-*.md`）およびユーザー向け Plan Artifact の保存が完了したら、チャットへの最終出力を以下の**定型フォーマット**で出力し、ターンを終了してください：
  
- ```markdown
- 📝 **[PLANNING COMPLETE]**
- 設計計画（Artifact）を作成しました。内容を確認し、承認してください。
- - **Plan Artifact**: [plan.md](file:///<appDataDir>/brain/<conversation-id>/plan.md)
- - **Target Task**: [TASK-XXX.md](file:///path/to/tasks/TASK-XXX.md) (Worker実装用)
- ```
+```markdown
+📝 **[PLANNING COMPLETE]**
+設計計画（Artifact）を作成しました。内容を確認し、承認してください。
+- **Plan Artifact**: [plan.md](file:///<appDataDir>/brain/<conversation-id>/plan.md)
+- **Target Task**: [TASK-XXX.md](file:///path/to/tasks/TASK-XXX.md) (Worker実装用)
+```

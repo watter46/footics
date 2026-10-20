@@ -25,7 +25,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 - 実装したい単一の振る舞いに対するテストを1つだけ作成します。
 - 避けられない場合を除き、過度なモック化は避けて本物のオブジェクト/関数を検証します。
 - テストを実行し、**期待通りに失敗すること（RED）** を必ず確認します。
-  - コマンド: `bun run agent:check-worker <対象テストファイル>`
+  - コマンド: `bun run ai:check:red <対象テストファイル>`
   - ※ 全体実行（無引数のテスト実行）はログ爆発防止のため禁止されています。
 - 単なるインポートミスや構文エラーではなく、「期待した機能が未実装であること」が失敗理由であることをログで確認します。
 
@@ -33,7 +33,7 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 - テストを通過させるための「最もシンプルで最小限のコード」を書きます。
 - この段階で余計な推測による抽象化や不要な機能追加（YAGNI違反）を行ってはなりません。
 - テストを再実行し、**すべて通過すること（GREEN）** を確認します。
-  - コマンド: `bun run agent:check-worker <対象ファイル群>`
+  - コマンド: `bun run ai:check <対象ファイル群>`
 
 ### 3. REFACTOR - コードを整理する
 - テストが GREEN になった後、重複排除、関数分割、リネームなどのリファクタリングを行います。
@@ -58,4 +58,4 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 - [ ] 実装したすべての新機能・振る舞いに対するテストが存在する
 - [ ] 実装前に、各テストが期待通りの理由で失敗（RED）したことを確認した
 - [ ] テストを通過させるための最小限のコードのみを実装した
-- [ ] `bun run agent:check-worker <対象ファイル群>` を実行し exit code 0 である
+- [ ] `bun run ai:check <対象ファイル群>` を実行し exit code 0 である

@@ -17,7 +17,7 @@ Plannerから `TASK_ASSIGN` のメッセージ（`target_file`, `target_phase`�
 ### 0. プロジェクト知識の確認（初回のみ）
 初回のタスク開始時に、以下のプロジェクト規約を確認してください（2回目以降はスキップ可）。
 これらは `.agents/rules/` に配置されており、対象ディレクトリへのアクセス時に自動適用されますが、事前に認識しておくことで品質を向上させます。
-- **コンポーネント規約**: `.agents/rules/component-architecture.md`（4層モデル、ホスト境界、プラグイン拡張性、Flickerゼロ）
+- **コンポーネント規約**: `.agents/rules/component-architecture.md`（4層モデル、6大設計品質原則、ホスト境界、プラグイン拡張性、Flickerゼロ）
 - **コーディング規約**: `.agents/rules/coding-standards.md`（命名規則、import規約、`any`禁止、行数250行制限）
 - **テスト規約**: `.agents/rules/testing-standards.md`（TDD厳守、AAAパターン、RTL優先順位）
 - **データアクセス規約**: `.agents/rules/data-access.md`（Dexie Repository パターン、Store Provider による初期値注入）
@@ -65,7 +65,10 @@ Phase 1 の実装および `bun run ai:check` のローカル検証が完了し�
 ## 制約事項 (Constraints)
 - **Zero-Exploration 原則（自律探索の厳禁）**: あなたはコードベースを自前で探索（Read/Grep）してはなりません。実装に必要なインポート・型・パターンはすべてタスクファイルの `Context Snippets` に記載されています。対象スコープ外のファイルを `view_file` したり、広範囲に `rtk grep` を走らせることはコンテキスト爆発を招くため禁止です。触るべきファイル（対象ファイルおよび対象テストファイル）のみ `view_file` してください。
 - **推論の禁止**: あなたはFlashモデルです。高度な推論による勝手なアーキテクチャ変更や、指示されていないファイルの追加・削除を行ってはいけません。タスクファイルに書かれた具体的な指示（契約インターフェース、ファイルパス、テストケース）に極めて忠実に従ってください。
+- **Store Provider 配下でのシングルトン直参照の絶対禁止 (CRITICAL)**: `StoreProvider`（Vanilla Store Factory + React Context）を採用した機能ドメイン（`memo-overlay`, `tactical-unified` 等）において、Level 2 以下のコンポーネントからグローバルシングルトン（`useXxxStore` 直呼び出し）を行ってはなりません。必ず Context 購読フック（`useXxxStoreContext` 等）経由で状態・アクションを取得してください（Reviewer の即時 REJECTED 対象）。
 - **4層コンポーネントモデルとホスト境界の厳守**: コンポーネント実装時は Level 4〜Level 1 の階層を厳守し、Level 2 以下の共用コンポーネントに `chrome.*` や Web専用ストア等のホスト依存を絶対に混入させてはなりません。
+- **Shell Purity（純粋マウンター原則）**: Level 4 コンポーネント（Content Script、HTML main 等）には複合ロジックやデータフェッチを直書きせず、UI マウントと配線のみに徹し、処理は Service 層へカプセル化してください。
+- **副作用の RAII 原則（クリーンアップ義務）**: `useEffect`、DOM一時変更、タイマー、イベントリスナー等の副作用には、必ず原状回復を行うクリーンアップ関数（`return () => ...`）を実装してください。
 - **プラグイン型拡張の適用**: ツールや機能を追加する際、コアコンポーネント（Stage, Toolbar, Dashboard等）に `switch / if` をベタ書きせず、プラグイン型インターフェースに従って 1 プラグイン 1 ファイルで実装してください。
 - **単一責任と行数上限 (不毛な行数パズル禁止)**: 単一責任の原則（1コンポーネント1責務）を最優先とし、Biome の自動改行（80文字制限）や Tailwind クラスによる縦長化（300〜400行程度）は許容します。**「行数を減らすためだけ」の不毛なファイル分割ループや `wc -l` 計測連打を固く禁じます**。
 - **生コマンド連打の禁止 & 専用コマンドへの集約**: 生の `vitest`、`tsc`、`biome check --write`、`wc -l` などを単独で連打してはなりません。検証と整形は必ず統合検証コマンドである `bun run ai:check <ファイルパス>` に1手で集約してください。
@@ -82,4 +85,3 @@ Phase 1 の実装および `bun run ai:check` のローカル検証が完了し�
   **最新のエラー内容**: [エラーメッセージの要約]
   **試行した修正**: [行った修正の概要]
   ```
-

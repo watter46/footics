@@ -88,10 +88,10 @@ export function generateTaskScaffold(
 - **Reviewed At**: 
 - **Decision**: \`TODO\`
 - **Audit Checklist**:
-  - [ ] 要件網羅性: Requirements の仕様が手抜きなくコードに実在するか（テストのハリボテ化がないか）
-  - [ ] 境界と副作用: Level 2 core にホスト依存（chrome.*, Web専用ストア）の混入がないか、useEffectによるFlickerがないか
-  - [ ] 設計負債防止: switch/ifの増殖（OCP違反）がなく、1ファイル250行以内に収まっているか
-  - [ ] サイレント破壊防止: 指示外ファイルの変更や既存コード・テストの勝手な削除がないか
+  - [ ] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
+  - [ ] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
+  - [ ] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
+  - [ ] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
 - **Summary**:
   <!-- 判定理由または改善指示を簡潔に記載 -->
 
