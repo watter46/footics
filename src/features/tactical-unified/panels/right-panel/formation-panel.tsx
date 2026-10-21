@@ -7,6 +7,7 @@
 
 import { Shield } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
 import {
   selectActiveSlide,
   useTacticalUnifiedStore,
@@ -29,6 +30,9 @@ export function FormationPanel() {
   const setTeamColor = useTacticalUnifiedStore((s) => s.setTeamColor);
   const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
   const setTeamVisibility = useTacticalUnifiedStore((s) => s.setTeamVisibility);
+  const swapTeamSides = useTacticalUnifiedStore((s) => s.swapTeamSides);
+
+  const isVertical = isVerticalPitch(project.aspectRatio);
 
   // Local states
   const [activeTeam, setActiveTeam] = useState<'home' | 'away'>('home');
@@ -108,6 +112,8 @@ export function FormationPanel() {
           onSelectFormation={handleApplyFormation}
           onResetFormation={() => handleApplyFormation(selectedFormation)}
           onClearPitch={() => clearPitchPlayers(activeSlideId)}
+          onSwapSides={() => swapTeamSides(activeSlideId)}
+          isVertical={isVertical}
         />
 
         {/* 3. Batch Player Display */}

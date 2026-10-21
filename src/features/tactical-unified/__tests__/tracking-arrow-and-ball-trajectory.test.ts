@@ -139,13 +139,16 @@ describe('Tracking Trajectory Arrow & Ball Trajectory Parity', () => {
       const store = useTacticalUnifiedStore.getState();
       const slideId = store.activeSlideId;
 
+      // 16:9 横向きピッチに設定
+      store.setAspectRatio('16:9');
+
       store.setBallPosition(slideId, 30, 40);
       store.updateBallTrajectory(slideId, {
         type: 'custom',
         controlPoint: { x: 25, y: 15 },
       });
 
-      // 左右反転 (16:9 横向き)
+      // 左右反転
       store.swapTeamSides(slideId);
 
       const flippedSlide = selectActiveSlide(

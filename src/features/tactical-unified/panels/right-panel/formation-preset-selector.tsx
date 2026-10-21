@@ -1,6 +1,13 @@
 'use client';
 
-import { ChevronDown, Eraser, RotateCcw, Search } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  ArrowUpDown,
+  ChevronDown,
+  Eraser,
+  RotateCcw,
+  Search,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { FORMATION_LIST, type FormationType } from '@/lib/data/formations';
 import { QUICK_FORMATIONS } from './formation-presets-data';
@@ -10,6 +17,8 @@ interface FormationPresetSelectorProps {
   onSelectFormation: (formation: FormationType) => void;
   onResetFormation?: () => void;
   onClearPitch?: () => void;
+  onSwapSides?: () => void;
+  isVertical?: boolean;
 }
 
 export function FormationPresetSelector({
@@ -17,6 +26,8 @@ export function FormationPresetSelector({
   onSelectFormation,
   onResetFormation,
   onClearPitch,
+  onSwapSides,
+  isVertical = false,
 }: FormationPresetSelectorProps) {
   const [isOpenMore, setIsOpenMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,6 +46,25 @@ export function FormationPresetSelector({
           Quick Formations
         </span>
         <div className="flex items-center gap-1">
+          {onSwapSides && (
+            <button
+              type="button"
+              onClick={onSwapSides}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+              title={
+                isVertical
+                  ? 'Swap team sides (vertical)'
+                  : 'Swap team sides (horizontal)'
+              }
+            >
+              {isVertical ? (
+                <ArrowUpDown size={10} className="text-emerald-400" />
+              ) : (
+                <ArrowLeftRight size={10} className="text-emerald-400" />
+              )}
+              <span>Swap</span>
+            </button>
+          )}
           {onResetFormation && (
             <button
               type="button"

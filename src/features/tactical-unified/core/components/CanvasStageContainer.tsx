@@ -1,5 +1,6 @@
 'use client';
 
+import { useDroppable } from '@dnd-kit/core';
 import type Konva from 'konva';
 import type React from 'react';
 import {
@@ -132,6 +133,11 @@ export const CanvasStageContainer = forwardRef<
   );
   const nodesRegistryRef = injectedRegistryRef ?? internalRegistryRef;
 
+  const { setNodeRef: setDroppableNodeRef, isOver } = useDroppable({
+    id: 'tactical-pitch-droppable',
+    data: { type: 'pitch' },
+  });
+
   useEffect(() => {
     nodesRegistryRef.current.stage = stageRef.current;
   });
@@ -151,14 +157,19 @@ export const CanvasStageContainer = forwardRef<
 
   return (
     <div
-      ref={containerRef}
+      ref={(node) => {
+        containerRef.current = node;
+        setDroppableNodeRef(node);
+      }}
       style={
         {
           '--toolbar-right': toolbarRight,
           '--toolbar-transform': toolbarTransform,
         } as React.CSSProperties
       }
-      className={`relative w-full h-full overflow-hidden select-none bg-zinc-950 ${className}`}
+      className={`relative w-full h-full overflow-hidden select-none bg-zinc-950 transition-colors ${
+        isOver ? 'ring-2 ring-blue-500/50' : ''
+      } ${className}`}
     >
       {vRect.width > 0 && vRect.height > 0 && (
         <div

@@ -1,6 +1,7 @@
 'use client';
 
-import { LayoutTemplate } from 'lucide-react';
+import { ArrowLeftRight, ArrowUpDown, LayoutTemplate } from 'lucide-react';
+import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
 
@@ -38,9 +39,32 @@ export function TopBarCenter() {
   const setTeamVisibility = useTacticalUnifiedStore((s) => s.setTeamVisibility);
   const homeColor = useTacticalUnifiedStore((s) => s.project.homeColor.primary);
   const awayColor = useTacticalUnifiedStore((s) => s.project.awayColor.primary);
+  const swapTeamSides = useTacticalUnifiedStore((s) => s.swapTeamSides);
+
+  const isVertical = isVerticalPitch(aspectRatio);
 
   return (
     <div className="flex items-center gap-2">
+      {/* Swap Sides Quick Button */}
+      <button
+        type="button"
+        onClick={() => swapTeamSides()}
+        className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white rounded-md border border-white/10 px-2 py-1 text-[11px] font-medium transition-colors cursor-pointer"
+        title={
+          isVertical
+            ? '攻守交代・陣地反転 (上下反転)'
+            : '攻守交代・陣地反転 (左右反転)'
+        }
+        aria-label="Swap team sides"
+      >
+        {isVertical ? (
+          <ArrowUpDown size={12} className="text-emerald-400" />
+        ) : (
+          <ArrowLeftRight size={12} className="text-emerald-400" />
+        )}
+        <span>Swap</span>
+      </button>
+
       {/* Team Visibility Quick Filter (Both / Home / Away) */}
       <div className="flex items-center bg-white/5 rounded-md border border-white/10 p-0.5 text-xs">
         <button

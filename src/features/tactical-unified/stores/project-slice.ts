@@ -18,7 +18,7 @@ import {
 } from '@/lib/types/tactical-unified';
 import { transformSlideAspectRatio } from './slide-aspect-helpers';
 import { applyImageBackgroundToProject } from './slide-background-helpers';
-import { flipSlideObjects } from './slide-flip-helpers';
+import { flipSlideObjects, isVerticalPitch } from './slide-flip-helpers';
 import { toggleSlideObjectLock } from './slide-lock-helpers';
 import {
   filterLockedSelectedObjects,
@@ -200,7 +200,7 @@ function createProjectConfigActions(set: SetState) {
     swapTeamSides: (slideId?: string) =>
       set((s) => {
         const targetSlideId = slideId ?? s.activeSlideId;
-        const isVertical = s.project.aspectRatio === '9:16';
+        const isVertical = isVerticalPitch(s.project.aspectRatio);
         return {
           ...recordHistory(s),
           project: updateSlideInProject(s.project, targetSlideId, (sl) =>

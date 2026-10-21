@@ -21,7 +21,7 @@ export interface AnimationPlaybackRefs {
 
 export interface UseTacticalAnimationOptions {
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
-  pitchSize?: { width: number; height: number };
+  pitchSize?: { width: number; height: number; x?: number; y?: number };
   loop?: boolean;
 }
 
@@ -43,11 +43,16 @@ export function useAnimationPlaybackRefs(): AnimationPlaybackRefs {
 }
 
 export function calculatePitchDimensions(
-  pitchSize?: { width: number; height: number },
+  pitchSize?: { width: number; height: number; x?: number; y?: number },
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>,
-): { width: number; height: number } {
+): { width: number; height: number; x: number; y: number } {
   if (pitchSize) {
-    return pitchSize;
+    return {
+      width: pitchSize.width,
+      height: pitchSize.height,
+      x: pitchSize.x ?? 0,
+      y: pitchSize.y ?? 0,
+    };
   }
   const registry = nodesRegistryRef?.current;
   const stage = registry?.stage;
@@ -60,9 +65,14 @@ export function calculatePitchDimensions(
       { width: stageWidth, height: stageHeight },
       aspectRatio,
     );
-    return { width: rect.width, height: rect.height };
+    return {
+      width: rect.width,
+      height: rect.height,
+      x: rect.x,
+      y: rect.y,
+    };
   }
-  return { width: 800, height: 450 };
+  return { width: 800, height: 450, x: 0, y: 0 };
 }
 
 export function renderFrameToCanvas(
@@ -73,6 +83,8 @@ export function renderFrameToCanvas(
   lastActiveSlideIndexRef: React.MutableRefObject<number>,
   setActiveSlide: (slideId: string) => void,
   synchronous = false,
+  offsetX = 0,
+  offsetY = 0,
 ) {
   if (!registry) return;
 
@@ -92,11 +104,46 @@ export function renderFrameToCanvas(
     }
   }
 
-  updatePlayerNodes(frame.players, registry, stageWidth, stageHeight);
-  updateBallNode(frame.ball, registry, stageWidth, stageHeight);
-  updateZoneNodes(frame.zones, registry, stageWidth, stageHeight);
-  updateArrowNodes(frame.arrows, registry, stageWidth, stageHeight);
-  updateTextNodes(frame.texts, registry, stageWidth, stageHeight);
+  updatePlayerNodes(
+    frame.players,
+    registry,
+    stageWidth,
+    stageHeight,
+    offsetX,
+    offsetY,
+  );
+  updateBallNode(
+    frame.ball,
+    registry,
+    stageWidth,
+    stageHeight,
+    offsetX,
+    offsetY,
+  );
+  updateZoneNodes(
+    frame.zones,
+    registry,
+    stageWidth,
+    stageHeight,
+    offsetX,
+    offsetY,
+  );
+  updateArrowNodes(
+    frame.arrows,
+    registry,
+    stageWidth,
+    stageHeight,
+    offsetX,
+    offsetY,
+  );
+  updateTextNodes(
+    frame.texts,
+    registry,
+    stageWidth,
+    stageHeight,
+    offsetX,
+    offsetY,
+  );
   batchDrawLayers(registry, synchronous);
 }
 
@@ -110,12 +157,15 @@ export function stopPlayback({
 }: {
   refs: AnimationPlaybackRefs;
   registry: CanvasNodesRegistry | undefined;
-  pitchDimensions: { width: number; height: number };
+  pitchDimensions: { width: number; height: number; x?: number; y?: number };
   applyFrameToCanvas: (
     timeMs: number,
     reg: CanvasNodesRegistry | undefined,
     w: number,
     h: number,
+    synchronous?: boolean,
+    offsetX?: number,
+    offsetY?: number,
   ) => void;
   setIsPlaying: (playing: boolean) => void;
   setActiveSlide: (slideId: string) => void;
@@ -137,6 +187,9 @@ export function stopPlayback({
       registry,
       pitchDimensions.width,
       pitchDimensions.height,
+      false,
+      pitchDimensions.x ?? 0,
+      pitchDimensions.y ?? 0,
     );
   }
 }
@@ -146,12 +199,15 @@ export interface RunAnimationLoopParams {
   totalDuration: number;
   loop?: boolean;
   registry: CanvasNodesRegistry | undefined;
-  pitchDimensions: { width: number; height: number };
+  pitchDimensions: { width: number; height: number; x?: number; y?: number };
   applyFrameToCanvas: (
     timeMs: number,
     reg: CanvasNodesRegistry | undefined,
     w: number,
     h: number,
+    synchronous?: boolean,
+    offsetX?: number,
+    offsetY?: number,
   ) => void;
   setIsPlaying: (playing: boolean) => void;
   onComplete?: () => void;
@@ -167,7 +223,12 @@ export function runAnimationLoop({
   setIsPlaying,
   onComplete,
 }: RunAnimationLoopParams) {
-  const { width: pitchWidth, height: pitchHeight } = pitchDimensions;
+  const {
+    width: pitchWidth,
+    height: pitchHeight,
+    x: offsetX = 0,
+    y: offsetY = 0,
+  } = pitchDimensions;
 
   const animate = (timestamp: number) => {
     if (!refs.startTimestampRef.current) {
@@ -183,18 +244,42 @@ export function runAnimationLoop({
       refs.startTimestampRef.current = null;
 
       if (loop) {
-        applyFrameToCanvas(0, registry, pitchWidth, pitchHeight);
+        applyFrameToCanvas(
+          0,
+          registry,
+          pitchWidth,
+          pitchHeight,
+          false,
+          offsetX,
+          offsetY,
+        );
         refs.animationFrameRef.current = requestAnimationFrame(animate);
         return;
       }
 
       setIsPlaying(false);
-      applyFrameToCanvas(totalDuration, registry, pitchWidth, pitchHeight);
+      applyFrameToCanvas(
+        totalDuration,
+        registry,
+        pitchWidth,
+        pitchHeight,
+        false,
+        offsetX,
+        offsetY,
+      );
       onComplete?.();
       return;
     }
 
-    applyFrameToCanvas(elapsed, registry, pitchWidth, pitchHeight);
+    applyFrameToCanvas(
+      elapsed,
+      registry,
+      pitchWidth,
+      pitchHeight,
+      false,
+      offsetX,
+      offsetY,
+    );
     refs.animationFrameRef.current = requestAnimationFrame(animate);
   };
 
@@ -225,12 +310,15 @@ export function seekPlayback({
   totalDurationMs: number;
   refs: AnimationPlaybackRefs;
   registry: CanvasNodesRegistry | undefined;
-  pitchDimensions: { width: number; height: number };
+  pitchDimensions: { width: number; height: number; x?: number; y?: number };
   applyFrameToCanvas: (
     timeMs: number,
     reg: CanvasNodesRegistry | undefined,
     w: number,
     h: number,
+    synchronous?: boolean,
+    offsetX?: number,
+    offsetY?: number,
   ) => void;
 }) {
   refs.currentPlaybackTimeRef.current = Math.max(
@@ -243,5 +331,8 @@ export function seekPlayback({
     registry,
     pitchDimensions.width,
     pitchDimensions.height,
+    false,
+    pitchDimensions.x ?? 0,
+    pitchDimensions.y ?? 0,
   );
 }

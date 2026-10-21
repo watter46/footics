@@ -1,6 +1,8 @@
 'use client';
 
-import { ArrowLeftRight, Plus, Trash2, X } from 'lucide-react';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { ArrowLeftRight, GripVertical, Plus, Trash2, X } from 'lucide-react';
 import { getPositionBadgeClass } from '@/lib/tactical/player-formatting';
 import type { Player } from '@/lib/types/tactical-unified';
 
@@ -31,10 +33,38 @@ export function FormationBenchItem({
 }: FormationBenchItemProps) {
   const isSwapping = activeSwapPlayerId === player.id;
 
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: `bench-player-${player.id}`,
+      data: {
+        type: 'bench-player',
+        playerId: player.id,
+        player,
+      },
+    });
+
+  const style = transform
+    ? {
+        transform: CSS.Translate.toString(transform),
+        opacity: isDragging ? 0.3 : undefined,
+      }
+    : undefined;
+
   return (
-    <div className="space-y-1">
+    <div ref={setNodeRef} style={style} className="space-y-1">
       <div className="flex items-center justify-between gap-2 p-1.5 rounded bg-white/5 hover:bg-white/10 border border-white/5 group transition-all">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          {/* Drag Handle */}
+          <button
+            type="button"
+            {...listeners}
+            {...attributes}
+            className="cursor-grab active:cursor-grabbing p-0.5 text-white/30 hover:text-white/70 transition-colors touch-none"
+            title="ドラッグしてピッチにドロップ配置"
+            aria-label="Drag player to pitch"
+          >
+            <GripVertical size={12} />
+          </button>
           <span
             className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] text-white shrink-0 shadow-sm"
             style={{ backgroundColor: teamColor }}

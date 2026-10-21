@@ -34,6 +34,8 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
       stageWidth: number,
       stageHeight: number,
       synchronous = false,
+      offsetX = 0,
+      offsetY = 0,
     ) => {
       renderFrameToCanvas(
         timeMs,
@@ -43,6 +45,8 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
         refs.lastActiveSlideIndexRef,
         setActiveSlide,
         synchronous,
+        offsetX,
+        offsetY,
       );
     },
     [setActiveSlide, refs.lastActiveSlideIndexRef],

@@ -18,14 +18,16 @@ export function updatePlayerNodes(
   registry: CanvasNodesRegistry,
   stageWidth: number,
   stageHeight: number,
+  offsetX = 0,
+  offsetY = 0,
 ) {
   for (const [playerId, pState] of Object.entries(players)) {
     const playerGroup =
       registry.playerNodes.get(playerId) ||
       (pState.id ? registry.playerNodes.get(pState.id) : undefined);
     if (playerGroup) {
-      const pxX = (pState.x / 100) * stageWidth;
-      const pxY = (pState.y / 100) * stageHeight;
+      const pxX = offsetX + (pState.x / 100) * stageWidth;
+      const pxY = offsetY + (pState.y / 100) * stageHeight;
       playerGroup.position({ x: pxX, y: pxY });
       playerGroup.opacity(pState.opacity);
       playerGroup.visible(pState.visible);
@@ -38,10 +40,12 @@ export function updateBallNode(
   registry: CanvasNodesRegistry,
   stageWidth: number,
   stageHeight: number,
+  offsetX = 0,
+  offsetY = 0,
 ) {
   if (!registry.ballNode) return;
-  const ballPxX = (ball.x / 100) * stageWidth;
-  const ballPxY = (ball.y / 100) * stageHeight;
+  const ballPxX = offsetX + (ball.x / 100) * stageWidth;
+  const ballPxY = offsetY + (ball.y / 100) * stageHeight;
   registry.ballNode.position({ x: ballPxX, y: ballPxY });
   registry.ballNode.opacity(ball.opacity);
   registry.ballNode.visible(ball.visible);
@@ -52,6 +56,8 @@ export function updateZoneNodes(
   registry: CanvasNodesRegistry,
   stageWidth: number,
   stageHeight: number,
+  offsetX = 0,
+  offsetY = 0,
 ) {
   for (const [zoneId, zState] of Object.entries(zones)) {
     const zoneShape = registry.zoneNodes.get(zoneId);
@@ -69,8 +75,8 @@ export function updateZoneNodes(
 
     if (zState.shapeType === 'polygon' && 'points' in zoneShape) {
       const pxPoints = zState.points.flatMap((pt) => [
-        (pt.x / 100) * stageWidth,
-        (pt.y / 100) * stageHeight,
+        offsetX + (pt.x / 100) * stageWidth,
+        offsetY + (pt.y / 100) * stageHeight,
       ]);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).points(pxPoints);
@@ -85,8 +91,8 @@ export function updateZoneNodes(
       const normY = zState.y ?? zState.points[0]?.y ?? 20;
       const normW = zState.width ?? 30;
       const normH = zState.height ?? 20;
-      const pxX = (normX / 100) * stageWidth;
-      const pxY = (normY / 100) * stageHeight;
+      const pxX = offsetX + (normX / 100) * stageWidth;
+      const pxY = offsetY + (normY / 100) * stageHeight;
       const pxW = (normW / 100) * stageWidth;
       const pxH = (normH / 100) * stageHeight;
       zoneShape.position({ x: pxX, y: pxY });
@@ -109,8 +115,8 @@ export function updateZoneNodes(
       const normH = zState.height ?? 20;
       const pxW = (normW / 100) * stageWidth;
       const pxH = (normH / 100) * stageHeight;
-      const cx = (normX / 100) * stageWidth + pxW / 2;
-      const cy = (normY / 100) * stageHeight + pxH / 2;
+      const cx = offsetX + (normX / 100) * stageWidth + pxW / 2;
+      const cy = offsetY + (normY / 100) * stageHeight + pxH / 2;
       zoneShape.position({ x: cx, y: cy });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).radiusX(pxW / 2);
@@ -133,6 +139,8 @@ export function updateArrowNodes(
   registry: CanvasNodesRegistry,
   stageWidth: number,
   stageHeight: number,
+  offsetX = 0,
+  offsetY = 0,
 ) {
   for (const [arrowId, aState] of Object.entries(arrows)) {
     const arrowEntry = registry.arrowNodes.get(arrowId);
@@ -140,15 +148,15 @@ export function updateArrowNodes(
 
     const rawP0 = aState.points[0] ?? { x: 20, y: 50 };
     const rawP1 = aState.points[1] ?? { x: 40, y: 50 };
-    const sPxX = (rawP0.x / 100) * stageWidth;
-    const sPxY = (rawP0.y / 100) * stageHeight;
-    const ePxX = (rawP1.x / 100) * stageWidth;
-    const ePxY = (rawP1.y / 100) * stageHeight;
+    const sPxX = offsetX + (rawP0.x / 100) * stageWidth;
+    const sPxY = offsetY + (rawP0.y / 100) * stageHeight;
+    const ePxX = offsetX + (rawP1.x / 100) * stageWidth;
+    const ePxY = offsetY + (rawP1.y / 100) * stageHeight;
 
     let renderPts = [sPxX, sPxY, ePxX, ePxY];
     if (aState.curveType === 'curved' && aState.controlPoint) {
-      const cpPxX = (aState.controlPoint.x / 100) * stageWidth;
-      const cpPxY = (aState.controlPoint.y / 100) * stageHeight;
+      const cpPxX = offsetX + (aState.controlPoint.x / 100) * stageWidth;
+      const cpPxY = offsetY + (aState.controlPoint.y / 100) * stageHeight;
       renderPts = [sPxX, sPxY, cpPxX, cpPxY, ePxX, ePxY];
     }
 
@@ -166,12 +174,14 @@ export function updateTextNodes(
   registry: CanvasNodesRegistry,
   stageWidth: number,
   stageHeight: number,
+  offsetX = 0,
+  offsetY = 0,
 ) {
   for (const [textId, tState] of Object.entries(texts)) {
     const textNode = registry.textNodes.get(textId);
     if (!textNode) continue;
-    const pxX = (tState.x / 100) * stageWidth;
-    const pxY = (tState.y / 100) * stageHeight;
+    const pxX = offsetX + (tState.x / 100) * stageWidth;
+    const pxY = offsetY + (tState.y / 100) * stageHeight;
     textNode.position({ x: pxX, y: pxY });
     textNode.text(tState.content);
     textNode.fontSize(tState.fontSize);

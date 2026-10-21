@@ -10,9 +10,11 @@
  *  - Clipboard paste & Image drop support
  */
 
+import { DndContext, type DragEndEvent, pointerWithin } from '@dnd-kit/core';
 import dynamic from 'next/dynamic';
 import { useRef } from 'react';
 import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
+import { calculateDropPitchCoords } from '@/features/tactical-unified/core/utils/dnd-coordinates';
 import { useKeyboardShortcuts } from '@/features/tactical-unified/hooks/use-keyboard-shortcuts';
 import { useTacticalAutoSave } from '@/features/tactical-unified/hooks/use-tactical-auto-save';
 import { useTacticalDropPaste } from '@/features/tactical-unified/hooks/use-tactical-drop-paste';
@@ -66,41 +68,75 @@ export function TacticalUnifiedPage({
 
   const canvasRef = useRef<CanvasCoreHandle | null>(null);
 
+  const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
+  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+
+  const handleDndEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeData = active.data.current;
+    if (
+      activeData?.type === 'bench-player' &&
+      over.id === 'tactical-pitch-droppable'
+    ) {
+      const activator = event.activatorEvent as MouseEvent | TouchEvent;
+      const clientX =
+        'clientX' in activator ? activator.clientX + event.delta.x : 0;
+      const clientY =
+        'clientY' in activator ? activator.clientY + event.delta.y : 0;
+
+      let normCoords = { x: 50, y: 50 };
+      if (over.rect) {
+        normCoords = calculateDropPitchCoords(over.rect, { clientX, clientY });
+      }
+
+      movePlayerToPitch(
+        activeSlideId,
+        activeData.playerId,
+        normCoords.x,
+        normCoords.y,
+      );
+    }
+  };
+
   return (
-    <div
-      role="application"
-      aria-label="Tactical Canvas Workspace"
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-      className="flex flex-col h-screen w-screen bg-[#0a0a0a] overflow-hidden select-none"
-    >
-      {/* Top Bar */}
-      <TopBar canvasRef={canvasRef} />
+    <DndContext onDragEnd={handleDndEnd} collisionDetection={pointerWithin}>
+      <div
+        role="application"
+        aria-label="Tactical Canvas Workspace"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        className="flex flex-col h-screen w-screen bg-[#0a0a0a] overflow-hidden select-none"
+      >
+        {/* Top Bar */}
+        <TopBar canvasRef={canvasRef} />
 
-      {/* Main Area */}
-      <div className="flex flex-1 min-h-0 relative">
-        {/* Canvas — 最大化 */}
-        <main className="flex-1 relative overflow-hidden flex flex-col bg-[#0a0a0a]">
-          <FullTacticalCanvas ref={canvasRef} />
-        </main>
+        {/* Main Area */}
+        <div className="flex flex-1 min-h-0 relative">
+          {/* Canvas — 最大化 */}
+          <main className="flex-1 relative overflow-hidden flex flex-col bg-[#0a0a0a]">
+            <FullTacticalCanvas ref={canvasRef} />
+          </main>
 
-        {/* Right Panel (常時表示 / アニメーションなし) */}
-        <RightPanel />
+          {/* Right Panel (常時表示 / アニメーションなし) */}
+          <RightPanel />
+        </div>
+
+        {/* Timeline Bar */}
+        <TimelineBar />
+
+        {/* Export Modal (Portal) */}
+        {exportModalOpen && <ExportModal />}
+
+        {/* Project Manager Modal */}
+        {projectManagerModalOpen && (
+          <ProjectManagerModal
+            isOpen={projectManagerModalOpen}
+            onClose={closeProjectManagerModal}
+          />
+        )}
       </div>
-
-      {/* Timeline Bar */}
-      <TimelineBar />
-
-      {/* Export Modal (Portal) */}
-      {exportModalOpen && <ExportModal />}
-
-      {/* Project Manager Modal */}
-      {projectManagerModalOpen && (
-        <ProjectManagerModal
-          isOpen={projectManagerModalOpen}
-          onClose={closeProjectManagerModal}
-        />
-      )}
-    </div>
+    </DndContext>
   );
 }

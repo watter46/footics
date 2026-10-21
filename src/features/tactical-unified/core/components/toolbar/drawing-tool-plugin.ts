@@ -53,7 +53,6 @@ export const EXTENSION_DRAWING_TOOLS: DrawingToolPlugin[] = [
 export const WEB_DRAWING_TOOLS: DrawingToolPlugin[] = [
   ...DRAWING_TOOLS_CORE,
   TOOL_PLUGIN_PLAYER_2D,
-  TOOL_PLUGIN_PLAYER_3D_RING,
 ];
 
 export function getDrawingTools(

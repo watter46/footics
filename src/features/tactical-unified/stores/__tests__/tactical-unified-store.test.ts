@@ -343,9 +343,10 @@ describe('tactical-unified-store', () => {
     expect(unMovedArrow?.sourcePlayerId).toBeUndefined();
   });
 
-  it('swapTeamSides でスライド内の選手・ボール・矢印・ゾーン・テキストのX座標が反転する', () => {
+  it('swapTeamSides でスライド内の選手・ボール・矢印・ゾーン・テキストのX座標が反転する (横画面 16:9)', () => {
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.activeSlideId;
+    store.setAspectRatio('16:9');
 
     const player = createDefaultPlayer('home', 20, 40, '#034694');
     store.addPlayer(player);
@@ -412,6 +413,34 @@ describe('tactical-unified-store', () => {
     expect(swappedPlayer?.x).toBe(20); // X は変わらない
     expect(swappedPlayer?.y).toBe(70); // 100 - 30
     expect(slide?.ball.y).toBe(80); // 100 - 20
+  });
+
+  it('swapTeamSides で縦画面 (4:5) および正方形 (1:1) の場合も Y 座標が反転する', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const slideId = store.activeSlideId;
+
+    // 4:5
+    store.setAspectRatio('4:5');
+    const p1 = createDefaultPlayer('home', 25, 40, '#034694');
+    store.addPlayer(p1);
+    store.swapTeamSides(slideId);
+
+    let slide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    let swappedP1 = slide?.players.find((p) => p.id === p1.id);
+    expect(swappedP1?.x).toBe(25);
+    expect(swappedP1?.y).toBe(60); // 100 - 40
+
+    // 1:1
+    store.setAspectRatio('1:1');
+    store.swapTeamSides(slideId);
+    slide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    swappedP1 = slide?.players.find((p) => p.id === p1.id);
+    expect(swappedP1?.x).toBe(25);
+    expect(swappedP1?.y).toBe(40); // 100 - 60 => 40
   });
 
   it('movePlayerToBench で選手がベンチに移動し、マーカーオプションおよび接続矢印がクリーンアップされる', () => {

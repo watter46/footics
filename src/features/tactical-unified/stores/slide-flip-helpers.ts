@@ -1,11 +1,20 @@
 import type {
   ArrowAnnotation,
+  AspectRatio,
   BallState,
   Player,
   Slide,
   TextAnnotation,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
+
+export function isVerticalPitch(
+  aspectRatio?: AspectRatio | string | null,
+): boolean {
+  return (
+    aspectRatio === '9:16' || aspectRatio === '4:5' || aspectRatio === '1:1'
+  );
+}
 
 function flipPlayer(p: Player, isVertical: boolean): Player {
   const x = isVertical ? p.x : Math.max(0, Math.min(100, 100 - p.x));

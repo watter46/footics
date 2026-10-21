@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   createHighPressBenchmarkProject,
@@ -48,7 +49,7 @@ function MoreMenuPitchSection({ onImportClick, onClose }: PitchSectionProps) {
         }}
         className="w-full text-left px-3 py-2 hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer flex items-center gap-2.5"
       >
-        {aspectRatio === '9:16' ? (
+        {isVerticalPitch(aspectRatio) ? (
           <ArrowUpDown size={14} className="text-amber-400 shrink-0" />
         ) : (
           <ArrowLeftRight size={14} className="text-amber-400 shrink-0" />
@@ -56,7 +57,7 @@ function MoreMenuPitchSection({ onImportClick, onClose }: PitchSectionProps) {
         <div className="flex flex-col">
           <span className="font-medium text-white">Swap Sides</span>
           <span className="text-[10px] text-white/50">
-            {aspectRatio === '9:16'
+            {isVerticalPitch(aspectRatio)
               ? 'Flip pitch sides vertically'
               : 'Swap pitch sides horizontally'}
           </span>

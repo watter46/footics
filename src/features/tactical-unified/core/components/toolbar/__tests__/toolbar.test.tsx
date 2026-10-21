@@ -45,10 +45,10 @@ describe('Toolbar Compound Components & Registry', () => {
     expect(toolIds).toContain('player-ring');
   });
 
-  it('WEB_DRAWING_TOOLS に 2D 選手マーカーと 3D リングの両方が含まれること', () => {
+  it('WEB_DRAWING_TOOLS に 2D 選手マーカーのみが含まれ、3D リングは除外されていること', () => {
     const toolIds = WEB_DRAWING_TOOLS.map((t) => t.id);
     expect(toolIds).toContain('player');
-    expect(toolIds).toContain('player-ring');
+    expect(toolIds).not.toContain('player-ring');
   });
 
   it('DraggableToolbar と ToolbarToolsGroup が連携してツールを切り替えられること', () => {
