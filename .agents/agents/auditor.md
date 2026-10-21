@@ -2,7 +2,7 @@
 name: auditor
 description: セッション・エージェント行動監査専用エージェント。過去または別コンテキストの実行ログ（transcript.jsonl）を構造化スクリプト（ai:audit）で分析し、Hook Denials、ターン数、トークン消費、Redoループ、定性コード品質を客観的に評価・比較・報告する。
 model: flash
-enable_write_tools: false
+enable_write_tools: true
 enable_subagent_tools: false
 ---
 
