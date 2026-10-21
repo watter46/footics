@@ -6,8 +6,14 @@ import type React from 'react';
 import type { ReactNode } from 'react';
 import { useCallback, useRef } from 'react';
 import { Layer } from 'react-konva';
+import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
+import {
+  selectPreviousSlide,
+  useTacticalUnifiedStore,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Player } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
+import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import { updateAttachedArrowPositions } from './annotations/arrow-drag-updater';
 import { PlayerConnectingGuide } from './PlayerConnectingGuide';
 import {
@@ -39,6 +45,20 @@ export function PlayerLayer({
   const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
   const setConnectingPlayerId = useCanvasStore((s) => s.setConnectingPlayerId);
 
+  const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
+  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+  const updatePlayerTrajectory = useTacticalUnifiedStore(
+    (s) => s.updatePlayerTrajectory,
+  );
+  const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
+
+  const visibleMarkers =
+    teamVisibility === 'both'
+      ? markers
+      : markers.filter(
+          (m) => m.team === teamVisibility || m.team === 'neutral',
+        );
+
   const connectLineNodesRef = useRef<Map<string, Konva.Line>>(new Map());
 
   const isInteractive = activeTool === 'select';
@@ -50,7 +70,7 @@ export function PlayerLayer({
       const curY = e.target.y();
       updateConnectLinePositions(
         connectLineNodesRef.current,
-        markers,
+        visibleMarkers,
         markerId,
         curX,
         curY,
@@ -63,7 +83,7 @@ export function PlayerLayer({
       updateAttachedArrowPositions(
         reg?.arrowNodes,
         arrows,
-        markers,
+        visibleMarkers,
         markerId,
         curX,
         curY,
@@ -72,7 +92,7 @@ export function PlayerLayer({
       );
       e.target.getLayer()?.batchDraw();
     },
-    [markers, arrows, width, height, nodesRegistryRef],
+    [visibleMarkers, arrows, width, height, nodesRegistryRef],
   );
 
   const handleMarkerClick = useCallback(
@@ -116,12 +136,11 @@ export function PlayerLayer({
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>, marker: Player) => {
       setIsDragging(false);
-      setIsHudOpen(true);
       const nx = Math.max(0, Math.min(100, (e.target.x() / width) * 100));
       const ny = Math.max(0, Math.min(100, (e.target.y() / height) * 100));
       updateMarker(marker.id, { x: nx, y: ny });
     },
-    [width, height, updateMarker, setIsDragging, setIsHudOpen],
+    [width, height, updateMarker, setIsDragging],
   );
 
   const handleDragStart = useCallback(
@@ -139,7 +158,7 @@ export function PlayerLayer({
   return (
     <Layer>
       <PlayerConnectLines
-        markers={markers}
+        markers={visibleMarkers}
         width={width}
         height={height}
         selectedIds={selectedIds}
@@ -158,14 +177,42 @@ export function PlayerLayer({
       {connectingPlayerId && (
         <PlayerConnectingGuide
           connectingPlayerId={connectingPlayerId}
-          markers={markers}
+          markers={visibleMarkers}
           width={width}
           height={height}
           baseDim={baseDim}
         />
       )}
 
-      {markers.map((marker) => (
+      {/* ── スライド間ゴーストマーカー & 追跡曲線矢印 ── */}
+      {visibleMarkers.map((marker) => {
+        const prevPlayer = prevSlide?.players.find(
+          (p) => p.id === marker.id && p.area === 'pitch',
+        );
+        if (!prevPlayer) return null;
+        const isMoved =
+          Math.hypot(marker.x - prevPlayer.x, marker.y - prevPlayer.y) >= 1;
+        const isSelected = selectedIds.includes(marker.id);
+        if (!isMoved || !isSelected) return null;
+
+        return (
+          <PlayerGhostTrajectory
+            key={`ghost-${marker.id}`}
+            player={marker}
+            prevPlayer={prevPlayer}
+            stageSize={{ width, height }}
+            activeSlideId={activeSlideId}
+            nodesRegistryRef={
+              nodesRegistryRef as
+                | React.MutableRefObject<CanvasNodesRegistry>
+                | undefined
+            }
+            onUpdateTrajectory={updatePlayerTrajectory}
+          />
+        );
+      })}
+
+      {visibleMarkers.map((marker) => (
         <PlayerMarkerItem
           key={marker.id}
           marker={marker}

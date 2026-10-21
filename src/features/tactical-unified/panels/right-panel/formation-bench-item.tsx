@@ -52,9 +52,15 @@ export function FormationBenchItem({
 
   return (
     <div ref={setNodeRef} style={style} className="space-y-1">
-      <div className="flex items-center justify-between gap-2 p-1.5 rounded bg-white/5 hover:bg-white/10 border border-white/5 group transition-all">
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          {/* Drag Handle */}
+      <div className="flex flex-col items-center justify-between p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 group transition-all text-center relative select-none">
+        <div className="flex items-center justify-between w-full mb-1">
+          <span
+            className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold border ${getPositionBadgeClass(
+              player.position ?? 'OTHER',
+            )}`}
+          >
+            {player.position || 'SUB'}
+          </span>
           <button
             type="button"
             {...listeners}
@@ -63,27 +69,29 @@ export function FormationBenchItem({
             title="ドラッグしてピッチにドロップ配置"
             aria-label="Drag player to pitch"
           >
-            <GripVertical size={12} />
+            <GripVertical size={11} />
           </button>
-          <span
-            className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] text-white shrink-0 shadow-sm"
-            style={{ backgroundColor: teamColor }}
-          >
-            {player.shirtNo || '—'}
-          </span>
-          <span
-            className="font-medium text-white/90 truncate text-xs"
-            title={player.name || player.position || `Player ${player.shirtNo}`}
-          >
-            {player.name || player.position || `Player ${player.shirtNo}`}
-          </span>
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <span
+          className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs text-white my-1 shadow-md shrink-0"
+          style={{ backgroundColor: teamColor }}
+        >
+          {player.shirtNo || '—'}
+        </span>
+
+        <span
+          className="font-medium text-white/90 truncate w-full text-[11px] my-0.5"
+          title={player.name || player.position || `Player ${player.shirtNo}`}
+        >
+          {player.name || player.position || `Player ${player.shirtNo}`}
+        </span>
+
+        <div className="flex items-center gap-1 w-full mt-1.5">
           <button
             type="button"
             onClick={() => onMoveToPitch(activeSlideId, player.id)}
-            className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-[10px] text-white font-medium shadow-xs transition-colors cursor-pointer"
+            className="flex-1 py-0.5 flex items-center justify-center gap-1 rounded bg-blue-600 hover:bg-blue-500 text-[10px] text-white font-medium shadow-xs transition-colors cursor-pointer"
             title="ピッチに投入"
           >
             <Plus size={11} />
@@ -99,7 +107,7 @@ export function FormationBenchItem({
             }`}
             title="Swap with pitch player"
           >
-            <ArrowLeftRight size={11} />
+            <ArrowLeftRight size={10} />
           </button>
           <button
             type="button"
@@ -107,7 +115,7 @@ export function FormationBenchItem({
             className="p-1 rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-colors cursor-pointer"
             title="Remove"
           >
-            <Trash2 size={11} />
+            <Trash2 size={10} />
           </button>
         </div>
       </div>

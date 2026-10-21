@@ -38,6 +38,7 @@ export function ContextHud({
   const selectedObjects = useCanvasStore((s) => s.selectedObjects);
   const activeTool = useCanvasStore((s) => s.activeTool);
   const isHudOpen = useCanvasStore((s) => s.isHudOpen);
+  const isDragging = useCanvasStore((s) => s.isDragging);
 
   const selected =
     selectedObjects.length === 1 ? selectedObjects[0] : undefined;
@@ -162,7 +163,13 @@ export function ContextHud({
     };
   }, [nodesRegistryRef, selected, stageSize]);
 
-  if (!selected || activeTool === 'eraser' || !isHudOpen || !position) {
+  if (
+    isDragging ||
+    !selected ||
+    activeTool === 'eraser' ||
+    !isHudOpen ||
+    !position
+  ) {
     return null;
   }
 

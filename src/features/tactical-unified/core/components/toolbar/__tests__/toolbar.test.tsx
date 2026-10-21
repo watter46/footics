@@ -45,9 +45,9 @@ describe('Toolbar Compound Components & Registry', () => {
     expect(toolIds).toContain('player-ring');
   });
 
-  it('WEB_DRAWING_TOOLS に 2D 選手マーカーのみが含まれ、3D リングは除外されていること', () => {
+  it('WEB_DRAWING_TOOLS から 2D 選手マーカーと 3D リングが除外されていること（Squad 一元化）', () => {
     const toolIds = WEB_DRAWING_TOOLS.map((t) => t.id);
-    expect(toolIds).toContain('player');
+    expect(toolIds).not.toContain('player');
     expect(toolIds).not.toContain('player-ring');
   });
 
@@ -143,12 +143,12 @@ describe('Toolbar Compound Components & Registry', () => {
     it('getDrawingTools が markerMode に応じてツールリストを生成すること', () => {
       const defaultTools = getDrawingTools();
       const defaultIds = defaultTools.map((t) => t.id);
-      expect(defaultIds).toContain('player');
+      expect(defaultIds).not.toContain('player');
       expect(defaultIds).not.toContain('player-ring');
 
       const tools2d = getDrawingTools('2d-only');
       const ids2d = tools2d.map((t) => t.id);
-      expect(ids2d).toContain('player');
+      expect(ids2d).not.toContain('player');
       expect(ids2d).not.toContain('player-ring');
 
       const tools3d = getDrawingTools('3d-only');
@@ -162,15 +162,15 @@ describe('Toolbar Compound Components & Registry', () => {
       expect(idsAll).toContain('player-ring');
     });
 
-    it('CoreDrawingToolbar で markerMode="2d-only" 時に 2D マーカーのみ表示されること', () => {
+    it('CoreDrawingToolbar で markerMode="2d-only" 時に 2D マーカーが表示されないこと（Squad 一元化）', () => {
       renderWithStore(<CoreDrawingToolbar markerMode="2d-only" />);
-      expect(screen.getByTestId('tool-player')).toBeDefined();
+      expect(screen.queryByTestId('tool-player')).toBeNull();
       expect(screen.queryByTestId('tool-player-ring')).toBeNull();
     });
 
-    it('CoreDrawingToolbar で markerMode 省略時にデフォルトで 2D マーカーのみ表示されること', () => {
+    it('CoreDrawingToolbar で markerMode 省略時にデフォルトで 2D マーカーが表示されないこと（Squad 一元化）', () => {
       renderWithStore(<CoreDrawingToolbar />);
-      expect(screen.getByTestId('tool-player')).toBeDefined();
+      expect(screen.queryByTestId('tool-player')).toBeNull();
       expect(screen.queryByTestId('tool-player-ring')).toBeNull();
     });
 

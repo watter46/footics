@@ -740,6 +740,44 @@ export type DrawingTool = z.infer<typeof DrawingToolSchema>;
 // § 13. Factory 関数
 // ─────────────────────────────────────────
 
+export const DEFAULT_4231_HOME: Array<{
+  shirtNo: string;
+  position: string;
+  x: number;
+  y: number;
+}> = [
+  { shirtNo: '1', position: 'GK', x: 7, y: 50 },
+  { shirtNo: '2', position: 'RB', x: 20, y: 18 },
+  { shirtNo: '5', position: 'CB', x: 18, y: 38 },
+  { shirtNo: '6', position: 'CB', x: 18, y: 62 },
+  { shirtNo: '3', position: 'LB', x: 20, y: 82 },
+  { shirtNo: '4', position: 'DM', x: 30, y: 36 },
+  { shirtNo: '8', position: 'DM', x: 30, y: 64 },
+  { shirtNo: '7', position: 'RM', x: 42, y: 18 },
+  { shirtNo: '10', position: 'AM', x: 40, y: 50 },
+  { shirtNo: '11', position: 'LM', x: 42, y: 82 },
+  { shirtNo: '9', position: 'ST', x: 46, y: 50 },
+];
+
+export const DEFAULT_442_AWAY: Array<{
+  shirtNo: string;
+  position: string;
+  x: number;
+  y: number;
+}> = [
+  { shirtNo: '1', position: 'GK', x: 93, y: 50 },
+  { shirtNo: '3', position: 'LB', x: 80, y: 18 },
+  { shirtNo: '6', position: 'CB', x: 82, y: 38 },
+  { shirtNo: '5', position: 'CB', x: 82, y: 62 },
+  { shirtNo: '2', position: 'RB', x: 80, y: 82 },
+  { shirtNo: '11', position: 'LM', x: 68, y: 18 },
+  { shirtNo: '4', position: 'CM', x: 70, y: 38 },
+  { shirtNo: '8', position: 'CM', x: 70, y: 62 },
+  { shirtNo: '7', position: 'RM', x: 68, y: 82 },
+  { shirtNo: '10', position: 'CF', x: 54, y: 40 },
+  { shirtNo: '9', position: 'CF', x: 54, y: 60 },
+];
+
 export const DEFAULT_442_HOME: Array<{
   shirtNo: string;
   position: string;
@@ -758,6 +796,37 @@ export const DEFAULT_442_HOME: Array<{
   { shirtNo: '9', position: 'CF', x: 63, y: 37 },
   { shirtNo: '10', position: 'CF', x: 63, y: 63 },
 ];
+
+export function createDefaultInitialPlayers(
+  homeColor = '#034694',
+  awayColor = '#ef4444',
+  aspectRatio: AspectRatio = '16:9',
+): Player[] {
+  const isVertical = isVerticalAspectRatio(aspectRatio);
+  const homePlayers: Player[] = DEFAULT_4231_HOME.map((p) => {
+    const rawPos = { x: p.x, y: p.y };
+    const pos = isVertical
+      ? transformCoord(rawPos, '16:9', aspectRatio)
+      : rawPos;
+    const pl = createDefaultPlayer('home', pos.x, pos.y, homeColor);
+    pl.shirtNo = p.shirtNo;
+    pl.position = p.position;
+    return pl;
+  });
+
+  const awayPlayers: Player[] = DEFAULT_442_AWAY.map((p) => {
+    const rawPos = { x: p.x, y: p.y };
+    const pos = isVertical
+      ? transformCoord(rawPos, '16:9', aspectRatio)
+      : rawPos;
+    const pl = createDefaultPlayer('away', pos.x, pos.y, awayColor);
+    pl.shirtNo = p.shirtNo;
+    pl.position = p.position;
+    return pl;
+  });
+
+  return [...homePlayers, ...awayPlayers];
+}
 
 export function createDefault442Players(
   homeColor = '#034694',
@@ -802,20 +871,20 @@ export function createDefaultProject(id: string): TacticalProject {
     title: 'Untitled Project',
     createdAt: now,
     updatedAt: now,
-    aspectRatio: '4:5',
+    aspectRatio: '16:9',
     backgroundType: 'pitch',
     homeColor,
     awayColor,
     activeSlideId: slideId,
-    boundaryBox: { ...DEFAULT_BOUNDARY_BOX_4_5 },
+    boundaryBox: { ...DEFAULT_BOUNDARY_BOX_16_9 },
     slides: [
       createDefaultSlide(
         0,
         slideId,
         homeColor.primary,
         awayColor.primary,
-        DEFAULT_BOUNDARY_BOX_4_5,
-        '4:5',
+        DEFAULT_BOUNDARY_BOX_16_9,
+        '16:9',
       ),
     ],
     tags: [],
@@ -827,15 +896,15 @@ export function createDefaultSlide(
   id?: string,
   homeColor?: string,
   awayColor?: string,
-  boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_4_5,
-  aspectRatio: AspectRatio = '4:5',
+  boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_16_9,
+  aspectRatio: AspectRatio = '16:9',
 ): Slide {
   return {
     id: id ?? crypto.randomUUID(),
     index,
     label: `Scene ${index + 1}`,
     aspectRatio,
-    players: createDefault442Players(homeColor, awayColor, aspectRatio),
+    players: createDefaultInitialPlayers(homeColor, awayColor, aspectRatio),
     arrows: [],
     zones: [],
     texts: [],

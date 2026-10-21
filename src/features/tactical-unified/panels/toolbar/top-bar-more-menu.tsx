@@ -1,8 +1,6 @@
 'use client';
 
 import {
-  ArrowLeftRight,
-  ArrowUpDown,
   FilePlus2,
   ImagePlus,
   MoreHorizontal,
@@ -11,7 +9,6 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   createHighPressBenchmarkProject,
@@ -27,11 +24,9 @@ interface PitchSectionProps {
 }
 
 function MoreMenuPitchSection({ onImportClick, onClose }: PitchSectionProps) {
-  const aspectRatio = useTacticalUnifiedStore((s) => s.project.aspectRatio);
   const isImageBackground = useTacticalUnifiedStore(
     (s) => s.project.backgroundType === 'image',
   );
-  const swapTeamSides = useTacticalUnifiedStore((s) => s.swapTeamSides);
   const restoreDefaultPitch = useTacticalUnifiedStore(
     (s) => s.restoreDefaultPitch,
   );
@@ -41,28 +36,6 @@ function MoreMenuPitchSection({ onImportClick, onClose }: PitchSectionProps) {
       <div className="px-3 py-1 text-[10px] uppercase font-semibold tracking-wider text-white/40">
         Pitch & Background
       </div>
-      <button
-        type="button"
-        onClick={() => {
-          swapTeamSides();
-          onClose();
-        }}
-        className="w-full text-left px-3 py-2 hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer flex items-center gap-2.5"
-      >
-        {isVerticalPitch(aspectRatio) ? (
-          <ArrowUpDown size={14} className="text-amber-400 shrink-0" />
-        ) : (
-          <ArrowLeftRight size={14} className="text-amber-400 shrink-0" />
-        )}
-        <div className="flex flex-col">
-          <span className="font-medium text-white">Swap Sides</span>
-          <span className="text-[10px] text-white/50">
-            {isVerticalPitch(aspectRatio)
-              ? 'Flip pitch sides vertically'
-              : 'Swap pitch sides horizontally'}
-          </span>
-        </div>
-      </button>
 
       <button
         type="button"

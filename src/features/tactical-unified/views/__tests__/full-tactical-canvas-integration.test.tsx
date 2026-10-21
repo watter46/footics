@@ -170,19 +170,19 @@ describe('FullTacticalCanvas integration', () => {
       expect(lastStage().find('Group').length).toBeGreaterThan(0);
     });
 
-    // dragBoundFunc: Stage 外へは出られない
+    // dragBoundFunc: ベンチD&D用マージン付きで許容範囲外へは出られない (-width..2*width, -height..2*height)
     const node = lastStage()
       .find('Group')
       .find((g) => g.draggable());
     if (!node) throw new Error('no draggable marker');
     const bound = node.dragBoundFunc();
     expect(bound?.call(node, { x: -300, y: 9999 }, null as never)).toEqual({
-      x: 0,
-      y: 600,
+      x: -300,
+      y: 1200,
     });
     expect(bound?.call(node, { x: 5000, y: -5 }, null as never)).toEqual({
-      x: 1000,
-      y: 0,
+      x: 2000,
+      y: -5,
     });
 
     // ストア更新でも 0-100 に clamp

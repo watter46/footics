@@ -34,7 +34,7 @@ export interface SelectedObject {
 export interface PanelState {
   sidebarOpen: boolean;
   inspectorOpen: boolean;
-  rightPanelTab: 'formation' | 'squad' | 'inspector';
+  rightPanelTab: 'formation' | 'squad';
   isRightPanelOpen: boolean;
   exportModalOpen: boolean;
   projectManagerModalOpen: boolean;
@@ -65,7 +65,7 @@ export interface ToolSlice {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setInspectorOpen: (open: boolean) => void;
-  setRightPanelTab: (tab: 'formation' | 'squad' | 'inspector') => void;
+  setRightPanelTab: (tab: 'formation' | 'squad') => void;
   toggleRightPanel: () => void;
   setRightPanelOpen: (open: boolean) => void;
   openExportModal: (target?: ExportTarget) => void;
@@ -116,20 +116,10 @@ export const createToolSlice: StateCreator<
           selectedObjects: already
             ? s.selectedObjects.filter((o) => o.id !== obj.id)
             : [...s.selectedObjects, obj],
-          panels: {
-            ...s.panels,
-            inspectorOpen: true,
-            rightPanelTab: 'inspector',
-          },
         };
       }
       return {
         selectedObjects: [obj],
-        panels: {
-          ...s.panels,
-          inspectorOpen: true,
-          rightPanelTab: 'inspector',
-        },
       };
     }),
 
@@ -146,11 +136,6 @@ export const createToolSlice: StateCreator<
         const newItems = objects.filter((o) => !existingIds.has(o.id));
         return {
           selectedObjects: [...s.selectedObjects, ...newItems],
-          panels: {
-            ...s.panels,
-            inspectorOpen: objects.length > 0 || s.selectedObjects.length > 0,
-            rightPanelTab: 'inspector',
-          },
         };
       }
       return {
@@ -159,11 +144,6 @@ export const createToolSlice: StateCreator<
           objects.length === 1 && objects[0].kind === 'player'
             ? 'vision'
             : null,
-        panels: {
-          ...s.panels,
-          inspectorOpen: objects.length > 0,
-          rightPanelTab: 'inspector',
-        },
       };
     }),
 

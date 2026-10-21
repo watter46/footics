@@ -50,10 +50,7 @@ export const EXTENSION_DRAWING_TOOLS: DrawingToolPlugin[] = [
   TOOL_PLUGIN_PLAYER_3D_RING,
 ];
 
-export const WEB_DRAWING_TOOLS: DrawingToolPlugin[] = [
-  ...DRAWING_TOOLS_CORE,
-  TOOL_PLUGIN_PLAYER_2D,
-];
+export const WEB_DRAWING_TOOLS: DrawingToolPlugin[] = [...DRAWING_TOOLS_CORE];
 
 export function getDrawingTools(
   markerMode: '2d-only' | '3d-only' | 'all' = '2d-only',
@@ -68,5 +65,5 @@ export function getDrawingTools(
       TOOL_PLUGIN_PLAYER_3D_RING,
     ];
   }
-  return [...DRAWING_TOOLS_CORE, TOOL_PLUGIN_PLAYER_2D];
+  return [...DRAWING_TOOLS_CORE];
 }

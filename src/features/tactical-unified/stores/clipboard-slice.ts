@@ -83,11 +83,6 @@ export const createClipboardSlice: StateCreator<
       })),
       isDirty: true,
       selectedObjects: newSelectedObjects,
-      panels: {
-        ...s.panels,
-        inspectorOpen: true,
-        rightPanelTab: 'inspector',
-      },
     }));
   },
   duplicateSelectedObjects: (slideId) => {
@@ -130,11 +125,6 @@ export const createClipboardSlice: StateCreator<
       })),
       isDirty: true,
       selectedObjects: newSelectedObjects,
-      panels: {
-        ...s.panels,
-        inspectorOpen: true,
-        rightPanelTab: 'inspector',
-      },
     }));
   },
 });

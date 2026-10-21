@@ -23,6 +23,7 @@ import {
 import { calculateVirtualCanvasRect } from '../utils/virtual-canvas-rect';
 import { AnnotationLayer } from './AnnotationLayer';
 import { BackgroundImageLayer } from './BackgroundImageLayer';
+import { BallLayer } from './BallLayer';
 import { CanvasOverlays } from './CanvasOverlays';
 import { DrawingPreviewLayer } from './DrawingPreviewLayer';
 import { PlayerLayer } from './PlayerLayer';
@@ -206,6 +207,11 @@ export const CanvasStageContainer = forwardRef<
               mousePreviewPos={mousePreviewPos}
               editingTextId={editingTextId}
               onStartEditText={setEditingTextId}
+              nodesRegistryRef={nodesRegistryRef}
+            />
+            <BallLayer
+              width={vRect.width}
+              height={vRect.height}
               nodesRegistryRef={nodesRegistryRef}
             />
             <PlayerLayer

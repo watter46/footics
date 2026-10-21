@@ -89,17 +89,12 @@ export function createSlideForMode(
  * スライドの背景種別に応じたパネルタブ状態を解決
  */
 export function resolvePanelStateForSlide(
-  slide: Slide | undefined,
+  _slide: Slide | undefined,
   panels: PanelState,
   fallbackTab: PanelState['rightPanelTab'] = 'formation',
 ): PanelState {
-  const isImageBg = slide?.backgroundType === 'image';
   return {
     ...panels,
-    rightPanelTab: isImageBg
-      ? 'inspector'
-      : panels.rightPanelTab === 'inspector'
-        ? fallbackTab
-        : panels.rightPanelTab,
+    rightPanelTab: panels.rightPanelTab ?? fallbackTab,
   };
 }

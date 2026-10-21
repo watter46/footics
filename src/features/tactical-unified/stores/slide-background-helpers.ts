@@ -6,13 +6,18 @@ import type {
   TacticalProject,
 } from '@/lib/types/tactical-unified';
 import {
+  DEFAULT_442_AWAY,
   DEFAULT_442_HOME,
+  DEFAULT_4231_HOME,
   DEFAULT_BOUNDARY_BOX_SCREENSHOT,
   isVerticalAspectRatio,
   transformCoord,
 } from '@/lib/types/tactical-unified';
 
-function isPlayerInInitial442(p: Player, aspectRatio: AspectRatio): boolean {
+function isPlayerInInitialPositions(
+  p: Player,
+  aspectRatio: AspectRatio,
+): boolean {
   if (
     p.area !== 'pitch' ||
     p.focus ||
@@ -23,15 +28,39 @@ function isPlayerInInitial442(p: Player, aspectRatio: AspectRatio): boolean {
   ) {
     return false;
   }
-  const expectedDef = DEFAULT_442_HOME.find((def) => def.shirtNo === p.shirtNo);
-  if (!expectedDef) return false;
   const isVertical = isVerticalAspectRatio(aspectRatio);
-  const rawPos =
+
+  // Check 1: Current default (Home 4-2-3-1, Away 4-4-2)
+  const defInitial =
     p.team === 'home'
-      ? { x: expectedDef.x, y: expectedDef.y }
-      : { x: 100 - expectedDef.x, y: expectedDef.y };
-  const pos = isVertical ? transformCoord(rawPos, '16:9', aspectRatio) : rawPos;
-  return Math.abs(p.x - pos.x) < 0.01 && Math.abs(p.y - pos.y) < 0.01;
+      ? DEFAULT_4231_HOME.find((def) => def.shirtNo === p.shirtNo)
+      : DEFAULT_442_AWAY.find((def) => def.shirtNo === p.shirtNo);
+  if (defInitial) {
+    const rawPos = { x: defInitial.x, y: defInitial.y };
+    const pos = isVertical
+      ? transformCoord(rawPos, '16:9', aspectRatio)
+      : rawPos;
+    if (Math.abs(p.x - pos.x) < 0.01 && Math.abs(p.y - pos.y) < 0.01) {
+      return true;
+    }
+  }
+
+  // Check 2: Legacy 4-4-2 (Home 4-4-2, Away 4-4-2)
+  const def442 = DEFAULT_442_HOME.find((def) => def.shirtNo === p.shirtNo);
+  if (def442) {
+    const rawPos =
+      p.team === 'home'
+        ? { x: def442.x, y: def442.y }
+        : { x: 100 - def442.x, y: def442.y };
+    const pos = isVertical
+      ? transformCoord(rawPos, '16:9', aspectRatio)
+      : rawPos;
+    if (Math.abs(p.x - pos.x) < 0.01 && Math.abs(p.y - pos.y) < 0.01) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function isDefault442Slide(
@@ -53,7 +82,7 @@ export function isDefault442Slide(
     return false;
   }
   const aspect = slide.aspectRatio ?? fallbackAspect;
-  return slide.players.every((p) => isPlayerInInitial442(p, aspect));
+  return slide.players.every((p) => isPlayerInInitialPositions(p, aspect));
 }
 
 export function applyImageBackgroundToProject(

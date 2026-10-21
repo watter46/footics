@@ -1445,6 +1445,8 @@ describe('tactical-unified-store', () => {
       const store = useTacticalUnifiedStore.getState();
       const slideId = store.activeSlideId;
 
+      store.setAspectRatio('4:5');
+
       // 事前に境界線をカスタム値に変更
       store.setBoundaryBox(slideId, {
         x: 15,
@@ -1660,6 +1662,8 @@ describe('tactical-unified-store', () => {
     it('setPitchPosition で pitchPosition と pitchTransform が更新され、autoFitBoundaryBox に反映される', () => {
       const store = useTacticalUnifiedStore.getState();
       const slideId = store.activeSlideId;
+
+      store.setAspectRatio('4:5');
 
       // 4:5 (1080x1350) において panX=108 (10%), panY=-135 (-10%)
       store.setPitchPosition(slideId, { x: 108, y: -135 });

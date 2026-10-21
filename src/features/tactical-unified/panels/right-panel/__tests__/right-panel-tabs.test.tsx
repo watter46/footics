@@ -16,7 +16,6 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
     // Initially collapsed: rail icons exist
     expect(screen.getByRole('button', { name: /formation/i })).toBeDefined();
     expect(screen.getByRole('button', { name: /squad/i })).toBeDefined();
-    expect(screen.getByRole('button', { name: /properties/i })).toBeDefined();
     expect(screen.queryByText('Formation Presets')).toBeNull();
 
     // Clicking formation rail button expands panel and shows content
@@ -27,13 +26,9 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
     fireEvent.click(screen.getByRole('button', { name: /squad/i }));
     expect(screen.getByText('Squad & Bench')).toBeDefined();
 
-    // Switch to Properties tab
-    fireEvent.click(screen.getByRole('button', { name: /properties/i }));
-    expect(screen.getByText(/Properties — Slide Settings/i)).toBeDefined();
-
     // Collapse panel with collapse button
     fireEvent.click(screen.getByRole('button', { name: /collapse panel/i }));
-    expect(screen.queryByText(/Properties — Slide Settings/i)).toBeNull();
+    expect(screen.queryByText('Squad & Bench')).toBeNull();
   });
 
   it('FormationPanel allows applying formation and changing team', () => {

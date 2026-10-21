@@ -179,7 +179,7 @@ describe('AAWU 3-2: Timeline & Slide Operations Store', () => {
     expect(stateBefore.project.backgroundImageUrl).toBe(
       'data:image/png;base64,mock-capture-frame',
     );
-    expect(stateBefore.panels.rightPanelTab).toBe('inspector');
+    expect(stateBefore.panels.rightPanelTab).toBe('formation');
 
     // 4. 右クリック複製（duplicateSlide）を実行
     const dupSlideId = store.duplicateSlide(slide1Id);
@@ -187,7 +187,7 @@ describe('AAWU 3-2: Timeline & Slide Operations Store', () => {
     const stateAfter = useTacticalUnifiedStore.getState();
     expect(stateAfter.project.slides.length).toBe(2);
     expect(stateAfter.activeSlideId).toBe(dupSlideId);
-    expect(stateAfter.panels.rightPanelTab).toBe('inspector');
+    expect(stateAfter.panels.rightPanelTab).toBe('formation');
 
     const duplicatedSlide = stateAfter.project.slides.find(
       (sl) => sl.id === dupSlideId,
@@ -218,7 +218,7 @@ describe('AAWU 3-2: Timeline & Slide Operations Store', () => {
       'image',
     );
     expect(useTacticalUnifiedStore.getState().panels.rightPanelTab).toBe(
-      'inspector',
+      'formation',
     );
 
     // 左クリック「+」相当 (blank mode)
@@ -256,7 +256,7 @@ describe('AAWU 3-2: Timeline & Slide Operations Store', () => {
     expect(slide1State.project.backgroundImageUrl).toBe(
       'data:image/png;base64,snapshot',
     );
-    expect(slide1State.panels.rightPanelTab).toBe('inspector');
+    expect(slide1State.panels.rightPanelTab).toBe('formation');
 
     // 再度スライド2（白紙デフォルト）に切り替えるとデフォルトに戻る
     store.setActiveSlide(blankSlideId);

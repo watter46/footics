@@ -6,14 +6,19 @@ import { useCanvasStore } from '../../hooks/use-canvas-store';
 export function ToolbarResetButton() {
   const setAnnotations = useCanvasStore((s) => s.setAnnotations);
   const clearSelection = useCanvasStore((s) => s.clearSelection);
+  const markers = useCanvasStore((s) => s.annotations.markers);
 
   const handleReset = () => {
-    if (window.confirm('すべての描画オブジェクトを消去しますか？')) {
+    if (
+      window.confirm(
+        '矢印やゾーンなどの描画オブジェクトを消去しますか？（選手マーカーは保護されます）',
+      )
+    ) {
       setAnnotations({
         arrows: [],
         zones: [],
         texts: [],
-        markers: [],
+        markers,
       });
       clearSelection();
     }

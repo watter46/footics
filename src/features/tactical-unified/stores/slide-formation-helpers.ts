@@ -33,25 +33,33 @@ export function buildTeamFormationPlayers(
   const pitchPlayers: Player[] = [];
   positions.forEach((pos, idx) => {
     const rawPos = getFormationActualPos(pos, team, mode);
-    const actualPos = isVertical
+    let targetPos = isVertical
       ? transformCoord(rawPos, '16:9', aspectRatio)
       : rawPos;
+
+    // GK 位置の最適化（ゴールライン直前・中央）
+    if (pos.position === 'GK') {
+      const gkBasePos = { x: team === 'home' ? 7 : 93, y: 50 };
+      targetPos = isVertical
+        ? transformCoord(gkBasePos, '16:9', aspectRatio)
+        : gkBasePos;
+    }
+
+    // ピッチ白線枠内 (3..97) への強制収容
+    const clampedX = Math.max(3, Math.min(97, targetPos.x));
+    const clampedY = Math.max(3, Math.min(97, targetPos.y));
+
     let player = existingPool[idx];
     if (player) {
       player = {
         ...player,
         area: 'pitch',
-        x: Math.max(0, Math.min(100, actualPos.x)),
-        y: Math.max(0, Math.min(100, actualPos.y)),
+        x: clampedX,
+        y: clampedY,
         position: pos.position,
       };
     } else {
-      player = createDefaultPlayer(
-        team,
-        Math.max(0, Math.min(100, actualPos.x)),
-        Math.max(0, Math.min(100, actualPos.y)),
-        primaryColor,
-      );
+      player = createDefaultPlayer(team, clampedX, clampedY, primaryColor);
       player.shirtNo = String(pos.id);
       player.position = pos.position;
     }

@@ -29,7 +29,6 @@ describe('BoundaryBoxHud Ratio Snap Presets', () => {
       name: /Boundary Box Ratio HUD/i,
     });
     expect(hud).toBeDefined();
-    expect(screen.getAllByText('4:5').length).toBeGreaterThanOrEqual(1);
 
     const trigger = screen.getByRole('button', {
       name: 'Toggle Boundary Box Settings',
@@ -67,7 +66,7 @@ describe('BoundaryBoxHud Ratio Snap Presets', () => {
     );
     expect(activeSlide?.boundaryBox?.enabled).toBe(true);
     expect(activeSlide?.boundaryBox?.height).toBe(100);
-    expect(activeSlide?.boundaryBox?.width).toBe(100);
+    expect(activeSlide?.boundaryBox?.width).toBe(45);
   });
 });
 

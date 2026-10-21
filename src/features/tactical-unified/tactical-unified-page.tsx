@@ -69,6 +69,7 @@ export function TacticalUnifiedPage({
   const canvasRef = useRef<CanvasCoreHandle | null>(null);
 
   const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
+  const movePlayerToBench = useTacticalUnifiedStore((s) => s.movePlayerToBench);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
 
   const handleDndEnd = (event: DragEndEvent) => {
@@ -97,6 +98,13 @@ export function TacticalUnifiedPage({
         normCoords.x,
         normCoords.y,
       );
+    } else if (over.id === 'tactical-bench-droppable') {
+      const playerId =
+        activeData?.playerId ||
+        String(active.id).replace('pitch-player-', '').replace('marker-', '');
+      if (playerId) {
+        movePlayerToBench(activeSlideId, playerId);
+      }
     }
   };
 

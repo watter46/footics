@@ -101,7 +101,7 @@ export const PlayerMarker = React.memo(function PlayerMarker({
   const handleDblClick = useCallback(
     (e: { cancelBubble: boolean }) => {
       e.cancelBubble = true;
-      setRightPanelTab('inspector');
+      setRightPanelTab('squad');
       setRightPanelOpen(true);
     },
     [setRightPanelTab, setRightPanelOpen],

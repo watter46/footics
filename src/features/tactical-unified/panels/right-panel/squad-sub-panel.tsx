@@ -5,21 +5,15 @@
  * Dedicated Right Panel: Squad & Substitutes (Bench) Management
  */
 
-import { ChevronDown, UserPlus, Users } from 'lucide-react';
+import { useDroppable } from '@dnd-kit/core';
+import { Sparkles, UserPlus, Users } from 'lucide-react';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
-import {
-  getPositionBadgeClass,
-  groupPlayersByPosition,
-  POSITION_GROUP_LABELS,
-  POSITION_GROUPS,
-  type PositionGroup,
-} from '@/lib/tactical/player-formatting';
-import { BenchPlayerRow } from './bench-player-row';
+import { FormationBenchItem } from './formation-bench-item';
 
 export function SquadSubPanel() {
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
@@ -35,19 +29,15 @@ export function SquadSubPanel() {
   const [activeSwapPlayerId, setActiveSwapPlayerId] = useState<string | null>(
     null,
   );
-  const [openBenchSections, setOpenBenchSections] = useState<
-    Record<PositionGroup, boolean>
-  >({
-    GK: true,
-    DF: true,
-    MF: true,
-    FW: true,
-    OTHER: true,
-  });
   const [isAddingSub, setIsAddingSub] = useState(false);
   const [newSubName, setNewSubName] = useState('');
   const [newSubNo, setNewSubNo] = useState('');
   const [newSubPos, setNewSubPos] = useState('SUB');
+
+  const { setNodeRef: setBenchDroppableRef, isOver } = useDroppable({
+    id: 'tactical-bench-droppable',
+    data: { type: 'bench', team: activeTeam },
+  });
 
   const teamPlayers = useMemo(() => {
     if (!activeSlide) return { pitch: [], bench: [] };
@@ -60,15 +50,61 @@ export function SquadSubPanel() {
     return { pitch, bench };
   }, [activeSlide, activeTeam]);
 
-  const benchGroups = useMemo(
-    () => groupPlayersByPosition(teamPlayers.bench),
-    [teamPlayers.bench],
-  );
-
   const teamColor =
     activeTeam === 'home'
       ? project.homeColor.primary
       : project.awayColor.primary;
+
+  const POSITION_ORDER: Record<string, number> = {
+    GK: 1,
+    DF: 2,
+    CB: 2,
+    LB: 2,
+    RB: 2,
+    LWB: 2,
+    RWB: 2,
+    MF: 3,
+    DM: 3,
+    CM: 3,
+    AM: 3,
+    LM: 3,
+    RM: 3,
+    FW: 4,
+    CF: 4,
+    ST: 4,
+    LW: 4,
+    RW: 4,
+    SS: 4,
+    OTHER: 5,
+  };
+
+  const handleOrganizeBench = () => {
+    if (!activeSlide) return;
+    const sortedBench = [...teamPlayers.bench].sort((a, b) => {
+      const orderA = POSITION_ORDER[a.position ?? 'OTHER'] ?? 5;
+      const orderB = POSITION_ORDER[b.position ?? 'OTHER'] ?? 5;
+      if (orderA !== orderB) return orderA - orderB;
+      const numA = Number.parseInt(a.shirtNo || '999', 10);
+      const numB = Number.parseInt(b.shirtNo || '999', 10);
+      return numA - numB;
+    });
+
+    const otherPlayers = activeSlide.players.filter(
+      (p) => !(p.team === activeTeam && p.area === 'bench'),
+    );
+    useTacticalUnifiedStore.setState((s) => ({
+      ...s,
+      project: {
+        ...s.project,
+        slides: s.project.slides.map((sl) =>
+          sl.id === activeSlideId
+            ? { ...sl, players: [...otherPlayers, ...sortedBench] }
+            : sl,
+        ),
+      },
+      isDirty: true,
+    }));
+  };
 
   const handleAddSub = (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,12 +188,21 @@ export function SquadSubPanel() {
           </div>
         </div>
 
-        {/* 2. Substitutes / Bench Area */}
+        {/* 2. Substitutes / Bench Area (自由配置ベンチキャンバス 3列グリッド) */}
         <div className="p-2.5 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
               Substitutes ({teamPlayers.bench.length})
             </span>
+            <button
+              type="button"
+              onClick={handleOrganizeBench}
+              className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-[10px] font-medium transition-colors cursor-pointer border border-white/10 shadow-xs"
+              title="ポジション順（GK/DF/MF/FW）に3列再整列"
+            >
+              <Sparkles size={11} className="text-amber-400" />
+              <span>整理</span>
+            </button>
           </div>
 
           {/* New Sub Player Form */}
@@ -198,94 +243,44 @@ export function SquadSubPanel() {
             </form>
           )}
 
-          {/* Bench Players (Position-Grouped Accordion) */}
-          {teamPlayers.bench.length === 0 ? (
-            <div className="p-4 rounded-lg border border-dashed border-white/10 text-center text-white/30 text-[11px]">
-              No substitutes on bench.
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar pr-0.5">
-              {POSITION_GROUPS.filter(
-                (grp) => grp !== 'OTHER' || benchGroups.OTHER.length > 0,
-              ).map((grp) => {
-                const groupPlayers = benchGroups[grp];
-                const isOpen = openBenchSections[grp];
-                return (
-                  <div
-                    key={`bench-grp-${grp}`}
-                    className="rounded-lg bg-black/20 border border-white/5 overflow-hidden"
-                  >
-                    {/* Group Accordion Header */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenBenchSections((prev) => ({
-                          ...prev,
-                          [grp]: !prev[grp],
-                        }))
-                      }
-                      className="w-full flex items-center justify-between px-2.5 py-1.5 bg-white/[0.03] hover:bg-white/[0.06] text-left transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`text-[9px] px-1 py-0.2 rounded border font-mono font-semibold ${getPositionBadgeClass(grp)}`}
-                        >
-                          {grp}
-                        </span>
-                        <span className="text-[10px] font-medium text-white/70">
-                          {POSITION_GROUP_LABELS[grp]}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] text-white/40 bg-white/5 px-1.5 py-0.2 rounded-full font-mono">
-                          {groupPlayers.length}
-                        </span>
-                        <ChevronDown
-                          size={11}
-                          className={`text-white/40 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                        />
-                      </div>
-                    </button>
-
-                    {/* Group Items */}
-                    {isOpen && (
-                      <div className="p-1.5 space-y-1">
-                        {groupPlayers.length === 0 ? (
-                          <div className="py-1 text-center text-[10px] text-white/20 italic">
-                            No {POSITION_GROUP_LABELS[grp].toLowerCase()}
-                          </div>
-                        ) : (
-                          groupPlayers.map((player) => (
-                            <BenchPlayerRow
-                              key={player.id}
-                              player={player}
-                              activeSlideId={activeSlideId}
-                              pitchPlayers={teamPlayers.pitch}
-                              teamColor={teamColor}
-                              isSwapActive={activeSwapPlayerId === player.id}
-                              onDeploy={(id) =>
-                                movePlayerToPitch(activeSlideId, id)
-                              }
-                              onToggleSwap={(id) =>
-                                setActiveSwapPlayerId((cur) =>
-                                  cur === id ? null : id,
-                                )
-                              }
-                              onSwap={(benchId, pitchId) =>
-                                swapPlayers(activeSlideId, benchId, pitchId)
-                              }
-                              onRemove={(id) => removePlayer(activeSlideId, id)}
-                              onCloseSwap={() => setActiveSwapPlayerId(null)}
-                            />
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* Droppable Bench Canvas Area */}
+          <div
+            ref={setBenchDroppableRef}
+            className={`min-h-[160px] max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar p-2 rounded-xl border-2 transition-all ${
+              isOver
+                ? 'border-blue-500/80 bg-blue-500/10 shadow-lg'
+                : 'border-white/10 bg-black/30'
+            }`}
+          >
+            {teamPlayers.bench.length === 0 ? (
+              <div className="h-32 flex flex-col items-center justify-center border border-dashed border-white/10 rounded-lg text-white/30 text-xs">
+                <span>ベンチ選手がいません</span>
+                <span className="text-[10px] opacity-60 mt-1">
+                  ピッチからドロップして退避
+                </span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {teamPlayers.bench.map((player) => (
+                  <FormationBenchItem
+                    key={player.id}
+                    player={player}
+                    teamColor={teamColor}
+                    activeSlideId={activeSlideId}
+                    pitchPlayers={teamPlayers.pitch}
+                    activeSwapPlayerId={activeSwapPlayerId}
+                    onToggleSwap={(id) =>
+                      setActiveSwapPlayerId((cur) => (cur === id ? null : id))
+                    }
+                    onCloseSwap={() => setActiveSwapPlayerId(null)}
+                    onMoveToPitch={(sId, pId) => movePlayerToPitch(sId, pId)}
+                    onSwapPlayers={(sId, p1, p2) => swapPlayers(sId, p1, p2)}
+                    onRemovePlayer={(sId, pId) => removePlayer(sId, pId)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

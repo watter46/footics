@@ -185,7 +185,7 @@ function createProjectMetaActions(set: SetState) {
           activeSlideId: result.activeSlideId,
           panels: {
             ...s.panels,
-            rightPanelTab: 'inspector',
+            rightPanelTab: 'formation',
             isRightPanelOpen: false,
           },
           selectedObjects: [],

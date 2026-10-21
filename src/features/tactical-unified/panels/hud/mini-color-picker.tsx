@@ -17,7 +17,16 @@ export function MiniColorPicker({
   isRing = false,
 }: MiniColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [openDownward, setOpenDownward] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const toggleOpen = () => {
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setOpenDownward(rect.top < 220);
+    }
+    setIsOpen(!isOpen);
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -40,7 +49,7 @@ export function MiniColorPicker({
     <div ref={containerRef} className="relative flex items-center">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleOpen}
         title={title}
         className={`w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-110 shadow-xs flex items-center justify-center shrink-0 overflow-hidden ${
           isRing ? 'border-2 border-white/80' : 'border border-white/30'
@@ -67,7 +76,9 @@ export function MiniColorPicker({
           role="dialog"
           aria-label="カラーパレット"
           tabIndex={-1}
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#1b1b1b] border border-white/20 rounded-xl shadow-2xl z-50 flex flex-col gap-1.5 w-44"
+          className={`absolute ${
+            openDownward ? 'top-full mt-2' : 'bottom-full mb-2'
+          } left-1/2 -translate-x-1/2 p-2 bg-[#1b1b1b] border border-white/20 rounded-xl shadow-2xl z-50 flex flex-col gap-1.5 w-44`}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
