@@ -21,8 +21,11 @@ async function loadAndInjectMatch(
   matchId: string,
   minute: number,
 ): Promise<void> {
+  const numId = Number(matchId);
   const match =
-    (await db.matches.get(matchId)) || (await db.matches.get(String(matchId)));
+    (!Number.isNaN(numId) ? await db.matches.get(numId as any) : null) ||
+    (await db.matches.get(matchId)) ||
+    (await db.matches.get(String(matchId)));
   if (!match) return;
   // 保存済みの同一試合プロジェクトがあれば既存スライドを優先し上書きしない
   const saved = await loadActiveProjectFromDb(String(match.id));

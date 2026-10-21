@@ -154,7 +154,7 @@ describe('ContextHud', () => {
 });
 
 describe('BoundaryBoxHud', () => {
-  it('BoundaryBoxHud で 4:5 などの比率ボタン押下時に boundaryBox が中央スナップすること', () => {
+  it('BoundaryBoxHud で「全画面」「ピッチフィット」ボタンが機能すること', () => {
     const { store } = renderWithStore(
       <BoundaryBoxHud
         stageSize={{ width: 800, height: 600 }}
@@ -162,10 +162,10 @@ describe('BoundaryBoxHud', () => {
       />,
       {
         defaultBoundaryBox: {
-          x: 0,
-          y: 0,
-          width: 100,
-          height: 100,
+          x: 10,
+          y: 10,
+          width: 80,
+          height: 80,
           enabled: true,
           visible: true,
         },
@@ -177,17 +177,28 @@ describe('BoundaryBoxHud', () => {
     });
     fireEvent.click(toggleBtn);
 
-    const btn45 = screen.getByRole('button', {
-      name: /Snap boundary to 4:5/i,
+    // 1. 全画面ボタン押下
+    const fullBtn = screen.getByRole('button', {
+      name: '全画面',
     });
-    fireEvent.click(btn45);
+    fireEvent.click(fullBtn);
 
-    const updatedBox = store.getState().boundaryBox;
+    let updatedBox = store.getState().boundaryBox;
     expect(updatedBox.visible).toBe(true);
-    // 4:5 aspect ratio on 16:9 canvas centers horizontally
+    expect(updatedBox.width).toBe(100);
     expect(updatedBox.height).toBe(100);
-    expect(updatedBox.width).toBeCloseTo(45, 0);
-    expect(updatedBox.x).toBeGreaterThan(0);
+    expect(updatedBox.x).toBe(0);
+    expect(updatedBox.y).toBe(0);
+
+    // 2. ピッチフィットボタン押下
+    const fitBtn = screen.getByRole('button', {
+      name: 'ピッチフィット',
+    });
+    fireEvent.click(fitBtn);
+
+    updatedBox = store.getState().boundaryBox;
+    expect(updatedBox.visible).toBe(true);
+    expect(updatedBox.fitTarget).toBe('pitch');
   });
 });
 

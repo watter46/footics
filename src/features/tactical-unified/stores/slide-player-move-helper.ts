@@ -90,3 +90,50 @@ export function computeSlideAfterPlayerMoveByDelta(
     arrows: updatedArrows,
   };
 }
+
+/**
+ * ピッチ上の既存選手と重ならない安全な空き座標（0..100%）を自動算出する純粋関数
+ */
+export function findSafePitchPosition(
+  existingPlayers: Array<{ x: number; y: number; area: string }>,
+  team: 'home' | 'away' | 'neutral' = 'home',
+): { x: number; y: number } {
+  const pitchPlayers = existingPlayers.filter((p) => p.area === 'pitch');
+  if (pitchPlayers.length === 0) {
+    return team === 'away' ? { x: 60, y: 50 } : { x: 40, y: 50 };
+  }
+
+  // チームに応じた探索範囲 (Home は自陣〜中盤 x: 25..55, Away は自陣〜中盤 x: 45..75, y: 20..80)
+  const minX = team === 'away' ? 45 : 25;
+  const maxX = team === 'away' ? 75 : 55;
+  const minY = 20;
+  const maxY = 80;
+
+  // グリッド候補（5%刻み）
+  const candidates: Array<{ x: number; y: number }> = [];
+  for (let x = minX; x <= maxX; x += 5) {
+    for (let y = minY; y <= maxY; y += 5) {
+      candidates.push({ x, y });
+    }
+  }
+
+  let bestCandidate = candidates[0] ?? { x: 50, y: 50 };
+  let maxMinDist = -1;
+
+  for (const cand of candidates) {
+    let minDist = Number.POSITIVE_INFINITY;
+    for (const p of pitchPlayers) {
+      const dist = Math.hypot(cand.x - p.x, cand.y - p.y);
+      if (dist < minDist) {
+        minDist = dist;
+      }
+    }
+    // 既存選手との最小距離が最も大きい（最も余裕のある）候補点を選択
+    if (minDist > maxMinDist) {
+      maxMinDist = minDist;
+      bestCandidate = cand;
+    }
+  }
+
+  return bestCandidate;
+}

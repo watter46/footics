@@ -6,6 +6,7 @@ import { BoundaryBoxHud } from '../boundary-box-hud';
 describe('BoundaryBoxHud Ratio Snap Presets', () => {
   beforeEach(() => {
     useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.getState().setAspectRatio('16:9');
     useTacticalUnifiedStore.getState().setIsExporting(false);
     const slideId = useTacticalUnifiedStore.getState().activeSlideId;
     const currentBox = useTacticalUnifiedStore
@@ -73,6 +74,7 @@ describe('BoundaryBoxHud Ratio Snap Presets', () => {
 describe('BoundaryBoxHud Fit Actions', () => {
   beforeEach(() => {
     useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.getState().setAspectRatio('16:9');
     useTacticalUnifiedStore.getState().setIsExporting(false);
   });
 
@@ -153,6 +155,7 @@ describe('BoundaryBoxHud Fit Actions', () => {
 describe('BoundaryBoxHud Visibility & Tilt Controls', () => {
   beforeEach(() => {
     useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.getState().setAspectRatio('16:9');
     useTacticalUnifiedStore.getState().setIsExporting(false);
     const slideId = useTacticalUnifiedStore.getState().activeSlideId;
     const currentBox = useTacticalUnifiedStore

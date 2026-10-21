@@ -599,7 +599,7 @@ export const TacticalProjectSchema = z.object({
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 
-  aspectRatio: AspectRatioSchema.default('16:9'),
+  aspectRatio: AspectRatioSchema.default('4:5'),
 
   backgroundType: z.enum(['pitch', 'image', 'blank']).default('pitch'),
   backgroundImageUrl: z.string().optional(),
@@ -800,7 +800,7 @@ export const DEFAULT_442_HOME: Array<{
 export function createDefaultInitialPlayers(
   homeColor = '#034694',
   awayColor = '#ef4444',
-  aspectRatio: AspectRatio = '16:9',
+  aspectRatio: AspectRatio = '4:5',
 ): Player[] {
   const isVertical = isVerticalAspectRatio(aspectRatio);
   const homePlayers: Player[] = DEFAULT_4231_HOME.map((p) => {
@@ -831,7 +831,7 @@ export function createDefaultInitialPlayers(
 export function createDefault442Players(
   homeColor = '#034694',
   awayColor = '#ef4444',
-  aspectRatio: AspectRatio = '16:9',
+  aspectRatio: AspectRatio = '4:5',
 ): Player[] {
   const isVertical = isVerticalAspectRatio(aspectRatio);
   const homePlayers: Player[] = DEFAULT_442_HOME.map((p) => {
@@ -871,7 +871,7 @@ export function createDefaultProject(id: string): TacticalProject {
     title: 'Untitled Project',
     createdAt: now,
     updatedAt: now,
-    aspectRatio: '16:9',
+    aspectRatio: '4:5',
     backgroundType: 'pitch',
     homeColor,
     awayColor,
@@ -884,7 +884,7 @@ export function createDefaultProject(id: string): TacticalProject {
         homeColor.primary,
         awayColor.primary,
         DEFAULT_BOUNDARY_BOX_16_9,
-        '16:9',
+        '4:5',
       ),
     ],
     tags: [],
@@ -897,7 +897,7 @@ export function createDefaultSlide(
   homeColor?: string,
   awayColor?: string,
   boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_16_9,
-  aspectRatio: AspectRatio = '16:9',
+  aspectRatio: AspectRatio = '4:5',
 ): Slide {
   return {
     id: id ?? crypto.randomUUID(),

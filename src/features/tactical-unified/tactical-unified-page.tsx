@@ -81,11 +81,24 @@ export function TacticalUnifiedPage({
       activeData?.type === 'bench-player' &&
       over.id === 'tactical-pitch-droppable'
     ) {
-      const activator = event.activatorEvent as MouseEvent | TouchEvent;
-      const clientX =
-        'clientX' in activator ? activator.clientX + event.delta.x : 0;
-      const clientY =
-        'clientY' in activator ? activator.clientY + event.delta.y : 0;
+      const activator = event.activatorEvent as
+        | MouseEvent
+        | TouchEvent
+        | PointerEvent;
+      let rawClientX = 0;
+      let rawClientY = 0;
+      if ('clientX' in activator) {
+        rawClientX = activator.clientX;
+        rawClientY = activator.clientY;
+      } else if (
+        'touches' in activator &&
+        (activator as TouchEvent).touches[0]
+      ) {
+        rawClientX = (activator as TouchEvent).touches[0]!.clientX;
+        rawClientY = (activator as TouchEvent).touches[0]!.clientY;
+      }
+      const clientX = rawClientX + event.delta.x;
+      const clientY = rawClientY + event.delta.y;
 
       let normCoords = { x: 50, y: 50 };
       if (over.rect) {

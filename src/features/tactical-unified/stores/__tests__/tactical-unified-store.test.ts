@@ -1981,5 +1981,72 @@ describe('tactical-unified-store', () => {
       expect(slide?.zones.length).toBe(0);
       expect(slide?.texts.length).toBe(0);
     });
+
+    it('resetSlideKeepSquad でメンバー構成を維持しつつ配置・ボール・境界線をリセットし、自由描画を白紙化する', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      // 選手を移動
+      const player0 = store.project.slides[0]?.players[0];
+      expect(player0).toBeDefined();
+      store.movePlayer(slideId, player0?.id ?? '', 88, 99);
+
+      // ボールを移動
+      store.setBallPosition(slideId, 10, 20);
+
+      // 境界線を変更
+      store.setBoundaryBox(slideId, {
+        x: 10,
+        y: 10,
+        width: 80,
+        height: 80,
+        enabled: true,
+        fitTarget: 'custom',
+      });
+
+      // 矢印を追加
+      store.addArrow(slideId, {
+        id: 'arrow-keep-test',
+        annotationType: 'arrow',
+        arrowType: 'pass',
+        curveType: 'straight',
+        points: [
+          { x: 10, y: 10 },
+          { x: 20, y: 20 },
+        ],
+        color: '#ffffff',
+        strokeWidth: 2,
+        dashArray: [],
+        arrowHead: true,
+      });
+
+      // resetSlideKeepSquad 実行
+      store.resetSlideKeepSquad(slideId);
+
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((sl) => sl.id === slideId);
+
+      // 自由描画は消去
+      expect(slide?.arrows).toEqual([]);
+      expect(slide?.zones).toEqual([]);
+      expect(slide?.texts).toEqual([]);
+
+      // ボールは (50, 50)
+      expect(slide?.ball.x).toBe(50);
+      expect(slide?.ball.y).toBe(50);
+
+      // 境界線は全画面 (100% x 100%)
+      expect(slide?.boundaryBox?.x).toBe(0);
+      expect(slide?.boundaryBox?.y).toBe(0);
+      expect(slide?.boundaryBox?.width).toBe(100);
+      expect(slide?.boundaryBox?.height).toBe(100);
+
+      // 選手0の座標は初期位置に戻る (x !== 88)
+      const updatedPlayer0 = slide?.players.find((p) => p.id === player0?.id);
+      expect(updatedPlayer0?.x).not.toBe(88);
+      expect(updatedPlayer0?.y).not.toBe(99);
+      expect(updatedPlayer0?.shirtNo).toBe(player0?.shirtNo);
+    });
   });
 });

@@ -1,7 +1,6 @@
 import { useMemo, useRef } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
 import {
   batchDrawLayers,
@@ -59,17 +58,11 @@ export function calculatePitchDimensions(
   if (stage) {
     const stageWidth = stage.width();
     const stageHeight = stage.height();
-    const aspectRatio =
-      useTacticalUnifiedStore.getState().project.aspectRatio || '16:9';
-    const rect = calculatePitchRect(
-      { width: stageWidth, height: stageHeight },
-      aspectRatio,
-    );
     return {
-      width: rect.width,
-      height: rect.height,
-      x: rect.x,
-      y: rect.y,
+      width: stageWidth,
+      height: stageHeight,
+      x: 0,
+      y: 0,
     };
   }
   return { width: 800, height: 450, x: 0, y: 0 };

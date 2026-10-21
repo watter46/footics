@@ -50,6 +50,7 @@ function useBallObjectState({
     stageSize,
     ghostGroupRef,
     ghostLineRef,
+    nodesRegistryRef,
   });
 
   const baseDim = Math.min(stageSize.width, stageSize.height);
@@ -141,9 +142,9 @@ export const BallObject = React.memo(function BallObject(
 
   return (
     <>
-      {/* ── ボール選択時のゴーストボール & 追跡矢印 & ベジェハンドル ── */}
+      {/* ── スライド間ゴーストボール & 追跡矢印 & ベジェハンドル ── */}
       <BallGhostTrajectory
-        isSelected={isSelected && !drag.isDragging}
+        isSelected={isSelected}
         hasPrevBall={prevInfo.hasPrevBall}
         prevBall={prevInfo.prevBall}
         ball={ball}
@@ -153,6 +154,7 @@ export const BallObject = React.memo(function BallObject(
         radius={radius}
         ballImage={ballImage}
         stageSize={stageSize}
+        nodesRegistryRef={props.nodesRegistryRef}
         onUpdateTrajectory={handleUpdateTrajectory}
       />
 

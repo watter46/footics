@@ -1,5 +1,8 @@
 import type { StateCreator } from 'zustand';
-import { computeSlideAfterPlayerMoveByDelta } from './slide-player-move-helper';
+import {
+  computeSlideAfterPlayerMoveByDelta,
+  findSafePitchPosition,
+} from './slide-player-move-helper';
 import { computeSlideAfterPlayerSwap } from './slide-player-swap-helper';
 import { recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
@@ -64,6 +67,7 @@ export const createSlidePlayerMoveSlice: StateCreator<
                 badges: [],
                 connectLines: [],
                 focus: undefined,
+                trajectory: undefined,
               }
             : {
                 ...p,
@@ -96,6 +100,7 @@ export const createSlidePlayerMoveSlice: StateCreator<
                   badges: [],
                   connectLines: [],
                   focus: undefined,
+                  trajectory: undefined,
                 }
               : p,
           ),
@@ -110,15 +115,29 @@ export const createSlidePlayerMoveSlice: StateCreator<
       };
     }),
 
-  movePlayerToPitch: (slideId, playerId, x = 50, y = 50) =>
+  movePlayerToPitch: (slideId, playerId, x, y) =>
     set((s) => ({
       ...recordHistory(s),
-      project: updateSlideInProject(s.project, slideId, (sl) => ({
-        ...sl,
-        players: sl.players.map((p) =>
-          p.id === playerId ? { ...p, area: 'pitch', x, y } : p,
-        ),
-      })),
+      project: updateSlideInProject(s.project, slideId, (sl) => {
+        const targetPlayer = sl.players.find((p) => p.id === playerId);
+        const autoPos =
+          x === undefined || y === undefined
+            ? findSafePitchPosition(sl.players, targetPlayer?.team)
+            : { x, y };
+        return {
+          ...sl,
+          players: sl.players.map((p) =>
+            p.id === playerId
+              ? {
+                  ...p,
+                  area: 'pitch',
+                  x: autoPos.x,
+                  y: autoPos.y,
+                }
+              : p,
+          ),
+        };
+      }),
       isDirty: true,
     })),
 

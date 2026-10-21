@@ -10,7 +10,7 @@ import { PlayerMarkerLabel } from '@/features/tactical-unified/objects/player/co
 import { PlayerMarkerRing } from '@/features/tactical-unified/objects/player/components/player-marker-ring';
 import { PlayerVisionCone } from '@/features/tactical-unified/objects/player/components/player-vision-cone';
 import { getLastName } from '@/lib/tactical/player-formatting';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { AspectRatio, Player } from '@/lib/types/tactical-unified';
 
 export interface PlayerMarkerItemProps {
   marker: Player;
@@ -22,6 +22,7 @@ export interface PlayerMarkerItemProps {
   isInteractive: boolean;
   connectingPlayerId: string | null;
   nodesRegistryRef?: React.MutableRefObject<unknown>;
+  aspectRatio?: AspectRatio;
   onDragStart: (e: KonvaEventObject<DragEvent>, markerId: string) => void;
   onDragMove: (e: KonvaEventObject<DragEvent>, markerId: string) => void;
   onDragEnd: (e: KonvaEventObject<DragEvent>, marker: Player) => void;
@@ -39,6 +40,7 @@ export function PlayerMarkerItem({
   isInteractive,
   connectingPlayerId,
   nodesRegistryRef,
+  aspectRatio,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -48,7 +50,9 @@ export function PlayerMarkerItem({
   const pxX = (marker.x / 100) * width;
   const pxY = (marker.y / 100) * height;
   const sizeScale = marker.style?.sizeScale ?? 1.0;
-  const radius = baseDim * 0.032 * sizeScale;
+  const isVerticalAspect = aspectRatio === '4:5' || aspectRatio === '9:16';
+  const verticalScale = isVerticalAspect ? 0.85 : 1.0;
+  const radius = baseDim * 0.032 * sizeScale * verticalScale;
   const numScale = marker.style?.numberSizeScale ?? 1.0;
   const labelScale = marker.style?.labelSizeScale ?? 1.0;
   const displayName = marker.name ? getLastName(marker.name) : '';

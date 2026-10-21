@@ -3,7 +3,11 @@ import type Konva from 'konva';
 import React from 'react';
 import { Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  selectPreviousSlide,
+  useTacticalUnifiedStore,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
+import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { CanvasStoreProvider } from '../../store/canvas-store-provider';
 import { PlayerLayer } from '../PlayerLayer';
 
@@ -140,5 +144,49 @@ describe('PlayerLayer teamVisibility filtering', () => {
     expect(textValues).not.toContain('9');
     expect(textValues).toContain('10');
     expect(textValues).toContain('REF');
+  });
+});
+
+describe('PlayerLayer ghost trajectory for moved players', () => {
+  it('前スライドから移動があった選手は非選択時でもゴースト軌道（GhostTrajectoryArrow）が描画される', () => {
+    useTacticalUnifiedStore.getState().resetProject();
+    const slide1Id = useTacticalUnifiedStore.getState().activeSlideId;
+    const basePlayer = createDefaultPlayer('home', 20, 20, '#001489');
+    const playerA = {
+      ...basePlayer,
+      id: 'p-1',
+      shirtNo: '7',
+      x: 20,
+      y: 20,
+    };
+    useTacticalUnifiedStore
+      .getState()
+      .updateSlide(slide1Id, { players: [playerA] });
+
+    // スライド2を作成し、選手を (20,20) から (60,60) へ移動
+    const slide2Id = useTacticalUnifiedStore
+      .getState()
+      .duplicateSlide(slide1Id);
+    useTacticalUnifiedStore.getState().updateSlide(slide2Id, {
+      players: [{ ...playerA, x: 60, y: 60 }],
+    });
+    useTacticalUnifiedStore.getState().setActiveSlide(slide2Id);
+
+    const prev = selectPreviousSlide(useTacticalUnifiedStore.getState());
+    expect(prev).not.toBeNull();
+    expect(prev?.players.find((p) => p.id === 'p-1')?.x).toBe(20);
+
+    const rawMarkers = JSON.stringify({
+      arrows: [],
+      zones: [],
+      texts: [],
+      markers: [{ ...playerA, x: 60, y: 60 }],
+    });
+
+    const { stageRef } = renderPlayerLayer(rawMarkers);
+
+    // 非選択状態でも GhostTrajectoryArrow の Arrow がレンダリングされていること
+    const arrows = stageRef.current?.find('Arrow') ?? [];
+    expect(arrows.length).toBeGreaterThan(0);
   });
 });

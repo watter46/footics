@@ -1,6 +1,13 @@
 'use client';
 
-import { Lock, Minus, Plus, Trash2, Unlock } from 'lucide-react';
+import {
+  ArrowDownToLine,
+  Lock,
+  Minus,
+  Plus,
+  Trash2,
+  Unlock,
+} from 'lucide-react';
 import { useCanvasStore } from '../../hooks/use-canvas-store';
 import { MiniColorPicker } from './mini-color-picker';
 import { PlayerQuickActions } from './player-quick-actions';
@@ -15,6 +22,7 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
   );
   const updateMarker = useCanvasStore((s) => s.updateMarker);
   const removeMarker = useCanvasStore((s) => s.removeMarker);
+  const moveMarkerToBench = useCanvasStore((s) => s.moveMarkerToBench);
   const clearSelection = useCanvasStore((s) => s.clearSelection);
 
   if (!player) return null;
@@ -130,6 +138,24 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
       </button>
 
       <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+
+      {/* ベンチへ退避ボタン */}
+      {moveMarkerToBench && (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              moveMarkerToBench(player.id);
+              clearSelection();
+            }}
+            className="p-1 rounded-md text-white/60 hover:text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer"
+            title="ベンチへ退避"
+          >
+            <ArrowDownToLine size={13} />
+          </button>
+          <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+        </>
+      )}
 
       {/* 削除ボタン */}
       <button

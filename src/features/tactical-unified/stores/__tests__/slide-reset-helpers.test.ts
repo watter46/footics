@@ -9,6 +9,7 @@ import {
 } from '@/lib/types/tactical-unified';
 import {
   filterLockedSelectedObjects,
+  resetSlideKeepSquadData,
   resetSlideObjectsData,
 } from '../slide-reset-helpers';
 
@@ -197,5 +198,112 @@ describe('slide-reset-helpers', () => {
       { id: 'arrow-locked', kind: 'arrow' },
       { id: 'p-locked', kind: 'player' },
     ]);
+  });
+
+  describe('resetSlideKeepSquadData', () => {
+    it('ピッチ上の選手のみ初期フォーメーション位置に戻し、ベンチ選手・属性を維持しつつオブジェクトを全消去する', () => {
+      const homePitch = {
+        ...createDefaultPlayer('home', 80, 80, '#0000ff'),
+        id: 'h-1',
+        shirtNo: '10',
+        name: 'Player Home 10',
+        area: 'pitch' as const,
+        visionCone: {
+          id: 'vc-1',
+          angleRad: 0.5,
+          spreadRad: 0.8,
+          radius: 20,
+          color: '#ffffff',
+          opacity: 0.3,
+          visible: true,
+        },
+        trajectory: {
+          type: 'custom' as const,
+          controlPoint: { x: 50, y: 50 },
+        },
+      };
+
+      const homeBench = {
+        ...createDefaultPlayer('home', 10, 10, '#0000ff'),
+        id: 'h-bench',
+        shirtNo: '12',
+        name: 'Bench Home 12',
+        area: 'bench' as const,
+      };
+
+      const awayPitch = {
+        ...createDefaultPlayer('away', 20, 20, '#ff0000'),
+        id: 'a-1',
+        shirtNo: '9',
+        name: 'Player Away 9',
+        area: 'pitch' as const,
+      };
+
+      const testSlide = {
+        ...createDefaultSlide(0, 's-reset'),
+        players: [homePitch, homeBench, awayPitch],
+        ball: { x: 30, y: 70, visible: true },
+        boundaryBox: {
+          x: 10,
+          y: 10,
+          width: 80,
+          height: 80,
+          enabled: true,
+          visible: true,
+        },
+        arrows: [arrowUnlocked, arrowLocked],
+        zones: [zoneUnlocked],
+        texts: [textUnlocked],
+      };
+
+      const result = resetSlideKeepSquadData(testSlide, '16:9');
+
+      // 1. 選手構成の維持 (ID, name, shirtNo, team, area)
+      expect(result.players).toHaveLength(3);
+      const resHomePitch = result.players.find((p) => p.id === 'h-1');
+      const resHomeBench = result.players.find((p) => p.id === 'h-bench');
+      const resAwayPitch = result.players.find((p) => p.id === 'a-1');
+
+      expect(resHomePitch).toBeDefined();
+      expect(resHomePitch?.name).toBe('Player Home 10');
+      expect(resHomePitch?.shirtNo).toBe('10');
+      expect(resHomePitch?.area).toBe('pitch');
+      // Home 4-2-3-1 の 1人目 (GK位置: x=7, y=50) にリセット
+      expect(resHomePitch?.x).toBe(7);
+      expect(resHomePitch?.y).toBe(50);
+      expect(resHomePitch?.visionCone).toBeUndefined();
+      expect(resHomePitch?.trajectory).toBeUndefined();
+
+      // ベンチ選手の位置・areaはそのまま維持
+      expect(resHomeBench).toBeDefined();
+      expect(resHomeBench?.name).toBe('Bench Home 12');
+      expect(resHomeBench?.shirtNo).toBe('12');
+      expect(resHomeBench?.area).toBe('bench');
+      expect(resHomeBench?.x).toBe(10);
+      expect(resHomeBench?.y).toBe(10);
+
+      // Away 4-4-2 の 1人目 (GK位置: x=93, y=50) にリセット
+      expect(resAwayPitch).toBeDefined();
+      expect(resAwayPitch?.name).toBe('Player Away 9');
+      expect(resAwayPitch?.shirtNo).toBe('9');
+      expect(resAwayPitch?.area).toBe('pitch');
+      expect(resAwayPitch?.x).toBe(93);
+      expect(resAwayPitch?.y).toBe(50);
+
+      // 2. ボールは (50, 50) に戻る
+      expect(result.ball.x).toBe(50);
+      expect(result.ball.y).toBe(50);
+
+      // 3. 境界線は全画面 (100% x 100%)
+      expect(result.boundaryBox?.x).toBe(0);
+      expect(result.boundaryBox?.y).toBe(0);
+      expect(result.boundaryBox?.width).toBe(100);
+      expect(result.boundaryBox?.height).toBe(100);
+
+      // 4. 自由描画オブジェクト全消去 (locked含む白紙化)
+      expect(result.arrows).toEqual([]);
+      expect(result.zones).toEqual([]);
+      expect(result.texts).toEqual([]);
+    });
   });
 });

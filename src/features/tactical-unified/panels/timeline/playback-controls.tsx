@@ -5,16 +5,14 @@
  * Timeline Playback Controls — Play/Pause, Total Duration, Scene Progress
  */
 
-import { Pause, Play, RotateCcw } from 'lucide-react';
+import { Pause, Play } from 'lucide-react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 
 export function PlaybackControls() {
   const slides = useTacticalUnifiedStore((s) => s.project.slides);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const setActiveSlide = useTacticalUnifiedStore((s) => s.setActiveSlide);
   const isPlaying = useTacticalUnifiedStore((s) => s.isPlaying);
   const togglePlayback = useTacticalUnifiedStore((s) => s.togglePlayback);
-  const stopPlayback = useTacticalUnifiedStore((s) => s.stopPlayback);
 
   const activeIndex = slides.findIndex((sl) => sl.id === activeSlideId);
   const currentIndex = activeIndex === -1 ? 0 : activeIndex;
@@ -25,13 +23,6 @@ export function PlaybackControls() {
     const pause = (sl.pauseMs ?? 500) / 1000;
     return acc + dur + pause;
   }, 0);
-
-  const handleResetToStart = () => {
-    stopPlayback();
-    if (slides.length > 0) {
-      setActiveSlide(slides[0].id);
-    }
-  };
 
   return (
     <div className="flex items-center gap-2 shrink-0">
@@ -59,17 +50,6 @@ export function PlaybackControls() {
             <span>Play</span>
           </>
         )}
-      </button>
-
-      {/* Reset to Start */}
-      <button
-        type="button"
-        onClick={handleResetToStart}
-        className="flex items-center justify-center w-7 h-7 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
-        title="Reset to first scene"
-        aria-label="Reset to first scene"
-      >
-        <RotateCcw size={12} />
       </button>
 
       {/* Playback Stats */}

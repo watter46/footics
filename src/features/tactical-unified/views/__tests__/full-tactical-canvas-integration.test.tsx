@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 describe('FullTacticalCanvas integration', () => {
-  it('aspectRatio 変更で Stage は不変、ピッチ矩形のみ比率に追従する', async () => {
+  it('aspectRatio 変更で Stage そのものがピッチ比率に contain フィットし、ピッチ画像が Stage 全面に一致する', async () => {
     render(
       <div style={{ width: 1000, height: 600 }}>
         <FullTacticalCanvas />
@@ -84,8 +84,9 @@ describe('FullTacticalCanvas integration', () => {
       return { w: img.width(), h: img.height(), x: img.x(), y: img.y() };
     };
 
+    // 初期状態 (4:5) では高さ600基準で 幅480
     await waitFor(() => {
-      expect(lastStage().width()).toBe(1000);
+      expect(lastStage().width()).toBe(480);
       expect(lastStage().height()).toBe(600);
       expect(lastStage().findOne('Image')).toBeTruthy();
     });
@@ -95,18 +96,20 @@ describe('FullTacticalCanvas integration', () => {
         useTacticalUnifiedStore.getState().setAspectRatio(ratio);
       });
       await waitFor(() => {
-        const r = pitchRect();
-        expect(r.w / r.h).toBeCloseTo(ASPECT_RATIOS[ratio], 1);
+        expect(lastStage().width() / lastStage().height()).toBeCloseTo(
+          ASPECT_RATIOS[ratio],
+          1,
+        );
       });
-      // Stage サイズは常にコンテナいっぱいで不変
-      expect(lastStage().width()).toBe(1000);
-      expect(lastStage().height()).toBe(600);
-      // ピッチはステージ内に収まり中央揃え
+      // ピッチ画像は常に Stage 全面 (x=0, y=0, width, height)
       const r = pitchRect();
-      expect(r.w).toBeLessThanOrEqual(1000);
-      expect(r.h).toBeLessThanOrEqual(600);
-      expect(Math.abs(r.x * 2 + r.w - 1000)).toBeLessThanOrEqual(2);
-      expect(Math.abs(r.y * 2 + r.h - 600)).toBeLessThanOrEqual(2);
+      expect(r.w).toBe(lastStage().width());
+      expect(r.h).toBe(lastStage().height());
+      expect(r.x).toBe(0);
+      expect(r.y).toBe(0);
+      // Stage 自体は 1000x600 のコンテナ内に収まっている
+      expect(lastStage().width()).toBeLessThanOrEqual(1000);
+      expect(lastStage().height()).toBeLessThanOrEqual(600);
     }
   });
 
@@ -117,9 +120,7 @@ describe('FullTacticalCanvas integration', () => {
       </div>,
     );
     await waitFor(() => {
-      expect(useTacticalUnifiedStore.getState().stageAspect).toBeCloseTo(
-        1000 / 600,
-      );
+      expect(useTacticalUnifiedStore.getState().stageAspect).toBeCloseTo(4 / 5);
     });
 
     const insidePitch = () => {
@@ -181,7 +182,7 @@ describe('FullTacticalCanvas integration', () => {
       y: 1200,
     });
     expect(bound?.call(node, { x: 5000, y: -5 }, null as never)).toEqual({
-      x: 2000,
+      x: 960,
       y: -5,
     });
 

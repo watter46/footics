@@ -74,4 +74,31 @@ describe('TopBarCenter aspect ratio selector', () => {
     fireEvent.click(bothBtn);
     expect(useTacticalUnifiedStore.getState().teamVisibility).toBe('both');
   });
+
+  it('renders reset squad button and triggers resetSlideKeepSquad', () => {
+    render(<TopBarCenter />);
+
+    const resetBtn = screen.getByRole('button', {
+      name: '配置・オブジェクトをリセット（メンバー維持）',
+    });
+    expect(resetBtn).toBeDefined();
+
+    // 選手を動かしてからリセットボタンをクリック
+    const store = useTacticalUnifiedStore.getState();
+    const slideId = store.activeSlideId;
+    const player0 = store.project.slides[0]?.players[0];
+    expect(player0).toBeDefined();
+    store.movePlayer(slideId, player0?.id ?? '', 99, 99);
+
+    fireEvent.click(resetBtn);
+
+    const updatedSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((sl) => sl.id === slideId);
+    const updatedPlayer0 = updatedSlide?.players.find(
+      (p) => p.id === player0?.id,
+    );
+    expect(updatedPlayer0?.x).not.toBe(99);
+    expect(updatedPlayer0?.y).not.toBe(99);
+  });
 });

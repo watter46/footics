@@ -70,7 +70,11 @@ export function TeamSummaryHeader({
         </button>
 
         <Link
-          href="/tactical"
+          href={
+            metadata.id
+              ? `/tactical?matchId=${encodeURIComponent(String(metadata.id))}`
+              : '/tactical'
+          }
           className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-blue-900/20"
           title="Tactical 戦術ボードを開く"
         >

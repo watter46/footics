@@ -19,6 +19,7 @@ import {
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
 import { DrawingToolbar } from '@/features/tactical-unified/panels/toolbar/drawing-toolbar';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { ASPECT_RATIOS } from '@/lib/types/tactical-unified';
 
 export interface FullTacticalCanvasProps {
   className?: string;
@@ -30,8 +31,17 @@ export const FullTacticalCanvas = forwardRef<
   CanvasCoreHandle,
   FullTacticalCanvasProps
 >(function FullTacticalCanvas({ className = '', imageAspect, toolbar }, ref) {
-  // Stage は常にコンテナ全面。aspectRatio はピッチ描画矩形のみに作用する
-  // (BackgroundImageLayer がキャンバスストア経由で追従)。
+  // 現在のアスペクト比をマスターストアから取得し、Stage 矩形をピッチ比率に完全一致させる
+  const projectAspectRatio = useTacticalUnifiedStore(
+    (s) => s.project.aspectRatio,
+  );
+  const activeSlideAspectRatio = useTacticalUnifiedStore((s) => {
+    const slide = s.project.slides.find((sl) => sl.id === s.activeSlideId);
+    return slide?.aspectRatio;
+  });
+  const currentAspect = activeSlideAspectRatio ?? projectAspectRatio ?? '4:5';
+  const resolvedImageAspect =
+    imageAspect ?? ASPECT_RATIOS[currentAspect] ?? 4 / 5;
 
   // マスターストア（useTacticalUnifiedStore）を唯一の真実源としてアダプター経由で接続
   const storeApi = useMemo(() => {
@@ -92,7 +102,7 @@ export const FullTacticalCanvas = forwardRef<
       <CanvasStageContainer
         ref={ref}
         className={className}
-        imageAspect={imageAspect}
+        imageAspect={resolvedImageAspect}
         nodesRegistryRef={nodesRegistryRef}
         onStageSizeChange={handleStageSizeChange}
         toolbar={resolvedToolbar}

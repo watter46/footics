@@ -1,7 +1,6 @@
 import type { StateCreator } from 'zustand';
 import {
   getPitchRectNormalized,
-  mapPlayersToPitchRect,
   pitchToStageCoord,
   stageToPitchCoord,
 } from '@/lib/tactical/pitch-stage-mapping';
@@ -22,6 +21,8 @@ import { flipSlideObjects, isVerticalPitch } from './slide-flip-helpers';
 import { toggleSlideObjectLock } from './slide-lock-helpers';
 import {
   filterLockedSelectedObjects,
+  fitProjectPlayers,
+  resetSlideKeepSquadData,
   resetSlideObjectsData,
 } from './slide-reset-helpers';
 import { getSlide, recordHistory, updateSlideInProject } from './store-helpers';
@@ -63,6 +64,7 @@ export interface ProjectSlice {
   setAspectRatio: (ratio: AspectRatio) => void;
   swapTeamSides: (slideId?: string) => void;
   resetSlideObjects: (slideId?: string) => void;
+  resetSlideKeepSquad: (slideId?: string) => void;
   toggleObjectLock: (objectId: string, kind: SelectedObjectKind) => void;
 }
 
@@ -76,20 +78,6 @@ type SetState = Parameters<
     ProjectSlice
   >
 >[0];
-
-function fitProjectPlayers(
-  project: TacticalProject,
-  stageAspect: number | null,
-): TacticalProject {
-  const rect = getPitchRectNormalized(stageAspect, project.aspectRatio);
-  return {
-    ...project,
-    slides: project.slides.map((sl) => ({
-      ...sl,
-      players: mapPlayersToPitchRect(sl.players, rect),
-    })),
-  };
-}
 
 function createProjectMetaActions(set: SetState) {
   return {
@@ -225,6 +213,21 @@ function createProjectConfigActions(set: SetState) {
             s.selectedObjects,
             getSlide(s.project, targetSlideId),
           ),
+          activeMarkerOptionTab: null,
+          isDirty: true,
+        };
+      }),
+
+    resetSlideKeepSquad: (slideId?: string) =>
+      set((s) => {
+        const targetSlideId = slideId ?? s.activeSlideId;
+        const aspect = s.project.aspectRatio;
+        return {
+          ...recordHistory(s),
+          project: updateSlideInProject(s.project, targetSlideId, (sl) =>
+            resetSlideKeepSquadData(sl, aspect),
+          ),
+          selectedObjects: [],
           activeMarkerOptionTab: null,
           isDirty: true,
         };

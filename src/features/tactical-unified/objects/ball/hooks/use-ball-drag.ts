@@ -4,6 +4,8 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { useCallback, useRef, useState } from 'react';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
+import { updateTrajectoryArrowPositions } from '@/features/tactical-unified/core/components/annotations/trajectory-arrow-drag-updater';
 import {
   selectPreviousSlide,
   useTacticalUnifiedStore,
@@ -19,12 +21,14 @@ interface UseBallDragProps {
   stageSize: { width: number; height: number };
   ghostGroupRef: React.RefObject<Konva.Group | null>;
   ghostLineRef: React.RefObject<Konva.Line | null>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
 export function useBallDrag({
   stageSize,
   ghostGroupRef,
   ghostLineRef,
+  nodesRegistryRef,
 }: UseBallDragProps) {
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
@@ -57,8 +61,16 @@ export function useBallDrag({
     (e: KonvaEventObject<DragEvent>) => {
       const node = e.currentTarget as Konva.Group;
       updateBallGhostLine(ghostLineRef.current, prevBallPxRef.current, node);
+      updateTrajectoryArrowPositions(
+        nodesRegistryRef?.current?.trajectoryArrowNodes,
+        'ball',
+        node.x(),
+        node.y(),
+        stageSize.width,
+        stageSize.height,
+      );
     },
-    [ghostLineRef],
+    [ghostLineRef, nodesRegistryRef, stageSize.width, stageSize.height],
   );
 
   const dragBoundFunc = useCallback(

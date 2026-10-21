@@ -15,6 +15,7 @@ import type { Player } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import { updateAttachedArrowPositions } from './annotations/arrow-drag-updater';
+import { updateTrajectoryArrowPositions } from './annotations/trajectory-arrow-drag-updater';
 import { PlayerConnectingGuide } from './PlayerConnectingGuide';
 import {
   PlayerConnectLines,
@@ -44,9 +45,11 @@ export function PlayerLayer({
   const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
   const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
   const setConnectingPlayerId = useCanvasStore((s) => s.setConnectingPlayerId);
+  const aspectRatio = useCanvasStore((s) => s.aspectRatio);
 
   const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+  const movePlayerToBench = useTacticalUnifiedStore((s) => s.movePlayerToBench);
   const updatePlayerTrajectory = useTacticalUnifiedStore(
     (s) => s.updatePlayerTrajectory,
   );
@@ -78,12 +81,23 @@ export function PlayerLayer({
         height,
       );
       const reg = nodesRegistryRef?.current as
-        | { arrowNodes?: Map<string, any> }
+        | {
+            arrowNodes?: Map<string, any>;
+            trajectoryArrowNodes?: Map<string, any>;
+          }
         | undefined;
       updateAttachedArrowPositions(
         reg?.arrowNodes,
         arrows,
         visibleMarkers,
+        markerId,
+        curX,
+        curY,
+        width,
+        height,
+      );
+      updateTrajectoryArrowPositions(
+        reg?.trajectoryArrowNodes,
         markerId,
         curX,
         curY,
@@ -136,11 +150,32 @@ export function PlayerLayer({
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>, marker: Player) => {
       setIsDragging(false);
+
+      const clientX = (e.evt as MouseEvent | undefined)?.clientX;
+      const isOverBenchPanel =
+        (clientX !== undefined &&
+          typeof window !== 'undefined' &&
+          clientX >= window.innerWidth - 340) ||
+        e.target.x() >= width ||
+        (e.target.x() / width) * 100 >= 98;
+
+      if (isOverBenchPanel) {
+        movePlayerToBench(activeSlideId, marker.id);
+        return;
+      }
+
       const nx = Math.max(0, Math.min(100, (e.target.x() / width) * 100));
       const ny = Math.max(0, Math.min(100, (e.target.y() / height) * 100));
       updateMarker(marker.id, { x: nx, y: ny });
     },
-    [width, height, updateMarker, setIsDragging],
+    [
+      width,
+      height,
+      updateMarker,
+      setIsDragging,
+      movePlayerToBench,
+      activeSlideId,
+    ],
   );
 
   const handleDragStart = useCallback(
@@ -192,8 +227,7 @@ export function PlayerLayer({
         if (!prevPlayer) return null;
         const isMoved =
           Math.hypot(marker.x - prevPlayer.x, marker.y - prevPlayer.y) >= 1;
-        const isSelected = selectedIds.includes(marker.id);
-        if (!isMoved || !isSelected) return null;
+        if (!isMoved) return null;
 
         return (
           <PlayerGhostTrajectory
@@ -207,6 +241,7 @@ export function PlayerLayer({
                 | React.MutableRefObject<CanvasNodesRegistry>
                 | undefined
             }
+            aspectRatio={aspectRatio}
             onUpdateTrajectory={updatePlayerTrajectory}
           />
         );
@@ -220,6 +255,7 @@ export function PlayerLayer({
           height={height}
           baseDim={baseDim}
           markerMode={markerMode}
+          aspectRatio={aspectRatio}
           isSelected={selectedIds.includes(marker.id)}
           isInteractive={isInteractive}
           connectingPlayerId={connectingPlayerId}

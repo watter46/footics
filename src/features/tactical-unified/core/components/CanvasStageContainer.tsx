@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react';
 import { Stage } from 'react-konva';
+import { ASPECT_RATIOS } from '@/lib/types/tactical-unified';
 import { useCanvasExport } from '../hooks/use-canvas-export';
 import { useCanvasPointerInteraction } from '../hooks/use-canvas-pointer-interaction';
 import { useCanvasShortcuts } from '../hooks/use-canvas-shortcuts';
@@ -71,14 +72,13 @@ export const CanvasStageContainer = forwardRef<
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   const containerSize = useContainerResize(containerRef);
-  const vRect = calculateVirtualCanvasRect(
-    containerSize,
-    // Stage は常にコンテナ全面。imageAspect 明示時のみ比率フィット
+  const storeAspectRatio = useCanvasStore((s) => s.aspectRatio);
+  const effectiveAspect =
     imageAspect ??
-      (containerSize.height > 0
-        ? containerSize.width / containerSize.height
-        : 1),
-  );
+    (storeAspectRatio ? ASPECT_RATIOS[storeAspectRatio] : undefined) ??
+    (containerSize.height > 0 ? containerSize.width / containerSize.height : 1);
+
+  const vRect = calculateVirtualCanvasRect(containerSize, effectiveAspect);
 
   useEffect(() => {
     if (vRect.width > 0 && vRect.height > 0) {

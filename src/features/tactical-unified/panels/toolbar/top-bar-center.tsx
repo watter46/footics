@@ -1,6 +1,11 @@
 'use client';
 
-import { ArrowLeftRight, ArrowUpDown, LayoutTemplate } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  ArrowUpDown,
+  LayoutTemplate,
+  RotateCcw,
+} from 'lucide-react';
 import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
@@ -40,6 +45,9 @@ export function TopBarCenter() {
   const homeColor = useTacticalUnifiedStore((s) => s.project.homeColor.primary);
   const awayColor = useTacticalUnifiedStore((s) => s.project.awayColor.primary);
   const swapTeamSides = useTacticalUnifiedStore((s) => s.swapTeamSides);
+  const resetSlideKeepSquad = useTacticalUnifiedStore(
+    (s) => s.resetSlideKeepSquad,
+  );
 
   const isVertical = isVerticalPitch(aspectRatio);
 
@@ -63,6 +71,18 @@ export function TopBarCenter() {
           <ArrowLeftRight size={12} className="text-emerald-400" />
         )}
         <span>Swap</span>
+      </button>
+
+      {/* Reset Squad Positions & Objects (Keep Squad) */}
+      <button
+        type="button"
+        onClick={() => resetSlideKeepSquad()}
+        className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white rounded-md border border-white/10 px-2 py-1 text-[11px] font-medium transition-colors cursor-pointer"
+        title="配置・オブジェクトをリセット（メンバー維持）"
+        aria-label="配置・オブジェクトをリセット（メンバー維持）"
+      >
+        <RotateCcw size={12} className="text-amber-400" />
+        <span>Reset</span>
       </button>
 
       {/* Team Visibility Quick Filter (Both / Home / Away) */}

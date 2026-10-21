@@ -5,7 +5,11 @@ import { Circle, Group, Text } from 'react-konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import { GhostTrajectoryArrow } from '@/features/tactical-unified/objects/arrow';
 import { getLastName } from '@/lib/tactical/player-formatting';
-import type { Player, PlayerTrajectory } from '@/lib/types/tactical-unified';
+import type {
+  AspectRatio,
+  Player,
+  PlayerTrajectory,
+} from '@/lib/types/tactical-unified';
 import { normX, normY } from '../types';
 
 export interface PlayerGhostTrajectoryProps {
@@ -14,6 +18,7 @@ export interface PlayerGhostTrajectoryProps {
   stageSize: { width: number; height: number };
   activeSlideId: string;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
+  aspectRatio?: AspectRatio;
   onUpdateTrajectory: (
     slideId: string,
     playerId: string,
@@ -27,12 +32,15 @@ export function PlayerGhostTrajectory({
   stageSize,
   activeSlideId,
   nodesRegistryRef,
+  aspectRatio,
   onUpdateTrajectory,
 }: PlayerGhostTrajectoryProps) {
   const { width, height } = stageSize;
   const baseDim = Math.min(width, height);
   const sizeScale = prevPlayer.style.sizeScale ?? 1.0;
-  const radius = baseDim * 0.032 * sizeScale;
+  const isVerticalAspect = aspectRatio === '4:5' || aspectRatio === '9:16';
+  const verticalScale = isVerticalAspect ? 0.85 : 1.0;
+  const radius = baseDim * 0.032 * sizeScale * verticalScale;
 
   const sPxX = normX(prevPlayer.x, width);
   const sPxY = normY(prevPlayer.y, height);

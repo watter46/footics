@@ -36,6 +36,7 @@ export function createAnnotationActions(
   | 'addMarker'
   | 'updateMarker'
   | 'removeMarker'
+  | 'moveMarkerToBench'
   | 'removeSelected'
   | 'setAnnotations'
   | 'eraseAtPoint'
@@ -141,6 +142,12 @@ export function createAnnotationActions(
       }));
     },
     removeMarker: (id) => {
+      pushHistory();
+      set((s) => ({
+        annotations: cascadeRemoveMarker(s.annotations, id),
+      }));
+    },
+    moveMarkerToBench: (id) => {
       pushHistory();
       set((s) => ({
         annotations: cascadeRemoveMarker(s.annotations, id),
