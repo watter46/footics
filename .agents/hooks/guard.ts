@@ -127,7 +127,9 @@ function evaluatePayload(payload: any): any {
   if (
     payload.toolCall &&
     (payload.toolCall.name === 'replace_file_content' ||
-      payload.toolCall.name === 'write_to_file')
+      payload.toolCall.name === 'write_to_file' ||
+      payload.toolCall.name === 'edit_file' ||
+      payload.toolCall.name === 'write_file')
   ) {
     const accessRes = checkAgentAccessGuard(payload);
     if (accessRes && accessRes.decision === 'deny') {
@@ -140,7 +142,11 @@ function evaluatePayload(payload: any): any {
     return checkGateguard(payload);
   }
 
-  if (payload.toolCall && payload.toolCall.name === 'view_file') {
+  if (
+    payload.toolCall &&
+    (payload.toolCall.name === 'view_file' ||
+      payload.toolCall.name === 'read_file')
+  ) {
     const viewRes = checkViewGuard(payload);
     if (viewRes) return viewRes;
     return { decision: 'allow' };

@@ -29,6 +29,15 @@ function parseLineNum(val: any): number | undefined {
   return undefined;
 }
 
+export function isReadTool(toolName?: string): boolean {
+  return toolName === 'view_file' || toolName === 'read_file';
+}
+
+export function getViewFilePath(toolCall: any): string {
+  if (!toolCall || !toolCall.args) return '';
+  return cleanString(toolCall.args.AbsolutePath || toolCall.args.Path || '');
+}
+
 /**
  * 過去の transcript から、同一ファイルに対してスライス読込がすでに行われていたかを判定する
  */
@@ -49,8 +58,8 @@ function hasRecentSliceRead(
         const step = JSON.parse(lines[i]);
         if (step.tool_calls) {
           for (const tc of step.tool_calls) {
-            if (tc.name === 'view_file' && tc.args) {
-              const tcPath = cleanString(tc.args.AbsolutePath || '');
+            if (isReadTool(tc.name) && tc.args) {
+              const tcPath = getViewFilePath(tc);
               if (tcPath && path.resolve(tcPath) === targetFile) {
                 const start = parseLineNum(tc.args.StartLine);
                 const end = parseLineNum(tc.args.EndLine);
@@ -69,7 +78,7 @@ function hasRecentSliceRead(
 }
 
 /**
- * Reviewer セッションにおいて、直列に view_file が連続実行されているかを判定する
+ * Reviewer セッションにおいて、直列に view_file / read_file が連続実行されているかを判定する
  */
 function hasSequentialSingleViewLoop(
   transcriptPath: string | undefined,
@@ -88,7 +97,7 @@ function hasSequentialSingleViewLoop(
         const step = JSON.parse(lines[i]);
         if (step.tool_calls) {
           const hasView = step.tool_calls.some(
-            (tc: any) => tc.name === 'view_file',
+            (tc: any) => isReadTool(tc.name),
           );
           if (hasView) {
             consecutiveViews++;
@@ -170,8 +179,8 @@ function getRecentInvestigatedFiles(
 
         if (step.tool_calls) {
           for (const tc of step.tool_calls) {
-            if (tc.name === 'view_file' && tc.args) {
-              const rawTcPath = cleanString(tc.args.AbsolutePath || '');
+            if (isReadTool(tc.name) && tc.args) {
+              const rawTcPath = getViewFilePath(tc);
               if (rawTcPath) {
                 const rel = normalizeRelativePath(rawTcPath, workspacePath);
                 if (isInvestigationTarget(rel)) {
@@ -190,11 +199,11 @@ function getRecentInvestigatedFiles(
 
 function checkViewGuard(payload: any): GuardDecision | null {
   const toolCall = payload.toolCall;
-  if (!toolCall || toolCall.name !== 'view_file' || !toolCall.args) {
+  if (!toolCall || !isReadTool(toolCall.name) || !toolCall.args) {
     return null;
   }
 
-  const rawPath = cleanString(toolCall.args.AbsolutePath || '');
+  const rawPath = getViewFilePath(toolCall);
   if (!rawPath) return null;
 
   const resolvedPath = path.resolve(rawPath);

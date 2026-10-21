@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { getTargetFilePath, isWriteTool } from './agent-access-guard';
 
 export interface GuardDecision {
   decision: 'allow' | 'deny';
@@ -22,17 +23,12 @@ const MAX_TASK_PHASES = 5;
  */
 export function checkTaskSizeGuard(payload: any): GuardDecision | null {
   const toolCall = payload.toolCall;
-  if (
-    !toolCall ||
-    (toolCall.name !== 'replace_file_content' &&
-      toolCall.name !== 'write_to_file') ||
-    !toolCall.args
-  ) {
+  if (!toolCall || !isWriteTool(toolCall.name) || !toolCall.args) {
     return null;
   }
 
-  const rawTargetFile = toolCall.args.TargetFile;
-  if (!rawTargetFile || typeof rawTargetFile !== 'string') {
+  const rawTargetFile = getTargetFilePath(toolCall);
+  if (!rawTargetFile) {
     return null;
   }
 
@@ -44,9 +40,9 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
     return null;
   }
 
-  // 1. write_to_file の場合
-  if (toolCall.name === 'write_to_file') {
-    const code = toolCall.args.CodeContent || '';
+  // 1. 全文書き込み (write_to_file / write_file) の場合
+  if (toolCall.name === 'write_to_file' || toolCall.name === 'write_file') {
+    const code = toolCall.args.CodeContent || toolCall.args.Content || '';
     const lineCount = code.split('\n').length;
     const phaseMatches = code.match(/###\s+Phase\s+\d+/gi) || [];
 
@@ -59,9 +55,13 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
     return { decision: 'allow' };
   }
 
-  // 2. replace_file_content の場合
-  if (toolCall.name === 'replace_file_content') {
-    const replacement = toolCall.args.ReplacementContent || '';
+  // 2. 部分置換 (replace_file_content / edit_file) の場合
+  if (
+    toolCall.name === 'replace_file_content' ||
+    toolCall.name === 'edit_file'
+  ) {
+    const replacement =
+      toolCall.args.ReplacementContent || toolCall.args.Replacement || '';
 
     // 新たに Phase 6 以降を追加しようとしているか直接チェック
     if (/###\s+Phase\s+([6-9]|\d{2,})/i.test(replacement)) {
@@ -76,7 +76,8 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
     if (fs.existsSync(resolvedPath)) {
       try {
         const currentContent = fs.readFileSync(resolvedPath, 'utf8');
-        const targetContent = toolCall.args.TargetContent || '';
+        const targetContent =
+          toolCall.args.TargetContent || toolCall.args.Target || '';
 
         let nextContent = currentContent;
         if (targetContent && currentContent.includes(targetContent)) {

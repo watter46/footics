@@ -1,14 +1,18 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { getTargetFilePath } from './agent-access-guard';
 
 function checkGateguard(payload: any): any {
   const toolCall = payload.toolCall;
   if (!toolCall || !toolCall.args) return { decision: 'allow' };
 
-  const rawTargetFile = toolCall.args.TargetFile;
+  const rawTargetFile = getTargetFilePath(toolCall);
   if (!rawTargetFile) return { decision: 'allow' };
 
-  if (toolCall.name === 'write_to_file' && toolCall.args.Overwrite !== true) {
+  if (
+    (toolCall.name === 'write_to_file' || toolCall.name === 'write_file') &&
+    toolCall.args.Overwrite !== true
+  ) {
     return { decision: 'allow' };
   }
 
@@ -35,13 +39,17 @@ function checkGateguard(payload: any): any {
             for (const tc of step.tool_calls) {
               if (
                 tc.name === 'view_file' ||
+                tc.name === 'read_file' ||
                 tc.name === 'run_command' ||
                 tc.name === 'rtk'
               ) {
                 const tcArgs = tc.args || {};
                 const viewedPath =
-                  tcArgs.AbsolutePath || tcArgs.TargetFile || '';
-                if (viewedPath && path.resolve(viewedPath) === targetFile) {
+                  tcArgs.AbsolutePath ||
+                  tcArgs.TargetFile ||
+                  tcArgs.Path ||
+                  '';
+                if (viewedPath && path.resolve(viewedPath.replace(/^["']|["']$/g, '')) === targetFile) {
                   viewed = true;
                   break;
                 }
@@ -69,7 +77,7 @@ function checkGateguard(payload: any): any {
       if (!viewed) {
         return {
           decision: 'deny',
-          reason: `[GATEGUARD] Blocked: You must read the file or its content first before modifying it. Use 'view_file' or uncompressed 'rtk read' on '${rawTargetFile}' to prevent blind edits.`,
+          reason: `[GATEGUARD] Blocked: You must read the file or its content first before modifying it. Use 'read_file' (or 'view_file') or uncompressed 'rtk read' on '${rawTargetFile}' to prevent blind edits.`,
         };
       }
     }

@@ -72,6 +72,29 @@ export function normalizeRelativePath(
   return path.relative(process.cwd(), resolved);
 }
 
+export function getTargetFilePath(toolCall: any): string | null {
+  if (!toolCall || !toolCall.args) return null;
+  const raw = toolCall.args.TargetFile || toolCall.args.Path || '';
+  if (typeof raw !== 'string') return null;
+  let s = raw.trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  return s || null;
+}
+
+export function isWriteTool(toolName?: string): boolean {
+  return (
+    toolName === 'replace_file_content' ||
+    toolName === 'write_to_file' ||
+    toolName === 'edit_file' ||
+    toolName === 'write_file'
+  );
+}
+
 /**
  * エージェントごとのファイル書き込み権限を判定する
  */
@@ -79,15 +102,11 @@ export function checkAgentAccessGuard(
   payload: any,
 ): AgentAccessDecision | null {
   const toolCall = payload.toolCall;
-  if (
-    !toolCall ||
-    (toolCall.name !== 'replace_file_content' &&
-      toolCall.name !== 'write_to_file')
-  ) {
+  if (!toolCall || !isWriteTool(toolCall.name)) {
     return null;
   }
 
-  const rawTargetFile = toolCall.args?.TargetFile;
+  const rawTargetFile = getTargetFilePath(toolCall);
   if (!rawTargetFile) return null;
 
   const role = detectAgentRole(payload.transcriptPath);

@@ -148,6 +148,74 @@ describe('agent-access-guard', () => {
     };
     expect(checkAgentAccessGuard(taskPayload)?.decision).toBe('allow');
 
+    // edit_file with Path
+    const editCodePayload = {
+      transcriptPath: plannerFile,
+      toolCall: {
+        name: 'edit_file',
+        args: {
+          Path: '"/home/watter46/src/footics/src/components/New.tsx"',
+        },
+      },
+    };
+    expect(checkAgentAccessGuard(editCodePayload)?.decision).toBe('deny');
+
+    const editTaskPayload = {
+      transcriptPath: plannerFile,
+      toolCall: {
+        name: 'edit_file',
+        args: {
+          Path: '/home/watter46/src/footics/tasks/TASK-001.md',
+        },
+      },
+    };
+    expect(checkAgentAccessGuard(editTaskPayload)?.decision).toBe('allow');
+
+    fs.rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('verifies worker permissions correctly', () => {
+    const workerFile = createTranscript(
+      JSON.stringify({
+        step_index: 0,
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "TASK_ASSIGN"',
+      }),
+    );
+
+    // Worker can edit src/
+    expect(
+      checkAgentAccessGuard({
+        transcriptPath: workerFile,
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '/home/watter46/src/footics/src/lib/utils.ts' },
+        },
+      })?.decision,
+    ).toBe('allow');
+
+    // Worker cannot edit .agents/
+    expect(
+      checkAgentAccessGuard({
+        transcriptPath: workerFile,
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '/home/watter46/src/footics/.agents/hooks.json' },
+        },
+      })?.decision,
+    ).toBe('deny');
+
+    // Worker cannot edit package.json
+    expect(
+      checkAgentAccessGuard({
+        transcriptPath: workerFile,
+        toolCall: {
+          name: 'write_file',
+          args: { Path: '/home/watter46/src/footics/package.json' },
+        },
+      })?.decision,
+    ).toBe('deny');
+
     fs.rmSync(testDir, { recursive: true, force: true });
   });
 });

@@ -24,7 +24,11 @@ process.stdin.on('end', () => {
       process.exit(0);
     }
 
-    const targetFile = toolCall.args.TargetFile;
+    const targetFile =
+      toolCall.args.TargetFile ||
+      (typeof toolCall.args.Path === 'string'
+        ? toolCall.args.Path.replace(/^["']|["']$/g, '').trim()
+        : undefined);
     if (!targetFile) {
       console.log(JSON.stringify({}));
       process.exit(0);
