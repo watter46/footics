@@ -4,6 +4,7 @@ import {
   detectToolMissing,
   detectUnexpandedTemplate,
 } from './detectors/infra';
+import { READING_DETECTORS } from './detectors/reading';
 import type { AuditContext, Detector, Finding, Severity } from './types';
 
 export const DETECTORS: Detector[] = [
@@ -11,6 +12,7 @@ export const DETECTORS: Detector[] = [
   detectHookRoleMismatch,
   detectUnexpandedTemplate,
   ...EXPLORATION_DETECTORS,
+  ...READING_DETECTORS,
 ];
 
 export function registerDetector(d: Detector): void {
