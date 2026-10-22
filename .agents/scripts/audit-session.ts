@@ -1,6 +1,15 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { detectRoleFromFirstStep } from '../hooks/guard/agent-access-guard';
+import { runDetectors } from './lib/audit/registry';
+import { renderFindings } from './lib/audit/render';
+import {
+  renderStepDetail,
+  resolveFullTranscript,
+} from './lib/audit/step-detail';
+import { collectSessionTree } from './lib/audit/tree';
+import type { AuditContext, Finding } from './lib/audit/types';
 
 export interface TranscriptRecord {
   step_index: number;
@@ -164,6 +173,7 @@ export function detectHookDenials(records: TranscriptRecord[]): HookDenial[] {
 
   for (let i = 0; i < records.length; i++) {
     const r = records[i];
+    if (r.status === 'DONE') continue;
     const content = r.content ?? '';
     const isDenied =
       content.includes('tool call denied by pre-tool hook') ||
@@ -373,7 +383,7 @@ export function findChildSubagentIds(
     if (
       r.type === 'GENERIC' &&
       r.content &&
-      r.content.includes('Created the following subagents:')
+      /Created the following subagents?:/i.test(r.content)
     ) {
       let m = idRegex.exec(r.content);
       while (m !== null) {
@@ -449,17 +459,32 @@ export function auditSession(
     }
   }
 
-  // 役割の簡易推定
-  const firstPlanner = filtered.find((r) => r.type === 'PLANNER_RESPONSE');
-  const role = firstPlanner?.tool_calls?.some(
-    (t) => t.name === 'invoke_subagent',
-  )
-    ? 'Planner / Coordinator'
-    : filtered.some((r) =>
-          r.tool_calls?.some((t) => t.name === 'replace_file_content'),
-        )
-      ? 'Worker'
-      : 'Scout / Inspector';
+  // 役割の推定 (detectRoleFromFirstStep 優先)
+  const firstStep = filtered[0];
+  const detectedRole = firstStep
+    ? detectRoleFromFirstStep(firstStep)
+    : 'unknown';
+  let role = 'Unknown';
+  if (detectedRole === 'planner') {
+    role = 'Planner / Coordinator';
+  } else if (detectedRole === 'worker') {
+    role = 'Worker';
+  } else if (detectedRole === 'reviewer') {
+    role = 'Reviewer';
+  } else if (detectedRole === 'scout') {
+    role = 'Scout / Inspector';
+  } else if (detectedRole === 'auditor') {
+    role = 'Auditor';
+  } else {
+    const firstPlanner = filtered.find((r) => r.type === 'PLANNER_RESPONSE');
+    role = firstPlanner?.tool_calls?.some((t) => t.name === 'invoke_subagent')
+      ? 'Planner / Coordinator'
+      : filtered.some((r) =>
+            r.tool_calls?.some((t) => t.name === 'replace_file_content'),
+          )
+        ? 'Worker'
+        : 'Scout / Inspector';
+  }
 
   return {
     sessionId: options?.sessionId ?? 'current',
@@ -760,6 +785,46 @@ export function main(argv: string[]): number {
     return 0;
   }
 
+  // 3. --step-detail モード
+  if (
+    flags.includes('--step-detail') ||
+    flags.some((f) => f.startsWith('--step-detail='))
+  ) {
+    let rangeStr: string | undefined;
+    const stepDetailFlag = flags.find((f) => f.startsWith('--step-detail='));
+    if (stepDetailFlag) {
+      rangeStr = stepDetailFlag.slice('--step-detail='.length);
+    }
+    let targetArg: string | undefined;
+    for (const p of pos) {
+      if (/^\d+(?::\d+)?$/.test(p) && !rangeStr) {
+        rangeStr = p;
+      } else if (!targetArg) {
+        targetArg = p;
+      }
+    }
+    const file = resolveFullTranscript(targetArg);
+    if (!file) {
+      console.error(
+        `[ERROR] transcript not found for: ${targetArg ?? 'latest'}`,
+      );
+      return 1;
+    }
+    let start = 0;
+    let end = 10;
+    if (rangeStr) {
+      const parts = rangeStr
+        .split(':')
+        .map((x) => Number.parseInt(x.trim(), 10));
+      if (!Number.isNaN(parts[0])) start = parts[0];
+      if (parts.length > 1 && !Number.isNaN(parts[1])) end = parts[1];
+      else if (parts.length === 1) end = start + 10;
+    }
+    const records = parseJsonl(fs.readFileSync(file, 'utf8'));
+    console.log(renderStepDetail(records, { start, end }));
+    return 0;
+  }
+
   const targetArg = pos[0];
   const file = resolveTranscript(targetArg);
   if (!file) {
@@ -785,26 +850,83 @@ export function main(argv: string[]): number {
 
   const report = auditSession(records, { sessionId, fromRequest });
 
-  if (isTree && report.childIds.length > 0) {
-    const allReports = [report];
-    for (const childId of report.childIds) {
-      const childFile = resolveTranscript(childId);
-      if (childFile) {
-        const childRecords = parseJsonl(fs.readFileSync(childFile, 'utf8'));
-        allReports.push(auditSession(childRecords, { sessionId: childId }));
-      }
+  if (isTree) {
+    const treeNodes = collectSessionTree(sessionId);
+    const effectiveNodes =
+      treeNodes.length > 0 ? treeNodes : [{ sessionId, depth: 0, records }];
+
+    const allReports: AuditReport[] = [];
+    const allFindings: Finding[] = [];
+
+    for (const node of effectiveNodes) {
+      const rep = auditSession(node.records, { sessionId: node.sessionId });
+      allReports.push(rep);
+
+      const first = node.records[0];
+      const role = first ? detectRoleFromFirstStep(first) : 'unknown';
+      const ctx: AuditContext = {
+        sessionId: node.sessionId,
+        records: node.records,
+        role,
+        childIds: rep.childIds,
+      };
+      allFindings.push(...runDetectors(ctx));
     }
 
     if (isJson) {
-      console.log(JSON.stringify(allReports, null, 2));
-    } else {
-      for (const r of allReports) {
-        console.log(renderAuditReport(r));
-        console.log(
-          '\n------------------------------------------------------------\n',
-        );
-      }
+      console.log(
+        JSON.stringify({ reports: allReports, findings: allFindings }, null, 2),
+      );
+      return 0;
     }
+
+    for (const r of allReports) {
+      console.log(renderAuditReport(r));
+      console.log(
+        '\n------------------------------------------------------------\n',
+      );
+    }
+
+    console.log('=== AUDIT FINDINGS ===');
+    console.log(renderFindings(allFindings));
+    console.log('');
+
+    console.log('=== TREE SUMMARY ===');
+    const totalSessions = allReports.length;
+    const totalTurns = allReports.reduce(
+      (sum, r) => sum + r.summary.totalTurns,
+      0,
+    );
+    const totalDuration = allReports.reduce(
+      (sum, r) => sum + r.summary.time.totalSec,
+      0,
+    );
+    const thinkSec = allReports.reduce(
+      (sum, r) => sum + r.summary.time.thinkSec,
+      0,
+    );
+    const toolSec = allReports.reduce(
+      (sum, r) => sum + r.summary.time.toolSec,
+      0,
+    );
+    const totalDenials = allReports.reduce(
+      (sum, r) => sum + r.hookDenials.length,
+      0,
+    );
+    const highCount = allFindings.filter((f) => f.severity === 'HIGH').length;
+    const medCount = allFindings.filter((f) => f.severity === 'MED').length;
+    const lowCount = allFindings.filter((f) => f.severity === 'LOW').length;
+    const infoCount = allFindings.filter((f) => f.severity === 'INFO').length;
+
+    console.log(`Sessions: ${totalSessions}`);
+    console.log(`Total Turns: ${totalTurns}`);
+    console.log(
+      `Duration: ${totalDuration}s (Think: ${thinkSec}s / Tool: ${toolSec}s)`,
+    );
+    console.log(`Hook Denials: ${totalDenials}件`);
+    console.log(
+      `Findings: HIGH=${highCount}, MED=${medCount}, LOW=${lowCount}, INFO=${infoCount}`,
+    );
     return 0;
   }
 
