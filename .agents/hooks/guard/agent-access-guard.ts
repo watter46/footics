@@ -23,34 +23,44 @@ export function detectRoleFromFirstStep(firstStep: {
 }): AgentRole {
   if (!firstStep) return 'unknown';
 
-  if (firstStep.type === 'USER_INPUT') {
-    return 'planner';
-  }
-
   const content = firstStep.content || '';
+
+  // 1. Auditor: 子セッションの AUDIT_REQUEST、または親チャットの @auditor / AUDIT_REQUEST / ai:audit 指定
   if (
     content.includes('type: "AUDIT_REQUEST"') ||
-    content.includes("type: 'AUDIT_REQUEST'")
+    content.includes("type: 'AUDIT_REQUEST'") ||
+    /@auditor\b/i.test(content) ||
+    /\bai:audit\b/i.test(content)
   ) {
     return 'auditor';
   }
+
+  // 2. Scout: SCOUT_REQUEST
   if (
     content.includes('type: "SCOUT_REQUEST"') ||
     content.includes("type: 'SCOUT_REQUEST'")
   ) {
     return 'scout';
   }
+
+  // 3. Reviewer: REVIEW_REQUEST
   if (
     content.includes('type: "REVIEW_REQUEST"') ||
     content.includes("type: 'REVIEW_REQUEST'")
   ) {
     return 'reviewer';
   }
+
+  // 4. Worker: TASK_ASSIGN
   if (
     content.includes('type: "TASK_ASSIGN"') ||
     content.includes("type: 'TASK_ASSIGN'")
   ) {
     return 'worker';
+  }
+
+  if (firstStep.type === 'USER_INPUT') {
+    return 'planner';
   }
 
   return 'planner';

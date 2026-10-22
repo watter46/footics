@@ -714,6 +714,17 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(resWrite.decision).toBe('deny');
       expect(resWrite.reason).toContain('Auditor is a read-only audit agent');
 
+      // 6. Subagent invocation is denied
+      const resInvoke = evaluatePayload({
+        toolCall: {
+          name: 'invoke_subagent',
+          args: { TypeName: 'worker', Role: 'Worker', Prompt: 'Do it' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resInvoke.decision).toBe('deny');
+      expect(resInvoke.reason).toContain('prohibited from spawning subagents');
+
       try {
         fs.unlinkSync(transcript);
       } catch (_e) {}

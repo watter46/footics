@@ -62,7 +62,7 @@ describe('agent-access-guard', () => {
     );
     expect(detectAgentRole(reviewerFile)).toBe('reviewer');
 
-    // 4b. Auditor (AUDIT_REQUEST)
+    // 4b. Auditor (AUDIT_REQUEST or @auditor or direct audit prompt)
     const auditorFile = createTranscript(
       JSON.stringify({
         step_index: 0,
@@ -75,6 +75,29 @@ describe('agent-access-guard', () => {
       detectRoleFromFirstStep({
         type: 'SYSTEM_MESSAGE',
         content: 'type: "AUDIT_REQUEST"',
+      }),
+    ).toBe('auditor');
+
+    // 4c. Auditor in main chat (USER_INPUT starting with @auditor or type: "AUDIT_REQUEST")
+    const mainChatAuditorFile = createTranscript(
+      JSON.stringify({
+        step_index: 0,
+        type: 'USER_INPUT',
+        content: 'type: "AUDIT_REQUEST"\nAudit session c2ed8fa3',
+      }),
+    );
+    expect(detectAgentRole(mainChatAuditorFile)).toBe('auditor');
+    expect(
+      detectRoleFromFirstStep({
+        type: 'USER_INPUT',
+        content: '@auditor c2ed8fa3-3d8b-44c6-bc2c-59b80300d362 を監査して',
+      }),
+    ).toBe('auditor');
+    expect(
+      detectRoleFromFirstStep({
+        type: 'USER_INPUT',
+        content:
+          'bun run ai:audit c2ed8fa3-3d8b-44c6-bc2c-59b80300d362 --tree で監査して',
       }),
     ).toBe('auditor');
 

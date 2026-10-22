@@ -59,6 +59,14 @@ export function checkAuditorGuard(payload: any): GuardDecision | null {
 
   const toolName = payload?.toolCall?.name;
 
+  // 0. サブエージェント起動の遮断（Auditor は単独自律実行のためサブエージェント起動を禁止）
+  if (toolName === 'invoke_subagent' || toolName === 'define_subagent') {
+    return {
+      decision: 'deny',
+      reason: `[GUARD] Access Denied: Auditor operates as a standalone direct audit agent and is prohibited from spawning subagents ('${toolName}'). Execute 'bun run ai:audit' and analyze findings directly within this context.`,
+    };
+  }
+
   // 1. read_file / view_file に対する transcript 直接読込の遮断
   if (toolName === 'read_file' || toolName === 'view_file') {
     const rawTarget =

@@ -187,6 +187,29 @@ describe('auditor-guard', () => {
     };
     expect(checkAuditorGuard(rtkPayload)).toBeNull();
 
+    // 8. Prohibited subagent spawning (Auditor must operate directly without subagents)
+    const invokePayload = {
+      transcriptPath: auditorFile,
+      toolCall: {
+        name: 'invoke_subagent',
+        args: { TypeName: 'worker', Role: 'Worker', Prompt: 'Do task' },
+      },
+    };
+    const invokeRes = checkAuditorGuard(invokePayload);
+    expect(invokeRes?.decision).toBe('deny');
+    expect(invokeRes?.reason).toContain('prohibited from spawning subagents');
+
+    const definePayload = {
+      transcriptPath: auditorFile,
+      toolCall: {
+        name: 'define_subagent',
+        args: { Name: 'custom-worker', Description: 'desc', SystemPrompt: 'p' },
+      },
+    };
+    const defineRes = checkAuditorGuard(definePayload);
+    expect(defineRes?.decision).toBe('deny');
+    expect(defineRes?.reason).toContain('prohibited from spawning subagents');
+
     fs.rmSync(testDir, { recursive: true, force: true });
   });
 });
