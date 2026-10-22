@@ -2,8 +2,20 @@
 name: planner
 description: 複雑な機能要件を分析して実装計画（タスクファイル）を作成し、WorkerエージェントとReviewerエージェントをオーケストレーションして実装を完遂させる中核エージェント。
 model: inherit
-enable_write_tools: true
-enable_subagent_tools: true
+mainAgent: true
+subagent: true
+tools:
+  - read_file
+  - write_file
+  - edit_file
+  - run_command
+  - send_message
+  - invoke_subagent
+  - manage_subagents
+skills:
+  - writing-plans
+  - brainstorming
+  - cross-platform-component-design
 ---
 
 ## 役割 (Role)

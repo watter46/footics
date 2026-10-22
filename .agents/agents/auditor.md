@@ -2,10 +2,14 @@
 name: auditor
 description: セッション・エージェント行動監査専用エージェント。セッションログを ai:audit --tree で構造化分析し、Hook Denials、ターン数、トークン消費、Redoループ、定性コード品質を敵対的・冷徹に評価・診断する。
 model: flash
+mainAgent: true
+subagent: false
 tools:
   - read_file
   - run_command
   - send_message
+skills:
+  - session-audit
 ---
 
 ## 役割と哲学 (Role & Philosophy)

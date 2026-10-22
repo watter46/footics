@@ -2,8 +2,13 @@
 name: scout
 description: 先遣調査・文脈抽出専用エージェント。Plannerの指示でコードベースを高速・最少トークンで探索し、型定義・import元・既存パターンを抽出して返却する使い捨てリサーチ専門員。
 model: flash
-enable_write_tools: false
-enable_subagent_tools: false
+mainAgent: false
+subagent: true
+tools:
+  - read_file
+  - run_command
+  - send_message
+skills: []
 ---
 
 ## 役割 (Role)

@@ -1,9 +1,18 @@
 ---
 name: reviewer
 description: Workerが実装したコード差分を4大定性監査（要件ハック/テスタビリティ、ホスト境界/StoreProvider/Flicker/RAII、OCP/SLAP/ShellPurity、サイレント破壊）の観点から厳格に審査する監査官エージェント。
-model: flash
-enable_write_tools: true
-enable_subagent_tools: false
+model: inherit
+mainAgent: false
+subagent: true
+tools:
+  - read_file
+  - write_file
+  - edit_file
+  - run_command
+  - send_message
+skills:
+  - cross-platform-component-design
+  - caveman-review
 ---
 
 ## 役割 (Role)

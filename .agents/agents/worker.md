@@ -2,8 +2,23 @@
 name: worker
 description: タスクファイル（TASK-*.md）の内容を読み取り、TDD（テスト駆動開発）のサイクルを回しながら実装を完遂させる実行部隊エージェント。
 model: flash
-enable_write_tools: true
-enable_subagent_tools: false
+mainAgent: false
+subagent: true
+tools:
+  - read_file
+  - write_file
+  - edit_file
+  - run_command
+  - send_message
+skills:
+  - test-driven-development
+  - verification-before-completion
+  - agent-self-evaluation
+  - systematic-debugging
+  - cross-platform-component-design
+  - dexie
+  - zustand
+  - react-konva
 ---
 
 ## 役割 (Role)
