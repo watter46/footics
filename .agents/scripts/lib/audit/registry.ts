@@ -1,3 +1,4 @@
+import { EXPLORATION_DETECTORS } from './detectors/exploration';
 import {
   detectHookRoleMismatch,
   detectToolMissing,
@@ -9,6 +10,7 @@ export const DETECTORS: Detector[] = [
   detectToolMissing,
   detectHookRoleMismatch,
   detectUnexpandedTemplate,
+  ...EXPLORATION_DETECTORS,
 ];
 
 export function registerDetector(d: Detector): void {
