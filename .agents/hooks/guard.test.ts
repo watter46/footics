@@ -651,5 +651,72 @@ describe('guard.ts Security & Token Guard Tests', () => {
         fs.unlinkSync(transcript);
       } catch (_e) {}
     });
+
+    test('Auditor (starting with AUDIT_REQUEST) denies raw transcript reads and unauthorized commands, but allows bun run ai:audit', () => {
+      const transcript = '/tmp/test-auditor-access.jsonl';
+      makeTranscript(transcript, {
+        step_index: 0,
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "AUDIT_REQUEST"\nsession: "c2ed8fa3"',
+      });
+
+      // 1. read_file on transcript.jsonl is denied
+      const resRead = evaluatePayload({
+        toolCall: {
+          name: 'read_file',
+          args: {
+            Path: '/home/watter46/.gemini/antigravity-cli/brain/c2ed8fa3/.system_generated/logs/transcript.jsonl',
+          },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resRead.decision).toBe('deny');
+      expect(resRead.reason).toContain('direct transcript');
+
+      // 2. cat on transcript.jsonl is denied
+      const resCat = evaluatePayload({
+        toolCall: {
+          name: 'run_command',
+          args: { CommandLine: 'cat /path/to/transcript.jsonl' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resCat.decision).toBe('deny');
+
+      // 3. Prohibited executable (python) is denied
+      const resPy = evaluatePayload({
+        toolCall: {
+          name: 'run_command',
+          args: { CommandLine: 'python3 -c "1"' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resPy.decision).toBe('deny');
+
+      // 4. Allowed bun run ai:audit
+      const resAudit = evaluatePayload({
+        toolCall: {
+          name: 'run_command',
+          args: { CommandLine: 'bun run ai:audit c2ed8fa3' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resAudit.decision).toBe('allow');
+
+      // 5. Any write tool is denied
+      const resWrite = evaluatePayload({
+        toolCall: {
+          name: 'write_file',
+          args: { Path: 'tasks/TASK-001.md' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resWrite.decision).toBe('deny');
+      expect(resWrite.reason).toContain('Auditor is a read-only audit agent');
+
+      try {
+        fs.unlinkSync(transcript);
+      } catch (_e) {}
+    });
   });
 });

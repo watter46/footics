@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { checkAgentAccessGuard, detectAgentRole } from './agent-access-guard';
+import {
+  checkAgentAccessGuard,
+  detectAgentRole,
+  detectRoleFromFirstStep,
+  isChildSession,
+} from './agent-access-guard';
 
 describe('agent-access-guard', () => {
   const testDir = path.resolve('.agents/hooks/guard/__tests__/fixtures-access');
@@ -57,9 +62,86 @@ describe('agent-access-guard', () => {
     );
     expect(detectAgentRole(reviewerFile)).toBe('reviewer');
 
+    // 4b. Auditor (AUDIT_REQUEST)
+    const auditorFile = createTranscript(
+      JSON.stringify({
+        step_index: 0,
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "AUDIT_REQUEST"\nAudit session c2ed8fa3',
+      }),
+    );
+    expect(detectAgentRole(auditorFile)).toBe('auditor');
+    expect(
+      detectRoleFromFirstStep({
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "AUDIT_REQUEST"',
+      }),
+    ).toBe('auditor');
+
     // 5. Unknown
     expect(detectAgentRole(undefined)).toBe('unknown');
     expect(detectAgentRole('/non/existent/path.jsonl')).toBe('unknown');
+
+    fs.rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('determines child session correctly via isChildSession', () => {
+    const parentFile = createTranscript(
+      JSON.stringify({
+        step_index: 0,
+        type: 'USER_INPUT',
+        content: 'hello',
+      }),
+    );
+    expect(isChildSession(parentFile)).toBe(false);
+
+    const childFile = createTranscript(
+      JSON.stringify({
+        step_index: 0,
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "AUDIT_REQUEST"',
+      }),
+    );
+    expect(isChildSession(childFile)).toBe(true);
+
+    expect(isChildSession(undefined)).toBe(false);
+    expect(isChildSession('/non/existent/transcript.jsonl')).toBe(false);
+
+    fs.rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('denies all file modifications for auditor role', () => {
+    const auditorFile = createTranscript(
+      JSON.stringify({
+        step_index: 0,
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "AUDIT_REQUEST"',
+      }),
+    );
+
+    // Auditor cannot edit tasks
+    const taskPayload = {
+      transcriptPath: auditorFile,
+      toolCall: {
+        name: 'edit_file',
+        args: { Path: '/home/watter46/src/footics/tasks/TASK-001.md' },
+      },
+    };
+    const taskRes = checkAgentAccessGuard(taskPayload);
+    expect(taskRes?.decision).toBe('deny');
+    expect(taskRes?.reason).toContain('Auditor is a read-only audit agent');
+
+    // Auditor cannot edit source
+    const codePayload = {
+      transcriptPath: auditorFile,
+      toolCall: {
+        name: 'write_file',
+        args: { Path: '/home/watter46/src/footics/src/some-file.ts' },
+      },
+    };
+    const codeRes = checkAgentAccessGuard(codePayload);
+    expect(codeRes?.decision).toBe('deny');
+    expect(codeRes?.reason).toContain('Auditor is a read-only audit agent');
 
     fs.rmSync(testDir, { recursive: true, force: true });
   });

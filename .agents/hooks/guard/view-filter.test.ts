@@ -286,6 +286,34 @@ describe('view-filter: planner investigation guard', () => {
       },
     });
     expect(resScout?.decision).toBe('allow');
+
+    // Auditor ロールの transcript (AUDIT_REQUEST から開始)
+    const auditorTranscript = createTranscript([
+      {
+        step_index: 0,
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "AUDIT_REQUEST"\nAudit session',
+      },
+      {
+        step_index: 1,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          { name: 'view_file', args: { AbsolutePath: file1 } },
+          { name: 'view_file', args: { AbsolutePath: file2 } },
+        ],
+      },
+    ]);
+
+    // Auditor が 3ファイル目を読んでも deny されない
+    const resAuditor = checkViewGuard({
+      transcriptPath: auditorTranscript,
+      workspacePaths: [testDir],
+      toolCall: {
+        name: 'view_file',
+        args: { AbsolutePath: file3 },
+      },
+    });
+    expect(resAuditor?.decision).toBe('allow');
   });
 });
 

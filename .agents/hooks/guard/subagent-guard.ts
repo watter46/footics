@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { detectAgentRole } from './agent-access-guard';
+import { detectAgentRole, isChildSession } from './agent-access-guard';
 
 export interface GuardDecision {
   decision: 'allow' | 'deny';
@@ -24,7 +24,14 @@ export function checkSubagentGuard(payload: any): GuardDecision | null {
     return null;
   }
 
-  // 子エージェント（Worker / Reviewer / Scout）から親エージェントへの完了・差し戻し報告は常に許可
+  // 1. 子エージェント（Worker / Reviewer / Scout / Auditor / Lead Planner 等）から
+  // 親エージェントへの完了・差し戻し・成果物報告は常に許可。
+  // 送信元が子セッション（USER_INPUT から始まらないセッション）である場合は即時 allow とする。
+  if (isChildSession(payload.transcriptPath)) {
+    return { decision: 'allow' };
+  }
+
+  // 2. 送信元ロールが明示的に planner 以外である場合も許可
   const senderRole = detectAgentRole(payload.transcriptPath);
   if (senderRole !== 'planner') {
     return { decision: 'allow' };

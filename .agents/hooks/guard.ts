@@ -1,4 +1,5 @@
 import { checkAgentAccessGuard } from './guard/agent-access-guard';
+import { checkAuditorGuard } from './guard/auditor-guard';
 import { checkGateguard } from './guard/gateguard-filter';
 import { parseExecutable, splitCommands, tokenize } from './guard/parser';
 import { checkSafetyGuard } from './guard/safety-filter';
@@ -124,6 +125,11 @@ function evaluateCommand(cmdLine: string): any {
 }
 
 function evaluatePayload(payload: any): any {
+  const auditorRes = checkAuditorGuard(payload);
+  if (auditorRes) {
+    return auditorRes;
+  }
+
   if (
     payload.toolCall &&
     (payload.toolCall.name === 'replace_file_content' ||

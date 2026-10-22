@@ -1,7 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export type AgentRole = 'planner' | 'worker' | 'reviewer' | 'scout' | 'unknown';
+export type AgentRole =
+  | 'planner'
+  | 'worker'
+  | 'reviewer'
+  | 'scout'
+  | 'auditor'
+  | 'unknown';
 
 export interface AgentAccessDecision {
   decision: 'allow' | 'deny';
@@ -9,9 +15,72 @@ export interface AgentAccessDecision {
 }
 
 /**
+ * 先頭ステップ（初回メッセージ）のオブジェクトからロールを判定する純粋関数
+ */
+export function detectRoleFromFirstStep(firstStep: {
+  type?: string;
+  content?: string;
+}): AgentRole {
+  if (!firstStep) return 'unknown';
+
+  if (firstStep.type === 'USER_INPUT') {
+    return 'planner';
+  }
+
+  const content = firstStep.content || '';
+  if (
+    content.includes('type: "AUDIT_REQUEST"') ||
+    content.includes("type: 'AUDIT_REQUEST'")
+  ) {
+    return 'auditor';
+  }
+  if (
+    content.includes('type: "SCOUT_REQUEST"') ||
+    content.includes("type: 'SCOUT_REQUEST'")
+  ) {
+    return 'scout';
+  }
+  if (
+    content.includes('type: "REVIEW_REQUEST"') ||
+    content.includes("type: 'REVIEW_REQUEST'")
+  ) {
+    return 'reviewer';
+  }
+  if (
+    content.includes('type: "TASK_ASSIGN"') ||
+    content.includes("type: 'TASK_ASSIGN'")
+  ) {
+    return 'worker';
+  }
+
+  return 'planner';
+}
+
+/**
+ * transcriptPath のセッションが親セッションではなく子サブエージェントであるかを判定する。
+ * 子サブエージェントは必ず親からの初期メッセージ（SYSTEM_MESSAGE）で開始される。
+ * USER_INPUT から開始するセッション（親セッション）や、パス不在・パース不能時は false を返す。
+ */
+export function isChildSession(transcriptPath?: string): boolean {
+  if (!transcriptPath || !fs.existsSync(transcriptPath)) {
+    return false;
+  }
+  try {
+    const text = fs.readFileSync(transcriptPath, 'utf8');
+    const firstLine = text.trim().split('\n')[0];
+    if (!firstLine) return false;
+    const firstStep = JSON.parse(firstLine);
+    return firstStep.type === 'SYSTEM_MESSAGE';
+  } catch (_e) {
+    return false;
+  }
+}
+
+/**
  * transcript.jsonl の先頭（初回メッセージ）を読み取り、実行中のエージェントロールを判別する。
  * サブエージェントの場合、親から送られた初回メッセージ（SYSTEM_MESSAGE）に
- * type: "TASK_ASSIGN" (Worker), type: "REVIEW_REQUEST" (Reviewer), または type: "SCOUT_REQUEST" (Scout) が含まれる。
+ * type: "AUDIT_REQUEST" (Auditor), type: "TASK_ASSIGN" (Worker),
+ * type: "REVIEW_REQUEST" (Reviewer), または type: "SCOUT_REQUEST" (Scout) が含まれる。
  * transcriptPath が存在しないか未指定の場合は、テスト環境やスタンドアロン実行とみなして 'unknown' を返す。
  * USER_INPUT から開始している場合は親セッション（Planner）と判定する。
  */
@@ -26,32 +95,7 @@ export function detectAgentRole(transcriptPath?: string): AgentRole {
     if (!firstLine) return 'unknown';
 
     const firstStep = JSON.parse(firstLine);
-
-    if (firstStep.type === 'USER_INPUT') {
-      return 'planner';
-    }
-
-    const content = firstStep.content || '';
-    if (
-      content.includes('type: "SCOUT_REQUEST"') ||
-      content.includes("type: 'SCOUT_REQUEST'")
-    ) {
-      return 'scout';
-    }
-    if (
-      content.includes('type: "REVIEW_REQUEST"') ||
-      content.includes("type: 'REVIEW_REQUEST'")
-    ) {
-      return 'reviewer';
-    }
-    if (
-      content.includes('type: "TASK_ASSIGN"') ||
-      content.includes("type: 'TASK_ASSIGN'")
-    ) {
-      return 'worker';
-    }
-
-    return 'planner';
+    return detectRoleFromFirstStep(firstStep);
   } catch (_e) {
     return 'unknown';
   }
@@ -154,6 +198,14 @@ export function checkAgentAccessGuard(
     return {
       decision: 'deny',
       reason: `[GUARD] Access Denied: Scout is a read-only reconnaissance agent and cannot modify any files ('${relPath}'). Return extracted Context Snippets to Planner via message.`,
+    };
+  }
+
+  // 2c. Auditor の書き込み制限: 完全読み取り専用（いかなるファイルも編集不可）
+  if (role === 'auditor') {
+    return {
+      decision: 'deny',
+      reason: `[GUARD] Access Denied: Auditor is a read-only audit agent and cannot modify any files ('${relPath}'). Return audit reports to Planner via message or output.`,
     };
   }
 
