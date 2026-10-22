@@ -136,13 +136,16 @@ export interface TargetProps { ... }
   - [ ] 2. `bun run ai:check <ファイル>` で PASS 確認
 ```
 
-## Planner 最終出力フォーマット
+## 計画確定後のセッション分離ハンドオフ (Context Separation)
  
-計画（`tasks/TASK-*.md`）およびユーザー向け Plan Artifact の保存が完了したら、チャットへの最終出力を以下の**定型フォーマット**で出力し、ターンを終了してください：
+ユーザー向け Plan Artifact の承認後、`tasks/TASK-*.md` の生成が完了したら、チャットへの最終出力を以下の**定型フォーマット**で出力し、新規チャットでの実装開始を案内してターンを終了してください：
  
 ```markdown
-📝 **[PLANNING COMPLETE]**
-設計計画（Artifact）を作成しました。内容を確認し、承認してください。
+📝 **[TASK READY]**
+実装タスクファイルを作成しました。
 - **Plan Artifact**: [plan.md](file:///<appDataDir>/brain/<conversation-id>/plan.md)
-- **Target Task**: [TASK-XXX.md](file:///path/to/tasks/TASK-XXX.md) (Worker実装用)
+- **Task File**: [TASK-XXX.md](file:///path/to/tasks/TASK-XXX.md)
+
+実装精度を最大化するため、**新しいチャット画面を開き、以下の指示で実装を開始してください**：
+> `tasks/TASK-XXX.md を実装してください`
 ```
