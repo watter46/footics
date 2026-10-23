@@ -1,5 +1,3 @@
-export { BoundaryBoxHud } from './boundary-box-hud';
-export { BoundaryBoxTiltControls } from './boundary-box-tilt-controls';
 export { PRIMARY_TOOLS } from './drawing-tool-config';
 export { DrawingToolbar } from './drawing-toolbar';
 export { TopBar, TopBar as TopHeader } from './top-bar';

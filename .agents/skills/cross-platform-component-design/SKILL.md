@@ -321,13 +321,16 @@ export const CanvasStageContainer = React.forwardRef<CanvasCoreHandle, CanvasSta
 
 ---
 
-## 4. 汎用プラグイン / レジストリ設計 (OCP の徹底)
+## 4. 汎用パッケージ設計 ＆ 不具合を生まない状態・操作分離 (OCP & Bug-Resistant Design)
 
-ツール、アノテーションオブジェクト、ダッシュボードウィジェット、エクスポート形式など、将来バリエーションが増える機能は、すべてプラグイン型で設計します。
+ツールに限らず、キャンバス上の全オブジェクト（選手、ボール、矢印、ゾーン、テキスト、コネクタ）、UIパネル、タイムライン、エクスポート機能は以下の原則で設計します。
 
-1. **プラグインインターフェースの定義**:
-   - `id`, `label`, `icon`, `createObject`, `PreviewComponent`, `RenderComponent`, `OptionsComponent`
-2. **コア側のレシーバー**:
-   - コアコンポーネント（Stage, Toolbar, Inspector等）は、プラグイン配列を受け取って動的にループまたは描画するだけにし、`if-else` による分岐を持たないこと。
-3. **自己申告型オプション**:
-   - オブジェクトの属性変更 UI は、プラグイン自身が `OptionsComponent` として提供し、Web の Inspector でも Extension の HUD でも同じコンポーネントをスロット自動展開すること。
+1. **頭脳（Headless Logic）と見た目（Renderer）の分離**:
+   - 各オブジェクトやパネルは「状態更新・ドラッグ移動・選択・検証を担う Headless Hook / 純粋関数」と「描画のみを行う Renderer（Konva / React UI）」に分離する。
+   - 例：選手マーカーは共通の頭脳を持ち、見た目のみ Web版（2D丸マーカー）と Extension版（3D足元リング）を差し替える（どちらも名前設定時はマーカー下部に名前ラベルを表示）。
+2. **オブジェクトオプション（`ObjectOptions`）への完全一本化**:
+   - オブジェクトの属性変更 UI は、Web・Extension ともに選択時に対象の近くへ表示される浮動メニュー（`ObjectOptions`）に100%一本化する（旧右パネルの Inspector は完全廃止し、二重管理を根絶）。
+3. **派生状態の保存禁止（Derived State via Pure Selectors）**:
+   - ストアには最小限の「正規化された生データ」のみを保存し、ピクセル座標やカメラ投影座標、フィルタ済みリストなどの派生状態を別 State にコピー保存してはならない（必ず純粋な Selector / Projection 関数で算出する）。
+4. **複合操作の単一トランザクション化（Atomic Command Functions）**:
+   - 「メンバー維持リセット」「アスペクト比変更」「フォーメーション適用」「Home/Away/Both一括設定」などの複合操作は、UIコンポーネント側にインライン記述せず、ストア内の単一コマンド関数に集約する。

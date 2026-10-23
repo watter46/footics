@@ -1,8 +1,3 @@
-export { PlayerBadge, type PlayerBadgeProps } from './player-badge';
-export {
-  PlayerConnectLines,
-  type PlayerConnectLinesProps,
-} from './player-connect-lines';
 export {
   PlayerFocusSpotlight,
   type PlayerFocusSpotlightProps,
@@ -11,7 +6,6 @@ export {
   PlayerGhostTrajectory,
   type PlayerGhostTrajectoryProps,
 } from './player-ghost-trajectory';
-export { PlayerMarker } from './player-marker';
 export {
   PlayerMarkerCircle,
   type PlayerMarkerCircleProps,
@@ -24,10 +18,6 @@ export {
   PlayerMarkerRing,
   type PlayerMarkerRingProps,
 } from './player-marker-ring';
-export {
-  PlayerOnionskin,
-  type PlayerOnionskinProps,
-} from './player-onionskin';
 export {
   PlayerVisionCone,
   type PlayerVisionConeProps,

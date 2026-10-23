@@ -9,10 +9,7 @@ export {
   CanvasStageContainer as UnifiedCanvas,
 } from './core';
 export { ExportModal } from './panels/export/export-modal';
-export { InspectorPanel } from './panels/inspector/inspector-panel';
-export { FormationSubPanel } from './panels/right-panel/formation-sub-panel';
 export { RightPanel } from './panels/right-panel/right-panel';
-export { SlideStrip } from './panels/slides/slide-strip';
 export { TimelineBar } from './panels/timeline/timeline-bar';
 export { DrawingToolbar } from './panels/toolbar/drawing-toolbar';
 export { TopBar } from './panels/toolbar/top-bar';

@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * common-color-input.tsx
- * Reusable dark-mode compatible color picker & palette for Tactical Unified
+ * color-input.tsx
+ * Reusable dark-mode compatible color picker & palette for formation panels
  */
 
 import { Pipette } from 'lucide-react';
@@ -59,7 +59,6 @@ export function ColorInput({
               }}
               title={isWhite ? 'White (#ffffff)' : c}
             >
-              {/* Edge/Chrome forced dark mode inversion prevention via SVG rect */}
               <svg
                 className="w-full h-full rounded-[3px] block pointer-events-none"
                 viewBox="0 0 20 20"

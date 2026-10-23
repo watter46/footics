@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getZoneStyle } from '@/features/tactical-unified/objects/zone';
+import { getZoneStyle } from '@/features/tactical-unified/core/components/zones/zone-geometry';
+import * as PlayerComponents from '@/features/tactical-unified/objects/player/components';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
 
 describe('ZoneObject components & helpers', () => {
@@ -25,12 +26,12 @@ describe('ZoneObject components & helpers', () => {
     strokeWidth: 3,
   };
 
-  it('getZoneStyle calculates fillRGBA and preserves stroke settings', () => {
+  it('getZoneStyle calculates fillRGBA and strokeColor with default strokeWidth and opacity', () => {
     const style = getZoneStyle(sampleZone);
-    expect(style.strokeColor).toBe('#1d4ed8');
-    expect(style.strokeWidth).toBe(3);
-    // opacity 0.5 -> alpha hex 80 (128)
-    expect(style.fillRGBA).toBe('#3b82f680');
+    expect(style.strokeColor).toBe('#3b82f6');
+    expect(style.strokeWidth).toBe(2);
+    expect(style.fillRGBA).toBe('#3b82f6');
+    expect(style.opacity).toBe(0.5);
   });
 
   it('getZoneStyle handles default opacity and fallback colors', () => {
@@ -40,14 +41,33 @@ describe('ZoneObject components & helpers', () => {
       zoneType: 'generic',
       shapeType: 'polygon',
       points: [{ x: 5, y: 5 }],
-      color: '#22c55e',
+      color: '',
       opacity: 0.25,
       strokeWidth: 2,
     };
     const style = getZoneStyle(defaultZone);
-    expect(style.strokeColor).toBe('#22c55e');
+    expect(style.strokeColor).toBe('#3b82f6');
     expect(style.strokeWidth).toBe(2);
-    // 0.25 * 255 = 64 -> 40 in hex
-    expect(style.fillRGBA).toBe('#22c55e40');
+    expect(style.fillRGBA).toBe('#3b82f6');
+    expect(style.opacity).toBe(0.25);
+  });
+});
+
+describe('Player components exports', () => {
+  it('does not export dead player components', () => {
+    expect('PlayerMarker' in PlayerComponents).toBe(false);
+    expect('PlayerConnectLines' in PlayerComponents).toBe(false);
+    expect('PlayerBadge' in PlayerComponents).toBe(false);
+    expect('PlayerOnionskin' in PlayerComponents).toBe(false);
+  });
+
+  it('exports active player components', () => {
+    expect(PlayerComponents.PlayerFocusSpotlight).toBeDefined();
+    expect(PlayerComponents.PlayerGhostTrajectory).toBeDefined();
+    expect(PlayerComponents.PlayerMarkerCircle).toBeDefined();
+    expect(PlayerComponents.PlayerMarkerLabel).toBeDefined();
+    expect(PlayerComponents.PlayerMarkerRing).toBeDefined();
+    expect(PlayerComponents.PlayerVisionCone).toBeDefined();
+    expect(PlayerComponents.PlayerVisionConeHandles).toBeDefined();
   });
 });
