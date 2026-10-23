@@ -72,13 +72,20 @@ export const CanvasStageContainer = forwardRef<
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   const containerSize = useContainerResize(containerRef);
+  const mode = useCanvasStore((s) => s.config.mode);
   const storeAspectRatio = useCanvasStore((s) => s.aspectRatio);
   const effectiveAspect =
     imageAspect ??
     (storeAspectRatio ? ASPECT_RATIOS[storeAspectRatio] : undefined) ??
     (containerSize.height > 0 ? containerSize.width / containerSize.height : 1);
 
-  const vRect = calculateVirtualCanvasRect(containerSize, effectiveAspect);
+  const paddingRatio = mode === 'full-tactical' ? 0.06 : 0;
+  const vRect = calculateVirtualCanvasRect(
+    containerSize,
+    effectiveAspect,
+    undefined,
+    paddingRatio,
+  );
 
   useEffect(() => {
     if (vRect.width > 0 && vRect.height > 0) {
@@ -114,7 +121,11 @@ export const CanvasStageContainer = forwardRef<
     onStartEditText: (textId) => setEditingTextId(textId),
   });
 
-  const { exportPng, copyToClipboard } = useCanvasExport({ stageRef, vRect });
+  const { exportPng, copyToClipboard } = useCanvasExport({
+    stageRef,
+    vRect,
+    pitchRect: vRect,
+  });
 
   useImperativeHandle(
     ref,

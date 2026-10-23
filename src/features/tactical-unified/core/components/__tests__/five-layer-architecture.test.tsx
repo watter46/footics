@@ -1,10 +1,12 @@
-import { render } from '@testing-library/react';
+import { act, render, renderHook } from '@testing-library/react';
 import type Konva from 'konva';
 import { createRef } from 'react';
 import { Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
+import { useCanvasSelectionBox } from '../../hooks/use-canvas-selection-box';
+import { useCanvasStore } from '../../hooks/use-canvas-store';
 import { CanvasStoreProvider } from '../../store/canvas-store-provider';
 import type { PitchRectBounds } from '../../utils/canvas-coordinates';
 import {
@@ -35,6 +37,8 @@ beforeEach(() => {
   HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
   useTacticalUnifiedStore.getState().resetProject();
 });
+
+type CanvasState = Parameters<Parameters<typeof useCanvasStore>[0]>[0];
 
 const defaultPitchRect: PitchRectBounds = {
   x: 100,
@@ -220,6 +224,292 @@ describe('BillboardObjectLayer', () => {
     const textValues = textNodes.map((t) => t.text());
     expect(textValues).toContain('9');
     expect(textValues).toContain('10');
+  });
+
+  it('PlayerMarkerItem の dragBoundFunc が Stage 全体（余白領域含む）を許容し、右側の見えない壁を解消すること', () => {
+    const stageRef = createRef<Konva.Stage>();
+    render(
+      <CanvasStoreProvider
+        config={{
+          mode: 'tactical-board',
+          initialAnnotations: JSON.stringify({
+            markers: [
+              {
+                id: 'm-bound-test',
+                shirtNo: '7',
+                x: 50,
+                y: 50,
+                team: 'home',
+                area: 'pitch',
+                style: { color: '#001489', markerType: 'circle' },
+              },
+            ],
+            arrows: [],
+            zones: [],
+            texts: [],
+          }),
+        }}
+      >
+        <Stage
+          ref={stageRef}
+          width={defaultStageSize.width}
+          height={defaultStageSize.height}
+        >
+          <BillboardObjectLayer
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+          />
+        </Stage>
+      </CanvasStoreProvider>,
+    );
+
+    const stage = stageRef.current;
+    expect(stage).not.toBeNull();
+    // PlayerMarkerItem の Group ノードを探す（draggable=true）
+    const draggableGroups = (stage?.find('Group') ?? []).filter((g) =>
+      g.draggable(),
+    );
+    expect(draggableGroups.length).toBeGreaterThan(0);
+    const markerGroup = draggableGroups[0];
+    const dragBoundFunc = markerGroup.dragBoundFunc();
+    expect(dragBoundFunc).toBeDefined();
+
+    // Stage サイズ: width=1000, height=550。pitchRect: x=100, y=50, width=800, height=450。
+    // ピッチ右側（例: pos.x = 850, pos.y = 500）は以前の width=800 制限だと 800 にクリップされていた。
+    // Stage 全体許容であれば 850, 500 がそのまま返るべき
+    const boundedPos = dragBoundFunc
+      ? (
+          dragBoundFunc as unknown as (pos: { x: number; y: number }) => {
+            x: number;
+            y: number;
+          }
+        ).call(markerGroup, { x: 850, y: 500 })
+      : null;
+    expect(boundedPos).toEqual({ x: 850, y: 500 });
+  });
+
+  it('marker.x, marker.y 更新時に Konva Group の position が同期されること', () => {
+    let capturedStore: CanvasState | null = null;
+    const TestConsumer = () => {
+      const store = useCanvasStore((s) => s);
+      capturedStore = store;
+      return null;
+    };
+
+    const stageRef = createRef<Konva.Stage>();
+    render(
+      <CanvasStoreProvider
+        config={{
+          mode: 'tactical-board',
+          initialAnnotations: JSON.stringify({
+            markers: [
+              {
+                id: 'm-sync-test',
+                shirtNo: '10',
+                x: 20,
+                y: 30,
+                team: 'home',
+                area: 'pitch',
+                style: { color: '#001489', markerType: 'circle' },
+              },
+            ],
+            arrows: [],
+            zones: [],
+            texts: [],
+          }),
+        }}
+      >
+        <TestConsumer />
+        <Stage
+          ref={stageRef}
+          width={defaultStageSize.width}
+          height={defaultStageSize.height}
+        >
+          <BillboardObjectLayer
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+          />
+        </Stage>
+      </CanvasStoreProvider>,
+    );
+
+    const stage = stageRef.current;
+    const markerGroup = (stage?.find('Group') ?? []).find((g) => g.draggable());
+    expect(markerGroup).toBeDefined();
+    // 初期位置: x = 20% * 800 = 160, y = 30% * 450 = 135
+    expect(markerGroup?.x()).toBe(160);
+    expect(markerGroup?.y()).toBe(135);
+
+    // ドラッグ等で一時的にズレた状態を模倣
+    markerGroup?.x(300);
+    markerGroup?.y(300);
+
+    // store 経由で marker.x, marker.y を更新 (リセット動作等)
+    act(() => {
+      (capturedStore as unknown as CanvasState)?.updateMarker('m-sync-test', {
+        x: 40,
+        y: 50,
+      });
+    });
+
+    // pxX = 40% * 800 = 320, pxY = 50% * 450 = 225 に同期されていること
+    expect(markerGroup?.x()).toBe(320);
+    expect(markerGroup?.y()).toBe(225);
+  });
+
+  it('ドロップ位置が Stage コンテナ内の場合、ベンチ退避せず余白座標で updateMarker を実行すること', () => {
+    let capturedStore: CanvasState | null = null;
+    const TestConsumer = () => {
+      const store = useCanvasStore((s) => s);
+      capturedStore = store;
+      return null;
+    };
+
+    const stageRef = createRef<Konva.Stage>();
+    render(
+      <CanvasStoreProvider
+        config={{
+          mode: 'tactical-board',
+          initialAnnotations: JSON.stringify({
+            markers: [
+              {
+                id: 'm-drop-test',
+                shirtNo: '8',
+                x: 50,
+                y: 50,
+                team: 'home',
+                area: 'pitch',
+                style: { color: '#001489', markerType: 'circle' },
+              },
+            ],
+            arrows: [],
+            zones: [],
+            texts: [],
+          }),
+        }}
+      >
+        <TestConsumer />
+        <Stage
+          ref={stageRef}
+          width={defaultStageSize.width}
+          height={defaultStageSize.height}
+        >
+          <BillboardObjectLayer
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+          />
+        </Stage>
+      </CanvasStoreProvider>,
+    );
+
+    const stage = stageRef.current;
+    const markerGroup = (stage?.find('Group') ?? []).find((g) => g.draggable());
+    expect(markerGroup).toBeDefined();
+
+    // Stage コンテナの getBoundingClientRect をモック
+    const container = stage?.container();
+    if (container) {
+      vi.spyOn(container, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        top: 0,
+        right: 1000,
+        bottom: 550,
+        width: 1000,
+        height: 550,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      });
+    }
+
+    // Stage 右端内（例: clientX = 950、window.innerWidth - 340 より大きくても Stage 内）
+    // ピッチ外余白 (x=880px -> nx = 880 / 800 * 100 = 110%)
+    markerGroup?.x(880);
+    markerGroup?.y(495); // ny = 495 / 450 * 100 = 110%
+
+    // fire dragend
+    act(() => {
+      markerGroup?.fire('dragend', {
+        evt: { clientX: 950, clientY: 200 } as MouseEvent,
+      });
+    });
+
+    // bench へ移動されず、updateMarker で nx=110, ny=110 が保存されること
+    expect(capturedStore).not.toBeNull();
+    const updatedMarker = (
+      capturedStore as unknown as CanvasState
+    ).annotations.markers.find((m: { id: string }) => m.id === 'm-drop-test');
+    expect(updatedMarker?.x).toBeCloseTo(110);
+    expect(updatedMarker?.y).toBeCloseTo(110);
+  });
+});
+
+describe('useCanvasSelectionBox', () => {
+  it('vRect に x, y オフセットがある場合、オフセットを差し引いて正規化選択領域を算出してマーカーを選択すること', () => {
+    let selectedIdsResult: string[] = [];
+    const StoreObserver = () => {
+      const selectedIds = useCanvasStore((s) => s.selectedIds);
+      selectedIdsResult = selectedIds;
+      return null;
+    };
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <CanvasStoreProvider
+        config={{
+          mode: 'tactical-board',
+          initialAnnotations: JSON.stringify({
+            markers: [
+              // ピッチ内正規化座標: x=50, y=50
+              // vRect: x=100, y=50, width=800, height=450 のとき、
+              // 絶対ピクセル座標は x = 100 + 50% * 800 = 500, y = 50 + 50% * 450 = 275
+              {
+                id: 'm-selected',
+                shirtNo: '11',
+                x: 50,
+                y: 50,
+                team: 'home',
+                area: 'pitch',
+                style: { color: '#001489', markerType: 'circle' },
+              },
+            ],
+            arrows: [],
+            zones: [],
+            texts: [],
+          }),
+        }}
+      >
+        <StoreObserver />
+        {children}
+      </CanvasStoreProvider>
+    );
+
+    const { result } = renderHook(
+      () =>
+        useCanvasSelectionBox({
+          vRect: { x: 100, y: 50, width: 800, height: 450 },
+        }),
+      { wrapper },
+    );
+
+    // ドラッグ選択範囲: 絶対ピクセル座標 450, 250 〜 550, 300
+    // オフセット差し引き後:
+    // minNormX = (450 - 100) / 800 * 100 = 350 / 8 = 43.75%
+    // maxNormX = (550 - 100) / 800 * 100 = 450 / 8 = 56.25%
+    // minNormY = (250 - 50) / 450 * 100 = 200 / 4.5 = 44.44%
+    // maxNormY = (300 - 50) / 450 * 100 = 250 / 4.5 = 55.55%
+    // マーカー(50, 50) はこの範囲に含まれるべき！
+    act(() => {
+      result.current.handleSelectionDown({ x: 450, y: 250 }, true, false);
+    });
+    act(() => {
+      result.current.handleSelectionMove({ x: 550, y: 300 });
+    });
+
+    act(() => {
+      result.current.handleSelectionUp();
+    });
+
+    expect(selectedIdsResult).toContain('m-selected');
   });
 });
 

@@ -104,6 +104,19 @@ export function PitchGroundLayer({
           height={pitchRect.height}
         />
 
+        {/* メインキャンバス外枠確認枠線 (!cleanRender時) */}
+        {!cleanRender && (
+          <Rect
+            x={0}
+            y={0}
+            width={pitchRect.width}
+            height={pitchRect.height}
+            stroke="#38bdf8"
+            strokeWidth={2}
+            listening={false}
+          />
+        )}
+
         {/* ゾーンオブジェクト群 */}
         {zones.map((zone) => (
           <ZoneObject

@@ -10,7 +10,7 @@ import { useCanvasStore } from './use-canvas-store';
 export type { SelectionBox };
 
 export interface UseCanvasSelectionBoxOptions {
-  vRect: { width: number; height: number };
+  vRect: { width: number; height: number; x?: number; y?: number };
 }
 
 export function useCanvasSelectionBox({ vRect }: UseCanvasSelectionBoxOptions) {
@@ -68,10 +68,12 @@ export function useCanvasSelectionBox({ vRect }: UseCanvasSelectionBoxOptions) {
         const minPxY = Math.min(startY, currentY);
         const maxPxY = Math.max(startY, currentY);
 
-        const minNormX = (minPxX / vRect.width) * 100;
-        const maxNormX = (maxPxX / vRect.width) * 100;
-        const minNormY = (minPxY / vRect.height) * 100;
-        const maxNormY = (maxPxY / vRect.height) * 100;
+        const offsetX = vRect.x ?? 0;
+        const offsetY = vRect.y ?? 0;
+        const minNormX = ((minPxX - offsetX) / vRect.width) * 100;
+        const maxNormX = ((maxPxX - offsetX) / vRect.width) * 100;
+        const minNormY = ((minPxY - offsetY) / vRect.height) * 100;
+        const maxNormY = ((maxPxY - offsetY) / vRect.height) * 100;
 
         const enclosed = getEnclosedObjects(annotations, {
           minNormX,
@@ -92,6 +94,8 @@ export function useCanvasSelectionBox({ vRect }: UseCanvasSelectionBoxOptions) {
     selectionBox,
     vRect.width,
     vRect.height,
+    vRect.x,
+    vRect.y,
     annotations,
     selectObjects,
     clearSelection,

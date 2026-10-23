@@ -2,7 +2,7 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import type React from 'react';
+import { type MutableRefObject, useEffect, useRef } from 'react';
 import { Group } from 'react-konva';
 import { PlayerFocusSpotlight } from '@/features/tactical-unified/objects/player/components/player-focus-spotlight';
 import { PlayerMarkerCircle } from '@/features/tactical-unified/objects/player/components/player-marker-circle';
@@ -21,7 +21,7 @@ export interface PlayerMarkerItemProps {
   isSelected: boolean;
   isInteractive: boolean;
   connectingPlayerId: string | null;
-  nodesRegistryRef?: React.MutableRefObject<unknown>;
+  nodesRegistryRef?: MutableRefObject<unknown>;
   aspectRatio?: AspectRatio;
   onDragStart: (e: KonvaEventObject<DragEvent>, markerId: string) => void;
   onDragMove: (e: KonvaEventObject<DragEvent>, markerId: string) => void;
@@ -47,8 +47,16 @@ export function PlayerMarkerItem({
   onClick,
   onUpdateVisionCone,
 }: PlayerMarkerItemProps) {
+  const groupRef = useRef<Konva.Group | null>(null);
   const pxX = (marker.x / 100) * width;
   const pxY = (marker.y / 100) * height;
+
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.position({ x: pxX, y: pxY });
+    }
+  }, [pxX, pxY]);
+
   const sizeScale = marker.style?.sizeScale ?? 1.0;
   const isVerticalAspect = aspectRatio === '4:5' || aspectRatio === '9:16';
   const verticalScale = isVerticalAspect ? 0.85 : 1.0;
@@ -64,6 +72,7 @@ export function PlayerMarkerItem({
   return (
     <Group
       ref={(node: Konva.Group | null) => {
+        groupRef.current = node;
         const reg = nodesRegistryRef?.current as
           | { playerNodes?: Map<string, Konva.Group> }
           | undefined;
@@ -75,11 +84,32 @@ export function PlayerMarkerItem({
       x={pxX}
       y={pxY}
       draggable={isInteractive && !marker.locked}
-      // マーカーはキャンバス(Stage)外へはみ出さない
-      dragBoundFunc={(pos) => ({
-        x: Math.max(0, Math.min(width, pos.x)),
-        y: Math.max(0, Math.min(height, pos.y)),
-      })}
+      // マーカーはキャンバス(Stage)外へはみ出さない（Stage全体許容、右側・下側の見えない壁を解消）
+      dragBoundFunc={function (this: Konva.Node, pos: Konva.Vector2d) {
+        const stage = this.getStage?.();
+        const stageW = stage?.width?.();
+        const stageH = stage?.height?.();
+        if (stageW && stageH) {
+          return {
+            x: Math.max(0, Math.min(stageW, pos.x)),
+            y: Math.max(0, Math.min(stageH, pos.y)),
+          };
+        }
+        const parentPos = this.getParent?.()?.getAbsolutePosition?.() ?? {
+          x: 0,
+          y: 0,
+        };
+        return {
+          x: Math.max(
+            parentPos.x - width,
+            Math.min(parentPos.x + width * 2, pos.x),
+          ),
+          y: Math.max(
+            parentPos.y - height,
+            Math.min(parentPos.y + height * 2, pos.y),
+          ),
+        };
+      }}
       onMouseEnter={(e) => {
         if (connectingPlayerId && connectingPlayerId !== marker.id) {
           e.target

@@ -18,6 +18,7 @@ export function calculateVirtualCanvasRect(
   containerSize: { width: number; height: number },
   imageAspect: number,
   baseWidth: number = imageAspect >= 1 ? 1920 : 1080,
+  paddingRatio: number = 0,
 ): VirtualCanvasRect {
   if (
     containerSize.width <= 0 ||
@@ -34,25 +35,25 @@ export function calculateVirtualCanvasRect(
     };
   }
 
-  const containerAspect = containerSize.width / containerSize.height;
+  const safePaddingRatio = Math.max(0, Math.min(0.4, paddingRatio));
+  const availW = containerSize.width * (1 - safePaddingRatio * 2);
+  const availH = containerSize.height * (1 - safePaddingRatio * 2);
+  const availAspect = availW / availH;
   let width = 0;
   let height = 0;
-  let x = 0;
-  let y = 0;
 
-  if (containerAspect > imageAspect) {
-    // コンテナの方が横長のため、高さ基準でフィットし左右にセンタリング
-    height = containerSize.height;
+  if (availAspect > imageAspect) {
+    // コンテナ（余白除外後）の方が横長のため、高さ基準でフィット
+    height = availH;
     width = height * imageAspect;
-    x = (containerSize.width - width) / 2;
-    y = 0;
   } else {
-    // コンテナの方が縦長のため、幅基準でフィットし上下にセンタリング
-    width = containerSize.width;
+    // コンテナ（余白除外後）の方が縦長のため、幅基準でフィット
+    width = availW;
     height = width / imageAspect;
-    x = 0;
-    y = (containerSize.height - height) / 2;
   }
+
+  const x = (containerSize.width - width) / 2;
+  const y = (containerSize.height - height) / 2;
 
   const safeBaseWidth = baseWidth > 0 ? baseWidth : 1920;
   const scale = width / safeBaseWidth;

@@ -7,6 +7,7 @@ import {
   CanvasStoreProvider,
   DraggableToolbar,
   EXTENSION_DRAWING_TOOLS,
+  ToolbarBoundaryBoxToggle,
   ToolbarContinuousLock,
   ToolbarDivider,
   ToolbarEraser,
@@ -96,6 +97,7 @@ function QuickAnnotationCanvasInner(
           <ToolbarContinuousLock />
           <ToolbarEraser />
           <ToolbarDivider />
+          <ToolbarBoundaryBoxToggle />
           <ToolbarResetButton />
         </DraggableToolbar>
       }

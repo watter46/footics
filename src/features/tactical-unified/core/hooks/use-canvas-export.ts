@@ -33,8 +33,8 @@ export function useCanvasExport({
       const shouldCrop = options?.crop ?? true;
 
       if (shouldCrop && boundaryBox?.enabled !== false) {
-        const stageW = vRect?.width ?? stage.width();
-        const stageH = vRect?.height ?? stage.height();
+        const stageW = stage.width();
+        const stageH = stage.height();
         const rect = resolveBoundaryBoxPixelRect(
           boundaryBox,
           { width: stageW, height: stageH },

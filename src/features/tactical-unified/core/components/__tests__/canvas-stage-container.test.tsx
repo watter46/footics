@@ -351,3 +351,42 @@ describe('CanvasStageContainer Fixed Stage Size & Dynamic PitchRect', () => {
     }
   });
 });
+
+describe('CanvasStageContainer Full-Tactical Margin & PNG Export Offset', () => {
+  it('full-tactical モード時に 16:9 でも上下左右に余白（vRect.x > 0, vRect.y > 0）が確保され、PNG エクスポートが vRect の位置で切り抜かれること', async () => {
+    const handleRef = createRef<CanvasCoreHandle>();
+    const registryRef = { current: createCanvasNodesRegistry() };
+    const onStageSizeChange = vi.fn();
+    const store = createCanvasStore({
+      mode: 'full-tactical',
+      aspectRatio: '16:9',
+    });
+
+    renderWithStore(
+      <CanvasStageContainer
+        ref={handleRef}
+        nodesRegistryRef={registryRef}
+        onStageSizeChange={onStageSizeChange}
+      />,
+      store,
+    );
+
+    expect(onStageSizeChange).toHaveBeenCalledWith({ width: 704, height: 396 });
+
+    const stage = registryRef.current.stage;
+    expect(stage).toBeTruthy();
+    const toDataURLSpy = vi.spyOn(stage!, 'toDataURL');
+
+    await handleRef.current?.exportPng({ crop: true, scale: 2 });
+
+    expect(toDataURLSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        x: 48,
+        y: 27,
+        width: 704,
+        height: 396,
+        pixelRatio: 2,
+      }),
+    );
+  });
+});

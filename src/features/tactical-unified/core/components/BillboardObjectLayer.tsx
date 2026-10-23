@@ -189,10 +189,15 @@ export function BillboardObjectLayer({
       setIsDragging(false);
 
       const clientX = (e.evt as MouseEvent | undefined)?.clientX;
+      const stage = e.target.getStage();
+      const stageRect = stage?.container().getBoundingClientRect();
+
       const isOverBenchPanel =
         clientX !== undefined &&
-        typeof window !== 'undefined' &&
-        clientX >= window.innerWidth - 340;
+        (stageRect
+          ? clientX >= stageRect.right
+          : typeof window !== 'undefined' &&
+            clientX >= window.innerWidth - 340);
 
       if (isOverBenchPanel) {
         movePlayerToBench(activeSlideId, marker.id);
