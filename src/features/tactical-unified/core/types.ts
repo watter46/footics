@@ -31,7 +31,7 @@ export interface SelectedObject {
 }
 
 export interface CanvasConfig {
-  mode: 'screenshot-edit' | 'tactical-board';
+  mode: 'screenshot-edit' | 'tactical-board' | 'full-tactical';
   backgroundImageUrl?: string;
   initialAnnotations?: string;
   markerMode?: '2d-only' | '3d-only' | 'all';

@@ -23,7 +23,7 @@ export const DEFAULT_BOUNDARY_BOX: BoundaryBox = {
   height: 100,
   enabled: true,
   visible: false,
-  fitTarget: 'canvas',
+  fitTarget: 'pitch',
 };
 
 export const EMPTY_ANNOTATIONS = {
