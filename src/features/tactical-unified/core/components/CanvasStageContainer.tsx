@@ -22,12 +22,11 @@ import {
   createCanvasNodesRegistry,
 } from '../utils/canvas-registry';
 import { calculateVirtualCanvasRect } from '../utils/virtual-canvas-rect';
-import { AnnotationLayer } from './AnnotationLayer';
-import { BackgroundImageLayer } from './BackgroundImageLayer';
-import { BallLayer } from './BallLayer';
-import { CanvasOverlays } from './CanvasOverlays';
-import { DrawingPreviewLayer } from './DrawingPreviewLayer';
-import { PlayerLayer } from './PlayerLayer';
+import { BillboardObjectLayer } from './BillboardObjectLayer';
+import { HtmlHudOverlay } from './HtmlHudOverlay';
+import { InteractionPreviewLayer } from './InteractionPreviewLayer';
+import { PitchGroundLayer } from './PitchGroundLayer';
+import { ViewportCropOverlay } from './ViewportCropOverlay';
 
 function useContainerResize(
   containerRef: React.RefObject<HTMLDivElement | null>,
@@ -64,6 +63,7 @@ export const CanvasStageContainer = forwardRef<
     nodesRegistryRef: injectedRegistryRef,
     onStageSizeChange,
     toolbar,
+    cleanRender,
   },
   ref,
 ) {
@@ -172,20 +172,20 @@ export const CanvasStageContainer = forwardRef<
         isOver ? 'ring-2 ring-blue-500/50' : ''
       } ${className}`}
     >
-      {vRect.width > 0 && vRect.height > 0 && (
+      {containerSize.width > 0 && containerSize.height > 0 && (
         <div
           style={{
             position: 'absolute',
-            left: vRect.x,
-            top: vRect.y,
-            width: vRect.width,
-            height: vRect.height,
+            left: 0,
+            top: 0,
+            width: containerSize.width,
+            height: containerSize.height,
           }}
         >
           <Stage
             ref={stageRef}
-            width={vRect.width}
-            height={vRect.height}
+            width={containerSize.width}
+            height={containerSize.height}
             dragDistance={3}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
@@ -199,39 +199,43 @@ export const CanvasStageContainer = forwardRef<
               setIsDragging(false);
             }}
           >
-            <BackgroundImageLayer width={vRect.width} height={vRect.height} />
-            <AnnotationLayer
-              width={vRect.width}
-              height={vRect.height}
+            <PitchGroundLayer
+              stageSize={containerSize}
+              pitchRect={vRect}
               activePolygonId={activePolygonId}
               mousePreviewPos={mousePreviewPos}
+              nodesRegistryRef={nodesRegistryRef}
+              cleanRender={cleanRender}
+            />
+            <BillboardObjectLayer
+              stageSize={containerSize}
+              pitchRect={vRect}
               editingTextId={editingTextId}
               onStartEditText={setEditingTextId}
               nodesRegistryRef={nodesRegistryRef}
+              cleanRender={cleanRender}
             />
-            <BallLayer
-              width={vRect.width}
-              height={vRect.height}
-              nodesRegistryRef={nodesRegistryRef}
-            />
-            <PlayerLayer
-              width={vRect.width}
-              height={vRect.height}
-              nodesRegistryRef={nodesRegistryRef}
-            />
-            <DrawingPreviewLayer
-              width={vRect.width}
-              height={vRect.height}
+            <InteractionPreviewLayer
+              stageSize={containerSize}
+              pitchRect={vRect}
               selectionBox={selectionBox}
               activePolygonId={activePolygonId}
               mousePreviewPos={mousePreviewPos}
+              cleanRender={cleanRender}
             />
           </Stage>
 
-          <CanvasOverlays
-            vRect={vRect}
+          <ViewportCropOverlay
+            stageSize={containerSize}
+            pitchRect={vRect}
+            cleanRender={cleanRender}
+          />
+          <HtmlHudOverlay
+            stageSize={containerSize}
+            pitchRect={vRect}
             editingText={editingText}
             nodesRegistryRef={nodesRegistryRef}
+            cleanRender={cleanRender}
             onSaveText={(textId, content) => updateText(textId, { content })}
             onRemoveText={(textId) => {
               removeText(textId);

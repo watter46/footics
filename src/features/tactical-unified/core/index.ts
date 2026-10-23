@@ -12,6 +12,11 @@ export {
   type BackgroundImageLayerProps,
 } from './components/BackgroundImageLayer';
 export {
+  BillboardObjectLayer,
+  type BillboardObjectLayerProps,
+  sortBillboardItemsByDepth,
+} from './components/BillboardObjectLayer';
+export {
   BoundaryBoxHud,
   type BoundaryBoxHudProps,
 } from './components/BoundaryBoxHud';
@@ -37,12 +42,24 @@ export {
   type DrawingPreviewLayerProps,
 } from './components/DrawingPreviewLayer';
 export {
+  HtmlHudOverlay,
+  type HtmlHudOverlayProps,
+} from './components/HtmlHudOverlay';
+export {
   ConnectLineHud,
   type ConnectLineHudProps,
   type HudOffsetRect,
   type HudTarget,
   resolveHudTarget,
 } from './components/hud';
+export {
+  InteractionPreviewLayer,
+  type InteractionPreviewLayerProps,
+} from './components/InteractionPreviewLayer';
+export {
+  PitchGroundLayer,
+  type PitchGroundLayerProps,
+} from './components/PitchGroundLayer';
 export {
   PitchInlineTextEditor,
   type PitchInlineTextEditorProps,
@@ -56,6 +73,10 @@ export {
   type PlayerLayerProps,
 } from './components/PlayerLayer';
 export * from './components/toolbar';
+export {
+  ViewportCropOverlay,
+  type ViewportCropOverlayProps,
+} from './components/ViewportCropOverlay';
 export {
   type CornerId,
   useBoundaryBoxDrag,

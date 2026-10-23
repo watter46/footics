@@ -10,15 +10,15 @@ import {
 } from '@/lib/tactical/pitch-svg';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 
-export interface BackgroundImageLayerProps {
+export interface PitchBackgroundImageProps {
   width: number;
   height: number;
 }
 
-export function BackgroundImageLayer({
+export function PitchBackgroundImage({
   width,
   height,
-}: BackgroundImageLayerProps): ReactNode {
+}: PitchBackgroundImageProps): ReactNode {
   const backgroundImageUrl = useCanvasStore((s) => s.backgroundImageUrl);
   const aspectRatio = useCanvasStore((s) => s.aspectRatio ?? '16:9');
 
@@ -79,10 +79,30 @@ export function BackgroundImageLayer({
 
   const displayImage = backgroundImageUrl ? customImage : pitchImage;
 
-  // Stage は常にピッチのアスペクト比に合わせて contain 配置されているため、
-  // 背景画像 / ピッチSVG は Stage 全面 (x: 0, y: 0, width, height) に描画する。
-  const imageRect = { x: 0, y: 0, width, height };
+  if (!displayImage) return null;
 
+  return (
+    <KonvaImage
+      image={displayImage}
+      x={0}
+      y={0}
+      width={width}
+      height={height}
+      listening={false}
+      perfectDrawEnabled={false}
+    />
+  );
+}
+
+export interface BackgroundImageLayerProps {
+  width: number;
+  height: number;
+}
+
+export function BackgroundImageLayer({
+  width,
+  height,
+}: BackgroundImageLayerProps): ReactNode {
   return (
     <Layer listening={false}>
       {/* ソリッド背景 */}
@@ -95,17 +115,7 @@ export function BackgroundImageLayer({
         listening={false}
       />
       {/* 余白0%（ゼロマージン）背景画像 / ピッチSVG */}
-      {displayImage && (
-        <KonvaImage
-          image={displayImage}
-          x={imageRect.x}
-          y={imageRect.y}
-          width={imageRect.width}
-          height={imageRect.height}
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      )}
+      <PitchBackgroundImage width={width} height={height} />
     </Layer>
   );
 }

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCanvasStore } from '../../store/canvas-store';
 import { CanvasStoreContext } from '../../store/canvas-store-provider';
 import type { CanvasCoreHandle, CanvasStoreApi } from '../../types';
+import { createCanvasNodesRegistry } from '../../utils/canvas-registry';
 import { CanvasStageContainer } from '../CanvasStageContainer';
 
 class MockResizeObserver {
@@ -160,24 +161,24 @@ describe('CanvasStageContainer Tool Shortcuts', () => {
     });
     renderWithStore(<CanvasStageContainer />, store);
 
-    const toolMappings: [string, string][] = [
-      ['l', 'line'],
-      ['r', 'route_line'],
-      ['a', 'arrow_solid'],
-      ['d', 'arrow_dash'],
-      ['w', 'arrow_wavy'],
-      ['z', 'zone_circle'],
-      ['p', 'polygon_zone'],
-      ['t', 'text'],
-      ['m', 'player'],
-      ['o', 'player-ring'],
-      ['e', 'eraser'],
-      ['v', 'select'],
+    const toolMappings: [string, string, string][] = [
+      ['l', 'line', 'KeyL'],
+      ['r', 'route_line', 'KeyR'],
+      ['a', 'arrow_solid', 'KeyA'],
+      ['d', 'arrow_dash', 'KeyD'],
+      ['w', 'arrow_wavy', 'KeyW'],
+      ['z', 'zone_circle', 'KeyZ'],
+      ['p', 'polygon_zone', 'KeyP'],
+      ['t', 'text', 'KeyT'],
+      ['m', 'player', 'KeyM'],
+      ['o', 'player-ring', 'KeyO'],
+      ['e', 'eraser', 'KeyE'],
+      ['v', 'select', 'KeyV'],
     ];
 
-    for (const [key, tool] of toolMappings) {
+    for (const [key, tool, code] of toolMappings) {
       act(() => {
-        fireEvent.keyDown(window, { key });
+        fireEvent.keyDown(document, { key, code });
       });
       expect(store.getState().activeTool).toBe(tool);
     }
@@ -194,10 +195,11 @@ describe('CanvasStageContainer Action & History Shortcuts', () => {
 
     const spaceEvt = new KeyboardEvent('keydown', {
       code: 'Space',
+      key: ' ',
       cancelable: true,
     });
     act(() => {
-      window.dispatchEvent(spaceEvt);
+      document.dispatchEvent(spaceEvt);
     });
     expect(spaceEvt.defaultPrevented).toBe(true);
 
@@ -220,45 +222,50 @@ describe('CanvasStageContainer Action & History Shortcuts', () => {
     });
 
     act(() => {
-      fireEvent.keyDown(window, { key: 'Delete' });
+      fireEvent.keyDown(document, { key: 'Delete', code: 'Delete' });
     });
     expect(store.getState().annotations.arrows).toHaveLength(0);
 
     act(() => {
-      fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
+      fireEvent.keyDown(document, { key: 'z', code: 'KeyZ', ctrlKey: true });
     });
     expect(store.getState().annotations.arrows).toHaveLength(1);
 
     act(() => {
-      fireEvent.keyDown(window, { key: 'z', ctrlKey: true, shiftKey: true });
+      fireEvent.keyDown(document, {
+        key: 'z',
+        code: 'KeyZ',
+        ctrlKey: true,
+        shiftKey: true,
+      });
     });
     expect(store.getState().annotations.arrows).toHaveLength(0);
 
     act(() => {
-      fireEvent.keyDown(window, { key: 'y', ctrlKey: true });
+      fireEvent.keyDown(document, { key: 'y', code: 'KeyY', ctrlKey: true });
     });
     expect(store.getState().annotations.arrows).toHaveLength(0);
 
     act(() => {
-      fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
+      fireEvent.keyDown(document, { key: 'z', code: 'KeyZ', ctrlKey: true });
     });
     expect(store.getState().annotations.arrows).toHaveLength(1);
 
     act(() => {
       store.getState().selectObject({ id: 'arrow-del-1', kind: 'arrow' });
-      fireEvent.keyDown(window, { key: 'Backspace' });
+      fireEvent.keyDown(document, { key: 'Backspace', code: 'Backspace' });
     });
     expect(store.getState().annotations.arrows).toHaveLength(0);
 
     act(() => {
       store.getState().undo();
       store.getState().clearSelection();
-      fireEvent.keyDown(window, { key: 'a', ctrlKey: true });
+      fireEvent.keyDown(document, { key: 'a', code: 'KeyA', ctrlKey: true });
     });
     expect(store.getState().selectedObjects.length).toBeGreaterThan(0);
 
     act(() => {
-      fireEvent.keyDown(window, { key: 'Escape' });
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
     });
     expect(store.getState().selectedObjects).toHaveLength(0);
     expect(store.getState().activeTool).toBe('select');
@@ -294,5 +301,53 @@ describe('CanvasStageContainer Action & History Shortcuts', () => {
       />,
     );
     expect(getByTestId('custom-injected-toolbar')).toBeDefined();
+  });
+});
+
+describe('CanvasStageContainer Fixed Stage Size & Dynamic PitchRect', () => {
+  it('アスペクト比を 4:5, 9:16, 1:1, 16:9 に切り替えても Stage 外枠サイズがコンテナサイズ(800x450)のまま不変であること', () => {
+    const registryRef = { current: createCanvasNodesRegistry() };
+    const onStageSizeChange = vi.fn();
+    const store = createCanvasStore({
+      mode: 'screenshot-edit',
+      aspectRatio: '16:9',
+    });
+
+    const { rerender, container } = renderWithStore(
+      <CanvasStageContainer
+        nodesRegistryRef={registryRef}
+        onStageSizeChange={onStageSizeChange}
+      />,
+      store,
+    );
+
+    const aspectRatios: ('4:5' | '9:16' | '1:1' | '16:9')[] = [
+      '4:5',
+      '9:16',
+      '1:1',
+      '16:9',
+    ];
+
+    for (const ratio of aspectRatios) {
+      act(() => {
+        store.getState().setAspectRatio(ratio);
+      });
+      rerender(
+        <CanvasStoreContext.Provider value={store}>
+          <CanvasStageContainer
+            nodesRegistryRef={registryRef}
+            onStageSizeChange={onStageSizeChange}
+          />
+        </CanvasStoreContext.Provider>,
+      );
+
+      // Stage のサイズが常にコンテナサイズ 800x450 であること
+      expect(registryRef.current.stage?.width()).toBe(800);
+      expect(registryRef.current.stage?.height()).toBe(450);
+
+      const konvaContent = container.querySelector('.konvajs-content');
+      expect(konvaContent?.getAttribute('style')).toContain('width: 800px');
+      expect(konvaContent?.getAttribute('style')).toContain('height: 450px');
+    }
   });
 });

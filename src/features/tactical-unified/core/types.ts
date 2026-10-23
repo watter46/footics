@@ -191,4 +191,5 @@ export interface CanvasStageProps {
   onStageSizeChange?: (size: { width: number; height: number }) => void;
   onAutoSave?: (json: string) => void;
   toolbar?: React.ReactNode;
+  cleanRender?: boolean;
 }

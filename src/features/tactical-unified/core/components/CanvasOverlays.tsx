@@ -1,5 +1,6 @@
 'use client';
 
+import type React from 'react';
 import type { TextAnnotation } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import { BoundaryBoxHud } from './BoundaryBoxHud';
@@ -8,7 +9,7 @@ import { ContextHud } from './ContextHud';
 import { PitchInlineTextEditor } from './PitchInlineTextEditor';
 
 export interface CanvasOverlaysProps {
-  vRect: { width: number; height: number };
+  vRect: { width: number; height: number; x?: number; y?: number };
   editingText: TextAnnotation | null;
   nodesRegistryRef?: React.MutableRefObject<unknown>;
   onSaveText: (id: string, content: string) => void;
@@ -26,6 +27,18 @@ export function CanvasOverlays({
 }: CanvasOverlaysProps) {
   const stageSize = { width: vRect.width, height: vRect.height };
   const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
+  const pitchRect =
+    'x' in vRect &&
+    'y' in vRect &&
+    vRect.x !== undefined &&
+    vRect.y !== undefined
+      ? {
+          x: vRect.x,
+          y: vRect.y,
+          width: vRect.width,
+          height: vRect.height,
+        }
+      : undefined;
 
   return (
     <>
@@ -44,12 +57,21 @@ export function CanvasOverlays({
           <span>🔗 接続先マーカーをクリックしてください (ESCでキャンセル)</span>
         </div>
       )}
-      <BoundaryBoxOverlay width={vRect.width} height={vRect.height} />
-      <ContextHud stageSize={stageSize} nodesRegistryRef={nodesRegistryRef} />
-      <BoundaryBoxHud stageSize={stageSize} />
+      <BoundaryBoxOverlay
+        width={vRect.width}
+        height={vRect.height}
+        pitchRect={pitchRect}
+      />
+      <ContextHud
+        stageSize={stageSize}
+        pitchRect={pitchRect}
+        nodesRegistryRef={nodesRegistryRef}
+      />
+      <BoundaryBoxHud stageSize={stageSize} pitchRect={pitchRect} />
       <PitchInlineTextEditor
         editingText={editingText}
         stageSize={stageSize}
+        pitchRect={pitchRect}
         onSave={onSaveText}
         onRemove={onRemoveText}
         onClose={onCloseText}

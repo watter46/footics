@@ -153,19 +153,17 @@ export function PlayerLayer({
 
       const clientX = (e.evt as MouseEvent | undefined)?.clientX;
       const isOverBenchPanel =
-        (clientX !== undefined &&
-          typeof window !== 'undefined' &&
-          clientX >= window.innerWidth - 340) ||
-        e.target.x() >= width ||
-        (e.target.x() / width) * 100 >= 98;
+        clientX !== undefined &&
+        typeof window !== 'undefined' &&
+        clientX >= window.innerWidth - 340;
 
       if (isOverBenchPanel) {
         movePlayerToBench(activeSlideId, marker.id);
         return;
       }
 
-      const nx = Math.max(0, Math.min(100, (e.target.x() / width) * 100));
-      const ny = Math.max(0, Math.min(100, (e.target.y() / height) * 100));
+      const nx = (e.target.x() / width) * 100;
+      const ny = (e.target.y() / height) * 100;
       updateMarker(marker.id, { x: nx, y: ny });
     },
     [
