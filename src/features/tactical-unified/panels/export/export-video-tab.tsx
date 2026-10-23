@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, Clapperboard, Film, Layers } from 'lucide-react';
+import { CheckCircle2, Film, Layers } from 'lucide-react';
 import { ExportVideoMorphingSection } from './export-video-morphing-section';
 import { ExportVideoPipelineSection } from './export-video-pipeline-section';
 import type { ExportFormat } from './use-export-modal-state';
@@ -33,12 +33,6 @@ const VIDEO_FORMATS = [
     label: 'Transparent WebM (VP9)',
     desc: 'Transparent overlay video for Premiere, DaVinci & FCP',
     badge: 'Pro Editor',
-  },
-  {
-    format: 'gif' as const,
-    icon: Clapperboard,
-    label: 'GIF Animation',
-    desc: 'Export lightweight looping tactical GIF',
   },
 ];
 

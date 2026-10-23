@@ -13,7 +13,7 @@ import { useExportShare } from './use-export-share';
 import { useVideoMorphingConfig } from './use-video-morphing-config';
 
 export type ExportTab = 'video' | 'image' | 'json';
-export type ExportFormat = ExportTarget['format'];
+export type ExportFormat = 'png' | 'zip' | 'mp4' | 'webm';
 
 export function useExportModalState() {
   const closeExportModal = useTacticalUnifiedStore((s) => s.closeExportModal);

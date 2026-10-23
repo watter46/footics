@@ -1,4 +1,4 @@
-import JSZip from 'jszip';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import type { EventRow, Match, Player } from '@/types';
 import {
   generatePlayerMasterId,
@@ -57,7 +57,7 @@ function isValidPhotoBlob(blob: unknown): blob is Blob {
  * 全データを ZIP 形式でエクスポートする
  */
 export async function exportAllDataZip(): Promise<void> {
-  const zip = new JSZip();
+  const files: Record<string, Uint8Array> = {};
 
   // 1. Memos, Custom Events, Match Memos & Snapshots
   const [
@@ -74,8 +74,7 @@ export async function exportAllDataZip(): Promise<void> {
     getAllPlayerMasters(),
   ]);
 
-  zip.file(
-    'memos.json',
+  files['memos.json'] = strToU8(
     JSON.stringify(
       {
         event_memos: eventMemos,
@@ -94,8 +93,8 @@ export async function exportAllDataZip(): Promise<void> {
     getAllEvents(),
   ]);
 
-  zip.file('matches.json', JSON.stringify(matches, null, 2));
-  zip.file('events.json', JSON.stringify(allEvents, null, 2));
+  files['matches.json'] = strToU8(JSON.stringify(matches, null, 2));
+  files['events.json'] = strToU8(JSON.stringify(allEvents, null, 2));
 
   // 選手マスターから画像を分離して photos/ フォルダに格納
   let photoCount = 0;
@@ -112,10 +111,10 @@ export async function exportAllDataZip(): Promise<void> {
         try {
           if (typeof (photoBlob as any).arrayBuffer === 'function') {
             const buffer = await (photoBlob as any).arrayBuffer();
-            zip.file(`photos/${photoFileName}`, buffer);
+            files[`photos/${photoFileName}`] = new Uint8Array(buffer);
             photoCount++;
-          } else {
-            zip.file(`photos/${photoFileName}`, photoBlob as any);
+          } else if (photoBlob instanceof Uint8Array) {
+            files[`photos/${photoFileName}`] = photoBlob;
             photoCount++;
           }
         } catch (err) {
@@ -130,11 +129,10 @@ export async function exportAllDataZip(): Promise<void> {
     }),
   );
 
-  zip.file('players.json', JSON.stringify(sanitizedPlayers, null, 2));
+  files['players.json'] = strToU8(JSON.stringify(sanitizedPlayers, null, 2));
 
   // 3. Manifest
-  zip.file(
-    'manifest.json',
+  files['manifest.json'] = strToU8(
     JSON.stringify(
       {
         version: BACKUP_VERSION,
@@ -149,7 +147,10 @@ export async function exportAllDataZip(): Promise<void> {
   );
 
   // 4. Generate & Download
-  const blob = await zip.generateAsync({ type: 'blob' });
+  const zipped = zipSync(files, { level: 6 });
+  const blob = new Blob([zipped as unknown as BlobPart], {
+    type: 'application/zip',
+  });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   const dateStr = new Date().toISOString().split('T')[0];
@@ -174,7 +175,9 @@ export async function importAllDataZip(file: File | Blob): Promise<{
     typeof (file as any).arrayBuffer === 'function'
       ? await (file as any).arrayBuffer()
       : file;
-  const zip = await JSZip.loadAsync(fileData);
+  const unzipped = unzipSync(
+    fileData instanceof Uint8Array ? fileData : new Uint8Array(fileData),
+  );
 
   let matchCount = 0;
   let memoCount = 0;
@@ -183,9 +186,9 @@ export async function importAllDataZip(file: File | Blob): Promise<{
 
   // 1. Import Memos
   try {
-    const memosFile = zip.file('memos.json');
-    if (memosFile) {
-      const memosText = await memosFile.async('string');
+    const memosBytes = unzipped['memos.json'];
+    if (memosBytes) {
+      const memosText = strFromU8(memosBytes);
       const memosData = JSON.parse(memosText);
       const eventMemos = Array.isArray(memosData.event_memos)
         ? memosData.event_memos
@@ -218,9 +221,9 @@ export async function importAllDataZip(file: File | Blob): Promise<{
 
   // 2. Import Matches & Sync Chelsea Players to Master
   try {
-    const matchesFile = zip.file('matches.json');
-    if (matchesFile) {
-      const matchesText = await matchesFile.async('string');
+    const matchesBytes = unzipped['matches.json'];
+    if (matchesBytes) {
+      const matchesText = strFromU8(matchesBytes);
       const rawMatches = JSON.parse(matchesText) as Array<
         Match & { matchId?: number }
       >;
@@ -272,9 +275,9 @@ export async function importAllDataZip(file: File | Blob): Promise<{
 
   // 3. Import Players & Photos (with legacy schema normalization and backward compatibility)
   try {
-    const playersFile = zip.file('players.json');
-    if (playersFile) {
-      const playersText = await playersFile.async('string');
+    const playersBytes = unzipped['players.json'];
+    if (playersBytes) {
+      const playersText = strFromU8(playersBytes);
       const rawPlayers = JSON.parse(playersText) as Array<
         Partial<PlayerMaster> & {
           playerId?: number;
@@ -293,11 +296,12 @@ export async function importAllDataZip(file: File | Blob): Promise<{
           let photoBlob: Blob | undefined;
 
           if (p.photoFileName) {
-            const photoFile = zip.file(`photos/${p.photoFileName}`);
-            if (photoFile) {
-              const u8 = await photoFile.async('uint8array');
+            const photoBytes = unzipped[`photos/${p.photoFileName}`];
+            if (photoBytes) {
               const mime = getMimeTypeFromFileName(p.photoFileName);
-              photoBlob = new Blob([u8 as unknown as BlobPart], { type: mime });
+              photoBlob = new Blob([photoBytes as unknown as BlobPart], {
+                type: mime,
+              });
             }
           }
 
@@ -315,11 +319,10 @@ export async function importAllDataZip(file: File | Blob): Promise<{
               `photos/${id}`,
             ];
             for (const path of candidatePaths) {
-              const photoFile = zip.file(path);
-              if (photoFile) {
-                const u8 = await photoFile.async('uint8array');
+              const photoBytes = unzipped[path];
+              if (photoBytes) {
                 const mime = getMimeTypeFromFileName(path);
-                photoBlob = new Blob([u8 as unknown as BlobPart], {
+                photoBlob = new Blob([photoBytes as unknown as BlobPart], {
                   type: mime,
                 });
                 break;
@@ -359,9 +362,9 @@ export async function importAllDataZip(file: File | Blob): Promise<{
 
   // 4. Import Events
   try {
-    const eventsFile = zip.file('events.json');
-    if (eventsFile) {
-      const eventsText = await eventsFile.async('string');
+    const eventsBytes = unzipped['events.json'];
+    if (eventsBytes) {
+      const eventsText = strFromU8(eventsBytes);
       const allEvents = JSON.parse(eventsText) as EventRow[];
 
       if (Array.isArray(allEvents) && allEvents.length > 0) {

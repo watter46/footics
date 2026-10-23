@@ -3,6 +3,7 @@
  * Pure calculation and format export helpers for Konva canvas pipeline.
  */
 
+import { zipSync } from 'fflate';
 import type Konva from 'konva';
 import type { ExportTarget, Slide } from '@/lib/types/tactical-unified';
 
@@ -24,6 +25,18 @@ export function downloadBlob(blob: Blob, filename: string): void {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export function stageToBlob(
+  stage: Konva.Stage,
+  config?: Parameters<Konva.Stage['toBlob']>[0],
+): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    stage.toBlob({
+      ...config,
+      callback: (blob) => resolve(blob),
+    });
+  });
 }
 
 export function getTargetSlides(
@@ -57,8 +70,7 @@ export async function exportZipSlides(options: {
   activateSlide?: (slideId: string) => Promise<void>;
   scale: number;
 }): Promise<void> {
-  const { default: JSZip } = await import('jszip');
-  const zip = new JSZip();
+  const files: Record<string, Uint8Array> = {};
 
   for (const slide of options.slides) {
     if (options.activateSlide) await options.activateSlide(slide.id);
@@ -66,55 +78,37 @@ export async function exportZipSlides(options: {
     const dataUrl = options.captureSlide(options.scale, slide.id);
     if (!dataUrl) continue;
     const blob = await dataUrlToBlob(dataUrl);
-    zip.file(`slide-${String(slide.index + 1).padStart(2, '0')}.png`, blob);
+    const buffer = await blob.arrayBuffer();
+    files[`slide-${String(slide.index + 1).padStart(2, '0')}.png`] =
+      new Uint8Array(buffer);
   }
 
-  const zipBlob = await zip.generateAsync({ type: 'blob' });
+  const zipped = zipSync(files, { level: 6 });
+  const zipBlob = new Blob([zipped as unknown as BlobPart], {
+    type: 'application/zip',
+  });
   downloadBlob(zipBlob, 'tactical-slides.zip');
-}
-
-export async function exportGifSlides(options: {
-  stage: Konva.Stage;
-  frames: string[];
-}): Promise<void> {
-  const { default: GIF } = await import('gif.js');
-  const gif = new GIF({
-    workers: 2,
-    quality: 10,
-    width: options.stage.width(),
-    height: options.stage.height(),
-  });
-
-  for (const dataUrl of options.frames) {
-    const img = await new Promise<HTMLImageElement>((res) => {
-      const i = new Image();
-      i.onload = () => res(i);
-      i.src = dataUrl;
-    });
-    gif.addFrame(img, { delay: 800 });
-  }
-
-  await new Promise<void>((res) => {
-    gif.on('finished', (blob: Blob) => {
-      downloadBlob(blob, 'tactical-animation.gif');
-      res();
-    });
-    gif.render();
-  });
 }
 
 export async function exportMp4Frames(options: {
   frames: string[];
 }): Promise<void> {
-  const { default: JSZip } = await import('jszip');
-  const zip = new JSZip();
-  options.frames.forEach((f, i) => {
+  const files: Record<string, Uint8Array> = {};
+  for (let i = 0; i < options.frames.length; i++) {
+    const f = options.frames[i];
+    if (!f) continue;
     const b64 = f.split(',')[1] ?? '';
-    zip.file(`frame-${String(i).padStart(3, '0')}.png`, b64, {
-      base64: true,
-    });
+    const binaryString = atob(b64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let j = 0; j < binaryString.length; j++) {
+      bytes[j] = binaryString.charCodeAt(j);
+    }
+    files[`frame-${String(i).padStart(3, '0')}.png`] = bytes;
+  }
+  const zipped = zipSync(files, { level: 6 });
+  const zipBlob = new Blob([zipped as unknown as BlobPart], {
+    type: 'application/zip',
   });
-  const zipBlob = await zip.generateAsync({ type: 'blob' });
   downloadBlob(zipBlob, 'tactical-frames.zip');
 }
 
@@ -161,9 +155,7 @@ export async function executeExportFormat(
     options.activateSlide,
   );
 
-  if (target.format === 'gif') {
-    await exportGifSlides({ stage: options.stage, frames });
-  } else if (target.format === 'mp4') {
+  if (target.format === 'mp4') {
     await exportMp4Frames({ frames });
   }
 }

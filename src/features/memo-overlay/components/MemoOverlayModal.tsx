@@ -1,8 +1,8 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import hotkeys from 'hotkeys-js';
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
+import { useHotkeys } from 'react-hotkeys-hook';
 import { putMatchMemo, saveCustomEvent } from '@/lib/db/extension-db-queries';
 import { createSavePayload } from '@/lib/features/memo-overlay/memoOverlayLogic';
 import { customEventKeys, eventKeys, matchKeys } from '@/lib/query-keys';
@@ -80,25 +80,25 @@ export const MemoOverlayModal: React.FC<MemoOverlayModalProps> = ({
   useMemoOverlayEventBridge(handleClose, handleSave, undefined, isModalOpen);
 
   // モーダル表示中の hotkeys 登録（直接ハンドラ呼出）
-  useEffect(() => {
-    if (!isModalOpen) return;
-
-    hotkeys('escape', (e) => {
-      e?.preventDefault?.();
+  useHotkeys(
+    'escape',
+    (e) => {
+      e.preventDefault();
       handleClose();
-    });
+    },
+    { enabled: isModalOpen, enableOnFormTags: true },
+    [isModalOpen, handleClose],
+  );
 
-    hotkeys('ctrl+enter,command+enter', (e) => {
-      e?.preventDefault?.();
+  useHotkeys(
+    ['mod+enter', 'ctrl+enter', 'meta+enter'],
+    (e) => {
+      e.preventDefault();
       handleSave();
-    });
-
-    return () => {
-      hotkeys.unbind('escape');
-      hotkeys.unbind('ctrl+enter');
-      hotkeys.unbind('command+enter');
-    };
-  }, [isModalOpen, handleClose, handleSave]);
+    },
+    { enabled: isModalOpen, enableOnFormTags: true },
+    [isModalOpen, handleSave],
+  );
 
   if (!isModalOpen) return null;
 

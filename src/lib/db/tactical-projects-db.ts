@@ -6,6 +6,7 @@
  * and JSON export/import for TacticalProject entities.
  */
 
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { db } from '@/lib/db/schema';
 import {
   clearActiveProjectFromDb,
@@ -261,8 +262,7 @@ export async function exportTacticalProjectsAsZip(
 ): Promise<void> {
   if (ids.length === 0) return;
 
-  const { default: JSZip } = await import('jszip');
-  const zip = new JSZip();
+  const files: Record<string, Uint8Array> = {};
 
   let count = 0;
   for (const id of ids) {
@@ -271,7 +271,7 @@ export async function exportTacticalProjectsAsZip(
 
     const safeTitle = sanitizeFilenameTitle(proj.title);
     const filename = `footics_tactical_${safeTitle}_${proj.id.slice(0, 8)}.json`;
-    zip.file(filename, JSON.stringify(proj, null, 2));
+    files[filename] = strToU8(JSON.stringify(proj, null, 2));
     count++;
   }
 
@@ -279,7 +279,10 @@ export async function exportTacticalProjectsAsZip(
     throw new Error('エクスポート対象のプロジェクトが見つかりませんでした');
   }
 
-  const content = await zip.generateAsync({ type: 'blob' });
+  const zipped = zipSync(files, { level: 6 });
+  const content = new Blob([zipped as unknown as BlobPart], {
+    type: 'application/zip',
+  });
   const timestamp = getTimestampForFilename();
   const zipFilename = `footics_tactical_projects_${timestamp}.zip`;
 
@@ -347,13 +350,15 @@ export async function importMultipleTacticalProjects(
     if (file.name.endsWith('.zip') || file.type.includes('zip')) {
       // Handle ZIP archive containing JSON projects
       try {
-        const { default: JSZip } = await import('jszip');
-        const zip = await JSZip.loadAsync(file);
+        const buffer = await file.arrayBuffer();
+        const unzipped = unzipSync(new Uint8Array(buffer));
 
-        for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
-          if (zipEntry.dir || !relativePath.endsWith('.json')) continue;
+        for (const [relativePath, bytes] of Object.entries(unzipped)) {
+          if (relativePath.endsWith('/') || !relativePath.endsWith('.json')) {
+            continue;
+          }
           try {
-            const jsonText = await zipEntry.async('string');
+            const jsonText = strFromU8(bytes);
             const raw = JSON.parse(jsonText);
             const parsed = TacticalProjectSchema.safeParse(raw);
             if (!parsed.success) {

@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, fireEvent, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
@@ -24,13 +24,11 @@ describe('useKeyboardShortcuts', () => {
 
     // 1. Ctrl+C (Windows/Linux)
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'c',
-          ctrlKey: true,
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'c',
+        code: 'KeyC',
+        ctrlKey: true,
+      });
     });
 
     expect(useTacticalUnifiedStore.getState().clipboard).not.toBeNull();
@@ -40,13 +38,11 @@ describe('useKeyboardShortcuts', () => {
 
     // 2. Ctrl+V (Windows/Linux)
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'v',
-          ctrlKey: true,
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'v',
+        code: 'KeyV',
+        ctrlKey: true,
+      });
     });
 
     const activeSlide = useTacticalUnifiedStore
@@ -75,13 +71,11 @@ describe('useKeyboardShortcuts', () => {
     });
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'c',
-          metaKey: true,
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'c',
+        code: 'KeyC',
+        metaKey: true,
+      });
     });
 
     expect(useTacticalUnifiedStore.getState().clipboard?.players).toHaveLength(
@@ -89,13 +83,11 @@ describe('useKeyboardShortcuts', () => {
     );
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'v',
-          metaKey: true,
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'v',
+        code: 'KeyV',
+        metaKey: true,
+      });
     });
 
     const activeSlide = useTacticalUnifiedStore
@@ -122,15 +114,14 @@ describe('useKeyboardShortcuts', () => {
 
     const inputElement = document.createElement('input');
     document.body.appendChild(inputElement);
+    inputElement.focus();
 
     act(() => {
-      inputElement.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'c',
-          ctrlKey: true,
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(inputElement, {
+        key: 'c',
+        code: 'KeyC',
+        ctrlKey: true,
+      });
     });
 
     // input 上でのキーイベントのためクリップボードは null のまま
@@ -150,12 +141,10 @@ describe('useKeyboardShortcuts', () => {
     expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(1);
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'Escape',
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'Escape',
+        code: 'Escape',
+      });
     });
 
     expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(0);
@@ -180,12 +169,10 @@ describe('useKeyboardShortcuts', () => {
     ).toHaveLength(initialCount + 1);
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'Delete',
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'Delete',
+        code: 'Delete',
+      });
     });
 
     const activeSlide = useTacticalUnifiedStore
@@ -195,27 +182,31 @@ describe('useKeyboardShortcuts', () => {
     expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(0);
   });
 
-  it('ツールショートカットキー (v, l, r, a, d, z, p, t, e) でアクティブツールが切り替わる', () => {
+  it('ツールショートカットキー (v, l, r, a, d, w, z, p, t, m, o, e) でアクティブツールが切り替わる', () => {
     renderHook(() => useKeyboardShortcuts());
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'l', bubbles: true }),
-      );
+      fireEvent.keyDown(document, { key: 'l', code: 'KeyL' });
     });
     expect(useTacticalUnifiedStore.getState().activeTool).toBe('line');
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'a', bubbles: true }),
-      );
+      fireEvent.keyDown(document, { key: 'a', code: 'KeyA' });
     });
     expect(useTacticalUnifiedStore.getState().activeTool).toBe('arrow_solid');
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'v', bubbles: true }),
-      );
+      fireEvent.keyDown(document, { key: 'w', code: 'KeyW' });
+    });
+    expect(useTacticalUnifiedStore.getState().activeTool).toBe('arrow_wavy');
+
+    act(() => {
+      fireEvent.keyDown(document, { key: 'm', code: 'KeyM' });
+    });
+    expect(useTacticalUnifiedStore.getState().activeTool).toBe('player');
+
+    act(() => {
+      fireEvent.keyDown(document, { key: 'v', code: 'KeyV' });
     });
     expect(useTacticalUnifiedStore.getState().activeTool).toBe('select');
   });
@@ -225,16 +216,12 @@ describe('useKeyboardShortcuts', () => {
     expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { code: 'Space', bubbles: true }),
-      );
+      fireEvent.keyDown(document, { key: ' ', code: 'Space' });
     });
     expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { code: 'Space', bubbles: true }),
-      );
+      fireEvent.keyDown(document, { key: ' ', code: 'Space' });
     });
     expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
   });
@@ -258,13 +245,11 @@ describe('useKeyboardShortcuts', () => {
 
     // 1. Ctrl+Z (Undo)
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'z',
-          ctrlKey: true,
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'z',
+        code: 'KeyZ',
+        ctrlKey: true,
+      });
     });
 
     const slideAfterUndo = useTacticalUnifiedStore
@@ -274,14 +259,12 @@ describe('useKeyboardShortcuts', () => {
 
     // 2. Ctrl+Shift+Z (Redo)
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'z',
-          ctrlKey: true,
-          shiftKey: true,
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'z',
+        code: 'KeyZ',
+        ctrlKey: true,
+        shiftKey: true,
+      });
     });
 
     const slideAfterRedo = useTacticalUnifiedStore
@@ -291,13 +274,11 @@ describe('useKeyboardShortcuts', () => {
 
     // 3. Cmd+Z (macOS Undo)
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'z',
-          metaKey: true,
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'z',
+        code: 'KeyZ',
+        metaKey: true,
+      });
     });
     expect(
       useTacticalUnifiedStore
@@ -307,13 +288,11 @@ describe('useKeyboardShortcuts', () => {
 
     // 4. Ctrl+Y (Windows Redo)
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'y',
-          ctrlKey: true,
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'y',
+        code: 'KeyY',
+        ctrlKey: true,
+      });
     });
     expect(
       useTacticalUnifiedStore
@@ -336,12 +315,10 @@ describe('useKeyboardShortcuts', () => {
 
     // オブジェクト非選択状態で Delete キーを押す
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'Delete',
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'Delete',
+        code: 'Delete',
+      });
     });
 
     // スライドが1枚に減る
@@ -354,13 +331,11 @@ describe('useKeyboardShortcuts', () => {
 
     // Ctrl+Z で削除前のスライドが完全復元される
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'z',
-          ctrlKey: true,
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'z',
+        code: 'KeyZ',
+        ctrlKey: true,
+      });
     });
 
     expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(2);
@@ -376,12 +351,10 @@ describe('useKeyboardShortcuts', () => {
     expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(1);
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'Delete',
-          bubbles: true,
-        }),
-      );
+      fireEvent.keyDown(document, {
+        key: 'Delete',
+        code: 'Delete',
+      });
     });
 
     expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(1);

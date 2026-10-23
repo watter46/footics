@@ -1,8 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import hotkeys from 'hotkeys-js';
 import type React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as dbQueries from '@/lib/db/extension-db-queries';
 import { useMemoOverlayStore } from '../../stores/memo-overlay-store';
 import { MemoOverlayModal } from '../MemoOverlayModal';
@@ -33,12 +32,6 @@ describe('MemoOverlayModal', () => {
     vi.clearAllMocks();
   });
 
-  afterEach(() => {
-    hotkeys.unbind('escape');
-    hotkeys.unbind('ctrl+enter');
-    hotkeys.unbind('command+enter');
-  });
-
   it('isModalOpen が false の場合は何も描画されないこと', () => {
     const { container } = renderWithClient(
       <MemoOverlayModal matchId="test-match" />,
@@ -63,7 +56,7 @@ describe('MemoOverlayModal', () => {
     renderWithClient(<MemoOverlayModal matchId="test-match" />);
 
     act(() => {
-      hotkeys.trigger('escape');
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
     });
 
     // window.dispatchEvent は呼び出されないこと
@@ -87,7 +80,11 @@ describe('MemoOverlayModal', () => {
     renderWithClient(<MemoOverlayModal matchId="test-match" />);
 
     await act(async () => {
-      hotkeys.trigger('ctrl+enter');
+      fireEvent.keyDown(document, {
+        key: 'Enter',
+        code: 'Enter',
+        ctrlKey: true,
+      });
     });
 
     // window.dispatchEvent は呼び出されないこと
@@ -111,7 +108,11 @@ describe('MemoOverlayModal', () => {
     renderWithClient(<MemoOverlayModal matchId="test-match" />);
 
     await act(async () => {
-      hotkeys.trigger('command+enter');
+      fireEvent.keyDown(document, {
+        key: 'Enter',
+        code: 'Enter',
+        metaKey: true,
+      });
     });
 
     expect(dispatchSpy).not.toHaveBeenCalled();

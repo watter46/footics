@@ -2,207 +2,193 @@
 
 /**
  * use-keyboard-shortcuts.ts
- * Keyboard shortcuts: Delete, Escape, Backspace, Copy (Ctrl/Cmd+C), Paste (Ctrl/Cmd+V), Duplicate (Ctrl/Cmd+D), Tool switching
+ * Keyboard shortcuts: Delete, Escape, Backspace, Copy (Mod+C), Paste (Mod+V), Duplicate (Mod+D), Tool switching, Space (Playback), Undo/Redo
  */
 
-import { useEffect } from 'react';
+import { useHotkeys } from 'react-hotkeys-hook';
 import { toast } from 'sonner';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { isInputFocused } from '@/lib/shortcuts';
+
+const TOOL_KEYS: Record<string, string> = {
+  v: 'select',
+  l: 'line',
+  r: 'route_line',
+  a: 'arrow_solid',
+  d: 'arrow_dash',
+  w: 'arrow_wavy',
+  z: 'zone_circle',
+  p: 'polygon_zone',
+  t: 'text',
+  m: 'player',
+  o: 'player-ring',
+  e: 'eraser',
+};
+
+const TOOL_SHORTCUT_KEYS = Object.keys(TOOL_KEYS);
 
 export function useKeyboardShortcuts() {
   const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
-  const clearSelection = useTacticalUnifiedStore((s) => s.clearSelection);
-  const removePlayer = useTacticalUnifiedStore((s) => s.removePlayer);
-  const removeArrow = useTacticalUnifiedStore((s) => s.removeArrow);
-  const removeZone = useTacticalUnifiedStore((s) => s.removeZone);
-  const removeText = useTacticalUnifiedStore((s) => s.removeText);
-  const copySelectedObjects = useTacticalUnifiedStore(
-    (s) => s.copySelectedObjects,
-  );
-  const pasteObjects = useTacticalUnifiedStore((s) => s.pasteObjects);
-  const duplicateSelectedObjects = useTacticalUnifiedStore(
-    (s) => s.duplicateSelectedObjects,
-  );
-  const undo = useTacticalUnifiedStore((s) => s.undo);
-  const redo = useTacticalUnifiedStore((s) => s.redo);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const setActiveTool = useTacticalUnifiedStore((s) => s.setActiveTool);
-  const togglePlayback = useTacticalUnifiedStore((s) => s.togglePlayback);
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      const target = e.target as HTMLElement | null;
-      const tag = target?.tagName;
-      // input/textarea/contenteditable にフォーカス中はスキップ
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) {
-        return;
-      }
+  // Undo: Mod+Z (Ctrl+Z / Cmd+Z)
+  useHotkeys(
+    ['mod+z', 'meta+z'],
+    (e) => {
+      if (isInputFocused()) return;
+      e.preventDefault();
+      useTacticalUnifiedStore.getState().undo();
+    },
+    { enableOnFormTags: false },
+  );
 
-      // Ctrl / Cmd コマンド (Undo, Redo, Copy & Paste)
-      if (e.ctrlKey || e.metaKey) {
-        // Redo: Ctrl+Shift+Z / Cmd+Shift+Z / Ctrl+Y (Windows/Linux)
-        if (
-          (e.shiftKey && (e.key === 'z' || e.key === 'Z')) ||
-          e.key === 'y' ||
-          e.key === 'Y'
-        ) {
-          e.preventDefault();
-          redo();
-          return;
-        }
+  // Redo: Mod+Shift+Z / Mod+Y (Ctrl+Shift+Z / Cmd+Shift+Z / Ctrl+Y / Cmd+Y)
+  useHotkeys(
+    ['mod+shift+z', 'meta+shift+z', 'mod+y', 'meta+y'],
+    (e) => {
+      if (isInputFocused()) return;
+      e.preventDefault();
+      useTacticalUnifiedStore.getState().redo();
+    },
+    { enableOnFormTags: false },
+  );
 
-        // Undo: Ctrl+Z / Cmd+Z
-        if (e.key === 'z' || e.key === 'Z') {
-          e.preventDefault();
-          undo();
-          return;
-        }
+  // Copy: Mod+C (Ctrl+C / Cmd+C)
+  useHotkeys(
+    ['mod+c', 'meta+c'],
+    (e) => {
+      if (isInputFocused()) return;
+      e.preventDefault();
+      const currentSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+      useTacticalUnifiedStore.getState().copySelectedObjects(currentSlideId);
+    },
+    { enableOnFormTags: false },
+  );
 
-        if (e.key === 'c' || e.key === 'C') {
-          e.preventDefault();
-          copySelectedObjects(activeSlideId);
-          return;
-        }
-        if (e.key === 'v' || e.key === 'V') {
-          e.preventDefault();
-          pasteObjects(activeSlideId);
-          return;
-        }
-        if (e.key === 'd' || e.key === 'D') {
-          e.preventDefault();
-          duplicateSelectedObjects(activeSlideId);
-          return;
-        }
-        // 他の修飾キー付きショートカットの場合は単独キー処理へ流さない
-        return;
-      }
+  // Paste: Mod+V (Ctrl+V / Cmd+V)
+  useHotkeys(
+    ['mod+v', 'meta+v'],
+    (e) => {
+      if (isInputFocused()) return;
+      e.preventDefault();
+      const currentSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+      useTacticalUnifiedStore.getState().pasteObjects(currentSlideId);
+    },
+    { enableOnFormTags: false },
+  );
 
-      if (e.code === 'Space') {
+  // Duplicate: Mod+D (Ctrl+D / Cmd+D)
+  useHotkeys(
+    ['mod+d', 'meta+d'],
+    (e) => {
+      if (isInputFocused()) return;
+      e.preventDefault();
+      const currentSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+      useTacticalUnifiedStore
+        .getState()
+        .duplicateSelectedObjects(currentSlideId);
+    },
+    { enableOnFormTags: false },
+  );
+
+  // Playback: Space
+  useHotkeys(
+    'space',
+    (e) => {
+      if (isInputFocused()) return;
+      e.preventDefault();
+      useTacticalUnifiedStore.getState().togglePlayback();
+    },
+    { enableOnFormTags: false },
+  );
+
+  // Escape: Clear selection
+  useHotkeys(
+    'escape',
+    (e) => {
+      if (isInputFocused()) return;
+      e.preventDefault();
+      useTacticalUnifiedStore.getState().clearSelection();
+    },
+    { enableOnFormTags: false },
+  );
+
+  // Tools: v, l, r, a, d, w, z, p, t, m, o, e
+  useHotkeys(
+    TOOL_SHORTCUT_KEYS,
+    (e) => {
+      if (isInputFocused()) return;
+      const tool = TOOL_KEYS[e.key.toLowerCase()];
+      if (tool) {
         e.preventDefault();
-        togglePlayback();
-        return;
+        useTacticalUnifiedStore.getState().setActiveTool(tool as any);
       }
+    },
+    { enableOnFormTags: false },
+  );
 
-      if (e.key === 'Escape') {
-        clearSelection();
-        return;
-      }
+  // Delete / Backspace: Remove selected objects or slide
+  useHotkeys(
+    ['delete', 'backspace'],
+    (e) => {
+      if (isInputFocused()) return;
+      e.preventDefault();
+      const store = useTacticalUnifiedStore.getState();
+      const currentSlideId = store.activeSlideId;
+      const currentSelected = store.selectedObjects;
 
-      if (e.key === 'v' || e.key === 'V') {
-        setActiveTool('select');
-        return;
-      }
-      if (e.key === 'l' || e.key === 'L') {
-        setActiveTool('line');
-        return;
-      }
-      if (e.key === 'r' || e.key === 'R') {
-        setActiveTool('route_line');
-        return;
-      }
-      if (e.key === 'a' || e.key === 'A') {
-        setActiveTool('arrow_solid');
-        return;
-      }
-      if (e.key === 'd' || e.key === 'D') {
-        setActiveTool('arrow_dash');
-        return;
-      }
-      if (e.key === 'z' || e.key === 'Z') {
-        setActiveTool('zone_circle');
-        return;
-      }
-      if (e.key === 'p' || e.key === 'P') {
-        setActiveTool('polygon_zone');
-        return;
-      }
-      if (e.key === 't' || e.key === 'T') {
-        setActiveTool('text');
-        return;
-      }
-      if (e.key === 'o' || e.key === 'O') {
-        setActiveTool('player-ring');
-        return;
-      }
-      if (e.key === 'e' || e.key === 'E') {
-        setActiveTool('eraser');
-        return;
-      }
+      if (currentSelected.length > 0) {
+        const slide = store.project.slides.find((s) => s.id === currentSlideId);
+        let hasLockedObject = false;
 
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault();
-        if (selectedObjects.length > 0) {
-          const slide = useTacticalUnifiedStore
-            .getState()
-            .project.slides.find((s) => s.id === activeSlideId);
-          let hasLockedObject = false;
-
-          for (const obj of selectedObjects) {
-            let isLocked = false;
-            switch (obj.kind) {
-              case 'player':
-                isLocked = Boolean(
-                  slide?.players.find((p) => p.id === obj.id)?.locked,
-                );
-                if (!isLocked) removePlayer(activeSlideId, obj.id);
-                break;
-              case 'arrow':
-                isLocked = Boolean(
-                  slide?.arrows.find((a) => a.id === obj.id)?.locked,
-                );
-                if (!isLocked) removeArrow(activeSlideId, obj.id);
-                break;
-              case 'zone':
-                isLocked = Boolean(
-                  slide?.zones.find((z) => z.id === obj.id)?.locked,
-                );
-                if (!isLocked) removeZone(activeSlideId, obj.id);
-                break;
-              case 'text':
-                isLocked = Boolean(
-                  slide?.texts.find((t) => t.id === obj.id)?.locked,
-                );
-                if (!isLocked) removeText(activeSlideId, obj.id);
-                break;
-            }
-            if (isLocked) {
-              hasLockedObject = true;
-            }
+        for (const obj of currentSelected) {
+          let isLocked = false;
+          switch (obj.kind) {
+            case 'player':
+              isLocked = Boolean(
+                slide?.players.find((p) => p.id === obj.id)?.locked,
+              );
+              if (!isLocked) store.removePlayer(currentSlideId, obj.id);
+              break;
+            case 'arrow':
+              isLocked = Boolean(
+                slide?.arrows.find((a) => a.id === obj.id)?.locked,
+              );
+              if (!isLocked) store.removeArrow(currentSlideId, obj.id);
+              break;
+            case 'zone':
+              isLocked = Boolean(
+                slide?.zones.find((z) => z.id === obj.id)?.locked,
+              );
+              if (!isLocked) store.removeZone(currentSlideId, obj.id);
+              break;
+            case 'text':
+              isLocked = Boolean(
+                slide?.texts.find((t) => t.id === obj.id)?.locked,
+              );
+              if (!isLocked) store.removeText(currentSlideId, obj.id);
+              break;
           }
-          if (hasLockedObject) {
-            toast.info('ロック中のオブジェクトは保護されています');
-          } else {
-            clearSelection();
+          if (isLocked) {
+            hasLockedObject = true;
           }
+        }
+        if (hasLockedObject) {
+          toast.info('ロック中のオブジェクトは保護されています');
         } else {
-          // ピッチ上オブジェクト非選択時はアクティブスライドを削除
-          const project = useTacticalUnifiedStore.getState().project;
-          if (project.slides.length <= 1) {
-            toast.error('これ以上スライドを削除できません（最低1枚必要です）');
-            return;
-          }
-          useTacticalUnifiedStore.getState().deleteSlide(activeSlideId);
-          toast.success('スライドを削除しました（Ctrl+Zで復元可能）');
+          store.clearSelection();
         }
+      } else {
+        // ピッチ上オブジェクト非選択時はアクティブスライドを削除
+        const project = store.project;
+        if (project.slides.length <= 1) {
+          toast.error('これ以上スライドを削除できません（最低1枚必要です）');
+          return;
+        }
+        store.deleteSlide(currentSlideId);
+        toast.success('スライドを削除しました（Ctrl+Zで復元可能）');
       }
-    }
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [
-    selectedObjects,
-    clearSelection,
-    removePlayer,
-    removeArrow,
-    removeZone,
-    removeText,
-    copySelectedObjects,
-    pasteObjects,
-    duplicateSelectedObjects,
-    undo,
-    redo,
-    activeSlideId,
-    setActiveTool,
-    togglePlayback,
-  ]);
+    },
+    { enableOnFormTags: false },
+  );
 }

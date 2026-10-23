@@ -44,5 +44,5 @@ export function buildExportTarget(params: BuildParams): ExportTarget {
       maxQueueSize,
     };
   }
-  return { format: 'gif', scope: 'all', fps: '15' };
+  throw new Error(`Unsupported export format: ${format}`);
 }

@@ -1,6 +1,5 @@
 'use client';
 
-import { toBlob } from 'html-to-image';
 import { type RefObject, useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import type { BoundaryAspectRatio } from '../pitch-constants';
@@ -8,6 +7,37 @@ import type { BoundaryAspectRatio } from '../pitch-constants';
 interface UsePitchExportOptions {
   exportRef: RefObject<HTMLDivElement | null>;
   boundaryAspect: BoundaryAspectRatio;
+}
+
+async function domToBlob(element: HTMLElement): Promise<Blob | null> {
+  const svg = element.querySelector('svg');
+  if (!svg) return null;
+
+  const svgData = new XMLSerializer().serializeToString(svg);
+  const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = reject;
+    img.src = url;
+  });
+
+  const canvas = document.createElement('canvas');
+  canvas.width = (element.clientWidth || 800) * 2;
+  canvas.height = (element.clientHeight || 450) * 2;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    URL.revokeObjectURL(url);
+    return null;
+  }
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  URL.revokeObjectURL(url);
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), 'image/png');
+  });
 }
 
 export function usePitchExport({
@@ -22,19 +52,7 @@ export function usePitchExport({
     setIsExporting(true);
 
     try {
-      const blob = await toBlob(exportRef.current, {
-        pixelRatio: 2,
-        cacheBust: true,
-        filter: (node) => {
-          if (node instanceof Element) {
-            if (node.classList?.contains('no-export')) return false;
-            if (node.getAttribute?.('class')?.includes('no-export'))
-              return false;
-          }
-          return true;
-        },
-      });
-
+      const blob = await domToBlob(exportRef.current);
       if (!blob) throw new Error('Blob generation failed');
 
       try {
@@ -70,19 +88,7 @@ export function usePitchExport({
     setIsExporting(true);
 
     try {
-      const blob = await toBlob(exportRef.current, {
-        pixelRatio: 2,
-        cacheBust: true,
-        filter: (node) => {
-          if (node instanceof Element) {
-            if (node.classList?.contains('no-export')) return false;
-            if (node.getAttribute?.('class')?.includes('no-export'))
-              return false;
-          }
-          return true;
-        },
-      });
-
+      const blob = await domToBlob(exportRef.current);
       if (!blob) throw new Error('Blob generation failed');
 
       const url = URL.createObjectURL(blob);

@@ -1,7 +1,7 @@
 'use client';
 
-import hotkeys from 'hotkeys-js';
 import { useEffect } from 'react';
+import { useHotkeys } from 'react-hotkeys-hook';
 import {
   configToHotkeyString,
   isInputFocused,
@@ -9,8 +9,6 @@ import {
   type ShortcutAction,
   type SimpleKeyConfig,
 } from '@/lib/shortcuts';
-
-hotkeys.filter = () => true;
 
 /**
  * キーボードショートカットを登録するカスタムフック
@@ -27,36 +25,42 @@ export function useKeyboardShortcut(
   options: { enabled?: boolean; ignoreInput?: boolean } = {},
 ) {
   const { enabled = true, ignoreInput = true } = options;
+  const isFunction = typeof actionOrConfig === 'function';
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !isFunction) return;
 
-    // カスタム判定関数の場合は、従来の window イベントリスナーを使用
-    if (typeof actionOrConfig === 'function') {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (ignoreInput && isInputFocused()) return;
-        if (actionOrConfig(e)) {
-          e.preventDefault();
-          callback(e);
-        }
-      };
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (ignoreInput && isInputFocused()) return;
+      if (actionOrConfig(e)) {
+        e.preventDefault();
+        callback(e);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [actionOrConfig, callback, enabled, ignoreInput, isFunction]);
 
-    // hotkeys-js を使用した登録
-    const hotkeyStr = configToHotkeyString(actionOrConfig);
-    if (!hotkeyStr) return;
+  const hotkeyStr = !isFunction ? configToHotkeyString(actionOrConfig) : '';
+  const hotkeysList = hotkeyStr
+    ? hotkeyStr.includes('ctrl+')
+      ? [hotkeyStr, hotkeyStr.replace(/ctrl\+/g, 'meta+')]
+      : [hotkeyStr]
+    : [];
 
-    const handler = (event: KeyboardEvent) => {
+  useHotkeys(
+    hotkeysList,
+    (event) => {
       if (ignoreInput && isInputFocused()) return;
       event.preventDefault();
       callback(event);
-    };
-
-    hotkeys(hotkeyStr, handler);
-    return () => hotkeys.unbind(hotkeyStr, handler);
-  }, [actionOrConfig, callback, enabled, ignoreInput]);
+    },
+    {
+      enabled: enabled && !isFunction && hotkeysList.length > 0,
+      enableOnFormTags: !ignoreInput,
+    },
+    [hotkeysList, enabled, isFunction, ignoreInput, callback],
+  );
 }
 
 /**

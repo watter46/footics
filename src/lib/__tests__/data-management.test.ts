@@ -1,4 +1,4 @@
-import JSZip from 'jszip';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { exportAllDataZip, importAllDataZip } from '../data-management';
 import {
@@ -89,25 +89,20 @@ describe('src/lib/data-management', () => {
       expect(clickSpy).toHaveBeenCalledTimes(1);
       expect(generatedBlob).not.toBeNull();
 
-      // 3. Inspect ZIP contents
-      const zip = await JSZip.loadAsync(
-        await (generatedBlob as unknown as Blob).arrayBuffer(),
-      );
+      // 3. Inspect ZIP contents using fflate
+      const buf = await (generatedBlob as unknown as Blob).arrayBuffer();
+      const unzipped = unzipSync(new Uint8Array(buf));
 
       // manifest.json
-      const manifestFile = zip.file('manifest.json');
-      expect(manifestFile).not.toBeNull();
-      const manifestText = await manifestFile?.async('string');
-      const manifest = JSON.parse(manifestText ?? '{}');
+      expect(unzipped['manifest.json']).toBeDefined();
+      const manifest = JSON.parse(strFromU8(unzipped['manifest.json']));
       expect(manifest.version).toBe(5);
       expect(manifest.playerCount).toBe(2);
       expect(manifest.photoCount).toBe(1);
 
       // players.json
-      const playersFile = zip.file('players.json');
-      expect(playersFile).not.toBeNull();
-      const playersText = await playersFile?.async('string');
-      const players = JSON.parse(playersText ?? '[]');
+      expect(unzipped['players.json']).toBeDefined();
+      const players = JSON.parse(strFromU8(unzipped['players.json']));
       expect(players).toHaveLength(2);
 
       const palmer = players.find((p: any) => p.playerId === 100);
@@ -118,66 +113,54 @@ describe('src/lib/data-management', () => {
       expect(enzo.photoFileName).toBeUndefined();
 
       // photos/ folder
-      const photoFile = zip.file(`photos/${palmer.photoFileName}`);
-      expect(photoFile).not.toBeNull();
-      const photoBlobText = await photoFile?.async('string');
+      expect(unzipped[`photos/${palmer.photoFileName}`]).toBeDefined();
+      const photoBlobText = strFromU8(
+        unzipped[`photos/${palmer.photoFileName}`],
+      );
       expect(photoBlobText).toBe('sample-image-binary-data');
     });
   });
 
   describe('importAllDataZip', () => {
     it('restores players and their photo blobs correctly from v5 ZIP', async () => {
-      const zip = new JSZip();
+      const files: Record<string, Uint8Array> = {
+        'manifest.json': strToU8(
+          JSON.stringify({
+            version: 5,
+            matchCount: 1,
+            playerCount: 1,
+            photoCount: 1,
+          }),
+        ),
+        'memos.json': strToU8(
+          JSON.stringify({
+            event_memos: [],
+            custom_events: [],
+            match_memos: [],
+            tactical_snapshots: [],
+          }),
+        ),
+        'matches.json': strToU8(JSON.stringify([])),
+        'events.json': strToU8(JSON.stringify([])),
+        'players.json': strToU8(
+          JSON.stringify([
+            {
+              id: '26-27_200',
+              playerId: 200,
+              name: 'Reece James',
+              season: '26-27',
+              defaultShirtNo: 24,
+              position: 'DF',
+              teamName: 'Chelsea',
+              photoFileName: '26-27_200.png',
+            },
+          ]),
+        ),
+        'photos/26-27_200.png': new TextEncoder().encode('fake-image-bytes'),
+      };
 
-      // manifest.json
-      zip.file(
-        'manifest.json',
-        JSON.stringify({
-          version: 5,
-          matchCount: 1,
-          playerCount: 1,
-          photoCount: 1,
-        }),
-      );
-
-      // memos.json
-      zip.file(
-        'memos.json',
-        JSON.stringify({
-          event_memos: [],
-          custom_events: [],
-          match_memos: [],
-          tactical_snapshots: [],
-        }),
-      );
-
-      // matches.json
-      zip.file('matches.json', JSON.stringify([]));
-      zip.file('events.json', JSON.stringify([]));
-
-      // players.json & photos/
-      zip.file(
-        'players.json',
-        JSON.stringify([
-          {
-            id: '26-27_200',
-            playerId: 200,
-            name: 'Reece James',
-            season: '26-27',
-            defaultShirtNo: 24,
-            position: 'DF',
-            teamName: 'Chelsea',
-            photoFileName: '26-27_200.png',
-          },
-        ]),
-      );
-      zip.file(
-        'photos/26-27_200.png',
-        new TextEncoder().encode('fake-image-bytes'),
-      );
-
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const mockFile = new File([zipBlob], 'backup.zip', {
+      const zipped = zipSync(files);
+      const mockFile = new File([zipped as unknown as BlobPart], 'backup.zip', {
         type: 'application/zip',
       });
 
@@ -197,49 +180,47 @@ describe('src/lib/data-management', () => {
     });
 
     it('supports backward compatibility with older v4 backups without photos folder', async () => {
-      const zip = new JSZip();
+      const files: Record<string, Uint8Array> = {
+        'manifest.json': strToU8(
+          JSON.stringify({
+            version: 4,
+            matchCount: 1,
+            playerCount: 1,
+          }),
+        ),
+        'memos.json': strToU8(
+          JSON.stringify({
+            event_memos: [],
+            custom_events: [],
+            match_memos: [],
+            tactical_snapshots: [],
+          }),
+        ),
+        'matches.json': strToU8(JSON.stringify([])),
+        'events.json': strToU8(JSON.stringify([])),
+        'players.json': strToU8(
+          JSON.stringify([
+            {
+              id: '26-27_300',
+              playerId: 300,
+              name: 'Moises Caicedo',
+              season: '26-27',
+              defaultShirtNo: 25,
+              position: 'MID',
+              teamName: 'Chelsea',
+            },
+          ]),
+        ),
+      };
 
-      zip.file(
-        'manifest.json',
-        JSON.stringify({
-          version: 4,
-          matchCount: 1,
-          playerCount: 1,
-        }),
+      const zipped = zipSync(files);
+      const mockFile = new File(
+        [zipped as unknown as BlobPart],
+        'legacy_backup.zip',
+        {
+          type: 'application/zip',
+        },
       );
-
-      zip.file(
-        'memos.json',
-        JSON.stringify({
-          event_memos: [],
-          custom_events: [],
-          match_memos: [],
-          tactical_snapshots: [],
-        }),
-      );
-
-      zip.file('matches.json', JSON.stringify([]));
-      zip.file('events.json', JSON.stringify([]));
-
-      zip.file(
-        'players.json',
-        JSON.stringify([
-          {
-            id: '26-27_300',
-            playerId: 300,
-            name: 'Moises Caicedo',
-            season: '26-27',
-            defaultShirtNo: 25,
-            position: 'MID',
-            teamName: 'Chelsea',
-          },
-        ]),
-      );
-
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const mockFile = new File([zipBlob], 'legacy_backup.zip', {
-        type: 'application/zip',
-      });
 
       const result = await importAllDataZip(mockFile);
 

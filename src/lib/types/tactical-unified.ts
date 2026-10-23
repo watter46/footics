@@ -664,13 +664,6 @@ export const ExportTargetSchema = z.discriminatedUnion('format', [
     maxQueueSize: z.enum(['60', '240']).default('60').optional(),
     scale: z.number().min(1).max(4).default(2),
   }),
-  z.object({
-    format: z.literal('gif'),
-    scope: z.enum(['all', 'range']).default('all'),
-    fromSlideId: z.string().optional(),
-    toSlideId: z.string().optional(),
-    fps: z.enum(['10', '15', '24']).default('15'),
-  }),
 ]);
 export type ExportTarget = z.infer<typeof ExportTargetSchema>;
 
