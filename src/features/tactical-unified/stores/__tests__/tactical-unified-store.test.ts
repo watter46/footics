@@ -1480,7 +1480,7 @@ describe('tactical-unified-store', () => {
         height: 100,
         enabled: true,
         visible: false,
-        fitTarget: 'canvas',
+        fitTarget: 'pitch',
       });
       expect(useTacticalUnifiedStore.getState().project.boundaryBox).toEqual({
         x: 0,
@@ -1489,7 +1489,7 @@ describe('tactical-unified-store', () => {
         height: 100,
         enabled: true,
         visible: false,
-        fitTarget: 'canvas',
+        fitTarget: 'pitch',
       });
     });
 
@@ -1509,7 +1509,7 @@ describe('tactical-unified-store', () => {
         height: 100,
         enabled: true,
         visible: false,
-        fitTarget: 'canvas',
+        fitTarget: 'pitch',
       });
 
       // ユーザーによる四方ハンドルの個別リサイズ操作
@@ -2041,6 +2041,8 @@ describe('tactical-unified-store', () => {
       expect(slide?.boundaryBox?.y).toBe(0);
       expect(slide?.boundaryBox?.width).toBe(100);
       expect(slide?.boundaryBox?.height).toBe(100);
+      expect(slide?.boundaryBox?.visible).toBe(false);
+      expect(slide?.boundaryBox?.fitTarget).toBe('pitch');
 
       // 選手0の座標は初期位置に戻る (x !== 88)
       const updatedPlayer0 = slide?.players.find((p) => p.id === player0?.id);

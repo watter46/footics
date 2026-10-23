@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import type { PitchRectBounds } from '../canvas-coordinates';
 import {
   buildMVPMatrix,
   type CameraParams,
+  type CameraState,
+  DEFAULT_CAMERA_STATE,
   projectPitchToScreen,
+  screenToWorld,
   unprojectScreenToPitch,
+  worldToScreen,
 } from '../matrix-coordinates';
 
 const baseParams: CameraParams = {
@@ -223,6 +228,97 @@ describe('matrix-coordinates rectangular pitch and extrapolation', () => {
       expect(unprojected).not.toBeNull();
       expect(unprojected?.x).toBeCloseTo(pt.x, 3);
       expect(unprojected?.y).toBeCloseTo(pt.y, 3);
+    }
+  });
+});
+
+describe('matrix-coordinates worldToScreen and screenToWorld pipeline', () => {
+  const pitchRect: PitchRectBounds = {
+    x: 50,
+    y: 40,
+    width: 800,
+    height: 500,
+  };
+
+  it('1. 正面 (tilt: 0, yaw: 0) で worldToScreen と screenToWorld の往復変換が一致すること', () => {
+    const testPoints = [
+      { x: 50, y: 50 },
+      { x: 0, y: 0 },
+      { x: 100, y: 100 },
+      { x: 25, y: 75 },
+    ];
+
+    for (const pt of testPoints) {
+      const screen = worldToScreen(pt, pitchRect, DEFAULT_CAMERA_STATE);
+      expect(screen.perspectiveScale).toBeCloseTo(1, 4);
+
+      const restored = screenToWorld(screen, pitchRect, DEFAULT_CAMERA_STATE);
+      expect(restored).not.toBeNull();
+      expect(restored?.x).toBeCloseTo(pt.x, 4);
+      expect(restored?.y).toBeCloseTo(pt.y, 4);
+    }
+  });
+
+  it('2. 3D視点 (tilt: 30, yaw: 15) で worldToScreen と screenToWorld の往復変換が一致すること', () => {
+    const camera: CameraState = {
+      tilt: 30,
+      yaw: 15,
+      zoom: 1.2,
+      panX: 20,
+      panY: -10,
+    };
+
+    const testPoints = [
+      { x: 50, y: 50 },
+      { x: 10, y: 20 },
+      { x: 80, y: 70 },
+      { x: 90, y: 10 },
+    ];
+
+    for (const pt of testPoints) {
+      const screen = worldToScreen(pt, pitchRect, camera);
+      expect(screen.perspectiveScale).toBeGreaterThan(0.2);
+
+      const restored = screenToWorld(screen, pitchRect, camera);
+      expect(restored).not.toBeNull();
+      expect(restored?.x).toBeCloseTo(pt.x, 3);
+      expect(restored?.y).toBeCloseTo(pt.y, 3);
+    }
+  });
+
+  it('3. ピッチ外余白座標 (例: x: -10, y: 110) の往復変換がクランプされず保持されること', () => {
+    const overflowPoints = [
+      { x: -10, y: 110 },
+      { x: -25, y: 50 },
+      { x: 120, y: -15 },
+      { x: 130, y: 125 },
+    ];
+
+    for (const pt of overflowPoints) {
+      const screen = worldToScreen(pt, pitchRect, DEFAULT_CAMERA_STATE);
+      const restored = screenToWorld(screen, pitchRect, DEFAULT_CAMERA_STATE);
+
+      expect(restored).not.toBeNull();
+      expect(restored?.x).toBeCloseTo(pt.x, 4);
+      expect(restored?.y).toBeCloseTo(pt.y, 4);
+    }
+
+    // 3D 視点でもピッチ外が保持されること
+    const camera3D: CameraState = {
+      tilt: 25,
+      yaw: -10,
+      zoom: 1.0,
+      panX: 0,
+      panY: 0,
+    };
+
+    for (const pt of overflowPoints) {
+      const screen = worldToScreen(pt, pitchRect, camera3D);
+      const restored = screenToWorld(screen, pitchRect, camera3D);
+
+      expect(restored).not.toBeNull();
+      expect(restored?.x).toBeCloseTo(pt.x, 3);
+      expect(restored?.y).toBeCloseTo(pt.y, 3);
     }
   });
 });

@@ -301,7 +301,7 @@ function createProjectConfigActions(set: SetState) {
           project: {
             ...s.project,
             aspectRatio: ratio,
-            boundaryBox: { ...DEFAULT_BOUNDARY_BOX_FULL },
+            boundaryBox: getDefaultBoundaryBoxForAspect(ratio),
             slides: transformedSlides,
             updatedAt: new Date().toISOString(),
           },

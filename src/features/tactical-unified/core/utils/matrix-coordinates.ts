@@ -1,7 +1,9 @@
 import { mat4, vec4 } from 'gl-matrix';
+import type { PitchRectBounds, Point2D } from './canvas-coordinates';
 
 export type CameraParams = {
   tilt?: number; // チルト角度（度数法, 例: 0〜60）。0または未指定時は2Dバイパス
+  yaw?: number; // ヨー角度（度数法, 例: -45〜45）。0または未指定時は2Dバイパス
   zoom: number; // ズーム倍率（例: 1.0 = 100%）
   panX: number; // パン X（px: Stage ピクセル空間でのオフセット）
   panY: number; // パン Y（px: Stage ピクセル空間でのオフセット）
@@ -127,6 +129,13 @@ export function buildMVPMatrix(params: CameraParams): mat4 {
   const tiltRad = (tilt * Math.PI) / 180;
   mat4.rotateX(model, model, -tiltRad);
 
+  // RotateZ (yaw: ヨー角度)
+  const yaw = params.yaw ?? 0;
+  if (Math.abs(yaw) > 1e-5) {
+    const yawRad = (yaw * Math.PI) / 180;
+    mat4.rotateZ(model, model, -yawRad);
+  }
+
   // Scale (zoom & pitch dimensions)
   const safeZoom = Math.max(0.0001, params.zoom);
   mat4.scale(model, model, [
@@ -151,7 +160,8 @@ export function projectPitchToScreen(
   params: CameraParams,
 ): ProjectedPoint {
   const tilt = params.tilt ?? 0;
-  if (Math.abs(tilt) < 1e-5) {
+  const yaw = params.yaw ?? 0;
+  if (Math.abs(tilt) < 1e-5 && Math.abs(yaw) < 1e-5) {
     // 2D 線形変換バイパス
     const geo = resolvePitchGeometry(params);
     const safeZoom = Math.max(0.0001, params.zoom);
@@ -200,7 +210,8 @@ export function unprojectScreenToPitch(
   params: CameraParams,
 ): NormPoint | null {
   const tilt = params.tilt ?? 0;
-  if (Math.abs(tilt) < 1e-5) {
+  const yaw = params.yaw ?? 0;
+  if (Math.abs(tilt) < 1e-5 && Math.abs(yaw) < 1e-5) {
     // 2D 線形逆変換バイパス
     const geo = resolvePitchGeometry(params);
     const safeZoom = Math.max(0.0001, params.zoom);
@@ -283,4 +294,94 @@ export function unprojectScreenToPitch(
   }
 
   return { x: normX, y: normY };
+}
+
+export interface CameraState {
+  tilt: number; // 0〜60 (度数法)
+  yaw: number; // -45〜45 (度数法, 左右覗き込み, 初期値 0)
+  zoom: number; // デフォルト 1.0
+  panX: number; // px
+  panY: number; // px
+}
+
+export const DEFAULT_CAMERA_STATE: CameraState = {
+  tilt: 0,
+  yaw: 0,
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+};
+
+export interface ScreenProjectedPoint {
+  x: number;
+  y: number;
+  perspectiveScale: number;
+}
+
+export function worldToScreen(
+  worldPos: Point2D,
+  pitchRect: PitchRectBounds,
+  camera: Partial<CameraState> = DEFAULT_CAMERA_STATE,
+  stageSize?: { width: number; height: number },
+): ScreenProjectedPoint {
+  const tilt = camera.tilt ?? 0;
+  const yaw = camera.yaw ?? 0;
+  const zoom = camera.zoom ?? 1;
+  const panX = camera.panX ?? 0;
+  const panY = camera.panY ?? 0;
+  const stW = stageSize?.width ?? pitchRect.x * 2 + pitchRect.width;
+  const stH = stageSize?.height ?? pitchRect.y * 2 + pitchRect.height;
+
+  const projected = projectPitchToScreen(
+    { x: worldPos.x / 100, y: worldPos.y / 100 },
+    {
+      tilt,
+      yaw,
+      zoom,
+      panX,
+      panY,
+      stageWidth: stW,
+      stageHeight: stH,
+      pitchRect,
+    },
+  );
+  // tilt > 0 時は画面上部ほど縮小、下部ほど拡大する簡易遠近スケールを付与
+  const normY = worldPos.y / 100;
+  const tiltRad = (tilt * Math.PI) / 180;
+  const depthFactor =
+    tilt === 0 ? 1 : 1 + (normY - 0.5) * Math.sin(tiltRad) * 0.35;
+  return {
+    x: projected.x,
+    y: projected.y,
+    perspectiveScale: Math.max(0.2, zoom * depthFactor),
+  };
+}
+
+export function screenToWorld(
+  screenPos: Point2D,
+  pitchRect: PitchRectBounds,
+  camera: Partial<CameraState> = DEFAULT_CAMERA_STATE,
+  stageSize?: { width: number; height: number },
+): Point2D | null {
+  const tilt = camera.tilt ?? 0;
+  const yaw = camera.yaw ?? 0;
+  const zoom = camera.zoom ?? 1;
+  const panX = camera.panX ?? 0;
+  const panY = camera.panY ?? 0;
+  const stW = stageSize?.width ?? pitchRect.x * 2 + pitchRect.width;
+  const stH = stageSize?.height ?? pitchRect.y * 2 + pitchRect.height;
+
+  const unprojected = unprojectScreenToPitch(screenPos, {
+    tilt,
+    yaw,
+    zoom,
+    panX,
+    panY,
+    stageWidth: stW,
+    stageHeight: stH,
+    pitchRect,
+    clamp: false,
+  });
+  if (!unprojected) return null;
+  return { x: unprojected.x * 100, y: unprojected.y * 100 };
 }

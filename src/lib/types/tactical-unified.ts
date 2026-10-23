@@ -404,6 +404,17 @@ export const DEFAULT_BOUNDARY_BOX_FULL: BoundaryBox = {
   fitTarget: 'canvas',
 };
 
+/** ピッチ白線フィット境界線のデフォルト値 (1:1 正方形) */
+export const DEFAULT_BOUNDARY_BOX_1_1: BoundaryBox = {
+  x: 0,
+  y: 0,
+  width: 100,
+  height: 100,
+  enabled: true,
+  visible: false,
+  fitTarget: 'pitch',
+};
+
 /** アスペクト比に応じたデフォルト境界線を取得 */
 export function getDefaultBoundaryBoxForAspect(
   aspectRatio: AspectRatio,
@@ -415,8 +426,9 @@ export function getDefaultBoundaryBoxForAspect(
       return { ...DEFAULT_BOUNDARY_BOX_9_16 };
     case '16:9':
       return { ...DEFAULT_BOUNDARY_BOX_16_9 };
+    case '1:1':
     default:
-      return { ...DEFAULT_BOUNDARY_BOX_FULL };
+      return { ...DEFAULT_BOUNDARY_BOX_1_1 };
   }
 }
 
@@ -869,14 +881,14 @@ export function createDefaultProject(id: string): TacticalProject {
     homeColor,
     awayColor,
     activeSlideId: slideId,
-    boundaryBox: { ...DEFAULT_BOUNDARY_BOX_16_9 },
+    boundaryBox: { ...DEFAULT_BOUNDARY_BOX_4_5 },
     slides: [
       createDefaultSlide(
         0,
         slideId,
         homeColor.primary,
         awayColor.primary,
-        DEFAULT_BOUNDARY_BOX_16_9,
+        DEFAULT_BOUNDARY_BOX_4_5,
         '4:5',
       ),
     ],
@@ -889,7 +901,7 @@ export function createDefaultSlide(
   id?: string,
   homeColor?: string,
   awayColor?: string,
-  boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_16_9,
+  boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_4_5,
   aspectRatio: AspectRatio = '4:5',
 ): Slide {
   return {

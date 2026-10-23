@@ -49,6 +49,23 @@ describe('canvas-store', () => {
       visible: false,
       fitTarget: 'canvas',
     });
+    expect(state.aspectRatio).toBe('4:5');
+  });
+
+  it('initializes with full-tactical mode defaults (fitTarget: pitch, aspectRatio: 4:5)', () => {
+    const store = createCanvasStore({ mode: 'full-tactical' });
+    const state = store.getState();
+
+    expect(state.aspectRatio).toBe('4:5');
+    expect(state.boundaryBox).toEqual({
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      enabled: true,
+      visible: false,
+      fitTarget: 'pitch',
+    });
   });
 
   it('supports undo and redo for annotation operations', () => {

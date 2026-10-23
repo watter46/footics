@@ -1,5 +1,8 @@
 import { createStore } from 'zustand/vanilla';
-import type { DrawingTool } from '@/lib/types/tactical-unified';
+import {
+  DEFAULT_BOUNDARY_BOX_FULL,
+  type DrawingTool,
+} from '@/lib/types/tactical-unified';
 import type {
   AnnotationsData,
   CanvasConfig,
@@ -37,11 +40,21 @@ function parseInitialAnnotations(json?: string): AnnotationsData {
 
 export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
   const initialAnnotations = parseInitialAnnotations(config.initialAnnotations);
-  const boundaryBox = config.defaultBoundaryBox ?? { ...DEFAULT_BOUNDARY_BOX };
+  const isPitchFitMode =
+    config.mode === 'full-tactical' || config.mode === 'tactical-board';
+  const boundaryBox =
+    config.defaultBoundaryBox ??
+    (isPitchFitMode
+      ? { ...DEFAULT_BOUNDARY_BOX, visible: false, fitTarget: 'pitch' as const }
+      : {
+          ...DEFAULT_BOUNDARY_BOX_FULL,
+          visible: false,
+          fitTarget: 'canvas' as const,
+        });
   const markerMode =
     config.markerMode ??
     (config.mode === 'screenshot-edit' ? '3d-only' : 'all');
-  const aspectRatio = config.aspectRatio ?? '16:9';
+  const aspectRatio = config.aspectRatio ?? '4:5';
 
   return createStore<CanvasStore>()((set, get) => {
     const pushHistory = () => {

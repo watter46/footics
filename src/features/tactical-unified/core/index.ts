@@ -139,15 +139,26 @@ export {
   type TrajectoryArrowNodeEntry,
 } from './utils/canvas-registry';
 export {
+  distToSegment,
+  getPointerCoordinates,
+  isPointInPolygon,
+  resolveBoundaryBoxPixelRect,
+} from './utils/geometry';
+export {
   buildMVPMatrix,
   type CameraParams,
+  type CameraState,
+  DEFAULT_CAMERA_STATE,
   DEFAULT_FAR,
   DEFAULT_FOV,
   DEFAULT_NEAR,
   type NormPoint,
   type ProjectedPoint,
   projectPitchToScreen,
+  type ScreenProjectedPoint,
+  screenToWorld,
   unprojectScreenToPitch,
+  worldToScreen,
 } from './utils/matrix-coordinates';
 export {
   calculateVirtualCanvasRect,

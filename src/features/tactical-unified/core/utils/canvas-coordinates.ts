@@ -340,3 +340,11 @@ export function unprojectScreenYToCssRotateX(
 
   return (dy * perspective) / denom;
 }
+
+export {
+  type CameraState,
+  DEFAULT_CAMERA_STATE,
+  type ScreenProjectedPoint,
+  screenToWorld,
+  worldToScreen,
+} from './matrix-coordinates';

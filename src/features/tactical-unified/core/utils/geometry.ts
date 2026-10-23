@@ -35,20 +35,54 @@ export function distToSegment(
 
 export function getPointerCoordinates(
   e: KonvaEventObject<PointerEvent | MouseEvent | TouchEvent>,
-  vRect: { width: number; height: number },
+  vRect: {
+    x?: number;
+    y?: number;
+    width: number;
+    height: number;
+    allowOverflow?: boolean;
+  },
 ): { pixelPos: { x: number; y: number }; normPos: { x: number; y: number } } {
   const stage = e.target.getStage();
   const pointer = stage?.getPointerPosition();
   const evt = e.evt;
   const x = pointer?.x ?? ('clientX' in evt ? evt.clientX : 0);
   const y = pointer?.y ?? ('clientY' in evt ? evt.clientY : 0);
-  const normX = vRect.width > 0 ? (x / vRect.width) * 100 : 0;
-  const normY = vRect.height > 0 ? (y / vRect.height) * 100 : 0;
+  const relX = x - (vRect.x ?? 0);
+  const relY = y - (vRect.y ?? 0);
+  const normX = vRect.width > 0 ? (relX / vRect.width) * 100 : 0;
+  const normY = vRect.height > 0 ? (relY / vRect.height) * 100 : 0;
   return {
     pixelPos: { x, y },
     normPos: {
-      x: Math.max(0, Math.min(100, normX)),
-      y: Math.max(0, Math.min(100, normY)),
+      x: vRect.allowOverflow ? normX : Math.max(0, Math.min(100, normX)),
+      y: vRect.allowOverflow ? normY : Math.max(0, Math.min(100, normY)),
     },
+  };
+}
+
+export function resolveBoundaryBoxPixelRect(
+  box: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    fitTarget?: string;
+  },
+  stageSize: { width: number; height: number },
+  pitchRect?: { x: number; y: number; width: number; height: number },
+): { x: number; y: number; width: number; height: number } {
+  const refRect =
+    box.fitTarget === 'pitch' &&
+    pitchRect &&
+    pitchRect.width > 0 &&
+    pitchRect.height > 0
+      ? pitchRect
+      : { x: 0, y: 0, width: stageSize.width, height: stageSize.height };
+  return {
+    x: refRect.x + (box.x / 100) * refRect.width,
+    y: refRect.y + (box.y / 100) * refRect.height,
+    width: (box.width / 100) * refRect.width,
+    height: (box.height / 100) * refRect.height,
   };
 }

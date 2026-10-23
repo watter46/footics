@@ -8,11 +8,13 @@ import {
   useBoundaryBoxDrag,
 } from '../hooks/use-boundary-box-drag';
 import { useCanvasStore } from '../hooks/use-canvas-store';
+import { resolveBoundaryBoxPixelRect } from '../utils/geometry';
 
 export interface BoundaryBoxOverlayProps {
   width: number;
   height: number;
   visible?: boolean;
+  pitchRect?: { x: number; y: number; width: number; height: number };
 }
 
 const CORNER_CURSORS: Record<CornerId, string> = {
@@ -112,6 +114,7 @@ export function BoundaryBoxOverlay({
   width,
   height,
   visible,
+  pitchRect,
 }: BoundaryBoxOverlayProps): ReactNode {
   const boundaryBox = useCanvasStore((s) => s.boundaryBox);
   const setBoundaryBox = useCanvasStore((s) => s.setBoundaryBox);
@@ -120,11 +123,22 @@ export function BoundaryBoxOverlay({
   const box = dragBox ?? boundaryBox;
   const isVisible = visible ?? box.visible ?? true;
 
-  const baseRect = { x: 0, y: 0, width, height };
-  const pxX = (box.x / 100) * width;
-  const pxY = (box.y / 100) * height;
-  const pxW = Math.max(20, (box.width / 100) * width);
-  const pxH = Math.max(20, (box.height / 100) * height);
+  const baseRect =
+    box.fitTarget === 'pitch' &&
+    pitchRect &&
+    pitchRect.width > 0 &&
+    pitchRect.height > 0
+      ? pitchRect
+      : { x: 0, y: 0, width, height };
+  const resolved = resolveBoundaryBoxPixelRect(
+    box,
+    { width, height },
+    pitchRect,
+  );
+  const pxX = resolved.x;
+  const pxY = resolved.y;
+  const pxW = Math.max(20, resolved.width);
+  const pxH = Math.max(20, resolved.height);
 
   const handleDragUpdate = useCallback((nextBox: BoundaryBoxType) => {
     setDragBox(nextBox);
