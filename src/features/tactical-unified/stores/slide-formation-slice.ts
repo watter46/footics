@@ -1,15 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { FormationMode, FormationType } from '@/lib/data/formations';
-import {
-  getPitchRectNormalized,
-  mapPlayersToPitchRect,
-  pitchToStageCoord,
-} from '@/lib/tactical/pitch-stage-mapping';
-import type {
-  FormationPreset,
-  Player,
-  Slide,
-} from '@/lib/types/tactical-unified';
+import type { FormationPreset, Player } from '@/lib/types/tactical-unified';
 import {
   createDefaultPlayer,
   isVerticalAspectRatio,
@@ -36,24 +27,6 @@ export interface SlideFormationSlice {
     mode: FormationMode,
     team: 'home' | 'away',
   ) => void;
-}
-
-/** 直前に再配置された team のピッチ上マーカー(ピッチ基準座標)を Stage 座標へ写像 */
-function fitTeamPitchPlayers(
-  slide: Slide,
-  team: 'home' | 'away',
-  s: TacticalUnifiedState,
-): Slide {
-  const aspect = slide.aspectRatio ?? s.project.aspectRatio ?? '16:9';
-  const rect = getPitchRectNormalized(s.stageAspect, aspect);
-  return {
-    ...slide,
-    players: slide.players.map((p) =>
-      p.team === team && p.area === 'pitch'
-        ? { ...p, ...pitchToStageCoord(p, rect) }
-        : p,
-    ),
-  };
 }
 
 export const createSlideFormationSlice: StateCreator<
@@ -85,14 +58,13 @@ export const createSlideFormationSlice: StateCreator<
           position: pp.position,
         };
       });
-      const rect = getPitchRectNormalized(s.stageAspect, aspect);
       return {
         ...recordHistory(s),
         project: updateSlideInProject(s.project, slideId, (sl) => ({
           ...sl,
           players: [
             ...sl.players.filter((p) => p.team !== preset.team),
-            ...mapPlayersToPitchRect(newPlayers, rect),
+            ...newPlayers,
           ],
         })),
         isDirty: true,
@@ -103,11 +75,7 @@ export const createSlideFormationSlice: StateCreator<
     set((s) => ({
       ...recordHistory(s),
       project: updateSlideInProject(s.project, slideId, (sl) =>
-        fitTeamPitchPlayers(
-          computeSlideAfterFormation(sl, s.project, formationName, mode, team),
-          team,
-          s,
-        ),
+        computeSlideAfterFormation(sl, s.project, formationName, mode, team),
       ),
       isDirty: true,
     })),
@@ -116,16 +84,12 @@ export const createSlideFormationSlice: StateCreator<
     set((s) => ({
       ...recordHistory(s),
       project: updateSlideInProject(s.project, slideId, (sl) =>
-        fitTeamPitchPlayers(
-          computeSlideAfterSingleTeamFormation(
-            sl,
-            s.project,
-            formationName,
-            mode,
-            team,
-          ),
+        computeSlideAfterSingleTeamFormation(
+          sl,
+          s.project,
+          formationName,
+          mode,
           team,
-          s,
         ),
       ),
       isDirty: true,

@@ -2050,5 +2050,87 @@ describe('tactical-unified-store', () => {
       expect(updatedPlayer0?.y).not.toBe(99);
       expect(updatedPlayer0?.shirtNo).toBe(player0?.shirtNo);
     });
+
+    it('アスペクト比切替を繰り返しても選手座標が中央へ収束せず元の値と一致する', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+      store.setAspectRatio('16:9');
+
+      const initialPlayers =
+        store.project.slides[0]?.players.map((p) => ({
+          id: p.id,
+          x: p.x,
+          y: p.y,
+        })) ?? [];
+
+      const ratios: AspectRatio[] = ['4:5', '16:9', '9:16', '1:1', '16:9'];
+      for (let i = 0; i < 10; i++) {
+        for (const ratio of ratios) {
+          store.setAspectRatio(ratio);
+        }
+      }
+
+      const finalPlayers = store.project.slides[0]?.players ?? [];
+      for (const initP of initialPlayers) {
+        const currentP = finalPlayers.find((p) => p.id === initP.id);
+        expect(currentP).toBeDefined();
+        expect(currentP?.x).toBeCloseTo(initP.x, 1);
+        expect(currentP?.y).toBeCloseTo(initP.y, 1);
+      }
+    });
+
+    it('updatePlayer でピッチ外の余白座標 (x: -15, y: 112) が 0〜100 にクランプされず保持される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+      const playerId = store.project.slides[0]?.players[0]?.id;
+      expect(playerId).toBeDefined();
+
+      store.updatePlayer(slideId, playerId!, { x: -15, y: 112 });
+
+      const player = useTacticalUnifiedStore
+        .getState()
+        .project.slides[0]?.players.find((p) => p.id === playerId);
+      expect(player?.x).toBe(-15);
+      expect(player?.y).toBe(112);
+    });
+
+    it('初期配置と resetSlideKeepSquad 後の全選手座標が完全一致する', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+
+      const initialPositions =
+        store.project.slides[0]?.players.map((p) => ({
+          id: p.id,
+          shirtNo: p.shirtNo,
+          team: p.team,
+          x: p.x,
+          y: p.y,
+        })) ?? [];
+
+      // 全選手を移動
+      for (const p of initialPositions) {
+        store.movePlayer(slideId, p.id, 10, 10);
+      }
+
+      // resetSlideKeepSquad 実行
+      store.resetSlideKeepSquad(slideId);
+
+      const resetPositions =
+        store.project.slides[0]?.players.map((p) => ({
+          id: p.id,
+          shirtNo: p.shirtNo,
+          team: p.team,
+          x: p.x,
+          y: p.y,
+        })) ?? [];
+
+      expect(resetPositions).toHaveLength(initialPositions.length);
+      for (const initP of initialPositions) {
+        const resetP = resetPositions.find((p) => p.id === initP.id);
+        expect(resetP).toBeDefined();
+        expect(resetP?.x).toBeCloseTo(initP.x, 3);
+        expect(resetP?.y).toBeCloseTo(initP.y, 3);
+      }
+    });
   });
 });

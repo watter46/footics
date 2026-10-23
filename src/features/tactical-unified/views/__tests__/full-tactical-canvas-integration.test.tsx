@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 describe('FullTacticalCanvas integration', () => {
-  it('aspectRatio 変更で Stage そのものがピッチ比率に contain フィットし、ピッチ画像が Stage 全面に一致する', async () => {
+  it('aspectRatio 変更で Stage は不変、ピッチ矩形のみ比率に追従する', async () => {
     render(
       <div style={{ width: 1000, height: 600 }}>
         <FullTacticalCanvas />
@@ -81,12 +81,13 @@ describe('FullTacticalCanvas integration', () => {
     const pitchRect = () => {
       const img = lastStage().findOne('Image');
       if (!img) throw new Error('no pitch image');
-      return { w: img.width(), h: img.height(), x: img.x(), y: img.y() };
+      const pos = img.getAbsolutePosition();
+      return { w: img.width(), h: img.height(), x: pos.x, y: pos.y };
     };
 
-    // 初期状態 (4:5) では高さ600基準で 幅480
+    // 初期状態 (Stage は 1000x600 で不変、ピッチ画像が存在する)
     await waitFor(() => {
-      expect(lastStage().width()).toBe(480);
+      expect(lastStage().width()).toBe(1000);
       expect(lastStage().height()).toBe(600);
       expect(lastStage().findOne('Image')).toBeTruthy();
     });
@@ -96,20 +97,18 @@ describe('FullTacticalCanvas integration', () => {
         useTacticalUnifiedStore.getState().setAspectRatio(ratio);
       });
       await waitFor(() => {
-        expect(lastStage().width() / lastStage().height()).toBeCloseTo(
-          ASPECT_RATIOS[ratio],
-          1,
-        );
+        const r = pitchRect();
+        expect(r.w / r.h).toBeCloseTo(ASPECT_RATIOS[ratio], 1);
       });
-      // ピッチ画像は常に Stage 全面 (x=0, y=0, width, height)
+      // Stage サイズは常にコンテナいっぱいで不変
+      expect(lastStage().width()).toBe(1000);
+      expect(lastStage().height()).toBe(600);
+      // ピッチはステージ内に収まり中央揃え
       const r = pitchRect();
-      expect(r.w).toBe(lastStage().width());
-      expect(r.h).toBe(lastStage().height());
-      expect(r.x).toBe(0);
-      expect(r.y).toBe(0);
-      // Stage 自体は 1000x600 のコンテナ内に収まっている
-      expect(lastStage().width()).toBeLessThanOrEqual(1000);
-      expect(lastStage().height()).toBeLessThanOrEqual(600);
+      expect(r.w).toBeLessThanOrEqual(1000);
+      expect(r.h).toBeLessThanOrEqual(600);
+      expect(Math.abs(r.x * 2 + r.w - 1000)).toBeLessThanOrEqual(2);
+      expect(Math.abs(r.y * 2 + r.h - 600)).toBeLessThanOrEqual(2);
     }
   });
 
@@ -171,22 +170,22 @@ describe('FullTacticalCanvas integration', () => {
       expect(lastStage().find('Group').length).toBeGreaterThan(0);
     });
 
-    // dragBoundFunc: ベンチD&D用マージン付きで許容範囲外へは出られない (-width..2*width, -height..2*height)
+    // dragBoundFunc: キャンバス (0..width, 0..height) 外へはみ出さない
     const node = lastStage()
       .find('Group')
       .find((g) => g.draggable());
     if (!node) throw new Error('no draggable marker');
     const bound = node.dragBoundFunc();
     expect(bound?.call(node, { x: -300, y: 9999 }, null as never)).toEqual({
-      x: -300,
-      y: 1200,
+      x: 0,
+      y: 600,
     });
     expect(bound?.call(node, { x: 5000, y: -5 }, null as never)).toEqual({
-      x: 960,
-      y: -5,
+      x: 480,
+      y: 0,
     });
 
-    // ストア更新でも 0-100 に clamp
+    // ストア更新ではピッチ外余白座標をそのまま保持する
     act(() => {
       useTacticalUnifiedStore
         .getState()
@@ -196,8 +195,8 @@ describe('FullTacticalCanvas integration', () => {
       .getState()
       .project.slides.find((s) => s.id === slideId)
       ?.players.find((p) => p.id === player.id);
-    expect(moved?.x).toBe(0);
-    expect(moved?.y).toBe(100);
+    expect(moved?.x).toBe(-40);
+    expect(moved?.y).toBe(250);
 
     // 矢印(ツールオブジェクト)は clamp しない
     const arrow = {

@@ -1,13 +1,8 @@
 import {
-  getPitchRectNormalized,
-  mapPlayersToPitchRect,
-} from '@/lib/tactical/pitch-stage-mapping';
-import {
   type AspectRatio,
   type BoundaryBox,
   DEFAULT_442_AWAY,
   DEFAULT_4231_HOME,
-  DEFAULT_BOUNDARY_BOX_FULL,
   getDefaultBoundaryBoxForAspect,
   isVerticalAspectRatio,
   type Slide,
@@ -18,16 +13,9 @@ import type { SelectedObject } from './tool-slice';
 
 export function fitProjectPlayers(
   project: TacticalProject,
-  stageAspect: number | null,
+  _stageAspect?: number | null,
 ): TacticalProject {
-  const rect = getPitchRectNormalized(stageAspect, project.aspectRatio);
-  return {
-    ...project,
-    slides: project.slides.map((sl) => ({
-      ...sl,
-      players: mapPlayersToPitchRect(sl.players, rect),
-    })),
-  };
+  return project;
 }
 
 export function resetSlideKeepSquadData(

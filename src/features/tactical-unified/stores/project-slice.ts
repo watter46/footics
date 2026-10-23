@@ -1,9 +1,4 @@
 import type { StateCreator } from 'zustand';
-import {
-  getPitchRectNormalized,
-  pitchToStageCoord,
-  stageToPitchCoord,
-} from '@/lib/tactical/pitch-stage-mapping';
 import type {
   AspectRatio,
   ExportTarget,
@@ -11,9 +6,7 @@ import type {
 } from '@/lib/types/tactical-unified';
 import {
   createDefaultProject,
-  DEFAULT_BOUNDARY_BOX_FULL,
   getDefaultBoundaryBoxForAspect,
-  transformCoord,
 } from '@/lib/types/tactical-unified';
 import { transformSlideAspectRatio } from './slide-aspect-helpers';
 import { applyImageBackgroundToProject } from './slide-background-helpers';
@@ -21,7 +14,6 @@ import { flipSlideObjects, isVerticalPitch } from './slide-flip-helpers';
 import { toggleSlideObjectLock } from './slide-lock-helpers';
 import {
   filterLockedSelectedObjects,
-  fitProjectPlayers,
   resetSlideKeepSquadData,
   resetSlideObjectsData,
 } from './slide-reset-helpers';
@@ -95,13 +87,11 @@ function createProjectMetaActions(set: SetState) {
       }),
 
     resetProject: () =>
-      set((s) => {
-        const base = createDefaultProject(crypto.randomUUID());
-        const known = s.stageAspect !== null;
-        const p = known ? fitProjectPlayers(base, s.stageAspect) : base;
+      set(() => {
+        const p = createDefaultProject(crypto.randomUUID());
         return {
           project: p,
-          pitchFitPending: !known,
+          pitchFitPending: false,
           isDirty: false,
           past: [],
           future: [],
@@ -115,11 +105,9 @@ function createProjectMetaActions(set: SetState) {
     setStageAspect: (aspect: number) =>
       set((s) => {
         if (s.stageAspect === aspect) return s;
-        if (!s.pitchFitPending) return { stageAspect: aspect };
         return {
           stageAspect: aspect,
           pitchFitPending: false,
-          project: fitProjectPlayers(s.project, aspect),
         };
       }),
 
@@ -276,26 +264,9 @@ function createProjectConfigActions(set: SetState) {
       set((s) => {
         const from = s.project.aspectRatio;
         if (from === ratio) return s;
-        const fromRect = getPitchRectNormalized(s.stageAspect, from);
-        const toRect = getPitchRectNormalized(s.stageAspect, ratio);
-        const transformedSlides = s.project.slides.map((slide) => {
-          const transformed = transformSlideAspectRatio(slide, from, ratio);
-          // マーカーはピッチ基準で変換し、新ピッチ矩形内へ再配置（他オブジェクトは従来どおり）
-          return {
-            ...transformed,
-            players: slide.players.map((p, i) => ({
-              ...(transformed.players[i] ?? p),
-              ...pitchToStageCoord(
-                transformCoord(
-                  stageToPitchCoord({ x: p.x, y: p.y }, fromRect),
-                  from,
-                  ratio,
-                ),
-                toRect,
-              ),
-            })),
-          };
-        });
+        const transformedSlides = s.project.slides.map((slide) =>
+          transformSlideAspectRatio(slide, from, ratio),
+        );
         return {
           ...recordHistory(s),
           project: {
