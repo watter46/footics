@@ -186,15 +186,29 @@ describe('Toolbar Compound Components & Registry', () => {
       expect(screen.getByTestId('tool-player-ring')).toBeDefined();
     });
 
-    it('CoreDrawingToolbar で markerMode="3d-only" 時に ToolbarPitchLock が非表示となり、markerMode="2d-only" 時に表示されること', () => {
+    it('CoreDrawingToolbar で capabilities.hasPitchLock に基づいて ToolbarPitchLock が制御されること', () => {
+      // mode: 'screenshot-edit' では hasPitchLock = false なので非表示
       const { unmount } = renderWithStore(
-        <CoreDrawingToolbar markerMode="3d-only" />,
+        <CoreDrawingToolbar />,
+        createCanvasStore({ mode: 'screenshot-edit' }),
       );
       expect(screen.queryByTitle(/Pitch Lock/i)).toBeNull();
       unmount();
 
-      renderWithStore(<CoreDrawingToolbar markerMode="2d-only" />);
+      // mode: 'tactical-board' では hasPitchLock = true なので表示
+      const { unmount: unmount2 } = renderWithStore(
+        <CoreDrawingToolbar />,
+        createCanvasStore({ mode: 'tactical-board' }),
+      );
       expect(screen.getByTitle(/Pitch Lock/i)).toBeDefined();
+      unmount2();
+
+      // showPitchLock prop での上書きも可能であること
+      renderWithStore(
+        <CoreDrawingToolbar showPitchLock={false} />,
+        createCanvasStore({ mode: 'tactical-board' }),
+      );
+      expect(screen.queryByTitle(/Pitch Lock/i)).toBeNull();
     });
   });
 });

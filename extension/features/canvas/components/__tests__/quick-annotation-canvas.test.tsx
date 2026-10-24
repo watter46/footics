@@ -69,7 +69,7 @@ describe('QuickAnnotationCanvas', () => {
     }).not.toThrow();
   });
 
-  it('Extensionツールバーに 3D リングが含まれ、PitchLock や BoundaryBox が含まれないこと', () => {
+  it('Extensionツールバーに 3D リングと BoundaryBox が含まれ、2D マーカーと PitchLock が含まれないこと', () => {
     const { queryByTitle, getByTitle } = render(
       <div style={{ width: 800, height: 600 }}>
         <QuickAnnotationCanvas
@@ -88,7 +88,7 @@ describe('QuickAnnotationCanvas', () => {
     // Pitch Lock should NOT be present
     expect(queryByTitle(/Pitch Lock/i)).toBeNull();
 
-    // Boundary Box button should NOT be present
-    expect(queryByTitle(/Boundary Box/i)).toBeNull();
+    // Boundary Box button should be present
+    expect(getByTitle(/Boundary Box/i)).toBeDefined();
   });
 });

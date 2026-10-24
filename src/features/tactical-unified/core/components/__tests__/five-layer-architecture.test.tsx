@@ -467,7 +467,8 @@ describe('BillboardObjectLayer', () => {
     expect(updatedMarker?.y).toBeCloseTo(110);
   });
 
-  it('mode === "screenshot-edit" または markerMode === "3d-only" のときはボールを描画しないこと', () => {
+  it('capabilities.hasBall に基づいてボールを描画・非表示制御すること', () => {
+    // 1. mode: 'screenshot-edit' のときは capabilities.hasBall が false となりボールを描画しないこと
     const registryRef1 = { current: {} as any };
     const { unmount: unmount1 } = render(
       <CanvasStoreProvider config={{ mode: 'screenshot-edit' }}>
@@ -483,10 +484,14 @@ describe('BillboardObjectLayer', () => {
     expect(registryRef1.current.ballNode).toBeUndefined();
     unmount1();
 
+    // 2. capabilities.hasBall = false を明示指定したときはボールを描画しないこと
     const registryRef2 = { current: {} as any };
     const { unmount: unmount2 } = render(
       <CanvasStoreProvider
-        config={{ mode: 'tactical-board', markerMode: '3d-only' }}
+        config={{
+          mode: 'tactical-board',
+          capabilities: { hasBall: false },
+        }}
       >
         <Stage width={defaultStageSize.width} height={defaultStageSize.height}>
           <BillboardObjectLayer
@@ -500,11 +505,10 @@ describe('BillboardObjectLayer', () => {
     expect(registryRef2.current.ballNode).toBeUndefined();
     unmount2();
 
+    // 3. mode: 'tactical-board' (capabilities.hasBall デフォルト true) ではボールが描画されること
     const registryRef3 = { current: {} as any };
     render(
-      <CanvasStoreProvider
-        config={{ mode: 'tactical-board', markerMode: '2d-only' }}
-      >
+      <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
         <Stage width={defaultStageSize.width} height={defaultStageSize.height}>
           <BillboardObjectLayer
             stageSize={defaultStageSize}

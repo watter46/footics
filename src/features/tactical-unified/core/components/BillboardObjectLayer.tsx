@@ -8,10 +8,6 @@ import { useCallback } from 'react';
 import { Group, Layer } from 'react-konva';
 import { BallObject } from '@/features/tactical-unified/objects/ball/components/ball-object';
 import type { BallObjectProps } from '@/features/tactical-unified/objects/ball/types';
-import {
-  selectActiveSlide,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Player, TextAnnotation } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
@@ -65,7 +61,6 @@ export function BillboardObjectLayer({
   const markers = useCanvasStore((s) => s.annotations.markers);
   const arrows = useCanvasStore((s) => s.annotations.arrows);
   const texts = useCanvasStore((s) => s.annotations.texts);
-  const mode = useCanvasStore((s) => s.config.mode);
   const markerMode = useCanvasStore((s) => s.markerMode);
   const selectedIds = useCanvasStore((s) => s.selectedIds);
   const activeTool = useCanvasStore((s) => s.activeTool);
@@ -78,16 +73,13 @@ export function BillboardObjectLayer({
   const setConnectingPlayerId = useCanvasStore((s) => s.setConnectingPlayerId);
   const aspectRatio = useCanvasStore((s) => s.aspectRatio);
 
-  const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const movePlayerToBench = useTacticalUnifiedStore((s) => s.movePlayerToBench);
-  const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
+  const capabilities = useCanvasStore((s) => s.capabilities);
+  const ball = useCanvasStore((s) => s.ball);
+  const teamVisibility = useCanvasStore((s) => s.teamVisibility ?? 'both');
+  const moveMarkerToBench = useCanvasStore((s) => s.moveMarkerToBench);
 
-  const ball = activeSlide?.ball ?? { x: 50, y: 50, visible: false };
   const showBall =
-    mode !== 'screenshot-edit' &&
-    markerMode !== '3d-only' &&
-    ball.visible !== false;
+    (capabilities?.hasBall ?? false) && ball != null && ball.visible !== false;
 
   const visibleMarkers =
     teamVisibility === 'both'
@@ -204,8 +196,8 @@ export function BillboardObjectLayer({
           : typeof window !== 'undefined' &&
             clientX >= window.innerWidth - 340);
 
-      if (isOverBenchPanel) {
-        movePlayerToBench(activeSlideId, marker.id);
+      if (isOverBenchPanel && capabilities?.hasBench && moveMarkerToBench) {
+        moveMarkerToBench(marker.id);
         return;
       }
 
@@ -219,8 +211,8 @@ export function BillboardObjectLayer({
       pitchRect.height,
       updateMarker,
       setIsDragging,
-      movePlayerToBench,
-      activeSlideId,
+      capabilities?.hasBench,
+      moveMarkerToBench,
     ],
   );
 

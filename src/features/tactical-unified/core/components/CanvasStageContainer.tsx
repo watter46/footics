@@ -72,14 +72,13 @@ export const CanvasStageContainer = forwardRef<
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   const containerSize = useContainerResize(containerRef);
-  const mode = useCanvasStore((s) => s.config.mode);
   const storeAspectRatio = useCanvasStore((s) => s.aspectRatio);
   const effectiveAspect =
     imageAspect ??
     (storeAspectRatio ? ASPECT_RATIOS[storeAspectRatio] : undefined) ??
     (containerSize.height > 0 ? containerSize.width / containerSize.height : 1);
 
-  const paddingRatio = mode === 'full-tactical' ? 0.06 : 0;
+  const paddingRatio = useCanvasStore((s) => s.capabilities?.paddingRatio ?? 0);
   const vRect = calculateVirtualCanvasRect(
     containerSize,
     effectiveAspect,

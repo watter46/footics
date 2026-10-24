@@ -113,6 +113,7 @@ export {
 export type {
   AnnotationsData,
   CanvasActions,
+  CanvasCapabilities,
   CanvasClipboard,
   CanvasConfig,
   CanvasCoreHandle,

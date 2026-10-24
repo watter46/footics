@@ -2,6 +2,7 @@ import type { StoreApi } from 'zustand';
 import type {
   ArrowAnnotation,
   AspectRatio,
+  BallState as BallAnnotation,
   BoundaryBox,
   DrawingTool,
   PitchTransform,
@@ -9,6 +10,9 @@ import type {
   TextAnnotation,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
+
+export type { BallAnnotation };
+
 import type { CanvasNodesRegistry } from './utils/canvas-registry';
 
 export type { AspectRatio, DrawingTool, PitchTransform };
@@ -30,6 +34,13 @@ export interface SelectedObject {
   parentPlayerId?: string;
 }
 
+export interface CanvasCapabilities {
+  hasBall: boolean;
+  hasPitchLock: boolean;
+  hasBench: boolean;
+  paddingRatio: number;
+}
+
 export interface CanvasConfig {
   mode: 'screenshot-edit' | 'tactical-board' | 'full-tactical';
   backgroundImageUrl?: string;
@@ -38,6 +49,7 @@ export interface CanvasConfig {
   defaultBoundaryBox?: BoundaryBox;
   aspectRatio?: AspectRatio;
   defaultPitchTransform?: PitchTransform;
+  capabilities?: Partial<CanvasCapabilities>;
 }
 
 export interface CanvasCoreHandle {
@@ -84,6 +96,9 @@ export interface CanvasClipboard {
 
 export interface CanvasState {
   config: CanvasConfig;
+  capabilities: CanvasCapabilities;
+  ball: BallAnnotation | null;
+  teamVisibility: 'both' | 'home' | 'away';
   activeTool: DrawingTool;
   continuousDrawing: boolean;
   selectedObjects: SelectedObject[];

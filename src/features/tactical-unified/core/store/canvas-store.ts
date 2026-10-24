@@ -5,6 +5,7 @@ import {
 } from '@/lib/types/tactical-unified';
 import type {
   AnnotationsData,
+  CanvasCapabilities,
   CanvasConfig,
   CanvasHistorySnapshot,
   CanvasStore,
@@ -42,6 +43,14 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
   const initialAnnotations = parseInitialAnnotations(config.initialAnnotations);
   const isPitchFitMode =
     config.mode === 'full-tactical' || config.mode === 'tactical-board';
+  const capabilities: CanvasCapabilities = {
+    hasBall: config.capabilities?.hasBall ?? isPitchFitMode,
+    hasPitchLock: config.capabilities?.hasPitchLock ?? isPitchFitMode,
+    hasBench: config.capabilities?.hasBench ?? isPitchFitMode,
+    paddingRatio:
+      config.capabilities?.paddingRatio ??
+      (config.mode === 'full-tactical' ? 0.06 : 0),
+  };
   const boundaryBox =
     config.defaultBoundaryBox ??
     (isPitchFitMode
@@ -96,6 +105,9 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
 
     return {
       config,
+      capabilities,
+      ball: capabilities.hasBall ? { x: 50, y: 50, visible: true } : null,
+      teamVisibility: 'both',
       activeTool: 'select',
       continuousDrawing: false,
       selectedObjects: [],
