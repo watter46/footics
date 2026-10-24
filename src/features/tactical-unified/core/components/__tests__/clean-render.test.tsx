@@ -4,6 +4,8 @@ import type React from 'react';
 import { createRef } from 'react';
 import { Layer, Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { BallObject } from '@/features/tactical-unified/objects/ball/components/ball-object';
+import type { BallObjectProps } from '@/features/tactical-unified/objects/ball/types';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { createCanvasStore } from '../../store/canvas-store';
 import { CanvasStoreContext } from '../../store/canvas-store-provider';
@@ -146,5 +148,121 @@ describe('Clean Render Propagation', () => {
     // cleanRender=true のため VisionCone のハンドル（PlayerVisionConeHandles）は非表示
     const handleCircles = stageRef.current?.find('.vision-cone-handle');
     expect(handleCircles?.length ?? 0).toBe(0);
+  });
+
+  it('PlayerMarkerItem: cleanRender が true から false に切り替わった際に命令的に変更された position が静止座標に自己復元されること', () => {
+    const stageRef = createRef<Konva.Stage>();
+    const marker = createDefaultPlayer('home', 50, 50, '#ff0000');
+
+    const { rerender } = render(
+      <Stage ref={stageRef} width={800} height={450}>
+        <Layer>
+          <PlayerMarkerItem
+            marker={marker}
+            width={800}
+            height={450}
+            baseDim={450}
+            markerMode="2d-only"
+            aspectRatio="16:9"
+            isSelected={false}
+            isInteractive={true}
+            cleanRender={true}
+            connectingPlayerId={null}
+            onDragStart={vi.fn()}
+            onDragMove={vi.fn()}
+            onDragEnd={vi.fn()}
+            onClick={vi.fn()}
+            onUpdateVisionCone={vi.fn()}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    const group = stageRef.current?.findOne('Group') as Konva.Group | null;
+    expect(group).not.toBeNull();
+    // 初期位置: (50 / 100) * 800 = 400, (50 / 100) * 450 = 225
+    expect(group?.position()).toEqual({ x: 400, y: 225 });
+
+    // GSAPアニメーション等で命令的に位置が変更されたと仮定
+    group?.position({ x: 999, y: 888 });
+    expect(group?.position()).toEqual({ x: 999, y: 888 });
+
+    // cleanRender=false（再生終了または一時停止）で再レンダリング
+    rerender(
+      <Stage ref={stageRef} width={800} height={450}>
+        <Layer>
+          <PlayerMarkerItem
+            marker={marker}
+            width={800}
+            height={450}
+            baseDim={450}
+            markerMode="2d-only"
+            aspectRatio="16:9"
+            isSelected={false}
+            isInteractive={true}
+            cleanRender={false}
+            connectingPlayerId={null}
+            onDragStart={vi.fn()}
+            onDragMove={vi.fn()}
+            onDragEnd={vi.fn()}
+            onClick={vi.fn()}
+            onUpdateVisionCone={vi.fn()}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    // cleanRender=false により、静止座標に自己復元される
+    expect(group?.position()).toEqual({ x: 400, y: 225 });
+  });
+
+  it('BallObject: cleanRender が true から false に切り替わった際に命令的に変更された position が静止座標に自己復元されること', () => {
+    const stageRef = createRef<Konva.Stage>();
+    const registryRef = { current: createCanvasNodesRegistry() };
+    const ball: BallObjectProps['ball'] = {
+      x: 50,
+      y: 50,
+      visible: true,
+      locked: false,
+    };
+
+    const { rerender } = render(
+      <Stage ref={stageRef} width={800} height={450}>
+        <Layer>
+          <BallObject
+            ball={ball}
+            stageSize={{ width: 800, height: 450 }}
+            cleanRender={true}
+            nodesRegistryRef={registryRef}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    const ballNode = registryRef.current.ballNode;
+    expect(ballNode).toBeTruthy();
+    // 初期位置: normToPx(50, 800) = 400, normToPx(50, 450) = 225
+    expect(ballNode?.position()).toEqual({ x: 400, y: 225 });
+
+    // GSAPアニメーション等で命令的に位置が変更されたと仮定
+    ballNode?.position({ x: 999, y: 888 });
+    expect(ballNode?.position()).toEqual({ x: 999, y: 888 });
+
+    // cleanRender=false で再レンダリング
+    rerender(
+      <Stage ref={stageRef} width={800} height={450}>
+        <Layer>
+          <BallObject
+            ball={ball}
+            stageSize={{ width: 800, height: 450 }}
+            cleanRender={false}
+            nodesRegistryRef={registryRef}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    // cleanRender=false により、静止座標に自己復元される
+    expect(ballNode?.position()).toEqual({ x: 400, y: 225 });
   });
 });

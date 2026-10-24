@@ -11,6 +11,31 @@ import {
 } from '../tactical-animation-canvas';
 
 describe('calculatePitchDimensions', () => {
+  it('registry に pitchRect がある場合、pitchRect の width, height, x: 0, y: 0 を返す', () => {
+    const mockStage = {
+      width: () => 1000,
+      height: () => 600,
+    } as Konva.Stage;
+
+    const registryRef = {
+      current: {
+        stage: mockStage,
+        pitchRect: { x: 50, y: 30, width: 900, height: 540 },
+      } as unknown as CanvasNodesRegistry,
+    };
+
+    const dims = calculatePitchDimensions(
+      undefined,
+      registryRef as unknown as React.MutableRefObject<CanvasNodesRegistry>,
+    );
+    expect(dims).toEqual({
+      width: 900,
+      height: 540,
+      x: 0,
+      y: 0,
+    });
+  });
+
   it('stage が registry にある場合、Stage の幅と高さをそのままピッチ実サイズ (x: 0, y: 0) として返す', () => {
     // 任意のStage寸法（レターボックス計算を通すと縮小されてしまうような値）
     const mockStage = {

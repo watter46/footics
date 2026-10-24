@@ -54,10 +54,10 @@ export function PlayerMarkerItem({
   const pxY = (marker.y / 100) * height;
 
   useEffect(() => {
-    if (groupRef.current) {
+    if (groupRef.current && !cleanRender) {
       groupRef.current.position({ x: pxX, y: pxY });
     }
-  }, [pxX, pxY]);
+  }, [pxX, pxY, cleanRender]);
 
   const sizeScale = marker.style?.sizeScale ?? 1.0;
   const isVerticalAspect = aspectRatio === '4:5' || aspectRatio === '9:16';

@@ -7,7 +7,7 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Group } from 'react-konva';
 import {
   normToPx,
@@ -27,6 +27,7 @@ import { BallVisual } from './ball-visual';
 function useBallObjectState({
   stageSize,
   ball,
+  cleanRender,
   nodesRegistryRef,
 }: BallObjectProps) {
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
@@ -62,6 +63,12 @@ function useBallObjectState({
     x: px,
     y: py,
   });
+
+  useEffect(() => {
+    if (ballGroupRef.current && !cleanRender) {
+      ballGroupRef.current.position({ x: px, y: py });
+    }
+  }, [px, py, cleanRender]);
 
   const handleUpdateTrajectory = useCallback(
     (traj: Parameters<typeof updateBallTrajectory>[1]) => {

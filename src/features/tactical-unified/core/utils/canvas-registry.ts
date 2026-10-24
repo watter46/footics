@@ -1,5 +1,6 @@
 import type Konva from 'konva';
 import type { PlayerTrajectory } from '@/lib/types/tactical-unified';
+import type { PitchRectBounds } from './canvas-coordinates';
 
 export interface ArrowNodeEntry {
   node: Konva.Arrow | null;
@@ -36,6 +37,7 @@ export interface CanvasNodesRegistry {
   playerLayer: Konva.Layer | null;
   backgroundLayer: Konva.Layer | null;
   stage: Konva.Stage | null;
+  pitchRect?: PitchRectBounds | null;
 }
 
 export function createCanvasNodesRegistry(): CanvasNodesRegistry {
@@ -52,5 +54,6 @@ export function createCanvasNodesRegistry(): CanvasNodesRegistry {
     playerLayer: null,
     backgroundLayer: null,
     stage: null,
+    pitchRect: null,
   };
 }

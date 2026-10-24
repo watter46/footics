@@ -87,6 +87,24 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
           loop: options?.loop,
           onComplete: () => {
             if (!options?.loop) {
+              const lastSlideIndex = currentSlides.length - 1;
+              if (lastSlideIndex >= 0) {
+                const lastSlide = currentSlides[lastSlideIndex];
+                if (lastSlide) {
+                  setActiveSlide(lastSlide.id);
+                  refs.lastActiveSlideIndexRef.current = lastSlideIndex;
+                  refs.currentPlaybackTimeRef.current = totalDurationMs;
+                }
+              }
+              applyFrameToCanvas(
+                totalDurationMs,
+                options?.nodesRegistryRef?.current,
+                dims.width,
+                dims.height,
+                true,
+                dims.x,
+                dims.y,
+              );
               setIsPlaying(false);
               onComplete?.();
             }
@@ -103,6 +121,8 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
     [
       applyFrameToCanvas,
       setIsPlaying,
+      setActiveSlide,
+      totalDurationMs,
       options?.loop,
       options?.nodesRegistryRef,
       getPitchDimensions,

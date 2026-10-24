@@ -92,6 +92,18 @@ export function calculatePitchDimensions(
     };
   }
   const registry = nodesRegistryRef?.current;
+  if (
+    registry?.pitchRect &&
+    registry.pitchRect.width > 0 &&
+    registry.pitchRect.height > 0
+  ) {
+    return {
+      width: registry.pitchRect.width,
+      height: registry.pitchRect.height,
+      x: 0,
+      y: 0,
+    };
+  }
   const stage = registry?.stage;
   if (stage) {
     const stageWidth = stage.width();

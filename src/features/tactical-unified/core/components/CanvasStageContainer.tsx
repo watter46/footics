@@ -151,6 +151,7 @@ export const CanvasStageContainer = forwardRef<
 
   useEffect(() => {
     nodesRegistryRef.current.stage = stageRef.current;
+    nodesRegistryRef.current.pitchRect = vRect;
   });
 
   const editingText = editingTextId
