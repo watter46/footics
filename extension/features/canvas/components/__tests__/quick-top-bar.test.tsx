@@ -158,4 +158,32 @@ describe('QuickCanvasTopBar', () => {
       expect(mockCanvasHandle.applyRatio).toHaveBeenCalledWith('9:16');
     });
   });
+
+  describe('Web unified styling', () => {
+    it('applies bg-blue-600 to active ratio button and text-blue-400 to ratio icon', () => {
+      render(
+        <QuickCanvasTopBar screenshot={mockScreenshot} currentRatio="16:9" />,
+      );
+
+      const ratio169Btn = screen.getByRole('button', {
+        name: '境界線比率 16:9',
+      });
+      expect(ratio169Btn.className).toContain('bg-blue-600');
+      expect(ratio169Btn.className).not.toContain('bg-sky-600');
+
+      const ratioSelectorGroup = screen.getByRole('group', {
+        name: '境界線・アスペクト比選択',
+      });
+      const icon = ratioSelectorGroup.querySelector('svg');
+      expect(icon?.getAttribute('class')).toContain('text-blue-400');
+    });
+
+    it('applies bg-blue-600 to primary X share button', () => {
+      render(<QuickCanvasTopBar screenshot={mockScreenshot} />);
+
+      const shareBtn = screen.getByRole('button', { name: 'X共有' });
+      expect(shareBtn.className).toContain('bg-blue-600');
+      expect(shareBtn.className).not.toContain('bg-sky-600');
+    });
+  });
 });

@@ -1,6 +1,9 @@
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
-import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
+import {
+  type CanvasCoreHandle,
+  useCanvasToast,
+} from '@/features/tactical-unified/core';
 import {
   type CapturedScreenshot,
   toggleFavorite,
@@ -28,20 +31,13 @@ export function useQuickCanvasActions({
   canvasRef,
 }: UseQuickCanvasActionsOptions): UseQuickCanvasActionsReturn {
   const [isFavorite, setIsFavorite] = useState(screenshot?.isFavorite ?? false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const { toastMessage, showToast } = useCanvasToast();
 
   useEffect(() => {
     if (screenshot) {
       setIsFavorite(screenshot.isFavorite ?? false);
     }
   }, [screenshot?.isFavorite]);
-
-  const showToast = useCallback((msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 3000);
-  }, []);
 
   const handleAutoSave = useCallback(
     async (json: string) => {

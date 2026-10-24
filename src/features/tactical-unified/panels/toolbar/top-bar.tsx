@@ -10,7 +10,11 @@
 
 import { Copy, Upload } from 'lucide-react';
 import type React from 'react';
-import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
+import {
+  type CanvasCoreHandle,
+  CanvasToast,
+  useCanvasToast,
+} from '@/features/tactical-unified/core';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { TopBarCenter } from './top-bar-center';
 import { TopBarHistory } from './top-bar-history';
@@ -24,9 +28,11 @@ export interface TopBarProps {
 
 export function TopBar({ canvasRef }: TopBarProps = {}): React.ReactElement {
   const openExportModal = useTacticalUnifiedStore((s) => s.openExportModal);
+  const { toastMessage, showToast } = useCanvasToast();
 
-  function handleCopy() {
-    canvasRef?.current?.copyToClipboard();
+  async function handleCopy() {
+    await canvasRef?.current?.copyToClipboard();
+    showToast('📋 画像をクリップボードにコピーしました！');
   }
 
   return (
@@ -72,6 +78,7 @@ export function TopBar({ canvasRef }: TopBarProps = {}): React.ReactElement {
         {/* More Actions (...) Dropdown */}
         <TopBarMoreMenu />
       </div>
+      <CanvasToast message={toastMessage} />
     </header>
   );
 }

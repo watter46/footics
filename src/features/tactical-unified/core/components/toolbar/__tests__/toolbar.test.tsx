@@ -185,5 +185,16 @@ describe('Toolbar Compound Components & Registry', () => {
       expect(screen.getByTestId('tool-player')).toBeDefined();
       expect(screen.getByTestId('tool-player-ring')).toBeDefined();
     });
+
+    it('CoreDrawingToolbar で markerMode="3d-only" 時に ToolbarPitchLock が非表示となり、markerMode="2d-only" 時に表示されること', () => {
+      const { unmount } = renderWithStore(
+        <CoreDrawingToolbar markerMode="3d-only" />,
+      );
+      expect(screen.queryByTitle(/Pitch Lock/i)).toBeNull();
+      unmount();
+
+      renderWithStore(<CoreDrawingToolbar markerMode="2d-only" />);
+      expect(screen.getByTitle(/Pitch Lock/i)).toBeDefined();
+    });
   });
 });

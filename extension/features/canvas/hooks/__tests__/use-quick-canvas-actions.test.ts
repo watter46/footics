@@ -128,4 +128,53 @@ describe('useQuickCanvasActions', () => {
       canvasAnnotations: '{"annotations":[]}',
     });
   });
+
+  it('auto-clears toast message after 3000ms', async () => {
+    vi.useFakeTimers();
+
+    const { result } = renderHook(() =>
+      useQuickCanvasActions({
+        screenshot: mockScreenshot,
+        canvasRef,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleCopyClipboard();
+    });
+
+    expect(result.current.toastMessage).toContain('クリップボードにコピー');
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(result.current.toastMessage).toBeNull();
+
+    vi.useRealTimers();
+  });
+
+  it('clears toast timer on unmount (RAII cleanup)', async () => {
+    vi.useFakeTimers();
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+    const { result, unmount } = renderHook(() =>
+      useQuickCanvasActions({
+        screenshot: mockScreenshot,
+        canvasRef,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleCopyClipboard();
+    });
+
+    expect(result.current.toastMessage).toContain('クリップボードにコピー');
+
+    unmount();
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+
+    vi.useRealTimers();
+    clearTimeoutSpy.mockRestore();
+  });
 });

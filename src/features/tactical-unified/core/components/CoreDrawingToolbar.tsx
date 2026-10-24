@@ -26,6 +26,7 @@ export function CoreDrawingToolbar({
   tools,
 }: CoreDrawingToolbarProps): ReactNode {
   const resolvedTools = tools ?? getDrawingTools(markerMode);
+  const isExtension = markerMode === '3d-only';
 
   return (
     <DraggableToolbar className={`right-3 ${className}`.trim()}>
@@ -33,7 +34,7 @@ export function CoreDrawingToolbar({
       <ToolbarDivider />
       <ToolbarContinuousLock />
       <ToolbarEraser />
-      <ToolbarPitchLock />
+      {!isExtension && <ToolbarPitchLock />}
       <ToolbarBoundaryBoxToggle />
       <ToolbarDivider />
       <ToolbarResetButton />

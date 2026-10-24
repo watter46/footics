@@ -19,7 +19,7 @@ export function VideoMetaInfo({
   return (
     <div className="flex items-center gap-1.5 min-w-0">
       <span
-        className="text-xs font-semibold text-white/90 truncate max-w-[180px] md:max-w-xs"
+        className="text-xs font-semibold text-white truncate max-w-[180px] md:max-w-xs"
         title={screenshot?.videoTitle || 'Footics Tactics Quick Canvas'}
       >
         {screenshot?.videoTitle || 'Footics Quick Canvas'}
@@ -31,7 +31,7 @@ export function VideoMetaInfo({
           rel="noreferrer"
           title="元動画を開く"
           aria-label="元動画を開く"
-          className="text-white/40 hover:text-white transition-colors shrink-0"
+          className="p-1 rounded text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
         >
           <ExternalLink className="w-3 h-3" />
         </a>

@@ -162,6 +162,30 @@ describe('PitchGroundLayer', () => {
     const arrows = stageRef.current?.find('Arrow') ?? [];
     expect(arrows).toHaveLength(0);
   });
+
+  it('メインキャンバス外枠確認枠線 (stroke="#38bdf8") が描画されないこと', () => {
+    const stageRef = createRef<Konva.Stage>();
+    render(
+      <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
+        <Stage
+          ref={stageRef}
+          width={defaultStageSize.width}
+          height={defaultStageSize.height}
+        >
+          <PitchGroundLayer
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+            cleanRender={false}
+          />
+        </Stage>
+      </CanvasStoreProvider>,
+    );
+
+    const stage = stageRef.current;
+    const rects = stage?.find('Rect') ?? [];
+    const blueBorderRect = rects.find((r) => r.attrs.stroke === '#38bdf8');
+    expect(blueBorderRect).toBeUndefined();
+  });
 });
 
 describe('BillboardObjectLayer', () => {
@@ -441,6 +465,56 @@ describe('BillboardObjectLayer', () => {
     ).annotations.markers.find((m: { id: string }) => m.id === 'm-drop-test');
     expect(updatedMarker?.x).toBeCloseTo(110);
     expect(updatedMarker?.y).toBeCloseTo(110);
+  });
+
+  it('mode === "screenshot-edit" または markerMode === "3d-only" のときはボールを描画しないこと', () => {
+    const registryRef1 = { current: {} as any };
+    const { unmount: unmount1 } = render(
+      <CanvasStoreProvider config={{ mode: 'screenshot-edit' }}>
+        <Stage width={defaultStageSize.width} height={defaultStageSize.height}>
+          <BillboardObjectLayer
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+            nodesRegistryRef={registryRef1}
+          />
+        </Stage>
+      </CanvasStoreProvider>,
+    );
+    expect(registryRef1.current.ballNode).toBeUndefined();
+    unmount1();
+
+    const registryRef2 = { current: {} as any };
+    const { unmount: unmount2 } = render(
+      <CanvasStoreProvider
+        config={{ mode: 'tactical-board', markerMode: '3d-only' }}
+      >
+        <Stage width={defaultStageSize.width} height={defaultStageSize.height}>
+          <BillboardObjectLayer
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+            nodesRegistryRef={registryRef2}
+          />
+        </Stage>
+      </CanvasStoreProvider>,
+    );
+    expect(registryRef2.current.ballNode).toBeUndefined();
+    unmount2();
+
+    const registryRef3 = { current: {} as any };
+    render(
+      <CanvasStoreProvider
+        config={{ mode: 'tactical-board', markerMode: '2d-only' }}
+      >
+        <Stage width={defaultStageSize.width} height={defaultStageSize.height}>
+          <BillboardObjectLayer
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+            nodesRegistryRef={registryRef3}
+          />
+        </Stage>
+      </CanvasStoreProvider>,
+    );
+    expect(registryRef3.current.ballNode).toBeDefined();
   });
 });
 

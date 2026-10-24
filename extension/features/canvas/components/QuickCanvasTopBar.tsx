@@ -100,9 +100,13 @@ export function QuickCanvasTopBar({
             disabled={!canUndo}
             title="元に戻す (Ctrl+Z)"
             aria-label="元に戻す"
-            className="p-1 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
+            className={`p-1.5 rounded transition-colors ${
+              canUndo
+                ? 'text-white/70 hover:text-white hover:bg-white/10 cursor-pointer'
+                : 'text-white/20 cursor-not-allowed'
+            }`}
           >
-            <Undo2 className="w-3.5 h-3.5" />
+            <Undo2 size={13} />
           </button>
           <button
             type="button"
@@ -110,9 +114,13 @@ export function QuickCanvasTopBar({
             disabled={!canRedo}
             title="やり直す (Ctrl+Y)"
             aria-label="やり直す"
-            className="p-1 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
+            className={`p-1.5 rounded transition-colors ${
+              canRedo
+                ? 'text-white/70 hover:text-white hover:bg-white/10 cursor-pointer'
+                : 'text-white/20 cursor-not-allowed'
+            }`}
           >
-            <Redo2 className="w-3.5 h-3.5" />
+            <Redo2 size={13} />
           </button>
         </div>
       </div>
@@ -133,19 +141,17 @@ export function QuickCanvasTopBar({
           className={`p-1.5 rounded transition-colors cursor-pointer ${
             isFavorite
               ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
-              : 'text-white/60 hover:text-white hover:bg-white/10'
+              : 'text-white/70 hover:text-white hover:bg-white/10'
           }`}
         >
-          <Star
-            className={`w-3.5 h-3.5 ${isFavorite ? 'fill-amber-400' : ''}`}
-          />
+          <Star size={13} className={isFavorite ? 'fill-amber-400' : ''} />
         </button>
         <button
           type="button"
           onClick={handleCopy}
           title="画像をクリップボードにコピー"
           aria-label="画像コピー"
-          className="flex items-center gap-1 px-2.5 py-1 rounded bg-white/5 hover:bg-white/15 text-white/80 hover:text-white text-xs transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/5 hover:bg-white/15 text-white/80 hover:text-white text-xs transition-colors cursor-pointer"
         >
           <Copy size={13} />
           <span>コピー</span>
@@ -155,7 +161,7 @@ export function QuickCanvasTopBar({
           onClick={handleDownloadClick}
           title="画像をダウンロード"
           aria-label="画像保存"
-          className="flex items-center gap-1 px-2.5 py-1 rounded bg-white/5 hover:bg-white/15 text-white/80 hover:text-white text-xs transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/5 hover:bg-white/15 text-white/80 hover:text-white text-xs transition-colors cursor-pointer"
         >
           <Download size={13} />
           <span>保存</span>
@@ -165,7 +171,7 @@ export function QuickCanvasTopBar({
           onClick={onShareX}
           title="Xで画像を共有"
           aria-label="X共有"
-          className="flex items-center gap-1 px-2.5 py-1 rounded bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs transition-colors shadow-xs cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-sm cursor-pointer"
         >
           <Share2 size={13} />
           <span>X共有</span>
@@ -176,7 +182,7 @@ export function QuickCanvasTopBar({
           onClick={onOpenDashboard}
           title="動画別ダッシュボードへ戻る"
           aria-label="ダッシュボード一覧"
-          className="flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-colors shadow-xs cursor-pointer"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/5 hover:bg-white/15 text-white/80 hover:text-white text-xs transition-colors cursor-pointer"
         >
           <LayoutDashboard size={13} />
           <span>一覧</span>

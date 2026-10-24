@@ -65,6 +65,7 @@ export function BillboardObjectLayer({
   const markers = useCanvasStore((s) => s.annotations.markers);
   const arrows = useCanvasStore((s) => s.annotations.arrows);
   const texts = useCanvasStore((s) => s.annotations.texts);
+  const mode = useCanvasStore((s) => s.config.mode);
   const markerMode = useCanvasStore((s) => s.markerMode);
   const selectedIds = useCanvasStore((s) => s.selectedIds);
   const activeTool = useCanvasStore((s) => s.activeTool);
@@ -82,7 +83,11 @@ export function BillboardObjectLayer({
   const movePlayerToBench = useTacticalUnifiedStore((s) => s.movePlayerToBench);
   const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
 
-  const ball = activeSlide?.ball ?? { x: 50, y: 50, visible: true };
+  const ball = activeSlide?.ball ?? { x: 50, y: 50, visible: false };
+  const showBall =
+    mode !== 'screenshot-edit' &&
+    markerMode !== '3d-only' &&
+    ball.visible !== false;
 
   const visibleMarkers =
     teamVisibility === 'both'
@@ -251,7 +256,7 @@ export function BillboardObjectLayer({
       x: m.x,
       y: m.y,
     })),
-    ...(ball.visible !== false
+    ...(showBall
       ? [{ kind: 'ball' as const, data: ball, x: ball.x, y: ball.y }]
       : []),
     ...texts.map((t) => ({

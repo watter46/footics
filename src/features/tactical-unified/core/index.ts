@@ -30,6 +30,12 @@ export {
 } from './components/CanvasOverlays';
 export { CanvasStageContainer } from './components/CanvasStageContainer';
 export {
+  CanvasToast,
+  type CanvasToastProps,
+  type UseCanvasToastReturn,
+  useCanvasToast,
+} from './components/CanvasToast';
+export {
   ContextHud,
   type ContextHudProps,
 } from './components/ContextHud';

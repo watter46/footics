@@ -116,7 +116,7 @@ export function RatioPresetSelector({
       role="group"
       aria-label="境界線・アスペクト比選択"
     >
-      <LayoutTemplate size={12} className="text-sky-400 mx-1.5 shrink-0" />
+      <LayoutTemplate size={12} className="text-blue-400 mx-1 shrink-0" />
       {RATIO_PRESETS.map(({ ratio, label, title }) => {
         const isActive = activeRatio === ratio;
         return (
@@ -126,7 +126,7 @@ export function RatioPresetSelector({
             onClick={() => handleSelect(ratio)}
             className={`px-2 py-0.5 rounded transition-colors text-[11px] font-medium cursor-pointer ${
               isActive
-                ? 'bg-sky-600 text-white font-semibold shadow-xs'
+                ? 'bg-blue-600 text-white font-semibold shadow-xs'
                 : 'text-white/60 hover:text-white hover:bg-white/10'
             }`}
             title={title}
@@ -142,7 +142,7 @@ export function RatioPresetSelector({
         onClick={() => handleSelect('full')}
         className={`px-2 py-0.5 rounded transition-colors text-[11px] font-medium cursor-pointer flex items-center gap-1 ${
           activeRatio === 'full'
-            ? 'bg-sky-600 text-white font-semibold shadow-xs'
+            ? 'bg-blue-600 text-white font-semibold shadow-xs'
             : 'text-white/60 hover:text-white hover:bg-white/10'
         }`}
         title="全画面 (100% × 100%) - クロップなし"
