@@ -20,6 +20,7 @@ export interface PlayerMarkerItemProps {
   markerMode: string;
   isSelected: boolean;
   isInteractive: boolean;
+  cleanRender?: boolean;
   connectingPlayerId: string | null;
   nodesRegistryRef?: MutableRefObject<unknown>;
   aspectRatio?: AspectRatio;
@@ -38,6 +39,7 @@ export function PlayerMarkerItem({
   markerMode,
   isSelected,
   isInteractive,
+  cleanRender,
   connectingPlayerId,
   nodesRegistryRef,
   aspectRatio,
@@ -69,6 +71,8 @@ export function PlayerMarkerItem({
     markerMode === '3d-only' ||
     (markerMode !== '2d-only' && marker.style?.markerType === 'ring');
 
+  const effectiveIsSelected = !cleanRender && isSelected;
+
   return (
     <Group
       ref={(node: Konva.Group | null) => {
@@ -83,7 +87,7 @@ export function PlayerMarkerItem({
       }}
       x={pxX}
       y={pxY}
-      draggable={isInteractive && !marker.locked}
+      draggable={!cleanRender && isInteractive && !marker.locked}
       // マーカーはキャンバス(Stage)外へはみ出さない（Stage全体許容、右側・下側の見えない壁を解消）
       dragBoundFunc={function (this: Konva.Node, pos: Konva.Vector2d) {
         const stage = this.getStage?.();
@@ -145,7 +149,7 @@ export function PlayerMarkerItem({
           focus={marker.focus}
           radius={radius}
           isRing={is3D}
-          isSelected={isSelected}
+          isSelected={effectiveIsSelected}
         />
       )}
 
@@ -155,7 +159,7 @@ export function PlayerMarkerItem({
           radius={radius}
           isRing={is3D}
           stageSize={{ width, height }}
-          isSelected={isSelected}
+          isSelected={effectiveIsSelected}
           onUpdateVisionCone={onUpdateVisionCone}
         />
       )}
@@ -165,14 +169,14 @@ export function PlayerMarkerItem({
           player={marker}
           radius={radius}
           numScale={numScale}
-          isSelected={isSelected}
+          isSelected={effectiveIsSelected}
         />
       ) : (
         <PlayerMarkerCircle
           player={marker}
           radius={radius}
           numScale={numScale}
-          isSelected={isSelected}
+          isSelected={effectiveIsSelected}
           loadedImage={null}
         />
       )}

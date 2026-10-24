@@ -56,6 +56,7 @@ export const FullTacticalCanvas = forwardRef<
     { nodesRegistryRef },
   );
   const isPlaying = useTacticalUnifiedStore((s) => s.isPlaying);
+  const isExporting = useTacticalUnifiedStore((s) => s.isExporting);
   const stopPlayback = useTacticalUnifiedStore((s) => s.stopPlayback);
 
   const playRef = useRef(playAnimation);
@@ -106,6 +107,7 @@ export const FullTacticalCanvas = forwardRef<
         nodesRegistryRef={nodesRegistryRef}
         onStageSizeChange={handleStageSizeChange}
         toolbar={resolvedToolbar}
+        cleanRender={isPlaying || isExporting}
       />
     </CanvasStoreProvider>
   );

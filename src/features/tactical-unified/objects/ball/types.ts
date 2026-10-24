@@ -6,6 +6,7 @@ export interface BallObjectProps {
   ball: BallState;
   stageSize: { width: number; height: number };
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
+  cleanRender?: boolean;
 }
 
 export interface BallGhostProps {

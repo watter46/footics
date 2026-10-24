@@ -120,7 +120,7 @@ function useBallObjectState({
 export const BallObject = React.memo(function BallObject(
   props: BallObjectProps,
 ) {
-  const { ball, stageSize } = props;
+  const { ball, stageSize, cleanRender } = props;
   const state = useBallObjectState(props);
 
   if (!ball.visible) return null;
@@ -143,33 +143,37 @@ export const BallObject = React.memo(function BallObject(
   return (
     <>
       {/* ── スライド間ゴーストボール & 追跡矢印 & ベジェハンドル ── */}
-      <BallGhostTrajectory
-        isSelected={isSelected}
-        hasPrevBall={prevInfo.hasPrevBall}
-        prevBall={prevInfo.prevBall}
-        ball={ball}
-        isBallMoved={prevInfo.isBallMoved}
-        prevPxX={prevInfo.prevPxX}
-        prevPxY={prevInfo.prevPxY}
-        radius={radius}
-        ballImage={ballImage}
-        stageSize={stageSize}
-        nodesRegistryRef={props.nodesRegistryRef}
-        onUpdateTrajectory={handleUpdateTrajectory}
-      />
+      {!cleanRender && (
+        <BallGhostTrajectory
+          isSelected={isSelected}
+          hasPrevBall={prevInfo.hasPrevBall}
+          prevBall={prevInfo.prevBall}
+          ball={ball}
+          isBallMoved={prevInfo.isBallMoved}
+          prevPxX={prevInfo.prevPxX}
+          prevPxY={prevInfo.prevPxY}
+          radius={radius}
+          ballImage={ballImage}
+          stageSize={stageSize}
+          nodesRegistryRef={props.nodesRegistryRef}
+          onUpdateTrajectory={handleUpdateTrajectory}
+        />
+      )}
 
       {/* ── ボールドラッグ中限定オニオンスキン ── */}
-      <BallOnionskin
-        ghostGroupRef={ghostGroupRef}
-        ghostLineRef={ghostLineRef}
-        radius={radius}
-      />
+      {!cleanRender && (
+        <BallOnionskin
+          ghostGroupRef={ghostGroupRef}
+          ghostLineRef={ghostLineRef}
+          radius={radius}
+        />
+      )}
 
       <Group
         ref={setBallGroupRef}
         x={px}
         y={py}
-        draggable={!ball.locked}
+        draggable={!cleanRender && !ball.locked}
         dragBoundFunc={drag.dragBoundFunc}
         onClick={handleSelect}
         onTap={handleSelect}
@@ -180,7 +184,7 @@ export const BallObject = React.memo(function BallObject(
         <BallVisual
           radius={radius}
           ballImage={ballImage}
-          isSelected={isSelected && !drag.isDragging}
+          isSelected={!cleanRender && isSelected && !drag.isDragging}
         />
       </Group>
     </>

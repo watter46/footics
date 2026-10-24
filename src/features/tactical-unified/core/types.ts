@@ -118,6 +118,8 @@ export interface CanvasState {
   isHudOpen: boolean;
   customColor: string;
   connectingPlayerId: string | null;
+  prevSlide?: { players: Player[] } | null;
+  activeSlideId?: string;
   history: {
     past: CanvasHistorySnapshot[];
     future: CanvasHistorySnapshot[];
@@ -176,6 +178,11 @@ export interface CanvasActions {
   updateMarker: (id: string, patch: Partial<Player>) => void;
   removeMarker: (id: string) => void;
   moveMarkerToBench?: (id: string) => void;
+  updatePlayerTrajectory?: (
+    slideId: string,
+    markerId: string,
+    trajectory: any,
+  ) => void;
 
   removeSelected: () => void;
   setAnnotations: (annotations: AnnotationsData) => void;

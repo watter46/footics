@@ -51,10 +51,12 @@ export function detectRoleFromFirstStep(firstStep: {
     return 'reviewer';
   }
 
-  // 4. Worker: TASK_ASSIGN
+  // 4. Worker: TASK_ASSIGN または Worker 指示
   if (
     content.includes('type: "TASK_ASSIGN"') ||
-    content.includes("type: 'TASK_ASSIGN'")
+    content.includes("type: 'TASK_ASSIGN'") ||
+    content.includes('Worker エージェント') ||
+    content.includes('あなたは Footics プロジェクトの Worker')
   ) {
     return 'worker';
   }

@@ -7,10 +7,6 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useRef } from 'react';
 import { Group, Layer, Rect } from 'react-konva';
 import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
-import {
-  selectPreviousSlide,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
@@ -51,10 +47,10 @@ export function PitchGroundLayer({
   const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
   const aspectRatio = useCanvasStore((s) => s.aspectRatio);
 
-  const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
-  const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const updatePlayerTrajectory = useTacticalUnifiedStore(
+  const teamVisibility = useCanvasStore((s) => s.teamVisibility ?? 'both');
+  const prevSlide = useCanvasStore((s) => s.prevSlide);
+  const activeSlideId = useCanvasStore((s) => s.activeSlideId ?? '');
+  const updatePlayerTrajectory = useCanvasStore(
     (s) => s.updatePlayerTrajectory,
   );
 
@@ -110,8 +106,8 @@ export function PitchGroundLayer({
             key={zone.id}
             zone={zone}
             stageSize={{ width: pitchRect.width, height: pitchRect.height }}
-            isSelected={selectedIds.includes(zone.id)}
-            isInteractive={isInteractive}
+            isSelected={!cleanRender && selectedIds.includes(zone.id)}
+            isInteractive={!cleanRender && isInteractive}
             onSelect={makeSelectHandler(zone.id, 'zone')}
             updateZone={updateZone}
             nodesRegistryRef={nodesRegistryRef}
@@ -127,8 +123,8 @@ export function PitchGroundLayer({
             arrow={arrow}
             players={markers}
             stageSize={{ width: pitchRect.width, height: pitchRect.height }}
-            isSelected={selectedIds.includes(arrow.id)}
-            isInteractive={isInteractive}
+            isSelected={!cleanRender && selectedIds.includes(arrow.id)}
+            isInteractive={!cleanRender && isInteractive}
             onSelect={makeSelectHandler(arrow.id, 'arrow')}
             updateArrow={updateArrow}
             nodesRegistryRef={nodesRegistryRef}
@@ -140,8 +136,8 @@ export function PitchGroundLayer({
           markers={visibleMarkers}
           width={pitchRect.width}
           height={pitchRect.height}
-          selectedIds={selectedIds}
-          isInteractive={isInteractive}
+          selectedIds={cleanRender ? [] : selectedIds}
+          isInteractive={!cleanRender && isInteractive}
           connectLineNodesRef={connectLineNodesRef}
           onSelectConnectLine={(id, parentPlayerId) => {
             selectObject({
@@ -177,7 +173,7 @@ export function PitchGroundLayer({
                     | undefined
                 }
                 aspectRatio={aspectRatio}
-                onUpdateTrajectory={updatePlayerTrajectory}
+                onUpdateTrajectory={updatePlayerTrajectory ?? (() => {})}
               />
             );
           })}

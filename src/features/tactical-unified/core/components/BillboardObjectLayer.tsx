@@ -57,6 +57,7 @@ export function BillboardObjectLayer({
   editingTextId,
   onStartEditText,
   nodesRegistryRef,
+  cleanRender,
 }: BillboardObjectLayerProps): ReactNode {
   const markers = useCanvasStore((s) => s.annotations.markers);
   const arrows = useCanvasStore((s) => s.annotations.arrows);
@@ -276,8 +277,9 @@ export function BillboardObjectLayer({
                 baseDim={baseDim}
                 markerMode={markerMode}
                 aspectRatio={aspectRatio}
-                isSelected={selectedIds.includes(marker.id)}
-                isInteractive={isInteractive}
+                isSelected={!cleanRender && selectedIds.includes(marker.id)}
+                isInteractive={!cleanRender && isInteractive}
+                cleanRender={cleanRender}
                 connectingPlayerId={connectingPlayerId}
                 nodesRegistryRef={nodesRegistryRef}
                 onDragStart={handleDragStart}
@@ -305,6 +307,7 @@ export function BillboardObjectLayer({
                   height: pitchRect.height,
                 }}
                 nodesRegistryRef={nodesRegistryRef}
+                cleanRender={cleanRender}
               />
             );
           }
@@ -319,9 +322,9 @@ export function BillboardObjectLayer({
                   width: pitchRect.width,
                   height: pitchRect.height,
                 }}
-                isSelected={selectedIds.includes(text.id)}
+                isSelected={!cleanRender && selectedIds.includes(text.id)}
                 isEditing={editingTextId === text.id}
-                isInteractive={isInteractive}
+                isInteractive={!cleanRender && isInteractive}
                 onSelect={makeSelectHandler(text.id, 'text')}
                 onDblClick={(e) => {
                   e.cancelBubble = true;

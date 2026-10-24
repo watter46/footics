@@ -129,6 +129,8 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
       isDragging: false,
       isHudOpen: false,
       connectingPlayerId: null,
+      prevSlide: null,
+      activeSlideId: undefined,
       history: { past: [], future: [] },
 
       setActiveTool: (tool: DrawingTool) =>

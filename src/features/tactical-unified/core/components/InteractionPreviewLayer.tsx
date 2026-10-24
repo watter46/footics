@@ -10,7 +10,6 @@ import {
   Rect as KonvaRect,
   Layer,
 } from 'react-konva';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { SelectionBox } from '../hooks/use-canvas-selection-box';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
@@ -38,7 +37,7 @@ export function InteractionPreviewLayer({
   const strokeWidth = useCanvasStore((s) => s.strokeWidth);
   const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
   const markers = useCanvasStore((s) => s.annotations.markers);
-  const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
+  const teamVisibility = useCanvasStore((s) => s.teamVisibility ?? 'both');
 
   if (cleanRender) return null;
   const visibleMarkers =

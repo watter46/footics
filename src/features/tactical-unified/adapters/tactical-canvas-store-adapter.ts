@@ -22,7 +22,10 @@ import {
   selectCanRedo,
   selectCanUndo,
 } from '../stores/tactical-unified-selectors';
-import type { TacticalUnifiedState } from '../stores/tactical-unified-store';
+import {
+  selectPreviousSlide,
+  type TacticalUnifiedState,
+} from '../stores/tactical-unified-store';
 import { createAdapterClipboardHelpers } from './adapter-clipboard-helpers';
 import {
   executeRemoveSelected,
@@ -117,6 +120,8 @@ export function createTacticalCanvasStoreAdapter(
       isHudOpen,
       customColor,
       connectingPlayerId: s.connectingPlayerId,
+      prevSlide: selectPreviousSlide(s),
+      activeSlideId: s.activeSlideId,
       history: {
         past: [] as CanvasHistorySnapshot[],
         future: [] as CanvasHistorySnapshot[],
@@ -217,6 +222,8 @@ export function createTacticalCanvasStoreAdapter(
       updateMarker: (id, patch) => s.updatePlayer(s.activeSlideId, id, patch),
       removeMarker: (id) => s.removePlayer(s.activeSlideId, id),
       moveMarkerToBench: (id) => s.movePlayerToBench(s.activeSlideId, id),
+      updatePlayerTrajectory: (slideId, markerId, trajectory) =>
+        s.updatePlayerTrajectory(slideId, markerId, trajectory),
       removeSelected: () => executeRemoveSelected(s),
       setAnnotations: (data) => {
         s.updateSlide(s.activeSlideId, {
