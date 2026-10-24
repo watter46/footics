@@ -1,7 +1,7 @@
 # TASK-046: step4-ghost-trajectory-gsap-and-mediabunny-export
 
 ## 1. Metadata
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Created**: 2026-10-24
 - **Target Files**:
   - `package.json` (MODIFY)
@@ -32,7 +32,7 @@
   - `src/lib/tactical/__tests__/video-export-engine.test.ts` (MODIFY)
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
-- [ ] 1. 純粋描画の徹底: `FullTacticalCanvas` から `cleanRender={isPlaying || isExporting}` を伝播し、`cleanRender=true` 時は全オブジェクトの選択枠・各種操作ハンドル・境界線枠・HUD・ゴースト軌道を100%非表示にする。
+- [x] 1. 純粋描画の徹底: `FullTacticalCanvas` から `cleanRender={isPlaying || isExporting}` を伝播し、`cleanRender=true` 時は全オブジェクトの選択枠・各種操作ハンドル・境界線枠・HUD・ゴースト軌道を100%非表示にする。
 - [x] 2. ゴースト軌道の選択/ドラッグ限定 & 1px目即時追従: 選手ゴースト軌道を `!cleanRender && (selectedIds.includes(marker.id) || isDragging)` のみ描画。初期距離0でもマウント可能としドラッグ開始1px目から先端・ベジェハンドルを即時追従。ボールも同様に `!cleanRender && (isSelected || isDragging)` で一本化（`BallOnionskin` 撤去）。
 - [x] 3. GSAP 再生への統一 ＆ 自前 rAF / easing の廃止: `useTacticalAnimation` / `tactical-animation-canvas` の自前 rAF を廃止し `gsap.timeline()` で再生・一時停止・シーク・位置同期を制御。自前イージング計算を `gsap.parseEase()` に統一し、未参照ファイルを削除。
 - [x] 4. Mediabunny 動画出力 ＆ stage.toBlob 静止画出力 ＆ 直接配線: `mediabunny`（`Output`, `Mp4OutputFormat`, `WebMOutputFormat`, `BufferTarget`, `CanvasSource`）に移行し `mp4-muxer` / `webm-muxer` を削除。静止画は `stage.toBlob()` に一本化。`window.dispatchEvent` を廃止しエクスポート処理を直接呼び出す。
@@ -140,13 +140,13 @@ export interface VideoExportOptions {
 
 ## 5. Reviewer Assessment (コード差分監査)
 - **Reviewer Model**: `pro`
-- **Reviewed At**: 
-- **Decision**: `TODO`
+- **Reviewed At**: 2026-10-24 13:50
+- **Decision**: `LGTM`
 - **Audit Checklist**:
-  - [ ] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
-  - [ ] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
-  - [ ] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
-  - [ ] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
-- **Summary**:
+  - [x] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
+  - [x] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
+  - [x] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
+  - [x] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
+- **Summary**: 純粋描画モード伝播、ゴースト軌道の1px追従化、GSAPタイムライン統合およびtimeline.killによるRAII徹底、Mediabunny動画/stage.toBlob静止画/直接配線への刷新を確認。ホスト境界・Store Provider原則にも適合し、全受入要件を高品質に満たしていることを確認。
 
 ## 6. Rejections / Additional Tasks (不可逆修正欄)
