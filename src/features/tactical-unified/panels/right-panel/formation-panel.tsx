@@ -13,8 +13,6 @@ import {
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { FormationMode, FormationType } from '@/lib/data/formations';
-import { FormationBatchDisplay } from './formation-batch-display';
-import { FormationCustomManager } from './formation-custom-manager';
 import { FormationPresetSelector } from './formation-preset-selector';
 import { FormationTeamToggle } from './formation-team-toggle';
 
@@ -35,8 +33,10 @@ export function FormationPanel() {
   const isVertical = isVerticalPitch(project.aspectRatio);
 
   // Local states
-  const [activeTeam, setActiveTeam] = useState<'home' | 'away'>('home');
-  const [formationMode, setFormationMode] = useState<FormationMode>('half');
+  const [activeTeam, setActiveTeam] = useState<'home' | 'away' | 'both'>(
+    'home',
+  );
+  const [formationMode, setFormationMode] = useState<FormationMode>('full');
   const [selectedFormation, setSelectedFormation] =
     useState<FormationType>('4-3-3');
 
@@ -54,6 +54,20 @@ export function FormationPanel() {
   const handleApplyFormation = (f: FormationType) => {
     setSelectedFormation(f);
     applyFormation(activeSlideId, f, formationMode, activeTeam);
+  };
+
+  const handleDisplayModeChange = (mode: 'number' | 'photo' | 'none') => {
+    if (!activeSlide) return;
+    const targetPlayers =
+      activeTeam === 'both'
+        ? activeSlide.players
+        : activeSlide.players.filter((p) => p.team === activeTeam);
+
+    for (const p of targetPlayers) {
+      updatePlayer(activeSlideId, p.id, {
+        style: { ...p.style, insideContent: mode },
+      });
+    }
   };
 
   return (
@@ -94,7 +108,7 @@ export function FormationPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto divide-y divide-white/5 custom-scrollbar">
-        {/* 1. Team Control Bar */}
+        {/* 1. Team Control Bar & Batch Display Mode */}
         <FormationTeamToggle
           activeTeam={activeTeam}
           onTeamChange={setActiveTeam}
@@ -104,6 +118,7 @@ export function FormationPanel() {
           teamPlayersCount={teamPlayersCount}
           teamVisibility={teamVisibility}
           onVisibilityChange={setTeamVisibility}
+          onDisplayModeChange={handleDisplayModeChange}
         />
 
         {/* 2. Quick Formations & Pitch Actions */}
@@ -114,24 +129,6 @@ export function FormationPanel() {
           onClearPitch={() => clearPitchPlayers(activeSlideId)}
           onSwapSides={() => swapTeamSides(activeSlideId)}
           isVertical={isVertical}
-        />
-
-        {/* 3. Batch Player Display */}
-        {activeSlide && (
-          <FormationBatchDisplay
-            activeSlideId={activeSlide.id}
-            players={activeSlide.players}
-            homeColor={project.homeColor.primary}
-            awayColor={project.awayColor.primary}
-            onUpdatePlayer={updatePlayer}
-          />
-        )}
-
-        {/* 4. Club & Season Presets */}
-        <FormationCustomManager
-          activeTeam={activeTeam}
-          activeSlideId={activeSlideId}
-          formationMode={formationMode}
         />
       </div>
     </div>

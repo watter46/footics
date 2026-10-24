@@ -1,3 +1,6 @@
+import type { FormationType } from '@/lib/data/formations';
+import { getFormationActualPos } from '@/lib/data/formations';
+import { FORMATION_POSITIONS } from '@/lib/data/formations-data';
 import {
   type AspectRatio,
   type BoundaryBox,
@@ -21,6 +24,7 @@ export function fitProjectPlayers(
 export function resetSlideKeepSquadData(
   slide: Slide,
   aspectRatio: AspectRatio,
+  matchFormations?: { home: FormationType; away: FormationType },
 ): Slide {
   const isVertical = isVerticalAspectRatio(aspectRatio);
 
@@ -33,23 +37,63 @@ export function resetSlideKeepSquadData(
 
   const newPositions = new Map<string, { x: number; y: number }>();
 
-  homePitchPlayers.forEach((p, idx) => {
-    const preset = DEFAULT_4231_HOME[idx % DEFAULT_4231_HOME.length];
-    const rawPos = { x: preset.x, y: preset.y };
-    const pos = isVertical
-      ? transformCoord(rawPos, '16:9', aspectRatio)
-      : rawPos;
-    newPositions.set(p.id, pos);
-  });
+  if (matchFormations?.home && FORMATION_POSITIONS[matchFormations.home]) {
+    const positions = FORMATION_POSITIONS[matchFormations.home];
+    homePitchPlayers.forEach((p, idx) => {
+      const posDef = positions[idx % positions.length];
+      const rawPos = getFormationActualPos(posDef, 'home', 'full');
+      let targetPos = isVertical
+        ? transformCoord(rawPos, '16:9', aspectRatio)
+        : rawPos;
+      if (posDef.position === 'GK') {
+        const gkBasePos = { x: 7, y: 50 };
+        targetPos = isVertical
+          ? transformCoord(gkBasePos, '16:9', aspectRatio)
+          : gkBasePos;
+      }
+      const clampedX = Math.max(3, Math.min(97, targetPos.x));
+      const clampedY = Math.max(3, Math.min(97, targetPos.y));
+      newPositions.set(p.id, { x: clampedX, y: clampedY });
+    });
+  } else {
+    homePitchPlayers.forEach((p, idx) => {
+      const preset = DEFAULT_4231_HOME[idx % DEFAULT_4231_HOME.length];
+      const rawPos = { x: preset.x, y: preset.y };
+      const pos = isVertical
+        ? transformCoord(rawPos, '16:9', aspectRatio)
+        : rawPos;
+      newPositions.set(p.id, pos);
+    });
+  }
 
-  awayPitchPlayers.forEach((p, idx) => {
-    const preset = DEFAULT_442_AWAY[idx % DEFAULT_442_AWAY.length];
-    const rawPos = { x: preset.x, y: preset.y };
-    const pos = isVertical
-      ? transformCoord(rawPos, '16:9', aspectRatio)
-      : rawPos;
-    newPositions.set(p.id, pos);
-  });
+  if (matchFormations?.away && FORMATION_POSITIONS[matchFormations.away]) {
+    const positions = FORMATION_POSITIONS[matchFormations.away];
+    awayPitchPlayers.forEach((p, idx) => {
+      const posDef = positions[idx % positions.length];
+      const rawPos = getFormationActualPos(posDef, 'away', 'full');
+      let targetPos = isVertical
+        ? transformCoord(rawPos, '16:9', aspectRatio)
+        : rawPos;
+      if (posDef.position === 'GK') {
+        const gkBasePos = { x: 93, y: 50 };
+        targetPos = isVertical
+          ? transformCoord(gkBasePos, '16:9', aspectRatio)
+          : gkBasePos;
+      }
+      const clampedX = Math.max(3, Math.min(97, targetPos.x));
+      const clampedY = Math.max(3, Math.min(97, targetPos.y));
+      newPositions.set(p.id, { x: clampedX, y: clampedY });
+    });
+  } else {
+    awayPitchPlayers.forEach((p, idx) => {
+      const preset = DEFAULT_442_AWAY[idx % DEFAULT_442_AWAY.length];
+      const rawPos = { x: preset.x, y: preset.y };
+      const pos = isVertical
+        ? transformCoord(rawPos, '16:9', aspectRatio)
+        : rawPos;
+      newPositions.set(p.id, pos);
+    });
+  }
 
   const updatedPlayers = slide.players.map((p) => {
     const pos = newPositions.get(p.id);

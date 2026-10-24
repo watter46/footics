@@ -19,7 +19,7 @@ export interface SlideFormationSlice {
     slideId: string,
     formationName: FormationType,
     mode: FormationMode,
-    team: 'home' | 'away',
+    team: 'home' | 'away' | 'both',
   ) => void;
   applySingleTeamFormation: (
     slideId: string,
@@ -74,9 +74,31 @@ export const createSlideFormationSlice: StateCreator<
   applyFormation: (slideId, formationName, mode, team) =>
     set((s) => ({
       ...recordHistory(s),
-      project: updateSlideInProject(s.project, slideId, (sl) =>
-        computeSlideAfterFormation(sl, s.project, formationName, mode, team),
-      ),
+      project: updateSlideInProject(s.project, slideId, (sl) => {
+        if (team === 'both') {
+          const afterHome = computeSlideAfterFormation(
+            sl,
+            s.project,
+            formationName,
+            mode,
+            'home',
+          );
+          return computeSlideAfterFormation(
+            afterHome,
+            s.project,
+            formationName,
+            mode,
+            'away',
+          );
+        }
+        return computeSlideAfterFormation(
+          sl,
+          s.project,
+          formationName,
+          mode,
+          team,
+        );
+      }),
       isDirty: true,
     })),
 

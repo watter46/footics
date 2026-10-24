@@ -14,21 +14,17 @@ import {
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { FormationBenchItem } from './formation-bench-item';
+import { FormationCustomManager } from './formation-custom-manager';
 
 export function SquadSubPanel() {
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const project = useTacticalUnifiedStore((s) => s.project);
 
-  const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
-  const swapPlayers = useTacticalUnifiedStore((s) => s.swapPlayers);
   const addCustomPlayer = useTacticalUnifiedStore((s) => s.addCustomPlayer);
   const removePlayer = useTacticalUnifiedStore((s) => s.removePlayer);
 
   const [activeTeam, setActiveTeam] = useState<'home' | 'away'>('home');
-  const [activeSwapPlayerId, setActiveSwapPlayerId] = useState<string | null>(
-    null,
-  );
   const [isAddingSub, setIsAddingSub] = useState(false);
   const [newSubName, setNewSubName] = useState('');
   const [newSubNo, setNewSubNo] = useState('');
@@ -267,14 +263,6 @@ export function SquadSubPanel() {
                     player={player}
                     teamColor={teamColor}
                     activeSlideId={activeSlideId}
-                    pitchPlayers={teamPlayers.pitch}
-                    activeSwapPlayerId={activeSwapPlayerId}
-                    onToggleSwap={(id) =>
-                      setActiveSwapPlayerId((cur) => (cur === id ? null : id))
-                    }
-                    onCloseSwap={() => setActiveSwapPlayerId(null)}
-                    onMoveToPitch={(sId, pId) => movePlayerToPitch(sId, pId)}
-                    onSwapPlayers={(sId, p1, p2) => swapPlayers(sId, p1, p2)}
                     onRemovePlayer={(sId, pId) => removePlayer(sId, pId)}
                   />
                 ))}
@@ -282,6 +270,15 @@ export function SquadSubPanel() {
             )}
           </div>
         </div>
+
+        {/* 3. Club & Season Presets (Only displayed for normal boards without matchId) */}
+        {!project.matchId && (
+          <FormationCustomManager
+            activeTeam={activeTeam}
+            activeSlideId={activeSlideId}
+            formationMode="full"
+          />
+        )}
       </div>
     </div>
   );

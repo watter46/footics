@@ -1,5 +1,6 @@
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getTeamFormationAtMinute } from '@/lib/data/formation-utils';
+import type { FormationType } from '@/lib/data/formations';
 import { parseWhoScoredFormationName } from '@/lib/tactical/formations';
 import {
   convertSquadToTacticalPlayers,
@@ -24,8 +25,8 @@ export interface MatchTacticalPlayersResult {
   homePlayers: TacticalPlayer[];
   awayPlayers: TacticalPlayer[];
   allPlayers: TacticalPlayer[];
-  homeFormation: string;
-  awayFormation: string;
+  homeFormation: FormationType;
+  awayFormation: FormationType;
 }
 
 /**
@@ -112,13 +113,14 @@ export function injectMatchToTactical({
   const targetSlideId = slideId || store.activeSlideId;
   const project = store.project;
 
-  const { allPlayers } = buildMatchTacticalPlayers({
-    match,
-    minute,
-    homeColor: project.homeColor.primary,
-    awayColor: project.awayColor.primary,
-    aspectRatio: project.aspectRatio,
-  });
+  const { allPlayers, homeFormation, awayFormation } =
+    buildMatchTacticalPlayers({
+      match,
+      minute,
+      homeColor: project.homeColor.primary,
+      awayColor: project.awayColor.primary,
+      aspectRatio: project.aspectRatio,
+    });
 
   const title =
     match.homeTeam?.name && match.awayTeam?.name
@@ -140,6 +142,10 @@ export function injectMatchToTactical({
   const updatedProject: TacticalProject = {
     ...project,
     matchId: String(match.id),
+    matchFormations: {
+      home: homeFormation,
+      away: awayFormation,
+    },
     title,
     slides: updatedSlides,
     updatedAt: new Date().toISOString(),

@@ -7,6 +7,7 @@
  */
 
 import { z } from 'zod';
+import { FORMATION_LIST } from '@/lib/data/formations';
 
 // ─────────────────────────────────────────
 // § 1. Primitives
@@ -623,6 +624,12 @@ export const TacticalProjectSchema = z.object({
   activeSlideId: z.string(),
 
   matchId: z.string().optional(),
+  matchFormations: z
+    .object({
+      home: z.enum(FORMATION_LIST),
+      away: z.enum(FORMATION_LIST),
+    })
+    .optional(),
   tags: z.array(z.string()).default([]),
 
   thumbnail: z.string().optional(),

@@ -213,7 +213,7 @@ function createProjectConfigActions(set: SetState) {
         return {
           ...recordHistory(s),
           project: updateSlideInProject(s.project, targetSlideId, (sl) =>
-            resetSlideKeepSquadData(sl, aspect),
+            resetSlideKeepSquadData(sl, aspect, s.project.matchFormations),
           ),
           selectedObjects: [],
           activeMarkerOptionTab: null,

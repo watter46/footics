@@ -10,12 +10,14 @@ import {
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { db } from '@/lib/db';
 import {
   createHighPressBenchmarkProject,
   createLowBlockBenchmarkProject,
   createSixSlideBenchmarkProject,
   createTenSlideFullSequenceBenchmarkProject,
 } from '@/lib/tactical/benchmark-presets';
+import { injectMatchToTactical } from '@/lib/tactical/match-to-tactical-bridge';
 import { clearActiveProjectFromDb } from '@/lib/tactical/tactical-storage';
 
 interface PitchSectionProps {
@@ -191,6 +193,26 @@ export function TopBarMoreMenu() {
       '現在の戦術プロジェクトをリセットして、まっさらなピッチで新規作成しますか？',
     );
     if (!confirmed) return;
+
+    const currentProject = useTacticalUnifiedStore.getState().project;
+    if (currentProject.matchId) {
+      const matchId = currentProject.matchId;
+      const numId = Number(matchId);
+      const match =
+        (!Number.isNaN(numId) ? await db.matches.get(numId as any) : null) ||
+        (await db.matches.get(matchId as any)) ||
+        (await db.matches.get(String(matchId) as any));
+
+      if (match) {
+        resetProject();
+        injectMatchToTactical({ match, minute: 0 });
+        await clearActiveProjectFromDb(String(matchId));
+        useTacticalUnifiedStore.getState().setSaveStatus('saved');
+        setIsOpen(false);
+        return;
+      }
+    }
+
     resetProject();
     await clearActiveProjectFromDb();
     useTacticalUnifiedStore.getState().setSaveStatus('saved');

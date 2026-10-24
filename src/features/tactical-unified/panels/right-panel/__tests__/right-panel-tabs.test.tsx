@@ -60,7 +60,7 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
     expect(awayPitch?.length).toBe(11);
   });
 
-  it('SquadSubPanel allows deploying bench player and adding new player', () => {
+  it('SquadSubPanel renders bench player and allows removing', () => {
     const store = useTacticalUnifiedStore.getState();
     const activeSlideId = store.activeSlideId;
 
@@ -78,20 +78,20 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
 
     expect(screen.getByText('Squad & Bench')).toBeDefined();
 
-    const deployButtons = screen.getAllByTitle('ピッチに投入');
-    expect(deployButtons.length).toBeGreaterThan(0);
+    const removeBtn = screen.getByTitle('Remove');
+    expect(removeBtn).toBeDefined();
 
-    // Deploy to pitch
-    fireEvent.click(deployButtons[0]);
+    // Remove bench player
+    fireEvent.click(removeBtn);
 
     const activeSlide = useTacticalUnifiedStore
       .getState()
       .project.slides.find(
         (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
       );
-    const deployedPlayer = activeSlide?.players.find(
+    const removedPlayer = activeSlide?.players.find(
       (p) => p.name === 'Deploy Sub',
     );
-    expect(deployedPlayer?.area).toBe('pitch');
+    expect(removedPlayer).toBeUndefined();
   });
 });
