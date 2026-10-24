@@ -147,7 +147,7 @@ export function createAnnotationActions(
         annotations: cascadeRemoveMarker(s.annotations, id),
       }));
     },
-    moveMarkerToBench: (id) => {
+    moveMarkerToBench: (id, _x, _y) => {
       pushHistory();
       set((s) => ({
         annotations: cascadeRemoveMarker(s.annotations, id),

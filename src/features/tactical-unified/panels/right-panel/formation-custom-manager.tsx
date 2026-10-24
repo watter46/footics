@@ -71,7 +71,7 @@ export function FormationCustomManager({
             name: p.name,
             shirtNo: p.shirtNo,
             position: p.position,
-            isFirstEleven: !p.isFirstEleven,
+            isFirstEleven: Boolean(p.isFirstEleven),
             field: activeTeam,
             stats: {},
             height: 180,

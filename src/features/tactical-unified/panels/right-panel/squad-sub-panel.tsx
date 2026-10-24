@@ -5,24 +5,34 @@
  * Dedicated Right Panel: Squad & Substitutes (Bench) Management
  */
 
-import { useDroppable } from '@dnd-kit/core';
+import type Konva from 'konva';
+import type { KonvaEventObject } from 'konva/lib/Node';
 import { Sparkles, UserPlus, Users } from 'lucide-react';
 import type React from 'react';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Layer, Stage } from 'react-konva';
+import { PlayerMarkerItem } from '@/features/tactical-unified/core/components/PlayerMarkerItem';
 import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { FormationBenchItem } from './formation-bench-item';
+import {
+  computeBenchGridPositions,
+  type Player,
+} from '@/lib/types/tactical-unified';
 import { FormationCustomManager } from './formation-custom-manager';
+
+const BASE_BENCH_HEIGHT = 280;
 
 export function SquadSubPanel() {
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const project = useTacticalUnifiedStore((s) => s.project);
-
+  const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
+  const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
+  const updatePlayer = useTacticalUnifiedStore((s) => s.updatePlayer);
+  const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
   const addCustomPlayer = useTacticalUnifiedStore((s) => s.addCustomPlayer);
-  const removePlayer = useTacticalUnifiedStore((s) => s.removePlayer);
 
   const [activeTeam, setActiveTeam] = useState<'home' | 'away'>('home');
   const [isAddingSub, setIsAddingSub] = useState(false);
@@ -30,10 +40,21 @@ export function SquadSubPanel() {
   const [newSubNo, setNewSubNo] = useState('');
   const [newSubPos, setNewSubPos] = useState('SUB');
 
-  const { setNodeRef: setBenchDroppableRef, isOver } = useDroppable({
-    id: 'tactical-bench-droppable',
-    data: { type: 'bench', team: activeTeam },
-  });
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [canvasWidth, setCanvasWidth] = useState(360);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const updateWidth = () => {
+      const w = el.clientWidth;
+      if (w > 0) setCanvasWidth(w);
+    };
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const teamPlayers = useMemo(() => {
     if (!activeSlide) return { pitch: [], bench: [] };
@@ -46,61 +67,107 @@ export function SquadSubPanel() {
     return { pitch, bench };
   }, [activeSlide, activeTeam]);
 
-  const teamColor =
-    activeTeam === 'home'
-      ? project.homeColor.primary
-      : project.awayColor.primary;
+  const selectedIds = useMemo(
+    () => selectedObjects.map((o) => o.id),
+    [selectedObjects],
+  );
 
-  const POSITION_ORDER: Record<string, number> = {
-    GK: 1,
-    DF: 2,
-    CB: 2,
-    LB: 2,
-    RB: 2,
-    LWB: 2,
-    RWB: 2,
-    MF: 3,
-    DM: 3,
-    CM: 3,
-    AM: 3,
-    LM: 3,
-    RM: 3,
-    FW: 4,
-    CF: 4,
-    ST: 4,
-    LW: 4,
-    RW: 4,
-    SS: 4,
-    OTHER: 5,
-  };
+  const maxBenchY = useMemo(() => {
+    if (teamPlayers.bench.length === 0) return 80;
+    return teamPlayers.bench.reduce((max, p) => Math.max(max, p.y), 80);
+  }, [teamPlayers.bench]);
+
+  const stageHeight = Math.max(
+    BASE_BENCH_HEIGHT,
+    Math.ceil(((maxBenchY + 15) / 100) * BASE_BENCH_HEIGHT),
+  );
 
   const handleOrganizeBench = () => {
-    if (!activeSlide) return;
-    const sortedBench = [...teamPlayers.bench].sort((a, b) => {
-      const orderA = POSITION_ORDER[a.position ?? 'OTHER'] ?? 5;
-      const orderB = POSITION_ORDER[b.position ?? 'OTHER'] ?? 5;
-      if (orderA !== orderB) return orderA - orderB;
-      const numA = Number.parseInt(a.shirtNo || '999', 10);
-      const numB = Number.parseInt(b.shirtNo || '999', 10);
-      return numA - numB;
-    });
+    if (!activeSlide || teamPlayers.bench.length === 0) return;
+    const positionedBench = computeBenchGridPositions(teamPlayers.bench);
+    const benchMap = new Map(positionedBench.map((p) => [p.id, p]));
 
-    const otherPlayers = activeSlide.players.filter(
-      (p) => !(p.team === activeTeam && p.area === 'bench'),
-    );
     useTacticalUnifiedStore.setState((s) => ({
       ...s,
       project: {
         ...s.project,
         slides: s.project.slides.map((sl) =>
           sl.id === activeSlideId
-            ? { ...sl, players: [...otherPlayers, ...sortedBench] }
+            ? {
+                ...sl,
+                players: sl.players.map((p) => benchMap.get(p.id) ?? p),
+              }
             : sl,
         ),
       },
       isDirty: true,
     }));
   };
+
+  const handleDragStart = useCallback(
+    (_e: KonvaEventObject<DragEvent>, markerId: string) => {
+      if (!selectedIds.includes(markerId)) {
+        selectObject({ id: markerId, kind: 'player' }, false);
+      }
+    },
+    [selectedIds, selectObject],
+  );
+
+  const handleDragEnd = useCallback(
+    (e: KonvaEventObject<DragEvent>, marker: Player) => {
+      const clientX = (e.evt as MouseEvent | undefined)?.clientX;
+      const clientY = (e.evt as MouseEvent | undefined)?.clientY;
+
+      const benchEl =
+        typeof document !== 'undefined'
+          ? document.getElementById('tactical-bench-canvas')
+          : null;
+      const benchRect = benchEl?.getBoundingClientRect();
+      const panelLeft =
+        benchRect?.left ??
+        (typeof window !== 'undefined' ? window.innerWidth - 400 : 0);
+
+      // 右パネルの左境界より左側（メインキャンバス上）にドロップされた場合
+      if (clientX !== undefined && clientX < panelLeft) {
+        const pitchDroppable =
+          typeof document !== 'undefined'
+            ? document.getElementById('tactical-pitch-droppable')
+            : null;
+        if (pitchDroppable && clientY !== undefined) {
+          const pRect = pitchDroppable.getBoundingClientRect();
+          const pitchX = Math.max(
+            0,
+            Math.min(100, ((clientX - pRect.left) / pRect.width) * 100),
+          );
+          const pitchY = Math.max(
+            0,
+            Math.min(100, ((clientY - pRect.top) / pRect.height) * 100),
+          );
+          movePlayerToPitch(activeSlideId, marker.id, pitchX, pitchY);
+        } else {
+          movePlayerToPitch(activeSlideId, marker.id);
+        }
+        return;
+      }
+
+      // サブキャンバス内での自由ドラッグ配置
+      const targetNode = e.target;
+      const newX = Math.max(
+        0,
+        Math.min(100, (targetNode.x() / canvasWidth) * 100),
+      );
+      const newY = Math.max(0, (targetNode.y() / BASE_BENCH_HEIGHT) * 100);
+      updatePlayer(activeSlideId, marker.id, { x: newX, y: newY });
+    },
+    [activeSlideId, canvasWidth, movePlayerToPitch, updatePlayer],
+  );
+
+  const handleClick = useCallback(
+    (markerId: string, isShift: boolean) => {
+      selectObject({ id: markerId, kind: 'player' }, isShift);
+    },
+    [selectObject],
+  );
 
   const handleAddSub = (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,7 +251,7 @@ export function SquadSubPanel() {
           </div>
         </div>
 
-        {/* 2. Substitutes / Bench Area (自由配置ベンチキャンバス 3列グリッド) */}
+        {/* 2. Substitutes / Bench Area (Konva Stage + PlayerMarkerItem サブキャンバス) */}
         <div className="p-2.5 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
@@ -194,7 +261,7 @@ export function SquadSubPanel() {
               type="button"
               onClick={handleOrganizeBench}
               className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-[10px] font-medium transition-colors cursor-pointer border border-white/10 shadow-xs"
-              title="ポジション順（GK/DF/MF/FW）に3列再整列"
+              title="ポジション順（FW/MF/DF/GK）に3列再整列"
             >
               <Sparkles size={11} className="text-amber-400" />
               <span>整理</span>
@@ -239,33 +306,48 @@ export function SquadSubPanel() {
             </form>
           )}
 
-          {/* Droppable Bench Canvas Area */}
-          <div
-            ref={setBenchDroppableRef}
-            className={`min-h-[160px] max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar p-2 rounded-xl border-2 transition-all ${
-              isOver
-                ? 'border-blue-500/80 bg-blue-500/10 shadow-lg'
-                : 'border-white/10 bg-black/30'
-            }`}
-          >
+          {/* Sub-canvas Area (Konva Stage) */}
+          <div className="min-h-[160px] max-h-[360px] overflow-y-auto custom-scrollbar rounded-xl border border-white/10 bg-black/40">
             {teamPlayers.bench.length === 0 ? (
-              <div className="h-32 flex flex-col items-center justify-center border border-dashed border-white/10 rounded-lg text-white/30 text-xs">
+              <div className="h-32 flex flex-col items-center justify-center border border-dashed border-white/10 rounded-lg text-white/30 text-xs m-2">
                 <span>ベンチ選手がいません</span>
                 <span className="text-[10px] opacity-60 mt-1">
-                  ピッチからドロップして退避
+                  ピッチからドラッグして退避
                 </span>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {teamPlayers.bench.map((player) => (
-                  <FormationBenchItem
-                    key={player.id}
-                    player={player}
-                    teamColor={teamColor}
-                    activeSlideId={activeSlideId}
-                    onRemovePlayer={(sId, pId) => removePlayer(sId, pId)}
-                  />
-                ))}
+              <div
+                id="tactical-bench-canvas"
+                ref={containerRef}
+                className="w-full relative"
+                style={{ minHeight: BASE_BENCH_HEIGHT, height: stageHeight }}
+              >
+                <Stage
+                  width={canvasWidth}
+                  height={stageHeight}
+                  listening={true}
+                >
+                  <Layer>
+                    {teamPlayers.bench.map((player) => (
+                      <PlayerMarkerItem
+                        key={player.id}
+                        marker={player}
+                        width={canvasWidth}
+                        height={BASE_BENCH_HEIGHT}
+                        baseDim={canvasWidth}
+                        markerMode="2d-only"
+                        isSelected={selectedIds.includes(player.id)}
+                        isInteractive={true}
+                        connectingPlayerId={null}
+                        onDragStart={handleDragStart}
+                        onDragMove={() => {}}
+                        onDragEnd={handleDragEnd}
+                        onClick={handleClick}
+                        onUpdateVisionCone={() => {}}
+                      />
+                    ))}
+                  </Layer>
+                </Stage>
               </div>
             )}
           </div>

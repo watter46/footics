@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { FormationPanel } from '../formation-panel';
 import { RightPanel } from '../right-panel';
@@ -7,6 +7,21 @@ import { SquadSubPanel } from '../squad-sub-panel';
 
 describe('RightPanel Tab & Sub-components Architecture', () => {
   beforeEach(() => {
+    const mockCtx = new Proxy(
+      {
+        getImageData: () => ({ data: new Array(4) }),
+        createImageData: () => [],
+        getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+        measureText: () => ({ width: 0 }),
+        getLineDash: () => [],
+        isPointInPath: () => true,
+      } as Record<string, unknown>,
+      {
+        get: (target, prop: string) =>
+          prop in target ? target[prop] : vi.fn(),
+      },
+    );
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
     useTacticalUnifiedStore.getState().resetProject();
   });
 
@@ -60,12 +75,12 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
     expect(awayPitch?.length).toBe(11);
   });
 
-  it('SquadSubPanel renders bench player and allows removing', () => {
+  it('SquadSubPanel renders bench player in tactical-bench-canvas sub-canvas', () => {
     const store = useTacticalUnifiedStore.getState();
     const activeSlideId = store.activeSlideId;
 
     // Add custom bench player
-    store.addCustomPlayer(
+    const playerId = store.addCustomPlayer(
       activeSlideId,
       'home',
       'Deploy Sub',
@@ -74,16 +89,19 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
       'bench',
     );
 
-    render(<SquadSubPanel />);
+    const { container } = render(<SquadSubPanel />);
 
     expect(screen.getByText('Squad & Bench')).toBeDefined();
 
-    const removeBtn = screen.getByTitle('Remove');
-    expect(removeBtn).toBeDefined();
+    // Sub-canvas container exists
+    const canvas = container.querySelector('#tactical-bench-canvas');
+    expect(canvas).not.toBeNull();
 
-    // Remove bench player
-    fireEvent.click(removeBtn);
+    // Old bench DOM card Remove button does not exist
+    expect(screen.queryByTitle('Remove')).toBeNull();
 
+    // Player can be removed via store action
+    store.removePlayer(activeSlideId, playerId);
     const activeSlide = useTacticalUnifiedStore
       .getState()
       .project.slides.find(

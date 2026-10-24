@@ -73,7 +73,7 @@ export function buildMatchTacticalPlayers({
   const homePlayers = convertSquadToTacticalPlayers(homeSquad, {
     team: 'home',
     formation: homeFormation,
-    mode: 'half',
+    mode: 'full',
     primaryColor: homeColor,
     aspectRatio,
   });
@@ -81,7 +81,7 @@ export function buildMatchTacticalPlayers({
   const awayPlayers = convertSquadToTacticalPlayers(awaySquad, {
     team: 'away',
     formation: awayFormation,
-    mode: 'half',
+    mode: 'full',
     primaryColor: awayColor,
     aspectRatio,
   });

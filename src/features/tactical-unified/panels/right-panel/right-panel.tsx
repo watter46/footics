@@ -2,7 +2,7 @@
 
 /**
  * right-panel.tsx
- * Persistent Figma-like Right Panel (Width: 340px)
+ * Persistent Figma-like Right Panel (Width: 400px)
  *
  * Houses:
  *  - Formation Presets Tab (Shield)
@@ -34,7 +34,7 @@ export function RightPanel() {
   return (
     <aside
       className={`h-full bg-[#141414] border-l border-white/10 flex flex-col shrink-0 z-30 overflow-hidden transition-[width] duration-200 ease-in-out ${
-        isRightPanelOpen ? 'w-[340px] min-w-[340px]' : 'w-12 min-w-[48px]'
+        isRightPanelOpen ? 'w-[400px] min-w-[400px]' : 'w-12 min-w-[48px]'
       }`}
     >
       {!isRightPanelOpen ? (
@@ -81,7 +81,7 @@ export function RightPanel() {
           </button>
         </div>
       ) : (
-        // ── 展開状態 (340px 詳細パネル) ──
+        // ── 展開状態 (400px 詳細パネル) ──
         <>
           {/* Top Segmented Tab Switcher (2タブ体制) + Close Button */}
           <div className="flex items-center gap-1.5 p-1.5 bg-[#111] border-b border-white/10 shrink-0">

@@ -82,12 +82,20 @@ export function BillboardObjectLayer({
   const showBall =
     (capabilities?.hasBall ?? false) && ball != null && ball.visible !== false;
 
-  const visibleMarkers =
-    teamVisibility === 'both'
-      ? markers
-      : markers.filter(
-          (m) => m.team === teamVisibility || m.team === 'neutral',
-        );
+  const pitchMarkers = useMemo(
+    () => markers.filter((m) => m.area !== 'bench'),
+    [markers],
+  );
+
+  const visibleMarkers = useMemo(
+    () =>
+      teamVisibility === 'both'
+        ? pitchMarkers
+        : pitchMarkers.filter(
+            (m) => m.team === teamVisibility || m.team === 'neutral',
+          ),
+    [pitchMarkers, teamVisibility],
+  );
 
   const isInteractive = activeTool === 'select';
   const baseDim = Math.min(pitchRect.width, pitchRect.height);
@@ -187,18 +195,49 @@ export function BillboardObjectLayer({
       setIsDragging(false);
 
       const clientX = (e.evt as MouseEvent | undefined)?.clientX;
+      const clientY = (e.evt as MouseEvent | undefined)?.clientY;
       const stage = e.target.getStage();
       const stageRect = stage?.container().getBoundingClientRect();
 
+      let isOverBench = false;
+      let benchCoord: { x: number; y: number } | undefined;
+
+      const benchCanvasEl =
+        typeof document !== 'undefined'
+          ? document.getElementById('tactical-bench-canvas')
+          : null;
+      const benchRect = benchCanvasEl?.getBoundingClientRect();
+
+      if (benchRect && clientX !== undefined && clientY !== undefined) {
+        if (
+          clientX >= benchRect.left &&
+          clientX <= benchRect.right &&
+          clientY >= benchRect.top &&
+          clientY <= benchRect.bottom
+        ) {
+          isOverBench = true;
+          const bx = Math.max(
+            0,
+            Math.min(100, ((clientX - benchRect.left) / benchRect.width) * 100),
+          );
+          const by = Math.max(
+            0,
+            Math.min(100, ((clientY - benchRect.top) / benchRect.height) * 100),
+          );
+          benchCoord = { x: bx, y: by };
+        }
+      }
+
       const isOverBenchPanel =
-        clientX !== undefined &&
-        (stageRect
-          ? clientX >= stageRect.right
-          : typeof window !== 'undefined' &&
-            clientX >= window.innerWidth - 340);
+        isOverBench ||
+        (clientX !== undefined &&
+          (stageRect
+            ? clientX >= stageRect.right
+            : typeof window !== 'undefined' &&
+              clientX >= window.innerWidth - 400));
 
       if (isOverBenchPanel && capabilities?.hasBench && moveMarkerToBench) {
-        moveMarkerToBench(marker.id);
+        moveMarkerToBench(marker.id, benchCoord?.x, benchCoord?.y);
         return;
       }
 

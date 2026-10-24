@@ -7,10 +7,6 @@ import type { ReactNode } from 'react';
 import { useCallback, useRef } from 'react';
 import { Layer } from 'react-konva';
 import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
-import {
-  selectPreviousSlide,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Player } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
@@ -46,19 +42,19 @@ export function PlayerLayer({
   const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
   const setConnectingPlayerId = useCanvasStore((s) => s.setConnectingPlayerId);
   const aspectRatio = useCanvasStore((s) => s.aspectRatio);
-
-  const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const movePlayerToBench = useTacticalUnifiedStore((s) => s.movePlayerToBench);
-  const updatePlayerTrajectory = useTacticalUnifiedStore(
+  const moveMarkerToBench = useCanvasStore((s) => s.moveMarkerToBench);
+  const prevSlide = useCanvasStore((s) => s.prevSlide);
+  const activeSlideId = useCanvasStore((s) => s.activeSlideId ?? '');
+  const updatePlayerTrajectory = useCanvasStore(
     (s) => s.updatePlayerTrajectory,
   );
-  const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
+  const teamVisibility = useCanvasStore((s) => s.teamVisibility ?? 'both');
 
+  const pitchMarkers = markers.filter((m) => m.area !== 'bench');
   const visibleMarkers =
     teamVisibility === 'both'
-      ? markers
-      : markers.filter(
+      ? pitchMarkers
+      : pitchMarkers.filter(
           (m) => m.team === teamVisibility || m.team === 'neutral',
         );
 
@@ -152,13 +148,49 @@ export function PlayerLayer({
       setIsDragging(false);
 
       const clientX = (e.evt as MouseEvent | undefined)?.clientX;
+      const clientY = (e.evt as MouseEvent | undefined)?.clientY;
+      const stage = e.target.getStage();
+      const stageRect = stage?.container().getBoundingClientRect();
+
+      let isOverBench = false;
+      let benchCoord: { x: number; y: number } | undefined;
+
+      const benchCanvasEl =
+        typeof document !== 'undefined'
+          ? document.getElementById('tactical-bench-canvas')
+          : null;
+      const benchRect = benchCanvasEl?.getBoundingClientRect();
+
+      if (benchRect && clientX !== undefined && clientY !== undefined) {
+        if (
+          clientX >= benchRect.left &&
+          clientX <= benchRect.right &&
+          clientY >= benchRect.top &&
+          clientY <= benchRect.bottom
+        ) {
+          isOverBench = true;
+          const bx = Math.max(
+            0,
+            Math.min(100, ((clientX - benchRect.left) / benchRect.width) * 100),
+          );
+          const by = Math.max(
+            0,
+            Math.min(100, ((clientY - benchRect.top) / benchRect.height) * 100),
+          );
+          benchCoord = { x: bx, y: by };
+        }
+      }
+
       const isOverBenchPanel =
-        clientX !== undefined &&
-        typeof window !== 'undefined' &&
-        clientX >= window.innerWidth - 340;
+        isOverBench ||
+        (clientX !== undefined &&
+          (stageRect
+            ? clientX >= stageRect.right
+            : typeof window !== 'undefined' &&
+              clientX >= window.innerWidth - 400));
 
       if (isOverBenchPanel) {
-        movePlayerToBench(activeSlideId, marker.id);
+        moveMarkerToBench?.(marker.id, benchCoord?.x, benchCoord?.y);
         return;
       }
 
@@ -166,14 +198,7 @@ export function PlayerLayer({
       const ny = (e.target.y() / height) * 100;
       updateMarker(marker.id, { x: nx, y: ny });
     },
-    [
-      width,
-      height,
-      updateMarker,
-      setIsDragging,
-      movePlayerToBench,
-      activeSlideId,
-    ],
+    [width, height, updateMarker, setIsDragging, moveMarkerToBench],
   );
 
   const handleDragStart = useCallback(
@@ -240,7 +265,12 @@ export function PlayerLayer({
                 | undefined
             }
             aspectRatio={aspectRatio}
-            onUpdateTrajectory={updatePlayerTrajectory}
+            onUpdateTrajectory={
+              updatePlayerTrajectory ??
+              (() => {
+                /* noop */
+              })
+            }
           />
         );
       })}

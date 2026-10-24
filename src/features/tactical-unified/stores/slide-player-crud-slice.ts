@@ -34,15 +34,20 @@ export const createSlidePlayerCrudSlice: StateCreator<
   [],
   SlidePlayerCrudSlice
 > = (set, get) => ({
-  addPlayer: (player) =>
-    set((s) => ({
+  addPlayer: (player) => {
+    const playerWithCustom: Player = {
+      ...player,
+      isCustom: player.isCustom ?? true,
+    };
+    return set((s) => ({
       ...recordHistory(s),
       project: updateSlideInProject(s.project, s.activeSlideId, (sl) => ({
         ...sl,
-        players: [...sl.players, player],
+        players: [...sl.players, playerWithCustom],
       })),
       isDirty: true,
-    })),
+    }));
+  },
 
   addPlayerFromPalette: (team, x, y, markerType = 'circle') => {
     const p = get().project;
@@ -54,6 +59,7 @@ export const createSlidePlayerCrudSlice: StateCreator<
           : '#6b7280';
     const player = createDefaultPlayer(team, x, y, color);
     player.style = { ...player.style, markerType };
+    player.isCustom = true;
     if (markerType === 'ring') {
       player.style.sizeScale = 1.5;
     }
@@ -74,6 +80,7 @@ export const createSlidePlayerCrudSlice: StateCreator<
     if (shirtNo) player.shirtNo = shirtNo;
     if (position) player.position = position;
     player.area = area;
+    player.isCustom = true;
 
     set((s) => ({
       ...recordHistory(s),

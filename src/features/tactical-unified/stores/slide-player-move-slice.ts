@@ -1,4 +1,6 @@
 import type { StateCreator } from 'zustand';
+import type { Player } from '@/lib/types/tactical-unified';
+import { computeBenchGridPositions } from '@/lib/types/tactical-unified';
 import {
   computeSlideAfterPlayerMoveByDelta,
   findSafePitchPosition,
@@ -15,7 +17,12 @@ export interface SlidePlayerMoveSlice {
     deltaX: number,
     deltaY: number,
   ) => void;
-  movePlayerToBench: (slideId: string, playerId: string) => void;
+  movePlayerToBench: (
+    slideId: string,
+    playerId: string,
+    x?: number,
+    y?: number,
+  ) => void;
   clearPitchPlayers: (slideId?: string) => void;
   movePlayerToPitch: (
     slideId: string,
@@ -53,33 +60,57 @@ export const createSlidePlayerMoveSlice: StateCreator<
       };
     }),
 
-  movePlayerToBench: (slideId, playerId) =>
+  movePlayerToBench: (slideId, playerId, x, y) =>
     set((s) => ({
       ...recordHistory(s),
-      project: updateSlideInProject(s.project, slideId, (sl) => ({
-        ...sl,
-        players: sl.players.map((p) =>
+      project: updateSlideInProject(s.project, slideId, (sl) => {
+        const targetPlayer = sl.players.find((p) => p.id === playerId);
+        if (!targetPlayer) return sl;
+
+        const benchedPlayer: Player = {
+          ...targetPlayer,
+          area: 'bench' as const,
+          visionCone: undefined,
+          badges: [],
+          connectLines: [],
+          focus: undefined,
+          trajectory: undefined,
+        };
+
+        let updatedPlayers = sl.players.map((p) =>
           p.id === playerId
-            ? {
-                ...p,
-                area: 'bench' as const,
-                visionCone: undefined,
-                badges: [],
-                connectLines: [],
-                focus: undefined,
-                trajectory: undefined,
-              }
+            ? benchedPlayer
             : {
                 ...p,
                 connectLines: p.connectLines.filter(
                   (cl) => cl.toPlayerId !== playerId,
                 ),
               },
-        ),
-        arrows: sl.arrows.filter(
-          (a) => a.sourcePlayerId !== playerId && a.targetPlayerId !== playerId,
-        ),
-      })),
+        );
+
+        if (x !== undefined && y !== undefined) {
+          updatedPlayers = updatedPlayers.map((p) =>
+            p.id === playerId ? { ...p, x, y } : p,
+          );
+        } else {
+          const benchPlayers = updatedPlayers.filter((p) => p.area === 'bench');
+          const positionedBenchPlayers =
+            computeBenchGridPositions(benchPlayers);
+          const benchMap = new Map(
+            positionedBenchPlayers.map((bp) => [bp.id, bp]),
+          );
+          updatedPlayers = updatedPlayers.map((p) => benchMap.get(p.id) ?? p);
+        }
+
+        return {
+          ...sl,
+          players: updatedPlayers,
+          arrows: sl.arrows.filter(
+            (a) =>
+              a.sourcePlayerId !== playerId && a.targetPlayerId !== playerId,
+          ),
+        };
+      }),
       isDirty: true,
       selectedObjects: s.selectedObjects.filter((o) => o.id !== playerId),
     })),

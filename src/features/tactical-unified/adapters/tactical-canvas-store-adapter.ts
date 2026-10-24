@@ -219,7 +219,11 @@ export function createTacticalCanvasStoreAdapter(
     addMarker: (m) => s().addPlayer(m),
     updateMarker: (id, p) => s().updatePlayer(s().activeSlideId, id, p),
     removeMarker: (id) => s().removePlayer(s().activeSlideId, id),
-    moveMarkerToBench: (id) => s().movePlayerToBench(s().activeSlideId, id),
+    moveMarkerToBench: (id, x, y) => {
+      s().movePlayerToBench(s().activeSlideId, id, x, y);
+      s().setRightPanelOpen(true);
+      s().setRightPanelTab('squad');
+    },
     updatePlayerTrajectory: (slideId, markerId, traj) =>
       s().updatePlayerTrajectory(slideId, markerId, traj),
     removeSelected: () => executeRemoveSelected(s()),

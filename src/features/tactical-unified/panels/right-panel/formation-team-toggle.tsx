@@ -31,85 +31,86 @@ export function FormationTeamToggle({
 
   return (
     <div className="p-2.5 space-y-2">
-      <div className="flex items-center justify-between gap-1.5">
-        {/* Team Toggle Buttons (3-cols grid) */}
-        <div className="grid grid-cols-3 gap-1 flex-1 p-0.5 rounded-lg bg-white/5 border border-white/10">
-          <button
-            type="button"
-            onClick={() => onTeamChange('home')}
-            className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-md font-medium text-[11px] transition-all cursor-pointer ${
-              activeTeam === 'home'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
+      {/* 1段目: 独立したチーム選択ボタン (Home | Away | Both) */}
+      <div className="grid grid-cols-3 gap-1.5 p-0.5 rounded-lg bg-white/5 border border-white/10">
+        <button
+          type="button"
+          onClick={() => onTeamChange('home')}
+          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md font-medium text-xs transition-all cursor-pointer ${
+            activeTeam === 'home'
+              ? 'bg-blue-600 text-white shadow-sm font-semibold'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <span
+            className="w-2.5 h-2.5 rounded-full border border-white/30 shrink-0"
+            style={{ backgroundColor: homeColor }}
+          />
+          <span>HOME</span>
+          <span className="text-[10px] opacity-75">
+            ({teamPlayersCount.home})
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onTeamChange('away')}
+          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md font-medium text-xs transition-all cursor-pointer ${
+            activeTeam === 'away'
+              ? 'bg-red-600 text-white shadow-sm font-semibold'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <span
+            className="w-2.5 h-2.5 rounded-full border border-white/30 shrink-0"
+            style={{ backgroundColor: awayColor }}
+          />
+          <span>AWAY</span>
+          <span className="text-[10px] opacity-75">
+            ({teamPlayersCount.away})
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onTeamChange('both')}
+          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md font-medium text-xs transition-all cursor-pointer ${
+            activeTeam === 'both'
+              ? 'bg-purple-600 text-white shadow-sm font-semibold'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <span className="flex items-center -space-x-0.5 shrink-0">
             <span
-              className="w-2 h-2 rounded-full border border-white/30 shrink-0"
+              className="w-2.5 h-2.5 rounded-full border border-white/30 z-10"
               style={{ backgroundColor: homeColor }}
             />
-            <span>HOME</span>
-            <span className="text-[10px] opacity-70">
-              ({teamPlayersCount.home})
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onTeamChange('away')}
-            className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-md font-medium text-[11px] transition-all cursor-pointer ${
-              activeTeam === 'away'
-                ? 'bg-red-600 text-white shadow-sm'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
             <span
-              className="w-2 h-2 rounded-full border border-white/30 shrink-0"
+              className="w-2.5 h-2.5 rounded-full border border-white/30"
               style={{ backgroundColor: awayColor }}
             />
-            <span>AWAY</span>
-            <span className="text-[10px] opacity-70">
-              ({teamPlayersCount.away})
-            </span>
-          </button>
+          </span>
+          <span>BOTH</span>
+          <span className="text-[10px] opacity-75">
+            ({teamPlayersCount.home + teamPlayersCount.away})
+          </span>
+        </button>
+      </div>
 
-          <button
-            type="button"
-            onClick={() => onTeamChange('both')}
-            className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-md font-medium text-[11px] transition-all cursor-pointer ${
-              activeTeam === 'both'
-                ? 'bg-purple-600 text-white shadow-sm'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <span className="flex items-center -space-x-0.5 shrink-0">
-              <span
-                className="w-2 h-2 rounded-full border border-white/30 z-10"
-                style={{ backgroundColor: homeColor }}
-              />
-              <span
-                className="w-2 h-2 rounded-full border border-white/30"
-                style={{ backgroundColor: awayColor }}
-              />
-            </span>
-            <span>BOTH</span>
-            <span className="text-[10px] opacity-70">
-              ({teamPlayersCount.home + teamPlayersCount.away})
-            </span>
-          </button>
-        </div>
-
-        {/* Color Picker Popover Toggle */}
+      {/* 2段目: チーム色とピッチ表示フィルタ */}
+      <div className="flex items-center justify-between gap-2 pt-0.5">
         <button
           type="button"
           onClick={() => setShowColorPicker((v) => !v)}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-colors cursor-pointer shrink-0"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-xs transition-colors cursor-pointer shrink-0"
           title={
             activeTeam === 'both'
               ? 'Home & Away Colors'
               : `${activeTeam === 'home' ? 'Home' : 'Away'} Color`
           }
         >
-          <Palette size={12} className="text-blue-400" />
+          <Palette size={13} className="text-blue-400" />
+          <span className="text-[11px] font-medium text-white/60">Color</span>
           {activeTeam === 'both' ? (
             <span className="flex items-center -space-x-1">
               <span
@@ -136,7 +137,7 @@ export function FormationTeamToggle({
           <button
             type="button"
             onClick={() => onVisibilityChange('both')}
-            className={`px-1.5 py-1 rounded text-[10px] font-medium transition-colors cursor-pointer ${
+            className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
               teamVisibility === 'both'
                 ? 'bg-white/20 text-white font-semibold shadow-xs'
                 : 'text-white/40 hover:text-white'
@@ -148,7 +149,7 @@ export function FormationTeamToggle({
           <button
             type="button"
             onClick={() => onVisibilityChange('home')}
-            className={`px-1.5 py-1 rounded text-[10px] font-medium transition-colors cursor-pointer ${
+            className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
               teamVisibility === 'home'
                 ? 'bg-blue-600 text-white font-semibold shadow-xs'
                 : 'text-white/40 hover:text-white'
@@ -160,7 +161,7 @@ export function FormationTeamToggle({
           <button
             type="button"
             onClick={() => onVisibilityChange('away')}
-            className={`px-1.5 py-1 rounded text-[10px] font-medium transition-colors cursor-pointer ${
+            className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
               teamVisibility === 'away'
                 ? 'bg-red-600 text-white font-semibold shadow-xs'
                 : 'text-white/40 hover:text-white'

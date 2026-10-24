@@ -1,7 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import * as squadBridge from '@/lib/tactical/squad-to-tactical-bridge';
+import { FormationCustomManager } from '../formation-custom-manager';
 import { FormationPanel } from '../formation-panel';
+import { QUICK_FORMATIONS } from '../formation-presets-data';
+import { FormationTeamToggle } from '../formation-team-toggle';
+import { RightPanel } from '../right-panel';
 
 describe('FormationPanel (Step 5)', () => {
   beforeEach(() => {
@@ -102,12 +107,78 @@ describe('FormationPanel (Step 5)', () => {
     expect(awayPitch?.length).toBe(11);
   });
 
-  it('5. does not render old FormationBatchDisplay or FormationCustomManager in FormationPanel', () => {
-    render(<FormationPanel />);
+  it('5. QUICK_FORMATIONS contains exactly 5 types in order: 4-4-2, 4-2-3-1, 4-3-3, 4-1-4-1, 3-4-2-1', () => {
+    expect(QUICK_FORMATIONS).toEqual([
+      '4-4-2',
+      '4-2-3-1',
+      '4-3-3',
+      '4-1-4-1',
+      '3-4-2-1',
+    ]);
+  });
 
-    // FormationBatchDisplay text was "Batch Player Display"
-    expect(screen.queryByText(/Batch Player Display/i)).toBeNull();
-    // FormationCustomManager text was "Club & Season Presets" or similar
-    expect(screen.queryByText(/Club & Season Presets/i)).toBeNull();
+  it('6. expands RightPanel to 400px width (w-[400px] min-w-[400px])', () => {
+    useTacticalUnifiedStore.getState().setRightPanelOpen(true);
+    const { container } = render(<RightPanel />);
+    const aside = container.querySelector('aside');
+    expect(aside?.className).toContain('w-[400px]');
+    expect(aside?.className).toContain('min-w-[400px]');
+  });
+
+  it('7. FormationTeamToggle renders 3-team buttons on an independent first row', () => {
+    const { container } = render(
+      <FormationTeamToggle
+        activeTeam="home"
+        onTeamChange={vi.fn()}
+        homeColor="#3b82f6"
+        awayColor="#ef4444"
+        onColorChange={vi.fn()}
+        teamPlayersCount={{ home: 11, away: 11 }}
+        teamVisibility="both"
+        onVisibilityChange={vi.fn()}
+      />,
+    );
+
+    // The first row should contain the grid of 3 team buttons
+    const firstRowGrid = container.querySelector('.grid.grid-cols-3');
+    expect(firstRowGrid).toBeDefined();
+    // It should not share its direct flex container with the color picker / visibility buttons
+    expect(firstRowGrid?.parentElement?.className).not.toContain(
+      'flex items-center justify-between',
+    );
+  });
+
+  it('8. FormationCustomManager correctly passes isFirstEleven without inverting it', async () => {
+    const injectSpy = vi.spyOn(squadBridge, 'injectTeamSquadToTactical');
+
+    render(
+      <FormationCustomManager
+        activeTeam="home"
+        activeSlideId="slide-1"
+        formationMode="full"
+      />,
+    );
+
+    // Open accordion
+    const toggleButton = screen.getByRole('button', {
+      name: /Club & Season Presets/i,
+    });
+    fireEvent.click(toggleButton);
+
+    // Click Chelsea preset
+    const chelseaButton = screen.getByRole('button', { name: /^Chelsea$/i });
+    fireEvent.click(chelseaButton);
+
+    await waitFor(() => {
+      expect(injectSpy).toHaveBeenCalled();
+    });
+
+    const callArgs = injectSpy.mock.calls[0][0];
+    // Find players that should be first eleven according to preset
+    const firstElevenPlayers = callArgs.players.filter((p) => p.isFirstEleven);
+    // Chelsea preset has 11 starters
+    expect(firstElevenPlayers.length).toBe(11);
+
+    injectSpy.mockRestore();
   });
 });

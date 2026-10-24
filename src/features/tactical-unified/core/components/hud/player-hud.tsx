@@ -238,8 +238,8 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
         )}
       </div>
 
-      {/* 7. 削除ボタン (Extension 3Dリングマーカー時のみ表示) */}
-      {isRing && (
+      {/* 7. 削除ボタン (カスタム選手または Extension 3Dリングマーカー時のみ表示) */}
+      {(isRing || Boolean(player.isCustom)) && (
         <>
           <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
           <button

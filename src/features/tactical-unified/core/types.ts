@@ -177,7 +177,7 @@ export interface CanvasActions {
   addMarker: (marker: Player) => void;
   updateMarker: (id: string, patch: Partial<Player>) => void;
   removeMarker: (id: string) => void;
-  moveMarkerToBench?: (id: string) => void;
+  moveMarkerToBench?: (id: string, x?: number, y?: number) => void;
   updatePlayerTrajectory?: (
     slideId: string,
     markerId: string,

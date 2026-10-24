@@ -3,6 +3,7 @@ import type Konva from 'konva';
 import React from 'react';
 import { Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTacticalCanvasStoreAdapter } from '@/features/tactical-unified/adapters/tactical-canvas-store-adapter';
 import {
   selectPreviousSlide,
   useTacticalUnifiedStore,
@@ -56,14 +57,20 @@ const H = 600;
 
 function renderPlayerLayer(initialAnnotations?: string) {
   const stageRef = React.createRef<Konva.Stage>();
+  if (initialAnnotations) {
+    const parsed = JSON.parse(initialAnnotations);
+    useTacticalUnifiedStore
+      .getState()
+      .updateSlide(useTacticalUnifiedStore.getState().activeSlideId, {
+        arrows: parsed.arrows ?? [],
+        zones: parsed.zones ?? [],
+        texts: parsed.texts ?? [],
+        players: parsed.markers ?? [],
+      });
+  }
+  const store = createTacticalCanvasStoreAdapter(useTacticalUnifiedStore);
   const renderResult = render(
-    <CanvasStoreProvider
-      config={{
-        mode: 'screenshot-edit',
-        markerMode: '2d-only',
-        initialAnnotations,
-      }}
-    >
+    <CanvasStoreProvider store={store}>
       <Stage ref={stageRef} width={W} height={H}>
         <PlayerLayer width={W} height={H} />
       </Stage>
@@ -188,5 +195,112 @@ describe('PlayerLayer ghost trajectory for moved players', () => {
     // 非選択状態でも GhostTrajectoryArrow の Arrow がレンダリングされていること
     const arrows = stageRef.current?.find('Arrow') ?? [];
     expect(arrows.length).toBeGreaterThan(0);
+  });
+});
+
+describe('PlayerLayer area filter', () => {
+  it('area === bench の選手はピッチ上に描画されない', () => {
+    useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.getState().setTeamVisibility('both');
+
+    const rawMarkers = JSON.stringify({
+      arrows: [],
+      zones: [],
+      texts: [],
+      markers: [
+        {
+          id: 'pitch-player-1',
+          shirtNo: '10',
+          x: 50,
+          y: 50,
+          team: 'home',
+          area: 'pitch',
+          style: { color: '#001489', markerType: 'circle' },
+        },
+        {
+          id: 'bench-player-1',
+          shirtNo: '99',
+          x: 0,
+          y: 0,
+          team: 'home',
+          area: 'bench',
+          style: { color: '#001489', markerType: 'circle' },
+        },
+      ],
+    });
+
+    const { stageRef } = renderPlayerLayer(rawMarkers);
+    const texts = stageRef.current?.find<Konva.Text>('Text') ?? [];
+    const textValues = texts.map((t) => t.text());
+
+    expect(textValues).toContain('10');
+    expect(textValues).not.toContain('99');
+  });
+});
+
+describe('PlayerHud delete button visibility for custom players', () => {
+  it('isCustom: true または ring マーカーのみ削除ボタンが表示される', async () => {
+    const { PlayerHud } = await import('../hud/player-hud');
+
+    // 1. 通常選手 (isCustom 未設定 / false)
+    const normalPlayer = createDefaultPlayer('home', 50, 50, '#001489');
+    normalPlayer.id = 'player-normal';
+    normalPlayer.isCustom = false;
+
+    // 2. カスタム選手 (isCustom: true)
+    const customPlayer = createDefaultPlayer('home', 50, 50, '#001489');
+    customPlayer.id = 'player-custom';
+    customPlayer.isCustom = true;
+
+    // 3. Ring マーカー選手
+    const ringPlayer = createDefaultPlayer('home', 50, 50, '#001489');
+    ringPlayer.id = 'player-ring';
+    ringPlayer.style = { ...ringPlayer.style, markerType: 'ring' };
+
+    const rawAnnotations = JSON.stringify({
+      arrows: [],
+      zones: [],
+      texts: [],
+      markers: [normalPlayer, customPlayer, ringPlayer],
+    });
+
+    const { unmount: unmount1, queryByRole: query1 } = render(
+      <CanvasStoreProvider
+        config={{
+          mode: 'tactical-board',
+          initialAnnotations: rawAnnotations,
+        }}
+      >
+        <PlayerHud playerId={normalPlayer.id} />
+      </CanvasStoreProvider>,
+    );
+    expect(query1('button', { name: /削除/i })).toBeNull();
+    unmount1();
+
+    const { unmount: unmount2, getByRole: get2 } = render(
+      <CanvasStoreProvider
+        config={{
+          mode: 'tactical-board',
+          initialAnnotations: rawAnnotations,
+        }}
+      >
+        <PlayerHud playerId={customPlayer.id} />
+      </CanvasStoreProvider>,
+    );
+    expect(get2('button', { name: /削除/i })).toBeDefined();
+    unmount2();
+
+    const { unmount: unmount3, getByRole: get3 } = render(
+      <CanvasStoreProvider
+        config={{
+          mode: 'tactical-board',
+          initialAnnotations: rawAnnotations,
+        }}
+      >
+        <PlayerHud playerId={ringPlayer.id} />
+      </CanvasStoreProvider>,
+    );
+    expect(get3('button', { name: /削除/i })).toBeDefined();
+    unmount3();
   });
 });

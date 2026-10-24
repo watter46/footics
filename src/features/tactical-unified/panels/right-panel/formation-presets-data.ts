@@ -3,11 +3,11 @@ import type { SeasonFormationPreset } from '@/lib/types/tactical-unified';
 
 // ── Common Quick Formations ────────────────────────────────────
 export const QUICK_FORMATIONS: FormationType[] = [
-  '4-3-3',
-  '4-2-3-1',
-  '3-4-2-1',
-  '3-5-2',
   '4-4-2',
+  '4-2-3-1',
+  '4-3-3',
+  '4-1-4-1',
+  '3-4-2-1',
 ];
 
 // ── Season Preset Sample Data ──────────────────────────────────

@@ -225,6 +225,7 @@ export const PlayerSchema = z.object({
   focus: PlayerFocusSchema.optional(),
   trajectory: PlayerTrajectorySchema.optional(),
   locked: z.boolean().optional(),
+  isCustom: z.boolean().optional(),
 });
 export type Player = z.infer<typeof PlayerSchema>;
 export type TacticalPlayer = Player;
@@ -749,8 +750,82 @@ export const DrawingToolSchema = z.enum([
 export type DrawingTool = z.infer<typeof DrawingToolSchema>;
 
 // ─────────────────────────────────────────
-// § 13. Factory 関数
+// § 13. Factory 関数 & グリッド配置
 // ─────────────────────────────────────────
+
+const BENCH_POSITION_RANK: Record<string, number> = {
+  // FW (Rank 1)
+  FW: 1,
+  CF: 1,
+  ST: 1,
+  LW: 1,
+  RW: 1,
+  SS: 1,
+  AML: 1,
+  AMR: 1,
+  // MF (Rank 2)
+  MF: 2,
+  DM: 2,
+  CM: 2,
+  AM: 2,
+  LM: 2,
+  RM: 2,
+  DMC: 2,
+  MC: 2,
+  AMC: 2,
+  // DF (Rank 3)
+  DF: 3,
+  CB: 3,
+  LB: 3,
+  RB: 3,
+  LWB: 3,
+  RWB: 3,
+  DC: 3,
+  DL: 3,
+  DR: 3,
+  // GK (Rank 4)
+  GK: 4,
+};
+
+function getBenchPositionRank(position?: string): number {
+  if (!position) return 5;
+  const upper = position.toUpperCase().trim();
+  return BENCH_POSITION_RANK[upper] ?? 5;
+}
+
+function getBenchShirtNumberValue(shirtNo?: string): number {
+  if (!shirtNo) return Number.POSITIVE_INFINITY;
+  const parsed = Number.parseInt(shirtNo, 10);
+  return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+}
+
+/**
+ * ベンチ選手をポジション (FW -> MF -> DF -> GK -> その他) と背番号順にソートし、
+ * 3列グリッド座標 (x: [20, 50, 80], y: 14 + row * 22) を付与した新しい配列を返す
+ */
+export function computeBenchGridPositions(players: Player[]): Player[] {
+  const sorted = [...players].sort((a, b) => {
+    const rankA = getBenchPositionRank(a.position);
+    const rankB = getBenchPositionRank(b.position);
+    if (rankA !== rankB) {
+      return rankA - rankB;
+    }
+    const noA = getBenchShirtNumberValue(a.shirtNo);
+    const noB = getBenchShirtNumberValue(b.shirtNo);
+    return noA - noB;
+  });
+
+  const xPositions = [20, 50, 80];
+  return sorted.map((player, idx) => {
+    const col = idx % 3;
+    const row = Math.floor(idx / 3);
+    return {
+      ...player,
+      x: xPositions[col],
+      y: 14 + row * 22,
+    };
+  });
+}
 
 export const DEFAULT_4231_HOME: Array<{
   shirtNo: string;

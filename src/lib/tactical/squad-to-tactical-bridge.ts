@@ -12,6 +12,7 @@ import type {
   TacticalProject,
 } from '@/lib/types/tactical-unified';
 import {
+  computeBenchGridPositions,
   createDefaultPlayer,
   isVerticalAspectRatio,
 } from '@/lib/types/tactical-unified';
@@ -53,7 +54,7 @@ export function convertSquadToTacticalPlayers(
   const {
     team,
     formation = '4-2-3-1',
-    mode = 'half',
+    mode = 'full',
     primaryColor,
     aspectRatio = '16:9',
   } = options;
@@ -117,8 +118,9 @@ export function convertSquadToTacticalPlayers(
   });
 
   // 3. ベンチ・サブメンバーの配置
+  const benchPlayers: TacticalPlayer[] = [];
   substitutes.forEach((sub) => {
-    // ベンチ選手は初期座標 (0, 0) で area: 'bench'
+    // ベンチ選手は computeBenchGridPositions でグリッド座標が付与される
     const benchPlayer = createDefaultPlayer(team, 0, 0, primaryColor);
 
     benchPlayer.playerId = String(sub.playerId);
@@ -140,8 +142,10 @@ export function convertSquadToTacticalPlayers(
       benchPlayer.style.insideContent = 'number';
     }
 
-    tacticalPlayers.push(benchPlayer);
+    benchPlayers.push(benchPlayer);
   });
+
+  tacticalPlayers.push(...computeBenchGridPositions(benchPlayers));
 
   return tacticalPlayers;
 }
@@ -154,7 +158,7 @@ export function injectTeamSquadToTactical({
   team = 'home',
   players,
   formation = '4-2-3-1',
-  mode = 'half',
+  mode = 'full',
   slideId,
 }: InjectTeamSquadOptions): void {
   const store = useTacticalUnifiedStore.getState();
