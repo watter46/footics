@@ -33,7 +33,7 @@
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
 - [ ] 1. 純粋描画の徹底: `FullTacticalCanvas` から `cleanRender={isPlaying || isExporting}` を伝播し、`cleanRender=true` 時は全オブジェクトの選択枠・各種操作ハンドル・境界線枠・HUD・ゴースト軌道を100%非表示にする。
-- [ ] 2. ゴースト軌道の選択/ドラッグ限定 & 1px目即時追従: 選手ゴースト軌道を `!cleanRender && (selectedIds.includes(marker.id) || isDragging)` のみ描画。初期距離0でもマウント可能としドラッグ開始1px目から先端・ベジェハンドルを即時追従。ボールも同様に `!cleanRender && (isSelected || isDragging)` で一本化（`BallOnionskin` 撤去）。
+- [x] 2. ゴースト軌道の選択/ドラッグ限定 & 1px目即時追従: 選手ゴースト軌道を `!cleanRender && (selectedIds.includes(marker.id) || isDragging)` のみ描画。初期距離0でもマウント可能としドラッグ開始1px目から先端・ベジェハンドルを即時追従。ボールも同様に `!cleanRender && (isSelected || isDragging)` で一本化（`BallOnionskin` 撤去）。
 - [ ] 3. GSAP 再生への統一 ＆ 自前 rAF / easing の廃止: `useTacticalAnimation` / `tactical-animation-canvas` の自前 rAF を廃止し `gsap.timeline()` で再生・一時停止・シーク・位置同期を制御。自前イージング計算を `gsap.parseEase()` に統一し、未参照ファイルを削除。
 - [ ] 4. Mediabunny 動画出力 ＆ stage.toBlob 静止画出力 ＆ 直接配線: `mediabunny`（`Output`, `Mp4OutputFormat`, `WebMOutputFormat`, `BufferTarget`, `CanvasSource`）に移行し `mp4-muxer` / `webm-muxer` を削除。静止画は `stage.toBlob()` に一本化。`window.dispatchEvent` を廃止しエクスポート処理を直接呼び出す。
 
@@ -97,8 +97,10 @@ export interface VideoExportOptions {
   ```
 - **Testing Strategy**: `src/features/tactical-unified/objects/ball/components/__tests__/ball-ghost-trajectory.test.tsx` で選択中/ドラッグ時限定表示と初期距離0からの追従を検証
 - **Tasks**:
-  - [ ] 1. TDD実装: `bun run ai:check:red src/features/tactical-unified/objects/ball/components/__tests__/ball-ghost-trajectory.test.tsx` ➔ 実装 ➔ `bun run ai:check src/features/tactical-unified/core/components/PitchGroundLayer.tsx` PASS
+  - [x] 1. TDD実装: `bun run ai:check:red src/features/tactical-unified/objects/ball/components/__tests__/ball-ghost-trajectory.test.tsx` ➔ 実装 ➔ `bun run ai:check src/features/tactical-unified/core/components/PitchGroundLayer.tsx` PASS
 - **Worker Handoff Log**:
+  - `PitchGroundLayer` で `isDragging` を監視し、`selectedIds.includes(marker.id) || isDragging` かつ距離0でも `PlayerGhostTrajectory` をマウントして1px追従化。
+  - `BallOnionskin` を撤去し `BallGhostTrajectory` のみで `!cleanRender && (isSelected || isDragging)` 表示に一本化。
 
 ---
 
