@@ -205,5 +205,6 @@ export function batchDrawLayers(
     registry.playerLayer?.batchDraw();
     registry.ballLayer?.batchDraw();
     registry.annotationLayer?.batchDraw();
+    registry.stage?.batchDraw();
   }
 }

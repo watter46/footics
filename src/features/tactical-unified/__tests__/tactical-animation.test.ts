@@ -184,4 +184,83 @@ describe('useTacticalAnimation hook', () => {
     expect(registry.stage?.draw).toHaveBeenCalled();
     expect(registry.playerLayer?.batchDraw).not.toHaveBeenCalled();
   });
+
+  it('calls stage.batchDraw() and layer batchDraw() when synchronous is false', () => {
+    const registry = createCanvasNodesRegistry();
+    registry.playerLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
+    registry.ballLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
+    registry.annotationLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
+    registry.stage = { draw: vi.fn(), batchDraw: vi.fn() } as any;
+
+    const registryRef = { current: registry };
+    const { result } = renderHook(() =>
+      useTacticalAnimation({ nodesRegistryRef: registryRef }),
+    );
+
+    act(() => {
+      result.current.applyFrameToCanvas(500, registry, 800, 450, false);
+    });
+
+    expect(registry.playerLayer?.batchDraw).toHaveBeenCalled();
+    expect(registry.ballLayer?.batchDraw).toHaveBeenCalled();
+    expect(registry.annotationLayer?.batchDraw).toHaveBeenCalled();
+    expect(registry.stage?.batchDraw).toHaveBeenCalled();
+  });
+
+  it('resets to 0ms and activates first slide when playing from end or initial state (Option B)', () => {
+    const registry = createCanvasNodesRegistry();
+    const registryRef = { current: registry };
+    const { result } = renderHook(() =>
+      useTacticalAnimation({ nodesRegistryRef: registryRef }),
+    );
+
+    // Initial state: select slide-2
+    act(() => {
+      useTacticalUnifiedStore.getState().setActiveSlide('slide-2');
+    });
+    expect(useTacticalUnifiedStore.getState().activeSlideId).toBe('slide-2');
+
+    // Calling playAnimation when currentPlaybackTime is 0 should switch to slide-1
+    act(() => {
+      result.current.playAnimation();
+    });
+    expect(useTacticalUnifiedStore.getState().activeSlideId).toBe('slide-1');
+    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
+
+    // Simulate seeking to end (1500ms) and pausing
+    act(() => {
+      result.current.seekTo(1500);
+      result.current.pauseAnimation();
+      useTacticalUnifiedStore.getState().setActiveSlide('slide-2');
+    });
+
+    // Calling playAnimation when currentPlaybackTime >= totalDurationMs resets to slide-1
+    act(() => {
+      result.current.playAnimation();
+    });
+    expect(useTacticalUnifiedStore.getState().activeSlideId).toBe('slide-1');
+    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
+  });
+
+  it('resumes from current playback time when paused midway without resetting to slide-1', () => {
+    const registry = createCanvasNodesRegistry();
+    const registryRef = { current: registry };
+    const { result, rerender } = renderHook(() =>
+      useTacticalAnimation({ nodesRegistryRef: registryRef }),
+    );
+
+    // Seek to 500ms and pause
+    act(() => {
+      result.current.seekTo(500);
+      result.current.pauseAnimation();
+    });
+
+    // Resume playing
+    act(() => {
+      result.current.playAnimation();
+    });
+
+    rerender();
+    expect(result.current.currentPlaybackTime).toBe(500);
+  });
 });

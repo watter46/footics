@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { TimelineBar } from '../timeline-bar';
 
@@ -139,5 +139,23 @@ describe('TimelineBar Component', () => {
 
     const movedSlides = useTacticalUnifiedStore.getState().project.slides;
     expect(movedSlides.map((s) => s.id)).toEqual([id1, id0]);
+  });
+
+  it('SlideCard クリック時に blur が呼ばれ、フォーカスが残留しない', () => {
+    render(<TimelineBar />);
+    const sceneCard = screen.getByRole('button', { name: 'Scene 1' });
+    const blurSpy = vi.spyOn(sceneCard, 'blur');
+    fireEvent.click(sceneCard);
+    expect(blurSpy).toHaveBeenCalled();
+    expect(sceneCard.className).toContain('focus:outline-none');
+  });
+
+  it('Play/Pause ボタンクリック時に blur が呼ばれ、フォーカスが残留しない', () => {
+    render(<TimelineBar />);
+    const playBtn = screen.getByRole('button', { name: /play/i });
+    const blurSpy = vi.spyOn(playBtn, 'blur');
+    fireEvent.click(playBtn);
+    expect(blurSpy).toHaveBeenCalled();
+    expect(playBtn.className).toContain('focus:outline-none');
   });
 });

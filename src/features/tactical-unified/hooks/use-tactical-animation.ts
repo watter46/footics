@@ -68,6 +68,15 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
       setIsPlaying(true);
       const dims = getPitchDimensions();
 
+      const isAtEnd = refs.currentPlaybackTimeRef.current >= totalDurationMs;
+      if (isAtEnd || refs.currentPlaybackTimeRef.current === 0) {
+        refs.currentPlaybackTimeRef.current = 0;
+        refs.lastActiveSlideIndexRef.current = 0;
+        if (currentSlides[0]) {
+          setActiveSlide(currentSlides[0].id);
+        }
+      }
+
       refs.timelineRef.current?.kill();
       const tl = createTacticalTimeline(
         currentSlides,

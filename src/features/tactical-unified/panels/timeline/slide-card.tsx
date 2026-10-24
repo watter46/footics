@@ -87,10 +87,13 @@ export function SlideCard({
       {/* Thumbnail Card */}
       <button
         type="button"
-        onClick={() => onSelect(slide.id)}
+        onClick={(e) => {
+          e.currentTarget.blur();
+          onSelect(slide.id);
+        }}
         onContextMenu={handleContextMenu}
         className={[
-          'flex flex-col justify-between w-24 h-12 px-2 py-1.5 rounded-lg border text-left transition-colors cursor-grab active:cursor-grabbing relative overflow-hidden',
+          'flex flex-col justify-between w-24 h-12 px-2 py-1.5 rounded-lg border text-left transition-colors cursor-grab active:cursor-grabbing relative overflow-hidden focus:outline-none',
           isActive
             ? 'border-blue-500 bg-blue-600/20 text-white shadow-md shadow-blue-500/10 ring-1 ring-blue-500'
             : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:bg-white/10 hover:text-white',

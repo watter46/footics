@@ -29,9 +29,12 @@ export function PlaybackControls() {
       {/* Play / Pause Toggle Button */}
       <button
         type="button"
-        onClick={togglePlayback}
+        onClick={(e) => {
+          e.currentTarget.blur();
+          togglePlayback();
+        }}
         className={[
-          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all cursor-pointer',
+          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all cursor-pointer focus:outline-none',
           isPlaying
             ? 'bg-amber-500 hover:bg-amber-400 text-black font-bold ring-2 ring-amber-400/30'
             : 'bg-blue-600 hover:bg-blue-500 text-white hover:shadow-blue-500/25',
