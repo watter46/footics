@@ -15,9 +15,3 @@ export interface BallGhostProps {
   radius: number;
   ballImage: HTMLImageElement | null;
 }
-
-export interface BallOnionskinProps {
-  ghostGroupRef: React.RefObject<any>;
-  ghostLineRef: React.RefObject<any>;
-  radius: number;
-}

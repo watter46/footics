@@ -23,58 +23,100 @@ beforeEach(() => {
 });
 
 describe('BallGhostTrajectory', () => {
-  it('非選択時 (isSelected=false) でも移動があった場合はゴーストボールと矢印がレンダリングされる', () => {
-    const stageRef = createRef<Konva.Stage>();
-    const prevBall = { x: 20, y: 30, visible: true };
-    const curBall = { x: 70, y: 80, visible: true };
+  const defaultProps = {
+    hasPrevBall: true,
+    prevBall: { x: 50, y: 50, visible: true },
+    ball: { x: 50, y: 50, visible: true },
+    prevPxX: 400,
+    prevPxY: 300,
+    radius: 12,
+    ballImage: null,
+    stageSize: { width: 800, height: 600 },
+    onUpdateTrajectory: vi.fn(),
+  };
 
+  it('cleanRender=true の場合は選択中やドラッグ中であってもレンダリングされない', () => {
+    const stageRef = createRef<Konva.Stage>();
     render(
       <Stage ref={stageRef} width={800} height={600}>
         <Layer>
           <BallGhostTrajectory
-            isSelected={false}
-            hasPrevBall={true}
-            prevBall={prevBall}
-            ball={curBall}
-            isBallMoved={true}
-            prevPxX={160}
-            prevPxY={180}
-            radius={12}
-            ballImage={null}
-            stageSize={{ width: 800, height: 600 }}
-            onUpdateTrajectory={vi.fn()}
+            {...defaultProps}
+            cleanRender={true}
+            isSelected={true}
+            isDragging={true}
           />
         </Layer>
       </Stage>,
     );
 
-    const stage = stageRef.current;
-    expect(stage).not.toBeNull();
-    // GhostTrajectoryArrow の Arrow が描画されていること
-    const arrows = stage?.find('Arrow') ?? [];
-    expect(arrows.length).toBe(1);
+    const arrows = stageRef.current?.find('Arrow') ?? [];
+    expect(arrows.length).toBe(0);
   });
 
-  it('前スライドからの移動がない場合 (isBallMoved=false) はレンダリングされない', () => {
+  it('非選択かつ非ドラッグ時 (isSelected=false && isDragging=false) はレンダリングされない', () => {
     const stageRef = createRef<Konva.Stage>();
-    const prevBall = { x: 50, y: 50, visible: true };
-    const curBall = { x: 50, y: 50, visible: true };
-
     render(
       <Stage ref={stageRef} width={800} height={600}>
         <Layer>
           <BallGhostTrajectory
+            {...defaultProps}
             isSelected={false}
-            hasPrevBall={true}
-            prevBall={prevBall}
-            ball={curBall}
-            isBallMoved={false}
-            prevPxX={400}
-            prevPxY={300}
-            radius={12}
-            ballImage={null}
-            stageSize={{ width: 800, height: 600 }}
-            onUpdateTrajectory={vi.fn()}
+            isDragging={false}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    const arrows = stageRef.current?.find('Arrow') ?? [];
+    expect(arrows.length).toBe(0);
+  });
+
+  it('選択中 (isSelected=true) の場合、初期位置（距離0）でもゴーストボールと矢印がレンダリングされる', () => {
+    const stageRef = createRef<Konva.Stage>();
+    render(
+      <Stage ref={stageRef} width={800} height={600}>
+        <Layer>
+          <BallGhostTrajectory
+            {...defaultProps}
+            isSelected={true}
+            isDragging={false}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    const arrows = stageRef.current?.find('Arrow') ?? [];
+    expect(arrows.length).toBe(1);
+  });
+
+  it('ドラッグ中 (isDragging=true) の場合、初期位置（距離0）でもゴーストボールと矢印がレンダリングされる', () => {
+    const stageRef = createRef<Konva.Stage>();
+    render(
+      <Stage ref={stageRef} width={800} height={600}>
+        <Layer>
+          <BallGhostTrajectory
+            {...defaultProps}
+            isSelected={false}
+            isDragging={true}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    const arrows = stageRef.current?.find('Arrow') ?? [];
+    expect(arrows.length).toBe(1);
+  });
+
+  it('前スライドからのボールがない場合 (hasPrevBall=false) はレンダリングされない', () => {
+    const stageRef = createRef<Konva.Stage>();
+    render(
+      <Stage ref={stageRef} width={800} height={600}>
+        <Layer>
+          <BallGhostTrajectory
+            {...defaultProps}
+            hasPrevBall={false}
+            isSelected={true}
           />
         </Layer>
       </Stage>,

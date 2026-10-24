@@ -22,7 +22,6 @@ import { useBallDrag } from '../hooks/use-ball-drag';
 import { useBallImage } from '../hooks/use-ball-image';
 import type { BallObjectProps } from '../types';
 import { BallGhostTrajectory } from './ball-ghost-trajectory';
-import { BallOnionskin } from './ball-onionskin';
 import { BallVisual } from './ball-visual';
 
 function useBallObjectState({
@@ -143,13 +142,14 @@ export const BallObject = React.memo(function BallObject(
   return (
     <>
       {/* ── スライド間ゴーストボール & 追跡矢印 & ベジェハンドル ── */}
-      {!cleanRender && (
+      {!cleanRender && (isSelected || drag.isDragging) && (
         <BallGhostTrajectory
           isSelected={isSelected}
+          isDragging={drag.isDragging}
+          cleanRender={cleanRender}
           hasPrevBall={prevInfo.hasPrevBall}
           prevBall={prevInfo.prevBall}
           ball={ball}
-          isBallMoved={prevInfo.isBallMoved}
           prevPxX={prevInfo.prevPxX}
           prevPxY={prevInfo.prevPxY}
           radius={radius}
@@ -157,15 +157,6 @@ export const BallObject = React.memo(function BallObject(
           stageSize={stageSize}
           nodesRegistryRef={props.nodesRegistryRef}
           onUpdateTrajectory={handleUpdateTrajectory}
-        />
-      )}
-
-      {/* ── ボールドラッグ中限定オニオンスキン ── */}
-      {!cleanRender && (
-        <BallOnionskin
-          ghostGroupRef={ghostGroupRef}
-          ghostLineRef={ghostLineRef}
-          radius={radius}
         />
       )}
 

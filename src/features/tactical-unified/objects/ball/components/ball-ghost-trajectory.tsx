@@ -9,10 +9,12 @@ import { BallGhost } from './ball-ghost';
 
 interface BallGhostTrajectoryProps {
   isSelected?: boolean;
+  isDragging?: boolean;
+  cleanRender?: boolean;
   hasPrevBall: boolean;
   prevBall?: BallState;
   ball: BallState;
-  isBallMoved: boolean;
+  isBallMoved?: boolean;
   prevPxX: number;
   prevPxY: number;
   radius: number;
@@ -23,11 +25,13 @@ interface BallGhostTrajectoryProps {
 }
 
 export const BallGhostTrajectory = React.memo(function BallGhostTrajectory({
-  isSelected: _isSelected,
+  isSelected,
+  isDragging,
+  cleanRender,
   hasPrevBall,
   prevBall,
   ball,
-  isBallMoved,
+  isBallMoved: _isBallMoved,
   prevPxX,
   prevPxY,
   radius,
@@ -36,7 +40,13 @@ export const BallGhostTrajectory = React.memo(function BallGhostTrajectory({
   nodesRegistryRef,
   onUpdateTrajectory,
 }: BallGhostTrajectoryProps) {
-  if (!hasPrevBall || !prevBall || !isBallMoved) {
+  if (cleanRender) {
+    return null;
+  }
+  if (!isSelected && !isDragging) {
+    return null;
+  }
+  if (!hasPrevBall || !prevBall) {
     return null;
   }
 
