@@ -30,8 +30,10 @@ const ALLOWED_BUN_SCRIPTS = new Set([
   'ai:report',
   'ai:find',
   'ai:outline',
+  'task:validate',
   '.agents/scripts/audit-session.ts',
   '.agents/scripts/session-report.ts',
+  '.agents/scripts/validate-task.ts',
   'scripts/map/find-symbol.ts',
   'scripts/ast/extract-types.ts',
 ]);
@@ -123,6 +125,28 @@ export function checkAuditorGuard(payload: any): GuardDecision | null {
 
       // bun のスクリプト制限
       if (parsed.executable === 'bun') {
+        if (parsed.args[0] === 'test') {
+          const testTargets = parsed.args
+            .slice(1)
+            .filter((a) => !a.startsWith('-'));
+          const isAllowedAgentTest =
+            testTargets.length > 0 &&
+            testTargets.every(
+              (t) =>
+                t === '.agents' ||
+                t === './.agents' ||
+                t.startsWith('.agents/') ||
+                t.startsWith('./.agents/'),
+            );
+          if (!isAllowedAgentTest) {
+            return {
+              decision: 'deny',
+              reason: `[GUARD] Access Denied: Auditor may only run 'bun test' scoped to './.agents'.`,
+            };
+          }
+          continue;
+        }
+
         const isRun = parsed.args[0] === 'run';
         const targetScript = isRun ? parsed.args[1] : parsed.args[0];
 
@@ -132,7 +156,7 @@ export function checkAuditorGuard(payload: any): GuardDecision | null {
         if (!isAllowedScript) {
           return {
             decision: 'deny',
-            reason: `[GUARD] Access Denied: Auditor may only execute authorized audit scripts with bun (ai:audit, ai:report, ai:find, ai:outline). '${targetScript ?? 'bun'}' is not allowed.`,
+            reason: `[GUARD] Access Denied: Auditor may only execute authorized audit scripts with bun (ai:audit, ai:report, ai:find, ai:outline, task:validate, or bun test ./.agents). '${targetScript ?? 'bun'}' is not allowed.`,
           };
         }
       }

@@ -245,7 +245,7 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(resWhole.decision).toBe('allow');
     });
 
-    test('view_file denies sequential slicing loop using transcriptPath', () => {
+    test('view_file allows sequential slicing and .system_generated/tasks/*.log', () => {
       const tmpTranscript = '/tmp/test-transcript-loop.jsonl';
       const tmpLargeFile = '/tmp/test-large-file-500.txt';
       const fs = require('fs');
@@ -274,7 +274,7 @@ describe('guard.ts Security & Token Guard Tests', () => {
         })}\n`,
       );
 
-      // Attempting another slice on the same file is denied
+      // Attempting another slice on the same file is now allowed
       const res = evaluatePayload({
         toolCall: {
           name: 'view_file',
@@ -286,8 +286,7 @@ describe('guard.ts Security & Token Guard Tests', () => {
         },
         transcriptPath: tmpTranscript,
       });
-      expect(res.decision).toBe('deny');
-      expect(res.reason).toContain('Sequential slicing loop detected');
+      expect(res.decision).toBe('allow');
 
       try {
         fs.unlinkSync(tmpTranscript);
@@ -703,16 +702,27 @@ describe('guard.ts Security & Token Guard Tests', () => {
       });
       expect(resAudit.decision).toBe('allow');
 
-      // 5. Any write tool is denied
-      const resWrite = evaluatePayload({
+      // 5. Write tool on tasks/** and .agents/** is allowed, src/** is denied
+      const resWriteTask = evaluatePayload({
         toolCall: {
           name: 'write_file',
           args: { Path: 'tasks/TASK-001.md' },
         },
         transcriptPath: transcript,
       });
-      expect(resWrite.decision).toBe('deny');
-      expect(resWrite.reason).toContain('Auditor is a read-only audit agent');
+      expect(resWriteTask.decision).toBe('allow');
+
+      const resWriteSrc = evaluatePayload({
+        toolCall: {
+          name: 'write_file',
+          args: { Path: 'src/foo.ts' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resWriteSrc.decision).toBe('deny');
+      expect(resWriteSrc.reason).toContain(
+        'Auditor is prohibited from editing production/test code',
+      );
 
       // 6. Subagent invocation is denied
       const resInvoke = evaluatePayload({

@@ -39,81 +39,6 @@ export function getViewFilePath(toolCall: any): string {
 }
 
 /**
- * 過去の transcript から、同一ファイルに対してスライス読込がすでに行われていたかを判定する
- */
-function hasRecentSliceRead(
-  transcriptPath: string | undefined,
-  targetFile: string,
-): boolean {
-  if (!transcriptPath || !fs.existsSync(transcriptPath)) return false;
-
-  try {
-    const transcript = fs.readFileSync(transcriptPath, 'utf8');
-    const lines = transcript.trim().split('\n');
-    const startIndex = Math.max(0, lines.length - 30);
-
-    for (let i = lines.length - 1; i >= startIndex; i--) {
-      if (!lines[i]) continue;
-      try {
-        const step = JSON.parse(lines[i]);
-        if (step.tool_calls) {
-          for (const tc of step.tool_calls) {
-            if (isReadTool(tc.name) && tc.args) {
-              const tcPath = getViewFilePath(tc);
-              if (tcPath && path.resolve(tcPath) === targetFile) {
-                const start = parseLineNum(tc.args.StartLine);
-                const end = parseLineNum(tc.args.EndLine);
-                if (start !== undefined || end !== undefined) {
-                  return true;
-                }
-              }
-            }
-          }
-        }
-      } catch (_e) {}
-    }
-  } catch (_e) {}
-
-  return false;
-}
-
-/**
- * Reviewer セッションにおいて、直列に view_file / read_file が連続実行されているかを判定する
- */
-function hasSequentialSingleViewLoop(
-  transcriptPath: string | undefined,
-): boolean {
-  if (!transcriptPath || !fs.existsSync(transcriptPath)) return false;
-
-  try {
-    const transcript = fs.readFileSync(transcriptPath, 'utf8');
-    const lines = transcript.trim().split('\n');
-    let consecutiveViews = 0;
-    const startIndex = Math.max(0, lines.length - 15);
-
-    for (let i = lines.length - 1; i >= startIndex; i--) {
-      if (!lines[i]) continue;
-      try {
-        const step = JSON.parse(lines[i]);
-        if (step.tool_calls) {
-          const hasView = step.tool_calls.some(
-            (tc: any) => isReadTool(tc.name),
-          );
-          if (hasView) {
-            consecutiveViews++;
-          } else if (step.type === 'PLANNER_RESPONSE') {
-            break;
-          }
-        }
-      } catch (_e) {}
-    }
-    return consecutiveViews >= 3;
-  } catch (_e) {}
-
-  return false;
-}
-
-/**
  * ファイルがコードベース調査の対象（ソースコード、テスト、スクリプト等）かを判定する。
  * tasks/, docs/, .agents/, notes/, ルート設定ファイル等は除外する。
  */
@@ -209,6 +134,11 @@ function checkViewGuard(payload: any): GuardDecision | null {
   const resolvedPath = path.resolve(rawPath);
   const baseName = path.basename(resolvedPath);
 
+  // 0. バックグラウンドタスク出力ログ (.system_generated/tasks/*.log) は全文読込を許可
+  if (resolvedPath.includes('/.system_generated/tasks/')) {
+    return { decision: 'allow' };
+  }
+
   // 1. ログファイル・tee出力のチェック (既存ルール)
   if (/\.log$/i.test(resolvedPath) || resolvedPath.includes('/rtk/tee/')) {
     const start = parseLineNum(toolCall.args.StartLine);
@@ -266,33 +196,8 @@ function checkViewGuard(payload: any): GuardDecision | null {
     }
   }
 
-  // 4. 同一ファイルに対する小刻みな連続スライス読込の検知 (Paging Loop Guard)
-  // 400行超のファイルであっても、同一ファイルに対して複数回連続してスライス読込を試みるのは禁止。
-  if (hasSlice) {
-    const isRepeat = hasRecentSliceRead(payload.transcriptPath, resolvedPath);
-    if (isRepeat) {
-      return {
-        decision: 'deny',
-        reason: `[GUARD] Sequential slicing loop detected for '${baseName}'.\nReason: Reading the same file in small chunks across multiple turns is prohibited.\nAction: If you need to view the implementation, call 'view_file' without StartLine/EndLine (up to 800 lines), or pinpoint exact lines using 'rtk grep <pattern> <file>' / 'ast-grep' first.`,
-      };
-    }
-  }
-
-  // 5. Reviewer による直列全ファイル読込ループの検知 (Reviewer View Loop Guard)
+  // 4. Planner による 6 ファイル以上の調査用ソースコード直接読込の遮断 (Planner Investigation Guard: 5ファイルまで許可)
   const role = detectAgentRole(payload.transcriptPath);
-  if (role === 'reviewer') {
-    const isSequentialLoop = hasSequentialSingleViewLoop(
-      payload.transcriptPath,
-    );
-    if (isSequentialLoop) {
-      return {
-        decision: 'deny',
-        reason: `[GUARD] Sequential full-file reading loop detected in Reviewer session (3+ consecutive view_file calls).\nReason: Reading entire files sequentially causes extreme token explosion (>3M tokens).\nAction: Inspect diffs via 'bun run ai:reviewer:check' or 'rtk diff', or pass multiple files in parallel in a single turn.`,
-      };
-    }
-  }
-
-  // 6. Planner による 3 ファイル以上の調査用ソースコード直接読込の遮断 (Planner Investigation Guard)
   if (role === 'planner') {
     const workspacePath = payload.workspacePaths?.[0];
     const relPath = normalizeRelativePath(resolvedPath, workspacePath);
@@ -303,11 +208,11 @@ function checkViewGuard(payload: any): GuardDecision | null {
         workspacePath,
       );
 
-      // すでに読んだファイルでなく、かつ既に2ファイル以上の調査対象を読んでいる場合は 3ファイル目となるため遮断
-      if (!recentTargets.has(resolvedPath) && recentTargets.size >= 2) {
+      // すでに読んだファイルでなく、かつ既に5ファイル以上の調査対象を読んでいる場合は 6ファイル目となるため遮断
+      if (!recentTargets.has(resolvedPath) && recentTargets.size >= 5) {
         return {
           decision: 'deny',
-          reason: `[GUARD] Codebase investigation limit reached (Planner is attempting to read 3+ source files directly: '${baseName}').\nReason: Reading multiple source files directly inflates Planner's context (>50K tokens) and causes severe token explosion.\nAction: You MUST delegate codebase investigation to Scout.\n1. Invoke subagent with TypeName: "scout" (Model: "flash") to extract types, signatures, and patterns.\n2. Scout will return Context Snippets (Import Specs, Interfaces & Types, Reference Pattern).\n3. Terminate the Scout immediately via manage_subagents(Action: "kill", ConversationIds: [...]) and embed the snippets into 'tasks/TASK-XXX.md'.`,
+          reason: `[GUARD] Codebase investigation limit reached (Planner is attempting to read 6+ source files directly: '${baseName}').\nReason: Reading multiple source files directly inflates Planner's context (>50K tokens) and causes severe token explosion.\nAction: You MUST delegate codebase investigation to Scout.\n1. Invoke subagent with TypeName: "scout" (Model: "flash_lite") to extract types, signatures, and patterns.\n2. Scout will return Context Snippets (Import Specs, Interfaces & Types, Reference Pattern).\n3. Terminate the Scout immediately via manage_subagents(Action: "kill", ConversationIds: [...]) and embed the snippets into 'tasks/TASK-XXX.md'.`,
         };
       }
     }

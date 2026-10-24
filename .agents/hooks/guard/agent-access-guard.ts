@@ -111,6 +111,8 @@ export function detectAgentRole(transcriptPath?: string): AgentRole {
   }
 }
 
+const REPO_ROOT = path.resolve(__dirname, '../../../');
+
 /**
  * ワークスペース相対パスに正規化する
  */
@@ -119,11 +121,11 @@ export function normalizeRelativePath(
   workspacePath?: string,
 ): string {
   const resolved = path.resolve(targetFile);
-  const root = workspacePath ? path.resolve(workspacePath) : process.cwd();
+  const root = workspacePath ? path.resolve(workspacePath) : REPO_ROOT;
   if (resolved.startsWith(root)) {
     return path.relative(root, resolved);
   }
-  return path.relative(process.cwd(), resolved);
+  return path.relative(REPO_ROOT, resolved);
 }
 
 export function getTargetFilePath(toolCall: any): string | null {
@@ -211,12 +213,19 @@ export function checkAgentAccessGuard(
     };
   }
 
-  // 2c. Auditor の書き込み制限: 完全読み取り専用（いかなるファイルも編集不可）
+  // 2c. Auditor の書き込み制限: tasks/** と .agents/** を許可、プロダクション・テストコードは禁止
   if (role === 'auditor') {
-    return {
-      decision: 'deny',
-      reason: `[GUARD] Access Denied: Auditor is a read-only audit agent and cannot modify any files ('${relPath}'). Return audit reports to Planner via message or output.`,
-    };
+    const isCode =
+      relPath.startsWith('src/') ||
+      relPath.startsWith('extension/') ||
+      relPath.startsWith('tests/');
+    if (isCode) {
+      return {
+        decision: 'deny',
+        reason: `[GUARD] Access Denied: Auditor is prohibited from editing production/test code ('${relPath}'). Auditor's write scope is strictly limited to 'tasks/**' and '.agents/**'.`,
+      };
+    }
+    return { decision: 'allow' };
   }
 
   // 3. Worker の書き込み権限

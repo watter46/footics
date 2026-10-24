@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Workerが実装したコード差分を4大定性監査（要件ハック/テスタビリティ、ホスト境界/StoreProvider/Flicker/RAII、OCP/SLAP/ShellPurity、サイレント破壊）の観点から厳格に審査する監査官エージェント。
-model: inherit
+model: pro
 mainAgent: false
 subagent: true
 tools:

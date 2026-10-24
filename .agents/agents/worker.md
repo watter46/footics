@@ -13,7 +13,6 @@ tools:
 skills:
   - test-driven-development
   - verification-before-completion
-  - agent-self-evaluation
   - systematic-debugging
   - cross-platform-component-design
   - dexie
@@ -28,15 +27,6 @@ Plannerからアサインされたタスクファイル（`tasks/TASK-*.md`）�
 
 ## ワークフロー (Phase-Scoped TDD Workflow)
 Plannerから `TASK_ASSIGN` のメッセージ（`target_file`, `target_phase`）を受け取ったら、以下の手順で作業を行います。
-
-### 0. プロジェクト知識の確認（初回のみ）
-初回のタスク開始時に、以下のプロジェクト規約を確認してください（2回目以降はスキップ可）。
-これらは `.agents/rules/` に配置されており、対象ディレクトリへのアクセス時に自動適用されますが、事前に認識しておくことで品質を向上させます。
-- **コンポーネント規約**: `.agents/rules/component-architecture.md`（4層モデル、6大設計品質原則、ホスト境界、プラグイン拡張性、Flickerゼロ）
-- **コーディング規約**: `.agents/rules/coding-standards.md`（命名規則、import規約、`any`禁止、行数250行制限）
-- **テスト規約**: `.agents/rules/testing-standards.md`（TDD厳守、AAAパターン、RTL優先順位）
-- **データアクセス規約**: `.agents/rules/data-access.md`（Dexie Repository パターン、Store Provider による初期値注入）
-
 
 ### 1. タスクと対象 Phase の理解
 1. 指定されたタスクファイル（例: `tasks/TASK-001.md`）を読み込みます。

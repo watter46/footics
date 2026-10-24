@@ -121,6 +121,50 @@ try {
         hasError = true;
       }
     }
+
+    const normFile = file.replace(/\\/g, '/').replace(/^\.\//, '');
+
+    // Check D: Next.js 'use client' Directive Check for .tsx files using React Hooks
+    if (
+      (normFile.startsWith('src/') || normFile.includes('/src/')) &&
+      normFile.endsWith('.tsx') &&
+      !/\.(test|spec)\.tsx$/.test(normFile)
+    ) {
+      const usesReactHooks =
+        /\b(useState|useEffect|useContext|useRef|useCallback|useMemo|useReducer|useStore)\b/.test(
+          content,
+        );
+      const hasUseClient =
+        /^\s*(?:\/\*[\s\S]*?\*\/\s*|\/\/[^\n]*\n\s*)*['"]use client['"]/.test(
+          content,
+        );
+      if (usesReactHooks && !hasUseClient) {
+        console.error(
+          `[ERROR] Missing 'use client' directive in ${file} (uses React/Zustand hooks).`,
+        );
+        hasError = true;
+      }
+    }
+
+    // Check E: Level 2 Core Singleton Store Import Prohibition
+    if (
+      normFile.includes('src/features/tactical-unified/core/') &&
+      !/\.(test|spec)\.[tj]sx?$/.test(normFile)
+    ) {
+      if (
+        /import\s+\{[^}]*\buseTacticalUnifiedStore\b[^}]*\}\s+from/.test(
+          content,
+        ) ||
+        /import\s+(?!type\b)[^;]*from\s+['"]@\/features\/tactical-unified\/stores\/tactical-unified-store['"]/.test(
+          content,
+        )
+      ) {
+        console.error(
+          `[ERROR] Host boundary violation in ${file}: Level 2 core must not import useTacticalUnifiedStore directly.`,
+        );
+        hasError = true;
+      }
+    }
   }
 
   if (hasError) {

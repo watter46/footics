@@ -133,7 +133,7 @@ describe('agent-access-guard', () => {
     fs.rmSync(testDir, { recursive: true, force: true });
   });
 
-  it('denies all file modifications for auditor role', () => {
+  it('allows tasks and .agents modifications for auditor role but denies production/test code', () => {
     const auditorFile = createTranscript(
       JSON.stringify({
         step_index: 0,
@@ -142,7 +142,7 @@ describe('agent-access-guard', () => {
       }),
     );
 
-    // Auditor cannot edit tasks
+    // Auditor can edit tasks/**
     const taskPayload = {
       transcriptPath: auditorFile,
       toolCall: {
@@ -151,10 +151,20 @@ describe('agent-access-guard', () => {
       },
     };
     const taskRes = checkAgentAccessGuard(taskPayload);
-    expect(taskRes?.decision).toBe('deny');
-    expect(taskRes?.reason).toContain('Auditor is a read-only audit agent');
+    expect(taskRes?.decision).toBe('allow');
 
-    // Auditor cannot edit source
+    // Auditor can edit .agents/**
+    const agentPayload = {
+      transcriptPath: auditorFile,
+      toolCall: {
+        name: 'edit_file',
+        args: { Path: '/home/watter46/src/footics/.agents/rules/foo.md' },
+      },
+    };
+    const agentRes = checkAgentAccessGuard(agentPayload);
+    expect(agentRes?.decision).toBe('allow');
+
+    // Auditor cannot edit source (src/**, extension/**, tests/**)
     const codePayload = {
       transcriptPath: auditorFile,
       toolCall: {
@@ -164,7 +174,9 @@ describe('agent-access-guard', () => {
     };
     const codeRes = checkAgentAccessGuard(codePayload);
     expect(codeRes?.decision).toBe('deny');
-    expect(codeRes?.reason).toContain('Auditor is a read-only audit agent');
+    expect(codeRes?.reason).toContain(
+      'Auditor is prohibited from editing production/test code',
+    );
 
     fs.rmSync(testDir, { recursive: true, force: true });
   });

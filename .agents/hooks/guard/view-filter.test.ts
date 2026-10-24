@@ -37,90 +37,119 @@ describe('view-filter: planner investigation guard', () => {
     return fullPath;
   }
 
-  it('allows planner to read 1 or 2 investigation target files', () => {
-    const file1 = createDummyFile(
-      '.agents/hooks/guard/__tests__/fixtures-view/src/feat-a.ts',
+  it('allows planner to read up to 5 investigation target files and denies on 6th', () => {
+    const files = ['a', 'b', 'c', 'd', 'e', 'f'].map((k) =>
+      createDummyFile(
+        `.agents/hooks/guard/__tests__/fixtures-view/src/feat-${k}.ts`,
+      ),
     );
-    const file2 = createDummyFile(
-      '.agents/hooks/guard/__tests__/fixtures-view/src/feat-b.ts',
-    );
 
-    const transcript = createTranscript([
-      { step_index: 0, type: 'USER_INPUT', content: 'Implement new feature' },
-    ]);
-
-    // 1ファイル目
-    const res1 = checkViewGuard({
-      transcriptPath: transcript,
-      workspacePaths: [testDir],
-      toolCall: {
-        name: 'view_file',
-        args: { AbsolutePath: file1 },
-      },
-    });
-    expect(res1?.decision).toBe('allow');
-
-    // transcript に 1ファイル目の履歴を追加
-    const transcriptWithOne = createTranscript([
+    // 5ファイル読込済みの transcript
+    const transcriptWith5 = createTranscript([
       { step_index: 0, type: 'USER_INPUT', content: 'Implement new feature' },
       {
         step_index: 1,
         type: 'PLANNER_RESPONSE',
-        tool_calls: [{ name: 'view_file', args: { AbsolutePath: file1 } }],
+        tool_calls: files
+          .slice(0, 4)
+          .map((f) => ({ name: 'view_file', args: { AbsolutePath: f } })),
       },
     ]);
 
-    // 2ファイル目
-    const res2 = checkViewGuard({
-      transcriptPath: transcriptWithOne,
+    // 5ファイル目は allow
+    const res5 = checkViewGuard({
+      transcriptPath: transcriptWith5,
       workspacePaths: [testDir],
       toolCall: {
         name: 'view_file',
-        args: { AbsolutePath: file2 },
+        args: { AbsolutePath: files[4] },
       },
     });
-    expect(res2?.decision).toBe('allow');
+    expect(res5?.decision).toBe('allow');
+
+    // 6ファイル目は deny
+    const transcriptWithFiveRead = createTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'Implement new feature' },
+      {
+        step_index: 1,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: files
+          .slice(0, 5)
+          .map((f) => ({ name: 'view_file', args: { AbsolutePath: f } })),
+      },
+    ]);
+
+    const res6 = checkViewGuard({
+      transcriptPath: transcriptWithFiveRead,
+      workspacePaths: [testDir],
+      toolCall: {
+        name: 'view_file',
+        args: { AbsolutePath: files[5] },
+      },
+    });
+
+    expect(res6).not.toBeNull();
+    expect(res6?.decision).toBe('deny');
+    expect(res6?.reason).toContain('Codebase investigation limit reached');
+    expect(res6?.reason).toContain('delegate codebase investigation to Scout');
+    expect(res6?.reason).toContain('TypeName: "scout"');
   });
 
-  it('denies planner when attempting to read a 3rd distinct investigation target file', () => {
+  it('allows reading .system_generated/tasks/*.log without line limit and does not block sequential slice or reviewer views', () => {
+    const taskLogRes = checkViewGuard({
+      toolCall: {
+        name: 'view_file',
+        args: {
+          AbsolutePath:
+            '/home/watter46/.gemini/antigravity-cli/brain/123/.system_generated/tasks/task-1.log',
+        },
+      },
+    });
+    expect(taskLogRes?.decision).toBe('allow');
+
     const file1 = createDummyFile(
-      '.agents/hooks/guard/__tests__/fixtures-view/src/feat-a.ts',
-    );
-    const file2 = createDummyFile(
-      '.agents/hooks/guard/__tests__/fixtures-view/src/feat-b.ts',
-    );
-    const file3 = createDummyFile(
-      '.agents/hooks/guard/__tests__/fixtures-view/src/feat-c.ts',
+      '.agents/hooks/guard/__tests__/fixtures-view/src/large.ts',
+      600,
     );
 
-    const transcript = createTranscript([
-      { step_index: 0, type: 'USER_INPUT', content: 'Implement new feature' },
+    // 連続スライス読込や Reviewer の 3連続 view_file が遮断されないこと
+    const reviewerTranscript = createTranscript([
+      {
+        step_index: 0,
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "REVIEW_REQUEST"\nReview task',
+      },
       {
         step_index: 1,
         type: 'PLANNER_RESPONSE',
-        tool_calls: [{ name: 'view_file', args: { AbsolutePath: file1 } }],
+        tool_calls: [
+          {
+            name: 'view_file',
+            args: { AbsolutePath: file1, StartLine: 1, EndLine: 100 },
+          },
+        ],
       },
       {
         step_index: 2,
         type: 'PLANNER_RESPONSE',
-        tool_calls: [{ name: 'view_file', args: { AbsolutePath: file2 } }],
+        tool_calls: [{ name: 'view_file', args: { AbsolutePath: file1 } }],
+      },
+      {
+        step_index: 3,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [{ name: 'view_file', args: { AbsolutePath: file1 } }],
       },
     ]);
 
-    const res = checkViewGuard({
-      transcriptPath: transcript,
+    const resSliceAndReviewer = checkViewGuard({
+      transcriptPath: reviewerTranscript,
       workspacePaths: [testDir],
       toolCall: {
         name: 'view_file',
-        args: { AbsolutePath: file3 },
+        args: { AbsolutePath: file1, StartLine: 101, EndLine: 200 },
       },
     });
-
-    expect(res).not.toBeNull();
-    expect(res?.decision).toBe('deny');
-    expect(res?.reason).toContain('Codebase investigation limit reached');
-    expect(res?.reason).toContain('delegate codebase investigation to Scout');
-    expect(res?.reason).toContain('TypeName: "scout"');
+    expect(resSliceAndReviewer?.decision).toBe('allow');
   });
 
   it('allows planner to re-read already viewed target files', () => {

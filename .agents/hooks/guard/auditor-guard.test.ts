@@ -147,6 +147,25 @@ describe('auditor-guard', () => {
     };
     expect(checkAuditorGuard(reportPayload)).toBeNull();
 
+    // 3b. Allowed bun test ./.agents and bun run task:validate
+    const bunTestPayload = {
+      transcriptPath: auditorFile,
+      toolCall: {
+        name: 'run_command',
+        args: { CommandLine: 'bun test ./.agents' },
+      },
+    };
+    expect(checkAuditorGuard(bunTestPayload)).toBeNull();
+
+    const taskValidatePayload = {
+      transcriptPath: auditorFile,
+      toolCall: {
+        name: 'run_command',
+        args: { CommandLine: 'bun run task:validate tasks/TASK-001.md' },
+      },
+    };
+    expect(checkAuditorGuard(taskValidatePayload)).toBeNull();
+
     // 4. Prohibited bun run ai:check
     const checkPayload = {
       transcriptPath: auditorFile,

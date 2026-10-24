@@ -32,17 +32,18 @@ Footics の「極限のトークン最適化」「4層分離パイプライン�
 2. **シンボル・ファイル特定**: `bun run ai:find <キーワード>`（repo_map.txt から一発検索・次手ガイド付き）
 3. **シグネチャ・型抽出**: `bun run ai:outline <ファイルパス>` で export シンボル・interface を最少トークン（90%削減）で抽出
 4. **行・構造特定**: `rtk grep "<キーワード>" <ファイル>` または `ast-grep`
-5. **使い捨て調査 (Scout) の活用**: 調査範囲が複数ファイルに及ぶ場合は、自前で読まず Scout サブエージェント（`TypeName: "scout"`）を起動して Context Snippets を抽出させ、回収後に即 kill すること。
+5. **5ファイル以下は自前並列・6ファイル以上は Scout の活用**: 調査対象が5ファイル以下の場合は Planner 自前の並列読込で完結させ、6ファイル以上に及ぶ場合のみ Scout サブエージェント（`TypeName: "scout"`, `Model: "flash_lite"`）を `type: "SCOUT_REQUEST"` で起動（最大6ターン完了）して対象パスと型シグネチャを抽出させ、回収後に即 kill すること。
 ※ 生の `ls`, `cat`, `grep`, `find`, `tree` などの直接実行は Hook により自動書き換えまたは遮断されます。
 
 ## タスク分割と指示の鉄則 (Task Right-Sizing)
 
-1. **チケットの肥大化防止（厳守）**:
-   - 変更ファイル目安5件以上、またはレイヤーが異なる場合は別タスク（TASK-001, TASK-002）に分離してください。
+1. **チケットの肥大化防止と 1〜4ファイル一括完遂（厳守）**:
+   - **1〜4ファイルの変更は細切れ Phase に分けず、1つの Phase（1 Worker）で一気に完遂**させます。
+   - ファイル被りのない複数 Phase は、Planner が同一ターン内で並列 Worker 起動できるようスコープを分離します。
    - **上限制約**: 1タスクあたり **最大 5 Phase・250 行以内**（フック `task-size-guard` によりこれを超える追加は自動遮断されます）。
-2. **Context-Ready 原則（Worker の探索ゼロ化）**:
-   - Worker（Flashモデル）が外部ファイルを自前で Read / Grep 探索しなくて済むよう、実装に必要な **Import Specs、関連 Interface/Types、既存コードの参照パターン（抜粋）を必ず `## 3. Context Snippets` に明記** すること。
-   - **最新設計パターンの抽出**: 参照コードには Store Provider、レジストリ、4層モデルに準拠した最新パターンを注入し、古いアンチパターン（シングルトン直接参照等）を持ち込まないこと。
+2. **軽量 Context-Ready 原則（既存コード丸写しコピペの廃止）**:
+   - 既存コードの長大な丸写しコピペはトークンと行数を圧迫するため禁止します。
+   - `## 3. Context Snippets` には **「対象ファイルパス＋変更契約シグネチャ（Import Specs / Interfaces）＋実装上の注意点（Gotcha）」のみ** を簡潔に記載してください。
 3. **Phase の本質定義**:
    - 開発工程（「型定義だけ」「テストだけ」）の分割ではなく、**「機能・サブシステムごとの完結した段階」** として分割します。
    - 各 Phase 内で Worker が単独で **TDD（テスト作成 ➔ 実装 ➔ スコープ検証）を一通り完結** させます。
@@ -90,9 +91,9 @@ import { someUtil } from '@/path/to/utils';
 export interface TargetProps { ... }
 \`\`\`
 
-### 3.3 Reference Pattern (既存実装・テスト抜粋)
+### 3.3 Implementation Notes & Gotchas (注意点・境界契約)
 \`\`\`ts
-// 類似コンポーネントや既存テストの書き方（3〜10行程度）
+// 既存コードの丸写しは行わず、対象パス・変更契約シグネチャ・注意点（'use client' 必須、StoreProvider Context経由等）のみを簡潔に記述
 \`\`\`
 
 ## 4. Implementation Phases (Worker 実装手順)
@@ -114,7 +115,7 @@ export interface TargetProps { ... }
 
 ## 5. Reviewer Assessment (コード差分監査)
 <!-- 機械的チェック（型・Lint・Vitest・depcruise）はスクリプトが自動検証。Reviewer はコード差分の意味を監査する -->
-- **Reviewer Model**: `flash`
+- **Reviewer Model**: `pro`
 - **Reviewed At**: 
 - **Decision**: `TODO` | `LGTM` | `REJECTED`
 - **Audit Checklist**:
