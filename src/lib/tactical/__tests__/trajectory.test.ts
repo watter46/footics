@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import type { Player } from '@/lib/types/tactical-unified';
 import {
   calculateBezierPoint,
   getBezierControlPoint,
   type PlayerTrajectory,
 } from '../trajectory';
+import { matchSlidePlayers } from '../unified-interpolation';
 
 describe('trajectory utility', () => {
   const p0 = { x: 20, y: 80 };
@@ -82,5 +84,65 @@ describe('trajectory utility', () => {
     };
     expect(reversedCp.x).toBeCloseTo(cp.x);
     expect(reversedCp.y).toBeCloseTo(cp.y);
+  });
+
+  it('returns destination coordinate immediately when distance between p0 and p1 is less than 0.1', () => {
+    const start = { x: 30, y: 40 };
+    const end = { x: 30.05, y: 40.05 }; // hypot is ~0.0707 < 0.1
+    const customTraj: PlayerTrajectory = {
+      type: 'custom',
+      controlPoint: { x: 80, y: 90 },
+    };
+
+    const cp = getBezierControlPoint(start, end, customTraj);
+    expect(cp.x).toBe(end.x);
+    expect(cp.y).toBe(end.y);
+
+    const midPt = calculateBezierPoint(start, end, 0.5, customTraj);
+    expect(midPt.x).toBe(end.x);
+    expect(midPt.y).toBe(end.y);
+  });
+
+  it('caches matched player pairs for identical player arrays via WeakMap', () => {
+    const defaultStyle = {
+      markerType: 'circle' as const,
+      insideContent: 'number' as const,
+      bottomLabel: 'name' as const,
+      color: '#ff0000',
+      strokeColor: '#ffffff',
+      strokeWidth: 2,
+      sizeScale: 1,
+      numberSizeScale: 1,
+      labelSizeScale: 1,
+    };
+    const playersA: Player[] = [
+      {
+        id: 'p1',
+        x: 10,
+        y: 20,
+        team: 'home',
+        area: 'pitch',
+        style: defaultStyle,
+        connectLines: [],
+        badges: [],
+      },
+    ];
+    const playersB: Player[] = [
+      {
+        id: 'p1',
+        x: 30,
+        y: 40,
+        team: 'home',
+        area: 'pitch',
+        style: defaultStyle,
+        connectLines: [],
+        badges: [],
+      },
+    ];
+
+    const match1 = matchSlidePlayers(playersA, playersB);
+    const match2 = matchSlidePlayers(playersA, playersB);
+
+    expect(match1).toBe(match2); // Reference identity via WeakMap cache
   });
 });

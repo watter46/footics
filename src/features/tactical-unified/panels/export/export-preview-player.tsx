@@ -123,7 +123,7 @@ function useExportPreviewAnimation({
   timeLabelRef,
   sliderRef,
 }: UseExportPreviewAnimationParams) {
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const totalDurationMs = calculateUnifiedTotalDuration(slides) || 1000;
 
   const { width: previewWidth, height: previewHeight } =

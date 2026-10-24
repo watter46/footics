@@ -50,6 +50,7 @@ export function createSlideForMode(
     visionCone: undefined,
     badge: undefined,
     focus: undefined,
+    trajectory: undefined,
   }));
 
   const defaultBox = getDefaultBoundaryBoxForAspect(project.aspectRatio);
@@ -64,7 +65,7 @@ export function createSlideForMode(
     zones: [],
     texts: [],
     ball: currentSlide.ball
-      ? { ...currentSlide.ball }
+      ? { ...currentSlide.ball, trajectory: undefined }
       : { x: 50, y: 50, visible: true },
     boundaryBox: currentSlide.boundaryBox
       ? { ...currentSlide.boundaryBox }

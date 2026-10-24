@@ -2,7 +2,7 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { type MutableRefObject, useEffect, useRef } from 'react';
+import { type MutableRefObject, memo, useEffect, useRef } from 'react';
 import { Group } from 'react-konva';
 import { PlayerFocusSpotlight } from '@/features/tactical-unified/objects/player/components/player-focus-spotlight';
 import { PlayerMarkerCircle } from '@/features/tactical-unified/objects/player/components/player-marker-circle';
@@ -31,7 +31,7 @@ export interface PlayerMarkerItemProps {
   onUpdateVisionCone: (patch: Record<string, unknown>) => void;
 }
 
-export function PlayerMarkerItem({
+export const PlayerMarkerItem = memo(function PlayerMarkerItem({
   marker,
   width,
   height,
@@ -189,4 +189,4 @@ export function PlayerMarkerItem({
       />
     </Group>
   );
-}
+});

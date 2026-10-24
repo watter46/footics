@@ -438,6 +438,11 @@ export interface MatchedPlayerPair {
   playerB?: Player;
 }
 
+const playerMatchCache = new WeakMap<
+  Player[],
+  WeakMap<Player[], MatchedPlayerPair[]>
+>();
+
 /**
  * Matches players across two slides by:
  * 1. Exact ID match
@@ -450,6 +455,11 @@ export function matchSlidePlayers(
   playersA: Player[],
   playersB: Player[],
 ): MatchedPlayerPair[] {
+  const cachedForA = playerMatchCache.get(playersA);
+  if (cachedForA?.has(playersB)) {
+    return cachedForA.get(playersB)!;
+  }
+
   const result: MatchedPlayerPair[] = [];
   const unmatchedA = new Map(playersA.map((p) => [p.id, p]));
   const unmatchedB = new Map(playersB.map((p) => [p.id, p]));
@@ -506,6 +516,14 @@ export function matchSlidePlayers(
   // 5. Remaining in B (appearing)
   for (const [idB, pB] of unmatchedB.entries()) {
     result.push({ key: idB, playerB: pB });
+  }
+
+  if (!cachedForA) {
+    const nextMap = new WeakMap<Player[], MatchedPlayerPair[]>();
+    nextMap.set(playersB, result);
+    playerMatchCache.set(playersA, nextMap);
+  } else {
+    cachedForA.set(playersB, result);
   }
 
   return result;

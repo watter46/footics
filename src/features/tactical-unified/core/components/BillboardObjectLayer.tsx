@@ -4,7 +4,7 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { ReactNode } from 'react';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Group, Layer } from 'react-konva';
 import { BallObject } from '@/features/tactical-unified/objects/ball/components/ball-object';
 import type { BallObjectProps } from '@/features/tactical-unified/objects/ball/types';
@@ -242,25 +242,27 @@ export function BillboardObjectLayer({
   );
 
   // 深さソート対象アイテム群の構築
-  const items: BillboardItem[] = [
-    ...visibleMarkers.map((m) => ({
-      kind: 'player' as const,
-      data: m,
-      x: m.x,
-      y: m.y,
-    })),
-    ...(showBall
-      ? [{ kind: 'ball' as const, data: ball, x: ball.x, y: ball.y }]
-      : []),
-    ...texts.map((t) => ({
-      kind: 'text' as const,
-      data: t,
-      x: t.x,
-      y: t.y,
-    })),
-  ];
+  const sortedItems = useMemo(() => {
+    const items: BillboardItem[] = [
+      ...visibleMarkers.map((m) => ({
+        kind: 'player' as const,
+        data: m,
+        x: m.x,
+        y: m.y,
+      })),
+      ...(showBall
+        ? [{ kind: 'ball' as const, data: ball, x: ball.x, y: ball.y }]
+        : []),
+      ...texts.map((t) => ({
+        kind: 'text' as const,
+        data: t,
+        x: t.x,
+        y: t.y,
+      })),
+    ];
 
-  const sortedItems = sortBillboardItemsByDepth(items, pitchRect, camera);
+    return sortBillboardItemsByDepth(items, pitchRect, camera);
+  }, [visibleMarkers, showBall, ball, texts, pitchRect, camera]);
 
   return (
     <Layer id="billboard-object-layer">

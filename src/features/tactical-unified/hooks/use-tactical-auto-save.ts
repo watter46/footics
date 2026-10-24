@@ -27,6 +27,7 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
 
   const project = useTacticalUnifiedStore((s) => s.project);
   const isDirty = useTacticalUnifiedStore((s) => s.isDirty);
+  const isPlaying = useTacticalUnifiedStore((s) => s.isPlaying);
   const loadProject = useTacticalUnifiedStore((s) => s.loadProject);
   const resetProject = useTacticalUnifiedStore((s) => s.resetProject);
   const setSaveStatus = useTacticalUnifiedStore((s) => s.setSaveStatus);
@@ -79,8 +80,8 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
 
   // 2. Debounced Auto-Save
   useEffect(() => {
-    // Do not save before initial load completes or when clean
-    if (!isLoadedRef.current || !isDirty) {
+    // Do not save before initial load completes, when clean, or while playing
+    if (!isLoadedRef.current || !isDirty || isPlaying) {
       return;
     }
     // 他試合のプロジェクトを今の試合キーへ保存しない
@@ -111,7 +112,7 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [project, isDirty, matchId, setSaveStatus, setLastSavedAt]);
+  }, [project, isDirty, isPlaying, matchId, setSaveStatus, setLastSavedAt]);
 
   // 3. Save on BeforeUnload
   useEffect(() => {

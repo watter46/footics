@@ -139,4 +139,97 @@ describe('PlayerMarkerItem vertical scale', () => {
     expect(nameText).toBeDefined();
     expect(nameText?.text()).toBe('Saka');
   });
+
+  it('PlayerMarkerCircle renders shirt number with verticalAlign="middle", height={radius*2}, y={-radius}', () => {
+    const stageRef = createRef<Konva.Stage>();
+    const marker = {
+      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      shirtNo: '9',
+      style: {
+        ...createDefaultPlayer('home', 50, 50, '#ff0000').style,
+        insideContent: 'number' as const,
+      },
+    };
+    const width = 800;
+    const height = 450;
+    const baseDim = 450;
+
+    render(
+      <Stage ref={stageRef} width={width} height={height}>
+        <Layer>
+          <PlayerMarkerItem
+            marker={marker}
+            width={width}
+            height={height}
+            baseDim={baseDim}
+            markerMode="2d-only"
+            aspectRatio="16:9"
+            isSelected={false}
+            isInteractive={true}
+            connectingPlayerId={null}
+            onDragStart={vi.fn()}
+            onDragMove={vi.fn()}
+            onDragEnd={vi.fn()}
+            onClick={vi.fn()}
+            onUpdateVisionCone={vi.fn()}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    const texts = stageRef.current?.find('Text') as Konva.Text[];
+    const numText = texts.find((t) => t.text() === '9');
+    expect(numText).toBeDefined();
+    expect(numText?.verticalAlign()).toBe('middle');
+    const radius = baseDim * 0.032;
+    expect(numText?.height()).toBeCloseTo(radius * 2, 1);
+    expect(numText?.y()).toBeCloseTo(-radius, 1);
+  });
+
+  it('PlayerMarkerRing renders shirt number with verticalAlign="middle", height={radius*2}, y={-radius*1.1}', () => {
+    const stageRef = createRef<Konva.Stage>();
+    const marker = {
+      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      shirtNo: '10',
+      style: {
+        ...createDefaultPlayer('home', 50, 50, '#ff0000').style,
+        markerType: 'ring' as const,
+        insideContent: 'number' as const,
+      },
+    };
+    const width = 800;
+    const height = 450;
+    const baseDim = 450;
+
+    render(
+      <Stage ref={stageRef} width={width} height={height}>
+        <Layer>
+          <PlayerMarkerItem
+            marker={marker}
+            width={width}
+            height={height}
+            baseDim={baseDim}
+            markerMode="3d-only"
+            aspectRatio="16:9"
+            isSelected={false}
+            isInteractive={true}
+            connectingPlayerId={null}
+            onDragStart={vi.fn()}
+            onDragMove={vi.fn()}
+            onDragEnd={vi.fn()}
+            onClick={vi.fn()}
+            onUpdateVisionCone={vi.fn()}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    const texts = stageRef.current?.find('Text') as Konva.Text[];
+    const numText = texts.find((t) => t.text() === '10');
+    expect(numText).toBeDefined();
+    expect(numText?.verticalAlign()).toBe('middle');
+    const radius = baseDim * 0.032;
+    expect(numText?.height()).toBeCloseTo(radius * 2, 1);
+    expect(numText?.y()).toBeCloseTo(-radius * 1.1, 1);
+  });
 });

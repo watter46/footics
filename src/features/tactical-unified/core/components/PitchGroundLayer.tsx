@@ -40,7 +40,6 @@ export function PitchGroundLayer({
   const arrows = useCanvasStore((s) => s.annotations.arrows);
   const markers = useCanvasStore((s) => s.annotations.markers);
   const selectedIds = useCanvasStore((s) => s.selectedIds);
-  const isDragging = useCanvasStore((s) => s.isDragging);
   const activeTool = useCanvasStore((s) => s.activeTool);
   const selectObject = useCanvasStore((s) => s.selectObject);
   const updateZone = useCanvasStore((s) => s.updateZone);
@@ -157,7 +156,12 @@ export function PitchGroundLayer({
               (p) => p.id === marker.id && p.area === 'pitch',
             );
             if (!prevPlayer) return null;
-            if (!selectedIds.includes(marker.id) && !isDragging) return null;
+            if (!selectedIds.includes(marker.id)) return null;
+            if (
+              Math.hypot(marker.x - prevPlayer.x, marker.y - prevPlayer.y) < 1
+            ) {
+              return null;
+            }
 
             return (
               <PlayerGhostTrajectory

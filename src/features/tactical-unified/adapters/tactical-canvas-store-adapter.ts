@@ -6,17 +6,25 @@
  */
 
 import type { StoreApi } from 'zustand';
+import type {
+  ArrowAnnotation,
+  Player,
+  Slide,
+  TextAnnotation,
+  ZoneAnnotation,
+} from '@/lib/types/tactical-unified';
 import {
   DEFAULT_BOUNDARY_BOX,
   DEFAULT_PITCH_TRANSFORM,
 } from '../core/store/canvas-store-pitch';
 import type {
   AnnotationsData,
+  CanvasActions,
   CanvasClipboard,
-  CanvasHistorySnapshot,
   CanvasStore,
   CanvasStoreApi,
   DrawingPreviewState,
+  SelectedObject,
 } from '../core/types';
 import {
   selectCanRedo,
@@ -41,25 +49,40 @@ interface TemporalStoreApi {
   }>;
 }
 
+const DEFAULT_CAPABILITIES: CanvasStore['capabilities'] = {
+  hasBall: true,
+  hasPitchLock: true,
+  hasBench: true,
+  paddingRatio: 0,
+};
+const DEFAULT_HISTORY: CanvasStore['history'] = { past: [], future: [] };
+const DEFAULT_BALL: CanvasStore['ball'] = { x: 50, y: 50, visible: true };
+const EMPTY_ARR: [] = [];
+
 export function createTacticalCanvasStoreAdapter(
   unifiedStore: StoreApi<TacticalUnifiedState>,
 ): CanvasStoreApi {
-  let drawingPreview: DrawingPreviewState | null = null;
-  let isDragging = false;
-  let isHudOpen = true;
-  let color = '#ffffff';
-  let strokeWidth = 2;
-  let fontSize = 14;
-  let customColor = '#ffffff';
+  const temporal = (unifiedStore as unknown as TemporalStoreApi).temporal;
+  const s = () => unifiedStore.getState();
+
+  const local = {
+    drawingPreview: null as DrawingPreviewState | null,
+    isDragging: false,
+    isHudOpen: true,
+    color: '#ffffff',
+    strokeWidth: 2,
+    fontSize: 14,
+    customColor: '#ffffff',
+    markerMode: 'all' as '2d-only' | '3d-only' | 'all',
+  };
   let clipboard: CanvasClipboard | null = null;
-  let markerMode: '2d-only' | '3d-only' | 'all' = 'all';
 
   const listeners = new Set<
     (state: CanvasStore, prevState: CanvasStore) => void
   >();
 
   const clipboardHelpers = createAdapterClipboardHelpers(
-    () => unifiedStore.getState(),
+    s,
     () => clipboard,
     (cb) => {
       clipboard = cb;
@@ -68,198 +91,192 @@ export function createTacticalCanvasStoreAdapter(
   );
 
   function getActiveSlide(state: TacticalUnifiedState) {
-    return state.project.slides.find((s) => s.id === state.activeSlideId);
+    return state.project.slides.find((sl) => sl.id === state.activeSlideId);
   }
 
+  function setLocal<K extends keyof typeof local>(
+    key: K,
+    val: (typeof local)[K],
+  ) {
+    if (local[key] !== val) {
+      local[key] = val;
+      updateAndNotify();
+    }
+  }
+
+  // Annotations キャッシュ
+  let prevArrows: ArrowAnnotation[] | undefined;
+  let prevZones: ZoneAnnotation[] | undefined;
+  let prevTexts: TextAnnotation[] | undefined;
+  let prevMarkers: Player[] | undefined;
+  let cachedAnnotations: AnnotationsData = {
+    arrows: EMPTY_ARR,
+    zones: EMPTY_ARR,
+    texts: EMPTY_ARR,
+    markers: EMPTY_ARR,
+  };
+
+  function getAnnotations(slide: Slide | undefined): AnnotationsData {
+    const a = slide?.arrows ?? EMPTY_ARR;
+    const z = slide?.zones ?? EMPTY_ARR;
+    const t = slide?.texts ?? EMPTY_ARR;
+    const m = slide?.players ?? EMPTY_ARR;
+    if (
+      a === prevArrows &&
+      z === prevZones &&
+      t === prevTexts &&
+      m === prevMarkers
+    ) {
+      return cachedAnnotations;
+    }
+    prevArrows = a;
+    prevZones = z;
+    prevTexts = t;
+    prevMarkers = m;
+    cachedAnnotations = { arrows: a, zones: z, texts: t, markers: m };
+    return cachedAnnotations;
+  }
+
+  // selectedIds キャッシュ
+  let prevSelectedObjects: readonly SelectedObject[] | undefined;
+  let cachedSelectedIds: string[] = [];
+
+  function getSelectedIds(objects: readonly SelectedObject[]): string[] {
+    if (objects === prevSelectedObjects) return cachedSelectedIds;
+    const ids = objects.map((o) => o.id);
+    if (
+      cachedSelectedIds.length === ids.length &&
+      cachedSelectedIds.every((id, i) => id === ids[i])
+    ) {
+      prevSelectedObjects = objects;
+      return cachedSelectedIds;
+    }
+    prevSelectedObjects = objects;
+    cachedSelectedIds = ids;
+    return cachedSelectedIds;
+  }
+
+  const actions: CanvasActions = {
+    setActiveTool: (tool) => s().setActiveTool(tool),
+    setContinuousDrawing: (c) => s().setContinuousDrawing(c),
+    toggleContinuousDrawing: () => s().toggleContinuousDrawing(),
+    setColor: (c) => setLocal('color', c),
+    setCustomColor: (c) => setLocal('customColor', c),
+    setStrokeWidth: (w) => setLocal('strokeWidth', w),
+    setFontSize: (sz) => setLocal('fontSize', sz),
+    setMarkerMode: (m) => setLocal('markerMode', m),
+    setBackgroundImageUrl: (url) =>
+      s().updateSlide(s().activeSlideId, { backgroundImageUrl: url }),
+    setDrawingPreview: (p) => setLocal('drawingPreview', p),
+    setIsDragging: (d) => setLocal('isDragging', d),
+    setIsHudOpen: (o) => setLocal('isHudOpen', o),
+    setConnectingPlayerId: (id) => s().setConnectingPlayerId(id),
+    setSelectedIds: (ids) =>
+      s().selectObjects(ids.map((id) => resolveSelectedObjectFromId(s(), id))),
+    setSelectedObjects: (objs) => s().selectObjects(objs),
+    selectObject: (target, isShift = false) => {
+      if (!target) {
+        s().clearSelection();
+        return;
+      }
+      local.isHudOpen = true;
+      const obj =
+        typeof target === 'string'
+          ? resolveSelectedObjectFromId(s(), target)
+          : target;
+      s().selectObject(obj, isShift);
+    },
+    selectObjects: (objs, multi = false) => {
+      if (objs.length === 1) local.isHudOpen = true;
+      s().selectObjects(objs, multi);
+    },
+    clearSelection: () => s().clearSelection(),
+    setBoundaryBox: (box) => s().setBoundaryBox(s().activeSlideId, box),
+    setPitchTransform: (patch) => {
+      const cur =
+        getActiveSlide(s())?.pitchTransform ?? DEFAULT_PITCH_TRANSFORM;
+      s().updatePitchTransform(
+        s().activeSlideId,
+        typeof patch === 'function' ? patch(cur) : patch,
+      );
+    },
+    resetPitchTransform: () => s().centerPitchAndBoundary(s().activeSlideId),
+    setPitchLocked: (locked) => {
+      if ((getActiveSlide(s())?.pitchTransform?.isLocked ?? false) !== locked) {
+        s().togglePitchLock(s().activeSlideId);
+      }
+    },
+    setAspectRatio: (ar) => s().setAspectRatio(ar),
+    addArrow: (a) => s().addArrow(s().activeSlideId, a),
+    updateArrow: (id, p) => s().updateArrow(s().activeSlideId, id, p),
+    removeArrow: (id) => s().removeArrow(s().activeSlideId, id),
+    addZone: (z) => s().addZone(s().activeSlideId, z),
+    updateZone: (id, p) => s().updateZone(s().activeSlideId, id, p),
+    removeZone: (id) => s().removeZone(s().activeSlideId, id),
+    addText: (t) => s().addText(s().activeSlideId, t),
+    updateText: (id, p) => s().updateText(s().activeSlideId, id, p),
+    removeText: (id) => s().removeText(s().activeSlideId, id),
+    addMarker: (m) => s().addPlayer(m),
+    updateMarker: (id, p) => s().updatePlayer(s().activeSlideId, id, p),
+    removeMarker: (id) => s().removePlayer(s().activeSlideId, id),
+    moveMarkerToBench: (id) => s().movePlayerToBench(s().activeSlideId, id),
+    updatePlayerTrajectory: (slideId, markerId, traj) =>
+      s().updatePlayerTrajectory(slideId, markerId, traj),
+    removeSelected: () => executeRemoveSelected(s()),
+    setAnnotations: (data) =>
+      s().updateSlide(s().activeSlideId, {
+        arrows: data.arrows,
+        zones: data.zones,
+        texts: data.texts,
+        players: data.markers,
+      }),
+    eraseAtPoint: (pt, r) => s().eraseAtPoint(s().activeSlideId, pt, r),
+    copySelectedObjects: clipboardHelpers.copySelectedObjects,
+    pasteObjects: clipboardHelpers.pasteObjects,
+    duplicateSelectedObjects: clipboardHelpers.duplicateSelectedObjects,
+    undo: () => (temporal ? temporal.getState().undo() : s().undo()),
+    redo: () => (temporal ? temporal.getState().redo() : s().redo()),
+    canUndo: () =>
+      temporal ? temporal.getState().pastStates.length > 0 : selectCanUndo(s()),
+    canRedo: () =>
+      temporal
+        ? temporal.getState().futureStates.length > 0
+        : selectCanRedo(s()),
+  };
+
   function buildState(): CanvasStore {
-    const s = unifiedStore.getState();
-    const activeSlide = getActiveSlide(s);
-    const temporal = (unifiedStore as unknown as TemporalStoreApi).temporal;
-    const aspectRatio = activeSlide?.aspectRatio ?? s.project.aspectRatio;
-
-    const annotations: AnnotationsData = {
-      arrows: activeSlide?.arrows ?? [],
-      zones: activeSlide?.zones ?? [],
-      texts: activeSlide?.texts ?? [],
-      markers: activeSlide?.players ?? [],
-    };
-
+    const state = s();
+    const active = getActiveSlide(state);
     return {
       config: {
         mode: 'tactical-board',
-        markerMode,
-        aspectRatio,
-        backgroundImageUrl: activeSlide?.backgroundImageUrl,
-        defaultBoundaryBox: activeSlide?.boundaryBox,
-        defaultPitchTransform: activeSlide?.pitchTransform,
+        markerMode: local.markerMode,
+        aspectRatio: active?.aspectRatio ?? state.project.aspectRatio,
+        backgroundImageUrl: active?.backgroundImageUrl,
+        defaultBoundaryBox: active?.boundaryBox,
+        defaultPitchTransform: active?.pitchTransform,
       },
-      capabilities: {
-        hasBall: true,
-        hasPitchLock: true,
-        hasBench: true,
-        paddingRatio: 0,
-      },
-      ball: activeSlide?.ball ?? { x: 50, y: 50, visible: true },
-      teamVisibility: s.teamVisibility,
-      activeTool: s.activeTool,
-      continuousDrawing: s.continuousDrawing,
-      selectedObjects: s.selectedObjects,
-      selectedIds: s.selectedObjects.map((o) => o.id),
-      pitchTransform: activeSlide?.pitchTransform ?? DEFAULT_PITCH_TRANSFORM,
-      boundaryBox: activeSlide?.boundaryBox ?? DEFAULT_BOUNDARY_BOX,
-      aspectRatio,
-      annotations,
+      capabilities: DEFAULT_CAPABILITIES,
+      ball: active?.ball ?? DEFAULT_BALL,
+      teamVisibility: state.teamVisibility,
+      activeTool: state.activeTool,
+      continuousDrawing: state.continuousDrawing,
+      selectedObjects: state.selectedObjects,
+      selectedIds: getSelectedIds(state.selectedObjects),
+      pitchTransform: active?.pitchTransform ?? DEFAULT_PITCH_TRANSFORM,
+      boundaryBox: active?.boundaryBox ?? DEFAULT_BOUNDARY_BOX,
+      aspectRatio: active?.aspectRatio ?? state.project.aspectRatio,
+      annotations: getAnnotations(active),
       clipboard,
-      color,
-      strokeWidth,
-      fontSize,
-      markerMode,
-      backgroundImageUrl: activeSlide?.backgroundImageUrl,
-      drawingPreview,
-      isDragging,
-      isHudOpen,
-      customColor,
-      connectingPlayerId: s.connectingPlayerId,
-      prevSlide: selectPreviousSlide(s),
-      activeSlideId: s.activeSlideId,
-      history: {
-        past: [] as CanvasHistorySnapshot[],
-        future: [] as CanvasHistorySnapshot[],
-      },
-
-      setActiveTool: (tool) => s.setActiveTool(tool),
-      setContinuousDrawing: (continuous) => s.setContinuousDrawing(continuous),
-      toggleContinuousDrawing: () => s.toggleContinuousDrawing(),
-      setColor: (c) => {
-        color = c;
-        updateAndNotify();
-      },
-      setCustomColor: (c) => {
-        customColor = c;
-        updateAndNotify();
-      },
-      setStrokeWidth: (w) => {
-        strokeWidth = w;
-        updateAndNotify();
-      },
-      setFontSize: (size) => {
-        fontSize = size;
-        updateAndNotify();
-      },
-      setMarkerMode: (mode) => {
-        markerMode = mode;
-        updateAndNotify();
-      },
-      setBackgroundImageUrl: (url) => {
-        s.updateSlide(s.activeSlideId, { backgroundImageUrl: url });
-      },
-      setDrawingPreview: (preview) => {
-        drawingPreview = preview;
-        updateAndNotify();
-      },
-      setIsDragging: (dragging) => {
-        isDragging = dragging;
-        updateAndNotify();
-      },
-      setIsHudOpen: (open) => {
-        isHudOpen = open;
-        updateAndNotify();
-      },
-      setConnectingPlayerId: (id) => s.setConnectingPlayerId(id),
-
-      setSelectedIds: (ids) => {
-        const objs = ids.map((id) => resolveSelectedObjectFromId(s, id));
-        s.selectObjects(objs);
-      },
-      setSelectedObjects: (objects) => s.selectObjects(objects),
-      selectObject: (target, isShiftOrMulti = false) => {
-        if (!target) {
-          s.clearSelection();
-          return;
-        }
-        isHudOpen = true;
-        const obj =
-          typeof target === 'string'
-            ? resolveSelectedObjectFromId(s, target)
-            : target;
-        s.selectObject(obj, isShiftOrMulti);
-      },
-      selectObjects: (objects, multi = false) => {
-        if (objects.length === 1) isHudOpen = true;
-        s.selectObjects(objects, multi);
-      },
-      clearSelection: () => s.clearSelection(),
-
-      setBoundaryBox: (box) => s.setBoundaryBox(s.activeSlideId, box),
-      setPitchTransform: (patch) => {
-        if (typeof patch === 'function') {
-          const current =
-            activeSlide?.pitchTransform ?? DEFAULT_PITCH_TRANSFORM;
-          s.updatePitchTransform(s.activeSlideId, patch(current));
-        } else {
-          s.updatePitchTransform(s.activeSlideId, patch);
-        }
-      },
-      resetPitchTransform: () => s.centerPitchAndBoundary(s.activeSlideId),
-      setPitchLocked: (locked) => {
-        const currentLocked = activeSlide?.pitchTransform?.isLocked ?? false;
-        if (currentLocked !== locked) {
-          s.togglePitchLock(s.activeSlideId);
-        }
-      },
-      setAspectRatio: (ar) => s.setAspectRatio(ar),
-
-      addArrow: (arrow) => s.addArrow(s.activeSlideId, arrow),
-      updateArrow: (id, patch) => s.updateArrow(s.activeSlideId, id, patch),
-      removeArrow: (id) => s.removeArrow(s.activeSlideId, id),
-      addZone: (zone) => s.addZone(s.activeSlideId, zone),
-      updateZone: (id, patch) => s.updateZone(s.activeSlideId, id, patch),
-      removeZone: (id) => s.removeZone(s.activeSlideId, id),
-      addText: (text) => s.addText(s.activeSlideId, text),
-      updateText: (id, patch) => s.updateText(s.activeSlideId, id, patch),
-      removeText: (id) => s.removeText(s.activeSlideId, id),
-      addMarker: (marker) => s.addPlayer(marker),
-      updateMarker: (id, patch) => s.updatePlayer(s.activeSlideId, id, patch),
-      removeMarker: (id) => s.removePlayer(s.activeSlideId, id),
-      moveMarkerToBench: (id) => s.movePlayerToBench(s.activeSlideId, id),
-      updatePlayerTrajectory: (slideId, markerId, trajectory) =>
-        s.updatePlayerTrajectory(slideId, markerId, trajectory),
-      removeSelected: () => executeRemoveSelected(s),
-      setAnnotations: (data) => {
-        s.updateSlide(s.activeSlideId, {
-          arrows: data.arrows,
-          zones: data.zones,
-          texts: data.texts,
-          players: data.markers,
-        });
-      },
-      eraseAtPoint: (point, radius) =>
-        s.eraseAtPoint(s.activeSlideId, point, radius),
-
-      copySelectedObjects: clipboardHelpers.copySelectedObjects,
-      pasteObjects: clipboardHelpers.pasteObjects,
-      duplicateSelectedObjects: clipboardHelpers.duplicateSelectedObjects,
-
-      undo: () => {
-        if (temporal) temporal.getState().undo();
-        else s.undo();
-      },
-      redo: () => {
-        if (temporal) temporal.getState().redo();
-        else s.redo();
-      },
-      canUndo: () => {
-        if (temporal) return temporal.getState().pastStates.length > 0;
-        return selectCanUndo(s);
-      },
-      canRedo: () => {
-        if (temporal) return temporal.getState().futureStates.length > 0;
-        return selectCanRedo(s);
-      },
+      ...local,
+      connectingPlayerId: state.connectingPlayerId,
+      prevSlide: selectPreviousSlide(state),
+      activeSlideId: state.activeSlideId,
+      history: DEFAULT_HISTORY,
+      ...actions,
     };
   }
 
-  // キャッシュされた最新スナップショット（useSyncExternalStoreの無限ループ防止に必須）
   let currentState: CanvasStore = buildState();
   const initialState: CanvasStore = currentState;
 
@@ -281,13 +298,40 @@ export function createTacticalCanvasStoreAdapter(
     setState: (partial) => {
       const next =
         typeof partial === 'function' ? partial(currentState) : partial;
-      if (next.drawingPreview !== undefined)
-        drawingPreview = next.drawingPreview ?? null;
-      if (next.isDragging !== undefined) isDragging = next.isDragging;
-      if (next.isHudOpen !== undefined) isHudOpen = next.isHudOpen;
-      if (next.markerMode !== undefined) markerMode = next.markerMode;
-      if (next.customColor !== undefined) customColor = next.customColor;
-      updateAndNotify();
+      let changed = false;
+      if (
+        next.drawingPreview !== undefined &&
+        next.drawingPreview !== local.drawingPreview
+      ) {
+        local.drawingPreview = next.drawingPreview ?? null;
+        changed = true;
+      }
+      if (
+        next.isDragging !== undefined &&
+        next.isDragging !== local.isDragging
+      ) {
+        local.isDragging = next.isDragging;
+        changed = true;
+      }
+      if (next.isHudOpen !== undefined && next.isHudOpen !== local.isHudOpen) {
+        local.isHudOpen = next.isHudOpen;
+        changed = true;
+      }
+      if (
+        next.markerMode !== undefined &&
+        next.markerMode !== local.markerMode
+      ) {
+        local.markerMode = next.markerMode;
+        changed = true;
+      }
+      if (
+        next.customColor !== undefined &&
+        next.customColor !== local.customColor
+      ) {
+        local.customColor = next.customColor;
+        changed = true;
+      }
+      if (changed) updateAndNotify();
     },
     subscribe: (listener) => {
       listeners.add(listener);

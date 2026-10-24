@@ -119,14 +119,22 @@ export const createSlideCrudSlice: StateCreator<
   setActiveSlide: (slideId) =>
     set((s) => {
       const targetSlide = s.project.slides.find((sl) => sl.id === slideId);
+      const nextBgType = targetSlide?.backgroundType ?? 'pitch';
+      const nextBgUrl = targetSlide?.backgroundImageUrl;
+      const bgUnchanged =
+        s.project.backgroundType === nextBgType &&
+        s.project.backgroundImageUrl === nextBgUrl;
+
       return {
         activeSlideId: slideId,
         selectedObjects: [],
-        project: {
-          ...s.project,
-          backgroundType: targetSlide?.backgroundType ?? 'pitch',
-          backgroundImageUrl: targetSlide?.backgroundImageUrl,
-        },
+        project: bgUnchanged
+          ? s.project
+          : {
+              ...s.project,
+              backgroundType: nextBgType,
+              backgroundImageUrl: nextBgUrl,
+            },
         panels: resolvePanelStateForSlide(targetSlide, s.panels),
       };
     }),

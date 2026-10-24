@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react';
-import type Konva from 'konva';
+import Konva from 'konva';
 import type React from 'react';
 import { createRef } from 'react';
 import { Layer, Stage } from 'react-konva';
@@ -264,5 +264,52 @@ describe('Clean Render Propagation', () => {
 
     // cleanRender=false により、静止座標に自己復元される
     expect(ballNode?.position()).toEqual({ x: 400, y: 225 });
+  });
+
+  it('BallObject: cleanRender=true 時に座標が更新されても Konva.Tween が発火しないこと', () => {
+    const tweenSpy = vi.spyOn(Konva, 'Tween');
+    const stageRef = createRef<Konva.Stage>();
+    const ball1: BallObjectProps['ball'] = {
+      x: 50,
+      y: 50,
+      visible: true,
+      locked: false,
+    };
+    const ball2: BallObjectProps['ball'] = {
+      x: 70,
+      y: 70,
+      visible: true,
+      locked: false,
+    };
+
+    const { rerender } = render(
+      <Stage ref={stageRef} width={800} height={450}>
+        <Layer>
+          <BallObject
+            ball={ball1}
+            stageSize={{ width: 800, height: 450 }}
+            cleanRender={true}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    expect(tweenSpy).not.toHaveBeenCalled();
+
+    // 座標変更
+    rerender(
+      <Stage ref={stageRef} width={800} height={450}>
+        <Layer>
+          <BallObject
+            ball={ball2}
+            stageSize={{ width: 800, height: 450 }}
+            cleanRender={true}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    expect(tweenSpy).not.toHaveBeenCalled();
+    tweenSpy.mockRestore();
   });
 });

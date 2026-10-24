@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTacticalUnifiedStore } from '../../stores/tactical-unified-store';
 import { createTacticalCanvasStoreAdapter } from '../tactical-canvas-store-adapter';
 
@@ -110,5 +110,43 @@ describe('TacticalCanvasStoreAdapter', () => {
 
     adapter.getState().redo();
     expect(adapter.getState().annotations.arrows.length).toBe(initialCount + 1);
+  });
+
+  it('無関係な状態更新時に selectedIds, annotations, capabilities, history, アクション関数の参照が維持されること', () => {
+    const adapter = createTacticalCanvasStoreAdapter(useTacticalUnifiedStore);
+    const initial = adapter.getState();
+
+    // activeTool のみ変更
+    useTacticalUnifiedStore.getState().setActiveTool('arrow_solid');
+
+    const updated = adapter.getState();
+    expect(updated.activeTool).toBe('arrow_solid');
+    expect(updated.selectedIds).toBe(initial.selectedIds);
+    expect(updated.annotations).toBe(initial.annotations);
+    expect(updated.capabilities).toBe(initial.capabilities);
+    expect(updated.history).toBe(initial.history);
+    expect(updated.setActiveTool).toBe(initial.setActiveTool);
+    expect(updated.addArrow).toBe(initial.addArrow);
+  });
+
+  it('同じ isDragging 値での setState はリスナー通知をスキップすること', () => {
+    const adapter = createTacticalCanvasStoreAdapter(useTacticalUnifiedStore);
+    const listener = vi.fn();
+    adapter.subscribe(listener);
+
+    // 初期状態は isDragging = false
+    expect(adapter.getState().isDragging).toBe(false);
+
+    // 同じ false を設定
+    adapter.setState({ isDragging: false });
+    expect(listener).not.toHaveBeenCalled();
+
+    // 異なる true を設定
+    adapter.setState({ isDragging: true });
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    // 再度 true を設定
+    adapter.setState({ isDragging: true });
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });

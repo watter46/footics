@@ -62,6 +62,7 @@ function useBallObjectState({
     nodeRef: ballGroupRef,
     x: px,
     y: py,
+    disabled: Boolean(cleanRender),
   });
 
   useEffect(() => {

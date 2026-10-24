@@ -56,6 +56,32 @@ describe('AAWU 3-2: Timeline & Slide Operations Store', () => {
     const firstPlayerId = store.project.slides[0].players[0].id;
     store.movePlayer(currentSlideId, firstPlayerId, 45, 65);
 
+    // 選手とボールに軌道（trajectory）を設定
+    useTacticalUnifiedStore.setState((s) => ({
+      project: {
+        ...s.project,
+        slides: s.project.slides.map((sl) =>
+          sl.id === currentSlideId
+            ? {
+                ...sl,
+                ball: {
+                  ...sl.ball,
+                  trajectory: { type: 'arc_left', curveOffset: 30 },
+                },
+                players: sl.players.map((p) =>
+                  p.id === firstPlayerId
+                    ? {
+                        ...p,
+                        trajectory: { type: 'arc_right', curveOffset: 25 },
+                      }
+                    : p,
+                ),
+              }
+            : sl,
+        ),
+      },
+    }));
+
     // 視野コーンを追加
     store.setVisionCone(currentSlideId, firstPlayerId, {
       id: 'vision-1',
@@ -102,6 +128,8 @@ describe('AAWU 3-2: Timeline & Slide Operations Store', () => {
     // 選手のネストアノテーション（visionCone等）もクリアされている
     expect(movedPlayerInNewSlide?.visionCone).toBeUndefined();
     expect(movedPlayerInNewSlide?.connectLines.length).toBe(0);
+    expect(movedPlayerInNewSlide?.trajectory).toBeUndefined();
+    expect(newSlide.ball.trajectory).toBeUndefined();
   });
 
   it('addSlide with full mode / duplicateSlide clones all objects completely', () => {

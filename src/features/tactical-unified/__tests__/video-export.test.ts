@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
+import { ExportPreviewPlayer } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
   calculateBoundaryCrop,
   getSupportedH264Codec,
@@ -7,6 +10,7 @@ import {
 import {
   type AspectRatio,
   type BoundaryBox,
+  createDefaultSlide,
   ExportTargetSchema,
   type PitchTransform,
 } from '@/lib/types/tactical-unified';
@@ -184,4 +188,47 @@ describe('buildExportMVPMatrix for 4 Aspect Ratios', () => {
       }
     },
   );
+});
+
+describe('ExportPreviewPlayer controls', () => {
+  beforeEach(() => {
+    const mockCtx = new Proxy(
+      {
+        getImageData: () => ({ data: new Array(4) }),
+        createImageData: () => [],
+        getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+        measureText: () => ({ width: 0 }),
+        getLineDash: () => [],
+        isPointInPath: () => true,
+        createLinearGradient: () => ({ addColorStop: vi.fn() }),
+        createRadialGradient: () => ({ addColorStop: vi.fn() }),
+      } as Record<string, unknown>,
+      {
+        get: (target, prop: string) =>
+          prop in target ? target[prop] : vi.fn(),
+      },
+    );
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
+  });
+
+  const dummySlide = createDefaultSlide(0, 'slide-1');
+
+  it('初期状態は停止状態（Playボタン表示）であり、Playボタンクリックで再生に切り替わること', () => {
+    render(
+      React.createElement(ExportPreviewPlayer, {
+        slides: [dummySlide],
+        aspectRatio: '16:9',
+      }),
+    );
+
+    // 初期状態は停止中なので Play preview ボタンが存在する
+    const playButton = screen.getByRole('button', { name: 'Play preview' });
+    expect(playButton).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Pause preview' })).toBeNull();
+
+    // クリックで再生開始（Pause preview に変化）
+    fireEvent.click(playButton);
+    expect(screen.getByRole('button', { name: 'Pause preview' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Play preview' })).toBeNull();
+  });
 });

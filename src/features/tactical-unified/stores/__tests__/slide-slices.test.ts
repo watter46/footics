@@ -111,6 +111,22 @@ describe('slide-slices modular unit tests', () => {
         initialCount + 1,
       );
     });
+
+    it('setActiveSlide で背景が同一の場合は project 参照を維持する', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slide1Id = store.activeSlideId;
+      const slide2Id = store.addSlide(slide1Id, 'blank');
+
+      const stateBefore = useTacticalUnifiedStore.getState();
+      const projectBefore = stateBefore.project;
+
+      // slide2 から slide1 へ切り替え（どちらもデフォルト pitch 背景）
+      stateBefore.setActiveSlide(slide1Id);
+
+      const stateAfter = useTacticalUnifiedStore.getState();
+      expect(stateAfter.activeSlideId).toBe(slide1Id);
+      expect(stateAfter.project).toBe(projectBefore);
+    });
   });
 
   describe('ClipboardHelpers - Option Clearing on Clone', () => {

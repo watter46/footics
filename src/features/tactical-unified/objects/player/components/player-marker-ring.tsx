@@ -127,13 +127,16 @@ export function PlayerMarkerRing({
       {player.style.insideContent !== 'none' && player.shirtNo && (
         <Text
           x={-radius}
-          y={-radius * 0.35}
+          y={-radius * 1.1}
           width={radius * 2}
+          height={radius * 2}
           text={player.shirtNo}
           fontSize={radius * 0.75 * numScale}
           fill="#ffffff"
           align="center"
+          verticalAlign="middle"
           fontStyle="bold"
+          fontFamily='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           listening={false}
           perfectDrawEnabled={false}
         />

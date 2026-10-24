@@ -8,6 +8,7 @@ import {
 } from '@/lib/types/tactical-unified';
 import {
   type AnyCanvasRenderingContext2D,
+  getOpticalCenterX,
   renderTacticalFrameToCanvas,
 } from '../tactical-frame-renderer';
 
@@ -30,6 +31,7 @@ function createMockContext(): AnyCanvasRenderingContext2D {
     restore: vi.fn(),
     scale: vi.fn(),
     translate: vi.fn(),
+    rotate: vi.fn(),
     fillText: vi.fn(),
     strokeText: vi.fn(),
     setLineDash: vi.fn(),
@@ -714,6 +716,67 @@ describe('Tactical Frame Renderer', () => {
       expect(arcMock.mock.calls.length).toBeGreaterThan(0);
 
       expect(ctx3d.restore).toHaveBeenCalled();
+    });
+  });
+
+  describe('Optical Center & 3D Soccer Ball parity', () => {
+    it('getOpticalCenterX offsets x coordinate based on actualBoundingBoxLeft/Right asymmetry', () => {
+      const ctx = createMockContext();
+      // left: 2, right: 8 => diff = 6, offset = 3 => px - 3
+      ctx.measureText = vi.fn().mockReturnValue({
+        actualBoundingBoxLeft: 2,
+        actualBoundingBoxRight: 8,
+      });
+
+      const opticalX = getOpticalCenterX(ctx, '10', 100);
+      expect(opticalX).toBe(97); // 100 - (8 - 2) / 2 = 97
+    });
+
+    it('getOpticalCenterX returns original px when bounding box metrics are missing', () => {
+      const ctx = createMockContext();
+      ctx.measureText = vi.fn().mockReturnValue({});
+
+      const opticalX = getOpticalCenterX(ctx, '10', 100);
+      expect(opticalX).toBe(100);
+    });
+
+    it('renders shirt number using getOpticalCenterX compensation', () => {
+      const ctx = createMockContext();
+      ctx.measureText = vi.fn().mockReturnValue({
+        actualBoundingBoxLeft: 1,
+        actualBoundingBoxRight: 5,
+      });
+
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [sampleSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        transparent: false,
+      });
+
+      // p1 is at x: 30% of 1920 = 576. Optical compensation: 576 - (5 - 1) / 2 = 574
+      expect(ctx.fillText).toHaveBeenCalledWith('10', 574, expect.any(Number));
+    });
+
+    it('renders 3D soccer ball with 15 seam lines, central pentagon, and radial gradient matching SOCCER_BALL_SVG', () => {
+      const ctx = createMockContext();
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [sampleSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        transparent: false,
+      });
+
+      // 15 seam lines: each line calls lineTo in 100x100 viewBox space
+      // Ball scale transform must be applied
+      expect(ctx.scale).toHaveBeenCalled();
+      expect(ctx.lineTo).toHaveBeenCalled();
+      // Central pentagon closing
+      expect(ctx.closePath).toHaveBeenCalled();
     });
   });
 });

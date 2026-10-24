@@ -19,6 +19,10 @@ export function getBezierControlPoint(
   p1: Point2D,
   trajectory?: PlayerTrajectory,
 ): Point2D {
+  if (Math.hypot(p1.x - p0.x, p1.y - p0.y) < 0.1) {
+    return { x: p1.x, y: p1.y };
+  }
+
   if (!trajectory || trajectory.type === 'straight') {
     return {
       x: (p0.x + p1.x) / 2,
@@ -87,6 +91,10 @@ export function calculateBezierPoint(
   t: number,
   trajectory?: PlayerTrajectory,
 ): Point2D {
+  if (Math.hypot(p1.x - p0.x, p1.y - p0.y) < 0.1) {
+    return { x: p1.x, y: p1.y };
+  }
+
   const clampedT = Math.max(0, Math.min(1, t));
 
   if (!trajectory || trajectory.type === 'straight') {
