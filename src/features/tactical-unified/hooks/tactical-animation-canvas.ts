@@ -1,7 +1,12 @@
+import gsap from 'gsap';
 import { useMemo, useRef } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
+import {
+  calculateUnifiedTotalDuration,
+  getInterpolatedUnifiedSlideFrame,
+} from '@/lib/tactical/unified-interpolation';
+import type { Slide } from '@/lib/types/tactical-unified';
 import {
   batchDrawLayers,
   updateArrowNodes,
@@ -12,8 +17,7 @@ import {
 } from './animation-node-updater';
 
 export interface AnimationPlaybackRefs {
-  animationFrameRef: React.MutableRefObject<number | null>;
-  startTimestampRef: React.MutableRefObject<number | null>;
+  timelineRef: React.MutableRefObject<gsap.core.Timeline | null>;
   currentPlaybackTimeRef: React.MutableRefObject<number>;
   lastActiveSlideIndexRef: React.MutableRefObject<number>;
 }
@@ -24,16 +28,50 @@ export interface UseTacticalAnimationOptions {
   loop?: boolean;
 }
 
+export interface TacticalTimelineOptions {
+  loop?: boolean;
+  onComplete?: () => void;
+}
+
+export function createTacticalTimeline(
+  slides: Slide[],
+  onUpdate: (timeMs: number) => void,
+  options?: TacticalTimelineOptions,
+): gsap.core.Timeline {
+  const totalDurationMs = calculateUnifiedTotalDuration(slides);
+  const totalDurationSec = totalDurationMs / 1000;
+
+  const tl = gsap.timeline({
+    paused: true,
+    repeat: options?.loop ? -1 : 0,
+    onComplete: options?.onComplete,
+  });
+
+  if (totalDurationSec <= 0) {
+    return tl;
+  }
+
+  const proxy = { time: 0 };
+  tl.to(proxy, {
+    time: totalDurationMs,
+    duration: totalDurationSec,
+    ease: 'none',
+    onUpdate: () => {
+      onUpdate(proxy.time);
+    },
+  });
+
+  return tl;
+}
+
 export function useAnimationPlaybackRefs(): AnimationPlaybackRefs {
-  const animationFrameRef = useRef<number | null>(null);
-  const startTimestampRef = useRef<number | null>(null);
+  const timelineRef = useRef<gsap.core.Timeline | null>(null);
   const currentPlaybackTimeRef = useRef<number>(0);
   const lastActiveSlideIndexRef = useRef<number>(0);
 
   return useMemo(
     () => ({
-      animationFrameRef,
-      startTimestampRef,
+      timelineRef,
       currentPlaybackTimeRef,
       lastActiveSlideIndexRef,
     }),
@@ -163,11 +201,9 @@ export function stopPlayback({
   setIsPlaying: (playing: boolean) => void;
   setActiveSlide: (slideId: string) => void;
 }) {
-  if (refs.animationFrameRef.current) {
-    cancelAnimationFrame(refs.animationFrameRef.current);
-    refs.animationFrameRef.current = null;
+  if (refs.timelineRef.current) {
+    refs.timelineRef.current.pause(0);
   }
-  refs.startTimestampRef.current = null;
   refs.currentPlaybackTimeRef.current = 0;
   refs.lastActiveSlideIndexRef.current = 0;
   setIsPlaying(false);
@@ -187,107 +223,11 @@ export function stopPlayback({
   }
 }
 
-export interface RunAnimationLoopParams {
-  refs: AnimationPlaybackRefs;
-  totalDuration: number;
-  loop?: boolean;
-  registry: CanvasNodesRegistry | undefined;
-  pitchDimensions: { width: number; height: number; x?: number; y?: number };
-  applyFrameToCanvas: (
-    timeMs: number,
-    reg: CanvasNodesRegistry | undefined,
-    w: number,
-    h: number,
-    synchronous?: boolean,
-    offsetX?: number,
-    offsetY?: number,
-  ) => void;
-  setIsPlaying: (playing: boolean) => void;
-  onComplete?: () => void;
-}
-
-export function runAnimationLoop({
-  refs,
-  totalDuration,
-  loop,
-  registry,
-  pitchDimensions,
-  applyFrameToCanvas,
-  setIsPlaying,
-  onComplete,
-}: RunAnimationLoopParams) {
-  const {
-    width: pitchWidth,
-    height: pitchHeight,
-    x: offsetX = 0,
-    y: offsetY = 0,
-  } = pitchDimensions;
-
-  const animate = (timestamp: number) => {
-    if (!refs.startTimestampRef.current) {
-      refs.startTimestampRef.current =
-        timestamp - refs.currentPlaybackTimeRef.current;
-    }
-
-    const elapsed = timestamp - refs.startTimestampRef.current;
-    refs.currentPlaybackTimeRef.current = elapsed;
-
-    if (elapsed >= totalDuration) {
-      refs.currentPlaybackTimeRef.current = 0;
-      refs.startTimestampRef.current = null;
-
-      if (loop) {
-        applyFrameToCanvas(
-          0,
-          registry,
-          pitchWidth,
-          pitchHeight,
-          false,
-          offsetX,
-          offsetY,
-        );
-        refs.animationFrameRef.current = requestAnimationFrame(animate);
-        return;
-      }
-
-      setIsPlaying(false);
-      applyFrameToCanvas(
-        totalDuration,
-        registry,
-        pitchWidth,
-        pitchHeight,
-        false,
-        offsetX,
-        offsetY,
-      );
-      onComplete?.();
-      return;
-    }
-
-    applyFrameToCanvas(
-      elapsed,
-      registry,
-      pitchWidth,
-      pitchHeight,
-      false,
-      offsetX,
-      offsetY,
-    );
-    refs.animationFrameRef.current = requestAnimationFrame(animate);
-  };
-
-  refs.animationFrameRef.current = requestAnimationFrame(animate);
-}
-
 export function pausePlayback(
   refs: AnimationPlaybackRefs,
   setIsPlaying: (playing: boolean) => void,
 ) {
-  if (refs.animationFrameRef.current) {
-    cancelAnimationFrame(refs.animationFrameRef.current);
-    refs.animationFrameRef.current = null;
-  }
-  refs.startTimestampRef.current = null;
+  refs.timelineRef.current?.pause();
   setIsPlaying(false);
 }
 
@@ -314,13 +254,14 @@ export function seekPlayback({
     offsetY?: number,
   ) => void;
 }) {
-  refs.currentPlaybackTimeRef.current = Math.max(
-    0,
-    Math.min(totalDurationMs, timeMs),
-  );
-  refs.startTimestampRef.current = null;
+  const clampedTime = Math.max(0, Math.min(totalDurationMs, timeMs));
+  refs.currentPlaybackTimeRef.current = clampedTime;
+
+  if (refs.timelineRef.current) {
+    refs.timelineRef.current.seek(clampedTime / 1000, false);
+  }
   applyFrameToCanvas(
-    refs.currentPlaybackTimeRef.current,
+    clampedTime,
     registry,
     pitchDimensions.width,
     pitchDimensions.height,

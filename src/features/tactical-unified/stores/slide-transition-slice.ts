@@ -1,33 +1,16 @@
+import gsap from 'gsap';
 import type { StateCreator } from 'zustand';
+import { GSAP_EASE_MAP } from '@/lib/tactical/easing';
 import type { Slide } from '@/lib/types/tactical-unified';
 import { recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 
 export type EasingType = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
 
-export function easeInOutQuad(t: number): number {
-  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-}
-
-export function easeInQuad(t: number): number {
-  return t * t;
-}
-
-export function easeOutQuad(t: number): number {
-  return t * (2 - t);
-}
-
 export function getEasingFunction(easing?: string): (t: number) => number {
-  switch (easing) {
-    case 'ease-in':
-      return easeInQuad;
-    case 'ease-out':
-      return easeOutQuad;
-    case 'ease-in-out':
-      return easeInOutQuad;
-    default:
-      return (t) => t;
-  }
+  const mapped = (easing && GSAP_EASE_MAP[easing]) || easing || 'power1.inOut';
+  const easeFn = gsap.parseEase(mapped);
+  return (t: number) => easeFn(Math.max(0, Math.min(1, t)));
 }
 
 /**

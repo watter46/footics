@@ -1,3 +1,5 @@
+import gsap from 'gsap';
+
 export type EasingType =
   | 'linear'
   | 'easeInOut'
@@ -48,43 +50,26 @@ export const EASING_OPTIONS: EasingOption[] = [
   },
 ];
 
+export const GSAP_EASE_MAP: Record<string, string> = {
+  linear: 'none',
+  easeInOut: 'power1.inOut',
+  'ease-in-out': 'power1.inOut',
+  cubic: 'power2.inOut',
+  easeOut: 'power1.out',
+  'ease-out': 'power1.out',
+  easeIn: 'power1.in',
+  'ease-in': 'power1.in',
+};
+
 /**
- * 0.0〜1.0 の正規化時間 t にイージングを適用して補間値を返す
+ * 0.0〜1.0 の正規化時間 t に GSAP イージングを適用して補間値を返す
  */
 export function applyEasing(
   t: number,
   type: EasingType | string = 'ease-in-out',
 ): number {
   const clamped = Math.max(0, Math.min(1, t));
-
-  switch (type) {
-    case 'linear':
-      return clamped;
-
-    case 'easeInOut':
-    case 'ease-in-out':
-      // easeInOutQuad: 滑らかで自然
-      return clamped < 0.5
-        ? 2 * clamped * clamped
-        : 1 - (-2 * clamped + 2) ** 2 / 2;
-
-    case 'cubic':
-      // easeInOutCubic: 強めの加減速
-      return clamped < 0.5
-        ? 4 * clamped * clamped * clamped
-        : 1 - (-2 * clamped + 2) ** 3 / 2;
-
-    case 'easeOut':
-    case 'ease-out':
-      // easeOutQuad: 最初が速く、徐々に止まる
-      return 1 - (1 - clamped) * (1 - clamped);
-
-    case 'easeIn':
-    case 'ease-in':
-      // easeInQuad: 最初が遅く、徐々に加速
-      return clamped * clamped;
-
-    default:
-      return clamped;
-  }
+  const gsapEaseName = GSAP_EASE_MAP[type] ?? type ?? 'power1.inOut';
+  const easeFn = gsap.parseEase(gsapEaseName);
+  return easeFn(clamped);
 }

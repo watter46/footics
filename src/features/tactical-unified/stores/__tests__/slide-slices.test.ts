@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   calculateSlideTransitionProgress,
-  easeInOutQuad,
-  easeInQuad,
-  easeOutQuad,
+  getEasingFunction,
 } from '../slide-transition-slice';
 import { useTacticalUnifiedStore } from '../tactical-unified-store';
 
@@ -45,17 +43,20 @@ describe('slide-slices modular unit tests', () => {
 
   describe('SlideTransitionSlice', () => {
     it('イージング計算と進捗計算が正しく算出される', () => {
-      expect(easeInQuad(0)).toBe(0);
-      expect(easeInQuad(0.5)).toBe(0.25);
-      expect(easeInQuad(1)).toBe(1);
+      const easeIn = getEasingFunction('ease-in');
+      expect(easeIn(0)).toBe(0);
+      expect(easeIn(0.5)).toBeCloseTo(0.25, 2);
+      expect(easeIn(1)).toBe(1);
 
-      expect(easeOutQuad(0)).toBe(0);
-      expect(easeOutQuad(0.5)).toBe(0.75);
-      expect(easeOutQuad(1)).toBe(1);
+      const easeOut = getEasingFunction('ease-out');
+      expect(easeOut(0)).toBe(0);
+      expect(easeOut(0.5)).toBeCloseTo(0.75, 2);
+      expect(easeOut(1)).toBe(1);
 
-      expect(easeInOutQuad(0)).toBe(0);
-      expect(easeInOutQuad(0.5)).toBe(0.5);
-      expect(easeInOutQuad(1)).toBe(1);
+      const easeInOut = getEasingFunction('ease-in-out');
+      expect(easeInOut(0)).toBe(0);
+      expect(easeInOut(0.5)).toBeCloseTo(0.5, 2);
+      expect(easeInOut(1)).toBe(1);
 
       // 進捗計算
       expect(calculateSlideTransitionProgress(0, 1000, 'linear')).toBe(0);

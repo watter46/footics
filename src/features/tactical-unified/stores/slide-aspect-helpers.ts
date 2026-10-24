@@ -270,8 +270,3 @@ export function interpolateSlide(
     ),
   };
 }
-
-export {
-  type UsePitchTransitionOptions,
-  usePitchTransition,
-} from './slide-transition-helpers';

@@ -8,9 +8,9 @@ import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tact
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 import {
   calculatePitchDimensions,
+  createTacticalTimeline,
   pausePlayback,
   renderFrameToCanvas,
-  runAnimationLoop,
   seekPlayback,
   stopPlayback,
   type UseTacticalAnimationOptions,
@@ -66,17 +66,39 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
         return;
       }
       setIsPlaying(true);
-      refs.startTimestampRef.current = null;
-      runAnimationLoop({
-        refs,
-        totalDuration: calculateUnifiedTotalDuration(currentSlides),
-        loop: options?.loop,
-        registry: options?.nodesRegistryRef?.current,
-        pitchDimensions: getPitchDimensions(),
-        applyFrameToCanvas,
-        setIsPlaying,
-        onComplete,
-      });
+      const dims = getPitchDimensions();
+
+      refs.timelineRef.current?.kill();
+      const tl = createTacticalTimeline(
+        currentSlides,
+        (timeMs) => {
+          refs.currentPlaybackTimeRef.current = timeMs;
+          applyFrameToCanvas(
+            timeMs,
+            options?.nodesRegistryRef?.current,
+            dims.width,
+            dims.height,
+            false,
+            dims.x,
+            dims.y,
+          );
+        },
+        {
+          loop: options?.loop,
+          onComplete: () => {
+            if (!options?.loop) {
+              setIsPlaying(false);
+              onComplete?.();
+            }
+          },
+        },
+      );
+      refs.timelineRef.current = tl;
+
+      if (refs.currentPlaybackTimeRef.current > 0) {
+        tl.time(refs.currentPlaybackTimeRef.current / 1000);
+      }
+      tl.play();
     },
     [
       applyFrameToCanvas,
@@ -102,6 +124,8 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
       setIsPlaying,
       setActiveSlide,
     });
+    refs.timelineRef.current?.kill();
+    refs.timelineRef.current = null;
   }, [
     refs,
     options?.nodesRegistryRef,
@@ -133,11 +157,10 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
 
   useEffect(() => {
     return () => {
-      if (refs.animationFrameRef.current) {
-        cancelAnimationFrame(refs.animationFrameRef.current);
-      }
+      refs.timelineRef.current?.kill();
+      refs.timelineRef.current = null;
     };
-  }, [refs.animationFrameRef]);
+  }, [refs.timelineRef]);
 
   return {
     playAnimation,
