@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { exportPngBlob } from '@/features/tactical-unified/hooks/konva-export-helpers';
 import type { Slide } from '@/lib/types/tactical-unified';
 import {
   type AnyCanvasRenderingContext2D,
@@ -9,20 +10,98 @@ import {
   createVideoExportWorker,
   exportTacticalVideo,
   exportVideoDirect,
+  exportVideoWithMediabunny,
   getSupportedH264Codec,
   getSupportedH264EncoderConfig,
   getSupportedVP9Codec,
   getSupportedVP9EncoderConfig,
 } from '../export/video-export-engine';
-import {
-  calculateWorkerBoundaryCrop,
-  executeOffThreadVideoExport,
-  getWorkerH264EncoderConfig,
-  getWorkerVP9EncoderConfig,
-} from '../export/video-export-worker';
 
-describe('video-export-engine & worker pipeline', () => {
-  describe('calculateBoundaryCrop & calculateWorkerBoundaryCrop', () => {
+vi.mock('mediabunny', () => {
+  class MockBufferTarget {
+    buffer: ArrayBuffer | null = null;
+  }
+
+  class MockOutput {
+    options: any;
+    tracks: any[] = [];
+    state = 'pending';
+
+    constructor(options: any) {
+      this.options = options;
+    }
+
+    addVideoTrack(track: any) {
+      this.tracks.push(track);
+      return track;
+    }
+
+    async start() {
+      this.state = 'started';
+      return Promise.resolve();
+    }
+
+    async finalize() {
+      this.state = 'finalized';
+      this.options.target.buffer = new Uint8Array([0, 1, 2, 3]).buffer;
+      return Promise.resolve();
+    }
+
+    async cancel() {
+      this.state = 'canceled';
+      return Promise.resolve();
+    }
+  }
+
+  class MockCanvasSource {
+    canvas: any;
+    config: any;
+    frames: Array<{ timestamp: number; duration?: number }> = [];
+
+    constructor(canvas: any, config: any) {
+      this.canvas = canvas;
+      this.config = config;
+    }
+
+    async add(timestamp: number, duration?: number) {
+      this.frames.push({ timestamp, duration });
+      return Promise.resolve();
+    }
+  }
+
+  class MockMp4OutputFormat {}
+  class MockWebMOutputFormat {}
+
+  return {
+    BufferTarget: MockBufferTarget,
+    Output: MockOutput,
+    CanvasSource: MockCanvasSource,
+    Mp4OutputFormat: MockMp4OutputFormat,
+    WebMOutputFormat: MockWebMOutputFormat,
+  };
+});
+
+describe('video-export-engine & pipeline', () => {
+  beforeEach(() => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () => {
+        return createMockCanvasContext() as unknown as RenderingContext;
+      },
+    );
+    if (typeof OffscreenCanvas !== 'undefined') {
+      vi.spyOn(OffscreenCanvas.prototype, 'getContext').mockImplementation(
+        () => {
+          return createMockCanvasContext() as unknown as OffscreenCanvasRenderingContext2D;
+        },
+      );
+    }
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('calculateBoundaryCrop', () => {
     it('returns full stage dimensions snapped to even numbers when boundary box is disabled', () => {
       const crop = calculateBoundaryCrop(null, 2560, 1440, 1);
       expect(crop.isCropped).toBe(false);
@@ -30,10 +109,6 @@ describe('video-export-engine & worker pipeline', () => {
       expect(crop.exportHeight).toBe(1440);
       expect(crop.exportWidth % 2).toBe(0);
       expect(crop.exportHeight % 2).toBe(0);
-
-      const workerCrop = calculateWorkerBoundaryCrop(null, 2560, 1440, 1);
-      expect(workerCrop.exportWidth).toBe(2560);
-      expect(workerCrop.exportHeight).toBe(1440);
     });
 
     it('calculates cropped dimensions and snaps odd numbers to even integers', () => {
@@ -55,21 +130,6 @@ describe('video-export-engine & worker pipeline', () => {
       expect(crop.exportWidth % 2).toBe(0);
       expect(crop.exportHeight % 2).toBe(0);
       expect(crop.exportHeight).toBe(480);
-
-      const workerCrop = calculateWorkerBoundaryCrop(
-        {
-          enabled: true,
-          x: 10,
-          y: 20,
-          width: 50,
-          height: 33,
-        },
-        2560,
-        1441,
-        1,
-      );
-      expect(workerCrop.exportHeight).toBe(480);
-      expect(workerCrop.isCropped).toBe(true);
     });
 
     it('enforces minimum dimension safeguard of 64px even', () => {
@@ -90,7 +150,7 @@ describe('video-export-engine & worker pipeline', () => {
     });
   });
 
-  describe('getSupportedH264EncoderConfig & getWorkerH264EncoderConfig', () => {
+  describe('getSupportedH264EncoderConfig', () => {
     it('returns null in non-browser or non-WebCodecs environment', async () => {
       const config = await getSupportedH264EncoderConfig(
         1920,
@@ -127,16 +187,6 @@ describe('video-export-engine & worker pipeline', () => {
       expect(result?.latencyMode).toBe('quality');
       expect(result?.bitrateMode).toBe('variable');
 
-      const workerResult = await getWorkerH264EncoderConfig(
-        1920,
-        1080,
-        60,
-        16_000_000,
-      );
-      expect(workerResult).not.toBeNull();
-      expect(workerResult?.hardwareAcceleration).toBe('prefer-hardware');
-      expect(workerResult?.latencyMode).toBe('realtime');
-
       delete (globalThis as unknown as { VideoEncoder?: unknown }).VideoEncoder;
     });
 
@@ -146,7 +196,7 @@ describe('video-export-engine & worker pipeline', () => {
     });
   });
 
-  describe('getSupportedVP9EncoderConfig & getWorkerVP9EncoderConfig', () => {
+  describe('getSupportedVP9EncoderConfig', () => {
     it('returns null when VideoEncoder is not available', async () => {
       delete (globalThis as any).VideoEncoder;
       const config = await getSupportedVP9EncoderConfig(
@@ -185,15 +235,6 @@ describe('video-export-engine & worker pipeline', () => {
       expect(result?.alpha).toBe('keep');
       expect(result?.hardwareAcceleration).toBe('prefer-hardware');
 
-      const workerResult = await getWorkerVP9EncoderConfig(
-        1920,
-        1080,
-        60,
-        16_000_000,
-        true,
-      );
-      expect(workerResult?.alpha).toBe('keep');
-
       delete (globalThis as unknown as { VideoEncoder?: unknown }).VideoEncoder;
     });
 
@@ -206,325 +247,6 @@ describe('video-export-engine & worker pipeline', () => {
         true,
       );
       expect(codec).toBe('vp09.00.10.08');
-    });
-  });
-
-  describe('executeOffThreadVideoExport', () => {
-    const mockSlide: Slide = {
-      id: 'slide-1',
-      index: 0,
-      transitionDurationMs: 1000,
-      pauseMs: 500,
-      easing: 'ease-in-out',
-      players: [
-        {
-          id: 'p-1',
-          name: 'Palmer',
-          shirtNo: '20',
-          team: 'home',
-          area: 'pitch',
-          x: 45,
-          y: 40,
-          style: {
-            markerType: 'circle',
-            insideContent: 'number',
-            bottomLabel: 'name',
-            color: '#2563eb',
-            strokeColor: '#ffffff',
-            strokeWidth: 2,
-            sizeScale: 1,
-            numberSizeScale: 1,
-            labelSizeScale: 1,
-          },
-          connectLines: [],
-          badges: [],
-        },
-      ],
-      ball: {
-        x: 46,
-        y: 41,
-        visible: true,
-      },
-      arrows: [],
-      zones: [],
-      texts: [],
-    };
-
-    class MockEncodedVideoChunk {
-      type: EncodedVideoChunkType;
-      timestamp: number;
-      duration?: number;
-      byteLength: number;
-      data: Uint8Array;
-
-      constructor(init: {
-        type: EncodedVideoChunkType;
-        timestamp: number;
-        duration?: number;
-        data: BufferSource;
-      }) {
-        this.type = init.type;
-        this.timestamp = init.timestamp;
-        this.duration = init.duration;
-        this.data = new Uint8Array(init.data as ArrayBuffer);
-        this.byteLength = this.data.byteLength;
-      }
-
-      copyTo(dest: BufferSource) {
-        new Uint8Array(dest as ArrayBuffer).set(this.data);
-      }
-    }
-
-    it('successfully renders and muxes MP4 video off-thread with mock WebCodecs', async () => {
-      let encodedFramesCount = 0;
-
-      class MockVideoEncoder {
-        state: CodecState = 'unconfigured';
-        encodeQueueSize = 0;
-        outputCallback: (chunk: unknown, meta?: unknown) => void;
-        errorCallback: (e: Error) => void;
-
-        constructor(init: {
-          output: (chunk: unknown, meta?: unknown) => void;
-          error: (e: Error) => void;
-        }) {
-          this.outputCallback = init.output;
-          this.errorCallback = init.error;
-        }
-
-        static isConfigSupported = vi.fn().mockResolvedValue({
-          supported: true,
-          config: {
-            codec: 'avc1.4d002a',
-            width: 1920,
-            height: 1080,
-            hardwareAcceleration: 'prefer-hardware',
-          },
-        });
-
-        configure() {
-          this.state = 'configured';
-        }
-
-        encode() {
-          encodedFramesCount++;
-          const dummyData = new Uint8Array(1024).fill(1);
-          const chunk = new MockEncodedVideoChunk({
-            type: 'key',
-            timestamp: 0,
-            duration: 16666,
-            data: dummyData.buffer,
-          });
-
-          this.outputCallback(chunk, {
-            decoderConfig: {
-              codec: 'avc1.4d002a',
-              description: new Uint8Array([0, 1, 2, 3]),
-            },
-          });
-        }
-
-        async flush() {
-          return Promise.resolve();
-        }
-
-        close() {
-          this.state = 'closed';
-        }
-      }
-
-      class MockVideoFrame {
-        timestamp: number;
-        duration: number;
-        constructor(
-          _source: unknown,
-          init: { timestamp: number; duration: number },
-        ) {
-          this.timestamp = init.timestamp;
-          this.duration = init.duration;
-        }
-        close() {}
-      }
-
-      class MockOffscreenCanvas {
-        width: number;
-        height: number;
-        constructor(width: number, height: number) {
-          this.width = width;
-          this.height = height;
-        }
-        getContext() {
-          return createMockCanvasContext();
-        }
-      }
-
-      (
-        globalThis as unknown as { EncodedVideoChunk: unknown }
-      ).EncodedVideoChunk = MockEncodedVideoChunk;
-      (globalThis as unknown as { VideoEncoder: unknown }).VideoEncoder =
-        MockVideoEncoder;
-      (globalThis as unknown as { VideoFrame: unknown }).VideoFrame =
-        MockVideoFrame;
-      (globalThis as unknown as { OffscreenCanvas: unknown }).OffscreenCanvas =
-        MockOffscreenCanvas;
-
-      const progressEvents: number[] = [];
-      const _chunks: any[] = [];
-      const result = await executeOffThreadVideoExport(
-        {
-          id: 'test-exp-1',
-          type: 'START_EXPORT',
-          format: 'mp4',
-          fps: 30,
-          scale: 1,
-          quality: 'high',
-          totalDurationMs: 500, // ~15 frames
-          stageWidth: 1920,
-          stageHeight: 1080,
-          slides: [mockSlide],
-          aspectRatio: '16:9',
-        },
-        (p) => progressEvents.push(p.percent),
-      );
-
-      expect(result).toBeDefined();
-      expect(result.mimeType).toBe('video/mp4');
-      expect(result.buffer).toBeInstanceOf(ArrayBuffer);
-      expect(encodedFramesCount).toBeGreaterThan(0);
-      expect(progressEvents.length).toBeGreaterThan(0);
-
-      delete (globalThis as unknown as { EncodedVideoChunk?: unknown })
-        .EncodedVideoChunk;
-      delete (globalThis as unknown as { VideoEncoder?: unknown }).VideoEncoder;
-      delete (globalThis as unknown as { VideoFrame?: unknown }).VideoFrame;
-      delete (globalThis as unknown as { OffscreenCanvas?: unknown })
-        .OffscreenCanvas;
-    });
-
-    it('successfully renders and muxes VP9 WebM with transparency off-thread', async () => {
-      let encodedFramesCount = 0;
-
-      class MockVideoEncoder {
-        state: CodecState = 'unconfigured';
-        encodeQueueSize = 0;
-        outputCallback: (chunk: unknown, meta?: unknown) => void;
-        errorCallback: (e: Error) => void;
-
-        constructor(init: {
-          output: (chunk: unknown, meta?: unknown) => void;
-          error: (e: Error) => void;
-        }) {
-          this.outputCallback = init.output;
-          this.errorCallback = init.error;
-        }
-
-        static isConfigSupported = vi.fn().mockResolvedValue({
-          supported: true,
-          config: {
-            codec: 'vp09.00.10.08',
-            width: 1920,
-            height: 1080,
-            alpha: 'keep',
-            hardwareAcceleration: 'prefer-hardware',
-          },
-        });
-
-        configure() {
-          this.state = 'configured';
-        }
-
-        encode() {
-          encodedFramesCount++;
-          const dummyData = new Uint8Array(1024).fill(1);
-          const chunk = new MockEncodedVideoChunk({
-            type: 'key',
-            timestamp: 0,
-            duration: 16666,
-            data: dummyData.buffer,
-          });
-
-          this.outputCallback(chunk, {
-            decoderConfig: {
-              codec: 'vp09.00.10.08',
-            },
-          });
-        }
-
-        async flush() {
-          return Promise.resolve();
-        }
-
-        close() {
-          this.state = 'closed';
-        }
-      }
-
-      class MockVideoFrame {
-        timestamp: number;
-        duration: number;
-        constructor(
-          _source: unknown,
-          init: { timestamp: number; duration: number },
-        ) {
-          this.timestamp = init.timestamp;
-          this.duration = init.duration;
-        }
-        close() {}
-      }
-
-      class MockOffscreenCanvas {
-        width: number;
-        height: number;
-        constructor(width: number, height: number) {
-          this.width = width;
-          this.height = height;
-        }
-        getContext() {
-          return createMockCanvasContext();
-        }
-      }
-
-      (
-        globalThis as unknown as { EncodedVideoChunk: unknown }
-      ).EncodedVideoChunk = MockEncodedVideoChunk;
-      (globalThis as unknown as { VideoEncoder: unknown }).VideoEncoder =
-        MockVideoEncoder;
-      (globalThis as unknown as { VideoFrame: unknown }).VideoFrame =
-        MockVideoFrame;
-      (globalThis as unknown as { OffscreenCanvas: unknown }).OffscreenCanvas =
-        MockOffscreenCanvas;
-
-      const progressEvents: number[] = [];
-      const _chunks: any[] = [];
-      const result = await executeOffThreadVideoExport(
-        {
-          id: 'test-exp-2',
-          type: 'START_EXPORT',
-          format: 'webm',
-          fps: 30,
-          scale: 1,
-          quality: 'high',
-          transparent: true,
-          totalDurationMs: 500,
-          stageWidth: 1920,
-          stageHeight: 1080,
-          slides: [mockSlide],
-          aspectRatio: '16:9',
-        },
-        (p) => progressEvents.push(p.percent),
-      );
-
-      expect(result).toBeDefined();
-      expect(result.mimeType).toBe('video/webm');
-      expect(result.buffer).toBeInstanceOf(ArrayBuffer);
-      expect(encodedFramesCount).toBeGreaterThan(0);
-
-      delete (globalThis as unknown as { EncodedVideoChunk?: unknown })
-        .EncodedVideoChunk;
-      delete (globalThis as unknown as { VideoEncoder?: unknown }).VideoEncoder;
-      delete (globalThis as unknown as { VideoFrame?: unknown }).VideoFrame;
-      delete (globalThis as unknown as { OffscreenCanvas?: unknown })
-        .OffscreenCanvas;
     });
   });
 
@@ -648,181 +370,32 @@ describe('video-export-engine & worker pipeline', () => {
           },
           transparent: true,
         });
-        expect(transparentCtx.clearRect).toHaveBeenCalledWith(0, 0, 1080, 1920);
-      });
+      }).not.toThrow();
+      expect(transparentCtx.clearRect).toHaveBeenCalledWith(0, 0, 1080, 1920);
     });
 
-    describe('AAWU 3-5-TURBO: Direct Turbo Engine & Robust Worker Pipeline', () => {
-      const mockSlide: Slide = {
+    describe('Mediabunny Pipeline & Backward Compatibility', () => {
+      const mockSlideItem: Slide = {
         id: 'slide-1',
         index: 0,
         transitionDurationMs: 1000,
         pauseMs: 500,
         easing: 'ease-in-out',
-        players: [
-          {
-            id: 'p-1',
-            name: 'Palmer',
-            shirtNo: '20',
-            team: 'home',
-            area: 'pitch',
-            x: 45,
-            y: 40,
-            style: {
-              markerType: 'circle',
-              insideContent: 'number',
-              bottomLabel: 'name',
-              color: '#2563eb',
-              strokeColor: '#ffffff',
-              strokeWidth: 2,
-              sizeScale: 1,
-              numberSizeScale: 1,
-              labelSizeScale: 1,
-            },
-            connectLines: [],
-            badges: [],
-          },
-        ],
-        ball: {
-          x: 46,
-          y: 41,
-          visible: true,
-        },
+        players: [],
+        ball: { x: 46, y: 41, visible: true },
         arrows: [],
         zones: [],
         texts: [],
       };
 
       describe('createVideoExportWorker', () => {
-        it('returns null safely in non-browser environment without throwing', () => {
+        it('returns null safely without throwing', () => {
           const worker = createVideoExportWorker();
           expect(worker).toBeNull();
-        });
-
-        it('returns null safely if Worker constructor throws', () => {
-          (globalThis as unknown as { window: unknown }).window = {};
-          (globalThis as unknown as { Worker: unknown }).Worker = vi
-            .fn()
-            .mockImplementation(() => {
-              throw new Error(
-                'Worker creation denied by CSP or bundler path failure',
-              );
-            });
-
-          const worker = createVideoExportWorker();
-          expect(worker).toBeNull();
-
-          delete (globalThis as unknown as { window?: unknown }).window;
-          delete (globalThis as unknown as { Worker?: unknown }).Worker;
         });
       });
 
       describe('exportVideoDirect', () => {
-        class MockEncodedVideoChunk {
-          type: EncodedVideoChunkType;
-          timestamp: number;
-          duration?: number;
-          byteLength: number;
-          data: Uint8Array;
-
-          constructor(init: {
-            type: EncodedVideoChunkType;
-            timestamp: number;
-            duration?: number;
-            data: BufferSource;
-          }) {
-            this.type = init.type;
-            this.timestamp = init.timestamp;
-            this.duration = init.duration;
-            this.data = new Uint8Array(init.data as ArrayBuffer);
-            this.byteLength = this.data.byteLength;
-          }
-
-          copyTo(dest: BufferSource) {
-            new Uint8Array(dest as ArrayBuffer).set(this.data);
-          }
-        }
-
-        class MockVideoEncoder {
-          state: CodecState = 'unconfigured';
-          encodeQueueSize = 0;
-          ondequeue: (() => void) | null = null;
-          outputCallback: (chunk: unknown, meta?: unknown) => void;
-          errorCallback: (e: Error) => void;
-
-          constructor(init: {
-            output: (chunk: unknown, meta?: unknown) => void;
-            error: (e: Error) => void;
-          }) {
-            this.outputCallback = init.output;
-            this.errorCallback = init.error;
-          }
-
-          static isConfigSupported = vi.fn().mockResolvedValue({
-            supported: true,
-            config: {
-              codec: 'avc1.4d002a',
-              width: 1920,
-              height: 1080,
-              hardwareAcceleration: 'prefer-hardware',
-            },
-          });
-
-          configure() {
-            this.state = 'configured';
-          }
-
-          encode() {
-            const dummyData = new Uint8Array(1024).fill(1);
-            const chunk = new MockEncodedVideoChunk({
-              type: 'key',
-              timestamp: 0,
-              duration: 16666,
-              data: dummyData.buffer,
-            });
-
-            this.outputCallback(chunk, {
-              decoderConfig: {
-                codec: 'avc1.4d002a',
-                description: new Uint8Array([0, 1, 2, 3]),
-              },
-            });
-          }
-
-          async flush() {
-            return Promise.resolve();
-          }
-
-          close() {
-            this.state = 'closed';
-          }
-        }
-
-        class MockVideoFrame {
-          timestamp: number;
-          duration: number;
-          constructor(
-            _source: unknown,
-            init: { timestamp: number; duration: number },
-          ) {
-            this.timestamp = init.timestamp;
-            this.duration = init.duration;
-          }
-          close() {}
-        }
-
-        class MockOffscreenCanvas {
-          width: number;
-          height: number;
-          constructor(width: number, height: number) {
-            this.width = width;
-            this.height = height;
-          }
-          getContext() {
-            return createMockCanvasContext();
-          }
-        }
-
         it('throws error when slides are empty in exportVideoDirect', async () => {
           await expect(
             exportVideoDirect({
@@ -838,232 +411,8 @@ describe('video-export-engine & worker pipeline', () => {
           );
         });
 
-        it('executes direct WebCodecs pipeline with zero-wait async yielding and generates MP4 Blob', async () => {
-          class MockWorker {
-            onmessage: any;
-            onerror: any;
-            postMessage(msg: any) {
-              if (msg.type === 'START_EXPORT') {
-                setTimeout(() => {
-                  this.onmessage?.({
-                    data: {
-                      id: msg.id,
-                      type: 'PROGRESS',
-                      progress: {
-                        percent: 50,
-                        stage: 'rendering',
-                        message: 'test',
-                      },
-                    },
-                  });
-                  this.onmessage?.({
-                    data: {
-                      id: msg.id,
-                      type: 'CHUNK_DATA',
-                      chunkType: 'key',
-                      timestamp: 0,
-                      duration: 33333,
-                      buffer: new ArrayBuffer(0),
-                      decoderConfig: {
-                        codec: 'avc1.64002a',
-                        description: new Uint8Array([
-                          1, 100, 0, 42, 255, 225, 0, 30, 103, 100, 0, 42, 172,
-                          217, 64, 120, 2, 39, 229, 132, 0, 0, 3, 0, 4, 0, 0, 3,
-                          0, 240, 60, 96, 198, 88, 1, 0, 5, 104, 235, 227, 203,
-                          34, 192,
-                        ]).buffer,
-                        codedWidth: 1920,
-                        codedHeight: 1080,
-                        displayAspectWidth: 1920,
-                        displayAspectHeight: 1080,
-                        colorSpace: {
-                          primaries: 'bt709',
-                          transfer: 'bt709',
-                          matrix: 'bt709',
-                          fullRange: false,
-                        },
-                      },
-                    },
-                  });
-                  setTimeout(() => {
-                    this.onmessage?.({
-                      data: {
-                        id: msg.id,
-                        type: 'SUCCESS',
-                        mimeType: 'video/mp4',
-                      },
-                    });
-                  }, 10);
-                }, 150);
-              }
-            }
-            terminate() {}
-          }
-          (globalThis as any).Worker = MockWorker;
-
-          (
-            globalThis as unknown as { EncodedVideoChunk: unknown }
-          ).EncodedVideoChunk = MockEncodedVideoChunk;
-          (globalThis as unknown as { VideoEncoder: unknown }).VideoEncoder =
-            MockVideoEncoder;
-          (globalThis as unknown as { VideoFrame: unknown }).VideoFrame =
-            MockVideoFrame;
-          (
-            globalThis as unknown as { OffscreenCanvas: unknown }
-          ).OffscreenCanvas = MockOffscreenCanvas;
-
+        it('executes direct Mediabunny pipeline and generates MP4 Blob', async () => {
           const progressEvents: number[] = [];
-          const blob = await exportVideoDirect({
-            format: 'mp4',
-            fps: 30,
-            scale: 1,
-            quality: 'high',
-            totalDurationMs: 500,
-            stageWidth: 1920,
-            stageHeight: 1080,
-            slides: [mockSlide],
-            aspectRatio: '16:9',
-            onProgress: (p) => progressEvents.push(p.percent),
-          });
-
-          expect(blob).toBeInstanceOf(Blob);
-          expect(blob.type).toBe('video/mp4');
-          expect(progressEvents.length).toBeGreaterThan(0);
-
-          delete (globalThis as unknown as { EncodedVideoChunk?: unknown })
-            .EncodedVideoChunk;
-          delete (globalThis as unknown as { VideoEncoder?: unknown })
-            .VideoEncoder;
-          delete (globalThis as unknown as { VideoFrame?: unknown }).VideoFrame;
-          delete (globalThis as unknown as { OffscreenCanvas?: unknown })
-            .OffscreenCanvas;
-        });
-
-        it('exportTacticalVideo falls back smoothly to Direct Turbo Engine when Worker is unavailable', async () => {
-          (globalThis as unknown as { window: unknown }).window = {
-            VideoEncoder: MockVideoEncoder,
-          };
-          (
-            globalThis as unknown as { EncodedVideoChunk: unknown }
-          ).EncodedVideoChunk = MockEncodedVideoChunk;
-          (globalThis as unknown as { VideoEncoder: unknown }).VideoEncoder =
-            MockVideoEncoder;
-          (globalThis as unknown as { VideoFrame: unknown }).VideoFrame =
-            MockVideoFrame;
-          (
-            globalThis as unknown as { OffscreenCanvas: unknown }
-          ).OffscreenCanvas = MockOffscreenCanvas;
-
-          const blob = await exportTacticalVideo({
-            format: 'mp4',
-            fps: 30,
-            scale: 1,
-            quality: 'high',
-            totalDurationMs: 500,
-            stageWidth: 1920,
-            stageHeight: 1080,
-            slides: [mockSlide],
-            aspectRatio: '16:9',
-          });
-
-          expect(blob).toBeInstanceOf(Blob);
-          expect(blob.type).toBe('video/mp4');
-
-          delete (globalThis as unknown as { window?: unknown }).window;
-          delete (globalThis as unknown as { EncodedVideoChunk?: unknown })
-            .EncodedVideoChunk;
-          delete (globalThis as unknown as { VideoEncoder?: unknown })
-            .VideoEncoder;
-          delete (globalThis as unknown as { VideoFrame?: unknown }).VideoFrame;
-          delete (globalThis as unknown as { OffscreenCanvas?: unknown })
-            .OffscreenCanvas;
-        });
-
-        it('handles backpressure when encodeQueueSize exceeds high watermark and resumes via ondequeue', async () => {
-          class MockWorker {
-            onmessage: any;
-            onerror: any;
-            postMessage(msg: any) {
-              if (msg.type === 'START_EXPORT') {
-                setTimeout(() => {
-                  this.onmessage?.({
-                    data: {
-                      id: msg.id,
-                      type: 'PROGRESS',
-                      progress: {
-                        percent: 50,
-                        stage: 'rendering',
-                        message: 'test',
-                      },
-                    },
-                  });
-                  this.onmessage?.({
-                    data: {
-                      id: msg.id,
-                      type: 'CHUNK_DATA',
-                      chunkType: 'key',
-                      timestamp: 0,
-                      duration: 33333,
-                      buffer: new ArrayBuffer(0),
-                      decoderConfig: {
-                        codec: 'avc1.64002a',
-                        description: new Uint8Array([
-                          1, 100, 0, 42, 255, 225, 0, 30, 103, 100, 0, 42, 172,
-                          217, 64, 120, 2, 39, 229, 132, 0, 0, 3, 0, 4, 0, 0, 3,
-                          0, 240, 60, 96, 198, 88, 1, 0, 5, 104, 235, 227, 203,
-                          34, 192,
-                        ]).buffer,
-                        codedWidth: 1920,
-                        codedHeight: 1080,
-                        displayAspectWidth: 1920,
-                        displayAspectHeight: 1080,
-                        colorSpace: {
-                          primaries: 'bt709',
-                          transfer: 'bt709',
-                          matrix: 'bt709',
-                          fullRange: false,
-                        },
-                      },
-                    },
-                  });
-                  setTimeout(() => {
-                    this.onmessage?.({
-                      data: {
-                        id: msg.id,
-                        type: 'SUCCESS',
-                        mimeType: 'video/mp4',
-                      },
-                    });
-                  }, 10);
-                }, 150);
-              }
-            }
-            terminate() {}
-          }
-          (globalThis as any).Worker = MockWorker;
-
-          class MockQueuedVideoEncoder extends MockVideoEncoder {
-            override encode() {
-              super.encode();
-              this.encodeQueueSize = 35; // Trigger MAX_QUEUE_SIZE (30)
-              setTimeout(() => {
-                this.encodeQueueSize = 10; // Under LOW_QUEUE_SIZE (15)
-                this.ondequeue?.();
-              }, 10);
-            }
-          }
-
-          (
-            globalThis as unknown as { EncodedVideoChunk: unknown }
-          ).EncodedVideoChunk = MockEncodedVideoChunk;
-          (globalThis as unknown as { VideoEncoder: unknown }).VideoEncoder =
-            MockQueuedVideoEncoder;
-          (globalThis as unknown as { VideoFrame: unknown }).VideoFrame =
-            MockVideoFrame;
-          (
-            globalThis as unknown as { OffscreenCanvas: unknown }
-          ).OffscreenCanvas = MockOffscreenCanvas;
-
           const blob = await exportVideoDirect({
             format: 'mp4',
             fps: 30,
@@ -1072,96 +421,34 @@ describe('video-export-engine & worker pipeline', () => {
             totalDurationMs: 300,
             stageWidth: 1920,
             stageHeight: 1080,
-            slides: [mockSlide],
+            slides: [mockSlideItem],
+            aspectRatio: '16:9',
+            onProgress: (p) => progressEvents.push(p.percent),
+          });
+
+          expect(blob).toBeInstanceOf(Blob);
+          expect(blob.type).toBe('video/mp4');
+          expect(progressEvents.length).toBeGreaterThan(0);
+        });
+
+        it('exportTacticalVideo outputs video via Mediabunny', async () => {
+          const blob = await exportTacticalVideo({
+            format: 'mp4',
+            fps: 30,
+            scale: 1,
+            quality: 'high',
+            totalDurationMs: 300,
+            stageWidth: 1920,
+            stageHeight: 1080,
+            slides: [mockSlideItem],
             aspectRatio: '16:9',
           });
 
           expect(blob).toBeInstanceOf(Blob);
           expect(blob.type).toBe('video/mp4');
-
-          delete (globalThis as unknown as { EncodedVideoChunk?: unknown })
-            .EncodedVideoChunk;
-          delete (globalThis as unknown as { VideoEncoder?: unknown })
-            .VideoEncoder;
-          delete (globalThis as unknown as { VideoFrame?: unknown }).VideoFrame;
-          delete (globalThis as unknown as { OffscreenCanvas?: unknown })
-            .OffscreenCanvas;
         });
 
         it('cancels video export immediately when checkCancelled returns true', async () => {
-          class MockWorker {
-            onmessage: any;
-            onerror: any;
-            postMessage(msg: any) {
-              if (msg.type === 'START_EXPORT') {
-                setTimeout(() => {
-                  this.onmessage?.({
-                    data: {
-                      id: msg.id,
-                      type: 'PROGRESS',
-                      progress: {
-                        percent: 50,
-                        stage: 'rendering',
-                        message: 'test',
-                      },
-                    },
-                  });
-                  this.onmessage?.({
-                    data: {
-                      id: msg.id,
-                      type: 'CHUNK_DATA',
-                      chunkType: 'key',
-                      timestamp: 0,
-                      duration: 33333,
-                      buffer: new ArrayBuffer(0),
-                      decoderConfig: {
-                        codec: 'avc1.64002a',
-                        description: new Uint8Array([
-                          1, 100, 0, 42, 255, 225, 0, 30, 103, 100, 0, 42, 172,
-                          217, 64, 120, 2, 39, 229, 132, 0, 0, 3, 0, 4, 0, 0, 3,
-                          0, 240, 60, 96, 198, 88, 1, 0, 5, 104, 235, 227, 203,
-                          34, 192,
-                        ]).buffer,
-                        codedWidth: 1920,
-                        codedHeight: 1080,
-                        displayAspectWidth: 1920,
-                        displayAspectHeight: 1080,
-                        colorSpace: {
-                          primaries: 'bt709',
-                          transfer: 'bt709',
-                          matrix: 'bt709',
-                          fullRange: false,
-                        },
-                      },
-                    },
-                  });
-                  setTimeout(() => {
-                    this.onmessage?.({
-                      data: {
-                        id: msg.id,
-                        type: 'SUCCESS',
-                        mimeType: 'video/mp4',
-                      },
-                    });
-                  }, 10);
-                }, 150);
-              }
-            }
-            terminate() {}
-          }
-          (globalThis as any).Worker = MockWorker;
-
-          (
-            globalThis as unknown as { EncodedVideoChunk: unknown }
-          ).EncodedVideoChunk = MockEncodedVideoChunk;
-          (globalThis as unknown as { VideoEncoder: unknown }).VideoEncoder =
-            MockVideoEncoder;
-          (globalThis as unknown as { VideoFrame: unknown }).VideoFrame =
-            MockVideoFrame;
-          (
-            globalThis as unknown as { OffscreenCanvas: unknown }
-          ).OffscreenCanvas = MockOffscreenCanvas;
-
           await expect(
             exportVideoDirect({
               format: 'mp4',
@@ -1171,21 +458,129 @@ describe('video-export-engine & worker pipeline', () => {
               totalDurationMs: 1000,
               stageWidth: 1920,
               stageHeight: 1080,
-              slides: [mockSlide],
+              slides: [mockSlideItem],
               aspectRatio: '16:9',
               checkCancelled: () => true,
             }),
           ).rejects.toThrow('Export cancelled');
-
-          delete (globalThis as unknown as { EncodedVideoChunk?: unknown })
-            .EncodedVideoChunk;
-          delete (globalThis as unknown as { VideoEncoder?: unknown })
-            .VideoEncoder;
-          delete (globalThis as unknown as { VideoFrame?: unknown }).VideoFrame;
-          delete (globalThis as unknown as { OffscreenCanvas?: unknown })
-            .OffscreenCanvas;
         });
       });
+    });
+  });
+
+  describe('Phase 4: Mediabunny Video Export & stage.toBlob Static Export', () => {
+    it('exports mp4 video using Mediabunny Output and CanvasSource', async () => {
+      const mockSlide: Slide = {
+        id: 'slide-1',
+        index: 0,
+        transitionDurationMs: 500,
+        pauseMs: 200,
+        easing: 'ease-in-out',
+        players: [],
+        ball: { x: 50, y: 50, visible: true },
+        arrows: [],
+        zones: [],
+        texts: [],
+      };
+
+      const blob = await exportVideoWithMediabunny({
+        format: 'mp4',
+        fps: 30,
+        scale: 1,
+        totalDurationMs: 300,
+        stageWidth: 1280,
+        stageHeight: 720,
+        slides: [mockSlide],
+      });
+
+      expect(blob).toBeInstanceOf(Blob);
+      expect(blob.type).toBe('video/mp4');
+    });
+
+    it('exports webm video using Mediabunny Output and CanvasSource', async () => {
+      const mockSlide: Slide = {
+        id: 'slide-1',
+        index: 0,
+        transitionDurationMs: 500,
+        pauseMs: 200,
+        easing: 'ease-in-out',
+        players: [],
+        ball: { x: 50, y: 50, visible: true },
+        arrows: [],
+        zones: [],
+        texts: [],
+      };
+
+      const blob = await exportVideoWithMediabunny({
+        format: 'webm',
+        fps: 30,
+        scale: 1,
+        totalDurationMs: 300,
+        stageWidth: 1280,
+        stageHeight: 720,
+        slides: [mockSlide],
+      });
+
+      expect(blob).toBeInstanceOf(Blob);
+      expect(blob.type).toBe('video/webm');
+    });
+
+    it('exports png blob using exportPngBlob helper', async () => {
+      const dummyBlob = new Blob(['dummy-image'], { type: 'image/png' });
+      const mockStage = {
+        width: () => 1280,
+        height: () => 720,
+        toBlob: vi.fn(
+          ({ callback }: { callback: (b: Blob | null) => void }) => {
+            callback(dummyBlob);
+          },
+        ),
+      } as unknown as Parameters<typeof exportPngBlob>[0];
+
+      const blob = await exportPngBlob(mockStage);
+      expect(blob).toBe(dummyBlob);
+      expect(mockStage.toBlob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mimeType: 'image/png',
+          pixelRatio: 2,
+        }),
+      );
+    });
+
+    it('exports cropped png blob with boundary box', async () => {
+      const dummyBlob = new Blob(['dummy-crop'], { type: 'image/png' });
+      const mockStage = {
+        width: () => 1000,
+        height: () => 1000,
+        toBlob: vi.fn(
+          ({ callback }: { callback: (b: Blob | null) => void }) => {
+            callback(dummyBlob);
+          },
+        ),
+      } as unknown as Parameters<typeof exportPngBlob>[0];
+
+      const blob = await exportPngBlob(mockStage, {
+        crop: true,
+        boundaryBox: {
+          enabled: true,
+          x: 10,
+          y: 10,
+          width: 50,
+          height: 50,
+        },
+      });
+
+      expect(blob).toBe(dummyBlob);
+      expect(mockStage.toBlob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          x: 100,
+          y: 100,
+          width: 500,
+          height: 500,
+          mimeType: 'image/png',
+          pixelRatio: 2,
+        }),
+      );
     });
   });
 });

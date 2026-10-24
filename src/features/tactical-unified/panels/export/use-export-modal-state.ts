@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { executeExportFormat } from '@/features/tactical-unified/hooks/konva-export-helpers';
 import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { exportMultiSlideVideo } from '@/lib/tactical/export/tactical-video-exporter';
 import type { ExportTarget } from '@/lib/types/tactical-unified';
 import { buildExportTarget } from './export-target-builder';
 import { useExportBenchmark } from './use-export-benchmark';
@@ -18,6 +20,7 @@ export type ExportFormat = 'png' | 'zip' | 'mp4' | 'webm';
 export function useExportModalState() {
   const closeExportModal = useTacticalUnifiedStore((s) => s.closeExportModal);
   const isExporting = useTacticalUnifiedStore((s) => s.isExporting);
+  const setIsExporting = useTacticalUnifiedStore((s) => s.setIsExporting);
   const pendingExport = useTacticalUnifiedStore((s) => s.pendingExport);
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
   const slides = useTacticalUnifiedStore((s) => s.project.slides);
@@ -52,17 +55,53 @@ export function useExportModalState() {
 
   const share = useExportShare({ onError: setExportError });
 
-  const handleExport = () => {
+  const handleExport = async () => {
     setCompletedVideo(null);
     setExportError(null);
-    const detail = buildExportTarget({
-      format: selectedFormat,
-      scale: imageScale,
-      keyFrameIntervalSec,
-      latencyMode,
-      maxQueueSize,
-    });
-    window.dispatchEvent(new CustomEvent('tactical:export', { detail }));
+    setIsExporting(true);
+
+    try {
+      if (selectedFormat === 'mp4' || selectedFormat === 'webm') {
+        const filename = `tactical-animation-${Date.now()}.${selectedFormat}`;
+        const blob = await exportMultiSlideVideo({
+          slides,
+          format: selectedFormat,
+          scale: imageScale,
+          aspectRatio,
+          boundaryBox: activeSlide?.boundaryBox,
+          keyFrameIntervalSec: Number(keyFrameIntervalSec) || 2,
+          latencyMode,
+          maxQueueSize: Number(maxQueueSize) || 60,
+          transitionDurationMs: Math.round(
+            Number.parseFloat(morphing.transitionSec) * 1000,
+          ),
+          pauseMs: Math.round(Number.parseFloat(morphing.pauseSec) * 1000),
+          easing: morphing.selectedEasing,
+        });
+        setCompletedVideo({ blob, filename });
+      } else {
+        const target = buildExportTarget({
+          format: selectedFormat,
+          scale: imageScale,
+          keyFrameIntervalSec,
+          latencyMode,
+          maxQueueSize,
+        });
+        await executeExportFormat(target, {
+          stage: null,
+          slides,
+          captureSlide: () => null,
+        });
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Video export failed. Please try again.';
+      setExportError(msg);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleDownloadCompletedVideo = () => {

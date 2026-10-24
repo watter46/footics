@@ -3,8 +3,8 @@
 import type Konva from 'konva';
 import { useCallback } from 'react';
 import {
-  dataUrlToBlob,
   downloadBlob,
+  exportPngBlob as exportPngBlobHelper,
 } from '@/features/tactical-unified/hooks/konva-export-helpers';
 import { resolveBoundaryBoxPixelRect } from '../utils/geometry';
 import { useCanvasStore } from './use-canvas-store';
@@ -21,6 +21,22 @@ export function useCanvasExport({
   pitchRect,
 }: UseCanvasExportOptions) {
   const boundaryBox = useCanvasStore((s) => s.boundaryBox);
+
+  const exportPngBlob = useCallback(
+    async (options?: { crop?: boolean; scale?: number }): Promise<Blob> => {
+      const stage = stageRef.current;
+      if (!stage) {
+        throw new Error('Canvas Stage is not initialized');
+      }
+      return exportPngBlobHelper(stage, {
+        crop: options?.crop,
+        scale: options?.scale,
+        boundaryBox,
+        pitchRect,
+      });
+    },
+    [stageRef, boundaryBox, pitchRect],
+  );
 
   const exportPng = useCallback(
     async (options?: { crop?: boolean; scale?: number }): Promise<string> => {
@@ -52,13 +68,12 @@ export function useCanvasExport({
 
       return stage.toDataURL({ pixelRatio });
     },
-    [stageRef, boundaryBox, vRect, pitchRect],
+    [stageRef, boundaryBox, pitchRect],
   );
 
   const copyToClipboard = useCallback(
     async (options?: { crop?: boolean; scale?: number }): Promise<void> => {
-      const dataUrl = await exportPng(options);
-      const blob = await dataUrlToBlob(dataUrl);
+      const blob = await exportPngBlob(options);
       try {
         if (typeof navigator === 'undefined' || !navigator.clipboard?.write) {
           throw new Error('Clipboard API not available');
@@ -74,11 +89,12 @@ export function useCanvasExport({
         downloadBlob(blob, 'tactical-capture.png');
       }
     },
-    [exportPng],
+    [exportPngBlob],
   );
 
   return {
     exportPng,
+    exportPngBlob,
     copyToClipboard,
   };
 }

@@ -10,13 +10,12 @@
  */
 
 import {
-  ArrayBufferTarget as Mp4ArrayBufferTarget,
-  Muxer as Mp4Muxer,
-} from 'mp4-muxer';
-import {
-  ArrayBufferTarget as WebmArrayBufferTarget,
-  Muxer as WebmMuxer,
-} from 'webm-muxer';
+  BufferTarget,
+  CanvasSource,
+  Mp4OutputFormat,
+  Output,
+  WebMOutputFormat,
+} from 'mediabunny';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import type {
   AspectRatio,
@@ -30,11 +29,6 @@ import {
   type AnyCanvasRenderingContext2D,
   renderTacticalFrameToCanvas,
 } from './tactical-frame-renderer';
-import {
-  executeOffThreadVideoExport,
-  type VideoExportWorkerOutbound,
-  type VideoExportWorkerRequest,
-} from './video-export-worker';
 
 export interface BoundaryCropInfo {
   cropX: number;
@@ -352,50 +346,11 @@ export async function getSupportedVP9Codec(
 }
 
 /**
- * Safely creates a dedicated Web Worker instance for video export.
- * Handles bundler resolution errors gracefully.
+ * Exports video using Mediabunny (hardware-accelerated WebCodecs + in-browser muxing).
  */
-export function createVideoExportWorker(): Worker | null {
-  if (
-    typeof process !== 'undefined' &&
-    process.env.NODE_ENV === 'test' &&
-    typeof (globalThis as any).Worker !== 'undefined'
-  ) {
-    try {
-      return new (globalThis as any).Worker(
-        './video-export-worker.ts',
-      ) as Worker;
-    } catch {
-      return null;
-    }
-  }
-  if (typeof window === 'undefined' || typeof Worker === 'undefined') {
-    return null;
-  }
-  try {
-    return new Worker(new URL('./video-export-worker.ts', import.meta.url), {
-      type: 'module',
-    });
-  } catch (err) {
-    console.warn('Failed to instantiate Web Worker, using direct engine:', err);
-    return null;
-  }
-}
-
-/**
- * Direct main-thread WebCodecs video export executor (Zero-Wait Async Pipelining).
- * Executes the exact same optimized OffscreenCanvas + WebCodecs pipeline as the worker,
- * with cooperative microtask yielding to ensure zero UI freeze even on the main thread.
- */
-
-export async function exportVideoDirect(
+export async function exportVideoWithMediabunny(
   options: VideoExportOptions,
 ): Promise<Blob> {
-  const slides = options.slides;
-  if (!slides || slides.length === 0) {
-    throw new Error('Slides data is required for Web Worker video export.');
-  }
-
   const pitchRect = calculatePitchRect(
     { width: options.stageWidth, height: options.stageHeight },
     options.aspectRatio ?? '16:9',
@@ -413,488 +368,74 @@ export async function exportVideoDirect(
   );
   const { exportWidth, exportHeight } = cropInfo;
 
-  const mvpMatrix = options.pitchTransform
-    ? (buildExportMVPMatrix(
-        options.pitchTransform,
-        exportWidth,
-        exportHeight,
-        options.aspectRatio ?? '16:9',
-      ) as unknown as Float32Array)
-    : (options.mvpMatrix ?? null);
+  let canvas!: HTMLCanvasElement | OffscreenCanvas;
+  let ctx: AnyCanvasRenderingContext2D | null = null;
 
-  const exportId = `direct_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-  const request: VideoExportWorkerRequest = {
-    id: exportId,
-    type: 'START_EXPORT',
-    format: options.format,
-    fps: options.fps,
-    scale: options.scale ?? 2,
-    quality: options.quality ?? 'high',
-    bitrate: options.bitrate,
-    h264Profile: options.h264Profile,
-    keyFrameIntervalSec: options.keyFrameIntervalSec,
-    latencyMode: options.latencyMode,
-    maxQueueSize: options.maxQueueSize,
-    transparent: options.transparent ?? options.format === 'webm',
-    totalDurationMs: options.totalDurationMs,
-    boundaryBox: options.boundaryBox,
-    stageWidth: options.stageWidth,
-    stageHeight: options.stageHeight,
-    slides,
-    aspectRatio: options.aspectRatio ?? '16:9',
-    isMainThread: true,
-    mvpMatrix,
-  };
-
-  const result = await executeOffThreadVideoExport(
-    request,
-    options.onProgress,
-    options.checkCancelled,
-  );
-
-  return new Blob([result.buffer], { type: result.mimeType });
-}
-
-export async function exportVideoWithWorker(
-  options: VideoExportOptions,
-): Promise<Blob> {
-  const worker = createVideoExportWorker();
-  if (!worker) {
-    return exportVideoDirect(options);
-  }
-
-  const slides = options.slides;
-  if (!slides || slides.length === 0) {
-    worker.terminate();
-    throw new Error('Slides data is required for Web Worker video export.');
-  }
-
-  const exportId = `export_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-
-  return new Promise<Blob>((resolve, reject) => {
-    let isSettled = false;
-    let cancelCheckInterval: NodeJS.Timeout | null = null;
-
-    const cleanup = () => {
-      if (cancelCheckInterval) {
-        clearInterval(cancelCheckInterval);
-        cancelCheckInterval = null;
-      }
-      try {
-        worker.terminate();
-      } catch {}
-    };
-
-    worker.onmessage = (event: MessageEvent<VideoExportWorkerOutbound>) => {
-      const msg = event.data;
-      if (!msg || msg.id !== exportId) return;
-
-      if (msg.type === 'PROGRESS') {
-        options.onProgress?.(msg.progress);
-      } else if (msg.type === 'SUCCESS') {
-        if (isSettled) return;
-        isSettled = true;
-        cleanup();
-        const blob = new Blob([msg.buffer], { type: msg.mimeType });
-        resolve(blob);
-      } else if (msg.type === 'ERROR') {
-        if (isSettled) return;
-        isSettled = true;
-        cleanup();
-        reject(new Error(msg.error));
-      }
-    };
-
-    worker.onerror = (err) => {
-      if (isSettled) return;
-      isSettled = true;
-      cleanup();
-      reject(
-        new Error(err.message || 'Web Worker export encountered an error'),
-      );
-    };
-
-    const pitchRect = calculatePitchRect(
-      { width: options.stageWidth, height: options.stageHeight },
-      options.aspectRatio ?? '16:9',
-    );
-    const baseRect =
-      options.boundaryBox?.fitTarget === 'canvas'
-        ? { x: 0, y: 0, width: options.stageWidth, height: options.stageHeight }
-        : pitchRect;
-    const cropInfo = calculateBoundaryCrop(
-      options.boundaryBox,
-      options.stageWidth,
-      options.stageHeight,
-      options.scale ?? 2,
-      baseRect,
-    );
-    const { exportWidth, exportHeight } = cropInfo;
-
-    const mvpMatrix = options.pitchTransform
-      ? (buildExportMVPMatrix(
-          options.pitchTransform,
-          exportWidth,
-          exportHeight,
-          options.aspectRatio ?? '16:9',
-        ) as unknown as Float32Array)
-      : (options.mvpMatrix ?? null);
-
-    const requestMsg: VideoExportWorkerRequest = {
-      id: exportId,
-      type: 'START_EXPORT',
-      format: options.format,
-      fps: options.fps,
-      scale: options.scale ?? 2,
-      quality: options.quality ?? 'high',
-      bitrate: options.bitrate,
-      h264Profile: options.h264Profile,
-      keyFrameIntervalSec: options.keyFrameIntervalSec,
-      latencyMode: options.latencyMode,
-      maxQueueSize: options.maxQueueSize,
-      transparent: options.transparent ?? options.format === 'webm',
-      totalDurationMs: options.totalDurationMs,
-      boundaryBox: options.boundaryBox,
-      stageWidth: options.stageWidth,
-      stageHeight: options.stageHeight,
-      slides,
-      aspectRatio: options.aspectRatio ?? '16:9',
-      isMainThread: false,
-      mvpMatrix,
-    };
-
-    worker.postMessage(requestMsg);
-
-    cancelCheckInterval = setInterval(() => {
-      if (options.checkCancelled?.()) {
-        if (isSettled) return;
-        isSettled = true;
-        try {
-          worker.postMessage({ id: exportId, type: 'CANCEL_EXPORT' });
-        } catch {}
-        cleanup();
-        reject(new Error('Export cancelled'));
-      }
-    }, 100);
-  });
-}
-
-/**
- * Exports tactical animation to MP4 using WebCodecs & mp4-muxer,
- * with automatic MediaRecorder fallback if WebCodecs is unavailable or fails.
- */
-export async function exportMp4Video(
-  options: VideoExportOptions,
-): Promise<Blob> {
-  const {
-    fps,
-    scale = 2,
-    quality = 'high',
-    totalDurationMs,
-    boundaryBox,
-    stageWidth,
-    stageHeight,
-    slides,
-    aspectRatio = '16:9',
-    onRenderFrame,
-    onCaptureFrame,
-    onProgress,
-    checkCancelled,
-  } = options;
-
-  const pitchRect = calculatePitchRect(
-    { width: stageWidth, height: stageHeight },
-    aspectRatio,
-  );
-  const baseRect =
-    boundaryBox?.fitTarget === 'canvas'
-      ? { x: 0, y: 0, width: stageWidth, height: stageHeight }
-      : pitchRect;
-  const cropInfo = calculateBoundaryCrop(
-    boundaryBox,
-    stageWidth,
-    stageHeight,
-    scale,
-    baseRect,
-  );
-  const { exportWidth, exportHeight } = cropInfo;
-
-  const mvpMatrix = options.pitchTransform
-    ? (buildExportMVPMatrix(
-        options.pitchTransform,
-        exportWidth,
-        exportHeight,
-        aspectRatio,
-      ) as unknown as Float32Array)
-    : (options.mvpMatrix ?? null);
-
-  const bitrate =
-    (scale ?? 2) >= 2.5
-      ? quality === 'low'
-        ? 18_000_000
-        : 30_000_000
-      : (scale ?? 2) >= 1.5
-        ? quality === 'low'
-          ? 10_000_000
-          : 16_000_000
-        : quality === 'low'
-          ? 5_000_000
-          : 8_000_000;
-
-  // Check if WebCodecs VideoEncoder is available and supported
-  const encoderConfig = await getSupportedH264EncoderConfig(
-    exportWidth,
-    exportHeight,
-    fps,
-    bitrate,
-  );
-
-  // If WebCodecs is not supported, fall back to MediaRecorder
-  if (
-    !encoderConfig ||
-    typeof window === 'undefined' ||
-    !('VideoEncoder' in window)
-  ) {
-    return exportVideoWithMediaRecorder({
-      ...options,
-      format: 'mp4',
-    });
-  }
-
-  const muxer = new Mp4Muxer({
-    target: new Mp4ArrayBufferTarget(),
-    video: {
-      codec: 'avc',
-      width: exportWidth,
-      height: exportHeight,
-    },
-    fastStart: 'in-memory',
-    firstTimestampBehavior: 'offset',
-  });
-
-  let encoderError: Error | null = null;
-  let videoEncoder: VideoEncoder | null = null;
-
-  try {
-    videoEncoder = new VideoEncoder({
-      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-      error: (e) => {
-        console.error('WebCodecs VideoEncoder runtime error:', e);
-        encoderError = e;
-      },
-    });
-
-    videoEncoder.configure(encoderConfig);
-  } catch (initErr) {
-    console.warn(
-      'VideoEncoder.configure failed, falling back to MediaRecorder:',
-      initErr,
-    );
-    return exportVideoWithMediaRecorder({
-      ...options,
-      format: 'mp4',
-    });
-  }
-
-  // Dedicated offscreen canvas for 100% opaque sRGB frame capture
-  const offscreenCanvas: HTMLCanvasElement | OffscreenCanvas =
-    typeof OffscreenCanvas !== 'undefined'
-      ? new OffscreenCanvas(exportWidth, exportHeight)
-      : document.createElement('canvas');
-  offscreenCanvas.width = exportWidth;
-  offscreenCanvas.height = exportHeight;
-  const offscreenCtx = (offscreenCanvas.getContext('2d', {
-    alpha: false,
-    desynchronized: true,
-    willReadFrequently: false,
-  }) || offscreenCanvas.getContext('2d')) as AnyCanvasRenderingContext2D | null;
-
-  if (!offscreenCtx) {
-    throw new Error('Failed to create 2D canvas context for MP4 export');
-  }
-
-  const effectiveDurationMs = totalDurationMs > 0 ? totalDurationMs : 3000;
-  const totalFrames = Math.max(
-    1,
-    Math.ceil((effectiveDurationMs / 1000) * fps),
-  );
-  const frameDurationUs = 1_000_000 / fps;
-
-  let lastReportedTime = 0;
-  let lastReportedPercent = -1;
-  const keyFrameInterval = Math.max(fps * 2, 60);
-
-  try {
-    for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
-      if (checkCancelled?.()) {
-        throw new Error('Export cancelled');
-      }
-      if (encoderError) {
-        throw encoderError;
-      }
-      if (videoEncoder.state === 'closed') {
-        throw new Error('VideoEncoder closed unexpectedly');
-      }
-
-      // Backpressure management with fast microtask unblocking (pipeline buffer: up to 60 frames, drains to 30)
-      if (videoEncoder.encodeQueueSize > 60) {
-        await new Promise<void>((resolve) => {
-          if (!videoEncoder || videoEncoder.state === 'closed') {
-            resolve();
-            return;
-          }
-          videoEncoder.ondequeue = () => {
-            if (!videoEncoder || videoEncoder.encodeQueueSize <= 30) {
-              if (videoEncoder) videoEncoder.ondequeue = null;
-              resolve();
-            }
-          };
-        });
-      }
-
-      const timeMs = (frameIdx / fps) * 1000;
-
-      if (slides && slides.length > 0) {
-        // Direct deterministic canvas frame rendering (100% reliable & blazing fast)
-        renderTacticalFrameToCanvas(offscreenCtx, {
-          slides,
-          timeMs,
-          width: exportWidth,
-          height: exportHeight,
-          aspectRatio,
-          boundaryBox,
-          transparent: false,
-          mvpMatrix,
-        });
-      } else {
-        // Fallback to Konva Stage snapshot only if slides are not passed
-        await onRenderFrame?.(timeMs);
-        const sourceCanvas = onCaptureFrame?.(cropInfo);
-        if (!sourceCanvas) {
-          throw new Error('Failed to capture frame from canvas stage');
-        }
-
-        offscreenCtx.fillStyle = '#020617';
-        offscreenCtx.fillRect(0, 0, exportWidth, exportHeight);
-        offscreenCtx.imageSmoothingEnabled = true;
-        offscreenCtx.imageSmoothingQuality = 'high';
-        offscreenCtx.drawImage(sourceCanvas, 0, 0, exportWidth, exportHeight);
-      }
-
-      const timestampUs = Math.round(frameIdx * frameDurationUs);
-      const videoFrame = new VideoFrame(offscreenCanvas, {
-        timestamp: timestampUs,
-        duration: Math.round(frameDurationUs),
-      });
-
-      if (videoEncoder.state === 'configured') {
-        const isKeyFrame = frameIdx === 0 || frameIdx % keyFrameInterval === 0;
-        videoEncoder.encode(videoFrame, {
-          keyFrame: isKeyFrame,
-        });
-      }
-      videoFrame.close();
-
-      const progressPercent = Math.min(
-        95,
-        Math.round(((frameIdx + 1) / totalFrames) * 95),
-      );
-      const now =
-        typeof performance !== 'undefined' ? performance.now() : Date.now();
-      if (
-        progressPercent !== lastReportedPercent &&
-        (now - lastReportedTime >= 60 || frameIdx === totalFrames - 1)
-      ) {
-        lastReportedTime = now;
-        lastReportedPercent = progressPercent;
-        onProgress?.({
-          percent: progressPercent,
-          stage: 'rendering',
-          message: `Rendering frame ${frameIdx + 1} of ${totalFrames} (${progressPercent}%)`,
-        });
-      }
-    }
-
-    onProgress?.({
-      percent: 96,
-      stage: 'finalizing',
-      message: 'Finalizing MP4 video container...',
-    });
-
-    if (videoEncoder.state === 'configured') {
-      await videoEncoder.flush();
-    }
-    muxer.finalize();
-
-    const buffer = muxer.target.buffer;
-    onProgress?.({
-      percent: 100,
-      stage: 'idle',
-      message: 'MP4 export completed successfully!',
-    });
-
-    return new Blob([buffer], { type: 'video/mp4' });
-  } catch (err) {
-    console.warn(
-      'WebCodecs execution error, attempting MediaRecorder fallback:',
-      err,
-    );
-    return exportVideoWithMediaRecorder({
-      ...options,
-      format: 'mp4',
-    });
-  } finally {
+  if (typeof OffscreenCanvas !== 'undefined') {
     try {
-      if (videoEncoder && videoEncoder.state !== 'closed') {
-        videoEncoder.close();
+      const offscreen = new OffscreenCanvas(exportWidth, exportHeight);
+      const offCtx = offscreen.getContext('2d', {
+        alpha: options.transparent ?? options.format === 'webm',
+      }) as unknown as AnyCanvasRenderingContext2D;
+      if (offCtx) {
+        canvas = offscreen;
+        ctx = offCtx;
       }
     } catch {
-      // ignore
+      ctx = null;
     }
   }
-}
 
-/**
- * Exports tactical animation to Transparent WebM using WebCodecs (webm-muxer + VP9)
- * with automatic MediaRecorder fallback if WebCodecs is unavailable.
- */
-export async function exportTransparentWebm(
-  options: VideoExportOptions,
-): Promise<Blob> {
-  const {
-    fps,
-    scale = 2,
-    quality = 'high',
-    transparent = true,
-    totalDurationMs,
-    boundaryBox,
-    stageWidth,
-    stageHeight,
-    slides,
-    aspectRatio = '16:9',
-    onRenderFrame,
-    onCaptureFrame,
-    onSetBackgroundVisible,
-    onProgress,
-    checkCancelled,
-  } = options;
+  if (!ctx && typeof document !== 'undefined') {
+    const docCanvas = document.createElement('canvas');
+    docCanvas.width = exportWidth;
+    docCanvas.height = exportHeight;
+    const docCtx = docCanvas.getContext('2d', {
+      alpha: options.transparent ?? options.format === 'webm',
+    }) as unknown as AnyCanvasRenderingContext2D;
+    if (docCtx) {
+      canvas = docCanvas;
+      ctx = docCtx;
+    }
+  }
 
-  const pitchRect = calculatePitchRect(
-    { width: stageWidth, height: stageHeight },
-    aspectRatio,
+  if (!ctx || !canvas) {
+    throw new Error('Failed to create canvas context for video export');
+  }
+
+  const target = new BufferTarget();
+  const format =
+    options.format === 'webm' ? new WebMOutputFormat() : new Mp4OutputFormat();
+  const output = new Output({ format, target });
+
+  const codec = options.format === 'webm' ? 'vp9' : 'avc';
+  const bitrate =
+    options.bitrate ??
+    (options.scale && options.scale >= 2.5 ? 30_000_000 : 20_000_000);
+  const keyFrameInterval = options.keyFrameIntervalSec ?? 2;
+
+  const canvasSource = new CanvasSource(canvas, {
+    codec,
+    bitrate,
+    keyFrameInterval,
+  });
+
+  output.addVideoTrack(canvasSource);
+  await output.start();
+
+  const fps = options.fps;
+  const effectiveDurationMs =
+    options.totalDurationMs > 0 ? options.totalDurationMs : 3000;
+  const totalFrames = Math.max(
+    1,
+    Math.ceil((effectiveDurationMs / 1000) * fps),
   );
-  const baseRect =
-    boundaryBox?.fitTarget === 'canvas'
-      ? { x: 0, y: 0, width: stageWidth, height: stageHeight }
-      : pitchRect;
-  const cropInfo = calculateBoundaryCrop(
-    boundaryBox,
-    stageWidth,
-    stageHeight,
-    scale,
-    baseRect,
-  );
-  const { exportWidth, exportHeight } = cropInfo;
+  const frameDuration = 1 / fps;
+
+  const transparent = options.transparent ?? options.format === 'webm';
+  const slides = options.slides;
+  const aspectRatio = options.aspectRatio ?? '16:9';
+  const boundaryBox = options.boundaryBox;
 
   const mvpMatrix = options.pitchTransform
     ? (buildExportMVPMatrix(
@@ -905,140 +446,22 @@ export async function exportTransparentWebm(
       ) as unknown as Float32Array)
     : (options.mvpMatrix ?? null);
 
-  const bitrate =
-    (scale ?? 2) >= 2.5
-      ? quality === 'low'
-        ? 18_000_000
-        : 30_000_000
-      : (scale ?? 2) >= 1.5
-        ? quality === 'low'
-          ? 10_000_000
-          : 16_000_000
-        : quality === 'low'
-          ? 5_000_000
-          : 8_000_000;
-
-  // Check if WebCodecs VP9 is supported
-  const encoderConfig = await getSupportedVP9EncoderConfig(
-    exportWidth,
-    exportHeight,
-    fps,
-    bitrate,
-    transparent,
-  );
-
-  if (
-    !encoderConfig ||
-    typeof window === 'undefined' ||
-    !('VideoEncoder' in window)
-  ) {
-    return exportVideoWithMediaRecorder({
-      ...options,
-      format: 'webm',
-      transparent: true,
-    });
-  }
-
-  const muxer = new WebmMuxer({
-    target: new WebmArrayBufferTarget(),
-    video: {
-      codec: 'V_VP9',
-      width: exportWidth,
-      height: exportHeight,
-      frameRate: fps,
-      alpha: transparent,
-    },
-    firstTimestampBehavior: 'offset',
-  });
-
-  let encoderError: Error | null = null;
-  let videoEncoder: VideoEncoder | null = null;
-
-  try {
-    videoEncoder = new VideoEncoder({
-      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-      error: (e) => {
-        console.error('WebCodecs VP9 VideoEncoder runtime error:', e);
-        encoderError = e;
-      },
-    });
-
-    videoEncoder.configure(encoderConfig);
-  } catch (initErr) {
-    console.warn(
-      'VP9 VideoEncoder.configure failed, falling back to MediaRecorder:',
-      initErr,
-    );
-    return exportVideoWithMediaRecorder({
-      ...options,
-      format: 'webm',
-      transparent: true,
-    });
-  }
-
-  const offscreenCanvas: HTMLCanvasElement | OffscreenCanvas =
-    typeof OffscreenCanvas !== 'undefined'
-      ? new OffscreenCanvas(exportWidth, exportHeight)
-      : document.createElement('canvas');
-  offscreenCanvas.width = exportWidth;
-  offscreenCanvas.height = exportHeight;
-  const offscreenCtx = (offscreenCanvas.getContext('2d', {
-    alpha: transparent,
-    desynchronized: true,
-    willReadFrequently: false,
-  }) || offscreenCanvas.getContext('2d')) as AnyCanvasRenderingContext2D | null;
-
-  if (!offscreenCtx) {
-    throw new Error('Failed to create 2D canvas context for WebM export');
-  }
-
   if (transparent) {
-    onSetBackgroundVisible?.(false);
+    options.onSetBackgroundVisible?.(false);
   }
-
-  const effectiveDurationMs = totalDurationMs > 0 ? totalDurationMs : 3000;
-  const totalFrames = Math.max(
-    1,
-    Math.ceil((effectiveDurationMs / 1000) * fps),
-  );
-  const frameDurationUs = 1_000_000 / fps;
-
-  let lastReportedTime = 0;
-  let lastReportedPercent = -1;
-  const keyFrameInterval = Math.max(fps * 2, 60);
 
   try {
     for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
-      if (checkCancelled?.()) {
+      if (options.checkCancelled?.()) {
+        await output.cancel();
         throw new Error('Export cancelled');
-      }
-      if (encoderError) {
-        throw encoderError;
-      }
-      if (videoEncoder.state === 'closed') {
-        throw new Error('VideoEncoder closed unexpectedly');
-      }
-
-      // Backpressure management with fast microtask unblocking (pipeline buffer: up to 60 frames, drains to 30)
-      if (videoEncoder.encodeQueueSize > 60) {
-        await new Promise<void>((resolve) => {
-          if (!videoEncoder || videoEncoder.state === 'closed') {
-            resolve();
-            return;
-          }
-          videoEncoder.ondequeue = () => {
-            if (!videoEncoder || videoEncoder.encodeQueueSize <= 30) {
-              if (videoEncoder) videoEncoder.ondequeue = null;
-              resolve();
-            }
-          };
-        });
       }
 
       const timeMs = (frameIdx / fps) * 1000;
+      const timestamp = frameIdx / fps;
 
       if (slides && slides.length > 0) {
-        renderTacticalFrameToCanvas(offscreenCtx, {
+        renderTacticalFrameToCanvas(ctx, {
           slides,
           timeMs,
           width: exportWidth,
@@ -1049,98 +472,127 @@ export async function exportTransparentWebm(
           mvpMatrix,
         });
       } else {
-        await onRenderFrame?.(timeMs);
-        const sourceCanvas = onCaptureFrame?.(cropInfo);
-        if (!sourceCanvas) {
-          throw new Error('Failed to capture frame from canvas stage');
+        await options.onRenderFrame?.(timeMs);
+        const sourceCanvas = options.onCaptureFrame?.(cropInfo);
+        if (sourceCanvas) {
+          if (transparent) {
+            ctx.clearRect(0, 0, exportWidth, exportHeight);
+          } else {
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, exportWidth, exportHeight);
+          }
+          ctx.drawImage(sourceCanvas, 0, 0, exportWidth, exportHeight);
         }
-
-        if (transparent) {
-          offscreenCtx.clearRect(0, 0, exportWidth, exportHeight);
-        } else {
-          offscreenCtx.fillStyle = '#020617';
-          offscreenCtx.fillRect(0, 0, exportWidth, exportHeight);
-        }
-
-        offscreenCtx.imageSmoothingEnabled = true;
-        offscreenCtx.imageSmoothingQuality = 'high';
-        offscreenCtx.drawImage(sourceCanvas, 0, 0, exportWidth, exportHeight);
       }
 
-      const timestampUs = Math.round(frameIdx * frameDurationUs);
-      const videoFrame = new VideoFrame(offscreenCanvas, {
-        timestamp: timestampUs,
-        duration: Math.round(frameDurationUs),
+      await canvasSource.add(timestamp, frameDuration);
+
+      options.onProgress?.({
+        percent: Math.min(95, Math.round(((frameIdx + 1) / totalFrames) * 95)),
+        stage: 'rendering',
+        message: `Rendering frame ${frameIdx + 1} of ${totalFrames}`,
       });
 
-      if (videoEncoder.state === 'configured') {
-        const isKeyFrame = frameIdx === 0 || frameIdx % keyFrameInterval === 0;
-        videoEncoder.encode(videoFrame, {
-          keyFrame: isKeyFrame,
-        });
-      }
-      videoFrame.close();
-
-      const progressPercent = Math.min(
-        95,
-        Math.round(((frameIdx + 1) / totalFrames) * 95),
-      );
-      const now =
-        typeof performance !== 'undefined' ? performance.now() : Date.now();
-      if (
-        progressPercent !== lastReportedPercent &&
-        (now - lastReportedTime >= 60 || frameIdx === totalFrames - 1)
-      ) {
-        lastReportedTime = now;
-        lastReportedPercent = progressPercent;
-        onProgress?.({
-          percent: progressPercent,
-          stage: 'rendering',
-          message: `Rendering WebM frame ${frameIdx + 1} of ${totalFrames} (${progressPercent}%)`,
-        });
+      if (frameIdx % 10 === 0) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
     }
 
-    onProgress?.({
+    options.onProgress?.({
       percent: 96,
       stage: 'finalizing',
-      message: 'Finalizing WebM container...',
+      message: 'Finalizing recorded video...',
     });
 
-    if (videoEncoder.state === 'configured') {
-      await videoEncoder.flush();
-    }
-    muxer.finalize();
+    await output.finalize();
 
-    const buffer = muxer.target.buffer;
-    onProgress?.({
+    if (!target.buffer) {
+      throw new Error('Mediabunny output buffer is empty after finalize');
+    }
+
+    options.onProgress?.({
       percent: 100,
       stage: 'idle',
-      message: 'WebM export completed successfully!',
+      message: 'Video export completed successfully!',
     });
 
-    return new Blob([buffer], { type: 'video/webm' });
+    return new Blob([target.buffer], {
+      type: options.format === 'webm' ? 'video/webm' : 'video/mp4',
+    });
+  } finally {
+    if (transparent) {
+      options.onSetBackgroundVisible?.(true);
+    }
+  }
+}
+
+/**
+ * Backward-compatible worker stub (Worker engine superseded by Mediabunny).
+ */
+export function createVideoExportWorker(): Worker | null {
+  return null;
+}
+
+/**
+ * Direct video export executor using Mediabunny.
+ */
+export async function exportVideoDirect(
+  options: VideoExportOptions,
+): Promise<Blob> {
+  const slides = options.slides;
+  if (!slides || slides.length === 0) {
+    throw new Error('Slides data is required for Web Worker video export.');
+  }
+  return exportVideoWithMediabunny(options);
+}
+
+export async function exportVideoWithWorker(
+  options: VideoExportOptions,
+): Promise<Blob> {
+  return exportVideoDirect(options);
+}
+
+/**
+ * Exports tactical animation to MP4 using Mediabunny,
+ * with automatic MediaRecorder fallback.
+ */
+export async function exportMp4Video(
+  options: VideoExportOptions,
+): Promise<Blob> {
+  try {
+    return await exportVideoWithMediabunny({ ...options, format: 'mp4' });
   } catch (err) {
     console.warn(
-      'WebCodecs VP9 execution error, attempting MediaRecorder fallback:',
+      '[Footics Video Export] Mediabunny MP4 export failed, attempting MediaRecorder fallback:',
+      err,
+    );
+    return exportVideoWithMediaRecorder({ ...options, format: 'mp4' });
+  }
+}
+
+/**
+ * Exports tactical animation to Transparent / Opaque WebM (VP9) using Mediabunny,
+ * with automatic MediaRecorder fallback.
+ */
+export async function exportTransparentWebm(
+  options: VideoExportOptions,
+): Promise<Blob> {
+  try {
+    return await exportVideoWithMediabunny({
+      ...options,
+      format: 'webm',
+      transparent: options.transparent ?? true,
+    });
+  } catch (err) {
+    console.warn(
+      '[Footics Video Export] Mediabunny WebM export failed, attempting MediaRecorder fallback:',
       err,
     );
     return exportVideoWithMediaRecorder({
       ...options,
       format: 'webm',
-      transparent: true,
+      transparent: options.transparent ?? true,
     });
-  } finally {
-    if (transparent) {
-      onSetBackgroundVisible?.(true);
-    }
-    try {
-      if (videoEncoder && videoEncoder.state !== 'closed') {
-        videoEncoder.close();
-      }
-    } catch {
-      // ignore
-    }
   }
 }
 
@@ -1379,37 +831,26 @@ export async function exportVideoWithMediaRecorder(
 }
 
 /**
- * Unified tactical animation video export entry point.
- * Executes the Direct Turbo Engine (WebCodecs + Direct OffscreenCanvas Zero-Wait Pipelining)
- * directly in the execution context with cooperative microtask yielding (0% UI freeze).
- * Automatically falls back to format-specific WebCodecs and MediaRecorder handlers as needed.
+ * Unified tactical animation video export entry point using Mediabunny,
+ * falling back smoothly to MediaRecorder if necessary.
  */
 export async function exportTacticalVideo(
   options: VideoExportOptions,
 ): Promise<Blob> {
   console.log(
-    `%c[Footics Video Export] Starting video export: format=${options.format.toUpperCase()}, fps=${options.fps}, scale=${options.scale ?? 2}, duration=${options.totalDurationMs}ms, slides=${options.slides?.length ?? 0}`,
+    `%c[Footics Video Export] Starting video export (Mediabunny): format=${options.format.toUpperCase()}, fps=${options.fps}, scale=${options.scale ?? 2}, duration=${options.totalDurationMs}ms`,
     'color: #6366f1; font-weight: bold;',
   );
 
-  // 1. Primary Engine: Direct Turbo Engine (WebCodecs GPU Hardware Accelerated + Zero-Wait Pipelining)
-  if (
-    options.slides &&
-    options.slides.length > 0 &&
-    typeof globalThis !== 'undefined' &&
-    'VideoEncoder' in globalThis
-  ) {
-    try {
-      return await exportVideoDirect(options);
-    } catch (directErr) {
-      console.warn(
-        '[Footics Video Export] Multi-Worker WebCodecs export failed, falling back to format-specific handler:',
-        directErr,
-      );
-    }
+  try {
+    return await exportVideoWithMediabunny(options);
+  } catch (err) {
+    console.warn(
+      '[Footics Video Export] Mediabunny export failed, falling back to MediaRecorder:',
+      err,
+    );
   }
 
-  // 2. Format-specific handlers (WebCodecs / MediaRecorder fallback)
   if (options.format === 'mp4') {
     return exportMp4Video(options);
   }
