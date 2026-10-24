@@ -22,6 +22,9 @@ export interface HudPosition {
   clampedX: number;
   clampedY: number;
   isBelow: boolean;
+  targetX?: number;
+  targetY?: number;
+  targetHeight?: number;
 }
 
 export function computeClampedHudPos(
@@ -43,7 +46,7 @@ export function computeClampedHudPos(
     ? Math.min(stageSize.height - HUD_HEIGHT - PADDING, targetBottom + MARGIN)
     : Math.max(HUD_HEIGHT + PADDING, targetTop - MARGIN);
 
-  return { clampedX, clampedY, isBelow };
+  return { clampedX, clampedY, isBelow, targetX, targetY, targetHeight };
 }
 
 export function useHudPosition({

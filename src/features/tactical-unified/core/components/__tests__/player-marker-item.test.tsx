@@ -95,4 +95,48 @@ describe('PlayerMarkerItem vertical scale', () => {
     // baseDim * 0.032 * 0.85
     expect(circle?.radius()).toBeCloseTo(baseDim * 0.032 * 0.85, 2);
   });
+
+  it('markerMode="3d-only" かつ name: "Saka" の 3Dマーカー下部に "Saka" の Konva Text が描画されること', () => {
+    const stageRef = createRef<Konva.Stage>();
+    const marker = {
+      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      name: 'Bukayo Saka',
+      style: {
+        ...createDefaultPlayer('home', 50, 50, '#ff0000').style,
+        markerType: 'ring' as const,
+        bottomLabel: 'none' as const,
+      },
+    };
+    const width = 800;
+    const height = 450;
+    const baseDim = 450;
+
+    render(
+      <Stage ref={stageRef} width={width} height={height}>
+        <Layer>
+          <PlayerMarkerItem
+            marker={marker}
+            width={width}
+            height={height}
+            baseDim={baseDim}
+            markerMode="3d-only"
+            aspectRatio="16:9"
+            isSelected={false}
+            isInteractive={true}
+            connectingPlayerId={null}
+            onDragStart={vi.fn()}
+            onDragMove={vi.fn()}
+            onDragEnd={vi.fn()}
+            onClick={vi.fn()}
+            onUpdateVisionCone={vi.fn()}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    const texts = stageRef.current?.find('Text') as Konva.Text[];
+    const nameText = texts.find((t) => t.text() === 'Saka');
+    expect(nameText).toBeDefined();
+    expect(nameText?.text()).toBe('Saka');
+  });
 });

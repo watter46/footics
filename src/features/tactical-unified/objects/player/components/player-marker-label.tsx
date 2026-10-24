@@ -16,7 +16,12 @@ export function PlayerMarkerLabel({
   displayName,
   labelScale,
 }: PlayerMarkerLabelProps) {
-  if (player.style.bottomLabel === 'name' && displayName) {
+  const isRingWithName =
+    player.style.markerType === 'ring' &&
+    player.style.bottomLabel !== 'number' &&
+    Boolean(displayName);
+
+  if ((player.style.bottomLabel === 'name' || isRingWithName) && displayName) {
     return (
       <Text
         x={-radius * 2}

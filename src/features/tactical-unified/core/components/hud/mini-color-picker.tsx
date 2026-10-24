@@ -1,7 +1,16 @@
 'use client';
 
-import { Pipette } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import {
+  flip,
+  offset,
+  shift,
+  useClick,
+  useDismiss,
+  useFloating,
+  useInteractions,
+} from '@floating-ui/react';
+import { useState } from 'react';
+import { HexColorPicker } from 'react-colorful';
 import { useCanvasStore } from '../../hooks/use-canvas-store';
 
 export const HUD_COLOR_PALETTE = [
@@ -31,32 +40,31 @@ export function MiniColorPicker({
   isRing = false,
 }: MiniColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
   const customColor = useCanvasStore((s) => s.customColor);
   const setCustomColor = useCanvasStore((s) => s.setCustomColor);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-    window.addEventListener('mousedown', handleClickOutside);
-    return () => window.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  const { refs, floatingStyles, context } = useFloating({
+    open: isOpen,
+    onOpenChange: setIsOpen,
+    placement: 'top',
+    middleware: [offset(8), flip(), shift({ padding: 8 })],
+  });
+  const click = useClick(context);
+  const dismiss = useDismiss(context);
+  const { getReferenceProps, getFloatingProps } = useInteractions([
+    click,
+    dismiss,
+  ]);
 
   const normalizedValue =
     value?.startsWith('#') && value.length === 7 ? value : '#ffffff';
 
   return (
-    <div ref={containerRef} className="relative flex items-center">
+    <div className="relative flex items-center">
       <button
+        ref={refs.setReference}
+        {...getReferenceProps()}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
         title={title}
         aria-label={title}
         className={`w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-110 shadow-xs flex items-center justify-center shrink-0 overflow-hidden ${
@@ -81,14 +89,17 @@ export function MiniColorPicker({
 
       {isOpen && (
         <div
+          ref={refs.setFloating}
+          {...getFloatingProps()}
           role="dialog"
           aria-label="カラーパレット"
           tabIndex={-1}
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2.5 bg-[#222222] border border-[#383838] rounded-xl shadow-2xl z-50 flex flex-col gap-2 w-48"
+          className="p-2.5 bg-[#222222] border border-[#383838] rounded-xl shadow-2xl z-50 flex flex-col gap-2 w-48"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           style={{
+            ...floatingStyles,
             width: 192,
             maxWidth: 200,
             backgroundColor: '#222222',
@@ -107,6 +118,7 @@ export function MiniColorPicker({
                   type="button"
                   onClick={() => {
                     onChange(c);
+                    setCustomColor(c);
                     setIsOpen(false);
                   }}
                   className={`w-6 h-6 rounded-md border p-0.5 cursor-pointer transition-transform hover:scale-105 flex items-center justify-center relative overflow-hidden ${
@@ -144,43 +156,20 @@ export function MiniColorPicker({
             className="pt-2 border-t border-[#383838] flex flex-col gap-1.5"
             style={{ borderColor: '#383838' }}
           >
-            <div
-              className="flex items-center gap-2 p-1.5 rounded-lg bg-[#2a2a2a] border border-[#383838] hover:border-[#4a4a4a] transition-colors relative"
-              style={{ backgroundColor: '#2a2a2a', borderColor: '#383838' }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(customColor);
-                  setIsOpen(false);
-                }}
-                title={`カスタム色 (${customColor}) を適用`}
-                className="flex items-center gap-2 flex-1 text-left cursor-pointer overflow-hidden"
-              >
-                <div
-                  className="w-5 h-5 rounded border border-white/20 shrink-0"
-                  style={{ backgroundColor: customColor }}
-                />
-                <span className="font-mono text-[11px] uppercase text-white/90 truncate">
-                  {customColor}
-                </span>
-              </button>
-              <label
-                title="カラーピッカー"
-                className="relative p-1 rounded hover:bg-[#383838] cursor-pointer text-white/70 hover:text-white shrink-0 flex items-center justify-center"
-              >
-                <Pipette size={14} />
-                <input
-                  type="color"
-                  value={customColor}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setCustomColor(val);
-                    onChange(val);
-                  }}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                />
-              </label>
+            <HexColorPicker
+              color={normalizedValue}
+              onChange={(c) => {
+                setCustomColor(c);
+                onChange(c);
+              }}
+              style={{ width: '100%', height: 120 }}
+            />
+            <div className="flex items-center justify-between text-[11px] font-mono text-white/80 px-1 pt-1">
+              <span>{normalizedValue.toUpperCase()}</span>
+              <div
+                className="w-4 h-4 rounded border border-white/30"
+                style={{ backgroundColor: normalizedValue }}
+              />
             </div>
           </div>
         </div>

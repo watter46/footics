@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { createCanvasStore } from '../../store/canvas-store';
@@ -7,6 +7,7 @@ import type { CanvasConfig, CanvasStoreApi } from '../../types';
 import { BoundaryBoxHud } from '../BoundaryBoxHud';
 import { ContextHud } from '../ContextHud';
 import { CoreDrawingToolbar } from '../CoreDrawingToolbar';
+import { MiniColorPicker } from '../hud/mini-color-picker';
 import { PitchInlineTextEditor } from '../PitchInlineTextEditor';
 
 function renderWithStore(
@@ -243,7 +244,9 @@ describe('PitchInlineTextEditor', () => {
 
 describe('CoreDrawingToolbar', () => {
   it('CoreDrawingToolbar で全11ツール、連続描画ロック、消しゴム、ピッチロック、クロップ枠、リセットが動作すること', () => {
-    const { store } = renderWithStore(<CoreDrawingToolbar markerMode="all" />);
+    const { store } = renderWithStore(<CoreDrawingToolbar markerMode="all" />, {
+      mode: 'tactical-board',
+    });
 
     const tools: { title: string; expected: string }[] = [
       { title: 'Select (V)', expected: 'select' },
@@ -303,5 +306,156 @@ describe('CoreDrawingToolbar', () => {
     fireEvent.click(resetBtn);
     expect(window.confirm).toHaveBeenCalled();
     expect(store.getState().annotations.arrows).toHaveLength(0);
+  });
+});
+
+describe('MiniColorPicker', () => {
+  it('クリック時に input[type="color"] は存在せず、HexColorPicker とスウォッチを含むダイアログが開き色変更できること', () => {
+    const onChange = vi.fn();
+    renderWithStore(
+      <MiniColorPicker
+        value="#ef4444"
+        onChange={onChange}
+        title="カラー選択"
+      />,
+    );
+
+    // トリガーボタンをクリックしてポップオーバーを開く
+    const trigger = screen.getByRole('button', { name: 'カラー選択' });
+    fireEvent.click(trigger);
+
+    // input[type="color"] は廃止されていること
+    expect(document.querySelector('input[type="color"]')).toBeNull();
+
+    // ダイアログが開くこと
+    const dialog = screen.getByRole('dialog', { name: 'カラーパレット' });
+    expect(dialog).toBeDefined();
+
+    // react-colorful の HexColorPicker (.react-colorful) が存在すること
+    expect(dialog.querySelector('.react-colorful')).not.toBeNull();
+
+    // スウォッチボタンをクリックすると onChange が呼ばれること
+    const whiteSwatch = screen.getByTitle('White (#ffffff)');
+    fireEvent.click(whiteSwatch);
+    expect(onChange).toHaveBeenCalledWith('#ffffff');
+  });
+});
+
+describe('PlayerHud', () => {
+  it('Web 2Dマーカー時にベンチ退避ボタンと削除ボタンが存在せず、選手情報変更ポップオーバーから背番号・選手名を更新できること', () => {
+    const { store } = renderWithStore(
+      <ContextHud stageSize={{ width: 800, height: 600 }} />,
+    );
+
+    act(() => {
+      store.getState().addMarker({
+        id: 'player-2d',
+        shirtNo: '10',
+        name: 'Initial Name',
+        x: 30,
+        y: 40,
+        team: 'home',
+        position: 'FW',
+        area: 'pitch',
+        connectLines: [],
+        badges: [],
+        style: {
+          markerType: 'circle',
+          insideContent: 'number',
+          bottomLabel: 'name',
+          color: '#ef4444',
+          strokeColor: '#ffffff',
+          strokeWidth: 2,
+          sizeScale: 1.0,
+          numberSizeScale: 1.0,
+          labelSizeScale: 1.0,
+        },
+      });
+      store.getState().selectObject({ id: 'player-2d', kind: 'player' });
+    });
+
+    // ベンチ退避ボタンと削除ボタンが存在しないこと
+    expect(screen.queryByTitle('ベンチへ退避')).toBeNull();
+    expect(screen.queryByTitle('削除 (Delete)')).toBeNull();
+
+    // 選手情報変更ボタンをクリック
+    const infoBtn = screen.getByRole('button', { name: '選手情報変更' });
+    fireEvent.click(infoBtn);
+
+    const dialog = screen.getByRole('dialog', { name: '選手情報変更フォーム' });
+    expect(dialog).toBeDefined();
+
+    // 背番号変更
+    const shirtInput = within(dialog).getByLabelText('背番号');
+    fireEvent.change(shirtInput, { target: { value: '8' } });
+    expect(store.getState().annotations.markers[0].shirtNo).toBe('8');
+
+    // 選手名変更
+    const nameInput = within(dialog).getByLabelText('選手名');
+    fireEvent.change(nameInput, { target: { value: 'Odegaard' } });
+    expect(store.getState().annotations.markers[0].name).toBe('Odegaard');
+    expect(store.getState().annotations.markers[0].style.bottomLabel).toBe(
+      'name',
+    );
+  });
+
+  it('Extension 3Dマーカー時に選手情報変更ポップオーバーから選手名を更新でき削除ボタンが表示されること', () => {
+    const { store } = renderWithStore(
+      <ContextHud stageSize={{ width: 800, height: 600 }} />,
+    );
+
+    act(() => {
+      store.getState().addMarker({
+        id: 'player-3d',
+        shirtNo: '4',
+        name: 'White',
+        x: 50,
+        y: 50,
+        team: 'home',
+        position: 'DF',
+        area: 'pitch',
+        connectLines: [],
+        badges: [],
+        style: {
+          markerType: 'ring',
+          insideContent: 'number',
+          bottomLabel: 'name',
+          color: '#034694',
+          strokeColor: '#ffffff',
+          strokeWidth: 2,
+          sizeScale: 1.0,
+          numberSizeScale: 1.0,
+          labelSizeScale: 1.0,
+        },
+      });
+      store.getState().selectObject({ id: 'player-3d', kind: 'player' });
+    });
+
+    // ベンチ退避ボタンは存在せず、削除ボタンが存在すること
+    expect(screen.queryByTitle('ベンチへ退避')).toBeNull();
+    const deleteBtn = screen.getByTitle('削除 (Delete)');
+    expect(deleteBtn).toBeDefined();
+
+    // 選手情報変更ボタンをクリック
+    const infoBtn = screen.getByRole('button', { name: '選手情報変更' });
+    fireEvent.click(infoBtn);
+
+    const dialog = screen.getByRole('dialog', { name: '選手情報変更フォーム' });
+    expect(dialog).toBeDefined();
+
+    // 3Dマーカー時、ポップオーバー内に背番号入力は存在しないこと
+    expect(within(dialog).queryByLabelText('背番号')).toBeNull();
+
+    // 選手名変更
+    const nameInput = within(dialog).getByLabelText('選手名');
+    fireEvent.change(nameInput, { target: { value: 'Saliba' } });
+    expect(store.getState().annotations.markers[0].name).toBe('Saliba');
+    expect(store.getState().annotations.markers[0].style.bottomLabel).toBe(
+      'name',
+    );
+
+    // 削除ボタンをクリックするとマーカーが削除されること
+    fireEvent.click(deleteBtn);
+    expect(store.getState().annotations.markers).toHaveLength(0);
   });
 });

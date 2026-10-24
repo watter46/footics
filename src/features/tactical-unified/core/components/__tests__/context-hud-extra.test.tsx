@@ -121,4 +121,26 @@ describe('ContextHud Extra Plugins (renderExtraHud & resolveExtraTarget)', () =>
     // ballNode.rect.x(200) + width/2(10) = 210
     expect(toolbar.style.left).toBe('210px');
   });
+
+  it('isDragging === true の時は ContextHud が null (描画されない) になること', () => {
+    const store = createCanvasStore({
+      mode: 'tactical-board',
+      aspectRatio: '16:9',
+    });
+    const player = {
+      ...createDefaultPlayer('home', 10, 10, '#034694'),
+      id: 'p1',
+      shirtNo: '10',
+    };
+    store.getState().addMarker(player);
+    store.getState().setSelectedObjects([{ id: 'p1', kind: 'player' }]);
+    store.setState({ isDragging: true });
+
+    const { container } = renderWithStore(
+      <ContextHud stageSize={{ width: 800, height: 600 }} />,
+      store,
+    );
+
+    expect(container.firstChild).toBeNull();
+  });
 });

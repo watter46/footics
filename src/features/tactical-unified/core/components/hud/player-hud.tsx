@@ -1,13 +1,16 @@
 'use client';
 
 import {
-  ArrowDownToLine,
-  Lock,
-  Minus,
-  Plus,
-  Trash2,
-  Unlock,
-} from 'lucide-react';
+  flip,
+  offset,
+  shift,
+  useClick,
+  useDismiss,
+  useFloating,
+  useInteractions,
+} from '@floating-ui/react';
+import { Lock, Minus, Plus, Trash2, Unlock, UserCog } from 'lucide-react';
+import { useState } from 'react';
 import { useCanvasStore } from '../../hooks/use-canvas-store';
 import { MiniColorPicker } from './mini-color-picker';
 import { PlayerQuickActions } from './player-quick-actions';
@@ -22,8 +25,25 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
   );
   const updateMarker = useCanvasStore((s) => s.updateMarker);
   const removeMarker = useCanvasStore((s) => s.removeMarker);
-  const moveMarkerToBench = useCanvasStore((s) => s.moveMarkerToBench);
   const clearSelection = useCanvasStore((s) => s.clearSelection);
+
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const {
+    refs: infoRefs,
+    floatingStyles: infoFloatingStyles,
+    context: infoContext,
+  } = useFloating({
+    open: isInfoOpen,
+    onOpenChange: setIsInfoOpen,
+    placement: 'top',
+    middleware: [offset(8), flip(), shift({ padding: 8 })],
+  });
+  const infoClick = useClick(infoContext);
+  const infoDismiss = useDismiss(infoContext);
+  const {
+    getReferenceProps: getInfoReferenceProps,
+    getFloatingProps: getInfoFloatingProps,
+  } = useInteractions([infoClick, infoDismiss]);
 
   if (!player) return null;
 
@@ -139,36 +159,103 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
 
       <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
 
-      {/* ベンチへ退避ボタン */}
-      {moveMarkerToBench && (
+      {/* 6. 選手情報変更ボタン & ポップオーバー */}
+      <div className="relative flex items-center">
+        <button
+          ref={infoRefs.setReference}
+          {...getInfoReferenceProps()}
+          type="button"
+          className={`p-1 rounded-md transition-colors cursor-pointer ${
+            isInfoOpen
+              ? 'text-white bg-white/20'
+              : 'text-white/60 hover:text-white hover:bg-white/10'
+          }`}
+          title="選手情報変更"
+          aria-label="選手情報変更"
+        >
+          <UserCog size={13} />
+        </button>
+
+        {isInfoOpen && (
+          <div
+            ref={infoRefs.setFloating}
+            {...getInfoFloatingProps()}
+            role="dialog"
+            aria-label="選手情報変更フォーム"
+            tabIndex={-1}
+            className="p-2.5 bg-[#222222] border border-[#383838] rounded-xl shadow-2xl z-50 flex flex-col gap-2 w-48 text-xs text-white"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{
+              ...infoFloatingStyles,
+              width: 192,
+              backgroundColor: '#222222',
+              borderColor: '#383838',
+            }}
+          >
+            <div className="text-[11px] font-semibold text-white/70 border-b border-[#383838] pb-1">
+              選手情報
+            </div>
+            {!isRing && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-white/60">背番号</label>
+                <input
+                  type="text"
+                  value={player.shirtNo ?? ''}
+                  onChange={(e) => {
+                    updateMarker(player.id, { shirtNo: e.target.value });
+                  }}
+                  placeholder="背番号 (例: 10)"
+                  className="w-full bg-[#1a1a1a] border border-[#383838] text-white px-2 py-1 rounded text-xs focus:outline-none focus:border-[#0d99ff]"
+                  maxLength={3}
+                  aria-label="背番号"
+                />
+              </div>
+            )}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-white/60">選手名</label>
+              <input
+                type="text"
+                value={player.name ?? ''}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  updateMarker(player.id, {
+                    name,
+                    style: {
+                      ...player.style,
+                      bottomLabel: name ? 'name' : 'none',
+                    },
+                  });
+                }}
+                placeholder="選手名 (例: Saka)"
+                className="w-full bg-[#1a1a1a] border border-[#383838] text-white px-2 py-1 rounded text-xs focus:outline-none focus:border-[#0d99ff]"
+                maxLength={20}
+                aria-label="選手名"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 7. 削除ボタン (Extension 3Dリングマーカー時のみ表示) */}
+      {isRing && (
         <>
+          <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
           <button
             type="button"
             onClick={() => {
-              moveMarkerToBench(player.id);
+              removeMarker(player.id);
               clearSelection();
             }}
-            className="p-1 rounded-md text-white/60 hover:text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer"
-            title="ベンチへ退避"
+            className="p-1 rounded-md text-white/50 hover:text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"
+            title="削除 (Delete)"
+            aria-label="削除 (Delete)"
           >
-            <ArrowDownToLine size={13} />
+            <Trash2 size={13} />
           </button>
-          <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
         </>
       )}
-
-      {/* 削除ボタン */}
-      <button
-        type="button"
-        onClick={() => {
-          removeMarker(player.id);
-          clearSelection();
-        }}
-        className="p-1 rounded-md text-white/50 hover:text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"
-        title="削除 (Delete)"
-      >
-        <Trash2 size={13} />
-      </button>
     </>
   );
 }

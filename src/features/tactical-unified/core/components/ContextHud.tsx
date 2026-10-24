@@ -1,13 +1,13 @@
 'use client';
 
+import { flip, offset, shift, useFloating } from '@floating-ui/react';
 import type React from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { SelectedObject } from '../types';
 import {
   ArrowHud,
   ConnectLineHud,
-  computeClampedHudPos,
   type HudOffsetRect,
   type HudTarget,
   PlayerHud,
@@ -34,7 +34,6 @@ export function ContextHud({
   renderExtraHud,
   resolveExtraTarget,
 }: ContextHudProps) {
-  const hudRef = useRef<HTMLDivElement>(null);
   const selectedObjects = useCanvasStore((s) => s.selectedObjects);
   const activeTool = useCanvasStore((s) => s.activeTool);
   const isHudOpen = useCanvasStore((s) => s.isHudOpen);
@@ -50,118 +49,45 @@ export function ContextHud({
     resolveExtraTarget,
   });
 
+  const { refs, x, y, placement } = useFloating({
+    placement: position?.isBelow ? 'bottom' : 'top',
+    strategy: 'absolute',
+    middleware: [
+      offset(12),
+      flip({ boundary: 'clippingAncestors', padding: 10 }),
+      shift({ padding: 10 }),
+    ],
+  });
+
+  const { setReference, setFloating } = refs;
+
   useEffect(() => {
-    const reg = nodesRegistryRef?.current as
-      | {
-          stage?: {
-            on: (event: string, fn: () => void) => void;
-            off: (event: string, fn: () => void) => void;
-          };
-          playerNodes?: Map<
-            string,
-            {
-              getClientRect: () => {
-                x: number;
-                y: number;
-                width: number;
-                height: number;
-              };
-            }
-          >;
-          arrowNodes?: Map<
-            string,
-            {
-              node?: {
-                getClientRect: () => {
-                  x: number;
-                  y: number;
-                  width: number;
-                  height: number;
-                };
-              };
-            }
-          >;
-          zoneNodes?: Map<
-            string,
-            {
-              getClientRect: () => {
-                x: number;
-                y: number;
-                width: number;
-                height: number;
-              };
-            }
-          >;
-          textNodes?: Map<
-            string,
-            {
-              getClientRect: () => {
-                x: number;
-                y: number;
-                width: number;
-                height: number;
-              };
-            }
-          >;
-          ballNode?: {
-            getClientRect: () => {
-              x: number;
-              y: number;
-              width: number;
-              height: number;
-            };
-          };
-        }
-      | undefined;
-    const stage = reg?.stage;
-    if (!stage || !selected) return;
-
-    const handleDragMove = () => {
-      if (!hudRef.current) return;
-      let node:
-        | {
-            getClientRect: () => {
-              x: number;
-              y: number;
-              width: number;
-              height: number;
-            };
-          }
-        | undefined;
-      if (selected.kind === 'player') node = reg.playerNodes?.get(selected.id);
-      else if (selected.kind === 'arrow')
-        node = reg.arrowNodes?.get(selected.id)?.node;
-      else if (selected.kind === 'zone') node = reg.zoneNodes?.get(selected.id);
-      else if (selected.kind === 'text') node = reg.textNodes?.get(selected.id);
-      else if (selected.kind === 'ball') node = reg.ballNode;
-
-      if (!node) return;
-      try {
-        const rect = node.getClientRect();
-        const targetX = rect.x + rect.width / 2;
-        const targetY = rect.y;
-        const targetHeight = rect.height || 30;
-        const next = computeClampedHudPos(
-          targetX,
-          targetY,
-          targetHeight,
-          stageSize,
-        );
-        hudRef.current.style.left = `${next.clampedX}px`;
-        hudRef.current.style.top = `${next.clampedY}px`;
-        hudRef.current.style.transform = next.isBelow
-          ? 'translate(-50%, 0)'
-          : 'translate(-50%, -100%)';
-      } catch {
-        // fallback
-      }
-    };
-
-    stage.on('dragmove', handleDragMove);
-    return () => {
-      stage.off('dragmove', handleDragMove);
-    };
-  }, [nodesRegistryRef, selected, stageSize]);
+    if (!position) return;
+    const tx = position.targetX ?? position.clampedX;
+    const ty = position.targetY ?? position.clampedY;
+    const th = position.targetHeight ?? 30;
+    setReference({
+      getBoundingClientRect() {
+        return {
+          width: 0,
+          height: th,
+          x: tx,
+          y: ty - th / 2,
+          top: ty - th / 2,
+          bottom: ty + th / 2,
+          left: tx,
+          right: tx,
+        };
+      },
+    });
+  }, [
+    position?.targetX,
+    position?.targetY,
+    position?.targetHeight,
+    position?.clampedX,
+    position?.clampedY,
+    setReference,
+  ]);
 
   if (
     isDragging ||
@@ -173,9 +99,13 @@ export function ContextHud({
     return null;
   }
 
+  const resolvedLeft = x ? Math.round(x) : position.clampedX;
+  const resolvedTop = y ? Math.round(y) : position.clampedY;
+  const isBelow = placement.startsWith('bottom') || (!x && position.isBelow);
+
   return (
     <div
-      ref={hudRef}
+      ref={setFloating}
       role="toolbar"
       aria-label="コンテキスト操作ツールバー"
       tabIndex={-1}
@@ -184,11 +114,13 @@ export function ContextHud({
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
       style={{
-        left: `${position.clampedX}px`,
-        top: `${position.clampedY}px`,
-        transform: position.isBelow
-          ? 'translate(-50%, 0)'
-          : 'translate(-50%, -100%)',
+        left: `${resolvedLeft}px`,
+        top: `${resolvedTop}px`,
+        transform: x
+          ? undefined
+          : isBelow
+            ? 'translate(-50%, 0)'
+            : 'translate(-50%, -100%)',
       }}
       className="absolute z-40 transition-opacity duration-150 select-none pointer-events-auto animate-in fade-in zoom-in-95 duration-100"
     >
