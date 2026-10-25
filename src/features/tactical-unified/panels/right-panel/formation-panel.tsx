@@ -6,7 +6,7 @@
  */
 
 import { Shield } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
 import {
   selectActiveSlide,
@@ -39,6 +39,17 @@ export function FormationPanel() {
   const [formationMode, setFormationMode] = useState<FormationMode>('full');
   const [selectedFormation, setSelectedFormation] =
     useState<FormationType>('4-3-3');
+
+  useEffect(() => {
+    if (!project.matchFormations) return;
+    const targetFormation =
+      activeTeam === 'away'
+        ? project.matchFormations.away
+        : project.matchFormations.home;
+    if (targetFormation) {
+      setSelectedFormation(targetFormation);
+    }
+  }, [project.matchFormations, activeTeam]);
 
   const teamPlayersCount = useMemo(() => {
     if (!activeSlide) return { home: 0, away: 0 };

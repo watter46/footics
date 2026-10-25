@@ -343,4 +343,53 @@ describe('squad-to-tactical-bridge', () => {
     expect(withBoth?.style.insideContent).toBe('photo');
     expect(withBoth?.style.photoUrl).toBe('https://example.com/both.png');
   });
+
+  it('correctly maps squad positions using matchPlayersToFormationPositions and complements sub positions', () => {
+    // Enzo の position を 'Sub' にして、マッチした枠の position が補完されることを検証
+    const squadWithSub: SquadPlayerItem[] = sampleSquad.map((p) =>
+      p.playerId === 345011 ? { ...p, position: 'Sub' } : p,
+    );
+
+    const tacticalPlayers = convertSquadToTacticalPlayers(squadWithSub, {
+      team: 'home',
+      formation: '4-2-3-1',
+      mode: 'full',
+      primaryColor: '#034694',
+    });
+
+    const cucurella = tacticalPlayers.find((p) => p.name === 'Marc Cucurella');
+    const gusto = tacticalPlayers.find((p) => p.name === 'Malo Gusto');
+    const neto = tacticalPlayers.find((p) => p.name === 'Pedro Neto');
+    const madueke = tacticalPlayers.find((p) => p.name === 'Noni Madueke');
+    const jackson = tacticalPlayers.find((p) => p.name === 'Nicolas Jackson');
+    const enzo = tacticalPlayers.find((p) => p.name === 'Enzo Fernández');
+
+    expect(cucurella).toBeDefined();
+    expect(gusto).toBeDefined();
+    expect(neto).toBeDefined();
+    expect(madueke).toBeDefined();
+    expect(jackson).toBeDefined();
+    expect(enzo).toBeDefined();
+
+    // Cucurella (DL, left) y < 30
+    expect(cucurella?.y).toBeLessThan(30);
+    expect(cucurella?.position).toBe('DL');
+
+    // Gusto (DR, right) y > 70
+    expect(gusto?.y).toBeGreaterThan(70);
+    expect(gusto?.position).toBe('DR');
+
+    // Neto (AML, left wing) y < 30
+    expect(neto?.y).toBeLessThan(30);
+
+    // Madueke (AMR, right wing) y > 70
+    expect(madueke?.y).toBeGreaterThan(70);
+
+    // Jackson (FW, striker) x は最前線（GK側より大きい）
+    expect(jackson?.x).toBeGreaterThan(gusto?.x ?? 0);
+
+    // 元の position が 'Sub' だった Enzo には割り当てられた枠の position が補完される（'Sub' ではなく 'CM' または 'DM' 等）
+    expect(enzo?.position).not.toBe('Sub');
+    expect(['CM', 'DM', 'MC']).toContain(enzo?.position);
+  });
 });

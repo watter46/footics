@@ -52,23 +52,39 @@ export function buildMatchTacticalPlayers({
     awayResult.formationName || '4-4-2',
   );
 
-  const homePitchIds = new Set(homeResult.playerIds);
-  const homeBench = (homeTeam?.players || [])
-    .filter((p: Player) => !homePitchIds.has(p.playerId))
-    .map((p: Player) => ({ ...p, isFirstEleven: false }));
-  const homeSquad: SquadPlayerItem[] = [
-    ...homeResult.players.map((p) => ({ ...p, isFirstEleven: true })),
-    ...homeBench,
-  ];
+  const homePitchSquad: SquadPlayerItem[] = homeResult.players.map((p) => {
+    const slotInfo = homeResult.slotPositions[p.playerId];
+    return {
+      ...p,
+      isFirstEleven: true,
+      slotVertical: slotInfo?.vertical,
+      slotHorizontal: slotInfo?.horizontal,
+    };
+  });
+  const homeBenchSquad: SquadPlayerItem[] = homeResult.benchPlayers.map(
+    (p) => ({
+      ...p,
+      isFirstEleven: false,
+    }),
+  );
+  const homeSquad: SquadPlayerItem[] = [...homePitchSquad, ...homeBenchSquad];
 
-  const awayPitchIds = new Set(awayResult.playerIds);
-  const awayBench = (awayTeam?.players || [])
-    .filter((p: Player) => !awayPitchIds.has(p.playerId))
-    .map((p: Player) => ({ ...p, isFirstEleven: false }));
-  const awaySquad: SquadPlayerItem[] = [
-    ...awayResult.players.map((p) => ({ ...p, isFirstEleven: true })),
-    ...awayBench,
-  ];
+  const awayPitchSquad: SquadPlayerItem[] = awayResult.players.map((p) => {
+    const slotInfo = awayResult.slotPositions[p.playerId];
+    return {
+      ...p,
+      isFirstEleven: true,
+      slotVertical: slotInfo?.vertical,
+      slotHorizontal: slotInfo?.horizontal,
+    };
+  });
+  const awayBenchSquad: SquadPlayerItem[] = awayResult.benchPlayers.map(
+    (p) => ({
+      ...p,
+      isFirstEleven: false,
+    }),
+  );
+  const awaySquad: SquadPlayerItem[] = [...awayPitchSquad, ...awayBenchSquad];
 
   const homePlayers = convertSquadToTacticalPlayers(homeSquad, {
     team: 'home',

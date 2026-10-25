@@ -127,6 +127,109 @@ describe('buildMatchTacticalPlayers', () => {
       ),
     ).toBe(true);
   });
+
+  it('correctly maps 20-player match data with formationSlots and subbed-out players to bench behind unplayed subs', () => {
+    // 20人の選手データを持つチーム
+    const homeTeam = createMockTeam(1, 'Chelsea', 'home');
+    // 20人に拡張
+    homeTeam.players = Array.from({ length: 20 }, (_, i) => ({
+      playerId: 100 + i + 1,
+      name: `Chelsea Player ${i + 1}`,
+      shirtNo: i + 1,
+      position: i === 0 ? 'GK' : i < 5 ? 'DC' : i < 9 ? 'MC' : 'FW',
+      isFirstEleven: i < 11,
+      field: 'home',
+      stats: {},
+      height: 180,
+      weight: 75,
+      age: 25,
+      isManOfTheMatch: false,
+    }));
+
+    // 最初: 1..11 がスタメン (slot 1..11), 12..20 が控え (slot 0)
+    // 60分に 11番(FW) が 12番(控え) と交代
+    // 60分以降の formation では 12番が slot 11 に入り、11番は playerIds から消える（交代退場）
+    const all20Ids = homeTeam.players.map((p) => p.playerId);
+    const starterIds = all20Ids.slice(0, 11);
+    const slotsStart = [
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ];
+    const positionsStart = Array.from({ length: 20 }, (_, i) => ({
+      vertical: i < 11 ? Math.floor(i / 3) * 2 : 0,
+      horizontal: i < 11 ? (i % 3) * 4 : 0,
+    }));
+
+    const starterIdsAfterSub = [
+      ...all20Ids.slice(0, 10),
+      all20Ids[11],
+      ...all20Ids.slice(12),
+    ];
+    // 11番(all20Ids[10])は formation.playerIds に含まれない
+    const slotsAfterSub = [
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 0, 0, 0, 0, 0, 0, 0,
+    ];
+
+    homeTeam.formations = [
+      {
+        formationId: 1,
+        formationName: '4-2-3-1',
+        captainPlayerId: starterIds[0],
+        startMinuteExpanded: 0,
+        endMinuteExpanded: 60,
+        playerIds: all20Ids,
+        formationSlots: slotsStart,
+        formationPositions: positionsStart,
+        jerseyNumbers: homeTeam.players.map((p) => p.shirtNo),
+      },
+      {
+        formationId: 2,
+        formationName: '4-2-3-1',
+        captainPlayerId: starterIds[0],
+        startMinuteExpanded: 60,
+        endMinuteExpanded: 90,
+        playerIds: starterIdsAfterSub, // 19人 (11番が退場して含まれない)
+        formationSlots: slotsAfterSub,
+        formationPositions: positionsStart.slice(0, 19),
+        jerseyNumbers: homeTeam.players
+          .filter((p) => p.playerId !== all20Ids[10])
+          .map((p) => p.shirtNo),
+      },
+    ];
+
+    const match: Match = {
+      id: '99999',
+      date: '2026-09-01',
+      score: '1-0',
+      matchType: 'club',
+      homeTeam: { id: 1, name: 'Chelsea' },
+      awayTeam: { id: 2, name: 'Arsenal' },
+      playerIdNameDictionary: {},
+      teams: {
+        home: homeTeam,
+        away: createMockTeam(2, 'Arsenal', 'away'),
+      },
+    };
+
+    // 70分時点をビルド
+    const result = buildMatchTacticalPlayers({ match, minute: 70 });
+    const homePitch = result.homePlayers.filter((p) => p.area === 'pitch');
+    const homeBench = result.homePlayers.filter((p) => p.area === 'bench');
+
+    // ピッチ上は 11人
+    expect(homePitch).toHaveLength(11);
+    // 交代でピッチに入った 12番 (ID: 112) がピッチにいる
+    expect(homePitch.some((p) => p.playerId === '112')).toBe(true);
+
+    // ベンチは 9人 (未出場控え8人 + 交代退場した11番)
+    expect(homeBench).toHaveLength(9);
+
+    // 交代退場した 11番 (ID: 111) はベンチに含まれている
+    expect(homeBench.some((p) => p.playerId === '111')).toBe(true);
+    // 未出場控え選手 (ID: 113) もベンチに含まれている
+    expect(homeBench.some((p) => p.playerId === '113')).toBe(true);
+    // ピッチにいる 12番 (ID: 112) はベンチにはいない
+    expect(homeBench.some((p) => p.playerId === '112')).toBe(false);
+  });
 });
 
 describe('injectMatchToTactical', () => {

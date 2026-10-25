@@ -6,6 +6,7 @@ import {
   getFormationActualPosVertical,
 } from '@/lib/data/formations';
 import { FORMATION_POSITIONS } from '@/lib/data/formations-data';
+import { matchPlayersToFormationPositions } from '@/lib/tactical/player-formatting';
 import type {
   AspectRatio,
   Player as TacticalPlayer,
@@ -18,14 +19,16 @@ import {
 } from '@/lib/types/tactical-unified';
 import type { Player } from '@/types';
 
-export interface SquadPlayerItem extends Partial<Player> {
+export interface SquadPlayerItem extends Omit<Partial<Player>, 'position'> {
   playerId: number;
   name: string;
   shirtNo?: number;
-  position?: Player['position'];
+  position?: string;
   isFirstEleven?: boolean;
   photoBlob?: Blob;
   photoUrl?: string;
+  slotVertical?: number;
+  slotHorizontal?: number;
 }
 
 export interface InjectTeamSquadOptions {
@@ -81,9 +84,9 @@ export function convertSquadToTacticalPlayers(
 
   const tacticalPlayers: TacticalPlayer[] = [];
 
-  // 2. スタメンの配置
-  starters.forEach((sp, idx) => {
-    const templatePos = positions[idx] || { top: 50, left: 50 };
+  // 2. スタメンの配置 (2D 適性マッチング)
+  const matchedStarters = matchPlayersToFormationPositions(starters, positions);
+  matchedStarters.forEach(({ player: sp, templatePos }, idx) => {
     const coord = isVertical
       ? getFormationActualPosVertical(templatePos, team, mode)
       : getFormationActualPos(templatePos, team, mode);
@@ -98,7 +101,10 @@ export function convertSquadToTacticalPlayers(
     tacticalPlayer.playerId = String(sp.playerId);
     tacticalPlayer.name = sp.name;
     tacticalPlayer.shirtNo = String(sp.shirtNo || idx + 1);
-    tacticalPlayer.position = sp.position;
+    tacticalPlayer.position =
+      sp.position && sp.position !== 'Sub'
+        ? sp.position
+        : (templatePos.position ?? sp.position);
     tacticalPlayer.area = 'pitch';
 
     if (sp.photoUrl) {

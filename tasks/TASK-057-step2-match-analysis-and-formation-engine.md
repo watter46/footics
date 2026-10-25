@@ -142,9 +142,10 @@ export function matchPlayersToFormationPositions<T extends PositionMatchablePlay
   - `match-to-tactical-bridge.test.ts`: 20人入りの `formation.playerIds` と `formationSlots` を持つ試合データからピッチ22人・ベンチ選手が正確に展開され、途中交代退場した選手もベンチ（未出場控えの後ろ）に配置されることを検証。
   - `formation-panel-step5.test.tsx`: `project.matchFormations`（例: `{ home: '4-2-3-1', away: '3-4-2-1' }`）が設定されている際、`activeTeam` の切り替え（`HOME` / `AWAY`）に応じて該当フォーメーションボタンが選択状態（アクティブ表示）になることを検証。
 - **Tasks**:
-  - [ ] 1. TDD実装: `bun run ai:check:red src/lib/tactical/__tests__/squad-to-tactical-bridge.test.ts src/lib/tactical/__tests__/match-to-tactical-bridge.test.ts src/features/tactical-unified/panels/right-panel/__tests__/formation-panel-step5.test.tsx` ➔ 実装 ➔ `bun run ai:check src/lib/tactical/squad-to-tactical-bridge.ts src/lib/tactical/match-to-tactical-bridge.ts src/features/tactical-unified/panels/right-panel/formation-panel.tsx src/lib/tactical/__tests__/squad-to-tactical-bridge.test.ts src/lib/tactical/__tests__/match-to-tactical-bridge.test.ts src/features/tactical-unified/panels/right-panel/__tests__/formation-panel-step5.test.tsx` PASS
+  - [x] 1. TDD実装: `bun run ai:check:red src/lib/tactical/__tests__/squad-to-tactical-bridge.test.ts src/lib/tactical/__tests__/match-to-tactical-bridge.test.ts src/features/tactical-unified/panels/right-panel/__tests__/formation-panel-step5.test.tsx` ➔ 実装 ➔ `bun run ai:check src/lib/tactical/squad-to-tactical-bridge.ts src/lib/tactical/match-to-tactical-bridge.ts src/features/tactical-unified/panels/right-panel/formation-panel.tsx src/lib/tactical/__tests__/squad-to-tactical-bridge.test.ts src/lib/tactical/__tests__/match-to-tactical-bridge.test.ts src/features/tactical-unified/panels/right-panel/__tests__/formation-panel-step5.test.tsx` PASS
 - **Worker Handoff Log**:
-  <!-- 確定したexportシンボルや注意点のみを1〜2行で記録 -->
+  - `convertSquadToTacticalPlayers` に `matchPlayersToFormationPositions` を統合し、`'Sub'` 選手へのポジション自動補完を適用。
+  - `buildMatchTacticalPlayers` に `slotPositions` と `benchPlayers` を配線し、`FormationPanel` で `project.matchFormations` 連動を実装。
 
 ### Phase 3: 陣地反転（180度点対称 Swap・ベンチ除外・`isSidesSwapped` 保持）とフォーメーション再配置整合性
 - **Worker Model**: `flash`

@@ -181,4 +181,33 @@ describe('FormationPanel (Step 5)', () => {
 
     injectSpy.mockRestore();
   });
+
+  it('9. synchronizes selectedFormation with activeTeam when project.matchFormations is present', () => {
+    useTacticalUnifiedStore.getState().loadProject({
+      ...useTacticalUnifiedStore.getState().project,
+      matchFormations: {
+        home: '4-2-3-1',
+        away: '3-4-2-1',
+      },
+    });
+
+    render(<FormationPanel />);
+
+    // Default activeTeam is home -> 4-2-3-1 button is selected (active)
+    const btn4231 = screen.getByRole('button', { name: '4-2-3-1' });
+    expect(btn4231.className).toContain('bg-blue-600');
+
+    // Switch to AWAY -> 3-4-2-1 button is selected (active)
+    const awayButton = screen.getByRole('button', { name: /^AWAY\s*\(/i });
+    fireEvent.click(awayButton);
+
+    const btn3421 = screen.getByRole('button', { name: '3-4-2-1' });
+    expect(btn3421.className).toContain('bg-blue-600');
+
+    // Switch to BOTH -> home formation 4-2-3-1 is selected
+    const bothButton = screen.getByRole('button', { name: /^BOTH\s*\(/i });
+    fireEvent.click(bothButton);
+
+    expect(btn4231.className).toContain('bg-blue-600');
+  });
 });
