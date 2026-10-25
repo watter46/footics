@@ -1,5 +1,15 @@
 import { z } from 'zod';
 import { getPlayersMasterBatch } from '@/lib/db/queries';
+import {
+  type AspectRatio,
+  type BoundaryBox,
+  BoundaryBoxSchema,
+  type PitchTransform,
+  PitchTransformSchema,
+} from '@/lib/types/tactical-unified';
+
+export const AspectRatioSchema = z.enum(['16:9', '4:5', '1:1', '9:16']);
+export type { AspectRatio };
 
 export type AnimationOrientation = 'vertical' | 'horizontal';
 
@@ -9,19 +19,28 @@ export interface TacticalSceneLike {
   [key: string]: any;
 }
 
-export const TacticalExportSharePayloadSchema = z.object({
-  version: z.number().default(1),
-  createdAt: z.number(),
-  title: z.string().optional(),
-  scenes: z.array(z.any()), // Slide[] or TacticalScene[]
-  orientation: z.enum(['vertical', 'horizontal']),
-  teamVisibility: z.enum(['both', 'home', 'away']).optional().default('both'),
-  photos: z.record(z.string(), z.string()).optional().default({}), // playerId -> base64 DataURL or Image URL
-  exportFps: z
-    .union([z.literal(30), z.literal(60)])
-    .optional()
-    .default(30),
-});
+export const TacticalExportSharePayloadSchema = z
+  .object({
+    version: z.number().default(1),
+    createdAt: z.number(),
+    title: z.string().optional(),
+    scenes: z.array(z.any()), // Slide[] or TacticalScene[]
+    orientation: z.enum(['vertical', 'horizontal']),
+    teamVisibility: z.enum(['both', 'home', 'away']).optional().default('both'),
+    photos: z.record(z.string(), z.string()).optional().default({}), // playerId -> base64 DataURL or Image URL
+    exportFps: z
+      .union([z.literal(30), z.literal(60)])
+      .optional()
+      .default(30),
+    aspectRatio: AspectRatioSchema.optional(),
+    boundaryBox: BoundaryBoxSchema.nullable().optional(),
+    pitchTransform: PitchTransformSchema.nullable().optional(),
+  })
+  .transform((data) => ({
+    ...data,
+    aspectRatio:
+      data.aspectRatio ?? (data.orientation === 'vertical' ? '9:16' : '16:9'),
+  }));
 
 export type TacticalExportSharePayload = z.infer<
   typeof TacticalExportSharePayloadSchema
@@ -29,7 +48,20 @@ export type TacticalExportSharePayload = z.infer<
   scenes: any[];
   orientation: AnimationOrientation;
   exportFps: 30 | 60;
+  aspectRatio: AspectRatio;
+  boundaryBox?: BoundaryBox | null;
+  pitchTransform?: PitchTransform | null;
 };
+
+export interface TacticalExportShareSummary {
+  shareId: string;
+  title: string;
+  createdAt: number;
+  sceneCount: number;
+  aspectRatio: AspectRatio;
+  orientation: AnimationOrientation;
+  hasBoundaryCrop: boolean;
+}
 
 /**
  * Blob を Base64 Data URL に変換する

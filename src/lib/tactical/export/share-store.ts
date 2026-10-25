@@ -1,5 +1,8 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import type { TacticalExportSharePayload } from './share-payload';
+import type {
+  TacticalExportSharePayload,
+  TacticalExportShareSummary,
+} from './share-payload';
 
 // メモリ内フォールバックストア (開発環境 / KV未設定時 / テスト用)
 interface MemoryEntry {
@@ -19,6 +22,7 @@ interface KVNamespaceLike {
     options?: { expirationTtl?: number },
   ): Promise<void>;
   get(key: string, options?: { type?: 'text' | 'json' }): Promise<any>;
+  delete?(key: string): Promise<void>;
 }
 
 async function getKVBinding(): Promise<KVNamespaceLike | null> {
@@ -63,6 +67,21 @@ async function getKVBinding(): Promise<KVNamespaceLike | null> {
   return null;
 }
 
+function createSummary(
+  shareId: string,
+  payload: TacticalExportSharePayload,
+): TacticalExportShareSummary {
+  return {
+    shareId,
+    title: payload.title || 'Untitled Animation',
+    createdAt: payload.createdAt,
+    sceneCount: Array.isArray(payload.scenes) ? payload.scenes.length : 0,
+    aspectRatio: payload.aspectRatio,
+    orientation: payload.orientation,
+    hasBoundaryCrop: Boolean(payload.boundaryBox),
+  };
+}
+
 /**
  * 共有データを保存し、共有ID (8〜10文字) を発行する
  */
@@ -72,6 +91,7 @@ export async function saveSharedExportData(
 ): Promise<string> {
   const shareId = generateShareId();
   const serialized = JSON.stringify(payload);
+  const summary = createSummary(shareId, payload);
 
   // Cloudflare KV バインディングを試行
   try {
@@ -80,6 +100,24 @@ export async function saveSharedExportData(
       await kv.put(shareId, serialized, {
         expirationTtl: ttlSeconds,
       });
+
+      // __index__ にサマリーを追加・更新
+      try {
+        const rawIndex = await kv.get('__index__', { type: 'json' });
+        const existingIndex: TacticalExportShareSummary[] = Array.isArray(
+          rawIndex,
+        )
+          ? rawIndex
+          : [];
+        const filtered = existingIndex.filter(
+          (item) => item.shareId !== shareId,
+        );
+        filtered.unshift(summary);
+        await kv.put('__index__', JSON.stringify(filtered.slice(0, 50)));
+      } catch (idxErr) {
+        console.warn('[share-store] Failed to update KV __index__:', idxErr);
+      }
+
       return shareId;
     }
   } catch (err) {
@@ -135,6 +173,97 @@ export async function getSharedExportData(
   }
 
   return entry.data;
+}
+
+/**
+ * 保存された共有データの一覧を最新順（最大50件）で取得する
+ */
+export async function listSharedExportData(): Promise<
+  TacticalExportShareSummary[]
+> {
+  // Cloudflare KV バインディングを試行
+  try {
+    const kv = await getKVBinding();
+    if (kv) {
+      const rawIndex = await kv.get('__index__', { type: 'json' });
+      if (Array.isArray(rawIndex)) {
+        return [...rawIndex]
+          .sort((a, b) => b.createdAt - a.createdAt)
+          .slice(0, 50);
+      }
+    }
+  } catch (err) {
+    console.warn(
+      '[share-store] Cloudflare KV list failed, falling back to memory:',
+      err,
+    );
+  }
+
+  // メモリストアから取得
+  cleanupExpiredMemoryEntries();
+  const summaries: TacticalExportShareSummary[] = Array.from(
+    memoryStore.entries(),
+  )
+    .map(([id, entry]) => createSummary(id, entry.data))
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, 50);
+
+  return summaries;
+}
+
+/**
+ * 共有データを削除する
+ */
+export async function deleteSharedExportData(
+  shareId: string,
+): Promise<boolean> {
+  if (!shareId) return false;
+
+  // Cloudflare KV バインディングを試行
+  try {
+    const kv = await getKVBinding();
+    if (kv) {
+      const existing = await kv.get(shareId);
+      if (existing) {
+        if (typeof kv.delete === 'function') {
+          await kv.delete(shareId);
+        }
+        try {
+          const rawIndex = await kv.get('__index__', { type: 'json' });
+          if (Array.isArray(rawIndex)) {
+            const filtered = rawIndex.filter(
+              (item: TacticalExportShareSummary) => item.shareId !== shareId,
+            );
+            await kv.put('__index__', JSON.stringify(filtered));
+          }
+        } catch (_e) {
+          // ignore
+        }
+        return true;
+      }
+      return false;
+    }
+  } catch (err) {
+    console.warn(
+      '[share-store] Cloudflare KV delete failed, falling back to memory:',
+      err,
+    );
+  }
+
+  // メモリストアから削除
+  if (memoryStore.has(shareId)) {
+    memoryStore.delete(shareId);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * メモリストアを全消去する (テスト用)
+ */
+export function clearSharedExportMemoryStore(): void {
+  memoryStore.clear();
 }
 
 function generateShareId(): string {

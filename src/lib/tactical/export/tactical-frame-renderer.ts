@@ -53,6 +53,9 @@ export type AnyCanvasRenderingContext2D =
   | CanvasRenderingContext2D
   | OffscreenCanvasRenderingContext2D;
 
+export const TACTICAL_CANVAS_FONT_FAMILY =
+  'Geist, "Geist Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
 export const SOCCER_BALL_PATCH_PATHS = [
   'M 36.5,5.2 A 47.5,47.5 0 0,1 63.5,5.2 L 68.0,21.5 L 50.0,16.5 L 32.0,21.5 Z',
   'M 87.8,25.2 A 47.5,47.5 0 0,1 97.2,50.0 L 84.5,58.5 L 80.5,39.5 L 68.0,21.5 Z',
@@ -1136,7 +1139,7 @@ export function renderTacticalFrameToCanvas(
       if (p.style?.insideContent !== 'none' && p.shirtNo) {
         const numScale = p.style?.numberSizeScale ?? 1.0;
         const numFontSize = Math.max(8, Math.round(radius * 0.75 * numScale));
-        ctx.font = `bold ${numFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.font = `bold ${numFontSize}px ${TACTICAL_CANVAS_FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
@@ -1167,7 +1170,7 @@ export function renderTacticalFrameToCanvas(
       if (showInsideNumber && p.shirtNo) {
         const numScale = p.style?.numberSizeScale ?? 1.0;
         const numFontSize = Math.max(8, Math.round(radius * 0.9 * numScale));
-        ctx.font = `bold ${numFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.font = `bold ${numFontSize}px ${TACTICAL_CANVAS_FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
@@ -1189,7 +1192,7 @@ export function renderTacticalFrameToCanvas(
       const fontSize = Math.max(8, Math.round(radius * 0.65 * labelScale));
       const textY = snap(py + radius + fontSize * 0.7 + 3);
 
-      ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      ctx.font = `bold ${fontSize}px ${TACTICAL_CANVAS_FONT_FAMILY}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
@@ -1322,7 +1325,7 @@ export function renderTacticalFrameToCanvas(
     ctx.globalAlpha = t.opacity ?? 1;
     const fontStyle = `${t.bold ? 'bold ' : ''}${t.italic ? 'italic ' : ''}`;
     const fontSize = Math.max(12, Math.round((t.fontSize || 16) * (w / 800)));
-    ctx.font = `${fontStyle}${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.font = `${fontStyle}${fontSize}px ${TACTICAL_CANVAS_FONT_FAMILY}`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
 

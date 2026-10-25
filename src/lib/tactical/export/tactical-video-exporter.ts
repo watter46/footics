@@ -14,6 +14,7 @@ import type {
   AspectRatio,
   BoundaryBox,
   ExportProgress,
+  PitchTransform,
   Slide,
 } from '@/lib/types/tactical-unified';
 import { PITCH_BOUNDARY_CONFIGS } from '../pitch-geometry';
@@ -47,6 +48,8 @@ export interface MultiSlideVideoExportOptions {
   stageHeight?: number;
   aspectRatio?: AspectRatio;
   boundaryBox?: BoundaryBox | null;
+  pitchTransform?: PitchTransform | null;
+  mvpMatrix?: Float32Array | null;
   onProgress?: (progress: ExportProgress) => void;
   checkCancelled?: () => boolean;
 }
@@ -89,6 +92,10 @@ export async function exportMultiSlideMp4Video(
     throw new Error('No slides provided for MP4 export');
   }
 
+  if (typeof document !== 'undefined' && document.fonts?.ready) {
+    await document.fonts.ready;
+  }
+
   const effectiveSlides = applySlideTimelineOverrides(options.slides, {
     transitionDurationMs: options.transitionDurationMs,
     pauseMs: options.pauseMs,
@@ -114,6 +121,8 @@ export async function exportMultiSlideMp4Video(
     transparent: options.transparent ?? false,
     totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 1500,
     boundaryBox: options.boundaryBox,
+    pitchTransform: options.pitchTransform,
+    mvpMatrix: options.mvpMatrix,
     stageWidth,
     stageHeight,
     slides: effectiveSlides,
@@ -131,6 +140,10 @@ export async function exportMultiSlideWebmVideo(
 ): Promise<Blob> {
   if (!options.slides || options.slides.length === 0) {
     throw new Error('No slides provided for WebM export');
+  }
+
+  if (typeof document !== 'undefined' && document.fonts?.ready) {
+    await document.fonts.ready;
   }
 
   const effectiveSlides = applySlideTimelineOverrides(options.slides, {
@@ -158,6 +171,8 @@ export async function exportMultiSlideWebmVideo(
     transparent: options.transparent ?? true,
     totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 1500,
     boundaryBox: options.boundaryBox,
+    pitchTransform: options.pitchTransform,
+    mvpMatrix: options.mvpMatrix,
     stageWidth,
     stageHeight,
     slides: effectiveSlides,

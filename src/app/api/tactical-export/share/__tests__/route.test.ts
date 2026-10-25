@@ -1,13 +1,19 @@
 import { NextRequest } from 'next/server';
-import { describe, expect, it } from 'vitest';
-import { GET, POST } from '../route';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { clearSharedExportMemoryStore } from '@/lib/tactical/export/share-store';
+import { DELETE, GET, POST } from '../route';
 
 describe('src/app/api/tactical-export/share/route', () => {
+  beforeEach(() => {
+    clearSharedExportMemoryStore();
+  });
+
   const mockPayload = {
     version: 1,
     createdAt: Date.now(),
     title: 'Test Tactical Share',
     orientation: 'vertical' as const,
+    aspectRatio: '9:16' as const,
     teamVisibility: 'both' as const,
     exportFps: 30,
     scenes: [
@@ -87,6 +93,93 @@ describe('src/app/api/tactical-export/share/route', () => {
     expect(getData.data.title).toBe('Test Tactical Share');
     expect(getData.data.scenes).toHaveLength(2);
     expect(getData.data.photos['1']).toBe(mockPayload.photos['1']);
+  });
+
+  it('lists shared export data when id is not provided', async () => {
+    // 2件作成
+    const req1 = new NextRequest(
+      'http://localhost:3000/api/tactical-export/share',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...mockPayload,
+          title: 'Project 1',
+          createdAt: 1000,
+        }),
+      },
+    );
+    const res1 = await POST(req1);
+    const data1 = await res1.json();
+
+    const req2 = new NextRequest(
+      'http://localhost:3000/api/tactical-export/share',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...mockPayload,
+          title: 'Project 2',
+          createdAt: 2000,
+        }),
+      },
+    );
+    const res2 = await POST(req2);
+    const data2 = await res2.json();
+
+    // GET /api/tactical-export/share (クエリパラメータなし)
+    const listReq = new NextRequest(
+      'http://localhost:3000/api/tactical-export/share',
+      { method: 'GET' },
+    );
+    const listRes = await GET(listReq);
+    expect(listRes.status).toBe(200);
+
+    const listData = await listRes.json();
+    expect(listData.success).toBe(true);
+    expect(listData.items).toHaveLength(2);
+    // 最新順 (createdAt 降順)
+    expect(listData.items[0].shareId).toBe(data2.shareId);
+    expect(listData.items[0].title).toBe('Project 2');
+    expect(listData.items[1].shareId).toBe(data1.shareId);
+    expect(listData.items[1].title).toBe('Project 1');
+  });
+
+  it('deletes shared export data via DELETE endpoint', async () => {
+    const postReq = new NextRequest(
+      'http://localhost:3000/api/tactical-export/share',
+      {
+        method: 'POST',
+        body: JSON.stringify(mockPayload),
+      },
+    );
+    const postRes = await POST(postReq);
+    const { shareId } = await postRes.json();
+
+    // 削除実行
+    const delReq = new NextRequest(
+      `http://localhost:3000/api/tactical-export/share?id=${shareId}`,
+      { method: 'DELETE' },
+    );
+    const delRes = await DELETE(delReq);
+    expect(delRes.status).toBe(200);
+    const delData = await delRes.json();
+    expect(delData.success).toBe(true);
+    expect(delData.deleted).toBe(true);
+
+    // 削除後は GET で 404
+    const getReq = new NextRequest(
+      `http://localhost:3000/api/tactical-export/share?id=${shareId}`,
+      { method: 'GET' },
+    );
+    const getRes = await GET(getReq);
+    expect(getRes.status).toBe(404);
+
+    // 存在しないIDの削除は 404
+    const delReq2 = new NextRequest(
+      `http://localhost:3000/api/tactical-export/share?id=non_existent_id`,
+      { method: 'DELETE' },
+    );
+    const delRes2 = await DELETE(delReq2);
+    expect(delRes2.status).toBe(404);
   });
 
   it('returns 400 when scenes is empty', async () => {

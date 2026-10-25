@@ -1,7 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { TacticalExportSharePayloadSchema } from '@/lib/tactical/export/share-payload';
 import {
+  deleteSharedExportData,
   getSharedExportData,
+  listSharedExportData,
   saveSharedExportData,
 } from '@/lib/tactical/export/share-store';
 
@@ -56,11 +58,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const shareId = searchParams.get('id');
 
+    // id 未指定時は共有データの一覧を返す
     if (!shareId) {
-      return NextResponse.json(
-        { error: '共有ID (id) が指定されていません' },
-        { status: 400 },
-      );
+      const items = await listSharedExportData();
+      return NextResponse.json({
+        success: true,
+        items,
+      });
     }
 
     const data = await getSharedExportData(shareId);
@@ -84,6 +88,43 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'データの取得に失敗しました',
+        details: err instanceof Error ? err.message : String(err),
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const shareId = searchParams.get('id');
+
+    if (!shareId) {
+      return NextResponse.json(
+        { error: '共有ID (id) が指定されていません' },
+        { status: 400 },
+      );
+    }
+
+    const deleted = await deleteSharedExportData(shareId);
+
+    if (!deleted) {
+      return NextResponse.json(
+        { error: '指定されたエクスポートデータが見つかりません' },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      deleted: true,
+    });
+  } catch (err) {
+    console.error('Failed to delete export share:', err);
+    return NextResponse.json(
+      {
+        error: 'データの削除に失敗しました',
         details: err instanceof Error ? err.message : String(err),
       },
       { status: 500 },
