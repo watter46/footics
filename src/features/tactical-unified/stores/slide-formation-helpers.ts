@@ -23,6 +23,7 @@ export function buildTeamFormationPlayers(
   existingPool: Player[],
   primaryColor: string,
   aspectRatio: AspectRatio = '16:9',
+  isSidesSwapped?: boolean,
 ): { pitchPlayers: Player[]; benchPlayers: Player[] } {
   const positions = FORMATION_POSITIONS[formationName];
   if (!positions) {
@@ -49,17 +50,23 @@ export function buildTeamFormationPlayers(
     const clampedX = Math.max(3, Math.min(97, targetPos.x));
     const clampedY = Math.max(3, Math.min(97, targetPos.y));
 
+    const finalX = isSidesSwapped ? 100 - clampedX : clampedX;
+    const finalY = isSidesSwapped ? 100 - clampedY : clampedY;
+
     let player = existingPool[idx];
     if (player) {
       player = {
         ...player,
         area: 'pitch',
-        x: clampedX,
-        y: clampedY,
-        position: pos.position,
+        x: finalX,
+        y: finalY,
+        position:
+          player.position && player.position !== 'Sub'
+            ? player.position
+            : pos.position,
       };
     } else {
-      player = createDefaultPlayer(team, clampedX, clampedY, primaryColor);
+      player = createDefaultPlayer(team, finalX, finalY, primaryColor);
       player.shirtNo = String(pos.id);
       player.position = pos.position;
     }
@@ -108,6 +115,7 @@ export function computeSlideAfterFormation(
     existingPool,
     primaryColor,
     aspect,
+    slide.isSidesSwapped,
   );
 
   return {
@@ -156,6 +164,7 @@ export function computeSlideAfterSingleTeamFormation(
     existingPool,
     primaryColor,
     aspect,
+    slide.isSidesSwapped,
   );
 
   return {

@@ -343,7 +343,7 @@ describe('tactical-unified-store', () => {
     expect(unMovedArrow?.sourcePlayerId).toBeUndefined();
   });
 
-  it('swapTeamSides でスライド内の選手・ボール・矢印・ゾーン・テキストのX座標が反転する (横画面 16:9)', () => {
+  it('swapTeamSides でスライド内の選手・ボール・矢印・ゾーン・テキストが180度点対称反転する (横画面 16:9)', () => {
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.activeSlideId;
     store.setAspectRatio('16:9');
@@ -387,14 +387,17 @@ describe('tactical-unified-store', () => {
     const swappedText = slide?.texts.find((t) => t.id === 'text-swap-1');
 
     expect(swappedPlayer?.x).toBe(80); // 100 - 20
-    expect(swappedPlayer?.y).toBe(40);
+    expect(swappedPlayer?.y).toBe(60); // 100 - 40
     expect(slide?.ball.x).toBe(70); // 100 - 30
-    expect(swappedArrow?.points[0]?.x).toBe(80);
-    expect(swappedArrow?.points[1]?.x).toBe(60);
-    expect(swappedText?.x).toBe(75);
+    expect(slide?.ball.y).toBe(50); // 100 - 50
+    expect(swappedArrow?.points[0]).toEqual({ x: 80, y: 60 });
+    expect(swappedArrow?.points[1]).toEqual({ x: 60, y: 40 });
+    expect(swappedText?.x).toBe(75); // 100 - 25
+    expect(swappedText?.y).toBe(65); // 100 - 35
+    expect(slide?.isSidesSwapped).toBe(true);
   });
 
-  it('swapTeamSides で縦画面 (9:16) の場合は Y 座標が反転する', () => {
+  it('swapTeamSides で縦画面 (9:16) の場合も 180度点対称反転する', () => {
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.activeSlideId;
     store.setAspectRatio('9:16');
@@ -410,12 +413,14 @@ describe('tactical-unified-store', () => {
       .project.slides.find((s) => s.id === slideId);
     const swappedPlayer = slide?.players.find((p) => p.id === player.id);
 
-    expect(swappedPlayer?.x).toBe(20); // X は変わらない
+    expect(swappedPlayer?.x).toBe(80); // 100 - 20
     expect(swappedPlayer?.y).toBe(70); // 100 - 30
+    expect(slide?.ball.x).toBe(50); // 100 - 50
     expect(slide?.ball.y).toBe(80); // 100 - 20
+    expect(slide?.isSidesSwapped).toBe(true);
   });
 
-  it('swapTeamSides で縦画面 (4:5) および正方形 (1:1) の場合も Y 座標が反転する', () => {
+  it('swapTeamSides で縦画面 (4:5) および正方形 (1:1) の場合も 180度点対称反転する', () => {
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.activeSlideId;
 
@@ -429,10 +434,11 @@ describe('tactical-unified-store', () => {
       .getState()
       .project.slides.find((s) => s.id === slideId);
     let swappedP1 = slide?.players.find((p) => p.id === p1.id);
-    expect(swappedP1?.x).toBe(25);
+    expect(swappedP1?.x).toBe(75); // 100 - 25
     expect(swappedP1?.y).toBe(60); // 100 - 40
+    expect(slide?.isSidesSwapped).toBe(true);
 
-    // 1:1
+    // 1:1 (もう一度 swap すると元に戻る)
     store.setAspectRatio('1:1');
     store.swapTeamSides(slideId);
     slide = useTacticalUnifiedStore
@@ -440,7 +446,8 @@ describe('tactical-unified-store', () => {
       .project.slides.find((s) => s.id === slideId);
     swappedP1 = slide?.players.find((p) => p.id === p1.id);
     expect(swappedP1?.x).toBe(25);
-    expect(swappedP1?.y).toBe(40); // 100 - 60 => 40
+    expect(swappedP1?.y).toBe(40);
+    expect(slide?.isSidesSwapped).toBe(false);
   });
 
   it('movePlayerToBench で選手がベンチに移動し、マーカーオプションおよび接続矢印がクリーンアップされる', () => {
@@ -655,7 +662,33 @@ describe('tactical-unified-store', () => {
 
     expect(homePitchPlayers).toHaveLength(11);
     expect(homePitchPlayers.some((p) => p.position === 'GK')).toBe(true);
-    expect(homePitchPlayers.some((p) => p.position === 'LW')).toBe(true);
+    // 既存選手の有効ポジション (ST, LM) は破壊されず維持される
+    expect(homePitchPlayers.some((p) => p.position === 'ST')).toBe(true);
+    expect(homePitchPlayers.some((p) => p.position === 'LM')).toBe(true);
+
+    // 未設定または 'Sub' の選手の場合はフォーメーション枠のポジション (LW) が割り当てられる
+    const subPlayers = homePitchPlayers.map((p) => ({ ...p, position: 'Sub' }));
+    store.loadProject({
+      ...store.project,
+      slides: [
+        {
+          ...slide!,
+          players: [
+            ...slide!.players.filter((p) => p.team !== 'home'),
+            ...subPlayers,
+          ],
+        },
+      ],
+    });
+    store.applyFormation(slideId, '4-3-3', 'full', 'home');
+    const updatedSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    const updatedHomePitch =
+      updatedSlide?.players.filter(
+        (p) => p.team === 'home' && p.area === 'pitch',
+      ) ?? [];
+    expect(updatedHomePitch.some((p) => p.position === 'LW')).toBe(true);
   });
 
   it('continuousDrawing のトグルと設定が正しく動作する', () => {

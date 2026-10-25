@@ -221,4 +221,126 @@ describe('slide-formation-both-and-match-reset', () => {
       expect(project.matchFormations?.away).toBe('4-2-3-1');
     });
   });
+
+  describe('swapTeamSides with applyFormation and resetSlideKeepSquad', () => {
+    it('maintains swapped territory after swapTeamSides and applyFormation', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const defaultProject = createDefaultProject(
+        'test-project-swap-formation',
+      );
+      const project = {
+        ...defaultProject,
+        aspectRatio: '16:9' as const,
+        slides: defaultProject.slides.map((s) => ({
+          ...s,
+          aspectRatio: '16:9' as const,
+        })),
+      };
+      store.loadProject(project);
+      const slideId = project.activeSlideId;
+
+      // 陣地反転を実行
+      store.swapTeamSides(slideId);
+
+      let slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      expect(slide?.isSidesSwapped).toBe(true);
+
+      // 反転状態でフォーメーションを適用 (both)
+      store.applyFormation(slideId, '4-3-3', 'full', 'both');
+
+      slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      expect(slide?.isSidesSwapped).toBe(true);
+
+      const homePlayers =
+        slide?.players.filter((p) => p.team === 'home' && p.area === 'pitch') ??
+        [];
+      const awayPlayers =
+        slide?.players.filter((p) => p.team === 'away' && p.area === 'pitch') ??
+        [];
+
+      // Home GK は右陣地 (x: 93)、Away GK は左陣地 (x: 7) に配置される
+      const homeGk = homePlayers.find((p) => p.position === 'GK');
+      const awayGk = awayPlayers.find((p) => p.position === 'GK');
+      expect(homeGk?.x).toBe(93);
+      expect(homeGk?.y).toBe(50);
+      expect(awayGk?.x).toBe(7);
+      expect(awayGk?.y).toBe(50);
+    });
+
+    it('maintains swapped territory after swapTeamSides and resetSlideKeepSquad', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const defaultProject = createDefaultProject('test-project-swap-reset');
+      const project = {
+        ...defaultProject,
+        aspectRatio: '16:9' as const,
+        slides: defaultProject.slides.map((s) => ({
+          ...s,
+          aspectRatio: '16:9' as const,
+        })),
+      };
+      store.loadProject(project);
+      const slideId = project.activeSlideId;
+
+      // 陣地反転を実行
+      store.swapTeamSides(slideId);
+
+      // リセット実行
+      store.resetSlideKeepSquad(slideId);
+
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      expect(slide?.isSidesSwapped).toBe(true);
+
+      const homePlayers =
+        slide?.players.filter((p) => p.team === 'home' && p.area === 'pitch') ??
+        [];
+      const awayPlayers =
+        slide?.players.filter((p) => p.team === 'away' && p.area === 'pitch') ??
+        [];
+
+      // Home GK は右陣地 (x: 93)、Away GK は左陣地 (x: 7) に配置される
+      const homeGk = homePlayers.find((p) => p.position === 'GK');
+      const awayGk = awayPlayers.find((p) => p.position === 'GK');
+      expect(homeGk?.x).toBe(93);
+      expect(homeGk?.y).toBe(50);
+      expect(awayGk?.x).toBe(7);
+      expect(awayGk?.y).toBe(50);
+    });
+
+    it('preserves existing player positions other than Sub when applying formation', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const defaultProject = createDefaultProject('test-project-preserve-pos');
+      const slideId = defaultProject.activeSlideId;
+
+      // 既存選手にカスタム本職ポジション 'AMR' を持たせる
+      const customSlide: Slide = {
+        ...defaultProject.slides[0],
+        players: defaultProject.slides[0].players.map((p, idx) => {
+          if (p.team === 'home' && idx === 1) {
+            return { ...p, position: 'AMR' };
+          }
+          return p;
+        }),
+      };
+      store.loadProject({ ...defaultProject, slides: [customSlide] });
+
+      // 新フォーメーション '4-4-2' を適用
+      store.applyFormation(slideId, '4-4-2', 'full', 'home');
+
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      const targetPlayer = slide?.players.find(
+        (p) => p.team === 'home' && p.id === customSlide.players[1].id,
+      );
+
+      // 既存の 'AMR' が 'RB' や 'pos.position' で上書き破壊されずに維持される
+      expect(targetPlayer?.position).toBe('AMR');
+    });
+  });
 });

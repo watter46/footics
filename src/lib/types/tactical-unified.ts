@@ -590,6 +590,7 @@ export const SlideSchema = z.object({
   aspectRatio: AspectRatioSchema.optional(),
   pitchTransform: PitchTransformSchema.optional(),
   pitchPosition: z.object({ x: z.number(), y: z.number() }).optional(),
+  isSidesSwapped: z.boolean().optional(),
 });
 export type Slide = z.infer<typeof SlideSchema>;
 export type TacticalSlide = Slide;
@@ -1001,6 +1002,7 @@ export function createDefaultSlide(
     transitionDurationMs: 1000,
     pauseMs: 500,
     easing: 'ease-in-out',
+    isSidesSwapped: false,
   };
 }
 

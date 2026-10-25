@@ -16,14 +16,17 @@ export function isVerticalPitch(
   );
 }
 
-function flipPlayer(p: Player, isVertical: boolean): Player {
-  const x = isVertical ? p.x : Math.max(0, Math.min(100, 100 - p.x));
-  const y = isVertical ? Math.max(0, Math.min(100, 100 - p.y)) : p.y;
+function flipPlayer(p: Player): Player {
+  if (p.area === 'bench') {
+    return p;
+  }
+  const x = Math.max(0, Math.min(100, 100 - p.x));
+  const y = Math.max(0, Math.min(100, 100 - p.y));
   const cp = p.trajectory?.controlPoint;
   const flippedCp = cp
     ? {
-        x: isVertical ? cp.x : 100 - cp.x,
-        y: isVertical ? 100 - cp.y : cp.y,
+        x: 100 - cp.x,
+        y: 100 - cp.y,
       }
     : undefined;
 
@@ -40,55 +43,59 @@ function flipPlayer(p: Player, isVertical: boolean): Player {
   };
 }
 
-function flipArrow(a: ArrowAnnotation, isVertical: boolean): ArrowAnnotation {
+function flipArrow(a: ArrowAnnotation): ArrowAnnotation {
   const points = a.points.map((pt) => ({
-    x: isVertical ? pt.x : 100 - pt.x,
-    y: isVertical ? 100 - pt.y : pt.y,
+    x: 100 - pt.x,
+    y: 100 - pt.y,
   }));
   const cp = a.controlPoint;
   const controlPoint = cp
     ? {
-        x: isVertical ? cp.x : 100 - cp.x,
-        y: isVertical ? 100 - cp.y : cp.y,
+        x: 100 - cp.x,
+        y: 100 - cp.y,
       }
     : undefined;
 
   return { ...a, points, controlPoint };
 }
 
-function flipZone(z: ZoneAnnotation, isVertical: boolean): ZoneAnnotation {
+function flipZone(z: ZoneAnnotation): ZoneAnnotation {
   const points = z.points.map((pt) => ({
-    x: isVertical ? pt.x : 100 - pt.x,
-    y: isVertical ? 100 - pt.y : pt.y,
+    x: 100 - pt.x,
+    y: 100 - pt.y,
   }));
   const x =
-    !isVertical && z.x !== undefined && z.width !== undefined
-      ? 100 - (z.x + z.width)
-      : z.x;
+    z.x !== undefined
+      ? z.width !== undefined
+        ? 100 - (z.x + z.width)
+        : 100 - z.x
+      : undefined;
   const y =
-    isVertical && z.y !== undefined && z.height !== undefined
-      ? 100 - (z.y + z.height)
-      : z.y;
+    z.y !== undefined
+      ? z.height !== undefined
+        ? 100 - (z.y + z.height)
+        : 100 - z.y
+      : undefined;
 
   return { ...z, points, x, y };
 }
 
-function flipText(t: TextAnnotation, isVertical: boolean): TextAnnotation {
+function flipText(t: TextAnnotation): TextAnnotation {
   return {
     ...t,
-    x: isVertical ? t.x : 100 - t.x,
-    y: isVertical ? 100 - t.y : t.y,
+    x: 100 - t.x,
+    y: 100 - t.y,
   };
 }
 
-function flipBall(ball: BallState, isVertical: boolean): BallState {
-  const x = isVertical ? ball.x : 100 - ball.x;
-  const y = isVertical ? 100 - ball.y : ball.y;
+function flipBall(ball: BallState): BallState {
+  const x = 100 - ball.x;
+  const y = 100 - ball.y;
   const cp = ball.trajectory?.controlPoint;
   const controlPoint = cp
     ? {
-        x: isVertical ? cp.x : 100 - cp.x,
-        y: isVertical ? 100 - cp.y : cp.y,
+        x: 100 - cp.x,
+        y: 100 - cp.y,
       }
     : undefined;
 
@@ -105,13 +112,14 @@ function flipBall(ball: BallState, isVertical: boolean): BallState {
   };
 }
 
-export function flipSlideObjects(slide: Slide, isVertical: boolean): Slide {
+export function flipSlideObjects(slide: Slide, _isVertical?: boolean): Slide {
   return {
     ...slide,
-    players: slide.players.map((p) => flipPlayer(p, isVertical)),
-    arrows: slide.arrows.map((a) => flipArrow(a, isVertical)),
-    zones: slide.zones.map((z) => flipZone(z, isVertical)),
-    texts: slide.texts.map((t) => flipText(t, isVertical)),
-    ball: flipBall(slide.ball, isVertical),
+    isSidesSwapped: !slide.isSidesSwapped,
+    players: slide.players.map(flipPlayer),
+    arrows: slide.arrows.map(flipArrow),
+    zones: slide.zones.map(flipZone),
+    texts: slide.texts.map(flipText),
+    ball: flipBall(slide.ball),
   };
 }

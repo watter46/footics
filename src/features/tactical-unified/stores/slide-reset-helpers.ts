@@ -95,8 +95,15 @@ export function resetSlideKeepSquadData(
     });
   }
 
+  const isSwapped = Boolean(slide.isSidesSwapped);
+
   const updatedPlayers = slide.players.map((p) => {
-    const pos = newPositions.get(p.id);
+    const rawPos = newPositions.get(p.id);
+    const pos = rawPos
+      ? isSwapped
+        ? { x: 100 - rawPos.x, y: 100 - rawPos.y }
+        : rawPos
+      : undefined;
     return {
       ...p,
       ...(pos ? { x: pos.x, y: pos.y } : {}),

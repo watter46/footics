@@ -155,9 +155,9 @@ describe('Tracking Trajectory Arrow & Ball Trajectory Parity', () => {
         useTacticalUnifiedStore.getState(),
       );
       expect(flippedSlide?.ball.x).toBe(70); // 100 - 30
-      expect(flippedSlide?.ball.y).toBe(40);
+      expect(flippedSlide?.ball.y).toBe(60); // 100 - 40
       expect(flippedSlide?.ball.trajectory?.controlPoint?.x).toBe(75); // 100 - 25
-      expect(flippedSlide?.ball.trajectory?.controlPoint?.y).toBe(15);
+      expect(flippedSlide?.ball.trajectory?.controlPoint?.y).toBe(85); // 100 - 15
     });
   });
 });
