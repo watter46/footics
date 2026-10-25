@@ -1,7 +1,6 @@
 'use client';
 
 import { Box } from 'lucide-react';
-import React from 'react';
 
 export interface BoundaryBoxTiltControlsProps {
   currentTilt: number;

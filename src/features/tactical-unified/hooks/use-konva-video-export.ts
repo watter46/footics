@@ -10,8 +10,6 @@ import type Konva from 'konva';
 import { useCallback, useRef, useState } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { exportTacticalVideo } from '@/lib/tactical/export/video-export-engine';
-import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 import type {
   ExportProgress,
   ExportTarget,

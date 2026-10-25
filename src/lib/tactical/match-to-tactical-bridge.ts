@@ -11,7 +11,7 @@ import type {
   Player as TacticalPlayer,
   TacticalProject,
 } from '@/lib/types/tactical-unified';
-import type { Match, Player, Team } from '@/types';
+import type { Match, Team } from '@/types';
 
 export interface BuildMatchTacticalPlayersOptions {
   match: Match;

@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDown, Crop, Expand, Maximize2 } from 'lucide-react';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ASPECT_RATIOS,
   type AspectRatio,

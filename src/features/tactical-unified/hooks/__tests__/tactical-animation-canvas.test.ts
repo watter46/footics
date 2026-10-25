@@ -1,5 +1,5 @@
 import type Konva from 'konva';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import { createDefaultSlide } from '@/lib/types/tactical-unified';
 import {

@@ -5,7 +5,6 @@
  * Dedicated Right Panel: Squad & Substitutes (Bench) Management
  */
 
-import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { Sparkles, UserPlus, Users } from 'lucide-react';
 import type React from 'react';

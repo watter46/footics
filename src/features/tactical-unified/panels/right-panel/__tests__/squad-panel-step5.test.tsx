@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import type Konva from 'konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TopBarMoreMenu } from '@/features/tactical-unified/panels/toolbar/top-bar-more-menu';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';

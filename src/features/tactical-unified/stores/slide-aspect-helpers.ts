@@ -1,7 +1,6 @@
 // biome-ignore lint/style/noExcessiveLinesPerFile: Aspect ratio transformation and transition helpers
 import type { AspectRatio, Slide } from '@/lib/types/tactical-unified';
 import {
-  DEFAULT_BOUNDARY_BOX_FULL,
   getDefaultBoundaryBoxForAspect,
   transformCoord,
   transformPoints,

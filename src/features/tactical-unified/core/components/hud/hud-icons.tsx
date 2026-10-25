@@ -1,5 +1,3 @@
-import type React from 'react';
-
 export function RingMarkerIcon({ size = 14 }: { size?: number }) {
   return (
     <svg

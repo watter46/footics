@@ -1,4 +1,3 @@
-import { ArrowDownToLine, Users } from 'lucide-react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createDefaultSlide } from '@/lib/types/tactical-unified';
 import { findSafePitchPosition } from '../stores/slide-player-move-helper';

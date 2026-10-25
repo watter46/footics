@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import {
-  getPlayerPhoto,
-  getPlayerPhotosBatch,
-  getPlayersMasterBatch,
-} from '@/lib/db/queries';
+import { getPlayerPhotosBatch, getPlayersMasterBatch } from '@/lib/db/queries';
 import {
   type AspectRatio,
   type BoundaryBox,
