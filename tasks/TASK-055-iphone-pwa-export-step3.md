@@ -1,7 +1,7 @@
 # TASK-055: Step 3: iPhone 12 PWA 動画書き出し（一覧・プレビュー・無劣化DL）
 
 ## 1. Metadata
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Created**: 2026-10-25
 - **Target Files**:
   - `src/lib/tactical/export/share-payload.ts` (MODIFY)
@@ -24,11 +24,11 @@
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
 <!-- Reviewer が審査時に要件充足を確認してチェックする -->
-- [ ] 1. 共有ペイロードと描画同一性の拡張: `TacticalExportSharePayloadSchema` に `aspectRatio` (`'16:9' | '4:5' | '1:1' | '9:16'`), `boundaryBox`, `pitchTransform` を追加。`tactical-frame-renderer.ts` のフォント指定を `TACTICAL_CANVAS_FONT_FAMILY` (`Geist, "Geist Sans", ...`) に統一し、`tactical-video-exporter.ts` で `document.fonts?.ready` 待機および `pitchTransform` / `mvpMatrix` の `exportTacticalVideo` への伝播を行うこと。
-- [ ] 2. 共有プロジェクト一覧取得・削除 API: `share-store.ts` に `listSharedExportData()`（最新順最大50件）および `deleteSharedExportData(shareId)` を実装し、`GET /api/tactical-export/share`（`id` 未指定時に一覧返却）と `DELETE /api/tactical-export/share?id=...` で利用可能にすること。
-- [ ] 3. QRコード関連機能・依存パッケージの完全撤去: `package.json` から `qrcode` と `@types/qrcode` を削除し、`export-share-overlay.tsx` を削除。`useExportShare` から QR 生成を廃止して `aspectRatio` / `boundaryBox` / `pitchTransform` を含めて一覧登録（トースト通知）する方式に変更すること。
-- [ ] 4. PWA マニフェスト設定: `src/app/manifest.ts` (`start_url: '/export'`, `display: 'standalone'`) を新規作成し、`src/app/layout.tsx` の `metadata` に `appleWebApp` 設定を追加すること。
-- [ ] 5. iPhone専用「一覧画面 (`/export`) ➔ 詳細プレビュー・無劣化DL画面 (`/export/share/[shareId]`)」: `/export` で送信済み一覧表示・削除・詳細遷移を実装し、`/export/share/[shareId]` に `ExportPreviewPlayer`（ループ再生プレビュー）を組み込み、`exportMultiSlideMp4Video` に `aspectRatio` / `boundaryBox` / `pitchTransform` を渡して書き出し、完了後に直接ファイルダウンロードおよび Web Share API (`navigator.share({ files })`) によるファイル保存を提供すること。
+- [x] 1. 共有ペイロードと描画同一性の拡張: `TacticalExportSharePayloadSchema` に `aspectRatio` (`'16:9' | '4:5' | '1:1' | '9:16'`), `boundaryBox`, `pitchTransform` を追加。`tactical-frame-renderer.ts` のフォント指定を `TACTICAL_CANVAS_FONT_FAMILY` (`Geist, "Geist Sans", ...`) に統一し、`tactical-video-exporter.ts` で `document.fonts?.ready` 待機および `pitchTransform` / `mvpMatrix` の `exportTacticalVideo` への伝播を行うこと。
+- [x] 2. 共有プロジェクト一覧取得・削除 API: `share-store.ts` に `listSharedExportData()`（最新順最大50件）および `deleteSharedExportData(shareId)` を実装し、`GET /api/tactical-export/share`（`id` 未指定時に一覧返却）と `DELETE /api/tactical-export/share?id=...` で利用可能にすること。
+- [x] 3. QRコード関連機能・依存パッケージの完全撤去: `package.json` から `qrcode` と `@types/qrcode` を削除し、`export-share-overlay.tsx` を削除。`useExportShare` から QR 生成を廃止して `aspectRatio` / `boundaryBox` / `pitchTransform` を含めて一覧登録（トースト通知）する方式に変更すること。
+- [x] 4. PWA マニフェスト設定: `src/app/manifest.ts` (`start_url: '/export'`, `display: 'standalone'`) を新規作成し、`src/app/layout.tsx` の `metadata` に `appleWebApp` 設定を追加すること。
+- [x] 5. iPhone専用「一覧画面 (`/export`) ➔ 詳細プレビュー・無劣化DL画面 (`/export/share/[shareId]`)」: `/export` で送信済み一覧表示・削除・詳細遷移を実装し、`/export/share/[shareId]` に `ExportPreviewPlayer`（ループ再生プレビュー）を組み込み、`exportMultiSlideMp4Video` に `aspectRatio` / `boundaryBox` / `pitchTransform` を渡して書き出し、完了後に直接ファイルダウンロードおよび Web Share API (`navigator.share({ files })`) によるファイル保存を提供すること。
 
 ## 3. Context Snippets (参照コード・型定義・import)
 
@@ -151,15 +151,29 @@ export function clearSharedExportMemoryStore(): void; // テスト用リセッ�
 ## 5. Reviewer Assessment (コード差分監査)
 <!-- 機械的チェック（型・Lint・Vitest・depcruise）はスクリプトが自動検証。Reviewer はコード差分の意味を監査する -->
 - **Reviewer Model**: `pro`
-- **Reviewed At**: 
-- **Decision**: `TODO`
+- **Reviewed At**: 2026-10-25 20:47
+- **Decision**: `LGTM`
 - **Audit Checklist**:
-  - [ ] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
-  - [ ] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
-  - [ ] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
-  - [ ] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
+  - [x] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証（Fix 1 による API・クライアント・テストモックのキー整合を確認）
+  - [x] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
+  - [x] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
+  - [x] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
 - **Summary**:
-  <!-- 判定理由または改善指示を簡潔に記載 -->
+  Fix 1 の是正を確認。API (`GET /api/tactical-export/share`) における items/data 両キー返却、クライアント (`src/app/export/page.tsx`) での安全なフォールバック参照、テストモック (`export-pages.test.tsx`) の本番API整合化により、共有一覧表示の堅牢性が担保されました。4大定性監査（要件網羅性、ホスト境界・PWA設計、OCP・描画同一性、サイレント破壊防止）をすべてクリア。
 
 ## 6. Rejections / Additional Tasks (不可逆修正欄)
 <!-- 既存のタスクやPhaseは絶対に消去・上書きせず、追記のみ行う -->
+
+### Fix 1 (2026-10-25)
+- **Worker Model**: `flash`
+- **Rejection Reason**: APIとクライアント間のキー不一致およびテストのハリボテ化（4大定性監査 ① 意図と実装の監査）。
+  `GET /api/tactical-export/share` (一覧取得) は `{ success: true, items: [...] }` を返却するが、`src/app/export/page.tsx` では `json.data` を参照しているため、本番環境で一覧が常に空（0件）になる。また `src/app/export/__tests__/export-pages.test.tsx` のモックが実APIと異なり `{ data: mockList }` を返していたため検証をすり抜けていた。
+- **Target Files**:
+  - `src/app/export/page.tsx`
+  - `src/app/export/__tests__/export-pages.test.tsx`
+  - `src/app/api/tactical-export/share/route.ts`
+- **Required Steps**:
+  - [x] 1. `src/app/export/page.tsx` で `(json.items ?? json.data)` から一覧を取得するよう修正。
+  - [x] 2. `src/app/api/tactical-export/share/route.ts` の GET 一覧返却時にも `{ success: true, items, data: items }` を返し、API側でも互換性と堅牢性を確保。
+  - [x] 3. `src/app/export/__tests__/export-pages.test.tsx` のモックレスポンスを `{ success: true, items: mockList }` に修正し、本番APIとの整合性を担保。
+  - [x] 4. `bun run ai:check src/app/export/page.tsx src/app/api/tactical-export/share/route.ts src/app/export/__tests__/export-pages.test.tsx` で PASS 確認。
