@@ -2,7 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { createDefaultSlide, type Slide } from '@/lib/types/tactical-unified';
+import { BatchTransitionPopover } from '../batch-transition-popover';
 import { SlideCard } from '../slide-card';
+import { SlideCardActions } from '../slide-card-actions';
 import { SlideTransitionPopover } from '../slide-transition-popover';
 
 describe('SlideTransitionPopover Component', () => {
@@ -234,5 +236,71 @@ describe('SlideCard Integration with SlideTransitionPopover', () => {
     fireEvent.click(menuBtn);
 
     expect(screen.getByRole('dialog')).toBeDefined();
+  });
+
+  it('displays pause duration instead of total transition duration', () => {
+    render(
+      <SlideCard
+        slide={slide1}
+        index={0}
+        isActive={true}
+        canDelete={false}
+        canMoveLeft={false}
+        canMoveRight={false}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onDuplicate={vi.fn()}
+        onMoveLeft={vi.fn()}
+        onMoveRight={vi.fn()}
+      />,
+    );
+
+    const pauseBtn = screen.getByRole('button', {
+      name: /edit scene transition/i,
+    });
+    expect(pauseBtn.textContent).toContain('0.5s');
+    expect(pauseBtn.textContent).not.toContain('1.5s');
+  });
+});
+
+describe('SlideCardActions Component', () => {
+  it('renders within card frame with top-1 and right-1 positioning classes', () => {
+    const { container } = render(
+      <SlideCardActions
+        slideId="slide-1"
+        canDelete={true}
+        canMoveLeft={true}
+        canMoveRight={true}
+        onDuplicate={vi.fn()}
+        onMoveLeft={vi.fn()}
+        onMoveRight={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    const actionContainer = container.firstElementChild as HTMLElement;
+    expect(actionContainer.className).toContain('top-1');
+    expect(actionContainer.className).toContain('right-1');
+    expect(actionContainer.className).not.toContain('-top-2');
+    expect(actionContainer.className).not.toContain('-right-1');
+  });
+});
+
+describe('BatchTransitionPopover Component', () => {
+  it('renders in FloatingPortal when isOpen is true', () => {
+    const anchor = document.createElement('div');
+    render(
+      <BatchTransitionPopover
+        isOpen={true}
+        onClose={vi.fn()}
+        referenceElement={anchor}
+      />,
+    );
+
+    const dialog = screen.getByRole('dialog', {
+      name: /全シーン トランジション一括設定/i,
+    });
+    expect(dialog).toBeDefined();
+    expect(screen.getByLabelText(/一括移動時間/i)).toBeDefined();
+    expect(screen.getByLabelText(/一括静止時間/i)).toBeDefined();
   });
 });

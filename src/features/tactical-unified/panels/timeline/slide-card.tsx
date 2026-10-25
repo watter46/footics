@@ -7,7 +7,7 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Clock, Layers } from 'lucide-react';
+import { Layers, Pause } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import type { Slide } from '@/lib/types/tactical-unified';
@@ -67,9 +67,7 @@ export function SlideCard({
     [setNodeRef],
   );
 
-  const durationSec = (slide.transitionDurationMs ?? 1000) / 1000;
   const pauseSec = (slide.pauseMs ?? 500) / 1000;
-  const totalSceneSec = durationSec + pauseSec;
   const annotationCount =
     (slide.arrows?.length ?? 0) +
     (slide.zones?.length ?? 0) +
@@ -141,11 +139,11 @@ export function SlideCard({
               setIsPopoverOpen(true);
             }}
             className="flex items-center gap-0.5 px-1 py-0.5 -mx-1 -my-0.5 rounded hover:bg-white/15 hover:text-white cursor-pointer transition-colors"
-            title="Scene transition duration (Click to edit duration & pause)"
+            title={`静止時間: ${pauseSec.toFixed(1)}s (クリックで編集)`}
             aria-label="Edit scene transition"
           >
-            <Clock size={8} className="text-white/40" />
-            {totalSceneSec.toFixed(1)}s
+            <Pause size={8} className="text-emerald-400/80" />
+            {pauseSec.toFixed(1)}s
           </button>
           {annotationCount > 0 && (
             <span
@@ -217,9 +215,7 @@ export function SlideCardOverlay({
   slide: Slide;
   index: number;
 }) {
-  const durationSec = (slide.transitionDurationMs ?? 1000) / 1000;
   const pauseSec = (slide.pauseMs ?? 500) / 1000;
-  const totalSceneSec = durationSec + pauseSec;
   const annotationCount =
     (slide.arrows?.length ?? 0) +
     (slide.zones?.length ?? 0) +
@@ -236,9 +232,12 @@ export function SlideCardOverlay({
         </span>
       </div>
       <div className="flex items-center justify-between w-full text-[9px] text-white/60 font-mono">
-        <span className="flex items-center gap-0.5" title="Duration + Pause">
-          <Clock size={8} className="text-white/40" />
-          {totalSceneSec.toFixed(1)}s
+        <span
+          className="flex items-center gap-0.5"
+          title={`静止時間: ${pauseSec.toFixed(1)}s`}
+        >
+          <Pause size={8} className="text-emerald-400/80" />
+          {pauseSec.toFixed(1)}s
         </span>
         {annotationCount > 0 && (
           <span

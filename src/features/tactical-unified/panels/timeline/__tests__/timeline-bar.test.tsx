@@ -159,6 +159,48 @@ describe('TimelineBar Component', () => {
     expect(playBtn.className).toContain('focus:outline-none');
   });
 
+  describe('シーン間トランジションコネクタ (TransitionConnector)', () => {
+    it('初期状態（1シーンのみ）ではトランジションコネクタは表示されない', () => {
+      render(<TimelineBar />);
+      expect(
+        screen.queryByRole('button', { name: /トランジション:/i }),
+      ).toBeNull();
+    });
+
+    it('複数スライドが存在する場合、Scene 1の前には表示されず、Scene 2以降の直前にコネクタが表示される', () => {
+      render(<TimelineBar />);
+
+      // スライドを2枚追加（計3枚）
+      const addBtn = screen.getByRole('button', { name: /add scene/i });
+      fireEvent.click(addBtn);
+      fireEvent.click(addBtn);
+
+      // Scene 1 のトランジションコネクタは存在しない
+      expect(
+        screen.queryByRole('button', {
+          name: /Scene 1 トランジション:/i,
+        }),
+      ).toBeNull();
+
+      // Scene 2 と Scene 3 のトランジションコネクタが存在する
+      const connScene2 = screen.getByRole('button', {
+        name: /Scene 2 トランジション: 1.0s/i,
+      });
+      const connScene3 = screen.getByRole('button', {
+        name: /Scene 3 トランジション: 1.0s/i,
+      });
+      expect(connScene2).toBeDefined();
+      expect(connScene3).toBeDefined();
+
+      // コネクタをクリックすると該当シーンのトランジションポップオーバーが開く
+      fireEvent.click(connScene2);
+      expect(
+        screen.getByRole('dialog', { name: /シーン トランジション設定/i }),
+      ).toBeDefined();
+      expect(screen.getByText('Scene 2 トランジション設定')).toBeDefined();
+    });
+  });
+
   describe('全シーン一括設定ポップオーバー (BatchTransitionPopover)', () => {
     it('「一括設定」ボタン押下でポップオーバーが表示され、閉じるボタンまたは外側クリックで閉じる', () => {
       render(<TimelineBar />);

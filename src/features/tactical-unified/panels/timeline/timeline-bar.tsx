@@ -29,12 +29,13 @@ import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import { Sliders } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { AddSlideButton } from './add-slide-button';
 import { BatchTransitionPopover } from './batch-transition-popover';
 import { PlaybackControls } from './playback-controls';
 import { SlideCard, SlideCardOverlay } from './slide-card';
+import { TransitionConnector } from './transition-connector';
 
 export function TimelineBar() {
   const slides = useTacticalUnifiedStore((s) => s.project.slides);
@@ -133,20 +134,24 @@ export function TimelineBar() {
             strategy={horizontalListSortingStrategy}
           >
             {slides.map((slide, i) => (
-              <SlideCard
-                key={slide.id}
-                slide={slide}
-                index={i}
-                isActive={activeSlideId === slide.id}
-                canDelete={slides.length > 1}
-                canMoveLeft={i > 0}
-                canMoveRight={i < slides.length - 1}
-                onSelect={setActiveSlide}
-                onDelete={deleteSlide}
-                onDuplicate={duplicateSlide}
-                onMoveLeft={() => handleMoveSlide(i, 'left')}
-                onMoveRight={() => handleMoveSlide(i, 'right')}
-              />
+              <Fragment key={slide.id}>
+                {i > 0 && (
+                  <TransitionConnector targetSlide={slide} targetIndex={i} />
+                )}
+                <SlideCard
+                  slide={slide}
+                  index={i}
+                  isActive={activeSlideId === slide.id}
+                  canDelete={slides.length > 1}
+                  canMoveLeft={i > 0}
+                  canMoveRight={i < slides.length - 1}
+                  onSelect={setActiveSlide}
+                  onDelete={deleteSlide}
+                  onDuplicate={duplicateSlide}
+                  onMoveLeft={() => handleMoveSlide(i, 'left')}
+                  onMoveRight={() => handleMoveSlide(i, 'right')}
+                />
+              </Fragment>
             ))}
           </SortableContext>
 

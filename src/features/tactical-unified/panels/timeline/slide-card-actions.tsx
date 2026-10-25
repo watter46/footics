@@ -31,7 +31,7 @@ export function SlideCardActions({
   onOpenTransitionSettings,
 }: SlideCardActionsProps) {
   return (
-    <div className="absolute -top-2 -right-1 hidden group-hover:flex items-center gap-0.5 bg-[#1e1e24] border border-white/20 rounded-md shadow-lg p-0.5 z-20">
+    <div className="absolute top-1 right-1 hidden group-hover:flex items-center gap-0.5 bg-[#181820]/90 backdrop-blur-xs border border-white/20 rounded shadow-md p-0.5 z-20">
       {onOpenTransitionSettings && (
         <button
           type="button"
