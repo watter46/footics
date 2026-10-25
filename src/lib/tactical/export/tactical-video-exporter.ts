@@ -22,6 +22,7 @@ import {
   calculateUnifiedTotalDuration,
   matchSlidePlayers,
 } from '../unified-interpolation';
+import { preloadSlidePlayerPhotos } from './share-payload';
 import {
   calculateBoundaryCrop,
   exportTacticalVideo,
@@ -50,6 +51,8 @@ export interface MultiSlideVideoExportOptions {
   boundaryBox?: BoundaryBox | null;
   pitchTransform?: PitchTransform | null;
   mvpMatrix?: Float32Array | null;
+  playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
+  photos?: Record<string, string>;
   onProgress?: (progress: ExportProgress) => void;
   checkCancelled?: () => boolean;
 }
@@ -109,27 +112,47 @@ export async function exportMultiSlideMp4Video(
   const stageWidth = options.stageWidth ?? config.widthPx;
   const stageHeight = options.stageHeight ?? config.heightPx;
 
-  return exportTacticalVideo({
-    format: 'mp4',
-    fps: options.fps ?? 60,
-    scale: options.scale ?? 2,
-    quality: options.quality ?? 'high',
-    bitrate: options.bitrate,
-    keyFrameIntervalSec: options.keyFrameIntervalSec ?? 2,
-    latencyMode: options.latencyMode ?? 'realtime',
-    maxQueueSize: options.maxQueueSize ?? 60,
-    transparent: options.transparent ?? false,
-    totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 1500,
-    boundaryBox: options.boundaryBox,
-    pitchTransform: options.pitchTransform,
-    mvpMatrix: options.mvpMatrix,
-    stageWidth,
-    stageHeight,
-    slides: effectiveSlides,
-    aspectRatio: options.aspectRatio ?? '16:9',
-    onProgress: options.onProgress,
-    checkCancelled: options.checkCancelled,
-  });
+  const shouldPreload = !options.playerPhotos;
+  const loadedPhotos =
+    options.playerPhotos ??
+    (await preloadSlidePlayerPhotos(effectiveSlides, options.photos));
+
+  try {
+    return await exportTacticalVideo({
+      format: 'mp4',
+      fps: options.fps ?? 60,
+      scale: options.scale ?? 2,
+      quality: options.quality ?? 'high',
+      bitrate: options.bitrate,
+      keyFrameIntervalSec: options.keyFrameIntervalSec ?? 2,
+      latencyMode: options.latencyMode ?? 'realtime',
+      maxQueueSize: options.maxQueueSize ?? 60,
+      transparent: options.transparent ?? false,
+      totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 1500,
+      boundaryBox: options.boundaryBox,
+      pitchTransform: options.pitchTransform,
+      mvpMatrix: options.mvpMatrix,
+      playerPhotos: loadedPhotos,
+      stageWidth,
+      stageHeight,
+      slides: effectiveSlides,
+      aspectRatio: options.aspectRatio ?? '16:9',
+      onProgress: options.onProgress,
+      checkCancelled: options.checkCancelled,
+    });
+  } finally {
+    if (shouldPreload && loadedPhotos) {
+      for (const item of Object.values(loadedPhotos)) {
+        if (
+          item &&
+          'close' in item &&
+          typeof (item as ImageBitmap).close === 'function'
+        ) {
+          (item as ImageBitmap).close();
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -159,27 +182,47 @@ export async function exportMultiSlideWebmVideo(
   const stageWidth = options.stageWidth ?? config.widthPx;
   const stageHeight = options.stageHeight ?? config.heightPx;
 
-  return exportTacticalVideo({
-    format: 'webm',
-    fps: options.fps ?? 60,
-    scale: options.scale ?? 2,
-    quality: options.quality ?? 'high',
-    bitrate: options.bitrate,
-    keyFrameIntervalSec: options.keyFrameIntervalSec ?? 2,
-    latencyMode: options.latencyMode ?? 'realtime',
-    maxQueueSize: options.maxQueueSize ?? 60,
-    transparent: options.transparent ?? true,
-    totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 1500,
-    boundaryBox: options.boundaryBox,
-    pitchTransform: options.pitchTransform,
-    mvpMatrix: options.mvpMatrix,
-    stageWidth,
-    stageHeight,
-    slides: effectiveSlides,
-    aspectRatio: options.aspectRatio ?? '16:9',
-    onProgress: options.onProgress,
-    checkCancelled: options.checkCancelled,
-  });
+  const shouldPreload = !options.playerPhotos;
+  const loadedPhotos =
+    options.playerPhotos ??
+    (await preloadSlidePlayerPhotos(effectiveSlides, options.photos));
+
+  try {
+    return await exportTacticalVideo({
+      format: 'webm',
+      fps: options.fps ?? 60,
+      scale: options.scale ?? 2,
+      quality: options.quality ?? 'high',
+      bitrate: options.bitrate,
+      keyFrameIntervalSec: options.keyFrameIntervalSec ?? 2,
+      latencyMode: options.latencyMode ?? 'realtime',
+      maxQueueSize: options.maxQueueSize ?? 60,
+      transparent: options.transparent ?? true,
+      totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 1500,
+      boundaryBox: options.boundaryBox,
+      pitchTransform: options.pitchTransform,
+      mvpMatrix: options.mvpMatrix,
+      playerPhotos: loadedPhotos,
+      stageWidth,
+      stageHeight,
+      slides: effectiveSlides,
+      aspectRatio: options.aspectRatio ?? '16:9',
+      onProgress: options.onProgress,
+      checkCancelled: options.checkCancelled,
+    });
+  } finally {
+    if (shouldPreload && loadedPhotos) {
+      for (const item of Object.values(loadedPhotos)) {
+        if (
+          item &&
+          'close' in item &&
+          typeof (item as ImageBitmap).close === 'function'
+        ) {
+          (item as ImageBitmap).close();
+        }
+      }
+    }
+  }
 }
 
 /**

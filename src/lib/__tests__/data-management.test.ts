@@ -10,14 +10,13 @@ import { db } from '../db/schema';
 
 describe('src/lib/data-management', () => {
   beforeEach(async () => {
-    await db.event_memos.clear();
     await db.custom_events.clear();
     await db.match_memos.clear();
-    await db.tactical_snapshots.clear();
     await db.matches.clear();
     await db.events.clear();
     await db.keyval.clear();
     await db.players.clear();
+    await db.player_photos.clear();
     vi.restoreAllMocks();
   });
 
@@ -177,6 +176,12 @@ describe('src/lib/data-management', () => {
       const arrayBuffer = await (allPlayers[0].photoBlob as any).arrayBuffer();
       const blobText = new TextDecoder().decode(arrayBuffer);
       expect(blobText).toBe('fake-image-bytes');
+
+      // Verify separation: db.players table has no photoBlob, db.player_photos has it
+      const rawDbPlayer = await db.players.get('26-27_200');
+      expect(rawDbPlayer?.photoBlob).toBeUndefined();
+      const rawDbPhoto = await db.player_photos.get(200);
+      expect(rawDbPhoto?.photoBlob).toBeDefined();
     });
 
     it('supports backward compatibility with older v4 backups without photos folder', async () => {

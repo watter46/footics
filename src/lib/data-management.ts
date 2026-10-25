@@ -3,16 +3,13 @@ import type { EventRow, Match, Player } from '@/types';
 import {
   generatePlayerMasterId,
   getAllCustomEvents,
-  getAllEventMemos,
   getAllEvents,
   getAllMatches,
   getAllMatchMemos,
   getAllPlayerMasters,
-  getAllTacticalSnapshots,
   importMemosBatch,
   putMatchEventsBatch,
   putMatchesBatch,
-  putTacticalSnapshotsBatch,
   savePlayerMaster,
 } from './db';
 import type { PlayerMaster } from './db/schema';
@@ -59,28 +56,18 @@ function isValidPhotoBlob(blob: unknown): blob is Blob {
 export async function exportAllDataZip(): Promise<void> {
   const files: Record<string, Uint8Array> = {};
 
-  // 1. Memos, Custom Events, Match Memos & Snapshots
-  const [
-    eventMemos,
-    customEvents,
-    matchMemos,
-    tacticalSnapshots,
-    playerMasters,
-  ] = await Promise.all([
-    getAllEventMemos(),
+  // 1. Custom Events & Match Memos
+  const [customEvents, matchMemos, playerMasters] = await Promise.all([
     getAllCustomEvents(),
     getAllMatchMemos(),
-    getAllTacticalSnapshots(),
     getAllPlayerMasters(),
   ]);
 
   files['memos.json'] = strToU8(
     JSON.stringify(
       {
-        event_memos: eventMemos,
         custom_events: customEvents,
         match_memos: matchMemos,
-        tactical_snapshots: tacticalSnapshots,
       },
       null,
       2,
@@ -190,29 +177,16 @@ export async function importAllDataZip(file: File | Blob): Promise<{
     if (memosBytes) {
       const memosText = strFromU8(memosBytes);
       const memosData = JSON.parse(memosText);
-      const eventMemos = Array.isArray(memosData.event_memos)
-        ? memosData.event_memos
-        : [];
       const customEvents = Array.isArray(memosData.custom_events)
         ? memosData.custom_events
         : [];
       const matchMemos = Array.isArray(memosData.match_memos)
         ? memosData.match_memos
         : [];
-      const tacticalSnapshots = Array.isArray(memosData.tactical_snapshots)
-        ? memosData.tactical_snapshots
-        : [];
 
-      await importMemosBatch(eventMemos, customEvents, matchMemos);
-      if (tacticalSnapshots.length > 0) {
-        await putTacticalSnapshotsBatch(tacticalSnapshots);
-      }
+      await importMemosBatch(customEvents, matchMemos);
 
-      memoCount =
-        eventMemos.length +
-        customEvents.length +
-        matchMemos.length +
-        tacticalSnapshots.length;
+      memoCount = customEvents.length + matchMemos.length;
       console.log(`[footics] Memos restored: ${memoCount} items`);
     }
   } catch (err) {

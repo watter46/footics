@@ -10,6 +10,60 @@ describe('resizeAndCropImageToBlob', () => {
     vi.unstubAllGlobals();
   });
 
+  it('resizes and square crops an image via createImageBitmap with default webp and quality 0.85', async () => {
+    const mockOutputBlob = new Blob(['resized-webp'], { type: 'image/webp' });
+    const mockContext = {
+      imageSmoothingEnabled: false,
+      imageSmoothingQuality: 'low',
+      drawImage: vi.fn(),
+    };
+
+    const mockCanvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn().mockReturnValue(mockContext),
+      toBlob: vi.fn(
+        (
+          callback: (blob: Blob | null) => void,
+          type?: string,
+          quality?: any,
+        ) => {
+          expect(type).toBe('image/webp');
+          expect(quality).toBe(0.85);
+          callback(mockOutputBlob);
+        },
+      ),
+    };
+
+    vi.spyOn(document, 'createElement').mockImplementation(
+      (tagName: string) => {
+        if (tagName === 'canvas')
+          return mockCanvas as unknown as HTMLCanvasElement;
+        return document.createElement(tagName);
+      },
+    );
+
+    const mockBitmap = {
+      width: 800,
+      height: 600,
+      close: vi.fn(),
+    } as unknown as ImageBitmap;
+
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(mockBitmap));
+
+    const inputBlob = new Blob(['input-data'], { type: 'image/jpeg' });
+    const result = await resizeAndCropImageToBlob(inputBlob);
+
+    expect(result).toBe(mockOutputBlob);
+    expect(mockCanvas.width).toBe(256);
+    expect(mockCanvas.height).toBe(256);
+    expect(mockCanvas.toBlob).toHaveBeenCalledWith(
+      expect.any(Function),
+      'image/webp',
+      0.85,
+    );
+  });
+
   it('resizes and square crops an image via createImageBitmap', async () => {
     const mockOutputBlob = new Blob(['resized-png'], { type: 'image/png' });
     const mockContext = {

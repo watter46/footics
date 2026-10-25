@@ -27,26 +27,34 @@ const createWrapper = () => {
 describe('usePlayerMaster & usePlayersMasterBatch & useSeasonPlayers', () => {
   beforeEach(async () => {
     await db.players.clear();
+    await db.player_photos.clear();
   });
 
   it('fetches player master and saves photo via mutation', async () => {
+    await db.players.put({
+      id: generatePlayerMasterId('26-27', 100),
+      playerId: 100,
+      season: '26-27',
+      name: 'Kaoru Mitoma',
+      updatedAt: Date.now(),
+    });
+
     const { result } = renderHook(() => usePlayerMaster(100, '26-27'), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(result.current.player).toBeUndefined();
+    expect(result.current.player).toBeDefined();
+    expect(result.current.player?.name).toBe('Kaoru Mitoma');
+    expect(result.current.player?.photoBlob).toBeUndefined();
 
     // Save photo
     const mockBlob = new Blob(['photo-100'], { type: 'image/png' });
     await result.current.savePhoto({ blob: mockBlob, name: 'Kaoru Mitoma' });
 
     await waitFor(() => {
-      expect(result.current.player).toBeDefined();
+      expect(result.current.player?.photoBlob).toBeDefined();
     });
-
-    expect(result.current.player?.name).toBe('Kaoru Mitoma');
-    expect(result.current.player?.photoBlob).toBeDefined();
 
     // Delete photo
     await result.current.deletePhoto();
@@ -66,7 +74,6 @@ describe('usePlayerMaster & usePlayersMasterBatch & useSeasonPlayers', () => {
         playerId: 201,
         season: '26-27',
         name: 'Player 201',
-        photoBlob: mockBlob1,
         updatedAt: Date.now(),
       },
       {
@@ -74,7 +81,20 @@ describe('usePlayerMaster & usePlayersMasterBatch & useSeasonPlayers', () => {
         playerId: 202,
         season: '26-27',
         name: 'Player 202',
+        updatedAt: Date.now(),
+      },
+    ]);
+    await db.player_photos.bulkPut([
+      {
+        playerId: 201,
+        photoBlob: mockBlob1,
+        mimeType: 'image/png',
+        updatedAt: Date.now(),
+      },
+      {
+        playerId: 202,
         photoBlob: mockBlob2,
+        mimeType: 'image/png',
         updatedAt: Date.now(),
       },
     ]);
@@ -90,7 +110,9 @@ describe('usePlayerMaster & usePlayersMasterBatch & useSeasonPlayers', () => {
 
     expect(result.current.data?.size).toBe(2);
     expect(result.current.data?.get(201)?.name).toBe('Player 201');
+    expect(result.current.data?.get(201)?.photoBlob).toBeDefined();
     expect(result.current.data?.get(202)?.name).toBe('Player 202');
+    expect(result.current.data?.get(202)?.photoBlob).toBeDefined();
     expect(result.current.data?.get(303)).toBeUndefined();
   });
 

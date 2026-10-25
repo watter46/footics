@@ -13,6 +13,7 @@
 import { Pause, Play, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
+import { preloadSlidePlayerPhotos } from '@/lib/tactical/export/share-payload';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 import type {
@@ -44,6 +45,8 @@ interface ExportPreviewPlayerProps {
   aspectRatio: AspectRatio;
   boundaryBox?: BoundaryBox | null;
   pitchTransform?: PitchTransform | null;
+  photos?: Record<string, string>;
+  playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
 }
 
 interface UseExportPreviewAnimationParams {
@@ -51,6 +54,8 @@ interface UseExportPreviewAnimationParams {
   aspectRatio: AspectRatio;
   boundaryBox?: BoundaryBox | null;
   pitchTransform?: PitchTransform | null;
+  photos?: Record<string, string>;
+  playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   timeLabelRef: React.RefObject<HTMLSpanElement | null>;
   sliderRef: React.RefObject<HTMLInputElement | null>;
@@ -119,12 +124,43 @@ function useExportPreviewAnimation({
   aspectRatio,
   boundaryBox,
   pitchTransform,
+  photos,
+  playerPhotos,
   canvasRef,
   timeLabelRef,
   sliderRef,
 }: UseExportPreviewAnimationParams) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [internalBitmaps, setInternalBitmaps] = useState<
+    Record<string, ImageBitmap>
+  >({});
   const totalDurationMs = calculateUnifiedTotalDuration(slides) || 1000;
+
+  useEffect(() => {
+    if (playerPhotos) return;
+    let isCancelled = false;
+    let loadedMap: Record<string, ImageBitmap> = {};
+
+    preloadSlidePlayerPhotos(slides, photos).then((map) => {
+      if (isCancelled) {
+        for (const bm of Object.values(map)) {
+          bm?.close?.();
+        }
+        return;
+      }
+      loadedMap = map;
+      setInternalBitmaps(map);
+    });
+
+    return () => {
+      isCancelled = true;
+      for (const bm of Object.values(loadedMap)) {
+        bm?.close?.();
+      }
+    };
+  }, [slides, photos, playerPhotos]);
+
+  const effectivePlayerPhotos = playerPhotos ?? internalBitmaps;
 
   const { width: previewWidth, height: previewHeight } =
     PREVIEW_DIMENSIONS[aspectRatio] ?? PREVIEW_DIMENSIONS['16:9'];
@@ -156,6 +192,7 @@ function useExportPreviewAnimation({
         boundaryBox,
         transparent: false,
         mvpMatrix,
+        playerPhotos: effectivePlayerPhotos,
       });
 
       if (timeLabelRef.current) {
@@ -170,6 +207,7 @@ function useExportPreviewAnimation({
       boundaryBox,
       aspectRatio,
       mvpMatrix,
+      effectivePlayerPhotos,
       canvasRef,
       timeLabelRef,
       sliderRef,
@@ -252,6 +290,8 @@ export function ExportPreviewPlayer({
   aspectRatio,
   boundaryBox,
   pitchTransform,
+  photos,
+  playerPhotos,
 }: ExportPreviewPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const timeLabelRef = useRef<HTMLSpanElement | null>(null);
@@ -270,6 +310,8 @@ export function ExportPreviewPlayer({
     aspectRatio,
     boundaryBox,
     pitchTransform,
+    photos,
+    playerPhotos,
     canvasRef,
     timeLabelRef,
     sliderRef,

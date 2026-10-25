@@ -101,15 +101,12 @@ export function convertSquadToTacticalPlayers(
     tacticalPlayer.position = sp.position;
     tacticalPlayer.area = 'pitch';
 
-    const photoUrl =
-      sp.photoUrl ||
-      (sp.photoBlob && typeof URL !== 'undefined' && URL.createObjectURL
-        ? URL.createObjectURL(sp.photoBlob)
-        : undefined);
-
-    if (photoUrl) {
+    if (sp.photoUrl) {
       tacticalPlayer.style.insideContent = 'photo';
-      tacticalPlayer.style.photoUrl = photoUrl;
+      tacticalPlayer.style.photoUrl = sp.photoUrl;
+    } else if (sp.photoBlob) {
+      tacticalPlayer.style.insideContent = 'photo';
+      tacticalPlayer.style.photoUrl = undefined;
     } else {
       tacticalPlayer.style.insideContent = 'number';
     }
@@ -129,15 +126,12 @@ export function convertSquadToTacticalPlayers(
     benchPlayer.position = sub.position;
     benchPlayer.area = 'bench';
 
-    const photoUrl =
-      sub.photoUrl ||
-      (sub.photoBlob && typeof URL !== 'undefined' && URL.createObjectURL
-        ? URL.createObjectURL(sub.photoBlob)
-        : undefined);
-
-    if (photoUrl) {
+    if (sub.photoUrl) {
       benchPlayer.style.insideContent = 'photo';
-      benchPlayer.style.photoUrl = photoUrl;
+      benchPlayer.style.photoUrl = sub.photoUrl;
+    } else if (sub.photoBlob) {
+      benchPlayer.style.insideContent = 'photo';
+      benchPlayer.style.photoUrl = undefined;
     } else {
       benchPlayer.style.insideContent = 'number';
     }

@@ -32,9 +32,9 @@ export function usePlayerMaster(playerId?: number, season?: string) {
   });
 
   const savePhotoMutation = useMutation({
-    mutationFn: async ({ blob, name }: { blob: Blob; name?: string }) => {
+    mutationFn: async ({ blob }: { blob: Blob; name?: string }) => {
       if (!playerId) throw new Error('playerId is required');
-      await savePlayerPhoto(playerId, blob, name, season);
+      await savePlayerPhoto(playerId, blob);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: playerKeys.all });
@@ -156,13 +156,12 @@ export function useSeasonPlayers(season: string, teamName: string = 'Chelsea') {
     mutationFn: async ({
       playerId,
       blob,
-      name,
     }: {
       playerId: number;
       blob: Blob;
       name?: string;
     }) => {
-      await savePlayerPhoto(playerId, blob, name, season);
+      await savePlayerPhoto(playerId, blob);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

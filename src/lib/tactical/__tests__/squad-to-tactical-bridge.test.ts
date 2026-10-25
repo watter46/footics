@@ -273,6 +273,28 @@ describe('squad-to-tactical-bridge', () => {
         shirtNo: 14,
         isFirstEleven: false,
       },
+      {
+        playerId: 105,
+        name: 'Player With Blob',
+        shirtNo: 9,
+        isFirstEleven: true,
+        photoBlob: new Blob(['blob-data'], { type: 'image/webp' }),
+      },
+      {
+        playerId: 106,
+        name: 'Sub With Blob',
+        shirtNo: 19,
+        isFirstEleven: false,
+        photoBlob: new Blob(['blob-data-sub'], { type: 'image/webp' }),
+      },
+      {
+        playerId: 107,
+        name: 'Player With Both Url And Blob',
+        shirtNo: 11,
+        isFirstEleven: true,
+        photoUrl: 'https://example.com/both.png',
+        photoBlob: new Blob(['blob-data-both'], { type: 'image/webp' }),
+      },
     ];
 
     const tacticalPlayers = convertSquadToTacticalPlayers(squadWithPhotos, {
@@ -292,6 +314,11 @@ describe('squad-to-tactical-bridge', () => {
     const subWithoutPhoto = tacticalPlayers.find(
       (p) => p.name === 'Sub Without Photo',
     );
+    const withBlob = tacticalPlayers.find((p) => p.name === 'Player With Blob');
+    const subWithBlob = tacticalPlayers.find((p) => p.name === 'Sub With Blob');
+    const withBoth = tacticalPlayers.find(
+      (p) => p.name === 'Player With Both Url And Blob',
+    );
 
     expect(withPhoto?.style.insideContent).toBe('photo');
     expect(withPhoto?.style.photoUrl).toBe('https://example.com/player.png');
@@ -304,5 +331,16 @@ describe('squad-to-tactical-bridge', () => {
 
     expect(subWithoutPhoto?.style.insideContent).toBe('number');
     expect(subWithoutPhoto?.style.photoUrl).toBeUndefined();
+
+    // photoBlob only: insideContent is 'photo', but temporary blob URL is NOT set (undefined)
+    expect(withBlob?.style.insideContent).toBe('photo');
+    expect(withBlob?.style.photoUrl).toBeUndefined();
+
+    expect(subWithBlob?.style.insideContent).toBe('photo');
+    expect(subWithBlob?.style.photoUrl).toBeUndefined();
+
+    // both photoUrl and photoBlob: insideContent is 'photo', photoUrl is retained
+    expect(withBoth?.style.insideContent).toBe('photo');
+    expect(withBoth?.style.photoUrl).toBe('https://example.com/both.png');
   });
 });

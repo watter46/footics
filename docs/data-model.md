@@ -13,28 +13,26 @@
 |-----|------|
 | **データベース** | Dexie.js (IndexedDB) のみ。サーバー DB なし |
 | **DB 名** | `footics_db` |
-| **現行スキーマバージョン** | v20 |
+| **現行スキーマバージョン** | v1（レガシー履歴・死にテーブルを撤廃しクリーン再設計） |
 | **バリデーション** | `src/lib/schema.ts` / `src/lib/types/tactical-unified.ts` の Zod スキーマ |
 | **主要型定義ファイル** | `src/types/index.ts`（試合データ系）、`src/lib/types/tactical-unified.ts`（戦術ボード系） |
 
 > **[!WARNING]**
-> DB スキーマを変更する場合は必ず `src/lib/db/schema.ts` のバージョンを上げ、マイグレーション（`.version(N).upgrade()`）を記述すること。
-> バージョンアップなしのスキーマ変更は Dexie のアップグレードエラーを引き起こす。
+> `footics_db` は `version(1)` へクリーン再設計されています。ブラウザに旧 `v20` 以前の DB が残存していて `VersionError` が発生した場合は、初期化ガードにより自動で旧 DB を削除し `version(1)` として再生成します。
 
 ---
 
-## 2. DB テーブル一覧（v20）
+## 2. DB テーブル一覧（v1）
 
-| テーブル名 | 型 | 主キー | 用途 |
+| テーブル名 | 型 | インデックス定義（先頭が主キー） | 用途 |
 |-----------|----|----|------|
-| `matches` | `Match` | `id` (string) | インポートした試合の基本情報 |
-| `events` | `EventRow` | `[match_id, id]` 複合キー | 試合イベント（WhoScored + カスタム） |
-| `event_memos` | `EventMemo` | `id` (number) | イベントへの分析メモ・タグ |
-| `custom_events` | `CustomEvent` | `id` (uuid) | ユーザーが手動追加したカスタムイベント |
+| `matches` | `Match` | `id, date, matchType` | インポートした試合の基本情報 |
+| `events` | `EventRow` | `[match_id+id], match_id` | 試合イベント（WhoScored） |
+| `custom_events` | `CustomEvent` | `id, match_id, created_at` | ユーザーが手動追加したカスタムイベント・メモ |
 | `match_memos` | `MatchMemo` | `matchId` | 試合全体への自由記述メモ |
-| `players` | `PlayerMaster` | `id` (`${season}_${playerId}`) | 選手マスターデータ（シーズン管理） |
-| `tactical_projects` | `TacticalProject` | `id` (uuid) | 戦術ボードプロジェクト（v20で追加） |
-| `tactical_snapshots` | `TacticalSnapshot` | `matchId` | ⚠️ **旧テーブル（廃止予定）** → `tactical_projects` に一本化予定 |
+| `players` | `PlayerMaster` | `id, playerId, season, [season+teamName]` | 選手マスターデータ（シーズン別メタデータ管理） |
+| `player_photos` | `PlayerPhoto` | `playerId, updatedAt` | 選手顔写真データ（256×256px WebP Blob、全シーズン共通） |
+| `tactical_projects` | `TacticalProject` | `id, matchId, updatedAt` | 戦術ボードプロジェクト |
 | `keyval` | `KeyValEntry` | `key` | 汎用キーバリューストア |
 
 ---
@@ -78,10 +76,45 @@ interface Player {
   playerId: number;
   name: string;
   shirtNo: number;
-  position: 'GK' | 'DF' | 'MID' | 'FW' | 'DR' | 'DC' | 'DL' | 'DMC' | 'MC' | 'AMC' | 'AMR' | 'AML' | 'Sub' | 'Other';
+  position:
+    | 'GK'
+    | 'DF'
+    | 'MID'
+    | 'FW'
+    | 'DR'
+    | 'DC'
+    | 'DL'
+    | 'DMC'
+    | 'DML'
+    | 'DMR'
+    | 'MC'
+    | 'MR'
+    | 'ML'
+    | 'AMC'
+    | 'AMR'
+    | 'AML'
+    | 'FWL'
+    | 'FWR'
+    | 'Sub'
+    | 'Other';
   isFirstEleven: boolean;
   field: 'home' | 'away';
   // ...
+}
+
+interface Formation {
+  formationId: number;
+  formationName: string;
+  captainPlayerId: number;
+  period?: number;
+  startMinuteExpanded: number;
+  endMinuteExpanded: number;
+  playerIds: number[];
+  jerseyNumbers: number[];
+  formationSlots?: number[]; // 1〜11: ピッチ上スロット, 0: ベンチ控え
+  formationPositions?: Array<{ vertical: number; horizontal: number }>; // ピッチ上11人の相対縦横位置 (0〜10)
+  subOnPlayerId?: number;
+  subOffPlayerId?: number;
 }
 ```
 
@@ -130,17 +163,19 @@ interface EventRow {
 }
 ```
 
-### 3-5. EventMemo・MatchMemo（分析メモ）
+### 3-5. CustomEvent・MatchMemo（分析メモ）
 
 ```typescript
 // Zod スキーマから導出 (src/lib/schema.ts)
-type EventMemo = {
-  id: number;
-  matchId: number;
-  memo: string;       // 分析テキスト
-  tags: string[];
-  updatedAt: number;
-  // ...WhoScoredEvent フィールドを継承
+type CustomEvent = {
+  id: string;         // UUID
+  match_id: string;
+  period: number;     // 1–5
+  minute: number;
+  second: number;
+  labels: string[];
+  memo: string;
+  created_at: number;
 }
 
 type MatchMemo = {
@@ -150,21 +185,28 @@ type MatchMemo = {
 }
 ```
 
-### 3-6. PlayerMaster（選手マスターデータ）
+### 3-6. PlayerMaster・PlayerPhoto（選手マスター・顔写真データ）
 
 ```typescript
-// src/lib/db/schema.ts
-interface PlayerMaster {
+// Zod スキーマから導出 (src/lib/schema.ts)
+type PlayerMaster = {
   id: string;                 // '${season}_${playerId}'
   playerId: number;
   name: string;
   season: string;             // 例: '26-27', '25-26'
   defaultShirtNo?: number;
   position?: string;
-  photoBlob?: Blob;           // ローカル保存画像
+  photoBlob?: Blob;           // クエリ取得時のJOIN結合フィールド（物理保存は player_photos テーブル）
   photoUrl?: string;          // 外部URL（フォールバック）
   teamName?: string;
   isExcluded?: boolean;       // 非表示フラグ
+  updatedAt: number;
+}
+
+type PlayerPhoto = {
+  playerId: number;           // Primary Key（全シーズン共通）
+  photoBlob: Blob;            // 256×256px WebP (品質0.85)
+  mimeType: string;           // 'image/webp' (またはフォールバック 'image/png')
   updatedAt: number;
 }
 ```
@@ -221,6 +263,7 @@ type Slide = {
   backgroundType?: 'pitch' | 'image' | 'blank';
   boundaryBox?: BoundaryBox;
   aspectRatio?: AspectRatio;
+  isSidesSwapped?: boolean;       // 陣地反転状態（Swap Sides 適用時に true）
 }
 ```
 

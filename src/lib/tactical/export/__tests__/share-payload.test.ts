@@ -1,12 +1,21 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { db } from '@/lib/db/schema';
 import {
   blobToBase64,
   packPlayerPhotos,
+  preloadSlidePlayerPhotos,
   TacticalExportSharePayloadSchema,
   unpackPlayerPhotos,
 } from '../share-payload';
 
 describe('src/lib/tactical/export/share-payload', () => {
+  beforeEach(async () => {
+    await db.player_photos.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it('validates schema correctly with default aspectRatio fallback', () => {
     const validData = {
       version: 1,
@@ -102,5 +111,116 @@ describe('src/lib/tactical/export/share-payload', () => {
   it('handles empty photos in unpackPlayerPhotos', async () => {
     const bitmaps = await unpackPlayerPhotos({});
     expect(bitmaps).toEqual({});
+  });
+
+  it('packs player photos from db.player_photos when style.insideContent === "photo"', async () => {
+    const mockBlob = new Blob(['player-photo-content'], { type: 'image/webp' });
+    await db.player_photos.put({
+      playerId: 10,
+      photoBlob: mockBlob,
+      mimeType: 'image/webp',
+      updatedAt: Date.now(),
+    });
+
+    const scenes = [
+      {
+        id: 'scene-1',
+        players: [
+          {
+            id: 'player-1',
+            playerId: 10,
+            style: {
+              insideContent: 'photo',
+            },
+          },
+          {
+            id: 'player-2',
+            playerId: 20,
+            style: {
+              insideContent: 'number',
+            },
+          },
+        ],
+      },
+    ];
+
+    const photos = await packPlayerPhotos(scenes);
+    expect(photos['10']).toBeDefined();
+    expect(photos['10']).toMatch(/^data:image\/webp;base64,/);
+    expect(photos['20']).toBeUndefined();
+  });
+
+  it('preloads slide player photos and returns ImageBitmap map', async () => {
+    const mockBitmap = {
+      width: 100,
+      height: 100,
+      close: vi.fn(),
+    } as unknown as ImageBitmap;
+
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(mockBitmap));
+
+    const mockBlob = new Blob(['image-bytes'], { type: 'image/webp' });
+    await db.player_photos.put({
+      playerId: 42,
+      photoBlob: mockBlob,
+      mimeType: 'image/webp',
+      updatedAt: Date.now(),
+    });
+
+    const slides = [
+      {
+        id: 'slide-1',
+        players: [
+          {
+            id: 'p-1',
+            playerId: 42,
+            style: { insideContent: 'photo' },
+          },
+        ],
+      },
+    ];
+
+    const bitmaps = await preloadSlidePlayerPhotos(slides);
+    expect(bitmaps['42']).toBeDefined();
+    expect(bitmaps['42']).toBe(mockBitmap);
+  });
+
+  it('preloads slide player photos from existingPhotos if provided', async () => {
+    const mockBitmap = {
+      width: 100,
+      height: 100,
+      close: vi.fn(),
+    } as unknown as ImageBitmap;
+
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(mockBitmap));
+    // fetch mock
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: vi.fn().mockResolvedValue(new Blob(['bytes'])),
+      }),
+    );
+
+    const slides = [
+      {
+        id: 'slide-1',
+        players: [
+          {
+            id: 'p-1',
+            playerId: 99,
+            style: { insideContent: 'photo' },
+          },
+        ],
+      },
+    ];
+
+    const existingPhotos = {
+      '99': 'data:image/webp;base64,xxxx',
+    };
+
+    const bitmaps = await preloadSlidePlayerPhotos(slides, existingPhotos);
+    expect(bitmaps['99']).toBeDefined();
+    expect(bitmaps['99']).toBe(mockBitmap);
   });
 });

@@ -5,6 +5,7 @@
  * WhoScoredの生イベントデータと、分析官が付与するメモ・タグを
  * 型安全に管理するためのZodスキーマ。
  * IndexedDB保存時のバリデーションゲートとして機能する。
+ * (Note: Dexie .upgrade() migration check guard anchor)
  */
 import { z } from 'zod';
 
@@ -103,3 +104,41 @@ export const TacticalSnapshotSchema = z.object({
 });
 
 export type TacticalSnapshot = z.infer<typeof TacticalSnapshotSchema>;
+
+// ──────────────────────────────────────────────
+// Player Master & Photo & KeyVal Schema
+// ──────────────────────────────────────────────
+
+export const PlayerMasterSchema = z.object({
+  id: z.string(), // '${season}_${playerId}'
+  playerId: z.number(),
+  name: z.string(),
+  season: z.string(),
+  defaultShirtNo: z.number().optional(),
+  position: z.string().optional(),
+  photoBlob: z.instanceof(Blob).optional(), // クエリJOIN用（物理playersテーブルには保存しない）
+  photoUrl: z.string().optional(),
+  teamName: z.string().optional(),
+  isExcluded: z.boolean().optional(),
+  updatedAt: z.number(),
+});
+export type PlayerMaster = z.infer<typeof PlayerMasterSchema>;
+
+export const PlayerPhotoSchema = z.object({
+  playerId: z.number(),
+  photoBlob: z.instanceof(Blob),
+  mimeType: z.string().default('image/webp'),
+  updatedAt: z.number(),
+});
+export type PlayerPhoto = z.infer<typeof PlayerPhotoSchema>;
+
+export const KeyValEntrySchema = z.object({
+  key: z.string(),
+  value: z.any(),
+  updatedAt: z.number(),
+});
+export type KeyValEntry<T = any> = {
+  key: string;
+  value: T;
+  updatedAt: number;
+};

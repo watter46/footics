@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { Ellipse, Group, Path, Text } from 'react-konva';
+import { Ellipse, Group, Path } from 'react-konva';
 import {
   MARKER_PATHS,
   MARKER_VIEWBOX_SIZE,
@@ -20,7 +20,7 @@ export interface PlayerMarkerRingProps {
 export function PlayerMarkerRing({
   player,
   radius,
-  numScale,
+  numScale: _numScale,
   isSelected,
   shapeRef,
 }: PlayerMarkerRingProps) {
@@ -122,25 +122,6 @@ export function PlayerMarkerRing({
         opacity={0.2}
         listening={false}
       />
-
-      {/* リング内背番号表示 */}
-      {player.style.insideContent !== 'none' && player.shirtNo && (
-        <Text
-          x={-radius}
-          y={-radius * 1.1}
-          width={radius * 2}
-          height={radius * 2}
-          text={player.shirtNo}
-          fontSize={radius * 0.75 * numScale}
-          fill="#ffffff"
-          align="center"
-          verticalAlign="middle"
-          fontStyle="bold"
-          fontFamily='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      )}
     </Group>
   );
 }

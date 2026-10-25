@@ -194,6 +194,7 @@ export interface VideoExportOptions {
   aspectRatio?: AspectRatio;
   pitchTransform?: PitchTransform | null;
   mvpMatrix?: Float32Array | null;
+  playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   onRenderFrame?: (timeMs: number) => Promise<void> | void;
   onCaptureFrame?: (cropInfo: BoundaryCropInfo) => HTMLCanvasElement | null;
   onSetBackgroundVisible?: (visible: boolean) => void;
@@ -480,6 +481,7 @@ export async function exportVideoWithMediabunny(
           boundaryBox,
           transparent,
           mvpMatrix,
+          playerPhotos: options.playerPhotos,
         });
       } else {
         await options.onRenderFrame?.(timeMs);
@@ -760,6 +762,7 @@ export async function exportVideoWithMediaRecorder(
           boundaryBox,
           transparent,
           mvpMatrix,
+          playerPhotos: options.playerPhotos,
         });
       } else {
         await onRenderFrame?.(timeMs);

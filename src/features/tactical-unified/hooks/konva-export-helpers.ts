@@ -5,6 +5,7 @@
 
 import { zipSync } from 'fflate';
 import type Konva from 'konva';
+import { preloadSlidePlayerPhotos } from '@/lib/tactical/export/share-payload';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-export-engine';
 import {
@@ -90,28 +91,37 @@ export async function renderSlideToPngBlob(
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Failed to get 2D context from canvas');
 
-  renderTacticalFrameToCanvas(ctx, {
-    slides: [options.slide],
-    timeMs: 0,
-    width: crop.exportWidth,
-    height: crop.exportHeight,
-    aspectRatio: options.aspectRatio,
-    boundaryBox: box,
-  });
+  const playerPhotos = await preloadSlidePlayerPhotos([options.slide]);
 
-  const blob: Blob | null = await new Promise((resolve) => {
-    if (typeof canvas.toBlob === 'function') {
-      canvas.toBlob((b) => resolve(b), 'image/png');
-    } else {
-      resolve(null);
+  try {
+    renderTacticalFrameToCanvas(ctx, {
+      slides: [options.slide],
+      timeMs: 0,
+      width: crop.exportWidth,
+      height: crop.exportHeight,
+      aspectRatio: options.aspectRatio,
+      boundaryBox: box,
+      playerPhotos,
+    });
+
+    const blob: Blob | null = await new Promise((resolve) => {
+      if (typeof canvas.toBlob === 'function') {
+        canvas.toBlob((b) => resolve(b), 'image/png');
+      } else {
+        resolve(null);
+      }
+    });
+    if (blob) return blob;
+    if (typeof canvas.toDataURL === 'function') {
+      const dataUrl = canvas.toDataURL('image/png');
+      if (dataUrl) return await dataUrlToBlob(dataUrl);
     }
-  });
-  if (blob) return blob;
-  if (typeof canvas.toDataURL === 'function') {
-    const dataUrl = canvas.toDataURL('image/png');
-    if (dataUrl) return await dataUrlToBlob(dataUrl);
+    throw new Error('Failed to create PNG blob from canvas');
+  } finally {
+    for (const bitmap of Object.values(playerPhotos)) {
+      bitmap?.close?.();
+    }
   }
-  throw new Error('Failed to create PNG blob from canvas');
 }
 
 export async function exportSingleSlidePng(

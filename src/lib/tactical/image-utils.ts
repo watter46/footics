@@ -7,13 +7,15 @@
  *
  * @param fileOrBlob 入力画像 File / Blob
  * @param size 出力画像の 1 辺のピクセル数 (デフォルト: 256)
- * @param mimeType 出力画像 MIME タイプ (デフォルト: 'image/png')
+ * @param mimeType 出力画像 MIME タイプ (デフォルト: 'image/webp')
+ * @param quality 画像品質 (デフォルト: 0.85)
  * @returns トリミング・リサイズ済みの Blob
  */
 export async function resizeAndCropImageToBlob(
   fileOrBlob: Blob | File,
   size = 256,
-  mimeType = 'image/png',
+  mimeType = 'image/webp',
+  quality = 0.85,
 ): Promise<Blob> {
   if (typeof window === 'undefined') {
     return fileOrBlob;
@@ -43,13 +45,17 @@ export async function resizeAndCropImageToBlob(
       bitmap.close();
 
       return new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error('Failed to create Blob from Canvas'));
-          }
-        }, mimeType);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to create Blob from Canvas'));
+            }
+          },
+          mimeType,
+          quality,
+        );
       });
     } catch {
       // フォールバック: HTMLImageElement によるロード
@@ -82,13 +88,17 @@ export async function resizeAndCropImageToBlob(
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
 
-        canvas.toBlob((blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error('Failed to create Blob from Canvas'));
-          }
-        }, mimeType);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to create Blob from Canvas'));
+            }
+          },
+          mimeType,
+          quality,
+        );
       } catch (err) {
         reject(err);
       }

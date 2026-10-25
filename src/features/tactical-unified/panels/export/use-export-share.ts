@@ -6,6 +6,7 @@ import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { packPlayerPhotos } from '@/lib/tactical/export/share-payload';
 
 interface ShareOptions {
   onError: (msg: string) => void;
@@ -28,6 +29,7 @@ export function useExportShare({ onError }: ShareOptions) {
       const state = useTacticalUnifiedStore.getState();
       const { project } = state;
       const activeSlide = selectActiveSlide(state);
+      const photos = await packPlayerPhotos(project.slides);
 
       const payload = {
         version: 1,
@@ -40,7 +42,7 @@ export function useExportShare({ onError }: ShareOptions) {
         teamVisibility: 'both',
         exportFps: 60,
         scenes: project.slides,
-        photos: {},
+        photos,
       };
 
       const res = await fetch('/api/tactical-export/share', {

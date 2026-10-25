@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CustomEvent, EventMemo, MatchMemo } from '../../schema';
+import type { CustomEvent, MatchMemo } from '../../schema';
 import {
   exportMemosAsJson,
   importMemosBatch,
@@ -10,29 +10,13 @@ import { db } from '../schema';
 
 describe('src/lib/db/export', () => {
   beforeEach(async () => {
-    await db.event_memos.clear();
     await db.custom_events.clear();
     await db.match_memos.clear();
     vi.restoreAllMocks();
   });
 
   describe('importMemosBatch', () => {
-    it('imports event memos, custom events, and match memos in batch', async () => {
-      const memos: EventMemo[] = [
-        {
-          id: 1,
-          matchId: 100,
-          period: 1,
-          minute: 10,
-          second: 0,
-          type: 'Save',
-          x: 5,
-          y: 50,
-          memo: 'Good save',
-          tags: ['GK'],
-          updatedAt: 1000,
-        },
-      ];
+    it('imports custom events and match memos in batch', async () => {
       const customEvents: CustomEvent[] = [
         {
           id: '11111111-1111-4111-8111-111111111111',
@@ -55,13 +39,11 @@ describe('src/lib/db/export', () => {
 
       const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
 
-      await importMemosBatch(memos, customEvents, matchMemos);
+      await importMemosBatch(customEvents, matchMemos);
 
-      const dbMemos = await db.event_memos.toArray();
       const dbCustomEvents = await db.custom_events.toArray();
       const dbMatchMemos = await db.match_memos.toArray();
 
-      expect(dbMemos).toHaveLength(1);
       expect(dbCustomEvents).toHaveLength(1);
       expect(dbMatchMemos).toHaveLength(1);
 
@@ -73,7 +55,7 @@ describe('src/lib/db/export', () => {
 
     it('handles empty batch import gracefully', async () => {
       const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
-      await importMemosBatch([], [], []);
+      await importMemosBatch([], []);
       expect(dispatchSpy).toHaveBeenCalledTimes(1);
     });
   });

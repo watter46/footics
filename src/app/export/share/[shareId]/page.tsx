@@ -18,43 +18,14 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { ExportPreviewPlayer } from '@/features/tactical-unified/panels/export/export-preview-player';
+import {
+  detectIOSDevice,
+  IOS_ENCODER_PRESETS,
+} from '@/features/tactical-unified/panels/export/ios-export-presets';
 import type { TacticalExportSharePayload } from '@/lib/tactical/export/share-payload';
 import { exportMultiSlideMp4Video } from '@/lib/tactical/export/tactical-video-exporter';
 import { PITCH_BOUNDARY_CONFIGS } from '@/lib/tactical/pitch-geometry';
 import type { AspectRatio, Slide } from '@/lib/types/tactical-unified';
-
-function detectIOSDevice() {
-  if (typeof navigator === 'undefined')
-    return { isIOS: false, isIPhone12: false };
-  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  const isIPhone12 =
-    isIOS &&
-    typeof window !== 'undefined' &&
-    window.screen.width === 390 &&
-    window.screen.height === 844;
-  return { isIOS, isIPhone12 };
-}
-
-const IOS_ENCODER_PRESETS = {
-  iphone12: {
-    label: 'iPhone 12 (A14 Bionic) — Optimized',
-    codec: 'avc1.64002a',
-    maxQueueSize: 30,
-    bitrateMbps: 24,
-    fps: 60,
-    latencyMode: 'quality' as const,
-    keyFrameIntervalSec: 2,
-  },
-  iosGeneral: {
-    label: 'iOS Safari — Safe',
-    codec: 'avc1.4d002a',
-    maxQueueSize: 20,
-    bitrateMbps: 16,
-    fps: 30,
-    latencyMode: 'realtime' as const,
-    keyFrameIntervalSec: 2,
-  },
-} as const;
 
 export default function StandaloneExportSharePage() {
   const params = useParams();
@@ -183,6 +154,7 @@ export default function StandaloneExportSharePage() {
         stageWidth,
         stageHeight,
         aspectRatio: effectiveAspectRatio,
+        photos: shareData.photos,
         onProgress: (p) => setExportProgress(p.percent),
       });
       setExportedBlob(blob);
@@ -304,6 +276,7 @@ export default function StandaloneExportSharePage() {
             aspectRatio={effectiveAspectRatio}
             boundaryBox={shareData.boundaryBox}
             pitchTransform={shareData.pitchTransform}
+            photos={shareData.photos}
           />
 
           {/* Preset Selector */}

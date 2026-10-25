@@ -1,4 +1,4 @@
-import type { CustomEvent, EventMemo, MatchMemo } from '../schema';
+import type { CustomEvent, MatchMemo } from '../schema';
 import { dispatchRefreshEvent, getCustomEventsByMatch } from './queries';
 import { db } from './schema';
 
@@ -6,15 +6,11 @@ import { db } from './schema';
  * メモとカスタムイベントを一括で IndexedDB に保存する。
  */
 export async function importMemosBatch(
-  memos: EventMemo[],
   customEvents: CustomEvent[],
   matchMemos: MatchMemo[] = [],
 ): Promise<void> {
   // 影響を受ける matchId を収集
   const matchIds = new Set<string | number>();
-  memos.forEach((m) => {
-    matchIds.add(m.matchId);
-  });
   customEvents.forEach((c) => {
     matchIds.add(c.match_id);
   });
@@ -22,18 +18,13 @@ export async function importMemosBatch(
     matchIds.add(m.matchId);
   });
 
-  await db.transaction(
-    'rw',
-    [db.event_memos, db.custom_events, db.match_memos],
-    async () => {
-      if (memos.length > 0) await db.event_memos.bulkPut(memos);
-      if (customEvents.length > 0) await db.custom_events.bulkPut(customEvents);
-      if (matchMemos.length > 0) await db.match_memos.bulkPut(matchMemos);
-    },
-  );
+  await db.transaction('rw', [db.custom_events, db.match_memos], async () => {
+    if (customEvents.length > 0) await db.custom_events.bulkPut(customEvents);
+    if (matchMemos.length > 0) await db.match_memos.bulkPut(matchMemos);
+  });
   console.log(
     `[footics] Batch memo import completed (${
-      memos.length + customEvents.length + matchMemos.length
+      customEvents.length + matchMemos.length
     } items)`,
   );
 

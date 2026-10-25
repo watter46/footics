@@ -226,6 +226,7 @@ export function rectToPoints(
 
 export interface InterpolatedPlayerState {
   id: string;
+  playerId?: string;
   x: number;
   y: number;
   opacity: number;
@@ -542,6 +543,7 @@ export function interpolatePlayer(
   if (pA && !pB) {
     return {
       id: pA.id,
+      playerId: pA.playerId,
       x: pA.x,
       y: pA.y,
       opacity: Math.max(0, 1 - ease),
@@ -561,6 +563,7 @@ export function interpolatePlayer(
   if (!pA && pB) {
     return {
       id: pB.id,
+      playerId: pB.playerId,
       x: pB.x,
       y: pB.y,
       opacity: Math.min(1, ease),
@@ -653,6 +656,7 @@ export function interpolatePlayer(
 
   return {
     id: endP.id,
+    playerId: endP.playerId ?? startP.playerId,
     x,
     y,
     opacity,
@@ -869,6 +873,7 @@ export function getInterpolatedUnifiedSlideFrame(
     slide.players.forEach((p) => {
       players[p.id] = {
         id: p.id,
+        playerId: p.playerId,
         x: p.x,
         y: p.y,
         opacity: 1,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { savePlayerMaster, savePlayerPhoto } from '@/lib/db/queries';
+import { savePlayerMaster } from '@/lib/db/queries';
 import { normalizePosition } from '@/lib/tactical/player-formatting';
 import type { StandardPosition } from '@/types';
 import { useSeasonPlayers } from './use-player-master';
@@ -36,9 +36,9 @@ async function copyPlayer(p: MergedSourcePlayer, season: string, team: string) {
     position,
     season,
     teamName: team,
+    photoBlob,
     updatedAt: Date.now(),
   });
-  if (photoBlob) await savePlayerPhoto(playerId, photoBlob, name, season);
 }
 
 export function useSeasonPlayerCopy(params: UseSeasonPlayerCopyParams) {

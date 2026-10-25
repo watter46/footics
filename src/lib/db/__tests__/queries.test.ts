@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EventRow, Match } from '@/types';
-import type {
-  CustomEvent as CustomEventType,
-  EventMemo,
-  MatchMemo,
-  TacticalSnapshot,
-} from '../../schema';
+import type { CustomEvent as CustomEventType, MatchMemo } from '../../schema';
 import { SHORTCUT_ACTIONS } from '../../shortcuts';
 import {
   deleteCustomEvent,
@@ -13,51 +8,45 @@ import {
   deleteMatch,
   deletePlayerMaster,
   deletePlayerPhoto,
-  deleteTacticalSnapshot,
   dispatchRefreshEvent,
   getAllCustomEvents,
-  getAllEventMemos,
   getAllEvents,
   getAllMatches,
   getAllMatchMemos,
   getAllPlayerMasters,
-  getAllTacticalSnapshots,
+  getAllPlayerPhotos,
   getCustomEventsByMatch,
-  getEventMemosByMatch,
   getEventsByMatch,
   getKeyValue,
   getMatch,
   getMatchMemo,
   getPlayerMaster,
   getPlayerMastersBySeason,
+  getPlayerPhoto,
+  getPlayerPhotosBatch,
   getPlayersMasterBatch,
-  getTacticalSnapshot,
   mergePlayerId,
-  putEventMemo,
   putMatch,
   putMatchEventsBatch,
   putMatchesBatch,
   putMatchMemo,
-  putTacticalSnapshot,
-  putTacticalSnapshotsBatch,
   saveCustomEvent,
   saveMatchUnified,
   savePlayerMaster,
   savePlayerPhoto,
   setKeyValue,
 } from '../queries';
-import { db } from '../schema';
+import { db, ensureDatabaseReady, type FooticsDatabase } from '../schema';
 
 describe('src/lib/db/queries', () => {
   beforeEach(async () => {
-    await db.event_memos.clear();
     await db.custom_events.clear();
     await db.match_memos.clear();
-    await db.tactical_snapshots.clear();
     await db.matches.clear();
     await db.events.clear();
     await db.keyval.clear();
     await db.players.clear();
+    await db.player_photos.clear();
     vi.restoreAllMocks();
   });
 
@@ -96,58 +85,39 @@ describe('src/lib/db/queries', () => {
     });
   });
 
-  describe('Event Memo Operations', () => {
-    it('puts and gets event memos by match', async () => {
-      const memo1: EventMemo = {
-        id: 101,
-        matchId: 1,
-        period: 1,
-        minute: 10,
-        second: 30,
-        type: 'Pass',
-        x: 50,
-        y: 50,
-        memo: 'Great pass',
-        tags: ['pass', 'key'],
-        updatedAt: Date.now(),
-      };
-      const memo2: EventMemo = {
-        id: 102,
-        matchId: 1,
-        period: 1,
-        minute: 25,
-        second: 15,
-        type: 'Shot',
-        x: 80,
-        y: 45,
-        memo: 'Shot on target',
-        tags: ['shot'],
-        updatedAt: Date.now(),
-      };
-      const memo3: EventMemo = {
-        id: 103,
-        matchId: 2,
-        period: 2,
-        minute: 60,
-        second: 0,
-        type: 'Tackle',
-        x: 40,
-        y: 60,
-        memo: 'Other match memo',
-        tags: [],
-        updatedAt: Date.now(),
-      };
+  describe('Database Ready and Recovery', () => {
+    it('opens database ready when no VersionError', async () => {
+      await expect(ensureDatabaseReady(db)).resolves.not.toThrow();
+    });
 
-      await putEventMemo(memo1);
-      await putEventMemo(memo2);
-      await putEventMemo(memo3);
+    it('recovers by delete and reopen when VersionError occurs', async () => {
+      const mockDb = {
+        open: vi
+          .fn()
+          .mockRejectedValueOnce({
+            name: 'VersionError',
+            message: 'Version error',
+          })
+          .mockResolvedValueOnce(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+      } as unknown as FooticsDatabase;
 
-      const match1Memos = await getEventMemosByMatch(1);
-      expect(match1Memos).toHaveLength(2);
-      expect(match1Memos.map((m) => m.id)).toEqual([101, 102]);
+      await ensureDatabaseReady(mockDb);
 
-      const allMemos = await getAllEventMemos();
-      expect(allMemos).toHaveLength(3);
+      expect(mockDb.open).toHaveBeenCalledTimes(2);
+      expect(mockDb.delete).toHaveBeenCalledTimes(1);
+    });
+
+    it('rethrows non-VersionError during open', async () => {
+      const mockDb = {
+        open: vi.fn().mockRejectedValue(new Error('Other DB error')),
+        delete: vi.fn(),
+      } as unknown as FooticsDatabase;
+
+      await expect(ensureDatabaseReady(mockDb)).rejects.toThrow(
+        'Other DB error',
+      );
+      expect(mockDb.delete).not.toHaveBeenCalled();
     });
   });
 
@@ -236,61 +206,6 @@ describe('src/lib/db/queries', () => {
 
       const all = await getAllMatchMemos();
       expect(all).toHaveLength(2);
-    });
-  });
-
-  describe('Tactical Snapshot Operations', () => {
-    it('handles tactical snapshot CRUD and batch operations', async () => {
-      const snapshot1: TacticalSnapshot = {
-        matchId: 'match-1',
-        updatedAt: 1000,
-        isInverted: false,
-        tactics: [
-          {
-            time: 0,
-            players: [
-              {
-                playerId: 1,
-                shirtNo: '1',
-                team: 'home',
-                area: 'pitch',
-                x: 50,
-                y: 50,
-              },
-            ],
-            assets: {
-              ball: { x: 50, y: 50 },
-            },
-          },
-        ],
-      };
-      const snapshot2: TacticalSnapshot = {
-        matchId: 'match-2',
-        updatedAt: 2000,
-        isInverted: true,
-        tactics: [
-          {
-            time: 0,
-            players: [],
-            assets: {
-              ball: { x: 30, y: 30 },
-            },
-          },
-        ],
-      };
-
-      expect(await getTacticalSnapshot('match-1')).toBeNull();
-
-      await putTacticalSnapshot(snapshot1);
-      expect(await getTacticalSnapshot('match-1')).toEqual(snapshot1);
-
-      await putTacticalSnapshotsBatch([snapshot1, snapshot2]);
-      const all = await getAllTacticalSnapshots();
-      expect(all).toHaveLength(2);
-
-      await deleteTacticalSnapshot('match-1');
-      expect(await getTacticalSnapshot('match-1')).toBeNull();
-      expect(await getAllTacticalSnapshots()).toHaveLength(1);
     });
   });
 
@@ -471,62 +386,83 @@ describe('src/lib/db/queries', () => {
     });
   });
 
+  describe('Player Photo Operations', () => {
+    it('saves and retrieves player photo independently', async () => {
+      const mockBlob = new Blob(['photo-100'], { type: 'image/webp' });
+      await savePlayerPhoto(100, mockBlob);
+
+      const photo = await getPlayerPhoto(100);
+      expect(photo).toBeDefined();
+      expect(photo?.playerId).toBe(100);
+      expect(photo?.photoBlob).toBeDefined();
+      expect(photo?.mimeType).toBe('image/webp');
+
+      const allPhotos = await getAllPlayerPhotos();
+      expect(allPhotos).toHaveLength(1);
+      expect(allPhotos[0].playerId).toBe(100);
+    });
+
+    it('batch retrieves player photos as Map', async () => {
+      const blob1 = new Blob(['p1'], { type: 'image/webp' });
+      const blob2 = new Blob(['p2'], { type: 'image/webp' });
+      await savePlayerPhoto(10, blob1);
+      await savePlayerPhoto(20, blob2);
+
+      const batch = await getPlayerPhotosBatch([10, 20, 99]);
+      expect(batch.size).toBe(2);
+      expect(batch.get(10)).toBeDefined();
+      expect(batch.get(20)).toBeDefined();
+      expect(batch.get(99)).toBeUndefined();
+    });
+
+    it('deletes player photo from player_photos table', async () => {
+      const mockBlob = new Blob(['photo-del'], { type: 'image/webp' });
+      await savePlayerPhoto(300, mockBlob);
+      expect(await getPlayerPhoto(300)).toBeDefined();
+
+      await deletePlayerPhoto(300);
+      expect(await getPlayerPhoto(300)).toBeUndefined();
+    });
+  });
+
   describe('Player Master Operations', () => {
-    it('saves and retrieves a player master record with season', async () => {
-      const player = {
+    it('saves player master without storing photoBlob in physical db.players table', async () => {
+      const mockBlob = new Blob(['sample-photo-data'], { type: 'image/webp' });
+      await savePlayerMaster({
         playerId: 101,
         name: 'Kaoru Mitoma',
         season: '26-27',
         defaultShirtNo: 22,
+        photoBlob: mockBlob,
         photoUrl: 'https://example.com/mitoma.jpg',
-        updatedAt: Date.now(),
-      };
-
-      await savePlayerMaster(player);
-
-      const retrieved = await getPlayerMaster(101, '26-27');
-      expect(retrieved).toBeDefined();
-      expect(retrieved?.name).toBe('Kaoru Mitoma');
-      expect(retrieved?.season).toBe('26-27');
-      expect(retrieved?.defaultShirtNo).toBe(22);
-      expect(retrieved?.photoUrl).toBe('https://example.com/mitoma.jpg');
-    });
-
-    it('saves player photo Blob and updates player master', async () => {
-      const mockBlob = new Blob(['sample-photo-data'], { type: 'image/png' });
-      await savePlayerPhoto(102, mockBlob, 'Takefusa Kubo', '26-27');
-
-      const retrieved = await getPlayerMaster(102, '26-27');
-      expect(retrieved).toBeDefined();
-      expect(retrieved?.playerId).toBe(102);
-      expect(retrieved?.name).toBe('Takefusa Kubo');
-      expect(retrieved?.photoBlob).toBeDefined();
-    });
-
-    it('updates photo for existing player without overwriting defaultShirtNo', async () => {
-      await savePlayerMaster({
-        playerId: 103,
-        name: 'Wataru Endo',
-        season: '26-27',
-        defaultShirtNo: 3,
         updatedAt: Date.now(),
       });
 
-      const newBlob = new Blob(['endo-image'], { type: 'image/png' });
-      await savePlayerPhoto(103, newBlob, undefined, '26-27');
+      // 物理 db.players には photoBlob が保存されていないこと
+      const rawRecord = await db.players.get('26-27_101');
+      expect(rawRecord).toBeDefined();
+      expect(rawRecord?.photoBlob).toBeUndefined();
 
-      const updated = await getPlayerMaster(103, '26-27');
-      expect(updated?.name).toBe('Wataru Endo');
-      expect(updated?.defaultShirtNo).toBe(3);
-      expect(updated?.photoBlob).toBeDefined();
+      // db.player_photos に保存されていること
+      const photoRecord = await db.player_photos.get(101);
+      expect(photoRecord).toBeDefined();
+      expect(photoRecord?.photoBlob).toBeDefined();
+
+      // クエリ (getPlayerMaster) では JOIN 結合されて photoBlob が返ること
+      const joined = await getPlayerMaster(101, '26-27');
+      expect(joined).toBeDefined();
+      expect(joined?.name).toBe('Kaoru Mitoma');
+      expect(joined?.photoBlob).toBeDefined();
     });
 
-    it('retrieves players by season with getPlayerMastersBySeason', async () => {
+    it('retrieves players by season with joined photoBlob', async () => {
+      const mockBlob = new Blob(['palmer-photo'], { type: 'image/webp' });
       await savePlayerMaster({
         playerId: 104,
         name: 'Cole Palmer',
         season: '25-26',
         teamName: 'Chelsea',
+        photoBlob: mockBlob,
       });
       await savePlayerMaster({
         playerId: 105,
@@ -536,30 +472,36 @@ describe('src/lib/db/queries', () => {
       });
 
       const s2526 = await getPlayerMastersBySeason('25-26', 'Chelsea');
-      expect(s2526.some((p) => p.playerId === 104)).toBe(true);
-      expect(s2526.some((p) => p.playerId === 105)).toBe(false);
+      expect(s2526).toHaveLength(1);
+      expect(s2526[0].playerId).toBe(104);
+      expect(s2526[0].photoBlob).toBeDefined();
 
       const s2627 = await getPlayerMastersBySeason('26-27', 'Chelsea');
-      expect(s2627.some((p) => p.playerId === 105)).toBe(true);
+      expect(s2627).toHaveLength(1);
+      expect(s2627[0].playerId).toBe(105);
+      expect(s2627[0].photoBlob).toBeUndefined();
     });
 
-    it('batch retrieves player masters as Map', async () => {
-      const blob1 = new Blob(['img1'], { type: 'image/png' });
-      const blob2 = new Blob(['img2'], { type: 'image/png' });
-
-      await savePlayerPhoto(201, blob1, 'Player 201', '26-27');
-      await savePlayerPhoto(202, blob2, 'Player 202', '26-27');
+    it('batch retrieves player masters as Map with joined photoBlob', async () => {
+      const blob1 = new Blob(['img1'], { type: 'image/webp' });
       await savePlayerMaster({
-        playerId: 203,
-        name: 'Player 203',
+        playerId: 201,
+        name: 'Player 201',
         season: '26-27',
-        updatedAt: Date.now(),
+        photoBlob: blob1,
+      });
+      await savePlayerMaster({
+        playerId: 202,
+        name: 'Player 202',
+        season: '26-27',
       });
 
       const batch = await getPlayersMasterBatch([201, 202, 999], '26-27');
       expect(batch.size).toBe(2);
       expect(batch.get(201)?.name).toBe('Player 201');
+      expect(batch.get(201)?.photoBlob).toBeDefined();
       expect(batch.get(202)?.name).toBe('Player 202');
+      expect(batch.get(202)?.photoBlob).toBeUndefined();
       expect(batch.get(999)).toBeUndefined();
     });
 
@@ -572,19 +514,23 @@ describe('src/lib/db/queries', () => {
     });
 
     it('deletes player photo without removing the player record', async () => {
-      const blob = new Blob(['temp-img'], { type: 'image/png' });
-      await savePlayerPhoto(301, blob, 'Daichi Kamada', '26-27');
+      const blob = new Blob(['temp-img'], { type: 'image/webp' });
+      await savePlayerMaster({
+        playerId: 301,
+        name: 'Daichi Kamada',
+        season: '26-27',
+        photoBlob: blob,
+      });
 
       let player = await getPlayerMaster(301, '26-27');
       expect(player?.photoBlob).toBeDefined();
 
-      await deletePlayerPhoto(301, '26-27');
+      await deletePlayerPhoto(301);
 
       player = await getPlayerMaster(301, '26-27');
       expect(player).toBeDefined();
       expect(player?.name).toBe('Daichi Kamada');
       expect(player?.photoBlob).toBeUndefined();
-      expect(player?.photoUrl).toBeUndefined();
     });
 
     it('physically deletes temporary players (ID < 0) with deletePlayerMaster', async () => {
@@ -617,8 +563,8 @@ describe('src/lib/db/queries', () => {
       expect(excluded?.isExcluded).toBe(true);
     });
 
-    it('merges temporary player into official WhoScored player ID', async () => {
-      const blob = new Blob(['sample-img'], { type: 'image/png' });
+    it('merges temporary player and migrates photo to official WhoScored player ID', async () => {
+      const blob = new Blob(['sample-img'], { type: 'image/webp' });
       await savePlayerMaster({
         playerId: -101,
         name: 'Estevao Willian',
@@ -632,9 +578,11 @@ describe('src/lib/db/queries', () => {
       // 公式ID 450010 に統合
       await mergePlayerId(-101, 450010, '26-27', 'Chelsea');
 
-      // 旧仮IDレコードが削除されていること
+      // 旧仮IDレコードおよび旧写真が削除されていること
       const oldTemp = await getPlayerMaster(-101, '26-27');
       expect(oldTemp).toBeUndefined();
+      const oldPhoto = await db.player_photos.get(-101);
+      expect(oldPhoto).toBeUndefined();
 
       // 正規IDレコードに写真や背番号・ポジションが引き継がれていること
       const merged = await getPlayerMaster(450010, '26-27');
@@ -645,13 +593,18 @@ describe('src/lib/db/queries', () => {
       expect(merged?.position).toBe('FW');
       expect(merged?.photoBlob).toBeDefined();
       expect(merged?.isExcluded).toBe(false);
+
+      const officialPhoto = await db.player_photos.get(450010);
+      expect(officialPhoto).toBeDefined();
     });
 
-    it('getAllPlayerMasters retrieves all saved players', async () => {
+    it('getAllPlayerMasters retrieves all saved players with photoBlob', async () => {
+      const blob = new Blob(['photo-501'], { type: 'image/webp' });
       await savePlayerMaster({
         playerId: 501,
         name: 'Player 501',
         season: '26-27',
+        photoBlob: blob,
         updatedAt: Date.now(),
       });
       await savePlayerMaster({
@@ -663,8 +616,10 @@ describe('src/lib/db/queries', () => {
 
       const all = await getAllPlayerMasters();
       expect(all.length).toBeGreaterThanOrEqual(2);
-      expect(all.some((p) => p.playerId === 501)).toBe(true);
-      expect(all.some((p) => p.playerId === 502)).toBe(true);
+      const p501 = all.find((p) => p.playerId === 501);
+      expect(p501?.photoBlob).toBeDefined();
+      const p502 = all.find((p) => p.playerId === 502);
+      expect(p502?.photoBlob).toBeUndefined();
     });
   });
 });

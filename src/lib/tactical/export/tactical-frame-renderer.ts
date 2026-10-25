@@ -36,6 +36,8 @@ export interface RenderTacticalFrameOptions {
   transparent?: boolean;
   /** エクスポート用の透視投影MVP行列（Float32Array） */
   mvpMatrix?: Float32Array | null;
+  /** 選手の顔写真ソースマップ (playerId または player.id -> CanvasImageSource) */
+  playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
 }
 
 /**
@@ -569,6 +571,7 @@ export function renderTacticalFrameToCanvas(
     boundaryBox,
     transparent = false,
     mvpMatrix,
+    playerPhotos,
   } = options;
 
   if (w <= 0 || h <= 0) return;
@@ -1135,17 +1138,7 @@ export function renderTacticalFrameToCanvas(
       ctx.fill();
       ctx.restore();
 
-      // Shirt Number in Ring
-      if (p.style?.insideContent !== 'none' && p.shirtNo) {
-        const numScale = p.style?.numberSizeScale ?? 1.0;
-        const numFontSize = Math.max(8, Math.round(radius * 0.75 * numScale));
-        ctx.font = `bold ${numFontSize}px ${TACTICAL_CANVAS_FONT_FAMILY}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#ffffff';
-        const opticalX = getOpticalCenterX(ctx, p.shirtNo, px);
-        ctx.fillText(p.shirtNo, opticalX, py - radius * 0.1);
-      }
+      // 3Dリング中央は何も表示しない仕様に統一
     } else {
       // ── 2D Player Circle ──
       // 1. Player Main Body (Team Color)
@@ -1155,16 +1148,40 @@ export function renderTacticalFrameToCanvas(
         p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
       ctx.fill();
 
-      // 2. Player Standard Stroke (White Ring)
+      // 2. Player Photo (insideContent === 'photo' かつ写真ソースがある場合)
+      const photoSource =
+        p.style?.insideContent === 'photo'
+          ? (playerPhotos?.[p.id] ??
+            (p.playerId ? playerPhotos?.[p.playerId] : undefined))
+          : undefined;
+
+      if (photoSource) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(px, py, radius, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(
+          photoSource,
+          px - radius,
+          py - radius,
+          radius * 2,
+          radius * 2,
+        );
+        ctx.restore();
+      }
+
+      // 3. Player Standard Stroke (White Ring)
       const strokeWidth = p.style?.strokeWidth ?? 2;
       ctx.lineWidth = Math.max(1.5, Math.round(strokeWidth * (w / 800)));
       ctx.strokeStyle = p.style?.strokeColor || '#ffffff';
       ctx.stroke();
 
-      // 3. Shirt Number (Clean pure white text matching player-layer.tsx without strokeText)
+      // 4. Shirt Number (写真がない場合、または insideContent === 'number' の場合)
       const showInsideNumber =
+        !photoSource &&
         (p.style?.insideContent === 'number' ||
-          p.style?.insideContent === undefined) &&
+          p.style?.insideContent === undefined ||
+          (p.style?.insideContent === 'photo' && !photoSource)) &&
         p.shirtNo;
 
       if (showInsideNumber && p.shirtNo) {

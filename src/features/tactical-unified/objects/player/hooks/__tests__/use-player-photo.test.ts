@@ -1,0 +1,120 @@
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as queries from '@/lib/db/queries';
+import { usePlayerPhoto } from '../use-player-photo';
+
+describe('usePlayerPhoto', () => {
+  let originalImage: typeof Image;
+  let originalCreateObjectURL: typeof URL.createObjectURL;
+  let originalRevokeObjectURL: typeof URL.revokeObjectURL;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    originalImage = globalThis.Image;
+    originalCreateObjectURL = URL.createObjectURL;
+    originalRevokeObjectURL = URL.revokeObjectURL;
+
+    URL.createObjectURL = vi
+      .fn()
+      .mockReturnValue('blob:http://localhost/test-uuid');
+    URL.revokeObjectURL = vi.fn();
+
+    // Mock Image
+    class MockImage {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      private _src = '';
+
+      set src(value: string) {
+        this._src = value;
+        // 同期で act 内から発火できるように queueMicrotask または setTimeout
+        setTimeout(() => {
+          act(() => {
+            if (value === 'invalid-url') {
+              this.onerror?.();
+            } else {
+              this.onload?.();
+            }
+          });
+        }, 10);
+      }
+
+      get src() {
+        return this._src;
+      }
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    globalThis.Image = MockImage as any;
+  });
+
+  afterEach(() => {
+    globalThis.Image = originalImage;
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
+  });
+
+  it('enabled が false のときは null を返し、クエリや Image ロードを行わない', async () => {
+    const getPhotoSpy = vi.spyOn(queries, 'getPlayerPhoto');
+    const { result } = renderHook(() =>
+      usePlayerPhoto('123', 'https://example.com/photo.jpg', false),
+    );
+
+    expect(result.current).toBeNull();
+    expect(getPhotoSpy).not.toHaveBeenCalled();
+  });
+
+  it('playerId があり DB に写真 Blob がある場合、createObjectURL で画像をロードし、アンマウント時に revokeObjectURL を呼ぶ', async () => {
+    const blob = new Blob(['fake image data'], { type: 'image/webp' });
+    vi.spyOn(queries, 'getPlayerPhoto').mockResolvedValue({
+      playerId: 123,
+      photoBlob: blob,
+      mimeType: 'image/webp',
+      updatedAt: Date.now(),
+    });
+
+    const { result, unmount } = renderHook(() =>
+      usePlayerPhoto('123', undefined, true),
+    );
+
+    expect(result.current).toBeNull();
+
+    await vi.waitFor(() => {
+      expect(result.current).not.toBeNull();
+    });
+
+    expect(URL.createObjectURL).toHaveBeenCalledWith(blob);
+    expect(result.current?.src).toBe('blob:http://localhost/test-uuid');
+
+    // アンマウント時の RAII クリーンアップ検証
+    unmount();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith(
+      'blob:http://localhost/test-uuid',
+    );
+  });
+
+  it('playerId がなく photoUrl のみある場合、外部 URL からロードする', async () => {
+    const getPhotoSpy = vi.spyOn(queries, 'getPlayerPhoto');
+    const { result } = renderHook(() =>
+      usePlayerPhoto(undefined, 'https://example.com/saka.png', true),
+    );
+
+    expect(getPhotoSpy).not.toHaveBeenCalled();
+
+    await vi.waitFor(() => {
+      expect(result.current).not.toBeNull();
+    });
+
+    expect(result.current?.src).toBe('https://example.com/saka.png');
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('画像ロード失敗時は null を返す', async () => {
+    const { result } = renderHook(() =>
+      usePlayerPhoto(undefined, 'invalid-url', true),
+    );
+
+    await vi.waitFor(() => {
+      expect(result.current).toBeNull();
+    });
+  });
+});

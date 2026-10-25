@@ -9,6 +9,7 @@ import { PlayerMarkerCircle } from '@/features/tactical-unified/objects/player/c
 import { PlayerMarkerLabel } from '@/features/tactical-unified/objects/player/components/player-marker-label';
 import { PlayerMarkerRing } from '@/features/tactical-unified/objects/player/components/player-marker-ring';
 import { PlayerVisionCone } from '@/features/tactical-unified/objects/player/components/player-vision-cone';
+import { usePlayerPhoto } from '@/features/tactical-unified/objects/player/hooks/use-player-photo';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { AspectRatio, Player } from '@/lib/types/tactical-unified';
 
@@ -70,6 +71,12 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
   const is3D =
     markerMode === '3d-only' ||
     (markerMode !== '2d-only' && marker.style?.markerType === 'ring');
+
+  const photoImage = usePlayerPhoto(
+    marker.playerId,
+    marker.style?.photoUrl,
+    marker.style?.insideContent === 'photo',
+  );
 
   const effectiveIsSelected = !cleanRender && isSelected;
 
@@ -177,7 +184,7 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
           radius={radius}
           numScale={numScale}
           isSelected={effectiveIsSelected}
-          loadedImage={null}
+          loadedImage={photoImage}
         />
       )}
 

@@ -3,10 +3,19 @@ import type Konva from 'konva';
 import { createRef } from 'react';
 import { Layer, Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { usePlayerPhoto } from '@/features/tactical-unified/objects/player/hooks/use-player-photo';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { PlayerMarkerItem } from '../PlayerMarkerItem';
 
+vi.mock(
+  '@/features/tactical-unified/objects/player/hooks/use-player-photo',
+  () => ({
+    usePlayerPhoto: vi.fn(),
+  }),
+);
+
 beforeEach(() => {
+  vi.clearAllMocks();
   const mockCtx = new Proxy(
     {
       getImageData: () => ({ data: new Array(4) }),
@@ -186,7 +195,7 @@ describe('PlayerMarkerItem vertical scale', () => {
     expect(numText?.y()).toBeCloseTo(-radius, 1);
   });
 
-  it('PlayerMarkerRing renders shirt number with verticalAlign="middle", height={radius*2}, y={-radius*1.1}', () => {
+  it('PlayerMarkerRing does not render shirt number in center (center text is removed)', () => {
     const stageRef = createRef<Konva.Stage>();
     const marker = {
       ...createDefaultPlayer('home', 50, 50, '#ff0000'),
@@ -226,10 +235,57 @@ describe('PlayerMarkerItem vertical scale', () => {
 
     const texts = stageRef.current?.find('Text') as Konva.Text[];
     const numText = texts.find((t) => t.text() === '10');
-    expect(numText).toBeDefined();
-    expect(numText?.verticalAlign()).toBe('middle');
-    const radius = baseDim * 0.032;
-    expect(numText?.height()).toBeCloseTo(radius * 2, 1);
-    expect(numText?.y()).toBeCloseTo(-radius * 1.1, 1);
+    expect(numText).toBeUndefined();
+  });
+
+  it('2Dサークルかつ insideContent: "photo" 時に usePlayerPhoto の画像を PlayerMarkerCircle に渡して描画する', () => {
+    const fakeImage = {
+      width: 100,
+      height: 100,
+    } as unknown as HTMLImageElement;
+    vi.mocked(usePlayerPhoto).mockReturnValue(fakeImage);
+
+    const stageRef = createRef<Konva.Stage>();
+    const marker = {
+      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      playerId: '12345',
+      shirtNo: '7',
+      style: {
+        ...createDefaultPlayer('home', 50, 50, '#ff0000').style,
+        insideContent: 'photo' as const,
+      },
+    };
+    const width = 800;
+    const height = 450;
+    const baseDim = 450;
+
+    render(
+      <Stage ref={stageRef} width={width} height={height}>
+        <Layer>
+          <PlayerMarkerItem
+            marker={marker}
+            width={width}
+            height={height}
+            baseDim={baseDim}
+            markerMode="2d-only"
+            aspectRatio="16:9"
+            isSelected={false}
+            isInteractive={true}
+            connectingPlayerId={null}
+            onDragStart={vi.fn()}
+            onDragMove={vi.fn()}
+            onDragEnd={vi.fn()}
+            onClick={vi.fn()}
+            onUpdateVisionCone={vi.fn()}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    expect(usePlayerPhoto).toHaveBeenCalledWith('12345', undefined, true);
+    // Konva.Image がレンダリングされていること
+    const konvaImages = stageRef.current?.find('Image') as Konva.Image[];
+    expect(konvaImages.length).toBeGreaterThan(0);
+    expect(konvaImages[0].image()).toBe(fakeImage);
   });
 });

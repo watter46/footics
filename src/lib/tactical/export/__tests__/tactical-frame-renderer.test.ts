@@ -338,9 +338,103 @@ describe('Tactical Frame Renderer', () => {
 
     // Verify ellipse called for ring and spotlight puddle
     expect(ctx.ellipse).toHaveBeenCalled();
-    // Verify shirt number rendered inside ring
-    expect(ctx.fillText).toHaveBeenCalledWith(
+    // 3Dリング中央には背番号を描画しない仕様に統一
+    expect(ctx.fillText).not.toHaveBeenCalledWith(
       '8',
+      expect.any(Number),
+      expect.any(Number),
+    );
+  });
+
+  it('renders player photo inside 2D circle when insideContent === "photo" and playerPhotos is provided, falling back to shirt number when missing', () => {
+    const photoSlide: Slide = SlideSchema.parse({
+      id: 'slide-photo',
+      index: 0,
+      transitionDurationMs: 1000,
+      pauseMs: 500,
+      players: [
+        {
+          id: 'p-photo',
+          playerId: '101',
+          x: 40,
+          y: 50,
+          team: 'home',
+          shirtNo: '7',
+          name: 'Saka',
+          area: 'pitch',
+          style: {
+            insideContent: 'photo',
+            bottomLabel: 'name',
+            color: '#dc2626',
+            strokeColor: '#ffffff',
+            strokeWidth: 2,
+            sizeScale: 1,
+            numberSizeScale: 1,
+            labelSizeScale: 1,
+          },
+        },
+        {
+          id: 'p-no-photo',
+          playerId: '102',
+          x: 60,
+          y: 50,
+          team: 'away',
+          shirtNo: '9',
+          name: 'Havertz',
+          area: 'pitch',
+          style: {
+            insideContent: 'photo',
+            bottomLabel: 'name',
+            color: '#3b82f6',
+            strokeColor: '#ffffff',
+            strokeWidth: 2,
+            sizeScale: 1,
+            numberSizeScale: 1,
+            labelSizeScale: 1,
+          },
+        },
+      ],
+      arrows: [],
+      zones: [],
+      texts: [],
+      ball: { x: 50, y: 50, visible: true },
+    });
+
+    const fakeImageSource = {} as CanvasImageSource;
+    const ctx = createMockContext();
+    (ctx as unknown as { drawImage: ReturnType<typeof vi.fn> }).drawImage =
+      vi.fn();
+
+    renderTacticalFrameToCanvas(ctx, {
+      slides: [photoSlide],
+      timeMs: 0,
+      width: 1920,
+      height: 1080,
+      aspectRatio: '16:9',
+      playerPhotos: {
+        '101': fakeImageSource,
+      },
+      transparent: false,
+    });
+
+    // 101 (Saka) には写真があるので ctx.drawImage が呼ばれる
+    expect(ctx.drawImage).toHaveBeenCalledWith(
+      fakeImageSource,
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+    );
+    // 101 (Saka) の背番号は描画されない
+    expect(ctx.fillText).not.toHaveBeenCalledWith(
+      '7',
+      expect.any(Number),
+      expect.any(Number),
+    );
+
+    // 102 (Havertz) は写真未登録のため背番号 '9' にフォールバック
+    expect(ctx.fillText).toHaveBeenCalledWith(
+      '9',
       expect.any(Number),
       expect.any(Number),
     );
