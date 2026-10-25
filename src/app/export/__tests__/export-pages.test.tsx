@@ -112,8 +112,7 @@ describe('Export Pages', () => {
               ok: true,
               json: async () => ({
                 success: true,
-                count: 2,
-                data: mockList,
+                items: mockList,
               }),
             });
           }
@@ -168,7 +167,7 @@ describe('Export Pages', () => {
         'fetch',
         vi.fn().mockResolvedValue({
           ok: true,
-          json: async () => ({ success: true, count: 0, data: [] }),
+          json: async () => ({ success: true, items: [] }),
         }),
       );
 

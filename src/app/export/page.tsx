@@ -39,7 +39,10 @@ export default function ExportListPage(): React.JSX.Element {
         throw new Error(`Failed to load shares: ${res.status}`);
       }
       const json = await res.json();
-      setItems((json.data as TacticalExportShareSummary[]) || []);
+      const list = (json.items ??
+        json.data ??
+        []) as TacticalExportShareSummary[];
+      setItems(list);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
