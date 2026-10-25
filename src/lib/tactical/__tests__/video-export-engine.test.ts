@@ -148,6 +148,27 @@ describe('video-export-engine & pipeline', () => {
       expect(crop.exportWidth).toBe(64);
       expect(crop.exportHeight).toBe(64);
     });
+
+    it('maintains 4:5 aspect ratio dimensions without stretching to 9:16', () => {
+      // 4:5 with stageWidth=1080, stageHeight=1350, scale=2
+      const crop = calculateBoundaryCrop(null, 1080, 1350, 2);
+      expect(crop.exportWidth).toBe(2160);
+      expect(crop.exportHeight).toBe(2704);
+      expect(crop.exportWidth / crop.exportHeight).toBeCloseTo(4 / 5, 2);
+
+      // small stage 540x675: baseline guarantees 720x904 (snapped to 8px) for scale=1, 1080x1352 for scale=1.5, 1440x1800 for scale=2.5
+      const cropSmall1 = calculateBoundaryCrop(null, 540, 675, 1);
+      expect(cropSmall1.exportWidth).toBe(720);
+      expect(cropSmall1.exportHeight).toBe(904);
+
+      const cropSmall15 = calculateBoundaryCrop(null, 540, 675, 1.5);
+      expect(cropSmall15.exportWidth).toBe(1080);
+      expect(cropSmall15.exportHeight).toBe(1352);
+
+      const cropSmall25 = calculateBoundaryCrop(null, 540, 675, 2.5);
+      expect(cropSmall25.exportWidth).toBe(1440);
+      expect(cropSmall25.exportHeight).toBe(1800);
+    });
   });
 
   describe('getSupportedH264EncoderConfig', () => {

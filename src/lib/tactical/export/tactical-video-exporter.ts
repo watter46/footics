@@ -16,6 +16,7 @@ import type {
   ExportProgress,
   Slide,
 } from '@/lib/types/tactical-unified';
+import { PITCH_BOUNDARY_CONFIGS } from '../pitch-geometry';
 import {
   calculateUnifiedTotalDuration,
   matchSlidePlayers,
@@ -95,6 +96,11 @@ export async function exportMultiSlideMp4Video(
   });
 
   const totalDurationMs = calculateUnifiedTotalDuration(effectiveSlides);
+  const config =
+    PITCH_BOUNDARY_CONFIGS[options.aspectRatio ?? '16:9'] ??
+    PITCH_BOUNDARY_CONFIGS['16:9'];
+  const stageWidth = options.stageWidth ?? config.widthPx;
+  const stageHeight = options.stageHeight ?? config.heightPx;
 
   return exportTacticalVideo({
     format: 'mp4',
@@ -108,8 +114,8 @@ export async function exportMultiSlideMp4Video(
     transparent: options.transparent ?? false,
     totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 1500,
     boundaryBox: options.boundaryBox,
-    stageWidth: options.stageWidth ?? 1280,
-    stageHeight: options.stageHeight ?? 720,
+    stageWidth,
+    stageHeight,
     slides: effectiveSlides,
     aspectRatio: options.aspectRatio ?? '16:9',
     onProgress: options.onProgress,
@@ -134,6 +140,11 @@ export async function exportMultiSlideWebmVideo(
   });
 
   const totalDurationMs = calculateUnifiedTotalDuration(effectiveSlides);
+  const config =
+    PITCH_BOUNDARY_CONFIGS[options.aspectRatio ?? '16:9'] ??
+    PITCH_BOUNDARY_CONFIGS['16:9'];
+  const stageWidth = options.stageWidth ?? config.widthPx;
+  const stageHeight = options.stageHeight ?? config.heightPx;
 
   return exportTacticalVideo({
     format: 'webm',
@@ -147,8 +158,8 @@ export async function exportMultiSlideWebmVideo(
     transparent: options.transparent ?? true,
     totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 1500,
     boundaryBox: options.boundaryBox,
-    stageWidth: options.stageWidth ?? 1280,
-    stageHeight: options.stageHeight ?? 720,
+    stageWidth,
+    stageHeight,
     slides: effectiveSlides,
     aspectRatio: options.aspectRatio ?? '16:9',
     onProgress: options.onProgress,

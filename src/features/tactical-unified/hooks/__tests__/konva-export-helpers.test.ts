@@ -184,6 +184,7 @@ describe('konva-export-helpers', () => {
           1280,
           720,
           2,
+          { x: 0, y: 0, width: 1280, height: 720 },
         );
         expect(renderSpy).toHaveBeenCalledWith(
           expect.anything(),
@@ -191,6 +192,75 @@ describe('konva-export-helpers', () => {
             slides: [mockSlide],
             timeMs: 0,
             aspectRatio: '16:9',
+            boundaryBox: mockSlide.boundaryBox,
+          }),
+        );
+        expect(result).toBe(mockBlob);
+      } finally {
+        vi.restoreAllMocks();
+      }
+    });
+
+    it('defaults to 1080x1350 stage dimensions and calculates pitch rect when aspectRatio is 4:5 and stageWidth/Height is omitted', async () => {
+      const mockSlide: Slide = {
+        id: 'slide-4-5',
+        index: 0,
+        players: [],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: true },
+        transitionDurationMs: 1000,
+        pauseMs: 500,
+        easing: 'ease-in-out',
+        boundaryBox: {
+          x: 10,
+          y: 10,
+          width: 80,
+          height: 80,
+          visible: true,
+          enabled: true,
+          fitTarget: 'canvas',
+        },
+      };
+
+      const renderSpy = vi
+        .spyOn(frameRenderer, 'renderTacticalFrameToCanvas')
+        .mockImplementation(() => {});
+      const cropSpy = vi.spyOn(videoEngine, 'calculateBoundaryCrop');
+
+      const mockBlob = new Blob(['png-bytes-45'], { type: 'image/png' });
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+        {} as unknown as CanvasRenderingContext2D,
+      );
+      vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(
+        (callback: (b: Blob | null) => void) => {
+          callback(mockBlob);
+        },
+      );
+
+      try {
+        const result = await renderSlideToPngBlob({
+          slide: mockSlide,
+          aspectRatio: '4:5',
+        });
+
+        // stageWidth should default to 1080, stageHeight to 1350 (from PITCH_BOUNDARY_CONFIGS['4:5'])
+        // scale defaults to 2
+        // Since fitTarget is 'canvas', baseRect should be { x: 0, y: 0, width: 1080, height: 1350 }
+        expect(cropSpy).toHaveBeenCalledWith(
+          mockSlide.boundaryBox,
+          1080,
+          1350,
+          2,
+          { x: 0, y: 0, width: 1080, height: 1350 },
+        );
+        expect(renderSpy).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            slides: [mockSlide],
+            timeMs: 0,
+            aspectRatio: '4:5',
             boundaryBox: mockSlide.boundaryBox,
           }),
         );

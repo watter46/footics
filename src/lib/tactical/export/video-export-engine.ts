@@ -88,16 +88,20 @@ export function calculateBoundaryCrop(
   // scale >= 2.5 (2K / 1440p QHD): 2560x1440 for 16:9, 1440x2560 for 9:16
   // scale >= 1.5 (1080p Full HD): 1920x1080 for 16:9, 1080x1920 for 9:16
   // scale < 1.5 (720p HD): 1280x720 for 16:9, 720x1280 for 9:16
-  const isVertical = stageHeight > stageWidth;
   const isSquare = stageWidth === stageHeight;
+  const isFourFive = Math.abs(stageWidth / stageHeight - 4 / 5) < 0.05;
   const isFourThree = Math.abs(stageWidth / stageHeight - 4 / 3) < 0.05;
+  const isVertical = stageHeight > stageWidth && !isFourFive;
 
   let baseWidth: number;
   let baseHeight: number;
 
   if (scale >= 2.5) {
     // 2K / 1440p (Ultra Quality)
-    if (isVertical) {
+    if (isFourFive) {
+      baseWidth = 1440;
+      baseHeight = 1800;
+    } else if (isVertical) {
       baseWidth = 1440;
       baseHeight = 2560;
     } else if (isSquare) {
@@ -112,7 +116,10 @@ export function calculateBoundaryCrop(
     }
   } else if (scale >= 1.5) {
     // 1080p (Full HD - Recommended)
-    if (isVertical) {
+    if (isFourFive) {
+      baseWidth = 1080;
+      baseHeight = 1350;
+    } else if (isVertical) {
       baseWidth = 1080;
       baseHeight = 1920;
     } else if (isSquare) {
@@ -127,7 +134,10 @@ export function calculateBoundaryCrop(
     }
   } else {
     // 720p (HD - Lightweight)
-    if (isVertical) {
+    if (isFourFive) {
+      baseWidth = 720;
+      baseHeight = 900;
+    } else if (isVertical) {
       baseWidth = 720;
       baseHeight = 1280;
     } else if (isSquare) {

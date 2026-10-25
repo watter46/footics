@@ -7,6 +7,10 @@ import { zipSync } from 'fflate';
 import type Konva from 'konva';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-export-engine';
+import {
+  calculatePitchRect,
+  PITCH_BOUNDARY_CONFIGS,
+} from '@/lib/tactical/pitch-geometry';
 import type {
   AspectRatio,
   BoundaryBox,
@@ -55,14 +59,31 @@ export interface ExportSlidesArchiveOptions {
 export async function renderSlideToPngBlob(
   options: RenderSlideImageOptions,
 ): Promise<Blob> {
-  const stageWidth = options.stageWidth ?? 1280;
-  const stageHeight = options.stageHeight ?? 720;
+  const config =
+    PITCH_BOUNDARY_CONFIGS[options.aspectRatio] ??
+    PITCH_BOUNDARY_CONFIGS['16:9'];
+  const stageWidth = options.stageWidth ?? config.widthPx;
+  const stageHeight = options.stageHeight ?? config.heightPx;
   const scale = options.scale ?? 2;
   const box =
     options.boundaryBox !== undefined
       ? options.boundaryBox
       : options.slide.boundaryBox;
-  const crop = calculateBoundaryCrop(box, stageWidth, stageHeight, scale);
+  const pitchRect = calculatePitchRect(
+    { width: stageWidth, height: stageHeight },
+    options.aspectRatio,
+  );
+  const baseRect =
+    box?.fitTarget === 'canvas'
+      ? { x: 0, y: 0, width: stageWidth, height: stageHeight }
+      : pitchRect;
+  const crop = calculateBoundaryCrop(
+    box,
+    stageWidth,
+    stageHeight,
+    scale,
+    baseRect,
+  );
   const canvas = document.createElement('canvas');
   canvas.width = crop.exportWidth;
   canvas.height = crop.exportHeight;
@@ -104,14 +125,19 @@ export async function exportSingleSlidePng(
 export async function exportAllSlidesZip(
   options: ExportSlidesArchiveOptions,
 ): Promise<void> {
+  const config =
+    PITCH_BOUNDARY_CONFIGS[options.aspectRatio] ??
+    PITCH_BOUNDARY_CONFIGS['16:9'];
+  const stageWidth = options.stageWidth ?? config.widthPx;
+  const stageHeight = options.stageHeight ?? config.heightPx;
   const files: Record<string, Uint8Array> = {};
   for (const slide of options.slides) {
     const blob = await renderSlideToPngBlob({
       slide,
       aspectRatio: options.aspectRatio,
       scale: options.scale,
-      stageWidth: options.stageWidth,
-      stageHeight: options.stageHeight,
+      stageWidth,
+      stageHeight,
     });
     const buffer = await blob.arrayBuffer();
     files[`slide-${String(slide.index + 1).padStart(2, '0')}.png`] =

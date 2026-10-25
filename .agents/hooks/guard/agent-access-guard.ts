@@ -56,7 +56,9 @@ export function detectRoleFromFirstStep(firstStep: {
     content.includes('type: "TASK_ASSIGN"') ||
     content.includes("type: 'TASK_ASSIGN'") ||
     content.includes('Worker エージェント') ||
-    content.includes('あなたは Footics プロジェクトの Worker')
+    content.includes('あなたは Footics プロジェクトの Worker') ||
+    (content.includes('Phase ') && content.includes('実装してください')) ||
+    content.includes('Worker Handoff Log')
   ) {
     return 'worker';
   }
