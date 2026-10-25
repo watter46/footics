@@ -20,6 +20,7 @@
       "recommended": true,
       "style": {
         "useTemplate": "error",
+        "useConst": "error",
         "noNonNullAssertion": "warn",
         "noExcessiveLinesPerFile": {
           "level": "warn",
@@ -44,7 +45,11 @@
       },
       "correctness": {
         "noUnusedVariables": "warn",
+        "noUnusedImports": "warn",
         "useExhaustiveDependencies": "warn"
+      },
+      "performance": {
+        "noDelete": "warn"
       },
       "a11y": {
         "noSvgWithoutTitle": "off",
