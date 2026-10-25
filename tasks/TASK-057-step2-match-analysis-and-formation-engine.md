@@ -1,7 +1,7 @@
 # TASK-057: Step 2: 試合データ分析 ＆ フォーメーション自動配置・陣地反転の精度向上
 
 ## 1. Metadata
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Created**: 2026-10-26
 - **Target Files**:
   - `src/types/index.ts` (MODIFY)
@@ -28,10 +28,10 @@
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
 <!-- Reviewer が審査時に要件充足を確認してチェックする -->
-- [ ] 1. 試合データ（WhoScored クラブ戦）のスタメン・控え・交代退場選手の抽出精度向上: `formation.formationSlots`（`1〜11`＝ピッチ上、`0`＝未出場控え）に基づき、`getTeamFormationAtMinute` でピッチ上の選手（最大11人）とベンチ選手（未出場控えを先頭、交代退場済み選手を後ろ）を正確に分離し、ピッチ上選手には `formation.formationPositions` の縦横座標（`vertical`, `horizontal`）を紐づけること（元の試合データは変更しない）。
-- [ ] 2. ポジション＆スロット適性マッチングによる自動配置と選手マスター保護: `DML, DMR, FWL, FWR` を含む全ポジションと WhoScored フォーメーション名（`41212`, `31312`, `343d`, `4240` 等）を正規化し、`matchPlayersToFormationPositions` によりフォーメーション枠（`FORMATION_POSITIONS`）の縦ライン・左右レーンへ選手を最適割り当てすること。途中出場等で元の `position` が `'Sub'` の選手は戦術ボード上で割り当て枠のポジションを補完し、また `savePlayerMaster` 同期時は既存の本職ポジションを `'Sub'` で上書きしないこと。
-- [ ] 3. 右パネル `FormationPanel` の試合フォーメーション選択連動とポジション保持再配置: 試合データ連携時（`project.matchFormations` 存在時）に `FormationPanel` の選択中フォーメーションが `activeTeam`（`home` / `away` / `both`）のフォーメーションに連動すること。また戦術ボード上でフォーメーションを変更した際、既存選手の `position`（`'Sub'` 以外）を上書き破壊せず保持したまま新フォーメーション枠へ適性配置すること。
-- [ ] 4. 陣地反転（Swap Sides）の180度点対称回転・ベンチ除外・反転状態（`isSidesSwapped`）保持: `SlideSchema` に `isSidesSwapped?: boolean` を追加し、`flipSlideObjects` ではベンチ選手（`area === 'bench'`）を反転対象外とし、ピッチ上の選手・ボール・矢印・ゾーン・テキストをピッチ中心 `(50, 50)` で180度点対称回転（`x' = 100 - x, y' = 100 - y`）させること。さらに `isSidesSwapped === true` のスライドでフォーメーション適用や「メンバー維持リセット」を行った際も反転後の陣地（Home＝右/上陣地、Away＝左/下陣地）を維持すること。
+- [x] 1. 試合データ（WhoScored クラブ戦）のスタメン・控え・交代退場選手の抽出精度向上: `formation.formationSlots`（`1〜11`＝ピッチ上、`0`＝未出場控え）に基づき、`getTeamFormationAtMinute` でピッチ上の選手（最大11人）とベンチ選手（未出場控えを先頭、交代退場済み選手を後ろ）を正確に分離し、ピッチ上選手には `formation.formationPositions` の縦横座標（`vertical`, `horizontal`）を紐づけること（元の試合データは変更しない）。
+- [x] 2. ポジション＆スロット適性マッチングによる自動配置と選手マスター保護: `DML, DMR, FWL, FWR` を含む全ポジションと WhoScored フォーメーション名（`41212`, `31312`, `343d`, `4240` 等）を正規化し、`matchPlayersToFormationPositions` によりフォーメーション枠（`FORMATION_POSITIONS`）の縦ライン・左右レーンへ選手を最適割り当てすること。途中出場等で元の `position` が `'Sub'` の選手は戦術ボード上で割り当て枠のポジションを補完し、また `savePlayerMaster` 同期時は既存の本職ポジションを `'Sub'` で上書きしないこと。
+- [x] 3. 右パネル `FormationPanel` の試合フォーメーション選択連動とポジション保持再配置: 試合データ連携時（`project.matchFormations` 存在時）に `FormationPanel` の選択中フォーメーションが `activeTeam`（`home` / `away` / `both`）のフォーメーションに連動すること。また戦術ボード上でフォーメーションを変更した際、既存選手の `position`（`'Sub'` 以外）を上書き破壊せず保持したまま新フォーメーション枠へ適性配置すること。
+- [x] 4. 陣地反転（Swap Sides）の180度点対称回転・ベンチ除外・反転状態（`isSidesSwapped`）保持: `SlideSchema` に `isSidesSwapped?: boolean` を追加し、`flipSlideObjects` ではベンチ選手（`area === 'bench'`）を反転対象外とし、ピッチ上の選手・ボール・矢印・ゾーン・テキストをピッチ中心 `(50, 50)` で180度点対称回転（`x' = 100 - x, y' = 100 - y`）させること。さらに `isSidesSwapped === true` のスライドでフォーメーション適用や「メンバー維持リセット」を行った際も反転後の陣地（Home＝右/上陣地、Away＝左/下陣地）を維持すること。
 
 ## 3. Context Snippets (参照コード・型定義・import)
 
@@ -177,15 +177,15 @@ export function matchPlayersToFormationPositions<T extends PositionMatchablePlay
 ## 5. Reviewer Assessment (コード差分監査)
 <!-- 機械的チェック（型・Lint・Vitest・depcruise）はスクリプトが自動検証。Reviewer はコード差分の意味を監査する -->
 - **Reviewer Model**: `pro`
-- **Reviewed At**: 
-- **Decision**: `TODO`
+- **Reviewed At**: 2026-10-26 02:32
+- **Decision**: `LGTM`
 - **Audit Checklist**:
-  - [ ] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
-  - [ ] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
-  - [ ] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
-  - [ ] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
+  - [x] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
+  - [x] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
+  - [x] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
+  - [x] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
 - **Summary**:
-  <!-- 判定理由または改善指示を簡潔に記載 -->
+  受入要件（1〜4）を完全網羅。WhoScored スロット/座標抽出と交代退場ベンチ分離、ポジション2D適性マッチング、選手マスターのSub上書き防止、FormationPanelの試合フォーメーション連動、および陣地反転の180度点対称回転（ベンチ除外・isSidesSwapped保持）が論理的かつ厳格に実装されていることを確認。4大定性監査をクリアし承認。
 
 ## 6. Rejections / Additional Tasks (不可逆修正欄)
 <!-- 既存のタスクやPhaseは絶対に消去・上書きせず、追記のみ行う -->
