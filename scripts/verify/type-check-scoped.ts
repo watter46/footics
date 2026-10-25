@@ -61,7 +61,19 @@ function checkExtension(extFiles: string[]): void {
   });
 }
 
-export function runScopedTypeCheck(files: string[] = []): void {
+function checkProjectWide(): void {
+  console.log(
+    'TypeScript: Checking project-wide ripple effects (incremental)...',
+  );
+  execSync('rtk tsc --noEmit --pretty false', {
+    stdio: 'inherit',
+  });
+}
+
+export function runScopedTypeCheck(
+  files: string[] = [],
+  options: { skipProjectWide?: boolean } = {},
+): void {
   const targetFiles =
     files.length > 0
       ? files.filter(
@@ -89,6 +101,9 @@ export function runScopedTypeCheck(files: string[] = []): void {
 
   if (rootFiles.length > 0) {
     checkRoot(rootFiles);
+    if (!options.skipProjectWide) {
+      checkProjectWide();
+    }
   }
   if (extFiles.length > 0) {
     checkExtension(extFiles);
@@ -100,9 +115,11 @@ export function runScopedTypeCheck(files: string[] = []): void {
 }
 
 // CLI direct execution
-const args = process.argv.slice(2).filter((arg) => !arg.startsWith('-'));
+const rawArgs = process.argv.slice(2);
+const skipProjectWide = rawArgs.includes('--scoped-only');
+const args = rawArgs.filter((arg) => !arg.startsWith('-'));
 try {
-  runScopedTypeCheck(args);
+  runScopedTypeCheck(args, { skipProjectWide });
 } catch (e) {
   const exitCode =
     typeof e === 'object' &&

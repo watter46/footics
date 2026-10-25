@@ -27,6 +27,8 @@
     "lint": "bun scripts/verify/lint.ts",
     "lint:fix": "bun scripts/verify/lint.ts --fix",
     "typecheck": "bun scripts/verify/type-check-scoped.ts",
+    "typecheck:scoped": "bun scripts/verify/type-check-scoped.ts --scoped-only",
+    "typecheck:full": "rtk tsc --noEmit",
     "test": "rtk vitest run",
     "test:agents": "bun test ./.agents",
     "task:new": "bun scripts/task/new-task.ts",
