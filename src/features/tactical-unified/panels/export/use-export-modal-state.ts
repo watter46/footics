@@ -1,14 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { executeExportFormat } from '@/features/tactical-unified/hooks/konva-export-helpers';
+import {
+  exportAllSlidesZip,
+  exportSingleSlidePng,
+} from '@/features/tactical-unified/hooks/konva-export-helpers';
 import {
   selectActiveSlide,
   useTacticalUnifiedStore,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { exportMultiSlideVideo } from '@/lib/tactical/export/tactical-video-exporter';
-import type { ExportTarget } from '@/lib/types/tactical-unified';
-import { buildExportTarget } from './export-target-builder';
 import { useExportBenchmark } from './use-export-benchmark';
 import { useExportEventListener } from './use-export-event-listener';
 import { useExportShare } from './use-export-share';
@@ -79,19 +80,25 @@ export function useExportModalState() {
           easing: morphing.selectedEasing,
         });
         setCompletedVideo({ blob, filename });
-      } else {
-        const target = buildExportTarget({
-          format: selectedFormat,
+      } else if (selectedFormat === 'png') {
+        const slideToExport = activeSlide ?? slides[0];
+        if (!slideToExport) throw new Error('No slides available to export');
+        await exportSingleSlidePng({
+          slide: slideToExport,
+          aspectRatio,
           scale: imageScale,
-          keyFrameIntervalSec,
-          latencyMode,
-          maxQueueSize,
+          boundaryBox: slideToExport.boundaryBox,
         });
-        await executeExportFormat(target, {
-          stage: null,
+        closeExportModal();
+      } else if (selectedFormat === 'zip') {
+        if (slides.length === 0)
+          throw new Error('No slides available to export');
+        await exportAllSlidesZip({
           slides,
-          captureSlide: () => null,
+          aspectRatio,
+          scale: imageScale,
         });
+        closeExportModal();
       }
     } catch (err) {
       const msg =

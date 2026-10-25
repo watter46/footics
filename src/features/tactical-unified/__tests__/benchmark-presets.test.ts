@@ -19,12 +19,12 @@ describe('Benchmark Test Presets', () => {
       expect(project.slides[0].boundaryBox?.enabled).toBe(true);
       expect(project.slides[0].boundaryBox?.width).toBe(70);
 
-      // Verify duration calculation: transitions of slide 0 and 1
-      // Slide 0: 1200ms transition + 600ms pause = 1800ms
+      // Verify duration calculation: arrival transitions of slide 1 and 2
       // Slide 1: 1400ms transition + 600ms pause = 2000ms
-      // Total = 3800ms
+      // Slide 2: 1400ms transition + 800ms pause = 2200ms
+      // Total = 4200ms
       const totalDuration = calculateUnifiedTotalDuration(project.slides);
-      expect(totalDuration).toBe(3800);
+      expect(totalDuration).toBe(4200);
 
       // Verify players & zones
       expect(project.slides[0].players.length).toBeGreaterThan(0);
@@ -41,10 +41,10 @@ describe('Benchmark Test Presets', () => {
       expect(project.slides).toHaveLength(2);
       expect(project.slides[0].boundaryBox?.enabled).toBe(true);
 
-      // Verify duration calculation: transition of slide 0
-      // Slide 0: 1200ms transition + 600ms pause = 1800ms
+      // Verify duration calculation: arrival transition of slide 1
+      // Slide 1: 1400ms transition + 600ms pause = 2000ms
       const totalDuration = calculateUnifiedTotalDuration(project.slides);
-      expect(totalDuration).toBe(1800);
+      expect(totalDuration).toBe(2000);
 
       // Verify arrows and player counts
       expect(project.slides[0].arrows[0].curveType).toBe('curved');

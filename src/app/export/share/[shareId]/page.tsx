@@ -19,28 +19,27 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import type { TacticalExportSharePayload } from '@/lib/tactical/export/share-payload';
-import { executeOffThreadVideoExport } from '@/lib/tactical/export/video-export-worker';
-import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
+import { exportMultiSlideMp4Video } from '@/lib/tactical/export/tactical-video-exporter';
 import type { Slide } from '@/lib/types/tactical-unified';
 
-function detectIOSDevice(): {
+interface IOSDeviceInfo {
   isIOS: boolean;
   isIPhone12: boolean;
   safariVersion: number | null;
-} {
+}
+
+function detectIOSDevice(): IOSDeviceInfo {
   if (typeof navigator === 'undefined') {
     return { isIOS: false, isIPhone12: false, safariVersion: null };
   }
-  const ua = navigator.userAgent;
-  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
   const isIPhone12 =
     isIOS &&
     typeof window !== 'undefined' &&
     window.screen.width === 390 &&
     window.screen.height === 844;
-  const safariMatch = ua.match(/Version\/(\d+)/);
-  const safariVersion = safariMatch ? Number(safariMatch[1]) : null;
-  return { isIOS, isIPhone12, safariVersion };
+  const match = navigator.userAgent.match(/Version\/(\d+)/);
+  return { isIOS, isIPhone12, safariVersion: match ? Number(match[1]) : null };
 }
 
 const IOS_ENCODER_PRESETS = {
@@ -133,7 +132,6 @@ export default function StandaloneExportSharePage() {
     const isVertical = shareData.orientation === 'vertical';
     const stageWidth = isVertical ? 1080 : 1920;
     const stageHeight = isVertical ? 1920 : 1080;
-    const totalDurationMs = calculateUnifiedTotalDuration(slides);
 
     setIsExporting(true);
     setExportProgress(0);
@@ -142,35 +140,23 @@ export default function StandaloneExportSharePage() {
     setExportedBlob(null);
 
     try {
-      const result = await executeOffThreadVideoExport(
-        {
-          id: `export-${Date.now()}`,
-          type: 'START_EXPORT',
-          format: 'mp4',
-          fps: preset.fps,
-          scale: 1,
-          quality: 'high',
-          bitrate: preset.bitrateMbps * 1_000_000,
-          h264Profile: 'high',
-          keyFrameIntervalSec: preset.keyFrameIntervalSec,
-          latencyMode: preset.latencyMode,
-          maxQueueSize: preset.maxQueueSize,
-          transparent: false,
-          totalDurationMs,
-          boundaryBox: null,
-          stageWidth,
-          stageHeight,
-          slides,
-          aspectRatio: isVertical ? '9:16' : '16:9',
-          isMainThread: true,
-        },
-        (progress) => {
-          setExportProgress(progress.percent);
-        },
-        () => false,
-      );
-
-      const blob = new Blob([result.buffer], { type: result.mimeType });
+      const blob = await exportMultiSlideMp4Video({
+        slides,
+        fps: preset.fps,
+        scale: 1,
+        quality: 'high',
+        bitrate: preset.bitrateMbps * 1_000_000,
+        h264Profile: 'high',
+        keyFrameIntervalSec: preset.keyFrameIntervalSec,
+        latencyMode: preset.latencyMode,
+        maxQueueSize: preset.maxQueueSize,
+        transparent: false,
+        boundaryBox: null,
+        stageWidth,
+        stageHeight,
+        aspectRatio: isVertical ? '9:16' : '16:9',
+        onProgress: (p) => setExportProgress(p.percent),
+      });
       setExportedBlob(blob);
       setExportCompleted(true);
       toast.success('エクスポートが完了しました！');
@@ -288,7 +274,6 @@ export default function StandaloneExportSharePage() {
               </span>
             </div>
           </div>
-
           {/* iOS Encoder Presets */}
           {isIOS && (
             <div className="space-y-2">
@@ -307,12 +292,11 @@ export default function StandaloneExportSharePage() {
                     type="button"
                     onClick={() => setSelectedPreset(key)}
                     disabled={isExporting}
-                    className={[
-                      'w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer disabled:cursor-not-allowed',
+                    className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer disabled:cursor-not-allowed ${
                       selectedPreset === key
                         ? 'border-emerald-500 bg-emerald-600/15 text-white shadow-sm ring-1 ring-emerald-500/30'
-                        : 'border-white/10 bg-white/5 text-white/60 hover:border-white/25 hover:text-white',
-                    ].join(' ')}
+                        : 'border-white/10 bg-white/5 text-white/60 hover:border-white/25 hover:text-white'
+                    }`}
                   >
                     <Sparkles
                       size={16}
@@ -342,7 +326,6 @@ export default function StandaloneExportSharePage() {
               </div>
             </div>
           )}
-
           {/* Video Information */}
           <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs">
             <div className="font-semibold text-slate-300 flex items-center justify-between">
@@ -380,7 +363,6 @@ export default function StandaloneExportSharePage() {
               </div>
             </div>
           </div>
-
           {/* Export Progress */}
           {isExporting && (
             <div className="p-4 rounded-xl bg-blue-950/40 border border-blue-500/40 space-y-2">
@@ -401,13 +383,11 @@ export default function StandaloneExportSharePage() {
               </div>
             </div>
           )}
-
           {exportError && (
             <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-300 text-xs">
               Error: {exportError}
             </div>
           )}
-
           {/* Export Completed */}
           {exportCompleted && exportedBlob && (
             <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-3">
@@ -445,7 +425,7 @@ export default function StandaloneExportSharePage() {
                         1.
                       </span>
                       <span>
-                        「Save MP4」をタップし、Safari の{' '}
+                        「Save MP4」をタップし Safari の{' '}
                         <strong className="text-emerald-400">
                           「ダウンロード」
                         </strong>{' '}
@@ -460,7 +440,7 @@ export default function StandaloneExportSharePage() {
                         Safariのダウンロード欄から{' '}
                         <FolderOpen className="w-3.5 h-3.5 inline text-blue-400" />{' '}
                         <strong className="text-white">
-                          ファイル (Files.app) / iCloud Drive
+                          ファイル / iCloud Drive
                         </strong>{' '}
                         に保存
                       </span>
@@ -472,7 +452,7 @@ export default function StandaloneExportSharePage() {
                       <span>
                         PC側の{' '}
                         <File className="w-3.5 h-3.5 inline text-blue-400" />{' '}
-                        iCloud Drive または AirDrop で最高画質 24Mbps MP4
+                        iCloud Drive / AirDrop で最高画質 24Mbps MP4
                         を無劣化回収
                       </span>
                     </li>
@@ -486,7 +466,6 @@ export default function StandaloneExportSharePage() {
               )}
             </div>
           )}
-
           {/* Export Action Button */}
           {!exportCompleted && (
             <button
