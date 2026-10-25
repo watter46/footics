@@ -5,6 +5,8 @@ import {
   packPlayerPhotos,
   preloadSlidePlayerPhotos,
   TacticalExportSharePayloadSchema,
+  type TacticalPlayerLike,
+  type TacticalSceneLike,
   unpackPlayerPhotos,
 } from '../share-payload';
 
@@ -222,5 +224,41 @@ describe('src/lib/tactical/export/share-payload', () => {
     const bitmaps = await preloadSlidePlayerPhotos(slides, existingPhotos);
     expect(bitmaps['99']).toBeDefined();
     expect(bitmaps['99']).toBe(mockBitmap);
+  });
+
+  it('accepts TacticalSceneLike and TacticalPlayerLike typed structures', async () => {
+    const player: TacticalPlayerLike = {
+      playerId: 123,
+      options: {
+        insideContent: 'photo',
+        photoUrl: 'https://example.com/p.png',
+      },
+    };
+    const scene: TacticalSceneLike = {
+      id: 'scene-type-test',
+      players: [player],
+    };
+
+    const payload = TacticalExportSharePayloadSchema.parse({
+      version: 1,
+      createdAt: Date.now(),
+      orientation: 'horizontal',
+      scenes: [scene],
+    });
+
+    expect(payload.scenes).toHaveLength(1);
+    expect(payload.scenes[0].id).toBe('scene-type-test');
+  });
+
+  it('rejects invalid scenes like primitives or null', () => {
+    const invalidData = {
+      version: 1,
+      createdAt: Date.now(),
+      orientation: 'horizontal' as const,
+      scenes: [null, 123, 'not an object'],
+    };
+
+    const result = TacticalExportSharePayloadSchema.safeParse(invalidData);
+    expect(result.success).toBe(false);
   });
 });

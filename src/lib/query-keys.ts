@@ -1,3 +1,5 @@
+import type { FilterState } from '@/types';
+
 export const matchKeys = {
   all: ['matches'] as const,
   lists: () => [...matchKeys.all, 'list'] as const,
@@ -18,7 +20,8 @@ export const customEventKeys = {
 
 export const eventKeys = {
   all: ['events'] as const,
-  filtered: (filters: any) => [...eventKeys.all, 'filtered', filters] as const,
+  filtered: (filters: FilterState | Record<string, unknown>) =>
+    [...eventKeys.all, 'filtered', filters] as const,
 };
 
 export const playerKeys = {

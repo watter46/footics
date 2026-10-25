@@ -100,7 +100,10 @@ try {
     }
 
     // Check B: Schema Migration Detection
-    if (file.endsWith('schema.ts') || file.endsWith('schema.js')) {
+    if (
+      path.basename(file) === 'schema.ts' ||
+      path.basename(file) === 'schema.js'
+    ) {
       if (!/\.upgrade\s*\(/.test(content)) {
         console.error(
           `[ERROR] schema.ts was modified, but no '.upgrade()' block was detected. You must write a Dexie migration block.`,

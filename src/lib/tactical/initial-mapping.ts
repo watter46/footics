@@ -3,26 +3,105 @@ import {
   getFormationActualPosVertical,
 } from '../data/formations';
 import { FORMATION_POSITIONS } from '../data/formations-data';
+import type {
+  FormattedMatchData,
+  FormattedPlayer,
+} from '../national-match-schema';
 import { getBenchPos } from './coordinates';
 import { parseWhoScoredFormationName } from './formations';
 import { getShirtNo, sortPlayersBy2DPositionGroup } from './player-formatting';
 
+export interface InitialPlayerMapping {
+  playerId: number;
+  name: string;
+  shirtNo: string;
+  position: string;
+  x: number;
+  y: number;
+  team: 'home' | 'away';
+  area: 'pitch' | 'bench';
+}
+
+export interface ClubPlayerLike {
+  playerId: number;
+  name?: string;
+  isFirstEleven?: boolean;
+  shirtNo?: string | number;
+  position?: string;
+  [key: string]: unknown;
+}
+
+export interface ClubIncidentEventLike {
+  minute: number;
+  type?: {
+    displayName?: string;
+  };
+  playerId: number;
+  [key: string]: unknown;
+}
+
+export interface ClubTeamLike {
+  players: ClubPlayerLike[];
+  incidentEvents?: ClubIncidentEventLike[];
+  [key: string]: unknown;
+}
+
+export interface ClubMatchCentreDataLike {
+  home: ClubTeamLike;
+  away: ClubTeamLike;
+  [key: string]: unknown;
+}
+
+export interface InitialMappingPlayerLike {
+  playerId: number;
+  name: string;
+  shirtNo?: string | number;
+  number?: string | number;
+  jerseyNumber?: string | number;
+  position?: string;
+  isFirstEleven?: boolean;
+  [key: string]: unknown;
+}
+
+export interface InitialMappingFormationLike {
+  formationName?: string;
+  playerIds?: number[];
+  [key: string]: unknown;
+}
+
+export interface InitialMappingTeamLike {
+  name?: string;
+  players?: InitialMappingPlayerLike[];
+  formations?: InitialMappingFormationLike[];
+  [key: string]: unknown;
+}
+
+export interface InitialMappingMetadata {
+  teams?: {
+    home?: InitialMappingTeamLike;
+    away?: InitialMappingTeamLike;
+  };
+  [key: string]: unknown;
+}
+
 /**
  * 特定の分における出場選手を特定する (National Data)
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getActivePlayersNational(matchData: any, minute: number) {
+export function getActivePlayersNational(
+  matchData: FormattedMatchData,
+  minute: number,
+): { homeActiveIds: number[]; awayActiveIds: number[] } {
   const { homeStarters, awayStarters, homeBench, awayBench } =
     matchData.lineups;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getTeamActive = (starters: any[], _bench: any[]) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const activeIds = new Set(starters.map((p: any) => p.playerId));
+  const getTeamActive = (
+    starters: FormattedPlayer[],
+    _bench: FormattedPlayer[],
+  ): number[] => {
+    const activeIds = new Set<number>(starters.map((p) => p.playerId));
 
     // 交代履歴をスキャン (timeline)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    matchData.timeline.forEach((period: any) => {
+    matchData.timeline.forEach((period) => {
       const eventMinute = period[0];
       if (eventMinute > minute) return;
 
@@ -30,8 +109,7 @@ export function getActivePlayersNational(matchData: any, minute: number) {
       const awayEvents = period[2] || [];
       const events = [...homeEvents, ...awayEvents];
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      events.forEach((ev: any) => {
+      events.forEach((ev) => {
         const eventType = ev[2];
         const player1Id = ev[6];
         const player2Id = ev[7];
@@ -57,20 +135,18 @@ export function getActivePlayersNational(matchData: any, minute: number) {
 /**
  * 特定の分における出場選手を特定する (Club Data)
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getActivePlayersClub(matchCentreData: any, minute: number) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getTeamActive = (team: any) => {
+export function getActivePlayersClub(
+  matchCentreData: ClubMatchCentreDataLike,
+  minute: number,
+): { homeActiveIds: number[]; awayActiveIds: number[] } {
+  const getTeamActive = (team: ClubTeamLike): number[] => {
     const starters = team.players
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((p: any) => p.isFirstEleven)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((p: any) => p.playerId);
+      .filter((p) => p.isFirstEleven)
+      .map((p) => p.playerId);
     const activeIds = new Set<number>(starters);
 
     // 交代履歴をスキャン (incidentEvents)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    team.incidentEvents?.forEach((ev: any) => {
+    team.incidentEvents?.forEach((ev) => {
       if (ev.minute > minute) return;
 
       if (ev.type?.displayName === 'SubstitutionOff') {
@@ -93,42 +169,34 @@ export function getActivePlayersClub(matchCentreData: any, minute: number) {
  * メタデータから初期の選手配置マッピングを生成する (縦画面 / 横画面両対応)
  */
 export function generateInitialMapping(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  metadata: any,
+  metadata: InitialMappingMetadata,
   orientation: 'vertical' | 'horizontal' = 'vertical',
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Record<number, any> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const initialMapping: Record<number, any> = {};
+): Record<number, InitialPlayerMapping> {
+  const initialMapping: Record<number, InitialPlayerMapping> = {};
 
-  const setupTeam = (team: 'home' | 'away') => {
+  const setupTeam = (team: 'home' | 'away'): boolean => {
     const teamData = metadata?.teams?.[team];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const players: any[] = teamData?.players || [];
+    const players: InitialMappingPlayerLike[] = teamData?.players || [];
     if (players.length === 0) return false;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const formations: any[] = teamData?.formations || [];
+    const formations: InitialMappingFormationLike[] =
+      teamData?.formations || [];
     const primaryFormation = formations[0];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let pitchPlayers: any[] = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let benchPlayers: any[] = [];
+    let pitchPlayers: InitialMappingPlayerLike[] = [];
+    let benchPlayers: InitialMappingPlayerLike[] = [];
 
     const playerIds: number[] = primaryFormation?.playerIds || [];
 
     // 1. 先発11名とベンチ選手を分離
     if (playerIds.length >= 11) {
       const starterIdSet = new Set<number>(playerIds.slice(0, 11));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const startersByIdMap = new Map<number, any>();
+      const startersByIdMap = new Map<number, InitialMappingPlayerLike>();
       players.forEach((p) => {
         startersByIdMap.set(p.playerId, p);
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rawStarters: any[] = [];
+      const rawStarters: InitialMappingPlayerLike[] = [];
       playerIds.slice(0, 11).forEach((id: number) => {
         const found = startersByIdMap.get(id);
         if (found) rawStarters.push(found);
@@ -141,8 +209,7 @@ export function generateInitialMapping(
       const starters = players.filter((p) => p.isFirstEleven);
       const nonStarters = players.filter((p) => !p.isFirstEleven);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let rawStarters: any[] = [];
+      let rawStarters: InitialMappingPlayerLike[] = [];
       if (starters.length >= 11) {
         rawStarters = starters.slice(0, 11);
         benchPlayers = [...starters.slice(11), ...nonStarters];

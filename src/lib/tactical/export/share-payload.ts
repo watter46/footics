@@ -13,10 +13,28 @@ export type { AspectRatio };
 
 export type AnimationOrientation = 'vertical' | 'horizontal';
 
+export interface TacticalPlayerLike {
+  id?: string | number;
+  playerId?: number | string;
+  photoUrl?: string;
+  insideContent?: string;
+  options?: {
+    photoUrl?: string;
+    insideContent?: string;
+    [key: string]: unknown;
+  };
+  style?: {
+    photoUrl?: string;
+    insideContent?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
 export interface TacticalSceneLike {
   id?: string;
-  players?: Record<string, any> | any[];
-  [key: string]: any;
+  players?: Record<string, TacticalPlayerLike> | TacticalPlayerLike[];
+  [key: string]: unknown;
 }
 
 export const TacticalExportSharePayloadSchema = z
@@ -24,7 +42,12 @@ export const TacticalExportSharePayloadSchema = z
     version: z.number().default(1),
     createdAt: z.number(),
     title: z.string().optional(),
-    scenes: z.array(z.any()), // Slide[] or TacticalScene[]
+    scenes: z.array(
+      z.custom<TacticalSceneLike>(
+        (val) => typeof val === 'object' && val !== null,
+        { message: 'Scene must be an object' },
+      ),
+    ), // Slide[] or TacticalScene[]
     orientation: z.enum(['vertical', 'horizontal']),
     teamVisibility: z.enum(['both', 'home', 'away']).optional().default('both'),
     photos: z.record(z.string(), z.string()).optional().default({}), // playerId -> base64 DataURL or Image URL
@@ -45,7 +68,7 @@ export const TacticalExportSharePayloadSchema = z
 export type TacticalExportSharePayload = z.infer<
   typeof TacticalExportSharePayloadSchema
 > & {
-  scenes: any[];
+  scenes: TacticalSceneLike[];
   orientation: AnimationOrientation;
   exportFps: 30 | 60;
   aspectRatio: AspectRatio;
@@ -108,7 +131,7 @@ export async function createBitmapFromUrlOrBase64(
  * IndexedDB の photoBlob または指定 URL から Base64 / URL の辞書を作成する
  */
 export async function packPlayerPhotos(
-  scenes: any[],
+  scenes: TacticalSceneLike[],
 ): Promise<Record<string, string>> {
   const photoMap: Record<string, string> = {};
 
@@ -116,7 +139,7 @@ export async function packPlayerPhotos(
   const targetPlayers = new Map<string, string | undefined>();
   for (const scene of scenes) {
     if (!scene.players) continue;
-    const playerList = Array.isArray(scene.players)
+    const playerList: TacticalPlayerLike[] = Array.isArray(scene.players)
       ? scene.players
       : Object.values(scene.players);
     for (const p of playerList) {
@@ -225,7 +248,7 @@ export async function packPlayerPhotos(
  * ImageBitmap のマップ (playerId -> ImageBitmap) を返す
  */
 export async function preloadSlidePlayerPhotos(
-  slides: any[],
+  slides: TacticalSceneLike[],
   existingPhotos?: Record<string, string>,
 ): Promise<Record<string, ImageBitmap>> {
   const result: Record<string, ImageBitmap> = {};
@@ -240,7 +263,7 @@ export async function preloadSlidePlayerPhotos(
   const targetPlayers = new Map<string, string | undefined>();
   for (const slide of slides) {
     if (!slide.players) continue;
-    const playerList = Array.isArray(slide.players)
+    const playerList: TacticalPlayerLike[] = Array.isArray(slide.players)
       ? slide.players
       : Object.values(slide.players);
     for (const p of playerList) {
