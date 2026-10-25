@@ -1,4 +1,5 @@
 import type { StandardPosition } from '@/types';
+import type { FormationPosition } from '../data/formations';
 
 export type PositionGroup = 'GK' | 'DF' | 'MF' | 'FW' | 'OTHER';
 
@@ -45,10 +46,26 @@ export function normalizePosition(position?: string): StandardPosition {
       'RM',
       'MR',
       'ML',
+      'DML',
+      'DMR',
     ].includes(pos)
   )
     return 'MID';
-  if (['FW', 'ST', 'SS', 'CF', 'LW', 'RW', 'WF', 'LF', 'RF'].includes(pos))
+  if (
+    [
+      'FW',
+      'ST',
+      'SS',
+      'CF',
+      'LW',
+      'RW',
+      'WF',
+      'LF',
+      'RF',
+      'FWL',
+      'FWR',
+    ].includes(pos)
+  )
     return 'FW';
   return 'Other';
 }
@@ -80,10 +97,26 @@ export function getPositionGroup(position?: string): PositionGroup {
       'RM',
       'MR',
       'ML',
+      'DML',
+      'DMR',
     ].includes(pos)
   )
     return 'MF';
-  if (['FW', 'ST', 'SS', 'CF', 'LW', 'RW', 'WF', 'LF', 'RF'].includes(pos))
+  if (
+    [
+      'FW',
+      'ST',
+      'SS',
+      'CF',
+      'LW',
+      'RW',
+      'WF',
+      'LF',
+      'RF',
+      'FWL',
+      'FWR',
+    ].includes(pos)
+  )
     return 'FW';
   return 'OTHER';
 }
@@ -113,9 +146,115 @@ export function getPositionBadgeClass(position?: string): string {
  */
 export function getSideScore(position?: string): number {
   const pos = (position || '').toUpperCase();
-  if (['DL', 'LWB', 'AML', 'LM', 'LW', 'LF'].includes(pos)) return 1;
-  if (['DR', 'RWB', 'AMR', 'RM', 'RW', 'RF'].includes(pos)) return 3;
+  if (['DL', 'LWB', 'AML', 'LM', 'LW', 'LF', 'DML', 'FWL'].includes(pos))
+    return 1;
+  if (['DR', 'RWB', 'AMR', 'RM', 'RW', 'RF', 'DMR', 'FWR'].includes(pos))
+    return 3;
   return 2; // Default Center (DC, CB, DMC, MC, AMC, CM, DM, AM, ST, SS, CF, GK, etc.)
+}
+
+export interface PositionMatchablePlayer {
+  position?: string;
+  slotVertical?: number;
+  slotHorizontal?: number;
+}
+
+/**
+ * 縦深さスコア (小さいほどGK側、大きいほどFW側)
+ */
+function getPlayerDepthScore(p: PositionMatchablePlayer): number {
+  if (p.slotVertical !== undefined && p.slotVertical !== null) {
+    return p.slotVertical;
+  }
+  const pos = (p.position || '').toUpperCase().trim();
+  if (pos === 'GK') return 0;
+  if (['DC', 'CB', 'SW'].includes(pos)) return 2.5;
+  if (['DL', 'DR', 'LB', 'RB', 'DF'].includes(pos)) return 2.8;
+  if (['DML', 'DMR', 'LWB', 'RWB'].includes(pos)) return 3.5;
+  if (['DMC', 'DM'].includes(pos)) return 4.5;
+  if (['MC', 'CM', 'MID', 'MF'].includes(pos)) return 5.5;
+  if (['ML', 'MR', 'LM', 'RM'].includes(pos)) return 6.0;
+  if (['AMC', 'AM'].includes(pos)) return 7.0;
+  if (['AML', 'AMR', 'LW', 'RW', 'FWL', 'FWR'].includes(pos)) return 7.5;
+  if (['SS'].includes(pos)) return 8.2;
+  if (['FW', 'ST', 'CF'].includes(pos)) return 9.0;
+  return 5.5; // Sub, Other
+}
+
+/**
+ * 横方向スコア (0: 最左翼, 100: 最右翼)
+ */
+function getPlayerLeftScore(p: PositionMatchablePlayer): number {
+  if (p.slotHorizontal !== undefined && p.slotHorizontal !== null) {
+    return (10 - p.slotHorizontal) * 10;
+  }
+  const side = getSideScore(p.position);
+  if (side === 1) return 15;
+  if (side === 3) return 85;
+  return 50;
+}
+
+/**
+ * 選手群をフォーメーションテンプレートの各位置 (FormationPosition) に最適マッチングする
+ */
+export function matchPlayersToFormationPositions<
+  T extends PositionMatchablePlayer,
+>(
+  players: T[],
+  templatePositions: FormationPosition[],
+): Array<{ player: T; templatePos: FormationPosition }> {
+  if (!players.length || !templatePositions.length) return [];
+
+  // (a) templatePositions を守備側 (top降順) にソート
+  const sortedTemplates = [...templatePositions].sort((a, b) => b.top - a.top);
+
+  // 近接する top (差が 8 以下) を同一ラインとしてグループ化
+  const lines: FormationPosition[][] = [];
+  for (const pos of sortedTemplates) {
+    const currentLine = lines[lines.length - 1];
+    if (currentLine && Math.abs(currentLine[0].top - pos.top) <= 8) {
+      currentLine.push(pos);
+    } else {
+      lines.push([pos]);
+    }
+  }
+
+  // 各ライン内を left 昇順 (左 -> 右) に並べる
+  for (const line of lines) {
+    line.sort((a, b) => a.left - b.left);
+  }
+
+  // (b) players を縦深さスコア昇順 (GK側 -> FW側) でソート
+  const sortedPlayers = [...players].sort(
+    (a, b) => getPlayerDepthScore(a) - getPlayerDepthScore(b),
+  );
+
+  // (c) 各ラインの枠数ずつに切り分け、ライン内で横スコア (leftScore) 昇順にソートして 1対1 ペアリング
+  const result: Array<{ player: T; templatePos: FormationPosition }> = [];
+  let playerOffset = 0;
+
+  for (const line of lines) {
+    const lineSlotsCount = line.length;
+    const linePlayers = sortedPlayers.slice(
+      playerOffset,
+      playerOffset + lineSlotsCount,
+    );
+    playerOffset += lineSlotsCount;
+
+    // ライン内の選手を leftScore (左 -> 右) 昇順にソート
+    linePlayers.sort((a, b) => getPlayerLeftScore(a) - getPlayerLeftScore(b));
+
+    for (let i = 0; i < lineSlotsCount; i++) {
+      if (linePlayers[i] && line[i]) {
+        result.push({
+          player: linePlayers[i],
+          templatePos: line[i],
+        });
+      }
+    }
+  }
+
+  return result;
 }
 
 /**

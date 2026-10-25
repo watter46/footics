@@ -319,13 +319,20 @@ export async function savePlayerMaster(
   const existing = await db.players.get(id);
   const { photoBlob, ..._rest } = player;
 
+  const resolvedPosition =
+    player.position && player.position !== 'Sub'
+      ? player.position
+      : existing?.position && existing.position !== 'Sub'
+        ? existing.position
+        : (player.position ?? existing?.position ?? 'Other');
+
   const updated: PlayerMaster = {
     id,
     playerId: player.playerId,
     name: player.name,
     season,
     defaultShirtNo: player.defaultShirtNo ?? existing?.defaultShirtNo,
-    position: player.position ?? existing?.position ?? 'Other',
+    position: resolvedPosition,
     photoUrl: player.photoUrl ?? existing?.photoUrl,
     teamName: player.teamName ?? existing?.teamName ?? 'Chelsea',
     isExcluded: player.isExcluded ?? false,

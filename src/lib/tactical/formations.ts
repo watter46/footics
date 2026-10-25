@@ -19,9 +19,21 @@ export function parseWhoScoredFormationName(
     return clean as FormationType;
   }
 
+  const lower = clean.toLowerCase();
+  const directMap: Record<string, FormationType> = {
+    '343d': '3-4-3',
+    '3-4-3d': '3-4-3',
+  };
+  if (directMap[lower]) {
+    return directMap[lower];
+  }
+
   // ハイフンが含まれていない数字列の場合の分解マップ (例: "4231" -> "4-2-3-1")
-  const digits = clean.replace(/\\D/g, '');
+  const digits = lower.replace(/\D/g, '');
   const patternMap: Record<string, FormationType> = {
+    '41212': '4-3-1-2',
+    '31312': '3-4-1-2',
+    '4240': '4-2-4',
     '4231': '4-2-3-1',
     '433': '4-3-3',
     '442': '4-4-2',

@@ -85,6 +85,10 @@ export interface Player extends BasePlayer {
     | 'AMC'
     | 'AMR'
     | 'AML'
+    | 'DML'
+    | 'DMR'
+    | 'FWL'
+    | 'FWR'
     | 'Sub';
   height: number;
   weight: number;
@@ -102,6 +106,8 @@ export interface Formation {
   endMinuteExpanded: number;
   playerIds: number[];
   jerseyNumbers: number[];
+  formationSlots?: number[];
+  formationPositions?: Array<{ vertical: number; horizontal: number }>;
 }
 
 export interface MatchEvent {

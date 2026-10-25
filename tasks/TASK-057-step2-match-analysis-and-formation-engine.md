@@ -109,9 +109,10 @@ export function matchPlayersToFormationPositions<T extends PositionMatchablePlay
   - `formations.test.ts`: `parseWhoScoredFormationName` が `'41212' -> '4-3-1-2'`, `'31312' -> '3-4-1-2'`, `'343d' -> '3-4-3'`, `'4240' -> '4-2-4'` を正しく変換し、`normalizePosition` / `getPositionGroup` / `getSideScore` が `DML, DMR, FWL, FWR` を正しく分類することを検証。
   - `formation-utils.test.ts`: WhoScored の 20人入り `playerIds` と `formationSlots` (`[1..11, 0..0]`) からピッチ11人と控えが正確に分離されること、交代後の時間帯で退場した先発選手が `benchPlayers` の末尾に含まれること、`matchPlayersToFormationPositions` で RB(`DR`, horiz:1) が RB枠(left:90)、LB(`DL`, horiz:9) が LB枠(left:10)、DM(`DMC`) が DM枠、CF(`FW`) が ST枠へ正確に割り当てられること、`savePlayerMaster` で既存の `'DC'` が `'Sub'` で上書きされないことを検証。
 - **Tasks**:
-  - [ ] 1. TDD実装: `bun run ai:check:red src/lib/tactical/__tests__/formations.test.ts src/lib/data/__tests__/formation-utils.test.ts` ➔ 実装 ➔ `bun run ai:check src/types/index.ts src/lib/tactical/player-formatting.ts src/lib/tactical/formations.ts src/lib/data/formation-utils.ts src/lib/db/queries.ts src/lib/tactical/__tests__/formations.test.ts src/lib/data/__tests__/formation-utils.test.ts` PASS
+  - [x] 1. TDD実装: `bun run ai:check:red src/lib/tactical/__tests__/formations.test.ts src/lib/data/__tests__/formation-utils.test.ts` ➔ 実装 ➔ `bun run ai:check src/types/index.ts src/lib/tactical/player-formatting.ts src/lib/tactical/formations.ts src/lib/data/formation-utils.ts src/lib/db/queries.ts src/lib/tactical/__tests__/formations.test.ts src/lib/data/__tests__/formation-utils.test.ts` PASS
 - **Worker Handoff Log**:
-  <!-- 確定したexportシンボルや注意点のみを1〜2行で記録 -->
+  - `matchPlayersToFormationPositions` (PositionMatchablePlayer 対応) と `getTeamFormationAtMinute` (TeamFormationResult への bench/slot 拡張) を export 完了。
+  - `savePlayerMaster` にて既存の有効ポジションを `'Sub'` で上書きしない保護ロジックを実装。
 
 ### Phase 2: 戦術ボードへのフォーメーション＆選手ポジション紐づけ展開と右パネル選択連動
 - **Worker Model**: `flash`

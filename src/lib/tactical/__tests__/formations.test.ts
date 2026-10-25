@@ -12,6 +12,11 @@ import {
   DEFAULT_442_POSITIONS,
   parseWhoScoredFormationName,
 } from '../formations';
+import {
+  getPositionGroup,
+  getSideScore,
+  normalizePosition,
+} from '../player-formatting';
 
 describe('formations', () => {
   describe('parseWhoScoredFormationName', () => {
@@ -25,10 +30,40 @@ describe('formations', () => {
       expect(parseWhoScoredFormationName('433')).toBe('4-3-3');
     });
 
+    it('parses special WhoScored patterns', () => {
+      expect(parseWhoScoredFormationName('41212')).toBe('4-3-1-2');
+      expect(parseWhoScoredFormationName('31312')).toBe('3-4-1-2');
+      expect(parseWhoScoredFormationName('343d')).toBe('3-4-3');
+      expect(parseWhoScoredFormationName('4240')).toBe('4-2-4');
+    });
+
     it('returns 4-4-2 if not provided or unknown', () => {
       expect(parseWhoScoredFormationName(undefined)).toBe('4-4-2');
       expect(parseWhoScoredFormationName('')).toBe('4-4-2');
       expect(parseWhoScoredFormationName('9999')).toBe('4-4-2');
+    });
+  });
+
+  describe('player-formatting: DML, DMR, FWL, FWR position handling', () => {
+    it('normalizes wing-back and wing-forward positions properly', () => {
+      expect(normalizePosition('DML')).toBe('MID');
+      expect(normalizePosition('DMR')).toBe('MID');
+      expect(normalizePosition('FWL')).toBe('FW');
+      expect(normalizePosition('FWR')).toBe('FW');
+    });
+
+    it('classifies position groups properly', () => {
+      expect(getPositionGroup('DML')).toBe('MF');
+      expect(getPositionGroup('DMR')).toBe('MF');
+      expect(getPositionGroup('FWL')).toBe('FW');
+      expect(getPositionGroup('FWR')).toBe('FW');
+    });
+
+    it('calculates side score properly for DML, DMR, FWL, FWR', () => {
+      expect(getSideScore('DML')).toBe(1);
+      expect(getSideScore('FWL')).toBe(1);
+      expect(getSideScore('DMR')).toBe(3);
+      expect(getSideScore('FWR')).toBe(3);
     });
   });
 

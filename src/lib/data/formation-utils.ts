@@ -1,13 +1,22 @@
 import type { ClubMatchRoot, Formation, Player, Team } from '@/types';
 
+export interface SlotPositionInfo {
+  slot: number;
+  vertical: number;
+  horizontal: number;
+}
+
 export interface TeamFormationResult {
   teamId: number;
   teamName: string;
   field: 'home' | 'away';
   formation: Formation | null;
   formationName: string | null;
-  playerIds: number[];
-  players: Player[];
+  playerIds: number[]; // ピッチ上の選手IDのみ (slot 1..11)
+  players: Player[]; // ピッチ上の選手のみ
+  benchPlayerIds: number[]; // 未出場控え(slot===0) + 交代退場済み選手ID
+  benchPlayers: Player[]; // 未出場控え(先頭) + 交代退場済み選手(後ろ)
+  slotPositions: Record<number, SlotPositionInfo>; // key: playerId
   captainPlayerId: number | null;
 }
 
@@ -78,7 +87,7 @@ export function getPlayersForFormation(
 }
 
 /**
- * 単一チームの指定分数におけるフォーメーションとピッチ上選手情報を取得する。
+ * 単一チームの指定分数におけるフォーメーションとピッチ上選手・控え選手情報を取得する。
  */
 export function getTeamFormationAtMinute(
   team: Team | undefined | null,
@@ -93,12 +102,72 @@ export function getTeamFormationAtMinute(
       formationName: null,
       playerIds: [],
       players: [],
+      benchPlayerIds: [],
+      benchPlayers: [],
+      slotPositions: {},
       captainPlayerId: null,
     };
   }
 
   const formation = findFormationAtMinute(team.formations, minute);
-  const players = getPlayersForFormation(formation, team.players);
+  const playerMap = new Map<number, Player>();
+  for (const player of team.players || []) {
+    playerMap.set(player.playerId, player);
+  }
+
+  const pitchPlayerIds: number[] = [];
+  const unplayedSubIds: number[] = [];
+  const slotPositions: Record<number, SlotPositionInfo> = {};
+
+  if (formation?.playerIds) {
+    const hasSlots =
+      Array.isArray(formation.formationSlots) &&
+      formation.formationSlots.length > 0;
+
+    formation.playerIds.forEach((pId, idx) => {
+      const slot = hasSlots
+        ? formation.formationSlots![idx]
+        : idx < 11
+          ? idx + 1
+          : 0;
+      const pos =
+        formation.formationPositions?.[idx] ??
+        (slot >= 1 && slot <= 11
+          ? formation.formationPositions?.[slot - 1]
+          : undefined);
+
+      if (slot >= 1 && slot <= 11) {
+        pitchPlayerIds.push(pId);
+        slotPositions[pId] = {
+          slot,
+          vertical: pos?.vertical ?? 0,
+          horizontal: pos?.horizontal ?? 0,
+        };
+      } else if (slot === 0) {
+        unplayedSubIds.push(pId);
+      }
+    });
+  }
+
+  // 交代退場済み選手: team.players に存在するが、ピッチ上選手にも未出場控えにも含まれない選手（重複排除）
+  const activeAndSubIdsSet = new Set([...pitchPlayerIds, ...unplayedSubIds]);
+  const subbedOutIds: number[] = [];
+  for (const p of team.players || []) {
+    if (!activeAndSubIdsSet.has(p.playerId)) {
+      subbedOutIds.push(p.playerId);
+      activeAndSubIdsSet.add(p.playerId);
+    }
+  }
+
+  const benchPlayerIds = [...unplayedSubIds, ...subbedOutIds];
+
+  const pitchPlayers = pitchPlayerIds
+    .map((id) => playerMap.get(id))
+    .filter((p): p is Player => Boolean(p));
+
+  const benchPlayers = benchPlayerIds
+    .map((id) => playerMap.get(id))
+    .filter((p): p is Player => Boolean(p));
 
   return {
     teamId: team.teamId,
@@ -106,8 +175,11 @@ export function getTeamFormationAtMinute(
     field: team.field,
     formation,
     formationName: formation?.formationName ?? null,
-    playerIds: formation?.playerIds ?? [],
-    players,
+    playerIds: pitchPlayerIds,
+    players: pitchPlayers,
+    benchPlayerIds,
+    benchPlayers,
+    slotPositions,
     captainPlayerId: formation?.captainPlayerId ?? null,
   };
 }
