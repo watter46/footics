@@ -13,8 +13,8 @@ export type AnimationEasing = 'ease-in-out' | 'ease-out' | 'ease-in' | 'linear';
 export function useVideoMorphingConfig() {
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
   const slides = useTacticalUnifiedStore((s) => s.project.slides);
-  const updateSlideTransition = useTacticalUnifiedStore(
-    (s) => s.updateSlideTransition,
+  const updateAllSlideTransitions = useTacticalUnifiedStore(
+    (s) => s.updateAllSlideTransitions,
   );
 
   const [transitionSec, setTransitionSec] = useState<TransitionSec>(() => {
@@ -44,24 +44,18 @@ export function useVideoMorphingConfig() {
   const handleTransitionSecChange = (val: TransitionSec) => {
     setTransitionSec(val);
     const ms = Math.round(Number.parseFloat(val) * 1000);
-    for (const sl of slides) {
-      updateSlideTransition(sl.id, { transitionDurationMs: ms });
-    }
+    updateAllSlideTransitions({ transitionDurationMs: ms });
   };
 
   const handlePauseSecChange = (val: PauseSec) => {
     setPauseSec(val);
     const ms = Math.round(Number.parseFloat(val) * 1000);
-    for (const sl of slides) {
-      updateSlideTransition(sl.id, { pauseMs: ms });
-    }
+    updateAllSlideTransitions({ pauseMs: ms });
   };
 
   const handleEasingChange = (val: AnimationEasing) => {
     setSelectedEasing(val);
-    for (const sl of slides) {
-      updateSlideTransition(sl.id, { easing: val });
-    }
+    updateAllSlideTransitions({ easing: val });
   };
 
   return {

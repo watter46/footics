@@ -9,10 +9,11 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Clock, Layers } from 'lucide-react';
 import type React from 'react';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { Slide } from '@/lib/types/tactical-unified';
 import { SlideCardActions } from './slide-card-actions';
 import { SlideContextMenu } from './slide-context-menu';
+import { SlideTransitionPopover } from './slide-transition-popover';
 
 export interface SlideCardProps {
   slide: Slide;
@@ -54,6 +55,17 @@ export function SlideCard({
     x: number;
     y: number;
   } | null>(null);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
+  const setCombinedRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setNodeRef(node);
+      cardRef.current = node;
+    },
+    [setNodeRef],
+  );
 
   const durationSec = (slide.transitionDurationMs ?? 1000) / 1000;
   const pauseSec = (slide.pauseMs ?? 500) / 1000;
@@ -78,18 +90,25 @@ export function SlideCard({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={setCombinedRef}
       style={style}
       className="relative group shrink-0 select-none touch-none"
       {...attributes}
       {...listeners}
     >
       {/* Thumbnail Card */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={(e) => {
           e.currentTarget.blur();
           onSelect(slide.id);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelect(slide.id);
+          }
         }}
         onContextMenu={handleContextMenu}
         className={[
@@ -113,10 +132,21 @@ export function SlideCard({
         </div>
 
         <div className="flex items-center justify-between w-full text-[9px] text-white/60 font-mono">
-          <span className="flex items-center gap-0.5" title="Duration + Pause">
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setPopoverAnchor(e.currentTarget);
+              setIsPopoverOpen(true);
+            }}
+            className="flex items-center gap-0.5 px-1 py-0.5 -mx-1 -my-0.5 rounded hover:bg-white/15 hover:text-white cursor-pointer transition-colors"
+            title="Scene transition duration (Click to edit duration & pause)"
+            aria-label="Edit scene transition"
+          >
             <Clock size={8} className="text-white/40" />
             {totalSceneSec.toFixed(1)}s
-          </span>
+          </button>
           {annotationCount > 0 && (
             <span
               className="flex items-center gap-0.5 text-blue-400/80"
@@ -127,7 +157,7 @@ export function SlideCard({
             </span>
           )}
         </div>
-      </button>
+      </div>
 
       {/* Floating Action Controls on Hover */}
       {!isDragging && (
@@ -140,6 +170,10 @@ export function SlideCard({
           onMoveLeft={onMoveLeft}
           onMoveRight={onMoveRight}
           onDelete={onDelete}
+          onOpenTransitionSettings={() => {
+            setPopoverAnchor(cardRef.current);
+            setIsPopoverOpen(true);
+          }}
         />
       )}
 
@@ -156,9 +190,22 @@ export function SlideCard({
           onMoveLeft={onMoveLeft}
           onMoveRight={onMoveRight}
           onDelete={onDelete}
+          onOpenTransitionSettings={() => {
+            setPopoverAnchor(cardRef.current);
+            setIsPopoverOpen(true);
+          }}
           onClose={() => setContextMenuPos(null)}
         />
       )}
+
+      {/* Slide Transition Popover */}
+      <SlideTransitionPopover
+        slide={slide}
+        index={index}
+        isOpen={isPopoverOpen}
+        onClose={() => setIsPopoverOpen(false)}
+        referenceElement={popoverAnchor ?? cardRef.current}
+      />
     </div>
   );
 }

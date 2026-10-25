@@ -835,7 +835,7 @@ export function interpolateText(
  */
 export function calculateUnifiedTotalDuration(slides: Slide[]): number {
   if (slides.length <= 1) return 0;
-  return slides.slice(0, -1).reduce((acc, slide) => {
+  return slides.slice(1).reduce((acc, slide) => {
     const duration = slide.transitionDurationMs ?? 1000;
     const pause = slide.pauseMs ?? 500;
     return acc + duration + pause;
@@ -963,10 +963,10 @@ export function getInterpolatedUnifiedSlideFrame(
   let currentSlideIdx = 0;
   let nextSlideIdx = 1;
   let elapsedInSegment = 0;
-  let segmentSlide = slides[0];
+  let segmentSlide = slides[1] ?? slides[0];
 
   for (let i = 0; i < slides.length - 1; i++) {
-    const s = slides[i];
+    const s = slides[i + 1];
     const segDuration = (s.transitionDurationMs ?? 1000) + (s.pauseMs ?? 500);
     if (timeMs <= accumulatedTime + segDuration || i === slides.length - 2) {
       currentSlideIdx = i;

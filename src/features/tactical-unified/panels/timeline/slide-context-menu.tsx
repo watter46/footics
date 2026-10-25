@@ -5,7 +5,7 @@
  * Right-click context menu for SlideCard
  */
 
-import { ArrowLeft, ArrowRight, Copy, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Copy, Sliders, Trash2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 interface SlideContextMenuProps {
@@ -19,6 +19,7 @@ interface SlideContextMenuProps {
   onMoveLeft: () => void;
   onMoveRight: () => void;
   onDelete: (id: string) => void;
+  onOpenTransitionSettings?: () => void;
   onClose: () => void;
 }
 
@@ -33,6 +34,7 @@ export function SlideContextMenu({
   onMoveLeft,
   onMoveRight,
   onDelete,
+  onOpenTransitionSettings,
   onClose,
 }: SlideContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -69,6 +71,7 @@ export function SlideContextMenu({
     >
       <button
         type="button"
+        role="menuitem"
         onClick={() => {
           onClose();
           onDuplicate(slideId);
@@ -78,6 +81,21 @@ export function SlideContextMenu({
         <Copy size={13} className="text-purple-400" />
         <span>シーンを複製</span>
       </button>
+
+      {onOpenTransitionSettings && (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onClose();
+            onOpenTransitionSettings();
+          }}
+          className="flex items-center gap-2 w-full px-3 py-1.5 text-left hover:bg-white/10 hover:text-white cursor-pointer"
+        >
+          <Sliders size={13} className="text-blue-400" />
+          <span>トランジション設定...</span>
+        </button>
+      )}
 
       {canMoveLeft && (
         <button

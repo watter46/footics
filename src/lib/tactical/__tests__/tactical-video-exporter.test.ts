@@ -9,6 +9,70 @@ import {
   matchSlidePlayers,
 } from '../export/tactical-video-exporter';
 
+vi.mock('mediabunny', () => {
+  class MockBufferTarget {
+    buffer: ArrayBuffer | null = null;
+  }
+
+  class MockOutput {
+    options: any;
+    tracks: any[] = [];
+    state = 'pending';
+
+    constructor(options: any) {
+      this.options = options;
+    }
+
+    addVideoTrack(track: any) {
+      this.tracks.push(track);
+      return track;
+    }
+
+    async start() {
+      this.state = 'started';
+      return Promise.resolve();
+    }
+
+    async finalize() {
+      this.state = 'finalized';
+      this.options.target.buffer = new Uint8Array([0, 1, 2, 3]).buffer;
+      return Promise.resolve();
+    }
+
+    async cancel() {
+      this.state = 'canceled';
+      return Promise.resolve();
+    }
+  }
+
+  class MockCanvasSource {
+    canvas: any;
+    config: any;
+    frames: Array<{ timestamp: number; duration?: number }> = [];
+
+    constructor(canvas: any, config: any) {
+      this.canvas = canvas;
+      this.config = config;
+    }
+
+    async add(timestamp: number, duration?: number) {
+      this.frames.push({ timestamp, duration });
+      return Promise.resolve();
+    }
+  }
+
+  class MockMp4OutputFormat {}
+  class MockWebMOutputFormat {}
+
+  return {
+    BufferTarget: MockBufferTarget,
+    Output: MockOutput,
+    CanvasSource: MockCanvasSource,
+    Mp4OutputFormat: MockMp4OutputFormat,
+    WebMOutputFormat: MockWebMOutputFormat,
+  };
+});
+
 function createMockPlayer(
   id: string,
   team: 'home' | 'away' | 'neutral',
@@ -178,9 +242,9 @@ describe('tactical-video-exporter', () => {
         createSampleSlide('s3', [], 1000, 500),
       ];
 
-      // Total for 3 slides: s1 (1500+500) + s2 (2000+1000) = 5000ms
+      // Total for 3 slides (destination-based): s2 (2000+1000) + s3 (1000+500) = 4500ms
       const duration = calculateUnifiedTotalDuration(slides);
-      expect(duration).toBe(5000);
+      expect(duration).toBe(4500);
     });
 
     it('snaps crop dimensions with 8-pixel macroblock alignment', () => {
@@ -306,6 +370,10 @@ describe('tactical-video-exporter', () => {
         return {
           save: vi.fn(),
           restore: vi.fn(),
+          translate: vi.fn(),
+          scale: vi.fn(),
+          rotate: vi.fn(),
+          resetTransform: vi.fn(),
           beginPath: vi.fn(),
           closePath: vi.fn(),
           moveTo: vi.fn(),
@@ -313,6 +381,7 @@ describe('tactical-video-exporter', () => {
           arc: vi.fn(),
           ellipse: vi.fn(),
           quadraticCurveTo: vi.fn(),
+          bezierCurveTo: vi.fn(),
           stroke: vi.fn(),
           fill: vi.fn(),
           strokeRect: vi.fn(),
@@ -320,6 +389,8 @@ describe('tactical-video-exporter', () => {
           clearRect: vi.fn(),
           fillText: vi.fn(),
           strokeText: vi.fn(),
+          drawImage: vi.fn(),
+          measureText: vi.fn(() => ({ width: 10 })),
           setLineDash: vi.fn(),
           fillStyle: '',
           strokeStyle: '',

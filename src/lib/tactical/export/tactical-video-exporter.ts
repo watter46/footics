@@ -84,6 +84,10 @@ export function applySlideTimelineOverrides(
 export async function exportMultiSlideMp4Video(
   options: MultiSlideVideoExportOptions,
 ): Promise<Blob> {
+  if (!options.slides || options.slides.length === 0) {
+    throw new Error('No slides provided for MP4 export');
+  }
+
   const effectiveSlides = applySlideTimelineOverrides(options.slides, {
     transitionDurationMs: options.transitionDurationMs,
     pauseMs: options.pauseMs,
@@ -119,6 +123,10 @@ export async function exportMultiSlideMp4Video(
 export async function exportMultiSlideWebmVideo(
   options: MultiSlideVideoExportOptions,
 ): Promise<Blob> {
+  if (!options.slides || options.slides.length === 0) {
+    throw new Error('No slides provided for WebM export');
+  }
+
   const effectiveSlides = applySlideTimelineOverrides(options.slides, {
     transitionDurationMs: options.transitionDurationMs,
     pauseMs: options.pauseMs,

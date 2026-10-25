@@ -5,7 +5,7 @@
  * Floating action buttons (hover overlay) for SlideCard
  */
 
-import { ChevronLeft, ChevronRight, Copy, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Sliders, Trash2 } from 'lucide-react';
 
 interface SlideCardActionsProps {
   slideId: string;
@@ -16,6 +16,7 @@ interface SlideCardActionsProps {
   onMoveLeft: () => void;
   onMoveRight: () => void;
   onDelete: (id: string) => void;
+  onOpenTransitionSettings?: () => void;
 }
 
 export function SlideCardActions({
@@ -27,9 +28,26 @@ export function SlideCardActions({
   onMoveLeft,
   onMoveRight,
   onDelete,
+  onOpenTransitionSettings,
 }: SlideCardActionsProps) {
   return (
     <div className="absolute -top-2 -right-1 hidden group-hover:flex items-center gap-0.5 bg-[#1e1e24] border border-white/20 rounded-md shadow-lg p-0.5 z-20">
+      {onOpenTransitionSettings && (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenTransitionSettings();
+          }}
+          className="flex items-center justify-center w-4 h-4 rounded text-white/60 hover:text-blue-300 hover:bg-blue-500/20 cursor-pointer"
+          title="Transition settings"
+          aria-label="Open transition settings"
+        >
+          <Sliders size={9} />
+        </button>
+      )}
+
       {canMoveLeft && (
         <button
           type="button"

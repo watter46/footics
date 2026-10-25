@@ -28,9 +28,11 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
+import { Sliders } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { AddSlideButton } from './add-slide-button';
+import { BatchTransitionPopover } from './batch-transition-popover';
 import { PlaybackControls } from './playback-controls';
 import { SlideCard, SlideCardOverlay } from './slide-card';
 
@@ -43,6 +45,10 @@ export function TimelineBar() {
   const reorderSlides = useTacticalUnifiedStore((s) => s.reorderSlides);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [isBatchOpen, setIsBatchOpen] = useState(false);
+  const [batchButtonRef, setBatchButtonRef] = useState<HTMLElement | null>(
+    null,
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -160,20 +166,45 @@ export function TimelineBar() {
       </DndContext>
 
       {/* Right: Quick Action & Shortcut Guides */}
-      <div className="hidden lg:flex items-center gap-3 pl-3 text-[10px] text-white/40 border-l border-white/10 shrink-0">
-        <div className="flex items-center gap-1">
-          <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/70 font-mono text-[9px]">
-            L-Click
-          </span>
-          <span>Add Scene</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/70 font-mono text-[9px]">
-            R-Click
-          </span>
-          <span>Duplicate</span>
+      <div className="flex items-center gap-3 shrink-0">
+        <button
+          type="button"
+          ref={setBatchButtonRef}
+          onClick={() => setIsBatchOpen((prev) => !prev)}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors border cursor-pointer ${
+            isBatchOpen
+              ? 'bg-blue-600/20 border-blue-500/50 text-blue-300'
+              : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/80 hover:text-white'
+          }`}
+          aria-label="一括設定"
+          title="全シーンのトランジションを一括設定"
+        >
+          <Sliders size={13} className="text-blue-400" />
+          <span className="hidden sm:inline">一括設定</span>
+        </button>
+
+        <div className="hidden lg:flex items-center gap-3 pl-3 text-[10px] text-white/40 border-l border-white/10">
+          <div className="flex items-center gap-1">
+            <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/70 font-mono text-[9px]">
+              L-Click
+            </span>
+            <span>Add Scene</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/70 font-mono text-[9px]">
+              R-Click
+            </span>
+            <span>Duplicate</span>
+          </div>
         </div>
       </div>
+
+      {/* Batch Transition Popover */}
+      <BatchTransitionPopover
+        isOpen={isBatchOpen}
+        onClose={() => setIsBatchOpen(false)}
+        referenceElement={batchButtonRef}
+      />
     </footer>
   );
 }

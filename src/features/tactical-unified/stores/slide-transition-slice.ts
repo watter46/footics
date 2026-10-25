@@ -1,11 +1,17 @@
 import gsap from 'gsap';
 import type { StateCreator } from 'zustand';
 import { GSAP_EASE_MAP } from '@/lib/tactical/easing';
-import type { Slide } from '@/lib/types/tactical-unified';
+import type { Easing, Slide } from '@/lib/types/tactical-unified';
 import { recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 
 export type EasingType = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+
+export interface SlideTransitionParams {
+  transitionDurationMs?: number;
+  pauseMs?: number;
+  easing?: Easing;
+}
 
 export function getEasingFunction(easing?: string): (t: number) => number {
   const mapped = (easing && GSAP_EASE_MAP[easing]) || easing || 'power1.inOut';
@@ -29,8 +35,9 @@ export function calculateSlideTransitionProgress(
 export interface SlideTransitionSlice {
   updateSlideTransition: (
     slideId: string,
-    params: Partial<Pick<Slide, 'transitionDurationMs' | 'pauseMs' | 'easing'>>,
+    params: SlideTransitionParams,
   ) => void;
+  updateAllSlideTransitions: (params: SlideTransitionParams) => void;
 }
 
 export const createSlideTransitionSlice: StateCreator<
@@ -46,6 +53,19 @@ export const createSlideTransitionSlice: StateCreator<
         ...sl,
         ...params,
       })),
+      isDirty: true,
+    })),
+  updateAllSlideTransitions: (params) =>
+    set((s) => ({
+      ...recordHistory(s),
+      project: {
+        ...s.project,
+        slides: s.project.slides.map((sl) => ({
+          ...sl,
+          ...params,
+        })),
+        updatedAt: new Date().toISOString(),
+      },
       isDirty: true,
     })),
 });

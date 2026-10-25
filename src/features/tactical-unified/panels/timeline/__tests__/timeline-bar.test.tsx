@@ -12,7 +12,7 @@ describe('TimelineBar Component', () => {
     render(<TimelineBar />);
 
     expect(screen.getByRole('button', { name: /play/i })).toBeDefined();
-    expect(screen.getByText(/Total 1.5s/i)).toBeDefined();
+    expect(screen.getByText(/Total 0.0s/i)).toBeDefined();
     expect(screen.getByText('1')).toBeDefined();
     expect(
       screen.getByRole('button', {
@@ -157,5 +157,93 @@ describe('TimelineBar Component', () => {
     fireEvent.click(playBtn);
     expect(blurSpy).toHaveBeenCalled();
     expect(playBtn.className).toContain('focus:outline-none');
+  });
+
+  describe('全シーン一括設定ポップオーバー (BatchTransitionPopover)', () => {
+    it('「一括設定」ボタン押下でポップオーバーが表示され、閉じるボタンまたは外側クリックで閉じる', () => {
+      render(<TimelineBar />);
+
+      // 一括設定ボタンが存在する
+      const batchBtn = screen.getByRole('button', { name: /一括設定/i });
+      expect(batchBtn).toBeDefined();
+
+      // 初期状態ではポップオーバーは非表示
+      expect(
+        screen.queryByRole('dialog', {
+          name: /全シーン トランジション一括設定/i,
+        }),
+      ).toBeNull();
+
+      // ボタンクリックでポップオーバーが開く
+      fireEvent.click(batchBtn);
+      const dialog = screen.getByRole('dialog', {
+        name: /全シーン トランジション一括設定/i,
+      });
+      expect(dialog).toBeDefined();
+
+      // 閉じるボタンで閉じる
+      const closeBtn = screen.getByRole('button', { name: '閉じる' });
+      fireEvent.click(closeBtn);
+      expect(
+        screen.queryByRole('dialog', {
+          name: /全シーン トランジション一括設定/i,
+        }),
+      ).toBeNull();
+    });
+
+    it('ポップオーバーから移動時間・静止時間・イージングを変更すると全スライドに反映され、1回のUndoで復元される', () => {
+      render(<TimelineBar />);
+
+      // スライドを3枚用意
+      const addBtn = screen.getByRole('button', { name: /add scene/i });
+      fireEvent.click(addBtn);
+      fireEvent.click(addBtn);
+
+      const store = useTacticalUnifiedStore.getState();
+      expect(store.project.slides).toHaveLength(3);
+
+      // 初期値を確認（デフォルト: duration=1000, pause=500, easing='ease-in-out'）
+      const initialSlides = store.project.slides;
+      expect(initialSlides[0].pauseMs).toBe(500);
+      expect(initialSlides[1].transitionDurationMs).toBe(1000);
+
+      // 一括設定ポップオーバーを開く
+      const batchBtn = screen.getByRole('button', { name: /一括設定/i });
+      fireEvent.click(batchBtn);
+
+      // 移動時間を 2.5s に変更
+      const durationSlider = screen.getByLabelText('一括移動時間');
+      fireEvent.change(durationSlider, { target: { value: '2.5' } });
+
+      let currentSlides = useTacticalUnifiedStore.getState().project.slides;
+      expect(currentSlides[0].transitionDurationMs).toBe(2500);
+      expect(currentSlides[1].transitionDurationMs).toBe(2500);
+      expect(currentSlides[2].transitionDurationMs).toBe(2500);
+
+      // 静止時間を 1.2s に変更
+      const pauseSlider = screen.getByLabelText('一括静止時間');
+      fireEvent.change(pauseSlider, { target: { value: '1.2' } });
+
+      currentSlides = useTacticalUnifiedStore.getState().project.slides;
+      expect(currentSlides[0].pauseMs).toBe(1200);
+      expect(currentSlides[1].pauseMs).toBe(1200);
+      expect(currentSlides[2].pauseMs).toBe(1200);
+
+      // イージングを 'linear' に変更
+      const easingSelect = screen.getByLabelText('一括加減速 (イージング)');
+      fireEvent.change(easingSelect, { target: { value: 'linear' } });
+
+      currentSlides = useTacticalUnifiedStore.getState().project.slides;
+      expect(currentSlides[0].easing).toBe('linear');
+      expect(currentSlides[1].easing).toBe('linear');
+      expect(currentSlides[2].easing).toBe('linear');
+
+      // 1回の Undo で直前のイージング変更が復元される
+      useTacticalUnifiedStore.getState().undo();
+      currentSlides = useTacticalUnifiedStore.getState().project.slides;
+      expect(currentSlides[0].easing).toBe('ease-in-out');
+      expect(currentSlides[1].easing).toBe('ease-in-out');
+      expect(currentSlides[2].easing).toBe('ease-in-out');
+    });
   });
 });

@@ -261,9 +261,20 @@ describe('unified-interpolation engine', () => {
       },
     ];
 
-    it('calculates total duration across slides', () => {
+    it('calculates total duration across slides (destination-based)', () => {
+      // 0 or 1 slide should have 0 duration
+      expect(calculateUnifiedTotalDuration([])).toBe(0);
+      expect(calculateUnifiedTotalDuration([mockSlides[0]])).toBe(0);
+
       const total = calculateUnifiedTotalDuration(mockSlides);
-      expect(total).toBe(1500); // 1000ms + 500ms for slide 0
+      expect(total).toBe(1500); // 1000ms + 500ms for destination slide (slide 1)
+
+      // Test with different durations
+      const variedSlides: Slide[] = [
+        { ...mockSlides[0], transitionDurationMs: 2000, pauseMs: 1000 },
+        { ...mockSlides[1], transitionDurationMs: 500, pauseMs: 200 },
+      ];
+      expect(calculateUnifiedTotalDuration(variedSlides)).toBe(700); // Only slide 1 counts: 500 + 200
     });
 
     it('interpolates positions at 50% transition progress (500ms)', () => {

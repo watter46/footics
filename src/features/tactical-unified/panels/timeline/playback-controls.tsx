@@ -7,6 +7,7 @@
 
 import { Pause, Play } from 'lucide-react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 
 export function PlaybackControls() {
   const slides = useTacticalUnifiedStore((s) => s.project.slides);
@@ -17,12 +18,8 @@ export function PlaybackControls() {
   const activeIndex = slides.findIndex((sl) => sl.id === activeSlideId);
   const currentIndex = activeIndex === -1 ? 0 : activeIndex;
 
-  // 計算: 合計再生時間 (Duration + Pause の総和)
-  const totalDurationSec = slides.reduce((acc, sl) => {
-    const dur = (sl.transitionDurationMs ?? 1000) / 1000;
-    const pause = (sl.pauseMs ?? 500) / 1000;
-    return acc + dur + pause;
-  }, 0);
+  // 計算: 合計再生時間 (単一の真実源 calculateUnifiedTotalDuration を参照)
+  const totalDurationSec = calculateUnifiedTotalDuration(slides) / 1000;
 
   return (
     <div className="flex items-center gap-2 shrink-0">
