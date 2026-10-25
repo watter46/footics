@@ -173,6 +173,7 @@ describe('SlideSchema', () => {
       width: 100,
       height: 100,
       enabled: true,
+      visible: false,
       fitTarget: 'pitch',
     });
   });

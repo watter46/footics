@@ -176,7 +176,7 @@ describe('矢印描画 & 制御点', () => {
 });
 
 describe('プレイヤー & テキスト & プレビュー描画', () => {
-  it('3D足元リングマーカーに背番号およびチームカラーが反映されること', () => {
+  it('3D足元リングマーカーで中心に背番号を描画せずチームカラー楕円が描画されること', () => {
     const raw = JSON.stringify({
       arrows: [],
       zones: [],
@@ -200,7 +200,7 @@ describe('プレイヤー & テキスト & プレビュー描画', () => {
     });
     const stageRef = renderWithStore(<PlayerLayer width={W} height={H} />, raw);
     const texts = stageRef.current?.find<Konva.Text>('Text') ?? [];
-    expect(texts.find((t) => t.text() === '20')).toBeDefined();
+    expect(texts.find((t) => t.text() === '20')).toBeUndefined();
 
     const ellipses = stageRef.current?.find<Konva.Ellipse>('Ellipse') ?? [];
     expect(ellipses.find((e) => e.attrs.stroke === '#001489')).toBeDefined();
