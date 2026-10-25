@@ -84,7 +84,7 @@ const executeSave = async (
     teamName: team === 'home' ? (teamName ?? 'Chelsea') : 'Opponent',
     updatedAt: Date.now(),
   });
-  if (photo) await savePlayerPhoto(id, photo, name, season);
+  if (photo) await savePlayerPhoto(id, photo);
 };
 
 interface PhotoUploadProps {
