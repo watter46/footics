@@ -1,8 +1,11 @@
 'use client';
 
-import QRCode from 'qrcode';
 import { useState } from 'react';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { toast } from 'sonner';
+import {
+  selectActiveSlide,
+  useTacticalUnifiedStore,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
 
 interface ShareOptions {
   onError: (msg: string) => void;
@@ -12,7 +15,6 @@ export function useExportShare({ onError }: ShareOptions) {
   const slides = useTacticalUnifiedStore((s) => s.project.slides);
   const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
   const createShareLink = async () => {
     if (slides.length <= 1) {
@@ -21,15 +23,20 @@ export function useExportShare({ onError }: ShareOptions) {
     }
     setIsCreatingShareLink(true);
     setShareUrl(null);
-    setQrCodeDataUrl(null);
 
     try {
-      const { project } = useTacticalUnifiedStore.getState();
+      const state = useTacticalUnifiedStore.getState();
+      const { project } = state;
+      const activeSlide = selectActiveSlide(state);
+
       const payload = {
         version: 1,
         createdAt: Date.now(),
         title: project.title || 'Untitled',
         orientation: project.aspectRatio === '9:16' ? 'vertical' : 'horizontal',
+        aspectRatio: project.aspectRatio,
+        boundaryBox: activeSlide?.boundaryBox,
+        pitchTransform: activeSlide?.pitchTransform,
         teamVisibility: 'both',
         exportFps: 60,
         scenes: project.slides,
@@ -50,13 +57,9 @@ export function useExportShare({ onError }: ShareOptions) {
       const data = await res.json();
       const url = `${window.location.origin}${data.shareUrl}`;
       setShareUrl(url);
-
-      const qrCode = await QRCode.toDataURL(url, {
-        width: 256,
-        margin: 2,
-        color: { dark: '#000000', light: '#ffffff' },
-      });
-      setQrCodeDataUrl(qrCode);
+      toast.success(
+        'iPhone（PWA）に送信しました。iPhoneの /export 画面で確認できます',
+      );
     } catch (err) {
       onError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -66,13 +69,11 @@ export function useExportShare({ onError }: ShareOptions) {
 
   const clearShareLink = () => {
     setShareUrl(null);
-    setQrCodeDataUrl(null);
   };
 
   return {
     isCreatingShareLink,
     shareUrl,
-    qrCodeDataUrl,
     createShareLink,
     clearShareLink,
   };

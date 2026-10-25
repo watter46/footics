@@ -4,7 +4,6 @@ import { ExportBenchmarkOverlay } from './export-benchmark-overlay';
 import { ExportModalBody } from './export-modal-body';
 import { ExportModalFooter } from './export-modal-footer';
 import { ExportModalHeader } from './export-modal-header';
-import { ExportShareOverlay } from './export-share-overlay';
 import { ExportVideoPlayer } from './export-video-player';
 import { type ExportTab, useExportModalState } from './use-export-modal-state';
 
@@ -76,11 +75,6 @@ export function ExportModal() {
           </div>
         )}
 
-        <ExportShareOverlay
-          shareUrl={share.shareUrl}
-          qrCodeDataUrl={share.qrCodeDataUrl}
-          onClose={share.clearShareLink}
-        />
         <ExportBenchmarkOverlay
           isBenchmarking={benchmark.isBenchmarking}
           progress={benchmark.benchmarkProgress}
@@ -104,7 +98,7 @@ export function ExportModal() {
           <ExportModalBody state={state} />
         )}
 
-        {!completedVideo && !benchmark.isBenchmarking && !share.shareUrl && (
+        {!completedVideo && !benchmark.isBenchmarking && (
           <ExportModalFooter state={state} />
         )}
       </div>

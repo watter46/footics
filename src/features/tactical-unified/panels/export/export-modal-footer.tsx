@@ -32,7 +32,7 @@ export function ExportModalFooter({ state }: ExportModalFooterProps) {
               type="button"
               onClick={share.createShareLink}
               disabled={isBusy}
-              title="iPhoneでQRコードを読み取り、HWエンコーダで高速出力"
+              title="iPhone（PWA）にプロジェクトを送信し、iPhone側で高速出力"
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-500/30 bg-emerald-600/10 hover:bg-emerald-600/20 text-xs text-emerald-300 font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {share.isCreatingShareLink ? (
@@ -40,7 +40,7 @@ export function ExportModalFooter({ state }: ExportModalFooterProps) {
               ) : (
                 <Smartphone size={14} />
               )}
-              <span>iPhone Export</span>
+              <span>iPhoneに送信</span>
             </button>
             <button
               type="button"
