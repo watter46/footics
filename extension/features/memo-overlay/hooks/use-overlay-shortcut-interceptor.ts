@@ -31,36 +31,38 @@ export function useOverlayShortcutInterceptor() {
       );
     };
 
+    const targetOrigin =
+      typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : '*';
+
     hotkeys('escape', (e) => {
       e.preventDefault();
-      window.dispatchEvent(
-        new CustomEvent('footics-action', {
-          detail: { action: 'CLOSE_OVERLAY' },
-        }),
+      window.postMessage(
+        { type: 'FOOTICS_ACTION', action: 'CLOSE_OVERLAY' },
+        targetOrigin,
       );
     });
 
     hotkeys('ctrl+enter, command+enter', (e) => {
       e.preventDefault();
-      window.dispatchEvent(
-        new CustomEvent('footics-action', {
-          detail: { action: 'SAVE_MEMO' },
-        }),
+      window.postMessage(
+        { type: 'FOOTICS_ACTION', action: 'SAVE_MEMO' },
+        targetOrigin,
       );
     });
 
     hotkeys('alt+m', (e) => {
       e.preventDefault();
-      window.dispatchEvent(
-        new CustomEvent('footics-action', {
-          detail: { action: 'TOGGLE_DISPLAY_MODE' },
-        }),
+      window.postMessage(
+        { type: 'FOOTICS_ACTION', action: 'TOGGLE_DISPLAY_MODE' },
+        targetOrigin,
       );
     });
 
     hotkeys('alt+s', (e) => {
       e.preventDefault();
-      window.dispatchEvent(new CustomEvent('footics-trigger-capture'));
+      window.postMessage({ type: 'FOOTICS_TRIGGER_CAPTURE' }, targetOrigin);
     });
 
     // 数字キー (1〜4) によるタグクイック選択

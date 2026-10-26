@@ -53,35 +53,66 @@ describe('src/lib/db/queries', () => {
   describe('dispatchRefreshEvent', () => {
     it('dispatches footics-action event on window with matchId', () => {
       const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+      const postMessageSpy = vi
+        .spyOn(window, 'postMessage')
+        .mockImplementation(() => {});
 
       dispatchRefreshEvent('12345');
 
-      expect(dispatchSpy).toHaveBeenCalledTimes(1);
-      const customEvent = dispatchSpy.mock.calls[0][0] as CustomEvent<{
-        action: string;
-        matchId?: string;
-      }>;
-      expect(customEvent.type).toBe('footics-action');
-      expect(customEvent.detail).toEqual({
-        action: SHORTCUT_ACTIONS.REFRESH_DATA,
-        matchId: '12345',
-      });
+      expect(dispatchSpy).not.toHaveBeenCalled();
+      expect(postMessageSpy).toHaveBeenCalledTimes(2);
+      expect(postMessageSpy).toHaveBeenNthCalledWith(
+        1,
+        {
+          type: 'footics-action',
+          detail: {
+            action: SHORTCUT_ACTIONS.REFRESH_DATA,
+            matchId: '12345',
+          },
+        },
+        expect.any(String),
+      );
+      expect(postMessageSpy).toHaveBeenNthCalledWith(
+        2,
+        {
+          type: 'FOOTICS_ACTION',
+          action: SHORTCUT_ACTIONS.REFRESH_DATA,
+          payload: { matchId: '12345' },
+        },
+        expect.any(String),
+      );
     });
 
     it('dispatches footics-action event without matchId when omitted', () => {
       const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+      const postMessageSpy = vi
+        .spyOn(window, 'postMessage')
+        .mockImplementation(() => {});
 
       dispatchRefreshEvent();
 
-      expect(dispatchSpy).toHaveBeenCalledTimes(1);
-      const customEvent = dispatchSpy.mock.calls[0][0] as CustomEvent<{
-        action: string;
-        matchId?: string;
-      }>;
-      expect(customEvent.detail).toEqual({
-        action: SHORTCUT_ACTIONS.REFRESH_DATA,
-        matchId: undefined,
-      });
+      expect(dispatchSpy).not.toHaveBeenCalled();
+      expect(postMessageSpy).toHaveBeenCalledTimes(2);
+      expect(postMessageSpy).toHaveBeenNthCalledWith(
+        1,
+        {
+          type: 'footics-action',
+          detail: {
+            action: SHORTCUT_ACTIONS.REFRESH_DATA,
+            matchId: undefined,
+          },
+        },
+        expect.any(String),
+      );
+      expect(postMessageSpy).toHaveBeenNthCalledWith(
+        2,
+        {
+          type: 'FOOTICS_ACTION',
+          action: SHORTCUT_ACTIONS.REFRESH_DATA,
+          payload: { matchId: undefined },
+        },
+        expect.any(String),
+      );
     });
   });
 

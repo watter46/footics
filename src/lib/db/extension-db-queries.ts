@@ -17,16 +17,26 @@ import { db } from './schema';
 export function dispatchRefreshEvent(matchId?: string | number): void {
   if (typeof window === 'undefined') return;
 
+  const targetOrigin =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : '*';
+
   const detail = {
     action: SHORTCUT_ACTIONS.REFRESH_DATA,
     matchId: matchId ? String(matchId) : undefined,
   };
 
-  // CustomEvent (for same-world listeners)
-  window.dispatchEvent(new CustomEvent('footics-action', { detail }));
-
   // postMessage (for cross-world listeners like Content Script to Main World)
-  window.postMessage({ type: 'footics-action', detail }, '*');
+  window.postMessage({ type: 'footics-action', detail }, targetOrigin);
+  window.postMessage(
+    {
+      type: 'FOOTICS_ACTION',
+      action: SHORTCUT_ACTIONS.REFRESH_DATA,
+      payload: { matchId: matchId ? String(matchId) : undefined },
+    },
+    targetOrigin,
+  );
 }
 
 /**

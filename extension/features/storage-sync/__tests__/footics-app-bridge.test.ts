@@ -7,9 +7,12 @@ import {
   TACTICAL_CAPTURE_WINDOW_MESSAGE,
   type TacticalCapturePayload,
 } from '../../../types/schemas';
+import { syncMatchMemoCacheToStorage } from '../cache-sync';
 import {
   dispatchCaptureToApp,
   isFooticsAppHost,
+  setupFooticsAppBridge,
+  setupMatchSync,
   setupTacticalCaptureBridge,
 } from '../footics-app-bridge';
 
@@ -18,6 +21,20 @@ vi.mock('webext-bridge/content-script', () => ({
   allowWindowMessaging: vi.fn(),
   onMessage: vi.fn(),
   sendMessage: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../cache-sync', () => ({
+  syncMatchMemoCacheToStorage: vi.fn().mockResolvedValue(undefined),
+  gcExpiredMatchMemoCaches: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../offline-queue', () => ({
+  replayOfflineQueue: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../save-queue', () => ({
+  addToSaveQueue: vi.fn().mockResolvedValue(undefined),
+  processSaveQueue: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('footics-app-bridge', () => {
@@ -42,6 +59,10 @@ describe('footics-app-bridge', () => {
             .mockImplementation(async (obj: Record<string, unknown>) => {
               Object.assign(storageMap, obj);
             }),
+        },
+        onChanged: {
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
         },
       },
     };
@@ -216,6 +237,82 @@ describe('footics-app-bridge', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(postMessageSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('setupMatchSync', () => {
+    it('postMessage で FOOTICS_ACTION REFRESH_DATA を受信したときに syncMatchMemoCacheToStorage が呼ばれること', async () => {
+      const cleanup = setupMatchSync();
+
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {
+            type: 'FOOTICS_ACTION',
+            action: 'REFRESH_DATA',
+            payload: { matchId: 'match-999' },
+          },
+        }),
+      );
+
+      await vi.waitFor(() => {
+        expect(syncMatchMemoCacheToStorage).toHaveBeenCalledWith('match-999');
+      });
+
+      cleanup();
+    });
+
+    it('不正な形式の postMessage の場合は syncMatchMemoCacheToStorage が呼ばれないこと', async () => {
+      vi.mocked(syncMatchMemoCacheToStorage).mockClear();
+      const cleanup = setupMatchSync();
+
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {
+            type: 'UNKNOWN_TYPE',
+          },
+        }),
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(syncMatchMemoCacheToStorage).not.toHaveBeenCalled();
+
+      cleanup();
+    });
+  });
+
+  describe('setupFooticsAppBridge keydown interceptor', () => {
+    it('Escape キー押下時に postMessage で CLOSE_OVERLAY が発火し CustomEvent は dispatch されないこと', () => {
+      const postMessageSpy = vi
+        .spyOn(window, 'postMessage')
+        .mockImplementation(() => {});
+      const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+
+      const cleanup = setupFooticsAppBridge();
+
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+
+      expect(postMessageSpy).toHaveBeenCalledWith(
+        {
+          type: 'FOOTICS_ACTION',
+          action: 'CLOSE_OVERLAY',
+        },
+        expect.any(String),
+      );
+      // footics-action CustomEvent は dispatch されない (テスト自身の keydown のみ)
+      const customEvents = dispatchSpy.mock.calls.filter(
+        ([e]) => (e as Event).type === 'footics-action',
+      );
+      expect(customEvents).toHaveLength(0);
+
+      cleanup();
+      postMessageSpy.mockRestore();
+      dispatchSpy.mockRestore();
     });
   });
 });

@@ -3,22 +3,41 @@ import {
   onMessage,
   sendMessage,
 } from 'webext-bridge/content-script';
-import { STORAGE_KEYS } from '~/constants';
+import { z } from 'zod';
+import { STORAGE_KEYS } from '../../constants';
 import {
   SaveQueueSchema,
   TACTICAL_CAPTURE_PULL_WINDOW_MESSAGE,
   TACTICAL_CAPTURE_WINDOW_MESSAGE,
   type TacticalCapturePayload,
   TacticalCapturePayloadSchema,
-} from '~/types/schemas';
-import { isExtensionContextValid } from '~/utils/context';
-import { detectMatchId } from '~/utils/match';
+} from '../../types/schemas';
+import { isExtensionContextValid } from '../../utils/context';
+import { detectMatchId } from '../../utils/match';
 import {
   gcExpiredMatchMemoCaches,
   syncMatchMemoCacheToStorage,
 } from './cache-sync';
 import { replayOfflineQueue } from './offline-queue';
 import { addToSaveQueue, processSaveQueue } from './save-queue';
+
+export const footicsBridgeActionPayloadSchema = z
+  .object({
+    matchId: z.string().optional(),
+  })
+  .passthrough();
+
+export const footicsBridgeMessageSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('FOOTICS_ACTION'),
+    action: z.string(),
+    payload: z.unknown().optional(),
+  }),
+  z.object({
+    type: z.literal('FOOTICS_TRIGGER_CAPTURE'),
+  }),
+]);
+export type FooticsBridgeMessage = z.infer<typeof footicsBridgeMessageSchema>;
 
 /**
  * Footics Web App のホスト名であるかを判定する。
@@ -53,7 +72,7 @@ export function dispatchCaptureToApp(payload: TacticalCapturePayload) {
   );
 }
 
-function setupMatchSync(): () => void {
+export function setupMatchSync(): () => void {
   const syncMatchIdToStorage = async () => {
     if (!isExtensionContextValid()) return;
     const matchId = detectMatchId();
@@ -86,14 +105,26 @@ function setupMatchSync(): () => void {
 
   syncMatchIdToStorage();
 
-  const handleFooticsAction = async (e: Event) => {
-    const customEvent = e as CustomEvent<{ action?: string; matchId?: string }>;
-    const { action, matchId } = customEvent.detail ?? {};
-    if (action === 'REFRESH_DATA' && matchId) {
-      await syncMatchMemoCacheToStorage(matchId);
+  const handleMessage = async (e: MessageEvent) => {
+    const parsed = footicsBridgeMessageSchema.safeParse(e.data);
+    if (!parsed.success) return;
+
+    if (
+      parsed.data.type === 'FOOTICS_ACTION' &&
+      parsed.data.action === 'REFRESH_DATA'
+    ) {
+      const payloadParsed = footicsBridgeActionPayloadSchema.safeParse(
+        parsed.data.payload,
+      );
+      const matchId = payloadParsed.success
+        ? payloadParsed.data.matchId
+        : undefined;
+      if (matchId) {
+        await syncMatchMemoCacheToStorage(matchId);
+      }
     }
   };
-  window.addEventListener('footics-action', handleFooticsAction);
+  window.addEventListener('message', handleMessage);
 
   onMessage('GET_ACTIVE_MATCH_INFO', async () => {
     const matchId = detectMatchId();
@@ -103,7 +134,7 @@ function setupMatchSync(): () => void {
   return () => {
     observer.disconnect();
     document.removeEventListener('DOMContentLoaded', observeDocumentElement);
-    window.removeEventListener('footics-action', handleFooticsAction);
+    window.removeEventListener('message', handleMessage);
   };
 }
 
@@ -233,12 +264,16 @@ export function setupFooticsAppBridge(): () => void {
   const cleanupCapture = setupTacticalCaptureBridge();
   const cleanupSave = setupSaveQueueSync();
 
+  const targetOrigin =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : '*';
+
   const handleKeydown = (e: KeyboardEvent) => {
     if (e.key !== 'Escape') return;
-    window.dispatchEvent(
-      new CustomEvent('footics-action', {
-        detail: { action: 'CLOSE_OVERLAY' },
-      }),
+    window.postMessage(
+      { type: 'FOOTICS_ACTION', action: 'CLOSE_OVERLAY' },
+      targetOrigin,
     );
     sendMessage('CLOSE_SIDEPANEL', {}, 'background').catch(() => {});
   };

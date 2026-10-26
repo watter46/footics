@@ -73,20 +73,45 @@ export function useExternalAction(
   action: () => void,
 ) {
   useEffect(() => {
-    const handler = (e: any) => {
-      if (e.detail?.action === actionName) {
+    const handleMessage = (e: MessageEvent) => {
+      const data = e.data;
+      if (!data || typeof data !== 'object') return;
+      if (data.type === 'FOOTICS_ACTION' && data.action === actionName) {
+        action();
+      } else if (
+        data.type === 'footics-action' &&
+        data.detail?.action === actionName
+      ) {
         action();
       }
     };
 
-    window.addEventListener('footics-action', handler);
+    const handleCustomEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ action?: string }>;
+      if (customEvent.detail?.action === actionName) {
+        action();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    window.addEventListener('footics-action', handleCustomEvent);
+
+    const targetOrigin =
+      typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : '*';
+
     (window as any).__trigger_shortcut = (name: string) => {
-      window.dispatchEvent(
-        new CustomEvent('footics-action', { detail: { action: name } }),
+      window.postMessage(
+        { type: 'FOOTICS_ACTION', action: name },
+        targetOrigin,
       );
     };
 
-    return () => window.removeEventListener('footics-action', handler);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('footics-action', handleCustomEvent);
+    };
   }, [actionName, action]);
 }
 
