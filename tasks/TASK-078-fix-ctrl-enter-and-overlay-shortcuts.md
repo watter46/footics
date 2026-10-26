@@ -1,7 +1,7 @@
 # TASK-078: [Level 2-A] Ctrl+Enter メモ保存および Overlay ショートカット認識の根本修正
 
 ## 1. Metadata
-- **Status**: `IN_REVIEW`
+- **Status**: `DONE`
 - **Created**: 2026-10-26
 - **Target Files**:
   - `src/features/memo-overlay/hooks/useMemoOverlayEventBridge.ts` (MODIFY)
@@ -193,13 +193,13 @@ export function useOverlayShortcutInterceptor() {
 
 ## 5. Reviewer Assessment (コード差分監査)
 - **Reviewer Model**: `pro`
-- **Reviewed At**: 
-- **Decision**: `PENDING`
+- **Reviewed At**: 2026-10-26 18:25
+- **Decision**: `LGTM`
 - **Audit Checklist**:
-  - [ ] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、既存テストの後方互換維持
-  - [ ] 2. ホスト境界 & Store Provider: ホスト依存混入なし、Flicker防止
-  - [ ] 3. 設計負債 & 拡張性: capture方式への刷新、60行制限の遵守
-  - [ ] 4. サイレント破壊 & 既存保護: 既存CustomEvent後方互換維持
-- **Summary**: 
+  - [x] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、既存テストの後方互換維持
+  - [x] 2. ホスト境界 & Store Provider: ホスト依存混入なし、Flicker防止
+  - [x] 3. 設計負債 & 拡張性: capture方式への刷新、60行制限の遵守
+  - [x] 4. サイレント破壊 & 既存保護: 既存CustomEvent後方互換維持
+- **Summary**: postMessageプロトコルへの移行とkeydownキャプチャリスナーへの刷新により、Shadow DOM内からのCtrl+Enter/Escape等のショートカット認識を根本解決。CustomEvent後方互換およびRAII型リスナー解除も完璧に担保。
 
 ## 6. Rejections / Additional Tasks (不可逆修正欄)
