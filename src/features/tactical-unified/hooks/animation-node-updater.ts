@@ -78,13 +78,9 @@ export function updateZoneNodes(
         offsetX + (pt.x / 100) * stageWidth,
         offsetY + (pt.y / 100) * stageHeight,
       ]);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).points(pxPoints);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).fill(fillRGBA);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).stroke(strokeColor);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).strokeWidth(zState.strokeWidth);
     } else if (zState.shapeType === 'rect') {
       const normX = zState.x ?? zState.points[0]?.x ?? 20;
@@ -96,17 +92,11 @@ export function updateZoneNodes(
       const pxW = (normW / 100) * stageWidth;
       const pxH = (normH / 100) * stageHeight;
       zoneShape.position({ x: pxX, y: pxY });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).width(pxW);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).height(pxH);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).rotation(zState.rotation || 0);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).fill(fillRGBA);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).stroke(strokeColor);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).strokeWidth(zState.strokeWidth);
     } else if (zState.shapeType === 'ellipse') {
       const normX = zState.x ?? zState.points[0]?.x ?? 20;
@@ -118,17 +108,11 @@ export function updateZoneNodes(
       const cx = offsetX + (normX / 100) * stageWidth + pxW / 2;
       const cy = offsetY + (normY / 100) * stageHeight + pxH / 2;
       zoneShape.position({ x: cx, y: cy });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).radiusX(pxW / 2);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).radiusY(pxH / 2);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).rotation(zState.rotation || 0);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).fill(fillRGBA);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).stroke(strokeColor);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (zoneShape as any).strokeWidth(zState.strokeWidth);
     }
   }

@@ -260,7 +260,6 @@ export function matchPlayersToFormationPositions<
 /**
  * 選手オブジェクトを 縦グループ (GK->DF->MF->FW->OTHER) および 横方向 (Left->Center->Right) で2Dソートする
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function sortPlayersBy2DPositionGroup<T extends { position?: string }>(
   players: T[],
 ): T[] {
@@ -355,7 +354,6 @@ export function parsePlayerIdFromMarkerId(id: string): number | null {
  * 選手オブジェクトから背番号を取得する
  * 各種データソース(Club, National, Store)の差異を吸収する
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getShirtNo(player: any): string {
   if (!player) return '';
   return (

@@ -14,8 +14,6 @@ export default defineContentScript({
   runAt: 'document_start',
   world: 'MAIN',
   main() {
-    console.log('💎 [Footics Main Bridge] Loaded in Main World');
-
     // webext-bridge の名前空間を登録
     setNamespace('footics-app');
 
@@ -24,11 +22,6 @@ export default defineContentScript({
     window.addEventListener('footics-save-request', (e: any) => {
       const payload = e.detail;
       if (!payload) return;
-
-      console.log(
-        '[MainBridge] Catching save request, relaying to isolated:',
-        payload,
-      );
 
       sendMessage('SAVE_MEMO_RELAY', payload, 'content-script').catch(
         (err: unknown) => {

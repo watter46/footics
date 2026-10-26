@@ -13,12 +13,6 @@ export class CaptureCommand implements CommandHandler {
       return;
     }
 
-    console.log(
-      '📸 [Footics BG] Sending TRIGGER_CAPTURE to active tab:',
-      targetTab.id,
-      targetTab.url,
-    );
-
     let captureHandledByContentScript = false;
     try {
       await ctx.sendBridgeMessage(
@@ -54,18 +48,12 @@ export class CaptureCommand implements CommandHandler {
     // 自律フォールバック: Content Script 未応答時でも確実にキャプチャ実行
     if (!captureHandledByContentScript) {
       try {
-        console.log(
-          '⚡ [Footics BG] Executing direct captureVisibleTab fallback...',
-        );
         const dataUrl = await ctx.captureTab({
           format: 'jpeg',
           quality: 98,
         });
         if (dataUrl) {
           await ctx.processCanvas(dataUrl, targetTab);
-          console.log(
-            '✅ [Footics BG] Autonomous direct capture & Quick Canvas opened!',
-          );
         }
       } catch (bgCaptureErr) {
         console.error(

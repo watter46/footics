@@ -93,7 +93,6 @@ export const PlayerPhoto: React.FC<PlayerPhotoProps> = ({
       onMouseLeave={() => setIsHovered(false)}
     >
       {displayUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={displayUrl}
           alt={name}

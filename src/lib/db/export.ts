@@ -22,11 +22,6 @@ export async function importMemosBatch(
     if (customEvents.length > 0) await db.custom_events.bulkPut(customEvents);
     if (matchMemos.length > 0) await db.match_memos.bulkPut(matchMemos);
   });
-  console.log(
-    `[footics] Batch memo import completed (${
-      customEvents.length + matchMemos.length
-    } items)`,
-  );
 
   // 通知
   if (matchIds.size > 0) {

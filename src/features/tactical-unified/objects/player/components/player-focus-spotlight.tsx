@@ -14,7 +14,6 @@ export interface PlayerFocusSpotlightProps {
   focus: NonNullable<Player['focus']>;
   radius: number;
   isRing?: boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   spotlightGroupRef?: React.Ref<any>;
   isSelected?: boolean;
   onSelectOption?: () => void;

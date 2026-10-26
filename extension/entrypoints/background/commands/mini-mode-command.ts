@@ -13,10 +13,6 @@ export class MiniModeCommand implements CommandHandler {
       return;
     }
 
-    console.log(
-      '📌 [Footics BG] Sending TOGGLE_MINI_MODE to active tab:',
-      targetTab.id,
-    );
     try {
       await ctx.sendBridgeMessage(
         'TOGGLE_MINI_MODE',

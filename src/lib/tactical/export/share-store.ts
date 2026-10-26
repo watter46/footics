@@ -29,7 +29,6 @@ async function getKVBinding(): Promise<KVNamespaceLike | null> {
   // 1. 同期呼び出し (本番 Cloudflare Worker 環境)
   try {
     const ctx = getCloudflareContext();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const kv = (ctx?.env as any)?.TACTICAL_SHARE_KV;
     if (kv && typeof kv.put === 'function') {
       return kv as KVNamespaceLike;
@@ -41,7 +40,6 @@ async function getKVBinding(): Promise<KVNamespaceLike | null> {
   // 2. 非同期呼び出し (dev / proxy 環境)
   try {
     const ctx = await getCloudflareContext({ async: true });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const kv = (ctx?.env as any)?.TACTICAL_SHARE_KV;
     if (kv && typeof kv.put === 'function') {
       return kv as KVNamespaceLike;
@@ -52,7 +50,6 @@ async function getKVBinding(): Promise<KVNamespaceLike | null> {
 
   // 3. globalThis / process.env フォールバック
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const globalKv =
       (globalThis as any).process?.env?.TACTICAL_SHARE_KV ||
       (globalThis as any).TACTICAL_SHARE_KV ||

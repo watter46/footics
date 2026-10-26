@@ -187,7 +187,6 @@ export async function importAllDataZip(file: File | Blob): Promise<{
       await importMemosBatch(customEvents, matchMemos);
 
       memoCount = customEvents.length + matchMemos.length;
-      console.log(`[footics] Memos restored: ${memoCount} items`);
     }
   } catch (err) {
     console.error('[footics] Failed to restore memos:', err);
@@ -211,7 +210,6 @@ export async function importAllDataZip(file: File | Blob): Promise<{
 
         await putMatchesBatch(normalizedMatches);
         matchCount = normalizedMatches.length;
-        console.log(`[footics] Matches restored: ${matchCount} matches`);
 
         // 試合データからシーズンを導出してチェルシー選手を PlayerMaster へ同期
         for (const m of normalizedMatches) {
@@ -325,9 +323,6 @@ export async function importAllDataZip(file: File | Blob): Promise<{
           });
           playerCount++;
         }
-        console.log(
-          `[footics] Players restored: ${playerCount} players (${photoCount} photos)`,
-        );
       }
     }
   } catch (err) {
@@ -348,9 +343,6 @@ export async function importAllDataZip(file: File | Blob): Promise<{
           match_id: String(e.match_id || ''),
         }));
         await putMatchEventsBatch(normalizedEvents);
-        console.log(
-          `[footics] Events restored: ${normalizedEvents.length} events`,
-        );
       }
     }
   } catch (err) {

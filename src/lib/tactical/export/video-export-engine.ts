@@ -256,8 +256,8 @@ export async function getSupportedH264EncoderConfig(
           if (support.supported && support.config) {
             return support.config;
           }
-        } catch {
-          // Continue to next combination
+        } catch (err) {
+          console.warn('[VideoExportEngine] H264 config check error:', err);
         }
       }
     }
@@ -326,8 +326,8 @@ export async function getSupportedVP9EncoderConfig(
           if (support.supported && support.config) {
             return support.config;
           }
-        } catch {
-          // Continue to next combination
+        } catch (err) {
+          console.warn('[VideoExportEngine] VP9 config check error:', err);
         }
       }
     }
@@ -392,7 +392,11 @@ export async function exportVideoWithMediabunny(
         canvas = offscreen;
         ctx = offCtx;
       }
-    } catch {
+    } catch (err) {
+      console.warn(
+        '[VideoExportEngine] OffscreenCanvas 2d context init failed:',
+        err,
+      );
       ctx = null;
     }
   }
@@ -850,11 +854,6 @@ export async function exportVideoWithMediaRecorder(
 export async function exportTacticalVideo(
   options: VideoExportOptions,
 ): Promise<Blob> {
-  console.log(
-    `%c[Footics Video Export] Starting video export (Mediabunny): format=${options.format.toUpperCase()}, fps=${options.fps}, scale=${options.scale ?? 2}, duration=${options.totalDurationMs}ms`,
-    'color: #6366f1; font-weight: bold;',
-  );
-
   try {
     return await exportVideoWithMediabunny(options);
   } catch (err) {

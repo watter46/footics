@@ -66,17 +66,11 @@ export interface PlayerDragContext {
 }
 
 export interface OnionSkinRefs {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostGroup: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostLine: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostMarkerGroup: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostCircle: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostText: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ghostLabel: any;
 }
 

@@ -12,8 +12,6 @@ export default defineContentScript({
   runAt: 'document_start',
 
   async main(ctx) {
-    console.log('💎 [Footics] Overlay Content Script Injected');
-
     // ── キャプチャパイプラインのハンドラ（即時同期登録） ──
     const handleCaptureTrigger = () => {
       CaptureService.executeCapturePipeline();
@@ -72,10 +70,6 @@ export default defineContentScript({
         const handleFullscreenChange = () => {
           const targetHost = document.fullscreenElement || document.body;
           if (ui.shadowHost && ui.shadowHost.parentElement !== targetHost) {
-            console.log(
-              '[Footics Overlay] Relocating overlay shadowHost to fullscreen target:',
-              targetHost,
-            );
             targetHost.appendChild(ui.shadowHost);
           }
         };

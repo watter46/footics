@@ -13,7 +13,6 @@ export interface PlayerMarkerRingProps {
   radius: number;
   numScale: number;
   isSelected: boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   shapeRef?: React.Ref<any>;
 }
 

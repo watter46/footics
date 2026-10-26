@@ -17,7 +17,6 @@ import { db } from './schema';
 export function dispatchRefreshEvent(matchId?: string | number): void {
   if (typeof window === 'undefined') return;
 
-  console.log('[db] Dispatching REFRESH_DATA event, matchId:', matchId);
   const detail = {
     action: SHORTCUT_ACTIONS.REFRESH_DATA,
     matchId: matchId ? String(matchId) : undefined,

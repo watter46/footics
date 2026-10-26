@@ -17,8 +17,6 @@ import type { BackgroundCommandContext } from './background/commands/types';
 
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Main background entrypoint
 export default defineBackground(() => {
-  console.log('Footics Background Script loaded');
-
   // Action クリック時にサイドパネルではなく拡張機能アイコンのアクション（Dashboardオープン）を優先
   browser.sidePanel
     ?.setPanelBehavior?.({ openPanelOnActionClick: false })
@@ -60,23 +58,10 @@ export default defineBackground(() => {
   // Footics 本体タブを特定するヘルパー
   const findFooticsTab = async () => {
     const allTabs = await browser.tabs.query({});
-    console.log(
-      '[Footics BG] Searching Footics tab among',
-      allTabs.length,
-      'tabs',
-    );
     const tab = allTabs.find((t) =>
       FOOTICS_APP_URLS.some((url) => t.url?.includes(url)),
     );
-    if (tab) {
-      console.log(
-        '[Footics BG] Found Footics tab:',
-        tab.url,
-        '(ID:',
-        tab.id,
-        ')',
-      );
-    } else {
+    if (!tab) {
       console.warn(
         '[Footics BG] Footics tab not found. Checked URLs:',
         FOOTICS_APP_URLS,
@@ -123,15 +108,11 @@ export default defineBackground(() => {
       storage: browser.storage.local,
       captureTab: (options) => browser.tabs.captureVisibleTab(options),
       processCanvas: async (dataUrl, targetTab) => {
-        const res = await processAndOpenCanvas({
+        await processAndOpenCanvas({
           imageDataUrl: dataUrl,
           videoUrl: targetTab?.url,
           videoTitle: targetTab?.title,
         });
-        console.log(
-          '✅ [Footics BG] Autonomous direct capture & Quick Canvas opened!',
-          res.id,
-        );
       },
     };
 
@@ -241,6 +222,8 @@ export default defineBackground(() => {
       if (tab.url) {
         notifyTabForOfflineReplay(activeInfo.tabId, tab.url);
       }
-    } catch {}
+    } catch (err) {
+      console.warn('[Footics BG] Failed to get active tab info:', err);
+    }
   });
 });

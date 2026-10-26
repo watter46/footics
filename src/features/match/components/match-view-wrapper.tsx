@@ -32,7 +32,6 @@ export function MatchViewWrapper({ matchId }: Props) {
       setKeyValue('lastActiveMatchId', matchId);
       // DOM 経由で拡張機能 (Isolated World) に受け渡す
       document.documentElement.dataset.matchId = matchId;
-      console.log('[MatchViewWrapper] matchId set to dataset:', matchId);
     }
     return () => {
       delete document.documentElement.dataset.matchId;
