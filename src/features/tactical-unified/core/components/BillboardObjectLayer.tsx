@@ -3,7 +3,7 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { ReactNode } from 'react';
-import { useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { Group, Layer } from 'react-konva';
 import type { Player, TextAnnotation } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
@@ -38,7 +38,7 @@ export interface BillboardObjectLayerProps {
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
-export function BillboardObjectLayer({
+export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   pitchRect,
   camera = DEFAULT_CAMERA_STATE,
   editingTextId,
@@ -240,14 +240,14 @@ export function BillboardObjectLayer({
   );
 
   // 深さソート対象アイテム群の構築
+  const billboardItems = useMemo(
+    () => buildBillboardItems(visibleMarkers, ball, showBall, texts),
+    [visibleMarkers, ball, showBall, texts],
+  );
+
   const sortedItems = useMemo(
-    () =>
-      sortBillboardItemsByDepth(
-        buildBillboardItems(visibleMarkers, ball, showBall, texts),
-        pitchRect,
-        camera,
-      ),
-    [visibleMarkers, ball, showBall, texts, pitchRect, camera],
+    () => sortBillboardItemsByDepth(billboardItems, pitchRect, camera),
+    [billboardItems, pitchRect, camera],
   );
 
   return (
@@ -288,4 +288,4 @@ export function BillboardObjectLayer({
       </Group>
     </Layer>
   );
-}
+});

@@ -19,6 +19,7 @@ globs:
 1. **派生状態の `useState` + `useEffect` 同期禁止**: Props や既存の State から計算できる値を `useState` に持ち、`useEffect` で更新することを禁止します。レンダリング中に直接計算してください。
 2. **Props 変更時の State リセットに `useEffect` を使うことの禁止**: 親から渡される ID や対象が変わったときに内部 State をリセットしたい場合は、`useEffect` ではなく親側で `<ChildComponent key={targetId} />` の `key` 属性を渡して再マウントさせてください。
 3. **マウント判定ハック（`setIsMounted(true)`）の禁止**: SSR ハイドレーション回避のために `useEffect(() => setIsMounted(true), [])` を書くことを禁止します。クライアント専用コンポーネント（Konva Stage 等）は `next/dynamic`（`{ ssr: false }`）で読み込んでください。
+4. **依存配列のない `useEffect`（毎レンダー実行）の禁止**: 第二引数（依存配列）を省略した `useEffect(() => { ... })` は、State/Props 変更のたびに実行されるため原則禁止です。必要な Ref や Rect などの依存配列を明示的に指定してください。
 
 ```tsx
 // ❌ 禁止1: Props を State にコピーして useEffect で同期する
@@ -104,3 +105,18 @@ export default async function SharePage({ params }: SharePageProps) {
   return <SharedExportView shareId={shareId} />;
 }
 ```
+
+---
+
+## 4. 高頻度イベント再描画の局所化・メモ化 (High-Frequency Events & Memoization)
+
+ドラッグ操作、マウス移動（ポインタ追従）、作図プレビューなど、**高頻度（60fps）で発生するインタラクションイベント** におけるパフォーマンス規約です。
+
+### 判定基準
+1. **静的・無関係レイヤーの `React.memo` 化による巻き添え再描画の遮断**:
+   - ドラッグ操作や選択枠（Rubber Band）の更新、作図プレビューなど親コンポーネントが高頻度に再レンダリングされる際、静的な背景（ピッチ枠・ゾーン等）や無関係なレイヤー（配置済みマーカーレイヤー等）が巻き添えで再描画されないよう、レイヤーコンポーネントは `React.memo`（または `memo`）でラップして分離してください。
+2. **依存配列のない `useEffect`（毎レンダー実行）の禁止**:
+   - 依存配列を省略した `useEffect` は毎レンダーで副作用が走り、高頻度イベント時に著しいボトルネックとなるため禁止します。必ず適切な依存値（Ref, Rect 等）を配列で指定してください。
+3. **計算コストの高い派生処理の `useMemo` 保護**:
+   - オブジェクトの描画順ソート（Y座標ソート）や重い幾何計算などは、依存値（アイテム一覧やカメラ状態）が変わらない限り `useMemo` でキャッシュし、毎レンダーでの再計算を回避してください。
+

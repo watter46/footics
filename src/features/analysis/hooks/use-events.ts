@@ -1,6 +1,7 @@
 'use client';
 
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { getCustomEventsByMatch, getEventsByMatch } from '@/lib/db';
 import { eventKeys } from '@/lib/query-keys';
 import { filterEvents } from '@/services/event-filter';
@@ -16,13 +17,17 @@ export function useEvents(
   matchId: string,
   filters: FilterState,
 ): UseEventsResult {
-  const { data, isPlaceholderData, isLoading } = useQuery({
-    queryKey: eventKeys.filtered({ ...filters, matchId }),
+  const {
+    data: rawEvents = [],
+    isPlaceholderData,
+    isLoading,
+  } = useQuery({
+    queryKey: eventKeys.byMatch(matchId),
     queryFn: async () => {
-      if (!matchId) return { events: [], totalCount: 0 };
+      if (!matchId) return [];
 
       // Dexie から生データを取得
-      const rawEvents = await getEventsByMatch(matchId);
+      const events = await getEventsByMatch(matchId);
 
       // カスタムイベントの統合
       const customEvents = await getCustomEventsByMatch(matchId);
@@ -52,27 +57,24 @@ export function useEvents(
         custom_memo: c.memo,
       }));
 
-      const allEvents = [...rawEvents, ...customEventRows].sort((a, b) => {
+      return [...events, ...customEventRows].sort((a, b) => {
         if (a.period !== b.period) return a.period - b.period;
         if (a.minute !== b.minute) return a.minute - b.minute;
         return a.second - b.second;
       });
-
-      // オンメモリフィルタリングの実行
-      const filteredEvents = filterEvents(allEvents, filters);
-
-      return {
-        events: filteredEvents,
-        totalCount: filteredEvents.length,
-      };
     },
     enabled: !!matchId,
     placeholderData: keepPreviousData,
   });
 
+  const filteredEvents = useMemo(
+    () => filterEvents(rawEvents, filters),
+    [rawEvents, filters],
+  );
+
   return {
-    events: data?.events ?? [],
-    totalCount: data?.totalCount ?? 0,
+    events: filteredEvents,
+    totalCount: filteredEvents.length,
     isQuerying: isLoading || isPlaceholderData,
   };
 }

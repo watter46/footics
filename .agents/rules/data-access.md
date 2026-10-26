@@ -38,7 +38,10 @@ globs:
    - 必ず `src/lib/query-keys.ts` にキー生成関数を定義して参照してください（キー不一致による Invalidation 漏れを防止）。
 3. **Invalidation の `useMutation` 内カプセル化**:
    - データ更新後の `queryClient.invalidateQueries` は、UI コンポーネントの `onClick` 内に直書きせず、必ずカスタムフック内の `useMutation({ onSuccess })` に閉じ込めてください。
-4. **複数テーブル更新のトランザクション化**:
+4. **生データキャッシュとオンメモリ導出の分離 (Raw Cache & In-Memory Derivation)**:
+   - TanStack Query のキャッシュキー（`queryKey`）には動的な UI フィルタ条件を含めず、`matchId` などの親リソース単位の生データ取得（例: `eventKeys.byMatch(matchId)`）に留めてください。
+   - フィルタリング、集約、ソートなどの加工処理は、コンポーネントやカスタムフック内の `useMemo` によるオンメモリ処理とし、UI フィルタ変更時の無駄な Dexie/IndexedDB 再クエリを根絶してください。
+5. **複数テーブル更新のトランザクション化**:
    - 関連する複数のテーブルを更新する処理は、必ず `db.transaction('rw', [...], async () => { ... })` 内にまとめ、部分失敗によるデータ破損を防止してください。
 
 ```tsx

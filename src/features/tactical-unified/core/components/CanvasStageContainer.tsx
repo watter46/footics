@@ -3,7 +3,13 @@
 import { useDroppable } from '@dnd-kit/core';
 import type Konva from 'konva';
 import type React from 'react';
-import { useEffect, useImperativeHandle, useRef, useState } from 'react';
+import {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Stage } from 'react-konva';
 import { ASPECT_RATIOS } from '@/lib/types/tactical-unified';
 import { useCanvasExport } from '../hooks/use-canvas-export';
@@ -72,11 +78,15 @@ export function CanvasStageContainer({
     (containerSize.height > 0 ? containerSize.width / containerSize.height : 1);
 
   const paddingRatio = useCanvasStore((s) => s.capabilities?.paddingRatio ?? 0);
-  const vRect = calculateVirtualCanvasRect(
-    containerSize,
-    effectiveAspect,
-    undefined,
-    paddingRatio,
+  const vRect = useMemo(
+    () =>
+      calculateVirtualCanvasRect(
+        containerSize,
+        effectiveAspect,
+        undefined,
+        paddingRatio,
+      ),
+    [containerSize, effectiveAspect, paddingRatio],
   );
 
   useEffect(() => {
@@ -145,7 +155,7 @@ export function CanvasStageContainer({
   useEffect(() => {
     nodesRegistryRef.current.stage = stageRef.current;
     nodesRegistryRef.current.pitchRect = vRect;
-  });
+  }, [nodesRegistryRef, vRect]);
 
   const editingText = editingTextId
     ? (texts.find((t) => t.id === editingTextId) ?? null)

@@ -4,7 +4,7 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import { Group, Layer, Rect } from 'react-konva';
 import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
 import { useCanvasStore } from '../hooks/use-canvas-store';
@@ -28,7 +28,7 @@ export interface PitchGroundLayerProps {
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
-export function PitchGroundLayer({
+export const PitchGroundLayer = memo(function PitchGroundLayer({
   stageSize,
   pitchRect,
   activePolygonId,
@@ -68,7 +68,7 @@ export function PitchGroundLayer({
     if (nodesRegistryRef?.current) {
       nodesRegistryRef.current.connectLineNodeMap = connectLineNodesRef.current;
     }
-  });
+  }, [nodesRegistryRef]);
 
   const makeSelectHandler = useCallback(
     (id: string, kind: 'arrow' | 'zone') => {
@@ -179,4 +179,4 @@ export function PitchGroundLayer({
       </Group>
     </Layer>
   );
-}
+});

@@ -99,4 +99,44 @@ Web アプリ（Footics 本体戦術盤）と Chrome Extension（動画スクシ
 - 旧右パネルの `Properties / Inspector` タブは完全廃止し、UIの二重管理を排除します。
 - Web版（2Dマーカー）と Extension版（3Dマーカー）は、選手に名前が設定されている場合はどちらもマーカーの下部に名前ラベルを表示し、オブジェクトオプションの「選手情報変更ボタン」からミニフォームで変更できる共通設計とします。
 
+## 9. レイヤー単位の再描画遮断（memo化）
+
+Stage コンテナ（`CanvasStageContainer` 等）でドラッグ選択枠の更新やプレビュー描画など高頻度な State 更新が発生した際、影響のない他の Konva Layer まで毎フレーム再描画されるとパフォーマンスが劇的に低下します。
+
+Konva Layer コンポーネント（`PitchGroundLayer`, `BillboardObjectLayer` 等）は必ず `React.memo` でラップし、Props が変更されない限り Konva ノードツリーの不要な再評価を遮断してください。
+
+```tsx
+import { memo } from 'react';
+import { Layer } from 'react-konva';
+
+export const PitchGroundLayer = memo(function PitchGroundLayer({
+  aspectRatio,
+  is3dPitch,
+  // ...
+}: PitchGroundLayerProps) {
+  return (
+    <Layer listening={false}>
+      {/* 静的なピッチ描画 */}
+    </Layer>
+  );
+});
+
+export const BillboardObjectLayer = memo(function BillboardObjectLayer({
+  items,
+  // ...
+}: BillboardObjectLayerProps) {
+  // アイテムのソートなどは useMemo で保護
+  const sortedItems = useMemo(() => sortItems(items), [items]);
+
+  return (
+    <Layer>
+      {/* オブジェクト群描画 */}
+    </Layer>
+  );
+});
+```
+
+また、レイヤー内の `useEffect` で Konva ノードや Canvas コンテキストを操作する場合は、依存配列の省略（毎レンダー実行）を厳禁とし、対象 Ref や Rect のみを依存配列に指定してください。
+
+
 

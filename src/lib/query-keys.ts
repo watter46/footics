@@ -21,6 +21,8 @@ export const customEventKeys = {
 
 export const eventKeys = {
   all: ['events'] as const,
+  byMatch: (matchId: string) =>
+    [...eventKeys.all, 'by-match', matchId] as const,
   filtered: (filters: FilterState | Record<string, unknown>) =>
     [...eventKeys.all, 'filtered', filters] as const,
 };

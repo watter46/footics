@@ -753,3 +753,14 @@ describe('HtmlHudOverlay', () => {
     expect(() => getByTestId('connecting-guidance-badge')).toThrow();
   });
 });
+
+describe('レイヤーの memo 化による再描画最適化', () => {
+  it('PitchGroundLayer と BillboardObjectLayer が memo 化されていること', () => {
+    expect((PitchGroundLayer as unknown as { $$typeof: symbol }).$$typeof).toBe(
+      Symbol.for('react.memo'),
+    );
+    expect(
+      (BillboardObjectLayer as unknown as { $$typeof: symbol }).$$typeof,
+    ).toBe(Symbol.for('react.memo'));
+  });
+});
