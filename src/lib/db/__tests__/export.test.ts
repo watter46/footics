@@ -37,7 +37,9 @@ describe('src/lib/db/export', () => {
         },
       ];
 
-      const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+      const postMessageSpy = vi
+        .spyOn(window, 'postMessage')
+        .mockImplementation(() => {});
 
       await importMemosBatch(customEvents, matchMemos);
 
@@ -47,16 +49,21 @@ describe('src/lib/db/export', () => {
       expect(dbCustomEvents).toHaveLength(1);
       expect(dbMatchMemos).toHaveLength(1);
 
-      const footicsActions = dispatchSpy.mock.calls
-        .map((call) => call[0] as unknown as globalThis.CustomEvent)
-        .filter((event) => event.type === 'footics-action');
+      const footicsActions = postMessageSpy.mock.calls
+        .map((call) => call[0] as { type?: string })
+        .filter((event) => event && event.type === 'footics-action');
       expect(footicsActions.length).toBeGreaterThanOrEqual(1);
     });
 
     it('handles empty batch import gracefully', async () => {
-      const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+      const postMessageSpy = vi
+        .spyOn(window, 'postMessage')
+        .mockImplementation(() => {});
       await importMemosBatch([], []);
-      expect(dispatchSpy).toHaveBeenCalledTimes(1);
+      const footicsActions = postMessageSpy.mock.calls
+        .map((call) => call[0] as { type?: string })
+        .filter((event) => event && event.type === 'footics-action');
+      expect(footicsActions.length).toBeGreaterThanOrEqual(1);
     });
   });
 

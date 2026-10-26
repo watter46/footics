@@ -1,5 +1,14 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
-import type { EventRow, Match, Player } from '@/types';
+import type { BasePlayer, EventRow, Match, Player } from '@/types';
+import {
+  findPhotoBlob,
+  getPhotoExtension,
+  isChelseaTeam,
+  isValidPhotoBlob,
+  readInputAsUint8Array,
+  toUint8Array,
+  uint8ArrayToBlob,
+} from './data-management-helpers';
 import {
   generatePlayerMasterId,
   getAllCustomEvents,
@@ -16,39 +25,6 @@ import type { PlayerMaster } from './db/schema';
 import { getSeasonFromDate } from './tactical/season-utils';
 
 const BACKUP_VERSION = 5;
-
-function isChelseaTeam(name?: string): boolean {
-  if (!name) return false;
-  return name.toLowerCase().includes('chelsea');
-}
-
-/**
- * 拡張子の判定
- */
-function getPhotoExtension(blob?: any): string {
-  if (!blob) return 'png';
-  const type = typeof blob.type === 'string' ? blob.type : '';
-  if (type.includes('jpeg') || type.includes('jpg')) return 'jpg';
-  if (type.includes('webp')) return 'webp';
-  if (type.includes('svg')) return 'svg';
-  return 'png';
-}
-
-function getMimeTypeFromFileName(fileName: string): string {
-  if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg'))
-    return 'image/jpeg';
-  if (fileName.endsWith('.webp')) return 'image/webp';
-  if (fileName.endsWith('.svg')) return 'image/svg+xml';
-  return 'image/png';
-}
-
-function isValidPhotoBlob(blob: unknown): blob is Blob {
-  if (!blob) return false;
-  if (typeof blob !== 'object') return false;
-  const b = blob as any;
-  if (typeof b.size === 'number' && b.size === 0) return false;
-  return true;
-}
 
 /**
  * 全データを ZIP 形式でエクスポートする
@@ -83,7 +59,6 @@ export async function exportAllDataZip(): Promise<void> {
   files['matches.json'] = strToU8(JSON.stringify(matches, null, 2));
   files['events.json'] = strToU8(JSON.stringify(allEvents, null, 2));
 
-  // 選手マスターから画像を分離して photos/ フォルダに格納
   let photoCount = 0;
   const sanitizedPlayers = await Promise.all(
     playerMasters.map(async (p) => {
@@ -96,14 +71,9 @@ export async function exportAllDataZip(): Promise<void> {
         photoFileName = `${safeId}.${ext}`;
 
         try {
-          if (typeof (photoBlob as any).arrayBuffer === 'function') {
-            const buffer = await (photoBlob as any).arrayBuffer();
-            files[`photos/${photoFileName}`] = new Uint8Array(buffer);
-            photoCount++;
-          } else if (photoBlob instanceof Uint8Array) {
-            files[`photos/${photoFileName}`] = photoBlob;
-            photoCount++;
-          }
+          const buffer = await toUint8Array(photoBlob);
+          files[`photos/${photoFileName}`] = buffer;
+          photoCount++;
         } catch (err) {
           console.warn(`[footics] Failed to serialize photo for ${p.id}:`, err);
         }
@@ -135,9 +105,7 @@ export async function exportAllDataZip(): Promise<void> {
 
   // 4. Generate & Download
   const zipped = zipSync(files, { level: 6 });
-  const blob = new Blob([zipped as unknown as BlobPart], {
-    type: 'application/zip',
-  });
+  const blob = uint8ArrayToBlob(zipped, 'application/zip');
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   const dateStr = new Date().toISOString().split('T')[0];
@@ -158,13 +126,8 @@ export async function importAllDataZip(file: File | Blob): Promise<{
   playerCount: number;
   photoCount: number;
 }> {
-  const fileData =
-    typeof (file as any).arrayBuffer === 'function'
-      ? await (file as any).arrayBuffer()
-      : file;
-  const unzipped = unzipSync(
-    fileData instanceof Uint8Array ? fileData : new Uint8Array(fileData),
-  );
+  const fileBytes = await readInputAsUint8Array(file);
+  const unzipped = unzipSync(fileBytes);
 
   let matchCount = 0;
   let memoCount = 0;
@@ -177,15 +140,14 @@ export async function importAllDataZip(file: File | Blob): Promise<{
     if (memosBytes) {
       const memosText = strFromU8(memosBytes);
       const memosData = JSON.parse(memosText);
-      const customEvents = Array.isArray(memosData.custom_events)
+      const customEvents = Array.isArray(memosData?.custom_events)
         ? memosData.custom_events
         : [];
-      const matchMemos = Array.isArray(memosData.match_memos)
+      const matchMemos = Array.isArray(memosData?.match_memos)
         ? memosData.match_memos
         : [];
 
       await importMemosBatch(customEvents, matchMemos);
-
       memoCount = customEvents.length + matchMemos.length;
     }
   } catch (err) {
@@ -202,7 +164,6 @@ export async function importAllDataZip(file: File | Blob): Promise<{
       >;
 
       if (Array.isArray(rawMatches) && rawMatches.length > 0) {
-        // Normalize: ensure every record has a string `id` field
         const normalizedMatches: Match[] = rawMatches.map((m) => ({
           ...m,
           id: String(m.id ?? m.matchId ?? ''),
@@ -211,21 +172,27 @@ export async function importAllDataZip(file: File | Blob): Promise<{
         await putMatchesBatch(normalizedMatches);
         matchCount = normalizedMatches.length;
 
-        // 試合データからシーズンを導出してチェルシー選手を PlayerMaster へ同期
         for (const m of normalizedMatches) {
           const season = getSeasonFromDate(m.date);
           const homeTeamName = m.homeTeam?.name || m.teams?.home?.name;
           const awayTeamName = m.awayTeam?.name || m.teams?.away?.name;
 
-          const syncPlayers = async (players?: Player[], team = 'Chelsea') => {
+          const syncPlayers = async (
+            players?: Array<Player | BasePlayer>,
+            team = 'Chelsea',
+          ) => {
             if (!Array.isArray(players)) return;
             for (const p of players) {
               if (!p?.playerId) continue;
+              const shirtNo =
+                'shirtNo' in p && typeof p.shirtNo === 'number'
+                  ? p.shirtNo
+                  : undefined;
               await savePlayerMaster({
                 playerId: p.playerId,
                 name: p.name || `Player ${p.playerId}`,
                 season,
-                defaultShirtNo: p.shirtNo,
+                defaultShirtNo: shirtNo,
                 position: p.position || 'Sub',
                 teamName: team,
               });
@@ -233,10 +200,10 @@ export async function importAllDataZip(file: File | Blob): Promise<{
           };
 
           if (isChelseaTeam(homeTeamName) && m.teams?.home?.players) {
-            await syncPlayers(m.teams.home.players as Player[], 'Chelsea');
+            await syncPlayers(m.teams.home.players, 'Chelsea');
           }
           if (isChelseaTeam(awayTeamName) && m.teams?.away?.players) {
-            await syncPlayers(m.teams.away.players as Player[], 'Chelsea');
+            await syncPlayers(m.teams.away.players, 'Chelsea');
           }
         }
       }
@@ -245,7 +212,7 @@ export async function importAllDataZip(file: File | Blob): Promise<{
     console.error('[footics] Failed to restore matches:', err);
   }
 
-  // 3. Import Players & Photos (with legacy schema normalization and backward compatibility)
+  // 3. Import Players & Photos
   try {
     const playersBytes = unzipped['players.json'];
     if (playersBytes) {
@@ -264,44 +231,7 @@ export async function importAllDataZip(file: File | Blob): Promise<{
           const season = p.season || '26-27';
           const id = p.id || generatePlayerMasterId(season, p.playerId);
 
-          // 1) 写真Blobの復元 (photos/ フォルダから探索)
-          let photoBlob: Blob | undefined;
-
-          if (p.photoFileName) {
-            const photoBytes = unzipped[`photos/${p.photoFileName}`];
-            if (photoBytes) {
-              const mime = getMimeTypeFromFileName(p.photoFileName);
-              photoBlob = new Blob([photoBytes as unknown as BlobPart], {
-                type: mime,
-              });
-            }
-          }
-
-          // photoFileName が未指定またはファイルが見つからない場合のフォールバック探索
-          if (!photoBlob) {
-            const safeId = encodeURIComponent(id).replace(/%/g, '_');
-            const candidatePaths = [
-              `photos/${safeId}.png`,
-              `photos/${safeId}.jpg`,
-              `photos/${safeId}.webp`,
-              `photos/${safeId}`,
-              `photos/${id}.png`,
-              `photos/${id}.jpg`,
-              `photos/${id}.webp`,
-              `photos/${id}`,
-            ];
-            for (const path of candidatePaths) {
-              const photoBytes = unzipped[path];
-              if (photoBytes) {
-                const mime = getMimeTypeFromFileName(path);
-                photoBlob = new Blob([photoBytes as unknown as BlobPart], {
-                  type: mime,
-                });
-                break;
-              }
-            }
-          }
-
+          const photoBlob = findPhotoBlob(unzipped, id, p.photoFileName);
           if (photoBlob) {
             photoCount++;
           }
@@ -337,7 +267,6 @@ export async function importAllDataZip(file: File | Blob): Promise<{
       const allEvents = JSON.parse(eventsText) as EventRow[];
 
       if (Array.isArray(allEvents) && allEvents.length > 0) {
-        // Normalize events: ensure match_id is present
         const normalizedEvents = allEvents.map((e) => ({
           ...e,
           match_id: String(e.match_id || ''),

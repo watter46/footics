@@ -1,13 +1,12 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, ChevronLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import Dashboard from '@/features/dashboard/components/Dashboard';
+import { useMatchDetail } from '@/features/match/hooks/use-match-detail';
 import NationalDashboard from '@/features/national-dashboard/components/NationalDashboard';
-import { getMatch, setKeyValue } from '@/lib/db';
 
 interface Props {
   matchId: string;
@@ -15,28 +14,25 @@ interface Props {
 
 export function MatchViewWrapper({ matchId }: Props) {
   const {
-    data: matchData,
+    match: matchData,
     isLoading,
-    error: queryError,
-  } = useQuery({
-    queryKey: ['matchData', matchId],
-    queryFn: () => getMatch(matchId),
-  });
+    recordRecentMatch,
+  } = useMatchDetail(matchId);
 
   const status = isLoading ? 'loading-data' : matchData ? 'ready' : 'error';
-  const error = queryError ? (queryError as Error).message : null;
+  const error = null;
 
   // 拡張機能から現在のアクティブな試合を特定できるように保存
   useEffect(() => {
     if (matchId) {
-      setKeyValue('lastActiveMatchId', matchId);
+      void recordRecentMatch(matchId);
       // DOM 経由で拡張機能 (Isolated World) に受け渡す
       document.documentElement.dataset.matchId = matchId;
     }
     return () => {
       delete document.documentElement.dataset.matchId;
     };
-  }, [matchId]);
+  }, [matchId, recordRecentMatch]);
 
   if (status === 'loading-data') {
     const statusMessage = 'Loading match data from IndexedDB...';
