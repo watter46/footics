@@ -9,7 +9,7 @@
 3. **モデル階層と並列・短時間パイプライン** — Planner / Reviewer / Auditor(`pro`)、Worker(`flash` / `flash_lite`)、Scout(`flash_lite`、6ファイル以上の調査のみ起動・6ターン以内完了) によるタスク駆動開発。1〜4ファイルの変更は 1 Worker で一括完遂し、ファイル被りのない複数 Phase / Task は並列 Worker 起動で高速化する
 4. **推論の排除とスクリプト化** — Worker TDD（`ai:check` による `'use client'`・ホスト境界検査含む）とコミットゲート（`ai:commit` / `task:validate`）による機械検証の徹底。Reviewer はコマンドを実行せず 4大定性監査（要件ハック・ホスト境界/Flicker・OCP・サイレント破壊）に専念
 5. **4層コンポーネントモデルとホスト境界の厳守** — Web と Extension で共用するコードは Level 2（Domain UI Block）以下に配置し、`chrome.*` や Web専用ストア等のホスト依存を絶対に混入させないこと。Store Provider パターンにより初期チラつき（Flicker）を根絶すること。
-6. **プラグイン型拡張設計（OCP 厳守）** — ツールや機能追加でコアコンポーネント（Stage, Toolbar, DashboardView等）に `switch / if` をベタ書きすることを禁止し、自律的なプラグインと自己申告型オプション（`OptionsComponent`）で拡張すること。
+6. **レジストリ・パッケージ型拡張設計（OCP 厳守）** — ツールや機能追加でコアコンポーネント（Stage, Toolbar, DashboardView, Background Commands等）に巨大な `switch / if` をベタ書きすることを禁止し、レジストリ登録または自律的なモジュール分離で拡張すること。
 7. **平易な対話（`caveman`）と2項目完了サマリー** — ユーザー対話は結論最優先・前置き排除（`caveman`）を徹底し、難解カタカナ語を禁止する。実装完了報告は「① 変更された内容（ユーザー目線の変化）」「② 手動・目視での確認手順（画面・操作・期待結果）」の2項目のみで端的に出力すること。
 
 ## 開発運用の基本フロー
@@ -37,10 +37,11 @@
 
 スコープ付きルールが `.agents/rules/` に配置済み：
 - `efficient-exploration.md` — ディレクトリ走査・ファイル探索時に常時適用（トークン最適化プロトコル）
-- `component-architecture.md` — `src/**`, `extension/**` アクセス時に自動適用（4層モデル・プラグイン設計・副作用ゼロ）
+- `component-architecture.md` — `src/**`, `extension/**` アクセス時に自動適用（4層モデル・Store Provider・副作用ゼロ）
 - `coding-standards.md` — `src/**`, `extension/**`, `tests/**` アクセス時に自動適用
+- `react-nextjs.md` — `src/**`, `extension/**` アクセス時に自動適用（React 19・Compiler・`useEffect` 規律・Next.js 16 境界）
 - `testing-standards.md` — `**/*.test.ts(x)`, `tests/**` アクセス時に自動適用
-- `data-access.md` — `src/lib/db/**`, `src/stores/**` 等アクセス時に自動適用
+- `data-access.md` — `src/lib/db/**`, `src/stores/**` 等アクセス時に自動適用（Dexie / TanStack Query / Zustand 3層モデル）
 - `agent-delegation.md` — サブエージェント委任時の完了回収・成果物契約を規定
 - `plan-artifact.md` — 設計計画立案時（`/plan`, `tasks/**`, `.agents/**`）の Artifact 構成規約（Mermaid/コード/ファイルパス排除）
 

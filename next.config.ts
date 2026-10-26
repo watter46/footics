@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  reactCompiler: true,
   // DuckDB-Wasm を外部パッケージとして扱い、ビルド時の依存解析から除外する
   serverExternalPackages: ['@duckdb/duckdb-wasm'],
 

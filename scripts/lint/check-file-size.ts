@@ -1,39 +1,28 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import {
+  isExcludedFromLineLimit,
+  isScopedSourceFile,
+  loadGuardrailsBaseline,
+  MAX_FILE_LINES,
+  normalizeRepoPath,
+} from '../../.agents/scripts/lib/code-guardrails';
 
-const LIMITS = {
-  component: 300,
-  hook: 150,
-  store: 200,
-};
+const baseline = loadGuardrailsBaseline();
 
-function getCategory(filePath: string): 'component' | 'hook' | 'store' | null {
-  if (/\.(test|spec)\.[tj]sx?$/.test(filePath)) return null;
-  const base = path.basename(filePath);
-  if (
-    filePath.includes('components/') ||
-    filePath.includes('app/') ||
-    filePath.includes('ui/')
-  ) {
-    // If it's a tsx file, it's likely a component
-    if (base.endsWith('.tsx')) return 'component';
+function checkFileSize(filePath: string): boolean {
+  if (!fs.existsSync(filePath)) return true;
+  const normFile = normalizeRepoPath(filePath);
+  if (!isScopedSourceFile(normFile) || isExcludedFromLineLimit(normFile)) {
+    return true;
   }
-  if (base.startsWith('use') && base.endsWith('.ts')) return 'hook';
-  if (filePath.includes('stores/') || base.includes('store')) return 'store';
-  return null;
-}
-
-function checkFileSize(filePath: string) {
-  const category = getCategory(filePath);
-  if (!category) return true; // not restricted by these rules
 
   const content = fs.readFileSync(filePath, 'utf8');
   const lines = content.split('\n').length;
-  const limit = LIMITS[category];
+  const limit = baseline.maxLinesOver300[normFile] ?? MAX_FILE_LINES;
 
   if (lines > limit) {
-    console.warn(
-      `[WARN] File size limit exceeded: ${filePath} (${lines} lines). Max allowed for ${category} is ${limit} lines.`,
+    console.error(
+      `[ERROR] File size limit exceeded: ${normFile} (${lines} lines). Max allowed is ${limit} lines.`,
     );
     return false;
   }
@@ -48,18 +37,16 @@ if (files.length === 0) {
   process.exit(1);
 }
 
-let warnedCount = 0;
+let failedCount = 0;
 for (const file of files) {
   if (!checkFileSize(file)) {
-    warnedCount += 1;
+    failedCount += 1;
   }
 }
 
-if (warnedCount > 0) {
-  console.log(
-    `${warnedCount} file(s) exceeded recommended size limits (warn only).`,
-  );
-} else {
-  console.log('All files passed size limits.');
+if (failedCount > 0) {
+  console.error(`${failedCount} file(s) exceeded size limits.`);
+  process.exit(1);
 }
+console.log('All files passed size limits.');
 process.exit(0);

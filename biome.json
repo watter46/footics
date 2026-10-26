@@ -21,6 +21,17 @@
       "style": {
         "useTemplate": "error",
         "useConst": "error",
+        "useImportType": "error",
+        "noParameterAssign": "warn",
+        "noNestedTernary": "warn",
+        "noRestrictedGlobals": {
+          "level": "warn",
+          "options": {
+            "deniedGlobals": {
+              "CustomEvent": "CustomEvent による暗黙連携は禁止です。Context / Ref または型付き postMessage を使用してください。"
+            }
+          }
+        },
         "noNonNullAssertion": "warn",
         "noExcessiveLinesPerFile": {
           "level": "warn",
@@ -49,7 +60,8 @@
         "useExhaustiveDependencies": "warn"
       },
       "performance": {
-        "noDelete": "warn"
+        "noDelete": "warn",
+        "noReExportAll": "warn"
       },
       "a11y": {
         "noSvgWithoutTitle": "off",
@@ -61,7 +73,20 @@
       },
       "suspicious": {
         "noExplicitAny": "warn",
-        "noArrayIndexKey": "warn"
+        "noArrayIndexKey": "warn",
+        "noConsole": {
+          "level": "warn",
+          "options": {
+            "allow": ["warn", "error"]
+          }
+        },
+        "noEmptyBlockStatements": "warn",
+        "noReactForwardRef": "warn",
+        "noTsIgnore": "warn",
+        "noLeakedRender": "warn"
+      },
+      "nursery": {
+        "useExhaustiveSwitchCases": "warn"
       }
     }
   },
@@ -100,6 +125,34 @@
           "defineWxtModule",
           "import.meta"
         ]
+      }
+    },
+    {
+      "includes": [
+        "src/lib/data/**",
+        "src/lib/tactical/*-preset*.ts",
+        "src/lib/types/tactical-unified.ts",
+        "src/components/features/syntax-studio/sample-syntax-data.ts",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/__tests__/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noExcessiveLinesPerFile": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["scripts/**", ".agents/**", "src/lib/agents/logger.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
       }
     }
   ]

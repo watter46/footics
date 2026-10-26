@@ -1,46 +1,113 @@
 ---
-description: "Footicsプロジェクトのローカルデータアクセス規約（Dexie.js v4, Zustand, Local-first 2026）"
+description: "Footicsプロジェクトのローカルデータアクセス・非同期状態管理規約（Dexie.js v4, TanStack Query v5, Zustand v5）"
 globs:
   - "src/lib/db/**"
+  - "src/lib/query-keys.ts"
   - "src/stores/**"
   - "src/components/**"
   - "src/features/**"
+  - "src/hooks/**"
+  - "extension/**"
 ---
-# データアクセス規約 (Data Access Standards)
+# データアクセス・状態管理規約 (Data Access Standards)
 
-本プロジェクト（Footics）は IndexedDB を単一の Source of Truth (SoT) とし、Dexie.js v4 と Zustand を組み合わせた **2026年最新の Local-first アーキテクチャ** を採用しています。
-エージェントがデータ永続化や状態管理のコードを編集する際は、本規約に従い、パフォーマンスと保守性を担保してください。
+本プロジェクト（Footics）は IndexedDB（Dexie.js v4）を永続データの唯一の正（Single Source of Truth）とし、**Dexie.js + TanStack Query + Zustand の3層ハイブリッドアーキテクチャ** を採用しています。
 
-## 1. Single Source of Truth (SoT) の原則
+---
 
-データ状態の「Split-brain（二重管理）」を防ぐため、以下の役割分担を厳守してください。
+## 1. 3層の状態責務モデル (Three-Tier State Responsibility)
 
-- **IndexedDB (Dexie.js)**: 永続化されるビジネスデータ（試合データ、選手、プロジェクト）の**唯一の真のデータソース**。
-- **Zustand**: モーダル開閉、現在のアクティブタブ、UIテーマなどの **「一時的なUIステート (ephemeral UI state)」** に限定します。DBのデータをZustand内にミラーリング（丸ごとコピーして保持）することは原則禁止です。
+データの二重管理（Split-brain）とキャッシュ不整合を防ぐため、すべての状態は以下の3層のいずれかに厳格に振り分けてください。
 
-## 2. データの取得とリアクティビティ
+| 層 | 技術 | 担当するデータの種類 | 禁止事項 |
+| :--- | :--- | :--- | :--- |
+| **1. 永続化層 (SoT)** | **Dexie.js v4 (IndexedDB)** | 試合データ、イベント、選手マスタ、戦術プロジェクト、スクリーンショット等の永続データ | UI コンポーネント（`.tsx`）から `db.<tableName>.*` を直接呼び出すこと |
+| **2. 非同期サーバー/DBキャッシュ層** | **TanStack Query v5 (`useQuery` / `useMutation`)** | IndexedDB や Route Handler から取得する非同期データのキャッシュ、ローディング状態、更新後の再検証（Invalidation） | `queryKey` に配列リテラルを直書きすること、コンポーネント内で直接 `invalidateQueries` を乱発すること |
+| **3. インメモリ UI / 高頻度操作層** | **Zustand v5 (`createStore` / `create`)** | モーダル開閉、選択中タブ、および **60fps で更新される戦術ボードのキャンバス状態・ドラッグ中座標** | 通常のマスタ・一覧データ（選手一覧・試合一覧等）を Zustand に手動コピーして保持すること |
 
-- **`useLiveQuery` の使用**: Zustand にデータを詰め替えるのではなく、Dexie 公式の `useLiveQuery` フックを使用してコンポーネントをリアクティブに更新してください。これによりボイラープレートを排除し、UI を常にDBと同期させます。
-- **派生状態の保存禁止**: 計算可能な値（例：得点合計、フィルタリング結果）をDBに保存してはいけません。コンポーネントやセレクタで都度計算してください。
+---
 
-## 3. Repository パターンとトランザクション
+## 2. データアクセスと TanStack Query 規約 (R5)
 
-- **直接アクセスの禁止**: UI コンポーネントやカスタムフックから Dexie の生 API (`db.table.put()` 等) を直接呼び出すことを禁じます。
-- **抽象化レイヤー**: データアクセスは必ず `src/lib/db/repositories/` 配下に抽象化された Repository クラス（または関数）を経由してください。
-- **Atomicity**: 複数の関連する更新（例：イベント追加とメモ更新）は、必ず `db.transaction('rw', ...)` ブロック内にまとめ、部分的な失敗を防いでください。
+### 判定基準
+1. **UI コンポーネントからの生 `db.*` 呼び出し禁止**:
+   - コンポーネント（`src/features/**/components/**`）から `@/lib/db` の `db` インスタンスを直接 import してクエリを発行することを禁止します（`.dependency-cruiser.cjs` で機械遮断）。
+   - 必ず `src/lib/db/` 配下のクエリ・リポジトリ関数（`queries.ts`, `tactical-projects-db.ts` 等）を経由し、`features/<domain>/hooks/use-*.ts` のカスタムフックでラップしてください。
+2. **`queryKey` は `queryKeys` ファクトリ関数を必須化**:
+   - `queryKey: ['matchData', matchId]` のような配列リテラルの直書きを禁止します。
+   - 必ず `src/lib/query-keys.ts` にキー生成関数を定義して参照してください（キー不一致による Invalidation 漏れを防止）。
+3. **Invalidation の `useMutation` 内カプセル化**:
+   - データ更新後の `queryClient.invalidateQueries` は、UI コンポーネントの `onClick` 内に直書きせず、必ずカスタムフック内の `useMutation({ onSuccess })` に閉じ込めてください。
+4. **複数テーブル更新のトランザクション化**:
+   - 関連する複数のテーブルを更新する処理は、必ず `db.transaction('rw', [...], async () => { ... })` 内にまとめ、部分失敗によるデータ破損を防止してください。
 
-## 4. 高頻度更新に対する例外処理 (Tactical Board パターン & Store Provider)
+```tsx
+// ❌ 禁止: コンポーネント内で db 直呼び出し・配列リテラル queryKey・手動 invalidate
+import { db } from '@/lib/db';
 
-戦術ボードの選手移動（ドラッグ操作）など、**60fps で発生する超高頻度の状態更新** に関しては、毎回 IndexedDB に書き込むとブラウザのパフォーマンスが崩壊します。このエッジケースに限り、以下の**ハイブリッド同期モデル**を許可します。
+export function PlayerEditor({ season, team }: Props) {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ['season-players', season, team],
+    queryFn: () => db.players.where({ season, team }).toArray(),
+  });
 
-1. **Zustand での一時管理**: ドラッグ中の現在座標などは例外的に Zustand (インメモリ) で管理し、UI を Optimistic（楽観的）かつ高速に更新します。
-2. **Store Provider による初期値注入 (Flicker ゼロ保証)**:
-   - Web と Extension で共用する機能や独立したキャンバスセッションでは、グローバル単一のストアインスタンスを使わず、**Store Provider パターン（Vanilla Store Factory + React Context）** を採用してください。
-   - レベル 3（Feature View）で IndexedDB からロードしたデータをマウント時の `initialState`（Props）として確定注入し、初回レンダリングから正しい状態で描画することで、初期チラつき（Flicker）を完全に根絶します。
-3. **デバウンス永続化**: Zustand の変更を subscribe し、操作終了時またはデバウンス（例: 500ms）をかけて Repository を経由し IndexedDB に書き戻します。
+  const handleSave = async (player: PlayerRecord) => {
+    await db.players.put(player);
+    await queryClient.invalidateQueries({ queryKey: ['season-players'] });
+  };
+  return <div />;
+}
 
-## 5. スキーマとバリデーション (Contract-First)
+// ✅ 推奨: クエリ関数 + queryKeys ファクトリ + useMutation カプセル化
+// 1) src/lib/query-keys.ts
+export const queryKeys = {
+  players: {
+    all: ['players'] as const,
+    bySeasonTeam: (season: string, team: string) =>
+      ['players', 'season', season, team] as const,
+  },
+};
 
-- **Zod による堅牢化**: IndexedDB は型を持たないため、Repository の入出力境界で必ず Zod スキーマを通した検証（`.parse()` / `.safeParse()`）を行ってください。
-- **マイグレーション**: ローカルファーストアプリでは「DBのリセット」はユーザーのデータ喪失を意味します。スキーマを変更する場合は必ず `src/lib/db/schema.ts` で Dexie のバージョンを上げ、非破壊的な（Additive な）マイグレーションを `.upgrade()` ブロックに記述してください。
+// 2) src/features/teams/hooks/use-season-players.ts
+export function useSeasonPlayers(season: string, team: string) {
+  return useQuery({
+    queryKey: queryKeys.players.bySeasonTeam(season, team),
+    queryFn: () => fetchSeasonPlayers(season, team),
+  });
+}
 
+export function useSavePlayer(season: string, team: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (player: PlayerRecord) => savePlayerRecord(player),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.players.bySeasonTeam(season, team),
+      });
+    },
+  });
+}
+```
+
+---
+
+## 3. 高頻度更新に対するハイブリッド同期モデル (Tactical Board)
+
+戦術ボードの選手移動・描画操作など、**60fps で発生する高頻度の状態更新** に限り、以下のハイブリッド同期モデルを適用します。
+
+1. **Zustand でのインメモリ管理**: ドラッグ中の座標やキャンバス上のオブジェクト編集は Zustand で管理し、UI を即時更新します。
+2. **初期値確定注入による Flicker ゼロ保証**:
+   - Level 3（Feature View）で IndexedDB からプロジェクトデータをロードし、初期状態を確定させてからキャンバスを描画します。
+   - マウント後に非同期 `useEffect` で空キャンバスを後から上書きして初期チラつき（Flicker）を起こす実装を禁止します。
+3. **デバウンス永続化**: 状態変更を購読（または自動保存フック `use-tactical-auto-save.ts` を使用）し、デバウンスをかけて `tactical-projects-db.ts` 経由で IndexedDB に書き戻します。
+
+---
+
+## 4. スキーマ・境界検証・マイグレーション規約 (Contract-First)
+
+1. **Zod による入出力境界の堅牢化**:
+   - IndexedDB のレコード読み書き（特に JSON エクスポート/インポート、拡張機能からのブリッジデータ、プロジェクトデータ `tactical-projects-db.ts`）では、必ず Zod スキーマ（`.parse()` / `.safeParse()`）による構造検証を行ってください。
+2. **非破壊マイグレーション必須 (`schema.ts`)**:
+   - Local-first アプリにおいて DB のリセットはユーザーデータの永久喪失を意味します。
+   - `src/lib/db/schema.ts` を変更する場合は、必ず Dexie のバージョン番号をインクリメントし、`.upgrade()` ブロックによる非破壊マイグレーションを記述してください（`ai:check` Check B で機械強制）。

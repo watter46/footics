@@ -1,6 +1,12 @@
 import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import path from 'node:path';
+import {
+  loadGuardrailsBaseline,
+  MAX_FILE_LINES,
+  normalizeRepoPath,
+  validateFileAgainstBaseline,
+} from './lib/code-guardrails';
 
 function getChangedFiles(): string[] {
   try {
@@ -29,7 +35,10 @@ function expandFiles(filePaths: string[]): string[] {
       });
       for (const entry of entries) {
         if (entry.isFile()) {
-          const parent = entry.parentPath || (entry as any).path;
+          const parent =
+            entry.parentPath ||
+            (entry as unknown as { path?: string }).path ||
+            '';
           result.push(path.join(parent, entry.name));
         }
       }
@@ -72,41 +81,20 @@ try {
     }
   }
 
-  // 0. Custom Validations (Odin Strict)
-  let hasError = false;
+  // 0. Custom Validations (Odin Strict + Baseline Guardrails)
+  const baseline = loadGuardrailsBaseline();
+  const errors: string[] = [];
   for (const file of files) {
     if (!fs.existsSync(file)) continue;
-
     const content = fs.readFileSync(file, 'utf8');
-
-    // Check A: Open Decisions Detection (exclude validator scripts themselves)
-    if (
-      !file.includes('check-worker.ts') &&
-      !file.includes('check-reviewer.ts')
-    ) {
-      if (/(TODO:\s*ASK|FIXME)/i.test(content)) {
-        console.error(
-          `[ERROR] Open Decisions (TODO: ASK / FIXME) found in ${file}. Resolve them before marking task as complete.`,
-        );
-        hasError = true;
-      }
-    }
-
-    // Check B: Schema Migration Detection
-    if (
-      path.basename(file) === 'schema.ts' ||
-      path.basename(file) === 'schema.js'
-    ) {
-      if (!/\.upgrade\s*\(/.test(content)) {
-        console.error(
-          `[ERROR] schema.ts was modified, but no '.upgrade()' block was detected. You must write a Dexie migration block.`,
-        );
-        hasError = true;
-      }
-    }
+    const normFile = normalizeRepoPath(file);
+    errors.push(...validateFileAgainstBaseline(normFile, content, baseline));
   }
 
-  if (hasError) {
+  if (errors.length > 0) {
+    for (const err of errors) {
+      console.error(err);
+    }
     process.exit(1);
   }
 
@@ -132,18 +120,18 @@ try {
   // 5. Reviewer Audit Bundle (Line limits & Git Diff)
   console.log('\n📊 === Reviewer Audit Summary ===');
 
-  // A. File Size & Line Limit Check Table
   console.log('\n[File Metrics]');
   for (const file of files) {
     if (!fs.existsSync(file)) continue;
     const content = fs.readFileSync(file, 'utf8');
     const lines = content.split('\n').length;
     const status =
-      lines > 200 ? `⚠️ (${lines} lines > 200)` : `✅ (${lines} lines)`;
+      lines > MAX_FILE_LINES
+        ? `⚠️ (${lines} lines > ${MAX_FILE_LINES})`
+        : `✅ (${lines} lines)`;
     console.log(`  - ${file}: ${status}`);
   }
 
-  // B. Git Diff Summary
   console.log('\n[Changes Summary (git diff --stat)]');
   try {
     const diffStat = execSync(`git diff --stat ${fileArgs}`, {
@@ -169,7 +157,7 @@ try {
   } catch (_e) {}
 
   console.log('\n✅ Reviewer checks passed.');
-} catch (err) {
+} catch (_err) {
   console.error('\n❌ Reviewer checks failed.');
   process.exit(1);
 }
