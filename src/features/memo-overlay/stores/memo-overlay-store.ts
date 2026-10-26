@@ -184,13 +184,27 @@ export function createMemoOverlayStore(
 
 export const defaultMemoOverlayStore = createMemoOverlayStore();
 
-export type UseMemoOverlayStore = {
+const identity = (state: MemoOverlayState) => state;
+
+export interface UseMemoOverlayStore extends MemoOverlayStore {
   (): MemoOverlayState;
   <T>(selector: (state: MemoOverlayState) => T): T;
-} & MemoOverlayStore;
+}
 
-export const useMemoOverlayStore = Object.assign(
-  <T = MemoOverlayState>(selector?: (state: MemoOverlayState) => T) =>
-    useStore(defaultMemoOverlayStore, selector ?? ((s) => s as unknown as T)),
+function useMemoOverlayStoreImpl(): MemoOverlayState;
+function useMemoOverlayStoreImpl<T>(
+  selector: (state: MemoOverlayState) => T,
+): T;
+function useMemoOverlayStoreImpl<T>(
+  selector?: (state: MemoOverlayState) => T,
+): T {
+  return useStore(
+    defaultMemoOverlayStore,
+    selector ?? (identity as (state: MemoOverlayState) => T),
+  );
+}
+
+export const useMemoOverlayStore: UseMemoOverlayStore = Object.assign(
+  useMemoOverlayStoreImpl,
   defaultMemoOverlayStore,
-) as UseMemoOverlayStore;
+);

@@ -9,7 +9,13 @@ import type {
   PlayerPhoto,
 } from '../schema';
 
-export type { KeyValEntry, PlayerMaster, PlayerPhoto } from '../schema';
+export type {
+  CustomEvent,
+  KeyValEntry,
+  MatchMemo,
+  PlayerMaster,
+  PlayerPhoto,
+} from '../schema';
 
 const DB_NAME = 'footics_db';
 
@@ -56,8 +62,18 @@ export async function ensureDatabaseReady(
 ): Promise<void> {
   try {
     await database.open();
-  } catch (err: any) {
-    if (err?.name === 'VersionError' || err?.inner?.name === 'VersionError') {
+  } catch (err: unknown) {
+    const isVersionError =
+      typeof err === 'object' &&
+      err !== null &&
+      (('name' in err && err.name === 'VersionError') ||
+        ('inner' in err &&
+          typeof err.inner === 'object' &&
+          err.inner !== null &&
+          'name' in err.inner &&
+          err.inner.name === 'VersionError'));
+
+    if (isVersionError) {
       await database.delete();
       await database.open();
     } else {

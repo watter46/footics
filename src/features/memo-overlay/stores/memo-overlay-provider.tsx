@@ -40,10 +40,19 @@ export function useMemoOverlayStoreContext<T>(
   return useStore(store ?? defaultMemoOverlayStore, selector);
 }
 
-export function useMemoOverlayContext<T = MemoOverlayState>(
+const identity = (state: MemoOverlayState) => state;
+
+export function useMemoOverlayContext(): MemoOverlayState;
+export function useMemoOverlayContext<T>(
+  selector: (state: MemoOverlayState) => T,
+): T;
+export function useMemoOverlayContext<T>(
   selector?: (state: MemoOverlayState) => T,
 ): T {
   const store = useContext(MemoOverlayStoreContext);
-  const sel = selector ?? ((state) => state as unknown as T);
-  return useStore(store ?? defaultMemoOverlayStore, sel);
+  const targetStore = store ?? defaultMemoOverlayStore;
+  return useStore(
+    targetStore,
+    selector ?? (identity as (state: MemoOverlayState) => T),
+  );
 }

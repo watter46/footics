@@ -16,14 +16,14 @@ import { useOverlayStore } from '../stores/use-overlay-store';
 export function useOverlayShortcutInterceptor() {
   useEffect(() => {
     const isInputFocused = (e: KeyboardEvent) => {
-      const target = (
-        e.composedPath ? e.composedPath()[0] : e.target
-      ) as HTMLElement | null;
+      const target =
+        typeof e.composedPath === 'function' ? e.composedPath()[0] : e.target;
+      if (!(target instanceof HTMLElement)) return false;
       return (
-        target?.tagName === 'INPUT' ||
-        target?.tagName === 'TEXTAREA' ||
-        target?.tagName === 'SELECT' ||
-        Boolean(target?.isContentEditable)
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
       );
     };
 

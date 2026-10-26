@@ -104,7 +104,11 @@ export default defineBackground(() => {
         data: unknown,
         dest: string,
       ): Promise<T> =>
-        sendMessage(msg as any, data as any, dest as any) as Promise<T>,
+        sendMessage(
+          msg,
+          data as Parameters<typeof sendMessage>[1],
+          dest,
+        ) as Promise<T>,
       storage: browser.storage.local,
       captureTab: (options) => browser.tabs.captureVisibleTab(options),
       processCanvas: async (dataUrl, targetTab) => {

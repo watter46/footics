@@ -1,11 +1,9 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { putMatchMemo, saveCustomEvent } from '@/lib/db/extension-db-queries';
 import { createSavePayload } from '@/lib/features/memo-overlay/memoOverlayLogic';
-import { customEventKeys, eventKeys, matchKeys } from '@/lib/query-keys';
+import { useMemoOverlayActions } from '../hooks/use-memo-overlay-actions';
 import { useMemoOverlayEventBridge } from '../hooks/useMemoOverlayEventBridge';
 import { MemoOverlayStoreProvider } from '../stores/memo-overlay-provider';
 import { useMemoOverlayStore } from '../stores/memo-overlay-store';
@@ -23,7 +21,7 @@ export function MemoOverlayModal({
   initialMemo,
   mode = 'EVENT',
 }: MemoOverlayModalProps) {
-  const queryClient = useQueryClient();
+  const { saveEvent, saveMemo } = useMemoOverlayActions(matchId);
   const isModalOpen = useMemoOverlayStore((s) => s.isModalOpen);
   const setModalOpen = useMemoOverlayStore((s) => s.setModalOpen);
   const reset = useMemoOverlayStore((s) => s.reset);
@@ -46,7 +44,7 @@ export function MemoOverlayModal({
     setIsSaving(true);
     try {
       if (payload.type === 'EVENT') {
-        await saveCustomEvent({
+        await saveEvent({
           id: eventId || crypto.randomUUID(),
           match_id: matchId,
           period: payload.period,
@@ -56,17 +54,12 @@ export function MemoOverlayModal({
           memo: payload.memo,
           created_at: Date.now(),
         });
-        queryClient.invalidateQueries({
-          queryKey: customEventKeys.byMatch(matchId),
-        });
-        queryClient.invalidateQueries({ queryKey: eventKeys.all });
       } else {
-        await putMatchMemo({
+        await saveMemo({
           matchId,
           memo: payload.memo,
           updatedAt: Date.now(),
         });
-        queryClient.invalidateQueries({ queryKey: matchKeys.memo(matchId) });
       }
       handleClose();
     } catch (err) {
@@ -74,7 +67,15 @@ export function MemoOverlayModal({
     } finally {
       setIsSaving(false);
     }
-  }, [matchId, eventId, queryClient, handleClose, isSaving, setIsSaving]);
+  }, [
+    matchId,
+    eventId,
+    handleClose,
+    isSaving,
+    setIsSaving,
+    saveEvent,
+    saveMemo,
+  ]);
 
   // footics-action イベント連携（外部からの操作をハンドラへ繋ぐ）
   useMemoOverlayEventBridge(handleClose, handleSave, undefined, isModalOpen);

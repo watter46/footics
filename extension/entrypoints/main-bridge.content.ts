@@ -19,8 +19,10 @@ export default defineContentScript({
 
     // 2. アプリからの保存リクエストをキャッチして Isolated World へ中継
 
-    window.addEventListener('footics-save-request', (e: any) => {
-      const payload = e.detail;
+    window.addEventListener('footics-save-request', (e: Event) => {
+      if (!(e instanceof CustomEvent)) return;
+      const payload = (e as CustomEvent<Parameters<typeof sendMessage>[1]>)
+        .detail;
       if (!payload) return;
 
       sendMessage('SAVE_MEMO_RELAY', payload, 'content-script').catch(

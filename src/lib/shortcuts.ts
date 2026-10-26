@@ -16,6 +16,12 @@ export const SHORTCUT_ACTIONS = {
 export type ShortcutAction =
   (typeof SHORTCUT_ACTIONS)[keyof typeof SHORTCUT_ACTIONS];
 
+const SHORTCUT_ACTION_VALUES = new Set<string>(Object.values(SHORTCUT_ACTIONS));
+
+export function isShortcutAction(value: unknown): value is ShortcutAction {
+  return typeof value === 'string' && SHORTCUT_ACTION_VALUES.has(value);
+}
+
 export interface SimpleKeyConfig {
   key: string;
   ctrl?: boolean;
@@ -89,11 +95,13 @@ export const isActionMatch = (
   // Escape の特別扱い
   if (targetKey === 'escape' || targetKey === 'esc') {
     // Escape の場合は、修飾キー（Ctrl/Shift）が押されていなければ常に許容
+    const hasEscapeKeyCode =
+      'keyCode' in e && typeof e.keyCode === 'number' && e.keyCode === 27;
     const looksLikeEscape =
       eventCode === 'Escape' ||
       eventKey === 'escape' ||
       eventKey === 'esc' ||
-      (e as any).keyCode === 27;
+      hasEscapeKeyCode;
 
     if (looksLikeEscape && !e.ctrlKey && !e.shiftKey && !e.altKey) {
       return true;

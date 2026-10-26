@@ -10,6 +10,15 @@ interface UseMatchMemoLoaderParams {
   isVisible: boolean;
 }
 
+interface StorageLocalLike {
+  get: (key: string) => Promise<Record<string, unknown>>;
+}
+
+interface GlobalWithStorage {
+  browser?: { storage?: { local?: StorageLocalLike } };
+  chrome?: { storage?: { local?: StorageLocalLike } };
+}
+
 /**
  * useMatchMemoLoader
  * 責務: Level 3 Feature View 用に、Extension キャッシュ (storage.local) や
@@ -44,11 +53,13 @@ export function useMatchMemoLoader({
 
     const load = async () => {
       try {
-        const globalAny =
-          typeof globalThis !== 'undefined' ? (globalThis as any) : undefined;
+        const globalTarget =
+          typeof globalThis !== 'undefined'
+            ? (globalThis as unknown as GlobalWithStorage)
+            : undefined;
         const storageLocal =
-          globalAny?.browser?.storage?.local ??
-          globalAny?.chrome?.storage?.local ??
+          globalTarget?.browser?.storage?.local ??
+          globalTarget?.chrome?.storage?.local ??
           undefined;
 
         if (storageLocal) {

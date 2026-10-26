@@ -63,9 +63,27 @@ export function useKeyboardShortcut(
   );
 }
 
+declare global {
+  interface Window {
+    __trigger_shortcut?: (name: string) => void;
+  }
+}
+
+interface ActionPayload {
+  type?: unknown;
+  action?: unknown;
+  detail?: {
+    action?: unknown;
+  };
+}
+
+function isActionPayload(data: unknown): data is ActionPayload {
+  return typeof data === 'object' && data !== null;
+}
+
 /**
  * 外部（Chrome拡張など）からのアクション呼び出しを可能にする
- * @param callbackKey アクション名
+ * @param actionName アクション名
  * @param action 実行する関数
  */
 export function useExternalAction(
@@ -75,7 +93,7 @@ export function useExternalAction(
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       const data = e.data;
-      if (!data || typeof data !== 'object') return;
+      if (!isActionPayload(data)) return;
       if (data.type === 'FOOTICS_ACTION' && data.action === actionName) {
         action();
       } else if (
@@ -87,9 +105,10 @@ export function useExternalAction(
     };
 
     const handleCustomEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ action?: string }>;
-      if (customEvent.detail?.action === actionName) {
-        action();
+      if (e instanceof CustomEvent && isActionPayload(e.detail)) {
+        if (e.detail.action === actionName) {
+          action();
+        }
       }
     };
 
@@ -101,7 +120,7 @@ export function useExternalAction(
         ? window.location.origin
         : '*';
 
-    (window as any).__trigger_shortcut = (name: string) => {
+    window.__trigger_shortcut = (name: string) => {
       window.postMessage(
         { type: 'FOOTICS_ACTION', action: name },
         targetOrigin,
@@ -111,6 +130,7 @@ export function useExternalAction(
     return () => {
       window.removeEventListener('message', handleMessage);
       window.removeEventListener('footics-action', handleCustomEvent);
+      window.__trigger_shortcut = undefined;
     };
   }, [actionName, action]);
 }

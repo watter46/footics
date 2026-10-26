@@ -29,8 +29,19 @@ export default defineContentScript({
     });
     window.addEventListener('footics-trigger-capture', handleCaptureTrigger);
 
-    const nativeMessageListener = (message: any) => {
-      if (message?.type === 'TRIGGER_CAPTURE') {
+    const isTriggerCaptureMessage = (
+      msg: unknown,
+    ): msg is { type: 'TRIGGER_CAPTURE' } => {
+      return (
+        typeof msg === 'object' &&
+        msg !== null &&
+        'type' in msg &&
+        (msg as { type: unknown }).type === 'TRIGGER_CAPTURE'
+      );
+    };
+
+    const nativeMessageListener = (message: unknown) => {
+      if (isTriggerCaptureMessage(message)) {
         CaptureService.executeCapturePipeline();
       }
     };

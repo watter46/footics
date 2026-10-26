@@ -1,7 +1,24 @@
 import { act, fireEvent, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
+import { isShortcutAction, SHORTCUT_ACTIONS } from '@/lib/shortcuts';
 import { useExternalAction, useKeyboardShortcut } from '../use-shortcut';
+
+describe('isShortcutAction', () => {
+  it('有効な ShortcutAction 文字列を正しく true と判定する', () => {
+    expect(isShortcutAction(SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD)).toBe(true);
+    expect(isShortcutAction(SHORTCUT_ACTIONS.SAVE_MEMO)).toBe(true);
+    expect(isShortcutAction(SHORTCUT_ACTIONS.CLOSE_MODAL)).toBe(true);
+  });
+
+  it('無効な値や型を false と判定する', () => {
+    expect(isShortcutAction('INVALID_ACTION')).toBe(false);
+    expect(isShortcutAction('')).toBe(false);
+    expect(isShortcutAction(null)).toBe(false);
+    expect(isShortcutAction(undefined)).toBe(false);
+    expect(isShortcutAction(123)).toBe(false);
+    expect(isShortcutAction({})).toBe(false);
+  });
+});
 
 describe('useKeyboardShortcut', () => {
   it('ショートカットキー押下時にコールバックが実行される', () => {
@@ -78,9 +95,7 @@ describe('useExternalAction', () => {
     );
 
     act(() => {
-      (window as any).__trigger_shortcut(
-        SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD,
-      );
+      window.__trigger_shortcut?.(SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD);
     });
 
     expect(postMessageSpy).toHaveBeenCalledWith(
@@ -95,5 +110,16 @@ describe('useExternalAction', () => {
     postMessageSpy.mockRestore();
     dispatchSpy.mockRestore();
     unmount();
+  });
+
+  it('アンマウント時に __trigger_shortcut がクリーンアップされる', () => {
+    const action = vi.fn();
+    const { unmount } = renderHook(() =>
+      useExternalAction(SHORTCUT_ACTIONS.TOGGLE_TACTICAL_BOARD, action),
+    );
+
+    expect(window.__trigger_shortcut).toBeDefined();
+    unmount();
+    expect(window.__trigger_shortcut).toBeUndefined();
   });
 });
