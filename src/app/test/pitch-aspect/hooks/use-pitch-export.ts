@@ -1,3 +1,5 @@
+'use client';
+
 import { type RefObject, useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import type { BoundaryAspectRatio } from '../pitch-constants';

@@ -1,92 +1,75 @@
-# TASK-064: TypeScript noUncheckedIndexedAccess 有効化と残存 any / 二重キャストの排除
+# TASK-064: [Level 4-A] tactical-unified 領域の any 全廃 (33ファイル) と noUncheckedIndexedAccess 対応
 
 ## 1. Metadata
 - **Status**: `TODO`
 - **Created**: 2026-10-26
 - **Target Files**:
+  - `src/features/tactical-unified/adapters/**` (MODIFY)
+  - `src/features/tactical-unified/core/**` (MODIFY)
+  - `src/features/tactical-unified/hooks/**` (MODIFY)
+  - `src/features/tactical-unified/objects/**` (MODIFY)
+  - `src/features/tactical-unified/panels/**` (MODIFY)
+  - `src/features/tactical-unified/stores/**` (MODIFY)
   - `tsconfig.json` (MODIFY)
-  - `extension/tsconfig.json` (MODIFY)
-  - `src/features/tactical-unified/**` (MODIFY)
-  - `src/lib/tactical/**` (MODIFY)
-  - `src/features/teams/**` (MODIFY)
-  - `.agents/guardrails-baseline.json` (MODIFY)
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
-- [ ] 1. `extension/tsconfig.json` に `target: "ES2022"`, `noFallthroughCasesInSwitch: true`, `noImplicitOverride: true` を反映する。
-- [ ] 2. 非テストコードに残存する `any` および `as unknown as`（計44ファイル、`.agents/guardrails-baseline.json` の `explicitAny` 登録分）を具体的な型または `unknown` + Zod 検証に置き換え、ベースラインの `explicitAny` を空にする。
-- [ ] 3. `tsconfig.json` および `extension/tsconfig.json` で `"noUncheckedIndexedAccess": true` を有効化し、発生する添字アクセス未チェック箇所（約470箇所）を Optional Chaining (`?.`)・Nullish Coalescing (`??`)・早期ガードで安全に修正して `bun run typecheck:full` を exit code 0 にする。
+- [ ] 1. `src/features/tactical-unified/` 配下に残存する `any` および `as unknown as`（33ファイル）を具体的な Konva ノード型（`Konva.Node`, `Konva.Group`, `Konva.Shape` 等）または判別共用体型に置き換え、`tactical-unified` 内の `explicitAny` を 0 件にする。
+- [ ] 2. `src/features/tactical-unified/` 配下の配列・Record 添字アクセスに対して Optional Chaining (`?.`)・Nullish Coalescing (`??`)・早期ガードを追加し、`noUncheckedIndexedAccess: true` 下で型エラーが 0 件になるようにする。
+- [ ] 3. 非戦術ボード領域（TASK-075）と合わせて `tsconfig.json` の `"noUncheckedIndexedAccess": true` を有効化できる状態にする。
 
 ## 3. Context Snippets (参照コード・型定義・import)
 
 ### 3.1 Import Specs
 ```ts
-// 外部・DB入力の検証には Zod を使用
-import { z } from 'zod';
+import type Konva from 'konva';
 ```
 
 ### 3.2 Key Interfaces & Types
 ```ts
-// 添字アクセス時は T | undefined として扱う
-const firstSlide = slides[0];
-if (!firstSlide) return;
+// 添字アクセス時は T | undefined として安全にガードする
+const activeSlide = slides[activeSlideIndex];
+if (!activeSlide) return;
 ```
 
-### 3.3 Reference Pattern (既存実装・テスト抜粋)
+### 3.3 Implementation Notes & Gotchas (注意点・境界契約)
 ```ts
-// ❌ 修正前
-const target = slides[activeIndex].players[0];
-// ✅ 修正後
-const activeSlide = slides[activeIndex];
-const target = activeSlide?.players[0];
-if (!target) return;
+// 並列実行する TASK-075（extension, src/lib, teams 等の型修正）と競合しないよう、本タスクでは src/features/tactical-unified/ 配下のみを編集すること。
 ```
 
 ## 4. Implementation Phases (Worker 実装手順)
 
-### Phase 1: extension/tsconfig.json の同期と src/lib・src/stores の any 排除
+### Phase 1: tactical-unified/core および objects の any 排除 (26ファイル)
 - **Worker Model**: `flash`
-- **対象ファイル**: `extension/tsconfig.json`, `src/lib/data-management.ts`, `src/lib/tactical/export/share-store.ts`, `src/lib/db/tactical-projects-db.ts`
+- **対象ファイル**: `src/features/tactical-unified/core/components/**`, `src/features/tactical-unified/core/types.ts`, `src/features/tactical-unified/objects/player/**`
 - **契約 (Interface)**:
   ```ts
-  // explicitAny ベースライン対象ファイルから any / as unknown as を除去
+  // Konva イベント・Ref・Target 型の厳密化により any / as unknown as を 0 件にする
   ```
-- **Testing Strategy**: `bun run ai:check` で対象ファイルの関連テストと型検査がすべて PASS すること。
+- **Testing Strategy**: `bun run ai:check` で対象ファイルの検査と関連テストが PASS すること。
 - **Tasks**:
   - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:
 
-### Phase 2: tactical-unified・teams・extension の any 排除とベースライン更新
+### Phase 2: tactical-unified/hooks・panels・stores・adapters の any 排除 (7ファイル)
 - **Worker Model**: `flash`
-- **対象ファイル**: `src/features/tactical-unified/hooks/animation-node-updater.ts`, `src/features/tactical-unified/objects/player/types.ts`, `src/features/tactical-unified/core/components/hud/hud-targets.ts`, `.agents/guardrails-baseline.json`
+- **対象ファイル**: `src/features/tactical-unified/adapters/tactical-canvas-store-adapter.ts`, `src/features/tactical-unified/hooks/animation-node-updater.ts`, `src/features/tactical-unified/hooks/konva-export-helpers.ts`, `src/features/tactical-unified/hooks/use-keyboard-shortcuts.ts`, `src/features/tactical-unified/hooks/use-tactical-match-init.ts`, `src/features/tactical-unified/panels/export/export-preview-player.tsx`, `src/features/tactical-unified/panels/toolbar/top-bar-more-menu.tsx`, `src/features/tactical-unified/stores/store-helpers.ts`
 - **契約 (Interface)**:
   ```ts
-  // Konva ノード型 (Konva.Node, Konva.Group 等) を明示し any を撤去
+  // animation-node-updater.ts (16箇所) 等の any をすべて具体的な型へ置換
   ```
-- **Testing Strategy**: `bun .agents/scripts/lib/code-guardrails.ts --write-baseline` 実行後に `explicitAny` が 0 件になること。
+- **Testing Strategy**: `bun run ai:check` で対象ファイルの検査と関連テストが PASS すること。
 - **Tasks**:
   - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:
 
-### Phase 3: src/lib/tactical およびに src/features/teams の noUncheckedIndexedAccess 対応
+### Phase 3: tactical-unified 全域の noUncheckedIndexedAccess 未定義ガード対応
 - **Worker Model**: `flash`
-- **対象ファイル**: `src/lib/tactical/**`, `src/features/teams/**`, `src/lib/db/**`
+- **対象ファイル**: `src/features/tactical-unified/core/**`, `src/features/tactical-unified/stores/**`, `src/features/tactical-unified/hooks/**`, `src/features/tactical-unified/panels/**`
 - **契約 (Interface)**:
   ```ts
-  // 配列・Record 添字アクセスの undefined ガード追加
+  // --noUncheckedIndexedAccess 有効時に src/features/tactical-unified/ の型エラーが 0 件になること
   ```
-- **Testing Strategy**: `--noUncheckedIndexedAccess` フラグ付き `tsc` で該当ディレクトリのエラーが 0 になること。
-- **Tasks**:
-  - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
-- **Worker Handoff Log**:
-
-### Phase 4: src/features/tactical-unified の noUncheckedIndexedAccess 対応と tsconfig.json 有効化
-- **Worker Model**: `flash`
-- **対象ファイル**: `src/features/tactical-unified/**`, `tsconfig.json`, `extension/tsconfig.json`
-- **契約 (Interface)**:
-  ```json
-  { "compilerOptions": { "noUncheckedIndexedAccess": true } }
-  ```
-- **Testing Strategy**: `bun run typecheck:full` がエラー 0 で PASS すること。
+- **Testing Strategy**: `bun run ai:check` がエラー 0 で PASS すること。
 - **Tasks**:
   - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:

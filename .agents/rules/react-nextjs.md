@@ -75,8 +75,8 @@ const PitchStage = dynamic(() => import('./pitch-stage'), { ssr: false });
 1. **`src/app/**/page.tsx` および `layout.tsx` の Server Component 維持**:
    - `page.tsx` と `layout.tsx` には原則として `'use client'` を付与せず、**50行以下** の薄い Server Component（URL パラメータ `params` / `searchParams` の解決と Feature View のマウントのみ）に保ってください（`ai:check` で新規違反を遮断）。
 2. **`'use client'` はクライアント境界（Entry）にのみ配置**:
-   - `'use client'` は、Server Component から直接 import されるクライアント側の入口コンポーネント（Level 3 Feature View や Client Wrapper）、または直接 React Hooks を呼び出す UI コンポーネント（`.tsx`）にのみ配置します。
-   - **純粋な `.ts` ファイル（ユーティリティ、型定義、Zustand ストア、ヘルパー）への `'use client'` の付与を禁止**します（`ai:check` Check D で機械遮断）。
+   - `'use client'` は、Server Component から直接 import されるクライアント側の入口コンポーネント（Level 3 Feature View や Client Wrapper）、直接 React Hooks を呼び出す UI コンポーネント（`.tsx`）、または React Hooks をインポート・使用するカスタムフック（`use-*.ts` や `hooks/*.ts`）にクライアント境界として配置します。
+   - **純粋な `.ts` ファイル（ユーティリティ、型定義、Zustand ストア、計算ヘルパー等の非フックモジュール）への `'use client'` の付与を禁止**します（`ai:check` Check D で機械遮断）。
 3. **Route Handler (`src/app/api/**/route.ts`) の入出力検証**:
    - `request.json()` やクエリパラメータは必ず Zod スキーマ（`.safeParse()`）で検証し、不正入力時はステータス `400` を返してください。
 4. **本番ルートへの検証用ページ放置の禁止**:

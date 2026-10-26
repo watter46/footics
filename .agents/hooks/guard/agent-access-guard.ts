@@ -53,13 +53,19 @@ export function detectRoleFromFirstStep(firstStep: {
 
   // 4. Worker: TASK_ASSIGN または Worker 指示
   if (
-    content.includes('type: "TASK_ASSIGN"') ||
-    content.includes("type: 'TASK_ASSIGN'") ||
+    content.includes('TASK_ASSIGN') ||
+    content.includes('Worker') ||
+    content.includes('worker') ||
     content.includes('Worker エージェント') ||
     content.includes('あなたは Footics プロジェクトの Worker') ||
-    (content.includes('Phase ') && content.includes('実装してください')) ||
+    (content.includes('Phase') && content.includes('実装')) ||
     content.includes('Worker Handoff Log')
   ) {
+    return 'worker';
+  }
+
+  // 子サブエージェント（SYSTEM_MESSAGE）で上記特定ロール以外は Worker とみなす
+  if (firstStep.type === 'SYSTEM_MESSAGE') {
     return 'worker';
   }
 

@@ -1,3 +1,5 @@
+'use client';
+
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { exportMemosAsJson, importMemosFromJson } from '@/lib/db';

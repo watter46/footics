@@ -1,3 +1,5 @@
+'use client';
+
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {

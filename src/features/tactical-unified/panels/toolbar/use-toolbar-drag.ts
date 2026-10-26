@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * use-toolbar-drag.ts
  * Draggable toolbar position logic

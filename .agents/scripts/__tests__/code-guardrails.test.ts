@@ -127,14 +127,38 @@ describe('code-guardrails validateFileAgainstBaseline', () => {
     expect(errs.some((e) => e.includes('[R8: Naming]'))).toBe(true);
   });
 
-  it('blocks deep relative imports ../../ and use client in .ts or app/page.tsx (R9, R11)', () => {
+  it('blocks deep relative imports ../../ and use client in pure .ts or app/page.tsx, but allows use client in hooks (R9, R11)', () => {
     const tsCode = `'use client';\nimport { a } from '../../lib/utils';`;
-    const errs = validateFileAgainstBaseline(
-      'src/features/teams/hooks/use-team.ts',
+    // Pure util .ts should be blocked for 'use client'
+    const utilErrs = validateFileAgainstBaseline(
+      'src/features/teams/utils/team-calc.ts',
       tsCode,
       createEmptyBaseline(),
     );
-    expect(errs.some((e) => e.includes('[R9: Imports]'))).toBe(true);
-    expect(errs.some((e) => e.includes('[R11: Next.js Boundary]'))).toBe(true);
+    expect(utilErrs.some((e) => e.includes('[R9: Imports]'))).toBe(true);
+    expect(utilErrs.some((e) => e.includes('[R11: Next.js Boundary]'))).toBe(
+      true,
+    );
+
+    // Custom hook .ts allows 'use client'
+    const hookCode = `'use client';\nimport { useState } from 'react';\nexport function useTeam() { return useState(null); }`;
+    const hookErrs = validateFileAgainstBaseline(
+      'src/features/teams/hooks/use-team.ts',
+      hookCode,
+      createEmptyBaseline(),
+    );
+    expect(hookErrs.some((e) => e.includes('[R11: Next.js Boundary]'))).toBe(
+      false,
+    );
+
+    // app/page.tsx should be blocked for 'use client'
+    const pageErrs = validateFileAgainstBaseline(
+      'src/app/teams/page.tsx',
+      `'use client';\nexport default function Page() { return null; }`,
+      createEmptyBaseline(),
+    );
+    expect(pageErrs.some((e) => e.includes('[R11: Next.js Boundary]'))).toBe(
+      true,
+    );
   });
 });

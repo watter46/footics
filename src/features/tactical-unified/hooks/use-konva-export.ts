@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * use-konva-export.ts
  * Export pipeline hook: PNG clipboard / single PNG / ZIP / MP4 / GIF

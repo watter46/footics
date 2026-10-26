@@ -1,3 +1,5 @@
+'use client';
+
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useMemoOverlayStore } from '@/features/memo-overlay';

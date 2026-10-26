@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { getSoccerBallImage } from '@/lib/tactical/soccer-ball-svg';
 

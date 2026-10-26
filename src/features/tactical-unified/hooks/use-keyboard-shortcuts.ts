@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * use-keyboard-shortcuts.ts
  * Keyboard shortcuts: Delete, Escape, Backspace, Copy (Mod+C), Paste (Mod+V), Duplicate (Mod+D), Tool switching, Space (Playback), Undo/Redo

@@ -1,3 +1,5 @@
+'use client';
+
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getCustomEventsByMatch, getEventsByMatch } from '@/lib/db';
 import { eventKeys } from '@/lib/query-keys';

@@ -1,74 +1,63 @@
-# TASK-068: 300行超ファイルの分割・多段相対import解消・Tactical Store Provider 移行
+# TASK-068: [Level 5-A] tactical-unified の 300行超ファイル分割 (10件) と Store Provider 段階移行
 
 ## 1. Metadata
 - **Status**: `TODO`
 - **Created**: 2026-10-26
 - **Target Files**:
-  - `src/lib/tactical/unified-interpolation.ts` (MODIFY)
-  - `src/lib/tactical/export/video-export-engine.ts` (MODIFY)
-  - `src/features/tactical-unified/**` (MODIFY)
-  - `src/stores/tactical-unified-store.ts` (DELETE)
-  - `.agents/guardrails-baseline.json` (MODIFY)
+  - `src/features/tactical-unified/adapters/tactical-canvas-store-adapter.ts` (MODIFY)
+  - `src/features/tactical-unified/core/components/BillboardObjectLayer.tsx` (MODIFY)
+  - `src/features/tactical-unified/core/components/PlayerLayer.tsx` (MODIFY)
+  - `src/features/tactical-unified/core/utils/canvas-coordinates.ts` (MODIFY)
+  - `src/features/tactical-unified/core/utils/matrix-coordinates.ts` (MODIFY)
+  - `src/features/tactical-unified/hooks/konva-export-helpers.ts` (MODIFY)
+  - `src/features/tactical-unified/panels/export/export-preview-player.tsx` (MODIFY)
+  - `src/features/tactical-unified/panels/right-panel/squad-sub-panel.tsx` (MODIFY)
+  - `src/features/tactical-unified/stores/annotation-slice.ts` (MODIFY)
+  - `src/features/tactical-unified/stores/project-slice.ts` (MODIFY)
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
-- [ ] 1. 多段相対 import（`../../` 56ファイル・73箇所）をすべて `@/` または `~/` エイリアスに統一し、再エクスポート専用ファイル `src/stores/tactical-unified-store.ts` を廃止して `.agents/guardrails-baseline.json` の `deepRelativeImport` を空にする。
-- [ ] 2. 静的データ定義を除く 300行超のファイル（`unified-interpolation.ts`, `video-export-engine.ts`, `pitch-renderer.ts`, `syntax-pitch-canvas.tsx`, `matrix-coordinates.ts`, `BillboardObjectLayer.tsx` 等）を単一責務のモジュール（各300行以下）へ分割し、`maxLinesOver300` ベースラインを空にする。
-- [ ] 3. `tactical-unified` の周辺パネル・フック群（43ファイル）における `useTacticalUnifiedStore` 直接参照を Context 経由へ段階移行し、二重同期アダプター `tactical-canvas-store-adapter.ts` を縮小・撤去する。
+- [ ] 1. `src/features/tactical-unified/` 配下の 300行超ファイル（10ファイル）を単一責務のサブモジュール・カスタムフックへ分割し、すべてのファイルを 300行以下にする（R8 規約準拠）。
+- [ ] 2. `tactical-unified/panels/` および `hooks/` における `useTacticalUnifiedStore` 直接参照を Context Hook 経由へ移行し、`tactical-canvas-store-adapter.ts`（348行）を 300行以下に縮小する（R4 規約準拠）。
 
 ## 3. Context Snippets (参照コード・型定義・import)
 
 ### 3.1 Import Specs
 ```ts
-// ❌ 禁止: import { ... } from '../../core/store/canvas-store-pitch';
-// ✅ 推奨:
-import { DEFAULT_BOUNDARY_BOX } from '@/features/tactical-unified/core/store/canvas-store-pitch';
+// 分割ファイル間の再エクスポートには export * を使用せず、明示的な named export を行うこと
 ```
 
 ### 3.2 Key Interfaces & Types
 ```ts
-// 各分割モジュールは 300 行以内、公開関数には明示的な引数・戻り値型を付与
+// 既存の公開関数・コンポーネント Props のシグネチャは完全に維持する
 ```
 
-### 3.3 Reference Pattern (既存実装・テスト抜粋)
+### 3.3 Implementation Notes & Gotchas (注意点・境界契約)
 ```ts
-// Context 購読フック経由でのスライス取得
-const activeTool = useCanvasStore((s) => s.activeTool);
+// 並列実行する TASK-076（src/lib および syntax-studio の300行超分割）と競合しないよう、src/features/tactical-unified/ 配下のみを編集すること。
 ```
 
 ## 4. Implementation Phases (Worker 実装手順)
 
-### Phase 1: 多段相対 import (56ファイル) の @/・~/ エイリアス化と Barrel ファイル撤去
-- **Worker Model**: `flash_lite`
-- **対象ファイル**: `src/features/**/*.ts`, `src/features/**/*.tsx`, `extension/**/*.ts`, `src/stores/tactical-unified-store.ts`, `.agents/guardrails-baseline.json`
+### Phase 1: core/utils・core/components の 300行超ファイル 4 件の責務分割
+- **Worker Model**: `flash`
+- **対象ファイル**: `src/features/tactical-unified/core/utils/canvas-coordinates.ts`, `src/features/tactical-unified/core/utils/matrix-coordinates.ts`, `src/features/tactical-unified/core/components/BillboardObjectLayer.tsx`, `src/features/tactical-unified/core/components/PlayerLayer.tsx`
 - **契約 (Interface)**:
   ```ts
-  // guardrails-baseline.json の deepRelativeImport を空オブジェクトにする
+  // 4ファイルすべてを 300行以下に分割し、既存の export シグネチャを維持
   ```
-- **Testing Strategy**: `bun .agents/scripts/lib/code-guardrails.ts --write-baseline` で `deepRelativeImport` が 0 件になること。
+- **Testing Strategy**: `src/features/tactical-unified/core/` の既存単体テストがすべて PASS すること。
 - **Tasks**:
   - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:
 
-### Phase 2: src/lib/tactical および src/components の 300行超ファイルの責務分割
+### Phase 2: panels・hooks・stores・adapters の 300行超ファイル 6 件の責務分割
 - **Worker Model**: `flash`
-- **対象ファイル**: `src/lib/tactical/unified-interpolation.ts`, `src/lib/tactical/export/video-export-engine.ts`, `src/lib/tactical/export/renderers/pitch-renderer.ts`, `src/lib/tactical/export/share-payload.ts`, `src/lib/tactical/player-formatting.ts`, `src/lib/data-management.ts`
+- **対象ファイル**: `src/features/tactical-unified/adapters/tactical-canvas-store-adapter.ts`, `src/features/tactical-unified/hooks/konva-export-helpers.ts`, `src/features/tactical-unified/panels/export/export-preview-player.tsx`, `src/features/tactical-unified/panels/right-panel/squad-sub-panel.tsx`, `src/features/tactical-unified/stores/annotation-slice.ts`, `src/features/tactical-unified/stores/project-slice.ts`
 - **契約 (Interface)**:
   ```ts
-  // 既存の export シグネチャを維持したまま内部サブモジュールへ分割（全ファイル <= 300行）
+  // 6ファイルすべてを 300行以下に分割
   ```
-- **Testing Strategy**: `src/lib/tactical/` の既存単体テストがすべて無修正で PASS すること。
-- **Tasks**:
-  - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
-- **Worker Handoff Log**:
-
-### Phase 3: src/features/tactical-unified の 300行超ファイルの責務分割
-- **Worker Model**: `flash`
-- **対象ファイル**: `src/features/tactical-unified/core/utils/matrix-coordinates.ts`, `src/features/tactical-unified/core/components/BillboardObjectLayer.tsx`, `src/features/tactical-unified/core/components/PlayerLayer.tsx`, `src/features/tactical-unified/panels/export/export-preview-player.tsx`, `src/features/tactical-unified/panels/right-panel/squad-sub-panel.tsx`, `src/features/tactical-unified/core/utils/canvas-coordinates.ts`, `.agents/guardrails-baseline.json`
-- **契約 (Interface)**:
-  ```ts
-  // guardrails-baseline.json の maxLinesOver300 を空にする
-  ```
-- **Testing Strategy**: `src/features/tactical-unified/` の全単体テストが PASS し、全ファイルが 300行以下になること。
+- **Testing Strategy**: `bun run ai:check` で対象ファイルの検査と関連テストが PASS すること。
 - **Tasks**:
   - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:

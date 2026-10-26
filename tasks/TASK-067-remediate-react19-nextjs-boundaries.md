@@ -1,4 +1,4 @@
-# TASK-067: React 19 & Next.js 16 境界の是正（Server Component 化・不要 'use client' 除去・React.FC / forwardRef 撤去）
+# TASK-067: [Level 2-B] App Router page.tsx (4件) の Server Component 薄層化と useEffect アンチパターン解消
 
 ## 1. Metadata
 - **Status**: `TODO`
@@ -7,22 +7,23 @@
   - `src/app/export/page.tsx` (MODIFY)
   - `src/app/export/share/[shareId]/page.tsx` (MODIFY)
   - `src/app/syntax-studio/page.tsx` (MODIFY)
+  - `src/app/test/pitch-aspect/page.tsx` (MODIFY)
+  - `src/features/tactical-unified/components/export-page-view.tsx` (NEW)
+  - `src/features/tactical-unified/components/shared-export-view.tsx` (NEW)
+  - `src/components/features/syntax-studio/syntax-studio-view.tsx` (NEW)
   - `src/features/tactical-unified/panels/toolbar/top-bar-title.tsx` (MODIFY)
   - `src/components/features/tactical-unified/canvas/PilotCanvas.tsx` (MODIFY)
   - `src/components/features/syntax-studio/syntax-pitch-canvas.tsx` (MODIFY)
-  - `.agents/guardrails-baseline.json` (MODIFY)
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
-- [ ] 1. `src/app/export/share/[shareId]/page.tsx`（472行・`'use client'`）等の App Router `page.tsx` からクライアント実装を `src/features/` 配下の Feature View へ抽出し、すべての `page.tsx` を 50行以下の Server Component（`'use client'` なし）にする。
-- [ ] 2. 純粋な `.ts` ファイル（45件）に付与された不要な `'use client'` を除去し、`.agents/guardrails-baseline.json` の `useClientViolations` を 0 件にする。
-- [ ] 3. `setIsMounted(true)` ハック（2件）および Props を State にコピーして `useEffect` で同期するアンチパターン（`top-bar-title.tsx`）を React 19 規約（`next/dynamic` / `key` リセット）に従って解消する。
-- [ ] 4. 残存する `React.FC`（52ファイル）および `forwardRef`（3ファイル）を標準の関数宣言 + `interface XxxProps`（React 19 `ref` prop）に置き換え、`reactFc` ベースラインを 0 件にする。
+- [ ] 1. `src/app/export/page.tsx`, `src/app/export/share/[shareId]/page.tsx`（473行）, `src/app/syntax-studio/page.tsx`, `src/app/test/pitch-aspect/page.tsx` から `'use client'` とクライアント実装を Feature View コンポーネントへ抽出し、すべての `page.tsx` を 50行以下の Server Component にする（各抽出先ファイルも 300行以下に収めること）。
+- [ ] 2. `PilotCanvas.tsx` と `syntax-pitch-canvas.tsx` の `setIsMounted(true)` ハックを解消し、同時に `syntax-pitch-canvas.tsx` の `React.FC` を通常の関数宣言に置換する。
+- [ ] 3. `top-bar-title.tsx` で Props を State にコピーして `useEffect` で同期しているアンチパターンを、編集開始時の初期化または `key` リセット方式に修正する。
 
 ## 3. Context Snippets (参照コード・型定義・import)
 
 ### 3.1 Import Specs
 ```tsx
-// Next.js 16 Server Component page.tsx
 import { SharedExportView } from '@/features/tactical-unified/components/shared-export-view';
 ```
 
@@ -33,48 +34,36 @@ interface SharePageProps {
 }
 ```
 
-### 3.3 Reference Pattern (既存実装・テスト抜粋)
+### 3.3 Implementation Notes & Gotchas (注意点・境界契約)
 ```tsx
-export default async function SharePage({ params }: SharePageProps) {
-  const { shareId } = await params;
-  return <SharedExportView shareId={shareId} />;
-}
+// Next.js 16 規約により page.tsx の params は Promise として await するかクライアント View へ渡す。
+// 抽出した shared-export-view.tsx が 300行を超えないよう、サブパーツやカスタムフックに適切に分割すること。
+// 並列実行時の競合防止のため、.agents/guardrails-baseline.json は編集しないこと。
 ```
 
 ## 4. Implementation Phases (Worker 実装手順)
 
-### Phase 1: App Router page.tsx 3件の Server Component 薄層化と useEffect アンチパターン3件の解消
+### Phase 1: App Router page.tsx 4件の Server Component 薄層化と View 抽出
 - **Worker Model**: `flash`
-- **対象ファイル**: `src/app/export/page.tsx`, `src/app/export/share/[shareId]/page.tsx`, `src/app/syntax-studio/page.tsx`, `src/features/tactical-unified/panels/toolbar/top-bar-title.tsx`, `src/components/features/tactical-unified/canvas/PilotCanvas.tsx`, `src/components/features/syntax-studio/syntax-pitch-canvas.tsx`
+- **対象ファイル**: `src/app/export/page.tsx`, `src/app/export/share/[shareId]/page.tsx`, `src/app/syntax-studio/page.tsx`, `src/app/test/pitch-aspect/page.tsx`, `src/features/tactical-unified/components/export-page-view.tsx`, `src/features/tactical-unified/components/shared-export-view.tsx`, `src/components/features/syntax-studio/syntax-studio-view.tsx`
 - **契約 (Interface)**:
   ```tsx
-  // page.tsx は 50 行以下の Server Component とし、Feature View へ分割
+  export default async function SharePage({ params }: SharePageProps)
   ```
-- **Testing Strategy**: `bun run ai:check` が PASS すること。
+- **Testing Strategy**: `bun run ai:check` で型検査・Lint・既存テストが PASS し、新規ファイルが 300行以下であること。
 - **Tasks**:
   - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:
 
-### Phase 2: 純粋 .ts ファイル 45件からの不要な 'use client' 除去
-- **Worker Model**: `flash_lite`
-- **対象ファイル**: `src/features/**/hooks/*.ts`, `extension/**/*.ts`, `.agents/guardrails-baseline.json`
-- **契約 (Interface)**:
-  ```ts
-  // guardrails-baseline.json の useClientViolations を空配列にする
-  ```
-- **Testing Strategy**: `bun .agents/scripts/lib/code-guardrails.ts --write-baseline` で `useClientViolations` が 0 件になること。
-- **Tasks**:
-  - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
-- **Worker Handoff Log**:
-
-### Phase 3: React.FC (52件) と forwardRef (3件) の関数宣言・React 19 ref prop への統一
+### Phase 2: useEffect アンチパターン 3 件（setIsMounted / Props→State 同期）の解消
 - **Worker Model**: `flash`
-- **対象ファイル**: `extension/features/**/*.tsx`, `src/components/**/*.tsx`, `src/features/**/*.tsx`, `.agents/guardrails-baseline.json`
+- **対象ファイル**: `src/features/tactical-unified/panels/toolbar/top-bar-title.tsx`, `src/components/features/tactical-unified/canvas/PilotCanvas.tsx`, `src/components/features/syntax-studio/syntax-pitch-canvas.tsx`
 - **契約 (Interface)**:
   ```tsx
-  // guardrails-baseline.json の reactFc を空配列にする
+  export function TopBarTitle(props: TopBarTitleProps)
+  export function SyntaxPitchCanvas(props: SyntaxPitchCanvasProps)
   ```
-- **Testing Strategy**: `bun .agents/scripts/lib/code-guardrails.ts --write-baseline` で `reactFc` が 0 件になること。
+- **Testing Strategy**: `bun run ai:check` で対象ファイルの検査と関連テストが PASS すること。
 - **Tasks**:
   - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:

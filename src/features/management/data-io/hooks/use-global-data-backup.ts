@@ -1,3 +1,5 @@
+'use client';
+
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { exportAllDataZip, importAllDataZip } from '@/lib/data-management';

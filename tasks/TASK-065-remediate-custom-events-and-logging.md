@@ -1,4 +1,4 @@
-# TASK-065: 残存 CustomEvent の全廃と console.log・空 catch・eslint-disable の一掃
+# TASK-065: [Level 2-A] 残存 CustomEvent (5ファイル) の型付き postMessage / コールバック移行
 
 ## 1. Metadata
 - **Status**: `TODO`
@@ -9,12 +9,10 @@
   - `src/lib/db/extension-db-queries.ts` (MODIFY)
   - `extension/features/memo-overlay/hooks/use-overlay-shortcut-interceptor.ts` (MODIFY)
   - `extension/features/storage-sync/footics-app-bridge.ts` (MODIFY)
-  - `.agents/guardrails-baseline.json` (MODIFY)
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
-- [ ] 1. 残存する `window.dispatchEvent(new CustomEvent(...))`（5ファイル・8箇所）を、React ツリー内はコールバック/Context、Extension 境界は型付き `window.postMessage` プロトコルへ置き換え、`.agents/guardrails-baseline.json` の `customEvent` を 0 件にする。
-- [ ] 2. 本番コードに残存する `console.log`（15ファイル）を除去または構造化ロガーへ置換し、`consoleLog` ベースラインを 0 件にする。
-- [ ] 3. 残存する `eslint-disable` コメント（7ファイル・30箇所）および空の `catch {}`（3箇所）をすべて解消し、`eslintDisable` ベースラインを 0 件にする。
+- [ ] 1. `src/hooks/use-shortcut.ts`, `src/features/match/hooks/use-match-memo.ts`, `src/lib/db/extension-db-queries.ts` の `window.dispatchEvent(new CustomEvent(...))` を、型付き `window.postMessage` または明示的なコールバック呼び出しへ置換する。
+- [ ] 2. `extension/features/memo-overlay/hooks/use-overlay-shortcut-interceptor.ts` および `extension/features/storage-sync/footics-app-bridge.ts` の `CustomEvent` 送受信を、Zod スキーマ検証付きの `window.postMessage` プロトコルへ統一し、`CustomEvent` の使用を 0 件にする。
 
 ## 3. Context Snippets (参照コード・型定義・import)
 
@@ -38,36 +36,23 @@ export const footicsBridgeMessageSchema = z.discriminatedUnion('type', [
 export type FooticsBridgeMessage = z.infer<typeof footicsBridgeMessageSchema>;
 ```
 
-### 3.3 Reference Pattern (既存実装・テスト抜粋)
+### 3.3 Implementation Notes & Gotchas (注意点・境界契約)
 ```ts
-// ❌ 修正前
-window.dispatchEvent(new CustomEvent('footics-action', { detail: { action } }));
-// ✅ 修正後
-window.postMessage({ type: 'FOOTICS_ACTION', action }, window.location.origin);
+// ❌ 禁止: window.dispatchEvent(new CustomEvent('footics-action', { detail: { action } }));
+// ✅ 推奨: window.postMessage({ type: 'FOOTICS_ACTION', action }, window.location.origin);
+// 並列実行時の競合を防ぐため、上記5ファイルと対応テストファイルのみを編集し、.agents/guardrails-baseline.json は編集しないこと。
 ```
 
 ## 4. Implementation Phases (Worker 実装手順)
 
-### Phase 1: CustomEvent 残存 5 ファイルの Context / postMessage 移行
+### Phase 1: CustomEvent 残存 5 ファイルの postMessage / コールバック移行と単体テスト更新
 - **Worker Model**: `flash`
 - **対象ファイル**: `src/hooks/use-shortcut.ts`, `src/features/match/hooks/use-match-memo.ts`, `src/lib/db/extension-db-queries.ts`, `extension/features/memo-overlay/hooks/use-overlay-shortcut-interceptor.ts`, `extension/features/storage-sync/footics-app-bridge.ts`
 - **契約 (Interface)**:
   ```ts
-  // CustomEvent を廃止し、型定義された postMessage またはコールバックへ統一
+  // 5ファイルすべてから CustomEvent / dispatchEvent を撤去
   ```
-- **Testing Strategy**: 該当フック・ブリッジの単体テストで `postMessage` またはコールバック呼び出しを検証。
-- **Tasks**:
-  - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
-- **Worker Handoff Log**:
-
-### Phase 2: 本番コードの console.log・eslint-disable・空 catch の一掃とベースライン更新
-- **Worker Model**: `flash_lite`
-- **対象ファイル**: `src/lib/data-management.ts`, `extension/entrypoints/background.ts`, `src/features/tactical-unified/hooks/animation-node-updater.ts`, `.agents/guardrails-baseline.json`
-- **契約 (Interface)**:
-  ```ts
-  // consoleLog: [], eslintDisable: [], customEvent: [] in guardrails-baseline.json
-  ```
-- **Testing Strategy**: `bun .agents/scripts/lib/code-guardrails.ts --write-baseline` 実行後、`customEvent`, `consoleLog`, `eslintDisable` がすべて空配列になること。
+- **Testing Strategy**: 該当フック・ブリッジの単体テストで `window.postMessage` 連携を検証し、`bun run ai:check` が PASS すること。
 - **Tasks**:
   - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:

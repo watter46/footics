@@ -1,4 +1,4 @@
-# TASK-066: データアクセス3層規約の完全適用（UI直DB参照の廃止・queryKeys統一・Zod境界検証）
+# TASK-066: [Level 3-A] queryKeys ファクトリ統一 (19箇所) と queries.ts (491行) のリポジトリ分割
 
 ## 1. Metadata
 - **Status**: `TODO`
@@ -6,20 +6,18 @@
 - **Target Files**:
   - `src/lib/query-keys.ts` (MODIFY)
   - `src/lib/db/queries.ts` (MODIFY)
-  - `src/features/match/components/match-view-wrapper.tsx` (MODIFY)
-  - `src/features/memo-overlay/components/MemoOverlayModal.tsx` (MODIFY)
-  - `src/features/teams/components/AddPlayerDialog.tsx` (MODIFY)
-  - `src/features/teams/components/EditPlayerDialog.tsx` (MODIFY)
-  - `src/features/teams/components/player-whoscored-link-section.tsx` (MODIFY)
+  - `src/lib/db/repositories/match-repository.ts` (NEW)
+  - `src/lib/db/repositories/player-repository.ts` (NEW)
+  - `src/lib/db/repositories/memo-repository.ts` (NEW)
+  - `src/features/dashboard/hooks/use-match-metadata.ts` (MODIFY)
   - `src/features/teams/hooks/use-player-master.ts` (MODIFY)
-  - `src/features/tactical-unified/panels/toolbar/top-bar-more-menu.tsx` (MODIFY)
-  - `.dependency-cruiser.cjs` (MODIFY)
+  - `src/features/teams/hooks/use-chelsea-squad.ts` (MODIFY)
+  - `src/features/national-dashboard/hooks/use-national-dashboard.ts` (MODIFY)
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
-- [ ] 1. `.dependency-cruiser.cjs` の `no-component-direct-db-access` に例外登録されている 6 つの UI コンポーネントから `@/lib/db` への直接 import を撤去し、カスタムフック（`useQuery` / `useMutation`）経由に移行して `.dependency-cruiser.cjs` の `pathNot` 例外をすべて削除する。
-- [ ] 2. コードベース内の配列リテラル `queryKey`（19箇所：`['matchData', matchId]`, `['season-players', ...]`, `['chelsea-squad']` 等）をすべて `src/lib/query-keys.ts` のファクトリ関数に統一する。
-- [ ] 3. コンポーネント内に直書きされた `queryClient.invalidateQueries`（`MemoOverlayModal.tsx`, `EditPlayerDialog.tsx`, `player-whoscored-link-section.tsx`）を各ドメインの `useMutation` フック内の `onSuccess` にカプセル化する。
-- [ ] 4. `src/lib/db/queries.ts`（490行）を機能ドメイン別のリポジトリファイル（300行以下）へ分割し、入出力境界に Zod バリデーションを追加する。
+- [ ] 1. コードベース内のカスタムフックに残存する配列リテラル `queryKey`（`['matchData', matchId]`, `['season-players', ...]`, `['chelsea-squad']` 等）をすべて `src/lib/query-keys.ts` のファクトリ関数に統一する（R5 規約準拠）。
+- [ ] 2. 491行に肥大化した `src/lib/db/queries.ts` を機能ドメイン別のリポジトリファイル（`match-repository.ts`, `player-repository.ts`, `memo-repository.ts`、各300行以下）へ分割し、`queries.ts` 自体も 300行以下に収める。
+- [ ] 3. 各リポジトリの DB 保存・読込境界に Zod スキーマ検証または安全な型ガードを組み込む。
 
 ## 3. Context Snippets (参照コード・型定義・import)
 
@@ -30,60 +28,47 @@ import { queryKeys } from '@/lib/query-keys';
 
 ### 3.2 Key Interfaces & Types
 ```ts
-// src/lib/query-keys.ts に全ドメインのキー生成関数を集約
 export const queryKeys = {
   matches: {
     all: ['matches'] as const,
     detail: (matchId: string) => ['matches', 'detail', matchId] as const,
   },
+  players: {
+    season: (season: string, team: string) =>
+      ['season-players', season, team] as const,
+  },
   // ...
 };
 ```
 
-### 3.3 Reference Pattern (既存実装・テスト抜粋)
+### 3.3 Implementation Notes & Gotchas (注意点・境界契約)
 ```ts
-// ❌ 修正前: コンポーネント内で直接 savePlayerMaster + invalidateQueries
-await savePlayerMaster(record);
-await queryClient.invalidateQueries({ queryKey: ['season-players', season, team] });
-
-// ✅ 修正後: useMutation フックを呼び出すのみ
-await savePlayerMutation.mutateAsync(record);
+// queries.ts で export * from '...' は使用禁止（Biome noReExportAll 違反になるため、明示的な named export または段階的移行を行うこと）。
+// 並列実行する TASK-074（UIコンポーネント6件のDB直参照解消）と競合しないよう、UIコンポーネント（.tsx）や .dependency-cruiser.cjs は編集しないこと。
 ```
 
 ## 4. Implementation Phases (Worker 実装手順)
 
-### Phase 1: queryKeys ファクトリの拡充と配列リテラル queryKey 19箇所の統一
+### Phase 1: queryKeys ファクトリの拡充とカスタムフック内の配列リテラル queryKey 統一
 - **Worker Model**: `flash`
-- **対象ファイル**: `src/lib/query-keys.ts`, `src/features/dashboard/hooks/use-match-metadata.ts`, `src/features/teams/hooks/use-player-master.ts`, `src/features/national-dashboard/hooks/use-national-dashboard.ts`
+- **対象ファイル**: `src/lib/query-keys.ts`, `src/features/dashboard/hooks/use-match-metadata.ts`, `src/features/teams/hooks/use-player-master.ts`, `src/features/teams/hooks/use-chelsea-squad.ts`, `src/features/national-dashboard/hooks/use-national-dashboard.ts`
 - **契約 (Interface)**:
   ```ts
-  // queryKey: ['...'] の直書きを 0 件にする
+  // 対象フック内の queryKey 配列リテラル直書きを 0 件にする
   ```
 - **Testing Strategy**: 既存のフック単体テストおよび `bun run ai:check` が PASS すること。
 - **Tasks**:
   - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:
 
-### Phase 2: UI コンポーネント6件の DB 直接参照・invalidateQueries 直書きのフック化と depcruise 例外撤去
+### Phase 2: src/lib/db/queries.ts (491行) のドメイン別リポジトリ分割（各300行以下）
 - **Worker Model**: `flash`
-- **対象ファイル**: `src/features/match/components/match-view-wrapper.tsx`, `src/features/memo-overlay/components/MemoOverlayModal.tsx`, `src/features/teams/components/AddPlayerDialog.tsx`, `src/features/teams/components/EditPlayerDialog.tsx`, `src/features/teams/components/player-whoscored-link-section.tsx`, `src/features/tactical-unified/panels/toolbar/top-bar-more-menu.tsx`, `.dependency-cruiser.cjs`
-- **契約 (Interface)**:
-  ```js
-  // .dependency-cruiser.cjs の no-component-direct-db-access から個別ファイル例外を全削除
-  ```
-- **Testing Strategy**: `bunx depcruise --config .dependency-cruiser.cjs src` がエラー 0 で PASS すること。
-- **Tasks**:
-  - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
-- **Worker Handoff Log**:
-
-### Phase 3: src/lib/db/queries.ts (490行) のドメイン別リポジトリ分割と Zod 境界検証
-- **Worker Model**: `flash`
-- **対象ファイル**: `src/lib/db/queries.ts`, `src/lib/db/repositories/match-repository.ts`, `src/lib/db/repositories/player-repository.ts`, `.agents/guardrails-baseline.json`
+- **対象ファイル**: `src/lib/db/queries.ts`, `src/lib/db/repositories/match-repository.ts`, `src/lib/db/repositories/player-repository.ts`, `src/lib/db/repositories/memo-repository.ts`
 - **契約 (Interface)**:
   ```ts
-  // 各リポジトリファイルは 300 行以下、queries.ts は barrel ではなく直接 import へ移行または縮小
+  // 既存の公開関数シグネチャを維持したまま各ファイルを 300行以下に分割
   ```
-- **Testing Strategy**: `src/lib/db/__tests__/` の単体テストと `bun run ai:check` が PASS すること。
+- **Testing Strategy**: `src/lib/db/` の単体テストおよび `bun run ai:check` が PASS すること。
 - **Tasks**:
   - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:

@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import {

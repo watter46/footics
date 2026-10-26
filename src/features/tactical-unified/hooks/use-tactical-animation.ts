@@ -1,3 +1,5 @@
+'use client';
+
 /** Tactical Unified Canvas — 60fps/120fps Animation Engine Hook */
 
 import { useCallback, useEffect } from 'react';

@@ -79,7 +79,11 @@ export function computeFileMetrics(
     /^\s*(?:\/\*[\s\S]*?\*\/\s*|\/\/[^\n]*\n\s*)*['"]use client['"]/.test(
       content,
     );
-  const isPureTs = normFile.endsWith('.ts') && !normFile.endsWith('.d.ts');
+  const isHook =
+    /^(?:.*\/)?use[A-Z0-9_-].*\.ts$/.test(normFile) ||
+    normFile.includes('/hooks/');
+  const isPureTs =
+    normFile.endsWith('.ts') && !normFile.endsWith('.d.ts') && !isHook;
   const isAppPageOrLayout = /^src\/app\/(?:.*\/)?(page|layout)\.tsx$/.test(
     normFile,
   );
