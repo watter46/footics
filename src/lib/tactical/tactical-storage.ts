@@ -6,6 +6,7 @@
 import { db } from '@/lib/db/schema';
 import type { TacticalProject } from '@/lib/types/tactical-unified';
 
+export { getMatchForTacticalProject } from '@/lib/db/tactical-match-helper';
 export const TACTICAL_PROJECT_STORAGE_KEY = 'tactical_active_project';
 
 /**

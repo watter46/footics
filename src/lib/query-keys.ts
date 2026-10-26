@@ -4,6 +4,7 @@ export const matchKeys = {
   all: ['matches'] as const,
   lists: () => [...matchKeys.all, 'list'] as const,
   detail: (id: string) => [...matchKeys.all, 'detail', id] as const,
+  metadata: (id: string) => [...matchKeys.all, 'detail', id] as const,
   memo: (id: string) => [...matchKeys.all, 'memo', id] as const,
 };
 

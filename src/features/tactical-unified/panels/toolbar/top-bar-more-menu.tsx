@@ -1,147 +1,21 @@
 'use client';
 
-import {
-  FilePlus2,
-  ImagePlus,
-  MoreHorizontal,
-  RotateCcw,
-  Sparkles,
-} from 'lucide-react';
+import { FilePlus2, MoreHorizontal } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { db } from '@/lib/db';
-import {
-  createHighPressBenchmarkProject,
-  createLowBlockBenchmarkProject,
-  createSixSlideBenchmarkProject,
-  createTenSlideFullSequenceBenchmarkProject,
-} from '@/lib/tactical/benchmark-presets';
+import { getMatchForTacticalProject } from '@/lib/db/tactical-match-helper';
 import { injectMatchToTactical } from '@/lib/tactical/match-to-tactical-bridge';
 import { clearActiveProjectFromDb } from '@/lib/tactical/tactical-storage';
+import {
+  MoreMenuPitchSection,
+  MoreMenuPresetsSection,
+} from './top-bar-more-menu-sections';
 
-interface PitchSectionProps {
-  onImportClick: () => void;
-  onClose: () => void;
-}
-
-function MoreMenuPitchSection({ onImportClick, onClose }: PitchSectionProps) {
-  const isImageBackground = useTacticalUnifiedStore(
-    (s) => s.project.backgroundType === 'image',
-  );
-  const restoreDefaultPitch = useTacticalUnifiedStore(
-    (s) => s.restoreDefaultPitch,
-  );
-
-  return (
-    <>
-      <div className="px-3 py-1 text-[10px] uppercase font-semibold tracking-wider text-white/40">
-        Pitch & Background
-      </div>
-
-      <button
-        type="button"
-        onClick={onImportClick}
-        className="w-full text-left px-3 py-2 hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer flex items-center gap-2.5"
-      >
-        <ImagePlus size={14} className="text-emerald-400 shrink-0" />
-        <div className="flex flex-col">
-          <span className="font-medium text-white">
-            Import Background Image
-          </span>
-          <span className="text-[10px] text-white/50">
-            Set screenshot or custom tactic pitch image
-          </span>
-        </div>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          restoreDefaultPitch();
-          onClose();
-        }}
-        disabled={!isImageBackground}
-        className={`w-full text-left px-3 py-2 transition-colors flex items-center gap-2.5 ${
-          isImageBackground
-            ? 'hover:bg-white/10 text-white/80 hover:text-white cursor-pointer'
-            : 'text-white/30 cursor-not-allowed'
-        }`}
-      >
-        <RotateCcw
-          size={14}
-          className={
-            isImageBackground
-              ? 'text-emerald-400 shrink-0'
-              : 'text-white/20 shrink-0'
-          }
-        />
-        <div className="flex flex-col">
-          <span className="font-medium">Clear Background Image</span>
-          <span className="text-[10px] text-white/50">
-            Restore standard tactical pitch
-          </span>
-        </div>
-      </button>
-    </>
-  );
-}
-
-function MoreMenuPresetsSection({ onClose }: { onClose: () => void }) {
-  const loadProject = useTacticalUnifiedStore((s) => s.loadProject);
-
-  const presets = [
-    {
-      title: '10-Slide Full Progression (16s)',
-      desc: '10 Slides • 984 frames benchmark (Build-up to Goal)',
-      color: 'text-emerald-300',
-      factory: createTenSlideFullSequenceBenchmarkProject,
-    },
-    {
-      title: '6-Slide Overload & Cutback (9.6s)',
-      desc: '6 Slides • 576 frames benchmark (Mid-Range)',
-      color: 'text-blue-300',
-      factory: createSixSlideBenchmarkProject,
-    },
-    {
-      title: 'Low Block Penetration (3.8s)',
-      desc: '3 Slides • Flank overload, underlap & cutback',
-      color: 'text-purple-300',
-      factory: createLowBlockBenchmarkProject,
-    },
-    {
-      title: 'High Press vs Build-up (1.8s)',
-      desc: '2 Slides • Pressing trap bait & turnover',
-      color: 'text-amber-300',
-      factory: createHighPressBenchmarkProject,
-    },
-  ];
-
-  return (
-    <>
-      <div className="px-3 py-1 text-[10px] uppercase font-semibold tracking-wider text-white/40">
-        Benchmark Presets
-      </div>
-      {presets.map((p) => (
-        <button
-          key={p.title}
-          type="button"
-          onClick={() => {
-            loadProject(p.factory());
-            onClose();
-          }}
-          className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-white transition-colors cursor-pointer flex flex-col gap-0.5"
-        >
-          <div className={`flex items-center gap-1.5 font-medium ${p.color}`}>
-            <Sparkles size={12} />
-            <span>{p.title}</span>
-          </div>
-          <span className="text-[10px] text-white/50 pl-4.5">{p.desc}</span>
-        </button>
-      ))}
-    </>
-  );
-}
+export {
+  MoreMenuPitchSection,
+  MoreMenuPresetsSection,
+} from './top-bar-more-menu-sections';
 
 export function TopBarMoreMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -152,6 +26,13 @@ export function TopBarMoreMenu() {
     (s) => s.setImageBackground,
   );
   const resetProject = useTacticalUnifiedStore((s) => s.resetProject);
+  const isImageBackground = useTacticalUnifiedStore(
+    (s) => s.project.backgroundType === 'image',
+  );
+  const restoreDefaultPitch = useTacticalUnifiedStore(
+    (s) => s.restoreDefaultPitch,
+  );
+  const loadProject = useTacticalUnifiedStore((s) => s.loadProject);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -197,11 +78,7 @@ export function TopBarMoreMenu() {
     const currentProject = useTacticalUnifiedStore.getState().project;
     if (currentProject.matchId) {
       const matchId = currentProject.matchId;
-      const numId = Number(matchId);
-      const match =
-        (!Number.isNaN(numId) ? await db.matches.get(numId as any) : null) ||
-        (await db.matches.get(matchId as any)) ||
-        (await db.matches.get(String(matchId) as any));
+      const match = await getMatchForTacticalProject(matchId);
 
       if (match) {
         resetProject();
@@ -266,13 +143,18 @@ export function TopBarMoreMenu() {
           <div className="h-px bg-white/10 my-1" />
 
           <MoreMenuPitchSection
+            isImageBackground={isImageBackground}
+            onRestoreDefaultPitch={restoreDefaultPitch}
             onImportClick={() => fileInputRef.current?.click()}
             onClose={() => setIsOpen(false)}
           />
 
           <div className="h-px bg-white/10 my-1" />
 
-          <MoreMenuPresetsSection onClose={() => setIsOpen(false)} />
+          <MoreMenuPresetsSection
+            onLoadProject={loadProject}
+            onClose={() => setIsOpen(false)}
+          />
         </div>
       )}
     </div>

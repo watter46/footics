@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { getMatch } from '@/lib/db';
+import { matchKeys } from '@/lib/query-keys';
 
 export type DashboardStatus =
   | 'idle'
@@ -17,7 +18,7 @@ export function useMatchMetadata(matchId: string) {
     isLoading,
     error: queryError,
   } = useQuery({
-    queryKey: ['matchData', matchId],
+    queryKey: matchKeys.detail(matchId),
     queryFn: () => getMatch(matchId),
   });
 

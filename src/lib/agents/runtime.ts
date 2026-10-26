@@ -80,7 +80,7 @@ export class AgentRuntime {
     TParams extends Record<string, unknown> = Record<string, unknown>,
     TResult = unknown,
   >(tool: AgentTool<TParams, TResult>): void {
-    this.toolExecutor.registerTool(tool as unknown as AgentTool);
+    this.toolExecutor.registerTool(tool as AgentTool);
   }
 
   async executeTurn(params: TurnExecutionParams): Promise<TurnExecutionResult> {

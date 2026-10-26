@@ -33,19 +33,11 @@ module.exports = {
     {
       name: 'no-component-direct-db-access',
       comment:
-        'UI コンポーネントから src/lib/db への直接アクセスは禁止です。カスタムフック (useQuery / useMutation) を経由してください（既存凍結5ファイルを除く）。',
+        'UI コンポーネントから src/lib/db への直接アクセスは禁止です。カスタムフック (useQuery / useMutation) またはサービス層を経由してください。',
       severity: 'error',
       from: {
         path: '^src/(components|features/[^/]+/(components|panels))/',
-        pathNot: [
-          '\\.(test|spec)\\.[tj]sx?$',
-          '^src/features/match/components/match-view-wrapper\\.tsx$',
-          '^src/features/memo-overlay/components/MemoOverlayModal\\.tsx$',
-          '^src/features/teams/components/AddPlayerDialog\\.tsx$',
-          '^src/features/teams/components/EditPlayerDialog\\.tsx$',
-          '^src/features/teams/components/player-whoscored-link-section\\.tsx$',
-          '^src/features/tactical-unified/panels/toolbar/top-bar-more-menu\\.tsx$',
-        ],
+        pathNot: ['\\.(test|spec)\\.[tj]sx?$'],
       },
       to: {
         path: '^src/lib/db/',
