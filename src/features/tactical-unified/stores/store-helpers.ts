@@ -30,7 +30,7 @@ export function updateSlideImmer(
   return produce(project, (draft) => {
     const slide = draft.slides.find((s) => s.id === slideId);
     if (slide) {
-      recipe(slide as unknown as Slide);
+      recipe(slide as Slide);
       draft.updatedAt = new Date().toISOString();
     }
   });

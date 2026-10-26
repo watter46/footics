@@ -6,7 +6,7 @@
  * and JSON export/import for TacticalProject entities.
  */
 
-import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
+import { strToU8, zipSync } from 'fflate';
 import { db } from '@/lib/db/schema';
 import {
   clearActiveProjectFromDb,
@@ -16,8 +16,8 @@ import {
 import {
   createDefaultProject,
   type TacticalProject,
-  TacticalProjectSchema,
 } from '@/lib/types/tactical-unified';
+import type { Match } from '@/types';
 
 export interface TacticalProjectSummary {
   id: string;
@@ -30,9 +30,7 @@ export interface TacticalProjectSummary {
   backgroundType: 'pitch' | 'image' | 'blank';
 }
 
-/**
- * List all saved tactical projects ordered by latest updated.
- */
+/** List all saved tactical projects ordered by latest updated. */
 export async function listTacticalProjects(): Promise<
   TacticalProjectSummary[]
 > {
@@ -58,9 +56,7 @@ export async function listTacticalProjects(): Promise<
   }
 }
 
-/**
- * Get a full tactical project by ID.
- */
+/** Get a full tactical project by ID. */
 export async function getTacticalProjectById(
   id: string,
 ): Promise<TacticalProject | null> {
@@ -99,9 +95,7 @@ export async function saveTacticalProject(
   }
 }
 
-/**
- * Create a new tactical project in DB and optionally activate it.
- */
+/** Create a new tactical project in DB and optionally activate it. */
 export async function createNewTacticalProject(
   title = 'Untitled Project',
   activate = true,
@@ -114,9 +108,7 @@ export async function createNewTacticalProject(
   return project;
 }
 
-/**
- * Rename an existing tactical project.
- */
+/** Rename an existing tactical project. */
 export async function renameTacticalProject(
   id: string,
   newTitle: string,
@@ -143,9 +135,7 @@ export async function renameTacticalProject(
   }
 }
 
-/**
- * Duplicate a tactical project with a new ID and title suffix.
- */
+/** Duplicate a tactical project with a new ID and title suffix. */
 export async function duplicateTacticalProject(
   id: string,
 ): Promise<TacticalProject> {
@@ -168,10 +158,7 @@ export async function duplicateTacticalProject(
   return cloned;
 }
 
-/**
- * Delete a tactical project from DB.
- * If the deleted project was active, clears active keyval store.
- */
+/** Delete a tactical project from DB. Clears active keyval store if active. */
 export async function deleteTacticalProject(id: string): Promise<void> {
   try {
     await db.tactical_projects.delete(id);
@@ -186,9 +173,7 @@ export async function deleteTacticalProject(id: string): Promise<void> {
   }
 }
 
-/**
- * Delete multiple tactical projects from DB.
- */
+/** Delete multiple tactical projects from DB. */
 export async function deleteTacticalProjects(ids: string[]): Promise<void> {
   try {
     await db.tactical_projects.bulkDelete(ids);
@@ -203,33 +188,10 @@ export async function deleteTacticalProjects(ids: string[]): Promise<void> {
   }
 }
 
-/**
- * Format local date time string as YYYYMMDD_HHmm for filenames.
- */
-function getTimestampForFilename(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  return `${year}${month}${day}_${hours}${minutes}`;
-}
-
-/**
- * Sanitize a project title for safe filesystem filenames while preserving Japanese/alphanumeric characters.
- */
-function sanitizeFilenameTitle(rawTitle?: string): string {
-  const fallback = 'untitled';
-  if (!rawTitle) return fallback;
-  // Replace invalid OS filename characters: \ / : * ? " < > | and whitespace
-  const sanitized = rawTitle
-    .trim()
-    .replace(/[\\/:*?"<>|\s]+/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return sanitized || fallback;
-}
+import {
+  getTimestampForFilename,
+  sanitizeFilenameTitle,
+} from './tactical-projects-import';
 
 /**
  * Export a tactical project as a formatted JSON blob file download.
@@ -280,7 +242,7 @@ export async function exportTacticalProjectsAsZip(
   }
 
   const zipped = zipSync(files, { level: 6 });
-  const content = new Blob([zipped as unknown as BlobPart], {
+  const content = new Blob([zipped], {
     type: 'application/zip',
   });
   const timestamp = getTimestampForFilename();
@@ -297,104 +259,26 @@ export async function exportTacticalProjectsAsZip(
 }
 
 /**
- * Import a tactical project from a single JSON File.
- * Validates schema with Zod and assigns a fresh ID if conflict or preferred.
- * Retains original project title without appending suffixes.
+ * Tactical Project 用の Match データ取得ヘルパー。
+ * UIコンポーネントからの DB 直接参照を防止する。
  */
-export async function importTacticalProjectFromJson(
-  file: File,
-  assignNewId = true,
-): Promise<TacticalProject> {
-  const text = await file.text();
-  let rawJson: unknown;
+export async function getMatchForTacticalProject(
+  matchId: string | number,
+): Promise<Match | null> {
   try {
-    rawJson = JSON.parse(text);
-  } catch (_e) {
-    throw new Error('Invalid file format: JSON could not be parsed.');
+    const numId = Number(matchId);
+    const match =
+      (!Number.isNaN(numId) ? await db.matches.get(numId as never) : null) ||
+      (await db.matches.get(matchId as string)) ||
+      (await db.matches.get(String(matchId)));
+    return match ?? null;
+  } catch (error) {
+    console.error('Failed to get match for tactical project:', error);
+    return null;
   }
-
-  const parseResult = TacticalProjectSchema.safeParse(rawJson);
-  if (!parseResult.success) {
-    throw new Error(
-      `Invalid tactical project JSON format: ${parseResult.error.issues[0]?.message ?? 'Schema validation failed'}`,
-    );
-  }
-
-  const project = parseResult.data;
-  const now = new Date().toISOString();
-
-  const importedProject: TacticalProject = {
-    ...project,
-    id: assignNewId ? crypto.randomUUID() : project.id,
-    title: project.title?.trim() || 'Untitled Project',
-    createdAt: assignNewId ? now : project.createdAt,
-    updatedAt: now,
-  };
-
-  await saveTacticalProject(importedProject, false);
-  return importedProject;
 }
 
-/**
- * Import multiple tactical projects from files (supports multiple .json files, or a .zip archive containing .json files).
- * Retains original project titles without appending suffixes.
- */
-export async function importMultipleTacticalProjects(
-  files: FileList | File[],
-): Promise<{ imported: TacticalProject[]; errors: string[] }> {
-  const fileArray = Array.from(files);
-  const imported: TacticalProject[] = [];
-  const errors: string[] = [];
-
-  for (const file of fileArray) {
-    if (file.name.endsWith('.zip') || file.type.includes('zip')) {
-      // Handle ZIP archive containing JSON projects
-      try {
-        const buffer = await file.arrayBuffer();
-        const unzipped = unzipSync(new Uint8Array(buffer));
-
-        for (const [relativePath, bytes] of Object.entries(unzipped)) {
-          if (relativePath.endsWith('/') || !relativePath.endsWith('.json')) {
-            continue;
-          }
-          try {
-            const jsonText = strFromU8(bytes);
-            const raw = JSON.parse(jsonText);
-            const parsed = TacticalProjectSchema.safeParse(raw);
-            if (!parsed.success) {
-              errors.push(
-                `${relativePath}: スキーマ検証に失敗しました (${parsed.error.issues[0]?.message})`,
-              );
-              continue;
-            }
-
-            const now = new Date().toISOString();
-            const proj: TacticalProject = {
-              ...parsed.data,
-              id: crypto.randomUUID(),
-              title: parsed.data.title?.trim() || 'Untitled Project',
-              createdAt: now,
-              updatedAt: now,
-            };
-            await saveTacticalProject(proj, false);
-            imported.push(proj);
-          } catch (err: any) {
-            errors.push(`${relativePath}: ${err.message || 'JSON解析エラー'}`);
-          }
-        }
-      } catch (err: any) {
-        errors.push(`${file.name}: ZIP展開エラー (${err.message})`);
-      }
-    } else {
-      // Handle individual JSON file
-      try {
-        const proj = await importTacticalProjectFromJson(file, true);
-        imported.push(proj);
-      } catch (err: any) {
-        errors.push(`${file.name}: ${err.message || 'インポート失敗'}`);
-      }
-    }
-  }
-
-  return { imported, errors };
-}
+export {
+  importMultipleTacticalProjects,
+  importTacticalProjectFromJson,
+} from './tactical-projects-import';

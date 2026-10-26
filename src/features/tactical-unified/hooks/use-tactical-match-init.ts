@@ -21,11 +21,7 @@ async function loadAndInjectMatch(
   matchId: string,
   minute: number,
 ): Promise<void> {
-  const numId = Number(matchId);
-  const match =
-    (!Number.isNaN(numId) ? await db.matches.get(numId as any) : null) ||
-    (await db.matches.get(matchId)) ||
-    (await db.matches.get(String(matchId)));
+  const match = await db.matches.get(matchId);
   if (!match) return;
   // 保存済みの同一試合プロジェクトがあれば既存スライドを優先し上書きしない
   const saved = await loadActiveProjectFromDb(String(match.id));
@@ -56,9 +52,7 @@ export function useTacticalMatchInit(
   const minute =
     typeof minuteParam === 'number'
       ? minuteParam
-      : minuteParam
-        ? Number.parseInt(minuteParam, 10) || 0
-        : 0;
+      : Number.parseInt(minuteParam ?? '', 10) || 0;
 
   const hasMatchQuery = Boolean(matchIdParam);
   const [isLoading, setIsLoading] = useState<boolean>(hasMatchQuery);

@@ -9,8 +9,6 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import { Sparkles, UserPlus, Users } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Layer, Stage } from 'react-konva';
-import { PlayerMarkerItem } from '@/features/tactical-unified/core/components/PlayerMarkerItem';
 import {
   selectActiveSlide,
   useTacticalUnifiedStore,
@@ -20,8 +18,26 @@ import {
   type Player,
 } from '@/lib/types/tactical-unified';
 import { FormationCustomManager } from './formation-custom-manager';
+import {
+  BASE_BENCH_HEIGHT,
+  SquadBenchCanvas,
+  type SquadBenchCanvasProps,
+} from './squad-bench-canvas';
+import { SquadSubForm, type SquadSubFormProps } from './squad-sub-form';
+import {
+  SquadTeamSwitcher,
+  type SquadTeamSwitcherProps,
+} from './squad-team-switcher';
 
-const BASE_BENCH_HEIGHT = 280;
+export {
+  BASE_BENCH_HEIGHT,
+  SquadBenchCanvas,
+  type SquadBenchCanvasProps,
+  SquadSubForm,
+  type SquadSubFormProps,
+  SquadTeamSwitcher,
+  type SquadTeamSwitcherProps,
+};
 
 export function SquadSubPanel() {
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
@@ -208,47 +224,14 @@ export function SquadSubPanel() {
 
       <div className="flex-1 overflow-y-auto divide-y divide-white/5 custom-scrollbar">
         {/* 1. Team Switcher */}
-        <div className="p-2.5 space-y-2">
-          <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-white/5 border border-white/10">
-            <button
-              type="button"
-              onClick={() => setActiveTeam('home')}
-              className={`flex items-center justify-center gap-1.5 py-1 px-2 rounded-md font-medium text-[11px] transition-all cursor-pointer ${
-                activeTeam === 'home'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <span
-                className="w-2 h-2 rounded-full border border-white/30 shrink-0"
-                style={{ backgroundColor: project.homeColor.primary }}
-              />
-              <span>HOME</span>
-              <span className="text-[10px] opacity-70">
-                ({teamPlayers.bench.length} Sub)
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTeam('away')}
-              className={`flex items-center justify-center gap-1.5 py-1 px-2 rounded-md font-medium text-[11px] transition-all cursor-pointer ${
-                activeTeam === 'away'
-                  ? 'bg-red-600 text-white shadow-sm'
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <span
-                className="w-2 h-2 rounded-full border border-white/30 shrink-0"
-                style={{ backgroundColor: project.awayColor.primary }}
-              />
-              <span>AWAY</span>
-              <span className="text-[10px] opacity-70">
-                ({teamPlayers.bench.length} Sub)
-              </span>
-            </button>
-          </div>
-        </div>
+        <SquadTeamSwitcher
+          activeTeam={activeTeam}
+          setActiveTeam={setActiveTeam}
+          homeColor={project.homeColor.primary}
+          awayColor={project.awayColor.primary}
+          homeSubCount={teamPlayers.bench.length}
+          awaySubCount={teamPlayers.bench.length}
+        />
 
         {/* 2. Substitutes / Bench Area (Konva Stage + PlayerMarkerItem サブキャンバス) */}
         <div className="p-2.5 space-y-2">
@@ -269,87 +252,28 @@ export function SquadSubPanel() {
 
           {/* New Sub Player Form */}
           {isAddingSub && (
-            <form
+            <SquadSubForm
+              newSubNo={newSubNo}
+              setNewSubNo={setNewSubNo}
+              newSubPos={newSubPos}
+              setNewSubPos={setNewSubPos}
+              newSubName={newSubName}
+              setNewSubName={setNewSubName}
               onSubmit={handleAddSub}
-              className="p-2.5 rounded-lg bg-black/40 border border-white/10 space-y-2"
-            >
-              <div className="grid grid-cols-3 gap-1.5">
-                <input
-                  type="text"
-                  placeholder="No."
-                  value={newSubNo}
-                  onChange={(e) => setNewSubNo(e.target.value)}
-                  className="px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
-                />
-                <input
-                  type="text"
-                  placeholder="Pos"
-                  value={newSubPos}
-                  onChange={(e) => setNewSubPos(e.target.value)}
-                  className="px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
-                />
-                <button
-                  type="submit"
-                  className="px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold cursor-pointer shadow-sm transition-colors"
-                >
-                  Add
-                </button>
-              </div>
-              <input
-                type="text"
-                placeholder="Player Name"
-                value={newSubName}
-                onChange={(e) => setNewSubName(e.target.value)}
-                className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
-              />
-            </form>
+            />
           )}
 
           {/* Sub-canvas Area (Konva Stage) */}
-          <div className="min-h-[160px] max-h-[360px] overflow-y-auto custom-scrollbar rounded-xl border border-white/10 bg-black/40">
-            {teamPlayers.bench.length === 0 ? (
-              <div className="h-32 flex flex-col items-center justify-center border border-dashed border-white/10 rounded-lg text-white/30 text-xs m-2">
-                <span>ベンチ選手がいません</span>
-                <span className="text-[10px] opacity-60 mt-1">
-                  ピッチからドラッグして退避
-                </span>
-              </div>
-            ) : (
-              <div
-                id="tactical-bench-canvas"
-                ref={containerRef}
-                className="w-full relative"
-                style={{ minHeight: BASE_BENCH_HEIGHT, height: stageHeight }}
-              >
-                <Stage
-                  width={canvasWidth}
-                  height={stageHeight}
-                  listening={true}
-                >
-                  <Layer>
-                    {teamPlayers.bench.map((player) => (
-                      <PlayerMarkerItem
-                        key={player.id}
-                        marker={player}
-                        width={canvasWidth}
-                        height={BASE_BENCH_HEIGHT}
-                        baseDim={canvasWidth}
-                        markerMode="2d-only"
-                        isSelected={selectedIds.includes(player.id)}
-                        isInteractive={true}
-                        connectingPlayerId={null}
-                        onDragStart={handleDragStart}
-                        onDragMove={() => {}}
-                        onDragEnd={handleDragEnd}
-                        onClick={handleClick}
-                        onUpdateVisionCone={() => {}}
-                      />
-                    ))}
-                  </Layer>
-                </Stage>
-              </div>
-            )}
-          </div>
+          <SquadBenchCanvas
+            benchPlayers={teamPlayers.bench}
+            selectedIds={selectedIds}
+            containerRef={containerRef}
+            canvasWidth={canvasWidth}
+            stageHeight={stageHeight}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onClick={handleClick}
+          />
         </div>
 
         {/* 3. Club & Season Presets (Only displayed for normal boards without matchId) */}

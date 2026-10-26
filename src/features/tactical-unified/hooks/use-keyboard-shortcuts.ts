@@ -9,8 +9,9 @@ import { useHotkeys } from 'react-hotkeys-hook';
 import { toast } from 'sonner';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { isInputFocused } from '@/lib/shortcuts';
+import type { DrawingTool } from '@/lib/types/tactical-unified';
 
-const TOOL_KEYS: Record<string, string> = {
+const TOOL_KEYS: Record<string, DrawingTool> = {
   v: 'select',
   l: 'line',
   r: 'route_line',
@@ -28,9 +29,6 @@ const TOOL_KEYS: Record<string, string> = {
 const TOOL_SHORTCUT_KEYS = Object.keys(TOOL_KEYS);
 
 export function useKeyboardShortcuts() {
-  const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-
   // Undo: Mod+Z (Ctrl+Z / Cmd+Z)
   useHotkeys(
     ['mod+z', 'meta+z'],
@@ -121,7 +119,7 @@ export function useKeyboardShortcuts() {
       const tool = TOOL_KEYS[e.key.toLowerCase()];
       if (tool) {
         e.preventDefault();
-        useTacticalUnifiedStore.getState().setActiveTool(tool as any);
+        useTacticalUnifiedStore.getState().setActiveTool(tool);
       }
     },
     { enableOnFormTags: false },

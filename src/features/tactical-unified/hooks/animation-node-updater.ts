@@ -4,6 +4,7 @@
  * (Zero React re-render: imperatively mutates Konva node properties)
  */
 
+import type Konva from 'konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import type {
   InterpolatedArrowState,
@@ -78,10 +79,11 @@ export function updateZoneNodes(
         offsetX + (pt.x / 100) * stageWidth,
         offsetY + (pt.y / 100) * stageHeight,
       ]);
-      (zoneShape as any).points(pxPoints);
-      (zoneShape as any).fill(fillRGBA);
-      (zoneShape as any).stroke(strokeColor);
-      (zoneShape as any).strokeWidth(zState.strokeWidth);
+      const polygonNode = zoneShape as unknown as Konva.Line;
+      polygonNode.points(pxPoints);
+      polygonNode.fill(fillRGBA);
+      polygonNode.stroke(strokeColor);
+      polygonNode.strokeWidth(zState.strokeWidth);
     } else if (zState.shapeType === 'rect') {
       const normX = zState.x ?? zState.points[0]?.x ?? 20;
       const normY = zState.y ?? zState.points[0]?.y ?? 20;
@@ -92,12 +94,13 @@ export function updateZoneNodes(
       const pxW = (normW / 100) * stageWidth;
       const pxH = (normH / 100) * stageHeight;
       zoneShape.position({ x: pxX, y: pxY });
-      (zoneShape as any).width(pxW);
-      (zoneShape as any).height(pxH);
-      (zoneShape as any).rotation(zState.rotation || 0);
-      (zoneShape as any).fill(fillRGBA);
-      (zoneShape as any).stroke(strokeColor);
-      (zoneShape as any).strokeWidth(zState.strokeWidth);
+      const rectNode = zoneShape as unknown as Konva.Rect;
+      rectNode.width(pxW);
+      rectNode.height(pxH);
+      rectNode.rotation(zState.rotation || 0);
+      rectNode.fill(fillRGBA);
+      rectNode.stroke(strokeColor);
+      rectNode.strokeWidth(zState.strokeWidth);
     } else if (zState.shapeType === 'ellipse') {
       const normX = zState.x ?? zState.points[0]?.x ?? 20;
       const normY = zState.y ?? zState.points[0]?.y ?? 20;
@@ -108,12 +111,13 @@ export function updateZoneNodes(
       const cx = offsetX + (normX / 100) * stageWidth + pxW / 2;
       const cy = offsetY + (normY / 100) * stageHeight + pxH / 2;
       zoneShape.position({ x: cx, y: cy });
-      (zoneShape as any).radiusX(pxW / 2);
-      (zoneShape as any).radiusY(pxH / 2);
-      (zoneShape as any).rotation(zState.rotation || 0);
-      (zoneShape as any).fill(fillRGBA);
-      (zoneShape as any).stroke(strokeColor);
-      (zoneShape as any).strokeWidth(zState.strokeWidth);
+      const ellipseNode = zoneShape as unknown as Konva.Ellipse;
+      ellipseNode.radiusX(pxW / 2);
+      ellipseNode.radiusY(pxH / 2);
+      ellipseNode.rotation(zState.rotation || 0);
+      ellipseNode.fill(fillRGBA);
+      ellipseNode.stroke(strokeColor);
+      ellipseNode.strokeWidth(zState.strokeWidth);
     }
   }
 }

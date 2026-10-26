@@ -1,4 +1,4 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { getKVBinding, type KVNamespaceLike } from './share-kv';
 import type {
   TacticalExportSharePayload,
   TacticalExportShareSummary,
@@ -15,54 +15,8 @@ const memoryStore = new Map<string, MemoryEntry>();
 // 24時間 (86400秒)
 const DEFAULT_TTL_SECONDS = 86400;
 
-interface KVNamespaceLike {
-  put(
-    key: string,
-    value: string,
-    options?: { expirationTtl?: number },
-  ): Promise<void>;
-  get(key: string, options?: { type?: 'text' | 'json' }): Promise<any>;
-  delete?(key: string): Promise<void>;
-}
-
-async function getKVBinding(): Promise<KVNamespaceLike | null> {
-  // 1. 同期呼び出し (本番 Cloudflare Worker 環境)
-  try {
-    const ctx = getCloudflareContext();
-    const kv = (ctx?.env as any)?.TACTICAL_SHARE_KV;
-    if (kv && typeof kv.put === 'function') {
-      return kv as KVNamespaceLike;
-    }
-  } catch (_e) {
-    // ignore
-  }
-
-  // 2. 非同期呼び出し (dev / proxy 環境)
-  try {
-    const ctx = await getCloudflareContext({ async: true });
-    const kv = (ctx?.env as any)?.TACTICAL_SHARE_KV;
-    if (kv && typeof kv.put === 'function') {
-      return kv as KVNamespaceLike;
-    }
-  } catch (_e) {
-    // ignore
-  }
-
-  // 3. globalThis / process.env フォールバック
-  try {
-    const globalKv =
-      (globalThis as any).process?.env?.TACTICAL_SHARE_KV ||
-      (globalThis as any).TACTICAL_SHARE_KV ||
-      (globalThis as any).__env__?.TACTICAL_SHARE_KV;
-    if (globalKv && typeof globalKv.put === 'function') {
-      return globalKv as KVNamespaceLike;
-    }
-  } catch (_e) {
-    // ignore
-  }
-
-  return null;
-}
+export type { KVNamespaceLike };
+export { getKVBinding };
 
 function createSummary(
   shareId: string,
