@@ -1,7 +1,6 @@
 'use client';
 
 import { Filter } from 'lucide-react';
-import type React from 'react';
 import { Button } from '@/components/ui/button';
 import { LengthInput } from '@/components/ui/length-input';
 import { ZonePicker } from '@/components/ui/zone-picker';
@@ -18,12 +17,12 @@ interface StrategyFilterProps {
   ) => void;
 }
 
-export const StrategyFilter: React.FC<StrategyFilterProps> = ({
+export function StrategyFilter({
   activeStrategies,
   activeStrategyParams,
   onStrategyToggle,
   onStrategyParamChange,
-}) => {
+}: StrategyFilterProps) {
   return (
     <div className="space-y-3 pt-4 border-t border-slate-800">
       <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -105,4 +104,4 @@ export const StrategyFilter: React.FC<StrategyFilterProps> = ({
       </div>
     </div>
   );
-};
+}

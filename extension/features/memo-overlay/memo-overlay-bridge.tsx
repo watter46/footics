@@ -1,4 +1,3 @@
-import type React from 'react';
 import {
   type EventPhase,
   type MemoOverlayInitialState,
@@ -20,7 +19,7 @@ import { useOverlayStore } from './stores/use-overlay-store';
  * - MemoOverlayView（Level 2 Domain UI）へ Props 確定注入
  * - ショートカット・イベントブリッジ・保存キュー連携
  */
-export const MemoOverlayBridge: React.FC = () => {
+export function MemoOverlayBridge() {
   const { isVisible, mode, matchId, initialData, initialError, open, close } =
     useOverlayStore();
 
@@ -82,4 +81,4 @@ export const MemoOverlayBridge: React.FC = () => {
       </div>
     </MemoOverlayStoreProvider>
   );
-};
+}

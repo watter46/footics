@@ -1,6 +1,5 @@
 'use client';
 
-import type React from 'react';
 import {
   Select,
   SelectContent,
@@ -16,11 +15,11 @@ interface TeamFilterProps {
   onTeamChange: (teamId: string) => void;
 }
 
-export const TeamFilter: React.FC<TeamFilterProps> = ({
+export function TeamFilter({
   selectedTeam,
   teams,
   onTeamChange,
-}) => {
+}: TeamFilterProps) {
   const selectedTeamName =
     selectedTeam === 'all'
       ? ''
@@ -60,4 +59,4 @@ export const TeamFilter: React.FC<TeamFilterProps> = ({
       </Select>
     </div>
   );
-};
+}

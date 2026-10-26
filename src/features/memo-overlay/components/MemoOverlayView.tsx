@@ -1,4 +1,3 @@
-import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { useMemoOverlayStoreContext } from '../stores/memo-overlay-provider';
@@ -36,7 +35,7 @@ export interface MemoOverlayViewProps {
  * - 初期メモは Props (initialMemo / initialData.memo) より確定注入
  * - 各フェーズの描画をサブコンポーネントへ委譲
  */
-export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
+export function MemoOverlayView({
   matchId,
   initialMemo,
   initialData,
@@ -44,7 +43,7 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
   onSave,
   className,
   readOnly = false,
-}) => {
+}: MemoOverlayViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInitialRef = useRef(true);
 
@@ -181,4 +180,4 @@ export const MemoOverlayView: React.FC<MemoOverlayViewProps> = ({
       <MemoOverlayFloatingError error={error} onClear={clearError} />
     </div>
   );
-};
+}

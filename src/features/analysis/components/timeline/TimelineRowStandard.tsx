@@ -2,7 +2,6 @@
 
 import { ExternalLink } from 'lucide-react';
 import Link from 'next/link';
-import type React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { formatTimelineTime } from '@/lib/timeline-utils';
 import type { EventStrategy } from '@/registry/event-strategy';
@@ -20,14 +19,14 @@ export interface TimelineRowStandardProps {
   activeStrategyParams: Record<string, Record<string, unknown>>;
 }
 
-export const TimelineRowStandard: React.FC<TimelineRowStandardProps> = ({
+export function TimelineRowStandard({
   event,
   index,
   virtualRow,
   metadata,
   activeStrategyList,
   activeStrategyParams,
-}) => {
+}: TimelineRowStandardProps) {
   const { playerIdNameDictionary, teams } = metadata;
   const isHome = Number(event.team_id) === Number(teams.home.teamId);
   const timeString = formatTimelineTime(event);
@@ -144,4 +143,4 @@ export const TimelineRowStandard: React.FC<TimelineRowStandardProps> = ({
       </div>
     </div>
   );
-};
+}

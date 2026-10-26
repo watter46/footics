@@ -1,7 +1,6 @@
 'use client';
 
 import { MessageSquare } from 'lucide-react';
-import type React from 'react';
 import { useEffect, useRef } from 'react';
 
 export interface PhaseMemoInputProps {
@@ -17,13 +16,13 @@ export interface PhaseMemoInputProps {
  * 責務: 補足メモ入力フェーズ（Phase 2）のUI。
  * Ctrl+EnterでのSave連携、フォーカス管理を担う。
  */
-export const PhaseMemoInput: React.FC<PhaseMemoInputProps> = ({
+export function PhaseMemoInput({
   memo,
   onMemoChange,
   onClose,
   onSave,
   onPrevPhase,
-}) => {
+}: PhaseMemoInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // フェーズ表示時にフォーカス
@@ -87,4 +86,4 @@ export const PhaseMemoInput: React.FC<PhaseMemoInputProps> = ({
       />
     </div>
   );
-};
+}

@@ -1,6 +1,5 @@
 'use client';
 
-import type React from 'react';
 import type { EventStrategy } from '@/registry/event-strategy';
 import type { EventRow, Match } from '@/types';
 import { TimelineRowCustom } from './TimelineRowCustom';
@@ -21,7 +20,7 @@ export interface TimelineRowProps {
   onDelete?: (eventId: string) => void;
 }
 
-export const TimelineRow: React.FC<TimelineRowProps> = ({
+export function TimelineRow({
   event,
   index,
   virtualRow,
@@ -31,7 +30,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
   highlightEventId,
   onEdit,
   onDelete,
-}) => {
+}: TimelineRowProps) {
   if (event.source === 'custom') {
     const isHighlighted = highlightEventId === event.id.toString();
     return (
@@ -57,4 +56,4 @@ export const TimelineRow: React.FC<TimelineRowProps> = ({
       activeStrategyParams={activeStrategyParams}
     />
   );
-};
+}

@@ -1,8 +1,6 @@
 'use client';
 
-import type React from 'react';
-
-export const TimelineHeader: React.FC = () => {
+export function TimelineHeader() {
   return (
     <div className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 flex-shrink-0 sticky top-0 z-20">
       <div className="flex items-center h-10 px-4">
@@ -30,4 +28,4 @@ export const TimelineHeader: React.FC = () => {
       </div>
     </div>
   );
-};
+}

@@ -1,7 +1,6 @@
 import { FolderOpen } from 'lucide-react';
-import type React from 'react';
 
-export const ScreenshotEmptyState: React.FC = () => {
+export function ScreenshotEmptyState() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center py-24 text-zinc-500 bg-zinc-900/30 rounded-2xl border border-zinc-800/60">
       <FolderOpen className="w-12 h-12 mb-3 text-zinc-600" />
@@ -17,4 +16,4 @@ export const ScreenshotEmptyState: React.FC = () => {
       </p>
     </div>
   );
-};
+}

@@ -1,7 +1,13 @@
 'use client';
 
-import type React from 'react';
-import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import {
+  forwardRef,
+  type ReactElement,
+  type Ref,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from 'react';
 import {
   CanvasStageContainer,
   CanvasStoreProvider,
@@ -39,7 +45,7 @@ function QuickAnnotationCanvasInner(
     className?: string;
     imageAspect?: number;
   },
-  ref: React.Ref<CanvasCoreHandle>,
+  ref: Ref<CanvasCoreHandle>,
 ) {
   const stageRef = useRef<CanvasCoreHandle | null>(null);
   const setBoundaryBox = useCanvasStore((s) => s.setBoundaryBox);
@@ -100,7 +106,7 @@ export const QuickAnnotationCanvas = forwardRef<
 >(function QuickAnnotationCanvas(
   { screenshot, onAutoSave, className = '', imageAspect = 16 / 9 },
   ref,
-): React.ReactElement {
+): ReactElement {
   const config = useMemo<CanvasConfig>(
     () => ({
       mode: 'screenshot-edit',

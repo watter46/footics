@@ -1,7 +1,6 @@
 'use client';
 
 import { AlertCircle, Clock } from 'lucide-react';
-import type React from 'react';
 import { useCallback, useEffect, useRef } from 'react';
 import { useKeyboardShortcut } from '@/hooks/use-shortcut';
 import { SHORTCUT_ACTIONS } from '@/lib/shortcuts';
@@ -64,7 +63,7 @@ const PERIOD_TABS = [
  * 責務: 時間入力フェーズ（Phase 0）のUI。
  * 数字入力・ピリオド選択・パース結果の表示を担う。
  */
-export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
+export function PhaseTimeInput({
   timeStr,
   displayTime,
   isEmptyTime,
@@ -74,7 +73,7 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
   onPeriodChange,
   onClose,
   onNextPhase,
-}) => {
+}: PhaseTimeInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const isComposing = useRef(false);
 
@@ -234,4 +233,4 @@ export const PhaseTimeInput: React.FC<PhaseTimeInputProps> = ({
       </div>
     </div>
   );
-};
+}

@@ -1,22 +1,22 @@
 import { Download, Pencil, Star, Trash2 } from 'lucide-react';
-import type React from 'react';
+import type { MouseEvent } from 'react';
 import type { CapturedScreenshot } from '~/features/capture/db/screenshot-db';
 
 export interface ScreenshotCardProps {
   screenshot: CapturedScreenshot;
   onOpenCanvas: (id: string) => void;
-  onToggleFavorite: (id: string, e?: React.MouseEvent) => void;
-  onDownload: (screenshot: CapturedScreenshot, e?: React.MouseEvent) => void;
-  onDelete: (id: string, e?: React.MouseEvent) => void;
+  onToggleFavorite: (id: string, e?: MouseEvent) => void;
+  onDownload: (screenshot: CapturedScreenshot, e?: MouseEvent) => void;
+  onDelete: (id: string, e?: MouseEvent) => void;
 }
 
-export const ScreenshotCard: React.FC<ScreenshotCardProps> = ({
+export function ScreenshotCard({
   screenshot,
   onOpenCanvas,
   onToggleFavorite,
   onDownload,
   onDelete,
-}) => {
+}: ScreenshotCardProps) {
   const formattedTime =
     screenshot.videoTime !== undefined && screenshot.videoTime > 0
       ? `${Math.floor(screenshot.videoTime / 60)}:${(screenshot.videoTime % 60)
@@ -105,4 +105,4 @@ export const ScreenshotCard: React.FC<ScreenshotCardProps> = ({
       </div>
     </div>
   );
-};
+}

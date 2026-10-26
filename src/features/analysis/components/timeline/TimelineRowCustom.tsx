@@ -2,7 +2,6 @@
 
 import { ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import type React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { getEventMetadata } from '@/lib/event-definitions';
 import { formatTimelineTime } from '@/lib/timeline-utils';
@@ -21,7 +20,7 @@ export interface TimelineRowCustomProps {
   onDelete?: (eventId: string) => void;
 }
 
-export const TimelineRowCustom: React.FC<TimelineRowCustomProps> = ({
+export function TimelineRowCustom({
   event,
   index,
   virtualRow,
@@ -29,7 +28,7 @@ export const TimelineRowCustom: React.FC<TimelineRowCustomProps> = ({
   isHighlighted,
   onEdit,
   onDelete,
-}) => {
+}: TimelineRowCustomProps) {
   const timeString = formatTimelineTime(event);
   const tacticalMinute = Math.floor(event.minute ?? 0);
   const tacticalUrl = `/tactical?matchId=${encodeURIComponent(matchId)}&minute=${tacticalMinute}`;
@@ -105,4 +104,4 @@ export const TimelineRowCustom: React.FC<TimelineRowCustomProps> = ({
       </div>
     </div>
   );
-};
+}

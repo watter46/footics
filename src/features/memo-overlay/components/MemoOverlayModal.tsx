@@ -18,11 +18,11 @@ interface MemoOverlayModalProps {
   mode?: MemoMode;
 }
 
-export const MemoOverlayModal: React.FC<MemoOverlayModalProps> = ({
+export function MemoOverlayModal({
   matchId,
   initialMemo,
   mode = 'EVENT',
-}) => {
+}: MemoOverlayModalProps) {
   const queryClient = useQueryClient();
   const isModalOpen = useMemoOverlayStore((s) => s.isModalOpen);
   const setModalOpen = useMemoOverlayStore((s) => s.setModalOpen);
@@ -124,4 +124,4 @@ export const MemoOverlayModal: React.FC<MemoOverlayModalProps> = ({
       </div>
     </MemoOverlayStoreProvider>
   );
-};
+}

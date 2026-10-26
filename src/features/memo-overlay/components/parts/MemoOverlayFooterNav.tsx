@@ -1,5 +1,4 @@
 import { ChevronLeft, ChevronRight, Loader2, Save } from 'lucide-react';
-import type React from 'react';
 
 interface MemoOverlayFooterNavProps {
   phase: number;
@@ -9,13 +8,13 @@ interface MemoOverlayFooterNavProps {
   onSave: () => void;
 }
 
-export const MemoOverlayFooterNav: React.FC<MemoOverlayFooterNavProps> = ({
+export function MemoOverlayFooterNav({
   phase,
   isSaving,
   onPrevPhase,
   onNextPhase,
   onSave,
-}) => {
+}: MemoOverlayFooterNavProps) {
   return (
     <div className="flex-shrink-0 px-5 py-4 bg-slate-950/30 border-t border-slate-800/50 flex justify-between items-center">
       <div className="flex gap-3">
@@ -56,4 +55,4 @@ export const MemoOverlayFooterNav: React.FC<MemoOverlayFooterNavProps> = ({
       </div>
     </div>
   );
-};
+}

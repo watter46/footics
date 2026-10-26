@@ -1,7 +1,5 @@
 'use client';
 
-import type React from 'react';
-
 const TIMELINE_SOURCE_OPTIONS = [
   { id: 'all', label: 'All Events' },
   { id: 'custom', label: 'My Memos' },
@@ -13,10 +11,10 @@ interface TimelineSourceFilterProps {
   onChange: (source: 'all' | 'whoscored' | 'custom') => void;
 }
 
-export const TimelineSourceFilter: React.FC<TimelineSourceFilterProps> = ({
+export function TimelineSourceFilter({
   timelineSource,
   onChange,
-}) => {
+}: TimelineSourceFilterProps) {
   return (
     <div className="space-y-2 mb-4">
       <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -43,4 +41,4 @@ export const TimelineSourceFilter: React.FC<TimelineSourceFilterProps> = ({
       </div>
     </div>
   );
-};
+}

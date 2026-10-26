@@ -1,14 +1,14 @@
 import { AlertCircle, X } from 'lucide-react';
-import type React from 'react';
 
 interface MemoOverlayFloatingErrorProps {
   error: string | undefined;
   onClear: () => void;
 }
 
-export const MemoOverlayFloatingError: React.FC<
-  MemoOverlayFloatingErrorProps
-> = ({ error, onClear }) => {
+export function MemoOverlayFloatingError({
+  error,
+  onClear,
+}: MemoOverlayFloatingErrorProps) {
   if (!error) return null;
 
   return (
@@ -25,4 +25,4 @@ export const MemoOverlayFloatingError: React.FC<
       </button>
     </div>
   );
-};
+}

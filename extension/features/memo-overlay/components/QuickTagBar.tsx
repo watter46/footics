@@ -1,9 +1,8 @@
-import type React from 'react';
 import { useMemoOverlayStoreContext } from '@/features/memo-overlay/stores/memo-overlay-provider';
 import { QUICK_TAGS, type QuickTag } from '~/constants/quick-tags';
 import { cn } from '~/utils/cn';
 
-interface QuickTagBarProps {
+export interface QuickTagBarProps {
   className?: string;
 }
 
@@ -13,7 +12,7 @@ interface QuickTagBarProps {
  * 責務: EVENT モードのメモオーバーレイ上部にプリセットタグ（ビルドアップ・プレス等）を
  * 横並びで表示し、ショートカット番号（1〜4）と選択状態（amberハイライト）を表示する。
  */
-export const QuickTagBar: React.FC<QuickTagBarProps> = ({ className }) => {
+export function QuickTagBar({ className }: QuickTagBarProps) {
   const selectedLabels = useMemoOverlayStoreContext((s) => s.selectedLabels);
   const addLabel = useMemoOverlayStoreContext((s) => s.addLabel);
   const setSelectedLabels = useMemoOverlayStoreContext(
@@ -68,4 +67,4 @@ export const QuickTagBar: React.FC<QuickTagBarProps> = ({ className }) => {
       })}
     </div>
   );
-};
+}

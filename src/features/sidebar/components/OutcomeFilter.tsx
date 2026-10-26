@@ -1,6 +1,5 @@
 'use client';
 
-import type React from 'react';
 import type { OutcomeFilter as OutcomeType } from '@/types';
 
 const OUTCOME_OPTIONS = [
@@ -14,10 +13,7 @@ interface OutcomeFilterProps {
   onChange: (outcome: OutcomeType) => void;
 }
 
-export const OutcomeFilter: React.FC<OutcomeFilterProps> = ({
-  outcomeFilter,
-  onChange,
-}) => {
+export function OutcomeFilter({ outcomeFilter, onChange }: OutcomeFilterProps) {
   return (
     <div className="space-y-2">
       <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -53,4 +49,4 @@ export const OutcomeFilter: React.FC<OutcomeFilterProps> = ({
       </div>
     </div>
   );
-};
+}

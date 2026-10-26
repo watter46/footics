@@ -1,6 +1,5 @@
 import { AlertCircle, FileText, LayoutDashboard, Send } from 'lucide-react';
-import type React from 'react';
-import { useEffect, useRef } from 'react';
+import { type KeyboardEvent, useEffect, useRef } from 'react';
 import { SuccessToast } from '~/features/memo-overlay';
 import { cn } from '~/utils/cn';
 import {
@@ -8,7 +7,7 @@ import {
   useSidepanelStore,
 } from '../stores/use-sidepanel-store';
 
-export const SidepanelView: React.FC = () => {
+export function SidepanelView() {
   useSidepanelStorageSync();
 
   const { text, setText, matchId, isSaving, errorMessage, toast, save } =
@@ -20,7 +19,7 @@ export const SidepanelView: React.FC = () => {
     textareaRef.current?.focus();
   }, []);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       window.close();
     }
@@ -147,4 +146,4 @@ export const SidepanelView: React.FC = () => {
       </div>
     </div>
   );
-};
+}

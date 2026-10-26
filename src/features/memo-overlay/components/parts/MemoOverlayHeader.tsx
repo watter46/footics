@@ -1,5 +1,4 @@
 import { Edit3, X } from 'lucide-react';
-import type React from 'react';
 import type {
   EventPhase,
   MemoMode,
@@ -20,12 +19,12 @@ const PERIOD_THEMES = {
   5: 'bg-fuchsia-500/10 text-fuchsia-400',
 } as const;
 
-export const MemoOverlayHeader: React.FC<MemoOverlayHeaderProps> = ({
+export function MemoOverlayHeader({
   mode,
   phase,
   period,
   onClose,
-}) => {
+}: MemoOverlayHeaderProps) {
   return (
     <div className="flex-shrink-0 px-5 py-3 border-b border-slate-800/50 bg-slate-900/50 flex items-center justify-between">
       <div className="flex items-center gap-3">
@@ -58,4 +57,4 @@ export const MemoOverlayHeader: React.FC<MemoOverlayHeaderProps> = ({
       </button>
     </div>
   );
-};
+}

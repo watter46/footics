@@ -6,7 +6,6 @@ import {
   Save,
   X,
 } from 'lucide-react';
-import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { sendMessage } from 'webext-bridge/content-script';
 import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
@@ -19,7 +18,7 @@ import { useOverlayStore } from '../stores/use-overlay-store';
  *
  * 責務: 動画視聴を遮らない右下小型フローティングパネルでの最小限メモ入力と保存。
  */
-export const MiniMemoPanel: React.FC = () => {
+export function MiniMemoPanel() {
   const { mode, matchId, close, toggleDisplayMode } = useOverlayStore();
   const memo = useMemoOverlayStore((s) => s.memo);
   const setMemo = useMemoOverlayStore((s) => s.setMemo);
@@ -181,4 +180,4 @@ export const MiniMemoPanel: React.FC = () => {
       </div>
     </div>
   );
-};
+}

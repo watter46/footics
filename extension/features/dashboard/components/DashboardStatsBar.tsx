@@ -1,16 +1,14 @@
-import type React from 'react';
-
 export interface DashboardStatsBarProps {
   totalScreenshots: number;
   totalGroups: number;
   totalFavorites: number;
 }
 
-export const DashboardStatsBar: React.FC<DashboardStatsBarProps> = ({
+export function DashboardStatsBar({
   totalScreenshots,
   totalGroups,
   totalFavorites,
-}) => {
+}: DashboardStatsBarProps) {
   return (
     <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
       <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-4 flex flex-col">
@@ -45,4 +43,4 @@ export const DashboardStatsBar: React.FC<DashboardStatsBarProps> = ({
       </div>
     </section>
   );
-};
+}

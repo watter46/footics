@@ -1,4 +1,3 @@
-import type React from 'react';
 import { getEventMetadata } from '@/lib/event-definitions';
 import type { EventPhase } from '@/lib/features/memo-overlay/memoOverlayLogic';
 
@@ -6,9 +5,7 @@ interface MemoOverlayProgressBarProps {
   phase: EventPhase;
 }
 
-export const MemoOverlayProgressBar: React.FC<MemoOverlayProgressBarProps> = ({
-  phase,
-}) => {
+export function MemoOverlayProgressBar({ phase }: MemoOverlayProgressBarProps) {
   return (
     <div className="flex-shrink-0 flex h-1 bg-slate-800">
       <div
@@ -17,7 +14,7 @@ export const MemoOverlayProgressBar: React.FC<MemoOverlayProgressBarProps> = ({
       />
     </div>
   );
-};
+}
 
 interface MemoOverlayRecapProps {
   phase: EventPhase;
@@ -26,12 +23,12 @@ interface MemoOverlayRecapProps {
   onRemoveLabel: (index: number) => void;
 }
 
-export const MemoOverlayRecap: React.FC<MemoOverlayRecapProps> = ({
+export function MemoOverlayRecap({
   phase,
   displayTime,
   selectedLabels,
   onRemoveLabel,
-}) => {
+}: MemoOverlayRecapProps) {
   if (phase === 0) return null;
 
   return (
@@ -72,4 +69,4 @@ export const MemoOverlayRecap: React.FC<MemoOverlayRecapProps> = ({
       )}
     </div>
   );
-};
+}

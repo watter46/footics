@@ -1,4 +1,3 @@
-import type React from 'react';
 import { useDashboardData } from '../hooks/use-dashboard-data';
 import { useDashboardFilters } from '../hooks/use-dashboard-filters';
 import { useScreenshotActions } from '../hooks/use-screenshot-actions';
@@ -7,7 +6,7 @@ import { DashboardStatsBar } from './DashboardStatsBar';
 import { ScreenshotEmptyState } from './ScreenshotEmptyState';
 import { VideoGroupCard } from './VideoGroupCard';
 
-export const DashboardView: React.FC = () => {
+export function DashboardView() {
   const {
     screenshots,
     loading,
@@ -88,4 +87,4 @@ export const DashboardView: React.FC = () => {
       )}
     </div>
   );
-};
+}

@@ -1,7 +1,6 @@
 'use client';
 
 import { Loader2, Save } from 'lucide-react';
-import type React from 'react';
 import { useEffect, useRef } from 'react';
 
 export interface MatchMemoUnitProps {
@@ -19,7 +18,7 @@ export interface MatchMemoUnitProps {
  * 責務: 試合総括モード（MATCH）のUI。
  * シングルフェーズのメモ入力と保存ボタンを担う。
  */
-export const MatchMemoUnit: React.FC<MatchMemoUnitProps> = ({
+export function MatchMemoUnit({
   memo,
   isSaving,
   hasMatchId,
@@ -27,7 +26,7 @@ export const MatchMemoUnit: React.FC<MatchMemoUnitProps> = ({
   onSave,
   readOnly = false,
   onClose,
-}) => {
+}: MatchMemoUnitProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // マウント時にフォーカスを確実に当て、キャレットを末尾に配置
@@ -176,4 +175,4 @@ export const MatchMemoUnit: React.FC<MatchMemoUnitProps> = ({
       )}
     </div>
   );
-};
+}

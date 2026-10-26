@@ -1,5 +1,4 @@
 import { Film, RefreshCw, Search, Star } from 'lucide-react';
-import type React from 'react';
 
 export interface DashboardHeaderProps {
   searchQuery: string;
@@ -10,14 +9,14 @@ export interface DashboardHeaderProps {
   onReload: () => void;
 }
 
-export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
+export function DashboardHeader({
   searchQuery,
   onSearchChange,
   filterFavorites,
   onToggleFilterFavorites,
   totalFavoriteCount,
   onReload,
-}) => {
+}: DashboardHeaderProps) {
   return (
     <header className="border-b border-zinc-800 bg-zinc-900/80 backdrop-blur sticky top-0 z-30 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div className="flex items-center gap-3">
@@ -78,4 +77,4 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       </div>
     </header>
   );
-};
+}

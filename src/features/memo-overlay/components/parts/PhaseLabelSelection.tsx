@@ -1,7 +1,6 @@
 'use client';
 
 import { AlertCircle, Search } from 'lucide-react';
-import type React from 'react';
 import { useEffect, useRef } from 'react';
 import type { FlattenedEvent } from '@/lib/event-definitions';
 
@@ -26,7 +25,7 @@ export interface PhaseLabelSelectionProps {
  * 責務: ラベル選択フェーズ（Phase 1）のUI。
  * テキスト検索・サジェストリスト・選択済みラベルの表示と操作を担う。
  */
-export const PhaseLabelSelection: React.FC<PhaseLabelSelectionProps> = ({
+export function PhaseLabelSelection({
   labelInput,
   suggestions,
   suggestionIndex,
@@ -40,7 +39,7 @@ export const PhaseLabelSelection: React.FC<PhaseLabelSelectionProps> = ({
   onNextPhase,
   onPrevPhase,
   onNavigateSuggestion,
-}) => {
+}: PhaseLabelSelectionProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsContainerRef = useRef<HTMLDivElement>(null);
 
@@ -172,4 +171,4 @@ export const PhaseLabelSelection: React.FC<PhaseLabelSelectionProps> = ({
       </div>
     </div>
   );
-};
+}

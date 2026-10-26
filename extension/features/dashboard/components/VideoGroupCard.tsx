@@ -7,7 +7,7 @@ import {
   Trash2,
   Video,
 } from 'lucide-react';
-import type React from 'react';
+import type { MouseEvent } from 'react';
 import type { CapturedScreenshot } from '~/features/capture/db/screenshot-db';
 import type { VideoGroup } from '../utils/grouping';
 import { ScreenshotCard } from './ScreenshotCard';
@@ -19,15 +19,12 @@ export interface VideoGroupCardProps {
   onDownloadGroup: (group: VideoGroup) => void;
   onDeleteGroup: (group: VideoGroup) => void;
   onOpenCanvas: (id: string) => void;
-  onToggleFavorite: (id: string, e?: React.MouseEvent) => void;
-  onDownloadSingle: (
-    screenshot: CapturedScreenshot,
-    e?: React.MouseEvent,
-  ) => void;
-  onDeleteSingle: (id: string, e?: React.MouseEvent) => void;
+  onToggleFavorite: (id: string, e?: MouseEvent) => void;
+  onDownloadSingle: (screenshot: CapturedScreenshot, e?: MouseEvent) => void;
+  onDeleteSingle: (id: string, e?: MouseEvent) => void;
 }
 
-export const VideoGroupCard: React.FC<VideoGroupCardProps> = ({
+export function VideoGroupCard({
   group,
   isExpanded,
   onToggleExpand,
@@ -37,7 +34,7 @@ export const VideoGroupCard: React.FC<VideoGroupCardProps> = ({
   onToggleFavorite,
   onDownloadSingle,
   onDeleteSingle,
-}) => {
+}: VideoGroupCardProps) {
   return (
     <article className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl overflow-hidden shadow-sm">
       {/* Group Header Card */}
@@ -139,4 +136,4 @@ export const VideoGroupCard: React.FC<VideoGroupCardProps> = ({
       )}
     </article>
   );
-};
+}

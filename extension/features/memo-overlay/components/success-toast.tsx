@@ -1,17 +1,13 @@
 import { Check } from 'lucide-react';
-import type React from 'react';
 import { Z_INDEX } from '~/constants';
 import { cn } from '~/utils/cn';
 
-interface SuccessToastProps {
+export interface SuccessToastProps {
   message: string;
   isVisible: boolean;
 }
 
-export const SuccessToast: React.FC<SuccessToastProps> = ({
-  message,
-  isVisible,
-}) => {
+export function SuccessToast({ message, isVisible }: SuccessToastProps) {
   if (!isVisible) return null;
 
   return (
@@ -37,4 +33,4 @@ export const SuccessToast: React.FC<SuccessToastProps> = ({
       </p>
     </div>
   );
-};
+}

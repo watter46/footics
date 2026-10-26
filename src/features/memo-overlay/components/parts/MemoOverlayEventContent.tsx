@@ -1,4 +1,3 @@
-import type React from 'react';
 import type { FlattenedEvent } from '@/lib/event-definitions';
 import type { EventPhase } from '@/lib/features/memo-overlay/memoOverlayLogic';
 import { PhaseLabelSelection } from './PhaseLabelSelection';
@@ -30,9 +29,7 @@ export interface MemoOverlayEventContentProps {
   onNavigateSuggestion?: (direction: 1 | -1) => void;
 }
 
-export const MemoOverlayEventContent: React.FC<
-  MemoOverlayEventContentProps
-> = ({
+export function MemoOverlayEventContent({
   phase,
   timeStr,
   displayTime,
@@ -55,7 +52,7 @@ export const MemoOverlayEventContent: React.FC<
   onNextPhase,
   onPrevPhase,
   onNavigateSuggestion,
-}) => {
+}: MemoOverlayEventContentProps) {
   switch (phase) {
     case 0:
       return (
@@ -102,4 +99,4 @@ export const MemoOverlayEventContent: React.FC<
     default:
       return null;
   }
-};
+}
