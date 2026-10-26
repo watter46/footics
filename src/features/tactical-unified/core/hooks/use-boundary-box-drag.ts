@@ -1,5 +1,3 @@
-'use client';
-
 import { useCallback, useRef } from 'react';
 import type { BoundaryBox as BoundaryBoxType } from '@/lib/types/tactical-unified';
 import {

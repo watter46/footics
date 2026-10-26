@@ -1,5 +1,3 @@
-'use client';
-
 import { useHotkeys } from 'react-hotkeys-hook';
 import type { DrawingTool, SelectedObject } from '../types';
 import { useCanvasStoreApi } from './use-canvas-store';

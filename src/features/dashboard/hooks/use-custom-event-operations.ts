@@ -1,5 +1,3 @@
-'use client';
-
 import { useCallback, useState } from 'react';
 import { useMemoOverlayStore } from '@/features/memo-overlay';
 import { deleteCustomEvent } from '@/lib/db';

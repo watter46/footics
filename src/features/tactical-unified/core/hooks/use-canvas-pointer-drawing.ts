@@ -1,5 +1,3 @@
-'use client';
-
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCallback } from 'react';
 import {

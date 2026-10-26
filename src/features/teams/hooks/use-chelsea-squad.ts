@@ -1,5 +1,3 @@
-'use client';
-
 import { DEFAULT_SEASON } from '@/lib/tactical/chelsea-preset';
 import { useTeamSquad } from './use-team-squad';
 

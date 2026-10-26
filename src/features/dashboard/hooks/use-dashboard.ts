@@ -1,5 +1,3 @@
-'use client';
-
 import { useMemo } from 'react';
 import { useEvents } from '@/features/analysis';
 import { useCustomEventOperations } from './use-custom-event-operations';

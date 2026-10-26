@@ -1,5 +1,3 @@
-'use client';
-
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { importMatchesBatch } from '@/lib/data-loader';

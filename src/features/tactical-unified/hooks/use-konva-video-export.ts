@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * use-konva-video-export.ts
  * Dedicated React hook for Boundary Video Export (MP4 & Transparent WebM)

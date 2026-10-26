@@ -1,5 +1,3 @@
-'use client';
-
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useMemoOverlayStore } from '@/features/memo-overlay';
@@ -30,7 +28,6 @@ export function useDataSync() {
         matchId?: unknown;
       };
       if (action !== SHORTCUT_ACTIONS.REFRESH_DATA) return;
-      console.log('[useDataSync] REFRESH_DATA received, matchId:', matchId);
 
       // 保存中フラグが立っている場合のみリセットして副作用を最小化
       if (useMemoOverlayStore.getState().isSaving) {
