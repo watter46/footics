@@ -33,6 +33,11 @@ export function MemoOverlayStoreProvider({
   );
 }
 
+export function useMemoOverlayStoreApi(): MemoOverlayStore {
+  const store = useContext(MemoOverlayStoreContext);
+  return store ?? defaultMemoOverlayStore;
+}
+
 export function useMemoOverlayStoreContext<T>(
   selector: (state: MemoOverlayState) => T,
 ): T {

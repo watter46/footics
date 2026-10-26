@@ -10,6 +10,65 @@ import { useMatchMemoLoader } from './hooks/use-match-memo-loader';
 import { useMemoSave } from './hooks/use-memo-save';
 import { useOverlayStore } from './stores/use-overlay-store';
 
+interface MemoOverlayBridgeInnerProps {
+  matchId?: string;
+  mode: 'MATCH' | 'EVENT';
+  resolvedMemo?: string;
+  initialData?: {
+    id?: string;
+    period?: number;
+    minute?: number;
+    second?: number;
+    labels?: string[];
+    memo?: string;
+  };
+  close: () => void;
+  open: (params: {
+    mode: 'MATCH' | 'EVENT';
+    matchId?: string;
+    error?: string;
+    initialData?: {
+      id?: string;
+      period?: number;
+      minute?: number;
+      second?: number;
+      labels?: string[];
+      memo?: string;
+    };
+  }) => void;
+  isVisible: boolean;
+}
+
+function MemoOverlayBridgeInner({
+  matchId,
+  mode,
+  resolvedMemo,
+  initialData,
+  close,
+  open,
+  isVisible,
+}: MemoOverlayBridgeInnerProps) {
+  const { handleSave } = useMemoSave();
+
+  // ストア連携
+  useMemoOverlayEventBridge(close, handleSave, open, isVisible);
+
+  return (
+    <div className="fixed top-6 right-6 flex flex-col gap-2 z-50 pointer-events-auto">
+      {mode === 'EVENT' && <QuickTagBar />}
+      <MemoOverlayView
+        matchId={matchId}
+        initialMemo={resolvedMemo}
+        initialData={initialData}
+        onClose={close}
+        onSave={handleSave}
+        readOnly={false}
+        className="static top-auto right-auto"
+      />
+    </div>
+  );
+}
+
 /**
  * MemoOverlayBridge (Extension Adapter Layer - Level 3 Feature View)
  *
@@ -30,11 +89,6 @@ export function MemoOverlayBridge() {
     initialMemo: initialData?.memo,
     isVisible,
   });
-
-  const { handleSave } = useMemoSave();
-
-  // ストア連携
-  useMemoOverlayEventBridge(close, handleSave, open, isVisible);
 
   if (!isVisible) return null;
 
@@ -67,18 +121,15 @@ export function MemoOverlayBridge() {
       key={`${matchId}-${mode}-${initialData?.id ?? 'new'}`}
       initialState={memoInitialState}
     >
-      <div className="fixed top-6 right-6 flex flex-col gap-2 z-50 pointer-events-auto">
-        {mode === 'EVENT' && <QuickTagBar />}
-        <MemoOverlayView
-          matchId={matchId}
-          initialMemo={resolvedMemo}
-          initialData={initialData}
-          onClose={close}
-          onSave={handleSave}
-          readOnly={false}
-          className="static top-auto right-auto"
-        />
-      </div>
+      <MemoOverlayBridgeInner
+        matchId={matchId}
+        mode={mode}
+        resolvedMemo={resolvedMemo}
+        initialData={initialData}
+        close={close}
+        open={open}
+        isVisible={isVisible}
+      />
     </MemoOverlayStoreProvider>
   );
 }

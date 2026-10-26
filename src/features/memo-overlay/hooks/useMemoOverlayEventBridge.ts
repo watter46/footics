@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useMemoOverlayStore } from '../stores/memo-overlay-store';
+import { useMemoOverlayStoreApi } from '../stores/memo-overlay-provider';
 import {
   EVENT_BRIDGE_HANDLERS,
   type EventBridgeContext,
@@ -12,6 +12,8 @@ export function useMemoOverlayEventBridge(
   onOpen?: EventBridgeContext['onOpen'],
   isActive = true,
 ) {
+  const storeApi = useMemoOverlayStoreApi();
+
   useEffect(() => {
     const handleAction = (action: string, detail?: FooticsActionDetail) => {
       const isToggle =
@@ -23,7 +25,7 @@ export function useMemoOverlayEventBridge(
           onClose,
           onSave,
           onOpen,
-          store: useMemoOverlayStore.getState(),
+          store: storeApi.getState(),
         });
       }
     };
@@ -54,5 +56,5 @@ export function useMemoOverlayEventBridge(
       window.removeEventListener('message', handleMessage);
       window.removeEventListener('footics-action', handleCustom);
     };
-  }, [onClose, onSave, onOpen, isActive]);
+  }, [onClose, onSave, onOpen, isActive, storeApi]);
 }

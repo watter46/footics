@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   MemoOverlayStoreProvider,
   useMemoOverlayContext,
+  useMemoOverlayStoreApi,
   useMemoOverlayStoreContext,
 } from '../memo-overlay-provider';
 import {
@@ -180,5 +181,30 @@ describe('MemoOverlayStoreProvider & Hooks', () => {
 
     expect(r1.current.memo).toBe('Scope 1 Changed');
     expect(r2.current.memo).toBe('Scope 2');
+  });
+
+  describe('useMemoOverlayStoreApi', () => {
+    it('Provider 配下でアクティブな Store インスタンスを取得できること', () => {
+      const wrapper = ({ children }: { children: ReactNode }) => (
+        <MemoOverlayStoreProvider initialState={{ memo: 'StoreApi Memo' }}>
+          {children}
+        </MemoOverlayStoreProvider>
+      );
+
+      const { result } = renderHook(() => useMemoOverlayStoreApi(), {
+        wrapper,
+      });
+
+      expect(result.current.getState().memo).toBe('StoreApi Memo');
+      act(() => {
+        result.current.getState().setMemo('Updated via StoreApi');
+      });
+      expect(result.current.getState().memo).toBe('Updated via StoreApi');
+    });
+
+    it('Provider 外では defaultMemoOverlayStore (シングルトン) を取得できること', () => {
+      const { result } = renderHook(() => useMemoOverlayStoreApi());
+      expect(result.current.getState().memo).toBe('Singleton Memo');
+    });
   });
 });

@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
+import { addToSaveQueue } from '~/features/storage-sync/save-queue';
 import { MemoOverlayBridge } from '../memo-overlay-bridge';
 import { useOverlayStore } from '../stores/use-overlay-store';
 
@@ -12,8 +13,8 @@ vi.mock('../hooks/use-match-memo-loader', () => ({
   useMatchMemoLoader: vi.fn(({ initialMemo }) => initialMemo ?? 'Loaded Memo'),
 }));
 
-vi.mock('../hooks/use-memo-save', () => ({
-  useMemoSave: vi.fn(() => ({ handleSave: vi.fn() })),
+vi.mock('~/features/storage-sync/save-queue', () => ({
+  addToSaveQueue: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('MemoOverlayBridge', () => {
@@ -84,5 +85,35 @@ describe('MemoOverlayBridge', () => {
       screen.getByDisplayValue('Isolated Provider Memo'),
     ).toBeInTheDocument();
     expect(useMemoOverlayStore.getState().memo).toBe('Global Singleton Memo');
+  });
+
+  it('SAVE_MEMO イベントを受信したとき、Provider 内のメモが addToSaveQueue に保存されて閉じること', async () => {
+    useOverlayStore.getState().open({
+      mode: 'MATCH',
+      matchId: 'match-save-1',
+      initialData: {
+        memo: 'Match tactical plan',
+      },
+    });
+
+    render(<MemoOverlayBridge />);
+
+    // SAVE_MEMO イベントを発火
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent('footics-action', {
+          detail: { action: 'SAVE_MEMO' },
+        }),
+      );
+    });
+
+    expect(addToSaveQueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'MATCH',
+        matchId: 'match-save-1',
+        memo: 'Match tactical plan',
+      }),
+    );
+    expect(useOverlayStore.getState().isVisible).toBe(false);
   });
 });

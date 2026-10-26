@@ -1,4 +1,5 @@
-import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
+import { useMemoOverlayStoreApi } from '@/features/memo-overlay';
+import type { MemoOverlayState } from '@/features/memo-overlay/stores/memo-overlay-types';
 import {
   createSavePayload,
   getValidationError,
@@ -15,25 +16,20 @@ import { useOverlayStore } from '../stores/use-overlay-store';
  */
 export function useMemoSave() {
   const { matchId, close, setToast } = useOverlayStore();
-  const setError = useMemoOverlayStore((s) => s.setError);
-  const forceSetPhase = useMemoOverlayStore((s) => s.forceSetPhase);
-  const setIsSaving = useMemoOverlayStore((s) => s.setIsSaving);
-  const reset = useMemoOverlayStore((s) => s.reset);
+  const storeApi = useMemoOverlayStoreApi();
 
-  const validate = (
-    state: ReturnType<typeof useMemoOverlayStore.getState>,
-  ): boolean => {
+  const validate = (state: MemoOverlayState): boolean => {
     if (state.mode === 'EVENT') {
       const timeErr = getValidationError({ ...state, phase: 0 });
       if (timeErr) {
-        setError(timeErr);
-        forceSetPhase(0);
+        storeApi.getState().setError(timeErr);
+        storeApi.getState().forceSetPhase(0);
         return false;
       }
       const labelErr = getValidationError({ ...state, phase: 1 });
       if (labelErr) {
-        setError(labelErr);
-        forceSetPhase(1);
+        storeApi.getState().setError(labelErr);
+        storeApi.getState().forceSetPhase(1);
         return false;
       }
     }
@@ -42,12 +38,12 @@ export function useMemoSave() {
 
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Save flow handles validation, dry run, and queueing
   const handleSave = async () => {
-    const currentState = useMemoOverlayStore.getState();
+    const currentState = storeApi.getState();
 
     if (currentState.isSaving) return;
 
     if (!DEBUG_CONFIG.DRY_RUN && !matchId) {
-      setError('保存先の試合情報が見つかりません。');
+      currentState.setError('保存先の試合情報が見つかりません。');
       return;
     }
 
@@ -63,13 +59,13 @@ export function useMemoSave() {
 
     if (!payload) return;
 
-    setIsSaving(true);
+    currentState.setIsSaving(true);
     try {
       if (DEBUG_CONFIG.DRY_RUN) {
         console.info('🚀 [DRY RUN] Save Payload:', { matchId, ...payload });
         await new Promise((resolve) => setTimeout(resolve, 500));
         setToast('Dry Run: Saved');
-        reset();
+        currentState.reset();
         return;
       }
 
@@ -96,9 +92,9 @@ export function useMemoSave() {
       );
     } catch (err) {
       console.error('[useMemoSave] Queue write failed:', err);
-      setError('保存キューへの書き込みに失敗しました。');
+      currentState.setError('保存キューへの書き込みに失敗しました。');
     } finally {
-      setIsSaving(false);
+      currentState.setIsSaving(false);
     }
   };
 

@@ -1,6 +1,11 @@
 import { act, renderHook } from '@testing-library/react';
+import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useMemoOverlayStore } from '../../stores/memo-overlay-store';
+import { MemoOverlayStoreContext } from '../../stores/memo-overlay-provider';
+import {
+  createMemoOverlayStore,
+  useMemoOverlayStore,
+} from '../../stores/memo-overlay-store';
 import { EVENT_BRIDGE_HANDLERS } from '../event-bridge-handlers';
 import { useMemoOverlayEventBridge } from '../useMemoOverlayEventBridge';
 
@@ -340,6 +345,35 @@ describe('useMemoOverlayEventBridge & EVENT_BRIDGE_HANDLERS', () => {
       });
 
       expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it('MemoOverlayStoreProvider 配下ではアクティブな context store を操作すること', () => {
+      const customStore = createMemoOverlayStore({
+        phase: 0,
+        timeStr: '12:00',
+      });
+      const wrapper = ({ children }: { children: React.ReactNode }) =>
+        React.createElement(
+          MemoOverlayStoreContext.Provider,
+          { value: customStore },
+          children,
+        );
+
+      renderHook(
+        () => useMemoOverlayEventBridge(onClose, onSave, onOpen, true),
+        { wrapper },
+      );
+
+      act(() => {
+        window.dispatchEvent(
+          new CustomEvent('footics-action', {
+            detail: { action: 'NEXT_PHASE' },
+          }),
+        );
+      });
+
+      expect(customStore.getState().phase).toBe(1);
+      expect(useMemoOverlayStore.getState().phase).toBe(0);
     });
 
     describe('window.postMessage integration', () => {

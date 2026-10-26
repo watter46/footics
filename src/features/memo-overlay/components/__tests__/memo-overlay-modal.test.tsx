@@ -149,4 +149,40 @@ describe('MemoOverlayModal', () => {
 
     expect(screen.getByDisplayValue('Initial match memo text')).toBeDefined();
   });
+
+  it('グローバルストアの最新状態（timeStr, labels, memo等）が引き継がれ、入力値が正しく保存されること', async () => {
+    // グローバルストアにイベント情報を事前に設定（例: ショートカット等で開いた場合）
+    useMemoOverlayStore.getState().reset('EVENT');
+    useMemoOverlayStore.getState().setTimeStr('25:10');
+    useMemoOverlayStore.getState().setSelectedLabels(['Tackle']);
+    useMemoOverlayStore.getState().setMemo('Initial note');
+    useMemoOverlayStore.getState().setModalOpen(true);
+
+    renderWithClient(<MemoOverlayModal matchId="test-match-2" />);
+
+    // 画面上でメモを編集
+    const textarea = screen.getByRole('textbox');
+    fireEvent.change(textarea, {
+      target: { value: 'Updated note from modal' },
+    });
+
+    // 保存を実行（Ctrl+Enter）
+    await act(async () => {
+      fireEvent.keyDown(document, {
+        key: 'Enter',
+        code: 'Enter',
+        ctrlKey: true,
+      });
+    });
+
+    expect(dbQueries.saveCustomEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        match_id: 'test-match-2',
+        minute: 25,
+        second: 10,
+        labels: ['Tackle'],
+        memo: 'Updated note from modal',
+      }),
+    );
+  });
 });
