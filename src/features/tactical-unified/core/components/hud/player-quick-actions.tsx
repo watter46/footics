@@ -1,8 +1,8 @@
 'use client';
 
 import { Eye, Link, MoveRight, Sparkles } from 'lucide-react';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import type { Player } from '@/lib/types/tactical-unified';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
 import { WavyArrowIcon } from '../toolbar/core-toolbar-icons';
 import { DashedArrowIcon } from './hud-icons';
 

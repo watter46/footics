@@ -1,7 +1,7 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Ellipse, Group, Rect, Transformer } from 'react-konva';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import { useZoneShape } from './use-zone-shape';
 import type { ZoneNodeProps } from './ZonePolygonNode';
 import { getZoneStyle } from './zone-geometry';

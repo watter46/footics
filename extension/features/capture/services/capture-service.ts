@@ -1,5 +1,5 @@
 import { sendMessage } from 'webext-bridge/content-script';
-import { useOverlayStore } from '../../memo-overlay';
+import { useOverlayStore } from '~/features/memo-overlay';
 import {
   findVideoElement,
   prepareDRMHardenedUI,
@@ -31,7 +31,6 @@ export interface CaptureOptions {
 export async function executeCapturePipeline(
   options?: CaptureOptions,
 ): Promise<boolean> {
-  console.log('📸 [Footics Capture] Capture trigger received');
   const video =
     options?.videoElement !== undefined
       ? options.videoElement
@@ -70,11 +69,6 @@ export async function executeCapturePipeline(
           );
         }
       }
-
-      console.log(
-        '✅ [Footics Capture] Frame captured & cropped successfully:',
-        { dataLength: finalDataUrl.length },
-      );
 
       // Quick Canvas パイプラインを実行
       const canvasResult = await sendMessage(

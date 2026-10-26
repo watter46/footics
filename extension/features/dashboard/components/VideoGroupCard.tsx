@@ -8,7 +8,7 @@ import {
   Video,
 } from 'lucide-react';
 import type React from 'react';
-import type { CapturedScreenshot } from '../../capture/db/screenshot-db';
+import type { CapturedScreenshot } from '~/features/capture/db/screenshot-db';
 import type { VideoGroup } from '../utils/grouping';
 import { ScreenshotCard } from './ScreenshotCard';
 

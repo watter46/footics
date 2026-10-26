@@ -1,7 +1,7 @@
 'use client';
 
 import { Crop } from 'lucide-react';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 
 export function ToolbarBoundaryBoxToggle() {
   const boundaryBox = useCanvasStore((s) => s.boundaryBox);

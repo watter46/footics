@@ -1,4 +1,4 @@
-import type { EventGroup } from '../../event-definitions';
+import type { EventGroup } from '@/lib/event-definitions';
 
 export const GK_GROUP: EventGroup = {
   id: 'GK',

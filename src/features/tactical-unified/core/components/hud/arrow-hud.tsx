@@ -1,7 +1,7 @@
 'use client';
 
 import { Lock, Minus, Plus, Trash2, Unlock } from 'lucide-react';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import { DashedLineIcon, SolidLineIcon } from './hud-icons';
 import { MiniColorPicker } from './mini-color-picker';
 

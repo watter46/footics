@@ -1,6 +1,6 @@
 'use client';
 
-import { useCanvasStore } from '../../hooks/use-canvas-store';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import type { DrawingToolPlugin } from './drawing-tool-plugin';
 
 export interface ToolbarToolsGroupProps {

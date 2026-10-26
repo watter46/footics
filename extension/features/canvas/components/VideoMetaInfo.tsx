@@ -1,6 +1,6 @@
 import { Clock, ExternalLink } from 'lucide-react';
 import type React from 'react';
-import type { CapturedScreenshot } from '../../capture/db/screenshot-db';
+import type { CapturedScreenshot } from '~/features/capture/db/screenshot-db';
 
 export interface VideoMetaInfoProps {
   screenshot: CapturedScreenshot | null;

@@ -3,8 +3,8 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Group, Line } from 'react-konva';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
 import { useZonePolygon } from './use-zone-polygon';
 import { ZonePolygonHandles } from './ZonePolygonHandles';
 import { getZoneStyle } from './zone-geometry';

@@ -1,11 +1,11 @@
 import type React from 'react';
+import type { SelectedObject } from '@/features/tactical-unified/core/types';
 import type {
   ArrowAnnotation,
   Player,
   TextAnnotation,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
-import type { SelectedObject } from '../../types';
 
 export interface HudTarget {
   x: number;

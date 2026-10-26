@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { STORAGE_KEYS } from '../../../constants';
+import { STORAGE_KEYS } from '~/constants';
 import type { BackgroundCommandContext, CommandHandler } from './types';
 
 export type MemoCommandName = 'toggle-match-memo' | 'toggle-event-memo';

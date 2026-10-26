@@ -18,7 +18,7 @@ import {
   createXBoundaryBox,
   DEFAULT_BOUNDARY_BOX_FULL,
 } from '@/lib/types/tactical-unified';
-import type { CapturedScreenshot } from '../../capture/db/screenshot-db';
+import type { CapturedScreenshot } from '~/features/capture/db/screenshot-db';
 
 export interface QuickAnnotationCanvasProps {
   screenshot: CapturedScreenshot;

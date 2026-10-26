@@ -1,9 +1,9 @@
+import type { TrajectoryArrowNodeEntry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import {
   getBezierControlPoint,
   getBezierMidpoint,
   getQuadraticBezierPoints,
 } from '@/lib/tactical/trajectory';
-import type { TrajectoryArrowNodeEntry } from '../../utils/canvas-registry';
 
 export function updateTrajectoryArrowPositions(
   trajectoryArrowNodesMap: Map<string, TrajectoryArrowNodeEntry> | undefined,

@@ -1,10 +1,10 @@
 import { ChevronLeft, ExternalLink } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import logoName from '@/app/logo-name.png';
 import { TeamsDropdown } from '@/components/layout/TeamsDropdown';
 import { GlobalDataManagement, ImportMatchButton } from '@/features/management';
 import { TeamSquadClient } from '@/features/teams';
-import logoName from '../../logo-name.png';
 
 interface TeamPageProps {
   params: Promise<{

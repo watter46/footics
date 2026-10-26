@@ -1,7 +1,7 @@
 'use client';
 
 import { Circle, Lock, Square, Trash2, Unlock } from 'lucide-react';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import { MiniColorPicker } from './mini-color-picker';
 
 export interface ZoneHudProps {

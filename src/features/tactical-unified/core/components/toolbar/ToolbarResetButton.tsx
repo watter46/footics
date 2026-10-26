@@ -1,7 +1,7 @@
 'use client';
 
 import { RotateCcw } from 'lucide-react';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 
 export function ToolbarResetButton() {
   const setAnnotations = useCanvasStore((s) => s.setAnnotations);

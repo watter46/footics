@@ -12,7 +12,7 @@ import {
 import type React from 'react';
 import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
-import type { CapturedScreenshot } from '../../capture/db/screenshot-db';
+import type { CapturedScreenshot } from '~/features/capture/db/screenshot-db';
 import { RatioPresetSelector } from './RatioPresetSelector';
 import { VideoMetaInfo } from './VideoMetaInfo';
 

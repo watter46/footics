@@ -1,7 +1,7 @@
 'use client';
 
 import { Eraser } from 'lucide-react';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 
 export function ToolbarEraser() {
   const activeTool = useCanvasStore((s) => s.activeTool);

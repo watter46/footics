@@ -3,8 +3,8 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Text as KonvaText } from 'react-konva';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import type { TextAnnotation } from '@/lib/types/tactical-unified';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
 import { normX, normY, pxToNormX, pxToNormY } from './math-utils';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;

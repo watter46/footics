@@ -11,7 +11,7 @@ import {
 } from '@floating-ui/react';
 import { Lock, Minus, Plus, Trash2, Unlock, UserCog } from 'lucide-react';
 import { useState } from 'react';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import { MiniColorPicker } from './mini-color-picker';
 import { PlayerQuickActions } from './player-quick-actions';
 

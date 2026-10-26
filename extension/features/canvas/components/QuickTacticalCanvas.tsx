@@ -10,7 +10,7 @@ import {
 import {
   type CapturedScreenshot,
   getScreenshotById,
-} from '../../capture/db/screenshot-db';
+} from '~/features/capture/db/screenshot-db';
 import { useQuickCanvasActions } from '../hooks/use-quick-canvas-actions';
 import { useQuickCanvasShortcuts } from '../hooks/use-quick-canvas-shortcuts';
 import { QuickAnnotationCanvas } from './QuickAnnotationCanvas';

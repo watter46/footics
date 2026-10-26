@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { onMessage } from 'webext-bridge/content-script';
-import { cn } from '../../../utils/cn';
+import { findVideoElement } from '~/features/capture/drm-capture-engine';
+import { cn } from '~/utils/cn';
 import {
   pauseVideoIfPlaying,
   resumeVideoIfWasPaused,
-} from '../../../utils/video-controller';
-import { findVideoElement } from '../../capture/drm-capture-engine';
+} from '~/utils/video-controller';
 import { useOverlayShortcutInterceptor } from '../hooks/use-overlay-shortcut-interceptor';
 import { MemoOverlayBridge } from '../memo-overlay-bridge';
 import { useOverlayStore } from '../stores/use-overlay-store';
@@ -41,10 +41,6 @@ export const OverlayApp = () => {
       // 開く直前に、現在フォーカスされている要素を記憶
       if (document.activeElement && document.activeElement !== document.body) {
         activeElementRef.current = document.activeElement as HTMLElement;
-        console.log(
-          '[Footics Overlay] Captured active element before open:',
-          activeElementRef.current,
-        );
       } else {
         activeElementRef.current = null;
       }
@@ -114,19 +110,12 @@ export const OverlayApp = () => {
 
       // 閉じたとき、記憶していた要素にフォーカスを戻す
       if (activeElementRef.current) {
-        console.log(
-          '[Footics Overlay] Restoring focus to:',
-          activeElementRef.current,
-        );
         activeElementRef.current.focus();
         activeElementRef.current = null;
       } else {
         // フォールバック：Shadow DOMを含むページ内の video 要素を探してフォーカス
         const video = findVideoElement();
         if (video) {
-          console.log(
-            '[Footics Overlay] Fallback: Focusing found video element',
-          );
           video.focus();
         }
       }

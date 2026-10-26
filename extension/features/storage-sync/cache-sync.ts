@@ -1,5 +1,5 @@
 import { getMatchMemo } from '@/lib/db/extension-db-queries';
-import { STORAGE_KEYS } from '../../constants';
+import { STORAGE_KEYS } from '~/constants';
 
 /**
  * 試合メモを IndexedDB から取得して browser.storage.local キャッシュへ同期する。
@@ -17,15 +17,9 @@ export async function syncMatchMemoCacheToStorage(
       await browser.storage.local.set({
         [cacheKey]: matchMemo.memo,
       });
-      console.log(
-        `[cache-sync] Synced match memo for match ${matchId} to cache.`,
-      );
     } else {
       // 試合メモが存在しない場合、キャッシュもクリアする
       await browser.storage.local.remove(cacheKey);
-      console.log(
-        `[cache-sync] Cleared match memo cache for match ${matchId} (no memo found).`,
-      );
     }
   } catch (error) {
     console.error(
@@ -59,10 +53,6 @@ export async function gcExpiredMatchMemoCaches(
 
     if (keysToRemove.length > 0) {
       await browser.storage.local.remove(keysToRemove);
-      console.log(
-        `[cache-sync] GC removed ${keysToRemove.length} expired match memo cache(s):`,
-        keysToRemove,
-      );
     }
   } catch (error) {
     console.error(

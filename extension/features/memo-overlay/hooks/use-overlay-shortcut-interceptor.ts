@@ -1,7 +1,7 @@
 import hotkeys from 'hotkeys-js';
 import { useEffect } from 'react';
 import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
-import { QUICK_TAGS } from '../../../constants/quick-tags';
+import { QUICK_TAGS } from '~/constants/quick-tags';
 import { useOverlayStore } from '../stores/use-overlay-store';
 
 /**

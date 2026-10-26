@@ -1,7 +1,7 @@
 'use client';
 
 import { Pin } from 'lucide-react';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 
 export function ToolbarContinuousLock() {
   const continuousDrawing = useCanvasStore((s) => s.continuousDrawing);

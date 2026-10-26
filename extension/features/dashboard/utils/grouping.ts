@@ -1,4 +1,4 @@
-import type { CapturedScreenshot } from '../../capture/db/screenshot-db';
+import type { CapturedScreenshot } from '~/features/capture/db/screenshot-db';
 
 export interface VideoGroup {
   videoUrl: string;

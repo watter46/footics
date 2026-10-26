@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
-import { OVERLAY_TRANSITION_DURATION, STORAGE_KEYS } from '../../../constants';
-import { addToSaveQueue } from '../../storage-sync/save-queue';
+import { OVERLAY_TRANSITION_DURATION, STORAGE_KEYS } from '~/constants';
+import { addToSaveQueue } from '~/features/storage-sync/save-queue';
 
 export interface SidepanelToastState {
   message: string;

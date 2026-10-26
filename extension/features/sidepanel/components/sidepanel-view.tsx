@@ -1,8 +1,8 @@
 import { AlertCircle, FileText, LayoutDashboard, Send } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import { cn } from '../../../utils/cn';
-import { SuccessToast } from '../../memo-overlay';
+import { SuccessToast } from '~/features/memo-overlay';
+import { cn } from '~/utils/cn';
 import {
   useSidepanelStorageSync,
   useSidepanelStore,

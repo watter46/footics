@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getMatchMemo } from '@/lib/db/extension-db-queries';
-import { STORAGE_KEYS } from '../../../constants';
-import type { MemoMode } from '../../../types/schemas';
+import { STORAGE_KEYS } from '~/constants';
+import type { MemoMode } from '~/types/schemas';
 
 interface UseMatchMemoLoaderParams {
   matchId: string | undefined;

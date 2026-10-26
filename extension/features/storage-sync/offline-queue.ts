@@ -1,12 +1,12 @@
 import Dexie, { type Table } from 'dexie';
 import { z } from 'zod';
-import { STORAGE_KEYS } from '../../constants';
+import { STORAGE_KEYS } from '~/constants';
 import {
   MemoModeSchema,
   type TacticalCapturePayload,
   TacticalCapturePayloadSchema,
-} from '../../types/schemas';
-import { isExtensionContextValid } from '../../utils/context';
+} from '~/types/schemas';
+import { isExtensionContextValid } from '~/utils/context';
 
 export const OfflineStatusSchema = z.enum(['pending', 'synced', 'failed']);
 export type OfflineStatus = z.infer<typeof OfflineStatusSchema>;

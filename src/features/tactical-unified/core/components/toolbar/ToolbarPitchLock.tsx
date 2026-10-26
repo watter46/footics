@@ -1,7 +1,7 @@
 'use client';
 
 import { Lock, Unlock } from 'lucide-react';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 
 export function ToolbarPitchLock() {
   const isPitchLocked = useCanvasStore((s) => s.pitchTransform.isLocked);

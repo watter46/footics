@@ -1,11 +1,11 @@
 import { putMatchMemo, saveCustomEvent } from '@/lib/db/extension-db-queries';
-import { STORAGE_KEYS } from '../../constants';
+import { STORAGE_KEYS } from '~/constants';
 import {
   type SaveQueueItem,
   SaveQueueItemSchema,
   SaveQueueSchema,
-} from '../../types/schemas';
-import { isExtensionContextValid } from '../../utils/context';
+} from '~/types/schemas';
+import { isExtensionContextValid } from '~/utils/context';
 import { syncMatchMemoCacheToStorage } from './cache-sync';
 
 export const MAX_QUEUE_RETRIES = 3;
@@ -151,10 +151,6 @@ export async function processSaveQueue(): Promise<void> {
         (item.status === 'error' && (item.retryCount ?? 0) < MAX_QUEUE_RETRIES),
     );
     if (pendingItems.length === 0) return;
-
-    console.log(
-      `[save-queue] Processing ${pendingItems.length} pending item(s)...`,
-    );
 
     const updatedQueue = [...queue];
 

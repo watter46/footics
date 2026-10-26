@@ -6,7 +6,7 @@ import {
   deleteScreenshotsByVideo,
   getAllScreenshots,
   toggleFavorite,
-} from '../../capture/db/screenshot-db';
+} from '~/features/capture/db/screenshot-db';
 import type { VideoGroup } from '../utils/grouping';
 
 export interface UseDashboardDataReturn {

@@ -3,16 +3,16 @@ import {
   onMessage,
   sendMessage,
 } from 'webext-bridge/content-script';
-import { STORAGE_KEYS } from '../../constants';
+import { STORAGE_KEYS } from '~/constants';
 import {
   SaveQueueSchema,
   TACTICAL_CAPTURE_PULL_WINDOW_MESSAGE,
   TACTICAL_CAPTURE_WINDOW_MESSAGE,
   type TacticalCapturePayload,
   TacticalCapturePayloadSchema,
-} from '../../types/schemas';
-import { isExtensionContextValid } from '../../utils/context';
-import { detectMatchId } from '../../utils/match';
+} from '~/types/schemas';
+import { isExtensionContextValid } from '~/utils/context';
+import { detectMatchId } from '~/utils/match';
 import {
   gcExpiredMatchMemoCaches,
   syncMatchMemoCacheToStorage,

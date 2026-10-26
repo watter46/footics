@@ -1,6 +1,6 @@
 import type React from 'react';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
-import type { SelectedObject } from '../../types';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import type { SelectedObject } from '@/features/tactical-unified/core/types';
 import {
   type HudOffsetRect,
   type HudTarget,

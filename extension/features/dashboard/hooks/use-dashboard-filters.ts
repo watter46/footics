@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
-import type { CapturedScreenshot } from '../../capture/db/screenshot-db';
+import type { CapturedScreenshot } from '~/features/capture/db/screenshot-db';
 import { groupScreenshotsByVideo, type VideoGroup } from '../utils/grouping';
 
 export interface UseDashboardFiltersReturn {

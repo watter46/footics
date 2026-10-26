@@ -11,7 +11,7 @@ import {
 } from '@floating-ui/react';
 import { useState } from 'react';
 import { HexColorPicker } from 'react-colorful';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 
 export const HUD_COLOR_PALETTE = [
   '#ffffff',

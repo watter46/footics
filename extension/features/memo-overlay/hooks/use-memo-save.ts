@@ -3,8 +3,8 @@ import {
   createSavePayload,
   getValidationError,
 } from '@/lib/features/memo-overlay/memoOverlayLogic';
-import { DEBUG_CONFIG } from '../../../constants';
-import { addToSaveQueue } from '../../storage-sync/save-queue';
+import { DEBUG_CONFIG } from '~/constants';
+import { addToSaveQueue } from '~/features/storage-sync/save-queue';
 import { useOverlayStore } from '../stores/use-overlay-store';
 
 /**

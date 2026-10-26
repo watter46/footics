@@ -8,7 +8,7 @@ import {
   type CapturedScreenshot,
   toggleFavorite,
   updateScreenshot,
-} from '../../capture/db/screenshot-db';
+} from '~/features/capture/db/screenshot-db';
 
 export interface UseQuickCanvasActionsOptions {
   screenshot: CapturedScreenshot | null;
