@@ -1,5 +1,3 @@
-import type React from 'react';
-
 interface SyntaxPitchSvgProps {
   className?: string;
   gridOpacity?: number;
@@ -10,10 +8,10 @@ interface SyntaxPitchSvgProps {
  * viewBox: 0 0 1000 562.5 (16:9)
  * 横 0..1000, 縦 0..562.5
  */
-export const SyntaxPitchSvg: React.FC<SyntaxPitchSvgProps> = ({
+export function SyntaxPitchSvg({
   className,
   gridOpacity = 0.15,
-}) => {
+}: SyntaxPitchSvgProps) {
   const lineColor = '#38bdf8'; // Cyan tactical line
   const lineOpacity = 0.45;
   const strokeWidth = 2.5;
@@ -286,4 +284,4 @@ export const SyntaxPitchSvg: React.FC<SyntaxPitchSvgProps> = ({
       />
     </svg>
   );
-};
+}

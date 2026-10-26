@@ -1,6 +1,5 @@
 'use client';
 
-import type React from 'react';
 import { type MergedSquadPlayer, SquadPlayerCard } from './squad-player-card';
 import type { PositionCategory } from './squad-stats-summary';
 
@@ -14,7 +13,7 @@ export interface SquadCategoryListProps {
   onPhotoDelete: (playerId: number) => Promise<void>;
 }
 
-export const SquadCategoryList: React.FC<SquadCategoryListProps> = ({
+export function SquadCategoryList({
   positionCategories,
   playersByCategory,
   selectedSeason,
@@ -22,7 +21,7 @@ export const SquadCategoryList: React.FC<SquadCategoryListProps> = ({
   onDelete,
   onPhotoUpload,
   onPhotoDelete,
-}) => {
+}: SquadCategoryListProps) {
   return (
     <div className="space-y-8">
       {positionCategories.map((cat) => {
@@ -69,4 +68,4 @@ export const SquadCategoryList: React.FC<SquadCategoryListProps> = ({
       })}
     </div>
   );
-};
+}

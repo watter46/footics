@@ -3,13 +3,7 @@
 import { useDroppable } from '@dnd-kit/core';
 import type Konva from 'konva';
 import type React from 'react';
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from 'react';
+import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Stage } from 'react-konva';
 import { ASPECT_RATIOS } from '@/lib/types/tactical-unified';
 import { useCanvasExport } from '../hooks/use-canvas-export';
@@ -53,20 +47,19 @@ function useContainerResize(
   return size;
 }
 
-export const CanvasStageContainer = forwardRef<
-  CanvasCoreHandle,
-  CanvasStageProps
->(function CanvasStageContainer(
-  {
-    className = '',
-    imageAspect,
-    nodesRegistryRef: injectedRegistryRef,
-    onStageSizeChange,
-    toolbar,
-    cleanRender,
-  },
+export interface CanvasStageContainerProps extends CanvasStageProps {
+  ref?: React.Ref<CanvasCoreHandle>;
+}
+
+export function CanvasStageContainer({
+  className = '',
+  imageAspect,
+  nodesRegistryRef: injectedRegistryRef,
+  onStageSizeChange,
+  toolbar,
+  cleanRender,
   ref,
-) {
+}: CanvasStageContainerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
@@ -260,4 +253,4 @@ export const CanvasStageContainer = forwardRef<
       {toolbar}
     </div>
   );
-});
+}

@@ -1,5 +1,4 @@
 import { Check, Loader2 } from 'lucide-react';
-import type React from 'react';
 import { Badge } from '@/components/ui/badge';
 import type { MergedSourcePlayer } from '../hooks/use-season-player-copy';
 
@@ -11,13 +10,13 @@ export interface CopySeasonPlayerGridProps {
   onTogglePlayer: (playerId: number) => void;
 }
 
-export const CopySeasonPlayerGrid: React.FC<CopySeasonPlayerGridProps> = ({
+export function CopySeasonPlayerGrid({
   isLoading,
   fromSeason,
   mergedSourcePlayers,
   selectedPlayerIds,
   onTogglePlayer,
-}) => {
+}: CopySeasonPlayerGridProps) {
   if (isLoading) {
     return (
       <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
@@ -90,4 +89,4 @@ export const CopySeasonPlayerGrid: React.FC<CopySeasonPlayerGridProps> = ({
       })}
     </div>
   );
-};
+}

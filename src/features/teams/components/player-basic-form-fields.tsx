@@ -1,4 +1,3 @@
-import type React from 'react';
 import type { StandardPosition } from '@/types';
 
 export const POSITIONS: Array<{ value: StandardPosition; label: string }> = [
@@ -21,7 +20,7 @@ export interface PlayerBasicFormFieldsProps {
   positionId?: string;
 }
 
-export const PlayerBasicFormFields: React.FC<PlayerBasicFormFieldsProps> = ({
+export function PlayerBasicFormFields({
   name,
   shirtNo,
   position,
@@ -31,7 +30,7 @@ export const PlayerBasicFormFields: React.FC<PlayerBasicFormFieldsProps> = ({
   nameId = 'player-name',
   shirtNoId = 'player-shirt-no',
   positionId = 'player-position',
-}) => {
+}: PlayerBasicFormFieldsProps) {
   return (
     <div className="space-y-4">
       {/* Player Name */}
@@ -109,4 +108,4 @@ export const PlayerBasicFormFields: React.FC<PlayerBasicFormFieldsProps> = ({
       </div>
     </div>
   );
-};
+}

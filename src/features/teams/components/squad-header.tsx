@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Shield,
 } from 'lucide-react';
-import type React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -121,7 +120,7 @@ const COLOR_STYLES: Record<
   },
 };
 
-export const SquadHeader: React.FC<SquadHeaderProps> = ({
+export function SquadHeader({
   teamName = 'Club',
   leagueName = 'League',
   accentColor = 'blue',
@@ -133,7 +132,7 @@ export const SquadHeader: React.FC<SquadHeaderProps> = ({
   onOpenTacticalBoard,
   onOpenTacticalCanvas,
   onOpenAddPlayer,
-}) => {
+}: SquadHeaderProps) {
   const styles = COLOR_STYLES[accentColor] || COLOR_STYLES.blue;
 
   return (
@@ -230,4 +229,4 @@ export const SquadHeader: React.FC<SquadHeaderProps> = ({
       </div>
     </div>
   );
-};
+}

@@ -1,7 +1,6 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
-import type React from 'react';
 import { useTeamSquadClient } from '../hooks/use-team-squad-client';
 import { POSITION_CATEGORIES } from '../utils/squad-aggregation';
 import { SquadCategoryList } from './squad-category-list';
@@ -16,10 +15,10 @@ export interface TeamSquadClientProps {
   initialSeason?: string;
 }
 
-export const TeamSquadClient: React.FC<TeamSquadClientProps> = ({
+export function TeamSquadClient({
   teamId = 'chelsea',
   initialSeason,
-}) => {
+}: TeamSquadClientProps) {
   const squad = useTeamSquadClient({ teamId, initialSeason });
 
   return (
@@ -100,4 +99,4 @@ export const TeamSquadClient: React.FC<TeamSquadClientProps> = ({
       />
     </div>
   );
-};
+}

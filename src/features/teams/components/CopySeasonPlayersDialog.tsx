@@ -1,7 +1,6 @@
 'use client';
 
 import { Copy, FolderSync, Loader2, X } from 'lucide-react';
-import type React from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,9 +11,7 @@ import { CopySeasonPlayerGrid } from './copy-season-player-grid';
 
 export type CopySeasonPlayersDialogProps = UseSeasonPlayerCopyParams;
 
-export const CopySeasonPlayersDialog: React.FC<CopySeasonPlayersDialogProps> = (
-  props,
-) => {
+export function CopySeasonPlayersDialog(props: CopySeasonPlayersDialogProps) {
   const { isOpen, onClose, targetSeason } = props;
   const copy = useSeasonPlayerCopy(props);
 
@@ -144,4 +141,4 @@ export const CopySeasonPlayersDialog: React.FC<CopySeasonPlayersDialogProps> = (
     </div>,
     document.body,
   );
-};
+}

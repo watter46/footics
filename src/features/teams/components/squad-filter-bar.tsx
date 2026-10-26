@@ -1,7 +1,5 @@
 'use client';
 
-import type React from 'react';
-
 export type IdFilterType = 'all' | 'official' | 'manual';
 
 export interface SquadFilterBarProps {
@@ -12,13 +10,13 @@ export interface SquadFilterBarProps {
   manualCount: number;
 }
 
-export const SquadFilterBar: React.FC<SquadFilterBarProps> = ({
+export function SquadFilterBar({
   idFilter,
   onFilterChange,
   totalCount,
   officialCount,
   manualCount,
-}) => {
+}: SquadFilterBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/40 border border-slate-800/60 rounded-xl p-3">
       <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
@@ -71,4 +69,4 @@ export const SquadFilterBar: React.FC<SquadFilterBarProps> = ({
       </div>
     </div>
   );
-};
+}

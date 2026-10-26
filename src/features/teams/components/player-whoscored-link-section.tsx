@@ -2,7 +2,6 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Link as LinkIcon, Loader2, Sparkles } from 'lucide-react';
-import type React from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -24,16 +23,14 @@ export interface PlayerWhoScoredLinkSectionProps {
   teamName?: string;
 }
 
-export const PlayerWhoScoredLinkSection: React.FC<
-  PlayerWhoScoredLinkSectionProps
-> = ({
+export function PlayerWhoScoredLinkSection({
   playerId,
   season,
   playerName,
   availableOfficialPlayers,
   onMergeSuccess,
   teamName = 'Chelsea',
-}) => {
+}: PlayerWhoScoredLinkSectionProps) {
   const queryClient = useQueryClient();
   const [targetOfficialId, setTargetOfficialId] = useState<number | ''>('');
   const [isMerging, setIsMerging] = useState(false);
@@ -189,4 +186,4 @@ export const PlayerWhoScoredLinkSection: React.FC<
       </div>
     </div>
   );
-};
+}

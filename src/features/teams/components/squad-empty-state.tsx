@@ -1,7 +1,6 @@
 'use client';
 
 import { FolderSync, Plus, RefreshCw, Users } from 'lucide-react';
-import type React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import type { SupportedTeam } from '@/lib/tactical/teams-config';
@@ -16,14 +15,14 @@ export interface SquadEmptyStateProps {
   onOpenAddPlayer: () => void;
 }
 
-export const SquadEmptyState: React.FC<SquadEmptyStateProps> = ({
+export function SquadEmptyState({
   idFilter,
   selectedSeason,
   teamConfig,
   onSyncSquad,
   onOpenCopySeason,
   onOpenAddPlayer,
-}) => {
+}: SquadEmptyStateProps) {
   return (
     <Card className="bg-slate-900/30 border-slate-800/60 border-dashed rounded-2xl p-12 text-center space-y-4">
       <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mx-auto text-slate-500">
@@ -73,4 +72,4 @@ export const SquadEmptyState: React.FC<SquadEmptyStateProps> = ({
       </div>
     </Card>
   );
-};
+}

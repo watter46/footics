@@ -1,6 +1,5 @@
 'use client';
 
-import type React from 'react';
 import type { SupportedTeam } from '@/lib/tactical/teams-config';
 import type { OfficialPlayerOption } from '../types/squad-client';
 import { AddPlayerDialog } from './AddPlayerDialog';
@@ -22,7 +21,7 @@ export interface SquadDialogsProps {
   refetchSquad: () => void;
 }
 
-export const SquadDialogs: React.FC<SquadDialogsProps> = ({
+export function SquadDialogs({
   teamConfig,
   selectedSeason,
   availableSeasons,
@@ -35,7 +34,7 @@ export const SquadDialogs: React.FC<SquadDialogsProps> = ({
   availableOfficialPlayers,
   currentSeasonPlayerIds,
   refetchSquad,
-}) => {
+}: SquadDialogsProps) {
   return (
     <>
       {/* Add Player Dialog */}
@@ -71,4 +70,4 @@ export const SquadDialogs: React.FC<SquadDialogsProps> = ({
       />
     </>
   );
-};
+}

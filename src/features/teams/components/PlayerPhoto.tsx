@@ -16,7 +16,7 @@ interface PlayerPhotoProps {
   editable?: boolean;
 }
 
-export const PlayerPhoto: React.FC<PlayerPhotoProps> = ({
+export function PlayerPhoto({
   photoBlob,
   photoUrl,
   name,
@@ -25,7 +25,7 @@ export const PlayerPhoto: React.FC<PlayerPhotoProps> = ({
   onPhotoDelete,
   size = 'md',
   editable = true,
-}) => {
+}: PlayerPhotoProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -151,4 +151,4 @@ export const PlayerPhoto: React.FC<PlayerPhotoProps> = ({
       )}
     </div>
   );
-};
+}

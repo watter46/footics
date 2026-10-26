@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronLeft, ChevronRight, Layers, Pause, Play } from 'lucide-react';
-import React from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { TacticalScene } from '@/lib/types/syntax-integration';
 
 interface SyntaxSceneTabsProps {
@@ -11,14 +11,14 @@ interface SyntaxSceneTabsProps {
   className?: string;
 }
 
-export const SyntaxSceneTabs: React.FC<SyntaxSceneTabsProps> = ({
+export function SyntaxSceneTabs({
   scenes,
   currentIndex,
   onSelectIndex,
   className = '',
-}) => {
-  const [isPlaying, setIsPlaying] = React.useState(false);
-  const playTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+}: SyntaxSceneTabsProps) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const totalScenes = scenes.length > 0 ? scenes.length : 4;
 
@@ -30,7 +30,7 @@ export const SyntaxSceneTabs: React.FC<SyntaxSceneTabsProps> = ({
     onSelectIndex((currentIndex + 1) % totalScenes);
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isPlaying && totalScenes > 1) {
       playTimerRef.current = setInterval(() => {
         onSelectIndex((currentIndex + 1) % totalScenes);
@@ -137,4 +137,4 @@ export const SyntaxSceneTabs: React.FC<SyntaxSceneTabsProps> = ({
       </div>
     </div>
   );
-};
+}

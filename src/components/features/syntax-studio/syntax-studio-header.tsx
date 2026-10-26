@@ -10,7 +10,6 @@ import {
   Shield,
   Sparkles,
 } from 'lucide-react';
-import type React from 'react';
 
 interface SyntaxStudioHeaderProps {
   viewMode: 'split' | 'focus';
@@ -25,14 +24,14 @@ interface SyntaxStudioHeaderProps {
   sceneCount: number;
 }
 
-export const SyntaxStudioHeader: React.FC<SyntaxStudioHeaderProps> = ({
+export function SyntaxStudioHeader({
   viewMode,
   onToggleViewMode,
   onOpenJsonDrawer,
   matchMetadata,
   datasetId,
   sceneCount,
-}) => {
+}: SyntaxStudioHeaderProps) {
   return (
     <header className="h-14 px-4 sm:px-6 bg-slate-950/90 border-b border-slate-800/80 backdrop-blur-md flex items-center justify-between gap-4 shrink-0 z-30">
       {/* ロゴ & タイトル & メタデータ */}
@@ -134,4 +133,4 @@ export const SyntaxStudioHeader: React.FC<SyntaxStudioHeaderProps> = ({
       </div>
     </header>
   );
-};
+}

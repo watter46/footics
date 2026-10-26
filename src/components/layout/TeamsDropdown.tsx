@@ -2,11 +2,10 @@
 
 import { ChevronDown, Shield, Users } from 'lucide-react';
 import Link from 'next/link';
-import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { SUPPORTED_TEAMS } from '@/lib/tactical/teams-config';
 
-export const TeamsDropdown: React.FC = () => {
+export function TeamsDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -82,4 +81,4 @@ export const TeamsDropdown: React.FC = () => {
       )}
     </div>
   );
-};
+}

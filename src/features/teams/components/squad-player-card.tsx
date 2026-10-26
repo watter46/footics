@@ -1,7 +1,6 @@
 'use client';
 
 import { Edit3, Trash2 } from 'lucide-react';
-import type React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import type { Player } from '@/types';
@@ -21,14 +20,14 @@ export interface SquadPlayerCardProps {
   onPhotoDelete?: () => Promise<void>;
 }
 
-export const SquadPlayerCard: React.FC<SquadPlayerCardProps> = ({
+export function SquadPlayerCard({
   player,
   selectedSeason,
   onEdit,
   onDelete,
   onPhotoUpload,
   onPhotoDelete,
-}) => {
+}: SquadPlayerCardProps) {
   return (
     <Card
       onClick={() => onEdit(player)}
@@ -119,4 +118,4 @@ export const SquadPlayerCard: React.FC<SquadPlayerCardProps> = ({
       </div>
     </Card>
   );
-};
+}

@@ -1,7 +1,6 @@
 'use client';
 
 import { Users } from 'lucide-react';
-import type React from 'react';
 import { Card } from '@/components/ui/card';
 import type { Player, StandardPosition } from '@/types';
 
@@ -17,11 +16,11 @@ export interface SquadStatsSummaryProps {
   playersByCategory: Record<string, Player[]>;
 }
 
-export const SquadStatsSummary: React.FC<SquadStatsSummaryProps> = ({
+export function SquadStatsSummary({
   totalCount,
   positionCategories,
   playersByCategory,
-}) => {
+}: SquadStatsSummaryProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
       <Card className="bg-slate-900/50 border-slate-800/80 p-4 rounded-xl flex items-center gap-3">
@@ -58,4 +57,4 @@ export const SquadStatsSummary: React.FC<SquadStatsSummaryProps> = ({
       ))}
     </div>
   );
-};
+}

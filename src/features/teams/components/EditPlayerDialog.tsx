@@ -42,13 +42,13 @@ const cCancel =
 const cSubmit =
   'h-9 px-5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl gap-2 shadow-lg shadow-blue-600/25 flex items-center justify-center transition-colors';
 
-export const EditPlayerDialog: React.FC<EditPlayerDialogProps> = ({
+export function EditPlayerDialog({
   isOpen,
   onClose,
   player,
   availableOfficialPlayers = [],
   onSuccess,
-}) => {
+}: EditPlayerDialogProps) {
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [shirtNo, setShirtNo] = useState<number | ''>('');
@@ -192,4 +192,4 @@ export const EditPlayerDialog: React.FC<EditPlayerDialogProps> = ({
     </div>,
     document.body,
   );
-};
+}

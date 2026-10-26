@@ -273,7 +273,7 @@ function AddPlayerForm({
   );
 }
 
-export const AddPlayerDialog: React.FC<AddPlayerDialogProps> = (props) => {
+export function AddPlayerDialog(props: AddPlayerDialogProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!props.isOpen || !mounted) return null;
@@ -295,4 +295,4 @@ export const AddPlayerDialog: React.FC<AddPlayerDialogProps> = (props) => {
     </div>,
     document.body,
   );
-};
+}

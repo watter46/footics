@@ -11,8 +11,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import type React from 'react';
-import { useCallback, useState } from 'react';
+import { type ChangeEvent, useCallback, useState } from 'react';
 import {
   type SyntaxIntegrationDraft,
   SyntaxIntegrationDraftSchema,
@@ -42,12 +41,12 @@ interface ValidationError {
   message: string;
 }
 
-export const SyntaxJsonDrawer: React.FC<SyntaxJsonDrawerProps> = ({
+export function SyntaxJsonDrawer({
   isOpen,
   onClose,
   onApplyJson,
   currentDataset,
-}) => {
+}: SyntaxJsonDrawerProps) {
   const [jsonText, setJsonText] = useState<string>('');
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
     [],
@@ -123,7 +122,7 @@ export const SyntaxJsonDrawer: React.FC<SyntaxJsonDrawerProps> = ({
     validateJson(formatted);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -332,4 +331,4 @@ export const SyntaxJsonDrawer: React.FC<SyntaxJsonDrawerProps> = ({
       </div>
     </div>
   );
-};
+}

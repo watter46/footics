@@ -1,8 +1,8 @@
 'use client';
 
 import {
-  forwardRef,
   type ReactNode,
+  type Ref,
   useCallback,
   useEffect,
   useMemo,
@@ -25,12 +25,15 @@ export interface FullTacticalCanvasProps {
   className?: string;
   imageAspect?: number;
   toolbar?: ReactNode;
+  ref?: Ref<CanvasCoreHandle>;
 }
 
-export const FullTacticalCanvas = forwardRef<
-  CanvasCoreHandle,
-  FullTacticalCanvasProps
->(function FullTacticalCanvas({ className = '', imageAspect, toolbar }, ref) {
+export function FullTacticalCanvas({
+  className = '',
+  imageAspect,
+  toolbar,
+  ref,
+}: FullTacticalCanvasProps) {
   // 現在のアスペクト比をマスターストアから取得し、Stage 矩形をピッチ比率に完全一致させる
   const projectAspectRatio = useTacticalUnifiedStore(
     (s) => s.project.aspectRatio,
@@ -111,4 +114,4 @@ export const FullTacticalCanvas = forwardRef<
       />
     </CanvasStoreProvider>
   );
-});
+}
