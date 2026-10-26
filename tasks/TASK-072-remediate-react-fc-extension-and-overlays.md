@@ -1,7 +1,7 @@
 # TASK-072: [Level 2-C] React.FC の関数宣言移行① (Extension 12件 + MemoOverlay / Analysis / Sidebar 20件)
 
 ## 1. Metadata
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Created**: 2026-10-26
 - **Target Files**:
   - `extension/features/canvas/components/QuickAnnotationCanvas.tsx` (MODIFY)
@@ -13,9 +13,9 @@
   - `src/features/sidebar/components/*.tsx` (MODIFY)
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
-- [ ] 1. `extension/features/` 配下の 12 コンポーネントから `React.FC` / `FC` 型注釈を撤去し、`export function ComponentName(props: ComponentNameProps)` 形式の標準関数宣言に統一する（R2 規約準拠）。
-- [ ] 2. `src/features/memo-overlay/`（12件）、`src/features/analysis/`（4件）、`src/features/sidebar/`（4件）の計 20 コンポーネントから `React.FC` / `FC` を撤去し、標準関数宣言に統一する。
-- [ ] 3. すべての対象コンポーネントで export 名（Named export / Default export）および Props 型を維持し、既存テストを破壊しないこと。
+- [x] 1. `extension/features/` 配下の 12 コンポーネントから `React.FC` / `FC` 型注釈を撤去し、`export function ComponentName(props: ComponentNameProps)` 形式の標準関数宣言に統一する（R2 規約準拠）。
+- [x] 2. `src/features/memo-overlay/`（12件）、`src/features/analysis/`（4件）、`src/features/sidebar/`（4件）の計 20 コンポーネントから `React.FC` / `FC` を撤去し、標準関数宣言に統一する。
+- [x] 3. すべての対象コンポーネントで export 名（Named export / Default export）および Props 型を維持し、既存テストを破壊しないこと。
 
 ## 3. Context Snippets (参照コード・型定義・import)
 
@@ -49,7 +49,7 @@ export function QuickTagBar({ tags }: QuickTagBarProps) {
   ```
 - **Testing Strategy**: `bun run ai:check` で対象ファイルの検査と関連テストが PASS すること。
 - **Tasks**:
-  - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
+  - [x] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:
 
 ### Phase 2: memo-overlay (12件)・analysis (4件)・sidebar (4件) の React.FC 撤去
@@ -61,20 +61,20 @@ export function QuickTagBar({ tags }: QuickTagBarProps) {
   ```
 - **Testing Strategy**: `bun run ai:check` で対象ファイルの検査と関連テストが PASS すること。
 - **Tasks**:
-  - [ ] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
+  - [x] 1. TDD実装: `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:
 
 ---
 
 ## 5. Reviewer Assessment (コード差分監査)
 - **Reviewer Model**: `pro`
-- **Reviewed At**: 
-- **Decision**: `TODO`
+- **Reviewed At**: 2026-10-26 17:30
+- **Decision**: `LGTM`
 - **Audit Checklist**:
-  - [ ] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
-  - [ ] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
-  - [ ] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
-  - [ ] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
-- **Summary**:
+  - [x] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
+  - [x] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
+  - [x] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
+  - [x] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
+- **Summary**: 対象32コンポーネントすべてにおいて React.FC / FC 型注釈が撤去され、Props型・exportシグネチャを完全維持した標準関数宣言へ安全に移行されていることを確認。不要なReact型importも適切にクリーンアップ済み。
 
 ## 6. Rejections / Additional Tasks (不可逆修正欄)
