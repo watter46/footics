@@ -5,6 +5,7 @@ import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { createCanvasStore } from '../../store/canvas-store';
 import { CanvasStoreContext } from '../../store/canvas-store-provider';
 import type { CanvasStoreApi } from '../../types';
+import type { CanvasNodesRegistry } from '../../utils/canvas-registry';
 import { ContextHud } from '../ContextHud';
 
 function renderWithStore(
@@ -104,7 +105,7 @@ describe('ContextHud Extra Plugins (renderExtraHud & resolveExtraTarget)', () =>
           }),
         },
       },
-    } as React.MutableRefObject<unknown>;
+    } as unknown as React.MutableRefObject<CanvasNodesRegistry>;
 
     const { container } = renderWithStore(
       <ContextHud

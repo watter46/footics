@@ -6,7 +6,6 @@ import type React from 'react';
 import type { ReactNode } from 'react';
 import { useCallback, useRef } from 'react';
 import { Layer } from 'react-konva';
-import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
 import type { Player } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
@@ -18,11 +17,13 @@ import {
   updateConnectLinePositions,
 } from './PlayerConnectLines';
 import { PlayerMarkerItem } from './PlayerMarkerItem';
+import { resolveBenchDrop } from './player-bench-drop';
+import { PlayerGhostTrajectoryList } from './player-ghost-trajectory-list';
 
 export interface PlayerLayerProps {
   width: number;
   height: number;
-  nodesRegistryRef?: React.MutableRefObject<unknown>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
 export function PlayerLayer({
@@ -76,12 +77,7 @@ export function PlayerLayer({
         width,
         height,
       );
-      const reg = nodesRegistryRef?.current as
-        | {
-            arrowNodes?: Map<string, any>;
-            trajectoryArrowNodes?: Map<string, any>;
-          }
-        | undefined;
+      const reg = nodesRegistryRef?.current as CanvasNodesRegistry | undefined;
       updateAttachedArrowPositions(
         reg?.arrowNodes,
         arrows,
@@ -152,44 +148,13 @@ export function PlayerLayer({
       const stage = e.target.getStage();
       const stageRect = stage?.container().getBoundingClientRect();
 
-      let isOverBench = false;
-      let benchCoord: { x: number; y: number } | undefined;
+      const { isOverBench, benchCoord } = resolveBenchDrop(
+        clientX,
+        clientY,
+        stageRect,
+      );
 
-      const benchCanvasEl =
-        typeof document !== 'undefined'
-          ? document.getElementById('tactical-bench-canvas')
-          : null;
-      const benchRect = benchCanvasEl?.getBoundingClientRect();
-
-      if (benchRect && clientX !== undefined && clientY !== undefined) {
-        if (
-          clientX >= benchRect.left &&
-          clientX <= benchRect.right &&
-          clientY >= benchRect.top &&
-          clientY <= benchRect.bottom
-        ) {
-          isOverBench = true;
-          const bx = Math.max(
-            0,
-            Math.min(100, ((clientX - benchRect.left) / benchRect.width) * 100),
-          );
-          const by = Math.max(
-            0,
-            Math.min(100, ((clientY - benchRect.top) / benchRect.height) * 100),
-          );
-          benchCoord = { x: bx, y: by };
-        }
-      }
-
-      const isOverBenchPanel =
-        isOverBench ||
-        (clientX !== undefined &&
-          (stageRect
-            ? clientX >= stageRect.right
-            : typeof window !== 'undefined' &&
-              clientX >= window.innerWidth - 400));
-
-      if (isOverBenchPanel) {
+      if (isOverBench) {
         moveMarkerToBench?.(marker.id, benchCoord?.x, benchCoord?.y);
         return;
       }
@@ -243,37 +208,16 @@ export function PlayerLayer({
       )}
 
       {/* ── スライド間ゴーストマーカー & 追跡曲線矢印 ── */}
-      {visibleMarkers.map((marker) => {
-        const prevPlayer = prevSlide?.players.find(
-          (p) => p.id === marker.id && p.area === 'pitch',
-        );
-        if (!prevPlayer) return null;
-        const isMoved =
-          Math.hypot(marker.x - prevPlayer.x, marker.y - prevPlayer.y) >= 1;
-        if (!isMoved) return null;
-
-        return (
-          <PlayerGhostTrajectory
-            key={`ghost-${marker.id}`}
-            player={marker}
-            prevPlayer={prevPlayer}
-            stageSize={{ width, height }}
-            activeSlideId={activeSlideId}
-            nodesRegistryRef={
-              nodesRegistryRef as
-                | React.MutableRefObject<CanvasNodesRegistry>
-                | undefined
-            }
-            aspectRatio={aspectRatio}
-            onUpdateTrajectory={
-              updatePlayerTrajectory ??
-              (() => {
-                /* noop */
-              })
-            }
-          />
-        );
-      })}
+      <PlayerGhostTrajectoryList
+        markers={visibleMarkers}
+        prevSlide={prevSlide}
+        width={width}
+        height={height}
+        activeSlideId={activeSlideId}
+        aspectRatio={aspectRatio}
+        nodesRegistryRef={nodesRegistryRef}
+        updatePlayerTrajectory={updatePlayerTrajectory}
+      />
 
       {visibleMarkers.map((marker) => (
         <PlayerMarkerItem

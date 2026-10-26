@@ -1,26 +1,30 @@
 'use client';
 
-import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { ReactNode } from 'react';
 import { useCallback, useMemo } from 'react';
 import { Group, Layer } from 'react-konva';
-import { BallObject } from '@/features/tactical-unified/objects/ball/components/ball-object';
-import type { BallObjectProps } from '@/features/tactical-unified/objects/ball/types';
 import type { Player, TextAnnotation } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
+import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import {
   type CameraState,
   DEFAULT_CAMERA_STATE,
-  worldToScreen,
 } from '../utils/matrix-coordinates';
 import { updateAttachedArrowPositions } from './annotations/arrow-drag-updater';
-import { TextObject } from './annotations/TextObject';
 import { updateTrajectoryArrowPositions } from './annotations/trajectory-arrow-drag-updater';
+import {
+  type BillboardItem,
+  buildBillboardItems,
+  sortBillboardItemsByDepth,
+} from './billboard-depth-sort';
+import { BillboardItemNode } from './billboard-item-node';
 import { updateConnectLinePositions } from './PlayerConnectLines';
-import { PlayerMarkerItem } from './PlayerMarkerItem';
+import { resolveBenchDrop } from './player-bench-drop';
+
+export { type BillboardItem, sortBillboardItemsByDepth };
 
 export interface BillboardObjectLayerProps {
   stageSize: { width: number; height: number };
@@ -28,28 +32,11 @@ export interface BillboardObjectLayerProps {
   camera?: Partial<CameraState>;
   editingTextId?: string | null;
   onStartEditText?: (textId: string) => void;
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   cleanRender?: boolean;
 }
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
-
-export function sortBillboardItemsByDepth<T extends { x?: number; y: number }>(
-  items: readonly T[],
-  pitchRect: PitchRectBounds,
-  camera: Partial<CameraState> = DEFAULT_CAMERA_STATE,
-): T[] {
-  return [...items].sort((a, b) => {
-    const screenA = worldToScreen({ x: a.x ?? 50, y: a.y }, pitchRect, camera);
-    const screenB = worldToScreen({ x: b.x ?? 50, y: b.y }, pitchRect, camera);
-    return screenA.y - screenB.y;
-  });
-}
-
-type BillboardItem =
-  | { kind: 'player'; data: Player; x: number; y: number }
-  | { kind: 'ball'; data: BallObjectProps['ball']; x: number; y: number }
-  | { kind: 'text'; data: TextAnnotation; x: number; y: number };
 
 export function BillboardObjectLayer({
   pitchRect,
@@ -104,13 +91,7 @@ export function BillboardObjectLayer({
     (e: KonvaEventObject<DragEvent>, markerId: string) => {
       const curX = e.target.x();
       const curY = e.target.y();
-      const reg = nodesRegistryRef?.current as
-        | {
-            arrowNodes?: Map<string, any>;
-            trajectoryArrowNodes?: Map<string, any>;
-            connectLineNodeMap?: Map<string, Konva.Line>;
-          }
-        | undefined;
+      const reg = nodesRegistryRef?.current as CanvasNodesRegistry | undefined;
 
       if (reg?.connectLineNodeMap) {
         updateConnectLinePositions(
@@ -199,44 +180,13 @@ export function BillboardObjectLayer({
       const stage = e.target.getStage();
       const stageRect = stage?.container().getBoundingClientRect();
 
-      let isOverBench = false;
-      let benchCoord: { x: number; y: number } | undefined;
+      const { isOverBench, benchCoord } = resolveBenchDrop(
+        clientX,
+        clientY,
+        stageRect,
+      );
 
-      const benchCanvasEl =
-        typeof document !== 'undefined'
-          ? document.getElementById('tactical-bench-canvas')
-          : null;
-      const benchRect = benchCanvasEl?.getBoundingClientRect();
-
-      if (benchRect && clientX !== undefined && clientY !== undefined) {
-        if (
-          clientX >= benchRect.left &&
-          clientX <= benchRect.right &&
-          clientY >= benchRect.top &&
-          clientY <= benchRect.bottom
-        ) {
-          isOverBench = true;
-          const bx = Math.max(
-            0,
-            Math.min(100, ((clientX - benchRect.left) / benchRect.width) * 100),
-          );
-          const by = Math.max(
-            0,
-            Math.min(100, ((clientY - benchRect.top) / benchRect.height) * 100),
-          );
-          benchCoord = { x: bx, y: by };
-        }
-      }
-
-      const isOverBenchPanel =
-        isOverBench ||
-        (clientX !== undefined &&
-          (stageRect
-            ? clientX >= stageRect.right
-            : typeof window !== 'undefined' &&
-              clientX >= window.innerWidth - 400));
-
-      if (isOverBenchPanel && capabilities?.hasBench && moveMarkerToBench) {
+      if (isOverBench && capabilities?.hasBench && moveMarkerToBench) {
         moveMarkerToBench(marker.id, benchCoord?.x, benchCoord?.y);
         return;
       }
@@ -268,117 +218,73 @@ export function BillboardObjectLayer({
     [selectedIds, selectObject, setIsDragging, setIsHudOpen],
   );
 
-  const makeSelectHandler = useCallback(
-    (id: string, kind: 'text') => {
-      return (e: KonvaClickEvent) => {
-        e.cancelBubble = true;
-        const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
-        selectObject({ id, kind }, isShift);
-        setIsHudOpen(true);
-      };
+  const handleSelectText = useCallback(
+    (e: KonvaClickEvent, id: string) => {
+      e.cancelBubble = true;
+      const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
+      selectObject({ id, kind: 'text' }, isShift);
+      setIsHudOpen(true);
     },
     [selectObject, setIsHudOpen],
   );
 
-  // 深さソート対象アイテム群の構築
-  const sortedItems = useMemo(() => {
-    const items: BillboardItem[] = [
-      ...visibleMarkers.map((m) => ({
-        kind: 'player' as const,
-        data: m,
-        x: m.x,
-        y: m.y,
-      })),
-      ...(showBall
-        ? [{ kind: 'ball' as const, data: ball, x: ball.x, y: ball.y }]
-        : []),
-      ...texts.map((t) => ({
-        kind: 'text' as const,
-        data: t,
-        x: t.x,
-        y: t.y,
-      })),
-    ];
+  const handleUpdateVisionCone = useCallback(
+    (marker: Player, patch: Partial<NonNullable<Player['visionCone']>>) => {
+      updateMarker(marker.id, {
+        visionCone: marker.visionCone
+          ? { ...marker.visionCone, ...patch }
+          : undefined,
+      });
+    },
+    [updateMarker],
+  );
 
-    return sortBillboardItemsByDepth(items, pitchRect, camera);
-  }, [visibleMarkers, showBall, ball, texts, pitchRect, camera]);
+  // 深さソート対象アイテム群の構築
+  const sortedItems = useMemo(
+    () =>
+      sortBillboardItemsByDepth(
+        buildBillboardItems(visibleMarkers, ball, showBall, texts),
+        pitchRect,
+        camera,
+      ),
+    [visibleMarkers, ball, showBall, texts, pitchRect, camera],
+  );
 
   return (
     <Layer id="billboard-object-layer">
       <Group x={pitchRect.x} y={pitchRect.y}>
-        {sortedItems.map((item) => {
-          if (item.kind === 'player') {
-            const marker = item.data;
-            return (
-              <PlayerMarkerItem
-                key={marker.id}
-                marker={marker}
-                width={pitchRect.width}
-                height={pitchRect.height}
-                baseDim={baseDim}
-                markerMode={markerMode}
-                aspectRatio={aspectRatio}
-                isSelected={!cleanRender && selectedIds.includes(marker.id)}
-                isInteractive={!cleanRender && isInteractive}
-                cleanRender={cleanRender}
-                connectingPlayerId={connectingPlayerId}
-                nodesRegistryRef={nodesRegistryRef}
-                onDragStart={handleDragStart}
-                onDragMove={handleMarkerDragMove}
-                onDragEnd={handleDragEnd}
-                onClick={handleMarkerClick}
-                onUpdateVisionCone={(patch) =>
-                  updateMarker(marker.id, {
-                    visionCone: marker.visionCone
-                      ? { ...marker.visionCone, ...patch }
-                      : undefined,
-                  })
-                }
-              />
-            );
-          }
-
-          if (item.kind === 'ball') {
-            return (
-              <BallObject
-                key="ball-object"
-                ball={item.data}
-                stageSize={{
-                  width: pitchRect.width,
-                  height: pitchRect.height,
-                }}
-                nodesRegistryRef={nodesRegistryRef}
-                cleanRender={cleanRender}
-              />
-            );
-          }
-
-          if (item.kind === 'text') {
-            const text = item.data;
-            return (
-              <TextObject
-                key={text.id}
-                text={text}
-                stageSize={{
-                  width: pitchRect.width,
-                  height: pitchRect.height,
-                }}
-                isSelected={!cleanRender && selectedIds.includes(text.id)}
-                isEditing={editingTextId === text.id}
-                isInteractive={!cleanRender && isInteractive}
-                onSelect={makeSelectHandler(text.id, 'text')}
-                onDblClick={(e) => {
-                  e.cancelBubble = true;
-                  onStartEditText?.(text.id);
-                }}
-                updateText={updateText}
-                nodesRegistryRef={nodesRegistryRef}
-              />
-            );
-          }
-
-          return null;
-        })}
+        {sortedItems.map((item) => (
+          <BillboardItemNode
+            key={
+              item.kind === 'player'
+                ? item.data.id
+                : item.kind === 'ball'
+                  ? 'ball-object'
+                  : item.data.id
+            }
+            item={item}
+            pitchRect={pitchRect}
+            baseDim={baseDim}
+            markerMode={markerMode}
+            aspectRatio={aspectRatio}
+            selectedIds={selectedIds}
+            cleanRender={cleanRender}
+            isInteractive={!cleanRender && isInteractive}
+            connectingPlayerId={connectingPlayerId}
+            editingTextId={editingTextId}
+            nodesRegistryRef={nodesRegistryRef}
+            onStartEditText={onStartEditText}
+            onDragStart={handleDragStart}
+            onDragMove={handleMarkerDragMove}
+            onDragEnd={handleDragEnd}
+            onClickMarker={handleMarkerClick}
+            onUpdateVisionCone={handleUpdateVisionCone}
+            onSelectText={handleSelectText}
+            updateText={(id, patch) =>
+              updateText(id, patch as Partial<TextAnnotation>)
+            }
+          />
+        ))}
       </Group>
     </Layer>
   );

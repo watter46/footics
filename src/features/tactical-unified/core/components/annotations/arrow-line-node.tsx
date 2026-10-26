@@ -61,7 +61,7 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
 
   return (
     <Arrow
-      ref={arrowRef as any}
+      ref={arrowRef}
       points={renderPoints}
       stroke={isSelected ? '#60a5fa' : arrow.color}
       fill={isSelected ? '#60a5fa' : arrow.color}

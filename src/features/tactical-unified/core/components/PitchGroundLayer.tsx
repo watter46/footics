@@ -22,7 +22,7 @@ export interface PitchGroundLayerProps {
   camera?: Partial<CameraState>;
   activePolygonId?: string | null;
   mousePreviewPos?: { x: number; y: number } | null;
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   cleanRender?: boolean;
 }
 
@@ -170,11 +170,7 @@ export function PitchGroundLayer({
                 prevPlayer={prevPlayer}
                 stageSize={{ width: pitchRect.width, height: pitchRect.height }}
                 activeSlideId={activeSlideId}
-                nodesRegistryRef={
-                  nodesRegistryRef as
-                    | React.MutableRefObject<CanvasNodesRegistry>
-                    | undefined
-                }
+                nodesRegistryRef={nodesRegistryRef}
                 aspectRatio={aspectRatio}
                 onUpdateTrajectory={updatePlayerTrajectory ?? (() => {})}
               />

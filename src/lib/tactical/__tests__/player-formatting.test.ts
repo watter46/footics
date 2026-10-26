@@ -10,6 +10,11 @@ import {
   parsePlayerIdFromMarkerId,
   sortPlayersBy2DPositionGroup,
 } from '../player-formatting';
+import {
+  getPositionBadgeClass as getBadgeClassHelper,
+  POSITION_GROUP_LABELS,
+  POSITION_GROUPS,
+} from '../player-formatting-helpers';
 
 describe('player-formatting', () => {
   describe('normalizePosition', () => {
@@ -184,6 +189,9 @@ describe('player-formatting', () => {
 
     it('returns slate styling for OTHER', () => {
       expect(getPositionBadgeClass('SUB')).toContain('slate');
+      expect(getBadgeClassHelper('SUB')).toContain('slate');
+      expect(POSITION_GROUPS).toContain('GK');
+      expect(POSITION_GROUP_LABELS.GK).toBe('Goalkeepers');
     });
   });
 

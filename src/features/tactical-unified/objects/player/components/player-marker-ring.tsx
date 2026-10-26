@@ -1,5 +1,6 @@
 'use client';
 
+import type Konva from 'konva';
 import type React from 'react';
 import { Ellipse, Group, Path } from 'react-konva';
 import {
@@ -13,7 +14,7 @@ export interface PlayerMarkerRingProps {
   radius: number;
   numScale: number;
   isSelected: boolean;
-  shapeRef?: React.Ref<any>;
+  shapeRef?: React.Ref<Konva.Group>;
 }
 
 export function PlayerMarkerRing({

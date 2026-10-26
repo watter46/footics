@@ -63,7 +63,7 @@ export const ArrowControlPoints = React.memo(function ArrowControlPoints({
 
   return (
     <Circle
-      ref={controlHandleRef as any}
+      ref={controlHandleRef}
       x={midHandlePxX}
       y={midHandlePxY}
       radius={6.5}

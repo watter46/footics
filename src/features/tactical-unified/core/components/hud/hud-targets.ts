@@ -1,5 +1,6 @@
 import type React from 'react';
 import type { SelectedObject } from '@/features/tactical-unified/core/types';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import type {
   ArrowAnnotation,
   Player,
@@ -23,7 +24,7 @@ export interface HudOffsetRect {
 function resolvePlayerTarget(
   player: Player,
   offset: HudOffsetRect,
-  nodesRegistryRef?: React.MutableRefObject<any>,
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>,
 ): HudTarget {
   const node = nodesRegistryRef?.current?.playerNodes?.get?.(player.id);
   if (node) {
@@ -46,7 +47,7 @@ function resolvePlayerTarget(
 function resolveArrowTarget(
   arrow: ArrowAnnotation,
   offset: HudOffsetRect,
-  nodesRegistryRef?: React.MutableRefObject<any>,
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>,
 ): HudTarget | null {
   const node = nodesRegistryRef?.current?.arrowNodes?.get?.(arrow.id)?.node;
   if (node) {
@@ -81,7 +82,7 @@ function resolveArrowTarget(
 function resolveZoneTarget(
   zone: ZoneAnnotation,
   offset: HudOffsetRect,
-  nodesRegistryRef?: React.MutableRefObject<any>,
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>,
 ): HudTarget {
   const node = nodesRegistryRef?.current?.zoneNodes?.get?.(zone.id);
   if (node) {
@@ -109,7 +110,7 @@ function resolveZoneTarget(
 function resolveTextTarget(
   text: TextAnnotation,
   offset: HudOffsetRect,
-  nodesRegistryRef?: React.MutableRefObject<any>,
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>,
 ): HudTarget {
   const node = nodesRegistryRef?.current?.textNodes?.get?.(text.id);
   if (node) {
@@ -162,7 +163,7 @@ export function resolveHudTarget({
 }: {
   selected: SelectedObject;
   offset: HudOffsetRect;
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   data: {
     markers: Player[];
     arrows: ArrowAnnotation[];

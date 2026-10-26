@@ -1,5 +1,6 @@
 'use client';
 
+import type Konva from 'konva';
 import type React from 'react';
 import { Circle, Group, Path } from 'react-konva';
 import {
@@ -14,7 +15,7 @@ export interface PlayerFocusSpotlightProps {
   focus: NonNullable<Player['focus']>;
   radius: number;
   isRing?: boolean;
-  spotlightGroupRef?: React.Ref<any>;
+  spotlightGroupRef?: React.Ref<Konva.Group>;
   isSelected?: boolean;
   onSelectOption?: () => void;
 }

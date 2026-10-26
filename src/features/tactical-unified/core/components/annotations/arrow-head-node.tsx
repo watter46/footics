@@ -32,7 +32,7 @@ export const ArrowHeadNode = React.memo(function ArrowHeadNode({
   return (
     <>
       <Circle
-        ref={startDotRef as any}
+        ref={startDotRef}
         x={sPxX}
         y={sPxY}
         radius={dotRadius}
@@ -43,7 +43,7 @@ export const ArrowHeadNode = React.memo(function ArrowHeadNode({
         listening={false}
       />
       <Circle
-        ref={endDotRef as any}
+        ref={endDotRef}
         x={ePxX}
         y={ePxY}
         radius={dotRadius}

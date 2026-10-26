@@ -1,3 +1,4 @@
+import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
@@ -66,12 +67,12 @@ export interface PlayerDragContext {
 }
 
 export interface OnionSkinRefs {
-  ghostGroup: any;
-  ghostLine: any;
-  ghostMarkerGroup: any;
-  ghostCircle: any;
-  ghostText: any;
-  ghostLabel: any;
+  ghostGroup: Konva.Group | null;
+  ghostLine: Konva.Line | null;
+  ghostMarkerGroup: Konva.Group | null;
+  ghostCircle: Konva.Circle | null;
+  ghostText: Konva.Text | null;
+  ghostLabel: Konva.Text | null;
 }
 
 export interface PlayerMarkerProps {

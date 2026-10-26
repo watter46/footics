@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Slide, ZoneAnnotation } from '@/lib/types/tactical-unified';
+import { interpolateArrow as directInterpolateArrow } from '../interpolation-annotation';
+import { interpolateBall as directInterpolateBall } from '../interpolation-ball';
+import { lerp as directLerp } from '../interpolation-geometry';
+import { interpolatePlayer as directInterpolatePlayer } from '../interpolation-player';
 import {
   calculateUnifiedTotalDuration,
   getInterpolatedUnifiedSlideFrame,
@@ -302,6 +306,10 @@ describe('unified-interpolation engine', () => {
     });
 
     it('interpolates player along custom bezier trajectory', () => {
+      expect(directLerp(0, 10, 0.5)).toBe(5);
+      expect(typeof directInterpolateBall).toBe('function');
+      expect(typeof directInterpolatePlayer).toBe('function');
+      expect(typeof directInterpolateArrow).toBe('function');
       const slidesWithCurve: Slide[] = [
         {
           id: 's1',

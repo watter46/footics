@@ -15,7 +15,7 @@ export interface PlayerVisionConeHandlesProps {
   radius?: number;
   rx?: number;
   ry?: number;
-  coneShapeRef?: React.MutableRefObject<any>;
+  coneShapeRef?: React.MutableRefObject<Konva.Line | Konva.Arc | null>;
   onUpdateVisionCone: (
     patch: Partial<NonNullable<Player['visionCone']>>,
   ) => void;
@@ -64,12 +64,18 @@ export function PlayerVisionConeHandles({
           rx,
           ry,
         );
-        coneShapeRef.current.points?.(pts);
+        if ('points' in coneShapeRef.current) {
+          coneShapeRef.current.points(pts);
+        }
       } else {
         const spreadDeg = (cone.spreadRad * 180) / Math.PI;
         const angleDeg = (angleRad * 180) / Math.PI - spreadDeg / 2;
-        coneShapeRef.current.rotation?.(angleDeg);
-        coneShapeRef.current.outerRadius?.(newPxRadius);
+        if ('rotation' in coneShapeRef.current) {
+          coneShapeRef.current.rotation(angleDeg);
+        }
+        if ('outerRadius' in coneShapeRef.current) {
+          coneShapeRef.current.outerRadius(newPxRadius);
+        }
       }
     }
     if (edge1Ref.current) {
@@ -101,12 +107,18 @@ export function PlayerVisionConeHandles({
           rx,
           ry,
         );
-        coneShapeRef.current.points?.(pts);
+        if ('points' in coneShapeRef.current) {
+          coneShapeRef.current.points(pts);
+        }
       } else {
         const spreadDeg = (spreadRad * 180) / Math.PI;
         const angleDeg = (cone.angleRad * 180) / Math.PI - spreadDeg / 2;
-        coneShapeRef.current.angle?.(spreadDeg);
-        coneShapeRef.current.rotation?.(angleDeg);
+        if ('angle' in coneShapeRef.current) {
+          coneShapeRef.current.angle(spreadDeg);
+        }
+        if ('rotation' in coneShapeRef.current) {
+          coneShapeRef.current.rotation(angleDeg);
+        }
       }
     }
     const targetRef = isEdge1 ? edge2Ref : edge1Ref;

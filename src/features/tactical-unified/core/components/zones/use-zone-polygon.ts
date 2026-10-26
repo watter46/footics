@@ -1,6 +1,7 @@
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCallback } from 'react';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
 import { normX, normY } from './zone-geometry';
 
@@ -8,7 +9,7 @@ export interface UseZonePolygonParams {
   zone: ZoneAnnotation;
   stageSize: { width: number; height: number };
   updateZone: (zoneId: string, patch: Partial<ZoneAnnotation>) => void;
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   isCreatingThis?: boolean;
   mousePreviewPos?: { x: number; y: number } | null;
 }

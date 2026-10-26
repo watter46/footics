@@ -1,5 +1,6 @@
 import type Konva from 'konva';
 import { useEffect } from 'react';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import { resolveDynamicArrowPoints } from './arrow-geometry';
 import type { useArrowCurve } from './use-arrow-curve';
 
@@ -15,7 +16,7 @@ export interface UseArrowSyncParams {
   sPxY: number;
   ePxX: number;
   ePxY: number;
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
 export function useArrowSyncAndRegistry({

@@ -2,6 +2,7 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Box } from 'konva/lib/shapes/Transformer';
 import { useCallback, useEffect, useRef } from 'react';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
 import {
   computeTransformedZonePatch,
@@ -15,7 +16,7 @@ export interface UseZoneShapeParams {
   stageSize: { width: number; height: number };
   isSelected: boolean;
   updateZone: (zoneId: string, patch: Partial<ZoneAnnotation>) => void;
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
 export function useZoneShape({

@@ -4,6 +4,7 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useRef } from 'react';
 import { Group } from 'react-konva';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import type { ArrowAnnotation, Player } from '@/lib/types/tactical-unified';
 import { ArrowHandlesGroup } from './arrow-handles-group';
 import { ArrowHeadNode } from './arrow-head-node';
@@ -24,7 +25,7 @@ export interface ArrowObjectProps {
   isInteractive?: boolean;
   onSelect: (e: KonvaClickEvent) => void;
   updateArrow: (arrowId: string, patch: Partial<ArrowAnnotation>) => void;
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
 export const ArrowObject = React.memo(function ArrowObject({

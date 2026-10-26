@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import type { TextAnnotation } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
+import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import { BoundaryBoxHud } from './BoundaryBoxHud';
 import { ContextHud } from './ContextHud';
 import { PitchInlineTextEditor } from './PitchInlineTextEditor';
@@ -13,7 +14,7 @@ export interface HtmlHudOverlayProps {
   stageSize: { width: number; height: number };
   pitchRect: PitchRectBounds;
   editingText: TextAnnotation | null;
-  nodesRegistryRef?: React.MutableRefObject<unknown>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   cleanRender?: boolean;
   onSaveText: (id: string, content: string) => void;
   onRemoveText: (id: string) => void;

@@ -1,5 +1,6 @@
 'use client';
 
+import type Konva from 'konva';
 import { useRef } from 'react';
 import { Arc, Group, Line } from 'react-konva';
 import type { Player } from '@/lib/types/tactical-unified';
@@ -51,7 +52,7 @@ export function PlayerVisionCone({
   isSelected,
   onUpdateVisionCone,
 }: PlayerVisionConeProps) {
-  const coneShapeRef = useRef<any>(null);
+  const coneShapeRef = useRef<Konva.Line | Konva.Arc | null>(null);
   if (!cone.visible) return null;
   const pxRadius = normX(cone.radius, stageSize.width);
   const spreadDeg = (cone.spreadRad * 180) / Math.PI;

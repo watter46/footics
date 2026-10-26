@@ -4,6 +4,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Group, Line } from 'react-konva';
 import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
 import { useZonePolygon } from './use-zone-polygon';
 import { ZonePolygonHandles } from './ZonePolygonHandles';
@@ -16,7 +17,7 @@ export interface ZoneNodeProps {
   isInteractive?: boolean;
   onSelect: (e: KonvaEventObject<MouseEvent | TouchEvent>) => void;
   updateZone: (zoneId: string, patch: Partial<ZoneAnnotation>) => void;
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   isCreatingThis?: boolean;
   mousePreviewPos?: { x: number; y: number } | null;
 }

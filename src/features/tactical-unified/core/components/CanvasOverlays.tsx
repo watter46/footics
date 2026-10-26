@@ -3,6 +3,7 @@
 import type React from 'react';
 import type { TextAnnotation } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
+import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import { BoundaryBoxHud } from './BoundaryBoxHud';
 import { BoundaryBoxOverlay } from './BoundaryBoxOverlay';
 import { ContextHud } from './ContextHud';
@@ -11,7 +12,7 @@ import { PitchInlineTextEditor } from './PitchInlineTextEditor';
 export interface CanvasOverlaysProps {
   vRect: { width: number; height: number; x?: number; y?: number };
   editingText: TextAnnotation | null;
-  nodesRegistryRef?: React.MutableRefObject<unknown>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   onSaveText: (id: string, content: string) => void;
   onRemoveText: (id: string) => void;
   onCloseText: () => void;

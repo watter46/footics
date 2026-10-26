@@ -45,7 +45,10 @@ const handleStyle = {
   perfectDrawEnabled: false,
 };
 
-function setCursor(e: KonvaEventObject<any>, cursor: string) {
+function setCursor(
+  e: KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>,
+  cursor: string,
+) {
   const stage = e.target.getStage();
   if (stage) stage.container().style.cursor = cursor;
 }
@@ -125,7 +128,7 @@ export const ArrowEndHandle = React.memo(function ArrowEndHandle({
 
   return (
     <Circle
-      ref={endHandleRef as any}
+      ref={endHandleRef}
       x={ePxX}
       y={ePxY}
       {...handleStyle}

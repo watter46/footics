@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import type { SelectedObject } from '@/features/tactical-unified/core/types';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import {
   type HudOffsetRect,
   type HudTarget,
@@ -11,7 +12,7 @@ export interface UseHudPositionProps {
   selected?: SelectedObject;
   stageSize: { width: number; height: number };
   pitchRect?: { x: number; y: number; width: number; height: number };
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   resolveExtraTarget?: (
     selected: SelectedObject,
     offset: HudOffsetRect,

@@ -31,6 +31,7 @@ export interface CanvasNodesRegistry {
   textNodes: Map<string, Konva.Text>;
   zoneNodes: Map<string, Konva.Shape>;
   connectLineNodes: Map<string, ConnectLineNodeEntry>;
+  connectLineNodeMap?: Map<string, Konva.Line>;
   ballNode: Konva.Group | null;
   annotationLayer: Konva.Layer | null;
   ballLayer: Konva.Layer | null;

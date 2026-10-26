@@ -4,6 +4,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Text as KonvaText } from 'react-konva';
 import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import type { TextAnnotation } from '@/lib/types/tactical-unified';
 import { normX, normY, pxToNormX, pxToNormY } from './math-utils';
 
@@ -18,7 +19,7 @@ export interface TextObjectProps {
   onSelect: (e: KonvaClickEvent) => void;
   onDblClick: (e: KonvaClickEvent) => void;
   updateText: (textId: string, patch: Partial<TextAnnotation>) => void;
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
 export const TextObject = React.memo(function TextObject({

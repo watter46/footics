@@ -7,6 +7,7 @@ import type {
   DrawingTool,
   PitchTransform,
   Player,
+  PlayerTrajectory,
   TextAnnotation,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
@@ -181,7 +182,7 @@ export interface CanvasActions {
   updatePlayerTrajectory?: (
     slideId: string,
     markerId: string,
-    trajectory: any,
+    trajectory?: PlayerTrajectory,
   ) => void;
 
   removeSelected: () => void;

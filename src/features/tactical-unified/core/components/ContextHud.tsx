@@ -5,6 +5,7 @@ import type React from 'react';
 import { useEffect } from 'react';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { SelectedObject } from '../types';
+import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import {
   ArrowHud,
   ConnectLineHud,
@@ -45,7 +46,9 @@ export function ContextHud({
     selected,
     stageSize,
     pitchRect,
-    nodesRegistryRef: nodesRegistryRef as any,
+    nodesRegistryRef: nodesRegistryRef as
+      | React.MutableRefObject<CanvasNodesRegistry>
+      | undefined,
     resolveExtraTarget,
   });
 

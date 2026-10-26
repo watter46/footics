@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { useCallback } from 'react';
 import { Group, Layer } from 'react-konva';
 import { useCanvasStore } from '../hooks/use-canvas-store';
+import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import { ArrowObject } from './annotations/ArrowObject';
 import { TextObject } from './annotations/TextObject';
 import { ZoneObject } from './zones/ZoneObject';
@@ -17,7 +18,7 @@ export interface AnnotationLayerProps {
   mousePreviewPos?: { x: number; y: number } | null;
   editingTextId?: string | null;
   onStartEditText?: (textId: string) => void;
-  nodesRegistryRef?: React.MutableRefObject<any>;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
