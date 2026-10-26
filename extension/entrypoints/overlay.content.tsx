@@ -17,6 +17,13 @@ export default defineContentScript({
       CaptureService.executeCapturePipeline();
     };
 
+    const handleWindowMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'FOOTICS_TRIGGER_CAPTURE') {
+        CaptureService.executeCapturePipeline();
+      }
+    };
+    window.addEventListener('message', handleWindowMessage);
+
     onMessage('TRIGGER_CAPTURE', async () => {
       await CaptureService.executeCapturePipeline();
     });
@@ -90,6 +97,7 @@ export default defineContentScript({
 
     ctx.onInvalidated(() => {
       cleanupBridge?.();
+      window.removeEventListener('message', handleWindowMessage);
       window.removeEventListener(
         'footics-trigger-capture',
         handleCaptureTrigger,

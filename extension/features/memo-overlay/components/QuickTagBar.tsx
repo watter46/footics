@@ -1,6 +1,6 @@
 import { useMemoOverlayStoreContext } from '@/features/memo-overlay/stores/memo-overlay-provider';
-import { QUICK_TAGS, type QuickTag } from '~/constants/quick-tags';
-import { cn } from '~/utils/cn';
+import { QUICK_TAGS, type QuickTag } from '../../../constants/quick-tags';
+import { cn } from '../../../utils/cn';
 
 export interface QuickTagBarProps {
   className?: string;

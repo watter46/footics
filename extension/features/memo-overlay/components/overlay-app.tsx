@@ -83,6 +83,20 @@ export const OverlayApp = () => {
       }
     });
 
+    const handleMessage = (e: MessageEvent) => {
+      const data = e.data;
+      if (!data || typeof data !== 'object') return;
+      if (
+        (data.type === 'FOOTICS_ACTION' &&
+          data.action === 'TOGGLE_DISPLAY_MODE') ||
+        (data.type === 'footics-action' &&
+          data.detail?.action === 'TOGGLE_DISPLAY_MODE')
+      ) {
+        useOverlayStore.getState().toggleDisplayMode();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+
     const handleFooticsAction = (e: Event) => {
       const customEvent = e as CustomEvent<{ action: string }>;
       if (customEvent.detail?.action === 'TOGGLE_DISPLAY_MODE') {
@@ -94,6 +108,7 @@ export const OverlayApp = () => {
     return () => {
       unsubOpen();
       unsubToggleMini();
+      window.removeEventListener('message', handleMessage);
       window.removeEventListener('footics-action', handleFooticsAction);
     };
   }, [handleOpenMessage, isVisible]);

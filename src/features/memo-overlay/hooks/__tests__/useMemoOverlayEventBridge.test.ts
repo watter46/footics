@@ -341,5 +341,63 @@ describe('useMemoOverlayEventBridge & EVENT_BRIDGE_HANDLERS', () => {
 
       expect(onSave).not.toHaveBeenCalled();
     });
+
+    describe('window.postMessage integration', () => {
+      it('FOOTICS_ACTION (SAVE_MEMO) を postMessage で受信した場合に onSave が呼ばれること', () => {
+        renderHook(() =>
+          useMemoOverlayEventBridge(onClose, onSave, onOpen, true),
+        );
+
+        act(() => {
+          window.dispatchEvent(
+            new MessageEvent('message', {
+              data: { type: 'FOOTICS_ACTION', action: 'SAVE_MEMO' },
+            }),
+          );
+        });
+
+        expect(onSave).toHaveBeenCalled();
+      });
+
+      it('FOOTICS_ACTION (CLOSE_OVERLAY) を postMessage で受信した場合に onClose が呼ばれること', () => {
+        renderHook(() =>
+          useMemoOverlayEventBridge(onClose, onSave, onOpen, true),
+        );
+
+        act(() => {
+          window.dispatchEvent(
+            new MessageEvent('message', {
+              data: { type: 'FOOTICS_ACTION', action: 'CLOSE_OVERLAY' },
+            }),
+          );
+        });
+
+        expect(onClose).toHaveBeenCalled();
+      });
+
+      it('FOOTICS_ACTION (TOGGLE_MATCH_MEMO) を postMessage で受信した場合に onOpen が呼ばれること', () => {
+        renderHook(() =>
+          useMemoOverlayEventBridge(onClose, onSave, onOpen, true),
+        );
+
+        act(() => {
+          window.dispatchEvent(
+            new MessageEvent('message', {
+              data: {
+                type: 'FOOTICS_ACTION',
+                action: 'TOGGLE_MATCH_MEMO',
+                payload: { matchId: 'm-msg-1', memo: 'msg memo' },
+              },
+            }),
+          );
+        });
+
+        expect(onOpen).toHaveBeenCalledWith({
+          mode: 'MATCH',
+          matchId: 'm-msg-1',
+          data: { memo: 'msg memo' },
+        });
+      });
+    });
   });
 });

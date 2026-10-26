@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
 import { QUICK_TAGS } from '../../../constants/quick-tags';
 import { QuickTagBar } from '../components/QuickTagBar';
@@ -136,6 +136,38 @@ describe('QuickTagBar & Shortcuts', () => {
       });
 
       expect(useMemoOverlayStore.getState().selectedLabels).toEqual([]);
+    });
+
+    it('posts SAVE_MEMO message on Ctrl+Enter and CLOSE_OVERLAY on Escape', () => {
+      const postMessageSpy = vi.spyOn(window, 'postMessage');
+      render(<TestComponent />);
+
+      act(() => {
+        fireEvent.keyDown(document.body, {
+          key: 'Enter',
+          code: 'Enter',
+          ctrlKey: true,
+        });
+      });
+
+      expect(postMessageSpy).toHaveBeenCalledWith(
+        { type: 'FOOTICS_ACTION', action: 'SAVE_MEMO' },
+        '*',
+      );
+
+      act(() => {
+        fireEvent.keyDown(document.body, {
+          key: 'Escape',
+          code: 'Escape',
+        });
+      });
+
+      expect(postMessageSpy).toHaveBeenCalledWith(
+        { type: 'FOOTICS_ACTION', action: 'CLOSE_OVERLAY' },
+        '*',
+      );
+
+      postMessageSpy.mockRestore();
     });
   });
 });

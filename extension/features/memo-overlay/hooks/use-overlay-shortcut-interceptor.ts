@@ -1,101 +1,100 @@
-import hotkeys from 'hotkeys-js';
 import { useEffect } from 'react';
 import { useMemoOverlayStore } from '@/features/memo-overlay/stores/memo-overlay-store';
-import { QUICK_TAGS } from '~/constants/quick-tags';
+import { QUICK_TAGS } from '../../../constants/quick-tags';
 import { useOverlayStore } from '../stores/use-overlay-store';
 
 /**
  * useOverlayShortcutInterceptor
  *
- * 責務: グローバルなキーボードショートカットを登録する。
+ * 責務: グローバルなキーボードショートカットをキャプチャフェーズで登録する。
  * - Escape: オーバーレイを閉じる
  * - Ctrl+Enter / Cmd+Enter: メモ保存
+ * - Alt+M: 表示モード切替
+ * - Alt+S: キャプチャトリガー
  * - 1〜4: EVENT モード時にプリセットクイックタグをトグル選択（input/textarea外のみ）
- *
- * 各フェーズの詳細なキー操作（Backspace, Arrow, Enter等）は、
- * 各フェーズコンポーネントのローカルな onKeyDown ハンドラに委譲する。
  */
 export function useOverlayShortcutInterceptor() {
   useEffect(() => {
-    // hotkeys-js が input/textarea 内でも動作するように設定
-    const originalFilter = hotkeys.filter;
-    hotkeys.filter = () => true;
-
     const isInputFocused = (e: KeyboardEvent) => {
-      const target = (e.target || (e as any).srcElement) as HTMLElement | null;
+      const target = (
+        e.composedPath ? e.composedPath()[0] : e.target
+      ) as HTMLElement | null;
       return (
         target?.tagName === 'INPUT' ||
         target?.tagName === 'TEXTAREA' ||
         target?.tagName === 'SELECT' ||
-        target?.isContentEditable
+        Boolean(target?.isContentEditable)
       );
     };
 
-    const targetOrigin =
-      typeof window !== 'undefined' && window.location?.origin
-        ? window.location.origin
-        : '*';
-
-    hotkeys('escape', (e) => {
-      e.preventDefault();
-      window.postMessage(
-        { type: 'FOOTICS_ACTION', action: 'CLOSE_OVERLAY' },
-        targetOrigin,
-      );
-    });
-
-    hotkeys('ctrl+enter, command+enter', (e) => {
-      e.preventDefault();
-      window.postMessage(
-        { type: 'FOOTICS_ACTION', action: 'SAVE_MEMO' },
-        targetOrigin,
-      );
-    });
-
-    hotkeys('alt+m', (e) => {
-      e.preventDefault();
-      window.postMessage(
-        { type: 'FOOTICS_ACTION', action: 'TOGGLE_DISPLAY_MODE' },
-        targetOrigin,
-      );
-    });
-
-    hotkeys('alt+s', (e) => {
-      e.preventDefault();
-      window.postMessage({ type: 'FOOTICS_TRIGGER_CAPTURE' }, targetOrigin);
-    });
-
-    // 数字キー (1〜4) によるタグクイック選択
-    for (const tag of QUICK_TAGS) {
-      hotkeys(tag.shortcut, (e) => {
-        if (isInputFocused(e)) return;
-
-        const overlayState = useOverlayStore.getState();
-        if (!overlayState.isVisible || overlayState.mode !== 'EVENT') return;
-
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape: オーバーレイを閉じる
+      if (e.key === 'Escape') {
         e.preventDefault();
-        const memoStore = useMemoOverlayStore.getState();
-        const currentLabels = memoStore.selectedLabels;
-        if (currentLabels.includes(tag.label)) {
-          memoStore.setSelectedLabels(
-            currentLabels.filter((l) => l !== tag.label),
-          );
-        } else {
-          memoStore.addLabel(tag.label);
-        }
-      });
-    }
-
-    return () => {
-      hotkeys.filter = originalFilter;
-      hotkeys.unbind('escape');
-      hotkeys.unbind('ctrl+enter');
-      hotkeys.unbind('command+enter');
-      hotkeys.unbind('alt+m');
-      hotkeys.unbind('alt+s');
-      for (const tag of QUICK_TAGS) {
-        hotkeys.unbind(tag.shortcut);
+        window.postMessage(
+          { type: 'FOOTICS_ACTION', action: 'CLOSE_OVERLAY' },
+          '*',
+        );
+        return;
       }
+
+      // Ctrl+Enter / Cmd+Enter: メモ保存
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        window.postMessage(
+          { type: 'FOOTICS_ACTION', action: 'SAVE_MEMO' },
+          '*',
+        );
+        return;
+      }
+
+      // Alt+M: 表示モード切替
+      if (e.altKey && (e.key === 'm' || e.key === 'M' || e.code === 'KeyM')) {
+        e.preventDefault();
+        window.postMessage(
+          { type: 'FOOTICS_ACTION', action: 'TOGGLE_DISPLAY_MODE' },
+          '*',
+        );
+        return;
+      }
+
+      // Alt+S: キャプチャトリガー
+      if (e.altKey && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
+        e.preventDefault();
+        window.postMessage({ type: 'FOOTICS_TRIGGER_CAPTURE' }, '*');
+        return;
+      }
+
+      // 数字キー (1〜4) によるタグクイック選択
+      if (
+        !isInputFocused(e) &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !e.shiftKey
+      ) {
+        const matchingTag = QUICK_TAGS.find((tag) => tag.shortcut === e.key);
+        if (matchingTag) {
+          const overlayState = useOverlayStore.getState();
+          if (overlayState.isVisible && overlayState.mode === 'EVENT') {
+            e.preventDefault();
+            const memoStore = useMemoOverlayStore.getState();
+            const currentLabels = memoStore.selectedLabels;
+            if (currentLabels.includes(matchingTag.label)) {
+              memoStore.setSelectedLabels(
+                currentLabels.filter((l) => l !== matchingTag.label),
+              );
+            } else {
+              memoStore.addLabel(matchingTag.label);
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, { capture: true });
     };
   }, []);
 }

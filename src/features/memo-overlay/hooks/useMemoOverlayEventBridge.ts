@@ -6,14 +6,6 @@ import {
   type FooticsActionDetail,
 } from './event-bridge-handlers';
 
-/**
- * useMemoOverlayEventBridge
- *
- * 責務: `window` の `footics-action` カスタムイベントを監視し、
- * `useMemoOverlayStore` のアクションへ橋渡しする。
- *
- * このHookは拡張機能・本体アプリ問わず、イベント駆動の操作連携を提供する。
- */
 export function useMemoOverlayEventBridge(
   onClose: () => void,
   onSave: () => void,
@@ -21,27 +13,46 @@ export function useMemoOverlayEventBridge(
   isActive = true,
 ) {
   useEffect(() => {
-    const handleFooticsAction = (e: Event) => {
-      const detail = (e as CustomEvent).detail as
-        | FooticsActionDetail
-        | undefined;
-      if (!detail?.action) return;
-
-      // 開く操作 (TOGGLE_*) 以外は、isActive が false の場合は無視する
-      const isToggleAction =
-        detail.action === 'TOGGLE_MATCH_MEMO' ||
-        detail.action === 'TOGGLE_EVENT_MEMO';
-      if (!isActive && !isToggleAction) return;
-
-      const handler = EVENT_BRIDGE_HANDLERS[detail.action];
+    const handleAction = (action: string, detail?: FooticsActionDetail) => {
+      const isToggle =
+        action === 'TOGGLE_MATCH_MEMO' || action === 'TOGGLE_EVENT_MEMO';
+      if (!isActive && !isToggle) return;
+      const handler = EVENT_BRIDGE_HANDLERS[action];
       if (handler) {
-        const store = useMemoOverlayStore.getState();
-        handler(detail, { onClose, onSave, onOpen, store });
+        handler(detail ?? { action }, {
+          onClose,
+          onSave,
+          onOpen,
+          store: useMemoOverlayStore.getState(),
+        });
       }
     };
 
-    window.addEventListener('footics-action', handleFooticsAction);
-    return () =>
-      window.removeEventListener('footics-action', handleFooticsAction);
+    const handleMessage = (e: MessageEvent) => {
+      const d = e.data;
+      if (!d || typeof d !== 'object') return;
+      if (d.type === 'FOOTICS_ACTION' && typeof d.action === 'string') {
+        handleAction(d.action, d.payload ?? d.detail ?? { action: d.action });
+      } else if (
+        d.type === 'footics-action' &&
+        typeof d.detail?.action === 'string'
+      ) {
+        handleAction(d.detail.action, d.detail);
+      }
+    };
+
+    const handleCustom = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | FooticsActionDetail
+        | undefined;
+      if (detail?.action) handleAction(detail.action, detail);
+    };
+
+    window.addEventListener('message', handleMessage);
+    window.addEventListener('footics-action', handleCustom);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('footics-action', handleCustom);
+    };
   }, [onClose, onSave, onOpen, isActive]);
 }
