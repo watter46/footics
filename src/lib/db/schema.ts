@@ -9,6 +9,7 @@ import type {
   PlayerPhoto,
 } from '../schema';
 
+export type { Match } from '@/types';
 export type {
   CustomEvent,
   KeyValEntry,
