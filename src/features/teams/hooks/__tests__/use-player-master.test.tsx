@@ -6,6 +6,7 @@ import { generatePlayerMasterId } from '@/lib/db/queries';
 import { db } from '@/lib/db/schema';
 import {
   usePlayerMaster,
+  usePlayerMasterMutations,
   usePlayersMasterBatch,
   useSeasonPlayers,
 } from '../use-player-master';
@@ -144,6 +145,43 @@ describe('usePlayerMaster & usePlayersMasterBatch & useSeasonPlayers', () => {
 
     await waitFor(() => {
       expect(result.current.players.length).toBe(0);
+    });
+  });
+
+  describe('usePlayerMasterMutations', () => {
+    it('works without QueryClientProvider and executes savePlayer, updatePlayer, mergePlayer', async () => {
+      const { result } = renderHook(() => usePlayerMasterMutations());
+
+      await result.current.savePlayer({
+        playerId: 999,
+        name: 'Test Player',
+        season: '26-27',
+      });
+
+      const player = await db.players.get(generatePlayerMasterId('26-27', 999));
+      expect(player).toBeDefined();
+      expect(player?.name).toBe('Test Player');
+
+      await result.current.updatePlayer({
+        playerId: 999,
+        name: 'Updated Player',
+        season: '26-27',
+      });
+
+      const updated = await db.players.get(
+        generatePlayerMasterId('26-27', 999),
+      );
+      expect(updated?.name).toBe('Updated Player');
+
+      await result.current.mergePlayer(999, 1000, '26-27', 'Chelsea');
+      const mergedOld = await db.players.get(
+        generatePlayerMasterId('26-27', 999),
+      );
+      expect(mergedOld).toBeUndefined();
+      const mergedNew = await db.players.get(
+        generatePlayerMasterId('26-27', 1000),
+      );
+      expect(mergedNew?.name).toBe('Updated Player');
     });
   });
 });

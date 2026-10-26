@@ -5,7 +5,7 @@ import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
-import { savePlayerMaster, savePlayerPhoto } from '@/lib/db/queries';
+import { usePlayerMasterMutations } from '@/features/teams/hooks/use-player-master';
 import { AVAILABLE_SEASONS } from '@/lib/tactical/chelsea-preset';
 import type { Player, StandardPosition } from '@/types';
 import { PlayerBasicFormFields } from './player-basic-form-fields';
@@ -64,28 +64,6 @@ const toPlayer = (
   field: team,
   stats: {},
 });
-
-const executeSave = async (
-  id: number,
-  name: string,
-  no: number,
-  pos: StandardPosition,
-  season: string,
-  team: 'home' | 'away',
-  teamName?: string,
-  photo?: File | null,
-) => {
-  await savePlayerMaster({
-    playerId: id,
-    name,
-    defaultShirtNo: no,
-    position: pos,
-    season,
-    teamName: team === 'home' ? (teamName ?? 'Chelsea') : 'Opponent',
-    updatedAt: Date.now(),
-  });
-  if (photo) await savePlayerPhoto(id, photo);
-};
 
 interface PhotoUploadProps {
   preview: string | null;
@@ -149,6 +127,7 @@ function AddPlayerForm({
   onClose,
   onPlayerAdded,
 }: Omit<AddPlayerDialogProps, 'isOpen'>) {
+  const { savePlayer } = usePlayerMasterMutations();
   const [name, setName] = useState('');
   const [shirtNo, setShirtNo] = useState<number | ''>('');
   const [pos, setPos] = useState<StandardPosition>('Other');
@@ -184,7 +163,18 @@ function AddPlayerForm({
       const pid = -Math.floor(Date.now() % 1e9);
       const no = typeof shirtNo === 'number' ? shirtNo : 99;
       const s = season.trim() || defaultSeason;
-      await executeSave(pid, trimmed, no, pos, s, team, teamName, photo);
+      await savePlayer(
+        {
+          playerId: pid,
+          name: trimmed,
+          defaultShirtNo: no,
+          position: pos,
+          season: s,
+          teamName: team === 'home' ? (teamName ?? 'Chelsea') : 'Opponent',
+          updatedAt: Date.now(),
+        },
+        photo,
+      );
       onPlayerAdded?.(toPlayer(pid, trimmed, no, pos, team), team);
       toast.success(`${trimmed} を選手リストに追加しました`);
       clearPhoto();

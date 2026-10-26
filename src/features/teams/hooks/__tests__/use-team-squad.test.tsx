@@ -4,6 +4,7 @@ import type React from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { savePlayerMaster } from '@/lib/db/queries';
 import { db } from '@/lib/db/schema';
+import { matchKeys, playerKeys } from '@/lib/query-keys';
 import { useTeamSquad } from '../use-team-squad';
 
 const createWrapper = () => {
@@ -17,7 +18,7 @@ const createWrapper = () => {
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
-  return Wrapper;
+  return { Wrapper, queryClient };
 };
 
 describe('useTeamSquad', () => {
@@ -27,10 +28,11 @@ describe('useTeamSquad', () => {
   });
 
   it('fetches team squad for chelsea and normalizes positions', async () => {
+    const { Wrapper } = createWrapper();
     const { result } = renderHook(
       () => useTeamSquad({ teamId: 'chelsea', season: '26-27' }),
       {
-        wrapper: createWrapper(),
+        wrapper: Wrapper,
       },
     );
 
@@ -55,10 +57,11 @@ describe('useTeamSquad', () => {
       updatedAt: Date.now(),
     });
 
+    const { Wrapper } = createWrapper();
     const { result } = renderHook(
       () => useTeamSquad({ teamId: 'arsenal', season: '26-27' }),
       {
-        wrapper: createWrapper(),
+        wrapper: Wrapper,
       },
     );
 
@@ -79,10 +82,11 @@ describe('useTeamSquad', () => {
       updatedAt: Date.now(),
     });
 
+    const { Wrapper } = createWrapper();
     const { result } = renderHook(
       () => useTeamSquad({ teamId: 'chelsea', season: '26-27' }),
       {
-        wrapper: createWrapper(),
+        wrapper: Wrapper,
       },
     );
 
@@ -95,5 +99,35 @@ describe('useTeamSquad', () => {
     expect(palmerList.length).toBe(1);
     expect(palmerList[0].playerId).toBeGreaterThan(0);
     expect(palmerList[0].playerId).toBe(345014);
+  });
+
+  it('uses unified query keys from matchKeys and playerKeys', async () => {
+    const { Wrapper, queryClient } = createWrapper();
+    const { result } = renderHook(
+      () => useTeamSquad({ teamId: 'chelsea', season: '26-27' }),
+      {
+        wrapper: Wrapper,
+      },
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const keys = queryClient
+      .getQueryCache()
+      .getAll()
+      .map((q) => q.queryKey);
+    expect(keys).toContainEqual(matchKeys.lists());
+    expect(keys).toContainEqual([
+      ...playerKeys.lists(),
+      'team-squad',
+      'chelsea',
+      '26-27',
+    ]);
+    expect(keys).toContainEqual([
+      ...playerKeys.lists(),
+      'excluded-players',
+      'chelsea',
+      '26-27',
+    ]);
   });
 });

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { getAllMatches } from '@/lib/db/queries';
+import { matchKeys } from '@/lib/query-keys';
 import { DEFAULT_SEASON } from '@/lib/tactical/chelsea-preset';
 import { extractAvailableSeasons } from '@/lib/tactical/season-utils';
 import type { EditablePlayerData } from '../components/EditPlayerDialog';
@@ -41,7 +42,7 @@ export function useTeamSquadClient({
   const [idFilter, setIdFilter] = useState<IdFilterOption>('all');
 
   const matchesQuery = useQuery({
-    queryKey: ['all-matches-seasons'],
+    queryKey: matchKeys.lists(),
     queryFn: () => getAllMatches(),
     staleTime: 300000,
   });

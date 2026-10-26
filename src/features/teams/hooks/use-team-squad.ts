@@ -7,6 +7,7 @@ import {
   getExcludedPlayerMastersBySeason,
   getPlayerMastersBySeason,
 } from '@/lib/db/queries';
+import { matchKeys, playerKeys } from '@/lib/query-keys';
 import { DEFAULT_SEASON } from '@/lib/tactical/chelsea-preset';
 import { getTeamConfig } from '@/lib/tactical/teams-config';
 import {
@@ -35,19 +36,24 @@ export function useTeamSquad({
   const effectiveTeamName = teamName || teamConfig.shortName;
 
   const matchesQuery = useQuery({
-    queryKey: ['team-squad', teamConfig.id, 'matches'],
+    queryKey: matchKeys.lists(),
     queryFn: () => getAllMatches(),
     staleTime: 1000 * 60 * 5,
   });
 
   const playersMasterQuery = useQuery({
-    queryKey: ['team-squad', teamConfig.id, 'players-master', season],
+    queryKey: [...playerKeys.lists(), 'team-squad', teamConfig.id, season],
     queryFn: () => getPlayerMastersBySeason(season, effectiveTeamName),
     staleTime: 1000 * 60 * 5,
   });
 
   const excludedPlayersQuery = useQuery({
-    queryKey: ['team-squad', teamConfig.id, 'excluded-players', season],
+    queryKey: [
+      ...playerKeys.lists(),
+      'excluded-players',
+      teamConfig.id,
+      season,
+    ],
     queryFn: () => getExcludedPlayerMastersBySeason(season, effectiveTeamName),
     staleTime: 1000 * 60 * 5,
   });

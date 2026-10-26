@@ -1,6 +1,5 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
 import { Edit3, Loader2, Save, X } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
@@ -8,8 +7,7 @@ import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { savePlayerMaster } from '@/lib/db/queries';
-import { playerKeys } from '@/lib/query-keys';
+import { usePlayerMasterMutations } from '@/features/teams/hooks/use-player-master';
 import { normalizePosition } from '@/lib/tactical/player-formatting';
 import type { Player, StandardPosition } from '@/types';
 import { PlayerBasicFormFields } from './player-basic-form-fields';
@@ -49,7 +47,7 @@ export function EditPlayerDialog({
   availableOfficialPlayers = [],
   onSuccess,
 }: EditPlayerDialogProps) {
-  const queryClient = useQueryClient();
+  const { updatePlayer } = usePlayerMasterMutations();
   const [name, setName] = useState('');
   const [shirtNo, setShirtNo] = useState<number | ''>('');
   const [position, setPosition] = useState<StandardPosition>('Other');
@@ -74,7 +72,7 @@ export function EditPlayerDialog({
 
     try {
       setIsSubmitting(true);
-      await savePlayerMaster({
+      await updatePlayer({
         playerId: player.playerId,
         name: trimmed,
         defaultShirtNo: typeof shirtNo === 'number' ? shirtNo : 99,
@@ -83,16 +81,6 @@ export function EditPlayerDialog({
         teamName: player.teamName || 'Chelsea',
         updatedAt: Date.now(),
       });
-
-      const keys = [
-        ['season-players', player.season],
-        playerKeys.all,
-        ['chelsea-squad'],
-        ['team-squad'],
-      ];
-      await Promise.all(
-        keys.map((k) => queryClient.invalidateQueries({ queryKey: k })),
-      );
 
       toast.success(`${trimmed} の情報を更新しました`);
       onSuccess();

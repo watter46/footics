@@ -1,6 +1,12 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  QueryClientContext,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { useContext } from 'react';
 import {
   deletePlayerMaster,
   deletePlayerPhoto,
@@ -14,6 +20,79 @@ import {
 import type { PlayerMaster } from '@/lib/db/schema';
 import { playerKeys } from '@/lib/query-keys';
 
+export interface PlayerMasterMutations {
+  savePlayer: (
+    master: Partial<PlayerMaster> & { playerId: number; name: string },
+    photoBlob?: Blob | null,
+  ) => Promise<void>;
+  updatePlayer: (
+    master: Partial<PlayerMaster> & { playerId: number; name: string },
+  ) => Promise<void>;
+  mergePlayer: (
+    sourceId: number,
+    targetId: number,
+    season?: string,
+    teamName?: string,
+  ) => Promise<void>;
+}
+
+/**
+ * 選手マスターの作成・更新・統合ミューテーションを提供するカスタムフック
+ * QueryClientProvider のスコープ外でも安全に動作可能
+ */
+export function usePlayerMasterMutations(): PlayerMasterMutations {
+  const queryClient = useContext(QueryClientContext);
+
+  const invalidate = async (season?: string) => {
+    if (!queryClient) return;
+    const keys: (readonly unknown[])[] = [
+      playerKeys.all,
+      ['chelsea-squad'],
+      ['team-squad'],
+    ];
+    if (season) {
+      keys.push(['season-players', season]);
+    }
+    await Promise.all(
+      keys.map((queryKey) => queryClient?.invalidateQueries({ queryKey })),
+    );
+  };
+
+  const savePlayer = async (
+    master: Partial<PlayerMaster> & { playerId: number; name: string },
+    photoBlob?: Blob | null,
+  ) => {
+    await savePlayerMaster(master);
+    if (photoBlob) {
+      await savePlayerPhoto(master.playerId, photoBlob);
+    }
+    await invalidate(master.season);
+  };
+
+  const updatePlayer = async (
+    master: Partial<PlayerMaster> & { playerId: number; name: string },
+  ) => {
+    await savePlayerMaster(master);
+    await invalidate(master.season);
+  };
+
+  const mergePlayer = async (
+    sourceId: number,
+    targetId: number,
+    season?: string,
+    teamName?: string,
+  ) => {
+    await mergePlayerId(sourceId, targetId, season, teamName);
+    await invalidate(season);
+  };
+
+  return {
+    savePlayer,
+    updatePlayer,
+    mergePlayer,
+  };
+}
+
 /**
  * 単一選手のマスター情報を取得・操作するカスタムフック
  */
@@ -23,7 +102,7 @@ export function usePlayerMaster(playerId?: number, season?: string) {
   const query = useQuery({
     queryKey: playerId
       ? [...playerKeys.detail(playerId), season ?? 'all']
-      : ['players', 'none'],
+      : [...playerKeys.all, 'none'],
     queryFn: () =>
       playerId ? getPlayerMaster(playerId, season) : Promise.resolve(undefined),
     enabled:
@@ -120,6 +199,14 @@ export function useSeasonPlayers(season: string, teamName: string = 'Chelsea') {
     staleTime: 1000 * 60 * 5,
   });
 
+  const invalidateSeason = () => {
+    queryClient.invalidateQueries({
+      queryKey: ['season-players', season, teamName],
+    });
+    queryClient.invalidateQueries({ queryKey: playerKeys.all });
+    queryClient.invalidateQueries({ queryKey: ['chelsea-squad'] });
+  };
+
   const savePlayerMutation = useMutation({
     mutationFn: async (
       player: Partial<PlayerMaster> & { playerId: number; name: string },
@@ -130,26 +217,14 @@ export function useSeasonPlayers(season: string, teamName: string = 'Chelsea') {
         teamName,
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['season-players', season, teamName],
-      });
-      queryClient.invalidateQueries({ queryKey: playerKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['chelsea-squad'] });
-    },
+    onSuccess: invalidateSeason,
   });
 
   const deletePlayerMutation = useMutation({
     mutationFn: async (playerId: number) => {
       await deletePlayerMaster(playerId, season);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['season-players', season, teamName],
-      });
-      queryClient.invalidateQueries({ queryKey: playerKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['chelsea-squad'] });
-    },
+    onSuccess: invalidateSeason,
   });
 
   const savePhotoMutation = useMutation({
@@ -163,26 +238,14 @@ export function useSeasonPlayers(season: string, teamName: string = 'Chelsea') {
     }) => {
       await savePlayerPhoto(playerId, blob);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['season-players', season, teamName],
-      });
-      queryClient.invalidateQueries({ queryKey: playerKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['chelsea-squad'] });
-    },
+    onSuccess: invalidateSeason,
   });
 
   const deletePhotoMutation = useMutation({
     mutationFn: async (playerId: number) => {
       await deletePlayerPhoto(playerId, season);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['season-players', season, teamName],
-      });
-      queryClient.invalidateQueries({ queryKey: playerKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['chelsea-squad'] });
-    },
+    onSuccess: invalidateSeason,
   });
 
   const mergePlayerMutation = useMutation({
@@ -195,13 +258,7 @@ export function useSeasonPlayers(season: string, teamName: string = 'Chelsea') {
     }) => {
       await mergePlayerId(tempPlayerId, officialPlayerId, season, teamName);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['season-players', season, teamName],
-      });
-      queryClient.invalidateQueries({ queryKey: playerKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['chelsea-squad'] });
-    },
+    onSuccess: invalidateSeason,
   });
 
   return {

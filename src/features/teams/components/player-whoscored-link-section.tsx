@@ -1,12 +1,10 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Link as LinkIcon, Loader2, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { mergePlayerId } from '@/lib/db/queries';
-import { playerKeys } from '@/lib/query-keys';
+import { usePlayerMasterMutations } from '@/features/teams/hooks/use-player-master';
 
 export interface OfficialPlayerOption {
   playerId: number;
@@ -31,7 +29,7 @@ export function PlayerWhoScoredLinkSection({
   onMergeSuccess,
   teamName = 'Chelsea',
 }: PlayerWhoScoredLinkSectionProps) {
-  const queryClient = useQueryClient();
+  const { mergePlayer } = usePlayerMasterMutations();
   const [targetOfficialId, setTargetOfficialId] = useState<number | ''>('');
   const [isMerging, setIsMerging] = useState(false);
 
@@ -63,16 +61,7 @@ export function PlayerWhoScoredLinkSection({
       );
       const targetName = match?.name || `WhoScored ID: ${targetOfficialId}`;
 
-      await mergePlayerId(playerId, targetOfficialId, season, teamName);
-      const keys = [
-        ['season-players', season],
-        playerKeys.all,
-        ['chelsea-squad'],
-        ['team-squad'],
-      ];
-      await Promise.all(
-        keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      await mergePlayer(playerId, targetOfficialId, season, teamName);
 
       toast.success(`${playerName} を ${targetName} に統合・紐付けました！`);
       onMergeSuccess(targetOfficialId);

@@ -17,7 +17,7 @@ export function useEvents(
   filters: FilterState,
 ): UseEventsResult {
   const { data, isPlaceholderData, isLoading } = useQuery({
-    queryKey: [...eventKeys.filtered(filters), matchId],
+    queryKey: eventKeys.filtered({ ...filters, matchId }),
     queryFn: async () => {
       if (!matchId) return { events: [], totalCount: 0 };
 

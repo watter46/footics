@@ -1,3 +1,4 @@
+import type { Qualifier } from '@/types';
 import type { EventStrategy } from '../event-strategy';
 
 export const CornerKickStrategy: EventStrategy = {
@@ -7,5 +8,5 @@ export const CornerKickStrategy: EventStrategy = {
   color:
     'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]',
   predicate: (event) =>
-    (event.qualifiers || []).some((q: any) => q.type?.value === 6),
+    ((event.qualifiers || []) as Qualifier[]).some((q) => q.type?.value === 6),
 };
