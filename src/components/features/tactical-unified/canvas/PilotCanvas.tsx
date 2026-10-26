@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Layer, Line, Rect, Stage } from 'react-konva';
 import { usePilotStore } from '@/stores/pilotStore';
 
@@ -31,12 +31,7 @@ export function PilotCanvas({
   height = 400,
   className,
 }: PilotCanvasProps) {
-  const [isMounted, setIsMounted] = useState(false);
   const showGrid = usePilotStore((state) => state.showGrid);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   // 中央配置の四角形座標
   const rectX = useMemo(() => (width - RECT_SIZE) / 2, [width]);
@@ -78,17 +73,6 @@ export function PilotCanvas({
 
     return lines;
   }, [showGrid, width, height]);
-
-  if (!isMounted) {
-    return (
-      <div
-        className={className}
-        style={{ width, height }}
-        role="status"
-        aria-label="Pilot Canvas Loading"
-      />
-    );
-  }
 
   return (
     <div className={className} data-testid="pilot-canvas-container">

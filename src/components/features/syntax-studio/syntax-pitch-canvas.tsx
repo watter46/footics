@@ -96,7 +96,7 @@ const TEAM_COLORS: Record<'home' | 'away', string> = {
   away: '#dc2626',
 };
 
-export const SyntaxPitchCanvas: React.FC<SyntaxPitchCanvasProps> = ({
+export function SyntaxPitchCanvas({
   mode,
   scene,
   width: propWidth,
@@ -106,18 +106,13 @@ export const SyntaxPitchCanvas: React.FC<SyntaxPitchCanvasProps> = ({
   badgeVariant = 'human',
   className = '',
   onPlayerPositionChange,
-}) => {
+}: SyntaxPitchCanvasProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerDimensions, setContainerDimensions] = useState<{
     width: number;
     height: number;
   }>({ width: 0, height: 0 });
-  const [isMounted, setIsMounted] = useState(false);
   const [pitchImage, setPitchImage] = useState<HTMLImageElement | null>(null);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   // ピッチSVGのロード
   useEffect(() => {
@@ -199,24 +194,6 @@ export const SyntaxPitchCanvas: React.FC<SyntaxPitchCanvasProps> = ({
       onPlayerPositionChange(playerId, clampedX, clampedY);
     }
   };
-
-  if (!isMounted) {
-    return (
-      <div
-        ref={containerRef}
-        className={`relative flex items-center justify-center bg-slate-950 rounded-xl overflow-hidden border border-slate-800 ${className}`}
-        style={{
-          aspectRatio: `${PITCH_ASPECT_RATIO}`,
-          width: propWidth || '100%',
-          height: propHeight || '100%',
-        }}
-      >
-        <div className="text-xs text-slate-500 font-mono animate-pulse">
-          Loading Canvas...
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -486,4 +463,4 @@ export const SyntaxPitchCanvas: React.FC<SyntaxPitchCanvasProps> = ({
       </div>
     </div>
   );
-};
+}

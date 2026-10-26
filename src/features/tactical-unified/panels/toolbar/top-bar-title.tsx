@@ -7,7 +7,7 @@ import {
   Loader2,
   Pencil,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 
 export function TopBarTitle() {
@@ -23,10 +23,6 @@ export function TopBarTitle() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(projectTitle);
   const titleInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setTempTitle(projectTitle);
-  }, [projectTitle]);
 
   const handleStartTitleEdit = () => {
     setTempTitle(projectTitle);
