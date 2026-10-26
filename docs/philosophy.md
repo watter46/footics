@@ -48,16 +48,16 @@
 User (要件指示)
   │
   ▼
-[ Planner (Flash High) ] ─── タスク分解・仕様策定
-  │                       Single Source of Truth: tasks/TASK-*.md 生成
+[ Planner (pro / inherit) ] ─── タスク分解・仕様策定（広範囲調査は Scout: flash_lite を起動）
+  │                             Single Source of Truth: tasks/TASK-*.md 生成
   ▼
-[ Worker (Flash) ] ────── TDD実装・全ステップ消化
-  │                       ローカル検証: agent:check-worker (PASS)
+[ Worker (flash / flash_lite) ] ── TDD実装・全ステップ消化
+  │                             ローカル検証: bun run ai:check [paths]
   ▼
-[ Reviewer (Pro) ] ────── 厳格審査 (スクリプト検証 + 要件照合)
+[ Reviewer (pro) ] ──────────── 厳格審査 (4大定性監査 + 検証)
   │
-  ├── LGTM (合格) ──────▶ Git コミット・タスク完了
-  └── REJECTED (差し戻し) ─▶ タスクファイルへ修正指示追記 ➔ Worker へリトライ (上限1回)
+  ├── LGTM (合格) ────────────▶ bun run ai:commit で自動ステージング・コミット ➔ タスク完了
+  └── REJECTED (差し戻し) ───────▶ タスクファイルへ修正指示追記 ➔ Worker へリトライ (上限1回)
 ```
 
 ---
@@ -69,6 +69,7 @@ User (要件指示)
 | 分野・関心事 | 参照先 | 内容 |
 |---|---|---|
 | **プロダクト仕様** | [app-overview.md](file:///home/watter46/src/footics/docs/app-overview.md) | ドメイン概念、主要ユースケース、**Open Decisions（未決定事項）** |
+| **画面・機能仕様** | [spec/](file:///home/watter46/src/footics/docs/spec/overview.md) | 各画面の振る舞い仕様（DO / DON'T / 画面遷移 / 例外挙動） |
 | **技術スタック・ディレクトリ** | [tech-stack.md](file:///home/watter46/src/footics/docs/tech-stack.md) | ライブラリ制約、ディレクトリ責務、命名規則、import規約 |
 | **データモデル・DB仕様** | [data-model.md](file:///home/watter46/src/footics/docs/data-model.md) | Dexie.js スキーマ、TypeScript型定義、Zod、外部API仕様 |
 | **行動ルール (Rules)** | `.agents/rules/` | `coding-standards.md`, `agent-communication.md`, `testing-standards.md` 等 |

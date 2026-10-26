@@ -52,7 +52,7 @@ WhoScored サイト
 
 **対応アスペクト比:** 16:9 / 9:16 / 4:5 / 1:1
 
-**エクスポート形式:** PNG / MP4 / WebM / GIF（WebCodecs API + mp4-muxer / webm-muxer / gif.js）
+**エクスポート形式:** PNG (Konva `stage.toBlob()`) / MP4 / WebM (`mediabunny`) / ZIP (`fflate`)（※旧来のGIF出力は廃止）
 
 ### 2-3. スクリーンショット系
 
@@ -60,13 +60,12 @@ WhoScored サイト
 |------------|------|
 | `Screenshot` (仮) | Footics 統合拡張機能でキャプチャした画像 |
 
-**現在のフロー（部分的にバグあり）:**
+**現在のフロー:**
 ```
 ユーザーが YouTube 等でビデオ視聴中
   → Alt+S でキャプチャ（Footics 統合 Chrome 拡張）
-  → BroadcastChannel 経由で Footics に転送
-  → Footics タブが開き、戦術ボード編集画面に遷移
-  → [未解決] スクリーンショットが戦術ボードの背景に設定されない
+  → 拡張機能専用の軽量キャンバス画面（独立した別タブ）が自動で開き、作図や画像共有が可能
+  → [未着手] Webアプリ本体の戦術ボード（/tactical）が開き、キャプチャ画像がピッチ背景に自動設定される連携フローは仕様再設計待ち
 ```
 
 ---
@@ -78,10 +77,10 @@ WhoScored サイト
 | UC-01 | WhoScored JSON をインポートして試合データを取得する | ✅ 動作中 |
 | UC-02 | 試合のイベントタイムラインを閲覧・分析する | ✅ 動作中 |
 | UC-03 | イベント・試合にメモを記録する | ⚠️ UI改善予定 |
-| UC-04 | 戦術ボードを作成し、選手・矢印・ゾーンを配置する | ✅ 動作中（満足） |
-| UC-05 | 戦術ボードを PNG / 動画としてエクスポートする | ✅ 動作中 |
-| UC-06 | 動画視聴中にスクリーンショットを撮り、戦術ボードで編集する | ❌ 部分バグあり |
-| UC-07 | 選手マスターデータを管理する | ✅ 動作中 |
+| UC-04 | 戦術ボードを作成し、選手・矢印・ゾーンを配置する | ✅ 動作中（5層レイヤー、HUD、ゴースト軌道、フォーメーション適性配置、180度反転等） |
+| UC-05 | 戦術ボードを PNG / 動画としてエクスポートする | ✅ 動作中（mediabunny、アスペクト比歪み解消、iPhone PWA ワイヤレス共有） |
+| UC-06 | 動画視聴中にスクリーンショットを撮り、軽量キャンバスで作図する | ✅ 動作中（Web戦術ボード背景自動セット連携は再設計待ち） |
+| UC-07 | 選手マスターデータを管理する | ✅ 動作中（256x256 WebP 顔写真管理、Dexie v1、シーズン引き継ぎ、ポジション保護） |
 
 ---
 
@@ -92,15 +91,17 @@ WhoScored サイト
 | **フレームワーク** | Next.js (App Router) | 16.3.1 |
 | **UI ライブラリ** | React | 19 |
 | **言語** | TypeScript | strict モード |
-| **キャンバス** | Konva.js + react-konva | ^10.3.0 / ^19.2.5 |
+| **キャンバス** | Konva.js + react-konva | ^10.3.0 / ^19.2.5（5層レイヤーアーキテクチャ） |
+| **アニメーション** | gsap + @gsap/react | ^3.15.0（タイムライン統括・イージング） |
 | **状態管理** | Zustand | v5（複数スライス構成） |
-| **ローカル DB** | Dexie.js（IndexedDB ラッパー） | v4 / DB スキーマ v20 |
+| **ローカル DB** | Dexie.js（IndexedDB ラッパー） | v4 / DB スキーマ v1（クリーン再設計・自己修復リカバリ付き） |
 | **スタイリング** | Tailwind CSS v4 + shadcn/ui | — |
+| **UI・インタラクション** | @floating-ui/react + react-colorful + react-hotkeys-hook | HUD、カラーピッカー、ショートカット |
 | **テスト** | Vitest + happy-dom + Testing Library | — |
 | **Lint / Format** | Biome | v2 strict |
 | **Chrome 拡張** | WXT | 独立した tsconfig / package.json |
 | **デプロイ** | Cloudflare Workers | wrangler.toml 設定済み |
-| **動画エクスポート** | WebCodecs API + mp4-muxer / webm-muxer / gif.js | — |
+| **動画・静止画エクスポート** | mediabunny + stage.toBlob() + fflate | MP4 / WebM / PNG / ZIP（GIF廃止） |
 
 ---
 
@@ -137,7 +138,6 @@ footics/
 |---|----------|------|
 | OD-01 | スクリーンショット機能の仕様再設計 | 「撮影 → Footics タブ起動 → 背景設定 → 即編集」のフローが未完成。BroadcastChannel の使い方を含めて仕様から見直す必要がある |
 | OD-02 | 戦術メモの分析フォーマット | `src/Syntax` プロジェクトで分析フォーマット完成後に Footics へ落とし込む。完成するまで UI は現状凍結 |
-| OD-03 | DB テーブル整理（`tactical_snapshots` → `tactical_projects`）| 両テーブルが DB v20 で共存。`tactical_snapshots` を廃止して `tactical_projects` に一本化する方針だが移行タスク未着手 |
 | OD-04 | `isChelseaTeam()` の汎用化 | MVP 時の名残。「お気に入りクラブ」設定として汎用化するか、削除するか未決定 |
 
 ---

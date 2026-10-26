@@ -22,8 +22,8 @@
 |-----------|---------|------|
 | Tailwind CSS | v4 | ユーティリティCSSフレームワーク |
 | shadcn/ui (`@base-ui/react`) | — | コンポーネント集。`src/components/ui/` に配置 |
-| `@floating-ui/react` | latest | オブジェクトオプション（HUD）・ポップオーバーの画面端自動反転（`flip`）・クランプ（`shift`） |
-| `react-colorful` | latest | ポップオーバー内完結の軽量カラーピッカー |
+| `@floating-ui/react` | latest | オブジェクトオプション（HUD）・ポップオーバーの自動反転（`flip`）・クランプ（`shift`）、および `FloatingPortal` による最前面オーバーレイ表示 |
+| `react-colorful` | latest | ポップオーバー内完結の軽量カラーピッカー（`HexColorPicker`） |
 | `@dnd-kit/core`, `@dnd-kit/sortable` | — | タイムラインのシーン並び替えおよびドラッグ＆ドロップ操作 |
 | `react-hotkeys-hook` | ^5.3.3 | キーボードショートカットの一元管理（自前の `keydown` 分岐および旧 `hotkeys-js` は廃止） |
 
@@ -34,12 +34,17 @@
 | Konva.js | ^10.3.0 | 戦術ボードのキャンバスエンジン |
 | react-konva | ^19.2.5 | Konva の React バインディング |
 | `gl-matrix` | ^3.4.4 | 3段階座標変換（`worldToScreen` / `screenToWorld`）およびカメラ透視投影行列計算 |
-| `gsap` + `@gsap/react` | ^3.15.0 | タイムライン連続再生・シーク・イージング制御、およびカメラ操作（チルト・回転・ズーム）の補間（自前RAFループ・自前イージング計算は廃止） |
+| `gsap` + `@gsap/react` | ^3.15.0 | タイムライン連続再生・シーク・イージング制御（`gsap.timeline()`, `gsap.parseEase()`、`timeline.kill()` RAII徹底）、およびカメラ操作の補間（自前RAFループ・自前イージング計算は全廃） |
 
 > **[!IMPORTANT]**
-> 戦術ボードの実装は Konva を前提とする。
-> Fabric.js / Canvas 2D API の直接使用は禁止。
-> Konva のベストプラクティス（レイヤー分離・`listening={false}`・`perfectDrawEnabled={false}`）を厳守すること。
+> 戦術ボードの実装は Konva を前提とし、以下の **5層レイヤーアーキテクチャ** に厳格に分離する：
+> 1. `PitchGroundLayer`: 地面・ピッチ白線枠、ゾーン、矢印、直線、コネクタ、ゴースト軌道
+> 2. `BillboardObjectLayer`: 選手マーカー（2Dサークル/3D足元リング）、ボール、テキスト（スクリーンY座標による深さソート `sortBillboardItemsByDepth` 適用）
+> 3. `InteractionPreviewLayer`: 作図プレビュー図形、範囲選択ボックス、選択ハイライト枠（純粋描画時は非表示）
+> 4. `ViewportCropOverlay`: 画面基準の境界線枠（BoundaryBox）と外側マスク
+> 5. `HtmlHudOverlay`: オブジェクトオプション（ContextHud）、境界線オプション、インラインテキストエディタ
+> 
+> Fabric.js / Canvas 2D API の直接使用は禁止。Konva のベストプラクティス（レイヤー分離・`listening={false}`・`perfectDrawEnabled={false}`）を厳守すること。
 
 ### 状態管理
 
@@ -52,7 +57,7 @@
 
 | ライブラリ | バージョン | 用途 |
 |-----------|---------|------|
-| Dexie.js | v4 | IndexedDB ラッパー。現在 DB スキーマ v20 |
+| Dexie.js | v4 | IndexedDB ラッパー。DB スキーマ v1（死にテーブル撤去・クリーン再設計。旧スキーマからの VersionError 自動リカバリ付き） |
 
 > **[!WARNING]**
 > サーバーサイド DB（Supabase 等）は使用していない。データはすべてブラウザの IndexedDB に保存される。
@@ -65,6 +70,10 @@
 | `mediabunny` | latest | WebCodecs 統合の MP4 / WebM 動画エンコード・マルチプレクサ（旧 `mp4-muxer` / `webm-muxer` および自前 `VideoEncoder` チャンク制御を置換） |
 | `fflate` | latest | 連番PNG一括出力・バックアップ用の高速ZIP圧縮（旧 `jszip` を置換） |
 | Konva `stage.toBlob()` | 標準メソッド | 静止画（PNG）切り抜き出力（旧 `html-to-image` および `gif.js` / GIF出力は廃止） |
+
+> **[!NOTE]**
+> **完全廃止・撤去済みのライブラリ**:
+> `qrcode`（PWA直接共有へ刷新）、`hotkeys-js`（`react-hotkeys-hook` へ置換）、`html-to-image`（`stage.toBlob()` へ置換）、`gif.js`（GIF出力全廃）、`mp4-muxer` / `webm-muxer`（`mediabunny` へ置換）、`jszip`（`fflate` へ置換）。
 
 ### Chrome 拡張
 
@@ -99,9 +108,10 @@ footics/
 ├── src/                            # Next.js アプリ本体（tsconfig.json の対象）
 │   ├── app/                        # App Router: ページ・レイアウト・API Route
 │   │   ├── layout.tsx              # ルートレイアウト
+│   │   ├── manifest.ts             # PWA マニフェスト（start_url: '/export', standalone）
 │   │   ├── page.tsx                # / : 試合一覧 + JSONインポート
-│   │   ├── api/                    # API Routes（最小限）
-│   │   ├── export/                 # エクスポート用ページ
+│   │   ├── api/                    # API Routes（/api/tactical-export/share 等）
+│   │   ├── export/                 # iPhone PWA エクスポート専用ページ（一覧・詳細DL）
 │   │   ├── match/[matchId]/        # イベントタイムライン分析
 │   │   ├── tactical/               # 戦術ボードエディタ
 │   │   ├── teams/[teamId]/         # 選手マスターデータ

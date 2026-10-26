@@ -18,7 +18,8 @@
 | **主要型定義ファイル** | `src/types/index.ts`（試合データ系）、`src/lib/types/tactical-unified.ts`（戦術ボード系） |
 
 > **[!WARNING]**
-> `footics_db` は `version(1)` へクリーン再設計されています。ブラウザに旧 `v20` 以前の DB が残存していて `VersionError` が発生した場合は、初期化ガードにより自動で旧 DB を削除し `version(1)` として再生成します。
+> `footics_db` は `version(1)` へクリーン再設計されています（死にテーブル `tactical_snapshots`, `event_memos` は完全撤去）。
+> ブラウザに旧 `v20` 以前の DB が残存していて `VersionError` が発生した場合は、`ensureDatabaseReady(db)`（`src/lib/db/schema.ts`）により自動で旧 DB を削除（`database.delete()`）し、`version(1)` としてクリーン再オープンする自己修復機構が備わっています。
 
 ---
 
@@ -209,6 +210,10 @@ type PlayerPhoto = {
   mimeType: string;           // 'image/webp' (またはフォールバック 'image/png')
   updatedAt: number;
 }
+
+> **[!NOTE]**
+> - **写真保存契約**: `savePlayerPhoto(playerId, photoBlob)` で `player_photos` に物理保存。`db.players` テーブルには Blob を持たせず、クエリ取得時に JOIN 結合します。
+> - **ポジション保護契約**: 試合インポートやスカッド同期時、途中交代等で試合データ側のポジションが `'Sub'` になっている場合でも、すでに選手マスター（`db.players`）に存在する本職ポジション（`GK, DF, MID, FW, DC, MC` 等）を `'Sub'` で上書き破壊しない保護ロジック（`savePlayerMaster`）が動作します。
 ```
 
 ---
@@ -353,17 +358,47 @@ type BallState = {
 
 ---
 
-## 5. エクスポート設定
+## 5. エクスポート設定 ＆ モバイル共有ペイロード
 
-エクスポート形式は `ExportTarget` の discriminated union で管理。
+### 5-1. エクスポート形式（ExportTarget）
+エクスポート形式は `ExportTarget` の discriminated union で管理。短尺アニメーションを含むすべての動画は MP4 / WebM（`mediabunny`）に一本化され、旧来の GIF 出力は廃止。
 
 | 形式 | FPS | スコープ | 特記 |
 |-----|-----|---------|------|
-| `png` | — | current / all / selected | スケール 1–4x |
-| `zip` | — | all | PNG一括 |
-| `mp4` | 30 / 60 | all / range | H.264 / bitrate設定あり |
-| `webm` | 30 / 60 | all / range | 透明チャンネル対応 |
-| `gif` | 10 / 15 / 24 | all / range | — |
+| `png` | — | current / all / selected | スケール 1–4x。Konva `stage.toBlob()` |
+| `zip` | — | all | PNG一括連番。`fflate` による高速圧縮 |
+| `mp4` | 30 / 60 | all / range | H.264 / bitrate設定あり（`mediabunny`） |
+| `webm` | 30 / 60 | all / range | アルファ透明チャンネル対応（`mediabunny`） |
+
+> **[!NOTE]**
+> 出力解像度は固定の 1280×720 ではなく、選択中のアスペクト比に対応する基準解像度（`PITCH_BOUNDARY_CONFIGS`: 4:5なら 1080×1350、9:16なら 1080×1920、1:1なら 1080×1080、16:9なら 1920×1080）が適用され、アスペクト比の歪みを防止します。
+
+### 5-2. iPhone PWA 共有ペイロード（TacticalExportSharePayload）
+iPhone 専用エクスポート（`/export`）へプロジェクトを受け渡すための一時共有ペイロード構造（Zod スキーマ `TacticalExportSharePayloadSchema`）。
+
+```typescript
+// src/lib/tactical/export/share-payload.ts
+type TacticalExportSharePayload = {
+  version: '2.0.0';
+  title: string;
+  slides: Slide[];
+  aspectRatio: '16:9' | '4:5' | '1:1' | '9:16';
+  orientation: 'horizontal' | 'vertical';
+  boundaryBox?: BoundaryBox;
+  pitchTransform?: PitchTransform;
+  playerPhotos?: Record<string, string>; // playerId -> Base64 WebP 文字列（Photo モード選手の顔写真）
+}
+
+type TacticalExportShareSummary = {
+  shareId: string;
+  title: string;
+  createdAt: number;
+  sceneCount: number;
+  aspectRatio: AspectRatio;
+  orientation: AnimationOrientation;
+  hasBoundaryCrop: boolean;
+}
+```
 
 ---
 
