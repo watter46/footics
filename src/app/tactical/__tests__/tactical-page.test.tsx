@@ -3,34 +3,30 @@ import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import TacticalError from '../error';
 import TacticalPage, { dynamic } from '../page';
+import { TacticalClientPage } from '../tactical-client-page';
 
-const MockTacticalUnifiedPage = ({
-  initialMatchId,
-  initialMinute,
-}: {
-  initialMatchId?: string;
-  initialMinute?: number;
-}) => (
-  <div
-    data-testid="tactical-page-mock"
-    data-match-id={initialMatchId ?? 'none'}
-    data-minute={initialMinute !== undefined ? String(initialMinute) : 'none'}
-  />
-);
+const { MockTacticalUnifiedPage } = vi.hoisted(() => {
+  return {
+    MockTacticalUnifiedPage: ({
+      initialMatchId,
+      initialMinute,
+    }: {
+      initialMatchId?: string;
+      initialMinute?: number;
+    }) => (
+      <div
+        data-testid="tactical-page-mock"
+        data-match-id={initialMatchId ?? 'none'}
+        data-minute={
+          initialMinute !== undefined ? String(initialMinute) : 'none'
+        }
+      />
+    ),
+  };
+});
 
 vi.mock('@/features/tactical-unified', () => ({
   TacticalUnifiedPage: MockTacticalUnifiedPage,
-}));
-
-vi.mock('next/dynamic', () => ({
-  default: () => {
-    return function DynamicWrapper(props: {
-      initialMatchId?: string;
-      initialMinute?: number;
-    }) {
-      return <MockTacticalUnifiedPage {...props} />;
-    };
-  },
 }));
 
 describe('TacticalPage', () => {
@@ -89,6 +85,16 @@ describe('TacticalPage', () => {
     const mock = screen.getByTestId('tactical-page-mock');
     expect(mock.getAttribute('data-match-id')).toBe('1983618');
     expect(mock.getAttribute('data-minute')).toBe('none');
+  });
+});
+
+describe('TacticalClientPage', () => {
+  it('TacticalUnifiedPage に initialMatchId と initialMinute を伝搬すること', () => {
+    render(<TacticalClientPage initialMatchId="123" initialMinute={15} />);
+
+    const mock = screen.getByTestId('tactical-page-mock');
+    expect(mock.getAttribute('data-match-id')).toBe('123');
+    expect(mock.getAttribute('data-minute')).toBe('15');
   });
 });
 

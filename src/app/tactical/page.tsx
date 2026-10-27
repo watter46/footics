@@ -4,8 +4,8 @@
  */
 
 import type { Metadata } from 'next';
-import nextDynamic from 'next/dynamic';
 import { Suspense } from 'react';
+import { TacticalClientPage } from './tactical-client-page';
 
 export const metadata: Metadata = {
   title: 'Tactical Canvas — Footics',
@@ -13,20 +13,6 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = 'force-dynamic';
-
-const DynamicTacticalUnifiedPage = nextDynamic(
-  () =>
-    import('@/features/tactical-unified').then((m) => m.TacticalUnifiedPage),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#0a0a0a] text-sm text-zinc-500 select-none">
-        <div className="mb-2 h-6 w-6 animate-spin rounded-full border-2 border-zinc-700 border-t-zinc-300" />
-        <span>読み込み中...</span>
-      </div>
-    ),
-  },
-);
 
 export interface TacticalPageProps {
   searchParams?:
@@ -73,10 +59,7 @@ export default async function TacticalPage({
 
   return (
     <Suspense fallback={null}>
-      <DynamicTacticalUnifiedPage
-        initialMatchId={matchId}
-        initialMinute={minute}
-      />
+      <TacticalClientPage initialMatchId={matchId} initialMinute={minute} />
     </Suspense>
   );
 }
