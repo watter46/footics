@@ -1,7 +1,7 @@
 # TASK-092: 全体のUI/UXデザイン刷新（Figmaライク・デザインシステム統一）
 
 ## 1. Metadata
-- **Status**: `IN_PROGRESS`
+- **Status**: `COMPLETED`
 - **Created**: 2026-10-27
 - **Target Files**:
   - `src/components/ui/floating-surface.tsx` (NEW)
@@ -150,7 +150,7 @@ export interface SegmentedControlProps<T extends string = string> {
   - `.agents/rules/component-architecture.md` (MODIFY - Worker権限ガードによりPlannerへ引き継ぎ)
 - **Tasks**:
   - [x] 1. `.agents/rules/component-architecture.md` の更新内容を確定（Planner引き継ぎ）
-  - [ ] 2. `bun run ai:commit -m "style(design): unify UI/UX with Figma-like design system primitives"` 実行
+  - [x] 2. `bun run ai:commit -m "style(design): unify UI/UX with Figma-like design system primitives"` 実行
 
 ## 5. Reviewer Assessment (コード差分監査)
 - **Reviewer Model**: `pro`
