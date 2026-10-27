@@ -37,7 +37,7 @@ export function generatePitchSvg(
 ): string {
   const {
     marginPercent = DEFAULT_PITCH_MARGIN_PERCENT,
-    strokeColor = '#38bdf8',
+    strokeColor = '#e2b48d',
     strokeOpacity = 0.85,
     strokeWidth = 4,
     grass = true,
@@ -151,7 +151,7 @@ function getCacheKey(
 ): string {
   const margin = options?.marginPercent ?? DEFAULT_PITCH_MARGIN_PERCENT;
   const grass = options?.grass ?? true;
-  const strokeColor = options?.strokeColor ?? '#38bdf8';
+  const strokeColor = options?.strokeColor ?? '#e2b48d';
   return `${aspectRatio}-${margin}-${grass}-${strokeColor}`;
 }
 

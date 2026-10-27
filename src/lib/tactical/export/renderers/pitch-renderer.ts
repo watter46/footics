@@ -19,7 +19,7 @@ export function renderPitchMarkings(
   const geom = calculatePitchGeometryForAspect(aspectRatio);
 
   ctx.save();
-  ctx.strokeStyle = '#38bdf8';
+  ctx.strokeStyle = '#e2b48d';
   ctx.fillStyle = 'none';
   const pitchLineWidth = Math.max(2, Math.round((w * 0.003) / 2) * 2);
   ctx.lineWidth = pitchLineWidth;

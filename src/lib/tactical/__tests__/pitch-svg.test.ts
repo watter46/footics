@@ -67,14 +67,14 @@ describe('pitch-svg generator', () => {
     }
   });
 
-  it('デフォルトでサイアン(#38bdf8)の枠線とベタ塗り黒(#000000)の背景で描画され、芝生ストライプを含まない', () => {
+  it('デフォルトでゴールド(#e2b48d)の枠線とベタ塗り黒(#000000)の背景で描画され、芝生ストライプを含まない', () => {
     const svg = generatePitchSvg('16:9');
     expect(svg).toContain('fill="#000000"');
-    expect(svg).toContain('stroke="#38bdf8"');
+    expect(svg).toContain('stroke="#e2b48d"');
     expect(svg).not.toContain('opacity="0.65"');
     expect(svg).not.toContain('#020617');
     expect(svg).not.toContain('#080e1e');
-    expect(svg).not.toContain('#e2b48d');
+    expect(svg).not.toContain('#38bdf8');
   });
 
   it('grass オプションに関わらずベタ塗り黒(#000000)の背景となりストライプを含まない', () => {

@@ -77,7 +77,7 @@ export function renderPitchMarkings2D(
       0,
       Math.PI * 2,
     );
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = '#e2b48d';
     ctx.fill();
     ctx.fillStyle = 'none';
 
@@ -113,7 +113,7 @@ export function renderPitchMarkings2D(
       0,
       Math.PI * 2,
     );
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = '#e2b48d';
     ctx.fill();
     ctx.fillStyle = 'none';
 
@@ -137,7 +137,7 @@ export function renderPitchMarkings2D(
       0,
       Math.PI * 2,
     );
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = '#e2b48d';
     ctx.fill();
     ctx.fillStyle = 'none';
 
@@ -180,7 +180,7 @@ export function renderPitchMarkings2D(
       0,
       Math.PI * 2,
     );
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = '#e2b48d';
     ctx.fill();
     ctx.fillStyle = 'none';
 
@@ -216,7 +216,7 @@ export function renderPitchMarkings2D(
       0,
       Math.PI * 2,
     );
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = '#e2b48d';
     ctx.fill();
     ctx.fillStyle = 'none';
 
@@ -240,7 +240,7 @@ export function renderPitchMarkings2D(
       0,
       Math.PI * 2,
     );
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = '#e2b48d';
     ctx.fill();
     ctx.fillStyle = 'none';
 

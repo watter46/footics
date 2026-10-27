@@ -246,7 +246,7 @@ describe('Tactical Frame Renderer', () => {
     expect(ctx.fillText).toHaveBeenCalled();
   });
 
-  it('achieves 100% visual parity with browser canvas (cyan pitch lines #38bdf8, clean white numbers without strokeText)', () => {
+  it('achieves 100% visual parity with browser canvas (gold pitch lines #e2b48d, clean white numbers without strokeText)', () => {
     const ctx = createMockContext();
     renderTacticalFrameToCanvas(ctx, {
       slides: [sampleSlide],
@@ -877,7 +877,7 @@ describe('Tactical Frame Renderer', () => {
   });
 
   describe('renderPitch and renderPitchMarkings color styling', () => {
-    it('sets cyan strokeStyle (#38bdf8) and solid black background/surface fill (#000000)', () => {
+    it('sets gold strokeStyle (#e2b48d) and solid black background/surface fill (#000000)', () => {
       const ctx = createMockContext();
       const mockRenderContext: FrameRenderContext = {
         ctx,
@@ -897,8 +897,8 @@ describe('Tactical Frame Renderer', () => {
 
       renderPitch(mockRenderContext, '16:9', false);
 
-      // Verify pitch markings line color is cyan
-      expect(ctx.strokeStyle).toBe('#38bdf8');
+      // Verify pitch markings line color is gold
+      expect(ctx.strokeStyle).toBe('#e2b48d');
     });
   });
 });
