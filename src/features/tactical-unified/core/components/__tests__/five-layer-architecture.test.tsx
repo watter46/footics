@@ -106,7 +106,7 @@ describe('PitchGroundLayer', () => {
         r.height() === defaultStageSize.height,
     );
     expect(bgRect).toBeDefined();
-    expect(bgRect?.attrs.fill).toBe('#020617');
+    expect(bgRect?.attrs.fill).toBe('#000000');
 
     // pitchRect オフセット付き Group の検証
     const groups = stage?.find('Group') ?? [];

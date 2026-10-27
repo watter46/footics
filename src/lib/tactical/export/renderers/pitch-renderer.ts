@@ -19,7 +19,7 @@ export function renderPitchMarkings(
   const geom = calculatePitchGeometryForAspect(aspectRatio);
 
   ctx.save();
-  ctx.strokeStyle = '#e2b48d';
+  ctx.strokeStyle = '#38bdf8';
   ctx.fillStyle = 'none';
   const pitchLineWidth = Math.max(2, Math.round((w * 0.003) / 2) * 2);
   ctx.lineWidth = pitchLineWidth;
@@ -59,7 +59,7 @@ export function renderPitch(
     ctx.clearRect(0, 0, w, h);
   } else {
     // Solid pitch background
-    ctx.fillStyle = '#020617';
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, w, h);
 
     // Pitch surface fill
@@ -74,10 +74,10 @@ export function renderPitch(
       ctx.lineTo(snap(p2.x), snap(p2.y));
       ctx.lineTo(snap(p3.x), snap(p3.y));
       ctx.closePath();
-      ctx.fillStyle = '#080e1e';
+      ctx.fillStyle = '#000000';
       ctx.fill();
     } else {
-      ctx.fillStyle = '#080e1e';
+      ctx.fillStyle = '#000000';
       ctx.fillRect(
         snap(toScreenX(0)),
         snap(toScreenY(0)),

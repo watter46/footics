@@ -37,7 +37,7 @@ export function generatePitchSvg(
 ): string {
   const {
     marginPercent = DEFAULT_PITCH_MARGIN_PERCENT,
-    strokeColor = '#e2b48d',
+    strokeColor = '#38bdf8',
     strokeOpacity = 0.85,
     strokeWidth = 4,
     grass = true,
@@ -72,33 +72,8 @@ export function generatePitchSvg(
     Math.max(0, r * r - (paDepth - penaltySpotDist) ** 2),
   );
 
-  // Grass stripes
-  let grassSvg = '';
-  if (grass) {
-    if (isHorizontal) {
-      const stripeWidth = pitchWidth / 18;
-      const stripes = Array.from({ length: 18 })
-        .map((_, i) => {
-          const sx = left + i * stripeWidth;
-          const fill = i % 2 === 0 ? '#0d1833' : '#091024';
-          return `<rect x="${sx.toFixed(2)}" y="${top.toFixed(2)}" width="${stripeWidth.toFixed(2)}" height="${pitchHeight.toFixed(2)}" fill="${fill}" opacity="0.65"/>`;
-        })
-        .join('');
-      grassSvg = `<rect x="${left.toFixed(2)}" y="${top.toFixed(2)}" width="${pitchWidth.toFixed(2)}" height="${pitchHeight.toFixed(2)}" fill="#080e1e"/>${stripes}`;
-    } else {
-      const stripeHeight = pitchHeight / 18;
-      const stripes = Array.from({ length: 18 })
-        .map((_, i) => {
-          const sy = top + i * stripeHeight;
-          const fill = i % 2 === 0 ? '#0d1833' : '#091024';
-          return `<rect x="${left.toFixed(2)}" y="${sy.toFixed(2)}" width="${pitchWidth.toFixed(2)}" height="${stripeHeight.toFixed(2)}" fill="${fill}" opacity="0.65"/>`;
-        })
-        .join('');
-      grassSvg = `<rect x="${left.toFixed(2)}" y="${top.toFixed(2)}" width="${pitchWidth.toFixed(2)}" height="${pitchHeight.toFixed(2)}" fill="#080e1e"/>${stripes}`;
-    }
-  } else {
-    grassSvg = `<rect x="${left.toFixed(2)}" y="${top.toFixed(2)}" width="${pitchWidth.toFixed(2)}" height="${pitchHeight.toFixed(2)}" fill="#020617"/>`;
-  }
+  // Pitch surface background (solid black)
+  const pitchBgSvg = `<rect x="${left.toFixed(2)}" y="${top.toFixed(2)}" width="${pitchWidth.toFixed(2)}" height="${pitchHeight.toFixed(2)}" fill="#000000"/>`;
 
   // Pitch markings
   let markingsSvg = '';
@@ -160,8 +135,8 @@ export function generatePitchSvg(
 
   return `<svg viewBox="${config.viewBox}" xmlns="http://www.w3.org/2000/svg">
   <!-- Solid Frame Background -->
-  <rect x="0" y="0" width="${config.widthPx}" height="${config.heightPx}" fill="#020617"/>
-  ${grassSvg}
+  <rect x="0" y="0" width="${config.widthPx}" height="${config.heightPx}" fill="#000000"/>
+  ${pitchBgSvg}
   ${markingsSvg}
 </svg>`.trim();
 }
@@ -176,7 +151,7 @@ function getCacheKey(
 ): string {
   const margin = options?.marginPercent ?? DEFAULT_PITCH_MARGIN_PERCENT;
   const grass = options?.grass ?? true;
-  const strokeColor = options?.strokeColor ?? '#e2b48d';
+  const strokeColor = options?.strokeColor ?? '#38bdf8';
   return `${aspectRatio}-${margin}-${grass}-${strokeColor}`;
 }
 

@@ -149,5 +149,4 @@ footics/
 | 対象 | 理由 | 対応 |
 |-----|------|------|
 | `src/components/features/tactical-unified/canvas/PilotCanvas.tsx` | エージェント自動生成デモ。本実装とは無関係 | 削除予定 |
-| `src/app/syntax-studio/` | エージェント一括生成のデモ UI。参考実装として保持中だが本機能ではない | 削除予定 |
 | `video-export-engine.ts`（1419行） | Biome 300行ルールを biome-ignore でバイパス中 | リファクタ予定 |

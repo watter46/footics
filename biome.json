@@ -132,7 +132,6 @@
         "src/lib/data/**",
         "src/lib/tactical/*-preset*.ts",
         "src/lib/types/tactical-unified.ts",
-        "src/components/features/syntax-studio/sample-syntax-data.ts",
         "**/*.test.ts",
         "**/*.test.tsx",
         "**/__tests__/**"

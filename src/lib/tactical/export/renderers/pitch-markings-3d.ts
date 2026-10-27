@@ -108,7 +108,7 @@ export function renderPitchMarkings3D(
 
   const draw3DSpot = (cx: number, cy: number, radius: number) => {
     ctx.save();
-    ctx.fillStyle = '#e2b48d';
+    ctx.fillStyle = '#38bdf8';
     ctx.beginPath();
     const segments = 16;
     for (let i = 0; i <= segments; i++) {

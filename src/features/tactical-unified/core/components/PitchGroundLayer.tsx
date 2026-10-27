@@ -90,7 +90,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
         y={0}
         width={stageSize.width}
         height={stageSize.height}
-        fill="#020617"
+        fill="#000000"
         listening={false}
       />
       <Group x={pitchRect.x} y={pitchRect.y}>

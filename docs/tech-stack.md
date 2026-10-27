@@ -115,7 +115,6 @@ footics/
 │   │   ├── match/[matchId]/        # イベントタイムライン分析
 │   │   ├── tactical/               # 戦術ボードエディタ
 │   │   ├── teams/[teamId]/         # 選手マスターデータ
-│   │   └── syntax-studio/          # ⚠️ 削除予定（デモUI）
 │   │
 │   ├── components/                 # UI コンポーネント
 │   │   ├── ui/                     # shadcn/ui コンポーネント（自動生成。原則編集しない）

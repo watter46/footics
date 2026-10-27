@@ -111,7 +111,7 @@ export function BackgroundImageLayer({
         y={0}
         width={width}
         height={height}
-        fill="#020617"
+        fill="#000000"
         listening={false}
       />
       {/* 余白0%（ゼロマージン）背景画像 / ピッチSVG */}

@@ -67,11 +67,23 @@ describe('pitch-svg generator', () => {
     }
   });
 
-  it('grass オプションで芝生ストライプの有無を切り替えられる', () => {
+  it('デフォルトでサイアン(#38bdf8)の枠線とベタ塗り黒(#000000)の背景で描画され、芝生ストライプを含まない', () => {
+    const svg = generatePitchSvg('16:9');
+    expect(svg).toContain('fill="#000000"');
+    expect(svg).toContain('stroke="#38bdf8"');
+    expect(svg).not.toContain('opacity="0.65"');
+    expect(svg).not.toContain('#020617');
+    expect(svg).not.toContain('#080e1e');
+    expect(svg).not.toContain('#e2b48d');
+  });
+
+  it('grass オプションに関わらずベタ塗り黒(#000000)の背景となりストライプを含まない', () => {
     const withGrass = generatePitchSvg('16:9', { grass: true });
-    expect(withGrass).toContain('opacity="0.65"');
+    expect(withGrass).toContain('fill="#000000"');
+    expect(withGrass).not.toContain('opacity="0.65"');
 
     const withoutGrass = generatePitchSvg('16:9', { grass: false });
+    expect(withoutGrass).toContain('fill="#000000"');
     expect(withoutGrass).not.toContain('opacity="0.65"');
   });
 

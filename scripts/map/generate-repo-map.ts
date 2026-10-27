@@ -158,7 +158,7 @@ Total Tracked Files: ${relFiles.length}
   Subsystems: ${Array.from(libDirs).sort().join(', ')}
   - src/lib/db/: Dexie schema & IndexedDB repositories (schema.ts)
   - src/lib/tactical/: Pitch geometry, easing, bezier trajectory, video export
-- src/stores/: Zustand global state slices (pilotStore, ui-store, syntax-studio-store)
+- src/stores/: Zustand global state slices (pilotStore, ui-store)
 - extension/: Chrome extension (WXT framework, overlay & background scripts)
 - scripts/: Developer verification, linting, map generation, AST tooling
 - .agents/: Agent framework (rules, hooks, guards, worker/reviewer validators)

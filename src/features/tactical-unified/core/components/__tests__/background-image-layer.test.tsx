@@ -70,7 +70,7 @@ describe('BackgroundImageLayer', () => {
 
     const rects = stage?.find('Rect') ?? [];
     expect(rects.length).toBeGreaterThan(0);
-    expect((rects[0] as Konva.Rect).attrs.fill).toBe('#020617');
+    expect((rects[0] as Konva.Rect).attrs.fill).toBe('#000000');
   });
 
   it('キャッシュが未ヒットの場合は loadPitchSvgImage を呼び出して描画すること', async () => {

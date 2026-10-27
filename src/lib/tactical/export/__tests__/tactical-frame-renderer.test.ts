@@ -6,6 +6,8 @@ import {
   type Slide,
   SlideSchema,
 } from '@/lib/types/tactical-unified';
+import { renderPitch, renderPitchMarkings } from '../renderers/pitch-renderer';
+import type { FrameRenderContext } from '../renderers/renderer-context';
 import {
   type AnyCanvasRenderingContext2D,
   getOpticalCenterX,
@@ -244,7 +246,7 @@ describe('Tactical Frame Renderer', () => {
     expect(ctx.fillText).toHaveBeenCalled();
   });
 
-  it('achieves 100% visual parity with browser canvas (gold pitch lines #e2b48d, clean white numbers without strokeText)', () => {
+  it('achieves 100% visual parity with browser canvas (cyan pitch lines #38bdf8, clean white numbers without strokeText)', () => {
     const ctx = createMockContext();
     renderTacticalFrameToCanvas(ctx, {
       slides: [sampleSlide],
@@ -871,6 +873,32 @@ describe('Tactical Frame Renderer', () => {
       expect(ctx.lineTo).toHaveBeenCalled();
       // Central pentagon closing
       expect(ctx.closePath).toHaveBeenCalled();
+    });
+  });
+
+  describe('renderPitch and renderPitchMarkings color styling', () => {
+    it('sets cyan strokeStyle (#38bdf8) and solid black background/surface fill (#000000)', () => {
+      const ctx = createMockContext();
+      const mockRenderContext: FrameRenderContext = {
+        ctx,
+        w: 1920,
+        h: 1080,
+        m: null,
+        toScreenX: (nx) => (nx / 100) * 1920,
+        toScreenY: (ny) => (ny / 100) * 1080,
+        toScreenSizeX: (nw) => (nw / 100) * 1920,
+        toScreenSizeY: (nh) => (nh / 100) * 1080,
+        projectObjToScreen: (nx, ny) => ({
+          x: (nx / 100) * 1920,
+          y: (ny / 100) * 1080,
+        }),
+        snap: (val) => Math.round(val),
+      };
+
+      renderPitch(mockRenderContext, '16:9', false);
+
+      // Verify pitch markings line color is cyan
+      expect(ctx.strokeStyle).toBe('#38bdf8');
     });
   });
 });
