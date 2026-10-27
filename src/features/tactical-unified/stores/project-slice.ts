@@ -55,6 +55,7 @@ export interface ProjectSlice {
   resetSlideObjects: (slideId?: string) => void;
   resetSlideKeepSquad: (slideId?: string) => void;
   toggleObjectLock: (objectId: string, kind: SelectedObjectKind) => void;
+  deleteSelectedObjects: (slideId?: string) => void;
 }
 
 const INITIAL_PROJECT = createDefaultProject(crypto.randomUUID());

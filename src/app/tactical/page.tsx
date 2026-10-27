@@ -4,23 +4,51 @@
  */
 
 import type { Metadata } from 'next';
+import nextDynamic from 'next/dynamic';
 import { Suspense } from 'react';
-import { TacticalUnifiedPage } from '@/features/tactical-unified';
 
 export const metadata: Metadata = {
   title: 'Tactical Canvas — Footics',
   description: '統合タクティカルキャンバス',
 };
 
+export const dynamic = 'force-dynamic';
+
+const DynamicTacticalUnifiedPage = nextDynamic(
+  () =>
+    import('@/features/tactical-unified').then((m) => m.TacticalUnifiedPage),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#0a0a0a] text-sm text-zinc-500 select-none">
+        <div className="mb-2 h-6 w-6 animate-spin rounded-full border-2 border-zinc-700 border-t-zinc-300" />
+        <span>読み込み中...</span>
+      </div>
+    ),
+  },
+);
+
 export interface TacticalPageProps {
-  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams?:
+    | Promise<{ [key: string]: string | string[] | undefined }>
+    | { [key: string]: string | string[] | undefined };
 }
 
 // Full-screen canvas — body overflow hidden は globals.css で管理
 export default async function TacticalPage({
   searchParams,
 }: TacticalPageProps) {
-  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  let resolvedSearchParams:
+    | { [key: string]: string | string[] | undefined }
+    | undefined;
+  try {
+    resolvedSearchParams = searchParams
+      ? await Promise.resolve(searchParams)
+      : undefined;
+  } catch {
+    resolvedSearchParams = undefined;
+  }
+
   const rawMatchId = resolvedSearchParams?.matchId;
   const rawMinute = resolvedSearchParams?.minute;
 
@@ -45,7 +73,10 @@ export default async function TacticalPage({
 
   return (
     <Suspense fallback={null}>
-      <TacticalUnifiedPage initialMatchId={matchId} initialMinute={minute} />
+      <DynamicTacticalUnifiedPage
+        initialMatchId={matchId}
+        initialMinute={minute}
+      />
     </Suspense>
   );
 }

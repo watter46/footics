@@ -1,7 +1,11 @@
 import type { StateCreator } from 'zustand';
 import type { Slide } from '@/lib/types/tactical-unified';
+import {
+  cloneSlidesShallow,
+  MAX_HISTORY,
+  recordHistory,
+} from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
-import { MAX_HISTORY, recordHistory } from './tactical-unified-store';
 
 export interface HistorySlice {
   past: Slide[][];
@@ -26,7 +30,7 @@ export const createHistorySlice: StateCreator<
       const previousSlides = nextPast.pop();
       if (!previousSlides) return s;
 
-      const currentSlides = structuredClone(s.project.slides);
+      const currentSlides = cloneSlidesShallow(s.project.slides);
       const nextFuture = [currentSlides, ...s.future].slice(0, MAX_HISTORY);
 
       let nextActiveSlideId = s.activeSlideId;
@@ -55,7 +59,7 @@ export const createHistorySlice: StateCreator<
       const nextSlides = nextFuture.shift();
       if (!nextSlides) return s;
 
-      const currentSlides = structuredClone(s.project.slides);
+      const currentSlides = cloneSlidesShallow(s.project.slides);
       const nextPast = [...s.past, currentSlides];
       if (nextPast.length > MAX_HISTORY) {
         nextPast.shift();

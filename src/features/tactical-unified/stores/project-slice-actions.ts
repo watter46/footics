@@ -9,6 +9,7 @@ import {
 } from '@/lib/types/tactical-unified';
 import { transformSlideAspectRatio } from './slide-aspect-helpers';
 import { applyImageBackgroundToProject } from './slide-background-helpers';
+import { executeBatchDeleteOnSlide } from './slide-batch-delete-helpers';
 import { flipSlideObjects, isVerticalPitch } from './slide-flip-helpers';
 import { toggleSlideObjectLock } from './slide-lock-helpers';
 import {
@@ -250,6 +251,27 @@ export function createProjectConfigActions(set: ProjectSliceSet) {
             slides: transformedSlides,
             updatedAt: new Date().toISOString(),
           },
+          isDirty: true,
+        };
+      }),
+
+    deleteSelectedObjects: (slideId?: string) =>
+      set((s) => {
+        const targetSlideId = slideId ?? s.activeSlideId;
+        const slide = getSlide(s.project, targetSlideId);
+        if (!slide || s.selectedObjects.length === 0) return s;
+
+        const result = executeBatchDeleteOnSlide(slide, s.selectedObjects);
+        if (!result.hasChanges) return s;
+
+        return {
+          ...recordHistory(s),
+          project: updateSlideInProject(
+            s.project,
+            targetSlideId,
+            () => result.updatedSlide,
+          ),
+          selectedObjects: result.remainingSelectedObjects,
           isDirty: true,
         };
       }),

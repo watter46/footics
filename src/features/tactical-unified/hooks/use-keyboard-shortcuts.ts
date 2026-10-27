@@ -137,44 +137,26 @@ export function useKeyboardShortcuts() {
 
       if (currentSelected.length > 0) {
         const slide = store.project.slides.find((s) => s.id === currentSlideId);
-        let hasLockedObject = false;
+        const hasLockedObject = currentSelected.some((obj) => {
+          if (obj.kind === 'player') {
+            return Boolean(slide?.players.find((p) => p.id === obj.id)?.locked);
+          }
+          if (obj.kind === 'arrow') {
+            return Boolean(slide?.arrows.find((a) => a.id === obj.id)?.locked);
+          }
+          if (obj.kind === 'zone') {
+            return Boolean(slide?.zones.find((z) => z.id === obj.id)?.locked);
+          }
+          if (obj.kind === 'text') {
+            return Boolean(slide?.texts.find((t) => t.id === obj.id)?.locked);
+          }
+          return false;
+        });
 
-        for (const obj of currentSelected) {
-          let isLocked = false;
-          switch (obj.kind) {
-            case 'player':
-              isLocked = Boolean(
-                slide?.players.find((p) => p.id === obj.id)?.locked,
-              );
-              if (!isLocked) store.removePlayer(currentSlideId, obj.id);
-              break;
-            case 'arrow':
-              isLocked = Boolean(
-                slide?.arrows.find((a) => a.id === obj.id)?.locked,
-              );
-              if (!isLocked) store.removeArrow(currentSlideId, obj.id);
-              break;
-            case 'zone':
-              isLocked = Boolean(
-                slide?.zones.find((z) => z.id === obj.id)?.locked,
-              );
-              if (!isLocked) store.removeZone(currentSlideId, obj.id);
-              break;
-            case 'text':
-              isLocked = Boolean(
-                slide?.texts.find((t) => t.id === obj.id)?.locked,
-              );
-              if (!isLocked) store.removeText(currentSlideId, obj.id);
-              break;
-          }
-          if (isLocked) {
-            hasLockedObject = true;
-          }
-        }
+        store.deleteSelectedObjects(currentSlideId);
+
         if (hasLockedObject) {
           toast.info('ロック中のオブジェクトは保護されています');
-        } else {
-          store.clearSelection();
         }
       } else {
         // ピッチ上オブジェクト非選択時はアクティブスライドを削除
