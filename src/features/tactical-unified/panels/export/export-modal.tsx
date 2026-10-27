@@ -53,7 +53,7 @@ export function ExportModal() {
         !isExporting && e.key === 'Escape' && closeExportModal()
       }
     >
-      <div className="relative w-full max-w-4xl rounded-2xl bg-[#121212] border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-4xl rounded-2xl bg-[#090d16] border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <ExportModalHeader
           activeTab={activeTab}
           onTabChange={handleTabChange}

@@ -10,6 +10,7 @@
 
 import { Copy, Upload } from 'lucide-react';
 import type React from 'react';
+import { ActionButton } from '@/components/ui/action-button';
 import {
   type CanvasCoreHandle,
   CanvasToast,
@@ -36,7 +37,7 @@ export function TopBar({ canvasRef }: TopBarProps = {}): React.ReactElement {
   }
 
   return (
-    <header className="flex items-center justify-between h-11 px-3 bg-[#111] border-b border-white/10 shrink-0 z-50 select-none">
+    <header className="flex items-center justify-between h-11 px-3 bg-[#090d16] border-b border-white/10 shrink-0 z-50 select-none">
       {/* Left: Brand / Project Manager, Editable Title, Save Status, Undo / Redo */}
       <div className="flex items-center gap-2">
         <TopBarTitle />
@@ -52,28 +53,28 @@ export function TopBar({ canvasRef }: TopBarProps = {}): React.ReactElement {
         <TopBarPanels />
 
         {/* Copy PNG */}
-        <button
-          type="button"
+        <ActionButton
+          variant="default"
+          size="sm"
           onClick={handleCopy}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/5 hover:bg-white/15 text-white/80 hover:text-white text-xs transition-colors cursor-pointer"
+          icon={<Copy size={13} />}
           aria-label="Copy PNG"
           title="Copy current slide image to clipboard"
         >
-          <Copy size={13} />
           <span className="hidden md:inline">Copy PNG</span>
-        </button>
+        </ActionButton>
 
         {/* Export Modal (Primary) */}
-        <button
-          type="button"
+        <ActionButton
+          variant="primary"
+          size="sm"
           onClick={() => openExportModal()}
-          className="flex items-center gap-1.5 px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-sm cursor-pointer"
+          icon={<Upload size={13} />}
           aria-label="Export"
           title="Export image or video"
         >
-          <Upload size={13} />
           <span>Export</span>
-        </button>
+        </ActionButton>
 
         {/* More Actions (...) Dropdown */}
         <TopBarMoreMenu />

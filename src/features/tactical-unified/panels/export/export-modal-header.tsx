@@ -1,6 +1,12 @@
 'use client';
 
 import { FileJson, Film, Image as ImageIcon, Sparkles, X } from 'lucide-react';
+import type * as React from 'react';
+import { IconButton } from '@/components/ui/icon-button';
+import {
+  SegmentedControl,
+  type SegmentOption,
+} from '@/components/ui/segmented-control';
 import type { ExportTab } from './use-export-modal-state';
 
 interface ExportModalHeaderProps {
@@ -11,7 +17,7 @@ interface ExportModalHeaderProps {
   onClose: () => void;
 }
 
-const TABS: { id: ExportTab; label: string; icon: React.ElementType }[] = [
+const TABS: SegmentOption<ExportTab>[] = [
   { id: 'video', label: 'Video', icon: Film },
   { id: 'image', label: 'Image', icon: ImageIcon },
   { id: 'json', label: 'JSON Data', icon: FileJson },
@@ -25,7 +31,7 @@ export function ExportModalHeader({
   onClose,
 }: ExportModalHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0">
+    <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0 select-none">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <Sparkles size={16} className="text-blue-400" />
@@ -38,37 +44,25 @@ export function ExportModalHeader({
         </div>
 
         {!isCompleted && (
-          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-white/5 border border-white/10">
-            {TABS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => onTabChange(id)}
-                disabled={isExporting}
-                className={[
-                  'flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer disabled:opacity-40',
-                  activeTab === id
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-white/60 hover:text-white',
-                ].join(' ')}
-              >
-                <Icon size={13} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
+          <SegmentedControl<ExportTab>
+            value={activeTab}
+            options={TABS}
+            onChange={onTabChange}
+            disabled={isExporting}
+          />
         )}
       </div>
 
-      <button
-        type="button"
+      <IconButton
+        variant="ghost"
+        size="sm"
         onClick={onClose}
         disabled={isExporting}
-        className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
         aria-label="Close modal"
+        className="text-white/50 hover:text-white"
       >
         <X size={16} />
-      </button>
+      </IconButton>
     </div>
   );
 }

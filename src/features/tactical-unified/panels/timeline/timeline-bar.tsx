@@ -30,6 +30,7 @@ import {
 } from '@dnd-kit/sortable';
 import { Sliders } from 'lucide-react';
 import { Fragment, useCallback, useMemo, useState } from 'react';
+import { ActionButton } from '@/components/ui/action-button';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { AddSlideButton } from './add-slide-button';
 import { BatchTransitionPopover } from './batch-transition-popover';
@@ -118,7 +119,7 @@ export function TimelineBar() {
   );
 
   return (
-    <footer className="flex items-center justify-between h-16 px-4 bg-[#0d0d10] border-t border-white/10 shrink-0 select-none z-10">
+    <footer className="flex items-center justify-between h-16 px-4 bg-[#090d16] border-t border-white/10 shrink-0 select-none z-10">
       {/* Left: Playback Controls */}
       <div className="flex items-center gap-3 shrink-0">
         <PlaybackControls />
@@ -186,21 +187,22 @@ export function TimelineBar() {
 
       {/* Right: Quick Action & Shortcut Guides */}
       <div className="flex items-center gap-3 shrink-0">
-        <button
-          type="button"
-          ref={setBatchButtonRef}
+        <ActionButton
+          ref={setBatchButtonRef as React.Ref<HTMLButtonElement>}
+          variant={isBatchOpen ? 'primary' : 'default'}
+          size="sm"
           onClick={() => setIsBatchOpen((prev) => !prev)}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors border cursor-pointer ${
-            isBatchOpen
-              ? 'bg-blue-600/20 border-blue-500/50 text-blue-300'
-              : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/80 hover:text-white'
-          }`}
+          icon={
+            <Sliders
+              size={13}
+              className={isBatchOpen ? 'text-white' : 'text-blue-400'}
+            />
+          }
           aria-label="一括設定"
           title="全シーンのトランジションを一括設定"
         >
-          <Sliders size={13} className="text-blue-400" />
           <span className="hidden sm:inline">一括設定</span>
-        </button>
+        </ActionButton>
 
         <div className="hidden lg:flex items-center gap-3 pl-3 text-[10px] text-white/40 border-l border-white/10">
           <div className="flex items-center gap-1">

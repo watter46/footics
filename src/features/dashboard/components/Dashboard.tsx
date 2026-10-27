@@ -60,7 +60,7 @@ export default function Dashboard({ matchId }: { matchId: string }) {
     d.filters.activeStrategies.size;
 
   return (
-    <div className="flex h-screen w-full bg-slate-950 text-slate-50 overflow-hidden font-sans">
+    <div className="flex h-screen w-full bg-black text-slate-50 overflow-hidden font-sans">
       <Sidebar
         metadata={d.metadata}
         filters={d.filters}

@@ -3,6 +3,7 @@
 import { Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { ActionButton } from '@/components/ui/action-button';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   listTacticalProjects,
@@ -64,7 +65,7 @@ export function ProjectManagerModal({
         if (e.key === 'Escape') onClose();
       }}
     >
-      <div className="flex flex-col w-full max-w-4xl h-[85vh] max-h-[720px] bg-[#141418] border border-white/15 rounded-2xl shadow-2xl overflow-hidden text-white">
+      <div className="flex flex-col w-full max-w-4xl h-[85vh] max-h-[720px] bg-[#090d16] border border-white/10 rounded-2xl shadow-2xl overflow-hidden text-white">
         <ProjectModalHeader
           projectCount={projects.length}
           view={view}
@@ -97,20 +98,21 @@ export function ProjectManagerModal({
           />
         )}
 
-        <div className="flex items-center justify-between px-6 py-3 border-t border-white/10 bg-[#191920]/80 text-[11px] text-white/50">
+        <div className="flex items-center justify-between px-6 py-3 border-t border-white/10 bg-black/40 text-[11px] text-white/50">
           <div className="flex items-center gap-1.5">
             <Sparkles size={12} className="text-blue-400 shrink-0" />
             <span>
               戦術プロジェクトの保存・復元・アスペクト比設定を管理できます
             </span>
           </div>
-          <button
-            type="button"
+          <ActionButton
+            variant="default"
+            size="sm"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium transition-colors cursor-pointer ml-4"
+            className="ml-4"
           >
             閉じる
-          </button>
+          </ActionButton>
         </div>
       </div>
     </div>

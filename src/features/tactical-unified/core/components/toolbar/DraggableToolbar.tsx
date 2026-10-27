@@ -1,6 +1,8 @@
 'use client';
 
 import type React from 'react';
+import { FloatingSurface } from '@/components/ui/floating-surface';
+import { cn } from '@/lib/utils';
 
 export interface FixedToolbarProps {
   children: React.ReactNode;
@@ -16,19 +18,21 @@ export function FixedToolbar({
   style,
 }: FixedToolbarProps) {
   return (
-    <div
+    <FloatingSurface
+      variant="floating"
+      density="compact"
       style={{
-        backgroundColor: '#222222',
-        borderColor: '#383838',
-        color: '#ffffff',
         right: 'var(--toolbar-right, 12px)',
         transform: 'var(--toolbar-transform, translateY(-50%))',
         ...style,
       }}
-      className={`absolute top-1/2 z-40 max-h-[calc(100%-1.5rem)] overflow-y-auto no-scrollbar flex flex-col items-center gap-1 p-1.5 rounded-xl bg-[#222222] border border-[#383838] shadow-2xl select-none ${className}`}
+      className={cn(
+        'absolute top-1/2 z-40 max-h-[calc(100%-1.5rem)] overflow-y-auto no-scrollbar flex flex-col items-center gap-1 select-none',
+        className,
+      )}
     >
       {children}
-    </div>
+    </FloatingSurface>
   );
 }
 

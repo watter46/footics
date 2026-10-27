@@ -10,6 +10,8 @@ import {
   Undo2,
 } from 'lucide-react';
 import type React from 'react';
+import { ActionButton } from '@/components/ui/action-button';
+import { IconButton } from '@/components/ui/icon-button';
 import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
 import type { CapturedScreenshot } from '~/features/capture/db/screenshot-db';
@@ -88,40 +90,32 @@ export function QuickCanvasTopBar({
   };
 
   return (
-    <header className="flex items-center justify-between h-11 px-3 bg-[#111] border-b border-white/10 shrink-0 z-50 select-none text-white">
+    <header className="flex items-center justify-between h-11 px-3 bg-[#090d16] border-b border-white/10 shrink-0 z-50 select-none text-white">
       {/* ── Left: Video Info & Undo/Redo ── */}
       <div className="flex items-center gap-2 min-w-0">
         <VideoMetaInfo screenshot={screenshot} />
         <div className="h-4 w-px bg-white/10 mx-1 shrink-0" />
         <div className="flex items-center gap-0.5">
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
+            size="sm"
             onClick={handleUndo}
             disabled={!canUndo}
             title="元に戻す (Ctrl+Z)"
             aria-label="元に戻す"
-            className={`p-1.5 rounded transition-colors ${
-              canUndo
-                ? 'text-white/70 hover:text-white hover:bg-white/10 cursor-pointer'
-                : 'text-white/20 cursor-not-allowed'
-            }`}
           >
             <Undo2 size={13} />
-          </button>
-          <button
-            type="button"
+          </IconButton>
+          <IconButton
+            variant="ghost"
+            size="sm"
             onClick={handleRedo}
             disabled={!canRedo}
             title="やり直す (Ctrl+Y)"
             aria-label="やり直す"
-            className={`p-1.5 rounded transition-colors ${
-              canRedo
-                ? 'text-white/70 hover:text-white hover:bg-white/10 cursor-pointer'
-                : 'text-white/20 cursor-not-allowed'
-            }`}
           >
             <Redo2 size={13} />
-          </button>
+          </IconButton>
         </div>
       </div>
 
@@ -133,60 +127,58 @@ export function QuickCanvasTopBar({
 
       {/* ── Right: Actions ── */}
       <div className="flex items-center gap-1.5">
-        <button
-          type="button"
+        <IconButton
+          variant="ghost"
+          size="sm"
+          isActive={isFavorite}
           onClick={onToggleFavorite}
           title={isFavorite ? 'お気に入り解除' : 'お気に入りに追加'}
           aria-label="お気に入りトグル"
-          className={`p-1.5 rounded transition-colors cursor-pointer ${
-            isFavorite
-              ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
-              : 'text-white/70 hover:text-white hover:bg-white/10'
-          }`}
+          className={isFavorite ? 'bg-amber-500/20 text-amber-400' : ''}
         >
           <Star size={13} className={isFavorite ? 'fill-amber-400' : ''} />
-        </button>
-        <button
-          type="button"
+        </IconButton>
+        <ActionButton
+          variant="default"
+          size="sm"
           onClick={handleCopy}
+          icon={<Copy size={13} />}
           title="画像をクリップボードにコピー"
           aria-label="画像コピー"
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/5 hover:bg-white/15 text-white/80 hover:text-white text-xs transition-colors cursor-pointer"
         >
-          <Copy size={13} />
           <span>コピー</span>
-        </button>
-        <button
-          type="button"
+        </ActionButton>
+        <ActionButton
+          variant="default"
+          size="sm"
           onClick={handleDownloadClick}
+          icon={<Download size={13} />}
           title="画像をダウンロード"
           aria-label="画像保存"
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/5 hover:bg-white/15 text-white/80 hover:text-white text-xs transition-colors cursor-pointer"
         >
-          <Download size={13} />
           <span>保存</span>
-        </button>
-        <button
-          type="button"
+        </ActionButton>
+        <ActionButton
+          variant="primary"
+          size="sm"
           onClick={onShareX}
+          icon={<Share2 size={13} />}
           title="Xで画像を共有"
           aria-label="X共有"
-          className="flex items-center gap-1.5 px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-sm cursor-pointer"
         >
-          <Share2 size={13} />
           <span>X共有</span>
-        </button>
+        </ActionButton>
         <div className="w-px h-4 bg-white/10 mx-0.5 shrink-0" />
-        <button
-          type="button"
+        <ActionButton
+          variant="default"
+          size="sm"
           onClick={onOpenDashboard}
+          icon={<LayoutDashboard size={13} />}
           title="動画別ダッシュボードへ戻る"
           aria-label="ダッシュボード一覧"
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/5 hover:bg-white/15 text-white/80 hover:text-white text-xs transition-colors cursor-pointer"
         >
-          <LayoutDashboard size={13} />
           <span>一覧</span>
-        </button>
+        </ActionButton>
       </div>
     </header>
   );

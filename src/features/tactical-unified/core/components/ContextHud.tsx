@@ -3,6 +3,7 @@
 import { flip, offset, shift, useFloating } from '@floating-ui/react';
 import type React from 'react';
 import { useEffect } from 'react';
+import { FloatingSurface } from '@/components/ui/floating-surface';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { SelectedObject } from '../types';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
@@ -127,13 +128,9 @@ export function ContextHud({
       }}
       className="absolute z-40 transition-opacity duration-150 select-none pointer-events-auto animate-in fade-in zoom-in-95 duration-100"
     >
-      <div
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#222222] border border-[#383838] shadow-xl text-xs text-white"
-        style={{
-          backgroundColor: '#222222',
-          borderColor: '#383838',
-          color: '#ffffff',
-        }}
+      <FloatingSurface
+        variant="floating"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-white"
       >
         {selected.kind === 'player' && <PlayerHud playerId={selected.id} />}
         {selected.kind === 'arrow' && <ArrowHud arrowId={selected.id} />}
@@ -146,7 +143,7 @@ export function ContextHud({
           />
         )}
         {renderExtraHud?.(selected)}
-      </div>
+      </FloatingSurface>
     </div>
   );
 }
