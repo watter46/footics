@@ -1,7 +1,7 @@
 # TASK-092: 全体のUI/UXデザイン刷新（Figmaライク・デザインシステム統一）
 
 ## 1. Metadata
-- **Status**: `COMPLETED`
+- **Status**: `DONE`
 - **Created**: 2026-10-27
 - **Target Files**:
   - `src/components/ui/floating-surface.tsx` (NEW)
@@ -28,7 +28,7 @@
 - [x] 4. ExportモーダルおよびChrome Extension（QuickCanvasTopBar, MiniMemoPanel）に共通デザインパーツを適用し、Web・Extension間のデザインを統一する。
 - [x] 5. DashboardおよびProjectManagerModalに共通デザインパーツを適用する。
 - [x] 6. キャンバス（Konva）の再描画をDOM UIのステート変化でトリガーさせず、高い描画パフォーマンスを維持する。
-- [ ] 7. 今後の新規コンポーネント開発で本規約が適用されるよう、`.agents/rules/component-architecture.md` にUIデザイン・Primitive利用規約を反映する。（※Worker権限制限のためPlanner/Reviewer側で反映）
+- [x] 7. 今後の新規コンポーネント開発で本規約が適用されるよう、`.agents/rules/component-architecture.md` にUIデザイン・Primitive利用規約を反映する。（Plannerにて反映完了）
 
 ## 3. Context Snippets (参照コード・型定義・import)
 
@@ -154,9 +154,11 @@ export interface SegmentedControlProps<T extends string = string> {
 
 ## 5. Reviewer Assessment (コード差分監査)
 - **Reviewer Model**: `pro`
-- **Decision**: `TODO`
+- **Decision**: `LGTM`
+- **Reviewed At**: 2026-10-27 20:06
+- **Summary**: 4大定性監査（6大設計品質原則）クリア。UI Primitive（FloatingSurface, IconButton, ActionButton, SegmentedControl）によるデザインシステム統一とテストが整備され、ホスト境界（Web/Extension共用安全）や既存機能・イベントハンドラ・アクセシビリティも完全維持されている。
 - **Audit Checklist**:
-  - [ ] 1. 要件網羅性 & テスタビリティ: 既存機能・イベントハンドラが完全維持され、Primitiveのテストが存在すること
-  - [ ] 2. ホスト境界 & Store Provider: Web/Extension共用コンポーネントにホスト依存がないこと
-  - [ ] 3. 設計負債 & 拡張性: ハードコード色（#222222等）を排除し、Design Primitiveで集約されていること
-  - [ ] 4. サイレント破壊 & 既存保護: 既存のコンポーネントPropsやシグネチャが破壊されていないこと
+  - [x] 1. 要件網羅性 & テスタビリティ: 既存機能・イベントハンドラが完全維持され、Primitiveのテストが存在すること
+  - [x] 2. ホスト境界 & Store Provider: Web/Extension共用コンポーネントにホスト依存がないこと
+  - [x] 3. 設計負債 & 拡張性: ハードコード色（#222222等）を排除し、Design Primitiveで集約されていること
+  - [x] 4. サイレント破壊 & 既存保護: 既存のコンポーネントPropsやシグネチャが破壊されていないこと

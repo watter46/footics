@@ -137,7 +137,34 @@ export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;
 
 ---
 
-## 6. 将来の目標（未実装・段階移行ロードマップ）
+## 7. UIデザイン・Primitive利用規約 (Figma-like Design System Standards)
+
+プロフェッショナルなツール品質（Figmaライクな高密度・極細ボーダー・ダークサーフェス）を維持し、画面・拡張機能ごとのデザイン乖離を防ぐための規約です。
+
+### 7.1 デザイン基本方針
+1. **配色とサーフェストークン**:
+   - ベース背景: ピッチ・全体と調和するソリッドな黒（`#000000` / `bg-black`）。
+   - パネル / HUD / ヘッダー: 浮遊感のあるダークサーフェス（`bg-[#090d16]/95` または `bg-[#090d16]`、微細半透明・`backdrop-blur-md`、極細境界線 `border-white/10`）。
+   - ハードコードされたグレー（`#222222`, `#383838`, `bg-slate-900` 等）のベタ書きを禁止し、共通サーフェス規約に統一すること。
+2. **タイポグラフィとアイコン**:
+   - ツール系ラベルは小さめ（`text-xs` / 11px〜12px）で引き締まった視認性を維持する。
+   - アイコンは `lucide-react` で統一（推奨: サイズ 14〜16px / `strokeWidth={1.5}`）。
+3. **パフォーマンス保護**:
+   - キャンバス（Konva）の再描画をDOM UIのホバーやステート変化でトリガーさせないこと（Zustandセレクタの局所化・React.memoの徹底、CSS GPU合成活用）。
+
+### 7.2 Level 1 UI Primitive の必須利用
+新規画面・UIパーツ作成時は、以下の共通Primitiveを優先して利用してください：
+
+| コンポーネント | パス | 責務と使用箇所 |
+| :--- | :--- | :--- |
+| **`FloatingSurface`** | `@/components/ui/floating-surface` | パネル、ツールバー、HUD、モーダル外枠の統一ダークサーフェス（variant: `floating`, `subtle`, `solid`） |
+| **`IconButton`** | `@/components/ui/icon-button` | アイコン単体ボタン（Undo/Redo、閉じる、お気に入り、ツール切替等） |
+| **`ActionButton`** | `@/components/ui/action-button` | アイコン＋ラベル付きのアクションボタン（Export、保存、一括設定等） |
+| **`SegmentedControl`** | `@/components/ui/segmented-control` | タブ切替、表示モード切替（Video/Image/JSON、アスペクト比選択等） |
+
+---
+
+## 8. 将来の目標（未実装・段階移行ロードマップ）
 
 以下はターゲットアーキテクチャとして計画されている概念ですが、**現時点のコードベースにはまだ該当インターフェース名としては存在しない**ため、既存コードで勝手に import してはなりません（該当リファクタリングタスクで段階的に導入します）：
 - **`useTacticalUnifiedStore` の完全 Store Provider 化と `tactical-canvas-store-adapter.ts` の撤去**（是正タスクで実施）
