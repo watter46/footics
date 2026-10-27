@@ -40,6 +40,13 @@ import { TransitionConnector } from './transition-connector';
 export function TimelineBar() {
   const slides = useTacticalUnifiedStore((s) => s.project.slides);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+  const isPlaying = useTacticalUnifiedStore((s) => s.isPlaying);
+  const playbackSlideIndex = useTacticalUnifiedStore(
+    (s) => s.playbackSlideIndex,
+  );
+  const playbackTransitionIndex = useTacticalUnifiedStore(
+    (s) => s.playbackTransitionIndex,
+  );
   const setActiveSlide = useTacticalUnifiedStore((s) => s.setActiveSlide);
   const deleteSlide = useTacticalUnifiedStore((s) => s.deleteSlide);
   const duplicateSlide = useTacticalUnifiedStore((s) => s.duplicateSlide);
@@ -136,12 +143,19 @@ export function TimelineBar() {
             {slides.map((slide, i) => (
               <Fragment key={slide.id}>
                 {i > 0 && (
-                  <TransitionConnector targetSlide={slide} targetIndex={i} />
+                  <TransitionConnector
+                    targetSlide={slide}
+                    targetIndex={i}
+                    isPlaybackActive={
+                      isPlaying && playbackTransitionIndex === i
+                    }
+                  />
                 )}
                 <SlideCard
                   slide={slide}
                   index={i}
                   isActive={activeSlideId === slide.id}
+                  isPlaybackActive={isPlaying && playbackSlideIndex === i}
                   canDelete={slides.length > 1}
                   canMoveLeft={i > 0}
                   canMoveRight={i < slides.length - 1}

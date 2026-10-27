@@ -303,6 +303,22 @@ describe('unified-interpolation engine', () => {
       expect(frame.ball.x).toBeCloseTo(50, 1);
       expect(frame.ball.y).toBeCloseTo(60, 1);
       expect(frame.isPaused).toBe(true);
+      expect(frame.currentSlideIndex).toBe(1);
+      expect(frame.nextSlideIndex).toBe(1);
+    });
+
+    it('returns last slide index when timeMs reaches or exceeds totalDurationMs', () => {
+      const frameAtTotal = getInterpolatedUnifiedSlideFrame(mockSlides, 1500);
+      expect(frameAtTotal.currentSlideIndex).toBe(1);
+      expect(frameAtTotal.nextSlideIndex).toBe(1);
+      expect(frameAtTotal.isPaused).toBe(true);
+      expect(frameAtTotal.progress).toBe(1);
+
+      const framePastTotal = getInterpolatedUnifiedSlideFrame(mockSlides, 2000);
+      expect(framePastTotal.currentSlideIndex).toBe(1);
+      expect(framePastTotal.nextSlideIndex).toBe(1);
+      expect(framePastTotal.isPaused).toBe(true);
+      expect(framePastTotal.progress).toBe(1);
     });
 
     it('interpolates player along custom bezier trajectory', () => {
@@ -389,6 +405,82 @@ describe('unified-interpolation engine', () => {
       const frame = getInterpolatedUnifiedSlideFrame(slidesWithCurve, 500);
       expect(frame.players.p1.x).toBeCloseTo(47.5, 1);
       expect(frame.players.p1.y).toBeCloseTo(47.5, 1);
+    });
+
+    describe('ball rotation interpolation', () => {
+      it('computes clockwise rotation when moving right (dx >= 0)', () => {
+        const ballA = { x: 20, y: 50, visible: true };
+        const ballB = { x: 70, y: 50, visible: true };
+        // dx = 50 >= 0 -> dir = 1
+        // At ease = 0.5, x = 45, distance = 25
+        const state = directInterpolateBall(ballA, ballB, 0.5);
+        expect(state.rotation).toBeDefined();
+        expect(state.rotation).toBeCloseTo(25 * 7.2, 1); // 180 degrees
+        expect(state.rotation).toBeGreaterThan(0);
+      });
+
+      it('computes counter-clockwise rotation when moving left (dx < 0)', () => {
+        const ballA = { x: 70, y: 50, visible: true };
+        const ballB = { x: 20, y: 50, visible: true };
+        // dx = -50 < 0 -> dir = -1
+        // At ease = 0.5, x = 45, distance = 25
+        const state = directInterpolateBall(ballA, ballB, 0.5);
+        expect(state.rotation).toBeDefined();
+        expect(state.rotation).toBeCloseTo(-25 * 7.2, 1); // -180 degrees
+        expect(state.rotation).toBeLessThan(0);
+      });
+
+      it('returns startRotation (0) when stationary', () => {
+        const ballA = { x: 50, y: 50, visible: true };
+        const ballB = { x: 50, y: 50, visible: true };
+        const state = directInterpolateBall(ballA, ballB, 0.5);
+        expect(state.rotation).toBe(0);
+      });
+
+      it('incorporates custom startRotation', () => {
+        const ballA = { x: 10, y: 50, visible: true };
+        const ballB = { x: 30, y: 50, visible: true };
+        const state = directInterpolateBall(ballA, ballB, 1.0, 90);
+        expect(state.rotation).toBeCloseTo(90 + 20 * 7.2, 1);
+      });
+
+      it('includes ball.rotation in unified slide frame interpolation and updates over time', () => {
+        const slides: Slide[] = [
+          {
+            id: 's1',
+            index: 0,
+            transitionDurationMs: 1000,
+            pauseMs: 500,
+            easing: 'linear',
+            players: [],
+            arrows: [],
+            zones: [],
+            texts: [],
+            ball: { x: 20, y: 50, visible: true },
+          },
+          {
+            id: 's2',
+            index: 1,
+            transitionDurationMs: 1000,
+            pauseMs: 500,
+            easing: 'linear',
+            players: [],
+            arrows: [],
+            zones: [],
+            texts: [],
+            ball: { x: 70, y: 50, visible: true },
+          },
+        ];
+
+        const frameStart = getInterpolatedUnifiedSlideFrame(slides, 0);
+        expect(frameStart.ball.rotation).toBe(0);
+
+        const frameMid = getInterpolatedUnifiedSlideFrame(slides, 500);
+        expect(frameMid.ball.rotation).toBeCloseTo(25 * 7.2, 1);
+
+        const frameEnd = getInterpolatedUnifiedSlideFrame(slides, 1000);
+        expect(frameEnd.ball.rotation).toBeCloseTo(50 * 7.2, 1);
+      });
     });
   });
 });

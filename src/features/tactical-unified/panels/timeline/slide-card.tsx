@@ -19,6 +19,7 @@ export interface SlideCardProps {
   slide: Slide;
   index: number;
   isActive: boolean;
+  isPlaybackActive?: boolean;
   canDelete: boolean;
   canMoveLeft: boolean;
   canMoveRight: boolean;
@@ -33,6 +34,7 @@ export function SlideCard({
   slide,
   index,
   isActive,
+  isPlaybackActive = false,
   canDelete,
   canMoveLeft,
   canMoveRight,
@@ -111,16 +113,24 @@ export function SlideCard({
         onContextMenu={handleContextMenu}
         className={[
           'flex flex-col justify-between w-24 h-12 px-2 py-1.5 rounded-lg border text-left transition-colors cursor-grab active:cursor-grabbing relative overflow-hidden focus:outline-none',
-          isActive
-            ? 'border-blue-500 bg-blue-600/20 text-white shadow-md shadow-blue-500/10 ring-1 ring-blue-500'
-            : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:bg-white/10 hover:text-white',
+          isPlaybackActive
+            ? 'border-amber-500 bg-amber-500/20 text-white shadow-md shadow-amber-500/20 ring-1 ring-amber-500'
+            : isActive
+              ? 'border-blue-500 bg-blue-600/20 text-white shadow-md shadow-blue-500/10 ring-1 ring-blue-500'
+              : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:bg-white/10 hover:text-white',
         ].join(' ')}
         title={`${slide.label ?? `Scene ${index + 1}`} (Drag to reorder, Right-click for options)`}
         aria-label={`Scene ${index + 1}`}
       >
         <div className="flex items-center justify-between w-full">
           <span
-            className={`text-[11px] font-bold font-mono ${isActive ? 'text-blue-300' : 'text-white/90'}`}
+            className={`text-[11px] font-bold font-mono ${
+              isPlaybackActive
+                ? 'text-amber-400'
+                : isActive
+                  ? 'text-blue-300'
+                  : 'text-white/90'
+            }`}
           >
             {index + 1}
           </span>

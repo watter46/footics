@@ -6,6 +6,10 @@
 
 import type Konva from 'konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
+import {
+  getQuadraticBezierPoints,
+  getWavyPoints,
+} from '@/features/tactical-unified/core/components/annotations/wavy-arrow-math';
 import type {
   InterpolatedArrowState,
   InterpolatedBallState,
@@ -50,6 +54,9 @@ export function updateBallNode(
   registry.ballNode.position({ x: ballPxX, y: ballPxY });
   registry.ballNode.opacity(ball.opacity);
   registry.ballNode.visible(ball.visible);
+  if (typeof registry.ballNode.rotation === 'function') {
+    registry.ballNode.rotation(ball.rotation ?? 0);
+  }
 }
 
 export function updateZoneNodes(
@@ -141,11 +148,28 @@ export function updateArrowNodes(
     const ePxX = offsetX + (rawP1.x / 100) * stageWidth;
     const ePxY = offsetY + (rawP1.y / 100) * stageHeight;
 
-    let renderPts = [sPxX, sPxY, ePxX, ePxY];
-    if (aState.curveType === 'curved' && aState.controlPoint) {
+    const isCurved =
+      aState.curveType === 'curved' ||
+      aState.curveType === 'arc' ||
+      aState.controlPoint !== undefined;
+    const isWavy = aState.arrowType === 'dribble';
+
+    let renderPts: number[];
+    if (isWavy) {
+      renderPts = getWavyPoints(sPxX, sPxY, ePxX, ePxY);
+    } else if (isCurved && aState.controlPoint) {
       const cpPxX = offsetX + (aState.controlPoint.x / 100) * stageWidth;
       const cpPxY = offsetY + (aState.controlPoint.y / 100) * stageHeight;
-      renderPts = [sPxX, sPxY, cpPxX, cpPxY, ePxX, ePxY];
+      renderPts = getQuadraticBezierPoints(
+        sPxX,
+        sPxY,
+        cpPxX,
+        cpPxY,
+        ePxX,
+        ePxY,
+      );
+    } else {
+      renderPts = [sPxX, sPxY, ePxX, ePxY];
     }
 
     arrowEntry.node.points(renderPts);

@@ -20,6 +20,10 @@ export interface AnimationPlaybackRefs {
   timelineRef: React.MutableRefObject<gsap.core.Timeline | null>;
   currentPlaybackTimeRef: React.MutableRefObject<number>;
   lastActiveSlideIndexRef: React.MutableRefObject<number>;
+  lastPlaybackIndicesRef: React.MutableRefObject<{
+    slideIndex: number;
+    transitionIndex: number | null;
+  }>;
 }
 
 export interface UseTacticalAnimationOptions {
@@ -68,12 +72,17 @@ export function useAnimationPlaybackRefs(): AnimationPlaybackRefs {
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
   const currentPlaybackTimeRef = useRef<number>(0);
   const lastActiveSlideIndexRef = useRef<number>(0);
+  const lastPlaybackIndicesRef = useRef<{
+    slideIndex: number;
+    transitionIndex: number | null;
+  }>({ slideIndex: 0, transitionIndex: null });
 
   return useMemo(
     () => ({
       timelineRef,
       currentPlaybackTimeRef,
       lastActiveSlideIndexRef,
+      lastPlaybackIndicesRef,
     }),
     [],
   );
@@ -128,6 +137,10 @@ export function renderFrameToCanvas(
   synchronous = false,
   offsetX = 0,
   offsetY = 0,
+  lastPlaybackIndicesRef?: React.MutableRefObject<{
+    slideIndex: number;
+    transitionIndex: number | null;
+  }>,
 ) {
   if (!registry) return;
 
@@ -135,6 +148,36 @@ export function renderFrameToCanvas(
   if (currentSlides.length === 0) return;
 
   const frame = getInterpolatedUnifiedSlideFrame(currentSlides, timeMs);
+
+  // 再生中オレンジ枠用のインデックス計算（境界時のみ更新し毎フレーム再描画を防止）
+  const isTransitioning =
+    !frame.isPaused &&
+    frame.progress < 1 &&
+    frame.currentSlideIndex !== frame.nextSlideIndex;
+
+  const currentPlaybackSlideIndex = frame.currentSlideIndex;
+  const currentPlaybackTransitionIndex = isTransitioning
+    ? frame.nextSlideIndex
+    : null;
+
+  if (lastPlaybackIndicesRef) {
+    const prev = lastPlaybackIndicesRef.current;
+    if (
+      prev.slideIndex !== currentPlaybackSlideIndex ||
+      prev.transitionIndex !== currentPlaybackTransitionIndex
+    ) {
+      lastPlaybackIndicesRef.current = {
+        slideIndex: currentPlaybackSlideIndex,
+        transitionIndex: currentPlaybackTransitionIndex,
+      };
+      useTacticalUnifiedStore
+        .getState()
+        .setPlaybackIndices(
+          currentPlaybackSlideIndex,
+          currentPlaybackTransitionIndex,
+        );
+    }
+  }
 
   if (frame.currentSlideIndex !== lastActiveSlideIndexRef.current) {
     lastActiveSlideIndexRef.current = frame.currentSlideIndex;
@@ -190,95 +233,5 @@ export function renderFrameToCanvas(
   batchDrawLayers(registry, synchronous);
 }
 
-export function stopPlayback({
-  refs,
-  registry,
-  pitchDimensions,
-  applyFrameToCanvas,
-  setIsPlaying,
-  setActiveSlide,
-}: {
-  refs: AnimationPlaybackRefs;
-  registry: CanvasNodesRegistry | undefined;
-  pitchDimensions: { width: number; height: number; x?: number; y?: number };
-  applyFrameToCanvas: (
-    timeMs: number,
-    reg: CanvasNodesRegistry | undefined,
-    w: number,
-    h: number,
-    synchronous?: boolean,
-    offsetX?: number,
-    offsetY?: number,
-  ) => void;
-  setIsPlaying: (playing: boolean) => void;
-  setActiveSlide: (slideId: string) => void;
-}) {
-  if (refs.timelineRef.current) {
-    refs.timelineRef.current.pause(0);
-  }
-  refs.currentPlaybackTimeRef.current = 0;
-  refs.lastActiveSlideIndexRef.current = 0;
-  setIsPlaying(false);
-
-  const currentSlides = useTacticalUnifiedStore.getState().project.slides;
-  if (currentSlides.length > 0) {
-    setActiveSlide(currentSlides[0].id);
-    applyFrameToCanvas(
-      0,
-      registry,
-      pitchDimensions.width,
-      pitchDimensions.height,
-      false,
-      pitchDimensions.x ?? 0,
-      pitchDimensions.y ?? 0,
-    );
-  }
-}
-
-export function pausePlayback(
-  refs: AnimationPlaybackRefs,
-  setIsPlaying: (playing: boolean) => void,
-) {
-  refs.timelineRef.current?.pause();
-  setIsPlaying(false);
-}
-
-export function seekPlayback({
-  timeMs,
-  totalDurationMs,
-  refs,
-  registry,
-  pitchDimensions,
-  applyFrameToCanvas,
-}: {
-  timeMs: number;
-  totalDurationMs: number;
-  refs: AnimationPlaybackRefs;
-  registry: CanvasNodesRegistry | undefined;
-  pitchDimensions: { width: number; height: number; x?: number; y?: number };
-  applyFrameToCanvas: (
-    timeMs: number,
-    reg: CanvasNodesRegistry | undefined,
-    w: number,
-    h: number,
-    synchronous?: boolean,
-    offsetX?: number,
-    offsetY?: number,
-  ) => void;
-}) {
-  const clampedTime = Math.max(0, Math.min(totalDurationMs, timeMs));
-  refs.currentPlaybackTimeRef.current = clampedTime;
-
-  if (refs.timelineRef.current) {
-    refs.timelineRef.current.seek(clampedTime / 1000, false);
-  }
-  applyFrameToCanvas(
-    clampedTime,
-    registry,
-    pitchDimensions.width,
-    pitchDimensions.height,
-    false,
-    pitchDimensions.x ?? 0,
-    pitchDimensions.y ?? 0,
-  );
-}
+// Re-export playback control functions to preserve public API
+export * from './tactical-playback-controls';

@@ -67,7 +67,6 @@ export function interpolateZone(
   if (!startZone && !endZone) return null;
 
   if (startZone && !endZone) {
-    // スライド A のみ存在 → フェードアウト
     return {
       ...startZone,
       shapeType: startZone.shapeType || 'rect',
@@ -78,9 +77,7 @@ export function interpolateZone(
       visible: ease < 1,
     };
   }
-
   if (!startZone && endZone) {
-    // スライド B のみ存在 → フェードイン
     return {
       ...endZone,
       shapeType: endZone.shapeType || 'rect',
@@ -91,15 +88,12 @@ export function interpolateZone(
       visible: true,
     };
   }
-
-  // startZone と endZone の両方が存在 → モーフィング補間
   const zA = startZone;
   const zB = endZone;
   if (!zA || !zB) return null;
 
   const shapeA = zA.shapeType || 'rect';
   const shapeB = zB.shapeType || 'rect';
-
   const opacity = lerp(zA.opacity ?? 0.25, zB.opacity ?? 0.25, ease);
   const color = interpolateColor(
     zA.color || '#f59e0b',
@@ -144,12 +138,10 @@ export function interpolateZone(
   const startY = zA.y ?? zA.points?.[0]?.y ?? 20;
   const endX = zB.x ?? zB.points?.[0]?.x ?? 20;
   const endY = zB.y ?? zB.points?.[0]?.y ?? 20;
-
   const startW = zA.width ?? 30;
   const startH = zA.height ?? 20;
   const endW = zB.width ?? 30;
   const endH = zB.height ?? 20;
-
   const x = lerp(startX, endX, ease);
   const y = lerp(startY, endY, ease);
   const width = lerp(startW, endW, ease);
@@ -210,20 +202,47 @@ export function interpolateArrow(
 
   const pts = interpolatePolygonPoints(aA.points, aB.points, ease, false);
 
+  const aAIsCurved =
+    aA.curveType === 'curved' ||
+    aA.curveType === 'arc' ||
+    aA.controlPoint !== undefined;
+  const aBIsCurved =
+    aB.curveType === 'curved' ||
+    aB.curveType === 'arc' ||
+    aB.controlPoint !== undefined;
+
   let controlPoint: NormalizedPoint | undefined;
-  if (aA.controlPoint && aB.controlPoint) {
-    controlPoint = {
-      x: lerp(aA.controlPoint.x, aB.controlPoint.x, ease),
-      y: lerp(aA.controlPoint.y, aB.controlPoint.y, ease),
+  let curveType = aB.curveType;
+
+  if (aAIsCurved || aBIsCurved) {
+    const cpA = aA.controlPoint ?? {
+      x: ((aA.points[0]?.x ?? 0) + (aA.points[1]?.x ?? 0)) / 2,
+      y: ((aA.points[0]?.y ?? 0) + (aA.points[1]?.y ?? 0)) / 2,
     };
-  } else {
-    controlPoint = aB.controlPoint || aA.controlPoint;
+    const cpB = aB.controlPoint ?? {
+      x: ((aB.points[0]?.x ?? 0) + (aB.points[1]?.x ?? 0)) / 2,
+      y: ((aB.points[0]?.y ?? 0) + (aB.points[1]?.y ?? 0)) / 2,
+    };
+
+    controlPoint = {
+      x: lerp(cpA.x, cpB.x, ease),
+      y: lerp(cpA.y, cpB.y, ease),
+    };
+
+    if (ease === 0) {
+      curveType = aA.curveType;
+    } else if (ease === 1) {
+      curveType = aB.curveType;
+    } else {
+      curveType =
+        aB.curveType === 'arc' || aA.curveType === 'arc' ? 'arc' : 'curved';
+    }
   }
 
   return {
     id: aB.id,
     arrowType: aB.arrowType,
-    curveType: aB.curveType,
+    curveType,
     points: pts,
     controlPoint,
     color: interpolateColor(aA.color || '#ffffff', aB.color || '#ffffff', ease),

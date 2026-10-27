@@ -242,14 +242,14 @@ describe('useTacticalAnimation hook', () => {
     expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
   });
 
-  it('resumes from current playback time when paused midway without resetting to slide-1', () => {
+  it('resumes from snapped playback time when paused midway without resetting to slide-1', () => {
     const registry = createCanvasNodesRegistry();
     const registryRef = { current: registry };
     const { result, rerender } = renderHook(() =>
       useTacticalAnimation({ nodesRegistryRef: registryRef }),
     );
 
-    // Seek to 500ms and pause
+    // Seek to 500ms and pause (snaps to slide-2 at 1000ms)
     act(() => {
       result.current.seekTo(500);
       result.current.pauseAnimation();
@@ -261,6 +261,82 @@ describe('useTacticalAnimation hook', () => {
     });
 
     rerender();
-    expect(result.current.currentPlaybackTime).toBe(500);
+    expect(result.current.currentPlaybackTime).toBe(1000);
+  });
+
+  it('snaps to next scene and updates activeSlideId when paused midway during slide transition', () => {
+    const registry = createCanvasNodesRegistry();
+    const registryRef = { current: registry };
+    const { result, rerender } = renderHook(() =>
+      useTacticalAnimation({ nodesRegistryRef: registryRef }),
+    );
+
+    // Seek to 500ms (midway between slide-1 and slide-2)
+    act(() => {
+      result.current.seekTo(500);
+    });
+
+    // Pause animation
+    act(() => {
+      result.current.pauseAnimation();
+    });
+
+    rerender();
+
+    // Should snap to next slide (slide-2), updating activeSlideId and playback indices
+    expect(useTacticalUnifiedStore.getState().activeSlideId).toBe('slide-2');
+    expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(1);
+    expect(
+      useTacticalUnifiedStore.getState().playbackTransitionIndex,
+    ).toBeNull();
+    // Time snapped to transition end (1000ms)
+    expect(result.current.currentPlaybackTime).toBe(1000);
+  });
+
+  it('remains on current scene when paused during hold/pause time', () => {
+    const registry = createCanvasNodesRegistry();
+    const registryRef = { current: registry };
+    const { result } = renderHook(() =>
+      useTacticalAnimation({ nodesRegistryRef: registryRef }),
+    );
+
+    // Seek to 1200ms (during slide-2 pause time: 1000ms ~ 1500ms)
+    act(() => {
+      result.current.seekTo(1200);
+    });
+
+    act(() => {
+      result.current.pauseAnimation();
+    });
+
+    expect(useTacticalUnifiedStore.getState().activeSlideId).toBe('slide-2');
+    expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(1);
+    expect(
+      useTacticalUnifiedStore.getState().playbackTransitionIndex,
+    ).toBeNull();
+  });
+
+  it('updates playback indices boundary states properly for orange highlight', () => {
+    const registry = createCanvasNodesRegistry();
+    const registryRef = { current: registry };
+    const { result } = renderHook(() =>
+      useTacticalAnimation({ nodesRegistryRef: registryRef }),
+    );
+
+    // At 500ms: transitioning from slide 0 to slide 1
+    act(() => {
+      result.current.applyFrameToCanvas(500, registry, 800, 450);
+    });
+    expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(0);
+    expect(useTacticalUnifiedStore.getState().playbackTransitionIndex).toBe(1);
+
+    // At 1200ms: arrived at slide 1, paused
+    act(() => {
+      result.current.applyFrameToCanvas(1200, registry, 800, 450);
+    });
+    expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(1);
+    expect(
+      useTacticalUnifiedStore.getState().playbackTransitionIndex,
+    ).toBeNull();
   });
 });

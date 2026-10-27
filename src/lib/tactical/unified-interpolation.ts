@@ -20,6 +20,8 @@ import {
   interpolateZone,
 } from './interpolation-annotation';
 import {
+  BALL_ROTATION_FACTOR,
+  calculateAccumulatedBallRotation,
   type InterpolatedBallState,
   interpolateBall,
 } from './interpolation-ball';
@@ -59,6 +61,18 @@ export function calculateUnifiedTotalDuration(slides: Slide[]): number {
   }, 0);
 }
 
+const EMPTY_FRAME: InterpolatedUnifiedFrame = {
+  players: {},
+  ball: { x: 50, y: 50, visible: true, opacity: 1, rotation: 0 },
+  zones: {},
+  arrows: {},
+  texts: {},
+  currentSlideIndex: 0,
+  nextSlideIndex: 0,
+  progress: 0,
+  isPaused: false,
+};
+
 /**
  * 指定時間 (timeMs) における全オブジェクトの補間フレーム状態を計算
  */
@@ -66,97 +80,22 @@ export function getInterpolatedUnifiedSlideFrame(
   slides: Slide[],
   timeMs: number,
 ): InterpolatedUnifiedFrame {
-  if (slides.length === 0) {
-    return {
-      players: {},
-      ball: { x: 50, y: 50, visible: true, opacity: 1 },
-      zones: {},
-      arrows: {},
-      texts: {},
-      currentSlideIndex: 0,
-      nextSlideIndex: 0,
-      progress: 0,
-      isPaused: false,
-    };
-  }
+  if (slides.length === 0) return EMPTY_FRAME;
 
   if (slides.length === 1) {
     const slide = slides[0];
-    const players: Record<string, InterpolatedPlayerState> = {};
-    slide.players.forEach((p) => {
-      players[p.id] = {
-        id: p.id,
-        playerId: p.playerId,
-        x: p.x,
-        y: p.y,
-        opacity: 1,
-        visible: p.area === 'pitch',
-        team: p.team,
-        area: p.area,
-        name: p.name,
-        shirtNo: p.shirtNo,
-        style: p.style,
-        visionCone: p.visionCone,
-        connectLines: p.connectLines,
-        badges: p.badges,
-        focus: p.focus,
-        trajectory: p.trajectory,
-      };
-    });
-
-    const zones: Record<string, InterpolatedZoneState> = {};
-    slide.zones.forEach((z) => {
-      zones[z.id] = {
-        id: z.id,
-        zoneType: z.zoneType,
-        shapeType: z.shapeType || 'rect',
-        x: z.x,
-        y: z.y,
-        width: z.width,
-        height: z.height,
-        rotation: z.rotation,
-        points: z.points || [],
-        color: z.color || '#f59e0b',
-        opacity: z.opacity ?? 0.25,
-        strokeColor: z.strokeColor,
-        strokeWidth: z.strokeWidth || 0,
-        label: z.label,
-        visible: true,
-      };
-    });
-
-    const arrows: Record<string, InterpolatedArrowState> = {};
-    slide.arrows.forEach((a) => {
-      arrows[a.id] = {
-        id: a.id,
-        arrowType: a.arrowType,
-        curveType: a.curveType,
-        points: a.points,
-        controlPoint: a.controlPoint,
-        color: a.color || '#ffffff',
-        strokeWidth: a.strokeWidth || 3,
-        opacity: 1,
-        visible: true,
-        sourcePlayerId: a.sourcePlayerId,
-        targetPlayerId: a.targetPlayerId,
-      };
-    });
-
-    const texts: Record<string, InterpolatedTextState> = {};
-    slide.texts.forEach((t) => {
-      texts[t.id] = {
-        id: t.id,
-        x: t.x,
-        y: t.y,
-        content: t.content,
-        fontSize: t.fontSize || 16,
-        color: t.color || '#ffffff',
-        bold: t.bold || false,
-        italic: t.italic || false,
-        opacity: 1,
-        visible: true,
-      };
-    });
+    const players = Object.fromEntries(
+      slide.players.map((p) => [p.id, interpolatePlayer(p, p, 0)!]),
+    );
+    const zones = Object.fromEntries(
+      slide.zones.map((z) => [z.id, interpolateZone(z, z, 0)!]),
+    );
+    const arrows = Object.fromEntries(
+      slide.arrows.map((a) => [a.id, interpolateArrow(a, a, 0)!]),
+    );
+    const texts = Object.fromEntries(
+      slide.texts.map((t) => [t.id, interpolateText(t, t, 0)!]),
+    );
 
     return {
       players,
@@ -165,6 +104,7 @@ export function getInterpolatedUnifiedSlideFrame(
         y: slide.ball?.y ?? 50,
         visible: slide.ball?.visible ?? true,
         opacity: 1,
+        rotation: 0,
       },
       zones,
       arrows,
@@ -222,7 +162,16 @@ export function getInterpolatedUnifiedSlideFrame(
   });
 
   // 2. Ball 補間
-  const ball = interpolateBall(slideA.ball, slideB.ball, ease);
+  const accumulatedRotation = calculateAccumulatedBallRotation(
+    slides,
+    currentSlideIdx,
+  );
+  const ball = interpolateBall(
+    slideA.ball,
+    slideB.ball,
+    ease,
+    accumulatedRotation,
+  );
 
   // 3. Zones 補間 (Vertex Morphing)
   const zones: Record<string, InterpolatedZoneState> = {};
@@ -263,15 +212,29 @@ export function getInterpolatedUnifiedSlideFrame(
     if (interpolated) texts[id] = interpolated;
   });
 
+  const totalDurationMs = calculateUnifiedTotalDuration(slides);
+  const isPastTotal = totalDurationMs > 0 && timeMs >= totalDurationMs;
+
+  const resolvedCurrentSlideIndex = isPastTotal
+    ? slides.length - 1
+    : isPaused
+      ? nextSlideIdx
+      : currentSlideIdx;
+  const resolvedNextSlideIndex = isPastTotal
+    ? slides.length - 1
+    : isPaused
+      ? nextSlideIdx
+      : nextSlideIdx;
+
   return {
     players,
     ball,
     zones,
     arrows,
     texts,
-    currentSlideIndex: currentSlideIdx,
-    nextSlideIndex: nextSlideIdx,
+    currentSlideIndex: resolvedCurrentSlideIndex,
+    nextSlideIndex: resolvedNextSlideIndex,
     progress: rawT,
-    isPaused,
+    isPaused: isPaused || isPastTotal,
   };
 }

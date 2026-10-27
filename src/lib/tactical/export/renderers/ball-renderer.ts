@@ -58,10 +58,14 @@ export function renderBall(
   ctx.save();
   ctx.globalAlpha = ball.opacity;
 
-  // 100x100 viewBox スケール変換
+  // 100x100 viewBox スケール変換 & 自転描画
   const ballScale = (ballRadius * 2) / 100;
-  ctx.translate(bx - 50 * ballScale, by - 50 * ballScale);
+  ctx.translate(bx, by);
+  if (ball.rotation && typeof ctx.rotate === 'function') {
+    ctx.rotate((ball.rotation * Math.PI) / 180);
+  }
   ctx.scale(ballScale, ballScale);
+  ctx.translate(-50, -50);
 
   // 球面ラジアルグラデーション (白パネル)
   let ballGrad: CanvasGradient | string = '#ffffff';

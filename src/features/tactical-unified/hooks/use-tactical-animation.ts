@@ -47,9 +47,10 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
         synchronous,
         offsetX,
         offsetY,
+        refs.lastPlaybackIndicesRef,
       );
     },
-    [setActiveSlide, refs.lastActiveSlideIndexRef],
+    [setActiveSlide, refs.lastActiveSlideIndexRef, refs.lastPlaybackIndicesRef],
   );
 
   const getPitchDimensions = useCallback(
@@ -72,6 +73,11 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
       if (isAtEnd || refs.currentPlaybackTimeRef.current === 0) {
         refs.currentPlaybackTimeRef.current = 0;
         refs.lastActiveSlideIndexRef.current = 0;
+        refs.lastPlaybackIndicesRef.current = {
+          slideIndex: 0,
+          transitionIndex: null,
+        };
+        useTacticalUnifiedStore.getState().setPlaybackIndices(0, null);
         if (currentSlides[0]) {
           setActiveSlide(currentSlides[0].id);
         }
@@ -102,7 +108,14 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
                 if (lastSlide) {
                   setActiveSlide(lastSlide.id);
                   refs.lastActiveSlideIndexRef.current = lastSlideIndex;
+                  refs.lastPlaybackIndicesRef.current = {
+                    slideIndex: lastSlideIndex,
+                    transitionIndex: null,
+                  };
                   refs.currentPlaybackTimeRef.current = totalDurationMs;
+                  useTacticalUnifiedStore
+                    .getState()
+                    .setPlaybackIndices(lastSlideIndex, null);
                 }
               }
               applyFrameToCanvas(
@@ -140,18 +153,36 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
   );
 
   const pauseAnimation = useCallback(
-    () => pausePlayback(refs, setIsPlaying),
-    [refs, setIsPlaying],
+    () =>
+      pausePlayback(refs, setIsPlaying, {
+        slides: useTacticalUnifiedStore.getState().project.slides,
+        registry: options?.nodesRegistryRef?.current,
+        pitchDimensions: getPitchDimensions(),
+        applyFrameToCanvas,
+        setActiveSlide,
+        setPlaybackIndices:
+          useTacticalUnifiedStore.getState().setPlaybackIndices,
+      }),
+    [
+      refs,
+      setIsPlaying,
+      options?.nodesRegistryRef,
+      getPitchDimensions,
+      applyFrameToCanvas,
+      setActiveSlide,
+    ],
   );
 
   const stopAnimation = useCallback(() => {
     stopPlayback({
+      slides: useTacticalUnifiedStore.getState().project.slides,
       refs,
       registry: options?.nodesRegistryRef?.current,
       pitchDimensions: getPitchDimensions(),
       applyFrameToCanvas,
       setIsPlaying,
       setActiveSlide,
+      setPlaybackIndices: useTacticalUnifiedStore.getState().setPlaybackIndices,
     });
     refs.timelineRef.current?.kill();
     refs.timelineRef.current = null;

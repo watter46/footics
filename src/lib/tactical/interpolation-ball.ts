@@ -7,6 +7,33 @@ export interface InterpolatedBallState {
   y: number;
   visible: boolean;
   opacity: number;
+  rotation?: number;
+}
+
+export const BALL_ROTATION_FACTOR = 7.2;
+
+/**
+ * 複数スライド間の累積自転角度を算出
+ */
+export function calculateAccumulatedBallRotation(
+  slides: Array<{ ball?: BallState }>,
+  currentSlideIdx: number,
+): number {
+  let accumulatedRotation = 0;
+  for (let i = 0; i < currentSlideIdx; i++) {
+    const prevA = slides[i]?.ball;
+    const prevB = slides[i + 1]?.ball;
+    if (prevA && prevB) {
+      const pdx = prevB.x - prevA.x;
+      const pdy = prevB.y - prevA.y;
+      if (pdx !== 0 || pdy !== 0) {
+        const pdir = pdx >= 0 ? 1 : -1;
+        const pdist = Math.hypot(pdx, pdy);
+        accumulatedRotation += pdir * (pdist * BALL_ROTATION_FACTOR);
+      }
+    }
+  }
+  return accumulatedRotation;
 }
 
 /**
@@ -16,9 +43,10 @@ export function interpolateBall(
   ballA: BallState | undefined,
   ballB: BallState | undefined,
   ease: number,
+  startRotation = 0,
 ): InterpolatedBallState {
   if (!ballA && !ballB) {
-    return { x: 50, y: 50, visible: true, opacity: 1 };
+    return { x: 50, y: 50, visible: true, opacity: 1, rotation: 0 };
   }
   if (!ballA && ballB) {
     return {
@@ -26,6 +54,7 @@ export function interpolateBall(
       y: ballB.y,
       visible: ballB.visible,
       opacity: ease,
+      rotation: startRotation,
     };
   }
   if (ballA && !ballB) {
@@ -34,10 +63,11 @@ export function interpolateBall(
       y: ballA.y,
       visible: ballA.visible,
       opacity: 1 - ease,
+      rotation: startRotation,
     };
   }
   if (!ballA || !ballB) {
-    return { x: 50, y: 50, visible: true, opacity: 1 };
+    return { x: 50, y: 50, visible: true, opacity: 1, rotation: 0 };
   }
 
   let x: number;
@@ -56,10 +86,20 @@ export function interpolateBall(
     y = lerp(ballA.y, ballB.y, ease);
   }
 
+  const dx = ballB.x - ballA.x;
+  const dy = ballB.y - ballA.y;
+  const isStationary = dx === 0 && dy === 0;
+  const dir = dx >= 0 ? 1 : -1;
+  const distance = Math.hypot(x - ballA.x, y - ballA.y);
+  const rotation = isStationary
+    ? startRotation
+    : startRotation + dir * (distance * BALL_ROTATION_FACTOR);
+
   return {
     x,
     y,
     visible: ballA.visible || ballB.visible,
     opacity: 1,
+    rotation,
   };
 }

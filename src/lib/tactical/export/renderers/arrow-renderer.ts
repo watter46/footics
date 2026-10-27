@@ -107,8 +107,14 @@ export function renderArrows(
       ctx.setLineDash([]);
     }
 
+    const isCurved =
+      (a.curveType === 'curved' ||
+        a.curveType === 'arc' ||
+        a.controlPoint !== undefined) &&
+      a.controlPoint !== undefined;
+
     ctx.beginPath();
-    if (a.curveType === 'curved' && a.controlPoint) {
+    if (isCurved && a.controlPoint) {
       const _ca = projectObjToScreen(a.controlPoint.x, a.controlPoint.y);
       const cx = snap(_ca.x);
       const cy = snap(_ca.y);
@@ -124,7 +130,7 @@ export function renderArrows(
     // Arrowhead
     ctx.setLineDash([]);
     const angle =
-      a.curveType === 'curved' && a.controlPoint
+      isCurved && a.controlPoint
         ? Math.atan2(
             ey - snap(projectObjToScreen(a.controlPoint.x, a.controlPoint.y).y),
             ex - snap(projectObjToScreen(a.controlPoint.x, a.controlPoint.y).x),

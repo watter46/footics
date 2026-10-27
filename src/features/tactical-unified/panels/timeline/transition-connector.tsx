@@ -13,11 +13,13 @@ import { SlideTransitionPopover } from './slide-transition-popover';
 export interface TransitionConnectorProps {
   targetSlide: Slide;
   targetIndex: number;
+  isPlaybackActive?: boolean;
 }
 
 export function TransitionConnector({
   targetSlide,
   targetIndex,
+  isPlaybackActive = false,
 }: TransitionConnectorProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const [buttonRef, setButtonRef] = useState<HTMLButtonElement | null>(null);
@@ -34,15 +36,32 @@ export function TransitionConnector({
           e.stopPropagation();
           setIsOpen((prev) => !prev);
         }}
-        className="group/conn flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-mono text-white/50 hover:text-blue-300 hover:bg-white/5 transition-colors shrink-0 cursor-pointer select-none"
+        className={[
+          'group/conn flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-mono transition-colors shrink-0 cursor-pointer select-none border',
+          isPlaybackActive
+            ? 'border-amber-500 ring-1 ring-amber-500 bg-amber-500/20 text-amber-300 font-bold'
+            : 'border-transparent text-white/50 hover:text-blue-300 hover:bg-white/5',
+        ].join(' ')}
         title={`Scene ${targetIndex + 1} への移動時間: ${durationSec.toFixed(1)}s (クリックで編集)`}
         aria-label={`Scene ${targetIndex + 1} トランジション: ${durationSec.toFixed(1)}s`}
       >
-        <span className="text-white/20 group-hover/conn:text-blue-400/50">
+        <span
+          className={
+            isPlaybackActive
+              ? 'text-amber-400'
+              : 'text-white/20 group-hover/conn:text-blue-400/50'
+          }
+        >
           ──
         </span>
         <span>{durationSec.toFixed(1)}s</span>
-        <span className="text-white/20 group-hover/conn:text-blue-400/50">
+        <span
+          className={
+            isPlaybackActive
+              ? 'text-amber-400'
+              : 'text-white/20 group-hover/conn:text-blue-400/50'
+          }
+        >
           ──▶
         </span>
       </button>

@@ -134,6 +134,9 @@ describe('playback control helpers with GSAP Timeline', () => {
       timelineRef: { current: { pause: mockPause } as any },
       currentPlaybackTimeRef: { current: 500 },
       lastActiveSlideIndexRef: { current: 0 },
+      lastPlaybackIndicesRef: {
+        current: { slideIndex: 0, transitionIndex: null },
+      },
     };
     const setIsPlaying = vi.fn();
 
@@ -149,6 +152,9 @@ describe('playback control helpers with GSAP Timeline', () => {
       timelineRef: { current: { pause: mockPause } as any },
       currentPlaybackTimeRef: { current: 500 },
       lastActiveSlideIndexRef: { current: 1 },
+      lastPlaybackIndicesRef: {
+        current: { slideIndex: 0, transitionIndex: null },
+      },
     };
     const setIsPlaying = vi.fn();
     const setActiveSlide = vi.fn();
@@ -175,6 +181,9 @@ describe('playback control helpers with GSAP Timeline', () => {
       timelineRef: { current: { seek: mockSeek } as any },
       currentPlaybackTimeRef: { current: 0 },
       lastActiveSlideIndexRef: { current: 0 },
+      lastPlaybackIndicesRef: {
+        current: { slideIndex: 0, transitionIndex: null },
+      },
     };
     const applyFrameToCanvas = vi.fn();
 

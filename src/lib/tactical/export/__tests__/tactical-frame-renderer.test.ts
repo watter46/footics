@@ -6,6 +6,7 @@ import {
   type Slide,
   SlideSchema,
 } from '@/lib/types/tactical-unified';
+import { renderBall } from '../renderers/ball-renderer';
 import { renderPitch, renderPitchMarkings } from '../renderers/pitch-renderer';
 import type { FrameRenderContext } from '../renderers/renderer-context';
 import {
@@ -873,6 +874,35 @@ describe('Tactical Frame Renderer', () => {
       expect(ctx.lineTo).toHaveBeenCalled();
       // Central pentagon closing
       expect(ctx.closePath).toHaveBeenCalled();
+    });
+
+    it('rotates canvas context with ctx.rotate when ball.rotation is specified', () => {
+      const ctx = createMockContext();
+      const mockRenderContext: FrameRenderContext = {
+        ctx,
+        w: 1920,
+        h: 1080,
+        m: null,
+        toScreenX: (nx) => (nx / 100) * 1920,
+        toScreenY: (ny) => (ny / 100) * 1080,
+        toScreenSizeX: (nw) => (nw / 100) * 1920,
+        toScreenSizeY: (nh) => (nh / 100) * 1080,
+        projectObjToScreen: (nx, ny) => ({
+          x: (nx / 100) * 1920,
+          y: (ny / 100) * 1080,
+        }),
+        snap: (val) => Math.round(val),
+      };
+
+      renderBall(mockRenderContext, {
+        x: 50,
+        y: 50,
+        visible: true,
+        opacity: 1,
+        rotation: 90,
+      });
+
+      expect(ctx.rotate).toHaveBeenCalledWith((90 * Math.PI) / 180);
     });
   });
 
