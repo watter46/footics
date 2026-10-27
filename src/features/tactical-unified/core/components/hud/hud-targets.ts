@@ -32,7 +32,7 @@ function resolvePlayerTarget(
       const rect = node.getClientRect();
       return {
         x: rect.x + rect.width / 2,
-        y: rect.y,
+        y: rect.y + rect.height / 2,
         height: rect.height || 30,
       };
     } catch {
@@ -55,26 +55,30 @@ function resolveArrowTarget(
       const rect = node.getClientRect();
       return {
         x: rect.x + rect.width / 2,
-        y: rect.y,
-        height: rect.height || 20,
+        y: rect.y + rect.height / 2,
+        height: Math.max(rect.height, 24),
       };
     } catch {
       // fallback
     }
   }
   if (arrow.points && arrow.points.length >= 2) {
+    const allPoints = [...arrow.points];
     if (arrow.controlPoint) {
-      return {
-        x: offset.x + (arrow.controlPoint.x / 100) * offset.width,
-        y: offset.y + (arrow.controlPoint.y / 100) * offset.height,
-        height: 20,
-      };
+      allPoints.push(arrow.controlPoint);
     }
-    const sX = offset.x + (arrow.points[0].x / 100) * offset.width;
-    const sY = offset.y + (arrow.points[0].y / 100) * offset.height;
-    const eX = offset.x + (arrow.points[1].x / 100) * offset.width;
-    const eY = offset.y + (arrow.points[1].y / 100) * offset.height;
-    return { x: (sX + eX) / 2, y: (sY + eY) / 2, height: 20 };
+    const xs = allPoints.map((p) => offset.x + (p.x / 100) * offset.width);
+    const ys = allPoints.map((p) => offset.y + (p.y / 100) * offset.height);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+
+    return {
+      x: (minX + maxX) / 2,
+      y: (minY + maxY) / 2,
+      height: Math.max(maxY - minY, 24),
+    };
   }
   return null;
 }
@@ -90,20 +94,35 @@ function resolveZoneTarget(
       const rect = node.getClientRect();
       return {
         x: rect.x + rect.width / 2,
-        y: rect.y,
-        height: rect.height || 30,
+        y: rect.y + rect.height / 2,
+        height: Math.max(rect.height, 30),
       };
     } catch {
       // fallback
     }
   }
-  const normX = zone.x ?? zone.points?.[0]?.x ?? 20;
-  const normY = zone.y ?? zone.points?.[0]?.y ?? 20;
-  const normH = zone.height ?? 20;
+
+  let normX = zone.x ?? 20;
+  let normY = zone.y ?? 20;
+  let normW = zone.width ?? 30;
+  let normH = zone.height ?? 20;
+
+  if (zone.points && zone.points.length > 0) {
+    const xs = zone.points.map((p) => p.x);
+    const ys = zone.points.map((p) => p.y);
+    normX = Math.min(...xs);
+    normY = Math.min(...ys);
+    normW = Math.max(...xs) - normX;
+    normH = Math.max(...ys) - normY;
+  }
+
+  const pxW = (normW / 100) * offset.width;
+  const pxH = Math.max((normH / 100) * offset.height, 30);
+
   return {
-    x: offset.x + (normX / 100) * offset.width + 30,
-    y: offset.y + (normY / 100) * offset.height,
-    height: (normH / 100) * offset.height,
+    x: offset.x + (normX / 100) * offset.width + pxW / 2,
+    y: offset.y + (normY / 100) * offset.height + pxH / 2,
+    height: pxH,
   };
 }
 
@@ -118,8 +137,8 @@ function resolveTextTarget(
       const rect = node.getClientRect();
       return {
         x: rect.x + rect.width / 2,
-        y: rect.y,
-        height: rect.height || 24,
+        y: rect.y + rect.height / 2,
+        height: Math.max(rect.height, 24),
       };
     } catch {
       // fallback
@@ -187,8 +206,8 @@ export function resolveHudTarget({
         const rect = ballNode.getClientRect();
         return {
           x: rect.x + rect.width / 2,
-          y: rect.y,
-          height: rect.height || 24,
+          y: rect.y + rect.height / 2,
+          height: Math.max(rect.height, 24),
         };
       } catch {
         // fallback

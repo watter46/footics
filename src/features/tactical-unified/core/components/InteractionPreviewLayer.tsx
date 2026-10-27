@@ -186,8 +186,7 @@ export function InteractionPreviewLayer({
                 fill={previewColor}
                 opacity={0.25}
                 stroke={previewColor}
-                strokeWidth={1.5}
-                dash={[4, 4]}
+                strokeWidth={2}
                 perfectDrawEnabled={false}
               />
             )}
@@ -201,8 +200,7 @@ export function InteractionPreviewLayer({
                 fill={previewColor}
                 opacity={0.25}
                 stroke={previewColor}
-                strokeWidth={1.5}
-                dash={[4, 4]}
+                strokeWidth={2}
                 cornerRadius={4}
                 perfectDrawEnabled={false}
               />

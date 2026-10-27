@@ -25,6 +25,10 @@ export interface SlidePlayerCrudSlice {
     playerId: string,
     patch: Partial<Player>,
   ) => void;
+  updatePlayers: (
+    slideId: string,
+    updates: { id: string; patch: Partial<Player> }[],
+  ) => void;
   removePlayer: (slideId: string, playerId: string) => void;
 }
 
@@ -105,6 +109,35 @@ export const createSlidePlayerCrudSlice: StateCreator<
           players: sl.players.map((p) =>
             p.id === playerId ? { ...p, ...patch } : p,
           ),
+        })),
+        isDirty: true,
+      };
+    }),
+
+  updatePlayers: (slideId, updates) =>
+    set((s) => {
+      if (updates.length === 0) return s;
+      const slide = getSlide(s.project, slideId);
+      if (!slide) return s;
+
+      const patchMap = new Map<string, Partial<Player>>();
+      for (const u of updates) {
+        const existingPlayer = slide.players.find((p) => p.id === u.id);
+        if (existingPlayer?.locked && !('locked' in u.patch)) {
+          continue;
+        }
+        patchMap.set(u.id, u.patch);
+      }
+      if (patchMap.size === 0) return s;
+
+      return {
+        ...recordHistory(s),
+        project: updateSlideInProject(s.project, slideId, (sl) => ({
+          ...sl,
+          players: sl.players.map((p) => {
+            const patch = patchMap.get(p.id);
+            return patch ? { ...p, ...patch } : p;
+          }),
         })),
         isDirty: true,
       };

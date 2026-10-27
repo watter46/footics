@@ -35,6 +35,7 @@ export function createAnnotationActions(
   | 'removeText'
   | 'addMarker'
   | 'updateMarker'
+  | 'updateMarkers'
   | 'removeMarker'
   | 'moveMarkerToBench'
   | 'removeSelected'
@@ -138,6 +139,20 @@ export function createAnnotationActions(
         annotations: {
           ...s.annotations,
           markers: updateItem(s.annotations.markers, id, patch),
+        },
+      }));
+    },
+    updateMarkers: (updates) => {
+      if (updates.length === 0) return;
+      pushHistory();
+      const patchMap = new Map(updates.map((u) => [u.id, u.patch]));
+      set((s) => ({
+        annotations: {
+          ...s.annotations,
+          markers: s.annotations.markers.map((m) => {
+            const patch = patchMap.get(m.id);
+            return patch ? { ...m, ...patch } : m;
+          }),
         },
       }));
     },

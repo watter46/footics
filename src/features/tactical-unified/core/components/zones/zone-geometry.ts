@@ -98,8 +98,8 @@ export function getZoneStyle(zone: ZoneAnnotation) {
   const opacity = zone.opacity ?? 0.25;
   return {
     fillRGBA: color,
-    strokeColor: color,
-    strokeWidth: 2,
+    strokeColor: zone.strokeColor || color,
+    strokeWidth: zone.strokeWidth ?? 2,
     opacity,
   };
 }

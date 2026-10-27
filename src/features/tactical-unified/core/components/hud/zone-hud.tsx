@@ -1,6 +1,14 @@
 'use client';
 
-import { Circle, Lock, Square, Trash2, Unlock } from 'lucide-react';
+import {
+  Circle,
+  Lock,
+  Minus,
+  Plus,
+  Square,
+  Trash2,
+  Unlock,
+} from 'lucide-react';
 import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import { MiniColorPicker } from './mini-color-picker';
 
@@ -54,6 +62,54 @@ export function ZoneHud({ zoneId }: ZoneHudProps) {
           updateZone(zone.id, { color });
         }}
         title="ゾーンの色"
+      />
+
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+
+      {/* 枠線の太さ */}
+      <div className="flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={() => {
+            const cur = zone.strokeWidth ?? 2;
+            if (cur > 0) {
+              updateZone(zone.id, { strokeWidth: cur - 1 });
+            }
+          }}
+          disabled={(zone.strokeWidth ?? 2) <= 0}
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-[#333333] disabled:opacity-30 cursor-pointer"
+          title="枠線を細く"
+        >
+          <Minus size={11} />
+        </button>
+        <span className="text-[11px] font-mono text-white/90 min-w-[20px] text-center">
+          {zone.strokeWidth ?? 2}px
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            const cur = zone.strokeWidth ?? 2;
+            if (cur < 8) {
+              updateZone(zone.id, { strokeWidth: cur + 1 });
+            }
+          }}
+          disabled={(zone.strokeWidth ?? 2) >= 8}
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-[#333333] disabled:opacity-30 cursor-pointer"
+          title="枠線を太く"
+        >
+          <Plus size={11} />
+        </button>
+      </div>
+
+      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+
+      {/* 枠線の色 */}
+      <MiniColorPicker
+        value={zone.strokeColor ?? zone.color ?? '#f59e0b'}
+        onChange={(strokeColor) => {
+          updateZone(zone.id, { strokeColor });
+        }}
+        title="枠線の色"
       />
 
       <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />

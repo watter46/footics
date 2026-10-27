@@ -13,16 +13,13 @@ import {
   type CameraState,
   DEFAULT_CAMERA_STATE,
 } from '../utils/matrix-coordinates';
-import { updateAttachedArrowPositions } from './annotations/arrow-drag-updater';
-import { updateTrajectoryArrowPositions } from './annotations/trajectory-arrow-drag-updater';
 import {
   type BillboardItem,
   buildBillboardItems,
   sortBillboardItemsByDepth,
 } from './billboard-depth-sort';
 import { BillboardItemNode } from './billboard-item-node';
-import { updateConnectLinePositions } from './PlayerConnectLines';
-import { resolveBenchDrop } from './player-bench-drop';
+import { useMarkerDragHandlers } from './use-marker-drag-handlers';
 
 export { type BillboardItem, sortBillboardItemsByDepth };
 
@@ -54,6 +51,7 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   const activeTool = useCanvasStore((s) => s.activeTool);
   const selectObject = useCanvasStore((s) => s.selectObject);
   const updateMarker = useCanvasStore((s) => s.updateMarker);
+  const updateMarkers = useCanvasStore((s) => s.updateMarkers);
   const updateText = useCanvasStore((s) => s.updateText);
   const setIsDragging = useCanvasStore((s) => s.setIsDragging);
   const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
@@ -87,51 +85,21 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   const isInteractive = activeTool === 'select';
   const baseDim = Math.min(pitchRect.width, pitchRect.height);
 
-  const handleMarkerDragMove = useCallback(
-    (e: KonvaEventObject<DragEvent>, markerId: string) => {
-      const curX = e.target.x();
-      const curY = e.target.y();
-      const reg = nodesRegistryRef?.current as CanvasNodesRegistry | undefined;
-
-      if (reg?.connectLineNodeMap) {
-        updateConnectLinePositions(
-          reg.connectLineNodeMap,
-          visibleMarkers,
-          markerId,
-          curX,
-          curY,
-          pitchRect.width,
-          pitchRect.height,
-        );
-      }
-      updateAttachedArrowPositions(
-        reg?.arrowNodes,
-        arrows,
-        visibleMarkers,
-        markerId,
-        curX,
-        curY,
-        pitchRect.width,
-        pitchRect.height,
-      );
-      updateTrajectoryArrowPositions(
-        reg?.trajectoryArrowNodes,
-        markerId,
-        curX,
-        curY,
-        pitchRect.width,
-        pitchRect.height,
-      );
-      e.target.getLayer()?.batchDraw();
-    },
-    [
+  const { handleDragStart, handleMarkerDragMove, handleDragEnd } =
+    useMarkerDragHandlers({
+      pitchRect,
       visibleMarkers,
       arrows,
-      pitchRect.width,
-      pitchRect.height,
+      selectedIds,
+      selectObject,
+      updateMarker,
+      updateMarkers,
+      setIsDragging,
+      setIsHudOpen,
+      capabilities,
+      moveMarkerToBench,
       nodesRegistryRef,
-    ],
-  );
+    });
 
   const handleMarkerClick = useCallback(
     (markerId: string, isShift: boolean) => {
@@ -169,53 +137,6 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
       selectObject,
       setIsHudOpen,
     ],
-  );
-
-  const handleDragEnd = useCallback(
-    (e: KonvaEventObject<DragEvent>, marker: Player) => {
-      setIsDragging(false);
-
-      const clientX = (e.evt as MouseEvent | undefined)?.clientX;
-      const clientY = (e.evt as MouseEvent | undefined)?.clientY;
-      const stage = e.target.getStage();
-      const stageRect = stage?.container().getBoundingClientRect();
-
-      const { isOverBench, benchCoord } = resolveBenchDrop(
-        clientX,
-        clientY,
-        stageRect,
-      );
-
-      if (isOverBench && capabilities?.hasBench && moveMarkerToBench) {
-        moveMarkerToBench(marker.id, benchCoord?.x, benchCoord?.y);
-        return;
-      }
-
-      // ピッチ外余白座標も保持（[0, 100] へのクランプは行わない）
-      const nx = (e.target.x() / pitchRect.width) * 100;
-      const ny = (e.target.y() / pitchRect.height) * 100;
-      updateMarker(marker.id, { x: nx, y: ny });
-    },
-    [
-      pitchRect.width,
-      pitchRect.height,
-      updateMarker,
-      setIsDragging,
-      capabilities?.hasBench,
-      moveMarkerToBench,
-    ],
-  );
-
-  const handleDragStart = useCallback(
-    (e: KonvaEventObject<DragEvent>, markerId: string) => {
-      setIsDragging(true);
-      setIsHudOpen(false);
-      if (!selectedIds.includes(markerId)) {
-        const isShift = Boolean((e.evt as MouseEvent)?.shiftKey);
-        selectObject(markerId, isShift);
-      }
-    },
-    [selectedIds, selectObject, setIsDragging, setIsHudOpen],
   );
 
   const handleSelectText = useCallback(

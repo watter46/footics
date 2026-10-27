@@ -28,8 +28,8 @@ describe('ZoneObject components & helpers', () => {
 
   it('getZoneStyle calculates fillRGBA and strokeColor with default strokeWidth and opacity', () => {
     const style = getZoneStyle(sampleZone);
-    expect(style.strokeColor).toBe('#3b82f6');
-    expect(style.strokeWidth).toBe(2);
+    expect(style.strokeColor).toBe('#1d4ed8');
+    expect(style.strokeWidth).toBe(3);
     expect(style.fillRGBA).toBe('#3b82f6');
     expect(style.opacity).toBe(0.5);
   });

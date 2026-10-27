@@ -56,7 +56,7 @@ export function ContextHud({
     placement: position?.isBelow ? 'bottom' : 'top',
     strategy: 'absolute',
     middleware: [
-      offset(12),
+      offset(16),
       flip({ boundary: 'clippingAncestors', padding: 10 }),
       shift({ padding: 10 }),
     ],

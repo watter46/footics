@@ -72,7 +72,7 @@ export function interpolateZone(
       shapeType: startZone.shapeType || 'rect',
       points: startZone.points || [],
       color: startZone.color || '#f59e0b',
-      strokeWidth: startZone.strokeWidth || 0,
+      strokeWidth: startZone.strokeWidth ?? 2,
       opacity: (startZone.opacity ?? 0.25) * Math.max(0, 1 - ease),
       visible: ease < 1,
     };
@@ -83,7 +83,7 @@ export function interpolateZone(
       shapeType: endZone.shapeType || 'rect',
       points: endZone.points || [],
       color: endZone.color || '#f59e0b',
-      strokeWidth: endZone.strokeWidth || 0,
+      strokeWidth: endZone.strokeWidth ?? 2,
       opacity: (endZone.opacity ?? 0.25) * Math.min(1, ease),
       visible: true,
     };
@@ -104,7 +104,7 @@ export function interpolateZone(
     zA.strokeColor && zB.strokeColor
       ? interpolateColor(zA.strokeColor, zB.strokeColor, ease)
       : zB.strokeColor || zA.strokeColor;
-  const strokeWidth = lerp(zA.strokeWidth || 0, zB.strokeWidth || 0, ease);
+  const strokeWidth = lerp(zA.strokeWidth ?? 2, zB.strokeWidth ?? 2, ease);
 
   // 1. Polygon ⇄ Polygon または Polygon ⇄ Rect モーフィング
   if (shapeA === 'polygon' || shapeB === 'polygon') {
