@@ -2,6 +2,7 @@
 
 import { Loader2, Save } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
 
 export interface MatchMemoUnitProps {
   memo: string;
@@ -120,7 +121,7 @@ export function MatchMemoUnit({
         placeholder={
           readOnly ? '試合メモは登録されていません' : '試合全体の総括を記録...'
         }
-        className="w-full h-48 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all resize-none custom-scrollbar"
+        className="w-full h-48 bg-surface-l1 border border-white/[0.08] rounded-lg p-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-accent-orange focus:ring-1 focus:ring-accent-orange/50 transition-all resize-none custom-scrollbar"
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
             e.preventDefault();
@@ -144,25 +145,27 @@ export function MatchMemoUnit({
       />
       {!readOnly && (
         <div className="flex justify-between items-center">
-          <div className="flex gap-3 text-[9px] text-slate-300 uppercase font-black">
+          <div className="flex gap-3 text-[9px] text-white/60 uppercase font-black">
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-slate-800 border border-slate-700 rounded-sm">
+              <kbd className="px-1 py-0.5 bg-surface-l2 border border-white/[0.08] rounded-sm text-white/80">
                 Esc
               </kbd>{' '}
               Close
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-slate-800 border border-slate-700 rounded-sm">
+              <kbd className="px-1 py-0.5 bg-surface-l2 border border-white/[0.08] rounded-sm text-white/80">
                 Ctrl+Ent
               </kbd>{' '}
               Save
             </span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="primary"
+            size="md"
             onClick={onSave}
             disabled={isSaving || !hasMatchId}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-all shadow-lg shadow-blue-900/20"
+            className="flex items-center gap-2 px-6 font-bold"
           >
             {isSaving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -170,7 +173,7 @@ export function MatchMemoUnit({
               <Save className="w-4 h-4" />
             )}
             Save Match Memo
-          </button>
+          </Button>
         </div>
       )}
     </div>

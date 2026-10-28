@@ -13,6 +13,11 @@ import {
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/patterns/empty-state';
+import { ErrorState } from '@/components/ui/patterns/error-state';
+import { PageLoading } from '@/components/ui/patterns/loading-state';
 import type { TacticalExportShareSummary } from '@/lib/tactical/export/share-payload';
 
 function formatCreatedAt(timestamp: number): string {
@@ -77,15 +82,15 @@ export default function ExportListPage(): React.JSX.Element {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col select-none">
+    <div className="min-h-screen bg-surface-l0 text-white flex flex-col select-none">
       {/* Header */}
-      <header className="h-14 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 shrink-0 z-20">
+      <header className="h-14 border-b border-white/[0.08] bg-surface-l1/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 shrink-0 z-20">
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-md">
               <Film className="w-4 h-4 text-white" />
             </div>
-            <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+            <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-white via-white/80 to-white/60 bg-clip-text text-transparent">
               Footics Export Studio
             </span>
           </Link>
@@ -95,90 +100,77 @@ export default function ExportListPage(): React.JSX.Element {
           </span>
         </div>
 
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="icon-sm"
           onClick={fetchItems}
           disabled={isLoading}
           aria-label="Refresh list"
-          className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-colors disabled:opacity-50 cursor-pointer"
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
+          <RefreshCw
+            className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`}
+          />
+        </Button>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 max-w-2xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-100">Shared Exports</h1>
-            <p className="text-xs text-slate-400">
+            <h1 className="text-lg font-bold text-white">Shared Exports</h1>
+            <p className="text-xs text-white/60">
               PCから送信されたアニメーション（保持期間: 24時間）
             </p>
           </div>
-          <span className="text-xs font-mono text-slate-400 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
+          <span className="text-xs font-mono text-white/60 bg-surface-l2 px-2.5 py-1 rounded-lg border border-white/[0.08]">
             {items.length} items
           </span>
         </div>
 
         {/* Loading state */}
         {isLoading && items.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-            <p className="text-xs font-medium">共有データを読み込み中...</p>
-          </div>
+          <PageLoading message="共有データを読み込み中..." />
         )}
 
         {/* Error state */}
         {error && !isLoading && items.length === 0 && (
-          <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-300 text-xs text-center space-y-2">
-            <p>読み込みに失敗しました: {error}</p>
-            <button
-              type="button"
-              onClick={fetchItems}
-              className="px-3 py-1.5 bg-rose-900/60 hover:bg-rose-800 rounded-lg text-xs font-semibold transition-colors"
-            >
-              再試行
-            </button>
-          </div>
+          <ErrorState
+            title="読み込みに失敗しました"
+            message={error}
+            onRetry={fetchItems}
+            retryLabel="再試行"
+          />
         )}
 
         {/* Empty state */}
         {!isLoading && items.length === 0 && !error && (
-          <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-slate-900/40 border border-slate-800/80 rounded-2xl gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-400">
-              <Film className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-200">
-                No Shared Exports
-              </p>
-              <p className="text-xs text-slate-400 mt-1 max-w-xs leading-relaxed">
-                PC版の「iPhoneへ送信」ボタンからプロジェクトを共有すると、ここに自動表示されます。
-              </p>
-            </div>
-          </div>
+          <EmptyState
+            icon={Film}
+            title="No Shared Exports"
+            description="PC版の「iPhoneへ送信」ボタンからプロジェクトを共有すると、ここに自動表示されます。"
+          />
         )}
 
         {/* List */}
         <div className="space-y-3">
           {items.map((item) => (
-            <div
+            <Card
               key={item.shareId}
-              className="bg-slate-900/80 hover:bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 transition-colors shadow-lg"
+              className="bg-surface-l2 border-white/[0.08] p-4 flex flex-col gap-3 shadow-lg hover:border-white/20 transition-colors"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-bold text-sm text-slate-100 truncate">
+                  <h2 className="font-bold text-sm text-white truncate">
                     {item.title || 'Untitled Animation'}
                   </h2>
-                  <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+                  <div className="flex items-center gap-2 mt-1 text-[11px] text-white/60">
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-500" />
+                      <Clock className="w-3 h-3 text-white/40" />
                       {formatCreatedAt(item.createdAt)}
                     </span>
                     <span>•</span>
                     <span className="flex items-center gap-1">
-                      <Layers className="w-3 h-3 text-slate-500" />
+                      <Layers className="w-3 h-3 text-white/40" />
                       {item.sceneCount} scenes
                     </span>
                   </div>
@@ -198,13 +190,14 @@ export default function ExportListPage(): React.JSX.Element {
               </div>
 
               {/* Actions */}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
-                <button
-                  type="button"
+              <div className="flex items-center justify-between pt-2 border-t border-white/[0.08]">
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => handleDelete(item.shareId, item.title)}
                   disabled={deletingId === item.shareId}
                   aria-label="Delete item"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 transition-colors disabled:opacity-50 cursor-pointer"
+                  className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 gap-1.5"
                 >
                   {deletingId === item.shareId ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -212,18 +205,18 @@ export default function ExportListPage(): React.JSX.Element {
                     <Trash2 className="w-3.5 h-3.5" />
                   )}
                   <span>削除</span>
-                </button>
+                </Button>
 
                 <Link
                   href={`/export/share/${item.shareId}`}
                   aria-label="Open preview"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-md"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-accent-orange hover:bg-accent-orange/90 text-white transition-colors shadow-md"
                 >
                   <span>Preview & Export</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </Link>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       </main>

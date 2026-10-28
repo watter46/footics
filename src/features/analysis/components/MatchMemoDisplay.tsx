@@ -1,6 +1,8 @@
 'use client';
 
 import { Edit3, Pencil } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { IconButton } from '@/components/ui/icon-button';
 import { useMatchMemo } from '@/features/match';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +26,7 @@ export function MatchMemoDisplay({
     return (
       <div
         className={cn(
-          'animate-pulse h-20 bg-slate-900/50 rounded-xl border border-slate-800/60 mb-6',
+          'animate-pulse h-20 bg-surface-l1/50 rounded-xl border border-white/[0.08] mb-6',
           className,
         )}
       />
@@ -34,41 +36,44 @@ export function MatchMemoDisplay({
   const hasMemo = memo && memo.trim().length > 0;
 
   return (
-    <div
+    <Card
       className={cn(
         'relative group overflow-hidden transition-all duration-300 mb-4 sm:mb-6',
-        'bg-slate-900/40 hover:bg-slate-900/60 backdrop-blur-md',
-        'border border-slate-800/60 hover:border-blue-500/30 rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-lg',
+        'bg-surface-l1/80 hover:bg-surface-l1 backdrop-blur-md',
+        'border border-white/[0.08] hover:border-accent-orange/30 rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-lg',
         className,
       )}
     >
       {/* Decorative gradient */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-[60px] pointer-events-none" />
+      <div className="absolute top-0 right-0 w-32 h-32 bg-accent-orange/5 blur-[60px] pointer-events-none" />
 
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg flex gap-1 align-middle bg-amber-500/10 border border-amber-500/20">
-              <Edit3 className="w-4 h-4 text-amber-400" />
-              <h3 className="text-xs sm:text-sm font-bold text-amber-400 tracking-wide uppercase">
+            <div className="p-1.5 rounded-lg flex gap-1 align-middle bg-accent-orange/10 border border-accent-orange/20">
+              <Edit3 className="w-4 h-4 text-accent-orange" />
+              <h3 className="text-xs sm:text-sm font-bold text-accent-orange tracking-wide uppercase">
                 Memo
               </h3>
             </div>
           </div>
           {onEdit && (
-            <button
+            <IconButton
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={onEdit}
-              className="p-1.5 rounded-lg hover:bg-amber-500/10 text-slate-400 hover:text-amber-400 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+              className="p-1.5 rounded-lg hover:bg-accent-orange/10 text-white/60 hover:text-accent-orange transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
               title="マッチメモを編集"
+              aria-label="マッチメモを編集"
             >
               <Pencil className="w-3.5 h-3.5" />
-            </button>
+            </IconButton>
           )}
         </div>
 
         {hasMemo ? (
-          <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap pl-1">
+          <p className="text-white/80 text-sm leading-relaxed whitespace-pre-wrap pl-1">
             {memo}
           </p>
         ) : (
@@ -76,8 +81,8 @@ export function MatchMemoDisplay({
             className={cn(
               'text-sm italic pl-1 transition-colors',
               onEdit
-                ? 'text-slate-500 cursor-pointer hover:text-slate-400'
-                : 'text-slate-500',
+                ? 'text-white/40 cursor-pointer hover:text-white/60'
+                : 'text-white/40',
             )}
             onClick={onEdit}
           >
@@ -90,6 +95,6 @@ export function MatchMemoDisplay({
           </p>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

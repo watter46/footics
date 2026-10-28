@@ -1,3 +1,5 @@
+import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/select';
 import type { StandardPosition } from '@/types';
 
 export const POSITIONS: Array<{ value: StandardPosition; label: string }> = [
@@ -35,20 +37,16 @@ export function PlayerBasicFormFields({
     <div className="space-y-4">
       {/* Player Name */}
       <div className="space-y-1.5">
-        <label
-          htmlFor={nameId}
-          className="text-xs font-semibold text-slate-300"
-        >
+        <label htmlFor={nameId} className="text-xs font-semibold text-white/80">
           選手名 <span className="text-red-400">*</span>
         </label>
-        <input
+        <Input
           id={nameId}
           type="text"
           required
           placeholder="例: Cole Palmer"
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
-          className="w-full h-10 bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
         />
       </div>
 
@@ -57,11 +55,11 @@ export function PlayerBasicFormFields({
         <div className="space-y-1.5">
           <label
             htmlFor={shirtNoId}
-            className="text-xs font-semibold text-slate-300"
+            className="text-xs font-semibold text-white/80"
           >
             背番号
           </label>
-          <input
+          <Input
             id={shirtNoId}
             type="number"
             min="1"
@@ -75,35 +73,29 @@ export function PlayerBasicFormFields({
                   : Number.parseInt(e.target.value, 10),
               )
             }
-            className="w-full h-10 bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
           />
         </div>
 
         <div className="space-y-1.5">
           <label
             htmlFor={positionId}
-            className="text-xs font-semibold text-slate-300"
+            className="text-xs font-semibold text-white/80"
           >
             ポジション
           </label>
-          <select
+          <NativeSelect
             id={positionId}
             value={position}
             onChange={(e) =>
               onPositionChange(e.target.value as StandardPosition)
             }
-            className="w-full h-10 bg-slate-950/80 border border-slate-700 rounded-xl px-3 text-xs font-medium text-slate-100 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
           >
             {POSITIONS.map((pos) => (
-              <option
-                key={pos.value}
-                value={pos.value}
-                className="bg-slate-900 text-slate-200"
-              >
+              <option key={pos.value} value={pos.value}>
                 {pos.label}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
       </div>
     </div>

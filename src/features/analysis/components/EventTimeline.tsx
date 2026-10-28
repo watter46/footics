@@ -60,7 +60,7 @@ export function EventTimeline({
 
   return (
     <div className="flex-1 flex flex-col relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-slate-950 to-emerald-900/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-surface-l0 to-emerald-900/10 pointer-events-none" />
 
       {/* Match Memo Display */}
       <MatchMemoDisplay matchId={metadata.id} onEdit={onEditMatchMemo} />
@@ -71,9 +71,11 @@ export function EventTimeline({
           <h2 className="text-2xl sm:text-3xl font-light tracking-tight text-white mb-1">
             Event Timeline
           </h2>
-          <p className="text-slate-400 text-xs sm:text-sm">
+          <p className="text-white/60 text-xs sm:text-sm">
             {isQuerying ? (
-              <span className="text-blue-400 animate-pulse">Querying...</span>
+              <span className="text-accent-orange animate-pulse">
+                Querying...
+              </span>
             ) : (
               `Showing ${events.length} of ${totalCount} events`
             )}
@@ -85,7 +87,7 @@ export function EventTimeline({
           variant="outline"
           size="sm"
           onClick={() => setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-          className="flex items-center gap-1.5 border-slate-700 bg-slate-900/60 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors shrink-0"
+          className="flex items-center gap-1.5 shrink-0"
           title={sortOrder === 'asc' ? '昇順（古い順）' : '降順（新しい順）'}
         >
           <ArrowDownUp className="w-3.5 h-3.5" />
@@ -96,13 +98,13 @@ export function EventTimeline({
       </header>
 
       {/* Table Container */}
-      <Card className="flex-1 flex flex-col bg-slate-900/80 border-slate-800 backdrop-blur-xl relative z-10 shadow-2xl overflow-hidden">
+      <Card className="flex-1 flex flex-col bg-surface-l1/80 border-white/[0.08] backdrop-blur-xl relative z-10 shadow-2xl overflow-hidden">
         <CardContent className="p-0 flex-1 flex flex-col min-h-0 overflow-x-auto">
           <div className="min-w-[640px] flex-1 flex flex-col min-h-0">
             <TimelineHeader />
 
             {sortedEvents.length === 0 ? (
-              <div className="flex items-center justify-center h-64 text-slate-500 text-sm">
+              <div className="flex items-center justify-center h-64 text-white/40 text-sm">
                 No events found for given filters.
               </div>
             ) : (

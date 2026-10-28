@@ -20,31 +20,31 @@ export interface PhaseTimeInputProps {
 const PERIOD_COLORS = {
   1: {
     active: 'text-indigo-400',
-    inactive: 'text-slate-500 hover:text-indigo-300',
+    inactive: 'text-white/40 hover:text-indigo-300',
     indicator: 'bg-indigo-500/20 border-indigo-500/30 shadow-indigo-500/10',
     glow: 'from-indigo-500/20 to-transparent',
   },
   2: {
     active: 'text-emerald-400',
-    inactive: 'text-slate-500 hover:text-emerald-300',
+    inactive: 'text-white/40 hover:text-emerald-300',
     indicator: 'bg-emerald-500/20 border-emerald-500/30 shadow-emerald-500/10',
     glow: 'from-emerald-500/20 to-transparent',
   },
   3: {
     active: 'text-rose-400',
-    inactive: 'text-slate-500 hover:text-rose-300',
+    inactive: 'text-white/40 hover:text-rose-300',
     indicator: 'bg-rose-500/20 border-rose-500/30 shadow-rose-500/10',
     glow: 'from-rose-500/20 to-transparent',
   },
   4: {
     active: 'text-violet-400',
-    inactive: 'text-slate-500 hover:text-violet-300',
+    inactive: 'text-white/40 hover:text-violet-300',
     indicator: 'bg-violet-500/20 border-violet-500/30 shadow-violet-500/10',
     glow: 'from-violet-500/20 to-transparent',
   },
   5: {
     active: 'text-fuchsia-400',
-    inactive: 'text-slate-500 hover:text-fuchsia-300',
+    inactive: 'text-white/40 hover:text-fuchsia-300',
     indicator: 'bg-fuchsia-500/20 border-fuchsia-500/30 shadow-fuchsia-500/10',
     glow: 'from-fuchsia-500/20 to-transparent',
   },
@@ -145,7 +145,7 @@ export function PhaseTimeInput({
   return (
     <div className="p-6 flex flex-col items-center gap-8">
       {/* Period Selector */}
-      <div className="w-full flex p-1 bg-slate-950/40 backdrop-blur-md border border-slate-800/30 rounded-xl relative overflow-hidden group">
+      <div className="w-full flex p-1 bg-surface-l0/40 backdrop-blur-md border border-white/[0.08] rounded-xl relative overflow-hidden group">
         <div
           className={`absolute inset-0 bg-gradient-to-r ${activePeriodConfig.glow} opacity-20 transition-all duration-500`}
         />
@@ -174,7 +174,7 @@ export function PhaseTimeInput({
 
       {/* Input & Display */}
       <div className="flex flex-col items-center gap-2">
-        <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+        <div className="flex items-center gap-2 text-white/40 text-[10px] font-bold uppercase tracking-widest">
           <Clock className="w-3 h-3" /> Step 1: Timestamp
         </div>
         <input
@@ -195,7 +195,7 @@ export function PhaseTimeInput({
             onTimeChange(isComposing.current ? val : normalize(val));
           }}
           placeholder="MMSS"
-          className="w-full text-center text-6xl font-mono bg-transparent outline-none text-slate-200 placeholder:text-slate-800 tracking-widest"
+          className="w-full text-center text-6xl font-mono bg-transparent outline-none text-white placeholder:text-white/20 tracking-widest"
           onKeyDown={(e) => {
             if (!e.altKey && !e.ctrlKey && !e.metaKey) {
               e.stopPropagation();
@@ -217,7 +217,7 @@ export function PhaseTimeInput({
         />
         <div
           className={`text-sm font-mono h-6 transition-colors ${
-            error ? 'text-red-500 font-bold animate-pulse' : 'text-slate-300'
+            error ? 'text-red-500 font-bold animate-pulse' : 'text-white/70'
           }`}
         >
           {error ? (

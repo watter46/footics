@@ -81,8 +81,8 @@ export function PhaseLabelSelection({
         <Search
           className={`absolute left-0 top-2 w-5 h-5 transition-all duration-300 ${
             labelInput
-              ? 'text-blue-400'
-              : 'text-slate-500 group-focus-within:text-blue-500'
+              ? 'text-accent-orange'
+              : 'text-white/40 group-focus-within:text-accent-orange'
           }`}
         />
         <input
@@ -91,10 +91,10 @@ export function PhaseLabelSelection({
           value={labelInput}
           onChange={(e) => onLabelInputChange(e.target.value)}
           placeholder="Search match events..."
-          className={`w-full bg-transparent border-b pl-8 pb-2 outline-none text-slate-100 placeholder:text-slate-600 text-xl font-bold transition-all duration-300 ${
+          className={`w-full bg-transparent border-b pl-8 pb-2 outline-none text-white placeholder:text-white/30 text-xl font-bold transition-all duration-300 ${
             isInvalidLabel
               ? 'border-red-500/50'
-              : 'border-slate-700 focus:border-blue-500 focus:ring-0'
+              : 'border-white/[0.12] focus:border-accent-orange focus:ring-0'
           }`}
           onKeyDown={(e) => {
             // 修飾キーを伴わない操作（矢印キーでの選択など）のみ伝播を止める。
@@ -125,7 +125,7 @@ export function PhaseLabelSelection({
         />
         {/* インジケーターバー */}
         <div
-          className={`absolute bottom-0 left-0 h-0.5 bg-blue-500 transition-all duration-500 ease-out ${
+          className={`absolute bottom-0 left-0 h-0.5 bg-accent-orange transition-all duration-500 ease-out ${
             labelInput ? 'w-full' : 'w-0'
           }`}
         />
@@ -148,8 +148,8 @@ export function PhaseLabelSelection({
             key={i}
             className={`px-3 py-1.5 rounded text-xs flex justify-between items-center cursor-pointer transition-all ${
               isListMode && i === suggestionIndex
-                ? 'bg-slate-800 text-white font-bold ring-1 ring-slate-600'
-                : 'text-slate-400 hover:bg-slate-800/30'
+                ? 'bg-surface-l2 text-white font-bold ring-1 ring-white/20'
+                : 'text-white/60 hover:bg-white/[0.04]'
             }`}
             onClick={() => {
               onAddLabel(s.label);
@@ -158,7 +158,7 @@ export function PhaseLabelSelection({
           >
             <span>{s.label}</span>
             <span
-              className="text-[10px] h-4 px-2 flex items-center justify-center rounded-sm bg-slate-950 font-black shadow-inner"
+              className="text-[10px] h-4 px-2 flex items-center justify-center rounded-sm bg-surface-l0 font-black shadow-inner"
               style={{
                 color: s.groupColor,
                 border: `1px solid ${s.groupColor}60`,

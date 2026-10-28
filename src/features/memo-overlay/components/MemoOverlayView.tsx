@@ -95,7 +95,7 @@ export function MemoOverlayView({
       role="dialog"
       aria-label="Memo Overlay"
       className={cn(
-        'fixed top-6 right-6 w-[22vw] min-w-[380px] aspect-[1/1.3] bg-slate-900 border border-slate-700/60 rounded-xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden font-sans flex flex-col outline-none',
+        'fixed top-6 right-6 w-[22vw] min-w-[380px] aspect-[1/1.3] bg-surface-l3 border border-white/[0.08] rounded-xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden font-sans flex flex-col outline-none',
         className,
       )}
       onKeyDown={(e) => {

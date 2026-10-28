@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
+import { PageLoading } from '@/components/ui/patterns/loading-state';
 import { useTeamSquadClient } from '../hooks/use-team-squad-client';
 import { POSITION_CATEGORIES } from '../utils/squad-aggregation';
 import { SquadCategoryList } from './squad-category-list';
@@ -55,12 +55,10 @@ export function TeamSquadClient({
 
       {/* Players Categories & Cards Grid */}
       {squad.isLoading ? (
-        <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-          <span className="text-sm font-medium">
-            Loading {squad.teamConfig.shortName} squad...
-          </span>
-        </div>
+        <PageLoading
+          message={`Loading ${squad.teamConfig.shortName} squad...`}
+          className="py-20 min-h-[200px]"
+        />
       ) : squad.filteredPlayers.length === 0 ? (
         <SquadEmptyState
           idFilter={squad.idFilter}

@@ -4,6 +4,9 @@ import { Download, Film, Loader2, Share2, Smartphone } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { PageLoading } from '@/components/ui/patterns/loading-state';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { ExportPreviewPlayer } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
@@ -15,11 +18,7 @@ import { exportMultiSlideMp4Video } from '@/lib/tactical/export/tactical-video-e
 import { PITCH_BOUNDARY_CONFIGS } from '@/lib/tactical/pitch-geometry';
 import type { AspectRatio, Slide } from '@/lib/types/tactical-unified';
 
-export function SharedExportView({
-  shareId,
-}: {
-  shareId: string;
-}): React.JSX.Element {
+export function SharedExportView({ shareId }: { shareId: string }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [data, setData] = useState<TacticalExportSharePayload | null>(null);
@@ -126,18 +125,18 @@ export function SharedExportView({
 
   if (loading || loadError || !data) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center gap-3 text-white">
+      <div className="min-h-screen bg-surface-l0 flex flex-col items-center justify-center p-4 text-center gap-3 text-white">
         {loading ? (
-          <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+          <PageLoading message="Loading export data..." />
         ) : (
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-white/60">
             {loadError || 'Export URL is invalid or expired.'}
           </p>
         )}
         {!loading && (
           <Link
             href="/export"
-            className="px-4 py-2 bg-slate-800 text-slate-200 rounded-lg text-xs font-semibold"
+            className="px-4 py-2 bg-surface-l3 hover:bg-white/10 text-white rounded-lg text-xs font-semibold transition-colors border border-white/[0.08]"
           >
             Back to List
           </Link>
@@ -147,13 +146,13 @@ export function SharedExportView({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col select-none">
-      <header className="h-14 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between px-4 sm:px-6">
+    <div className="min-h-screen bg-surface-l0 text-white flex flex-col select-none">
+      <header className="h-14 border-b border-white/[0.08] bg-surface-l1/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6">
         <Link
           href="/export"
-          className="flex items-center gap-2 font-bold text-sm"
+          className="flex items-center gap-2 font-bold text-sm text-white"
         >
-          <Film className="w-4 h-4 text-blue-400" />
+          <Film className="w-4 h-4 text-accent-orange" />
           Footics Export Studio
           {ios.isIOS && (
             <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
@@ -161,13 +160,13 @@ export function SharedExportView({
             </span>
           )}
         </Link>
-        <span className="text-xs text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+        <span className="text-xs text-white/60 bg-surface-l0 px-2 py-0.5 rounded border border-white/[0.08]">
           24h
         </span>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 max-w-xl mx-auto w-full">
-        <div className="w-full bg-slate-900/90 border border-slate-800 p-5 rounded-2xl flex flex-col gap-4 shadow-2xl">
+        <Card className="w-full bg-surface-l2 border-white/[0.08] p-5 rounded-2xl flex flex-col gap-4 shadow-2xl">
           <ExportPreviewPlayer
             slides={slides}
             aspectRatio={aspect}
@@ -184,10 +183,10 @@ export function SharedExportView({
                   type="button"
                   onClick={() => setKey(k)}
                   disabled={isExporting}
-                  className={`flex-1 p-2 rounded-xl border text-xs cursor-pointer ${
+                  className={`flex-1 p-2 rounded-xl border text-xs cursor-pointer transition-colors ${
                     key === k
                       ? 'border-emerald-500 bg-emerald-600/15 text-white'
-                      : 'border-white/10 text-white/60'
+                      : 'border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.05]'
                   }`}
                 >
                   {IOS_ENCODER_PRESETS[k].label} ({IOS_ENCODER_PRESETS[k].fps}
@@ -197,22 +196,22 @@ export function SharedExportView({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400">
+          <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-surface-l0 border border-white/[0.08] text-xs text-white/60">
             <div>
               Title:{' '}
-              <span className="text-slate-200 truncate">
+              <span className="text-white truncate">
                 {data.title || 'Untitled'}
               </span>
             </div>
             <div>
               Scenes:{' '}
-              <span className="text-blue-400 font-mono">
+              <span className="text-accent-orange font-mono">
                 {data.scenes.length}
               </span>
             </div>
             <div>
               Res:{' '}
-              <span className="font-mono text-slate-200">
+              <span className="font-mono text-white">
                 {stageWidth}×{stageHeight}
               </span>
             </div>
@@ -225,14 +224,14 @@ export function SharedExportView({
           </div>
 
           {isExporting && (
-            <div className="p-3 rounded-xl bg-blue-950/40 border border-blue-500/40 space-y-1.5 text-xs">
-              <div className="flex justify-between text-blue-300 font-bold">
+            <div className="p-3 rounded-xl bg-accent-orange/10 border border-accent-orange/30 space-y-1.5 text-xs">
+              <div className="flex justify-between text-accent-orange font-bold">
                 <span>Rendering...</span>
                 <span>{progress}%</span>
               </div>
-              <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-700">
+              <div className="w-full bg-surface-l0 rounded-full h-2 overflow-hidden border border-white/[0.08]">
                 <div
-                  className="bg-blue-500 h-full transition-all"
+                  className="bg-accent-orange h-full transition-all"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -243,37 +242,40 @@ export function SharedExportView({
             <div className="space-y-2">
               <div className="flex justify-between text-xs text-emerald-300 font-bold px-1">
                 <span>Completed</span>
-                <span className="font-mono text-slate-400">
+                <span className="font-mono text-white/60">
                   {(blob.size / 1e6).toFixed(1)} MB
                 </span>
               </div>
               <div className="flex gap-2">
                 {typeof navigator !== 'undefined' && 'share' in navigator && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="primary"
+                    size="lg"
                     onClick={() => handleSave(true)}
-                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="flex-1 font-bold text-xs gap-1.5"
                   >
                     <Share2 className="w-3.5 h-3.5" />
                     Share
-                  </button>
+                  </Button>
                 )}
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="lg"
                   onClick={() => handleSave(false)}
-                  className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="flex-1 font-bold text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Save MP4
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="lg"
               onClick={handleExportClick}
               disabled={isExporting}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="w-full py-3 h-auto font-bold text-sm gap-2"
             >
               {isExporting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -285,9 +287,9 @@ export function SharedExportView({
                   ? `Encoding... (${progress}%)`
                   : `Export (${preset.bitrateMbps}Mbps)`}
               </span>
-            </button>
+            </Button>
           )}
-        </div>
+        </Card>
       </main>
     </div>
   );

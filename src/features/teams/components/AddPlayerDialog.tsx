@@ -1,10 +1,17 @@
 'use client';
 
-import { Image as ImageIcon, Plus, Upload, UserPlus, X } from 'lucide-react';
+import { Image as ImageIcon, Plus, Upload, X } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+} from '@/components/ui/dialog';
+import { NativeSelect } from '@/components/ui/select';
 import { usePlayerMasterMutations } from '@/features/teams/hooks/use-player-master';
 import { AVAILABLE_SEASONS } from '@/lib/tactical/chelsea-preset';
 import type { Player, StandardPosition } from '@/types';
@@ -19,31 +26,6 @@ export interface AddPlayerDialogProps {
   availableSeasons?: readonly string[];
   onPlayerAdded?: (player: Player, team: 'home' | 'away') => void;
 }
-
-const cClose =
-  'text-slate-400 hover:text-slate-200 hover:bg-slate-800 p-1.5 rounded-lg transition-colors';
-const cSelect =
-  'w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors';
-const cCancel =
-  'px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors';
-const cSubmit =
-  'flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg transition-colors shadow-lg shadow-blue-600/20';
-const cUpload =
-  'flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-200';
-const cClear =
-  'absolute inset-0 bg-black/60 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity';
-const cImgWrap =
-  'relative w-12 h-12 rounded-full overflow-hidden border-2 border-blue-500 shrink-0';
-const cImgEmpty =
-  'w-12 h-12 rounded-full bg-slate-800 border border-dashed border-slate-600 flex items-center justify-center text-slate-500 shrink-0';
-const cBtn = (a: boolean, col: 'blue' | 'red') =>
-  `py-2 px-3 rounded-lg text-xs font-bold border transition-all ${
-    a
-      ? col === 'blue'
-        ? 'bg-blue-600/20 border-blue-500 text-blue-400'
-        : 'bg-red-600/20 border-red-500 text-red-400'
-      : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-800'
-  }`;
 
 const toPlayer = (
   id: number,
@@ -82,25 +64,29 @@ function PhotoUpload({
 }: PhotoUploadProps) {
   return (
     <div className="space-y-1.5">
-      <span className="block text-xs font-semibold text-slate-300">
+      <span className="block text-xs font-semibold text-white/80">
         顔写真画像 (任意)
       </span>
       <div className="flex items-center gap-3">
         {preview ? (
-          <div className={cImgWrap}>
+          <div className="relative size-12 rounded-full overflow-hidden border-2 border-accent-orange shrink-0">
             {/* biome-ignore lint/performance/noImgElement: preview */}
             <img
               src={preview}
               alt="Preview"
               className="w-full h-full object-cover"
             />
-            <button type="button" onClick={onClear} className={cClear}>
-              <X className="w-4 h-4" />
+            <button
+              type="button"
+              onClick={onClear}
+              className="absolute inset-0 bg-black/60 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity"
+            >
+              <X className="size-4" />
             </button>
           </div>
         ) : (
-          <div className={cImgEmpty}>
-            <ImageIcon className="w-5 h-5" />
+          <div className="size-12 rounded-full bg-surface-l1 border border-dashed border-white/[0.08] flex items-center justify-center text-white/40 shrink-0">
+            <ImageIcon className="size-5" />
           </div>
         )}
         <input
@@ -110,10 +96,16 @@ function PhotoUpload({
           onChange={onPhoto}
           className="hidden"
         />
-        <button type="button" onClick={onPick} className={cUpload}>
-          <Upload className="w-3.5 h-3.5" />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onPick}
+          className="gap-2"
+        >
+          <Upload className="size-3.5" />
           <span>画像を選択</span>
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -189,100 +181,90 @@ function AddPlayerForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-4">
-      <div className="space-y-1.5">
-        <span className="block text-xs font-semibold text-slate-300">
-          所属チーム
-        </span>
-        <div className="grid grid-cols-2 gap-2">
-          {(['home', 'away'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTeam(t)}
-              className={cBtn(team === t, t === 'home' ? 'blue' : 'red')}
-            >
-              {t === 'home' ? 'Chelsea (Home)' : 'Opponent (Away)'}
-            </button>
-          ))}
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <DialogContent className="space-y-4 p-0">
+        <div className="space-y-1.5">
+          <span className="block text-xs font-semibold text-white/80">
+            所属チーム
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            {(['home', 'away'] as const).map((t) => (
+              <Button
+                key={t}
+                type="button"
+                variant={team === t ? 'primary' : 'outline'}
+                onClick={() => setTeam(t)}
+                size="sm"
+              >
+                {t === 'home' ? 'Chelsea (Home)' : 'Opponent (Away)'}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <PlayerBasicFormFields
-        name={name}
-        shirtNo={shirtNo}
-        position={pos}
-        onNameChange={setName}
-        onShirtNoChange={setShirtNo}
-        onPositionChange={setPos}
-      />
+        <PlayerBasicFormFields
+          name={name}
+          shirtNo={shirtNo}
+          position={pos}
+          onNameChange={setName}
+          onShirtNoChange={setShirtNo}
+          onPositionChange={setPos}
+        />
 
-      <div className="space-y-1.5">
-        <label
-          htmlFor="new-player-season"
-          className="text-xs font-semibold text-slate-300"
-        >
-          シーズン
-        </label>
-        <select
-          id="new-player-season"
-          value={season}
-          onChange={(e) => setSeason(e.target.value)}
-          className={cSelect}
-        >
-          {availableSeasons.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </div>
+        <div className="space-y-1.5">
+          <label
+            htmlFor="new-player-season"
+            className="text-xs font-semibold text-white/80"
+          >
+            シーズン
+          </label>
+          <NativeSelect
+            id="new-player-season"
+            value={season}
+            onChange={(e) => setSeason(e.target.value)}
+          >
+            {availableSeasons.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
 
-      <PhotoUpload
-        preview={preview}
-        fileRef={fileRef}
-        onPick={() => fileRef.current?.click()}
-        onPhoto={handlePhoto}
-        onClear={clearPhoto}
-      />
+        <PhotoUpload
+          preview={preview}
+          fileRef={fileRef}
+          onPick={() => fileRef.current?.click()}
+          onPhoto={handlePhoto}
+          onClear={clearPhoto}
+        />
+      </DialogContent>
 
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-        <button type="button" onClick={onClose} className={cCancel}>
+      <DialogFooter>
+        <Button type="button" variant="ghost" onClick={onClose}>
           キャンセル
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
+          variant="primary"
           disabled={loading || !name.trim()}
-          className={cSubmit}
+          className="gap-1.5"
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Plus className="size-3.5" />
           <span>{loading ? '保存中...' : '選手を追加'}</span>
-        </button>
-      </div>
+        </Button>
+      </DialogFooter>
     </form>
   );
 }
 
 export function AddPlayerDialog(props: AddPlayerDialogProps) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!props.isOpen || !mounted) return null;
+  if (!props.isOpen) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/50">
-          <div className="flex items-center gap-2 text-slate-100 font-bold text-base">
-            <UserPlus className="w-5 h-5 text-blue-400" />
-            <span>新規選手を追加</span>
-          </div>
-          <button type="button" onClick={props.onClose} className={cClose}>
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <AddPlayerForm {...props} />
-      </div>
-    </div>,
-    document.body,
+  return (
+    <Dialog open={props.isOpen} onClose={props.onClose} size="md">
+      <DialogHeader title="新規選手を追加" onClose={props.onClose} />
+      <AddPlayerForm {...props} />
+    </Dialog>
   );
 }

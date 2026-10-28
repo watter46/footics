@@ -49,7 +49,7 @@ export function PhaseMemoInput({
 
   return (
     <div className="p-4 flex flex-col gap-4">
-      <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+      <div className="flex items-center gap-2 text-white/40 text-[10px] font-bold uppercase tracking-widest">
         <MessageSquare className="w-3 h-3" /> Step 3: Memo (Optional)
       </div>
       <textarea
@@ -57,7 +57,7 @@ export function PhaseMemoInput({
         value={memo}
         onChange={(e) => onMemoChange(e.target.value)}
         placeholder="補足メモを入力..."
-        className="w-full h-32 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 outline-none focus:border-blue-500 transition-all resize-none"
+        className="w-full h-32 bg-surface-l1 border border-white/[0.08] rounded-lg p-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-accent-orange focus:ring-1 focus:ring-accent-orange/30 transition-all resize-none"
         onKeyDown={(e) => {
           // Escape: オーバーレイを閉じる
           if (e.key === 'Escape') {

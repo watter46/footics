@@ -88,7 +88,7 @@ export function PlayerPhoto({
 
   return (
     <div
-      className={`relative ${sizeClasses} rounded-2xl bg-slate-800/90 border border-slate-700/80 shadow-md flex items-center justify-center overflow-hidden shrink-0 group select-none`}
+      className={`relative ${sizeClasses} rounded-2xl bg-[#18181B] border border-white/[0.08] shadow-md flex items-center justify-center overflow-hidden shrink-0 group select-none`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -99,10 +99,10 @@ export function PlayerPhoto({
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
       ) : (
-        <div className="flex flex-col items-center justify-center text-slate-500">
+        <div className="flex flex-col items-center justify-center text-white/40">
           <User className="w-6 h-6 opacity-60" />
           {shirtNo && (
-            <span className="text-[10px] font-mono font-bold text-slate-400 -mt-0.5">
+            <span className="text-[10px] font-mono font-bold text-white/60 -mt-0.5">
               #{shirtNo}
             </span>
           )}
@@ -123,7 +123,7 @@ export function PlayerPhoto({
             disabled={isUpdating}
             onClick={() => fileInputRef.current?.click()}
             title="写真を変更"
-            className="p-1.5 rounded-lg bg-blue-600/80 hover:bg-blue-500 text-white transition-transform hover:scale-110 shadow-sm"
+            className="p-1.5 rounded-lg bg-[#FF8100]/80 hover:bg-[#FF8100] text-white transition-transform hover:scale-110 shadow-sm"
           >
             <Camera className="w-3.5 h-3.5" />
           </button>
@@ -134,7 +134,7 @@ export function PlayerPhoto({
               disabled={isUpdating}
               onClick={handleDelete}
               title="写真を削除"
-              className="p-1.5 rounded-lg bg-red-600/80 hover:bg-red-500 text-white transition-transform hover:scale-110 shadow-sm"
+              className="p-1.5 rounded-lg bg-red-500/80 hover:bg-red-500 text-white transition-transform hover:scale-110 shadow-sm"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>

@@ -20,7 +20,12 @@ import {
   Monitor,
 } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/menu';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   ASPECT_RATIOS,
@@ -94,7 +99,6 @@ function detectActivePreset(
 
 export function XMediaPresetMenu() {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const applyXMediaPreset = useTacticalUnifiedStore((s) => s.applyXMediaPreset);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
@@ -114,141 +118,129 @@ export function XMediaPresetMenu() {
     [applyXMediaPreset],
   );
 
-  // Close when clicking outside or pressing Escape
   useEffect(() => {
     if (!isOpen) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsOpen(false);
       }
     };
-
-    window.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
   return (
-    <div ref={containerRef} className="relative flex items-center">
-      {/* Trigger Button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        title="Xメディア最適化比率 (4:5 / 9:16 / 16:9)"
-        aria-label="Xメディア最適化比率メニュー"
-        aria-haspopup="dialog"
-        aria-expanded={isOpen}
-        className={[
-          'p-2 rounded-lg transition-all cursor-pointer flex items-center gap-1',
-          isOpen
-            ? 'bg-sky-600 text-white shadow-md shadow-sky-500/30 ring-1 ring-sky-400'
-            : 'text-white/60 hover:text-white hover:bg-white/10',
-        ].join(' ')}
-      >
-        <Crop size={15} />
-      </button>
-
-      {/* Popover Menu */}
-      {isOpen && (
-        <div
-          role="dialog"
-          aria-label="Xメディア最適化比率メニュー"
-          tabIndex={-1}
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          className="absolute bottom-full right-0 mb-2.5 w-76 p-2 rounded-xl bg-neutral-900/95 backdrop-blur-md border border-white/20 shadow-2xl z-50 flex flex-col gap-1 text-white select-none animate-in fade-in zoom-in-95 duration-100"
-        >
-          {/* Menu Header */}
-          <div className="px-2 py-1.5 border-b border-white/10 flex items-center justify-between">
-            <span className="font-semibold text-xs tracking-wide text-white/90">
-              X メディア最適化比率
-            </span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-medium">
-              チートシート準拠
-            </span>
-          </div>
-
-          {/* Preset Options */}
-          <div className="flex flex-col gap-0.5 mt-0.5">
-            {PRESET_ITEMS.map(
-              ({ id, name, badge, desc, icon: Icon, iconColor }) => {
-                const isActive = activePresetKey === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => handleSelectPreset(id)}
-                    className={[
-                      'w-full flex items-start gap-2.5 px-2 py-1.5 rounded-lg text-left transition-colors cursor-pointer',
-                      isActive
-                        ? 'bg-white/15 text-white'
-                        : 'text-white/80 hover:bg-white/10 hover:text-white',
-                    ].join(' ')}
-                  >
-                    <div className="mt-0.5 shrink-0">
-                      <Icon size={16} className={iconColor} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-white truncate">
-                          {name}
-                        </span>
-                        <span className="text-[10px] text-white/50 font-mono">
-                          {badge}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-white/50 truncate leading-tight mt-0.5">
-                        {desc}
-                      </p>
-                    </div>
-                    {isActive && (
-                      <Check size={14} className="text-sky-400 shrink-0 mt-1" />
-                    )}
-                  </button>
-                );
-              },
-            )}
-
-            {/* Divider */}
-            <div className="border-t border-white/10 my-1" />
-
-            {/* Pitch White Line Fit */}
+    <div className="relative flex items-center">
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenuTrigger
+          render={
             <button
               type="button"
-              onClick={() => handleSelectPreset('pitch_fit')}
-              className="w-full flex items-start gap-2.5 px-2 py-1.5 rounded-lg text-left text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+              title="Xメディア最適化比率 (4:5 / 9:16 / 16:9)"
+              aria-label="Xメディア最適化比率メニュー"
+              className={[
+                'p-2 rounded-lg transition-all cursor-pointer flex items-center gap-1',
+                isOpen
+                  ? 'bg-sky-600 text-white shadow-md shadow-sky-500/30 ring-1 ring-sky-400'
+                  : 'text-white/60 hover:text-white hover:bg-white/10',
+              ].join(' ')}
             >
-              <div className="mt-0.5 shrink-0">
-                <Maximize2 size={16} className="text-blue-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-white truncate">
-                    ピッチ白線フィット
-                  </span>
-                  <span className="text-[10px] text-white/50">リセット</span>
-                </div>
-                <p className="text-[11px] text-white/50 truncate leading-tight mt-0.5">
-                  白線境界・ピッチ全体にリセット
-                </p>
-              </div>
+              <Crop size={15} />
             </button>
-          </div>
-        </div>
-      )}
+          }
+        />
+
+        {isOpen && (
+          <DropdownMenuContent
+            side="top"
+            align="end"
+            sideOffset={10}
+            role="dialog"
+            aria-label="Xメディア最適化比率メニュー"
+            className="w-76 p-2 rounded-xl bg-surface-l3 backdrop-blur-md border border-white/[0.08] shadow-2xl z-50 flex flex-col gap-1 text-white select-none"
+          >
+            {/* Menu Header */}
+            <div className="px-2 py-1.5 border-b border-white/[0.08] flex items-center justify-between">
+              <span className="font-semibold text-xs tracking-wide text-white/90">
+                X メディア最適化比率
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-medium">
+                チートシート準拠
+              </span>
+            </div>
+
+            {/* Preset Options */}
+            <div className="flex flex-col gap-0.5 mt-0.5">
+              {PRESET_ITEMS.map(
+                ({ id, name, badge, desc, icon: Icon, iconColor }) => {
+                  const isActive = activePresetKey === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => handleSelectPreset(id)}
+                      className={[
+                        'w-full flex items-start gap-2.5 px-2 py-1.5 rounded-lg text-left transition-colors cursor-pointer',
+                        isActive
+                          ? 'bg-white/15 text-white'
+                          : 'text-white/80 hover:bg-white/10 hover:text-white',
+                      ].join(' ')}
+                    >
+                      <div className="mt-0.5 shrink-0">
+                        <Icon size={16} className={iconColor} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-white truncate">
+                            {name}
+                          </span>
+                          <span className="text-[10px] text-white/50 font-mono">
+                            {badge}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-white/50 truncate leading-tight mt-0.5">
+                          {desc}
+                        </p>
+                      </div>
+                      {isActive && (
+                        <Check
+                          size={14}
+                          className="text-sky-400 shrink-0 mt-1"
+                        />
+                      )}
+                    </button>
+                  );
+                },
+              )}
+
+              {/* Divider */}
+              <div className="border-t border-white/[0.08] my-1" />
+
+              {/* Pitch White Line Fit */}
+              <button
+                type="button"
+                onClick={() => handleSelectPreset('pitch_fit')}
+                className="w-full flex items-start gap-2.5 px-2 py-1.5 rounded-lg text-left text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+              >
+                <div className="mt-0.5 shrink-0">
+                  <Maximize2 size={16} className="text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium text-white truncate">
+                      ピッチ白線フィット
+                    </span>
+                    <span className="text-[10px] text-white/50">リセット</span>
+                  </div>
+                  <p className="text-[11px] text-white/50 truncate leading-tight mt-0.5">
+                    白線境界・ピッチ全体にリセット
+                  </p>
+                </div>
+              </button>
+            </div>
+          </DropdownMenuContent>
+        )}
+      </DropdownMenu>
     </div>
   );
 }

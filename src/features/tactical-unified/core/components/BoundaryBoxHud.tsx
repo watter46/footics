@@ -1,7 +1,12 @@
 'use client';
 
 import { ChevronDown, Crop, Expand, Maximize2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/menu';
 import {
   ASPECT_RATIOS,
   type AspectRatio,
@@ -48,11 +53,10 @@ function calculateRatioInfo(
 
 export function BoundaryBoxHud({
   stageSize,
-  pitchRect,
+  pitchRect: _pitchRect,
   showTiltControls = true,
 }: BoundaryBoxHudProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const boundaryBox = useCanvasStore((s) => s.boundaryBox);
   const setBoundaryBox = useCanvasStore((s) => s.setBoundaryBox);
@@ -62,21 +66,7 @@ export function BoundaryBoxHud({
 
   const currentTilt = pitchTransform?.tilt ?? 0;
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
-
-  const { ratioLabel, matchedRatio } = useMemo(
+  const { ratioLabel } = useMemo(
     () => calculateRatioInfo(boundaryBox, aspectRatio),
     [boundaryBox, aspectRatio],
   );
@@ -91,47 +81,53 @@ export function BoundaryBoxHud({
 
   return (
     <aside
-      ref={containerRef}
       aria-label="Boundary Box Ratio HUD"
       className="absolute top-4 left-4 z-40 pointer-events-auto flex flex-col items-start gap-1 select-none text-xs text-white"
     >
-      <button
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        aria-expanded={isOpen}
-        aria-label="Toggle Boundary Box Settings"
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg backdrop-blur-md border transition-all cursor-pointer shadow-lg ${
-          isOpen
-            ? 'bg-neutral-800 border-sky-500/50 ring-1 ring-sky-400/40 text-white'
-            : 'bg-neutral-900/90 hover:bg-neutral-800/90 border-white/20 hover:border-white/40 text-white/90'
-        }`}
-      >
-        <div className="flex items-center gap-1 text-sky-400 font-medium shrink-0">
-          <Crop size={13} />
-          <span className="font-mono text-[11px] font-semibold text-white/90">
-            {ratioLabel}
-          </span>
-        </div>
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenuTrigger
+          render={
+            <button
+              type="button"
+              aria-label="Toggle Boundary Box Settings"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg backdrop-blur-md border transition-all cursor-pointer shadow-lg ${
+                isOpen
+                  ? 'bg-surface-l3 border-sky-500/50 ring-1 ring-sky-400/40 text-white'
+                  : 'bg-surface-l2/90 hover:bg-surface-l3/90 border-white/[0.08] hover:border-white/20 text-white/90'
+              }`}
+            >
+              <div className="flex items-center gap-1 text-sky-400 font-medium shrink-0">
+                <Crop size={13} />
+                <span className="font-mono text-[11px] font-semibold text-white/90">
+                  {ratioLabel}
+                </span>
+              </div>
 
-        {showTiltControls && currentTilt > 0 && (
-          <>
-            <span className="text-white/30 text-[10px]">|</span>
-            <span className="font-mono text-[11px] text-sky-300 font-medium">
-              {currentTilt}°
-            </span>
-          </>
-        )}
+              {showTiltControls && currentTilt > 0 && (
+                <>
+                  <span className="text-white/30 text-[10px]">|</span>
+                  <span className="font-mono text-[11px] text-sky-300 font-medium">
+                    {currentTilt}°
+                  </span>
+                </>
+              )}
 
-        <ChevronDown
-          size={12}
-          className={`text-white/50 transition-transform duration-150 ${
-            isOpen ? 'rotate-180 text-sky-400' : ''
-          }`}
+              <ChevronDown
+                size={12}
+                className={`text-white/50 transition-transform duration-150 ${
+                  isOpen ? 'rotate-180 text-sky-400' : ''
+                }`}
+              />
+            </button>
+          }
         />
-      </button>
 
-      {isOpen && (
-        <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-neutral-900/95 backdrop-blur-md border border-white/20 shadow-2xl animate-in fade-in zoom-in-95 duration-100 min-w-[200px]">
+        <DropdownMenuContent
+          side="bottom"
+          align="start"
+          sideOffset={4}
+          className="flex flex-col gap-2 p-2.5 rounded-xl bg-surface-l3 backdrop-blur-md border border-white/[0.08] shadow-2xl min-w-[200px]"
+        >
           <div className="flex flex-col gap-1.5">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
               境界線プリセット
@@ -145,7 +141,7 @@ export function BoundaryBoxHud({
                     visible: true,
                   })
                 }
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/[0.08] transition-colors cursor-pointer"
                 title="AutoFitCanvas (全画面フィット 100% × 100%)"
                 aria-label="全画面"
               >
@@ -166,7 +162,7 @@ export function BoundaryBoxHud({
                     fitTarget: 'pitch',
                   });
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/[0.08] transition-colors cursor-pointer"
                 title="AutoFitPitch (ピッチ外枠にフィット)"
                 aria-label="ピッチフィット"
               >
@@ -178,7 +174,7 @@ export function BoundaryBoxHud({
 
           {showTiltControls && (
             <>
-              <div className="w-full h-px bg-white/15" />
+              <div className="w-full h-px bg-white/[0.08]" />
               <div className="flex flex-col gap-1.5">
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
                   Pitch 2.5D Tilt
@@ -190,8 +186,8 @@ export function BoundaryBoxHud({
               </div>
             </>
           )}
-        </div>
-      )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </aside>
   );
 }

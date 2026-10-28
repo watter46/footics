@@ -19,8 +19,8 @@ export function CopySeasonPlayerGrid({
 }: CopySeasonPlayerGridProps) {
   if (isLoading) {
     return (
-      <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
-        <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+      <div className="py-16 flex flex-col items-center justify-center gap-2 text-white/60">
+        <Loader2 className="size-6 animate-spin text-accent-orange" />
         <span className="text-xs">
           Season {fromSeason} の選手データを読み込み中...
         </span>
@@ -30,7 +30,7 @@ export function CopySeasonPlayerGrid({
 
   if (mergedSourcePlayers.length === 0) {
     return (
-      <div className="py-16 text-center text-slate-500 text-xs font-medium">
+      <div className="py-16 text-center text-white/40 text-xs font-medium">
         Season {fromSeason} に登録されている選手がいません。
       </div>
     );
@@ -46,31 +46,31 @@ export function CopySeasonPlayerGrid({
             onClick={() => onTogglePlayer(player.playerId)}
             className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
               isSelected
-                ? 'bg-blue-600/15 border-blue-500/50 text-slate-100'
-                : 'bg-slate-950/40 hover:bg-slate-800/60 border-slate-800 text-slate-300'
+                ? 'bg-accent-orange/15 border-accent-orange/50 text-white'
+                : 'bg-surface-l1 hover:bg-surface-l2 border-white/[0.08] text-white/80'
             }`}
           >
             <div className="flex items-center gap-3 min-w-0">
               <div
                 className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors shrink-0 ${
                   isSelected
-                    ? 'bg-blue-600 text-white'
-                    : 'border border-slate-700 bg-slate-900'
+                    ? 'bg-accent-orange text-white'
+                    : 'border border-white/[0.1] bg-surface-l0'
                 }`}
               >
-                {isSelected && <Check className="w-3.5 h-3.5" />}
+                {isSelected && <Check className="size-3.5" />}
               </div>
 
               <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-xs font-bold text-blue-400">
+                  <span className="font-mono text-xs font-bold text-accent-orange">
                     #{player.shirtNo || '99'}
                   </span>
                   <span className="text-xs font-bold truncate">
                     {player.name}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[10px] text-white/60">
                   {player.position}
                 </span>
               </div>
@@ -79,7 +79,7 @@ export function CopySeasonPlayerGrid({
             {player.isAlreadyInTarget && (
               <Badge
                 variant="outline"
-                className="bg-slate-800 text-slate-400 border-slate-700 text-[9px] px-1.5 shrink-0"
+                className="bg-white/[0.04] text-white/60 border-white/[0.08] text-[9px] px-1.5 shrink-0"
               >
                 登録済
               </Badge>

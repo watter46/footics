@@ -1,12 +1,17 @@
 'use client';
 
-import { Edit3, Loader2, Save, X } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+} from '@/components/ui/dialog';
 import { usePlayerMasterMutations } from '@/features/teams/hooks/use-player-master';
 import { normalizePosition } from '@/lib/tactical/player-formatting';
 import type { Player, StandardPosition } from '@/types';
@@ -34,11 +39,6 @@ export interface EditPlayerDialogProps {
   availableOfficialPlayers?: OfficialPlayerOption[];
   onSuccess: () => void;
 }
-
-const cCancel =
-  'px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors';
-const cSubmit =
-  'h-9 px-5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl gap-2 shadow-lg shadow-blue-600/25 flex items-center justify-center transition-colors';
 
 export function EditPlayerDialog({
   isOpen,
@@ -93,55 +93,33 @@ export function EditPlayerDialog({
   };
 
   const badgeCls = isTemporaryPlayer
-    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 text-[10px]'
-    : 'bg-blue-600/10 border-blue-500/30 text-blue-400 text-[10px]';
+    ? 'bg-accent-orange/15 border-accent-orange/40 text-[#FFA336] text-[10px]'
+    : 'bg-white/[0.04] border-white/[0.08] text-white/60 text-[10px]';
 
-  return createPortal(
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/60 shrink-0">
-          <div className="flex items-center gap-2.5 text-slate-100 font-bold text-base">
-            <div className="p-2 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
-              <Edit3 className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span>選手情報の編集</span>
-                <Badge variant="outline" className={badgeCls}>
-                  {isTemporaryPlayer
-                    ? '手動登録 (仮ID)'
-                    : `WhoScored ID: ${player.playerId}`}
-                </Badge>
-              </div>
-              <span className="text-xs text-slate-400 font-normal block">
-                Season {player.season} の登録情報を変更します
-              </span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 hover:bg-slate-800 p-1.5 rounded-lg transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+  return (
+    <Dialog open={isOpen} onClose={onClose} size="lg">
+      <DialogHeader onClose={onClose}>
+        <div className="flex items-center gap-2">
+          <span className="size-2 rounded-full bg-accent-orange shadow-[0_0_6px_#FF8100] shrink-0" />
+          <span className="text-sm font-bold text-white">選手情報の編集</span>
+          <Badge variant="outline" className={badgeCls}>
+            {isTemporaryPlayer
+              ? '手動登録 (仮ID)'
+              : `WhoScored ID: ${player.playerId}`}
+          </Badge>
         </div>
+      </DialogHeader>
 
-        <div className="p-6 space-y-6 overflow-y-auto">
-          <form
-            id="edit-player-form"
-            onSubmit={handleSubmit}
-            className="space-y-4"
-          >
-            <PlayerBasicFormFields
-              name={name}
-              shirtNo={shirtNo}
-              position={position}
-              onNameChange={setName}
-              onShirtNoChange={setShirtNo}
-              onPositionChange={setPosition}
-            />
-          </form>
+      <form id="edit-player-form" onSubmit={handleSubmit}>
+        <DialogContent className="space-y-6 max-h-[70vh] overflow-y-auto p-0">
+          <PlayerBasicFormFields
+            name={name}
+            shirtNo={shirtNo}
+            position={position}
+            onNameChange={setName}
+            onShirtNoChange={setShirtNo}
+            onPositionChange={setPosition}
+          />
 
           {isTemporaryPlayer && (
             <PlayerWhoScoredLinkSection
@@ -156,28 +134,27 @@ export function EditPlayerDialog({
               }}
             />
           )}
-        </div>
+        </DialogContent>
 
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-800 bg-slate-900/60 shrink-0">
-          <button type="button" onClick={onClose} className={cCancel}>
+        <DialogFooter className="mt-4">
+          <Button type="button" variant="ghost" onClick={onClose}>
             キャンセル
-          </button>
+          </Button>
           <Button
             type="submit"
-            form="edit-player-form"
+            variant="primary"
             disabled={isSubmitting}
-            className={cSubmit}
+            className="gap-2"
           >
             {isSubmitting ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="size-3.5 animate-spin" />
             ) : (
-              <Save className="w-3.5 h-3.5" />
+              <Save className="size-3.5" />
             )}
             <span>保存する</span>
           </Button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+        </DialogFooter>
+      </form>
+    </Dialog>
   );
 }

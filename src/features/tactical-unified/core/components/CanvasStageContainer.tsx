@@ -182,7 +182,7 @@ export function CanvasStageContainer({
           '--toolbar-transform': toolbarTransform,
         } as React.CSSProperties
       }
-      className={`relative w-full h-full overflow-hidden select-none bg-zinc-950 transition-colors ${
+      className={`relative w-full h-full overflow-hidden select-none bg-surface-l0 transition-colors ${
         isOver ? 'ring-2 ring-blue-500/50' : ''
       } ${className}`}
     >

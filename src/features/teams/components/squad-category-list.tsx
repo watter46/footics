@@ -30,16 +30,16 @@ export function SquadCategoryList({
 
         return (
           <div key={cat.key} className="space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-blue-400 tracking-wider">
+                <span className="text-xs font-black text-accent-orange tracking-wider">
                   {cat.key}
                 </span>
-                <span className="text-sm font-bold text-slate-200">
+                <span className="text-sm font-bold text-white">
                   {cat.label}
                 </span>
               </div>
-              <span className="text-xs font-semibold text-slate-500">
+              <span className="text-xs font-semibold text-white/40">
                 {list.length} players
               </span>
             </div>
