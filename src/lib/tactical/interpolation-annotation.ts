@@ -25,6 +25,7 @@ export interface InterpolatedZoneState {
   opacity: number;
   strokeColor?: string;
   strokeWidth: number;
+  strokeOpacity?: number;
   label?: string;
   visible: boolean;
 }
@@ -67,31 +68,25 @@ export function interpolateZone(
 ): InterpolatedZoneState | null {
   if (!startZone && !endZone) return null;
 
-  if (startZone && !endZone) {
+  const singleZone = startZone ?? endZone;
+  if (!startZone || !endZone) {
+    if (!singleZone) return null;
     return {
-      ...startZone,
-      shapeType: startZone.shapeType || 'rect',
-      points: startZone.points || [],
-      color: startZone.color || '#f59e0b',
-      strokeWidth: startZone.strokeWidth ?? 2,
-      opacity: (startZone.opacity ?? 0.25) * Math.max(0, 1 - ease),
-      visible: ease < 1,
-    };
-  }
-  if (!startZone && endZone) {
-    return {
-      ...endZone,
-      shapeType: endZone.shapeType || 'rect',
-      points: endZone.points || [],
-      color: endZone.color || '#f59e0b',
-      strokeWidth: endZone.strokeWidth ?? 2,
-      opacity: (endZone.opacity ?? 0.25) * Math.min(1, ease),
-      visible: true,
+      ...singleZone,
+      id: singleZone.id,
+      shapeType: singleZone.shapeType || 'rect',
+      points: singleZone.points || [],
+      color: singleZone.color || '#f59e0b',
+      strokeWidth: singleZone.strokeWidth ?? 3,
+      strokeOpacity: singleZone.strokeOpacity ?? 1,
+      opacity:
+        (singleZone.opacity ?? 0.25) *
+        (startZone ? Math.max(0, 1 - ease) : Math.min(1, ease)),
+      visible: startZone ? ease < 1 : true,
     };
   }
   const zA = startZone;
   const zB = endZone;
-  if (!zA || !zB) return null;
 
   const shapeA = zA.shapeType || 'rect';
   const shapeB = zB.shapeType || 'rect';
@@ -105,7 +100,12 @@ export function interpolateZone(
     zA.strokeColor && zB.strokeColor
       ? interpolateColor(zA.strokeColor, zB.strokeColor, ease)
       : zB.strokeColor || zA.strokeColor;
-  const strokeWidth = lerp(zA.strokeWidth ?? 2, zB.strokeWidth ?? 2, ease);
+  const strokeWidth = lerp(zA.strokeWidth ?? 3, zB.strokeWidth ?? 3, ease);
+  const strokeOpacity = lerp(
+    zA.strokeOpacity ?? 1,
+    zB.strokeOpacity ?? 1,
+    ease,
+  );
 
   // 1. Polygon ⇄ Polygon または Polygon ⇄ Rect モーフィング
   if (shapeA === 'polygon' || shapeB === 'polygon') {
@@ -129,6 +129,7 @@ export function interpolateZone(
       opacity,
       strokeColor,
       strokeWidth,
+      strokeOpacity,
       label: zB.label || zA.label,
       visible: true,
     };
@@ -166,6 +167,7 @@ export function interpolateZone(
     opacity,
     strokeColor,
     strokeWidth,
+    strokeOpacity,
     label: zB.label || zA.label,
     visible: true,
   };

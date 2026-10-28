@@ -10,7 +10,7 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
   props: ZoneNodeProps,
 ) {
   const { zone, isSelected, onSelect, isInteractive = true } = props;
-  const { fillRGBA, strokeColor, strokeWidth } = getZoneStyle(zone);
+  const { fillRGBA, strokeColorRGBA, strokeWidth } = getZoneStyle(zone);
   const setIsDragging = useCanvasStore((s) => s.setIsDragging);
   const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
   const {
@@ -57,8 +57,8 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
           radiusY={pxH / 2}
           rotation={rotation}
           fill={fillRGBA}
-          opacity={zone.opacity ?? 0.25}
-          stroke={isSelected ? '#60a5fa' : strokeColor}
+          opacity={1}
+          stroke={isSelected ? '#60a5fa' : strokeColorRGBA}
           strokeWidth={isSelected ? strokeWidth + 1 : strokeWidth}
           draggable={isInteractive && !zone.locked}
           onClick={onSelect}
@@ -78,8 +78,8 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
           offsetY={pxH / 2}
           rotation={rotation}
           fill={fillRGBA}
-          opacity={zone.opacity ?? 0.25}
-          stroke={isSelected ? '#60a5fa' : strokeColor}
+          opacity={1}
+          stroke={isSelected ? '#60a5fa' : strokeColorRGBA}
           strokeWidth={isSelected ? strokeWidth + 1 : strokeWidth}
           draggable={isInteractive && !zone.locked}
           onClick={onSelect}

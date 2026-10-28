@@ -16,16 +16,27 @@ describe('tactical-unified Zone Features', () => {
     }));
   });
 
-  it('ZoneAnnotationSchema parses with strokeWidth default 2', () => {
+  it('ZoneAnnotationSchema parses with strokeWidth default 3 and strokeOpacity default 1', () => {
     const parsed = ZoneAnnotationSchema.parse({
       id: 'z-test-default',
       annotationType: 'zone',
       zoneType: 'generic',
     });
-    expect(parsed.strokeWidth).toBe(2);
+    expect(parsed.strokeWidth).toBe(3);
+    expect(parsed.strokeOpacity).toBe(1);
+
+    const custom = ZoneAnnotationSchema.parse({
+      id: 'z-test-custom',
+      annotationType: 'zone',
+      zoneType: 'generic',
+      strokeOpacity: 0.6,
+      strokeWidth: 5,
+    });
+    expect(custom.strokeOpacity).toBe(0.6);
+    expect(custom.strokeWidth).toBe(5);
   });
 
-  it('getZoneStyle reflects strokeColor and strokeWidth with default 2', () => {
+  it('getZoneStyle reflects strokeColor, strokeColorRGBA, and strokeWidth with default 3', () => {
     const customZone: ZoneAnnotation = {
       id: 'z-custom',
       annotationType: 'zone',
@@ -34,12 +45,15 @@ describe('tactical-unified Zone Features', () => {
       color: '#ef4444',
       opacity: 0.3,
       strokeColor: '#3b82f6',
+      strokeOpacity: 0.8,
       strokeWidth: 5,
       points: [],
     };
     const customStyle = getZoneStyle(customZone);
-    expect(customStyle.strokeColor).toBe('#3b82f6');
+    expect(customStyle.fillRGBA).toBe('#ef44444d');
+    expect(customStyle.strokeColorRGBA).toBe('#3b82f6cc');
     expect(customStyle.strokeWidth).toBe(5);
+    expect(customStyle.strokeOpacity).toBe(0.8);
 
     const defaultZone: ZoneAnnotation = {
       id: 'z-default',
@@ -52,11 +66,13 @@ describe('tactical-unified Zone Features', () => {
       strokeWidth: undefined as unknown as number,
     };
     const defaultStyle = getZoneStyle(defaultZone);
-    expect(defaultStyle.strokeColor).toBe('#f59e0b');
-    expect(defaultStyle.strokeWidth).toBe(2);
+    expect(defaultStyle.fillRGBA).toBe('#f59e0b40');
+    expect(defaultStyle.strokeColorRGBA).toBe('#f59e0bff');
+    expect(defaultStyle.strokeWidth).toBe(3);
+    expect(defaultStyle.strokeOpacity).toBe(1);
   });
 
-  it('interpolateZone preserves strokeWidth fallback of 2 and interpolates strokeColor', () => {
+  it('interpolateZone preserves strokeWidth fallback of 3 and interpolates strokeColor and strokeOpacity', () => {
     const zoneA: ZoneAnnotation = {
       id: 'z-a',
       annotationType: 'zone',
@@ -70,6 +86,7 @@ describe('tactical-unified Zone Features', () => {
       color: '#10b981',
       strokeColor: '#059669',
       strokeWidth: undefined as unknown as number,
+      strokeOpacity: 0.2,
       opacity: 0.5,
     };
     const zoneB: ZoneAnnotation = {
@@ -85,16 +102,19 @@ describe('tactical-unified Zone Features', () => {
       color: '#3b82f6',
       strokeColor: '#2563eb',
       strokeWidth: undefined as unknown as number,
+      strokeOpacity: 0.8,
       opacity: 0.5,
     };
 
     const mid = interpolateZone(zoneA, zoneB, 0.5);
     expect(mid).not.toBeNull();
-    expect(mid?.strokeWidth).toBe(2);
+    expect(mid?.strokeWidth).toBe(3);
+    expect(mid?.strokeOpacity).toBeCloseTo(0.5);
     expect(mid?.strokeColor).toBeDefined();
 
     const fadeMid = interpolateZone(zoneA, undefined, 0.5);
-    expect(fadeMid?.strokeWidth).toBe(2);
+    expect(fadeMid?.strokeWidth).toBe(3);
+    expect(fadeMid?.strokeOpacity).toBe(0.2);
   });
 
   it('四角形ゾーン (Rect) を作成・更新できる (strokeWidth/strokeColor含む)', () => {

@@ -299,7 +299,8 @@ export const ZoneAnnotationSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
     .optional(),
-  strokeWidth: z.number().min(0).max(8).default(2),
+  strokeOpacity: z.number().min(0).max(1).default(1).optional(),
+  strokeWidth: z.number().min(0).max(8).default(3),
   label: z.string().max(50).optional(),
   locked: z.boolean().optional(),
 });

@@ -73,11 +73,19 @@ export function updateZoneNodes(
     if (!zoneShape) continue;
 
     const opacity = zState.opacity ?? 0.25;
-    const alphaHex = Math.round(opacity * 255)
+    const alphaHex = Math.round(Math.max(0, Math.min(1, opacity)) * 255)
       .toString(16)
       .padStart(2, '0');
     const fillRGBA = (zState.color || '#22c55e') + alphaHex;
-    const strokeColor = zState.strokeColor ?? zState.color ?? '#22c55e';
+
+    const strokeOpacity = zState.strokeOpacity ?? 1;
+    const strokeAlphaHex = Math.round(
+      Math.max(0, Math.min(1, strokeOpacity)) * 255,
+    )
+      .toString(16)
+      .padStart(2, '0');
+    const strokeBaseColor = zState.strokeColor ?? zState.color ?? '#22c55e';
+    const strokeColorRGBA = strokeBaseColor + strokeAlphaHex;
 
     zoneShape.visible(zState.visible);
     zoneShape.opacity(1);
@@ -90,7 +98,7 @@ export function updateZoneNodes(
       const polygonNode = zoneShape as unknown as Konva.Line;
       polygonNode.points(pxPoints);
       polygonNode.fill(fillRGBA);
-      polygonNode.stroke(strokeColor);
+      polygonNode.stroke(strokeColorRGBA);
       polygonNode.strokeWidth(zState.strokeWidth);
     } else if (zState.shapeType === 'rect') {
       const normX = zState.x ?? zState.points[0]?.x ?? 20;
@@ -109,7 +117,7 @@ export function updateZoneNodes(
       rectNode.offsetY(pxH / 2);
       rectNode.rotation(zState.rotation || 0);
       rectNode.fill(fillRGBA);
-      rectNode.stroke(strokeColor);
+      rectNode.stroke(strokeColorRGBA);
       rectNode.strokeWidth(zState.strokeWidth);
     } else if (zState.shapeType === 'ellipse') {
       const normX = zState.x ?? zState.points[0]?.x ?? 20;
@@ -126,7 +134,7 @@ export function updateZoneNodes(
       ellipseNode.radiusY(pxH / 2);
       ellipseNode.rotation(zState.rotation || 0);
       ellipseNode.fill(fillRGBA);
-      ellipseNode.stroke(strokeColor);
+      ellipseNode.stroke(strokeColorRGBA);
       ellipseNode.strokeWidth(zState.strokeWidth);
     }
   }

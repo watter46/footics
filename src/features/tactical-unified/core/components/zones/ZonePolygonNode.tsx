@@ -26,7 +26,7 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
   props: ZoneNodeProps,
 ) {
   const { zone, isSelected, onSelect, isInteractive = true } = props;
-  const { fillRGBA, strokeColor, strokeWidth } = getZoneStyle(zone);
+  const { fillRGBA, strokeColorRGBA, strokeWidth } = getZoneStyle(zone);
   const setIsDragging = useCanvasStore((s) => s.setIsDragging);
   const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
   const {
@@ -63,8 +63,8 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
         points={renderPts}
         closed={isComplete}
         fill={isComplete ? fillRGBA : undefined}
-        opacity={zone.opacity ?? 0.25}
-        stroke={isSelected ? '#60a5fa' : strokeColor}
+        opacity={1}
+        stroke={isSelected ? '#60a5fa' : strokeColorRGBA}
         strokeWidth={isSelected ? strokeWidth + 1 : strokeWidth}
         lineCap="round"
         lineJoin="round"

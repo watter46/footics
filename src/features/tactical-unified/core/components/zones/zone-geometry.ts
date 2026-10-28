@@ -93,13 +93,26 @@ export function computeTransformedZonePatch(
   };
 }
 
+function alphaHex(opacity: number): string {
+  const clamped = Math.max(0, Math.min(1, opacity));
+  return Math.round(clamped * 255)
+    .toString(16)
+    .padStart(2, '0');
+}
+
 export function getZoneStyle(zone: ZoneAnnotation) {
   const color = zone.color || '#3b82f6';
   const opacity = zone.opacity ?? 0.25;
+  const strokeOpacity = zone.strokeOpacity ?? 1;
+  const strokeColor = zone.strokeColor || color;
+  const strokeWidth = zone.strokeWidth ?? 3;
+
   return {
-    fillRGBA: color,
-    strokeColor: zone.strokeColor || color,
-    strokeWidth: zone.strokeWidth ?? 2,
+    fillRGBA: color + alphaHex(opacity),
+    strokeColor,
+    strokeColorRGBA: strokeColor + alphaHex(strokeOpacity),
+    strokeWidth,
+    strokeOpacity,
     opacity,
   };
 }
