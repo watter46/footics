@@ -106,7 +106,7 @@ describe('TacticalError', () => {
     };
     error.digest = 'ERR_12345';
 
-    render(<TacticalError error={error} reset={reset} />);
+    const { container } = render(<TacticalError error={error} reset={reset} />);
 
     expect(
       screen.getByText('タクティカルキャンバスの読み込みに失敗しました'),
@@ -116,5 +116,8 @@ describe('TacticalError', () => {
     const retryButton = screen.getByRole('button', { name: '再試行' });
     fireEvent.click(retryButton);
     expect(reset).toHaveBeenCalledTimes(1);
+
+    expect(container.innerHTML).not.toMatch(/\bzinc-[a-z0-9]/);
+    expect(container.innerHTML).not.toMatch(/\bslate-[a-z0-9]/);
   });
 });

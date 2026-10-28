@@ -2,6 +2,7 @@
 
 import { ChevronLeft, Database, FileJson, Loader2, Upload } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import type { CacheRecoveryViewProps } from '../types';
 
@@ -17,24 +18,24 @@ export function CacheRecoveryView({
     cacheMissing || error?.includes('not found in local storage');
 
   return (
-    <div className="flex h-screen w-full flex-col bg-slate-950 text-slate-50 overflow-hidden font-sans">
+    <div className="flex h-screen w-full flex-col bg-[#0D0D0E] text-white overflow-hidden font-sans">
       {metadata && (
-        <div className="flex justify-between items-center px-8 py-4 border-b border-slate-800/60 bg-slate-900/30 shrink-0">
+        <div className="flex justify-between items-center px-8 py-4 border-b border-white/[0.07] bg-[#121214] shrink-0">
           <div className="flex items-center gap-4">
             <Link
               href="/"
-              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400"
+              className="p-2 hover:bg-white/[0.06] rounded-lg text-[#A1A1AA] hover:text-white transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </Link>
-            <div className="flex items-center gap-4 text-slate-200">
+            <div className="flex items-center gap-4 text-white">
               <span className="font-bold text-lg">
                 {metadata.teams.home.name}
               </span>
-              <div className="px-3 py-1 bg-slate-800/80 rounded-md font-mono text-sm font-bold border border-slate-700/50 text-blue-400">
+              <div className="px-3 py-1 bg-[#18181B] rounded-md font-mono text-sm font-bold border border-white/[0.08] text-[#FF8100]">
                 {metadata.score}
               </div>
-              <span className="font-bold text-lg text-slate-300">
+              <span className="font-bold text-lg text-[#D4D4D8]">
                 {metadata.teams.away.name}
               </span>
             </div>
@@ -42,20 +43,20 @@ export function CacheRecoveryView({
         </div>
       )}
       <div className="flex-1 flex items-center justify-center p-6 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent">
-        <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-800 p-8 max-w-md w-full shadow-2xl ring-1 ring-slate-700/50">
+        <Card className="bg-[#18181B] border-white/[0.08] p-8 max-w-md w-full shadow-2xl">
           <div className="flex flex-col items-center text-center space-y-6">
-            <div className="w-16 h-16 rounded-2xl bg-slate-800/50 flex items-center justify-center ring-1 ring-slate-700">
+            <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
               {isCacheMissing ? (
-                <Database className="w-8 h-8 text-blue-500 animate-pulse" />
+                <Database className="w-8 h-8 text-[#FF8100] animate-pulse" />
               ) : (
-                <Loader2 className="w-8 h-8 text-red-500" />
+                <Loader2 className="w-8 h-8 text-[#EB3B5A]" />
               )}
             </div>
             <div className="space-y-2">
-              <h2 className="text-xl font-bold text-slate-100 tracking-tight">
+              <h2 className="text-xl font-bold text-white tracking-tight">
                 {isCacheMissing ? 'データの再構築が必要です' : '接続エラー'}
               </h2>
-              <p className="text-sm text-slate-400 leading-relaxed px-4">
+              <p className="text-sm text-[#A1A1AA] leading-relaxed px-4">
                 {isCacheMissing
                   ? '以前の JSON ファイルを再読み込みしてください。'
                   : error || '予期せぬエラーが発生しました'}
@@ -70,15 +71,17 @@ export function CacheRecoveryView({
                   className="hidden"
                   onChange={onRestoreCache}
                 />
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="w-full font-bold"
                   onClick={() => restoreInputRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg transition-all"
+                  disabled={isRestoring}
+                  icon={<Upload className="w-5 h-5" />}
                 >
-                  <Upload className="w-5 h-5" />
                   {isRestoring ? '復旧中...' : 'JSONファイルを読み込む'}
-                </button>
-                <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold flex items-center justify-center gap-1.5">
+                </Button>
+                <p className="text-[10px] text-[#71717A] uppercase tracking-widest font-bold flex items-center justify-center gap-1.5">
                   <FileJson className="w-3.5 h-3.5" />
                   WhoScored JSON Format
                 </p>

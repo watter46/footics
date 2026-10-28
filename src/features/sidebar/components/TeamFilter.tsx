@@ -29,19 +29,19 @@ export function TeamFilter({
 
   return (
     <div className="space-y-2 mb-4">
-      <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <div className="text-xs font-semibold uppercase tracking-wider text-[#71717A]">
         Team Filter
       </div>
       <Select
         value={selectedTeam}
         onValueChange={(val) => onTeamChange(val || 'all')}
       >
-        <SelectTrigger className="w-full bg-slate-800/50 border-slate-700 text-slate-200">
+        <SelectTrigger className="w-full">
           <SelectValue placeholder="All Teams">
             {selectedTeam === 'all' ? 'All Teams' : selectedTeamName}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent className="bg-slate-800 border-slate-700 text-slate-200">
+        <SelectContent>
           <SelectItem value="all">All Teams</SelectItem>
           <SelectItem
             value={teams.home.teamId.toString()}

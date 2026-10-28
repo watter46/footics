@@ -24,8 +24,8 @@ export function StrategyFilter({
   onStrategyParamChange,
 }: StrategyFilterProps) {
   return (
-    <div className="space-y-3 pt-4 border-t border-slate-800">
-      <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+    <div className="space-y-3 pt-4 border-t border-white/[0.07]">
+      <div className="text-xs font-semibold uppercase tracking-wider text-[#71717A]">
         Event Scopes
       </div>
       <div className="flex flex-col gap-2">
@@ -36,12 +36,10 @@ export function StrategyFilter({
           return (
             <div key={strategy.id} className="relative group">
               <Button
-                variant={isActive ? 'default' : 'outline'}
+                variant={isActive ? 'primary' : 'outline'}
                 onClick={() => onStrategyToggle(strategy.id)}
                 className={`w-full justify-start transition-all duration-300 ${
-                  isActive
-                    ? strategy.color
-                    : 'border-slate-700 text-slate-300 bg-slate-800/50 hover:bg-slate-800'
+                  isActive ? strategy.color : ''
                 }`}
                 title={strategy.description}
               >
@@ -56,7 +54,7 @@ export function StrategyFilter({
                     if (param.type === 'length') {
                       return (
                         <div key={param.id}>
-                          <div className="text-xs text-slate-400 mb-1 block">
+                          <div className="text-xs text-[#71717A] mb-1 block">
                             {param.label}
                           </div>
                           <LengthInput
@@ -76,7 +74,7 @@ export function StrategyFilter({
                     if (param.type === 'zone') {
                       return (
                         <div key={param.id}>
-                          <div className="text-xs text-slate-400 mb-1 block">
+                          <div className="text-xs text-[#71717A] mb-1 block">
                             {param.label}
                           </div>
                           <ZonePicker

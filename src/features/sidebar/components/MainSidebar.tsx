@@ -1,6 +1,7 @@
 'use client';
 
 import { Activity, X } from 'lucide-react';
+import { IconButton } from '@/components/ui/icon-button';
 import { FlatPlayerBadges, PlayerBadgeGroup } from '@/features/analysis';
 import type {
   BasePlayer,
@@ -62,23 +63,27 @@ export function Sidebar({
         : teams.away.players;
 
   const sidebarContent = (
-    <div className="w-80 max-w-[85vw] lg:w-80 h-full border-r border-slate-800 bg-slate-900 lg:bg-slate-900/50 flex flex-col backdrop-blur-md overflow-hidden shrink-0">
+    <div className="w-80 max-w-[85vw] lg:w-80 h-full border-r border-white/[0.07] bg-[#121214] flex flex-col backdrop-blur-md overflow-hidden shrink-0">
       {/* Fixed Header */}
       <div className="p-5 sm:p-6 pb-0 flex-shrink-0">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <Activity className="h-6 w-6 text-blue-400" />
-            <h1 className="text-xl font-bold tracking-tight">Filters</h1>
+            <Activity className="h-5 w-5 text-[#FF8100]" />
+            <h1 className="text-lg font-bold tracking-tight text-[#F4F4F5]">
+              Filters
+            </h1>
           </div>
           {onClose && (
-            <button
+            <IconButton
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={onClose}
-              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+              className="lg:hidden"
               aria-label="Close Filters"
             >
-              <X className="w-5 h-5" />
-            </button>
+              <X className="w-4 h-4 text-[#A1A1AA]" />
+            </IconButton>
           )}
         </div>
 
@@ -98,19 +103,19 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto px-5 sm:px-6 pb-6 space-y-4">
         {/* Player Filter */}
         <div className="space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex justify-between items-center">
+          <div className="text-xs font-semibold uppercase tracking-wider text-[#71717A] flex justify-between items-center">
             <span>Player Filter</span>
             {selectedPlayers.size > 0 && (
               <button
                 type="button"
-                className="text-xs text-blue-400 cursor-pointer hover:text-blue-300"
+                className="text-xs text-[#FF8100] cursor-pointer hover:text-[#FFA336]"
                 onClick={onPlayersClear}
               >
                 Clear
               </button>
             )}
           </div>
-          <div className="border border-slate-800 rounded-md bg-slate-900/30 p-2 space-y-3">
+          <div className="border border-white/[0.07] rounded-md bg-[#18181B] p-2 space-y-3">
             {selectedTeam === 'all' ? (
               <>
                 <PlayerBadgeGroup
@@ -120,7 +125,7 @@ export function Sidebar({
                   selectedPlayers={selectedPlayers}
                   onTogglePlayer={onPlayerToggle}
                 />
-                <div className="border-t border-slate-800/50 my-1" />
+                <div className="border-t border-white/[0.07] my-1" />
                 <PlayerBadgeGroup
                   teamName={teams.away.name}
                   players={teams.away.players}
@@ -167,7 +172,7 @@ export function Sidebar({
             type="button"
             aria-label="Close drawer"
             onClick={onClose}
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm cursor-default"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm cursor-default"
           />
 
           {/* Drawer content */}

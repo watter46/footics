@@ -86,7 +86,7 @@ describe('Match Center Components (Phase 2)', () => {
       // Popover should be visible with L3 background
       const popover = screen
         .getByText('Club Teams')
-        .closest('div')?.parentElement;
+        .closest('[class*="bg-[#222226]"]');
       expect(popover).toHaveClass('bg-[#222226]');
       expect(popover).toHaveClass('border-white/[0.08]');
     });

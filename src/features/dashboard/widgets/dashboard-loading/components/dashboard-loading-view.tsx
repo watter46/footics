@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
+import { PageLoading } from '@/components/ui/patterns/loading-state';
 import type { DashboardLoadingViewProps } from '../types';
 
 export function DashboardLoadingView({
@@ -13,11 +13,8 @@ export function DashboardLoadingView({
       : 'Loading match data...';
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-slate-950 text-slate-50">
-      <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      <span className="ml-3 text-lg font-medium">
-        {message || defaultMessage}
-      </span>
+    <div className="flex h-screen w-full items-center justify-center bg-[#0D0D0E] text-white">
+      <PageLoading message={message || defaultMessage} />
     </div>
   );
 }

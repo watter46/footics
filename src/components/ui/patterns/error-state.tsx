@@ -6,6 +6,7 @@ export interface ErrorStateProps {
   message: string;
   code?: string;
   onRetry?: () => void;
+  retryLabel?: string;
   backHref?: string;
   backLabel?: string;
   fullscreen?: boolean;
@@ -17,6 +18,7 @@ export function ErrorState({
   message,
   code,
   onRetry,
+  retryLabel = 'Retry',
   backHref,
   backLabel = 'Go Back',
   fullscreen = false,
@@ -49,7 +51,7 @@ export function ErrorState({
               onClick={onRetry}
               className="px-3.5 py-1.5 rounded-[6px] text-xs font-medium bg-[#FF8100] hover:bg-[#FFA336] text-white transition-colors cursor-pointer"
             >
-              Retry
+              {retryLabel}
             </button>
           )}
           {backHref && (

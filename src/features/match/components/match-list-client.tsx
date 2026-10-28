@@ -1,6 +1,8 @@
 'use client';
 
 import { Filter } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/patterns/empty-state';
 import type { Match } from '@/types';
 import { useMatchList } from '../hooks/use-match-list';
 import { FilterBar } from './match-list/FilterBar';
@@ -31,7 +33,19 @@ export function MatchListClient({ matches: serverMatches }: Props) {
           setActiveTeam={setActiveTeam}
           resultCount={0}
         />
-        <EmptyState onReset={() => setActiveTeam(null)} />
+        <EmptyState
+          icon={Filter}
+          title="No matches found matching filters"
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTeam(null)}
+            >
+              Reset Filters
+            </Button>
+          }
+        />
       </div>
     );
   }
@@ -61,25 +75,6 @@ export function MatchListClient({ matches: serverMatches }: Props) {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-/**
- * Sub-component for Empty State
- */
-function EmptyState({ onReset }: { onReset: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-600 bg-slate-900/40 rounded-3xl border border-slate-800 border-dashed">
-      <Filter className="w-10 h-10 opacity-40 animate-pulse" />
-      <p className="text-base font-medium">No matches found matching filters</p>
-      <button
-        type="button"
-        onClick={onReset}
-        className="text-sm text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors font-bold"
-      >
-        Reset Filters
-      </button>
     </div>
   );
 }
