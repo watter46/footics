@@ -7,6 +7,17 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --color-surface-l0: #0d0d0e;
+  --color-surface-l1: #121214;
+  --color-surface-l2: #18181b;
+  --color-surface-l3: #222226;
+  --color-accent-orange: #ff8100;
+  --color-accent-play: #60a5fa;
+  --color-accent-danger: #eb3b5a;
+  --color-pos-fw: #ff4757;
+  --color-pos-mid: #10b981;
+  --color-pos-df: #60a5fa;
+  --color-pos-gk: #fbbf24;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -121,7 +132,11 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
+  }
+  *:focus-visible {
+    outline: 1px solid rgba(255, 129, 0, 0.6);
+    outline-offset: 1px;
   }
   body {
     @apply bg-background text-foreground;
@@ -132,8 +147,8 @@
 
   /* Custom Scrollbar */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
@@ -141,13 +156,13 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-800/80 rounded-full transition-colors;
-    border: 2px solid transparent;
-    background-clip: padding-box;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    transition: background 0.15s ease;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-slate-700;
+    background: rgba(255, 255, 255, 0.25);
   }
 
   /* Firefox */
@@ -155,6 +170,114 @@
     scrollbar-width: thin;
     scrollbar-color: var(--muted-foreground) transparent;
   }
+}
+
+/* ========================================================================= */
+/* Footics Design System — 共通スタイル & ネオンアクセント体系 */
+/* ========================================================================= */
+
+.btn-interactive {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-interactive:active {
+  transform: scale(0.97);
+}
+
+.surface-interactive {
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+/* Primary Orange: #FF8100 15%背景 + 1px枠線 + グロー */
+.btn-guideline-primary {
+  background-color: rgba(255, 129, 0, 0.15);
+  border: 1px solid #ff8100;
+  color: #ff8a00;
+  box-shadow: 0 0 12px rgba(255, 129, 0, 0.35);
+}
+.btn-guideline-primary:hover {
+  background-color: rgba(255, 129, 0, 0.28);
+  border-color: #ff991a;
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(255, 129, 0, 0.55);
+}
+
+/* Play Action (Blue): 鮮烈な青 + 15%発光背景 + 同系色極細線 */
+.btn-guideline-play {
+  background-color: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  color: #60a5fa;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+}
+.btn-guideline-play:hover {
+  background-color: rgba(59, 130, 246, 0.26);
+  border-color: rgba(59, 130, 246, 0.75);
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.4);
+}
+
+/* Secondary: L2ダークグレー（#18181B）+ 極細線（border-white/[0.07]） */
+.btn-guideline-secondary {
+  background-color: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: #f4f4f5;
+}
+.btn-guideline-secondary:hover {
+  background-color: #222226;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+/* Danger / Alert (Coral Red #EB3B5A) */
+.btn-guideline-danger {
+  background-color: rgba(235, 59, 90, 0.14);
+  border: 1px solid rgba(235, 59, 90, 0.4);
+  color: #ff4757;
+  box-shadow: 0 0 10px rgba(235, 59, 90, 0.18);
+}
+.btn-guideline-danger:hover {
+  background-color: rgba(235, 59, 90, 0.25);
+  border-color: rgba(235, 59, 90, 0.65);
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(235, 59, 90, 0.35);
+}
+
+/* Ghost Tool Button */
+.btn-guideline-ghost {
+  color: #a1a1aa;
+  background-color: transparent;
+}
+.btn-guideline-ghost:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* ポジション別 ネオンバッジ体系 */
+.badge-pos-fw {
+  background-color: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #ff5252;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+.badge-pos-mid {
+  background-color: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+.badge-pos-df {
+  background-color: rgba(59, 130, 246, 0.16);
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  color: #60a5fa;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+}
+.badge-pos-gk {
+  background-color: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fbbf24;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
 }
 
 @keyframes blink-shadow {

@@ -1,18 +1,25 @@
 import type * as React from 'react';
-
 import { cn } from '@/lib/utils';
 
-function Card({
+export interface CardProps extends React.ComponentProps<'div'> {
+  ref?: React.Ref<HTMLDivElement>;
+  interactive?: boolean;
+}
+
+export function Card({
+  ref,
   className,
-  size = 'default',
+  interactive = false,
   ...props
-}: React.ComponentProps<'div'> & { size?: 'default' | 'sm' }) {
+}: CardProps) {
   return (
     <div
+      ref={ref}
       data-slot="card"
-      data-size={size}
       className={cn(
-        'group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl',
+        'flex flex-col gap-4 overflow-hidden rounded-[10px] bg-[#18181B] border border-white/[0.07] p-4 text-sm text-[#F4F4F5] transition-all',
+        interactive &&
+          'hover:bg-[#1e1e22] hover:border-white/20 cursor-pointer surface-interactive',
         className,
       )}
       {...props}
@@ -20,12 +27,15 @@ function Card({
   );
 }
 
-function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
+export function CardHeader({
+  className,
+  ...props
+}: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="card-header"
       className={cn(
-        'group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-4 group-data-[size=sm]/card:px-3 has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-4 group-data-[size=sm]/card:[.border-b]:pb-3',
+        'flex items-center justify-between border-b border-white/[0.07] pb-3',
         className,
       )}
       {...props}
@@ -33,58 +43,51 @@ function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<'div'>) {
+export function CardTitle({ className, ...props }: React.ComponentProps<'h3'>) {
   return (
-    <div
+    <h3
       data-slot="card-title"
-      className={cn(
-        'font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm',
-        className,
-      )}
+      className={cn('text-sm font-bold text-white tracking-tight', className)}
       {...props}
     />
   );
 }
 
-function CardDescription({ className, ...props }: React.ComponentProps<'div'>) {
+export function CardDescription({
+  className,
+  ...props
+}: React.ComponentProps<'p'>) {
   return (
-    <div
+    <p
       data-slot="card-description"
-      className={cn('text-sm text-muted-foreground', className)}
+      className={cn('text-xs text-[#71717A]', className)}
       {...props}
     />
   );
 }
 
-function CardAction({ className, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div
-      data-slot="card-action"
-      className={cn(
-        'col-start-2 row-span-2 row-start-1 self-start justify-self-end',
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
-function CardContent({ className, ...props }: React.ComponentProps<'div'>) {
+export function CardContent({
+  className,
+  ...props
+}: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="card-content"
-      className={cn('px-4 group-data-[size=sm]/card:px-3', className)}
+      className={cn('text-xs text-[#A1A1AA]', className)}
       {...props}
     />
   );
 }
 
-function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {
+export function CardFooter({
+  className,
+  ...props
+}: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="card-footer"
       className={cn(
-        'flex items-center rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/card:p-3',
+        'flex items-center justify-between border-t border-white/[0.04] pt-2 text-xs text-[#A1A1AA]',
         className,
       )}
       {...props}
@@ -92,12 +95,86 @@ function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
-export {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-};
+export function CardAction({
+  className,
+  ...props
+}: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn('self-start justify-self-end', className)}
+      {...props}
+    />
+  );
+}
+
+export interface KpiTileProps extends React.ComponentProps<'div'> {
+  ref?: React.Ref<HTMLDivElement>;
+  title: string;
+  value: string | number;
+  subtext?: string;
+  accentColor?: string;
+  progressPercent?: number;
+}
+
+export function KpiTile({
+  ref,
+  title,
+  value,
+  subtext,
+  accentColor = '#FF8100',
+  progressPercent,
+  className,
+  ...props
+}: KpiTileProps) {
+  return (
+    <div
+      ref={ref}
+      data-slot="kpi-tile"
+      className={cn(
+        'flex flex-col justify-between rounded-[10px] bg-[#18181B] border border-white/[0.07] p-4 text-[#F4F4F5] transition-all hover:border-white/20',
+        className,
+      )}
+      {...props}
+    >
+      <div>
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-mono text-[#71717A] uppercase tracking-wider">
+            {title}
+          </span>
+          <span
+            className="size-2 rounded-full shrink-0"
+            style={{
+              backgroundColor: accentColor,
+              boxShadow: `0 0 6px ${accentColor}`,
+            }}
+          />
+        </div>
+        <div className="mt-2 flex items-baseline gap-2">
+          <span className="text-2xl font-mono font-bold text-white">
+            {value}
+          </span>
+          {subtext && (
+            <span className="text-xs font-mono text-emerald-400 font-semibold">
+              {subtext}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {progressPercent !== undefined && (
+        <div className="mt-4 space-y-1.5">
+          <div className="w-full h-1.5 bg-[#0D0D0E] rounded-full overflow-hidden flex">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${Math.min(100, Math.max(0, progressPercent))}%`,
+                backgroundColor: accentColor,
+              }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

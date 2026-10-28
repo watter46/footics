@@ -7,23 +7,23 @@ export interface IconButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   ref?: React.Ref<HTMLButtonElement>;
   variant?: 'ghost' | 'subtle' | 'primary' | 'danger';
-  size?: 'xs' | 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   isActive?: boolean;
 }
 
 const sizeStyles: Record<NonNullable<IconButtonProps['size']>, string> = {
-  xs: 'size-6 p-1 text-xs rounded-[6px]',
-  sm: 'size-7 p-1.5 text-xs rounded-[6px]',
-  md: 'size-8 p-2 text-sm rounded-[8px]',
+  xs: 'size-6 p-1 text-xs rounded-[6px] [&_svg]:size-3',
+  sm: 'size-7 p-1.5 text-xs rounded-[6px] [&_svg]:size-3.5',
+  md: 'size-8 p-2 text-sm rounded-[8px] [&_svg]:size-4',
+  lg: 'size-9 p-2.5 text-base rounded-[8px] [&_svg]:size-5',
 };
 
 const variantStyles: Record<NonNullable<IconButtonProps['variant']>, string> = {
-  ghost: 'text-[#A1A1AA] hover:text-white hover:bg-white/[0.05]',
+  ghost: 'btn-guideline-ghost',
   subtle:
     'bg-[#18181B] hover:bg-[#222226] border border-white/[0.07] text-[#A1A1AA] hover:text-white',
-  primary:
-    'bg-[#FF5500] hover:bg-[#ff6a1f] text-white shadow-[0_0_12px_rgba(255,85,0,0.35)]',
-  danger: 'text-[#EB3B5A] hover:text-[#ff5270] hover:bg-[#EB3B5A]/15',
+  primary: 'btn-guideline-primary',
+  danger: 'btn-guideline-danger',
 };
 
 export function IconButton({
@@ -44,11 +44,11 @@ export function IconButton({
       disabled={disabled}
       data-active={isActive ? 'true' : undefined}
       className={cn(
-        'inline-flex items-center justify-center font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5500]/50 disabled:pointer-events-none disabled:opacity-35 cursor-pointer select-none active:scale-95',
+        'inline-flex items-center justify-center font-medium outline-none select-none cursor-pointer disabled:pointer-events-none disabled:opacity-35 btn-interactive active:scale-95',
         sizeStyles[size],
         variantStyles[variant],
         isActive &&
-          'bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/30 shadow-[0_0_10px_rgba(255,85,0,0.25)]',
+          'bg-[#FF8100]/15 text-[#FF8A00] border border-[#FF8100]/30 shadow-[0_0_12px_rgba(255,129,0,0.25)]',
         className,
       )}
       {...props}
