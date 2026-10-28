@@ -21,7 +21,7 @@ export function SquadTeamSwitcher({
 }: SquadTeamSwitcherProps) {
   return (
     <div className="p-2.5 space-y-2">
-      <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-white/5 border border-white/10">
+      <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-white/5 border border-white/[0.08]">
         <button
           type="button"
           onClick={() => setActiveTeam('home')}

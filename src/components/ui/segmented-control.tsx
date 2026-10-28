@@ -47,7 +47,7 @@ export function SegmentedControl<T extends string = string>({
             className={cn(
               'flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-[6px] transition-all cursor-pointer select-none btn-interactive active:scale-95',
               isSelected
-                ? 'bg-[#18181B] text-white shadow-sm border border-white/[0.08]'
+                ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)]'
                 : 'text-[#71717A] hover:text-white hover:bg-white/[0.03] border border-transparent',
             )}
           >

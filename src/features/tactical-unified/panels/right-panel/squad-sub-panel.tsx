@@ -201,11 +201,11 @@ export function SquadSubPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#141414] text-white text-xs select-none">
+    <div className="flex flex-col h-full bg-[#121214] text-white text-xs select-none">
       {/* Panel Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 shrink-0 bg-[#181818]">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.08] shrink-0 bg-[#18181B]">
         <div className="flex items-center gap-2">
-          <Users size={14} className="text-blue-400" />
+          <Users size={14} className="text-[#FFA336]" />
           <span className="font-semibold text-white/90">Squad & Bench</span>
         </div>
         <button
@@ -213,8 +213,8 @@ export function SquadSubPanel() {
           onClick={() => setIsAddingSub((v) => !v)}
           className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors cursor-pointer ${
             isAddingSub
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white'
+              ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)]'
+              : 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-transparent'
           }`}
         >
           <UserPlus size={11} />
@@ -242,7 +242,7 @@ export function SquadSubPanel() {
             <button
               type="button"
               onClick={handleOrganizeBench}
-              className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-[10px] font-medium transition-colors cursor-pointer border border-white/10 shadow-xs"
+              className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-[10px] font-medium transition-colors cursor-pointer border border-white/[0.08] shadow-xs"
               title="ポジション順（FW/MF/DF/GK）に3列再整列"
             >
               <Sparkles size={11} className="text-amber-400" />

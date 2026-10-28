@@ -11,6 +11,8 @@
  */
 
 import { ChevronLeft, ChevronRight, Shield, Users } from 'lucide-react';
+import { IconButton } from '@/components/ui/icon-button';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { FormationPanel } from './formation-panel';
 import { SquadSubPanel } from './squad-sub-panel';
@@ -33,7 +35,7 @@ export function RightPanel() {
 
   return (
     <aside
-      className={`h-full bg-[#141414] border-l border-white/10 flex flex-col shrink-0 z-30 overflow-hidden transition-[width] duration-200 ease-in-out ${
+      className={`h-full bg-[#121214] border-l border-white/[0.08] flex flex-col shrink-0 z-30 overflow-hidden transition-[width] duration-200 ease-in-out ${
         isRightPanelOpen ? 'w-[400px] min-w-[400px]' : 'w-12 min-w-[48px]'
       }`}
     >
@@ -57,8 +59,8 @@ export function RightPanel() {
             onClick={() => handleTabClick('formation')}
             className={`p-2 rounded-md transition-colors cursor-pointer relative ${
               rightPanelTab === 'formation'
-                ? 'bg-blue-600/30 text-blue-400'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
+                ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)]'
+                : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
             title="Formation Presets"
             aria-label="Formation"
@@ -71,8 +73,8 @@ export function RightPanel() {
             onClick={() => handleTabClick('squad')}
             className={`p-2 rounded-md transition-colors cursor-pointer relative ${
               rightPanelTab === 'squad'
-                ? 'bg-blue-600/30 text-blue-400'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
+                ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)]'
+                : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
             title="Squad & Bench Management"
             aria-label="Squad"
@@ -84,47 +86,26 @@ export function RightPanel() {
         // ── 展開状態 (400px 詳細パネル) ──
         <>
           {/* Top Segmented Tab Switcher (2タブ体制) + Close Button */}
-          <div className="flex items-center gap-1.5 p-1.5 bg-[#111] border-b border-white/10 shrink-0">
-            <div className="grid grid-cols-2 gap-1 flex-1 p-0.5 rounded-lg bg-white/5 border border-white/10">
-              <button
-                type="button"
-                onClick={() => setRightPanelTab('formation')}
-                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
-                  rightPanelTab === 'formation'
-                    ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-                title="Formation Presets"
-              >
-                <Shield size={13} />
-                <span>Formation</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setRightPanelTab('squad')}
-                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
-                  rightPanelTab === 'squad'
-                    ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-                title="Squad & Bench Management"
-              >
-                <Users size={13} />
-                <span>Squad</span>
-              </button>
-            </div>
+          <div className="flex items-center gap-1.5 p-1.5 bg-[#0D0D0E] border-b border-white/[0.08] shrink-0">
+            <SegmentedControl
+              className="flex-1 [&>button]:flex-1"
+              value={rightPanelTab === 'squad' ? 'squad' : 'formation'}
+              onChange={setRightPanelTab}
+              options={[
+                { id: 'formation', label: 'Formation', icon: Shield },
+                { id: 'squad', label: 'Squad', icon: Users },
+              ]}
+            />
 
             {/* Collapse Button */}
-            <button
-              type="button"
+            <IconButton
               onClick={toggleRightPanel}
-              className="p-1.5 rounded-md text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+              className="shrink-0"
               title="Collapse Panel"
               aria-label="Collapse Panel"
             >
               <ChevronRight size={16} />
-            </button>
+            </IconButton>
           </div>
 
           {/* Tab Body */}

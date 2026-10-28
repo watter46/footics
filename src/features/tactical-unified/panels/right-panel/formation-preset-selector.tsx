@@ -50,7 +50,7 @@ export function FormationPresetSelector({
             <button
               type="button"
               onClick={onSwapSides}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/[0.08] text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
               title={
                 isVertical
                   ? 'Swap team sides (vertical)'
@@ -69,7 +69,7 @@ export function FormationPresetSelector({
             <button
               type="button"
               onClick={onResetFormation}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/[0.08] text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
               title="Reset to default formation positions"
             >
               <RotateCcw size={10} className="text-amber-400" />
@@ -80,7 +80,7 @@ export function FormationPresetSelector({
             <button
               type="button"
               onClick={onClearPitch}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/[0.08] text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
               title="Clear all players from pitch to bench"
             >
               <Eraser size={10} className="text-rose-400" />
@@ -99,8 +99,8 @@ export function FormationPresetSelector({
             onClick={() => onSelectFormation(f)}
             className={`py-1 rounded text-[10.5px] font-mono text-center transition-all cursor-pointer truncate ${
               selectedFormation === f
-                ? 'bg-blue-600 text-white font-bold shadow-xs'
-                : 'bg-white/5 text-white/70 hover:bg-white/15 hover:text-white'
+                ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)] font-bold'
+                : 'bg-white/5 text-white/70 hover:bg-white/15 hover:text-white border border-transparent'
             }`}
             title={`Apply ${f}`}
           >
@@ -122,7 +122,7 @@ export function FormationPresetSelector({
           </span>
           <div className="flex items-center gap-1">
             {selectedFormation && (
-              <span className="text-[10px] font-mono text-blue-400">
+              <span className="text-[10px] font-mono text-[#60A5FA]">
                 {selectedFormation}
               </span>
             )}
@@ -134,7 +134,7 @@ export function FormationPresetSelector({
         </button>
 
         {isOpenMore && (
-          <div className="mt-1.5 space-y-1.5 p-2 bg-black/40 rounded-lg border border-white/10">
+          <div className="mt-1.5 space-y-1.5 p-2 bg-black/40 rounded-lg border border-white/[0.08]">
             <div className="relative">
               <Search
                 size={11}
@@ -145,7 +145,7 @@ export function FormationPresetSelector({
                 placeholder="Search formations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-6 pr-2 py-1 rounded bg-white/5 border border-white/10 text-white text-[11px] placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+                className="w-full pl-6 pr-2 py-1 rounded bg-white/5 border border-white/[0.08] text-white text-[11px] placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
               />
             </div>
 
@@ -157,8 +157,8 @@ export function FormationPresetSelector({
                   onClick={() => onSelectFormation(f)}
                   className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-all cursor-pointer ${
                     selectedFormation === f
-                      ? 'bg-blue-600 text-white font-bold shadow-xs'
-                      : 'bg-white/5 text-white/70 hover:bg-white/15 hover:text-white'
+                      ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)] font-bold'
+                      : 'bg-white/5 text-white/70 hover:bg-white/15 hover:text-white border border-transparent'
                   }`}
                 >
                   {f}

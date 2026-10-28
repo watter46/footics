@@ -82,23 +82,23 @@ export function FormationPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#141414] text-white text-xs select-none">
+    <div className="flex flex-col h-full bg-[#121214] text-white text-xs select-none">
       {/* Panel Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 shrink-0 bg-[#181818]">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.08] shrink-0 bg-[#18181B]">
         <div className="flex items-center gap-2">
-          <Shield size={14} className="text-blue-400" />
+          <Shield size={14} className="text-[#60A5FA]" />
           <span className="font-semibold text-white/90">Formation Presets</span>
         </div>
         <div className="flex items-center gap-1">
           {/* Half / Full Pitch Toggle */}
-          <div className="flex items-center bg-black/40 rounded border border-white/10 p-0.5">
+          <div className="flex items-center bg-black/40 rounded border border-white/[0.08] p-0.5">
             <button
               type="button"
               onClick={() => setFormationMode('half')}
               className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
                 formationMode === 'half'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-white/50 hover:text-white'
+                  ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)]'
+                  : 'text-white/50 hover:text-white border border-transparent'
               }`}
             >
               Half
@@ -108,8 +108,8 @@ export function FormationPanel() {
               onClick={() => setFormationMode('full')}
               className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
                 formationMode === 'full'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-white/50 hover:text-white'
+                  ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)]'
+                  : 'text-white/50 hover:text-white border border-transparent'
               }`}
             >
               Full

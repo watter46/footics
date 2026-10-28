@@ -32,7 +32,7 @@ export function FormationTeamToggle({
   return (
     <div className="p-2.5 space-y-2">
       {/* 1段目: 独立したチーム選択ボタン (Home | Away | Both) */}
-      <div className="grid grid-cols-3 gap-1.5 p-0.5 rounded-lg bg-white/5 border border-white/10">
+      <div className="grid grid-cols-3 gap-1.5 p-0.5 rounded-lg bg-white/5 border border-white/[0.08]">
         <button
           type="button"
           onClick={() => onTeamChange('home')}
@@ -102,7 +102,7 @@ export function FormationTeamToggle({
         <button
           type="button"
           onClick={() => setShowColorPicker((v) => !v)}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-xs transition-colors cursor-pointer shrink-0"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/[0.08] text-white/70 hover:text-white text-xs transition-colors cursor-pointer shrink-0"
           title={
             activeTeam === 'both'
               ? 'Home & Away Colors'
@@ -133,7 +133,7 @@ export function FormationTeamToggle({
         </button>
 
         {/* Pitch Visibility Filter */}
-        <div className="flex items-center bg-black/40 rounded-lg border border-white/10 p-0.5 shrink-0">
+        <div className="flex items-center bg-black/40 rounded-lg border border-white/[0.08] p-0.5 shrink-0">
           <button
             type="button"
             onClick={() => onVisibilityChange('both')}
@@ -177,7 +177,7 @@ export function FormationTeamToggle({
       {onDisplayModeChange && (
         <div className="flex items-center justify-between text-[11px] px-0.5">
           <span className="text-white/60 font-medium">Display Mode</span>
-          <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/10 p-0.5">
+          <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/[0.08] p-0.5">
             <button
               type="button"
               onClick={() => onDisplayModeChange('number')}
@@ -211,7 +211,7 @@ export function FormationTeamToggle({
 
       {/* Inline Color Picker Accordion */}
       {showColorPicker && (
-        <div className="p-2 rounded-lg bg-black/40 border border-white/10 space-y-2 animate-in fade-in duration-150">
+        <div className="p-2 rounded-lg bg-black/40 border border-white/[0.08] space-y-2 animate-in fade-in duration-150">
           {(activeTeam === 'home' || activeTeam === 'both') && (
             <div className="space-y-1">
               <div className="flex items-center justify-between text-[10px] text-white/60">
