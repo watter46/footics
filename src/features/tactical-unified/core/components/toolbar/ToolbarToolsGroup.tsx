@@ -1,5 +1,6 @@
 'use client';
 
+import { IconButton } from '@/components/ui/icon-button';
 import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import type { DrawingToolPlugin } from './drawing-tool-plugin';
 
@@ -16,27 +17,20 @@ export function ToolbarToolsGroup({ tools }: ToolbarToolsGroupProps) {
       {tools.map(({ id, icon: Icon, label }) => {
         const isActive = activeTool === id;
         return (
-          <button
-            type="button"
+          <IconButton
             key={id}
             data-tool={id}
             data-testid={`tool-${id}`}
             onClick={() => setActiveTool(id)}
             title={label}
             aria-label={label}
-            style={
-              isActive
-                ? { backgroundColor: '#0d99ff', color: '#ffffff' }
-                : undefined
-            }
-            className={`p-1.5 rounded-lg transition-all cursor-pointer shrink-0 ${
-              isActive
-                ? 'bg-[#0d99ff] text-white shadow-xs'
-                : 'text-white/80 hover:text-white hover:bg-[#333333]'
-            }`}
+            isActive={isActive}
+            variant="ghost"
+            size="sm"
+            className="shrink-0"
           >
             <Icon size={16} />
-          </button>
+          </IconButton>
         );
       })}
     </>

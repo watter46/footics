@@ -1,8 +1,9 @@
 'use client';
 
-import { ExternalLink } from 'lucide-react';
+import { Play } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { formatTimelineTime } from '@/lib/timeline-utils';
 import type { EventStrategy } from '@/registry/event-strategy';
 import type { EventRow, Match } from '@/types';
@@ -41,11 +42,11 @@ export function TimelineRowStandard({
   return (
     <div
       data-index={index}
-      className="group flex items-center px-4 border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors"
+      className="group flex items-center px-4 border-b border-white/[0.04] hover:bg-[#18181B] transition-colors"
       style={{ height: `${virtualRow.size}px` }}
     >
       {/* Time */}
-      <div className="w-28 font-mono text-slate-300 text-sm">{timeString}</div>
+      <div className="w-28 font-mono text-[#EDEDED] text-sm">{timeString}</div>
 
       {/* Player */}
       <div
@@ -81,7 +82,7 @@ export function TimelineRowStandard({
       </div>
 
       {/* Event Type */}
-      <div className="w-40 text-sm">
+      <div className="w-40 text-sm text-[#EDEDED]">
         <span>{event.type_name}</span>
         {event.is_shot && (
           <Badge className="ml-1.5 bg-red-900/50 text-red-400 hover:bg-red-900/50 text-xs">
@@ -107,7 +108,7 @@ export function TimelineRowStandard({
             </Badge>
           ))}
           {matchedStrategies.length === 0 && (
-            <span className="text-slate-600">-</span>
+            <span className="text-[#71717A]">-</span>
           )}
         </div>
       </div>
@@ -128,17 +129,24 @@ export function TimelineRowStandard({
         </div>
       </div>
 
-      {/* Actions (Tactical link) */}
-      <div className="w-10 flex items-center justify-center shrink-0">
+      {/* Actions (Play / Tactical link) */}
+      <div className="w-16 flex items-center justify-center shrink-0">
         <Link
           href={tacticalUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="p-1.5 text-slate-500 hover:text-blue-400 hover:bg-slate-700/50 rounded-lg transition-colors"
           title={`Tactical戦術ボードを開く (${tacticalMinute}分)`}
           aria-label={`Open in Tactical at minute ${tacticalMinute}`}
+          className="inline-flex"
         >
-          <ExternalLink className="w-4 h-4" />
+          <Button
+            type="button"
+            variant="play"
+            size="xs"
+            icon={<Play className="size-3" />}
+          >
+            Play
+          </Button>
         </Link>
       </div>
     </div>

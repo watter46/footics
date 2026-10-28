@@ -60,7 +60,7 @@ export default function Dashboard({ matchId }: { matchId: string }) {
     d.filters.activeStrategies.size;
 
   return (
-    <div className="flex h-screen w-full bg-black text-slate-50 overflow-hidden font-sans">
+    <div className="flex h-screen w-full bg-[#0D0D0E] text-[#EDEDED] overflow-hidden font-sans">
       <Sidebar
         metadata={d.metadata}
         filters={d.filters}
@@ -74,7 +74,7 @@ export default function Dashboard({ matchId }: { matchId: string }) {
         isOpenOnMobile={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
-      <main className="flex-1 flex flex-col p-3 sm:p-6 pt-3 sm:pt-4 overflow-y-auto relative min-w-0">
+      <main className="flex-1 flex flex-col p-3 sm:p-6 pt-3 sm:pt-4 overflow-y-auto relative min-w-0 bg-[#0D0D0E]">
         <TeamSummaryHeader
           metadata={d.metadata}
           activeFilterCount={activeFilterCount}

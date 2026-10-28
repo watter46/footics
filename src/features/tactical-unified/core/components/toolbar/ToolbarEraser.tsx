@@ -1,6 +1,7 @@
 'use client';
 
 import { Eraser } from 'lucide-react';
+import { IconButton } from '@/components/ui/icon-button';
 import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 
 export function ToolbarEraser() {
@@ -9,22 +10,20 @@ export function ToolbarEraser() {
   const isEraser = activeTool === 'eraser';
 
   return (
-    <button
-      type="button"
+    <IconButton
       onClick={() => setActiveTool(isEraser ? 'select' : 'eraser')}
+      variant={isEraser ? 'danger' : 'ghost'}
+      isActive={isEraser}
+      size="sm"
       title={
         isEraser
           ? 'Eraser: ON (Drag over objects to erase)'
           : 'Eraser: OFF (Click to toggle)'
       }
       aria-label="Eraser Mode"
-      className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center shrink-0 ${
-        isEraser
-          ? 'bg-rose-600 text-white shadow-md shadow-rose-500/30 ring-1 ring-rose-400'
-          : 'text-white/80 hover:text-white hover:bg-[#333333]'
-      }`}
+      className="shrink-0"
     >
       <Eraser size={16} />
-    </button>
+    </IconButton>
   );
 }

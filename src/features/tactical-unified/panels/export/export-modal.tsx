@@ -1,5 +1,6 @@
 'use client';
 
+import { Dialog } from '@/components/ui/dialog';
 import { ExportBenchmarkOverlay } from './export-benchmark-overlay';
 import { ExportModalBody } from './export-modal-body';
 import { ExportModalFooter } from './export-modal-footer';
@@ -41,19 +42,12 @@ export function ExportModal() {
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="export-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs select-none p-4"
-      onClick={(e) =>
-        !isExporting && e.target === e.currentTarget && closeExportModal()
-      }
-      onKeyDown={(e) =>
-        !isExporting && e.key === 'Escape' && closeExportModal()
-      }
+    <Dialog
+      open={true}
+      onClose={isExporting ? undefined : closeExportModal}
+      className="max-w-4xl p-0 overflow-hidden flex flex-col max-h-[90vh] space-y-0 select-none"
     >
-      <div className="relative w-full max-w-4xl rounded-[12px] bg-[#222226] border border-white/[0.08] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative w-full flex flex-col h-full overflow-hidden">
         <ExportModalHeader
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -102,6 +96,6 @@ export function ExportModal() {
           <ExportModalFooter state={state} />
         )}
       </div>
-    </div>
+    </Dialog>
   );
 }

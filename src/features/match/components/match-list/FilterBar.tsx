@@ -1,6 +1,9 @@
 'use client';
 
-import { Filter, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { SearchInput } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/select';
 import { GlobalDataManagement } from '@/features/management';
 
 interface FilterBarProps {
@@ -21,55 +24,62 @@ export function FilterBar({
   resultCount,
 }: FilterBarProps) {
   return (
-    <div className="flex items-center gap-2 sm:gap-3 flex-wrap relative z-20">
-      <div className="flex items-center gap-1.5 text-slate-500 text-xs sm:text-sm font-medium pr-1 sm:pr-2">
-        <Filter className="w-3.5 h-3.5" />
-        <span>Type</span>
-      </div>
-      {(['all', 'club', 'national'] as const).map((t) => (
-        <button
-          type="button"
-          key={t}
-          onClick={() => setActiveType(t)}
-          className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-semibold border transition-all duration-200 capitalize ${
-            activeType === t
-              ? 'bg-blue-500/20 border-blue-500/60 text-blue-300'
-              : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
-          }`}
+    <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap relative z-20">
+      {/* Type Select */}
+      <div className="w-32 sm:w-36 shrink-0">
+        <NativeSelect
+          aria-label="Match Type"
+          value={activeType}
+          onChange={(e) =>
+            setActiveType(e.target.value as 'all' | 'club' | 'national')
+          }
+          className="h-8 text-xs py-1"
         >
-          {t}
-        </button>
-      ))}
-
-      <div className="hidden sm:block w-px h-5 bg-slate-700 mx-1 sm:mx-2" />
-
-      <div className="flex items-center gap-1.5 text-slate-500 text-xs sm:text-sm font-medium pr-1 sm:pr-2 ml-1 sm:ml-0">
-        <Filter className="w-3.5 h-3.5" />
-        <span>Team</span>
+          <option value="all">All Types</option>
+          <option value="club">Club</option>
+          <option value="national">National</option>
+        </NativeSelect>
       </div>
-      {TEAM_FILTERS.map((f) => {
-        const isActive = activeTeam === f.value;
-        return (
-          <button
-            type="button"
-            key={f.value}
-            onClick={() => setActiveTeam(isActive ? null : f.value)}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-semibold border transition-all duration-200 ${
-              isActive
-                ? 'bg-blue-500/20 border-blue-500/60 text-blue-300'
-                : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
-            }`}
-          >
-            {f.label}
-            {isActive && <X className="w-3 h-3 opacity-70" />}
-          </button>
-        );
-      })}
+
+      {/* Team Search Input */}
+      <div className="w-44 sm:w-56 shrink-0">
+        <SearchInput
+          placeholder="Search team..."
+          value={activeTeam ?? ''}
+          onChange={(e) => setActiveTeam(e.target.value || null)}
+          onClear={() => setActiveTeam(null)}
+          className="h-8 text-xs"
+        />
+      </div>
+
+      {/* Quick Filter Buttons */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {TEAM_FILTERS.map((f) => {
+          const isActive = activeTeam === f.value;
+          return (
+            <Button
+              key={f.value}
+              variant="secondary"
+              size="sm"
+              isActive={isActive}
+              onClick={() => setActiveTeam(isActive ? null : f.value)}
+              icon={
+                isActive ? <X className="w-3 h-3 text-[#FF8A00]" /> : undefined
+              }
+              iconPosition="right"
+            >
+              {f.label}
+            </Button>
+          );
+        })}
+      </div>
+
       {activeTeam && (
-        <span className="text-xs text-slate-500 ml-auto mr-2 sm:mr-4 italic">
+        <span className="text-xs text-[#A1A1AA] ml-auto mr-2 sm:mr-4 font-mono italic">
           {resultCount} match{resultCount !== 1 ? 'es' : ''} found
         </span>
       )}
+
       <div
         className={activeTeam ? 'hidden sm:block' : 'hidden sm:block ml-auto'}
       >

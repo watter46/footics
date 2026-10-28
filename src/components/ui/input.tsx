@@ -1,6 +1,6 @@
 'use client';
 
-import { SearchIcon } from 'lucide-react';
+import { SearchIcon, X } from 'lucide-react';
 import type * as React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -40,8 +40,12 @@ export function SearchInput({
   ref,
   className,
   disabled,
+  onClear,
+  value,
   ...props
 }: SearchInputProps) {
+  const hasValue = Boolean(value);
+
   return (
     <div className="relative flex items-center w-full">
       <SearchIcon
@@ -51,9 +55,20 @@ export function SearchInput({
       <Input
         ref={ref}
         disabled={disabled}
-        className={cn('pl-9', className)}
+        value={value}
+        className={cn('pl-9', onClear && hasValue && 'pr-8', className)}
         {...props}
       />
+      {onClear && hasValue && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="absolute right-2.5 text-[#71717A] hover:text-white transition-colors cursor-pointer"
+          aria-label="Clear search"
+        >
+          <X className="size-3.5" />
+        </button>
+      )}
     </div>
   );
 }

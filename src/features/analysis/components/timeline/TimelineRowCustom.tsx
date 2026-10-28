@@ -1,8 +1,9 @@
 'use client';
 
-import { ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Play, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { getEventMetadata } from '@/lib/event-definitions';
 import { formatTimelineTime } from '@/lib/timeline-utils';
 import type { EventRow } from '@/types';
@@ -36,10 +37,10 @@ export function TimelineRowCustom({
   return (
     <div
       data-index={index}
-      className={`group flex items-center px-4 border-b border-amber-900/30 transition-colors ${
+      className={`group flex items-center px-4 border-b border-white/[0.04] transition-colors ${
         isHighlighted
           ? 'bg-amber-700/50 blink-shadow'
-          : 'bg-amber-950/20 hover:bg-amber-900/30'
+          : 'bg-amber-950/20 hover:bg-[#18181B]'
       }`}
       style={{ height: `${virtualRow.size}px` }}
     >
@@ -77,11 +78,18 @@ export function TimelineRowCustom({
           href={tacticalUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="p-2 sm:p-1.5 text-amber-500/70 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition-colors"
           title={`Tactical戦術ボードを開く (${tacticalMinute}分)`}
           aria-label={`Open in Tactical at minute ${tacticalMinute}`}
+          className="inline-flex"
         >
-          <ExternalLink className="w-4 h-4" />
+          <Button
+            type="button"
+            variant="play"
+            size="xs"
+            icon={<Play className="size-3" />}
+          >
+            Play
+          </Button>
         </Link>
         <button
           type="button"

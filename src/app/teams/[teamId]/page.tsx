@@ -16,16 +16,16 @@ export default async function TeamDynamicPage({ params }: TeamPageProps) {
   const { teamId } = await params;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col">
+    <div className="min-h-screen bg-[#0D0D0E] text-[#EDEDED] flex flex-col">
       {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/60">
+      <header className="sticky top-0 z-40 bg-[#121214] border-b border-white/[0.07]">
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
               href="/"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-semibold text-[#A1A1AA] hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.07] transition-colors"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <ChevronLeft className="size-3.5" />
               <span>Matches</span>
             </Link>
 
@@ -44,10 +44,10 @@ export default async function TeamDynamicPage({ params }: TeamPageProps) {
           <div className="flex items-center gap-2.5">
             <Link
               href="/tactical"
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 hover:border-indigo-400 transition-all flex items-center gap-1.5 shadow-sm"
+              className="inline-flex items-center justify-center whitespace-nowrap outline-none select-none cursor-pointer h-7 px-2.5 text-xs font-medium rounded-[8px] gap-1.5 [&_svg]:size-3.5 btn-guideline-secondary btn-interactive active:scale-[0.98]"
               title="Tactical 統合キャンバスを開く"
             >
-              <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+              <ExternalLink className="size-3.5 text-[#FF8A00]" />
               <span>Tactical</span>
             </Link>
             <TeamsDropdown />

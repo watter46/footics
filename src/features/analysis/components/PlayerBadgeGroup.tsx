@@ -1,7 +1,10 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Badge } from '@/components/ui/badge';
+import {
+  PositionBadge,
+  type PositionType,
+} from '@/components/ui/position-badge';
 import type { BasePlayer } from '@/types';
 
 // ── ポジション定義 ──
@@ -29,6 +32,18 @@ function getPositionCategory(position?: string): string {
   if (['DL', 'DC', 'DR'].includes(position)) return 'DF';
   if (position === 'GK') return 'GK';
   return 'SUB';
+}
+
+function toPositionType(category: string): PositionType {
+  if (
+    category === 'FW' ||
+    category === 'MID' ||
+    category === 'DF' ||
+    category === 'GK'
+  ) {
+    return category;
+  }
+  return 'MID';
 }
 
 function sortPlayersByPosition(players: BasePlayer[]): BasePlayer[] {
@@ -84,27 +99,26 @@ export function PlayerBadgeGroup({
         const categoryPlayers = groupedByCategory[category];
         if (!categoryPlayers || categoryPlayers.length === 0) return null;
 
+        const posType = toPositionType(category);
+
         return (
           <div key={category} className="space-y-1">
-            <div className="text-[9px] text-slate-500 font-medium uppercase tracking-wide pl-0.5">
+            <div className="text-[9px] text-[#71717A] font-medium uppercase tracking-wide pl-0.5">
               {category}
             </div>
             <div className="flex flex-wrap gap-1">
               {categoryPlayers.map((player) => {
                 const isSelected = selectedPlayers.has(player.playerId);
                 return (
-                  <Badge
+                  <PositionBadge
                     key={player.playerId}
-                    variant={isSelected ? 'default' : 'outline'}
-                    className={`cursor-pointer transition-all duration-200 text-[10px] px-1.5 py-0.5 ${
-                      isSelected
-                        ? 'bg-blue-600 hover:bg-blue-500'
-                        : 'border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                    }`}
-                    onClick={() => onTogglePlayer(player.playerId)}
-                  >
-                    {player.name}
-                  </Badge>
+                    position={posType}
+                    label={player.name}
+                    variant="button"
+                    isActive={isSelected}
+                    onSelect={() => onTogglePlayer(player.playerId)}
+                    className="px-2 py-0.5 text-[11px]"
+                  />
                 );
               })}
             </div>
@@ -138,20 +152,17 @@ export function FlatPlayerBadges({
       {sortedPlayers.map((player) => {
         const isSelected = selectedPlayers.has(player.playerId);
         const category = getPositionCategory(player.position);
+        const posType = toPositionType(category);
         return (
-          <Badge
+          <PositionBadge
             key={player.playerId}
-            variant={isSelected ? 'default' : 'outline'}
-            className={`cursor-pointer transition-all duration-200 text-[10px] px-1.5 py-0.5 ${
-              isSelected
-                ? 'bg-blue-600 hover:bg-blue-500'
-                : 'border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-            }`}
-            onClick={() => onTogglePlayer(player.playerId)}
-          >
-            <span className="text-slate-500 mr-0.5 text-[8px]">{category}</span>
-            {player.name}
-          </Badge>
+            position={posType}
+            label={player.name}
+            variant="button"
+            isActive={isSelected}
+            onSelect={() => onTogglePlayer(player.playerId)}
+            className="px-2 py-0.5 text-[11px]"
+          />
         );
       })}
     </div>

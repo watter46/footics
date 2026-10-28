@@ -1,6 +1,7 @@
 'use client';
 
 import { RotateCcw } from 'lucide-react';
+import { IconButton } from '@/components/ui/icon-button';
 import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 
 export function ToolbarResetButton() {
@@ -25,14 +26,15 @@ export function ToolbarResetButton() {
   };
 
   return (
-    <button
-      type="button"
+    <IconButton
       onClick={handleReset}
+      variant="ghost"
+      size="sm"
       title="Reset all annotations"
       aria-label="Reset all slide objects"
-      className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-[#333333] transition-all cursor-pointer flex items-center justify-center shrink-0"
+      className="shrink-0 text-white/40 hover:text-rose-400 hover:bg-rose-500/10"
     >
       <RotateCcw size={16} />
-    </button>
+    </IconButton>
   );
 }

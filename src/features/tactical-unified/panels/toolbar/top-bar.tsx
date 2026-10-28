@@ -10,7 +10,8 @@
 
 import { Copy, Maximize2, Minimize2, PanelLeft, Upload } from 'lucide-react';
 import type React from 'react';
-import { ActionButton } from '@/components/ui/action-button';
+import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import {
   type CanvasCoreHandle,
   CanvasToast,
@@ -48,19 +49,16 @@ export function TopBar({
     <header className="flex items-center justify-between h-11 px-3 bg-[#121214] border-b border-white/[0.07] shrink-0 z-50 select-none">
       {/* Left: Sidebar Toggle, Brand / Project Manager, Editable Title, Undo / Redo */}
       <div className="flex items-center gap-2">
-        <button
-          type="button"
+        <IconButton
+          variant="ghost"
+          size="sm"
+          isActive={sidebarOpen && !isFocusMode}
           onClick={toggleSidebar}
-          className={`p-1.5 rounded-[6px] transition-all cursor-pointer ${
-            sidebarOpen && !isFocusMode
-              ? 'bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/30'
-              : 'text-[#A1A1AA] hover:text-white hover:bg-white/[0.05] border border-transparent'
-          }`}
           title="Toggle Left Sequences Sidebar"
           aria-label="Toggle Sequences Sidebar"
         >
           <PanelLeft size={15} strokeWidth={1.5} />
-        </button>
+        </IconButton>
 
         <TopBarTitle />
         <div className="h-4 w-px bg-white/[0.07]" />
@@ -73,33 +71,33 @@ export function TopBar({
       {/* Right: Focus Mode, Panel Toggles, Copy PNG, Primary Export, More Options (...) */}
       <div className="flex items-center gap-1.5">
         {onToggleFocusMode && (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
+            isActive={isFocusMode}
             onClick={onToggleFocusMode}
-            className={`px-2 py-1 rounded-[6px] text-xs font-mono border transition-all cursor-pointer flex items-center gap-1.5 ${
-              isFocusMode
-                ? 'bg-[#FF5500]/15 text-[#FF5500] border-[#FF5500]/30 shadow-[0_0_10px_rgba(255,85,0,0.25)]'
-                : 'bg-[#18181B] hover:bg-[#222226] border-white/[0.07] text-[#A1A1AA] hover:text-white'
-            }`}
+            icon={
+              isFocusMode ? (
+                <Minimize2 size={13} strokeWidth={1.5} />
+              ) : (
+                <Maximize2 size={13} strokeWidth={1.5} />
+              )
+            }
             title="Focus Mode (ピッチ最大化) [Shortcut: \] "
+            className="font-mono"
           >
-            {isFocusMode ? (
-              <Minimize2 size={13} strokeWidth={1.5} />
-            ) : (
-              <Maximize2 size={13} strokeWidth={1.5} />
-            )}
             <span className="hidden xl:inline">Focus</span>
             <kbd className="text-[9px] bg-black/40 px-1 py-0.5 rounded text-[#71717A] border border-white/[0.05]">
               \
             </kbd>
-          </button>
+          </Button>
         )}
 
         <TopBarPanels />
 
         {/* Copy PNG */}
-        <ActionButton
-          variant="default"
+        <Button
+          variant="secondary"
           size="sm"
           onClick={handleCopy}
           icon={<Copy size={13} strokeWidth={1.5} />}
@@ -107,10 +105,10 @@ export function TopBar({
           title="Copy current slide image to clipboard"
         >
           <span className="hidden md:inline">Copy PNG</span>
-        </ActionButton>
+        </Button>
 
         {/* Export Modal (Primary) */}
-        <ActionButton
+        <Button
           variant="primary"
           size="sm"
           onClick={() => openExportModal()}
@@ -119,7 +117,7 @@ export function TopBar({
           title="Export image or video"
         >
           <span>Export</span>
-        </ActionButton>
+        </Button>
 
         {/* More Actions (...) Dropdown */}
         <TopBarMoreMenu />
