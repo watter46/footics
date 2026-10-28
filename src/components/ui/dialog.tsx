@@ -1,8 +1,68 @@
 'use client';
 
+import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { XIcon } from 'lucide-react';
-import * as React from 'react';
+import type * as React from 'react';
 import { cn } from '@/lib/utils';
+
+export { DialogPrimitive };
+export const DialogTrigger = DialogPrimitive.Trigger;
+export const DialogPortal = DialogPrimitive.Portal;
+export const DialogClose = DialogPrimitive.Close;
+
+export function DialogBackdrop({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Backdrop>) {
+  return (
+    <DialogPrimitive.Backdrop
+      className={cn(
+        'fixed inset-0 z-50 bg-black/70 backdrop-blur-xs transition-opacity animate-in fade-in-0',
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function DialogPopup({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Popup>) {
+  return (
+    <DialogPrimitive.Popup
+      className={cn(
+        'w-full bg-[#222226] border border-white/[0.08] rounded-[10px] shadow-2xl p-6 space-y-5 text-white animate-in zoom-in-95 duration-150 focus:outline-none',
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function DialogDescription({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Description>) {
+  return (
+    <DialogPrimitive.Description
+      className={cn('text-xs text-[#A1A1AA] leading-relaxed', className)}
+      {...props}
+    />
+  );
+}
+
+export function DialogTitle({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Title>) {
+  return (
+    <DialogPrimitive.Title
+      className={cn('text-sm font-bold text-white', className)}
+      {...props}
+    />
+  );
+}
 
 export interface DialogProps {
   open: boolean;
@@ -26,40 +86,24 @@ export function Dialog({
   className,
   size = 'lg',
 }: DialogProps) {
-  React.useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose?.();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in-0"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
+    <DialogPrimitive.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
           onClose?.();
         }
       }}
     >
-      <div
-        className={cn(
-          'w-full bg-[#222226] border border-white/[0.08] rounded-[10px] shadow-2xl p-6 space-y-5 text-white',
-          sizeClasses[size],
-          className,
-        )}
-      >
-        {children}
-      </div>
-    </div>
+      <DialogPrimitive.Portal>
+        <DialogBackdrop />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <DialogPopup className={cn(sizeClasses[size], className)}>
+            {children}
+          </DialogPopup>
+        </div>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
@@ -94,7 +138,7 @@ export function DialogHeader({
               boxShadow: `0 0 6px ${accentColor}`,
             }}
           />
-          <h4 className="text-sm font-bold text-white">{title}</h4>
+          <DialogTitle>{title}</DialogTitle>
         </div>
       ) : (
         children
@@ -110,15 +154,6 @@ export function DialogHeader({
         </button>
       )}
     </div>
-  );
-}
-
-export function DialogTitle({
-  className,
-  ...props
-}: React.ComponentProps<'h4'>) {
-  return (
-    <h4 className={cn('text-sm font-bold text-white', className)} {...props} />
   );
 }
 

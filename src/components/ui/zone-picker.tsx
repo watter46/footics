@@ -154,7 +154,7 @@ export function ZonePicker({ selectedZones, onChange }: ZonePickerProps) {
                 y={y}
                 width={CELL_WIDTH}
                 height={CELL_HEIGHT}
-                fill={isSelected ? 'rgba(192, 38, 211, 0.45)' : 'transparent'}
+                fill={isSelected ? 'rgba(255, 129, 0, 0.45)' : 'transparent'}
                 stroke="rgba(255,255,255,0.12)"
                 strokeWidth={0.5}
                 rx={1}
@@ -167,7 +167,7 @@ export function ZonePicker({ selectedZones, onChange }: ZonePickerProps) {
                   width={CELL_WIDTH}
                   height={CELL_HEIGHT}
                   fill="none"
-                  stroke="rgba(192, 38, 211, 0.8)"
+                  stroke="rgba(255, 129, 0, 0.8)"
                   strokeWidth={1.2}
                   rx={1}
                 />
@@ -197,13 +197,13 @@ export function ZonePicker({ selectedZones, onChange }: ZonePickerProps) {
       {/* 選択数インジケーター */}
       {selectedZones.length > 0 && (
         <div className="flex items-center justify-between mt-1.5">
-          <span className="text-[10px] text-fuchsia-400">
+          <span className="text-[10px] text-[#FFA336]">
             {selectedZones.length} zone{selectedZones.length !== 1 ? 's' : ''}{' '}
             selected
           </span>
           <button
             type="button"
-            className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+            className="text-[10px] text-[#71717A] hover:text-white transition-colors"
             onClick={() => onChange([])}
           >
             Clear

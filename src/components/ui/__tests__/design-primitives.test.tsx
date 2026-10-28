@@ -4,10 +4,31 @@ import { describe, expect, it, vi } from 'vitest';
 import { ActionButton } from '../action-button';
 import { Button } from '../button';
 import { Card, KpiTile } from '../card';
-import { Dialog, DialogFooter, DialogHeader } from '../dialog';
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
+  DialogPortal,
+  DialogPrimitive,
+  DialogTitle,
+  DialogTrigger,
+} from '../dialog';
 import { FloatingSurface } from '../floating-surface';
 import { IconButton } from '../icon-button';
 import { Input, SearchInput } from '../input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../menu';
 import { PositionBadge } from '../position-badge';
 import { SegmentedControl } from '../segmented-control';
 import { NativeSelect } from '../select';
@@ -257,6 +278,7 @@ describe('Design System Primitives', () => {
       render(
         <Dialog open onClose={handleClose}>
           <DialogHeader title="Export Modal" />
+          <DialogDescription>Description text</DialogDescription>
           <div>Dialog Body</div>
           <DialogFooter>
             <button type="button">Close</button>
@@ -264,7 +286,42 @@ describe('Design System Primitives', () => {
         </Dialog>,
       );
       expect(screen.getByText('Export Modal')).toBeInTheDocument();
+      expect(screen.getByText('Description text')).toBeInTheDocument();
       expect(screen.getByText('Dialog Body')).toBeInTheDocument();
+    });
+
+    it('exports primitive dialog subcomponents', () => {
+      expect(DialogPrimitive).toBeDefined();
+      expect(DialogTrigger).toBeDefined();
+      expect(DialogPortal).toBeDefined();
+      expect(DialogClose).toBeDefined();
+      expect(DialogBackdrop).toBeDefined();
+      expect(DialogPopup).toBeDefined();
+      expect(DialogDescription).toBeDefined();
+    });
+  });
+
+  describe('DropdownMenu', () => {
+    it('renders menu items and triggers action on click', () => {
+      const handleSelect = vi.fn();
+      render(
+        <DropdownMenu defaultOpen>
+          <DropdownMenuTrigger>Actions</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Group</DropdownMenuLabel>
+              <DropdownMenuItem onClick={handleSelect}>Edit</DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled>Delete</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>,
+      );
+      expect(screen.getByText('Group')).toBeInTheDocument();
+      const editItem = screen.getByText('Edit');
+      expect(editItem).toBeInTheDocument();
+      fireEvent.click(editItem);
+      expect(handleSelect).toHaveBeenCalledTimes(1);
     });
   });
 
