@@ -88,7 +88,7 @@ export function FormationBenchSection({
       )}
 
       {benchPlayers.length === 0 ? (
-        <div className="p-3 rounded border border-dashed border-white/10 text-center text-white/30 text-[11px]">
+        <div className="p-3 rounded border border-dashed border-white/[0.08] text-center text-white/30 text-[11px]">
           No substitutes.
         </div>
       ) : (
@@ -101,7 +101,7 @@ export function FormationBenchSection({
             return (
               <div
                 key={`bench-grp-${grp}`}
-                className="rounded bg-black/20 border border-white/5 overflow-hidden"
+                className="rounded bg-black/20 border border-white/[0.07] overflow-hidden"
               >
                 <button
                   type="button"

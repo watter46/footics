@@ -107,7 +107,7 @@ export function FormationCustomManager({
       </button>
 
       {isOpen && (
-        <div className="mt-2 space-y-2.5 p-2 bg-black/40 rounded-lg border border-white/10">
+        <div className="mt-2 space-y-2.5 p-2 bg-black/40 rounded-lg border border-white/[0.08]">
           <div>
             <span className="text-[10px] uppercase font-bold text-white/40 block mb-1">
               Registered Clubs
@@ -118,9 +118,9 @@ export function FormationCustomManager({
                   key={t.id}
                   type="button"
                   onClick={() => handleApplyClubPreset(t.id)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-blue-600/20 hover:text-blue-300 text-left text-[10px] text-white/80 transition-colors truncate cursor-pointer"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-[#60A5FA]/15 hover:text-[#60A5FA] text-left text-[10px] text-white/80 transition-colors truncate cursor-pointer"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#60A5FA] shrink-0" />
                   <span className="truncate">{t.shortName}</span>
                 </button>
               ))}

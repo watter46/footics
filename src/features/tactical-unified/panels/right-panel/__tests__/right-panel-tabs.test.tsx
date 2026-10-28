@@ -38,7 +38,7 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
     expect(screen.getByText('Formation Presets')).toBeDefined();
 
     // Switch to Squad tab
-    fireEvent.click(screen.getByRole('button', { name: /squad/i }));
+    fireEvent.click(screen.getByRole('radio', { name: /squad/i }));
     expect(screen.getByText('Squad & Bench')).toBeDefined();
 
     // Collapse panel with collapse button

@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Footics Design System — Visual Showcase & Component Catalog</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            matte: {
+              canvas: '#0D0D0E',    // Level 0: ピッチ背景・アプリ最下層
+              sidebar: '#121214',   // Level 1: サイドバー・上部ヘッダー
+              surface: '#18181B',   // Level 2: カード・行・入力欄
+              modal: '#222226',     // Level 3: ダイアログ・ポップオーバー
+            },
+            accent: {
+              orange: '#FF5500',    // 主動線・決定・作成
+              cyan: '#00A8FF',      // 分析・MF・情報
+              play: '#2563EB',      // 再生系アクション (Blue)
+              // ポジションカラー指定
+              fw: '#EF4444',        // FW: 赤
+              mid: '#10B981',       // MID: 緑
+              df: '#3B82F6',        // DF: 青
+              gk: '#F59E0B',        // GK: 黄色
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .btn-interactive {
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-interactive:active {
+      transform: scale(0.97);
+    }
+    .surface-interactive {
+      transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    /* ========================================================================= */
+    /* ガイドライン完全準拠・ダークサーフェス＆高彩度ネオンアクセント体系 */
+    /* 背景は一段明るいダークグレー（#18181B〜#222226）+ 極細ボーダー（border-white/[0.07]） */
+    /* アクセントは最小面積（アイコン・文字色・微細発光）。オレンジは鮮明度を上げ赤と明確に差別化 */
+    /* ========================================================================= */
+
+    /* Primary Orange: Step 3.5 (Hue 30° #FF8100)。赤みを完全に消し去り、黄色に突入する直前の極限純オレンジ */
+    .btn-guideline-primary {
+      background-color: rgba(255, 129, 0, 0.15);
+      border: 1px solid #FF8100;
+      color: #FF8A00;
+      box-shadow: 0 0 12px rgba(255, 129, 0, 0.35);
+    }
+    .btn-guideline-primary:hover {
+      background-color: rgba(255, 129, 0, 0.28);
+      border-color: #FF991A;
+      color: #FFFFFF;
+      box-shadow: 0 0 16px rgba(255, 129, 0, 0.55);
+    }
+
+    /* Play Action (Blue): 鮮やかなエレクトリックブルー + 15%発光背景 + 同系色極細線 */
+    .btn-guideline-play {
+      background-color: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.45);
+      color: #60A5FA;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.20);
+    }
+    .btn-guideline-play:hover {
+      background-color: rgba(59, 130, 246, 0.26);
+      border-color: rgba(59, 130, 246, 0.75);
+      color: #FFFFFF;
+      box-shadow: 0 0 16px rgba(59, 130, 246, 0.40);
+    }
+
+    /* Secondary: 一段明るいダークグレー（#18181B）+ 極細線（border-white/[0.07]） */
+    .btn-guideline-secondary {
+      background-color: #18181B;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      color: #F4F4F5;
+    }
+    .btn-guideline-secondary:hover {
+      background-color: #222226;
+      border-color: rgba(255, 255, 255, 0.15);
+      color: #FFFFFF;
+    }
+
+    /* Danger / Alert (Coral Red #EB3B5A): 鮮烈な赤 */
+    .btn-guideline-danger {
+      background-color: rgba(235, 59, 90, 0.14);
+      border: 1px solid rgba(235, 59, 90, 0.40);
+      color: #FF4757;
+      box-shadow: 0 0 10px rgba(235, 59, 90, 0.18);
+    }
+    .btn-guideline-danger:hover {
+      background-color: rgba(235, 59, 90, 0.25);
+      border-color: rgba(235, 59, 90, 0.65);
+      color: #FFFFFF;
+      box-shadow: 0 0 14px rgba(235, 59, 90, 0.35);
+    }
+
+    /* ポジション別 ネオンバッジ体系（暗闇に沈ませず、鮮明な高彩度発光で視認性を確保） */
+    .badge-pos-fw {
+      background-color: rgba(239, 68, 68, 0.16);
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      color: #FF5252;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.20);
+    }
+    .badge-pos-mid {
+      background-color: rgba(16, 185, 129, 0.16);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #10B981;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.20);
+    }
+    .badge-pos-df {
+      background-color: rgba(59, 130, 246, 0.16);
+      border: 1px solid rgba(59, 130, 246, 0.45);
+      color: #60A5FA;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.20);
+    }
+    .badge-pos-gk {
+      background-color: rgba(245, 158, 11, 0.16);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #FBBF24;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.20);
+    }
+
+    /* Ghost Tool Button */
+    .btn-guideline-ghost {
+      color: #A1A1AA;
+      background: transparent;
+    }
+    .btn-guideline-ghost:hover {
+      color: #FFFFFF;
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+  </style>
+</head>
+<body class="bg-[#0D0D0E] text-[#F4F4F5] font-sans antialiased min-h-screen selection:bg-[#FF5500] selection:text-white pb-24">
+
+  <!-- TOP APP BAR / HEADER -->
+  <header class="sticky top-0 z-40 bg-[#121214]/95 backdrop-blur-sm border-b border-white/[0.07] px-6 py-3">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-[8px] bg-[#18181B] border border-[#FF5500]/40 flex items-center justify-center font-black text-[#FF5500] text-sm shadow-[0_0_12px_rgba(255,85,0,0.25)]">F</div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-sm font-bold text-white tracking-tight">Footics UI Component Catalog</h1>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-[4px] bg-[#FF5500]/10 text-[#FF5500] border border-[#FF5500]/25 font-semibold">Guidelines 100% Strictly Applied</span>
+          </div>
+          <p class="text-xs text-[#71717A]">ガイドライン厳密準拠：暗闇に溶け込むダークサーフェス ＋ 最小限面積ネオンアクセント</p>
+        </div>
+      </div>
+
+      <!-- Quick Nav Buttons -->
+      <div class="flex items-center gap-1.5 overflow-x-auto text-xs py-1">
+        <a href="#sec-buttons" class="px-2.5 py-1 rounded-[6px] btn-guideline-secondary btn-interactive">Buttons</a>
+        <a href="#sec-positions" class="px-2.5 py-1 rounded-[6px] btn-guideline-secondary btn-interactive">Positions</a>
+        <a href="#sec-controls" class="px-2.5 py-1 rounded-[6px] btn-guideline-secondary btn-interactive">Controls</a>
+        <a href="#sec-cards" class="px-2.5 py-1 rounded-[6px] btn-guideline-secondary btn-interactive">Cards &amp; KPI</a>
+        <a href="#sec-table" class="px-2.5 py-1 rounded-[6px] btn-guideline-secondary btn-interactive">Data Grid</a>
+        <a href="#sec-dialogs" class="px-2.5 py-1 rounded-[6px] btn-guideline-secondary btn-interactive">Modals</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto p-6 md:p-8 space-y-12">
+
+    <!-- 0. DESIGN SPECS SUMMARY BANNER -->
+    <section class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-5">
+      <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#FF8100] shadow-[0_0_8px_#FF8100]"></span>
+            <h2 class="text-base font-bold text-white tracking-tight">4階層サーフェス明度設計 ＆ 役割別カラーパレット</h2>
+          </div>
+          <p class="text-xs text-[#A1A1AA] mt-1.5 leading-relaxed max-w-3xl">
+            純黒を排した4階層サーフェス（<span class="font-mono text-white">#0D0D0E</span> ➔ <span class="font-mono text-white">#121214</span> ➔ <span class="font-mono text-white">#18181B</span> ➔ <span class="font-mono text-white">#222226</span>）と極細境界（<span class="font-mono text-white">border-white/[0.07]</span>）を適用。
+            ポジションはご指定の <span class="text-red-400 font-bold">FW:赤</span> / <span class="text-emerald-400 font-bold">MID:緑</span> / <span class="text-blue-400 font-bold">DF:青</span> / <span class="text-amber-400 font-bold">GK:黄</span>、再生系は <span class="text-blue-500 font-bold">青系</span>、主要アクションは <span class="text-[#FF8A00] font-bold">純ネオンオレンジ（Step 3.5）</span> を遵守しています。
+          </p>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono shrink-0 w-full lg:w-auto">
+          <div class="px-3 py-2 rounded-[8px] bg-[#0D0D0E] border border-white/[0.07] text-center">
+            <span class="text-[#71717A] block text-[9px]">L0: CANVAS</span>
+            <span class="text-white font-bold">#0D0D0E</span>
+          </div>
+          <div class="px-3 py-2 rounded-[8px] bg-[#121214] border border-white/[0.07] text-center">
+            <span class="text-[#71717A] block text-[9px]">L1: SIDE/BAR</span>
+            <span class="text-white font-bold">#121214</span>
+          </div>
+          <div class="px-3 py-2 rounded-[8px] bg-[#18181B] border border-white/[0.07] text-center">
+            <span class="text-[#71717A] block text-[9px]">L2: CARD/ROW</span>
+            <span class="text-white font-bold">#18181B</span>
+          </div>
+          <div class="px-3 py-2 rounded-[8px] bg-[#222226] border border-white/[0.07] text-center">
+            <span class="text-[#71717A] block text-[9px]">L3: MODAL</span>
+            <span class="text-white font-bold">#222226</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 1. BUTTONS & PLAY CONTROLS -->
+    <section id="sec-buttons" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <span class="w-1.5 h-4 bg-[#FF8100] rounded-full"></span>
+            1. Buttons &amp; Play Controls
+          </h3>
+          <p class="text-xs text-[#71717A]">
+            全階層で1px極細線・15%透過背景・ソフトグローによる統一感のある質感を提供
+          </p>
+        </div>
+      </div>
+
+      <!-- ORANGE SHADE VARIATIONS (色相ステップ微調整パネル) -->
+      <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-xs font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-[#FF7A00] shadow-[0_0_10px_#FF7A00]"></span>
+              純オレンジ色相精密ステップ比較（赤寄り・黄寄りの排除）
+            </span>
+            <p class="text-[10px] text-[#A1A1AA] mt-0.5">
+              1px極細線＋Play Actionと同等の15%透過背景。Step 3.5（#FF8100）を採用
+            </p>
+          </div>
+          <span class="text-[10px] font-mono text-[#00A8FF] bg-[#00A8FF]/10 px-2 py-0.5 rounded border border-[#00A8FF]/25 font-bold">Hue 20°〜34° Calibration</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
+          
+          <!-- Step 1: #FF6600 (Hue 24°) -->
+          <div class="bg-[#18181B] border border-white/[0.06] rounded-[8px] p-2.5 space-y-1.5 text-center">
+            <span class="text-[10px] font-mono text-[#A1A1AA] block">① Hue 24°</span>
+            <button class="w-full py-2 px-2 rounded-[8px] text-xs font-bold btn-interactive flex items-center justify-center bg-[#FF6600]/15 hover:bg-[#FF6600]/30 text-[#FF6600] border border-[#FF6600]">
+              <span>Step 1</span>
+            </button>
+            <span class="text-[9px] text-[#71717A] block">Reddish</span>
+          </div>
+
+          <!-- Step 2: #FF7300 (Hue 27°) -->
+          <div class="bg-[#18181B] border border-white/[0.06] rounded-[8px] p-2.5 space-y-1.5 text-center">
+            <span class="text-[10px] font-mono text-[#A1A1AA] block">② Hue 27°</span>
+            <button class="w-full py-2 px-2 rounded-[8px] text-xs font-bold btn-interactive flex items-center justify-center bg-[#FF7300]/15 hover:bg-[#FF7300]/30 text-[#FF7A00] border border-[#FF7300]">
+              <span>Step 2</span>
+            </button>
+            <span class="text-[9px] text-[#71717A] block">Tangerine</span>
+          </div>
+
+          <!-- Step 3: #FF7D00 (Hue 29°) -->
+          <div class="bg-[#18181B] border border-white/[0.06] rounded-[8px] p-2.5 space-y-1.5 text-center">
+            <span class="text-[10px] font-mono text-[#A1A1AA] block">③ Hue 29°</span>
+            <button class="w-full py-2 px-2 rounded-[8px] text-xs font-bold btn-interactive flex items-center justify-center bg-[#FF7D00]/15 hover:bg-[#FF7D00]/30 text-[#FF8500] border border-[#FF7D00]">
+              <span>Step 3</span>
+            </button>
+            <span class="text-[9px] text-[#71717A] block">Pure Orange</span>
+          </div>
+
+          <!-- ★ Step 3.5: #FF8100 (Hue 30°) 【指定採用】 -->
+          <div class="bg-[#18181B] border-2 border-[#FF8100] rounded-[8px] p-2.5 space-y-1.5 text-center relative overflow-hidden shadow-[0_0_14px_rgba(255,129,0,0.35)]">
+            <div class="absolute top-0 right-0 px-1.5 py-0.2 bg-[#FF8100] text-black text-[8px] font-extrabold rounded-bl">Selected</div>
+            <span class="text-[10px] font-mono text-white font-bold block">★ Step 3.5</span>
+            <button class="w-full py-2 px-2 rounded-[8px] text-xs font-bold btn-interactive flex items-center justify-center bg-[#FF8100]/15 hover:bg-[#FF8100]/30 text-[#FF8A00] border border-[#FF8100] shadow-[0_0_12px_rgba(255,129,0,0.4)]">
+              <span>Step 3.5</span>
+            </button>
+            <span class="text-[9px] text-[#FF8A00] font-bold block">#FF8100</span>
+          </div>
+
+          <!-- Step 4: #FF8500 (Hue 31°) -->
+          <div class="bg-[#18181B] border border-white/[0.06] rounded-[8px] p-2.5 space-y-1.5 text-center">
+            <span class="text-[10px] font-mono text-[#A1A1AA] block">④ Hue 31°</span>
+            <button class="w-full py-2 px-2 rounded-[8px] text-xs font-bold btn-interactive flex items-center justify-center bg-[#FF8500]/15 hover:bg-[#FF8500]/30 text-[#FF8F00] border border-[#FF8500]">
+              <span>Step 4</span>
+            </button>
+            <span class="text-[9px] text-[#71717A] block">Marigold</span>
+          </div>
+
+          <!-- Step 5: #FF9000 (Hue 34°) -->
+          <div class="bg-[#18181B] border border-white/[0.06] rounded-[8px] p-2.5 space-y-1.5 text-center">
+            <span class="text-[10px] font-mono text-[#A1A1AA] block">⑤ Hue 34°</span>
+            <button class="w-full py-2 px-2 rounded-[8px] text-xs font-bold btn-interactive flex items-center justify-center bg-[#FF9000]/15 hover:bg-[#FF9000]/30 text-[#FF9900] border border-[#FF9000]">
+              <span>Step 5</span>
+            </button>
+            <span class="text-[9px] text-[#71717A] block">Amber Tint</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- STANDARD BUTTON ROW & PLAY TRANSPORT -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Action Buttons -->
+        <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-4 space-y-3">
+          <span class="text-[11px] font-bold text-[#A1A1AA] uppercase tracking-wider">Standard Button Hierarchy</span>
+          <div class="space-y-2.5">
+            <!-- Primary Orange (Step 3.5: Hue 30° #FF8100) -->
+            <button class="w-full py-2 px-3.5 btn-guideline-primary rounded-[8px] text-xs font-bold btn-interactive flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              <span>Primary Action</span>
+            </button>
+
+            <!-- Play Button (Blue): 12%透過背景 + ネオンブルー文字 + 極細ボーダー -->
+            <button class="w-full py-2 px-3.5 btn-guideline-play rounded-[8px] text-xs font-semibold btn-interactive flex items-center justify-center gap-2">
+              <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <span>Play Action</span>
+            </button>
+
+            <!-- Secondary Charcoal: #18181B + border-white/[0.07] -->
+            <button class="w-full py-2 px-3.5 btn-guideline-secondary rounded-[8px] text-xs font-medium btn-interactive flex items-center justify-center gap-2">
+              <svg class="w-4 h-4 text-[#A1A1AA]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              <span>Secondary Button</span>
+            </button>
+
+            <!-- Danger / Alert: Coral Red #EB3B5A 10%透過 -->
+            <button class="w-full py-2 px-3.5 btn-guideline-danger rounded-[8px] text-xs font-medium btn-interactive flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              <span>Danger Button</span>
+            </button>
+
+            <!-- Disabled -->
+            <button disabled class="w-full py-2 px-3.5 bg-[#18181B] text-[#71717A] border border-white/[0.04] rounded-[8px] text-xs font-medium opacity-35 cursor-not-allowed flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+              <span>Disabled State</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Playback & Media Transport Bar -->
+        <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-4 space-y-4">
+          <span class="text-[11px] font-bold text-[#A1A1AA] uppercase tracking-wider">Video &amp; Board Playback Transport</span>
+          
+          <div class="bg-[#18181B] border border-white/[0.07] rounded-[10px] p-3 space-y-3">
+            <!-- Timeline scrub -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] font-mono text-[#A1A1AA]">
+                <span class="text-white font-bold">01:24.45</span>
+                <span>03:00.00</span>
+              </div>
+              <div class="w-full h-1.5 bg-[#0D0D0E] rounded-full overflow-hidden relative cursor-pointer group">
+                <div class="w-[45%] h-full bg-[#3B82F6] shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+              </div>
+            </div>
+
+            <!-- Play Controls Bar -->
+            <div class="flex items-center justify-between pt-1">
+              <div class="flex items-center gap-1.5">
+                <!-- Frame Prev -->
+                <button class="w-7 h-7 rounded-[6px] hover:bg-white/[0.06] text-[#A1A1AA] hover:text-white flex items-center justify-center btn-interactive" title="Prev Frame">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+                </button>
+                <!-- Large Play (Guideline Blue: 15%透過背景 + ネオンブルーアイコン + 極細線 + ソフトグロー) -->
+                <button class="w-9 h-9 rounded-[8px] btn-guideline-play flex items-center justify-center btn-interactive" title="Play / Pause">
+                  <svg class="w-4 h-4 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <!-- Frame Next -->
+                <button class="w-7 h-7 rounded-[6px] hover:bg-white/[0.06] text-[#A1A1AA] hover:text-white flex items-center justify-center btn-interactive" title="Next Frame">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                </button>
+              </div>
+
+              <!-- Speed & Loop -->
+              <div class="flex items-center gap-1.5 font-mono text-[11px]">
+                <button class="px-2 py-0.5 rounded bg-[#121214] hover:bg-[#222226] text-white border border-white/[0.07] btn-interactive">1.0x</button>
+                <button class="p-1 rounded bg-[#121214] hover:bg-[#222226] text-[#00A8FF] border border-white/[0.07] btn-interactive" title="Loop">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-[#71717A]">
+            再生ボタンは青の薄い透過背景（15%）と発光アイコンで、暗闇のダークUIに高貴に溶け込みます。
+          </p>
+        </div>
+
+        <!-- Tool & Icon Buttons (前バージョンの良さをそのまま復元) -->
+        <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-4 space-y-3">
+          <span class="text-[11px] font-bold text-[#A1A1AA] uppercase tracking-wider">Fine-Line Icon Tool Palette</span>
+          <div class="space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-mono text-[#71717A] w-12">28px:</span>
+              <div class="flex items-center gap-1 p-1 bg-[#18181B] border border-white/[0.07] rounded-[8px]">
+                <!-- アクティブ: オレンジ15%背景 + オレンジ細線ボーダー + オレンジアイコン + 微細グロー -->
+                <button class="w-7 h-7 rounded-[6px] flex items-center justify-center bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/30 shadow-[0_0_10px_rgba(255,85,0,0.25)] btn-interactive" title="Select Tool (Active)">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+                </button>
+                <button class="w-7 h-7 rounded-[6px] flex items-center justify-center hover:bg-white/[0.04] text-[#A1A1AA] hover:text-white btn-interactive" title="Player Token">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
+                </button>
+                <button class="w-7 h-7 rounded-[6px] flex items-center justify-center hover:bg-white/[0.04] text-[#A1A1AA] hover:text-white btn-interactive" title="Curved Arrow">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+                <button class="w-7 h-7 rounded-[6px] flex items-center justify-center hover:bg-white/[0.04] text-[#A1A1AA] hover:text-white btn-interactive" title="Pitch Zone">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-mono text-[#71717A] w-12">32px:</span>
+              <div class="flex items-center gap-1.5">
+                <button class="w-8 h-8 rounded-[8px] bg-[#18181B] hover:bg-[#222226] border border-white/[0.07] text-white flex items-center justify-center btn-interactive" title="Settings">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
+                <button class="w-8 h-8 rounded-[8px] bg-[#18181B] hover:bg-[#222226] border border-white/[0.07] text-[#00A8FF] flex items-center justify-center btn-interactive" title="Share Clip">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+                </button>
+                <button class="w-8 h-8 rounded-[8px] bg-[#18181B] hover:bg-[#222226] border border-white/[0.07] text-white flex items-center justify-center btn-interactive" title="Fullscreen">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 2. POSITION BADGES & TOKENS (FW:赤 / MID:緑 / DF:青 / GK:黄) -->
+    <section id="sec-positions" class="space-y-4">
+      <div>
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <span class="w-1.5 h-4 bg-[#FF8100] rounded-full"></span>
+          2. Position Badges &amp; Tactical Tokens
+        </h3>
+        <p class="text-xs text-[#71717A]">
+          高彩度ネオン発光（FW: #FF4757 赤 / MID: #10B981 緑 / DF: #60A5FA 青 / GK: #FBBF24 黄）による鮮明な視認性
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- FW: Red -->
+        <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-4 space-y-3 relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-[2px] bg-[#FF4757] shadow-[0_0_8px_#FF4757]"></div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-[#FF4757] shadow-[0_0_6px_#FF4757]"></span>
+              FW
+            </span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded badge-pos-fw font-bold">#FF4757</span>
+          </div>
+
+          <!-- Tokens preview -->
+          <div class="flex items-center gap-3 bg-[#0D0D0E] p-3 rounded-[8px] border border-white/[0.04]">
+            <div class="w-9 h-9 rounded-full bg-[#18181B] border-2 border-[#FF4757] text-[#FF4757] font-mono font-bold flex items-center justify-center text-xs shadow-[0_0_14px_rgba(255,71,87,0.45)]">
+              09
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-white">Erling Haaland</div>
+              <div class="flex gap-1.5 mt-1">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-fw">ST</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-fw">CF</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MID: Green -->
+        <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-4 space-y-3 relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-[2px] bg-[#10B981] shadow-[0_0_8px_#10B981]"></div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-[#10B981] shadow-[0_0_6px_#10B981]"></span>
+              MID
+            </span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded badge-pos-mid font-bold">#10B981</span>
+          </div>
+
+          <!-- Tokens preview -->
+          <div class="flex items-center gap-3 bg-[#0D0D0E] p-3 rounded-[8px] border border-white/[0.04]">
+            <div class="w-9 h-9 rounded-full bg-[#18181B] border-2 border-[#10B981] text-[#10B981] font-mono font-bold flex items-center justify-center text-xs shadow-[0_0_14px_rgba(16,185,129,0.45)]">
+              08
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-white">Martin Ødegaard</div>
+              <div class="flex gap-1.5 mt-1">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-mid">CAM</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-mid">CM</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DF: Blue -->
+        <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-4 space-y-3 relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-[2px] bg-[#3B82F6] shadow-[0_0_8px_#3B82F6]"></div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-[#3B82F6] shadow-[0_0_6px_#3B82F6]"></span>
+              DF
+            </span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded badge-pos-df font-bold">#3B82F6</span>
+          </div>
+
+          <!-- Tokens preview -->
+          <div class="flex items-center gap-3 bg-[#0D0D0E] p-3 rounded-[8px] border border-white/[0.04]">
+            <div class="w-9 h-9 rounded-full bg-[#18181B] border-2 border-[#3B82F6] text-[#60A5FA] font-mono font-bold flex items-center justify-center text-xs shadow-[0_0_14px_rgba(59,130,246,0.45)]">
+              02
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-white">William Saliba</div>
+              <div class="flex gap-1.5 mt-1">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-df">CB</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-df">RB</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GK: Yellow -->
+        <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-4 space-y-3 relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-[2px] bg-[#F59E0B] shadow-[0_0_8px_#F59E0B]"></div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-[#F59E0B] shadow-[0_0_6px_#F59E0B]"></span>
+              GK
+            </span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded badge-pos-gk font-bold">#F59E0B</span>
+          </div>
+
+          <!-- Tokens preview -->
+          <div class="flex items-center gap-3 bg-[#0D0D0E] p-3 rounded-[8px] border border-white/[0.04]">
+            <div class="w-9 h-9 rounded-full bg-[#18181B] border-2 border-[#F59E0B] text-[#FBBF24] font-mono font-bold flex items-center justify-center text-xs shadow-[0_0_14px_rgba(245,158,11,0.45)]">
+              01
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-white">David Raya</div>
+              <div class="flex gap-1.5 mt-1">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-gk">GK</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 3. INPUT CONTROLS, SEARCH, TABS, SELECT -->
+    <section id="sec-controls" class="space-y-4">
+      <div>
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <span class="w-1.5 h-4 bg-[#00A8FF] rounded-full"></span>
+          3. Controls (Inputs, Search, Select &amp; Tabs)
+        </h3>
+        <p class="text-xs text-[#71717A]">青いフォーカスリングを排除し、オレンジ/シアンの微細リングと#18181B背景を統一</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <!-- Form Inputs -->
+        <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-5 space-y-4">
+          <span class="text-[11px] font-bold text-[#A1A1AA] uppercase tracking-wider">Input Fields</span>
+          
+          <!-- Search Bar -->
+          <div class="space-y-1.5">
+            <label class="text-[11px] text-[#A1A1AA]">Search Bar</label>
+            <div class="relative flex items-center">
+              <svg class="w-4 h-4 absolute left-3 text-[#71717A]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <input type="text" placeholder="Search..." value="Arsenal" class="w-full bg-[#18181B] border border-white/[0.08] focus:border-[#FF5500]/60 focus:ring-1 focus:ring-[#FF5500]/30 rounded-[8px] pl-9 pr-3 py-2 text-xs text-white placeholder-[#71717A] outline-none">
+            </div>
+          </div>
+
+          <!-- Standard Text Input -->
+          <div class="space-y-1.5">
+            <label class="text-[11px] text-[#A1A1AA]">Title</label>
+            <input type="text" value="3-2-4-1 Inverted Build-up" class="w-full bg-[#18181B] border border-white/[0.08] focus:border-[#FF5500]/60 focus:ring-1 focus:ring-[#FF5500]/30 rounded-[8px] px-3 py-2 text-xs text-white outline-none">
+          </div>
+
+          <!-- Textarea (Memo) -->
+          <div class="space-y-1.5">
+            <label class="text-[11px] text-[#A1A1AA]">Notes</label>
+            <textarea rows="2" class="w-full bg-[#18181B] border border-white/[0.08] focus:border-[#00A8FF]/60 focus:ring-1 focus:ring-[#00A8FF]/30 rounded-[8px] p-2.5 text-xs text-white outline-none resize-none">Saka cuts inside drawing two defenders while White overlaps for cross delivery.</textarea>
+          </div>
+        </div>
+
+        <!-- Select & Segmented Control -->
+        <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-5 space-y-4">
+          <span class="text-[11px] font-bold text-[#A1A1AA] uppercase tracking-wider">Select &amp; Tabs</span>
+
+          <!-- Segmented Control (Pill Switcher) -->
+          <div class="space-y-1.5">
+            <label class="text-[11px] text-[#A1A1AA]">Display Mode</label>
+            <div class="flex items-center p-1 bg-[#0D0D0E] border border-white/[0.07] rounded-[8px] gap-1">
+              <button class="flex-1 py-1.5 rounded-[6px] text-xs font-semibold bg-[#18181B] text-white shadow-sm border border-white/[0.08] btn-interactive">Tactics Board</button>
+              <button class="flex-1 py-1.5 rounded-[6px] text-xs font-medium text-[#71717A] hover:text-white btn-interactive">Keyframes</button>
+              <button class="flex-1 py-1.5 rounded-[6px] text-xs font-medium text-[#71717A] hover:text-white btn-interactive">Video Overlay</button>
+            </div>
+          </div>
+
+          <!-- Custom Select -->
+          <div class="space-y-1.5">
+            <label class="text-[11px] text-[#A1A1AA]">Formation</label>
+            <div class="relative">
+              <select class="w-full bg-[#18181B] border border-white/[0.08] rounded-[8px] px-3 py-2 text-xs text-white outline-none appearance-none pr-8 cursor-pointer focus:border-[#FF5500]/60">
+                <option>4-3-3</option>
+                <option>3-2-4-1</option>
+                <option>4-4-2</option>
+                <option>5-3-2</option>
+              </select>
+              <svg class="w-4 h-4 text-[#71717A] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+
+          <!-- Resolution Pills -->
+          <div class="space-y-1.5">
+            <label class="text-[11px] text-[#A1A1AA]">Preset</label>
+            <div class="grid grid-cols-3 gap-2">
+              <div class="p-2 rounded-[8px] bg-[#18181B] border border-[#FF8100] text-center cursor-pointer shadow-[0_0_8px_rgba(255,129,0,0.25)]">
+                <div class="text-[10px] text-[#FF8A00] font-bold">4K UHD</div>
+                <div class="text-[9px] text-[#71717A] font-mono">60fps</div>
+              </div>
+              <div class="p-2 rounded-[8px] bg-[#18181B] border border-white/[0.07] text-center hover:border-white/20 cursor-pointer">
+                <div class="text-[10px] text-white font-medium">1080p</div>
+                <div class="text-[9px] text-[#71717A] font-mono">60fps</div>
+              </div>
+              <div class="p-2 rounded-[8px] bg-[#18181B] border border-white/[0.07] text-center hover:border-white/20 cursor-pointer">
+                <div class="text-[10px] text-white font-medium">GIF</div>
+                <div class="text-[9px] text-[#71717A] font-mono">Compact</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Switches & Checkboxes & Empty State -->
+        <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-5 space-y-4">
+          <span class="text-[11px] font-bold text-[#A1A1AA] uppercase tracking-wider">Switches &amp; Empty State</span>
+
+          <!-- Toggles -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between p-2 rounded-[8px] bg-[#18181B]">
+              <span class="text-xs text-white">Pitch Grid</span>
+              <div class="w-9 h-5 bg-[#FF5500] rounded-full p-0.5 cursor-pointer shadow-[0_0_8px_rgba(255,85,0,0.5)]">
+                <div class="w-4 h-4 bg-white rounded-full ml-auto shadow"></div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between p-2 rounded-[8px] bg-[#18181B]">
+              <span class="text-xs text-[#A1A1AA]">Auto Keyframes</span>
+              <div class="w-9 h-5 bg-[#0D0D0E] border border-white/10 rounded-full p-0.5 cursor-pointer">
+                <div class="w-4 h-4 bg-[#71717A] rounded-full shadow"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State Box -->
+          <div class="border border-dashed border-white/10 rounded-[8px] p-4 text-center space-y-2 bg-[#0D0D0E]/60">
+            <svg class="w-6 h-6 mx-auto text-[#71717A]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <div class="text-xs font-semibold text-white">No Custom Tags</div>
+            <p class="text-[10px] text-[#71717A]">動画クリップに付与するタグを作成してください</p>
+            <button class="px-2.5 py-1 rounded-[6px] text-[10px] font-semibold bg-[#FF8100]/15 hover:bg-[#FF8100]/25 text-[#FF8A00] border border-[#FF8100]/40 btn-interactive">
+              + New Tag
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 4. CARDS & KPI TILES & MATCH PREVIEW -->
+    <section id="sec-cards" class="space-y-4">
+      <div>
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <span class="w-1.5 h-4 bg-[#F59E0B] rounded-full"></span>
+          4. Cards &amp; KPI Tiles
+        </h3>
+        <p class="text-xs text-[#71717A]">過度なシャドウを廃し、明度差（#18181B）とホバー時の極細ハイライトで表現</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <!-- Match Card -->
+        <div class="bg-[#18181B] hover:bg-[#1e1e22] border border-white/[0.07] hover:border-white/20 rounded-[10px] p-4 space-y-3 cursor-pointer surface-interactive">
+          <div class="flex items-center justify-between text-[11px] text-[#71717A] font-mono">
+            <span>PREMIER LEAGUE MD28</span>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">FULL TIME</span>
+          </div>
+
+          <!-- Score Row -->
+          <div class="flex items-center justify-between py-2">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-full bg-red-600/20 border border-red-500/40 flex items-center justify-center font-bold text-[11px] text-red-400">ARS</div>
+              <span class="text-sm font-bold text-white">Arsenal</span>
+            </div>
+            <span class="text-lg font-mono font-bold text-white">2 - 1</span>
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-bold text-white">Man City</span>
+              <div class="w-7 h-7 rounded-full bg-sky-600/20 border border-sky-500/40 flex items-center justify-center font-bold text-[11px] text-sky-400">MCI</div>
+            </div>
+          </div>
+
+          <!-- Footer stats -->
+          <div class="border-t border-white/[0.04] pt-2 flex items-center justify-between text-[11px] text-[#A1A1AA]">
+            <span>Tactical Clips: 4</span>
+            <span class="text-[#00A8FF] flex items-center gap-1 font-semibold">
+              Dashboard
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+            </span>
+          </div>
+        </div>
+
+        <!-- KPI Tile 1 (xG / High Press) -->
+        <div class="bg-[#18181B] border border-white/[0.07] rounded-[10px] p-4 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-[#71717A] uppercase font-mono tracking-wider">Expected Goals (xG)</span>
+              <span class="w-2 h-2 rounded-full bg-[#00A8FF]"></span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span class="text-2xl font-mono font-bold text-white">2.41</span>
+              <span class="text-xs font-mono text-emerald-400 font-semibold">+0.82 vs opp</span>
+            </div>
+          </div>
+          <div class="space-y-1.5 mt-4">
+            <div class="flex justify-between text-[10px] text-[#71717A]">
+              <span>Arsenal (2.41)</span>
+              <span>City (1.18)</span>
+            </div>
+            <div class="w-full h-1.5 bg-[#0D0D0E] rounded-full overflow-hidden flex">
+              <div class="w-[67%] bg-[#00A8FF]"></div>
+              <div class="w-[33%] bg-[#71717A]"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Tile 2 (PPDA / Press Intensity) -->
+        <div class="bg-[#18181B] border border-white/[0.07] rounded-[10px] p-4 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-[#71717A] uppercase font-mono tracking-wider">PPDA (Press Intensity)</span>
+              <span class="w-2 h-2 rounded-full bg-[#FF8100] shadow-[0_0_6px_#FF8100]"></span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span class="text-2xl font-mono font-bold text-[#FF8A00]">8.4</span>
+              <span class="text-xs font-mono text-[#A1A1AA]">passes allowed</span>
+            </div>
+          </div>
+          <div class="mt-4 pt-2 border-t border-white/[0.04] flex items-center justify-between text-[11px] text-[#A1A1AA]">
+            <span>High Block Zone: 42%</span>
+            <span class="text-xs font-mono text-[#FF8A00] font-bold">Aggressive</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 5. BORDERLESS DATA GRID & SQUAD LIST (推奨仕様4: 等幅右寄せ・ホバー明度差) -->
+    <section id="sec-table" class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <span class="w-1.5 h-4 bg-[#10B981] rounded-full"></span>
+            5. Borderless Data Grid
+          </h3>
+          <p class="text-xs text-[#71717A]">縦罫線・外枠ゼロ。ポジション色と右寄せ等幅フォント数値</p>
+        </div>
+        <span class="text-[10px] font-mono text-[#71717A]">Row Hover: #18181B</span>
+      </div>
+
+      <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] overflow-hidden">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-white/[0.07] text-[#71717A] font-mono text-[11px]">
+              <th class="py-3 px-4 font-normal w-12">#</th>
+              <th class="py-3 px-4 font-normal">Player / Club</th>
+              <th class="py-3 px-4 font-normal">Position</th>
+              <th class="py-3 px-4 font-normal text-right">Minutes</th>
+              <th class="py-3 px-4 font-normal text-right">Distance</th>
+              <th class="py-3 px-4 font-normal text-right">Top Speed</th>
+              <th class="py-3 px-4 font-normal text-right">Pass %</th>
+              <th class="py-3 px-4 font-normal text-center w-28">Action</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/[0.04]">
+            
+            <!-- FW Row (Red) -->
+            <tr class="hover:bg-[#18181B] transition-colors duration-150 cursor-pointer group">
+              <td class="py-3.5 px-4 font-mono text-[#71717A] group-hover:text-white font-bold">07</td>
+              <td class="py-3.5 px-4">
+                <div class="font-semibold text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-[#FF4757] shadow-[0_0_6px_#FF4757]"></span>
+                  Bukayo Saka
+                </div>
+                <div class="text-[10px] text-[#71717A]">Arsenal</div>
+              </td>
+              <td class="py-3.5 px-4">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-fw">FW / RW</span>
+              </td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#F4F4F5]">88'</td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#F4F4F5]">10.84 <span class="text-[10px] text-[#71717A]">km</span></td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#FF4757] font-bold">33.8 <span class="text-[10px] text-[#71717A]">km/h</span></td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#F4F4F5]">84.2%</td>
+              <td class="py-3.5 px-4 text-center">
+                <!-- Play Action (Blue): 15%透過背景 + ネオンブルー文字 + 極細ボーダー -->
+                <button class="px-2.5 py-1 rounded-[6px] btn-guideline-play text-[10px] font-semibold btn-interactive inline-flex items-center gap-1" title="Play Clips">
+                  <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  <span>Play</span>
+                </button>
+              </td>
+            </tr>
+
+            <!-- MID Row (Green) -->
+            <tr class="hover:bg-[#18181B] transition-colors duration-150 cursor-pointer group">
+              <td class="py-3.5 px-4 font-mono text-[#71717A] group-hover:text-white font-bold">08</td>
+              <td class="py-3.5 px-4">
+                <div class="font-semibold text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-[#10B981] shadow-[0_0_6px_#10B981]"></span>
+                  Martin Ødegaard
+                </div>
+                <div class="text-[10px] text-[#71717A]">Arsenal</div>
+              </td>
+              <td class="py-3.5 px-4">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-mid">MID / CAM</span>
+              </td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#F4F4F5]">90'</td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#F4F4F5]">12.15 <span class="text-[10px] text-[#71717A]">km</span></td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#F4F4F5]">30.2 <span class="text-[10px] text-[#71717A]">km/h</span></td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#10B981] font-bold">91.4%</td>
+              <td class="py-3.5 px-4 text-center">
+                <button class="px-2.5 py-1 rounded-[6px] btn-guideline-play text-[10px] font-semibold btn-interactive inline-flex items-center gap-1">
+                  <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  <span>Play</span>
+                </button>
+              </td>
+            </tr>
+
+            <!-- DF Row (Blue) -->
+            <tr class="hover:bg-[#18181B] transition-colors duration-150 cursor-pointer group">
+              <td class="py-3.5 px-4 font-mono text-[#71717A] group-hover:text-white font-bold">02</td>
+              <td class="py-3.5 px-4">
+                <div class="font-semibold text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-[#3B82F6] shadow-[0_0_6px_#3B82F6]"></span>
+                  William Saliba
+                </div>
+                <div class="text-[10px] text-[#71717A]">Arsenal</div>
+              </td>
+              <td class="py-3.5 px-4">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-df">DF / CB</span>
+              </td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#F4F4F5]">90'</td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#F4F4F5]">9.60 <span class="text-[10px] text-[#71717A]">km</span></td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#60A5FA] font-bold">32.6 <span class="text-[10px] text-[#71717A]">km/h</span></td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#F4F4F5]">94.8%</td>
+              <td class="py-3.5 px-4 text-center">
+                <button class="px-2.5 py-1 rounded-[6px] btn-guideline-play text-[10px] font-semibold btn-interactive inline-flex items-center gap-1">
+                  <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  <span>Play</span>
+                </button>
+              </td>
+            </tr>
+
+            <!-- GK Row (Yellow) -->
+            <tr class="hover:bg-[#18181B] transition-colors duration-150 cursor-pointer group">
+              <td class="py-3.5 px-4 font-mono text-[#71717A] group-hover:text-white font-bold">01</td>
+              <td class="py-3.5 px-4">
+                <div class="font-semibold text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-[#F59E0B] shadow-[0_0_6px_#F59E0B]"></span>
+                  David Raya
+                </div>
+                <div class="text-[10px] text-[#71717A]">Arsenal</div>
+              </td>
+              <td class="py-3.5 px-4">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-gk">GK</span>
+              </td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#F4F4F5]">90'</td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#F4F4F5]">4.20 <span class="text-[10px] text-[#71717A]">km</span></td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#F4F4F5]">19.8 <span class="text-[10px] text-[#71717A]">km/h</span></td>
+              <td class="py-3.5 px-4 text-right font-mono text-[#FBBF24] font-bold">78.5%</td>
+              <td class="py-3.5 px-4 text-center">
+                <button class="px-2.5 py-1 rounded-[6px] btn-guideline-play text-[10px] font-semibold btn-interactive inline-flex items-center gap-1">
+                  <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  <span>Play</span>
+                </button>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+
+    <!-- 6. MODAL & DIALOG MOCKUPS -->
+    <section id="sec-dialogs" class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <span class="w-1.5 h-4 bg-[#FF5500] rounded-full"></span>
+            6. Modals &amp; Dialogs (Level 3: #222226 Surface)
+          </h3>
+          <p class="text-xs text-[#71717A]">クリックで実際のモーダル表示と Dim バックロップ（bg-black/70）を確認可能</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Trigger 1: Export Modal -->
+        <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-5 space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-[#FF8100]"></span>
+            <h4 class="text-xs font-bold text-white">Export Tactical Clip</h4>
+          </div>
+          <p class="text-xs text-[#71717A] leading-relaxed">
+            解像度・FPS・画像/動画/JSON切替を含むエクスポート設定パネル。
+          </p>
+          <button onclick="openModal('modal-export-demo')" class="px-4 py-2 btn-guideline-primary rounded-[8px] text-xs font-semibold btn-interactive">
+            Export
+          </button>
+        </div>
+
+        <!-- Trigger 2: Match Memo Modal -->
+        <div class="bg-[#121214] border border-white/[0.07] rounded-[10px] p-5 space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-[#00A8FF]"></span>
+            <h4 class="text-xs font-bold text-white">Event Note Dialog</h4>
+          </div>
+          <p class="text-xs text-[#71717A] leading-relaxed">
+            タイムスタンプ、選手タグ、戦術メモ入力を行うダイアログ。
+          </p>
+          <button onclick="openModal('modal-memo-demo')" class="px-4 py-2 btn-guideline-secondary rounded-[8px] text-xs font-semibold btn-interactive">
+            Edit Note
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 1: EXPORT CONFIG (Level 3 #222226 Surface) -->
+  <!-- ========================================================================= -->
+  <div id="modal-export-demo" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+    <div class="w-full max-w-lg bg-[#222226] border border-white/[0.08] rounded-[10px] shadow-2xl p-6 space-y-5">
+      <div class="flex items-center justify-between border-b border-white/[0.07] pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-[#FF8100]"></div>
+          <h4 class="text-sm font-bold text-white">Export Tactical Clip</h4>
+        </div>
+        <button onclick="closeModal('modal-export-demo')" class="text-[#71717A] hover:text-white p-1 rounded hover:bg-white/[0.05] btn-interactive">✕</button>
+      </div>
+
+      <!-- Format Tabs -->
+      <div class="flex items-center p-1 bg-[#121214] border border-white/[0.07] rounded-[8px] gap-1">
+        <button class="flex-1 py-1.5 rounded-[6px] text-xs font-semibold bg-[#18181B] text-white shadow-sm border border-white/[0.08]">MP4</button>
+        <button class="flex-1 py-1.5 rounded-[6px] text-xs font-medium text-[#71717A] hover:text-white">PNG</button>
+        <button class="flex-1 py-1.5 rounded-[6px] text-xs font-medium text-[#71717A] hover:text-white">JSON</button>
+      </div>
+
+      <div class="space-y-3">
+        <div class="flex items-center justify-between bg-[#18181B] p-3 rounded-[8px] text-xs">
+          <span class="text-[#A1A1AA]">Quality</span>
+          <span class="font-mono text-[#00A8FF] font-semibold">4K UHD (60fps)</span>
+        </div>
+        <div class="flex items-center justify-between bg-[#18181B] p-3 rounded-[8px] text-xs">
+          <span class="text-[#A1A1AA]">Easing</span>
+          <span class="font-mono text-white">Cubic Bezier</span>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('modal-export-demo')" class="px-4 py-2 rounded-[8px] text-xs font-medium text-[#A1A1AA] hover:text-white hover:bg-white/[0.05] btn-interactive">Cancel</button>
+        <button onclick="closeModal('modal-export-demo'); triggerToast('Export started: 4K UHD video')" class="px-4 py-2 rounded-[8px] text-xs font-semibold btn-guideline-primary btn-interactive">Export</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 2: MATCH MEMO (Level 3 #222226 Surface) -->
+  <!-- ========================================================================= -->
+  <div id="modal-memo-demo" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+    <div class="w-full max-w-lg bg-[#222226] border border-white/[0.08] rounded-[10px] shadow-2xl p-6 space-y-5">
+      <div class="flex items-center justify-between border-b border-white/[0.07] pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-[#00A8FF]"></div>
+          <h4 class="text-sm font-bold text-white">Edit Event Note</h4>
+        </div>
+        <button onclick="closeModal('modal-memo-demo')" class="text-[#71717A] hover:text-white p-1 rounded hover:bg-white/[0.05] btn-interactive">✕</button>
+      </div>
+
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] text-[#A1A1AA] block mb-1">Time</label>
+            <input type="text" value="34:12" class="w-full bg-[#18181B] border border-white/[0.08] rounded-[8px] px-3 py-2 text-xs font-mono text-white outline-none">
+          </div>
+          <div>
+            <label class="text-[11px] text-[#A1A1AA] block mb-1">Player</label>
+            <input type="text" value="#7 Bukayo Saka" class="w-full bg-[#18181B] border border-white/[0.08] rounded-[8px] px-3 py-2 text-xs text-white outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-[#A1A1AA] block mb-1">Tags</label>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-fw cursor-pointer">High Press</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-mid cursor-pointer">Half-Space</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-df cursor-pointer">Counter-Press</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold badge-pos-gk cursor-pointer">Build-up</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-[#A1A1AA] border border-white/10 cursor-pointer">+ Tag</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-[#A1A1AA] block mb-1">Note</label>
+          <textarea rows="3" class="w-full bg-[#18181B] border border-white/[0.08] focus:border-[#00A8FF]/60 rounded-[8px] p-2.5 text-xs text-white outline-none resize-none">Overload created on right flank followed by sharp cutback into half-space.</textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('modal-memo-demo')" class="px-4 py-2 rounded-[8px] text-xs font-medium text-[#A1A1AA] hover:text-white hover:bg-white/[0.05] btn-interactive">Cancel</button>
+        <button onclick="closeModal('modal-memo-demo'); triggerToast('Event note saved successfully')" class="px-4 py-2 rounded-[8px] text-xs font-semibold btn-guideline-play btn-interactive">Save</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function triggerToast(message) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'pointer-events-auto bg-[#18181B] border border-white/[0.08] rounded-[8px] p-3 shadow-2xl flex items-center gap-3 text-xs text-white min-w-[280px] relative overflow-hidden transition-all duration-200 transform translate-y-2 opacity-0';
+      toast.innerHTML = `
+        <div class="absolute left-0 top-0 bottom-0 w-[3px] bg-[#FF8100]"></div>
+        <div class="flex-1 pl-1">${message}</div>
+      `;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 200);
+      }, 3000);
+    }
+  </script>
+</body>
+</html>

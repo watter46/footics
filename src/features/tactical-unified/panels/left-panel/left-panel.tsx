@@ -24,7 +24,7 @@ export function LeftPanel({
     >
       <div className="p-3 border-b border-white/[0.07] flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Layers className="size-3.5 text-[#FF5500]" strokeWidth={1.5} />
+          <Layers className="size-3.5 text-[#FF8100]" strokeWidth={1.5} />
           <span className="text-[11px] font-bold text-[#F4F4F5] uppercase tracking-wider">
             Tactical Sequences
           </span>
@@ -57,13 +57,13 @@ export function LeftPanel({
               )}
             >
               {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-[#FF5500] rounded-r-full shadow-[0_0_8px_#FF5500]" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-[#FF8100] rounded-r-full shadow-[0_0_8px_#FF8100]" />
               )}
               <div className="flex items-center justify-between pl-1.5">
                 <span className="font-semibold text-white">
                   {slide.label ? slide.label : `Scene ${idx + 1}`}
                 </span>
-                <span className="text-[10px] font-mono text-[#00A8FF]">
+                <span className="text-[10px] font-mono text-[#60A5FA]">
                   {((slide.pauseMs ?? 500) / 1000).toFixed(1)}s
                 </span>
               </div>
@@ -88,7 +88,7 @@ export function LeftPanel({
           <button
             type="button"
             onClick={onAddSlide}
-            className="px-2.5 py-1 rounded-[6px] text-[10px] font-semibold bg-[#FF5500]/10 hover:bg-[#FF5500]/20 text-[#FF5500] border border-[#FF5500]/30 transition-colors cursor-pointer inline-flex items-center gap-1"
+            className="px-2.5 py-1 rounded-[6px] text-[10px] font-semibold bg-[#FF8100]/10 hover:bg-[#FF8100]/20 text-[#FF8100] border border-[#FF8100]/30 transition-colors cursor-pointer inline-flex items-center gap-1"
           >
             <Plus className="size-3" strokeWidth={1.5} />
             <span>シーン追加</span>

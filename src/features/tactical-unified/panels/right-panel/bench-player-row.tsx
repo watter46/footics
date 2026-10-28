@@ -36,7 +36,7 @@ export function BenchPlayerRow({
 }: BenchPlayerRowProps) {
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between gap-2 p-1.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/5 group transition-all">
+      <div className="flex items-center justify-between gap-2 p-1.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/[0.07] group transition-all">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <span
             className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] text-white shrink-0 shadow-sm"
@@ -56,7 +56,7 @@ export function BenchPlayerRow({
           <button
             type="button"
             onClick={() => onDeploy(player.id)}
-            className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-[10px] text-white font-medium shadow-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#FF8100] hover:bg-[#FF8100]/85 text-[10px] text-white font-medium shadow-xs transition-colors cursor-pointer"
             title="ピッチに投入"
           >
             <Plus size={11} />
@@ -77,7 +77,7 @@ export function BenchPlayerRow({
           <button
             type="button"
             onClick={() => onRemove(player.id)}
-            className="p-1 rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-colors cursor-pointer"
+            className="p-1 rounded hover:bg-[#EB3B5A]/20 text-white/40 hover:text-[#EB3B5A] transition-colors cursor-pointer"
             title="Remove"
           >
             <Trash2 size={11} />

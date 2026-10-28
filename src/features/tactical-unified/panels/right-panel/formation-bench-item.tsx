@@ -45,7 +45,7 @@ export function FormationBenchItem({
 
   return (
     <div ref={setNodeRef} style={style} className="space-y-1">
-      <div className="flex flex-col items-center justify-between p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 group transition-all text-center relative select-none">
+      <div className="flex flex-col items-center justify-between p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/[0.08] group transition-all text-center relative select-none">
         <div className="flex items-center justify-between w-full mb-1">
           <span
             className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold border ${getPositionBadgeClass(
@@ -84,7 +84,7 @@ export function FormationBenchItem({
           <button
             type="button"
             onClick={() => onRemovePlayer(activeSlideId, player.id)}
-            className="p-1 rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-colors cursor-pointer"
+            className="p-1 rounded hover:bg-[#EB3B5A]/20 text-white/40 hover:text-[#EB3B5A] transition-colors cursor-pointer"
             title="Remove"
             aria-label="Remove bench player"
           >

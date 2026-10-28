@@ -16,7 +16,7 @@ describe('FormationPanel (Step 5)', () => {
   it('1. defaults formationMode to "full" pitch', () => {
     render(<FormationPanel />);
     const fullButton = screen.getByRole('button', { name: /^Full$/i });
-    expect(fullButton.className).toContain('bg-blue-600');
+    expect(fullButton.className).toMatch(/bg-(\[#FF8100\]|blue-600)/);
   });
 
   it('2. renders 3-team toggle (HOME, AWAY, BOTH) with player counts and switches activeTeam', () => {
@@ -31,11 +31,11 @@ describe('FormationPanel (Step 5)', () => {
     expect(bothButton).toBeDefined();
 
     // Default activeTeam is home
-    expect(homeButton.className).toContain('bg-blue-600');
+    expect(homeButton.className).toMatch(/bg-(\[#FF8100\]|blue-600)/);
 
     // Switch to BOTH
     fireEvent.click(bothButton);
-    expect(bothButton.className).toContain('bg-purple-600');
+    expect(bothButton.className).toMatch(/bg-(\[#FF8100\]|purple-600)/);
   });
 
   it('3. applies display mode batch change to currently active team (single team and both)', () => {
@@ -195,19 +195,19 @@ describe('FormationPanel (Step 5)', () => {
 
     // Default activeTeam is home -> 4-2-3-1 button is selected (active)
     const btn4231 = screen.getByRole('button', { name: '4-2-3-1' });
-    expect(btn4231.className).toContain('bg-blue-600');
+    expect(btn4231.className).toMatch(/bg-(\[#FF8100\]|blue-600)/);
 
     // Switch to AWAY -> 3-4-2-1 button is selected (active)
     const awayButton = screen.getByRole('button', { name: /^AWAY\s*\(/i });
     fireEvent.click(awayButton);
 
     const btn3421 = screen.getByRole('button', { name: '3-4-2-1' });
-    expect(btn3421.className).toContain('bg-blue-600');
+    expect(btn3421.className).toMatch(/bg-(\[#FF8100\]|blue-600)/);
 
     // Switch to BOTH -> home formation 4-2-3-1 is selected
     const bothButton = screen.getByRole('button', { name: /^BOTH\s*\(/i });
     fireEvent.click(bothButton);
 
-    expect(btn4231.className).toContain('bg-blue-600');
+    expect(btn4231.className).toMatch(/bg-(\[#FF8100\]|blue-600)/);
   });
 });

@@ -120,7 +120,7 @@ export function ProjectListView({
       <div className="flex-1 overflow-y-auto p-6 min-h-0 bg-[#121214]">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-[#71717A] text-xs">
-            <Loader2 size={24} className="animate-spin text-[#FF5500]" />
+            <Loader2 size={24} className="animate-spin text-[#FF8100]" />
             <span>プロジェクトを処理中...</span>
           </div>
         ) : filteredProjects.length === 0 ? (
@@ -130,7 +130,7 @@ export function ProjectListView({
             <button
               type="button"
               onClick={onCreateClick}
-              className="text-[#FF5500] hover:underline cursor-pointer"
+              className="text-[#FF8100] hover:underline cursor-pointer"
             >
               新しいプロジェクトを作成
             </button>

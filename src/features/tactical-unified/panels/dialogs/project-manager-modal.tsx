@@ -103,7 +103,7 @@ export function ProjectManagerModal({
             <Sparkles
               size={12}
               strokeWidth={1.5}
-              className="text-[#FF5500] shrink-0"
+              className="text-[#FF8100] shrink-0"
             />
             <span>
               戦術プロジェクトの保存・復元・アスペクト比設定を管理できます

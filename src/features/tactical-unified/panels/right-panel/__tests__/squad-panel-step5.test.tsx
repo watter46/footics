@@ -6,6 +6,9 @@ import { db } from '@/lib/db';
 import * as matchBridge from '@/lib/tactical/match-to-tactical-bridge';
 import * as tacticalStorage from '@/lib/tactical/tactical-storage';
 import type { Player } from '@/lib/types/tactical-unified';
+import { BenchSwapSelector } from '../bench-swap-selector';
+import { FormationBenchAddForm } from '../formation-bench-add-form';
+import { SquadSubForm } from '../squad-sub-form';
 import { SquadSubPanel } from '../squad-sub-panel';
 
 vi.mock('@/lib/db', () => ({
@@ -282,7 +285,7 @@ describe('SquadSubPanel - Phase 4 Bench Canvas & Interactivity', () => {
     const moreBtn = screen.getByRole('button', { name: /More actions/i });
     fireEvent.click(moreBtn);
 
-    const newProjBtn = screen.getByRole('button', { name: /New Project/i });
+    const newProjBtn = screen.getByRole('menuitem', { name: /New Project/i });
     fireEvent.click(newProjBtn);
 
     expect(db.matches.get).toHaveBeenCalledWith(999);
@@ -320,5 +323,74 @@ describe('SquadSubPanel - Phase 4 Bench Canvas & Interactivity', () => {
     expect(player?.area).toBe('pitch');
     expect(player?.x).toBe(45);
     expect(player?.y).toBe(55);
+  });
+
+  describe('Bench & Squad Forms Primitives & Layout Cleanup', () => {
+    it('BenchSwapSelector applies min-w-0 and truncate to prevent right-edge clipping', () => {
+      const dummyBenchPlayer = dummyBenchPlayers[0];
+      const { container } = render(
+        <BenchSwapSelector
+          benchPlayer={dummyBenchPlayer}
+          pitchPlayers={[
+            {
+              ...dummyBenchPlayers[1],
+              id: 'pitch-1',
+              name: 'A Very Long Player Name That Might Overflow',
+              area: 'pitch',
+            },
+          ]}
+          teamColor="#3b82f6"
+          onSwap={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      );
+      const root = container.firstElementChild as HTMLElement;
+      expect(root.className).toContain('min-w-0');
+      const playerText = screen.getByText(
+        'A Very Long Player Name That Might Overflow',
+      );
+      expect(playerText.className).toContain('truncate');
+    });
+
+    it('SquadSubForm uses Input and Button UI components', () => {
+      const { container } = render(
+        <SquadSubForm
+          newSubNo="10"
+          setNewSubNo={vi.fn()}
+          newSubPos="FW"
+          setNewSubPos={vi.fn()}
+          newSubName="Mudryk"
+          setNewSubName={vi.fn()}
+          onSubmit={vi.fn()}
+        />,
+      );
+      const submitBtn = screen.getByRole('button', { name: 'Add' });
+      expect(submitBtn.className).toContain('btn-interactive');
+
+      const inputs = container.querySelectorAll('input');
+      expect(inputs.length).toBe(3);
+      for (const input of inputs) {
+        expect(input.className).toContain('focus:ring-1');
+      }
+    });
+
+    it('FormationBenchAddForm uses Input and Button UI components', () => {
+      const { container } = render(
+        <FormationBenchAddForm
+          activeSlideId="s1"
+          activeTeam="home"
+          onAddPlayer={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      );
+      const submitBtn = screen.getByRole('button', { name: 'Add Player' });
+      expect(submitBtn.className).toContain('btn-interactive');
+
+      const inputs = container.querySelectorAll('input');
+      expect(inputs.length).toBe(3);
+      for (const input of inputs) {
+        expect(input.className).toContain('focus:ring-1');
+      }
+    });
   });
 });

@@ -51,7 +51,7 @@ export function ColorInput({
                   ? 'ring-2 ring-blue-500 border-white scale-105 shadow-md z-10'
                   : isWhite
                     ? 'border-white/60 hover:border-white hover:scale-105'
-                    : 'border-white/10 hover:border-white/30 hover:scale-105'
+                    : 'border-white/[0.08] hover:border-white/30 hover:scale-105'
               }`}
               style={{
                 colorScheme: 'only light',
@@ -108,7 +108,7 @@ export function ColorInput({
                 // user cancelled or unsupported
               }
             }}
-            className="p-1 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white transition-colors cursor-pointer shrink-0"
+            className="p-1 rounded bg-white/5 hover:bg-white/15 border border-white/[0.08] text-white/70 hover:text-white transition-colors cursor-pointer shrink-0"
             title="Pick color from screen (Eyedropper)"
             aria-label="Pick color from screen"
           >
@@ -119,7 +119,7 @@ export function ColorInput({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px] font-mono text-white/80 focus:outline-none focus:border-blue-500 uppercase"
+          className="flex-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/[0.08] text-[11px] font-mono text-white/80 focus:outline-none focus:border-blue-500 uppercase"
         />
       </div>
     </div>

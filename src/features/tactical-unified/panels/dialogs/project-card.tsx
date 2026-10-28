@@ -12,7 +12,9 @@ import {
   Trash2,
 } from 'lucide-react';
 import type React from 'react';
+import { IconButton } from '@/components/ui/icon-button';
 import type { TacticalProjectSummary } from '@/lib/db/tactical-projects-db';
+import { cn } from '@/lib/utils';
 import { formatProjectDate } from './project-dialog-utils';
 
 export interface ProjectCardProps {
@@ -57,81 +59,77 @@ export function ProjectCard({
           onSelect(project.id);
         }
       }}
-      className={`group relative flex flex-col justify-between rounded-xl border p-4 transition-all cursor-pointer overflow-hidden text-left ${
+      className={cn(
+        'group relative flex flex-col justify-between rounded-[12px] border p-4 transition-all cursor-pointer overflow-hidden text-left',
         isSelected
-          ? 'bg-blue-900/30 border-blue-400 shadow-md ring-2 ring-blue-500'
+          ? 'bg-[#FF8100]/10 border-[#FF8100] ring-1 ring-[#FF8100]/50'
           : isActive
-            ? 'bg-blue-900/20 border-blue-500 shadow-md shadow-blue-500/10 ring-1 ring-blue-500/50'
-            : 'bg-[#181820] border-white/10 hover:border-white/25 hover:bg-[#1f1f2a]'
-      }`}
+            ? 'bg-[#18181B] border-[#FF8100]/60'
+            : 'bg-[#18181B] border-white/[0.07] hover:border-white/[0.16] hover:bg-[#222226]',
+      )}
     >
-      {/* Top row: Checkbox, status & Quick Action Icons */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <button
-            type="button"
+          <IconButton
+            size="xs"
+            variant="ghost"
             onClick={(e) => onToggleSelect(e, project.id)}
-            className="p-1 rounded text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
             title={isSelected ? '選択解除' : '選択'}
           >
             {isSelected ? (
-              <CheckSquare size={16} className="text-blue-400" />
+              <CheckSquare className="text-[#FF8100]" />
             ) : (
-              <Square
-                size={16}
-                className="opacity-40 group-hover:opacity-100"
-              />
+              <Square className="opacity-40 group-hover:opacity-100" />
             )}
-          </button>
+          </IconButton>
 
           {isActive && (
-            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0">
+            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-[6px] text-[10px] font-bold bg-[#FF8100]/15 text-[#FF8100] border border-[#FF8100]/30 shrink-0">
               <Check size={10} />
               編集中
             </span>
           )}
-          <span className="text-[11px] font-mono text-white/40 shrink-0">
+          <span className="text-[11px] font-mono text-[#71717A] shrink-0">
             {project.aspectRatio}
           </span>
         </div>
 
-        <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10 shrink-0">
-          <button
-            type="button"
+        <div className="flex items-center gap-1 bg-[#0D0D0E] p-0.5 rounded-[8px] border border-white/[0.07] shrink-0">
+          <IconButton
+            size="xs"
+            variant="ghost"
             onClick={(e) => onStartRename(e, project)}
-            className="p-1.5 rounded hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="名前を変更"
           >
-            <Edit2 size={13} />
-          </button>
-          <button
-            type="button"
+            <Edit2 />
+          </IconButton>
+          <IconButton
+            size="xs"
+            variant="ghost"
             onClick={(e) => onDuplicate(e, project.id)}
-            className="p-1.5 rounded hover:bg-purple-500/20 text-white/70 hover:text-purple-300 transition-colors cursor-pointer"
             title="プロジェクトを複製"
           >
-            <Copy size={13} />
-          </button>
-          <button
-            type="button"
+            <Copy />
+          </IconButton>
+          <IconButton
+            size="xs"
+            variant="ghost"
             onClick={(e) => onExportJson(e, project.id)}
-            className="p-1.5 rounded hover:bg-blue-500/20 text-white/70 hover:text-blue-300 transition-colors cursor-pointer"
             title="プロジェクトをJSONファイルとしてダウンロード保存"
           >
-            <Download size={13} className="text-blue-400" />
-          </button>
-          <button
-            type="button"
+            <Download className="text-[#60A5FA]" />
+          </IconButton>
+          <IconButton
+            size="xs"
+            variant="danger"
             onClick={(e) => onDelete(e, project)}
-            className="p-1.5 rounded hover:bg-rose-500/20 text-white/70 hover:text-rose-400 transition-colors cursor-pointer"
             title="プロジェクトを削除"
           >
-            <Trash2 size={13} />
-          </button>
+            <Trash2 />
+          </IconButton>
         </div>
       </div>
 
-      {/* Title & Rename Form */}
       <div className="mb-3">
         {isEditing ? (
           <form onSubmit={onCommitRename} className="flex items-center gap-1">
@@ -141,14 +139,11 @@ export function ProjectCard({
               value={editingTitle}
               onChange={(e) => onEditingTitleChange(e.target.value)}
               onBlur={() => onCommitRename()}
-              className="w-full px-2 py-1 bg-black/40 border border-blue-500 rounded text-xs text-white focus:outline-none"
+              className="w-full px-2 py-1 bg-[#0D0D0E] border border-[#FF8100] rounded-[6px] text-xs text-white focus:outline-none"
             />
-            <button
-              type="submit"
-              className="p-1 rounded bg-blue-600 text-white cursor-pointer"
-            >
-              <Check size={12} />
-            </button>
+            <IconButton type="submit" size="xs" variant="primary">
+              <Check />
+            </IconButton>
           </form>
         ) : (
           <h3
@@ -160,15 +155,14 @@ export function ProjectCard({
         )}
       </div>
 
-      {/* Metadata Footer */}
-      <div className="flex items-center justify-between text-[10px] text-white/50 border-t border-white/5 pt-2 mt-auto">
+      <div className="flex items-center justify-between text-[10px] text-[#A1A1AA] border-t border-white/[0.07] pt-2 mt-auto">
         <span className="flex items-center gap-1">
-          <Layers size={11} className="text-blue-400" />
+          <Layers size={11} className="text-[#60A5FA]" />
           <span>{project.slideCount} スライド</span>
         </span>
 
         <span className="flex items-center gap-1" title={project.updatedAt}>
-          <Clock size={11} className="text-white/40" />
+          <Clock size={11} className="text-[#71717A]" />
           <span>{formatProjectDate(project.updatedAt)}</span>
         </span>
       </div>

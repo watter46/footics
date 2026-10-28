@@ -136,7 +136,7 @@ export function getPositionBadgeClass(position?: string): string {
     case 'FW':
       return 'bg-rose-500/20 text-rose-300 border-rose-500/40';
     default:
-      return 'bg-slate-500/20 text-slate-300 border-slate-500/40';
+      return 'bg-[#222226] text-white/70 border-white/[0.08]';
   }
 }
 

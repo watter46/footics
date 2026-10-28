@@ -30,9 +30,9 @@ export function SquadBenchCanvas({
   onClick,
 }: SquadBenchCanvasProps) {
   return (
-    <div className="min-h-[160px] max-h-[360px] overflow-y-auto custom-scrollbar rounded-xl border border-white/10 bg-black/40">
+    <div className="min-h-[160px] max-h-[360px] overflow-y-auto custom-scrollbar rounded-xl border border-white/[0.08] bg-black/40">
       {benchPlayers.length === 0 ? (
-        <div className="h-32 flex flex-col items-center justify-center border border-dashed border-white/10 rounded-lg text-white/30 text-xs m-2">
+        <div className="h-32 flex flex-col items-center justify-center border border-dashed border-white/[0.08] rounded-lg text-white/30 text-xs m-2">
           <span>ベンチ選手がいません</span>
           <span className="text-[10px] opacity-60 mt-1">
             ピッチからドラッグして退避

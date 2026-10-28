@@ -5,10 +5,12 @@ import {
   CheckSquare,
   LayoutGrid,
   List,
-  Search,
   Square,
   Trash2,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { SearchInput } from '@/components/ui/input';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 
 export interface ProjectListToolbarProps {
   searchQuery: string;
@@ -24,6 +26,15 @@ export interface ProjectListToolbarProps {
   onViewModeChange: (mode: 'grid' | 'list') => void;
 }
 
+const VIEW_OPTIONS: {
+  id: 'grid' | 'list';
+  label: string;
+  icon: typeof List;
+}[] = [
+  { id: 'grid', label: 'グリッド', icon: LayoutGrid },
+  { id: 'list', label: 'リスト', icon: List },
+];
+
 export function ProjectListToolbar({
   searchQuery,
   onSearchChange,
@@ -38,89 +49,67 @@ export function ProjectListToolbar({
   onViewModeChange,
 }: ProjectListToolbarProps) {
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-b border-white/10 bg-[#121216] gap-3">
-      <div className="relative flex-1 max-w-sm">
-        <Search
-          size={14}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
-        />
-        <input
-          type="text"
+    <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.07] bg-[#121214] gap-3">
+      <div className="flex-1 max-w-sm">
+        <SearchInput
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
+          onClear={() => onSearchChange('')}
           placeholder="プロジェクト名で検索..."
-          className="w-full pl-9 pr-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder-white/40 focus:outline-none focus:border-blue-500 transition-colors"
         />
       </div>
 
       <div className="flex items-center gap-2">
         {filteredCount > 0 && (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={onSelectAll}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-xs transition-colors cursor-pointer"
+            icon={
+              isAllSelected ? (
+                <CheckSquare className="text-[#FF8100]" />
+              ) : (
+                <Square />
+              )
+            }
           >
-            {isAllSelected ? (
-              <CheckSquare size={13} className="text-blue-400" />
-            ) : (
-              <Square size={13} />
-            )}
             <span className="hidden sm:inline">
               {isAllSelected ? '全解除' : '全選択'}
             </span>
-          </button>
+          </Button>
         )}
 
         {selectedCount > 0 && (
-          <div className="flex items-center gap-1.5 bg-blue-950/40 px-2 py-1 rounded-lg border border-blue-500/30">
-            <span className="text-xs font-semibold text-blue-300 mr-1">
+          <div className="flex items-center gap-1.5 bg-[#18181B] px-2 py-1 rounded-[8px] border border-[#FF8100]/30">
+            <span className="text-xs font-semibold text-[#FF8100] mr-1">
               {selectedCount} 件選択中
             </span>
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="xs"
               onClick={onBulkExport}
               disabled={isProcessingBulk}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+              icon={<Archive />}
             >
-              <Archive size={12} />
-              <span>一括Export (ZIP)</span>
-            </button>
-            <button
-              type="button"
+              一括Export (ZIP)
+            </Button>
+            <Button
+              variant="danger"
+              size="xs"
               onClick={onBulkDelete}
               disabled={isProcessingBulk}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-rose-600/80 hover:bg-rose-500 text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+              icon={<Trash2 />}
             >
-              <Trash2 size={12} />
-              <span>一括削除</span>
-            </button>
+              一括削除
+            </Button>
           </div>
         )}
 
-        <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/10">
-          <button
-            type="button"
-            onClick={() => onViewModeChange('grid')}
-            className={`p-1.5 rounded transition-colors cursor-pointer ${
-              viewMode === 'grid'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-white/50 hover:text-white'
-            }`}
-          >
-            <LayoutGrid size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onViewModeChange('list')}
-            className={`p-1.5 rounded transition-colors cursor-pointer ${
-              viewMode === 'list'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-white/50 hover:text-white'
-            }`}
-          >
-            <List size={14} />
-          </button>
-        </div>
+        <SegmentedControl
+          value={viewMode}
+          options={VIEW_OPTIONS}
+          onChange={onViewModeChange}
+        />
       </div>
     </div>
   );

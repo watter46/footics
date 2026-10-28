@@ -64,9 +64,9 @@ export function ProjectImportExport({
   return (
     <div className="flex flex-col flex-1 p-6 overflow-y-auto space-y-6">
       {/* Import Section */}
-      <div className="bg-[#181820] border border-white/10 rounded-xl p-5 space-y-4">
+      <div className="bg-[#18181B] border border-white/[0.08] rounded-[10px] p-5 space-y-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-white">
-          <Upload size={16} className="text-purple-400" />
+          <Upload size={16} className="text-[#60A5FA]" />
           <span>プロジェクトの復元・インポート (JSON / ZIP)</span>
         </div>
         <p className="text-xs text-white/60">
@@ -84,12 +84,12 @@ export function ProjectImportExport({
           }}
           role="button"
           tabIndex={0}
-          className="border-2 border-dashed border-white/15 hover:border-purple-500/50 rounded-xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer bg-white/[0.02] hover:bg-purple-500/[0.04] transition-colors"
+          className="border-2 border-dashed border-white/[0.08] hover:border-[#60A5FA]/50 rounded-[10px] p-8 flex flex-col items-center justify-center gap-2 cursor-pointer bg-white/[0.02] hover:bg-[#60A5FA]/[0.04] transition-colors"
         >
           {isImporting ? (
-            <Loader2 size={24} className="animate-spin text-purple-400" />
+            <Loader2 size={24} className="animate-spin text-[#60A5FA]" />
           ) : (
-            <FileArchive size={28} className="text-purple-400/80" />
+            <FileArchive size={28} className="text-[#60A5FA]/80" />
           )}
           <span className="text-xs font-medium text-white/80">
             {isImporting
@@ -111,9 +111,9 @@ export function ProjectImportExport({
       </div>
 
       {/* Export Section */}
-      <div className="bg-[#181820] border border-white/10 rounded-xl p-5 space-y-4">
+      <div className="bg-[#18181B] border border-white/[0.08] rounded-[10px] p-5 space-y-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-white">
-          <Download size={16} className="text-blue-400" />
+          <Download size={16} className="text-[#60A5FA]" />
           <span>バックアップ・エクスポート</span>
         </div>
         <p className="text-xs text-white/60">
@@ -125,7 +125,7 @@ export function ProjectImportExport({
             type="button"
             onClick={handleExportAllZip}
             disabled={isExporting || projects.length === 0}
-            className="flex items-center justify-center gap-2 p-3.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-300 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-40"
+            className="flex items-center justify-center gap-2 p-3.5 rounded-[8px] bg-[#60A5FA]/15 hover:bg-[#60A5FA]/25 border border-[#60A5FA]/30 text-[#60A5FA] text-xs font-semibold transition-colors cursor-pointer disabled:opacity-40"
           >
             <Archive size={15} />
             <span>
@@ -136,7 +136,7 @@ export function ProjectImportExport({
           <button
             type="button"
             onClick={() => exportSingleProjectJson(currentProjectId)}
-            className="flex items-center justify-center gap-2 p-3.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
+            className="flex items-center justify-center gap-2 p-3.5 rounded-[8px] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-white/80 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
           >
             <Download size={15} />
             <span>編集中プロジェクトのみ書き出し (JSON)</span>

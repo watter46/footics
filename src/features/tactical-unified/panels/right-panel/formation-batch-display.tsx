@@ -49,7 +49,7 @@ export function FormationBatchDisplay({
         className="flex items-center justify-between w-full text-[11px] font-semibold text-white/70 hover:text-white transition-colors cursor-pointer"
       >
         <span className="flex items-center gap-1.5">
-          <Users size={12} className="text-blue-400" />
+          <Users size={12} className="text-[#60A5FA]" />
           <span>Batch Player Display</span>
         </span>
         <ChevronDown
@@ -59,11 +59,11 @@ export function FormationBatchDisplay({
       </button>
 
       {isOpen && (
-        <div className="mt-2 space-y-1.5 p-2 rounded-lg bg-black/40 border border-white/10">
+        <div className="mt-2 space-y-1.5 p-2 rounded-lg bg-black/40 border border-white/[0.08]">
           {/* All Players */}
           <div className="flex items-center justify-between text-[11px]">
             <span className="text-white/60 font-medium">All Players</span>
-            <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/10 p-0.5">
+            <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/[0.08] p-0.5">
               <button
                 type="button"
                 onClick={() => applyInsideContent('all', 'number')}
@@ -96,14 +96,14 @@ export function FormationBatchDisplay({
 
           {/* Home Team */}
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-blue-400 flex items-center gap-1.5 font-medium">
+            <span className="text-[#60A5FA] flex items-center gap-1.5 font-medium">
               <span
                 className="w-1.5 h-1.5 rounded-full shadow-xs"
                 style={{ backgroundColor: homeColor }}
               />
               Home
             </span>
-            <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/10 p-0.5">
+            <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/[0.08] p-0.5">
               <button
                 type="button"
                 onClick={() => applyInsideContent('home', 'number')}
@@ -133,14 +133,14 @@ export function FormationBatchDisplay({
 
           {/* Away Team */}
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-red-400 flex items-center gap-1.5 font-medium">
+            <span className="text-[#EB3B5A] flex items-center gap-1.5 font-medium">
               <span
                 className="w-1.5 h-1.5 rounded-full shadow-xs"
                 style={{ backgroundColor: awayColor }}
               />
               Away
             </span>
-            <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/10 p-0.5">
+            <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/[0.08] p-0.5">
               <button
                 type="button"
                 onClick={() => applyInsideContent('away', 'number')}

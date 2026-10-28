@@ -1,6 +1,8 @@
 'use client';
 
 import { FilePlus2, FolderKanban, Upload, X } from 'lucide-react';
+import { IconButton } from '@/components/ui/icon-button';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 
 export type ModalView = 'list' | 'create' | 'import-export';
 
@@ -24,54 +26,35 @@ export function ProjectModalHeader({
   onClose,
 }: ProjectModalHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#191920]/80">
+    <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] bg-[#18181B]">
       <div className="flex items-center gap-2.5">
-        <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+        <div className="p-2 rounded-[8px] bg-[#FF8100]/10 border border-[#FF8100]/20 text-[#FF8100]">
           <FolderKanban size={20} />
         </div>
         <div>
           <h2 className="text-base font-bold text-white flex items-center gap-2">
             戦術プロジェクト管理
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/10 text-white/70">
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#222226] border border-white/[0.07] text-[#A1A1AA]">
               {projectCount} 件
             </span>
           </h2>
-          <p className="text-xs text-white/50">
+          <p className="text-xs text-[#71717A]">
             保存済みプロジェクトの管理・切り替え・複製・一括操作
           </p>
         </div>
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="flex items-center bg-white/5 p-1 rounded-lg border border-white/10 text-xs">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isSelected = view === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => onViewChange(tab.id)}
-                className={`flex items-center gap-1 px-3 py-1 rounded-md font-medium transition-colors cursor-pointer ${
-                  isSelected
-                    ? 'bg-blue-600 text-white'
-                    : 'text-white/60 hover:text-white'
-                }`}
-              >
-                {Icon && <Icon size={13} />}
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        <button
-          type="button"
+        <SegmentedControl value={view} options={TABS} onChange={onViewChange} />
+        <IconButton
+          variant="ghost"
+          size="md"
           onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer ml-2"
           aria-label="Close dialog"
+          className="ml-2"
         >
-          <X size={18} />
-        </button>
+          <X />
+        </IconButton>
       </div>
     </div>
   );

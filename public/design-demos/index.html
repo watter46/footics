@@ -78,13 +78,18 @@
       </div>
 
       <!-- Mode Switcher (2 Tabs Only) -->
-      <div class="flex items-center p-1 bg-[#0D0D0E] border border-white/[0.07] rounded-xl shadow-inner gap-1">
-        <button onclick="switchTab('basic')" id="tab-basic" class="px-4 py-2 rounded-lg text-xs font-semibold btn-interactive text-[#71717A] hover:text-white hover:bg-white/[0.03]">
-          1. Matte & Charcoal (基本ガイドライン)
-        </button>
-        <button onclick="switchTab('pro')" id="tab-pro" class="px-4 py-2 rounded-lg text-xs font-bold btn-interactive bg-[#FF5500] text-white shadow-lg shadow-[#FF5500]/30 ring-1 ring-white/20">
-          ★ 2. 推奨仕様適用版 (Expanded Pro System)
-        </button>
+      <div class="flex items-center gap-2">
+        <a href="/design-demos/components.html" class="px-3 py-1.5 rounded-lg text-xs font-bold btn-interactive bg-[#222226] text-[#00A8FF] border border-[#00A8FF]/40 hover:bg-[#2a2a30] flex items-center gap-1.5 shadow-sm">
+          <span>📦 全パーツカタログ表示</span>
+        </a>
+        <div class="flex items-center p-1 bg-[#0D0D0E] border border-white/[0.07] rounded-xl shadow-inner gap-1">
+          <button onclick="switchTab('basic')" id="tab-basic" class="px-4 py-2 rounded-lg text-xs font-semibold btn-interactive text-[#71717A] hover:text-white hover:bg-white/[0.03]">
+            1. Matte & Charcoal (基本ガイドライン)
+          </button>
+          <button onclick="switchTab('pro')" id="tab-pro" class="px-4 py-2 rounded-lg text-xs font-bold btn-interactive bg-[#FF5500] text-white shadow-lg shadow-[#FF5500]/30 ring-1 ring-white/20">
+            ★ 2. 推奨仕様適用版 (Expanded Pro System)
+          </button>
+        </div>
       </div>
     </div>
   </header>
