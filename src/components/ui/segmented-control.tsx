@@ -28,8 +28,8 @@ export function SegmentedControl<T extends string = string>({
     <div
       role="radiogroup"
       className={cn(
-        'inline-flex items-center p-0.5 rounded-lg bg-black/40 border border-white/10 select-none',
-        disabled && 'opacity-50 pointer-events-none',
+        'inline-flex items-center p-0.5 rounded-[8px] bg-[#0D0D0E] border border-white/[0.07] select-none gap-0.5',
+        disabled && 'opacity-35 pointer-events-none',
         className,
       )}
     >
@@ -45,13 +45,13 @@ export function SegmentedControl<T extends string = string>({
             disabled={disabled}
             onClick={() => onChange(option.id)}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer',
+              'flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-[6px] transition-all cursor-pointer select-none active:scale-95',
               isSelected
-                ? 'bg-white/15 text-white shadow-xs'
-                : 'text-white/60 hover:text-white/90 hover:bg-white/5',
+                ? 'bg-[#18181B] text-white shadow-sm border border-white/[0.07]'
+                : 'text-[#71717A] hover:text-white hover:bg-white/[0.03] border border-transparent',
             )}
           >
-            {Icon && <Icon className="size-3.5" />}
+            {Icon && <Icon className="size-3.5" strokeWidth={1.5} />}
             <span>{option.label}</span>
           </button>
         );

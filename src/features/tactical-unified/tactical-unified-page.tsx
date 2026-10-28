@@ -12,7 +12,7 @@
 
 import { DndContext, type DragEndEvent, pointerWithin } from '@dnd-kit/core';
 import dynamic from 'next/dynamic';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
 import { calculateDropPitchCoords } from '@/features/tactical-unified/core/utils/dnd-coordinates';
 import { useKeyboardShortcuts } from '@/features/tactical-unified/hooks/use-keyboard-shortcuts';
@@ -22,6 +22,7 @@ import { useTacticalMatchInit } from '@/features/tactical-unified/hooks/use-tact
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { ProjectManagerModal } from './panels/dialogs/project-manager-modal';
 import { ExportModal } from './panels/export/export-modal';
+import { LeftPanel } from './panels/left-panel/left-panel';
 import { RightPanel } from './panels/right-panel/right-panel';
 import { TimelineBar } from './panels/timeline/timeline-bar';
 import { TopBar } from './panels/toolbar';
@@ -59,6 +60,27 @@ export function TacticalUnifiedPage({
   const closeProjectManagerModal = useTacticalUnifiedStore(
     (s) => s.closeProjectManagerModal,
   );
+  const sidebarOpen = useTacticalUnifiedStore((s) => s.panels.sidebarOpen);
+
+  const [isFocusMode, setIsFocusMode] = useState(false);
+
+  // Focus Mode toggle via shortcut '\'
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+      if (e.key === '\\') {
+        e.preventDefault();
+        setIsFocusMode((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // キーボードショートカット (Delete/Escape)
   useKeyboardShortcuts();
@@ -71,6 +93,9 @@ export function TacticalUnifiedPage({
   const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
   const movePlayerToBench = useTacticalUnifiedStore((s) => s.movePlayerToBench);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+  const slides = useTacticalUnifiedStore((s) => s.project.slides);
+  const setActiveSlide = useTacticalUnifiedStore((s) => s.setActiveSlide);
+  const addSlide = useTacticalUnifiedStore((s) => s.addSlide);
 
   const handleDndEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -128,20 +153,34 @@ export function TacticalUnifiedPage({
         aria-label="Tactical Canvas Workspace"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        className="flex flex-col h-screen w-screen bg-[#0a0a0a] overflow-hidden select-none"
+        className="flex flex-col h-[100dvh] w-screen bg-[#0D0D0E] overflow-hidden select-none touch-manipulation"
       >
         {/* Top Bar */}
-        <TopBar canvasRef={canvasRef} />
+        <TopBar
+          canvasRef={canvasRef}
+          isFocusMode={isFocusMode}
+          onToggleFocusMode={() => setIsFocusMode((prev) => !prev)}
+        />
 
-        {/* Main Area */}
+        {/* Main Area (3-Pane Workspace) */}
         <div className="flex flex-1 min-h-0 relative">
+          {/* Left Panel (Tactical Sequences / Toggleable) */}
+          {!isFocusMode && sidebarOpen && (
+            <LeftPanel
+              slides={slides}
+              activeSlideId={activeSlideId}
+              onSelectSlide={setActiveSlide}
+              onAddSlide={() => addSlide('duplicate')}
+            />
+          )}
+
           {/* Canvas — 最大化 */}
-          <main className="flex-1 relative overflow-hidden flex flex-col bg-[#0a0a0a]">
+          <main className="flex-1 relative overflow-hidden flex flex-col bg-[#0D0D0E]">
             <FullTacticalCanvas ref={canvasRef} />
           </main>
 
-          {/* Right Panel (常時表示 / アニメーションなし) */}
-          <RightPanel />
+          {/* Right Panel (Formation & Squad / Focus Mode対応) */}
+          {!isFocusMode && <RightPanel />}
         </div>
 
         {/* Timeline Bar */}

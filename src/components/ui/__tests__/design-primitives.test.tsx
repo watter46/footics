@@ -15,9 +15,7 @@ describe('Design System Primitives', () => {
         </FloatingSurface>,
       );
       expect(screen.getByText('Panel Content')).toBeInTheDocument();
-      expect(container.firstChild as HTMLElement).toHaveClass(
-        'backdrop-blur-md',
-      );
+      expect(container.firstChild as HTMLElement).toHaveClass('bg-[#18181B]');
     });
 
     it('renders subtle variant correctly', () => {
@@ -71,7 +69,7 @@ describe('Design System Primitives', () => {
       const { container } = render(
         <ActionButton variant="primary">Submit</ActionButton>,
       );
-      expect(container.firstChild as HTMLElement).toHaveClass('bg-blue-600');
+      expect(container.firstChild as HTMLElement).toHaveClass('bg-[#FF5500]');
     });
   });
 

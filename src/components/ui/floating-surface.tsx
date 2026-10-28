@@ -14,11 +14,9 @@ const variantStyles: Record<
   NonNullable<FloatingSurfaceProps['variant']>,
   string
 > = {
-  floating:
-    'bg-[#090d16]/95 backdrop-blur-md border border-white/10 shadow-2xl rounded-xl',
-  subtle:
-    'bg-white/[0.03] backdrop-blur-xs border border-white/[0.08] rounded-lg',
-  solid: 'bg-[#090d16] border border-white/10 rounded-xl',
+  floating: 'bg-[#18181B] border border-white/[0.07] shadow-2xl rounded-[10px]',
+  subtle: 'bg-white/[0.03] border border-white/[0.05] rounded-[8px]',
+  solid: 'bg-[#121214] border border-white/[0.07] rounded-[10px]',
 };
 
 const densityStyles: Record<

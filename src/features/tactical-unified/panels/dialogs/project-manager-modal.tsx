@@ -57,7 +57,7 @@ export function ProjectManagerModal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 select-none"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -65,7 +65,7 @@ export function ProjectManagerModal({
         if (e.key === 'Escape') onClose();
       }}
     >
-      <div className="flex flex-col w-full max-w-4xl h-[85vh] max-h-[720px] bg-[#090d16] border border-white/10 rounded-2xl shadow-2xl overflow-hidden text-white">
+      <div className="flex flex-col w-full max-w-4xl h-[85vh] max-h-[720px] bg-[#222226] border border-white/[0.08] rounded-[12px] shadow-2xl overflow-hidden text-[#F4F4F5]">
         <ProjectModalHeader
           projectCount={projects.length}
           view={view}
@@ -98,9 +98,13 @@ export function ProjectManagerModal({
           />
         )}
 
-        <div className="flex items-center justify-between px-6 py-3 border-t border-white/10 bg-black/40 text-[11px] text-white/50">
+        <div className="flex items-center justify-between px-6 py-3 border-t border-white/[0.07] bg-[#18181B] text-[11px] text-[#A1A1AA]">
           <div className="flex items-center gap-1.5">
-            <Sparkles size={12} className="text-blue-400 shrink-0" />
+            <Sparkles
+              size={12}
+              strokeWidth={1.5}
+              className="text-[#FF5500] shrink-0"
+            />
             <span>
               戦術プロジェクトの保存・復元・アスペクト比設定を管理できます
             </span>

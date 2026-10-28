@@ -119,13 +119,13 @@ export function TimelineBar() {
   );
 
   return (
-    <footer className="flex items-center justify-between h-16 px-4 bg-[#090d16] border-t border-white/10 shrink-0 select-none z-10">
+    <footer className="flex items-center justify-between h-16 px-4 bg-[#121214] border-t border-white/[0.07] shrink-0 select-none z-10">
       {/* Left: Playback Controls */}
       <div className="flex items-center gap-3 shrink-0">
         <PlaybackControls />
       </div>
 
-      <div className="w-px h-7 bg-white/10 mx-3 shrink-0" />
+      <div className="w-px h-7 bg-white/[0.07] mx-3 shrink-0" />
 
       {/* Center: Slide Strip with @dnd-kit horizontal sorting */}
       <DndContext
@@ -195,7 +195,8 @@ export function TimelineBar() {
           icon={
             <Sliders
               size={13}
-              className={isBatchOpen ? 'text-white' : 'text-blue-400'}
+              strokeWidth={1.5}
+              className={isBatchOpen ? 'text-white' : 'text-[#FF5500]'}
             />
           }
           aria-label="一括設定"
@@ -204,15 +205,15 @@ export function TimelineBar() {
           <span className="hidden sm:inline">一括設定</span>
         </ActionButton>
 
-        <div className="hidden lg:flex items-center gap-3 pl-3 text-[10px] text-white/40 border-l border-white/10">
+        <div className="hidden lg:flex items-center gap-3 pl-3 text-[10px] text-[#71717A] border-l border-white/[0.07]">
           <div className="flex items-center gap-1">
-            <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/70 font-mono text-[9px]">
+            <span className="px-1.5 py-0.5 rounded-[4px] bg-[#0D0D0E] text-[#A1A1AA] border border-white/[0.07] font-mono text-[9px]">
               L-Click
             </span>
             <span>Add Scene</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/70 font-mono text-[9px]">
+            <span className="px-1.5 py-0.5 rounded-[4px] bg-[#0D0D0E] text-[#A1A1AA] border border-white/[0.07] font-mono text-[9px]">
               R-Click
             </span>
             <span>Duplicate</span>

@@ -56,12 +56,12 @@ export function ProjectRow({
           onSelect(project.id);
         }
       }}
-      className={`group flex items-center justify-between px-4 py-3 transition-colors cursor-pointer text-left ${
+      className={`group flex items-center justify-between px-4 py-3 transition-colors cursor-pointer text-left border-b border-white/[0.04] last:border-b-0 ${
         isSelected
-          ? 'bg-blue-900/30'
+          ? 'bg-[#FF5500]/15 border-l-2 border-[#FF5500]'
           : isActive
-            ? 'bg-blue-900/20'
-            : 'hover:bg-white/5'
+            ? 'bg-[#18181B] border-l-2 border-[#FF5500]'
+            : 'hover:bg-[#18181B]'
       }`}
     >
       <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -69,18 +69,26 @@ export function ProjectRow({
         <button
           type="button"
           onClick={(e) => onToggleSelect(e, project.id)}
-          className="p-1 rounded text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+          className="p-1 rounded text-[#71717A] hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer shrink-0"
           title={isSelected ? '選択解除' : '選択'}
         >
           {isSelected ? (
-            <CheckSquare size={16} className="text-blue-400" />
+            <CheckSquare
+              size={16}
+              strokeWidth={1.5}
+              className="text-[#FF5500]"
+            />
           ) : (
-            <Square size={16} className="opacity-40 group-hover:opacity-100" />
+            <Square
+              size={16}
+              strokeWidth={1.5}
+              className="opacity-40 group-hover:opacity-100"
+            />
           )}
         </button>
 
-        <div className="p-2 rounded-lg bg-white/5 text-white/60 shrink-0">
-          <FolderKanban size={16} />
+        <div className="p-2 rounded-[6px] bg-[#0D0D0E] text-[#A1A1AA] border border-white/[0.07] shrink-0">
+          <FolderKanban size={16} strokeWidth={1.5} />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -95,29 +103,29 @@ export function ProjectRow({
                 value={editingTitle}
                 onChange={(e) => onEditingTitleChange(e.target.value)}
                 onBlur={() => onCommitRename()}
-                className="px-2 py-0.5 bg-black/40 border border-blue-500 rounded text-xs text-white focus:outline-none"
+                className="px-2 py-0.5 bg-[#0D0D0E] border border-[#FF5500]/60 rounded text-xs text-white focus:outline-none font-sans"
               />
               <button
                 type="submit"
-                className="p-1 rounded bg-blue-600 text-white cursor-pointer"
+                className="p-1 rounded bg-[#FF5500] text-white cursor-pointer"
               >
-                <Check size={12} />
+                <Check size={12} strokeWidth={1.5} />
               </button>
             </form>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-white/90 group-hover:text-white truncate">
+              <span className="text-xs font-semibold text-[#F4F4F5] group-hover:text-white truncate">
                 {project.title}
               </span>
               {isActive && (
-                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/30 font-mono">
                   編集中
                 </span>
               )}
             </div>
           )}
 
-          <div className="flex items-center gap-3 text-[10px] text-white/40 mt-0.5 font-mono">
+          <div className="flex items-center gap-3 text-[10px] text-[#71717A] mt-0.5 font-mono">
             <span>{project.aspectRatio}</span>
             <span>•</span>
             <span>{project.slideCount} スライド</span>
@@ -128,38 +136,38 @@ export function ProjectRow({
       </div>
 
       {/* Actions (Always Visible) */}
-      <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10 shrink-0 ml-3">
+      <div className="flex items-center gap-1 bg-[#0D0D0E] p-0.5 rounded-[6px] border border-white/[0.07] shrink-0 ml-3">
         <button
           type="button"
           onClick={(e) => onStartRename(e, project)}
-          className="p-1.5 rounded hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
+          className="p-1.5 rounded hover:bg-white/[0.08] text-[#A1A1AA] hover:text-white transition-colors cursor-pointer"
           title="名前を変更"
         >
-          <Edit2 size={13} />
+          <Edit2 size={13} strokeWidth={1.5} />
         </button>
         <button
           type="button"
           onClick={(e) => onDuplicate(e, project.id)}
-          className="p-1.5 rounded hover:bg-purple-500/20 text-white/70 hover:text-purple-300 transition-colors cursor-pointer"
+          className="p-1.5 rounded hover:bg-white/[0.08] text-[#A1A1AA] hover:text-white transition-colors cursor-pointer"
           title="プロジェクトを複製"
         >
-          <Copy size={13} />
+          <Copy size={13} strokeWidth={1.5} />
         </button>
         <button
           type="button"
           onClick={(e) => onExportJson(e, project.id)}
-          className="p-1.5 rounded hover:bg-blue-500/20 text-white/70 hover:text-blue-300 transition-colors cursor-pointer"
+          className="p-1.5 rounded hover:bg-[#00A8FF]/15 text-[#00A8FF] transition-colors cursor-pointer"
           title="プロジェクトをJSONファイルとしてダウンロード保存"
         >
-          <Download size={13} className="text-blue-400" />
+          <Download size={13} strokeWidth={1.5} />
         </button>
         <button
           type="button"
           onClick={(e) => onDelete(e, project)}
-          className="p-1.5 rounded hover:bg-rose-500/20 text-white/70 hover:text-rose-400 transition-colors cursor-pointer"
+          className="p-1.5 rounded hover:bg-[#EB3B5A]/20 text-[#71717A] hover:text-[#EB3B5A] transition-colors cursor-pointer"
           title="プロジェクトを削除"
         >
-          <Trash2 size={13} />
+          <Trash2 size={13} strokeWidth={1.5} />
         </button>
       </div>
     </div>

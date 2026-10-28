@@ -117,20 +117,20 @@ export function ProjectListView({
         onViewModeChange={setViewMode}
       />
 
-      <div className="flex-1 overflow-y-auto p-6 min-h-0 bg-[#0f0f13]">
+      <div className="flex-1 overflow-y-auto p-6 min-h-0 bg-[#121214]">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-white/50 text-xs">
-            <Loader2 size={24} className="animate-spin text-blue-400" />
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-[#71717A] text-xs">
+            <Loader2 size={24} className="animate-spin text-[#FF5500]" />
             <span>プロジェクトを処理中...</span>
           </div>
         ) : filteredProjects.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-white/40 text-xs">
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-[#71717A] text-xs">
             <FolderKanban size={36} className="opacity-40" />
             <span>該当するプロジェクトがありません</span>
             <button
               type="button"
               onClick={onCreateClick}
-              className="text-blue-400 hover:underline cursor-pointer"
+              className="text-[#FF5500] hover:underline cursor-pointer"
             >
               新しいプロジェクトを作成
             </button>
@@ -142,7 +142,7 @@ export function ProjectListView({
             ))}
           </div>
         ) : (
-          <div className="flex flex-col divide-y divide-white/5 rounded-xl border border-white/10 bg-[#181820] overflow-hidden">
+          <div className="flex flex-col divide-y divide-white/[0.04] rounded-[8px] border border-white/[0.07] bg-[#121214] overflow-hidden">
             {filteredProjects.map((p) => (
               <ProjectRow key={p.id} {...getItemProps(p)} />
             ))}

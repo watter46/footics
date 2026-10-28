@@ -45,7 +45,7 @@ export function ExportModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="export-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm select-none p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs select-none p-4"
       onClick={(e) =>
         !isExporting && e.target === e.currentTarget && closeExportModal()
       }
@@ -53,7 +53,7 @@ export function ExportModal() {
         !isExporting && e.key === 'Escape' && closeExportModal()
       }
     >
-      <div className="relative w-full max-w-4xl rounded-2xl bg-[#090d16] border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-4xl rounded-[12px] bg-[#222226] border border-white/[0.08] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <ExportModalHeader
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -63,12 +63,12 @@ export function ExportModal() {
         />
 
         {exportError && !completedVideo && (
-          <div className="px-6 py-3 bg-red-500/15 border-b border-red-500/30 text-xs text-red-300 flex items-center justify-between">
+          <div className="px-6 py-3 bg-[#EB3B5A]/15 border-b border-[#EB3B5A]/30 text-xs text-[#EB3B5A] flex items-center justify-between">
             <span>⚠️ {exportError}</span>
             <button
               type="button"
               onClick={() => setExportError(null)}
-              className="text-red-300/70 hover:text-red-200 text-[11px] underline ml-3 cursor-pointer"
+              className="text-[#EB3B5A]/70 hover:text-[#EB3B5A] text-[11px] underline ml-3 cursor-pointer"
             >
               Dismiss
             </button>

@@ -12,9 +12,9 @@ export interface ActionButtonProps
 }
 
 const sizeStyles: Record<NonNullable<ActionButtonProps['size']>, string> = {
-  xs: 'h-6 px-2 text-[11px] font-medium rounded-md gap-1',
-  sm: 'h-7 px-2.5 text-xs font-medium rounded-md gap-1.5',
-  md: 'h-8 px-3 text-sm font-medium rounded-lg gap-2',
+  xs: 'h-6 px-2 text-[11px] font-medium rounded-[6px] gap-1',
+  sm: 'h-7 px-2.5 text-xs font-semibold rounded-[8px] gap-1.5',
+  md: 'h-8 px-3.5 text-xs font-bold rounded-[8px] gap-2',
 };
 
 const variantStyles: Record<
@@ -22,13 +22,14 @@ const variantStyles: Record<
   string
 > = {
   default:
-    'bg-white/10 hover:bg-white/15 text-white/90 hover:text-white border border-white/10',
-  primary: 'bg-blue-600 hover:bg-blue-500 text-white font-medium shadow-xs',
+    'bg-[#18181B] hover:bg-[#222226] text-[#F4F4F5] border border-white/[0.07]',
+  primary:
+    'bg-[#FF5500] hover:bg-[#ff6a1f] text-white font-semibold shadow-[0_0_14px_rgba(255,85,0,0.4)]',
   outline:
-    'border border-white/15 hover:bg-white/5 text-white/80 hover:text-white',
-  ghost: 'text-white/70 hover:text-white hover:bg-white/10',
+    'border border-white/[0.07] hover:bg-white/[0.05] text-[#A1A1AA] hover:text-white',
+  ghost: 'text-[#A1A1AA] hover:text-white hover:bg-white/[0.05]',
   danger:
-    'bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30',
+    'bg-[#EB3B5A]/15 hover:bg-[#EB3B5A]/25 text-[#EB3B5A] border border-[#EB3B5A]/30',
 };
 
 export function ActionButton({
@@ -48,7 +49,7 @@ export function ActionButton({
       type={type}
       disabled={disabled}
       className={cn(
-        'inline-flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:pointer-events-none disabled:opacity-40 cursor-pointer select-none',
+        'inline-flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5500]/50 disabled:pointer-events-none disabled:opacity-35 cursor-pointer select-none active:scale-[0.98]',
         sizeStyles[size],
         variantStyles[variant],
         className,
