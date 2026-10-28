@@ -182,6 +182,66 @@ describe('AAWU 3-2: Timeline & Slide Operations Store', () => {
     expect(newSlide.texts[0].content).toBe('Cover space');
   });
 
+  it('duplicateSlide resets player and ball trajectories to undefined', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const currentSlideId = store.activeSlideId;
+    const firstPlayerId = store.project.slides[0].players[0].id;
+
+    // 選手とボールに軌道（trajectory）を設定
+    useTacticalUnifiedStore.setState((s) => ({
+      project: {
+        ...s.project,
+        slides: s.project.slides.map((sl) =>
+          sl.id === currentSlideId
+            ? {
+                ...sl,
+                ball: {
+                  ...sl.ball,
+                  trajectory: { type: 'arc_left', curveOffset: 30 },
+                },
+                players: sl.players.map((p) =>
+                  p.id === firstPlayerId
+                    ? {
+                        ...p,
+                        trajectory: { type: 'arc_right', curveOffset: 25 },
+                      }
+                    : p,
+                ),
+              }
+            : sl,
+        ),
+      },
+    }));
+
+    // duplicateSlide (full mode) を実行
+    const newSlideId = useTacticalUnifiedStore
+      .getState()
+      .duplicateSlide(currentSlideId);
+
+    const nextState = useTacticalUnifiedStore.getState();
+    const newSlide = nextState.project.slides.find(
+      (sl) => sl.id === newSlideId,
+    )!;
+
+    // 複製先のスライドでは、全プレイヤーおよびボールの trajectory が undefined にリセットされていること
+    expect(newSlide.players.every((p) => p.trajectory === undefined)).toBe(
+      true,
+    );
+    expect(newSlide.ball.trajectory).toBeUndefined();
+
+    // 元のスライドの trajectory は維持されていること
+    const originalSlide = nextState.project.slides.find(
+      (sl) => sl.id === currentSlideId,
+    )!;
+    expect(
+      originalSlide.players.find((p) => p.id === firstPlayerId)?.trajectory,
+    ).toEqual({ type: 'arc_right', curveOffset: 25 });
+    expect(originalSlide.ball.trajectory).toEqual({
+      type: 'arc_left',
+      curveOffset: 30,
+    });
+  });
+
   it('AAWU 8-3-D: duplicateSlide carries over snapshot background, ring markers, and inspector settings', () => {
     const store = useTacticalUnifiedStore.getState();
     const slide1Id = store.activeSlideId;

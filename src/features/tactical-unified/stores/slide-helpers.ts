@@ -31,8 +31,9 @@ export function createSlideForMode(
   }
 
   if (mode === 'full') {
+    const clonedSlide = JSON.parse(JSON.stringify(currentSlide)) as Slide;
     return {
-      ...(JSON.parse(JSON.stringify(currentSlide)) as Slide),
+      ...clonedSlide,
       id: generateId('slide'),
       label: `${currentSlide.label ?? 'Scene'} (copy)`,
       aspectRatio: currentSlide.aspectRatio ?? project.aspectRatio,
@@ -40,6 +41,16 @@ export function createSlideForMode(
         currentSlide.backgroundImageUrl ?? project.backgroundImageUrl,
       backgroundType:
         currentSlide.backgroundType ?? project.backgroundType ?? 'pitch',
+      players: clonedSlide.players.map((pl) => ({
+        ...pl,
+        trajectory: undefined,
+      })),
+      ball: clonedSlide.ball
+        ? {
+            ...clonedSlide.ball,
+            trajectory: undefined,
+          }
+        : clonedSlide.ball,
     };
   }
 
