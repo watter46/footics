@@ -22,8 +22,8 @@ const mockMatch: Match = {
 
 describe('Match Center Components (Phase 2)', () => {
   describe('MatchCard', () => {
-    it('renders with L2 surface style and mono score', () => {
-      render(<MatchCard match={mockMatch} isLatest />);
+    it('renders with L2 surface style and mono score, without Latest or Imported badge', () => {
+      render(<MatchCard match={mockMatch} isLatest isImported />);
 
       // MatchCard container has L2 card class
       const card = screen.getByText('Arsenal').closest('a')?.firstElementChild;
@@ -37,8 +37,9 @@ describe('Match Center Components (Phase 2)', () => {
       // Full Time badge
       expect(screen.getByText('Full Time')).toBeInTheDocument();
 
-      // Latest indicator
-      expect(screen.getByText('Latest')).toBeInTheDocument();
+      // Latest & Imported indicators should NOT be rendered
+      expect(screen.queryByText('Latest')).toBeNull();
+      expect(screen.queryByText('Imported')).toBeNull();
     });
   });
 

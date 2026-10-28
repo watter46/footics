@@ -8,7 +8,7 @@
  *  - Right: Panel toggles, Copy PNG, Primary Export, and More Actions menu (...)
  */
 
-import { Copy, Maximize2, Minimize2, PanelLeft, Upload } from 'lucide-react';
+import { Copy, PanelLeft, Upload } from 'lucide-react';
 import type React from 'react';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
@@ -68,31 +68,8 @@ export function TopBar({
       {/* Center: Team Visibility & Aspect Ratio */}
       <TopBarCenter />
 
-      {/* Right: Focus Mode, Panel Toggles, Copy PNG, Primary Export, More Options (...) */}
+      {/* Right: Panel Toggles, Copy PNG, Primary Export, More Options (...) */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {onToggleFocusMode && (
-          <Button
-            variant="secondary"
-            size="sm"
-            isActive={isFocusMode}
-            onClick={onToggleFocusMode}
-            icon={
-              isFocusMode ? (
-                <Minimize2 size={13} strokeWidth={1.5} />
-              ) : (
-                <Maximize2 size={13} strokeWidth={1.5} />
-              )
-            }
-            title="Focus Mode (ピッチ最大化) [Shortcut: \] "
-            className="font-mono"
-          >
-            <span className="hidden xl:inline">Focus</span>
-            <kbd className="text-[9px] bg-black/40 px-1 py-0.5 rounded text-[#71717A] border border-white/[0.05]">
-              \
-            </kbd>
-          </Button>
-        )}
-
         <TopBarPanels />
 
         {/* Copy PNG */}

@@ -44,6 +44,7 @@ export function DropdownMenuContent({
   return (
     <Menu.Portal>
       <Menu.Positioner
+        className="z-[100]"
         side={side}
         align={align}
         sideOffset={sideOffset}

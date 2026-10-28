@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, Database } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -12,24 +12,13 @@ interface MatchCardProps {
   isImported?: boolean;
 }
 
-export function MatchCard({ match, isLatest, isImported }: MatchCardProps) {
+export function MatchCard({ match }: MatchCardProps) {
   return (
     <Link href={`/match/${match.id}`} className="block w-full">
       <Card
         interactive
         className="relative overflow-hidden group w-full p-0 flex flex-row border-white/[0.07] bg-[#18181B] hover:bg-[#1e1e22] transition-colors"
       >
-        {isLatest && (
-          <div className="absolute top-2.5 left-3 z-10">
-            <Badge
-              variant="primary"
-              className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5"
-            >
-              Latest
-            </Badge>
-          </div>
-        )}
-
         {/* Date column */}
         <div className="px-2.5 py-2.5 sm:px-5 sm:py-4 w-20 sm:w-36 border-r border-white/[0.07] flex flex-col justify-center items-start gap-1 sm:gap-1.5 bg-black/20 shrink-0">
           <div className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-medium text-[#A1A1AA]">
@@ -49,12 +38,6 @@ export function MatchCard({ match, isLatest, isImported }: MatchCardProps) {
           <span className="text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.07] text-[#71717A] font-mono mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis w-full max-w-full block">
             #{match.id}
           </span>
-          {isImported && (
-            <span className="flex items-center gap-1 text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0.5 rounded bg-[#FF8100]/10 border border-[#FF8100]/30 text-[#FF8A00] font-bold mt-0.5 uppercase tracking-wider">
-              <Database className="w-2 sm:w-2.5 h-2 sm:h-2.5 shrink-0" />
-              <span className="truncate">Imported</span>
-            </span>
-          )}
           {match.matchType === 'national' && (
             <span className="text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0.5 rounded bg-[#00A8FF]/10 border border-[#00A8FF]/30 text-[#00A8FF] font-bold mt-0.5 uppercase tracking-wider truncate w-full">
               National

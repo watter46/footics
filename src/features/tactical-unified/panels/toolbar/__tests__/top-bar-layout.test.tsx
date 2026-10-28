@@ -34,4 +34,13 @@ describe('TopBar 3-column layout robustness', () => {
     // Right column
     expect(rightCol.className).toContain('shrink-0');
   });
+
+  it('does not render Focus mode button even when onToggleFocusMode is passed', () => {
+    const { queryByText, queryByTitle } = render(
+      <TopBar onToggleFocusMode={() => {}} />,
+    );
+
+    expect(queryByText('Focus')).toBeNull();
+    expect(queryByTitle(/Focus Mode/i)).toBeNull();
+  });
 });
