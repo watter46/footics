@@ -4,7 +4,7 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { ReactNode } from 'react';
-import { memo, useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Group, Layer, Rect } from 'react-konva';
 import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
 import { useCanvasStore } from '../hooks/use-canvas-store';
@@ -54,12 +54,20 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
     (s) => s.updatePlayerTrajectory,
   );
 
-  const visibleMarkers =
-    teamVisibility === 'both'
-      ? markers
-      : markers.filter(
-          (m) => m.team === teamVisibility || m.team === 'neutral',
-        );
+  const pitchMarkers = useMemo(
+    () => markers.filter((m) => m.area !== 'bench'),
+    [markers],
+  );
+
+  const visibleMarkers = useMemo(
+    () =>
+      teamVisibility === 'both'
+        ? pitchMarkers
+        : pitchMarkers.filter(
+            (m) => m.team === teamVisibility || m.team === 'neutral',
+          ),
+    [pitchMarkers, teamVisibility],
+  );
 
   const isInteractive = activeTool === 'select';
   const connectLineNodesRef = useRef<Map<string, Konva.Line>>(new Map());
@@ -121,7 +129,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
           <ArrowObject
             key={arrow.id}
             arrow={arrow}
-            players={markers}
+            players={pitchMarkers}
             stageSize={{ width: pitchRect.width, height: pitchRect.height }}
             isSelected={!cleanRender && selectedIds.includes(arrow.id)}
             isInteractive={!cleanRender && isInteractive}
@@ -152,6 +160,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
         {/* スライド間ゴーストマーカー & 追跡曲線矢印 (cleanRender時は非表示) */}
         {!cleanRender &&
           visibleMarkers.map((marker) => {
+            if (marker.area === 'bench') return null;
             const prevPlayer = prevSlide?.players.find(
               (p) => p.id === marker.id && p.area === 'pitch',
             );
@@ -164,16 +173,23 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
             }
 
             return (
-              <PlayerGhostTrajectory
+              <Group
                 key={`ghost-${marker.id}`}
-                player={marker}
-                prevPlayer={prevPlayer}
-                stageSize={{ width: pitchRect.width, height: pitchRect.height }}
-                activeSlideId={activeSlideId}
-                nodesRegistryRef={nodesRegistryRef}
-                aspectRatio={aspectRatio}
-                onUpdateTrajectory={updatePlayerTrajectory ?? (() => {})}
-              />
+                id={`ghost-trajectory-${marker.id}`}
+              >
+                <PlayerGhostTrajectory
+                  player={marker}
+                  prevPlayer={prevPlayer}
+                  stageSize={{
+                    width: pitchRect.width,
+                    height: pitchRect.height,
+                  }}
+                  activeSlideId={activeSlideId}
+                  nodesRegistryRef={nodesRegistryRef}
+                  aspectRatio={aspectRatio}
+                  onUpdateTrajectory={updatePlayerTrajectory ?? (() => {})}
+                />
+              </Group>
             );
           })}
       </Group>

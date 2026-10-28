@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import React from 'react';
+import { Stage } from 'react-konva';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   createDefaultPlayer,
@@ -7,9 +8,11 @@ import {
 } from '@/lib/types/tactical-unified';
 import { ContextHud } from '../core/components/ContextHud';
 import { resolveHudTarget } from '../core/components/hud/hud-targets';
+import { PitchGroundLayer } from '../core/components/PitchGroundLayer';
 import { PlayerGhostTrajectoryList } from '../core/components/player-ghost-trajectory-list';
 import { createCanvasStore } from '../core/store/canvas-store';
 import { CanvasStoreContext } from '../core/store/canvas-store-provider';
+import { createCanvasNodesRegistry } from '../core/utils/canvas-registry';
 import { findSafePitchPosition } from '../stores/slide-player-move-helper';
 import { useTacticalUnifiedStore } from '../stores/tactical-unified-store';
 
@@ -386,6 +389,76 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
 
         const children = React.Children.toArray(element?.props.children);
         expect(children.length).toBe(1);
+      });
+    });
+
+    describe('PitchGroundLayer', () => {
+      it('選択された選手が area === "bench" の場合、ピッチ上にゴースト軌道（PlayerGhostTrajectory）が描画されない', () => {
+        const store = createCanvasStore({
+          mode: 'tactical-board',
+          aspectRatio: '16:9',
+        });
+        const benchPlayer = {
+          ...createDefaultPlayer('home', 80, 80, '#034694'),
+          id: 'bench-p1',
+          area: 'bench' as const,
+        };
+        const pitchPlayer = {
+          ...createDefaultPlayer('home', 50, 50, '#034694'),
+          id: 'pitch-p1',
+          area: 'pitch' as const,
+        };
+        store.getState().addMarker(benchPlayer);
+        store.getState().addMarker(pitchPlayer);
+
+        // 前スライド情報（benchPlayer は前スライドではピッチ (20, 20) にいた）
+        store.setState({
+          prevSlide: {
+            players: [
+              { ...benchPlayer, x: 20, y: 20, area: 'pitch' as const },
+              { ...pitchPlayer, x: 50, y: 50, area: 'pitch' as const },
+            ],
+          },
+        });
+
+        // サブキャンバスでドラッグされた時と同様に benchPlayer を選択
+        store
+          .getState()
+          .setSelectedObjects([{ id: benchPlayer.id, kind: 'player' }]);
+
+        const pitchRect = { x: 0, y: 0, width: 800, height: 600 };
+        const stageSize = { width: 800, height: 600 };
+        const nodesRegistry = createCanvasNodesRegistry();
+        const nodesRegistryRef = { current: nodesRegistry };
+        const stageRef = React.createRef<any>();
+
+        render(
+          React.createElement(
+            CanvasStoreContext.Provider,
+            { value: store },
+            React.createElement(
+              Stage as any,
+              { ref: stageRef, width: 800, height: 600 },
+              React.createElement(PitchGroundLayer, {
+                stageSize,
+                pitchRect,
+                cleanRender: false,
+                nodesRegistryRef,
+              }),
+            ),
+          ),
+        );
+
+        // benchPlayer のゴースト軌道 (key=`ghost-${benchPlayer.id}`) が存在しないことを検証
+        const ghostGroup = stageRef.current?.findOne?.((node: any) => {
+          return node.attrs?.id === `ghost-trajectory-${benchPlayer.id}`;
+        });
+        expect(ghostGroup).toBeFalsy();
+
+        // benchPlayer のゴースト軌道が nodesRegistry に登録されていないことを検証
+        expect(nodesRegistry.trajectoryArrowNodes.has(benchPlayer.id)).toBe(
+          false,
+        );
       });
     });
   });
