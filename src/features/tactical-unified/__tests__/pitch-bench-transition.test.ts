@@ -1,5 +1,15 @@
+import { render } from '@testing-library/react';
+import React from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createDefaultSlide } from '@/lib/types/tactical-unified';
+import {
+  createDefaultPlayer,
+  createDefaultSlide,
+} from '@/lib/types/tactical-unified';
+import { ContextHud } from '../core/components/ContextHud';
+import { resolveHudTarget } from '../core/components/hud/hud-targets';
+import { PlayerGhostTrajectoryList } from '../core/components/player-ghost-trajectory-list';
+import { createCanvasStore } from '../core/store/canvas-store';
+import { CanvasStoreContext } from '../core/store/canvas-store-provider';
 import { findSafePitchPosition } from '../stores/slide-player-move-helper';
 import { useTacticalUnifiedStore } from '../stores/tactical-unified-store';
 
@@ -273,6 +283,110 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
         .project.slides.find((s) => s.id === slideId)!;
       const benched = afterSlide.players.find((p) => p.id === target.id)!;
       expect(benched.area).toBe('bench');
+    });
+  });
+
+  describe('HUD & ゴースト軌道のベンチ選手干渉防止 (TASK-104)', () => {
+    describe('resolveHudTarget', () => {
+      it('selected.kind === "player" かつ player.area === "bench" の場合は null を返却する', () => {
+        const benchPlayer = {
+          ...createDefaultPlayer('home', 10, 10, '#034694'),
+          id: 'bench-p1',
+          area: 'bench' as const,
+        };
+        const pitchPlayer = {
+          ...createDefaultPlayer('home', 50, 50, '#034694'),
+          id: 'pitch-p1',
+          area: 'pitch' as const,
+        };
+
+        const offset = { x: 0, y: 0, width: 800, height: 600 };
+        const data = {
+          markers: [benchPlayer, pitchPlayer],
+          arrows: [],
+          zones: [],
+          texts: [],
+        };
+
+        // ベンチ選手選択時は null
+        const benchResult = resolveHudTarget({
+          selected: { id: benchPlayer.id, kind: 'player' },
+          offset,
+          data,
+        });
+        expect(benchResult).toBeNull();
+
+        // ピッチ選手選択時は HudTarget を返却
+        const pitchResult = resolveHudTarget({
+          selected: { id: pitchPlayer.id, kind: 'player' },
+          offset,
+          data,
+        });
+        expect(pitchResult).not.toBeNull();
+      });
+    });
+
+    describe('ContextHud', () => {
+      it('選択された選手が area === "bench" の場合は描画をガード（null を返す）', () => {
+        const store = createCanvasStore({
+          mode: 'tactical-board',
+          aspectRatio: '16:9',
+        });
+        const benchPlayer = {
+          ...createDefaultPlayer('home', 10, 10, '#034694'),
+          id: 'bench-p1',
+          area: 'bench' as const,
+        };
+        store.getState().addMarker(benchPlayer);
+        store
+          .getState()
+          .setSelectedObjects([{ id: benchPlayer.id, kind: 'player' }]);
+
+        const { container } = render(
+          React.createElement(
+            CanvasStoreContext.Provider,
+            { value: store },
+            React.createElement(ContextHud, {
+              stageSize: { width: 800, height: 600 },
+            }),
+          ),
+        );
+
+        expect(container.firstChild).toBeNull();
+      });
+    });
+
+    describe('PlayerGhostTrajectoryList', () => {
+      it('marker.area === "bench" の選手は除外（null を返却）されゴースト軌道が描画されない', () => {
+        const benchPlayer = {
+          ...createDefaultPlayer('home', 80, 80, '#034694'),
+          id: 'bench-p1',
+          area: 'bench' as const,
+        };
+        const pitchPlayer = {
+          ...createDefaultPlayer('home', 50, 50, '#034694'),
+          id: 'pitch-p1',
+          area: 'pitch' as const,
+        };
+
+        const prevSlide = {
+          players: [
+            { ...benchPlayer, x: 20, y: 20, area: 'pitch' as const },
+            { ...pitchPlayer, x: 30, y: 30, area: 'pitch' as const },
+          ],
+        };
+
+        const element = PlayerGhostTrajectoryList({
+          markers: [benchPlayer, pitchPlayer],
+          prevSlide,
+          width: 800,
+          height: 600,
+          activeSlideId: 'slide-1',
+        });
+
+        const children = React.Children.toArray(element?.props.children);
+        expect(children.length).toBe(1);
+      });
     });
   });
 });

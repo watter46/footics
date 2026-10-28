@@ -40,9 +40,13 @@ export function ContextHud({
   const activeTool = useCanvasStore((s) => s.activeTool);
   const isHudOpen = useCanvasStore((s) => s.isHudOpen);
   const isDragging = useCanvasStore((s) => s.isDragging);
+  const markers = useCanvasStore((s) => s.annotations.markers);
 
   const selected =
     selectedObjects.length === 1 ? selectedObjects[0] : undefined;
+  const isBenchPlayer =
+    selected?.kind === 'player' &&
+    markers.find((m) => m.id === selected.id)?.area === 'bench';
   const position = useHudPosition({
     selected,
     stageSize,
@@ -96,6 +100,7 @@ export function ContextHud({
   if (
     isDragging ||
     !selected ||
+    isBenchPlayer ||
     activeTool === 'eraser' ||
     !isHudOpen ||
     !position

@@ -218,9 +218,8 @@ export function resolveHudTarget({
 
   if (selected.kind === 'player') {
     const player = data.markers.find((p) => p.id === selected.id);
-    return player
-      ? resolvePlayerTarget(player, offset, nodesRegistryRef)
-      : null;
+    if (!player || player.area === 'bench') return null;
+    return resolvePlayerTarget(player, offset, nodesRegistryRef);
   }
   if (selected.kind === 'arrow') {
     const arrow = data.arrows.find((a) => a.id === selected.id);

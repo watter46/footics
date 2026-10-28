@@ -42,6 +42,7 @@ export function PlayerGhostTrajectoryList({
   return (
     <>
       {markers.map((marker) => {
+        if (marker.area === 'bench') return null;
         const prevPlayer = prevSlide.players.find(
           (p) => p.id === marker.id && p.area === 'pitch',
         );
