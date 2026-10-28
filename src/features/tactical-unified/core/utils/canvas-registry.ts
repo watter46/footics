@@ -7,6 +7,8 @@ export interface ArrowNodeEntry {
   startHandleNode?: Konva.Circle | null;
   endHandleNode?: Konva.Circle | null;
   controlHandleNode?: Konva.Circle | null;
+  startDotNode?: Konva.Circle | null;
+  endDotNode?: Konva.Circle | null;
 }
 
 export interface TrajectoryArrowNodeEntry {

@@ -6,6 +6,7 @@ import {
   updateBallNode,
   updatePlayerNodes,
   updateTextNodes,
+  updateZoneNodes,
 } from '../animation-node-updater';
 
 describe('animation-node-updater', () => {
@@ -366,6 +367,219 @@ describe('animation-node-updater', () => {
       expect(midway?.controlPoint?.x).toBeCloseTo(40);
       expect(midway?.controlPoint?.y).toBeCloseTo(30);
       expect(midway?.curveType).toBe('curved');
+    });
+  });
+
+  describe('Route Line and Dot marker support', () => {
+    it('applies dot offset shortening and updates startDotNode and endDotNode for route_line', () => {
+      const registry = createCanvasNodesRegistry();
+      const mockPoints = vi.fn();
+      const mockStartDotPos = vi.fn();
+      const mockStartDotOpacity = vi.fn();
+      const mockStartDotVisible = vi.fn();
+      const mockEndDotPos = vi.fn();
+      const mockEndDotOpacity = vi.fn();
+      const mockEndDotVisible = vi.fn();
+
+      const mockArrowNode = {
+        points: mockPoints,
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        strokeWidth: vi.fn(),
+        opacity: vi.fn(),
+        visible: vi.fn(),
+      } as any;
+
+      const mockStartDot = {
+        position: mockStartDotPos,
+        opacity: mockStartDotOpacity,
+        visible: mockStartDotVisible,
+      } as any;
+
+      const mockEndDot = {
+        position: mockEndDotPos,
+        opacity: mockEndDotOpacity,
+        visible: mockEndDotVisible,
+      } as any;
+
+      registry.arrowNodes.set('rl-1', {
+        node: mockArrowNode,
+        startDotNode: mockStartDot,
+        endDotNode: mockEndDot,
+      });
+
+      // Horizontal line from (10%, 20%) to (30%, 20%) on a 1000x500 canvas
+      // sPx: (100, 100), ePx: (300, 100), dist = 200px
+      // strokeWidth = 3 -> dotRadius = Math.max(5, 3 * 1.6) = 5
+      updateArrowNodes(
+        {
+          'rl-1': {
+            id: 'rl-1',
+            arrowType: 'route_line',
+            points: [
+              { x: 10, y: 20 },
+              { x: 30, y: 20 },
+            ],
+            curveType: 'straight',
+            color: '#38bdf8',
+            strokeWidth: 3,
+            opacity: 0.9,
+            visible: true,
+          } as any,
+        },
+        registry,
+        1000,
+        500,
+        0,
+        0,
+      );
+
+      // Points should be shortened by dotRadius (5px) on each side:
+      // sx: 100 + 5 = 105, ex: 300 - 5 = 295
+      expect(mockPoints).toHaveBeenCalledWith([105, 100, 295, 100]);
+
+      // startDotNode and endDotNode should follow the un-offset endpoints
+      expect(mockStartDotPos).toHaveBeenCalledWith({ x: 100, y: 100 });
+      expect(mockStartDotOpacity).toHaveBeenCalledWith(0.9);
+      expect(mockStartDotVisible).toHaveBeenCalledWith(true);
+
+      expect(mockEndDotPos).toHaveBeenCalledWith({ x: 300, y: 100 });
+      expect(mockEndDotOpacity).toHaveBeenCalledWith(0.9);
+      expect(mockEndDotVisible).toHaveBeenCalledWith(true);
+    });
+
+    it('applies default 6px dot offset when strokeWidth is not specified', () => {
+      const registry = createCanvasNodesRegistry();
+      const mockPoints = vi.fn();
+      const mockArrowNode = {
+        points: mockPoints,
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        strokeWidth: vi.fn(),
+        opacity: vi.fn(),
+        visible: vi.fn(),
+      } as any;
+
+      registry.arrowNodes.set('arr-dot', {
+        node: mockArrowNode,
+      });
+
+      // sPx: (100, 100), ePx: (300, 100)
+      // No strokeWidth provided -> default 6px dotRadius
+      updateArrowNodes(
+        {
+          'arr-dot': {
+            id: 'arr-dot',
+            arrowType: 'pass',
+            endMarker: 'dot',
+            points: [
+              { x: 10, y: 20 },
+              { x: 30, y: 20 },
+            ],
+            curveType: 'straight',
+            color: '#ffffff',
+            opacity: 1,
+            visible: true,
+          } as any,
+        },
+        registry,
+        1000,
+        500,
+        0,
+        0,
+      );
+
+      // Points shortened by 6px
+      expect(mockPoints).toHaveBeenCalledWith([106, 100, 294, 100]);
+    });
+
+    it('preserves endMarker during interpolateArrow', () => {
+      const arrowA = {
+        id: 'arr-dot',
+        annotationType: 'arrow' as const,
+        arrowType: 'route_line' as const,
+        curveType: 'straight' as const,
+        points: [
+          { x: 10, y: 20 },
+          { x: 30, y: 20 },
+        ],
+        color: '#ffffff',
+        strokeWidth: 3,
+        dashArray: [],
+        arrowHead: false,
+        endMarker: 'dot' as const,
+      };
+
+      const arrowB = {
+        ...arrowA,
+        points: [
+          { x: 20, y: 30 },
+          { x: 40, y: 30 },
+        ],
+      };
+
+      const interpolated = interpolateArrow(arrowA, arrowB, 0.5);
+      expect(interpolated).not.toBeNull();
+      expect(interpolated?.endMarker).toBe('dot');
+    });
+
+    it('positions rect zones at center cx/cy with offsetX/offsetY to match static ZoneShapeNode', () => {
+      const registry = createCanvasNodesRegistry();
+      const mockPos = vi.fn();
+      const mockWidth = vi.fn();
+      const mockHeight = vi.fn();
+      const mockOffsetX = vi.fn();
+      const mockOffsetY = vi.fn();
+
+      const mockRectNode = {
+        position: mockPos,
+        width: mockWidth,
+        height: mockHeight,
+        offsetX: mockOffsetX,
+        offsetY: mockOffsetY,
+        rotation: vi.fn(),
+        fill: vi.fn(),
+        stroke: vi.fn(),
+        strokeWidth: vi.fn(),
+        visible: vi.fn(),
+        opacity: vi.fn(),
+      } as any;
+
+      registry.zoneNodes.set('z1', mockRectNode);
+
+      // normX: 20, normY: 30, normW: 40, normH: 20 on 1000x500 canvas
+      // pxW = 0.4 * 1000 = 400, pxH = 0.2 * 500 = 100
+      // cx = (0.2 * 1000) + 400 / 2 = 200 + 200 = 400
+      // cy = (0.3 * 500) + 100 / 2 = 150 + 50 = 200
+      updateZoneNodes(
+        {
+          z1: {
+            id: 'z1',
+            zoneType: 'highlight',
+            shapeType: 'rect',
+            x: 20,
+            y: 30,
+            width: 40,
+            height: 20,
+            points: [],
+            color: '#22c55e',
+            opacity: 0.25,
+            strokeWidth: 2,
+            visible: true,
+          },
+        },
+        registry,
+        1000,
+        500,
+        0,
+        0,
+      );
+
+      expect(mockPos).toHaveBeenCalledWith({ x: 400, y: 200 });
+      expect(mockWidth).toHaveBeenCalledWith(400);
+      expect(mockHeight).toHaveBeenCalledWith(100);
+      expect(mockOffsetX).toHaveBeenCalledWith(200);
+      expect(mockOffsetY).toHaveBeenCalledWith(50);
     });
   });
 });

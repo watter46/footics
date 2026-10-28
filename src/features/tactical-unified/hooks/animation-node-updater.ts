@@ -6,6 +6,7 @@
 
 import type Konva from 'konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
+import { applyDotOffsets } from '@/features/tactical-unified/core/components/annotations/arrow-geometry';
 import {
   getQuadraticBezierPoints,
   getWavyPoints,
@@ -96,14 +97,16 @@ export function updateZoneNodes(
       const normY = zState.y ?? zState.points[0]?.y ?? 20;
       const normW = zState.width ?? 30;
       const normH = zState.height ?? 20;
-      const pxX = offsetX + (normX / 100) * stageWidth;
-      const pxY = offsetY + (normY / 100) * stageHeight;
       const pxW = (normW / 100) * stageWidth;
       const pxH = (normH / 100) * stageHeight;
-      zoneShape.position({ x: pxX, y: pxY });
+      const cx = offsetX + (normX / 100) * stageWidth + pxW / 2;
+      const cy = offsetY + (normY / 100) * stageHeight + pxH / 2;
+      zoneShape.position({ x: cx, y: cy });
       const rectNode = zoneShape as unknown as Konva.Rect;
       rectNode.width(pxW);
       rectNode.height(pxH);
+      rectNode.offsetX(pxW / 2);
+      rectNode.offsetY(pxH / 2);
       rectNode.rotation(zState.rotation || 0);
       rectNode.fill(fillRGBA);
       rectNode.stroke(strokeColor);
@@ -153,23 +156,41 @@ export function updateArrowNodes(
       aState.curveType === 'arc' ||
       aState.controlPoint !== undefined;
     const isWavy = aState.arrowType === 'dribble';
+    const isDotEnd =
+      aState.arrowType === 'route_line' || aState.endMarker === 'dot';
+    const dotRadius = aState.strokeWidth
+      ? Math.max(5, aState.strokeWidth * 1.6)
+      : 6;
+
+    const cpPxX =
+      isCurved && aState.controlPoint
+        ? offsetX + (aState.controlPoint.x / 100) * stageWidth
+        : undefined;
+    const cpPxY =
+      isCurved && aState.controlPoint
+        ? offsetY + (aState.controlPoint.y / 100) * stageHeight
+        : undefined;
+
+    const { rsx, rsy, rex, rey } = applyDotOffsets(
+      sPxX,
+      sPxY,
+      ePxX,
+      ePxY,
+      cpPxX,
+      cpPxY,
+      isCurved,
+      isWavy,
+      isDotEnd,
+      dotRadius,
+    );
 
     let renderPts: number[];
     if (isWavy) {
-      renderPts = getWavyPoints(sPxX, sPxY, ePxX, ePxY);
-    } else if (isCurved && aState.controlPoint) {
-      const cpPxX = offsetX + (aState.controlPoint.x / 100) * stageWidth;
-      const cpPxY = offsetY + (aState.controlPoint.y / 100) * stageHeight;
-      renderPts = getQuadraticBezierPoints(
-        sPxX,
-        sPxY,
-        cpPxX,
-        cpPxY,
-        ePxX,
-        ePxY,
-      );
+      renderPts = getWavyPoints(rsx, rsy, rex, rey);
+    } else if (isCurved && cpPxX !== undefined && cpPxY !== undefined) {
+      renderPts = getQuadraticBezierPoints(rsx, rsy, cpPxX, cpPxY, rex, rey);
     } else {
-      renderPts = [sPxX, sPxY, ePxX, ePxY];
+      renderPts = [rsx, rsy, rex, rey];
     }
 
     arrowEntry.node.points(renderPts);
@@ -178,6 +199,18 @@ export function updateArrowNodes(
     arrowEntry.node.strokeWidth(aState.strokeWidth);
     arrowEntry.node.opacity(aState.opacity);
     arrowEntry.node.visible(aState.visible);
+
+    if (arrowEntry.startDotNode) {
+      arrowEntry.startDotNode.position({ x: sPxX, y: sPxY });
+      arrowEntry.startDotNode.opacity(aState.opacity);
+      arrowEntry.startDotNode.visible(aState.visible);
+    }
+
+    if (arrowEntry.endDotNode) {
+      arrowEntry.endDotNode.position({ x: ePxX, y: ePxY });
+      arrowEntry.endDotNode.opacity(aState.opacity);
+      arrowEntry.endDotNode.visible(aState.visible);
+    }
   }
 }
 

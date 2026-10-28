@@ -70,7 +70,7 @@ function computeBoundaryEndpoints(
   return { effSx, effSy, effEx, effEy };
 }
 
-function applyDotOffsets(
+export function applyDotOffsets(
   sx: number,
   sy: number,
   ex: number,

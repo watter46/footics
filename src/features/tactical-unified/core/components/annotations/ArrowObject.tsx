@@ -53,6 +53,8 @@ export const ArrowObject = React.memo(function ArrowObject({
     startHandleRef,
     endHandleRef,
     controlHandleRef,
+    startDotRef,
+    endDotRef,
     midHandlePxX: curve.midHandlePxX,
     midHandlePxY: curve.midHandlePxY,
     sPxX: curve.sPxX,

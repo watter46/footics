@@ -10,6 +10,8 @@ export interface UseArrowSyncParams {
   startHandleRef: React.RefObject<Konva.Circle | null>;
   endHandleRef: React.RefObject<Konva.Circle | null>;
   controlHandleRef: React.RefObject<Konva.Circle | null>;
+  startDotRef?: React.RefObject<Konva.Circle | null>;
+  endDotRef?: React.RefObject<Konva.Circle | null>;
   midHandlePxX: number;
   midHandlePxY: number;
   sPxX: number;
@@ -25,6 +27,8 @@ export function useArrowSyncAndRegistry({
   startHandleRef,
   endHandleRef,
   controlHandleRef,
+  startDotRef,
+  endDotRef,
   midHandlePxX,
   midHandlePxY,
   sPxX,
@@ -56,6 +60,8 @@ export function useArrowSyncAndRegistry({
       startHandleNode: startHandleRef.current,
       endHandleNode: endHandleRef.current,
       controlHandleNode: controlHandleRef.current,
+      startDotNode: startDotRef?.current,
+      endDotNode: endDotRef?.current,
     });
     return () => {
       nodesRegistryRef.current.arrowNodes.delete(arrowId);
@@ -67,6 +73,8 @@ export function useArrowSyncAndRegistry({
     startHandleRef,
     endHandleRef,
     controlHandleRef,
+    startDotRef,
+    endDotRef,
   ]);
 }
 

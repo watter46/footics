@@ -41,6 +41,7 @@ export interface InterpolatedArrowState {
   visible: boolean;
   sourcePlayerId?: string;
   targetPlayerId?: string;
+  endMarker?: ArrowAnnotation['endMarker'];
 }
 
 export interface InterpolatedTextState {
@@ -251,6 +252,7 @@ export function interpolateArrow(
     visible: true,
     sourcePlayerId: aB.sourcePlayerId,
     targetPlayerId: aB.targetPlayerId,
+    endMarker: aB.endMarker,
   };
 }
 
@@ -265,19 +267,10 @@ export function interpolateText(
   if (!textA && !textB) return null;
 
   if (textA && !textB) {
-    return {
-      ...textA,
-      opacity: Math.max(0, 1 - ease),
-      visible: ease < 1,
-    };
+    return { ...textA, opacity: Math.max(0, 1 - ease), visible: ease < 1 };
   }
-
   if (!textA && textB) {
-    return {
-      ...textB,
-      opacity: Math.min(1, ease),
-      visible: true,
-    };
+    return { ...textB, opacity: Math.min(1, ease), visible: true };
   }
 
   const tA = textA;
