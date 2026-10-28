@@ -212,8 +212,19 @@ export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;
 | **`ActionButton`** | `@/components/ui/action-button` | アイコン＋ラベル付きのアクションボタン（Export、保存、一括設定等） |
 | **`SegmentedControl`** | `@/components/ui/segmented-control` | タブ切替、表示モード切替（Video/Image/JSON、アスペクト比選択等） |
 
-### 7.6 パフォーマンス保護
-- キャンバス（Konva）の再描画をDOM UIのホバーやステート変化でトリガーさせないこと（Zustandセレクタの局所化・React.memoの徹底、CSS GPU合成活用）。
+### 7.6 クロスプラットフォーム（Edge / iOS Safari）＆パフォーマンス保護規約
+
+1. **Microsoft Edge（Chromium / Windows）環境への配慮**:
+   - **フォールバック**: Chromiumベースのため基本描画は安定しているが、WindowsのClearType環境で細線（0.07枠線）が潰れないよう、`border` のアンチエイリアス崩れを防ぐため `1px` 未満の小数は指定しないこと。
+   - **スクロールバーの最適化**: Edge固有のオーバーレイスクロールバーとの干渉を防ぐため、カスタムスクロールバーは細幅（5px）に抑え、タッチパッド/ホイールのスクロール慣性を阻害しないこと。
+2. **iOS Safari（WebKit）環境への厳格な配慮**:
+   - **過度な `backdrop-blur` の禁止**: iOS WebKitでは複数重なった `backdrop-filter: blur(...)` がGPUメモリを圧迫し、フレームレートの急低下（ジャンク）や発熱の原因となる。ブラーはモーダル背面などの最上位レイヤー（`backdrop-blur-xs`）に限定し、キャンバス上を頻繁に動くツールチップやリストアイテムには**不透明・単色サーフェス（#18181B / #121214）を使用**すること。
+   - **100vh問題の防止**: モバイル/タブレット表示時、アドレスバー伸縮によるレイアウト崩れを防ぐため、`h-screen` ではなく `h-[100dvh]`（Dynamic Viewport Height）を使用すること。
+   - **セーフエリア（Safe Area Insets）**: iOSデバイスのノッチやホームインジケーターにUIが被らないよう、ヘッダー・フッター・フローティングHUDには `pb-[env(safe-area-inset-bottom)]` 等の余白を考慮すること。
+   - **タップ遅延と300msディレイ排除**: `touch-action: manipulation` を適用し、ダブルタップズーム遅延を防止すること。
+3. **Konvaキャンバスのパフォーマンス保護（60fps維持）**:
+   - **再描画の完全隔離**: キャンバス（Konva）の再描画をDOM UIのホバー、アニメーション、ツールバーのステート変化でトリガーさせないこと（Zustandセレクタの局所化・React.memoの徹底）。
+   - **GPU合成レイヤーの明示**: アニメーションするフローティングUIやトーストには `transform: translateZ(0)` または `will-change: transform` を適用し、メインスレッドの再レイアウト（Reflow）を誘発させないこと。
 
 ---
 
