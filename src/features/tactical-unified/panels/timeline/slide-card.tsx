@@ -116,8 +116,8 @@ export function SlideCard({
           isPlaybackActive
             ? 'border-amber-500 bg-amber-500/20 text-white shadow-md shadow-amber-500/20 ring-1 ring-amber-500'
             : isActive
-              ? 'border-blue-500 bg-blue-600/20 text-white shadow-md shadow-blue-500/10 ring-1 ring-blue-500'
-              : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:bg-white/10 hover:text-white',
+              ? 'border-[#60A5FA] bg-[#60A5FA]/15 text-white shadow-md ring-1 ring-[#60A5FA]'
+              : 'border-white/[0.07] bg-[#18181B] text-white/70 hover:border-white/25 hover:bg-white/10 hover:text-white',
         ].join(' ')}
         title={`${slide.label ?? `Scene ${index + 1}`} (Drag to reorder, Right-click for options)`}
         aria-label={`Scene ${index + 1}`}
@@ -128,7 +128,7 @@ export function SlideCard({
               isPlaybackActive
                 ? 'text-amber-400'
                 : isActive
-                  ? 'text-blue-300'
+                  ? 'text-[#60A5FA]'
                   : 'text-white/90'
             }`}
           >
@@ -152,12 +152,12 @@ export function SlideCard({
             title={`静止時間: ${pauseSec.toFixed(1)}s (クリックで編集)`}
             aria-label="Edit scene transition"
           >
-            <Pause size={8} className="text-emerald-400/80" />
+            <Pause size={8} className="text-[#FF8100]/80" />
             {pauseSec.toFixed(1)}s
           </button>
           {annotationCount > 0 && (
             <span
-              className="flex items-center gap-0.5 text-blue-400/80"
+              className="flex items-center gap-0.5 text-[#60A5FA]/80"
               title={`${annotationCount} drawings`}
             >
               <Layers size={8} />
@@ -232,9 +232,9 @@ export function SlideCardOverlay({
     (slide.texts?.length ?? 0);
 
   return (
-    <div className="flex flex-col justify-between w-24 h-12 px-2 py-1.5 rounded-lg border border-blue-500 bg-[#161b26] text-white shadow-2xl shadow-blue-500/30 ring-2 ring-blue-500 scale-105 cursor-grabbing relative overflow-hidden select-none">
+    <div className="flex flex-col justify-between w-24 h-12 px-2 py-1.5 rounded-lg border border-[#60A5FA] bg-[#222226] text-white shadow-2xl ring-2 ring-[#60A5FA] scale-105 cursor-grabbing relative overflow-hidden select-none">
       <div className="flex items-center justify-between w-full">
-        <span className="text-[11px] font-bold font-mono text-blue-300">
+        <span className="text-[11px] font-bold font-mono text-[#60A5FA]">
           {index + 1}
         </span>
         <span className="text-[9px] text-white/50 truncate max-w-[50px]">
@@ -246,12 +246,12 @@ export function SlideCardOverlay({
           className="flex items-center gap-0.5"
           title={`静止時間: ${pauseSec.toFixed(1)}s`}
         >
-          <Pause size={8} className="text-emerald-400/80" />
+          <Pause size={8} className="text-[#FF8100]/80" />
           {pauseSec.toFixed(1)}s
         </span>
         {annotationCount > 0 && (
           <span
-            className="flex items-center gap-0.5 text-blue-400/80"
+            className="flex items-center gap-0.5 text-[#60A5FA]/80"
             title={`${annotationCount} drawings`}
           >
             <Layers size={8} />

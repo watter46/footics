@@ -25,16 +25,16 @@ export function BenchSwapSelector({
   onClose,
 }: BenchSwapSelectorProps) {
   return (
-    <div className="p-2 rounded-lg bg-[#1c1c1c] border border-amber-500/40 shadow-lg space-y-1.5">
-      <div className="flex items-center justify-between text-[10px] text-white/70 font-semibold border-b border-white/10 pb-1">
-        <span>
+    <div className="p-2 rounded-lg bg-[#222226] border border-amber-500/40 shadow-lg space-y-1.5 w-full max-w-full min-w-0">
+      <div className="flex items-center justify-between gap-1 text-[10px] text-white/70 font-semibold border-b border-white/[0.08] pb-1 min-w-0">
+        <span className="truncate">
           Swap #{benchPlayer.shirtNo || '—'} {benchPlayer.name || 'Player'} with
           Pitch Player:
         </span>
         <button
           type="button"
           onClick={onClose}
-          className="text-white/40 hover:text-white cursor-pointer"
+          className="text-white/40 hover:text-white cursor-pointer shrink-0"
         >
           <X size={10} />
         </button>
@@ -45,15 +45,15 @@ export function BenchSwapSelector({
           No pitch players available to swap
         </div>
       ) : (
-        <div className="max-h-32 overflow-y-auto space-y-1 custom-scrollbar">
+        <div className="max-h-32 overflow-y-auto space-y-1 custom-scrollbar min-w-0">
           {pitchPlayers.map((pitchPlayer) => (
             <button
               key={pitchPlayer.id}
               type="button"
               onClick={() => onSwap(pitchPlayer.id)}
-              className="flex items-center justify-between w-full px-2 py-1 rounded bg-white/5 hover:bg-amber-500/20 hover:border-amber-500/40 border border-transparent text-left text-[10px] text-white/80 hover:text-white transition-colors cursor-pointer"
+              className="flex items-center justify-between gap-1.5 w-full px-2 py-1 rounded bg-white/5 hover:bg-amber-500/20 hover:border-amber-500/40 border border-transparent text-left text-[10px] text-white/80 hover:text-white transition-colors cursor-pointer min-w-0"
             >
-              <div className="flex items-center gap-1.5 truncate">
+              <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
                 <span
                   className="w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] text-white shrink-0"
                   style={{ backgroundColor: teamColor }}
@@ -66,7 +66,7 @@ export function BenchSwapSelector({
               </div>
               {pitchPlayer.position && (
                 <span
-                  className={`text-[9px] px-1 rounded border font-mono ${getPositionBadgeClass(pitchPlayer.position)}`}
+                  className={`text-[9px] px-1 rounded border font-mono shrink-0 ${getPositionBadgeClass(pitchPlayer.position)}`}
                 >
                   {pitchPlayer.position}
                 </span>

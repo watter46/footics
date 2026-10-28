@@ -24,9 +24,9 @@ export function FilterBar({
   resultCount,
 }: FilterBarProps) {
   return (
-    <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap relative z-20">
+    <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap relative z-20 min-w-0 w-full">
       {/* Type Select */}
-      <div className="w-32 sm:w-36 shrink-0">
+      <div className="w-32 sm:w-36 shrink-0 min-w-0">
         <NativeSelect
           aria-label="Match Type"
           value={activeType}
@@ -42,7 +42,7 @@ export function FilterBar({
       </div>
 
       {/* Team Search Input */}
-      <div className="w-44 sm:w-56 shrink-0">
+      <div className="w-full sm:w-56 min-w-0 sm:shrink-0 flex-1 sm:flex-initial">
         <SearchInput
           placeholder="Search team..."
           value={activeTeam ?? ''}

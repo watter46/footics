@@ -33,12 +33,12 @@ export function VisionConeAction({ player }: PlayerQuickActionsProps) {
       type="button"
       onClick={toggleVisionCone}
       style={
-        visible ? { backgroundColor: '#0d99ff', color: '#ffffff' } : undefined
+        visible ? { backgroundColor: '#FF8100', color: '#ffffff' } : undefined
       }
       className={`p-1 rounded-md transition-all cursor-pointer ${
         visible
-          ? 'bg-[#0d99ff] text-white ring-1 ring-sky-400 shadow-sm'
-          : 'text-white/80 hover:text-white hover:bg-[#333333]'
+          ? 'bg-[#FF8100] text-white shadow-sm'
+          : 'text-white/80 hover:text-white hover:bg-white/[0.08]'
       }`}
       title={visible ? '視野コーンON (クリックでOFF)' : '視野コーンを追加'}
     >
@@ -86,7 +86,7 @@ export function ConnectLineAction({ player }: PlayerQuickActionsProps) {
   };
 
   const btnStyle = isConnecting
-    ? { backgroundColor: '#0d99ff', color: '#ffffff' }
+    ? { backgroundColor: '#FF8100', color: '#ffffff' }
     : hasLines
       ? { backgroundColor: '#10b981', color: '#ffffff' }
       : undefined;
@@ -98,10 +98,10 @@ export function ConnectLineAction({ player }: PlayerQuickActionsProps) {
       style={btnStyle}
       className={`p-1 rounded-md transition-all cursor-pointer ${
         isConnecting
-          ? 'bg-[#0d99ff] text-white animate-pulse shadow-md'
+          ? 'bg-[#FF8100] text-white animate-pulse shadow-md'
           : hasLines
             ? 'bg-emerald-500 text-white shadow-sm'
-            : 'text-white/80 hover:text-white hover:bg-[#333333]'
+            : 'text-white/80 hover:text-white hover:bg-white/[0.08]'
       }`}
       title={
         isConnecting
@@ -148,7 +148,7 @@ export function ArrowActionGroup({ player }: PlayerQuickActionsProps) {
       <button
         type="button"
         onClick={() => addPlayerArrow('pass', '#ffffff', [])}
-        className="p-1 rounded-md text-white/80 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
+        className="p-1 rounded-md text-white/80 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
         title="実線矢印を追加 (パス/シュート)"
       >
         <MoveRight size={13} />
@@ -156,7 +156,7 @@ export function ArrowActionGroup({ player }: PlayerQuickActionsProps) {
       <button
         type="button"
         onClick={() => addPlayerArrow('move', '#ffffff', [6, 4])}
-        className="p-1 rounded-md text-white/80 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
+        className="p-1 rounded-md text-white/80 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
         title="点線矢印を追加 (フリーラン/移動)"
       >
         <DashedArrowIcon size={13} />
@@ -164,7 +164,7 @@ export function ArrowActionGroup({ player }: PlayerQuickActionsProps) {
       <button
         type="button"
         onClick={() => addPlayerArrow('dribble', '#eab308', [])}
-        className="p-1 rounded-md text-white/80 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
+        className="p-1 rounded-md text-white/80 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
         title="波線矢印を追加 (ドリブル/波線)"
       >
         <WavyArrowIcon size={13} />
@@ -199,7 +199,7 @@ export function SpotlightAction({ player }: PlayerQuickActionsProps) {
       className={`p-1 rounded-md transition-all cursor-pointer ${
         hasFocus
           ? 'bg-amber-500 text-white shadow-sm'
-          : 'text-white/80 hover:text-white hover:bg-[#333333]'
+          : 'text-white/80 hover:text-white hover:bg-white/[0.08]'
       }`}
       title={
         hasFocus ? 'スポットライトON (クリックでOFF)' : 'スポットライトを追加'

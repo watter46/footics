@@ -57,20 +57,20 @@ export function ConnectLineHud({
         }}
         style={
           isDashed
-            ? { backgroundColor: '#0d99ff', color: '#ffffff' }
+            ? { backgroundColor: '#FF8100', color: '#ffffff' }
             : undefined
         }
         className={`p-1 rounded-md transition-colors cursor-pointer ${
           isDashed
-            ? 'bg-[#0d99ff] text-white'
-            : 'text-white/70 hover:text-white hover:bg-[#333333]'
+            ? 'bg-[#FF8100] text-white'
+            : 'text-white/70 hover:text-white hover:bg-white/[0.08]'
         }`}
         title={isDashed ? '点線 (実線に切替)' : '実線 (点線に切替)'}
       >
         {isDashed ? <DashedLineIcon size={14} /> : <SolidLineIcon size={14} />}
       </button>
 
-      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
 
       {/* 線の太さ */}
       <div className="flex items-center gap-0.5">
@@ -81,7 +81,7 @@ export function ConnectLineHud({
             if (cur > 1) updateLine({ strokeWidth: cur - 1 });
           }}
           disabled={(cl.strokeWidth ?? 2) <= 1}
-          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-[#333333] disabled:opacity-30 cursor-pointer"
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-white/[0.08] disabled:opacity-30 cursor-pointer"
           title="線を細く"
         >
           <Minus size={11} />
@@ -96,14 +96,14 @@ export function ConnectLineHud({
             if (cur < 8) updateLine({ strokeWidth: cur + 1 });
           }}
           disabled={(cl.strokeWidth ?? 2) >= 8}
-          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-[#333333] disabled:opacity-30 cursor-pointer"
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-white/[0.08] disabled:opacity-30 cursor-pointer"
           title="線を太く"
         >
           <Plus size={11} />
         </button>
       </div>
 
-      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
 
       {/* 線の色 */}
       <MiniColorPicker
@@ -112,7 +112,7 @@ export function ConnectLineHud({
         title="コネクトラインの色"
       />
 
-      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
 
       {/* 削除 */}
       <button

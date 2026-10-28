@@ -48,7 +48,7 @@ export function TopBar({
   return (
     <header className="flex items-center justify-between h-11 px-3 bg-[#121214] border-b border-white/[0.07] shrink-0 z-50 select-none">
       {/* Left: Sidebar Toggle, Brand / Project Manager, Editable Title, Undo / Redo */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0 min-w-0">
         <IconButton
           variant="ghost"
           size="sm"
@@ -61,7 +61,7 @@ export function TopBar({
         </IconButton>
 
         <TopBarTitle />
-        <div className="h-4 w-px bg-white/[0.07]" />
+        <div className="h-4 w-px bg-white/[0.07] shrink-0" />
         <TopBarHistory />
       </div>
 
@@ -69,7 +69,7 @@ export function TopBar({
       <TopBarCenter />
 
       {/* Right: Focus Mode, Panel Toggles, Copy PNG, Primary Export, More Options (...) */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 shrink-0">
         {onToggleFocusMode && (
           <Button
             variant="secondary"

@@ -83,7 +83,7 @@ export function MiniColorPicker({
           <rect width="20" height="20" fill={normalizedValue} />
         </svg>
         {isRing && (
-          <div className="absolute w-1.5 h-1.5 rounded-full bg-[#222222] pointer-events-none" />
+          <div className="absolute w-1.5 h-1.5 rounded-full bg-[#18181B] pointer-events-none" />
         )}
       </button>
 
@@ -94,7 +94,7 @@ export function MiniColorPicker({
           role="dialog"
           aria-label="カラーパレット"
           tabIndex={-1}
-          className="p-2.5 bg-[#222222] border border-[#383838] rounded-xl shadow-2xl z-50 flex flex-col gap-2 w-48"
+          className="p-2.5 bg-[#222226] border border-white/[0.08] rounded-xl shadow-2xl z-50 flex flex-col gap-2 w-48"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
@@ -102,8 +102,8 @@ export function MiniColorPicker({
             ...floatingStyles,
             width: 192,
             maxWidth: 200,
-            backgroundColor: '#222222',
-            borderColor: '#383838',
+            backgroundColor: '#222226',
+            borderColor: 'rgba(255, 255, 255, 0.08)',
             colorScheme: 'only light',
           }}
         >
@@ -123,7 +123,7 @@ export function MiniColorPicker({
                   }}
                   className={`w-6 h-6 rounded-md border p-0.5 cursor-pointer transition-transform hover:scale-105 flex items-center justify-center relative overflow-hidden ${
                     isSelected
-                      ? 'ring-2 ring-[#0d99ff] border-white scale-105 shadow-md z-10'
+                      ? 'ring-2 ring-[#FF8100] border-white scale-105 shadow-md z-10'
                       : isWhite
                         ? 'border-white/60 hover:border-white'
                         : 'border-white/10 hover:border-white/30'
@@ -136,7 +136,7 @@ export function MiniColorPicker({
                     colorScheme: 'only light',
                     backgroundImage: `linear-gradient(${c}, ${c})`,
                     boxShadow: isSelected
-                      ? '0 0 0 2px #0d99ff, 0 0 0 4px #222222'
+                      ? '0 0 0 2px #FF8100, 0 0 0 4px #222226'
                       : undefined,
                   }}
                   title={isWhite ? 'White (#ffffff)' : c}
@@ -153,8 +153,8 @@ export function MiniColorPicker({
             })}
           </div>
           <div
-            className="pt-2 border-t border-[#383838] flex flex-col gap-1.5"
-            style={{ borderColor: '#383838' }}
+            className="pt-2 border-t border-white/[0.08] flex flex-col gap-1.5"
+            style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}
           >
             <HexColorPicker
               color={normalizedValue}

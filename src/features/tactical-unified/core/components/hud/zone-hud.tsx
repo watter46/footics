@@ -38,7 +38,7 @@ export function ZoneHud({ zoneId }: ZoneHudProps) {
                 zone.shapeType === 'ellipse' ? 'rect' : 'ellipse';
               updateZone(zone.id, { shapeType: nextType });
             }}
-            className="p-1 rounded-md text-white/80 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
+            className="p-1 rounded-md text-white/80 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
             title={
               zone.shapeType === 'ellipse'
                 ? '円/楕円 (四角形に切替)'
@@ -51,7 +51,7 @@ export function ZoneHud({ zoneId }: ZoneHudProps) {
               <Square size={14} />
             )}
           </button>
-          <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+          <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
         </>
       )}
 
@@ -64,7 +64,7 @@ export function ZoneHud({ zoneId }: ZoneHudProps) {
         title="ゾーンの色"
       />
 
-      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
 
       {/* 枠線の太さ */}
       <div className="flex items-center gap-0.5">
@@ -77,7 +77,7 @@ export function ZoneHud({ zoneId }: ZoneHudProps) {
             }
           }}
           disabled={(zone.strokeWidth ?? 2) <= 0}
-          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-[#333333] disabled:opacity-30 cursor-pointer"
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-white/[0.08] disabled:opacity-30 cursor-pointer"
           title="枠線を細く"
         >
           <Minus size={11} />
@@ -94,14 +94,14 @@ export function ZoneHud({ zoneId }: ZoneHudProps) {
             }
           }}
           disabled={(zone.strokeWidth ?? 2) >= 8}
-          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-[#333333] disabled:opacity-30 cursor-pointer"
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-white/[0.08] disabled:opacity-30 cursor-pointer"
           title="枠線を太く"
         >
           <Plus size={11} />
         </button>
       </div>
 
-      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
 
       {/* 枠線の色 */}
       <MiniColorPicker
@@ -112,7 +112,7 @@ export function ZoneHud({ zoneId }: ZoneHudProps) {
         title="枠線の色"
       />
 
-      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
 
       {/* 不透明度切替 */}
       <button
@@ -123,14 +123,14 @@ export function ZoneHud({ zoneId }: ZoneHudProps) {
             cur < 0.25 ? 0.35 : cur < 0.45 ? 0.6 : cur < 0.7 ? 0.15 : 0.25;
           updateZone(zone.id, { opacity: next });
         }}
-        style={{ backgroundColor: '#2a2a2a', color: '#ffffff' }}
-        className="px-1.5 py-0.5 rounded bg-[#2a2a2a] text-[11px] text-white/80 hover:text-white hover:bg-[#333333] transition-colors cursor-pointer font-mono"
+        style={{ backgroundColor: '#222226', color: '#ffffff' }}
+        className="px-1.5 py-0.5 rounded bg-[#222226] border border-white/[0.08] text-[11px] text-white/80 hover:text-white hover:bg-white/[0.1] transition-colors cursor-pointer font-mono"
         title="不透明度 (クリックで切替)"
       >
         {Math.round((zone.opacity ?? 0.25) * 100)}%
       </button>
 
-      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
 
       {/* ロック / ロック解除 */}
       <button
@@ -144,14 +144,14 @@ export function ZoneHud({ zoneId }: ZoneHudProps) {
         className={`p-1 rounded-md transition-colors cursor-pointer ${
           zone.locked
             ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'
-            : 'text-white/80 hover:text-white hover:bg-[#333333]'
+            : 'text-white/80 hover:text-white hover:bg-white/[0.08]'
         }`}
         title={zone.locked ? 'ロック解除' : 'ロック (固定)'}
       >
         {zone.locked ? <Lock size={13} /> : <Unlock size={13} />}
       </button>
 
-      <div className="w-px h-3.5 bg-[#383838] mx-0.5 shrink-0" />
+      <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
 
       {/* 削除ボタン */}
       <button

@@ -1,6 +1,7 @@
 'use client';
 
 import { Redo2, Undo2 } from 'lucide-react';
+import { IconButton } from '@/components/ui/icon-button';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 
 export function TopBarHistory() {
@@ -11,34 +12,26 @@ export function TopBarHistory() {
 
   return (
     <div className="flex items-center gap-0.5">
-      <button
-        type="button"
+      <IconButton
+        variant="ghost"
+        size="sm"
         onClick={undo}
         disabled={!canUndo}
-        className={`p-1.5 rounded transition-colors ${
-          canUndo
-            ? 'text-white/70 hover:text-white hover:bg-white/10 cursor-pointer'
-            : 'text-white/20 cursor-not-allowed'
-        }`}
         aria-label="Undo"
         title="Undo (Ctrl+Z / Cmd+Z)"
       >
         <Undo2 size={13} />
-      </button>
-      <button
-        type="button"
+      </IconButton>
+      <IconButton
+        variant="ghost"
+        size="sm"
         onClick={redo}
         disabled={!canRedo}
-        className={`p-1.5 rounded transition-colors ${
-          canRedo
-            ? 'text-white/70 hover:text-white hover:bg-white/10 cursor-pointer'
-            : 'text-white/20 cursor-not-allowed'
-        }`}
         aria-label="Redo"
         title="Redo (Ctrl+Shift+Z / Cmd+Shift+Z / Ctrl+Y)"
       >
         <Redo2 size={13} />
-      </button>
+      </IconButton>
     </div>
   );
 }

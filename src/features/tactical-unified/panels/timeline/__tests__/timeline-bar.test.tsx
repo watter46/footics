@@ -288,4 +288,14 @@ describe('TimelineBar Component', () => {
       expect(currentSlides[2].easing).toBe('ease-in-out');
     });
   });
+
+  describe('レイアウト崩れ防止 (min-w-0 / overflow-x-auto)', () => {
+    it('サムネイル横スクロール領域に min-w-0 と overflow-x-auto が適用されている', () => {
+      const { container } = render(<TimelineBar />);
+      const scrollArea = container.querySelector('.overflow-x-auto');
+      expect(scrollArea).not.toBeNull();
+      expect(scrollArea?.className).toContain('min-w-0');
+      expect(scrollArea?.className).toContain('flex-1');
+    });
+  });
 });

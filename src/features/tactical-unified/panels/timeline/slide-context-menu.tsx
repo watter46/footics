@@ -59,7 +59,7 @@ export function SlideContextMenu({
       ref={menuRef}
       role="menu"
       tabIndex={-1}
-      className="fixed z-50 min-w-[140px] bg-[#1a1a22] border border-white/15 rounded-lg shadow-xl py-1 text-xs text-white/90 backdrop-blur-md"
+      className="fixed z-50 min-w-[140px] bg-[#222226] border border-white/[0.08] rounded-lg shadow-xl py-1 text-xs text-white/90"
       style={{
         left: Math.min(x, window.innerWidth - 150),
         top: Math.max(10, y - 120),
@@ -78,7 +78,7 @@ export function SlideContextMenu({
         }}
         className="flex items-center gap-2 w-full px-3 py-1.5 text-left hover:bg-white/10 hover:text-white cursor-pointer"
       >
-        <Copy size={13} className="text-purple-400" />
+        <Copy size={13} className="text-[#FF8100]" />
         <span>シーンを複製</span>
       </button>
 
@@ -92,7 +92,7 @@ export function SlideContextMenu({
           }}
           className="flex items-center gap-2 w-full px-3 py-1.5 text-left hover:bg-white/10 hover:text-white cursor-pointer"
         >
-          <Sliders size={13} className="text-blue-400" />
+          <Sliders size={13} className="text-[#FF8100]" />
           <span>トランジション設定...</span>
         </button>
       )}
@@ -106,7 +106,7 @@ export function SlideContextMenu({
           }}
           className="flex items-center gap-2 w-full px-3 py-1.5 text-left hover:bg-white/10 hover:text-white cursor-pointer"
         >
-          <ArrowLeft size={13} className="text-blue-400" />
+          <ArrowLeft size={13} className="text-[#A1A1AA]" />
           <span>左へ移動</span>
         </button>
       )}
@@ -120,7 +120,7 @@ export function SlideContextMenu({
           }}
           className="flex items-center gap-2 w-full px-3 py-1.5 text-left hover:bg-white/10 hover:text-white cursor-pointer"
         >
-          <ArrowRight size={13} className="text-blue-400" />
+          <ArrowRight size={13} className="text-[#A1A1AA]" />
           <span>右へ移動</span>
         </button>
       )}
@@ -134,7 +134,7 @@ export function SlideContextMenu({
               onClose();
               onDelete(slideId);
             }}
-            className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-red-400 hover:bg-red-500/20 hover:text-red-300 cursor-pointer"
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-[#EB3B5A] hover:bg-[#EB3B5A]/20 cursor-pointer"
           >
             <Trash2 size={13} />
             <span>シーンを削除</span>

@@ -8,6 +8,8 @@ import {
   Pencil,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 
 export function TopBarTitle() {
@@ -39,21 +41,22 @@ export function TopBarTitle() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 shrink-0 min-w-0">
       {/* Brand & Projects Launcher */}
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="sm"
         onClick={openProjectManagerModal}
-        className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 hover:text-blue-200 border border-blue-500/30 text-xs font-semibold tracking-wide transition-colors cursor-pointer"
+        icon={<FolderKanban size={13} className="text-[#FF8100]" />}
         title="Open Project Manager"
+        className="font-semibold tracking-wide shrink-0"
       >
-        <FolderKanban size={13} className="text-blue-400" />
         <span className="hidden sm:inline">Projects</span>
-      </button>
+      </Button>
 
       {/* Editable Title */}
       {isEditingTitle ? (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 min-w-0">
           <input
             ref={titleInputRef}
             type="text"
@@ -67,22 +70,24 @@ export function TopBarTitle() {
                 setIsEditingTitle(false);
               }
             }}
-            className="px-2 py-0.5 bg-black/60 border border-blue-500 rounded text-xs text-white font-medium focus:outline-none w-36 sm:w-48 truncate"
+            className="px-2 py-0.5 bg-[#121214] border border-[#FF8100]/50 focus:border-[#FF8100] rounded text-xs text-white font-medium focus:outline-none w-28 sm:w-36 md:w-48 truncate transition-colors"
           />
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
+            size="sm"
             onClick={handleSaveTitle}
-            className="p-1 rounded bg-blue-600 text-white hover:bg-blue-500 cursor-pointer"
             title="Save Title"
+            aria-label="Save Title"
+            className="text-[#FF8100] hover:text-[#FF8100] hover:bg-[#FF8100]/10"
           >
             <Check size={11} />
-          </button>
+          </IconButton>
         </div>
       ) : (
         <button
           type="button"
           onClick={handleStartTitleEdit}
-          className="group flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-white/10 text-white/90 hover:text-white text-xs font-medium max-w-[140px] sm:max-w-[200px] truncate transition-colors cursor-pointer"
+          className="group flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-white/10 text-white/90 hover:text-white text-xs font-medium max-w-[100px] sm:max-w-[140px] md:max-w-[180px] lg:max-w-[220px] truncate transition-colors cursor-pointer shrink min-w-0"
           title="Click to rename project"
         >
           <span className="truncate">{projectTitle}</span>
@@ -94,7 +99,7 @@ export function TopBarTitle() {
       )}
 
       {/* Save Status Indicator */}
-      <div className="flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium select-none">
+      <div className="flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium select-none shrink-0">
         {saveStatus === 'saving' && (
           <div
             className="flex items-center gap-1 text-amber-400/90"

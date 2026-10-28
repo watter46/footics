@@ -74,6 +74,24 @@ describe('Match Center Components (Phase 2)', () => {
       fireEvent.click(chelseaBtn);
       expect(handleTeamChange).toHaveBeenCalledWith('Chelsea');
     });
+
+    it('applies responsive width classes and flex-wrap to prevent horizontal overflow on small screens', () => {
+      const { container } = render(
+        <FilterBar
+          activeType="all"
+          setActiveType={vi.fn()}
+          activeTeam={null}
+          setActiveTeam={vi.fn()}
+          resultCount={5}
+        />,
+      );
+      const root = container.firstElementChild as HTMLElement;
+      expect(root.className).toContain('flex-wrap');
+      expect(root.className).toContain('min-w-0');
+      const input = screen.getByPlaceholderText(/search team/i);
+      const searchWrapper = input.parentElement?.parentElement;
+      expect(searchWrapper?.className).toContain('min-w-0');
+    });
   });
 
   describe('TeamsDropdown', () => {

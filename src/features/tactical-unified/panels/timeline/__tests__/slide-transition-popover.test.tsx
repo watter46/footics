@@ -5,6 +5,7 @@ import { createDefaultSlide, type Slide } from '@/lib/types/tactical-unified';
 import { BatchTransitionPopover } from '../batch-transition-popover';
 import { SlideCard } from '../slide-card';
 import { SlideCardActions } from '../slide-card-actions';
+import { SlideContextMenu } from '../slide-context-menu';
 import { SlideTransitionPopover } from '../slide-transition-popover';
 
 describe('SlideTransitionPopover Component', () => {
@@ -302,5 +303,92 @@ describe('BatchTransitionPopover Component', () => {
     expect(dialog).toBeDefined();
     expect(screen.getByLabelText(/一括移動時間/i)).toBeDefined();
     expect(screen.getByLabelText(/一括静止時間/i)).toBeDefined();
+  });
+
+  it('uses L3 background and eliminates legacy blue #60A5FA', () => {
+    const anchor = document.createElement('div');
+    render(
+      <BatchTransitionPopover
+        isOpen={true}
+        onClose={vi.fn()}
+        referenceElement={anchor}
+      />,
+    );
+    const dialog = screen.getByRole('dialog', {
+      name: /全シーン トランジション一括設定/i,
+    });
+    expect(dialog.className).toContain('bg-[#222226]');
+    expect(dialog.innerHTML).not.toContain('#60A5FA');
+  });
+});
+
+describe('Design System Token & Primitives Verification', () => {
+  it('SlideCardActions uses IconButton with xs size', () => {
+    const { container } = render(
+      <SlideCardActions
+        slideId="slide-1"
+        canDelete={true}
+        canMoveLeft={true}
+        canMoveRight={true}
+        onDuplicate={vi.fn()}
+        onMoveLeft={vi.fn()}
+        onMoveRight={vi.fn()}
+        onDelete={vi.fn()}
+        onOpenTransitionSettings={vi.fn()}
+      />,
+    );
+    const buttons = container.querySelectorAll('button');
+    expect(buttons.length).toBeGreaterThan(0);
+    for (const btn of buttons) {
+      expect(btn.className).toContain('size-6');
+      expect(btn.className).toContain('btn-interactive');
+    }
+  });
+
+  it('SlideContextMenu uses L3 background and eliminates legacy blue #60A5FA', () => {
+    const { container } = render(
+      <SlideContextMenu
+        x={100}
+        y={100}
+        slideId="slide-1"
+        canDelete={true}
+        canMoveLeft={true}
+        canMoveRight={true}
+        onDuplicate={vi.fn()}
+        onMoveLeft={vi.fn()}
+        onMoveRight={vi.fn()}
+        onDelete={vi.fn()}
+        onOpenTransitionSettings={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const menu = container.firstElementChild as HTMLElement;
+    expect(menu.className).toContain('bg-[#222226]');
+    expect(menu.innerHTML).not.toContain('#60A5FA');
+  });
+
+  it('SlideTransitionPopover uses L3 background and eliminates legacy blue #60A5FA', () => {
+    const dummySlide = {
+      ...createDefaultSlide(1, 'slide-2'),
+      label: 'Scene 2',
+      transitionDurationMs: 1500,
+      pauseMs: 800,
+      easing: 'ease-in-out' as const,
+    };
+    const anchor = document.createElement('div');
+    render(
+      <SlideTransitionPopover
+        slide={dummySlide}
+        index={1}
+        isOpen={true}
+        onClose={vi.fn()}
+        referenceElement={anchor}
+      />,
+    );
+    const dialog = screen.getByRole('dialog', {
+      name: /シーン トランジション設定/i,
+    });
+    expect(dialog.className).toContain('bg-[#222226]');
+    expect(dialog.innerHTML).not.toContain('#60A5FA');
   });
 });

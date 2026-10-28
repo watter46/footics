@@ -33,8 +33,8 @@ export function PlaybackControls() {
         className={[
           'flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-bold transition-all cursor-pointer focus:outline-none select-none active:scale-95',
           isPlaying
-            ? 'bg-[#00A8FF] hover:bg-[#20b8ff] text-black font-black ring-2 ring-[#00A8FF]/40 shadow-[0_0_14px_rgba(0,168,255,0.4)]'
-            : 'bg-[#FF5500] hover:bg-[#ff6a1f] text-white shadow-[0_0_14px_rgba(255,85,0,0.4)] ring-1 ring-white/20',
+            ? 'bg-[#60A5FA] hover:bg-[#93C5FD] text-black font-black ring-2 ring-[#60A5FA]/40 shadow-[0_0_14px_rgba(96,165,250,0.4)]'
+            : 'bg-[#FF8100] hover:bg-[#FFA040] text-white shadow-[0_0_14px_rgba(255,129,0,0.4)] ring-1 ring-white/20',
         ].join(' ')}
         title={isPlaying ? 'Pause playback (Space)' : 'Play animation (Space)'}
         aria-label={isPlaying ? 'Pause' : 'Play'}

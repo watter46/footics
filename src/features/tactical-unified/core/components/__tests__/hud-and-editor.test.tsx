@@ -458,4 +458,49 @@ describe('PlayerHud', () => {
     fireEvent.click(deleteBtn);
     expect(store.getState().annotations.markers).toHaveLength(0);
   });
+
+  it('PlayerHud と MiniColorPicker が新UIデザイントークン (L3 #222226, L1 #121214 入力欄) を適用していること', () => {
+    const { store } = renderWithStore(
+      <ContextHud stageSize={{ width: 800, height: 600 }} />,
+    );
+
+    act(() => {
+      store.getState().addMarker({
+        id: 'player-ds',
+        shirtNo: '7',
+        name: 'Saka',
+        x: 50,
+        y: 50,
+        team: 'home',
+        position: 'FW',
+        area: 'pitch',
+        connectLines: [],
+        badges: [],
+        style: {
+          markerType: 'ring',
+          insideContent: 'number',
+          bottomLabel: 'name',
+          color: '#034694',
+          strokeColor: '#ffffff',
+          strokeWidth: 2,
+          sizeScale: 1.0,
+          numberSizeScale: 1.0,
+          labelSizeScale: 1.0,
+        },
+      });
+      store.getState().selectObject({ id: 'player-ds', kind: 'player' });
+    });
+
+    const infoBtn = screen.getByRole('button', { name: '選手情報変更' });
+    fireEvent.click(infoBtn);
+
+    const dialog = screen.getByRole('dialog', { name: '選手情報変更フォーム' });
+    expect(dialog.className).toContain('bg-[#222226]');
+    expect(dialog.className).toContain('border-white/[0.08]');
+    expect(dialog.className).not.toContain('bg-[#222222]');
+
+    const nameInput = within(dialog).getByLabelText('選手名');
+    expect(nameInput.className).toContain('bg-[#121214]');
+    expect(nameInput.className).not.toContain('bg-[#1a1a1a]');
+  });
 });

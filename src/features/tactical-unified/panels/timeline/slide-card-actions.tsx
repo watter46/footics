@@ -6,6 +6,7 @@
  */
 
 import { ChevronLeft, ChevronRight, Copy, Sliders, Trash2 } from 'lucide-react';
+import { IconButton } from '@/components/ui/icon-button';
 
 interface SlideCardActionsProps {
   slideId: string;
@@ -31,83 +32,88 @@ export function SlideCardActions({
   onOpenTransitionSettings,
 }: SlideCardActionsProps) {
   return (
-    <div className="absolute top-1 right-1 hidden group-hover:flex items-center gap-0.5 bg-[#181820]/90 backdrop-blur-xs border border-white/20 rounded shadow-md p-0.5 z-20">
+    <div className="absolute top-1 right-1 hidden group-hover:flex items-center gap-0.5 bg-[#18181B] border border-white/[0.08] rounded shadow-md p-0.5 z-20">
       {onOpenTransitionSettings && (
-        <button
-          type="button"
+        <IconButton
+          size="xs"
+          variant="ghost"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             onOpenTransitionSettings();
           }}
-          className="flex items-center justify-center w-4 h-4 rounded text-white/60 hover:text-blue-300 hover:bg-blue-500/20 cursor-pointer"
+          className="text-white/60 hover:text-[#FF8100] hover:bg-[#FF8100]/20"
           title="Transition settings"
           aria-label="Open transition settings"
         >
-          <Sliders size={9} />
-        </button>
+          <Sliders size={11} />
+        </IconButton>
       )}
 
       {canMoveLeft && (
-        <button
-          type="button"
+        <IconButton
+          size="xs"
+          variant="ghost"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             onMoveLeft();
           }}
-          className="flex items-center justify-center w-4 h-4 rounded text-white/60 hover:text-white hover:bg-white/15 cursor-pointer"
+          className="text-white/60 hover:text-white hover:bg-white/15"
           title="Move left"
           aria-label="Move left"
         >
-          <ChevronLeft size={10} />
-        </button>
+          <ChevronLeft size={11} />
+        </IconButton>
       )}
 
       {canMoveRight && (
-        <button
-          type="button"
+        <IconButton
+          size="xs"
+          variant="ghost"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             onMoveRight();
           }}
-          className="flex items-center justify-center w-4 h-4 rounded text-white/60 hover:text-white hover:bg-white/15 cursor-pointer"
+          className="text-white/60 hover:text-white hover:bg-white/15"
           title="Move right"
           aria-label="Move right"
         >
-          <ChevronRight size={10} />
-        </button>
+          <ChevronRight size={11} />
+        </IconButton>
       )}
 
-      <button
-        type="button"
+      <IconButton
+        size="xs"
+        variant="ghost"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
           onDuplicate(slideId);
         }}
-        className="flex items-center justify-center w-4 h-4 rounded text-white/60 hover:text-purple-300 hover:bg-purple-500/20 cursor-pointer"
+        className="text-white/60 hover:text-[#FF8100] hover:bg-[#FF8100]/20"
         title="Duplicate scene"
         aria-label="Duplicate scene"
       >
-        <Copy size={9} />
-      </button>
+        <Copy size={11} />
+      </IconButton>
 
       {canDelete && (
-        <button
-          type="button"
+        <IconButton
+          size="xs"
+          variant="ghost"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             onDelete(slideId);
           }}
-          className="flex items-center justify-center w-4 h-4 rounded text-white/60 hover:text-red-400 hover:bg-red-500/20 cursor-pointer"
+          className="text-white/60 hover:text-[#EB3B5A] hover:bg-[#EB3B5A]/20"
           title="Delete scene"
           aria-label="Delete scene"
         >
-          <Trash2 size={9} />
-        </button>
+          <Trash2 size={11} />
+        </IconButton>
       )}
     </div>
   );

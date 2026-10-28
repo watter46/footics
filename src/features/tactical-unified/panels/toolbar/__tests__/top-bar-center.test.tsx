@@ -3,75 +3,50 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { TopBarCenter } from '../top-bar-center';
 
+const radio = (name: string) => screen.getByRole('radio', { name });
+
 describe('TopBarCenter aspect ratio selector', () => {
   beforeEach(() => {
     useTacticalUnifiedStore.getState().resetProject();
     useTacticalUnifiedStore.getState().setAspectRatio('16:9');
   });
 
-  it('renders all 4 aspect ratio tabs (16:9, 9:16, 4:5, 1:1)', () => {
+  it('renders all 4 aspect ratio options (16:9, 9:16, 4:5, 1:1)', () => {
     render(<TopBarCenter />);
 
-    const ratioGroup = screen.getByRole('group', {
-      name: /Aspect Ratio Selector/i,
-    });
-    expect(ratioGroup).toBeDefined();
-
-    expect(
-      screen.getByRole('button', { name: 'Aspect ratio 16:9' }),
-    ).toBeDefined();
-    expect(
-      screen.getByRole('button', { name: 'Aspect ratio 9:16' }),
-    ).toBeDefined();
-    expect(
-      screen.getByRole('button', { name: 'Aspect ratio 4:5' }),
-    ).toBeDefined();
-    expect(
-      screen.getByRole('button', { name: 'Aspect ratio 1:1' }),
-    ).toBeDefined();
+    for (const label of ['16:9', '9:16', '4:5', '1:1']) {
+      expect(radio(label)).toBeDefined();
+    }
   });
 
   it('defaults to 16:9 as active and allows switching to 9:16, 4:5, 1:1', () => {
     render(<TopBarCenter />);
 
-    const btn169 = screen.getByRole('button', { name: 'Aspect ratio 16:9' });
-    const btn916 = screen.getByRole('button', { name: 'Aspect ratio 9:16' });
-    const btn45 = screen.getByRole('button', { name: 'Aspect ratio 4:5' });
-    const btn11 = screen.getByRole('button', { name: 'Aspect ratio 1:1' });
+    expect(radio('16:9').getAttribute('aria-checked')).toBe('true');
+    expect(radio('9:16').getAttribute('aria-checked')).toBe('false');
 
-    expect(btn169.getAttribute('aria-pressed')).toBe('true');
-    expect(btn916.getAttribute('aria-pressed')).toBe('false');
-
-    // Switch to 9:16
-    fireEvent.click(btn916);
+    fireEvent.click(radio('9:16'));
     expect(useTacticalUnifiedStore.getState().project.aspectRatio).toBe('9:16');
-    expect(btn916.getAttribute('aria-pressed')).toBe('true');
-    expect(btn169.getAttribute('aria-pressed')).toBe('false');
+    expect(radio('9:16').getAttribute('aria-checked')).toBe('true');
+    expect(radio('16:9').getAttribute('aria-checked')).toBe('false');
 
-    // Switch to 4:5
-    fireEvent.click(btn45);
+    fireEvent.click(radio('4:5'));
     expect(useTacticalUnifiedStore.getState().project.aspectRatio).toBe('4:5');
-    expect(btn45.getAttribute('aria-pressed')).toBe('true');
 
-    // Switch to 1:1
-    fireEvent.click(btn11);
+    fireEvent.click(radio('1:1'));
     expect(useTacticalUnifiedStore.getState().project.aspectRatio).toBe('1:1');
-    expect(btn11.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('allows toggling team visibility', () => {
     render(<TopBarCenter />);
 
-    const homeBtn = screen.getByTitle('Show Home team only');
-    fireEvent.click(homeBtn);
+    fireEvent.click(radio('Home'));
     expect(useTacticalUnifiedStore.getState().teamVisibility).toBe('home');
 
-    const awayBtn = screen.getByTitle('Show Away team only');
-    fireEvent.click(awayBtn);
+    fireEvent.click(radio('Away'));
     expect(useTacticalUnifiedStore.getState().teamVisibility).toBe('away');
 
-    const bothBtn = screen.getByTitle('Show both teams');
-    fireEvent.click(bothBtn);
+    fireEvent.click(radio('Both'));
     expect(useTacticalUnifiedStore.getState().teamVisibility).toBe('both');
   });
 
@@ -83,7 +58,6 @@ describe('TopBarCenter aspect ratio selector', () => {
     });
     expect(resetBtn).toBeDefined();
 
-    // 選手を動かしてからリセットボタンをクリック
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.activeSlideId;
     const player0 = store.project.slides[0]?.players[0];
@@ -100,5 +74,14 @@ describe('TopBarCenter aspect ratio selector', () => {
     );
     expect(updatedPlayer0?.x).not.toBe(99);
     expect(updatedPlayer0?.y).not.toBe(99);
+  });
+
+  it('renders Swap button with responsive text hiding class for small screens', () => {
+    render(<TopBarCenter />);
+
+    const textSpan = screen.getByText('Swap');
+    expect(textSpan).toBeDefined();
+    expect(textSpan.className).toContain('hidden');
+    expect(textSpan.className).toContain('2xl:inline');
   });
 });

@@ -124,12 +124,12 @@ export function BatchTransitionPopover({
         aria-label="全シーン トランジション一括設定"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
-        className="fixed z-50 w-72 bg-[#181822] border border-white/20 rounded-xl p-3.5 shadow-2xl text-white backdrop-blur-md text-xs select-none"
+        className="fixed z-50 w-72 bg-[#222226] border border-white/[0.08] rounded-xl p-3.5 shadow-2xl text-white text-xs select-none"
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-white/10">
+        <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-white/[0.07]">
           <div className="flex items-center gap-1.5 font-medium text-white/90">
-            <Sliders size={13} className="text-blue-400" />
+            <Sliders size={13} className="text-[#FF8100]" />
             <span>全シーン トランジション一括設定</span>
           </div>
           <button
@@ -150,7 +150,7 @@ export function BatchTransitionPopover({
                 htmlFor="batch-duration"
                 className="flex items-center gap-1 text-[11px] text-white/70"
               >
-                <Clock size={11} className="text-blue-400" />
+                <Clock size={11} className="text-[#FF8100]" />
                 <span>移動時間</span>
               </label>
               <span className="font-mono text-[11px] text-white/90">
@@ -168,7 +168,7 @@ export function BatchTransitionPopover({
                 value={durationSec}
                 onChange={handleDurationChange}
                 aria-label="一括移動時間"
-                className="flex-1 accent-blue-500 h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                className="flex-1 accent-[#FF8100] h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
               />
             </div>
             <p className="text-[10px] text-white/40">
@@ -183,7 +183,7 @@ export function BatchTransitionPopover({
                 htmlFor="batch-pause"
                 className="flex items-center gap-1 text-[11px] text-white/70"
               >
-                <Pause size={11} className="text-emerald-400" />
+                <Pause size={11} className="text-[#FF8100]" />
                 <span>静止時間</span>
               </label>
               <span className="font-mono text-[11px] text-white/90">
@@ -201,7 +201,7 @@ export function BatchTransitionPopover({
                 value={pauseSec}
                 onChange={handlePauseChange}
                 aria-label="一括静止時間"
-                className="flex-1 accent-emerald-500 h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                className="flex-1 accent-[#FF8100] h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
               />
             </div>
           </div>
@@ -219,7 +219,7 @@ export function BatchTransitionPopover({
               value={easing}
               onChange={handleEasingChange}
               aria-label="一括加減速 (イージング)"
-              className="w-full bg-[#121218] border border-white/15 rounded-md px-2 py-1 text-white/90 text-xs focus:outline-none focus:border-blue-500"
+              className="w-full bg-[#121214] border border-white/[0.08] rounded-md px-2 py-1 text-white/90 text-xs focus:outline-none focus:border-[#FF8100]"
             >
               {EASING_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>

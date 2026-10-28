@@ -136,7 +136,7 @@ export function TimelineBar() {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex items-center gap-2 flex-1 overflow-x-auto custom-scrollbar py-1">
+        <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto custom-scrollbar py-1">
           <SortableContext
             items={slideIds}
             strategy={horizontalListSortingStrategy}
@@ -196,7 +196,7 @@ export function TimelineBar() {
             <Sliders
               size={13}
               strokeWidth={1.5}
-              className={isBatchOpen ? 'text-white' : 'text-[#FF5500]'}
+              className={isBatchOpen ? 'text-white' : 'text-[#FF8100]'}
             />
           }
           aria-label="一括設定"
