@@ -1,7 +1,7 @@
 # TASK-094: UIデザインシステム基盤 ＆ 共通UIコンポーネント体系確立
 
 ## 1. Metadata
-- **Status**: `READY`
+- **Status**: `COMPLETED`
 - **Created**: 2026-10-28
 - **SSOT**: `public/design-demos/components.html`
 - **Target Files**:
@@ -138,7 +138,7 @@ export interface PositionBadgeProps extends React.HTMLAttributes<HTMLSpanElement
 - **Tasks**:
   - [x] 1. `design-primitives.test.tsx`: 全新コンポーネント（Button, IconButton, PositionBadge, Input, Select, Switch, Card, Dialog, Table）のレンダリング、バリアント、イベント発火テストを記述。
   - [x] 2. 検証実行: `bun run ai:check src/components/ui` PASS（型エラー・Lint警告ゼロ、全テスト合格）。
-  - [ ] 3. コミット実行: `bun run ai:commit -m "feat(ui): implement new UI design system foundation and common primitives"`。
+  - [x] 3. コミット実行: `bun run ai:commit -m "feat(ui): implement new UI design system foundation and common primitives"`。
 - **Worker Handoff Log**:
   - 20 件の単体テストを完備し、全チェック PASS。
 
