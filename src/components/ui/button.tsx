@@ -76,7 +76,7 @@ export function Button({
         variantStyles[variant],
         sizeStyles[size],
         isActive &&
-          'bg-[#FF8100]/15 text-[#FF8A00] border-[#FF8100]/30 shadow-[0_0_12px_rgba(255,129,0,0.35)]',
+          'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)]',
         className,
       )}
       {...props}

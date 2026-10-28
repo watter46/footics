@@ -61,6 +61,20 @@ describe('Design System Primitives', () => {
       expect(screen.getByText('Delete')).toBeInTheDocument();
       expect(screen.getByTestId('del-icon')).toBeInTheDocument();
     });
+
+    it('renders active state with enhanced orange neon glow', () => {
+      render(
+        <Button isActive aria-label="Active Action">
+          Active Action
+        </Button>,
+      );
+      const button = screen.getByRole('button', { name: 'Active Action' });
+      expect(button).toHaveAttribute('data-active', 'true');
+      expect(button).toHaveClass('bg-[#FF8100]/24');
+      expect(button).toHaveClass('text-[#FFA336]');
+      expect(button).toHaveClass('border-[#FF8100]/80');
+      expect(button).toHaveClass('ring-[#FF8100]/40');
+    });
   });
 
   describe('IconButton', () => {
@@ -76,7 +90,7 @@ describe('Design System Primitives', () => {
       expect(handleClick).toHaveBeenCalledTimes(1);
     });
 
-    it('renders active state with orange neon glow', () => {
+    it('renders active state with enhanced orange neon glow', () => {
       render(
         <IconButton isActive aria-label="Active Tool">
           <span>✏</span>
@@ -84,8 +98,10 @@ describe('Design System Primitives', () => {
       );
       const button = screen.getByRole('button', { name: 'Active Tool' });
       expect(button).toHaveAttribute('data-active', 'true');
-      expect(button).toHaveClass('bg-[#FF8100]/15');
-      expect(button).toHaveClass('text-[#FF8A00]');
+      expect(button).toHaveClass('bg-[#FF8100]/24');
+      expect(button).toHaveClass('text-[#FFA336]');
+      expect(button).toHaveClass('border-[#FF8100]/80');
+      expect(button).toHaveClass('ring-[#FF8100]/40');
     });
   });
 
