@@ -32,7 +32,7 @@ import { Sliders } from 'lucide-react';
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { ActionButton } from '@/components/ui/action-button';
 import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { AddSlideButton } from './add-slide-button';
 import { BatchTransitionPopover } from './batch-transition-popover';
 import { PlaybackControls } from './playback-controls';
@@ -40,19 +40,23 @@ import { SlideCard, SlideCardOverlay } from './slide-card';
 import { TransitionConnector } from './transition-connector';
 
 export function TimelineBar() {
-  const slides = useTacticalUnifiedStore(selectActivePhaseSlides);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const isPlaying = useTacticalUnifiedStore((s) => s.isPlaying);
-  const playbackSlideIndex = useTacticalUnifiedStore(
+  const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
+  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
+  const isPlaying = useTacticalUnifiedStoreContext((s) => s.isPlaying);
+  const playbackSlideIndex = useTacticalUnifiedStoreContext(
     (s) => s.playbackSlideIndex,
   );
-  const playbackTransitionIndex = useTacticalUnifiedStore(
+  const playbackTransitionIndex = useTacticalUnifiedStoreContext(
     (s) => s.playbackTransitionIndex,
   );
-  const setActiveSlide = useTacticalUnifiedStore((s) => s.setActiveSlide);
-  const deleteSlide = useTacticalUnifiedStore((s) => s.deleteSlide);
-  const duplicateSlide = useTacticalUnifiedStore((s) => s.duplicateSlide);
-  const reorderSlides = useTacticalUnifiedStore((s) => s.reorderSlides);
+  const setActiveSlide = useTacticalUnifiedStoreContext(
+    (s) => s.setActiveSlide,
+  );
+  const deleteSlide = useTacticalUnifiedStoreContext((s) => s.deleteSlide);
+  const duplicateSlide = useTacticalUnifiedStoreContext(
+    (s) => s.duplicateSlide,
+  );
+  const reorderSlides = useTacticalUnifiedStoreContext((s) => s.reorderSlides);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [isBatchOpen, setIsBatchOpen] = useState(false);

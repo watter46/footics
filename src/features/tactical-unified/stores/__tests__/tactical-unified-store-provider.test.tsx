@@ -19,6 +19,9 @@ describe('tactical-unified-store-provider', () => {
 
       expect(store1).not.toBe(store2);
       expect(store1.getState().activeSlideId).toBeDefined();
+      expect(store1.getState().project.id).not.toBe(
+        store2.getState().project.id,
+      );
 
       // Mutate store1, store2 should be unaffected
       act(() => {
@@ -33,6 +36,37 @@ describe('tactical-unified-store-provider', () => {
         activeSlideId: 'injected-slide-id',
       });
       expect(store.getState().activeSlideId).toBe('injected-slide-id');
+    });
+
+    it('synchronizes activePhaseId and activeSlideId when initial.project is provided', () => {
+      const customProject = {
+        id: 'custom-proj-id',
+        title: 'Custom Proj',
+        phases: [
+          {
+            id: 'custom-phase-1',
+            name: 'Phase 1',
+            slides: [
+              {
+                id: 'custom-slide-100',
+                name: 'Slide 100',
+                players: [],
+                arrows: [],
+                shapes: [],
+                texts: [],
+              },
+            ],
+          },
+        ],
+        activePhaseId: 'custom-phase-1',
+        activeSlideId: 'custom-slide-100',
+      };
+      const store = createTacticalUnifiedStore({
+        project: customProject as never,
+      });
+      expect(store.getState().project.id).toBe('custom-proj-id');
+      expect(store.getState().activePhaseId).toBe('custom-phase-1');
+      expect(store.getState().activeSlideId).toBe('custom-slide-100');
     });
 
     it('provides temporal undo/redo API', () => {
@@ -130,6 +164,58 @@ describe('tactical-unified-store-provider', () => {
 
       expect(res1.current).toBe('store-1-slide');
       expect(res2.current).toBe('store-2-slide');
+    });
+
+    it('makes useTacticalUnifiedStore read from Context when wrapped with Provider', () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <TacticalUnifiedStoreProvider
+          initialState={{ activeSlideId: 'provider-context-slide' }}
+        >
+          {children}
+        </TacticalUnifiedStoreProvider>
+      );
+
+      const { result } = renderHook(
+        () => useTacticalUnifiedStore((s) => s.activeSlideId),
+        { wrapper },
+      );
+      expect(result.current).toBe('provider-context-slide');
+    });
+
+    it('uses provided custom store instance when store prop is passed', () => {
+      const customStore = createTacticalUnifiedStore({
+        activeSlideId: 'direct-store-prop-slide',
+      });
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <TacticalUnifiedStoreProvider store={customStore}>
+          {children}
+        </TacticalUnifiedStoreProvider>
+      );
+
+      const { result: apiResult } = renderHook(
+        () => useTacticalUnifiedStoreApi(),
+        {
+          wrapper,
+        },
+      );
+      expect(apiResult.current).toBe(customStore);
+      expect(apiResult.current.getState().activeSlideId).toBe(
+        'direct-store-prop-slide',
+      );
+    });
+
+    it('shares defaultTacticalUnifiedStore when neither initialState nor store is provided', () => {
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <TacticalUnifiedStoreProvider>{children}</TacticalUnifiedStoreProvider>
+      );
+
+      const { result: apiResult } = renderHook(
+        () => useTacticalUnifiedStoreApi(),
+        {
+          wrapper,
+        },
+      );
+      expect(apiResult.current).toBe(defaultTacticalUnifiedStore);
     });
   });
 });

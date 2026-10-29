@@ -7,7 +7,10 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  useTacticalUnifiedStoreApi,
+  useTacticalUnifiedStoreContext,
+} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import {
   loadActiveProjectFromDb,
   saveActiveProjectToDb,
@@ -22,16 +25,19 @@ export interface UseTacticalAutoSaveOptions {
 
 export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
   const { skipRestore = false, matchId = null } = options;
+  const storeApi = useTacticalUnifiedStoreApi();
   const isLoadedRef = useRef(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const project = useTacticalUnifiedStore((s) => s.project);
-  const isDirty = useTacticalUnifiedStore((s) => s.isDirty);
-  const isPlaying = useTacticalUnifiedStore((s) => s.isPlaying);
-  const loadProject = useTacticalUnifiedStore((s) => s.loadProject);
-  const resetProject = useTacticalUnifiedStore((s) => s.resetProject);
-  const setSaveStatus = useTacticalUnifiedStore((s) => s.setSaveStatus);
-  const setLastSavedAt = useTacticalUnifiedStore((s) => s.setLastSavedAt);
+  const project = useTacticalUnifiedStoreContext((s) => s.project);
+  const isDirty = useTacticalUnifiedStoreContext((s) => s.isDirty);
+  const isPlaying = useTacticalUnifiedStoreContext((s) => s.isPlaying);
+  const loadProject = useTacticalUnifiedStoreContext((s) => s.loadProject);
+  const resetProject = useTacticalUnifiedStoreContext((s) => s.resetProject);
+  const setSaveStatus = useTacticalUnifiedStoreContext((s) => s.setSaveStatus);
+  const setLastSavedAt = useTacticalUnifiedStoreContext(
+    (s) => s.setLastSavedAt,
+  );
 
   // 1. Initial Load from Dexie IndexedDB (matchId 変化時は新キーで再復元)
   useEffect(() => {
@@ -52,10 +58,7 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
             setSaveStatus('saved');
           } else {
             // 前試合のスライドを引き継がない
-            if (
-              matchId &&
-              useTacticalUnifiedStore.getState().project.matchId !== matchId
-            ) {
+            if (matchId && storeApi.getState().project.matchId !== matchId) {
               resetProject();
             }
             setSaveStatus('idle');
@@ -76,7 +79,14 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
     return () => {
       isMounted = false;
     };
-  }, [loadProject, resetProject, setSaveStatus, skipRestore, matchId]);
+  }, [
+    loadProject,
+    resetProject,
+    setSaveStatus,
+    skipRestore,
+    matchId,
+    storeApi,
+  ]);
 
   // 2. Debounced Auto-Save
   useEffect(() => {
@@ -100,7 +110,7 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
         await saveActiveProjectToDb(project, matchId);
         setSaveStatus('saved');
         setLastSavedAt(Date.now());
-        useTacticalUnifiedStore.setState({ isDirty: false });
+        storeApi.setState({ isDirty: false });
       } catch (err) {
         console.error('Auto-save failed:', err);
         setSaveStatus('error');
@@ -112,12 +122,20 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [project, isDirty, isPlaying, matchId, setSaveStatus, setLastSavedAt]);
+  }, [
+    project,
+    isDirty,
+    isPlaying,
+    matchId,
+    setSaveStatus,
+    setLastSavedAt,
+    storeApi,
+  ]);
 
   // 3. Save on BeforeUnload
   useEffect(() => {
     const handleBeforeUnload = () => {
-      const state = useTacticalUnifiedStore.getState();
+      const state = storeApi.getState();
       if (
         state.isDirty &&
         isLoadedRef.current &&
@@ -131,5 +149,5 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [matchId]);
+  }, [matchId, storeApi]);
 }

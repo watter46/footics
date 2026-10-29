@@ -6,7 +6,10 @@ import {
   selectActivePhaseSlides,
   selectActiveSlide,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  useTacticalUnifiedStoreApi,
+  useTacticalUnifiedStoreContext,
+} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { packPlayerPhotos } from '@/lib/tactical/export/share-payload';
 
 interface ShareOptions {
@@ -14,7 +17,8 @@ interface ShareOptions {
 }
 
 export function useExportShare({ onError }: ShareOptions) {
-  const slides = useTacticalUnifiedStore(selectActivePhaseSlides);
+  const storeApi = useTacticalUnifiedStoreApi();
+  const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
   const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
 
@@ -27,7 +31,7 @@ export function useExportShare({ onError }: ShareOptions) {
     setShareUrl(null);
 
     try {
-      const state = useTacticalUnifiedStore.getState();
+      const state = storeApi.getState();
       const { project } = state;
       const activeSlide = selectActiveSlide(state);
       const currentSlides = selectActivePhaseSlides(state);

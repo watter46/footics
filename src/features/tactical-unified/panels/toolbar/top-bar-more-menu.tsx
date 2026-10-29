@@ -13,7 +13,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/menu';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  useTacticalUnifiedStoreApi,
+  useTacticalUnifiedStoreContext,
+} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { getMatchForTacticalProject } from '@/lib/db/tactical-match-helper';
 import { injectMatchToTactical } from '@/lib/tactical/match-to-tactical-bridge';
 import { clearActiveProjectFromDb } from '@/lib/tactical/tactical-storage';
@@ -28,20 +31,21 @@ export {
 } from './top-bar-more-menu-sections';
 
 export function TopBarMoreMenu() {
+  const storeApi = useTacticalUnifiedStoreApi();
   const [isOpen, setIsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const setImageBackground = useTacticalUnifiedStore(
+  const setImageBackground = useTacticalUnifiedStoreContext(
     (s) => s.setImageBackground,
   );
-  const resetProject = useTacticalUnifiedStore((s) => s.resetProject);
-  const isImageBackground = useTacticalUnifiedStore(
+  const resetProject = useTacticalUnifiedStoreContext((s) => s.resetProject);
+  const isImageBackground = useTacticalUnifiedStoreContext(
     (s) => s.project.backgroundType === 'image',
   );
-  const restoreDefaultPitch = useTacticalUnifiedStore(
+  const restoreDefaultPitch = useTacticalUnifiedStoreContext(
     (s) => s.restoreDefaultPitch,
   );
-  const loadProject = useTacticalUnifiedStore((s) => s.loadProject);
+  const loadProject = useTacticalUnifiedStoreContext((s) => s.loadProject);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -63,7 +67,7 @@ export function TopBarMoreMenu() {
     );
     if (!confirmed) return;
 
-    const currentProject = useTacticalUnifiedStore.getState().project;
+    const currentProject = storeApi.getState().project;
     if (currentProject.matchId) {
       const matchId = currentProject.matchId;
       const match = await getMatchForTacticalProject(matchId);
@@ -72,7 +76,7 @@ export function TopBarMoreMenu() {
         resetProject();
         injectMatchToTactical({ match, minute: 0 });
         await clearActiveProjectFromDb(String(matchId));
-        useTacticalUnifiedStore.getState().setSaveStatus('saved');
+        storeApi.getState().setSaveStatus('saved');
         setIsOpen(false);
         return;
       }
@@ -80,7 +84,7 @@ export function TopBarMoreMenu() {
 
     resetProject();
     await clearActiveProjectFromDb();
-    useTacticalUnifiedStore.getState().setSaveStatus('saved');
+    storeApi.getState().setSaveStatus('saved');
     setIsOpen(false);
   };
 

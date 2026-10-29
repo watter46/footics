@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { defaultTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   createNewTacticalProject,
   deleteTacticalProject,
@@ -104,12 +104,13 @@ export async function renameProjectHelper(
   currentProjectId: string,
   onDone: () => void,
   onRefresh: () => Promise<void>,
+  setTitle?: (title: string) => void,
 ): Promise<void> {
   const trimmed = title.trim() || 'Untitled Project';
   try {
     await renameTacticalProject(editingId, trimmed);
     if (currentProjectId === editingId) {
-      useTacticalUnifiedStore.getState().setTitle(trimmed);
+      (setTitle ?? defaultTacticalUnifiedStore.getState().setTitle)(trimmed);
     }
     onDone();
     await onRefresh();

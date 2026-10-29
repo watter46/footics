@@ -17,7 +17,7 @@ import {
   CanvasToast,
   useCanvasToast,
 } from '@/features/tactical-unified/core';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { TopBarCenter } from './top-bar-center';
 import { TopBarHistory } from './top-bar-history';
 import { TopBarMoreMenu } from './top-bar-more-menu';
@@ -35,9 +35,13 @@ export function TopBar({
   isFocusMode = false,
   onToggleFocusMode,
 }: TopBarProps = {}): React.ReactElement {
-  const openExportModal = useTacticalUnifiedStore((s) => s.openExportModal);
-  const sidebarOpen = useTacticalUnifiedStore((s) => s.panels.sidebarOpen);
-  const toggleSidebar = useTacticalUnifiedStore((s) => s.toggleSidebar);
+  const openExportModal = useTacticalUnifiedStoreContext(
+    (s) => s.openExportModal,
+  );
+  const sidebarOpen = useTacticalUnifiedStoreContext(
+    (s) => s.panels.sidebarOpen,
+  );
+  const toggleSidebar = useTacticalUnifiedStoreContext((s) => s.toggleSidebar);
   const { toastMessage, showToast } = useCanvasToast();
 
   async function handleCopy() {

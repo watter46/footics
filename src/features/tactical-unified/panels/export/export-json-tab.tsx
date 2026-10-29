@@ -3,7 +3,7 @@
 import { Copy, Download, FileJson, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import {
   exportTacticalProjectToJson,
   importTacticalProjectFromJson,
@@ -14,8 +14,8 @@ interface ExportJsonTabProps {
 }
 
 export function ExportJsonTab({ onSuccessClose }: ExportJsonTabProps) {
-  const project = useTacticalUnifiedStore((s) => s.project);
-  const loadProject = useTacticalUnifiedStore((s) => s.loadProject);
+  const project = useTacticalUnifiedStoreContext((s) => s.project);
+  const loadProject = useTacticalUnifiedStoreContext((s) => s.loadProject);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
 

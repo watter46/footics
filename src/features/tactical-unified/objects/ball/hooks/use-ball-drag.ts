@@ -6,10 +6,8 @@ import type React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import { updateTrajectoryArrowPositions } from '@/features/tactical-unified/core/components/annotations/trajectory-arrow-drag-updater';
-import {
-  selectPreviousSlide,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
+import { selectPreviousSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import {
   computeFallbackNormPos,
   hideGhostGroup,
@@ -30,9 +28,11 @@ export function useBallDrag({
   ghostLineRef,
   nodesRegistryRef,
 }: UseBallDragProps) {
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
-  const setBallPosition = useTacticalUnifiedStore((s) => s.setBallPosition);
+  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
+  const prevSlide = useTacticalUnifiedStoreContext(selectPreviousSlide);
+  const setBallPosition = useTacticalUnifiedStoreContext(
+    (s) => s.setBallPosition,
+  );
 
   const [isDragging, setIsDragging] = useState(false);
   const prevBallPxRef = useRef<{ x: number; y: number } | null>(null);

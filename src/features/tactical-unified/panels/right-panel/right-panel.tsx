@@ -19,24 +19,32 @@ import {
 } from 'lucide-react';
 import { IconButton } from '@/components/ui/icon-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { DEFAULT_PITCH_APPEARANCE } from '@/lib/types/tactical-unified';
 import { FormationPanel } from './formation-panel';
 import { PitchAppearancePanel } from './pitch-appearance-panel';
 import { SquadSubPanel } from './squad-sub-panel';
 
 export function RightPanel() {
-  const rightPanelTab = useTacticalUnifiedStore((s) => s.panels.rightPanelTab);
-  const setRightPanelTab = useTacticalUnifiedStore((s) => s.setRightPanelTab);
-  const isRightPanelOpen = useTacticalUnifiedStore(
+  const rightPanelTab = useTacticalUnifiedStoreContext(
+    (s) => s.panels.rightPanelTab,
+  );
+  const setRightPanelTab = useTacticalUnifiedStoreContext(
+    (s) => s.setRightPanelTab,
+  );
+  const isRightPanelOpen = useTacticalUnifiedStoreContext(
     (s) => s.panels.isRightPanelOpen,
   );
-  const toggleRightPanel = useTacticalUnifiedStore((s) => s.toggleRightPanel);
-  const setRightPanelOpen = useTacticalUnifiedStore((s) => s.setRightPanelOpen);
-  const pitchAppearance = useTacticalUnifiedStore(
+  const toggleRightPanel = useTacticalUnifiedStoreContext(
+    (s) => s.toggleRightPanel,
+  );
+  const setRightPanelOpen = useTacticalUnifiedStoreContext(
+    (s) => s.setRightPanelOpen,
+  );
+  const pitchAppearance = useTacticalUnifiedStoreContext(
     (s) => s.project.pitchAppearance ?? DEFAULT_PITCH_APPEARANCE,
   );
-  const updatePitchAppearance = useTacticalUnifiedStore(
+  const updatePitchAppearance = useTacticalUnifiedStoreContext(
     (s) => s.updatePitchAppearance,
   );
 

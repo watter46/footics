@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { saveTacticalProject } from '@/lib/db/tactical-projects-db';
 import {
   type AspectRatio,
@@ -45,8 +45,8 @@ export function ProjectCreateForm({
   onCancel,
   onCreated,
 }: ProjectCreateFormProps) {
-  const loadProject = useTacticalUnifiedStore((s) => s.loadProject);
-  const setSaveStatus = useTacticalUnifiedStore((s) => s.setSaveStatus);
+  const loadProject = useTacticalUnifiedStoreContext((s) => s.loadProject);
+  const setSaveStatus = useTacticalUnifiedStoreContext((s) => s.setSaveStatus);
 
   const [title, setTitle] = useState('新規戦術プロジェクト');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('4:5');

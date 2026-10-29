@@ -2,7 +2,10 @@ import gsap from 'gsap';
 import { useMemo, useRef } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  defaultTacticalUnifiedStore,
+  type TacticalUnifiedStoreApi,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   calculateUnifiedTotalDuration,
   getInterpolatedUnifiedSlideFrame,
@@ -142,12 +145,11 @@ export function renderFrameToCanvas(
     slideIndex: number;
     transitionIndex: number | null;
   }>,
+  storeApi: TacticalUnifiedStoreApi = defaultTacticalUnifiedStore,
 ) {
   if (!registry) return;
 
-  const currentSlides = selectActivePhaseSlides(
-    useTacticalUnifiedStore.getState(),
-  );
+  const currentSlides = selectActivePhaseSlides(storeApi.getState());
   if (currentSlides.length === 0) return;
 
   const frame = getInterpolatedUnifiedSlideFrame(currentSlides, timeMs);
@@ -173,7 +175,7 @@ export function renderFrameToCanvas(
         slideIndex: currentPlaybackSlideIndex,
         transitionIndex: currentPlaybackTransitionIndex,
       };
-      useTacticalUnifiedStore
+      storeApi
         .getState()
         .setPlaybackIndices(
           currentPlaybackSlideIndex,
@@ -185,10 +187,7 @@ export function renderFrameToCanvas(
   if (frame.currentSlideIndex !== lastActiveSlideIndexRef.current) {
     lastActiveSlideIndexRef.current = frame.currentSlideIndex;
     const targetSlide = currentSlides[frame.currentSlideIndex];
-    if (
-      targetSlide &&
-      targetSlide.id !== useTacticalUnifiedStore.getState().activeSlideId
-    ) {
+    if (targetSlide && targetSlide.id !== storeApi.getState().activeSlideId) {
       setActiveSlide(targetSlide.id);
     }
   }

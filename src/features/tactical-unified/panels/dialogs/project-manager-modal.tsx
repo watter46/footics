@@ -4,7 +4,7 @@ import { Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ActionButton } from '@/components/ui/action-button';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import {
   listTacticalProjects,
   saveTacticalProject,
@@ -24,7 +24,7 @@ export function ProjectManagerModal({
   isOpen,
   onClose,
 }: ProjectManagerModalProps) {
-  const currentProject = useTacticalUnifiedStore((s) => s.project);
+  const currentProject = useTacticalUnifiedStoreContext((s) => s.project);
   const [projects, setProjects] = useState<TacticalProjectSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [view, setView] = useState<ModalView>('list');

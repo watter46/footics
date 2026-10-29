@@ -15,7 +15,7 @@ import {
 import { Clock, Pause, Sliders, X } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import type { Easing, Slide } from '@/lib/types/tactical-unified';
 
 export interface SlideTransitionPopoverProps {
@@ -40,7 +40,7 @@ export function SlideTransitionPopover({
   onClose,
   referenceElement,
 }: SlideTransitionPopoverProps) {
-  const updateSlideTransition = useTacticalUnifiedStore(
+  const updateSlideTransition = useTacticalUnifiedStoreContext(
     (s) => s.updateSlideTransition,
   );
   const popoverRef = useRef<HTMLDivElement>(null);

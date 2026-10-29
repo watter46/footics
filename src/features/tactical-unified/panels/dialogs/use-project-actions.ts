@@ -3,7 +3,7 @@
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import {
   getTacticalProjectById,
   type TacticalProjectSummary,
@@ -27,10 +27,11 @@ export function useProjectActions({
   onRefresh,
   onClose,
 }: UseProjectActionsOptions) {
-  const currentProject = useTacticalUnifiedStore((s) => s.project);
-  const isDirty = useTacticalUnifiedStore((s) => s.isDirty);
-  const loadProject = useTacticalUnifiedStore((s) => s.loadProject);
-  const setSaveStatus = useTacticalUnifiedStore((s) => s.setSaveStatus);
+  const currentProject = useTacticalUnifiedStoreContext((s) => s.project);
+  const isDirty = useTacticalUnifiedStoreContext((s) => s.isDirty);
+  const loadProject = useTacticalUnifiedStoreContext((s) => s.loadProject);
+  const setSaveStatus = useTacticalUnifiedStoreContext((s) => s.setSaveStatus);
+  const setTitle = useTacticalUnifiedStoreContext((s) => s.setTitle);
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
 
   const switchActiveProject = async (id: string) => {
@@ -92,6 +93,7 @@ export function useProjectActions({
         currentProject.id,
         onDone,
         onRefresh,
+        setTitle,
       ),
     handleDelete: (
       e: React.MouseEvent,

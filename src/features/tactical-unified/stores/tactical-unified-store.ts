@@ -6,6 +6,7 @@
  * 統合し、単一のStoreインスタンスとして提供する。
  */
 
+import { createContext, useContext } from 'react';
 import { temporal } from 'zundo';
 import { useStore } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
@@ -108,9 +109,9 @@ export interface TacticalUnifiedState
 export function createTacticalUnifiedStore(
   initial?: Partial<TacticalUnifiedState>,
 ) {
-  if (initial?.project) {
-    ensureTacticalProject(initial.project);
-  }
+  const initialNormalizedProject = initial?.project
+    ? ensureTacticalProject(initial.project)
+    : undefined;
 
   return createStore<TacticalUnifiedState>()(
     temporal(
@@ -132,7 +133,10 @@ export function createTacticalUnifiedStore(
                 'project' in next &&
                 next.project
               ) {
-                ensureTacticalProject(next.project);
+                return {
+                  ...next,
+                  project: ensureTacticalProject(next.project),
+                };
               }
               return next;
             };
@@ -143,7 +147,10 @@ export function createTacticalUnifiedStore(
             'project' in partial &&
             partial.project
           ) {
-            ensureTacticalProject(partial.project);
+            return {
+              ...partial,
+              project: ensureTacticalProject(partial.project),
+            };
           }
           return partial;
         };
@@ -189,7 +196,21 @@ export function createTacticalUnifiedStore(
           ...createProjectSlice(wrappedSet, get, store),
         };
 
-        return initial ? { ...baseState, ...initial } : baseState;
+        if (initial) {
+          if (initialNormalizedProject) {
+            return {
+              ...baseState,
+              ...initial,
+              project: initialNormalizedProject,
+              activePhaseId:
+                initial.activePhaseId ?? initialNormalizedProject.activePhaseId,
+              activeSlideId:
+                initial.activeSlideId ?? initialNormalizedProject.activeSlideId,
+            };
+          }
+          return { ...baseState, ...initial };
+        }
+        return baseState;
       }),
       {
         limit: MAX_HISTORY,
@@ -205,6 +226,9 @@ export function createTacticalUnifiedStore(
 export type TacticalUnifiedStoreApi = ReturnType<
   typeof createTacticalUnifiedStore
 >;
+
+export const TacticalUnifiedStoreContext =
+  createContext<TacticalUnifiedStoreApi | null>(null);
 
 export const defaultTacticalUnifiedStore = createTacticalUnifiedStore();
 
@@ -222,8 +246,9 @@ function useTacticalUnifiedStoreImpl<T>(
 function useTacticalUnifiedStoreImpl<T>(
   selector?: (state: TacticalUnifiedState) => T,
 ): T {
+  const contextStore = useContext(TacticalUnifiedStoreContext);
   return useStore(
-    defaultTacticalUnifiedStore,
+    contextStore ?? defaultTacticalUnifiedStore,
     selector ?? (identity as (state: TacticalUnifiedState) => T),
   );
 }

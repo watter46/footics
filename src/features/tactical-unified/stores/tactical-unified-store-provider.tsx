@@ -1,29 +1,37 @@
 'use client';
 
-import { createContext, type ReactNode, useContext, useRef } from 'react';
+import { type ReactNode, useContext, useRef } from 'react';
 import { useStore } from 'zustand';
 import {
   createTacticalUnifiedStore,
   defaultTacticalUnifiedStore,
   type TacticalUnifiedState,
   type TacticalUnifiedStoreApi,
+  TacticalUnifiedStoreContext,
 } from './tactical-unified-store';
 
-export const TacticalUnifiedStoreContext =
-  createContext<TacticalUnifiedStoreApi | null>(null);
+export { TacticalUnifiedStoreContext };
 
 export interface TacticalUnifiedStoreProviderProps {
   initialState?: Partial<TacticalUnifiedState>;
+  store?: TacticalUnifiedStoreApi;
   children: ReactNode;
 }
 
 export function TacticalUnifiedStoreProvider({
   children,
   initialState,
+  store,
 }: TacticalUnifiedStoreProviderProps): React.JSX.Element {
   const storeRef = useRef<TacticalUnifiedStoreApi | null>(null);
   if (!storeRef.current) {
-    storeRef.current = createTacticalUnifiedStore(initialState);
+    if (store) {
+      storeRef.current = store;
+    } else if (initialState !== undefined) {
+      storeRef.current = createTacticalUnifiedStore(initialState);
+    } else {
+      storeRef.current = defaultTacticalUnifiedStore;
+    }
   }
 
   return (

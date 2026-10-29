@@ -27,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/menu';
 import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import {
   ASPECT_RATIOS,
   type AspectRatio,
@@ -101,9 +101,11 @@ function detectActivePreset(
 export function XMediaPresetMenu() {
   const [isOpen, setIsOpen] = useState(false);
 
-  const applyXMediaPreset = useTacticalUnifiedStore((s) => s.applyXMediaPreset);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const project = useTacticalUnifiedStore((s) => s.project);
+  const applyXMediaPreset = useTacticalUnifiedStoreContext(
+    (s) => s.applyXMediaPreset,
+  );
+  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
+  const project = useTacticalUnifiedStoreContext((s) => s.project);
 
   const activeSlide = selectActiveSlide({ project, activeSlideId });
   const activePresetKey = detectActivePreset(

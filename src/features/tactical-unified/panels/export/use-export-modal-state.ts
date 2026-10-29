@@ -9,7 +9,7 @@ import {
   selectActivePhaseSlides,
   selectActiveSlide,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { exportMultiSlideVideo } from '@/lib/tactical/export/tactical-video-exporter';
 import { useExportBenchmark } from './use-export-benchmark';
 import { useExportEventListener } from './use-export-event-listener';
@@ -20,13 +20,19 @@ export type ExportTab = 'video' | 'image' | 'json';
 export type ExportFormat = 'png' | 'zip' | 'mp4' | 'webm';
 
 export function useExportModalState() {
-  const closeExportModal = useTacticalUnifiedStore((s) => s.closeExportModal);
-  const isExporting = useTacticalUnifiedStore((s) => s.isExporting);
-  const setIsExporting = useTacticalUnifiedStore((s) => s.setIsExporting);
-  const pendingExport = useTacticalUnifiedStore((s) => s.pendingExport);
-  const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
-  const slides = useTacticalUnifiedStore(selectActivePhaseSlides);
-  const aspectRatio = useTacticalUnifiedStore((s) => s.project.aspectRatio);
+  const closeExportModal = useTacticalUnifiedStoreContext(
+    (s) => s.closeExportModal,
+  );
+  const isExporting = useTacticalUnifiedStoreContext((s) => s.isExporting);
+  const setIsExporting = useTacticalUnifiedStoreContext(
+    (s) => s.setIsExporting,
+  );
+  const pendingExport = useTacticalUnifiedStoreContext((s) => s.pendingExport);
+  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
+  const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
+  const aspectRatio = useTacticalUnifiedStoreContext(
+    (s) => s.project.aspectRatio,
+  );
 
   const initFmt = pendingExport?.format ?? 'mp4';
   const [activeTab, setActiveTab] = useState<ExportTab>(

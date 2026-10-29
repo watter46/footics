@@ -10,15 +10,15 @@ import {
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 
 export function TopBarTitle() {
-  const projectTitle = useTacticalUnifiedStore(
+  const projectTitle = useTacticalUnifiedStoreContext(
     (s) => s.project.title || 'Untitled Project',
   );
-  const setTitle = useTacticalUnifiedStore((s) => s.setTitle);
-  const saveStatus = useTacticalUnifiedStore((s) => s.saveStatus);
-  const openProjectManagerModal = useTacticalUnifiedStore(
+  const setTitle = useTacticalUnifiedStoreContext((s) => s.setTitle);
+  const saveStatus = useTacticalUnifiedStoreContext((s) => s.saveStatus);
+  const openProjectManagerModal = useTacticalUnifiedStoreContext(
     (s) => s.openProjectManagerModal,
   );
 

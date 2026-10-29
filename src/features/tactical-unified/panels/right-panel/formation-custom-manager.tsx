@@ -2,7 +2,7 @@
 
 import { ChevronDown, Shield } from 'lucide-react';
 import { useState } from 'react';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import type { FormationMode } from '@/lib/data/formations';
 import { getPlayerMastersBySeason } from '@/lib/db/queries';
 import {
@@ -26,7 +26,7 @@ export function FormationCustomManager({
   formationMode,
 }: FormationCustomManagerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const applyFormationPreset = useTacticalUnifiedStore(
+  const applyFormationPreset = useTacticalUnifiedStoreContext(
     (s) => s.applyFormationPreset,
   );
 

@@ -8,7 +8,7 @@ import {
   type SegmentOption,
 } from '@/components/ui/segmented-control';
 import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
 
 const ASPECT_RATIO_OPTIONS: SegmentOption<AspectRatio>[] = [
@@ -32,14 +32,26 @@ function createTeamDot(color: string) {
 }
 
 export function TopBarCenter() {
-  const aspectRatio = useTacticalUnifiedStore((s) => s.project.aspectRatio);
-  const setAspectRatio = useTacticalUnifiedStore((s) => s.setAspectRatio);
-  const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
-  const setTeamVisibility = useTacticalUnifiedStore((s) => s.setTeamVisibility);
-  const homeColor = useTacticalUnifiedStore((s) => s.project.homeColor.primary);
-  const awayColor = useTacticalUnifiedStore((s) => s.project.awayColor.primary);
-  const swapTeamSides = useTacticalUnifiedStore((s) => s.swapTeamSides);
-  const resetSlideKeepSquad = useTacticalUnifiedStore(
+  const aspectRatio = useTacticalUnifiedStoreContext(
+    (s) => s.project.aspectRatio,
+  );
+  const setAspectRatio = useTacticalUnifiedStoreContext(
+    (s) => s.setAspectRatio,
+  );
+  const teamVisibility = useTacticalUnifiedStoreContext(
+    (s) => s.teamVisibility,
+  );
+  const setTeamVisibility = useTacticalUnifiedStoreContext(
+    (s) => s.setTeamVisibility,
+  );
+  const homeColor = useTacticalUnifiedStoreContext(
+    (s) => s.project.homeColor.primary,
+  );
+  const awayColor = useTacticalUnifiedStoreContext(
+    (s) => s.project.awayColor.primary,
+  );
+  const swapTeamSides = useTacticalUnifiedStoreContext((s) => s.swapTeamSides);
+  const resetSlideKeepSquad = useTacticalUnifiedStoreContext(
     (s) => s.resetSlideKeepSquad,
   );
 

@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * use-keyboard-shortcuts.ts
  * Keyboard shortcuts: Delete, Escape, Backspace, Copy (Mod+C), Paste (Mod+V), Duplicate (Mod+D), Tool switching, Space (Playback), Undo/Redo
@@ -11,7 +9,7 @@ import {
   selectActivePhaseSlides,
   selectActiveSlide,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreApi } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { isInputFocused } from '@/lib/shortcuts';
 import type { DrawingTool } from '@/lib/types/tactical-unified';
 
@@ -33,13 +31,15 @@ const TOOL_KEYS: Record<string, DrawingTool> = {
 const TOOL_SHORTCUT_KEYS = Object.keys(TOOL_KEYS);
 
 export function useKeyboardShortcuts() {
+  const storeApi = useTacticalUnifiedStoreApi();
+
   // Undo: Mod+Z (Ctrl+Z / Cmd+Z)
   useHotkeys(
     ['mod+z', 'meta+z'],
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      useTacticalUnifiedStore.getState().undo();
+      storeApi.getState().undo();
     },
     { enableOnFormTags: false },
   );
@@ -50,7 +50,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      useTacticalUnifiedStore.getState().redo();
+      storeApi.getState().redo();
     },
     { enableOnFormTags: false },
   );
@@ -61,8 +61,8 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      const currentSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-      useTacticalUnifiedStore.getState().copySelectedObjects(currentSlideId);
+      const currentSlideId = storeApi.getState().activeSlideId;
+      storeApi.getState().copySelectedObjects(currentSlideId);
     },
     { enableOnFormTags: false },
   );
@@ -73,8 +73,8 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      const currentSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-      useTacticalUnifiedStore.getState().pasteObjects(currentSlideId);
+      const currentSlideId = storeApi.getState().activeSlideId;
+      storeApi.getState().pasteObjects(currentSlideId);
     },
     { enableOnFormTags: false },
   );
@@ -85,10 +85,8 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      const currentSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-      useTacticalUnifiedStore
-        .getState()
-        .duplicateSelectedObjects(currentSlideId);
+      const currentSlideId = storeApi.getState().activeSlideId;
+      storeApi.getState().duplicateSelectedObjects(currentSlideId);
     },
     { enableOnFormTags: false },
   );
@@ -99,7 +97,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      useTacticalUnifiedStore.getState().togglePlayback();
+      storeApi.getState().togglePlayback();
     },
     { enableOnFormTags: false },
   );
@@ -110,7 +108,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      useTacticalUnifiedStore.getState().clearSelection();
+      storeApi.getState().clearSelection();
     },
     { enableOnFormTags: false },
   );
@@ -123,7 +121,7 @@ export function useKeyboardShortcuts() {
       const tool = TOOL_KEYS[e.key.toLowerCase()];
       if (tool) {
         e.preventDefault();
-        useTacticalUnifiedStore.getState().setActiveTool(tool);
+        storeApi.getState().setActiveTool(tool);
       }
     },
     { enableOnFormTags: false },
@@ -135,7 +133,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      const store = useTacticalUnifiedStore.getState();
+      const store = storeApi.getState();
       const currentSlideId = store.activeSlideId;
       const currentSelected = store.selectedObjects;
 

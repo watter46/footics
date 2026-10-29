@@ -7,7 +7,10 @@
 
 import type Konva from 'konva';
 import { useCallback } from 'react';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  useTacticalUnifiedStoreApi,
+  useTacticalUnifiedStoreContext,
+} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import type { ExportTarget } from '@/lib/types/tactical-unified';
 import {
   calculateExportCropRect,
@@ -26,10 +29,15 @@ export function useKonvaExport({
   stageRef,
   activateSlide,
 }: UseKonvaExportOptions) {
-  const setIsExporting = useTacticalUnifiedStore((s) => s.setIsExporting);
-  const closeExportModal = useTacticalUnifiedStore((s) => s.closeExportModal);
-  const project = useTacticalUnifiedStore((s) => s.project);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+  const storeApi = useTacticalUnifiedStoreApi();
+  const setIsExporting = useTacticalUnifiedStoreContext(
+    (s) => s.setIsExporting,
+  );
+  const closeExportModal = useTacticalUnifiedStoreContext(
+    (s) => s.closeExportModal,
+  );
+  const project = useTacticalUnifiedStoreContext((s) => s.project);
+  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
 
   /** Stage → PNG dataURL */
   const captureCurrentSlide = useCallback(
@@ -37,11 +45,9 @@ export function useKonvaExport({
       const stage = stageRef.current;
       if (!stage) return null;
 
-      const currentProject = useTacticalUnifiedStore.getState().project;
+      const currentProject = storeApi.getState().project;
       const currentActiveId =
-        targetSlideId ??
-        useTacticalUnifiedStore.getState().activeSlideId ??
-        activeSlideId;
+        targetSlideId ?? storeApi.getState().activeSlideId ?? activeSlideId;
       const activeSlide = currentProject.slides.find(
         (s) => s.id === currentActiveId,
       );
@@ -61,7 +67,7 @@ export function useKonvaExport({
         pixelRatio: scale,
       });
     },
-    [stageRef, activeSlideId],
+    [stageRef, activeSlideId, storeApi],
   );
 
   /** PNG clipboard (📋 ボタン) */

@@ -9,11 +9,18 @@
 import type Konva from 'konva';
 import { useCallback, useRef, useState } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  useTacticalUnifiedStoreApi,
+  useTacticalUnifiedStoreContext,
+} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import type {
   ExportProgress,
   ExportTarget,
 } from '@/lib/types/tactical-unified';
+import {
+  executeVideoExport,
+  validateVideoExportParams,
+} from './konva-video-export-helper';
 
 interface UseKonvaVideoExportOptions {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -27,17 +34,13 @@ interface UseKonvaVideoExportOptions {
   ) => void;
 }
 
-import {
-  executeVideoExport,
-  validateVideoExportParams,
-} from './konva-video-export-helper';
-
 export function useKonvaVideoExport({
   stageRef,
   nodesRegistryRef,
   applyFrameToCanvas,
 }: UseKonvaVideoExportOptions) {
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+  const storeApi = useTacticalUnifiedStoreApi();
+  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
   const [videoProgress, setVideoProgress] = useState<ExportProgress | null>(
     null,
   );
@@ -52,7 +55,7 @@ export function useKonvaVideoExport({
       target: ExportTarget,
       onProgressCallback?: (p: ExportProgress) => void,
     ): Promise<Blob | null> => {
-      const currentSlides = useTacticalUnifiedStore.getState().project.slides;
+      const currentSlides = storeApi.getState().project.slides;
       const { stage, videoTarget } = validateVideoExportParams(
         stageRef.current,
         target,
@@ -76,6 +79,7 @@ export function useKonvaVideoExport({
             onProgressCallback?.(p);
           },
           isCancelled: () => isCancelledRef.current,
+          aspectRatio: storeApi.getState().project.aspectRatio,
         });
       } finally {
         if (currentSlides.length > 0) {
@@ -88,7 +92,7 @@ export function useKonvaVideoExport({
         }
       }
     },
-    [stageRef, nodesRegistryRef, applyFrameToCanvas, activeSlideId],
+    [stageRef, nodesRegistryRef, applyFrameToCanvas, activeSlideId, storeApi],
   );
 
   return {

@@ -1,9 +1,10 @@
 import type Konva from 'konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { defaultTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { exportTacticalVideo } from '@/lib/tactical/export/video-export-engine';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 import type {
+  AspectRatio,
   ExportProgress,
   ExportTarget,
   Slide,
@@ -80,6 +81,7 @@ export interface ExecuteVideoExportParams {
   ) => void;
   onProgress: (p: ExportProgress) => void;
   isCancelled: () => boolean;
+  aspectRatio?: AspectRatio;
 }
 
 export async function executeVideoExport({
@@ -91,6 +93,7 @@ export async function executeVideoExport({
   applyFrameToCanvas,
   onProgress,
   isCancelled,
+  aspectRatio: targetAspectRatio,
 }: ExecuteVideoExportParams): Promise<Blob> {
   const activeSlide = currentSlides.find((s) => s.id === activeSlideId);
   const boundaryBox = activeSlide?.boundaryBox ?? null;
@@ -101,7 +104,9 @@ export async function executeVideoExport({
   const scale = target.scale ?? 2;
 
   const targetOptions = extractTargetOptions(target);
-  const aspectRatio = useTacticalUnifiedStore.getState().project.aspectRatio;
+  const aspectRatio =
+    targetAspectRatio ??
+    defaultTacticalUnifiedStore.getState().project.aspectRatio;
 
   return exportTacticalVideo({
     format: target.format,

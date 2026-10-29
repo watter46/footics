@@ -2,13 +2,13 @@
 
 import { Redo2, Undo2 } from 'lucide-react';
 import { IconButton } from '@/components/ui/icon-button';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 
 export function TopBarHistory() {
-  const undo = useTacticalUnifiedStore((s) => s.undo);
-  const redo = useTacticalUnifiedStore((s) => s.redo);
-  const canUndo = useTacticalUnifiedStore((s) => s.past.length > 0);
-  const canRedo = useTacticalUnifiedStore((s) => s.future.length > 0);
+  const undo = useTacticalUnifiedStoreContext((s) => s.undo);
+  const redo = useTacticalUnifiedStoreContext((s) => s.redo);
+  const canUndo = useTacticalUnifiedStoreContext((s) => s.past.length > 0);
+  const canRedo = useTacticalUnifiedStoreContext((s) => s.future.length > 0);
 
   return (
     <div className="flex items-center gap-0.5">

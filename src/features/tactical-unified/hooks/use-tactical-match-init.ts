@@ -1,6 +1,10 @@
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  defaultTacticalUnifiedStore,
+  type TacticalUnifiedStoreApi,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreApi } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { db } from '@/lib/db';
 import { injectMatchToTactical } from '@/lib/tactical/match-to-tactical-bridge';
 import { loadActiveProjectFromDb } from '@/lib/tactical/tactical-storage';
@@ -20,13 +24,14 @@ export interface UseTacticalMatchInitResult {
 async function loadAndInjectMatch(
   matchId: string,
   minute: number,
+  storeApi: TacticalUnifiedStoreApi = defaultTacticalUnifiedStore,
 ): Promise<void> {
   const match = await db.matches.get(matchId);
   if (!match) return;
   // 保存済みの同一試合プロジェクトがあれば既存スライドを優先し上書きしない
   const saved = await loadActiveProjectFromDb(String(match.id));
   if (saved) {
-    useTacticalUnifiedStore.getState().loadProject(saved);
+    storeApi.getState().loadProject(saved);
     return;
   }
   injectMatchToTactical({ match, minute });
@@ -40,6 +45,7 @@ export function useTacticalMatchInit(
   options: UseTacticalMatchInitOptions = {},
 ): UseTacticalMatchInitResult {
   const { initialMatchId, initialMinute } = options;
+  const storeApi = useTacticalUnifiedStoreApi();
   const searchParams = useSearchParams();
 
   const matchIdParam =
@@ -73,7 +79,7 @@ export function useTacticalMatchInit(
     let isMounted = true;
     setIsLoading(true);
 
-    loadAndInjectMatch(matchIdParam, minute)
+    loadAndInjectMatch(matchIdParam, minute, storeApi)
       .then(() => {
         if (isMounted) {
           hasInitializedRef.current = initKey;
@@ -92,7 +98,7 @@ export function useTacticalMatchInit(
     return () => {
       isMounted = false;
     };
-  }, [matchIdParam, minute]);
+  }, [matchIdParam, minute, storeApi]);
 
   return { isLoading, hasMatchQuery, matchId: matchIdParam ?? null, error };
 }

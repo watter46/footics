@@ -19,13 +19,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/menu';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 
 const ITEM_CLASS = 'items-start gap-2 px-2 py-2';
 
 export function AddSlideButton() {
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const addSlide = useTacticalUnifiedStore((s) => s.addSlide);
+  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
+  const addSlide = useTacticalUnifiedStoreContext((s) => s.addSlide);
 
   const handleLeftClick = (e: React.MouseEvent) => {
     e.preventDefault();

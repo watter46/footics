@@ -8,27 +8,33 @@
 import { Shield } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
-import {
-  selectActiveSlide,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
+import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import type { FormationMode, FormationType } from '@/lib/data/formations';
 import { FormationPresetSelector } from './formation-preset-selector';
 import { FormationTeamToggle } from './formation-team-toggle';
 
 export function FormationPanel() {
-  const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const project = useTacticalUnifiedStore((s) => s.project);
+  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
+  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
+  const project = useTacticalUnifiedStoreContext((s) => s.project);
 
   // Store actions
-  const applyFormation = useTacticalUnifiedStore((s) => s.applyFormation);
-  const clearPitchPlayers = useTacticalUnifiedStore((s) => s.clearPitchPlayers);
-  const updatePlayer = useTacticalUnifiedStore((s) => s.updatePlayer);
-  const setTeamColor = useTacticalUnifiedStore((s) => s.setTeamColor);
-  const teamVisibility = useTacticalUnifiedStore((s) => s.teamVisibility);
-  const setTeamVisibility = useTacticalUnifiedStore((s) => s.setTeamVisibility);
-  const swapTeamSides = useTacticalUnifiedStore((s) => s.swapTeamSides);
+  const applyFormation = useTacticalUnifiedStoreContext(
+    (s) => s.applyFormation,
+  );
+  const clearPitchPlayers = useTacticalUnifiedStoreContext(
+    (s) => s.clearPitchPlayers,
+  );
+  const updatePlayer = useTacticalUnifiedStoreContext((s) => s.updatePlayer);
+  const setTeamColor = useTacticalUnifiedStoreContext((s) => s.setTeamColor);
+  const teamVisibility = useTacticalUnifiedStoreContext(
+    (s) => s.teamVisibility,
+  );
+  const setTeamVisibility = useTacticalUnifiedStoreContext(
+    (s) => s.setTeamVisibility,
+  );
+  const swapTeamSides = useTacticalUnifiedStoreContext((s) => s.swapTeamSides);
 
   const isVertical = isVerticalPitch(project.aspectRatio);
 

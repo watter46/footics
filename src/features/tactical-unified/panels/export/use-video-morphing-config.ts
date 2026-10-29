@@ -5,16 +5,16 @@ import {
   selectActivePhaseSlides,
   selectActiveSlide,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 
 export type TransitionSec = '1.0' | '1.5' | '2.0' | '3.0';
 export type PauseSec = '0' | '0.5' | '1.0' | '2.0';
 export type AnimationEasing = 'ease-in-out' | 'ease-out' | 'ease-in' | 'linear';
 
 export function useVideoMorphingConfig() {
-  const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
-  const slides = useTacticalUnifiedStore(selectActivePhaseSlides);
-  const updateAllSlideTransitions = useTacticalUnifiedStore(
+  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
+  const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
+  const updateAllSlideTransitions = useTacticalUnifiedStoreContext(
     (s) => s.updateAllSlideTransitions,
   );
 

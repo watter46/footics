@@ -9,10 +9,8 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import { Sparkles, UserPlus, Users } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  selectActiveSlide,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
+import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import {
   computeBenchGridPositions,
   type Player,
@@ -40,14 +38,21 @@ export {
 };
 
 export function SquadSubPanel() {
-  const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const project = useTacticalUnifiedStore((s) => s.project);
-  const selectedObjects = useTacticalUnifiedStore((s) => s.selectedObjects);
-  const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
-  const updatePlayer = useTacticalUnifiedStore((s) => s.updatePlayer);
-  const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
-  const addCustomPlayer = useTacticalUnifiedStore((s) => s.addCustomPlayer);
+  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
+  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
+  const project = useTacticalUnifiedStoreContext((s) => s.project);
+  const selectedObjects = useTacticalUnifiedStoreContext(
+    (s) => s.selectedObjects,
+  );
+  const selectObject = useTacticalUnifiedStoreContext((s) => s.selectObject);
+  const updatePlayer = useTacticalUnifiedStoreContext((s) => s.updatePlayer);
+  const updateSlide = useTacticalUnifiedStoreContext((s) => s.updateSlide);
+  const movePlayerToPitch = useTacticalUnifiedStoreContext(
+    (s) => s.movePlayerToPitch,
+  );
+  const addCustomPlayer = useTacticalUnifiedStoreContext(
+    (s) => s.addCustomPlayer,
+  );
 
   const [activeTeam, setActiveTeam] = useState<'home' | 'away'>('home');
   const [isAddingSub, setIsAddingSub] = useState(false);
@@ -102,9 +107,7 @@ export function SquadSubPanel() {
     const positionedBench = computeBenchGridPositions(teamPlayers.bench);
     const benchMap = new Map(positionedBench.map((p) => [p.id, p]));
     const nextPlayers = activeSlide.players.map((p) => benchMap.get(p.id) ?? p);
-    useTacticalUnifiedStore
-      .getState()
-      .updateSlide(activeSlideId, { players: nextPlayers });
+    updateSlide(activeSlideId, { players: nextPlayers });
   };
 
   const handleDragStart = useCallback(

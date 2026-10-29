@@ -16,8 +16,8 @@ import {
 import {
   selectActiveSlide,
   selectPreviousSlide,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
+} from '@/features/tactical-unified/stores/tactical-unified-selectors';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { useBallDrag } from '../hooks/use-ball-drag';
 import { useBallImage } from '../hooks/use-ball-image';
 import type { BallObjectProps } from '../types';
@@ -30,14 +30,14 @@ function useBallObjectState({
   cleanRender,
   nodesRegistryRef,
 }: BallObjectProps) {
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
-  const prevSlide = useTacticalUnifiedStore(selectPreviousSlide);
-  const updateBallTrajectory = useTacticalUnifiedStore(
+  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
+  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
+  const prevSlide = useTacticalUnifiedStoreContext(selectPreviousSlide);
+  const updateBallTrajectory = useTacticalUnifiedStoreContext(
     (s) => s.updateBallTrajectory,
   );
-  const selectObject = useTacticalUnifiedStore((s) => s.selectObject);
-  const isSelected = useTacticalUnifiedStore((s) =>
+  const selectObject = useTacticalUnifiedStoreContext((s) => s.selectObject);
+  const isSelected = useTacticalUnifiedStoreContext((s) =>
     s.selectedObjects.some((o) => o.kind === 'ball'),
   );
 

@@ -61,14 +61,13 @@ export interface ProjectSlice {
   deleteSelectedObjects: (slideId?: string) => void;
 }
 
-const INITIAL_PROJECT = createDefaultProject(crypto.randomUUID());
-
 export const createProjectSlice: StateCreator<
   TacticalUnifiedState,
   [['zustand/subscribeWithSelector', never]],
   [],
   ProjectSlice
 > = (set) => {
+  const initialProject = createDefaultProject(crypto.randomUUID());
   const setter: ProjectSliceSet = (partial) => {
     if (typeof partial === 'function') {
       set((s) => partial(s) as Partial<TacticalUnifiedState>);
@@ -78,14 +77,14 @@ export const createProjectSlice: StateCreator<
   };
 
   return {
-    project: INITIAL_PROJECT,
+    project: initialProject,
     isDirty: false,
     saveStatus: 'idle',
     lastSavedAt: null,
     setSaveStatus: (status) => set({ saveStatus: status }),
     setLastSavedAt: (timestamp) => set({ lastSavedAt: timestamp }),
-    activePhaseId: INITIAL_PROJECT.activePhaseId,
-    activeSlideId: INITIAL_PROJECT.activeSlideId,
+    activePhaseId: initialProject.activePhaseId,
+    activeSlideId: initialProject.activeSlideId,
     stageAspect: null,
     pitchFitPending: true,
     isPlaying: false,

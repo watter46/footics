@@ -3,7 +3,7 @@
 import { Archive, Download, FileArchive, Loader2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import {
   importMultipleTacticalProjects,
   type TacticalProjectSummary,
@@ -22,7 +22,7 @@ export function ProjectImportExport({
   projects,
   onImportCompleted,
 }: ProjectImportExportProps) {
-  const currentProjectId = useTacticalUnifiedStore((s) => s.project.id);
+  const currentProjectId = useTacticalUnifiedStoreContext((s) => s.project.id);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

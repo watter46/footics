@@ -1,6 +1,11 @@
 import { act, fireEvent, renderHook } from '@testing-library/react';
+import { createElement, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  createTacticalUnifiedStore,
+  useTacticalUnifiedStore,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
+import { TacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { useKeyboardShortcuts } from '../use-keyboard-shortcuts';
 
@@ -358,5 +363,25 @@ describe('useKeyboardShortcuts', () => {
     });
 
     expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(1);
+  });
+
+  it('TacticalUnifiedStoreContext から渡された独立ストアを正しく操作する', () => {
+    const customStore = createTacticalUnifiedStore();
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(
+        TacticalUnifiedStoreContext.Provider,
+        { value: customStore },
+        children,
+      );
+
+    renderHook(() => useKeyboardShortcuts(), { wrapper });
+
+    act(() => {
+      fireEvent.keyDown(document, { key: 'l', code: 'KeyL' });
+    });
+
+    // customStore の activeTool が更新され、グローバルストアは影響を受けない
+    expect(customStore.getState().activeTool).toBe('line');
+    expect(useTacticalUnifiedStore.getState().activeTool).toBe('select');
   });
 });

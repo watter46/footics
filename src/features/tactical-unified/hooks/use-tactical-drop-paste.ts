@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useCallback, useEffect } from 'react';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 
 function handleImageFile(
   file: File,
@@ -49,11 +49,13 @@ function handleBenchDrop(
 }
 
 export function useTacticalDropPaste() {
-  const setImageBackground = useTacticalUnifiedStore(
+  const setImageBackground = useTacticalUnifiedStoreContext(
     (s) => s.setImageBackground,
   );
-  const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
+  const movePlayerToPitch = useTacticalUnifiedStoreContext(
+    (s) => s.movePlayerToPitch,
+  );
+  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
 
   // 📋 クリップボード画像貼り付け (Ctrl+V / Paste)
   useEffect(() => {
