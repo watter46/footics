@@ -1,10 +1,58 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { detectAgentRole, isChildSession } from './agent-access-guard';
+import { cleanString, getRecentToolCalls } from './transcript-calls';
 
 export interface GuardDecision {
   decision: 'allow' | 'deny';
   reason?: string;
+}
+
+const MAX_CONSECUTIVE_LIST = 3;
+
+function isListCall(call: {
+  name: string;
+  args: Record<string, any>;
+}): boolean {
+  return (
+    call.name === 'manage_subagents' &&
+    cleanString(call.args?.Action).toLowerCase() === 'list'
+  );
+}
+
+/**
+ * `manage_subagents Action: "list"` のポーリング連打を物理遮断するガード。
+ *
+ * 背景: 非同期サブエージェントの完了待ちで list を連打し、ターン・トークンを浪費する
+ * ループが発生していた。完了通知は SYSTEM_MESSAGE として自動で届くため、ポーリングは不要。
+ *
+ * 判定: 直近の USER_INPUT / SYSTEM_MESSAGE 以降のツール呼び出し列の末尾で
+ * `list` が MAX_CONSECUTIVE_LIST(3) 回連続した場合に DENY。
+ * transcript に現在の呼び出しが含まれる場合は含めて数える。
+ * 他のツール呼び出しや通知が挟まればリセットされる。
+ */
+export function checkSubagentPollGuard(payload: any): GuardDecision | null {
+  const toolCall = payload.toolCall;
+  if (!toolCall || toolCall.name !== 'manage_subagents') {
+    return null;
+  }
+  if (!isListCall({ name: toolCall.name, args: toolCall.args ?? {} })) {
+    return { decision: 'allow' };
+  }
+
+  const calls = getRecentToolCalls(payload.transcriptPath);
+  let run = 0;
+  for (let i = calls.length - 1; i >= 0 && isListCall(calls[i]); i--) {
+    run++;
+  }
+
+  if (run >= MAX_CONSECUTIVE_LIST) {
+    return {
+      decision: 'deny',
+      reason: `[GUARD] Polling loop blocked: 'manage_subagents' with Action "list" was called ${MAX_CONSECUTIVE_LIST} times in a row. Completion of subagents is delivered to you automatically as a message.\nAction: Do NOT poll. End your turn without calling any tool (or do other useful work) and wait for the notification.`,
+    };
+  }
+  return { decision: 'allow' };
 }
 
 /**

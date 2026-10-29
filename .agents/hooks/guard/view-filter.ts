@@ -2,31 +2,72 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { detectAgentRole, normalizeRelativePath } from './agent-access-guard';
 import type { GuardDecision } from './safety-filter';
+import {
+  cleanString,
+  getRecentToolCalls,
+  parseLineNum,
+  type RecordedToolCall,
+} from './transcript-calls';
 
 const SMALL_FILE_LINE_LIMIT = 400;
+const MAX_SEQUENTIAL_SLICES = 3;
+const PAGING_TOLERANCE_LINES = 10;
+const DEFAULT_VIEW_WINDOW_LINES = 800;
 
-function cleanString(val: any): string {
-  if (typeof val !== 'string') return '';
-  let s = val.trim();
-  if (
-    (s.startsWith('"') && s.endsWith('"')) ||
-    (s.startsWith("'") && s.endsWith("'"))
-  ) {
-    s = s.slice(1, -1).trim();
-  }
-  return s;
+interface SliceRange {
+  file: string;
+  start: number;
+  end: number;
 }
 
-function parseLineNum(val: any): number | undefined {
-  if (typeof val === 'number') {
-    return isNaN(val) ? undefined : val;
+function toSliceRange(call: RecordedToolCall): SliceRange | null {
+  if (!isReadTool(call.name) || !call.args) return null;
+  const raw = getViewFilePath({ args: call.args });
+  if (!raw) return null;
+  const start = parseLineNum(call.args.StartLine);
+  const end = parseLineNum(call.args.EndLine);
+  if (start === undefined && end === undefined) return null;
+  const s = start ?? 1;
+  return {
+    file: path.resolve(raw),
+    start: s,
+    end: end ?? s + DEFAULT_VIEW_WINDOW_LINES - 1,
+  };
+}
+
+function isPaging(prev: SliceRange, next: SliceRange): boolean {
+  return (
+    Math.abs(next.start - (prev.end + 1)) <= PAGING_TOLERANCE_LINES ||
+    Math.abs(next.end - (prev.start - 1)) <= PAGING_TOLERANCE_LINES
+  );
+}
+
+function isSameRange(a: SliceRange, b: SliceRange): boolean {
+  return a.file === b.file && a.start === b.start && a.end === b.end;
+}
+
+/**
+ * 今回の読込を含め、同一ファイルへのページ送り（連続範囲）スライス読込が末尾から何回続いているかを数える。
+ * transcript の末尾が今回と同一範囲の読込なら「今回分が記録済み」とみなして二重計上しない。
+ * 他のツール呼び出し・別ファイル・全文読込・離れた範囲が挟まれば連鎖は途切れる。
+ */
+function countPagedSliceChain(
+  calls: RecordedToolCall[],
+  current: SliceRange,
+): number {
+  let i = calls.length - 1;
+  const last = i >= 0 ? toSliceRange(calls[i]) : null;
+  if (last && isSameRange(last, current)) i--;
+
+  let count = 1;
+  let next = current;
+  for (; i >= 0; i--) {
+    const range = toSliceRange(calls[i]);
+    if (!range || range.file !== current.file || !isPaging(range, next)) break;
+    count++;
+    next = range;
   }
-  if (typeof val === 'string') {
-    const cleaned = cleanString(val);
-    const n = parseInt(cleaned, 10);
-    return isNaN(n) ? undefined : n;
-  }
-  return undefined;
+  return count;
 }
 
 export function isReadTool(toolName?: string): boolean {
@@ -193,6 +234,26 @@ function checkViewGuard(payload: any): GuardDecision | null {
           EndLine: totalLines,
         },
       };
+    }
+  }
+
+  // 3b. 大型ファイルの連続ページ送りスライス読込の遮断 (全ロール共通)
+  if (totalLines > SMALL_FILE_LINE_LIMIT && hasSlice) {
+    const current = toSliceRange({
+      name: toolCall.name,
+      args: toolCall.args,
+    });
+    if (current) {
+      const chain = countPagedSliceChain(
+        getRecentToolCalls(payload.transcriptPath),
+        current,
+      );
+      if (chain >= MAX_SEQUENTIAL_SLICES) {
+        return {
+          decision: 'deny',
+          reason: `[GUARD] Sequential slice paging blocked: '${baseName}' (${totalLines} lines) has been read in ${chain} consecutive contiguous slices.\nAction: Run 'bun run ai:outline ${rawPath}' first to get signatures with line numbers, then locate the target with 'rtk grep' and read only that range (with 5-10 lines of margin).`,
+        };
+      }
     }
   }
 

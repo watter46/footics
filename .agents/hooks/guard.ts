@@ -3,7 +3,10 @@ import { checkAuditorGuard } from './guard/auditor-guard';
 import { checkGateguard } from './guard/gateguard-filter';
 import { parseExecutable, splitCommands, tokenize } from './guard/parser';
 import { checkSafetyGuard } from './guard/safety-filter';
-import { checkSubagentGuard } from './guard/subagent-guard';
+import {
+  checkSubagentGuard,
+  checkSubagentPollGuard,
+} from './guard/subagent-guard';
 import { checkTaskSizeGuard } from './guard/task-size-guard';
 import { checkTokenGuard } from './guard/token-filter';
 import { checkViewGuard } from './guard/view-filter';
@@ -161,6 +164,12 @@ function evaluatePayload(payload: any): any {
   if (payload.toolCall && payload.toolCall.name === 'send_message') {
     const subagentRes = checkSubagentGuard(payload);
     if (subagentRes) return subagentRes;
+    return { decision: 'allow' };
+  }
+
+  if (payload.toolCall && payload.toolCall.name === 'manage_subagents') {
+    const pollRes = checkSubagentPollGuard(payload);
+    if (pollRes) return pollRes;
     return { decision: 'allow' };
   }
 

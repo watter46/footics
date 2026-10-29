@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { evaluateCommand, evaluatePayload, splitCommands } from './guard';
 
 const BIOME_FLAGS =
@@ -739,5 +742,39 @@ describe('guard.ts Security & Token Guard Tests', () => {
         fs.unlinkSync(transcript);
       } catch (_e) {}
     });
+  });
+});
+
+describe('guard.ts manage_subagents polling guard routing', () => {
+  function writeTranscript(callCount: number): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-poll-'));
+    const p = path.join(dir, 'transcript.jsonl');
+    const steps = [{ step_index: 0, type: 'USER_INPUT', content: 'go' }];
+    for (let i = 0; i < callCount; i++) {
+      steps.push({
+        step_index: i + 1,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [{ name: 'manage_subagents', args: { Action: '"list"' } }],
+      } as any);
+    }
+    fs.writeFileSync(p, `${steps.map((s) => JSON.stringify(s)).join('\n')}\n`);
+    return p;
+  }
+
+  test('denies manage_subagents list on the 3rd consecutive call', () => {
+    const res = evaluatePayload({
+      transcriptPath: writeTranscript(3),
+      toolCall: { name: 'manage_subagents', args: { Action: '"list"' } },
+    });
+    expect(res.decision).toBe('deny');
+    expect(res.reason).toContain('Polling loop blocked');
+  });
+
+  test('allows manage_subagents list on the 2nd consecutive call', () => {
+    const res = evaluatePayload({
+      transcriptPath: writeTranscript(2),
+      toolCall: { name: 'manage_subagents', args: { Action: '"list"' } },
+    });
+    expect(res.decision).toBe('allow');
   });
 });

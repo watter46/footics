@@ -380,3 +380,164 @@ describe('view-filter: small file transparent overwrite', () => {
     });
   });
 });
+
+describe('view-filter: sequential slice (paging) guard', () => {
+  const testDir = path.resolve(
+    '.agents/hooks/guard/__tests__/fixtures-seq-view',
+  );
+
+  beforeEach(() => {
+    fs.mkdirSync(testDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(testDir, { recursive: true, force: true });
+  });
+
+  function createFile(name: string, lineCount: number): string {
+    const p = path.join(testDir, name);
+    fs.writeFileSync(
+      p,
+      Array.from({ length: lineCount }, (_, i) => `// line ${i + 1}`).join(
+        '\n',
+      ),
+    );
+    return p;
+  }
+
+  function createTranscript(steps: any[]): string {
+    const p = path.join(testDir, `t-${Math.random()}.jsonl`);
+    fs.writeFileSync(p, `${steps.map((s) => JSON.stringify(s)).join('\n')}\n`);
+    return p;
+  }
+
+  const user = { step_index: 0, type: 'USER_INPUT', content: 'investigate' };
+  const readStep = (i: number, file: string, start?: number, end?: number) => ({
+    step_index: i,
+    type: 'PLANNER_RESPONSE',
+    tool_calls: [
+      {
+        name: 'view_file',
+        args: {
+          AbsolutePath: file,
+          ...(start !== undefined ? { StartLine: start } : {}),
+          ...(end !== undefined ? { EndLine: end } : {}),
+        },
+      },
+    ],
+  });
+
+  const guard = (
+    transcriptPath: string,
+    file: string,
+    start: number,
+    end: number,
+    name = 'view_file',
+  ) =>
+    checkViewGuard({
+      transcriptPath,
+      workspacePaths: [testDir],
+      toolCall: {
+        name,
+        args:
+          name === 'read_file'
+            ? {
+                Path: `"${file}"`,
+                StartLine: `"${start}"`,
+                EndLine: `"${end}"`,
+              }
+            : { AbsolutePath: file, StartLine: start, EndLine: end },
+      },
+    });
+
+  it('denies the 3rd consecutive paged slice read (current not yet in transcript)', () => {
+    const f = createFile('big.ts', 800);
+    const t = createTranscript([
+      user,
+      readStep(1, f, 1, 100),
+      readStep(3, f, 101, 200),
+    ]);
+    const res = guard(t, f, 201, 300);
+    expect(res?.decision).toBe('deny');
+    expect(res?.reason).toContain('ai:outline');
+  });
+
+  it('denies the 3rd paged slice read when current call is already in transcript', () => {
+    const f = createFile('big.ts', 800);
+    const t = createTranscript([
+      user,
+      readStep(1, f, 1, 100),
+      readStep(3, f, 101, 200),
+      readStep(5, f, 201, 300),
+    ]);
+    expect(guard(t, f, 201, 300)?.decision).toBe('deny');
+  });
+
+  it('allows the 2nd paged slice read', () => {
+    const f = createFile('big.ts', 800);
+    const t = createTranscript([user, readStep(1, f, 1, 100)]);
+    expect(guard(t, f, 101, 200)?.decision).toBe('allow');
+  });
+
+  it('allows non-contiguous slices (targeted margin reads)', () => {
+    const f = createFile('big.ts', 800);
+    const t = createTranscript([
+      user,
+      readStep(1, f, 10, 30),
+      readStep(3, f, 300, 330),
+    ]);
+    expect(guard(t, f, 450, 480)?.decision).toBe('allow');
+  });
+
+  it('resets when another tool call is in between', () => {
+    const f = createFile('big.ts', 800);
+    const t = createTranscript([
+      user,
+      readStep(1, f, 1, 100),
+      {
+        step_index: 3,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [{ name: 'run_command', args: { CommandLine: 'ls' } }],
+      },
+      readStep(5, f, 101, 200),
+    ]);
+    expect(guard(t, f, 201, 300)?.decision).toBe('allow');
+  });
+
+  it('does not chain reads of different files', () => {
+    const a = createFile('a.ts', 800);
+    const b = createFile('b.ts', 800);
+    const t = createTranscript([
+      user,
+      readStep(1, a, 1, 100),
+      readStep(3, b, 101, 200),
+    ]);
+    expect(guard(t, a, 201, 300)?.decision).toBe('allow');
+  });
+
+  it('applies to read_file with quoted args and to non-planner roles', () => {
+    const f = createFile('big.ts', 800);
+    const t = createTranscript([
+      {
+        step_index: 0,
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "REVIEW_REQUEST"\nReview',
+      },
+      readStep(1, f, 1, 100),
+      readStep(3, f, 101, 200),
+    ]);
+    expect(guard(t, f, 201, 300, 'read_file')?.decision).toBe('deny');
+  });
+
+  it('does not block small files (auto-overwritten to whole file)', () => {
+    const f = createFile('small.ts', 200);
+    const t = createTranscript([
+      user,
+      readStep(1, f, 1, 50),
+      readStep(3, f, 51, 100),
+    ]);
+    const res = guard(t, f, 101, 150);
+    expect(res?.decision).toBe('allow');
+    expect(res?.overwrite).toEqual({ StartLine: 1, EndLine: 200 });
+  });
+});

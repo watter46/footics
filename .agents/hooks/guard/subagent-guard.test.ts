@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { checkSubagentGuard } from './subagent-guard';
+import { checkSubagentGuard, checkSubagentPollGuard } from './subagent-guard';
 
 describe('checkSubagentGuard', () => {
   it('allows non-send_message tool calls', () => {
@@ -181,5 +181,124 @@ describe('checkSubagentGuard', () => {
 
     // クリーンアップ
     fs.rmSync(testDir, { recursive: true, force: true });
+  });
+});
+
+describe('checkSubagentPollGuard', () => {
+  const testDir = path.resolve('.agents/hooks/guard/__tests__/fixtures-poll');
+
+  function createTranscript(steps: any[]): string {
+    fs.mkdirSync(testDir, { recursive: true });
+    const p = path.join(testDir, `t-${Math.random()}.jsonl`);
+    fs.writeFileSync(p, `${steps.map((s) => JSON.stringify(s)).join('\n')}\n`);
+    return p;
+  }
+
+  const listCall = (action = '"list"') => ({
+    name: 'manage_subagents',
+    args: { Action: action },
+  });
+  const step = (i: number, ...calls: any[]) => ({
+    step_index: i,
+    type: 'PLANNER_RESPONSE',
+    tool_calls: calls,
+  });
+  const payloadFor = (
+    transcriptPath: string | undefined,
+    action = '"list"',
+  ) => ({
+    transcriptPath,
+    toolCall: listCall(action),
+  });
+
+  afterEach(() => {
+    fs.rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('returns null for non manage_subagents tools', () => {
+    expect(
+      checkSubagentPollGuard({
+        toolCall: { name: 'run_command', args: { CommandLine: 'ls' } },
+      }),
+    ).toBeNull();
+  });
+
+  it('allows when there is no transcript', () => {
+    expect(checkSubagentPollGuard(payloadFor(undefined))).toEqual({
+      decision: 'allow',
+    });
+  });
+
+  it('allows the 1st and 2nd consecutive list', () => {
+    const t1 = createTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'go' },
+      step(1, listCall()),
+    ]);
+    expect(checkSubagentPollGuard(payloadFor(t1))?.decision).toBe('allow');
+
+    const t2 = createTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'go' },
+      step(1, listCall()),
+      step(3, listCall()),
+    ]);
+    expect(checkSubagentPollGuard(payloadFor(t2))?.decision).toBe('allow');
+  });
+
+  it('denies the 3rd consecutive list', () => {
+    const t = createTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'go' },
+      step(1, listCall()),
+      step(3, listCall()),
+      step(5, listCall()),
+    ]);
+    const res = checkSubagentPollGuard(payloadFor(t));
+    expect(res?.decision).toBe('deny');
+    expect(res?.reason).toContain('[GUARD]');
+    expect(res?.reason).toContain('manage_subagents');
+  });
+
+  it('resets the count when another tool call is in between', () => {
+    const t = createTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'go' },
+      step(1, listCall()),
+      step(3, listCall()),
+      step(5, { name: 'run_command', args: { CommandLine: 'ls' } }),
+      step(7, listCall()),
+    ]);
+    expect(checkSubagentPollGuard(payloadFor(t))?.decision).toBe('allow');
+  });
+
+  it('resets the count on SYSTEM_MESSAGE (child notification)', () => {
+    const t = createTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'go' },
+      step(1, listCall()),
+      step(3, listCall()),
+      { step_index: 4, type: 'SYSTEM_MESSAGE', content: 'worker done' },
+      step(5, listCall()),
+    ]);
+    expect(checkSubagentPollGuard(payloadFor(t))?.decision).toBe('allow');
+  });
+
+  it('never blocks kill / kill_all', () => {
+    const t = createTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'go' },
+      step(1, listCall(), listCall(), listCall()),
+    ]);
+    expect(checkSubagentPollGuard(payloadFor(t, '"kill"'))?.decision).toBe(
+      'allow',
+    );
+    expect(checkSubagentPollGuard(payloadFor(t, 'kill_all'))?.decision).toBe(
+      'allow',
+    );
+  });
+
+  it('handles unquoted Action values', () => {
+    const t = createTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'go' },
+      step(1, listCall('list'), listCall('list'), listCall('list')),
+    ]);
+    expect(checkSubagentPollGuard(payloadFor(t, 'list'))?.decision).toBe(
+      'deny',
+    );
   });
 });
