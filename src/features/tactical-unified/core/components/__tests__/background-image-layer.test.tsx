@@ -96,7 +96,7 @@ describe('BackgroundImageLayer', () => {
       </CanvasStoreContext.Provider>,
     );
 
-    expect(loadSpy).toHaveBeenCalledWith('4:5');
+    expect(loadSpy).toHaveBeenCalledWith('4:5', expect.anything());
 
     await act(async () => {
       await Promise.resolve();

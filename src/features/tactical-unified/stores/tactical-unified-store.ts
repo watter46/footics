@@ -9,6 +9,7 @@
 import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
+import { ensureTacticalProject } from '@/lib/types/tactical-unified';
 import {
   type AnnotationSlice,
   createAnnotationSlice,
@@ -105,15 +106,81 @@ export interface TacticalUnifiedState
 
 export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
   temporal(
-    subscribeWithSelector((set, get, store) => ({
-      ...createHistorySlice(set, get, store),
-      ...createClipboardSlice(set, get, store),
-      ...createSlideSlice(set, get, store),
-      ...createAnnotationSlice(set, get, store),
-      ...createToolSlice(set, get, store),
-      ...createPitchSlice(set, get, store),
-      ...createProjectSlice(set, get, store),
-    })),
+    subscribeWithSelector((set, get, store) => {
+      const interceptProject = (
+        partial:
+          | TacticalUnifiedState
+          | Partial<TacticalUnifiedState>
+          | ((
+              state: TacticalUnifiedState,
+            ) => TacticalUnifiedState | Partial<TacticalUnifiedState>),
+      ) => {
+        if (typeof partial === 'function') {
+          return (state: TacticalUnifiedState) => {
+            const next = partial(state);
+            if (
+              next &&
+              typeof next === 'object' &&
+              'project' in next &&
+              next.project
+            ) {
+              ensureTacticalProject(next.project);
+            }
+            return next;
+          };
+        }
+        if (
+          partial &&
+          typeof partial === 'object' &&
+          'project' in partial &&
+          partial.project
+        ) {
+          ensureTacticalProject(partial.project);
+        }
+        return partial;
+      };
+
+      const wrappedSet: typeof set = (...args) => {
+        const [partial, replace] = args;
+        const intercepted = interceptProject(partial);
+        if (replace) {
+          set(
+            intercepted as
+              | TacticalUnifiedState
+              | ((state: TacticalUnifiedState) => TacticalUnifiedState),
+            true,
+          );
+        } else {
+          set(intercepted, false);
+        }
+      };
+
+      const origSetState = store.setState;
+      store.setState = (...args) => {
+        const [partial, replace] = args;
+        const intercepted = interceptProject(partial);
+        if (replace) {
+          origSetState(
+            intercepted as
+              | TacticalUnifiedState
+              | ((state: TacticalUnifiedState) => TacticalUnifiedState),
+            true,
+          );
+        } else {
+          origSetState(intercepted, false);
+        }
+      };
+
+      return {
+        ...createHistorySlice(wrappedSet, get, store),
+        ...createClipboardSlice(wrappedSet, get, store),
+        ...createSlideSlice(wrappedSet, get, store),
+        ...createAnnotationSlice(wrappedSet, get, store),
+        ...createToolSlice(wrappedSet, get, store),
+        ...createPitchSlice(wrappedSet, get, store),
+        ...createProjectSlice(wrappedSet, get, store),
+      };
+    }),
     {
       limit: MAX_HISTORY,
       partialize: (state) => ({

@@ -4,7 +4,10 @@
  */
 
 import { db } from '@/lib/db/schema';
-import type { TacticalProject } from '@/lib/types/tactical-unified';
+import {
+  ensureTacticalProject,
+  type TacticalProject,
+} from '@/lib/types/tactical-unified';
 
 export { getMatchForTacticalProject } from '@/lib/db/tactical-match-helper';
 export const TACTICAL_PROJECT_STORAGE_KEY = 'tactical_active_project';
@@ -49,13 +52,13 @@ export async function loadActiveProjectFromDb(
 ): Promise<TacticalProject | null> {
   try {
     const entry = await db.keyval.get(getTacticalProjectStorageKey(matchId));
-    if (
-      entry?.value &&
-      typeof entry.value === 'object' &&
-      Array.isArray(entry.value.slides) &&
-      entry.value.slides.length > 0
-    ) {
-      return entry.value as TacticalProject;
+    if (entry?.value && typeof entry.value === 'object') {
+      const val = entry.value as { phases?: unknown[]; slides?: unknown[] };
+      const hasPhases = Array.isArray(val.phases) && val.phases.length > 0;
+      const hasSlides = Array.isArray(val.slides) && val.slides.length > 0;
+      if (hasPhases || hasSlides) {
+        return ensureTacticalProject(val);
+      }
     }
     return null;
   } catch (error) {

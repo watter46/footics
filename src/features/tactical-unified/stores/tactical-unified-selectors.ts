@@ -20,8 +20,12 @@ export const selectActivePhase = <
 >(
   s: T,
 ): TacticalPhase | undefined => {
-  const activeId = s.activePhaseId ?? s.project.activePhaseId;
-  return s.project.phases.find((p) => p.id === activeId) ?? s.project.phases[0];
+  const phases = s.project?.phases;
+  if (!phases || !Array.isArray(phases) || phases.length === 0) {
+    return undefined;
+  }
+  const activeId = s.activePhaseId ?? s.project?.activePhaseId;
+  return phases.find((p) => p.id === activeId) ?? phases[0];
 };
 
 /** アクティブ Phase 配下のスライド配列を取得 (空なら []) */
@@ -42,10 +46,11 @@ export const selectActiveSlide = <
   s: T,
 ): Slide | undefined => {
   const activePhase = selectActivePhase(s);
-  const inActive = activePhase?.slides.find((sl) => sl.id === s.activeSlideId);
+  const inActive = activePhase?.slides?.find((sl) => sl.id === s.activeSlideId);
   if (inActive) return inActive;
-  for (const phase of s.project.phases) {
-    const found = phase.slides.find((sl) => sl.id === s.activeSlideId);
+  const phases = s.project?.phases ?? [];
+  for (const phase of phases) {
+    const found = phase.slides?.find((sl) => sl.id === s.activeSlideId);
     if (found) return found;
   }
   return undefined;

@@ -178,3 +178,43 @@ export const DrawingToolSchema = z.enum([
   'pan',
 ]);
 export type DrawingTool = z.infer<typeof DrawingToolSchema>;
+
+// ─────────────────────────────────────────
+// § 13. スライド getter ユーティリティ
+// ─────────────────────────────────────────
+
+/**
+ * プロジェクトオブジェクトに非列挙の slides getter を付与する。
+ * イミュータブルなスプレッドコピーやシリアライズで getter が消失した場合でも、
+ * 本関数を通すことで安全に project.slides へのアクセスが可能になる。
+ */
+export function attachProjectSlidesGetter<
+  T extends { phases?: TacticalPhase[]; activePhaseId?: string },
+>(project: T): T & { readonly slides: Slide[] } {
+  if (!project) return project as T & { readonly slides: Slide[] };
+  const desc = Object.getOwnPropertyDescriptor(project, 'slides');
+  if (desc?.get) return project as T & { readonly slides: Slide[] };
+
+  try {
+    delete (project as { slides?: unknown }).slides;
+  } catch {
+    // ignore
+  }
+
+  try {
+    Object.defineProperty(project, 'slides', {
+      get(this: TacticalProject) {
+        return (
+          this.phases?.find((p) => p.id === this.activePhaseId)?.slides ??
+          this.phases?.[0]?.slides ??
+          []
+        );
+      },
+      enumerable: false,
+      configurable: true,
+    });
+  } catch {
+    // ignore
+  }
+  return project as T & { readonly slides: Slide[] };
+}

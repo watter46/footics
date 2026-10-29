@@ -4,7 +4,11 @@ import {
   isVerticalAspectRatio,
   transformCoord,
 } from './primitives';
-import type { TacticalPhase, TacticalProject } from './project';
+import {
+  attachProjectSlidesGetter,
+  type TacticalPhase,
+  type TacticalProject,
+} from './project';
 import {
   type BoundaryBox,
   DEFAULT_BOUNDARY_BOX_4_5,
@@ -226,19 +230,7 @@ export function createDefaultProject(id: string): TacticalProject {
     tags: [],
   };
 
-  Object.defineProperty(project, 'slides', {
-    get(this: TacticalProject) {
-      return (
-        this.phases?.find((p) => p.id === this.activePhaseId)?.slides ??
-        this.phases?.[0]?.slides ??
-        []
-      );
-    },
-    enumerable: false,
-    configurable: true,
-  });
-
-  return project as unknown as TacticalProject;
+  return attachProjectSlidesGetter(project);
 }
 
 export function createDefaultSlide(

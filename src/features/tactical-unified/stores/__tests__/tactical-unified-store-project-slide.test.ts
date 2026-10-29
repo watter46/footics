@@ -8,6 +8,7 @@ import type { TacticalProject } from '@/lib/types/tactical-unified';
 import {
   createDefaultPlayer,
   createDefaultProject,
+  createDefaultSlide,
 } from '@/lib/types/tactical-unified';
 import { selectActivePhaseSlides } from '../tactical-unified-selectors';
 import { useTacticalUnifiedStore } from '../tactical-unified-store';
@@ -55,6 +56,33 @@ describe('tactical-unified-store - project & slide', () => {
       'Test Project',
     );
     expect(useTacticalUnifiedStore.getState().isDirty).toBe(false);
+  });
+
+  it('旧データ形式 (phases が存在しない slides 配列のみのプロジェクト) を loadProject してもクラッシュせず正常に移行する', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const legacyProject = {
+      id: 'legacy-project-dexie',
+      title: 'Legacy Dexie Project',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      aspectRatio: '4:5' as const,
+      backgroundType: 'pitch' as const,
+      homeColor: { primary: '#034694' },
+      awayColor: { primary: '#ef4444' },
+      slides: [createDefaultSlide(0, 'legacy-slide-1')],
+      activeSlideId: 'legacy-slide-1',
+    };
+
+    // phases がない旧形式のまま loadProject
+    store.loadProject(legacyProject as any);
+
+    const state = useTacticalUnifiedStore.getState();
+    expect(state.project.title).toBe('Legacy Dexie Project');
+    expect(state.project.phases).toHaveLength(1);
+    expect(state.project.phases[0].slides[0].id).toBe('legacy-slide-1');
+    expect(state.activePhaseId).toBe(state.project.phases[0].id);
+    expect(state.activeSlideId).toBe('legacy-slide-1');
+    expect(selectActivePhaseSlides(state)).toHaveLength(1);
   });
 
   it('isDirty が操作後に true になる', () => {

@@ -30,7 +30,7 @@ describe('ZoneObject components & helpers', () => {
     const style = getZoneStyle(sampleZone);
     expect(style.strokeColor).toBe('#1d4ed8');
     expect(style.strokeWidth).toBe(3);
-    expect(style.fillRGBA).toBe('#3b82f6');
+    expect(style.fillRGBA).toBe('#3b82f680');
     expect(style.opacity).toBe(0.5);
   });
 
@@ -48,7 +48,7 @@ describe('ZoneObject components & helpers', () => {
     const style = getZoneStyle(defaultZone);
     expect(style.strokeColor).toBe('#3b82f6');
     expect(style.strokeWidth).toBe(2);
-    expect(style.fillRGBA).toBe('#3b82f6');
+    expect(style.fillRGBA).toBe('#3b82f640');
     expect(style.opacity).toBe(0.25);
   });
 });

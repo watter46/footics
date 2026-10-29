@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AspectRatioSchema,
+  attachProjectSlidesGetter,
   BoundaryBoxSchema,
   ConnectLineSchema,
   createDefaultPhase,
@@ -14,6 +15,7 @@ import {
   createDefaultSlide,
   createXBoundaryBox,
   DrawingToolSchema,
+  ensureTacticalProject,
   getAspectRatioOrientation,
   isHorizontalAspectRatio,
   isVerticalAspectRatio,
@@ -384,5 +386,57 @@ describe('MarkerStyleSchema & ConnectLineSchema & DrawingToolSchema', () => {
     expect(DrawingToolSchema.parse('player-ring-fade')).toBe(
       'player-ring-fade',
     );
+  });
+});
+
+describe('ensureTacticalProject & attachProjectSlidesGetter', () => {
+  it('旧形式データ (slides配列のみ・phasesなし) を安全に新形式 (phases配列) にマイグレーションする', () => {
+    const slide1 = createDefaultSlide(0, 'slide-legacy-1');
+    const legacyProject = {
+      id: 'legacy-project-1',
+      title: 'Legacy Project',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      aspectRatio: '4:5',
+      backgroundType: 'pitch',
+      homeColor: { primary: '#034694' },
+      awayColor: { primary: '#ef4444' },
+      slides: [slide1],
+      activeSlideId: 'slide-legacy-1',
+    };
+
+    const normalized = ensureTacticalProject(legacyProject);
+    expect(normalized.phases).toHaveLength(1);
+    expect(normalized.phases[0].name).toBe('Phase 1');
+    expect(normalized.phases[0].slides).toHaveLength(1);
+    expect(normalized.phases[0].slides[0].id).toBe('slide-legacy-1');
+    expect(normalized.activePhaseId).toBe(normalized.phases[0].id);
+    expect(normalized.activeSlideId).toBe('slide-legacy-1');
+    expect(normalized.slides).toHaveLength(1);
+    expect(normalized.slides[0].id).toBe('slide-legacy-1');
+  });
+
+  it('スプレッド構文や structuredClone で消失した slides getter を再バインドする', () => {
+    const project = createDefaultProject('test-p-1');
+    expect(project.slides).toHaveLength(1);
+
+    // スプレッド構文による浅いコピー（非列挙プロパティ slides が消失）
+    const shallowCopy = { ...project };
+    expect((shallowCopy as any).slides).toBeUndefined();
+
+    // ensureTacticalProject で getter を復元
+    const restored = ensureTacticalProject(shallowCopy);
+    expect(restored.slides).toHaveLength(1);
+    expect(restored.slides[0].id).toBe(project.phases[0].slides[0].id);
+  });
+
+  it('空データまたは不正データが渡された場合はデフォルトプロジェクトにフォールバックする', () => {
+    const fallbackNull = ensureTacticalProject(null);
+    expect(fallbackNull.id).toBeDefined();
+    expect(fallbackNull.phases).toHaveLength(1);
+
+    const fallbackEmpty = ensureTacticalProject({});
+    expect(fallbackEmpty.phases).toHaveLength(1);
+    expect(fallbackEmpty.slides).toHaveLength(1);
   });
 });

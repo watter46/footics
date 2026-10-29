@@ -182,18 +182,28 @@ export const createSlideCrudSlice: StateCreator<
       const nextBgType = targetSlide?.backgroundType ?? 'pitch';
       const nextBgUrl = targetSlide?.backgroundImageUrl;
       const nextPhaseId = targetPhase?.id ?? s.activePhaseId;
+      const bgUnchanged =
+        s.project.backgroundType === nextBgType &&
+        s.project.backgroundImageUrl === nextBgUrl;
+
+      if (bgUnchanged) {
+        s.project.activePhaseId = nextPhaseId;
+        s.project.activeSlideId = slideId;
+      }
 
       return {
         activePhaseId: nextPhaseId,
         activeSlideId: slideId,
         selectedObjects: [],
-        project: {
-          ...s.project,
-          activePhaseId: nextPhaseId,
-          activeSlideId: slideId,
-          backgroundType: nextBgType,
-          backgroundImageUrl: nextBgUrl,
-        },
+        project: bgUnchanged
+          ? s.project
+          : {
+              ...s.project,
+              activePhaseId: nextPhaseId,
+              activeSlideId: slideId,
+              backgroundType: nextBgType,
+              backgroundImageUrl: nextBgUrl,
+            },
         panels: resolvePanelStateForSlide(targetSlide, s.panels),
       };
     }),

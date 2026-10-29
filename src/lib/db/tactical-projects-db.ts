@@ -15,6 +15,7 @@ import {
 } from '@/lib/tactical/tactical-storage';
 import {
   createDefaultProject,
+  ensureTacticalProject,
   type TacticalProject,
 } from '@/lib/types/tactical-unified';
 import type { Match } from '@/types';
@@ -46,7 +47,10 @@ export async function listTacticalProjects(): Promise<
       updatedAt: p.updatedAt,
       createdAt: p.createdAt,
       slideCount:
-        p.phases?.reduce((acc, ph) => acc + (ph.slides?.length ?? 0), 0) ?? 0,
+        p.phases?.reduce((acc, ph) => acc + (ph.slides?.length ?? 0), 0) ??
+        ('slides' in p && Array.isArray((p as { slides?: unknown[] }).slides)
+          ? ((p as { slides?: unknown[] }).slides?.length ?? 0)
+          : 0),
       aspectRatio: p.aspectRatio,
       thumbnail: p.thumbnail,
       backgroundType: p.backgroundType,
@@ -63,7 +67,7 @@ export async function getTacticalProjectById(
 ): Promise<TacticalProject | null> {
   try {
     const project = await db.tactical_projects.get(id);
-    return project ?? null;
+    return project ? ensureTacticalProject(project) : null;
   } catch (error) {
     console.error(`Failed to get tactical project ${id}:`, error);
     return null;
@@ -147,13 +151,13 @@ export async function duplicateTacticalProject(
 
   const newId = crypto.randomUUID();
   const now = new Date().toISOString();
-  const cloned: TacticalProject = {
+  const cloned: TacticalProject = ensureTacticalProject({
     ...structuredClone(original),
     id: newId,
     title: `${original.title || 'Untitled Project'} (Copy)`,
     createdAt: now,
     updatedAt: now,
-  };
+  });
 
   await saveTacticalProject(cloned, false);
   return cloned;
