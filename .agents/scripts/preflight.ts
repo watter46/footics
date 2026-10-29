@@ -153,11 +153,12 @@ function runBiome(files: string[]): Promise<StepResult> {
   );
 }
 
-function runTypes(files: string[]): Promise<StepResult> {
+function runTypes(files: string[], scopedOnly = false): Promise<StepResult> {
   if (files.length === 0) return Promise.resolve(skippedStep('tsc', 'no ts'));
   return runStep('tsc', [
     'bun',
     'scripts/verify/type-check-scoped.ts',
+    ...(scopedOnly ? ['--scoped-only'] : []),
     ...files,
   ]);
 }
@@ -265,7 +266,7 @@ export async function executePreflight(
   const results = await Promise.all([
     runSize(files),
     runBiome(plan.biome),
-    runTypes(plan.tsc),
+    runTypes(plan.tsc, args.length > 0),
     ...runTests(plan),
   ]);
 

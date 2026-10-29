@@ -8,6 +8,7 @@ import {
   AspectRatioSchema,
   BoundaryBoxSchema,
   ConnectLineSchema,
+  createDefaultPhase,
   createDefaultPlayer,
   createDefaultProject,
   createDefaultSlide,
@@ -19,6 +20,7 @@ import {
   MarkerStyleSchema,
   PlayerSchema,
   SlideSchema,
+  TacticalPhaseSchema,
   TacticalProjectSchema,
   transformCoord,
   transformPoints,
@@ -133,15 +135,45 @@ describe('transformPoints', () => {
   });
 });
 
+describe('TacticalPhaseSchema', () => {
+  it('createDefaultPhase が有効なフェーズを生成する', () => {
+    const phase = createDefaultPhase('test-phase-id', 'Phase 1');
+    const result = TacticalPhaseSchema.safeParse(phase);
+    expect(result.success).toBe(true);
+    expect(phase.id).toBe('test-phase-id');
+    expect(phase.name).toBe('Phase 1');
+    expect(phase.slides).toHaveLength(1);
+  });
+
+  it('slides が空の場合はエラー', () => {
+    const phase = { id: 'p1', name: 'Phase 1', slides: [] };
+    const result = TacticalPhaseSchema.safeParse(phase);
+    expect(result.success).toBe(false);
+  });
+
+  it('name が空文字の場合はエラー', () => {
+    const phase = {
+      id: 'p1',
+      name: '',
+      slides: [createDefaultSlide(0)],
+    };
+    const result = TacticalPhaseSchema.safeParse(phase);
+    expect(result.success).toBe(false);
+  });
+});
+
 describe('TacticalProjectSchema', () => {
   it('createDefaultProject が有効なプロジェクトを生成する', () => {
     const project = createDefaultProject('test-id');
     const result = TacticalProjectSchema.safeParse(project);
     expect(result.success).toBe(true);
+    expect(project.phases).toHaveLength(1);
+    expect(project.activePhaseId).toBe(project.phases[0].id);
+    expect(project.activeSlideId).toBe(project.phases[0].slides[0].id);
   });
 
-  it('slides が空の場合はエラー', () => {
-    const project = { ...createDefaultProject('test-id'), slides: [] };
+  it('phases が空の場合はエラー', () => {
+    const project = { ...createDefaultProject('test-id'), phases: [] };
     const result = TacticalProjectSchema.safeParse(project);
     expect(result.success).toBe(false);
   });
