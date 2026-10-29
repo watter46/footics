@@ -26,6 +26,7 @@ export interface PitchSvgOptions {
   strokeOpacity?: number;
   strokeWidth?: number;
   grass?: boolean;
+  onlyMarkings?: boolean;
 }
 
 /**
@@ -41,6 +42,7 @@ export function generatePitchSvg(
     strokeOpacity = 0.85,
     strokeWidth = 4,
     grass = true,
+    onlyMarkings = false,
   } = options;
 
   const {
@@ -133,6 +135,12 @@ export function generatePitchSvg(
 `;
   }
 
+  if (onlyMarkings) {
+    return `<svg viewBox="${config.viewBox}" xmlns="http://www.w3.org/2000/svg">
+  ${markingsSvg}
+</svg>`.trim();
+  }
+
   return `<svg viewBox="${config.viewBox}" xmlns="http://www.w3.org/2000/svg">
   <!-- Solid Frame Background -->
   <rect x="0" y="0" width="${config.widthPx}" height="${config.heightPx}" fill="#000000"/>
@@ -152,7 +160,10 @@ function getCacheKey(
   const margin = options?.marginPercent ?? DEFAULT_PITCH_MARGIN_PERCENT;
   const grass = options?.grass ?? true;
   const strokeColor = options?.strokeColor ?? '#e2b48d';
-  return `${aspectRatio}-${margin}-${grass}-${strokeColor}`;
+  const strokeWidth = options?.strokeWidth ?? 4;
+  const strokeOpacity = options?.strokeOpacity ?? 0.85;
+  const onlyMarkings = options?.onlyMarkings ?? false;
+  return `${aspectRatio}-${margin}-${grass}-${strokeColor}-${strokeWidth}-${strokeOpacity}-${onlyMarkings}`;
 }
 
 export function getPitchSvgDataUrl(

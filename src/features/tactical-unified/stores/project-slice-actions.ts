@@ -1,10 +1,12 @@
 import type {
   AspectRatio,
+  PitchAppearanceConfig,
   Slide,
   TacticalProject,
 } from '@/lib/types/tactical-unified';
 import {
   createDefaultProject,
+  DEFAULT_PITCH_APPEARANCE,
   getDefaultBoundaryBoxForAspect,
 } from '@/lib/types/tactical-unified';
 import { transformSlideAspectRatio } from './slide-aspect-helpers';
@@ -148,6 +150,20 @@ export function createProjectMetaActions(set: ProjectSliceSet) {
 
 export function createProjectConfigActions(set: ProjectSliceSet) {
   return {
+    updatePitchAppearance: (appearance: Partial<PitchAppearanceConfig>) =>
+      set((s) => ({
+        ...recordHistory(s),
+        project: {
+          ...s.project,
+          pitchAppearance: {
+            ...(s.project.pitchAppearance ?? DEFAULT_PITCH_APPEARANCE),
+            ...appearance,
+          },
+          updatedAt: new Date().toISOString(),
+        },
+        isDirty: true,
+      })),
+
     swapTeamSides: (slideId?: string) =>
       set((s) => {
         const targetSlideId = slideId ?? s.activeSlideId;

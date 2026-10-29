@@ -8,7 +8,9 @@ import {
   loadPitchSvgImage,
   preloadAllPitchSvgImages,
 } from '@/lib/tactical/pitch-svg';
+import { DEFAULT_PITCH_APPEARANCE } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
+import { PitchMarbleBackground } from './pitch-marble-background';
 
 export interface PitchBackgroundImageProps {
   width: number;
@@ -21,6 +23,9 @@ export function PitchBackgroundImage({
 }: PitchBackgroundImageProps): ReactNode {
   const backgroundImageUrl = useCanvasStore((s) => s.backgroundImageUrl);
   const aspectRatio = useCanvasStore((s) => s.aspectRatio ?? '16:9');
+  const pitchAppearance = useCanvasStore(
+    (s) => s.pitchAppearance ?? DEFAULT_PITCH_APPEARANCE,
+  );
 
   const [customImage, setCustomImage] = useState<HTMLImageElement | null>(null);
   const [pitchImage, setPitchImage] = useState<HTMLImageElement | null>(() => {
@@ -53,18 +58,24 @@ export function PitchBackgroundImage({
     };
   }, [backgroundImageUrl]);
 
-  // backgroundImageUrl 未指定時のピッチSVGロード
+  // solid ピッチSVGロード
   useEffect(() => {
     if (backgroundImageUrl) return;
+    if (pitchAppearance.pitchBackgroundType === 'marble') return;
 
-    const cached = getCachedPitchSvgImage(aspectRatio);
+    const options = {
+      strokeColor: pitchAppearance.lineColor,
+      strokeWidth: pitchAppearance.lineWidth,
+      strokeOpacity: pitchAppearance.lineOpacity,
+    };
+    const cached = getCachedPitchSvgImage(aspectRatio, options);
     if (cached) {
       setPitchImage(cached);
       return;
     }
 
     let active = true;
-    loadPitchSvgImage(aspectRatio)
+    loadPitchSvgImage(aspectRatio, options)
       .then((img) => {
         if (active) {
           setPitchImage(img);
@@ -75,23 +86,51 @@ export function PitchBackgroundImage({
     return () => {
       active = false;
     };
-  }, [backgroundImageUrl, aspectRatio]);
+  }, [backgroundImageUrl, aspectRatio, pitchAppearance]);
 
-  const displayImage = backgroundImageUrl ? customImage : pitchImage;
+  // 1. カスタム画像背景
+  if (backgroundImageUrl && customImage) {
+    return (
+      <KonvaImage
+        image={customImage}
+        x={0}
+        y={0}
+        width={width}
+        height={height}
+        listening={false}
+        perfectDrawEnabled={false}
+      />
+    );
+  }
 
-  if (!displayImage) return null;
+  // 2. 大理石背景
+  if (pitchAppearance.pitchBackgroundType === 'marble') {
+    return (
+      <PitchMarbleBackground
+        width={width}
+        height={height}
+        aspectRatio={aspectRatio}
+        pitchAppearance={pitchAppearance}
+      />
+    );
+  }
 
-  return (
-    <KonvaImage
-      image={displayImage}
-      x={0}
-      y={0}
-      width={width}
-      height={height}
-      listening={false}
-      perfectDrawEnabled={false}
-    />
-  );
+  // 3. 通常ピッチ（Solid）
+  if (pitchImage) {
+    return (
+      <KonvaImage
+        image={pitchImage}
+        x={0}
+        y={0}
+        width={width}
+        height={height}
+        listening={false}
+        perfectDrawEnabled={false}
+      />
+    );
+  }
+
+  return null;
 }
 
 export interface BackgroundImageLayerProps {

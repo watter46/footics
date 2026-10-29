@@ -2,6 +2,7 @@ import type { StateCreator } from 'zustand';
 import type {
   AspectRatio,
   ExportTarget,
+  PitchAppearanceConfig,
   TacticalProject,
 } from '@/lib/types/tactical-unified';
 import { createDefaultProject } from '@/lib/types/tactical-unified';
@@ -43,6 +44,7 @@ export interface ProjectSlice {
   setTitle: (title: string) => void;
   setBackgroundType: (type: TacticalProject['backgroundType']) => void;
   setBackgroundImageUrl: (url: string | undefined) => void;
+  updatePitchAppearance: (appearance: Partial<PitchAppearanceConfig>) => void;
   restoreDefaultPitch: () => void;
   setImageBackground: (url: string) => void;
   setTeamColor: (

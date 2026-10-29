@@ -108,7 +108,10 @@ export function transformPoints(
 // ─────────────────────────────────────────
 
 export const MarkerStyleSchema = z.object({
-  markerType: z.enum(['circle', 'ring']).optional().default('circle'),
+  markerType: z
+    .enum(['circle', 'ring', 'ring-fade'])
+    .optional()
+    .default('circle'),
   insideContent: z.enum(['number', 'photo', 'none']).default('number'),
   photoUrl: z.string().url().optional(),
   bottomLabel: z.enum(['name', 'number', 'none']).default('name'),
@@ -121,6 +124,8 @@ export const MarkerStyleSchema = z.object({
   sizeScale: z.number().min(0.4).max(2.0).default(1.0),
   numberSizeScale: z.number().min(0.6).max(1.8).default(1.0),
   labelSizeScale: z.number().min(0.6).max(1.8).default(1.0),
+  glowBlur: z.number().min(0).max(100).default(50).optional(),
+  glowOpacity: z.number().min(0).max(1).default(1.0).optional(),
 });
 export type MarkerStyle = z.infer<typeof MarkerStyleSchema>;
 
@@ -156,6 +161,8 @@ export const ConnectLineSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/)
     .default('#ffffff'),
   strokeWidth: z.number().min(1).max(8).default(3.5),
+  glowBlur: z.number().min(0).max(100).default(50).optional(),
+  glowOpacity: z.number().min(0).max(1).default(1.0).optional(),
   visible: z.boolean().default(true),
 });
 export type ConnectLine = z.infer<typeof ConnectLineSchema>;
@@ -567,6 +574,25 @@ export const PitchTransformSchema = z.object({
 });
 export type PitchTransform = z.infer<typeof PitchTransformSchema>;
 
+export const PitchAppearanceConfigSchema = z.object({
+  pitchBackgroundType: z.enum(['solid', 'marble']).default('solid'),
+  overlayColor: z.string().default('#0B303E'),
+  overlayOpacity: z.number().min(0).max(1).default(1.0),
+  lineColor: z.string().default('#ffffff'),
+  lineWidth: z.number().min(1).max(6).default(2.5),
+  lineOpacity: z.number().min(0).max(1).default(1.0),
+});
+export type PitchAppearanceConfig = z.infer<typeof PitchAppearanceConfigSchema>;
+
+export const DEFAULT_PITCH_APPEARANCE: PitchAppearanceConfig = {
+  pitchBackgroundType: 'solid',
+  overlayColor: '#0B303E',
+  overlayOpacity: 1.0,
+  lineColor: '#ffffff',
+  lineWidth: 2.5,
+  lineOpacity: 1.0,
+};
+
 export const SlideSchema = z.object({
   id: z.string(),
   index: z.number().int().min(0),
@@ -591,6 +617,7 @@ export const SlideSchema = z.object({
   aspectRatio: AspectRatioSchema.optional(),
   pitchTransform: PitchTransformSchema.optional(),
   pitchPosition: z.object({ x: z.number(), y: z.number() }).optional(),
+  pitchAppearance: PitchAppearanceConfigSchema.optional(),
   isSidesSwapped: z.boolean().optional(),
 });
 export type Slide = z.infer<typeof SlideSchema>;
@@ -619,6 +646,7 @@ export const TacticalProjectSchema = z.object({
 
   backgroundType: z.enum(['pitch', 'image', 'blank']).default('pitch'),
   backgroundImageUrl: z.string().optional(),
+  pitchAppearance: PitchAppearanceConfigSchema.optional(),
 
   homeColor: TeamColorSchema.default({ primary: '#034694' }),
   awayColor: TeamColorSchema.default({ primary: '#ef4444' }),
@@ -740,6 +768,7 @@ export const DrawingToolSchema = z.enum([
   'eraser',
   'player',
   'player-ring',
+  'player-ring-fade',
   'arrow-straight',
   'arrow-curved',
   'zone',
@@ -962,6 +991,7 @@ export function createDefaultProject(id: string): TacticalProject {
     updatedAt: now,
     aspectRatio: '4:5',
     backgroundType: 'pitch',
+    pitchAppearance: { ...DEFAULT_PITCH_APPEARANCE },
     homeColor,
     awayColor,
     activeSlideId: slideId,

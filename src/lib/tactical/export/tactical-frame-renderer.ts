@@ -13,6 +13,7 @@ import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpo
 import type {
   AspectRatio,
   BoundaryBox,
+  PitchAppearanceConfig,
   Slide,
 } from '@/lib/types/tactical-unified';
 import { renderArrows, renderConnectLines } from './renderers/arrow-renderer';
@@ -52,6 +53,10 @@ export interface RenderTacticalFrameOptions {
   mvpMatrix?: Float32Array | null;
   /** 選手の顔写真ソースマップ (playerId または player.id -> CanvasImageSource) */
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
+  /** ピッチ外観カスタム設定 */
+  pitchAppearance?: PitchAppearanceConfig;
+  /** 大理石テクスチャ画像 */
+  marbleTexture?: CanvasImageSource | null;
 }
 
 /**
@@ -82,6 +87,8 @@ export function renderTacticalFrameToCanvas(
     transparent = false,
     mvpMatrix,
     playerPhotos,
+    pitchAppearance,
+    marbleTexture,
   } = options;
 
   if (w <= 0 || h <= 0) return;
@@ -201,7 +208,13 @@ export function renderTacticalFrameToCanvas(
   };
 
   // 1. Background & Pitch Markings
-  renderPitch(frameContext, aspectRatio, transparent);
+  renderPitch(
+    frameContext,
+    aspectRatio,
+    transparent,
+    pitchAppearance,
+    marbleTexture,
+  );
 
   // 2. Interpolated Frame Data
   const frame = getInterpolatedUnifiedSlideFrame(slides, timeMs);

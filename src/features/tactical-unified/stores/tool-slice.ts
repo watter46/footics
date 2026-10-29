@@ -34,7 +34,7 @@ export interface SelectedObject {
 export interface PanelState {
   sidebarOpen: boolean;
   inspectorOpen: boolean;
-  rightPanelTab: 'formation' | 'squad';
+  rightPanelTab: 'formation' | 'squad' | 'pitch';
   isRightPanelOpen: boolean;
   exportModalOpen: boolean;
   projectManagerModalOpen: boolean;
@@ -65,7 +65,7 @@ export interface ToolSlice {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setInspectorOpen: (open: boolean) => void;
-  setRightPanelTab: (tab: 'formation' | 'squad') => void;
+  setRightPanelTab: (tab: 'formation' | 'squad' | 'pitch') => void;
   toggleRightPanel: () => void;
   setRightPanelOpen: (open: boolean) => void;
   openExportModal: (target?: ExportTarget) => void;
