@@ -70,7 +70,7 @@ function createPitchBoundaryActions(set: SetState) {
     ) =>
       set((s) => {
         const targetSlideId = slideId ?? s.activeSlideId;
-        const slide = s.project.slides.find((sl) => sl.id === targetSlideId);
+        const slide = getSlide(s.project, targetSlideId);
         const isPitchBg =
           (slide?.backgroundType ?? s.project.backgroundType ?? 'pitch') ===
           'pitch';
@@ -105,7 +105,7 @@ function createPitchBoundaryActions(set: SetState) {
         const targetSlideId = slideId ?? s.activeSlideId;
         let box: BoundaryBox;
         if (presetKey === 'pitch_fit') {
-          const slide = s.project.slides.find((sl) => sl.id === targetSlideId);
+          const slide = getSlide(s.project, targetSlideId);
           const isPitchBg =
             (slide?.backgroundType ?? s.project.backgroundType ?? 'pitch') ===
             'pitch';

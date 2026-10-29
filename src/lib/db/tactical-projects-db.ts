@@ -45,7 +45,8 @@ export async function listTacticalProjects(): Promise<
       title: p.title || 'Untitled Project',
       updatedAt: p.updatedAt,
       createdAt: p.createdAt,
-      slideCount: p.slides?.length ?? 0,
+      slideCount:
+        p.phases?.reduce((acc, ph) => acc + (ph.slides?.length ?? 0), 0) ?? 0,
       aspectRatio: p.aspectRatio,
       thumbnail: p.thumbnail,
       backgroundType: p.backgroundType,

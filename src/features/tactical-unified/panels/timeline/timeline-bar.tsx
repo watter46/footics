@@ -31,6 +31,7 @@ import {
 import { Sliders } from 'lucide-react';
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { ActionButton } from '@/components/ui/action-button';
+import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { AddSlideButton } from './add-slide-button';
 import { BatchTransitionPopover } from './batch-transition-popover';
@@ -39,7 +40,7 @@ import { SlideCard, SlideCardOverlay } from './slide-card';
 import { TransitionConnector } from './transition-connector';
 
 export function TimelineBar() {
-  const slides = useTacticalUnifiedStore((s) => s.project.slides);
+  const slides = useTacticalUnifiedStore(selectActivePhaseSlides);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const isPlaying = useTacticalUnifiedStore((s) => s.isPlaying);
   const playbackSlideIndex = useTacticalUnifiedStore(

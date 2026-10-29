@@ -1,4 +1,5 @@
 import type { CanvasClipboard } from '../core/types';
+import { selectActiveSlide } from '../stores/tactical-unified-selectors';
 import type { TacticalUnifiedState } from '../stores/tactical-unified-store';
 
 export function createAdapterClipboardHelpers(
@@ -9,7 +10,7 @@ export function createAdapterClipboardHelpers(
   return {
     copySelectedObjects: () => {
       const s = getState();
-      const slide = s.project.slides.find((sl) => sl.id === s.activeSlideId);
+      const slide = selectActiveSlide(s);
       if (!slide) return;
       const selectedSet = new Set(s.selectedObjects.map((o) => o.id));
       setClipboard({
@@ -59,7 +60,7 @@ export function createAdapterClipboardHelpers(
     },
     duplicateSelectedObjects: () => {
       const s = getState();
-      const slide = s.project.slides.find((sl) => sl.id === s.activeSlideId);
+      const slide = selectActiveSlide(s);
       if (!slide) return;
       const selectedSet = new Set(s.selectedObjects.map((o) => o.id));
       const currentSlideId = s.activeSlideId;

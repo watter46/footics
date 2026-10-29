@@ -6,11 +6,12 @@
  */
 
 import { Pause, Play } from 'lucide-react';
+import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 
 export function PlaybackControls() {
-  const slides = useTacticalUnifiedStore((s) => s.project.slides);
+  const slides = useTacticalUnifiedStore(selectActivePhaseSlides);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const isPlaying = useTacticalUnifiedStore((s) => s.isPlaying);
   const togglePlayback = useTacticalUnifiedStore((s) => s.togglePlayback);

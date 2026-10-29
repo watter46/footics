@@ -53,10 +53,49 @@ describe('useTacticalAnimation hook', () => {
       },
     ];
 
-    project.slides = [slide1, slide2];
+    project.phases = [
+      {
+        id: 'phase-1',
+        name: 'Phase 1',
+        slides: [slide1, slide2],
+      },
+      {
+        id: 'phase-2',
+        name: 'Phase 2',
+        slides: [
+          createDefaultSlide(0, 'slide-3'),
+          {
+            ...createDefaultSlide(1, 'slide-4'),
+            transitionDurationMs: 2000,
+            pauseMs: 1000,
+          },
+        ],
+      },
+    ];
+    project.activePhaseId = 'phase-1';
     project.activeSlideId = 'slide-1';
     useTacticalUnifiedStore.getState().loadProject(project);
     useTacticalUnifiedStore.getState().stopPlayback();
+  });
+
+  it('calculates total duration for active phase only, not across all phases', () => {
+    const registry = createCanvasNodesRegistry();
+    const registryRef = { current: registry };
+
+    const { result, rerender } = renderHook(() =>
+      useTacticalAnimation({ nodesRegistryRef: registryRef }),
+    );
+
+    // Phase 1 has slide1 + slide2: 1000ms + 500ms = 1500ms
+    expect(result.current.totalDurationMs).toBe(1500);
+
+    // Switch to Phase 2 (slide-3: 2000ms + 1000ms = 3000ms)
+    act(() => {
+      useTacticalUnifiedStore.getState().setActivePhase('phase-2');
+    });
+    rerender();
+
+    expect(result.current.totalDurationMs).toBe(3000);
   });
 
   it('calculates total duration across all slides correctly', () => {
@@ -99,7 +138,8 @@ describe('useTacticalAnimation hook', () => {
     } as any;
 
     const firstPlayerId =
-      useTacticalUnifiedStore.getState().project.slides[0].players[0].id;
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0].players[0]
+        .id;
     registry.playerNodes.set(firstPlayerId, mockPlayerGroup);
 
     // Mock Layers

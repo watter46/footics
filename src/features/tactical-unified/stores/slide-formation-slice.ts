@@ -10,7 +10,7 @@ import {
   computeSlideAfterFormation,
   computeSlideAfterSingleTeamFormation,
 } from './slide-formation-helpers';
-import { recordHistory, updateSlideInProject } from './store-helpers';
+import { getSlide, recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 
 export interface SlideFormationSlice {
@@ -43,7 +43,7 @@ export const createSlideFormationSlice: StateCreator<
           : preset.team === 'away'
             ? s.project.awayColor.primary
             : '#6b7280';
-      const targetSlide = s.project.slides.find((sl) => sl.id === slideId);
+      const targetSlide = getSlide(s.project, slideId);
       const aspect =
         targetSlide?.aspectRatio ?? s.project.aspectRatio ?? '16:9';
       const isVertical = isVerticalAspectRatio(aspect);

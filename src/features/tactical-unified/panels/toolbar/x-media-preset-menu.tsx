@@ -26,6 +26,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/menu';
+import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   ASPECT_RATIOS,
@@ -104,7 +105,7 @@ export function XMediaPresetMenu() {
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
   const project = useTacticalUnifiedStore((s) => s.project);
 
-  const activeSlide = project.slides.find((sl) => sl.id === activeSlideId);
+  const activeSlide = selectActiveSlide({ project, activeSlideId });
   const activePresetKey = detectActivePreset(
     activeSlide?.boundaryBox,
     project.aspectRatio,

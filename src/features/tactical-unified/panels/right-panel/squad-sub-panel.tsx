@@ -101,22 +101,10 @@ export function SquadSubPanel() {
     if (!activeSlide || teamPlayers.bench.length === 0) return;
     const positionedBench = computeBenchGridPositions(teamPlayers.bench);
     const benchMap = new Map(positionedBench.map((p) => [p.id, p]));
-
-    useTacticalUnifiedStore.setState((s) => ({
-      ...s,
-      project: {
-        ...s.project,
-        slides: s.project.slides.map((sl) =>
-          sl.id === activeSlideId
-            ? {
-                ...sl,
-                players: sl.players.map((p) => benchMap.get(p.id) ?? p),
-              }
-            : sl,
-        ),
-      },
-      isDirty: true,
-    }));
+    const nextPlayers = activeSlide.players.map((p) => benchMap.get(p.id) ?? p);
+    useTacticalUnifiedStore
+      .getState()
+      .updateSlide(activeSlideId, { players: nextPlayers });
   };
 
   const handleDragStart = useCallback(

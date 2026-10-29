@@ -22,6 +22,7 @@ import type {
   SelectedObject,
 } from '../core/types';
 import {
+  selectActiveSlide,
   selectCanRedo,
   selectCanUndo,
 } from '../stores/tactical-unified-selectors';
@@ -88,7 +89,7 @@ export function createTacticalCanvasStoreAdapter(
   );
 
   function getActiveSlide(state: TacticalUnifiedState) {
-    return state.project.slides.find((sl) => sl.id === state.activeSlideId);
+    return selectActiveSlide(state);
   }
 
   function setLocal<K extends keyof typeof local>(

@@ -6,7 +6,7 @@ import {
   findSafePitchPosition,
 } from './slide-player-move-helper';
 import { computeSlideAfterPlayerSwap } from './slide-player-swap-helper';
-import { recordHistory, updateSlideInProject } from './store-helpers';
+import { getSlide, recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 
 export interface SlidePlayerMoveSlice {
@@ -40,7 +40,7 @@ export const createSlidePlayerMoveSlice: StateCreator<
   SlidePlayerMoveSlice
 > = (set, get) => ({
   movePlayer: (slideId, playerId, x, y) => {
-    const slide = get().project.slides.find((sl) => sl.id === slideId);
+    const slide = getSlide(get().project, slideId);
     const p = slide?.players.find((pl) => pl.id === playerId);
     if (!p || p.locked) return;
     const dx = x - p.x;
@@ -139,7 +139,7 @@ export const createSlidePlayerMoveSlice: StateCreator<
         })),
         isDirty: true,
         selectedObjects: s.selectedObjects.filter((o) => {
-          const slide = s.project.slides.find((sl) => sl.id === targetId);
+          const slide = getSlide(s.project, targetId);
           const pl = slide?.players.find((p) => p.id === o.id);
           return pl ? pl.area !== 'pitch' : true;
         }),
@@ -174,7 +174,7 @@ export const createSlidePlayerMoveSlice: StateCreator<
 
   swapPlayers: (slideId, playerAId, playerBId) =>
     set((s) => {
-      const slide = s.project.slides.find((sl) => sl.id === slideId);
+      const slide = getSlide(s.project, slideId);
       if (!slide) return s;
       const res = computeSlideAfterPlayerSwap(slide, playerAId, playerBId);
       if (!res) return s;

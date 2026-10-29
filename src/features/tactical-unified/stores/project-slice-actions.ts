@@ -1,13 +1,12 @@
-import type {
-  AspectRatio,
-  PitchAppearanceConfig,
-  Slide,
-  TacticalProject,
-} from '@/lib/types/tactical-unified';
 import {
+  type AspectRatio,
   createDefaultProject,
   DEFAULT_PITCH_APPEARANCE,
   getDefaultBoundaryBoxForAspect,
+  type PitchAppearanceConfig,
+  type Slide,
+  type TacticalPhase,
+  type TacticalProject,
 } from '@/lib/types/tactical-unified';
 import { transformSlideAspectRatio } from './slide-aspect-helpers';
 import { applyImageBackgroundToProject } from './slide-background-helpers';
@@ -33,8 +32,8 @@ export interface ProjectSliceStoreState {
   stageAspect: number | null;
   pitchFitPending: boolean;
   selectedObjects: SelectedObject[];
-  past: Slide[][];
-  future: Slide[][];
+  past: TacticalPhase[][];
+  future: TacticalPhase[][];
   clipboard: unknown;
   teamVisibility: 'home' | 'away' | 'both';
   panels: PanelState;
@@ -239,13 +238,16 @@ export function createProjectConfigActions(set: ProjectSliceSet) {
           ...(team === 'home'
             ? { homeColor: { primary, secondary } }
             : { awayColor: { primary, secondary } }),
-          slides: s.project.slides.map((sl) => ({
-            ...sl,
-            players: sl.players.map((p) =>
-              p.team === team
-                ? { ...p, style: { ...p.style, color: primary } }
-                : p,
-            ),
+          phases: s.project.phases.map((ph) => ({
+            ...ph,
+            slides: ph.slides.map((sl) => ({
+              ...sl,
+              players: sl.players.map((p) =>
+                p.team === team
+                  ? { ...p, style: { ...p.style, color: primary } }
+                  : p,
+              ),
+            })),
           })),
         },
         isDirty: true,
@@ -255,16 +257,18 @@ export function createProjectConfigActions(set: ProjectSliceSet) {
       set((s) => {
         const from = s.project.aspectRatio;
         if (from === ratio) return s;
-        const transformedSlides = s.project.slides.map((slide) =>
-          transformSlideAspectRatio(slide, from, ratio),
-        );
         return {
           ...recordHistory(s),
           project: {
             ...s.project,
             aspectRatio: ratio,
             boundaryBox: getDefaultBoundaryBoxForAspect(ratio),
-            slides: transformedSlides,
+            phases: s.project.phases.map((ph) => ({
+              ...ph,
+              slides: ph.slides.map((sl) =>
+                transformSlideAspectRatio(sl, from, ratio),
+              ),
+            })),
             updatedAt: new Date().toISOString(),
           },
           isDirty: true,

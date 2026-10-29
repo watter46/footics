@@ -60,9 +60,12 @@ export const createSlideTransitionSlice: StateCreator<
       ...recordHistory(s),
       project: {
         ...s.project,
-        slides: s.project.slides.map((sl) => ({
-          ...sl,
-          ...params,
+        phases: s.project.phases.map((ph) => ({
+          ...ph,
+          slides: ph.slides.map((sl) => ({
+            ...sl,
+            ...params,
+          })),
         })),
         updatedAt: new Date().toISOString(),
       },

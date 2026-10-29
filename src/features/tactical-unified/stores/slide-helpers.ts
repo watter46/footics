@@ -17,11 +17,17 @@ export function createSlideForMode(
   currentSlide: Slide | undefined,
   project: TacticalProject,
   mode: 'object-free' | 'full' | 'blank',
+  slideCount?: number,
 ): Slide {
+  const activePhase =
+    project.phases.find((p) => p.id === project.activePhaseId) ??
+    project.phases[0];
+  const count = slideCount ?? activePhase?.slides.length ?? 0;
+
   if (!currentSlide || mode === 'blank') {
     const defaultBox = getDefaultBoundaryBoxForAspect(project.aspectRatio);
     return createDefaultSlide(
-      project.slides.length,
+      count,
       undefined,
       project.homeColor.primary,
       project.awayColor.primary,
@@ -68,8 +74,8 @@ export function createSlideForMode(
 
   return {
     id: generateId('slide'),
-    index: project.slides.length,
-    label: `Scene ${project.slides.length + 1}`,
+    index: count,
+    label: `Scene ${count + 1}`,
     aspectRatio: currentSlide.aspectRatio ?? project.aspectRatio,
     players: clonedPlayers,
     arrows: [],

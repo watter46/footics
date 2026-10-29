@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import {
+  selectActivePhaseSlides,
   selectActiveSlide,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
+} from '@/features/tactical-unified/stores/tactical-unified-selectors';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { packPlayerPhotos } from '@/lib/tactical/export/share-payload';
 
 interface ShareOptions {
@@ -13,7 +14,7 @@ interface ShareOptions {
 }
 
 export function useExportShare({ onError }: ShareOptions) {
-  const slides = useTacticalUnifiedStore((s) => s.project.slides);
+  const slides = useTacticalUnifiedStore(selectActivePhaseSlides);
   const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
 
@@ -29,7 +30,8 @@ export function useExportShare({ onError }: ShareOptions) {
       const state = useTacticalUnifiedStore.getState();
       const { project } = state;
       const activeSlide = selectActiveSlide(state);
-      const photos = await packPlayerPhotos(project.slides);
+      const currentSlides = selectActivePhaseSlides(state);
+      const photos = await packPlayerPhotos(currentSlides);
 
       const payload = {
         version: 1,
@@ -41,7 +43,7 @@ export function useExportShare({ onError }: ShareOptions) {
         pitchTransform: activeSlide?.pitchTransform,
         teamVisibility: 'both',
         exportFps: 60,
-        scenes: project.slides,
+        scenes: currentSlides,
         photos,
       };
 

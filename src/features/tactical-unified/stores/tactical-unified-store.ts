@@ -32,6 +32,8 @@ import {
 } from './store-helpers';
 import { distToSegment, isPointInPolygon } from './tactical-geometry-helpers';
 import {
+  type selectActivePhase,
+  type selectActivePhaseSlides,
   selectActiveSlide,
   selectCanRedo,
   selectCanUndo,
@@ -73,6 +75,8 @@ export {
   isPointInPolygon,
   MAX_HISTORY,
   recordHistory,
+  type selectActivePhase,
+  type selectActivePhaseSlides,
   selectActiveSlide,
   selectCanRedo,
   selectCanUndo,

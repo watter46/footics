@@ -1,30 +1,67 @@
-import type { Slide, TacticalProject } from '@/lib/types/tactical-unified';
+import type {
+  Slide,
+  TacticalPhase,
+  TacticalProject,
+} from '@/lib/types/tactical-unified';
 import type { SelectedObject } from './tool-slice';
 
 export interface SelectorStateContext {
   project: TacticalProject;
+  activePhaseId?: string;
   activeSlideId: string;
   selectedObjects: SelectedObject[];
-  past: Slide[][];
-  future: Slide[][];
+  past: TacticalPhase[][];
+  future: TacticalPhase[][];
 }
 
-/** アクティブスライドを取得 */
-export const selectActiveSlide = <
-  T extends Pick<SelectorStateContext, 'project' | 'activeSlideId'>,
+/** アクティブ Phase を取得 */
+export const selectActivePhase = <
+  T extends Pick<SelectorStateContext, 'project'> & { activePhaseId?: string },
 >(
   s: T,
-): Slide | undefined =>
-  s.project.slides.find((sl) => sl.id === s.activeSlideId);
+): TacticalPhase | undefined => {
+  const activeId = s.activePhaseId ?? s.project.activePhaseId;
+  return s.project.phases.find((p) => p.id === activeId) ?? s.project.phases[0];
+};
 
-/** 直前のスライドを取得 (先頭スライドの場合は null) */
+/** アクティブ Phase 配下のスライド配列を取得 (空なら []) */
+export const selectActivePhaseSlides = <
+  T extends Pick<SelectorStateContext, 'project'> & { activePhaseId?: string },
+>(
+  s: T,
+): Slide[] => {
+  return selectActivePhase(s)?.slides ?? [];
+};
+
+/** アクティブスライドを取得 (アクティブ Phase 優先、全 Phase フォールバック) */
+export const selectActiveSlide = <
+  T extends Pick<SelectorStateContext, 'project' | 'activeSlideId'> & {
+    activePhaseId?: string;
+  },
+>(
+  s: T,
+): Slide | undefined => {
+  const activePhase = selectActivePhase(s);
+  const inActive = activePhase?.slides.find((sl) => sl.id === s.activeSlideId);
+  if (inActive) return inActive;
+  for (const phase of s.project.phases) {
+    const found = phase.slides.find((sl) => sl.id === s.activeSlideId);
+    if (found) return found;
+  }
+  return undefined;
+};
+
+/** 直前のスライドを取得 (アクティブ Phase 内でアクティブスライドの1つ前。先頭スライドなら null) */
 export const selectPreviousSlide = <
-  T extends Pick<SelectorStateContext, 'project' | 'activeSlideId'>,
+  T extends Pick<SelectorStateContext, 'project' | 'activeSlideId'> & {
+    activePhaseId?: string;
+  },
 >(
   s: T,
 ): Slide | null => {
-  const idx = s.project.slides.findIndex((sl) => sl.id === s.activeSlideId);
-  return idx > 0 ? (s.project.slides[idx - 1] ?? null) : null;
+  const slides = selectActivePhaseSlides(s);
+  const idx = slides.findIndex((sl) => sl.id === s.activeSlideId);
+  return idx > 0 ? (slides[idx - 1] ?? null) : null;
 };
 
 /** 選択中の単一オブジェクトID */
@@ -35,12 +72,12 @@ export const selectSingleSelectedId = <
 ): string | null =>
   s.selectedObjects.length === 1 ? (s.selectedObjects[0]?.id ?? null) : null;
 
-/** スライドが複数あるか */
+/** アクティブ Phase のスライドが複数あるか */
 export const selectIsMultiSlide = <
-  T extends Pick<SelectorStateContext, 'project'>,
+  T extends Pick<SelectorStateContext, 'project'> & { activePhaseId?: string },
 >(
   s: T,
-): boolean => s.project.slides.length > 1;
+): boolean => selectActivePhaseSlides(s).length > 1;
 
 /** Undo 可能か */
 export const selectCanUndo = <T extends Pick<SelectorStateContext, 'past'>>(

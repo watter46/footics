@@ -44,7 +44,7 @@ export async function importTacticalProjectFromJson(
     title: project.title?.trim() || 'Untitled Project',
     createdAt: assignNewId ? now : project.createdAt,
     updatedAt: now,
-  };
+  } as unknown as TacticalProject;
 
   await saveTacticalProject(importedProject, false);
   return importedProject;
@@ -90,7 +90,7 @@ export async function importMultipleTacticalProjects(
               title: parsed.data.title?.trim() || 'Untitled Project',
               createdAt: now,
               updatedAt: now,
-            };
+            } as unknown as TacticalProject;
             await saveTacticalProject(proj, false);
             imported.push(proj);
           } catch (err) {

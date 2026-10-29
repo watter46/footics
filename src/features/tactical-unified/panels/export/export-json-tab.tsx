@@ -19,6 +19,11 @@ export function ExportJsonTab({ onSuccessClose }: ExportJsonTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
 
+  const totalSlides = project.phases.reduce(
+    (acc, p) => acc + p.slides.length,
+    0,
+  );
+
   const handleExportJson = () => {
     try {
       exportTacticalProjectToJson(project);
@@ -64,8 +69,7 @@ export function ExportJsonTab({ onSuccessClose }: ExportJsonTabProps) {
               {project.title || 'Untitled Project'}
             </h4>
             <p className="text-[10px] text-white/50 mt-0.5">
-              {project.slides.length} slides • Aspect Ratio:{' '}
-              {project.aspectRatio}
+              {totalSlides} slides • Aspect Ratio: {project.aspectRatio}
             </p>
           </div>
         </div>

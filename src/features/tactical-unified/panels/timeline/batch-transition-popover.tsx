@@ -15,6 +15,7 @@ import {
 import { Clock, Pause, Sliders, X } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
+import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Easing } from '@/lib/types/tactical-unified';
 
@@ -36,7 +37,7 @@ export function BatchTransitionPopover({
   onClose,
   referenceElement,
 }: BatchTransitionPopoverProps) {
-  const slides = useTacticalUnifiedStore((s) => s.project.slides);
+  const slides = useTacticalUnifiedStore(selectActivePhaseSlides);
   const updateAllSlideTransitions = useTacticalUnifiedStore(
     (s) => s.updateAllSlideTransitions,
   );

@@ -7,6 +7,10 @@
 
 import { useHotkeys } from 'react-hotkeys-hook';
 import { toast } from 'sonner';
+import {
+  selectActivePhaseSlides,
+  selectActiveSlide,
+} from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { isInputFocused } from '@/lib/shortcuts';
 import type { DrawingTool } from '@/lib/types/tactical-unified';
@@ -136,7 +140,7 @@ export function useKeyboardShortcuts() {
       const currentSelected = store.selectedObjects;
 
       if (currentSelected.length > 0) {
-        const slide = store.project.slides.find((s) => s.id === currentSlideId);
+        const slide = selectActiveSlide(store);
         const hasLockedObject = currentSelected.some((obj) => {
           if (obj.kind === 'player') {
             return Boolean(slide?.players.find((p) => p.id === obj.id)?.locked);
@@ -160,8 +164,8 @@ export function useKeyboardShortcuts() {
         }
       } else {
         // ピッチ上オブジェクト非選択時はアクティブスライドを削除
-        const project = store.project;
-        if (project.slides.length <= 1) {
+        const activeSlides = selectActivePhaseSlides(store);
+        if (activeSlides.length <= 1) {
           toast.error('これ以上スライドを削除できません（最低1枚必要です）');
           return;
         }

@@ -6,9 +6,10 @@ import {
   exportSingleSlidePng,
 } from '@/features/tactical-unified/hooks/konva-export-helpers';
 import {
+  selectActivePhaseSlides,
   selectActiveSlide,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
+} from '@/features/tactical-unified/stores/tactical-unified-selectors';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { exportMultiSlideVideo } from '@/lib/tactical/export/tactical-video-exporter';
 import { useExportBenchmark } from './use-export-benchmark';
 import { useExportEventListener } from './use-export-event-listener';
@@ -24,7 +25,7 @@ export function useExportModalState() {
   const setIsExporting = useTacticalUnifiedStore((s) => s.setIsExporting);
   const pendingExport = useTacticalUnifiedStore((s) => s.pendingExport);
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
-  const slides = useTacticalUnifiedStore((s) => s.project.slides);
+  const slides = useTacticalUnifiedStore(selectActivePhaseSlides);
   const aspectRatio = useTacticalUnifiedStore((s) => s.project.aspectRatio);
 
   const initFmt = pendingExport?.format ?? 'mp4';

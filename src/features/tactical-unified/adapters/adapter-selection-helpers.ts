@@ -1,4 +1,5 @@
 import type { SelectedObject } from '../core/types';
+import { selectActiveSlide } from '../stores/tactical-unified-selectors';
 import type { TacticalUnifiedState } from '../stores/tactical-unified-store';
 
 export function resolveSelectedObjectFromId(
@@ -8,7 +9,7 @@ export function resolveSelectedObjectFromId(
   if (id === 'ball' || id.startsWith('ball')) {
     return { id, kind: 'ball' };
   }
-  const slide = s.project.slides.find((sl) => sl.id === s.activeSlideId);
+  const slide = selectActiveSlide(s);
   if (slide?.arrows.some((a) => a.id === id)) {
     return { id, kind: 'arrow' };
   }

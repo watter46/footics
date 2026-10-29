@@ -18,6 +18,7 @@ import {
 } from '@/features/tactical-unified/core';
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
 import { DrawingToolbar } from '@/features/tactical-unified/panels/toolbar/drawing-toolbar';
+import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { ASPECT_RATIOS } from '@/lib/types/tactical-unified';
 
@@ -38,10 +39,9 @@ export function FullTacticalCanvas({
   const projectAspectRatio = useTacticalUnifiedStore(
     (s) => s.project.aspectRatio,
   );
-  const activeSlideAspectRatio = useTacticalUnifiedStore((s) => {
-    const slide = s.project.slides.find((sl) => sl.id === s.activeSlideId);
-    return slide?.aspectRatio;
-  });
+  const activeSlideAspectRatio = useTacticalUnifiedStore(
+    (s) => selectActiveSlide(s)?.aspectRatio,
+  );
   const currentAspect = activeSlideAspectRatio ?? projectAspectRatio ?? '4:5';
   const resolvedImageAspect =
     imageAspect ?? ASPECT_RATIOS[currentAspect] ?? 4 / 5;

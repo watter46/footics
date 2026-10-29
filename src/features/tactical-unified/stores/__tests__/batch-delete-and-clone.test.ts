@@ -152,15 +152,15 @@ describe('cloneSlideShallow and cloneSlidesShallow', () => {
     const s1 = createDefaultSlide(0, 's1');
     const state = {
       project: {
-        slides: [s1],
+        phases: [{ id: 'p1', name: 'P1', slides: [s1] }],
       },
       past: [],
     };
 
-    const result = recordHistory(state);
+    const result = recordHistory(state as any);
     expect(result.past).toHaveLength(1);
-    expect(result.past[0]).not.toBe(state.project.slides);
-    expect(result.past[0]?.[0]).not.toBe(state.project.slides[0]);
+    expect(result.past[0]).not.toBe(state.project.phases);
+    expect(result.past[0]?.[0]).not.toBe(state.project.phases[0]);
     expect(result.future).toEqual([]);
   });
 });

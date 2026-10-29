@@ -4,14 +4,12 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import type {
-  AspectRatio,
-  TacticalProject,
-} from '@/lib/types/tactical-unified';
+import type { TacticalProject } from '@/lib/types/tactical-unified';
 import {
   createDefaultPlayer,
   createDefaultProject,
 } from '@/lib/types/tactical-unified';
+import { selectActivePhaseSlides } from '../tactical-unified-selectors';
 import { useTacticalUnifiedStore } from '../tactical-unified-store';
 
 describe('tactical-unified-store - project & slide', () => {
@@ -25,22 +23,27 @@ describe('tactical-unified-store - project & slide', () => {
   });
 
   it('初期状態でスライドが1枚存在し、4-4-2の両チーム22名が配置される', () => {
-    const { project } = useTacticalUnifiedStore.getState();
-    expect(project.slides).toHaveLength(1);
-    expect(project.slides[0]?.players).toHaveLength(22);
+    const state = useTacticalUnifiedStore.getState();
+    const slides = selectActivePhaseSlides(state);
+    expect(slides).toHaveLength(1);
+    expect(slides[0]?.players).toHaveLength(22);
   });
 
   it('addSlide でスライドが追加される', () => {
     const store = useTacticalUnifiedStore.getState();
     store.addSlide();
-    expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(2);
+    expect(
+      selectActivePhaseSlides(useTacticalUnifiedStore.getState()),
+    ).toHaveLength(2);
   });
 
   it('deleteSlide で最後の1枚は削除できない', () => {
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.project.activeSlideId;
     store.deleteSlide(slideId);
-    expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(1);
+    expect(
+      selectActivePhaseSlides(useTacticalUnifiedStore.getState()),
+    ).toHaveLength(1);
   });
 
   it('loadProject でプロジェクトがロードされる', () => {
@@ -63,23 +66,25 @@ describe('tactical-unified-store - project & slide', () => {
 
   it('restoreDefaultPitch と setImageBackground で背景が正しく切り替わり、選手が白紙クリアされ、境界線が全面フィットする', () => {
     const store = useTacticalUnifiedStore.getState();
+    const initialSlides = selectActivePhaseSlides(store);
     expect(
-      store.project.slides[0]?.players.filter((p) => p.area === 'pitch'),
+      initialSlides[0]?.players.filter((p) => p.area === 'pitch'),
     ).toHaveLength(22);
 
     store.setImageBackground('data:image/png;base64,sample');
     const imageState = useTacticalUnifiedStore.getState();
+    const imageSlides = selectActivePhaseSlides(imageState);
     expect(imageState.project.backgroundType).toBe('image');
     expect(imageState.project.backgroundImageUrl).toBe(
       'data:image/png;base64,sample',
     );
     expect(
-      imageState.project.slides[0]?.players.filter((p) => p.area === 'pitch'),
+      imageSlides[0]?.players.filter((p) => p.area === 'pitch'),
     ).toHaveLength(0);
     expect(
-      imageState.project.slides[0]?.players.filter((p) => p.area === 'bench'),
+      imageSlides[0]?.players.filter((p) => p.area === 'bench'),
     ).toHaveLength(22);
-    expect(imageState.project.slides[0]?.boundaryBox).toEqual({
+    expect(imageSlides[0]?.boundaryBox).toEqual({
       x: 2.0,
       y: 2.0,
       width: 96.0,
@@ -102,7 +107,9 @@ describe('tactical-unified-store - project & slide', () => {
     const store = useTacticalUnifiedStore.getState();
     // 1枚目キャプチャ適用
     store.setImageBackground('data:image/png;base64,capture1');
-    expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(1);
+    expect(
+      selectActivePhaseSlides(useTacticalUnifiedStore.getState()),
+    ).toHaveLength(1);
     const firstSlideId = useTacticalUnifiedStore.getState().activeSlideId;
 
     // 1枚目のピッチ上にリングマーカーまたは選手を配置して編集
@@ -112,10 +119,11 @@ describe('tactical-unified-store - project & slide', () => {
     store.setImageBackground('data:image/png;base64,capture2');
 
     const state = useTacticalUnifiedStore.getState();
+    const slides = selectActivePhaseSlides(state);
     // スライドが2枚に増加していること
-    expect(state.project.slides).toHaveLength(2);
+    expect(slides).toHaveLength(2);
     // 1枚目のスライドは capture1 のまま保持され、リングマーカーも残っていること
-    const firstSlide = state.project.slides.find((s) => s.id === firstSlideId);
+    const firstSlide = slides.find((s) => s.id === firstSlideId);
     expect(firstSlide?.backgroundImageUrl).toBe(
       'data:image/png;base64,capture1',
     );
@@ -125,9 +133,7 @@ describe('tactical-unified-store - project & slide', () => {
 
     // 新規アクティブスライドは capture2 で初期化されていること
     expect(state.activeSlideId).not.toBe(firstSlideId);
-    const activeSlide = state.project.slides.find(
-      (s) => s.id === state.activeSlideId,
-    );
+    const activeSlide = slides.find((s) => s.id === state.activeSlideId);
     expect(activeSlide?.backgroundImageUrl).toBe(
       'data:image/png;base64,capture2',
     );
@@ -175,9 +181,8 @@ describe('tactical-unified-store - project & slide', () => {
 
     store.resetSlideObjects(slideId);
 
-    const slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
+    const slides = selectActivePhaseSlides(useTacticalUnifiedStore.getState());
+    const slide = slides.find((s) => s.id === slideId);
     expect(slide?.arrows).toHaveLength(0);
     expect(slide?.zones).toHaveLength(0);
     expect(slide?.texts).toHaveLength(0);
@@ -211,10 +216,14 @@ describe('tactical-unified-store - project & slide', () => {
     it('resetProject で初期プロジェクトが生成され選択状態がリセットされる', () => {
       const store = useTacticalUnifiedStore.getState();
       store.addSlide();
-      expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(2);
+      expect(
+        selectActivePhaseSlides(useTacticalUnifiedStore.getState()),
+      ).toHaveLength(2);
 
       store.resetProject();
-      expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(1);
+      expect(
+        selectActivePhaseSlides(useTacticalUnifiedStore.getState()),
+      ).toHaveLength(1);
       expect(useTacticalUnifiedStore.getState().isDirty).toBe(false);
     });
   });
@@ -224,7 +233,8 @@ describe('tactical-unified-store - project & slide', () => {
     const slideId = store.activeSlideId;
 
     // 選手を移動
-    const player0 = store.project.slides[0]?.players[0];
+    const slides = selectActivePhaseSlides(store);
+    const player0 = slides[0]?.players[0];
     expect(player0).toBeDefined();
     store.movePlayer(slideId, player0?.id ?? '', 88, 99);
 
@@ -260,9 +270,10 @@ describe('tactical-unified-store - project & slide', () => {
     // resetSlideKeepSquad 実行
     store.resetSlideKeepSquad(slideId);
 
-    const slide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((sl) => sl.id === slideId);
+    const updatedSlides = selectActivePhaseSlides(
+      useTacticalUnifiedStore.getState(),
+    );
+    const slide = updatedSlides.find((sl) => sl.id === slideId);
 
     // 自由描画は消去
     expect(slide?.arrows).toEqual([]);
@@ -292,8 +303,9 @@ describe('tactical-unified-store - project & slide', () => {
     const store = useTacticalUnifiedStore.getState();
     const slideId = store.activeSlideId;
 
+    const initialSlides = selectActivePhaseSlides(store);
     const initialPositions =
-      store.project.slides[0]?.players.map((p) => ({
+      initialSlides[0]?.players.map((p) => ({
         id: p.id,
         shirtNo: p.shirtNo,
         team: p.team,
@@ -309,8 +321,11 @@ describe('tactical-unified-store - project & slide', () => {
     // resetSlideKeepSquad 実行
     store.resetSlideKeepSquad(slideId);
 
+    const resetSlides = selectActivePhaseSlides(
+      useTacticalUnifiedStore.getState(),
+    );
     const resetPositions =
-      store.project.slides[0]?.players.map((p) => ({
+      resetSlides[0]?.players.map((p) => ({
         id: p.id,
         shirtNo: p.shirtNo,
         team: p.team,

@@ -1,10 +1,16 @@
 import type { StateCreator } from 'zustand';
 import type { Slide } from '@/lib/types/tactical-unified';
+import { createPhaseCrudActions } from './phase-crud-actions';
 import { createSlideForMode, resolvePanelStateForSlide } from './slide-helpers';
 import { recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 
 export interface SlideCrudSlice {
+  addPhase: (name?: string) => string;
+  deletePhase: (phaseId: string) => void;
+  renamePhase: (phaseId: string, name: string) => void;
+  setActivePhase: (phaseId: string) => void;
+  selectPhaseAndSlide: (phaseId: string, slideId: string) => void;
   addSlide: (
     sourceSlideId?: string,
     mode?: 'object-free' | 'full' | 'blank',
@@ -23,15 +29,28 @@ export const createSlideCrudSlice: StateCreator<
   [],
   SlideCrudSlice
 > = (set, get) => ({
+  ...createPhaseCrudActions(set, get),
+
   addSlide: (sourceSlideId, mode = 'object-free') => {
     const p = get().project;
+    const activePhaseId = get().activePhaseId;
+    const activePhase =
+      p.phases.find((ph) => ph.id === activePhaseId) ?? p.phases[0];
     const targetId = sourceSlideId ?? get().activeSlideId;
-    const currentSlide = p.slides.find((sl) => sl.id === targetId);
-    const newSlide = createSlideForMode(currentSlide, p, mode);
+    const currentSlide = activePhase.slides.find((sl) => sl.id === targetId);
+    const newSlide = createSlideForMode(
+      currentSlide,
+      p,
+      mode,
+      activePhase.slides.length,
+    );
 
     set((s) => {
-      const currentIdx = s.project.slides.findIndex((sl) => sl.id === targetId);
-      const nextSlides = [...s.project.slides];
+      const currentPh =
+        s.project.phases.find((ph) => ph.id === activePhase.id) ??
+        s.project.phases[0];
+      const currentIdx = currentPh.slides.findIndex((sl) => sl.id === targetId);
+      const nextSlides = [...currentPh.slides];
       if (currentIdx !== -1) {
         nextSlides.splice(currentIdx + 1, 0, newSlide);
       } else {
@@ -39,13 +58,18 @@ export const createSlideCrudSlice: StateCreator<
       }
       const indexedSlides = nextSlides.map((sl, i) => ({ ...sl, index: i }));
 
+      const nextPhases = s.project.phases.map((ph) =>
+        ph.id === currentPh.id ? { ...ph, slides: indexedSlides } : ph,
+      );
+
       return {
         ...recordHistory(s),
         project: {
           ...s.project,
           backgroundType: newSlide.backgroundType ?? 'pitch',
           backgroundImageUrl: newSlide.backgroundImageUrl,
-          slides: indexedSlides,
+          phases: nextPhases,
+          activePhaseId: currentPh.id,
           activeSlideId: newSlide.id,
           updatedAt: new Date().toISOString(),
         },
@@ -54,6 +78,7 @@ export const createSlideCrudSlice: StateCreator<
           s.panels,
           mode === 'blank' ? 'formation' : s.panels.rightPanelTab,
         ),
+        activePhaseId: currentPh.id,
         activeSlideId: newSlide.id,
         selectedObjects: [],
         isDirty: true,
@@ -69,22 +94,36 @@ export const createSlideCrudSlice: StateCreator<
 
   deleteSlide: (slideId) =>
     set((s) => {
-      if (s.project.slides.length <= 1) return s;
-      const remaining = s.project.slides
+      const activePhase =
+        s.project.phases.find((ph) => ph.id === s.activePhaseId) ??
+        s.project.phases.find((ph) =>
+          ph.slides.some((sl) => sl.id === slideId),
+        ) ??
+        s.project.phases[0];
+
+      if (!activePhase || activePhase.slides.length <= 1) return s;
+
+      const remaining = activePhase.slides
         .filter((sl) => sl.id !== slideId)
         .map((sl, i) => ({ ...sl, index: i }));
+
       const newActive =
         s.activeSlideId === slideId
           ? (remaining[0]?.id ?? remaining[remaining.length - 1]?.id ?? '')
           : s.activeSlideId;
       const activeSlideObj = remaining.find((sl) => sl.id === newActive);
+
+      const nextPhases = s.project.phases.map((ph) =>
+        ph.id === activePhase.id ? { ...ph, slides: remaining } : ph,
+      );
+
       return {
         ...recordHistory(s),
         project: {
           ...s.project,
           backgroundType: activeSlideObj?.backgroundType ?? 'pitch',
           backgroundImageUrl: activeSlideObj?.backgroundImageUrl,
-          slides: remaining,
+          phases: nextPhases,
           activeSlideId: newActive,
           updatedAt: new Date().toISOString(),
         },
@@ -96,8 +135,13 @@ export const createSlideCrudSlice: StateCreator<
 
   reorderSlides: (orderedIds) =>
     set((s) => {
+      const activePhase =
+        s.project.phases.find((ph) => ph.id === s.activePhaseId) ??
+        s.project.phases[0];
+      if (!activePhase) return s;
+
       const idToSlide = Object.fromEntries(
-        s.project.slides.map((sl) => [sl.id, sl]),
+        activePhase.slides.map((sl) => [sl.id, sl]),
       );
       const slides = orderedIds
         .map((id, i) => {
@@ -105,11 +149,16 @@ export const createSlideCrudSlice: StateCreator<
           return sl ? { ...sl, index: i } : null;
         })
         .filter((sl): sl is NonNullable<typeof sl> => sl !== null);
+
+      const nextPhases = s.project.phases.map((ph) =>
+        ph.id === activePhase.id ? { ...ph, slides } : ph,
+      );
+
       return {
         ...recordHistory(s),
         project: {
           ...s.project,
-          slides,
+          phases: nextPhases,
           updatedAt: new Date().toISOString(),
         },
         isDirty: true,
@@ -118,23 +167,33 @@ export const createSlideCrudSlice: StateCreator<
 
   setActiveSlide: (slideId) =>
     set((s) => {
-      const targetSlide = s.project.slides.find((sl) => sl.id === slideId);
+      let targetPhase = s.project.phases.find(
+        (ph) => ph.id === s.activePhaseId,
+      );
+      let targetSlide = targetPhase?.slides.find((sl) => sl.id === slideId);
+
+      if (!targetSlide) {
+        targetPhase = s.project.phases.find((ph) =>
+          ph.slides.some((sl) => sl.id === slideId),
+        );
+        targetSlide = targetPhase?.slides.find((sl) => sl.id === slideId);
+      }
+
       const nextBgType = targetSlide?.backgroundType ?? 'pitch';
       const nextBgUrl = targetSlide?.backgroundImageUrl;
-      const bgUnchanged =
-        s.project.backgroundType === nextBgType &&
-        s.project.backgroundImageUrl === nextBgUrl;
+      const nextPhaseId = targetPhase?.id ?? s.activePhaseId;
 
       return {
+        activePhaseId: nextPhaseId,
         activeSlideId: slideId,
         selectedObjects: [],
-        project: bgUnchanged
-          ? s.project
-          : {
-              ...s.project,
-              backgroundType: nextBgType,
-              backgroundImageUrl: nextBgUrl,
-            },
+        project: {
+          ...s.project,
+          activePhaseId: nextPhaseId,
+          activeSlideId: slideId,
+          backgroundType: nextBgType,
+          backgroundImageUrl: nextBgUrl,
+        },
         panels: resolvePanelStateForSlide(targetSlide, s.panels),
       };
     }),

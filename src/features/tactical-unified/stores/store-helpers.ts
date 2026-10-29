@@ -1,13 +1,53 @@
 import { produce } from 'immer';
-import type { Slide, TacticalProject } from '@/lib/types/tactical-unified';
+import type {
+  Slide,
+  TacticalPhase,
+  TacticalProject,
+} from '@/lib/types/tactical-unified';
 
 export const MAX_HISTORY = 50;
+
+export function attachSlidesGetter(project: TacticalProject): TacticalProject {
+  if (!project) return project;
+  const existingDesc = Object.getOwnPropertyDescriptor(project, 'slides');
+  if (existingDesc?.get) {
+    return project;
+  }
+  const target = Object.isExtensible(project) ? project : { ...project };
+  try {
+    Object.defineProperty(target, 'slides', {
+      get(this: TacticalProject) {
+        return (
+          this.phases?.find((p) => p.id === this.activePhaseId)?.slides ??
+          this.phases?.[0]?.slides ??
+          []
+        );
+      },
+      enumerable: false,
+      configurable: true,
+    });
+  } catch {
+    // ignore
+  }
+  return target;
+}
 
 export function getSlide(
   project: TacticalProject,
   slideId: string,
 ): Slide | undefined {
-  return project.slides.find((s) => s.id === slideId);
+  if (project.activePhaseId) {
+    const activePhase = project.phases.find(
+      (p) => p.id === project.activePhaseId,
+    );
+    const slide = activePhase?.slides.find((s) => s.id === slideId);
+    if (slide) return slide;
+  }
+  for (const phase of project.phases) {
+    const slide = phase.slides.find((s) => s.id === slideId);
+    if (slide) return slide;
+  }
+  return undefined;
 }
 
 export function updateSlideInProject(
@@ -15,11 +55,25 @@ export function updateSlideInProject(
   slideId: string,
   updater: (slide: Slide) => Slide,
 ): TacticalProject {
-  return {
+  let slideFound = false;
+  const nextPhases = project.phases.map((phase) => {
+    if (!phase.slides.some((s) => s.id === slideId)) {
+      return phase;
+    }
+    slideFound = true;
+    return {
+      ...phase,
+      slides: phase.slides.map((s) => (s.id === slideId ? updater(s) : s)),
+    };
+  });
+
+  if (!slideFound) return project;
+
+  return attachSlidesGetter({
     ...project,
     updatedAt: new Date().toISOString(),
-    slides: project.slides.map((s) => (s.id === slideId ? updater(s) : s)),
-  };
+    phases: nextPhases,
+  });
 }
 
 export function updateSlideImmer(
@@ -27,13 +81,20 @@ export function updateSlideImmer(
   slideId: string,
   recipe: (draft: Slide) => void,
 ): TacticalProject {
-  return produce(project, (draft) => {
-    const slide = draft.slides.find((s) => s.id === slideId);
-    if (slide) {
-      recipe(slide as Slide);
-      draft.updatedAt = new Date().toISOString();
+  let slideFound = false;
+  const next = produce(project, (draft) => {
+    for (const phase of draft.phases) {
+      const slide = phase.slides.find((s) => s.id === slideId);
+      if (slide) {
+        recipe(slide as Slide);
+        draft.updatedAt = new Date().toISOString();
+        slideFound = true;
+        break;
+      }
     }
   });
+  if (!slideFound) return project;
+  return attachSlidesGetter(next);
 }
 
 export function cloneSlideShallow(slide: Slide): Slide {
@@ -87,14 +148,25 @@ export function cloneSlidesShallow(slides: Slide[]): Slide[] {
   return slides.map(cloneSlideShallow);
 }
 
+export function clonePhaseShallow(phase: TacticalPhase): TacticalPhase {
+  return {
+    ...phase,
+    slides: cloneSlidesShallow(phase.slides),
+  };
+}
+
+export function clonePhasesShallow(phases: TacticalPhase[]): TacticalPhase[] {
+  return phases.map(clonePhaseShallow);
+}
+
 export function recordHistory(s: {
-  project: { slides: Slide[] };
-  past: Slide[][];
+  project: { phases: TacticalPhase[] };
+  past: TacticalPhase[][];
 }): {
-  past: Slide[][];
-  future: Slide[][];
+  past: TacticalPhase[][];
+  future: TacticalPhase[][];
 } {
-  const snapshot = cloneSlidesShallow(s.project.slides);
+  const snapshot = clonePhasesShallow(s.project.phases);
   const nextPast = [...s.past, snapshot];
   if (nextPast.length > MAX_HISTORY) {
     nextPast.splice(0, nextPast.length - MAX_HISTORY);

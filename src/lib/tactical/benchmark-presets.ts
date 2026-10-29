@@ -11,6 +11,19 @@ import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 const HOME_COLOR = '#034694'; // Chelsea Blue
 const AWAY_COLOR = '#dc2626'; // Opponent Red
 
+function attachSlidesGetter(
+  project: Omit<TacticalProject, 'slides'>,
+): TacticalProject {
+  Object.defineProperty(project, 'slides', {
+    get(this: TacticalProject) {
+      return this.phases?.[0]?.slides ?? [];
+    },
+    enumerable: false,
+    configurable: true,
+  });
+  return project as TacticalProject;
+}
+
 /**
  * 1. Low Block Penetration Preset (3 Slides)
  */
@@ -445,20 +458,29 @@ export function createLowBlockBenchmarkProject(): TacticalProject {
     ],
   };
 
-  return {
+  const phaseId = crypto.randomUUID();
+  const project = {
     id: projectId,
     title: 'Benchmark: Low Block Penetration',
-    version: '2.0.0',
+    version: '2.0.0' as const,
     createdAt: now,
     updatedAt: now,
-    aspectRatio: '16:9',
-    backgroundType: 'pitch',
+    aspectRatio: '16:9' as const,
+    backgroundType: 'pitch' as const,
     homeColor: { primary: HOME_COLOR },
     awayColor: { primary: AWAY_COLOR },
+    activePhaseId: phaseId,
     activeSlideId: slide1Id,
-    slides: [slide1, slide2, slide3],
+    phases: [
+      {
+        id: phaseId,
+        name: 'Main Phase',
+        slides: [slide1, slide2, slide3],
+      },
+    ],
     tags: ['benchmark', 'low-block', 'attack'],
   };
+  return attachSlidesGetter(project);
 }
 
 /**
@@ -705,20 +727,29 @@ export function createHighPressBenchmarkProject(): TacticalProject {
     ],
   };
 
-  return {
+  const phaseId = crypto.randomUUID();
+  const project = {
     id: projectId,
     title: 'Benchmark: High Press vs Build-up',
-    version: '2.0.0',
+    version: '2.0.0' as const,
     createdAt: now,
     updatedAt: now,
-    aspectRatio: '16:9',
-    backgroundType: 'pitch',
+    aspectRatio: '16:9' as const,
+    backgroundType: 'pitch' as const,
     homeColor: { primary: HOME_COLOR },
     awayColor: { primary: AWAY_COLOR },
+    activePhaseId: phaseId,
     activeSlideId: slide1Id,
-    slides: [slide1, slide2],
+    phases: [
+      {
+        id: phaseId,
+        name: 'Main Phase',
+        slides: [slide1, slide2],
+      },
+    ],
     tags: ['benchmark', 'high-press', 'defense'],
   };
+  return attachSlidesGetter(project);
 }
 
 /**
@@ -1003,20 +1034,29 @@ export function createTenSlideFullSequenceBenchmarkProject(): TacticalProject {
     };
   });
 
-  return {
+  const phaseId = crypto.randomUUID();
+  const project = {
     id: projectId,
     title: 'Benchmark: 10-Slide Full Progression (16s)',
-    version: '2.0.0',
+    version: '2.0.0' as const,
     createdAt: now,
     updatedAt: now,
-    aspectRatio: '16:9',
-    backgroundType: 'pitch',
+    aspectRatio: '16:9' as const,
+    backgroundType: 'pitch' as const,
     homeColor: { primary: HOME_COLOR },
     awayColor: { primary: AWAY_COLOR },
+    activePhaseId: phaseId,
     activeSlideId: slideIds[0],
-    slides,
+    phases: [
+      {
+        id: phaseId,
+        name: 'Main Phase',
+        slides,
+      },
+    ],
     tags: ['benchmark', '10-slides', 'full-sequence', 'video-export'],
   };
+  return attachSlidesGetter(project);
 }
 
 /**
@@ -1025,14 +1065,26 @@ export function createTenSlideFullSequenceBenchmarkProject(): TacticalProject {
  */
 export function createSixSlideBenchmarkProject(): TacticalProject {
   const tenSlideProj = createTenSlideFullSequenceBenchmarkProject();
-  return {
+  const phaseId = crypto.randomUUID();
+  const firstPhase = tenSlideProj.phases[0];
+  const slides = firstPhase.slides.slice(0, 6).map((s, idx) => ({
+    ...s,
+    index: idx,
+  }));
+  const project = {
     ...tenSlideProj,
     id: crypto.randomUUID(),
     title: 'Benchmark: 6-Slide Overload & Cutback (~9.6s)',
-    slides: tenSlideProj.slides.slice(0, 6).map((s, idx) => ({
-      ...s,
-      index: idx,
-    })),
+    activePhaseId: phaseId,
+    activeSlideId: slides[0].id,
+    phases: [
+      {
+        id: phaseId,
+        name: 'Main Phase',
+        slides,
+      },
+    ],
     tags: ['benchmark', '6-slides', 'mid-range', 'video-export'],
   };
+  return attachSlidesGetter(project);
 }

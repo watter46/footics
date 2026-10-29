@@ -13,6 +13,7 @@ import {
   isVerticalAspectRatio,
   transformCoord,
 } from '@/lib/types/tactical-unified';
+import { getSlide } from './store-helpers';
 
 function isPlayerInInitialPositions(
   p: Player,
@@ -89,21 +90,32 @@ export function applyImageBackgroundToProject(
   project: TacticalProject,
   url: string,
   targetSlideId: string,
+  targetPhaseId?: string,
 ): {
   project: TacticalProject;
+  activePhaseId: string;
   activeSlideId: string;
 } {
-  const currentSlide = project.slides.find((sl) => sl.id === targetSlideId);
+  const currentSlide = getSlide(project, targetSlideId);
   const screenshotBox: BoundaryBox = { ...DEFAULT_BOUNDARY_BOX_SCREENSHOT };
   const isDefault442 = isDefault442Slide(currentSlide, project.aspectRatio);
   const isCurrentSlideEdited = currentSlide && !isDefault442;
 
+  const activePhase =
+    project.phases.find(
+      (ph) =>
+        ph.id === targetPhaseId ||
+        ph.slides.some((sl) => sl.id === targetSlideId),
+    ) ?? project.phases[0];
+  const activePhaseId = activePhase?.id ?? project.activePhaseId;
+
   if (isCurrentSlideEdited && currentSlide) {
     const newSlideId = crypto.randomUUID();
+    const slideCount = activePhase?.slides.length ?? 0;
     const newSlide: Slide = {
       id: newSlideId,
-      index: project.slides.length,
-      label: `Scene ${project.slides.length + 1}`,
+      index: slideCount,
+      label: `Scene ${slideCount + 1}`,
       players: currentSlide.players.map((p) => ({
         ...p,
         area: 'bench' as const,
@@ -120,20 +132,24 @@ export function applyImageBackgroundToProject(
       transitionDurationMs: 1000,
       pauseMs: 500,
       easing: 'ease-in-out',
-      backgroundType: 'image',
+      backgroundType: 'image' as const,
       backgroundImageUrl: url,
     };
 
-    const currentIdx = project.slides.findIndex(
-      (sl) => sl.id === targetSlideId,
-    );
-    const nextSlides = [...project.slides];
-    if (currentIdx !== -1) {
-      nextSlides.splice(currentIdx + 1, 0, newSlide);
-    } else {
-      nextSlides.push(newSlide);
-    }
-    const indexedSlides = nextSlides.map((sl, i) => ({ ...sl, index: i }));
+    const nextPhases = project.phases.map((ph) => {
+      if (ph.id !== activePhaseId) return ph;
+      const currentIdx = ph.slides.findIndex((sl) => sl.id === targetSlideId);
+      const nextSlides = [...ph.slides];
+      if (currentIdx !== -1) {
+        nextSlides.splice(currentIdx + 1, 0, newSlide);
+      } else {
+        nextSlides.push(newSlide);
+      }
+      return {
+        ...ph,
+        slides: nextSlides.map((sl, i) => ({ ...sl, index: i })),
+      };
+    });
 
     return {
       project: {
@@ -141,24 +157,24 @@ export function applyImageBackgroundToProject(
         backgroundType: 'image',
         backgroundImageUrl: url,
         updatedAt: new Date().toISOString(),
-        slides: indexedSlides,
+        phases: nextPhases,
+        activePhaseId,
         activeSlideId: newSlideId,
       },
+      activePhaseId,
       activeSlideId: newSlideId,
     };
   }
 
-  return {
-    project: {
-      ...project,
-      backgroundType: 'image',
-      backgroundImageUrl: url,
-      updatedAt: new Date().toISOString(),
-      slides: project.slides.map((sl) => {
+  const nextPhases = project.phases.map((ph) => {
+    if (!ph.slides.some((sl) => sl.id === targetSlideId)) return ph;
+    return {
+      ...ph,
+      slides: ph.slides.map((sl) => {
         if (sl.id !== targetSlideId) return sl;
         return {
           ...sl,
-          backgroundType: 'image',
+          backgroundType: 'image' as const,
           backgroundImageUrl: url,
           boundaryBox: screenshotBox,
           ball: { ...sl.ball, visible: false },
@@ -175,7 +191,18 @@ export function applyImageBackgroundToProject(
           ),
         };
       }),
+    };
+  });
+
+  return {
+    project: {
+      ...project,
+      backgroundType: 'image',
+      backgroundImageUrl: url,
+      updatedAt: new Date().toISOString(),
+      phases: nextPhases,
     },
+    activePhaseId,
     activeSlideId: targetSlideId,
   };
 }

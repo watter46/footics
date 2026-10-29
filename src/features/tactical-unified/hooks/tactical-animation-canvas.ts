@@ -1,6 +1,7 @@
 import gsap from 'gsap';
 import { useMemo, useRef } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
+import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   calculateUnifiedTotalDuration,
@@ -144,7 +145,9 @@ export function renderFrameToCanvas(
 ) {
   if (!registry) return;
 
-  const currentSlides = useTacticalUnifiedStore.getState().project.slides;
+  const currentSlides = selectActivePhaseSlides(
+    useTacticalUnifiedStore.getState(),
+  );
   if (currentSlides.length === 0) return;
 
   const frame = getInterpolatedUnifiedSlideFrame(currentSlides, timeMs);

@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import {
+  selectActivePhaseSlides,
   selectActiveSlide,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
+} from '@/features/tactical-unified/stores/tactical-unified-selectors';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 
 export type TransitionSec = '1.0' | '1.5' | '2.0' | '3.0';
 export type PauseSec = '0' | '0.5' | '1.0' | '2.0';
@@ -12,7 +13,7 @@ export type AnimationEasing = 'ease-in-out' | 'ease-out' | 'ease-in' | 'linear';
 
 export function useVideoMorphingConfig() {
   const activeSlide = useTacticalUnifiedStore(selectActiveSlide);
-  const slides = useTacticalUnifiedStore((s) => s.project.slides);
+  const slides = useTacticalUnifiedStore(selectActivePhaseSlides);
   const updateAllSlideTransitions = useTacticalUnifiedStore(
     (s) => s.updateAllSlideTransitions,
   );

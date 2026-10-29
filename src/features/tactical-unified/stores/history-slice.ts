@@ -1,15 +1,16 @@
 import type { StateCreator } from 'zustand';
-import type { Slide } from '@/lib/types/tactical-unified';
+import type { TacticalPhase } from '@/lib/types/tactical-unified';
 import {
-  cloneSlidesShallow,
+  attachSlidesGetter,
+  clonePhasesShallow,
   MAX_HISTORY,
   recordHistory,
 } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 
 export interface HistorySlice {
-  past: Slide[][];
-  future: Slide[][];
+  past: TacticalPhase[][];
+  future: TacticalPhase[][];
   undo: () => void;
   redo: () => void;
   pushHistory: () => void;
@@ -27,26 +28,33 @@ export const createHistorySlice: StateCreator<
     set((s) => {
       if (s.past.length === 0) return s;
       const nextPast = [...s.past];
-      const previousSlides = nextPast.pop();
-      if (!previousSlides) return s;
+      const previousPhases = nextPast.pop();
+      if (!previousPhases) return s;
 
-      const currentSlides = cloneSlidesShallow(s.project.slides);
-      const nextFuture = [currentSlides, ...s.future].slice(0, MAX_HISTORY);
+      const currentPhases = clonePhasesShallow(s.project.phases);
+      const nextFuture = [currentPhases, ...s.future].slice(0, MAX_HISTORY);
 
       let nextActiveSlideId = s.activeSlideId;
-      if (!previousSlides.some((sl) => sl.id === nextActiveSlideId)) {
-        nextActiveSlideId = previousSlides[0]?.id ?? '';
+      const allPreviousSlides = previousPhases.flatMap((p) => p.slides);
+      if (!allPreviousSlides.some((sl) => sl.id === nextActiveSlideId)) {
+        nextActiveSlideId = allPreviousSlides[0]?.id ?? '';
+      }
+      let nextActivePhaseId = s.activePhaseId;
+      if (!previousPhases.some((p) => p.id === nextActivePhaseId)) {
+        nextActivePhaseId = previousPhases[0]?.id ?? '';
       }
 
       return {
         past: nextPast,
         future: nextFuture,
-        project: {
+        project: attachSlidesGetter({
           ...s.project,
-          slides: previousSlides,
+          phases: previousPhases,
+          activePhaseId: nextActivePhaseId,
           activeSlideId: nextActiveSlideId,
           updatedAt: new Date().toISOString(),
-        },
+        }),
+        activePhaseId: nextActivePhaseId,
         activeSlideId: nextActiveSlideId,
         selectedObjects: [],
         isDirty: true,
@@ -56,29 +64,36 @@ export const createHistorySlice: StateCreator<
     set((s) => {
       if (s.future.length === 0) return s;
       const nextFuture = [...s.future];
-      const nextSlides = nextFuture.shift();
-      if (!nextSlides) return s;
+      const nextPhases = nextFuture.shift();
+      if (!nextPhases) return s;
 
-      const currentSlides = cloneSlidesShallow(s.project.slides);
-      const nextPast = [...s.past, currentSlides];
+      const currentPhases = clonePhasesShallow(s.project.phases);
+      const nextPast = [...s.past, currentPhases];
       if (nextPast.length > MAX_HISTORY) {
         nextPast.shift();
       }
 
       let nextActiveSlideId = s.activeSlideId;
-      if (!nextSlides.some((sl) => sl.id === nextActiveSlideId)) {
-        nextActiveSlideId = nextSlides[0]?.id ?? '';
+      const allNextSlides = nextPhases.flatMap((p) => p.slides);
+      if (!allNextSlides.some((sl) => sl.id === nextActiveSlideId)) {
+        nextActiveSlideId = allNextSlides[0]?.id ?? '';
+      }
+      let nextActivePhaseId = s.activePhaseId;
+      if (!nextPhases.some((p) => p.id === nextActivePhaseId)) {
+        nextActivePhaseId = nextPhases[0]?.id ?? '';
       }
 
       return {
         past: nextPast,
         future: nextFuture,
-        project: {
+        project: attachSlidesGetter({
           ...s.project,
-          slides: nextSlides,
+          phases: nextPhases,
+          activePhaseId: nextActivePhaseId,
           activeSlideId: nextActiveSlideId,
           updatedAt: new Date().toISOString(),
-        },
+        }),
+        activePhaseId: nextActivePhaseId,
         activeSlideId: nextActiveSlideId,
         selectedObjects: [],
         isDirty: true,

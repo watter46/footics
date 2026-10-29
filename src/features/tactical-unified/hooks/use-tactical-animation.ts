@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
+import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 import {
@@ -20,7 +21,7 @@ import {
 export type { UseTacticalAnimationOptions };
 
 export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
-  const slides = useTacticalUnifiedStore((s) => s.project.slides);
+  const slides = useTacticalUnifiedStore(selectActivePhaseSlides);
   const setActiveSlide = useTacticalUnifiedStore((s) => s.setActiveSlide);
   const setIsPlaying = useTacticalUnifiedStore((s) => s.setIsPlaying);
 
@@ -61,7 +62,9 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
 
   const playAnimation = useCallback(
     (onComplete?: () => void) => {
-      const currentSlides = useTacticalUnifiedStore.getState().project.slides;
+      const currentSlides = selectActivePhaseSlides(
+        useTacticalUnifiedStore.getState(),
+      );
       if (currentSlides.length <= 1) {
         onComplete?.();
         return;
@@ -155,7 +158,7 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
   const pauseAnimation = useCallback(
     () =>
       pausePlayback(refs, setIsPlaying, {
-        slides: useTacticalUnifiedStore.getState().project.slides,
+        slides: selectActivePhaseSlides(useTacticalUnifiedStore.getState()),
         registry: options?.nodesRegistryRef?.current,
         pitchDimensions: getPitchDimensions(),
         applyFrameToCanvas,
@@ -175,7 +178,7 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
 
   const stopAnimation = useCallback(() => {
     stopPlayback({
-      slides: useTacticalUnifiedStore.getState().project.slides,
+      slides: selectActivePhaseSlides(useTacticalUnifiedStore.getState()),
       refs,
       registry: options?.nodesRegistryRef?.current,
       pitchDimensions: getPitchDimensions(),

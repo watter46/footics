@@ -69,10 +69,11 @@ export function ProjectCreateForm({
       proj.backgroundType = backgroundType;
       proj.homeColor = { primary: homeColor };
       proj.awayColor = { primary: awayColor };
-      if (proj.slides[0]) {
-        proj.slides[0].aspectRatio = aspectRatio;
-        proj.slides[0].boundaryBox = { ...boundaryBox };
-        proj.slides[0].backgroundType = backgroundType;
+      const firstSlide = proj.phases[0]?.slides[0];
+      if (firstSlide) {
+        firstSlide.aspectRatio = aspectRatio;
+        firstSlide.boundaryBox = { ...boundaryBox };
+        firstSlide.backgroundType = backgroundType;
       }
       await saveTacticalProject(proj, true);
       loadProject(proj);

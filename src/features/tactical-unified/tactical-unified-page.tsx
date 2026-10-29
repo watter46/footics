@@ -92,9 +92,19 @@ export function TacticalUnifiedPage({
 
   const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
   const movePlayerToBench = useTacticalUnifiedStore((s) => s.movePlayerToBench);
+  const phases = useTacticalUnifiedStore((s) => s.project.phases);
+  const activePhaseId = useTacticalUnifiedStore((s) => s.activePhaseId);
   const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const slides = useTacticalUnifiedStore((s) => s.project.slides);
-  const setActiveSlide = useTacticalUnifiedStore((s) => s.setActiveSlide);
+  const pitchAppearance = useTacticalUnifiedStore(
+    (s) => s.project.pitchAppearance,
+  );
+  const selectPhaseAndSlide = useTacticalUnifiedStore(
+    (s) => s.selectPhaseAndSlide,
+  );
+  const addPhase = useTacticalUnifiedStore((s) => s.addPhase);
+  const deletePhase = useTacticalUnifiedStore((s) => s.deletePhase);
+  const renamePhase = useTacticalUnifiedStore((s) => s.renamePhase);
+  const setActivePhase = useTacticalUnifiedStore((s) => s.setActivePhase);
   const addSlide = useTacticalUnifiedStore((s) => s.addSlide);
 
   const handleDndEnd = (event: DragEndEvent) => {
@@ -167,10 +177,20 @@ export function TacticalUnifiedPage({
           {/* Left Panel (Tactical Sequences / Toggleable) */}
           {!isFocusMode && sidebarOpen && (
             <LeftPanel
-              slides={slides}
+              phases={phases}
+              activePhaseId={activePhaseId}
               activeSlideId={activeSlideId}
-              onSelectSlide={setActiveSlide}
-              onAddSlide={() => addSlide('duplicate')}
+              pitchAppearance={pitchAppearance}
+              onSelectScene={selectPhaseAndSlide}
+              onAddPhase={() => addPhase()}
+              onDeletePhase={deletePhase}
+              onRenamePhase={renamePhase}
+              onAddSlideToPhase={(phaseId) => {
+                if (phaseId !== activePhaseId) {
+                  setActivePhase(phaseId);
+                }
+                addSlide(undefined, 'full');
+              }}
             />
           )}
 

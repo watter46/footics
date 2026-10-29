@@ -1,100 +1,232 @@
 'use client';
 
-import { Layers, Plus } from 'lucide-react';
-import type { Slide } from '@/lib/types/tactical-unified';
-import { cn } from '@/lib/utils';
+import { AlertTriangle, FolderPlus, Layers, Plus } from 'lucide-react';
+import { useState } from 'react';
+import type {
+  PitchAppearanceConfig,
+  Slide,
+  TacticalPhase,
+} from '@/lib/types/tactical-unified';
+import { PhaseSection } from './phase-section';
 
 export interface LeftPanelProps {
-  slides: Slide[];
-  activeSlideId: string;
-  onSelectSlide: (slideId: string) => void;
-  onAddSlide: () => void;
+  phases?: TacticalPhase[];
+  activePhaseId?: string;
+  activeSlideId?: string;
+  pitchAppearance?: PitchAppearanceConfig;
+  onSelectScene?: (phaseId: string, slideId: string) => void;
+  onAddPhase?: () => void;
+  onDeletePhase?: (phaseId: string) => void;
+  onRenamePhase?: (phaseId: string, name: string) => void;
+  onAddSlideToPhase?: (phaseId: string) => void;
+  // 後方互換性プロパティ (Phase 4 移行用)
+  slides?: Slide[];
+  onSelectSlide?: (slideId: string) => void;
+  onAddSlide?: () => void;
 }
 
 export function LeftPanel({
+  phases: propPhases,
+  activePhaseId = '',
+  activeSlideId = '',
+  pitchAppearance,
+  onSelectScene,
+  onAddPhase,
+  onDeletePhase,
+  onRenamePhase,
+  onAddSlideToPhase,
   slides,
-  activeSlideId,
   onSelectSlide,
   onAddSlide,
 }: LeftPanelProps) {
+  // フォールバック: phases がなく slides のみ渡された場合は単一フェーズとして扱う
+  const phases: TacticalPhase[] =
+    propPhases ??
+    (slides
+      ? [
+          {
+            id: 'default-phase',
+            name: 'Tactical Phase 1',
+            slides,
+          },
+        ]
+      : []);
+
+  // アコーディオン開閉状態（明示的にトグルされたフェーズを記録）
+  const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
+
+  // 削除確認ダイアログの状態
+  const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(
+    null,
+  );
+
+  const handleToggleExpand = (phaseId: string) => {
+    setExpandedMap((prev) => {
+      const current = prev[phaseId] ?? phaseId === activePhaseId;
+      return { ...prev, [phaseId]: !current };
+    });
+  };
+
+  const handleSelectScene = (phaseId: string, slideId: string) => {
+    if (onSelectScene) {
+      onSelectScene(phaseId, slideId);
+    } else if (onSelectSlide) {
+      onSelectSlide(slideId);
+    }
+  };
+
+  const handleAddPhase = () => {
+    if (onAddPhase) {
+      onAddPhase();
+    }
+  };
+
+  const handleRenamePhase = (phaseId: string, name: string) => {
+    if (onRenamePhase) {
+      onRenamePhase(phaseId, name);
+    }
+  };
+
+  const handleAddSlideToPhase = (phaseId: string) => {
+    if (onAddSlideToPhase) {
+      onAddSlideToPhase(phaseId);
+    } else if (onAddSlide) {
+      onAddSlide();
+    }
+  };
+
+  const handleDeleteRequest = (phaseId: string) => {
+    if (phases.length <= 1) return;
+    setDeleteCandidateId(phaseId);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteCandidateId) return;
+    if (onDeletePhase) {
+      onDeletePhase(deleteCandidateId);
+    }
+    setDeleteCandidateId(null);
+  };
+
+  const candidatePhase = phases.find((p) => p.id === deleteCandidateId);
+
   return (
     <aside
-      aria-label="Tactical Sequences"
-      className="w-64 bg-[#121214] border-r border-white/[0.07] flex flex-col text-xs shrink-0 select-none z-10"
+      aria-label="Tactical Phases"
+      className="w-72 bg-[#121214] border-r border-white/[0.07] flex flex-col text-xs shrink-0 select-none z-10 h-full relative"
     >
-      <div className="p-3 border-b border-white/[0.07] flex items-center justify-between">
+      {/* Panel Top Header */}
+      <div className="p-3 border-b border-white/[0.07] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Layers className="size-3.5 text-[#FF8100]" strokeWidth={1.5} />
           <span className="text-[11px] font-bold text-[#F4F4F5] uppercase tracking-wider">
-            Tactical Sequences
+            Tactical Phases
           </span>
         </div>
-        <span className="text-[10px] font-mono text-[#71717A]">
-          {slides.length} {slides.length === 1 ? 'scene' : 'scenes'}
-        </span>
-      </div>
-
-      <div className="p-2 space-y-1.5 overflow-y-auto flex-1 custom-scrollbar">
-        {slides.map((slide, idx) => {
-          const isActive = activeSlideId === slide.id;
-          return (
-            <div
-              key={slide.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => onSelectSlide(slide.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onSelectSlide(slide.id);
-                }
-              }}
-              className={cn(
-                'p-2.5 rounded-[8px] border transition-all cursor-pointer relative text-left',
-                isActive
-                  ? 'bg-[#18181B] border-white/[0.07] shadow-sm'
-                  : 'hover:bg-[#18181B] text-[#A1A1AA] hover:text-[#F4F4F5] border-transparent hover:border-white/[0.05]',
-              )}
-            >
-              {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-[#FF8100] rounded-r-full shadow-[0_0_8px_#FF8100]" />
-              )}
-              <div className="flex items-center justify-between pl-1.5">
-                <span className="font-semibold text-white">
-                  {slide.label ? slide.label : `Scene ${idx + 1}`}
-                </span>
-                <span className="text-[10px] font-mono text-[#60A5FA]">
-                  {((slide.pauseMs ?? 500) / 1000).toFixed(1)}s
-                </span>
-              </div>
-              <p className="text-[10px] text-[#A1A1AA] pl-1.5 mt-0.5 truncate">
-                {slide.label || `Tactical Phase ${idx + 1}`}
-              </p>
-            </div>
-          );
-        })}
-
-        {/* Empty State / Custom Annotation Tags (推奨仕様5) */}
-        <div className="pt-3 pb-1 px-1">
-          <span className="text-[10px] font-bold text-[#71717A] uppercase tracking-wider">
-            Annotations
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-mono text-[#71717A]">
+            {phases.length} {phases.length === 1 ? 'phase' : 'phases'}
           </span>
-        </div>
-        <div className="border border-dashed border-white/10 rounded-[8px] p-3 text-center space-y-2 bg-[#0D0D0E]/50">
-          <Layers className="size-4 mx-auto text-[#71717A]" strokeWidth={1.5} />
-          <p className="text-[10px] text-[#71717A]">
-            カスタム注釈タグは未登録です
-          </p>
           <button
             type="button"
-            onClick={onAddSlide}
-            className="px-2.5 py-1 rounded-[6px] text-[10px] font-semibold bg-[#FF8100]/10 hover:bg-[#FF8100]/20 text-[#FF8100] border border-[#FF8100]/30 transition-colors cursor-pointer inline-flex items-center gap-1"
+            onClick={handleAddPhase}
+            className="px-2 py-0.5 rounded-[5px] text-[10px] font-semibold bg-[#FF8100]/10 hover:bg-[#FF8100]/20 text-[#FF8100] border border-[#FF8100]/30 transition-colors cursor-pointer inline-flex items-center gap-1"
           >
             <Plus className="size-3" strokeWidth={1.5} />
-            <span>シーン追加</span>
+            <span>新規フェーズ</span>
           </button>
         </div>
       </div>
+
+      {/* Phase List Scrollable Container */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        {phases.map((phase) => {
+          const isExpanded =
+            expandedMap[phase.id] ?? phase.id === activePhaseId;
+          const isActivePhase = phase.id === activePhaseId;
+          const canDeletePhase = phases.length > 1;
+
+          return (
+            <PhaseSection
+              key={phase.id}
+              phase={phase}
+              isExpanded={isExpanded}
+              isActivePhase={isActivePhase}
+              activeSlideId={activeSlideId}
+              canDeletePhase={canDeletePhase}
+              pitchAppearance={pitchAppearance}
+              onToggleExpand={handleToggleExpand}
+              onSelectScene={handleSelectScene}
+              onAddSlideToPhase={handleAddSlideToPhase}
+              onDeletePhaseRequest={handleDeleteRequest}
+              onRenamePhase={handleRenamePhase}
+            />
+          );
+        })}
+
+        {/* Empty State */}
+        {phases.length === 0 && (
+          <div className="p-4 text-center space-y-2 text-[#71717A]">
+            <FolderPlus
+              className="size-6 mx-auto text-white/20"
+              strokeWidth={1.5}
+            />
+            <p className="text-[11px]">フェーズが登録されていません</p>
+            <button
+              type="button"
+              onClick={handleAddPhase}
+              className="px-2.5 py-1 rounded-[6px] text-[10px] font-semibold bg-[#FF8100]/10 hover:bg-[#FF8100]/20 text-[#FF8100] border border-[#FF8100]/30 transition-colors cursor-pointer inline-flex items-center gap-1"
+            >
+              <Plus className="size-3" strokeWidth={1.5} />
+              <span>フェーズを追加</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteCandidateId && candidatePhase && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-phase-dialog-title"
+          className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] flex items-center justify-center p-3 animate-in fade-in duration-150"
+        >
+          <div className="bg-[#18181B] border border-white/[0.12] rounded-[10px] p-4 shadow-xl max-w-[240px] w-full text-center space-y-3">
+            <div className="size-8 rounded-full bg-red-500/10 text-red-400 mx-auto flex items-center justify-center">
+              <AlertTriangle className="size-4" strokeWidth={1.5} />
+            </div>
+            <div>
+              <h3
+                id="delete-phase-dialog-title"
+                className="text-[12px] font-bold text-white"
+              >
+                フェーズを削除しますか？
+              </h3>
+              <p className="text-[10px] text-[#A1A1AA] mt-1 leading-relaxed">
+                「{candidatePhase.name}」と配下のシーン（
+                {candidatePhase.slides.length}件）が完全に削除されます。
+              </p>
+            </div>
+            <div className="flex gap-2 justify-center pt-1">
+              <button
+                type="button"
+                onClick={() => setDeleteCandidateId(null)}
+                className="px-3 py-1 rounded text-[11px] bg-white/5 hover:bg-white/10 text-[#A1A1AA] hover:text-white transition-colors"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-3 py-1 rounded text-[11px] bg-red-600 hover:bg-red-500 text-white font-medium transition-colors"
+              >
+                削除する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

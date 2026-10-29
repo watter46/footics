@@ -26,6 +26,7 @@ export interface ProjectSlice {
   lastSavedAt: number | null;
   setSaveStatus: (status: 'idle' | 'saving' | 'saved' | 'error') => void;
   setLastSavedAt: (timestamp: number | null) => void;
+  activePhaseId: string;
   activeSlideId: string;
   /** Stage(コンテナ全面)の width/height。未計測は null（非永続・履歴対象外） */
   stageAspect: number | null;
@@ -83,6 +84,7 @@ export const createProjectSlice: StateCreator<
     lastSavedAt: null,
     setSaveStatus: (status) => set({ saveStatus: status }),
     setLastSavedAt: (timestamp) => set({ lastSavedAt: timestamp }),
+    activePhaseId: INITIAL_PROJECT.activePhaseId,
     activeSlideId: INITIAL_PROJECT.activeSlideId,
     stageAspect: null,
     pitchFitPending: true,
