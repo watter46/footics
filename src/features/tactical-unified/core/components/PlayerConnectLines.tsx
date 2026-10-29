@@ -62,7 +62,10 @@ export function PlayerConnectLines({
                     : undefined;
               const isClSelected = selectedIds.includes(cl.id);
               const lineColor = cl.color || p.style?.color || '#034694';
-              const strokeWidth = cl.strokeWidth ?? 2;
+              const strokeWidth = cl.strokeWidth ?? 3.5;
+              const glowBlur = cl.glowBlur ?? 50;
+              const glowOpacity = cl.glowOpacity ?? 1.0;
+
               return (
                 <Fragment key={cl.id}>
                   {/* 外側 / うっすら白枠 */}
@@ -78,8 +81,62 @@ export function PlayerConnectLines({
                     lineCap="round"
                     dash={dash}
                     listening={false}
+                    perfectDrawEnabled={false}
                   />
-                  {/* 内側 / メイン Line & 発光グロー */}
+
+                  {/* レイヤA: 最も外側に広がる淡い光彩（超広域フォグ・低不透明度） */}
+                  {glowBlur > 0 && (
+                    <Line
+                      ref={(node) => {
+                        if (node)
+                          connectLineNodesRef.current.set(
+                            `${cl.id}-fog-a`,
+                            node,
+                          );
+                        else
+                          connectLineNodesRef.current.delete(`${cl.id}-fog-a`);
+                      }}
+                      points={[p1.x, p1.y, p2.x, p2.y]}
+                      stroke={lineColor}
+                      strokeWidth={strokeWidth + 10}
+                      lineCap="round"
+                      dash={dash}
+                      shadowColor={lineColor}
+                      shadowBlur={glowBlur * 1.5}
+                      shadowOpacity={0.9}
+                      opacity={glowOpacity * 0.25}
+                      listening={false}
+                      perfectDrawEnabled={false}
+                    />
+                  )}
+
+                  {/* レイヤB: 中間グロウ層（滑らかな減衰グラデーション） */}
+                  {glowBlur > 0 && (
+                    <Line
+                      ref={(node) => {
+                        if (node)
+                          connectLineNodesRef.current.set(
+                            `${cl.id}-fog-b`,
+                            node,
+                          );
+                        else
+                          connectLineNodesRef.current.delete(`${cl.id}-fog-b`);
+                      }}
+                      points={[p1.x, p1.y, p2.x, p2.y]}
+                      stroke={lineColor}
+                      strokeWidth={strokeWidth + 4}
+                      lineCap="round"
+                      dash={dash}
+                      shadowColor={lineColor}
+                      shadowBlur={glowBlur * 0.8}
+                      shadowOpacity={0.9}
+                      opacity={glowOpacity * 0.55}
+                      listening={false}
+                      perfectDrawEnabled={false}
+                    />
+                  )}
+
+                  {/* レイヤC: コアライン & メインインタラクション */}
                   <Line
                     ref={(node) => {
                       if (node) connectLineNodesRef.current.set(cl.id, node);
@@ -91,10 +148,12 @@ export function PlayerConnectLines({
                     lineCap="round"
                     dash={dash}
                     shadowColor={lineColor}
-                    shadowBlur={isClSelected ? 12 : 6}
-                    shadowOpacity={isClSelected ? 1 : 0.8}
+                    shadowBlur={glowBlur * 0.35}
+                    shadowOpacity={isClSelected ? 1 : 0.85}
+                    opacity={1.0}
                     listening={isInteractive}
                     hitStrokeWidth={16}
+                    perfectDrawEnabled={false}
                     onClick={(e) => {
                       e.cancelBubble = true;
                       onSelectConnectLine(cl.id, p.id);
@@ -126,7 +185,9 @@ export function updateConnectLinePositions(
       if (p.id === markerId || cl.toPlayerId === markerId) {
         const lineNode = nodeMap.get(cl.id);
         const bgNode = nodeMap.get(`${cl.id}-bg`);
-        if (!lineNode && !bgNode) continue;
+        const fogANode = nodeMap.get(`${cl.id}-fog-a`);
+        const fogBNode = nodeMap.get(`${cl.id}-fog-b`);
+        if (!lineNode && !bgNode && !fogANode && !fogBNode) continue;
         const targetMarker = markers.find((m) => m.id === cl.toPlayerId);
         if (!targetMarker) continue;
         const sPos =
@@ -157,6 +218,8 @@ export function updateConnectLinePositions(
         const pts = [p1.x, p1.y, p2.x, p2.y];
         if (lineNode) lineNode.points(pts);
         if (bgNode) bgNode.points(pts);
+        if (fogANode) fogANode.points(pts);
+        if (fogBNode) fogBNode.points(pts);
       }
     }
   }

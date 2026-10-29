@@ -4,6 +4,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCallback } from 'react';
 import {
   commitDrawingShape,
+  createRingFadeMarker,
   createRingMarker,
   createTextAnnotation,
 } from '../utils/canvas-drawing-factory';
@@ -61,6 +62,16 @@ export function useCanvasPointerDrawing({
         });
       } else if (activeTool === 'text') {
         addText(createTextAnnotation(normX, normY, '#ffffff'));
+        setActiveTool('select');
+      } else if (activeTool === 'player-ring-fade') {
+        addMarker(
+          createRingFadeMarker(
+            normX,
+            normY,
+            color || '#ffffff',
+            `${markers.length + 1}`,
+          ),
+        );
         setActiveTool('select');
       } else if (activeTool === 'player-ring') {
         addMarker(

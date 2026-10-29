@@ -1,5 +1,6 @@
 import {
   create2DPlayerMarker,
+  createRingFadeMarker,
   createRingMarker,
   createTextAnnotation,
 } from './canvas-drawing-factory';
@@ -64,21 +65,32 @@ export function handleToolPointerDown(
     return;
   }
 
-  if (activeTool === 'player-ring' || activeTool === 'player') {
+  if (
+    activeTool === 'player-ring-fade' ||
+    activeTool === 'player-ring' ||
+    activeTool === 'player'
+  ) {
     const marker =
-      activeTool === 'player-ring'
-        ? createRingMarker(
+      activeTool === 'player-ring-fade'
+        ? createRingFadeMarker(
             normPos.x,
             normPos.y,
-            '#034694',
+            '#ffffff',
             `${markers.length + 1}`,
           )
-        : create2DPlayerMarker(
-            normPos.x,
-            normPos.y,
-            '#034694',
-            `${markers.length + 1}`,
-          );
+        : activeTool === 'player-ring'
+          ? createRingMarker(
+              normPos.x,
+              normPos.y,
+              '#034694',
+              `${markers.length + 1}`,
+            )
+          : create2DPlayerMarker(
+              normPos.x,
+              normPos.y,
+              '#034694',
+              `${markers.length + 1}`,
+            );
     addMarker(marker);
     if (!continuousDrawing) setActiveTool('select');
   }

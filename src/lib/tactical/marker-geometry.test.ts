@@ -8,7 +8,9 @@ import {
 describe('marker-geometry', () => {
   const stageSize = { width: 1000, height: 600 };
 
-  const createPlayer = (markerType: 'circle' | 'ring'): Player => ({
+  const createPlayer = (
+    markerType: 'circle' | 'ring' | 'ring-fade',
+  ): Player => ({
     id: 'p1',
     team: 'home',
     area: 'pitch',
@@ -42,6 +44,38 @@ describe('marker-geometry', () => {
     const radius = getPlayerMarkerRadius(player, stageSize);
     const rx = radius * 1.15;
     const ry = radius * 0.55;
+
+    // Target to the right (dx > 0, dy = 0)
+    const rightTarget = { x: 700, y: 300 };
+    const rightPt = getMarkerBoundaryPoint(
+      center,
+      rightTarget,
+      player,
+      stageSize,
+      true,
+    );
+    expect(rightPt.x).toBeCloseTo(center.x + rx);
+    expect(rightPt.y).toBeCloseTo(center.y);
+
+    // Target to the bottom (dx = 0, dy > 0)
+    const bottomTarget = { x: 500, y: 500 };
+    const bottomPt = getMarkerBoundaryPoint(
+      center,
+      bottomTarget,
+      player,
+      stageSize,
+      true,
+    );
+    expect(bottomPt.x).toBeCloseTo(center.x);
+    expect(bottomPt.y).toBeCloseTo(center.y + ry);
+  });
+
+  it('returns boundary points offset by larger ellipse for ring-fade marker', () => {
+    const player = createPlayer('ring-fade');
+    const center = { x: 500, y: 300 };
+    const radius = getPlayerMarkerRadius(player, stageSize);
+    const rx = radius * 2.3;
+    const ry = radius * 1.1;
 
     // Target to the right (dx > 0, dy = 0)
     const rightTarget = { x: 700, y: 300 };

@@ -8,6 +8,7 @@ import { PlayerFocusSpotlight } from '@/features/tactical-unified/objects/player
 import { PlayerMarkerCircle } from '@/features/tactical-unified/objects/player/components/player-marker-circle';
 import { PlayerMarkerLabel } from '@/features/tactical-unified/objects/player/components/player-marker-label';
 import { PlayerMarkerRing } from '@/features/tactical-unified/objects/player/components/player-marker-ring';
+import { PlayerMarkerRingFade } from '@/features/tactical-unified/objects/player/components/player-marker-ring-fade';
 import { PlayerVisionCone } from '@/features/tactical-unified/objects/player/components/player-vision-cone';
 import { usePlayerPhoto } from '@/features/tactical-unified/objects/player/hooks/use-player-photo';
 import { getLastName } from '@/lib/tactical/player-formatting';
@@ -68,9 +69,11 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
   const labelScale = marker.style?.labelSizeScale ?? 1.0;
   const displayName = marker.name ? getLastName(marker.name) : '';
 
+  const isRingFade = marker.style?.markerType === 'ring-fade';
   const is3D =
     markerMode === '3d-only' ||
-    (markerMode !== '2d-only' && marker.style?.markerType === 'ring');
+    (markerMode !== '2d-only' &&
+      (marker.style?.markerType === 'ring' || isRingFade));
 
   const photoImage = usePlayerPhoto(
     marker.playerId,
@@ -171,7 +174,14 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
         />
       )}
 
-      {is3D ? (
+      {isRingFade ? (
+        <PlayerMarkerRingFade
+          player={marker}
+          radius={radius}
+          numScale={numScale}
+          isSelected={effectiveIsSelected}
+        />
+      ) : is3D ? (
         <PlayerMarkerRing
           player={marker}
           radius={radius}

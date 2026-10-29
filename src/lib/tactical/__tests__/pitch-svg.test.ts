@@ -94,4 +94,31 @@ describe('pitch-svg generator', () => {
     const url2 = getPitchSvgDataUrl('16:9');
     expect(url1).toBe(url2);
   });
+
+  it('onlyMarkings: true のとき背景黒矩形を描画せずマーキングのみ生成する', () => {
+    const svgOnly = generatePitchSvg('16:9', { onlyMarkings: true });
+    expect(svgOnly).not.toContain('fill="#000000"');
+    expect(svgOnly).toContain('<!-- Touchlines & Goal lines -->');
+    expect(svgOnly).toContain('<!-- Halfway Line -->');
+
+    const defaultSvg = generatePitchSvg('16:9');
+    expect(defaultSvg).toContain('fill="#000000"');
+  });
+
+  it('getCacheKey が onlyMarkings, strokeWidth, strokeOpacity を区別する', () => {
+    const normalUrl = getPitchSvgDataUrl('16:9', { onlyMarkings: false });
+    const markingsUrl = getPitchSvgDataUrl('16:9', { onlyMarkings: true });
+    const thickLineUrl = getPitchSvgDataUrl('16:9', {
+      onlyMarkings: true,
+      strokeWidth: 6,
+    });
+    const opaqueLineUrl = getPitchSvgDataUrl('16:9', {
+      onlyMarkings: true,
+      strokeOpacity: 0.5,
+    });
+
+    expect(normalUrl).not.toBe(markingsUrl);
+    expect(markingsUrl).not.toBe(thickLineUrl);
+    expect(markingsUrl).not.toBe(opaqueLineUrl);
+  });
 });

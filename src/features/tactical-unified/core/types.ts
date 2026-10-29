@@ -5,6 +5,7 @@ import type {
   BallState as BallAnnotation,
   BoundaryBox,
   DrawingTool,
+  PitchAppearanceConfig,
   PitchTransform,
   Player,
   PlayerTrajectory,
@@ -50,6 +51,7 @@ export interface CanvasConfig {
   defaultBoundaryBox?: BoundaryBox;
   aspectRatio?: AspectRatio;
   defaultPitchTransform?: PitchTransform;
+  pitchAppearance?: PitchAppearanceConfig;
   capabilities?: Partial<CanvasCapabilities>;
 }
 
@@ -107,6 +109,7 @@ export interface CanvasState {
   pitchTransform: PitchTransform;
   boundaryBox: BoundaryBox;
   aspectRatio: AspectRatio;
+  pitchAppearance?: PitchAppearanceConfig;
   annotations: AnnotationsData;
   clipboard: CanvasClipboard | null;
   color: string;

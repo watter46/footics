@@ -117,6 +117,7 @@ export function createCanvasStore(config: CanvasConfig): CanvasStoreApi {
         : { ...DEFAULT_PITCH_TRANSFORM },
       boundaryBox,
       aspectRatio,
+      pitchAppearance: config.pitchAppearance,
       annotations: initialAnnotations,
       clipboard: null,
       color: '#ffffff',

@@ -19,6 +19,10 @@ export {
   type PlayerMarkerRingProps,
 } from './player-marker-ring';
 export {
+  PlayerMarkerRingFade,
+  type PlayerMarkerRingFadeProps,
+} from './player-marker-ring-fade';
+export {
   PlayerVisionCone,
   type PlayerVisionConeProps,
 } from './player-vision-cone';

@@ -115,7 +115,7 @@ describe('ContextHud', () => {
       store.getState().selectObject({ id: 'zone-1', kind: 'zone' });
     });
 
-    const opacityBtn = screen.getByTitle('不透明度 (クリックで切替)');
+    const opacityBtn = screen.getByTitle('塗りの不透明度 (クリックで切替)');
     expect(opacityBtn.textContent).toBe('25%');
     fireEvent.click(opacityBtn);
     expect(store.getState().annotations.zones[0].opacity).toBe(0.6);
@@ -502,5 +502,57 @@ describe('PlayerHud', () => {
     const nameInput = within(dialog).getByLabelText('選手名');
     expect(nameInput.className).toContain('bg-[#121214]');
     expect(nameInput.className).not.toContain('bg-[#1a1a1a]');
+  });
+
+  it('markerType="ring-fade" または "ring" のとき発光幅調整コントロールが表示され、glowBlur を調整できること', () => {
+    const { store } = renderWithStore(
+      <ContextHud stageSize={{ width: 800, height: 600 }} />,
+    );
+
+    act(() => {
+      store.getState().addMarker({
+        id: 'player-ring-fade-hud',
+        shirtNo: '',
+        name: 'Havertz',
+        x: 50,
+        y: 50,
+        team: 'home',
+        position: 'FW',
+        area: 'pitch',
+        connectLines: [],
+        badges: [],
+        style: {
+          markerType: 'ring-fade',
+          insideContent: 'none',
+          bottomLabel: 'name',
+          color: '#38bdf8',
+          strokeColor: '#ffffff',
+          strokeWidth: 2,
+          sizeScale: 1.0,
+          numberSizeScale: 1.0,
+          labelSizeScale: 1.0,
+          glowBlur: 16,
+        },
+      });
+      store
+        .getState()
+        .selectObject({ id: 'player-ring-fade-hud', kind: 'player' });
+    });
+
+    // 発光幅調整ボタンが存在すること
+    const decBtn = screen.getByTitle('発光幅縮小');
+    const incBtn = screen.getByTitle('発光幅拡大');
+    expect(decBtn).toBeDefined();
+    expect(incBtn).toBeDefined();
+    expect(screen.getByText('16px')).toBeDefined();
+
+    // 拡大ボタンをクリック (+5px)
+    fireEvent.click(incBtn);
+    expect(store.getState().annotations.markers[0].style?.glowBlur).toBe(21);
+    expect(screen.getByText('21px')).toBeDefined();
+
+    // 縮小ボタンをクリック (-5px)
+    fireEvent.click(decBtn);
+    expect(store.getState().annotations.markers[0].style?.glowBlur).toBe(16);
   });
 });

@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Footics - Pitch Background & Overlay Interactive Demo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #090a0f;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+    }
+    header {
+      padding: 12px 24px;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 20;
+    }
+    .title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 9999px;
+    }
+    .main-container {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      background: radial-gradient(circle at center, #151922 0%, #08090c 100%);
+      position: relative;
+    }
+    /* ピッチ枠 (外枠3%余白を含むフレーム全体) */
+    .pitch-frame {
+      position: relative;
+      width: 100%;
+      max-width: 960px;
+      aspect-ratio: 16 / 9;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #000000;
+      transition: aspect-ratio 0.2s ease, max-width 0.2s ease;
+    }
+    .pitch-frame.aspect-9-16 {
+      aspect-ratio: 9 / 16;
+      max-width: 420px;
+      height: 90%;
+    }
+    .pitch-frame.aspect-4-5 {
+      aspect-ratio: 4 / 5;
+      max-width: 520px;
+      height: 90%;
+    }
+    .pitch-frame.aspect-1-1 {
+      aspect-ratio: 1 / 1;
+      max-width: 600px;
+    }
+
+    /* ピッチ白線の内側領域（均等3%余白の内側にピッタリ収める） */
+    .pitch-inner-field {
+      position: absolute;
+      top: 3%;
+      left: 3%;
+      width: 94%;
+      height: 94%;
+      overflow: hidden;
+    }
+
+    /* レイヤー構造 */
+    .layer-image {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      z-index: 1;
+    }
+    .layer-overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+      transition: background-color 0.15s ease, opacity 0.15s ease, mix-blend-mode 0.15s ease;
+    }
+    .layer-pitch-lines {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    /* サイドバーUI */
+    .sidebar {
+      width: 320px;
+      background: rgba(15, 20, 28, 0.85);
+      backdrop-filter: blur(16px);
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+      z-index: 20;
+    }
+    .control-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #94a3b8;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 6px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .control-row label {
+      color: #cbd5e1;
+    }
+    .val-display {
+      font-size: 12px;
+      font-family: monospace;
+      color: #38bdf8;
+      min-width: 40px;
+      text-align: right;
+    }
+    input[type="range"] {
+      flex: 1;
+      accent-color: #38bdf8;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+      cursor: pointer;
+    }
+    input[type="color"] {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      width: 32px;
+      height: 26px;
+      background: transparent;
+      cursor: pointer;
+      padding: 0;
+    }
+    select, button {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.15s;
+    }
+    select:hover, button:hover {
+      background: #334155;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .btn-group {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+    .btn-preset {
+      font-size: 11px;
+      padding: 6px 8px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .btn-preset:hover {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="title-group">
+      <div class="title">Footics - Pitch Background & Overlay Demo</div>
+      <div class="badge">Live Preview</div>
+    </div>
+    <div style="font-size: 12px; color: #94a3b8;">
+      Figma再現: <strong style="color: #38bdf8;">#0B303E (Fill/Overlay)</strong>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <div class="canvas-area">
+      <div id="pitchFrame" class="pitch-frame">
+        <!-- 均等3%余白の内側にピッタリ収めるピッチ面 -->
+        <div id="pitchInnerField" class="pitch-inner-field">
+          <!-- 1. 背景画像 (大理石テクスチャ) -->
+          <img id="bgImage" class="layer-image" src="pitch-marble-texture.jpg" alt="Marble Background">
+          <!-- 2. カラーオーバーレイ -->
+          <div id="overlayLayer" class="layer-overlay"></div>
+        </div>
+        <!-- 3. ピッチライン (SVG) -->
+        <svg id="pitchSvg" class="layer-pitch-lines" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+          <g id="svgMarkingsGroup"></g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- コントロールサイドバー -->
+    <div class="sidebar">
+      <!-- プリセット切り替え -->
+      <div class="control-section">
+        <div class="section-title">クイックプリセット</div>
+        <div class="btn-group">
+          <button class="btn-preset" onclick="applyPreset('figma-default')">🎯 Figma設定 (#0B303E)</button>
+          <button class="btn-preset" onclick="applyPreset('figma-multiply')">🧪 Figma乗算 (Multiply)</button>
+          <button class="btn-preset" onclick="applyPreset('dark-deep')">🌌 深黒ネイビー (85%)</button>
+          <button class="btn-preset" onclick="applyPreset('pure-black')">⚫ 完全ブラック</button>
+        </div>
+      </div>
+
+      <!-- オーバーレイ設定 -->
+      <div class="control-section">
+        <div class="section-title">オーバーレイ設定</div>
+        
+        <div class="control-row">
+          <label>オーバーレイ色</label>
+          <input type="color" id="overlayColor" value="#0B303E">
+          <span id="overlayColorVal" class="val-display">#0b303e</span>
+        </div>
+
+        <div class="control-row">
+          <label>不透明度</label>
+          <input type="range" id="overlayOpacity" min="0" max="100" value="100">
+          <span id="overlayOpacityVal" class="val-display">100%</span>
+        </div>
+
+        <div class="control-row">
+          <label>合成モード</label>
+          <select id="blendMode">
+            <option value="overlay" selected>Overlay (オーバーレイ)</option>
+            <option value="normal">Normal (通常)</option>
+            <option value="multiply">Multiply (乗算)</option>
+            <option value="screen">Screen (スクリーン)</option>
+            <option value="hard-light">Hard Light</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ピッチライン設定 -->
+      <div class="control-section">
+        <div class="section-title">ピッチライン設定</div>
+
+        <div class="control-row">
+          <label>ライン色</label>
+          <input type="color" id="lineColor" value="#ffffff">
+          <span id="lineColorVal" class="val-display">#ffffff</span>
+        </div>
+
+        <div class="control-row">
+          <label>ライン太さ</label>
+          <input type="range" id="lineWidth" min="1" max="6" step="0.5" value="2.5">
+          <span id="lineWidthVal" class="val-display">2.5px</span>
+        </div>
+
+        <div class="control-row">
+          <label>ライン不透明度</label>
+          <input type="range" id="lineOpacity" min="0" max="100" value="100">
+          <span id="lineOpacityVal" class="val-display">100%</span>
+        </div>
+      </div>
+
+      <!-- 背景画像設定 -->
+      <div class="control-section">
+        <div class="section-title">テクスチャ画像設定</div>
+
+        <div class="control-row">
+          <label>画像の表示</label>
+          <select id="imageVisibility" onchange="toggleImage(this.value)">
+            <option value="visible" selected>表示 (Marble)</option>
+            <option value="hidden">非表示 (ベタ塗りのみ)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- アスペクト比 -->
+      <div class="control-section">
+        <div class="section-title">アスペクト比プレビュー</div>
+        <div class="btn-group">
+          <button class="btn-preset" onclick="setAspect('16:9')">16:9 (横長)</button>
+          <button class="btn-preset" onclick="setAspect('9:16')">9:16 (縦長)</button>
+          <button class="btn-preset" onclick="setAspect('4:5')">4:5 (X縦長)</button>
+          <button class="btn-preset" onclick="setAspect('1-1')">1:1 (正方形)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const pitchFrame = document.getElementById('pitchFrame');
+    const bgImage = document.getElementById('bgImage');
+    const overlayLayer = document.getElementById('overlayLayer');
+    const svgMarkingsGroup = document.getElementById('svgMarkingsGroup');
+    const pitchSvg = document.getElementById('pitchSvg');
+
+    // Controls
+    const overlayColor = document.getElementById('overlayColor');
+    const overlayColorVal = document.getElementById('overlayColorVal');
+    const overlayOpacity = document.getElementById('overlayOpacity');
+    const overlayOpacityVal = document.getElementById('overlayOpacityVal');
+    const blendMode = document.getElementById('blendMode');
+
+    const lineColor = document.getElementById('lineColor');
+    const lineColorVal = document.getElementById('lineColorVal');
+    const lineWidth = document.getElementById('lineWidth');
+    const lineWidthVal = document.getElementById('lineWidthVal');
+    const lineOpacity = document.getElementById('lineOpacity');
+    const lineOpacityVal = document.getElementById('lineOpacityVal');
+
+    let currentAspect = '16:9';
+
+    // ピッチ幾何描画 (16:9)
+    function renderPitchSvg(aspect, strokeColor, strokeWidth, strokeOpacity) {
+      const isHorizontal = aspect === '16:9';
+      let w = 1920, h = 1080;
+      if (aspect === '9:16') { w = 1080; h = 1920; }
+      else if (aspect === '4:5') { w = 1080; h = 1350; }
+      else if (aspect === '1-1') { w = 1080; h = 1080; }
+
+      pitchSvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+      const marginRatio = 0.03;
+      const left = w * marginRatio;
+      const top = h * marginRatio;
+      const pw = w * (1 - 2 * marginRatio);
+      const ph = h * (1 - 2 * marginRatio);
+      const right = left + pw;
+      const bottom = top + ph;
+      const cx = w / 2;
+      const cy = h / 2;
+
+      const lenPx = isHorizontal ? pw : ph;
+      const widPx = isHorizontal ? ph : pw;
+      const sL = lenPx / 105;
+      const sW = widPx / 68;
+      const mS = Math.min(sL, sW);
+      const r = 9.15 * mS;
+      const paDepth = 16.5 * sL;
+      const paWidth = 40.32 * sW;
+      const gaDepth = 5.5 * sL;
+      const gaWidth = 18.32 * sW;
+      const spotDist = 11.0 * sL;
+      const arcOffset = Math.sqrt(Math.max(0, r * r - (paDepth - spotDist) ** 2));
+
+      let svgHtml = '';
+      if (isHorizontal) {
+        svgHtml = `
+          <!-- 外枠 & ハーフウェーライン -->
+          <rect x="${left}" y="${top}" width="${pw}" height="${ph}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <line x1="${cx}" y1="${top}" x2="${cx}" y2="${bottom}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <!-- センターサークル & スポット -->
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <circle cx="${cx}" cy="${cy}" r="${0.4 * mS}" fill="${strokeColor}" opacity="${strokeOpacity}"/>
+          <!-- PA (左右) -->
+          <rect x="${left}" y="${cy - paWidth / 2}" width="${paDepth}" height="${paWidth}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <rect x="${right - paDepth}" y="${cy - paWidth / 2}" width="${paDepth}" height="${paWidth}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <!-- GA (左右) -->
+          <rect x="${left}" y="${cy - gaWidth / 2}" width="${gaDepth}" height="${gaWidth}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <rect x="${right - gaDepth}" y="${cy - gaWidth / 2}" width="${gaDepth}" height="${gaWidth}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <!-- ペナルティスポット -->
+          <circle cx="${left + spotDist}" cy="${cy}" r="${0.3 * mS}" fill="${strokeColor}" opacity="${strokeOpacity}"/>
+          <circle cx="${right - spotDist}" cy="${cy}" r="${0.3 * mS}" fill="${strokeColor}" opacity="${strokeOpacity}"/>
+          <!-- ペナルティアーク -->
+          <path d="M ${left + paDepth} ${cy - arcOffset} A ${r} ${r} 0 0 1 ${left + paDepth} ${cy + arcOffset}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <path d="M ${right - paDepth} ${cy - arcOffset} A ${r} ${r} 0 0 0 ${right - paDepth} ${cy + arcOffset}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+        `;
+      } else {
+        svgHtml = `
+          <!-- 縦向き外枠 -->
+          <rect x="${left}" y="${top}" width="${pw}" height="${ph}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <line x1="${left}" y1="${cy}" x2="${right}" y2="${cy}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <circle cx="${cx}" cy="${cy}" r="${0.4 * mS}" fill="${strokeColor}" opacity="${strokeOpacity}"/>
+          <rect x="${cx - paWidth / 2}" y="${top}" width="${paWidth}" height="${paDepth}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <rect x="${cx - paWidth / 2}" y="${bottom - paDepth}" width="${paWidth}" height="${paDepth}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <rect x="${cx - gaWidth / 2}" y="${top}" width="${gaWidth}" height="${gaDepth}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <rect x="${cx - gaWidth / 2}" y="${bottom - gaDepth}" width="${gaWidth}" height="${gaDepth}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <circle cx="${cx}" cy="${top + spotDist}" r="${0.3 * mS}" fill="${strokeColor}" opacity="${strokeOpacity}"/>
+          <circle cx="${cx}" cy="${bottom - spotDist}" r="${0.3 * mS}" fill="${strokeColor}" opacity="${strokeOpacity}"/>
+          <path d="M ${cx - arcOffset} ${top + paDepth} A ${r} ${r} 0 0 0 ${cx + arcOffset} ${top + paDepth}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+          <path d="M ${cx - arcOffset} ${bottom - paDepth} A ${r} ${r} 0 0 1 ${cx + arcOffset} ${bottom - paDepth}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${strokeOpacity}"/>
+        `;
+      }
+      svgMarkingsGroup.innerHTML = svgHtml;
+    }
+
+    function update() {
+      // Overlay
+      overlayLayer.style.backgroundColor = overlayColor.value;
+      overlayLayer.style.opacity = overlayOpacity.value / 100;
+      overlayLayer.style.mixBlendMode = blendMode.value;
+
+      overlayColorVal.textContent = overlayColor.value.toLowerCase();
+      overlayOpacityVal.textContent = `${overlayOpacity.value}%`;
+
+      // Lines
+      const col = lineColor.value;
+      const wid = parseFloat(lineWidth.value);
+      const op = lineOpacity.value / 100;
+      lineColorVal.textContent = col.toLowerCase();
+      lineWidthVal.textContent = `${wid}px`;
+      lineOpacityVal.textContent = `${lineOpacity.value}%`;
+
+      renderPitchSvg(currentAspect, col, wid, op);
+    }
+
+    function toggleImage(val) {
+      bgImage.style.display = val === 'visible' ? 'block' : 'none';
+    }
+
+    function setAspect(aspect) {
+      currentAspect = aspect;
+      pitchFrame.className = 'pitch-frame';
+      if (aspect === '9:16') pitchFrame.classList.add('aspect-9-16');
+      if (aspect === '4:5') pitchFrame.classList.add('aspect-4-5');
+      if (aspect === '1-1') pitchFrame.classList.add('aspect-1-1');
+      update();
+    }
+
+    function applyPreset(name) {
+      if (name === 'figma-default') {
+        overlayColor.value = '#0b303e';
+        overlayOpacity.value = 65;
+        blendMode.value = 'normal';
+        lineColor.value = '#ffffff';
+        lineWidth.value = 2.5;
+        lineOpacity.value = 95;
+      } else if (name === 'figma-multiply') {
+        overlayColor.value = '#0b303e';
+        overlayOpacity.value = 90;
+        blendMode.value = 'multiply';
+        lineColor.value = '#ffffff';
+        lineWidth.value = 2.5;
+        lineOpacity.value = 100;
+      } else if (name === 'dark-deep') {
+        overlayColor.value = '#051319';
+        overlayOpacity.value = 82;
+        blendMode.value = 'normal';
+        lineColor.value = '#38bdf8';
+        lineWidth.value = 2.0;
+        lineOpacity.value = 90;
+      } else if (name === 'pure-black') {
+        overlayColor.value = '#000000';
+        overlayOpacity.value = 88;
+        blendMode.value = 'normal';
+        lineColor.value = '#ffffff';
+        lineWidth.value = 2.0;
+        lineOpacity.value = 100;
+      }
+      update();
+    }
+
+    // Event Listeners
+    [overlayColor, overlayOpacity, blendMode, lineColor, lineWidth, lineOpacity].forEach(el => {
+      el.addEventListener('input', update);
+      el.addEventListener('change', update);
+    });
+
+    // Initial render
+    update();
+  </script>
+</body>
+</html>

@@ -7,13 +7,16 @@ import { describe, expect, it } from 'vitest';
 import {
   AspectRatioSchema,
   BoundaryBoxSchema,
+  ConnectLineSchema,
   createDefaultPlayer,
   createDefaultProject,
   createDefaultSlide,
   createXBoundaryBox,
+  DrawingToolSchema,
   getAspectRatioOrientation,
   isHorizontalAspectRatio,
   isVerticalAspectRatio,
+  MarkerStyleSchema,
   PlayerSchema,
   SlideSchema,
   TacticalProjectSchema,
@@ -245,5 +248,109 @@ describe('BoundaryBoxSchema & X Media Presets', () => {
     expect(box.height).toBeCloseTo(70.31, 1);
     expect(box.x).toBe(0);
     expect(box.y).toBeCloseTo(14.84, 1);
+  });
+});
+
+describe('MarkerStyleSchema & ConnectLineSchema & DrawingToolSchema', () => {
+  it('MarkerStyleSchema が markerType: "ring-fade" を許容する', () => {
+    const style = MarkerStyleSchema.parse({
+      markerType: 'ring-fade',
+      color: '#38bdf8',
+    });
+    expect(style.markerType).toBe('ring-fade');
+  });
+
+  it('MarkerStyleSchema が glowBlur と glowOpacity を検証・デフォルト値を適用する', () => {
+    const styleDefault = MarkerStyleSchema.parse({
+      color: '#38bdf8',
+    });
+    expect(styleDefault.glowBlur).toBe(50);
+    expect(styleDefault.glowOpacity).toBe(1.0);
+
+    const styleCustom = MarkerStyleSchema.parse({
+      color: '#38bdf8',
+      glowBlur: 75,
+      glowOpacity: 0.6,
+    });
+    expect(styleCustom.glowBlur).toBe(75);
+    expect(styleCustom.glowOpacity).toBe(0.6);
+
+    expect(() =>
+      MarkerStyleSchema.parse({
+        color: '#38bdf8',
+        glowBlur: -1,
+      }),
+    ).toThrow();
+    expect(() =>
+      MarkerStyleSchema.parse({
+        color: '#38bdf8',
+        glowBlur: 101,
+      }),
+    ).toThrow();
+    expect(() =>
+      MarkerStyleSchema.parse({
+        color: '#38bdf8',
+        glowOpacity: -0.1,
+      }),
+    ).toThrow();
+    expect(() =>
+      MarkerStyleSchema.parse({
+        color: '#38bdf8',
+        glowOpacity: 1.1,
+      }),
+    ).toThrow();
+  });
+
+  it('ConnectLineSchema が glowBlur と glowOpacity を検証・デフォルト値を適用する', () => {
+    const clDefault = ConnectLineSchema.parse({
+      id: 'cl-1',
+      toPlayerId: 'p-2',
+    });
+    expect(clDefault.glowBlur).toBe(50);
+    expect(clDefault.glowOpacity).toBe(1.0);
+
+    const clCustom = ConnectLineSchema.parse({
+      id: 'cl-2',
+      toPlayerId: 'p-3',
+      glowBlur: 80,
+      glowOpacity: 0.4,
+    });
+    expect(clCustom.glowBlur).toBe(80);
+    expect(clCustom.glowOpacity).toBe(0.4);
+
+    expect(() =>
+      ConnectLineSchema.parse({
+        id: 'cl-3',
+        toPlayerId: 'p-4',
+        glowBlur: -1,
+      }),
+    ).toThrow();
+    expect(() =>
+      ConnectLineSchema.parse({
+        id: 'cl-4',
+        toPlayerId: 'p-5',
+        glowBlur: 101,
+      }),
+    ).toThrow();
+    expect(() =>
+      ConnectLineSchema.parse({
+        id: 'cl-5',
+        toPlayerId: 'p-6',
+        glowOpacity: -0.1,
+      }),
+    ).toThrow();
+    expect(() =>
+      ConnectLineSchema.parse({
+        id: 'cl-6',
+        toPlayerId: 'p-7',
+        glowOpacity: 1.1,
+      }),
+    ).toThrow();
+  });
+
+  it('DrawingToolSchema が "player-ring-fade" を許容する', () => {
+    expect(DrawingToolSchema.parse('player-ring-fade')).toBe(
+      'player-ring-fade',
+    );
   });
 });

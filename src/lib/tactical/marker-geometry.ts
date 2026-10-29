@@ -35,7 +35,9 @@ export function getMarkerBoundaryPoint(
   stageSize: { width: number; height: number },
   onlyRing = true,
 ): { x: number; y: number } {
-  const isRing = player.style.markerType === 'ring';
+  const isRing =
+    player.style.markerType === 'ring' ||
+    player.style.markerType === 'ring-fade';
   if (onlyRing && !isRing) {
     return { x: center.x, y: center.y };
   }
@@ -52,9 +54,10 @@ export function getMarkerBoundaryPoint(
   const radius = getPlayerMarkerRadius(player, stageSize);
 
   if (isRing) {
-    // 3D Foot Ring (横長楕円: rx = radius * 1.15, ry = radius * 0.55)
-    const rx = radius * 1.15;
-    const ry = radius * 0.55;
+    const isRingFade = player.style.markerType === 'ring-fade';
+    // 3D Foot Ring (横長楕円: ring は rx = radius * 1.15, ry = radius * 0.55, ring-fade は rx = radius * 2.3, ry = radius * 1.1)
+    const rx = radius * (isRingFade ? 2.3 : 1.15);
+    const ry = radius * (isRingFade ? 1.1 : 0.55);
 
     // 楕円方程式: (t*dx / rx)^2 + (t*dy / ry)^2 = 1 => t = 1 / hypot(dx/rx, dy/ry)
     const termX = dx / rx;

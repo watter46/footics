@@ -154,6 +154,41 @@ export function RingMarkerIcon({ size = 16, className }: IconProps) {
   );
 }
 
+export function RingFadeMarkerIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <ellipse
+        cx="12"
+        cy="14"
+        rx="9"
+        ry="5"
+        strokeWidth={2}
+        fill="currentColor"
+        fillOpacity={0.35}
+      />
+      <ellipse
+        cx="12"
+        cy="14"
+        rx="5"
+        ry="2.5"
+        strokeWidth={0}
+        fill="#000000"
+        fillOpacity={0.5}
+      />
+    </svg>
+  );
+}
+
 export function CircleMarkerIcon({ size = 16, className }: IconProps) {
   return (
     <svg

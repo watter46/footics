@@ -39,10 +39,11 @@ function renderWithStore(
 }
 
 describe('Toolbar Compound Components & Registry', () => {
-  it('EXTENSION_DRAWING_TOOLS に 2D 選手マーカーが含まれず、3D リングが含まれること', () => {
+  it('EXTENSION_DRAWING_TOOLS に 2D 選手マーカーが含まれず、3D リングおよび 3D Fade リングが含まれること', () => {
     const toolIds = EXTENSION_DRAWING_TOOLS.map((t) => t.id);
     expect(toolIds).not.toContain('player');
     expect(toolIds).toContain('player-ring');
+    expect(toolIds).toContain('player-ring-fade');
   });
 
   it('WEB_DRAWING_TOOLS から 2D 選手マーカーと 3D リングが除外されていること（Squad 一元化）', () => {

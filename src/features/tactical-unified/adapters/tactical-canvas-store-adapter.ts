@@ -6,7 +6,10 @@
  */
 
 import type { StoreApi } from 'zustand';
-import type { Slide } from '@/lib/types/tactical-unified';
+import {
+  DEFAULT_PITCH_APPEARANCE,
+  type Slide,
+} from '@/lib/types/tactical-unified';
 import {
   DEFAULT_BOUNDARY_BOX,
   DEFAULT_PITCH_TRANSFORM,
@@ -216,6 +219,10 @@ export function createTacticalCanvasStoreAdapter(
       pitchTransform: active?.pitchTransform ?? DEFAULT_PITCH_TRANSFORM,
       boundaryBox: active?.boundaryBox ?? DEFAULT_BOUNDARY_BOX,
       aspectRatio: active?.aspectRatio ?? state.project.aspectRatio,
+      pitchAppearance:
+        active?.pitchAppearance ??
+        state.project.pitchAppearance ??
+        DEFAULT_PITCH_APPEARANCE,
       annotations: getAnnotations(active),
       clipboard,
       ...local,

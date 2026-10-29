@@ -114,6 +114,90 @@ export function ConnectLineHud({
 
       <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
 
+      {/* 発光幅 (Blur) */}
+      <div className="flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={() => {
+            const cur = cl.glowBlur ?? 50;
+            if (cur > 0) updateLine({ glowBlur: Math.max(0, cur - 5) });
+          }}
+          disabled={(cl.glowBlur ?? 50) <= 0}
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-white/[0.08] disabled:opacity-30 cursor-pointer"
+          title="発光幅縮小"
+          aria-label="発光幅縮小"
+        >
+          <Minus size={11} />
+        </button>
+        <span
+          className="text-[11px] font-mono text-white/90 min-w-[24px] text-center"
+          title="発光幅"
+        >
+          {cl.glowBlur ?? 50}px
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            const cur = cl.glowBlur ?? 50;
+            if (cur < 100) updateLine({ glowBlur: Math.min(100, cur + 5) });
+          }}
+          disabled={(cl.glowBlur ?? 50) >= 100}
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-white/[0.08] disabled:opacity-30 cursor-pointer"
+          title="発光幅拡大"
+          aria-label="発光幅拡大"
+        >
+          <Plus size={11} />
+        </button>
+      </div>
+
+      <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
+
+      {/* 発光透明度 (Opacity) */}
+      <div className="flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={() => {
+            const cur = cl.glowOpacity ?? 1.0;
+            if (cur > 0) {
+              updateLine({
+                glowOpacity: Math.max(0, Number((cur - 0.1).toFixed(1))),
+              });
+            }
+          }}
+          disabled={(cl.glowOpacity ?? 1.0) <= 0}
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-white/[0.08] disabled:opacity-30 cursor-pointer"
+          title="発光透明度縮小"
+          aria-label="発光透明度縮小"
+        >
+          <Minus size={11} />
+        </button>
+        <span
+          className="text-[11px] font-mono text-white/90 min-w-[28px] text-center"
+          title="発光透明度"
+        >
+          {Math.round((cl.glowOpacity ?? 1.0) * 100)}%
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            const cur = cl.glowOpacity ?? 1.0;
+            if (cur < 1.0) {
+              updateLine({
+                glowOpacity: Math.min(1.0, Number((cur + 0.1).toFixed(1))),
+              });
+            }
+          }}
+          disabled={(cl.glowOpacity ?? 1.0) >= 1.0}
+          className="p-0.5 rounded text-white/60 hover:text-white hover:bg-white/[0.08] disabled:opacity-30 cursor-pointer"
+          title="発光透明度拡大"
+          aria-label="発光透明度拡大"
+        >
+          <Plus size={11} />
+        </button>
+      </div>
+
+      <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
+
       {/* 削除 */}
       <button
         type="button"

@@ -35,6 +35,35 @@ export function createRingMarker(
   };
 }
 
+export function createRingFadeMarker(
+  x: number,
+  y: number,
+  color = '#ffffff',
+  _shirtNo = '',
+): Player {
+  return {
+    id: `marker-${Date.now()}`,
+    area: 'pitch',
+    x,
+    y,
+    team: 'neutral',
+    shirtNo: '',
+    style: {
+      markerType: 'ring-fade',
+      color: color || '#ffffff',
+      strokeColor: '#ffffff',
+      strokeWidth: 2,
+      sizeScale: 1.0,
+      numberSizeScale: 1.0,
+      labelSizeScale: 1.0,
+      insideContent: 'none',
+      bottomLabel: 'none',
+    },
+    badges: [],
+    connectLines: [],
+  };
+}
+
 export function create2DPlayerMarker(
   x: number,
   y: number,

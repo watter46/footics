@@ -21,6 +21,10 @@ export {
 } from './mini-color-picker';
 export { PlayerHud, type PlayerHudProps } from './player-hud';
 export {
+  PlayerInfoPopover,
+  type PlayerInfoPopoverProps,
+} from './player-info-popover';
+export {
   PlayerQuickActions,
   type PlayerQuickActionsProps,
 } from './player-quick-actions';

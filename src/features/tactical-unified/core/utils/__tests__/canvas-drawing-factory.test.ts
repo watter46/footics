@@ -5,10 +5,19 @@ import type {
 } from '@/lib/types/tactical-unified';
 import {
   commitDrawingShape,
+  createRingFadeMarker,
   createRingMarker,
 } from '../canvas-drawing-factory';
 
 describe('canvas-drawing-factory', () => {
+  it('createRingFadeMarker が背番号なし・ラベル非表示・markerType: "ring-fade" で生成されること', () => {
+    const marker = createRingFadeMarker(50, 50, '#38bdf8');
+    expect(marker.shirtNo).toBe('');
+    expect(marker.style.markerType).toBe('ring-fade');
+    expect(marker.style.insideContent).toBe('none');
+    expect(marker.style.bottomLabel).toBe('none');
+  });
+
   it('createRingMarker が背番号なし・ラベル非表示で生成されること', () => {
     const marker = createRingMarker(50, 50, '#38bdf8');
     expect(marker.shirtNo).toBe('');
