@@ -7,8 +7,9 @@
  */
 
 import { temporal } from 'zundo';
-import { create } from 'zustand';
+import { useStore } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
+import { createStore } from 'zustand/vanilla';
 import { ensureTacticalProject } from '@/lib/types/tactical-unified';
 import {
   type AnnotationSlice,
@@ -104,89 +105,130 @@ export interface TacticalUnifiedState
 // § 3. Store 実装
 // ─────────────────────────────────────────
 
-export const useTacticalUnifiedStore = create<TacticalUnifiedState>()(
-  temporal(
-    subscribeWithSelector((set, get, store) => {
-      const interceptProject = (
-        partial:
-          | TacticalUnifiedState
-          | Partial<TacticalUnifiedState>
-          | ((
-              state: TacticalUnifiedState,
-            ) => TacticalUnifiedState | Partial<TacticalUnifiedState>),
-      ) => {
-        if (typeof partial === 'function') {
-          return (state: TacticalUnifiedState) => {
-            const next = partial(state);
-            if (
-              next &&
-              typeof next === 'object' &&
-              'project' in next &&
-              next.project
-            ) {
-              ensureTacticalProject(next.project);
-            }
-            return next;
-          };
-        }
-        if (
-          partial &&
-          typeof partial === 'object' &&
-          'project' in partial &&
-          partial.project
-        ) {
-          ensureTacticalProject(partial.project);
-        }
-        return partial;
-      };
+export function createTacticalUnifiedStore(
+  initial?: Partial<TacticalUnifiedState>,
+) {
+  if (initial?.project) {
+    ensureTacticalProject(initial.project);
+  }
 
-      const wrappedSet: typeof set = (...args) => {
-        const [partial, replace] = args;
-        const intercepted = interceptProject(partial);
-        if (replace) {
-          set(
-            intercepted as
-              | TacticalUnifiedState
-              | ((state: TacticalUnifiedState) => TacticalUnifiedState),
-            true,
-          );
-        } else {
-          set(intercepted, false);
-        }
-      };
+  return createStore<TacticalUnifiedState>()(
+    temporal(
+      subscribeWithSelector((set, get, store) => {
+        const interceptProject = (
+          partial:
+            | TacticalUnifiedState
+            | Partial<TacticalUnifiedState>
+            | ((
+                state: TacticalUnifiedState,
+              ) => TacticalUnifiedState | Partial<TacticalUnifiedState>),
+        ) => {
+          if (typeof partial === 'function') {
+            return (state: TacticalUnifiedState) => {
+              const next = partial(state);
+              if (
+                next &&
+                typeof next === 'object' &&
+                'project' in next &&
+                next.project
+              ) {
+                ensureTacticalProject(next.project);
+              }
+              return next;
+            };
+          }
+          if (
+            partial &&
+            typeof partial === 'object' &&
+            'project' in partial &&
+            partial.project
+          ) {
+            ensureTacticalProject(partial.project);
+          }
+          return partial;
+        };
 
-      const origSetState = store.setState;
-      store.setState = (...args) => {
-        const [partial, replace] = args;
-        const intercepted = interceptProject(partial);
-        if (replace) {
-          origSetState(
-            intercepted as
-              | TacticalUnifiedState
-              | ((state: TacticalUnifiedState) => TacticalUnifiedState),
-            true,
-          );
-        } else {
-          origSetState(intercepted, false);
-        }
-      };
+        const wrappedSet: typeof set = (...args) => {
+          const [partial, replace] = args;
+          const intercepted = interceptProject(partial);
+          if (replace) {
+            set(
+              intercepted as
+                | TacticalUnifiedState
+                | ((state: TacticalUnifiedState) => TacticalUnifiedState),
+              true,
+            );
+          } else {
+            set(intercepted, false);
+          }
+        };
 
-      return {
-        ...createHistorySlice(wrappedSet, get, store),
-        ...createClipboardSlice(wrappedSet, get, store),
-        ...createSlideSlice(wrappedSet, get, store),
-        ...createAnnotationSlice(wrappedSet, get, store),
-        ...createToolSlice(wrappedSet, get, store),
-        ...createPitchSlice(wrappedSet, get, store),
-        ...createProjectSlice(wrappedSet, get, store),
-      };
-    }),
-    {
-      limit: MAX_HISTORY,
-      partialize: (state) => ({
-        project: state.project,
-        activeSlideId: state.activeSlideId,
+        const origSetState = store.setState;
+        store.setState = (...args) => {
+          const [partial, replace] = args;
+          const intercepted = interceptProject(partial);
+          if (replace) {
+            origSetState(
+              intercepted as
+                | TacticalUnifiedState
+                | ((state: TacticalUnifiedState) => TacticalUnifiedState),
+              true,
+            );
+          } else {
+            origSetState(intercepted, false);
+          }
+        };
+
+        const baseState = {
+          ...createHistorySlice(wrappedSet, get, store),
+          ...createClipboardSlice(wrappedSet, get, store),
+          ...createSlideSlice(wrappedSet, get, store),
+          ...createAnnotationSlice(wrappedSet, get, store),
+          ...createToolSlice(wrappedSet, get, store),
+          ...createPitchSlice(wrappedSet, get, store),
+          ...createProjectSlice(wrappedSet, get, store),
+        };
+
+        return initial ? { ...baseState, ...initial } : baseState;
       }),
-    },
-  ),
+      {
+        limit: MAX_HISTORY,
+        partialize: (state) => ({
+          project: state.project,
+          activeSlideId: state.activeSlideId,
+        }),
+      },
+    ),
+  );
+}
+
+export type TacticalUnifiedStoreApi = ReturnType<
+  typeof createTacticalUnifiedStore
+>;
+
+export const defaultTacticalUnifiedStore = createTacticalUnifiedStore();
+
+const identity = (state: TacticalUnifiedState) => state;
+
+export interface UseTacticalUnifiedStore extends TacticalUnifiedStoreApi {
+  (): TacticalUnifiedState;
+  <T>(selector: (state: TacticalUnifiedState) => T): T;
+}
+
+function useTacticalUnifiedStoreImpl(): TacticalUnifiedState;
+function useTacticalUnifiedStoreImpl<T>(
+  selector: (state: TacticalUnifiedState) => T,
+): T;
+function useTacticalUnifiedStoreImpl<T>(
+  selector?: (state: TacticalUnifiedState) => T,
+): T {
+  return useStore(
+    defaultTacticalUnifiedStore,
+    selector ?? (identity as (state: TacticalUnifiedState) => T),
+  );
+}
+
+export const useTacticalUnifiedStore: UseTacticalUnifiedStore = Object.assign(
+  useTacticalUnifiedStoreImpl,
+  defaultTacticalUnifiedStore,
 );

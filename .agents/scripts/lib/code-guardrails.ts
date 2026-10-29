@@ -209,6 +209,8 @@ export function validateFileAgainstBaseline(
   const isStoreDef =
     normFile ===
       'src/features/tactical-unified/stores/tactical-unified-store.ts' ||
+    normFile ===
+      'src/features/tactical-unified/stores/tactical-unified-store-provider.tsx' ||
     normFile === 'src/stores/tactical-unified-store.ts';
   if (m.tacticalSingleton > 0 && !isStoreDef) {
     if (isCore || !baseline.tacticalSingleton.includes(normFile)) {
@@ -284,6 +286,8 @@ export function generateBaselineFromRepo(
       m.tacticalSingleton > 0 &&
       !f.includes('src/features/tactical-unified/core/') &&
       f !== 'src/features/tactical-unified/stores/tactical-unified-store.ts' &&
+      f !==
+        'src/features/tactical-unified/stores/tactical-unified-store-provider.tsx' &&
       f !== 'src/stores/tactical-unified-store.ts'
     ) {
       b.tacticalSingleton.push(f);

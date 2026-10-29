@@ -19,7 +19,10 @@ import {
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
 import { DrawingToolbar } from '@/features/tactical-unified/panels/toolbar/drawing-toolbar';
 import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  useTacticalUnifiedStoreApi,
+  useTacticalUnifiedStoreContext,
+} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { ASPECT_RATIOS } from '@/lib/types/tactical-unified';
 
 export interface FullTacticalCanvasProps {
@@ -35,21 +38,23 @@ export function FullTacticalCanvas({
   toolbar,
   ref,
 }: FullTacticalCanvasProps) {
+  const storeApi = useTacticalUnifiedStoreApi();
+
   // 現在のアスペクト比をマスターストアから取得し、Stage 矩形をピッチ比率に完全一致させる
-  const projectAspectRatio = useTacticalUnifiedStore(
+  const projectAspectRatio = useTacticalUnifiedStoreContext(
     (s) => s.project.aspectRatio,
   );
-  const activeSlideAspectRatio = useTacticalUnifiedStore(
+  const activeSlideAspectRatio = useTacticalUnifiedStoreContext(
     (s) => selectActiveSlide(s)?.aspectRatio,
   );
   const currentAspect = activeSlideAspectRatio ?? projectAspectRatio ?? '4:5';
   const resolvedImageAspect =
     imageAspect ?? ASPECT_RATIOS[currentAspect] ?? 4 / 5;
 
-  // マスターストア（useTacticalUnifiedStore）を唯一の真実源としてアダプター経由で接続
-  const storeApi = useMemo(() => {
-    return createTacticalCanvasStoreAdapter(useTacticalUnifiedStore);
-  }, []);
+  // マスターストア（storeApi）を唯一の真実源としてアダプター経由で接続
+  const canvasStore = useMemo(() => {
+    return createTacticalCanvasStoreAdapter(storeApi);
+  }, [storeApi]);
 
   // 再生配線: レジストリを親で保持して core に注入し、アニメーション hook と共有
   const nodesRegistryRef = useRef<CanvasNodesRegistry>(
@@ -58,9 +63,9 @@ export function FullTacticalCanvas({
   const { playAnimation, pauseAnimation, stopAnimation } = useTacticalAnimation(
     { nodesRegistryRef },
   );
-  const isPlaying = useTacticalUnifiedStore((s) => s.isPlaying);
-  const isExporting = useTacticalUnifiedStore((s) => s.isExporting);
-  const stopPlayback = useTacticalUnifiedStore((s) => s.stopPlayback);
+  const isPlaying = useTacticalUnifiedStoreContext((s) => s.isPlaying);
+  const isExporting = useTacticalUnifiedStoreContext((s) => s.isExporting);
+  const stopPlayback = useTacticalUnifiedStoreContext((s) => s.stopPlayback);
 
   const playRef = useRef(playAnimation);
   const pauseRef = useRef(pauseAnimation);
@@ -87,14 +92,16 @@ export function FullTacticalCanvas({
         wasPlayingRef.current = false;
         stopRef.current();
       }
-      useTacticalUnifiedStore.getState().setIsPlaying(false);
+      storeApi.getState().setIsPlaying(false);
     };
-  }, []);
+  }, [storeApi]);
 
   const resolvedToolbar = toolbar ?? <DrawingToolbar />;
 
   // Stage 実サイズをストアへ通知（ピッチ矩形写像用。座標系自体は変更しない）
-  const setStageAspect = useTacticalUnifiedStore((s) => s.setStageAspect);
+  const setStageAspect = useTacticalUnifiedStoreContext(
+    (s) => s.setStageAspect,
+  );
   const handleStageSizeChange = useCallback(
     (size: { width: number; height: number }) =>
       setStageAspect(size.width / size.height),
@@ -102,7 +109,7 @@ export function FullTacticalCanvas({
   );
 
   return (
-    <CanvasStoreProvider store={storeApi}>
+    <CanvasStoreProvider store={canvasStore}>
       <CanvasStageContainer
         ref={ref}
         className={className}

@@ -73,4 +73,26 @@ describe('TacticalUnifiedPage Integration', () => {
     const canvasElement = await screen.findByTestId('full-tactical-canvas');
     expect(canvasElement).toBeDefined();
   });
+
+  it('initialState で projectManagerModalOpen: true を確定注入した場合、モーダルが表示されること', async () => {
+    render(
+      <TacticalUnifiedPage
+        initialState={{
+          panels: {
+            sidebarOpen: true,
+            inspectorOpen: true,
+            rightPanelTab: 'formation',
+            isRightPanelOpen: false,
+            exportModalOpen: false,
+            projectManagerModalOpen: true,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('application')).toBeDefined();
+    // initialState の確定注入により projectManagerModal が開いていること
+    expect(screen.getByRole('dialog')).toBeDefined();
+    expect(screen.getByText('戦術プロジェクト管理')).toBeDefined();
+  });
 });

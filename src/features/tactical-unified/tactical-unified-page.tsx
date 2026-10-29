@@ -19,7 +19,11 @@ import { useKeyboardShortcuts } from '@/features/tactical-unified/hooks/use-keyb
 import { useTacticalAutoSave } from '@/features/tactical-unified/hooks/use-tactical-auto-save';
 import { useTacticalDropPaste } from '@/features/tactical-unified/hooks/use-tactical-drop-paste';
 import { useTacticalMatchInit } from '@/features/tactical-unified/hooks/use-tactical-match-init';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import type { TacticalUnifiedState } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  TacticalUnifiedStoreProvider,
+  useTacticalUnifiedStoreContext,
+} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { ProjectManagerModal } from './panels/dialogs/project-manager-modal';
 import { ExportModal } from './panels/export/export-modal';
 import { LeftPanel } from './panels/left-panel/left-panel';
@@ -36,12 +40,33 @@ const FullTacticalCanvas = dynamic(
 export interface TacticalUnifiedPageProps {
   initialMatchId?: string;
   initialMinute?: number;
+  initialState?: Partial<TacticalUnifiedState>;
 }
 
 export function TacticalUnifiedPage({
   initialMatchId,
   initialMinute,
+  initialState,
 }: TacticalUnifiedPageProps = {}) {
+  return (
+    <TacticalUnifiedStoreProvider initialState={initialState}>
+      <TacticalUnifiedPageContent
+        initialMatchId={initialMatchId}
+        initialMinute={initialMinute}
+      />
+    </TacticalUnifiedStoreProvider>
+  );
+}
+
+interface TacticalUnifiedPageContentProps {
+  initialMatchId?: string;
+  initialMinute?: number;
+}
+
+function TacticalUnifiedPageContent({
+  initialMatchId,
+  initialMinute,
+}: TacticalUnifiedPageContentProps) {
   // 🎯 URLクエリ or Props (matchId, minute) による試合データの初期配置
   const { matchId } = useTacticalMatchInit({
     initialMatchId,
@@ -51,16 +76,18 @@ export function TacticalUnifiedPage({
   // 💾 プロジェクト自動保存 & リロード時自動復元 (Dexie IndexedDB)
   useTacticalAutoSave({ matchId });
 
-  const exportModalOpen = useTacticalUnifiedStore(
+  const exportModalOpen = useTacticalUnifiedStoreContext(
     (s) => s.panels.exportModalOpen,
   );
-  const projectManagerModalOpen = useTacticalUnifiedStore(
+  const projectManagerModalOpen = useTacticalUnifiedStoreContext(
     (s) => s.panels.projectManagerModalOpen,
   );
-  const closeProjectManagerModal = useTacticalUnifiedStore(
+  const closeProjectManagerModal = useTacticalUnifiedStoreContext(
     (s) => s.closeProjectManagerModal,
   );
-  const sidebarOpen = useTacticalUnifiedStore((s) => s.panels.sidebarOpen);
+  const sidebarOpen = useTacticalUnifiedStoreContext(
+    (s) => s.panels.sidebarOpen,
+  );
 
   const [isFocusMode, setIsFocusMode] = useState(false);
 
@@ -90,22 +117,28 @@ export function TacticalUnifiedPage({
 
   const canvasRef = useRef<CanvasCoreHandle | null>(null);
 
-  const movePlayerToPitch = useTacticalUnifiedStore((s) => s.movePlayerToPitch);
-  const movePlayerToBench = useTacticalUnifiedStore((s) => s.movePlayerToBench);
-  const phases = useTacticalUnifiedStore((s) => s.project.phases);
-  const activePhaseId = useTacticalUnifiedStore((s) => s.activePhaseId);
-  const activeSlideId = useTacticalUnifiedStore((s) => s.activeSlideId);
-  const pitchAppearance = useTacticalUnifiedStore(
+  const movePlayerToPitch = useTacticalUnifiedStoreContext(
+    (s) => s.movePlayerToPitch,
+  );
+  const movePlayerToBench = useTacticalUnifiedStoreContext(
+    (s) => s.movePlayerToBench,
+  );
+  const phases = useTacticalUnifiedStoreContext((s) => s.project.phases);
+  const activePhaseId = useTacticalUnifiedStoreContext((s) => s.activePhaseId);
+  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
+  const pitchAppearance = useTacticalUnifiedStoreContext(
     (s) => s.project.pitchAppearance,
   );
-  const selectPhaseAndSlide = useTacticalUnifiedStore(
+  const selectPhaseAndSlide = useTacticalUnifiedStoreContext(
     (s) => s.selectPhaseAndSlide,
   );
-  const addPhase = useTacticalUnifiedStore((s) => s.addPhase);
-  const deletePhase = useTacticalUnifiedStore((s) => s.deletePhase);
-  const renamePhase = useTacticalUnifiedStore((s) => s.renamePhase);
-  const setActivePhase = useTacticalUnifiedStore((s) => s.setActivePhase);
-  const addSlide = useTacticalUnifiedStore((s) => s.addSlide);
+  const addPhase = useTacticalUnifiedStoreContext((s) => s.addPhase);
+  const deletePhase = useTacticalUnifiedStoreContext((s) => s.deletePhase);
+  const renamePhase = useTacticalUnifiedStoreContext((s) => s.renamePhase);
+  const setActivePhase = useTacticalUnifiedStoreContext(
+    (s) => s.setActivePhase,
+  );
+  const addSlide = useTacticalUnifiedStoreContext((s) => s.addSlide);
 
   const handleDndEnd = (event: DragEndEvent) => {
     const { active, over } = event;

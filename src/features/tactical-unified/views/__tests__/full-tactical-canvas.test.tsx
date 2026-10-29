@@ -2,7 +2,14 @@ import { act, render, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  type TacticalUnifiedStoreApi,
+  useTacticalUnifiedStore,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  TacticalUnifiedStoreProvider,
+  useTacticalUnifiedStoreApi,
+} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import {
   type ArrowAnnotation,
   createDefaultPlayer,
@@ -157,5 +164,61 @@ describe('FullTacticalCanvas (Level 3 Feature View)', () => {
     );
     expect(updatedPlayer?.x).toBe(99);
     expect(updatedPlayer?.y).toBe(99);
+  });
+
+  it('TacticalUnifiedStoreProvider 配下で Context 経由のストアがキャンバスに反映されアンマウント時もContextストアが操作されること', async () => {
+    let capturedApi!: TacticalUnifiedStoreApi;
+    function ApiCapturer() {
+      capturedApi = useTacticalUnifiedStoreApi();
+      return null;
+    }
+
+    const initialGlobalPlaying = useTacticalUnifiedStore.getState().isPlaying;
+    expect(initialGlobalPlaying).toBe(false);
+
+    const { unmount, container } = render(
+      <TacticalUnifiedStoreProvider initialState={{ isPlaying: true }}>
+        <ApiCapturer />
+        <div style={{ width: 800, height: 450 }}>
+          <FullTacticalCanvas imageAspect={16 / 9} />
+        </div>
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    // Context ストアの activeSlide にカスタム選手を追加
+    const activeSlideId = capturedApi.getState().activeSlideId;
+    const customPlayer = createDefaultPlayer('away', 30, 40, '#00ff00');
+    customPlayer.id = 'ctx-player-1';
+
+    act(() => {
+      capturedApi.getState().updateSlide(activeSlideId, {
+        players: [customPlayer],
+      });
+    });
+
+    await waitFor(() => {
+      const stageElement = container.querySelector('.konvajs-content');
+      expect(stageElement).not.toBeNull();
+      // 初期化時、Provider 側の stageAspect が MockResizeObserver (800x450, 16:9) により更新されていること
+      expect(capturedApi.getState().stageAspect).toBeCloseTo(16 / 9);
+    });
+
+    // Context ストアの選手情報が正しく更新されていること
+    const slide = capturedApi
+      .getState()
+      .project.slides.find((s) => s.id === activeSlideId);
+    expect(slide?.players[0].id).toBe('ctx-player-1');
+
+    const setIsPlayingSpy = vi.spyOn(capturedApi.getState(), 'setIsPlaying');
+    const globalSetIsPlayingSpy = vi.spyOn(
+      useTacticalUnifiedStore.getState(),
+      'setIsPlaying',
+    );
+
+    unmount();
+
+    // アンマウント時に Context ストアの setIsPlaying(false) が呼ばれ、グローバル側は呼ばれないこと
+    expect(setIsPlayingSpy).toHaveBeenCalledWith(false);
+    expect(globalSetIsPlayingSpy).not.toHaveBeenCalled();
   });
 });

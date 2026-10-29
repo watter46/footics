@@ -149,4 +149,66 @@ describe('TacticalCanvasStoreAdapter', () => {
     adapter.setState({ isDragging: true });
     expect(listener).toHaveBeenCalledTimes(1);
   });
+
+  it('copySelectedObjects がマスターストアの copySelectedObjects に委譲され、アダプターの clipboard がマスターストアの射影となること', () => {
+    const adapter = createTacticalCanvasStoreAdapter(useTacticalUnifiedStore);
+    const store = useTacticalUnifiedStore.getState();
+
+    const firstMarker = adapter.getState().annotations.markers[0];
+    expect(firstMarker).toBeDefined();
+    store.selectObject({ kind: 'player', id: firstMarker.id });
+
+    adapter.getState().copySelectedObjects();
+
+    // マスターストアの clipboard に保存されていること
+    expect(useTacticalUnifiedStore.getState().clipboard).not.toBeNull();
+    expect(
+      useTacticalUnifiedStore
+        .getState()
+        .clipboard?.players.some((p) => p.id === firstMarker.id),
+    ).toBe(true);
+
+    // アダプターの getState().clipboard がマスターストアの射影になっていること
+    const adapterClipboard = adapter.getState().clipboard;
+    expect(adapterClipboard).not.toBeNull();
+    expect(adapterClipboard?.markers.some((m) => m.id === firstMarker.id)).toBe(
+      true,
+    );
+  });
+
+  it('pasteObjects がマスターストアの pasteObjects に委譲されること', () => {
+    const adapter = createTacticalCanvasStoreAdapter(useTacticalUnifiedStore);
+    const store = useTacticalUnifiedStore.getState();
+
+    const firstMarker = adapter.getState().annotations.markers[0];
+    expect(firstMarker).toBeDefined();
+    store.selectObject({ kind: 'player', id: firstMarker.id });
+    adapter.getState().copySelectedObjects();
+
+    const beforeCount = adapter.getState().annotations.markers.length;
+
+    adapter.getState().pasteObjects();
+
+    expect(adapter.getState().annotations.markers.length).toBe(beforeCount + 1);
+  });
+
+  it('duplicateSelectedObjects がマスターストアの duplicateSelectedObjects に委譲されること', () => {
+    const adapter = createTacticalCanvasStoreAdapter(useTacticalUnifiedStore);
+    const store = useTacticalUnifiedStore.getState();
+
+    const firstMarker = adapter.getState().annotations.markers[0];
+    expect(firstMarker).toBeDefined();
+    store.selectObject({ kind: 'player', id: firstMarker.id });
+
+    const beforeCount = adapter.getState().annotations.markers.length;
+
+    adapter.getState().duplicateSelectedObjects();
+
+    expect(adapter.getState().annotations.markers.length).toBe(beforeCount + 1);
+    expect(
+      useTacticalUnifiedStore
+        .getState()
+        .clipboard?.players.some((p) => p.id === firstMarker.id),
+    ).toBe(true);
+  });
 });

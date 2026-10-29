@@ -14,13 +14,7 @@ import {
   DEFAULT_BOUNDARY_BOX,
   DEFAULT_PITCH_TRANSFORM,
 } from '../core/store/canvas-store-pitch';
-import type {
-  CanvasActions,
-  CanvasClipboard,
-  CanvasStore,
-  CanvasStoreApi,
-  SelectedObject,
-} from '../core/types';
+import type { CanvasActions, CanvasStore, CanvasStoreApi } from '../core/types';
 import {
   selectActiveSlide,
   selectCanRedo,
@@ -39,7 +33,6 @@ import {
   DEFAULT_CAPABILITIES,
   DEFAULT_HISTORY,
 } from './adapter-cache-helpers';
-import { createAdapterClipboardHelpers } from './adapter-clipboard-helpers';
 import {
   executeRemoveSelected,
   resolveSelectedObjectFromId,
@@ -73,20 +66,10 @@ export function createTacticalCanvasStoreAdapter(
   const s = () => unifiedStore.getState();
 
   const local = createInitialLocalState();
-  let clipboard: CanvasClipboard | null = null;
 
   const listeners = new Set<
     (state: CanvasStore, prevState: CanvasStore) => void
   >();
-
-  const clipboardHelpers = createAdapterClipboardHelpers(
-    s,
-    () => clipboard,
-    (cb) => {
-      clipboard = cb;
-      updateAndNotify();
-    },
-  );
 
   function getActiveSlide(state: TacticalUnifiedState) {
     return selectActiveSlide(state);
@@ -185,9 +168,9 @@ export function createTacticalCanvasStoreAdapter(
         players: data.markers,
       }),
     eraseAtPoint: (pt, r) => s().eraseAtPoint(s().activeSlideId, pt, r),
-    copySelectedObjects: clipboardHelpers.copySelectedObjects,
-    pasteObjects: clipboardHelpers.pasteObjects,
-    duplicateSelectedObjects: clipboardHelpers.duplicateSelectedObjects,
+    copySelectedObjects: () => s().copySelectedObjects(),
+    pasteObjects: () => s().pasteObjects(),
+    duplicateSelectedObjects: () => s().duplicateSelectedObjects(),
     undo: () => (temporal ? temporal.getState().undo() : s().undo()),
     redo: () => (temporal ? temporal.getState().redo() : s().redo()),
     canUndo: () =>
@@ -225,7 +208,14 @@ export function createTacticalCanvasStoreAdapter(
         state.project.pitchAppearance ??
         DEFAULT_PITCH_APPEARANCE,
       annotations: getAnnotations(active),
-      clipboard,
+      clipboard: state.clipboard
+        ? {
+            markers: state.clipboard.players,
+            arrows: state.clipboard.arrows,
+            zones: state.clipboard.zones,
+            texts: state.clipboard.texts,
+          }
+        : null,
       ...local,
       connectingPlayerId: state.connectingPlayerId,
       prevSlide: selectPreviousSlide(state),
