@@ -1,3 +1,7 @@
+import {
+  getSlide,
+  updateSlideInProject,
+} from '@/features/tactical-unified/stores/store-helpers';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   type FormationMode,
@@ -177,20 +181,18 @@ export function injectTeamSquadToTactical({
   });
 
   // 既存の同一チーム選手を置き換え、相手チーム選手は維持
-  const targetSlide = project.slides.find((s) => s.id === targetSlideId);
+  const targetSlide = getSlide(project, targetSlideId);
   if (!targetSlide) return;
 
   const otherTeamPlayers = targetSlide.players.filter((p) => p.team !== team);
   const updatedPlayers = [...otherTeamPlayers, ...newTeamPlayers];
 
   // スライド更新
-  const updatedSlides = project.slides.map((s) =>
-    s.id === targetSlideId ? { ...s, players: updatedPlayers } : s,
-  );
-
   const updatedProject: TacticalProject = {
-    ...project,
-    slides: updatedSlides,
+    ...updateSlideInProject(project, targetSlideId, (s) => ({
+      ...s,
+      players: updatedPlayers,
+    })),
     updatedAt: new Date().toISOString(),
   };
 

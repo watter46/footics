@@ -1,3 +1,7 @@
+import {
+  getSlide,
+  updateSlideInProject,
+} from '@/features/tactical-unified/stores/store-helpers';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getTeamFormationAtMinute } from '@/lib/data/formation-utils';
 import type { FormationType } from '@/lib/data/formations';
@@ -143,7 +147,7 @@ export function injectMatchToTactical({
       ? `${match.homeTeam.name} vs ${match.awayTeam.name} (${minute}')`
       : project.title;
 
-  const targetSlide = project.slides.find((s) => s.id === targetSlideId);
+  const targetSlide = getSlide(project, targetSlideId);
   if (!targetSlide) return;
 
   const neutralPlayers = targetSlide.players.filter(
@@ -151,19 +155,17 @@ export function injectMatchToTactical({
   );
   const updatedPlayers = [...neutralPlayers, ...allPlayers];
 
-  const updatedSlides = project.slides.map((s) =>
-    s.id === targetSlideId ? { ...s, players: updatedPlayers } : s,
-  );
-
   const updatedProject: TacticalProject = {
-    ...project,
+    ...updateSlideInProject(project, targetSlideId, (s) => ({
+      ...s,
+      players: updatedPlayers,
+    })),
     matchId: String(match.id),
     matchFormations: {
       home: homeFormation,
       away: awayFormation,
     },
     title,
-    slides: updatedSlides,
     updatedAt: new Date().toISOString(),
   };
 
