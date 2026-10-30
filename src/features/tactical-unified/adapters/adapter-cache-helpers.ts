@@ -8,7 +8,6 @@ import type {
 import type {
   AnnotationsData,
   CanvasStore,
-  DrawingPreviewState,
   SelectedObject,
 } from '../core/types';
 
@@ -31,64 +30,6 @@ export const DEFAULT_BALL: CanvasStore['ball'] = {
 };
 
 const EMPTY_ARR: [] = [];
-
-export interface LocalAdapterState {
-  drawingPreview: DrawingPreviewState | null;
-  isDragging: boolean;
-  isHudOpen: boolean;
-  color: string;
-  strokeWidth: number;
-  fontSize: number;
-  customColor: string;
-  markerMode: '2d-only' | '3d-only' | 'all';
-}
-
-export function createInitialLocalState(): LocalAdapterState {
-  return {
-    drawingPreview: null,
-    isDragging: false,
-    isHudOpen: true,
-    color: '#ffffff',
-    strokeWidth: 2,
-    fontSize: 14,
-    customColor: '#ffffff',
-    markerMode: 'all',
-  };
-}
-
-export function applyLocalStatePartial(
-  local: LocalAdapterState,
-  next: Partial<CanvasStore>,
-): boolean {
-  let changed = false;
-  if (
-    next.drawingPreview !== undefined &&
-    next.drawingPreview !== local.drawingPreview
-  ) {
-    local.drawingPreview = next.drawingPreview ?? null;
-    changed = true;
-  }
-  if (next.isDragging !== undefined && next.isDragging !== local.isDragging) {
-    local.isDragging = next.isDragging;
-    changed = true;
-  }
-  if (next.isHudOpen !== undefined && next.isHudOpen !== local.isHudOpen) {
-    local.isHudOpen = next.isHudOpen;
-    changed = true;
-  }
-  if (next.markerMode !== undefined && next.markerMode !== local.markerMode) {
-    local.markerMode = next.markerMode;
-    changed = true;
-  }
-  if (
-    next.customColor !== undefined &&
-    next.customColor !== local.customColor
-  ) {
-    local.customColor = next.customColor;
-    changed = true;
-  }
-  return changed;
-}
 
 export function createAnnotationCache() {
   let prevArrows: ArrowAnnotation[] | undefined;

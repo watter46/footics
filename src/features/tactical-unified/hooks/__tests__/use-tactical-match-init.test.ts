@@ -1,6 +1,11 @@
 import { renderHook, waitFor } from '@testing-library/react';
+import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  createTacticalUnifiedStore,
+  useTacticalUnifiedStore,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
+import { TacticalUnifiedStoreProvider } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { db } from '@/lib/db';
 import type { Match, Player, Team } from '@/types';
 import { useTacticalMatchInit } from '../use-tactical-match-init';
@@ -102,5 +107,36 @@ describe('useTacticalMatchInit', () => {
     const pitchPlayers =
       activeSlide?.players.filter((p) => p.area === 'pitch') ?? [];
     expect(pitchPlayers).toHaveLength(22);
+  });
+
+  it('injects match into custom storeApi when provided by context', async () => {
+    vi.spyOn(db.matches, 'get').mockResolvedValueOnce(mockMatch);
+
+    const customStore = createTacticalUnifiedStore();
+    const { result } = renderHook(
+      () => useTacticalMatchInit({ initialMatchId: '999', initialMinute: 25 }),
+      {
+        wrapper: ({ children }) =>
+          React.createElement(TacticalUnifiedStoreProvider, {
+            store: customStore,
+            children,
+          }),
+      },
+    );
+
+    expect(result.current.hasMatchQuery).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // Custom store must be populated
+    expect(customStore.getState().project.matchId).toBe('999');
+    expect(customStore.getState().project.title).toContain(
+      "Home FC vs Away FC (25')",
+    );
+
+    // Default store must NOT be polluted
+    expect(useTacticalUnifiedStore.getState().project.matchId).toBeUndefined();
   });
 });

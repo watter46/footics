@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { DrawingTool, ExportTarget } from '@/lib/types/tactical-unified';
+import type { DrawingPreviewState } from '../core/types';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 
 export type { DrawingTool, ExportTarget };
@@ -48,6 +49,16 @@ export interface ToolSlice {
   connectingPlayerId: string | null;
   activeMarkerOptionTab: MarkerOptionTab | null;
 
+  // ── キャンバス作図設定 & 一時UI状態
+  drawingPreview: DrawingPreviewState | null;
+  isDragging: boolean;
+  isHudOpen: boolean;
+  color: string;
+  strokeWidth: number;
+  fontSize: number;
+  customColor: string;
+  markerMode: '2d-only' | '3d-only' | 'all';
+
   // ── 表示制御
   teamVisibility: 'both' | 'home' | 'away';
   panels: PanelState;
@@ -56,6 +67,14 @@ export interface ToolSlice {
   setActiveTool: (tool: DrawingTool) => void;
   setContinuousDrawing: (val: boolean) => void;
   toggleContinuousDrawing: () => void;
+  setColor: (color: string) => void;
+  setCustomColor: (color: string) => void;
+  setStrokeWidth: (width: number) => void;
+  setFontSize: (size: number) => void;
+  setMarkerMode: (mode: '2d-only' | '3d-only' | 'all') => void;
+  setDrawingPreview: (preview: DrawingPreviewState | null) => void;
+  setIsDragging: (dragging: boolean) => void;
+  setIsHudOpen: (open: boolean) => void;
   selectObject: (obj: SelectedObject | null, multi?: boolean) => void;
   selectObjects: (objects: SelectedObject[], multi?: boolean) => void;
   clearSelection: () => void;
@@ -85,6 +104,14 @@ export const createToolSlice: StateCreator<
   selectedObjects: [],
   connectingPlayerId: null,
   activeMarkerOptionTab: null,
+  drawingPreview: null,
+  isDragging: false,
+  isHudOpen: true,
+  color: '#ffffff',
+  strokeWidth: 2,
+  fontSize: 14,
+  customColor: '#ffffff',
+  markerMode: 'all',
   teamVisibility: 'both',
   panels: {
     sidebarOpen: false,
@@ -102,6 +129,29 @@ export const createToolSlice: StateCreator<
   toggleContinuousDrawing: () =>
     set((s) => ({ continuousDrawing: !s.continuousDrawing })),
 
+  setColor: (color) => set((s) => (s.color === color ? s : { color })),
+
+  setCustomColor: (customColor) =>
+    set((s) => (s.customColor === customColor ? s : { customColor })),
+
+  setStrokeWidth: (strokeWidth) =>
+    set((s) => (s.strokeWidth === strokeWidth ? s : { strokeWidth })),
+
+  setFontSize: (fontSize) =>
+    set((s) => (s.fontSize === fontSize ? s : { fontSize })),
+
+  setMarkerMode: (markerMode) =>
+    set((s) => (s.markerMode === markerMode ? s : { markerMode })),
+
+  setDrawingPreview: (drawingPreview) =>
+    set((s) => (s.drawingPreview === drawingPreview ? s : { drawingPreview })),
+
+  setIsDragging: (isDragging) =>
+    set((s) => (s.isDragging === isDragging ? s : { isDragging })),
+
+  setIsHudOpen: (isHudOpen) =>
+    set((s) => (s.isHudOpen === isHudOpen ? s : { isHudOpen })),
+
   selectObject: (obj, multi = false) =>
     set((s) => {
       if (!obj) {
@@ -116,10 +166,12 @@ export const createToolSlice: StateCreator<
           selectedObjects: already
             ? s.selectedObjects.filter((o) => o.id !== obj.id)
             : [...s.selectedObjects, obj],
+          isHudOpen: true,
         };
       }
       return {
         selectedObjects: [obj],
+        isHudOpen: true,
       };
     }),
 
@@ -144,6 +196,7 @@ export const createToolSlice: StateCreator<
           objects.length === 1 && objects[0].kind === 'player'
             ? 'vision'
             : null,
+        ...(objects.length === 1 ? { isHudOpen: true } : {}),
       };
     }),
 

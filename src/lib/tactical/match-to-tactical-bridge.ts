@@ -2,7 +2,10 @@ import {
   getSlide,
   updateSlideInProject,
 } from '@/features/tactical-unified/stores/store-helpers';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  defaultTacticalUnifiedStore,
+  type TacticalUnifiedStoreApi,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
 import { getTeamFormationAtMinute } from '@/lib/data/formation-utils';
 import type { FormationType } from '@/lib/data/formations';
 import { parseWhoScoredFormationName } from '@/lib/tactical/formations';
@@ -119,6 +122,7 @@ export interface InjectMatchToTacticalOptions {
   match: Match;
   minute?: number;
   slideId?: string;
+  storeApi?: TacticalUnifiedStoreApi;
 }
 
 /**
@@ -128,8 +132,9 @@ export function injectMatchToTactical({
   match,
   minute = 0,
   slideId,
+  storeApi = defaultTacticalUnifiedStore,
 }: InjectMatchToTacticalOptions): void {
-  const store = useTacticalUnifiedStore.getState();
+  const store = storeApi.getState();
   const targetSlideId = slideId || store.activeSlideId;
   const project = store.project;
 

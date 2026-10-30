@@ -211,4 +211,63 @@ describe('TacticalCanvasStoreAdapter', () => {
         .clipboard?.players.some((p) => p.id === firstMarker.id),
     ).toBe(true);
   });
+
+  it('setColor, setStrokeWidth, setIsDragging, setDrawingPreview, setMarkerMode などがマスターストアと双方向同期すること', () => {
+    const adapter = createTacticalCanvasStoreAdapter(useTacticalUnifiedStore);
+
+    // アダプターからの呼び出しがマスターストアに反映されること
+    adapter.getState().setColor('#ff0000');
+    expect(useTacticalUnifiedStore.getState().color).toBe('#ff0000');
+    expect(adapter.getState().color).toBe('#ff0000');
+
+    adapter.getState().setStrokeWidth(5);
+    expect(useTacticalUnifiedStore.getState().strokeWidth).toBe(5);
+    expect(adapter.getState().strokeWidth).toBe(5);
+
+    adapter.getState().setMarkerMode('3d-only');
+    expect(useTacticalUnifiedStore.getState().markerMode).toBe('3d-only');
+    expect(adapter.getState().markerMode).toBe('3d-only');
+
+    const preview = {
+      isDrawing: true,
+      tool: 'arrow_solid' as const,
+      startX: 0,
+      startY: 0,
+      currentX: 10,
+      currentY: 10,
+      points: [0, 0, 10, 10],
+    };
+    adapter.getState().setDrawingPreview(preview);
+    expect(useTacticalUnifiedStore.getState().drawingPreview).toEqual(preview);
+    expect(adapter.getState().drawingPreview).toEqual(preview);
+
+    // マスターストアからの変更がアダプターに反映されること
+    useTacticalUnifiedStore.getState().setColor('#00ff00');
+    expect(adapter.getState().color).toBe('#00ff00');
+  });
+
+  it('adapter.setState で UI 状態がマスターストアに反映され、同値更新時はリスナー通知をスキップすること', () => {
+    const adapter = createTacticalCanvasStoreAdapter(useTacticalUnifiedStore);
+    const listener = vi.fn();
+    adapter.subscribe(listener);
+
+    adapter.setState({ color: '#abcdef' });
+    expect(useTacticalUnifiedStore.getState().color).toBe('#abcdef');
+    expect(adapter.getState().color).toBe('#abcdef');
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    // 同値更新
+    adapter.setState({ color: '#abcdef' });
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('selectObject を呼んだときに isHudOpen が true になること', () => {
+    const adapter = createTacticalCanvasStoreAdapter(useTacticalUnifiedStore);
+    useTacticalUnifiedStore.getState().setIsHudOpen(false);
+    expect(useTacticalUnifiedStore.getState().isHudOpen).toBe(false);
+
+    adapter.getState().selectObject({ kind: 'player', id: 'player-1' });
+    expect(useTacticalUnifiedStore.getState().isHudOpen).toBe(true);
+    expect(adapter.getState().isHudOpen).toBe(true);
+  });
 });

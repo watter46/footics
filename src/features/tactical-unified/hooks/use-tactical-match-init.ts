@@ -34,7 +34,7 @@ async function loadAndInjectMatch(
     storeApi.getState().loadProject(saved);
     return;
   }
-  injectMatchToTactical({ match, minute });
+  injectMatchToTactical({ match, minute, storeApi });
 }
 
 /**

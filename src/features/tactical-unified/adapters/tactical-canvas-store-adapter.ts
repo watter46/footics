@@ -25,9 +25,7 @@ import {
   type TacticalUnifiedState,
 } from '../stores/tactical-unified-store';
 import {
-  applyLocalStatePartial,
   createAnnotationCache,
-  createInitialLocalState,
   createSelectedIdsCache,
   DEFAULT_BALL,
   DEFAULT_CAPABILITIES,
@@ -39,9 +37,7 @@ import {
 } from './adapter-selection-helpers';
 
 export {
-  applyLocalStatePartial,
   createAnnotationCache,
-  createInitialLocalState,
   createSelectedIdsCache,
   DEFAULT_BALL,
   DEFAULT_CAPABILITIES,
@@ -57,6 +53,17 @@ interface TemporalStoreApi {
   }>;
 }
 
+const UI_STATE_KEYS = [
+  'drawingPreview',
+  'isDragging',
+  'isHudOpen',
+  'color',
+  'strokeWidth',
+  'fontSize',
+  'customColor',
+  'markerMode',
+] as const;
+
 export function createTacticalCanvasStoreAdapter(
   unifiedStore: StoreApi<TacticalUnifiedState>,
 ): CanvasStoreApi {
@@ -64,8 +71,6 @@ export function createTacticalCanvasStoreAdapter(
     unifiedStore as StoreApi<TacticalUnifiedState> & TemporalStoreApi
   ).temporal;
   const s = () => unifiedStore.getState();
-
-  const local = createInitialLocalState();
 
   const listeners = new Set<
     (state: CanvasStore, prevState: CanvasStore) => void
@@ -75,16 +80,6 @@ export function createTacticalCanvasStoreAdapter(
     return selectActiveSlide(state);
   }
 
-  function setLocal<K extends keyof typeof local>(
-    key: K,
-    val: (typeof local)[K],
-  ) {
-    if (local[key] !== val) {
-      local[key] = val;
-      updateAndNotify();
-    }
-  }
-
   const getAnnotations = createAnnotationCache();
   const getSelectedIds = createSelectedIdsCache();
 
@@ -92,16 +87,16 @@ export function createTacticalCanvasStoreAdapter(
     setActiveTool: (tool) => s().setActiveTool(tool),
     setContinuousDrawing: (c) => s().setContinuousDrawing(c),
     toggleContinuousDrawing: () => s().toggleContinuousDrawing(),
-    setColor: (c) => setLocal('color', c),
-    setCustomColor: (c) => setLocal('customColor', c),
-    setStrokeWidth: (w) => setLocal('strokeWidth', w),
-    setFontSize: (sz) => setLocal('fontSize', sz),
-    setMarkerMode: (m) => setLocal('markerMode', m),
+    setColor: (c) => s().setColor(c),
+    setCustomColor: (c) => s().setCustomColor(c),
+    setStrokeWidth: (w) => s().setStrokeWidth(w),
+    setFontSize: (sz) => s().setFontSize(sz),
+    setMarkerMode: (m) => s().setMarkerMode(m),
     setBackgroundImageUrl: (url) =>
       s().updateSlide(s().activeSlideId, { backgroundImageUrl: url }),
-    setDrawingPreview: (p) => setLocal('drawingPreview', p),
-    setIsDragging: (d) => setLocal('isDragging', d),
-    setIsHudOpen: (o) => setLocal('isHudOpen', o),
+    setDrawingPreview: (p) => s().setDrawingPreview(p),
+    setIsDragging: (d) => s().setIsDragging(d),
+    setIsHudOpen: (o) => s().setIsHudOpen(o),
     setConnectingPlayerId: (id) => s().setConnectingPlayerId(id),
     setSelectedIds: (ids) =>
       s().selectObjects(ids.map((id) => resolveSelectedObjectFromId(s(), id))),
@@ -111,7 +106,6 @@ export function createTacticalCanvasStoreAdapter(
         s().clearSelection();
         return;
       }
-      local.isHudOpen = true;
       const obj =
         typeof target === 'string'
           ? resolveSelectedObjectFromId(s(), target)
@@ -119,7 +113,6 @@ export function createTacticalCanvasStoreAdapter(
       s().selectObject(obj, isShift);
     },
     selectObjects: (objs, multi = false) => {
-      if (objs.length === 1) local.isHudOpen = true;
       s().selectObjects(objs, multi);
     },
     clearSelection: () => s().clearSelection(),
@@ -187,7 +180,7 @@ export function createTacticalCanvasStoreAdapter(
     return {
       config: {
         mode: 'tactical-board',
-        markerMode: local.markerMode,
+        markerMode: state.markerMode,
         aspectRatio: active?.aspectRatio ?? state.project.aspectRatio,
         backgroundImageUrl: active?.backgroundImageUrl,
         defaultBoundaryBox: active?.boundaryBox,
@@ -216,7 +209,14 @@ export function createTacticalCanvasStoreAdapter(
             texts: state.clipboard.texts,
           }
         : null,
-      ...local,
+      drawingPreview: state.drawingPreview,
+      isDragging: state.isDragging,
+      isHudOpen: state.isHudOpen,
+      color: state.color,
+      strokeWidth: state.strokeWidth,
+      fontSize: state.fontSize,
+      customColor: state.customColor,
+      markerMode: state.markerMode,
       connectingPlayerId: state.connectingPlayerId,
       prevSlide: selectPreviousSlide(state),
       activeSlideId: state.activeSlideId,
@@ -246,8 +246,22 @@ export function createTacticalCanvasStoreAdapter(
     setState: (partial) => {
       const next =
         typeof partial === 'function' ? partial(currentState) : partial;
-      if (applyLocalStatePartial(local, next)) {
-        updateAndNotify();
+      const current = s();
+      const patch: Partial<TacticalUnifiedState> = {};
+      let hasDiff = false;
+
+      for (const key of UI_STATE_KEYS) {
+        if (key in next && next[key] !== undefined) {
+          const val = next[key];
+          if (val !== current[key]) {
+            (patch as Record<string, unknown>)[key] = val;
+            hasDiff = true;
+          }
+        }
+      }
+
+      if (hasDiff) {
+        unifiedStore.setState(patch);
       }
     },
     subscribe: (listener) => {

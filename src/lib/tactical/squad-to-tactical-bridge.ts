@@ -2,7 +2,10 @@ import {
   getSlide,
   updateSlideInProject,
 } from '@/features/tactical-unified/stores/store-helpers';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  defaultTacticalUnifiedStore,
+  type TacticalUnifiedStoreApi,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   type FormationMode,
   type FormationType,
@@ -42,6 +45,7 @@ export interface InjectTeamSquadOptions {
   formation?: FormationType;
   mode?: FormationMode;
   slideId?: string;
+  storeApi?: TacticalUnifiedStoreApi;
 }
 
 /**
@@ -164,8 +168,9 @@ export function injectTeamSquadToTactical({
   formation = '4-2-3-1',
   mode = 'full',
   slideId,
+  storeApi = defaultTacticalUnifiedStore,
 }: InjectTeamSquadOptions): void {
-  const store = useTacticalUnifiedStore.getState();
+  const store = storeApi.getState();
   const targetSlideId = slideId || store.activeSlideId;
   const project = store.project;
 

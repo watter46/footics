@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  createTacticalUnifiedStore,
+  useTacticalUnifiedStore,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   convertSquadToTacticalPlayers,
   injectTeamSquadToTactical,
@@ -243,6 +246,39 @@ describe('squad-to-tactical-bridge', () => {
     expect(homeBench.length).toBe(2);
     // 相手チーム選手が保持されていること
     expect(awayPlayers.length).toBeGreaterThan(0);
+  });
+
+  it('injects squad into custom storeApi without polluting default store', () => {
+    const customStore = createTacticalUnifiedStore();
+    const activeSlideId = customStore.getState().activeSlideId;
+
+    injectTeamSquadToTactical({
+      teamName: 'Chelsea FC',
+      team: 'home',
+      players: sampleSquad,
+      formation: '4-2-3-1',
+      mode: 'half',
+      storeApi: customStore,
+    });
+
+    const updatedSlide = customStore
+      .getState()
+      .project.slides.find((s) => s.id === activeSlideId);
+    expect(updatedSlide).toBeDefined();
+    const homePitch =
+      updatedSlide?.players.filter(
+        (p) => p.team === 'home' && p.area === 'pitch',
+      ) || [];
+    expect(homePitch.length).toBe(11);
+
+    const defaultSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find(
+        (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
+      );
+    expect(defaultSlide?.players.some((p) => p.name === 'Cole Palmer')).toBe(
+      false,
+    );
   });
 
   it('correctly sets photoUrl and insideContent for players with and without photos', () => {

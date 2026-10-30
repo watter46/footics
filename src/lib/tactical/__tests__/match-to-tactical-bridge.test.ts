@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  createTacticalUnifiedStore,
+  useTacticalUnifiedStore,
+} from '@/features/tactical-unified/stores/tactical-unified-store';
 import type { Match, Player, Team } from '@/types';
 import {
   buildMatchTacticalPlayers,
@@ -253,5 +256,15 @@ describe('injectMatchToTactical', () => {
     const pitchPlayers =
       activeSlide?.players.filter((p) => p.area === 'pitch') ?? [];
     expect(pitchPlayers).toHaveLength(22);
+  });
+
+  it('injects match into custom storeApi without polluting default store', () => {
+    const customStore = createTacticalUnifiedStore();
+    const match = createMockMatch();
+
+    injectMatchToTactical({ match, minute: 30, storeApi: customStore });
+
+    expect(customStore.getState().project.matchId).toBe('12345');
+    expect(useTacticalUnifiedStore.getState().project.matchId).toBeUndefined();
   });
 });
