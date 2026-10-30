@@ -145,4 +145,40 @@ describe('TacticalUnifiedPage Integration', () => {
 
     expect(screen.getByText('Champions League Final Tactics')).toBeDefined();
   });
+
+  it('TopBar の Toggle 3D Split Preview ボタン押下で 3D プレビューパネルが展開され、右パネルが自動折りたたみされること', async () => {
+    render(
+      <TacticalUnifiedPage
+        initialState={{
+          panels: {
+            sidebarOpen: true,
+            inspectorOpen: false,
+            rightPanelTab: 'formation',
+            isRightPanelOpen: true,
+            splitPreviewOpen: false,
+            exportModalOpen: false,
+            projectManagerModalOpen: false,
+          },
+        }}
+      />,
+    );
+
+    // 初期状態: 3Dプレビューパネルは存在しない
+    expect(screen.queryByText('3D Camera Preview')).toBeNull();
+
+    // TopBar の Toggle 3D Split Preview ボタンを取得してクリック
+    const splitToggleBtn = screen.getByRole('button', {
+      name: /Toggle 3D Split Preview/i,
+    });
+    expect(splitToggleBtn).toBeDefined();
+    fireEvent.click(splitToggleBtn);
+
+    // 3Dプレビューパネルが表示されること
+    expect(await screen.findByText('3D Camera Preview')).toBeDefined();
+    expect(screen.getByLabelText('3D Tilt Angle Slider')).toBeDefined();
+
+    // 再度クリックで閉じること
+    fireEvent.click(splitToggleBtn);
+    expect(screen.queryByText('3D Camera Preview')).toBeNull();
+  });
 });

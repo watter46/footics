@@ -37,6 +37,7 @@ export interface PanelState {
   inspectorOpen: boolean;
   rightPanelTab: 'formation' | 'squad' | 'pitch';
   isRightPanelOpen: boolean;
+  splitPreviewOpen?: boolean;
   exportModalOpen: boolean;
   projectManagerModalOpen: boolean;
 }
@@ -87,6 +88,8 @@ export interface ToolSlice {
   setRightPanelTab: (tab: 'formation' | 'squad' | 'pitch') => void;
   toggleRightPanel: () => void;
   setRightPanelOpen: (open: boolean) => void;
+  toggleSplitPreview: () => void;
+  setSplitPreviewOpen: (open: boolean) => void;
   openExportModal: (target?: ExportTarget) => void;
   closeExportModal: () => void;
   openProjectManagerModal: () => void;
@@ -118,6 +121,7 @@ export const createToolSlice: StateCreator<
     inspectorOpen: true,
     rightPanelTab: 'formation',
     isRightPanelOpen: false,
+    splitPreviewOpen: false,
     exportModalOpen: false,
     projectManagerModalOpen: false,
   },
@@ -236,6 +240,27 @@ export const createToolSlice: StateCreator<
   setRightPanelOpen: (open) =>
     set((s) => ({
       panels: { ...s.panels, isRightPanelOpen: open },
+    })),
+
+  toggleSplitPreview: () =>
+    set((s) => {
+      const next = !s.panels.splitPreviewOpen;
+      return {
+        panels: {
+          ...s.panels,
+          splitPreviewOpen: next,
+          ...(next ? { isRightPanelOpen: false } : {}),
+        },
+      };
+    }),
+
+  setSplitPreviewOpen: (open) =>
+    set((s) => ({
+      panels: {
+        ...s.panels,
+        splitPreviewOpen: open,
+        ...(open ? { isRightPanelOpen: false } : {}),
+      },
     })),
 
   openExportModal: (target) =>

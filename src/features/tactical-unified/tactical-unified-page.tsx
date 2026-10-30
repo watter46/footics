@@ -28,6 +28,7 @@ import { ProjectManagerModal } from './panels/dialogs/project-manager-modal';
 import { ExportModal } from './panels/export/export-modal';
 import { LeftPanel } from './panels/left-panel/left-panel';
 import { RightPanel } from './panels/right-panel/right-panel';
+import { TacticalSplitPreviewPanel } from './panels/split-preview/tactical-split-preview-panel';
 import { TimelineBar } from './panels/timeline/timeline-bar';
 import { TopBar } from './panels/toolbar';
 
@@ -86,6 +87,9 @@ function TacticalUnifiedPageContent({
   );
   const sidebarOpen = useTacticalUnifiedStoreContext(
     (s) => s.panels.sidebarOpen,
+  );
+  const splitPreviewOpen = useTacticalUnifiedStoreContext((s) =>
+    Boolean(s.panels.splitPreviewOpen),
   );
 
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -172,10 +176,17 @@ function TacticalUnifiedPageContent({
             />
           )}
 
-          {/* Canvas — 最大化 */}
-          <main className="flex-1 relative overflow-hidden flex flex-col bg-[#0D0D0E]">
-            <FullTacticalCanvas ref={canvasRef} />
-          </main>
+          {/* Central Workspace: Canvas + Split Preview */}
+          <div className="flex-1 min-w-0 relative overflow-hidden flex flex-row bg-[#0D0D0E]">
+            <main className="flex-1 min-w-0 relative overflow-hidden flex flex-col bg-[#0D0D0E]">
+              <FullTacticalCanvas ref={canvasRef} />
+            </main>
+            {!isFocusMode && splitPreviewOpen && (
+              <div className="w-1/2 min-w-[320px] max-w-[55%] border-l border-white/[0.08] flex flex-col h-full">
+                <TacticalSplitPreviewPanel />
+              </div>
+            )}
+          </div>
 
           {/* Right Panel (Formation & Squad / Focus Mode対応) */}
           {!isFocusMode && <RightPanel />}

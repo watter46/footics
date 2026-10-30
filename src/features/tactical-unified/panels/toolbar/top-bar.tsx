@@ -8,7 +8,7 @@
  *  - Right: Panel toggles, Copy PNG, Primary Export, and More Actions menu (...)
  */
 
-import { Copy, PanelLeft, Upload } from 'lucide-react';
+import { Columns2, Copy, PanelLeft, Upload } from 'lucide-react';
 import type React from 'react';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
@@ -42,6 +42,12 @@ export function TopBar({
     (s) => s.panels.sidebarOpen,
   );
   const toggleSidebar = useTacticalUnifiedStoreContext((s) => s.toggleSidebar);
+  const splitPreviewOpen = useTacticalUnifiedStoreContext(
+    (s) => s.panels.splitPreviewOpen,
+  );
+  const toggleSplitPreview = useTacticalUnifiedStoreContext(
+    (s) => s.toggleSplitPreview,
+  );
   const { toastMessage, showToast } = useCanvasToast();
 
   async function handleCopy() {
@@ -75,6 +81,18 @@ export function TopBar({
       {/* Right: Panel Toggles, Copy PNG, Primary Export, More Options (...) */}
       <div className="flex items-center gap-1.5 shrink-0">
         <TopBarPanels />
+
+        {/* 3D Split Preview Toggle */}
+        <IconButton
+          variant="ghost"
+          size="sm"
+          isActive={Boolean(splitPreviewOpen && !isFocusMode)}
+          onClick={toggleSplitPreview}
+          aria-label="Toggle 3D Split Preview"
+          title="Toggle 3D Split Preview (Side-by-Side)"
+        >
+          <Columns2 size={15} strokeWidth={1.5} />
+        </IconButton>
 
         {/* Copy PNG */}
         <Button
