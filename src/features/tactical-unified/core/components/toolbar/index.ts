@@ -18,8 +18,14 @@ export {
   type DrawingToolPlugin,
   EXTENSION_DRAWING_TOOLS,
   getDrawingTools,
+  getToolShortcutMap,
+  registerDrawingToolPlugin,
+  TOOL_PLUGIN_ERASER,
   TOOL_PLUGIN_PLAYER_2D,
   TOOL_PLUGIN_PLAYER_3D_RING,
+  TOOL_PLUGIN_PLAYER_3D_RING_FADE,
+  TOOL_PLUGIN_ZONE_CIRCLE,
+  type ToolVisibility,
   WEB_DRAWING_TOOLS,
 } from './drawing-tool-plugin';
 export { ToolbarBoundaryBoxToggle } from './ToolbarBoundaryBoxToggle';

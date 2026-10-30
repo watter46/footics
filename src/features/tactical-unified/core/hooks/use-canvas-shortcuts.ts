@@ -1,29 +1,13 @@
 'use client';
 
 import { useHotkeys } from 'react-hotkeys-hook';
-import type { DrawingTool, SelectedObject } from '../types';
+import { getToolShortcutMap } from '../components/toolbar/drawing-tool-plugin';
+import type { SelectedObject } from '../types';
 import { useCanvasStoreApi } from './use-canvas-store';
 
 export interface UseCanvasShortcutsOptions {
   disabled?: boolean;
 }
-
-const TOOL_KEYS: Record<string, DrawingTool> = {
-  v: 'select',
-  l: 'line',
-  r: 'route_line',
-  a: 'arrow_solid',
-  d: 'arrow_dash',
-  w: 'arrow_wavy',
-  z: 'zone_circle',
-  p: 'polygon_zone',
-  t: 'text',
-  m: 'player',
-  o: 'player-ring',
-  e: 'eraser',
-};
-
-const TOOL_SHORTCUT_KEYS = Object.keys(TOOL_KEYS);
 
 export function useCanvasShortcuts({
   disabled = false,
@@ -139,11 +123,15 @@ export function useCanvasShortcuts({
     [store, isEnabled],
   );
 
-  // Tools: v, l, r, a, d, w, z, p, t, m, o, e
+  // Tools: registered shortcuts (v, l, r, a, d, w, z, p, t, m, o, e)
+  const shortcutMap = getToolShortcutMap();
+  const toolShortcutKeys = Object.keys(shortcutMap);
+
   useHotkeys(
-    TOOL_SHORTCUT_KEYS,
+    toolShortcutKeys,
     (e) => {
-      const tool = TOOL_KEYS[e.key.toLowerCase()];
+      const currentMap = getToolShortcutMap();
+      const tool = currentMap[e.key.toLowerCase()];
       if (tool) {
         e.preventDefault();
         store.getState().setActiveTool(tool);

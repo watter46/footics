@@ -1,24 +1,13 @@
-import {
-  create2DPlayerMarker,
-  createRingFadeMarker,
-  createRingMarker,
-  createTextAnnotation,
-} from './canvas-drawing-factory';
+import { getDrawingToolBehavior } from './canvas-drawing-factory';
 import type { useCanvasPointerStore } from './canvas-pointer-state';
 
-export const SHAPE_TOOLS = new Set<string>([
-  'pass',
-  'dribble',
-  'line',
-  'route_line',
-  'arrow_solid',
-  'arrow_dash',
-  'arrow_wavy',
-  'arrow-straight',
-  'arrow-curved',
-  'zone_circle',
-  'zone',
-]);
+class DynamicShapeToolsSet extends Set<string> {
+  override has(value: string): boolean {
+    return getDrawingToolBehavior(value)?.interactionKind === 'drag-shape';
+  }
+}
+
+export const SHAPE_TOOLS = new DynamicShapeToolsSet();
 
 export type PointerToolContext = ReturnType<typeof useCanvasPointerStore> & {
   onStartEditText?: (textId: string) => void;
@@ -40,12 +29,15 @@ export function handleToolPointerDown(
     eraseAtPoint,
   } = ctx;
 
-  if (activeTool === 'eraser') {
+  const behavior = getDrawingToolBehavior(activeTool);
+  if (!behavior) return;
+
+  if (behavior.interactionKind === 'eraser') {
     eraseAtPoint(normPos, 4);
     return;
   }
 
-  if (SHAPE_TOOLS.has(activeTool)) {
+  if (behavior.interactionKind === 'drag-shape') {
     setDrawingPreview({
       isDrawing: true,
       tool: activeTool,
@@ -57,41 +49,13 @@ export function handleToolPointerDown(
     return;
   }
 
-  if (activeTool === 'text') {
-    const text = createTextAnnotation(normPos.x, normPos.y, '#ffffff');
-    addText(text);
-    onStartEditText?.(text.id);
-    if (!continuousDrawing) setActiveTool('select');
-    return;
-  }
-
-  if (
-    activeTool === 'player-ring-fade' ||
-    activeTool === 'player-ring' ||
-    activeTool === 'player'
-  ) {
-    const marker =
-      activeTool === 'player-ring-fade'
-        ? createRingFadeMarker(
-            normPos.x,
-            normPos.y,
-            '#ffffff',
-            `${markers.length + 1}`,
-          )
-        : activeTool === 'player-ring'
-          ? createRingMarker(
-              normPos.x,
-              normPos.y,
-              '#034694',
-              `${markers.length + 1}`,
-            )
-          : create2DPlayerMarker(
-              normPos.x,
-              normPos.y,
-              '#034694',
-              `${markers.length + 1}`,
-            );
-    addMarker(marker);
+  if (behavior.interactionKind === 'point-place' && behavior.placePoint) {
+    behavior.placePoint(normPos, {
+      markersCount: markers.length,
+      addText,
+      addMarker,
+      onStartEditText,
+    });
     if (!continuousDrawing) setActiveTool('select');
   }
 }

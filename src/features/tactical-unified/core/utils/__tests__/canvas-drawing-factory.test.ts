@@ -7,6 +7,9 @@ import {
   commitDrawingShape,
   createRingFadeMarker,
   createRingMarker,
+  getDrawingToolBehavior,
+  registerDrawingToolBehavior,
+  resolveToolPreviewColor,
 } from '../canvas-drawing-factory';
 
 describe('canvas-drawing-factory', () => {
@@ -184,6 +187,50 @@ describe('canvas-drawing-factory', () => {
         annotationType: 'zone',
         color: '#ef4444',
         opacity: 0.25,
+      }),
+    );
+  });
+
+  it('resolveToolPreviewColor がツールの既定色およびユーザー選択色を正しく解決すること', () => {
+    expect(resolveToolPreviewColor('route_line')).toBe('#38bdf8');
+    expect(resolveToolPreviewColor('arrow_wavy')).toBe('#eab308');
+    expect(resolveToolPreviewColor('zone')).toBe('#ef4444');
+    expect(resolveToolPreviewColor('line')).toBe('#ffffff');
+    expect(resolveToolPreviewColor('line', '#10b981')).toBe('#10b981');
+    expect(resolveToolPreviewColor('route_line', '#10b981')).toBe('#10b981');
+  });
+
+  it('registerDrawingToolBehavior でカスタムツールを登録し commitDrawingShape に委譲されること', () => {
+    const customCommit = vi.fn();
+    registerDrawingToolBehavior('custom_star', {
+      interactionKind: 'drag-shape',
+      previewKind: 'line',
+      defaultPreviewColor: '#a855f7',
+      commitDrag: customCommit,
+    });
+
+    expect(getDrawingToolBehavior('custom_star')).toBeDefined();
+    expect(resolveToolPreviewColor('custom_star')).toBe('#a855f7');
+
+    const addArrow = vi.fn<(a: ArrowAnnotation) => void>();
+    const addZone = vi.fn<(z: ZoneAnnotation) => void>();
+    const preview = {
+      isDrawing: true,
+      tool: 'custom_star' as never,
+      startX: 0,
+      startY: 0,
+      currentX: 10,
+      currentY: 10,
+    };
+
+    commitDrawingShape(preview, '#a855f7', 2, addArrow, addZone);
+    expect(customCommit).toHaveBeenCalledWith(
+      preview,
+      '#a855f7',
+      2,
+      expect.objectContaining({
+        addArrow,
+        addZone,
       }),
     );
   });

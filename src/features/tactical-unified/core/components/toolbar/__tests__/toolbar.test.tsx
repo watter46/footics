@@ -10,6 +10,8 @@ import {
   EXTENSION_DRAWING_TOOLS,
   FixedToolbar,
   getDrawingTools,
+  getToolShortcutMap,
+  registerDrawingToolPlugin,
   ToolbarBoundaryBoxToggle,
   ToolbarContinuousLock,
   ToolbarDivider,
@@ -210,6 +212,43 @@ describe('Toolbar Compound Components & Registry', () => {
         createCanvasStore({ mode: 'tactical-board' }),
       );
       expect(screen.queryByTitle(/Pitch Lock/i)).toBeNull();
+    });
+  });
+
+  describe('Drawing Tool Plugin Registry & Shortcuts', () => {
+    it('getToolShortcutMap が規定のショートカットマッピングを返すこと', () => {
+      const map = getToolShortcutMap();
+      expect(map).toMatchObject({
+        v: 'select',
+        l: 'line',
+        r: 'route_line',
+        a: 'arrow_solid',
+        d: 'arrow_dash',
+        w: 'arrow_wavy',
+        z: 'zone_circle',
+        p: 'polygon_zone',
+        t: 'text',
+        m: 'player',
+        o: 'player-ring',
+        e: 'eraser',
+      });
+    });
+
+    it('registerDrawingToolPlugin で新しいツールが登録され、getDrawingTools や getToolShortcutMap に反映されること', () => {
+      const DummyIcon = () => null;
+      registerDrawingToolPlugin({
+        id: 'test_tool' as never,
+        label: 'Test Tool (K)',
+        icon: DummyIcon,
+        shortcutKey: 'k',
+        visibility: 'core',
+      });
+
+      const tools = getDrawingTools('2d-only');
+      expect(tools.some((t) => (t.id as string) === 'test_tool')).toBe(true);
+
+      const map = getToolShortcutMap();
+      expect(map.k).toBe('test_tool');
     });
   });
 });

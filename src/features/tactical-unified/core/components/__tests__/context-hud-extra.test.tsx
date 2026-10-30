@@ -6,7 +6,16 @@ import { createCanvasStore } from '../../store/canvas-store';
 import { CanvasStoreContext } from '../../store/canvas-store-provider';
 import type { CanvasStoreApi } from '../../types';
 import type { CanvasNodesRegistry } from '../../utils/canvas-registry';
-import { ContextHud } from '../ContextHud';
+import {
+  ContextHud,
+  HUD_CONTENT_RENDERERS,
+  registerHudContentRenderer,
+} from '../ContextHud';
+import {
+  HUD_TARGET_RESOLVERS,
+  registerHudTargetResolver,
+  resolveHudTarget,
+} from '../hud/hud-targets';
 
 function renderWithStore(
   ui: React.ReactElement,
@@ -143,5 +152,52 @@ describe('ContextHud Extra Plugins (renderExtraHud & resolveExtraTarget)', () =>
     );
 
     expect(container.firstChild).toBeNull();
+  });
+
+  describe('Plugin Registry (HUD Target & Content)', () => {
+    it('registerHudTargetResolver でカスタム種別のターゲット解決を登録できること', () => {
+      expect(HUD_TARGET_RESOLVERS).toBeDefined();
+      registerHudTargetResolver(
+        'custom-item' as any,
+        ({ selected, offset }) => {
+          return { x: offset.x + 50, y: offset.y + 50, height: 20 };
+        },
+      );
+
+      const target = resolveHudTarget({
+        selected: { id: 'c1', kind: 'custom-item' as any },
+        offset: { x: 10, y: 20, width: 100, height: 100 },
+        data: { markers: [], arrows: [], zones: [], texts: [] },
+      });
+
+      expect(target).toEqual({ x: 60, y: 70, height: 20 });
+    });
+
+    it('registerHudContentRenderer でカスタム種別のHUD描画を登録できること', () => {
+      expect(HUD_CONTENT_RENDERERS).toBeDefined();
+      registerHudContentRenderer('custom-item' as any, (selected) => (
+        <span data-testid="custom-item-hud">Item: {selected.id}</span>
+      ));
+
+      const store = createCanvasStore({
+        mode: 'tactical-board',
+        aspectRatio: '16:9',
+      });
+      store
+        .getState()
+        .setSelectedObjects([{ id: 'c1', kind: 'custom-item' as any }]);
+
+      renderWithStore(
+        <ContextHud
+          stageSize={{ width: 800, height: 600 }}
+          resolveExtraTarget={() => ({ x: 400, y: 300, height: 20 })}
+        />,
+        store,
+      );
+
+      const hudItem = screen.getByTestId('custom-item-hud');
+      expect(hudItem).toBeDefined();
+      expect(hudItem.textContent).toBe('Item: c1');
+    });
   });
 });

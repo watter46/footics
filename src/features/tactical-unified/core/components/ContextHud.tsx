@@ -5,7 +5,7 @@ import type React from 'react';
 import { useEffect } from 'react';
 import { FloatingSurface } from '@/components/ui/floating-surface';
 import { useCanvasStore } from '../hooks/use-canvas-store';
-import type { SelectedObject } from '../types';
+import type { SelectedObject, SelectedObjectKind } from '../types';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import {
   ArrowHud,
@@ -27,6 +27,35 @@ export interface ContextHudProps {
     selected: SelectedObject,
     offset: HudOffsetRect,
   ) => HudTarget | null;
+}
+
+export type HudContentRenderer = (selected: SelectedObject) => React.ReactNode;
+
+export const HUD_CONTENT_RENDERERS = new Map<
+  SelectedObjectKind,
+  HudContentRenderer
+>([
+  ['player', (selected) => <PlayerHud playerId={selected.id} />],
+  ['arrow', (selected) => <ArrowHud arrowId={selected.id} />],
+  ['zone', (selected) => <ZoneHud zoneId={selected.id} />],
+  ['text', (selected) => <TextHud textId={selected.id} />],
+  [
+    'connect-line',
+    (selected) =>
+      selected.kind === 'connect-line' ? (
+        <ConnectLineHud
+          connectLineId={selected.id}
+          parentPlayerId={selected.parentPlayerId}
+        />
+      ) : null,
+  ],
+]);
+
+export function registerHudContentRenderer(
+  kind: SelectedObjectKind,
+  renderer: HudContentRenderer,
+): void {
+  HUD_CONTENT_RENDERERS.set(kind, renderer);
 }
 
 export function ContextHud({
@@ -137,16 +166,7 @@ export function ContextHud({
         variant="floating"
         className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-white"
       >
-        {selected.kind === 'player' && <PlayerHud playerId={selected.id} />}
-        {selected.kind === 'arrow' && <ArrowHud arrowId={selected.id} />}
-        {selected.kind === 'zone' && <ZoneHud zoneId={selected.id} />}
-        {selected.kind === 'text' && <TextHud textId={selected.id} />}
-        {selected.kind === 'connect-line' && (
-          <ConnectLineHud
-            connectLineId={selected.id}
-            parentPlayerId={selected.parentPlayerId}
-          />
-        )}
+        {HUD_CONTENT_RENDERERS.get(selected.kind)?.(selected)}
         {renderExtraHud?.(selected)}
       </FloatingSurface>
     </div>

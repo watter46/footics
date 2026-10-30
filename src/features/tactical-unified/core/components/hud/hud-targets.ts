@@ -1,5 +1,8 @@
 import type React from 'react';
-import type { SelectedObject } from '@/features/tactical-unified/core/types';
+import type {
+  SelectedObject,
+  SelectedObjectKind,
+} from '@/features/tactical-unified/core/types';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import type {
   ArrowAnnotation,
@@ -173,6 +176,90 @@ function resolveConnectLineTarget(
   return { x: (sX + eX) / 2, y: (sY + eY) / 2, height: 16 };
 }
 
+export type HudTargetResolver = (ctx: {
+  selected: SelectedObject;
+  offset: HudOffsetRect;
+  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
+  data: {
+    markers: Player[];
+    arrows: ArrowAnnotation[];
+    zones: ZoneAnnotation[];
+    texts: TextAnnotation[];
+  };
+}) => HudTarget | null;
+
+export const HUD_TARGET_RESOLVERS = new Map<
+  SelectedObjectKind,
+  HudTargetResolver
+>([
+  [
+    'ball',
+    ({ nodesRegistryRef }) => {
+      const ballNode = nodesRegistryRef?.current?.ballNode;
+      if (ballNode) {
+        try {
+          const rect = ballNode.getClientRect();
+          return {
+            x: rect.x + rect.width / 2,
+            y: rect.y + rect.height / 2,
+            height: Math.max(rect.height, 24),
+          };
+        } catch {
+          // fallback
+        }
+      }
+      return null;
+    },
+  ],
+  [
+    'player',
+    ({ selected, offset, nodesRegistryRef, data }) => {
+      const player = data.markers.find((p) => p.id === selected.id);
+      if (!player || player.area === 'bench') return null;
+      return resolvePlayerTarget(player, offset, nodesRegistryRef);
+    },
+  ],
+  [
+    'arrow',
+    ({ selected, offset, nodesRegistryRef, data }) => {
+      const arrow = data.arrows.find((a) => a.id === selected.id);
+      return arrow ? resolveArrowTarget(arrow, offset, nodesRegistryRef) : null;
+    },
+  ],
+  [
+    'zone',
+    ({ selected, offset, nodesRegistryRef, data }) => {
+      const zone = data.zones.find((z) => z.id === selected.id);
+      return zone ? resolveZoneTarget(zone, offset, nodesRegistryRef) : null;
+    },
+  ],
+  [
+    'text',
+    ({ selected, offset, nodesRegistryRef, data }) => {
+      const text = data.texts.find((t) => t.id === selected.id);
+      return text ? resolveTextTarget(text, offset, nodesRegistryRef) : null;
+    },
+  ],
+  [
+    'connect-line',
+    ({ selected, offset, data }) => {
+      return resolveConnectLineTarget(
+        selected.id,
+        selected.parentPlayerId,
+        offset,
+        data.markers,
+      );
+    },
+  ],
+]);
+
+export function registerHudTargetResolver(
+  kind: SelectedObjectKind,
+  resolver: HudTargetResolver,
+): void {
+  HUD_TARGET_RESOLVERS.set(kind, resolver);
+}
+
 export function resolveHudTarget({
   selected,
   offset,
@@ -199,47 +286,10 @@ export function resolveHudTarget({
     if (extra) return extra;
   }
 
-  if (selected.kind === 'ball') {
-    const ballNode = nodesRegistryRef?.current?.ballNode;
-    if (ballNode) {
-      try {
-        const rect = ballNode.getClientRect();
-        return {
-          x: rect.x + rect.width / 2,
-          y: rect.y + rect.height / 2,
-          height: Math.max(rect.height, 24),
-        };
-      } catch {
-        // fallback
-      }
-    }
-    return null;
+  const resolver = HUD_TARGET_RESOLVERS.get(selected.kind);
+  if (resolver) {
+    return resolver({ selected, offset, nodesRegistryRef, data });
   }
 
-  if (selected.kind === 'player') {
-    const player = data.markers.find((p) => p.id === selected.id);
-    if (!player || player.area === 'bench') return null;
-    return resolvePlayerTarget(player, offset, nodesRegistryRef);
-  }
-  if (selected.kind === 'arrow') {
-    const arrow = data.arrows.find((a) => a.id === selected.id);
-    return arrow ? resolveArrowTarget(arrow, offset, nodesRegistryRef) : null;
-  }
-  if (selected.kind === 'zone') {
-    const zone = data.zones.find((z) => z.id === selected.id);
-    return zone ? resolveZoneTarget(zone, offset, nodesRegistryRef) : null;
-  }
-  if (selected.kind === 'text') {
-    const text = data.texts.find((t) => t.id === selected.id);
-    return text ? resolveTextTarget(text, offset, nodesRegistryRef) : null;
-  }
-  if (selected.kind === 'connect-line') {
-    return resolveConnectLineTarget(
-      selected.id,
-      selected.parentPlayerId,
-      offset,
-      data.markers,
-    );
-  }
   return null;
 }

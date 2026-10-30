@@ -5,30 +5,23 @@
 
 import { useHotkeys } from 'react-hotkeys-hook';
 import { toast } from 'sonner';
+import { getToolShortcutMap } from '@/features/tactical-unified/core/components/toolbar';
 import {
   selectActivePhaseSlides,
   selectActiveSlide,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreApi } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { isInputFocused } from '@/lib/shortcuts';
-import type { DrawingTool } from '@/lib/types/tactical-unified';
 
-const TOOL_KEYS: Record<string, DrawingTool> = {
-  v: 'select',
-  l: 'line',
-  r: 'route_line',
-  a: 'arrow_solid',
-  d: 'arrow_dash',
-  w: 'arrow_wavy',
-  z: 'zone_circle',
-  p: 'polygon_zone',
-  t: 'text',
-  m: 'player',
-  o: 'player-ring',
-  e: 'eraser',
+const OBJECT_KIND_TO_COLLECTION: Record<
+  string,
+  'players' | 'arrows' | 'zones' | 'texts'
+> = {
+  player: 'players',
+  arrow: 'arrows',
+  zone: 'zones',
+  text: 'texts',
 };
-
-const TOOL_SHORTCUT_KEYS = Object.keys(TOOL_KEYS);
 
 export function useKeyboardShortcuts() {
   const storeApi = useTacticalUnifiedStoreApi();
@@ -113,12 +106,16 @@ export function useKeyboardShortcuts() {
     { enableOnFormTags: false },
   );
 
-  // Tools: v, l, r, a, d, w, z, p, t, m, o, e
+  // Tools: registered shortcuts
+  const shortcutMap = getToolShortcutMap();
+  const toolShortcutKeys = Object.keys(shortcutMap);
+
   useHotkeys(
-    TOOL_SHORTCUT_KEYS,
+    toolShortcutKeys,
     (e) => {
       if (isInputFocused()) return;
-      const tool = TOOL_KEYS[e.key.toLowerCase()];
+      const currentMap = getToolShortcutMap();
+      const tool = currentMap[e.key.toLowerCase()];
       if (tool) {
         e.preventDefault();
         storeApi.getState().setActiveTool(tool);
@@ -140,19 +137,14 @@ export function useKeyboardShortcuts() {
       if (currentSelected.length > 0) {
         const slide = selectActiveSlide(store);
         const hasLockedObject = currentSelected.some((obj) => {
-          if (obj.kind === 'player') {
-            return Boolean(slide?.players.find((p) => p.id === obj.id)?.locked);
-          }
-          if (obj.kind === 'arrow') {
-            return Boolean(slide?.arrows.find((a) => a.id === obj.id)?.locked);
-          }
-          if (obj.kind === 'zone') {
-            return Boolean(slide?.zones.find((z) => z.id === obj.id)?.locked);
-          }
-          if (obj.kind === 'text') {
-            return Boolean(slide?.texts.find((t) => t.id === obj.id)?.locked);
-          }
-          return false;
+          const collectionKey = OBJECT_KIND_TO_COLLECTION[obj.kind];
+          if (!collectionKey || !slide) return false;
+          const list = slide[collectionKey];
+          return Boolean(
+            (list as { id: string; locked?: boolean }[]).find(
+              (item) => item.id === obj.id,
+            )?.locked,
+          );
         });
 
         store.deleteSelectedObjects(currentSlideId);
