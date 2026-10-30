@@ -8,6 +8,7 @@
 import type { StoreApi } from 'zustand';
 import {
   DEFAULT_PITCH_APPEARANCE,
+  type PitchTransform,
   type Slide,
 } from '@/lib/types/tactical-unified';
 import {
@@ -83,6 +84,11 @@ export function createTacticalCanvasStoreAdapter(
   const getAnnotations = createAnnotationCache();
   const getSelectedIds = createSelectedIdsCache();
 
+  let editorViewport: PitchTransform = {
+    ...DEFAULT_PITCH_TRANSFORM,
+    isLocked: false,
+  };
+
   const actions: CanvasActions = {
     setActiveTool: (tool) => s().setActiveTool(tool),
     setContinuousDrawing: (c) => s().setContinuousDrawing(c),
@@ -118,17 +124,24 @@ export function createTacticalCanvasStoreAdapter(
     clearSelection: () => s().clearSelection(),
     setBoundaryBox: (box) => s().setBoundaryBox(s().activeSlideId, box),
     setPitchTransform: (patch) => {
-      const cur =
-        getActiveSlide(s())?.pitchTransform ?? DEFAULT_PITCH_TRANSFORM;
-      s().updatePitchTransform(
-        s().activeSlideId,
-        typeof patch === 'function' ? patch(cur) : patch,
-      );
+      const next =
+        typeof patch === 'function'
+          ? patch(editorViewport)
+          : { ...editorViewport, ...patch };
+      editorViewport = { ...next, tilt: 0 };
+      updateAndNotify();
     },
-    resetPitchTransform: () => s().centerPitchAndBoundary(s().activeSlideId),
+    resetPitchTransform: () => {
+      editorViewport = {
+        ...DEFAULT_PITCH_TRANSFORM,
+        isLocked: editorViewport.isLocked,
+      };
+      updateAndNotify();
+    },
     setPitchLocked: (locked) => {
-      if ((getActiveSlide(s())?.pitchTransform?.isLocked ?? false) !== locked) {
-        s().togglePitchLock(s().activeSlideId);
+      if (editorViewport.isLocked !== locked) {
+        editorViewport = { ...editorViewport, isLocked: locked };
+        updateAndNotify();
       }
     },
     setAspectRatio: (ar) => s().setAspectRatio(ar),
@@ -193,7 +206,7 @@ export function createTacticalCanvasStoreAdapter(
       continuousDrawing: state.continuousDrawing,
       selectedObjects: state.selectedObjects,
       selectedIds: getSelectedIds(state.selectedObjects),
-      pitchTransform: active?.pitchTransform ?? DEFAULT_PITCH_TRANSFORM,
+      pitchTransform: editorViewport,
       boundaryBox: active?.boundaryBox ?? DEFAULT_BOUNDARY_BOX,
       aspectRatio: active?.aspectRatio ?? state.project.aspectRatio,
       pitchAppearance:

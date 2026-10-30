@@ -9,6 +9,7 @@ import { Group, Layer, Rect } from 'react-konva';
 import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
+import { calculatePitchTransform } from '../utils/canvas-pitch-transform-helper';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import type { CameraState } from '../utils/matrix-coordinates';
 import { ArrowObject } from './annotations/ArrowObject';
@@ -52,6 +53,15 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
   const activeSlideId = useCanvasStore((s) => s.activeSlideId ?? '');
   const updatePlayerTrajectory = useCanvasStore(
     (s) => s.updatePlayerTrajectory,
+  );
+  const pitchTransform = useCanvasStore((s) => s.pitchTransform);
+
+  const groupTransform = calculatePitchTransform(
+    pitchRect,
+    pitchTransform.panX,
+    pitchTransform.panY,
+    pitchTransform.zoom,
+    0,
   );
 
   const pitchMarkers = useMemo(
@@ -101,7 +111,12 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
         fill="#000000"
         listening={false}
       />
-      <Group x={pitchRect.x} y={pitchRect.y}>
+      <Group
+        x={groupTransform.x}
+        y={groupTransform.y}
+        scaleX={groupTransform.scaleX}
+        scaleY={groupTransform.scaleY}
+      >
         {/* ピッチ背景画像 */}
         <PitchBackgroundImage
           width={pitchRect.width}

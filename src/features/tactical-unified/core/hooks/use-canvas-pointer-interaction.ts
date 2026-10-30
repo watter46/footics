@@ -13,6 +13,7 @@ import { handleToolPointerDown } from '../utils/canvas-pointer-tools';
 import { getPointerCoordinates } from '../utils/geometry';
 import { useCanvasPolygonZone } from './use-canvas-polygon-zone';
 import { useCanvasSelectionBox } from './use-canvas-selection-box';
+import { useCanvasStore } from './use-canvas-store';
 import { useCanvasZoneRotation } from './use-canvas-zone-rotation';
 import { useCanvasZoomPan } from './use-canvas-zoom-pan';
 
@@ -27,6 +28,7 @@ export function useCanvasPointerInteraction({
   onStartEditText,
 }: UseCanvasPointerInteractionOptions): CanvasPointerInteractionResult {
   const s = useCanvasPointerStore();
+  const pitchTransform = useCanvasStore((st) => st.pitchTransform);
   const isPointerDownRef = useRef(false);
 
   const zoomPan = useCanvasZoomPan({ vRect });
@@ -43,7 +45,11 @@ export function useCanvasPointerInteraction({
     (e: KonvaEventObject<PointerEvent>) => {
       isPointerDownRef.current = true;
       if (zoomPan.handlePanPointerDown(e)) return;
-      const { pixelPos, normPos } = getPointerCoordinates(e, vRect);
+      const { pixelPos, normPos } = getPointerCoordinates(
+        e,
+        vRect,
+        pitchTransform,
+      );
       if (zoneRotation.handlePointerDown(pixelPos)) return;
       if (polygonZone.handlePointerDown(normPos)) return;
 
@@ -61,6 +67,7 @@ export function useCanvasPointerInteraction({
     [
       zoomPan,
       vRect,
+      pitchTransform,
       zoneRotation,
       polygonZone,
       s,
@@ -73,6 +80,7 @@ export function useCanvasPointerInteraction({
     (e: KonvaEventObject<PointerEvent>) => {
       dispatchPointerMove(e, {
         vRect,
+        pitchTransform,
         isPointerDown: isPointerDownRef.current,
         activeTool: s.activeTool,
         drawingPreview: s.drawingPreview,
@@ -86,6 +94,7 @@ export function useCanvasPointerInteraction({
     },
     [
       vRect,
+      pitchTransform,
       s.activeTool,
       s.drawingPreview,
       s.eraseAtPoint,

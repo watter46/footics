@@ -8,6 +8,7 @@ import { Group, Layer } from 'react-konva';
 import type { Player, TextAnnotation } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
+import { calculatePitchTransform } from '../utils/canvas-pitch-transform-helper';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import {
   type CameraState,
@@ -66,6 +67,16 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
 
   const showBall =
     (capabilities?.hasBall ?? false) && ball != null && ball.visible !== false;
+
+  const pitchTransform = useCanvasStore((s) => s.pitchTransform);
+
+  const groupTransform = calculatePitchTransform(
+    pitchRect,
+    pitchTransform.panX,
+    pitchTransform.panY,
+    pitchTransform.zoom,
+    0,
+  );
 
   const pitchMarkers = useMemo(
     () => markers.filter((m) => m.area !== 'bench'),
@@ -173,7 +184,12 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
 
   return (
     <Layer id="billboard-object-layer">
-      <Group x={pitchRect.x} y={pitchRect.y}>
+      <Group
+        x={groupTransform.x}
+        y={groupTransform.y}
+        scaleX={groupTransform.scaleX}
+        scaleY={groupTransform.scaleY}
+      >
         {sortedItems.map((item) => (
           <BillboardItemNode
             key={

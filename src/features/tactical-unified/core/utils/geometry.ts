@@ -1,4 +1,5 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
+import { type PitchTransformState, stageToPitch } from './canvas-coordinates';
 
 export function isPointInPolygon(
   point: { x: number; y: number },
@@ -42,14 +43,38 @@ export function getPointerCoordinates(
     height: number;
     allowOverflow?: boolean;
   },
+  transform?: PitchTransformState,
 ): { pixelPos: { x: number; y: number }; normPos: { x: number; y: number } } {
   const stage = e.target.getStage();
   const pointer = stage?.getPointerPosition();
   const evt = e.evt;
   const x = pointer?.x ?? ('clientX' in evt ? evt.clientX : 0);
   const y = pointer?.y ?? ('clientY' in evt ? evt.clientY : 0);
-  const relX = x - (vRect.x ?? 0);
-  const relY = y - (vRect.y ?? 0);
+  let relX = x - (vRect.x ?? 0);
+  let relY = y - (vRect.y ?? 0);
+
+  if (
+    transform &&
+    ((transform.zoom !== undefined && transform.zoom !== 1) ||
+      Boolean(transform.panX) ||
+      Boolean(transform.panY))
+  ) {
+    const pitchPos = stageToPitch(
+      { x, y },
+      {
+        x: vRect.x ?? 0,
+        y: vRect.y ?? 0,
+        width: vRect.width,
+        height: vRect.height,
+      },
+      transform.panX ?? 0,
+      transform.panY ?? 0,
+      transform.zoom ?? 1,
+    );
+    relX = pitchPos.x;
+    relY = pitchPos.y;
+  }
+
   const normX = vRect.width > 0 ? (relX / vRect.width) * 100 : 0;
   const normY = vRect.height > 0 ? (relY / vRect.height) * 100 : 0;
   return {

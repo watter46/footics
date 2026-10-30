@@ -1,13 +1,21 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import type Konva from 'konva';
 import type React from 'react';
+import { createRef } from 'react';
+import { Stage } from 'react-konva';
 import { describe, expect, it, vi } from 'vitest';
 import { createCanvasStore } from '../../store/canvas-store';
 import { CanvasStoreContext } from '../../store/canvas-store-provider';
 import type { CanvasConfig, CanvasStoreApi } from '../../types';
+import { calculatePitchTransform } from '../../utils/canvas-pitch-transform-helper';
+import { getPointerCoordinates } from '../../utils/geometry';
+import { BillboardObjectLayer } from '../BillboardObjectLayer';
 import { BoundaryBoxHud } from '../BoundaryBoxHud';
 import { ContextHud } from '../ContextHud';
 import { CoreDrawingToolbar } from '../CoreDrawingToolbar';
 import { MiniColorPicker } from '../hud/mini-color-picker';
+import { InteractionPreviewLayer } from '../InteractionPreviewLayer';
+import { PitchGroundLayer } from '../PitchGroundLayer';
 import { PitchInlineTextEditor } from '../PitchInlineTextEditor';
 
 function renderWithStore(
@@ -155,6 +163,47 @@ describe('ContextHud', () => {
 });
 
 describe('BoundaryBoxHud', () => {
+  it('デフォルト表示で 3D Tilt コントロールが非表示であり、showTiltControls={true} 指定時のみ表示されること', () => {
+    const defaultBox = {
+      x: 10,
+      y: 10,
+      width: 80,
+      height: 80,
+      enabled: true,
+      visible: true,
+    };
+
+    // 1. デフォルト (showTiltControls 未指定 -> false)
+    const { unmount } = renderWithStore(
+      <BoundaryBoxHud stageSize={{ width: 800, height: 600 }} />,
+      { defaultBoundaryBox: defaultBox },
+    );
+
+    const toggleBtn = screen.getByRole('button', {
+      name: /Toggle Boundary Box Settings/i,
+    });
+    fireEvent.click(toggleBtn);
+
+    expect(screen.queryByText('Pitch 2.5D Tilt')).toBeNull();
+    unmount();
+
+    // 2. showTiltControls={true}
+    renderWithStore(
+      <BoundaryBoxHud
+        stageSize={{ width: 800, height: 600 }}
+        showTiltControls={true}
+      />,
+      { defaultBoundaryBox: defaultBox },
+    );
+
+    const toggleBtnTrue = screen.getByRole('button', {
+      name: /Toggle Boundary Box Settings/i,
+    });
+    fireEvent.click(toggleBtnTrue);
+
+    expect(screen.getByText('Pitch 2.5D Tilt')).toBeDefined();
+  });
+
   it('BoundaryBoxHud で「全画面」「ピッチフィット」ボタンが機能すること', () => {
     const { store } = renderWithStore(
       <BoundaryBoxHud
@@ -200,6 +249,46 @@ describe('BoundaryBoxHud', () => {
     updatedBox = store.getState().boundaryBox;
     expect(updatedBox.visible).toBe(true);
     expect(updatedBox.fitTarget).toBe('pitch');
+  });
+});
+
+describe('getPointerCoordinates with 2D zoom/pan transform', () => {
+  it('ズーム・パン変換を渡した際に stageToPitch 逆変換された normPos が返り pixelPos は Stage 座標のまま維持されること', () => {
+    const mockEvent = {
+      target: {
+        getStage: () => ({
+          getPointerPosition: () => ({ x: 250, y: 150 }),
+        }),
+      },
+      evt: { clientX: 250, clientY: 150 },
+    } as unknown as Parameters<typeof getPointerCoordinates>[0];
+
+    const vRect = { x: 50, y: 50, width: 200, height: 100 };
+
+    // zoom: 2 の場合:
+    // cx = 150, cy = 100
+    // localX = (250 - 150) / 2 = 50 -> pitchPos.x = 50 + 100 = 150 -> normX = 150 / 200 * 100 = 75%
+    // localY = (150 - 100) / 2 = 25 -> pitchPos.y = 25 + 50 = 75 -> normY = 75 / 100 * 100 = 75%
+    const resWithZoom = (getPointerCoordinates as Function)(mockEvent, vRect, {
+      zoom: 2,
+      panX: 0,
+      panY: 0,
+    });
+
+    expect(resWithZoom.pixelPos).toEqual({ x: 250, y: 150 });
+    expect(resWithZoom.normPos).toEqual({ x: 75, y: 75 });
+
+    // panX: 20, panY: -10, zoom: 1 の場合:
+    // localX = (250 - 150) - 20 = 80 -> pitchPos.x = 80 + 100 = 180 -> normX = 180 / 200 * 100 = 90%
+    // localY = (150 - 100) - (-10) = 60 -> pitchPos.y = 60 + 50 = 110 -> normY = 110 / 100 * 100 = 110% (clamped to 100 unless allowOverflow)
+    const resWithPan = (getPointerCoordinates as Function)(mockEvent, vRect, {
+      zoom: 1,
+      panX: 20,
+      panY: -10,
+    });
+
+    expect(resWithPan.pixelPos).toEqual({ x: 250, y: 150 });
+    expect(resWithPan.normPos).toEqual({ x: 90, y: 100 });
   });
 });
 
@@ -554,5 +643,86 @@ describe('PlayerHud', () => {
     // 縮小ボタンをクリック (-5px)
     fireEvent.click(decBtn);
     expect(store.getState().annotations.markers[0].style?.glowBlur).toBe(16);
+  });
+});
+
+describe('Konva 3レイヤーへの2Dズーム・パン描画接続 (Phase 3)', () => {
+  it('pitchTransform 更新時に PitchGroundLayer, BillboardObjectLayer, InteractionPreviewLayer のピッチ Group に 2D ズーム・パン変形が適用されること', () => {
+    const stageRef = createRef<Konva.Stage>();
+    const pitchRect = { x: 100, y: 50, width: 800, height: 450 };
+    const stageSize = { width: 1000, height: 600 };
+
+    const { store } = renderWithStore(
+      <Stage ref={stageRef} width={stageSize.width} height={stageSize.height}>
+        <PitchGroundLayer stageSize={stageSize} pitchRect={pitchRect} />
+        <BillboardObjectLayer stageSize={stageSize} pitchRect={pitchRect} />
+        <InteractionPreviewLayer stageSize={stageSize} pitchRect={pitchRect} />
+      </Stage>,
+      { mode: 'tactical-board' },
+    );
+
+    const stage = stageRef.current;
+    expect(stage).not.toBeNull();
+
+    // 初期状態 (zoom: 1, panX: 0, panY: 0)
+    const groundLayer = stage?.findOne('#pitch-ground-layer') as Konva.Layer;
+    const billboardLayer = stage?.findOne(
+      '#billboard-object-layer',
+    ) as Konva.Layer;
+    const previewLayer = stage?.findOne(
+      '#interaction-preview-layer',
+    ) as Konva.Layer;
+
+    const groundGroup = groundLayer.findOne('Group');
+    const billboardGroup = billboardLayer.findOne('Group');
+    const previewGroup = previewLayer.findOne('Group');
+
+    expect(groundGroup).toBeDefined();
+    expect(billboardGroup).toBeDefined();
+    expect(previewGroup).toBeDefined();
+    if (!groundGroup || !billboardGroup || !previewGroup) {
+      throw new Error('Required Konva Groups not found in layers');
+    }
+
+    expect(groundGroup.x()).toBe(100);
+    expect(groundGroup.y()).toBe(50);
+    expect(groundGroup.scaleX()).toBe(1);
+    expect(groundGroup.scaleY()).toBe(1);
+
+    expect(billboardGroup.x()).toBe(100);
+    expect(billboardGroup.y()).toBe(50);
+    expect(billboardGroup.scaleX()).toBe(1);
+    expect(billboardGroup.scaleY()).toBe(1);
+
+    expect(previewGroup.x()).toBe(100);
+    expect(previewGroup.y()).toBe(50);
+    expect(previewGroup.scaleX()).toBe(1);
+    expect(previewGroup.scaleY()).toBe(1);
+
+    // 2Dズーム・パン状態の更新
+    act(() => {
+      store.getState().setPitchTransform({
+        zoom: 2,
+        panX: 40,
+        panY: -20,
+      });
+    });
+
+    const expectedTransform = calculatePitchTransform(pitchRect, 40, -20, 2, 0);
+
+    expect(groundGroup.x()).toBe(expectedTransform.x);
+    expect(groundGroup.y()).toBe(expectedTransform.y);
+    expect(groundGroup.scaleX()).toBe(2);
+    expect(groundGroup.scaleY()).toBe(2);
+
+    expect(billboardGroup.x()).toBe(expectedTransform.x);
+    expect(billboardGroup.y()).toBe(expectedTransform.y);
+    expect(billboardGroup.scaleX()).toBe(2);
+    expect(billboardGroup.scaleY()).toBe(2);
+
+    expect(previewGroup.x()).toBe(expectedTransform.x);
+    expect(previewGroup.y()).toBe(expectedTransform.y);
+    expect(previewGroup.scaleX()).toBe(2);
+    expect(previewGroup.scaleY()).toBe(2);
   });
 });

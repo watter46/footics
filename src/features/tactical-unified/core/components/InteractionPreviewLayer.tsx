@@ -5,6 +5,7 @@ import { Group, Rect as KonvaRect, Layer } from 'react-konva';
 import type { SelectionBox } from '../hooks/use-canvas-selection-box';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
+import { calculatePitchTransform } from '../utils/canvas-pitch-transform-helper';
 import type { CameraState } from '../utils/matrix-coordinates';
 import { renderDrawingPreviewNode } from './DrawingPreviewLayer';
 import { PlayerConnectingGuide } from './PlayerConnectingGuide';
@@ -30,6 +31,15 @@ export function InteractionPreviewLayer({
   const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
   const markers = useCanvasStore((s) => s.annotations.markers);
   const teamVisibility = useCanvasStore((s) => s.teamVisibility ?? 'both');
+  const pitchTransform = useCanvasStore((s) => s.pitchTransform);
+
+  const groupTransform = calculatePitchTransform(
+    pitchRect,
+    pitchTransform.panX,
+    pitchTransform.panY,
+    pitchTransform.zoom,
+    0,
+  );
 
   if (cleanRender) return null;
   const visibleMarkers =
@@ -62,7 +72,13 @@ export function InteractionPreviewLayer({
       )}
 
       {/* ピッチ枠座標系基準の描画プレビュー・接続ガイド */}
-      <Group x={pitchRect.x} y={pitchRect.y} listening={false}>
+      <Group
+        x={groupTransform.x}
+        y={groupTransform.y}
+        scaleX={groupTransform.scaleX}
+        scaleY={groupTransform.scaleY}
+        listening={false}
+      >
         {connectingPlayerId && (
           <PlayerConnectingGuide
             connectingPlayerId={connectingPlayerId}

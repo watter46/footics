@@ -4,6 +4,7 @@ import type {
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
 import type { DrawingPreviewState, DrawingTool } from '../types';
+import type { PitchTransformState } from './canvas-coordinates';
 import { commitDrawingShape } from './canvas-drawing-factory';
 import type { SelectionBox } from './canvas-selection-helpers';
 import { getPointerCoordinates } from './geometry';
@@ -30,6 +31,7 @@ export interface CanvasPointerInteractionResult {
 
 export interface DispatcherMoveOptions {
   vRect: { width: number; height: number };
+  pitchTransform?: PitchTransformState;
   isPointerDown: boolean;
   activeTool: DrawingTool;
   drawingPreview: DrawingPreviewState | null;
@@ -46,7 +48,11 @@ export function dispatchPointerMove(
   opts: DispatcherMoveOptions,
 ): void {
   if (opts.onPanMove(e)) return;
-  const { pixelPos, normPos } = getPointerCoordinates(e, opts.vRect);
+  const { pixelPos, normPos } = getPointerCoordinates(
+    e,
+    opts.vRect,
+    opts.pitchTransform,
+  );
   if (opts.onRotateMove(pixelPos)) return;
   if (opts.onPolygonMove(normPos)) return;
   if (opts.onSelectionMove(pixelPos)) return;

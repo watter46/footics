@@ -54,7 +54,7 @@ function calculateRatioInfo(
 export function BoundaryBoxHud({
   stageSize,
   pitchRect: _pitchRect,
-  showTiltControls = true,
+  showTiltControls = false,
 }: BoundaryBoxHudProps) {
   const [isOpen, setIsOpen] = useState(false);
 

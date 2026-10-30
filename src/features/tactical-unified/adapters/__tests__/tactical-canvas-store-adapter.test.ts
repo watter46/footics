@@ -270,4 +270,58 @@ describe('TacticalCanvasStoreAdapter', () => {
     expect(useTacticalUnifiedStore.getState().isHudOpen).toBe(true);
     expect(adapter.getState().isHudOpen).toBe(true);
   });
+
+  it('setPitchTransform, resetPitchTransform, setPitchLocked が 2D 作業用 viewport のみを更新し、マスターストアの 3D カメラ用 pitchTransform を保護すること', () => {
+    const adapter = createTacticalCanvasStoreAdapter(useTacticalUnifiedStore);
+    const initialSlideTransform = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find(
+        (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
+      )?.pitchTransform;
+
+    // 初期状態の pitchTransform は editorViewport (tilt: 0)
+    expect(adapter.getState().pitchTransform).toEqual({
+      panX: 0,
+      panY: 0,
+      zoom: 1,
+      tilt: 0,
+      isLocked: false,
+    });
+
+    // setPitchTransform 実行
+    adapter
+      .getState()
+      .setPitchTransform({ zoom: 2, panX: 50, panY: 30, tilt: 45 });
+
+    // アダプター側は tilt: 0 で更新される
+    expect(adapter.getState().pitchTransform).toEqual({
+      panX: 50,
+      panY: 30,
+      zoom: 2,
+      tilt: 0,
+      isLocked: false,
+    });
+
+    // マスターストアのスライド側 pitchTransform は変更されていないこと (3D演出用カメラの保護)
+    const currentSlideTransform = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find(
+        (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
+      )?.pitchTransform;
+    expect(currentSlideTransform).toEqual(initialSlideTransform);
+
+    // setPitchLocked
+    adapter.getState().setPitchLocked(true);
+    expect(adapter.getState().pitchTransform.isLocked).toBe(true);
+
+    // resetPitchTransform
+    adapter.getState().resetPitchTransform();
+    expect(adapter.getState().pitchTransform).toEqual({
+      panX: 0,
+      panY: 0,
+      zoom: 1,
+      tilt: 0,
+      isLocked: true, // locked 状態は維持
+    });
+  });
 });
