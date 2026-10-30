@@ -23,11 +23,13 @@ vi.mock(
       aspectRatio,
       boundaryBox,
       pitchTransform,
+      pitchAppearance,
     }: {
       slides: unknown[];
       aspectRatio: string;
       boundaryBox?: unknown;
       pitchTransform?: unknown;
+      pitchAppearance?: unknown;
     }) => (
       <div
         data-testid="export-preview-player"
@@ -35,6 +37,7 @@ vi.mock(
         data-slide-count={slides?.length ?? 0}
         data-has-boundary={Boolean(boundaryBox)}
         data-has-transform={Boolean(pitchTransform)}
+        data-has-appearance={Boolean(pitchAppearance)}
       >
         Preview Player
       </div>
@@ -209,6 +212,10 @@ describe('Export Pages', () => {
           zoom: 1.2,
           tilt: 25,
         },
+        pitchAppearance: {
+          pitchColor: '#1a472a',
+          pitchBackgroundType: 'flat',
+        },
       };
 
       vi.stubGlobal(
@@ -242,6 +249,7 @@ describe('Export Pages', () => {
       expect(previewEl.getAttribute('data-aspect-ratio')).toBe('4:5');
       expect(previewEl.getAttribute('data-has-boundary')).toBe('true');
       expect(previewEl.getAttribute('data-has-transform')).toBe('true');
+      expect(previewEl.getAttribute('data-has-appearance')).toBe('true');
 
       // Click export button
       const exportButton = screen.getByRole('button', {
@@ -255,6 +263,9 @@ describe('Export Pages', () => {
             aspectRatio: '4:5',
             stageWidth: 1080,
             stageHeight: 1350,
+            fps: 60,
+            bitrate: 24_000_000,
+            pitchAppearance: expect.objectContaining({ pitchColor: '#1a472a' }),
             boundaryBox: expect.objectContaining({ enabled: true }),
             pitchTransform: expect.objectContaining({ tilt: 25 }),
             mvpMatrix: expect.any(Object),

@@ -14,6 +14,7 @@ import type {
   AspectRatio,
   BoundaryBox,
   ExportProgress,
+  PitchAppearanceConfig,
   PitchTransform,
   Slide,
 } from '@/lib/types/tactical-unified';
@@ -50,6 +51,7 @@ export interface MultiSlideVideoExportOptions {
   aspectRatio?: AspectRatio;
   boundaryBox?: BoundaryBox | null;
   pitchTransform?: PitchTransform | null;
+  pitchAppearance?: PitchAppearanceConfig;
   mvpMatrix?: Float32Array | null;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   photos?: Record<string, string>;
@@ -131,6 +133,7 @@ export async function exportMultiSlideMp4Video(
       totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 1500,
       boundaryBox: options.boundaryBox,
       pitchTransform: options.pitchTransform,
+      pitchAppearance: options.pitchAppearance,
       mvpMatrix: options.mvpMatrix,
       playerPhotos: loadedPhotos,
       stageWidth,
@@ -201,6 +204,7 @@ export async function exportMultiSlideWebmVideo(
       totalDurationMs: totalDurationMs > 0 ? totalDurationMs : 1500,
       boundaryBox: options.boundaryBox,
       pitchTransform: options.pitchTransform,
+      pitchAppearance: options.pitchAppearance,
       mvpMatrix: options.mvpMatrix,
       playerPhotos: loadedPhotos,
       stageWidth,

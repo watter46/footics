@@ -3,6 +3,8 @@ import {
   type AspectRatio,
   type BoundaryBox,
   BoundaryBoxSchema,
+  type PitchAppearanceConfig,
+  PitchAppearanceConfigSchema,
   type PitchTransform,
   PitchTransformSchema,
 } from '@/lib/types/tactical-unified';
@@ -57,6 +59,7 @@ export const TacticalExportSharePayloadSchema = z
     aspectRatio: AspectRatioSchema.optional(),
     boundaryBox: BoundaryBoxSchema.nullable().optional(),
     pitchTransform: PitchTransformSchema.nullable().optional(),
+    pitchAppearance: PitchAppearanceConfigSchema.optional(),
   })
   .transform((data) => ({
     ...data,
@@ -73,6 +76,7 @@ export type TacticalExportSharePayload = z.infer<
   aspectRatio: AspectRatio;
   boundaryBox?: BoundaryBox | null;
   pitchTransform?: PitchTransform | null;
+  pitchAppearance?: PitchAppearanceConfig;
 };
 
 export interface TacticalExportShareSummary {

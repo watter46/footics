@@ -161,6 +161,7 @@ export async function exportVideoWithMediaRecorder(
           transparent,
           mvpMatrix,
           playerPhotos: options.playerPhotos,
+          pitchAppearance: options.pitchAppearance,
         });
       } else {
         await onRenderFrame?.(timeMs);

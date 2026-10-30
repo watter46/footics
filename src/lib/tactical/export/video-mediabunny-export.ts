@@ -146,6 +146,7 @@ export async function exportVideoWithMediabunny(
           transparent,
           mvpMatrix,
           playerPhotos: options.playerPhotos,
+          pitchAppearance: options.pitchAppearance,
         });
       } else {
         await options.onRenderFrame?.(timeMs);

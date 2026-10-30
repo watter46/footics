@@ -8,6 +8,7 @@ import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolat
 import type {
   AspectRatio,
   BoundaryBox,
+  PitchAppearanceConfig,
   PitchTransform,
   Slide,
 } from '@/lib/types/tactical-unified';
@@ -36,9 +37,43 @@ export interface UseExportPreviewAnimationParams {
   pitchTransform?: PitchTransform | null;
   photos?: Record<string, string>;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
+  pitchAppearance?: PitchAppearanceConfig;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   timeLabelRef: React.RefObject<HTMLSpanElement | null>;
   sliderRef: React.RefObject<HTMLInputElement | null>;
+}
+
+let cachedMarbleImage: HTMLImageElement | null = null;
+let marbleImagePromise: Promise<HTMLImageElement> | null = null;
+
+function loadMarbleTexture(): Promise<HTMLImageElement> {
+  if (
+    cachedMarbleImage &&
+    cachedMarbleImage.complete &&
+    cachedMarbleImage.naturalWidth > 0
+  ) {
+    return Promise.resolve(cachedMarbleImage);
+  }
+  if (!marbleImagePromise) {
+    marbleImagePromise = new Promise<HTMLImageElement>((resolve, reject) => {
+      if (typeof Image === 'undefined') {
+        reject(new Error('Image is not available'));
+        return;
+      }
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        cachedMarbleImage = img;
+        resolve(img);
+      };
+      img.onerror = (e) => {
+        marbleImagePromise = null;
+        reject(e);
+      };
+      img.src = '/assets/pitch-marble-texture.jpg';
+    });
+  }
+  return marbleImagePromise;
 }
 
 export function useAnimationFrameLoop(
@@ -106,6 +141,7 @@ export function useExportPreviewAnimation({
   pitchTransform,
   photos,
   playerPhotos,
+  pitchAppearance,
   canvasRef,
   timeLabelRef,
   sliderRef,
@@ -114,7 +150,43 @@ export function useExportPreviewAnimation({
   const [internalBitmaps, setInternalBitmaps] = useState<
     Record<string, ImageBitmap>
   >({});
+  const [marbleTexture, setMarbleTexture] = useState<HTMLImageElement | null>(
+    () => cachedMarbleImage,
+  );
   const totalDurationMs = calculateUnifiedTotalDuration(slides) || 1000;
+
+  useEffect(() => {
+    if (pitchAppearance?.pitchBackgroundType !== 'marble') {
+      return;
+    }
+    if (
+      cachedMarbleImage &&
+      cachedMarbleImage.complete &&
+      cachedMarbleImage.naturalWidth > 0
+    ) {
+      if (marbleTexture !== cachedMarbleImage) {
+        setMarbleTexture(cachedMarbleImage);
+      }
+      return;
+    }
+    let isCancelled = false;
+    loadMarbleTexture()
+      .then((img) => {
+        if (!isCancelled) {
+          setMarbleTexture(img);
+        }
+      })
+      .catch((err) => {
+        console.warn(
+          '[useExportPreviewAnimation] Failed to load marble texture:',
+          err,
+        );
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [pitchAppearance?.pitchBackgroundType, marbleTexture]);
 
   useEffect(() => {
     if (playerPhotos) return;
@@ -175,6 +247,8 @@ export function useExportPreviewAnimation({
         transparent: false,
         mvpMatrix,
         playerPhotos: effectivePlayerPhotos,
+        pitchAppearance,
+        marbleTexture,
       });
 
       if (timeLabelRef.current) {
@@ -190,6 +264,8 @@ export function useExportPreviewAnimation({
       aspectRatio,
       mvpMatrix,
       effectivePlayerPhotos,
+      pitchAppearance,
+      marbleTexture,
       canvasRef,
       timeLabelRef,
       sliderRef,

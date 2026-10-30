@@ -1,11 +1,9 @@
 'use client';
 
 import { Dialog } from '@/components/ui/dialog';
-import { ExportBenchmarkOverlay } from './export-benchmark-overlay';
 import { ExportModalBody } from './export-modal-body';
 import { ExportModalFooter } from './export-modal-footer';
 import { ExportModalHeader } from './export-modal-header';
-import { ExportVideoPlayer } from './export-video-player';
 import { type ExportTab, useExportModalState } from './use-export-modal-state';
 
 export function ExportModal() {
@@ -15,14 +13,14 @@ export function ExportModal() {
     setActiveTab,
     selectedFormat,
     setSelectedFormat,
-    completedVideo,
     exportError,
     setExportError,
-    benchmark,
     share,
     isExporting,
     closeExportModal,
   } = state;
+
+  const isBusy = isExporting || share.isCreatingShareLink;
 
   const handleTabChange = (tab: ExportTab) => {
     setActiveTab(tab);
@@ -33,30 +31,24 @@ export function ExportModal() {
     ) {
       setSelectedFormat('png');
     }
-    if (
-      tab === 'video' &&
-      (selectedFormat === 'png' || selectedFormat === 'zip')
-    ) {
-      setSelectedFormat('mp4');
-    }
   };
 
   return (
     <Dialog
       open={true}
-      onClose={isExporting ? undefined : closeExportModal}
+      onClose={isBusy ? undefined : closeExportModal}
       className="max-w-4xl p-0 overflow-hidden flex flex-col max-h-[90vh] space-y-0 select-none"
     >
       <div className="relative w-full flex flex-col h-full overflow-hidden">
         <ExportModalHeader
           activeTab={activeTab}
           onTabChange={handleTabChange}
-          isCompleted={Boolean(completedVideo)}
-          isExporting={isExporting}
+          isCompleted={false}
+          isExporting={isBusy}
           onClose={closeExportModal}
         />
 
-        {exportError && !completedVideo && (
+        {exportError && (
           <div className="px-6 py-3 bg-[#EB3B5A]/15 border-b border-[#EB3B5A]/30 text-xs text-[#EB3B5A] flex items-center justify-between">
             <span>⚠️ {exportError}</span>
             <button
@@ -69,32 +61,8 @@ export function ExportModal() {
           </div>
         )}
 
-        <ExportBenchmarkOverlay
-          isBenchmarking={benchmark.isBenchmarking}
-          progress={benchmark.benchmarkProgress}
-          report={benchmark.benchmarkReport}
-          copiedReport={benchmark.copiedReport}
-          onCancel={benchmark.cancelBenchmark}
-          onCopyReport={benchmark.copyReport}
-          onClearReport={benchmark.clearReport}
-        />
-
-        {completedVideo ? (
-          <div className="p-6 overflow-y-auto">
-            <ExportVideoPlayer
-              videoBlob={completedVideo.blob}
-              filename={completedVideo.filename}
-              onDownload={state.handleDownloadCompletedVideo}
-              onReExport={state.handleReExport}
-            />
-          </div>
-        ) : (
-          <ExportModalBody state={state} />
-        )}
-
-        {!completedVideo && !benchmark.isBenchmarking && (
-          <ExportModalFooter state={state} />
-        )}
+        <ExportModalBody state={state} />
+        <ExportModalFooter state={state} />
       </div>
     </Dialog>
   );

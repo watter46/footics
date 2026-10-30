@@ -10,7 +10,6 @@ import {
   Share2,
   ShieldAlert,
   Smartphone,
-  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { JSX } from 'react';
@@ -18,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageLoading } from '@/components/ui/patterns/loading-state';
 import { ExportPreviewPlayer } from '@/features/tactical-unified/panels/export/export-preview-player';
-import { IOS_ENCODER_PRESETS } from '@/features/tactical-unified/panels/export/ios-export-presets';
 import { useSharePageExport } from './use-share-page-export';
 
 export interface SharePageClientViewProps {
@@ -97,55 +95,8 @@ export function SharePageClientView({
             boundaryBox={shareData.boundaryBox}
             pitchTransform={shareData.pitchTransform}
             photos={shareData.photos}
+            pitchAppearance={shareData.pitchAppearance}
           />
-
-          {exp.iosInfo.isIOS && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-white/60">
-                Encoder Preset
-              </p>
-              <div className="space-y-2">
-                {(
-                  Object.entries(IOS_ENCODER_PRESETS) as [
-                    'iphone12' | 'iosGeneral',
-                    (typeof IOS_ENCODER_PRESETS)[keyof typeof IOS_ENCODER_PRESETS],
-                  ][]
-                ).map(([key, preset]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => exp.setSelectedPreset(key)}
-                    disabled={exp.isExporting}
-                    className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer disabled:cursor-not-allowed ${
-                      exp.selectedPreset === key
-                        ? 'border-emerald-500 bg-emerald-600/15 text-white shadow-sm ring-1 ring-emerald-500/30'
-                        : 'border-white/[0.08] bg-white/[0.04] text-white/60 hover:border-white/20 hover:text-white'
-                    }`}
-                  >
-                    <Sparkles
-                      size={16}
-                      className={`mt-0.5 shrink-0 ${exp.selectedPreset === key ? 'text-emerald-400' : 'text-white/40'}`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-white">
-                        {preset.label}
-                      </p>
-                      <p className="text-[11px] text-white/50 mt-0.5 font-mono">
-                        {preset.codec} · {preset.fps}fps · {preset.bitrateMbps}{' '}
-                        Mbps
-                      </p>
-                    </div>
-                    {exp.selectedPreset === key && (
-                      <CheckCircle2
-                        size={16}
-                        className="text-emerald-400 mt-0.5 shrink-0"
-                      />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="p-4 rounded-xl bg-surface-l0 border border-white/[0.08] space-y-2 text-xs">
             <div className="font-semibold text-white/80 flex items-center justify-between">
@@ -223,42 +174,48 @@ export function SharePageClientView({
                 </span>
               </div>
 
-              {exp.canShare && (
+              {exp.canShare ? (
+                <>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={exp.handleWebShare}
+                    className="w-full py-3.5 px-4 h-auto text-sm font-bold shadow-xl transition-all gap-2"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>Share / Save to Files</span>
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    onClick={exp.handleDownload}
+                    className="w-full py-3.5 px-4 h-auto text-sm font-semibold transition-all gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Save MP4 (Direct Download)</span>
+                  </Button>
+                </>
+              ) : (
                 <Button
                   variant="primary"
                   size="lg"
-                  onClick={exp.handleWebShare}
+                  onClick={exp.handleDownload}
                   className="w-full py-3.5 px-4 h-auto text-sm font-bold shadow-xl transition-all gap-2"
                 >
-                  <Share2 className="w-4 h-4" />
-                  <span>Share / Save to Files</span>
+                  <Download className="w-4 h-4" />
+                  <span>Save MP4 (Direct Download)</span>
                 </Button>
               )}
 
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={exp.handleDownload}
-                className="w-full py-3.5 px-4 h-auto text-sm font-bold shadow-xl transition-all gap-2 bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-500 hover:to-blue-500 text-white"
-              >
-                <Download className="w-4 h-4" />
-                <span>
-                  Save MP4 — Bit-Perfect {activePreset.bitrateMbps} Mbps
-                </span>
-              </Button>
-
-              {exp.iosInfo.isIOS && (
-                <div className="p-3 rounded-xl bg-surface-l0 border border-white/[0.08] text-xs text-white/80 space-y-1">
-                  <div className="flex items-center gap-1.5 font-semibold text-amber-400">
-                    <Info className="w-3.5 h-3.5" />
-                    Bit-Perfect 保存ガイド
-                  </div>
-                  <p className="text-[11px] leading-relaxed text-white/60">
-                    Safariの「ファイルに保存」から iCloud Drive / AirDrop
-                    経由でPCへ共有すると写真アプリの強制圧縮を回避できます。
-                  </p>
+              <div className="p-3 rounded-xl bg-surface-l0 border border-white/[0.08] text-xs text-white/80 space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold text-amber-400">
+                  <Info className="w-3.5 h-3.5" />
+                  保存ガイド
                 </div>
-              )}
+                <p className="text-[11px] leading-relaxed text-white/60">
+                  ファイルアプリまたはダウンロードで劣化のない60fps高画質MP4を保存できます。
+                </p>
+              </div>
             </div>
           )}
 

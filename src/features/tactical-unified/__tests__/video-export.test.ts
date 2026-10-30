@@ -231,4 +231,24 @@ describe('ExportPreviewPlayer controls', () => {
     expect(screen.getByRole('button', { name: 'Pause preview' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Play preview' })).toBeNull();
   });
+
+  it('pitchAppearance を渡しても正常にレンダリングされ、再生操作ができること', () => {
+    render(
+      React.createElement(ExportPreviewPlayer, {
+        slides: [dummySlide],
+        aspectRatio: '16:9',
+        pitchAppearance: {
+          lineColor: '#e0e0e0',
+          lineWidth: 3,
+          lineOpacity: 0.9,
+          pitchBackgroundType: 'marble',
+          overlayColor: '#111111',
+          overlayOpacity: 0.15,
+        },
+      }),
+    );
+
+    const playButton = screen.getByRole('button', { name: 'Play preview' });
+    expect(playButton).toBeTruthy();
+  });
 });

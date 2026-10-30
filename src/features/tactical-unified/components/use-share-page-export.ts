@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
 import {
   detectIOSDevice,
-  IOS_ENCODER_PRESETS,
+  IOS_ENCODER_PRESET,
 } from '@/features/tactical-unified/panels/export/ios-export-presets';
 import type { TacticalExportSharePayload } from '@/lib/tactical/export/share-payload';
 import { exportMultiSlideMp4Video } from '@/lib/tactical/export/tactical-video-exporter';
@@ -38,9 +38,6 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
       ? { isIOS: false, isIPhone12: false }
       : detectIOSDevice(),
   );
-  const [selectedPreset, setSelectedPreset] = useState<
-    'iphone12' | 'iosGeneral'
-  >(iosInfo.isIPhone12 ? 'iphone12' : 'iosGeneral');
 
   useEffect(() => {
     if (!shareId) return;
@@ -106,7 +103,7 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
   const slides: Slide[] = shareData?.scenes
     ? shareData.scenes.map((s) => s as Slide)
     : [];
-  const activePreset = IOS_ENCODER_PRESETS[selectedPreset];
+  const activePreset = IOS_ENCODER_PRESET;
 
   const handleExportClick = async () => {
     if (slides.length === 0) {
@@ -142,6 +139,7 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
         transparent: false,
         boundaryBox: shareData?.boundaryBox ?? null,
         pitchTransform: shareData?.pitchTransform ?? null,
+        pitchAppearance: shareData?.pitchAppearance,
         mvpMatrix,
         stageWidth,
         stageHeight,
@@ -206,8 +204,6 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
     exportedBlob,
     canShare,
     iosInfo,
-    selectedPreset,
-    setSelectedPreset,
     effectiveAspectRatio,
     stageWidth,
     stageHeight,

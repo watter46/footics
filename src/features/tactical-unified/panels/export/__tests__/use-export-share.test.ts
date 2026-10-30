@@ -22,6 +22,14 @@ describe('useExportShare', () => {
         id: 'proj-1',
         title: 'Tactical Analysis',
         aspectRatio: '4:5',
+        pitchAppearance: {
+          lineColor: '#ffffff',
+          lineWidth: 2,
+          lineOpacity: 0.8,
+          pitchBackgroundType: 'marble',
+          overlayColor: '#0B303E',
+          overlayOpacity: 0.2,
+        },
         slides: [
           {
             id: 'slide-1',
@@ -105,6 +113,14 @@ describe('useExportShare', () => {
       pitchPan: 10,
       pitchZoom: 1.2,
       cameraElevation: 45,
+    });
+    expect(body.pitchAppearance).toEqual({
+      lineColor: '#ffffff',
+      lineWidth: 2,
+      lineOpacity: 0.8,
+      pitchBackgroundType: 'marble',
+      overlayColor: '#0B303E',
+      overlayOpacity: 0.2,
     });
     expect(body.scenes).toHaveLength(2);
 

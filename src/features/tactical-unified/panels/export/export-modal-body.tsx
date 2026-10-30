@@ -1,8 +1,6 @@
 'use client';
 
 import { Crop } from 'lucide-react';
-import { useMemo } from 'react';
-import { applySlideTimelineOverrides } from '@/lib/tactical/export/tactical-video-exporter';
 import { ExportImageTab } from './export-image-tab';
 import { ExportJsonTab } from './export-json-tab';
 import { ExportPreviewPlayer } from './export-preview-player';
@@ -23,26 +21,8 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
     activeSlide,
     slides,
     aspectRatio,
+    pitchAppearance,
   } = state;
-
-  const previewSlides = useMemo(() => {
-    if (activeTab === 'video') {
-      return applySlideTimelineOverrides(slides, {
-        transitionDurationMs: Math.round(
-          Number.parseFloat(state.morphing.transitionSec) * 1000,
-        ),
-        pauseMs: Math.round(Number.parseFloat(state.morphing.pauseSec) * 1000),
-        easing: state.morphing.selectedEasing,
-      });
-    }
-    return slides;
-  }, [
-    activeTab,
-    slides,
-    state.morphing.transitionSec,
-    state.morphing.pauseSec,
-    state.morphing.selectedEasing,
-  ]);
 
   const box = activeSlide?.boundaryBox;
   const isCropped = Boolean(
@@ -56,10 +36,11 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
     <div className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6 overflow-y-auto">
       <div className="md:col-span-6 space-y-3">
         <ExportPreviewPlayer
-          slides={previewSlides}
+          slides={slides}
           aspectRatio={aspectRatio}
           boundaryBox={box}
           pitchTransform={activeSlide?.pitchTransform}
+          pitchAppearance={pitchAppearance}
         />
         <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white/60">
           <Crop
@@ -84,16 +65,8 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
       <div className="md:col-span-6 space-y-4">
         {activeTab === 'video' && (
           <ExportVideoTab
-            selectedFormat={selectedFormat}
-            onSelectFormat={setSelectedFormat}
-            morphing={state.morphing}
-            maxQueueSize={state.maxQueueSize}
-            onMaxQueueSizeChange={state.setMaxQueueSize}
-            keyFrameIntervalSec={state.keyFrameIntervalSec}
-            onKeyFrameIntervalChange={state.setKeyFrameIntervalSec}
-            latencyMode={state.latencyMode}
-            onLatencyModeChange={state.setLatencyMode}
-            disabled={isExporting}
+            onSendToIPhone={state.share.createShareLink}
+            isSending={state.share.isCreatingShareLink}
           />
         )}
         {activeTab === 'image' && (

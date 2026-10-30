@@ -10,23 +10,20 @@ export function detectIOSDevice() {
   return { isIOS, isIPhone12 };
 }
 
+export const IOS_ENCODER_PRESET = {
+  label: 'iPhone (A14 Bionic) — 60fps High Quality',
+  codec: 'avc1.64002a',
+  maxQueueSize: 30,
+  bitrateMbps: 24,
+  fps: 60,
+  latencyMode: 'quality' as const,
+  keyFrameIntervalSec: 2,
+} as const;
+
+export type IosEncoderPreset = typeof IOS_ENCODER_PRESET;
+
+// 後方互換性用エイリアス (30fps撤去・60fps高画質プリセットへ一本化)
 export const IOS_ENCODER_PRESETS = {
-  iphone12: {
-    label: 'iPhone 12 (A14 Bionic) — Optimized',
-    codec: 'avc1.64002a',
-    maxQueueSize: 30,
-    bitrateMbps: 24,
-    fps: 60,
-    latencyMode: 'quality' as const,
-    keyFrameIntervalSec: 2,
-  },
-  iosGeneral: {
-    label: 'iOS Safari — Safe',
-    codec: 'avc1.4d002a',
-    maxQueueSize: 20,
-    bitrateMbps: 16,
-    fps: 30,
-    latencyMode: 'realtime' as const,
-    keyFrameIntervalSec: 2,
-  },
+  iphone12: IOS_ENCODER_PRESET,
+  iosGeneral: IOS_ENCODER_PRESET,
 } as const;

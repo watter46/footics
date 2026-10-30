@@ -45,6 +45,7 @@ export function useExportShare({ onError }: ShareOptions) {
         aspectRatio: project.aspectRatio,
         boundaryBox: activeSlide?.boundaryBox,
         pitchTransform: activeSlide?.pitchTransform,
+        pitchAppearance: project.pitchAppearance,
         teamVisibility: 'both',
         exportFps: 60,
         scenes: currentSlides,

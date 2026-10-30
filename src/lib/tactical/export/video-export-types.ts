@@ -2,6 +2,7 @@ import type {
   AspectRatio,
   BoundaryBox,
   ExportProgress,
+  PitchAppearanceConfig,
   PitchTransform,
   Slide,
 } from '@/lib/types/tactical-unified';
@@ -25,6 +26,7 @@ export interface VideoExportOptions {
   slides?: Slide[];
   aspectRatio?: AspectRatio;
   pitchTransform?: PitchTransform | null;
+  pitchAppearance?: PitchAppearanceConfig;
   mvpMatrix?: Float32Array | null;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   onRenderFrame?: (timeMs: number) => Promise<void> | void;

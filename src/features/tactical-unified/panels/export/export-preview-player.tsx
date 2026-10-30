@@ -14,6 +14,7 @@ import { useRef } from 'react';
 import type {
   AspectRatio,
   BoundaryBox,
+  PitchAppearanceConfig,
   PitchTransform,
   Slide,
 } from '@/lib/types/tactical-unified';
@@ -46,6 +47,7 @@ export interface ExportPreviewPlayerProps {
   pitchTransform?: PitchTransform | null;
   photos?: Record<string, string>;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
+  pitchAppearance?: PitchAppearanceConfig;
 }
 
 export function ExportPreviewPlayer({
@@ -55,6 +57,7 @@ export function ExportPreviewPlayer({
   pitchTransform,
   photos,
   playerPhotos,
+  pitchAppearance,
 }: ExportPreviewPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const timeLabelRef = useRef<HTMLSpanElement | null>(null);
@@ -75,6 +78,7 @@ export function ExportPreviewPlayer({
     pitchTransform,
     photos,
     playerPhotos,
+    pitchAppearance,
     canvasRef,
     timeLabelRef,
     sliderRef,
