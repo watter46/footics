@@ -161,6 +161,8 @@ export function calculateExportCropRect({
   return effectivePitchRect;
 }
 
+export const REFERENCE_STAGE_HEIGHT = 360;
+
 /**
  * エクスポート用MVPマトリクスを生成する。
  *
@@ -172,6 +174,7 @@ export function calculateExportCropRect({
  * @param exportWidth - エクスポートキャンバスの幅（px）
  * @param exportHeight - エクスポートキャンバスの高さ（px）
  * @param aspectRatio - アスペクト比（ピッチ矩形の算出に使用）
+ * @param referenceHeight - 基準ステージ高さ（デフォルト REFERENCE_STAGE_HEIGHT = 360）
  * @returns MVP行列（Float32Array, 16要素）
  */
 export function buildExportMVPMatrix(
@@ -179,17 +182,20 @@ export function buildExportMVPMatrix(
   exportWidth: number,
   exportHeight: number,
   aspectRatio: AspectRatio = '16:9',
+  referenceHeight = REFERENCE_STAGE_HEIGHT,
 ): mat4 {
   const pitchRect = calculatePitchRect(
     { width: exportWidth, height: exportHeight },
     aspectRatio,
   );
 
+  const scale = referenceHeight > 0 ? exportHeight / referenceHeight : 1;
+
   const cameraParams: CameraParams = {
     tilt: pitchTransform.tilt,
     zoom: pitchTransform.zoom,
-    panX: pitchTransform.panX,
-    panY: pitchTransform.panY,
+    panX: (pitchTransform.panX || 0) * scale,
+    panY: (pitchTransform.panY || 0) * scale,
     stageWidth: exportWidth,
     stageHeight: exportHeight,
     pitchRect: {

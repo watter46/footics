@@ -9,7 +9,7 @@
  *   - ピッチ ⇄ ベンチのフェード遷移
  */
 
-import type { Slide } from '@/lib/types/tactical-unified';
+import type { PitchTransform, Slide } from '@/lib/types/tactical-unified';
 import { applyEasing } from './easing';
 import {
   type InterpolatedArrowState,
@@ -37,16 +37,53 @@ export * from './interpolation-ball';
 export * from './interpolation-geometry';
 export * from './interpolation-player';
 
+export interface InterpolatedPitchTransformState {
+  panX: number;
+  panY: number;
+  zoom: number;
+  tilt: number;
+  isLocked: boolean;
+}
+
 export interface InterpolatedUnifiedFrame {
   players: Record<string, InterpolatedPlayerState>;
   ball: InterpolatedBallState;
   zones: Record<string, InterpolatedZoneState>;
   arrows: Record<string, InterpolatedArrowState>;
   texts: Record<string, InterpolatedTextState>;
+  pitchTransform: InterpolatedPitchTransformState;
   currentSlideIndex: number;
   nextSlideIndex: number;
   progress: number;
   isPaused: boolean;
+}
+
+/**
+ * スライド間のピッチカメラ変換（panX, panY, zoom, tilt, isLocked）を補間
+ */
+export function interpolatePitchTransform(
+  transformA?: PitchTransform | null,
+  transformB?: PitchTransform | null,
+  t = 0,
+): InterpolatedPitchTransformState {
+  const panXA = transformA?.panX ?? 0;
+  const panXB = transformB?.panX ?? 0;
+  const panYA = transformA?.panY ?? 0;
+  const panYB = transformB?.panY ?? 0;
+  const zoomA = transformA?.zoom ?? 1;
+  const zoomB = transformB?.zoom ?? 1;
+  const tiltA = transformA?.tilt ?? 0;
+  const tiltB = transformB?.tilt ?? 0;
+  const lockedA = transformA?.isLocked ?? false;
+  const lockedB = transformB?.isLocked ?? false;
+
+  return {
+    panX: panXA + (panXB - panXA) * t,
+    panY: panYA + (panYB - panYA) * t,
+    zoom: zoomA + (zoomB - zoomA) * t,
+    tilt: tiltA + (tiltB - tiltA) * t,
+    isLocked: t < 0.5 ? lockedA : lockedB,
+  };
 }
 
 /**
@@ -67,6 +104,13 @@ const EMPTY_FRAME: InterpolatedUnifiedFrame = {
   zones: {},
   arrows: {},
   texts: {},
+  pitchTransform: {
+    panX: 0,
+    panY: 0,
+    zoom: 1,
+    tilt: 0,
+    isLocked: false,
+  },
   currentSlideIndex: 0,
   nextSlideIndex: 0,
   progress: 0,
@@ -109,6 +153,11 @@ export function getInterpolatedUnifiedSlideFrame(
       zones,
       arrows,
       texts,
+      pitchTransform: interpolatePitchTransform(
+        slide.pitchTransform,
+        slide.pitchTransform,
+        0,
+      ),
       currentSlideIndex: 0,
       nextSlideIndex: 0,
       progress: 0,
@@ -232,6 +281,11 @@ export function getInterpolatedUnifiedSlideFrame(
     zones,
     arrows,
     texts,
+    pitchTransform: interpolatePitchTransform(
+      slideA.pitchTransform,
+      slideB.pitchTransform,
+      ease,
+    ),
     currentSlideIndex: resolvedCurrentSlideIndex,
     nextSlideIndex: resolvedNextSlideIndex,
     progress: rawT,

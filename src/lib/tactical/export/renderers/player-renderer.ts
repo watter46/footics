@@ -28,15 +28,26 @@ export function renderPlayers(
   players: Record<string, InterpolatedPlayerState>,
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>,
 ): void {
-  const { ctx, w, projectObjToScreen, snap, toScreenSizeX } = context;
+  const { ctx, w, h, m, projectObjToScreen, snap, toScreenSizeX } = context;
 
-  Object.values(players).forEach((p) => {
+  // 3D透視投影時は投影後の画面Y座標昇順（奥から手前）にソートして重なり順序を保証
+  const sortedPlayers = Object.values(players)
+    .slice()
+    .sort(
+      (a, b) => projectObjToScreen(a.x, a.y).y - projectObjToScreen(b.x, b.y).y,
+    );
+
+  sortedPlayers.forEach((p) => {
     if (!p.visible) return;
     const _pp = projectObjToScreen(p.x, p.y);
     const px = snap(_pp.x);
     const py = snap(_pp.y);
-    const sizeScale = p.style?.sizeScale ?? 1.0;
-    const radius = Math.max(8, Math.round(w * 0.022 * sizeScale));
+    const sizeScale =
+      (p as { scale?: number }).scale ?? p.style?.sizeScale ?? 1.0;
+    const depthScale = m
+      ? Math.max(0.75, Math.min(1.25, 0.88 + (p.y / 100) * 0.24))
+      : 1;
+    const radius = Math.max(8, Math.round(w * 0.022 * sizeScale * depthScale));
 
     ctx.save();
     ctx.globalAlpha = p.opacity;
@@ -59,44 +70,38 @@ export function renderPlayers(
         ctx.translate(tx, ty);
         ctx.scale(spotlightScale, spotlightScale);
 
-        // 1. 光の柱（中央が透けるソフトグラデーションビーム）
+        // 光の柱（中央が透けるソフトグラデーションビーム）
         const grad = ctx.createLinearGradient(31.36, 5, 31.36, 100);
         const hex = focusColor.replace('#', '');
         const cr = Number.parseInt(hex.substring(0, 2), 16) || 255;
         const cg = Number.parseInt(hex.substring(2, 4), 16) || 255;
         const cb = Number.parseInt(hex.substring(4, 6), 16) || 255;
 
-        grad.addColorStop(
-          0,
-          `rgba(${cr}, ${cg}, ${cb}, ${(focusOpacity * 0.95).toFixed(3)})`,
-        );
-        grad.addColorStop(
-          0.25,
-          `rgba(${cr}, ${cg}, ${cb}, ${(focusOpacity * 0.5).toFixed(3)})`,
-        );
-        grad.addColorStop(
-          0.6,
-          `rgba(${cr}, ${cg}, ${cb}, ${(focusOpacity * 0.22).toFixed(3)})`,
-        );
-        grad.addColorStop(
-          0.9,
-          `rgba(${cr}, ${cg}, ${cb}, ${(focusOpacity * 0.65).toFixed(3)})`,
-        );
-        grad.addColorStop(
-          1,
-          `rgba(${cr}, ${cg}, ${cb}, ${(focusOpacity * 0.95).toFixed(3)})`,
-        );
+        const stops = [
+          [0, 0.95],
+          [0.25, 0.5],
+          [0.6, 0.22],
+          [0.9, 0.65],
+          [1, 0.95],
+        ] as const;
+        for (const [offset, mul] of stops) {
+          grad.addColorStop(
+            offset,
+            `rgba(${cr}, ${cg}, ${cb}, ${(focusOpacity * mul).toFixed(3)})`,
+          );
+        }
 
         ctx.fillStyle = grad;
         ctx.fill(CACHED_SPOTLIGHT_BEAM_PATH);
-
         ctx.restore();
       }
       ctx.restore();
     }
 
     // Vision Cone
-    if (p.visionCone?.visible) {
+    const isVisionConeVisible =
+      p.visionCone?.visible || (p.visionCone as { enabled?: boolean })?.enabled;
+    if (isVisionConeVisible && p.visionCone) {
       const cone = p.visionCone;
       const coneRadius = snap(toScreenSizeX(cone.radius || 20));
       const startAngle = cone.angleRad - cone.spreadRad / 2;
@@ -109,24 +114,37 @@ export function renderPlayers(
       ctx.globalAlpha = (cone.opacity ?? 0.25) * p.opacity;
       ctx.fillStyle = cone.color || p.style?.color || '#3b82f6';
       ctx.beginPath();
-      if (isRing) {
-        const steps = 36;
-        for (let i = 0; i <= steps; i++) {
-          const a = startAngle + (i / steps) * (endAngle - startAngle);
-          const x = px + coneRadius * Math.cos(a);
-          const y = py + coneRadius * Math.sin(a);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+
+      const getArcPoint = (a: number) => {
+        if (m) {
+          const nx = p.x + ((Math.cos(a) * coneRadius) / w) * 100;
+          const ny = p.y + ((Math.sin(a) * coneRadius) / h) * 100;
+          return projectObjToScreen(nx, ny);
         }
-        for (let i = steps; i >= 0; i--) {
-          const a = startAngle + (i / steps) * (endAngle - startAngle);
-          const x = px + rx * Math.cos(a);
-          const y = py + ry * Math.sin(a);
-          ctx.lineTo(x, y);
-        }
-      } else {
+        return {
+          x: px + coneRadius * Math.cos(a),
+          y: py + coneRadius * Math.sin(a),
+        };
+      };
+
+      if (!m && !isRing) {
         ctx.moveTo(px, py);
         ctx.arc(px, py, coneRadius, startAngle, endAngle);
+      } else {
+        const steps = 36;
+        if (!isRing) ctx.moveTo(px, py);
+        for (let i = 0; i <= steps; i++) {
+          const a = startAngle + (i / steps) * (endAngle - startAngle);
+          const pt = getArcPoint(a);
+          if (isRing && i === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        }
+        if (isRing) {
+          for (let i = steps; i >= 0; i--) {
+            const a = startAngle + (i / steps) * (endAngle - startAngle);
+            ctx.lineTo(px + rx * Math.cos(a), py + ry * Math.sin(a));
+          }
+        }
       }
       ctx.closePath();
       ctx.fill();
@@ -177,23 +195,20 @@ export function renderPlayers(
 
       // Ring Center Glow Ellipse (各パーツと同じ発光グロー効果)
       ctx.save();
+      ctx.strokeStyle = ringColor;
+      ctx.fillStyle = ringColor;
+      ctx.shadowColor = ringColor;
+      ctx.lineWidth = Math.round(2 * (w / 800));
+      ctx.shadowBlur = Math.round(8 * (w / 800));
+      ctx.globalAlpha = p.opacity * 0.6;
       ctx.beginPath();
       ctx.ellipse(px, py, radius * 0.72, radius * 0.24, 0, 0, Math.PI * 2);
-      ctx.strokeStyle = ringColor;
-      ctx.lineWidth = Math.round(2 * (w / 800));
-      ctx.globalAlpha = p.opacity * 0.6;
-      ctx.shadowColor = ringColor;
-      ctx.shadowBlur = Math.round(8 * (w / 800));
       ctx.stroke();
-      ctx.restore();
 
-      ctx.save();
+      ctx.globalAlpha = p.opacity * 0.45;
+      ctx.shadowBlur = Math.round(4 * (w / 800));
       ctx.beginPath();
       ctx.ellipse(px, py, radius * 0.68, radius * 0.22, 0, 0, Math.PI * 2);
-      ctx.fillStyle = ringColor;
-      ctx.globalAlpha = p.opacity * 0.45;
-      ctx.shadowColor = ringColor;
-      ctx.shadowBlur = Math.round(4 * (w / 800));
       ctx.fill();
       ctx.restore();
 
@@ -235,12 +250,10 @@ export function renderPlayers(
       ctx.strokeStyle = p.style?.strokeColor || '#ffffff';
       ctx.stroke();
 
-      // 4. Shirt Number (写真がない場合、または insideContent === 'number' の場合)
+      // 4. Shirt Number
       const showInsideNumber =
         !photoSource &&
-        (p.style?.insideContent === 'number' ||
-          p.style?.insideContent === undefined ||
-          (p.style?.insideContent === 'photo' && !photoSource)) &&
+        (p.style?.insideContent !== 'photo' || !photoSource) &&
         p.shirtNo;
 
       if (showInsideNumber && p.shirtNo) {
@@ -250,8 +263,7 @@ export function renderPlayers(
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
-        const opticalX = getOpticalCenterX(ctx, p.shirtNo, px);
-        ctx.fillText(p.shirtNo, opticalX, py);
+        ctx.fillText(p.shirtNo, getOpticalCenterX(ctx, p.shirtNo, px), py);
       }
     }
 
@@ -271,8 +283,6 @@ export function renderPlayers(
       ctx.font = `bold ${fontSize}px ${TACTICAL_CANVAS_FONT_FAMILY}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-
-      // Dark background outline (matching stroke="#020617" strokeWidth=1.5 in player-layer.tsx)
       if (typeof ctx.strokeText === 'function') {
         ctx.strokeStyle = '#020617';
         ctx.lineWidth = Math.max(2, Math.round(fontSize * 0.25));
@@ -280,8 +290,6 @@ export function renderPlayers(
         ctx.miterLimit = 2;
         ctx.strokeText(labelText, px, textY);
       }
-
-      // Bright white foreground text
       ctx.fillStyle = '#ffffff';
       ctx.fillText(labelText, px, textY);
     }

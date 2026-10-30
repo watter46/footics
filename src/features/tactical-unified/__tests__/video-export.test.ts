@@ -1,19 +1,47 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, renderHook, screen } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { ExportPreviewPlayer } from '@/features/tactical-unified/panels/export/export-preview-player';
+import { useExportPreviewAnimation } from '@/features/tactical-unified/panels/export/use-export-preview-animation';
+import * as tacticalFrameRenderer from '@/lib/tactical/export/tactical-frame-renderer';
 import {
   calculateBoundaryCrop,
   getSupportedH264Codec,
 } from '@/lib/tactical/export/video-export-engine';
+import { exportVideoWithMediabunny } from '@/lib/tactical/export/video-mediabunny-export';
 import {
   type AspectRatio,
   type BoundaryBox,
   createDefaultSlide,
   ExportTargetSchema,
   type PitchTransform,
+  type Slide,
 } from '@/lib/types/tactical-unified';
+
+vi.mock('mediabunny', () => {
+  class BufferTarget {
+    buffer = new Uint8Array([1, 2, 3]).buffer;
+  }
+  class CanvasSource {
+    add = vi.fn().mockResolvedValue(undefined);
+  }
+  class Mp4OutputFormat {}
+  class WebMOutputFormat {}
+  class Output {
+    addVideoTrack = vi.fn();
+    start = vi.fn().mockResolvedValue(undefined);
+    finalize = vi.fn().mockResolvedValue(undefined);
+    cancel = vi.fn().mockResolvedValue(undefined);
+  }
+  return {
+    BufferTarget,
+    CanvasSource,
+    Mp4OutputFormat,
+    WebMOutputFormat,
+    Output,
+  };
+});
 
 describe('Video Export Engine & Boundary Crop', () => {
   describe('calculateBoundaryCrop', () => {
@@ -250,5 +278,180 @@ describe('ExportPreviewPlayer controls', () => {
 
     const playButton = screen.getByRole('button', { name: 'Play preview' });
     expect(playButton).toBeTruthy();
+  });
+});
+
+describe('Dynamic Camera Work in Video Export & Preview', () => {
+  const createMockContext = () =>
+    new Proxy(
+      {
+        getImageData: () => ({ data: new Array(4) }),
+        createImageData: () => [],
+        getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+        measureText: () => ({ width: 0 }),
+        getLineDash: () => [],
+        isPointInPath: () => true,
+        createLinearGradient: () => ({ addColorStop: vi.fn() }),
+        createRadialGradient: () => ({ addColorStop: vi.fn() }),
+      } as Record<string, unknown>,
+      {
+        get: (target, prop: string) =>
+          prop in target ? target[prop] : vi.fn(),
+      },
+    );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const mockContext = createMockContext();
+    HTMLCanvasElement.prototype.getContext = vi
+      .fn()
+      .mockReturnValue(mockContext);
+    if (typeof OffscreenCanvas !== 'undefined') {
+      OffscreenCanvas.prototype.getContext = vi
+        .fn()
+        .mockReturnValue(mockContext);
+    }
+  });
+
+  it('マルチスライド動画出力時、固定 mvpMatrix ではなく mvpMatrix: undefined が渡され各フレーム動的カメラワークが使われること', async () => {
+    const slide1: Slide = {
+      ...createDefaultSlide(0, 'slide-1'),
+      pitchTransform: {
+        tilt: 10,
+        zoom: 1.1,
+        panX: 5,
+        panY: 0,
+        isLocked: false,
+      },
+    };
+    const slide2: Slide = {
+      ...createDefaultSlide(1, 'slide-2'),
+      pitchTransform: {
+        tilt: 35,
+        zoom: 1.8,
+        panX: -20,
+        panY: 10,
+        isLocked: false,
+      },
+    };
+
+    const spyRender = vi.spyOn(
+      tacticalFrameRenderer,
+      'renderTacticalFrameToCanvas',
+    );
+
+    await exportVideoWithMediabunny({
+      format: 'mp4',
+      fps: 30,
+      totalDurationMs: 100,
+      stageWidth: 800,
+      stageHeight: 450,
+      slides: [slide1, slide2],
+      pitchTransform: {
+        tilt: 10,
+        zoom: 1.1,
+        panX: 5,
+        panY: 0,
+        isLocked: false,
+      },
+    });
+
+    expect(spyRender).toHaveBeenCalled();
+    const callArgs = spyRender.mock.calls[0][1];
+    expect(callArgs.mvpMatrix).toBeUndefined();
+  });
+
+  it('単一スライド時は options.pitchTransform から生成された mvpMatrix が渡されること', async () => {
+    const slide1: Slide = {
+      ...createDefaultSlide(0, 'slide-1'),
+      pitchTransform: {
+        tilt: 20,
+        zoom: 1.5,
+        panX: 10,
+        panY: 5,
+        isLocked: false,
+      },
+    };
+
+    const spyRender = vi.spyOn(
+      tacticalFrameRenderer,
+      'renderTacticalFrameToCanvas',
+    );
+
+    await exportVideoWithMediabunny({
+      format: 'mp4',
+      fps: 30,
+      totalDurationMs: 100,
+      stageWidth: 800,
+      stageHeight: 450,
+      slides: [slide1],
+      pitchTransform: {
+        tilt: 20,
+        zoom: 1.5,
+        panX: 10,
+        panY: 5,
+        isLocked: false,
+      },
+    });
+
+    expect(spyRender).toHaveBeenCalled();
+    const callArgs = spyRender.mock.calls[0][1];
+    expect(callArgs.mvpMatrix).toBeInstanceOf(Float32Array);
+    expect(callArgs.mvpMatrix).toHaveLength(16);
+  });
+
+  it('useExportPreviewAnimation で複数スライド時は mvpMatrix: null が渡されること', () => {
+    const slide1 = {
+      ...createDefaultSlide(0, 's1'),
+      pitchTransform: {
+        tilt: 15,
+        zoom: 1.2,
+        panX: 0,
+        panY: 0,
+        isLocked: false,
+      },
+    };
+    const slide2 = {
+      ...createDefaultSlide(1, 's2'),
+      pitchTransform: {
+        tilt: 30,
+        zoom: 1.5,
+        panX: 10,
+        panY: 0,
+        isLocked: false,
+      },
+    };
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 360;
+    const canvasRef = { current: canvas };
+    const timeLabelRef = { current: document.createElement('span') };
+    const sliderRef = { current: document.createElement('input') };
+
+    const spyRender = vi.spyOn(
+      tacticalFrameRenderer,
+      'renderTacticalFrameToCanvas',
+    );
+
+    renderHook(() =>
+      useExportPreviewAnimation({
+        slides: [slide1, slide2],
+        aspectRatio: '16:9',
+        pitchTransform: {
+          tilt: 15,
+          zoom: 1.2,
+          panX: 0,
+          panY: 0,
+          isLocked: false,
+        },
+        canvasRef,
+        timeLabelRef,
+        sliderRef,
+      }),
+    );
+
+    expect(spyRender).toHaveBeenCalled();
+    const lastCall = spyRender.mock.calls[spyRender.mock.calls.length - 1][1];
+    expect(lastCall.mvpMatrix).toBeNull();
   });
 });

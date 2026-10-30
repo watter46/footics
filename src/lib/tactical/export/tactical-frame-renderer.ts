@@ -9,11 +9,13 @@
  *   - Snapshot / GIF frame rendering
  */
 
+import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
 import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
 import type {
   AspectRatio,
   BoundaryBox,
   PitchAppearanceConfig,
+  PitchTransform,
   Slide,
 } from '@/lib/types/tactical-unified';
 import { renderArrows, renderConnectLines } from './renderers/arrow-renderer';
@@ -51,6 +53,8 @@ export interface RenderTacticalFrameOptions {
   transparent?: boolean;
   /** エクスポート用の透視投影MVP行列（Float32Array） */
   mvpMatrix?: Float32Array | null;
+  /** スライドのカメラ設定を強制上書きするPitchTransform */
+  pitchTransformOverride?: PitchTransform | null;
   /** 選手の顔写真ソースマップ (playerId または player.id -> CanvasImageSource) */
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   /** ピッチ外観カスタム設定 */
@@ -93,6 +97,9 @@ export function renderTacticalFrameToCanvas(
 
   if (w <= 0 || h <= 0) return;
 
+  // 補間済みフレームデータを先行取得（動的カメラMVP行列の解決に利用）
+  const frame = getInterpolatedUnifiedSlideFrame(slides, timeMs);
+
   const isBoundaryActive =
     boundaryBox?.enabled &&
     boundaryBox.width > 0 &&
@@ -110,8 +117,23 @@ export function renderTacticalFrameToCanvas(
 
   // チルト投影: オブジェクト（選手・ボール・矢印）の位置計算用。
   // 0〜100スケールのピッチ正規化座標 → 画面座標（px）
-  // mvpMatrixが指定されている場合（チルト非ゼロ時）、行列ベクトル積で透視投影を計算する
-  const m = mvpMatrix;
+  // mvpMatrixが明示指定されていない場合は、補間済み frame.pitchTransform または pitchTransformOverride から動的生成
+  let m = mvpMatrix && mvpMatrix.length === 16 ? mvpMatrix : null;
+  if (!m) {
+    const effectiveTransform =
+      options.pitchTransformOverride ?? frame.pitchTransform;
+    if (
+      effectiveTransform &&
+      (effectiveTransform.tilt !== 0 ||
+        effectiveTransform.zoom !== 1 ||
+        effectiveTransform.panX !== 0 ||
+        effectiveTransform.panY !== 0)
+    ) {
+      m = new Float32Array(
+        buildExportMVPMatrix(effectiveTransform, w, h, aspectRatio),
+      );
+    }
+  }
 
   /**
    * 3D透視投影による生のスクリーン座標計算
@@ -216,10 +238,7 @@ export function renderTacticalFrameToCanvas(
     marbleTexture,
   );
 
-  // 2. Interpolated Frame Data
-  const frame = getInterpolatedUnifiedSlideFrame(slides, timeMs);
-
-  // 3. Zones (Vertex Morphing)
+  // 2. Zones (Vertex Morphing)
   renderZones(frameContext, frame.zones);
 
   // 4. Connect Lines between players

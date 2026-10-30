@@ -8,6 +8,7 @@ import {
   calculateUnifiedTotalDuration,
   getInterpolatedUnifiedSlideFrame,
   interpolateColor,
+  interpolatePitchTransform,
   interpolatePolygonPoints,
   interpolateZone,
   rectToPoints,
@@ -480,6 +481,102 @@ describe('unified-interpolation engine', () => {
 
         const frameEnd = getInterpolatedUnifiedSlideFrame(slides, 1000);
         expect(frameEnd.ball.rotation).toBeCloseTo(50 * 7.2, 1);
+      });
+    });
+
+    describe('pitchTransform interpolation', () => {
+      it('interpolates pitchTransform between two slides with easing', () => {
+        const transformA = {
+          panX: 0,
+          panY: 0,
+          zoom: 1,
+          tilt: 0,
+          isLocked: false,
+        };
+        const transformB = {
+          panX: 100,
+          panY: -50,
+          zoom: 2,
+          tilt: 30,
+          isLocked: true,
+        };
+
+        const mid = interpolatePitchTransform(transformA, transformB, 0.5);
+        expect(mid.panX).toBeCloseTo(50, 1);
+        expect(mid.panY).toBeCloseTo(-25, 1);
+        expect(mid.zoom).toBeCloseTo(1.5, 2);
+        expect(mid.tilt).toBeCloseTo(15, 1);
+
+        // isLocked switches at t < 0.5 ? a.isLocked : b.isLocked
+        const early = interpolatePitchTransform(transformA, transformB, 0.4);
+        expect(early.isLocked).toBe(false);
+
+        const half = interpolatePitchTransform(transformA, transformB, 0.5);
+        expect(half.isLocked).toBe(true);
+      });
+
+      it('falls back to default values when transform is missing', () => {
+        const mid = interpolatePitchTransform(null, undefined, 0.5);
+        expect(mid).toEqual({
+          panX: 0,
+          panY: 0,
+          zoom: 1,
+          tilt: 0,
+          isLocked: false,
+        });
+      });
+
+      it('interpolates pitchTransform within getInterpolatedUnifiedSlideFrame', () => {
+        const slides: Slide[] = [
+          {
+            id: 's1',
+            index: 0,
+            transitionDurationMs: 1000,
+            pauseMs: 500,
+            easing: 'linear',
+            players: [],
+            arrows: [],
+            zones: [],
+            texts: [],
+            ball: { x: 50, y: 50, visible: true },
+            pitchTransform: {
+              panX: 0,
+              panY: 0,
+              zoom: 1,
+              tilt: 0,
+              isLocked: false,
+            },
+          },
+          {
+            id: 's2',
+            index: 1,
+            transitionDurationMs: 1000,
+            pauseMs: 500,
+            easing: 'linear',
+            players: [],
+            arrows: [],
+            zones: [],
+            texts: [],
+            ball: { x: 50, y: 50, visible: true },
+            pitchTransform: {
+              panX: 100,
+              panY: 50,
+              zoom: 2,
+              tilt: 30,
+              isLocked: true,
+            },
+          },
+        ];
+
+        const frameStart = getInterpolatedUnifiedSlideFrame(slides, 0);
+        expect(frameStart.pitchTransform.zoom).toBe(1);
+        expect(frameStart.pitchTransform.tilt).toBe(0);
+
+        const frameMid = getInterpolatedUnifiedSlideFrame(slides, 500);
+        expect(frameMid.pitchTransform.panX).toBeCloseTo(50, 1);
+        expect(frameMid.pitchTransform.panY).toBeCloseTo(25, 1);
+        expect(frameMid.pitchTransform.zoom).toBeCloseTo(1.5, 2);
+        expect(frameMid.pitchTransform.tilt).toBeCloseTo(15, 1);
       });
     });
   });

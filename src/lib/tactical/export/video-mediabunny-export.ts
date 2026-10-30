@@ -110,16 +110,28 @@ export async function exportVideoWithMediabunny(
   const aspectRatio = options.aspectRatio ?? '16:9';
   const boundaryBox = options.boundaryBox;
 
-  const mvpMatrix = options.pitchTransform
-    ? new Float32Array(
-        buildExportMVPMatrix(
-          options.pitchTransform,
-          exportWidth,
-          exportHeight,
-          aspectRatio,
-        ),
-      )
-    : (options.mvpMatrix ?? null);
+  const useSingleSlideOverride = !slides || slides.length <= 1;
+  const pitchTransform = options.pitchTransform;
+  const hasTransform =
+    pitchTransform &&
+    (pitchTransform.tilt !== 0 ||
+      pitchTransform.zoom !== 1 ||
+      pitchTransform.panX !== 0 ||
+      pitchTransform.panY !== 0);
+
+  const mvpMatrix =
+    useSingleSlideOverride && hasTransform
+      ? new Float32Array(
+          buildExportMVPMatrix(
+            pitchTransform,
+            exportWidth,
+            exportHeight,
+            aspectRatio,
+          ),
+        )
+      : useSingleSlideOverride
+        ? (options.mvpMatrix ?? undefined)
+        : undefined;
 
   if (transparent) {
     options.onSetBackgroundVisible?.(false);

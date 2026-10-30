@@ -218,6 +218,7 @@ export function useExportPreviewAnimation({
     PREVIEW_DIMENSIONS[aspectRatio] ?? PREVIEW_DIMENSIONS['16:9'];
 
   const mvpMatrix = useMemo(() => {
+    if (slides.length > 1) return null;
     if (!pitchTransform) return null;
     return new Float32Array(
       buildExportMVPMatrix(
@@ -227,7 +228,7 @@ export function useExportPreviewAnimation({
         aspectRatio,
       ),
     );
-  }, [pitchTransform, previewWidth, previewHeight, aspectRatio]);
+  }, [slides.length, pitchTransform, previewWidth, previewHeight, aspectRatio]);
 
   // ── Canvas Frame Drawing ──
   const drawFrame = useCallback(

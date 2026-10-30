@@ -931,4 +931,257 @@ describe('Tactical Frame Renderer', () => {
       expect(ctx.strokeStyle).toBe('#e2b48d');
     });
   });
+
+  describe('Phase 2: 3D Camera Dynamic MVP Matrix & Renderer Overhaul', () => {
+    it('dynamically generates and applies 3D MVP matrix from slide.pitchTransform when mvpMatrix is omitted', () => {
+      const slideWithTilt: Slide = SlideSchema.parse({
+        id: 'slide-tilt',
+        index: 0,
+        transitionDurationMs: 1000,
+        pauseMs: 500,
+        pitchTransform: {
+          tilt: 30,
+          zoom: 1.5,
+          panX: 20,
+          panY: -10,
+          isLocked: false,
+        },
+        players: [],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: true },
+      });
+
+      const ctx = createMockContext();
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [slideWithTilt],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        transparent: false,
+      });
+
+      // 3D mode should be active because slide.pitchTransform has tilt: 30, zoom: 1.5
+      // Pitch markings 3D uses moveTo & lineTo instead of strokeRect
+      expect(ctx.strokeRect).not.toHaveBeenCalled();
+      expect(ctx.moveTo).toHaveBeenCalled();
+      expect(ctx.lineTo).toHaveBeenCalled();
+    });
+
+    it('prioritizes options.pitchTransformOverride over slide.pitchTransform when provided', () => {
+      const slideWithTilt: Slide = SlideSchema.parse({
+        id: 'slide-tilt-2',
+        index: 0,
+        transitionDurationMs: 1000,
+        pauseMs: 500,
+        pitchTransform: {
+          tilt: 45,
+          zoom: 1.5,
+          panX: 0,
+          panY: 0,
+          isLocked: false,
+        },
+        players: [],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: true },
+      });
+
+      const ctx = createMockContext();
+      // Override with zero tilt and default zoom -> should fall back to 2D
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [slideWithTilt],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        transparent: false,
+        pitchTransformOverride: {
+          tilt: 0,
+          zoom: 1,
+          panX: 0,
+          panY: 0,
+          isLocked: false,
+        },
+      });
+
+      // Override forces 2D mode
+      expect(ctx.strokeRect).toHaveBeenCalled();
+    });
+
+    it('clips marble background with 3D trapezoid polygon when isMarble is true and 3D mode is active', () => {
+      const slideWithTilt: Slide = SlideSchema.parse({
+        id: 'slide-marble-3d',
+        index: 0,
+        transitionDurationMs: 1000,
+        pauseMs: 500,
+        pitchTransform: {
+          tilt: 35,
+          zoom: 1.2,
+          panX: 0,
+          panY: 0,
+          isLocked: false,
+        },
+        players: [],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: true },
+      });
+
+      const fakeMarbleTexture = {
+        naturalWidth: 800,
+        naturalHeight: 600,
+      } as unknown as CanvasImageSource;
+
+      const ctx = createMockContext();
+      (ctx as unknown as { drawImage: ReturnType<typeof vi.fn> }).drawImage =
+        vi.fn();
+
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [slideWithTilt],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        transparent: false,
+        pitchAppearance: {
+          pitchBackgroundType: 'marble',
+          overlayOpacity: 0.6,
+          overlayColor: '#123456',
+          lineColor: '#e2b48d',
+          lineWidth: 2,
+          lineOpacity: 0.85,
+        },
+        marbleTexture: fakeMarbleTexture,
+      });
+
+      // In 3D marble mode, pitch trapezoid polygon (4 corners) is clipped via moveTo + 3 lineTo + closePath + clip
+      expect(ctx.clip).toHaveBeenCalled();
+      expect(ctx.closePath).toHaveBeenCalled();
+      // Should not call ctx.rect for marble bounds clipping in 3D mode (only viewport rect at 0, 0, w, h is called)
+      const rectCalls = (ctx.rect as unknown as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(rectCalls.length).toBe(1); // Only canvas viewport clipping (0, 0, 1920, 1080)
+      expect(
+        (ctx as unknown as { drawImage: ReturnType<typeof vi.fn> }).drawImage,
+      ).toHaveBeenCalledWith(
+        fakeMarbleTexture,
+        expect.any(Number),
+        expect.any(Number),
+        expect.any(Number),
+        expect.any(Number),
+      );
+      // Overlay blend rect should be filled with overlayColor
+      expect(ctx.fillRect).toHaveBeenCalledWith(
+        expect.any(Number),
+        expect.any(Number),
+        expect.any(Number),
+        expect.any(Number),
+      );
+    });
+
+    it('sorts players by projected screen Y coordinate ascending and applies depth scale and 3D vision cone', () => {
+      // p1 is near the top of the pitch (y: 20) -> Far in 3D perspective
+      // p2 is near the bottom of the pitch (y: 80) -> Close in 3D perspective
+      const slideWithPlayers: Slide = SlideSchema.parse({
+        id: 'slide-players-3d',
+        index: 0,
+        transitionDurationMs: 1000,
+        pauseMs: 500,
+        pitchTransform: {
+          tilt: 40,
+          zoom: 1.0,
+          panX: 0,
+          panY: 0,
+          isLocked: false,
+        },
+        players: [
+          {
+            id: 'p-close',
+            x: 50,
+            y: 80,
+            team: 'away',
+            shirtNo: '9',
+            name: 'ClosePlayer',
+            area: 'pitch',
+            style: {
+              insideContent: 'number',
+              bottomLabel: 'name',
+              color: '#dc2626',
+            },
+          },
+          {
+            id: 'p-far',
+            x: 50,
+            y: 20,
+            team: 'home',
+            shirtNo: '10',
+            name: 'FarPlayer',
+            area: 'pitch',
+            style: {
+              insideContent: 'number',
+              bottomLabel: 'name',
+              color: '#3b82f6',
+            },
+            visionCone: {
+              id: 'vc-far',
+              visible: true,
+              angleRad: Math.PI / 2,
+              spreadRad: Math.PI / 3,
+              radius: 20,
+              opacity: 0.4,
+              color: '#3b82f6',
+            },
+          },
+        ],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: true },
+      });
+
+      const drawOrder: string[] = [];
+      const ctx = createMockContext();
+      const originalFillText = ctx.fillText as (
+        text: string,
+        ...args: unknown[]
+      ) => unknown;
+      ctx.fillText = vi.fn((text: string, ...args: unknown[]) => {
+        if (text === '10' || text === '9') {
+          drawOrder.push(text);
+        }
+        return originalFillText(text, ...args);
+      }) as unknown as typeof ctx.fillText;
+
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [slideWithPlayers],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        transparent: false,
+      });
+
+      // In 3D perspective, FarPlayer (y: 20, #10) must be drawn BEFORE ClosePlayer (y: 80, #9)
+      // Depth sort: screen Y ascending order (far -> near)
+      expect(drawOrder).toEqual(['10', '9']);
+
+      // Far player (y: 20) scale: 0.88 + (20/100)*0.24 = 0.928
+      // Close player (y: 80) scale: 0.88 + (80/100)*0.24 = 1.072
+      // Close player radius > Far player radius
+      const arcMock = ctx.arc as unknown as ReturnType<typeof vi.fn>;
+      const playerBodyArcs = arcMock.mock.calls.filter(
+        (call: unknown[]) =>
+          call[3] === 0 && Math.abs((call[4] as number) - Math.PI * 2) < 0.001,
+      );
+      expect(playerBodyArcs.length).toBeGreaterThanOrEqual(2);
+      const farRadius = playerBodyArcs[0][2];
+      const closeRadius = playerBodyArcs[1][2];
+      expect(closeRadius).toBeGreaterThan(farRadius);
+    });
+  });
 });

@@ -117,9 +117,13 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
     setExportedBlob(null);
 
     try {
-      const mvpMatrix = shareData?.pitchTransform
+      const isSingleSlide = slides.length <= 1;
+      const effectivePitchTransform = isSingleSlide
+        ? (shareData?.pitchTransform ?? null)
+        : null;
+      const mvpMatrix = effectivePitchTransform
         ? (buildExportMVPMatrix(
-            shareData.pitchTransform,
+            effectivePitchTransform,
             stageWidth,
             stageHeight,
             effectiveAspectRatio,
@@ -138,7 +142,7 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
         maxQueueSize: activePreset.maxQueueSize,
         transparent: false,
         boundaryBox: shareData?.boundaryBox ?? null,
-        pitchTransform: shareData?.pitchTransform ?? null,
+        pitchTransform: effectivePitchTransform,
         pitchAppearance: shareData?.pitchAppearance,
         mvpMatrix,
         stageWidth,

@@ -81,61 +81,136 @@ export function renderPitch(
     const toNormW = (svgW: number) => (svgW / geom.config.widthPx) * 100;
     const toNormH = (svgH: number) => (svgH / geom.config.heightPx) * 100;
 
-    const pitchBoundsPx = {
-      left: snap(toScreenX(toNormX(geom.pitchLeft))),
-      top: snap(toScreenY(toNormY(geom.pitchTop))),
-      width: snap(toScreenSizeX(toNormW(geom.pitchWidth))),
-      height: snap(toScreenSizeY(toNormH(geom.pitchHeight))),
-    };
+    const normLeft = toNormX(geom.pitchLeft);
+    const normTop = toNormY(geom.pitchTop);
+    const normRight = toNormX(geom.pitchLeft + geom.pitchWidth);
+    const normBottom = toNormY(geom.pitchTop + geom.pitchHeight);
 
-    // 3. Clip pitch inner area
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(
-      pitchBoundsPx.left,
-      pitchBoundsPx.top,
-      pitchBoundsPx.width,
-      pitchBoundsPx.height,
-    );
-    ctx.clip();
+    if (m) {
+      // 3D Trapezoid clip
+      ctx.save();
+      const p0 = projectObjToScreen(normLeft, normTop);
+      const p1 = projectObjToScreen(normRight, normTop);
+      const p2 = projectObjToScreen(normRight, normBottom);
+      const p3 = projectObjToScreen(normLeft, normBottom);
 
-    // 4. Marble texture image cover
-    if (marbleTexture) {
-      const tex = marbleTexture as {
-        naturalWidth?: number;
-        naturalHeight?: number;
-        videoWidth?: number;
-        videoHeight?: number;
-        width?: number;
-        height?: number;
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.closePath();
+      ctx.clip();
+
+      const minX = Math.min(p0.x, p1.x, p2.x, p3.x);
+      const maxX = Math.max(p0.x, p1.x, p2.x, p3.x);
+      const minY = Math.min(p0.y, p1.y, p2.y, p3.y);
+      const maxY = Math.max(p0.y, p1.y, p2.y, p3.y);
+      const bw = Math.max(1, maxX - minX);
+      const bh = Math.max(1, maxY - minY);
+
+      if (marbleTexture) {
+        const tex = marbleTexture as {
+          naturalWidth?: number;
+          naturalHeight?: number;
+          videoWidth?: number;
+          videoHeight?: number;
+          width?: number;
+          height?: number;
+        };
+        const imgWidth = tex.naturalWidth ?? tex.videoWidth ?? tex.width ?? 679;
+        const imgHeight =
+          tex.naturalHeight ?? tex.videoHeight ?? tex.height ?? 800;
+
+        const cover = calculatePitchTextureCover(
+          { left: minX, top: minY, width: bw, height: bh },
+          { width: imgWidth, height: imgHeight },
+        );
+
+        ctx.drawImage(
+          marbleTexture,
+          cover.x,
+          cover.y,
+          cover.width,
+          cover.height,
+        );
+      }
+
+      if (pitchAppearance && pitchAppearance.overlayOpacity > 0) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'overlay';
+        ctx.globalAlpha = pitchAppearance.overlayOpacity;
+        ctx.fillStyle = pitchAppearance.overlayColor;
+        ctx.fillRect(minX, minY, bw, bh);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    } else {
+      const pitchBoundsPx = {
+        left: snap(toScreenX(normLeft)),
+        top: snap(toScreenY(normTop)),
+        width: snap(toScreenSizeX(toNormW(geom.pitchWidth))),
+        height: snap(toScreenSizeY(toNormH(geom.pitchHeight))),
       };
-      const imgWidth = tex.naturalWidth ?? tex.videoWidth ?? tex.width ?? 679;
-      const imgHeight =
-        tex.naturalHeight ?? tex.videoHeight ?? tex.height ?? 800;
 
-      const cover = calculatePitchTextureCover(pitchBoundsPx, {
-        width: imgWidth,
-        height: imgHeight,
-      });
+      // 3. Clip pitch inner area
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(
+        pitchBoundsPx.left,
+        pitchBoundsPx.top,
+        pitchBoundsPx.width,
+        pitchBoundsPx.height,
+      );
+      ctx.clip();
 
-      ctx.drawImage(marbleTexture, cover.x, cover.y, cover.width, cover.height);
+      // 4. Marble texture image cover
+      if (marbleTexture) {
+        const tex = marbleTexture as {
+          naturalWidth?: number;
+          naturalHeight?: number;
+          videoWidth?: number;
+          videoHeight?: number;
+          width?: number;
+          height?: number;
+        };
+        const imgWidth = tex.naturalWidth ?? tex.videoWidth ?? tex.width ?? 679;
+        const imgHeight =
+          tex.naturalHeight ?? tex.videoHeight ?? tex.height ?? 800;
+
+        const cover = calculatePitchTextureCover(pitchBoundsPx, {
+          width: imgWidth,
+          height: imgHeight,
+        });
+
+        ctx.drawImage(
+          marbleTexture,
+          cover.x,
+          cover.y,
+          cover.width,
+          cover.height,
+        );
+      }
+
+      // 5. Overlay blend rectangle
+      if (pitchAppearance && pitchAppearance.overlayOpacity > 0) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'overlay';
+        ctx.globalAlpha = pitchAppearance.overlayOpacity;
+        ctx.fillStyle = pitchAppearance.overlayColor;
+        ctx.fillRect(
+          pitchBoundsPx.left,
+          pitchBoundsPx.top,
+          pitchBoundsPx.width,
+          pitchBoundsPx.height,
+        );
+        ctx.restore();
+      }
+
+      // Restore clip
+      ctx.restore();
     }
-
-    // 5. Overlay blend rectangle
-    ctx.save();
-    ctx.globalCompositeOperation = 'overlay';
-    ctx.globalAlpha = pitchAppearance.overlayOpacity;
-    ctx.fillStyle = pitchAppearance.overlayColor;
-    ctx.fillRect(
-      pitchBoundsPx.left,
-      pitchBoundsPx.top,
-      pitchBoundsPx.width,
-      pitchBoundsPx.height,
-    );
-    ctx.restore();
-
-    // Restore clip
-    ctx.restore();
 
     // 6. Pitch markings
     renderPitchMarkings(context, aspectRatio, pitchAppearance);

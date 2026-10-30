@@ -9,6 +9,10 @@ import {
   pitchToScreen,
   screenToPitch,
 } from '@/features/tactical-unified/core';
+import {
+  buildExportMVPMatrix,
+  REFERENCE_STAGE_HEIGHT,
+} from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
 
 describe('Pitch Center-Anchored Transform & Tilt 3D Inversion', () => {
   const pitchRect = { x: 50, y: 30, width: 800, height: 500 };
@@ -207,5 +211,42 @@ describe('Boundary Box Export Crop Rect under Zoom & Tilt', () => {
       width: pitchRect.width,
       height: pitchRect.height,
     });
+  });
+});
+
+describe('buildExportMVPMatrix resolution-independent panning', () => {
+  it('REFERENCE_STAGE_HEIGHT equals 360', () => {
+    expect(REFERENCE_STAGE_HEIGHT).toBe(360);
+  });
+
+  it('scales panX and panY proportionally to exportHeight / referenceHeight', () => {
+    const pitchTransform = {
+      panX: 40,
+      panY: 20,
+      zoom: 1.2,
+      tilt: 30,
+      isLocked: false,
+    };
+
+    // 360p (reference height)
+    const mat360 = buildExportMVPMatrix(pitchTransform, 640, 360, '16:9', 360);
+    // 1080p (3x height)
+    const mat1080 = buildExportMVPMatrix(
+      pitchTransform,
+      1920,
+      1080,
+      '16:9',
+      360,
+    );
+
+    expect(mat360).toBeDefined();
+    expect(mat1080).toBeDefined();
+
+    // ピッチ中心 (0, 0, 0, 1) をクリップ空間に投影した際の NDC 座標 (x/w, y/w) が一致する
+    const p360 = [mat360[12] / mat360[15], mat360[13] / mat360[15]];
+    const p1080 = [mat1080[12] / mat1080[15], mat1080[13] / mat1080[15]];
+
+    expect(p360[0]).toBeCloseTo(p1080[0], 4);
+    expect(p360[1]).toBeCloseTo(p1080[1], 4);
   });
 });
