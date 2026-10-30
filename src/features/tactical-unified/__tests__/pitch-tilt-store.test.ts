@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 
 describe('L3-Tactical-028: Pitch Tilt Store Actions & Boundary Box Independence', () => {
@@ -30,6 +31,75 @@ describe('L3-Tactical-028: Pitch Tilt Store Actions & Boundary Box Independence'
     expect(slide?.pitchTransform?.panY).toBe(-30);
     expect(slide?.pitchTransform?.zoom).toBe(1.5);
     expect(slide?.pitchTransform?.isLocked).toBe(true);
+  });
+
+  it('updatePitchTransform updates yaw and preserves existing transform properties', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const slideId = store.activeSlideId;
+
+    store.updatePitchTransform(slideId, {
+      panX: 10,
+      panY: 20,
+      zoom: 1.2,
+      tilt: 30,
+      yaw: 75,
+    });
+
+    const slide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+
+    expect(slide?.pitchTransform?.yaw).toBe(75);
+    expect(slide?.pitchTransform?.tilt).toBe(30);
+    expect(slide?.pitchTransform?.zoom).toBe(1.2);
+    expect(slide?.pitchTransform?.panX).toBe(10);
+    expect(slide?.pitchTransform?.panY).toBe(20);
+  });
+
+  it('centerPitchAndBoundary resets yaw to 90 alongside tilt, pan, zoom', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const slideId = store.activeSlideId;
+
+    store.updatePitchTransform(slideId, {
+      tilt: 45,
+      yaw: 120,
+      panX: 50,
+      panY: -30,
+      zoom: 1.5,
+    });
+
+    store.centerPitchAndBoundary(slideId);
+
+    const slide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+
+    expect(slide?.pitchTransform?.tilt).toBe(0);
+    expect(slide?.pitchTransform?.yaw).toBe(90);
+    expect(slide?.pitchTransform?.zoom).toBe(1);
+    expect(slide?.pitchTransform?.panX).toBe(0);
+    expect(slide?.pitchTransform?.panY).toBe(0);
+  });
+
+  it('buildExportMVPMatrix produces different matrices for yaw=90 vs yaw=75', () => {
+    const matrixFront = buildExportMVPMatrix(
+      { panX: 0, panY: 0, zoom: 1, tilt: 30, yaw: 90, isLocked: true },
+      1920,
+      1080,
+      '16:9',
+    );
+    const matrixYaw75 = buildExportMVPMatrix(
+      { panX: 0, panY: 0, zoom: 1, tilt: 30, yaw: 75, isLocked: true },
+      1920,
+      1080,
+      '16:9',
+    );
+
+    // Matrix should be Float32Array (mat4)
+    expect(matrixFront).toHaveLength(16);
+    expect(matrixYaw75).toHaveLength(16);
+    // Yaw differences should alter the transformation matrix
+    expect(Array.from(matrixFront)).not.toEqual(Array.from(matrixYaw75));
   });
 
   it('ピッチのチルト角度を変更しても境界線(boundaryBox)の配置・サイズは影響を受けない', () => {

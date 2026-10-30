@@ -153,6 +153,7 @@ function createPitchTransformActions(set: SetState) {
           panY: slide.pitchTransform?.panY ?? 0,
           zoom: slide.pitchTransform?.zoom ?? 1,
           tilt: slide.pitchTransform?.tilt ?? 0,
+          yaw: slide.pitchTransform?.yaw ?? 90,
           isLocked: !currentLocked,
         };
         return {
@@ -179,6 +180,7 @@ function createPitchTransformActions(set: SetState) {
           panY: 0,
           zoom: 1,
           tilt: 0,
+          yaw: 90,
           isLocked: false,
         };
         const newTransform: PitchTransform = {
@@ -186,6 +188,7 @@ function createPitchTransformActions(set: SetState) {
           panY: patch.panY ?? current.panY,
           zoom: patch.zoom ?? current.zoom,
           tilt: patch.tilt ?? current.tilt,
+          yaw: patch.yaw ?? current.yaw,
           isLocked: patch.isLocked ?? current.isLocked,
         };
         return {
@@ -208,6 +211,7 @@ function createPitchTransformActions(set: SetState) {
           panY: 0,
           zoom: 1,
           tilt: 0,
+          yaw: 90,
           isLocked: false,
         };
         const newTransform: PitchTransform = {
@@ -247,6 +251,7 @@ export const createPitchSlice: StateCreator<
         panY: 0,
         zoom: 1,
         tilt: 0,
+        yaw: 90,
         isLocked: slide.pitchTransform?.isLocked ?? true,
       };
       return {

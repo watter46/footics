@@ -125,6 +125,8 @@ export function renderTacticalFrameToCanvas(
     if (
       effectiveTransform &&
       (effectiveTransform.tilt !== 0 ||
+        (effectiveTransform.yaw !== undefined &&
+          effectiveTransform.yaw !== 90) ||
         effectiveTransform.zoom !== 1 ||
         effectiveTransform.panX !== 0 ||
         effectiveTransform.panY !== 0)

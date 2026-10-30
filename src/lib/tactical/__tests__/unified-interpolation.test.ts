@@ -491,6 +491,7 @@ describe('unified-interpolation engine', () => {
           panY: 0,
           zoom: 1,
           tilt: 0,
+          yaw: 90,
           isLocked: false,
         };
         const transformB = {
@@ -498,6 +499,7 @@ describe('unified-interpolation engine', () => {
           panY: -50,
           zoom: 2,
           tilt: 30,
+          yaw: 70,
           isLocked: true,
         };
 
@@ -506,6 +508,7 @@ describe('unified-interpolation engine', () => {
         expect(mid.panY).toBeCloseTo(-25, 1);
         expect(mid.zoom).toBeCloseTo(1.5, 2);
         expect(mid.tilt).toBeCloseTo(15, 1);
+        expect(mid.yaw).toBeCloseTo(80, 1);
 
         // isLocked switches at t < 0.5 ? a.isLocked : b.isLocked
         const early = interpolatePitchTransform(transformA, transformB, 0.4);
@@ -522,6 +525,7 @@ describe('unified-interpolation engine', () => {
           panY: 0,
           zoom: 1,
           tilt: 0,
+          yaw: 90,
           isLocked: false,
         });
       });
@@ -544,6 +548,7 @@ describe('unified-interpolation engine', () => {
               panY: 0,
               zoom: 1,
               tilt: 0,
+              yaw: 90,
               isLocked: false,
             },
           },
@@ -563,6 +568,7 @@ describe('unified-interpolation engine', () => {
               panY: 50,
               zoom: 2,
               tilt: 30,
+              yaw: 110,
               isLocked: true,
             },
           },
@@ -571,12 +577,14 @@ describe('unified-interpolation engine', () => {
         const frameStart = getInterpolatedUnifiedSlideFrame(slides, 0);
         expect(frameStart.pitchTransform.zoom).toBe(1);
         expect(frameStart.pitchTransform.tilt).toBe(0);
+        expect(frameStart.pitchTransform.yaw).toBe(90);
 
         const frameMid = getInterpolatedUnifiedSlideFrame(slides, 500);
         expect(frameMid.pitchTransform.panX).toBeCloseTo(50, 1);
         expect(frameMid.pitchTransform.panY).toBeCloseTo(25, 1);
         expect(frameMid.pitchTransform.zoom).toBeCloseTo(1.5, 2);
         expect(frameMid.pitchTransform.tilt).toBeCloseTo(15, 1);
+        expect(frameMid.pitchTransform.yaw).toBeCloseTo(100, 1);
       });
     });
   });

@@ -190,9 +190,11 @@ export function buildExportMVPMatrix(
   );
 
   const scale = referenceHeight > 0 ? exportHeight / referenceHeight : 1;
+  const relativeYaw = 90 - (pitchTransform.yaw ?? 90);
 
   const cameraParams: CameraParams = {
     tilt: pitchTransform.tilt,
+    yaw: relativeYaw,
     zoom: pitchTransform.zoom,
     panX: (pitchTransform.panX || 0) * scale,
     panY: (pitchTransform.panY || 0) * scale,

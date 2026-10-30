@@ -47,6 +47,7 @@ export function TacticalSplitPreviewPanel() {
 
   // Camera parameters for current active slide
   const tilt = activeSlide?.pitchTransform?.tilt ?? 0;
+  const yaw = activeSlide?.pitchTransform?.yaw ?? 90;
   const zoom = activeSlide?.pitchTransform?.zoom ?? 1;
   const panX = activeSlide?.pitchTransform?.panX ?? 0;
   const panY = activeSlide?.pitchTransform?.panY ?? 0;
@@ -78,9 +79,12 @@ export function TacticalSplitPreviewPanel() {
     togglePlay();
   }, [togglePlay]);
 
-  const handleChangeTilt = (newTilt: number) => {
+  const handleSelectPreset = (preset: { tilt: number; yaw: number }) => {
     if (!activeSlide) return;
-    updatePitchTransform(activeSlide.id, { tilt: newTilt });
+    updatePitchTransform(activeSlide.id, {
+      tilt: preset.tilt,
+      yaw: preset.yaw,
+    });
   };
 
   const handleResetCamera = () => {
@@ -90,10 +94,12 @@ export function TacticalSplitPreviewPanel() {
       panY: 0,
       zoom: 1,
       tilt: 0,
+      yaw: 90,
     });
   };
 
   const handlePointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return;
     isDraggingRef.current = true;
     lastPosRef.current = { x: e.clientX, y: e.clientY };
     try {
@@ -109,12 +115,33 @@ export function TacticalSplitPreviewPanel() {
     const dy = e.clientY - lastPosRef.current.y;
     lastPosRef.current = { x: e.clientX, y: e.clientY };
 
-    const currentPanX = activeSlide.pitchTransform?.panX ?? 0;
-    const currentPanY = activeSlide.pitchTransform?.panY ?? 0;
-    updatePitchTransform(activeSlide.id, {
-      panX: currentPanX + dx,
-      panY: currentPanY + dy,
-    });
+    if (e.shiftKey) {
+      // Shift + 左ドラッグ: パン
+      const currentPanX = activeSlide.pitchTransform?.panX ?? 0;
+      const currentPanY = activeSlide.pitchTransform?.panY ?? 0;
+      updatePitchTransform(activeSlide.id, {
+        panX: currentPanX + dx,
+        panY: currentPanY + dy,
+      });
+    } else {
+      // 左ドラッグ（Shiftなし）: オービット（Tilt & Yaw）
+      const currentTilt = activeSlide.pitchTransform?.tilt ?? 0;
+      const currentYaw = activeSlide.pitchTransform?.yaw ?? 90;
+
+      // 上ドラッグ (dy < 0) で Tilt 増加、下ドラッグ (dy > 0) で Tilt 減少
+      const nextTilt = Math.max(
+        0,
+        Math.min(70, Math.round(currentTilt - dy * 0.25)),
+      );
+      // 左右ドラッグ (dx) で Yaw 旋回 (0〜360)
+      const rawYaw = currentYaw + dx * 0.4;
+      const nextYaw = Math.round((((rawYaw % 360) + 360) % 360) * 10) / 10;
+
+      updatePitchTransform(activeSlide.id, {
+        tilt: nextTilt,
+        yaw: nextYaw,
+      });
+    }
   };
 
   const handlePointerUp = (e: PointerEvent<HTMLCanvasElement>) => {
@@ -165,10 +192,11 @@ export function TacticalSplitPreviewPanel() {
       {/* Camera Bar */}
       <SplitPreviewCameraBar
         tilt={tilt}
+        yaw={yaw}
         zoom={zoom}
         panX={panX}
         panY={panY}
-        onChangeTilt={handleChangeTilt}
+        onSelectPreset={handleSelectPreset}
         onResetCamera={handleResetCamera}
       />
 

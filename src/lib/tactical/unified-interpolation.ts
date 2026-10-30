@@ -42,6 +42,7 @@ export interface InterpolatedPitchTransformState {
   panY: number;
   zoom: number;
   tilt: number;
+  yaw: number;
   isLocked: boolean;
 }
 
@@ -74,6 +75,8 @@ export function interpolatePitchTransform(
   const zoomB = transformB?.zoom ?? 1;
   const tiltA = transformA?.tilt ?? 0;
   const tiltB = transformB?.tilt ?? 0;
+  const yawA = transformA?.yaw ?? 90;
+  const yawB = transformB?.yaw ?? 90;
   const lockedA = transformA?.isLocked ?? false;
   const lockedB = transformB?.isLocked ?? false;
 
@@ -82,6 +85,7 @@ export function interpolatePitchTransform(
     panY: panYA + (panYB - panYA) * t,
     zoom: zoomA + (zoomB - zoomA) * t,
     tilt: tiltA + (tiltB - tiltA) * t,
+    yaw: yawA + (yawB - yawA) * t,
     isLocked: t < 0.5 ? lockedA : lockedB,
   };
 }
@@ -109,6 +113,7 @@ const EMPTY_FRAME: InterpolatedUnifiedFrame = {
     panY: 0,
     zoom: 1,
     tilt: 0,
+    yaw: 90,
     isLocked: false,
   },
   currentSlideIndex: 0,
