@@ -12,13 +12,13 @@
 
 import { DndContext, type DragEndEvent, pointerWithin } from '@dnd-kit/core';
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
-import { calculateDropPitchCoords } from '@/features/tactical-unified/core/utils/dnd-coordinates';
+import { handleTacticalDndEnd } from '@/features/tactical-unified/core/utils/dnd-coordinates';
 import { useKeyboardShortcuts } from '@/features/tactical-unified/hooks/use-keyboard-shortcuts';
 import { useTacticalAutoSave } from '@/features/tactical-unified/hooks/use-tactical-auto-save';
 import { useTacticalDropPaste } from '@/features/tactical-unified/hooks/use-tactical-drop-paste';
-import { useTacticalMatchInit } from '@/features/tactical-unified/hooks/use-tactical-match-init';
+import { useTacticalShortcuts } from '@/features/tactical-unified/hooks/use-tactical-shortcuts';
 import type { TacticalUnifiedState } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   TacticalUnifiedStoreProvider,
@@ -53,6 +53,7 @@ export function TacticalUnifiedPage({
       <TacticalUnifiedPageContent
         initialMatchId={initialMatchId}
         initialMinute={initialMinute}
+        initialState={initialState}
       />
     </TacticalUnifiedStoreProvider>
   );
@@ -61,20 +62,18 @@ export function TacticalUnifiedPage({
 interface TacticalUnifiedPageContentProps {
   initialMatchId?: string;
   initialMinute?: number;
+  initialState?: Partial<TacticalUnifiedState>;
 }
 
 function TacticalUnifiedPageContent({
   initialMatchId,
-  initialMinute,
+  initialState,
 }: TacticalUnifiedPageContentProps) {
-  // 🎯 URLクエリ or Props (matchId, minute) による試合データの初期配置
-  const { matchId } = useTacticalMatchInit({
-    initialMatchId,
-    initialMinute,
-  });
-
   // 💾 プロジェクト自動保存 & リロード時自動復元 (Dexie IndexedDB)
-  useTacticalAutoSave({ matchId });
+  useTacticalAutoSave({
+    matchId: initialMatchId,
+    skipRestore: Boolean(initialState?.project),
+  });
 
   const exportModalOpen = useTacticalUnifiedStoreContext(
     (s) => s.panels.exportModalOpen,
@@ -92,22 +91,9 @@ function TacticalUnifiedPageContent({
   const [isFocusMode, setIsFocusMode] = useState(false);
 
   // Focus Mode toggle via shortcut '\'
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
-      if (e.key === '\\') {
-        e.preventDefault();
-        setIsFocusMode((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  useTacticalShortcuts({
+    toggleFocusMode: () => setIsFocusMode((prev) => !prev),
+  });
 
   // キーボードショートカット (Delete/Escape)
   useKeyboardShortcuts();
@@ -141,52 +127,11 @@ function TacticalUnifiedPageContent({
   const addSlide = useTacticalUnifiedStoreContext((s) => s.addSlide);
 
   const handleDndEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeData = active.data.current;
-    if (
-      activeData?.type === 'bench-player' &&
-      over.id === 'tactical-pitch-droppable'
-    ) {
-      const activator = event.activatorEvent as
-        | MouseEvent
-        | TouchEvent
-        | PointerEvent;
-      let rawClientX = 0;
-      let rawClientY = 0;
-      if ('clientX' in activator) {
-        rawClientX = activator.clientX;
-        rawClientY = activator.clientY;
-      } else if (
-        'touches' in activator &&
-        (activator as TouchEvent).touches[0]
-      ) {
-        rawClientX = (activator as TouchEvent).touches[0]!.clientX;
-        rawClientY = (activator as TouchEvent).touches[0]!.clientY;
-      }
-      const clientX = rawClientX + event.delta.x;
-      const clientY = rawClientY + event.delta.y;
-
-      let normCoords = { x: 50, y: 50 };
-      if (over.rect) {
-        normCoords = calculateDropPitchCoords(over.rect, { clientX, clientY });
-      }
-
-      movePlayerToPitch(
-        activeSlideId,
-        activeData.playerId,
-        normCoords.x,
-        normCoords.y,
-      );
-    } else if (over.id === 'tactical-bench-droppable') {
-      const playerId =
-        activeData?.playerId ||
-        String(active.id).replace('pitch-player-', '').replace('marker-', '');
-      if (playerId) {
-        movePlayerToBench(activeSlideId, playerId);
-      }
-    }
+    handleTacticalDndEnd(event, {
+      activeSlideId,
+      movePlayerToPitch,
+      movePlayerToBench,
+    });
   };
 
   return (

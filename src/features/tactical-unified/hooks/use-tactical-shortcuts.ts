@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { isInputFocused } from '@/lib/shortcuts';
 
@@ -6,6 +7,7 @@ export interface TacticalShortcutsOptions {
   redo?: () => void;
   deleteSelected?: () => void;
   clearSelection?: () => void;
+  toggleFocusMode?: () => void;
   enabled?: boolean;
 }
 
@@ -20,6 +22,7 @@ export function useTacticalShortcuts({
   redo,
   deleteSelected,
   clearSelection,
+  toggleFocusMode,
   enabled = true,
 }: TacticalShortcutsOptions): void {
   // Undo: mod+z (Ctrl+Z / Cmd+Z)
@@ -69,4 +72,29 @@ export function useTacticalShortcuts({
     { enabled: enabled && Boolean(clearSelection), enableOnFormTags: false },
     [clearSelection, enabled],
   );
+
+  // Focus Mode toggle via shortcut '\' (RAII event listener)
+  useEffect(() => {
+    if (!enabled || !toggleFocusMode) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable ||
+        isInputFocused()
+      ) {
+        return;
+      }
+
+      if (event.key === '\\') {
+        event.preventDefault();
+        toggleFocusMode();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleFocusMode, enabled]);
 }

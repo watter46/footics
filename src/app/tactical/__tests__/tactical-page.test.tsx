@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import type { TacticalUnifiedState } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { db } from '@/lib/db';
 import TacticalError from '../error';
 import TacticalPage, { dynamic } from '../page';
 import { TacticalClientPage } from '../tactical-client-page';
@@ -10,9 +12,11 @@ const { MockTacticalUnifiedPage } = vi.hoisted(() => {
     MockTacticalUnifiedPage: ({
       initialMatchId,
       initialMinute,
+      initialState,
     }: {
       initialMatchId?: string;
       initialMinute?: number;
+      initialState?: Partial<TacticalUnifiedState>;
     }) => (
       <div
         data-testid="tactical-page-mock"
@@ -20,6 +24,8 @@ const { MockTacticalUnifiedPage } = vi.hoisted(() => {
         data-minute={
           initialMinute !== undefined ? String(initialMinute) : 'none'
         }
+        data-has-initial-state={String(Boolean(initialState))}
+        data-state-match-id={initialState?.project?.matchId ?? 'none'}
       />
     ),
   };
@@ -43,7 +49,7 @@ describe('TacticalPage', () => {
     const pageElement = await TacticalPage({ searchParams });
     render(pageElement);
 
-    const mock = screen.getByTestId('tactical-page-mock');
+    const mock = await screen.findByTestId('tactical-page-mock');
     expect(mock.getAttribute('data-match-id')).toBe('1983618');
     expect(mock.getAttribute('data-minute')).toBe('45');
   });
@@ -57,7 +63,7 @@ describe('TacticalPage', () => {
     const pageElement = await TacticalPage({ searchParams });
     render(pageElement);
 
-    const mock = screen.getByTestId('tactical-page-mock');
+    const mock = await screen.findByTestId('tactical-page-mock');
     expect(mock.getAttribute('data-match-id')).toBe('1983618');
     expect(mock.getAttribute('data-minute')).toBe('30');
   });
@@ -82,19 +88,62 @@ describe('TacticalPage', () => {
     const pageElement = await TacticalPage({ searchParams });
     render(pageElement);
 
-    const mock = screen.getByTestId('tactical-page-mock');
+    const mock = await screen.findByTestId('tactical-page-mock');
     expect(mock.getAttribute('data-match-id')).toBe('1983618');
     expect(mock.getAttribute('data-minute')).toBe('none');
   });
 });
 
 describe('TacticalClientPage', () => {
-  it('TacticalUnifiedPage に initialMatchId と initialMinute を伝搬すること', () => {
-    render(<TacticalClientPage initialMatchId="123" initialMinute={15} />);
+  it('TacticalUnifiedPage に initialMatchId と initialMinute を伝搬すること（matchId なしの場合）', () => {
+    render(<TacticalClientPage initialMinute={15} />);
 
     const mock = screen.getByTestId('tactical-page-mock');
+    expect(mock.getAttribute('data-match-id')).toBe('none');
+    expect(mock.getAttribute('data-minute')).toBe('15');
+    expect(mock.getAttribute('data-has-initial-state')).toBe('false');
+  });
+
+  it('initialMatchId がある場合、ローディングシェルを表示し解決後に initialState を伝搬すること', async () => {
+    vi.spyOn(db.matches, 'get').mockResolvedValueOnce({
+      id: '123',
+      date: '2026-09-01',
+      score: '0-0',
+      matchType: 'club',
+      homeTeam: { id: 1, name: 'Home' },
+      awayTeam: { id: 2, name: 'Away' },
+      playerIdNameDictionary: {},
+      teams: {
+        home: {
+          teamId: 1,
+          name: 'Home',
+          field: 'home',
+          players: [],
+          formations: [],
+          stats: {},
+        } as any,
+        away: {
+          teamId: 2,
+          name: 'Away',
+          field: 'away',
+          players: [],
+          formations: [],
+          stats: {},
+        } as any,
+      },
+    } as any);
+
+    render(<TacticalClientPage initialMatchId="123" initialMinute={15} />);
+
+    // 最初は loading シェルが表示される
+    expect(screen.getByTestId('tactical-init-loading')).toBeDefined();
+
+    // 解決後に mock が描画される
+    const mock = await screen.findByTestId('tactical-page-mock');
     expect(mock.getAttribute('data-match-id')).toBe('123');
     expect(mock.getAttribute('data-minute')).toBe('15');
+    expect(mock.getAttribute('data-has-initial-state')).toBe('true');
+    expect(mock.getAttribute('data-state-match-id')).toBe('123');
   });
 });
 

@@ -87,4 +87,50 @@ describe('useTacticalShortcuts', () => {
 
     document.body.removeChild(input);
   });
+
+  it('triggers toggleFocusMode on backslash key', () => {
+    const toggleFocusMode = vi.fn();
+
+    renderHook(() =>
+      useTacticalShortcuts({
+        toggleFocusMode,
+      }),
+    );
+
+    fireEvent.keyDown(window, { key: '\\', code: 'Backslash' });
+    expect(toggleFocusMode).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not trigger toggleFocusMode when enabled is false', () => {
+    const toggleFocusMode = vi.fn();
+
+    renderHook(() =>
+      useTacticalShortcuts({
+        toggleFocusMode,
+        enabled: false,
+      }),
+    );
+
+    fireEvent.keyDown(window, { key: '\\', code: 'Backslash' });
+    expect(toggleFocusMode).not.toHaveBeenCalled();
+  });
+
+  it('does not trigger toggleFocusMode when input or textarea is focused', () => {
+    const toggleFocusMode = vi.fn();
+
+    renderHook(() =>
+      useTacticalShortcuts({
+        toggleFocusMode,
+      }),
+    );
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    fireEvent.keyDown(input, { key: '\\', code: 'Backslash' });
+    expect(toggleFocusMode).not.toHaveBeenCalled();
+
+    document.body.removeChild(input);
+  });
 });

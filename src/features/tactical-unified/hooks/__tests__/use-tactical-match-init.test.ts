@@ -8,7 +8,10 @@ import {
 import { TacticalUnifiedStoreProvider } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { db } from '@/lib/db';
 import type { Match, Player, Team } from '@/types';
-import { useTacticalMatchInit } from '../use-tactical-match-init';
+import {
+  resolveMatchInitialState,
+  useTacticalMatchInit,
+} from '../use-tactical-match-init';
 
 vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(() => null),
@@ -138,5 +141,157 @@ describe('useTacticalMatchInit', () => {
 
     // Default store must NOT be polluted
     expect(useTacticalUnifiedStore.getState().project.matchId).toBeUndefined();
+  });
+
+  it('injectToStore: false resolves initialState without modifying storeApi', async () => {
+    vi.spyOn(db.matches, 'get').mockResolvedValueOnce(mockMatch);
+
+    const { result } = renderHook(() =>
+      useTacticalMatchInit({
+        initialMatchId: '999',
+        initialMinute: 25,
+        injectToStore: false,
+      }),
+    );
+
+    expect(result.current.hasMatchQuery).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // initialState must be resolved
+    expect(result.current.initialState).toBeDefined();
+    expect(result.current.initialState?.project?.matchId).toBe('999');
+    const activeSlideId = result.current.initialState?.activeSlideId;
+    const activeSlide = result.current.initialState?.project?.slides.find(
+      (s) => s.id === activeSlideId,
+    );
+    const pitchPlayers =
+      activeSlide?.players.filter((p) => p.area === 'pitch') ?? [];
+    expect(pitchPlayers).toHaveLength(22);
+
+    // Global store must remain empty/unmodified
+    expect(useTacticalUnifiedStore.getState().project.matchId).toBeUndefined();
+  });
+});
+
+describe('resolveMatchInitialState', () => {
+  const createMockTeam = (
+    teamId: number,
+    name: string,
+    field: 'home' | 'away',
+  ): Team => {
+    const players: Player[] = Array.from({ length: 15 }, (_, i) => ({
+      playerId: teamId * 100 + i + 1,
+      name: `${name} Player ${i + 1}`,
+      shirtNo: i + 1,
+      position: 'MC',
+      isFirstEleven: i < 11,
+      field,
+      stats: {},
+      height: 180,
+      weight: 75,
+      age: 25,
+      isManOfTheMatch: false,
+    }));
+
+    const starterIds = players.slice(0, 11).map((p) => p.playerId);
+
+    return {
+      teamId,
+      name,
+      countryName: 'England',
+      managerName: 'Manager',
+      field,
+      averageAge: 25,
+      players,
+      formations: [
+        {
+          formationId: 1,
+          formationName: '4-3-3',
+          captainPlayerId: starterIds[0],
+          startMinuteExpanded: 0,
+          endMinuteExpanded: 90,
+          playerIds: starterIds,
+          jerseyNumbers: players.slice(0, 11).map((p) => p.shirtNo),
+        },
+      ],
+      stats: {},
+    };
+  };
+
+  const mockMatch: Match = {
+    id: '999',
+    date: '2026-09-01',
+    score: '1-0',
+    matchType: 'club',
+    homeTeam: { id: 10, name: 'Home FC' },
+    awayTeam: { id: 20, name: 'Away FC' },
+    playerIdNameDictionary: {},
+    teams: {
+      home: createMockTeam(10, 'Home FC', 'home'),
+      away: createMockTeam(20, 'Away FC', 'away'),
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns undefined if match is not found in db', async () => {
+    vi.spyOn(db.matches, 'get').mockResolvedValueOnce(undefined);
+    const result = await resolveMatchInitialState('unknown', 0);
+    expect(result).toBeUndefined();
+  });
+
+  it('resolves default initial state with 22 players if no saved project exists', async () => {
+    vi.spyOn(db.matches, 'get').mockResolvedValueOnce(mockMatch);
+
+    const result = await resolveMatchInitialState('999', 30);
+    expect(result).toBeDefined();
+    expect(result?.pitchFitPending).toBe(false);
+    expect(result?.project?.matchId).toBe('999');
+    expect(result?.project?.title).toContain("Home FC vs Away FC (30')");
+
+    const activeSlide = result?.project?.slides.find(
+      (s) => s.id === result.activeSlideId,
+    );
+    const pitchPlayers =
+      activeSlide?.players.filter((p) => p.area === 'pitch') ?? [];
+    expect(pitchPlayers).toHaveLength(22);
+  });
+
+  it('resolves saved project if saved project exists', async () => {
+    vi.spyOn(db.matches, 'get').mockResolvedValueOnce(mockMatch);
+    vi.spyOn(db.keyval, 'get').mockResolvedValueOnce({
+      key: 'footics_tactical_active_project_999',
+      value: {
+        id: 'saved-project-1',
+        title: 'Saved Match Project',
+        matchId: '999',
+        phases: [{ id: 'phase-1', name: 'Phase 1', slideIds: ['slide-1'] }],
+        slides: [
+          {
+            id: 'slide-1',
+            name: 'Slide 1',
+            players: [],
+            arrows: [],
+            drawings: [],
+            bench: { home: [], away: [] },
+          },
+        ],
+        activePhaseId: 'phase-1',
+        activeSlideId: 'slide-1',
+      },
+    } as any);
+
+    const result = await resolveMatchInitialState('999', 30);
+    expect(result).toBeDefined();
+    expect(result?.pitchFitPending).toBe(false);
+    expect(result?.project?.id).toBe('saved-project-1');
+    expect(result?.project?.title).toBe('Saved Match Project');
+    expect(result?.activePhaseId).toBe('phase-1');
+    expect(result?.activeSlideId).toBe('slide-1');
   });
 });

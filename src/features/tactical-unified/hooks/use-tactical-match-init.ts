@@ -1,40 +1,89 @@
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import {
-  defaultTacticalUnifiedStore,
-  type TacticalUnifiedStoreApi,
+import { updateSlideInProject } from '@/features/tactical-unified/stores/store-helpers';
+import type {
+  TacticalUnifiedState,
+  TacticalUnifiedStoreApi,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { useTacticalUnifiedStoreApi } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { db } from '@/lib/db';
-import { injectMatchToTactical } from '@/lib/tactical/match-to-tactical-bridge';
+import { buildMatchTacticalPlayers } from '@/lib/tactical/match-to-tactical-bridge';
 import { loadActiveProjectFromDb } from '@/lib/tactical/tactical-storage';
+import {
+  createDefaultProject,
+  ensureTacticalProject,
+} from '@/lib/types/tactical-unified';
 
 export interface UseTacticalMatchInitOptions {
   initialMatchId?: string;
   initialMinute?: number;
+  injectToStore?: boolean;
 }
 
 export interface UseTacticalMatchInitResult {
   isLoading: boolean;
   hasMatchQuery: boolean;
   matchId: string | null;
+  initialState?: Partial<TacticalUnifiedState>;
   error: Error | null;
 }
 
-async function loadAndInjectMatch(
+export async function resolveMatchInitialState(
   matchId: string,
   minute: number,
-  storeApi: TacticalUnifiedStoreApi = defaultTacticalUnifiedStore,
-): Promise<void> {
+): Promise<Partial<TacticalUnifiedState> | undefined> {
   const match = await db.matches.get(matchId);
-  if (!match) return;
+  if (!match) return undefined;
+
   // 保存済みの同一試合プロジェクトがあれば既存スライドを優先し上書きしない
   const saved = await loadActiveProjectFromDb(String(match.id));
   if (saved) {
-    storeApi.getState().loadProject(saved);
-    return;
+    const normalized = ensureTacticalProject(saved);
+    return {
+      project: normalized,
+      activePhaseId: normalized.activePhaseId,
+      activeSlideId: normalized.activeSlideId,
+      pitchFitPending: false,
+    };
   }
-  injectMatchToTactical({ match, minute, storeApi });
+
+  const baseProject = createDefaultProject(crypto.randomUUID());
+  const { allPlayers, homeFormation, awayFormation } =
+    buildMatchTacticalPlayers({
+      match,
+      minute,
+      homeColor: baseProject.homeColor.primary,
+      awayColor: baseProject.awayColor.primary,
+      aspectRatio: baseProject.aspectRatio,
+    });
+
+  const title =
+    match.homeTeam?.name && match.awayTeam?.name
+      ? `${match.homeTeam.name} vs ${match.awayTeam.name} (${minute}')`
+      : baseProject.title;
+
+  const targetSlideId = baseProject.activeSlideId;
+  const updatedProject = {
+    ...updateSlideInProject(baseProject, targetSlideId, (s) => ({
+      ...s,
+      players: allPlayers,
+    })),
+    matchId: String(match.id),
+    matchFormations: {
+      home: homeFormation,
+      away: awayFormation,
+    },
+    title,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const normalized = ensureTacticalProject(updatedProject);
+  return {
+    project: normalized,
+    activePhaseId: normalized.activePhaseId,
+    activeSlideId: normalized.activeSlideId,
+    pitchFitPending: false,
+  };
 }
 
 /**
@@ -44,7 +93,7 @@ async function loadAndInjectMatch(
 export function useTacticalMatchInit(
   options: UseTacticalMatchInitOptions = {},
 ): UseTacticalMatchInitResult {
-  const { initialMatchId, initialMinute } = options;
+  const { initialMatchId, initialMinute, injectToStore = true } = options;
   const storeApi = useTacticalUnifiedStoreApi();
   const searchParams = useSearchParams();
 
@@ -62,6 +111,9 @@ export function useTacticalMatchInit(
 
   const hasMatchQuery = Boolean(matchIdParam);
   const [isLoading, setIsLoading] = useState<boolean>(hasMatchQuery);
+  const [initialState, setInitialState] = useState<
+    Partial<TacticalUnifiedState> | undefined
+  >(undefined);
   const [error, setError] = useState<Error | null>(null);
   const hasInitializedRef = useRef<string | null>(null);
 
@@ -79,12 +131,17 @@ export function useTacticalMatchInit(
     let isMounted = true;
     setIsLoading(true);
 
-    loadAndInjectMatch(matchIdParam, minute, storeApi)
-      .then(() => {
-        if (isMounted) {
-          hasInitializedRef.current = initKey;
-          setIsLoading(false);
+    resolveMatchInitialState(matchIdParam, minute)
+      .then((resolved) => {
+        if (!isMounted) return;
+        hasInitializedRef.current = initKey;
+        if (resolved) {
+          setInitialState(resolved);
+          if (injectToStore && resolved.project) {
+            storeApi.getState().loadProject(resolved.project);
+          }
         }
+        setIsLoading(false);
       })
       .catch((err) => {
         if (isMounted) {
@@ -98,7 +155,13 @@ export function useTacticalMatchInit(
     return () => {
       isMounted = false;
     };
-  }, [matchIdParam, minute, storeApi]);
+  }, [matchIdParam, minute, storeApi, injectToStore]);
 
-  return { isLoading, hasMatchQuery, matchId: matchIdParam ?? null, error };
+  return {
+    isLoading,
+    hasMatchQuery,
+    matchId: matchIdParam ?? null,
+    initialState,
+    error,
+  };
 }
