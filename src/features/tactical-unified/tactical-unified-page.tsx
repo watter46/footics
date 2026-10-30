@@ -182,7 +182,7 @@ function TacticalUnifiedPageContent({
               <FullTacticalCanvas ref={canvasRef} />
             </main>
             {!isFocusMode && splitPreviewOpen && (
-              <div className="w-1/2 min-w-[320px] max-w-[55%] border-l border-white/[0.08] flex flex-col h-full">
+              <div className="w-1/2 min-w-[320px] max-w-[55%] border-l border-white/20 flex flex-col h-full">
                 <TacticalSplitPreviewPanel />
               </div>
             )}

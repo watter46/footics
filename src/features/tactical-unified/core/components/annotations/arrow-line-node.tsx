@@ -58,6 +58,13 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
   updateArrow,
 }: ArrowLineNodeProps) {
   const { width, height } = stageSize;
+  const scale = width > 0 ? width / 600 : 1;
+  const scaledStrokeWidth = Math.max(
+    2,
+    Math.round((arrow.strokeWidth || 3) * scale),
+  );
+  const pointerLength = Math.max(8, Math.round(15 * scale));
+  const pointerWidth = Math.max(8, Math.round(15 * scale));
 
   return (
     <Arrow
@@ -65,10 +72,10 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
       points={renderPoints}
       stroke={isSelected ? '#60a5fa' : arrow.color}
       fill={isSelected ? '#60a5fa' : arrow.color}
-      strokeWidth={isSelected ? arrow.strokeWidth + 1 : arrow.strokeWidth}
+      strokeWidth={isSelected ? scaledStrokeWidth + 1 : scaledStrokeWidth}
       dash={arrow.dashArray.length > 0 ? arrow.dashArray : undefined}
-      pointerLength={hasArrowHead ? 15 : 0}
-      pointerWidth={hasArrowHead ? 15 : 0}
+      pointerLength={hasArrowHead ? pointerLength : 0}
+      pointerWidth={hasArrowHead ? pointerWidth : 0}
       tension={0}
       onClick={onSelect}
       onTap={onSelect}

@@ -85,12 +85,14 @@ export function renderArrows(
   Object.values(arrows).forEach((a) => {
     if (!a.visible || a.points.length < 2) return;
     ctx.save();
-    ctx.strokeStyle = a.color || '#38bdf8';
-    ctx.fillStyle = a.color || '#38bdf8';
-    const arrowWidth = Math.max(
-      2,
-      Math.round((a.strokeWidth || 3) * (w / 800)),
-    );
+    const arrowColor = a.color || '#38bdf8';
+    ctx.strokeStyle = arrowColor;
+    ctx.fillStyle = arrowColor;
+    const scale = w > 0 ? w / 600 : 1;
+    const arrowWidth = Math.max(2, Math.round((a.strokeWidth || 3) * scale));
+    const pointerLength = Math.max(8, Math.round(15 * scale));
+    const pointerWidth = Math.max(8, Math.round(15 * scale));
+
     ctx.lineWidth = arrowWidth;
     ctx.globalAlpha = a.opacity ?? 1;
 
@@ -137,23 +139,18 @@ export function renderArrows(
           )
         : Math.atan2(ey - sy, ex - sx);
 
-    const headLen = Math.max(8, Math.round(w * 0.018));
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const bx = ex - pointerLength * cos;
+    const by = ey - pointerLength * sin;
+    const halfWidth = pointerWidth / 2;
+
     ctx.beginPath();
     ctx.moveTo(ex, ey);
-    ctx.lineTo(
-      ex - headLen * Math.cos(angle - Math.PI / 6),
-      ey - headLen * Math.sin(angle - Math.PI / 6),
-    );
-    ctx.lineTo(
-      ex - headLen * Math.cos(angle + Math.PI / 6),
-      ey - headLen * Math.sin(angle + Math.PI / 6),
-    );
+    ctx.lineTo(bx - halfWidth * sin, by + halfWidth * cos);
+    ctx.lineTo(bx + halfWidth * sin, by - halfWidth * cos);
     ctx.closePath();
     ctx.fill();
-
-    // Subtle dark boundary on arrowhead for razor-sharp edge contrast
-    ctx.strokeStyle = '#020617';
-    ctx.lineWidth = Math.max(1.5, Math.round(w * 0.0015));
     ctx.stroke();
 
     ctx.restore();

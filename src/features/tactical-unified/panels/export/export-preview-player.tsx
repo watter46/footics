@@ -25,6 +25,7 @@ import {
 import {
   ASPECT_CONTAINER_CLASSES,
   PREVIEW_DIMENSIONS,
+  SPLIT_PREVIEW_CONTAINER_CLASSES,
   type UseExportPreviewAnimationParams,
   useAnimationFrameLoop,
   useExportPreviewAnimation,
@@ -35,6 +36,7 @@ export {
   ExportPreviewControls,
   type ExportPreviewControlsProps,
   PREVIEW_DIMENSIONS,
+  SPLIT_PREVIEW_CONTAINER_CLASSES,
   type UseExportPreviewAnimationParams,
   useAnimationFrameLoop,
   useExportPreviewAnimation,

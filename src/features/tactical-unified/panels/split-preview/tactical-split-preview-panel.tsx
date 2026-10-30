@@ -9,8 +9,8 @@ import {
   type WheelEvent,
 } from 'react';
 import {
-  ASPECT_CONTAINER_CLASSES,
   ExportPreviewControls,
+  SPLIT_PREVIEW_CONTAINER_CLASSES,
   useExportPreviewAnimation,
 } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
@@ -23,9 +23,10 @@ import { SplitPreviewCameraBar } from './split-preview-camera-bar';
 export function TacticalSplitPreviewPanel() {
   const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
   const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
-  const aspectRatio = useTacticalUnifiedStoreContext(
-    (s) => s.project.aspectRatio ?? '16:9',
+  const projectAspectRatio = useTacticalUnifiedStoreContext(
+    (s) => s.project.aspectRatio ?? '4:5',
   );
+  const aspectRatio = activeSlide?.aspectRatio ?? projectAspectRatio;
   const pitchAppearance = useTacticalUnifiedStoreContext(
     (s) => s.project.pitchAppearance,
   );
@@ -67,6 +68,7 @@ export function TacticalSplitPreviewPanel() {
   } = useExportPreviewAnimation({
     slides: isPlaying ? slides : previewSlides,
     aspectRatio,
+    boundaryBox: activeSlide?.boundaryBox ?? null,
     pitchTransform: isPlaying ? null : (activeSlide?.pitchTransform ?? null),
     pitchAppearance,
     canvasRef,
@@ -165,7 +167,7 @@ export function TacticalSplitPreviewPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0D0D0E] text-white border-l border-white/[0.08] select-none overflow-hidden">
+    <div className="flex flex-col h-full bg-[#0D0D0E] text-white select-none overflow-hidden">
       {/* Top Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.08] bg-black/30 shrink-0">
         <div className="flex items-center gap-2">
@@ -203,8 +205,9 @@ export function TacticalSplitPreviewPanel() {
       {/* Center 3D Preview Canvas */}
       <div className="flex-1 min-h-0 p-3 flex items-center justify-center bg-[#070709] overflow-hidden">
         <div
-          className={`relative w-full ${
-            ASPECT_CONTAINER_CLASSES[aspectRatio] ?? 'aspect-video'
+          className={`relative ${
+            SPLIT_PREVIEW_CONTAINER_CLASSES[aspectRatio] ??
+            'aspect-video w-full max-h-full'
           } rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-lg`}
         >
           <canvas

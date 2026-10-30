@@ -30,6 +30,13 @@ export const ASPECT_CONTAINER_CLASSES: Record<AspectRatio, string> = {
   '1:1': 'aspect-square max-h-[340px]',
 };
 
+export const SPLIT_PREVIEW_CONTAINER_CLASSES: Record<AspectRatio, string> = {
+  '16:9': 'aspect-video w-full max-h-full',
+  '9:16': 'aspect-[9/16] h-full max-h-full w-auto max-w-full',
+  '4:5': 'aspect-[4/5] h-full max-h-full w-auto max-w-full',
+  '1:1': 'aspect-square h-full max-h-full w-auto max-w-full',
+};
+
 export interface UseExportPreviewAnimationParams {
   slides: Slide[];
   aspectRatio: AspectRatio;
@@ -47,11 +54,7 @@ let cachedMarbleImage: HTMLImageElement | null = null;
 let marbleImagePromise: Promise<HTMLImageElement> | null = null;
 
 function loadMarbleTexture(): Promise<HTMLImageElement> {
-  if (
-    cachedMarbleImage &&
-    cachedMarbleImage.complete &&
-    cachedMarbleImage.naturalWidth > 0
-  ) {
+  if (cachedMarbleImage?.complete && cachedMarbleImage.naturalWidth > 0) {
     return Promise.resolve(cachedMarbleImage);
   }
   if (!marbleImagePromise) {
@@ -156,25 +159,16 @@ export function useExportPreviewAnimation({
   const totalDurationMs = calculateUnifiedTotalDuration(slides) || 1000;
 
   useEffect(() => {
-    if (pitchAppearance?.pitchBackgroundType !== 'marble') {
-      return;
-    }
-    if (
-      cachedMarbleImage &&
-      cachedMarbleImage.complete &&
-      cachedMarbleImage.naturalWidth > 0
-    ) {
-      if (marbleTexture !== cachedMarbleImage) {
+    if (pitchAppearance?.pitchBackgroundType !== 'marble') return;
+    if (cachedMarbleImage?.complete && cachedMarbleImage.naturalWidth > 0) {
+      if (marbleTexture !== cachedMarbleImage)
         setMarbleTexture(cachedMarbleImage);
-      }
       return;
     }
     let isCancelled = false;
     loadMarbleTexture()
       .then((img) => {
-        if (!isCancelled) {
-          setMarbleTexture(img);
-        }
+        if (!isCancelled) setMarbleTexture(img);
       })
       .catch((err) => {
         console.warn(

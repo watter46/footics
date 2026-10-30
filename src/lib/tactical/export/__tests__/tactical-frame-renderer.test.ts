@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
+import type { InterpolatedArrowState } from '@/lib/tactical/unified-interpolation';
 import {
   type AspectRatio,
   type PitchTransform,
   type Slide,
   SlideSchema,
 } from '@/lib/types/tactical-unified';
+import { renderArrows } from '../renderers/arrow-renderer';
 import { renderBall } from '../renderers/ball-renderer';
 import { renderPitch, renderPitchMarkings } from '../renderers/pitch-renderer';
 import type { FrameRenderContext } from '../renderers/renderer-context';
@@ -1182,6 +1184,71 @@ describe('Tactical Frame Renderer', () => {
       const farRadius = playerBodyArcs[0][2];
       const closeRadius = playerBodyArcs[1][2];
       expect(closeRadius).toBeGreaterThan(farRadius);
+    });
+  });
+
+  describe('renderArrows scaling & arrowhead synchronization', () => {
+    it('scales arrow strokeWidth, pointerLength, and pointerWidth relative to 600px baseline and uses arrow color without dark border', () => {
+      const ctx = createMockContext();
+      const mockRenderContext: FrameRenderContext = {
+        ctx,
+        w: 1200,
+        h: 675,
+        m: null,
+        toScreenX: (nx) => (nx / 100) * 1200,
+        toScreenY: (ny) => (ny / 100) * 675,
+        toScreenSizeX: (nw) => (nw / 100) * 1200,
+        toScreenSizeY: (nh) => (nh / 100) * 675,
+        projectObjToScreen: (nx, ny) => ({
+          x: (nx / 100) * 1200,
+          y: (ny / 100) * 675,
+        }),
+        snap: (val) => Math.round(val),
+      };
+
+      const arrows: Record<string, InterpolatedArrowState> = {
+        arrow1: {
+          id: 'arrow1',
+          arrowType: 'move',
+          curveType: 'straight',
+          points: [
+            { x: 10, y: 50 },
+            { x: 90, y: 50 },
+          ],
+          color: '#ef4444',
+          strokeWidth: 3,
+          opacity: 1,
+          visible: true,
+        },
+      };
+
+      renderArrows(mockRenderContext, arrows);
+
+      // w = 1200, baseline = 600 => scale = 2
+      // strokeWidth = max(2, round(3 * 2)) = 6
+      // pointerLength = max(8, round(15 * 2)) = 30
+      // pointerWidth = max(8, round(15 * 2)) = 30
+      // sx = 120, sy = 338, ex = 1080, ey = 338
+      // angle = 0, cos = 1, sin = 0
+      // bx = 1080 - 30 = 1050, by = 338
+      // halfWidth = 15
+      // c1: (1050, 338 + 15) = (1050, 353)
+      // c2: (1050, 338 - 15) = (1050, 323)
+
+      expect(ctx.lineWidth).toBe(6);
+      expect(ctx.strokeStyle).toBe('#ef4444');
+      expect(ctx.fillStyle).toBe('#ef4444');
+
+      // Tip and arrowhead vertices
+      expect(ctx.moveTo).toHaveBeenCalledWith(1080, 338);
+      expect(ctx.lineTo).toHaveBeenCalledWith(1050, 353);
+      expect(ctx.lineTo).toHaveBeenCalledWith(1050, 323);
+      expect(ctx.closePath).toHaveBeenCalled();
+      expect(ctx.fill).toHaveBeenCalled();
+      expect(ctx.stroke).toHaveBeenCalled();
+
+      // Ensure #020617 dark border is NOT used anywhere
+      expect(ctx.strokeStyle).not.toBe('#020617');
     });
   });
 });

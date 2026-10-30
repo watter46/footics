@@ -2,6 +2,7 @@ import { fireEvent, render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { TacticalUnifiedStoreProvider } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import * as frameRenderer from '@/lib/tactical/export/tactical-frame-renderer';
 import { SPLIT_CAMERA_PRESETS } from '../split-preview-camera-bar';
 import { TacticalSplitPreviewPanel } from '../tactical-split-preview-panel';
 
@@ -234,6 +235,50 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
 
     expect(useTacticalUnifiedStore.getState().panels.splitPreviewOpen).toBe(
       false,
+    );
+  });
+
+  it('passes slide boundaryBox and uses split preview container classes (without modal max-h restriction)', () => {
+    const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
+
+    const boundaryBox = {
+      x: 10,
+      y: 10,
+      width: 80,
+      height: 80,
+      enabled: true,
+    };
+    const activeSlide =
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
+    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
+      boundaryBox,
+      aspectRatio: '4:5',
+    });
+
+    const { container } = render(
+      <TacticalUnifiedStoreProvider>
+        <TacticalSplitPreviewPanel />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    const canvas = container.querySelector('canvas');
+    if (!canvas) throw new Error('Canvas not found');
+    const containerDiv = canvas.parentElement;
+    expect(containerDiv).toBeDefined();
+
+    // Check full-size split container classes (aspect-[4/5] h-full max-h-full w-auto max-w-full)
+    // and ensure modal max-h-[340px] is NOT present
+    expect(containerDiv?.className).toContain('aspect-[4/5]');
+    expect(containerDiv?.className).toContain('h-full');
+    expect(containerDiv?.className).not.toContain('max-h-[340px]');
+
+    // Check that boundaryBox and activeSlide's aspectRatio were passed to renderTacticalFrameToCanvas
+    expect(renderSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        boundaryBox,
+        aspectRatio: '4:5',
+      }),
     );
   });
 });
