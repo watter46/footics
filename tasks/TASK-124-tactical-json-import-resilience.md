@@ -1,7 +1,7 @@
 # TASK-124: tactical-json-import-resilience
 
 ## 1. Metadata
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Created**: 2026-11-01
 - **Target Files**:
   - `src/lib/types/tactical/annotations.ts` (MODIFY)
@@ -13,14 +13,14 @@
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
 <!-- Reviewer が審査時に要件充足を確認してチェックする -->
-- [ ] 1. `TextAnnotationSchema.content` の上限を 10,000 文字に緩和し、実戦的な長文戦術メモを許容する
-- [ ] 2. `TacticalProjectSchema.title` を 500 文字、`TacticalPhaseSchema.name` / `SlideSchema.label` / `ArrowAnnotationSchema.label` / `ZoneAnnotationSchema.label` を 200 文字、`PlayerBadgeSchema.label` を 100 文字に緩和する
-- [ ] 3. `transitionDurationMs` を 30,000ms、`pauseMs` を 10,000ms、`cameraDurationMs` を 60,000ms に緩和する
-- [ ] 4. `VisionConeSchema.angleRad` に `max(Math.PI * 2 + 0.1)` を設定し、浮動小数点計算の丸め誤差を許容する
-- [ ] 5. `importTacticalProjectFromJson` でパース前にサニタイズ（1万文字超のテキストや上限超の文字列を末尾切り詰め）を実施し、読み込みを必ず完遂させる
-- [ ] 6. スキーマ検証エラー時に `issues.map(i => `${i.path.join('.') || 'root'}: ${i.message}`).join(', ')` により原因フィールドパスを明示する
-- [ ] 7. インポート完了後のプロジェクトに `attachProjectSlidesGetter` を適用し、`project.slides` が正常に取得できることを保証する
-- [ ] 8. `src/lib/db/__tests__/tactical-projects-import.test.ts` で長文テキスト・上限切り詰め・詳細エラー表示・`slides` getter 取得をテストし PASS する
+- [x] 1. `TextAnnotationSchema.content` の上限を 10,000 文字に緩和し、実戦的な長文戦術メモを許容する
+- [x] 2. `TacticalProjectSchema.title` を 500 文字、`TacticalPhaseSchema.name` / `SlideSchema.label` / `ArrowAnnotationSchema.label` / `ZoneAnnotationSchema.label` を 200 文字、`PlayerBadgeSchema.label` を 100 文字に緩和する
+- [x] 3. `transitionDurationMs` を 30,000ms、`pauseMs` を 10,000ms、`cameraDurationMs` を 60,000ms に緩和する
+- [x] 4. `VisionConeSchema.angleRad` に `max(Math.PI * 2 + 0.1)` を設定し、浮動小数点計算の丸め誤差を許容する
+- [x] 5. `importTacticalProjectFromJson` でパース前にサニタイズ（1万文字超のテキストや上限超の文字列を末尾切り詰め）を実施し、読み込みを必ず完遂させる
+- [x] 6. スキーマ検証エラー時に `issues.map(i => `${i.path.join('.') || 'root'}: ${i.message}`).join(', ')` により原因フィールドパスを明示する
+- [x] 7. インポート完了後のプロジェクトに `attachProjectSlidesGetter` を適用し、`project.slides` が正常に取得できることを保証する
+- [x] 8. `src/lib/db/__tests__/tactical-projects-import.test.ts` で長文テキスト・上限切り詰め・詳細エラー表示・`slides` getter 取得をテストし PASS する
 
 ## 3. Context Snippets (参照コード・型定義・import)
 
@@ -113,13 +113,14 @@ export const VisionConeSchema = z.object({
 
 ## 5. Reviewer Assessment (コード差分監査)
 - **Reviewer Model**: `pro`
-- **Reviewed At**: 
-- **Decision**: `TODO`
+- **Reviewed At**: 2026-11-01 07:51
+- **Decision**: `LGTM`
 - **Audit Checklist**:
-  - [ ] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
-  - [ ] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
-  - [ ] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
-  - [ ] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
+  - [x] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
+  - [x] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
+  - [x] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
+  - [x] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
 - **Summary**:
+  テキスト・ラベル・時間・角度の上限緩和、インポート前の安全なサニタイズ（切り詰め・クランプ）、詳細エラーパス生成、および attachProjectSlidesGetter の付与が規律正しく実装され、包括的なテストで検証されていることを確認。4大定性監査オールクリア。
 
 ## 6. Rejections / Additional Tasks (不可逆修正欄)
