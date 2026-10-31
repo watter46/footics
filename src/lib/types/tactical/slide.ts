@@ -263,7 +263,7 @@ export const DEFAULT_PITCH_APPEARANCE: PitchAppearanceConfig = {
 export const SlideSchema = z.object({
   id: z.string(),
   index: z.number().int().min(0),
-  label: z.string().max(50).optional(),
+  label: z.string().max(200).optional(),
 
   players: z.array(PlayerSchema).default([]),
 
@@ -273,11 +273,11 @@ export const SlideSchema = z.object({
 
   ball: BallStateSchema.default({ x: 50, y: 50, visible: true }),
 
-  transitionDurationMs: z.number().min(100).max(10000).default(1000),
-  pauseMs: z.number().min(0).max(5000).default(500),
+  transitionDurationMs: z.number().min(100).max(30000).default(1000),
+  pauseMs: z.number().min(0).max(10000).default(500),
   easing: EasingSchema.default('ease-in-out'),
   cameraTransitionMode: CameraTransitionModeSchema.default('sync').optional(),
-  cameraDurationMs: z.number().min(500).max(30000).default(10000).optional(),
+  cameraDurationMs: z.number().min(500).max(60000).default(10000).optional(),
 
   backgroundImageUrl: z.string().optional(),
   backgroundType: z.enum(['pitch', 'image', 'blank']).optional(),

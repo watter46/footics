@@ -37,7 +37,7 @@ export const VisionConeSchema = z.object({
   angleRad: z
     .number()
     .min(0)
-    .max(Math.PI * 2),
+    .max(Math.PI * 2 + 0.1),
   spreadRad: z.number().min(0.1).max(Math.PI),
   radius: NormalizedCoordSchema.default(13),
   color: z
@@ -68,7 +68,7 @@ export type ConnectLine = z.infer<typeof ConnectLineSchema>;
 /** バッジ — 選手配下にネスト */
 export const PlayerBadgeSchema = z.object({
   id: z.string(),
-  label: z.string().max(20),
+  label: z.string().max(100),
   color: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)

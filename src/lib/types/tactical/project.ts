@@ -14,7 +14,7 @@ import {
 
 export const TacticalPhaseSchema = z.object({
   id: z.string(),
-  name: z.string().min(1).max(50),
+  name: z.string().min(1).max(200),
   slides: z.array(SlideSchema).min(1),
 });
 export type TacticalPhase = z.infer<typeof TacticalPhaseSchema>;
@@ -34,7 +34,7 @@ export const TeamColorSchema = z.object({
 export const TacticalProjectSchema = z.object({
   id: z.string(),
   version: z.literal('2.0.0').default('2.0.0'),
-  title: z.string().max(100).optional(),
+  title: z.string().max(500).optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 

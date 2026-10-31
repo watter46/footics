@@ -31,7 +31,7 @@ export const ArrowAnnotationSchema = z.object({
   arrowHead: z.boolean().default(true),
   endMarker: z.enum(['none', 'arrow', 'dot']).optional(),
   startMarker: z.enum(['none', 'arrow', 'dot']).optional(),
-  label: z.string().max(50).optional(),
+  label: z.string().max(200).optional(),
   sourcePlayerId: z.string().optional(),
   targetPlayerId: z.string().optional(),
   locked: z.boolean().optional(),
@@ -71,7 +71,7 @@ export const ZoneAnnotationSchema = z.object({
     .optional(),
   strokeOpacity: z.number().min(0).max(1).default(1).optional(),
   strokeWidth: z.number().min(0).max(8).default(3),
-  label: z.string().max(50).optional(),
+  label: z.string().max(200).optional(),
   locked: z.boolean().optional(),
 });
 export type ZoneAnnotation = z.infer<typeof ZoneAnnotationSchema>;
@@ -82,7 +82,7 @@ export const TextAnnotationSchema = z.object({
   annotationType: z.literal('text'),
   x: z.number(),
   y: z.number(),
-  content: z.string().max(200),
+  content: z.string().max(10000),
   fontSize: z.number().min(8).max(72).default(16),
   color: z
     .string()
