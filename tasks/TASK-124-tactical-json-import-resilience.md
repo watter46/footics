@@ -103,10 +103,11 @@ export const VisionConeSchema = z.object({
     - 不正な JSON 構造（必須項目欠落）でパス付きのエラーメッセージが返ること
     - インポートされたオブジェクトで `project.slides` が正常に取得できること
 - **Tasks**:
-  - [ ] 1. TDD テスト作成（RED）: `rtk vitest run src/lib/db/__tests__/tactical-projects-import.test.ts`
-  - [ ] 2. 実装: `sanitizeTacticalProjectForImport` を実装し、インポート処理に組み込み、エラーメッセージを詳細化し、`attachProjectSlidesGetter` を適用
-  - [ ] 3. スコープ検証: `bun run ai:check src/lib/db/tactical-projects-import.ts src/lib/db/__tests__/tactical-projects-import.test.ts` PASS 確認
+  - [x] 1. TDD テスト作成（RED）: `rtk vitest run src/lib/db/__tests__/tactical-projects-import.test.ts`
+  - [x] 2. 実装: `sanitizeTacticalProjectForImport` を実装し、インポート処理に組み込み、エラーメッセージを詳細化し、`attachProjectSlidesGetter` を適用
+  - [x] 3. スコープ検証: `bun run ai:check src/lib/db/tactical-projects-import.ts src/lib/db/__tests__/tactical-projects-import.test.ts` PASS 確認
 - **Worker Handoff Log**:
+  - `sanitizeTacticalProjectForImport` を実装し、長文テキスト/ラベル切り詰めおよび時間・角度クランプを完備。Zod パースエラー時のフィールドパス詳細化と `attachProjectSlidesGetter` を適用。単体テスト全 8 件 PASS。
 
 ---
 

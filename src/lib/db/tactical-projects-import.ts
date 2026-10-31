@@ -5,11 +5,107 @@
  */
 
 import { strFromU8, unzipSync } from 'fflate';
+import { attachProjectSlidesGetter } from '@/lib/types/tactical/project';
 import {
   type TacticalProject,
   TacticalProjectSchema,
 } from '@/lib/types/tactical-unified';
 import { saveTacticalProject } from './tactical-projects-db';
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+function clamp(v: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, v));
+}
+
+/**
+ * Sanitize tactical project raw JSON before Zod validation to ensure resilience.
+ * Truncates overlong text fields and clamps duration / angles.
+ */
+export function sanitizeTacticalProjectForImport(raw: unknown): unknown {
+  if (!isRecord(raw)) return raw;
+
+  const title =
+    typeof raw.title === 'string' ? raw.title.slice(0, 500) : raw.title;
+  const phases = Array.isArray(raw.phases)
+    ? raw.phases.map((ph) => {
+        if (!isRecord(ph)) return ph;
+        const name =
+          typeof ph.name === 'string' ? ph.name.slice(0, 200) : ph.name;
+        const slides = Array.isArray(ph.slides)
+          ? ph.slides.map((sl) => {
+              if (!isRecord(sl)) return sl;
+              return {
+                ...sl,
+                label:
+                  typeof sl.label === 'string'
+                    ? sl.label.slice(0, 200)
+                    : sl.label,
+                transitionDurationMs:
+                  typeof sl.transitionDurationMs === 'number'
+                    ? clamp(sl.transitionDurationMs, 100, 30000)
+                    : sl.transitionDurationMs,
+                pauseMs:
+                  typeof sl.pauseMs === 'number'
+                    ? clamp(sl.pauseMs, 0, 10000)
+                    : sl.pauseMs,
+                cameraDurationMs:
+                  typeof sl.cameraDurationMs === 'number'
+                    ? clamp(sl.cameraDurationMs, 500, 60000)
+                    : sl.cameraDurationMs,
+                texts: Array.isArray(sl.texts)
+                  ? sl.texts.map((t) =>
+                      isRecord(t) && typeof t.content === 'string'
+                        ? { ...t, content: t.content.slice(0, 10000) }
+                        : t,
+                    )
+                  : sl.texts,
+                arrows: Array.isArray(sl.arrows)
+                  ? sl.arrows.map((a) =>
+                      isRecord(a) && typeof a.label === 'string'
+                        ? { ...a, label: a.label.slice(0, 200) }
+                        : a,
+                    )
+                  : sl.arrows,
+                zones: Array.isArray(sl.zones)
+                  ? sl.zones.map((z) =>
+                      isRecord(z) && typeof z.label === 'string'
+                        ? { ...z, label: z.label.slice(0, 200) }
+                        : z,
+                    )
+                  : sl.zones,
+                players: Array.isArray(sl.players)
+                  ? sl.players.map((pl) => {
+                      if (!isRecord(pl)) return pl;
+                      const badges = Array.isArray(pl.badges)
+                        ? pl.badges.map((b) =>
+                            isRecord(b) && typeof b.label === 'string'
+                              ? { ...b, label: b.label.slice(0, 100) }
+                              : b,
+                          )
+                        : pl.badges;
+                      let visionCone = pl.visionCone;
+                      if (
+                        isRecord(visionCone) &&
+                        typeof visionCone.angleRad === 'number' &&
+                        visionCone.angleRad > Math.PI * 2 + 0.1
+                      ) {
+                        visionCone = { ...visionCone, angleRad: Math.PI * 2 };
+                      }
+                      return { ...pl, badges, visionCone };
+                    })
+                  : sl.players,
+              };
+            })
+          : ph.slides;
+        return { ...ph, name, slides };
+      })
+    : raw.phases;
+
+  return { ...raw, title, phases };
+}
 
 /**
  * Import a tactical project from a single JSON File.
@@ -28,23 +124,25 @@ export async function importTacticalProjectFromJson(
     throw new Error('Invalid file format: JSON could not be parsed.');
   }
 
-  const parseResult = TacticalProjectSchema.safeParse(rawJson);
+  const sanitized = sanitizeTacticalProjectForImport(rawJson);
+  const parseResult = TacticalProjectSchema.safeParse(sanitized);
   if (!parseResult.success) {
-    throw new Error(
-      `Invalid tactical project JSON format: ${parseResult.error.issues[0]?.message ?? 'Schema validation failed'}`,
-    );
+    const details = parseResult.error.issues
+      .map((i) => `${i.path.join('.') || 'root'}: ${i.message}`)
+      .join(', ');
+    throw new Error(`Invalid tactical project JSON format: ${details}`);
   }
 
   const project = parseResult.data;
   const now = new Date().toISOString();
 
-  const importedProject: TacticalProject = {
+  const importedProject: TacticalProject = attachProjectSlidesGetter({
     ...project,
     id: assignNewId ? crypto.randomUUID() : project.id,
     title: project.title?.trim() || 'Untitled Project',
     createdAt: assignNewId ? now : project.createdAt,
     updatedAt: now,
-  } as unknown as TacticalProject;
+  } as TacticalProject);
 
   await saveTacticalProject(importedProject, false);
   return importedProject;
@@ -75,22 +173,26 @@ export async function importMultipleTacticalProjects(
           try {
             const jsonText = strFromU8(bytes);
             const raw = JSON.parse(jsonText);
-            const parsed = TacticalProjectSchema.safeParse(raw);
+            const sanitized = sanitizeTacticalProjectForImport(raw);
+            const parsed = TacticalProjectSchema.safeParse(sanitized);
             if (!parsed.success) {
+              const details = parsed.error.issues
+                .map((i) => `${i.path.join('.') || 'root'}: ${i.message}`)
+                .join(', ');
               errors.push(
-                `${relativePath}: スキーマ検証に失敗しました (${parsed.error.issues[0]?.message})`,
+                `${relativePath}: スキーマ検証に失敗しました (${details})`,
               );
               continue;
             }
 
             const now = new Date().toISOString();
-            const proj: TacticalProject = {
+            const proj: TacticalProject = attachProjectSlidesGetter({
               ...parsed.data,
               id: crypto.randomUUID(),
               title: parsed.data.title?.trim() || 'Untitled Project',
               createdAt: now,
               updatedAt: now,
-            } as unknown as TacticalProject;
+            } as TacticalProject);
             await saveTacticalProject(proj, false);
             imported.push(proj);
           } catch (err) {
