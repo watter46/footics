@@ -10,7 +10,7 @@
     "dev": "next dev --turbo",
     "dev:https": "bun x next dev --experimental-https",
     "build": "next build",
-    "deploy": "rm -rf .next .open-next && bunx @opennextjs/cloudflare build && bunx wrangler deploy",
+    "deploy": "rm -rf .next .open-next && NODE_OPTIONS='--max-old-space-size=2048' opennextjs-cloudflare build && wrangler deploy",
     "extension:dev": "bun --cwd extension dev",
     "extension:build": "bun --cwd extension build",
     "extension:sync": "bun scripts/extension/sync-windows.ts",
