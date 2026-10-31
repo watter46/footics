@@ -65,4 +65,39 @@ describe('TransitionConnector Component', () => {
     fireEvent(button, clickEvent);
     expect(clickSpy).toHaveBeenCalled();
   });
+
+  describe('カメラ移動モードのバッジ表示', () => {
+    it('cameraTransitionMode が slow のとき CAM 10.0s が表示されること', () => {
+      const slide = createMockSlide({
+        cameraTransitionMode: 'slow',
+        cameraDurationMs: 10000,
+      });
+      render(<TransitionConnector targetSlide={slide} targetIndex={1} />);
+      expect(screen.getByText('CAM 10.0s')).toBeDefined();
+    });
+
+    it('cameraTransitionMode が continuous のとき CAM 継続 が表示されること', () => {
+      const slide = createMockSlide({
+        cameraTransitionMode: 'continuous',
+      });
+      render(<TransitionConnector targetSlide={slide} targetIndex={1} />);
+      expect(screen.getByText('CAM 継続')).toBeDefined();
+    });
+
+    it('cameraTransitionMode が cut のとき CAM CUT が表示されること', () => {
+      const slide = createMockSlide({
+        cameraTransitionMode: 'cut',
+      });
+      render(<TransitionConnector targetSlide={slide} targetIndex={1} />);
+      expect(screen.getByText('CAM CUT')).toBeDefined();
+    });
+
+    it('cameraTransitionMode が sync のときはカメラバッジが表示されないこと', () => {
+      const slide = createMockSlide({
+        cameraTransitionMode: 'sync',
+      });
+      render(<TransitionConnector targetSlide={slide} targetIndex={1} />);
+      expect(screen.queryByText(/CAM/)).toBeNull();
+    });
+  });
 });

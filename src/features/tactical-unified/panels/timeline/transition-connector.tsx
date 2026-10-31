@@ -26,6 +26,16 @@ export function TransitionConnector({
 
   const durationSec = (targetSlide.transitionDurationMs ?? 1000) / 1000;
 
+  let cameraBadgeText: string | null = null;
+  if (targetSlide.cameraTransitionMode === 'slow') {
+    const camDurationSec = (targetSlide.cameraDurationMs ?? 10000) / 1000;
+    cameraBadgeText = `CAM ${camDurationSec.toFixed(1)}s`;
+  } else if (targetSlide.cameraTransitionMode === 'continuous') {
+    cameraBadgeText = 'CAM 継続';
+  } else if (targetSlide.cameraTransitionMode === 'cut') {
+    cameraBadgeText = 'CAM CUT';
+  }
+
   return (
     <>
       <button
@@ -64,6 +74,11 @@ export function TransitionConnector({
         >
           ──▶
         </span>
+        {cameraBadgeText && (
+          <span className="ml-0.5 px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[9px] font-sans">
+            {cameraBadgeText}
+          </span>
+        )}
       </button>
 
       <SlideTransitionPopover

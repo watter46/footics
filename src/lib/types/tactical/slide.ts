@@ -28,7 +28,6 @@ export const BoundaryBoxSchema = z.object({
 });
 export type BoundaryBox = z.infer<typeof BoundaryBoxSchema>;
 
-/** ピッチ白線フィット境界線のデフォルト値 (16:9 横向き) */
 export const DEFAULT_BOUNDARY_BOX_16_9: BoundaryBox = {
   x: 0,
   y: 0,
@@ -38,8 +37,6 @@ export const DEFAULT_BOUNDARY_BOX_16_9: BoundaryBox = {
   visible: false,
   fitTarget: 'pitch',
 };
-
-/** ピッチ白線フィット境界線のデフォルト値 (9:16 縦向き) */
 export const DEFAULT_BOUNDARY_BOX_9_16: BoundaryBox = {
   x: 0,
   y: 0,
@@ -49,8 +46,6 @@ export const DEFAULT_BOUNDARY_BOX_9_16: BoundaryBox = {
   visible: false,
   fitTarget: 'pitch',
 };
-
-/** ピッチ白線フィット境界線のデフォルト値 (4:5 縦長) */
 export const DEFAULT_BOUNDARY_BOX_4_5: BoundaryBox = {
   x: 0,
   y: 0,
@@ -60,8 +55,6 @@ export const DEFAULT_BOUNDARY_BOX_4_5: BoundaryBox = {
   visible: false,
   fitTarget: 'pitch',
 };
-
-/** スクリーンショット / 画像背景時のフィット境界線（周囲にポインタハンドル用 2% の余白を持たせて配置） */
 export const DEFAULT_BOUNDARY_BOX_SCREENSHOT: BoundaryBox = {
   x: 2.0,
   y: 2.0,
@@ -71,8 +64,6 @@ export const DEFAULT_BOUNDARY_BOX_SCREENSHOT: BoundaryBox = {
   visible: false,
   fitTarget: 'pitch',
 };
-
-/** 対象比率の全画面フィット境界線 (フル領域 100x100) */
 export const DEFAULT_BOUNDARY_BOX_FULL: BoundaryBox = {
   x: 0,
   y: 0,
@@ -82,8 +73,6 @@ export const DEFAULT_BOUNDARY_BOX_FULL: BoundaryBox = {
   visible: false,
   fitTarget: 'canvas',
 };
-
-/** ピッチ白線フィット境界線のデフォルト値 (1:1 正方形) */
 export const DEFAULT_BOUNDARY_BOX_1_1: BoundaryBox = {
   x: 0,
   y: 0,
@@ -234,6 +223,14 @@ export const EasingSchema = z.enum([
 ]);
 export type Easing = z.infer<typeof EasingSchema>;
 
+export const CameraTransitionModeSchema = z.enum([
+  'sync',
+  'slow',
+  'continuous',
+  'cut',
+]);
+export type CameraTransitionMode = z.infer<typeof CameraTransitionModeSchema>;
+
 export const PitchTransformSchema = z.object({
   panX: z.number().default(0),
   panY: z.number().default(0),
@@ -279,6 +276,8 @@ export const SlideSchema = z.object({
   transitionDurationMs: z.number().min(100).max(10000).default(1000),
   pauseMs: z.number().min(0).max(5000).default(500),
   easing: EasingSchema.default('ease-in-out'),
+  cameraTransitionMode: CameraTransitionModeSchema.default('sync').optional(),
+  cameraDurationMs: z.number().min(500).max(30000).default(10000).optional(),
 
   backgroundImageUrl: z.string().optional(),
   backgroundType: z.enum(['pitch', 'image', 'blank']).optional(),

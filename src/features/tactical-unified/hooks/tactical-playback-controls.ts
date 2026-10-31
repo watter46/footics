@@ -1,5 +1,8 @@
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
-import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
+import {
+  getInterpolatedUnifiedSlideFrame,
+  resolveEffectiveSlideSegments,
+} from '@/lib/tactical/unified-interpolation';
 import type { Slide } from '@/lib/types/tactical-unified';
 import type { AnimationPlaybackRefs } from './tactical-animation-canvas';
 
@@ -9,13 +12,18 @@ import type { AnimationPlaybackRefs } from './tactical-animation-canvas';
 export function getSlideSnapTime(slides: Slide[], targetIndex: number): number {
   if (targetIndex <= 0 || slides.length === 0) return 0;
   const clampedIndex = Math.min(targetIndex, slides.length - 1);
-  let accumulated = 0;
-  for (let i = 1; i < clampedIndex; i++) {
-    const s = slides[i];
-    accumulated += (s.transitionDurationMs ?? 1000) + (s.pauseMs ?? 500);
-  }
-  const destSlide = slides[clampedIndex];
-  return accumulated + (destSlide.transitionDurationMs ?? 1000);
+  const segments = resolveEffectiveSlideSegments(slides);
+  if (segments.length === 0) return 0;
+
+  const destSegment = segments[clampedIndex - 1];
+  if (!destSegment) return 0;
+
+  const moveDurationInSeg =
+    destSegment.cameraMode === 'slow'
+      ? destSegment.effectiveDurationMs
+      : destSegment.playerMoveMs;
+
+  return destSegment.startTimeMs + moveDurationInSeg;
 }
 
 export function snapToSlideOnStop({

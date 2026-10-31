@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { SlideSchema } from '@/lib/types/tactical/slide';
+import { createSlideForMode } from '../slide-helpers';
 import { useTacticalUnifiedStore } from '../tactical-unified-store';
 
 describe('slide-transition-slice', () => {
@@ -57,5 +59,100 @@ describe('slide-transition-slice', () => {
       expect(restoredSlides[i].pauseMs).toBe(initialSlides[i].pauseMs);
       expect(restoredSlides[i].easing).toBe(initialSlides[i].easing);
     }
+  });
+
+  it('updateSlideTransition updates camera transition parameters for a specific slide', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const slideId = store.project.slides[0].id;
+
+    store.updateSlideTransition(slideId, {
+      cameraTransitionMode: 'slow',
+      cameraDurationMs: 8000,
+    });
+
+    const updatedSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(updatedSlide?.cameraTransitionMode).toBe('slow');
+    expect(updatedSlide?.cameraDurationMs).toBe(8000);
+
+    useTacticalUnifiedStore.getState().undo();
+    const restoredSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find((s) => s.id === slideId);
+    expect(restoredSlide?.cameraTransitionMode).toBeUndefined();
+    expect(restoredSlide?.cameraDurationMs).toBeUndefined();
+  });
+
+  it('updateAllSlideTransitions updates camera transition parameters for all slides and can be undone', () => {
+    const store = useTacticalUnifiedStore.getState();
+    store.addSlide();
+
+    useTacticalUnifiedStore.getState().updateAllSlideTransitions({
+      cameraTransitionMode: 'continuous',
+      cameraDurationMs: 15000,
+    });
+
+    const updatedSlides = useTacticalUnifiedStore.getState().project.slides;
+    for (const slide of updatedSlides) {
+      expect(slide.cameraTransitionMode).toBe('continuous');
+      expect(slide.cameraDurationMs).toBe(15000);
+    }
+
+    useTacticalUnifiedStore.getState().undo();
+    const restoredSlides = useTacticalUnifiedStore.getState().project.slides;
+    for (const slide of restoredSlides) {
+      expect(slide.cameraTransitionMode).not.toBe('continuous');
+    }
+  });
+
+  it('validates cameraTransitionMode and cameraDurationMs via SlideSchema', () => {
+    const baseSlide = {
+      id: 'slide-1',
+      index: 0,
+      players: [],
+      arrows: [],
+      zones: [],
+      texts: [],
+      ball: { x: 50, y: 50, visible: true },
+    };
+
+    const parsedDefault = SlideSchema.parse(baseSlide);
+    expect(parsedDefault.cameraTransitionMode).toBe('sync');
+    expect(parsedDefault.cameraDurationMs).toBe(10000);
+
+    const parsedCustom = SlideSchema.parse({
+      ...baseSlide,
+      cameraTransitionMode: 'slow',
+      cameraDurationMs: 5000,
+    });
+    expect(parsedCustom.cameraTransitionMode).toBe('slow');
+    expect(parsedCustom.cameraDurationMs).toBe(5000);
+
+    expect(() =>
+      SlideSchema.parse({ ...baseSlide, cameraDurationMs: 499 }),
+    ).toThrow();
+    expect(() =>
+      SlideSchema.parse({ ...baseSlide, cameraDurationMs: 30001 }),
+    ).toThrow();
+    expect(() =>
+      SlideSchema.parse({ ...baseSlide, cameraTransitionMode: 'invalid' }),
+    ).toThrow();
+  });
+
+  it('createSlideForMode preserves camera transition parameters for object-free mode', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const currentSlide = {
+      ...store.project.slides[0],
+      cameraTransitionMode: 'slow' as const,
+      cameraDurationMs: 12000,
+    };
+    const newSlide = createSlideForMode(
+      currentSlide,
+      store.project,
+      'object-free',
+    );
+    expect(newSlide.cameraTransitionMode).toBe('slow');
+    expect(newSlide.cameraDurationMs).toBe(12000);
   });
 });

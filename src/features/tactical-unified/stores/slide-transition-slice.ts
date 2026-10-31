@@ -1,7 +1,10 @@
 import gsap from 'gsap';
 import type { StateCreator } from 'zustand';
 import { GSAP_EASE_MAP } from '@/lib/tactical/easing';
-import type { Easing } from '@/lib/types/tactical-unified';
+import type {
+  CameraTransitionMode,
+  Easing,
+} from '@/lib/types/tactical-unified';
 import { recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 
@@ -11,6 +14,8 @@ export interface SlideTransitionParams {
   transitionDurationMs?: number;
   pauseMs?: number;
   easing?: Easing;
+  cameraTransitionMode?: CameraTransitionMode;
+  cameraDurationMs?: number;
 }
 
 export function getEasingFunction(easing?: string): (t: number) => number {

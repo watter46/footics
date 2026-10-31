@@ -17,7 +17,11 @@ import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import type { Easing } from '@/lib/types/tactical-unified';
+import type {
+  CameraTransitionMode,
+  Easing,
+} from '@/lib/types/tactical-unified';
+import { CameraTransitionSection } from './camera-transition-section';
 
 export interface BatchTransitionPopoverProps {
   isOpen: boolean;
@@ -88,6 +92,8 @@ export function BatchTransitionPopover({
     (representativeSlide?.transitionDurationMs ?? 1000) / 1000;
   const pauseSec = (slides[0]?.pauseMs ?? 500) / 1000;
   const easing = representativeSlide?.easing ?? 'ease-in-out';
+  const cameraMode = representativeSlide?.cameraTransitionMode ?? 'sync';
+  const cameraDurationMs = representativeSlide?.cameraDurationMs ?? 10000;
 
   const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number.parseFloat(e.target.value);
@@ -110,6 +116,18 @@ export function BatchTransitionPopover({
   const handleEasingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     updateAllSlideTransitions({
       easing: e.target.value as Easing,
+    });
+  };
+
+  const handleCameraModeChange = (mode: CameraTransitionMode) => {
+    updateAllSlideTransitions({
+      cameraTransitionMode: mode,
+    });
+  };
+
+  const handleCameraDurationChange = (valMs: number) => {
+    updateAllSlideTransitions({
+      cameraDurationMs: valMs,
     });
   };
 
@@ -229,6 +247,16 @@ export function BatchTransitionPopover({
               ))}
             </select>
           </div>
+
+          {/* カメラ移動設定 */}
+          <CameraTransitionSection
+            idPrefix="batch"
+            mode={cameraMode}
+            durationMs={cameraDurationMs}
+            isBatch={true}
+            onChangeMode={handleCameraModeChange}
+            onChangeDurationMs={handleCameraDurationChange}
+          />
         </div>
       </div>
     </FloatingPortal>

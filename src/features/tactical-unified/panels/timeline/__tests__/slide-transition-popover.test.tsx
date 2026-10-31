@@ -139,6 +139,107 @@ describe('SlideTransitionPopover Component', () => {
     expect(durationInput.disabled).toBe(true);
     expect(pauseInput.disabled).toBe(false);
   });
+
+  it('updates cameraTransitionMode when camera mode buttons are clicked', () => {
+    const updateSpy = vi.spyOn(
+      useTacticalUnifiedStore.getState(),
+      'updateSlideTransition',
+    );
+    const anchor = document.createElement('div');
+
+    render(
+      <SlideTransitionPopover
+        slide={dummySlide}
+        index={1}
+        isOpen={true}
+        onClose={vi.fn()}
+        referenceElement={anchor}
+      />,
+    );
+
+    const slowBtn = screen.getByRole('button', { name: 'スロー' });
+    fireEvent.click(slowBtn);
+    expect(updateSpy).toHaveBeenCalledWith('slide-2', {
+      cameraTransitionMode: 'slow',
+    });
+
+    const continuousBtn = screen.getByRole('button', { name: '継続' });
+    fireEvent.click(continuousBtn);
+    expect(updateSpy).toHaveBeenCalledWith('slide-2', {
+      cameraTransitionMode: 'continuous',
+    });
+
+    const cutBtn = screen.getByRole('button', { name: 'Cut' });
+    fireEvent.click(cutBtn);
+    expect(updateSpy).toHaveBeenCalledWith('slide-2', {
+      cameraTransitionMode: 'cut',
+    });
+
+    const syncBtn = screen.getByRole('button', { name: '連動' });
+    fireEvent.click(syncBtn);
+    expect(updateSpy).toHaveBeenCalledWith('slide-2', {
+      cameraTransitionMode: 'sync',
+    });
+  });
+
+  it('displays camera duration slider when cameraTransitionMode is slow and updates duration', () => {
+    const updateSpy = vi.spyOn(
+      useTacticalUnifiedStore.getState(),
+      'updateSlideTransition',
+    );
+    const anchor = document.createElement('div');
+    const slowSlide: Slide = {
+      ...dummySlide,
+      cameraTransitionMode: 'slow',
+      cameraDurationMs: 8000,
+    };
+
+    render(
+      <SlideTransitionPopover
+        slide={slowSlide}
+        index={1}
+        isOpen={true}
+        onClose={vi.fn()}
+        referenceElement={anchor}
+      />,
+    );
+
+    const cameraSlider = screen.getByLabelText(
+      'カメラ秒数',
+    ) as HTMLInputElement;
+    expect(cameraSlider).toBeDefined();
+    expect(cameraSlider.value).toBe('8');
+
+    fireEvent.change(cameraSlider, { target: { value: '12.5' } });
+    expect(updateSpy).toHaveBeenCalledWith('slide-2', {
+      cameraDurationMs: 12500,
+    });
+  });
+
+  it('disables camera mode buttons for Scene 1 (index === 0)', () => {
+    const anchor = document.createElement('div');
+    const firstSlide: Slide = {
+      ...dummySlide,
+      id: 'slide-1',
+      index: 0,
+      label: 'Scene 1',
+    };
+
+    render(
+      <SlideTransitionPopover
+        slide={firstSlide}
+        index={0}
+        isOpen={true}
+        onClose={vi.fn()}
+        referenceElement={anchor}
+      />,
+    );
+
+    for (const name of ['連動', 'スロー', '継続', 'Cut']) {
+      const btn = screen.getByRole('button', { name }) as HTMLButtonElement;
+      expect(btn.disabled).toBe(true);
+    }
+  });
 });
 
 describe('SlideCard Integration with SlideTransitionPopover', () => {
@@ -319,6 +420,53 @@ describe('BatchTransitionPopover Component', () => {
     });
     expect(dialog.className).toContain('bg-[#222226]');
     expect(dialog.innerHTML).not.toContain('#60A5FA');
+  });
+
+  it('updates cameraTransitionMode and cameraDurationMs across all slides in batch', () => {
+    const updateSpy = vi.spyOn(
+      useTacticalUnifiedStore.getState(),
+      'updateAllSlideTransitions',
+    );
+    const anchor = document.createElement('div');
+    render(
+      <BatchTransitionPopover
+        isOpen={true}
+        onClose={vi.fn()}
+        referenceElement={anchor}
+      />,
+    );
+
+    const slowBtn = screen.getByRole('button', { name: 'スロー' });
+    fireEvent.click(slowBtn);
+    expect(updateSpy).toHaveBeenCalledWith({
+      cameraTransitionMode: 'slow',
+    });
+  });
+
+  it('updates batch camera duration slider when mode is slow', () => {
+    // 状態としてスライド2枚目（代表）に cameraTransitionMode: 'slow' をセット
+    const store = useTacticalUnifiedStore.getState();
+    store.updateSlideTransition('slide-2', {
+      cameraTransitionMode: 'slow',
+      cameraDurationMs: 6000,
+    });
+    const updateSpy = vi.spyOn(store, 'updateAllSlideTransitions');
+    const anchor = document.createElement('div');
+
+    render(
+      <BatchTransitionPopover
+        isOpen={true}
+        onClose={vi.fn()}
+        referenceElement={anchor}
+      />,
+    );
+
+    const slider = screen.getByLabelText('一括カメラ秒数') as HTMLInputElement;
+    expect(slider).toBeDefined();
+    fireEvent.change(slider, { target: { value: '15' } });
+    expect(updateSpy).toHaveBeenCalledWith({
+      cameraDurationMs: 15000,
+    });
   });
 });
 

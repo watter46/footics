@@ -518,6 +518,28 @@ describe('unified-interpolation engine', () => {
         expect(half.isLocked).toBe(true);
       });
 
+      it('interpolates yaw using the shortest angular path across 360 boundary (350 -> 10 => 0 at t=0.5)', () => {
+        const transformA = {
+          panX: 0,
+          panY: 0,
+          zoom: 1,
+          tilt: 0,
+          yaw: 350,
+          isLocked: false,
+        };
+        const transformB = {
+          panX: 0,
+          panY: 0,
+          zoom: 1,
+          tilt: 0,
+          yaw: 10,
+          isLocked: false,
+        };
+
+        const mid = interpolatePitchTransform(transformA, transformB, 0.5);
+        expect(mid.yaw).toBeCloseTo(0, 1);
+      });
+
       it('falls back to default values when transform is missing', () => {
         const mid = interpolatePitchTransform(null, undefined, 0.5);
         expect(mid).toEqual({
@@ -585,6 +607,259 @@ describe('unified-interpolation engine', () => {
         expect(frameMid.pitchTransform.zoom).toBeCloseTo(1.5, 2);
         expect(frameMid.pitchTransform.tilt).toBeCloseTo(15, 1);
         expect(frameMid.pitchTransform.yaw).toBeCloseTo(100, 1);
+      });
+
+      describe('camera transition modes (slow, continuous, cut)', () => {
+        it('handles single slide slow camera drift with auto-extended duration', () => {
+          const slides: Slide[] = [
+            {
+              id: 's1',
+              index: 0,
+              transitionDurationMs: 1000,
+              pauseMs: 500,
+              easing: 'linear',
+              players: [
+                {
+                  id: 'p1',
+                  team: 'home',
+                  area: 'pitch',
+                  x: 10,
+                  y: 10,
+                  style: {
+                    markerType: 'circle',
+                    insideContent: 'number',
+                    bottomLabel: 'name',
+                    color: '#000',
+                    strokeColor: '#fff',
+                    strokeWidth: 2,
+                    sizeScale: 1,
+                    numberSizeScale: 1,
+                    labelSizeScale: 1,
+                  },
+                  connectLines: [],
+                  badges: [],
+                },
+              ],
+              arrows: [],
+              zones: [],
+              texts: [],
+              ball: { x: 10, y: 10, visible: true },
+              pitchTransform: {
+                panX: 0,
+                panY: 0,
+                zoom: 1,
+                tilt: 0,
+                yaw: 90,
+                isLocked: false,
+              },
+            },
+            {
+              id: 's2',
+              index: 1,
+              transitionDurationMs: 2000,
+              pauseMs: 500,
+              cameraTransitionMode: 'slow',
+              cameraDurationMs: 10000,
+              easing: 'linear',
+              players: [
+                {
+                  id: 'p1',
+                  team: 'home',
+                  area: 'pitch',
+                  x: 50,
+                  y: 50,
+                  style: {
+                    markerType: 'circle',
+                    insideContent: 'number',
+                    bottomLabel: 'name',
+                    color: '#000',
+                    strokeColor: '#fff',
+                    strokeWidth: 2,
+                    sizeScale: 1,
+                    numberSizeScale: 1,
+                    labelSizeScale: 1,
+                  },
+                  connectLines: [],
+                  badges: [],
+                },
+              ],
+              arrows: [],
+              zones: [],
+              texts: [],
+              ball: { x: 50, y: 50, visible: true },
+              pitchTransform: {
+                panX: 100,
+                panY: 50,
+                zoom: 2,
+                tilt: 20,
+                yaw: 90,
+                isLocked: false,
+              },
+            },
+          ];
+
+          // 1. calculateUnifiedTotalDuration is extended to 10000ms
+          const total = calculateUnifiedTotalDuration(slides);
+          expect(total).toBe(10000);
+
+          // 2. at timeMs = 5000: player reached destination (progress === 1), camera at t=0.5, isPaused === false
+          const frame5000 = getInterpolatedUnifiedSlideFrame(slides, 5000);
+          expect(frame5000.progress).toBe(1);
+          expect(frame5000.players.p1.x).toBeCloseTo(50, 1);
+          expect(frame5000.players.p1.y).toBeCloseTo(50, 1);
+          expect(frame5000.pitchTransform.panX).toBeCloseTo(50, 1);
+          expect(frame5000.pitchTransform.panY).toBeCloseTo(25, 1);
+          expect(frame5000.pitchTransform.zoom).toBeCloseTo(1.5, 2);
+          expect(frame5000.isPaused).toBe(false);
+
+          // 3. at timeMs = 10000: camera reaches end, isPaused === true
+          const frame10000 = getInterpolatedUnifiedSlideFrame(slides, 10000);
+          expect(frame10000.pitchTransform.panX).toBeCloseTo(100, 1);
+          expect(frame10000.pitchTransform.zoom).toBeCloseTo(2, 2);
+          expect(frame10000.isPaused).toBe(true);
+        });
+
+        it('handles multi-slide continuous camera span without stopping at intermediate slide', () => {
+          const slides: Slide[] = [
+            {
+              id: 's1',
+              index: 0,
+              transitionDurationMs: 1000,
+              pauseMs: 500,
+              easing: 'linear',
+              players: [],
+              arrows: [],
+              zones: [],
+              texts: [],
+              ball: { x: 50, y: 50, visible: true },
+              pitchTransform: {
+                panX: 0,
+                panY: 0,
+                zoom: 1,
+                tilt: 0,
+                yaw: 90,
+                isLocked: false,
+              },
+            },
+            {
+              id: 's2',
+              index: 1,
+              transitionDurationMs: 1000,
+              pauseMs: 500,
+              easing: 'linear',
+              cameraTransitionMode: 'continuous',
+              players: [],
+              arrows: [],
+              zones: [],
+              texts: [],
+              ball: { x: 50, y: 50, visible: true },
+              pitchTransform: {
+                panX: 40,
+                panY: 20,
+                zoom: 1.4,
+                tilt: 0,
+                yaw: 90,
+                isLocked: false,
+              },
+            },
+            {
+              id: 's3',
+              index: 2,
+              transitionDurationMs: 2000,
+              pauseMs: 500,
+              easing: 'linear',
+              cameraTransitionMode: 'slow',
+              cameraDurationMs: 10000,
+              players: [],
+              arrows: [],
+              zones: [],
+              texts: [],
+              ball: { x: 50, y: 50, visible: true },
+              pitchTransform: {
+                panX: 100,
+                panY: 50,
+                zoom: 2,
+                tilt: 0,
+                yaw: 90,
+                isLocked: false,
+              },
+            },
+          ];
+
+          const total = calculateUnifiedTotalDuration(slides);
+          expect(total).toBe(10000); // 1500 + 8500 = 10000ms
+
+          // At boundary (timeMs = 1500, end of s2 player duration):
+          // Camera should be at 1500 / 10000 = 0.15 of span between s1 (panX: 0) and s3 (panX: 100) -> panX: 15
+          const frame1500 = getInterpolatedUnifiedSlideFrame(slides, 1500);
+          expect(frame1500.pitchTransform.panX).toBeCloseTo(15, 1);
+          expect(frame1500.pitchTransform.zoom).toBeCloseTo(
+            1 + (2 - 1) * 0.15,
+            2,
+          );
+
+          // At timeMs = 5000:
+          // Camera at 5000 / 10000 = 0.5 between s1 and s3 -> panX: 50, zoom: 1.5
+          const frame5000 = getInterpolatedUnifiedSlideFrame(slides, 5000);
+          expect(frame5000.pitchTransform.panX).toBeCloseTo(50, 1);
+          expect(frame5000.pitchTransform.zoom).toBeCloseTo(1.5, 2);
+          expect(frame5000.isPaused).toBe(false);
+        });
+
+        it('instantly snaps camera to destination on cameraTransitionMode cut', () => {
+          const slides: Slide[] = [
+            {
+              id: 's1',
+              index: 0,
+              transitionDurationMs: 1000,
+              pauseMs: 500,
+              easing: 'linear',
+              players: [],
+              arrows: [],
+              zones: [],
+              texts: [],
+              ball: { x: 50, y: 50, visible: true },
+              pitchTransform: {
+                panX: 0,
+                panY: 0,
+                zoom: 1,
+                tilt: 0,
+                yaw: 90,
+                isLocked: false,
+              },
+            },
+            {
+              id: 's2',
+              index: 1,
+              transitionDurationMs: 1000,
+              pauseMs: 500,
+              easing: 'linear',
+              cameraTransitionMode: 'cut',
+              players: [],
+              arrows: [],
+              zones: [],
+              texts: [],
+              ball: { x: 50, y: 50, visible: true },
+              pitchTransform: {
+                panX: 80,
+                panY: 40,
+                zoom: 2.5,
+                tilt: 15,
+                yaw: 120,
+                isLocked: true,
+              },
+            },
+          ];
+
+          // At timeMs = 10 (just started transition):
+          const frame10 = getInterpolatedUnifiedSlideFrame(slides, 10);
+          expect(frame10.pitchTransform.panX).toBe(80);
+          expect(frame10.pitchTransform.panY).toBe(40);
+          expect(frame10.pitchTransform.zoom).toBe(2.5);
+          expect(frame10.pitchTransform.tilt).toBe(15);
+          expect(frame10.pitchTransform.yaw).toBe(120);
+          expect(frame10.pitchTransform.isLocked).toBe(true);
+        });
       });
     });
   });

@@ -9,7 +9,7 @@
  *   - ピッチ ⇄ ベンチのフェード遷移
  */
 
-import type { PitchTransform, Slide } from '@/lib/types/tactical-unified';
+import type { Slide } from '@/lib/types/tactical-unified';
 import { applyEasing } from './easing';
 import {
   type InterpolatedArrowState,
@@ -26,6 +26,12 @@ import {
   interpolateBall,
 } from './interpolation-ball';
 import {
+  type InterpolatedPitchTransformState,
+  interpolatePitchTransform,
+  resolveCameraAtTime,
+  resolveEffectiveSlideSegments,
+} from './interpolation-camera';
+import {
   type InterpolatedPlayerState,
   interpolatePlayer,
   matchSlidePlayers,
@@ -33,18 +39,10 @@ import {
 
 export * from './interpolation-annotation';
 export * from './interpolation-ball';
+export * from './interpolation-camera';
 // Re-export submodules to preserve public API without breaking changes
 export * from './interpolation-geometry';
 export * from './interpolation-player';
-
-export interface InterpolatedPitchTransformState {
-  panX: number;
-  panY: number;
-  zoom: number;
-  tilt: number;
-  yaw: number;
-  isLocked: boolean;
-}
 
 export interface InterpolatedUnifiedFrame {
   players: Record<string, InterpolatedPlayerState>;
@@ -60,46 +58,12 @@ export interface InterpolatedUnifiedFrame {
 }
 
 /**
- * スライド間のピッチカメラ変換（panX, panY, zoom, tilt, isLocked）を補間
- */
-export function interpolatePitchTransform(
-  transformA?: PitchTransform | null,
-  transformB?: PitchTransform | null,
-  t = 0,
-): InterpolatedPitchTransformState {
-  const panXA = transformA?.panX ?? 0;
-  const panXB = transformB?.panX ?? 0;
-  const panYA = transformA?.panY ?? 0;
-  const panYB = transformB?.panY ?? 0;
-  const zoomA = transformA?.zoom ?? 1;
-  const zoomB = transformB?.zoom ?? 1;
-  const tiltA = transformA?.tilt ?? 0;
-  const tiltB = transformB?.tilt ?? 0;
-  const yawA = transformA?.yaw ?? 90;
-  const yawB = transformB?.yaw ?? 90;
-  const lockedA = transformA?.isLocked ?? false;
-  const lockedB = transformB?.isLocked ?? false;
-
-  return {
-    panX: panXA + (panXB - panXA) * t,
-    panY: panYA + (panYB - panYA) * t,
-    zoom: zoomA + (zoomB - zoomA) * t,
-    tilt: tiltA + (tiltB - tiltA) * t,
-    yaw: yawA + (yawB - yawA) * t,
-    isLocked: t < 0.5 ? lockedA : lockedB,
-  };
-}
-
-/**
  * 全スライドの総再生時間 (ms) を計算
  */
 export function calculateUnifiedTotalDuration(slides: Slide[]): number {
   if (slides.length <= 1) return 0;
-  return slides.slice(1).reduce((acc, slide) => {
-    const duration = slide.transitionDurationMs ?? 1000;
-    const pause = slide.pauseMs ?? 500;
-    return acc + duration + pause;
-  }, 0);
+  const segments = resolveEffectiveSlideSegments(slides);
+  return segments.reduce((sum, seg) => sum + seg.effectiveDurationMs, 0);
 }
 
 const EMPTY_FRAME: InterpolatedUnifiedFrame = {
@@ -171,38 +135,44 @@ export function getInterpolatedUnifiedSlideFrame(
   }
 
   // スライド区間の特定
-  let accumulatedTime = 0;
+  const segments = resolveEffectiveSlideSegments(slides);
   let currentSlideIdx = 0;
   let nextSlideIdx = 1;
   let elapsedInSegment = 0;
-  let segmentSlide = slides[1] ?? slides[0];
+  let activeSegment = segments[0];
 
-  for (let i = 0; i < slides.length - 1; i++) {
-    const s = slides[i + 1];
-    const segDuration = (s.transitionDurationMs ?? 1000) + (s.pauseMs ?? 500);
-    if (timeMs <= accumulatedTime + segDuration || i === slides.length - 2) {
-      currentSlideIdx = i;
-      nextSlideIdx = i + 1;
-      elapsedInSegment = Math.max(0, timeMs - accumulatedTime);
-      segmentSlide = s;
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const isLastSegment = i === segments.length - 1;
+    if (timeMs < seg.startTimeMs + seg.effectiveDurationMs || isLastSegment) {
+      currentSlideIdx = seg.slideIndex - 1;
+      nextSlideIdx = seg.slideIndex;
+      elapsedInSegment = Math.max(0, timeMs - seg.startTimeMs);
+      activeSegment = seg;
       break;
     }
-    accumulatedTime += segDuration;
   }
 
   const slideA = slides[currentSlideIdx];
   const slideB = slides[nextSlideIdx];
+  const segmentSlide = slideB ?? slides[0];
 
-  const transitionDuration = Math.max(
-    100,
-    segmentSlide.transitionDurationMs ?? 1000,
-  );
+  const transitionDuration = Math.max(100, activeSegment.playerMoveMs);
 
   let rawT = elapsedInSegment / transitionDuration;
-  const isPaused = rawT >= 1;
+  const isPlayerPaused = rawT >= 1;
   if (rawT > 1) rawT = 1;
 
   const ease = applyEasing(rawT, segmentSlide.easing ?? 'ease-in-out');
+
+  // カメラ補間（Slow / Continuous / Cut / Sync）
+  const { pitchTransform, isCameraMoving } = resolveCameraAtTime(
+    slides,
+    segments,
+    activeSegment,
+    timeMs,
+    elapsedInSegment,
+  );
 
   // 1. Players 補間 (ID / 背番号 / 名前マッチングによるスムーズモーフィング)
   const players: Record<string, InterpolatedPlayerState> = {};
@@ -268,6 +238,7 @@ export function getInterpolatedUnifiedSlideFrame(
 
   const totalDurationMs = calculateUnifiedTotalDuration(slides);
   const isPastTotal = totalDurationMs > 0 && timeMs >= totalDurationMs;
+  const isPaused = (isPlayerPaused && !isCameraMoving) || isPastTotal;
 
   const resolvedCurrentSlideIndex = isPastTotal
     ? slides.length - 1
@@ -286,14 +257,10 @@ export function getInterpolatedUnifiedSlideFrame(
     zones,
     arrows,
     texts,
-    pitchTransform: interpolatePitchTransform(
-      slideA.pitchTransform,
-      slideB.pitchTransform,
-      ease,
-    ),
+    pitchTransform,
     currentSlideIndex: resolvedCurrentSlideIndex,
     nextSlideIndex: resolvedNextSlideIndex,
     progress: rawT,
-    isPaused: isPaused || isPastTotal,
+    isPaused,
   };
 }

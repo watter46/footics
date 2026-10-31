@@ -96,6 +96,8 @@ export function createSlideForMode(
     transitionDurationMs: currentSlide.transitionDurationMs ?? 1000,
     pauseMs: currentSlide.pauseMs ?? 500,
     easing: currentSlide.easing ?? 'ease-in-out',
+    cameraTransitionMode: currentSlide.cameraTransitionMode ?? 'sync',
+    cameraDurationMs: currentSlide.cameraDurationMs ?? 10000,
     backgroundImageUrl:
       currentSlide.backgroundImageUrl ?? project.backgroundImageUrl,
     backgroundType:

@@ -16,7 +16,12 @@ import { Clock, Pause, Sliders, X } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import type { Easing, Slide } from '@/lib/types/tactical-unified';
+import type {
+  CameraTransitionMode,
+  Easing,
+  Slide,
+} from '@/lib/types/tactical-unified';
+import { CameraTransitionSection } from './camera-transition-section';
 
 export interface SlideTransitionPopoverProps {
   slide: Slide;
@@ -87,6 +92,8 @@ export function SlideTransitionPopover({
   const durationSec = (slide.transitionDurationMs ?? 1000) / 1000;
   const pauseSec = (slide.pauseMs ?? 500) / 1000;
   const easing = slide.easing ?? 'ease-in-out';
+  const cameraMode = slide.cameraTransitionMode ?? 'sync';
+  const cameraDurationMs = slide.cameraDurationMs ?? 10000;
   const isFirstScene = index === 0;
 
   const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,6 +117,18 @@ export function SlideTransitionPopover({
   const handleEasingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     updateSlideTransition(slide.id, {
       easing: e.target.value as Easing,
+    });
+  };
+
+  const handleCameraModeChange = (mode: CameraTransitionMode) => {
+    updateSlideTransition(slide.id, {
+      cameraTransitionMode: mode,
+    });
+  };
+
+  const handleCameraDurationChange = (valMs: number) => {
+    updateSlideTransition(slide.id, {
+      cameraDurationMs: valMs,
     });
   };
 
@@ -233,6 +252,17 @@ export function SlideTransitionPopover({
               ))}
             </select>
           </div>
+
+          {/* カメラ移動設定 */}
+          <CameraTransitionSection
+            idPrefix={`slide-${slide.id}`}
+            mode={cameraMode}
+            durationMs={cameraDurationMs}
+            disabled={isFirstScene}
+            isBatch={false}
+            onChangeMode={handleCameraModeChange}
+            onChangeDurationMs={handleCameraDurationChange}
+          />
         </div>
       </div>
     </FloatingPortal>
