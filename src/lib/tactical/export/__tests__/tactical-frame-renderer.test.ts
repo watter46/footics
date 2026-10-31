@@ -1,4 +1,21 @@
 import { describe, expect, it, vi } from 'vitest';
+
+vi.hoisted(() => {
+  if (typeof globalThis.Path2D === 'undefined') {
+    class MockPath2D {
+      d: string;
+      constructor(d?: string) {
+        this.d = d ?? '';
+      }
+    }
+    Object.defineProperty(globalThis, 'Path2D', {
+      value: MockPath2D,
+      writable: true,
+      configurable: true,
+    });
+  }
+});
+
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import type { InterpolatedArrowState } from '@/lib/tactical/unified-interpolation';
 import {
@@ -41,6 +58,12 @@ function createMockContext(): AnyCanvasRenderingContext2D {
     strokeText: vi.fn(),
     setLineDash: vi.fn(),
     quadraticCurveTo: vi.fn(),
+    createLinearGradient: vi.fn(() => ({
+      addColorStop: vi.fn(),
+    })),
+    createRadialGradient: vi.fn(() => ({
+      addColorStop: vi.fn(),
+    })),
     fillStyle: '',
     strokeStyle: '',
     lineWidth: 1,
@@ -1249,6 +1272,221 @@ describe('Tactical Frame Renderer', () => {
 
       // Ensure #020617 dark border is NOT used anywhere
       expect(ctx.strokeStyle).not.toBe('#020617');
+    });
+  });
+
+  describe('Phase 1: Subpixel Precision, Perspective Depth Scale, and Combined Ring Path', () => {
+    it('preserves subpixel coordinates without rounding in snap()', () => {
+      const ctx = createMockContext();
+      const subpixelSlide: Slide = SlideSchema.parse({
+        id: 'slide-subpixel',
+        index: 0,
+        transitionDurationMs: 1000,
+        pauseMs: 500,
+        players: [
+          {
+            id: 'p-subpixel',
+            x: 30.33,
+            y: 40.33,
+            team: 'home',
+            shirtNo: '10',
+            name: 'Messi',
+            area: 'pitch',
+            style: {
+              insideContent: 'number',
+              bottomLabel: 'name',
+              color: '#3b82f6',
+              strokeColor: '#ffffff',
+              strokeWidth: 2,
+              sizeScale: 1,
+              numberSizeScale: 1,
+              labelSizeScale: 1,
+            },
+            connectLines: [],
+            badges: [],
+          },
+        ],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: false },
+      });
+
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [subpixelSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        transparent: false,
+      });
+
+      const fillTextCalls = vi.mocked(ctx.fillText).mock.calls;
+      const messiCall = fillTextCalls.find((call) => call[0] === 'Messi');
+      expect(messiCall).toBeDefined();
+      const messiX = messiCall?.[1] as number;
+      const messiY = messiCall?.[2] as number;
+
+      // With snap = (v) => v, subpixel decimals are preserved (not Math.round integers)
+      expect(Number.isInteger(messiX)).toBe(false);
+      expect(Number.isInteger(messiY)).toBe(false);
+    });
+
+    it('applies depthScale only when perspective tilt is active, remaining 1 for 2D plane zoom/pan', () => {
+      const depthSlide: Slide = SlideSchema.parse({
+        id: 'slide-depth',
+        index: 0,
+        transitionDurationMs: 1000,
+        pauseMs: 500,
+        players: [
+          {
+            id: 'p-back',
+            x: 50,
+            y: 10,
+            team: 'home',
+            shirtNo: '1',
+            name: 'Back',
+            area: 'pitch',
+            style: {
+              color: '#3b82f6',
+              strokeColor: '#ffffff',
+              strokeWidth: 2,
+              insideContent: 'number',
+              sizeScale: 1,
+            },
+            connectLines: [],
+            badges: [],
+          },
+          {
+            id: 'p-front',
+            x: 50,
+            y: 90,
+            team: 'away',
+            shirtNo: '2',
+            name: 'Front',
+            area: 'pitch',
+            style: {
+              color: '#ef4444',
+              strokeColor: '#ffffff',
+              strokeWidth: 2,
+              insideContent: 'number',
+              sizeScale: 1,
+            },
+            connectLines: [],
+            badges: [],
+          },
+        ],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: false },
+      });
+
+      // 1. Plane zoom only (tilt: 0, zoom: 1.5, yaw: 90, panX: 0, panY: 0)
+      const ctxPlane = createMockContext();
+      renderTacticalFrameToCanvas(ctxPlane, {
+        slides: [depthSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        pitchTransformOverride: {
+          tilt: 0,
+          zoom: 1.5,
+          yaw: 90,
+          panX: 0,
+          panY: 0,
+          isLocked: false,
+        },
+      });
+
+      const planeArcCalls = vi.mocked(ctxPlane.arc).mock.calls;
+      expect(planeArcCalls.length).toBeGreaterThanOrEqual(2);
+      const radiusBackPlane = planeArcCalls[0][2];
+      const radiusFrontPlane = planeArcCalls[1][2];
+      // When tilt is 0, depthScale should be 1 for both players (no depth scaling)
+      expect(radiusBackPlane).toBe(radiusFrontPlane);
+
+      // 2. Perspective tilt (tilt: 40, zoom: 1.0)
+      const ctxTilt = createMockContext();
+      renderTacticalFrameToCanvas(ctxTilt, {
+        slides: [depthSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        pitchTransformOverride: {
+          tilt: 40,
+          zoom: 1.0,
+          yaw: 90,
+          panX: 0,
+          panY: 0,
+          isLocked: false,
+        },
+      });
+
+      const tiltArcCalls = vi.mocked(ctxTilt.arc).mock.calls;
+      expect(tiltArcCalls.length).toBeGreaterThanOrEqual(2);
+      // Because sorted by projected screen Y ascending (back to front):
+      const radiusBackTilt = tiltArcCalls[0][2];
+      const radiusFrontTilt = tiltArcCalls[1][2];
+      // Front player (y: 90) should be rendered larger than back player (y: 10)
+      expect(radiusFrontTilt).toBeGreaterThan(radiusBackTilt);
+    });
+
+    it('renders 3D Foot Ring (markerType: ring) using a single combined Path2D instance with 1 stroke and 1 fill for parts', () => {
+      const ringSlide: Slide = SlideSchema.parse({
+        id: 'slide-ring-perf',
+        index: 0,
+        transitionDurationMs: 1000,
+        pauseMs: 500,
+        players: [
+          {
+            id: 'p-ring',
+            x: 50,
+            y: 50,
+            team: 'home',
+            shirtNo: '7',
+            name: 'Player',
+            area: 'pitch',
+            style: {
+              markerType: 'ring',
+              insideContent: 'number',
+              color: '#2563eb',
+            },
+            connectLines: [],
+            badges: [],
+          },
+        ],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: false },
+      });
+
+      const ctx = createMockContext();
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [ringSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+      });
+
+      // ctx.stroke(Path2D) and ctx.fill(Path2D) should be called exactly ONCE each for the combined marker path
+      const strokeWithPathCalls = vi
+        .mocked(ctx.stroke)
+        .mock.calls.filter(
+          (args) => args.length > 0 && typeof args[0] === 'object',
+        );
+      const fillWithPathCalls = vi
+        .mocked(ctx.fill)
+        .mock.calls.filter(
+          (args) => args.length > 0 && typeof args[0] === 'object',
+        );
+
+      expect(strokeWithPathCalls.length).toBe(1);
+      expect(fillWithPathCalls.length).toBe(1);
     });
   });
 });

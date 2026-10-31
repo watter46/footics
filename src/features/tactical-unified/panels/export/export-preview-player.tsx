@@ -24,6 +24,7 @@ import {
 } from './export-preview-controls';
 import {
   ASPECT_CONTAINER_CLASSES,
+  hasActivePitchTransform,
   PREVIEW_DIMENSIONS,
   SPLIT_PREVIEW_CONTAINER_CLASSES,
   type UseExportPreviewAnimationParams,
@@ -35,6 +36,7 @@ export {
   ASPECT_CONTAINER_CLASSES,
   ExportPreviewControls,
   type ExportPreviewControlsProps,
+  hasActivePitchTransform,
   PREVIEW_DIMENSIONS,
   SPLIT_PREVIEW_CONTAINER_CLASSES,
   type UseExportPreviewAnimationParams,
@@ -70,6 +72,7 @@ export function ExportPreviewPlayer({
     totalDurationMs,
     previewWidth,
     previewHeight,
+    previewAspectStyle,
     togglePlay,
     handleReset,
     handleSeek,
@@ -108,6 +111,9 @@ export function ExportPreviewPlayer({
 
       {/* Canvas Viewport */}
       <div
+        style={
+          previewAspectStyle ? { aspectRatio: previewAspectStyle } : undefined
+        }
         className={`relative w-full ${
           ASPECT_CONTAINER_CLASSES[aspectRatio] ?? 'aspect-video'
         } rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center`}

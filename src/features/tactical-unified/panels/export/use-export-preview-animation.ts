@@ -12,16 +12,30 @@ import type {
   PitchTransform,
   Slide,
 } from '@/lib/types/tactical-unified';
+import { useAnimationFrameLoop } from './use-animation-frame-loop';
+
+export { useAnimationFrameLoop };
 
 export const PREVIEW_DIMENSIONS: Record<
   AspectRatio,
   { width: number; height: number }
 > = {
-  '16:9': { width: 640, height: 360 },
-  '9:16': { width: 360, height: 640 },
-  '4:5': { width: 360, height: 450 },
-  '1:1': { width: 360, height: 360 },
+  '16:9': { width: 1920, height: 1080 },
+  '9:16': { width: 1080, height: 1920 },
+  '4:5': { width: 1080, height: 1350 },
+  '1:1': { width: 1080, height: 1080 },
 };
+
+export function hasActivePitchTransform(pt?: PitchTransform | null): boolean {
+  if (!pt) return false;
+  return (
+    pt.tilt !== 0 ||
+    (pt.yaw !== undefined && pt.yaw !== 90) ||
+    pt.zoom !== 1 ||
+    pt.panX !== 0 ||
+    pt.panY !== 0
+  );
+}
 
 export const ASPECT_CONTAINER_CLASSES: Record<AspectRatio, string> = {
   '16:9': 'aspect-video',
@@ -79,64 +93,6 @@ function loadMarbleTexture(): Promise<HTMLImageElement> {
   return marbleImagePromise;
 }
 
-export function useAnimationFrameLoop(
-  isPlaying: boolean,
-  totalDurationMs: number,
-  onFrame: (timeMs: number) => void,
-) {
-  const animationFrameRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number | null>(null);
-  const currentTimeRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (!isPlaying) {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-      return;
-    }
-
-    startTimeRef.current = null;
-
-    const loop = (timestamp: number) => {
-      if (!startTimeRef.current) {
-        startTimeRef.current = timestamp - currentTimeRef.current;
-      }
-
-      const elapsed = timestamp - startTimeRef.current;
-      currentTimeRef.current = elapsed % totalDurationMs;
-
-      onFrame(currentTimeRef.current);
-      animationFrameRef.current = requestAnimationFrame(loop);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(loop);
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-    };
-  }, [isPlaying, totalDurationMs, onFrame]);
-
-  useEffect(() => {
-    onFrame(currentTimeRef.current);
-  }, [onFrame]);
-
-  const seek = useCallback(
-    (time: number) => {
-      currentTimeRef.current = time;
-      startTimeRef.current = null;
-      onFrame(time);
-    },
-    [onFrame],
-  );
-
-  return { seek };
-}
-
 export function useExportPreviewAnimation({
   slides,
   aspectRatio,
@@ -157,6 +113,27 @@ export function useExportPreviewAnimation({
     () => cachedMarbleImage,
   );
   const totalDurationMs = calculateUnifiedTotalDuration(slides) || 1000;
+
+  const slidesRef = useRef(slides);
+  slidesRef.current = slides;
+
+  const photoSignature = useMemo(() => {
+    const playerIds: string[] = [];
+    for (const slide of slides) {
+      for (const player of slide.players ?? []) {
+        if (player.style?.insideContent === 'photo') {
+          playerIds.push(`${player.id}:${player.playerId ?? ''}`);
+        }
+      }
+    }
+    const photoEntries = photos
+      ? Object.entries(photos)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([k, v]) => `${k}=${v}`)
+          .join(';')
+      : '';
+    return `${playerIds.join(',')}|${photoEntries}`;
+  }, [slides, photos]);
 
   useEffect(() => {
     if (pitchAppearance?.pitchBackgroundType !== 'marble') return;
@@ -187,7 +164,7 @@ export function useExportPreviewAnimation({
     let isCancelled = false;
     let loadedMap: Record<string, ImageBitmap> = {};
 
-    preloadSlidePlayerPhotos(slides, photos).then((map) => {
+    preloadSlidePlayerPhotos(slidesRef.current, photos).then((map) => {
       if (isCancelled) {
         for (const bm of Object.values(map)) {
           bm?.close?.();
@@ -204,7 +181,7 @@ export function useExportPreviewAnimation({
         bm?.close?.();
       }
     };
-  }, [slides, photos, playerPhotos]);
+  }, [photoSignature, photos, playerPhotos]);
 
   const effectivePlayerPhotos = playerPhotos ?? internalBitmaps;
 
@@ -212,8 +189,13 @@ export function useExportPreviewAnimation({
     PREVIEW_DIMENSIONS[aspectRatio] ?? PREVIEW_DIMENSIONS['16:9'];
 
   const mvpMatrix = useMemo(() => {
-    if (slides.length > 1) return null;
-    if (!pitchTransform) return null;
+    if (
+      slides.length > 1 ||
+      !hasActivePitchTransform(pitchTransform) ||
+      !pitchTransform
+    ) {
+      return null;
+    }
     return new Float32Array(
       buildExportMVPMatrix(
         pitchTransform,
@@ -223,6 +205,29 @@ export function useExportPreviewAnimation({
       ),
     );
   }, [slides.length, pitchTransform, previewWidth, previewHeight, aspectRatio]);
+
+  const isBoundaryActive = Boolean(
+    boundaryBox?.enabled &&
+      boundaryBox.width > 0 &&
+      boundaryBox.height > 0 &&
+      (boundaryBox.width < 100 ||
+        boundaryBox.height < 100 ||
+        boundaryBox.x > 0 ||
+        boundaryBox.y > 0),
+  );
+
+  const previewAspectStyle = useMemo(() => {
+    if (!isBoundaryActive || !boundaryBox) return undefined;
+    const cropW = Math.max(
+      1,
+      Math.round(previewWidth * (boundaryBox.width / 100)),
+    );
+    const cropH = Math.max(
+      1,
+      Math.round(previewHeight * (boundaryBox.height / 100)),
+    );
+    return `${cropW} / ${cropH}`;
+  }, [isBoundaryActive, boundaryBox, previewWidth, previewHeight]);
 
   // ── Canvas Frame Drawing ──
   const drawFrame = useCallback(
@@ -282,6 +287,7 @@ export function useExportPreviewAnimation({
     totalDurationMs,
     previewWidth,
     previewHeight,
+    previewAspectStyle,
     togglePlay,
     handleReset,
     handleSeek: seek,

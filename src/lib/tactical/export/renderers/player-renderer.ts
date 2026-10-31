@@ -17,8 +17,8 @@ import {
 const CACHED_SPOTLIGHT_BEAM_PATH: Path2D | null =
   typeof Path2D !== 'undefined' ? new Path2D(SPOTLIGHT_BEAM_PATH) : null;
 
-const CACHED_MARKER_PATHS: readonly Path2D[] =
-  typeof Path2D !== 'undefined' ? MARKER_PATHS.map((p) => new Path2D(p)) : [];
+const CACHED_COMBINED_MARKER_PATH: Path2D | null =
+  typeof Path2D !== 'undefined' ? new Path2D(MARKER_PATHS.join(' ')) : null;
 
 /**
  * Draws players (rings, circles, photos, numbers, labels, spotlights, cones) onto canvas context.
@@ -44,7 +44,10 @@ export function renderPlayers(
     const py = snap(_pp.y);
     const sizeScale =
       (p as { scale?: number }).scale ?? p.style?.sizeScale ?? 1.0;
-    const depthScale = m
+    const hasPerspectiveTilt = Boolean(
+      m && (Math.abs(m[7]) > 1e-5 || Math.abs(m[3]) > 1e-5),
+    );
+    const depthScale = hasPerspectiveTilt
       ? Math.max(0.75, Math.min(1.25, 0.88 + (p.y / 100) * 0.24))
       : 1;
     const radius = Math.max(8, Math.round(w * 0.022 * sizeScale * depthScale));
@@ -167,7 +170,7 @@ export function renderPlayers(
       const ringColor =
         p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
 
-      if (CACHED_MARKER_PATHS.length > 0) {
+      if (CACHED_COMBINED_MARKER_PATH) {
         ctx.save();
         ctx.translate(rtx, rty);
         ctx.scale(ringScale, ringScale);
@@ -178,18 +181,14 @@ export function renderPlayers(
         ctx.shadowColor = ringColor;
         ctx.shadowBlur = Math.round(8 * (w / 800));
         ctx.globalAlpha = p.opacity * 0.6;
-        for (const pathObj of CACHED_MARKER_PATHS) {
-          ctx.stroke(pathObj);
-        }
+        ctx.stroke(CACHED_COMBINED_MARKER_PATH);
 
         // 各パーツ本体 (シャープな発光コア)
         ctx.fillStyle = ringColor;
         ctx.shadowColor = ringColor;
         ctx.shadowBlur = Math.round(4 * (w / 800));
         ctx.globalAlpha = p.opacity;
-        for (const pathObj of CACHED_MARKER_PATHS) {
-          ctx.fill(pathObj);
-        }
+        ctx.fill(CACHED_COMBINED_MARKER_PATH);
         ctx.restore();
       }
 

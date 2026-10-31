@@ -188,7 +188,7 @@ export function renderTacticalFrameToCanvas(
   };
 
   // Pixel grid snapping helpers to eliminate subpixel antialias fuzziness
-  const snap = (v: number) => Math.round(v);
+  const snap = (v: number) => v;
 
   // キャンバス境界外のはみ出しを防ぐ安全クリッピングおよび一括ビューポート変換を開始
   ctx.save();

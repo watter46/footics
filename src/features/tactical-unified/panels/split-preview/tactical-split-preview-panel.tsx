@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import {
   type PointerEvent,
   useCallback,
+  useMemo,
   useRef,
   useState,
   type WheelEvent,
@@ -56,12 +57,16 @@ export function TacticalSplitPreviewPanel() {
   // Real-time animation hook:
   // When stopped, preview activeSlide single frame with direct activeSlide.pitchTransform.
   // When playing, interpolate all slides.
-  const previewSlides = activeSlide ? [activeSlide] : slides;
+  const previewSlides = useMemo(
+    () => (activeSlide ? [activeSlide] : slides),
+    [activeSlide, slides],
+  );
 
   const {
     totalDurationMs,
     previewWidth,
     previewHeight,
+    previewAspectStyle,
     togglePlay,
     handleReset,
     handleSeek,
@@ -205,6 +210,9 @@ export function TacticalSplitPreviewPanel() {
       {/* Center 3D Preview Canvas */}
       <div className="flex-1 min-h-0 p-3 flex items-center justify-center bg-[#070709] overflow-hidden">
         <div
+          style={
+            previewAspectStyle ? { aspectRatio: previewAspectStyle } : undefined
+          }
           className={`relative ${
             SPLIT_PREVIEW_CONTAINER_CLASSES[aspectRatio] ??
             'aspect-video w-full max-h-full'

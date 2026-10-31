@@ -88,7 +88,7 @@ export function renderPitchMarkings3D(
     radius: number,
     startAngle = 0,
     endAngle = Math.PI * 2,
-    segments = 36,
+    segments = 64,
   ) => {
     ctx.beginPath();
     const angleSpan = endAngle - startAngle;
@@ -110,7 +110,7 @@ export function renderPitchMarkings3D(
     ctx.save();
     ctx.fillStyle = '#e2b48d';
     ctx.beginPath();
-    const segments = 16;
+    const segments = 24;
     for (let i = 0; i <= segments; i++) {
       const angle = (Math.PI * 2 * i) / segments;
       const px = cx + Math.cos(angle) * radius;
@@ -132,7 +132,7 @@ export function renderPitchMarkings3D(
 
   if (isHorizontal) {
     draw3DLine(centerX, top, centerX, bottom);
-    draw3DArc(centerX, centerY, r, 0, Math.PI * 2, 48);
+    draw3DArc(centerX, centerY, r, 0, Math.PI * 2, 72);
     draw3DSpot(centerX, centerY, Math.max(2, 0.4 * meterScale));
     draw3DQuad(left, centerY - paWidth / 2, paDepth, paWidth);
     draw3DQuad(right - paDepth, centerY - paWidth / 2, paDepth, paWidth);
@@ -140,22 +140,22 @@ export function renderPitchMarkings3D(
     draw3DQuad(right - gaDepth, centerY - gaWidth / 2, gaDepth, gaWidth);
     draw3DSpot(left + penaltySpotDist, centerY, Math.max(2, 0.3 * meterScale));
     draw3DSpot(right - penaltySpotDist, centerY, Math.max(2, 0.3 * meterScale));
-    draw3DArc(left + penaltySpotDist, centerY, r, -arcAngle, arcAngle, 24);
+    draw3DArc(left + penaltySpotDist, centerY, r, -arcAngle, arcAngle, 36);
     draw3DArc(
       right - penaltySpotDist,
       centerY,
       r,
       Math.PI - arcAngle,
       Math.PI + arcAngle,
-      24,
+      36,
     );
-    draw3DArc(left, top, cornerArcRadius, 0, Math.PI / 2, 12);
-    draw3DArc(right, top, cornerArcRadius, Math.PI / 2, Math.PI, 12);
-    draw3DArc(left, bottom, cornerArcRadius, -Math.PI / 2, 0, 12);
-    draw3DArc(right, bottom, cornerArcRadius, Math.PI, Math.PI * 1.5, 12);
+    draw3DArc(left, top, cornerArcRadius, 0, Math.PI / 2, 16);
+    draw3DArc(right, top, cornerArcRadius, Math.PI / 2, Math.PI, 16);
+    draw3DArc(left, bottom, cornerArcRadius, -Math.PI / 2, 0, 16);
+    draw3DArc(right, bottom, cornerArcRadius, Math.PI, Math.PI * 1.5, 16);
   } else {
     draw3DLine(left, centerY, right, centerY);
-    draw3DArc(centerX, centerY, r, 0, Math.PI * 2, 48);
+    draw3DArc(centerX, centerY, r, 0, Math.PI * 2, 72);
     draw3DSpot(centerX, centerY, Math.max(2, 0.4 * meterScale));
     draw3DQuad(centerX - paWidth / 2, top, paWidth, paDepth);
     draw3DQuad(centerX - paWidth / 2, bottom - paDepth, paWidth, paDepth);
@@ -173,7 +173,7 @@ export function renderPitchMarkings3D(
       r,
       Math.PI / 2 - arcAngle,
       Math.PI / 2 + arcAngle,
-      24,
+      36,
     );
     draw3DArc(
       centerX,
@@ -181,11 +181,11 @@ export function renderPitchMarkings3D(
       r,
       -Math.PI / 2 - arcAngle,
       -Math.PI / 2 + arcAngle,
-      24,
+      36,
     );
-    draw3DArc(left, top, cornerArcRadius, 0, Math.PI / 2, 12);
-    draw3DArc(right, top, cornerArcRadius, Math.PI / 2, Math.PI, 12);
-    draw3DArc(left, bottom, cornerArcRadius, -Math.PI / 2, 0, 12);
-    draw3DArc(right, bottom, cornerArcRadius, Math.PI, Math.PI * 1.5, 12);
+    draw3DArc(left, top, cornerArcRadius, 0, Math.PI / 2, 16);
+    draw3DArc(right, top, cornerArcRadius, Math.PI / 2, Math.PI, 16);
+    draw3DArc(left, bottom, cornerArcRadius, -Math.PI / 2, 0, 16);
+    draw3DArc(right, bottom, cornerArcRadius, Math.PI, Math.PI * 1.5, 16);
   }
 }
