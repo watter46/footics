@@ -262,7 +262,7 @@ describe('resolveMatchInitialState', () => {
     expect(pitchPlayers).toHaveLength(22);
   });
 
-  it('resolves saved project if saved project exists', async () => {
+  it('ignores saved project in db and always generates fresh match initial state for given minute', async () => {
     vi.spyOn(db.matches, 'get').mockResolvedValueOnce(mockMatch);
     vi.spyOn(db.keyval, 'get').mockResolvedValueOnce({
       key: 'footics_tactical_active_project_999',
@@ -270,28 +270,25 @@ describe('resolveMatchInitialState', () => {
         id: 'saved-project-1',
         title: 'Saved Match Project',
         matchId: '999',
-        phases: [{ id: 'phase-1', name: 'Phase 1', slideIds: ['slide-1'] }],
-        slides: [
-          {
-            id: 'slide-1',
-            name: 'Slide 1',
-            players: [],
-            arrows: [],
-            drawings: [],
-            bench: { home: [], away: [] },
-          },
-        ],
+        phases: [{ id: 'phase-1', name: 'Phase 1', slides: [] }],
+        slides: [],
         activePhaseId: 'phase-1',
         activeSlideId: 'slide-1',
       },
     } as any);
 
-    const result = await resolveMatchInitialState('999', 30);
+    const result = await resolveMatchInitialState('999', 45);
     expect(result).toBeDefined();
     expect(result?.pitchFitPending).toBe(false);
-    expect(result?.project?.id).toBe('saved-project-1');
-    expect(result?.project?.title).toBe('Saved Match Project');
-    expect(result?.activePhaseId).toBe('phase-1');
-    expect(result?.activeSlideId).toBe('slide-1');
+    expect(result?.project?.id).not.toBe('saved-project-1');
+    expect(result?.project?.matchId).toBe('999');
+    expect(result?.project?.title).toContain("Home FC vs Away FC (45')");
+
+    const activeSlide = result?.project?.slides.find(
+      (s) => s.id === result.activeSlideId,
+    );
+    const pitchPlayers =
+      activeSlide?.players.filter((p) => p.area === 'pitch') ?? [];
+    expect(pitchPlayers).toHaveLength(22);
   });
 });

@@ -60,6 +60,8 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
             // 前試合のスライドを引き継がない
             if (matchId && storeApi.getState().project.matchId !== matchId) {
               resetProject();
+            } else if (!matchId && storeApi.getState().project.matchId) {
+              resetProject();
             }
             setSaveStatus('idle');
           }

@@ -29,8 +29,9 @@ export async function saveActiveProjectToDb(
   matchId?: string | null,
 ): Promise<void> {
   try {
+    const effectiveMatchId = matchId ?? project.matchId;
     await db.keyval.put({
-      key: getTacticalProjectStorageKey(matchId),
+      key: getTacticalProjectStorageKey(effectiveMatchId),
       value: project,
       updatedAt: Date.now(),
     });
@@ -53,7 +54,14 @@ export async function loadActiveProjectFromDb(
   try {
     const entry = await db.keyval.get(getTacticalProjectStorageKey(matchId));
     if (entry?.value && typeof entry.value === 'object') {
-      const val = entry.value as { phases?: unknown[]; slides?: unknown[] };
+      const val = entry.value as {
+        phases?: unknown[];
+        slides?: unknown[];
+        matchId?: string;
+      };
+      if (!matchId && val.matchId) {
+        return null;
+      }
       const hasPhases = Array.isArray(val.phases) && val.phases.length > 0;
       const hasSlides = Array.isArray(val.slides) && val.slides.length > 0;
       if (hasPhases || hasSlides) {

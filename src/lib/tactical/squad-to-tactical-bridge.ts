@@ -23,6 +23,7 @@ import {
   computeBenchGridPositions,
   createDefaultPlayer,
   isVerticalAspectRatio,
+  transformCoord,
 } from '@/lib/types/tactical-unified';
 import type { Player } from '@/types';
 
@@ -95,9 +96,15 @@ export function convertSquadToTacticalPlayers(
   // 2. スタメンの配置 (2D 適性マッチング)
   const matchedStarters = matchPlayersToFormationPositions(starters, positions);
   matchedStarters.forEach(({ player: sp, templatePos }, idx) => {
-    const coord = isVertical
-      ? getFormationActualPosVertical(templatePos, team, mode)
-      : getFormationActualPos(templatePos, team, mode);
+    const gkBasePos = { x: team === 'home' ? 7 : 93, y: 50 };
+    const coord =
+      mode === 'full' && templatePos.position === 'GK'
+        ? isVertical
+          ? transformCoord(gkBasePos, '16:9', aspectRatio)
+          : gkBasePos
+        : isVertical
+          ? getFormationActualPosVertical(templatePos, team, mode)
+          : getFormationActualPos(templatePos, team, mode);
 
     const tacticalPlayer = createDefaultPlayer(
       team,

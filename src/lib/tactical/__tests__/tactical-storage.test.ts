@@ -55,4 +55,36 @@ describe('tactical-storage', () => {
     const loaded = await loadActiveProjectFromDb();
     expect(loaded).toBeNull();
   });
+
+  it('project.matchId を持つプロジェクトを第2引数なしで saveActiveProjectToDb に渡した際、試合専用キーに保存され単独キーを汚染しない', async () => {
+    const project = createDefaultProject('test-project-match');
+    project.matchId = '10';
+    project.title = 'Match 10 Project';
+
+    await saveActiveProjectToDb(project);
+
+    // 単独キー側は保存されていない
+    const singleLoaded = await db.keyval.get(TACTICAL_PROJECT_STORAGE_KEY);
+    expect(singleLoaded).toBeUndefined();
+
+    // 試合専用キー側からロードできる
+    const matchLoaded = await loadActiveProjectFromDb('10');
+    expect(matchLoaded?.id).toBe('test-project-match');
+    expect(matchLoaded?.matchId).toBe('10');
+  });
+
+  it('単独キーに matchId を持つデータが入っている場合、loadActiveProjectFromDb() は null を返す（汚染排除）', async () => {
+    const project = createDefaultProject('test-project-polluted');
+    project.matchId = '10';
+
+    // 強制的に単独キーに書き込む
+    await db.keyval.put({
+      key: TACTICAL_PROJECT_STORAGE_KEY,
+      value: project,
+      updatedAt: Date.now(),
+    });
+
+    const loaded = await loadActiveProjectFromDb();
+    expect(loaded).toBeNull();
+  });
 });

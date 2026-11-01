@@ -428,4 +428,66 @@ describe('squad-to-tactical-bridge', () => {
     expect(enzo?.position).not.toBe('Sub');
     expect(['CM', 'DM', 'MC']).toContain(enzo?.position);
   });
+
+  describe('GK fixed position in full mode', () => {
+    it('places GK at fixed coordinates in full mode for 16:9 (horizontal pitch)', () => {
+      const homePlayers = convertSquadToTacticalPlayers(sampleSquad, {
+        team: 'home',
+        formation: '4-2-3-1',
+        mode: 'full',
+        primaryColor: '#034694',
+        aspectRatio: '16:9',
+      });
+      const homeGk = homePlayers.find(
+        (p) => p.position === 'GK' && p.area === 'pitch',
+      );
+      expect(homeGk).toBeDefined();
+      expect(homeGk?.x).toBe(7);
+      expect(homeGk?.y).toBe(50);
+
+      const awayPlayers = convertSquadToTacticalPlayers(sampleSquad, {
+        team: 'away',
+        formation: '4-2-3-1',
+        mode: 'full',
+        primaryColor: '#d11243',
+        aspectRatio: '16:9',
+      });
+      const awayGk = awayPlayers.find(
+        (p) => p.position === 'GK' && p.area === 'pitch',
+      );
+      expect(awayGk).toBeDefined();
+      expect(awayGk?.x).toBe(93);
+      expect(awayGk?.y).toBe(50);
+    });
+
+    it('places GK at fixed coordinates in full mode for 9:16 (vertical pitch)', () => {
+      const homePlayers = convertSquadToTacticalPlayers(sampleSquad, {
+        team: 'home',
+        formation: '4-2-3-1',
+        mode: 'full',
+        primaryColor: '#034694',
+        aspectRatio: '9:16',
+      });
+      const homeGk = homePlayers.find(
+        (p) => p.position === 'GK' && p.area === 'pitch',
+      );
+      expect(homeGk).toBeDefined();
+      expect(homeGk?.x).toBe(50);
+      expect(homeGk?.y).toBe(93);
+
+      const awayPlayers = convertSquadToTacticalPlayers(sampleSquad, {
+        team: 'away',
+        formation: '4-2-3-1',
+        mode: 'full',
+        primaryColor: '#d11243',
+        aspectRatio: '9:16',
+      });
+      const awayGk = awayPlayers.find(
+        (p) => p.position === 'GK' && p.area === 'pitch',
+      );
+      expect(awayGk).toBeDefined();
+      expect(awayGk?.x).toBe(50);
+      expect(awayGk?.y).toBe(7);
+    });
+  });
 });

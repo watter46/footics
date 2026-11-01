@@ -65,4 +65,21 @@ describe('useTacticalAutoSave (試合別)', () => {
     expect(await loadActiveProjectFromDb('m1')).toBeNull();
     expect(await loadActiveProjectFromDb()).toBeNull();
   });
+
+  it('matchId なし（単独用）マウント時にストア内に matchId が残っていれば resetProject で初期化される', async () => {
+    // ストアに試合用プロジェクトが残存している状態をシミュレート
+    useTacticalUnifiedStore
+      .getState()
+      .loadProject(projectFor('m1', 'Match Remnant'));
+    expect(useTacticalUnifiedStore.getState().project.matchId).toBe('m1');
+
+    // matchId なしで useTacticalAutoSave をマウント
+    renderHook(() => useTacticalAutoSave({ matchId: null }));
+
+    await waitFor(() => {
+      const p = useTacticalUnifiedStore.getState().project;
+      expect(p.matchId).toBeUndefined();
+      expect(p.title).not.toBe('Match Remnant');
+    });
+  });
 });

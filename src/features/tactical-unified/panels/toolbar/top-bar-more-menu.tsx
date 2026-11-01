@@ -1,6 +1,7 @@
 'use client';
 
 import { FilePlus2, MoreHorizontal } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import type React from 'react';
 import { useRef, useState } from 'react';
 import { IconButton } from '@/components/ui/icon-button';
@@ -13,12 +14,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/menu';
+import { injectMatchToTactical } from '@/features/tactical-unified/hooks/use-tactical-match-init';
 import {
   useTacticalUnifiedStoreApi,
   useTacticalUnifiedStoreContext,
 } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { getMatchForTacticalProject } from '@/lib/db/tactical-match-helper';
-import { injectMatchToTactical } from '@/lib/tactical/match-to-tactical-bridge';
 import { clearActiveProjectFromDb } from '@/lib/tactical/tactical-storage';
 import {
   MoreMenuPitchSection,
@@ -32,6 +33,8 @@ export {
 
 export function TopBarMoreMenu() {
   const storeApi = useTacticalUnifiedStoreApi();
+  const searchParams = useSearchParams();
+  const urlMatchId = searchParams?.get('matchId') ?? null;
   const [isOpen, setIsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -67,15 +70,12 @@ export function TopBarMoreMenu() {
     );
     if (!confirmed) return;
 
-    const currentProject = storeApi.getState().project;
-    if (currentProject.matchId) {
-      const matchId = currentProject.matchId;
-      const match = await getMatchForTacticalProject(matchId);
-
+    if (urlMatchId) {
+      const match = await getMatchForTacticalProject(urlMatchId);
       if (match) {
         resetProject();
-        injectMatchToTactical({ match, minute: 0 });
-        await clearActiveProjectFromDb(String(matchId));
+        injectMatchToTactical({ match, minute: 0, storeApi });
+        await clearActiveProjectFromDb(urlMatchId);
         storeApi.getState().setSaveStatus('saved');
         setIsOpen(false);
         return;
@@ -83,7 +83,7 @@ export function TopBarMoreMenu() {
     }
 
     resetProject();
-    await clearActiveProjectFromDb();
+    await clearActiveProjectFromDb(null);
     storeApi.getState().setSaveStatus('saved');
     setIsOpen(false);
   };

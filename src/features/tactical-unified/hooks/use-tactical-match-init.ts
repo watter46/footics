@@ -7,12 +7,16 @@ import type {
 } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { useTacticalUnifiedStoreApi } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { db } from '@/lib/db';
-import { buildMatchTacticalPlayers } from '@/lib/tactical/match-to-tactical-bridge';
-import { loadActiveProjectFromDb } from '@/lib/tactical/tactical-storage';
+import {
+  buildMatchTacticalPlayers,
+  injectMatchToTactical,
+} from '@/lib/tactical/match-to-tactical-bridge';
 import {
   createDefaultProject,
   ensureTacticalProject,
 } from '@/lib/types/tactical-unified';
+
+export { injectMatchToTactical } from '@/lib/tactical/match-to-tactical-bridge';
 
 export interface UseTacticalMatchInitOptions {
   initialMatchId?: string;
@@ -34,18 +38,6 @@ export async function resolveMatchInitialState(
 ): Promise<Partial<TacticalUnifiedState> | undefined> {
   const match = await db.matches.get(matchId);
   if (!match) return undefined;
-
-  // 保存済みの同一試合プロジェクトがあれば既存スライドを優先し上書きしない
-  const saved = await loadActiveProjectFromDb(String(match.id));
-  if (saved) {
-    const normalized = ensureTacticalProject(saved);
-    return {
-      project: normalized,
-      activePhaseId: normalized.activePhaseId,
-      activeSlideId: normalized.activeSlideId,
-      pitchFitPending: false,
-    };
-  }
 
   const baseProject = createDefaultProject(crypto.randomUUID());
   const { allPlayers, homeFormation, awayFormation } =
