@@ -25,7 +25,7 @@ export interface PresetPlayer {
 const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
   // GK
   {
-    playerId: 345001,
+    playerId: 362151,
     name: 'Robert Sánchez',
     shirtNo: 1,
     position: 'GK',
@@ -33,7 +33,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345002,
+    playerId: 404749,
     name: 'Filip Jörgensen',
     shirtNo: 12,
     position: 'GK',
@@ -43,7 +43,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
 
   // DF
   {
-    playerId: 345003,
+    playerId: 361330,
     name: 'Reece James',
     shirtNo: 24,
     position: 'DR',
@@ -51,7 +51,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345004,
+    playerId: 403850,
     name: 'Malo Gusto',
     shirtNo: 27,
     position: 'DR',
@@ -59,7 +59,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345005,
+    playerId: 373946,
     name: 'Wesley Fofana',
     shirtNo: 29,
     position: 'DC',
@@ -67,7 +67,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345006,
+    playerId: 421351,
     name: 'Levi Colwill',
     shirtNo: 6,
     position: 'DC',
@@ -75,7 +75,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345007,
+    playerId: 363496,
     name: 'Marc Cucurella',
     shirtNo: 3,
     position: 'DL',
@@ -83,7 +83,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345008,
+    playerId: 136464,
     name: 'Tosin Adarabioyo',
     shirtNo: 4,
     position: 'DC',
@@ -91,7 +91,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345009,
+    playerId: 365406,
     name: 'Benoît Badiashile',
     shirtNo: 5,
     position: 'DC',
@@ -99,7 +99,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345010,
+    playerId: 300426,
     name: 'Axel Disasi',
     shirtNo: 2,
     position: 'DC',
@@ -107,7 +107,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345011,
+    playerId: 434077,
     name: 'Renato Veiga',
     shirtNo: 40,
     position: 'DL',
@@ -117,7 +117,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
 
   // MF
   {
-    playerId: 345012,
+    playerId: 410175,
     name: 'Moisés Caicedo',
     shirtNo: 25,
     position: 'DMC',
@@ -125,7 +125,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345013,
+    playerId: 369430,
     name: 'Enzo Fernández',
     shirtNo: 8,
     position: 'MC',
@@ -133,7 +133,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345014,
+    playerId: 395692,
     name: 'Cole Palmer',
     shirtNo: 20,
     position: 'AMC',
@@ -141,7 +141,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345015,
+    playerId: 425319,
     name: 'Roméo Lavia',
     shirtNo: 45,
     position: 'DMC',
@@ -149,7 +149,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345016,
+    playerId: 391256,
     name: 'Kiernan Dewsbury-Hall',
     shirtNo: 22,
     position: 'MC',
@@ -157,7 +157,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345017,
+    playerId: 410639,
     name: 'Carney Chukwuemeka',
     shirtNo: 17,
     position: 'AMC',
@@ -167,7 +167,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
 
   // FW / WING
   {
-    playerId: 345018,
+    playerId: 389935,
     name: 'Noni Madueke',
     shirtNo: 11,
     position: 'AMR',
@@ -175,7 +175,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345019,
+    playerId: 337916,
     name: 'Pedro Neto',
     shirtNo: 7,
     position: 'AML',
@@ -183,7 +183,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345020,
+    playerId: 426050,
     name: 'Nicolas Jackson',
     shirtNo: 15,
     position: 'FW',
@@ -191,7 +191,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345021,
+    playerId: 300945,
     name: 'Christopher Nkunku',
     shirtNo: 18,
     position: 'FW',
@@ -199,7 +199,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345022,
+    playerId: 362431,
     name: 'João Félix',
     shirtNo: 14,
     position: 'AMC',
@@ -207,7 +207,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345023,
+    playerId: 346300,
     name: 'Jadon Sancho',
     shirtNo: 19,
     position: 'AML',
@@ -215,7 +215,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345024,
+    playerId: 409376,
     name: 'Mykhailo Mudryk',
     shirtNo: 10,
     position: 'AML',
@@ -223,7 +223,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
     season: '24-25',
   },
   {
-    playerId: 345025,
+    playerId: 483208,
     name: 'Marc Guiu',
     shirtNo: 38,
     position: 'FW',
@@ -238,7 +238,7 @@ const CHELSEA_SQUAD_24_25: PresetPlayer[] = [
 const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
   // GK
   {
-    playerId: 345001,
+    playerId: 362151,
     name: 'Robert Sánchez',
     shirtNo: 1,
     position: 'GK',
@@ -246,7 +246,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345002,
+    playerId: 404749,
     name: 'Filip Jörgensen',
     shirtNo: 12,
     position: 'GK',
@@ -256,7 +256,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
 
   // DF
   {
-    playerId: 345003,
+    playerId: 361330,
     name: 'Reece James',
     shirtNo: 24,
     position: 'DR',
@@ -264,7 +264,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345004,
+    playerId: 403850,
     name: 'Malo Gusto',
     shirtNo: 27,
     position: 'DR',
@@ -272,7 +272,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345005,
+    playerId: 373946,
     name: 'Wesley Fofana',
     shirtNo: 29,
     position: 'DC',
@@ -280,7 +280,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345006,
+    playerId: 421351,
     name: 'Levi Colwill',
     shirtNo: 6,
     position: 'DC',
@@ -288,7 +288,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345007,
+    playerId: 363496,
     name: 'Marc Cucurella',
     shirtNo: 3,
     position: 'DL',
@@ -296,7 +296,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345008,
+    playerId: 136464,
     name: 'Tosin Adarabioyo',
     shirtNo: 4,
     position: 'DC',
@@ -304,7 +304,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345009,
+    playerId: 365406,
     name: 'Benoît Badiashile',
     shirtNo: 5,
     position: 'DC',
@@ -314,7 +314,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
 
   // MF
   {
-    playerId: 345012,
+    playerId: 410175,
     name: 'Moisés Caicedo',
     shirtNo: 25,
     position: 'DMC',
@@ -322,7 +322,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345013,
+    playerId: 369430,
     name: 'Enzo Fernández',
     shirtNo: 8,
     position: 'MC',
@@ -330,7 +330,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345014,
+    playerId: 395692,
     name: 'Cole Palmer',
     shirtNo: 20,
     position: 'AMC',
@@ -338,7 +338,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345015,
+    playerId: 425319,
     name: 'Roméo Lavia',
     shirtNo: 45,
     position: 'DMC',
@@ -346,7 +346,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345027,
+    playerId: 477772,
     name: 'Kendry Páez',
     shirtNo: 32,
     position: 'AMC',
@@ -356,7 +356,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
 
   // FW / WING
   {
-    playerId: 345026,
+    playerId: 510728,
     name: 'Estêvão Willian',
     shirtNo: 41,
     position: 'AMR',
@@ -364,7 +364,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345019,
+    playerId: 337916,
     name: 'Pedro Neto',
     shirtNo: 7,
     position: 'AML',
@@ -372,7 +372,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345020,
+    playerId: 426050,
     name: 'Nicolas Jackson',
     shirtNo: 15,
     position: 'FW',
@@ -380,7 +380,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345021,
+    playerId: 300945,
     name: 'Christopher Nkunku',
     shirtNo: 18,
     position: 'FW',
@@ -388,7 +388,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345018,
+    playerId: 389935,
     name: 'Noni Madueke',
     shirtNo: 11,
     position: 'AMR',
@@ -396,7 +396,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345022,
+    playerId: 362431,
     name: 'João Félix',
     shirtNo: 14,
     position: 'AMC',
@@ -404,7 +404,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
     season: '25-26',
   },
   {
-    playerId: 345025,
+    playerId: 483208,
     name: 'Marc Guiu',
     shirtNo: 38,
     position: 'FW',
@@ -419,7 +419,7 @@ const CHELSEA_SQUAD_25_26: PresetPlayer[] = [
 const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
   // GK
   {
-    playerId: 345001,
+    playerId: 362151,
     name: 'Robert Sánchez',
     shirtNo: 1,
     position: 'GK',
@@ -427,7 +427,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345002,
+    playerId: 404749,
     name: 'Filip Jörgensen',
     shirtNo: 12,
     position: 'GK',
@@ -437,7 +437,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
 
   // DF
   {
-    playerId: 345003,
+    playerId: 361330,
     name: 'Reece James',
     shirtNo: 24,
     position: 'DR',
@@ -445,7 +445,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345004,
+    playerId: 403850,
     name: 'Malo Gusto',
     shirtNo: 27,
     position: 'DR',
@@ -453,7 +453,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345005,
+    playerId: 373946,
     name: 'Wesley Fofana',
     shirtNo: 29,
     position: 'DC',
@@ -461,7 +461,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345006,
+    playerId: 421351,
     name: 'Levi Colwill',
     shirtNo: 6,
     position: 'DC',
@@ -469,7 +469,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345007,
+    playerId: 363496,
     name: 'Marc Cucurella',
     shirtNo: 3,
     position: 'DL',
@@ -477,7 +477,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345008,
+    playerId: 136464,
     name: 'Tosin Adarabioyo',
     shirtNo: 4,
     position: 'DC',
@@ -487,7 +487,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
 
   // MF
   {
-    playerId: 345012,
+    playerId: 410175,
     name: 'Moisés Caicedo',
     shirtNo: 25,
     position: 'DMC',
@@ -495,7 +495,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345013,
+    playerId: 369430,
     name: 'Enzo Fernández',
     shirtNo: 8,
     position: 'MC',
@@ -503,7 +503,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345014,
+    playerId: 395692,
     name: 'Cole Palmer',
     shirtNo: 20,
     position: 'AMC',
@@ -511,7 +511,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345015,
+    playerId: 425319,
     name: 'Roméo Lavia',
     shirtNo: 45,
     position: 'DMC',
@@ -519,7 +519,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345027,
+    playerId: 477772,
     name: 'Kendry Páez',
     shirtNo: 32,
     position: 'AMC',
@@ -529,7 +529,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
 
   // FW / WING
   {
-    playerId: 345026,
+    playerId: 510728,
     name: 'Estêvão Willian',
     shirtNo: 11,
     position: 'AMR',
@@ -537,7 +537,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345019,
+    playerId: 337916,
     name: 'Pedro Neto',
     shirtNo: 7,
     position: 'AML',
@@ -545,7 +545,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345020,
+    playerId: 426050,
     name: 'Nicolas Jackson',
     shirtNo: 9,
     position: 'FW',
@@ -553,7 +553,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345021,
+    playerId: 300945,
     name: 'Christopher Nkunku',
     shirtNo: 18,
     position: 'FW',
@@ -561,7 +561,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345022,
+    playerId: 362431,
     name: 'João Félix',
     shirtNo: 14,
     position: 'AMC',
@@ -569,7 +569,7 @@ const CHELSEA_SQUAD_26_27: PresetPlayer[] = [
     season: '26-27',
   },
   {
-    playerId: 345025,
+    playerId: 483208,
     name: 'Marc Guiu',
     shirtNo: 19,
     position: 'FW',
