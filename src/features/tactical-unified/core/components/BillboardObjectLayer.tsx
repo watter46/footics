@@ -178,8 +178,9 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   );
 
   const sortedItems = useMemo(
-    () => sortBillboardItemsByDepth(billboardItems, pitchRect, camera),
-    [billboardItems, pitchRect, camera],
+    () =>
+      sortBillboardItemsByDepth(billboardItems, pitchRect, camera, selectedIds),
+    [billboardItems, pitchRect, camera, selectedIds],
   );
 
   return (

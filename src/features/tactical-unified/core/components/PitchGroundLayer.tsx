@@ -82,6 +82,26 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
   const isInteractive = activeTool === 'select';
   const connectLineNodesRef = useRef<Map<string, Konva.Line>>(new Map());
 
+  const sortedZones = useMemo(() => {
+    if (selectedIds.length === 0) return zones;
+    return [...zones].sort((a, b) => {
+      const aSelected = selectedIds.includes(a.id);
+      const bSelected = selectedIds.includes(b.id);
+      if (aSelected === bSelected) return 0;
+      return aSelected ? 1 : -1;
+    });
+  }, [zones, selectedIds]);
+
+  const sortedArrows = useMemo(() => {
+    if (selectedIds.length === 0) return arrows;
+    return [...arrows].sort((a, b) => {
+      const aSelected = selectedIds.includes(a.id);
+      const bSelected = selectedIds.includes(b.id);
+      if (aSelected === bSelected) return 0;
+      return aSelected ? 1 : -1;
+    });
+  }, [arrows, selectedIds]);
+
   useEffect(() => {
     if (nodesRegistryRef?.current) {
       nodesRegistryRef.current.connectLineNodeMap = connectLineNodesRef.current;
@@ -124,7 +144,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
         />
 
         {/* ゾーンオブジェクト群 */}
-        {zones.map((zone) => (
+        {sortedZones.map((zone) => (
           <ZoneObject
             key={zone.id}
             zone={zone}
@@ -140,7 +160,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
         ))}
 
         {/* 矢印オブジェクト群 */}
-        {arrows.map((arrow) => (
+        {sortedArrows.map((arrow) => (
           <ArrowObject
             key={arrow.id}
             arrow={arrow}
