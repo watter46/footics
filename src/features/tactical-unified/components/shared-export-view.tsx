@@ -11,12 +11,18 @@ import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { ExportPreviewPlayer } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
   detectIOSDevice,
+  IOS_COMPARISON_PRESET_KEYS,
   IOS_ENCODER_PRESETS,
+  type IosEncoderPresetKey,
 } from '@/features/tactical-unified/panels/export/ios-export-presets';
 import type { TacticalExportSharePayload } from '@/lib/tactical/export/share-payload';
 import { exportMultiSlideMp4Video } from '@/lib/tactical/export/tactical-video-exporter';
 import { PITCH_BOUNDARY_CONFIGS } from '@/lib/tactical/pitch-geometry';
 import type { AspectRatio, Slide } from '@/lib/types/tactical-unified';
+
+const BTN_ACTIVE = 'border-emerald-500 bg-emerald-600/15 text-white';
+const BTN_INACTIVE =
+  'border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.05]';
 
 export function SharedExportView({ shareId }: { shareId: string }) {
   const [loading, setLoading] = useState(true);
@@ -31,9 +37,7 @@ export function SharedExportView({ shareId }: { shareId: string }) {
       ? { isIOS: false, isIPhone12: false }
       : detectIOSDevice(),
   );
-  const [key, setKey] = useState<'iphone12' | 'iosGeneral'>(
-    ios.isIPhone12 ? 'iphone12' : 'iosGeneral',
-  );
+  const [key, setKey] = useState<IosEncoderPresetKey>('24mbps');
   const preset = IOS_ENCODER_PRESETS[key];
 
   useEffect(() => {
@@ -84,10 +88,18 @@ export function SharedExportView({ shareId }: { shareId: string }) {
 
       const resBlob = await exportMultiSlideMp4Video({
         slides,
-        ...preset,
+        fps: preset.fps,
+        scale: 1,
+        quality: 'high',
         bitrate: preset.bitrateMbps * 1_000_000,
+        h264Profile: 'high',
+        keyFrameIntervalSec: preset.keyFrameIntervalSec,
+        latencyMode: preset.latencyMode,
+        maxQueueSize: preset.maxQueueSize,
+        transparent: false,
         boundaryBox: data?.boundaryBox ?? null,
         pitchTransform: data?.pitchTransform ?? null,
+        pitchAppearance: data?.pitchAppearance,
         mvpMatrix: mvp,
         stageWidth,
         stageHeight,
@@ -145,6 +157,13 @@ export function SharedExportView({ shareId }: { shareId: string }) {
     );
   }
 
+  const infoList = [
+    ['Title:', data.title || 'Untitled', 'text-white truncate'],
+    ['Scenes:', `${data.scenes.length}`, 'text-accent-orange font-mono'],
+    ['Res:', `${stageWidth}×${stageHeight}`, 'font-mono text-white'],
+    ['Bitrate:', `${preset.bitrateMbps} Mbps`, 'font-mono text-emerald-400'],
+  ] as const;
+
   return (
     <div className="min-h-screen bg-surface-l0 text-white flex flex-col select-none">
       <header className="h-14 border-b border-white/[0.08] bg-surface-l1/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6">
@@ -173,54 +192,35 @@ export function SharedExportView({ shareId }: { shareId: string }) {
             boundaryBox={data.boundaryBox}
             pitchTransform={data.pitchTransform}
             photos={data.photos}
+            pitchAppearance={data.pitchAppearance}
           />
 
-          {ios.isIOS && (
-            <div className="flex gap-2">
-              {(['iphone12', 'iosGeneral'] as const).map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setKey(k)}
-                  disabled={isExporting}
-                  className={`flex-1 p-2 rounded-xl border text-xs cursor-pointer transition-colors ${
-                    key === k
-                      ? 'border-emerald-500 bg-emerald-600/15 text-white'
-                      : 'border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.05]'
-                  }`}
-                >
-                  {IOS_ENCODER_PRESETS[k].label} ({IOS_ENCODER_PRESETS[k].fps}
-                  fps)
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex gap-2">
+            {IOS_COMPARISON_PRESET_KEYS.map((k) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={key === k}
+                onClick={() => setKey(k)}
+                disabled={isExporting}
+                className={`flex-1 p-2 rounded-xl border text-xs cursor-pointer transition-colors ${key === k ? BTN_ACTIVE : BTN_INACTIVE}`}
+              >
+                <div className="font-bold">
+                  {IOS_ENCODER_PRESETS[k].shortLabel}
+                </div>
+                <div className="text-[10px] text-white/50">
+                  {IOS_ENCODER_PRESETS[k].description}
+                </div>
+              </button>
+            ))}
+          </div>
 
           <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-surface-l0 border border-white/[0.08] text-xs text-white/60">
-            <div>
-              Title:{' '}
-              <span className="text-white truncate">
-                {data.title || 'Untitled'}
-              </span>
-            </div>
-            <div>
-              Scenes:{' '}
-              <span className="text-accent-orange font-mono">
-                {data.scenes.length}
-              </span>
-            </div>
-            <div>
-              Res:{' '}
-              <span className="font-mono text-white">
-                {stageWidth}×{stageHeight}
-              </span>
-            </div>
-            <div>
-              Bitrate:{' '}
-              <span className="font-mono text-emerald-400">
-                {preset.bitrateMbps} Mbps
-              </span>
-            </div>
+            {infoList.map(([l, v, c]) => (
+              <div key={l}>
+                {l} <span className={c}>{v}</span>
+              </div>
+            ))}
           </div>
 
           {isExporting && (

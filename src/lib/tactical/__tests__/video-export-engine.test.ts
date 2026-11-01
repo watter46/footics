@@ -11,6 +11,7 @@ import {
   exportTacticalVideo,
   exportVideoDirect,
   exportVideoWithMediabunny,
+  exportVideoWithWorker,
   getSupportedH264Codec,
   getSupportedH264EncoderConfig,
   getSupportedVP9Codec,
@@ -409,10 +410,204 @@ describe('video-export-engine & pipeline', () => {
         texts: [],
       };
 
-      describe('createVideoExportWorker', () => {
-        it('returns null safely without throwing', () => {
+      describe('createVideoExportWorker and exportVideoWithWorker', () => {
+        it('returns null safely without throwing when Worker is undefined', () => {
+          const originalWorker = globalThis.Worker;
+          // @ts-expect-error test override
+          delete globalThis.Worker;
           const worker = createVideoExportWorker();
           expect(worker).toBeNull();
+          if (originalWorker) globalThis.Worker = originalWorker;
+        });
+
+        it('falls back to exportVideoDirect when Worker is undefined', async () => {
+          const originalWorker = globalThis.Worker;
+          // @ts-expect-error test override
+          delete globalThis.Worker;
+
+          const blob = await exportVideoWithWorker({
+            format: 'mp4',
+            fps: 30,
+            scale: 1,
+            totalDurationMs: 300,
+            stageWidth: 1920,
+            stageHeight: 1080,
+            slides: [mockSlideItem],
+            aspectRatio: '16:9',
+          });
+
+          expect(blob).toBeInstanceOf(Blob);
+          expect(blob.type).toBe('video/mp4');
+
+          if (originalWorker) globalThis.Worker = originalWorker;
+        });
+
+        it('exports video via Worker, notifies progress, and terminates worker on success', async () => {
+          let workerInstance: any = null;
+
+          class MockWorker {
+            onmessage: ((event: MessageEvent) => void) | null = null;
+            onerror: ((event: any) => void) | null = null;
+            postMessage = vi.fn((message: any) => {
+              if (message.type === 'START_EXPORT') {
+                setTimeout(() => {
+                  this.onmessage?.({
+                    data: {
+                      type: 'PROGRESS',
+                      progress: { percent: 50, frame: 1, totalFrames: 2 },
+                    },
+                  } as MessageEvent);
+                  const fakeBuffer = new Uint8Array([10, 20, 30]).buffer;
+                  this.onmessage?.({
+                    data: {
+                      type: 'SUCCESS',
+                      buffer: fakeBuffer,
+                      mimeType: 'video/mp4',
+                    },
+                  } as MessageEvent);
+                }, 0);
+              }
+            });
+            terminate = vi.fn();
+            constructor() {
+              workerInstance = this;
+            }
+          }
+
+          const originalWorker = globalThis.Worker;
+          // @ts-expect-error test override
+          globalThis.Worker = MockWorker;
+
+          const progressEvents: number[] = [];
+          const fakeBitmap = {
+            width: 10,
+            height: 10,
+            close: vi.fn(),
+          };
+          class MockImageBitmap {}
+          const originalImageBitmap = globalThis.ImageBitmap;
+          // @ts-expect-error test mock
+          globalThis.ImageBitmap = MockImageBitmap;
+          Object.setPrototypeOf(fakeBitmap, MockImageBitmap.prototype);
+
+          const blob = await exportVideoWithWorker({
+            format: 'mp4',
+            fps: 30,
+            scale: 1,
+            totalDurationMs: 300,
+            stageWidth: 1920,
+            stageHeight: 1080,
+            slides: [mockSlideItem],
+            aspectRatio: '16:9',
+            marbleTexture: fakeBitmap as unknown as CanvasImageSource,
+            playerPhotos: { p1: fakeBitmap as unknown as CanvasImageSource },
+            onProgress: (p) => progressEvents.push(p.percent),
+          });
+
+          expect(blob).toBeInstanceOf(Blob);
+          expect(blob.type).toBe('video/mp4');
+          expect(progressEvents).toContain(50);
+          expect(workerInstance).not.toBeNull();
+          expect(workerInstance.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'START_EXPORT',
+              payload: expect.not.objectContaining({
+                onProgress: expect.anything(),
+              }),
+            }),
+            expect.arrayContaining([fakeBitmap]),
+          );
+          expect(workerInstance.terminate).toHaveBeenCalled();
+
+          if (originalWorker) globalThis.Worker = originalWorker;
+          else delete (globalThis as any).Worker;
+          if (originalImageBitmap) globalThis.ImageBitmap = originalImageBitmap;
+          else delete (globalThis as any).ImageBitmap;
+        });
+
+        it('falls back to exportVideoDirect when Worker posts ERROR and terminates worker', async () => {
+          let workerInstance: any = null;
+
+          class ErrorWorker {
+            onmessage: ((event: MessageEvent) => void) | null = null;
+            onerror: ((event: any) => void) | null = null;
+            postMessage = vi.fn(() => {
+              setTimeout(() => {
+                this.onmessage?.({
+                  data: {
+                    type: 'ERROR',
+                    error: 'Simulated worker error',
+                  },
+                } as MessageEvent);
+              }, 0);
+            });
+            terminate = vi.fn();
+            constructor() {
+              workerInstance = this;
+            }
+          }
+
+          const originalWorker = globalThis.Worker;
+          // @ts-expect-error test override
+          globalThis.Worker = ErrorWorker;
+
+          const blob = await exportVideoWithWorker({
+            format: 'mp4',
+            fps: 30,
+            scale: 1,
+            totalDurationMs: 300,
+            stageWidth: 1920,
+            stageHeight: 1080,
+            slides: [mockSlideItem],
+            aspectRatio: '16:9',
+          });
+
+          expect(blob).toBeInstanceOf(Blob);
+          expect(blob.type).toBe('video/mp4');
+          expect(workerInstance.terminate).toHaveBeenCalled();
+
+          if (originalWorker) globalThis.Worker = originalWorker;
+          else delete (globalThis as any).Worker;
+        });
+
+        it('falls back to exportVideoDirect when Worker triggers onerror and terminates worker', async () => {
+          let workerInstance: any = null;
+
+          class ThrowingWorker {
+            onmessage: ((event: MessageEvent) => void) | null = null;
+            onerror: ((event: any) => void) | null = null;
+            postMessage = vi.fn(() => {
+              setTimeout(() => {
+                this.onerror?.(new Error('Fatal worker crash'));
+              }, 0);
+            });
+            terminate = vi.fn();
+            constructor() {
+              workerInstance = this;
+            }
+          }
+
+          const originalWorker = globalThis.Worker;
+          // @ts-expect-error test override
+          globalThis.Worker = ThrowingWorker;
+
+          const blob = await exportVideoWithWorker({
+            format: 'mp4',
+            fps: 30,
+            scale: 1,
+            totalDurationMs: 300,
+            stageWidth: 1920,
+            stageHeight: 1080,
+            slides: [mockSlideItem],
+            aspectRatio: '16:9',
+          });
+
+          expect(blob).toBeInstanceOf(Blob);
+          expect(blob.type).toBe('video/mp4');
+          expect(workerInstance.terminate).toHaveBeenCalled();
+
+          if (originalWorker) globalThis.Worker = originalWorker;
+          else delete (globalThis as any).Worker;
         });
       });
 

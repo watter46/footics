@@ -31,10 +31,20 @@ export {
 };
 
 /**
- * Backward-compatible worker stub (Worker engine superseded by Mediabunny).
+ * Creates a dedicated Web Worker instance for off-thread video export.
  */
 export function createVideoExportWorker(): Worker | null {
-  return null;
+  if (typeof Worker === 'undefined') return null;
+  try {
+    return new Worker(
+      new URL('./video-mediabunny.worker.ts', import.meta.url),
+      {
+        type: 'module',
+      },
+    );
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -50,10 +60,69 @@ export async function exportVideoDirect(
   return exportVideoWithMediabunny(options);
 }
 
+/**
+ * Exports video using a dedicated Web Worker with zero main-thread freeze,
+ * falling back automatically to direct Mediabunny execution on failure.
+ */
 export async function exportVideoWithWorker(
   options: VideoExportOptions,
 ): Promise<Blob> {
-  return exportVideoDirect(options);
+  const worker = createVideoExportWorker();
+  if (!worker) return exportVideoDirect(options);
+
+  try {
+    return await new Promise<Blob>((resolve, reject) => {
+      const { onProgress, ...serializablePayload } = options;
+      const transferList: Transferable[] = [];
+
+      if (typeof ImageBitmap !== 'undefined') {
+        if (options.playerPhotos) {
+          for (const photo of Object.values(options.playerPhotos)) {
+            if (photo instanceof ImageBitmap) {
+              transferList.push(photo);
+            }
+          }
+        }
+        if (options.marbleTexture instanceof ImageBitmap) {
+          transferList.push(options.marbleTexture);
+        }
+      }
+
+      worker.onmessage = (event: MessageEvent) => {
+        const data = event.data;
+        if (data?.type === 'PROGRESS') {
+          onProgress?.(data.progress);
+        } else if (data?.type === 'SUCCESS') {
+          resolve(
+            new Blob([data.buffer], { type: data.mimeType || 'video/mp4' }),
+          );
+        } else if (data?.type === 'ERROR') {
+          reject(new Error(data.error || 'Worker export failed'));
+        }
+      };
+
+      worker.onerror = (err) => {
+        reject(
+          err instanceof ErrorEvent
+            ? new Error(err.message)
+            : new Error('Worker execution error'),
+        );
+      };
+
+      worker.postMessage(
+        { type: 'START_EXPORT', payload: serializablePayload },
+        transferList,
+      );
+    });
+  } catch (err) {
+    console.warn(
+      '[Footics Video Export] Worker export failed, falling back to exportVideoDirect:',
+      err,
+    );
+    return exportVideoDirect(options);
+  } finally {
+    worker.terminate();
+  }
 }
 
 /**
@@ -108,7 +177,7 @@ export async function exportTacticalVideo(
   options: VideoExportOptions,
 ): Promise<Blob> {
   try {
-    return await exportVideoWithMediabunny(options);
+    return await exportVideoWithWorker(options);
   } catch (err) {
     console.warn(
       '[Footics Video Export] Mediabunny export failed, falling back to MediaRecorder:',

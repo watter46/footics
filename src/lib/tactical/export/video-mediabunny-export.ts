@@ -6,6 +6,7 @@ import {
   WebMOutputFormat,
 } from 'mediabunny';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
+import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
 import { calculatePitchRect } from '../pitch-geometry';
 import {
   type AnyCanvasRenderingContext2D,
@@ -91,6 +92,11 @@ export async function exportVideoWithMediabunny(
     codec,
     bitrate,
     keyFrameInterval,
+    latencyMode: options.latencyMode ?? 'quality',
+    hardwareAcceleration: 'prefer-hardware',
+    ...(options.fullCodecString
+      ? { fullCodecString: options.fullCodecString }
+      : {}),
   });
 
   output.addVideoTrack(canvasSource);
@@ -137,6 +143,8 @@ export async function exportVideoWithMediabunny(
     options.onSetBackgroundVisible?.(false);
   }
 
+  let lastRenderedSlideIdx = -1;
+
   try {
     for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
       if (options.checkCancelled?.()) {
@@ -148,18 +156,31 @@ export async function exportVideoWithMediabunny(
       const timestamp = frameIdx / fps;
 
       if (slides && slides.length > 0) {
-        renderTacticalFrameToCanvas(ctx, {
-          slides,
-          timeMs,
-          width: exportWidth,
-          height: exportHeight,
-          aspectRatio,
-          boundaryBox,
-          transparent,
-          mvpMatrix,
-          playerPhotos: options.playerPhotos,
-          pitchAppearance: options.pitchAppearance,
-        });
+        const interpolated = getInterpolatedUnifiedSlideFrame(slides, timeMs);
+        const shouldSkipRender =
+          frameIdx > 0 &&
+          interpolated.isPaused &&
+          lastRenderedSlideIdx === interpolated.currentSlideIndex;
+
+        if (!shouldSkipRender) {
+          renderTacticalFrameToCanvas(ctx, {
+            slides,
+            timeMs,
+            width: exportWidth,
+            height: exportHeight,
+            aspectRatio,
+            boundaryBox,
+            transparent,
+            mvpMatrix,
+            playerPhotos: options.playerPhotos,
+            pitchAppearance: options.pitchAppearance,
+            marbleTexture: options.marbleTexture,
+            precomputedFrame: interpolated,
+          });
+          lastRenderedSlideIdx = interpolated.isPaused
+            ? interpolated.currentSlideIndex
+            : -1;
+        }
       } else {
         await options.onRenderFrame?.(timeMs);
         const sourceCanvas = options.onCaptureFrame?.(cropInfo);
@@ -176,13 +197,23 @@ export async function exportVideoWithMediabunny(
 
       await canvasSource.add(timestamp, frameDuration);
 
-      options.onProgress?.({
-        percent: Math.min(95, Math.round(((frameIdx + 1) / totalFrames) * 95)),
-        stage: 'rendering',
-        message: `Rendering frame ${frameIdx + 1} of ${totalFrames}`,
-      });
+      if (
+        options.onProgress &&
+        (frameIdx === 0 ||
+          (frameIdx + 1) % 15 === 0 ||
+          frameIdx === totalFrames - 1)
+      ) {
+        options.onProgress({
+          percent: Math.min(
+            95,
+            Math.round(((frameIdx + 1) / totalFrames) * 95),
+          ),
+          stage: 'rendering',
+          message: `Rendering frame ${frameIdx + 1} of ${totalFrames}`,
+        });
+      }
 
-      if (frameIdx % 10 === 0) {
+      if (!options.isWorkerContext && frameIdx % 5 === 0) {
         await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
     }
@@ -211,6 +242,10 @@ export async function exportVideoWithMediabunny(
   } finally {
     if (transparent) {
       options.onSetBackgroundVisible?.(true);
+    }
+    if (canvas) {
+      canvas.width = 0;
+      canvas.height = 0;
     }
   }
 }

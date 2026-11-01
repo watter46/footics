@@ -1,4 +1,52 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { mockCanvasSourceAdd, lastCanvasSourceConfig } = vi.hoisted(() => {
+  return {
+    mockCanvasSourceAdd: vi.fn().mockResolvedValue(undefined),
+    lastCanvasSourceConfig: { value: null as any },
+  };
+});
+
+vi.mock('mediabunny', () => {
+  class MockBufferTarget {
+    buffer: ArrayBuffer | null = new Uint8Array([0, 1, 2, 3]).buffer;
+  }
+  class MockMp4OutputFormat {}
+  class MockWebMOutputFormat {}
+  class MockOutput {
+    target: any;
+    tracks: any[] = [];
+    constructor(options: any) {
+      this.target = options.target;
+    }
+    addVideoTrack(track: any) {
+      this.tracks.push(track);
+      return track;
+    }
+    async start() {}
+    async finalize() {
+      this.target.buffer = new Uint8Array([0, 1, 2, 3]).buffer;
+    }
+    async cancel() {}
+  }
+  class MockCanvasSource {
+    canvas: any;
+    config: any;
+    constructor(canvas: any, config: any) {
+      this.canvas = canvas;
+      this.config = config;
+      lastCanvasSourceConfig.value = config;
+    }
+    add = mockCanvasSourceAdd;
+  }
+  return {
+    BufferTarget: MockBufferTarget,
+    Output: MockOutput,
+    CanvasSource: MockCanvasSource,
+    Mp4OutputFormat: MockMp4OutputFormat,
+    WebMOutputFormat: MockWebMOutputFormat,
+  };
+});
 
 vi.hoisted(() => {
   if (typeof globalThis.Path2D === 'undefined') {
@@ -28,17 +76,20 @@ import { renderArrows } from '../renderers/arrow-renderer';
 import { renderBall } from '../renderers/ball-renderer';
 import { renderPitch, renderPitchMarkings } from '../renderers/pitch-renderer';
 import type { FrameRenderContext } from '../renderers/renderer-context';
+import * as tacticalFrameRenderer from '../tactical-frame-renderer';
 import {
   type AnyCanvasRenderingContext2D,
   getOpticalCenterX,
   renderTacticalFrameToCanvas,
 } from '../tactical-frame-renderer';
+import { exportVideoWithMediabunny } from '../video-mediabunny-export';
 
 function createMockContext(): AnyCanvasRenderingContext2D {
   return {
     clearRect: vi.fn(),
     fillRect: vi.fn(),
     strokeRect: vi.fn(),
+    drawImage: vi.fn(),
     beginPath: vi.fn(),
     rect: vi.fn(),
     clip: vi.fn(),
@@ -1487,6 +1538,157 @@ describe('Tactical Frame Renderer', () => {
 
       expect(strokeWithPathCalls.length).toBe(1);
       expect(fillWithPathCalls.length).toBe(1);
+    });
+
+    it('uses precomputedFrame instead of recomputing interpolation', () => {
+      const ctx = createMockContext();
+      const dummyPrecomputed = {
+        players: {
+          p1: {
+            id: 'p1',
+            x: 92,
+            y: 84,
+            team: 'home' as const,
+            shirtNo: '99',
+            name: 'PrecomputedPlayer',
+            area: 'pitch' as const,
+            style: {
+              insideContent: 'number' as const,
+              bottomLabel: 'name' as const,
+              color: '#3b82f6',
+              strokeColor: '#ffffff',
+              strokeWidth: 2,
+              sizeScale: 1,
+              numberSizeScale: 1,
+              labelSizeScale: 1,
+            },
+            opacity: 1,
+            visible: true,
+            connectLines: [],
+            badges: [],
+          },
+        },
+        ball: { x: 50, y: 50, visible: true, opacity: 1, rotation: 0 },
+        zones: {},
+        arrows: {},
+        texts: {},
+        pitchTransform: {
+          panX: 0,
+          panY: 0,
+          zoom: 1,
+          tilt: 0,
+          yaw: 90,
+          isLocked: false,
+        },
+        currentSlideIndex: 0,
+        nextSlideIndex: 0,
+        progress: 0,
+        isPaused: false,
+      };
+
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [sampleSlide],
+        timeMs: 0,
+        width: 1000,
+        height: 1000,
+        aspectRatio: '16:9',
+        precomputedFrame: dummyPrecomputed as any,
+      });
+
+      const arcCalls = vi.mocked(ctx.arc).mock.calls;
+      const matched = arcCalls.some(
+        ([x, y]) => Math.abs(x - 920) < 5 && Math.abs(y - 840) < 5,
+      );
+      expect(matched).toBe(true);
+    });
+  });
+
+  describe('exportVideoWithMediabunny optimization', () => {
+    let mockContext: AnyCanvasRenderingContext2D;
+
+    beforeEach(() => {
+      mockContext = createMockContext();
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+        () => mockContext as any,
+      );
+      if (typeof OffscreenCanvas !== 'undefined') {
+        vi.spyOn(OffscreenCanvas.prototype, 'getContext').mockImplementation(
+          () => mockContext as any,
+        );
+      }
+      mockCanvasSourceAdd.mockClear();
+    });
+
+    it('skips redundant canvas redraw during pauseMs freeze frames while adding all frames to canvasSource', async () => {
+      const renderSpy = vi.spyOn(
+        tacticalFrameRenderer,
+        'renderTacticalFrameToCanvas',
+      );
+      renderSpy.mockClear();
+
+      const slide1 = SlideSchema.parse({
+        id: 's1',
+        index: 0,
+        transitionDurationMs: 200,
+        pauseMs: 400,
+        players: [],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: true },
+      });
+      const slide2 = SlideSchema.parse({
+        id: 's2',
+        index: 1,
+        transitionDurationMs: 200,
+        pauseMs: 400,
+        players: [],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: true },
+      });
+
+      const fakeMarbleTexture = {
+        width: 100,
+        height: 100,
+      } as unknown as CanvasImageSource;
+
+      const blob = await exportVideoWithMediabunny({
+        format: 'mp4',
+        fps: 10,
+        totalDurationMs: 600,
+        stageWidth: 1000,
+        stageHeight: 1000,
+        slides: [slide1, slide2],
+        scale: 1,
+        fullCodecString: 'avc1.640028',
+        latencyMode: 'quality',
+        marbleTexture: fakeMarbleTexture,
+        isWorkerContext: true,
+      });
+
+      expect(blob).toBeInstanceOf(Blob);
+
+      // Total frames sent to canvasSource.add should be exactly 6
+      expect(mockCanvasSourceAdd).toHaveBeenCalledTimes(6);
+
+      // renderTacticalFrameToCanvas should be called less than total frames because static paused frames were skipped
+      expect(renderSpy.mock.calls.length).toBeLessThan(6);
+      expect(renderSpy.mock.calls.length).toBeGreaterThan(0);
+
+      // Verify marbleTexture was forwarded
+      expect(renderSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ marbleTexture: fakeMarbleTexture }),
+      );
+
+      // Verify CanvasSource received fullCodecString, latencyMode, hardwareAcceleration
+      expect(lastCanvasSourceConfig.value).toMatchObject({
+        fullCodecString: 'avc1.640028',
+        latencyMode: 'quality',
+        hardwareAcceleration: 'prefer-hardware',
+      });
     });
   });
 });

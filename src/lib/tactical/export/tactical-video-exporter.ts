@@ -23,7 +23,10 @@ import {
   calculateUnifiedTotalDuration,
   matchSlidePlayers,
 } from '../unified-interpolation';
-import { preloadSlidePlayerPhotos } from './share-payload';
+import {
+  preloadMarbleTextureBitmap,
+  preloadSlidePlayerPhotos,
+} from './share-payload';
 import {
   calculateBoundaryCrop,
   exportTacticalVideo,
@@ -118,6 +121,9 @@ export async function exportMultiSlideMp4Video(
   const loadedPhotos =
     options.playerPhotos ??
     (await preloadSlidePlayerPhotos(effectiveSlides, options.photos));
+  const marbleTexture = await preloadMarbleTextureBitmap(
+    options.pitchAppearance,
+  );
 
   try {
     return await exportTacticalVideo({
@@ -136,6 +142,7 @@ export async function exportMultiSlideMp4Video(
       pitchAppearance: options.pitchAppearance,
       mvpMatrix: options.mvpMatrix,
       playerPhotos: loadedPhotos,
+      marbleTexture,
       stageWidth,
       stageHeight,
       slides: effectiveSlides,
@@ -154,6 +161,13 @@ export async function exportMultiSlideMp4Video(
           (item as ImageBitmap).close();
         }
       }
+    }
+    if (
+      marbleTexture &&
+      'close' in marbleTexture &&
+      typeof (marbleTexture as ImageBitmap).close === 'function'
+    ) {
+      (marbleTexture as ImageBitmap).close();
     }
   }
 }
@@ -189,6 +203,9 @@ export async function exportMultiSlideWebmVideo(
   const loadedPhotos =
     options.playerPhotos ??
     (await preloadSlidePlayerPhotos(effectiveSlides, options.photos));
+  const marbleTexture = await preloadMarbleTextureBitmap(
+    options.pitchAppearance,
+  );
 
   try {
     return await exportTacticalVideo({
@@ -207,6 +224,7 @@ export async function exportMultiSlideWebmVideo(
       pitchAppearance: options.pitchAppearance,
       mvpMatrix: options.mvpMatrix,
       playerPhotos: loadedPhotos,
+      marbleTexture,
       stageWidth,
       stageHeight,
       slides: effectiveSlides,
@@ -225,6 +243,13 @@ export async function exportMultiSlideWebmVideo(
           (item as ImageBitmap).close();
         }
       }
+    }
+    if (
+      marbleTexture &&
+      'close' in marbleTexture &&
+      typeof (marbleTexture as ImageBitmap).close === 'function'
+    ) {
+      (marbleTexture as ImageBitmap).close();
     }
   }
 }

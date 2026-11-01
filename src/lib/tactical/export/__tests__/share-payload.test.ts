@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@/lib/db/schema';
 import {
   blobToBase64,
+  createBitmapFromUrlOrBase64,
   packPlayerPhotos,
+  preloadMarbleTextureBitmap,
   preloadSlidePlayerPhotos,
   TacticalExportSharePayloadSchema,
   type TacticalPlayerLike,
@@ -94,6 +96,7 @@ describe('src/lib/tactical/export/share-payload', () => {
         panY: -20,
         zoom: 1.2,
         tilt: 15,
+        yaw: 90,
         isLocked: false,
       });
     }
@@ -260,5 +263,64 @@ describe('src/lib/tactical/export/share-payload', () => {
 
     const result = TacticalExportSharePayloadSchema.safeParse(invalidData);
     expect(result.success).toBe(false);
+  });
+
+  it('creates bitmap in worker context when window is undefined', async () => {
+    const originalWindow = globalThis.window;
+    try {
+      delete (globalThis as Record<string, unknown>).window;
+      const mockBitmap = { width: 50, height: 50 } as unknown as ImageBitmap;
+      vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(mockBitmap));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          blob: vi.fn().mockResolvedValue(new Blob(['bytes'])),
+        }),
+      );
+
+      const bitmap = await createBitmapFromUrlOrBase64(
+        'https://example.com/test.png',
+      );
+      expect(bitmap).toBe(mockBitmap);
+    } finally {
+      if (originalWindow !== undefined) {
+        globalThis.window = originalWindow;
+      }
+    }
+  });
+
+  it('preloads marble texture bitmap when texture is marble', async () => {
+    const mockBitmap = { width: 100, height: 100 } as unknown as ImageBitmap;
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(mockBitmap));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: vi.fn().mockResolvedValue(new Blob(['bytes'])),
+      }),
+    );
+
+    // With texture: 'marble'
+    const result1 = await preloadMarbleTextureBitmap({
+      texture: 'marble',
+    } as any);
+    expect(result1).toBe(mockBitmap);
+
+    // With pitchBackgroundType: 'marble'
+    const result2 = await preloadMarbleTextureBitmap({
+      pitchBackgroundType: 'marble',
+    } as any);
+    expect(result2).toBe(mockBitmap);
+
+    // With flat / solid
+    const result3 = await preloadMarbleTextureBitmap({
+      texture: 'flat',
+    } as any);
+    expect(result3).toBeNull();
+
+    // With undefined
+    const result4 = await preloadMarbleTextureBitmap(undefined);
+    expect(result4).toBeNull();
   });
 });

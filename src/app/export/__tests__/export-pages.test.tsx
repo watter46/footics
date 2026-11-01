@@ -265,6 +265,7 @@ describe('Export Pages', () => {
             stageHeight: 1350,
             fps: 60,
             bitrate: 24_000_000,
+            keyFrameIntervalSec: 2,
             pitchAppearance: expect.objectContaining({ pitchColor: '#1a472a' }),
             boundaryBox: expect.objectContaining({ enabled: true }),
             pitchTransform: expect.objectContaining({ tilt: 25 }),
@@ -279,6 +280,64 @@ describe('Export Pages', () => {
 
       await waitFor(() => {
         expect(mockShare).toHaveBeenCalled();
+      });
+    });
+
+    it('allows switching to 14Mbps preset and exports with 14Mbps parameters', async () => {
+      const mockShareData = {
+        version: 1,
+        title: 'Tactical Analysis 14Mbps',
+        orientation: 'horizontal',
+        aspectRatio: '16:9',
+        scenes: [
+          {
+            id: 'slide-1',
+            players: [],
+            arrows: [],
+            texts: [],
+            duration: 2000,
+          },
+        ],
+      };
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: mockShareData,
+          }),
+        }),
+      );
+
+      const mockBlob = new Blob(['video-data'], { type: 'video/mp4' });
+      vi.mocked(exportMultiSlideMp4Video).mockResolvedValue(mockBlob);
+
+      render(<StandaloneExportSharePage />);
+
+      await screen.findByTestId('export-preview-player');
+
+      // 14Mbps preset button
+      const preset14Btn = screen.getByRole('button', {
+        name: /14\s*Mbps/i,
+      });
+      fireEvent.click(preset14Btn);
+
+      // Click export button
+      const exportButton = screen.getByRole('button', {
+        name: /export|start/i,
+      });
+      fireEvent.click(exportButton);
+
+      await waitFor(() => {
+        expect(exportMultiSlideMp4Video).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fps: 60,
+            bitrate: 14_000_000,
+            keyFrameIntervalSec: 1,
+          }),
+        );
       });
     });
   });

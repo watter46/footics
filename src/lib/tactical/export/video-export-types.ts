@@ -29,6 +29,9 @@ export interface VideoExportOptions {
   pitchAppearance?: PitchAppearanceConfig;
   mvpMatrix?: Float32Array | null;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
+  fullCodecString?: string;
+  marbleTexture?: CanvasImageSource | null;
+  isWorkerContext?: boolean;
   onRenderFrame?: (timeMs: number) => Promise<void> | void;
   onCaptureFrame?: (cropInfo: BoundaryCropInfo) => HTMLCanvasElement | null;
   onSetBackgroundVisible?: (visible: boolean) => void;

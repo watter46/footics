@@ -17,6 +17,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageLoading } from '@/components/ui/patterns/loading-state';
 import { ExportPreviewPlayer } from '@/features/tactical-unified/panels/export/export-preview-player';
+import {
+  IOS_COMPARISON_PRESET_KEYS,
+  IOS_ENCODER_PRESETS,
+} from '@/features/tactical-unified/panels/export/ios-export-presets';
 import { useSharePageExport } from './use-share-page-export';
 
 export interface SharePageClientViewProps {
@@ -97,6 +101,32 @@ export function SharePageClientView({
             photos={shareData.photos}
             pitchAppearance={shareData.pitchAppearance}
           />
+
+          <div className="flex gap-2">
+            {IOS_COMPARISON_PRESET_KEYS.map((key) => {
+              const preset = IOS_ENCODER_PRESETS[key];
+              const isSelected = exp.presetKey === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => exp.setPresetKey(key)}
+                  disabled={exp.isExporting}
+                  className={`flex-1 p-2.5 rounded-xl border text-xs font-medium cursor-pointer transition-colors ${
+                    isSelected
+                      ? 'border-emerald-500 bg-emerald-600/20 text-white shadow-sm'
+                      : 'border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.05]'
+                  }`}
+                >
+                  <div className="font-bold">{preset.shortLabel}</div>
+                  <div className="text-[10px] text-white/50">
+                    {preset.description}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
 
           <div className="p-4 rounded-xl bg-surface-l0 border border-white/[0.08] space-y-2 text-xs">
             <div className="font-semibold text-white/80 flex items-center justify-between">

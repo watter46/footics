@@ -93,6 +93,7 @@ export {
   blobToBase64,
   createBitmapFromUrlOrBase64,
   packPlayerPhotos,
+  preloadMarbleTextureBitmap,
   preloadSlidePlayerPhotos,
   unpackPlayerPhotos,
 } from './share-photos';

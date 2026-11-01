@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
 import {
   detectIOSDevice,
-  IOS_ENCODER_PRESET,
+  IOS_ENCODER_PRESETS,
+  type IosEncoderPresetKey,
 } from '@/features/tactical-unified/panels/export/ios-export-presets';
 import type { TacticalExportSharePayload } from '@/lib/tactical/export/share-payload';
 import { exportMultiSlideMp4Video } from '@/lib/tactical/export/tactical-video-exporter';
@@ -103,7 +104,8 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
   const slides: Slide[] = shareData?.scenes
     ? shareData.scenes.map((s) => s as Slide)
     : [];
-  const activePreset = IOS_ENCODER_PRESET;
+  const [presetKey, setPresetKey] = useState<IosEncoderPresetKey>('24mbps');
+  const activePreset = IOS_ENCODER_PRESETS[presetKey];
 
   const handleExportClick = async () => {
     if (slides.length === 0) {
@@ -212,6 +214,8 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
     stageWidth,
     stageHeight,
     slides,
+    presetKey,
+    setPresetKey,
     activePreset,
     handleExportClick,
     handleDownload,

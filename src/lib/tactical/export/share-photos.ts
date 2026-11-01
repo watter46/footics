@@ -1,4 +1,5 @@
 import { getPlayerPhotosBatch, getPlayersMasterBatch } from '@/lib/db/queries';
+import type { PitchAppearanceConfig } from '@/lib/types/tactical-unified';
 import type { TacticalPlayerLike, TacticalSceneLike } from './share-payload';
 
 /**
@@ -27,7 +28,7 @@ export function blobToBase64(blob: Blob): Promise<string> {
 export async function createBitmapFromUrlOrBase64(
   urlOrBase64: string,
 ): Promise<ImageBitmap | null> {
-  if (typeof window === 'undefined' || !('createImageBitmap' in window)) {
+  if (typeof globalThis.createImageBitmap !== 'function') {
     return null;
   }
   try {
@@ -41,6 +42,59 @@ export async function createBitmapFromUrlOrBase64(
   }
 }
 
+export const MARBLE_TEXTURE_PATH = '/assets/pitch-marble-texture.jpg';
+
+/**
+ * 大理石テクスチャ画像をプリロードして ImageBitmap を返す
+ */
+export async function preloadMarbleTextureBitmap(
+  pitchAppearance?:
+    | PitchAppearanceConfig
+    | { texture?: string; pitchBackgroundType?: string },
+): Promise<ImageBitmap | null> {
+  const texture =
+    (
+      pitchAppearance as
+        | { texture?: string; pitchBackgroundType?: string }
+        | undefined
+    )?.texture ?? pitchAppearance?.pitchBackgroundType;
+  if (
+    texture !== 'marble' ||
+    typeof globalThis.createImageBitmap !== 'function'
+  ) {
+    return null;
+  }
+  return await createBitmapFromUrlOrBase64(MARBLE_TEXTURE_PATH);
+}
+
+function extractTargetPlayers(
+  scenes: TacticalSceneLike[],
+): Map<string, string | undefined> {
+  const target = new Map<string, string | undefined>();
+  for (const scene of scenes) {
+    if (!scene.players) continue;
+    const list: TacticalPlayerLike[] = Array.isArray(scene.players)
+      ? scene.players
+      : Object.values(scene.players);
+    for (const p of list) {
+      const opt = p.options || p;
+      const style = p.style || {};
+      const isPhoto =
+        style.insideContent === 'photo' ||
+        opt.insideContent === 'photo' ||
+        p.insideContent === 'photo';
+      const pid = String(p.playerId ?? p.id ?? '');
+      if (isPhoto && pid && !target.has(pid)) {
+        const url =
+          (p.photoUrl || style.photoUrl || opt.photoUrl || '').trim() ||
+          undefined;
+        target.set(pid, url);
+      }
+    }
+  }
+  return target;
+}
+
 /**
  * シーン情報から使用されている選手画像を抽出し、
  * IndexedDB の photoBlob または指定 URL から Base64 / URL の辞書を作成する
@@ -49,34 +103,8 @@ export async function packPlayerPhotos(
   scenes: TacticalSceneLike[],
 ): Promise<Record<string, string>> {
   const photoMap: Record<string, string> = {};
-
-  // 写真表示が必要なマーカーのみを抽出 (playerId -> photoUrl)
-  const targetPlayers = new Map<string, string | undefined>();
-  for (const scene of scenes) {
-    if (!scene.players) continue;
-    const playerList: TacticalPlayerLike[] = Array.isArray(scene.players)
-      ? scene.players
-      : Object.values(scene.players);
-    for (const p of playerList) {
-      const options = p.options || p;
-      const style = p.style || {};
-      const isPhoto =
-        style.insideContent === 'photo' ||
-        options.insideContent === 'photo' ||
-        p.insideContent === 'photo';
-      const pid = String(p.playerId ?? p.id ?? '');
-      if (isPhoto && pid && !targetPlayers.has(pid)) {
-        const url =
-          (p.photoUrl || style.photoUrl || options.photoUrl || '').trim() ||
-          undefined;
-        targetPlayers.set(pid, url);
-      }
-    }
-  }
-
-  if (targetPlayers.size === 0) {
-    return photoMap;
-  }
+  const targetPlayers = extractTargetPlayers(scenes);
+  if (targetPlayers.size === 0) return photoMap;
 
   // 1. IndexedDB から選手写真 Blob および マスター情報を取得
   const numericIds = Array.from(targetPlayers.keys())
@@ -167,37 +195,12 @@ export async function preloadSlidePlayerPhotos(
   existingPhotos?: Record<string, string>,
 ): Promise<Record<string, ImageBitmap>> {
   const result: Record<string, ImageBitmap> = {};
-  if (
-    typeof window === 'undefined' ||
-    typeof createImageBitmap !== 'function'
-  ) {
+  if (typeof globalThis.createImageBitmap !== 'function') {
     return result;
   }
 
   // 1. 写真表示が必要な選手マーカーを抽出
-  const targetPlayers = new Map<string, string | undefined>();
-  for (const slide of slides) {
-    if (!slide.players) continue;
-    const playerList: TacticalPlayerLike[] = Array.isArray(slide.players)
-      ? slide.players
-      : Object.values(slide.players);
-    for (const p of playerList) {
-      const options = p.options || p;
-      const style = p.style || {};
-      const isPhoto =
-        style.insideContent === 'photo' ||
-        options.insideContent === 'photo' ||
-        p.insideContent === 'photo';
-      const pid = String(p.playerId ?? p.id ?? '');
-      if (isPhoto && pid && !targetPlayers.has(pid)) {
-        const url =
-          (p.photoUrl || style.photoUrl || options.photoUrl || '').trim() ||
-          undefined;
-        targetPlayers.set(pid, url);
-      }
-    }
-  }
-
+  const targetPlayers = extractTargetPlayers(slides);
   if (targetPlayers.size === 0) {
     return result;
   }

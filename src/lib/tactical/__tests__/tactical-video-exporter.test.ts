@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Player, Slide } from '@/lib/types/tactical-unified';
+import * as sharePayloadModule from '../export/share-payload';
 import {
   applySlideTimelineOverrides,
   calculateBoundaryCrop,
   calculateUnifiedTotalDuration,
   exportMultiSlideMp4Video,
   exportMultiSlideVideo,
+  exportMultiSlideWebmVideo,
   matchSlidePlayers,
 } from '../export/tactical-video-exporter';
 
@@ -387,6 +389,8 @@ describe('tactical-video-exporter', () => {
           strokeRect: vi.fn(),
           fillRect: vi.fn(),
           clearRect: vi.fn(),
+          rect: vi.fn(),
+          clip: vi.fn(),
           fillText: vi.fn(),
           strokeText: vi.fn(),
           drawImage: vi.fn(),
@@ -491,6 +495,129 @@ describe('tactical-video-exporter', () => {
 
       expect(blob).toBeDefined();
       expect(blob.type).toContain('video');
+
+      delete (globalThis as unknown as { EncodedVideoChunk?: unknown })
+        .EncodedVideoChunk;
+      delete (globalThis as unknown as { VideoEncoder?: unknown }).VideoEncoder;
+      delete (globalThis as unknown as { VideoFrame?: unknown }).VideoFrame;
+      delete (globalThis as unknown as { OffscreenCanvas?: unknown })
+        .OffscreenCanvas;
+    });
+
+    it('preloads marble texture bitmap and safely closes ImageBitmaps upon MP4 export completion', async () => {
+      (
+        globalThis as unknown as { EncodedVideoChunk: unknown }
+      ).EncodedVideoChunk = MockEncodedVideoChunk;
+      (globalThis as unknown as { VideoEncoder: unknown }).VideoEncoder =
+        MockVideoEncoder;
+      (globalThis as unknown as { VideoFrame: unknown }).VideoFrame =
+        MockVideoFrame;
+      (globalThis as unknown as { OffscreenCanvas: unknown }).OffscreenCanvas =
+        MockOffscreenCanvas;
+
+      const mockMarble = {
+        close: vi.fn(),
+      } as unknown as ImageBitmap;
+
+      const preloadMarbleSpy = vi
+        .spyOn(sharePayloadModule, 'preloadMarbleTextureBitmap')
+        .mockResolvedValue(mockMarble);
+
+      const mockPlayerPhoto = {
+        close: vi.fn(),
+      } as unknown as ImageBitmap;
+
+      const preloadPhotosSpy = vi
+        .spyOn(sharePayloadModule, 'preloadSlidePlayerPhotos')
+        .mockResolvedValue({ 'player-1': mockPlayerPhoto });
+
+      const slides = [
+        createSampleSlide(
+          's1',
+          [createMockPlayer('p1', 'home', 20, 30, '10', 'Messi')],
+          1000,
+          500,
+        ),
+      ];
+
+      const blob = await exportMultiSlideMp4Video({
+        slides,
+        pitchAppearance: {
+          pitchBackgroundType: 'marble',
+          overlayColor: '#000000',
+          overlayOpacity: 0.2,
+          lineColor: '#ffffff',
+          lineWidth: 2,
+          lineOpacity: 1,
+        },
+      });
+
+      expect(blob).toBeDefined();
+      expect(preloadMarbleSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ pitchBackgroundType: 'marble' }),
+      );
+      expect(preloadPhotosSpy).toHaveBeenCalled();
+      expect(mockMarble.close).toHaveBeenCalled();
+      expect(mockPlayerPhoto.close).toHaveBeenCalled();
+
+      preloadMarbleSpy.mockRestore();
+      preloadPhotosSpy.mockRestore();
+
+      delete (globalThis as unknown as { EncodedVideoChunk?: unknown })
+        .EncodedVideoChunk;
+      delete (globalThis as unknown as { VideoEncoder?: unknown }).VideoEncoder;
+      delete (globalThis as unknown as { VideoFrame?: unknown }).VideoFrame;
+      delete (globalThis as unknown as { OffscreenCanvas?: unknown })
+        .OffscreenCanvas;
+    });
+
+    it('preloads marble texture bitmap and safely closes ImageBitmaps upon WebM export completion', async () => {
+      (
+        globalThis as unknown as { EncodedVideoChunk: unknown }
+      ).EncodedVideoChunk = MockEncodedVideoChunk;
+      (globalThis as unknown as { VideoEncoder: unknown }).VideoEncoder =
+        MockVideoEncoder;
+      (globalThis as unknown as { VideoFrame: unknown }).VideoFrame =
+        MockVideoFrame;
+      (globalThis as unknown as { OffscreenCanvas: unknown }).OffscreenCanvas =
+        MockOffscreenCanvas;
+
+      const mockMarble = {
+        close: vi.fn(),
+      } as unknown as ImageBitmap;
+
+      const preloadMarbleSpy = vi
+        .spyOn(sharePayloadModule, 'preloadMarbleTextureBitmap')
+        .mockResolvedValue(mockMarble);
+
+      const slides = [
+        createSampleSlide(
+          's1',
+          [createMockPlayer('p1', 'home', 20, 30, '10', 'Messi')],
+          1000,
+          500,
+        ),
+      ];
+
+      const blob = await exportMultiSlideWebmVideo({
+        slides,
+        pitchAppearance: {
+          pitchBackgroundType: 'marble',
+          overlayColor: '#000000',
+          overlayOpacity: 0.2,
+          lineColor: '#ffffff',
+          lineWidth: 2,
+          lineOpacity: 1,
+        },
+      });
+
+      expect(blob).toBeDefined();
+      expect(preloadMarbleSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ pitchBackgroundType: 'marble' }),
+      );
+      expect(mockMarble.close).toHaveBeenCalled();
+
+      preloadMarbleSpy.mockRestore();
 
       delete (globalThis as unknown as { EncodedVideoChunk?: unknown })
         .EncodedVideoChunk;

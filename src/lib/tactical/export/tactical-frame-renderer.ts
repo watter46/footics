@@ -10,7 +10,10 @@
  */
 
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
-import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
+import {
+  getInterpolatedUnifiedSlideFrame,
+  type InterpolatedUnifiedFrame,
+} from '@/lib/tactical/unified-interpolation';
 import type {
   AspectRatio,
   BoundaryBox,
@@ -43,6 +46,8 @@ export {
   TACTICAL_CANVAS_FONT_FAMILY,
 };
 
+export type InterpolatedUnifiedSlideFrame = InterpolatedUnifiedFrame;
+
 export interface RenderTacticalFrameOptions {
   slides: Slide[];
   timeMs: number;
@@ -61,6 +66,8 @@ export interface RenderTacticalFrameOptions {
   pitchAppearance?: PitchAppearanceConfig;
   /** 大理石テクスチャ画像 */
   marbleTexture?: CanvasImageSource | null;
+  /** 事前計算済み補間フレーム（指定時は getInterpolatedUnifiedSlideFrame の再計算をスキップ） */
+  precomputedFrame?: InterpolatedUnifiedSlideFrame;
 }
 
 /**
@@ -97,8 +104,10 @@ export function renderTacticalFrameToCanvas(
 
   if (w <= 0 || h <= 0) return;
 
-  // 補間済みフレームデータを先行取得（動的カメラMVP行列の解決に利用）
-  const frame = getInterpolatedUnifiedSlideFrame(slides, timeMs);
+  // 補間済みフレームデータを先行取得（事前計算済みフレームがあれば流用し動的カメラMVP行列の解決に利用）
+  const frame =
+    options.precomputedFrame ??
+    getInterpolatedUnifiedSlideFrame(slides, timeMs);
 
   const isBoundaryActive =
     boundaryBox?.enabled &&
