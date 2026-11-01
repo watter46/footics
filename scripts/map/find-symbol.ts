@@ -1,6 +1,5 @@
 import { execSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 export function findSymbolsInMap(
   mapContent: string,
@@ -62,7 +61,7 @@ export function findSymbolsInMap(
   return matches.slice(0, maxResults).map((m) => m.line);
 }
 
-function runCli() {
+async function runCli() {
   const query = process.argv[2]?.trim();
   if (!query || query.startsWith('-')) {
     console.error('Usage: bun run ai:find <symbol-or-keyword>');
@@ -72,8 +71,9 @@ function runCli() {
 
   const repoRoot = process.cwd();
   const mapPath = join(repoRoot, '.agents', '.cache', 'repo_map.txt');
+  const mapFile = Bun.file(mapPath);
 
-  if (!existsSync(mapPath)) {
+  if (!(await mapFile.exists())) {
     console.log('[ai:find] repo_map.txt not found. Generating index first...');
     try {
       execSync('bun scripts/map/generate-repo-map.ts', {
@@ -86,7 +86,7 @@ function runCli() {
     }
   }
 
-  const content = readFileSync(mapPath, 'utf-8');
+  const content = await mapFile.text();
   const results = findSymbolsInMap(content, query);
 
   if (results.length === 0) {

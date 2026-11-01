@@ -10,11 +10,14 @@ import {
 const baseline = loadGuardrailsBaseline();
 
 function checkFileSize(filePath: string): boolean {
-  if (!fs.existsSync(filePath)) return true;
   const normFile = normalizeRepoPath(filePath);
   if (!isScopedSourceFile(normFile) || isExcludedFromLineLimit(normFile)) {
     return true;
   }
+
+  const file = Bun.file(filePath);
+  // Bun.file(filePath).size は高速にバイト数を確認可能
+  if (file.size === 0) return true;
 
   const content = fs.readFileSync(filePath, 'utf8');
   const lines = content.split('\n').length;

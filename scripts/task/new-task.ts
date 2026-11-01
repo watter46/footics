@@ -103,7 +103,7 @@ export function generateTaskScaffold(
     fs.mkdirSync(tasksDir, { recursive: true });
   }
 
-  fs.writeFileSync(targetPath, template, 'utf8');
+  Bun.write(targetPath, template);
 
   return {
     filePath: targetPath,

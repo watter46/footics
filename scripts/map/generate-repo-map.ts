@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
 
 // 除外ディレクトリ・ファイル名の正規表現
@@ -50,7 +50,7 @@ interface FileInfo {
 
 async function extractFileInfo(fullPath: string): Promise<FileInfo> {
   try {
-    const content = await readFile(fullPath, 'utf-8');
+    const content = await Bun.file(fullPath).text();
     const lines = content.split('\n');
     const lineCount = lines.length;
 
@@ -212,7 +212,7 @@ async function main() {
   await mkdir(cacheDir, { recursive: true });
 
   const outMapPath = join(cacheDir, 'repo_map.txt');
-  await writeFile(outMapPath, `${mapLines.join('\n')}\n`);
+  await Bun.write(outMapPath, `${mapLines.join('\n')}\n`);
   console.log(
     `[RepoMap] Generated detailed map: ${outMapPath} (${mapLines.length} files)`,
   );
@@ -220,7 +220,7 @@ async function main() {
   // 2. 高レベルサマリ (repo_summary.txt) の生成
   const summaryText = buildSummaryText(relFiles);
   const outSummaryPath = join(cacheDir, 'repo_summary.txt');
-  await writeFile(outSummaryPath, summaryText);
+  await Bun.write(outSummaryPath, summaryText);
   const lineCount = summaryText.split('\n').length;
   console.log(
     `[RepoMap] Generated high-level summary: ${outSummaryPath} (${lineCount} lines)`,
