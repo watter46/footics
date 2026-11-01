@@ -1,7 +1,7 @@
 # TASK-136: whoscored-player-id-sync-and-photo-fallback
 
 ## 1. Metadata
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Created**: 2026-11-01
 - **Target Files**:
   - `src/lib/tactical/chelsea-preset.ts` (MODIFY)
@@ -19,13 +19,13 @@
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
 <!-- Reviewer が審査時に要件充足を確認してチェックする -->
-- [ ] 1. `chelsea-preset.ts`: 全シーズン（24-25, 25-26, 26-27）のチェルシー選手IDを、旧345000番台からWhoScored/Opta実ID（Palmer: 395692, Gusto: 403850, Caicedo: 410175, Neto: 337916, Fofana: 373946, Colwill: 421351, Lavia: 425319, Sánchez: 362151, James: 361330, Cucurella: 363496, Fernández: 369430, Jackson: 426050, Estêvão: 510728 等）へ更新すること。
-- [ ] 2. `player-merge.ts` / `queries-player.ts`: `isLegacyOrTempPlayerId(id)` を導入し、`savePlayerMastersBatch` において負の仮IDだけでなく旧345000番台（345000〜349999）も名寄せ対象として検知すること。
-- [ ] 3. `queries-player.ts`: 旧仮IDの写真Blob（`db.player_photos`）を公式IDへ移行・コピーし、旧仮IDの選手・写真レコードを削除し、`tactical_projects` 内の選手ID参照も新公式IDへ自動マッピング更新すること。さらに既存DB内を一括整理する `mergeLegacyPlayersAndPhotos()` を提供すること。
-- [ ] 4. `data-loader.ts`, `data-management-import.ts`, `squad-actions.ts`: 試合取込後、ZIP復元（リストア）完了時、および「Sync Squad」実行時に自動名寄せ・写真引き継ぎ・クリーンアップ処理が実行されること。
-- [ ] 5. `use-player-photo.ts`: `usePlayerPhoto(playerId, photoUrl, enabled, playerName)` の第4引数 `playerName` を追加し、IDでの写真取得が未ヒットの場合に選手名（`normalizePlayerNameForMatch`）で同名選手を検索してその写真Blobをフォールバック描画すること。
-- [ ] 6. `PlayerMarkerItem.tsx`: `usePlayerPhoto` に `marker.name` を渡すこと。
-- [ ] 7. 各Phaseのテストおよび型検査（`bun run ai:check`）が全件 PASS すること。
+- [x] 1. `chelsea-preset.ts`: 全シーズン（24-25, 25-26, 26-27）のチェルシー選手IDを、旧345000番台からWhoScored/Opta実ID（Palmer: 395692, Gusto: 403850, Caicedo: 410175, Neto: 337916, Fofana: 373946, Colwill: 421351, Lavia: 425319, Sánchez: 362151, James: 361330, Cucurella: 363496, Fernández: 369430, Jackson: 426050, Estêvão: 510728 等）へ更新すること。
+- [x] 2. `player-merge.ts` / `queries-player.ts`: `isLegacyOrTempPlayerId(id)` を導入し、`savePlayerMastersBatch` において負の仮IDだけでなく旧345000番台（345000〜349999）も名寄せ対象として検知すること。
+- [x] 3. `queries-player.ts`: 旧仮IDの写真Blob（`db.player_photos`）を公式IDへ移行・コピーし、旧仮IDの選手・写真レコードを削除し、`tactical_projects` 内の選手ID参照も新公式IDへ自動マッピング更新すること。さらに既存DB内を一括整理する `mergeLegacyPlayersAndPhotos()` を提供すること。
+- [x] 4. `data-loader.ts`, `data-management-import.ts`, `squad-actions.ts`: 試合取込後、ZIP復元（リストア）完了時、および「Sync Squad」実行時に自動名寄せ・写真引き継ぎ・クリーンアップ処理が実行されること。
+- [x] 5. `use-player-photo.ts`: `usePlayerPhoto(playerId, photoUrl, enabled, playerName)` の第4引数 `playerName` を追加し、IDでの写真取得が未ヒットの場合に選手名（`normalizePlayerNameForMatch`）で同名選手を検索してその写真Blobをフォールバック描画すること。
+- [x] 6. `PlayerMarkerItem.tsx`: `usePlayerPhoto` に `marker.name` を渡すこと。
+- [x] 7. 各Phaseのテストおよび型検査（`bun run ai:check`）が全件 PASS すること。
 
 ## 3. Context Snippets (参照コード・型定義・import)
 
@@ -211,14 +211,15 @@ export function usePlayerPhoto(
 ## 5. Reviewer Assessment (コード差分監査)
 <!-- 機械的チェック（型・Lint・Vitest・depcruise）はスクリプトが自動検証。Reviewer はコード差分の意味を監査する -->
 - **Reviewer Model**: `pro`
-- **Reviewed At**: 
-- **Decision**: `TODO`
+- **Reviewed At**: 2026-11-02 00:10
+- **Decision**: `LGTM`
 - **Audit Checklist**:
-  - [ ] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
-  - [ ] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
-  - [ ] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
-  - [ ] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
+  - [x] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
+  - [x] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
+  - [x] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
+  - [x] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
 - **Summary**:
+  WhoScored公式ID移行、345000番台旧仮IDと負の仮IDの自動名寄せ・写真引き継ぎ・tactical_projects自動更新、各導線（データ復元・スカッド同期・試合取込）のバッチ整理配線、および戦術ボード描画（usePlayerPhoto）の名前フォールバック（RAII準拠）の全要件をクリア。下位互換性および250行制限も遵守されていることを確認。なお `use-player-photo.test.ts` に未コミットの有益なテスト差分があるため、Plannerの一括コミットにて同梱することを推奨。
 
 ## 6. Rejections / Additional Tasks (不可逆修正欄)
 <!-- 既存のタスクやPhaseは絶対に消去・上書きせず、追記のみ行う -->
