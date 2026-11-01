@@ -256,7 +256,7 @@ export function renderTacticalFrameToCanvas(
   renderConnectLines(frameContext, frame.players);
 
   // 5. Arrows
-  renderArrows(frameContext, frame.arrows);
+  renderArrows(frameContext, frame.arrows, frame.players);
 
   // 6. Players
   renderPlayers(frameContext, frame.players, playerPhotos);

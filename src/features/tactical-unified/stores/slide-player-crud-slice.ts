@@ -102,14 +102,40 @@ export const createSlidePlayerCrudSlice: StateCreator<
       const slide = getSlide(s.project, slideId);
       const existingPlayer = slide?.players.find((p) => p.id === playerId);
       if (existingPlayer?.locked && !('locked' in patch)) return s;
+
+      const isPositionUpdate = 'x' in patch || 'y' in patch;
+      const newX = patch.x ?? existingPlayer?.x;
+      const newY = patch.y ?? existingPlayer?.y;
+
       return {
         ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players.map((p) =>
+        project: updateSlideInProject(s.project, slideId, (sl) => {
+          const updatedPlayers = sl.players.map((p) =>
             p.id === playerId ? { ...p, ...patch } : p,
-          ),
-        })),
+          );
+          if (!isPositionUpdate || newX === undefined || newY === undefined) {
+            return { ...sl, players: updatedPlayers };
+          }
+          const updatedArrows = sl.arrows.map((a) => {
+            const isSource = a.sourcePlayerId === playerId;
+            const isTarget = a.targetPlayerId === playerId;
+            if (!isSource && !isTarget) return a;
+
+            const nextPoints = [...a.points];
+            if (isSource && nextPoints[0]) {
+              nextPoints[0] = { x: newX, y: newY };
+            }
+            if (isTarget && nextPoints.length > 1) {
+              nextPoints[1] = { x: newX, y: newY };
+            }
+            return { ...a, points: nextPoints };
+          });
+          return {
+            ...sl,
+            players: updatedPlayers,
+            arrows: updatedArrows,
+          };
+        }),
         isDirty: true,
       };
     }),
@@ -121,24 +147,61 @@ export const createSlidePlayerCrudSlice: StateCreator<
       if (!slide) return s;
 
       const patchMap = new Map<string, Partial<Player>>();
+      const movedPositions = new Map<string, { x: number; y: number }>();
+
       for (const u of updates) {
         const existingPlayer = slide.players.find((p) => p.id === u.id);
         if (existingPlayer?.locked && !('locked' in u.patch)) {
           continue;
         }
         patchMap.set(u.id, u.patch);
+        if ('x' in u.patch || 'y' in u.patch) {
+          const nextX = u.patch.x ?? existingPlayer?.x;
+          const nextY = u.patch.y ?? existingPlayer?.y;
+          if (nextX !== undefined && nextY !== undefined) {
+            movedPositions.set(u.id, { x: nextX, y: nextY });
+          }
+        }
       }
       if (patchMap.size === 0) return s;
 
       return {
         ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          players: sl.players.map((p) => {
+        project: updateSlideInProject(s.project, slideId, (sl) => {
+          const updatedPlayers = sl.players.map((p) => {
             const patch = patchMap.get(p.id);
             return patch ? { ...p, ...patch } : p;
-          }),
-        })),
+          });
+
+          if (movedPositions.size === 0) {
+            return { ...sl, players: updatedPlayers };
+          }
+
+          const updatedArrows = sl.arrows.map((a) => {
+            const sourcePos = a.sourcePlayerId
+              ? movedPositions.get(a.sourcePlayerId)
+              : undefined;
+            const targetPos = a.targetPlayerId
+              ? movedPositions.get(a.targetPlayerId)
+              : undefined;
+            if (!sourcePos && !targetPos) return a;
+
+            const nextPoints = [...a.points];
+            if (sourcePos && nextPoints[0]) {
+              nextPoints[0] = { x: sourcePos.x, y: sourcePos.y };
+            }
+            if (targetPos && nextPoints.length > 1) {
+              nextPoints[1] = { x: targetPos.x, y: targetPos.y };
+            }
+            return { ...a, points: nextPoints };
+          });
+
+          return {
+            ...sl,
+            players: updatedPlayers,
+            arrows: updatedArrows,
+          };
+        }),
         isDirty: true,
       };
     }),

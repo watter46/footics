@@ -1,21 +1,15 @@
 import {
   MARKER_PATHS,
   MARKER_VIEWBOX_SIZE,
-  SPOTLIGHT_BEAM_BOTTOM_CENTER_X,
-  SPOTLIGHT_BEAM_BOTTOM_MAX_Y,
-  SPOTLIGHT_BEAM_BOTTOM_WIDTH,
-  SPOTLIGHT_BEAM_PATH,
 } from '@/lib/tactical/marker-assets';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { InterpolatedPlayerState } from '@/lib/tactical/unified-interpolation';
+import { renderPlayerFocus } from './player-focus-renderer';
 import {
   type FrameRenderContext,
   getOpticalCenterX,
   TACTICAL_CANVAS_FONT_FAMILY,
 } from './renderer-context';
-
-const CACHED_SPOTLIGHT_BEAM_PATH: Path2D | null =
-  typeof Path2D !== 'undefined' ? new Path2D(SPOTLIGHT_BEAM_PATH) : null;
 
 const CACHED_COMBINED_MARKER_PATH: Path2D | null =
   typeof Path2D !== 'undefined' ? new Path2D(MARKER_PATHS.join(' ')) : null;
@@ -51,57 +45,18 @@ export function renderPlayers(
       ? Math.max(0.75, Math.min(1.25, 0.88 + (p.y / 100) * 0.24))
       : 1;
     const radius = Math.max(8, Math.round(w * 0.022 * sizeScale * depthScale));
+    const scale = w / 800;
 
     ctx.save();
     ctx.globalAlpha = p.opacity;
 
-    // Spotlight Beam (Focus)
-    if (p.focus?.enabled) {
-      const focusColor = p.focus.color || '#ffffff';
-      const focusOpacity = (p.focus.opacity ?? 0.35) * p.opacity;
-      const focusRadiusMultiplier = (p.focus.radius ?? 3) / 3;
-      const ringWidth = radius * 2.3 * focusRadiusMultiplier;
-      const spotlightScale = ringWidth / SPOTLIGHT_BEAM_BOTTOM_WIDTH;
-      const tx = px - SPOTLIGHT_BEAM_BOTTOM_CENTER_X * spotlightScale;
-      // フォーカスの最下部をリング最下部 (py + radius * 0.55) に一致させる
-      const ringBottomY = py + radius * 0.55 * focusRadiusMultiplier;
-      const ty = ringBottomY - SPOTLIGHT_BEAM_BOTTOM_MAX_Y * spotlightScale;
+    const isRingMarker =
+      p.style?.markerType === 'ring' || p.style?.markerType === 'ring-fade';
 
-      ctx.save();
-      if (CACHED_SPOTLIGHT_BEAM_PATH) {
-        ctx.save();
-        ctx.translate(tx, ty);
-        ctx.scale(spotlightScale, spotlightScale);
+    // ── Spotlight Beam / 2D Focus Glow ──
+    renderPlayerFocus(ctx, p, px, py, radius, scale, isRingMarker);
 
-        // 光の柱（中央が透けるソフトグラデーションビーム）
-        const grad = ctx.createLinearGradient(31.36, 5, 31.36, 100);
-        const hex = focusColor.replace('#', '');
-        const cr = Number.parseInt(hex.substring(0, 2), 16) || 255;
-        const cg = Number.parseInt(hex.substring(2, 4), 16) || 255;
-        const cb = Number.parseInt(hex.substring(4, 6), 16) || 255;
-
-        const stops = [
-          [0, 0.95],
-          [0.25, 0.5],
-          [0.6, 0.22],
-          [0.9, 0.65],
-          [1, 0.95],
-        ] as const;
-        for (const [offset, mul] of stops) {
-          grad.addColorStop(
-            offset,
-            `rgba(${cr}, ${cg}, ${cb}, ${(focusOpacity * mul).toFixed(3)})`,
-          );
-        }
-
-        ctx.fillStyle = grad;
-        ctx.fill(CACHED_SPOTLIGHT_BEAM_PATH);
-        ctx.restore();
-      }
-      ctx.restore();
-    }
-
-    // Vision Cone
+    // ── Vision Cone ──
     const isVisionConeVisible =
       p.visionCone?.visible || (p.visionCone as { enabled?: boolean })?.enabled;
     if (isVisionConeVisible && p.visionCone) {
@@ -109,9 +64,8 @@ export function renderPlayers(
       const coneRadius = snap(toScreenSizeX(cone.radius || 20));
       const startAngle = cone.angleRad - cone.spreadRad / 2;
       const endAngle = cone.angleRad + cone.spreadRad / 2;
-      const isRing = p.style?.markerType === 'ring';
-      const rx = isRing ? radius * 1.15 : radius + 2;
-      const ry = isRing ? radius * 0.55 : radius + 2;
+      const rx = isRingMarker ? radius * 1.15 : radius + 2;
+      const ry = isRingMarker ? radius * 0.55 : radius + 2;
 
       ctx.save();
       ctx.globalAlpha = (cone.opacity ?? 0.25) * p.opacity;
@@ -130,19 +84,19 @@ export function renderPlayers(
         };
       };
 
-      if (!m && !isRing) {
+      if (!m && !isRingMarker) {
         ctx.moveTo(px, py);
         ctx.arc(px, py, coneRadius, startAngle, endAngle);
       } else {
         const steps = 36;
-        if (!isRing) ctx.moveTo(px, py);
+        if (!isRingMarker) ctx.moveTo(px, py);
         for (let i = 0; i <= steps; i++) {
           const a = startAngle + (i / steps) * (endAngle - startAngle);
           const pt = getArcPoint(a);
-          if (isRing && i === 0) ctx.moveTo(pt.x, pt.y);
+          if (isRingMarker && i === 0) ctx.moveTo(pt.x, pt.y);
           else ctx.lineTo(pt.x, pt.y);
         }
-        if (isRing) {
+        if (isRingMarker) {
           for (let i = steps; i >= 0; i--) {
             const a = startAngle + (i / steps) * (endAngle - startAngle);
             ctx.lineTo(px + rx * Math.cos(a), py + ry * Math.sin(a));
@@ -159,16 +113,14 @@ export function renderPlayers(
     }
 
     // ── 100% Visual Parity with player-layer.tsx ──
-    const isRingMarker = p.style?.markerType === 'ring';
+    const markerColor =
+      p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
 
-    if (isRingMarker) {
+    if (p.style?.markerType === 'ring') {
       // ── 3D Foot Ring (立体足元楕円リング) ──
       const ringScale = (radius * 2) / MARKER_VIEWBOX_SIZE;
       const rtx = px - (MARKER_VIEWBOX_SIZE * ringScale) / 2;
       const rty = py - (MARKER_VIEWBOX_SIZE * ringScale) / 2;
-
-      const ringColor =
-        p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
 
       if (CACHED_COMBINED_MARKER_PATH) {
         ctx.save();
@@ -176,17 +128,16 @@ export function renderPlayers(
         ctx.scale(ringScale, ringScale);
 
         // 各パーツから外側にふんわり光が漏れ出るグロー層
-        ctx.strokeStyle = ringColor;
+        ctx.strokeStyle = markerColor;
         ctx.lineWidth = 3;
-        ctx.shadowColor = ringColor;
-        ctx.shadowBlur = Math.round(8 * (w / 800));
+        ctx.shadowColor = markerColor;
+        ctx.shadowBlur = Math.round(8 * scale);
         ctx.globalAlpha = p.opacity * 0.6;
         ctx.stroke(CACHED_COMBINED_MARKER_PATH);
 
         // 各パーツ本体 (シャープな発光コア)
-        ctx.fillStyle = ringColor;
-        ctx.shadowColor = ringColor;
-        ctx.shadowBlur = Math.round(4 * (w / 800));
+        ctx.fillStyle = markerColor;
+        ctx.shadowBlur = Math.round(4 * scale);
         ctx.globalAlpha = p.opacity;
         ctx.fill(CACHED_COMBINED_MARKER_PATH);
         ctx.restore();
@@ -194,31 +145,59 @@ export function renderPlayers(
 
       // Ring Center Glow Ellipse (各パーツと同じ発光グロー効果)
       ctx.save();
-      ctx.strokeStyle = ringColor;
-      ctx.fillStyle = ringColor;
-      ctx.shadowColor = ringColor;
-      ctx.lineWidth = Math.round(2 * (w / 800));
-      ctx.shadowBlur = Math.round(8 * (w / 800));
+      ctx.strokeStyle = markerColor;
+      ctx.fillStyle = markerColor;
+      ctx.shadowColor = markerColor;
+      ctx.lineWidth = Math.round(2 * scale);
+      ctx.shadowBlur = Math.round(8 * scale);
       ctx.globalAlpha = p.opacity * 0.6;
       ctx.beginPath();
       ctx.ellipse(px, py, radius * 0.72, radius * 0.24, 0, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.globalAlpha = p.opacity * 0.45;
-      ctx.shadowBlur = Math.round(4 * (w / 800));
+      ctx.shadowBlur = Math.round(4 * scale);
       ctx.beginPath();
       ctx.ellipse(px, py, radius * 0.68, radius * 0.22, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
       // 3Dリング中央は何も表示しない仕様に統一
+    } else if (p.style?.markerType === 'ring-fade') {
+      // ── Ring Fade (フェード足元楕円リング) ──
+      ctx.save();
+      ctx.strokeStyle = markerColor;
+      ctx.fillStyle = markerColor;
+      ctx.shadowColor = markerColor;
+
+      // 外側フェードグロー
+      ctx.lineWidth = Math.max(3 * scale, 3);
+      ctx.shadowBlur = Math.round(10 * scale);
+      ctx.globalAlpha = p.opacity * 0.5;
+      ctx.beginPath();
+      ctx.ellipse(px, py, radius * 0.95, radius * 0.38, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 内側コア楕円リング
+      ctx.lineWidth = Math.max(2 * scale, 2);
+      ctx.shadowBlur = Math.round(4 * scale);
+      ctx.globalAlpha = p.opacity * 0.85;
+      ctx.beginPath();
+      ctx.ellipse(px, py, radius * 0.95, radius * 0.38, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 足元中央の薄いフェード塗り
+      ctx.globalAlpha = p.opacity * 0.15;
+      ctx.beginPath();
+      ctx.ellipse(px, py, radius * 0.9, radius * 0.35, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     } else {
       // ── 2D Player Circle ──
       // 1. Player Main Body (Team Color)
       ctx.beginPath();
       ctx.arc(px, py, radius, 0, Math.PI * 2);
-      ctx.fillStyle =
-        p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
+      ctx.fillStyle = markerColor;
       ctx.fill();
 
       // 2. Player Photo (insideContent === 'photo' かつ写真ソースがある場合)
@@ -244,16 +223,15 @@ export function renderPlayers(
       }
 
       // 3. Player Standard Stroke (White Ring)
-      const strokeWidth = p.style?.strokeWidth ?? 2;
-      ctx.lineWidth = Math.max(1.5, Math.round(strokeWidth * (w / 800)));
-      ctx.strokeStyle = p.style?.strokeColor || '#ffffff';
-      ctx.stroke();
+      if (!photoSource && (p.style?.strokeWidth ?? 2) > 0) {
+        const strokeWidth = p.style?.strokeWidth ?? 2;
+        ctx.lineWidth = Math.max(1.5, Math.round(strokeWidth * scale));
+        ctx.strokeStyle = p.style?.strokeColor || '#ffffff';
+        ctx.stroke();
+      }
 
       // 4. Shirt Number
-      const showInsideNumber =
-        !photoSource &&
-        (p.style?.insideContent !== 'photo' || !photoSource) &&
-        p.shirtNo;
+      const showInsideNumber = !photoSource && p.shirtNo;
 
       if (showInsideNumber && p.shirtNo) {
         const numScale = p.style?.numberSizeScale ?? 1.0;

@@ -43,6 +43,8 @@ export interface InterpolatedArrowState {
   sourcePlayerId?: string;
   targetPlayerId?: string;
   endMarker?: ArrowAnnotation['endMarker'];
+  dashArray?: number[];
+  arrowHead?: boolean;
 }
 
 export interface InterpolatedTextState {
@@ -136,18 +138,18 @@ export function interpolateZone(
   }
 
   // 2. Rect ⇄ Rect または Ellipse ⇄ Ellipse
-  const startX = zA.x ?? zA.points?.[0]?.x ?? 20;
-  const startY = zA.y ?? zA.points?.[0]?.y ?? 20;
-  const endX = zB.x ?? zB.points?.[0]?.x ?? 20;
-  const endY = zB.y ?? zB.points?.[0]?.y ?? 20;
-  const startW = zA.width ?? 30;
-  const startH = zA.height ?? 20;
-  const endW = zB.width ?? 30;
-  const endH = zB.height ?? 20;
-  const x = lerp(startX, endX, ease);
-  const y = lerp(startY, endY, ease);
-  const width = lerp(startW, endW, ease);
-  const height = lerp(startH, endH, ease);
+  const x = lerp(
+    zA.x ?? zA.points?.[0]?.x ?? 20,
+    zB.x ?? zB.points?.[0]?.x ?? 20,
+    ease,
+  );
+  const y = lerp(
+    zA.y ?? zA.points?.[0]?.y ?? 20,
+    zB.y ?? zB.points?.[0]?.y ?? 20,
+    ease,
+  );
+  const width = lerp(zA.width ?? 30, zB.width ?? 30, ease);
+  const height = lerp(zA.height ?? 20, zB.height ?? 20, ease);
   const rotation = lerp(zA.rotation || 0, zB.rotation || 0, ease);
 
   return {
@@ -184,19 +186,10 @@ export function interpolateArrow(
   if (!arrowA && !arrowB) return null;
 
   if (arrowA && !arrowB) {
-    return {
-      ...arrowA,
-      opacity: Math.max(0, 1 - ease),
-      visible: ease < 1,
-    };
+    return { ...arrowA, opacity: Math.max(0, 1 - ease), visible: ease < 1 };
   }
-
   if (!arrowA && arrowB) {
-    return {
-      ...arrowB,
-      opacity: Math.min(1, ease),
-      visible: true,
-    };
+    return { ...arrowB, opacity: Math.min(1, ease), visible: true };
   }
 
   const aA = arrowA;
@@ -252,9 +245,11 @@ export function interpolateArrow(
     strokeWidth: lerp(aA.strokeWidth || 3, aB.strokeWidth || 3, ease),
     opacity: 1,
     visible: true,
-    sourcePlayerId: aB.sourcePlayerId,
-    targetPlayerId: aB.targetPlayerId,
-    endMarker: aB.endMarker,
+    sourcePlayerId: aB.sourcePlayerId ?? aA.sourcePlayerId,
+    targetPlayerId: aB.targetPlayerId ?? aA.targetPlayerId,
+    endMarker: aB.endMarker ?? aA.endMarker,
+    dashArray: aB.dashArray ?? aA.dashArray,
+    arrowHead: aB.arrowHead ?? aA.arrowHead,
   };
 }
 

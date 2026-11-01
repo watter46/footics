@@ -862,5 +862,172 @@ describe('unified-interpolation engine', () => {
         });
       });
     });
+
+    describe('arrow interpolation with connected players', () => {
+      it('syncs arrow endpoints with interpolated player coordinates during transition', () => {
+        const slides: Slide[] = [
+          {
+            id: 's1',
+            index: 0,
+            transitionDurationMs: 1000,
+            pauseMs: 0,
+            easing: 'linear',
+            players: [
+              {
+                id: 'p1',
+                team: 'home',
+                area: 'pitch',
+                x: 10,
+                y: 10,
+                style: {
+                  markerType: 'circle',
+                  insideContent: 'number',
+                  bottomLabel: 'name',
+                  color: '#000',
+                  strokeColor: '#fff',
+                  strokeWidth: 2,
+                  sizeScale: 1,
+                  numberSizeScale: 1,
+                  labelSizeScale: 1,
+                },
+                connectLines: [],
+                badges: [],
+              },
+              {
+                id: 'p2',
+                team: 'away',
+                area: 'pitch',
+                x: 80,
+                y: 80,
+                style: {
+                  markerType: 'circle',
+                  insideContent: 'number',
+                  bottomLabel: 'name',
+                  color: '#fff',
+                  strokeColor: '#000',
+                  strokeWidth: 2,
+                  sizeScale: 1,
+                  numberSizeScale: 1,
+                  labelSizeScale: 1,
+                },
+                connectLines: [],
+                badges: [],
+              },
+            ],
+            arrows: [
+              {
+                id: 'arrow-sync-1',
+                annotationType: 'arrow',
+                arrowType: 'pass',
+                curveType: 'straight',
+                sourcePlayerId: 'p1',
+                targetPlayerId: 'p2',
+                points: [
+                  { x: 10, y: 10 },
+                  { x: 80, y: 80 },
+                ],
+                color: '#38bdf8',
+                strokeWidth: 3,
+                dashArray: [6, 4],
+                arrowHead: false,
+              },
+            ],
+            zones: [],
+            texts: [],
+            ball: { x: 50, y: 50, visible: true },
+          },
+          {
+            id: 's2',
+            index: 1,
+            transitionDurationMs: 1000,
+            pauseMs: 0,
+            easing: 'linear',
+            players: [
+              {
+                id: 'p1',
+                team: 'home',
+                area: 'pitch',
+                x: 30,
+                y: 50,
+                style: {
+                  markerType: 'circle',
+                  insideContent: 'number',
+                  bottomLabel: 'name',
+                  color: '#000',
+                  strokeColor: '#fff',
+                  strokeWidth: 2,
+                  sizeScale: 1,
+                  numberSizeScale: 1,
+                  labelSizeScale: 1,
+                },
+                connectLines: [],
+                badges: [],
+              },
+              {
+                id: 'p2',
+                team: 'away',
+                area: 'pitch',
+                x: 60,
+                y: 20,
+                style: {
+                  markerType: 'circle',
+                  insideContent: 'number',
+                  bottomLabel: 'name',
+                  color: '#fff',
+                  strokeColor: '#000',
+                  strokeWidth: 2,
+                  sizeScale: 1,
+                  numberSizeScale: 1,
+                  labelSizeScale: 1,
+                },
+                connectLines: [],
+                badges: [],
+              },
+            ],
+            arrows: [
+              {
+                id: 'arrow-sync-1',
+                annotationType: 'arrow',
+                arrowType: 'pass',
+                curveType: 'straight',
+                sourcePlayerId: 'p1',
+                targetPlayerId: 'p2',
+                // Points intentionally differing or outdated in raw data
+                points: [
+                  { x: 0, y: 0 },
+                  { x: 0, y: 0 },
+                ],
+                color: '#38bdf8',
+                strokeWidth: 3,
+                dashArray: [6, 4],
+                arrowHead: false,
+              },
+            ],
+            zones: [],
+            texts: [],
+            ball: { x: 50, y: 50, visible: true },
+          },
+        ];
+
+        // At t=0.5 (500ms):
+        // p1 moves from (10, 10) to (30, 50) -> expected (20, 30)
+        // p2 moves from (80, 80) to (60, 20) -> expected (70, 50)
+        const frameMid = getInterpolatedUnifiedSlideFrame(slides, 500);
+        expect(frameMid.players.p1.x).toBeCloseTo(20, 1);
+        expect(frameMid.players.p1.y).toBeCloseTo(30, 1);
+        expect(frameMid.players.p2.x).toBeCloseTo(70, 1);
+        expect(frameMid.players.p2.y).toBeCloseTo(50, 1);
+
+        const arrow = frameMid.arrows['arrow-sync-1'];
+        expect(arrow).toBeDefined();
+        // Endpoints MUST synchronize with the interpolated player coordinates
+        expect(arrow.points[0].x).toBeCloseTo(20, 1);
+        expect(arrow.points[0].y).toBeCloseTo(30, 1);
+        expect(arrow.points[1].x).toBeCloseTo(70, 1);
+        expect(arrow.points[1].y).toBeCloseTo(50, 1);
+        expect(arrow.dashArray).toEqual([6, 4]);
+        expect(arrow.arrowHead).toBe(false);
+      });
+    });
   });
 });

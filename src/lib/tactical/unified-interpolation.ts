@@ -86,6 +86,35 @@ const EMPTY_FRAME: InterpolatedUnifiedFrame = {
   isPaused: false,
 };
 
+function syncArrowsWithPlayers(
+  arrows: Record<string, InterpolatedArrowState>,
+  players: Record<string, InterpolatedPlayerState>,
+): Record<string, InterpolatedArrowState> {
+  const synced: Record<string, InterpolatedArrowState> = {};
+  for (const [id, arrow] of Object.entries(arrows)) {
+    const sp = arrow.sourcePlayerId ? players[arrow.sourcePlayerId] : undefined;
+    const tp = arrow.targetPlayerId ? players[arrow.targetPlayerId] : undefined;
+
+    if (!sp && !tp) {
+      synced[id] = arrow;
+      continue;
+    }
+
+    const nextPoints = [...arrow.points];
+    if (sp && nextPoints[0]) {
+      nextPoints[0] = { x: sp.x, y: sp.y };
+    }
+    if (tp && nextPoints.length > 1) {
+      nextPoints[1] = { x: tp.x, y: tp.y };
+    }
+    synced[id] = {
+      ...arrow,
+      points: nextPoints,
+    };
+  }
+  return synced;
+}
+
 /**
  * 指定時間 (timeMs) における全オブジェクトの補間フレーム状態を計算
  */
@@ -103,9 +132,10 @@ export function getInterpolatedUnifiedSlideFrame(
     const zones = Object.fromEntries(
       slide.zones.map((z) => [z.id, interpolateZone(z, z, 0)!]),
     );
-    const arrows = Object.fromEntries(
+    const rawArrows = Object.fromEntries(
       slide.arrows.map((a) => [a.id, interpolateArrow(a, a, 0)!]),
     );
+    const arrows = syncArrowsWithPlayers(rawArrows, players);
     const texts = Object.fromEntries(
       slide.texts.map((t) => [t.id, interpolateText(t, t, 0)!]),
     );
@@ -211,7 +241,7 @@ export function getInterpolatedUnifiedSlideFrame(
   });
 
   // 4. Arrows 補間
-  const arrows: Record<string, InterpolatedArrowState> = {};
+  const rawArrows: Record<string, InterpolatedArrowState> = {};
   const arrowMapA = new Map(slideA.arrows.map((a) => [a.id, a]));
   const arrowMapB = new Map(slideB.arrows.map((a) => [a.id, a]));
   const allArrowIds = new Set([...arrowMapA.keys(), ...arrowMapB.keys()]);
@@ -220,8 +250,9 @@ export function getInterpolatedUnifiedSlideFrame(
     const aA = arrowMapA.get(id);
     const aB = arrowMapB.get(id);
     const interpolated = interpolateArrow(aA, aB, ease);
-    if (interpolated) arrows[id] = interpolated;
+    if (interpolated) rawArrows[id] = interpolated;
   });
+  const arrows = syncArrowsWithPlayers(rawArrows, players);
 
   // 5. Texts 補間
   const texts: Record<string, InterpolatedTextState> = {};

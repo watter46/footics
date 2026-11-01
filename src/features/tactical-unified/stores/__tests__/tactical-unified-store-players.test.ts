@@ -615,4 +615,93 @@ describe('tactical-unified-store - players & squad', () => {
     expect(player?.x).toBe(-15);
     expect(player?.y).toBe(112);
   });
+
+  describe('updatePlayer / updatePlayers arrow endpoint synchronization', () => {
+    it('updatePlayer で選手移動時に接続矢印 (sourcePlayerId, targetPlayerId) の端点が更新される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+      const player1 = createDefaultPlayer('home', 20, 30, '#034694');
+      const player2 = createDefaultPlayer('home', 60, 70, '#034694');
+      store.addPlayer(player1);
+      store.addPlayer(player2);
+
+      const arrowId = 'arrow-sync-test-1';
+      store.addArrow(slideId, {
+        id: arrowId,
+        annotationType: 'arrow',
+        arrowType: 'pass',
+        curveType: 'straight',
+        sourcePlayerId: player1.id,
+        targetPlayerId: player2.id,
+        points: [
+          { x: 20, y: 30 },
+          { x: 60, y: 70 },
+        ],
+        color: '#ffffff',
+        strokeWidth: 3,
+        dashArray: [],
+        arrowHead: true,
+      });
+
+      // player1 (source) を (25, 35) へ更新
+      store.updatePlayer(slideId, player1.id, { x: 25, y: 35 });
+
+      let slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      let arrow = slide?.arrows.find((a) => a.id === arrowId);
+      expect(arrow?.points[0]).toEqual({ x: 25, y: 35 });
+      expect(arrow?.points[1]).toEqual({ x: 60, y: 70 });
+
+      // player2 (target) を (65, 75) へ更新
+      store.updatePlayer(slideId, player2.id, { x: 65, y: 75 });
+
+      slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      arrow = slide?.arrows.find((a) => a.id === arrowId);
+      expect(arrow?.points[0]).toEqual({ x: 25, y: 35 });
+      expect(arrow?.points[1]).toEqual({ x: 65, y: 75 });
+    });
+
+    it('updatePlayers で複数選手一括移動時に接続矢印の端点が同時に更新される', () => {
+      const store = useTacticalUnifiedStore.getState();
+      const slideId = store.activeSlideId;
+      const player1 = createDefaultPlayer('home', 10, 20, '#034694');
+      const player2 = createDefaultPlayer('home', 50, 60, '#034694');
+      store.addPlayer(player1);
+      store.addPlayer(player2);
+
+      const arrowId = 'arrow-sync-batch-1';
+      store.addArrow(slideId, {
+        id: arrowId,
+        annotationType: 'arrow',
+        arrowType: 'pass',
+        curveType: 'straight',
+        sourcePlayerId: player1.id,
+        targetPlayerId: player2.id,
+        points: [
+          { x: 10, y: 20 },
+          { x: 50, y: 60 },
+        ],
+        color: '#ffffff',
+        strokeWidth: 3,
+        dashArray: [],
+        arrowHead: true,
+      });
+
+      // player1 と player2 を一括更新
+      store.updatePlayers(slideId, [
+        { id: player1.id, patch: { x: 15, y: 25 } },
+        { id: player2.id, patch: { x: 55, y: 65 } },
+      ]);
+
+      const slide = useTacticalUnifiedStore
+        .getState()
+        .project.slides.find((s) => s.id === slideId);
+      const arrow = slide?.arrows.find((a) => a.id === arrowId);
+      expect(arrow?.points[0]).toEqual({ x: 15, y: 25 });
+      expect(arrow?.points[1]).toEqual({ x: 55, y: 65 });
+    });
+  });
 });

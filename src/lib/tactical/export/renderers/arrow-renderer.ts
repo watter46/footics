@@ -5,12 +5,6 @@ import type {
 } from '@/lib/tactical/unified-interpolation';
 import type { FrameRenderContext } from './renderer-context';
 
-declare module '@/lib/tactical/interpolation-annotation' {
-  interface InterpolatedArrowState {
-    dashArray?: number[];
-  }
-}
-
 /**
  * Draws connect lines between players onto canvas context.
  */
@@ -86,6 +80,7 @@ export function renderConnectLines(
 export function renderArrows(
   context: FrameRenderContext,
   arrows: Record<string, InterpolatedArrowState>,
+  players?: Record<string, InterpolatedPlayerState>,
 ): void {
   const { ctx, w, projectObjToScreen, snap } = context;
 
@@ -104,19 +99,11 @@ export function renderArrows(
     ctx.globalAlpha = a.opacity ?? 1;
 
     const _sa = projectObjToScreen(a.points[0].x, a.points[0].y);
-    const sx = snap(_sa.x);
-    const sy = snap(_sa.y);
+    let sx = snap(_sa.x);
+    let sy = snap(_sa.y);
     const _ea = projectObjToScreen(a.points[1].x, a.points[1].y);
-    const ex = snap(_ea.x);
-    const ey = snap(_ea.y);
-
-    const dash =
-      a.dashArray && a.dashArray.length > 0
-        ? a.dashArray
-        : a.arrowType === 'pass' || a.arrowType === 'defend'
-          ? [8, 5]
-          : [];
-    ctx.setLineDash(dash);
+    let ex = snap(_ea.x);
+    let ey = snap(_ea.y);
 
     const isWavy =
       a.arrowType === 'dribble' || (a.arrowType as string) === 'arrow_wavy';
@@ -127,10 +114,84 @@ export function renderArrows(
         a.controlPoint !== undefined) &&
       a.controlPoint !== undefined;
     const isDotEnd = a.arrowType === 'route_line' || a.endMarker === 'dot';
+    const hasArrowHead =
+      a.arrowHead !== false &&
+      a.endMarker !== 'none' &&
+      a.arrowType !== 'line' &&
+      !isDotEnd;
+
+    // 接続選手の境界オフセット
+    const sourcePlayer =
+      a.sourcePlayerId && players ? players[a.sourcePlayerId] : undefined;
+    const targetPlayer =
+      a.targetPlayerId && players ? players[a.targetPlayerId] : undefined;
+
+    let cx = 0;
+    let cy = 0;
+    if (isCurved && a.controlPoint) {
+      const _ca = projectObjToScreen(a.controlPoint.x, a.controlPoint.y);
+      cx = snap(_ca.x);
+      cy = snap(_ca.y);
+    }
+
+    if (sourcePlayer?.visible) {
+      const sourceRadius =
+        ((sourcePlayer as { size?: number }).size || 18) * scale + 2;
+      const angle =
+        isCurved && a.controlPoint
+          ? Math.atan2(cy - sy, cx - sx)
+          : Math.atan2(ey - sy, ex - sx);
+      sx = snap(sx + sourceRadius * Math.cos(angle));
+      sy = snap(sy + sourceRadius * Math.sin(angle));
+    }
+
+    if (targetPlayer?.visible) {
+      const targetRadius =
+        ((targetPlayer as { size?: number }).size || 18) * scale + 2;
+      const angle =
+        isCurved && a.controlPoint
+          ? Math.atan2(ey - cy, ex - cx)
+          : Math.atan2(ey - sy, ex - sx);
+      ex = snap(ex - targetRadius * Math.cos(angle));
+      ey = snap(ey - targetRadius * Math.sin(angle));
+    }
+
+    const dotRadius = Math.max(5 * scale, arrowWidth * 1.8);
+    let lineSx = sx;
+    let lineSy = sy;
+    let lineEx = ex;
+    let lineEy = ey;
+
+    if (isDotEnd) {
+      if (isCurved && a.controlPoint) {
+        const startAngle = Math.atan2(cy - sy, cx - sx);
+        lineSx = sx + dotRadius * Math.cos(startAngle);
+        lineSy = sy + dotRadius * Math.sin(startAngle);
+        const endAngle = Math.atan2(ey - cy, ex - cx);
+        lineEx = ex - dotRadius * Math.cos(endAngle);
+        lineEy = ey - dotRadius * Math.sin(endAngle);
+      } else {
+        const angle = Math.atan2(ey - sy, ex - sx);
+        const dist = Math.hypot(ex - sx, ey - sy);
+        if (dist > dotRadius * 2) {
+          lineSx = sx + dotRadius * Math.cos(angle);
+          lineSy = sy + dotRadius * Math.sin(angle);
+          lineEx = ex - dotRadius * Math.cos(angle);
+          lineEy = ey - dotRadius * Math.sin(angle);
+        }
+      }
+    }
+
+    const dash = Array.isArray(a.dashArray)
+      ? a.dashArray.map((d) => d * scale)
+      : a.arrowType === 'pass' || a.arrowType === 'defend'
+        ? [8 * scale, 5 * scale]
+        : [];
+    ctx.setLineDash(dash);
 
     ctx.beginPath();
     if (isWavy) {
-      const wavyPts = getWavyPoints(sx, sy, ex, ey);
+      const wavyPts = getWavyPoints(lineSx, lineSy, lineEx, lineEy);
       if (wavyPts.length >= 2) {
         ctx.moveTo(wavyPts[0], wavyPts[1]);
         for (let i = 2; i < wavyPts.length; i += 2) {
@@ -139,30 +200,26 @@ export function renderArrows(
       }
       ctx.stroke();
     } else if (isCurved && a.controlPoint) {
-      const _ca = projectObjToScreen(a.controlPoint.x, a.controlPoint.y);
-      const cx = snap(_ca.x);
-      const cy = snap(_ca.y);
-      ctx.moveTo(sx, sy);
-      ctx.quadraticCurveTo(cx, cy, ex, ey);
+      ctx.moveTo(lineSx, lineSy);
+      ctx.quadraticCurveTo(cx, cy, lineEx, lineEy);
       ctx.stroke();
     } else {
-      ctx.moveTo(sx, sy);
-      ctx.lineTo(ex, ey);
+      ctx.moveTo(lineSx, lineSy);
+      ctx.lineTo(lineEx, lineEy);
       ctx.stroke();
     }
 
     // Arrowhead or Dot endpoint
     ctx.setLineDash([]);
     if (isDotEnd) {
-      const dotRadius = Math.max(
-        4,
-        Math.round((a.strokeWidth ? a.strokeWidth * 1.6 : 6) * scale),
-      );
+      ctx.lineWidth = Math.max(2 * scale, arrowWidth);
+      ctx.beginPath();
+      ctx.arc(sx, sy, dotRadius, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.beginPath();
       ctx.arc(ex, ey, dotRadius, 0, Math.PI * 2);
-      ctx.fill();
       ctx.stroke();
-    } else {
+    } else if (hasArrowHead) {
       const angle =
         isCurved && a.controlPoint
           ? Math.atan2(

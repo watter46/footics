@@ -1601,6 +1601,173 @@ describe('Tactical Frame Renderer', () => {
       );
       expect(matched).toBe(true);
     });
+
+    describe('Phase 2: Player rendering parity (photo stroke, 2D focus glow, ring-fade)', () => {
+      it('does not draw circle stroke when insideContent is photo and photoCache hits', () => {
+        const slideWithPhoto: Slide = SlideSchema.parse({
+          id: 'slide-photo-nostroke',
+          index: 0,
+          transitionDurationMs: 1000,
+          pauseMs: 500,
+          players: [
+            {
+              id: 'p-photo-only',
+              playerId: 'photo-1',
+              x: 50,
+              y: 50,
+              team: 'home',
+              shirtNo: '10',
+              name: '',
+              area: 'pitch',
+              style: {
+                insideContent: 'photo',
+                bottomLabel: 'none',
+                color: '#3b82f6',
+                strokeColor: '#ffffff',
+                strokeWidth: 2,
+                sizeScale: 1,
+                numberSizeScale: 1,
+                labelSizeScale: 1,
+              },
+            },
+          ],
+          arrows: [],
+          zones: [],
+          texts: [],
+          ball: { x: 0, y: 0, visible: false },
+        });
+
+        const fakeImage = {} as CanvasImageSource;
+        const ctx = createMockContext();
+        renderTacticalFrameToCanvas(ctx, {
+          slides: [slideWithPhoto],
+          timeMs: 0,
+          width: 1000,
+          height: 1000,
+          aspectRatio: '16:9',
+          playerPhotos: {
+            'photo-1': fakeImage,
+          },
+          transparent: true,
+        });
+
+        // 選手本体のクリップ＆drawImageは呼ばれるが、外枠の白枠 stroke は呼ばれない
+        expect(ctx.drawImage).toHaveBeenCalled();
+        expect(ctx.stroke).not.toHaveBeenCalled();
+      });
+
+      it('renders 2D neon glow ring with shadowBlur when 2D circle player has focus enabled', () => {
+        const slideWith2DFocus: Slide = SlideSchema.parse({
+          id: 'slide-2d-focus',
+          index: 0,
+          transitionDurationMs: 1000,
+          pauseMs: 500,
+          players: [
+            {
+              id: 'p-2d-focus',
+              x: 50,
+              y: 50,
+              team: 'home',
+              shirtNo: '10',
+              name: '',
+              area: 'pitch',
+              style: {
+                insideContent: 'number',
+                bottomLabel: 'none',
+                color: '#3b82f6',
+                strokeColor: '#ffffff',
+                strokeWidth: 0,
+                sizeScale: 1,
+                numberSizeScale: 1,
+                labelSizeScale: 1,
+              },
+              focus: {
+                enabled: true,
+                color: '#ffffff',
+                opacity: 0.7,
+              },
+            },
+          ],
+          arrows: [],
+          zones: [],
+          texts: [],
+          ball: { x: 0, y: 0, visible: false },
+        });
+
+        const ctx = createMockContext();
+        let capturedShadowBlur = 0;
+        let strokeWithShadowBlurCount = 0;
+        ctx.stroke = vi.fn().mockImplementation(() => {
+          if (ctx.shadowBlur > 0) {
+            capturedShadowBlur = ctx.shadowBlur;
+            strokeWithShadowBlurCount++;
+          }
+        });
+
+        renderTacticalFrameToCanvas(ctx, {
+          slides: [slideWith2DFocus],
+          timeMs: 0,
+          width: 800,
+          height: 600,
+          aspectRatio: '16:9',
+          transparent: true,
+        });
+
+        // 2Dフォーカスのネオングローリング（ブルームリングとコア発光リング）で shadowBlur > 0 を伴う stroke が呼ばれること
+        expect(strokeWithShadowBlurCount).toBeGreaterThanOrEqual(2);
+        expect(capturedShadowBlur).toBeGreaterThan(0);
+      });
+
+      it('renders ellipse for ring-fade marker without falling back to 2D circle fill', () => {
+        const slideWithRingFade: Slide = SlideSchema.parse({
+          id: 'slide-ring-fade',
+          index: 0,
+          transitionDurationMs: 1000,
+          pauseMs: 500,
+          players: [
+            {
+              id: 'p-ring-fade',
+              x: 50,
+              y: 50,
+              team: 'home',
+              shirtNo: '8',
+              name: '',
+              area: 'pitch',
+              style: {
+                markerType: 'ring-fade',
+                insideContent: 'number',
+                bottomLabel: 'none',
+                color: '#2563eb',
+                strokeColor: '#ffffff',
+                strokeWidth: 2,
+                sizeScale: 1,
+                numberSizeScale: 1,
+                labelSizeScale: 1,
+              },
+            },
+          ],
+          arrows: [],
+          zones: [],
+          texts: [],
+          ball: { x: 0, y: 0, visible: false },
+        });
+
+        const ctx = createMockContext();
+        renderTacticalFrameToCanvas(ctx, {
+          slides: [slideWithRingFade],
+          timeMs: 0,
+          width: 800,
+          height: 600,
+          aspectRatio: '16:9',
+          transparent: true,
+        });
+
+        // ring-fade マーカーでは ctx.ellipse が呼ばれ、2Dサークルの arc fill にフォールバックしない
+        expect(ctx.ellipse).toHaveBeenCalled();
+        // 2D Player Circle の arc は呼ばれない
+        expect(ctx.arc).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('exportVideoWithMediabunny optimization', () => {
