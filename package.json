@@ -10,7 +10,7 @@
     "dev": "bun scripts/dev/start-dev.ts",
     "dev:next": "next dev --turbo",
     "dev:https": "bun x next dev --experimental-https",
-    "build": "next build",
+    "build": "next build --webpack",
     "deploy": "opennextjs-cloudflare build && wrangler deploy",
     "deploy:clean": "rm -rf .next .open-next && opennextjs-cloudflare build && wrangler deploy",
     "extension:dev": "bun --cwd extension dev",
