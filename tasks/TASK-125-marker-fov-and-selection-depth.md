@@ -1,7 +1,7 @@
 # TASK-125: マーカー視野色変更・最前面表示・操作メニュー表示復旧
 
 ## 1. Metadata
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Created**: 2026-11-01
 - **Target Files**:
   - `src/lib/types/tactical/player.ts` (MODIFY)
@@ -16,9 +16,9 @@
   - `src/features/tactical-unified/core/components/__tests__/billboard-depth-sort.test.ts` (NEW)
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
-- [ ] 1. 視野コーンのデフォルト初期色がライトブルー（`#38bdf8`）となり、描画時に控えめな発光（シャドウ）が付与されること。
+- [x] 1. 視野コーンのデフォルト初期色がライトブルー（`#38bdf8`）となり、描画時に控えめな発光（シャドウ）が付与されること。
 - [x] 2. 視野コーンが有効な時、マーカー操作メニュー（HUD）に視野カラー選択用の `MiniColorPicker` が表示され、パレットから色を変更して `player.visionCone.color` に即座に反映できること。
-- [ ] 3. 視野調整ハンドルのドラッグ操作時、およびマーカー移動ドラッグ完了時に `isDragging: false` と `isHudOpen: true` が正しく処理され、操作後にマーカーをクリックまたは再選択した際に確実に操作メニューが表示されること。
+- [x] 3. 視野調整ハンドルのドラッグ操作時、およびマーカー移動ドラッグ完了時に `isDragging: false` と `isHudOpen: true` が正しく処理され、操作後にマーカーをクリックまたは再選択した際に確実に操作メニューが表示されること。
 - [x] 4. 選択中のマーカーが非選択マーカーよりも手前（最前面）に動的ソートされて描画され、選択解除で通常の奥行き順（Y座標順）に戻ること。
 - [x] 5. 選択中のゾーンおよび矢印が、それぞれの描画配列内で非選択要素よりも手前（配列末尾）に動的に並び替えられて描画されること。
 
@@ -134,13 +134,14 @@ export function sortBillboardItemsByDepth<T extends { x?: number; y: number }>(
 
 ## 5. Reviewer Assessment (コード差分監査)
 - **Reviewer Model**: `pro`
-- **Reviewed At**: 
-- **Decision**: `TODO`
+- **Reviewed At**: 2026-11-01 12:25
+- **Decision**: `LGTM`
 - **Audit Checklist**:
-  - [ ] 1. 要件網羅性 & テスタビリティ: 視野色変更・最前面表示・メニュー表示復旧がすべて満たされているか
-  - [ ] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: ドラッグ完了時の状態整合性と副作用クリーンアップ
-  - [ ] 3. 設計負債 & 拡張性: データストア配列を直接書き換えず、描画レイヤーでの純粋なソートになっているか
-  - [ ] 4. サイレント破壊 & 既存保護: 既存のマーカー描画・コネクトライン・矢印描画に副作用がないか
+  - [x] 1. 要件網羅性 & テスタビリティ: 視野色変更・最前面表示・メニュー表示復旧がすべて満たされているか
+  - [x] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: ドラッグ完了時の状態整合性と副作用クリーンアップ
+  - [x] 3. 設計負債 & 拡張性: データストア配列を直接書き換えず、描画レイヤーでの純粋なソートになっているか
+  - [x] 4. サイレント破壊 & 既存保護: 既存のマーカー描画・コネクトライン・矢印描画に副作用がないか
 - **Summary**:
+  視野初期色・発光・HUDカラー選択・ドラッグ後メニュー復旧・選択要素最前面ソートの全要件をクリア。データストア配列を破壊しない純粋な描画層ソート設計と、Context購読フックによるホスト境界・Store Providerの健全性を確認。
 
 ## 6. Rejections / Additional Tasks (不可逆修正欄)
