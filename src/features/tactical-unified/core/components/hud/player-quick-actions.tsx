@@ -5,6 +5,7 @@ import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canva
 import type { Player } from '@/lib/types/tactical-unified';
 import { WavyArrowIcon } from '../toolbar/core-toolbar-icons';
 import { DashedArrowIcon } from './hud-icons';
+import { MiniColorPicker } from './mini-color-picker';
 
 export interface PlayerQuickActionsProps {
   player: Player;
@@ -21,7 +22,7 @@ export function VisionConeAction({ player }: PlayerQuickActionsProps) {
         angleRad: player.visionCone?.angleRad ?? 0,
         spreadRad: player.visionCone?.spreadRad ?? (60 * Math.PI) / 180,
         radius: player.visionCone?.radius ?? 13,
-        color: player.visionCone?.color ?? '#034694',
+        color: player.visionCone?.color ?? '#38bdf8',
         opacity: player.visionCone?.opacity ?? 0.3,
         visible: !visible,
       },
@@ -29,21 +30,36 @@ export function VisionConeAction({ player }: PlayerQuickActionsProps) {
   };
 
   return (
-    <button
-      type="button"
-      onClick={toggleVisionCone}
-      style={
-        visible ? { backgroundColor: '#FF8100', color: '#ffffff' } : undefined
-      }
-      className={`p-1 rounded-md transition-all cursor-pointer ${
-        visible
-          ? 'bg-[#FF8100] text-white shadow-sm'
-          : 'text-white/80 hover:text-white hover:bg-white/[0.08]'
-      }`}
-      title={visible ? '視野コーンON (クリックでOFF)' : '視野コーンを追加'}
-    >
-      <Eye size={13} />
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={toggleVisionCone}
+        style={
+          visible ? { backgroundColor: '#FF8100', color: '#ffffff' } : undefined
+        }
+        className={`p-1 rounded-md transition-all cursor-pointer ${
+          visible
+            ? 'bg-[#FF8100] text-white shadow-sm'
+            : 'text-white/80 hover:text-white hover:bg-white/[0.08]'
+        }`}
+        title={visible ? '視野コーンON (クリックでOFF)' : '視野コーンを追加'}
+      >
+        <Eye size={13} />
+      </button>
+      {visible && player.visionCone && (
+        <MiniColorPicker
+          value={player.visionCone.color ?? '#38bdf8'}
+          onChange={(color) => {
+            if (player.visionCone) {
+              updateMarker(player.id, {
+                visionCone: { ...player.visionCone, color },
+              });
+            }
+          }}
+          title="視野カラー変更"
+        />
+      )}
+    </>
   );
 }
 
