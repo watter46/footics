@@ -1,7 +1,7 @@
 # TASK-141: スプリットプレビューの Canvas2D 描画復元と選手写真統合（高解像度・文字描画修正）
 
 ## 1. Metadata
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Created**: 2026-11-02
 - **Depends On**: TASK-137, TASK-139（すべて `DONE`）
 - **Goal**: コミット `adfd9c2`（TASK-140）で行われたスプリットプレビュー（`TacticalSplitPreviewPanel`）の Konva 化による変更を取り消し、高解像度・高精細な Canvas2D 映像レンダラー（`useExportPreviewAnimation` / `tactical-frame-renderer.ts`）に復元する。`core/` に追加された不要なカメラ投影コードを削除してアーキテクチャの責務を正常化し、`TASK-137` / `TASK-139` の成果（`usePlayerPhotoRegistry` / `preloadSlidePlayerPhotos`）を正しく繋ぎ込んで「高解像度（Retina対応）」「文字の太線アウトラインと正確な位置」「滑らかな3Dカメラ透視」「選手写真の完全表示」を両立させる。
@@ -24,18 +24,18 @@
 
 ## 2. Requirements & Acceptance Criteria (受入要件)
 <!-- Reviewer が審査時に要件充足を確認してチェックする -->
-- [ ] 1. **高精細 Canvas2D レンダラーへの完全復元**:
+- [x] 1. **高精細 Canvas2D レンダラーへの完全復元**:
   - `TacticalSplitPreviewPanel` が Full HD 解像度（1080x1350 for 4:5, 1920x1080 for 16:9）の `<canvas>` 描画（`useExportPreviewAnimation` / `renderTacticalFrameToCanvas`）に戻り、Retina / 高DPI ディスプレイでもガビガビにならず極めて鮮明に描画されること。
   - テキストが太線ダークアウトライン付きで正確なフォントスケール・位置に描画され、文字ズレが発生しないこと。
-- [ ] 2. **選手写真の確実な解決・表示**:
+- [x] 2. **選手写真の確実な解決・表示**:
   - `TacticalSplitPreviewPanel` において、`slides` の全選手に対して `usePlayerPhotoRegistry` または `preloadSlidePlayerPhotos` を介して選手写真が解決され、スプリットプレビュー内の選手マーカー（`insideContent === 'photo'`）で顔写真が確実に表示されること（背番号フォールバックに陥らないこと）。
-- [ ] 3. **3D カメラ操作 UI & アニメーション補間再生の維持**:
+- [x] 3. **3D カメラ操作 UI & アニメーション補間再生の維持**:
   - `SplitPreviewCameraBar` の 6 プリセット選択、リセットボタン、ビューポート上の左ドラッグ（Tilt `0〜70`、Yaw `0〜360`）、Shift+ドラッグ（Pan）、ホイールズーム（`0.5〜2.5`）が正常に機能すること。
   - タイムライン再生時（`isPlaying === true`）に各スライドのアニメーション補間が 60fps で滑らかに再生されること。
-- [ ] 4. **`core/` および `adapters/` の責務正常化（ロールバック）**:
+- [x] 4. **`core/` および `adapters/` の責務正常化（ロールバック）**:
   - `core/` から 3D カメラ投影関数（`preview-scene-projector.ts`）、`Pitch3DBackground`、`cameraTransform` 拡張が完全に削除され、純粋な Level 2 編集基盤（`CanvasStageContainer` / `CanvasDisplayStage`）としてクリーンに保たれること。
   - 一時的なプレビュー専用アダプター（`preview-canvas-store-adapter.ts`）および再生フック（`use-split-preview-playback.ts`）が削除されること。
-- [ ] 5. **品質ゲートとテストの完全通過**:
+- [x] 5. **品質ゲートとテストの完全通過**:
   - `bun run ai:check src/features/tactical-unified/core/ src/features/tactical-unified/panels/split-preview/` が exit code 0 で全テスト PASS すること。
 
 ---
@@ -110,14 +110,15 @@
 ## 5. Reviewer Assessment (コード差分監査)
 <!-- 機械的チェック（型・Lint・Vitest・depcruise）はスクリプトが自動検証。Reviewer はコード差分の意味を監査する -->
 - **Reviewer Model**: `pro`
-- **Reviewed At**: 
-- **Decision**: 
+- **Reviewed At**: 2026-11-02 04:05
+- **Decision**: `LGTM`
 - **Audit Checklist**:
-  - [ ] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
-  - [ ] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
-  - [ ] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
-  - [ ] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
+  - [x] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
+  - [x] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
+  - [x] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
+  - [x] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
 - **Summary**:
+  TASK-140 による core 汚染（3D投影関数・アダプター層・一時的カメラ型拡張）が綺麗に削除され、高精細 Canvas2D レンダラー（Full HD / Retina対応）への復元が完了。さらに `usePlayerPhotoRegistry` からの選手写真マッピング（`id` / `playerId` 両引き対応）が正しく注入され、受入要件を完全に満たしていることを確認しました。
 
 ---
 
