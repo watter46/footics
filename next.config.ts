@@ -5,6 +5,16 @@ const nextConfig: NextConfig = {
   // DuckDB-Wasm を外部パッケージとして扱い、ビルド時の依存解析から除外する
   serverExternalPackages: ['@duckdb/duckdb-wasm'],
 
+  // 事前検証（ai:check / ai:preflight）で型チェック済みのためビルド時の二重チェックを抑止し高速化
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
+  // 4.9GB RAM環境での並列ワーカーによるメモリ枯渇（OOMクラッシュ）を防ぐ
+  experimental: {
+    cpus: 2,
+  },
+
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

@@ -7,10 +7,12 @@
     "extension"
   ],
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "bun scripts/dev/start-dev.ts",
+    "dev:next": "next dev --turbo",
     "dev:https": "bun x next dev --experimental-https",
     "build": "next build",
-    "deploy": "rm -rf .next .open-next && NODE_OPTIONS='--max-old-space-size=2048' opennextjs-cloudflare build && wrangler deploy",
+    "deploy": "opennextjs-cloudflare build && wrangler deploy",
+    "deploy:clean": "rm -rf .next .open-next && opennextjs-cloudflare build && wrangler deploy",
     "extension:dev": "bun --cwd extension dev",
     "extension:build": "bun --cwd extension build",
     "extension:sync": "bun scripts/extension/sync-windows.ts",
@@ -102,7 +104,6 @@
     "tailwindcss": "^4.3.3",
     "tsc-files": "^1.1.4",
     "tsup": "^8.5.1",
-    "tsx": "^4.23.13",
     "turbo": "^2.11.4",
     "typescript": "^5",
     "vitest": "^4.1.10",
