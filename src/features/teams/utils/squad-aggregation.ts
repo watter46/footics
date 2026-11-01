@@ -1,4 +1,10 @@
+import {
+  normalizePlayerNameForMatch,
+  resolveMergedPosition,
+  resolveMergedShirtNo,
+} from '@/lib/db/queries-player';
 import type { PlayerMaster } from '@/lib/db/schema';
+import { normalizePosition } from '@/lib/tactical/player-formatting';
 import type { Player } from '@/types';
 import type { MergedSquadPlayer } from '../components/squad-player-card';
 import type { PositionCategory } from '../components/squad-stats-summary';
@@ -19,6 +25,26 @@ export const POSITION_CATEGORIES: PositionCategory[] = [
   { key: 'Other', label: 'Others', positions: ['Other', 'Sub'] },
 ];
 
+function mergeSquadPlayerPair(
+  official: MergedSquadPlayer,
+  manual: MergedSquadPlayer,
+): MergedSquadPlayer {
+  const shirtNo =
+    resolveMergedShirtNo(manual.shirtNo, official.shirtNo) ??
+    official.shirtNo ??
+    99;
+  const position = normalizePosition(
+    resolveMergedPosition(manual.position, official.position),
+  );
+  return {
+    ...official,
+    shirtNo,
+    position,
+    photoBlob: manual.photoBlob || official.photoBlob,
+    photoUrl: manual.photoUrl || official.photoUrl,
+  };
+}
+
 /**
  * 重複する同一選手名レコードを統合（公式ID優先・手動メタデータ引き継ぎ）
  */
@@ -26,21 +52,14 @@ function resolvePlayerConflict(
   existing: MergedSquadPlayer,
   incoming: MergedSquadPlayer,
 ): MergedSquadPlayer {
-  if (existing.playerId < 0 && incoming.playerId > 0) {
-    return {
-      ...incoming,
-      shirtNo: existing.shirtNo || incoming.shirtNo,
-      photoBlob: existing.photoBlob || incoming.photoBlob,
-      photoUrl: existing.photoUrl || incoming.photoUrl,
-      position: existing.position || incoming.position,
-    };
+  const isExistingManual = existing.playerId < 0;
+  const isIncomingManual = incoming.playerId < 0;
+
+  if (isExistingManual && !isIncomingManual) {
+    return mergeSquadPlayerPair(incoming, existing);
   }
-  if (existing.playerId > 0 && incoming.playerId < 0) {
-    return {
-      ...existing,
-      photoBlob: incoming.photoBlob || existing.photoBlob,
-      photoUrl: incoming.photoUrl || existing.photoUrl,
-    };
+  if (!isExistingManual && isIncomingManual) {
+    return mergeSquadPlayerPair(existing, incoming);
   }
   return existing;
 }
@@ -71,7 +90,7 @@ export function mergeMasterAndSquadPlayers(
 
   const uniqueMap = new Map<string, MergedSquadPlayer>();
   list.forEach((p) => {
-    const cleanName = p.name.trim().toLowerCase();
+    const cleanName = normalizePlayerNameForMatch(p.name);
     const existing = uniqueMap.get(cleanName);
     uniqueMap.set(cleanName, existing ? resolvePlayerConflict(existing, p) : p);
   });

@@ -95,7 +95,7 @@ export function uint8ArrayToBlob(
   data: Uint8Array,
   mimeType: string = 'application/octet-stream',
 ): Blob {
-  return new Blob([data.buffer as ArrayBuffer], { type: mimeType });
+  return new Blob([new Uint8Array(data)], { type: mimeType });
 }
 
 /**
@@ -105,6 +105,7 @@ export function findPhotoBlob(
   unzipped: Record<string, Uint8Array>,
   id: string,
   fileName?: string,
+  playerId?: number,
 ): Blob | undefined {
   if (fileName) {
     const bytes = unzipped[`photos/${fileName}`];
@@ -113,15 +114,36 @@ export function findPhotoBlob(
     }
   }
 
+  if (playerId !== undefined) {
+    const playerPaths = [
+      `photos/${playerId}.png`,
+      `photos/${playerId}.jpg`,
+      `photos/${playerId}.jpeg`,
+      `photos/${playerId}.webp`,
+      `photos/${playerId}.svg`,
+      `photos/${playerId}`,
+    ];
+    for (const path of playerPaths) {
+      const bytes = unzipped[path];
+      if (bytes) {
+        return uint8ArrayToBlob(bytes, getMimeTypeFromFileName(path));
+      }
+    }
+  }
+
   const safeId = encodeURIComponent(id).replace(/%/g, '_');
   const candidatePaths = [
     `photos/${safeId}.png`,
     `photos/${safeId}.jpg`,
+    `photos/${safeId}.jpeg`,
     `photos/${safeId}.webp`,
+    `photos/${safeId}.svg`,
     `photos/${safeId}`,
     `photos/${id}.png`,
     `photos/${id}.jpg`,
+    `photos/${id}.jpeg`,
     `photos/${id}.webp`,
+    `photos/${id}.svg`,
     `photos/${id}`,
   ];
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { PlayerMaster } from '@/lib/db/schema';
 import { getTeamConfig } from '@/lib/tactical/teams-config';
 import type { Match, Player, Team } from '@/types';
+import { mergeMasterAndSquadPlayers } from '../squad-aggregation';
 import {
   buildUnifiedSquad,
   buildVirtualMatch,
@@ -270,6 +271,108 @@ describe('squad-builder', () => {
       expect(palmerList[0].playerId).toBeGreaterThan(0);
       expect(palmerList[0].shirtNo).toBe(20);
     });
+
+    it('deduplicates players with accent differences and applies manual explicit shirtNo/position', () => {
+      const mockMatch: Match = {
+        id: 'match-estevao',
+        date: '2026-09-15T15:00:00Z',
+        score: '1 - 0',
+        matchType: 'club',
+        homeTeam: { id: 13, name: 'Arsenal' },
+        awayTeam: { id: 999, name: 'Other FC' },
+        playerIdNameDictionary: {},
+        teams: {
+          home: {
+            teamId: 13,
+            name: 'Arsenal',
+            players: [
+              {
+                playerId: 50001,
+                name: 'Estevao',
+                shirtNo: 41,
+                position: 'MID',
+              } as unknown as Player,
+            ],
+          },
+          away: { teamId: 999, name: 'Other FC', players: [] },
+        } as unknown as Match['teams'],
+      };
+
+      const manualMaster: PlayerMaster = {
+        id: '26-27_-9999',
+        playerId: -9999,
+        name: 'Estêvão',
+        defaultShirtNo: 17,
+        position: 'FW',
+        season: '26-27',
+        teamName: 'Arsenal',
+        updatedAt: Date.now(),
+      };
+
+      const result = buildUnifiedSquad({
+        teamConfig: arsenalConfig,
+        effectiveTeamName: 'Arsenal',
+        season: '26-27',
+        matches: [mockMatch],
+        masters: [manualMaster],
+      });
+
+      expect(result.teamPlayers.length).toBe(1);
+      expect(result.teamPlayers[0].playerId).toBe(50001);
+      expect(result.teamPlayers[0].shirtNo).toBe(17); // 手動の明示背番号が優先
+      expect(result.teamPlayers[0].position).toBe('FW'); // 手動の明示ポジションが優先
+    });
+
+    it('falls back to official shirtNo and position when manual is default (99 or Sub/Other)', () => {
+      const mockMatch: Match = {
+        id: 'match-neto',
+        date: '2026-09-15T15:00:00Z',
+        score: '1 - 0',
+        matchType: 'club',
+        homeTeam: { id: 13, name: 'Arsenal' },
+        awayTeam: { id: 999, name: 'Other FC' },
+        playerIdNameDictionary: {},
+        teams: {
+          home: {
+            teamId: 13,
+            name: 'Arsenal',
+            players: [
+              {
+                playerId: 50002,
+                name: 'Pedro Neto',
+                shirtNo: 7,
+                position: 'FW',
+              } as unknown as Player,
+            ],
+          },
+          away: { teamId: 999, name: 'Other FC', players: [] },
+        } as unknown as Match['teams'],
+      };
+
+      const manualMaster: PlayerMaster = {
+        id: '26-27_-9998',
+        playerId: -9998,
+        name: 'Pedro-Neto',
+        defaultShirtNo: 99,
+        position: 'Sub',
+        season: '26-27',
+        teamName: 'Arsenal',
+        updatedAt: Date.now(),
+      };
+
+      const result = buildUnifiedSquad({
+        teamConfig: arsenalConfig,
+        effectiveTeamName: 'Arsenal',
+        season: '26-27',
+        matches: [mockMatch],
+        masters: [manualMaster],
+      });
+
+      expect(result.teamPlayers.length).toBe(1);
+      expect(result.teamPlayers[0].playerId).toBe(50002);
+      expect(result.teamPlayers[0].shirtNo).toBe(7); // 公式の背番号を採用
+      expect(result.teamPlayers[0].position).toBe('FW'); // 公式のポジションを採用
+    });
   });
 
   describe('buildVirtualMatch', () => {
@@ -302,6 +405,130 @@ describe('squad-builder', () => {
         Math.min(11, squadResult.teamPlayers.length),
       );
       expect(awayTeam?.formations?.[0]?.playerIds).toHaveLength(11);
+    });
+  });
+
+  describe('mergeMasterAndSquadPlayers', () => {
+    const mockBlob = new Blob(['photo-bytes'], { type: 'image/webp' });
+
+    it('merges players matching by normalized name and prioritizes official ID', () => {
+      const teamPlayers: Player[] = [
+        {
+          playerId: -9999,
+          name: 'Estêvão',
+          shirtNo: 17,
+          position: 'FW',
+          field: 'home',
+          stats: {},
+        } as unknown as Player,
+        {
+          playerId: 50001,
+          name: 'Estevao',
+          shirtNo: 41,
+          position: 'MID',
+          field: 'home',
+          stats: {},
+        } as unknown as Player,
+      ];
+
+      const masterPlayers: PlayerMaster[] = [
+        {
+          id: '26-27_-9999',
+          playerId: -9999,
+          name: 'Estêvão',
+          defaultShirtNo: 17,
+          position: 'FW',
+          season: '26-27',
+          teamName: 'Chelsea',
+          photoBlob: mockBlob,
+          photoUrl: 'blob:manual-photo',
+          updatedAt: Date.now(),
+        },
+      ];
+
+      const merged = mergeMasterAndSquadPlayers(teamPlayers, masterPlayers);
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0].playerId).toBe(50001); // 公式ID優先
+      expect(merged[0].shirtNo).toBe(17); // 手動の明示背番号優先
+      expect(merged[0].position).toBe('FW'); // 手動の明示ポジション優先
+      expect(merged[0].photoBlob).toBe(mockBlob); // 手動の写真引き継ぎ
+      expect(merged[0].photoUrl).toBe('blob:manual-photo');
+    });
+
+    it('handles conflict resolution when official player comes first in teamPlayers', () => {
+      const teamPlayers: Player[] = [
+        {
+          playerId: 50001,
+          name: 'Estevao',
+          shirtNo: 41,
+          position: 'MID',
+          field: 'home',
+          stats: {},
+        } as unknown as Player,
+        {
+          playerId: -9999,
+          name: 'Estêvão',
+          shirtNo: 17,
+          position: 'FW',
+          field: 'home',
+          stats: {},
+        } as unknown as Player,
+      ];
+
+      const masterPlayers: PlayerMaster[] = [
+        {
+          id: '26-27_-9999',
+          playerId: -9999,
+          name: 'Estêvão',
+          defaultShirtNo: 17,
+          position: 'FW',
+          season: '26-27',
+          teamName: 'Chelsea',
+          photoBlob: mockBlob,
+          photoUrl: 'blob:manual-photo',
+          updatedAt: Date.now(),
+        },
+      ];
+
+      const merged = mergeMasterAndSquadPlayers(teamPlayers, masterPlayers);
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0].playerId).toBe(50001);
+      expect(merged[0].shirtNo).toBe(17);
+      expect(merged[0].position).toBe('FW');
+      expect(merged[0].photoBlob).toBe(mockBlob);
+      expect(merged[0].photoUrl).toBe('blob:manual-photo');
+    });
+
+    it('falls back to official shirtNo (when manual is 99 or undefined) and official position (when manual is Sub/Other)', () => {
+      const teamPlayers: Player[] = [
+        {
+          playerId: 50002,
+          name: 'Pedro Neto',
+          shirtNo: 7,
+          position: 'FW',
+          field: 'home',
+          stats: {},
+        } as unknown as Player,
+        {
+          playerId: -9998,
+          name: 'Pedro-Neto',
+          shirtNo: 99,
+          position: 'Other',
+          field: 'home',
+          stats: {},
+        } as unknown as Player,
+      ];
+
+      const masterPlayers: PlayerMaster[] = [];
+
+      const merged = mergeMasterAndSquadPlayers(teamPlayers, masterPlayers);
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0].playerId).toBe(50002);
+      expect(merged[0].shirtNo).toBe(7); // 公式採用
+      expect(merged[0].position).toBe('FW'); // 公式採用
     });
   });
 });

@@ -109,7 +109,7 @@ export async function packPlayerPhotos(
   // 1. IndexedDB から選手写真 Blob および マスター情報を取得
   const numericIds = Array.from(targetPlayers.keys())
     .map((id) => Number(id))
-    .filter((id) => typeof id === 'number' && !Number.isNaN(id) && id > 0);
+    .filter((id) => typeof id === 'number' && !Number.isNaN(id) && id !== 0);
 
   let photoBlobMap = new Map<number, Blob>();
   let masterMap = new Map<number, { photoBlob?: Blob; photoUrl?: string }>();
@@ -190,8 +190,8 @@ export async function packPlayerPhotos(
  * スライド内の選手画像 (insideContent === 'photo') をプリロードし、
  * ImageBitmap のマップ (playerId -> ImageBitmap) を返す
  */
-export async function preloadSlidePlayerPhotos(
-  slides: TacticalSceneLike[],
+export async function preloadPlayerPhotos(
+  scenes: TacticalSceneLike[],
   existingPhotos?: Record<string, string>,
 ): Promise<Record<string, ImageBitmap>> {
   const result: Record<string, ImageBitmap> = {};
@@ -200,7 +200,7 @@ export async function preloadSlidePlayerPhotos(
   }
 
   // 1. 写真表示が必要な選手マーカーを抽出
-  const targetPlayers = extractTargetPlayers(slides);
+  const targetPlayers = extractTargetPlayers(scenes);
   if (targetPlayers.size === 0) {
     return result;
   }
@@ -210,7 +210,7 @@ export async function preloadSlidePlayerPhotos(
   for (const pid of targetPlayers.keys()) {
     if (!existingPhotos?.[pid]) {
       const numId = Number(pid);
-      if (!Number.isNaN(numId) && numId > 0) {
+      if (!Number.isNaN(numId) && numId !== 0) {
         neededDbIds.push(numId);
       }
     }
@@ -269,6 +269,8 @@ export async function preloadSlidePlayerPhotos(
   await Promise.allSettled(promises);
   return result;
 }
+
+export const preloadSlidePlayerPhotos = preloadPlayerPhotos;
 
 /**
  * 共有ペイロードの photos 辞書から ImageBitmap 辞書を復元する

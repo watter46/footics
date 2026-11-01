@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { TacticalProject } from '@/lib/types/tactical-unified';
 import type { EventRow, Match } from '@/types';
 import type { CustomEvent as CustomEventType, MatchMemo } from '../../schema';
 import { SHORTCUT_ACTIONS } from '../../shortcuts';
@@ -26,6 +27,7 @@ import {
   getPlayerPhotosBatch,
   getPlayersMasterBatch,
   mergePlayerId,
+  normalizePlayerNameForMatch,
   putMatch,
   putMatchEventsBatch,
   putMatchesBatch,
@@ -33,6 +35,7 @@ import {
   saveCustomEvent,
   saveMatchUnified,
   savePlayerMaster,
+  savePlayerMastersBatch,
   savePlayerPhoto,
   setKeyValue,
 } from '../queries';
@@ -47,6 +50,7 @@ describe('src/lib/db/queries', () => {
     await db.keyval.clear();
     await db.players.clear();
     await db.player_photos.clear();
+    await db.tactical_projects.clear();
     vi.restoreAllMocks();
   });
 
@@ -651,6 +655,286 @@ describe('src/lib/db/queries', () => {
       expect(p501?.photoBlob).toBeDefined();
       const p502 = all.find((p) => p.playerId === 502);
       expect(p502?.photoBlob).toBeUndefined();
+    });
+
+    describe('normalizePlayerNameForMatch', () => {
+      it('normalizes accents, casing, hyphens, and whitespace', () => {
+        expect(normalizePlayerNameForMatch('  Estêvão  ')).toBe('estevao');
+        expect(normalizePlayerNameForMatch('Cole Palmer-Smith')).toBe(
+          'cole palmer smith',
+        );
+        expect(normalizePlayerNameForMatch('Moisés   Caicedo_Jr')).toBe(
+          'moises caicedo jr',
+        );
+        expect(normalizePlayerNameForMatch('Éder Militão')).toBe(
+          'eder militao',
+        );
+      });
+    });
+
+    describe('Player Auto-Merge and Tactical Project Reference Updates', () => {
+      it('auto-merges temp player into official player on savePlayerMaster', async () => {
+        const photoBlob = new Blob(['estevao-img'], { type: 'image/webp' });
+        // 手動仮ID選手を作成
+        await savePlayerMaster({
+          playerId: -101,
+          name: 'Estêvão',
+          season: '26-27',
+          defaultShirtNo: 41,
+          position: 'RW',
+          photoBlob,
+        });
+
+        // 戦術プロジェクト内にこの仮ID選手を配置
+        const mockProject: TacticalProject = {
+          id: 'proj-1',
+          version: '2.0.0',
+          title: 'Tactical Test',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          aspectRatio: '4:5',
+          backgroundType: 'pitch',
+          homeColor: { primary: '#034694' },
+          awayColor: { primary: '#ef4444' },
+          activePhaseId: 'phase-1',
+          activeSlideId: 'slide-1',
+          tags: [],
+          slides: [],
+          phases: [
+            {
+              id: 'phase-1',
+              name: 'Build Up',
+              slides: [
+                {
+                  id: 'slide-1',
+                  index: 0,
+                  ball: { x: 50, y: 50, visible: true },
+                  arrows: [],
+                  zones: [],
+                  texts: [],
+                  transitionDurationMs: 1000,
+                  pauseMs: 500,
+                  easing: 'ease-in-out',
+                  players: [
+                    {
+                      id: 'p-1',
+                      playerId: '-101',
+                      name: 'Estêvão',
+                      shirtNo: '41',
+                      position: 'RW',
+                      team: 'home',
+                      area: 'pitch',
+                      x: 20,
+                      y: 30,
+                      style: {
+                        markerType: 'circle',
+                        insideContent: 'number',
+                        bottomLabel: 'name',
+                        color: '#034694',
+                        strokeColor: '#ffffff',
+                        strokeWidth: 2,
+                        sizeScale: 1,
+                        numberSizeScale: 1,
+                        labelSizeScale: 1,
+                      },
+                      connectLines: [],
+                      badges: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+        await db.tactical_projects.put(mockProject);
+
+        // 公式ID（同名だがアクセントなし、未設定背番号99、Sub）で保存
+        await savePlayerMaster({
+          playerId: 450010,
+          name: 'Estevao',
+          season: '26-27',
+          defaultShirtNo: 99,
+          position: 'Sub',
+        });
+
+        // 1. 仮IDレコードおよび写真が削除されていること
+        expect(await getPlayerMaster(-101, '26-27')).toBeUndefined();
+        expect(await db.player_photos.get(-101)).toBeUndefined();
+
+        // 2. 公式IDに仮IDの手動登録情報（写真、背番号41、RW）が引き継がれていること
+        const official = await getPlayerMaster(450010, '26-27');
+        expect(official).toBeDefined();
+        expect(official?.defaultShirtNo).toBe(41);
+        expect(official?.position).toBe('RW');
+        expect(official?.photoBlob).toBeDefined();
+
+        const officialPhoto = await db.player_photos.get(450010);
+        expect(officialPhoto?.photoBlob).toBeDefined();
+
+        // 3. tactical_projects 内の選手参照が -101 から 450010 に更新されていること
+        const updatedProject = await db.tactical_projects.get('proj-1');
+        const slidePlayer = updatedProject?.phases[0].slides[0].players.find(
+          (p) => p.id === 'p-1',
+        );
+        expect(slidePlayer?.playerId).toBe('450010');
+      });
+
+      it('updates tactical_projects playerId references on mergePlayerId', async () => {
+        await savePlayerMaster({
+          playerId: -202,
+          name: 'Temp Striker',
+          season: '26-27',
+          defaultShirtNo: 9,
+          position: 'CF',
+        });
+
+        const mockProject: TacticalProject = {
+          id: 'proj-2',
+          version: '2.0.0',
+          title: 'Tactical Test 2',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          aspectRatio: '4:5',
+          backgroundType: 'pitch',
+          homeColor: { primary: '#034694' },
+          awayColor: { primary: '#ef4444' },
+          activePhaseId: 'phase-1',
+          activeSlideId: 'slide-1',
+          tags: [],
+          slides: [],
+          phases: [
+            {
+              id: 'phase-1',
+              name: 'Attack',
+              slides: [
+                {
+                  id: 'slide-1',
+                  index: 0,
+                  ball: { x: 50, y: 50, visible: true },
+                  arrows: [],
+                  zones: [],
+                  texts: [],
+                  transitionDurationMs: 1000,
+                  pauseMs: 500,
+                  easing: 'ease-in-out',
+                  players: [
+                    {
+                      id: 'p-2',
+                      playerId: '-202',
+                      team: 'home',
+                      area: 'pitch',
+                      x: 50,
+                      y: 80,
+                      style: {
+                        markerType: 'circle',
+                        insideContent: 'number',
+                        bottomLabel: 'name',
+                        color: '#034694',
+                        strokeColor: '#ffffff',
+                        strokeWidth: 2,
+                        sizeScale: 1,
+                        numberSizeScale: 1,
+                        labelSizeScale: 1,
+                      },
+                      connectLines: [],
+                      badges: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+        await db.tactical_projects.put(mockProject);
+
+        await mergePlayerId(-202, 9999, '26-27', 'Chelsea');
+
+        const updatedProject = await db.tactical_projects.get('proj-2');
+        const slidePlayer = updatedProject?.phases[0].slides[0].players.find(
+          (p) => p.id === 'p-2',
+        );
+        expect(slidePlayer?.playerId).toBe('9999');
+      });
+
+      it('batch saves players and performs auto-merge with single refresh event', async () => {
+        const postMessageSpy = vi
+          .spyOn(window, 'postMessage')
+          .mockImplementation(() => {});
+
+        const photoBlob = new Blob(['batch-img'], { type: 'image/webp' });
+        await savePlayerMaster({
+          playerId: -303,
+          name: 'João Pedro',
+          season: '26-27',
+          defaultShirtNo: 10,
+          position: 'FW',
+          photoBlob,
+        });
+
+        postMessageSpy.mockClear();
+
+        await savePlayerMastersBatch([
+          {
+            playerId: 8888,
+            name: 'Joao Pedro',
+            season: '26-27',
+            defaultShirtNo: 99, // default 99 should be overridden by 10
+            position: 'Sub', // Sub should be overridden by FW
+          },
+          {
+            playerId: 8889,
+            name: 'Moises Caicedo',
+            season: '26-27',
+            defaultShirtNo: 25,
+            position: 'DM',
+          },
+        ]);
+
+        // dispatchRefreshEvent emits 2 postMessage calls (legacy & new protocol)
+        // savePlayerMastersBatch should call dispatchRefreshEvent exactly once at the end
+        expect(postMessageSpy).toHaveBeenCalledTimes(2);
+
+        // 仮ID -303 が 8888 にマージされていること
+        expect(await getPlayerMaster(-303, '26-27')).toBeUndefined();
+        const merged = await getPlayerMaster(8888, '26-27');
+        expect(merged).toBeDefined();
+        expect(merged?.defaultShirtNo).toBe(10);
+        expect(merged?.position).toBe('FW');
+        expect(merged?.photoBlob).toBeDefined();
+
+        const p8889 = await getPlayerMaster(8889, '26-27');
+        expect(p8889?.name).toBe('Moises Caicedo');
+        expect(p8889?.defaultShirtNo).toBe(25);
+      });
+
+      it('queries players by filter using [season+teamName] index and handles legacy Chelsea', async () => {
+        await savePlayerMaster({
+          playerId: 7001,
+          name: 'Arsenal Player',
+          season: '26-27',
+          teamName: 'Arsenal',
+        });
+        await savePlayerMaster({
+          playerId: 7002,
+          name: 'Legacy Chelsea Player',
+          season: '26-27',
+          // teamName omitted -> defaults to Chelsea
+        });
+
+        const arsenalPlayers = await getPlayerMastersBySeason(
+          '26-27',
+          'Arsenal',
+        );
+        expect(arsenalPlayers.some((p) => p.playerId === 7001)).toBe(true);
+        expect(arsenalPlayers.some((p) => p.playerId === 7002)).toBe(false);
+
+        const chelseaPlayers = await getPlayerMastersBySeason(
+          '26-27',
+          'Chelsea',
+        );
+        expect(chelseaPlayers.some((p) => p.playerId === 7002)).toBe(true);
+        expect(chelseaPlayers.some((p) => p.playerId === 7001)).toBe(false);
+      });
     });
   });
 });

@@ -94,6 +94,7 @@ export {
   createBitmapFromUrlOrBase64,
   packPlayerPhotos,
   preloadMarbleTextureBitmap,
+  preloadPlayerPhotos,
   preloadSlidePlayerPhotos,
   unpackPlayerPhotos,
 } from './share-photos';

@@ -1,3 +1,8 @@
+import {
+  normalizePlayerNameForMatch,
+  resolveMergedPosition,
+  resolveMergedShirtNo,
+} from '@/lib/db/queries-player';
 import type { PlayerMaster } from '@/lib/db/schema';
 import {
   CHELSEA_PRESETS_BY_SEASON,
@@ -170,16 +175,36 @@ export function buildUnifiedSquad({
   // 5. 同名選手の重複排除 (公式ID優先)
   const uniqueMap = new Map<string, Player>();
   playerMap.forEach((player) => {
-    const cleanName = player.name.trim().toLowerCase();
+    const cleanName = normalizePlayerNameForMatch(player.name);
     const existing = uniqueMap.get(cleanName);
     if (!existing) {
       uniqueMap.set(cleanName, player);
-    } else if (existing.playerId < 0 && player.playerId > 0) {
-      uniqueMap.set(cleanName, {
-        ...player,
-        shirtNo: existing.shirtNo || player.shirtNo,
-        position: existing.position || player.position,
-      });
+    } else {
+      const isExistingManual = existing.playerId < 0;
+      const isPlayerManual = player.playerId < 0;
+      if (isExistingManual && !isPlayerManual) {
+        uniqueMap.set(cleanName, {
+          ...player,
+          shirtNo:
+            resolveMergedShirtNo(existing.shirtNo, player.shirtNo) ??
+            player.shirtNo ??
+            99,
+          position: normalizePosition(
+            resolveMergedPosition(existing.position, player.position),
+          ),
+        });
+      } else if (!isExistingManual && isPlayerManual) {
+        uniqueMap.set(cleanName, {
+          ...existing,
+          shirtNo:
+            resolveMergedShirtNo(player.shirtNo, existing.shirtNo) ??
+            existing.shirtNo ??
+            99,
+          position: normalizePosition(
+            resolveMergedPosition(player.position, existing.position),
+          ),
+        });
+      }
     }
   });
 

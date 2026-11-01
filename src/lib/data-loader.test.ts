@@ -1,10 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { importMatchesBatch, importMatchJsonFile } from './data-loader';
-import { saveMatchUnified } from './db';
+import {
+  db,
+  getAllPlayerMasters,
+  getPlayerMaster,
+  getPlayerPhoto,
+  saveMatchUnified,
+  savePlayerMaster,
+  savePlayerMastersBatch,
+  savePlayerPhoto,
+} from './db';
 
-vi.mock('./db', () => ({
-  saveMatchUnified: vi.fn(),
-}));
+vi.mock('./db', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./db')>();
+  return {
+    ...actual,
+    saveMatchUnified: vi.fn(actual.saveMatchUnified),
+    savePlayerMastersBatch: vi.fn(actual.savePlayerMastersBatch),
+  };
+});
 
 vi.mock('./national-match-schema', () => ({
   NATIONAL_INFO_IDX: {
@@ -19,8 +33,13 @@ vi.mock('./national-match-schema', () => ({
 }));
 
 describe('data-loader', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await db.matches.clear();
+    await db.events.clear();
+    await db.players.clear();
+    await db.player_photos.clear();
+    await db.tactical_projects.clear();
   });
 
   const createMockFile = (name: string, content: any): File => {
@@ -126,5 +145,84 @@ describe('data-loader', () => {
     expect(result.failed).toBe(1);
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0].filename).toBe('invalid.json');
+  });
+
+  it('auto-merges temporary negative ID player into official player via savePlayerMastersBatch without duplicate registration', async () => {
+    // 1. Arrange: 手動登録された仮ID選手（写真・明示背番号・ポジション設定済み）
+    const tempPlayerId = -12345;
+    await savePlayerMaster({
+      playerId: tempPlayerId,
+      name: 'Estêvão',
+      season: '24-25',
+      defaultShirtNo: 41,
+      position: 'RW',
+      teamName: 'Chelsea',
+    });
+    const photoBlob = new Blob(['sample-photo-bytes'], { type: 'image/webp' });
+    await savePlayerPhoto(tempPlayerId, photoBlob);
+
+    // 2. Act: WhoScored 形式の試合JSON（同名公式選手：Estevao, playerId: 1001, shirtNo: 99, position: 'Sub'）をインポート
+    const matchData = {
+      matchId: 99901,
+      matchCentreData: {
+        startDate: '2024-09-01T15:00:00Z',
+        score: '2 : 0',
+        home: {
+          teamId: 1,
+          name: 'Chelsea',
+          players: [
+            {
+              playerId: 1001,
+              name: 'Estevao',
+              shirtNo: 99,
+              position: 'Sub',
+            },
+            {
+              playerId: 1002,
+              name: 'Cole Palmer',
+              shirtNo: 20,
+              position: 'AM',
+            },
+          ],
+        },
+        away: {
+          teamId: 2,
+          name: 'Arsenal',
+          players: [],
+        },
+        events: [],
+      },
+    };
+    const file = createMockFile('chelsea-match.json', matchData);
+    await importMatchJsonFile(file);
+
+    // 3. Assert: savePlayerMastersBatch が 1 回のバッチ呼び出しで実行されたこと
+    expect(savePlayerMastersBatch).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(savePlayerMastersBatch).mock.calls[0][0]).toHaveLength(2);
+
+    // 4. Assert: 仮ID選手が公式ID選手へ自動統合され、二重登録がないこと
+    const allMasters = await getAllPlayerMasters();
+    const chelseaMasters = allMasters.filter((p) => p.season === '24-25');
+    expect(chelseaMasters).toHaveLength(2);
+
+    // 仮ID選手は削除されていること
+    const tempRecord = await getPlayerMaster(tempPlayerId, '24-25');
+    expect(tempRecord).toBeUndefined();
+    const tempPhoto = await getPlayerPhoto(tempPlayerId);
+    expect(tempPhoto).toBeUndefined();
+
+    // 公式ID選手に手動設定情報（写真、明示背番号41、明示ポジションRW）が引き継がれていること
+    const officialPlayer = await getPlayerMaster(1001, '24-25');
+    expect(officialPlayer).toBeDefined();
+    expect(officialPlayer?.name).toBe('Estevao');
+    expect(officialPlayer?.defaultShirtNo).toBe(41);
+    expect(officialPlayer?.position).toBe('RW');
+    expect(officialPlayer?.teamName).toBe('Chelsea');
+
+    // 写真も引き継がれていること
+    const officialPhoto = await getPlayerPhoto(1001);
+    expect(officialPhoto).toBeDefined();
+    expect(officialPhoto?.photoBlob).toBeDefined();
+    expect(await officialPhoto?.photoBlob?.text()).toBe('sample-photo-bytes');
   });
 });

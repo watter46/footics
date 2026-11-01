@@ -5,6 +5,7 @@ import {
   createBitmapFromUrlOrBase64,
   packPlayerPhotos,
   preloadMarbleTextureBitmap,
+  preloadPlayerPhotos,
   preloadSlidePlayerPhotos,
   TacticalExportSharePayloadSchema,
   type TacticalPlayerLike,
@@ -322,5 +323,71 @@ describe('src/lib/tactical/export/share-payload', () => {
     // With undefined
     const result4 = await preloadMarbleTextureBitmap(undefined);
     expect(result4).toBeNull();
+  });
+
+  it('packs player photos for negative temporary playerIds from db.player_photos', async () => {
+    const mockBlob = new Blob(['manual-player-photo-bytes'], {
+      type: 'image/webp',
+    });
+    await db.player_photos.put({
+      playerId: -12345,
+      photoBlob: mockBlob,
+      mimeType: 'image/webp',
+      updatedAt: Date.now(),
+    });
+
+    const scenes = [
+      {
+        id: 'scene-neg-1',
+        players: [
+          {
+            id: 'p-neg-1',
+            playerId: -12345,
+            style: { insideContent: 'photo' },
+          },
+        ],
+      },
+    ];
+
+    const photos = await packPlayerPhotos(scenes);
+    expect(photos['-12345']).toBeDefined();
+    expect(photos['-12345']).toMatch(/^data:image\/webp;base64,/);
+  });
+
+  it('preloads photos for negative temporary playerIds using preloadPlayerPhotos', async () => {
+    const mockBitmap = {
+      width: 100,
+      height: 100,
+      close: vi.fn(),
+    } as unknown as ImageBitmap;
+
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(mockBitmap));
+
+    const mockBlob = new Blob(['manual-player-photo-bytes'], {
+      type: 'image/webp',
+    });
+    await db.player_photos.put({
+      playerId: -12345,
+      photoBlob: mockBlob,
+      mimeType: 'image/webp',
+      updatedAt: Date.now(),
+    });
+
+    const scenes = [
+      {
+        id: 'scene-neg-2',
+        players: [
+          {
+            id: 'p-neg-2',
+            playerId: -12345,
+            style: { insideContent: 'photo' },
+          },
+        ],
+      },
+    ];
+
+    const bitmaps = await preloadPlayerPhotos(scenes);
+    expect(bitmaps['-12345']).toBeDefined();
+    expect(bitmaps['-12345']).toBe(mockBitmap);
   });
 });
