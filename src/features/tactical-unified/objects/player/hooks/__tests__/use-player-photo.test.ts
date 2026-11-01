@@ -108,6 +108,33 @@ describe('usePlayerPhoto', () => {
     expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 
+  it('playerId に写真がなく photoUrl もないが playerName がある場合、findPlayerPhotoByName で写真Blobを取得して画像をロードし、アンマウント時に revokeObjectURL を呼ぶ', async () => {
+    const blob = new Blob(['fallback fake image data'], { type: 'image/webp' });
+    vi.spyOn(queries, 'getPlayerPhoto').mockResolvedValue(undefined);
+    const findPhotoByNameSpy = vi
+      .spyOn(queries, 'findPlayerPhotoByName')
+      .mockResolvedValue(blob);
+
+    const { result, unmount } = renderHook(() =>
+      usePlayerPhoto('345001', undefined, true, 'Cole Palmer'),
+    );
+
+    expect(result.current).toBeNull();
+
+    await vi.waitFor(() => {
+      expect(result.current).not.toBeNull();
+    });
+
+    expect(findPhotoByNameSpy).toHaveBeenCalledWith('Cole Palmer');
+    expect(URL.createObjectURL).toHaveBeenCalledWith(blob);
+    expect(result.current?.src).toBe('blob:http://localhost/test-uuid');
+
+    unmount();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith(
+      'blob:http://localhost/test-uuid',
+    );
+  });
+
   it('画像ロード失敗時は null を返す', async () => {
     const { result } = renderHook(() =>
       usePlayerPhoto(undefined, 'invalid-url', true),
