@@ -83,9 +83,9 @@ export function PlayerVisionCone({
           fill={cone.color + alphaHex}
           stroke={isSelected ? '#38bdf8' : undefined}
           strokeWidth={isSelected ? 2 : 0}
-          shadowColor={isSelected ? '#38bdf8' : undefined}
-          shadowBlur={isSelected ? 8 : 0}
-          shadowOpacity={isSelected ? 0.8 : 0}
+          shadowColor={isSelected ? '#38bdf8' : cone.color}
+          shadowBlur={8}
+          shadowOpacity={isSelected ? 0.8 : 0.4}
           listening={false}
         />
       ) : (
@@ -102,9 +102,9 @@ export function PlayerVisionCone({
           fill={cone.color + alphaHex}
           stroke={isSelected ? '#38bdf8' : undefined}
           strokeWidth={isSelected ? 2 : 0}
-          shadowColor={isSelected ? '#38bdf8' : undefined}
-          shadowBlur={isSelected ? 8 : 0}
-          shadowOpacity={isSelected ? 0.8 : 0}
+          shadowColor={isSelected ? '#38bdf8' : cone.color}
+          shadowBlur={8}
+          shadowOpacity={isSelected ? 0.8 : 0.4}
           listening={false}
         />
       )}

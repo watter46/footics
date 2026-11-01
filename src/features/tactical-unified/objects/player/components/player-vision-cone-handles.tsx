@@ -4,6 +4,7 @@ import type Konva from 'konva';
 import type React from 'react';
 import { useRef } from 'react';
 import { Circle, Group } from 'react-konva';
+import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import type { Player } from '@/lib/types/tactical-unified';
 import { computeRingConePoints } from './player-vision-cone';
 
@@ -31,6 +32,9 @@ export function PlayerVisionConeHandles({
   coneShapeRef,
   onUpdateVisionCone,
 }: PlayerVisionConeHandlesProps) {
+  const setIsDragging = useCanvasStore((s) => s.setIsDragging);
+  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
+
   const dirDragStateRef = useRef<{ angleRad: number; radius: number } | null>(
     null,
   );
@@ -160,6 +164,11 @@ export function PlayerVisionConeHandles({
           const c = e.target.getStage()?.container();
           if (c) c.style.cursor = 'default';
         }}
+        onDragStart={(e) => {
+          e.cancelBubble = true;
+          setIsDragging(true);
+          setIsHudOpen(false);
+        }}
         onDragMove={(e) => {
           e.cancelBubble = true;
           const curX = e.target.x();
@@ -179,6 +188,8 @@ export function PlayerVisionConeHandles({
         }}
         onDragEnd={(e) => {
           e.cancelBubble = true;
+          setIsDragging(false);
+          setIsHudOpen(true);
           if (dirDragStateRef.current) {
             onUpdateVisionCone(dirDragStateRef.current);
             dirDragStateRef.current = null;
@@ -202,6 +213,11 @@ export function PlayerVisionConeHandles({
           const c = e.target.getStage()?.container();
           if (c) c.style.cursor = 'default';
         }}
+        onDragStart={(e) => {
+          e.cancelBubble = true;
+          setIsDragging(true);
+          setIsHudOpen(false);
+        }}
         onDragMove={(e) => {
           e.cancelBubble = true;
           const spreadRad = computeEdgeSpread(e.target.x(), e.target.y());
@@ -210,6 +226,8 @@ export function PlayerVisionConeHandles({
         }}
         onDragEnd={(e) => {
           e.cancelBubble = true;
+          setIsDragging(false);
+          setIsHudOpen(true);
           if (spreadDragStateRef.current !== null) {
             onUpdateVisionCone({ spreadRad: spreadDragStateRef.current });
             spreadDragStateRef.current = null;
@@ -233,6 +251,11 @@ export function PlayerVisionConeHandles({
           const c = e.target.getStage()?.container();
           if (c) c.style.cursor = 'default';
         }}
+        onDragStart={(e) => {
+          e.cancelBubble = true;
+          setIsDragging(true);
+          setIsHudOpen(false);
+        }}
         onDragMove={(e) => {
           e.cancelBubble = true;
           const spreadRad = computeEdgeSpread(e.target.x(), e.target.y());
@@ -241,6 +264,8 @@ export function PlayerVisionConeHandles({
         }}
         onDragEnd={(e) => {
           e.cancelBubble = true;
+          setIsDragging(false);
+          setIsHudOpen(true);
           if (spreadDragStateRef.current !== null) {
             onUpdateVisionCone({ spreadRad: spreadDragStateRef.current });
             spreadDragStateRef.current = null;

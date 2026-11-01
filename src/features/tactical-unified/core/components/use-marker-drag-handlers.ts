@@ -201,6 +201,7 @@ export function useMarkerDragHandlers({
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>, marker: Player) => {
       setIsDragging(false);
+      setIsHudOpen(true);
 
       const clientX = (e.evt as MouseEvent | undefined)?.clientX;
       const clientY = (e.evt as MouseEvent | undefined)?.clientY;
@@ -258,6 +259,7 @@ export function useMarkerDragHandlers({
       updateMarker,
       updateMarkers,
       setIsDragging,
+      setIsHudOpen,
       capabilities?.hasBench,
       moveMarkerToBench,
     ],

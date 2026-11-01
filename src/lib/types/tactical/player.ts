@@ -43,7 +43,7 @@ export const VisionConeSchema = z.object({
   color: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
-    .default('#3b82f6'),
+    .default('#38bdf8'),
   opacity: z.number().min(0).max(1).default(0.3),
   visible: z.boolean().default(true),
 });
