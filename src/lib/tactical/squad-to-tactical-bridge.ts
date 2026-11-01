@@ -115,15 +115,8 @@ export function convertSquadToTacticalPlayers(
         : (templatePos.position ?? sp.position);
     tacticalPlayer.area = 'pitch';
 
-    if (sp.photoUrl) {
-      tacticalPlayer.style.insideContent = 'photo';
-      tacticalPlayer.style.photoUrl = sp.photoUrl;
-    } else if (sp.photoBlob) {
-      tacticalPlayer.style.insideContent = 'photo';
-      tacticalPlayer.style.photoUrl = undefined;
-    } else {
-      tacticalPlayer.style.insideContent = 'number';
-    }
+    tacticalPlayer.style.insideContent = 'photo';
+    tacticalPlayer.style.photoUrl = sp.photoUrl;
 
     tacticalPlayers.push(tacticalPlayer);
   });
@@ -140,15 +133,8 @@ export function convertSquadToTacticalPlayers(
     benchPlayer.position = sub.position;
     benchPlayer.area = 'bench';
 
-    if (sub.photoUrl) {
-      benchPlayer.style.insideContent = 'photo';
-      benchPlayer.style.photoUrl = sub.photoUrl;
-    } else if (sub.photoBlob) {
-      benchPlayer.style.insideContent = 'photo';
-      benchPlayer.style.photoUrl = undefined;
-    } else {
-      benchPlayer.style.insideContent = 'number';
-    }
+    benchPlayer.style.insideContent = 'photo';
+    benchPlayer.style.photoUrl = sub.photoUrl;
 
     benchPlayers.push(benchPlayer);
   });

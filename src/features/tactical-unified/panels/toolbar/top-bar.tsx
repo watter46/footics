@@ -8,7 +8,8 @@
  *  - Right: Panel toggles, Copy PNG, Primary Export, and More Actions menu (...)
  */
 
-import { Columns2, Copy, PanelLeft, Upload } from 'lucide-react';
+import { ArrowLeft, Columns2, Copy, PanelLeft, Upload } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
@@ -35,6 +36,21 @@ export function TopBar({
   isFocusMode = false,
   onToggleFocusMode,
 }: TopBarProps = {}): React.ReactElement {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const projectMatchId = useTacticalUnifiedStoreContext(
+    (s) => s.project.matchId,
+  );
+  const matchId = searchParams?.get('matchId') || projectMatchId;
+
+  const handleBack = () => {
+    if (matchId) {
+      router.push(`/match/${matchId}`);
+    } else {
+      router.back();
+    }
+  };
+
   const openExportModal = useTacticalUnifiedStoreContext(
     (s) => s.openExportModal,
   );
@@ -57,8 +73,18 @@ export function TopBar({
 
   return (
     <header className="flex items-center justify-between h-11 px-3 bg-[#121214] border-b border-white/[0.07] shrink-0 z-50 select-none">
-      {/* Left: Sidebar Toggle, Brand / Project Manager, Editable Title, Undo / Redo */}
+      {/* Left: Back Button, Sidebar Toggle, Brand / Project Manager, Editable Title, Undo / Redo */}
       <div className="flex items-center gap-2 shrink-0 min-w-0">
+        <IconButton
+          variant="ghost"
+          size="sm"
+          onClick={handleBack}
+          title="戻る"
+          aria-label="戻る"
+        >
+          <ArrowLeft size={15} strokeWidth={1.5} />
+        </IconButton>
+
         <IconButton
           variant="ghost"
           size="sm"

@@ -194,11 +194,11 @@ export function getFormationActualPosVertical(
   const x = isHome ? xHome : 100 - xHome;
 
   if (mode === 'full') {
-    const yDist = clampedTop;
-    const yAway = PITCH_BOUNDS_9_16.yMin + (yDist / 100) * pitchHeight;
+    const dist = 100 - clampedTop;
+    const yAway = PITCH_BOUNDS_9_16.yMin + (dist / 100) * pitchHeight;
     return {
       x,
-      y: isHome ? 100 - yAway : yAway,
+      y: isHome ? PITCH_BOUNDS_9_16.yMax - (dist / 100) * pitchHeight : yAway,
     };
   } else {
     const distFromGoal = 100 - clampedTop;

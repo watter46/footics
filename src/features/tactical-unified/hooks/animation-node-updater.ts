@@ -19,6 +19,12 @@ import type {
   InterpolatedZoneState,
 } from '@/lib/tactical/unified-interpolation';
 
+declare module '@/lib/tactical/interpolation-annotation' {
+  interface InterpolatedArrowState {
+    dashArray?: number[];
+  }
+}
+
 export function updatePlayerNodes(
   players: Record<string, InterpolatedPlayerState>,
   registry: CanvasNodesRegistry,
@@ -163,7 +169,9 @@ export function updateArrowNodes(
       aState.curveType === 'curved' ||
       aState.curveType === 'arc' ||
       aState.controlPoint !== undefined;
-    const isWavy = aState.arrowType === 'dribble';
+    const isWavy =
+      aState.arrowType === 'dribble' ||
+      (aState.arrowType as string) === 'arrow_wavy';
     const isDotEnd =
       aState.arrowType === 'route_line' || aState.endMarker === 'dot';
     const dotRadius = aState.strokeWidth
@@ -207,6 +215,9 @@ export function updateArrowNodes(
     arrowEntry.node.strokeWidth(aState.strokeWidth);
     arrowEntry.node.opacity(aState.opacity);
     arrowEntry.node.visible(aState.visible);
+    arrowEntry.node.dash?.(
+      aState.dashArray && aState.dashArray.length > 0 ? aState.dashArray : [],
+    );
 
     if (arrowEntry.startDotNode) {
       arrowEntry.startDotNode.position({ x: sPxX, y: sPxY });

@@ -67,7 +67,9 @@ export function updateAttachedArrowPositions(
         arrow.curveType === 'curved' ||
         arrow.curveType === 'arc' ||
         arrow.controlPoint !== undefined,
-      isWavy: arrow.arrowType === 'dribble',
+      isWavy:
+        arrow.arrowType === 'dribble' ||
+        (arrow.arrowType as string) === 'arrow_wavy',
       isDotEnd: arrow.endMarker === 'dot' || arrow.arrowType === 'route_line',
       dotRadius: Math.max(5, arrow.strokeWidth * 1.6),
       sourcePlayer: effSPlayer,

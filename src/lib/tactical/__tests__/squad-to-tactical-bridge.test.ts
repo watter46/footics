@@ -359,13 +359,13 @@ describe('squad-to-tactical-bridge', () => {
     expect(withPhoto?.style.insideContent).toBe('photo');
     expect(withPhoto?.style.photoUrl).toBe('https://example.com/player.png');
 
-    expect(withoutPhoto?.style.insideContent).toBe('number');
+    expect(withoutPhoto?.style.insideContent).toBe('photo');
     expect(withoutPhoto?.style.photoUrl).toBeUndefined();
 
     expect(subWithPhoto?.style.insideContent).toBe('photo');
     expect(subWithPhoto?.style.photoUrl).toBe('https://example.com/sub.png');
 
-    expect(subWithoutPhoto?.style.insideContent).toBe('number');
+    expect(subWithoutPhoto?.style.insideContent).toBe('photo');
     expect(subWithoutPhoto?.style.photoUrl).toBeUndefined();
 
     // photoBlob only: insideContent is 'photo', but temporary blob URL is NOT set (undefined)

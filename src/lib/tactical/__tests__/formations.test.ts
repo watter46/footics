@@ -286,6 +286,108 @@ describe('formations', () => {
       }
     });
 
+    it('guarantees vertical Full Mode positions are strictly bounded within pitch lines and placed in correct halves', () => {
+      for (const formation of FORMATION_LIST) {
+        const positions = FORMATION_POSITIONS[formation];
+
+        // Home team: defending bottom, GK at bottom (y > 80)
+        positions.forEach((pos, idx) => {
+          const actual = getFormationActualPosVertical(pos, 'home', 'full');
+          expect(
+            actual.y,
+            `${formation} Vertical Full Home player ${idx} y`,
+          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.yMin);
+          expect(
+            actual.y,
+            `${formation} Vertical Full Home player ${idx} y`,
+          ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.yMax);
+          expect(
+            actual.x,
+            `${formation} Vertical Full Home player ${idx} x`,
+          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.xMin);
+          expect(
+            actual.x,
+            `${formation} Vertical Full Home player ${idx} x`,
+          ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.xMax);
+
+          if (idx === 0) {
+            // Home GK near bottom goal line (y > 80)
+            expect(
+              actual.y,
+              `${formation} Vertical Full Home GK y`,
+            ).toBeGreaterThan(80);
+            expect(
+              actual.y,
+              `${formation} Vertical Full Home GK y`,
+            ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.yMax);
+          }
+        });
+
+        // Away team: defending top, GK at top (y < 20)
+        positions.forEach((pos, idx) => {
+          const actual = getFormationActualPosVertical(pos, 'away', 'full');
+          expect(
+            actual.y,
+            `${formation} Vertical Full Away player ${idx} y`,
+          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.yMin);
+          expect(
+            actual.y,
+            `${formation} Vertical Full Away player ${idx} y`,
+          ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.yMax);
+          expect(
+            actual.x,
+            `${formation} Vertical Full Away player ${idx} x`,
+          ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.xMin);
+          expect(
+            actual.x,
+            `${formation} Vertical Full Away player ${idx} x`,
+          ).toBeLessThanOrEqual(PITCH_BOUNDS_9_16.xMax);
+
+          if (idx === 0) {
+            // Away GK near top goal line (y < 20)
+            expect(
+              actual.y,
+              `${formation} Vertical Full Away GK y`,
+            ).toBeGreaterThanOrEqual(PITCH_BOUNDS_9_16.yMin);
+            expect(
+              actual.y,
+              `${formation} Vertical Full Away GK y`,
+            ).toBeLessThan(20);
+          }
+        });
+      }
+    });
+
+    it('places side defenders (LB/RB) intuitively in vertical Full Mode', () => {
+      const positions442 = FORMATION_POSITIONS['4-4-2'];
+      const lbPos = positions442.find((p) => p.position === 'LB');
+      const rbPos = positions442.find((p) => p.position === 'RB');
+      expect(lbPos).toBeDefined();
+      expect(rbPos).toBeDefined();
+
+      if (lbPos && rbPos) {
+        // Home LB is on screen left (x < 30) and defending side (y > 50)
+        const homeLb = getFormationActualPosVertical(lbPos, 'home', 'full');
+        expect(homeLb.x).toBeLessThan(30);
+        expect(homeLb.y).toBeGreaterThan(50);
+
+        // Home RB is on screen right (x > 70) and defending side (y > 50)
+        const homeRb = getFormationActualPosVertical(rbPos, 'home', 'full');
+        expect(homeRb.x).toBeGreaterThan(70);
+        expect(homeRb.y).toBeGreaterThan(50);
+
+        // Away LB (from team perspective) is on screen right (x > 70) and defending side (y < 50)
+        const awayLb = getFormationActualPosVertical(lbPos, 'away', 'full');
+        expect(awayLb.x).toBeGreaterThan(70);
+        expect(awayLb.y).toBeLessThan(50);
+
+        // Away RB (from team perspective) is on screen left (x < 30) and defending side (y < 50)
+        const awayRb = getFormationActualPosVertical(rbPos, 'away', 'full');
+        expect(awayRb.x).toBeLessThan(30);
+        expect(awayRb.y).toBeLessThan(50);
+      }
+    });
+
     it('guarantees DEFAULT_442_POSITIONS are properly bounded on pitch', () => {
       expect(DEFAULT_442_POSITIONS.home.length).toBe(11);
       expect(DEFAULT_442_POSITIONS.away.length).toBe(11);

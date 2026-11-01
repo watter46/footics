@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCanvasNodesRegistry } from '@/features/tactical-unified/core';
+import { renderArrows } from '@/lib/tactical/export/renderers/arrow-renderer';
+import type { FrameRenderContext } from '@/lib/tactical/export/renderers/renderer-context';
 import { interpolateArrow } from '@/lib/tactical/interpolation-annotation';
 import {
   updateArrowNodes,
@@ -580,6 +582,293 @@ describe('animation-node-updater', () => {
       expect(mockHeight).toHaveBeenCalledWith(100);
       expect(mockOffsetX).toHaveBeenCalledWith(200);
       expect(mockOffsetY).toHaveBeenCalledWith(50);
+    });
+  });
+
+  describe('arrow dash and wavy/dot rendering', () => {
+    it('applies dashArray to arrow node dash property during animation update', () => {
+      const registry = createCanvasNodesRegistry();
+      const mockPoints = vi.fn();
+      const mockDash = vi.fn();
+      const mockArrowNode = {
+        points: mockPoints,
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        strokeWidth: vi.fn(),
+        opacity: vi.fn(),
+        visible: vi.fn(),
+        dash: mockDash,
+      } as any;
+
+      registry.arrowNodes.set('arr-dashed', {
+        node: mockArrowNode,
+      });
+
+      updateArrowNodes(
+        {
+          'arr-dashed': {
+            id: 'arr-dashed',
+            arrowType: 'pass',
+            points: [
+              { x: 10, y: 10 },
+              { x: 30, y: 10 },
+            ],
+            curveType: 'straight',
+            color: '#38bdf8',
+            strokeWidth: 3,
+            dashArray: [10, 5],
+            opacity: 1,
+            visible: true,
+          } as any,
+        },
+        registry,
+        1000,
+        500,
+        0,
+        0,
+      );
+
+      expect(mockDash).toHaveBeenCalledWith([10, 5]);
+
+      // When dashArray is empty or undefined, defaults to empty array []
+      updateArrowNodes(
+        {
+          'arr-dashed': {
+            id: 'arr-dashed',
+            arrowType: 'move',
+            points: [
+              { x: 10, y: 10 },
+              { x: 30, y: 10 },
+            ],
+            curveType: 'straight',
+            color: '#38bdf8',
+            strokeWidth: 3,
+            dashArray: [],
+            opacity: 1,
+            visible: true,
+          } as any,
+        },
+        registry,
+        1000,
+        500,
+        0,
+        0,
+      );
+
+      expect(mockDash).toHaveBeenCalledWith([]);
+    });
+
+    it('updates arrow_wavy arrow node with wavy sampled points', () => {
+      const registry = createCanvasNodesRegistry();
+      const mockPoints = vi.fn();
+      const mockArrow = {
+        node: {
+          points: mockPoints,
+          stroke: vi.fn(),
+          fill: vi.fn(),
+          strokeWidth: vi.fn(),
+          opacity: vi.fn(),
+          visible: vi.fn(),
+          dash: vi.fn(),
+        },
+      } as any;
+      registry.arrowNodes.set('a_wavy', mockArrow);
+
+      updateArrowNodes(
+        {
+          a_wavy: {
+            id: 'a_wavy',
+            arrowType: 'arrow_wavy',
+            curveType: 'straight',
+            points: [
+              { x: 10, y: 10 },
+              { x: 50, y: 10 },
+            ],
+            color: '#38bdf8',
+            strokeWidth: 3,
+            opacity: 1,
+            visible: true,
+          } as any,
+        },
+        registry,
+        1000,
+        500,
+        0,
+        0,
+      );
+
+      expect(mockPoints).toHaveBeenCalledTimes(1);
+      const passedPoints = mockPoints.mock.calls[0][0];
+      // Wavy sampling generates multiple curve points (> 4 numbers)
+      expect(passedPoints.length).toBeGreaterThan(4);
+    });
+
+    it('renderArrows applies custom dashArray or defaults for pass/defend arrows', () => {
+      const mockCtx = {
+        save: vi.fn(),
+        restore: vi.fn(),
+        beginPath: vi.fn(),
+        moveTo: vi.fn(),
+        lineTo: vi.fn(),
+        quadraticCurveTo: vi.fn(),
+        arc: vi.fn(),
+        closePath: vi.fn(),
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        setLineDash: vi.fn(),
+      };
+      const mockRenderContext: FrameRenderContext = {
+        ctx: mockCtx as any,
+        w: 600,
+        h: 400,
+        m: null,
+        toScreenX: (x) => (x / 100) * 600,
+        toScreenY: (y) => (y / 100) * 400,
+        toScreenSizeX: (w) => (w / 100) * 600,
+        toScreenSizeY: (h) => (h / 100) * 400,
+        projectObjToScreen: (x, y) => ({
+          x: (x / 100) * 600,
+          y: (y / 100) * 400,
+        }),
+        snap: (v) => v,
+      };
+
+      // Custom dashArray
+      renderArrows(mockRenderContext, {
+        a1: {
+          id: 'a1',
+          arrowType: 'move',
+          points: [
+            { x: 10, y: 10 },
+            { x: 50, y: 10 },
+          ],
+          dashArray: [12, 4],
+          color: '#ffffff',
+          strokeWidth: 2,
+          opacity: 1,
+          visible: true,
+        } as any,
+      });
+
+      expect(mockCtx.setLineDash).toHaveBeenCalledWith([12, 4]);
+
+      // Fallback for pass
+      renderArrows(mockRenderContext, {
+        a2: {
+          id: 'a2',
+          arrowType: 'pass',
+          points: [
+            { x: 10, y: 10 },
+            { x: 50, y: 10 },
+          ],
+          dashArray: [],
+          color: '#ffffff',
+          strokeWidth: 2,
+          opacity: 1,
+          visible: true,
+        } as any,
+      });
+
+      expect(mockCtx.setLineDash).toHaveBeenCalledWith([8, 5]);
+    });
+
+    it('renderArrows renders wavy path for arrow_wavy arrowType', () => {
+      const mockCtx = {
+        save: vi.fn(),
+        restore: vi.fn(),
+        beginPath: vi.fn(),
+        moveTo: vi.fn(),
+        lineTo: vi.fn(),
+        quadraticCurveTo: vi.fn(),
+        arc: vi.fn(),
+        closePath: vi.fn(),
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        setLineDash: vi.fn(),
+      };
+      const mockRenderContext: FrameRenderContext = {
+        ctx: mockCtx as any,
+        w: 600,
+        h: 400,
+        m: null,
+        toScreenX: (x) => (x / 100) * 600,
+        toScreenY: (y) => (y / 100) * 400,
+        toScreenSizeX: (w) => (w / 100) * 600,
+        toScreenSizeY: (h) => (h / 100) * 400,
+        projectObjToScreen: (x, y) => ({
+          x: (x / 100) * 600,
+          y: (y / 100) * 400,
+        }),
+        snap: (v) => v,
+      };
+
+      renderArrows(mockRenderContext, {
+        wavy: {
+          id: 'wavy',
+          arrowType: 'arrow_wavy',
+          points: [
+            { x: 10, y: 10 },
+            { x: 80, y: 10 },
+          ],
+          color: '#ffffff',
+          strokeWidth: 2,
+          opacity: 1,
+          visible: true,
+        } as any,
+      });
+
+      // getWavyPoints produces multiple points -> multiple lineTo calls
+      expect(mockCtx.lineTo.mock.calls.length).toBeGreaterThan(4);
+    });
+
+    it('renderArrows renders dot end instead of arrowhead polygon when route_line or endMarker=dot', () => {
+      const mockCtx = {
+        save: vi.fn(),
+        restore: vi.fn(),
+        beginPath: vi.fn(),
+        moveTo: vi.fn(),
+        lineTo: vi.fn(),
+        quadraticCurveTo: vi.fn(),
+        arc: vi.fn(),
+        closePath: vi.fn(),
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        setLineDash: vi.fn(),
+      };
+      const mockRenderContext: FrameRenderContext = {
+        ctx: mockCtx as any,
+        w: 600,
+        h: 400,
+        m: null,
+        toScreenX: (x) => (x / 100) * 600,
+        toScreenY: (y) => (y / 100) * 400,
+        toScreenSizeX: (w) => (w / 100) * 600,
+        toScreenSizeY: (h) => (h / 100) * 400,
+        projectObjToScreen: (x, y) => ({
+          x: (x / 100) * 600,
+          y: (y / 100) * 400,
+        }),
+        snap: (v) => v,
+      };
+
+      renderArrows(mockRenderContext, {
+        route: {
+          id: 'route',
+          arrowType: 'route_line',
+          points: [
+            { x: 10, y: 10 },
+            { x: 50, y: 10 },
+          ],
+          color: '#ffffff',
+          strokeWidth: 2,
+          opacity: 1,
+          visible: true,
+        } as any,
+      });
+
+      // Dot end uses ctx.arc, not polygon closePath
+      expect(mockCtx.arc).toHaveBeenCalledTimes(1);
+      expect(mockCtx.closePath).not.toHaveBeenCalled();
     });
   });
 });

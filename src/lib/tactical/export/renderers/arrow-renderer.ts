@@ -1,8 +1,15 @@
+import { getWavyPoints } from '@/features/tactical-unified/core/components/annotations/wavy-arrow-math';
 import type {
   InterpolatedArrowState,
   InterpolatedPlayerState,
 } from '@/lib/tactical/unified-interpolation';
 import type { FrameRenderContext } from './renderer-context';
+
+declare module '@/lib/tactical/interpolation-annotation' {
+  interface InterpolatedArrowState {
+    dashArray?: number[];
+  }
+}
 
 /**
  * Draws connect lines between players onto canvas context.
@@ -103,20 +110,35 @@ export function renderArrows(
     const ex = snap(_ea.x);
     const ey = snap(_ea.y);
 
-    if (a.arrowType === 'pass' || a.arrowType === 'defend') {
-      ctx.setLineDash([8, 5]);
-    } else {
-      ctx.setLineDash([]);
-    }
+    const dash =
+      a.dashArray && a.dashArray.length > 0
+        ? a.dashArray
+        : a.arrowType === 'pass' || a.arrowType === 'defend'
+          ? [8, 5]
+          : [];
+    ctx.setLineDash(dash);
 
+    const isWavy =
+      a.arrowType === 'dribble' || (a.arrowType as string) === 'arrow_wavy';
     const isCurved =
+      !isWavy &&
       (a.curveType === 'curved' ||
         a.curveType === 'arc' ||
         a.controlPoint !== undefined) &&
       a.controlPoint !== undefined;
+    const isDotEnd = a.arrowType === 'route_line' || a.endMarker === 'dot';
 
     ctx.beginPath();
-    if (isCurved && a.controlPoint) {
+    if (isWavy) {
+      const wavyPts = getWavyPoints(sx, sy, ex, ey);
+      if (wavyPts.length >= 2) {
+        ctx.moveTo(wavyPts[0], wavyPts[1]);
+        for (let i = 2; i < wavyPts.length; i += 2) {
+          ctx.lineTo(wavyPts[i], wavyPts[i + 1]);
+        }
+      }
+      ctx.stroke();
+    } else if (isCurved && a.controlPoint) {
       const _ca = projectObjToScreen(a.controlPoint.x, a.controlPoint.y);
       const cx = snap(_ca.x);
       const cy = snap(_ca.y);
@@ -129,29 +151,42 @@ export function renderArrows(
       ctx.stroke();
     }
 
-    // Arrowhead
+    // Arrowhead or Dot endpoint
     ctx.setLineDash([]);
-    const angle =
-      isCurved && a.controlPoint
-        ? Math.atan2(
-            ey - snap(projectObjToScreen(a.controlPoint.x, a.controlPoint.y).y),
-            ex - snap(projectObjToScreen(a.controlPoint.x, a.controlPoint.y).x),
-          )
-        : Math.atan2(ey - sy, ex - sx);
+    if (isDotEnd) {
+      const dotRadius = Math.max(
+        4,
+        Math.round((a.strokeWidth ? a.strokeWidth * 1.6 : 6) * scale),
+      );
+      ctx.beginPath();
+      ctx.arc(ex, ey, dotRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      const angle =
+        isCurved && a.controlPoint
+          ? Math.atan2(
+              ey -
+                snap(projectObjToScreen(a.controlPoint.x, a.controlPoint.y).y),
+              ex -
+                snap(projectObjToScreen(a.controlPoint.x, a.controlPoint.y).x),
+            )
+          : Math.atan2(ey - sy, ex - sx);
 
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    const bx = ex - pointerLength * cos;
-    const by = ey - pointerLength * sin;
-    const halfWidth = pointerWidth / 2;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const bx = ex - pointerLength * cos;
+      const by = ey - pointerLength * sin;
+      const halfWidth = pointerWidth / 2;
 
-    ctx.beginPath();
-    ctx.moveTo(ex, ey);
-    ctx.lineTo(bx - halfWidth * sin, by + halfWidth * cos);
-    ctx.lineTo(bx + halfWidth * sin, by - halfWidth * cos);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(bx - halfWidth * sin, by + halfWidth * cos);
+      ctx.lineTo(bx + halfWidth * sin, by - halfWidth * cos);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
 
     ctx.restore();
   });
