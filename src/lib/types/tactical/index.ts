@@ -2,6 +2,7 @@ export * from './annotations';
 export * from './ball';
 export * from './capture';
 export * from './factory';
+export * from './formations';
 export * from './migration';
 export * from './player';
 export * from './primitives';

@@ -16,6 +16,12 @@ import {
   type Slide,
 } from './slide';
 
+export const DEFAULT_INITIAL_PROJECT_ID =
+  '00000000-0000-4000-8000-000000000001';
+export const DEFAULT_INITIAL_PHASE_ID = '00000000-0000-4000-8000-000000000002';
+export const DEFAULT_INITIAL_SLIDE_ID = '00000000-0000-4000-8000-000000000003';
+export const DEFAULT_INITIAL_CREATED_AT = '2026-01-01T00:00:00.000Z';
+
 const BENCH_POSITION_RANK: Record<string, number> = Object.fromEntries([
   ...['FW', 'CF', 'ST', 'LW', 'RW', 'SS', 'AML', 'AMR'].map((p) => [p, 1]),
   ...['MF', 'DM', 'CM', 'AM', 'LM', 'RM', 'DMC', 'MC', 'AMC'].map((p) => [
@@ -66,59 +72,24 @@ export function computeBenchGridPositions(players: Player[]): Player[] {
   });
 }
 
-type DefaultFormationPlayer = {
-  shirtNo: string;
-  position: string;
-  x: number;
-  y: number;
-};
+import {
+  DEFAULT_442_AWAY,
+  DEFAULT_442_HOME,
+  DEFAULT_4231_HOME,
+} from './formations';
 
-export const DEFAULT_4231_HOME: DefaultFormationPlayer[] = [
-  { shirtNo: '1', position: 'GK', x: 7, y: 50 },
-  { shirtNo: '2', position: 'RB', x: 20, y: 18 },
-  { shirtNo: '5', position: 'CB', x: 18, y: 38 },
-  { shirtNo: '6', position: 'CB', x: 18, y: 62 },
-  { shirtNo: '3', position: 'LB', x: 20, y: 82 },
-  { shirtNo: '4', position: 'DM', x: 30, y: 36 },
-  { shirtNo: '8', position: 'DM', x: 30, y: 64 },
-  { shirtNo: '7', position: 'RM', x: 42, y: 18 },
-  { shirtNo: '10', position: 'AM', x: 40, y: 50 },
-  { shirtNo: '11', position: 'LM', x: 42, y: 82 },
-  { shirtNo: '9', position: 'ST', x: 46, y: 50 },
-];
-
-export const DEFAULT_442_AWAY: DefaultFormationPlayer[] = [
-  { shirtNo: '1', position: 'GK', x: 93, y: 50 },
-  { shirtNo: '3', position: 'LB', x: 80, y: 18 },
-  { shirtNo: '6', position: 'CB', x: 82, y: 38 },
-  { shirtNo: '5', position: 'CB', x: 82, y: 62 },
-  { shirtNo: '2', position: 'RB', x: 80, y: 82 },
-  { shirtNo: '11', position: 'LM', x: 68, y: 18 },
-  { shirtNo: '4', position: 'CM', x: 70, y: 38 },
-  { shirtNo: '8', position: 'CM', x: 70, y: 62 },
-  { shirtNo: '7', position: 'RM', x: 68, y: 82 },
-  { shirtNo: '10', position: 'CF', x: 54, y: 40 },
-  { shirtNo: '9', position: 'CF', x: 54, y: 60 },
-];
-
-export const DEFAULT_442_HOME: DefaultFormationPlayer[] = [
-  { shirtNo: '1', position: 'GK', x: 10, y: 50 },
-  { shirtNo: '2', position: 'RB', x: 25, y: 20 },
-  { shirtNo: '5', position: 'CB', x: 25, y: 37 },
-  { shirtNo: '6', position: 'CB', x: 25, y: 63 },
-  { shirtNo: '3', position: 'LB', x: 25, y: 80 },
-  { shirtNo: '7', position: 'RM', x: 45, y: 20 },
-  { shirtNo: '8', position: 'CM', x: 45, y: 37 },
-  { shirtNo: '4', position: 'CM', x: 45, y: 63 },
-  { shirtNo: '11', position: 'LM', x: 45, y: 80 },
-  { shirtNo: '9', position: 'CF', x: 63, y: 37 },
-  { shirtNo: '10', position: 'CF', x: 63, y: 63 },
-];
+export {
+  DEFAULT_442_AWAY,
+  DEFAULT_442_HOME,
+  DEFAULT_4231_HOME,
+  type DefaultFormationPlayer,
+} from './formations';
 
 export function createDefaultInitialPlayers(
   homeColor = '#034694',
   awayColor = '#ef4444',
   aspectRatio: AspectRatio = '4:5',
+  deterministic?: boolean,
 ): Player[] {
   const isVertical = isVerticalAspectRatio(aspectRatio);
   const homePlayers: Player[] = DEFAULT_4231_HOME.map((p) => {
@@ -126,7 +97,8 @@ export function createDefaultInitialPlayers(
     const pos = isVertical
       ? transformCoord(rawPos, '16:9', aspectRatio)
       : rawPos;
-    const pl = createDefaultPlayer('home', pos.x, pos.y, homeColor);
+    const playerId = deterministic ? `player-home-${p.shirtNo}` : undefined;
+    const pl = createDefaultPlayer('home', pos.x, pos.y, homeColor, playerId);
     pl.shirtNo = p.shirtNo;
     pl.position = p.position;
     return pl;
@@ -137,7 +109,8 @@ export function createDefaultInitialPlayers(
     const pos = isVertical
       ? transformCoord(rawPos, '16:9', aspectRatio)
       : rawPos;
-    const pl = createDefaultPlayer('away', pos.x, pos.y, awayColor);
+    const playerId = deterministic ? `player-away-${p.shirtNo}` : undefined;
+    const pl = createDefaultPlayer('away', pos.x, pos.y, awayColor, playerId);
     pl.shirtNo = p.shirtNo;
     pl.position = p.position;
     return pl;
@@ -182,34 +155,47 @@ export function createDefaultPhase(
   name = 'Phase 1',
   homeColor?: string,
   awayColor?: string,
+  slideId?: string,
+  deterministic?: boolean,
 ): TacticalPhase {
   const phaseId = id ?? crypto.randomUUID();
-  const slideId = crypto.randomUUID();
+  const resolvedSlideId = slideId ?? crypto.randomUUID();
   return {
     id: phaseId,
     name,
     slides: [
       createDefaultSlide(
         0,
-        slideId,
+        resolvedSlideId,
         homeColor,
         awayColor,
         DEFAULT_BOUNDARY_BOX_4_5,
         '4:5',
+        deterministic,
       ),
     ],
   };
 }
 
-export function createDefaultProject(id: string): TacticalProject {
-  const now = new Date().toISOString();
+export function createDefaultProject(
+  id: string,
+  options?: {
+    phaseId?: string;
+    slideId?: string;
+    deterministic?: boolean;
+    createdAt?: string;
+  },
+): TacticalProject {
+  const now = options?.createdAt ?? new Date().toISOString();
   const homeColor = { primary: '#034694' };
   const awayColor = { primary: '#ef4444' };
   const initialPhase = createDefaultPhase(
-    undefined,
+    options?.phaseId,
     'Phase 1',
     homeColor.primary,
     awayColor.primary,
+    options?.slideId,
+    options?.deterministic,
   );
 
   const project = {
@@ -233,6 +219,15 @@ export function createDefaultProject(id: string): TacticalProject {
   return attachProjectSlidesGetter(project);
 }
 
+export function createInitialProject(): TacticalProject {
+  return createDefaultProject(DEFAULT_INITIAL_PROJECT_ID, {
+    phaseId: DEFAULT_INITIAL_PHASE_ID,
+    slideId: DEFAULT_INITIAL_SLIDE_ID,
+    deterministic: true,
+    createdAt: DEFAULT_INITIAL_CREATED_AT,
+  });
+}
+
 export function createDefaultSlide(
   index: number,
   id?: string,
@@ -240,13 +235,19 @@ export function createDefaultSlide(
   awayColor?: string,
   boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_4_5,
   aspectRatio: AspectRatio = '4:5',
+  deterministic?: boolean,
 ): Slide {
   return {
     id: id ?? crypto.randomUUID(),
     index,
     label: `Scene ${index + 1}`,
     aspectRatio,
-    players: createDefaultInitialPlayers(homeColor, awayColor, aspectRatio),
+    players: createDefaultInitialPlayers(
+      homeColor,
+      awayColor,
+      aspectRatio,
+      deterministic,
+    ),
     arrows: [],
     zones: [],
     texts: [],
@@ -265,9 +266,10 @@ export function createDefaultPlayer(
   x: number,
   y: number,
   primaryColor: string,
+  id?: string,
 ): Player {
   return {
-    id: crypto.randomUUID(),
+    id: id ?? crypto.randomUUID(),
     team,
     area: 'pitch',
     x,

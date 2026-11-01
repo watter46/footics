@@ -13,7 +13,12 @@ import {
   createDefaultPlayer,
   createDefaultProject,
   createDefaultSlide,
+  createInitialProject,
   createXBoundaryBox,
+  DEFAULT_INITIAL_CREATED_AT,
+  DEFAULT_INITIAL_PHASE_ID,
+  DEFAULT_INITIAL_PROJECT_ID,
+  DEFAULT_INITIAL_SLIDE_ID,
   DrawingToolSchema,
   ensureTacticalProject,
   getAspectRatioOrientation,
@@ -438,5 +443,33 @@ describe('ensureTacticalProject & attachProjectSlidesGetter', () => {
     const fallbackEmpty = ensureTacticalProject({});
     expect(fallbackEmpty.phases).toHaveLength(1);
     expect(fallbackEmpty.slides).toHaveLength(1);
+  });
+});
+
+describe('createInitialProject (Deterministic Project Factory)', () => {
+  it('決定論的定数と同一の固定IDおよび作成日時を持つプロジェクトを生成する', () => {
+    const p1 = createInitialProject();
+    const p2 = createInitialProject();
+
+    expect(p1.id).toBe(DEFAULT_INITIAL_PROJECT_ID);
+    expect(p1.phases[0].id).toBe(DEFAULT_INITIAL_PHASE_ID);
+    expect(p1.phases[0].slides[0].id).toBe(DEFAULT_INITIAL_SLIDE_ID);
+    expect(p1.activePhaseId).toBe(DEFAULT_INITIAL_PHASE_ID);
+    expect(p1.activeSlideId).toBe(DEFAULT_INITIAL_SLIDE_ID);
+    expect(p1.createdAt).toBe(DEFAULT_INITIAL_CREATED_AT);
+    expect(p1.updatedAt).toBe(DEFAULT_INITIAL_CREATED_AT);
+
+    // 2回呼んでも完全に同一のオブジェクト構造・ID群を持つ
+    expect(p1.id).toBe(p2.id);
+    expect(p1.activePhaseId).toBe(p2.activePhaseId);
+    expect(p1.activeSlideId).toBe(p2.activeSlideId);
+    expect(p1.createdAt).toBe(p2.createdAt);
+
+    // 選手の ID も決定論的（player-home-*, player-away-*）で一致する
+    const p1Players = p1.phases[0].slides[0].players;
+    const p2Players = p2.phases[0].slides[0].players;
+    expect(p1Players.length).toBeGreaterThan(0);
+    expect(p1Players.map((p) => p.id)).toEqual(p2Players.map((p) => p.id));
+    expect(p1Players[0].id).toBe('player-home-1');
   });
 });

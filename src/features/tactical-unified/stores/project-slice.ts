@@ -5,7 +5,7 @@ import type {
   PitchAppearanceConfig,
   TacticalProject,
 } from '@/lib/types/tactical-unified';
-import { createDefaultProject } from '@/lib/types/tactical-unified';
+import { createInitialProject } from '@/lib/types/tactical-unified';
 import {
   createProjectConfigActions,
   createProjectMetaActions,
@@ -67,7 +67,7 @@ export const createProjectSlice: StateCreator<
   [],
   ProjectSlice
 > = (set) => {
-  const initialProject = createDefaultProject(crypto.randomUUID());
+  const initialProject = createInitialProject();
   const setter: ProjectSliceSet = (partial) => {
     if (typeof partial === 'function') {
       set((s) => partial(s) as Partial<TacticalUnifiedState>);
