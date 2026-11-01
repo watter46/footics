@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as playerPhotos from '@/lib/db/player-photos';
 import * as queries from '@/lib/db/queries';
 import { usePlayerPhoto } from '../use-player-photo';
 
@@ -54,23 +55,24 @@ describe('usePlayerPhoto', () => {
   });
 
   it('enabled が false のときは null を返し、クエリや Image ロードを行わない', async () => {
-    const getPhotoSpy = vi.spyOn(queries, 'getPlayerPhoto');
+    const getPhotosBatchSpy = vi.spyOn(playerPhotos, 'getPlayerPhotosBatch');
+    const getMasterBatchSpy = vi.spyOn(queries, 'getPlayersMasterBatch');
+    const findByNameSpy = vi.spyOn(queries, 'findPlayerPhotosByNames');
     const { result } = renderHook(() =>
       usePlayerPhoto('123', 'https://example.com/photo.jpg', false),
     );
 
     expect(result.current).toBeNull();
-    expect(getPhotoSpy).not.toHaveBeenCalled();
+    expect(getPhotosBatchSpy).not.toHaveBeenCalled();
+    expect(getMasterBatchSpy).not.toHaveBeenCalled();
+    expect(findByNameSpy).not.toHaveBeenCalled();
   });
 
   it('playerId があり DB に写真 Blob がある場合、createObjectURL で画像をロードし、アンマウント時に revokeObjectURL を呼ぶ', async () => {
     const blob = new Blob(['fake image data'], { type: 'image/webp' });
-    vi.spyOn(queries, 'getPlayerPhoto').mockResolvedValue({
-      playerId: 123,
-      photoBlob: blob,
-      mimeType: 'image/webp',
-      updatedAt: Date.now(),
-    });
+    vi.spyOn(playerPhotos, 'getPlayerPhotosBatch').mockResolvedValue(
+      new Map([[123, blob]]),
+    );
 
     const { result, unmount } = renderHook(() =>
       usePlayerPhoto('123', undefined, true),
@@ -93,12 +95,12 @@ describe('usePlayerPhoto', () => {
   });
 
   it('playerId がなく photoUrl のみある場合、外部 URL からロードする', async () => {
-    const getPhotoSpy = vi.spyOn(queries, 'getPlayerPhoto');
+    const getPhotosBatchSpy = vi.spyOn(playerPhotos, 'getPlayerPhotosBatch');
     const { result } = renderHook(() =>
       usePlayerPhoto(undefined, 'https://example.com/saka.png', true),
     );
 
-    expect(getPhotoSpy).not.toHaveBeenCalled();
+    expect(getPhotosBatchSpy).not.toHaveBeenCalled();
 
     await vi.waitFor(() => {
       expect(result.current).not.toBeNull();
@@ -108,12 +110,13 @@ describe('usePlayerPhoto', () => {
     expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 
-  it('playerId に写真がなく photoUrl もないが playerName がある場合、findPlayerPhotoByName で写真Blobを取得して画像をロードし、アンマウント時に revokeObjectURL を呼ぶ', async () => {
+  it('playerId に写真がなく photoUrl もないが playerName がある場合、findPlayerPhotosByNames で写真Blobを取得して画像をロードし、アンマウント時に revokeObjectURL を呼ぶ', async () => {
     const blob = new Blob(['fallback fake image data'], { type: 'image/webp' });
-    vi.spyOn(queries, 'getPlayerPhoto').mockResolvedValue(undefined);
-    const findPhotoByNameSpy = vi
-      .spyOn(queries, 'findPlayerPhotoByName')
-      .mockResolvedValue(blob);
+    vi.spyOn(playerPhotos, 'getPlayerPhotosBatch').mockResolvedValue(new Map());
+    vi.spyOn(queries, 'getPlayersMasterBatch').mockResolvedValue(new Map());
+    const findPhotosByNamesSpy = vi
+      .spyOn(queries, 'findPlayerPhotosByNames')
+      .mockResolvedValue(new Map([['Cole Palmer', blob]]));
 
     const { result, unmount } = renderHook(() =>
       usePlayerPhoto('345001', undefined, true, 'Cole Palmer'),
@@ -125,7 +128,7 @@ describe('usePlayerPhoto', () => {
       expect(result.current).not.toBeNull();
     });
 
-    expect(findPhotoByNameSpy).toHaveBeenCalledWith('Cole Palmer');
+    expect(findPhotosByNamesSpy).toHaveBeenCalledWith(['Cole Palmer']);
     expect(URL.createObjectURL).toHaveBeenCalledWith(blob);
     expect(result.current?.src).toBe('blob:http://localhost/test-uuid');
 

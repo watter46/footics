@@ -3,6 +3,7 @@ import {
   type Season,
 } from '@/lib/tactical/chelsea-preset';
 import { dispatchRefreshEvent } from './extension-db-queries';
+import { getPlayerPhotosBatch } from './player-photos';
 import { db, type PlayerMaster } from './schema';
 
 // ──────────────────────────────────────────────
@@ -43,12 +44,9 @@ export function resolveMergedPosition(
   manualPos: string | undefined,
   officialPos: string | undefined,
 ): string {
-  if (manualPos && manualPos !== 'Sub' && manualPos !== 'Other') {
+  if (manualPos && manualPos !== 'Sub' && manualPos !== 'Other')
     return manualPos;
-  }
-  if (officialPos && officialPos !== 'Sub') {
-    return officialPos;
-  }
+  if (officialPos && officialPos !== 'Sub') return officialPos;
   return manualPos ?? officialPos ?? 'Other';
 }
 
@@ -148,17 +146,57 @@ export async function findPlayerPhotoByName(
   if (!norm) return undefined;
 
   const players = await db.players.toArray();
-  const matchedPlayers = players.filter(
-    (p) => normalizePlayerNameForMatch(p.name) === norm,
-  );
-
-  for (const p of matchedPlayers) {
-    const photo = await db.player_photos.get(p.playerId);
-    if (photo?.photoBlob) {
-      return photo.photoBlob;
+  for (const p of players) {
+    if (normalizePlayerNameForMatch(p.name) === norm) {
+      const photo = await db.player_photos.get(p.playerId);
+      if (photo?.photoBlob) return photo.photoBlob;
     }
   }
   return undefined;
+}
+
+export async function findPlayerPhotosByNames(
+  names: string[],
+): Promise<Map<string, Blob>> {
+  const result = new Map<string, Blob>();
+  if (!names || names.length === 0) return result;
+
+  const normToNames = new Map<string, string[]>();
+  for (const name of names) {
+    const norm = normalizePlayerNameForMatch(name);
+    if (!norm) continue;
+    const list = normToNames.get(norm);
+    if (list) list.push(name);
+    else normToNames.set(norm, [name]);
+  }
+  if (normToNames.size === 0) return result;
+
+  const players = await db.players.toArray();
+  const normToPlayers = new Map<string, PlayerMaster[]>();
+  const matchedPlayerIds: number[] = [];
+
+  for (const p of players) {
+    const pNorm = normalizePlayerNameForMatch(p.name);
+    if (normToNames.has(pNorm)) {
+      const list = normToPlayers.get(pNorm);
+      if (list) list.push(p);
+      else normToPlayers.set(pNorm, [p]);
+      matchedPlayerIds.push(p.playerId);
+    }
+  }
+  if (matchedPlayerIds.length === 0) return result;
+
+  const photosMap = await getPlayerPhotosBatch(matchedPlayerIds);
+  for (const [norm, matchedList] of normToPlayers.entries()) {
+    const match = matchedList.find((p) => photosMap.has(p.playerId));
+    if (match) {
+      const blob = photosMap.get(match.playerId)!;
+      for (const inputName of normToNames.get(norm) ?? []) {
+        result.set(inputName, blob);
+      }
+    }
+  }
+  return result;
 }
 
 export async function mergeLegacyPlayersAndPhotos(
@@ -199,12 +237,8 @@ export async function mergeLegacyPlayersAndPhotos(
             (pr) => normalizePlayerNameForMatch(pr.name) === normName,
           );
           if (presetMatch) {
-            const officialId = generatePlayerMasterId(
-              legacySeason,
-              presetMatch.playerId,
-            );
             officialRecord = {
-              id: officialId,
+              id: generatePlayerMasterId(legacySeason, presetMatch.playerId),
               playerId: presetMatch.playerId,
               name: presetMatch.name,
               season: legacySeason,
@@ -224,30 +258,25 @@ export async function mergeLegacyPlayersAndPhotos(
 
         idMap.set(String(legacy.playerId), String(officialRecord.playerId));
 
-        const defaultShirtNo = resolveMergedShirtNo(
-          legacy.defaultShirtNo,
-          officialRecord.defaultShirtNo,
-        );
-        const position = resolveMergedPosition(
-          legacy.position,
-          officialRecord.position,
-        );
-        const photoUrl = legacy.photoUrl ?? officialRecord.photoUrl;
-
-        const updatedOfficial: PlayerMaster = {
+        await db.players.put({
           ...officialRecord,
-          defaultShirtNo,
-          position,
-          photoUrl,
+          defaultShirtNo: resolveMergedShirtNo(
+            legacy.defaultShirtNo,
+            officialRecord.defaultShirtNo,
+          ),
+          position: resolveMergedPosition(
+            legacy.position,
+            officialRecord.position,
+          ),
+          photoUrl: legacy.photoUrl ?? officialRecord.photoUrl,
           updatedAt: Date.now(),
-        };
-        await db.players.put(updatedOfficial);
+        });
 
         const legacyPhoto = await db.player_photos.get(legacy.playerId);
-        const existingOfficialPhoto = await db.player_photos.get(
+        const existingPhoto = await db.player_photos.get(
           officialRecord.playerId,
         );
-        if (legacyPhoto?.photoBlob && !existingOfficialPhoto?.photoBlob) {
+        if (legacyPhoto?.photoBlob && !existingPhoto?.photoBlob) {
           await db.player_photos.put({
             playerId: officialRecord.playerId,
             photoBlob: legacyPhoto.photoBlob,

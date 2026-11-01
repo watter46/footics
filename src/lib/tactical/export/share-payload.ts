@@ -17,6 +17,7 @@ export type AnimationOrientation = 'vertical' | 'horizontal';
 export interface TacticalPlayerLike {
   id?: string | number;
   playerId?: number | string;
+  name?: string;
   photoUrl?: string;
   insideContent?: string;
   options?: {

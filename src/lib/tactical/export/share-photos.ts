@@ -1,4 +1,9 @@
-import { getPlayerPhotosBatch, getPlayersMasterBatch } from '@/lib/db/queries';
+import { getPlayerPhotoKey } from '@/lib/tactical/player-photo-key';
+import {
+  type PlayerPhotoSource,
+  type PlayerPhotoTarget,
+  resolvePlayerPhotoSources,
+} from '@/lib/tactical/player-photo-resolver';
 import type { PitchAppearanceConfig } from '@/lib/types/tactical-unified';
 import type { TacticalPlayerLike, TacticalSceneLike } from './share-payload';
 
@@ -69,8 +74,8 @@ export async function preloadMarbleTextureBitmap(
 
 function extractTargetPlayers(
   scenes: TacticalSceneLike[],
-): Map<string, string | undefined> {
-  const target = new Map<string, string | undefined>();
+): Map<string, PlayerPhotoTarget> {
+  const target = new Map<string, PlayerPhotoTarget>();
   for (const scene of scenes) {
     if (!scene.players) continue;
     const list: TacticalPlayerLike[] = Array.isArray(scene.players)
@@ -83,12 +88,18 @@ function extractTargetPlayers(
         style.insideContent === 'photo' ||
         opt.insideContent === 'photo' ||
         p.insideContent === 'photo';
-      const pid = String(p.playerId ?? p.id ?? '');
-      if (isPhoto && pid && !target.has(pid)) {
-        const url =
+      const key = getPlayerPhotoKey(p);
+      if (isPhoto && key && !target.has(key)) {
+        const photoUrl =
           (p.photoUrl || style.photoUrl || opt.photoUrl || '').trim() ||
           undefined;
-        target.set(pid, url);
+        const name = typeof p.name === 'string' ? p.name : undefined;
+        target.set(key, {
+          key,
+          playerId: p.playerId ?? p.id,
+          name,
+          photoUrl,
+        });
       }
     }
   }
@@ -106,81 +117,60 @@ export async function packPlayerPhotos(
   const targetPlayers = extractTargetPlayers(scenes);
   if (targetPlayers.size === 0) return photoMap;
 
-  // 1. IndexedDB から選手写真 Blob および マスター情報を取得
-  const numericIds = Array.from(targetPlayers.keys())
-    .map((id) => Number(id))
-    .filter((id) => typeof id === 'number' && !Number.isNaN(id) && id !== 0);
-
-  let photoBlobMap = new Map<number, Blob>();
-  let masterMap = new Map<number, { photoBlob?: Blob; photoUrl?: string }>();
-
-  if (numericIds.length > 0) {
-    try {
-      const [blobs, masters] = await Promise.all([
-        getPlayerPhotosBatch(numericIds),
-        getPlayersMasterBatch(numericIds),
-      ]);
-      photoBlobMap = blobs;
-      masterMap = masters;
-    } catch (dbErr) {
-      console.warn('[share-payload] Failed to fetch players data:', dbErr);
-    }
+  let sources = new Map<string, PlayerPhotoSource>();
+  try {
+    sources = await resolvePlayerPhotoSources(
+      Array.from(targetPlayers.values()),
+    );
+  } catch (err) {
+    console.warn('[share-payload] Failed to resolve player photos:', err);
   }
 
-  // 2. 各選手の画像を Base64 または URL として辞書化
-  const promises = Array.from(targetPlayers.entries()).map(
-    async ([playerId, specifiedUrl]) => {
-      try {
-        const numId = Number(playerId);
-        const photoBlob = !Number.isNaN(numId)
-          ? photoBlobMap.get(numId)
-          : undefined;
-        const master = !Number.isNaN(numId) ? masterMap.get(numId) : undefined;
+  // 各選手の画像を Base64 または URL として辞書化
+  const promises = Array.from(sources.entries()).map(async ([key, source]) => {
+    try {
+      // パス A: Blob の場合は Base64 化
+      if (source.kind === 'blob') {
+        const base64 = await blobToBase64(source.blob);
+        photoMap[key] = base64;
+        return;
+      }
 
-        // パス A: ローカル保存された photoBlob がある場合は Base64 化 (完全オフライン可)
-        const blobToConvert = photoBlob || master?.photoBlob;
-        if (blobToConvert) {
-          const base64 = await blobToBase64(blobToConvert);
-          photoMap[playerId] = base64;
+      // パス B: URL
+      const url = source.url;
+      if (url && url.trim() !== '') {
+        // すでに Data URL の場合
+        if (url.startsWith('data:')) {
+          photoMap[key] = url;
           return;
         }
-
-        // パス B: 指定 URL またはマスター photoUrl
-        const url = specifiedUrl || master?.photoUrl;
-        if (url && url.trim() !== '') {
-          // すでに Data URL の場合
-          if (url.startsWith('data:')) {
-            photoMap[playerId] = url;
+        // 外部 URL の場合、一度 fetch して Base64 に変換可能なら変換して埋め込む（CORS が許す場合）
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
+          const res = await fetch(url, {
+            mode: 'cors',
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            const blob = await res.blob();
+            const base64 = await blobToBase64(blob);
+            photoMap[key] = base64;
             return;
           }
-          // 外部 URL の場合、一度 fetch して Base64 に変換可能なら変換して埋め込む（CORS が許す場合）
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000);
-            const res = await fetch(url, {
-              mode: 'cors',
-              signal: controller.signal,
-            });
-            clearTimeout(timeoutId);
-            if (res.ok) {
-              const blob = await res.blob();
-              const base64 = await blobToBase64(blob);
-              photoMap[playerId] = base64;
-              return;
-            }
-          } catch {
-            // fetch 失敗時は URL のままフォールバック
-          }
-          photoMap[playerId] = url;
+        } catch {
+          // fetch 失敗時は URL のままフォールバック
         }
-      } catch (err) {
-        console.warn(
-          `[share-payload] Failed to pack photo for player ${playerId}:`,
-          err,
-        );
+        photoMap[key] = url;
       }
-    },
-  );
+    } catch (err) {
+      console.warn(
+        `[share-payload] Failed to pack photo for player ${key}:`,
+        err,
+      );
+    }
+  });
 
   await Promise.allSettled(promises);
   return photoMap;
@@ -205,68 +195,68 @@ export async function preloadPlayerPhotos(
     return result;
   }
 
-  // 2. existingPhotos に無い選手について、IndexedDB の player_photos を一括取得
-  const neededDbIds: number[] = [];
-  for (const pid of targetPlayers.keys()) {
-    if (!existingPhotos?.[pid]) {
-      const numId = Number(pid);
-      if (!Number.isNaN(numId) && numId !== 0) {
-        neededDbIds.push(numId);
-      }
+  // 2. existingPhotos にある選手とない選手を分離
+  const existingToLoad: Array<{ key: string; photoData: string }> = [];
+  const neededTargets: PlayerPhotoTarget[] = [];
+
+  for (const [key, target] of targetPlayers) {
+    const existing = existingPhotos?.[key];
+    if (existing) {
+      existingToLoad.push({ key, photoData: existing });
+    } else {
+      neededTargets.push(target);
     }
   }
 
-  let photoBlobMap = new Map<number, Blob>();
-  if (neededDbIds.length > 0) {
+  // 3. existingPhotos にない選手のみ resolver で一括解決（全員解決済みなら DB 呼出なし）
+  let resolvedSources = new Map<string, PlayerPhotoSource>();
+  if (neededTargets.length > 0) {
     try {
-      photoBlobMap = await getPlayerPhotosBatch(neededDbIds);
+      resolvedSources = await resolvePlayerPhotoSources(neededTargets);
     } catch (err) {
-      console.warn('[share-payload] Failed to batch load player photos:', err);
+      console.warn('[share-payload] Failed to resolve player photos:', err);
     }
   }
 
-  // 3. 各選手の ImageBitmap を並列生成
-  const promises = Array.from(targetPlayers.entries()).map(
-    async ([playerId, specifiedUrl]) => {
+  // 4. 各選手の ImageBitmap を並列生成
+  const existingPromises = existingToLoad.map(async ({ key, photoData }) => {
+    try {
+      const bitmap = await createBitmapFromUrlOrBase64(photoData);
+      if (bitmap) {
+        result[key] = bitmap;
+      }
+    } catch (err) {
+      console.warn(
+        `[share-payload] Failed to preload existing photo for player ${key}:`,
+        err,
+      );
+    }
+  });
+
+  const resolvedPromises = Array.from(resolvedSources.entries()).map(
+    async ([key, source]) => {
       try {
-        // パス A: 共有ペイロードや引数で渡された existingPhotos を優先
-        const existing = existingPhotos?.[playerId];
-        if (existing) {
-          const bitmap = await createBitmapFromUrlOrBase64(existing);
+        if (source.kind === 'blob') {
+          const bitmap = await createImageBitmap(source.blob);
           if (bitmap) {
-            result[playerId] = bitmap;
+            result[key] = bitmap;
           }
-          return;
-        }
-
-        // パス B: IndexedDB の photoBlob
-        const numId = Number(playerId);
-        const blob = !Number.isNaN(numId) ? photoBlobMap.get(numId) : undefined;
-        if (blob) {
-          const bitmap = await createImageBitmap(blob);
+        } else if (source.kind === 'url') {
+          const bitmap = await createBitmapFromUrlOrBase64(source.url);
           if (bitmap) {
-            result[playerId] = bitmap;
-          }
-          return;
-        }
-
-        // パス C: 指定 URL
-        if (specifiedUrl) {
-          const bitmap = await createBitmapFromUrlOrBase64(specifiedUrl);
-          if (bitmap) {
-            result[playerId] = bitmap;
+            result[key] = bitmap;
           }
         }
       } catch (err) {
         console.warn(
-          `[share-payload] Failed to preload photo for player ${playerId}:`,
+          `[share-payload] Failed to preload photo for player ${key}:`,
           err,
         );
       }
     },
   );
 
-  await Promise.allSettled(promises);
+  await Promise.allSettled([...existingPromises, ...resolvedPromises]);
   return result;
 }
 

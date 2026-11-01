@@ -11,6 +11,7 @@ import {
   deletePlayerPhoto,
   dispatchRefreshEvent,
   findPlayerPhotoByName,
+  findPlayerPhotosByNames,
   getAllCustomEvents,
   getAllEvents,
   getAllMatches,
@@ -1101,6 +1102,79 @@ describe('src/lib/db/queries', () => {
 
           const notFound = await findPlayerPhotoByName('Unknown Player');
           expect(notFound).toBeUndefined();
+        });
+      });
+
+      describe('findPlayerPhotosByNames', () => {
+        it('resolves normalized name variants to the same Blob, excludes unknown, and returns map keyed by input names', async () => {
+          const gustoBlob = new Blob(['gusto-blob'], { type: 'image/webp' });
+          await savePlayerMaster({
+            playerId: 403850,
+            name: 'Malo Gusto',
+            season: '26-27',
+            photoBlob: gustoBlob,
+          });
+
+          const names = [
+            'Malo Gusto',
+            '  malo gusto  ',
+            'Malo-Gusto',
+            'Unknown Player',
+          ];
+          const resultMap = await findPlayerPhotosByNames(names);
+
+          expect(resultMap.get('Malo Gusto')).toBeDefined();
+          expect(resultMap.get('  malo gusto  ')).toBeDefined();
+          expect(resultMap.get('Malo-Gusto')).toBeDefined();
+          expect(resultMap.has('Unknown Player')).toBe(false);
+          expect(resultMap.size).toBe(3);
+        });
+
+        it('does not touch DB when input is empty or contains only whitespace', async () => {
+          const toArraySpy = vi.spyOn(db.players, 'toArray');
+
+          const emptyResult = await findPlayerPhotosByNames([]);
+          expect(emptyResult.size).toBe(0);
+          expect(toArraySpy).not.toHaveBeenCalled();
+
+          const whitespaceResult = await findPlayerPhotosByNames([
+            '',
+            '   ',
+            '\t\n',
+          ]);
+          expect(whitespaceResult.size).toBe(0);
+          expect(toArraySpy).not.toHaveBeenCalled();
+
+          toArraySpy.mockRestore();
+        });
+
+        it('calls db.players.toArray only once for multiple names', async () => {
+          const gustoBlob = new Blob(['gusto-blob'], { type: 'image/webp' });
+          const palmerBlob = new Blob(['palmer-blob'], { type: 'image/webp' });
+          await savePlayerMaster({
+            playerId: 403850,
+            name: 'Malo Gusto',
+            season: '26-27',
+            photoBlob: gustoBlob,
+          });
+          await savePlayerMaster({
+            playerId: 403851,
+            name: 'Cole Palmer',
+            season: '26-27',
+            photoBlob: palmerBlob,
+          });
+
+          const toArraySpy = vi.spyOn(db.players, 'toArray');
+
+          const resultMap = await findPlayerPhotosByNames([
+            'Malo Gusto',
+            'Cole Palmer',
+            'Other',
+          ]);
+          expect(toArraySpy).toHaveBeenCalledTimes(1);
+          expect(resultMap.size).toBe(2);
+
+          toArraySpy.mockRestore();
         });
       });
 

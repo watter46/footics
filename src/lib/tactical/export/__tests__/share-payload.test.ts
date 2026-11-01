@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as playerPhotosDb from '@/lib/db/player-photos';
+import * as queries from '@/lib/db/queries';
 import { db } from '@/lib/db/schema';
 import {
   blobToBase64,
@@ -16,6 +18,7 @@ import {
 describe('src/lib/tactical/export/share-payload', () => {
   beforeEach(async () => {
     await db.player_photos.clear();
+    await db.players.clear();
   });
 
   afterEach(() => {
@@ -389,5 +392,132 @@ describe('src/lib/tactical/export/share-payload', () => {
     const bitmaps = await preloadPlayerPhotos(scenes);
     expect(bitmaps['-12345']).toBeDefined();
     expect(bitmaps['-12345']).toBe(mockBitmap);
+  });
+
+  it('preloads photos via name matching when playerId has no photo in preloadPlayerPhotos', async () => {
+    const mockBitmap = {
+      width: 100,
+      height: 100,
+      close: vi.fn(),
+    } as unknown as ImageBitmap;
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(mockBitmap));
+
+    const mockBlob = new Blob(['name-matched-photo-bytes'], {
+      type: 'image/webp',
+    });
+    // playerId 999 のマスターと写真を登録
+    await db.players.put({
+      id: 'player-master-999',
+      playerId: 999,
+      name: 'Malo Gusto',
+      season: '2024-2025',
+      updatedAt: Date.now(),
+    });
+    await db.player_photos.put({
+      playerId: 999,
+      photoBlob: mockBlob,
+      mimeType: 'image/webp',
+      updatedAt: Date.now(),
+    });
+
+    // 選手マーカーは playerId: 100 (DBに写真なし), name: 'Malo Gusto'
+    const scenes = [
+      {
+        id: 'scene-name-preload',
+        players: [
+          {
+            id: 'p-1',
+            playerId: 100,
+            name: 'Malo Gusto',
+            style: { insideContent: 'photo' },
+          },
+        ],
+      },
+    ];
+
+    const bitmaps = await preloadPlayerPhotos(scenes);
+    expect(bitmaps['100']).toBeDefined();
+    expect(bitmaps['100']).toBe(mockBitmap);
+  });
+
+  it('does not call DB functions when all photos are resolved by existingPhotos', async () => {
+    const mockBitmap = {
+      width: 100,
+      height: 100,
+      close: vi.fn(),
+    } as unknown as ImageBitmap;
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(mockBitmap));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: vi.fn().mockResolvedValue(new Blob(['bytes'])),
+      }),
+    );
+
+    const getPlayerPhotosSpy = vi.spyOn(playerPhotosDb, 'getPlayerPhotosBatch');
+    const getMasterSpy = vi.spyOn(queries, 'getPlayersMasterBatch');
+    const findByNameSpy = vi.spyOn(queries, 'findPlayerPhotosByNames');
+
+    const scenes = [
+      {
+        id: 'scene-existing',
+        players: [
+          {
+            id: 'p-1',
+            playerId: 55,
+            name: 'Player 55',
+            style: { insideContent: 'photo' },
+          },
+        ],
+      },
+    ];
+
+    const existingPhotos = {
+      '55': 'data:image/webp;base64,resolved',
+    };
+
+    const bitmaps = await preloadPlayerPhotos(scenes, existingPhotos);
+    expect(bitmaps['55']).toBe(mockBitmap);
+    expect(getPlayerPhotosSpy).not.toHaveBeenCalled();
+    expect(getMasterSpy).not.toHaveBeenCalled();
+    expect(findByNameSpy).not.toHaveBeenCalled();
+  });
+
+  it('packs player photos via name matching when playerId has no photo in packPlayerPhotos', async () => {
+    const mockBlob = new Blob(['name-matched-pack-bytes'], {
+      type: 'image/webp',
+    });
+    await db.players.put({
+      id: 'player-master-888',
+      playerId: 888,
+      name: 'Cole Palmer',
+      season: '2024-2025',
+      updatedAt: Date.now(),
+    });
+    await db.player_photos.put({
+      playerId: 888,
+      photoBlob: mockBlob,
+      mimeType: 'image/webp',
+      updatedAt: Date.now(),
+    });
+
+    const scenes = [
+      {
+        id: 'scene-name-pack',
+        players: [
+          {
+            id: 'p-pack',
+            playerId: 200,
+            name: 'Cole Palmer',
+            style: { insideContent: 'photo' },
+          },
+        ],
+      },
+    ];
+
+    const photos = await packPlayerPhotos(scenes);
+    expect(photos['200']).toBeDefined();
+    expect(photos['200']).toMatch(/^data:image\/webp;base64,/);
   });
 });

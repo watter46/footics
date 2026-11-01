@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { findPlayerPhotoByName, getPlayerPhoto } from '@/lib/db/queries';
+import { resolvePlayerPhotoSources } from '@/lib/tactical/player-photo-resolver';
 
 /**
  * 選手の顔写真 (HTMLImageElement) を取得・ロードするフック
@@ -45,48 +45,35 @@ export function usePlayerPhoto(
     };
 
     const fetchAndLoad = async () => {
-      // 1. playerId があれば IndexedDB (db.player_photos) から写真を取得
-      if (playerId) {
-        const idNum = Number(playerId);
-        if (!Number.isNaN(idNum)) {
-          try {
-            const photoRecord = await getPlayerPhoto(idNum);
-            if (isCancelled) return;
-            if (photoRecord?.photoBlob) {
-              const url = URL.createObjectURL(photoRecord.photoBlob);
-              objectUrlToRevoke = url;
-              loadImage(url);
-              return;
-            }
-          } catch {
-            // DB取得失敗時は photoUrl / playerName へのフォールバックを試みる
-          }
+      try {
+        const sources = await resolvePlayerPhotoSources([
+          {
+            key: 'self',
+            playerId,
+            name: playerName,
+            photoUrl,
+          },
+        ]);
+        if (isCancelled) return;
+
+        const source = sources.get('self');
+        if (!source) {
+          setImage(null);
+          return;
+        }
+
+        if (source.kind === 'blob') {
+          const url = URL.createObjectURL(source.blob);
+          objectUrlToRevoke = url;
+          loadImage(url);
+        } else {
+          loadImage(source.url);
+        }
+      } catch {
+        if (!isCancelled) {
+          setImage(null);
         }
       }
-
-      // 2. playerId がない、またはDBに写真がない場合、photoUrl を使用
-      if (photoUrl) {
-        loadImage(photoUrl);
-        return;
-      }
-
-      // 3. photoUrl もない場合、playerName があれば同名選手を検索してフォールバック
-      if (playerName) {
-        try {
-          const blob = await findPlayerPhotoByName(playerName);
-          if (isCancelled) return;
-          if (blob) {
-            const url = URL.createObjectURL(blob);
-            objectUrlToRevoke = url;
-            loadImage(url);
-            return;
-          }
-        } catch {
-          // 検索失敗時は何もしない
-        }
-      }
-
-      setImage(null);
     };
 
     fetchAndLoad();
