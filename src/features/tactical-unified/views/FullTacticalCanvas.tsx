@@ -15,10 +15,15 @@ import {
   CanvasStageContainer,
   CanvasStoreProvider,
   createCanvasNodesRegistry,
+  PlayerPhotoProvider,
 } from '@/features/tactical-unified/core';
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
+import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { DrawingToolbar } from '@/features/tactical-unified/panels/toolbar/drawing-toolbar';
-import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
+import {
+  selectActivePhaseSlides,
+  selectActiveSlide,
+} from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import {
   useTacticalUnifiedStoreApi,
   useTacticalUnifiedStoreContext,
@@ -50,6 +55,14 @@ export function FullTacticalCanvas({
   const currentAspect = activeSlideAspectRatio ?? projectAspectRatio ?? '4:5';
   const resolvedImageAspect =
     imageAspect ?? ASPECT_RATIOS[currentAspect] ?? 4 / 5;
+
+  // アクティブフェーズの全スライドの選手写真を一括事前解決・キャッシュ
+  const activeSlides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
+  const allPhasePlayers = useMemo(
+    () => activeSlides.flatMap((s) => s.players ?? []),
+    [activeSlides],
+  );
+  const playerPhotos = usePlayerPhotoRegistry(allPhasePlayers);
 
   // マスターストア（storeApi）を唯一の真実源としてアダプター経由で接続
   const canvasStore = useMemo(() => {
@@ -110,15 +123,17 @@ export function FullTacticalCanvas({
 
   return (
     <CanvasStoreProvider store={canvasStore}>
-      <CanvasStageContainer
-        ref={ref}
-        className={className}
-        imageAspect={resolvedImageAspect}
-        nodesRegistryRef={nodesRegistryRef}
-        onStageSizeChange={handleStageSizeChange}
-        toolbar={resolvedToolbar}
-        cleanRender={isPlaying || isExporting}
-      />
+      <PlayerPhotoProvider photos={playerPhotos}>
+        <CanvasStageContainer
+          ref={ref}
+          className={className}
+          imageAspect={resolvedImageAspect}
+          nodesRegistryRef={nodesRegistryRef}
+          onStageSizeChange={handleStageSizeChange}
+          toolbar={resolvedToolbar}
+          cleanRender={isPlaying || isExporting}
+        />
+      </PlayerPhotoProvider>
     </CanvasStoreProvider>
   );
 }

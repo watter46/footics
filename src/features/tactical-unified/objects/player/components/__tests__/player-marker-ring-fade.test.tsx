@@ -7,13 +7,6 @@ import { PlayerMarkerItem } from '@/features/tactical-unified/core/components/Pl
 import { PlayerMarkerRingFade } from '@/features/tactical-unified/objects/player/components/player-marker-ring-fade';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 
-vi.mock(
-  '@/features/tactical-unified/objects/player/hooks/use-player-photo',
-  () => ({
-    usePlayerPhoto: vi.fn(),
-  }),
-);
-
 beforeEach(() => {
   vi.clearAllMocks();
   const mockCtx = new Proxy(

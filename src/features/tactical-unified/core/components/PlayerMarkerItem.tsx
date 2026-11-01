@@ -4,13 +4,13 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { type MutableRefObject, memo, useEffect, useRef } from 'react';
 import { Group } from 'react-konva';
+import { usePlayerPhotoImage } from '@/features/tactical-unified/core/hooks/player-photo-context';
 import { PlayerFocusSpotlight } from '@/features/tactical-unified/objects/player/components/player-focus-spotlight';
 import { PlayerMarkerCircle } from '@/features/tactical-unified/objects/player/components/player-marker-circle';
 import { PlayerMarkerLabel } from '@/features/tactical-unified/objects/player/components/player-marker-label';
 import { PlayerMarkerRing } from '@/features/tactical-unified/objects/player/components/player-marker-ring';
 import { PlayerMarkerRingFade } from '@/features/tactical-unified/objects/player/components/player-marker-ring-fade';
 import { PlayerVisionCone } from '@/features/tactical-unified/objects/player/components/player-vision-cone';
-import { usePlayerPhoto } from '@/features/tactical-unified/objects/player/hooks/use-player-photo';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { AspectRatio, Player } from '@/lib/types/tactical-unified';
 
@@ -75,12 +75,7 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
     (markerMode !== '2d-only' &&
       (marker.style?.markerType === 'ring' || isRingFade));
 
-  const photoImage = usePlayerPhoto(
-    marker.playerId,
-    marker.style?.photoUrl,
-    marker.style?.insideContent === 'photo',
-    marker.name,
-  );
+  const photoImage = usePlayerPhotoImage(marker);
 
   const effectiveIsSelected = !cleanRender && isSelected;
 

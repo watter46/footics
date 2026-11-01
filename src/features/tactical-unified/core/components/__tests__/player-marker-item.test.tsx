@@ -3,16 +3,13 @@ import type Konva from 'konva';
 import { createRef } from 'react';
 import { Layer, Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { usePlayerPhoto } from '@/features/tactical-unified/objects/player/hooks/use-player-photo';
+import {
+  type PlayerPhotoMap,
+  PlayerPhotoProvider,
+} from '@/features/tactical-unified/core/hooks/player-photo-context';
+import { getPlayerPhotoKey } from '@/lib/tactical/player-photo-key';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { PlayerMarkerItem } from '../PlayerMarkerItem';
-
-vi.mock(
-  '@/features/tactical-unified/objects/player/hooks/use-player-photo',
-  () => ({
-    usePlayerPhoto: vi.fn(),
-  }),
-);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -238,13 +235,58 @@ describe('PlayerMarkerItem vertical scale', () => {
     expect(numText).toBeUndefined();
   });
 
-  it('2Dサークルかつ insideContent: "photo" 時に usePlayerPhoto の画像を PlayerMarkerCircle に渡して描画する', () => {
+  it('PlayerPhotoProvider で写真が提供され insideContent: "photo" の場合、Konva Image が描画される', () => {
     const fakeImage = {
       width: 100,
       height: 100,
     } as unknown as HTMLImageElement;
-    vi.mocked(usePlayerPhoto).mockReturnValue(fakeImage);
+    const stageRef = createRef<Konva.Stage>();
+    const marker = {
+      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      playerId: '12345',
+      shirtNo: '7',
+      style: {
+        ...createDefaultPlayer('home', 50, 50, '#ff0000').style,
+        insideContent: 'photo' as const,
+      },
+    };
+    const key = getPlayerPhotoKey(marker);
+    const photos: PlayerPhotoMap = new Map([[key, fakeImage]]);
+    const width = 800;
+    const height = 450;
+    const baseDim = 450;
 
+    render(
+      <PlayerPhotoProvider photos={photos}>
+        <Stage ref={stageRef} width={width} height={height}>
+          <Layer>
+            <PlayerMarkerItem
+              marker={marker}
+              width={width}
+              height={height}
+              baseDim={baseDim}
+              markerMode="2d-only"
+              aspectRatio="16:9"
+              isSelected={false}
+              isInteractive={true}
+              connectingPlayerId={null}
+              onDragStart={vi.fn()}
+              onDragMove={vi.fn()}
+              onDragEnd={vi.fn()}
+              onClick={vi.fn()}
+              onUpdateVisionCone={vi.fn()}
+            />
+          </Layer>
+        </Stage>
+      </PlayerPhotoProvider>,
+    );
+
+    const konvaImages = stageRef.current?.find('Image') as Konva.Image[];
+    expect(konvaImages.length).toBeGreaterThan(0);
+    expect(konvaImages[0].image()).toBe(fakeImage);
+  });
+
+  it('PlayerPhotoProvider が無い場合、背番号テキストが描画されエラーにならない', () => {
     const stageRef = createRef<Konva.Stage>();
     const marker = {
       ...createDefaultPlayer('home', 50, 50, '#ff0000'),
@@ -282,61 +324,62 @@ describe('PlayerMarkerItem vertical scale', () => {
       </Stage>,
     );
 
-    expect(usePlayerPhoto).toHaveBeenCalledWith(
-      '12345',
-      undefined,
-      true,
-      undefined,
-    );
-    // Konva.Image がレンダリングされていること
-    const konvaImages = stageRef.current?.find('Image') as Konva.Image[];
-    expect(konvaImages.length).toBeGreaterThan(0);
-    expect(konvaImages[0].image()).toBe(fakeImage);
+    const texts = stageRef.current?.find('Text') as Konva.Text[];
+    const numText = texts.find((t) => t.text() === '7');
+    expect(numText).toBeDefined();
   });
 
-  it('PlayerMarkerItem が usePlayerPhoto に marker.name を第4引数として渡す', () => {
+  it('insideContent !== "photo" の場合、Context に写真があっても背番号テキストが描画される', () => {
+    const fakeImage = {
+      width: 100,
+      height: 100,
+    } as unknown as HTMLImageElement;
     const stageRef = createRef<Konva.Stage>();
     const marker = {
       ...createDefaultPlayer('home', 50, 50, '#ff0000'),
-      name: 'Cole Palmer',
-      playerId: '395692',
+      playerId: '12345',
+      shirtNo: '7',
       style: {
         ...createDefaultPlayer('home', 50, 50, '#ff0000').style,
-        insideContent: 'photo' as const,
+        insideContent: 'number' as const,
       },
     };
+    const key = getPlayerPhotoKey(marker);
+    const photos: PlayerPhotoMap = new Map([[key, fakeImage]]);
     const width = 800;
     const height = 450;
     const baseDim = 450;
 
     render(
-      <Stage ref={stageRef} width={width} height={height}>
-        <Layer>
-          <PlayerMarkerItem
-            marker={marker}
-            width={width}
-            height={height}
-            baseDim={baseDim}
-            markerMode="2d-only"
-            aspectRatio="16:9"
-            isSelected={false}
-            isInteractive={true}
-            connectingPlayerId={null}
-            onDragStart={vi.fn()}
-            onDragMove={vi.fn()}
-            onDragEnd={vi.fn()}
-            onClick={vi.fn()}
-            onUpdateVisionCone={vi.fn()}
-          />
-        </Layer>
-      </Stage>,
+      <PlayerPhotoProvider photos={photos}>
+        <Stage ref={stageRef} width={width} height={height}>
+          <Layer>
+            <PlayerMarkerItem
+              marker={marker}
+              width={width}
+              height={height}
+              baseDim={baseDim}
+              markerMode="2d-only"
+              aspectRatio="16:9"
+              isSelected={false}
+              isInteractive={true}
+              connectingPlayerId={null}
+              onDragStart={vi.fn()}
+              onDragMove={vi.fn()}
+              onDragEnd={vi.fn()}
+              onClick={vi.fn()}
+              onUpdateVisionCone={vi.fn()}
+            />
+          </Layer>
+        </Stage>
+      </PlayerPhotoProvider>,
     );
 
-    expect(usePlayerPhoto).toHaveBeenCalledWith(
-      '395692',
-      undefined,
-      true,
-      'Cole Palmer',
-    );
+    const texts = stageRef.current?.find('Text') as Konva.Text[];
+    const numText = texts.find((t) => t.text() === '7');
+    expect(numText).toBeDefined();
+
+    const konvaImages = stageRef.current?.find('Image') as Konva.Image[];
+    expect(konvaImages.length).toBe(0);
   });
 });

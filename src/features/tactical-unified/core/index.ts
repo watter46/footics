@@ -93,6 +93,11 @@ export {
   type ViewportCropOverlayProps,
 } from './components/ViewportCropOverlay';
 export {
+  type PlayerPhotoMap,
+  PlayerPhotoProvider,
+  usePlayerPhotoImage,
+} from './hooks/player-photo-context';
+export {
   type CornerId,
   useBoundaryBoxDrag,
 } from './hooks/use-boundary-box-drag';
