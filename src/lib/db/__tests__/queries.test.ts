@@ -10,6 +10,7 @@ import {
   deletePlayerMaster,
   deletePlayerPhoto,
   dispatchRefreshEvent,
+  findPlayerPhotoByName,
   getAllCustomEvents,
   getAllEvents,
   getAllMatches,
@@ -26,6 +27,8 @@ import {
   getPlayerPhoto,
   getPlayerPhotosBatch,
   getPlayersMasterBatch,
+  isLegacyOrTempPlayerId,
+  mergeLegacyPlayersAndPhotos,
   mergePlayerId,
   normalizePlayerNameForMatch,
   putMatch,
@@ -934,6 +937,312 @@ describe('src/lib/db/queries', () => {
         );
         expect(chelseaPlayers.some((p) => p.playerId === 7002)).toBe(true);
         expect(chelseaPlayers.some((p) => p.playerId === 7001)).toBe(false);
+      });
+
+      describe('isLegacyOrTempPlayerId', () => {
+        it('identifies negative IDs and 345000-345999 as legacy/temp, but keeps 346000+ official', () => {
+          expect(isLegacyOrTempPlayerId(-1)).toBe(true);
+          expect(isLegacyOrTempPlayerId(-999)).toBe(true);
+          expect(isLegacyOrTempPlayerId(345000)).toBe(true);
+          expect(isLegacyOrTempPlayerId(345014)).toBe(true);
+          expect(isLegacyOrTempPlayerId(345999)).toBe(true);
+
+          // 346000 and Jadon Sancho (346300) should be false (official)
+          expect(isLegacyOrTempPlayerId(346000)).toBe(false);
+          expect(isLegacyOrTempPlayerId(346300)).toBe(false);
+          expect(isLegacyOrTempPlayerId(395692)).toBe(false);
+          expect(isLegacyOrTempPlayerId(101)).toBe(false);
+        });
+      });
+
+      describe('Legacy 345000 Player Auto-Merge and Deletion', () => {
+        it('physically deletes legacy 345000 players with deletePlayerMaster', async () => {
+          const blob = new Blob(['legacy-photo'], { type: 'image/webp' });
+          await savePlayerMaster({
+            playerId: 345014,
+            name: 'Cole Palmer',
+            season: '26-27',
+            photoBlob: blob,
+          });
+
+          expect(await getPlayerMaster(345014, '26-27')).toBeDefined();
+          expect(await db.player_photos.get(345014)).toBeDefined();
+
+          await deletePlayerMaster(345014, '26-27');
+
+          expect(await getPlayerMaster(345014, '26-27')).toBeUndefined();
+          expect(await db.player_photos.get(345014)).toBeUndefined();
+        });
+
+        it('auto-merges legacy 345000 player into official player on savePlayerMaster', async () => {
+          const photoBlob = new Blob(['palmer-img'], { type: 'image/webp' });
+          await savePlayerMaster({
+            playerId: 345014,
+            name: 'Cole Palmer',
+            season: '26-27',
+            defaultShirtNo: 20,
+            position: 'AM',
+            photoBlob,
+          });
+
+          const mockProject: TacticalProject = {
+            id: 'proj-legacy-merge',
+            version: '2.0.0',
+            title: 'Legacy Merge Test',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            aspectRatio: '4:5',
+            backgroundType: 'pitch',
+            homeColor: { primary: '#034694' },
+            awayColor: { primary: '#ef4444' },
+            activePhaseId: 'phase-1',
+            activeSlideId: 'slide-1',
+            tags: [],
+            slides: [],
+            phases: [
+              {
+                id: 'phase-1',
+                name: 'Phase 1',
+                slides: [
+                  {
+                    id: 'slide-1',
+                    index: 0,
+                    ball: { x: 50, y: 50, visible: true },
+                    arrows: [],
+                    zones: [],
+                    texts: [],
+                    transitionDurationMs: 1000,
+                    pauseMs: 500,
+                    easing: 'ease-in-out',
+                    players: [
+                      {
+                        id: 'p-palmer',
+                        playerId: '345014',
+                        name: 'Cole Palmer',
+                        shirtNo: '20',
+                        position: 'AM',
+                        team: 'home',
+                        area: 'pitch',
+                        x: 50,
+                        y: 50,
+                        style: {
+                          markerType: 'circle',
+                          insideContent: 'number',
+                          bottomLabel: 'name',
+                          color: '#034694',
+                          strokeColor: '#ffffff',
+                          strokeWidth: 2,
+                          sizeScale: 1,
+                          numberSizeScale: 1,
+                          labelSizeScale: 1,
+                        },
+                        connectLines: [],
+                        badges: [],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          };
+          await db.tactical_projects.put(mockProject);
+
+          // 公式ID（395692）で同名選手を保存
+          await savePlayerMaster({
+            playerId: 395692,
+            name: 'Cole Palmer',
+            season: '26-27',
+            defaultShirtNo: 99, // default 99 should be overridden by 20
+            position: 'Sub', // Sub should be overridden by AM
+          });
+
+          // 1. 旧345014 レコードと写真が削除されていること
+          expect(await getPlayerMaster(345014, '26-27')).toBeUndefined();
+          expect(await db.player_photos.get(345014)).toBeUndefined();
+
+          // 2. 公式ID（395692）に旧仮IDの写真・背番号20・AMが引き継がれていること
+          const official = await getPlayerMaster(395692, '26-27');
+          expect(official).toBeDefined();
+          expect(official?.defaultShirtNo).toBe(20);
+          expect(official?.position).toBe('AM');
+          expect(official?.photoBlob).toBeDefined();
+
+          const officialPhoto = await db.player_photos.get(395692);
+          expect(officialPhoto?.photoBlob).toBeDefined();
+
+          // 3. tactical_projects 内の選手参照が '345014' から '395692' に更新されていること
+          const updatedProj =
+            await db.tactical_projects.get('proj-legacy-merge');
+          const slidePlayer = updatedProj?.phases[0].slides[0].players.find(
+            (p) => p.id === 'p-palmer',
+          );
+          expect(slidePlayer?.playerId).toBe('395692');
+        });
+      });
+
+      describe('findPlayerPhotoByName', () => {
+        it('finds player photo Blob by normalized player name across records', async () => {
+          const blob = new Blob(['gusto-blob'], { type: 'image/webp' });
+          await savePlayerMaster({
+            playerId: 403850,
+            name: 'Malo Gusto',
+            season: '26-27',
+            photoBlob: blob,
+          });
+
+          const foundExact = await findPlayerPhotoByName('Malo Gusto');
+          expect(foundExact).toBeDefined();
+
+          const foundNormalized = await findPlayerPhotoByName('  malo gusto  ');
+          expect(foundNormalized).toBeDefined();
+
+          const foundAccent = await findPlayerPhotoByName('Malo-Gusto');
+          expect(foundAccent).toBeDefined();
+
+          const notFound = await findPlayerPhotoByName('Unknown Player');
+          expect(notFound).toBeUndefined();
+        });
+      });
+
+      describe('mergeLegacyPlayersAndPhotos', () => {
+        it('migrates legacy 345000 players and photos to official IDs using Chelsea presets', async () => {
+          // DBに旧345000番台の選手・写真が存在し、公式ID未登録
+          const palmerBlob = new Blob(['legacy-palmer'], {
+            type: 'image/webp',
+          });
+          const gustoBlob = new Blob(['legacy-gusto'], { type: 'image/webp' });
+
+          await savePlayerMaster({
+            playerId: 345014,
+            name: 'Cole Palmer',
+            season: '26-27',
+            defaultShirtNo: 20,
+            position: 'AM',
+            photoBlob: palmerBlob,
+          });
+          await savePlayerMaster({
+            playerId: 345004,
+            name: 'Malo Gusto',
+            season: '26-27',
+            defaultShirtNo: 27,
+            position: 'DR',
+            photoBlob: gustoBlob,
+          });
+
+          const mockProject: TacticalProject = {
+            id: 'proj-batch-merge',
+            version: '2.0.0',
+            title: 'Batch Merge Test',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            aspectRatio: '4:5',
+            backgroundType: 'pitch',
+            homeColor: { primary: '#034694' },
+            awayColor: { primary: '#ef4444' },
+            activePhaseId: 'phase-1',
+            activeSlideId: 'slide-1',
+            tags: [],
+            slides: [],
+            phases: [
+              {
+                id: 'phase-1',
+                name: 'Phase 1',
+                slides: [
+                  {
+                    id: 'slide-1',
+                    index: 0,
+                    ball: { x: 50, y: 50, visible: true },
+                    arrows: [],
+                    zones: [],
+                    texts: [],
+                    transitionDurationMs: 1000,
+                    pauseMs: 500,
+                    easing: 'ease-in-out',
+                    players: [
+                      {
+                        id: 'p-1',
+                        playerId: '345014',
+                        team: 'home',
+                        area: 'pitch',
+                        x: 20,
+                        y: 30,
+                        style: {
+                          markerType: 'circle',
+                          insideContent: 'number',
+                          bottomLabel: 'name',
+                          color: '#034694',
+                          strokeColor: '#ffffff',
+                          strokeWidth: 2,
+                          sizeScale: 1,
+                          numberSizeScale: 1,
+                          labelSizeScale: 1,
+                        },
+                        connectLines: [],
+                        badges: [],
+                      },
+                      {
+                        id: 'p-2',
+                        playerId: '345004',
+                        team: 'home',
+                        area: 'pitch',
+                        x: 40,
+                        y: 30,
+                        style: {
+                          markerType: 'circle',
+                          insideContent: 'number',
+                          bottomLabel: 'name',
+                          color: '#034694',
+                          strokeColor: '#ffffff',
+                          strokeWidth: 2,
+                          sizeScale: 1,
+                          numberSizeScale: 1,
+                          labelSizeScale: 1,
+                        },
+                        connectLines: [],
+                        badges: [],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          };
+          await db.tactical_projects.put(mockProject);
+
+          // 一括名寄せ＆移行実行
+          await mergeLegacyPlayersAndPhotos('26-27');
+
+          // 旧345014 / 345004 は削除されていること
+          expect(await getPlayerMaster(345014, '26-27')).toBeUndefined();
+          expect(await getPlayerMaster(345004, '26-27')).toBeUndefined();
+          expect(await db.player_photos.get(345014)).toBeUndefined();
+          expect(await db.player_photos.get(345004)).toBeUndefined();
+
+          // 公式ID（Palmer: 395692, Gusto: 403850）が作成され写真が引き継がれていること
+          const officialPalmer = await getPlayerMaster(395692, '26-27');
+          expect(officialPalmer).toBeDefined();
+          expect(officialPalmer?.name).toBe('Cole Palmer');
+          expect(officialPalmer?.photoBlob).toBeDefined();
+          expect(officialPalmer?.defaultShirtNo).toBe(20);
+
+          const officialGusto = await getPlayerMaster(403850, '26-27');
+          expect(officialGusto).toBeDefined();
+          expect(officialGusto?.name).toBe('Malo Gusto');
+          expect(officialGusto?.photoBlob).toBeDefined();
+          expect(officialGusto?.defaultShirtNo).toBe(27);
+
+          // tactical_projects の参照が公式IDに置換されていること
+          const updatedProj =
+            await db.tactical_projects.get('proj-batch-merge');
+          const p1 = updatedProj?.phases[0].slides[0].players.find(
+            (p) => p.id === 'p-1',
+          );
+          const p2 = updatedProj?.phases[0].slides[0].players.find(
+            (p) => p.id === 'p-2',
+          );
+          expect(p1?.playerId).toBe('395692');
+          expect(p2?.playerId).toBe('403850');
+        });
       });
     });
   });

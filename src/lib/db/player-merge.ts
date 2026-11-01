@@ -1,8 +1,17 @@
-import { db } from './schema';
+import {
+  CHELSEA_PRESETS_BY_SEASON,
+  type Season,
+} from '@/lib/tactical/chelsea-preset';
+import { dispatchRefreshEvent } from './extension-db-queries';
+import { db, type PlayerMaster } from './schema';
 
 // ──────────────────────────────────────────────
 // Player Merge Helpers
 // ──────────────────────────────────────────────
+
+export function isLegacyOrTempPlayerId(id: number): boolean {
+  return id < 0 || (id >= 345000 && id < 346000);
+}
 
 export function generatePlayerMasterId(
   season: string,
@@ -67,4 +76,195 @@ export async function updateTacticalProjectsPlayerIds(
       });
     }
   }
+}
+
+export async function mergePlayerId(
+  tempPlayerId: number,
+  officialPlayerId: number,
+  season: string = '26-27',
+  teamName: string = 'Chelsea',
+): Promise<void> {
+  const tempId = generatePlayerMasterId(season, tempPlayerId);
+  const officialId = generatePlayerMasterId(season, officialPlayerId);
+
+  await db.transaction(
+    'rw',
+    [db.players, db.player_photos, db.tactical_projects],
+    async () => {
+      const tempRecord = await db.players.get(tempId);
+      const officialRecord = await db.players.get(officialId);
+
+      const resolvedShirtNo = resolveMergedShirtNo(
+        tempRecord?.defaultShirtNo,
+        officialRecord?.defaultShirtNo,
+      );
+      const resolvedPosition = resolveMergedPosition(
+        tempRecord?.position,
+        officialRecord?.position,
+      );
+
+      await db.players.put({
+        id: officialId,
+        playerId: officialPlayerId,
+        name:
+          officialRecord?.name ||
+          tempRecord?.name ||
+          `Player ${officialPlayerId}`,
+        season,
+        defaultShirtNo: resolvedShirtNo,
+        position: resolvedPosition,
+        photoUrl: tempRecord?.photoUrl ?? officialRecord?.photoUrl,
+        teamName,
+        isExcluded: false,
+        updatedAt: Date.now(),
+      });
+
+      await db.players.delete(tempId);
+
+      const tempPhoto = await db.player_photos.get(tempPlayerId);
+      if (tempPhoto) {
+        await db.player_photos.put({
+          ...tempPhoto,
+          playerId: officialPlayerId,
+          updatedAt: Date.now(),
+        });
+        await db.player_photos.delete(tempPlayerId);
+      }
+
+      const idMap = new Map<string, string>([
+        [String(tempPlayerId), String(officialPlayerId)],
+      ]);
+      await updateTacticalProjectsPlayerIds(idMap);
+    },
+  );
+
+  dispatchRefreshEvent();
+}
+
+export async function findPlayerPhotoByName(
+  name: string,
+): Promise<Blob | undefined> {
+  const norm = normalizePlayerNameForMatch(name);
+  if (!norm) return undefined;
+
+  const players = await db.players.toArray();
+  const matchedPlayers = players.filter(
+    (p) => normalizePlayerNameForMatch(p.name) === norm,
+  );
+
+  for (const p of matchedPlayers) {
+    const photo = await db.player_photos.get(p.playerId);
+    if (photo?.photoBlob) {
+      return photo.photoBlob;
+    }
+  }
+  return undefined;
+}
+
+export async function mergeLegacyPlayersAndPhotos(
+  season?: string,
+): Promise<void> {
+  await db.transaction(
+    'rw',
+    [db.players, db.player_photos, db.tactical_projects],
+    async () => {
+      const allPlayers = await db.players.toArray();
+      const legacyPlayers = allPlayers.filter(
+        (p) =>
+          isLegacyOrTempPlayerId(p.playerId) &&
+          (!season || (p.season || '26-27') === season),
+      );
+      if (legacyPlayers.length === 0) return;
+
+      const idMap = new Map<string, string>();
+
+      for (const legacy of legacyPlayers) {
+        const legacySeason = legacy.season || season || '26-27';
+        const legacyTeam = legacy.teamName || 'Chelsea';
+        const normName = normalizePlayerNameForMatch(legacy.name);
+
+        let officialRecord = allPlayers.find(
+          (p) =>
+            !isLegacyOrTempPlayerId(p.playerId) &&
+            (p.season || '26-27') === legacySeason &&
+            (p.teamName || 'Chelsea') === legacyTeam &&
+            normalizePlayerNameForMatch(p.name) === normName,
+        );
+
+        if (!officialRecord) {
+          const presets =
+            CHELSEA_PRESETS_BY_SEASON[legacySeason as Season] ||
+            CHELSEA_PRESETS_BY_SEASON['26-27'];
+          const presetMatch = presets?.find(
+            (pr) => normalizePlayerNameForMatch(pr.name) === normName,
+          );
+          if (presetMatch) {
+            const officialId = generatePlayerMasterId(
+              legacySeason,
+              presetMatch.playerId,
+            );
+            officialRecord = {
+              id: officialId,
+              playerId: presetMatch.playerId,
+              name: presetMatch.name,
+              season: legacySeason,
+              defaultShirtNo: presetMatch.shirtNo,
+              position: presetMatch.position,
+              teamName: legacyTeam,
+              isExcluded: false,
+              updatedAt: Date.now(),
+            };
+            allPlayers.push(officialRecord);
+          }
+        }
+
+        if (!officialRecord) {
+          continue;
+        }
+
+        idMap.set(String(legacy.playerId), String(officialRecord.playerId));
+
+        const defaultShirtNo = resolveMergedShirtNo(
+          legacy.defaultShirtNo,
+          officialRecord.defaultShirtNo,
+        );
+        const position = resolveMergedPosition(
+          legacy.position,
+          officialRecord.position,
+        );
+        const photoUrl = legacy.photoUrl ?? officialRecord.photoUrl;
+
+        const updatedOfficial: PlayerMaster = {
+          ...officialRecord,
+          defaultShirtNo,
+          position,
+          photoUrl,
+          updatedAt: Date.now(),
+        };
+        await db.players.put(updatedOfficial);
+
+        const legacyPhoto = await db.player_photos.get(legacy.playerId);
+        const existingOfficialPhoto = await db.player_photos.get(
+          officialRecord.playerId,
+        );
+        if (legacyPhoto?.photoBlob && !existingOfficialPhoto?.photoBlob) {
+          await db.player_photos.put({
+            playerId: officialRecord.playerId,
+            photoBlob: legacyPhoto.photoBlob,
+            mimeType: legacyPhoto.mimeType || 'image/webp',
+            updatedAt: Date.now(),
+          });
+        }
+
+        await db.players.delete(legacy.id);
+        await db.player_photos.delete(legacy.playerId);
+      }
+
+      if (idMap.size > 0) {
+        await updateTacticalProjectsPlayerIds(idMap);
+      }
+    },
+  );
+
+  dispatchRefreshEvent();
 }

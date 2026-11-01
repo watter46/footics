@@ -1,6 +1,7 @@
 import { dispatchRefreshEvent } from './extension-db-queries';
 import {
   generatePlayerMasterId,
+  isLegacyOrTempPlayerId,
   normalizePlayerNameForMatch,
   resolveMergedPosition,
   resolveMergedShirtNo,
@@ -79,7 +80,15 @@ export async function savePlayerMastersBatch(
     'rw',
     [db.players, db.player_photos, db.tactical_projects],
     async () => {
-      const tempPlayers = await db.players.where('playerId').below(0).toArray();
+      const negativePlayers = await db.players
+        .where('playerId')
+        .below(0)
+        .toArray();
+      const legacyRangePlayers = await db.players
+        .where('playerId')
+        .between(345000, 346000, true, false)
+        .toArray();
+      const tempPlayers = [...negativePlayers, ...legacyRangePlayers];
       const idMap = new Map<string, string>();
 
       for (const player of players) {
@@ -90,7 +99,7 @@ export async function savePlayerMastersBatch(
         const { photoBlob } = player;
 
         let matchedTempIndex = -1;
-        if (player.playerId > 0) {
+        if (!isLegacyOrTempPlayerId(player.playerId)) {
           const normName = normalizePlayerNameForMatch(player.name);
           matchedTempIndex = tempPlayers.findIndex((tp) => {
             const tpSeason = tp.season || '26-27';
@@ -210,7 +219,7 @@ export async function deletePlayerMaster(
   const targetSeason = season || '26-27';
   const id = generatePlayerMasterId(targetSeason, playerId);
 
-  if (playerId < 0) {
+  if (isLegacyOrTempPlayerId(playerId)) {
     await db.players.delete(id);
     await db.player_photos.delete(playerId);
   } else {
@@ -223,68 +232,5 @@ export async function deletePlayerMaster(
       });
     }
   }
-  dispatchRefreshEvent();
-}
-
-export async function mergePlayerId(
-  tempPlayerId: number,
-  officialPlayerId: number,
-  season: string = '26-27',
-  teamName: string = 'Chelsea',
-): Promise<void> {
-  const tempId = generatePlayerMasterId(season, tempPlayerId);
-  const officialId = generatePlayerMasterId(season, officialPlayerId);
-
-  await db.transaction(
-    'rw',
-    [db.players, db.player_photos, db.tactical_projects],
-    async () => {
-      const tempRecord = await db.players.get(tempId);
-      const officialRecord = await db.players.get(officialId);
-
-      const resolvedShirtNo = resolveMergedShirtNo(
-        tempRecord?.defaultShirtNo,
-        officialRecord?.defaultShirtNo,
-      );
-      const resolvedPosition = resolveMergedPosition(
-        tempRecord?.position,
-        officialRecord?.position,
-      );
-
-      await db.players.put({
-        id: officialId,
-        playerId: officialPlayerId,
-        name:
-          officialRecord?.name ||
-          tempRecord?.name ||
-          `Player ${officialPlayerId}`,
-        season,
-        defaultShirtNo: resolvedShirtNo,
-        position: resolvedPosition,
-        photoUrl: tempRecord?.photoUrl ?? officialRecord?.photoUrl,
-        teamName,
-        isExcluded: false,
-        updatedAt: Date.now(),
-      });
-
-      await db.players.delete(tempId);
-
-      const tempPhoto = await db.player_photos.get(tempPlayerId);
-      if (tempPhoto) {
-        await db.player_photos.put({
-          ...tempPhoto,
-          playerId: officialPlayerId,
-          updatedAt: Date.now(),
-        });
-        await db.player_photos.delete(tempPlayerId);
-      }
-
-      const idMap = new Map<string, string>([
-        [String(tempPlayerId), String(officialPlayerId)],
-      ]);
-      await updateTacticalProjectsPlayerIds(idMap);
-    },
-  );
-
   dispatchRefreshEvent();
 }
