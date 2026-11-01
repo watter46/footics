@@ -107,7 +107,6 @@ export interface CanvasState {
   selectedObjects: SelectedObject[];
   selectedIds: string[];
   pitchTransform: PitchTransform;
-  cameraTransform?: PitchTransform | null;
   boundaryBox: BoundaryBox;
   aspectRatio: AspectRatio;
   pitchAppearance?: PitchAppearanceConfig;

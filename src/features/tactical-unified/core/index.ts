@@ -87,10 +87,6 @@ export {
   PlayerLayer,
   type PlayerLayerProps,
 } from './components/PlayerLayer';
-export {
-  Pitch3DBackground,
-  type Pitch3DBackgroundProps,
-} from './components/pitch-3d-background';
 export * from './components/toolbar';
 export {
   ViewportCropOverlay,
@@ -206,14 +202,6 @@ export {
   unprojectScreenToPitch,
   worldToScreen,
 } from './utils/matrix-coordinates';
-export {
-  applyBoundaryCropToPitchRect,
-  hasActiveCameraTransform,
-  type ProjectedSceneResult,
-  type ProjectSceneParams,
-  projectNorm100WithMatrix,
-  projectSceneForCamera,
-} from './utils/preview-scene-projector';
 export {
   calculateVirtualCanvasRect,
   type VirtualCanvasRect,

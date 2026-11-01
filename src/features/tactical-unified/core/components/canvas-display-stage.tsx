@@ -2,14 +2,12 @@
 
 import type Konva from 'konva';
 import type React from 'react';
-import { useEffect, useMemo, useRef } from 'react';
-import { useCanvasStore } from '../hooks/use-canvas-store';
+import { useEffect, useRef } from 'react';
 import { useCanvasViewport } from '../hooks/use-canvas-viewport';
 import {
   type CanvasNodesRegistry,
   createCanvasNodesRegistry,
 } from '../utils/canvas-registry';
-import { applyBoundaryCropToPitchRect } from '../utils/preview-scene-projector';
 import { CanvasStage } from './canvas-stage';
 
 export interface CanvasDisplayStageProps {
@@ -32,12 +30,6 @@ export function CanvasDisplayStage({
     onStageSizeChange,
   });
 
-  const boundaryBox = useCanvasStore((s) => s.boundaryBox);
-  const effectiveVRect = useMemo(
-    () => applyBoundaryCropToPitchRect(vRect, boundaryBox),
-    [vRect, boundaryBox],
-  );
-
   const internalRegistryRef = useRef<CanvasNodesRegistry>(
     createCanvasNodesRegistry(),
   );
@@ -45,13 +37,13 @@ export function CanvasDisplayStage({
 
   useEffect(() => {
     nodesRegistryRef.current.stage = stageRef.current;
-    nodesRegistryRef.current.pitchRect = effectiveVRect;
+    nodesRegistryRef.current.pitchRect = vRect;
     return () => {
       if (nodesRegistryRef.current.stage === stageRef.current) {
         nodesRegistryRef.current.stage = null;
       }
     };
-  }, [nodesRegistryRef, effectiveVRect]);
+  }, [nodesRegistryRef, vRect]);
 
   return (
     <div
@@ -61,7 +53,7 @@ export function CanvasDisplayStage({
       <CanvasStage
         stageRef={stageRef}
         size={containerSize}
-        vRect={effectiveVRect}
+        vRect={vRect}
         nodesRegistryRef={nodesRegistryRef}
         cleanRender={true}
       />

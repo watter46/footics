@@ -10,8 +10,6 @@ import {
 } from '@/lib/tactical/pitch-svg';
 import { DEFAULT_PITCH_APPEARANCE } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
-import { hasActiveCameraTransform } from '../utils/preview-scene-projector';
-import { Pitch3DBackground } from './pitch-3d-background';
 import { PitchMarbleBackground } from './pitch-marble-background';
 
 export interface PitchBackgroundImageProps {
@@ -24,7 +22,6 @@ export function PitchBackgroundImage({
   height,
 }: PitchBackgroundImageProps): ReactNode {
   const backgroundImageUrl = useCanvasStore((s) => s.backgroundImageUrl);
-  const cameraTransform = useCanvasStore((s) => s.cameraTransform);
   const aspectRatio = useCanvasStore((s) => s.aspectRatio ?? '16:9');
   const pitchAppearance = useCanvasStore(
     (s) => s.pitchAppearance ?? DEFAULT_PITCH_APPEARANCE,
@@ -106,24 +103,7 @@ export function PitchBackgroundImage({
     );
   }
 
-  // 2. 3D カメラ背景
-  if (
-    !backgroundImageUrl &&
-    cameraTransform &&
-    hasActiveCameraTransform(cameraTransform)
-  ) {
-    return (
-      <Pitch3DBackground
-        width={width}
-        height={height}
-        aspectRatio={aspectRatio}
-        pitchAppearance={pitchAppearance}
-        cameraTransform={cameraTransform}
-      />
-    );
-  }
-
-  // 3. 大理石背景
+  // 2. 大理石背景
   if (pitchAppearance.pitchBackgroundType === 'marble') {
     return (
       <PitchMarbleBackground
@@ -135,7 +115,7 @@ export function PitchBackgroundImage({
     );
   }
 
-  // 4. 通常ピッチ（Solid）
+  // 3. 通常ピッチ（Solid）
   if (pitchImage) {
     return (
       <KonvaImage

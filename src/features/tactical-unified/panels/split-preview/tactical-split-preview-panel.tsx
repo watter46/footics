@@ -1,38 +1,38 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { type PointerEvent, useMemo, useRef, type WheelEvent } from 'react';
-import { createPreviewCanvasStoreAdapter } from '@/features/tactical-unified/adapters/preview-canvas-store-adapter';
 import {
-  CanvasDisplayStage,
-  CanvasStoreProvider,
-  PlayerPhotoProvider,
-} from '@/features/tactical-unified/core';
+  type PointerEvent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type WheelEvent,
+} from 'react';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
-import { ExportPreviewControls } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
-  PREVIEW_DIMENSIONS,
+  ExportPreviewControls,
   SPLIT_PREVIEW_CONTAINER_CLASSES,
-} from '@/features/tactical-unified/panels/export/use-export-preview-animation';
+  useExportPreviewAnimation,
+} from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
   selectActivePhaseSlides,
   selectActiveSlide,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import {
-  useTacticalUnifiedStoreApi,
-  useTacticalUnifiedStoreContext,
-} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { getPlayerPhotoKey } from '@/lib/tactical/player-photo-key';
 import { SplitPreviewCameraBar } from './split-preview-camera-bar';
-import { useSplitPreviewPlayback } from './use-split-preview-playback';
 
 export function TacticalSplitPreviewPanel() {
-  const unifiedStoreApi = useTacticalUnifiedStoreApi();
   const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
   const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
   const projectAspectRatio = useTacticalUnifiedStoreContext(
     (s) => s.project.aspectRatio ?? '4:5',
   );
   const aspectRatio = activeSlide?.aspectRatio ?? projectAspectRatio;
+  const pitchAppearance = useTacticalUnifiedStoreContext(
+    (s) => s.project.pitchAppearance,
+  );
   const updatePitchTransform = useTacticalUnifiedStoreContext(
     (s) => s.updatePitchTransform,
   );
@@ -40,29 +40,14 @@ export function TacticalSplitPreviewPanel() {
     (s) => s.setSplitPreviewOpen,
   );
 
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const timeLabelRef = useRef<HTMLSpanElement | null>(null);
   const sliderRef = useRef<HTMLInputElement | null>(null);
+
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
-
-  const previewStore = useMemo(
-    () => createPreviewCanvasStoreAdapter(unifiedStoreApi),
-    [unifiedStoreApi],
-  );
-
-  const allPhasePlayers = useMemo(
-    () => slides.flatMap((s) => s.players ?? []),
-    [slides],
-  );
-  const playerPhotos = usePlayerPhotoRegistry(allPhasePlayers);
-
-  const { isPlaying, totalDurationMs, togglePlay, handleReset, handleSeek } =
-    useSplitPreviewPlayback({
-      store: previewStore,
-      slides,
-      timeLabelRef,
-      sliderRef,
-    });
 
   // Camera parameters for current active slide
   const tilt = activeSlide?.pitchTransform?.tilt ?? 0;
@@ -71,32 +56,54 @@ export function TacticalSplitPreviewPanel() {
   const panX = activeSlide?.pitchTransform?.panX ?? 0;
   const panY = activeSlide?.pitchTransform?.panY ?? 0;
 
-  const boundaryBox = activeSlide?.boundaryBox ?? null;
-  const isBoundaryActive = Boolean(
-    boundaryBox?.enabled &&
-      boundaryBox.width > 0 &&
-      boundaryBox.height > 0 &&
-      (boundaryBox.width < 100 ||
-        boundaryBox.height < 100 ||
-        boundaryBox.x > 0 ||
-        boundaryBox.y > 0),
+  const allPhasePlayers = useMemo(
+    () => slides.flatMap((s) => s.players ?? []),
+    [slides],
   );
+  const playerPhotoMap = usePlayerPhotoRegistry(allPhasePlayers);
 
-  const { width: previewWidth, height: previewHeight } =
-    PREVIEW_DIMENSIONS[aspectRatio] ?? PREVIEW_DIMENSIONS['16:9'];
+  const playerPhotos = useMemo(() => {
+    const record: Record<string, CanvasImageSource> = {};
+    for (const [key, img] of playerPhotoMap.entries()) {
+      record[key] = img;
+    }
+    for (const p of allPhasePlayers) {
+      const key = getPlayerPhotoKey(p);
+      const img = playerPhotoMap.get(key);
+      if (img) {
+        record[p.id] = img;
+        if (p.playerId) {
+          record[String(p.playerId)] = img;
+        }
+      }
+    }
+    return record;
+  }, [allPhasePlayers, playerPhotoMap]);
 
-  const previewAspectStyle = useMemo(() => {
-    if (!isBoundaryActive || !boundaryBox) return undefined;
-    const cropW = Math.max(
-      1,
-      Math.round(previewWidth * (boundaryBox.width / 100)),
-    );
-    const cropH = Math.max(
-      1,
-      Math.round(previewHeight * (boundaryBox.height / 100)),
-    );
-    return `${cropW} / ${cropH}`;
-  }, [isBoundaryActive, boundaryBox, previewWidth, previewHeight]);
+  const {
+    totalDurationMs,
+    previewWidth,
+    previewHeight,
+    previewAspectStyle,
+    togglePlay,
+    handleReset,
+    handleSeek,
+  } = useExportPreviewAnimation({
+    slides,
+    aspectRatio,
+    boundaryBox: activeSlide?.boundaryBox ?? null,
+    pitchTransform: isPlaying ? null : (activeSlide?.pitchTransform ?? null),
+    playerPhotos,
+    pitchAppearance,
+    canvasRef,
+    timeLabelRef,
+    sliderRef,
+  });
+
+  const onTogglePlay = useCallback(() => {
+    setIsPlaying((prev) => !prev);
+    togglePlay();
+  }, [togglePlay]);
 
   const handleSelectPreset = (preset: { tilt: number; yaw: number }) => {
     if (!activeSlide) return;
@@ -117,7 +124,7 @@ export function TacticalSplitPreviewPanel() {
     });
   };
 
-  const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
+  const handlePointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return;
     isDraggingRef.current = true;
     lastPosRef.current = { x: e.clientX, y: e.clientY };
@@ -128,13 +135,14 @@ export function TacticalSplitPreviewPanel() {
     }
   };
 
-  const handlePointerMove = (e: PointerEvent<HTMLDivElement>) => {
+  const handlePointerMove = (e: PointerEvent<HTMLCanvasElement>) => {
     if (!isDraggingRef.current || !activeSlide) return;
     const dx = e.clientX - lastPosRef.current.x;
     const dy = e.clientY - lastPosRef.current.y;
     lastPosRef.current = { x: e.clientX, y: e.clientY };
 
     if (e.shiftKey) {
+      // Shift + 左ドラッグ: パン
       const currentPanX = activeSlide.pitchTransform?.panX ?? 0;
       const currentPanY = activeSlide.pitchTransform?.panY ?? 0;
       updatePitchTransform(activeSlide.id, {
@@ -142,14 +150,19 @@ export function TacticalSplitPreviewPanel() {
         panY: currentPanY + dy,
       });
     } else {
+      // 左ドラッグ（Shiftなし）: オービット（Tilt & Yaw）
       const currentTilt = activeSlide.pitchTransform?.tilt ?? 0;
       const currentYaw = activeSlide.pitchTransform?.yaw ?? 90;
+
+      // 上ドラッグ (dy < 0) で Tilt 増加、下ドラッグ (dy > 0) で Tilt 減少
       const nextTilt = Math.max(
         0,
         Math.min(70, Math.round(currentTilt - dy * 0.25)),
       );
+      // 左右ドラッグ (dx) で Yaw 旋回 (0〜360)
       const rawYaw = currentYaw + dx * 0.4;
       const nextYaw = Math.round((((rawYaw % 360) + 360) % 360) * 10) / 10;
+
       updatePitchTransform(activeSlide.id, {
         tilt: nextTilt,
         yaw: nextYaw,
@@ -157,7 +170,7 @@ export function TacticalSplitPreviewPanel() {
     }
   };
 
-  const handlePointerUp = (e: PointerEvent<HTMLDivElement>) => {
+  const handlePointerUp = (e: PointerEvent<HTMLCanvasElement>) => {
     isDraggingRef.current = false;
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -166,7 +179,7 @@ export function TacticalSplitPreviewPanel() {
     }
   };
 
-  const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
+  const handleWheel = (e: WheelEvent<HTMLCanvasElement>) => {
     if (!activeSlide) return;
     e.preventDefault();
     const currentZoom = activeSlide.pitchTransform?.zoom ?? 1;
@@ -222,18 +235,19 @@ export function TacticalSplitPreviewPanel() {
           className={`relative ${
             SPLIT_PREVIEW_CONTAINER_CLASSES[aspectRatio] ??
             'aspect-video w-full max-h-full'
-          } rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-lg cursor-grab active:cursor-grabbing touch-none`}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onWheel={handleWheel}
+          } rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-lg`}
         >
-          <CanvasStoreProvider store={previewStore}>
-            <PlayerPhotoProvider photos={playerPhotos}>
-              <CanvasDisplayStage />
-            </PlayerPhotoProvider>
-          </CanvasStoreProvider>
+          <canvas
+            ref={canvasRef}
+            width={previewWidth}
+            height={previewHeight}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onWheel={handleWheel}
+            className="w-full h-full object-contain cursor-grab active:cursor-grabbing touch-none"
+          />
         </div>
       </div>
 
@@ -241,7 +255,7 @@ export function TacticalSplitPreviewPanel() {
       <div className="p-2 border-t border-white/[0.08] bg-black/40 shrink-0">
         <ExportPreviewControls
           isPlaying={isPlaying}
-          onTogglePlay={togglePlay}
+          onTogglePlay={onTogglePlay}
           onReset={handleReset}
           onSeek={handleSeek}
           sliderRef={sliderRef}
