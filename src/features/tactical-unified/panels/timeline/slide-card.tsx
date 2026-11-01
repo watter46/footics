@@ -92,6 +92,8 @@ export function SlideCard({
     <div
       ref={setCombinedRef}
       style={style}
+      data-slide-id={slide.id}
+      data-slide-card="true"
       className="relative group shrink-0 select-none touch-none"
       {...attributes}
       {...listeners}

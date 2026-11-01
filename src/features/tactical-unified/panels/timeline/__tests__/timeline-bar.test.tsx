@@ -290,12 +290,21 @@ describe('TimelineBar Component', () => {
   });
 
   describe('レイアウト崩れ防止 (min-w-0 / overflow-x-auto)', () => {
-    it('サムネイル横スクロール領域に min-w-0 と overflow-x-auto が適用されている', () => {
+    it('サムネイル横スクロール領域に min-w-0, overflow-x-auto, timeline-scrollbar, cursor-grab が適用されている', () => {
       const { container } = render(<TimelineBar />);
       const scrollArea = container.querySelector('.overflow-x-auto');
       expect(scrollArea).not.toBeNull();
       expect(scrollArea?.className).toContain('min-w-0');
       expect(scrollArea?.className).toContain('flex-1');
+      expect(scrollArea?.className).toContain('timeline-scrollbar');
+      expect(scrollArea?.className).toContain('cursor-grab');
+
+      const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+      const slideCardEl = container.querySelector(
+        `[data-slide-id="${activeSlideId}"]`,
+      );
+      expect(slideCardEl).not.toBeNull();
+      expect(slideCardEl?.getAttribute('data-slide-card')).toBe('true');
     });
   });
 });

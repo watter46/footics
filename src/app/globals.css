@@ -170,6 +170,27 @@
     scrollbar-width: thin;
     scrollbar-color: var(--muted-foreground) transparent;
   }
+
+  /* Custom Timeline Scrollbar */
+  .timeline-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.04);
+  }
+  .timeline-scrollbar::-webkit-scrollbar {
+    height: 6px;
+  }
+  .timeline-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 9999px;
+  }
+  .timeline-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 9999px;
+    transition: background-color 0.15s ease;
+  }
+  .timeline-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.45);
+  }
 }
 
 /* ========================================================================= */

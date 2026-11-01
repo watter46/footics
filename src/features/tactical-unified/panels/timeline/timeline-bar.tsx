@@ -38,6 +38,7 @@ import { BatchTransitionPopover } from './batch-transition-popover';
 import { PlaybackControls } from './playback-controls';
 import { SlideCard, SlideCardOverlay } from './slide-card';
 import { TransitionConnector } from './transition-connector';
+import { useTimelineScroll } from './use-timeline-scroll';
 
 export function TimelineBar() {
   const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
@@ -63,6 +64,12 @@ export function TimelineBar() {
   const [batchButtonRef, setBatchButtonRef] = useState<HTMLElement | null>(
     null,
   );
+
+  const { containerRef, isDragging, onWheel, onPointerDown } =
+    useTimelineScroll({
+      activeSlideId,
+      slideCount: slides.length,
+    });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -141,7 +148,14 @@ export function TimelineBar() {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto custom-scrollbar py-1">
+        <div
+          ref={containerRef}
+          onWheel={onWheel}
+          onPointerDown={onPointerDown}
+          className={`flex items-center gap-2 flex-1 min-w-0 overflow-x-auto timeline-scrollbar py-1 ${
+            isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
+          }`}
+        >
           <SortableContext
             items={slideIds}
             strategy={horizontalListSortingStrategy}

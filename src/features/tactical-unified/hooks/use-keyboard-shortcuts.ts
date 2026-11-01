@@ -84,6 +84,19 @@ export function useKeyboardShortcuts() {
     { enableOnFormTags: false },
   );
 
+  // Duplicate Scene: Mod+M (Ctrl+M / Cmd+M)
+  useHotkeys(
+    ['mod+m', 'meta+m'],
+    (e) => {
+      if (isInputFocused()) return;
+      e.preventDefault();
+      const currentSlideId = storeApi.getState().activeSlideId;
+      storeApi.getState().duplicateSlide(currentSlideId);
+      toast.success('シーンを複製しました');
+    },
+    { enableOnFormTags: false },
+  );
+
   // Playback: Space
   useHotkeys(
     'space',
@@ -114,6 +127,7 @@ export function useKeyboardShortcuts() {
     toolShortcutKeys,
     (e) => {
       if (isInputFocused()) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       const currentMap = getToolShortcutMap();
       const tool = currentMap[e.key.toLowerCase()];
       if (tool) {

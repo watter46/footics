@@ -216,6 +216,41 @@ describe('useKeyboardShortcuts', () => {
     expect(useTacticalUnifiedStore.getState().activeTool).toBe('select');
   });
 
+  it('Ctrl+M / Cmd+M でアクティブシーンが複製され、ツール切替 (m) と競合しない', () => {
+    renderHook(() => useKeyboardShortcuts());
+    const store = useTacticalUnifiedStore.getState();
+    const initialSlideId = store.activeSlideId;
+    const initialSlidesCount = store.project.slides.length;
+
+    // 1. Ctrl+M (Windows/Linux)
+    act(() => {
+      fireEvent.keyDown(document, {
+        key: 'm',
+        code: 'KeyM',
+        ctrlKey: true,
+      });
+    });
+
+    const slidesAfterCtrlM = useTacticalUnifiedStore.getState().project.slides;
+    expect(slidesAfterCtrlM).toHaveLength(initialSlidesCount + 1);
+    const newSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+    expect(newSlideId).not.toBe(initialSlideId);
+    // ツールが player に誤変更されていないこと (Ctrl 修飾キーガード)
+    expect(useTacticalUnifiedStore.getState().activeTool).not.toBe('player');
+
+    // 2. Cmd+M (macOS metaKey)
+    act(() => {
+      fireEvent.keyDown(document, {
+        key: 'm',
+        code: 'KeyM',
+        metaKey: true,
+      });
+    });
+
+    const slidesAfterCmdM = useTacticalUnifiedStore.getState().project.slides;
+    expect(slidesAfterCmdM).toHaveLength(initialSlidesCount + 2);
+  });
+
   it('Space キーで再生トグルが発火する', () => {
     renderHook(() => useKeyboardShortcuts());
     expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
