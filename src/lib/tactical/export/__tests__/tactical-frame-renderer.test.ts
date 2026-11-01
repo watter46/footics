@@ -62,6 +62,18 @@ vi.hoisted(() => {
       configurable: true,
     });
   }
+  if (typeof globalThis.ImageBitmap === 'undefined') {
+    class MockImageBitmap {
+      width = 0;
+      height = 0;
+      close() {}
+    }
+    Object.defineProperty(globalThis, 'ImageBitmap', {
+      value: MockImageBitmap,
+      writable: true,
+      configurable: true,
+    });
+  }
 });
 
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
@@ -514,6 +526,140 @@ describe('Tactical Frame Renderer', () => {
     // 102 (Havertz) は写真未登録のため背番号 '9' にフォールバック
     expect(ctx.fillText).toHaveBeenCalledWith(
       '9',
+      expect.any(Number),
+      expect.any(Number),
+    );
+  });
+
+  it('skips detached ImageBitmap (width: 0, height: 0) and falls back to shirt number', () => {
+    const photoSlide: Slide = SlideSchema.parse({
+      id: 'slide-detached-photo',
+      index: 0,
+      transitionDurationMs: 1000,
+      pauseMs: 500,
+      players: [
+        {
+          id: 'p-detached',
+          playerId: '101',
+          x: 40,
+          y: 50,
+          team: 'home',
+          shirtNo: '7',
+          name: 'Saka',
+          area: 'pitch',
+          style: {
+            insideContent: 'photo',
+            bottomLabel: 'name',
+            color: '#dc2626',
+            strokeColor: '#ffffff',
+            strokeWidth: 2,
+            sizeScale: 1,
+            numberSizeScale: 1,
+            labelSizeScale: 1,
+          },
+        },
+      ],
+      arrows: [],
+      zones: [],
+      texts: [],
+      ball: { x: 50, y: 50, visible: true },
+    });
+
+    const detachedBitmap = Object.create(ImageBitmap.prototype, {
+      width: { value: 0, configurable: true },
+      height: { value: 0, configurable: true },
+    }) as ImageBitmap;
+
+    const ctx = createMockContext();
+    (ctx as unknown as { drawImage: ReturnType<typeof vi.fn> }).drawImage =
+      vi.fn();
+
+    renderTacticalFrameToCanvas(ctx, {
+      slides: [photoSlide],
+      timeMs: 0,
+      width: 1920,
+      height: 1080,
+      aspectRatio: '16:9',
+      playerPhotos: {
+        '101': detachedBitmap,
+      },
+      transparent: false,
+    });
+
+    // detached なため ctx.drawImage は呼ばれない
+    expect(ctx.drawImage).not.toHaveBeenCalled();
+
+    // 背番号 '7' がフォールバック描画される
+    expect(ctx.fillText).toHaveBeenCalledWith(
+      '7',
+      expect.any(Number),
+      expect.any(Number),
+    );
+  });
+
+  it('catches drawImage exception (e.g. InvalidStateError) and falls back to shirt number gracefully', () => {
+    const photoSlide: Slide = SlideSchema.parse({
+      id: 'slide-error-photo',
+      index: 0,
+      transitionDurationMs: 1000,
+      pauseMs: 500,
+      players: [
+        {
+          id: 'p-error',
+          playerId: '101',
+          x: 40,
+          y: 50,
+          team: 'home',
+          shirtNo: '7',
+          name: 'Saka',
+          area: 'pitch',
+          style: {
+            insideContent: 'photo',
+            bottomLabel: 'name',
+            color: '#dc2626',
+            strokeColor: '#ffffff',
+            strokeWidth: 2,
+            sizeScale: 1,
+            numberSizeScale: 1,
+            labelSizeScale: 1,
+          },
+        },
+      ],
+      arrows: [],
+      zones: [],
+      texts: [],
+      ball: { x: 50, y: 50, visible: true },
+    });
+
+    const brokenBitmap = Object.create(ImageBitmap.prototype, {
+      width: { value: 100, configurable: true },
+      height: { value: 100, configurable: true },
+    }) as ImageBitmap;
+
+    const ctx = createMockContext();
+    (ctx as unknown as { drawImage: ReturnType<typeof vi.fn> }).drawImage = vi
+      .fn()
+      .mockImplementation(() => {
+        throw new Error('InvalidStateError: The image source is detached');
+      });
+
+    expect(() => {
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [photoSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        playerPhotos: {
+          '101': brokenBitmap,
+        },
+        transparent: false,
+      });
+    }).not.toThrow();
+
+    // drawImage が例外をスローしても背番号 '7' にフォールバック描画される
+    expect(ctx.fillText).toHaveBeenCalledWith(
+      '7',
       expect.any(Number),
       expect.any(Number),
     );

@@ -1,9 +1,16 @@
-import { fireEvent, render, renderHook, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { ExportPreviewPlayer } from '@/features/tactical-unified/panels/export/export-preview-player';
 import { useExportPreviewAnimation } from '@/features/tactical-unified/panels/export/use-export-preview-animation';
+import * as sharePayload from '@/lib/tactical/export/share-payload';
 import * as tacticalFrameRenderer from '@/lib/tactical/export/tactical-frame-renderer';
 import {
   calculateBoundaryCrop,
@@ -453,5 +460,114 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
     expect(spyRender).toHaveBeenCalled();
     const lastCall = spyRender.mock.calls[spyRender.mock.calls.length - 1][1];
     expect(lastCall.mvpMatrix).toBeNull();
+  });
+
+  describe('useExportPreviewAnimation bitmap lifecycle', () => {
+    it('does not close ImageBitmap on slide change/re-render, and closes all cached bitmaps on unmount', async () => {
+      const mockClose1 = vi.fn();
+      const mockBitmap1 = {
+        width: 100,
+        height: 100,
+        close: mockClose1,
+      } as unknown as ImageBitmap;
+
+      const mockClose2 = vi.fn();
+      const mockBitmap2 = {
+        width: 100,
+        height: 100,
+        close: mockClose2,
+      } as unknown as ImageBitmap;
+
+      let callCount = 0;
+      vi.spyOn(sharePayload, 'preloadSlidePlayerPhotos').mockImplementation(
+        async (): Promise<Record<string, ImageBitmap>> => {
+          callCount++;
+          if (callCount === 1) {
+            return { p1: mockBitmap1 };
+          }
+          return { p2: mockBitmap2 };
+        },
+      );
+
+      const baseSlide1 = createDefaultSlide(0, 's1');
+      const baseSlide2 = createDefaultSlide(1, 's2');
+
+      const slide1: Slide = {
+        ...baseSlide1,
+        players: baseSlide1.players.map((p, idx) =>
+          idx === 0
+            ? {
+                ...p,
+                id: 'p1',
+                playerId: 'player-1',
+                style: {
+                  ...p.style,
+                  insideContent: 'photo' as const,
+                },
+              }
+            : p,
+        ),
+      };
+
+      const slide2: Slide = {
+        ...baseSlide2,
+        players: baseSlide2.players.map((p, idx) =>
+          idx === 0
+            ? {
+                ...p,
+                id: 'p2',
+                playerId: 'player-2',
+                style: {
+                  ...p.style,
+                  insideContent: 'photo' as const,
+                },
+              }
+            : p,
+        ),
+      };
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 360;
+      const canvasRef = { current: canvas };
+      const timeLabelRef = { current: document.createElement('span') };
+      const sliderRef = { current: document.createElement('input') };
+
+      const { rerender, unmount } = renderHook(
+        ({ slides }) =>
+          useExportPreviewAnimation({
+            slides,
+            aspectRatio: '16:9',
+            canvasRef,
+            timeLabelRef,
+            sliderRef,
+          }),
+        { initialProps: { slides: [slide1] } },
+      );
+
+      await waitFor(() => {
+        expect(callCount).toBe(1);
+      });
+      await new Promise((r) => setTimeout(r, 50));
+
+      // スライド変更で再レンダリング
+      rerender({ slides: [slide2] });
+
+      await waitFor(() => {
+        expect(callCount).toBe(2);
+      });
+      await new Promise((r) => setTimeout(r, 50));
+
+      // スライド変更時に mockBitmap1 の close は呼ばれてはならない（キャッシュ維持）
+      expect(mockClose1).not.toHaveBeenCalled();
+      expect(mockClose2).not.toHaveBeenCalled();
+
+      // アンマウント
+      unmount();
+
+      // アンマウント時に全ビットマップが一括して close される
+      expect(mockClose1).toHaveBeenCalledTimes(1);
+      expect(mockClose2).toHaveBeenCalledTimes(1);
+    });
   });
 });

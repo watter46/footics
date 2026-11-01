@@ -26,17 +26,6 @@ export const PREVIEW_DIMENSIONS: Record<
   '1:1': { width: 1080, height: 1080 },
 };
 
-export function hasActivePitchTransform(pt?: PitchTransform | null): boolean {
-  if (!pt) return false;
-  return (
-    pt.tilt !== 0 ||
-    (pt.yaw !== undefined && pt.yaw !== 90) ||
-    pt.zoom !== 1 ||
-    pt.panX !== 0 ||
-    pt.panY !== 0
-  );
-}
-
 export const ASPECT_CONTAINER_CLASSES: Record<AspectRatio, string> = {
   '16:9': 'aspect-video',
   '9:16': 'aspect-[9/16] max-h-[340px]',
@@ -50,6 +39,17 @@ export const SPLIT_PREVIEW_CONTAINER_CLASSES: Record<AspectRatio, string> = {
   '4:5': 'aspect-[4/5] h-full max-h-full w-auto max-w-full',
   '1:1': 'aspect-square h-full max-h-full w-auto max-w-full',
 };
+
+export function hasActivePitchTransform(pt?: PitchTransform | null): boolean {
+  if (!pt) return false;
+  return (
+    pt.tilt !== 0 ||
+    (pt.yaw !== undefined && pt.yaw !== 90) ||
+    pt.zoom !== 1 ||
+    pt.panX !== 0 ||
+    pt.panY !== 0
+  );
+}
 
 export interface UseExportPreviewAnimationParams {
   slides: Slide[];
@@ -109,6 +109,7 @@ export function useExportPreviewAnimation({
   const [internalBitmaps, setInternalBitmaps] = useState<
     Record<string, ImageBitmap>
   >({});
+  const loadedBitmapsRef = useRef<Record<string, ImageBitmap>>({});
   const [marbleTexture, setMarbleTexture] = useState<HTMLImageElement | null>(
     () => cachedMarbleImage,
   );
@@ -116,6 +117,15 @@ export function useExportPreviewAnimation({
 
   const slidesRef = useRef(slides);
   slidesRef.current = slides;
+
+  // コンポーネント／フックのアンマウント時にのみ、保持していた全 ImageBitmap を一括 close (RAII)
+  useEffect(
+    () => () => {
+      for (const bm of Object.values(loadedBitmapsRef.current)) bm?.close?.();
+      loadedBitmapsRef.current = {};
+    },
+    [],
+  );
 
   const photoSignature = useMemo(() => {
     const playerIds: string[] = [];
@@ -138,22 +148,20 @@ export function useExportPreviewAnimation({
   useEffect(() => {
     if (pitchAppearance?.pitchBackgroundType !== 'marble') return;
     if (cachedMarbleImage?.complete && cachedMarbleImage.naturalWidth > 0) {
-      if (marbleTexture !== cachedMarbleImage)
+      if (marbleTexture !== cachedMarbleImage) {
         setMarbleTexture(cachedMarbleImage);
+      }
       return;
     }
     let isCancelled = false;
     loadMarbleTexture()
-      .then((img) => {
-        if (!isCancelled) setMarbleTexture(img);
-      })
-      .catch((err) => {
+      .then((img) => !isCancelled && setMarbleTexture(img))
+      .catch((err) =>
         console.warn(
           '[useExportPreviewAnimation] Failed to load marble texture:',
           err,
-        );
-      });
-
+        ),
+      );
     return () => {
       isCancelled = true;
     };
@@ -162,24 +170,22 @@ export function useExportPreviewAnimation({
   useEffect(() => {
     if (playerPhotos) return;
     let isCancelled = false;
-    let loadedMap: Record<string, ImageBitmap> = {};
 
     preloadSlidePlayerPhotos(slidesRef.current, photos).then((map) => {
       if (isCancelled) {
-        for (const bm of Object.values(map)) {
-          bm?.close?.();
+        for (const [key, bm] of Object.entries(map)) {
+          if (!loadedBitmapsRef.current[key]) {
+            bm?.close?.();
+          }
         }
         return;
       }
-      loadedMap = map;
-      setInternalBitmaps(map);
+      loadedBitmapsRef.current = { ...loadedBitmapsRef.current, ...map };
+      setInternalBitmaps((prev) => ({ ...prev, ...map }));
     });
 
     return () => {
       isCancelled = true;
-      for (const bm of Object.values(loadedMap)) {
-        bm?.close?.();
-      }
     };
   }, [photoSignature, photos, playerPhotos]);
 
@@ -273,14 +279,8 @@ export function useExportPreviewAnimation({
   );
 
   const { seek } = useAnimationFrameLoop(isPlaying, totalDurationMs, drawFrame);
-
-  const togglePlay = useCallback(() => {
-    setIsPlaying((prev) => !prev);
-  }, []);
-
-  const handleReset = useCallback(() => {
-    seek(0);
-  }, [seek]);
+  const togglePlay = useCallback(() => setIsPlaying((prev) => !prev), []);
+  const handleReset = useCallback(() => seek(0), [seek]);
 
   return {
     isPlaying,

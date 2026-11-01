@@ -4,7 +4,6 @@ import { X } from 'lucide-react';
 import {
   type PointerEvent,
   useCallback,
-  useMemo,
   useRef,
   useState,
   type WheelEvent,
@@ -54,14 +53,6 @@ export function TacticalSplitPreviewPanel() {
   const panX = activeSlide?.pitchTransform?.panX ?? 0;
   const panY = activeSlide?.pitchTransform?.panY ?? 0;
 
-  // Real-time animation hook:
-  // When stopped, preview activeSlide single frame with direct activeSlide.pitchTransform.
-  // When playing, interpolate all slides.
-  const previewSlides = useMemo(
-    () => (activeSlide ? [activeSlide] : slides),
-    [activeSlide, slides],
-  );
-
   const {
     totalDurationMs,
     previewWidth,
@@ -71,7 +62,7 @@ export function TacticalSplitPreviewPanel() {
     handleReset,
     handleSeek,
   } = useExportPreviewAnimation({
-    slides: isPlaying ? slides : previewSlides,
+    slides,
     aspectRatio,
     boundaryBox: activeSlide?.boundaryBox ?? null,
     pitchTransform: isPlaying ? null : (activeSlide?.pitchTransform ?? null),

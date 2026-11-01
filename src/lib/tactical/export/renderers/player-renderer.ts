@@ -14,6 +14,16 @@ import {
 const CACHED_COMBINED_MARKER_PATH: Path2D | null =
   typeof Path2D !== 'undefined' ? new Path2D(MARKER_PATHS.join(' ')) : null;
 
+function isDrawablePhoto(
+  source: CanvasImageSource | null | undefined,
+): boolean {
+  if (!source) return false;
+  if (typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap) {
+    return source.width > 0 && source.height > 0;
+  }
+  return true;
+}
+
 /**
  * Draws players (rings, circles, photos, numbers, labels, spotlights, cones) onto canvas context.
  */
@@ -207,23 +217,30 @@ export function renderPlayers(
             (p.playerId ? playerPhotos?.[p.playerId] : undefined))
           : undefined;
 
-      if (photoSource) {
+      let photoRendered = false;
+      if (isDrawablePhoto(photoSource)) {
         ctx.save();
-        ctx.beginPath();
-        ctx.arc(px, py, radius, 0, Math.PI * 2);
-        ctx.clip();
-        ctx.drawImage(
-          photoSource,
-          px - radius,
-          py - radius,
-          radius * 2,
-          radius * 2,
-        );
-        ctx.restore();
+        try {
+          ctx.beginPath();
+          ctx.arc(px, py, radius, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(
+            photoSource as CanvasImageSource,
+            px - radius,
+            py - radius,
+            radius * 2,
+            radius * 2,
+          );
+          ctx.restore();
+          photoRendered = true;
+        } catch {
+          ctx.restore();
+          photoRendered = false;
+        }
       }
 
       // 3. Player Standard Stroke (White Ring)
-      if (!photoSource && (p.style?.strokeWidth ?? 2) > 0) {
+      if (!photoRendered && (p.style?.strokeWidth ?? 2) > 0) {
         const strokeWidth = p.style?.strokeWidth ?? 2;
         ctx.lineWidth = Math.max(1.5, Math.round(strokeWidth * scale));
         ctx.strokeStyle = p.style?.strokeColor || '#ffffff';
@@ -231,7 +248,7 @@ export function renderPlayers(
       }
 
       // 4. Shirt Number
-      const showInsideNumber = !photoSource && p.shirtNo;
+      const showInsideNumber = !photoRendered && p.shirtNo;
 
       if (showInsideNumber && p.shirtNo) {
         const numScale = p.style?.numberSizeScale ?? 1.0;
