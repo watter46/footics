@@ -25,6 +25,7 @@ export interface PitchGroundLayerProps {
   mousePreviewPos?: { x: number; y: number } | null;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   cleanRender?: boolean;
+  listening?: boolean;
 }
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
@@ -36,6 +37,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
   mousePreviewPos,
   nodesRegistryRef,
   cleanRender,
+  listening = true,
 }: PitchGroundLayerProps): ReactNode {
   const zones = useCanvasStore((s) => s.annotations.zones);
   const arrows = useCanvasStore((s) => s.annotations.arrows);
@@ -121,7 +123,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
   );
 
   return (
-    <Layer id="pitch-ground-layer">
+    <Layer id="pitch-ground-layer" listening={listening}>
       {/* Stage 全面の背景 Rect */}
       <Rect
         x={0}

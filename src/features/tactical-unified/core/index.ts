@@ -44,6 +44,15 @@ export {
   type CoreDrawingToolbarProps,
 } from './components/CoreDrawingToolbar';
 export {
+  CanvasDisplayStage,
+  type CanvasDisplayStageProps,
+} from './components/canvas-display-stage';
+export {
+  CanvasStage,
+  type CanvasStageInteraction,
+  type CanvasStageViewProps,
+} from './components/canvas-stage';
+export {
   DrawingPreviewLayer,
   type DrawingPreviewLayerProps,
 } from './components/DrawingPreviewLayer';

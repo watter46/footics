@@ -32,6 +32,7 @@ export interface BillboardObjectLayerProps {
   onStartEditText?: (textId: string) => void;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   cleanRender?: boolean;
+  listening?: boolean;
 }
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
@@ -43,6 +44,7 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   onStartEditText,
   nodesRegistryRef,
   cleanRender,
+  listening = true,
 }: BillboardObjectLayerProps): ReactNode {
   const markers = useCanvasStore((s) => s.annotations.markers);
   const arrows = useCanvasStore((s) => s.annotations.arrows);
@@ -184,7 +186,7 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   );
 
   return (
-    <Layer id="billboard-object-layer">
+    <Layer id="billboard-object-layer" listening={listening}>
       <Group
         x={groupTransform.x}
         y={groupTransform.y}
