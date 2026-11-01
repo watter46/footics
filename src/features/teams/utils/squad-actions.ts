@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { mergeLegacyPlayersAndPhotos } from '@/lib/db';
 import type { PlayerMaster } from '@/lib/db/schema';
 import {
   CHELSEA_PRESETS_BY_SEASON,
@@ -97,6 +98,7 @@ export function createSquadActionHandlers(
         teamPlayers,
         savePlayer,
       });
+      await mergeLegacyPlayersAndPhotos(selectedSeason);
       refetchSquad();
       toast.success(
         `${teamConfig.shortName} (${selectedSeason}) の選手データを同期しました`,

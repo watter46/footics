@@ -8,6 +8,7 @@ import type {
   Player,
 } from '@/types';
 import {
+  mergeLegacyPlayersAndPhotos,
   type SavePlayerMasterInput,
   saveMatchUnified,
   savePlayerMastersBatch,
@@ -172,6 +173,7 @@ async function processClubMatch(rawData: ClubMatchRoot): Promise<string> {
 
   if (playersToSync.length > 0) {
     await savePlayerMastersBatch(playersToSync);
+    await mergeLegacyPlayersAndPhotos(season);
   }
 
   return matchId;

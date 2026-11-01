@@ -38,9 +38,9 @@ import { getPlayerPhoto } from '@/lib/db/queries';
 
 ### 3.2 Key Interfaces & Types
 ```ts
-// 旧ID判定ヘルパー
+// 旧ID判定ヘルパー（Jadon Sancho の公式ID 346300 との衝突を防ぐため 345000〜345999 を対象とする）
 export function isLegacyOrTempPlayerId(id: number): boolean {
-  return id < 0 || (id >= 345000 && id < 350000);
+  return id < 0 || (id >= 345000 && id < 346000);
 }
 
 // 選手写真フックシグネチャ拡張
@@ -139,10 +139,11 @@ export function usePlayerPhoto(
     - `mergeLegacyPlayersAndPhotos` で既存DB内の旧仮ID写真・選手が一括で公式IDへ統合・移行されること。
     - `findPlayerPhotoByName` で同名選手の写真Blobが正しく取得できること。
 - **Tasks**:
-  - [ ] 1. TDD RED: `queries.test.ts` に旧345000番台からの自動名寄せ・写真引き継ぎ・tactical_projects 更新・findPlayerPhotoByName テストを追加。
-  - [ ] 2. TDD GREEN: `player-merge.ts` に `isLegacyOrTempPlayerId` を定義し、`queries-player.ts` の `savePlayerMastersBatch` で 345000 番台を統合対象に含める。`mergeLegacyPlayersAndPhotos` および `findPlayerPhotoByName` を実装。
-  - [ ] 3. `bun run ai:check src/lib/db/player-merge.ts src/lib/db/queries-player.ts src/lib/db/__tests__/queries.test.ts` PASS。
+  - [x] 1. TDD RED: `queries.test.ts` に旧345000番台からの自動名寄せ・写真引き継ぎ・tactical_projects 更新・findPlayerPhotoByName テストを追加。
+  - [x] 2. TDD GREEN: `player-merge.ts` に `isLegacyOrTempPlayerId` を定義し、`queries-player.ts` の `savePlayerMastersBatch` で 345000 番台を統合対象に含める。`mergeLegacyPlayersAndPhotos` および `findPlayerPhotoByName` を実装。
+  - [x] 3. `bun run ai:check src/lib/db/player-merge.ts src/lib/db/queries-player.ts src/lib/db/__tests__/queries.test.ts` PASS。
 - **Worker Handoff Log**:
+  - `isLegacyOrTempPlayerId`（`id < 0 || (id >= 345000 && id < 346000)`）、`findPlayerPhotoByName`、`mergeLegacyPlayersAndPhotos` を実装・export。300行制限維持のため名寄せロジックは `player-merge.ts` に配置し `queries-player.ts` 経由で公開。
 
 ---
 
@@ -161,11 +162,12 @@ export function usePlayerPhoto(
 - **Testing Strategy**:
   - 既存の `data-loader.test.ts`, `data-management.test.ts`, `use-team-squad-client.test.tsx` の回帰検証。
 - **Tasks**:
-  - [ ] 1. `data-management-import.ts`: リストア処理末尾で `mergeLegacyPlayersAndPhotos` を呼び出し。
-  - [ ] 2. `squad-actions.ts`: `handleSyncSquad` 内で `mergeLegacyPlayersAndPhotos` を実行。
-  - [ ] 3. `data-loader.ts`: 試合取込時の選手同期で `mergeLegacyPlayersAndPhotos` と連携。
-  - [ ] 4. `bun run ai:check src/lib/data-loader.ts src/lib/data-management-import.ts src/features/teams/utils/squad-actions.ts` PASS。
+  - [x] 1. `data-management-import.ts`: リストア処理末尾で `mergeLegacyPlayersAndPhotos` を呼び出し。
+  - [x] 2. `squad-actions.ts`: `handleSyncSquad` 内で `mergeLegacyPlayersAndPhotos` を実行。
+  - [x] 3. `data-loader.ts`: 試合取込時の選手同期で `mergeLegacyPlayersAndPhotos` と連携。
+  - [x] 4. `bun run ai:check src/lib/data-loader.ts src/lib/data-management-import.ts src/features/teams/utils/squad-actions.ts` PASS。
 - **Worker Handoff Log**:
+  - 試合取込（`processClubMatch`）、ZIP復元（`importAllDataZip`）、スカッド同期（`handleSyncSquad`）の末尾/直後に `mergeLegacyPlayersAndPhotos` を配線。各操作で旧仮ID写真・選手マスタが自動的に公式IDへ引き継がれクリーンアップされる。
 
 ---
 
@@ -198,10 +200,11 @@ export function usePlayerPhoto(
   - `player-marker-item.test.tsx`:
     - `PlayerMarkerItem` が `usePlayerPhoto` に `marker.name` を第4引数として渡していること。
 - **Tasks**:
-  - [ ] 1. TDD RED: `use-player-photo.test.ts` と `player-marker-item.test.tsx` に名前フォールバックテストを追加。
-  - [ ] 2. TDD GREEN: `use-player-photo.ts` で `findPlayerPhotoByName` を用いたフォールバックを実装し、`PlayerMarkerItem.tsx` から `marker.name` を渡す。
-  - [ ] 3. `bun run ai:check src/features/tactical-unified/objects/player/hooks/use-player-photo.ts src/features/tactical-unified/objects/player/hooks/__tests__/use-player-photo.test.ts src/features/tactical-unified/core/components/PlayerMarkerItem.tsx src/features/tactical-unified/core/components/__tests__/player-marker-item.test.tsx` PASS。
+  - [x] 1. TDD RED: `use-player-photo.test.ts` と `player-marker-item.test.tsx` に名前フォールバックテストを追加。
+  - [x] 2. TDD GREEN: `use-player-photo.ts` で `findPlayerPhotoByName` を用いたフォールバックを実装し、`PlayerMarkerItem.tsx` から `marker.name` を渡す。
+  - [x] 3. `bun run ai:check src/features/tactical-unified/objects/player/hooks/use-player-photo.ts src/features/tactical-unified/objects/player/hooks/__tests__/use-player-photo.test.ts src/features/tactical-unified/core/components/PlayerMarkerItem.tsx src/features/tactical-unified/core/components/__tests__/player-marker-item.test.tsx` PASS。
 - **Worker Handoff Log**:
+  - `usePlayerPhoto` に第4引数 `playerName?: string` を追加し、`findPlayerPhotoByName` による写真Blobフォールバック取得および RAII クリーンアップ（revokeObjectURL）を実装。`PlayerMarkerItem` から `marker.name` を配線。
 
 ---
 

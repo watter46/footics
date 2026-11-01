@@ -8,6 +8,7 @@ import {
 import {
   generatePlayerMasterId,
   importMemosBatch,
+  mergeLegacyPlayersAndPhotos,
   putMatchEventsBatch,
   putMatchesBatch,
   savePlayerMastersBatch,
@@ -275,6 +276,13 @@ export async function importAllDataZip(
     }
   } catch (err) {
     console.error('[footics] Failed to restore events:', err);
+  }
+
+  // 6. Merge legacy players and photos
+  try {
+    await mergeLegacyPlayersAndPhotos();
+  } catch (err) {
+    console.error('[footics] Failed to merge legacy players:', err);
   }
 
   return {

@@ -2,6 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { exportAllDataZip, importAllDataZip } from '../data-management';
 import { uint8ArrayToBlob } from '../data-management-helpers';
+import * as dbQueries from '../db';
 import {
   getAllPlayerMasters,
   saveCustomEvent,
@@ -461,6 +462,19 @@ describe('src/lib/data-management', () => {
       expect(allPlayers).toHaveLength(1);
       expect(allPlayers[0].name).toBe('Moises Caicedo');
       expect(allPlayers[0].photoBlob).toBeUndefined();
+    });
+
+    it('executes mergeLegacyPlayersAndPhotos during importAllDataZip', async () => {
+      const spy = vi.spyOn(dbQueries, 'mergeLegacyPlayersAndPhotos');
+      const files: Record<string, Uint8Array> = {
+        'manifest.json': strToU8(JSON.stringify({ version: 4 })),
+      };
+      const zipped = zipSync(files);
+      const mockFile = new File([zipped as unknown as BlobPart], 'test.zip', {
+        type: 'application/zip',
+      });
+      await importAllDataZip(mockFile);
+      expect(spy).toHaveBeenCalled();
     });
   });
 });

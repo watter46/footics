@@ -5,6 +5,7 @@ import {
   getAllPlayerMasters,
   getPlayerMaster,
   getPlayerPhoto,
+  mergeLegacyPlayersAndPhotos,
   saveMatchUnified,
   savePlayerMaster,
   savePlayerMastersBatch,
@@ -17,6 +18,7 @@ vi.mock('./db', async (importOriginal) => {
     ...actual,
     saveMatchUnified: vi.fn(actual.saveMatchUnified),
     savePlayerMastersBatch: vi.fn(actual.savePlayerMastersBatch),
+    mergeLegacyPlayersAndPhotos: vi.fn(actual.mergeLegacyPlayersAndPhotos),
   };
 });
 
@@ -199,6 +201,7 @@ describe('data-loader', () => {
     // 3. Assert: savePlayerMastersBatch が 1 回のバッチ呼び出しで実行されたこと
     expect(savePlayerMastersBatch).toHaveBeenCalledTimes(1);
     expect(vi.mocked(savePlayerMastersBatch).mock.calls[0][0]).toHaveLength(2);
+    expect(mergeLegacyPlayersAndPhotos).toHaveBeenCalledWith('24-25');
 
     // 4. Assert: 仮ID選手が公式ID選手へ自動統合され、二重登録がないこと
     const allMasters = await getAllPlayerMasters();
