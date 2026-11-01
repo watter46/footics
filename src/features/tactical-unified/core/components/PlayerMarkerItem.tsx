@@ -78,6 +78,8 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
   const photoImage = usePlayerPhotoImage(marker);
 
   const effectiveIsSelected = !cleanRender && isSelected;
+  const markerOpacity = (marker as { opacity?: number }).opacity ?? 1;
+  const markerVisible = (marker as { visible?: boolean }).visible ?? true;
 
   return (
     <Group
@@ -93,6 +95,8 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
       }}
       x={pxX}
       y={pxY}
+      opacity={markerOpacity}
+      visible={markerVisible}
       draggable={!cleanRender && isInteractive && !marker.locked}
       // マーカーはキャンバス(Stage)外へはみ出さない（Stage全体許容、右側・下側の見えない壁を解消）
       dragBoundFunc={function (this: Konva.Node, pos: Konva.Vector2d) {
