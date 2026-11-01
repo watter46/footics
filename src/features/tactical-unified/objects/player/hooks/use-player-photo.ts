@@ -1,22 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getPlayerPhoto } from '@/lib/db/queries';
+import { findPlayerPhotoByName, getPlayerPhoto } from '@/lib/db/queries';
 
 /**
  * 選手の顔写真 (HTMLImageElement) を取得・ロードするフック
  * - IndexedDB (db.player_photos) から写真 Blob を取得、または外部 URL を利用
+ * - playerId で写真が見つからない場合、playerName で同名選手を検索してフォールバック
  * - URL.createObjectURL のライフサイクルを管理し、アンマウント・再取得時に確実に revoke (RAII)
  */
 export function usePlayerPhoto(
   playerId?: string,
   photoUrl?: string,
   enabled = true,
+  playerName?: string,
 ): HTMLImageElement | null {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
 
   useEffect(() => {
-    if (!enabled || (!playerId && !photoUrl)) {
+    if (!enabled || (!playerId && !photoUrl && !playerName)) {
       setImage(null);
       return;
     }
@@ -57,7 +59,7 @@ export function usePlayerPhoto(
               return;
             }
           } catch {
-            // DB取得失敗時は photoUrl へのフォールバックを試みる
+            // DB取得失敗時は photoUrl / playerName へのフォールバックを試みる
           }
         }
       }
@@ -66,6 +68,22 @@ export function usePlayerPhoto(
       if (photoUrl) {
         loadImage(photoUrl);
         return;
+      }
+
+      // 3. photoUrl もない場合、playerName があれば同名選手を検索してフォールバック
+      if (playerName) {
+        try {
+          const blob = await findPlayerPhotoByName(playerName);
+          if (isCancelled) return;
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            objectUrlToRevoke = url;
+            loadImage(url);
+            return;
+          }
+        } catch {
+          // 検索失敗時は何もしない
+        }
       }
 
       setImage(null);
@@ -79,7 +97,7 @@ export function usePlayerPhoto(
         URL.revokeObjectURL(objectUrlToRevoke);
       }
     };
-  }, [playerId, photoUrl, enabled]);
+  }, [playerId, photoUrl, enabled, playerName]);
 
   return image;
 }

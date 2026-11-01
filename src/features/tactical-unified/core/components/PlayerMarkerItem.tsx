@@ -79,6 +79,7 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
     marker.playerId,
     marker.style?.photoUrl,
     marker.style?.insideContent === 'photo',
+    marker.name,
   );
 
   const effectiveIsSelected = !cleanRender && isSelected;

@@ -282,10 +282,61 @@ describe('PlayerMarkerItem vertical scale', () => {
       </Stage>,
     );
 
-    expect(usePlayerPhoto).toHaveBeenCalledWith('12345', undefined, true);
+    expect(usePlayerPhoto).toHaveBeenCalledWith(
+      '12345',
+      undefined,
+      true,
+      undefined,
+    );
     // Konva.Image がレンダリングされていること
     const konvaImages = stageRef.current?.find('Image') as Konva.Image[];
     expect(konvaImages.length).toBeGreaterThan(0);
     expect(konvaImages[0].image()).toBe(fakeImage);
+  });
+
+  it('PlayerMarkerItem が usePlayerPhoto に marker.name を第4引数として渡す', () => {
+    const stageRef = createRef<Konva.Stage>();
+    const marker = {
+      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      name: 'Cole Palmer',
+      playerId: '395692',
+      style: {
+        ...createDefaultPlayer('home', 50, 50, '#ff0000').style,
+        insideContent: 'photo' as const,
+      },
+    };
+    const width = 800;
+    const height = 450;
+    const baseDim = 450;
+
+    render(
+      <Stage ref={stageRef} width={width} height={height}>
+        <Layer>
+          <PlayerMarkerItem
+            marker={marker}
+            width={width}
+            height={height}
+            baseDim={baseDim}
+            markerMode="2d-only"
+            aspectRatio="16:9"
+            isSelected={false}
+            isInteractive={true}
+            connectingPlayerId={null}
+            onDragStart={vi.fn()}
+            onDragMove={vi.fn()}
+            onDragEnd={vi.fn()}
+            onClick={vi.fn()}
+            onUpdateVisionCone={vi.fn()}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    expect(usePlayerPhoto).toHaveBeenCalledWith(
+      '395692',
+      undefined,
+      true,
+      'Cole Palmer',
+    );
   });
 });
