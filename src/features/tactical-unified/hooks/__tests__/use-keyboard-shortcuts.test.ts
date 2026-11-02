@@ -419,4 +419,22 @@ describe('useKeyboardShortcuts', () => {
     expect(customStore.getState().activeTool).toBe('line');
     expect(useTacticalUnifiedStore.getState().activeTool).toBe('select');
   });
+
+  it('Tab キーで WorkspaceMode (board <-> director) がトグルされる', () => {
+    renderHook(() => useKeyboardShortcuts());
+    const store = useTacticalUnifiedStore.getState();
+    expect(store.workspaceMode).toBe('board');
+
+    act(() => {
+      fireEvent.keyDown(document, { key: 'Tab', code: 'Tab' });
+    });
+
+    expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('director');
+
+    act(() => {
+      fireEvent.keyDown(document, { key: 'Tab', code: 'Tab' });
+    });
+
+    expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('board');
+  });
 });

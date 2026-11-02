@@ -87,7 +87,10 @@ export interface ScreenBackgroundConfig {
   - Space キー押下でどちらのモードでも即座に再生/停止が切り替わり、モード遷移しないことを担保。
 - **Testing Strategy**: `src/features/tactical-unified/stores/__tests__/workspace-mode.test.ts` で Tab 切替と再生状態の保持をテスト。
 - **Tasks**:
-  - [ ] 1. TDD実装: テスト作成 ➔ ストア＆ショートカット実装 ➔ `bun run ai:check` PASS
+  - [x] 1. TDD実装: テスト作成 ➔ ストア＆ショートカット実装 ➔ `bun run ai:check` PASS
+- **Worker Handoff Log**:
+  - Export symbols: `WorkspaceMode` (`'board' | 'director'`), `savedPanelStateBeforeDirector`, `setWorkspaceMode`, `toggleWorkspaceMode`
+  - Gotcha: `tool-slice.ts` 300行ルール遵守のため型定義を `tool-types.ts` に分離して re-export。Tab キー押下時は `isInputFocused()` ガード付きで `toggleWorkspaceMode` をトリガー、Space キーはモード非依存で再生/停止をトグル。
 
 ---
 

@@ -1,6 +1,6 @@
 /**
  * use-keyboard-shortcuts.ts
- * Keyboard shortcuts: Delete, Escape, Backspace, Copy (Mod+C), Paste (Mod+V), Duplicate (Mod+D), Tool switching, Space (Playback), Undo/Redo
+ * Keyboard shortcuts: Delete, Escape, Backspace, Copy (Mod+C), Paste (Mod+V), Duplicate (Mod+D), Tool switching, Tab (Workspace Mode), Space (Playback), Undo/Redo
  */
 
 import { useHotkeys } from 'react-hotkeys-hook';
@@ -104,6 +104,17 @@ export function useKeyboardShortcuts() {
       if (isInputFocused()) return;
       e.preventDefault();
       storeApi.getState().togglePlayback();
+    },
+    { enableOnFormTags: false },
+  );
+
+  // Workspace mode: Tab (Board <-> Director)
+  useHotkeys(
+    'tab',
+    (e) => {
+      if (isInputFocused()) return;
+      e.preventDefault();
+      storeApi.getState().toggleWorkspaceMode();
     },
     { enableOnFormTags: false },
   );
