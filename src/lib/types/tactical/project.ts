@@ -4,6 +4,7 @@ import { AspectRatioSchema, NormalizedCoordSchema } from './primitives';
 import {
   BoundaryBoxSchema,
   PitchAppearanceConfigSchema,
+  ScreenBackgroundConfigSchema,
   type Slide,
   SlideSchema,
 } from './slide';
@@ -43,6 +44,9 @@ export const TacticalProjectSchema = z.object({
   backgroundType: z.enum(['pitch', 'image', 'blank']).default('pitch'),
   backgroundImageUrl: z.string().optional(),
   pitchAppearance: PitchAppearanceConfigSchema.optional(),
+  screenBackground: ScreenBackgroundConfigSchema.default({
+    type: 'cinematic',
+  }).optional(),
 
   homeColor: TeamColorSchema.default({ primary: '#034694' }),
   awayColor: TeamColorSchema.default({ primary: '#ef4444' }),

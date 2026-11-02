@@ -13,9 +13,7 @@ import {
   NormalizedCoordSchema,
 } from './primitives';
 
-// ─────────────────────────────────────────
 // § 8. スライド (シーン)
-// ─────────────────────────────────────────
 
 export const BoundaryBoxSchema = z.object({
   x: NormalizedCoordSchema,
@@ -103,9 +101,7 @@ export function getDefaultBoundaryBoxForAspect(
 /** 標準デフォルト境界線 (4:5) */
 export const DEFAULT_BOUNDARY_BOX = DEFAULT_BOUNDARY_BOX_4_5;
 
-// ─────────────────────────────────────────
 // § 8.1. X (Twitter) 最適化メディア比率 & プリセット
-// ─────────────────────────────────────────
 
 export const X_MEDIA_RATIOS = {
   '4:5': 4 / 5, // 画像1枚: TL最大高さ・Dwell Time最大化 (0.80)
@@ -258,6 +254,16 @@ export const DEFAULT_PITCH_APPEARANCE: PitchAppearanceConfig = {
   lineColor: '#ffffff',
   lineWidth: 2.5,
   lineOpacity: 1.0,
+};
+
+export const ScreenBackgroundConfigSchema = z.object({
+  type: z.enum(['cinematic', 'dark']).default('cinematic'),
+});
+export type ScreenBackgroundConfig = z.infer<
+  typeof ScreenBackgroundConfigSchema
+>;
+export const DEFAULT_SCREEN_BACKGROUND: ScreenBackgroundConfig = {
+  type: 'cinematic',
 };
 
 export const SlideSchema = z.object({

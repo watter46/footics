@@ -13,6 +13,7 @@ import {
   type BoundaryBox,
   DEFAULT_BOUNDARY_BOX_4_5,
   DEFAULT_PITCH_APPEARANCE,
+  DEFAULT_SCREEN_BACKGROUND,
   type Slide,
 } from './slide';
 
@@ -207,6 +208,7 @@ export function createDefaultProject(
     aspectRatio: '4:5' as const,
     backgroundType: 'pitch' as const,
     pitchAppearance: { ...DEFAULT_PITCH_APPEARANCE },
+    screenBackground: { ...DEFAULT_SCREEN_BACKGROUND },
     homeColor,
     awayColor,
     phases: [initialPhase],

@@ -1,8 +1,10 @@
 import {
   type AspectRatio,
   DEFAULT_PITCH_APPEARANCE,
+  DEFAULT_SCREEN_BACKGROUND,
   getDefaultBoundaryBoxForAspect,
   type PitchAppearanceConfig,
+  type ScreenBackgroundConfig,
 } from '@/lib/types/tactical-unified';
 import type { ProjectSliceSet } from './project-slice-actions';
 import { transformSlideAspectRatio } from './slide-aspect-helpers';
@@ -27,6 +29,20 @@ export function createProjectConfigActions(set: ProjectSliceSet) {
           pitchAppearance: {
             ...(s.project.pitchAppearance ?? DEFAULT_PITCH_APPEARANCE),
             ...appearance,
+          },
+          updatedAt: new Date().toISOString(),
+        },
+        isDirty: true,
+      })),
+
+    updateScreenBackground: (config: Partial<ScreenBackgroundConfig>) =>
+      set((s) => ({
+        ...recordHistory(s),
+        project: {
+          ...s.project,
+          screenBackground: {
+            ...(s.project.screenBackground ?? DEFAULT_SCREEN_BACKGROUND),
+            ...config,
           },
           updatedAt: new Date().toISOString(),
         },

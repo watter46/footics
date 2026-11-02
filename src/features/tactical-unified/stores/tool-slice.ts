@@ -35,7 +35,7 @@ export interface SelectedObject {
 export interface PanelState {
   sidebarOpen: boolean;
   inspectorOpen: boolean;
-  rightPanelTab: 'formation' | 'squad' | 'pitch';
+  rightPanelTab: 'formation' | 'squad' | 'pitch' | 'screen';
   isRightPanelOpen: boolean;
   splitPreviewOpen?: boolean;
   exportModalOpen: boolean;
@@ -85,7 +85,7 @@ export interface ToolSlice {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setInspectorOpen: (open: boolean) => void;
-  setRightPanelTab: (tab: 'formation' | 'squad' | 'pitch') => void;
+  setRightPanelTab: (tab: 'formation' | 'squad' | 'pitch' | 'screen') => void;
   toggleRightPanel: () => void;
   setRightPanelOpen: (open: boolean) => void;
   toggleSplitPreview: () => void;

@@ -13,6 +13,7 @@
 import {
   ChevronLeft,
   ChevronRight,
+  Monitor,
   Shield,
   SlidersHorizontal,
   Users,
@@ -23,6 +24,7 @@ import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stor
 import { DEFAULT_PITCH_APPEARANCE } from '@/lib/types/tactical-unified';
 import { FormationPanel } from './formation-panel';
 import { PitchAppearancePanel } from './pitch-appearance-panel';
+import { ScreenBackgroundPanel } from './screen-background-panel';
 import { SquadSubPanel } from './squad-sub-panel';
 
 export function RightPanel() {
@@ -48,7 +50,7 @@ export function RightPanel() {
     (s) => s.updatePitchAppearance,
   );
 
-  const handleTabClick = (tab: 'formation' | 'squad' | 'pitch') => {
+  const handleTabClick = (tab: 'formation' | 'squad' | 'pitch' | 'screen') => {
     setRightPanelTab(tab);
     if (!isRightPanelOpen) {
       setRightPanelOpen(true);
@@ -117,22 +119,39 @@ export function RightPanel() {
           >
             <SlidersHorizontal size={16} />
           </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabClick('screen')}
+            className={`p-2 rounded-md transition-colors cursor-pointer relative ${
+              rightPanelTab === 'screen'
+                ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)]'
+                : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
+            }`}
+            title="Screen Background"
+            aria-label="Screen"
+          >
+            <Monitor size={16} />
+          </button>
         </div>
       ) : (
         // ── 展開状態 (400px 詳細パネル) ──
         <>
-          {/* Top Segmented Tab Switcher (3タブ体制) + Close Button */}
+          {/* Top Segmented Tab Switcher (4タブ体制) + Close Button */}
           <div className="flex items-center gap-1.5 p-1.5 bg-[#0D0D0E] border-b border-white/[0.08] shrink-0">
             <SegmentedControl
               className="flex-1 [&>button]:flex-1"
               value={rightPanelTab}
               onChange={(tab) =>
-                setRightPanelTab(tab as 'formation' | 'squad' | 'pitch')
+                setRightPanelTab(
+                  tab as 'formation' | 'squad' | 'pitch' | 'screen',
+                )
               }
               options={[
                 { id: 'formation', label: 'Formation', icon: Shield },
                 { id: 'squad', label: 'Squad', icon: Users },
                 { id: 'pitch', label: 'Pitch', icon: SlidersHorizontal },
+                { id: 'screen', label: 'Screen', icon: Monitor },
               ]}
             />
 
@@ -157,6 +176,7 @@ export function RightPanel() {
                 onUpdatePitchAppearance={updatePitchAppearance}
               />
             )}
+            {rightPanelTab === 'screen' && <ScreenBackgroundPanel />}
           </div>
         </>
       )}

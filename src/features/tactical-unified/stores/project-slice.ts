@@ -3,6 +3,7 @@ import type {
   AspectRatio,
   ExportTarget,
   PitchAppearanceConfig,
+  ScreenBackgroundConfig,
   TacticalProject,
 } from '@/lib/types/tactical-unified';
 import { createInitialProject } from '@/lib/types/tactical-unified';
@@ -46,6 +47,7 @@ export interface ProjectSlice {
   setBackgroundType: (type: TacticalProject['backgroundType']) => void;
   setBackgroundImageUrl: (url: string | undefined) => void;
   updatePitchAppearance: (appearance: Partial<PitchAppearanceConfig>) => void;
+  updateScreenBackground: (config: Partial<ScreenBackgroundConfig>) => void;
   restoreDefaultPitch: () => void;
   setImageBackground: (url: string) => void;
   setTeamColor: (
