@@ -27,10 +27,10 @@
 | [**spec/overview.md**](file:///home/watter46/src/footics/docs/spec/overview.md) | **システム全体概要** | 全体像、DO / DON'T、共通ナビゲーション、保存トリガー、例外復旧 |
 | [**spec/dashboard.md**](file:///home/watter46/src/footics/docs/spec/dashboard.md) | **ダッシュボード (`/`)** | 試合カード一覧、種別・チーム絞り込み、WhoScored JSONインポート |
 | [**spec/match-analysis.md**](file:///home/watter46/src/footics/docs/spec/match-analysis.md) | **試合分析 (`/match/[id]`)** | タイムライン閲覧、多角フィルタ、戦術メモ・独自イベント、戦術ボード別タブ連携 |
-| [**spec/tactical-board.md**](file:///home/watter46/src/footics/docs/spec/tactical-board.md) | **戦術ボード (`/tactical`)** | メインキャンバス作図、5層レイヤー、HUD、Formation/Squadパネル、陣地反転、GSAPタイムライン |
-| [**spec/team-player-master.md**](file:///home/watter46/src/footics/docs/spec/team-player-master.md) | **選手・チーム管理 (`/teams/[id]`)** | シーズン別スカッド管理、256px WebP顔写真管理、手動選手と公式データリンク、戦術ボード送出 |
-| [**spec/data-management.md**](file:///home/watter46/src/footics/docs/spec/data-management.md) | **グローバルデータ管理** | 全データ（試合・メモ・選手・写真）のZIPバックアップおよび復元マージ |
-| [**spec/export.md**](file:///home/watter46/src/footics/docs/spec/export.md) | **エクスポート・共有** | 静止画PNG、動画MP4/WebM（mediabunny）、iPhone PWA連携（`/export`）、無劣化保存 |
+| [**spec/tactical-board.md**](file:///home/watter46/src/footics/docs/spec/tactical-board.md) | **戦術ボード (`/tactical`)** | 2D完全平面作図、3Dスプリットプレビュー（オービット・6大プリセット）、Phase構造、5層レイヤー、HUD、Formation/Squad/Pitchパネル、陣地反転、GSAPタイムライン |
+| [**spec/team-player-master.md**](file:///home/watter46/src/footics/docs/spec/team-player-master.md) | **選手・チーム管理 (`/teams/[id]`)** | シーズン別スカッド管理、256px WebP顔写真管理、手動選手と公式データリンク、自動名寄せ、戦術ボード送出 |
+| [**spec/data-management.md**](file:///home/watter46/src/footics/docs/spec/data-management.md) | **グローバルデータ管理** | 全データ（試合・メモ・選手・写真・戦術プロジェクト）のZIPバックアップおよび復元マージ（Manifest v5） |
+| [**spec/export.md**](file:///home/watter46/src/footics/docs/spec/export.md) | **エクスポート・共有** | 静止画PNG、動画MP4（iPhone A14+ ハードウェアエンコード 24Mbps/14Mbps）、プロジェクトJSON入出力、iPhone PWA連携（`/export`） |
 | [**spec/extension-capture.md**](file:///home/watter46/src/footics/docs/spec/extension-capture.md) | **拡張機能連携** | YouTube動画キャプチャ（Alt+S）、独立タブ軽量キャンバス作図、動画視聴中メモオーバーレイ |
 
 ---

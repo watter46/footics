@@ -37,14 +37,14 @@
 | `gsap` + `@gsap/react` | ^3.15.0 | タイムライン連続再生・シーク・イージング制御（`gsap.timeline()`, `gsap.parseEase()`、`timeline.kill()` RAII徹底）、およびカメラ操作の補間（自前RAFループ・自前イージング計算は全廃） |
 
 > **[!IMPORTANT]**
-> 戦術ボードの実装は Konva を前提とし、以下の **5層レイヤーアーキテクチャ** に厳格に分離する：
-> 1. `PitchGroundLayer`: 地面・ピッチ白線枠、ゾーン、矢印、直線、コネクタ、ゴースト軌道
+> 戦術ボードのエディタ実装は Konva を前提とし、以下の **5層レイヤーアーキテクチャ** に厳格に分離する：
+> 1. `PitchGroundLayer`: 地面・ピッチ白線枠（サイアン `#38bdf8` / 大理石テクスチャ）、ゾーン、矢印、ルートルート線、直線、コネクタ、ゴースト軌道
 > 2. `BillboardObjectLayer`: 選手マーカー（2Dサークル/3D足元リング）、ボール、テキスト（スクリーンY座標による深さソート `sortBillboardItemsByDepth` 適用）
 > 3. `InteractionPreviewLayer`: 作図プレビュー図形、範囲選択ボックス、選択ハイライト枠（純粋描画時は非表示）
 > 4. `ViewportCropOverlay`: 画面基準の境界線枠（BoundaryBox）と外側マスク
 > 5. `HtmlHudOverlay`: オブジェクトオプション（ContextHud）、境界線オプション、インラインテキストエディタ
 > 
-> Fabric.js / Canvas 2D API の直接使用は禁止。Konva のベストプラクティス（レイヤー分離・`listening={false}`・`perfectDrawEnabled={false}`）を厳守すること。
+> ※3Dスプリットプレビューワークスペースおよび動画エクスポート（Off-Thread Web Worker）では、高解像度描画およびパフォーマンス最適化のため純粋な Canvas 2D API（`tactical-frame-renderer`）を使用する。
 
 ### 状態管理
 
