@@ -3,6 +3,7 @@ import { calculatePitchTextureCover } from '@/lib/tactical/pitch-texture-geometr
 import type {
   AspectRatio,
   PitchAppearanceConfig,
+  ScreenBackgroundConfig,
 } from '@/lib/types/tactical-unified';
 import { renderPitchMarkings2D } from './pitch-markings-2d';
 import { renderPitchMarkings3D } from './pitch-markings-3d';
@@ -10,6 +11,51 @@ import type { FrameRenderContext } from './renderer-context';
 
 export { renderPitchMarkings2D } from './pitch-markings-2d';
 export { renderPitchMarkings3D } from './pitch-markings-3d';
+
+const radialGradientCache = new Map<string, CanvasGradient>();
+
+/**
+ * Clears the cached radial gradients used by pitch renderer.
+ */
+export function clearPitchRendererCache(): void {
+  radialGradientCache.clear();
+}
+
+/**
+ * Draws screen background (cinematic radial gradient or dark solid).
+ */
+function renderScreenBackground(
+  ctx: FrameRenderContext['ctx'],
+  w: number,
+  h: number,
+  screenBackground?: ScreenBackgroundConfig,
+): void {
+  if (screenBackground?.type === 'dark') {
+    ctx.fillStyle = '#0D0D0E';
+    ctx.fillRect(0, 0, w, h);
+    return;
+  }
+
+  // cinematic (or default)
+  const key = `${w}x${h}`;
+  let gradient = radialGradientCache.get(key);
+  if (!gradient && typeof ctx.createRadialGradient === 'function') {
+    const cx = w / 2;
+    const cy = h / 2;
+    const r = Math.max(w, h) / 2;
+    gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    gradient.addColorStop(0, '#2B2B2B');
+    gradient.addColorStop(1, '#050505');
+    radialGradientCache.set(key, gradient);
+  }
+
+  if (gradient) {
+    ctx.fillStyle = gradient;
+  } else {
+    ctx.fillStyle = '#050505';
+  }
+  ctx.fillRect(0, 0, w, h);
+}
 
 /**
  * Draws pitch lines and markings for the given aspect ratio in 2D or 3D projected space.
@@ -48,6 +94,7 @@ export function renderPitch(
   transparent: boolean,
   pitchAppearance?: PitchAppearanceConfig,
   marbleTexture?: CanvasImageSource | null,
+  screenBackground?: ScreenBackgroundConfig,
 ): void {
   const {
     ctx,
@@ -67,15 +114,14 @@ export function renderPitch(
     return;
   }
 
+  // 1. Screen background (cinematic radial gradient or dark solid)
+  renderScreenBackground(ctx, w, h, screenBackground);
+
   const geom = calculatePitchGeometryForAspect(aspectRatio);
   const isMarble = pitchAppearance?.pitchBackgroundType === 'marble';
 
   if (isMarble) {
-    // 1. Solid frame background
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, w, h);
-
-    // 2. Pitch inner bounds calculation
+    // Pitch inner bounds calculation
     const toNormX = (svgX: number) => (svgX / geom.config.widthPx) * 100;
     const toNormY = (svgY: number) => (svgY / geom.config.heightPx) * 100;
     const toNormW = (svgW: number) => (svgW / geom.config.widthPx) * 100;
@@ -154,7 +200,7 @@ export function renderPitch(
         height: snap(toScreenSizeY(toNormH(geom.pitchHeight))),
       };
 
-      // 3. Clip pitch inner area
+      // Clip pitch inner area
       ctx.save();
       ctx.beginPath();
       ctx.rect(
@@ -165,7 +211,7 @@ export function renderPitch(
       );
       ctx.clip();
 
-      // 4. Marble texture image cover
+      // Marble texture image cover
       if (marbleTexture) {
         const tex = marbleTexture as {
           naturalWidth?: number;
@@ -193,7 +239,7 @@ export function renderPitch(
         );
       }
 
-      // 5. Overlay blend rectangle
+      // Overlay blend rectangle
       if (pitchAppearance && pitchAppearance.overlayOpacity > 0) {
         ctx.save();
         ctx.globalCompositeOperation = 'overlay';
@@ -211,39 +257,8 @@ export function renderPitch(
       // Restore clip
       ctx.restore();
     }
-
-    // 6. Pitch markings
-    renderPitchMarkings(context, aspectRatio, pitchAppearance);
-  } else {
-    // Solid pitch background
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, w, h);
-
-    // Pitch surface fill
-    if (m) {
-      const p0 = projectObjToScreen(0, 0);
-      const p1 = projectObjToScreen(100, 0);
-      const p2 = projectObjToScreen(100, 100);
-      const p3 = projectObjToScreen(0, 100);
-      ctx.beginPath();
-      ctx.moveTo(snap(p0.x), snap(p0.y));
-      ctx.lineTo(snap(p1.x), snap(p1.y));
-      ctx.lineTo(snap(p2.x), snap(p2.y));
-      ctx.lineTo(snap(p3.x), snap(p3.y));
-      ctx.closePath();
-      ctx.fillStyle = '#000000';
-      ctx.fill();
-    } else {
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(
-        snap(toScreenX(0)),
-        snap(toScreenY(0)),
-        snap(toScreenSizeX(100)),
-        snap(toScreenSizeY(100)),
-      );
-    }
-
-    // Pitch markings
-    renderPitchMarkings(context, aspectRatio, pitchAppearance);
   }
+
+  // Pitch markings
+  renderPitchMarkings(context, aspectRatio, pitchAppearance);
 }

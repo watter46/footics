@@ -19,6 +19,7 @@ import type {
   BoundaryBox,
   PitchAppearanceConfig,
   PitchTransform,
+  ScreenBackgroundConfig,
   Slide,
 } from '@/lib/types/tactical-unified';
 import { renderArrows, renderConnectLines } from './renderers/arrow-renderer';
@@ -66,6 +67,8 @@ export interface RenderTacticalFrameOptions {
   pitchAppearance?: PitchAppearanceConfig;
   /** 大理石テクスチャ画像 */
   marbleTexture?: CanvasImageSource | null;
+  /** 画面背景設定 (シネマティック放射グラデーション / 単色ダーク) */
+  screenBackground?: ScreenBackgroundConfig;
   /** 事前計算済み補間フレーム（指定時は getInterpolatedUnifiedSlideFrame の再計算をスキップ） */
   precomputedFrame?: InterpolatedUnifiedSlideFrame;
 }
@@ -100,6 +103,7 @@ export function renderTacticalFrameToCanvas(
     playerPhotos,
     pitchAppearance,
     marbleTexture,
+    screenBackground,
   } = options;
 
   if (w <= 0 || h <= 0) return;
@@ -247,6 +251,7 @@ export function renderTacticalFrameToCanvas(
     transparent,
     pitchAppearance,
     marbleTexture,
+    screenBackground,
   );
 
   // 2. Zones (Vertex Morphing)

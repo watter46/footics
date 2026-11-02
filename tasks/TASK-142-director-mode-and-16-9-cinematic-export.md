@@ -71,7 +71,10 @@ export interface ScreenBackgroundConfig {
   - `exportVideoWithMediabunny` が 16:9 背景付きで 1920×1080 MP4 / 静止画を出力することを確認。
 - **Testing Strategy**: `src/lib/tactical/export/__tests__/pitch-renderer-cinematic.test.ts` で背景描画キャッシュと中央ピッチ配置を検証。
 - **Tasks**:
-  - [ ] 1. TDD実装: テスト作成 ➔ レンダラー最適化 ➔ `bun run ai:check` PASS
+  - [x] 1. TDD実装: テスト作成 ➔ レンダラー最適化 ➔ `bun run ai:check` PASS
+- **Worker Handoff Log**:
+  - Export symbols: `clearPitchRendererCache`, `renderPitch` (`screenBackground?: ScreenBackgroundConfig` added to arg#6), `RenderTacticalFrameOptions.screenBackground`, `VideoExportOptions.screenBackground`
+  - Gotcha: `radialGradientCache` は `${w}x${h}` をキーにキャッシュされ、単色ダーク時はグラデーション生成を回避。`clearPitchRendererCache` でキャッシュ破棄可能。
 
 ---
 

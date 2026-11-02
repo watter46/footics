@@ -4,6 +4,7 @@ import type {
   ExportProgress,
   PitchAppearanceConfig,
   PitchTransform,
+  ScreenBackgroundConfig,
   Slide,
 } from '@/lib/types/tactical-unified';
 import type { BoundaryCropInfo } from './video-crop-calc';
@@ -31,6 +32,7 @@ export interface VideoExportOptions {
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   fullCodecString?: string;
   marbleTexture?: CanvasImageSource | null;
+  screenBackground?: ScreenBackgroundConfig;
   isWorkerContext?: boolean;
   onRenderFrame?: (timeMs: number) => Promise<void> | void;
   onCaptureFrame?: (cropInfo: BoundaryCropInfo) => HTMLCanvasElement | null;

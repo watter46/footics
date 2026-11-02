@@ -175,6 +175,7 @@ export async function exportVideoWithMediabunny(
             playerPhotos: options.playerPhotos,
             pitchAppearance: options.pitchAppearance,
             marbleTexture: options.marbleTexture,
+            screenBackground: options.screenBackground,
             precomputedFrame: interpolated,
           });
           lastRenderedSlideIdx = interpolated.isPaused
