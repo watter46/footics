@@ -84,4 +84,23 @@ describe('TopBarCenter aspect ratio selector', () => {
     expect(textSpan.className).toContain('hidden');
     expect(textSpan.className).toContain('2xl:inline');
   });
+
+  it('allows switching workspace mode between board and director', () => {
+    render(<TopBarCenter />);
+
+    const boardRadio = radio('作図');
+    const directorRadio = radio('演出');
+    expect(boardRadio.getAttribute('aria-checked')).toBe('true');
+    expect(directorRadio.getAttribute('aria-checked')).toBe('false');
+
+    fireEvent.click(directorRadio);
+    expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('director');
+    expect(directorRadio.getAttribute('aria-checked')).toBe('true');
+    expect(boardRadio.getAttribute('aria-checked')).toBe('false');
+
+    fireEvent.click(boardRadio);
+    expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('board');
+    expect(boardRadio.getAttribute('aria-checked')).toBe('true');
+    expect(directorRadio.getAttribute('aria-checked')).toBe('false');
+  });
 });

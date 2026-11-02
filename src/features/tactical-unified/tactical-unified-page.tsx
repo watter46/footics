@@ -88,9 +88,8 @@ function TacticalUnifiedPageContent({
   const sidebarOpen = useTacticalUnifiedStoreContext(
     (s) => s.panels.sidebarOpen,
   );
-  const splitPreviewOpen = useTacticalUnifiedStoreContext((s) =>
-    Boolean(s.panels.splitPreviewOpen),
-  );
+  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
+  const isDirectorMode = workspaceMode === 'director';
 
   const [isFocusMode, setIsFocusMode] = useState(false);
 
@@ -154,10 +153,10 @@ function TacticalUnifiedPageContent({
           onToggleFocusMode={() => setIsFocusMode((prev) => !prev)}
         />
 
-        {/* Main Area (3-Pane Workspace) */}
+        {/* Main Area (3-Pane Workspace or Director View) */}
         <div className="flex flex-1 min-h-0 relative">
           {/* Left Panel (Tactical Sequences / Toggleable) */}
-          {!isFocusMode && sidebarOpen && (
+          {!isDirectorMode && !isFocusMode && sidebarOpen && (
             <LeftPanel
               phases={phases}
               activePhaseId={activePhaseId}
@@ -176,20 +175,21 @@ function TacticalUnifiedPageContent({
             />
           )}
 
-          {/* Central Workspace: Canvas + Split Preview */}
+          {/* Central Workspace: Canvas (board) or Director View (director) */}
           <div className="flex-1 min-w-0 relative overflow-hidden flex flex-row bg-[#0D0D0E]">
-            <main className="flex-1 min-w-0 relative overflow-hidden flex flex-col bg-[#0D0D0E]">
-              <FullTacticalCanvas ref={canvasRef} />
-            </main>
-            {!isFocusMode && splitPreviewOpen && (
-              <div className="w-1/2 min-w-[320px] max-w-[55%] border-l border-white/20 flex flex-col h-full">
+            {isDirectorMode ? (
+              <div className="flex-1 min-w-0 h-full">
                 <TacticalSplitPreviewPanel />
               </div>
+            ) : (
+              <main className="flex-1 min-w-0 relative overflow-hidden flex flex-col bg-[#0D0D0E]">
+                <FullTacticalCanvas ref={canvasRef} />
+              </main>
             )}
           </div>
 
           {/* Right Panel (Formation & Squad / Focus Mode対応) */}
-          {!isFocusMode && <RightPanel />}
+          {!isDirectorMode && !isFocusMode && <RightPanel />}
         </div>
 
         {/* Timeline Bar */}

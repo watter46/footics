@@ -39,8 +39,8 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
     );
 
     // Header & Close
-    expect(getByText('3D Camera Preview')).toBeDefined();
-    expect(getByLabelText('Close 3D Split Preview')).toBeDefined();
+    expect(getByText('🎬 Director Mode (3D Camera Preview)')).toBeDefined();
+    expect(getByLabelText('Close Director Mode')).toBeDefined();
 
     // 6 Camera Presets
     for (const preset of SPLIT_CAMERA_PRESETS) {
@@ -220,11 +220,10 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
     expect(activeSlide.pitchTransform?.yaw).toBe(90);
   });
 
-  it('closes split preview when clicking close button in header', () => {
+  it('closes director mode when clicking close button in header', () => {
+    useTacticalUnifiedStore.getState().setWorkspaceMode('director');
     useTacticalUnifiedStore.getState().setSplitPreviewOpen(true);
-    expect(useTacticalUnifiedStore.getState().panels.splitPreviewOpen).toBe(
-      true,
-    );
+    expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('director');
 
     const { getByLabelText } = render(
       <TacticalUnifiedStoreProvider>
@@ -232,9 +231,10 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
       </TacticalUnifiedStoreProvider>,
     );
 
-    const closeBtn = getByLabelText('Close 3D Split Preview');
+    const closeBtn = getByLabelText('Close Director Mode');
     fireEvent.click(closeBtn);
 
+    expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('board');
     expect(useTacticalUnifiedStore.getState().panels.splitPreviewOpen).toBe(
       false,
     );

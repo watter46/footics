@@ -39,6 +39,9 @@ export function TacticalSplitPreviewPanel() {
   const setSplitPreviewOpen = useTacticalUnifiedStoreContext(
     (s) => s.setSplitPreviewOpen,
   );
+  const setWorkspaceMode = useTacticalUnifiedStoreContext(
+    (s) => s.setWorkspaceMode,
+  );
 
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -196,7 +199,7 @@ export function TacticalSplitPreviewPanel() {
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.08] bg-black/30 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold tracking-wide text-white/90">
-            3D Camera Preview
+            🎬 Director Mode (3D Camera Preview)
           </span>
           <div className="flex items-center gap-1 font-mono text-[10px] text-white/50">
             <span ref={timeLabelRef}>0.0s</span>
@@ -206,10 +209,13 @@ export function TacticalSplitPreviewPanel() {
         </div>
         <button
           type="button"
-          onClick={() => setSplitPreviewOpen(false)}
-          aria-label="Close 3D Split Preview"
-          title="Close 3D Split Preview"
-          className="p-1 rounded text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+          onClick={() => {
+            setWorkspaceMode('board');
+            setSplitPreviewOpen(false);
+          }}
+          aria-label="Close Director Mode"
+          title="Close Director Mode"
+          className="p-1 rounded text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>

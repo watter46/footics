@@ -103,7 +103,10 @@ export interface ScreenBackgroundConfig {
   - 演出モード表示時は左右パネルを自動非表示とし、作図復帰時に元の開閉状態を復元。
 - **Testing Strategy**: `src/features/tactical-unified/__tests__/tactical-unified-page-modes.test.tsx` でモード切替とUIレイアウトを検証。
 - **Tasks**:
-  - [ ] 1. TDD実装: テスト作成 ➔ コンポーネント実装 ➔ `bun run ai:check` PASS
+  - [x] 1. TDD実装: テスト作成 ➔ コンポーネント実装 ➔ `bun run ai:check` PASS
+- **Worker Handoff Log**:
+  - Export symbols: `TopBarCenter` (`WORKSPACE_MODE_OPTIONS`), `TopBar` (Director mode toggle icon button), `TacticalSplitPreviewPanel` (🎬 Director Mode title & `setWorkspaceMode('board')` close button)
+  - Gotcha: `tactical-unified-page.tsx` のスプリット左右分割を全画面切替（`FullTacticalCanvas` ⇄ `TacticalSplitPreviewPanel`）へ置き換え、Director モード時は左右パネルを非表示化。既存の統合テストも director mode に追従済み。
 
 ## 5. Reviewer Assessment
 - **Reviewer Model**: `pro`

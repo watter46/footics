@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultProject } from '@/lib/types/tactical-unified';
 import { TacticalUnifiedPage } from '../tactical-unified-page';
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ back: vi.fn(), push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 // Konva & Canvas Mocks
 class MockResizeObserver {
   callback: ResizeObserverCallback;
@@ -164,21 +169,21 @@ describe('TacticalUnifiedPage Integration', () => {
     );
 
     // 初期状態: 3Dプレビューパネルは存在しない
-    expect(screen.queryByText('3D Camera Preview')).toBeNull();
+    expect(screen.queryByText(/3D Camera Preview/)).toBeNull();
 
-    // TopBar の Toggle 3D Split Preview ボタンを取得してクリック
+    // TopBar の Toggle Director Mode ボタンを取得してクリック
     const splitToggleBtn = screen.getByRole('button', {
-      name: /Toggle 3D Split Preview/i,
+      name: /Toggle Director Mode|Toggle 3D Split Preview/i,
     });
     expect(splitToggleBtn).toBeDefined();
     fireEvent.click(splitToggleBtn);
 
     // 3Dプレビューパネルが表示されること
-    expect(await screen.findByText('3D Camera Preview')).toBeDefined();
-    expect(screen.getByLabelText('3D Tilt Angle Slider')).toBeDefined();
+    expect(await screen.findByText(/3D Camera Preview/)).toBeDefined();
+    expect(screen.getByLabelText('Reset 3D Camera')).toBeDefined();
 
     // 再度クリックで閉じること
     fireEvent.click(splitToggleBtn);
-    expect(screen.queryByText('3D Camera Preview')).toBeNull();
+    expect(screen.queryByText(/3D Camera Preview/)).toBeNull();
   });
 });

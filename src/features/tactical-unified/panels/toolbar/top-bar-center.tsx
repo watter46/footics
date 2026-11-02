@@ -1,6 +1,12 @@
 'use client';
 
-import { ArrowLeftRight, ArrowUpDown, RotateCcw } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  ArrowUpDown,
+  Clapperboard,
+  PenTool,
+  RotateCcw,
+} from 'lucide-react';
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,7 +15,13 @@ import {
 } from '@/components/ui/segmented-control';
 import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import type { WorkspaceMode } from '@/features/tactical-unified/stores/tool-types';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
+
+const WORKSPACE_MODE_OPTIONS: SegmentOption<WorkspaceMode>[] = [
+  { id: 'board', label: '作図', icon: PenTool },
+  { id: 'director', label: '演出', icon: Clapperboard },
+];
 
 const ASPECT_RATIO_OPTIONS: SegmentOption<AspectRatio>[] = [
   { id: '16:9', label: '16:9' },
@@ -32,6 +44,10 @@ function createTeamDot(color: string) {
 }
 
 export function TopBarCenter() {
+  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
+  const setWorkspaceMode = useTacticalUnifiedStoreContext(
+    (s) => s.setWorkspaceMode,
+  );
   const aspectRatio = useTacticalUnifiedStoreContext(
     (s) => s.project.aspectRatio,
   );
@@ -68,6 +84,12 @@ export function TopBarCenter() {
 
   return (
     <div className="flex items-center justify-center min-w-0 shrink overflow-hidden gap-2">
+      <SegmentedControl
+        value={workspaceMode}
+        onChange={setWorkspaceMode}
+        options={WORKSPACE_MODE_OPTIONS}
+      />
+
       <Button
         variant="secondary"
         size="sm"
