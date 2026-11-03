@@ -4,24 +4,17 @@ import {
   ArrowLeftRight,
   ArrowUpDown,
   Clapperboard,
-  PenTool,
   RotateCcw,
 } from 'lucide-react';
 import { useMemo } from 'react';
-import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import {
   SegmentedControl,
   type SegmentOption,
 } from '@/components/ui/segmented-control';
 import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import type { WorkspaceMode } from '@/features/tactical-unified/stores/tool-types';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
-
-const WORKSPACE_MODE_OPTIONS: SegmentOption<WorkspaceMode>[] = [
-  { id: 'board', label: '作図', icon: PenTool },
-  { id: 'director', label: '演出', icon: Clapperboard },
-];
 
 const ASPECT_RATIO_OPTIONS: SegmentOption<AspectRatio>[] = [
   { id: '16:9', label: '16:9' },
@@ -45,8 +38,8 @@ function createTeamDot(color: string) {
 
 export function TopBarCenter() {
   const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
-  const setWorkspaceMode = useTacticalUnifiedStoreContext(
-    (s) => s.setWorkspaceMode,
+  const toggleWorkspaceMode = useTacticalUnifiedStoreContext(
+    (s) => s.toggleWorkspaceMode,
   );
   const aspectRatio = useTacticalUnifiedStoreContext(
     (s) => s.project.aspectRatio,
@@ -84,56 +77,61 @@ export function TopBarCenter() {
 
   return (
     <div className="flex items-center justify-center min-w-0 shrink overflow-hidden gap-2">
-      <SegmentedControl
-        value={workspaceMode}
-        onChange={setWorkspaceMode}
-        options={WORKSPACE_MODE_OPTIONS}
-      />
-
-      <Button
-        variant="secondary"
+      <IconButton
+        variant="subtle"
         size="sm"
         onClick={() => swapTeamSides()}
-        icon={
-          isVertical ? (
-            <ArrowUpDown size={12} className="text-[#FF8100]" />
-          ) : (
-            <ArrowLeftRight size={12} className="text-[#FF8100]" />
-          )
-        }
         title={
           isVertical
             ? '攻守交代・陣地反転 (上下反転)'
             : '攻守交代・陣地反転 (左右反転)'
         }
         aria-label="Swap team sides"
+        className="whitespace-nowrap shrink-0"
       >
-        <span className="hidden 2xl:inline">Swap</span>
-      </Button>
+        {isVertical ? (
+          <ArrowUpDown size={13} className="text-[#FF8100]" />
+        ) : (
+          <ArrowLeftRight size={13} className="text-[#FF8100]" />
+        )}
+      </IconButton>
 
-      <Button
-        variant="secondary"
+      <IconButton
+        variant="subtle"
         size="sm"
         onClick={() => resetSlideKeepSquad()}
-        icon={<RotateCcw size={12} className="text-[#A1A1AA]" />}
         title="配置・オブジェクトをリセット（メンバー維持）"
         aria-label="配置・オブジェクトをリセット（メンバー維持）"
+        className="whitespace-nowrap shrink-0"
       >
-        <span className="hidden 2xl:inline">Reset</span>
-      </Button>
+        <RotateCcw size={13} className="text-[#A1A1AA]" />
+      </IconButton>
 
       <SegmentedControl
         value={teamVisibility}
         onChange={setTeamVisibility}
         options={visibilityOptions}
+        className="whitespace-nowrap shrink-0"
       />
 
       <SegmentedControl
         value={aspectRatio}
         onChange={setAspectRatio}
         options={ASPECT_RATIO_OPTIONS}
-        className="font-mono"
+        className="font-mono whitespace-nowrap shrink-0"
       />
+
+      <IconButton
+        variant="ghost"
+        size="sm"
+        isActive={workspaceMode === 'director'}
+        onClick={toggleWorkspaceMode}
+        title="Toggle Layout Mode"
+        aria-label="Toggle Layout Mode"
+        className="whitespace-nowrap shrink-0"
+      >
+        <Clapperboard size={15} strokeWidth={1.5} />
+      </IconButton>
     </div>
   );
 }

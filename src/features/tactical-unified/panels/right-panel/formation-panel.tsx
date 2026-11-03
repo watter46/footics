@@ -28,11 +28,8 @@ export function FormationPanel() {
   );
   const updatePlayer = useTacticalUnifiedStoreContext((s) => s.updatePlayer);
   const setTeamColor = useTacticalUnifiedStoreContext((s) => s.setTeamColor);
-  const teamVisibility = useTacticalUnifiedStoreContext(
-    (s) => s.teamVisibility,
-  );
-  const setTeamVisibility = useTacticalUnifiedStoreContext(
-    (s) => s.setTeamVisibility,
+  const setBallSizeScale = useTacticalUnifiedStoreContext(
+    (s) => s.setBallSizeScale,
   );
   const swapTeamSides = useTacticalUnifiedStoreContext((s) => s.swapTeamSides);
 
@@ -68,6 +65,20 @@ export function FormationPanel() {
     return { home, away };
   }, [activeSlide]);
 
+  const targetPitchPlayers = useMemo(() => {
+    if (!activeSlide) return [];
+    return activeSlide.players.filter(
+      (p) =>
+        p.area === 'pitch' && (activeTeam === 'both' || p.team === activeTeam),
+    );
+  }, [activeSlide, activeTeam]);
+
+  const currentInsideContent =
+    targetPitchPlayers[0]?.style.insideContent ?? 'number';
+  const currentBottomLabel = targetPitchPlayers[0]?.style.bottomLabel ?? 'name';
+  const currentMarkerScale = targetPitchPlayers[0]?.style.sizeScale ?? 1.0;
+  const currentBallScale = activeSlide?.ball.sizeScale ?? 1.0;
+
   const handleApplyFormation = (f: FormationType) => {
     setSelectedFormation(f);
     applyFormation(activeSlideId, f, formationMode, activeTeam);
@@ -87,45 +98,43 @@ export function FormationPanel() {
     }
   };
 
+  const handleBottomLabelChange = (label: 'name' | 'number' | 'none') => {
+    if (!activeSlide) return;
+    const targetPlayers =
+      activeTeam === 'both'
+        ? activeSlide.players
+        : activeSlide.players.filter((p) => p.team === activeTeam);
+
+    for (const p of targetPlayers) {
+      updatePlayer(activeSlideId, p.id, {
+        style: { ...p.style, bottomLabel: label },
+      });
+    }
+  };
+
+  const handleMarkerScaleChange = (scale: number) => {
+    if (!activeSlide) return;
+    const targetPlayers =
+      activeTeam === 'both'
+        ? activeSlide.players
+        : activeSlide.players.filter((p) => p.team === activeTeam);
+
+    for (const p of targetPlayers) {
+      updatePlayer(activeSlideId, p.id, {
+        style: { ...p.style, sizeScale: scale },
+      });
+    }
+  };
+
+  const handleBallScaleChange = (scale: number) => {
+    if (!activeSlideId) return;
+    setBallSizeScale(activeSlideId, scale);
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#121214] text-white text-xs select-none">
-      {/* Panel Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.08] shrink-0 bg-[#18181B]">
-        <div className="flex items-center gap-2">
-          <Shield size={14} className="text-[#60A5FA]" />
-          <span className="font-semibold text-white/90">Formation Presets</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {/* Half / Full Pitch Toggle */}
-          <div className="flex items-center bg-black/40 rounded border border-white/[0.08] p-0.5">
-            <button
-              type="button"
-              onClick={() => setFormationMode('half')}
-              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                formationMode === 'half'
-                  ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)]'
-                  : 'text-white/50 hover:text-white border border-transparent'
-              }`}
-            >
-              Half
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormationMode('full')}
-              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                formationMode === 'full'
-                  ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)]'
-                  : 'text-white/50 hover:text-white border border-transparent'
-              }`}
-            >
-              Full
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div className="flex-1 overflow-y-auto divide-y divide-white/5 custom-scrollbar">
-        {/* 1. Team Control Bar & Batch Display Mode */}
+        {/* 1. Team Configuration & Marker/Ball Settings */}
         <FormationTeamToggle
           activeTeam={activeTeam}
           onTeamChange={setActiveTeam}
@@ -133,20 +142,63 @@ export function FormationPanel() {
           awayColor={project.awayColor.primary}
           onColorChange={setTeamColor}
           teamPlayersCount={teamPlayersCount}
-          teamVisibility={teamVisibility}
-          onVisibilityChange={setTeamVisibility}
+          currentInsideContent={currentInsideContent}
           onDisplayModeChange={handleDisplayModeChange}
+          currentBottomLabel={currentBottomLabel}
+          onBottomLabelChange={handleBottomLabelChange}
+          currentMarkerScale={currentMarkerScale}
+          onMarkerScaleChange={handleMarkerScaleChange}
+          currentBallScale={currentBallScale}
+          onBallScaleChange={handleBallScaleChange}
         />
 
-        {/* 2. Quick Formations & Pitch Actions */}
-        <FormationPresetSelector
-          selectedFormation={selectedFormation}
-          onSelectFormation={handleApplyFormation}
-          onResetFormation={() => handleApplyFormation(selectedFormation)}
-          onClearPitch={() => clearPitchPlayers(activeSlideId)}
-          onSwapSides={() => swapTeamSides(activeSlideId)}
-          isVertical={isVertical}
-        />
+        {/* 2. Formation Presets Section Header & Selector */}
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.08] shrink-0 bg-[#18181B]">
+            <div className="flex items-center gap-2">
+              <Shield size={14} className="text-[#60A5FA]" />
+              <span className="font-semibold text-white/90">
+                Formation Presets
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              {/* Half / Full Pitch Toggle */}
+              <div className="flex items-center bg-black/40 rounded border border-white/[0.08] p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setFormationMode('half')}
+                  className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                    formationMode === 'half'
+                      ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)]'
+                      : 'text-white/50 hover:text-white border border-transparent'
+                  }`}
+                >
+                  Half
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormationMode('full')}
+                  className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                    formationMode === 'full'
+                      ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80 ring-1 ring-[#FF8100]/40 shadow-[0_0_14px_rgba(255,129,0,0.5)]'
+                      : 'text-white/50 hover:text-white border border-transparent'
+                  }`}
+                >
+                  Full
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <FormationPresetSelector
+            selectedFormation={selectedFormation}
+            onSelectFormation={handleApplyFormation}
+            onResetFormation={() => handleApplyFormation(selectedFormation)}
+            onClearPitch={() => clearPitchPlayers(activeSlideId)}
+            onSwapSides={() => swapTeamSides(activeSlideId)}
+            isVertical={isVertical}
+          />
+        </div>
       </div>
     </div>
   );

@@ -37,7 +37,8 @@ function transitionWorkspaceMode(
       panels: {
         ...s.panels,
         sidebarOpen: false,
-        isRightPanelOpen: false,
+        rightPanelTab: 'camera',
+        isRightPanelOpen: true,
       },
     };
   }
@@ -47,6 +48,7 @@ function transitionWorkspaceMode(
     savedPanelStateBeforeDirector: null,
     panels: {
       ...s.panels,
+      rightPanelTab: 'formation',
       ...(restored
         ? {
             sidebarOpen: restored.sidebarOpen,

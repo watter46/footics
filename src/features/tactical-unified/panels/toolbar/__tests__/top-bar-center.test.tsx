@@ -76,31 +76,36 @@ describe('TopBarCenter aspect ratio selector', () => {
     expect(updatedPlayer0?.y).not.toBe(99);
   });
 
-  it('renders Swap button with responsive text hiding class for small screens', () => {
+  it('renders Swap and Reset icon buttons with shrink-0', () => {
     render(<TopBarCenter />);
 
-    const textSpan = screen.getByText('Swap');
-    expect(textSpan).toBeDefined();
-    expect(textSpan.className).toContain('hidden');
-    expect(textSpan.className).toContain('2xl:inline');
+    const swapBtn = screen.getByRole('button', { name: 'Swap team sides' });
+    expect(swapBtn).toBeDefined();
+    expect(swapBtn.className).toContain('shrink-0');
+
+    const resetBtn = screen.getByRole('button', {
+      name: '配置・オブジェクトをリセット（メンバー維持）',
+    });
+    expect(resetBtn).toBeDefined();
+    expect(resetBtn.className).toContain('shrink-0');
   });
 
-  it('allows switching workspace mode between board and director', () => {
+  it('allows toggling workspace mode using Toggle Layout Mode button', () => {
     render(<TopBarCenter />);
 
-    const boardRadio = radio('作図');
-    const directorRadio = radio('演出');
-    expect(boardRadio.getAttribute('aria-checked')).toBe('true');
-    expect(directorRadio.getAttribute('aria-checked')).toBe('false');
+    expect(screen.queryByRole('radio', { name: '作図' })).toBeNull();
+    expect(screen.queryByRole('radio', { name: '演出' })).toBeNull();
 
-    fireEvent.click(directorRadio);
-    expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('director');
-    expect(directorRadio.getAttribute('aria-checked')).toBe('true');
-    expect(boardRadio.getAttribute('aria-checked')).toBe('false');
-
-    fireEvent.click(boardRadio);
+    const toggleBtn = screen.getByRole('button', {
+      name: 'Toggle Layout Mode',
+    });
+    expect(toggleBtn).toBeDefined();
     expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('board');
-    expect(boardRadio.getAttribute('aria-checked')).toBe('true');
-    expect(directorRadio.getAttribute('aria-checked')).toBe('false');
+
+    fireEvent.click(toggleBtn);
+    expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('director');
+
+    fireEvent.click(toggleBtn);
+    expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('board');
   });
 });

@@ -1,10 +1,15 @@
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
 import { TopBar } from '../top-bar';
 
-describe('TopBar Copy PNG with Ref Contract', () => {
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ back: vi.fn(), push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+describe('TopBar Copy with Ref Contract', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
@@ -26,8 +31,10 @@ describe('TopBar Copy PNG with Ref Contract', () => {
 
     const { getByRole } = render(<TopBar canvasRef={canvasRef} />);
 
-    const copyButton = getByRole('button', { name: /Copy PNG/i });
-    fireEvent.click(copyButton);
+    const copyButton = getByRole('button', { name: /^Copy$/i });
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
 
     expect(dispatchEventSpy).not.toHaveBeenCalled();
     expect(copyToClipboardMock).toHaveBeenCalledTimes(1);

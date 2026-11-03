@@ -2,7 +2,8 @@
 
 import { Circle, Hash, ImageIcon, Palette } from 'lucide-react';
 import { useState } from 'react';
-import { ColorInput } from './color-input';
+import { FormationTeamColorPicker } from './formation-team-color-picker';
+import { ScaleSlider } from './scale-slider';
 
 export interface FormationTeamToggleProps {
   activeTeam: 'home' | 'away' | 'both';
@@ -11,10 +12,109 @@ export interface FormationTeamToggleProps {
   awayColor: string;
   onColorChange: (team: 'home' | 'away', color: string) => void;
   teamPlayersCount: { home: number; away: number };
-  teamVisibility: 'both' | 'home' | 'away';
-  onVisibilityChange: (visibility: 'both' | 'home' | 'away') => void;
-  onDisplayModeChange?: (mode: 'number' | 'photo' | 'none') => void;
+  currentInsideContent: 'number' | 'photo' | 'none';
+  onDisplayModeChange: (mode: 'number' | 'photo' | 'none') => void;
+  currentBottomLabel: 'name' | 'number' | 'none';
+  onBottomLabelChange: (label: 'name' | 'number' | 'none') => void;
+  currentMarkerScale: number;
+  onMarkerScaleChange: (scale: number) => void;
+  currentBallScale: number;
+  onBallScaleChange: (scale: number) => void;
 }
+
+function TeamDots({
+  team,
+  homeColor,
+  awayColor,
+}: {
+  team: 'home' | 'away' | 'both';
+  homeColor: string;
+  awayColor: string;
+}) {
+  if (team === 'both') {
+    return (
+      <span className="flex items-center -space-x-0.5 shrink-0">
+        <span
+          className="w-2.5 h-2.5 rounded-full border border-white/30 z-10"
+          style={{ backgroundColor: homeColor }}
+        />
+        <span
+          className="w-2.5 h-2.5 rounded-full border border-white/30"
+          style={{ backgroundColor: awayColor }}
+        />
+      </span>
+    );
+  }
+  return (
+    <span
+      className="w-2.5 h-2.5 rounded-full border border-white/30 shrink-0"
+      style={{ backgroundColor: team === 'home' ? homeColor : awayColor }}
+    />
+  );
+}
+
+const TEAMS = [
+  {
+    id: 'home' as const,
+    label: 'HOME',
+    activeClass: 'bg-blue-600 text-white shadow-sm font-semibold',
+  },
+  {
+    id: 'away' as const,
+    label: 'AWAY',
+    activeClass: 'bg-red-600 text-white shadow-sm font-semibold',
+  },
+  {
+    id: 'both' as const,
+    label: 'BOTH',
+    activeClass: 'bg-purple-600 text-white shadow-sm font-semibold',
+  },
+];
+
+const DISPLAY_MODES = [
+  {
+    id: 'number' as const,
+    label: 'Num',
+    icon: Hash,
+    title: 'Set Number',
+    ariaLabel: 'Display Mode Number',
+  },
+  {
+    id: 'photo' as const,
+    label: 'Photo',
+    icon: ImageIcon,
+    title: 'Set Photo',
+    ariaLabel: 'Display Mode Photo',
+  },
+  {
+    id: 'none' as const,
+    label: 'Empty',
+    icon: Circle,
+    title: 'Set Empty',
+    ariaLabel: 'Display Mode Empty',
+  },
+];
+
+const BOTTOM_LABELS = [
+  {
+    id: 'name' as const,
+    label: 'Name',
+    title: 'Set Name label',
+    ariaLabel: 'Bottom Label Name',
+  },
+  {
+    id: 'number' as const,
+    label: 'Num',
+    title: 'Set Number label',
+    ariaLabel: 'Bottom Label Number',
+  },
+  {
+    id: 'none' as const,
+    label: 'None',
+    title: 'Hide bottom label',
+    ariaLabel: 'Bottom Label None',
+  },
+];
 
 export function FormationTeamToggle({
   activeTeam,
@@ -23,81 +123,49 @@ export function FormationTeamToggle({
   awayColor,
   onColorChange,
   teamPlayersCount,
-  teamVisibility,
-  onVisibilityChange,
+  currentInsideContent,
   onDisplayModeChange,
+  currentBottomLabel,
+  onBottomLabelChange,
+  currentMarkerScale,
+  onMarkerScaleChange,
+  currentBallScale,
+  onBallScaleChange,
 }: FormationTeamToggleProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
 
+  const getTeamCount = (team: 'home' | 'away' | 'both') =>
+    team === 'home'
+      ? teamPlayersCount.home
+      : team === 'away'
+        ? teamPlayersCount.away
+        : teamPlayersCount.home + teamPlayersCount.away;
+
   return (
-    <div className="p-2.5 space-y-2">
+    <div className="p-2.5 space-y-2.5">
       {/* 1段目: 独立したチーム選択ボタン (Home | Away | Both) */}
       <div className="grid grid-cols-3 gap-1.5 p-0.5 rounded-lg bg-white/5 border border-white/[0.08]">
-        <button
-          type="button"
-          onClick={() => onTeamChange('home')}
-          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md font-medium text-xs transition-all cursor-pointer ${
-            activeTeam === 'home'
-              ? 'bg-blue-600 text-white shadow-sm font-semibold'
-              : 'text-white/60 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <span
-            className="w-2.5 h-2.5 rounded-full border border-white/30 shrink-0"
-            style={{ backgroundColor: homeColor }}
-          />
-          <span>HOME</span>
-          <span className="text-[10px] opacity-75">
-            ({teamPlayersCount.home})
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onTeamChange('away')}
-          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md font-medium text-xs transition-all cursor-pointer ${
-            activeTeam === 'away'
-              ? 'bg-red-600 text-white shadow-sm font-semibold'
-              : 'text-white/60 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <span
-            className="w-2.5 h-2.5 rounded-full border border-white/30 shrink-0"
-            style={{ backgroundColor: awayColor }}
-          />
-          <span>AWAY</span>
-          <span className="text-[10px] opacity-75">
-            ({teamPlayersCount.away})
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onTeamChange('both')}
-          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md font-medium text-xs transition-all cursor-pointer ${
-            activeTeam === 'both'
-              ? 'bg-purple-600 text-white shadow-sm font-semibold'
-              : 'text-white/60 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <span className="flex items-center -space-x-0.5 shrink-0">
-            <span
-              className="w-2.5 h-2.5 rounded-full border border-white/30 z-10"
-              style={{ backgroundColor: homeColor }}
-            />
-            <span
-              className="w-2.5 h-2.5 rounded-full border border-white/30"
-              style={{ backgroundColor: awayColor }}
-            />
-          </span>
-          <span>BOTH</span>
-          <span className="text-[10px] opacity-75">
-            ({teamPlayersCount.home + teamPlayersCount.away})
-          </span>
-        </button>
+        {TEAMS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => onTeamChange(t.id)}
+            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md font-medium text-xs transition-all cursor-pointer ${
+              activeTeam === t.id
+                ? t.activeClass
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <TeamDots team={t.id} homeColor={homeColor} awayColor={awayColor} />
+            <span>{t.label}</span>
+            <span className="text-[10px] opacity-75">
+              ({getTeamCount(t.id)})
+            </span>
+          </button>
+        ))}
       </div>
 
-      {/* 2段目: チーム色とピッチ表示フィルタ */}
+      {/* 2段目: チーム色 (ピッチ表示フィルタAll/H/Aは削除) */}
       <div className="flex items-center justify-between gap-2 pt-0.5">
         <button
           type="button"
@@ -111,148 +179,91 @@ export function FormationTeamToggle({
         >
           <Palette size={13} className="text-blue-400" />
           <span className="text-[11px] font-medium text-white/60">Color</span>
-          {activeTeam === 'both' ? (
-            <span className="flex items-center -space-x-1">
-              <span
-                className="w-2.5 h-2.5 rounded-full border border-white/30 inline-block z-10"
-                style={{ backgroundColor: homeColor }}
-              />
-              <span
-                className="w-2.5 h-2.5 rounded-full border border-white/30 inline-block"
-                style={{ backgroundColor: awayColor }}
-              />
-            </span>
-          ) : (
-            <span
-              className="w-2.5 h-2.5 rounded-full border border-white/30 inline-block"
-              style={{
-                backgroundColor: activeTeam === 'home' ? homeColor : awayColor,
-              }}
-            />
-          )}
+          <TeamDots
+            team={activeTeam}
+            homeColor={homeColor}
+            awayColor={awayColor}
+          />
         </button>
-
-        {/* Pitch Visibility Filter */}
-        <div className="flex items-center bg-black/40 rounded-lg border border-white/[0.08] p-0.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => onVisibilityChange('both')}
-            className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-              teamVisibility === 'both'
-                ? 'bg-white/20 text-white font-semibold shadow-xs'
-                : 'text-white/40 hover:text-white'
-            }`}
-            title="Show both teams"
-          >
-            All
-          </button>
-          <button
-            type="button"
-            onClick={() => onVisibilityChange('home')}
-            className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-              teamVisibility === 'home'
-                ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                : 'text-white/40 hover:text-white'
-            }`}
-            title="Home only"
-          >
-            H
-          </button>
-          <button
-            type="button"
-            onClick={() => onVisibilityChange('away')}
-            className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-              teamVisibility === 'away'
-                ? 'bg-red-600 text-white font-semibold shadow-xs'
-                : 'text-white/40 hover:text-white'
-            }`}
-            title="Away only"
-          >
-            A
-          </button>
-        </div>
       </div>
-
-      {/* Display Mode Batch Toggle (Num / Photo / Empty) */}
-      {onDisplayModeChange && (
-        <div className="flex items-center justify-between text-[11px] px-0.5">
-          <span className="text-white/60 font-medium">Display Mode</span>
-          <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/[0.08] p-0.5">
-            <button
-              type="button"
-              onClick={() => onDisplayModeChange('number')}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
-              title="Set Number for selected team"
-            >
-              <Hash size={9} />
-              <span>Num</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onDisplayModeChange('photo')}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
-              title="Set Photo for selected team"
-            >
-              <ImageIcon size={9} />
-              <span>Photo</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onDisplayModeChange('none')}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] text-white/70 hover:text-white hover:bg-white/10 transition-colors uppercase font-medium cursor-pointer"
-              title="Set Empty for selected team"
-            >
-              <Circle size={9} />
-              <span>Empty</span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Inline Color Picker Accordion */}
       {showColorPicker && (
-        <div className="p-2 rounded-lg bg-black/40 border border-white/[0.08] space-y-2 animate-in fade-in duration-150">
-          {(activeTeam === 'home' || activeTeam === 'both') && (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-[10px] text-white/60">
-                <span className="flex items-center gap-1 text-blue-400 font-medium">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full inline-block"
-                    style={{ backgroundColor: homeColor }}
-                  />
-                  Home Team Color
-                </span>
-                <span className="font-mono text-white/40">{homeColor}</span>
-              </div>
-              <ColorInput
-                value={homeColor}
-                onChange={(c) => onColorChange('home', c)}
-                className="w-full"
-              />
-            </div>
-          )}
-
-          {(activeTeam === 'away' || activeTeam === 'both') && (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-[10px] text-white/60">
-                <span className="flex items-center gap-1 text-red-400 font-medium">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full inline-block"
-                    style={{ backgroundColor: awayColor }}
-                  />
-                  Away Team Color
-                </span>
-                <span className="font-mono text-white/40">{awayColor}</span>
-              </div>
-              <ColorInput
-                value={awayColor}
-                onChange={(c) => onColorChange('away', c)}
-                className="w-full"
-              />
-            </div>
-          )}
-        </div>
+        <FormationTeamColorPicker
+          activeTeam={activeTeam}
+          homeColor={homeColor}
+          awayColor={awayColor}
+          onColorChange={onColorChange}
+        />
       )}
+
+      {/* Display Mode Batch Toggle (Num / Photo / Empty) */}
+      <div className="flex items-center justify-between text-[11px] px-0.5">
+        <span className="text-white/60 font-medium">Display Mode</span>
+        <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/[0.08] p-0.5">
+          {DISPLAY_MODES.map((mode) => {
+            const Icon = mode.icon;
+            const isSelected = currentInsideContent === mode.id;
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => onDisplayModeChange(mode.id)}
+                aria-label={mode.ariaLabel}
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] uppercase font-medium cursor-pointer transition-colors ${
+                  isSelected
+                    ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80'
+                    : 'text-white/70 hover:text-white hover:bg-white/10 border border-transparent'
+                }`}
+                title={`${mode.title} for selected team`}
+              >
+                <Icon size={9} />
+                <span>{mode.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Bottom Label Batch Toggle (Name / Num / None) */}
+      <div className="flex items-center justify-between text-[11px] px-0.5">
+        <span className="text-white/60 font-medium">Bottom Label</span>
+        <div className="flex items-center gap-0.5 bg-black/50 rounded border border-white/[0.08] p-0.5">
+          {BOTTOM_LABELS.map((label) => {
+            const isSelected = currentBottomLabel === label.id;
+            return (
+              <button
+                key={label.id}
+                type="button"
+                onClick={() => onBottomLabelChange(label.id)}
+                aria-label={label.ariaLabel}
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] uppercase font-medium cursor-pointer transition-colors ${
+                  isSelected
+                    ? 'bg-[#FF8100]/24 text-[#FFA336] border border-[#FF8100]/80'
+                    : 'text-white/70 hover:text-white hover:bg-white/10 border border-transparent'
+                }`}
+                title={`${label.title} for selected team`}
+              >
+                <span>{label.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Marker Size & Ball Size Sliders */}
+      <ScaleSlider
+        id="marker-size-slider"
+        label="Marker Size"
+        value={currentMarkerScale}
+        onChange={onMarkerScaleChange}
+      />
+      <ScaleSlider
+        id="ball-size-slider"
+        label="Ball Size"
+        value={currentBallScale}
+        onChange={onBallScaleChange}
+      />
     </div>
   );
 }

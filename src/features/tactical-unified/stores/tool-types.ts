@@ -32,10 +32,17 @@ export interface SelectedObject {
   parentPlayerId?: string;
 }
 
+export type RightPanelTab =
+  | 'formation'
+  | 'squad'
+  | 'pitch'
+  | 'camera'
+  | 'screen';
+
 export interface PanelState {
   sidebarOpen: boolean;
   inspectorOpen: boolean;
-  rightPanelTab: 'formation' | 'squad' | 'pitch' | 'screen';
+  rightPanelTab: RightPanelTab;
   isRightPanelOpen: boolean;
   splitPreviewOpen?: boolean;
   exportModalOpen: boolean;
@@ -92,7 +99,7 @@ export interface ToolSlice {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setInspectorOpen: (open: boolean) => void;
-  setRightPanelTab: (tab: 'formation' | 'squad' | 'pitch' | 'screen') => void;
+  setRightPanelTab: (tab: RightPanelTab) => void;
   toggleRightPanel: () => void;
   setRightPanelOpen: (open: boolean) => void;
   toggleSplitPreview: () => void;

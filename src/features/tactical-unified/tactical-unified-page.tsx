@@ -189,7 +189,7 @@ function TacticalUnifiedPageContent({
           </div>
 
           {/* Right Panel (Formation & Squad / Focus Mode対応) */}
-          {!isDirectorMode && !isFocusMode && <RightPanel />}
+          {!isFocusMode && <RightPanel />}
         </div>
 
         {/* Timeline Bar */}

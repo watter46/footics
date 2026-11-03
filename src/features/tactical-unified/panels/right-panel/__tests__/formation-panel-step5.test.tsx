@@ -125,8 +125,8 @@ describe('FormationPanel (Step 5)', () => {
     expect(aside?.className).toContain('min-w-[400px]');
   });
 
-  it('7. FormationTeamToggle renders 3-team buttons on an independent first row', () => {
-    const { container } = render(
+  it('7. FormationTeamToggle renders 3-team buttons without pitch visibility filter', () => {
+    const { container, queryByText } = render(
       <FormationTeamToggle
         activeTeam="home"
         onTeamChange={vi.fn()}
@@ -134,21 +134,88 @@ describe('FormationPanel (Step 5)', () => {
         awayColor="#ef4444"
         onColorChange={vi.fn()}
         teamPlayersCount={{ home: 11, away: 11 }}
-        teamVisibility="both"
-        onVisibilityChange={vi.fn()}
+        currentInsideContent="number"
+        onDisplayModeChange={vi.fn()}
+        currentBottomLabel="name"
+        onBottomLabelChange={vi.fn()}
+        currentMarkerScale={1.0}
+        onMarkerScaleChange={vi.fn()}
+        currentBallScale={1.0}
+        onBallScaleChange={vi.fn()}
       />,
     );
 
     // The first row should contain the grid of 3 team buttons
     const firstRowGrid = container.querySelector('.grid.grid-cols-3');
     expect(firstRowGrid).toBeDefined();
-    // It should not share its direct flex container with the color picker / visibility buttons
-    expect(firstRowGrid?.parentElement?.className).not.toContain(
-      'flex items-center justify-between',
+
+    // Duplicate visibility filters (All | H | A) should NOT exist
+    expect(queryByText('All')).toBeNull();
+    expect(queryByText('H')).toBeNull();
+    expect(queryByText('A')).toBeNull();
+  });
+
+  it('8. highlights currentInsideContent and currentBottomLabel and supports bottom label change', () => {
+    render(<FormationPanel />);
+
+    // Default insideContent is number -> Display Mode Num button should be highlighted
+    const numInsideBtn = screen.getByRole('button', {
+      name: /Display Mode Number/i,
+    });
+    expect(numInsideBtn.className).toContain('bg-[#FF8100]/24');
+
+    // Default bottomLabel is name -> Bottom Label Name button should be highlighted
+    const nameBottomBtn = screen.getByRole('button', {
+      name: /Bottom Label Name/i,
+    });
+    expect(nameBottomBtn.className).toContain('bg-[#FF8100]/24');
+
+    // Switch bottom label to 'none'
+    const noneBottomBtn = screen.getByRole('button', {
+      name: /Bottom Label None/i,
+    });
+    fireEvent.click(noneBottomBtn);
+
+    const activeSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find(
+        (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
+      );
+
+    const homePlayers = activeSlide?.players.filter((p) => p.team === 'home');
+    expect(homePlayers?.every((p) => p.style.bottomLabel === 'none')).toBe(
+      true,
     );
   });
 
-  it('8. FormationCustomManager correctly passes isFirstEleven without inverting it', async () => {
+  it('9. updates marker scale and ball scale when sliders are changed', () => {
+    render(<FormationPanel />);
+
+    const markerSlider = screen.getByLabelText('Marker Size');
+    fireEvent.change(markerSlider, { target: { value: '1.4' } });
+
+    let activeSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find(
+        (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
+      );
+
+    const homePlayers = activeSlide?.players.filter((p) => p.team === 'home');
+    expect(homePlayers?.every((p) => p.style.sizeScale === 1.4)).toBe(true);
+
+    const ballSlider = screen.getByLabelText('Ball Size');
+    fireEvent.change(ballSlider, { target: { value: '1.8' } });
+
+    activeSlide = useTacticalUnifiedStore
+      .getState()
+      .project.slides.find(
+        (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
+      );
+
+    expect(activeSlide?.ball.sizeScale).toBe(1.8);
+  });
+
+  it('10. FormationCustomManager correctly passes isFirstEleven without inverting it', async () => {
     const injectSpy = vi.spyOn(squadBridge, 'injectTeamSquadToTactical');
 
     render(
@@ -182,7 +249,7 @@ describe('FormationPanel (Step 5)', () => {
     injectSpy.mockRestore();
   });
 
-  it('9. synchronizes selectedFormation with activeTeam when project.matchFormations is present', () => {
+  it('11. synchronizes selectedFormation with activeTeam when project.matchFormations is present', () => {
     useTacticalUnifiedStore.getState().loadProject({
       ...useTacticalUnifiedStore.getState().project,
       matchFormations: {
