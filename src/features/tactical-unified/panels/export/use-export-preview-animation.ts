@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
-import { preloadSlidePlayerPhotos } from '@/lib/tactical/export/share-payload';
+import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 import type {
@@ -13,45 +13,22 @@ import type {
   ScreenBackgroundConfig,
   Slide,
 } from '@/lib/types/tactical-unified';
-import { getCachedMarbleImage, loadMarbleTexture } from './load-marble-texture';
+import {
+  ASPECT_CONTAINER_CLASSES,
+  hasActivePitchTransform,
+  PREVIEW_DIMENSIONS,
+  SPLIT_PREVIEW_CONTAINER_CLASSES,
+} from './export-preview-constants';
 import { useAnimationFrameLoop } from './use-animation-frame-loop';
+import { useExportPreviewTextures } from './use-export-preview-textures';
 
-export { useAnimationFrameLoop };
-
-export const PREVIEW_DIMENSIONS: Record<
-  AspectRatio,
-  { width: number; height: number }
-> = {
-  '16:9': { width: 1920, height: 1080 },
-  '9:16': { width: 1080, height: 1920 },
-  '4:5': { width: 1080, height: 1350 },
-  '1:1': { width: 1080, height: 1080 },
+export {
+  ASPECT_CONTAINER_CLASSES,
+  hasActivePitchTransform,
+  PREVIEW_DIMENSIONS,
+  SPLIT_PREVIEW_CONTAINER_CLASSES,
+  useAnimationFrameLoop,
 };
-
-export const ASPECT_CONTAINER_CLASSES: Record<AspectRatio, string> = {
-  '16:9': 'aspect-video',
-  '9:16': 'aspect-[9/16] max-h-[340px]',
-  '4:5': 'aspect-[4/5] max-h-[340px]',
-  '1:1': 'aspect-square max-h-[340px]',
-};
-
-export const SPLIT_PREVIEW_CONTAINER_CLASSES: Record<AspectRatio, string> = {
-  '16:9': 'aspect-video w-full max-h-full',
-  '9:16': 'aspect-[9/16] h-full max-h-full w-auto max-w-full',
-  '4:5': 'aspect-[4/5] h-full max-h-full w-auto max-w-full',
-  '1:1': 'aspect-square h-full max-h-full w-auto max-w-full',
-};
-
-export function hasActivePitchTransform(pt?: PitchTransform | null): boolean {
-  if (!pt) return false;
-  return (
-    pt.tilt !== 0 ||
-    (pt.yaw !== undefined && pt.yaw !== 90) ||
-    pt.zoom !== 1 ||
-    pt.panX !== 0 ||
-    pt.panY !== 0
-  );
-}
 
 export interface UseExportPreviewAnimationParams {
   slides: Slide[];
@@ -90,84 +67,15 @@ export function useExportPreviewAnimation({
   const [isPlaying, setIsPlaying] = useState(false);
   const effectiveIsPlaying =
     externalIsPlaying !== undefined ? externalIsPlaying : isPlaying;
-  const [internalBitmaps, setInternalBitmaps] = useState<
-    Record<string, ImageBitmap>
-  >(() => ({}));
-  const loadedBitmapsRef = useRef<Record<string, ImageBitmap>>({});
-  const [marbleTexture, setMarbleTexture] = useState<HTMLImageElement | null>(
-    () => getCachedMarbleImage(),
-  );
   const totalDurationMs = calculateUnifiedTotalDuration(slides) || 1000;
+  const currentTimeMsRef = useRef<number>(0);
 
-  const slidesRef = useRef(slides);
-  slidesRef.current = slides;
-
-  // コンポーネント／フックのアンマウント時にのみ、保持していた全 ImageBitmap を一括 close (RAII)
-  useEffect(
-    () => () => {
-      for (const bm of Object.values(loadedBitmapsRef.current)) bm?.close?.();
-      loadedBitmapsRef.current = {};
-    },
-    [],
-  );
-
-  const photoSignature = useMemo(() => {
-    const playerIds = slides.flatMap((s) =>
-      (s.players ?? [])
-        .filter((p) => p.style?.insideContent === 'photo')
-        .map((p) => `${p.id}:${p.playerId ?? ''}`),
-    );
-    const photoEntries = photos
-      ? Object.entries(photos)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([k, v]) => `${k}=${v}`)
-          .join(';')
-      : '';
-    return `${playerIds.join(',')}|${photoEntries}`;
-  }, [slides, photos]);
-
-  useEffect(() => {
-    if (pitchAppearance?.pitchBackgroundType !== 'marble') return;
-    const cached = getCachedMarbleImage();
-    if (cached?.complete && cached.naturalWidth > 0) {
-      if (marbleTexture !== cached) {
-        setMarbleTexture(cached);
-      }
-      return;
-    }
-    let isCancelled = false;
-    loadMarbleTexture()
-      .then((img) => !isCancelled && setMarbleTexture(img))
-      .catch((err) =>
-        console.warn(
-          '[useExportPreviewAnimation] Failed to load marble texture:',
-          err,
-        ),
-      );
-    return () => {
-      isCancelled = true;
-    };
-  }, [pitchAppearance?.pitchBackgroundType, marbleTexture]);
-
-  useEffect(() => {
-    if (playerPhotos) return;
-    let isCancelled = false;
-    preloadSlidePlayerPhotos(slidesRef.current, photos).then((map) => {
-      if (isCancelled) {
-        for (const [key, bm] of Object.entries(map)) {
-          if (!loadedBitmapsRef.current[key]) bm?.close?.();
-        }
-        return;
-      }
-      loadedBitmapsRef.current = { ...loadedBitmapsRef.current, ...map };
-      setInternalBitmaps((prev) => ({ ...prev, ...map }));
-    });
-    return () => {
-      isCancelled = true;
-    };
-  }, [photoSignature, photos, playerPhotos]);
-
-  const effectivePlayerPhotos = playerPhotos ?? internalBitmaps;
+  const { effectivePlayerPhotos, marbleTexture } = useExportPreviewTextures({
+    slides,
+    photos,
+    playerPhotos,
+    pitchAppearance,
+  });
 
   const effectiveAspectRatio = canvasAspectRatio ?? aspectRatio;
   const { width: previewWidth, height: previewHeight } =
@@ -175,7 +83,7 @@ export function useExportPreviewAnimation({
 
   const mvpMatrix = useMemo(() => {
     if (
-      slides.length > 1 ||
+      (effectiveIsPlaying && slides.length > 1) ||
       !hasActivePitchTransform(pitchTransform) ||
       !pitchTransform
     ) {
@@ -189,7 +97,14 @@ export function useExportPreviewAnimation({
         aspectRatio,
       ),
     );
-  }, [slides.length, pitchTransform, previewWidth, previewHeight, aspectRatio]);
+  }, [
+    effectiveIsPlaying,
+    slides.length,
+    pitchTransform,
+    previewWidth,
+    previewHeight,
+    aspectRatio,
+  ]);
 
   const isBoundaryActive = Boolean(
     boundaryBox?.enabled &&
@@ -217,6 +132,7 @@ export function useExportPreviewAnimation({
   // ── Canvas Frame Drawing ──
   const drawFrame = useCallback(
     (timeMs: number) => {
+      currentTimeMsRef.current = timeMs;
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
@@ -237,10 +153,12 @@ export function useExportPreviewAnimation({
         screenBackground,
       });
 
-      if (timeLabelRef.current)
+      if (timeLabelRef.current) {
         timeLabelRef.current.textContent = `${(timeMs / 1000).toFixed(1)}s`;
-      if (sliderRef.current)
+      }
+      if (sliderRef.current) {
         sliderRef.current.value = String(Math.round(timeMs));
+      }
     },
     [
       slides,
@@ -257,11 +175,40 @@ export function useExportPreviewAnimation({
     ],
   );
 
+  // ── アニメーション停止中、カメラやスライド・外観設定の更新を即座に静止キャンバスへ反映 ──
+  useEffect(() => {
+    if (!effectiveIsPlaying) drawFrame(currentTimeMsRef.current);
+  }, [
+    effectiveIsPlaying,
+    drawFrame,
+    pitchTransform,
+    slides,
+    pitchAppearance,
+    screenBackground,
+    boundaryBox,
+  ]);
+
   const { seek } = useAnimationFrameLoop(
     effectiveIsPlaying,
     totalDurationMs,
     drawFrame,
   );
+
+  const playbackSeekTimeMs = useTacticalUnifiedStoreContext(
+    (s) => s.playbackSeekTimeMs,
+  );
+  const playbackSeekId = useTacticalUnifiedStoreContext(
+    (s) => s.playbackSeekId,
+  );
+  const lastHandledSeekIdRef = useRef(0);
+
+  useEffect(() => {
+    if (playbackSeekId > 0 && playbackSeekId !== lastHandledSeekIdRef.current) {
+      lastHandledSeekIdRef.current = playbackSeekId;
+      if (playbackSeekTimeMs !== null) seek(playbackSeekTimeMs);
+    }
+  }, [playbackSeekId, playbackSeekTimeMs, seek]);
+
   const togglePlay = useCallback(() => {
     if (onToggleExternalPlay) {
       onToggleExternalPlay();

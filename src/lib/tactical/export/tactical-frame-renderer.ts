@@ -238,6 +238,7 @@ export function renderTacticalFrameToCanvas(
     ctx,
     w,
     h,
+    aspectRatio,
     m,
     toScreenX,
     toScreenY,

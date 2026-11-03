@@ -30,23 +30,26 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
     useTacticalUnifiedStore.getState().resetProject();
   });
 
-  it('renders layout mode header, close button, and controls (without camera bar)', () => {
-    const { getByLabelText, getByText, queryByText, queryByLabelText } = render(
+  it('renders full-bleed layout canvas with border-white/10 without header or footer controls', () => {
+    const { container, queryByText, queryByLabelText } = render(
       <TacticalUnifiedStoreProvider>
         <TacticalSplitPreviewPanel />
       </TacticalUnifiedStoreProvider>,
     );
 
-    // Header & Close
-    expect(getByText('🎬 Layout Mode')).toBeDefined();
-    expect(getByLabelText('Close Layout Mode')).toBeDefined();
+    // Header & Close button should NOT be rendered
+    expect(queryByText('🎬 Layout Mode')).toBeNull();
+    expect(queryByLabelText('Close Layout Mode')).toBeNull();
 
-    // Camera Bar should NOT be rendered
-    expect(queryByText('1.0x')).toBeNull();
-    expect(queryByLabelText('Reset 3D Camera')).toBeNull();
+    // ExportPreviewControls should NOT be rendered
+    expect(queryByLabelText('Play preview')).toBeNull();
 
-    // Controls
-    expect(getByLabelText('Play preview')).toBeDefined();
+    // Canvas container should have border-white/10
+    const canvas = container.querySelector('canvas');
+    expect(canvas).not.toBeNull();
+    const borderContainer = canvas?.parentElement;
+    expect(borderContainer?.className).toContain('border');
+    expect(borderContainer?.className).toContain('border-white/10');
   });
 
   it('renders canvas with 16:9 Full HD (1920x1080) even when project aspectRatio is 4:5', () => {
@@ -94,28 +97,6 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
         },
       }),
     );
-  });
-
-  it('syncs playing state with store isPlaying and togglePlayback', () => {
-    const { getByLabelText } = render(
-      <TacticalUnifiedStoreProvider>
-        <TacticalSplitPreviewPanel />
-      </TacticalUnifiedStoreProvider>,
-    );
-
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
-    expect(getByLabelText('Play preview')).toBeDefined();
-
-    // Clicking play button in preview controls triggers store's togglePlayback
-    fireEvent.click(getByLabelText('Play preview'));
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
-
-    // When store isPlaying becomes true, controls show Pause button
-    expect(getByLabelText('Pause preview')).toBeDefined();
-
-    // Trigger togglePlayback again from store (e.g. Space key)
-    useTacticalUnifiedStore.getState().togglePlayback();
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
   });
 
   it('always passes boundaryBox as null to useExportPreviewAnimation', () => {
@@ -256,26 +237,6 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
     const activeSlide =
       useTacticalUnifiedStore.getState().project.phases[0].slides[0];
     expect(activeSlide.pitchTransform?.zoom).toBe(1.3);
-  });
-
-  it('closes layout mode when clicking close button in header', () => {
-    useTacticalUnifiedStore.getState().setWorkspaceMode('director');
-    useTacticalUnifiedStore.getState().setSplitPreviewOpen(true);
-    expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('director');
-
-    const { getByLabelText } = render(
-      <TacticalUnifiedStoreProvider>
-        <TacticalSplitPreviewPanel />
-      </TacticalUnifiedStoreProvider>,
-    );
-
-    const closeBtn = getByLabelText('Close Layout Mode');
-    fireEvent.click(closeBtn);
-
-    expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('board');
-    expect(useTacticalUnifiedStore.getState().panels.splitPreviewOpen).toBe(
-      false,
-    );
   });
 
   it('passes mvpMatrix as null when camera is at default front angle', () => {

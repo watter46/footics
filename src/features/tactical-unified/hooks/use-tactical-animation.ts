@@ -2,7 +2,7 @@
 
 /** Tactical Unified Canvas — 60fps/120fps Animation Engine Hook */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import {
@@ -30,6 +30,13 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
     (s) => s.setActiveSlide,
   );
   const setIsPlaying = useTacticalUnifiedStoreContext((s) => s.setIsPlaying);
+  const playbackSeekTimeMs = useTacticalUnifiedStoreContext(
+    (s) => s.playbackSeekTimeMs,
+  );
+  const playbackSeekId = useTacticalUnifiedStoreContext(
+    (s) => s.playbackSeekId,
+  );
+  const lastHandledSeekIdRef = useRef(0);
 
   const refs = useAnimationPlaybackRefs();
   const totalDurationMs = calculateUnifiedTotalDuration(slides);
@@ -227,6 +234,15 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
       refs,
     ],
   );
+
+  useEffect(() => {
+    if (playbackSeekId > 0 && playbackSeekId !== lastHandledSeekIdRef.current) {
+      lastHandledSeekIdRef.current = playbackSeekId;
+      if (playbackSeekTimeMs !== null) {
+        seekTo(playbackSeekTimeMs);
+      }
+    }
+  }, [playbackSeekId, playbackSeekTimeMs, seekTo]);
 
   useEffect(() => {
     return () => {

@@ -16,6 +16,9 @@ export interface SlidePlaybackSlice {
     slideIndex: number,
     transitionIndex: number | null,
   ) => void;
+  playbackSeekTimeMs: number | null;
+  playbackSeekId: number;
+  seekTo: (timeMs: number) => void;
 }
 
 export const createSlidePlaybackSlice: StateCreator<
@@ -36,6 +39,7 @@ export const createSlidePlaybackSlice: StateCreator<
       isPlaying: false,
       playbackSlideIndex: 0,
       playbackTransitionIndex: null,
+      playbackSeekTimeMs: null,
     }),
   playbackSpeed: 1.0,
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
@@ -53,4 +57,11 @@ export const createSlidePlaybackSlice: StateCreator<
       }
       return { playbackSlideIndex, playbackTransitionIndex };
     }),
+  playbackSeekTimeMs: null,
+  playbackSeekId: 0,
+  seekTo: (playbackSeekTimeMs) =>
+    set((state) => ({
+      playbackSeekTimeMs,
+      playbackSeekId: state.playbackSeekId + 1,
+    })),
 });

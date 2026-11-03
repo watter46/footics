@@ -2,6 +2,7 @@ import {
   MARKER_PATHS,
   MARKER_VIEWBOX_SIZE,
 } from '@/lib/tactical/marker-assets';
+import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { InterpolatedPlayerState } from '@/lib/tactical/unified-interpolation';
 import { renderPlayerFocus } from './player-focus-renderer';
@@ -18,10 +19,9 @@ function isDrawablePhoto(
   source: CanvasImageSource | null | undefined,
 ): boolean {
   if (!source) return false;
-  if (typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap) {
-    return source.width > 0 && source.height > 0;
-  }
-  return true;
+  return typeof ImageBitmap === 'undefined' || !(source instanceof ImageBitmap)
+    ? true
+    : source.width > 0 && source.height > 0;
 }
 
 /**
@@ -33,6 +33,9 @@ export function renderPlayers(
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>,
 ): void {
   const { ctx, w, h, m, projectObjToScreen, snap, toScreenSizeX } = context;
+  const aspectRatio = context.aspectRatio ?? '16:9';
+  const pitchRect = calculatePitchRect({ width: w, height: h }, aspectRatio);
+  const baseDim = Math.min(pitchRect.width, pitchRect.height);
 
   // 3D透視投影時は投影後の画面Y座標昇順（奥から手前）にソートして重なり順序を保証
   const sortedPlayers = Object.values(players)
@@ -54,7 +57,10 @@ export function renderPlayers(
     const depthScale = hasPerspectiveTilt
       ? Math.max(0.75, Math.min(1.25, 0.88 + (p.y / 100) * 0.24))
       : 1;
-    const radius = Math.max(8, Math.round(w * 0.022 * sizeScale * depthScale));
+    const radius = Math.max(
+      8,
+      Math.round(baseDim * 0.032 * sizeScale * depthScale),
+    );
     const scale = w / 800;
 
     ctx.save();

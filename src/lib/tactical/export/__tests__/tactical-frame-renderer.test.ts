@@ -1737,7 +1737,7 @@ describe('Tactical Frame Renderer', () => {
         timeMs: 0,
         width: 1000,
         height: 1000,
-        aspectRatio: '16:9',
+        aspectRatio: '1:1',
         precomputedFrame: dummyPrecomputed as any,
       });
 
@@ -2002,6 +2002,33 @@ describe('Tactical Frame Renderer', () => {
         latencyMode: 'quality',
         hardwareAcceleration: 'prefer-hardware',
       });
+    });
+
+    it('calculates player marker radius based on pitch baseDim (short edge) * 0.032', () => {
+      const ctx = createMockContext();
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [sampleSlide],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        transparent: false,
+      });
+
+      // 1920x1080 16:9: baseDim = Math.min(pitchRect.width, pitchRect.height) = 1080
+      // radius = Math.max(8, Math.round(1080 * 0.032 * 1 * 1)) = 35 (old w * 0.022 was 42)
+      // p1 is at x: 30, y: 40. toScreenX(30) = 576, toScreenY(40) = 432.
+      const arcCalls = vi.mocked(ctx.arc).mock.calls;
+      const playerRadiusCalls = arcCalls.filter(
+        ([x, y, , startAngle, endAngle]) =>
+          Math.abs(x - 576) < 5 &&
+          Math.abs(y - 432) < 5 &&
+          startAngle === 0 &&
+          Math.abs(endAngle - Math.PI * 2) < 1e-4,
+      );
+      expect(playerRadiusCalls.length).toBeGreaterThan(0);
+      const radius = playerRadiusCalls[0][2];
+      expect(radius).toBe(35);
     });
   });
 });

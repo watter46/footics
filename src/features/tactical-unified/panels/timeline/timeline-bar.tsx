@@ -31,6 +31,7 @@ import {
 import { Sliders } from 'lucide-react';
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { ActionButton } from '@/components/ui/action-button';
+import { getSlideSnapTime } from '@/features/tactical-unified/hooks/tactical-animation-canvas';
 import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { AddSlideButton } from './add-slide-button';
@@ -53,6 +54,10 @@ export function TimelineBar() {
   const setActiveSlide = useTacticalUnifiedStoreContext(
     (s) => s.setActiveSlide,
   );
+  const setPlaybackIndices = useTacticalUnifiedStoreContext(
+    (s) => s.setPlaybackIndices,
+  );
+  const seekTo = useTacticalUnifiedStoreContext((s) => s.seekTo);
   const deleteSlide = useTacticalUnifiedStoreContext((s) => s.deleteSlide);
   const duplicateSlide = useTacticalUnifiedStoreContext(
     (s) => s.duplicateSlide,
@@ -130,6 +135,19 @@ export function TimelineBar() {
     [slides, reorderSlides],
   );
 
+  const handleSelectSlide = useCallback(
+    (slideId: string) => {
+      setActiveSlide(slideId);
+      const targetIndex = slides.findIndex((s) => s.id === slideId);
+      if (targetIndex !== -1) {
+        setPlaybackIndices(targetIndex, null);
+        const startTimeMs = getSlideSnapTime(slides, targetIndex);
+        seekTo(startTimeMs);
+      }
+    },
+    [slides, setActiveSlide, setPlaybackIndices, seekTo],
+  );
+
   return (
     <footer className="flex items-center justify-between h-16 px-4 bg-[#121214] border-t border-white/[0.07] shrink-0 select-none z-10">
       {/* Left: Playback Controls */}
@@ -179,7 +197,7 @@ export function TimelineBar() {
                   canDelete={slides.length > 1}
                   canMoveLeft={i > 0}
                   canMoveRight={i < slides.length - 1}
-                  onSelect={setActiveSlide}
+                  onSelect={handleSelectSlide}
                   onDelete={deleteSlide}
                   onDuplicate={duplicateSlide}
                   onMoveLeft={() => handleMoveSlide(i, 'left')}

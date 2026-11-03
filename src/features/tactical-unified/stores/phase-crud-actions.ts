@@ -1,13 +1,28 @@
-import type { Slide } from '@/lib/types/tactical-unified';
+import type {
+  Slide,
+  TacticalPhase,
+  TacticalProject,
+} from '@/lib/types/tactical-unified';
 import { createDefaultPhase } from '@/lib/types/tactical-unified';
 import { resolvePanelStateForSlide } from './slide-helpers';
 import { recordHistory } from './store-helpers';
-import type { TacticalUnifiedState } from './tactical-unified-store';
+import type { PanelState, SelectedObject } from './tool-types';
+
+export interface PhaseStoreState {
+  project: TacticalProject;
+  activePhaseId: string;
+  activeSlideId: string;
+  selectedObjects: SelectedObject[];
+  isDirty: boolean;
+  panels: PanelState;
+  past: TacticalPhase[][];
+  future: TacticalPhase[][];
+}
 
 type StoreSetter = (
-  fn: (state: TacticalUnifiedState) => Partial<TacticalUnifiedState>,
+  fn: (state: PhaseStoreState) => Partial<PhaseStoreState>,
 ) => void;
-type StoreGetter = () => TacticalUnifiedState;
+type StoreGetter = () => PhaseStoreState;
 
 export function createPhaseCrudActions(set: StoreSetter, get: StoreGetter) {
   return {

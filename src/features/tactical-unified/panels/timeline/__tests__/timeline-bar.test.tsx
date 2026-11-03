@@ -6,6 +6,7 @@ import { TimelineBar } from '../timeline-bar';
 describe('TimelineBar Component', () => {
   beforeEach(() => {
     useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.getState().stopPlayback();
   });
 
   it('renders playback controls and initial scene', () => {
@@ -305,6 +306,94 @@ describe('TimelineBar Component', () => {
       );
       expect(slideCardEl).not.toBeNull();
       expect(slideCardEl?.getAttribute('data-slide-card')).toBe('true');
+    });
+  });
+
+  describe('シーン選択とシーク連動 (Scene selection & seek sync)', () => {
+    it('SlideCard をクリックした際、setActiveSlide とともに対象シーンの開始時間へ連動し playbackSlideIndex および playbackSeekTimeMs が同期される（停止中）', () => {
+      render(<TimelineBar />);
+
+      // スライドを2枚追加（計3枚: Scene 1, Scene 2, Scene 3）
+      const addBtn = screen.getByRole('button', { name: /add scene/i });
+      fireEvent.click(addBtn);
+      fireEvent.click(addBtn);
+
+      const store = useTacticalUnifiedStore.getState();
+      const slides = store.project.slides;
+      expect(slides).toHaveLength(3);
+
+      // 最初は Scene 3 がアクティブになっている（追加されたため）
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(
+        slides[2].id,
+      );
+
+      // Scene 2 の SlideCard をクリック
+      const scene2Card = screen.getByRole('button', { name: 'Scene 2' });
+      fireEvent.click(scene2Card);
+
+      // activeSlideId が Scene 2 になり、playbackSlideIndex が 1、シーク時間が Scene 2 の開始時刻 (1000ms) に同期される
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(
+        slides[1].id,
+      );
+      expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(1);
+      expect(
+        useTacticalUnifiedStore.getState().playbackTransitionIndex,
+      ).toBeNull();
+      expect(useTacticalUnifiedStore.getState().playbackSeekTimeMs).toBe(1000);
+
+      // Scene 1 の SlideCard をクリック
+      const scene1Card = screen.getByRole('button', { name: 'Scene 1' });
+      fireEvent.click(scene1Card);
+
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(
+        slides[0].id,
+      );
+      expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(0);
+      expect(
+        useTacticalUnifiedStore.getState().playbackTransitionIndex,
+      ).toBeNull();
+      expect(useTacticalUnifiedStore.getState().playbackSeekTimeMs).toBe(0);
+    });
+
+    it('再生中に SlideCard をクリックした際、再生状態を維持したまま対象シーンの開始時間へジャンプする', () => {
+      render(<TimelineBar />);
+
+      // スライドを2枚追加（計3枚: Scene 1, Scene 2, Scene 3）
+      const addBtn = screen.getByRole('button', { name: /add scene/i });
+      fireEvent.click(addBtn);
+      fireEvent.click(addBtn);
+
+      const store = useTacticalUnifiedStore.getState();
+      const slides = store.project.slides;
+
+      // 再生を開始
+      const playBtn = screen.getByRole('button', { name: /play/i });
+      fireEvent.click(playBtn);
+      expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
+
+      // 再生中に Scene 2 の SlideCard をクリック
+      const scene2Card = screen.getByRole('button', { name: 'Scene 2' });
+      fireEvent.click(scene2Card);
+
+      // 再生中が維持され、Scene 2 の開始時刻 (1000ms) へシークされる
+      expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(
+        slides[1].id,
+      );
+      expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(1);
+      expect(useTacticalUnifiedStore.getState().playbackSeekTimeMs).toBe(1000);
+
+      // さらに Scene 3 の SlideCard をクリック
+      const scene3Card = screen.getByRole('button', { name: 'Scene 3' });
+      fireEvent.click(scene3Card);
+
+      expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(
+        slides[2].id,
+      );
+      expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(2);
+      // Scene 3 の開始時間: Scene 2(1000ms move + 500ms pause) + Scene 3(1000ms move) = 2500ms
+      expect(useTacticalUnifiedStore.getState().playbackSeekTimeMs).toBe(2500);
     });
   });
 });

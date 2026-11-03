@@ -1,3 +1,5 @@
+import type { AspectRatio } from '@/lib/types/tactical-unified';
+
 export type AnyCanvasRenderingContext2D =
   | CanvasRenderingContext2D
   | OffscreenCanvasRenderingContext2D;
@@ -9,6 +11,7 @@ export interface FrameRenderContext {
   ctx: AnyCanvasRenderingContext2D;
   w: number;
   h: number;
+  aspectRatio?: AspectRatio;
   m?: Float32Array | null;
   toScreenX: (normX: number) => number;
   toScreenY: (normY: number) => number;

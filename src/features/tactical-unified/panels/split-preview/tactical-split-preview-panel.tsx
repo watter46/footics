@@ -1,12 +1,8 @@
 'use client';
 
-import { X } from 'lucide-react';
 import { type PointerEvent, useMemo, useRef, type WheelEvent } from 'react';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
-import {
-  ExportPreviewControls,
-  useExportPreviewAnimation,
-} from '@/features/tactical-unified/panels/export/export-preview-player';
+import { useExportPreviewAnimation } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
   selectActivePhaseSlides,
   selectActiveSlide,
@@ -33,12 +29,6 @@ export function TacticalSplitPreviewPanel() {
   );
   const updatePitchTransform = useTacticalUnifiedStoreContext(
     (s) => s.updatePitchTransform,
-  );
-  const setSplitPreviewOpen = useTacticalUnifiedStoreContext(
-    (s) => s.setSplitPreviewOpen,
-  );
-  const setWorkspaceMode = useTacticalUnifiedStoreContext(
-    (s) => s.setWorkspaceMode,
   );
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -72,14 +62,7 @@ export function TacticalSplitPreviewPanel() {
     return record;
   }, [allPhasePlayers, playerPhotoMap]);
 
-  const {
-    totalDurationMs,
-    previewWidth,
-    previewHeight,
-    togglePlay,
-    handleReset,
-    handleSeek,
-  } = useExportPreviewAnimation({
+  const { previewWidth, previewHeight } = useExportPreviewAnimation({
     slides,
     aspectRatio,
     canvasAspectRatio: '16:9',
@@ -162,35 +145,9 @@ export function TacticalSplitPreviewPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0D0D0E] text-white select-none overflow-hidden">
-      {/* Top Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.08] bg-black/30 shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold tracking-wide text-white/90">
-            🎬 Layout Mode
-          </span>
-          <div className="flex items-center gap-1 font-mono text-[10px] text-white/50">
-            <span ref={timeLabelRef}>0.0s</span>
-            <span>/</span>
-            <span>{(totalDurationMs / 1000).toFixed(1)}s</span>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setWorkspaceMode('board');
-            setSplitPreviewOpen(false);
-          }}
-          aria-label="Close Layout Mode"
-          title="Close Layout Mode"
-          className="p-1 rounded text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
+    <div className="flex flex-col h-full w-full bg-[#0D0D0E] text-white select-none overflow-hidden">
       {/* Center Layout Preview Canvas */}
-      <div className="flex-1 min-h-0 p-3 flex items-center justify-center bg-[#070709] overflow-hidden">
+      <div className="flex-1 min-h-0 p-4 flex items-center justify-center bg-[#070709] overflow-hidden w-full h-full">
         <div className="relative aspect-video w-full max-h-full rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-lg">
           <canvas
             ref={canvasRef}
@@ -204,18 +161,6 @@ export function TacticalSplitPreviewPanel() {
             className="w-full h-full object-contain cursor-grab active:cursor-grabbing touch-none"
           />
         </div>
-      </div>
-
-      {/* Footer Playback Controls */}
-      <div className="p-2 border-t border-white/[0.08] bg-black/40 shrink-0">
-        <ExportPreviewControls
-          isPlaying={isPlaying}
-          onTogglePlay={togglePlay}
-          onReset={handleReset}
-          onSeek={handleSeek}
-          sliderRef={sliderRef}
-          totalDurationMs={totalDurationMs}
-        />
       </div>
     </div>
   );
