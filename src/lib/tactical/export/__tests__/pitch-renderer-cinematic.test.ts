@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
+import { calculatePitchGeometryForAspect } from '@/lib/tactical/pitch-geometry';
 import type { ScreenBackgroundConfig } from '@/lib/types/tactical-unified';
+import { renderPitchMarkings3D } from '../renderers/pitch-markings-3d';
 import {
   clearPitchRendererCache,
   renderPitch,
+  renderScreenBackground,
 } from '../renderers/pitch-renderer';
 import type { FrameRenderContext } from '../renderers/renderer-context';
 import {
@@ -238,5 +242,164 @@ describe('pitch-renderer cinematic and screen background', () => {
     );
     expect(frameFill?.fillStyle).toBe('#0D0D0E');
     expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 1920, 1080);
+  });
+
+  describe('screen-pitch layer separation and 2D bounds centering', () => {
+    it('exports renderScreenBackground directly', () => {
+      expect(typeof renderScreenBackground).toBe('function');
+      const ctx = createMockContext();
+      renderScreenBackground(ctx, 1920, 1080, { type: 'dark' });
+      expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 1920, 1080);
+    });
+
+    it('renders screen background at 1920x1080 while centering 4:5 pitch at (528, 0, 864, 1080)', () => {
+      const ctx = createMockContext();
+      const moveToCoords: { x: number; y: number }[] = [];
+      const lineToCoords: { x: number; y: number }[] = [];
+      (ctx.moveTo as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+        (x: number, y: number) => {
+          moveToCoords.push({ x, y });
+        },
+      );
+      (ctx.lineTo as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+        (x: number, y: number) => {
+          lineToCoords.push({ x, y });
+        },
+      );
+
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [
+          {
+            id: 's1',
+            index: 0,
+            players: [],
+            arrows: [],
+            zones: [],
+            texts: [],
+            ball: { x: 50, y: 50, visible: false },
+            transitionDurationMs: 1000,
+            pauseMs: 500,
+            easing: 'ease-in-out',
+          },
+        ],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '4:5',
+        screenBackground: { type: 'dark' },
+      });
+
+      // 1. Screen background covers 1920x1080
+      const screenFill = ctx.fillRectCalls.find(
+        (c) => c.x === 0 && c.y === 0 && c.w === 1920 && c.h === 1080,
+      );
+      expect(screenFill).toBeDefined();
+
+      // 2. Pitch markings lines are confined within the 4:5 centered rect: x in [528, 1392]
+      // 4:5 in 1920x1080 canvas: pitchRect = { x: 528, y: 0, width: 864, height: 1080 }
+      const allCoords = [...moveToCoords, ...lineToCoords];
+      expect(allCoords.length).toBeGreaterThan(0);
+      for (const pt of allCoords) {
+        expect(pt.x).toBeGreaterThanOrEqual(528 - 1);
+        expect(pt.x).toBeLessThanOrEqual(528 + 864 + 1);
+      }
+    });
+  });
+
+  describe('3D Near-plane clipping (project3DSegment)', () => {
+    it('uses project3DSegment in renderPitchMarkings3D and skips segments returning null', () => {
+      const ctx = createMockContext();
+      const geom = calculatePitchGeometryForAspect('16:9');
+      let segmentCallCount = 0;
+
+      const frameCtx: FrameRenderContext = {
+        ctx,
+        w: 1920,
+        h: 1080,
+        m: new Float32Array(16),
+        toScreenX: (x) => (x / 100) * 1920,
+        toScreenY: (y) => (y / 100) * 1080,
+        toScreenSizeX: (s) => (s / 100) * 1920,
+        toScreenSizeY: (s) => (s / 100) * 1080,
+        projectObjToScreen: () => ({ x: 0, y: 0 }),
+        project3DSegment: vi.fn(
+          (
+            x1: number,
+            y1: number,
+            x2: number,
+            y2: number,
+          ): [{ x: number; y: number }, { x: number; y: number }] | null => {
+            segmentCallCount++;
+            // First 2 segments return null (clipped/behind), others return screen points
+            if (segmentCallCount <= 2) {
+              return null;
+            }
+            return [
+              { x: (x1 / 100) * 1920, y: (y1 / 100) * 1080 },
+              { x: (x2 / 100) * 1920, y: (y2 / 100) * 1080 },
+            ];
+          },
+        ),
+        snap: (v) => v,
+      };
+
+      renderPitchMarkings3D(frameCtx, geom);
+
+      expect(segmentCallCount).toBeGreaterThan(10);
+      expect(frameCtx.project3DSegment).toHaveBeenCalled();
+    });
+
+    it('prevents NaN or Infinity coordinates under extreme tilt/zoom camera transform', () => {
+      const transform = {
+        tilt: 58,
+        yaw: 45,
+        zoom: 2.5,
+        panX: 0,
+        panY: 0,
+        isLocked: false,
+      };
+      const mvp = new Float32Array(
+        buildExportMVPMatrix(transform, 1920, 1080, '16:9'),
+      );
+
+      const ctx = createMockContext();
+
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [
+          {
+            id: 's1',
+            index: 0,
+            players: [],
+            arrows: [],
+            zones: [],
+            texts: [],
+            ball: { x: 50, y: 50, visible: true },
+            transitionDurationMs: 1000,
+            pauseMs: 500,
+            easing: 'ease-in-out',
+          },
+        ],
+        timeMs: 0,
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+        mvpMatrix: mvp,
+      });
+
+      const moveToCalls = (ctx.moveTo as unknown as ReturnType<typeof vi.fn>)
+        .mock.calls;
+      const lineToCalls = (ctx.lineTo as unknown as ReturnType<typeof vi.fn>)
+        .mock.calls;
+
+      expect(moveToCalls.length).toBeGreaterThan(0);
+      for (const [x, y] of moveToCalls) {
+        expect(Number.isFinite(x)).toBe(true);
+        expect(Number.isFinite(y)).toBe(true);
+      }
+      for (const [x, y] of lineToCalls) {
+        expect(Number.isFinite(x)).toBe(true);
+        expect(Number.isFinite(y)).toBe(true);
+      }
+    });
   });
 });

@@ -1,14 +1,13 @@
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as playerPhotoRegistryHook from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { TacticalUnifiedStoreProvider } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import * as sharePayload from '@/lib/tactical/export/share-payload';
 import * as frameRenderer from '@/lib/tactical/export/tactical-frame-renderer';
-import { SPLIT_CAMERA_PRESETS } from '../split-preview-camera-bar';
 import { TacticalSplitPreviewPanel } from '../tactical-split-preview-panel';
 
-describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
+describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     const mockCtx = new Proxy(
@@ -31,51 +30,120 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
     useTacticalUnifiedStore.getState().resetProject();
   });
 
-  it('renders camera bar with 6 camera presets, zoom badge, reset button', () => {
-    const { getByLabelText, getByText, getByRole } = render(
+  it('renders layout mode header, close button, and controls (without camera bar)', () => {
+    const { getByLabelText, getByText, queryByText, queryByLabelText } = render(
       <TacticalUnifiedStoreProvider>
         <TacticalSplitPreviewPanel />
       </TacticalUnifiedStoreProvider>,
     );
 
     // Header & Close
-    expect(getByText('🎬 Director Mode (3D Camera Preview)')).toBeDefined();
-    expect(getByLabelText('Close Director Mode')).toBeDefined();
+    expect(getByText('🎬 Layout Mode')).toBeDefined();
+    expect(getByLabelText('Close Layout Mode')).toBeDefined();
 
-    // 6 Camera Presets
-    for (const preset of SPLIT_CAMERA_PRESETS) {
-      expect(
-        getByRole('button', {
-          name: new RegExp(`${preset.tilt}°/${preset.yaw}°`),
-        }),
-      ).toBeDefined();
-    }
-
-    // Zoom badge
-    expect(getByText('1.0x')).toBeDefined();
-
-    // Reset button
-    expect(getByLabelText('Reset 3D Camera')).toBeDefined();
+    // Camera Bar should NOT be rendered
+    expect(queryByText('1.0x')).toBeNull();
+    expect(queryByLabelText('Reset 3D Camera')).toBeNull();
 
     // Controls
     expect(getByLabelText('Play preview')).toBeDefined();
   });
 
-  it('updates slide tilt and yaw when clicking a camera preset button', () => {
-    const { getByRole } = render(
+  it('renders canvas with 16:9 Full HD (1920x1080) even when project aspectRatio is 4:5', () => {
+    useTacticalUnifiedStore.getState().setAspectRatio('4:5');
+    const activeSlide =
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
+    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
+      aspectRatio: '4:5',
+    });
+
+    const { container } = render(
       <TacticalUnifiedStoreProvider>
         <TacticalSplitPreviewPanel />
       </TacticalUnifiedStoreProvider>,
     );
 
-    // Click '15°/75°' preset (shallow-right)
-    const presetBtn = getByRole('button', { name: /15°\/75°/ });
-    fireEvent.click(presetBtn);
+    const canvas = container.querySelector('canvas');
+    if (!canvas) throw new Error('Canvas not found');
+    expect(canvas.width).toBe(1920);
+    expect(canvas.height).toBe(1080);
 
+    const containerDiv = canvas.parentElement;
+    expect(containerDiv?.className).toContain('aspect-video');
+    expect(containerDiv?.className).toContain('w-full');
+    expect(containerDiv?.className).toContain('max-h-full');
+  });
+
+  it('passes screenBackground from store to renderTacticalFrameToCanvas', () => {
+    const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
+    useTacticalUnifiedStore.getState().updateScreenBackground({
+      type: 'cinematic',
+    });
+
+    render(
+      <TacticalUnifiedStoreProvider>
+        <TacticalSplitPreviewPanel />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    expect(renderSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        screenBackground: {
+          type: 'cinematic',
+        },
+      }),
+    );
+  });
+
+  it('syncs playing state with store isPlaying and togglePlayback', () => {
+    const { getByLabelText } = render(
+      <TacticalUnifiedStoreProvider>
+        <TacticalSplitPreviewPanel />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
+    expect(getByLabelText('Play preview')).toBeDefined();
+
+    // Clicking play button in preview controls triggers store's togglePlayback
+    fireEvent.click(getByLabelText('Play preview'));
+    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
+
+    // When store isPlaying becomes true, controls show Pause button
+    expect(getByLabelText('Pause preview')).toBeDefined();
+
+    // Trigger togglePlayback again from store (e.g. Space key)
+    useTacticalUnifiedStore.getState().togglePlayback();
+    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
+  });
+
+  it('always passes boundaryBox as null to useExportPreviewAnimation', () => {
+    const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
     const activeSlide =
       useTacticalUnifiedStore.getState().project.phases[0].slides[0];
-    expect(activeSlide.pitchTransform?.tilt).toBe(15);
-    expect(activeSlide.pitchTransform?.yaw).toBe(75);
+    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
+      boundaryBox: {
+        x: 10,
+        y: 10,
+        width: 80,
+        height: 80,
+        enabled: true,
+      },
+    });
+
+    render(
+      <TacticalUnifiedStoreProvider>
+        <TacticalSplitPreviewPanel />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    expect(renderSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        boundaryBox: null,
+      }),
+    );
   });
 
   it('updates tilt and yaw on normal left-drag (orbit mode)', () => {
@@ -88,9 +156,6 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
     const canvas = container.querySelector('canvas');
     if (!canvas) throw new Error('Canvas not found');
 
-    // Drag up (-dy) and right (+dx): tilt should increase, yaw should increase
-    // clientX: 100 -> 150 (dx = 50 -> yaw + 50*0.4 = 90 + 20 = 110)
-    // clientY: 100 -> 60 (dy = -40 -> tilt + 40*0.25 = 0 + 10 = 10)
     fireEvent.pointerDown(canvas, { clientX: 100, clientY: 100, button: 0 });
     fireEvent.pointerMove(canvas, { clientX: 150, clientY: 60, button: 0 });
     fireEvent.pointerUp(canvas);
@@ -99,7 +164,6 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
       useTacticalUnifiedStore.getState().project.phases[0].slides[0];
     expect(activeSlide.pitchTransform?.tilt).toBe(10);
     expect(activeSlide.pitchTransform?.yaw).toBe(110);
-    // pan should remain 0
     expect(activeSlide.pitchTransform?.panX ?? 0).toBe(0);
     expect(activeSlide.pitchTransform?.panY ?? 0).toBe(0);
   });
@@ -132,8 +196,7 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
       useTacticalUnifiedStore.getState().project.phases[0].slides[0];
     expect(activeSlide.pitchTransform?.tilt).toBe(70);
 
-    // Test yaw wrap-around (left drag huge amount to go negative)
-    // current yaw is 90. left drag dx = -300 -> 90 + (-120) = -30 -> wrapped to 330
+    // Test yaw wrap-around
     useTacticalUnifiedStore
       .getState()
       .updatePitchTransform(activeSlide.id, { yaw: 90 });
@@ -156,7 +219,6 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
     const canvas = container.querySelector('canvas');
     if (!canvas) throw new Error('Canvas not found');
 
-    // Shift + Pointer drag
     fireEvent.pointerDown(canvas, {
       clientX: 100,
       clientY: 100,
@@ -175,13 +237,12 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
       useTacticalUnifiedStore.getState().project.phases[0].slides[0];
     expect(activeSlide.pitchTransform?.panX).toBe(50);
     expect(activeSlide.pitchTransform?.panY).toBe(30);
-    // tilt and yaw should remain untouched
     expect(activeSlide.pitchTransform?.tilt).toBe(0);
     expect(activeSlide.pitchTransform?.yaw).toBe(90);
   });
 
-  it('updates zoom on canvas wheel event within 0.5 to 2.5 bounds and resets to default (tilt: 0, yaw: 90, zoom: 1, pan: 0,0)', () => {
-    const { container, getByText, getByLabelText } = render(
+  it('updates zoom on canvas wheel event within 0.5 to 2.5 bounds', () => {
+    const { container } = render(
       <TacticalUnifiedStoreProvider>
         <TacticalSplitPreviewPanel />
       </TacticalUnifiedStoreProvider>,
@@ -190,37 +251,14 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
     const canvas = container.querySelector('canvas');
     if (!canvas) throw new Error('Canvas not found');
 
-    // Wheel zoom in (negative deltaY)
     fireEvent.wheel(canvas, { deltaY: -200 });
 
-    let activeSlide =
+    const activeSlide =
       useTacticalUnifiedStore.getState().project.phases[0].slides[0];
-    // 1 - (-200 * 0.0015) = 1 + 0.3 = 1.3
     expect(activeSlide.pitchTransform?.zoom).toBe(1.3);
-    expect(getByText('1.3x')).toBeDefined();
-
-    // Also change tilt and yaw
-    useTacticalUnifiedStore.getState().updatePitchTransform(activeSlide.id, {
-      tilt: 35,
-      yaw: 75,
-      panX: 40,
-      panY: 50,
-    });
-
-    // Reset camera button
-    const resetBtn = getByLabelText('Reset 3D Camera');
-    fireEvent.click(resetBtn);
-
-    activeSlide =
-      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
-    expect(activeSlide.pitchTransform?.zoom).toBe(1);
-    expect(activeSlide.pitchTransform?.panX).toBe(0);
-    expect(activeSlide.pitchTransform?.panY).toBe(0);
-    expect(activeSlide.pitchTransform?.tilt).toBe(0);
-    expect(activeSlide.pitchTransform?.yaw).toBe(90);
   });
 
-  it('closes director mode when clicking close button in header', () => {
+  it('closes layout mode when clicking close button in header', () => {
     useTacticalUnifiedStore.getState().setWorkspaceMode('director');
     useTacticalUnifiedStore.getState().setSplitPreviewOpen(true);
     expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('director');
@@ -231,7 +269,7 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
       </TacticalUnifiedStoreProvider>,
     );
 
-    const closeBtn = getByLabelText('Close Director Mode');
+    const closeBtn = getByLabelText('Close Layout Mode');
     fireEvent.click(closeBtn);
 
     expect(useTacticalUnifiedStore.getState().workspaceMode).toBe('board');
@@ -240,87 +278,10 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
     );
   });
 
-  it('passes slide boundaryBox and uses split preview container classes (without modal max-h restriction)', () => {
+  it('passes mvpMatrix as null when camera is at default front angle', () => {
     const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
 
-    const boundaryBox = {
-      x: 10,
-      y: 10,
-      width: 80,
-      height: 80,
-      enabled: true,
-    };
-    const activeSlide =
-      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
-    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
-      boundaryBox,
-      aspectRatio: '4:5',
-    });
-
-    const { container } = render(
-      <TacticalUnifiedStoreProvider>
-        <TacticalSplitPreviewPanel />
-      </TacticalUnifiedStoreProvider>,
-    );
-
-    const canvas = container.querySelector('canvas');
-    if (!canvas) throw new Error('Canvas not found');
-    const containerDiv = canvas.parentElement;
-    expect(containerDiv).toBeDefined();
-
-    // Check full-size split container classes (aspect-[4/5] h-full max-h-full w-auto max-w-full)
-    // and ensure modal max-h-[340px] is NOT present
-    expect(containerDiv?.className).toContain('aspect-[4/5]');
-    expect(containerDiv?.className).toContain('h-full');
-    expect(containerDiv?.className).not.toContain('max-h-[340px]');
-
-    // Check that boundaryBox and activeSlide's aspectRatio were passed to renderTacticalFrameToCanvas
-    expect(renderSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        boundaryBox,
-        aspectRatio: '4:5',
-      }),
-    );
-  });
-
-  it('renders canvas with Full HD resolution (1080x1350 for 4:5, 1920x1080 for 16:9)', () => {
-    // 1. Default 4:5 Full HD (1080x1350)
-    const { container, unmount } = render(
-      <TacticalUnifiedStoreProvider>
-        <TacticalSplitPreviewPanel />
-      </TacticalUnifiedStoreProvider>,
-    );
-
-    const canvas = container.querySelector('canvas');
-    if (!canvas) throw new Error('Canvas not found');
-    expect(canvas.width).toBe(1080);
-    expect(canvas.height).toBe(1350);
-    unmount();
-
-    // 2. 16:9 Full HD (1920x1080)
-    const activeSlide =
-      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
-    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
-      aspectRatio: '16:9',
-    });
-
-    const { container: container169 } = render(
-      <TacticalUnifiedStoreProvider>
-        <TacticalSplitPreviewPanel />
-      </TacticalUnifiedStoreProvider>,
-    );
-
-    const canvas169 = container169.querySelector('canvas');
-    if (!canvas169) throw new Error('Canvas not found');
-    expect(canvas169.width).toBe(1920);
-    expect(canvas169.height).toBe(1080);
-  });
-
-  it('passes mvpMatrix as null when camera is at default front angle (tilt: 0, yaw: 90, zoom: 1, pan: 0, 0)', () => {
-    const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
-
-    const { getByRole } = render(
+    render(
       <TacticalUnifiedStoreProvider>
         <TacticalSplitPreviewPanel />
       </TacticalUnifiedStoreProvider>,
@@ -333,9 +294,14 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
       }),
     );
 
-    // Now change tilt/yaw by preset
-    const presetBtn = getByRole('button', { name: /15°\/75°/ });
-    fireEvent.click(presetBtn);
+    const activeSlide =
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
+    act(() => {
+      useTacticalUnifiedStore.getState().updatePitchTransform(activeSlide.id, {
+        tilt: 15,
+        yaw: 75,
+      });
+    });
 
     expect(renderSpy).toHaveBeenLastCalledWith(
       expect.anything(),
@@ -361,7 +327,6 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
 
     const initialCallCount = preloadSpy.mock.calls.length;
 
-    // Simulate multiple pointer drag moves (which trigger updatePitchTransform)
     fireEvent.pointerDown(canvas, { clientX: 100, clientY: 100, button: 0 });
     fireEvent.pointerMove(canvas, { clientX: 110, clientY: 90, button: 0 });
     fireEvent.pointerMove(canvas, { clientX: 120, clientY: 80, button: 0 });
@@ -369,35 +334,6 @@ describe('TacticalSplitPreviewPanel & SplitPreviewCameraBar', () => {
     fireEvent.pointerUp(canvas);
 
     expect(preloadSpy).toHaveBeenCalledTimes(initialCallCount);
-  });
-
-  it('applies crop aspectRatio style to container when boundaryBox is active', () => {
-    const boundaryBox = {
-      x: 10,
-      y: 10,
-      width: 50,
-      height: 80,
-      enabled: true,
-    };
-    const activeSlide =
-      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
-    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
-      boundaryBox,
-      aspectRatio: '16:9',
-    });
-
-    const { container } = render(
-      <TacticalUnifiedStoreProvider>
-        <TacticalSplitPreviewPanel />
-      </TacticalUnifiedStoreProvider>,
-    );
-
-    const canvas = container.querySelector('canvas');
-    if (!canvas) throw new Error('Canvas not found');
-    const containerDiv = canvas.parentElement;
-
-    // 1920 * 0.5 = 960, 1080 * 0.8 = 864 -> aspectRatio: '960 / 864'
-    expect(containerDiv?.style.aspectRatio).toBe('960 / 864');
   });
 
   it('passes playerPhotos from usePlayerPhotoRegistry to renderTacticalFrameToCanvas', () => {

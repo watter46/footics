@@ -10,8 +10,10 @@ import type {
   BoundaryBox,
   PitchAppearanceConfig,
   PitchTransform,
+  ScreenBackgroundConfig,
   Slide,
 } from '@/lib/types/tactical-unified';
+import { getCachedMarbleImage, loadMarbleTexture } from './load-marble-texture';
 import { useAnimationFrameLoop } from './use-animation-frame-loop';
 
 export { useAnimationFrameLoop };
@@ -54,64 +56,46 @@ export function hasActivePitchTransform(pt?: PitchTransform | null): boolean {
 export interface UseExportPreviewAnimationParams {
   slides: Slide[];
   aspectRatio: AspectRatio;
+  /** キャンバス自体の出力アスペクト比（省略時は aspectRatio、レイアウト画面では '16:9' 固定） */
+  canvasAspectRatio?: AspectRatio;
   boundaryBox?: BoundaryBox | null;
   pitchTransform?: PitchTransform | null;
   photos?: Record<string, string>;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   pitchAppearance?: PitchAppearanceConfig;
+  screenBackground?: ScreenBackgroundConfig;
+  externalIsPlaying?: boolean;
+  onToggleExternalPlay?: () => void;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   timeLabelRef: React.RefObject<HTMLSpanElement | null>;
   sliderRef: React.RefObject<HTMLInputElement | null>;
 }
 
-let cachedMarbleImage: HTMLImageElement | null = null;
-let marbleImagePromise: Promise<HTMLImageElement> | null = null;
-
-function loadMarbleTexture(): Promise<HTMLImageElement> {
-  if (cachedMarbleImage?.complete && cachedMarbleImage.naturalWidth > 0) {
-    return Promise.resolve(cachedMarbleImage);
-  }
-  if (!marbleImagePromise) {
-    marbleImagePromise = new Promise<HTMLImageElement>((resolve, reject) => {
-      if (typeof Image === 'undefined') {
-        reject(new Error('Image is not available'));
-        return;
-      }
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        cachedMarbleImage = img;
-        resolve(img);
-      };
-      img.onerror = (e) => {
-        marbleImagePromise = null;
-        reject(e);
-      };
-      img.src = '/assets/pitch-marble-texture.jpg';
-    });
-  }
-  return marbleImagePromise;
-}
-
 export function useExportPreviewAnimation({
   slides,
   aspectRatio,
+  canvasAspectRatio,
   boundaryBox,
   pitchTransform,
   photos,
   playerPhotos,
   pitchAppearance,
+  screenBackground,
+  externalIsPlaying,
+  onToggleExternalPlay,
   canvasRef,
   timeLabelRef,
   sliderRef,
 }: UseExportPreviewAnimationParams) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const effectiveIsPlaying =
+    externalIsPlaying !== undefined ? externalIsPlaying : isPlaying;
   const [internalBitmaps, setInternalBitmaps] = useState<
     Record<string, ImageBitmap>
-  >({});
+  >(() => ({}));
   const loadedBitmapsRef = useRef<Record<string, ImageBitmap>>({});
   const [marbleTexture, setMarbleTexture] = useState<HTMLImageElement | null>(
-    () => cachedMarbleImage,
+    () => getCachedMarbleImage(),
   );
   const totalDurationMs = calculateUnifiedTotalDuration(slides) || 1000;
 
@@ -128,14 +112,11 @@ export function useExportPreviewAnimation({
   );
 
   const photoSignature = useMemo(() => {
-    const playerIds: string[] = [];
-    for (const slide of slides) {
-      for (const player of slide.players ?? []) {
-        if (player.style?.insideContent === 'photo') {
-          playerIds.push(`${player.id}:${player.playerId ?? ''}`);
-        }
-      }
-    }
+    const playerIds = slides.flatMap((s) =>
+      (s.players ?? [])
+        .filter((p) => p.style?.insideContent === 'photo')
+        .map((p) => `${p.id}:${p.playerId ?? ''}`),
+    );
     const photoEntries = photos
       ? Object.entries(photos)
           .sort(([a], [b]) => a.localeCompare(b))
@@ -147,9 +128,10 @@ export function useExportPreviewAnimation({
 
   useEffect(() => {
     if (pitchAppearance?.pitchBackgroundType !== 'marble') return;
-    if (cachedMarbleImage?.complete && cachedMarbleImage.naturalWidth > 0) {
-      if (marbleTexture !== cachedMarbleImage) {
-        setMarbleTexture(cachedMarbleImage);
+    const cached = getCachedMarbleImage();
+    if (cached?.complete && cached.naturalWidth > 0) {
+      if (marbleTexture !== cached) {
+        setMarbleTexture(cached);
       }
       return;
     }
@@ -170,20 +152,16 @@ export function useExportPreviewAnimation({
   useEffect(() => {
     if (playerPhotos) return;
     let isCancelled = false;
-
     preloadSlidePlayerPhotos(slidesRef.current, photos).then((map) => {
       if (isCancelled) {
         for (const [key, bm] of Object.entries(map)) {
-          if (!loadedBitmapsRef.current[key]) {
-            bm?.close?.();
-          }
+          if (!loadedBitmapsRef.current[key]) bm?.close?.();
         }
         return;
       }
       loadedBitmapsRef.current = { ...loadedBitmapsRef.current, ...map };
       setInternalBitmaps((prev) => ({ ...prev, ...map }));
     });
-
     return () => {
       isCancelled = true;
     };
@@ -191,8 +169,9 @@ export function useExportPreviewAnimation({
 
   const effectivePlayerPhotos = playerPhotos ?? internalBitmaps;
 
+  const effectiveAspectRatio = canvasAspectRatio ?? aspectRatio;
   const { width: previewWidth, height: previewHeight } =
-    PREVIEW_DIMENSIONS[aspectRatio] ?? PREVIEW_DIMENSIONS['16:9'];
+    PREVIEW_DIMENSIONS[effectiveAspectRatio] ?? PREVIEW_DIMENSIONS['16:9'];
 
   const mvpMatrix = useMemo(() => {
     if (
@@ -255,14 +234,13 @@ export function useExportPreviewAnimation({
         playerPhotos: effectivePlayerPhotos,
         pitchAppearance,
         marbleTexture,
+        screenBackground,
       });
 
-      if (timeLabelRef.current) {
+      if (timeLabelRef.current)
         timeLabelRef.current.textContent = `${(timeMs / 1000).toFixed(1)}s`;
-      }
-      if (sliderRef.current) {
+      if (sliderRef.current)
         sliderRef.current.value = String(Math.round(timeMs));
-      }
     },
     [
       slides,
@@ -272,18 +250,29 @@ export function useExportPreviewAnimation({
       effectivePlayerPhotos,
       pitchAppearance,
       marbleTexture,
+      screenBackground,
       canvasRef,
       timeLabelRef,
       sliderRef,
     ],
   );
 
-  const { seek } = useAnimationFrameLoop(isPlaying, totalDurationMs, drawFrame);
-  const togglePlay = useCallback(() => setIsPlaying((prev) => !prev), []);
+  const { seek } = useAnimationFrameLoop(
+    effectiveIsPlaying,
+    totalDurationMs,
+    drawFrame,
+  );
+  const togglePlay = useCallback(() => {
+    if (onToggleExternalPlay) {
+      onToggleExternalPlay();
+    } else {
+      setIsPlaying((prev) => !prev);
+    }
+  }, [onToggleExternalPlay]);
   const handleReset = useCallback(() => seek(0), [seek]);
 
   return {
-    isPlaying,
+    isPlaying: effectiveIsPlaying,
     totalDurationMs,
     previewWidth,
     previewHeight,

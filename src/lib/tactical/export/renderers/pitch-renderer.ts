@@ -24,7 +24,7 @@ export function clearPitchRendererCache(): void {
 /**
  * Draws screen background (cinematic radial gradient or dark solid).
  */
-function renderScreenBackground(
+export function renderScreenBackground(
   ctx: FrameRenderContext['ctx'],
   w: number,
   h: number,

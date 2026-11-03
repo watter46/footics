@@ -52,6 +52,20 @@ export function renderPitchMarkings3D(
     projectObjToScreen(toNormX(vx), toNormY(vy));
 
   const draw3DLine = (x1: number, y1: number, x2: number, y2: number) => {
+    if (context.project3DSegment) {
+      const seg = context.project3DSegment(
+        toNormX(x1),
+        toNormY(y1),
+        toNormX(x2),
+        toNormY(y2),
+      );
+      if (!seg) return;
+      ctx.beginPath();
+      ctx.moveTo(snap(seg[0].x), snap(seg[0].y));
+      ctx.lineTo(snap(seg[1].x), snap(seg[1].y));
+      ctx.stroke();
+      return;
+    }
     const p1 = projectPitch(x1, y1);
     const p2 = projectPitch(x2, y2);
     ctx.beginPath();
@@ -68,6 +82,15 @@ export function renderPitchMarkings3D(
     fill = false,
     stroke = true,
   ) => {
+    if (context.project3DSegment) {
+      if (stroke) {
+        draw3DLine(qx, qy, qx + qw, qy);
+        draw3DLine(qx + qw, qy, qx + qw, qy + qh);
+        draw3DLine(qx + qw, qy + qh, qx, qy + qh);
+        draw3DLine(qx, qy + qh, qx, qy);
+      }
+      return;
+    }
     const p1 = projectPitch(qx, qy);
     const p2 = projectPitch(qx + qw, qy);
     const p3 = projectPitch(qx + qw, qy + qh);
@@ -90,6 +113,20 @@ export function renderPitchMarkings3D(
     endAngle = Math.PI * 2,
     segments = 64,
   ) => {
+    if (context.project3DSegment) {
+      const angleSpan = endAngle - startAngle;
+      let prevPx = cx + Math.cos(startAngle) * radius;
+      let prevPy = cy + Math.sin(startAngle) * radius;
+      for (let i = 1; i <= segments; i++) {
+        const angle = startAngle + (angleSpan * i) / segments;
+        const px = cx + Math.cos(angle) * radius;
+        const py = cy + Math.sin(angle) * radius;
+        draw3DLine(prevPx, prevPy, px, py);
+        prevPx = px;
+        prevPy = py;
+      }
+      return;
+    }
     ctx.beginPath();
     const angleSpan = endAngle - startAngle;
     for (let i = 0; i <= segments; i++) {
@@ -107,6 +144,15 @@ export function renderPitchMarkings3D(
   };
 
   const draw3DSpot = (cx: number, cy: number, radius: number) => {
+    if (context.project3DSegment) {
+      const testSeg = context.project3DSegment(
+        toNormX(cx),
+        toNormY(cy),
+        toNormX(cx),
+        toNormY(cy),
+      );
+      if (!testSeg) return;
+    }
     ctx.save();
     ctx.fillStyle = '#e2b48d';
     ctx.beginPath();

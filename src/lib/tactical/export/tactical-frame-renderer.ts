@@ -10,6 +10,7 @@
  */
 
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
+import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import {
   getInterpolatedUnifiedSlideFrame,
   type InterpolatedUnifiedFrame,
@@ -34,6 +35,8 @@ import {
   type AnyCanvasRenderingContext2D,
   type FrameRenderContext,
   getOpticalCenterX,
+  project3DLineSegment,
+  project3DPoint,
   TACTICAL_CANVAS_FONT_FAMILY,
 } from './renderers/renderer-context';
 import { renderTexts } from './renderers/text-renderer';
@@ -122,11 +125,16 @@ export function renderTacticalFrameToCanvas(
       boundaryBox.x > 0 ||
       boundaryBox.y > 0);
 
-  // ピッチマーキング用（0〜100スケール、2D素のスクリーン座標変換）
-  const toScreenX = (normX: number) => (normX / 100) * w;
-  const toScreenY = (normY: number) => (normY / 100) * h;
-  const toScreenSizeX = (normSize: number) => (normSize / 100) * w;
-  const toScreenSizeY = (normSize: number) => (normSize / 100) * h;
+  // ピッチマーキング用（0〜100スケール、ピッチ枠基準の2Dスクリーン座標変換）
+  const pitchRect = calculatePitchRect({ width: w, height: h }, aspectRatio);
+  const toScreenX = (normX: number) =>
+    pitchRect.x + (normX / 100) * pitchRect.width;
+  const toScreenY = (normY: number) =>
+    pitchRect.y + (normY / 100) * pitchRect.height;
+  const toScreenSizeX = (normSize: number) =>
+    (normSize / 100) * pitchRect.width;
+  const toScreenSizeY = (normSize: number) =>
+    (normSize / 100) * pitchRect.height;
 
   // チルト投影: オブジェクト（選手・ボール・矢印）の位置計算用。
   // 0〜100スケールのピッチ正規化座標 → 画面座標（px）
@@ -158,31 +166,26 @@ export function renderTacticalFrameToCanvas(
     norm100Y: number,
   ): { x: number; y: number } => {
     if (!m) return { x: 0, y: 0 };
-    // 0〜100 -> 0〜1にスケール
-    const normX = norm100X / 100;
-    const normY = norm100Y / 100;
+    return project3DPoint(m, norm100X, norm100Y, w, h);
+  };
 
-    // モデル空間 (-0.5..0.5, 0.5..-0.5, 0)
-    const modelX = normX - 0.5;
-    const modelY = 0.5 - normY;
-
-    // gl-matrix は Column-major: m0=0, m4=1, m8=2, m12=3 列目
-    // clip = M * v
-    const clipX = modelX * m[0] + modelY * m[4] + /* 0*m[8] */ m[12];
-    const clipY = modelX * m[1] + modelY * m[5] + /* 0*m[9] */ m[13];
-    const clipW = modelX * m[3] + modelY * m[7] + /* 0*m[11] */ m[15];
-
-    if (Math.abs(clipW) < 1e-6) {
-      return { x: 0, y: 0 };
+  /**
+   * 3D線分をNear-plane (clipW >= 0.05) でクリップして画面座標ペアを返す
+   * 両端点ともカメラ背後なら null
+   */
+  const project3DSegment = (
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+  ): [{ x: number; y: number }, { x: number; y: number }] | null => {
+    if (!m) {
+      return [
+        { x: toScreenX(x1), y: toScreenY(y1) },
+        { x: toScreenX(x2), y: toScreenY(y2) },
+      ];
     }
-
-    // NDC (-1..1) -> 画面座標
-    const ndcX = clipX / clipW;
-    const ndcY = clipY / clipW;
-    return {
-      x: (ndcX + 1) * 0.5 * w,
-      y: (1 - ndcY) * 0.5 * h,
-    };
+    return project3DLineSegment(m, x1, y1, x2, y2, w, h);
   };
 
   /**
@@ -241,6 +244,7 @@ export function renderTacticalFrameToCanvas(
     toScreenSizeX,
     toScreenSizeY,
     projectObjToScreen,
+    project3DSegment,
     snap,
   };
 

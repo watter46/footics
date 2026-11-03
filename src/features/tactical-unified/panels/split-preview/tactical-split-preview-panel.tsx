@@ -1,18 +1,10 @@
 'use client';
 
 import { X } from 'lucide-react';
-import {
-  type PointerEvent,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-  type WheelEvent,
-} from 'react';
+import { type PointerEvent, useMemo, useRef, type WheelEvent } from 'react';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import {
   ExportPreviewControls,
-  SPLIT_PREVIEW_CONTAINER_CLASSES,
   useExportPreviewAnimation,
 } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
@@ -21,7 +13,6 @@ import {
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { getPlayerPhotoKey } from '@/lib/tactical/player-photo-key';
-import { SplitPreviewCameraBar } from './split-preview-camera-bar';
 
 export function TacticalSplitPreviewPanel() {
   const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
@@ -33,6 +24,13 @@ export function TacticalSplitPreviewPanel() {
   const pitchAppearance = useTacticalUnifiedStoreContext(
     (s) => s.project.pitchAppearance,
   );
+  const screenBackground = useTacticalUnifiedStoreContext(
+    (s) => s.project.screenBackground,
+  );
+  const isPlaying = useTacticalUnifiedStoreContext((s) => s.isPlaying);
+  const togglePlayback = useTacticalUnifiedStoreContext(
+    (s) => s.togglePlayback,
+  );
   const updatePitchTransform = useTacticalUnifiedStoreContext(
     (s) => s.updatePitchTransform,
   );
@@ -43,21 +41,12 @@ export function TacticalSplitPreviewPanel() {
     (s) => s.setWorkspaceMode,
   );
 
-  const [isPlaying, setIsPlaying] = useState(false);
-
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const timeLabelRef = useRef<HTMLSpanElement | null>(null);
   const sliderRef = useRef<HTMLInputElement | null>(null);
 
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
-
-  // Camera parameters for current active slide
-  const tilt = activeSlide?.pitchTransform?.tilt ?? 0;
-  const yaw = activeSlide?.pitchTransform?.yaw ?? 90;
-  const zoom = activeSlide?.pitchTransform?.zoom ?? 1;
-  const panX = activeSlide?.pitchTransform?.panX ?? 0;
-  const panY = activeSlide?.pitchTransform?.panY ?? 0;
 
   const allPhasePlayers = useMemo(
     () => slides.flatMap((s) => s.players ?? []),
@@ -87,45 +76,24 @@ export function TacticalSplitPreviewPanel() {
     totalDurationMs,
     previewWidth,
     previewHeight,
-    previewAspectStyle,
     togglePlay,
     handleReset,
     handleSeek,
   } = useExportPreviewAnimation({
     slides,
     aspectRatio,
-    boundaryBox: activeSlide?.boundaryBox ?? null,
+    canvasAspectRatio: '16:9',
+    boundaryBox: null,
     pitchTransform: isPlaying ? null : (activeSlide?.pitchTransform ?? null),
     playerPhotos,
     pitchAppearance,
+    screenBackground,
+    externalIsPlaying: isPlaying,
+    onToggleExternalPlay: togglePlayback,
     canvasRef,
     timeLabelRef,
     sliderRef,
   });
-
-  const onTogglePlay = useCallback(() => {
-    setIsPlaying((prev) => !prev);
-    togglePlay();
-  }, [togglePlay]);
-
-  const handleSelectPreset = (preset: { tilt: number; yaw: number }) => {
-    if (!activeSlide) return;
-    updatePitchTransform(activeSlide.id, {
-      tilt: preset.tilt,
-      yaw: preset.yaw,
-    });
-  };
-
-  const handleResetCamera = () => {
-    if (!activeSlide) return;
-    updatePitchTransform(activeSlide.id, {
-      panX: 0,
-      panY: 0,
-      zoom: 1,
-      tilt: 0,
-      yaw: 90,
-    });
-  };
 
   const handlePointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return;
@@ -199,7 +167,7 @@ export function TacticalSplitPreviewPanel() {
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.08] bg-black/30 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold tracking-wide text-white/90">
-            🎬 Director Mode (3D Camera Preview)
+            🎬 Layout Mode
           </span>
           <div className="flex items-center gap-1 font-mono text-[10px] text-white/50">
             <span ref={timeLabelRef}>0.0s</span>
@@ -213,36 +181,17 @@ export function TacticalSplitPreviewPanel() {
             setWorkspaceMode('board');
             setSplitPreviewOpen(false);
           }}
-          aria-label="Close Director Mode"
-          title="Close Director Mode"
+          aria-label="Close Layout Mode"
+          title="Close Layout Mode"
           className="p-1 rounded text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Camera Bar */}
-      <SplitPreviewCameraBar
-        tilt={tilt}
-        yaw={yaw}
-        zoom={zoom}
-        panX={panX}
-        panY={panY}
-        onSelectPreset={handleSelectPreset}
-        onResetCamera={handleResetCamera}
-      />
-
-      {/* Center 3D Preview Canvas */}
+      {/* Center Layout Preview Canvas */}
       <div className="flex-1 min-h-0 p-3 flex items-center justify-center bg-[#070709] overflow-hidden">
-        <div
-          style={
-            previewAspectStyle ? { aspectRatio: previewAspectStyle } : undefined
-          }
-          className={`relative ${
-            SPLIT_PREVIEW_CONTAINER_CLASSES[aspectRatio] ??
-            'aspect-video w-full max-h-full'
-          } rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-lg`}
-        >
+        <div className="relative aspect-video w-full max-h-full rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-lg">
           <canvas
             ref={canvasRef}
             width={previewWidth}
@@ -261,7 +210,7 @@ export function TacticalSplitPreviewPanel() {
       <div className="p-2 border-t border-white/[0.08] bg-black/40 shrink-0">
         <ExportPreviewControls
           isPlaying={isPlaying}
-          onTogglePlay={onTogglePlay}
+          onTogglePlay={togglePlay}
           onReset={handleReset}
           onSeek={handleSeek}
           sliderRef={sliderRef}
