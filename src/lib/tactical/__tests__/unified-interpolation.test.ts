@@ -445,6 +445,36 @@ describe('unified-interpolation engine', () => {
         expect(state.rotation).toBeCloseTo(90 + 20 * 7.2, 1);
       });
 
+      it('interpolates sizeScale between slides linearly', () => {
+        const ballA = { x: 10, y: 50, visible: true, sizeScale: 1.0 };
+        const ballB = { x: 30, y: 50, visible: true, sizeScale: 2.0 };
+        const midState = directInterpolateBall(ballA, ballB, 0.5);
+        expect(midState.sizeScale).toBeCloseTo(1.5, 2);
+
+        const startState = directInterpolateBall(ballA, ballB, 0);
+        expect(startState.sizeScale).toBeCloseTo(1.0, 2);
+
+        const endState = directInterpolateBall(ballA, ballB, 1);
+        expect(endState.sizeScale).toBeCloseTo(2.0, 2);
+      });
+
+      it('defaults sizeScale to 1.0 if not specified', () => {
+        const ballA = { x: 10, y: 50, visible: true };
+        const ballB = { x: 30, y: 50, visible: true };
+        const midState = directInterpolateBall(ballA, ballB, 0.5);
+        expect(midState.sizeScale).toBe(1.0);
+      });
+
+      it('preserves sizeScale when only one ball is defined', () => {
+        const ballA = { x: 10, y: 50, visible: true, sizeScale: 1.4 };
+        const stateA = directInterpolateBall(ballA, undefined, 0.5);
+        expect(stateA.sizeScale).toBe(1.4);
+
+        const ballB = { x: 30, y: 50, visible: true, sizeScale: 0.8 };
+        const stateB = directInterpolateBall(undefined, ballB, 0.5);
+        expect(stateB.sizeScale).toBe(0.8);
+      });
+
       it('includes ball.rotation in unified slide frame interpolation and updates over time', () => {
         const slides: Slide[] = [
           {

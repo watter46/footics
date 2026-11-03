@@ -1,16 +1,30 @@
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import type {
   ArrowAnnotation,
   Player,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
+import {
+  ContextHud,
+  HUD_CONTENT_RENDERERS,
+} from '../core/components/ContextHud';
+import { BallHud } from '../core/components/hud';
 import { resolveHudTarget } from '../core/components/hud/hud-targets';
 import { computeClampedHudPos } from '../core/components/hud/use-hud-position';
+import { createCanvasStore } from '../core/store/canvas-store';
+import { CanvasStoreProvider } from '../core/store/canvas-store-provider';
 import {
   type ArrowNodeEntry,
   type CanvasNodesRegistry,
   createCanvasNodesRegistry,
 } from '../core/utils/canvas-registry';
+import { PlayerMarkerLabel } from '../objects/player/components/player-marker-label';
+import {
+  createTacticalUnifiedStore,
+  TacticalUnifiedStoreContext,
+} from '../stores/tactical-unified-store';
 
 function createMockRegistry(
   partial: Partial<CanvasNodesRegistry>,
@@ -304,6 +318,146 @@ describe('Context HUD Positioning and Target Resolution', () => {
       expect(pos.isBelow).toBe(true);
       // targetBottom (80) + MARGIN (32) = 112
       expect(pos.clampedY).toBe(112);
+    });
+  });
+
+  describe('BallHud & ContextHud ball selection', () => {
+    it('HUD_CONTENT_RENDERERS に ball が登録されている', () => {
+      expect(HUD_CONTENT_RENDERERS.has('ball')).toBe(true);
+    });
+
+    it('BallHud 単体でスライダー操作時に setBallSizeScale が呼ばれる', () => {
+      const store = createTacticalUnifiedStore();
+      const setBallSizeScaleSpy = vi.spyOn(
+        store.getState(),
+        'setBallSizeScale',
+      );
+
+      render(
+        <TacticalUnifiedStoreContext.Provider value={store}>
+          <BallHud />
+        </TacticalUnifiedStoreContext.Provider>,
+      );
+
+      const slider = screen.getByLabelText('ボールサイズ') as HTMLInputElement;
+      expect(slider).toBeDefined();
+      expect(slider.value).toBe('1');
+      expect(screen.getByText('1.0x')).toBeDefined();
+
+      fireEvent.change(slider, { target: { value: '1.5' } });
+
+      const activeSlideId = store.getState().activeSlideId;
+      expect(setBallSizeScaleSpy).toHaveBeenCalledWith(activeSlideId, 1.5);
+    });
+
+    it('ContextHud で ball 選択時に BallHud が描画される', () => {
+      const canvasStore = createCanvasStore({ mode: 'full-tactical' });
+      canvasStore.setState({
+        selectedObjects: [{ id: 'ball', kind: 'ball' }],
+        isHudOpen: true,
+        isDragging: false,
+        activeTool: 'select',
+      });
+
+      const tacticalStore = createTacticalUnifiedStore();
+      const mockNode = {
+        getClientRect: () => ({
+          x: 200,
+          y: 200,
+          width: 20,
+          height: 20,
+        }),
+      } as unknown as import('konva/lib/Group').Group;
+
+      const nodesRegistryRef = {
+        current: createMockRegistry({
+          ballNode: mockNode,
+        }),
+      };
+
+      render(
+        <TacticalUnifiedStoreContext.Provider value={tacticalStore}>
+          <CanvasStoreProvider store={canvasStore}>
+            <ContextHud
+              stageSize={{ width: 800, height: 600 }}
+              nodesRegistryRef={nodesRegistryRef}
+            />
+          </CanvasStoreProvider>
+        </TacticalUnifiedStoreContext.Provider>,
+      );
+
+      expect(screen.getByLabelText('ボールサイズ')).toBeDefined();
+      expect(screen.getByText('1.0x')).toBeDefined();
+    });
+  });
+
+  describe('PlayerMarkerLabel - bottomLabel none with ring marker', () => {
+    it('markerType が ring であっても bottomLabel が none の時はラベルが非表示 (null) になる', () => {
+      const player = {
+        id: 'player-test',
+        x: 50,
+        y: 50,
+        team: 'home',
+        area: 'pitch',
+        displayName: 'Saka',
+        shirtNo: '7',
+        style: {
+          markerType: 'ring',
+          insideContent: 'none',
+          bottomLabel: 'none',
+          color: '#ff0000',
+          strokeColor: '#000000',
+          strokeWidth: 2,
+          sizeScale: 1,
+          numberSizeScale: 1,
+          labelSizeScale: 1,
+        },
+        connectLines: [],
+        badges: [],
+      } as unknown as Player;
+
+      const result = PlayerMarkerLabel({
+        player,
+        radius: 16,
+        displayName: 'Saka',
+        labelScale: 1,
+      });
+
+      expect(result).toBeNull();
+    });
+
+    it('bottomLabel が name の時はラベルが表示される (null でない)', () => {
+      const player = {
+        id: 'player-test-2',
+        x: 50,
+        y: 50,
+        team: 'home',
+        area: 'pitch',
+        displayName: 'Saka',
+        shirtNo: '7',
+        style: {
+          markerType: 'ring',
+          insideContent: 'none',
+          bottomLabel: 'name',
+          color: '#ff0000',
+          strokeColor: '#000000',
+          strokeWidth: 2,
+          sizeScale: 1,
+          numberSizeScale: 1,
+          labelSizeScale: 1,
+        },
+        connectLines: [],
+        badges: [],
+      } as unknown as Player;
+
+      const result = PlayerMarkerLabel({
+        player,
+        radius: 16,
+        displayName: 'Saka',
+        labelScale: 1,
+      });
+
+      expect(result).not.toBeNull();
     });
   });
 });

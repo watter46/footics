@@ -33,9 +33,18 @@ function isInsideBBox(x: number, y: number, bbox: NormBBox): boolean {
 function findEnclosedMarkers(
   markers: Player[],
   bbox: NormBBox,
+  teamVisibility?: 'both' | 'home' | 'away',
 ): SelectedObject[] {
   const result: SelectedObject[] = [];
   for (const m of markers) {
+    if (m.area === 'bench') {
+      continue;
+    }
+    if (teamVisibility && teamVisibility !== 'both') {
+      if (m.team !== teamVisibility && m.team !== 'neutral') {
+        continue;
+      }
+    }
     if (isInsideBBox(m.x, m.y, bbox)) {
       result.push({ id: m.id, kind: 'player' });
     }
@@ -86,9 +95,10 @@ function findEnclosedZones(
 export function getEnclosedObjects(
   annotations: AnnotationsData,
   bbox: NormBBox,
+  teamVisibility?: 'both' | 'home' | 'away',
 ): SelectedObject[] {
   return [
-    ...findEnclosedMarkers(annotations.markers, bbox),
+    ...findEnclosedMarkers(annotations.markers, bbox, teamVisibility),
     ...findEnclosedTexts(annotations.texts, bbox),
     ...findEnclosedArrows(annotations.arrows, bbox),
     ...findEnclosedZones(annotations.zones, bbox),

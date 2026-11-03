@@ -6,9 +6,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { useCanvasSelectionBox } from '../../hooks/use-canvas-selection-box';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
+import {
+  useCanvasStore,
+  useCanvasStoreApi,
+} from '../../hooks/use-canvas-store';
 import { CanvasStoreProvider } from '../../store/canvas-store-provider';
 import type { PitchRectBounds } from '../../utils/canvas-coordinates';
+import { getPointerCoordinates } from '../../utils/geometry';
 import {
   BillboardObjectLayer,
   sortBillboardItemsByDepth,
@@ -588,6 +592,213 @@ describe('useCanvasSelectionBox', () => {
     });
 
     expect(selectedIdsResult).toContain('m-selected');
+  });
+
+  it('pitchTransform（zoom, panX, panY）適用時にスクリーン座標系でのドラッグ範囲選択からピッチ正規化座標が正しく逆変換されマーカーが選択されること', () => {
+    let selectedIdsResult: string[] = [];
+    const StoreObserver = () => {
+      const selectedIds = useCanvasStore((s) => s.selectedIds);
+      selectedIdsResult = selectedIds;
+      return null;
+    };
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <CanvasStoreProvider
+        config={{
+          mode: 'tactical-board',
+          defaultPitchTransform: {
+            zoom: 1.5,
+            panX: 80,
+            panY: -40,
+            tilt: 0,
+            isLocked: false,
+          },
+          initialAnnotations: JSON.stringify({
+            markers: [
+              // ピッチ内正規化座標: x=60, y=60
+              // vRect: x=100, y=50, width=800, height=450
+              // pitchPos: x = 480, y = 270
+              // local: x = 480 - 400 = 80, y = 270 - 225 = 45
+              // stagePos: x = 500 + 80 + 80 * 1.5 = 700, y = 275 - 40 + 45 * 1.5 = 302.5
+              {
+                id: 'm-transformed',
+                shirtNo: '9',
+                x: 60,
+                y: 60,
+                team: 'home',
+                area: 'pitch',
+                style: { color: '#001489', markerType: 'circle' },
+              },
+            ],
+            arrows: [],
+            zones: [],
+            texts: [],
+          }),
+        }}
+      >
+        <StoreObserver />
+        {children}
+      </CanvasStoreProvider>
+    );
+
+    const { result } = renderHook(
+      () =>
+        useCanvasSelectionBox({
+          vRect: { x: 100, y: 50, width: 800, height: 450 },
+        }),
+      { wrapper },
+    );
+
+    // スクリーン上で (680, 290) 〜 (720, 320) を囲んでドラッグ選択
+    act(() => {
+      result.current.handleSelectionDown({ x: 680, y: 290 }, true, false);
+    });
+    act(() => {
+      result.current.handleSelectionMove({ x: 720, y: 320 });
+    });
+    act(() => {
+      result.current.handleSelectionUp();
+    });
+
+    expect(selectedIdsResult).toContain('m-transformed');
+  });
+
+  it('area: bench の選手や teamVisibility で非表示の選手が範囲選択から除外されること', () => {
+    let selectedIdsResult: string[] = [];
+    let canvasStoreApi: ReturnType<typeof useCanvasStoreApi> | null = null;
+    const StoreObserver = () => {
+      const selectedIds = useCanvasStore((s) => s.selectedIds);
+      canvasStoreApi = useCanvasStoreApi();
+      selectedIdsResult = selectedIds;
+      return null;
+    };
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <CanvasStoreProvider
+        config={{
+          mode: 'tactical-board',
+          initialAnnotations: JSON.stringify({
+            markers: [
+              {
+                id: 'm-visible-home',
+                shirtNo: '1',
+                x: 50,
+                y: 50,
+                team: 'home',
+                area: 'pitch',
+              },
+              {
+                id: 'm-bench-home',
+                shirtNo: '2',
+                x: 50,
+                y: 50,
+                team: 'home',
+                area: 'bench',
+              },
+              {
+                id: 'm-away-hidden',
+                shirtNo: '3',
+                x: 50,
+                y: 50,
+                team: 'away',
+                area: 'pitch',
+              },
+            ],
+            arrows: [],
+            zones: [],
+            texts: [],
+          }),
+        }}
+      >
+        <StoreObserver />
+        {children}
+      </CanvasStoreProvider>
+    );
+
+    const { result } = renderHook(
+      () =>
+        useCanvasSelectionBox({
+          vRect: { x: 0, y: 0, width: 800, height: 450 },
+        }),
+      { wrapper },
+    );
+
+    // teamVisibility を 'home' に変更
+    act(() => {
+      canvasStoreApi?.setState({ teamVisibility: 'home' });
+    });
+
+    // (40, 40) 〜 (60, 60) の範囲 (norm: 40%〜60%) を選択
+    act(() => {
+      result.current.handleSelectionDown({ x: 320, y: 180 }, true, false);
+    });
+    act(() => {
+      result.current.handleSelectionMove({ x: 480, y: 270 });
+    });
+    act(() => {
+      result.current.handleSelectionUp();
+    });
+
+    // homeかつpitchの選手のみが選択され、benchとawayは除外されていること
+    expect(selectedIdsResult).toContain('m-visible-home');
+    expect(selectedIdsResult).not.toContain('m-bench-home');
+    expect(selectedIdsResult).not.toContain('m-away-hidden');
+  });
+});
+
+describe('getPointerCoordinates', () => {
+  it('stage が存在する場合 stage.setPointersPositions(evt) を呼び出すこと', () => {
+    const setPointersPositionsMock = vi.fn();
+    const getPointerPositionMock = vi.fn().mockReturnValue({ x: 150, y: 120 });
+    const mockStage = {
+      setPointersPositions: setPointersPositionsMock,
+      getPointerPosition: getPointerPositionMock,
+      container: vi.fn(),
+    };
+    const mockEvent = {
+      target: {
+        getStage: () => mockStage,
+      },
+      evt: { clientX: 150, clientY: 120 },
+    } as any;
+
+    const coords = getPointerCoordinates(mockEvent, {
+      x: 0,
+      y: 0,
+      width: 1000,
+      height: 500,
+    });
+
+    expect(setPointersPositionsMock).toHaveBeenCalledWith(mockEvent.evt);
+    expect(coords.pixelPos).toEqual({ x: 150, y: 120 });
+  });
+
+  it('pointer が null のとき stage.container().getBoundingClientRect() でフォールバック補正すること', () => {
+    const mockRect = { left: 50, top: 20, width: 800, height: 600 };
+    const mockContainer = {
+      getBoundingClientRect: vi.fn().mockReturnValue(mockRect),
+    };
+    const mockStage = {
+      setPointersPositions: vi.fn(),
+      getPointerPosition: vi.fn().mockReturnValue(null),
+      container: () => mockContainer,
+    };
+    const mockEvent = {
+      target: {
+        getStage: () => mockStage,
+      },
+      evt: { clientX: 250, clientY: 120 },
+    } as any;
+
+    const coords = getPointerCoordinates(mockEvent, {
+      x: 0,
+      y: 0,
+      width: 1000,
+      height: 500,
+    });
+
+    // clientX (250) - rect.left (50) = 200, clientY (120) - rect.top (20) = 100
+    expect(coords.pixelPos).toEqual({ x: 200, y: 100 });
   });
 });
 

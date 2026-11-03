@@ -1,4 +1,5 @@
 export { ArrowHud, type ArrowHudProps } from './arrow-hud';
+export { BallHud } from './ball-hud';
 export {
   ConnectLineHud,
   type ConnectLineHudProps,

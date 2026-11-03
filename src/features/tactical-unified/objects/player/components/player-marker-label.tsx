@@ -16,6 +16,10 @@ export function PlayerMarkerLabel({
   displayName,
   labelScale,
 }: PlayerMarkerLabelProps) {
+  if (player.style.bottomLabel === 'none') {
+    return null;
+  }
+
   const isRingWithName =
     player.style.markerType === 'ring' &&
     player.style.bottomLabel !== 'number' &&

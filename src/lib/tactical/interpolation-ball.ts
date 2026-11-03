@@ -8,6 +8,7 @@ export interface InterpolatedBallState {
   visible: boolean;
   opacity: number;
   rotation?: number;
+  sizeScale?: number;
 }
 
 export const BALL_ROTATION_FACTOR = 7.2;
@@ -46,7 +47,14 @@ export function interpolateBall(
   startRotation = 0,
 ): InterpolatedBallState {
   if (!ballA && !ballB) {
-    return { x: 50, y: 50, visible: true, opacity: 1, rotation: 0 };
+    return {
+      x: 50,
+      y: 50,
+      visible: true,
+      opacity: 1,
+      rotation: 0,
+      sizeScale: 1.0,
+    };
   }
   if (!ballA && ballB) {
     return {
@@ -55,6 +63,7 @@ export function interpolateBall(
       visible: ballB.visible,
       opacity: ease,
       rotation: startRotation,
+      sizeScale: ballB.sizeScale ?? 1.0,
     };
   }
   if (ballA && !ballB) {
@@ -64,10 +73,18 @@ export function interpolateBall(
       visible: ballA.visible,
       opacity: 1 - ease,
       rotation: startRotation,
+      sizeScale: ballA.sizeScale ?? 1.0,
     };
   }
   if (!ballA || !ballB) {
-    return { x: 50, y: 50, visible: true, opacity: 1, rotation: 0 };
+    return {
+      x: 50,
+      y: 50,
+      visible: true,
+      opacity: 1,
+      rotation: 0,
+      sizeScale: 1.0,
+    };
   }
 
   let x: number;
@@ -95,11 +112,16 @@ export function interpolateBall(
     ? startRotation
     : startRotation + dir * (distance * BALL_ROTATION_FACTOR);
 
+  const scaleA = ballA.sizeScale ?? 1.0;
+  const scaleB = ballB.sizeScale ?? 1.0;
+  const sizeScale = lerp(scaleA, scaleB, ease);
+
   return {
     x,
     y,
     visible: ballA.visible || ballB.visible,
     opacity: 1,
     rotation,
+    sizeScale,
   };
 }

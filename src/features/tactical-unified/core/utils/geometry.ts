@@ -46,10 +46,28 @@ export function getPointerCoordinates(
   transform?: PitchTransformState,
 ): { pixelPos: { x: number; y: number }; normPos: { x: number; y: number } } {
   const stage = e.target.getStage();
-  const pointer = stage?.getPointerPosition();
   const evt = e.evt;
-  const x = pointer?.x ?? ('clientX' in evt ? evt.clientX : 0);
-  const y = pointer?.y ?? ('clientY' in evt ? evt.clientY : 0);
+  if (stage && typeof stage.setPointersPositions === 'function') {
+    stage.setPointersPositions(evt);
+  }
+  const pointer = stage?.getPointerPosition();
+  let x = pointer?.x;
+  let y = pointer?.y;
+
+  if (x === undefined || y === undefined) {
+    if ('clientX' in evt) {
+      const container = stage?.container?.();
+      const rect =
+        typeof container?.getBoundingClientRect === 'function'
+          ? container.getBoundingClientRect()
+          : null;
+      x = rect ? evt.clientX - rect.left : evt.clientX;
+      y = rect ? evt.clientY - rect.top : evt.clientY;
+    } else {
+      x = 0;
+      y = 0;
+    }
+  }
   let relX = x - (vRect.x ?? 0);
   let relY = y - (vRect.y ?? 0);
 

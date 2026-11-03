@@ -53,7 +53,8 @@ export function renderBall(
   const _bp = projectObjToScreen(ball.x, ball.y);
   const bx = snap(_bp.x);
   const by = snap(_bp.y);
-  const ballRadius = Math.max(8, Math.round(Math.min(w, h) * 0.022));
+  const ballRadius =
+    Math.max(8, Math.round(Math.min(w, h) * 0.022)) * (ball.sizeScale ?? 1.0);
 
   ctx.save();
   ctx.globalAlpha = ball.opacity;

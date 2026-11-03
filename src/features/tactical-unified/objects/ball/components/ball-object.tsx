@@ -54,7 +54,7 @@ function useBallObjectState({
   });
 
   const baseDim = Math.min(stageSize.width, stageSize.height);
-  const radius = Math.max(8, baseDim * 0.022);
+  const radius = Math.max(8, baseDim * 0.022) * (ball.sizeScale ?? 1.0);
   const px = normToPx(ball.x, stageSize.width);
   const py = normToPx(ball.y, stageSize.height);
 

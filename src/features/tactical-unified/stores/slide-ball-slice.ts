@@ -6,6 +6,7 @@ import type { TacticalUnifiedState } from './tactical-unified-store';
 export interface SlideBallSlice {
   setBallPosition: (slideId: string, x: number, y: number) => void;
   setBallVisible: (slideId: string, visible: boolean) => void;
+  setBallSizeScale: (slideId: string, sizeScale: number) => void;
   updateBallTrajectory: (
     slideId: string,
     trajectory: PlayerTrajectory | undefined,
@@ -42,6 +43,16 @@ export const createSlideBallSlice: StateCreator<
       project: updateSlideInProject(s.project, slideId, (sl) => ({
         ...sl,
         ball: { ...sl.ball, visible },
+      })),
+      isDirty: true,
+    })),
+
+  setBallSizeScale: (slideId, sizeScale) =>
+    set((s) => ({
+      ...recordHistory(s),
+      project: updateSlideInProject(s.project, slideId, (sl) => ({
+        ...sl,
+        ball: { ...sl.ball, sizeScale },
       })),
       isDirty: true,
     })),
