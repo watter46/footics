@@ -10,7 +10,7 @@
  *   - Play / Pause, Timeline Seek bar, Loop toggle, Time display
  */
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type {
   AspectRatio,
   BoundaryBox,
@@ -92,6 +92,29 @@ export function ExportPreviewPlayer({
     timeLabelRef,
     sliderRef,
   });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [togglePlay]);
 
   const isBoundaryActive =
     boundaryBox?.enabled &&

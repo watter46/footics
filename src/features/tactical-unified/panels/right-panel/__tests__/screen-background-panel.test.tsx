@@ -70,26 +70,27 @@ describe('ScreenBackgroundPanel & RightPanel screen tab', () => {
     });
 
     describe('Boundary Box Section & Presets', () => {
-      it('renders boundary box toggle and all 7 preset buttons', () => {
+      it('renders boundary box toggle and only 4 preset buttons (16:9, 9:16, 4:5, 1:1)', () => {
         render(<ScreenBackgroundPanel />);
 
         expect(screen.getByText('Boundary Box')).toBeDefined();
         const toggleBtn = screen.getByRole('switch', { name: /境界線/i });
         expect(toggleBtn).toBeDefined();
 
-        expect(
-          screen.getByRole('button', { name: /全画面16:9/i }),
-        ).toBeDefined();
-        expect(
-          screen.getByRole('button', { name: /ピッチフィット横/i }),
-        ).toBeDefined();
-        expect(
-          screen.getByRole('button', { name: /ピッチフィット縦/i }),
-        ).toBeDefined();
         expect(screen.getByRole('button', { name: /^16:9/i })).toBeDefined();
         expect(screen.getByRole('button', { name: /^9:16/i })).toBeDefined();
         expect(screen.getByRole('button', { name: /^4:5/i })).toBeDefined();
         expect(screen.getByRole('button', { name: /^1:1/i })).toBeDefined();
+
+        expect(
+          screen.queryByRole('button', { name: /全画面16:9/i }),
+        ).toBeNull();
+        expect(
+          screen.queryByRole('button', { name: /ピッチフィット横/i }),
+        ).toBeNull();
+        expect(
+          screen.queryByRole('button', { name: /ピッチフィット縦/i }),
+        ).toBeNull();
       });
 
       it('toggles boundary box enabled state when toggle button is clicked', () => {
@@ -125,6 +126,24 @@ describe('ScreenBackgroundPanel & RightPanel screen tab', () => {
         ).toBe(true);
       });
 
+      it('applies 16:9 preset and updates active slide boundaryBox', () => {
+        render(<ScreenBackgroundPanel />);
+
+        const btn169 = screen.getByRole('button', { name: /^16:9/i });
+        fireEvent.click(btn169);
+
+        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+        const activeSlide = useTacticalUnifiedStore
+          .getState()
+          .project.slides.find((s) => s.id === activeSlideId);
+
+        expect(activeSlide?.boundaryBox?.width).toBe(100);
+        expect(activeSlide?.boundaryBox?.height).toBe(100);
+        expect(activeSlide?.boundaryBox?.x).toBe(0);
+        expect(activeSlide?.boundaryBox?.y).toBe(0);
+        expect(activeSlide?.boundaryBox?.enabled).toBe(true);
+      });
+
       it('applies 4:5 preset and updates active slide boundaryBox', () => {
         render(<ScreenBackgroundPanel />);
 
@@ -158,42 +177,6 @@ describe('ScreenBackgroundPanel & RightPanel screen tab', () => {
         expect(activeSlide?.boundaryBox?.height).toBe(100);
         expect(activeSlide?.boundaryBox?.x).toBe(34.18);
         expect(activeSlide?.boundaryBox?.enabled).toBe(true);
-      });
-
-      it('applies 全画面16:9 preset with canvas fitTarget', () => {
-        render(<ScreenBackgroundPanel />);
-
-        const btnFull = screen.getByRole('button', { name: /全画面16:9/i });
-        fireEvent.click(btnFull);
-
-        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-        const activeSlide = useTacticalUnifiedStore
-          .getState()
-          .project.slides.find((s) => s.id === activeSlideId);
-
-        expect(activeSlide?.boundaryBox?.fitTarget).toBe('canvas');
-        expect(activeSlide?.boundaryBox?.width).toBe(100);
-        expect(activeSlide?.boundaryBox?.height).toBe(100);
-        expect(activeSlide?.boundaryBox?.x).toBe(0);
-        expect(activeSlide?.boundaryBox?.y).toBe(0);
-      });
-
-      it('applies ピッチフィット横 preset with pitch fitTarget', () => {
-        render(<ScreenBackgroundPanel />);
-
-        const btnPitchFitH = screen.getByRole('button', {
-          name: /ピッチフィット横/i,
-        });
-        fireEvent.click(btnPitchFitH);
-
-        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-        const activeSlide = useTacticalUnifiedStore
-          .getState()
-          .project.slides.find((s) => s.id === activeSlideId);
-
-        expect(activeSlide?.boundaryBox?.fitTarget).toBe('pitch');
-        expect(activeSlide?.boundaryBox?.width).toBe(100);
-        expect(activeSlide?.boundaryBox?.height).toBe(100);
       });
 
       it('applies 1:1 preset with correct aspect ratio', () => {

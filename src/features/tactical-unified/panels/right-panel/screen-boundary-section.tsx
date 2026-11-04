@@ -2,11 +2,9 @@
 
 import { Crop } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { computePitchFitBoundaryBox } from '@/features/tactical-unified/stores/boundary-box-helpers';
 import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import {
-  ASPECT_RATIOS,
   type BoundaryBox,
   createXBoundaryBox,
   DEFAULT_BOUNDARY_BOX_FULL,
@@ -20,54 +18,15 @@ interface BoundaryPreset {
 }
 
 const PRESET_DEFINITIONS: BoundaryPreset[] = [
-  {
-    id: 'full_16_9',
-    label: '全画面16:9',
-    badge: '既定',
-    desc: 'キャンバス全体 (100% × 100%)',
-  },
-  {
-    id: 'pitch_fit_h',
-    label: 'ピッチフィット横',
-    badge: '16:9',
-    desc: '白線横フィット',
-  },
-  {
-    id: 'pitch_fit_v',
-    label: 'ピッチフィット縦',
-    badge: '9:16',
-    desc: '白線縦フィット',
-  },
-  {
-    id: 'ratio_16_9',
-    label: '16:9',
-    badge: '横長',
-    desc: 'ピッチ全体横画像',
-  },
-  {
-    id: 'ratio_9_16',
-    label: '9:16',
-    badge: '縦長',
-    desc: 'スマホ全画面',
-  },
-  {
-    id: 'ratio_4_5',
-    label: '4:5',
-    badge: '縦長',
-    desc: 'TL最大高さ',
-  },
-  {
-    id: 'ratio_1_1',
-    label: '1:1',
-    badge: '正方形',
-    desc: 'スクエア',
-  },
+  { id: 'ratio_16_9', label: '16:9', badge: '横長', desc: '標準横画像' },
+  { id: 'ratio_9_16', label: '9:16', badge: '縦長', desc: 'スマホ全画面' },
+  { id: 'ratio_4_5', label: '4:5', badge: '縦長', desc: 'TL最大高さ' },
+  { id: 'ratio_1_1', label: '1:1', badge: '正方形', desc: 'スクエア' },
 ];
 
 export function ScreenBoundarySection() {
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 
-  const project = useTacticalUnifiedStoreContext((s) => s.project);
   const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
   const updateActiveSlideBoundaryBox = useTacticalUnifiedStoreContext(
     (s) => s.updateActiveSlideBoundaryBox,
@@ -87,51 +46,7 @@ export function ScreenBoundarySection() {
   };
 
   const getPresetBox = (presetId: string): BoundaryBox => {
-    const isPitchBg =
-      (activeSlide?.backgroundType ?? project.backgroundType ?? 'pitch') ===
-      'pitch';
-    const pitchPos =
-      activeSlide?.pitchPosition ??
-      (activeSlide?.pitchTransform
-        ? {
-            x: activeSlide.pitchTransform.panX,
-            y: activeSlide.pitchTransform.panY,
-          }
-        : undefined);
-
     switch (presetId) {
-      case 'full_16_9':
-        return {
-          ...DEFAULT_BOUNDARY_BOX_FULL,
-          enabled: true,
-          visible: true,
-        };
-      case 'pitch_fit_h': {
-        const computed = computePitchFitBoundaryBox(
-          isPitchBg,
-          '16:9',
-          pitchPos,
-          activeSlide?.pitchTransform,
-        );
-        return {
-          ...computed,
-          enabled: true,
-          visible: true,
-        };
-      }
-      case 'pitch_fit_v': {
-        const computed = computePitchFitBoundaryBox(
-          isPitchBg,
-          '9:16',
-          pitchPos,
-          activeSlide?.pitchTransform,
-        );
-        return {
-          ...computed,
-          enabled: true,
-          visible: true,
-        };
-      }
       case 'ratio_16_9':
         return {
           ...createXBoundaryBox('16:9'),
@@ -167,19 +82,15 @@ export function ScreenBoundarySection() {
 
   const activePresetId = useMemo(() => {
     if (!boundaryBox || !boundaryBox.enabled) return null;
-    if (boundaryBox.fitTarget === 'canvas') return 'full_16_9';
     const stageAspect = 16 / 9;
     const currentRatio = (boundaryBox.width / boundaryBox.height) * stageAspect;
 
     if (Math.abs(currentRatio - 4 / 5) < 0.05) return 'ratio_4_5';
     if (Math.abs(currentRatio - 9 / 16) < 0.05) return 'ratio_9_16';
     if (Math.abs(currentRatio - 1 / 1) < 0.05) return 'ratio_1_1';
-    if (Math.abs(currentRatio - 16 / 9) < 0.05) {
-      if (boundaryBox.fitTarget === 'pitch') return 'pitch_fit_h';
-      return 'ratio_16_9';
-    }
+    if (Math.abs(currentRatio - 16 / 9) < 0.05) return 'ratio_16_9';
     return null;
-  }, [boundaryBox, project.aspectRatio]);
+  }, [boundaryBox]);
 
   const handleSelectPreset = (presetId: string) => {
     setSelectedPresetId(presetId);

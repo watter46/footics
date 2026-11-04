@@ -93,9 +93,8 @@ export function useExportPreviewAnimation({
         boundaryBox.y > 0),
   );
 
-  // 再生時はクロップを行わず16:9全体を描画。静止時は境界線が有効であれば境界線解像度にクロップ
-  const shouldCropPreview =
-    !effectiveIsPlaying && Boolean(boundaryBox?.enabled && isBoundaryActive);
+  // 静止時・再生時に関わらず、境界線が有効であれば常時クロップを適用
+  const shouldCropPreview = Boolean(boundaryBox?.enabled && isBoundaryActive);
 
   const previewWidth = useMemo(() => {
     if (!shouldCropPreview || !boundaryBox) return basePreviewDim.width;
@@ -169,39 +168,6 @@ export function useExportPreviewAnimation({
         screenBackground,
       });
 
-      // 再生時: 境界線が全画面でなければ、境界線外側4領域にシネマティックマスクを描画
-      // 境界線がOFFの場合でも、設定された境界線が全画面でなければマスクを適用
-      if (effectiveIsPlaying && isBoundaryActive && boundaryBox) {
-        const boxX = (boundaryBox.x / 100) * canvas.width;
-        const boxY = (boundaryBox.y / 100) * canvas.height;
-        const boxW = (boundaryBox.width / 100) * canvas.width;
-        const boxH = (boundaryBox.height / 100) * canvas.height;
-
-        ctx.save();
-        ctx.fillStyle = CINEMATIC_MASK_FILL;
-
-        // 上
-        if (boxY > 0) {
-          ctx.fillRect(0, 0, canvas.width, boxY);
-        }
-        // 下
-        const bottomY = boxY + boxH;
-        if (canvas.height - bottomY > 0) {
-          ctx.fillRect(0, bottomY, canvas.width, canvas.height - bottomY);
-        }
-        // 左
-        if (boxX > 0) {
-          ctx.fillRect(0, boxY, boxX, boxH);
-        }
-        // 右
-        const rightX = boxX + boxW;
-        if (canvas.width - rightX > 0) {
-          ctx.fillRect(rightX, boxY, canvas.width - rightX, boxH);
-        }
-
-        ctx.restore();
-      }
-
       if (timeLabelRef.current) {
         timeLabelRef.current.textContent = `${(timeMs / 1000).toFixed(1)}s`;
       }
@@ -212,8 +178,6 @@ export function useExportPreviewAnimation({
     [
       slides,
       shouldCropPreview,
-      effectiveIsPlaying,
-      isBoundaryActive,
       boundaryBox,
       aspectRatio,
       mvpMatrix,

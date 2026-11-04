@@ -137,7 +137,7 @@ describe('useExportPreviewAnimation', () => {
     expect(newCallCount).toBeGreaterThan(initialCallCount);
   });
 
-  it('does not crop canvas during playback, passes boundaryBox: null to frame renderer, and draws cinematic mask', () => {
+  it('maintains canvas crop during playback when boundaryBox is enabled and does not draw cinematic mask', () => {
     const boundaryBox = {
       x: 10,
       y: 10,
@@ -160,27 +160,23 @@ describe('useExportPreviewAnimation', () => {
       }),
     );
 
-    // キャンバス解像度はクロップされず 16:9 (1920x1080) を維持
-    expect(result.current.previewWidth).toBe(1920);
-    expect(result.current.previewHeight).toBe(1080);
-    expect(result.current.previewAspectStyle).toBeUndefined();
+    // 再生中も境界線領域にクロップされること (1920*0.8=1536, 1080*0.8=864)
+    expect(result.current.previewWidth).toBe(1536);
+    expect(result.current.previewHeight).toBe(864);
+    expect(result.current.previewAspectStyle).toBe('1536 / 864');
 
     const calls = vi.mocked(frameRendererModule.renderTacticalFrameToCanvas)
       .mock.calls;
     expect(calls.length).toBeGreaterThan(0);
     const lastCall = calls[calls.length - 1];
-    // renderTacticalFrameToCanvas には boundaryBox: null が渡される（クロップ抑制）
-    expect(lastCall[1].boundaryBox).toBeNull();
+    // renderTacticalFrameToCanvas に boundaryBox が渡されること
+    expect(lastCall[1].boundaryBox).toEqual(boundaryBox);
 
-    // シネマティックマスクの 4 領域（上・下・左・右）が fillRect で描画されていること
-    expect(mockContext.fillRect).toHaveBeenCalledWith(0, 0, 1920, 108);
-    expect(mockContext.fillRect).toHaveBeenCalledWith(0, 972, 1920, 108);
-    expect(mockContext.fillRect).toHaveBeenCalledWith(0, 108, 192, 864);
-    expect(mockContext.fillRect).toHaveBeenCalledWith(1728, 108, 192, 864);
-    expect(mockContext.fillStyle).toBe(CINEMATIC_MASK_FILL);
+    // キャンバス自体がクロップされているため、外側シネマティックマスクの fillRect は呼ばれないこと
+    expect(mockContext.fillRect).not.toHaveBeenCalled();
   });
 
-  it('draws cinematic mask during playback even when boundaryBox.enabled is false if boundary coordinates are non-fullscreen', () => {
+  it('does not crop canvas when boundaryBox is disabled', () => {
     const boundaryBox = {
       x: 10,
       y: 10,
@@ -191,7 +187,7 @@ describe('useExportPreviewAnimation', () => {
       fitTarget: 'pitch' as const,
     };
 
-    renderHook(() =>
+    const { result } = renderHook(() =>
       useExportPreviewAnimation({
         slides: [mockSlide1],
         aspectRatio: '16:9',
@@ -203,9 +199,11 @@ describe('useExportPreviewAnimation', () => {
       }),
     );
 
-    // enabled: false でも全画面でなければマスク描画
-    expect(mockContext.fillRect).toHaveBeenCalledWith(0, 0, 1920, 108);
-    expect(mockContext.fillRect).toHaveBeenCalledWith(0, 972, 1920, 108);
+    // enabled: false なのでクロップされない
+    expect(result.current.previewWidth).toBe(1920);
+    expect(result.current.previewHeight).toBe(1080);
+    expect(result.current.previewAspectStyle).toBeUndefined();
+    expect(mockContext.fillRect).not.toHaveBeenCalled();
   });
 
   it('does not draw cinematic mask when boundaryBox is full screen', () => {
