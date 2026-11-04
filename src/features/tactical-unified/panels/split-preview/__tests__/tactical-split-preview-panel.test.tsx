@@ -28,6 +28,7 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
     );
     HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
     useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.getState().stopPlayback();
   });
 
   it('renders full-bleed layout canvas with border-white/10 without header or footer controls', () => {
@@ -316,5 +317,217 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
         playerPhotos: expect.objectContaining({ p1: mockImage }),
       }),
     );
+  });
+
+  it('renders boundary mask overlay and boundary box overlay handles when boundaryBox is enabled in edit mode', () => {
+    const activeSlide =
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
+    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
+      boundaryBox: {
+        x: 10,
+        y: 10,
+        width: 80,
+        height: 80,
+        enabled: true,
+      },
+    });
+
+    const { queryByTestId } = render(
+      <TacticalUnifiedStoreProvider>
+        <TacticalSplitPreviewPanel />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    expect(queryByTestId('boundary-mask-overlay')).not.toBeNull();
+    expect(queryByTestId('boundary-box-overlay')).not.toBeNull();
+    expect(queryByTestId('boundary-corner-tl')).not.toBeNull();
+    expect(queryByTestId('boundary-corner-br')).not.toBeNull();
+  });
+
+  it('toggles cropped preview mode on button click and passes boundaryBox to renderer', () => {
+    const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
+    const activeSlide =
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
+    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
+      boundaryBox: {
+        x: 10,
+        y: 10,
+        width: 80,
+        height: 80,
+        enabled: true,
+      },
+    });
+
+    const { getByTestId, queryByTestId } = render(
+      <TacticalUnifiedStoreProvider>
+        <TacticalSplitPreviewPanel />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    expect(renderSpy).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        boundaryBox: null,
+      }),
+    );
+
+    const toggleBtn = getByTestId('toggle-crop-preview-btn');
+    fireEvent.click(toggleBtn);
+
+    expect(renderSpy).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        boundaryBox: expect.objectContaining({
+          x: 10,
+          y: 10,
+          width: 80,
+          height: 80,
+          enabled: true,
+        }),
+      }),
+    );
+
+    expect(queryByTestId('boundary-mask-overlay')).toBeNull();
+    expect(queryByTestId('boundary-box-overlay')).toBeNull();
+  });
+
+  it('automatically switches to cropped preview when playing', () => {
+    const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
+    const activeSlide =
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
+    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
+      boundaryBox: {
+        x: 10,
+        y: 10,
+        width: 80,
+        height: 80,
+        enabled: true,
+      },
+    });
+
+    render(
+      <TacticalUnifiedStoreProvider>
+        <TacticalSplitPreviewPanel />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    act(() => {
+      useTacticalUnifiedStore.getState().togglePlayback();
+    });
+
+    expect(renderSpy).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        boundaryBox: expect.objectContaining({
+          enabled: true,
+        }),
+      }),
+    );
+  });
+
+  it('updates active slide boundaryBox on overlay frame drag', () => {
+    const activeSlide =
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
+    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
+      boundaryBox: {
+        x: 10,
+        y: 10,
+        width: 50,
+        height: 50,
+        enabled: true,
+      },
+    });
+
+    const { getByTestId, container } = render(
+      <TacticalUnifiedStoreProvider>
+        <TacticalSplitPreviewPanel />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    const containerEl = container.querySelector(
+      '[data-testid="preview-container"]',
+    );
+    if (!containerEl) throw new Error('Container not found');
+    vi.spyOn(containerEl, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 1000,
+      height: 1000,
+      right: 1000,
+      bottom: 1000,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+
+    const dragHandle = getByTestId('boundary-box-drag-handle');
+    fireEvent.pointerDown(dragHandle, {
+      clientX: 100,
+      clientY: 100,
+      button: 0,
+    });
+    fireEvent.pointerMove(dragHandle, {
+      clientX: 200,
+      clientY: 150,
+      button: 0,
+    });
+    fireEvent.pointerUp(dragHandle);
+
+    const updated =
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0]
+        .boundaryBox;
+    expect(updated?.x).toBe(20);
+    expect(updated?.y).toBe(15);
+    expect(updated?.width).toBe(50);
+    expect(updated?.height).toBe(50);
+  });
+
+  it('updates active slide boundaryBox width and height on corner handle drag', () => {
+    const activeSlide =
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
+    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
+      boundaryBox: {
+        x: 10,
+        y: 10,
+        width: 50,
+        height: 50,
+        enabled: true,
+      },
+    });
+
+    const { getByTestId, container } = render(
+      <TacticalUnifiedStoreProvider>
+        <TacticalSplitPreviewPanel />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    const containerEl = container.querySelector(
+      '[data-testid="preview-container"]',
+    );
+    if (!containerEl) throw new Error('Container not found');
+    vi.spyOn(containerEl, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 1000,
+      height: 1000,
+      right: 1000,
+      bottom: 1000,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+
+    const brCorner = getByTestId('boundary-corner-br');
+    fireEvent.pointerDown(brCorner, { clientX: 600, clientY: 600, button: 0 });
+    fireEvent.pointerMove(brCorner, { clientX: 700, clientY: 750, button: 0 });
+    fireEvent.pointerUp(brCorner);
+
+    const updated =
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0]
+        .boundaryBox;
+    expect(updated?.x).toBe(10);
+    expect(updated?.y).toBe(10);
+    expect(updated?.width).toBe(60);
+    expect(updated?.height).toBe(65);
   });
 });

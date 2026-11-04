@@ -17,6 +17,7 @@ export interface PitchSlice {
   centerPitchAndBoundary: (slideId?: string) => void;
   setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
   updateBoundaryBox: (slideId: string, box: BoundaryBox | undefined) => void;
+  updateActiveSlideBoundaryBox: (box: BoundaryBox | undefined) => void;
   autoFitBoundaryBox: (
     slideId?: string,
     pitchRect?: { width: number; height: number },
@@ -63,6 +64,20 @@ function createPitchBoundaryActions(set: SetState) {
         })),
         isDirty: true,
       })),
+
+    updateActiveSlideBoundaryBox: (box: BoundaryBox | undefined) =>
+      set((s) => {
+        const targetSlideId = s.activeSlideId;
+        if (!targetSlideId) return s;
+        return {
+          ...recordHistory(s),
+          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
+            ...sl,
+            boundaryBox: box,
+          })),
+          isDirty: true,
+        };
+      }),
 
     autoFitBoundaryBox: (
       slideId?: string,

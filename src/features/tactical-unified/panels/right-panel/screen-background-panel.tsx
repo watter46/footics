@@ -3,6 +3,7 @@
 import { Monitor, Sparkles } from 'lucide-react';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { DEFAULT_SCREEN_BACKGROUND } from '@/lib/types/tactical-unified';
+import { ScreenBoundarySection } from './screen-boundary-section';
 
 export function ScreenBackgroundPanel() {
   const screenBackground = useTacticalUnifiedStoreContext(
@@ -22,7 +23,8 @@ export function ScreenBackgroundPanel() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-3 space-y-5 custom-scrollbar">
+        {/* ピッチ外周背景 */}
         <div>
           <p className="text-[11px] text-white/50 mb-3">
             ピッチ外周の画面背景を設定します
@@ -112,6 +114,9 @@ export function ScreenBackgroundPanel() {
             </button>
           </div>
         </div>
+
+        {/* 境界線 (Boundary Box) セクション */}
+        <ScreenBoundarySection />
       </div>
     </div>
   );

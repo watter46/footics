@@ -51,6 +51,7 @@ export function TopBar({
     }
   };
 
+  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
   const openExportModal = useTacticalUnifiedStoreContext(
     (s) => s.openExportModal,
   );
@@ -61,7 +62,36 @@ export function TopBar({
   const { toastMessage, showToast } = useCanvasToast();
 
   async function handleCopy() {
-    await canvasRef?.current?.copyToClipboard();
+    if (workspaceMode === 'director') {
+      const canvas = document.querySelector('canvas');
+      if (canvas && typeof canvas.toBlob === 'function') {
+        await new Promise<void>((resolve, reject) => {
+          canvas.toBlob(async (blob) => {
+            if (!blob) {
+              resolve();
+              return;
+            }
+            try {
+              if (
+                typeof navigator !== 'undefined' &&
+                navigator.clipboard?.write
+              ) {
+                await navigator.clipboard.write([
+                  new ClipboardItem({ 'image/png': blob }),
+                ]);
+              }
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
+          });
+        });
+      } else if (canvasRef?.current?.copyToClipboard) {
+        await canvasRef.current.copyToClipboard();
+      }
+    } else {
+      await canvasRef?.current?.copyToClipboard();
+    }
     showToast('📋 画像をクリップボードにコピーしました！');
   }
 

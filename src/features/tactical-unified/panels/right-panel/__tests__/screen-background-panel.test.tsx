@@ -68,10 +68,159 @@ describe('ScreenBackgroundPanel & RightPanel screen tab', () => {
         useTacticalUnifiedStore.getState().project.screenBackground?.type,
       ).toBe('cinematic');
     });
+
+    describe('Boundary Box Section & Presets', () => {
+      it('renders boundary box toggle and all 7 preset buttons', () => {
+        render(<ScreenBackgroundPanel />);
+
+        expect(screen.getByText('Boundary Box')).toBeDefined();
+        const toggleBtn = screen.getByRole('switch', { name: /境界線/i });
+        expect(toggleBtn).toBeDefined();
+
+        expect(
+          screen.getByRole('button', { name: /全画面16:9/i }),
+        ).toBeDefined();
+        expect(
+          screen.getByRole('button', { name: /ピッチフィット横/i }),
+        ).toBeDefined();
+        expect(
+          screen.getByRole('button', { name: /ピッチフィット縦/i }),
+        ).toBeDefined();
+        expect(screen.getByRole('button', { name: /^16:9/i })).toBeDefined();
+        expect(screen.getByRole('button', { name: /^9:16/i })).toBeDefined();
+        expect(screen.getByRole('button', { name: /^4:5/i })).toBeDefined();
+        expect(screen.getByRole('button', { name: /^1:1/i })).toBeDefined();
+      });
+
+      it('toggles boundary box enabled state when toggle button is clicked', () => {
+        render(<ScreenBackgroundPanel />);
+
+        const toggleBtn = screen.getByRole('switch', { name: /境界線/i });
+        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+
+        // Default: enabled is true
+        expect(
+          useTacticalUnifiedStore
+            .getState()
+            .project.slides.find((s) => s.id === activeSlideId)?.boundaryBox
+            ?.enabled,
+        ).toBe(true);
+
+        // Click toggle to disable
+        fireEvent.click(toggleBtn);
+        expect(
+          useTacticalUnifiedStore
+            .getState()
+            .project.slides.find((s) => s.id === activeSlideId)?.boundaryBox
+            ?.enabled,
+        ).toBe(false);
+
+        // Click toggle to enable
+        fireEvent.click(toggleBtn);
+        expect(
+          useTacticalUnifiedStore
+            .getState()
+            .project.slides.find((s) => s.id === activeSlideId)?.boundaryBox
+            ?.enabled,
+        ).toBe(true);
+      });
+
+      it('applies 4:5 preset and updates active slide boundaryBox', () => {
+        render(<ScreenBackgroundPanel />);
+
+        const btn45 = screen.getByRole('button', { name: /^4:5/i });
+        fireEvent.click(btn45);
+
+        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+        const activeSlide = useTacticalUnifiedStore
+          .getState()
+          .project.slides.find((s) => s.id === activeSlideId);
+
+        expect(activeSlide?.boundaryBox?.width).toBe(45);
+        expect(activeSlide?.boundaryBox?.height).toBe(100);
+        expect(activeSlide?.boundaryBox?.x).toBe(27.5);
+        expect(activeSlide?.boundaryBox?.y).toBe(0);
+        expect(activeSlide?.boundaryBox?.enabled).toBe(true);
+      });
+
+      it('applies 9:16 preset and updates active slide boundaryBox', () => {
+        render(<ScreenBackgroundPanel />);
+
+        const btn916 = screen.getByRole('button', { name: /^9:16/i });
+        fireEvent.click(btn916);
+
+        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+        const activeSlide = useTacticalUnifiedStore
+          .getState()
+          .project.slides.find((s) => s.id === activeSlideId);
+
+        expect(activeSlide?.boundaryBox?.width).toBe(31.64);
+        expect(activeSlide?.boundaryBox?.height).toBe(100);
+        expect(activeSlide?.boundaryBox?.x).toBe(34.18);
+        expect(activeSlide?.boundaryBox?.enabled).toBe(true);
+      });
+
+      it('applies 全画面16:9 preset with canvas fitTarget', () => {
+        render(<ScreenBackgroundPanel />);
+
+        const btnFull = screen.getByRole('button', { name: /全画面16:9/i });
+        fireEvent.click(btnFull);
+
+        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+        const activeSlide = useTacticalUnifiedStore
+          .getState()
+          .project.slides.find((s) => s.id === activeSlideId);
+
+        expect(activeSlide?.boundaryBox?.fitTarget).toBe('canvas');
+        expect(activeSlide?.boundaryBox?.width).toBe(100);
+        expect(activeSlide?.boundaryBox?.height).toBe(100);
+        expect(activeSlide?.boundaryBox?.x).toBe(0);
+        expect(activeSlide?.boundaryBox?.y).toBe(0);
+      });
+
+      it('applies ピッチフィット横 preset with pitch fitTarget', () => {
+        render(<ScreenBackgroundPanel />);
+
+        const btnPitchFitH = screen.getByRole('button', {
+          name: /ピッチフィット横/i,
+        });
+        fireEvent.click(btnPitchFitH);
+
+        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+        const activeSlide = useTacticalUnifiedStore
+          .getState()
+          .project.slides.find((s) => s.id === activeSlideId);
+
+        expect(activeSlide?.boundaryBox?.fitTarget).toBe('pitch');
+        expect(activeSlide?.boundaryBox?.width).toBe(100);
+        expect(activeSlide?.boundaryBox?.height).toBe(100);
+      });
+
+      it('applies 1:1 preset with correct aspect ratio', () => {
+        render(<ScreenBackgroundPanel />);
+
+        const btn11 = screen.getByRole('button', { name: /^1:1/i });
+        fireEvent.click(btn11);
+
+        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+        const activeSlide = useTacticalUnifiedStore
+          .getState()
+          .project.slides.find((s) => s.id === activeSlideId);
+
+        expect(activeSlide?.boundaryBox?.width).toBe(56.25);
+        expect(activeSlide?.boundaryBox?.height).toBe(100);
+        expect(activeSlide?.boundaryBox?.x).toBe(21.88);
+      });
+    });
   });
 
   describe('RightPanel Screen Tab Integration', () => {
+    beforeEach(() => {
+      useTacticalUnifiedStore.getState().setWorkspaceMode('director');
+    });
+
     it('expands right panel and renders screen background panel when screen rail icon is clicked', () => {
+      useTacticalUnifiedStore.getState().setRightPanelOpen(false);
       render(<RightPanel />);
 
       const screenRailBtn = screen.getByRole('button', { name: /screen/i });
