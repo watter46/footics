@@ -90,6 +90,7 @@ import { renderPitch, renderPitchMarkings } from '../renderers/pitch-renderer';
 import type { FrameRenderContext } from '../renderers/renderer-context';
 import * as tacticalFrameRenderer from '../tactical-frame-renderer';
 import {
+  _resetSharedOffscreenCanvas,
   type AnyCanvasRenderingContext2D,
   getOpticalCenterX,
   renderTacticalFrameToCanvas,
@@ -252,6 +253,10 @@ const sampleSlide: Slide = SlideSchema.parse({
   ],
 });
 
+beforeEach(() => {
+  _resetSharedOffscreenCanvas();
+});
+
 describe('Tactical Frame Renderer', () => {
   it('renders a full tactical frame with pitch background, players, ball, zone, arrow and text', () => {
     const ctx = createMockContext();
@@ -364,6 +369,88 @@ describe('Tactical Frame Renderer', () => {
     // baseWidth = 960 / 0.5 = 1920, baseHeight = 540 / 0.5 = 1080
     // cropX = 0.2 * 1920 = 384, cropY = 0.1 * 1080 = 108
     expect(ctx.translate).toHaveBeenCalledWith(-384, -108);
+  });
+
+  it('uses baseWidth and baseHeight when provided with boundaryBox to crop exactly from canonical 16:9 frame', () => {
+    const slideWithoutBall: Slide = {
+      ...sampleSlide,
+      ball: { x: 30, y: 40, visible: false },
+    };
+    const ctx = createMockContext();
+    renderTacticalFrameToCanvas(ctx, {
+      slides: [slideWithoutBall],
+      timeMs: 0,
+      width: 480,
+      height: 270,
+      baseWidth: 1920,
+      baseHeight: 1080,
+      aspectRatio: '16:9',
+      boundaryBox: {
+        enabled: true,
+        x: 25,
+        y: 20,
+        width: 25,
+        height: 25,
+      },
+      transparent: false,
+    });
+
+    // baseWidth: 1920, baseHeight: 1080 指定時
+    // cropX = 0.25 * 1920 = 480, cropY = 0.20 * 1080 = 216
+    expect(ctx.translate).toHaveBeenCalledWith(-480, -216);
+  });
+
+  it('renders 16:9 full frame to offscreen canvas and draws cropped slice with drawImage when offscreen context is available', () => {
+    _resetSharedOffscreenCanvas();
+    const offscreenCtx = createMockContext();
+    const origCreateElement = document.createElement.bind(document);
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: string) => {
+        if (tagName.toLowerCase() === 'canvas') {
+          const mockC = origCreateElement('canvas');
+          vi.spyOn(mockC, 'getContext').mockReturnValue(offscreenCtx as any);
+          return mockC;
+        }
+        return origCreateElement(tagName);
+      });
+
+    const ctx = createMockContext();
+    renderTacticalFrameToCanvas(ctx, {
+      slides: [sampleSlide],
+      timeMs: 0,
+      width: 960,
+      height: 540,
+      baseWidth: 1920,
+      baseHeight: 1080,
+      aspectRatio: '16:9',
+      boundaryBox: {
+        enabled: true,
+        x: 20,
+        y: 10,
+        width: 50,
+        height: 50,
+      },
+      transparent: false,
+    });
+
+    createElementSpy.mockRestore();
+    _resetSharedOffscreenCanvas();
+
+    // オフスクリーンへ 16:9 全体を描画
+    expect(offscreenCtx.fillRect).toHaveBeenCalledWith(0, 0, 1920, 1080);
+    // メイン ctx へ cropSlice (384, 108, 960, 540) を (0, 0, 960, 540) に drawImage
+    expect(ctx.drawImage).toHaveBeenCalledWith(
+      expect.anything(),
+      384,
+      108,
+      960,
+      540,
+      0,
+      0,
+      960,
+      540,
+    );
   });
 
   it('achieves 100% visual parity with browser canvas (gold pitch lines #e2b48d, clean white numbers without strokeText)', () => {

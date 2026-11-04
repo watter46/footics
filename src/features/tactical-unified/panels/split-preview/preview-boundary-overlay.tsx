@@ -23,6 +23,36 @@ export interface PreviewBoundaryOverlayProps {
   onCommit: (box: BoundaryBox) => void;
 }
 
+function computeResizedBox(
+  id: CornerId,
+  start: BoundaryBox,
+  dx: number,
+  dy: number,
+): BoundaryBox {
+  let { x, y, width, height } = start;
+  if (id === 'tl' || id === 'bl') {
+    const maxX = start.x + start.width - 5;
+    x = Math.max(0, Math.min(maxX, Math.round((start.x + dx) * 10) / 10));
+    width = Math.round((start.x + start.width - x) * 10) / 10;
+  } else {
+    width = Math.max(
+      5,
+      Math.min(100 - start.x, Math.round((start.width + dx) * 10) / 10),
+    );
+  }
+  if (id === 'tl' || id === 'tr') {
+    const maxY = start.y + start.height - 5;
+    y = Math.max(0, Math.min(maxY, Math.round((start.y + dy) * 10) / 10));
+    height = Math.round((start.y + start.height - y) * 10) / 10;
+  } else {
+    height = Math.max(
+      5,
+      Math.min(100 - start.y, Math.round((start.height + dy) * 10) / 10),
+    );
+  }
+  return { ...start, x, y, width, height };
+}
+
 export function PreviewBoundaryOverlay({
   boundaryBox,
   containerRef,
@@ -46,14 +76,7 @@ export function PreviewBoundaryOverlay({
       const startBox = { ...boundaryBox };
       let latestBox = { ...startBox };
 
-      const targetEl = e.currentTarget;
-      try {
-        targetEl.setPointerCapture(e.pointerId);
-      } catch {
-        // JSDOM fallback
-      }
-
-      const onMove = (moveEv: globalThis.PointerEvent | PointerEvent) => {
+      const onMove = (moveEv: globalThis.PointerEvent) => {
         const dxPercent =
           ((moveEv.clientX - startPointerX) / containerRect.width) * 100;
         const dyPercent =
@@ -74,33 +97,18 @@ export function PreviewBoundaryOverlay({
           ),
         );
 
-        latestBox = {
-          ...startBox,
-          x: nextX,
-          y: nextY,
-        };
+        latestBox = { ...startBox, x: nextX, y: nextY };
         setDragBox(latestBox);
       };
 
-      const onUp = (upEv: globalThis.PointerEvent | PointerEvent) => {
-        try {
-          targetEl.releasePointerCapture(
-            (upEv as globalThis.PointerEvent).pointerId,
-          );
-        } catch {
-          // JSDOM fallback
-        }
+      const onUp = () => {
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
         window.removeEventListener('pointercancel', onUp);
-        targetEl.removeEventListener('pointermove', onMove as EventListener);
-        targetEl.removeEventListener('pointerup', onUp as EventListener);
         setDragBox(null);
         onCommit(latestBox);
       };
 
-      targetEl.addEventListener('pointermove', onMove as EventListener);
-      targetEl.addEventListener('pointerup', onUp as EventListener);
       window.addEventListener('pointermove', onMove);
       window.addEventListener('pointerup', onUp);
       window.addEventListener('pointercancel', onUp);
@@ -123,111 +131,24 @@ export function PreviewBoundaryOverlay({
       const startBox = { ...boundaryBox };
       let latestBox = { ...startBox };
 
-      const targetEl = e.currentTarget;
-      try {
-        targetEl.setPointerCapture(e.pointerId);
-      } catch {
-        // JSDOM fallback
-      }
-
-      const onMove = (moveEv: globalThis.PointerEvent | PointerEvent) => {
+      const onMove = (moveEv: globalThis.PointerEvent) => {
         const dxPercent =
           ((moveEv.clientX - startPointerX) / containerRect.width) * 100;
         const dyPercent =
           ((moveEv.clientY - startPointerY) / containerRect.height) * 100;
 
-        let x = startBox.x;
-        let y = startBox.y;
-        let width = startBox.width;
-        let height = startBox.height;
-
-        if (id === 'tl') {
-          const maxX = startBox.x + startBox.width - 5;
-          const maxY = startBox.y + startBox.height - 5;
-          x = Math.max(
-            0,
-            Math.min(maxX, Math.round((startBox.x + dxPercent) * 10) / 10),
-          );
-          y = Math.max(
-            0,
-            Math.min(maxY, Math.round((startBox.y + dyPercent) * 10) / 10),
-          );
-          width = Math.round((startBox.x + startBox.width - x) * 10) / 10;
-          height = Math.round((startBox.y + startBox.height - y) * 10) / 10;
-        } else if (id === 'tr') {
-          const maxY = startBox.y + startBox.height - 5;
-          y = Math.max(
-            0,
-            Math.min(maxY, Math.round((startBox.y + dyPercent) * 10) / 10),
-          );
-          width = Math.max(
-            5,
-            Math.min(
-              100 - startBox.x,
-              Math.round((startBox.width + dxPercent) * 10) / 10,
-            ),
-          );
-          height = Math.round((startBox.y + startBox.height - y) * 10) / 10;
-        } else if (id === 'br') {
-          width = Math.max(
-            5,
-            Math.min(
-              100 - startBox.x,
-              Math.round((startBox.width + dxPercent) * 10) / 10,
-            ),
-          );
-          height = Math.max(
-            5,
-            Math.min(
-              100 - startBox.y,
-              Math.round((startBox.height + dyPercent) * 10) / 10,
-            ),
-          );
-        } else if (id === 'bl') {
-          const maxX = startBox.x + startBox.width - 5;
-          x = Math.max(
-            0,
-            Math.min(maxX, Math.round((startBox.x + dxPercent) * 10) / 10),
-          );
-          width = Math.round((startBox.x + startBox.width - x) * 10) / 10;
-          height = Math.max(
-            5,
-            Math.min(
-              100 - startBox.y,
-              Math.round((startBox.height + dyPercent) * 10) / 10,
-            ),
-          );
-        }
-
-        latestBox = {
-          ...startBox,
-          x,
-          y,
-          width,
-          height,
-        };
+        latestBox = computeResizedBox(id, startBox, dxPercent, dyPercent);
         setDragBox(latestBox);
       };
 
-      const onUp = (upEv: globalThis.PointerEvent | PointerEvent) => {
-        try {
-          targetEl.releasePointerCapture(
-            (upEv as globalThis.PointerEvent).pointerId,
-          );
-        } catch {
-          // JSDOM fallback
-        }
+      const onUp = () => {
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
         window.removeEventListener('pointercancel', onUp);
-        targetEl.removeEventListener('pointermove', onMove as EventListener);
-        targetEl.removeEventListener('pointerup', onUp as EventListener);
         setDragBox(null);
         onCommit(latestBox);
       };
 
-      targetEl.addEventListener('pointermove', onMove as EventListener);
-      targetEl.addEventListener('pointerup', onUp as EventListener);
       window.addEventListener('pointermove', onMove);
       window.addEventListener('pointerup', onUp);
       window.addEventListener('pointercancel', onUp);
@@ -262,15 +183,44 @@ export function PreviewBoundaryOverlay({
           height: `${currentBox.height}%`,
         }}
       >
-        {/* 枠線ドラッグ移動用エリア */}
         <div
-          data-testid="boundary-box-drag-handle"
-          role="button"
-          tabIndex={-1}
-          aria-label="境界線移動"
-          onPointerDown={handleBoxPointerDown}
-          className="absolute inset-0 border-2 border-dashed border-sky-400 cursor-move pointer-events-auto"
-        />
+          data-testid="boundary-box-frame"
+          className="absolute inset-0 border-2 border-dashed border-[#00A8FF] pointer-events-none"
+        >
+          {/* 4辺エッジバー (ドラッグ移動用) */}
+          <div
+            data-testid="boundary-edge-top"
+            role="button"
+            tabIndex={-1}
+            aria-label="境界線移動（上辺）"
+            onPointerDown={handleBoxPointerDown}
+            className="absolute -top-1.5 left-2 right-2 h-3 cursor-move pointer-events-auto"
+          />
+          <div
+            data-testid="boundary-edge-bottom"
+            role="button"
+            tabIndex={-1}
+            aria-label="境界線移動（下辺）"
+            onPointerDown={handleBoxPointerDown}
+            className="absolute -bottom-1.5 left-2 right-2 h-3 cursor-move pointer-events-auto"
+          />
+          <div
+            data-testid="boundary-edge-left"
+            role="button"
+            tabIndex={-1}
+            aria-label="境界線移動（左辺）"
+            onPointerDown={handleBoxPointerDown}
+            className="absolute top-2 -left-1.5 bottom-2 w-3 cursor-move pointer-events-auto"
+          />
+          <div
+            data-testid="boundary-edge-right"
+            role="button"
+            tabIndex={-1}
+            aria-label="境界線移動（右辺）"
+            onPointerDown={handleBoxPointerDown}
+            className="absolute top-2 -right-1.5 bottom-2 w-3 cursor-move pointer-events-auto"
+          />
+        </div>
 
         {/* 4隅リサイズハンドル */}
         {CORNERS.map(({ id, cursor, style }) => (

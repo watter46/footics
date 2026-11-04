@@ -126,3 +126,37 @@ describe('ExportPreviewPlayer Keyboard Shortcuts', () => {
     );
   });
 });
+
+describe('ExportPreviewPlayer Viewport & Boundary Crop Layout', () => {
+  it('applies boundary aspect ratio and resolution to viewport and canvas', () => {
+    const boundaryBox = {
+      x: 10,
+      y: 10,
+      width: 50,
+      height: 50,
+      enabled: true,
+      visible: true,
+      fitTarget: 'pitch' as const,
+    };
+
+    render(
+      <TacticalUnifiedStoreProvider>
+        <ExportPreviewPlayer
+          slides={[mockSlide]}
+          aspectRatio="16:9"
+          boundaryBox={boundaryBox}
+        />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    const viewport = screen.getByTestId('export-preview-viewport');
+    expect(viewport).toBeDefined();
+    // 1920 * 0.5 = 960, 1080 * 0.5 = 540 -> 8px alignment gives 544
+    expect(viewport.style.aspectRatio).toBe('960 / 544');
+
+    const canvas = viewport.querySelector('canvas');
+    expect(canvas).toBeDefined();
+    expect(canvas?.width).toBe(960);
+    expect(canvas?.height).toBe(544);
+  });
+});

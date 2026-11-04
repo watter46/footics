@@ -9,8 +9,6 @@
  *   - Snapshot / GIF frame rendering
  */
 
-import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
-import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import {
   getInterpolatedUnifiedSlideFrame,
   type InterpolatedUnifiedFrame,
@@ -29,20 +27,23 @@ import {
   SOCCER_BALL_PATCH_PATHS,
   SOCCER_BALL_SEAM_LINES,
 } from './renderers/ball-renderer';
+import {
+  _resetSharedOffscreenCanvas,
+  getOffscreenCanvas,
+} from './renderers/offscreen-canvas-pool';
 import { renderPitch } from './renderers/pitch-renderer';
 import { renderPlayers } from './renderers/player-renderer';
 import {
   type AnyCanvasRenderingContext2D,
-  type FrameRenderContext,
+  createFrameRenderContext,
   getOpticalCenterX,
-  project3DLineSegment,
-  project3DPoint,
   TACTICAL_CANVAS_FONT_FAMILY,
 } from './renderers/renderer-context';
 import { renderTexts } from './renderers/text-renderer';
 import { renderZones } from './renderers/zone-renderer';
 
 export {
+  _resetSharedOffscreenCanvas,
   type AnyCanvasRenderingContext2D,
   getOpticalCenterX,
   SOCCER_BALL_PATCH_PATHS,
@@ -57,6 +58,10 @@ export interface RenderTacticalFrameOptions {
   timeMs: number;
   width: number;
   height: number;
+  /** 16:9正規描画の基準幅 (例: 1920) */
+  baseWidth?: number;
+  /** 16:9正規描画の基準高 (例: 1080) */
+  baseHeight?: number;
   aspectRatio: AspectRatio;
   boundaryBox?: BoundaryBox | null;
   transparent?: boolean;
@@ -75,6 +80,8 @@ export interface RenderTacticalFrameOptions {
   /** 事前計算済み補間フレーム（指定時は getInterpolatedUnifiedSlideFrame の再計算をスキップ） */
   precomputedFrame?: InterpolatedUnifiedSlideFrame;
 }
+
+export type RenderTacticalFrameParams = RenderTacticalFrameOptions;
 
 /**
  * Returns true when `timeMs` falls within a `pauseMs` (static freeze) interval
@@ -111,7 +118,7 @@ export function renderTacticalFrameToCanvas(
 
   if (w <= 0 || h <= 0) return;
 
-  // 補間済みフレームデータを先行取得（事前計算済みフレームがあれば流用し動的カメラMVP行列の解決に利用）
+  // 補間済みフレームデータを先行取得
   const frame =
     options.precomputedFrame ??
     getInterpolatedUnifiedSlideFrame(slides, timeMs);
@@ -125,105 +132,64 @@ export function renderTacticalFrameToCanvas(
       boundaryBox.x > 0 ||
       boundaryBox.y > 0);
 
-  // 境界線が有効な場合、描画キャンバスのサイズ (w, h) はクロップ後の解像度であるため、
-  // ピッチ全体のベース解像度 (baseWidth, baseHeight) を逆算して等倍描画基準とする
-  const baseWidth =
-    isBoundaryActive && boundaryBox && boundaryBox.width > 0
-      ? (w * 100) / boundaryBox.width
-      : w;
-  const baseHeight =
-    isBoundaryActive && boundaryBox && boundaryBox.height > 0
-      ? (h * 100) / boundaryBox.height
-      : h;
+  if (isBoundaryActive && boundaryBox) {
+    const canonicalW =
+      options.baseWidth ??
+      Math.round((w * 100) / Math.max(1, boundaryBox.width));
+    const canonicalH =
+      options.baseHeight ??
+      Math.round((h * 100) / Math.max(1, boundaryBox.height));
 
-  // ピッチマーキング用（0〜100スケール、ピッチ枠基準の2Dスクリーン座標変換）
-  const pitchRect = calculatePitchRect(
-    { width: baseWidth, height: baseHeight },
-    aspectRatio,
-  );
-  const toScreenX = (normX: number) =>
-    pitchRect.x + (normX / 100) * pitchRect.width;
-  const toScreenY = (normY: number) =>
-    pitchRect.y + (normY / 100) * pitchRect.height;
-  const toScreenSizeX = (normSize: number) =>
-    (normSize / 100) * pitchRect.width;
-  const toScreenSizeY = (normSize: number) =>
-    (normSize / 100) * pitchRect.height;
+    const cropX = (boundaryBox.x / 100) * canonicalW;
+    const cropY = (boundaryBox.y / 100) * canonicalH;
+    const cropW = (boundaryBox.width / 100) * canonicalW;
+    const cropH = (boundaryBox.height / 100) * canonicalH;
 
-  // チルト投影: オブジェクト（選手・ボール・矢印）の位置計算用。
-  // 0〜100スケールのピッチ正規化座標 → 画面座標（px）
-  // mvpMatrixが明示指定されていない場合は、補間済み frame.pitchTransform または pitchTransformOverride から動的生成
-  let m = mvpMatrix && mvpMatrix.length === 16 ? mvpMatrix : null;
-  if (!m) {
-    const effectiveTransform =
-      options.pitchTransformOverride ?? frame.pitchTransform;
-    if (
-      effectiveTransform &&
-      (effectiveTransform.tilt !== 0 ||
-        (effectiveTransform.yaw !== undefined &&
-          effectiveTransform.yaw !== 90) ||
-        effectiveTransform.zoom !== 1 ||
-        effectiveTransform.panX !== 0 ||
-        effectiveTransform.panY !== 0)
-    ) {
-      m = new Float32Array(
-        buildExportMVPMatrix(
-          effectiveTransform,
-          baseWidth,
-          baseHeight,
-          aspectRatio,
-        ),
+    const offscreen = getOffscreenCanvas(canonicalW, canonicalH);
+    if (offscreen && typeof ctx.drawImage === 'function') {
+      if (typeof offscreen.ctx.clearRect === 'function') {
+        offscreen.ctx.clearRect(0, 0, canonicalW, canonicalH);
+      }
+      // 1. オフスクリーンへ 16:9 全体フレームを正規描画
+      renderTacticalFrameToCanvas(offscreen.ctx, {
+        ...options,
+        width: canonicalW,
+        height: canonicalH,
+        baseWidth: canonicalW,
+        baseHeight: canonicalH,
+        boundaryBox: null,
+      });
+
+      // 2. メイン出力先へ指定領域を切り抜き転送
+      ctx.drawImage(
+        offscreen.canvas as CanvasImageSource,
+        cropX,
+        cropY,
+        cropW,
+        cropH,
+        0,
+        0,
+        w,
+        h,
       );
+      return;
     }
   }
 
-  /**
-   * 3D透視投影による生のスクリーン座標計算
-   */
-  const project3D = (
-    norm100X: number,
-    norm100Y: number,
-  ): { x: number; y: number } => {
-    if (!m) return { x: 0, y: 0 };
-    return project3DPoint(m, norm100X, norm100Y, baseWidth, baseHeight);
-  };
+  // 境界線が有効かつオフスクリーン context が取得できない場合のフォールバック基準解像度
+  const canonicalW =
+    isBoundaryActive && boundaryBox
+      ? (options.baseWidth ??
+        Math.round((w * 100) / Math.max(1, boundaryBox.width)))
+      : (options.baseWidth ?? w);
+  const canonicalH =
+    isBoundaryActive && boundaryBox
+      ? (options.baseHeight ??
+        Math.round((h * 100) / Math.max(1, boundaryBox.height)))
+      : (options.baseHeight ?? h);
 
-  /**
-   * 3D線分をNear-plane (clipW >= 0.05) でクリップして画面座標ペアを返す
-   * 両端点ともカメラ背後なら null
-   */
-  const project3DSegment = (
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-  ): [{ x: number; y: number }, { x: number; y: number }] | null => {
-    if (!m) {
-      return [
-        { x: toScreenX(x1), y: toScreenY(y1) },
-        { x: toScreenX(x2), y: toScreenY(y2) },
-      ];
-    }
-    return project3DLineSegment(m, x1, y1, x2, y2, baseWidth, baseHeight);
-  };
-
-  /**
-   * オブジェクト専用の座標変換（0〜100スケールのピッチ正規化座標 → 画面座標 px）
-   * mvpMatrixあり: 行列ベクトル積による透視投影
-   * mvpMatrixなし: 2D素のスクリーン座標変換
-   */
-  const projectObjToScreen = (
-    norm100X: number,
-    norm100Y: number,
-  ): { x: number; y: number } => {
-    if (m) {
-      return project3D(norm100X, norm100Y);
-    }
-    return { x: toScreenX(norm100X), y: toScreenY(norm100Y) };
-  };
-
-  // Pixel grid snapping helpers to eliminate subpixel antialias fuzziness
-  const snap = (v: number) => v;
+  const baseWidth = isBoundaryActive ? canonicalW : w;
+  const baseHeight = isBoundaryActive ? canonicalH : h;
 
   // キャンバス境界外のはみ出しを防ぐ安全クリッピングおよび一括ビューポート変換を開始
   ctx.save();
@@ -235,36 +201,25 @@ export function renderTacticalFrameToCanvas(
     ctx.clip();
   }
 
-  // 境界線（BoundaryBox）が有効な場合、等倍切り抜き（クロップ）用の translate のみ適用（scale は行わない）
+  // 境界線（BoundaryBox）が有効な場合のフォールバック等倍切り抜き（translate のみ適用）
   if (isBoundaryActive && boundaryBox) {
-    const isPitchFit = boundaryBox.fitTarget === 'pitch';
-    const baseTargetRect = isPitchFit
-      ? pitchRect
-      : { x: 0, y: 0, width: baseWidth, height: baseHeight };
-    const cropX_px =
-      baseTargetRect.x + (boundaryBox.x / 100) * baseTargetRect.width;
-    const cropY_px =
-      baseTargetRect.y + (boundaryBox.y / 100) * baseTargetRect.height;
+    const cropX = (boundaryBox.x / 100) * canonicalW;
+    const cropY = (boundaryBox.y / 100) * canonicalH;
 
     if (typeof ctx.translate === 'function') {
-      ctx.translate(-cropX_px, -cropY_px);
+      ctx.translate(-cropX, -cropY);
     }
   }
 
-  const frameContext: FrameRenderContext = {
+  const frameContext = createFrameRenderContext({
     ctx,
-    w: baseWidth,
-    h: baseHeight,
+    baseWidth,
+    baseHeight,
     aspectRatio,
-    m,
-    toScreenX,
-    toScreenY,
-    toScreenSizeX,
-    toScreenSizeY,
-    projectObjToScreen,
-    project3DSegment,
-    snap,
-  };
+    mvpMatrix,
+    pitchTransformOverride: options.pitchTransformOverride,
+    framePitchTransform: frame.pitchTransform,
+  });
 
   // 1. Background & Pitch Markings
   renderPitch(

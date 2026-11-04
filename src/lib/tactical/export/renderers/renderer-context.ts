@@ -1,4 +1,6 @@
-import type { AspectRatio } from '@/lib/types/tactical-unified';
+import { buildExportMVPMatrix } from '@/features/tactical-unified/core/utils/canvas-pitch-transform-helper';
+import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
+import type { AspectRatio, PitchTransform } from '@/lib/types/tactical-unified';
 
 export type AnyCanvasRenderingContext2D =
   | CanvasRenderingContext2D
@@ -159,4 +161,110 @@ export function getOpticalCenterX(
     }
   }
   return px;
+}
+
+export interface CreateFrameRenderContextParams {
+  ctx: AnyCanvasRenderingContext2D;
+  baseWidth: number;
+  baseHeight: number;
+  aspectRatio: AspectRatio;
+  mvpMatrix?: Float32Array | null;
+  pitchTransformOverride?: PitchTransform | null;
+  framePitchTransform?: PitchTransform | null;
+}
+
+export function createFrameRenderContext({
+  ctx,
+  baseWidth,
+  baseHeight,
+  aspectRatio,
+  mvpMatrix,
+  pitchTransformOverride,
+  framePitchTransform,
+}: CreateFrameRenderContextParams): FrameRenderContext {
+  const pitchRect = calculatePitchRect(
+    { width: baseWidth, height: baseHeight },
+    aspectRatio,
+  );
+  const toScreenX = (normX: number) =>
+    pitchRect.x + (normX / 100) * pitchRect.width;
+  const toScreenY = (normY: number) =>
+    pitchRect.y + (normY / 100) * pitchRect.height;
+  const toScreenSizeX = (normSize: number) =>
+    (normSize / 100) * pitchRect.width;
+  const toScreenSizeY = (normSize: number) =>
+    (normSize / 100) * pitchRect.height;
+
+  let m = mvpMatrix && mvpMatrix.length === 16 ? mvpMatrix : null;
+  if (!m) {
+    const effectiveTransform = pitchTransformOverride ?? framePitchTransform;
+    if (
+      effectiveTransform &&
+      (effectiveTransform.tilt !== 0 ||
+        (effectiveTransform.yaw !== undefined &&
+          effectiveTransform.yaw !== 90) ||
+        effectiveTransform.zoom !== 1 ||
+        effectiveTransform.panX !== 0 ||
+        effectiveTransform.panY !== 0)
+    ) {
+      m = new Float32Array(
+        buildExportMVPMatrix(
+          effectiveTransform,
+          baseWidth,
+          baseHeight,
+          aspectRatio,
+        ),
+      );
+    }
+  }
+
+  const project3D = (
+    norm100X: number,
+    norm100Y: number,
+  ): { x: number; y: number } => {
+    if (!m) return { x: 0, y: 0 };
+    return project3DPoint(m, norm100X, norm100Y, baseWidth, baseHeight);
+  };
+
+  const project3DSegment = (
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+  ): [{ x: number; y: number }, { x: number; y: number }] | null => {
+    if (!m) {
+      return [
+        { x: toScreenX(x1), y: toScreenY(y1) },
+        { x: toScreenX(x2), y: toScreenY(y2) },
+      ];
+    }
+    return project3DLineSegment(m, x1, y1, x2, y2, baseWidth, baseHeight);
+  };
+
+  const projectObjToScreen = (
+    norm100X: number,
+    norm100Y: number,
+  ): { x: number; y: number } => {
+    if (m) {
+      return project3D(norm100X, norm100Y);
+    }
+    return { x: toScreenX(norm100X), y: toScreenY(norm100Y) };
+  };
+
+  const snap = (v: number) => v;
+
+  return {
+    ctx,
+    w: baseWidth,
+    h: baseHeight,
+    aspectRatio,
+    m,
+    toScreenX,
+    toScreenY,
+    toScreenSizeX,
+    toScreenSizeY,
+    projectObjToScreen,
+    project3DSegment,
+    snap,
+  };
 }

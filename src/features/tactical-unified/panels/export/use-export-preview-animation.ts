@@ -160,6 +160,8 @@ export function useExportPreviewAnimation({
         timeMs,
         width: canvas.width,
         height: canvas.height,
+        baseWidth: basePreviewDim.width,
+        baseHeight: basePreviewDim.height,
         aspectRatio,
         boundaryBox: effectiveBoundaryBox,
         transparent: false,
@@ -179,6 +181,8 @@ export function useExportPreviewAnimation({
     },
     [
       slides,
+      basePreviewDim.width,
+      basePreviewDim.height,
       shouldCropPreview,
       boundaryBox,
       aspectRatio,

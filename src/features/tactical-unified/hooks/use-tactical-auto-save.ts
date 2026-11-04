@@ -6,7 +6,7 @@
  * matchId 指定時は試合専用キーで保存・復元する（試合ごとにスライドを分離）。
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   useTacticalUnifiedStoreApi,
   useTacticalUnifiedStoreContext,
@@ -28,6 +28,7 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
   const storeApi = useTacticalUnifiedStoreApi();
   const isLoadedRef = useRef(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isPointerDown, setIsPointerDown] = useState(false);
 
   const project = useTacticalUnifiedStoreContext((s) => s.project);
   const isDirty = useTacticalUnifiedStoreContext((s) => s.isDirty);
@@ -38,6 +39,30 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
   const setLastSavedAt = useTacticalUnifiedStoreContext(
     (s) => s.setLastSavedAt,
   );
+
+  // ポインタドラッグ中の保存保留（RAII監視）
+  useEffect(() => {
+    const handleDown = (e: globalThis.PointerEvent) => {
+      if (e.button === 0) {
+        setIsPointerDown(true);
+      }
+    };
+    const handleUp = () => {
+      setIsPointerDown(false);
+    };
+
+    window.addEventListener('pointerdown', handleDown, { passive: true });
+    window.addEventListener('pointerup', handleUp, { passive: true });
+    window.addEventListener('pointercancel', handleUp, { passive: true });
+    window.addEventListener('blur', handleUp, { passive: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', handleDown);
+      window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('pointercancel', handleUp);
+      window.removeEventListener('blur', handleUp);
+    };
+  }, []);
 
   // 1. Initial Load from Dexie IndexedDB (matchId 変化時は新キーで再復元)
   useEffect(() => {
@@ -92,8 +117,8 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
 
   // 2. Debounced Auto-Save
   useEffect(() => {
-    // Do not save before initial load completes, when clean, or while playing
-    if (!isLoadedRef.current || !isDirty || isPlaying) {
+    // Do not save before initial load completes, when clean, while playing, or during pointer interaction
+    if (!isLoadedRef.current || !isDirty || isPlaying || isPointerDown) {
       return;
     }
     // 他試合のプロジェクトを今の試合キーへ保存しない
@@ -128,6 +153,7 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
     project,
     isDirty,
     isPlaying,
+    isPointerDown,
     matchId,
     setSaveStatus,
     setLastSavedAt,

@@ -82,4 +82,41 @@ describe('useTacticalAutoSave (試合別)', () => {
       expect(p.title).not.toBe('Match Remnant');
     });
   });
+
+  it('pointerdown 中は isDirty でも saving を発火せず、pointerup 後に saving -> saved へ遷移する', async () => {
+    useTacticalUnifiedStore.getState().loadProject(projectFor('m1', 'One'));
+    renderHook(() => useTacticalAutoSave({ matchId: 'm1', skipRestore: true }));
+
+    // pointerdown を発火（ドラッグ中）
+    act(() => {
+      window.dispatchEvent(new PointerEvent('pointerdown'));
+    });
+
+    // 変更が発生して isDirty: true
+    act(() => {
+      useTacticalUnifiedStore.setState((s) => ({
+        project: { ...s.project, title: 'One During Drag' },
+        isDirty: true,
+      }));
+    });
+
+    // ドラッグ中は saving に遷移せず、idle のまま
+    expect(useTacticalUnifiedStore.getState().saveStatus).not.toBe('saving');
+
+    // pointerup を発火（ドラッグ完了）
+    act(() => {
+      window.dispatchEvent(new PointerEvent('pointerup'));
+    });
+
+    // pointerup 後に saving -> saved へ遷移し、DB に保存される
+    await waitFor(
+      async () => {
+        expect((await loadActiveProjectFromDb('m1'))?.title).toBe(
+          'One During Drag',
+        );
+        expect(useTacticalUnifiedStore.getState().saveStatus).toBe('saved');
+      },
+      { timeout: 3000 },
+    );
+  });
 });

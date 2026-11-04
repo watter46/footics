@@ -269,4 +269,35 @@ describe('useExportPreviewAnimation', () => {
       result.current.previewWidth / result.current.previewHeight,
     ).toBeCloseTo(4 / 5, 2);
   });
+
+  it('passes baseWidth and baseHeight to renderTacticalFrameToCanvas for canonical reference frame', () => {
+    const boundaryBox = {
+      x: 10,
+      y: 10,
+      width: 80,
+      height: 80,
+      enabled: true,
+      visible: false,
+      fitTarget: 'pitch' as const,
+    };
+
+    renderHook(() =>
+      useExportPreviewAnimation({
+        slides: [mockSlide1],
+        aspectRatio: '16:9',
+        boundaryBox,
+        externalIsPlaying: false,
+        canvasRef,
+        timeLabelRef,
+        sliderRef,
+      }),
+    );
+
+    const calls = vi.mocked(frameRendererModule.renderTacticalFrameToCanvas)
+      .mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    const lastCall = calls[calls.length - 1];
+    expect(lastCall[1].baseWidth).toBe(1920);
+    expect(lastCall[1].baseHeight).toBe(1080);
+  });
 });

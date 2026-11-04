@@ -125,30 +125,42 @@ export function ExportPreviewPlayer({
       boundaryBox.x > 0 ||
       boundaryBox.y > 0);
 
+  const ratioNum =
+    previewWidth > 0 && previewHeight > 0
+      ? previewWidth / previewHeight
+      : 16 / 9;
+
+  const resolvedAspectRatio =
+    previewAspectStyle ??
+    (aspectRatio === '9:16'
+      ? '9 / 16'
+      : aspectRatio === '1:1'
+        ? '1 / 1'
+        : aspectRatio === '4:5'
+          ? '4 / 5'
+          : '16 / 9');
+
   return (
     <div className="flex-1 min-h-0 w-full flex flex-col rounded-xl bg-black/40 border border-white/10 overflow-hidden">
       {/* Upper Viewport: 境界線アスペクト比連動 最大フィット */}
-      <div className="relative flex-1 min-h-0 w-full p-4 flex items-center justify-center bg-[#020617]/40 overflow-hidden">
+      <div
+        className="relative flex-1 min-h-0 w-full p-4 flex items-center justify-center bg-[#020617]/40 overflow-hidden"
+        style={{ containerType: 'size' }}
+      >
         <div
           data-testid="export-preview-viewport"
           style={{
-            aspectRatio:
-              previewAspectStyle ??
-              (aspectRatio === '9:16'
-                ? '9/16'
-                : aspectRatio === '1:1'
-                  ? '1/1'
-                  : aspectRatio === '4:5'
-                    ? '4/5'
-                    : '16/9'),
+            aspectRatio: resolvedAspectRatio,
+            width: `min(100%, calc(100cqh * ${ratioNum}))`,
+            maxHeight: '100%',
           }}
-          className="relative max-w-full max-h-full w-auto h-auto rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-2xl"
+          className="relative rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-2xl"
         >
           <canvas
             ref={canvasRef}
             width={previewWidth}
             height={previewHeight}
-            className="max-w-full max-h-full w-full h-full object-contain block"
+            className="w-full h-full block"
           />
 
           {/* Boundary Crop Watermark/Badge */}

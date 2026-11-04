@@ -141,13 +141,13 @@ describe('ExportModal Fullscreen & Compact Bottom Bar', () => {
     // Boundary Croppedバッジ
     expect(renderResult.getByText('Boundary Cropped')).toBeDefined();
 
-    // プレビュー枠の aspectRatio が 768 / 324 (1920*0.4 / 1080*0.3) に連動していること
+    // プレビュー枠の aspectRatio が 768 / 328 (1920*0.4 / 8px-aligned(1080*0.3)) に連動していること
     const previewContainer = renderResult.baseElement.querySelector(
       '[data-testid="export-preview-viewport"]',
     );
     expect(previewContainer).toBeTruthy();
     expect((previewContainer as HTMLElement).style.aspectRatio).toBe(
-      '768 / 324',
+      '768 / 328',
     );
   });
 
