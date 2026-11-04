@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
+import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 import type {
   AspectRatio,
@@ -83,34 +84,35 @@ export function useExportPreviewAnimation({
   const basePreviewDim =
     PREVIEW_DIMENSIONS[effectiveAspectRatio] ?? PREVIEW_DIMENSIONS['16:9'];
 
-  const isBoundaryActive = Boolean(
-    boundaryBox &&
-      boundaryBox.width > 0 &&
-      boundaryBox.height > 0 &&
-      (boundaryBox.width < 100 ||
-        boundaryBox.height < 100 ||
-        boundaryBox.x > 0 ||
-        boundaryBox.y > 0),
-  );
+  const cropInfo = useMemo(() => {
+    return calculateBoundaryCrop(
+      boundaryBox,
+      basePreviewDim.width,
+      basePreviewDim.height,
+      1,
+      basePreviewDim.width > 0
+        ? {
+            x: 0,
+            y: 0,
+            width: basePreviewDim.width,
+            height: basePreviewDim.height,
+          }
+        : undefined,
+    );
+  }, [boundaryBox, basePreviewDim.width, basePreviewDim.height]);
 
   // 静止時・再生時に関わらず、境界線が有効であれば常時クロップを適用
-  const shouldCropPreview = Boolean(boundaryBox?.enabled && isBoundaryActive);
+  const shouldCropPreview = cropInfo.isCropped;
 
   const previewWidth = useMemo(() => {
-    if (!shouldCropPreview || !boundaryBox) return basePreviewDim.width;
-    return Math.max(
-      1,
-      Math.round(basePreviewDim.width * (boundaryBox.width / 100)),
-    );
-  }, [shouldCropPreview, boundaryBox, basePreviewDim.width]);
+    if (!shouldCropPreview) return basePreviewDim.width;
+    return cropInfo.exportWidth;
+  }, [shouldCropPreview, cropInfo.exportWidth, basePreviewDim.width]);
 
   const previewHeight = useMemo(() => {
-    if (!shouldCropPreview || !boundaryBox) return basePreviewDim.height;
-    return Math.max(
-      1,
-      Math.round(basePreviewDim.height * (boundaryBox.height / 100)),
-    );
-  }, [shouldCropPreview, boundaryBox, basePreviewDim.height]);
+    if (!shouldCropPreview) return basePreviewDim.height;
+    return cropInfo.exportHeight;
+  }, [shouldCropPreview, cropInfo.exportHeight, basePreviewDim.height]);
 
   const mvpMatrix = useMemo(() => {
     if (
@@ -138,9 +140,9 @@ export function useExportPreviewAnimation({
   ]);
 
   const previewAspectStyle = useMemo(() => {
-    if (!shouldCropPreview || !boundaryBox) return undefined;
+    if (!shouldCropPreview) return undefined;
     return `${previewWidth} / ${previewHeight}`;
-  }, [shouldCropPreview, boundaryBox, previewWidth, previewHeight]);
+  }, [shouldCropPreview, previewWidth, previewHeight]);
 
   // ── Canvas Frame Drawing ──
   const drawFrame = useCallback(

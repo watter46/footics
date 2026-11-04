@@ -138,7 +138,9 @@ export function ExportPreviewPlayer({
                 ? '9/16'
                 : aspectRatio === '1:1'
                   ? '1/1'
-                  : '16/9'),
+                  : aspectRatio === '4:5'
+                    ? '4/5'
+                    : '16/9'),
           }}
           className="relative max-w-full max-h-full w-auto h-auto rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-2xl"
         >

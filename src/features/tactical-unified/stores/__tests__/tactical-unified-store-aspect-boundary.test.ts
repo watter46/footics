@@ -52,7 +52,7 @@ describe('tactical-unified-store - aspect ratio & boundary', () => {
       height: 100,
       enabled: true,
       visible: false,
-      fitTarget: 'pitch',
+      fitTarget: 'canvas',
     });
 
     const newSlideId = store.addSlide(undefined, 'blank');
@@ -66,7 +66,7 @@ describe('tactical-unified-store - aspect ratio & boundary', () => {
       height: 100,
       enabled: true,
       visible: false,
-      fitTarget: 'pitch',
+      fitTarget: 'canvas',
     });
   });
 
@@ -154,7 +154,7 @@ describe('tactical-unified-store - aspect ratio & boundary', () => {
       height: 96.0,
       enabled: true,
       visible: false,
-      fitTarget: 'pitch',
+      fitTarget: 'canvas',
     });
 
     // 境界線を変更した後に autoFitBoundaryBox を実行しても画像境界にフィットする
@@ -218,7 +218,7 @@ describe('tactical-unified-store - aspect ratio & boundary', () => {
         height: 100,
         enabled: true,
         visible: false,
-        fitTarget: 'pitch',
+        fitTarget: 'canvas',
       });
     });
 
@@ -239,7 +239,7 @@ describe('tactical-unified-store - aspect ratio & boundary', () => {
         height: 100,
         enabled: true,
         visible: false,
-        fitTarget: 'pitch',
+        fitTarget: 'canvas',
       });
     });
 
@@ -336,7 +336,7 @@ describe('tactical-unified-store - aspect ratio & boundary', () => {
         height: 100,
         enabled: true,
         visible: false,
-        fitTarget: 'pitch',
+        fitTarget: 'canvas',
       });
       expect(useTacticalUnifiedStore.getState().project.boundaryBox).toEqual({
         x: 0,
@@ -345,7 +345,7 @@ describe('tactical-unified-store - aspect ratio & boundary', () => {
         height: 100,
         enabled: true,
         visible: false,
-        fitTarget: 'pitch',
+        fitTarget: 'canvas',
       });
     });
 
@@ -365,7 +365,7 @@ describe('tactical-unified-store - aspect ratio & boundary', () => {
         height: 100,
         enabled: true,
         visible: false,
-        fitTarget: 'pitch',
+        fitTarget: 'canvas',
       });
 
       // ユーザーによる四方ハンドルの個別リサイズ操作
@@ -407,7 +407,7 @@ describe('tactical-unified-store - aspect ratio & boundary', () => {
         height: 100,
         enabled: true,
         visible: false,
-        fitTarget: 'pitch',
+        fitTarget: 'canvas',
       });
     });
 

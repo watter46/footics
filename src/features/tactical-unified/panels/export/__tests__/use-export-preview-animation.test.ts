@@ -2,6 +2,12 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as frameRendererModule from '@/lib/tactical/export/tactical-frame-renderer';
 import {
+  createXBoundaryBox,
+  DEFAULT_BOUNDARY_BOX_1_1,
+  DEFAULT_BOUNDARY_BOX_4_5,
+  DEFAULT_BOUNDARY_BOX_9_16,
+  DEFAULT_BOUNDARY_BOX_16_9,
+  DEFAULT_BOUNDARY_BOX_SCREENSHOT,
   type PitchTransform,
   type Slide,
   SlideSchema,
@@ -230,5 +236,37 @@ describe('useExportPreviewAnimation', () => {
     );
 
     expect(mockContext.fillRect).not.toHaveBeenCalled();
+  });
+
+  it('DEFAULT_BOUNDARY_BOX_* and createXBoundaryBox use fitTarget "canvas"', () => {
+    expect(DEFAULT_BOUNDARY_BOX_16_9.fitTarget).toBe('canvas');
+    expect(DEFAULT_BOUNDARY_BOX_9_16.fitTarget).toBe('canvas');
+    expect(DEFAULT_BOUNDARY_BOX_4_5.fitTarget).toBe('canvas');
+    expect(DEFAULT_BOUNDARY_BOX_1_1.fitTarget).toBe('canvas');
+    expect(DEFAULT_BOUNDARY_BOX_SCREENSHOT.fitTarget).toBe('canvas');
+    expect(createXBoundaryBox('4:5', '16:9').fitTarget).toBe('canvas');
+  });
+
+  it('correctly calculates preview dimensions and 4:5 aspect ratio without distortion when 4:5 preset boundary is set', () => {
+    const boundaryBox = createXBoundaryBox('4:5', '16:9');
+
+    const { result } = renderHook(() =>
+      useExportPreviewAnimation({
+        slides: [mockSlide1],
+        aspectRatio: '16:9',
+        boundaryBox,
+        externalIsPlaying: false,
+        canvasRef,
+        timeLabelRef,
+        sliderRef,
+      }),
+    );
+
+    expect(result.current.previewWidth).toBe(864);
+    expect(result.current.previewHeight).toBe(1080);
+    expect(result.current.previewAspectStyle).toBe('864 / 1080');
+    expect(
+      result.current.previewWidth / result.current.previewHeight,
+    ).toBeCloseTo(4 / 5, 2);
   });
 });

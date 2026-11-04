@@ -237,8 +237,14 @@ export function renderTacticalFrameToCanvas(
 
   // 境界線（BoundaryBox）が有効な場合、等倍切り抜き（クロップ）用の translate のみ適用（scale は行わない）
   if (isBoundaryActive && boundaryBox) {
-    const cropX_px = (boundaryBox.x / 100) * baseWidth;
-    const cropY_px = (boundaryBox.y / 100) * baseHeight;
+    const isPitchFit = boundaryBox.fitTarget === 'pitch';
+    const baseTargetRect = isPitchFit
+      ? pitchRect
+      : { x: 0, y: 0, width: baseWidth, height: baseHeight };
+    const cropX_px =
+      baseTargetRect.x + (boundaryBox.x / 100) * baseTargetRect.width;
+    const cropY_px =
+      baseTargetRect.y + (boundaryBox.y / 100) * baseTargetRect.height;
 
     if (typeof ctx.translate === 'function') {
       ctx.translate(-cropX_px, -cropY_px);

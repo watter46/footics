@@ -33,7 +33,7 @@ export const DEFAULT_BOUNDARY_BOX_16_9: BoundaryBox = {
   height: 100,
   enabled: true,
   visible: false,
-  fitTarget: 'pitch',
+  fitTarget: 'canvas',
 };
 export const DEFAULT_BOUNDARY_BOX_9_16: BoundaryBox = {
   x: 0,
@@ -42,7 +42,7 @@ export const DEFAULT_BOUNDARY_BOX_9_16: BoundaryBox = {
   height: 100,
   enabled: true,
   visible: false,
-  fitTarget: 'pitch',
+  fitTarget: 'canvas',
 };
 export const DEFAULT_BOUNDARY_BOX_4_5: BoundaryBox = {
   x: 0,
@@ -51,7 +51,7 @@ export const DEFAULT_BOUNDARY_BOX_4_5: BoundaryBox = {
   height: 100,
   enabled: true,
   visible: false,
-  fitTarget: 'pitch',
+  fitTarget: 'canvas',
 };
 export const DEFAULT_BOUNDARY_BOX_SCREENSHOT: BoundaryBox = {
   x: 2.0,
@@ -60,7 +60,7 @@ export const DEFAULT_BOUNDARY_BOX_SCREENSHOT: BoundaryBox = {
   height: 96.0,
   enabled: true,
   visible: false,
-  fitTarget: 'pitch',
+  fitTarget: 'canvas',
 };
 export const DEFAULT_BOUNDARY_BOX_FULL: BoundaryBox = {
   x: 0,
@@ -78,7 +78,7 @@ export const DEFAULT_BOUNDARY_BOX_1_1: BoundaryBox = {
   height: 100,
   enabled: true,
   visible: false,
-  fitTarget: 'pitch',
+  fitTarget: 'canvas',
 };
 
 /** アスペクト比に応じたデフォルト境界線を取得 */
@@ -207,7 +207,7 @@ export function createXBoundaryBox(
     height: Math.max(0, Math.min(100, height)),
     enabled: true,
     visible: false,
-    fitTarget: 'pitch',
+    fitTarget: 'canvas',
   };
 }
 
