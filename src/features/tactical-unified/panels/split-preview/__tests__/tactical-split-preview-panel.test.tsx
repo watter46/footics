@@ -530,4 +530,80 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
     expect(updated?.width).toBe(60);
     expect(updated?.height).toBe(65);
   });
+
+  it('applies boundary aspect ratio and exact cropped dimensions to canvas and container in cropped preview mode', () => {
+    const activeSlide =
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
+    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
+      boundaryBox: {
+        x: 10,
+        y: 10,
+        width: 80,
+        height: 50,
+        enabled: true,
+      },
+    });
+
+    const { getByTestId, container } = render(
+      <TacticalUnifiedStoreProvider>
+        <TacticalSplitPreviewPanel />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    const canvas = container.querySelector('canvas');
+    const previewContainer = getByTestId('preview-container');
+    if (!canvas) throw new Error('Canvas not found');
+
+    // Default edit mode: 16:9 full HD (1920x1080)
+    expect(canvas.width).toBe(1920);
+    expect(canvas.height).toBe(1080);
+    expect(previewContainer.className).toContain('aspect-video');
+    expect(previewContainer.style.aspectRatio).toBe('');
+
+    // Toggle to cropped preview
+    const toggleBtn = getByTestId('toggle-crop-preview-btn');
+    fireEvent.click(toggleBtn);
+
+    // Cropped dimensions: 80% of 1920 = 1536, 50% of 1080 = 540
+    expect(canvas.width).toBe(1536);
+    expect(canvas.height).toBe(540);
+    expect(previewContainer.style.aspectRatio).toBe('1536 / 540');
+    expect(previewContainer.className).not.toContain('aspect-video');
+    expect(previewContainer.className).toContain('max-w-full');
+    expect(previewContainer.className).toContain('max-h-full');
+  });
+
+  it('automatically applies boundary aspect ratio and cropped dimensions to canvas during playback', () => {
+    const activeSlide =
+      useTacticalUnifiedStore.getState().project.phases[0].slides[0];
+    useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
+      boundaryBox: {
+        x: 20,
+        y: 20,
+        width: 60,
+        height: 60,
+        enabled: true,
+      },
+    });
+
+    const { getByTestId, container } = render(
+      <TacticalUnifiedStoreProvider>
+        <TacticalSplitPreviewPanel />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    const canvas = container.querySelector('canvas');
+    const previewContainer = getByTestId('preview-container');
+    if (!canvas) throw new Error('Canvas not found');
+
+    act(() => {
+      useTacticalUnifiedStore.getState().togglePlayback();
+    });
+
+    // Cropped dimensions: 60% of 1920 = 1152, 60% of 1080 = 648
+    expect(canvas.width).toBe(1152);
+    expect(canvas.height).toBe(648);
+    expect(previewContainer.style.aspectRatio).toBe('1152 / 648');
+    expect(previewContainer.className).not.toContain('aspect-video');
+  });
 });

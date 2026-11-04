@@ -174,8 +174,10 @@ export function TacticalSplitPreviewPanel() {
               : undefined
           }
           className={`relative ${
-            showCropped ? '' : 'aspect-video'
-          } w-full max-h-full rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-lg`}
+            showCropped
+              ? 'max-w-full max-h-full w-auto h-auto'
+              : 'aspect-video w-full max-h-full'
+          } rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-lg`}
         >
           <canvas
             ref={canvasRef}

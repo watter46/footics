@@ -2,7 +2,6 @@
 
 import { Dialog } from '@/components/ui/dialog';
 import { ExportModalBody } from './export-modal-body';
-import { ExportModalFooter } from './export-modal-footer';
 import { ExportModalHeader } from './export-modal-header';
 import { type ExportTab, useExportModalState } from './use-export-modal-state';
 
@@ -37,7 +36,7 @@ export function ExportModal() {
     <Dialog
       open={true}
       onClose={isBusy ? undefined : closeExportModal}
-      className="max-w-4xl p-0 overflow-hidden flex flex-col max-h-[90vh] space-y-0 select-none"
+      className="w-[96vw] max-w-[96vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden flex flex-col space-y-0 select-none"
     >
       <div className="relative w-full flex flex-col h-full overflow-hidden">
         <ExportModalHeader
@@ -49,7 +48,7 @@ export function ExportModal() {
         />
 
         {exportError && (
-          <div className="px-6 py-3 bg-[#EB3B5A]/15 border-b border-[#EB3B5A]/30 text-xs text-[#EB3B5A] flex items-center justify-between">
+          <div className="px-6 py-3 bg-[#EB3B5A]/15 border-b border-[#EB3B5A]/30 text-xs text-[#EB3B5A] flex items-center justify-between shrink-0">
             <span>⚠️ {exportError}</span>
             <button
               type="button"
@@ -62,7 +61,6 @@ export function ExportModal() {
         )}
 
         <ExportModalBody state={state} />
-        <ExportModalFooter state={state} />
       </div>
     </Dialog>
   );

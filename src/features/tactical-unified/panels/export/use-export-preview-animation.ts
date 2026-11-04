@@ -78,8 +78,34 @@ export function useExportPreviewAnimation({
   });
 
   const effectiveAspectRatio = canvasAspectRatio ?? aspectRatio;
-  const { width: previewWidth, height: previewHeight } =
+  const basePreviewDim =
     PREVIEW_DIMENSIONS[effectiveAspectRatio] ?? PREVIEW_DIMENSIONS['16:9'];
+
+  const isBoundaryActive = Boolean(
+    boundaryBox?.enabled &&
+      boundaryBox.width > 0 &&
+      boundaryBox.height > 0 &&
+      (boundaryBox.width < 100 ||
+        boundaryBox.height < 100 ||
+        boundaryBox.x > 0 ||
+        boundaryBox.y > 0),
+  );
+
+  const previewWidth = useMemo(() => {
+    if (!isBoundaryActive || !boundaryBox) return basePreviewDim.width;
+    return Math.max(
+      1,
+      Math.round(basePreviewDim.width * (boundaryBox.width / 100)),
+    );
+  }, [isBoundaryActive, boundaryBox, basePreviewDim.width]);
+
+  const previewHeight = useMemo(() => {
+    if (!isBoundaryActive || !boundaryBox) return basePreviewDim.height;
+    return Math.max(
+      1,
+      Math.round(basePreviewDim.height * (boundaryBox.height / 100)),
+    );
+  }, [isBoundaryActive, boundaryBox, basePreviewDim.height]);
 
   const mvpMatrix = useMemo(() => {
     if (
@@ -92,8 +118,8 @@ export function useExportPreviewAnimation({
     return new Float32Array(
       buildExportMVPMatrix(
         pitchTransform,
-        previewWidth,
-        previewHeight,
+        basePreviewDim.width,
+        basePreviewDim.height,
         aspectRatio,
       ),
     );
@@ -101,32 +127,14 @@ export function useExportPreviewAnimation({
     effectiveIsPlaying,
     slides.length,
     pitchTransform,
-    previewWidth,
-    previewHeight,
+    basePreviewDim.width,
+    basePreviewDim.height,
     aspectRatio,
   ]);
 
-  const isBoundaryActive = Boolean(
-    boundaryBox?.enabled &&
-      boundaryBox.width > 0 &&
-      boundaryBox.height > 0 &&
-      (boundaryBox.width < 100 ||
-        boundaryBox.height < 100 ||
-        boundaryBox.x > 0 ||
-        boundaryBox.y > 0),
-  );
-
   const previewAspectStyle = useMemo(() => {
     if (!isBoundaryActive || !boundaryBox) return undefined;
-    const cropW = Math.max(
-      1,
-      Math.round(previewWidth * (boundaryBox.width / 100)),
-    );
-    const cropH = Math.max(
-      1,
-      Math.round(previewHeight * (boundaryBox.height / 100)),
-    );
-    return `${cropW} / ${cropH}`;
+    return `${previewWidth} / ${previewHeight}`;
   }, [isBoundaryActive, boundaryBox, previewWidth, previewHeight]);
 
   // ── Canvas Frame Drawing ──

@@ -125,8 +125,22 @@ export function renderTacticalFrameToCanvas(
       boundaryBox.x > 0 ||
       boundaryBox.y > 0);
 
+  // 境界線が有効な場合、描画キャンバスのサイズ (w, h) はクロップ後の解像度であるため、
+  // ピッチ全体のベース解像度 (baseWidth, baseHeight) を逆算して等倍描画基準とする
+  const baseWidth =
+    isBoundaryActive && boundaryBox && boundaryBox.width > 0
+      ? (w * 100) / boundaryBox.width
+      : w;
+  const baseHeight =
+    isBoundaryActive && boundaryBox && boundaryBox.height > 0
+      ? (h * 100) / boundaryBox.height
+      : h;
+
   // ピッチマーキング用（0〜100スケール、ピッチ枠基準の2Dスクリーン座標変換）
-  const pitchRect = calculatePitchRect({ width: w, height: h }, aspectRatio);
+  const pitchRect = calculatePitchRect(
+    { width: baseWidth, height: baseHeight },
+    aspectRatio,
+  );
   const toScreenX = (normX: number) =>
     pitchRect.x + (normX / 100) * pitchRect.width;
   const toScreenY = (normY: number) =>
@@ -153,7 +167,12 @@ export function renderTacticalFrameToCanvas(
         effectiveTransform.panY !== 0)
     ) {
       m = new Float32Array(
-        buildExportMVPMatrix(effectiveTransform, w, h, aspectRatio),
+        buildExportMVPMatrix(
+          effectiveTransform,
+          baseWidth,
+          baseHeight,
+          aspectRatio,
+        ),
       );
     }
   }
@@ -166,7 +185,7 @@ export function renderTacticalFrameToCanvas(
     norm100Y: number,
   ): { x: number; y: number } => {
     if (!m) return { x: 0, y: 0 };
-    return project3DPoint(m, norm100X, norm100Y, w, h);
+    return project3DPoint(m, norm100X, norm100Y, baseWidth, baseHeight);
   };
 
   /**
@@ -185,7 +204,7 @@ export function renderTacticalFrameToCanvas(
         { x: toScreenX(x2), y: toScreenY(y2) },
       ];
     }
-    return project3DLineSegment(m, x1, y1, x2, y2, w, h);
+    return project3DLineSegment(m, x1, y1, x2, y2, baseWidth, baseHeight);
   };
 
   /**
@@ -216,19 +235,11 @@ export function renderTacticalFrameToCanvas(
     ctx.clip();
   }
 
-  // 境界線（BoundaryBox）が有効な場合、一括ビューポート変換（Scale & Translate）を適用
+  // 境界線（BoundaryBox）が有効な場合、等倍切り抜き（クロップ）用の translate のみ適用（scale は行わない）
   if (isBoundaryActive && boundaryBox) {
-    const cropX_px = (boundaryBox.x / 100) * w;
-    const cropY_px = (boundaryBox.y / 100) * h;
-    const cropW_px = (boundaryBox.width / 100) * w;
-    const cropH_px = (boundaryBox.height / 100) * h;
+    const cropX_px = (boundaryBox.x / 100) * baseWidth;
+    const cropY_px = (boundaryBox.y / 100) * baseHeight;
 
-    const scaleX = cropW_px > 0 ? w / cropW_px : 1;
-    const scaleY = cropH_px > 0 ? h / cropH_px : 1;
-
-    if (typeof ctx.scale === 'function') {
-      ctx.scale(scaleX, scaleY);
-    }
     if (typeof ctx.translate === 'function') {
       ctx.translate(-cropX_px, -cropY_px);
     }
@@ -236,8 +247,8 @@ export function renderTacticalFrameToCanvas(
 
   const frameContext: FrameRenderContext = {
     ctx,
-    w,
-    h,
+    w: baseWidth,
+    h: baseHeight,
     aspectRatio,
     m,
     toScreenX,

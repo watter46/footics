@@ -18,6 +18,7 @@ import {
   CanvasToast,
   useCanvasToast,
 } from '@/features/tactical-unified/core';
+import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { TopBarCenter } from './top-bar-center';
 import { TopBarHistory } from './top-bar-history';
@@ -59,14 +60,52 @@ export function TopBar({
     (s) => s.panels.sidebarOpen,
   );
   const toggleSidebar = useTacticalUnifiedStoreContext((s) => s.toggleSidebar);
+  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
   const { toastMessage, showToast } = useCanvasToast();
 
   async function handleCopy() {
     if (workspaceMode === 'director') {
       const canvas = document.querySelector('canvas');
       if (canvas && typeof canvas.toBlob === 'function') {
+        const boundaryBox = activeSlide?.boundaryBox;
+        let sourceCanvas: HTMLCanvasElement = canvas;
+
+        const isBoundaryActive = Boolean(
+          boundaryBox?.enabled &&
+            boundaryBox.width > 0 &&
+            boundaryBox.height > 0 &&
+            (boundaryBox.width < 100 ||
+              boundaryBox.height < 100 ||
+              boundaryBox.x > 0 ||
+              boundaryBox.y > 0),
+        );
+
+        if (
+          isBoundaryActive &&
+          boundaryBox &&
+          canvas.dataset.cropped !== 'true'
+        ) {
+          const sx = Math.round((boundaryBox.x / 100) * canvas.width);
+          const sy = Math.round((boundaryBox.y / 100) * canvas.height);
+          const sw = Math.max(
+            1,
+            Math.round((boundaryBox.width / 100) * canvas.width),
+          );
+          const sh = Math.max(
+            1,
+            Math.round((boundaryBox.height / 100) * canvas.height),
+          );
+
+          const cropCanvas = document.createElement('canvas');
+          cropCanvas.width = sw;
+          cropCanvas.height = sh;
+          const ctx = cropCanvas.getContext('2d');
+          ctx?.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+          sourceCanvas = cropCanvas;
+        }
+
         await new Promise<void>((resolve, reject) => {
-          canvas.toBlob(async (blob) => {
+          sourceCanvas.toBlob(async (blob) => {
             if (!blob) {
               resolve();
               return;

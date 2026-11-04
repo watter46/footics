@@ -2,7 +2,21 @@ import {
   type BoundaryCropInfo,
   calculateBoundaryCrop,
 } from '@/lib/tactical/export/video-crop-calc';
-import type { BoundaryBox, ExportTarget } from '@/lib/types/tactical-unified';
+import type {
+  AspectRatio,
+  BoundaryBox,
+  ExportTarget,
+} from '@/lib/types/tactical-unified';
+
+const DEFAULT_STAGE_DIMENSIONS: Record<
+  AspectRatio,
+  { width: number; height: number }
+> = {
+  '16:9': { width: 960, height: 540 },
+  '9:16': { width: 540, height: 960 },
+  '4:5': { width: 540, height: 675 },
+  '1:1': { width: 540, height: 540 },
+};
 
 export interface BuildParams {
   format: ExportTarget['format'];
@@ -13,6 +27,7 @@ export interface BuildParams {
   boundaryBox?: BoundaryBox | null;
   stageWidth?: number;
   stageHeight?: number;
+  aspectRatio?: AspectRatio;
 }
 
 export type BuiltExportTarget = ExportTarget & {
@@ -28,9 +43,13 @@ export function buildExportTarget(params: BuildParams): BuiltExportTarget {
     latencyMode = 'realtime',
     maxQueueSize = '60',
     boundaryBox = null,
-    stageWidth = 960,
-    stageHeight = 540,
+    aspectRatio = '16:9',
   } = params;
+
+  const defaultDim =
+    DEFAULT_STAGE_DIMENSIONS[aspectRatio] ?? DEFAULT_STAGE_DIMENSIONS['16:9'];
+  const stageWidth = params.stageWidth ?? defaultDim.width;
+  const stageHeight = params.stageHeight ?? defaultDim.height;
 
   const cropInfo = calculateBoundaryCrop(
     boundaryBox,

@@ -52,6 +52,7 @@ export interface ExportPreviewPlayerProps {
   photos?: Record<string, string>;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   pitchAppearance?: PitchAppearanceConfig;
+  bottomBarSlot?: React.ReactNode;
 }
 
 export function ExportPreviewPlayer({
@@ -62,6 +63,7 @@ export function ExportPreviewPlayer({
   photos,
   playerPhotos,
   pitchAppearance,
+  bottomBarSlot,
 }: ExportPreviewPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const timeLabelRef = useRef<HTMLSpanElement | null>(null);
@@ -99,48 +101,65 @@ export function ExportPreviewPlayer({
       boundaryBox.y > 0);
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl bg-black/50 border border-white/10 p-3 overflow-hidden">
-      <div className="flex items-center justify-between text-xs text-white/70">
-        <span className="font-semibold text-white/90">Animation Preview</span>
-        <div className="flex items-center gap-1 font-mono text-[11px] text-white/50">
-          <span ref={timeLabelRef}>0.0s</span>
-          <span>/</span>
-          <span>{(totalDurationMs / 1000).toFixed(1)}s</span>
+    <div className="flex-1 min-h-0 w-full flex flex-col rounded-xl bg-black/40 border border-white/10 overflow-hidden">
+      {/* Upper Viewport: 境界線アスペクト比連動 最大フィット */}
+      <div className="relative flex-1 min-h-0 w-full p-4 flex items-center justify-center bg-[#020617]/40 overflow-hidden">
+        <div
+          data-testid="export-preview-viewport"
+          style={{
+            aspectRatio:
+              previewAspectStyle ??
+              (aspectRatio === '9:16'
+                ? '9/16'
+                : aspectRatio === '1:1'
+                  ? '1/1'
+                  : '16/9'),
+          }}
+          className="relative max-w-full max-h-full w-auto h-auto rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-2xl"
+        >
+          <canvas
+            ref={canvasRef}
+            width={previewWidth}
+            height={previewHeight}
+            className="max-w-full max-h-full w-full h-full object-contain block"
+          />
+
+          {/* Boundary Crop Watermark/Badge */}
+          {isBoundaryActive && (
+            <div className="absolute top-2 left-2 px-2.5 py-1 rounded bg-black/80 border border-green-500/50 text-green-400 text-[10px] font-semibold backdrop-blur-md flex items-center gap-1.5 shadow-md select-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <span>Boundary Cropped</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Canvas Viewport */}
-      <div
-        style={
-          previewAspectStyle ? { aspectRatio: previewAspectStyle } : undefined
-        }
-        className={`relative w-full ${
-          ASPECT_CONTAINER_CLASSES[aspectRatio] ?? 'aspect-video'
-        } rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center`}
-      >
-        <canvas
-          ref={canvasRef}
-          width={previewWidth}
-          height={previewHeight}
-          className="w-full h-full object-contain"
-        />
+      {/* Bottom Compact 1-Row Bar */}
+      <div className="shrink-0 w-full px-4 py-2.5 bg-neutral-950/90 border-t border-white/10 backdrop-blur-md flex flex-wrap md:flex-nowrap items-center justify-between gap-4">
+        {/* Playback & Seek */}
+        <div className="flex items-center gap-3 flex-1 min-w-[280px] max-w-xl">
+          <ExportPreviewControls
+            isPlaying={isPlaying}
+            onTogglePlay={togglePlay}
+            onReset={handleReset}
+            onSeek={handleSeek}
+            sliderRef={sliderRef}
+            totalDurationMs={totalDurationMs}
+          />
+          <div className="flex items-center gap-1 font-mono text-[11px] text-white/50 shrink-0 select-none">
+            <span ref={timeLabelRef}>0.0s</span>
+            <span>/</span>
+            <span>{(totalDurationMs / 1000).toFixed(1)}s</span>
+          </div>
+        </div>
 
-        {/* Boundary Crop Watermark/Badge */}
-        {isBoundaryActive && (
-          <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 border border-green-500/40 text-green-400 text-[10px] font-medium backdrop-blur-sm">
-            Boundary Cropped
+        {/* Settings & Actions Slot */}
+        {bottomBarSlot && (
+          <div className="flex items-center gap-3 shrink-0 flex-wrap">
+            {bottomBarSlot}
           </div>
         )}
       </div>
-
-      <ExportPreviewControls
-        isPlaying={isPlaying}
-        onTogglePlay={togglePlay}
-        onReset={handleReset}
-        onSeek={handleSeek}
-        sliderRef={sliderRef}
-        totalDurationMs={totalDurationMs}
-      />
     </div>
   );
 }

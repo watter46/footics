@@ -335,6 +335,37 @@ describe('Tactical Frame Renderer', () => {
     expect(ctx.fillText).toHaveBeenCalled();
   });
 
+  it('applies 1:1 boundary crop offset without calling ctx.scale', () => {
+    const slideWithoutBall: Slide = {
+      ...sampleSlide,
+      ball: { x: 30, y: 40, visible: false },
+    };
+    const ctx = createMockContext();
+    renderTacticalFrameToCanvas(ctx, {
+      slides: [slideWithoutBall],
+      timeMs: 0,
+      width: 960,
+      height: 540,
+      aspectRatio: '16:9',
+      boundaryBox: {
+        enabled: true,
+        x: 20,
+        y: 10,
+        width: 50,
+        height: 50,
+      },
+      transparent: false,
+    });
+
+    // 拡大縮小（ctx.scale）は一切呼ばれない（等倍クロップ保証）
+    expect(ctx.scale).not.toHaveBeenCalled();
+
+    // 等倍クロップ用のtranslate（全画面ベース基準のオフセット）が呼ばれていること
+    // baseWidth = 960 / 0.5 = 1920, baseHeight = 540 / 0.5 = 1080
+    // cropX = 0.2 * 1920 = 384, cropY = 0.1 * 1080 = 108
+    expect(ctx.translate).toHaveBeenCalledWith(-384, -108);
+  });
+
   it('achieves 100% visual parity with browser canvas (gold pitch lines #e2b48d, clean white numbers without strokeText)', () => {
     const ctx = createMockContext();
     renderTacticalFrameToCanvas(ctx, {
@@ -945,7 +976,11 @@ describe('Tactical Frame Renderer', () => {
       expect(ctx.restore).toHaveBeenCalled();
     });
 
-    it('applies boundaryBox crop and zoom viewport transform in 2D mode', () => {
+    it('applies boundaryBox 1:1 crop viewport transform in 2D mode without scale', () => {
+      const slideWithoutBall: Slide = {
+        ...sampleSlide,
+        ball: { x: 30, y: 40, visible: false },
+      };
       const boundaryBox = {
         enabled: true,
         x: 20,
@@ -956,25 +991,24 @@ describe('Tactical Frame Renderer', () => {
 
       const ctx2d = createMockContext();
       renderTacticalFrameToCanvas(ctx2d, {
-        slides: [sampleSlide],
+        slides: [slideWithoutBall],
         timeMs: 0,
-        width: 1920,
-        height: 1080,
+        width: 768,
+        height: 432,
         aspectRatio: '16:9',
         boundaryBox,
         transparent: false,
       });
 
       // Canvas boundary safe clipping
-      expect(ctx2d.rect).toHaveBeenCalledWith(0, 0, 1920, 1080);
+      expect(ctx2d.rect).toHaveBeenCalledWith(0, 0, 768, 432);
       expect(ctx2d.clip).toHaveBeenCalled();
       expect(ctx2d.save).toHaveBeenCalled();
 
-      // Viewport transform (Scale & Translate):
+      // Viewport transform (1:1 crop: No scale, only translate):
+      // baseWidth = 768 / 0.4 = 1920, baseHeight = 432 / 0.4 = 1080
       // cropX_px = (20/100)*1920 = 384, cropY_px = (20/100)*1080 = 216
-      // cropW_px = (40/100)*1920 = 768, cropH_px = (40/100)*1080 = 432
-      // scaleX = 1920 / 768 = 2.5, scaleY = 1080 / 432 = 2.5
-      expect(ctx2d.scale).toHaveBeenCalledWith(2.5, 2.5);
+      expect(ctx2d.scale).not.toHaveBeenCalled();
       expect(ctx2d.translate).toHaveBeenCalledWith(-384, -216);
 
       // Player p1 rendered at raw screen coordinate (x: (30/100)*1920 = 576, y: (40/100)*1080 = 432)
@@ -987,7 +1021,11 @@ describe('Tactical Frame Renderer', () => {
       expect(ctx2d.restore).toHaveBeenCalled();
     });
 
-    it('applies boundaryBox crop and zoom viewport transform in 3D mode', () => {
+    it('applies boundaryBox 1:1 crop viewport transform in 3D mode without scale', () => {
+      const slideWithoutBall: Slide = {
+        ...sampleSlide,
+        ball: { x: 30, y: 40, visible: false },
+      };
       const pitchTransform: PitchTransform = {
         tilt: 45,
         zoom: 1.0,
@@ -1011,10 +1049,10 @@ describe('Tactical Frame Renderer', () => {
       };
       const ctx3d = createMockContext();
       renderTacticalFrameToCanvas(ctx3d, {
-        slides: [sampleSlide],
+        slides: [slideWithoutBall],
         timeMs: 0,
-        width: 1920,
-        height: 1080,
+        width: 768,
+        height: 432,
         aspectRatio: '16:9',
         boundaryBox,
         transparent: false,
@@ -1022,12 +1060,12 @@ describe('Tactical Frame Renderer', () => {
       });
 
       // Canvas boundary safe clipping
-      expect(ctx3d.rect).toHaveBeenCalledWith(0, 0, 1920, 1080);
+      expect(ctx3d.rect).toHaveBeenCalledWith(0, 0, 768, 432);
       expect(ctx3d.clip).toHaveBeenCalled();
       expect(ctx3d.save).toHaveBeenCalled();
 
-      // Viewport transform (Scale & Translate) applied identically in 3D mode
-      expect(ctx3d.scale).toHaveBeenCalledWith(2.5, 2.5);
+      // Viewport transform (1:1 crop: No scale, only translate) applied identically in 3D mode
+      expect(ctx3d.scale).not.toHaveBeenCalled();
       expect(ctx3d.translate).toHaveBeenCalledWith(-384, -216);
 
       // Player p1 projected with 3D matrix in raw uncropped coordinate space
