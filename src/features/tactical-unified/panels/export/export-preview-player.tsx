@@ -49,6 +49,7 @@ export {
 export interface ExportPreviewPlayerProps {
   slides: Slide[];
   aspectRatio: AspectRatio;
+  canvasAspectRatio?: AspectRatio;
   boundaryBox?: BoundaryBox | null;
   pitchTransform?: PitchTransform | null;
   photos?: Record<string, string>;
@@ -60,6 +61,7 @@ export interface ExportPreviewPlayerProps {
 export function ExportPreviewPlayer({
   slides,
   aspectRatio,
+  canvasAspectRatio,
   boundaryBox,
   pitchTransform,
   photos,
@@ -83,6 +85,7 @@ export function ExportPreviewPlayer({
   } = useExportPreviewAnimation({
     slides,
     aspectRatio,
+    canvasAspectRatio: canvasAspectRatio ?? '16:9',
     boundaryBox,
     pitchTransform,
     photos,

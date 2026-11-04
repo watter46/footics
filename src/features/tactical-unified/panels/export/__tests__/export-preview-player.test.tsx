@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TacticalUnifiedStoreProvider } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import { SlideSchema } from '@/lib/types/tactical-unified';
+import { createXBoundaryBox, SlideSchema } from '@/lib/types/tactical-unified';
 import { ExportPreviewPlayer } from '../export-preview-player';
 
 const mockSlide = SlideSchema.parse({
@@ -158,5 +158,28 @@ describe('ExportPreviewPlayer Viewport & Boundary Crop Layout', () => {
     expect(canvas).toBeDefined();
     expect(canvas?.width).toBe(960);
     expect(canvas?.height).toBe(544);
+  });
+
+  it('renders viewport with 4:5 aspect ratio (864 / 1080) when 4:5 boundary preset is active', () => {
+    const boundaryBox = createXBoundaryBox('4:5', '16:9');
+
+    render(
+      <TacticalUnifiedStoreProvider>
+        <ExportPreviewPlayer
+          slides={[mockSlide]}
+          aspectRatio="4:5"
+          boundaryBox={boundaryBox}
+        />
+      </TacticalUnifiedStoreProvider>,
+    );
+
+    const viewport = screen.getByTestId('export-preview-viewport');
+    expect(viewport).toBeDefined();
+    expect(viewport.style.aspectRatio).toBe('864 / 1080');
+
+    const canvas = viewport.querySelector('canvas');
+    expect(canvas).toBeDefined();
+    expect(canvas?.width).toBe(864);
+    expect(canvas?.height).toBe(1080);
   });
 });

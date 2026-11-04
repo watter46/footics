@@ -80,9 +80,9 @@ export function useExportPreviewAnimation({
     pitchAppearance,
   });
 
-  const effectiveAspectRatio = canvasAspectRatio ?? aspectRatio;
+  const effectiveCanvasAspect = canvasAspectRatio ?? '16:9';
   const basePreviewDim =
-    PREVIEW_DIMENSIONS[effectiveAspectRatio] ?? PREVIEW_DIMENSIONS['16:9'];
+    PREVIEW_DIMENSIONS[effectiveCanvasAspect] ?? PREVIEW_DIMENSIONS['16:9'];
 
   const cropInfo = useMemo(() => {
     return calculateBoundaryCrop(
@@ -127,7 +127,7 @@ export function useExportPreviewAnimation({
         pitchTransform,
         basePreviewDim.width,
         basePreviewDim.height,
-        aspectRatio,
+        effectiveCanvasAspect,
       ),
     );
   }, [
@@ -136,7 +136,7 @@ export function useExportPreviewAnimation({
     pitchTransform,
     basePreviewDim.width,
     basePreviewDim.height,
-    aspectRatio,
+    effectiveCanvasAspect,
   ]);
 
   const previewAspectStyle = useMemo(() => {
@@ -162,7 +162,7 @@ export function useExportPreviewAnimation({
         height: canvas.height,
         baseWidth: basePreviewDim.width,
         baseHeight: basePreviewDim.height,
-        aspectRatio,
+        aspectRatio: effectiveCanvasAspect,
         boundaryBox: effectiveBoundaryBox,
         transparent: false,
         mvpMatrix,
@@ -185,7 +185,7 @@ export function useExportPreviewAnimation({
       basePreviewDim.height,
       shouldCropPreview,
       boundaryBox,
-      aspectRatio,
+      effectiveCanvasAspect,
       mvpMatrix,
       effectivePlayerPhotos,
       pitchAppearance,

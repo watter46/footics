@@ -270,6 +270,29 @@ describe('useExportPreviewAnimation', () => {
     ).toBeCloseTo(4 / 5, 2);
   });
 
+  it('correctly calculates preview dimensions 864x1080 when slide project aspectRatio is 4:5 with 4:5 boundary preset', () => {
+    const boundaryBox = createXBoundaryBox('4:5', '16:9');
+
+    const { result } = renderHook(() =>
+      useExportPreviewAnimation({
+        slides: [mockSlide1],
+        aspectRatio: '4:5',
+        boundaryBox,
+        externalIsPlaying: false,
+        canvasRef,
+        timeLabelRef,
+        sliderRef,
+      }),
+    );
+
+    expect(result.current.previewWidth).toBe(864);
+    expect(result.current.previewHeight).toBe(1080);
+    expect(result.current.previewAspectStyle).toBe('864 / 1080');
+    expect(
+      result.current.previewWidth / result.current.previewHeight,
+    ).toBeCloseTo(4 / 5, 2);
+  });
+
   it('passes baseWidth and baseHeight to renderTacticalFrameToCanvas for canonical reference frame', () => {
     const boundaryBox = {
       x: 10,

@@ -250,6 +250,7 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
       <ExportPreviewPlayer
         slides={slides}
         aspectRatio={aspectRatio}
+        canvasAspectRatio="16:9"
         boundaryBox={activeSlide?.boundaryBox}
         pitchTransform={activeSlide?.pitchTransform}
         pitchAppearance={pitchAppearance}

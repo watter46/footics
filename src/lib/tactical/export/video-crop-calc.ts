@@ -58,10 +58,12 @@ export function calculateBoundaryCrop(
   // scale >= 2.5 (2K / 1440p QHD): 2560x1440 for 16:9, 1440x2560 for 9:16
   // scale >= 1.5 (1080p Full HD): 1920x1080 for 16:9, 1080x1920 for 9:16
   // scale < 1.5 (720p HD): 1280x720 for 16:9, 720x1280 for 9:16
-  const isSquare = stageWidth === stageHeight;
-  const isFourFive = Math.abs(stageWidth / stageHeight - 4 / 5) < 0.05;
-  const isFourThree = Math.abs(stageWidth / stageHeight - 4 / 3) < 0.05;
-  const isVertical = stageHeight > stageWidth && !isFourFive;
+  const targetW = isCropped && cropW > 0 ? cropW : stageWidth;
+  const targetH = isCropped && cropH > 0 ? cropH : stageHeight;
+  const isSquare = targetW === targetH;
+  const isFourFive = Math.abs(targetW / targetH - 4 / 5) < 0.05;
+  const isFourThree = Math.abs(targetW / targetH - 4 / 3) < 0.05;
+  const isVertical = targetH > targetW && !isFourFive;
 
   let baseWidth: number;
   let baseHeight: number;
