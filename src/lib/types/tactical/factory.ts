@@ -12,6 +12,7 @@ import {
 import {
   type BoundaryBox,
   DEFAULT_BOUNDARY_BOX_4_5,
+  DEFAULT_BOUNDARY_BOX_16_9,
   DEFAULT_PITCH_APPEARANCE,
   DEFAULT_SCREEN_BACKGROUND,
   type Slide,
@@ -24,16 +25,16 @@ export const DEFAULT_INITIAL_SLIDE_ID = '00000000-0000-4000-8000-000000000003';
 export const DEFAULT_INITIAL_CREATED_AT = '2026-01-01T00:00:00.000Z';
 
 const BENCH_POSITION_RANK: Record<string, number> = Object.fromEntries([
-  ...['FW', 'CF', 'ST', 'LW', 'RW', 'SS', 'AML', 'AMR'].map((p) => [p, 1]),
-  ...['MF', 'DM', 'CM', 'AM', 'LM', 'RM', 'DMC', 'MC', 'AMC'].map((p) => [
-    p,
-    2,
-  ]),
-  ...['DF', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'DC', 'DL', 'DR'].map((p) => [
-    p,
-    3,
-  ]),
-  ['GK', 4],
+  ...['FW', 'CF', 'ST', 'LW', 'RW', 'SS', 'AML', 'AMR'].map(
+    (p) => [p, 1] as const,
+  ),
+  ...['MF', 'DM', 'CM', 'AM', 'LM', 'RM', 'DMC', 'MC', 'AMC'].map(
+    (p) => [p, 2] as const,
+  ),
+  ...['DF', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'DC', 'DL', 'DR'].map(
+    (p) => [p, 3] as const,
+  ),
+  ['GK', 4] as const,
 ]);
 
 function getBenchPositionRank(position?: string): number {
@@ -89,7 +90,7 @@ export {
 export function createDefaultInitialPlayers(
   homeColor = '#034694',
   awayColor = '#ef4444',
-  aspectRatio: AspectRatio = '4:5',
+  aspectRatio: AspectRatio = '16:9',
   deterministic?: boolean,
 ): Player[] {
   const isVertical = isVerticalAspectRatio(aspectRatio);
@@ -123,7 +124,7 @@ export function createDefaultInitialPlayers(
 export function createDefault442Players(
   homeColor = '#034694',
   awayColor = '#ef4444',
-  aspectRatio: AspectRatio = '4:5',
+  aspectRatio: AspectRatio = '16:9',
 ): Player[] {
   const isVertical = isVerticalAspectRatio(aspectRatio);
   const homePlayers: Player[] = DEFAULT_442_HOME.map((p) => {
@@ -158,20 +159,24 @@ export function createDefaultPhase(
   awayColor?: string,
   slideId?: string,
   deterministic?: boolean,
+  aspectRatio: AspectRatio = '16:9',
+  boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_16_9,
 ): TacticalPhase {
   const phaseId = id ?? crypto.randomUUID();
   const resolvedSlideId = slideId ?? crypto.randomUUID();
   return {
     id: phaseId,
     name,
+    aspectRatio,
+    boundaryBox: { ...boundaryBox },
     slides: [
       createDefaultSlide(
         0,
         resolvedSlideId,
         homeColor,
         awayColor,
-        DEFAULT_BOUNDARY_BOX_4_5,
-        '4:5',
+        boundaryBox,
+        aspectRatio,
         deterministic,
       ),
     ],
@@ -188,15 +193,15 @@ export function createDefaultProject(
   },
 ): TacticalProject {
   const now = options?.createdAt ?? new Date().toISOString();
-  const homeColor = { primary: '#034694' };
-  const awayColor = { primary: '#ef4444' };
   const initialPhase = createDefaultPhase(
     options?.phaseId,
     'Phase 1',
-    homeColor.primary,
-    awayColor.primary,
+    '#034694',
+    '#ef4444',
     options?.slideId,
     options?.deterministic,
+    '16:9',
+    DEFAULT_BOUNDARY_BOX_16_9,
   );
 
   const project = {
@@ -205,16 +210,16 @@ export function createDefaultProject(
     title: 'Untitled Project',
     createdAt: now,
     updatedAt: now,
-    aspectRatio: '4:5' as const,
+    aspectRatio: '16:9' as const,
     backgroundType: 'pitch' as const,
     pitchAppearance: { ...DEFAULT_PITCH_APPEARANCE },
     screenBackground: { ...DEFAULT_SCREEN_BACKGROUND },
-    homeColor,
-    awayColor,
+    homeColor: { primary: '#034694' },
+    awayColor: { primary: '#ef4444' },
     phases: [initialPhase],
     activePhaseId: initialPhase.id,
     activeSlideId: initialPhase.slides[0].id,
-    boundaryBox: { ...DEFAULT_BOUNDARY_BOX_4_5 },
+    boundaryBox: { ...DEFAULT_BOUNDARY_BOX_16_9 },
     tags: [],
   };
 
@@ -235,8 +240,8 @@ export function createDefaultSlide(
   id?: string,
   homeColor?: string,
   awayColor?: string,
-  boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_4_5,
-  aspectRatio: AspectRatio = '4:5',
+  boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_16_9,
+  aspectRatio: AspectRatio = '16:9',
   deterministic?: boolean,
 ): Slide {
   return {

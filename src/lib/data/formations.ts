@@ -1,3 +1,6 @@
+import { getScreenPitchBounds } from '@/lib/tactical/pitch-geometry';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
+
 export type FormationPosition = {
   id: number;
   group: 'GK' | 'DF' | 'MF' | 'FW';
@@ -139,73 +142,95 @@ export function getHalfCourtPitchPos(
 }
 
 /**
- * テンプレート座標 (top, left) を横画面ボードの絶対座標 (Normal/Home視点: x=0..100, y=0..100) に変換する
+ * テンプレート座標 (top, left) を各アスペクト比の絶対座標 (Normal/Home視点: x=0..100, y=0..100) に変換する
  */
+export function getFormationActualPos(
+  top: number,
+  left: number,
+  isAway: boolean,
+  aspectRatio?: AspectRatio,
+): { x: number; y: number };
 export function getFormationActualPos(
   pos: { top: number; left: number },
   team: 'home' | 'away',
-  mode: FormationMode = 'full',
+  mode?: FormationMode,
+  aspectRatio?: AspectRatio,
+): { x: number; y: number };
+export function getFormationActualPos(
+  arg1: number | { top: number; left: number },
+  arg2: number | 'home' | 'away',
+  arg3?: boolean | FormationMode,
+  arg4?: AspectRatio,
 ): { x: number; y: number } {
-  const isHome = team === 'home';
-  const clampedTop = Math.max(0, Math.min(100, pos.top));
-  const clampedLeft = Math.max(0, Math.min(100, pos.left));
+  let top: number;
+  let left: number;
+  let isAway: boolean;
+  let aspectRatio: AspectRatio = '16:9';
 
-  const pitchWidth = PITCH_BOUNDS_16_9.xMax - PITCH_BOUNDS_16_9.xMin;
-  const pitchHeight = PITCH_BOUNDS_16_9.yMax - PITCH_BOUNDS_16_9.yMin;
-
-  const yHome = PITCH_BOUNDS_16_9.yMin + (clampedLeft / 100) * pitchHeight;
-  const y = isHome ? yHome : 100 - yHome;
-
-  if (mode === 'full') {
-    // フルコート: ピッチ白線全域 (7.81%〜92.19%)
-    const xDist = 100 - clampedTop;
-    const xHome = PITCH_BOUNDS_16_9.xMin + (xDist / 100) * pitchWidth;
-    return {
-      x: isHome ? xHome : 100 - xHome,
-      y,
-    };
+  if (typeof arg1 === 'object') {
+    top = arg1.top;
+    left = arg1.left;
+    isAway = arg2 === 'away';
+    if (typeof arg4 === 'string') {
+      aspectRatio = arg4;
+    }
   } else {
-    // ハーフコート: ピッチ白線自陣守備側 (Home: 7.81%〜50.0%, Away: 50.0%〜92.19%)
-    const distFromGoal = 100 - clampedTop;
-    const x = getHalfCourtPitchPos(distFromGoal, team);
+    top = arg1;
+    left = arg2 as number;
+    isAway = Boolean(arg3);
+    if (arg4) {
+      aspectRatio = arg4;
+    }
+  }
+
+  const clampedTop = Math.max(0, Math.min(100, top));
+  const clampedLeft = Math.max(0, Math.min(100, left));
+
+  const attackRatio = isAway
+    ? 1 - (clampedTop / 100) * 0.5
+    : (clampedTop / 100) * 0.5;
+  const widthRatio = isAway ? (100 - clampedLeft) / 100 : clampedLeft / 100;
+
+  const bounds = getScreenPitchBounds(aspectRatio);
+
+  if (bounds.isHorizontal) {
     return {
-      x,
-      y,
+      x: bounds.xMin + attackRatio * bounds.xSpan,
+      y: bounds.yMin + (1 - widthRatio) * bounds.ySpan,
     };
   }
+
+  return {
+    x: bounds.xMin + widthRatio * bounds.xSpan,
+    y: bounds.yMax - attackRatio * bounds.ySpan,
+  };
 }
 
 /**
- * テンプレート座標 (top, left) を縦画面ボードの絶対座標 (Home: 下陣地 y=50-92.19%, Away: 上陣地 y=7.81-50%) に変換する
+ * テンプレート座標 (top, left) を縦画面ボードの絶対座標 (Home: 下陣地, Away: 上陣地) に変換する (4:5 委譲)
  */
+export function getFormationActualPosVertical(
+  top: number,
+  left: number,
+  isAway: boolean,
+): { x: number; y: number };
 export function getFormationActualPosVertical(
   pos: { top: number; left: number },
   team: 'home' | 'away',
-  mode: FormationMode = 'half',
+  mode?: FormationMode,
+): { x: number; y: number };
+export function getFormationActualPosVertical(
+  arg1: number | { top: number; left: number },
+  arg2: number | 'home' | 'away',
+  arg3?: boolean | FormationMode,
 ): { x: number; y: number } {
-  const isHome = team === 'home';
-  const clampedTop = Math.max(0, Math.min(100, pos.top));
-  const clampedLeft = Math.max(0, Math.min(100, pos.left));
-
-  const pitchWidth = PITCH_BOUNDS_9_16.xMax - PITCH_BOUNDS_9_16.xMin;
-  const pitchHeight = PITCH_BOUNDS_9_16.yMax - PITCH_BOUNDS_9_16.yMin;
-
-  const xHome = PITCH_BOUNDS_9_16.xMin + (clampedLeft / 100) * pitchWidth;
-  const x = isHome ? xHome : 100 - xHome;
-
-  if (mode === 'full') {
-    const dist = 100 - clampedTop;
-    const yAway = PITCH_BOUNDS_9_16.yMin + (dist / 100) * pitchHeight;
-    return {
-      x,
-      y: isHome ? PITCH_BOUNDS_9_16.yMax - (dist / 100) * pitchHeight : yAway,
-    };
-  } else {
-    const distFromGoal = 100 - clampedTop;
-    const halfPos = getHalfCourtPitchPos(distFromGoal, 'home');
-    return {
-      x,
-      y: isHome ? 100 - halfPos : halfPos,
-    };
+  if (typeof arg1 === 'object') {
+    return getFormationActualPos(
+      arg1,
+      arg2 as 'home' | 'away',
+      arg3 as FormationMode,
+      '4:5',
+    );
   }
+  return getFormationActualPos(arg1, arg2 as number, Boolean(arg3), '4:5');
 }

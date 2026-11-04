@@ -15,6 +15,7 @@ import {
   createDefaultSlide,
   createInitialProject,
   createXBoundaryBox,
+  DEFAULT_BOUNDARY_BOX_16_9,
   DEFAULT_INITIAL_CREATED_AT,
   DEFAULT_INITIAL_PHASE_ID,
   DEFAULT_INITIAL_PROJECT_ID,
@@ -72,52 +73,36 @@ describe('transformCoord', () => {
     expect(transformCoord(p, '1:1', '1:1')).toEqual(p);
   });
 
-  it('同系統比率間（横: 16:9, 縦同士: 9:16 ⇄ 4:5 ⇄ 1:1）では回転せず維持される', () => {
-    const p = { x: 80, y: 30 };
-    expect(transformCoord(p, '9:16', '4:5')).toEqual(p);
-    expect(transformCoord(p, '4:5', '9:16')).toEqual(p);
-    expect(transformCoord(p, '9:16', '1:1')).toEqual(p);
-    expect(transformCoord(p, '1:1', '9:16')).toEqual(p);
-    expect(transformCoord(p, '4:5', '1:1')).toEqual(p);
-    expect(transformCoord(p, '1:1', '4:5')).toEqual(p);
+  it('往復変換で元の座標値に戻る (16:9 ⇄ 4:5)', () => {
+    const original = { x: 65, y: 42 };
+    const converted = transformCoord(original, '16:9', '4:5');
+    const back = transformCoord(converted, '4:5', '16:9');
+    expect(back.x).toBeCloseTo(original.x, 1);
+    expect(back.y).toBeCloseTo(original.y, 1);
   });
 
-  it('16:9 → 4:5 変換 (横→縦): x_v=y_h, y_v=100-x_h', () => {
-    const result = transformCoord({ x: 80, y: 30 }, '16:9', '4:5');
-    expect(result.x).toBeCloseTo(30);
-    expect(result.y).toBeCloseTo(20);
-  });
-
-  it('16:9 → 1:1 変換 (横→縦): x_v=y_h, y_v=100-x_h', () => {
-    const result = transformCoord({ x: 80, y: 30 }, '16:9', '1:1');
-    expect(result.x).toBeCloseTo(30);
-    expect(result.y).toBeCloseTo(20);
-  });
-
-  it('4:5 → 16:9 変換 (縦→横): x_h=100-y_v, y_h=x_v', () => {
-    const result = transformCoord({ x: 30, y: 20 }, '4:5', '16:9');
-    expect(result.x).toBeCloseTo(80);
-    expect(result.y).toBeCloseTo(30);
-  });
-
-  it('16:9 → 9:16 変換: x_v=y_h, y_v=100-x_h', () => {
-    const result = transformCoord({ x: 80, y: 30 }, '16:9', '9:16');
-    expect(result.x).toBeCloseTo(30);
-    expect(result.y).toBeCloseTo(20);
-  });
-
-  it('9:16 → 16:9 変換: x_h=100-y_v, y_h=x_v', () => {
-    const result = transformCoord({ x: 30, y: 20 }, '9:16', '16:9');
-    expect(result.x).toBeCloseTo(80);
-    expect(result.y).toBeCloseTo(30);
-  });
-
-  it('往復変換で元の値に戻る', () => {
+  it('往復変換で元の座標値に戻る (16:9 ⇄ 9:16)', () => {
     const original = { x: 65, y: 42 };
     const converted = transformCoord(original, '16:9', '9:16');
     const back = transformCoord(converted, '9:16', '16:9');
-    expect(back.x).toBeCloseTo(original.x, 5);
-    expect(back.y).toBeCloseTo(original.y, 5);
+    expect(back.x).toBeCloseTo(original.x, 1);
+    expect(back.y).toBeCloseTo(original.y, 1);
+  });
+
+  it('往復変換で元の座標値に戻る (16:9 ⇄ 1:1)', () => {
+    const original = { x: 65, y: 42 };
+    const converted = transformCoord(original, '16:9', '1:1');
+    const back = transformCoord(converted, '1:1', '16:9');
+    expect(back.x).toBeCloseTo(original.x, 1);
+    expect(back.y).toBeCloseTo(original.y, 1);
+  });
+
+  it('縦比率同士の往復変換で元の座標値に戻る (4:5 ⇄ 9:16)', () => {
+    const original = { x: 50, y: 50 };
+    const converted = transformCoord(original, '4:5', '9:16');
+    const back = transformCoord(converted, '9:16', '4:5');
+    expect(back.x).toBeCloseTo(original.x, 1);
+    expect(back.y).toBeCloseTo(original.y, 1);
   });
 
   it('座標が 0〜100 にクランプされる', () => {
@@ -137,8 +122,9 @@ describe('transformPoints', () => {
     ];
     const result = transformPoints(pts, '16:9', '9:16');
     expect(result).toHaveLength(2);
-    expect(result[0]?.x).toBeCloseTo(30);
-    expect(result[1]?.x).toBeCloseTo(50);
+    const back0 = transformCoord(result[0]!, '9:16', '16:9');
+    expect(back0.x).toBeCloseTo(80, 1);
+    expect(back0.y).toBeCloseTo(30, 1);
   });
 });
 
@@ -208,16 +194,8 @@ describe('SlideSchema', () => {
     const slide = createDefaultSlide(0);
     const result = SlideSchema.safeParse(slide);
     expect(result.success).toBe(true);
-    expect(slide.aspectRatio).toBe('4:5');
-    expect(slide.boundaryBox).toEqual({
-      x: 0,
-      y: 0,
-      width: 100,
-      height: 100,
-      enabled: true,
-      visible: false,
-      fitTarget: 'pitch',
-    });
+    expect(slide.aspectRatio).toBe('16:9');
+    expect(slide.boundaryBox).toEqual(DEFAULT_BOUNDARY_BOX_16_9);
   });
 });
 

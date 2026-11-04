@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand';
+import { getScreenOuterPitchRect } from '@/lib/tactical/pitch-geometry';
 import type {
   BoundaryBox,
   PitchTransform,
@@ -6,10 +7,13 @@ import type {
 } from '@/lib/types/tactical-unified';
 import {
   createXBoundaryBox,
-  getDefaultBoundaryBoxForAspect,
+  DEFAULT_BOUNDARY_BOX_16_9,
   X_MEDIA_PRESETS,
 } from '@/lib/types/tactical-unified';
-import { computePitchFitBoundaryBox } from './boundary-box-helpers';
+import {
+  findPhaseIdForSlide,
+  updatePhaseBoundaryInProject,
+} from './boundary-box-helpers';
 import { getSlide, recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 
@@ -47,67 +51,60 @@ type SetState = Parameters<
 function createPitchBoundaryActions(set: SetState) {
   return {
     setBoundaryBox: (slideId: string, box: BoundaryBox | undefined) =>
-      set((s) => ({
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          boundaryBox: box,
-        })),
-        isDirty: true,
-      })),
+      set((s) => {
+        const phaseId =
+          findPhaseIdForSlide(s.project, slideId) || s.activePhaseId;
+        return {
+          ...recordHistory(s),
+          project: updatePhaseBoundaryInProject(s.project, phaseId, box),
+          isDirty: true,
+        };
+      }),
 
     updateBoundaryBox: (slideId: string, box: BoundaryBox | undefined) =>
-      set((s) => ({
-        project: updateSlideInProject(s.project, slideId, (sl) => ({
-          ...sl,
-          boundaryBox: box,
-        })),
-        isDirty: true,
-      })),
+      set((s) => {
+        const phaseId =
+          findPhaseIdForSlide(s.project, slideId) || s.activePhaseId;
+        return {
+          project: updatePhaseBoundaryInProject(s.project, phaseId, box),
+          isDirty: true,
+        };
+      }),
 
     updateActiveSlideBoundaryBox: (box: BoundaryBox | undefined) =>
       set((s) => {
-        const targetSlideId = s.activeSlideId;
-        if (!targetSlideId) return s;
+        const phaseId =
+          findPhaseIdForSlide(s.project, s.activeSlideId) || s.activePhaseId;
         return {
           ...recordHistory(s),
-          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
-            ...sl,
-            boundaryBox: box,
-          })),
+          project: updatePhaseBoundaryInProject(s.project, phaseId, box),
           isDirty: true,
         };
       }),
 
     autoFitBoundaryBox: (
       slideId?: string,
-      pitchRect?: { width: number; height: number },
+      _pitchRect?: { width: number; height: number },
     ) =>
       set((s) => {
-        const targetSlideId = slideId ?? s.activeSlideId;
-        const slide = getSlide(s.project, targetSlideId);
-        const isPitchBg =
-          (slide?.backgroundType ?? s.project.backgroundType ?? 'pitch') ===
-          'pitch';
-        const pitchPos =
-          slide?.pitchPosition ??
-          (slide?.pitchTransform
-            ? { x: slide.pitchTransform.panX, y: slide.pitchTransform.panY }
-            : undefined);
-        const box = computePitchFitBoundaryBox(
-          isPitchBg,
-          s.project.aspectRatio,
-          pitchPos,
-          slide?.pitchTransform,
-          pitchRect,
-        );
-
+        const phaseId =
+          findPhaseIdForSlide(s.project, slideId ?? s.activeSlideId) ||
+          s.activePhaseId;
+        const phase = s.project.phases.find((p) => p.id === phaseId);
+        const aspect = phase?.aspectRatio ?? s.project.aspectRatio ?? '16:9';
+        const outer = getScreenOuterPitchRect(aspect);
+        const box: BoundaryBox = {
+          x: outer.left,
+          y: outer.top,
+          width: outer.width,
+          height: outer.height,
+          enabled: true,
+          visible: false,
+          fitTarget: 'pitch',
+        };
         return {
           ...recordHistory(s),
-          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
-            ...sl,
-            boundaryBox: box,
-          })),
+          project: updatePhaseBoundaryInProject(s.project, phaseId, box),
           isDirty: true,
         };
       }),
@@ -117,38 +114,32 @@ function createPitchBoundaryActions(set: SetState) {
       slideId?: string,
     ) =>
       set((s) => {
-        const targetSlideId = slideId ?? s.activeSlideId;
+        const phaseId =
+          findPhaseIdForSlide(s.project, slideId ?? s.activeSlideId) ||
+          s.activePhaseId;
+        const phase = s.project.phases.find((p) => p.id === phaseId);
+        const aspect = phase?.aspectRatio ?? s.project.aspectRatio ?? '16:9';
+
         let box: BoundaryBox;
         if (presetKey === 'pitch_fit') {
-          const slide = getSlide(s.project, targetSlideId);
-          const isPitchBg =
-            (slide?.backgroundType ?? s.project.backgroundType ?? 'pitch') ===
-            'pitch';
-          const pitchPos =
-            slide?.pitchPosition ??
-            (slide?.pitchTransform
-              ? { x: slide.pitchTransform.panX, y: slide.pitchTransform.panY }
-              : undefined);
-          box = computePitchFitBoundaryBox(
-            isPitchBg,
-            s.project.aspectRatio,
-            pitchPos,
-            slide?.pitchTransform,
-          );
+          const outer = getScreenOuterPitchRect(aspect);
+          box = {
+            x: outer.left,
+            y: outer.top,
+            width: outer.width,
+            height: outer.height,
+            enabled: true,
+            visible: false,
+            fitTarget: 'pitch',
+          };
         } else {
           const preset = X_MEDIA_PRESETS[presetKey];
-          box = createXBoundaryBox(
-            preset?.ratio ?? '16:9',
-            s.project.aspectRatio,
-          );
+          box = createXBoundaryBox(preset?.ratio ?? '16:9', '16:9');
         }
 
         return {
           ...recordHistory(s),
-          project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
-            ...sl,
-            boundaryBox: box,
-          })),
+          project: updatePhaseBoundaryInProject(s.project, phaseId, box),
           isDirty: true,
         };
       }),
@@ -256,11 +247,11 @@ export const createPitchSlice: StateCreator<
   centerPitchAndBoundary: (slideId?: string) =>
     set((s) => {
       const targetSlideId = slideId ?? s.activeSlideId;
+      const phaseId =
+        findPhaseIdForSlide(s.project, targetSlideId) || s.activePhaseId;
       const slide = getSlide(s.project, targetSlideId);
       if (!slide) return s;
-      const defaultBox = getDefaultBoundaryBoxForAspect(
-        slide.aspectRatio ?? s.project.aspectRatio,
-      );
+      const defaultBox = DEFAULT_BOUNDARY_BOX_16_9;
       const resetTransform: PitchTransform = {
         panX: 0,
         panY: 0,
@@ -269,14 +260,22 @@ export const createPitchSlice: StateCreator<
         yaw: 90,
         isLocked: slide.pitchTransform?.isLocked ?? true,
       };
-      return {
-        ...recordHistory(s),
-        project: updateSlideInProject(s.project, targetSlideId, (sl) => ({
+      const projectWithTransform = updateSlideInProject(
+        s.project,
+        targetSlideId,
+        (sl) => ({
           ...sl,
           pitchPosition: undefined,
           pitchTransform: resetTransform,
-          boundaryBox: defaultBox,
-        })),
+        }),
+      );
+      return {
+        ...recordHistory(s),
+        project: updatePhaseBoundaryInProject(
+          projectWithTransform,
+          phaseId,
+          defaultBox,
+        ),
         isDirty: true,
       };
     }),

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ASPECT_RATIOS } from '@/lib/types/tactical-unified';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import { calculateVirtualCanvasRect } from '../utils/virtual-canvas-rect';
 import { useCanvasStore } from './use-canvas-store';
@@ -48,20 +47,15 @@ export function useCanvasViewport({
     return () => observer.disconnect();
   }, []);
 
-  const storeAspectRatio = useCanvasStore((s) => s.aspectRatio);
-  const effectiveAspect =
-    imageAspect ??
-    (storeAspectRatio ? ASPECT_RATIOS[storeAspectRatio] : undefined) ??
-    (containerSize.height > 0 ? containerSize.width / containerSize.height : 1);
-
   const paddingRatio = useCanvasStore((s) => s.capabilities?.paddingRatio ?? 0);
+  const effectiveAspect = imageAspect ?? 16 / 9;
 
   const rawVRect = useMemo(
     () =>
       calculateVirtualCanvasRect(
         containerSize,
         effectiveAspect,
-        undefined,
+        1920,
         paddingRatio,
       ),
     [containerSize, effectiveAspect, paddingRatio],

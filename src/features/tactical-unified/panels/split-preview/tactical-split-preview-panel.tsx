@@ -10,6 +10,8 @@ import {
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { useExportPreviewAnimation } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
+  selectActivePhaseAspectRatio,
+  selectActivePhaseBoundaryBox,
   selectActivePhaseSlides,
   selectActiveSlide,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
@@ -21,10 +23,12 @@ import { PreviewBoundaryOverlay } from './preview-boundary-overlay';
 export function TacticalSplitPreviewPanel() {
   const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
   const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
-  const projectAspectRatio = useTacticalUnifiedStoreContext(
-    (s) => s.project.aspectRatio ?? '4:5',
+  const aspectRatio = useTacticalUnifiedStoreContext(
+    selectActivePhaseAspectRatio,
   );
-  const aspectRatio = activeSlide?.aspectRatio ?? projectAspectRatio;
+  const phaseBoundaryBox = useTacticalUnifiedStoreContext(
+    selectActivePhaseBoundaryBox,
+  );
   const pitchAppearance = useTacticalUnifiedStoreContext(
     (s) => s.project.pitchAppearance,
   );
@@ -54,7 +58,7 @@ export function TacticalSplitPreviewPanel() {
   const latestPitchTransformRef = useRef<PitchTransform | null>(null);
 
   // 境界線の状態
-  const boundaryBox = activeSlide?.boundaryBox;
+  const boundaryBox = activeSlide?.boundaryBox ?? phaseBoundaryBox;
   const isBoundaryActive = Boolean(boundaryBox?.enabled);
 
   const allPhasePlayers = useMemo(

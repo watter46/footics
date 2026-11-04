@@ -17,6 +17,8 @@ import {
 } from '../core/store/canvas-store-pitch';
 import type { CanvasActions, CanvasStore, CanvasStoreApi } from '../core/types';
 import {
+  selectActivePhaseAspectRatio,
+  selectActivePhaseBoundaryBox,
   selectActiveSlide,
   selectCanRedo,
   selectCanUndo,
@@ -207,8 +209,8 @@ export function createTacticalCanvasStoreAdapter(
       selectedObjects: state.selectedObjects,
       selectedIds: getSelectedIds(state.selectedObjects),
       pitchTransform: editorViewport,
-      boundaryBox: active?.boundaryBox ?? DEFAULT_BOUNDARY_BOX,
-      aspectRatio: active?.aspectRatio ?? state.project.aspectRatio,
+      boundaryBox: selectActivePhaseBoundaryBox(state),
+      aspectRatio: selectActivePhaseAspectRatio(state),
       pitchAppearance:
         active?.pitchAppearance ??
         state.project.pitchAppearance ??

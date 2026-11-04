@@ -81,12 +81,12 @@ export function useBallDrag({
       };
       return {
         x: Math.max(
-          parentPos.x - stageSize.width,
-          Math.min(parentPos.x + stageSize.width * 2, pos.x),
+          parentPos.x,
+          Math.min(parentPos.x + stageSize.width, pos.x),
         ),
         y: Math.max(
-          parentPos.y - stageSize.height,
-          Math.min(parentPos.y + stageSize.height * 2, pos.y),
+          parentPos.y,
+          Math.min(parentPos.y + stageSize.height, pos.y),
         ),
       };
     },

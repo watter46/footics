@@ -30,6 +30,7 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
     activeSlide,
     slides,
     aspectRatio,
+    boundaryBox,
     pitchAppearance,
   } = state;
 
@@ -251,7 +252,7 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
         slides={slides}
         aspectRatio={aspectRatio}
         canvasAspectRatio="16:9"
-        boundaryBox={activeSlide?.boundaryBox}
+        boundaryBox={boundaryBox ?? activeSlide?.boundaryBox}
         pitchTransform={activeSlide?.pitchTransform}
         pitchAppearance={pitchAppearance}
         bottomBarSlot={renderBottomControls()}

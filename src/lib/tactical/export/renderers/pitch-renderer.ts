@@ -1,4 +1,7 @@
-import { calculatePitchGeometryForAspect } from '@/lib/tactical/pitch-geometry';
+import {
+  calculatePitchGeometryForAspect,
+  calculatePitchRect,
+} from '@/lib/tactical/pitch-geometry';
 import { calculatePitchTextureCover } from '@/lib/tactical/pitch-texture-geometry';
 import type {
   AspectRatio,
@@ -121,11 +124,21 @@ export function renderPitch(
   const isMarble = pitchAppearance?.pitchBackgroundType === 'marble';
 
   if (isMarble) {
+    const outerRect =
+      context.outerPitchRect ??
+      calculatePitchRect({ width: w, height: h }, aspectRatio);
+
     // Pitch inner bounds calculation
-    const toNormX = (svgX: number) => (svgX / geom.config.widthPx) * 100;
-    const toNormY = (svgY: number) => (svgY / geom.config.heightPx) * 100;
-    const toNormW = (svgW: number) => (svgW / geom.config.widthPx) * 100;
-    const toNormH = (svgH: number) => (svgH / geom.config.heightPx) * 100;
+    const toNormX = (svgX: number) =>
+      ((outerRect.x + (svgX / geom.config.widthPx) * outerRect.width) / w) *
+      100;
+    const toNormY = (svgY: number) =>
+      ((outerRect.y + (svgY / geom.config.heightPx) * outerRect.height) / h) *
+      100;
+    const toNormW = (svgW: number) =>
+      (((svgW / geom.config.widthPx) * outerRect.width) / w) * 100;
+    const toNormH = (svgH: number) =>
+      (((svgH / geom.config.heightPx) * outerRect.height) / h) * 100;
 
     const normLeft = toNormX(geom.pitchLeft);
     const normTop = toNormY(geom.pitchTop);

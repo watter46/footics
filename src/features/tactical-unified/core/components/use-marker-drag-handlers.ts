@@ -239,8 +239,8 @@ export function useMarkerDragHandlers({
           updates.push({
             id,
             patch: {
-              x: initial.normX + deltaNormX,
-              y: initial.normY + deltaNormY,
+              x: Math.max(0, Math.min(100, initial.normX + deltaNormX)),
+              y: Math.max(0, Math.min(100, initial.normY + deltaNormY)),
             },
           });
         }
@@ -248,9 +248,15 @@ export function useMarkerDragHandlers({
         return;
       }
 
-      // ピッチ外余白座標も保持（[0, 100] へのクランプは行わない）
-      const nx = (e.target.x() / pitchRect.width) * 100;
-      const ny = (e.target.y() / pitchRect.height) * 100;
+      // 16:9 スクリーン（0..100）にクランプ（白線外余白は配置可・境界線は無視）
+      const nx = Math.max(
+        0,
+        Math.min(100, (e.target.x() / pitchRect.width) * 100),
+      );
+      const ny = Math.max(
+        0,
+        Math.min(100, (e.target.y() / pitchRect.height) * 100),
+      );
       updateMarker(marker.id, { x: nx, y: ny });
     },
     [

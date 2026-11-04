@@ -3,6 +3,7 @@ import { FORMATION_LIST } from '@/lib/data/formations';
 import { AspectRatioSchema, NormalizedCoordSchema } from './primitives';
 import {
   BoundaryBoxSchema,
+  DEFAULT_BOUNDARY_BOX_16_9,
   PitchAppearanceConfigSchema,
   ScreenBackgroundConfigSchema,
   type Slide,
@@ -16,6 +17,8 @@ import {
 export const TacticalPhaseSchema = z.object({
   id: z.string(),
   name: z.string().min(1).max(200),
+  aspectRatio: AspectRatioSchema.default('16:9').optional(),
+  boundaryBox: BoundaryBoxSchema.default(DEFAULT_BOUNDARY_BOX_16_9).optional(),
   slides: z.array(SlideSchema).min(1),
 });
 export type TacticalPhase = z.infer<typeof TacticalPhaseSchema>;
@@ -39,7 +42,7 @@ export const TacticalProjectSchema = z.object({
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 
-  aspectRatio: AspectRatioSchema.default('4:5'),
+  aspectRatio: AspectRatioSchema.default('16:9'),
 
   backgroundType: z.enum(['pitch', 'image', 'blank']).default('pitch'),
   backgroundImageUrl: z.string().optional(),

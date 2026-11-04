@@ -7,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/menu';
+import { getScreenOuterPitchRect } from '@/lib/tactical/pitch-geometry';
 import {
   ASPECT_RATIOS,
   type AspectRatio,
@@ -152,14 +153,14 @@ export function BoundaryBoxHud({
               <button
                 type="button"
                 onClick={() => {
+                  const outerRect = getScreenOuterPitchRect(aspectRatio);
                   setBoundaryBox({
-                    x: 0,
-                    y: 0,
-                    width: 100,
-                    height: 100,
+                    x: outerRect.left,
+                    y: outerRect.top,
+                    width: outerRect.width,
+                    height: outerRect.height,
                     enabled: true,
                     visible: true,
-                    fitTarget: 'pitch',
                   });
                 }}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/[0.08] transition-colors cursor-pointer"

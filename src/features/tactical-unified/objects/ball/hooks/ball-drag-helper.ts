@@ -34,17 +34,11 @@ export function computeFallbackNormPos(
   node: Konva.Group,
   stageSize: { width: number; height: number },
 ): { x: number; y: number } {
-  const clampedPxX = Math.max(
-    -stageSize.width,
-    Math.min(stageSize.width * 2, node.x()),
-  );
-  const clampedPxY = Math.max(
-    -stageSize.height,
-    Math.min(stageSize.height * 2, node.y()),
-  );
+  const clampedPxX = Math.max(0, Math.min(stageSize.width, node.x()));
+  const clampedPxY = Math.max(0, Math.min(stageSize.height, node.y()));
   return {
-    x: clampNorm(pxToNorm(clampedPxX, stageSize.width), -100, 200),
-    y: clampNorm(pxToNorm(clampedPxY, stageSize.height), -100, 200),
+    x: clampNorm(pxToNorm(clampedPxX, stageSize.width), 0, 100),
+    y: clampNorm(pxToNorm(clampedPxY, stageSize.height), 0, 100),
   };
 }
 

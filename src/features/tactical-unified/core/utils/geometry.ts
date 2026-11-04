@@ -34,6 +34,54 @@ export function distToSegment(
   );
 }
 
+export function pointerToNormalizedCoord(
+  pos: { x: number; y: number },
+  vRect: {
+    x?: number;
+    y?: number;
+    width: number;
+    height: number;
+  },
+  options?: {
+    allowOverflow?: boolean;
+    transform?: PitchTransformState;
+  },
+): { x: number; y: number } {
+  let relX = pos.x - (vRect.x ?? 0);
+  let relY = pos.y - (vRect.y ?? 0);
+
+  const transform = options?.transform;
+  if (
+    transform &&
+    ((transform.zoom !== undefined && transform.zoom !== 1) ||
+      Boolean(transform.panX) ||
+      Boolean(transform.panY))
+  ) {
+    const pitchPos = stageToPitch(
+      { x: pos.x, y: pos.y },
+      {
+        x: vRect.x ?? 0,
+        y: vRect.y ?? 0,
+        width: vRect.width,
+        height: vRect.height,
+      },
+      transform.panX ?? 0,
+      transform.panY ?? 0,
+      transform.zoom ?? 1,
+    );
+    relX = pitchPos.x;
+    relY = pitchPos.y;
+  }
+
+  const normX = vRect.width > 0 ? (relX / vRect.width) * 100 : 0;
+  const normY = vRect.height > 0 ? (relY / vRect.height) * 100 : 0;
+
+  return {
+    x: options?.allowOverflow ? normX : Math.max(0, Math.min(100, normX)),
+    y: options?.allowOverflow ? normY : Math.max(0, Math.min(100, normY)),
+  };
+}
+
 export function getPointerCoordinates(
   e: KonvaEventObject<PointerEvent | MouseEvent | TouchEvent>,
   vRect: {
@@ -68,39 +116,15 @@ export function getPointerCoordinates(
       y = 0;
     }
   }
-  let relX = x - (vRect.x ?? 0);
-  let relY = y - (vRect.y ?? 0);
 
-  if (
-    transform &&
-    ((transform.zoom !== undefined && transform.zoom !== 1) ||
-      Boolean(transform.panX) ||
-      Boolean(transform.panY))
-  ) {
-    const pitchPos = stageToPitch(
-      { x, y },
-      {
-        x: vRect.x ?? 0,
-        y: vRect.y ?? 0,
-        width: vRect.width,
-        height: vRect.height,
-      },
-      transform.panX ?? 0,
-      transform.panY ?? 0,
-      transform.zoom ?? 1,
-    );
-    relX = pitchPos.x;
-    relY = pitchPos.y;
-  }
+  const normPos = pointerToNormalizedCoord({ x, y }, vRect, {
+    allowOverflow: vRect.allowOverflow,
+    transform,
+  });
 
-  const normX = vRect.width > 0 ? (relX / vRect.width) * 100 : 0;
-  const normY = vRect.height > 0 ? (relY / vRect.height) * 100 : 0;
   return {
     pixelPos: { x, y },
-    normPos: {
-      x: vRect.allowOverflow ? normX : Math.max(0, Math.min(100, normX)),
-      y: vRect.allowOverflow ? normY : Math.max(0, Math.min(100, normY)),
-    },
+    normPos,
   };
 }
 
@@ -116,10 +140,7 @@ export function resolveBoundaryBoxPixelRect(
   pitchRect?: { x: number; y: number; width: number; height: number },
 ): { x: number; y: number; width: number; height: number } {
   const refRect =
-    box.fitTarget === 'pitch' &&
-    pitchRect &&
-    pitchRect.width > 0 &&
-    pitchRect.height > 0
+    pitchRect && pitchRect.width > 0 && pitchRect.height > 0
       ? pitchRect
       : { x: 0, y: 0, width: stageSize.width, height: stageSize.height };
   return {

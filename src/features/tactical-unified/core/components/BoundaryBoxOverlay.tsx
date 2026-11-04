@@ -124,10 +124,7 @@ export function BoundaryBoxOverlay({
   const isVisible = visible ?? box.visible ?? true;
 
   const baseRect =
-    box.fitTarget === 'pitch' &&
-    pitchRect &&
-    pitchRect.width > 0 &&
-    pitchRect.height > 0
+    pitchRect && pitchRect.width > 0 && pitchRect.height > 0
       ? pitchRect
       : { x: 0, y: 0, width, height };
   const resolved = resolveBoundaryBoxPixelRect(

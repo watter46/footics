@@ -3,7 +3,10 @@ import type {
   TacticalPhase,
   TacticalProject,
 } from '@/lib/types/tactical-unified';
-import { createDefaultPhase } from '@/lib/types/tactical-unified';
+import {
+  createDefaultPhase,
+  DEFAULT_BOUNDARY_BOX_16_9,
+} from '@/lib/types/tactical-unified';
 import { resolvePanelStateForSlide } from './slide-helpers';
 import { recordHistory } from './store-helpers';
 import type { PanelState, SelectedObject } from './tool-types';
@@ -64,6 +67,8 @@ export function createPhaseCrudActions(set: StoreSetter, get: StoreGetter) {
         const remaining = s.project.phases.filter((p) => p.id !== phaseId);
         let nextActivePhaseId = s.activePhaseId;
         let nextActiveSlideId = s.activeSlideId;
+        let nextAspect = s.project.aspectRatio;
+        let nextBoundary = s.project.boundaryBox;
 
         if (s.activePhaseId === phaseId) {
           const nextPhase =
@@ -71,6 +76,8 @@ export function createPhaseCrudActions(set: StoreSetter, get: StoreGetter) {
             remaining[0];
           nextActivePhaseId = nextPhase.id;
           nextActiveSlideId = nextPhase.slides[0]?.id ?? '';
+          nextAspect = nextPhase.aspectRatio ?? '16:9';
+          nextBoundary = nextPhase.boundaryBox ?? DEFAULT_BOUNDARY_BOX_16_9;
         }
 
         return {
@@ -80,6 +87,8 @@ export function createPhaseCrudActions(set: StoreSetter, get: StoreGetter) {
             phases: remaining,
             activePhaseId: nextActivePhaseId,
             activeSlideId: nextActiveSlideId,
+            aspectRatio: nextAspect,
+            boundaryBox: nextBoundary,
             updatedAt: new Date().toISOString(),
           },
           activePhaseId: nextActivePhaseId,
@@ -110,6 +119,9 @@ export function createPhaseCrudActions(set: StoreSetter, get: StoreGetter) {
         const nextSlideId = targetSlide?.id ?? '';
         const nextBgType = targetSlide?.backgroundType ?? 'pitch';
         const nextBgUrl = targetSlide?.backgroundImageUrl;
+        const nextAspect = targetPhase.aspectRatio ?? '16:9';
+        const nextBoundary =
+          targetPhase.boundaryBox ?? DEFAULT_BOUNDARY_BOX_16_9;
 
         return {
           activePhaseId: phaseId,
@@ -119,6 +131,8 @@ export function createPhaseCrudActions(set: StoreSetter, get: StoreGetter) {
             ...s.project,
             activePhaseId: phaseId,
             activeSlideId: nextSlideId,
+            aspectRatio: nextAspect,
+            boundaryBox: nextBoundary,
             backgroundType: nextBgType,
             backgroundImageUrl: nextBgUrl,
           },
@@ -132,6 +146,9 @@ export function createPhaseCrudActions(set: StoreSetter, get: StoreGetter) {
         const targetSlide = targetPhase?.slides.find((sl) => sl.id === slideId);
         const nextBgType = targetSlide?.backgroundType ?? 'pitch';
         const nextBgUrl = targetSlide?.backgroundImageUrl;
+        const nextAspect = targetPhase?.aspectRatio ?? '16:9';
+        const nextBoundary =
+          targetPhase?.boundaryBox ?? DEFAULT_BOUNDARY_BOX_16_9;
 
         return {
           activePhaseId: phaseId,
@@ -141,6 +158,8 @@ export function createPhaseCrudActions(set: StoreSetter, get: StoreGetter) {
             ...s.project,
             activePhaseId: phaseId,
             activeSlideId: slideId,
+            aspectRatio: nextAspect,
+            boundaryBox: nextBoundary,
             backgroundType: nextBgType,
             backgroundImageUrl: nextBgUrl,
           },

@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Image as KonvaImage, Layer, Rect } from 'react-konva';
+import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import {
   getCachedPitchSvgImage,
   loadPitchSvgImage,
@@ -88,15 +89,17 @@ export function PitchBackgroundImage({
     };
   }, [backgroundImageUrl, aspectRatio, pitchAppearance]);
 
+  const subPitchRect = calculatePitchRect({ width, height }, aspectRatio);
+
   // 1. カスタム画像背景
   if (backgroundImageUrl && customImage) {
     return (
       <KonvaImage
         image={customImage}
-        x={0}
-        y={0}
-        width={width}
-        height={height}
+        x={subPitchRect.x}
+        y={subPitchRect.y}
+        width={subPitchRect.width}
+        height={subPitchRect.height}
         listening={false}
         perfectDrawEnabled={false}
       />
@@ -111,6 +114,7 @@ export function PitchBackgroundImage({
         height={height}
         aspectRatio={aspectRatio}
         pitchAppearance={pitchAppearance}
+        subPitchRect={subPitchRect}
       />
     );
   }
@@ -120,10 +124,10 @@ export function PitchBackgroundImage({
     return (
       <KonvaImage
         image={pitchImage}
-        x={0}
-        y={0}
-        width={width}
-        height={height}
+        x={subPitchRect.x}
+        y={subPitchRect.y}
+        width={subPitchRect.width}
+        height={subPitchRect.height}
         listening={false}
         perfectDrawEnabled={false}
       />

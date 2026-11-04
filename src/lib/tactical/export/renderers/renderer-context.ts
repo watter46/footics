@@ -14,6 +14,7 @@ export interface FrameRenderContext {
   w: number;
   h: number;
   aspectRatio?: AspectRatio;
+  outerPitchRect?: { x: number; y: number; width: number; height: number };
   m?: Float32Array | null;
   toScreenX: (normX: number) => number;
   toScreenY: (normY: number) => number;
@@ -182,18 +183,14 @@ export function createFrameRenderContext({
   pitchTransformOverride,
   framePitchTransform,
 }: CreateFrameRenderContextParams): FrameRenderContext {
-  const pitchRect = calculatePitchRect(
+  const outerPitchRect = calculatePitchRect(
     { width: baseWidth, height: baseHeight },
     aspectRatio,
   );
-  const toScreenX = (normX: number) =>
-    pitchRect.x + (normX / 100) * pitchRect.width;
-  const toScreenY = (normY: number) =>
-    pitchRect.y + (normY / 100) * pitchRect.height;
-  const toScreenSizeX = (normSize: number) =>
-    (normSize / 100) * pitchRect.width;
-  const toScreenSizeY = (normSize: number) =>
-    (normSize / 100) * pitchRect.height;
+  const toScreenX = (normX: number) => (normX / 100) * baseWidth;
+  const toScreenY = (normY: number) => (normY / 100) * baseHeight;
+  const toScreenSizeX = (normSize: number) => (normSize / 100) * baseWidth;
+  const toScreenSizeY = (normSize: number) => (normSize / 100) * baseHeight;
 
   let m = mvpMatrix && mvpMatrix.length === 16 ? mvpMatrix : null;
   if (!m) {
@@ -258,6 +255,7 @@ export function createFrameRenderContext({
     w: baseWidth,
     h: baseHeight,
     aspectRatio,
+    outerPitchRect,
     m,
     toScreenX,
     toScreenY,

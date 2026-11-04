@@ -6,6 +6,8 @@ import {
   exportSingleSlidePng,
 } from '@/features/tactical-unified/hooks/konva-export-helpers';
 import {
+  selectActivePhaseAspectRatio,
+  selectActivePhaseBoundaryBox,
   selectActivePhaseSlides,
   selectActiveSlide,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
@@ -27,7 +29,10 @@ export function useExportModalState() {
   const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
   const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
   const aspectRatio = useTacticalUnifiedStoreContext(
-    (s) => s.project.aspectRatio,
+    selectActivePhaseAspectRatio,
+  );
+  const boundaryBox = useTacticalUnifiedStoreContext(
+    selectActivePhaseBoundaryBox,
   );
   const pitchAppearance = useTacticalUnifiedStoreContext(
     (s) => s.project.pitchAppearance,
@@ -57,7 +62,7 @@ export function useExportModalState() {
           slide: slideToExport,
           aspectRatio,
           scale: imageScale,
-          boundaryBox: slideToExport.boundaryBox,
+          boundaryBox: slideToExport.boundaryBox ?? boundaryBox,
         });
         closeExportModal();
       } else if (selectedFormat === 'zip') {
@@ -95,6 +100,7 @@ export function useExportModalState() {
     activeSlide,
     slides,
     aspectRatio,
+    boundaryBox,
     pitchAppearance,
   };
 }

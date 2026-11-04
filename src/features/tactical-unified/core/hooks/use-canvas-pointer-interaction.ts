@@ -45,9 +45,12 @@ export function useCanvasPointerInteraction({
     (e: KonvaEventObject<PointerEvent>) => {
       isPointerDownRef.current = true;
       if (zoomPan.handlePanPointerDown(e)) return;
+      const isDrawingTool =
+        s.activeTool !== 'select' && s.activeTool !== 'eraser';
+      const effectiveVRect = { ...vRect, allowOverflow: isDrawingTool };
       const { pixelPos, normPos } = getPointerCoordinates(
         e,
-        vRect,
+        effectiveVRect,
         pitchTransform,
       );
       if (zoneRotation.handlePointerDown(pixelPos)) return;
@@ -78,8 +81,11 @@ export function useCanvasPointerInteraction({
 
   const handlePointerMove = useCallback(
     (e: KonvaEventObject<PointerEvent>) => {
+      const isDrawingTool =
+        s.activeTool !== 'select' && s.activeTool !== 'eraser';
+      const effectiveVRect = { ...vRect, allowOverflow: isDrawingTool };
       dispatchPointerMove(e, {
-        vRect,
+        vRect: effectiveVRect,
         pitchTransform,
         isPointerDown: isPointerDownRef.current,
         activeTool: s.activeTool,

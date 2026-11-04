@@ -1,7 +1,10 @@
-import type {
-  Slide,
-  TacticalPhase,
-  TacticalProject,
+import {
+  type AspectRatio,
+  type BoundaryBox,
+  DEFAULT_BOUNDARY_BOX_16_9,
+  type Slide,
+  type TacticalPhase,
+  type TacticalProject,
 } from '@/lib/types/tactical-unified';
 import type { SelectedObject } from './tool-slice';
 
@@ -26,6 +29,30 @@ export const selectActivePhase = <
   }
   const activeId = s.activePhaseId ?? s.project?.activePhaseId;
   return phases.find((p) => p.id === activeId) ?? phases[0];
+};
+
+/** アクティブ Phase の aspectRatio を取得 (Phase -> Project -> '16:9') */
+export const selectActivePhaseAspectRatio = <
+  T extends Pick<SelectorStateContext, 'project'> & { activePhaseId?: string },
+>(
+  s: T,
+): AspectRatio => {
+  const activePhase = selectActivePhase(s);
+  return activePhase?.aspectRatio ?? s.project?.aspectRatio ?? '16:9';
+};
+
+/** アクティブ Phase の boundaryBox を取得 (Phase -> Project -> DEFAULT_BOUNDARY_BOX_16_9) */
+export const selectActivePhaseBoundaryBox = <
+  T extends Pick<SelectorStateContext, 'project'> & { activePhaseId?: string },
+>(
+  s: T,
+): BoundaryBox => {
+  const activePhase = selectActivePhase(s);
+  return (
+    activePhase?.boundaryBox ??
+    s.project?.boundaryBox ??
+    DEFAULT_BOUNDARY_BOX_16_9
+  );
 };
 
 /** アクティブ Phase 配下のスライド配列を取得 (空なら []) */

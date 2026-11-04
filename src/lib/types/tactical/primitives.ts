@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { getScreenPitchBounds } from '@/lib/tactical/pitch-geometry';
 
 // ─────────────────────────────────────────
 // § 1. Primitives
@@ -10,6 +11,17 @@ export const NormalizedCoordSchema = z.number();
 /** アスペクト比: 16:9 (横), 9:16 (縦), 4:5 (縦長タイムライン), 1:1 (正方形) */
 export const AspectRatioSchema = z.enum(['16:9', '9:16', '4:5', '1:1']);
 export type AspectRatio = z.infer<typeof AspectRatioSchema>;
+
+export type XMediaPresetKey =
+  | 'landscape_16_9'
+  | 'portrait_4_5'
+  | 'vertical_9_16'
+  | 'square_1_1'
+  | 'pitch_fit'
+  | 'single_image_4_5'
+  | 'carousel_image_9_16'
+  | 'feed_video_9_16'
+  | 'pitch_overview_16_9';
 
 export const ASPECT_RATIOS: Record<AspectRatio, number> = {
   '16:9': 16 / 9,
@@ -48,40 +60,45 @@ export function transformCoord(
   point: { x: number; y: number },
   from: AspectRatio,
   to: AspectRatio,
+  options?: { clamp?: boolean },
 ): { x: number; y: number } {
-  const clampedX = Math.max(0, Math.min(100, point.x));
-  const clampedY = Math.max(0, Math.min(100, point.y));
+  const shouldClamp = options?.clamp !== false;
 
   if (from === to) {
     return {
-      x: clampedX,
-      y: clampedY,
+      x: shouldClamp ? Math.max(0, Math.min(100, point.x)) : point.x,
+      y: shouldClamp ? Math.max(0, Math.min(100, point.y)) : point.y,
     };
   }
 
-  const fromVertical = isVerticalAspectRatio(from);
-  const toVertical = isVerticalAspectRatio(to);
+  const fromBounds = getScreenPitchBounds(from);
+  const toBounds = getScreenPitchBounds(to);
 
-  // 同系統（横同士: 16:9、縦同士: 9:16 ⇄ 4:5 ⇄ 1:1）の場合、向きは変わらないためそのまま維持
-  if (fromVertical === toVertical) {
-    return {
-      x: clampedX,
-      y: clampedY,
-    };
+  let attackNorm: number;
+  let widthNorm: number;
+
+  if (fromBounds.isHorizontal) {
+    attackNorm = (point.x - fromBounds.xMin) / fromBounds.xSpan;
+    widthNorm = 1 - (point.y - fromBounds.yMin) / fromBounds.ySpan;
+  } else {
+    attackNorm = (fromBounds.yMax - point.y) / fromBounds.ySpan;
+    widthNorm = (point.x - fromBounds.xMin) / fromBounds.xSpan;
   }
 
-  // 横→縦: x_v = y_h, y_v = 100 - x_h
-  if (!fromVertical && toVertical) {
-    return {
-      x: clampedY,
-      y: Math.max(0, Math.min(100, 100 - clampedX)),
-    };
+  let nx: number;
+  let ny: number;
+
+  if (toBounds.isHorizontal) {
+    nx = toBounds.xMin + attackNorm * toBounds.xSpan;
+    ny = toBounds.yMin + (1 - widthNorm) * toBounds.ySpan;
+  } else {
+    nx = toBounds.xMin + widthNorm * toBounds.xSpan;
+    ny = toBounds.yMax - attackNorm * toBounds.ySpan;
   }
 
-  // 縦→横: x_h = 100 - y_v, y_h = x_v
   return {
-    x: Math.max(0, Math.min(100, 100 - clampedY)),
-    y: clampedX,
+    x: shouldClamp ? Math.max(0, Math.min(100, nx)) : nx,
+    y: shouldClamp ? Math.max(0, Math.min(100, ny)) : ny,
   };
 }
 
@@ -90,6 +107,7 @@ export function transformPoints(
   points: Array<{ x: number; y: number }>,
   from: AspectRatio,
   to: AspectRatio,
+  options?: { clamp?: boolean },
 ): Array<{ x: number; y: number }> {
-  return points.map((p) => transformCoord(p, from, to));
+  return points.map((p) => transformCoord(p, from, to, options));
 }

@@ -106,6 +106,76 @@ export interface PitchBounds {
   pitchHeight: number;
 }
 
+export interface ScreenPitchBounds {
+  outerLeft: number;
+  outerTop: number;
+  outerWidth: number;
+  outerHeight: number;
+  xMin: number;
+  xMax: number;
+  xSpan: number;
+  xMid: number;
+  yMin: number;
+  yMax: number;
+  ySpan: number;
+  yMid: number;
+  isHorizontal: boolean; // aspectRatio === '16:9'
+}
+
+/**
+ * 16:9 スクリーン（100x100）の中央に各アスペクト比の外枠ピッチ矩形を内接配置する
+ */
+export function getScreenOuterPitchRect(aspectRatio: AspectRatio): {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+} {
+  const targetAspect = PITCH_BOUNDARY_CONFIGS[aspectRatio]?.ratio ?? 16 / 9;
+  const screenAspect = 16 / 9;
+  const height = 100;
+  const top = 0;
+  const width = (targetAspect / screenAspect) * 100;
+  const left = (100 - width) / 2;
+  return { left, top, width, height };
+}
+
+/**
+ * 16:9 スクリーン座標系 (0-100) におけるピッチ白線枠・範囲情報を算出
+ */
+export function getScreenPitchBounds(
+  aspectRatio: AspectRatio,
+  marginPercent = DEFAULT_PITCH_MARGIN_PERCENT,
+): ScreenPitchBounds {
+  const outer = getScreenOuterPitchRect(aspectRatio);
+  const mRatio = marginPercent / 100;
+  const xMin = outer.left + outer.width * mRatio;
+  const xMax = outer.left + outer.width * (1 - mRatio);
+  const xSpan = xMax - xMin;
+  const xMid = outer.left + outer.width / 2;
+
+  const yMin = outer.top + outer.height * mRatio;
+  const yMax = outer.top + outer.height * (1 - mRatio);
+  const ySpan = yMax - yMin;
+  const yMid = outer.top + outer.height / 2;
+
+  return {
+    outerLeft: outer.left,
+    outerTop: outer.top,
+    outerWidth: outer.width,
+    outerHeight: outer.height,
+    xMin,
+    xMax,
+    xSpan,
+    xMid,
+    yMin,
+    yMax,
+    ySpan,
+    yMid,
+    isHorizontal: aspectRatio === '16:9',
+  };
+}
+
 /**
  * 指定された余白率における正規化座標系 (0-100) でのピッチ境界線（白線内側）を算出
  * @param marginPercent 上下左右の余白率 (%、デフォルト: 3.0)
@@ -129,14 +199,6 @@ export function calculateNormalizedPitchBounds(
 
 /**
  * 境界線サイズと余白率からピッチの各幾何要素を算出
- * 1. 境界線に対して内側に上下左右 marginPercent % の均等余白を確保（デフォルト: 3%）
- * 2. 余白の内側（pitchWidth × pitchHeight）を完璧に埋めるようにピッチ比率を変形描画
- * 3. センターサークルは等方スケーリングにより完全な真円（歪みゼロ）を保証
- *
- * @param width 境界線の幅 (px)
- * @param height 境界線の高さ (px)
- * @param marginPercent 上下左右の余白率 (%、デフォルト: 3.0)
- * @param orientation ピッチの向き ('horizontal' | 'vertical'、デフォルト: 'horizontal')
  */
 export function calculatePitchGeometry(
   width: number,
@@ -153,22 +215,15 @@ export function calculatePitchGeometry(
   const centerX = width / 2;
   const centerY = height / 2;
 
-  // ピッチ領域（余白の内側）を完璧に埋めるためのスケーリング
-  // 横向き: 長さ=pitchWidth (FIFA規格105m基準), 幅=pitchHeight (FIFA規格68m基準)
-  // 縦向き: 長さ=pitchHeight (FIFA規格105m基準), 幅=pitchWidth (FIFA規格68m基準)
   const isHorizontal = orientation === 'horizontal';
   const lengthPx = isHorizontal ? pitchWidth : pitchHeight;
   const widthPx = isHorizontal ? pitchHeight : pitchWidth;
 
   const scaleLength = lengthPx / 105;
   const scaleWidth = widthPx / 68;
-
-  // センターサークルは等方真円スケーリング (歪みゼロ保証)
-  // 短辺方向にも収まるよう等方スケールを適用
   const meterScale = Math.min(scaleLength, scaleWidth);
   const centerCircleRadius = 9.15 * meterScale;
 
-  // ペナルティエリア・ゴールエリア（ピッチ比率に調和させて配置）
   const paDepth = 16.5 * scaleLength;
   const paWidth = 40.32 * scaleWidth;
   const gaDepth = 5.5 * scaleLength;

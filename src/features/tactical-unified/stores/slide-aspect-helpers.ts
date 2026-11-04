@@ -1,12 +1,8 @@
 // biome-ignore lint/style/noExcessiveLinesPerFile: Aspect ratio transformation and transition helpers
 import type { AspectRatio, Slide } from '@/lib/types/tactical-unified';
-import {
-  getDefaultBoundaryBoxForAspect,
-  transformCoord,
-  transformPoints,
-} from '@/lib/types/tactical-unified';
+import { transformCoord, transformPoints } from '@/lib/types/tactical-unified';
 
-export function transformSlideAspectRatio(
+export function transformSlideForAspect(
   slide: Slide,
   from: AspectRatio,
   to: AspectRatio,
@@ -14,48 +10,55 @@ export function transformSlideAspectRatio(
   return {
     ...slide,
     aspectRatio: to,
-    boundaryBox: getDefaultBoundaryBoxForAspect(to),
     players: slide.players.map((p) => ({
       ...p,
-      ...transformCoord({ x: p.x, y: p.y }, from, to),
+      ...transformCoord({ x: p.x, y: p.y }, from, to, { clamp: true }),
       trajectory: p.trajectory
         ? {
             ...p.trajectory,
             controlPoint: p.trajectory.controlPoint
-              ? transformCoord(p.trajectory.controlPoint, from, to)
+              ? transformCoord(p.trajectory.controlPoint, from, to, {
+                  clamp: true,
+                })
               : undefined,
           }
         : undefined,
     })),
     arrows: slide.arrows.map((a) => ({
       ...a,
-      points: transformPoints(a.points, from, to),
+      points: transformPoints(a.points, from, to, { clamp: false }),
       controlPoint: a.controlPoint
-        ? transformCoord(a.controlPoint, from, to)
+        ? transformCoord(a.controlPoint, from, to, { clamp: false })
         : undefined,
     })),
     zones: slide.zones.map((z) => ({
       ...z,
-      points: transformPoints(z.points, from, to),
+      points: transformPoints(z.points, from, to, { clamp: false }),
     })),
     texts: slide.texts.map((t) => ({
       ...t,
-      ...transformCoord({ x: t.x, y: t.y }, from, to),
+      ...transformCoord({ x: t.x, y: t.y }, from, to, { clamp: false }),
     })),
     ball: {
       ...slide.ball,
-      ...transformCoord({ x: slide.ball.x, y: slide.ball.y }, from, to),
+      ...transformCoord({ x: slide.ball.x, y: slide.ball.y }, from, to, {
+        clamp: true,
+      }),
       trajectory: slide.ball.trajectory
         ? {
             ...slide.ball.trajectory,
             controlPoint: slide.ball.trajectory.controlPoint
-              ? transformCoord(slide.ball.trajectory.controlPoint, from, to)
+              ? transformCoord(slide.ball.trajectory.controlPoint, from, to, {
+                  clamp: true,
+                })
               : undefined,
           }
         : undefined,
     },
   };
 }
+
+export const transformSlideAspectRatio = transformSlideForAspect;
 
 export interface PitchRect {
   x: number;

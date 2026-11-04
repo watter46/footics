@@ -18,7 +18,10 @@ import {
   CanvasToast,
   useCanvasToast,
 } from '@/features/tactical-unified/core';
-import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
+import {
+  selectActivePhaseBoundaryBox,
+  selectActiveSlide,
+} from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { TopBarCenter } from './top-bar-center';
 import { TopBarHistory } from './top-bar-history';
@@ -61,13 +64,16 @@ export function TopBar({
   );
   const toggleSidebar = useTacticalUnifiedStoreContext((s) => s.toggleSidebar);
   const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
+  const activeBoundaryBox = useTacticalUnifiedStoreContext(
+    selectActivePhaseBoundaryBox,
+  );
   const { toastMessage, showToast } = useCanvasToast();
 
   async function handleCopy() {
     if (workspaceMode === 'director') {
       const canvas = document.querySelector('canvas');
       if (canvas && typeof canvas.toBlob === 'function') {
-        const boundaryBox = activeSlide?.boundaryBox;
+        const boundaryBox = activeBoundaryBox ?? activeSlide?.boundaryBox;
         let sourceCanvas: HTMLCanvasElement = canvas;
 
         const isBoundaryActive = Boolean(

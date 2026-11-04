@@ -94,30 +94,15 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
       x={pxX}
       y={pxY}
       draggable={!cleanRender && isInteractive && !marker.locked}
-      // マーカーはキャンバス(Stage)外へはみ出さない（Stage全体許容、右側・下側の見えない壁を解消）
+      // 選手マーカーは 16:9 スクリーン内（0..100）にクランプ
       dragBoundFunc={function (this: Konva.Node, pos: Konva.Vector2d) {
-        const stage = this.getStage?.();
-        const stageW = stage?.width?.();
-        const stageH = stage?.height?.();
-        if (stageW && stageH) {
-          return {
-            x: Math.max(0, Math.min(stageW, pos.x)),
-            y: Math.max(0, Math.min(stageH, pos.y)),
-          };
-        }
         const parentPos = this.getParent?.()?.getAbsolutePosition?.() ?? {
           x: 0,
           y: 0,
         };
         return {
-          x: Math.max(
-            parentPos.x - width,
-            Math.min(parentPos.x + width * 2, pos.x),
-          ),
-          y: Math.max(
-            parentPos.y - height,
-            Math.min(parentPos.y + height * 2, pos.y),
-          ),
+          x: Math.max(parentPos.x, Math.min(parentPos.x + width, pos.x)),
+          y: Math.max(parentPos.y, Math.min(parentPos.y + height, pos.y)),
         };
       }}
       onMouseEnter={(e) => {

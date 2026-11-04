@@ -1,10 +1,15 @@
 import { createDefaultProject, createDefaultSlide } from './factory';
+import type { AspectRatio } from './primitives';
 import {
   attachProjectSlidesGetter,
   type TacticalPhase,
   type TacticalProject,
 } from './project';
-import type { Slide } from './slide';
+import {
+  type BoundaryBox,
+  DEFAULT_BOUNDARY_BOX_16_9,
+  type Slide,
+} from './slide';
 
 export interface LegacyTacticalProjectLike {
   id?: string;
@@ -14,6 +19,8 @@ export interface LegacyTacticalProjectLike {
   slides?: Slide[];
   activePhaseId?: string;
   activeSlideId?: string;
+  aspectRatio?: AspectRatio;
+  boundaryBox?: BoundaryBox;
   [key: string]: unknown;
 }
 
@@ -38,10 +45,16 @@ export function ensureTacticalProject(project: unknown): TacticalProject {
     const slides: Slide[] = hasRawSlides
       ? rawSlides
       : [createDefaultSlide(0, p.activeSlideId)];
+    const fallbackAspect: AspectRatio =
+      slides[0]?.aspectRatio ?? p.aspectRatio ?? '16:9';
+    const fallbackBoundary: BoundaryBox =
+      slides[0]?.boundaryBox ?? p.boundaryBox ?? DEFAULT_BOUNDARY_BOX_16_9;
     phases = [
       {
         id: defaultPhaseId,
         name: 'Phase 1',
+        aspectRatio: fallbackAspect,
+        boundaryBox: { ...fallbackBoundary },
         slides,
       },
     ];
@@ -56,15 +69,29 @@ export function ensureTacticalProject(project: unknown): TacticalProject {
       );
     }
 
-    // 各 phase の slides が空配列の場合はフォールバック
+    // 各 phase の slides が空配列の場合はフォールバック、および aspectRatio/boundaryBox を正規化
     phases = phases.map((ph) => {
-      if (!Array.isArray(ph.slides) || ph.slides.length === 0) {
-        return {
-          ...ph,
-          slides: [createDefaultSlide(0)],
-        };
-      }
-      return ph;
+      const resolvedSlides =
+        !Array.isArray(ph.slides) || ph.slides.length === 0
+          ? [createDefaultSlide(0)]
+          : ph.slides;
+      const phaseAspect: AspectRatio =
+        ph.aspectRatio ??
+        resolvedSlides[0]?.aspectRatio ??
+        p.aspectRatio ??
+        '16:9';
+      const phaseBoundary: BoundaryBox =
+        ph.boundaryBox ??
+        resolvedSlides[0]?.boundaryBox ??
+        p.boundaryBox ??
+        DEFAULT_BOUNDARY_BOX_16_9;
+
+      return {
+        ...ph,
+        aspectRatio: phaseAspect,
+        boundaryBox: { ...phaseBoundary },
+        slides: resolvedSlides,
+      };
     });
   }
 
@@ -78,6 +105,8 @@ export function ensureTacticalProject(project: unknown): TacticalProject {
 
   const result = {
     ...p,
+    aspectRatio: activePhase.aspectRatio ?? '16:9',
+    boundaryBox: { ...(activePhase.boundaryBox ?? DEFAULT_BOUNDARY_BOX_16_9) },
     phases,
     activePhaseId,
     activeSlideId,

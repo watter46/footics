@@ -7,7 +7,7 @@ import {
   type ScreenBackgroundConfig,
 } from '@/lib/types/tactical-unified';
 import type { ProjectSliceSet } from './project-slice-actions';
-import { transformSlideAspectRatio } from './slide-aspect-helpers';
+import { transformSlideForAspect } from './slide-aspect-helpers';
 import { executeBatchDeleteOnSlide } from './slide-batch-delete-helpers';
 import { flipSlideObjects, isVerticalPitch } from './slide-flip-helpers';
 import { toggleSlideObjectLock } from './slide-lock-helpers';
@@ -141,20 +141,32 @@ export function createProjectConfigActions(set: ProjectSliceSet) {
 
     setAspectRatio: (ratio: AspectRatio) =>
       set((s) => {
-        const from = s.project.aspectRatio;
-        if (from === ratio) return s;
+        const activePhaseId = s.activePhaseId ?? s.project.activePhaseId;
+        const activePhase =
+          s.project.phases.find((p) => p.id === activePhaseId) ??
+          s.project.phases[0];
+        if (!activePhase) return s;
+        const oldRatio =
+          activePhase.aspectRatio ?? s.project.aspectRatio ?? '16:9';
+        if (oldRatio === ratio) return s;
+
+        const updatedPhases = s.project.phases.map((ph) => {
+          if (ph.id !== activePhase.id) return ph;
+          return {
+            ...ph,
+            aspectRatio: ratio,
+            slides: ph.slides.map((sl) =>
+              transformSlideForAspect(sl, oldRatio, ratio),
+            ),
+          };
+        });
+
         return {
           ...recordHistory(s),
           project: {
             ...s.project,
             aspectRatio: ratio,
-            boundaryBox: getDefaultBoundaryBoxForAspect(ratio),
-            phases: s.project.phases.map((ph) => ({
-              ...ph,
-              slides: ph.slides.map((sl) =>
-                transformSlideAspectRatio(sl, from, ratio),
-              ),
-            })),
+            phases: updatedPhases,
             updatedAt: new Date().toISOString(),
           },
           isDirty: true,

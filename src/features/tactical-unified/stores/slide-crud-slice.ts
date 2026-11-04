@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { Slide } from '@/lib/types/tactical-unified';
+import { DEFAULT_BOUNDARY_BOX_16_9 } from '@/lib/types/tactical-unified';
 import { createPhaseCrudActions } from './phase-crud-actions';
 import { createSlideForMode, resolvePanelStateForSlide } from './slide-helpers';
 import { recordHistory, updateSlideInProject } from './store-helpers';
@@ -182,28 +183,26 @@ export const createSlideCrudSlice: StateCreator<
       const nextBgType = targetSlide?.backgroundType ?? 'pitch';
       const nextBgUrl = targetSlide?.backgroundImageUrl;
       const nextPhaseId = targetPhase?.id ?? s.activePhaseId;
-      const bgUnchanged =
-        s.project.backgroundType === nextBgType &&
-        s.project.backgroundImageUrl === nextBgUrl;
-
-      if (bgUnchanged) {
-        s.project.activePhaseId = nextPhaseId;
-        s.project.activeSlideId = slideId;
-      }
+      const nextAspect =
+        targetPhase?.aspectRatio ?? s.project.aspectRatio ?? '16:9';
+      const nextBoundary =
+        targetPhase?.boundaryBox ??
+        s.project.boundaryBox ??
+        DEFAULT_BOUNDARY_BOX_16_9;
 
       return {
         activePhaseId: nextPhaseId,
         activeSlideId: slideId,
         selectedObjects: [],
-        project: bgUnchanged
-          ? s.project
-          : {
-              ...s.project,
-              activePhaseId: nextPhaseId,
-              activeSlideId: slideId,
-              backgroundType: nextBgType,
-              backgroundImageUrl: nextBgUrl,
-            },
+        project: {
+          ...s.project,
+          activePhaseId: nextPhaseId,
+          activeSlideId: slideId,
+          aspectRatio: nextAspect,
+          boundaryBox: nextBoundary,
+          backgroundType: nextBgType,
+          backgroundImageUrl: nextBgUrl,
+        },
         panels: resolvePanelStateForSlide(targetSlide, s.panels),
       };
     }),

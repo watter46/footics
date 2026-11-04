@@ -13,6 +13,7 @@ import {
   type SegmentOption,
 } from '@/components/ui/segmented-control';
 import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
+import { selectActivePhaseAspectRatio } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import type { AspectRatio } from '@/lib/types/tactical-unified';
 
@@ -42,7 +43,7 @@ export function TopBarCenter() {
     (s) => s.toggleWorkspaceMode,
   );
   const aspectRatio = useTacticalUnifiedStoreContext(
-    (s) => s.project.aspectRatio,
+    selectActivePhaseAspectRatio,
   );
   const setAspectRatio = useTacticalUnifiedStoreContext(
     (s) => s.setAspectRatio,

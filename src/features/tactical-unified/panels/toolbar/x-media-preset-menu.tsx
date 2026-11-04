@@ -18,6 +18,7 @@ import {
   Image as ImageIcon,
   Maximize2,
   Monitor,
+  Square,
 } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
@@ -26,7 +27,10 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/menu';
-import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
+import {
+  selectActivePhaseAspectRatio,
+  selectActivePhaseBoundaryBox,
+} from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import {
   ASPECT_RATIOS,
@@ -53,6 +57,14 @@ const PRESET_ITEMS: PresetItem[] = [
     desc: 'TL最大高さ・Dwell Time最大化',
     icon: ImageIcon,
     iconColor: 'text-sky-400',
+  },
+  {
+    id: 'square_1_1',
+    name: '正方形 (1:1)',
+    badge: '1080×1080',
+    desc: 'スクエア・グリッド投稿最適化',
+    icon: Square,
+    iconColor: 'text-indigo-400',
   },
   {
     id: 'carousel_image_9_16',
@@ -85,7 +97,7 @@ function detectActivePreset(
   canvasAspect: AspectRatio,
 ): XMediaPresetKey | 'pitch_fit' | null {
   if (!boundaryBox?.enabled) return null;
-  const stageAspect = ASPECT_RATIOS[canvasAspect] ?? 16 / 9;
+  const stageAspect = 16 / 9;
   const currentAspect = (boundaryBox.width / boundaryBox.height) * stageAspect;
 
   for (const item of PRESET_ITEMS) {
@@ -104,14 +116,18 @@ export function XMediaPresetMenu() {
   const applyXMediaPreset = useTacticalUnifiedStoreContext(
     (s) => s.applyXMediaPreset,
   );
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
+  const activePhaseId = useTacticalUnifiedStoreContext((s) => s.activePhaseId);
   const project = useTacticalUnifiedStoreContext((s) => s.project);
 
-  const activeSlide = selectActiveSlide({ project, activeSlideId });
-  const activePresetKey = detectActivePreset(
-    activeSlide?.boundaryBox,
-    project.aspectRatio,
-  );
+  const activeBoundaryBox = selectActivePhaseBoundaryBox({
+    project,
+    activePhaseId,
+  });
+  const activeAspect = selectActivePhaseAspectRatio({
+    project,
+    activePhaseId,
+  });
+  const activePresetKey = detectActivePreset(activeBoundaryBox, activeAspect);
 
   const handleSelectPreset = useCallback(
     (presetKey: XMediaPresetKey | 'pitch_fit') => {

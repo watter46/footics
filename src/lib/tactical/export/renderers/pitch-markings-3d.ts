@@ -1,6 +1,7 @@
-import type {
-  PitchBoundaryConfig,
-  PitchLayoutGeometry,
+import {
+  calculatePitchRect,
+  type PitchBoundaryConfig,
+  type PitchLayoutGeometry,
 } from '@/lib/tactical/pitch-geometry';
 import type { FrameRenderContext } from './renderer-context';
 
@@ -45,8 +46,19 @@ export function renderPitchMarkings3D(
     Math.min(1, Math.max(-1, (paDepth - penaltySpotDist) / r)),
   );
 
-  const toNormX = (svgX: number) => (svgX / config.widthPx) * 100;
-  const toNormY = (svgY: number) => (svgY / config.heightPx) * 100;
+  const outerRect =
+    context.outerPitchRect ??
+    calculatePitchRect(
+      { width: context.w, height: context.h },
+      geom.config.orientation === 'horizontal' ? '16:9' : '4:5',
+    );
+
+  const toNormX = (svgX: number) =>
+    ((outerRect.x + (svgX / config.widthPx) * outerRect.width) / context.w) *
+    100;
+  const toNormY = (svgY: number) =>
+    ((outerRect.y + (svgY / config.heightPx) * outerRect.height) / context.h) *
+    100;
 
   const projectPitch = (vx: number, vy: number) =>
     projectObjToScreen(toNormX(vx), toNormY(vy));

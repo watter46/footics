@@ -3,7 +3,10 @@
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Group, Image as KonvaImage, Rect } from 'react-konva';
-import { calculatePitchGeometryForAspect } from '@/lib/tactical/pitch-geometry';
+import {
+  calculatePitchGeometryForAspect,
+  calculatePitchRect,
+} from '@/lib/tactical/pitch-geometry';
 import {
   getCachedPitchSvgImage,
   loadPitchSvgImage,
@@ -19,6 +22,7 @@ export interface PitchMarbleBackgroundProps {
   height: number;
   aspectRatio: AspectRatio;
   pitchAppearance: PitchAppearanceConfig;
+  subPitchRect?: { x: number; y: number; width: number; height: number };
 }
 
 const MARBLE_TEXTURE_SRC = '/assets/pitch-marble-texture.jpg';
@@ -29,6 +33,7 @@ export function PitchMarbleBackground({
   height,
   aspectRatio,
   pitchAppearance,
+  subPitchRect,
 }: PitchMarbleBackgroundProps): ReactNode {
   const [marbleImage, setMarbleImage] = useState<HTMLImageElement | null>(
     () => cachedMarbleImage,
@@ -86,18 +91,23 @@ export function PitchMarbleBackground({
     };
   }, [aspectRatio, pitchAppearance]);
 
+  const targetPitchRect = useMemo(
+    () => subPitchRect ?? calculatePitchRect({ width, height }, aspectRatio),
+    [subPitchRect, width, height, aspectRatio],
+  );
+
   // ピッチ内側領域の計算
   const pitchInnerBounds = useMemo(() => {
     const geom = calculatePitchGeometryForAspect(aspectRatio);
-    const scaleX = width / geom.config.widthPx;
-    const scaleY = height / geom.config.heightPx;
+    const scaleX = targetPitchRect.width / geom.config.widthPx;
+    const scaleY = targetPitchRect.height / geom.config.heightPx;
     return {
-      left: geom.pitchLeft * scaleX,
-      top: geom.pitchTop * scaleY,
+      left: targetPitchRect.x + geom.pitchLeft * scaleX,
+      top: targetPitchRect.y + geom.pitchTop * scaleY,
       width: geom.pitchWidth * scaleX,
       height: geom.pitchHeight * scaleY,
     };
-  }, [aspectRatio, width, height]);
+  }, [aspectRatio, targetPitchRect]);
 
   // 大理石カバー計算
   const marbleCoverRect = useMemo(() => {
@@ -167,10 +177,10 @@ export function PitchMarbleBackground({
       {markingImage && (
         <KonvaImage
           image={markingImage}
-          x={0}
-          y={0}
-          width={width}
-          height={height}
+          x={targetPitchRect.x}
+          y={targetPitchRect.y}
+          width={targetPitchRect.width}
+          height={targetPitchRect.height}
           listening={false}
           perfectDrawEnabled={false}
         />

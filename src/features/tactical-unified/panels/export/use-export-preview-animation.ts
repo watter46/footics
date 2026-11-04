@@ -127,7 +127,7 @@ export function useExportPreviewAnimation({
         pitchTransform,
         basePreviewDim.width,
         basePreviewDim.height,
-        effectiveCanvasAspect,
+        aspectRatio,
       ),
     );
   }, [
@@ -136,7 +136,7 @@ export function useExportPreviewAnimation({
     pitchTransform,
     basePreviewDim.width,
     basePreviewDim.height,
-    effectiveCanvasAspect,
+    aspectRatio,
   ]);
 
   const previewAspectStyle = useMemo(() => {
@@ -162,7 +162,7 @@ export function useExportPreviewAnimation({
         height: canvas.height,
         baseWidth: basePreviewDim.width,
         baseHeight: basePreviewDim.height,
-        aspectRatio: effectiveCanvasAspect,
+        aspectRatio,
         boundaryBox: effectiveBoundaryBox,
         transparent: false,
         mvpMatrix,
@@ -185,7 +185,7 @@ export function useExportPreviewAnimation({
       basePreviewDim.height,
       shouldCropPreview,
       boundaryBox,
-      effectiveCanvasAspect,
+      aspectRatio,
       mvpMatrix,
       effectivePlayerPhotos,
       pitchAppearance,

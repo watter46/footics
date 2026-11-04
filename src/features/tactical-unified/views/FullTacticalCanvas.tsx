@@ -21,14 +21,14 @@ import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tact
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { DrawingToolbar } from '@/features/tactical-unified/panels/toolbar/drawing-toolbar';
 import {
+  selectActivePhaseAspectRatio,
+  selectActivePhaseBoundaryBox,
   selectActivePhaseSlides,
-  selectActiveSlide,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import {
   useTacticalUnifiedStoreApi,
   useTacticalUnifiedStoreContext,
 } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import { ASPECT_RATIOS } from '@/lib/types/tactical-unified';
 
 export interface FullTacticalCanvasProps {
   className?: string;
@@ -45,16 +45,14 @@ export function FullTacticalCanvas({
 }: FullTacticalCanvasProps) {
   const storeApi = useTacticalUnifiedStoreApi();
 
-  // 現在のアスペクト比をマスターストアから取得し、Stage 矩形をピッチ比率に完全一致させる
-  const projectAspectRatio = useTacticalUnifiedStoreContext(
-    (s) => s.project.aspectRatio,
+  // 16:9 固定スクリーン。アクティブフェーズの設定をセレクタ経由で取得
+  const _activePhaseAspectRatio = useTacticalUnifiedStoreContext(
+    selectActivePhaseAspectRatio,
   );
-  const activeSlideAspectRatio = useTacticalUnifiedStoreContext(
-    (s) => selectActiveSlide(s)?.aspectRatio,
+  const _activePhaseBoundaryBox = useTacticalUnifiedStoreContext(
+    selectActivePhaseBoundaryBox,
   );
-  const currentAspect = activeSlideAspectRatio ?? projectAspectRatio ?? '4:5';
-  const resolvedImageAspect =
-    imageAspect ?? ASPECT_RATIOS[currentAspect] ?? 4 / 5;
+  const resolvedImageAspect = imageAspect ?? 16 / 9;
 
   // アクティブフェーズの全スライドの選手写真を一括事前解決・キャッシュ
   const activeSlides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
