@@ -98,8 +98,8 @@ export function getDefaultBoundaryBoxForAspect(
   }
 }
 
-/** 標準デフォルト境界線 (4:5) */
-export const DEFAULT_BOUNDARY_BOX = DEFAULT_BOUNDARY_BOX_4_5;
+/** 標準デフォルト境界線 (16:9) */
+export const DEFAULT_BOUNDARY_BOX = DEFAULT_BOUNDARY_BOX_16_9;
 
 // § 8.1. X (Twitter) 最適化メディア比率 & プリセット
 

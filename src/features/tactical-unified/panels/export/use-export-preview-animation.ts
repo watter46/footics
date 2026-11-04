@@ -15,6 +15,7 @@ import type {
 } from '@/lib/types/tactical-unified';
 import {
   ASPECT_CONTAINER_CLASSES,
+  CINEMATIC_MASK_FILL,
   hasActivePitchTransform,
   PREVIEW_DIMENSIONS,
   SPLIT_PREVIEW_CONTAINER_CLASSES,
@@ -24,6 +25,7 @@ import { useExportPreviewTextures } from './use-export-preview-textures';
 
 export {
   ASPECT_CONTAINER_CLASSES,
+  CINEMATIC_MASK_FILL,
   hasActivePitchTransform,
   PREVIEW_DIMENSIONS,
   SPLIT_PREVIEW_CONTAINER_CLASSES,
@@ -82,7 +84,7 @@ export function useExportPreviewAnimation({
     PREVIEW_DIMENSIONS[effectiveAspectRatio] ?? PREVIEW_DIMENSIONS['16:9'];
 
   const isBoundaryActive = Boolean(
-    boundaryBox?.enabled &&
+    boundaryBox &&
       boundaryBox.width > 0 &&
       boundaryBox.height > 0 &&
       (boundaryBox.width < 100 ||
@@ -91,21 +93,25 @@ export function useExportPreviewAnimation({
         boundaryBox.y > 0),
   );
 
+  // 再生時はクロップを行わず16:9全体を描画。静止時は境界線が有効であれば境界線解像度にクロップ
+  const shouldCropPreview =
+    !effectiveIsPlaying && Boolean(boundaryBox?.enabled && isBoundaryActive);
+
   const previewWidth = useMemo(() => {
-    if (!isBoundaryActive || !boundaryBox) return basePreviewDim.width;
+    if (!shouldCropPreview || !boundaryBox) return basePreviewDim.width;
     return Math.max(
       1,
       Math.round(basePreviewDim.width * (boundaryBox.width / 100)),
     );
-  }, [isBoundaryActive, boundaryBox, basePreviewDim.width]);
+  }, [shouldCropPreview, boundaryBox, basePreviewDim.width]);
 
   const previewHeight = useMemo(() => {
-    if (!isBoundaryActive || !boundaryBox) return basePreviewDim.height;
+    if (!shouldCropPreview || !boundaryBox) return basePreviewDim.height;
     return Math.max(
       1,
       Math.round(basePreviewDim.height * (boundaryBox.height / 100)),
     );
-  }, [isBoundaryActive, boundaryBox, basePreviewDim.height]);
+  }, [shouldCropPreview, boundaryBox, basePreviewDim.height]);
 
   const mvpMatrix = useMemo(() => {
     if (
@@ -133,9 +139,9 @@ export function useExportPreviewAnimation({
   ]);
 
   const previewAspectStyle = useMemo(() => {
-    if (!isBoundaryActive || !boundaryBox) return undefined;
+    if (!shouldCropPreview || !boundaryBox) return undefined;
     return `${previewWidth} / ${previewHeight}`;
-  }, [isBoundaryActive, boundaryBox, previewWidth, previewHeight]);
+  }, [shouldCropPreview, boundaryBox, previewWidth, previewHeight]);
 
   // ── Canvas Frame Drawing ──
   const drawFrame = useCallback(
@@ -146,13 +152,15 @@ export function useExportPreviewAnimation({
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
+      const effectiveBoundaryBox = shouldCropPreview ? boundaryBox : null;
+
       renderTacticalFrameToCanvas(ctx, {
         slides,
         timeMs,
         width: canvas.width,
         height: canvas.height,
         aspectRatio,
-        boundaryBox,
+        boundaryBox: effectiveBoundaryBox,
         transparent: false,
         mvpMatrix,
         playerPhotos: effectivePlayerPhotos,
@@ -160,6 +168,39 @@ export function useExportPreviewAnimation({
         marbleTexture,
         screenBackground,
       });
+
+      // 再生時: 境界線が全画面でなければ、境界線外側4領域にシネマティックマスクを描画
+      // 境界線がOFFの場合でも、設定された境界線が全画面でなければマスクを適用
+      if (effectiveIsPlaying && isBoundaryActive && boundaryBox) {
+        const boxX = (boundaryBox.x / 100) * canvas.width;
+        const boxY = (boundaryBox.y / 100) * canvas.height;
+        const boxW = (boundaryBox.width / 100) * canvas.width;
+        const boxH = (boundaryBox.height / 100) * canvas.height;
+
+        ctx.save();
+        ctx.fillStyle = CINEMATIC_MASK_FILL;
+
+        // 上
+        if (boxY > 0) {
+          ctx.fillRect(0, 0, canvas.width, boxY);
+        }
+        // 下
+        const bottomY = boxY + boxH;
+        if (canvas.height - bottomY > 0) {
+          ctx.fillRect(0, bottomY, canvas.width, canvas.height - bottomY);
+        }
+        // 左
+        if (boxX > 0) {
+          ctx.fillRect(0, boxY, boxX, boxH);
+        }
+        // 右
+        const rightX = boxX + boxW;
+        if (canvas.width - rightX > 0) {
+          ctx.fillRect(rightX, boxY, canvas.width - rightX, boxH);
+        }
+
+        ctx.restore();
+      }
 
       if (timeLabelRef.current) {
         timeLabelRef.current.textContent = `${(timeMs / 1000).toFixed(1)}s`;
@@ -170,6 +211,9 @@ export function useExportPreviewAnimation({
     },
     [
       slides,
+      shouldCropPreview,
+      effectiveIsPlaying,
+      isBoundaryActive,
       boundaryBox,
       aspectRatio,
       mvpMatrix,

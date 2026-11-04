@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  type PointerEvent,
-  useMemo,
-  useRef,
-  useState,
-  type WheelEvent,
-} from 'react';
+import { type PointerEvent, useMemo, useRef, type WheelEvent } from 'react';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { useExportPreviewAnimation } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
@@ -49,12 +43,18 @@ export function TacticalSplitPreviewPanel() {
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
 
-  // 境界線の状態とクロッププレビュー切り替え
+  // 境界線の状態
   const boundaryBox = activeSlide?.boundaryBox;
   const isBoundaryActive = Boolean(boundaryBox?.enabled);
-  const [isCroppedPreview, setIsCroppedPreview] = useState(false);
-
-  const showCropped = (isPlaying || isCroppedPreview) && isBoundaryActive;
+  const isFullScreenBoundary =
+    !boundaryBox ||
+    (boundaryBox.x === 0 &&
+      boundaryBox.y === 0 &&
+      boundaryBox.width === 100 &&
+      boundaryBox.height === 100);
+  const showPlaybackMask = Boolean(
+    isPlaying && boundaryBox && (boundaryBox.enabled || !isFullScreenBoundary),
+  );
 
   const allPhasePlayers = useMemo(
     () => slides.flatMap((s) => s.players ?? []),
@@ -80,22 +80,21 @@ export function TacticalSplitPreviewPanel() {
     return record;
   }, [allPhasePlayers, playerPhotoMap]);
 
-  const { previewWidth, previewHeight, previewAspectStyle } =
-    useExportPreviewAnimation({
-      slides,
-      aspectRatio,
-      canvasAspectRatio: '16:9',
-      boundaryBox: showCropped ? (boundaryBox ?? null) : null,
-      pitchTransform: isPlaying ? null : (activeSlide?.pitchTransform ?? null),
-      playerPhotos,
-      pitchAppearance,
-      screenBackground,
-      externalIsPlaying: isPlaying,
-      onToggleExternalPlay: togglePlayback,
-      canvasRef,
-      timeLabelRef,
-      sliderRef,
-    });
+  const { previewWidth, previewHeight } = useExportPreviewAnimation({
+    slides,
+    aspectRatio,
+    canvasAspectRatio: '16:9',
+    boundaryBox: null,
+    pitchTransform: isPlaying ? null : (activeSlide?.pitchTransform ?? null),
+    playerPhotos,
+    pitchAppearance,
+    screenBackground,
+    externalIsPlaying: isPlaying,
+    onToggleExternalPlay: togglePlayback,
+    canvasRef,
+    timeLabelRef,
+    sliderRef,
+  });
 
   const handlePointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return;
@@ -168,16 +167,7 @@ export function TacticalSplitPreviewPanel() {
         <div
           ref={containerRef}
           data-testid="preview-container"
-          style={
-            showCropped && previewAspectStyle
-              ? { aspectRatio: previewAspectStyle }
-              : undefined
-          }
-          className={`relative ${
-            showCropped
-              ? 'max-w-full max-h-full w-auto h-auto'
-              : 'aspect-video w-full max-h-full'
-          } rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-lg`}
+          className="relative aspect-video w-full max-h-full rounded-lg overflow-hidden border border-white/10 bg-[#020617] flex items-center justify-center shadow-lg"
         >
           <canvas
             ref={canvasRef}
@@ -191,30 +181,29 @@ export function TacticalSplitPreviewPanel() {
             className="w-full h-full object-contain cursor-grab active:cursor-grabbing touch-none"
           />
 
-          {/* 切り替えボタン (境界線有効時のみ表示) */}
-          {isBoundaryActive && !isPlaying && (
-            <button
-              type="button"
-              aria-label={
-                showCropped
-                  ? '編集モードに切り替え'
-                  : '切り抜きプレビューに切り替え'
-              }
-              data-testid="toggle-crop-preview-btn"
-              onClick={() => setIsCroppedPreview((prev) => !prev)}
-              className="absolute top-3 right-3 z-30 px-2.5 py-1 text-xs font-medium rounded bg-black/75 hover:bg-black/90 text-white/90 border border-white/20 backdrop-blur-sm transition-colors flex items-center gap-1.5 shadow"
-            >
-              <span>{showCropped ? '編集モード' : '切り抜きプレビュー'}</span>
-            </button>
-          )}
-
-          {/* 編集モード時: 外側半透明暗転マスク & 境界線枠操作オーバーレイ */}
-          {isBoundaryActive && !showCropped && boundaryBox && (
+          {/* 静止時 かつ 境界線有効時: 編集用ドラッグ枠 & 暗転マスク */}
+          {isBoundaryActive && !isPlaying && boundaryBox && (
             <PreviewBoundaryOverlay
               boundaryBox={boundaryBox}
               containerRef={containerRef}
               onCommit={updateActiveSlideBoundaryBox}
             />
+          )}
+
+          {/* 再生時: 境界線外側のシネマティックマスクのみを表示 */}
+          {showPlaybackMask && boundaryBox && (
+            <svg
+              data-testid="boundary-mask-overlay"
+              className="absolute inset-0 w-full h-full pointer-events-none z-10"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+            >
+              <path
+                d={`M 0 0 H 100 V 100 H 0 Z M ${boundaryBox.x} ${boundaryBox.y} V ${boundaryBox.y + boundaryBox.height} H ${boundaryBox.x + boundaryBox.width} V ${boundaryBox.y} Z`}
+                fill="rgba(5, 7, 12, 0.72)"
+                fillRule="evenodd"
+              />
+            </svg>
           )}
         </div>
       </div>

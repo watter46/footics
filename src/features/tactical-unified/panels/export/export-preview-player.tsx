@@ -24,6 +24,7 @@ import {
 } from './export-preview-controls';
 import {
   ASPECT_CONTAINER_CLASSES,
+  CINEMATIC_MASK_FILL,
   hasActivePitchTransform,
   PREVIEW_DIMENSIONS,
   SPLIT_PREVIEW_CONTAINER_CLASSES,
@@ -34,6 +35,7 @@ import {
 
 export {
   ASPECT_CONTAINER_CLASSES,
+  CINEMATIC_MASK_FILL,
   ExportPreviewControls,
   type ExportPreviewControlsProps,
   hasActivePitchTransform,

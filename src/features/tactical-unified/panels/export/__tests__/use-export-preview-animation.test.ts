@@ -6,7 +6,10 @@ import {
   type Slide,
   SlideSchema,
 } from '@/lib/types/tactical-unified';
-import { useExportPreviewAnimation } from '../use-export-preview-animation';
+import {
+  CINEMATIC_MASK_FILL,
+  useExportPreviewAnimation,
+} from '../use-export-preview-animation';
 
 vi.mock('@/lib/tactical/export/tactical-frame-renderer', () => ({
   renderTacticalFrameToCanvas: vi.fn(),
@@ -45,7 +48,12 @@ describe('useExportPreviewAnimation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockContext = {} as CanvasRenderingContext2D;
+    mockContext = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      fillRect: vi.fn(),
+      fillStyle: '',
+    } as unknown as CanvasRenderingContext2D;
     mockCanvas = {
       getContext: vi.fn().mockReturnValue(mockContext),
       width: 1920,
@@ -127,5 +135,102 @@ describe('useExportPreviewAnimation', () => {
       frameRendererModule.renderTacticalFrameToCanvas,
     ).mock.calls.length;
     expect(newCallCount).toBeGreaterThan(initialCallCount);
+  });
+
+  it('does not crop canvas during playback, passes boundaryBox: null to frame renderer, and draws cinematic mask', () => {
+    const boundaryBox = {
+      x: 10,
+      y: 10,
+      width: 80,
+      height: 80,
+      enabled: true,
+      visible: false,
+      fitTarget: 'pitch' as const,
+    };
+
+    const { result } = renderHook(() =>
+      useExportPreviewAnimation({
+        slides: [mockSlide1],
+        aspectRatio: '16:9',
+        boundaryBox,
+        externalIsPlaying: true,
+        canvasRef,
+        timeLabelRef,
+        sliderRef,
+      }),
+    );
+
+    // キャンバス解像度はクロップされず 16:9 (1920x1080) を維持
+    expect(result.current.previewWidth).toBe(1920);
+    expect(result.current.previewHeight).toBe(1080);
+    expect(result.current.previewAspectStyle).toBeUndefined();
+
+    const calls = vi.mocked(frameRendererModule.renderTacticalFrameToCanvas)
+      .mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    const lastCall = calls[calls.length - 1];
+    // renderTacticalFrameToCanvas には boundaryBox: null が渡される（クロップ抑制）
+    expect(lastCall[1].boundaryBox).toBeNull();
+
+    // シネマティックマスクの 4 領域（上・下・左・右）が fillRect で描画されていること
+    expect(mockContext.fillRect).toHaveBeenCalledWith(0, 0, 1920, 108);
+    expect(mockContext.fillRect).toHaveBeenCalledWith(0, 972, 1920, 108);
+    expect(mockContext.fillRect).toHaveBeenCalledWith(0, 108, 192, 864);
+    expect(mockContext.fillRect).toHaveBeenCalledWith(1728, 108, 192, 864);
+    expect(mockContext.fillStyle).toBe(CINEMATIC_MASK_FILL);
+  });
+
+  it('draws cinematic mask during playback even when boundaryBox.enabled is false if boundary coordinates are non-fullscreen', () => {
+    const boundaryBox = {
+      x: 10,
+      y: 10,
+      width: 80,
+      height: 80,
+      enabled: false,
+      visible: false,
+      fitTarget: 'pitch' as const,
+    };
+
+    renderHook(() =>
+      useExportPreviewAnimation({
+        slides: [mockSlide1],
+        aspectRatio: '16:9',
+        boundaryBox,
+        externalIsPlaying: true,
+        canvasRef,
+        timeLabelRef,
+        sliderRef,
+      }),
+    );
+
+    // enabled: false でも全画面でなければマスク描画
+    expect(mockContext.fillRect).toHaveBeenCalledWith(0, 0, 1920, 108);
+    expect(mockContext.fillRect).toHaveBeenCalledWith(0, 972, 1920, 108);
+  });
+
+  it('does not draw cinematic mask when boundaryBox is full screen', () => {
+    const boundaryBox = {
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      enabled: true,
+      visible: false,
+      fitTarget: 'pitch' as const,
+    };
+
+    renderHook(() =>
+      useExportPreviewAnimation({
+        slides: [mockSlide1],
+        aspectRatio: '16:9',
+        boundaryBox,
+        externalIsPlaying: true,
+        canvasRef,
+        timeLabelRef,
+        sliderRef,
+      }),
+    );
+
+    expect(mockContext.fillRect).not.toHaveBeenCalled();
   });
 });

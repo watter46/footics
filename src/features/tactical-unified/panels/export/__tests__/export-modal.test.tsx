@@ -93,7 +93,7 @@ describe('ExportModal Fullscreen & Compact Bottom Bar', () => {
     };
   };
 
-  it('全画面スタイル (w-[96vw] max-w-[96vw] h-[92vh]) を持つダイアログとしてレンダリングされること', async () => {
+  it('完全全画面スタイル (w-screen h-screen rounded-none 等) を持つダイアログとしてレンダリングされること', async () => {
     let renderResult: any;
     await act(async () => {
       renderResult = render(
@@ -105,9 +105,12 @@ describe('ExportModal Fullscreen & Compact Bottom Bar', () => {
 
     const dialog = renderResult.baseElement.querySelector('[role="dialog"]');
     expect(dialog).toBeTruthy();
-    expect(dialog?.className).toContain('w-[96vw]');
-    expect(dialog?.className).toContain('max-w-[96vw]');
-    expect(dialog?.className).toContain('h-[92vh]');
+    expect(dialog?.className).toContain('w-screen');
+    expect(dialog?.className).toContain('max-w-none');
+    expect(dialog?.className).toContain('h-screen');
+    expect(dialog?.className).toContain('max-h-none');
+    expect(dialog?.className).toContain('rounded-none');
+    expect(dialog?.className).toContain('border-none');
 
     // 左右分割 (grid-cols-12, md:col-span-6) が撤廃されていること
     expect(

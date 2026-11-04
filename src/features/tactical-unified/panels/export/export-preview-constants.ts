@@ -24,6 +24,8 @@ export const SPLIT_PREVIEW_CONTAINER_CLASSES: Record<AspectRatio, string> = {
   '1:1': 'aspect-square h-full max-h-full w-auto max-w-full',
 };
 
+export const CINEMATIC_MASK_FILL = 'rgba(5, 7, 12, 0.72)';
+
 export function hasActivePitchTransform(pt?: PitchTransform | null): boolean {
   if (!pt) return false;
   return (

@@ -344,8 +344,7 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
     expect(queryByTestId('boundary-corner-br')).not.toBeNull();
   });
 
-  it('toggles cropped preview mode on button click and passes boundaryBox to renderer', () => {
-    const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
+  it('does not render toggle crop preview button even when boundaryBox is active', () => {
     const activeSlide =
       useTacticalUnifiedStore.getState().project.phases[0].slides[0];
     useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
@@ -358,41 +357,16 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
       },
     });
 
-    const { getByTestId, queryByTestId } = render(
+    const { queryByTestId } = render(
       <TacticalUnifiedStoreProvider>
         <TacticalSplitPreviewPanel />
       </TacticalUnifiedStoreProvider>,
     );
 
-    expect(renderSpy).toHaveBeenLastCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        boundaryBox: null,
-      }),
-    );
-
-    const toggleBtn = getByTestId('toggle-crop-preview-btn');
-    fireEvent.click(toggleBtn);
-
-    expect(renderSpy).toHaveBeenLastCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        boundaryBox: expect.objectContaining({
-          x: 10,
-          y: 10,
-          width: 80,
-          height: 80,
-          enabled: true,
-        }),
-      }),
-    );
-
-    expect(queryByTestId('boundary-mask-overlay')).toBeNull();
-    expect(queryByTestId('boundary-box-overlay')).toBeNull();
+    expect(queryByTestId('toggle-crop-preview-btn')).toBeNull();
   });
 
-  it('automatically switches to cropped preview when playing', () => {
-    const renderSpy = vi.spyOn(frameRenderer, 'renderTacticalFrameToCanvas');
+  it('hides edit handles and shows cinematic mask overlay during playback', () => {
     const activeSlide =
       useTacticalUnifiedStore.getState().project.phases[0].slides[0];
     useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
@@ -405,24 +379,24 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
       },
     });
 
-    render(
+    const { queryByTestId } = render(
       <TacticalUnifiedStoreProvider>
         <TacticalSplitPreviewPanel />
       </TacticalUnifiedStoreProvider>,
     );
+
+    // 静止時: ハンドルとマスク両方存在
+    expect(queryByTestId('boundary-box-overlay')).not.toBeNull();
+    expect(queryByTestId('boundary-mask-overlay')).not.toBeNull();
 
     act(() => {
       useTacticalUnifiedStore.getState().togglePlayback();
     });
 
-    expect(renderSpy).toHaveBeenLastCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        boundaryBox: expect.objectContaining({
-          enabled: true,
-        }),
-      }),
-    );
+    // 再生時: ハンドルは隠され、マスクのみ表示
+    expect(queryByTestId('boundary-box-overlay')).toBeNull();
+    expect(queryByTestId('boundary-corner-tl')).toBeNull();
+    expect(queryByTestId('boundary-mask-overlay')).not.toBeNull();
   });
 
   it('updates active slide boundaryBox on overlay frame drag', () => {
@@ -531,7 +505,7 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
     expect(updated?.height).toBe(65);
   });
 
-  it('applies boundary aspect ratio and exact cropped dimensions to canvas and container in cropped preview mode', () => {
+  it('maintains aspect-video container and 1920x1080 canvas during playback with boundaryBox', () => {
     const activeSlide =
       useTacticalUnifiedStore.getState().project.phases[0].slides[0];
     useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
@@ -554,26 +528,26 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
     const previewContainer = getByTestId('preview-container');
     if (!canvas) throw new Error('Canvas not found');
 
-    // Default edit mode: 16:9 full HD (1920x1080)
+    // 静止時: 16:9 full HD (1920x1080), aspect-video
     expect(canvas.width).toBe(1920);
     expect(canvas.height).toBe(1080);
     expect(previewContainer.className).toContain('aspect-video');
-    expect(previewContainer.style.aspectRatio).toBe('');
+    expect(previewContainer.className).toContain('w-full');
+    expect(previewContainer.className).toContain('max-h-full');
 
-    // Toggle to cropped preview
-    const toggleBtn = getByTestId('toggle-crop-preview-btn');
-    fireEvent.click(toggleBtn);
+    act(() => {
+      useTacticalUnifiedStore.getState().togglePlayback();
+    });
 
-    // Cropped dimensions: 80% of 1920 = 1536, 50% of 1080 = 540
-    expect(canvas.width).toBe(1536);
-    expect(canvas.height).toBe(540);
-    expect(previewContainer.style.aspectRatio).toBe('1536 / 540');
-    expect(previewContainer.className).not.toContain('aspect-video');
-    expect(previewContainer.className).toContain('max-w-full');
+    // 再生時もクロップ急変形せず、常時 16:9（1920x1080）と aspect-video を維持
+    expect(canvas.width).toBe(1920);
+    expect(canvas.height).toBe(1080);
+    expect(previewContainer.className).toContain('aspect-video');
+    expect(previewContainer.className).toContain('w-full');
     expect(previewContainer.className).toContain('max-h-full');
   });
 
-  it('automatically applies boundary aspect ratio and cropped dimensions to canvas during playback', () => {
+  it('shows cinematic mask overlay during playback when boundaryBox is disabled but not full screen', () => {
     const activeSlide =
       useTacticalUnifiedStore.getState().project.phases[0].slides[0];
     useTacticalUnifiedStore.getState().updateSlide(activeSlide.id, {
@@ -582,28 +556,26 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
         y: 20,
         width: 60,
         height: 60,
-        enabled: true,
+        enabled: false,
       },
     });
 
-    const { getByTestId, container } = render(
+    const { queryByTestId } = render(
       <TacticalUnifiedStoreProvider>
         <TacticalSplitPreviewPanel />
       </TacticalUnifiedStoreProvider>,
     );
 
-    const canvas = container.querySelector('canvas');
-    const previewContainer = getByTestId('preview-container');
-    if (!canvas) throw new Error('Canvas not found');
+    // 静止時で enabled: false の場合、編集ハンドルもマスクも非表示
+    expect(queryByTestId('boundary-mask-overlay')).toBeNull();
+    expect(queryByTestId('boundary-box-overlay')).toBeNull();
 
     act(() => {
       useTacticalUnifiedStore.getState().togglePlayback();
     });
 
-    // Cropped dimensions: 60% of 1920 = 1152, 60% of 1080 = 648
-    expect(canvas.width).toBe(1152);
-    expect(canvas.height).toBe(648);
-    expect(previewContainer.style.aspectRatio).toBe('1152 / 648');
-    expect(previewContainer.className).not.toContain('aspect-video');
+    // 再生時は、enabled: false であっても保持されている境界線枠情報（初期全画面以外）に基づきシネマティックマスクを表示
+    expect(queryByTestId('boundary-mask-overlay')).not.toBeNull();
+    expect(queryByTestId('boundary-box-overlay')).toBeNull();
   });
 });

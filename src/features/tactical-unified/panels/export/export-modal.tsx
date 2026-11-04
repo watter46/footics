@@ -36,7 +36,7 @@ export function ExportModal() {
     <Dialog
       open={true}
       onClose={isBusy ? undefined : closeExportModal}
-      className="w-[96vw] max-w-[96vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden flex flex-col space-y-0 select-none"
+      className="w-screen max-w-none h-screen max-h-none p-0 m-0 rounded-none border-none overflow-hidden flex flex-col space-y-0 select-none"
     >
       <div className="relative w-full flex flex-col h-full overflow-hidden">
         <ExportModalHeader
