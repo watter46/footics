@@ -95,6 +95,7 @@ export {
 export {
   type PlayerPhotoMap,
   PlayerPhotoProvider,
+  usePlayerPhotoContext,
   usePlayerPhotoImage,
 } from './hooks/player-photo-context';
 export {

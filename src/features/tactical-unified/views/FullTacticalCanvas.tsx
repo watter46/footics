@@ -16,6 +16,7 @@ import {
   CanvasStoreProvider,
   createCanvasNodesRegistry,
   PlayerPhotoProvider,
+  usePlayerPhotoContext,
 } from '@/features/tactical-unified/core';
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
@@ -55,12 +56,17 @@ export function FullTacticalCanvas({
   const resolvedImageAspect = imageAspect ?? 16 / 9;
 
   // アクティブフェーズの全スライドの選手写真を一括事前解決・キャッシュ
+  // 親コンテキストに写真マップが存在する場合は重複ロードを防ぐため空配列を渡し、単体マウント時のみ自前解決
   const activeSlides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
   const allPhasePlayers = useMemo(
     () => activeSlides.flatMap((s) => s.players ?? []),
     [activeSlides],
   );
-  const playerPhotos = usePlayerPhotoRegistry(allPhasePlayers);
+  const parentPhotos = usePlayerPhotoContext();
+  const fallbackPhotos = usePlayerPhotoRegistry(
+    parentPhotos ? [] : allPhasePlayers,
+  );
+  const playerPhotos = parentPhotos ?? fallbackPhotos;
 
   // マスターストア（storeApi）を唯一の真実源としてアダプター経由で接続
   const canvasStore = useMemo(() => {

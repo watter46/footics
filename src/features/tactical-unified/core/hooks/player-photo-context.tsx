@@ -21,6 +21,10 @@ export function PlayerPhotoProvider({
   );
 }
 
+export function usePlayerPhotoContext(): PlayerPhotoMap | null {
+  return useContext(PlayerPhotoContext);
+}
+
 export function usePlayerPhotoImage(marker: {
   playerId?: string | number;
   id: string;

@@ -24,6 +24,7 @@ import {
   TacticalUnifiedStoreProvider,
   useTacticalUnifiedStoreContext,
 } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { TacticalPlayerPhotoProvider } from './objects/player/components/tactical-player-photo-provider';
 import { ProjectManagerModal } from './panels/dialogs/project-manager-modal';
 import { ExportModal } from './panels/export/export-modal';
 import { LeftPanel } from './panels/left-panel/left-panel';
@@ -51,11 +52,13 @@ export function TacticalUnifiedPage({
 }: TacticalUnifiedPageProps = {}) {
   return (
     <TacticalUnifiedStoreProvider initialState={initialState}>
-      <TacticalUnifiedPageContent
-        initialMatchId={initialMatchId}
-        initialMinute={initialMinute}
-        initialState={initialState}
-      />
+      <TacticalPlayerPhotoProvider>
+        <TacticalUnifiedPageContent
+          initialMatchId={initialMatchId}
+          initialMinute={initialMinute}
+          initialState={initialState}
+        />
+      </TacticalPlayerPhotoProvider>
     </TacticalUnifiedStoreProvider>
   );
 }
