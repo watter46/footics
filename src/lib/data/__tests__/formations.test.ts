@@ -72,4 +72,29 @@ describe('formations getFormationActualPos', () => {
     expect(stPosHalf.y).toBeGreaterThan(50.0);
     expect(stPosFull.y).toBeLessThan(50.0);
   });
+
+  it('expands wingers across full width in vertical aspect ratios without central shrink', () => {
+    // 4-3-3: LW left=20, RW left=80
+    const formation433 = FORMATION_POSITIONS['4-3-3'];
+    const lw = formation433.find((p) => p.position === 'LW')!;
+    const rw = formation433.find((p) => p.position === 'RW')!;
+
+    for (const ratio of ['4:5', '9:16', '1:1'] as const) {
+      const lwPos = getFormationActualPos(lw, 'home', 'full', ratio);
+      const rwPos = getFormationActualPos(rw, 'home', 'full', ratio);
+
+      // bounds: xMin=3, pitchWidth=94 -> left=20 => 3 + 0.20 * 94 = 21.8%
+      // left=80 => 3 + 0.80 * 94 = 78.2%
+      expect(lwPos.x).toBeCloseTo(21.8, 1);
+      expect(rwPos.x).toBeCloseTo(78.2, 1);
+      expect(rwPos.x - lwPos.x).toBeGreaterThan(55.0);
+
+      // Arbitrary wide coords (left=15, 85) -> 3 + 0.15 * 94 = 17.1%, 3 + 0.85 * 94 = 82.9% (> 60% span)
+      const wideL = getFormationActualPos(30, 15, false, ratio);
+      const wideR = getFormationActualPos(30, 85, false, ratio);
+      expect(wideL.x).toBeCloseTo(17.1, 1);
+      expect(wideR.x).toBeCloseTo(82.9, 1);
+      expect(wideR.x - wideL.x).toBeGreaterThan(60.0);
+    }
+  });
 });

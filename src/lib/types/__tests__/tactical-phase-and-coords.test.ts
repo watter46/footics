@@ -4,6 +4,7 @@ import {
   getFormationActualPosVertical,
 } from '@/lib/data/formations';
 import {
+  calculateNormalizedPitchBounds,
   getScreenOuterPitchRect,
   getScreenPitchBounds,
 } from '@/lib/tactical/pitch-geometry';
@@ -16,40 +17,44 @@ import { ensureTacticalProject } from '@/lib/types/tactical/migration';
 import { transformCoord } from '@/lib/types/tactical/primitives';
 import {
   createXBoundaryBox,
+  DEFAULT_BOUNDARY_BOX_4_5,
   DEFAULT_BOUNDARY_BOX_16_9,
   X_MEDIA_PRESETS,
 } from '@/lib/types/tactical/slide';
 
 describe('Phase 1: TacticalPhase & Single Coordinate System', () => {
   describe('Default creation & factory', () => {
-    it('creates default project with 16:9 and default boundaryBox', () => {
+    it('creates default project with 4:5 and default boundaryBox', () => {
+      const defaultBox = createXBoundaryBox('4:5', '4:5');
       const project = createDefaultProject('test-project');
-      expect(project.aspectRatio).toBe('16:9');
-      expect(project.boundaryBox).toEqual(DEFAULT_BOUNDARY_BOX_16_9);
+      expect(project.aspectRatio).toBe('4:5');
+      expect(project.boundaryBox).toEqual(defaultBox);
       expect(project.boundaryBox?.visible).toBe(false);
 
       const phase = project.phases[0];
-      expect(phase.aspectRatio).toBe('16:9');
-      expect(phase.boundaryBox).toEqual(DEFAULT_BOUNDARY_BOX_16_9);
+      expect(phase.aspectRatio).toBe('4:5');
+      expect(phase.boundaryBox).toEqual(defaultBox);
       expect(phase.boundaryBox?.visible).toBe(false);
 
       const slide = phase.slides[0];
-      expect(slide.aspectRatio).toBe('16:9');
-      expect(slide.boundaryBox).toEqual(DEFAULT_BOUNDARY_BOX_16_9);
+      expect(slide.aspectRatio).toBe('4:5');
+      expect(slide.boundaryBox).toEqual(defaultBox);
     });
 
-    it('creates default phase with 16:9 and default boundaryBox', () => {
+    it('creates default phase with 4:5 and default boundaryBox', () => {
+      const defaultBox = createXBoundaryBox('4:5', '4:5');
       const phase = createDefaultPhase('test-phase');
-      expect(phase.aspectRatio).toBe('16:9');
-      expect(phase.boundaryBox).toEqual(DEFAULT_BOUNDARY_BOX_16_9);
-      expect(phase.slides[0].aspectRatio).toBe('16:9');
-      expect(phase.slides[0].boundaryBox).toEqual(DEFAULT_BOUNDARY_BOX_16_9);
+      expect(phase.aspectRatio).toBe('4:5');
+      expect(phase.boundaryBox).toEqual(defaultBox);
+      expect(phase.slides[0].aspectRatio).toBe('4:5');
+      expect(phase.slides[0].boundaryBox).toEqual(defaultBox);
     });
 
-    it('creates default slide with 16:9 and default boundaryBox', () => {
+    it('creates default slide with 4:5 and default boundaryBox', () => {
+      const defaultBox = createXBoundaryBox('4:5', '4:5');
       const slide = createDefaultSlide(0);
-      expect(slide.aspectRatio).toBe('16:9');
-      expect(slide.boundaryBox).toEqual(DEFAULT_BOUNDARY_BOX_16_9);
+      expect(slide.aspectRatio).toBe('4:5');
+      expect(slide.boundaryBox).toEqual(defaultBox);
     });
   });
 
@@ -187,49 +192,57 @@ describe('Phase 1: TacticalPhase & Single Coordinate System', () => {
 
   describe('Formation coordinates calculation', () => {
     it('calculates horizontal (16:9) formation positions (Home left, Away right)', () => {
-      // Home GK (top=0, left=50) -> x ≈ xMin, y ≈ yMid
-      const homeGK = getFormationActualPos(0, 50, false, '16:9');
-      const b169 = getScreenPitchBounds('16:9');
-      expect(homeGK.x).toBeCloseTo(b169.xMin, 1);
-      expect(homeGK.y).toBeCloseTo(b169.yMid, 1);
+      const bounds = calculateNormalizedPitchBounds();
+      // Home GK (top=100, left=50) -> x ≈ xMin, y ≈ yMid
+      const homeGK = getFormationActualPos(100, 50, false, '16:9');
+      expect(homeGK.x).toBeCloseTo(bounds.xMin, 1);
+      expect(homeGK.y).toBeCloseTo(bounds.yMid, 1);
 
-      // Home FW (top=100, left=50) -> x ≈ xMid, y ≈ yMid
-      const homeFW = getFormationActualPos(100, 50, false, '16:9');
-      expect(homeFW.x).toBeCloseTo(b169.xMid, 1);
-      expect(homeFW.y).toBeCloseTo(b169.yMid, 1);
+      // Home FW (top=0, left=50) -> x ≈ xMax (in full mode), y ≈ yMid
+      const homeFW = getFormationActualPos(0, 50, false, '16:9');
+      expect(homeFW.x).toBeCloseTo(bounds.xMax, 1);
+      expect(homeFW.y).toBeCloseTo(bounds.yMid, 1);
 
-      // Away GK (top=0, left=50) -> x ≈ xMax, y ≈ yMid
-      const awayGK = getFormationActualPos(0, 50, true, '16:9');
-      expect(awayGK.x).toBeCloseTo(b169.xMax, 1);
-      expect(awayGK.y).toBeCloseTo(b169.yMid, 1);
+      // Away GK (top=100, left=50) -> x ≈ xMax, y ≈ yMid
+      const awayGK = getFormationActualPos(100, 50, true, '16:9');
+      expect(awayGK.x).toBeCloseTo(bounds.xMax, 1);
+      expect(awayGK.y).toBeCloseTo(bounds.yMid, 1);
 
-      // Away FW (top=100, left=50) -> x ≈ xMid, y ≈ yMid
-      const awayFW = getFormationActualPos(100, 50, true, '16:9');
-      expect(awayFW.x).toBeCloseTo(b169.xMid, 1);
-      expect(awayFW.y).toBeCloseTo(b169.yMid, 1);
+      // Away FW (top=0, left=50) -> x ≈ xMin, y ≈ yMid
+      const awayFW = getFormationActualPos(0, 50, true, '16:9');
+      expect(awayFW.x).toBeCloseTo(bounds.xMin, 1);
+      expect(awayFW.y).toBeCloseTo(bounds.yMid, 1);
     });
 
     it('calculates vertical (4:5) formation positions (Home bottom, Away top)', () => {
-      const b45 = getScreenPitchBounds('4:5');
-      // Home GK (top=0, left=50) -> x ≈ xMid, y ≈ yMax
-      const homeGK = getFormationActualPos(0, 50, false, '4:5');
-      expect(homeGK.x).toBeCloseTo(b45.xMid, 1);
-      expect(homeGK.y).toBeCloseTo(b45.yMax, 1);
+      const bounds = calculateNormalizedPitchBounds();
+      // Home GK (top=100, left=50) -> x ≈ xMid, y ≈ yMax
+      const homeGK = getFormationActualPos(100, 50, false, '4:5');
+      expect(homeGK.x).toBeCloseTo(bounds.xMid, 1);
+      expect(homeGK.y).toBeCloseTo(bounds.yMax, 1);
 
-      // Home FW (top=100, left=50) -> x ≈ xMid, y ≈ yMid
-      const homeFW = getFormationActualPos(100, 50, false, '4:5');
-      expect(homeFW.x).toBeCloseTo(b45.xMid, 1);
-      expect(homeFW.y).toBeCloseTo(b45.yMid, 1);
+      // Home FW (top=0, left=50) -> x ≈ xMid, y ≈ yMin
+      const homeFW = getFormationActualPos(0, 50, false, '4:5');
+      expect(homeFW.x).toBeCloseTo(bounds.xMid, 1);
+      expect(homeFW.y).toBeCloseTo(bounds.yMin, 1);
 
-      // Away GK (top=0, left=50) -> x ≈ xMid, y ≈ yMin
-      const awayGK = getFormationActualPos(0, 50, true, '4:5');
-      expect(awayGK.x).toBeCloseTo(b45.xMid, 1);
-      expect(awayGK.y).toBeCloseTo(b45.yMin, 1);
+      // Away GK (top=100, left=50) -> x ≈ xMid, y ≈ yMin
+      const awayGK = getFormationActualPos(100, 50, true, '4:5');
+      expect(awayGK.x).toBeCloseTo(bounds.xMid, 1);
+      expect(awayGK.y).toBeCloseTo(bounds.yMin, 1);
 
-      // Away FW (top=100, left=50) -> x ≈ xMid, y ≈ yMid
-      const awayFW = getFormationActualPos(100, 50, true, '4:5');
-      expect(awayFW.x).toBeCloseTo(b45.xMid, 1);
-      expect(awayFW.y).toBeCloseTo(b45.yMid, 1);
+      // Away FW (top=0, left=50) -> x ≈ xMid, y ≈ yMax
+      const awayFW = getFormationActualPos(0, 50, true, '4:5');
+      expect(awayFW.x).toBeCloseTo(bounds.xMid, 1);
+      expect(awayFW.y).toBeCloseTo(bounds.yMax, 1);
+    });
+
+    it('places wide players near pitch edges without shrink in 4:5', () => {
+      // left=10 -> x ≈ 12.4, left=90 -> x ≈ 87.6
+      const leftWinger = getFormationActualPos(50, 10, false, '4:5');
+      const rightWinger = getFormationActualPos(50, 90, false, '4:5');
+      expect(leftWinger.x).toBeCloseTo(12.4, 1);
+      expect(rightWinger.x).toBeCloseTo(87.6, 1);
     });
 
     it('delegates getFormationActualPosVertical to 4:5', () => {
@@ -247,6 +260,33 @@ describe('Phase 1: TacticalPhase & Single Coordinate System', () => {
       const back169 = transformCoord(to45, '4:5', '16:9');
       expect(back169.x).toBeCloseTo(orig.x, 1);
       expect(back169.y).toBeCloseTo(orig.y, 1);
+    });
+
+    it('preserves normalized coordinates across vertical aspect ratios (4:5 <-> 9:16 <-> 1:1)', () => {
+      const point = { x: 15, y: 80 };
+      const to916 = transformCoord(point, '4:5', '9:16');
+      expect(to916.x).toBeCloseTo(15, 2);
+      expect(to916.y).toBeCloseTo(80, 2);
+
+      const to11 = transformCoord(to916, '9:16', '1:1');
+      expect(to11.x).toBeCloseTo(15, 2);
+      expect(to11.y).toBeCloseTo(80, 2);
+
+      const back45 = transformCoord(to11, '1:1', '4:5');
+      expect(back45.x).toBeCloseTo(15, 2);
+      expect(back45.y).toBeCloseTo(80, 2);
+    });
+
+    it('transforms tactical coordinates between 16:9 and 4:5 without width compression', () => {
+      const leftWinger169 = { x: 50, y: 3 };
+      const converted45 = transformCoord(leftWinger169, '16:9', '4:5');
+      expect(converted45.x).toBeCloseTo(97, 1);
+      expect(converted45.y).toBeCloseTo(50, 1);
+
+      const rightWinger169 = { x: 50, y: 97 };
+      const converted45RW = transformCoord(rightWinger169, '16:9', '4:5');
+      expect(converted45RW.x).toBeCloseTo(3, 1);
+      expect(converted45RW.y).toBeCloseTo(50, 1);
     });
 
     it('does not clamp coordinates when clamp is false', () => {
