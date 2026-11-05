@@ -186,9 +186,8 @@ export function getFormationActualPos(
   const clampedTop = Math.max(0, Math.min(100, top));
   const clampedLeft = Math.max(0, Math.min(100, left));
 
-  const attackRatio = isAway
-    ? 1 - (clampedTop / 100) * 0.5
-    : (clampedTop / 100) * 0.5;
+  const depthRatio = ((100 - clampedTop) / 100) * 0.5;
+  const attackRatio = isAway ? 1 - depthRatio : depthRatio;
   const widthRatio = isAway ? (100 - clampedLeft) / 100 : clampedLeft / 100;
 
   const bounds = getScreenPitchBounds(aspectRatio);

@@ -4,6 +4,7 @@ import { AspectRatioSchema, NormalizedCoordSchema } from './primitives';
 import {
   BoundaryBoxSchema,
   DEFAULT_BOUNDARY_BOX_16_9,
+  DEFAULT_BOUNDARY_BOX_FULL,
   PitchAppearanceConfigSchema,
   ScreenBackgroundConfigSchema,
   type Slide,
@@ -14,11 +15,16 @@ import {
 // § 8.2. フェーズ
 // ─────────────────────────────────────────
 
+export const DEFAULT_PHASE_BOUNDARY_BOX = {
+  ...DEFAULT_BOUNDARY_BOX_FULL,
+  fitTarget: 'canvas' as const,
+};
+
 export const TacticalPhaseSchema = z.object({
   id: z.string(),
   name: z.string().min(1).max(200),
-  aspectRatio: AspectRatioSchema.default('16:9').optional(),
-  boundaryBox: BoundaryBoxSchema.default(DEFAULT_BOUNDARY_BOX_16_9).optional(),
+  aspectRatio: AspectRatioSchema.default('4:5').optional(),
+  boundaryBox: BoundaryBoxSchema.default(DEFAULT_PHASE_BOUNDARY_BOX).optional(),
   slides: z.array(SlideSchema).min(1),
 });
 export type TacticalPhase = z.infer<typeof TacticalPhaseSchema>;
@@ -42,7 +48,7 @@ export const TacticalProjectSchema = z.object({
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 
-  aspectRatio: AspectRatioSchema.default('16:9'),
+  aspectRatio: AspectRatioSchema.default('4:5'),
 
   backgroundType: z.enum(['pitch', 'image', 'blank']).default('pitch'),
   backgroundImageUrl: z.string().optional(),

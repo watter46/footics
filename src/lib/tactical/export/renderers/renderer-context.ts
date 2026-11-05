@@ -231,8 +231,14 @@ export function createFrameRenderContext({
   ): [{ x: number; y: number }, { x: number; y: number }] | null => {
     if (!m) {
       return [
-        { x: toScreenX(x1), y: toScreenY(y1) },
-        { x: toScreenX(x2), y: toScreenY(y2) },
+        {
+          x: outerPitchRect.x + (x1 / 100) * outerPitchRect.width,
+          y: outerPitchRect.y + (y1 / 100) * outerPitchRect.height,
+        },
+        {
+          x: outerPitchRect.x + (x2 / 100) * outerPitchRect.width,
+          y: outerPitchRect.y + (y2 / 100) * outerPitchRect.height,
+        },
       ];
     }
     return project3DLineSegment(m, x1, y1, x2, y2, baseWidth, baseHeight);

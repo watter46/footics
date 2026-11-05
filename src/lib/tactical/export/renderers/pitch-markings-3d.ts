@@ -53,15 +53,18 @@ export function renderPitchMarkings3D(
       geom.config.orientation === 'horizontal' ? '16:9' : '4:5',
     );
 
-  const toNormX = (svgX: number) =>
-    ((outerRect.x + (svgX / config.widthPx) * outerRect.width) / context.w) *
-    100;
-  const toNormY = (svgY: number) =>
-    ((outerRect.y + (svgY / config.heightPx) * outerRect.height) / context.h) *
-    100;
+  const toNormX = (svgX: number) => (svgX / config.widthPx) * 100;
+  const toNormY = (svgY: number) => (svgY / config.heightPx) * 100;
 
-  const projectPitch = (vx: number, vy: number) =>
-    projectObjToScreen(toNormX(vx), toNormY(vy));
+  const projectPitch = (vx: number, vy: number) => {
+    if (context.m) {
+      return projectObjToScreen(toNormX(vx), toNormY(vy));
+    }
+    return {
+      x: outerRect.x + (toNormX(vx) / 100) * outerRect.width,
+      y: outerRect.y + (toNormY(vy) / 100) * outerRect.height,
+    };
+  };
 
   const draw3DLine = (x1: number, y1: number, x2: number, y2: number) => {
     if (context.project3DSegment) {

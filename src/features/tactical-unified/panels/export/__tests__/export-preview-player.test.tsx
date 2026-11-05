@@ -1,7 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TacticalUnifiedStoreProvider } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import { createXBoundaryBox, SlideSchema } from '@/lib/types/tactical-unified';
+import * as tacticalFrameRenderer from '@/lib/tactical/export/tactical-frame-renderer';
+import {
+  createXBoundaryBox,
+  type ScreenBackgroundConfig,
+  SlideSchema,
+} from '@/lib/types/tactical-unified';
 import { ExportPreviewPlayer } from '../export-preview-player';
 
 const mockSlide = SlideSchema.parse({
@@ -181,5 +186,37 @@ describe('ExportPreviewPlayer Viewport & Boundary Crop Layout', () => {
     expect(canvas).toBeDefined();
     expect(canvas?.width).toBe(864);
     expect(canvas?.height).toBe(1080);
+  });
+});
+
+describe('ExportPreviewPlayer ScreenBackground', () => {
+  it('forwards screenBackground to renderTacticalFrameToCanvas', async () => {
+    const renderSpy = vi.spyOn(
+      tacticalFrameRenderer,
+      'renderTacticalFrameToCanvas',
+    );
+    const screenBackground: ScreenBackgroundConfig = {
+      type: 'cinematic',
+    };
+
+    await act(async () => {
+      render(
+        <TacticalUnifiedStoreProvider>
+          <ExportPreviewPlayer
+            slides={[mockSlide]}
+            aspectRatio="16:9"
+            boundaryBox={null}
+            screenBackground={screenBackground}
+          />
+        </TacticalUnifiedStoreProvider>,
+      );
+    });
+
+    expect(renderSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        screenBackground,
+      }),
+    );
   });
 });

@@ -11,8 +11,7 @@ import {
 } from './project';
 import {
   type BoundaryBox,
-  DEFAULT_BOUNDARY_BOX_4_5,
-  DEFAULT_BOUNDARY_BOX_16_9,
+  DEFAULT_BOUNDARY_BOX_FULL,
   DEFAULT_PITCH_APPEARANCE,
   DEFAULT_SCREEN_BACKGROUND,
   type Slide,
@@ -24,23 +23,13 @@ export const DEFAULT_INITIAL_PHASE_ID = '00000000-0000-4000-8000-000000000002';
 export const DEFAULT_INITIAL_SLIDE_ID = '00000000-0000-4000-8000-000000000003';
 export const DEFAULT_INITIAL_CREATED_AT = '2026-01-01T00:00:00.000Z';
 
-const BENCH_POSITION_RANK: Record<string, number> = Object.fromEntries([
-  ...['FW', 'CF', 'ST', 'LW', 'RW', 'SS', 'AML', 'AMR'].map(
-    (p) => [p, 1] as const,
-  ),
-  ...['MF', 'DM', 'CM', 'AM', 'LM', 'RM', 'DMC', 'MC', 'AMC'].map(
-    (p) => [p, 2] as const,
-  ),
-  ...['DF', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'DC', 'DL', 'DR'].map(
-    (p) => [p, 3] as const,
-  ),
-  ['GK', 4] as const,
-]);
-
 function getBenchPositionRank(position?: string): number {
   if (!position) return 5;
-  const upper = position.toUpperCase().trim();
-  return BENCH_POSITION_RANK[upper] ?? 5;
+  const p = position.toUpperCase().trim();
+  if ('FW,CF,ST,LW,RW,SS,AML,AMR'.includes(p)) return 1;
+  if ('MF,DM,CM,AM,LM,RM,DMC,MC,AMC'.includes(p)) return 2;
+  if ('DF,CB,LB,RB,LWB,RWB,DC,DL,DR'.includes(p)) return 3;
+  return p === 'GK' ? 4 : 5;
 }
 
 function getBenchShirtNumberValue(shirtNo?: string): number {
@@ -74,12 +63,6 @@ export function computeBenchGridPositions(players: Player[]): Player[] {
   });
 }
 
-import {
-  DEFAULT_442_AWAY,
-  DEFAULT_442_HOME,
-  DEFAULT_4231_HOME,
-} from './formations';
-
 export {
   DEFAULT_442_AWAY,
   DEFAULT_442_HOME,
@@ -87,10 +70,21 @@ export {
   type DefaultFormationPlayer,
 } from './formations';
 
+import {
+  DEFAULT_442_AWAY,
+  DEFAULT_442_HOME,
+  DEFAULT_4231_HOME,
+} from './formations';
+
+export const DEFAULT_INITIAL_BOUNDARY_BOX: BoundaryBox = {
+  ...DEFAULT_BOUNDARY_BOX_FULL,
+  fitTarget: 'canvas',
+};
+
 export function createDefaultInitialPlayers(
   homeColor = '#034694',
   awayColor = '#ef4444',
-  aspectRatio: AspectRatio = '16:9',
+  aspectRatio: AspectRatio = '4:5',
   deterministic?: boolean,
 ): Player[] {
   const isVertical = isVerticalAspectRatio(aspectRatio);
@@ -159,8 +153,8 @@ export function createDefaultPhase(
   awayColor?: string,
   slideId?: string,
   deterministic?: boolean,
-  aspectRatio: AspectRatio = '16:9',
-  boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_16_9,
+  aspectRatio: AspectRatio = '4:5',
+  boundaryBox: BoundaryBox = DEFAULT_INITIAL_BOUNDARY_BOX,
 ): TacticalPhase {
   const phaseId = id ?? crypto.randomUUID();
   const resolvedSlideId = slideId ?? crypto.randomUUID();
@@ -200,8 +194,8 @@ export function createDefaultProject(
     '#ef4444',
     options?.slideId,
     options?.deterministic,
-    '16:9',
-    DEFAULT_BOUNDARY_BOX_16_9,
+    '4:5',
+    DEFAULT_INITIAL_BOUNDARY_BOX,
   );
 
   const project = {
@@ -210,7 +204,7 @@ export function createDefaultProject(
     title: 'Untitled Project',
     createdAt: now,
     updatedAt: now,
-    aspectRatio: '16:9' as const,
+    aspectRatio: '4:5' as const,
     backgroundType: 'pitch' as const,
     pitchAppearance: { ...DEFAULT_PITCH_APPEARANCE },
     screenBackground: { ...DEFAULT_SCREEN_BACKGROUND },
@@ -219,7 +213,7 @@ export function createDefaultProject(
     phases: [initialPhase],
     activePhaseId: initialPhase.id,
     activeSlideId: initialPhase.slides[0].id,
-    boundaryBox: { ...DEFAULT_BOUNDARY_BOX_16_9 },
+    boundaryBox: { ...DEFAULT_INITIAL_BOUNDARY_BOX },
     tags: [],
   };
 
@@ -240,8 +234,8 @@ export function createDefaultSlide(
   id?: string,
   homeColor?: string,
   awayColor?: string,
-  boundaryBox: BoundaryBox = DEFAULT_BOUNDARY_BOX_16_9,
-  aspectRatio: AspectRatio = '16:9',
+  boundaryBox: BoundaryBox = DEFAULT_INITIAL_BOUNDARY_BOX,
+  aspectRatio: AspectRatio = '4:5',
   deterministic?: boolean,
 ): Slide {
   return {
@@ -268,6 +262,17 @@ export function createDefaultSlide(
   };
 }
 
+const DEFAULT_PLAYER_STYLE = {
+  markerType: 'circle' as const,
+  insideContent: 'number' as const,
+  bottomLabel: 'name' as const,
+  strokeColor: '#ffffff',
+  strokeWidth: 2,
+  sizeScale: 1.0,
+  numberSizeScale: 1.0,
+  labelSizeScale: 1.0,
+};
+
 export function createDefaultPlayer(
   team: 'home' | 'away' | 'neutral',
   x: number,
@@ -281,17 +286,7 @@ export function createDefaultPlayer(
     area: 'pitch',
     x,
     y,
-    style: {
-      markerType: 'circle',
-      insideContent: 'number',
-      bottomLabel: 'name',
-      color: primaryColor,
-      strokeColor: '#ffffff',
-      strokeWidth: 2,
-      sizeScale: 1.0,
-      numberSizeScale: 1.0,
-      labelSizeScale: 1.0,
-    },
+    style: { ...DEFAULT_PLAYER_STYLE, color: primaryColor },
     connectLines: [],
     badges: [],
   };

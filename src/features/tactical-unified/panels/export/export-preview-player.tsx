@@ -16,6 +16,7 @@ import type {
   BoundaryBox,
   PitchAppearanceConfig,
   PitchTransform,
+  ScreenBackgroundConfig,
   Slide,
 } from '@/lib/types/tactical-unified';
 import {
@@ -55,6 +56,7 @@ export interface ExportPreviewPlayerProps {
   photos?: Record<string, string>;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   pitchAppearance?: PitchAppearanceConfig;
+  screenBackground?: ScreenBackgroundConfig;
   bottomBarSlot?: React.ReactNode;
 }
 
@@ -67,6 +69,7 @@ export function ExportPreviewPlayer({
   photos,
   playerPhotos,
   pitchAppearance,
+  screenBackground,
   bottomBarSlot,
 }: ExportPreviewPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -91,6 +94,7 @@ export function ExportPreviewPlayer({
     photos,
     playerPhotos,
     pitchAppearance,
+    screenBackground,
     canvasRef,
     timeLabelRef,
     sliderRef,

@@ -44,7 +44,7 @@ export function buildMatchTacticalPlayers({
   minute = 0,
   homeColor = '#034694',
   awayColor = '#ef4444',
-  aspectRatio = '16:9',
+  aspectRatio = '4:5',
 }: BuildMatchTacticalPlayersOptions): MatchTacticalPlayersResult {
   const homeTeam = match.teams?.home as Team | undefined;
   const awayTeam = match.teams?.away as Team | undefined;

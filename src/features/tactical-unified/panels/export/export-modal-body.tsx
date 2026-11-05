@@ -255,6 +255,7 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
         boundaryBox={boundaryBox ?? activeSlide?.boundaryBox}
         pitchTransform={activeSlide?.pitchTransform}
         pitchAppearance={pitchAppearance}
+        screenBackground={project.screenBackground}
         bottomBarSlot={renderBottomControls()}
       />
     </div>
