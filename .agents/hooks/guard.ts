@@ -9,7 +9,10 @@ import {
 } from './guard/subagent-guard';
 import { checkTaskSizeGuard } from './guard/task-size-guard';
 import { checkTokenGuard } from './guard/token-filter';
-import { checkViewGuard } from './guard/view-filter';
+import {
+  checkCommandInvestigationGuard,
+  checkViewGuard,
+} from './guard/view-filter';
 
 interface Rewrite {
   raw: string;
@@ -190,6 +193,11 @@ function evaluatePayload(payload: any): any {
     ).trim();
   } else {
     cmd = (payload.CommandLine || payload.command || '').trim();
+  }
+
+  const investigationRes = checkCommandInvestigationGuard(payload, cmd);
+  if (investigationRes && investigationRes.decision === 'deny') {
+    return investigationRes;
   }
 
   return evaluateCommand(cmd);

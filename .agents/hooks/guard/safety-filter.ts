@@ -45,17 +45,29 @@ function checkSafetyGuard(
     };
   }
 
-  // インラインファイル書き換え・改ざんコマンドの遮断 (write_to_file / replace_file_content への一本化)
-  if (
-    executable === 'sed' &&
-    args.some(
+  // sed によるインライン編集・閲覧・スライス抽出の遮断 (view_file / replace_file_content への一本化)
+  if (executable === 'sed') {
+    const isInline = args.some(
       (a) => a === '-i' || /^-[a-zA-Z]*i/.test(a) || a.startsWith('--in-place'),
-    )
-  ) {
+    );
+    if (isInline) {
+      return {
+        decision: 'deny',
+        reason:
+          "[GUARD] Inline editing with 'sed -i' is prohibited to prevent guard bypass and syntax errors. Use 'replace_file_content' or 'write_to_file' instead.",
+      };
+    }
     return {
       decision: 'deny',
       reason:
-        "[GUARD] Inline editing with 'sed -i' is prohibited to prevent guard bypass and syntax errors. Use 'replace_file_content' or 'write_to_file' instead.",
+        "[GUARD] File slicing or reading with 'sed' is prohibited to prevent guard bypass and token explosion. Use 'bun run ai:outline <file>' for signatures, or 'view_file' with StartLine/EndLine instead.",
+    };
+  }
+
+  if (executable === 'awk' || executable === 'cut') {
+    return {
+      decision: 'deny',
+      reason: `[GUARD] Ad-hoc file slicing with '${executable}' is prohibited. Use 'bun run ai:outline <file>' or 'view_file' with StartLine/EndLine instead.`,
     };
   }
 

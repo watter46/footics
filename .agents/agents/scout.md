@@ -37,10 +37,13 @@ Plannerから `SCOUT_REQUEST` のメッセージを受け取ったら、以下�
 ### 2. Context Snippets の整形
 抽出した情報を、Worker（Flashモデル）が「外部ファイルを 1 回も読まずにそのままコピペして実装できる」レベルに整形します。
 
-**含めるべき 3 大要素:**
-1. **Import Specs**: どのモジュールからどの型・関数を import すべきか。
-2. **Interface & Types**: 関連する正確な型定義。
-3. **Reference Pattern (最新設計の優先抜粋)**:
+**含めるべき 4 大要素:**
+1. **Target Line Map (必須)**:
+   - 調査対象ファイルの正確なパスと該当行番号（`path:line`）。
+   - 現在実装されている問題箇所・処理ロジックの要約（3〜5行）。
+2. **Import Specs**: どのモジュールからどの型・関数を import すべきか。
+3. **Interface & Types**: 関連する正確な型定義。
+4. **Reference Pattern (最新設計の優先抜粋)**:
    - 類似機能の既存テストや呼び出しコードの最小限の抜粋（3〜10行程度）。
    - **最新設計原則の厳守**: 4層モデル（Level 1〜4）、Store Provider（Context Hook経由取得）、プラグインレジストリパターンに準拠したコードを優先抽出すること。
 
@@ -58,13 +61,17 @@ type: "SCOUT_RESULT"
 
 ### Context Snippets
 
-#### 1. Import Specs
+#### 1. Target Line Map
+- `src/features/tactical-unified/core/hooks/use-canvas-selection-box.ts:45-80`: 範囲選択の判定ロジック。ピッチ座標変換の不整合が存在。
+- `src/features/tactical-unified/core/components/PitchGroundLayer.tsx:112`: 白い直線の描画境界。
+
+#### 2. Import Specs
 ```ts
 import type { PlayerMarkerProps } from '@/features/tactical-unified/objects/player/types';
 import { useTacticalStoreContext } from '@/features/tactical-unified/core/store';
 ```
 
-#### 2. Interface & Types
+#### 3. Interface & Types
 ```ts
 export interface PlayerMarkerConfig {
   id: string;
@@ -73,7 +80,7 @@ export interface PlayerMarkerConfig {
 }
 ```
 
-#### 3. Reference Pattern
+#### 4. Reference Pattern
 ```ts
 // src/features/tactical-unified/objects/player/__tests__/player-marker.test.tsx より抜粋
 const renderComponent = (props: Partial<PlayerMarkerProps> = {}) => {
