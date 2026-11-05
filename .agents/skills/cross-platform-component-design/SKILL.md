@@ -284,7 +284,7 @@ test('findFooticsTab finds matching tab among open tabs', async () => {
 ## 3. Imperative Ref API 契約 (グローバルイベントの全廃)
 
 親（TopBar 等）から子（Canvas 等）へのアクション実行（エクスポート、画像コピー、Undo/Redo 等）に、`window.dispatchEvent(new CustomEvent(...))` を使ってはなりません。
-`forwardRef` と `useImperativeHandle` による明示的な契約を定義してください。
+React 19 標準の `ref` prop と `useImperativeHandle` による明示的な契約を定義してください（Biome `noReactForwardRef` 規約遵守）。
 
 ```tsx
 // 1. Ref インターフェースの定義
@@ -295,28 +295,30 @@ export interface CanvasCoreHandle {
   redo: () => void;
 }
 
-// 2. コンポーネント側での実装
-export const CanvasStageContainer = React.forwardRef<CanvasCoreHandle, CanvasStageProps>(
-  (props, ref) => {
-    const stageRef = useRef<Konva.Stage>(null);
-    const { undo, redo } = useCanvasActions();
+export interface CanvasStageProps {
+  ref?: React.Ref<CanvasCoreHandle>;
+}
 
-    useImperativeHandle(ref, () => ({
-      exportPng: async (opts) => {
-        const stage = stageRef.current;
-        if (!stage) throw new Error('Stage not ready');
-        return stage.toDataURL({ pixelRatio: opts?.pixelRatio ?? 2 });
-      },
-      copyToClipboard: async (opts) => {
-        // クリップボードコピー処理
-      },
-      undo,
-      redo,
-    }));
+// 2. コンポーネント側での実装（React 19 ref prop 形式）
+export function CanvasStageContainer({ ref, ...props }: CanvasStageProps) {
+  const stageRef = useRef<Konva.Stage>(null);
+  const { undo, redo } = useCanvasActions();
 
-    return <Stage ref={stageRef} ... />;
-  }
-);
+  useImperativeHandle(ref, () => ({
+    exportPng: async (opts) => {
+      const stage = stageRef.current;
+      if (!stage) throw new Error('Stage not ready');
+      return stage.toDataURL({ pixelRatio: opts?.pixelRatio ?? 2 });
+    },
+    copyToClipboard: async (opts) => {
+      // クリップボードコピー処理
+    },
+    undo,
+    redo,
+  }));
+
+  return <Stage ref={stageRef} {...props} />;
+}
 ```
 
 ---

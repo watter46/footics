@@ -206,5 +206,5 @@ import { DEFAULT_BOUNDARY_BOX } from '@/features/tactical-unified/core/store/can
 戦術ボードやアノテーションキャンバスで Konva を使用する場合:
 - Fabric.js / 生の Canvas 2D API のコンポーネント内直接使用は禁止です（オフスクリーン動画エクスポート用レンダラーを除く）。
 - **ゼロマージン描画**: 画像背景モードでは周囲余白 0% を徹底し、BoundaryBox との隙間（黒枠）を排除してください。
-- **仮想キャンバス座標系 (`0〜100`)**: 永続化データは `0〜100` の論理座標で管理し、描画座標への変換は `src/features/tactical-unified/core/utils/canvas-coordinates.ts`（`worldToScreen` / `screenToWorld`）または `matrix-coordinates.ts` を経由してください。
+- **4層単一座標系（16:9 スクリーン 0〜100）**: 全画面の第1層スクリーン外枠は 16:9 固定とし、永続化データは常に 16:9 スクリーン全体の単一論理座標（0〜100）で管理します（選手・ボールは [0, 100] クランプ、矢印・ゾーン・テキストは範囲外配置可）。ピッチ枠計算は src/lib/tactical/pitch-geometry.ts（calculatePitchRect / getScreenOuterPitchRect / getScreenPitchBounds）、3D・スクリーン投影は src/features/tactical-unified/core/utils/canvas-screen-coordinates.ts（worldToScreen / screenToWorld）、幾何判定・境界線変換は src/features/tactical-unified/core/utils/geometry.ts（resolveBoundaryBoxPixelRect / pointerToNormalizedCoord / isPointInPolygon / distToSegment）に一本化してください。
 - パフォーマンス最適化のため、レイヤー分離、静的要素への `listening={false}`、`perfectDrawEnabled={false}` を徹底してください。

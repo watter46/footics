@@ -10,8 +10,10 @@ Footics の状態管理（特に戦術ボードの `tactical-unified-store.ts`�
 
 ## 1. 11スライス構成の理解と結合
 
-戦術ボードのストアは巨大なため、`src/features/tactical-unified/stores` 内で **11個のスライス** に分割され、最終的に1つのメインストアとして結合されています。
+戦術ボードのWeb用ストアは巨大なため、`src/features/tactical-unified/stores` 内で **11個のスライス** に分割され、最終的に1つのメインストア（`useTacticalUnifiedStore`）として結合されています。
 状態やアクションを追加する場合は、`create` ブロックに直接書くのではなく、責務に応じた適切なスライスファイル（例：`project-slice.ts`, `slide-slice.ts`, `tool-slice.ts` 等）を編集してください。
+
+なお、共用キャンバスコア（`src/features/tactical-unified/core/`）では Vanilla Store Factory（`createCanvasStore`）+ `CanvasStoreProvider`（`useCanvasStore`）による Store Provider パターンが標準です。`core/` 配下および新規ファイルでのシングルトン `useTacticalUnifiedStore` 直接参照はガードレール（R4）によりエラー遮断されます。
 
 ```typescript
 import { create } from 'zustand';
@@ -59,11 +61,12 @@ export const createToolSlice: StateCreator<
 });
 ```
 
-## 3. `subscribeWithSelector` の活用
+## 3. `subscribeWithSelector` と純粋セレクタの活用
 
 Zustand の `subscribeWithSelector` ミドルウェアが全体の `create` レベルで適用されています（スライス単位ではなく、結合ストアに適用します）。
 コンポーネント外から状態の変更を監視したい場合や、パフォーマンス最適化のためにセレクタを利用してください。
-頻繁に利用されるセレクタは `tactical-unified-selectors.ts` などで別途定義するパターンを採用しています。
+
+Web ストア側では、`TacticalPhase` 単位の `aspectRatio` / `boundaryBox` などを `tactical-unified-selectors.ts` の純粋セレクタ（`selectActivePhaseAspectRatio`, `selectActivePhaseBoundaryBox`, `selectActiveSlide` 等）経由で購読するパターンを徹底してください。
 
 ## 4. イミュータブルな更新と History 管理
 
@@ -72,12 +75,13 @@ Zustand の `subscribeWithSelector` ミドルウェアが全体の `create` レ�
 
 ## 5. グローバルシングルトン vs Store Provider パターン
 
-Zustand はデフォルトでグローバル単一インスタンス（`create(...)`）として動作しますが、**以下のユースケースでは単一グローバルストアの直接参照を固く禁じます**。
+Zustand はデフォルトでグローバル単一インスタンス（`create(...)`）として動作しますが、**以下のユースケースでは単一グローバルストア（`useTacticalUnifiedStore`）の直接参照を固く禁じます**。
 
+- **共用キャンバスコア（`src/features/tactical-unified/core/`）**: `CanvasStoreProvider`（`useCanvasStore`）による Store Provider パターンが標準であり、`core/` 配下および新規ファイルからのシングルトン `useTacticalUnifiedStore` 直接参照はガードレール（R4）で即時エラー遮断されます。
 - **Web と Chrome Extension で共用する機能**: ホストアプリごとにライフサイクルや初期データ（スクショ画像 vs 試合ピッチ）が異なるため。
 - **初期チラつき（Flicker）を根絶すべきコンポーネント**: マウント後に `useEffect` で非同期上書きすると、数フレーム前の状態が画面にフラッシュするため。
 - **複数インスタンスが存在しうる機能**: モーダル、独立したタブ、プレビューキャンバス等。
 
 ### 推奨パターン: Vanilla Store Factory + React Context
-共用・独立した機能では、`zustand/vanilla` の `createStore` ファクトリと React Context を組み合わせ、**マウント時に初期状態（Props）を確定注入** してください（詳細は `.agents/skills/cross-platform-component-design/SKILL.md` 参照）。
+共用・独立した機能では、`zustand/vanilla` の `createStore` ファクトリ（例: `createCanvasStore`）と React Context（`CanvasStoreProvider`）を組み合わせ、**マウント時に初期状態（Props）を確定注入** してください（詳細は `.agents/skills/cross-platform-component-design/SKILL.md` 参照）。
 

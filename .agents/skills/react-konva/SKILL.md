@@ -58,10 +58,10 @@ Footics では `useNodePositionTransition` フック等を用いたり、ゴー�
    - 選手マーカー（Webの2D丸マーカー / Extensionの3D足元リング＋下部の選手名ラベル）、ボール、テキスト。
    - **ビルボード原則**: 基準位置 `(x, y)` はカメラ投影位置へ移動し、奥行きに応じた遠近スケール（`perspectiveScale`）が掛かるが、**マーカーの円や文字ラベル自体は縦に潰れず常にカメラ正面（正円・読める文字）を向く**構造にする。また、カメラを傾けた際に手前の選手が奥の選手の前に重なるよう、スクリーンY座標（深さ）で描画順ソートを行える構造とする。
 3. **Layer 3: `InteractionPreviewLayer`（作図プレビュー・編集補助レイヤー）**:
-   - 作図中のプレビュー図形、範囲選択ボックス、選択ハイライト、ゴースト軌道の操作ハンドル、矢印・ゾーンの頂点ハンドル。
+   - 作図中のプレビュー図形、範囲選択ボックス、選択ハイライト、ゴースト軌道の操作ハンドル、矢印・ゾーンの頂点ハンドル。作図中プレビュー図形は `DrawingPreviewLayer.tsx` の純粋レンダラー関数（`renderDrawingPreviewNode`, `PREVIEW_SHAPE_RENDERERS`）を呼び出して描画する構造とする。
    - **純粋描画（Clean Render）原則**: アニメーション再生中および画像・動画の出力時は、この編集補助レイヤー（および選択強調・ゴースト軌道）を一括で非表示（`visible={false}`）にし、出力結果に編集UIが絶対に映り込まない構造とする。
-4. **Overlay 1: `ViewportCropOverlay`（画面基準の境界線枠レイヤー）**:
-   - 境界線枠（`BoundaryBox`）と外側マスク。これは地面ではなく「カメラのレンズ枠（画面切り抜き枠）」に属するため、ピッチを傾けたり回転させたりしても境界線枠自体は傾かず、常に画面に対して水平・垂直な矩形として動作する。また、初期状態ではキャンバス上で非表示とし、ツールバーの「境界線」がONの時のみ表示する。
+4. **Overlay 1: `ViewportCropOverlay` / `BoundaryBoxOverlay`（画面基準の境界線枠レイヤー）**:
+   - `TacticalPhase` 単位の `boundaryBox`（`16:9` スクリーン `0..100` 基準）と外側マスクを描画する。これは地面ではなく「カメラのレンズ枠（画面切り抜き枠）」に属するため、ピッチを傾けたり回転させたりしても境界線枠自体は傾かず、常に画面に対して水平・垂直な矩形として動作する。また、初期状態ではキャンバス上で非表示とし、ツールバーの「境界線」がONの時のみ表示する。
 5. **Overlay 2: `HtmlHudOverlay`（オブジェクトオプション・境界線オプション）**:
    - 選択オブジェクトのスクリーン投影座標（`worldToScreen`）を購読して浮動表示される `ObjectOptions` 等。
 
@@ -73,19 +73,22 @@ Web アプリ（Footics 本体戦術盤）と Chrome Extension（動画スクシ
 - **Store Provider パターン**: グローバルシングルトンの Zustand ストアに直接依存せず、React Context Provider 経由で初期状態を Props 注入できる構造にし、マウント時のチラつき（Flicker）を根絶すること。
 - **グローバルカスタムイベントの禁止**: `window.dispatchEvent` による `tactical:copy-png` などの暗黙的な疎結合を避け、コンポーネントの Imperative Ref（`canvasRef.current.exportPng()`）または Context メソッドで明示的にやり取りすること。
 
-## 6. メインキャンバス不変・3段階の単一座標変換パイプライン (Single Coordinate & Camera Pipeline)
+## 6. 4層単一座標系アーキテクチャと投影パイプライン (4-Layer Single Coordinate & Projection Pipeline)
 
-メインキャンバスの大きさは常に不変とし、アスペクト比切替・リサイズ・将来のカメラ操作（チルト・左右覗き込み・パン・ズーム）に対して一切の座標ズレを生まないよう、座標変換は以下の **3段階空間と単一の純粋関数群（`CameraProjection`）** に集約してください（各コンポーネントでの個別計算は厳禁）。
+メインキャンバスの大きさは常に不変とし、アスペクト比切替・リサイズ・カメラ操作（チルト・3D投影・パン・ズーム）に対して一切の座標ズレを生まないよう、座標変換は以下の **4層単一座標系アーキテクチャ** に集約してください（各コンポーネントでの個別計算は厳禁）。
 
-1. **ピッチ論理座標（World / Pitch Space: `0〜100`）**:
-   - ストアに保存される唯一の永続化座標。アスペクト比変更やカメラ操作によって論理座標自体が壊れてはならない。
-2. **キャンバス平面座標（Stage 2D Space: `px`）**:
-   - 不変サイズのメインキャンバス中央に配置される選択アスペクト比の「ピッチ枠（`PitchRect`）」への2Dマッピング座標。
-   - 画像背景モード（Extension）では外側余白 0%（`x: 0, y: 0, width: 100%, height: 100%`）を基準とする。
-3. **スクリーン投影座標（Screen / Camera Space: `px` + `perspectiveScale`）**:
-   - カメラ状態 `CameraState = { tilt, yaw, zoom, panX, panY }`（現在は初期値 `{ tilt: 0, yaw: 0, zoom: 1, panX: 0, panY: 0 }` 固定）を適用した最終描画座標。
-   - **正変換 `worldToScreen(worldPos, pitchRect, camera)`**: すべての描画（静止画・再生・エクスポート）およびオブジェクトオプションの表示位置算出が必ずこの1つの関数を通る。
-   - **逆変換 `screenToWorld(screenPos, pitchRect, camera)`**: マウス操作、ドラッグ移動、ベンチからのドロップ座標計算が必ずこの1つの逆変換関数を通る。
+1. **第1層: スクリーン外枠（`16:9` 固定・`X: 0〜100, Y: 0〜100` 単一論理座標）**:
+   - 全画面（ボード・レイアウト・エクスポート）の基準外枠は `16:9`（1920×1080）固定とし、ストアに保存される全座標は `16:9` スクリーン全体の `0〜100` とする。
+   - 選手・ボールは `[0, 100]` にクランプされ、矢印・ゾーン・テキストは `pointerToNormalizedCoord(pos, vRect, { allowOverflow: true })` により `0〜100` 外への配置も許容する。
+2. **第2層: 中央配置サブピッチと3D投影（`pitch-geometry.ts` & `canvas-screen-coordinates.ts`）**:
+   - `16:9` スクリーン中央にアクティブフェーズの `aspectRatio`（`'16:9' | '4:5' | '9:16' | '1:1'`）のサブピッチ（`calculatePitchRect` / `getScreenOuterPitchRect` / `getScreenPitchBounds`）を内接配置する。
+   - 3D視点投影およびスクリーン変換は `canvas-screen-coordinates.ts`（`worldToScreen` / `screenToWorld`, `DEFAULT_PITCH_PERSPECTIVE = 1200`）を通し、縦向きピッチの3D二重スケーリングを防止する。
+3. **第3層: フェーズ単位の境界線クロップ（`TacticalPhase.boundaryBox`）**:
+   - `aspectRatio` と `boundaryBox` は `TacticalPhase` 単位で独立保持し（`selectActivePhaseAspectRatio` / `selectActivePhaseBoundaryBox` で購読）、比率切替（`setAspectRatio`）は `boundaryBox` を一切書き換えない。
+   - レイアウト画面・エクスポート画面は第1層＋第2層を `16:9`（1920×1080）で正規描画した上で、`boundaryBox`（`resolveBoundaryBoxPixelRect`）の内側領域をクロップ出力する。
+4. **第4層: フォーメーション配置と比率変換（`getFormationActualPos` / `transformCoord`）**:
+   - Full/Half コートモードおよびピッチの向き（`'16:9'`=横: Home左/Away右、`'9:16' | '4:5' | '1:1'`=縦: Home下/Away上）に基づき、`getScreenPitchBounds(aspectRatio)` 基準で単一変換を行う。
+   - ベンチ配置選手も含め選手マーカー写真は `PlayerPhotoContext`（`player-photo-resolver.ts`）で解決する。
 
 ## 7. プラグイン型ツール・オブジェクトアーキテクチャ (`CanvasToolPlugin` & Object Modules)
 

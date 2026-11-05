@@ -18,7 +18,7 @@ globs:
 | :--- | :--- | :--- | :--- |
 | **Level 4** | **Application Shell** | 画面全体のエントリーポイント、URLパラメータ解決、ルーティング、タブ/ウィンドウ制御。**純粋マウンターに徹し、低レベルなパイプライン処理のインライン記述を禁止する。ホスト（Web / Extension）固有のコードをここに限定する。** | `src/app/tactical/page.tsx`, `extension/entrypoints/overlay.content.tsx`, `extension/entrypoints/background.ts` |
 | **Level 3** | **Feature View** | データソース（IndexedDB / Query）のロードと永続化ライフサイクル管理。**`StoreProvider` による初期値（Props）確定注入** を行い、複数の Level 2 を組み立てる。 | `FullTacticalCanvas.tsx`, `QuickAnnotationCanvas.tsx`, `memo-overlay-bridge.tsx` |
-| **Level 2** | **Domain UI Block** | 単一の関心事を持つ自律的な UI パーツ。**ホスト非依存（Web / Extension 完全共用）**。ビジネスロジックはカスタムフックに逃がし、UIファイルは描画に集中。状態は Context Hook 経由で取得。 | `CanvasStageContainer.tsx`, `CoreDrawingToolbar.tsx`, `AnnotationLayer.tsx`, `MemoOverlayView.tsx` |
+| **Level 2** | **Domain UI Block** | 単一の関心事を持つ自律的な UI パーツ。**ホスト非依存（Web / Extension 完全共用）**。ビジネスロジックはカスタムフックに逃がし、UIファイルは描画に集中。状態は Context Hook 経由で取得。 | `CanvasStageContainer.tsx`, `CoreDrawingToolbar.tsx`, `PitchGroundLayer.tsx`, `BillboardObjectLayer.tsx`, `MemoOverlayView.tsx` |
 | **Level 1** | **Pure Primitive / Headless** | ドメイン知識を持たない汎用部品、純粋幾何計算、汎用フック。完全純粋でテスト容易性が 100%。 | `calculateContainVideoCrop`, `worldToScreen`, `button.tsx`, `select.tsx` |
 
 ---
@@ -90,7 +90,7 @@ Web と Extension で共用する機能、または複数インスタンス・�
 | :--- | :--- | :--- |
 | **`memo-overlay` (Web)** | **移行完了** (`MemoOverlayStoreProvider` + `useMemoOverlayStoreContext`) | ドメイン内部からのシングルトン直接参照は全面禁止。 |
 | **`tactical-unified/core` (Level 2 共用キャンバス)** | **移行完了** (`CanvasStoreProvider` + `useCanvasStore`) | `core/` 配下から `useTacticalUnifiedStore` の import は **`ai:check` で即時エラー遮断**。 |
-| **`tactical-unified` (Web パネル・フック群)** | **段階移行中（凍結例外）** (`useTacticalUnifiedStore` 43ファイル + `tactical-canvas-store-adapter.ts`) | 既存の 43 ファイルはベースライン（許可リスト）として凍結。**新規ファイルでの `useTacticalUnifiedStore` 直接参照・アダプター拡張は `ai:check` でエラー遮断**。 |
+| **`tactical-unified` (Web パネル・フック群)** | **段階移行中（凍結例外）** (`useTacticalUnifiedStore` 57ファイル + `tactical-canvas-store-adapter.ts`) | 既存の 57 ファイルはベースライン（許可リスト）として凍結。**新規ファイルでの `useTacticalUnifiedStore` 直接参照・アダプター拡張は `ai:check` でエラー遮断**。 |
 
 ---
 
@@ -132,8 +132,8 @@ export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;
    生データから計算できる値（ピクセル座標、カメラ投影座標、フィルタ結果）を別 State として二重保存せず、`tactical-unified-selectors.ts` 等の純粋セレクターで算出してください。
 3. **複合操作の単一トランザクション化（Atomic Command Functions）**:
    「リセット」「アスペクト比切替」「フォーメーション適用」など複数データを同時更新する操作は、UI の `onClick` にインライン記述せず、ストアまたはヘルパーの単一コマンド関数に集約してください。
-4. **論理座標（World Space `0〜100`）とスクリーン投影座標（Screen Space）の分離**:
-   永続化座標（`0〜100`）と画面描画座標を混同せず、必ず座標変換ユーティリティ（`worldToScreen` / `screenToWorld`）を経由してください。
+4. **16:9 スクリーン単一座標系（0〜100）と投影座標（Screen Space）の分離**:
+   永続化データは常に第1層 16:9 スクリーン全体の単一座標（0〜100）で管理し、サブピッチ矩形計算（src/lib/tactical/pitch-geometry.ts）、3D・スクリーン投影（src/features/tactical-unified/core/utils/canvas-screen-coordinates.ts）、境界線・幾何変換（src/features/tactical-unified/core/utils/geometry.ts）を経由してください。
 
 ---
 
