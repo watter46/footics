@@ -1,7 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { checkViewGuard } from './view-filter';
+import {
+  checkCommandInvestigationGuard,
+  checkViewGuard,
+  extractReadTargetsFromCommand,
+} from './view-filter';
+
+describe('view-filter: extractReadTargetsFromCommand', () => {
+  it('extracts file paths from git show <rev>:<path> and rtk git show <rev>:<path>', () => {
+    expect(extractReadTargetsFromCommand('git show HEAD:src/a.ts')).toEqual([
+      'src/a.ts',
+    ]);
+    expect(extractReadTargetsFromCommand('rtk git show main:src/b.ts')).toEqual(
+      ['src/b.ts'],
+    );
+    expect(extractReadTargetsFromCommand('git show HEAD')).toEqual([]);
+  });
+});
 
 describe('view-filter: planner investigation guard', () => {
   const testDir = path.resolve('.agents/hooks/guard/__tests__/fixtures-view');
@@ -93,6 +109,111 @@ describe('view-filter: planner investigation guard', () => {
     expect(res6?.reason).toContain('Codebase investigation limit reached');
     expect(res6?.reason).toContain('delegate codebase investigation to Scout');
     expect(res6?.reason).toContain('TypeName: "scout"');
+  });
+
+  it('allows planner to read up to 5 files via run_command (rtk read) and denies on 6th', () => {
+    const files = ['a', 'b', 'c', 'd', 'e', 'f'].map((k) =>
+      createDummyFile(
+        `.agents/hooks/guard/__tests__/fixtures-view/src/feat-cmd-${k}.ts`,
+      ),
+    );
+
+    const transcriptWith5 = createTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'Explore codebase' },
+      {
+        step_index: 1,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: files.slice(0, 4).map((f) => ({
+          name: 'run_command',
+          args: { CommandLine: `rtk read ${f}` },
+        })),
+      },
+    ]);
+
+    // 5ファイル目の rtk read は allow (null)
+    const res5 = checkCommandInvestigationGuard(
+      {
+        transcriptPath: transcriptWith5,
+        workspacePaths: [testDir],
+      },
+      `rtk read ${files[4]}`,
+    );
+    expect(res5).toBeNull();
+
+    // 5ファイル読込済みの transcript
+    const transcriptWithFiveRead = createTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'Explore codebase' },
+      {
+        step_index: 1,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: files.slice(0, 5).map((f) => ({
+          name: 'run_command',
+          args: { CommandLine: `rtk read ${f}` },
+        })),
+      },
+    ]);
+
+    // 6ファイル目の rtk read は deny
+    const res6 = checkCommandInvestigationGuard(
+      {
+        transcriptPath: transcriptWithFiveRead,
+        workspacePaths: [testDir],
+      },
+      `rtk read ${files[5]}`,
+    );
+
+    expect(res6).not.toBeNull();
+    expect(res6?.decision).toBe('deny');
+    expect(res6?.reason).toContain('Codebase investigation limit reached');
+    expect(res6?.reason).toContain('delegate codebase investigation to Scout');
+  });
+
+  it('denies 6th investigation file across combined view_file and run_command', () => {
+    const files = ['a', 'b', 'c', 'd', 'e', 'f'].map((k) =>
+      createDummyFile(
+        `.agents/hooks/guard/__tests__/fixtures-view/src/feat-hybrid-${k}.ts`,
+      ),
+    );
+
+    // 3件 view_file, 2件 run_command で計5件
+    const transcriptHybrid = createTranscript([
+      { step_index: 0, type: 'USER_INPUT', content: 'Explore codebase' },
+      {
+        step_index: 1,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          { name: 'view_file', args: { AbsolutePath: files[0] } },
+          { name: 'view_file', args: { AbsolutePath: files[1] } },
+          { name: 'view_file', args: { AbsolutePath: files[2] } },
+          {
+            name: 'run_command',
+            args: { CommandLine: `rtk read ${files[3]}` },
+          },
+          {
+            name: 'run_command',
+            args: { CommandLine: `rtk read ${files[4]}` },
+          },
+        ],
+      },
+    ]);
+
+    // 6ファイル目を view_file で読もうとすると deny
+    const resView6 = checkViewGuard({
+      transcriptPath: transcriptHybrid,
+      workspacePaths: [testDir],
+      toolCall: { name: 'view_file', args: { AbsolutePath: files[5] } },
+    });
+    expect(resView6?.decision).toBe('deny');
+
+    // 6ファイル目を rtk read で読もうとしても deny
+    const resCmd6 = checkCommandInvestigationGuard(
+      {
+        transcriptPath: transcriptHybrid,
+        workspacePaths: [testDir],
+      },
+      `rtk read ${files[5]}`,
+    );
+    expect(resCmd6?.decision).toBe('deny');
   });
 
   it('allows reading .system_generated/tasks/*.log without line limit and does not block sequential slice or reviewer views', () => {

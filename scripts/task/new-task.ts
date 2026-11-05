@@ -47,6 +47,13 @@ export function generateTaskScaffold(
 - [ ] 1. [明確かつ客観的に検証可能な振る舞い]
 - [ ] 2. [型定義や制約事項]
 
+## 2.5 Architectural Invariants & Why (破壊禁止の前提と設計理由)
+<!-- ちゃぶ台返し防止の前提条件と、影響を受ける呼び出し元（Consumers）の同期確認リストを明記する -->
+- **Invariants (破壊禁止の不変条件と理由)**:
+  1. [不変条件と設計上の理由（Why）]
+- **Consumers (呼び出し元・別画面の同期確認リスト)**:
+  - \`src/.../consumer.tsx\` — [シグネチャ・状態遷移の整合確認]
+
 ## 3. Context Snippets (参照コード・型定義・import)
 <!-- Workerが自律探索（Read/Grep）を行わずに実装できるよう、必要な文脈を過不足なく事前注入する -->
 
@@ -66,15 +73,16 @@ export function generateTaskScaffold(
 \`\`\`
 
 ## 4. Implementation Phases (Worker 実装手順)
+<!-- 1〜4ファイルは1 Phase一括、5ファイル以上は1 Phase最大4ファイル（テスト含め6ファイル）以下に分割、15ファイル超は連番タスク（TASK-XXXa, TASK-XXXb）に分割 -->
 
 ### Phase 1: [サブシステム名]
 - **Worker Model**: \`flash\`
 - **対象ファイル**: \`src/.../target.ts\`, \`src/.../__tests__/target.test.ts\`
-- **契約 (Interface)**:
+- **契約 (Exact Contract & Formula)**:
   \`\`\`ts
-  // 公開シグネチャ
+  // 公開シグネチャおよび具体的な計算式・座標変換式・分岐条件（推論の余地を残さない）
   \`\`\`
-- **Testing Strategy**: [テストファイルパス、入力と期待値]
+- **Testing Strategy (Concrete Test Values)**: [テストファイルパス、具体的な入力値と期待出力値（例: input={x:10} ➔ expected={x:20}）]
 - **Tasks**:
   - [ ] 1. TDD実装: \`bun run ai:check:red <テストファイル>\` ➔ 実装 ➔ \`bun run ai:check <対象ファイル>\` PASS
 - **Worker Handoff Log**:
@@ -84,14 +92,14 @@ export function generateTaskScaffold(
 
 ## 5. Reviewer Assessment (コード差分監査)
 <!-- 機械的チェック（型・Lint・Vitest・depcruise）はスクリプトが自動検証。Reviewer はコード差分の意味を監査する -->
-- **Reviewer Model**: \`flash\`
+- **Reviewer Model**: \`pro\`
 - **Reviewed At**: 
 - **Decision**: \`TODO\`
 - **Audit Checklist**:
-  - [ ] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
-  - [ ] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
-  - [ ] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
-  - [ ] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
+  - [ ] 1. ドメイン論理 & 要件網羅性 & テスタビリティ: 数式/座標/状態遷移の整合性、受入要件の全網羅、Concrete Test Values検証、ハック排除
+  - [ ] 2. Invariants保護 & Consumer同期: Section 2.5 の不変条件（ちゃぶ台返し防止）遵守、別画面・呼び出し元（Consumers）の更新漏れゼロ
+  - [ ] 3. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
+  - [ ] 4. 設計負債 & サイレント破壊防止: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、公開シグネチャ保護、指示外変更の排除
 - **Summary**:
   <!-- 判定理由または改善指示を簡潔に記載 -->
 

@@ -19,7 +19,7 @@ Footics の「極限のトークン最適化」「4層分離パイプライン�
 1. **ユーザー向け設計合意 (Plan Artifact)**:
    - 保存先: `<appDataDir>/brain/<conversation-id>/plan.md` (Artifact)
    - 目的: ユーザーとの設計・アーキテクチャ・振る舞いの合意形成。
-   - 制約: **コードスニペット、ファイルパス、テスト手順、Mermaid、横長テーブルは一切禁止**。`~/.gemini/config/rules/plan-artifact.md` のテンプレート（Alerts + 縦型リスト）を厳格に適用すること。
+   - 制約: **コードスニペット、ファイルパス、テスト手順、Mermaid、横長テーブルは一切禁止**。`.agents/rules/plan-artifact.md` のテンプレート（Alerts + 縦型リスト）を厳格に適用すること。
 2. **Worker向け内部指示書 (Task File)**:
    - 保存先: `tasks/TASK-<連番>-<feature-name>.md` (例: `tasks/TASK-001-player-marker.md`)
    - 目的: Worker (Flash) が迷わず実装するためのコンテキスト注入（型・import・テスト期待値・ファイルパス）。
@@ -37,24 +37,28 @@ Footics の「極限のトークン最適化」「4層分離パイプライン�
 
 ## タスク分割と指示の鉄則 (Task Right-Sizing)
 
-1. **チケットの肥大化防止と 1〜4ファイル一括完遂（厳守）**:
-   - **1〜4ファイルの変更は細切れ Phase に分けず、1つの Phase（1 Worker）で一気に完遂**させます。
-   - ファイル被りのない複数 Phase は、Planner が同一ターン内で並列 Worker 起動できるようスコープを分離します。
-   - **上限制約**: 1タスクあたり **最大 5 Phase・250 行以内**（フック `task-size-guard` によりこれを超える追加は自動遮断されます）。
-2. **軽量 Context-Ready 原則（既存コード丸写しコピペの廃止）**:
-   - 既存コードの長大な丸写しコピペはトークンと行数を圧迫するため禁止します。
-   - `## 3. Context Snippets` には **「対象ファイルパス＋変更契約シグネチャ（Import Specs / Interfaces）＋実装上の注意点（Gotcha）」のみ** を簡潔に記載してください。
-3. **Phase の本質定義**:
+1. **行数制限（旧250行）の撤廃とファイル数ベースの分割基準（厳守）**:
+   - Worker (`flash`) が推論や自律探索なしで実装できるよう、タスクファイルの行数制限（旧250行制限）は撤廃します。Invariants・計算式・具体テスト値の情報を絶対に削ってはなりません。
+   - **1〜4ファイルの変更**: 細切れ Phase に分けず、**1つの Phase（1 Worker）で一括完遂**させます。
+   - **5ファイル以上の変更**: **1 Phase あたり最大4プロダクションファイル（テスト含め最大6ファイル）以下**に分割します（1 Phase に7ファイル以上詰め込むとフック `task-size-guard` により遮断されます）。ファイル被りのない複数 Phase は並列 Worker 起動できるようスコープを分離します。
+   - **15ファイル超の大規模変更**: 1タスクの Phase 上限（最大 5 Phase）を超えないよう、**連番タスク（`TASK-XXXa`, `TASK-XXXb`）に分割**します。
+2. **Architectural Invariants & Consumers 同期確認リストの必須化**:
+   - `## 2.5 Architectural Invariants & Why (破壊禁止の前提と設計理由)` を必ず記述し、ちゃぶ台返し防止の前提条件（なぜその構造になっているか）と、影響を受ける別画面・呼び出し元（Consumers）の同期確認リストを明記します。
+3. **Exact Contract（具体式・分岐条件）と Concrete Test Values（具体テスト値）の必須化**:
+   - 各 Phase の契約には抽象的な言葉ではなく、**具体的な計算式・座標変換式・状態遷移・分岐条件（Exact Contract）**を明記します。
+   - Testing Strategy には「〇〇をテストする」ではなく、**具体的な入力値と期待出力値（Concrete Test Values: 例 `input={x:10} ➔ expected={x:20}`）**を必須化します。
+   - 既存コードの長大な丸写しコピペは避け、`## 3. Context Snippets` には「対象ファイルパス＋変更契約シグネチャ（Import Specs / Interfaces）＋実装上の注意点（Gotcha）」を過不足なく記載します。
+4. **Phase の本質定義**:
    - 開発工程（「型定義だけ」「テストだけ」）の分割ではなく、**「機能・サブシステムごとの完結した段階」** として分割します。
    - 各 Phase 内で Worker が単独で **TDD（テスト作成 ➔ 実装 ➔ スコープ検証）を一通り完結** させます。
-4. **4層モデル & 6大設計品質原則の反映（What & Contract）**:
+5. **4層モデル & 6大設計品質原則の反映（What & Contract）**:
    Worker に指示する契約とテスト戦略には、以下の原則を反映させます：
    - **階層配置 (Level 1〜4)**: コンポーネントが属する階層を明記。
    - **Store Provider 契約**: Level 2 以下ではグローバルストア直接参照を禁止し、Context Hook 経由または Props 確定注入を指定。
    - **Shell Purity**: Level 4（Shell）は組み立て専用とし、低レベル複合ロジックやデータフェッチを直書きさせない。
    - **OCP プラグイン設計**: 拡張ポイントはレジストリ登録形式とする。
    - **RAII 副作用クリーンアップ**: リスナーやタイマー等の副作用は `cleanup()` 関数を必須とする。
-   - **Testing Strategy**: 具体的なテストファイルパスと入力・期待値を明記。
+   - **Testing Strategy**: 具体的なテストファイルパスと具体的な入力値・期待出力値（Concrete Test Values）を明記。
 
 ## TASK-*.md 正式テンプレート
 
@@ -74,6 +78,13 @@ Footics の「極限のトークン最適化」「4層分離パイプライン�
 <!-- Reviewer が審査時に要件充足を確認してチェックする -->
 - [ ] 1. [明確かつ客観的に検証可能な振る舞い]
 - [ ] 2. [型定義や制約事項]
+
+## 2.5 Architectural Invariants & Why (破壊禁止の前提と設計理由)
+<!-- ちゃぶ台返し防止の前提条件と、影響を受ける呼び出し元（Consumers）の同期確認リストを明記する -->
+- **Invariants (破壊禁止の不変条件と理由)**:
+  1. [不変条件と設計上の理由（Why）]
+- **Consumers (呼び出し元・別画面の同期確認リスト)**:
+  - `src/.../consumer.tsx` — [シグネチャ・状態遷移の整合確認]
 
 ## 3. Context Snippets (参照コード・型定義・import)
 <!-- Workerが自律探索（Read/Grep）を行わずに実装できるよう、必要な文脈を過不足なく事前注入する -->
@@ -97,15 +108,17 @@ export interface TargetProps { ... }
 \`\`\`
 
 ## 4. Implementation Phases (Worker 実装手順)
+<!-- 1〜4ファイルは1 Phase一括、5ファイル以上は1 Phase最大4ファイル（テスト含め6ファイル）以下に分割、15ファイル超は連番タスク（TASK-XXXa, TASK-XXXb）に分割 -->
 
 ### Phase 1: [サブシステム名]
 - **Worker Model**: `flash` | `flash_lite`
 - **対象ファイル**: `src/.../service.ts`, `src/.../__tests__/service.test.ts`
-- **契約 (Interface)**:
+- **契約 (Exact Contract & Formula)**:
   \`\`\`ts
+  // 公開シグネチャおよび具体的な計算式・座標変換式・分岐条件
   export function doSomething(param: string): Promise<Result>;
   \`\`\`
-- **Testing Strategy**: [テストファイルパス、入力と期待値]
+- **Testing Strategy (Concrete Test Values)**: [テストファイルパス、具体的な入力値と期待出力値（例: input={x:10} ➔ expected={x:20}）]
 - **Tasks**:
   - [ ] 1. TDD実装: `bun run ai:check:red <テストファイル>` ➔ 実装 ➔ `bun run ai:check <対象ファイル>` PASS
 - **Worker Handoff Log**:
@@ -119,10 +132,10 @@ export interface TargetProps { ... }
 - **Reviewed At**: 
 - **Decision**: `TODO` | `LGTM` | `REJECTED`
 - **Audit Checklist**:
-  - [ ] 1. 要件網羅性 & テスタビリティ: 受入要件の全網羅、ダミー実装・ハックの排除、DI可能な設計と検証
-  - [ ] 2. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
-  - [ ] 3. 設計負債 & 拡張性: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、局所性担保
-  - [ ] 4. サイレント破壊 & 既存保護: 公開シグネチャ・既存型破壊の防止、指示外変更の排除
+  - [ ] 1. ドメイン論理 & 要件網羅性 & テスタビリティ: 数式/座標/状態遷移の整合性、受入要件の全網羅、Concrete Test Values検証、ハック排除
+  - [ ] 2. Invariants保護 & Consumer同期: Section 2.5 の不変条件（ちゃぶ台返し防止）遵守、別画面・呼び出し元（Consumers）の更新漏れゼロ
+  - [ ] 3. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
+  - [ ] 4. 設計負債 & サイレント破壊防止: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、公開シグネチャ保護、指示外変更の排除
 - **Summary**:
   <!-- 判定理由または改善指示を簡潔に記載 -->
 

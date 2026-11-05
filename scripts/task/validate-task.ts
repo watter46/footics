@@ -121,8 +121,48 @@ export function validateTaskFile(filePath: string): ValidationResult {
     );
   }
 
-  // 7. Phase の Handoff Log チェック
+  // 7. Phase の Handoff Log チェック & V2 タスク構成チェック (250行制限撤廃・1 Phase 最大6ファイル上限)
   const phaseHeaders = content.match(/###\s+Phase\s+\d+:/g) || [];
+  const taskNumMatch = path.basename(filePath).match(/^TASK-(\d+)/);
+  const taskNum = taskNumMatch ? parseInt(taskNumMatch[1], 10) : 0;
+  const hasInvariantsSection = /^##\s+2\.5\s+Architectural Invariants/m.test(
+    content,
+  );
+  const isV2Task = taskNum >= 159 || hasInvariantsSection;
+
+  if (taskNum >= 159 && !hasInvariantsSection) {
+    result.errors.push(
+      `[Format Error] Missing required section: '## 2.5 Architectural Invariants & Why' (required for TASK-159+).`,
+    );
+  }
+
+  if (isV2Task) {
+    if (phaseHeaders.length > 5) {
+      result.errors.push(
+        `[Phase Limit Error] Task has ${phaseHeaders.length} phases (max allowed: 5). Split large changes (>15 files) into sequential tasks (e.g. TASK-XXXa, TASK-XXXb).`,
+      );
+    }
+
+    const phaseSectionRegex =
+      /^(###\s+Phase\s+\d+[^\n]*)\n([\s\S]*?)(?=^###\s+Phase\s+\d+|^##\s+\d+\.|$(?![\s\S]))/gm;
+    for (const match of content.matchAll(phaseSectionRegex)) {
+      const header = match[1].trim();
+      const body = match[2];
+      const targetMatch = body.match(
+        /-\s+\*\*(?:対象ファイル|Target Files|対象スコープ)\*\*:\s*([^\n]*(?:\n\s+-\s+[^\n]*)*)/i,
+      );
+      if (targetMatch) {
+        const backticks = targetMatch[1].match(/`[^`\n]+`/g);
+        const fileCount = backticks ? backticks.length : 0;
+        if (fileCount > 6) {
+          result.errors.push(
+            `[Phase File Limit Error] ${header} specifies ${fileCount} target files (max allowed: 6 [4 production + 2 test]). Split into smaller phases.`,
+          );
+        }
+      }
+    }
+  }
+
   if (status === 'DONE' && phaseHeaders.length > 0) {
     const handoffMatches =
       content.match(/-\s+\*\*Worker Handoff Log\*\*:\s*([^\n]*)/g) || [];

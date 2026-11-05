@@ -44,6 +44,9 @@ describe('generateTaskScaffold', () => {
       '## 2. Requirements & Acceptance Criteria (受入要件)',
     );
     expect(content).toContain(
+      '## 2.5 Architectural Invariants & Why (破壊禁止の前提と設計理由)',
+    );
+    expect(content).toContain(
       '## 3. Context Snippets (参照コード・型定義・import)',
     );
     expect(content).toContain('## 4. Implementation Phases (Worker 実装手順)');

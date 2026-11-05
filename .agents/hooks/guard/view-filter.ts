@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { detectAgentRole, normalizeRelativePath } from './agent-access-guard';
+import { parseExecutable, splitCommands, tokenize } from './parser';
 import type { GuardDecision } from './safety-filter';
 import {
   cleanString,
@@ -121,7 +122,50 @@ function isInvestigationTarget(relPath: string): boolean {
 }
 
 /**
- * 直近の USER_INPUT 以降に、Planner が view_file でアクセスした調査対象ファイルのユニークパス集合を取得する。
+ * コマンドライン文字列から、ファイル閲覧ツール (rtk read, cat, head 等) の対象ファイルパスを抽出する。
+ */
+export function extractReadTargetsFromCommand(cmdLine: string): string[] {
+  const targets: string[] = [];
+  if (!cmdLine || typeof cmdLine !== 'string') return targets;
+
+  const subCmds = splitCommands(cmdLine);
+  for (const sub of subCmds) {
+    const tokens = tokenize(sub);
+    if (tokens.length === 0) continue;
+    const parsed = parseExecutable(tokens);
+    if (!parsed.executable) continue;
+
+    if (parsed.executable === 'rtk' && parsed.args[0] === 'read') {
+      const files = parsed.args.slice(1).filter((a) => !a.startsWith('-'));
+      targets.push(...files);
+    } else if (['cat', 'head', 'less', 'more'].includes(parsed.executable)) {
+      const files = parsed.args.filter((a) => !a.startsWith('-'));
+      targets.push(...files);
+    } else if (
+      (parsed.executable === 'git' && parsed.args[0] === 'show') ||
+      (parsed.executable === 'rtk' &&
+        parsed.args[0] === 'git' &&
+        parsed.args[1] === 'show')
+    ) {
+      const showArgs =
+        parsed.executable === 'git'
+          ? parsed.args.slice(1)
+          : parsed.args.slice(2);
+      for (const arg of showArgs) {
+        if (arg.startsWith('-')) continue;
+        const colonIdx = arg.indexOf(':');
+        if (colonIdx > 0 && colonIdx < arg.length - 1) {
+          const filePath = arg.slice(colonIdx + 1).replace(/^\/+/, '');
+          if (filePath) targets.push(filePath);
+        }
+      }
+    }
+  }
+  return targets;
+}
+
+/**
+ * 直近の USER_INPUT 以降に、Planner が view_file または run_command でアクセスした調査対象ファイルのユニークパス集合を取得する。
  */
 function getRecentInvestigatedFiles(
   transcriptPath: string | undefined,
@@ -151,6 +195,16 @@ function getRecentInvestigatedFiles(
                 const rel = normalizeRelativePath(rawTcPath, workspacePath);
                 if (isInvestigationTarget(rel)) {
                   viewedFiles.add(path.resolve(rawTcPath));
+                }
+              }
+            } else if (tc.name === 'run_command' && tc.args?.CommandLine) {
+              const cmdTargets = extractReadTargetsFromCommand(
+                tc.args.CommandLine,
+              );
+              for (const target of cmdTargets) {
+                const rel = normalizeRelativePath(target, workspacePath);
+                if (isInvestigationTarget(rel)) {
+                  viewedFiles.add(path.resolve(target));
                 }
               }
             }
@@ -282,7 +336,46 @@ function checkViewGuard(payload: any): GuardDecision | null {
   return { decision: 'allow' };
 }
 
+/**
+ * Planner による run_command 経由の調査用ソースコード直接読込の遮断 (5ファイルまで許可、6ファイル目で遮断)
+ */
+function checkCommandInvestigationGuard(
+  payload: any,
+  cmdLine: string,
+): GuardDecision | null {
+  if (!payload || !cmdLine) return null;
+  const role = detectAgentRole(payload.transcriptPath);
+  if (role !== 'planner') return null;
+
+  const workspacePath = payload.workspacePaths?.[0];
+  const targets = extractReadTargetsFromCommand(cmdLine);
+  if (targets.length === 0) return null;
+
+  const recentTargets = getRecentInvestigatedFiles(
+    payload.transcriptPath,
+    workspacePath,
+  );
+
+  for (const rawPath of targets) {
+    const resolvedPath = path.resolve(rawPath);
+    const relPath = normalizeRelativePath(resolvedPath, workspacePath);
+    if (isInvestigationTarget(relPath)) {
+      if (!recentTargets.has(resolvedPath) && recentTargets.size >= 5) {
+        const baseName = path.basename(resolvedPath);
+        return {
+          decision: 'deny',
+          reason: `[GUARD] Codebase investigation limit reached (Planner is attempting to read 6+ source files directly via shell: '${baseName}').\nReason: Reading multiple source files directly inflates Planner's context (>50K tokens) and causes severe token explosion.\nAction: You MUST delegate codebase investigation to Scout.\n1. Invoke subagent with TypeName: "scout" (Model: "flash_lite") to extract types, signatures, and patterns.\n2. Scout will return Context Snippets (Import Specs, Interfaces & Types, Reference Pattern).\n3. Terminate the Scout immediately via manage_subagents(Action: "kill", ConversationIds: [...]) and embed the snippets into 'tasks/TASK-XXX.md'.`,
+        };
+      }
+      recentTargets.add(resolvedPath);
+    }
+  }
+
+  return null;
+}
+
 export {
+  checkCommandInvestigationGuard,
   checkViewGuard,
   getRecentInvestigatedFiles,
   isInvestigationTarget,

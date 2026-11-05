@@ -197,4 +197,39 @@ import { foo } from '@/bar';
       expect(batch.failed).toBe(2);
     });
   });
+
+  it('should enforce V2 invariants and <=6 files per phase on V2 tasks (TASK-159+)', () => {
+    const overstuffedV2 = `# TASK-160: V2 Task Test
+
+## 1. Metadata
+- **Status**: \`TODO\`
+- **Created**: 2026-11-05
+
+## 2. Requirements & Acceptance Criteria (受入要件)
+- [ ] 1. Req
+
+## 2.5 Architectural Invariants & Why (破壊禁止の前提と設計理由)
+- **Invariants**:
+  1. Keep compatibility
+
+## 3. Context Snippets (参照コード・型定義・import)
+## 4. Implementation Phases (Worker 実装手順)
+### Phase 1: Too Many Files
+- **対象ファイル**: \`a.ts\`, \`b.ts\`, \`c.ts\`, \`d.ts\`, \`e.ts\`, \`f.test.ts\`, \`g.test.ts\`
+- **Tasks**:
+  - [ ] 1. TDD
+
+## 5. Reviewer Assessment (コード差分監査)
+- **Decision**: \`TODO\`
+`;
+    const filePath = path.join(tmpDir, 'TASK-160-overstuffed.md');
+    fs.writeFileSync(filePath, overstuffedV2, 'utf8');
+
+    const result = validateTaskFile(filePath);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some((e) => e.includes('[Phase File Limit Error]')),
+    ).toBe(true);
+    fs.unlinkSync(filePath);
+  });
 });

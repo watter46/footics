@@ -70,7 +70,7 @@ function checkTokenGuard(
   if (executable === 'rtk' && args[0] === 'smart') {
     const targetPath = args.slice(1).join(' ').trim();
     const isCriticalTarget =
-      /(\.agents\/rules|\.agents\/agents|\.agents\/tasks)/.test(targetPath);
+      /(\.agents\/rules|\.agents\/agents|\btasks\/)/.test(targetPath);
     if (isCriticalTarget) {
       return {
         decision: 'deny',
@@ -127,6 +127,26 @@ function checkTokenGuard(
       decision: 'deny',
       reason:
         "[GUARD] 'git diff --stat' is forbidden as it lacks diff details. Use 'GIT_EXTERNAL_DIFF=difft rtk git diff' or 'rtk git diff -U0'.",
+    };
+  }
+
+  // git log -p / git log -u / git log --patch の遮断 (ソースコード全文パッチ出力によるトークン爆発防止)
+  if (
+    (executable === 'git' || (executable === 'rtk' && args[0] === 'git')) &&
+    args.some((a) => a === 'log') &&
+    args.some(
+      (a) =>
+        a === '-p' ||
+        a === '-u' ||
+        a === '--patch' ||
+        /^-[a-zA-Z]*p/.test(a) ||
+        /^-[a-zA-Z]*u/.test(a),
+    )
+  ) {
+    return {
+      decision: 'deny',
+      reason:
+        "[GUARD] 'git log -p' (patch mode) dumps entire code diffs and causes token explosion. Use 'rtk git log -n 5 --oneline' or check specific diffs via 'GIT_EXTERNAL_DIFF=difft rtk git show <hash> -- <file>'.",
     };
   }
 
@@ -208,15 +228,64 @@ function checkTokenGuard(
     };
   }
 
-  // 6e. cat / less / more / head / tail -> rtk read
-  if (['cat', 'less', 'more', 'head', 'tail'].includes(executable)) {
+  // 6e-1. tail およびファイル読込・行数計測バイパスコマンドの遮断
+  if (executable === 'tail') {
+    return {
+      decision: 'deny',
+      reason:
+        "[GUARD] 'tail' is prohibited for code exploration. Use 'bun run ai:outline <file>' to locate signatures, or 'view_file' with specific StartLine/EndLine.",
+    };
+  }
+  if (
+    ['strings', 'nl', 'tac', 'od', 'xxd', 'base64', 'wc'].includes(executable)
+  ) {
+    return {
+      decision: 'deny',
+      reason: `[GUARD] '${executable}' is prohibited to prevent file read / line count guard bypass. Use 'bun run ai:outline <file>' or 'view_file' instead.`,
+    };
+  }
+
+  // 6e-2. head の健全化 (オプション -n <N> を rtk read -m 1:<N> に安全変換)
+  if (executable === 'head') {
+    let lineCount = 10;
+    const files: string[] = [];
+    for (let i = 0; i < args.length; i++) {
+      const a = args[i];
+      if (a === '-n' && args[i + 1] && /^\d+$/.test(args[i + 1])) {
+        lineCount = parseInt(args[i + 1], 10);
+        i++;
+      } else if (/^-n(\d+)$/.test(a)) {
+        const m = a.match(/^-n(\d+)$/);
+        if (m) lineCount = parseInt(m[1], 10);
+      } else if (/^-(\d+)$/.test(a)) {
+        const m = a.match(/^-(\d+)$/);
+        if (m) lineCount = parseInt(m[1], 10);
+      } else if (!a.startsWith('-')) {
+        files.push(a);
+      }
+    }
+    if (files.length > 0) {
+      return {
+        decision: 'allow',
+        overwrite: {
+          CommandLine: `rtk read -m 1:${lineCount} ${files.join(' ')}`,
+        },
+      };
+    }
     return {
       decision: 'allow',
       overwrite: {
-        CommandLine: rawSubCmd.replace(
-          /^(cat|less|more|head|tail)\b/,
-          'rtk read',
-        ),
+        CommandLine: rawSubCmd.replace(/^head\b/, 'rtk read'),
+      },
+    };
+  }
+
+  // 6e-3. cat / less / more -> rtk read
+  if (['cat', 'less', 'more'].includes(executable)) {
+    return {
+      decision: 'allow',
+      overwrite: {
+        CommandLine: rawSubCmd.replace(/^(cat|less|more)\b/, 'rtk read'),
       },
     };
   }
@@ -237,13 +306,28 @@ function checkTokenGuard(
     };
   }
 
-  // 6h. git (diff, status, log)
+  // 6h. git (diff, status, log, show, branch, stash, worktree, grep)
   if (executable === 'git') {
     const subCmd = args[0] || '';
-    if (subCmd === 'status' || subCmd === 'log') {
+    if (
+      subCmd === 'status' ||
+      subCmd === 'log' ||
+      subCmd === 'show' ||
+      subCmd === 'branch' ||
+      subCmd === 'stash' ||
+      subCmd === 'worktree'
+    ) {
       return {
         decision: 'allow',
         overwrite: { CommandLine: rawSubCmd.replace(/^git\b/, 'rtk git') },
+      };
+    }
+    if (subCmd === 'grep') {
+      return {
+        decision: 'allow',
+        overwrite: {
+          CommandLine: rawSubCmd.replace(/^git\s+grep\b/, 'rtk grep'),
+        },
       };
     }
     if (subCmd === 'diff') {

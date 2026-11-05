@@ -22,7 +22,7 @@ trigger: always_on
    - **広範囲調査の委譲（5ファイル以下は自前並列・6ファイル以上はScout委譲）**:
      - **5ファイル以下の調査**: Planner 自前の `bun run ai:outline <file>` や並列 `view_file` / `read_file` で直接確認する。
      - **6ファイル以上の広範囲調査**: 関連ソースファイルが 6 件以上に及ぶ場合、使い捨ての `Scout`（`TypeName: "scout"`, `Model: "flash_lite"`）に調査を一括委譲（最大6ターン完了）し、結果受領後に即 kill する。
-     - **物理遮断ガード**: Planner が同一指示内で 6 ファイル目以降のソースコードを直接 `view_file` しようとすると、フック（`view-filter`）により物理遮断（deny）される。
+     - **物理遮断ガード**: Planner が同一指示内で 6 ファイル目以降のソースコードを直接読込（`view_file` または `run_command` 経由の `rtk read`）しようとすると、フック（`view-filter`）により物理遮断（deny）される。
 2. **【ピンポイント検索】該当箇所を行番号レベルで検索する**
    - テキスト検索: `rtk grep '<keyword>' <file>`
    - 構文/AST検索: `ast-grep run -p '<pattern>' -l <lang> <file>`
@@ -34,6 +34,10 @@ trigger: always_on
      - **400行超のファイル**: `rtk grep` / `ast-grep` で特定した対象行の**前後5〜10行（親スコープ・インデント構造）を含めたのりしろ範囲**を無加工で正確に取得する。
       - **初手 `ai:outline` の義務**: 400行超のファイルの型・シグネチャ確認は、スライス読込の前に必ず `bun run ai:outline <file>` を初手で実行する。
       - **連続スライス（ページ送り）読込の禁止**: 同一ファイルを `StartLine`/`EndLine` の連続範囲（1-100 → 101-200 → …）で順に読み進めてはならない。同一ファイルへのページ送りが 3 回連続するとフック（`view-filter`）により物理遮断（deny）される。離れた範囲ののりしろ読込（grep で特定した行）は対象外。
+4. **【抜け道コマンドの厳格禁止（Bypass Prohibition）】**
+   - **`sed` / `awk` / `cut` / `strings` / `nl` / `tac` / `od` / `xxd` / `base64` / `wc` / `tail` の禁止**: ファイル読込制限や行数計測のバイパスとなるシェルコマンドはフックにより物理遮断（deny）される。
+   - **`git log -p` の禁止**: パッチ形式でソース差分を大量出力する行為を禁止（特定コミットのファイル確認は `GIT_EXTERNAL_DIFF=difft rtk git show <hash> -- <file>` を使用。なお `git show <rev>:<path>` も調査ファイル数上限のカウント対象）。
+   - **Planner の二重調査（Over-investigation）禁止**: 6 ファイル以上の調査は Scout に委任し、受領後は自力でファイルを読み直さず即座にタスク策定へ進むこと。
 
 ---
 

@@ -7,19 +7,55 @@ export interface GuardDecision {
   reason?: string;
 }
 
-const MAX_TASK_LINES = 250;
 const MAX_TASK_PHASES = 5;
+const MAX_PHASE_FILES = 6;
+
+function isDoneTask(content: string): boolean {
+  return /-\s+\*\*Status\*\*:\s*`?DONE`?\b/i.test(content);
+}
 
 /**
- * タスクファイル（tasks/TASK-*.md）の肥大化・スコープクリープを物理遮断するガード。
- *
- * 背景:
- * TASK-002 では当初のスコープ外であるUI改善やブラウザ検証後の要望が
- * Phase 7, 8, 9 と次々に同一ファイルに継ぎ足され、34KB / 406行に肥大化。
- * 全エージェントが過去ログを毎回全読みするコンテキスト浪費を引き起こした。
- *
- * 本ガードは、行数 250行超 または 5 Phase 超のタスクファイルへの追加書き込みを強制遮断（deny）し、
- * 新規タスクチケット（例: TASK-003）への分離を物理的に強制する。
+ * 各 Phase セクション内の「対象ファイル」に指定されたファイル数が上限（6個: プロダクション4+テスト2相当）
+ * を超えていないか検査する。
+ */
+export function findOverstuffedPhase(
+  content: string,
+): { phaseHeader: string; fileCount: number } | null {
+  const phaseRegex =
+    /^(###\s+Phase\s+\d+[^\n]*)\n([\s\S]*?)(?=^###\s+Phase\s+\d+|^##\s+\d+\.|$(?![\s\S]))/gm;
+
+  for (const match of content.matchAll(phaseRegex)) {
+    const phaseHeader = match[1].trim();
+    const body = match[2];
+
+    const targetMatch = body.match(
+      /-\s+\*\*(?:対象ファイル|Target Files|対象スコープ)\*\*:\s*([^\n]*(?:\n\s+-\s+[^\n]*)*)/i,
+    );
+    if (!targetMatch) continue;
+
+    const targetBlock = targetMatch[1];
+    const backtickFiles = targetBlock.match(/`[^`\n]+`/g);
+    let fileCount = 0;
+    if (backtickFiles && backtickFiles.length > 0) {
+      fileCount = backtickFiles.length;
+    } else {
+      fileCount = targetBlock
+        .split(/[,\n]/)
+        .map((s) => s.replace(/^\s*-\s*/, '').trim())
+        .filter(Boolean).length;
+    }
+
+    if (fileCount > MAX_PHASE_FILES) {
+      return { phaseHeader, fileCount };
+    }
+  }
+  return null;
+}
+
+/**
+ * タスクファイル（tasks/TASK-*.md）のスコープクリープ（6 Phase以上の継ぎ足し、DONEタスクへのPhase追記、
+ * 1 Phaseあたり6ファイル超の詰め込み）を物理遮断するガード。
+ * ※ Worker が推論なしで実装できるよう Invariants・具体式・具体テスト値を十分に記述するため、行数制限（旧250行）は設けない。
  */
 export function checkTaskSizeGuard(payload: any): GuardDecision | null {
   const toolCall = payload.toolCall;
@@ -40,18 +76,42 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
     return null;
   }
 
+  const resolvedPath = path.resolve(rawTargetFile);
+  const existingContent = fs.existsSync(resolvedPath)
+    ? fs.readFileSync(resolvedPath, 'utf8')
+    : null;
+
   // 1. 全文書き込み (write_to_file / write_file) の場合
   if (toolCall.name === 'write_to_file' || toolCall.name === 'write_file') {
     const code = toolCall.args.CodeContent || toolCall.args.Content || '';
-    const lineCount = code.split('\n').length;
     const phaseMatches = code.match(/###\s+Phase\s+\d+/gi) || [];
 
-    if (lineCount > MAX_TASK_LINES || phaseMatches.length > MAX_TASK_PHASES) {
+    if (existingContent && isDoneTask(existingContent)) {
+      const prevPhases = (existingContent.match(/###\s+Phase\s+\d+/gi) || [])
+        .length;
+      if (phaseMatches.length > prevPhases) {
+        return {
+          decision: 'deny',
+          reason: `[GUARD] Task file modification blocked: '${baseName}' is already marked as DONE. Appending new phases to a completed task is prohibited.\nAction: Create a new task file (e.g. TASK-003) for additional requirements.`,
+        };
+      }
+    }
+
+    if (phaseMatches.length > MAX_TASK_PHASES) {
       return {
         decision: 'deny',
-        reason: `[GUARD] Task file limit exceeded ('${baseName}' has ${lineCount} lines / ${phaseMatches.length} phases. Limits: <=${MAX_TASK_LINES} lines, <=${MAX_TASK_PHASES} phases).\nReason: Oversized task files cause severe context bloat and token waste across all agents.\nAction: Do NOT append additional phases to this task. Mark this task as DONE, commit the changes, and create a new task file (e.g. TASK-003) for additional requirements.`,
+        reason: `[GUARD] Task file limit exceeded ('${baseName}' has ${phaseMatches.length} phases. Limit: <=${MAX_TASK_PHASES} phases).\nReason: Oversized task scopes cause context bloat across agents.\nAction: Do NOT append additional phases to this task. Split into a new task file (e.g. TASK-003).`,
       };
     }
+
+    const overstuffed = findOverstuffedPhase(code);
+    if (overstuffed) {
+      return {
+        decision: 'deny',
+        reason: `[GUARD] Phase file limit exceeded in '${baseName}' (${overstuffed.phaseHeader} has ${overstuffed.fileCount} target files. Limit: <=${MAX_PHASE_FILES} files [max 4 production + 2 test]).\nAction: Split the phase into smaller phases of <=4 production files each.`,
+      };
+    }
+
     return { decision: 'allow' };
   }
 
@@ -62,6 +122,8 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
   ) {
     const replacement =
       toolCall.args.ReplacementContent || toolCall.args.Replacement || '';
+    const targetContent =
+      toolCall.args.TargetContent || toolCall.args.Target || '';
 
     // 新たに Phase 6 以降を追加しようとしているか直接チェック
     if (/###\s+Phase\s+([6-9]|\d{2,})/i.test(replacement)) {
@@ -71,42 +133,66 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
       };
     }
 
-    // ファイルが存在する場合、置換後の行数とPhase数を推定
-    const resolvedPath = path.resolve(rawTargetFile);
-    if (fs.existsSync(resolvedPath)) {
-      try {
-        const currentContent = fs.readFileSync(resolvedPath, 'utf8');
-        const targetContent =
-          toolCall.args.TargetContent || toolCall.args.Target || '';
+    const prevPhaseCountInTarget = (
+      targetContent.match(/###\s+Phase\s+\d+/gi) || []
+    ).length;
+    const nextPhaseCountInReplacement = (
+      replacement.match(/###\s+Phase\s+\d+/gi) || []
+    ).length;
+    const isAddingPhase = nextPhaseCountInReplacement > prevPhaseCountInTarget;
 
-        let nextContent = currentContent;
-        if (targetContent && currentContent.includes(targetContent)) {
-          nextContent = currentContent.replace(targetContent, replacement);
+    // TargetContent 自体に Status: DONE が含まれており、新規 Phase を追記しようとしている場合
+    if (isDoneTask(targetContent) && isAddingPhase) {
+      return {
+        decision: 'deny',
+        reason: `[GUARD] Task file modification blocked: '${baseName}' is already marked as DONE. Appending new phases to a completed task is prohibited.\nAction: Create a new task file (e.g. TASK-003) for additional requirements.`,
+      };
+    }
+
+    // 置換文字列単体での 1 Phase ファイル数超過チェック
+    const overstuffedInReplacement = findOverstuffedPhase(replacement);
+    if (overstuffedInReplacement) {
+      return {
+        decision: 'deny',
+        reason: `[GUARD] Phase file limit exceeded in '${baseName}' (${overstuffedInReplacement.phaseHeader} has ${overstuffedInReplacement.fileCount} target files. Limit: <=${MAX_PHASE_FILES} files [max 4 production + 2 test]).\nAction: Split the phase into smaller phases of <=4 production files each.`,
+      };
+    }
+
+    // ファイルが存在する場合、置換後の全体構造を検査
+    if (existingContent !== null) {
+      try {
+        if (isDoneTask(existingContent) && isAddingPhase) {
+          return {
+            decision: 'deny',
+            reason: `[GUARD] Task file modification blocked: '${baseName}' is already marked as DONE. Appending new phases to a completed task is prohibited.\nAction: Create a new task file (e.g. TASK-003) for additional requirements.`,
+          };
         }
 
-        const nextLines = nextContent.split('\n').length;
+        let nextContent = existingContent;
+        if (targetContent && existingContent.includes(targetContent)) {
+          nextContent = existingContent.replace(targetContent, replacement);
+        }
+
         const nextPhases = (nextContent.match(/###\s+Phase\s+\d+/gi) || [])
           .length;
 
-        // 既存の肥大化ファイル（TASK-001, TASK-002）の完了チェックボックス更新等は許容しつつ、
-        // さらに行数が 250 を超えて増殖する追加編集を防止
-        if (
-          nextPhases > MAX_TASK_PHASES &&
-          replacement.includes('### Phase ')
-        ) {
+        if (nextPhases > MAX_TASK_PHASES && isAddingPhase) {
           return {
             decision: 'deny',
             reason: `[GUARD] Task file limit exceeded ('${baseName}' has ${nextPhases} phases > ${MAX_TASK_PHASES}).\nAction: Create a new task file (e.g. TASK-003) for additional requirements.`,
           };
         }
 
+        const overstuffedNext = findOverstuffedPhase(nextContent);
         if (
-          nextLines > MAX_TASK_LINES &&
-          nextLines > currentContent.split('\n').length + 10
+          overstuffedNext &&
+          (replacement.includes('対象ファイル') ||
+            replacement.includes('Target Files') ||
+            replacement.includes('### Phase'))
         ) {
           return {
             decision: 'deny',
-            reason: `[GUARD] Task file limit exceeded ('${baseName}' would expand to ${nextLines} lines > ${MAX_TASK_LINES} lines).\nAction: Keep task files concise or split into a new task file.`,
+            reason: `[GUARD] Phase file limit exceeded in '${baseName}' (${overstuffedNext.phaseHeader} has ${overstuffedNext.fileCount} target files. Limit: <=${MAX_PHASE_FILES} files [max 4 production + 2 test]).\nAction: Split the phase into smaller phases of <=4 production files each.`,
           };
         }
       } catch (_e) {}

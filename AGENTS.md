@@ -6,8 +6,8 @@
 
 1. **極限のトークン最適化** — 標準コマンド（`ls`, `cat`, `grep` 等）は `guard.ts` により自動最適化。探索初手は `repo_summary.txt`（高レベル把握）を参照し、シンボル特定は `bun run ai:find <symbol>` を使用すること
 2. **高品質な実装の担保** — TDD 厳守、Biome v2 strict、TypeScript strict
-3. **モデル階層と並列・短時間パイプライン** — Planner / Reviewer / Auditor(`pro`)、Worker(`flash` / `flash_lite`)、Scout(`flash_lite`、6ファイル以上の調査のみ起動・6ターン以内完了) によるタスク駆動開発。1〜4ファイルの変更は 1 Worker で一括完遂し、ファイル被りのない複数 Phase / Task は並列 Worker 起動で高速化する
-4. **推論の排除とスクリプト化** — Worker TDD（`ai:check` による `'use client'`・ホスト境界検査含む）とコミットゲート（`ai:commit` / `task:validate`）による機械検証の徹底。Reviewer はコマンドを実行せず 4大定性監査（要件ハック・ホスト境界/Flicker・OCP・サイレント破壊）に専念
+3. **モデル階層と並列・短時間パイプライン** — Planner / Brainstormer / Reviewer / Auditor(`pro`)、Worker(`flash` / `flash_lite`)、Scout(`flash_lite`、6ファイル以上の調査のみ起動・6ターン以内完了) によるタスク駆動開発。Planner / Brainstormer は要望に破綻や副作用がある場合、迎合せず『⚠️ 設計破綻・副作用の指摘』として反論・代替案を提示する。1〜4ファイルの変更は 1 Phase（1 Worker）で一括完遂し、5ファイル以上は 1 Phase 最大4プロダクションファイル（テスト含め6ファイル）以下に分割（250行制限は撤廃）、非重複 Phase は並列 Worker 起動で高速化する
+4. **推論の排除とスクリプト化** — タスクファイルには `## 2.5 Architectural Invariants & Why`・具体計算式（Exact Contract）・具体テスト値（Concrete Test Values）を必須化し、Worker TDD（`ai:check`）とコミットゲート（`ai:commit` / `task:validate`）で機械検証を徹底する。Reviewer はコマンドを実行せず 4大定性監査（ドメイン論理/要件網羅・Invariants破壊/Consumer更新漏れ・ホスト境界/Flicker・OCP/サイレント破壊）に専念
 5. **4層コンポーネントモデルとホスト境界の厳守** — Web と Extension で共用するコードは Level 2（Domain UI Block）以下に配置し、`chrome.*` や Web専用ストア等のホスト依存を絶対に混入させないこと。Store Provider パターンにより初期チラつき（Flicker）を根絶すること。
 6. **レジストリ・パッケージ型拡張設計（OCP 厳守）** — ツールや機能追加でコアコンポーネント（Stage, Toolbar, DashboardView, Background Commands等）に巨大な `switch / if` をベタ書きすることを禁止し、レジストリ登録または自律的なモジュール分離で拡張すること。
 7. **平易な対話（`caveman`）と2項目完了サマリー** — ユーザー対話は結論最優先・前置き排除（`caveman`）を徹底し、難解カタカナ語を禁止する。実装完了報告は「① 変更された内容（ユーザー目線の変化）」「② 手動・目視での確認手順（画面・操作・期待結果）」の2項目のみで端的に出力すること。

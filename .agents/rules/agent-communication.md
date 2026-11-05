@@ -31,7 +31,7 @@ type: "TASK_COMPLETE"
 target_file: "tasks/TASK-XXX.md"
 phase: 1
 ---
-Phase 1 の実装および `bun run agent:check-worker` のローカル検証が完了しました。Handoff Log を追記済みです。
+Phase 1 の実装および `bun run ai:check <ファイル>` のローカル検証が完了しました。Handoff Log を追記済みです。
 ```
 
 ### 1.3 Planner → Reviewer (全Phase完了後のレビュー依頼)
@@ -64,8 +64,8 @@ type: "SCOUT_REQUEST"
 
 ## 2. Reviewer による差し戻し（REJECTED）のルール
 
-1. **不可逆修正欄への追記**: Reviewer は既存のタスクや Phase を消去・上書きせず、必ず `tasks/TASK-*.md` の末尾 `## 5. Rejections / Additional Tasks` に `### Fix 1 (YYYY-MM-DD)` の形式で追記する。
-2. **自己完結な指示**: Worker がチャット履歴を遡らなくて済むよう、追加修正欄には対象ファイルパスと具体的な修正ステップ（`bun run agent:check-worker` での検証指示含む）を明記する。
+1. **不可逆修正欄への追記**: Reviewer は既存のタスクや Phase を消去・上書きせず、必ず `tasks/TASK-*.md` の末尾 `## 6. Rejections / Additional Tasks` に `### Fix 1 (YYYY-MM-DD)` の形式で追記する。
+2. **自己完結な指示**: Worker がチャット履歴を遡らなくて済むよう、追加修正欄には対象ファイルパスと具体的な修正ステップ（`bun run ai:check <ファイル>` での検証指示含む）を明記する。
 3. **ステータス更新**: タスクファイル内の Metadata の Status を `REJECTED` に変更する。
 4. **上限**: 差し戻しは原則1回までとする。解決しない場合は Planner はユーザーに制御を返すこと。
 

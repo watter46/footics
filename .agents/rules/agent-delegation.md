@@ -17,17 +17,14 @@ globs:
 1. **結果回収の義務付け**:
    - サブエージェントを `invoke_subagent` ツールで起動した親エージェントは、**必ず子エージェントから完了メッセージまたは成果物を受信・確認した上で自身のタスクを完了**しなければならない。
    - 子エージェントが実行中または未応答の状態で、親エージェントが自らターンを終了（`DONE` や完了宣言）してはならない。
-2. **1〜4ファイル一括完遂・非重複並列 Worker 起動・即時破棄（Kill）**:
-   - **単一 Worker の再利用・使い回しは厳禁**です。完了済Workerへの `send_message` はフック（`subagent-guard`）により物理的に遮断（deny）されます。
-   - **1〜4ファイルの変更は 1 Worker で一気に完遂**: 変更対象が 1〜4 ファイル程度のタスクは細切れの Phase リレーに分割せず、1つの Phase（1 Worker）で一気に完遂させます。
-   - **非重複 Phase / Task の並列起動**: 編集対象ファイルに被りがない複数の Phase や独立タスクは、直列に待たず **同一ターン内で複数の `invoke_subagent(TypeName: "worker")` を並列発行** して短時間で実装を完了させます。
-   - 各 Worker の完了メッセージを受領したら、親エージェントは直ちに `manage_subagents` ツール（`Action: "kill"`）を実行して該当 Worker を破棄しなければなりません。
-   - **Scout の委譲基準（5ファイル以下自前・6ファイル以上Scout）と即時破棄**:
-     - **5ファイル以下の調査**: Planner 自前の並列読込（`ai:find`, `ai:outline`, `read_file`）で完結させます。
-     - **6ファイル以上の調査**: 関連ファイルが 6 件以上に及ぶ場合（`view-filter` により 6 ファイル目以降の直接読込は遮断）、`Scout`（`TypeName: "scout"`, `Model: "flash_lite"`）に `type: "SCOUT_REQUEST"` で委譲し（最大 6 ターン完了）、結果受領後に直ちに kill します。
-   - 1タスクあたりの Phase 数は最大 5 Phase（行数 250 行以内）。追加要件は新チケットへ分離します（フック `task-size-guard` により強制）。
-   - **5ファイル以上の Worker 一括丸投げ禁止（Fix のまとめ投げを含む）**: 修正対象が 5 ファイル以上に及ぶ場合は、ファイルが被らない単位（1〜4ファイル）の Phase に分割し、Worker を Phase ごとに起動する。各 Phase は個別に検証（`ai:check`）・コミット（`ai:commit`）し、Reviewer の差し戻し（Fix）も同様に分割する。`invoke_subagent` はフック対象外のため本項は規約として遵守する。
-   - **完了待ちのポーリング禁止**: `manage_subagents` の `Action: "list"` を繰り返して完了を待ってはならない。完了通知は自動でメッセージとして届く。`list` が 3 回連続で呼ばれるとフック（`guard.ts` → `subagent-guard`）により物理遮断（deny）される。待機が必要な場合はツールを呼ばずにターンを終える。
+2. **Phase 分割基準・非重複並列 Worker 起動・即時破棄（Kill）**:
+   - **単一 Worker の再利用・使い回しは厳禁**: 完了済 Worker への `send_message` はフック（`subagent-guard`）により遮断されます。各 Worker の完了受領後は直ちに `manage_subagents(Action: "kill")` で破棄してください。
+   - **ファイル数ベースの Phase 分割（旧250行制限は撤廃）**:
+     - **1〜4ファイル**: 1 Phase（1 Worker）で一括完遂させます。
+     - **5ファイル以上**: 1 Phase 最大4プロダクションファイル（テスト含め最大6ファイル）以下に分割し、非重複 Phase は同一ターン内で複数の `invoke_subagent(TypeName: "worker")` を並列発行します（差し戻し `Fix` も同様）。
+     - **15ファイル超（または 6 Phase 以上）**: 1タスクの Phase 上限（最大 5 Phase）を超えないよう、連番タスク（`TASK-XXXa`, `TASK-XXXb`）に分割します（`task-size-guard` により 6 Phase 以上・1 Phase 7ファイル以上・DONE タスクへの Phase 追記は物理遮断）。
+   - **Scout 委譲（6ファイル以上の調査のみ）**: 5ファイル以下は Planner 自前並列読込、6ファイル以上のみ `Scout`（`Model: "flash_lite"`、最大6ターン）へ委譲し、結果（`Target Line Map`）受領後に即 kill します（Planner による二重調査は禁止。詳細は `efficient-exploration.md` 参照）。
+   - **完了待ちのポーリング禁止**: `manage_subagents(Action: "list")` の 3 回連続呼び出しは `subagent-guard` により遮断されます。完了通知は自動到着するため、ツールを呼ばずにターンを終了して待機してください。
 3. **放置プロセスの即時回収**:
    - サブエージェントをバックグラウンドに放置したままセッションや親タスクを切り上げてはならない。
 

@@ -67,6 +67,20 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(resPerl.reason).toContain("'perl -i' is prohibited");
     });
 
+    test('denies file slicing or reading via sed, awk, cut', () => {
+      const resSedSlice = evaluateCommand("sed -n '50,200p' src/file.ts");
+      expect(resSedSlice.decision).toBe('deny');
+      expect(resSedSlice.reason).toContain("reading with 'sed' is prohibited");
+
+      const resAwk = evaluateCommand("awk '{print $1}' src/file.ts");
+      expect(resAwk.decision).toBe('deny');
+      expect(resAwk.reason).toContain("slicing with 'awk' is prohibited");
+
+      const resCut = evaluateCommand("cut -d ' ' -f 1 src/file.ts");
+      expect(resCut.decision).toBe('deny');
+      expect(resCut.reason).toContain("slicing with 'cut' is prohibited");
+    });
+
     test('denies shell redirection into source/config files', () => {
       const resRedir = evaluateCommand('echo "export const a = 1;" > src/a.ts');
       expect(resRedir.decision).toBe('deny');
@@ -90,6 +104,23 @@ describe('guard.ts Security & Token Guard Tests', () => {
       const res = evaluateCommand('cat README.md');
       expect(res.decision).toBe('allow');
       expect(res.overwrite?.CommandLine).toBe('rtk read README.md');
+    });
+
+    test('rewrites raw head with line limit to rtk read -m 1:N', () => {
+      const res1 = evaluateCommand('head -n 120 src/file.ts');
+      expect(res1.decision).toBe('allow');
+      expect(res1.overwrite?.CommandLine).toBe('rtk read -m 1:120 src/file.ts');
+
+      const res2 = evaluateCommand('head -50 src/file.ts');
+      expect(res2.decision).toBe('allow');
+      expect(res2.overwrite?.CommandLine).toBe('rtk read -m 1:50 src/file.ts');
+    });
+
+    test('denies tail and suggests ai:outline or view_file', () => {
+      const res = evaluateCommand('tail -n 120 src/file.ts');
+      expect(res.decision).toBe('deny');
+      expect(res.reason).toContain("'tail' is prohibited");
+      expect(res.reason).toContain('ai:outline');
     });
 
     test('rewrites raw grep to rtk grep', () => {
@@ -124,12 +155,27 @@ describe('guard.ts Security & Token Guard Tests', () => {
       );
     });
 
-    test('rewrites git status and git log to rtk git', () => {
+    test('rewrites git status, log, show, branch, stash, worktree to rtk git and git grep to rtk grep', () => {
       expect(evaluateCommand('git status').overwrite?.CommandLine).toBe(
         'rtk git status',
       );
       expect(evaluateCommand('git log -n 5').overwrite?.CommandLine).toBe(
         'rtk git log -n 5',
+      );
+      expect(evaluateCommand('git show HEAD').overwrite?.CommandLine).toBe(
+        'rtk git show HEAD',
+      );
+      expect(evaluateCommand('git branch -a').overwrite?.CommandLine).toBe(
+        'rtk git branch -a',
+      );
+      expect(evaluateCommand('git stash list').overwrite?.CommandLine).toBe(
+        'rtk git stash list',
+      );
+      expect(evaluateCommand('git worktree list').overwrite?.CommandLine).toBe(
+        'rtk git worktree list',
+      );
+      expect(evaluateCommand('git grep "foo" src').overwrite?.CommandLine).toBe(
+        'rtk grep "foo" src',
       );
     });
 
@@ -217,13 +263,13 @@ describe('guard.ts Security & Token Guard Tests', () => {
     });
 
     test('view_file transparently rewrites slicing for small files (<= 400 lines)', () => {
-      // token-filter.ts is 354 lines (<= 400 lines)
+      // safety-filter.ts is 282 lines (<= 400 lines)
       const resSliced = evaluatePayload({
         toolCall: {
           name: 'view_file',
           args: {
             AbsolutePath:
-              '/home/watter46/src/footics/.agents/hooks/guard/token-filter.ts',
+              '/home/watter46/src/footics/.agents/hooks/guard/safety-filter.ts',
             StartLine: 1,
             EndLine: 60,
           },
@@ -232,7 +278,7 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(resSliced.decision).toBe('allow');
       expect(resSliced.overwrite).toEqual({
         StartLine: 1,
-        EndLine: 355,
+        EndLine: 282,
       });
 
       // view_file without slice is allowed
@@ -303,7 +349,7 @@ describe('guard.ts Security & Token Guard Tests', () => {
           name: 'view_file',
           args: {
             AbsolutePath:
-              '"/home/watter46/src/footics/.agents/hooks/guard/token-filter.ts"',
+              '"/home/watter46/src/footics/.agents/hooks/guard/safety-filter.ts"',
             StartLine: '"1"',
             EndLine: '"60"',
           },
@@ -312,7 +358,7 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(res.decision).toBe('allow');
       expect(res.overwrite).toEqual({
         StartLine: 1,
-        EndLine: 355,
+        EndLine: 282,
       });
     });
   });
@@ -344,6 +390,16 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(res.reason).toContain('git diff --stat');
     });
 
+    test('denies git log -p and git log --patch', () => {
+      const res1 = evaluateCommand('git log -p -n 2 src/file.ts');
+      expect(res1.decision).toBe('deny');
+      expect(res1.reason).toContain("'git log -p'");
+
+      const res2 = evaluateCommand('rtk git log --patch -n 1');
+      expect(res2.decision).toBe('deny');
+      expect(res2.reason).toContain("'git log -p'");
+    });
+
     test('denies compressed rtk read on markdown / rules / config files', () => {
       const res1 = evaluateCommand('rtk read -m 10 README.md');
       expect(res1.decision).toBe('deny');
@@ -355,11 +411,27 @@ describe('guard.ts Security & Token Guard Tests', () => {
       expect(res2.decision).toBe('deny');
     });
 
-    test('denies rtk smart on critical agent rules', () => {
+    test('denies rtk smart on critical agent rules and tasks/', () => {
       const res = evaluateCommand(
         'rtk smart .agents/rules/coding-standards.md',
       );
       expect(res.decision).toBe('deny');
+      const resTask = evaluateCommand('rtk smart tasks/TASK-001.md');
+      expect(resTask.decision).toBe('deny');
+    });
+
+    test('denies file read / line count bypass commands (strings, nl, tac, od, xxd, base64, wc)', () => {
+      for (const cmd of [
+        'strings src/a.ts',
+        'nl src/a.ts',
+        'tac src/a.ts',
+        'od -c src/a.ts',
+        'xxd src/a.ts',
+        'base64 src/a.ts',
+        'wc -l src/a.ts',
+      ]) {
+        expect(evaluateCommand(cmd).decision).toBe('deny');
+      }
     });
 
     test('enforces scope on ai:reviewer:check', () => {

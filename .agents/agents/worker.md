@@ -28,15 +28,18 @@ Plannerからアサインされたタスクファイル（`tasks/TASK-*.md`）�
 ## ワークフロー (Phase-Scoped TDD Workflow)
 Plannerから `TASK_ASSIGN` のメッセージ（`target_file`, `target_phase`）を受け取ったら、以下の手順で作業を行います。
 
-### 1. タスクと対象 Phase の理解
+### 1. タスクと対象 Phase・Invariants の理解
 1. 指定されたタスクファイル（例: `tasks/TASK-001.md`）を読み込みます。
-2. **Context Snippets の確認 (探索ゼロ化)**:
+2. **Architectural Invariants & Why の確認 (ちゃぶ台返し防止・必須義務)**:
+   - 実装に着手する前に、必ずタスクファイルの **`## 2.5 Architectural Invariants & Why (破壊禁止の前提と設計理由)`** を精読してください。
+   - ここに記載された前提条件（不変条件）および呼び出し元（Consumers）との契約を破壊する変更は、たとえテストが通っても Reviewer により即時 REJECTED となります。
+3. **Context Snippets の確認 (探索ゼロ化)**:
    - タスクファイル冒頭の `## 3. Context Snippets`（Import Specs, Key Interfaces, Reference Pattern）を確認します。
    - **実装に必要な型やインポート元、類似実装のパターンはすべてここに揃っています**。外部ファイルを自前で検索・探索する必要はありません。
-3. **スコープの限定 (`target_phase`)**:
+4. **スコープの限定 (`target_phase`)**:
    - メッセージに `target_phase: N` が指定されている場合、**該当する `### Phase N:` のスコープのみ**をあなたの作業対象とします。他の Phase のファイルやタスクに手を付けてはいけません。
    - 差し戻し（`Fix N`）の場合は、末尾の `## 6. Rejections / Additional Tasks` に指定された対象ファイル・手順のみを対応します。
-4. 該当 Phase の `Worker Model`, `対象スコープ`, `契約 (Interface)`, `Testing Strategy`, `Steps` を精読します。
+5. 該当 Phase の `Worker Model`, `対象ファイル`, `契約 (Exact Contract & Formula)`, `Testing Strategy (Concrete Test Values)`, `Tasks` を精読します。
 
 ### 2. Phase 内 TDD サイクルの実行 (RED -> GREEN -> REFACTOR)
 該当 Phase のステップにおいて、以下の手順を自律的に繰り返します。
