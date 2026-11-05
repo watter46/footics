@@ -4,10 +4,6 @@
  */
 
 export {
-  AnnotationLayer,
-  type AnnotationLayerProps,
-} from './components/AnnotationLayer';
-export {
   BackgroundImageLayer,
   type BackgroundImageLayerProps,
 } from './components/BackgroundImageLayer';
@@ -53,10 +49,6 @@ export {
   type CanvasStageViewProps,
 } from './components/canvas-stage';
 export {
-  DrawingPreviewLayer,
-  type DrawingPreviewLayerProps,
-} from './components/DrawingPreviewLayer';
-export {
   HtmlHudOverlay,
   type HtmlHudOverlayProps,
 } from './components/HtmlHudOverlay';
@@ -83,10 +75,6 @@ export {
   PlayerConnectLines,
   type PlayerConnectLinesProps,
 } from './components/PlayerConnectLines';
-export {
-  PlayerLayer,
-  type PlayerLayerProps,
-} from './components/PlayerLayer';
 export * from './components/toolbar';
 export {
   ViewportCropOverlay,

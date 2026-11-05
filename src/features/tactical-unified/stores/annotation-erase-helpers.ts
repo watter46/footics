@@ -1,5 +1,8 @@
+import {
+  distToSegment,
+  isPointInPolygon,
+} from '@/features/tactical-unified/core/utils/geometry';
 import type { Slide } from '@/lib/types/tactical-unified';
-import { distToSegment, isPointInPolygon } from './tactical-geometry-helpers';
 
 /**
  * 消しゴムツール: 指定座標と半径に基づき、スライド内の矢印・ゾーン・テキストおよび選手描画オプションを消去する。

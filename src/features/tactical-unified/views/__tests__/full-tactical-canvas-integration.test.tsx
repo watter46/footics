@@ -1,8 +1,8 @@
 import { act, render, waitFor } from '@testing-library/react';
 import Konva from 'konva';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { calculatePitchRect } from '@/features/tactical-unified/core';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { getPitchRectNormalized } from '@/lib/tactical/pitch-stage-mapping';
 import {
   ASPECT_RATIOS,
   createDefaultPlayer,
@@ -119,12 +119,25 @@ describe('FullTacticalCanvas integration', () => {
       </div>,
     );
     await waitFor(() => {
-      expect(useTacticalUnifiedStore.getState().stageAspect).toBeCloseTo(4 / 5);
+      expect(useTacticalUnifiedStore.getState().stageAspect).toBeCloseTo(
+        16 / 9,
+      );
     });
 
     const insidePitch = () => {
       const s = useTacticalUnifiedStore.getState();
-      const rect = getPitchRectNormalized(s.stageAspect, s.project.aspectRatio);
+      const stageW = 100 * (s.stageAspect ?? 1);
+      const stageH = 100;
+      const rawRect = calculatePitchRect(
+        { width: stageW, height: stageH },
+        s.project.aspectRatio,
+      );
+      const rect = {
+        x: (rawRect.x / stageW) * 100,
+        y: (rawRect.y / stageH) * 100,
+        width: (rawRect.width / stageW) * 100,
+        height: (rawRect.height / stageH) * 100,
+      };
       const slide = s.project.slides.find((sl) => sl.id === s.activeSlideId);
       const pitchPlayers = (slide?.players ?? []).filter(
         (p) => p.area === 'pitch',
@@ -170,7 +183,7 @@ describe('FullTacticalCanvas integration', () => {
       expect(lastStage().find('Group').length).toBeGreaterThan(0);
     });
 
-    // dragBoundFunc: キャンバス (0..width, 0..height) 外へはみ出さない
+    // dragBoundFunc: 16:9 スクリーン境界外へはみ出さない
     const node = lastStage()
       .find('Group')
       .find((g) => g.draggable());
@@ -178,11 +191,11 @@ describe('FullTacticalCanvas integration', () => {
     const bound = node.dragBoundFunc();
     expect(bound?.call(node, { x: -300, y: 9999 }, null as never)).toEqual({
       x: 0,
-      y: 600,
+      y: 581.25,
     });
     expect(bound?.call(node, { x: 5000, y: -5 }, null as never)).toEqual({
       x: 1000,
-      y: 0,
+      y: 18.75,
     });
 
     // ストア更新ではピッチ外余白座標をそのまま保持する

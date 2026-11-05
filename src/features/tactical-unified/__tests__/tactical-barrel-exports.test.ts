@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as TacticalBarrel from '@/features/tactical-unified';
+import * as CoreBarrel from '@/features/tactical-unified/core';
 import * as ToolbarBarrel from '@/features/tactical-unified/panels/toolbar';
 
 describe('Tactical Unified Barrel Exports', () => {
@@ -24,5 +25,13 @@ describe('Tactical Unified Barrel Exports', () => {
     const toolbar = ToolbarBarrel as Record<string, unknown>;
     expect(toolbar['BoundaryBoxHud']).toBeUndefined();
     expect(toolbar['BoundaryBoxTiltControls']).toBeUndefined();
+  });
+
+  it('should not export dead layer symbols from core barrel', () => {
+    const core = CoreBarrel as Record<string, unknown>;
+    expect(core['AnnotationLayer']).toBeUndefined();
+    expect(core['DrawingPreviewLayer']).toBeUndefined();
+    expect(core['PlayerLayer']).toBeUndefined();
+    expect(core['BallLayer']).toBeUndefined();
   });
 });

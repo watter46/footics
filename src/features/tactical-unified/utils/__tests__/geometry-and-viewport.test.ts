@@ -1,10 +1,40 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_PITCH_PERSPECTIVE as TRANSFORM_PERSPECTIVE } from '../../core/utils/canvas-pitch-transform-helper';
+import { DEFAULT_PITCH_PERSPECTIVE as SCREEN_PERSPECTIVE } from '../../core/utils/canvas-screen-coordinates';
 import {
+  distToSegment,
+  isPointInPolygon,
   pointerToNormalizedCoord,
   resolveBoundaryBoxPixelRect,
 } from '../../core/utils/geometry';
 
 describe('geometry-and-viewport', () => {
+  describe('DEFAULT_PITCH_PERSPECTIVE unification', () => {
+    it('re-exports DEFAULT_PITCH_PERSPECTIVE correctly and matches screen coordinates constant', () => {
+      expect(TRANSFORM_PERSPECTIVE).toBe(1200);
+      expect(TRANSFORM_PERSPECTIVE).toBe(SCREEN_PERSPECTIVE);
+    });
+  });
+
+  describe('isPointInPolygon & distToSegment', () => {
+    it('isPointInPolygon correctly determines if point is inside polygon', () => {
+      const square = [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 100 },
+        { x: 0, y: 100 },
+      ];
+      expect(isPointInPolygon({ x: 50, y: 50 }, square)).toBe(true);
+      expect(isPointInPolygon({ x: 150, y: 50 }, square)).toBe(false);
+    });
+
+    it('distToSegment calculates distance from point to segment', () => {
+      expect(
+        distToSegment({ x: 5, y: 10 }, { x: 0, y: 0 }, { x: 10, y: 0 }),
+      ).toBe(10);
+    });
+  });
+
   describe('resolveBoundaryBoxPixelRect', () => {
     it('always uses pitchRect (16:9 screen vRect) as base coordinate frame', () => {
       const pitchRect = { x: 100, y: 50, width: 800, height: 450 };

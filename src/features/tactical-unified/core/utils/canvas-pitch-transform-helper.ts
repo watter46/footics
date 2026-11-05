@@ -15,7 +15,7 @@ export interface PitchTransformValues {
   scaleY: number;
 }
 
-export const DEFAULT_PITCH_PERSPECTIVE = 1200;
+export { DEFAULT_PITCH_PERSPECTIVE } from './canvas-screen-coordinates';
 export const DEFAULT_PITCH_TRANSFORM_ORIGIN = '50% 50%';
 
 /**

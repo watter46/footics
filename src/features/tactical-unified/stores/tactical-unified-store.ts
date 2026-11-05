@@ -11,6 +11,10 @@ import { temporal } from 'zundo';
 import { useStore } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { createStore } from 'zustand/vanilla';
+import {
+  distToSegment,
+  isPointInPolygon,
+} from '@/features/tactical-unified/core/utils/geometry';
 import { ensureTacticalProject } from '@/lib/types/tactical-unified';
 import {
   type AnnotationSlice,
@@ -33,7 +37,6 @@ import {
   recordHistory,
   updateSlideInProject,
 } from './store-helpers';
-import { distToSegment, isPointInPolygon } from './tactical-geometry-helpers';
 import {
   type selectActivePhase,
   type selectActivePhaseSlides,

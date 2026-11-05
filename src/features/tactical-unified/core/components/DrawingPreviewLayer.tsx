@@ -8,10 +8,7 @@ import {
   Ellipse as KonvaEllipse,
   Line as KonvaLine,
   Rect as KonvaRect,
-  Layer,
 } from 'react-konva';
-import type { SelectionBox } from '../hooks/use-canvas-selection-box';
-import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { DrawingPreviewState } from '../types';
 import {
   getDrawingToolBehavior,
@@ -29,9 +26,13 @@ export interface PreviewShapeRenderContext {
   strokeWidth: number;
 }
 
+export type PreviewShapeRenderer = (
+  ctx: PreviewShapeRenderContext,
+) => ReactNode;
+
 export const PREVIEW_SHAPE_RENDERERS: Record<
   PreviewShapeKind,
-  (ctx: PreviewShapeRenderContext) => ReactNode
+  PreviewShapeRenderer
 > = {
   line: ({ sPxX, sPxY, cPxX, cPxY, color, strokeWidth }) => (
     <KonvaLine
@@ -182,52 +183,5 @@ export function renderDrawingPreviewNode(
         />
       )}
     </Group>
-  );
-}
-
-export interface DrawingPreviewLayerProps {
-  width: number;
-  height: number;
-  selectionBox?: SelectionBox | null;
-  activePolygonId?: string | null;
-  mousePreviewPos?: { x: number; y: number } | null;
-}
-
-export function DrawingPreviewLayer({
-  width,
-  height,
-  selectionBox,
-}: DrawingPreviewLayerProps): ReactNode {
-  const drawingPreview = useCanvasStore((s) => s.drawingPreview);
-  const color = useCanvasStore((s) => s.color);
-  const strokeWidth = useCanvasStore((s) => s.strokeWidth);
-
-  return (
-    <Layer listening={false}>
-      {/* 範囲選択矩形 */}
-      {selectionBox && (
-        <KonvaRect
-          x={Math.min(selectionBox.startX, selectionBox.currentX)}
-          y={Math.min(selectionBox.startY, selectionBox.currentY)}
-          width={Math.abs(selectionBox.currentX - selectionBox.startX)}
-          height={Math.abs(selectionBox.currentY - selectionBox.startY)}
-          fill="rgba(56, 189, 248, 0.12)"
-          stroke="#38bdf8"
-          strokeWidth={1}
-          dash={[4, 3]}
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      )}
-
-      {/* 描画プレビュー */}
-      {renderDrawingPreviewNode(
-        drawingPreview,
-        width,
-        height,
-        color,
-        strokeWidth,
-      )}
-    </Layer>
   );
 }

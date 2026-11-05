@@ -5,7 +5,7 @@ import { useCallback } from 'react';
 import {
   downloadBlob,
   exportPngBlob as exportPngBlobHelper,
-} from '@/features/tactical-unified/hooks/konva-export-helpers';
+} from '../utils/canvas-export-primitives';
 import { resolveBoundaryBoxPixelRect } from '../utils/geometry';
 import { useCanvasStore } from './use-canvas-store';
 
