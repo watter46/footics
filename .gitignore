@@ -62,10 +62,13 @@ next-env.d.ts
 *.swo
 
 # Match data (large JSON files)
+data/
 public/data/
 public/national_data/
 public/preview/
 public/static/
+public/screenshots/
+notes/
 upload/
 .open-next/
 .wrangler/
