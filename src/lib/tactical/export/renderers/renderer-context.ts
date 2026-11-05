@@ -249,7 +249,15 @@ export function createFrameRenderContext({
     norm100Y: number,
   ): { x: number; y: number } => {
     if (m) {
-      return project3D(norm100X, norm100Y);
+      const pitchNormX =
+        ((norm100X - (outerPitchRect.x / baseWidth) * 100) /
+          ((outerPitchRect.width / baseWidth) * 100)) *
+        100;
+      const pitchNormY =
+        ((norm100Y - (outerPitchRect.y / baseHeight) * 100) /
+          ((outerPitchRect.height / baseHeight) * 100)) *
+        100;
+      return project3DPoint(m, pitchNormX, pitchNormY, baseWidth, baseHeight);
     }
     return { x: toScreenX(norm100X), y: toScreenY(norm100Y) };
   };

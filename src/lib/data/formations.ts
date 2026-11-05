@@ -1,8 +1,5 @@
-import { calculateNormalizedPitchBounds } from '@/lib/tactical/pitch-geometry';
-import {
-  type AspectRatio,
-  isHorizontalAspectRatio,
-} from '@/lib/types/tactical/primitives';
+import { getScreenPitchBounds } from '@/lib/tactical/pitch-geometry';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
 
 export type FormationPosition = {
   id: number;
@@ -198,19 +195,18 @@ export function getFormationActualPos(
   const attackRatio = isAway ? 1 - depthRatio : depthRatio;
   const widthRatio = isAway ? (100 - clampedLeft) / 100 : clampedLeft / 100;
 
-  const bounds = calculateNormalizedPitchBounds();
-  const isHorizontal = isHorizontalAspectRatio(aspectRatio);
+  const bounds = getScreenPitchBounds(aspectRatio);
 
-  if (isHorizontal) {
+  if (bounds.isHorizontal) {
     return {
-      x: bounds.xMin + attackRatio * bounds.pitchWidth,
-      y: bounds.yMin + (1 - widthRatio) * bounds.pitchHeight,
+      x: bounds.xMin + attackRatio * bounds.xSpan,
+      y: bounds.yMin + (1 - widthRatio) * bounds.ySpan,
     };
   }
 
   return {
-    x: bounds.xMin + widthRatio * bounds.pitchWidth,
-    y: bounds.yMax - attackRatio * bounds.pitchHeight,
+    x: bounds.xMin + widthRatio * bounds.xSpan,
+    y: bounds.yMax - attackRatio * bounds.ySpan,
   };
 }
 

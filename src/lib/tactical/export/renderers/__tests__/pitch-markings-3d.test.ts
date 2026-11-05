@@ -129,4 +129,51 @@ describe('renderPitchMarkings3D - Vertical Pitch Proportion & Dual Scaling Elimi
     // tilt 30度でも手前側の横幅は 700px 以上を維持（二重縮小なら 400px 未満に潰れる）
     expect(renderedWidth).toBeGreaterThan(700);
   });
+
+  it('3. 正面 (tilt: 0, yaw: 90) の 2D スクリーン座標と 3D 投影座標が同一点になり完全一致すること', () => {
+    const { ctx } = createMockContext();
+    const pitchTransform = {
+      tilt: 0,
+      yaw: 90,
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+      isLocked: false,
+    };
+    const mvpMatrix = new Float32Array(
+      buildExportMVPMatrix(pitchTransform, w, h, aspectRatio),
+    );
+
+    const frameCtx2D = createFrameRenderContext({
+      ctx,
+      baseWidth: w,
+      baseHeight: h,
+      aspectRatio,
+      mvpMatrix: null,
+    });
+
+    const frameCtx3D = createFrameRenderContext({
+      ctx,
+      baseWidth: w,
+      baseHeight: h,
+      aspectRatio,
+      mvpMatrix,
+    });
+
+    // 4:5 における代表的な選手座標群 (norm100X, norm100Y)
+    const testPoints = [
+      { x: 50, y: 50 }, // センターサークル
+      { x: 37.31, y: 30 }, // 4:5 LW (xMin ≈ 28.85% の内側)
+      { x: 62.69, y: 30 }, // 4:5 RW
+      { x: 50, y: 97 }, // Home GK (ゴールライン上)
+    ];
+
+    for (const pt of testPoints) {
+      const p2d = frameCtx2D.projectObjToScreen(pt.x, pt.y);
+      const p3d = frameCtx3D.projectObjToScreen(pt.x, pt.y);
+
+      expect(p3d.x).toBeCloseTo(p2d.x, 1);
+      expect(p3d.y).toBeCloseTo(p2d.y, 1);
+    }
+  });
 });

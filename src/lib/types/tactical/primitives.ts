@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { calculateNormalizedPitchBounds } from '@/lib/tactical/pitch-geometry';
+import { getScreenPitchBounds } from '@/lib/tactical/pitch-geometry';
 
 // ─────────────────────────────────────────
 // § 1. Primitives
@@ -71,39 +71,29 @@ export function transformCoord(
     };
   }
 
-  const fromOrient = getAspectRatioOrientation(from);
-  const toOrient = getAspectRatioOrientation(to);
-
-  // 同一オリエンテーション（垂直同士 4:5 ↔ 9:16 ↔ 1:1、または水平同士）は正規化座標をそのまま維持
-  if (fromOrient === toOrient) {
-    return {
-      x: shouldClamp ? Math.max(0, Math.min(100, point.x)) : point.x,
-      y: shouldClamp ? Math.max(0, Math.min(100, point.y)) : point.y,
-    };
-  }
-
-  const bounds = calculateNormalizedPitchBounds();
+  const fromBounds = getScreenPitchBounds(from);
+  const toBounds = getScreenPitchBounds(to);
 
   let attackNorm: number;
   let widthNorm: number;
 
-  if (fromOrient === 'horizontal') {
-    attackNorm = (point.x - bounds.xMin) / bounds.pitchWidth;
-    widthNorm = 1 - (point.y - bounds.yMin) / bounds.pitchHeight;
+  if (fromBounds.isHorizontal) {
+    attackNorm = (point.x - fromBounds.xMin) / fromBounds.xSpan;
+    widthNorm = 1 - (point.y - fromBounds.yMin) / fromBounds.ySpan;
   } else {
-    attackNorm = (bounds.yMax - point.y) / bounds.pitchHeight;
-    widthNorm = (point.x - bounds.xMin) / bounds.pitchWidth;
+    attackNorm = (fromBounds.yMax - point.y) / fromBounds.ySpan;
+    widthNorm = (point.x - fromBounds.xMin) / fromBounds.xSpan;
   }
 
   let nx: number;
   let ny: number;
 
-  if (toOrient === 'horizontal') {
-    nx = bounds.xMin + attackNorm * bounds.pitchWidth;
-    ny = bounds.yMin + (1 - widthNorm) * bounds.pitchHeight;
+  if (toBounds.isHorizontal) {
+    nx = toBounds.xMin + attackNorm * toBounds.xSpan;
+    ny = toBounds.yMin + (1 - widthNorm) * toBounds.ySpan;
   } else {
-    nx = bounds.xMin + widthNorm * bounds.pitchWidth;
-    ny = bounds.yMax - attackNorm * bounds.pitchHeight;
+    nx = toBounds.xMin + widthNorm * toBounds.xSpan;
+    ny = toBounds.yMax - attackNorm * toBounds.ySpan;
   }
 
   return {

@@ -215,7 +215,7 @@ describe('Phase 1: TacticalPhase & Single Coordinate System', () => {
     });
 
     it('calculates vertical (4:5) formation positions (Home bottom, Away top)', () => {
-      const bounds = calculateNormalizedPitchBounds();
+      const bounds = getScreenPitchBounds('4:5');
       // Home GK (top=100, left=50) -> x ≈ xMid, y ≈ yMax
       const homeGK = getFormationActualPos(100, 50, false, '4:5');
       expect(homeGK.x).toBeCloseTo(bounds.xMid, 1);
@@ -237,12 +237,14 @@ describe('Phase 1: TacticalPhase & Single Coordinate System', () => {
       expect(awayFW.y).toBeCloseTo(bounds.yMax, 1);
     });
 
-    it('places wide players near pitch edges without shrink in 4:5', () => {
-      // left=10 -> x ≈ 12.4, left=90 -> x ≈ 87.6
+    it('places wide players within pitch boundary box in 4:5', () => {
+      // bounds: xMin ≈ 28.85, xMax ≈ 71.15, span ≈ 42.3
+      // left=10 -> x ≈ 28.85 + 0.1 * 42.3 = 33.08
+      // left=90 -> x ≈ 28.85 + 0.9 * 42.3 = 66.92
       const leftWinger = getFormationActualPos(50, 10, false, '4:5');
       const rightWinger = getFormationActualPos(50, 90, false, '4:5');
-      expect(leftWinger.x).toBeCloseTo(12.4, 1);
-      expect(rightWinger.x).toBeCloseTo(87.6, 1);
+      expect(leftWinger.x).toBeCloseTo(33.08, 1);
+      expect(rightWinger.x).toBeCloseTo(66.92, 1);
     });
 
     it('delegates getFormationActualPosVertical to 4:5', () => {
@@ -262,31 +264,39 @@ describe('Phase 1: TacticalPhase & Single Coordinate System', () => {
       expect(back169.y).toBeCloseTo(orig.y, 1);
     });
 
-    it('preserves normalized coordinates across vertical aspect ratios (4:5 <-> 9:16 <-> 1:1)', () => {
-      const point = { x: 15, y: 80 };
+    it('preserves tactical position on round-trip across vertical aspect ratios (4:5 <-> 9:16 <-> 1:1)', () => {
+      // 4:5 center spot: x = 50, y = 50
+      const point = { x: 50, y: 50 };
       const to916 = transformCoord(point, '4:5', '9:16');
-      expect(to916.x).toBeCloseTo(15, 2);
-      expect(to916.y).toBeCloseTo(80, 2);
+      expect(to916.x).toBeCloseTo(50, 1);
+      expect(to916.y).toBeCloseTo(50, 1);
 
       const to11 = transformCoord(to916, '9:16', '1:1');
-      expect(to11.x).toBeCloseTo(15, 2);
-      expect(to11.y).toBeCloseTo(80, 2);
+      expect(to11.x).toBeCloseTo(50, 1);
+      expect(to11.y).toBeCloseTo(50, 1);
 
       const back45 = transformCoord(to11, '1:1', '4:5');
-      expect(back45.x).toBeCloseTo(15, 2);
-      expect(back45.y).toBeCloseTo(80, 2);
+      expect(back45.x).toBeCloseTo(50, 1);
+      expect(back45.y).toBeCloseTo(50, 1);
     });
 
-    it('transforms tactical coordinates between 16:9 and 4:5 without width compression', () => {
-      const leftWinger169 = { x: 50, y: 3 };
-      const converted45 = transformCoord(leftWinger169, '16:9', '4:5');
-      expect(converted45.x).toBeCloseTo(97, 1);
-      expect(converted45.y).toBeCloseTo(50, 1);
+    it('transforms tactical coordinates between 16:9 and 4:5 within respective screen pitch bounds', () => {
+      const b169 = getScreenPitchBounds('16:9');
+      const b45 = getScreenPitchBounds('4:5');
 
-      const rightWinger169 = { x: 50, y: 97 };
-      const converted45RW = transformCoord(rightWinger169, '16:9', '4:5');
-      expect(converted45RW.x).toBeCloseTo(3, 1);
-      expect(converted45RW.y).toBeCloseTo(50, 1);
+      // Right touchline at halfway line in 16:9: x = 50, y = 3 (yMin)
+      const rightTouchline169 = { x: b169.xMid, y: b169.yMin };
+      const converted45 = transformCoord(rightTouchline169, '16:9', '4:5');
+      // In 4:5 vertical, right touchline is xMax, halfway line is yMid
+      expect(converted45.x).toBeCloseTo(b45.xMax, 1);
+      expect(converted45.y).toBeCloseTo(b45.yMid, 1);
+
+      // Left touchline at halfway line in 16:9: x = 50, y = 97 (yMax)
+      const leftTouchline169 = { x: b169.xMid, y: b169.yMax };
+      const converted45Left = transformCoord(leftTouchline169, '16:9', '4:5');
+      // In 4:5 vertical, left touchline is xMin, halfway line is yMid
+      expect(converted45Left.x).toBeCloseTo(b45.xMin, 1);
+      expect(converted45Left.y).toBeCloseTo(b45.yMid, 1);
     });
 
     it('does not clamp coordinates when clamp is false', () => {
