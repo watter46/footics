@@ -165,12 +165,16 @@ export function getFormationActualPos(
   let top: number;
   let left: number;
   let isAway: boolean;
+  let mode: FormationMode = 'full';
   let aspectRatio: AspectRatio = '16:9';
 
   if (typeof arg1 === 'object') {
     top = arg1.top;
     left = arg1.left;
     isAway = arg2 === 'away';
+    if (arg3 === 'half' || arg3 === 'full') {
+      mode = arg3;
+    }
     if (typeof arg4 === 'string') {
       aspectRatio = arg4;
     }
@@ -186,7 +190,8 @@ export function getFormationActualPos(
   const clampedTop = Math.max(0, Math.min(100, top));
   const clampedLeft = Math.max(0, Math.min(100, left));
 
-  const depthRatio = ((100 - clampedTop) / 100) * 0.5;
+  const depthFactor = mode === 'half' ? 0.5 : 1.0;
+  const depthRatio = ((100 - clampedTop) / 100) * depthFactor;
   const attackRatio = isAway ? 1 - depthRatio : depthRatio;
   const widthRatio = isAway ? (100 - clampedLeft) / 100 : clampedLeft / 100;
 

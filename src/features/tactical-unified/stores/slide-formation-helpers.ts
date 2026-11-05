@@ -33,10 +33,8 @@ export function buildTeamFormationPlayers(
   const isVertical = isVerticalAspectRatio(aspectRatio);
   const pitchPlayers: Player[] = [];
   positions.forEach((pos, idx) => {
-    const rawPos = getFormationActualPos(pos, team, mode);
-    let targetPos = isVertical
-      ? transformCoord(rawPos, '16:9', aspectRatio)
-      : rawPos;
+    const rawPos = getFormationActualPos(pos, team, mode, aspectRatio);
+    let targetPos = rawPos;
 
     // GK 位置の最適化（ゴールライン直前・中央）
     if (pos.position === 'GK') {
