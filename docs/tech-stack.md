@@ -33,18 +33,18 @@
 |-----------|---------|------|
 | Konva.js | ^10.3.0 | 戦術ボードのキャンバスエンジン |
 | react-konva | ^19.2.5 | Konva の React バインディング |
-| `gl-matrix` | ^3.4.4 | 3段階座標変換（`worldToScreen` / `screenToWorld`）およびカメラ透視投影行列計算 |
+| `gl-matrix` | ^3.4.4 | 4層単一座標系（`16:9` 固定スクリーン `0〜100`、`src/lib/tactical/pitch-geometry.ts` の `calculatePitchRect` / `getScreenOuterPitchRect` / `getScreenPitchBounds`、`src/features/tactical-unified/core/utils/canvas-screen-coordinates.ts` の3D透視投影行列、`src/features/tactical-unified/core/utils/geometry.ts` の境界線・幾何計算） |
 | `gsap` + `@gsap/react` | ^3.15.0 | タイムライン連続再生・シーク・イージング制御（`gsap.timeline()`, `gsap.parseEase()`、`timeline.kill()` RAII徹底）、およびカメラ操作の補間（自前RAFループ・自前イージング計算は全廃） |
 
 > **[!IMPORTANT]**
-> 戦術ボードのエディタ実装は Konva を前提とし、以下の **5層レイヤーアーキテクチャ** に厳格に分離する：
+> 戦術ボードのエディタ実装は Konva を前提とし、以下の **4層単一座標系・レイヤーアーキテクチャ** に厳格に分離する：
 > 1. `PitchGroundLayer`: 地面・ピッチ白線枠（サイアン `#38bdf8` / 大理石テクスチャ）、ゾーン、矢印、ルートルート線、直線、コネクタ、ゴースト軌道
-> 2. `BillboardObjectLayer`: 選手マーカー（2Dサークル/3D足元リング）、ボール、テキスト（スクリーンY座標による深さソート `sortBillboardItemsByDepth` 適用）
-> 3. `InteractionPreviewLayer`: 作図プレビュー図形、範囲選択ボックス、選択ハイライト枠（純粋描画時は非表示）
+> 2. `BillboardObjectLayer`: 選手マーカー（2Dサークル/3D足元リング、顔写真WebP対応）、ボール、テキスト（スクリーンY座標による深さソート `sortBillboardItemsByDepth` 適用）
+> 3. `InteractionPreviewLayer`: 作図プレビュー図形、範囲選択ボックス、選択ハイライト枠（`DrawingPreviewLayer.tsx` の純粋レンダラー関数使用、純粋描画時は非表示）
 > 4. `ViewportCropOverlay`: 画面基準の境界線枠（BoundaryBox）と外側マスク
 > 5. `HtmlHudOverlay`: オブジェクトオプション（ContextHud）、境界線オプション、インラインテキストエディタ
 > 
-> ※3Dスプリットプレビューワークスペースおよび動画エクスポート（Off-Thread Web Worker）では、高解像度描画およびパフォーマンス最適化のため純粋な Canvas 2D API（`tactical-frame-renderer`）を使用する。
+> ※3Dレイアウトプレビューワークスペース（Layout Mode）および動画エクスポート（Off-Thread Web Worker）では、高解像度描画およびパフォーマンス最適化のため純粋な Canvas 2D API（`tactical-frame-renderer`）を使用し、`16:9` 正規描画後にフェーズの `boundaryBox`（`resolveBoundaryBoxPixelRect`）で正確にクロップする。
 
 ### 状態管理
 
@@ -130,6 +130,8 @@ footics/
 │   │   ├── national-dashboard/     # 代表戦ダッシュボード
 │   │   ├── sidebar/                # サイドバー
 │   │   ├── tactical-unified/       # 戦術ボード（メイン機能）
+│   │   │   ├── core/store/         # キャンバス専用ストア（canvas-store.ts）
+│   │   │   └── stores/             # 戦術ボードメインストア（tactical-unified-store.ts）
 │   │   └── teams/                  # チーム・選手管理
 │   │
 │   ├── hooks/                      # カスタム React Hooks
@@ -141,7 +143,8 @@ footics/
 │   │   ├── data/                   # フォーメーション・ピッチ座標・戦術ユーティリティ
 │   │   ├── db/                     # Dexie.js スキーマ・クエリ関数
 │   │   ├── features/               # 機能ロジック（memo-overlay 等）
-│   │   └── tactical/               # 戦術ボード計算・座標変換・チェルシープリセット
+│   │   ├── tactical/               # 戦術ボード計算・幾何変換（pitch-geometry.ts 等）
+│   │   └── types/tactical/         # 戦術ボード型定義（モジュール分割構成）
 │   │
 │   ├── registry/                   # イベント定義レジストリ
 │   │   └── events/
@@ -149,10 +152,8 @@ footics/
 │   ├── services/                   # 外部サービス・ドメインサービス層
 │   │   └── event-filter.ts
 │   │
-│   ├── stores/                     # Zustand ストア
-│   │   ├── tactical-unified-store.ts   # 戦術ボードのメインストア（11スライス）
-│   │   ├── ui-store.ts
-│   │   └── pilotStore.ts           # ⚠️ 削除予定（デモ用）
+│   ├── stores/                     # 共通 Zustand ストア（ui-store.ts 等）
+│   │   └── ui-store.ts
 │   │
 │   └── types/                      # TypeScript 型定義
 │       └── index.ts

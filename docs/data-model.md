@@ -14,8 +14,8 @@
 | **データベース** | Dexie.js (IndexedDB) のみ。サーバー DB なし |
 | **DB 名** | `footics_db` |
 | **現行スキーマバージョン** | v1（レガシー履歴・死にテーブルを撤廃しクリーン再設計） |
-| **バリデーション** | `src/lib/schema.ts` / `src/lib/types/tactical-unified.ts` の Zod スキーマ |
-| **主要型定義ファイル** | `src/types/index.ts`（試合データ系）、`src/lib/types/tactical-unified.ts`（戦術ボード系） |
+| **バリデーション** | `src/lib/schema.ts` / `src/lib/types/tactical/`（Zod スキーマ群） |
+| **主要型定義ファイル** | `src/types/index.ts`（試合データ系）、`src/lib/types/tactical/`（モジュール分割構成）およびバレル `src/lib/types/tactical-unified.ts`（戦術ボード系） |
 
 > **[!WARNING]**
 > `footics_db` は `version(1)` へクリーン再設計されています（死にテーブル `tactical_snapshots`, `event_memos` は完全撤去）。
@@ -222,19 +222,19 @@ type PlayerPhoto = {
 
 ## 4. 戦術ボード系エンティティ
 
-型定義ファイル: [`src/lib/types/tactical-unified.ts`](file:///home/watter46/src/footics/src/lib/types/tactical-unified.ts)（912行、Contract-First Zod スキーマ）
+型定義ファイル: モジュール分割構成 [`src/lib/types/tactical/`](file:///home/watter46/src/footics/src/lib/types/tactical/)（`primitives.ts`, `project.ts`, `slide.ts`, `player.ts`, `annotations.ts`, `ball.ts`, `formations.ts`, `capture.ts`, `factory.ts`, `migration.ts`）およびバレル [`src/lib/types/tactical-unified.ts`](file:///home/watter46/src/footics/src/lib/types/tactical-unified.ts)（Contract-First Zod スキーマ）
 
 ### 4-1. TacticalProject（プロジェクト全体）
 
 ```typescript
-// Zod スキーマから導出 (Phase 構造化 v2.0.0)
+// Zod スキーマから導出 (Phase 構造化 v2.0.0, TASK-154〜161)
 type TacticalProject = {
   id: string;
   version: '2.0.0';
   title?: string;
   createdAt: string;      // ISO 8601
   updatedAt: string;
-  aspectRatio: AspectRatio;                   // '16:9' | '9:16' | '4:5' | '1:1'
+  aspectRatio: AspectRatio;                   // デフォルト '16:9' ('16:9' | '9:16' | '4:5' | '1:1')
   backgroundType: 'pitch' | 'image' | 'blank';
   backgroundImageUrl?: string;
   pitchAppearance?: PitchAppearanceConfig;    // ピッチ外観（solid / marble、ライン設定）
@@ -251,13 +251,15 @@ type TacticalProject = {
   tags: string[];
   thumbnail?: string;
   screenshotSourceUrl?: string;
-  boundaryBox?: BoundaryBox;
+  boundaryBox?: BoundaryBox;                  // デフォルト DEFAULT_BOUNDARY_BOX_16_9 (visible: false)
   readonly slides: Slide[];                   // activePhaseId のスライドを指す仮想非列挙 getter
 }
 
 type TacticalPhase = {
   id: string;
   name: string;                               // フェーズ名 (1〜200文字)
+  aspectRatio: AspectRatio;                   // フェーズ単位のアスペクト比（デフォルト '16:9'）
+  boundaryBox: BoundaryBox;                   // フェーズ単位の境界線枠（デフォルト DEFAULT_BOUNDARY_BOX_16_9, visible: false）
   slides: Slide[];                            // スライド配列（最低1枚）
 }
 ```
@@ -312,7 +314,7 @@ type PitchAppearanceConfig = {
 
 ### 4-3. キャンバスオブジェクト
 
-**座標系**: すべて正規化座標 `(0.0 ～ 100.0)`。アスペクト比変換は `transformCoord()` で実施。
+**座標系**: すべて `16:9` 固定スクリーン基準の正規化単一座標 `(0.0 ～ 100.0)`。選手・ボールは `[0, 100]` にクランプされ（白線外余白は配置可）、矢印・ゾーン・テキストは `allowOverflow: true` により範囲外配置も許容。アスペクト比変換は `getScreenPitchBounds` に基づく `transformCoord(point, fromAspect, toAspect, { clamp })` で実施。
 
 #### Player（戦術ボード上の選手）
 
@@ -484,14 +486,15 @@ footics_backup_YYYY-MM-DD.zip
 
 ## 6. X (Twitter) メディア最適化プリセット
 
-コンテンツ投稿用に最適化されたアスペクト比プリセットが定義済み。
+コンテンツ投稿用に最適化された境界線（BoundaryBox）プリセット（`X_MEDIA_PRESETS`、`src/lib/types/tactical/primitives.ts`）が定義済み。
 
-| プリセット ID | 比率 | 推奨サイズ | 用途 |
-|------------|------|---------|-----|
-| `single_image_4_5` | 4:5 | 1080×1350px | 画像1枚（TL最大高さ） |
-| `carousel_image_9_16` | 9:16 | 1080×1920px | 画像2枚カルーセル |
-| `feed_video_9_16` | 9:16 | 1080×1920px | 縦動画フィード |
-| `pitch_overview_16_9` | 16:9 | 1200×675px | ピッチ全体俯瞰 |
+| プリセット ID (`XMediaPresetKey`) | 比率 | ラベル | 用途 |
+|---------------------------------|------|--------|-----|
+| `landscape_16_9` | 16:9 | 16:9 ワイド | 横長投稿・YouTube・PC全画面 |
+| `portrait_4_5` | 4:5 | 4:5 縦長 | X (Twitter) 単体画像TL最大占有 |
+| `vertical_9_16` | 9:16 | 9:16 フル縦 | TikTok / Instagram Reels / 縦動画 |
+| `square_1_1` | 1:1 | 1:1 スクエア | Instagram フィード / 正方形作図 |
+| `pitch_fit` | 動的 | ピッチにフィット | 現在のピッチ枠にジャストフィット |
 
 ---
 
