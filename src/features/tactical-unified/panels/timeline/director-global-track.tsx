@@ -19,7 +19,7 @@ export function DirectorGlobalTrack({
 }: DirectorGlobalTrackProps) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[9px] font-mono text-[#60A5FA]/80 shrink-0 w-12 text-right">
+      <span className="text-[9px] font-mono text-[#60A5FA]/80 shrink-0 w-14 text-right">
         全体
       </span>
       <div

@@ -14,6 +14,7 @@ export function PlaybackControls() {
   const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
   const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
   const isPlaying = useTacticalUnifiedStoreContext((s) => s.isPlaying);
+  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
   const togglePlayback = useTacticalUnifiedStoreContext(
     (s) => s.togglePlayback,
   );
@@ -56,17 +57,19 @@ export function PlaybackControls() {
       </button>
 
       {/* Playback Stats */}
-      <div className="flex flex-col justify-center px-2 py-0.5 border-l border-white/[0.07] min-w-[72px]">
-        <div className="text-[11px] font-mono font-medium text-white/90 leading-tight">
-          {currentIndex + 1} / {slides.length}{' '}
-          <span className="text-[9px] text-[#71717A] uppercase font-sans">
-            Scene
-          </span>
+      {workspaceMode !== 'director' && (
+        <div className="flex flex-col justify-center px-2 py-0.5 border-l border-white/[0.07] min-w-[72px]">
+          <div className="text-[11px] font-mono font-medium text-white/90 leading-tight">
+            {currentIndex + 1} / {slides.length}{' '}
+            <span className="text-[9px] text-[#71717A] uppercase font-sans">
+              Scene
+            </span>
+          </div>
+          <div className="text-[10px] font-mono text-[#A1A1AA] leading-tight">
+            Total {totalDurationSec.toFixed(1)}s
+          </div>
         </div>
-        <div className="text-[10px] font-mono text-[#A1A1AA] leading-tight">
-          Total {totalDurationSec.toFixed(1)}s
-        </div>
-      </div>
+      )}
     </div>
   );
 }

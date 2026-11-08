@@ -1,14 +1,31 @@
 'use client';
 
-import { RotateCcw, Trash2 } from 'lucide-react';
 import type { ActionCameraCue } from '@/lib/types/tactical-unified';
 
-const ACTION_DURATIONS = [
-  { ms: 500, label: '0.5s' },
-  { ms: 1000, label: '1.0s' },
-  { ms: 2000, label: '2.0s' },
-  { ms: 3000, label: '3.0s' },
-] as const;
+export function layoutActionCuesIntoLanes(
+  cues: ActionCameraCue[],
+): ActionCameraCue[][] {
+  const sorted = [...cues].sort((a, b) => a.startTimeMs - b.startTimeMs);
+  const lanes: ActionCameraCue[][] = [];
+
+  for (const cue of sorted) {
+    let placed = false;
+    const cueEnd = cue.startTimeMs + (cue.durationMs ?? 1000);
+    for (let i = 0; i < lanes.length; i++) {
+      const lastCue = lanes[i][lanes[i].length - 1];
+      const lastEnd = lastCue.startTimeMs + (lastCue.durationMs ?? 1000);
+      if (cue.startTimeMs >= lastEnd) {
+        lanes[i].push(cue);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      lanes.push([cue]);
+    }
+  }
+  return lanes;
+}
 
 export interface DirectorActionTrackProps {
   actionCues: ActionCameraCue[];
@@ -16,9 +33,9 @@ export interface DirectorActionTrackProps {
   totalDurationMs: number;
   currentTimeMs: number;
   onSelectCue: (id: string, startTimeMs: number) => void;
-  onUpdateDuration: (cue: ActionCameraCue, durationMs: number) => void;
-  onToggleAutoReturn: (cue: ActionCameraCue) => void;
-  onDeleteCue: (id: string) => void;
+  onUpdateDuration?: (cue: ActionCameraCue, durationMs: number) => void;
+  onToggleAutoReturn?: (cue: ActionCameraCue) => void;
+  onDeleteCue?: (id: string) => void;
 }
 
 export function DirectorActionTrack({
@@ -27,20 +44,25 @@ export function DirectorActionTrack({
   totalDurationMs,
   currentTimeMs,
   onSelectCue,
-  onUpdateDuration,
-  onToggleAutoReturn,
-  onDeleteCue,
 }: DirectorActionTrackProps) {
-  const selectedCue = actionCues.find((c) => c.id === selectedCueId);
+  const lanes = layoutActionCuesIntoLanes(actionCues);
+  const displayedLanes = lanes.length > 0 ? lanes : [[]];
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[9px] font-mono text-[#FF8100]/80 shrink-0 w-12 text-right">
+      <span className="text-[9px] font-mono text-[#FF8100]/80 shrink-0 w-14 text-right">
         アクション
       </span>
       <div
         data-testid="action-camera-track"
-        className="relative flex-1 h-6 bg-[#0D0D0E] rounded border border-white/[0.07] overflow-hidden flex items-center"
+        style={
+          displayedLanes.length > 1
+            ? { height: `calc(1.5rem * ${displayedLanes.length})` }
+            : undefined
+        }
+        className={`relative flex-1 ${
+          displayedLanes.length > 1 ? '' : 'h-6'
+        } bg-[#0D0D0E] rounded border border-white/[0.07] overflow-hidden flex flex-col justify-center`}
       >
         {/* 現在再生ヘッドインジケータ */}
         <div
@@ -48,92 +70,48 @@ export function DirectorActionTrack({
           style={{ left: `${(currentTimeMs / totalDurationMs) * 100}%` }}
         />
 
-        {actionCues.map((cue) => {
-          const leftPct = Math.min(
-            100,
-            Math.max(0, (cue.startTimeMs / totalDurationMs) * 100),
-          );
-          const widthPct = Math.min(
-            100 - leftPct,
-            Math.max(4, (cue.durationMs / totalDurationMs) * 100),
-          );
-          const isSelected = cue.id === selectedCueId;
-          return (
-            <button
-              key={cue.id}
-              type="button"
-              data-testid={`action-cue-block-${cue.id}`}
-              onClick={() => onSelectCue(cue.id, cue.startTimeMs)}
-              style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
-              className={`absolute h-4.5 rounded px-1 flex items-center justify-between text-[9px] font-mono truncate cursor-pointer transition-colors border ${
-                isSelected
-                  ? 'bg-[#FF8100]/40 border-[#FF8100] text-white z-20 shadow-sm'
-                  : 'bg-[#FF8100]/20 border-[#FF8100]/40 text-white/90 hover:bg-[#FF8100]/30 z-10'
-              }`}
-              title={`アクションCue: ${(cue.startTimeMs / 1000).toFixed(1)}s (${(cue.durationMs / 1000).toFixed(1)}s), Zoom ${cue.zoom.toFixed(1)}x${cue.autoReturn ? ' (復帰)' : ''}`}
-            >
-              <span className="truncate">{cue.zoom.toFixed(1)}x</span>
-              {cue.autoReturn && (
-                <span className="text-[8px] text-amber-300 ml-0.5">↩</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 選択中のアクションCue編集コントロール */}
-      {selectedCue && (
-        <div className="flex items-center gap-1.5 shrink-0 bg-[#18181B] px-2 py-0.5 rounded border border-white/[0.1] text-[10px]">
-          {/* 秒数チップ */}
-          <div className="flex items-center gap-0.5">
-            {ACTION_DURATIONS.map(({ ms, label }) => {
-              const isActive = selectedCue.durationMs === ms;
+        {displayedLanes.map((lane, laneIdx) => (
+          <div
+            key={laneIdx}
+            data-testid={`action-sublane-${laneIdx}`}
+            data-lane-index={laneIdx}
+            className="relative w-full h-5 flex items-center"
+          >
+            {lane.map((cue) => {
+              const leftPct = Math.min(
+                100,
+                Math.max(0, (cue.startTimeMs / totalDurationMs) * 100),
+              );
+              const widthPct = Math.min(
+                100 - leftPct,
+                Math.max(4, (cue.durationMs / totalDurationMs) * 100),
+              );
+              const isSelected = cue.id === selectedCueId;
               return (
                 <button
-                  key={ms}
+                  key={cue.id}
                   type="button"
-                  data-testid={`action-duration-chip-${ms}`}
-                  onClick={() => onUpdateDuration(selectedCue, ms)}
-                  className={`px-1 py-0.5 rounded font-mono text-[9px] transition-colors cursor-pointer ${
-                    isActive
-                      ? 'bg-[#FF8100] text-white font-medium'
-                      : 'bg-white/[0.06] hover:bg-white/[0.12] text-[#A1A1AA]'
+                  data-testid={`action-cue-block-${cue.id}`}
+                  data-lane-index={laneIdx}
+                  onClick={() => onSelectCue(cue.id, cue.startTimeMs)}
+                  style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                  className={`absolute h-4.5 rounded px-1 flex items-center justify-between text-[9px] font-mono truncate cursor-pointer transition-colors border ${
+                    isSelected
+                      ? 'bg-[#FF8100]/40 border-[#FF8100] text-white z-20 shadow-sm'
+                      : 'bg-[#FF8100]/20 border-[#FF8100]/40 text-white/90 hover:bg-[#FF8100]/30 z-10'
                   }`}
+                  title={`アクションCue: ${(cue.startTimeMs / 1000).toFixed(1)}s (${(cue.durationMs / 1000).toFixed(1)}s), Zoom ${cue.zoom.toFixed(1)}x${cue.autoReturn ? ' (復帰)' : ''}`}
                 >
-                  {label}
+                  <span className="truncate">{cue.zoom.toFixed(1)}x</span>
+                  {cue.autoReturn && (
+                    <span className="text-[8px] text-amber-300 ml-0.5">↩</span>
+                  )}
                 </button>
               );
             })}
           </div>
-
-          {/* autoReturn トグル */}
-          <button
-            type="button"
-            data-testid="action-auto-return-toggle"
-            onClick={() => onToggleAutoReturn(selectedCue)}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] transition-colors cursor-pointer border ${
-              selectedCue.autoReturn
-                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                : 'bg-white/[0.06] border-white/[0.08] text-[#71717A] hover:text-[#A1A1AA]'
-            }`}
-            title="アクション終了後に通常カメラへ自動復帰するかどうか"
-          >
-            <RotateCcw size={10} />
-            <span>自動で戻る</span>
-          </button>
-
-          {/* 削除ボタン */}
-          <button
-            type="button"
-            data-testid="delete-action-cue-btn"
-            onClick={() => onDeleteCue(selectedCue.id)}
-            className="p-1 rounded hover:bg-red-500/20 text-red-400 transition-colors cursor-pointer"
-            title="選択中のアクションCueを削除"
-          >
-            <Trash2 size={11} />
-          </button>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import * as frameRendererModule from '@/lib/tactical/export/tactical-frame-renderer';
 import {
   createXBoundaryBox,
@@ -238,12 +239,12 @@ describe('useExportPreviewAnimation', () => {
     expect(mockContext.fillRect).not.toHaveBeenCalled();
   });
 
-  it('DEFAULT_BOUNDARY_BOX_* and createXBoundaryBox use fitTarget "canvas"', () => {
-    expect(DEFAULT_BOUNDARY_BOX_16_9.fitTarget).toBe('canvas');
-    expect(DEFAULT_BOUNDARY_BOX_9_16.fitTarget).toBe('canvas');
-    expect(DEFAULT_BOUNDARY_BOX_4_5.fitTarget).toBe('canvas');
-    expect(DEFAULT_BOUNDARY_BOX_1_1.fitTarget).toBe('canvas');
-    expect(DEFAULT_BOUNDARY_BOX_SCREENSHOT.fitTarget).toBe('canvas');
+  it('DEFAULT_BOUNDARY_BOX_* use fitTarget "pitch" and createXBoundaryBox uses "canvas"', () => {
+    expect(DEFAULT_BOUNDARY_BOX_16_9.fitTarget).toBe('pitch');
+    expect(DEFAULT_BOUNDARY_BOX_9_16.fitTarget).toBe('pitch');
+    expect(DEFAULT_BOUNDARY_BOX_4_5.fitTarget).toBe('pitch');
+    expect(DEFAULT_BOUNDARY_BOX_1_1.fitTarget).toBe('pitch');
+    expect(DEFAULT_BOUNDARY_BOX_SCREENSHOT.fitTarget).toBe('pitch');
     expect(createXBoundaryBox('4:5', '16:9').fitTarget).toBe('canvas');
   });
 
@@ -322,5 +323,50 @@ describe('useExportPreviewAnimation', () => {
     const lastCall = calls[calls.length - 1];
     expect(lastCall[1].baseWidth).toBe(1920);
     expect(lastCall[1].baseHeight).toBe(1080);
+  });
+
+  it('notifies seekTo throttled during playback and on stop in director mode', () => {
+    useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.getState().setWorkspaceMode('director');
+    const seekSpy = vi.spyOn(useTacticalUnifiedStore.getState(), 'seekTo');
+
+    let externalIsPlaying = true;
+    const { rerender, result } = renderHook(() =>
+      useExportPreviewAnimation({
+        slides: [mockSlide1, mockSlide2],
+        aspectRatio: '16:9',
+        externalIsPlaying,
+        canvasRef,
+        timeLabelRef,
+        sliderRef,
+      }),
+    );
+
+    // 再生中に handleSeek などの呼び出しでフレームが進んだ時、スロットル間隔で seekTo が呼ばれること
+    act(() => {
+      result.current.handleSeek(100);
+    });
+
+    expect(seekSpy).toHaveBeenCalledWith(100);
+    seekSpy.mockClear();
+
+    // 60ms未満の小さな変化ではスロットルされて seekTo は呼ばれないこと
+    act(() => {
+      result.current.handleSeek(120);
+    });
+    expect(seekSpy).not.toHaveBeenCalled();
+
+    // 60ms以上の変化では seekTo が呼ばれること
+    act(() => {
+      result.current.handleSeek(200);
+    });
+    expect(seekSpy).toHaveBeenCalledWith(200);
+    seekSpy.mockClear();
+
+    // 再生停止時（true -> false）、最終時刻で seekTo が確実に1回呼ばれること
+    externalIsPlaying = false;
+    rerender();
+
+    expect(seekSpy).toHaveBeenCalledWith(200);
   });
 });

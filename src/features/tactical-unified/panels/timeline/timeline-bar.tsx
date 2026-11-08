@@ -233,40 +233,42 @@ export function TimelineBar() {
       )}
 
       {/* Right: Quick Action & Shortcut Guides */}
-      <div className="flex items-center gap-3 shrink-0">
-        <ActionButton
-          ref={setBatchButtonRef as React.Ref<HTMLButtonElement>}
-          variant={isBatchOpen ? 'primary' : 'default'}
-          size="sm"
-          onClick={() => setIsBatchOpen((prev) => !prev)}
-          icon={
-            <Sliders
-              size={13}
-              strokeWidth={1.5}
-              className={isBatchOpen ? 'text-white' : 'text-[#FF8100]'}
-            />
-          }
-          aria-label="一括設定"
-          title="全シーンのトランジションを一括設定"
-        >
-          <span className="hidden sm:inline">一括設定</span>
-        </ActionButton>
+      {workspaceMode !== 'director' && (
+        <div className="flex items-center gap-3 shrink-0">
+          <ActionButton
+            ref={setBatchButtonRef as React.Ref<HTMLButtonElement>}
+            variant={isBatchOpen ? 'primary' : 'default'}
+            size="sm"
+            onClick={() => setIsBatchOpen((prev) => !prev)}
+            icon={
+              <Sliders
+                size={13}
+                strokeWidth={1.5}
+                className={isBatchOpen ? 'text-white' : 'text-[#FF8100]'}
+              />
+            }
+            aria-label="一括設定"
+            title="全シーンのトランジションを一括設定"
+          >
+            <span className="hidden sm:inline">一括設定</span>
+          </ActionButton>
 
-        <div className="hidden lg:flex items-center gap-3 pl-3 text-[10px] text-[#71717A] border-l border-white/[0.07]">
-          <div className="flex items-center gap-1">
-            <span className="px-1.5 py-0.5 rounded-[4px] bg-[#0D0D0E] text-[#A1A1AA] border border-white/[0.07] font-mono text-[9px]">
-              L-Click
-            </span>
-            <span>Add Scene</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="px-1.5 py-0.5 rounded-[4px] bg-[#0D0D0E] text-[#A1A1AA] border border-white/[0.07] font-mono text-[9px]">
-              R-Click
-            </span>
-            <span>Duplicate</span>
+          <div className="hidden lg:flex items-center gap-3 pl-3 text-[10px] text-[#71717A] border-l border-white/[0.07]">
+            <div className="flex items-center gap-1">
+              <span className="px-1.5 py-0.5 rounded-[4px] bg-[#0D0D0E] text-[#A1A1AA] border border-white/[0.07] font-mono text-[9px]">
+                L-Click
+              </span>
+              <span>Add Scene</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="px-1.5 py-0.5 rounded-[4px] bg-[#0D0D0E] text-[#A1A1AA] border border-white/[0.07] font-mono text-[9px]">
+                R-Click
+              </span>
+              <span>Duplicate</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Batch Transition Popover */}
       <BatchTransitionPopover

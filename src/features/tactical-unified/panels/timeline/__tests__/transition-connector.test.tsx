@@ -66,37 +66,27 @@ describe('TransitionConnector Component', () => {
     expect(clickSpy).toHaveBeenCalled();
   });
 
-  describe('カメラ移動モードのバッジ表示', () => {
-    it('cameraTransitionMode が slow のとき CAM 10.0s が表示されること', () => {
-      const slide = createMockSlide({
+  describe('カメラ移動モードのバッジ非表示', () => {
+    it('どのような cameraTransitionMode であっても CAM バッジが表示されないこと', () => {
+      const slowSlide = createMockSlide({
         cameraTransitionMode: 'slow',
         cameraDurationMs: 10000,
       });
-      render(<TransitionConnector targetSlide={slide} targetIndex={1} />);
-      expect(screen.getByText('CAM 10.0s')).toBeDefined();
-    });
+      render(<TransitionConnector targetSlide={slowSlide} targetIndex={1} />);
+      expect(screen.queryByText(/CAM/)).toBeNull();
 
-    it('cameraTransitionMode が continuous のとき CAM 継続 が表示されること', () => {
-      const slide = createMockSlide({
+      const continuousSlide = createMockSlide({
         cameraTransitionMode: 'continuous',
       });
-      render(<TransitionConnector targetSlide={slide} targetIndex={1} />);
-      expect(screen.getByText('CAM 継続')).toBeDefined();
-    });
+      render(
+        <TransitionConnector targetSlide={continuousSlide} targetIndex={1} />,
+      );
+      expect(screen.queryByText(/CAM/)).toBeNull();
 
-    it('cameraTransitionMode が cut のとき CAM CUT が表示されること', () => {
-      const slide = createMockSlide({
+      const cutSlide = createMockSlide({
         cameraTransitionMode: 'cut',
       });
-      render(<TransitionConnector targetSlide={slide} targetIndex={1} />);
-      expect(screen.getByText('CAM CUT')).toBeDefined();
-    });
-
-    it('cameraTransitionMode が sync のときはカメラバッジが表示されないこと', () => {
-      const slide = createMockSlide({
-        cameraTransitionMode: 'sync',
-      });
-      render(<TransitionConnector targetSlide={slide} targetIndex={1} />);
+      render(<TransitionConnector targetSlide={cutSlide} targetIndex={1} />);
       expect(screen.queryByText(/CAM/)).toBeNull();
     });
   });

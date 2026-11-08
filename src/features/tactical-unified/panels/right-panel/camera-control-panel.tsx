@@ -2,51 +2,137 @@
 
 /**
  * camera-control-panel.tsx
- * Right Panel sub-panel for 3D Camera Controls in Director/Layout mode
+ * Right Panel sub-panel for 3D Camera Controls in Director/Board mode
  */
 
 import { RotateCcw } from 'lucide-react';
+import type React from 'react';
 import { SPLIT_CAMERA_PRESETS } from '@/features/tactical-unified/panels/split-preview/split-preview-camera-bar';
-import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
+import {
+  selectActivePhase,
+  selectActiveSlide,
+} from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import {
+  hasActiveDirectorCameraTrack,
+  resolveSyntheticDirectorCamera,
+} from '@/lib/tactical/unified-interpolation';
+import type { PitchTransform } from '@/lib/types/tactical-unified';
+import { CameraPanControl } from './camera-pan-control';
+import { CameraSliderField } from './camera-slider-field';
+import {
+  DirectorCueInspector,
+  findActiveActionCue,
+} from './director-cue-inspector';
 
 export function CameraControlPanel(): React.ReactElement {
+  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
+  const playbackSeekTimeMs = useTacticalUnifiedStoreContext(
+    (s) => s.playbackSeekTimeMs,
+  );
   const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
+  const activePhase = useTacticalUnifiedStoreContext(selectActivePhase);
   const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
+  const upsertGlobalCameraKeyframe = useTacticalUnifiedStoreContext(
+    (s) => s.upsertGlobalCameraKeyframe,
+  );
+  const upsertActionCameraCue = useTacticalUnifiedStoreContext(
+    (s) => s.upsertActionCameraCue,
+  );
+  const deleteActionCameraCue = useTacticalUnifiedStoreContext(
+    (s) => s.deleteActionCameraCue,
+  );
   const updatePitchTransform = useTacticalUnifiedStoreContext(
     (s) => s.updatePitchTransform,
   );
 
-  const tilt = activeSlide?.pitchTransform?.tilt ?? 0;
-  const yaw = activeSlide?.pitchTransform?.yaw ?? 90;
-  const zoom = activeSlide?.pitchTransform?.zoom ?? 1;
-  const panX = Math.round(activeSlide?.pitchTransform?.panX ?? 0);
-  const panY = Math.round(activeSlide?.pitchTransform?.panY ?? 0);
+  const isDirectorMode = workspaceMode === 'director';
+  const currentTimeMs = playbackSeekTimeMs ?? 0;
+  const directorCamera = activePhase?.directorCamera;
 
-  const handleTiltChange = (value: number) => {
-    if (!activeSlideId) return;
-    const clamped = Math.max(0, Math.min(60, Number.isNaN(value) ? 0 : value));
-    updatePitchTransform(activeSlideId, { tilt: clamped });
+  const currentCamera = isDirectorMode
+    ? hasActiveDirectorCameraTrack(directorCamera)
+      ? resolveSyntheticDirectorCamera(directorCamera, currentTimeMs)
+      : (activeSlide?.pitchTransform ?? {
+          tilt: 0,
+          yaw: 90,
+          zoom: 1,
+          panX: 0,
+          panY: 0,
+        })
+    : (activeSlide?.pitchTransform ?? {
+        tilt: 0,
+        yaw: 90,
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+      });
+
+  const tilt = Math.round(currentCamera.tilt ?? 0);
+  const yaw = Math.round(currentCamera.yaw ?? 90);
+  const zoom = Number((currentCamera.zoom ?? 1).toFixed(2));
+  const panX = Math.round(currentCamera.panX ?? 0);
+  const panY = Math.round(currentCamera.panY ?? 0);
+
+  const activeCue = isDirectorMode
+    ? findActiveActionCue(directorCamera?.actionCues ?? [], currentTimeMs)
+    : null;
+
+  const syncSlide = (patch: Partial<PitchTransform>) => {
+    if (activeSlideId) updatePitchTransform(activeSlideId, patch);
   };
 
-  const handleYawChange = (value: number) => {
-    if (!activeSlideId) return;
-    const clamped = Math.max(
-      0,
-      Math.min(180, Number.isNaN(value) ? 90 : value),
-    );
-    updatePitchTransform(activeSlideId, { yaw: clamped });
+  const handleTiltChange = (v: number) => {
+    const nextTilt = Math.max(0, Math.min(65, Number.isNaN(v) ? 0 : v));
+    if (isDirectorMode) {
+      upsertGlobalCameraKeyframe(currentTimeMs, { tilt: nextTilt });
+    }
+    syncSlide({ tilt: nextTilt });
+  };
+
+  const handleYawChange = (v: number) => {
+    const nextYaw = (((Number.isNaN(v) ? 90 : v) % 360) + 360) % 360;
+    if (isDirectorMode) {
+      upsertGlobalCameraKeyframe(currentTimeMs, { yaw: nextYaw });
+    }
+    syncSlide({ yaw: nextYaw });
+  };
+
+  const handlePresetSelect = (preset: { tilt: number; yaw: number }) => {
+    const patch = { tilt: preset.tilt, yaw: preset.yaw };
+    if (isDirectorMode) {
+      upsertGlobalCameraKeyframe(currentTimeMs, patch);
+    }
+    syncSlide(patch);
   };
 
   const handleResetCamera = () => {
-    if (!activeSlideId) return;
-    updatePitchTransform(activeSlideId, {
-      panX: 0,
-      panY: 0,
-      zoom: 1,
-      tilt: 0,
-      yaw: 90,
-    });
+    if (isDirectorMode) {
+      upsertGlobalCameraKeyframe(currentTimeMs, { tilt: 0, yaw: 90 });
+      upsertActionCameraCue(currentTimeMs, { zoom: 1, panX: 0, panY: 0 });
+    }
+    syncSlide({ panX: 0, panY: 0, zoom: 1, tilt: 0, yaw: 90 });
+  };
+
+  const handleZoomChange = (v: number) => {
+    const nextZoom = Math.max(0.4, Math.min(3.0, Number.isNaN(v) ? 1 : v));
+    if (isDirectorMode) {
+      upsertActionCameraCue(currentTimeMs, { zoom: nextZoom, panX, panY });
+    }
+    syncSlide({ zoom: nextZoom });
+  };
+
+  const handlePanChange = (newX: number, newY: number) => {
+    const nextX = Number.isNaN(newX) ? 0 : Math.round(newX);
+    const nextY = Number.isNaN(newY) ? 0 : Math.round(newY);
+    if (isDirectorMode) {
+      upsertActionCameraCue(currentTimeMs, {
+        panX: nextX,
+        panY: nextY,
+        zoom,
+      });
+    }
+    syncSlide({ panX: nextX, panY: nextY });
   };
 
   return (
@@ -71,6 +157,24 @@ export function CameraControlPanel(): React.ReactElement {
         </button>
       </div>
 
+      {/* Action Cue Inspector Section (Director Mode only, when active cue exists) */}
+      {isDirectorMode && activeCue && (
+        <DirectorCueInspector
+          cue={activeCue}
+          onUpdateDuration={(cue, durationMs) =>
+            upsertActionCameraCue(cue.startTimeMs, { durationMs }, cue.id)
+          }
+          onToggleAutoReturn={(cue) =>
+            upsertActionCameraCue(
+              cue.startTimeMs,
+              { autoReturn: !cue.autoReturn },
+              cue.id,
+            )
+          }
+          onDeleteCue={(cueId) => deleteActionCameraCue(cueId)}
+        />
+      )}
+
       {/* Camera Presets Section */}
       <div className="flex flex-col gap-2">
         <span className="text-[11px] font-medium text-white/60 uppercase tracking-wider">
@@ -83,13 +187,7 @@ export function CameraControlPanel(): React.ReactElement {
               <button
                 key={preset.id}
                 type="button"
-                onClick={() => {
-                  if (!activeSlideId) return;
-                  updatePitchTransform(activeSlideId, {
-                    tilt: preset.tilt,
-                    yaw: preset.yaw,
-                  });
-                }}
+                onClick={() => handlePresetSelect(preset)}
                 title={preset.label}
                 aria-label={preset.label}
                 className={`flex flex-col items-start px-2.5 py-1.5 rounded text-left transition-colors border ${
@@ -110,110 +208,53 @@ export function CameraControlPanel(): React.ReactElement {
         </div>
       </div>
 
-      {/* Tilt Control (0° - 60°) */}
-      <div className="flex flex-col gap-1.5 p-3 rounded-lg bg-black/20 border border-white/[0.06]">
-        <div className="flex items-center justify-between">
-          <label
-            htmlFor="camera-tilt-number"
-            className="font-medium text-white/80 text-[11px]"
-          >
-            Tilt (俯瞰角度)
-          </label>
-          <div className="flex items-center gap-1">
-            <input
-              id="camera-tilt-number"
-              type="number"
-              min={0}
-              max={60}
-              value={tilt}
-              aria-label="Tilt"
-              onChange={(e) =>
-                handleTiltChange(Number.parseInt(e.target.value, 10))
-              }
-              className="w-14 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-right font-mono text-[11px] text-white focus:outline-none focus:border-[#FF8100]/60"
-            />
-            <span className="text-white/40 text-[11px]">°</span>
-          </div>
-        </div>
-        <input
-          id="camera-tilt-range"
-          type="range"
-          min={0}
-          max={60}
-          value={tilt}
-          aria-label="Tilt"
-          onChange={(e) =>
-            handleTiltChange(Number.parseInt(e.target.value, 10))
-          }
-          className="w-full accent-[#FF8100] cursor-pointer"
-        />
-        <div className="flex justify-between text-[10px] text-white/40 font-mono">
-          <span>0° (平面)</span>
-          <span>60° (斜め俯瞰)</span>
-        </div>
-      </div>
+      {/* Tilt Control (0° - 65°) */}
+      <CameraSliderField
+        id="camera-tilt"
+        label="Tilt (俯瞰角度)"
+        ariaLabel="Tilt"
+        value={tilt}
+        min={0}
+        max={65}
+        unit="°"
+        minLabel="0° (平面)"
+        maxLabel="65° (斜め俯瞰)"
+        onChange={handleTiltChange}
+      />
 
       {/* Yaw Control (0° - 180°) */}
-      <div className="flex flex-col gap-1.5 p-3 rounded-lg bg-black/20 border border-white/[0.06]">
-        <div className="flex items-center justify-between">
-          <label
-            htmlFor="camera-yaw-number"
-            className="font-medium text-white/80 text-[11px]"
-          >
-            Yaw (水平旋回)
-          </label>
-          <div className="flex items-center gap-1">
-            <input
-              id="camera-yaw-number"
-              type="number"
-              min={0}
-              max={180}
-              value={yaw}
-              aria-label="Yaw"
-              onChange={(e) =>
-                handleYawChange(Number.parseInt(e.target.value, 10))
-              }
-              className="w-14 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-right font-mono text-[11px] text-white focus:outline-none focus:border-[#FF8100]/60"
-            />
-            <span className="text-white/40 text-[11px]">°</span>
-          </div>
-        </div>
-        <input
-          id="camera-yaw-range"
-          type="range"
-          min={0}
-          max={180}
-          value={yaw}
-          aria-label="Yaw"
-          onChange={(e) => handleYawChange(Number.parseInt(e.target.value, 10))}
-          className="w-full accent-[#FF8100] cursor-pointer"
-        />
-        <div className="flex justify-between text-[10px] text-white/40 font-mono">
-          <span>0° (左)</span>
-          <span>90° (正面)</span>
-          <span>180° (右)</span>
-        </div>
-      </div>
+      <CameraSliderField
+        id="camera-yaw"
+        label="Yaw (水平旋回)"
+        ariaLabel="Yaw"
+        value={yaw}
+        min={0}
+        max={180}
+        unit="°"
+        minLabel="0° (左)"
+        midLabel="90° (正面)"
+        maxLabel="180° (右)"
+        onChange={handleYawChange}
+      />
 
-      {/* Zoom and Pan Status Display */}
-      <div className="p-3 rounded-lg bg-black/20 border border-white/[0.06] flex items-center justify-between">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[11px] font-medium text-white/80">
-            Zoom & Pan
-          </span>
-          <span className="text-[10px] text-white/40">
-            Preview canvas drag / wheel values
-          </span>
-        </div>
-        <div className="flex items-center gap-2 font-mono text-[11px]">
-          <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-white/80">
-            {zoom.toFixed(1)}x
-          </span>
-          <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-white/60">
-            ({panX}, {panY})
-          </span>
-        </div>
-      </div>
+      {/* Zoom Control (0.4x - 3.0x) */}
+      <CameraSliderField
+        id="camera-zoom"
+        label="Zoom (ズーム)"
+        ariaLabel="Zoom"
+        value={zoom}
+        min={0.4}
+        max={3.0}
+        step={0.05}
+        unit="x"
+        minLabel="0.4x (広域)"
+        midLabel="1.0x (標準)"
+        maxLabel="3.0x (拡大)"
+        onChange={handleZoomChange}
+      />
+
+      {/* Pan Control & Display */}
+      <CameraPanControl panX={panX} panY={panY} onChange={handlePanChange} />
     </div>
   );
 }

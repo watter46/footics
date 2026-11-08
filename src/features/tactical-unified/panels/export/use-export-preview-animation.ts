@@ -18,6 +18,7 @@ import type {
   ScreenBackgroundConfig,
   Slide,
 } from '@/lib/types/tactical-unified';
+
 import {
   ASPECT_CONTAINER_CLASSES,
   CINEMATIC_MASK_FILL,
@@ -79,6 +80,17 @@ export function useExportPreviewAnimation({
   const totalDurationMs = calculateUnifiedTotalDuration(slides) || 1000;
   const currentTimeMsRef = useRef<number>(0);
 
+  const seekTo = useTacticalUnifiedStoreContext((s) => s.seekTo);
+  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
+  const lastSeekNoticeTimeRef = useRef<number>(-9999);
+  const isInternalSeekRef = useRef<boolean>(false);
+  const workspaceModeRef = useRef(workspaceMode);
+  workspaceModeRef.current = workspaceMode;
+  const effectiveIsPlayingRef = useRef(effectiveIsPlaying);
+  effectiveIsPlayingRef.current = effectiveIsPlaying;
+  const seekToRef = useRef(seekTo);
+  seekToRef.current = seekTo;
+
   const { effectivePlayerPhotos, marbleTexture } = useExportPreviewTextures({
     slides,
     photos,
@@ -109,12 +121,10 @@ export function useExportPreviewAnimation({
 
   // 静止時・再生時に関わらず、境界線が有効であれば常時クロップを適用
   const shouldCropPreview = cropInfo.isCropped;
-
   const previewWidth = useMemo(() => {
     if (!shouldCropPreview) return basePreviewDim.width;
     return cropInfo.exportWidth;
   }, [shouldCropPreview, cropInfo.exportWidth, basePreviewDim.width]);
-
   const previewHeight = useMemo(() => {
     if (!shouldCropPreview) return basePreviewDim.height;
     return cropInfo.exportHeight;
@@ -187,6 +197,17 @@ export function useExportPreviewAnimation({
       if (sliderRef.current) {
         sliderRef.current.value = String(Math.round(timeMs));
       }
+
+      if (
+        effectiveIsPlayingRef.current &&
+        workspaceModeRef.current === 'director'
+      ) {
+        if (Math.abs(timeMs - lastSeekNoticeTimeRef.current) >= 60) {
+          lastSeekNoticeTimeRef.current = timeMs;
+          isInternalSeekRef.current = true;
+          seekToRef.current(timeMs);
+        }
+      }
     },
     [
       slides,
@@ -238,16 +259,30 @@ export function useExportPreviewAnimation({
   useEffect(() => {
     if (playbackSeekId > 0 && playbackSeekId !== lastHandledSeekIdRef.current) {
       lastHandledSeekIdRef.current = playbackSeekId;
+      if (isInternalSeekRef.current) {
+        isInternalSeekRef.current = false;
+        return;
+      }
       if (playbackSeekTimeMs !== null) seek(playbackSeekTimeMs);
     }
   }, [playbackSeekId, playbackSeekTimeMs, seek]);
 
-  const togglePlay = useCallback(() => {
-    if (onToggleExternalPlay) {
-      onToggleExternalPlay();
-    } else {
-      setIsPlaying((prev) => !prev);
+  const prevPlayingRef = useRef(effectiveIsPlaying);
+  useEffect(() => {
+    if (
+      prevPlayingRef.current &&
+      !effectiveIsPlaying &&
+      workspaceModeRef.current === 'director'
+    ) {
+      isInternalSeekRef.current = true;
+      seekToRef.current(currentTimeMsRef.current);
     }
+    prevPlayingRef.current = effectiveIsPlaying;
+  }, [effectiveIsPlaying]);
+
+  const togglePlay = useCallback(() => {
+    if (onToggleExternalPlay) onToggleExternalPlay();
+    else setIsPlaying((prev) => !prev);
   }, [onToggleExternalPlay]);
   const handleReset = useCallback(() => seek(0), [seek]);
 
