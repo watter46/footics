@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { Slide, ZoneAnnotation } from '@/lib/types/tactical-unified';
+import type {
+  DirectorCameraTrack,
+  Slide,
+  ZoneAnnotation,
+} from '@/lib/types/tactical-unified';
 import { interpolateArrow as directInterpolateArrow } from '../interpolation-annotation';
 import { interpolateBall as directInterpolateBall } from '../interpolation-ball';
+import {
+  hasActiveDirectorCameraTrack,
+  resolveSyntheticDirectorCamera,
+} from '../interpolation-camera';
 import { lerp as directLerp } from '../interpolation-geometry';
 import { interpolatePlayer as directInterpolatePlayer } from '../interpolation-player';
 import {
@@ -1057,6 +1065,221 @@ describe('unified-interpolation engine', () => {
         expect(arrow.points[1].y).toBeCloseTo(50, 1);
         expect(arrow.dashArray).toEqual([6, 4]);
         expect(arrow.arrowHead).toBe(false);
+      });
+    });
+
+    describe('director synthetic camera interpolation', () => {
+      it('checks active director camera track availability', () => {
+        expect(hasActiveDirectorCameraTrack(null)).toBe(false);
+        expect(hasActiveDirectorCameraTrack(undefined)).toBe(false);
+        expect(
+          hasActiveDirectorCameraTrack({
+            enabled: false,
+            globalKeyframes: [
+              { id: 'g1', timeMs: 0, tilt: 10, yaw: 90, easing: 'linear' },
+            ],
+            actionCues: [],
+          }),
+        ).toBe(false);
+        expect(
+          hasActiveDirectorCameraTrack({
+            enabled: true,
+            globalKeyframes: [],
+            actionCues: [],
+          }),
+        ).toBe(false);
+        expect(
+          hasActiveDirectorCameraTrack({
+            enabled: true,
+            globalKeyframes: [
+              { id: 'g1', timeMs: 0, tilt: 10, yaw: 90, easing: 'linear' },
+            ],
+            actionCues: [],
+          }),
+        ).toBe(true);
+      });
+
+      it('interpolates global keyframes (tilt / yaw shortest angular path)', () => {
+        const track: DirectorCameraTrack = {
+          enabled: true,
+          globalKeyframes: [
+            { id: 'g1', timeMs: 0, tilt: 0, yaw: 90, easing: 'linear' },
+            { id: 'g2', timeMs: 4000, tilt: 40, yaw: 70, easing: 'linear' },
+          ],
+          actionCues: [],
+        };
+
+        const mid = resolveSyntheticDirectorCamera(track, 2000, 4000);
+        expect(mid.tilt).toBeCloseTo(20, 1);
+        expect(mid.yaw).toBeCloseTo(80, 1);
+        expect(mid.zoom).toBe(1);
+        expect(mid.panX).toBe(0);
+        expect(mid.panY).toBe(0);
+        expect(mid.isLocked).toBe(true);
+
+        const before = resolveSyntheticDirectorCamera(track, -100, 4000);
+        expect(before.tilt).toBe(0);
+        expect(before.yaw).toBe(90);
+
+        const after = resolveSyntheticDirectorCamera(track, 5000, 4000);
+        expect(after.tilt).toBe(40);
+        expect(after.yaw).toBe(70);
+      });
+
+      it('interpolates action cues in hold mode (autoReturn: false)', () => {
+        const track: DirectorCameraTrack = {
+          enabled: true,
+          globalKeyframes: [],
+          actionCues: [
+            {
+              id: 'a1',
+              startTimeMs: 1000,
+              durationMs: 1000,
+              zoom: 2.0,
+              panX: 100,
+              panY: -50,
+              autoReturn: false,
+              easing: 'linear',
+            },
+          ],
+        };
+
+        const before = resolveSyntheticDirectorCamera(track, 500);
+        expect(before.zoom).toBe(1);
+        expect(before.panX).toBe(0);
+        expect(before.panY).toBe(0);
+
+        const mid = resolveSyntheticDirectorCamera(track, 1500);
+        expect(mid.zoom).toBeCloseTo(1.5, 2);
+        expect(mid.panX).toBeCloseTo(50, 1);
+        expect(mid.panY).toBeCloseTo(-25, 1);
+
+        const after = resolveSyntheticDirectorCamera(track, 3000);
+        expect(after.zoom).toBeCloseTo(2.0, 2);
+        expect(after.panX).toBeCloseTo(100, 1);
+        expect(after.panY).toBeCloseTo(-50, 1);
+      });
+
+      it('interpolates action cues in auto return mode (autoReturn: true)', () => {
+        const track: DirectorCameraTrack = {
+          enabled: true,
+          globalKeyframes: [],
+          actionCues: [
+            {
+              id: 'a2',
+              startTimeMs: 1000,
+              durationMs: 1000,
+              holdMs: 500,
+              returnDurationMs: 1000,
+              zoom: 2.0,
+              panX: 100,
+              panY: 0,
+              autoReturn: true,
+              easing: 'linear',
+            },
+          ],
+        };
+
+        // hold phase: 2000ms <= timeMs <= 2500ms
+        const hold = resolveSyntheticDirectorCamera(track, 2250);
+        expect(hold.zoom).toBeCloseTo(2.0, 2);
+        expect(hold.panX).toBeCloseTo(100, 1);
+
+        // returning phase (50% returned): timeMs = 2500 + 500 = 3000ms
+        const returning = resolveSyntheticDirectorCamera(track, 3000);
+        expect(returning.zoom).toBeCloseTo(1.5, 2);
+        expect(returning.panX).toBeCloseTo(50, 1);
+
+        // fully returned: timeMs >= 3500ms
+        const returned = resolveSyntheticDirectorCamera(track, 3500);
+        expect(returned.zoom).toBeCloseTo(1.0, 2);
+        expect(returned.panX).toBeCloseTo(0, 1);
+      });
+
+      it('synthesizes global camera and action cues into unified slide frame', () => {
+        const slides: Slide[] = [
+          {
+            id: 's1',
+            index: 0,
+            transitionDurationMs: 1000,
+            pauseMs: 500,
+            easing: 'linear',
+            players: [],
+            arrows: [],
+            zones: [],
+            texts: [],
+            ball: { x: 50, y: 50, visible: true },
+            pitchTransform: {
+              panX: 0,
+              panY: 0,
+              zoom: 1,
+              tilt: 0,
+              yaw: 90,
+              isLocked: false,
+            },
+          },
+          {
+            id: 's2',
+            index: 1,
+            transitionDurationMs: 1000,
+            pauseMs: 500,
+            easing: 'linear',
+            players: [],
+            arrows: [],
+            zones: [],
+            texts: [],
+            ball: { x: 50, y: 50, visible: true },
+            pitchTransform: {
+              panX: 999,
+              panY: 999,
+              zoom: 3,
+              tilt: 50,
+              yaw: 150,
+              isLocked: false,
+            },
+          },
+        ];
+
+        const track: DirectorCameraTrack = {
+          enabled: true,
+          globalKeyframes: [
+            { id: 'g1', timeMs: 0, tilt: 10, yaw: 90, easing: 'linear' },
+            { id: 'g2', timeMs: 3000, tilt: 30, yaw: 110, easing: 'linear' },
+          ],
+          actionCues: [
+            {
+              id: 'a1',
+              startTimeMs: 1000,
+              durationMs: 1000,
+              zoom: 2.0,
+              panX: 100,
+              panY: -50,
+              autoReturn: false,
+              easing: 'linear',
+            },
+          ],
+        };
+
+        // When directorCamera is provided and active:
+        const frameWithDirector = getInterpolatedUnifiedSlideFrame(
+          slides,
+          1500,
+          track,
+        );
+        expect(frameWithDirector.pitchTransform.tilt).toBeCloseTo(20, 1);
+        expect(frameWithDirector.pitchTransform.yaw).toBeCloseTo(100, 1);
+        expect(frameWithDirector.pitchTransform.zoom).toBeCloseTo(1.5, 2);
+        expect(frameWithDirector.pitchTransform.panX).toBeCloseTo(50, 1);
+        expect(frameWithDirector.pitchTransform.panY).toBeCloseTo(-25, 1);
+
+        // When directorCamera is not provided, falls back to regular slide pitchTransform interpolation
+        const frameWithoutDirector = getInterpolatedUnifiedSlideFrame(
+          slides,
+          1500,
+        );
+        // At 1500ms (pause phase of s2), slide pitchTransform is s2's transform
+        expect(frameWithoutDirector.pitchTransform.zoom).toBe(3);
+        expect(frameWithoutDirector.pitchTransform.tilt).toBe(50);
       });
     });
   });

@@ -36,6 +36,7 @@ import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tact
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { AddSlideButton } from './add-slide-button';
 import { BatchTransitionPopover } from './batch-transition-popover';
+import { DirectorCameraTimeline } from './director-camera-timeline';
 import { PlaybackControls } from './playback-controls';
 import { SlideCard, SlideCardOverlay } from './slide-card';
 import { TransitionConnector } from './transition-connector';
@@ -63,6 +64,7 @@ export function TimelineBar() {
     (s) => s.duplicateSlide,
   );
   const reorderSlides = useTacticalUnifiedStoreContext((s) => s.reorderSlides);
+  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
@@ -149,7 +151,11 @@ export function TimelineBar() {
   );
 
   return (
-    <footer className="flex items-center justify-between h-16 px-4 bg-[#121214] border-t border-white/[0.07] shrink-0 select-none z-10">
+    <footer
+      className={`flex items-center justify-between ${
+        workspaceMode === 'director' ? 'h-24' : 'h-16'
+      } px-4 bg-[#121214] border-t border-white/[0.07] shrink-0 select-none z-10`}
+    >
       {/* Left: Playback Controls */}
       <div className="flex items-center gap-3 shrink-0">
         <PlaybackControls />
@@ -157,70 +163,74 @@ export function TimelineBar() {
 
       <div className="w-px h-7 bg-white/[0.07] mx-3 shrink-0" />
 
-      {/* Center: Slide Strip with @dnd-kit horizontal sorting */}
-      <DndContext
-        id="tactical-timeline-dnd"
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onDragCancel={handleDragCancel}
-      >
-        <div
-          ref={containerRef}
-          onWheel={onWheel}
-          onPointerDown={onPointerDown}
-          className={`flex items-center gap-2 flex-1 min-w-0 overflow-x-auto timeline-scrollbar py-1 ${
-            isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
-          }`}
+      {/* Center: Director Timeline or Slide Strip with @dnd-kit horizontal sorting */}
+      {workspaceMode === 'director' ? (
+        <DirectorCameraTimeline />
+      ) : (
+        <DndContext
+          id="tactical-timeline-dnd"
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
-          <SortableContext
-            items={slideIds}
-            strategy={horizontalListSortingStrategy}
+          <div
+            ref={containerRef}
+            onWheel={onWheel}
+            onPointerDown={onPointerDown}
+            className={`flex items-center gap-2 flex-1 min-w-0 overflow-x-auto timeline-scrollbar py-1 ${
+              isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
+            }`}
           >
-            {slides.map((slide, i) => (
-              <Fragment key={slide.id}>
-                {i > 0 && (
-                  <TransitionConnector
-                    targetSlide={slide}
-                    targetIndex={i}
-                    isPlaybackActive={
-                      isPlaying && playbackTransitionIndex === i
-                    }
+            <SortableContext
+              items={slideIds}
+              strategy={horizontalListSortingStrategy}
+            >
+              {slides.map((slide, i) => (
+                <Fragment key={slide.id}>
+                  {i > 0 && (
+                    <TransitionConnector
+                      targetSlide={slide}
+                      targetIndex={i}
+                      isPlaybackActive={
+                        isPlaying && playbackTransitionIndex === i
+                      }
+                    />
+                  )}
+                  <SlideCard
+                    slide={slide}
+                    index={i}
+                    isActive={activeSlideId === slide.id}
+                    isPlaybackActive={isPlaying && playbackSlideIndex === i}
+                    canDelete={slides.length > 1}
+                    canMoveLeft={i > 0}
+                    canMoveRight={i < slides.length - 1}
+                    onSelect={handleSelectSlide}
+                    onDelete={deleteSlide}
+                    onDuplicate={duplicateSlide}
+                    onMoveLeft={() => handleMoveSlide(i, 'left')}
+                    onMoveRight={() => handleMoveSlide(i, 'right')}
                   />
-                )}
-                <SlideCard
-                  slide={slide}
-                  index={i}
-                  isActive={activeSlideId === slide.id}
-                  isPlaybackActive={isPlaying && playbackSlideIndex === i}
-                  canDelete={slides.length > 1}
-                  canMoveLeft={i > 0}
-                  canMoveRight={i < slides.length - 1}
-                  onSelect={handleSelectSlide}
-                  onDelete={deleteSlide}
-                  onDuplicate={duplicateSlide}
-                  onMoveLeft={() => handleMoveSlide(i, 'left')}
-                  onMoveRight={() => handleMoveSlide(i, 'right')}
-                />
-              </Fragment>
-            ))}
-          </SortableContext>
+                </Fragment>
+              ))}
+            </SortableContext>
 
-          {/* Add Scene Button */}
-          <AddSlideButton />
-        </div>
+            {/* Add Scene Button */}
+            <AddSlideButton />
+          </div>
 
-        {/* Drag Overlay with visual card clone */}
-        <DragOverlay>
-          {activeDragSlide ? (
-            <SlideCardOverlay
-              slide={activeDragSlide.slide}
-              index={activeDragSlide.index}
-            />
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+          {/* Drag Overlay with visual card clone */}
+          <DragOverlay>
+            {activeDragSlide ? (
+              <SlideCardOverlay
+                slide={activeDragSlide.slide}
+                index={activeDragSlide.index}
+              />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      )}
 
       {/* Right: Quick Action & Shortcut Guides */}
       <div className="flex items-center gap-3 shrink-0">

@@ -5,10 +5,14 @@ import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
-import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
+import {
+  calculateUnifiedTotalDuration,
+  hasActiveDirectorCameraTrack,
+} from '@/lib/tactical/unified-interpolation';
 import type {
   AspectRatio,
   BoundaryBox,
+  DirectorCameraTrack,
   PitchAppearanceConfig,
   PitchTransform,
   ScreenBackgroundConfig,
@@ -40,6 +44,7 @@ export interface UseExportPreviewAnimationParams {
   canvasAspectRatio?: AspectRatio;
   boundaryBox?: BoundaryBox | null;
   pitchTransform?: PitchTransform | null;
+  directorCamera?: DirectorCameraTrack | null;
   photos?: Record<string, string>;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   pitchAppearance?: PitchAppearanceConfig;
@@ -57,6 +62,7 @@ export function useExportPreviewAnimation({
   canvasAspectRatio,
   boundaryBox,
   pitchTransform,
+  directorCamera,
   photos,
   playerPhotos,
   pitchAppearance,
@@ -117,6 +123,7 @@ export function useExportPreviewAnimation({
   const mvpMatrix = useMemo(() => {
     if (
       (effectiveIsPlaying && slides.length > 1) ||
+      (!pitchTransform && hasActiveDirectorCameraTrack(directorCamera)) ||
       !hasActivePitchTransform(pitchTransform) ||
       !pitchTransform
     ) {
@@ -133,6 +140,7 @@ export function useExportPreviewAnimation({
   }, [
     effectiveIsPlaying,
     slides.length,
+    directorCamera,
     pitchTransform,
     basePreviewDim.width,
     basePreviewDim.height,
@@ -170,6 +178,7 @@ export function useExportPreviewAnimation({
         pitchAppearance,
         marbleTexture,
         screenBackground,
+        directorCamera,
       });
 
       if (timeLabelRef.current) {
@@ -191,6 +200,7 @@ export function useExportPreviewAnimation({
       pitchAppearance,
       marbleTexture,
       screenBackground,
+      directorCamera,
       canvasRef,
       timeLabelRef,
       sliderRef,
@@ -204,6 +214,7 @@ export function useExportPreviewAnimation({
     effectiveIsPlaying,
     drawFrame,
     pitchTransform,
+    directorCamera,
     slides,
     pitchAppearance,
     screenBackground,

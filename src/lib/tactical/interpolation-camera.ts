@@ -5,10 +5,17 @@
 
 import type {
   CameraTransitionMode,
+  DirectorCameraTrack,
   PitchTransform,
   Slide,
 } from '@/lib/types/tactical-unified';
 import { applyEasing } from './easing';
+import {
+  hasActiveDirectorCameraTrack,
+  resolveSyntheticDirectorCamera,
+} from './interpolation-director';
+
+export * from './interpolation-director';
 
 export interface InterpolatedPitchTransformState {
   panX: number;
@@ -37,22 +44,12 @@ export function hasCameraDelta(
   b?: PitchTransform | null,
 ): boolean {
   if (!a && !b) return false;
-  const panXA = a?.panX ?? 0;
-  const panXB = b?.panX ?? 0;
-  const panYA = a?.panY ?? 0;
-  const panYB = b?.panY ?? 0;
-  const zoomA = a?.zoom ?? 1;
-  const zoomB = b?.zoom ?? 1;
-  const tiltA = a?.tilt ?? 0;
-  const tiltB = b?.tilt ?? 0;
-  const yawA = a?.yaw ?? 90;
-  const yawB = b?.yaw ?? 90;
   return (
-    Math.abs(panXA - panXB) > 0.001 ||
-    Math.abs(panYA - panYB) > 0.001 ||
-    Math.abs(zoomA - zoomB) > 0.001 ||
-    Math.abs(tiltA - tiltB) > 0.001 ||
-    Math.abs(yawA - yawB) > 0.001
+    Math.abs((a?.panX ?? 0) - (b?.panX ?? 0)) > 0.001 ||
+    Math.abs((a?.panY ?? 0) - (b?.panY ?? 0)) > 0.001 ||
+    Math.abs((a?.zoom ?? 1) - (b?.zoom ?? 1)) > 0.001 ||
+    Math.abs((a?.tilt ?? 0) - (b?.tilt ?? 0)) > 0.001 ||
+    Math.abs((a?.yaw ?? 90) - (b?.yaw ?? 90)) > 0.001
   );
 }
 
@@ -231,10 +228,18 @@ export function resolveCameraAtTime(
   activeSegment: EffectiveSlideSegment,
   timeMs: number,
   elapsedInSegment: number,
+  directorCamera?: DirectorCameraTrack | null,
 ): {
   pitchTransform: InterpolatedPitchTransformState;
   isCameraMoving: boolean;
 } {
+  if (hasActiveDirectorCameraTrack(directorCamera)) {
+    return {
+      pitchTransform: resolveSyntheticDirectorCamera(directorCamera, timeMs),
+      isCameraMoving: false,
+    };
+  }
+
   const slideA = slides[activeSegment.cameraSpanStartSlideIdx - 1];
   const slideB = slides[activeSegment.cameraSpanEndSlideIdx];
 

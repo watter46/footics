@@ -1,15 +1,9 @@
 /**
  * unified-interpolation.ts
  * Unified Tactical Canvas — Animation Interpolation & Zone Vertex Morphing Engine
- *
- * Responsibilities:
- *   - スライド間の時間・イージング進捗計算
- *   - 選手・ボール・矢印・テキストの座標・属性補間 (Lerp / Bezier)
- *   - ゾーン頂点モーフィング (Zone Vertex Morphing - 多角形/Rect/Ellipse 変形連動)
- *   - ピッチ ⇄ ベンチのフェード遷移
  */
 
-import type { Slide } from '@/lib/types/tactical-unified';
+import type { DirectorCameraTrack, Slide } from '@/lib/types/tactical-unified';
 import { applyEasing } from './easing';
 import {
   type InterpolatedArrowState,
@@ -26,10 +20,12 @@ import {
   interpolateBall,
 } from './interpolation-ball';
 import {
+  hasActiveDirectorCameraTrack,
   type InterpolatedPitchTransformState,
   interpolatePitchTransform,
   resolveCameraAtTime,
   resolveEffectiveSlideSegments,
+  resolveSyntheticDirectorCamera,
 } from './interpolation-camera';
 import {
   type InterpolatedPlayerState,
@@ -40,6 +36,7 @@ import {
 export * from './interpolation-annotation';
 export * from './interpolation-ball';
 export * from './interpolation-camera';
+export * from './interpolation-director';
 // Re-export submodules to preserve public API without breaking changes
 export * from './interpolation-geometry';
 export * from './interpolation-player';
@@ -121,6 +118,7 @@ function syncArrowsWithPlayers(
 export function getInterpolatedUnifiedSlideFrame(
   slides: Slide[],
   timeMs: number,
+  directorCamera?: DirectorCameraTrack | null,
 ): InterpolatedUnifiedFrame {
   if (slides.length === 0) return EMPTY_FRAME;
 
@@ -140,6 +138,14 @@ export function getInterpolatedUnifiedSlideFrame(
       slide.texts.map((t) => [t.id, interpolateText(t, t, 0)!]),
     );
 
+    const pitchTransform = hasActiveDirectorCameraTrack(directorCamera)
+      ? resolveSyntheticDirectorCamera(directorCamera, timeMs, 0)
+      : interpolatePitchTransform(
+          slide.pitchTransform,
+          slide.pitchTransform,
+          0,
+        );
+
     return {
       players,
       ball: {
@@ -152,11 +158,7 @@ export function getInterpolatedUnifiedSlideFrame(
       zones,
       arrows,
       texts,
-      pitchTransform: interpolatePitchTransform(
-        slide.pitchTransform,
-        slide.pitchTransform,
-        0,
-      ),
+      pitchTransform,
       currentSlideIndex: 0,
       nextSlideIndex: 0,
       progress: 0,
@@ -195,13 +197,14 @@ export function getInterpolatedUnifiedSlideFrame(
 
   const ease = applyEasing(rawT, segmentSlide.easing ?? 'ease-in-out');
 
-  // カメラ補間（Slow / Continuous / Cut / Sync）
+  // カメラ補間（Slow / Continuous / Cut / Sync / Director）
   const { pitchTransform, isCameraMoving } = resolveCameraAtTime(
     slides,
     segments,
     activeSegment,
     timeMs,
     elapsedInSegment,
+    directorCamera,
   );
 
   // 1. Players 補間 (ID / 背番号 / 名前マッチングによるスムーズモーフィング)
@@ -276,11 +279,7 @@ export function getInterpolatedUnifiedSlideFrame(
     : isPaused
       ? nextSlideIdx
       : currentSlideIdx;
-  const resolvedNextSlideIndex = isPastTotal
-    ? slides.length - 1
-    : isPaused
-      ? nextSlideIdx
-      : nextSlideIdx;
+  const resolvedNextSlideIndex = isPastTotal ? slides.length - 1 : nextSlideIdx;
 
   return {
     players,

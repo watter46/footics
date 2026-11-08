@@ -605,4 +605,82 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
     // 再生時はクロップ再生となり、境界線比率の解像度とアスペクト比に更新される
     expect(previewContainer.style.aspectRatio).not.toBe('1920 / 1080');
   });
+
+  describe('Director Camera Track Interaction', () => {
+    it('upserts global camera keyframe on normal left-drag pointer up', () => {
+      const { container } = render(
+        <TacticalUnifiedStoreProvider>
+          <TacticalSplitPreviewPanel />
+        </TacticalUnifiedStoreProvider>,
+      );
+
+      const canvas = container.querySelector('canvas');
+      if (!canvas) throw new Error('Canvas not found');
+
+      fireEvent.pointerDown(canvas, { clientX: 100, clientY: 100, button: 0 });
+      fireEvent.pointerMove(canvas, { clientX: 150, clientY: 60, button: 0 });
+      fireEvent.pointerUp(canvas);
+
+      const activePhase = useTacticalUnifiedStore.getState().project.phases[0];
+      const globalKf = activePhase.directorCamera?.globalKeyframes;
+      expect(globalKf).toBeDefined();
+      expect(globalKf?.length).toBeGreaterThan(0);
+      const latestKf = globalKf?.[globalKf.length - 1];
+      expect(latestKf?.tilt).toBe(10);
+      expect(latestKf?.yaw).toBe(110);
+    });
+
+    it('upserts action camera cue on Shift + pointer drag (pan mode)', () => {
+      const { container } = render(
+        <TacticalUnifiedStoreProvider>
+          <TacticalSplitPreviewPanel />
+        </TacticalUnifiedStoreProvider>,
+      );
+
+      const canvas = container.querySelector('canvas');
+      if (!canvas) throw new Error('Canvas not found');
+
+      fireEvent.pointerDown(canvas, {
+        clientX: 100,
+        clientY: 100,
+        shiftKey: true,
+        button: 0,
+      });
+      fireEvent.pointerMove(canvas, {
+        clientX: 140,
+        clientY: 80,
+        shiftKey: true,
+        button: 0,
+      });
+      fireEvent.pointerUp(canvas);
+
+      const activePhase = useTacticalUnifiedStore.getState().project.phases[0];
+      const actionCues = activePhase.directorCamera?.actionCues;
+      expect(actionCues).toBeDefined();
+      expect(actionCues?.length).toBeGreaterThan(0);
+      const latestCue = actionCues?.[actionCues.length - 1];
+      expect(latestCue?.panX).toBe(40);
+      expect(latestCue?.panY).toBe(-20);
+    });
+
+    it('upserts action camera cue on canvas wheel event with updated zoom', () => {
+      const { container } = render(
+        <TacticalUnifiedStoreProvider>
+          <TacticalSplitPreviewPanel />
+        </TacticalUnifiedStoreProvider>,
+      );
+
+      const canvas = container.querySelector('canvas');
+      if (!canvas) throw new Error('Canvas not found');
+
+      fireEvent.wheel(canvas, { deltaY: -100 });
+
+      const activePhase = useTacticalUnifiedStore.getState().project.phases[0];
+      const actionCues = activePhase.directorCamera?.actionCues;
+      expect(actionCues).toBeDefined();
+      expect(actionCues?.length).toBeGreaterThan(0);
+      const latestCue = actionCues?.[actionCues.length - 1];
+      expect(latestCue?.zoom).toBe(1.15);
+    });
+  });
 });

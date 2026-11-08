@@ -1,19 +1,20 @@
 import type { StateCreator } from 'zustand';
 import { getScreenOuterPitchRect } from '@/lib/tactical/pitch-geometry';
-import type {
-  BoundaryBox,
-  PitchTransform,
-  XMediaPresetKey,
-} from '@/lib/types/tactical-unified';
 import {
+  type ActionCameraCue,
+  type BoundaryBox,
   createXBoundaryBox,
   DEFAULT_BOUNDARY_BOX_16_9,
+  type Easing,
+  type PitchTransform,
   X_MEDIA_PRESETS,
+  type XMediaPresetKey,
 } from '@/lib/types/tactical-unified';
 import {
   findPhaseIdForSlide,
   updatePhaseBoundaryInProject,
 } from './boundary-box-helpers';
+import { createDirectorCameraActions } from './director-camera-actions';
 import { getSlide, recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
 
@@ -37,6 +38,18 @@ export interface PitchSlice {
     recordHistory?: boolean,
   ) => void;
   setPitchPosition: (slideId?: string, pos?: { x: number; y: number }) => void;
+  upsertGlobalCameraKeyframe: (
+    timeMs: number,
+    patch: { tilt?: number; yaw?: number; easing?: Easing },
+    keyframeId?: string,
+  ) => void;
+  deleteGlobalCameraKeyframe: (keyframeId: string) => void;
+  upsertActionCameraCue: (
+    startTimeMs: number,
+    patch: Partial<Omit<ActionCameraCue, 'id'>>,
+    cueId?: string,
+  ) => void;
+  deleteActionCameraCue: (cueId: string) => void;
 }
 
 type SetState = Parameters<
@@ -281,4 +294,5 @@ export const createPitchSlice: StateCreator<
     }),
   ...createPitchBoundaryActions(set),
   ...createPitchTransformActions(set),
+  ...createDirectorCameraActions(set),
 });

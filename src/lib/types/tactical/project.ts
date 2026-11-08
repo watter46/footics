@@ -5,11 +5,46 @@ import {
   BoundaryBoxSchema,
   DEFAULT_BOUNDARY_BOX_16_9,
   DEFAULT_BOUNDARY_BOX_FULL,
+  EasingSchema,
   PitchAppearanceConfigSchema,
   ScreenBackgroundConfigSchema,
   type Slide,
   SlideSchema,
 } from './slide';
+
+// ─────────────────────────────────────────
+// § 8.1. ディレクターカメラトラック
+// ─────────────────────────────────────────
+
+export const GlobalCameraKeyframeSchema = z.object({
+  id: z.string(),
+  timeMs: z.number().min(0),
+  tilt: z.number().min(0).max(65),
+  yaw: z.number(),
+  easing: EasingSchema.default('ease-in-out').optional(),
+});
+export type GlobalCameraKeyframe = z.infer<typeof GlobalCameraKeyframeSchema>;
+
+export const ActionCameraCueSchema = z.object({
+  id: z.string(),
+  startTimeMs: z.number().min(0),
+  durationMs: z.number().min(100).default(1000),
+  holdMs: z.number().min(0).default(0).optional(),
+  returnDurationMs: z.number().min(100).default(800).optional(),
+  zoom: z.number().min(0.4).max(3.0),
+  panX: z.number(),
+  panY: z.number(),
+  autoReturn: z.boolean().default(false),
+  easing: EasingSchema.default('ease-in-out').optional(),
+});
+export type ActionCameraCue = z.infer<typeof ActionCameraCueSchema>;
+
+export const DirectorCameraTrackSchema = z.object({
+  enabled: z.boolean().default(true),
+  globalKeyframes: z.array(GlobalCameraKeyframeSchema).default([]),
+  actionCues: z.array(ActionCameraCueSchema).default([]),
+});
+export type DirectorCameraTrack = z.infer<typeof DirectorCameraTrackSchema>;
 
 // ─────────────────────────────────────────
 // § 8.2. フェーズ
@@ -25,6 +60,7 @@ export const TacticalPhaseSchema = z.object({
   name: z.string().min(1).max(200),
   aspectRatio: AspectRatioSchema.default('4:5').optional(),
   boundaryBox: BoundaryBoxSchema.default(DEFAULT_PHASE_BOUNDARY_BOX).optional(),
+  directorCamera: DirectorCameraTrackSchema.optional(),
   slides: z.array(SlideSchema).min(1),
 });
 export type TacticalPhase = z.infer<typeof TacticalPhaseSchema>;

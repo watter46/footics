@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { TimelineBar } from '../timeline-bar';
@@ -394,6 +394,24 @@ describe('TimelineBar Component', () => {
       expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(2);
       // Scene 3 の開始時間: Scene 2(1000ms move + 500ms pause) + Scene 3(1000ms move) = 2500ms
       expect(useTacticalUnifiedStore.getState().playbackSeekTimeMs).toBe(2500);
+    });
+  });
+
+  describe('ディレクターモード切り替え (Director Workspace Mode)', () => {
+    it('workspaceMode === "board" のときはスライドカード一覧が表示され、workspaceMode === "director" に切り替えたときは director-camera-timeline が表示される', () => {
+      render(<TimelineBar />);
+
+      // board モードではスライドカード (Scene 1) が表示され、director-camera-timeline は存在しない
+      expect(screen.getByRole('button', { name: 'Scene 1' })).toBeDefined();
+      expect(screen.queryByTestId('director-camera-timeline')).toBeNull();
+
+      // director モードに切り替え
+      act(() => {
+        useTacticalUnifiedStore.getState().setWorkspaceMode('director');
+      });
+
+      expect(screen.getByTestId('director-camera-timeline')).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Scene 1' })).toBeNull();
     });
   });
 });

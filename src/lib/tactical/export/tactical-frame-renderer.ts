@@ -16,6 +16,7 @@ import {
 import type {
   AspectRatio,
   BoundaryBox,
+  DirectorCameraTrack,
   PitchAppearanceConfig,
   PitchTransform,
   ScreenBackgroundConfig,
@@ -77,6 +78,8 @@ export interface RenderTacticalFrameOptions {
   marbleTexture?: CanvasImageSource | null;
   /** 画面背景設定 (シネマティック放射グラデーション / 単色ダーク) */
   screenBackground?: ScreenBackgroundConfig;
+  /** ディレクターモード疑似マルチカメラトラック（指定時は合成カメラで描画） */
+  directorCamera?: DirectorCameraTrack | null;
   /** 事前計算済み補間フレーム（指定時は getInterpolatedUnifiedSlideFrame の再計算をスキップ） */
   precomputedFrame?: InterpolatedUnifiedSlideFrame;
 }
@@ -88,9 +91,17 @@ export type RenderTacticalFrameParams = RenderTacticalFrameOptions;
  * between two slides, meaning the canvas content is identical to the previous frame.
  * Used by the VideoFrame.clone() static-frame cache to skip redundant GPU re-uploads.
  */
-export function isPauseFrame(slides: Slide[], timeMs: number): boolean {
+export function isPauseFrame(
+  slides: Slide[],
+  timeMs: number,
+  directorCamera?: DirectorCameraTrack | null,
+): boolean {
   if (slides.length <= 1) return false;
-  const frame = getInterpolatedUnifiedSlideFrame(slides, timeMs);
+  const frame = getInterpolatedUnifiedSlideFrame(
+    slides,
+    timeMs,
+    directorCamera,
+  );
   return frame.isPaused;
 }
 
@@ -114,6 +125,7 @@ export function renderTacticalFrameToCanvas(
     pitchAppearance,
     marbleTexture,
     screenBackground,
+    directorCamera,
   } = options;
 
   if (w <= 0 || h <= 0) return;
@@ -121,7 +133,7 @@ export function renderTacticalFrameToCanvas(
   // 補間済みフレームデータを先行取得
   const frame =
     options.precomputedFrame ??
-    getInterpolatedUnifiedSlideFrame(slides, timeMs);
+    getInterpolatedUnifiedSlideFrame(slides, timeMs, directorCamera);
 
   const isBoundaryActive =
     boundaryBox?.enabled &&
