@@ -68,15 +68,19 @@ export function CameraControlPanel(): React.ReactElement {
         panY: 0,
       });
 
-  const tilt = Math.round(currentCamera.tilt ?? 0);
-  const yaw = Math.round(currentCamera.yaw ?? 90);
-  const zoom = Number((currentCamera.zoom ?? 1).toFixed(2));
-  const panX = Math.round(currentCamera.panX ?? 0);
-  const panY = Math.round(currentCamera.panY ?? 0);
-
   const activeCue = isDirectorMode
     ? findActiveActionCue(directorCamera?.actionCues ?? [], currentTimeMs)
     : null;
+
+  const tilt = Math.round(currentCamera.tilt ?? 0);
+  const yaw = Math.round(currentCamera.yaw ?? 90);
+  const zoom = Number(
+    (
+      (isDirectorMode && activeCue ? activeCue.zoom : currentCamera.zoom) ?? 1
+    ).toFixed(2),
+  );
+  const panX = Math.round(currentCamera.panX ?? 0);
+  const panY = Math.round(currentCamera.panY ?? 0);
 
   const syncSlide = (patch: Partial<PitchTransform>) => {
     if (activeSlideId) updatePitchTransform(activeSlideId, patch);
@@ -117,7 +121,15 @@ export function CameraControlPanel(): React.ReactElement {
   const handleZoomChange = (v: number) => {
     const nextZoom = Math.max(0.4, Math.min(3.0, Number.isNaN(v) ? 1 : v));
     if (isDirectorMode) {
-      upsertActionCameraCue(currentTimeMs, { zoom: nextZoom, panX, panY });
+      if (activeCue) {
+        upsertActionCameraCue(
+          currentTimeMs,
+          { zoom: nextZoom, panX, panY },
+          activeCue.id,
+        );
+      } else {
+        upsertActionCameraCue(currentTimeMs, { zoom: nextZoom, panX, panY });
+      }
     }
     syncSlide({ zoom: nextZoom });
   };
@@ -249,6 +261,7 @@ export function CameraControlPanel(): React.ReactElement {
         unit="x"
         minLabel="0.4x (広域)"
         midLabel="1.0x (標準)"
+        midValue={1.0}
         maxLabel="3.0x (拡大)"
         onChange={handleZoomChange}
       />

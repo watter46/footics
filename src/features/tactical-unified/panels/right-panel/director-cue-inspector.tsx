@@ -74,9 +74,28 @@ export function DirectorCueInspector({
         </button>
       </div>
 
-      {/* Duration Chips */}
+      {/* Duration Control (Direct Input + Chips) */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-[10px] text-white/60">演出秒数:</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] text-white/60">演出秒数:</span>
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              data-testid="action-duration-input"
+              step="0.1"
+              min="0.2"
+              max="10.0"
+              value={((cue.durationMs ?? 1000) / 1000).toFixed(1)}
+              onChange={(e) => {
+                const val = Number.parseFloat(e.target.value);
+                if (!Number.isNaN(val) && val > 0)
+                  onUpdateDuration(cue, Math.round(val * 1000));
+              }}
+              className="w-16 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-right font-mono text-[11px] text-white focus:outline-none focus:border-[#FF8100]/60"
+            />
+            <span className="text-white/40 text-[10px]">秒</span>
+          </div>
+        </div>
         <div className="grid grid-cols-4 gap-1">
           {DURATION_PRESETS.map(({ label, ms }) => {
             const isChipActive = (cue.durationMs ?? 1000) === ms;

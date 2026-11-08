@@ -682,5 +682,46 @@ describe('TacticalSplitPreviewPanel (Layout Mode)', () => {
       const latestCue = actionCues?.[actionCues.length - 1];
       expect(latestCue?.zoom).toBe(1.15);
     });
+
+    it('updates existing active cue on native container wheel event with preventDefault and activeCue.id', () => {
+      const { container } = render(
+        <TacticalUnifiedStoreProvider>
+          <TacticalSplitPreviewPanel />
+        </TacticalUnifiedStoreProvider>,
+      );
+
+      const store = useTacticalUnifiedStore.getState();
+      act(() => {
+        store.upsertActionCameraCue(
+          0,
+          {
+            zoom: 1.8,
+            durationMs: 2000,
+          },
+          'cue-test-1',
+        );
+      });
+
+      const previewContainer = container.querySelector(
+        '[data-testid="preview-container"]',
+      );
+      if (!previewContainer) throw new Error('Preview container not found');
+
+      const wheelEvent = new WheelEvent('wheel', {
+        deltaY: -100,
+        bubbles: true,
+        cancelable: true,
+      });
+      const preventSpy = vi.spyOn(wheelEvent, 'preventDefault');
+      previewContainer.dispatchEvent(wheelEvent);
+
+      expect(preventSpy).toHaveBeenCalled();
+
+      const activePhase = useTacticalUnifiedStore.getState().project.phases[0];
+      const actionCues = activePhase.directorCamera?.actionCues;
+      const targetCue = actionCues?.find((c) => c.id === 'cue-test-1');
+      expect(targetCue).toBeDefined();
+      expect(targetCue?.zoom).toBe(1.95);
+    });
   });
 });

@@ -165,7 +165,9 @@ export function TimelineBar() {
 
       {/* Center: Director Timeline or Slide Strip with @dnd-kit horizontal sorting */}
       {workspaceMode === 'director' ? (
-        <DirectorCameraTimeline />
+        <div className="flex-1 max-w-6xl mx-auto px-6 w-full flex items-center">
+          <DirectorCameraTimeline />
+        </div>
       ) : (
         <DndContext
           id="tactical-timeline-dnd"

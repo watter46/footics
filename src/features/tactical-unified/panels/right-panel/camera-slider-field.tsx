@@ -14,6 +14,7 @@ export interface CameraSliderFieldProps {
   minLabel: string;
   maxLabel: string;
   midLabel?: string;
+  midValue?: number;
   onChange: (value: number) => void;
 }
 
@@ -29,6 +30,7 @@ export function CameraSliderField({
   minLabel,
   maxLabel,
   midLabel,
+  midValue,
   onChange,
 }: CameraSliderFieldProps): React.ReactElement {
   return (
@@ -66,9 +68,42 @@ export function CameraSliderField({
         onChange={(e) => onChange(Number.parseFloat(e.target.value))}
         className="w-full accent-[#FF8100] cursor-pointer"
       />
-      <div className="flex justify-between text-[10px] text-white/40 font-mono">
+      <div className="relative flex justify-between text-[10px] text-white/40 font-mono">
         <span>{minLabel}</span>
-        {midLabel && <span>{midLabel}</span>}
+        {midLabel && (
+          <span
+            role={midValue !== undefined ? 'button' : undefined}
+            tabIndex={midValue !== undefined ? 0 : undefined}
+            onClick={
+              midValue !== undefined ? () => onChange(midValue) : undefined
+            }
+            onKeyDown={
+              midValue !== undefined
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      onChange(midValue);
+                    }
+                  }
+                : undefined
+            }
+            style={
+              midValue !== undefined
+                ? {
+                    position: 'absolute',
+                    left: `${((midValue - min) / (max - min)) * 100}%`,
+                    transform: 'translateX(-50%)',
+                  }
+                : undefined
+            }
+            className={
+              midValue !== undefined
+                ? 'cursor-pointer hover:text-white transition-colors select-none'
+                : undefined
+            }
+          >
+            {midLabel}
+          </span>
+        )}
         <span>{maxLabel}</span>
       </div>
     </div>

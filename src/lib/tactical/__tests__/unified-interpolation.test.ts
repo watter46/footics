@@ -1126,7 +1126,7 @@ describe('unified-interpolation engine', () => {
         expect(after.yaw).toBe(70);
       });
 
-      it('interpolates action cues in hold mode (autoReturn: false)', () => {
+      it('interpolates action cues in hold mode (autoReturn: false) with fast approach and target zoom hold', () => {
         const track: DirectorCameraTrack = {
           enabled: true,
           globalKeyframes: [],
@@ -1134,7 +1134,7 @@ describe('unified-interpolation engine', () => {
             {
               id: 'a1',
               startTimeMs: 1000,
-              durationMs: 1000,
+              durationMs: 2000,
               zoom: 2.0,
               panX: 100,
               panY: -50,
@@ -1149,15 +1149,22 @@ describe('unified-interpolation engine', () => {
         expect(before.panX).toBe(0);
         expect(before.panY).toBe(0);
 
+        // 100ms into cue (within transitionInMs = 250ms) -> easing in progress
+        const approaching = resolveSyntheticDirectorCamera(track, 1100);
+        expect(approaching.zoom).toBeGreaterThan(1.0);
+        expect(approaching.zoom).toBeLessThan(2.0);
+        expect(approaching.zoom).toBeCloseTo(1.4, 2); // (100 / 250) = 0.4 -> 1 + 1*0.4 = 1.4
+
+        // 1500ms (center of cue) -> holds target zoom 2.0
         const mid = resolveSyntheticDirectorCamera(track, 1500);
-        expect(mid.zoom).toBeCloseTo(1.5, 2);
-        expect(mid.panX).toBeCloseTo(50, 1);
-        expect(mid.panY).toBeCloseTo(-25, 1);
+        expect(mid.zoom).toBe(2.0);
+        expect(mid.panX).toBe(100);
+        expect(mid.panY).toBe(-50);
 
         const after = resolveSyntheticDirectorCamera(track, 3000);
-        expect(after.zoom).toBeCloseTo(2.0, 2);
-        expect(after.panX).toBeCloseTo(100, 1);
-        expect(after.panY).toBeCloseTo(-50, 1);
+        expect(after.zoom).toBe(2.0);
+        expect(after.panX).toBe(100);
+        expect(after.panY).toBe(-50);
       });
 
       it('interpolates action cues in auto return mode (autoReturn: true)', () => {
@@ -1268,9 +1275,9 @@ describe('unified-interpolation engine', () => {
         );
         expect(frameWithDirector.pitchTransform.tilt).toBeCloseTo(20, 1);
         expect(frameWithDirector.pitchTransform.yaw).toBeCloseTo(100, 1);
-        expect(frameWithDirector.pitchTransform.zoom).toBeCloseTo(1.5, 2);
-        expect(frameWithDirector.pitchTransform.panX).toBeCloseTo(50, 1);
-        expect(frameWithDirector.pitchTransform.panY).toBeCloseTo(-25, 1);
+        expect(frameWithDirector.pitchTransform.zoom).toBe(2.0);
+        expect(frameWithDirector.pitchTransform.panX).toBe(100);
+        expect(frameWithDirector.pitchTransform.panY).toBe(-50);
 
         // When directorCamera is not provided, falls back to regular slide pitchTransform interpolation
         const frameWithoutDirector = getInterpolatedUnifiedSlideFrame(

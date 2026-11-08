@@ -17,6 +17,15 @@ export function DirectorCameraTimeline() {
     (s) => s.playbackSeekTimeMs,
   );
   const seekTo = useTacticalUnifiedStoreContext((s) => s.seekTo);
+  const deleteGlobalCameraKeyframe = useTacticalUnifiedStoreContext(
+    (s) => s.deleteGlobalCameraKeyframe,
+  );
+  const deleteActionCameraCue = useTacticalUnifiedStoreContext(
+    (s) => s.deleteActionCameraCue,
+  );
+  const upsertActionCameraCue = useTacticalUnifiedStoreContext(
+    (s) => s.upsertActionCameraCue,
+  );
 
   const [selectedGlobalId, setSelectedGlobalId] = useState<string | null>(null);
   const [selectedCueId, setSelectedCueId] = useState<string | null>(null);
@@ -44,6 +53,13 @@ export function DirectorCameraTimeline() {
       seekTo(startTimeMs);
     },
     [seekTo],
+  );
+
+  const handleUpdateCueDuration = useCallback(
+    (cue: (typeof actionCues)[number], durationMs: number) => {
+      upsertActionCameraCue(cue.startTimeMs, { durationMs }, cue.id);
+    },
+    [upsertActionCameraCue],
   );
 
   return (
@@ -81,6 +97,7 @@ export function DirectorCameraTimeline() {
         totalDurationMs={totalDurationMs}
         currentTimeMs={currentTimeMs}
         onSelectKeyframe={handleSelectKeyframe}
+        onDeleteKeyframe={deleteGlobalCameraKeyframe}
       />
 
       {/* 下段: ② アクションカメラトラック */}
@@ -90,6 +107,9 @@ export function DirectorCameraTimeline() {
         totalDurationMs={totalDurationMs}
         currentTimeMs={currentTimeMs}
         onSelectCue={handleSelectCue}
+        onUpdateDuration={handleUpdateCueDuration}
+        onDeleteCue={deleteActionCameraCue}
+        onSeek={seekTo}
       />
     </div>
   );

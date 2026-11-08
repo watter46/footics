@@ -152,4 +152,93 @@ describe('CameraControlPanel (Phase 1)', () => {
         ?.actionCues ?? [];
     expect(cuesAfter.some((c) => c.id === cue!.id)).toBe(false);
   });
+
+  it('6. DirectorCueInspector の秒数手入力フィールドに 1.5 を入力すると、upsertActionCameraCue が durationMs: 1500 で呼ばれること', () => {
+    const store = useTacticalUnifiedStore.getState();
+    store.setWorkspaceMode('director');
+    store.seekTo(1000);
+    store.upsertActionCameraCue(1000, {
+      durationMs: 1000,
+      zoom: 1.5,
+    });
+
+    const activePhase = useTacticalUnifiedStore.getState().project.phases[0];
+    const cue = activePhase?.directorCamera?.actionCues?.[0];
+    expect(cue).toBeDefined();
+
+    const upsertActionSpy = vi.spyOn(
+      useTacticalUnifiedStore.getState(),
+      'upsertActionCameraCue',
+    );
+
+    render(<CameraControlPanel />);
+
+    const durationInput = screen.getByTestId('action-duration-input');
+    expect(durationInput).toBeDefined();
+    expect((durationInput as HTMLInputElement).value).toBe('1.0');
+
+    fireEvent.change(durationInput, { target: { value: '1.5' } });
+
+    expect(upsertActionSpy).toHaveBeenCalledWith(
+      cue!.startTimeMs,
+      expect.objectContaining({ durationMs: 1500 }),
+      cue!.id,
+    );
+    upsertActionSpy.mockRestore();
+  });
+
+  it('7. activeCue が存在するとき、Zoomスライダー操作で activeCue.id を含む upsertActionCameraCue が呼ばれ、activeCue.zoom が表示されること', () => {
+    const store = useTacticalUnifiedStore.getState();
+    store.setWorkspaceMode('director');
+    store.seekTo(1200);
+    store.upsertActionCameraCue(1000, {
+      durationMs: 2000,
+      zoom: 2.2,
+    });
+
+    const activePhase = useTacticalUnifiedStore.getState().project.phases[0];
+    const cue = activePhase?.directorCamera?.actionCues?.[0];
+    expect(cue).toBeDefined();
+
+    const upsertActionSpy = vi.spyOn(
+      useTacticalUnifiedStore.getState(),
+      'upsertActionCameraCue',
+    );
+
+    render(<CameraControlPanel />);
+
+    const zoomSlider = screen.getByLabelText('Zoom', {
+      selector: 'input[type="range"]',
+    });
+    expect((zoomSlider as HTMLInputElement).value).toBe('2.2');
+
+    fireEvent.change(zoomSlider, { target: { value: '2.5' } });
+
+    expect(upsertActionSpy).toHaveBeenCalledWith(
+      1200,
+      expect.objectContaining({ zoom: 2.5 }),
+      cue!.id,
+    );
+    upsertActionSpy.mockRestore();
+  });
+
+  it('8. Zoomスライダーの midLabel (1.0x (標準)) をクリックすると 1.0 にリセットされること', () => {
+    const store = useTacticalUnifiedStore.getState();
+    store.setWorkspaceMode('board');
+
+    render(<CameraControlPanel />);
+
+    const midLabel = screen.getByText('1.0x (標準)');
+    fireEvent.click(midLabel);
+
+    const updateSpy = vi.spyOn(
+      useTacticalUnifiedStore.getState(),
+      'updatePitchTransform',
+    );
+    fireEvent.click(midLabel);
+
+    const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+    expect(updateSpy).toHaveBeenCalledWith(activeSlideId, { zoom: 1 });
+    updateSpy.mockRestore();
+  });
 });

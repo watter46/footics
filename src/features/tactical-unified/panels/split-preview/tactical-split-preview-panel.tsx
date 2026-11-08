@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  type PointerEvent,
-  useMemo,
-  useRef,
-  useState,
-  type WheelEvent,
-} from 'react';
+import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { useExportPreviewAnimation } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
@@ -83,6 +77,11 @@ export function TacticalSplitPreviewPanel() {
         currentTimeMs,
       )
     : (activeSlide?.pitchTransform ?? null);
+  const activeCue = activePhase?.directorCamera?.actionCues?.find(
+    (c) =>
+      currentTimeMs >= c.startTimeMs &&
+      currentTimeMs <= c.startTimeMs + (c.durationMs ?? 1000),
+  );
 
   // 境界線の状態
   const boundaryBox = activeSlide?.boundaryBox ?? phaseBoundaryBox;
@@ -93,7 +92,6 @@ export function TacticalSplitPreviewPanel() {
     [slides],
   );
   const playerPhotoMap = usePlayerPhotoRegistry(allPhasePlayers);
-
   const playerPhotos = useMemo(
     () => buildPlayerPhotoRecord(allPhasePlayers, playerPhotoMap),
     [allPhasePlayers, playerPhotoMap],
@@ -147,7 +145,7 @@ export function TacticalSplitPreviewPanel() {
   const handlePointerMove = (e: PointerEvent<HTMLCanvasElement>) => {
     if (!isDraggingRef.current || !activeSlide) return;
     const baseCamera = resolvedCamera ?? activeSlide.pitchTransform;
-    const baseTransform: PitchTransform = latestPitchTransformRef.current ??
+    const base: PitchTransform = latestPitchTransformRef.current ??
       baseCamera ?? {
         tilt: 0,
         yaw: 90,
@@ -160,39 +158,22 @@ export function TacticalSplitPreviewPanel() {
     const dy = e.clientY - lastPosRef.current.y;
     lastPosRef.current = { x: e.clientX, y: e.clientY };
 
-    if (e.shiftKey) {
-      dragModeRef.current = 'pan';
-      // Shift + 左ドラッグ: パン
-      const currentPanX = baseTransform.panX ?? 0;
-      const currentPanY = baseTransform.panY ?? 0;
-      const nextTransform: PitchTransform = {
-        ...baseTransform,
-        panX: currentPanX + dx,
-        panY: currentPanY + dy,
-      };
-      latestPitchTransformRef.current = nextTransform;
-      setDragPitchTransform(nextTransform);
-    } else {
-      dragModeRef.current = 'orbit';
-      // 左ドラッグ（Shiftなし）: オービット（Tilt & Yaw）
-      const currentTilt = baseTransform.tilt ?? 0;
-      const currentYaw = baseTransform.yaw ?? 90;
-
-      const nextTilt = Math.max(
-        0,
-        Math.min(70, Math.round(currentTilt - dy * 0.25)),
-      );
-      const rawYaw = currentYaw + dx * 0.4;
-      const nextYaw = Math.round((((rawYaw % 360) + 360) % 360) * 10) / 10;
-
-      const nextTransform: PitchTransform = {
-        ...baseTransform,
-        tilt: nextTilt,
-        yaw: nextYaw,
-      };
-      latestPitchTransformRef.current = nextTransform;
-      setDragPitchTransform(nextTransform);
-    }
+    const nextTransform: PitchTransform = e.shiftKey
+      ? { ...base, panX: (base.panX ?? 0) + dx, panY: (base.panY ?? 0) + dy }
+      : {
+          ...base,
+          tilt: Math.max(
+            0,
+            Math.min(70, Math.round((base.tilt ?? 0) - dy * 0.25)),
+          ),
+          yaw:
+            Math.round(
+              (((((base.yaw ?? 90) + dx * 0.4) % 360) + 360) % 360) * 10,
+            ) / 10,
+        };
+    dragModeRef.current = e.shiftKey ? 'pan' : 'orbit';
+    latestPitchTransformRef.current = nextTransform;
+    setDragPitchTransform(nextTransform);
   };
 
   const handlePointerUp = (e: PointerEvent<HTMLCanvasElement>) => {
@@ -228,22 +209,47 @@ export function TacticalSplitPreviewPanel() {
     }
   };
 
-  const handleWheel = (e: WheelEvent<HTMLCanvasElement>) => {
-    if (!activeSlide) return;
-    e.preventDefault();
-    const currentZoom =
-      resolvedCamera?.zoom ?? activeSlide.pitchTransform?.zoom ?? 1;
-    const nextZoom = Math.max(
-      0.4,
-      Math.min(3.0, +(currentZoom - e.deltaY * 0.0015).toFixed(2)),
-    );
-    upsertActionCameraCue(currentTimeMs, {
-      zoom: nextZoom,
-      panX: resolvedCamera?.panX ?? 0,
-      panY: resolvedCamera?.panY ?? 0,
-    });
-    updatePitchTransform(activeSlide.id, { zoom: nextZoom });
-  };
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleNativeWheel = (e: globalThis.WheelEvent) => {
+      e.preventDefault();
+      const currentZoom =
+        activeCue?.zoom ??
+        resolvedCamera?.zoom ??
+        activeSlide?.pitchTransform?.zoom ??
+        1;
+      const nextZoom = Math.max(
+        0.4,
+        Math.min(3.0, +(currentZoom - e.deltaY * 0.0015).toFixed(2)),
+      );
+      upsertActionCameraCue(
+        currentTimeMs,
+        {
+          zoom: nextZoom,
+          panX: resolvedCamera?.panX ?? 0,
+          panY: resolvedCamera?.panY ?? 0,
+        },
+        activeCue?.id,
+      );
+      if (activeSlide) {
+        updatePitchTransform(activeSlide.id, { zoom: nextZoom });
+      }
+    };
+
+    container.addEventListener('wheel', handleNativeWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleNativeWheel);
+    };
+  }, [
+    activeCue,
+    resolvedCamera,
+    activeSlide,
+    currentTimeMs,
+    upsertActionCameraCue,
+    updatePitchTransform,
+  ]);
 
   const ratioNum =
     previewWidth > 0 && previewHeight > 0
@@ -275,7 +281,6 @@ export function TacticalSplitPreviewPanel() {
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            onWheel={handleWheel}
             className="w-full h-full block object-contain cursor-grab active:cursor-grabbing touch-none"
           />
 

@@ -78,16 +78,23 @@ export function resolveSyntheticDirectorCamera(
     const fromPanY = panY;
     const moveDur = Math.max(100, cue.durationMs ?? 1000);
     const moveEnd = cue.startTimeMs + moveDur;
+    const transitionInMs = Math.min(250, moveDur * 0.3);
 
     if (timeMs <= moveEnd) {
-      const rawT = Math.min(
-        1,
-        Math.max(0, (timeMs - cue.startTimeMs) / moveDur),
-      );
-      const easeT = applyEasing(rawT, cue.easing ?? 'ease-in-out');
-      zoom = fromZoom + (cue.zoom - fromZoom) * easeT;
-      panX = fromPanX + (cue.panX - fromPanX) * easeT;
-      panY = fromPanY + (cue.panY - fromPanY) * easeT;
+      if (timeMs < cue.startTimeMs + transitionInMs) {
+        const rawT = Math.min(
+          1,
+          Math.max(0, (timeMs - cue.startTimeMs) / Math.max(1, transitionInMs)),
+        );
+        const easeT = applyEasing(rawT, cue.easing ?? 'ease-in-out');
+        zoom = fromZoom + (cue.zoom - fromZoom) * easeT;
+        panX = fromPanX + (cue.panX - fromPanX) * easeT;
+        panY = fromPanY + (cue.panY - fromPanY) * easeT;
+      } else {
+        zoom = cue.zoom;
+        panX = cue.panX;
+        panY = cue.panY;
+      }
       break;
     }
 

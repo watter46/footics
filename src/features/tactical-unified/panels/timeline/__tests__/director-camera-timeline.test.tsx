@@ -104,6 +104,125 @@ describe('DirectorCameraTimeline Component', () => {
     expect(screen.getByRole('button', { name: '一括設定' })).toBeDefined();
     expect(screen.getByText('L-Click')).toBeDefined();
   });
+
+  it('全体ピン（◆）をクリックしたとき、削除ポップオーバーが表示され、削除ボタン押下で deleteGlobalCameraKeyframe が呼ばれること', () => {
+    const store = useTacticalUnifiedStore.getState();
+    store.upsertGlobalCameraKeyframe(1000, { tilt: 30, yaw: 45 });
+    const kfs =
+      useTacticalUnifiedStore.getState().project.phases[0]?.directorCamera
+        ?.globalKeyframes ?? [];
+    const kf = kfs.find((k) => k.timeMs === 1000)!;
+    expect(kf).toBeDefined();
+    const kfId = kf.id;
+
+    render(<DirectorCameraTimeline />);
+
+    const pin = screen.getByTestId(`global-kf-pin-${kfId}`);
+    fireEvent.click(pin);
+
+    const popover = screen.getByTestId(`global-pin-popover-${kfId}`);
+    expect(popover).toBeDefined();
+    expect(screen.getByText(/Tilt 30°/)).toBeDefined();
+
+    const deleteBtn = screen.getByTestId(`delete-global-pin-btn-${kfId}`);
+    fireEvent.click(deleteBtn);
+
+    const afterKfs =
+      useTacticalUnifiedStore.getState().project.phases[0]?.directorCamera
+        ?.globalKeyframes ?? [];
+    expect(afterKfs.find((k) => k.id === kfId)).toBeUndefined();
+  });
+
+  it('アクションCueをクリックしたとき、削除ポップオーバーが表示され、削除ボタン押下で deleteActionCameraCue が呼ばれること', () => {
+    const store = useTacticalUnifiedStore.getState();
+    store.upsertActionCameraCue(
+      1000,
+      {
+        durationMs: 1500,
+        zoom: 2.0,
+        panX: 0,
+        panY: 0,
+      },
+      'cue-test-del',
+    );
+
+    render(<DirectorCameraTimeline />);
+
+    const cueBlock = screen.getByTestId('action-cue-block-cue-test-del');
+    fireEvent.click(cueBlock);
+
+    const popover = screen.getByTestId('action-cue-popover-cue-test-del');
+    expect(popover).toBeDefined();
+
+    const deleteBtn = screen.getByTestId(
+      'delete-action-cue-popover-btn-cue-test-del',
+    );
+    fireEvent.click(deleteBtn);
+
+    const cues =
+      useTacticalUnifiedStore.getState().project.phases[0]?.directorCamera
+        ?.actionCues ?? [];
+    expect(cues.find((c) => c.id === 'cue-test-del')).toBeUndefined();
+  });
+
+  it('アクションCueの右端リサイズハンドルをドラッグしたとき、durationMs が更新され seekTo が呼ばれること', () => {
+    const store = useTacticalUnifiedStore.getState();
+    store.upsertActionCameraCue(
+      1000,
+      {
+        durationMs: 1000,
+        zoom: 2.0,
+        panX: 0,
+        panY: 0,
+      },
+      'cue-test-resize',
+    );
+
+    render(<DirectorCameraTimeline />);
+
+    const resizeHandle = screen.getByTestId(
+      'action-cue-resize-handle-cue-test-resize',
+    );
+    expect(resizeHandle).toBeDefined();
+
+    // トラックの幅をモック
+    const track = screen.getByTestId('action-camera-track');
+    Object.defineProperty(track, 'getBoundingClientRect', {
+      value: () => ({
+        width: 1000,
+        left: 0,
+        right: 1000,
+        top: 0,
+        bottom: 50,
+      }),
+    });
+
+    fireEvent.pointerDown(resizeHandle, { clientX: 100 });
+    // totalDurationMs (3000ms想定), trackWidth: 1000px
+    // clientX: 200 => deltaX = 100px => deltaMs = (100 / 1000) * totalDurationMs = 300ms
+    // newDuration = 1000 + 300 = 1300ms
+    fireEvent.pointerMove(window, { clientX: 200 });
+    fireEvent.pointerUp(window);
+
+    const cues =
+      useTacticalUnifiedStore.getState().project.phases[0]?.directorCamera
+        ?.actionCues ?? [];
+    const cue = cues.find((c) => c.id === 'cue-test-resize');
+    expect(cue?.durationMs).toBe(1300);
+    // seekTo は cue.startTimeMs + newDurationMs = 1000 + 1300 = 2300 に追従
+    expect(useTacticalUnifiedStore.getState().playbackSeekTimeMs).toBe(2300);
+  });
+
+  it('workspaceMode === "director" のとき、TimelineBar 内のディレクターコンテナに max-w-6xl が適用されていること', () => {
+    act(() => {
+      useTacticalUnifiedStore.getState().setWorkspaceMode('director');
+    });
+    render(<TimelineBar />);
+
+    const timeline = screen.getByTestId('director-camera-timeline');
+    const container = timeline.parentElement;
+    expect(container?.className).toContain('max-w-6xl');
+  });
 });
 
 describe('layoutActionCuesIntoLanes', () => {
