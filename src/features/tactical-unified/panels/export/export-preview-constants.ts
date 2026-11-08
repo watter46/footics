@@ -1,4 +1,34 @@
-import type { AspectRatio, PitchTransform } from '@/lib/types/tactical-unified';
+import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/unified-interpolation';
+import type {
+  AspectRatio,
+  BoundaryBox,
+  DirectorCameraTrack,
+  PitchAppearanceConfig,
+  PitchTransform,
+  ScreenBackgroundConfig,
+  Slide,
+} from '@/lib/types/tactical-unified';
+
+export interface UseExportPreviewAnimationParams {
+  slides: Slide[];
+  aspectRatio: AspectRatio;
+  /** キャンバス自体の出力アスペクト比（省略時は aspectRatio、レイアウト画面では '16:9' 固定） */
+  canvasAspectRatio?: AspectRatio;
+  boundaryBox?: BoundaryBox | null;
+  pitchTransform?: PitchTransform | null;
+  directorCamera?: DirectorCameraTrack | null;
+  directorCameraOptions?: ResolveSyntheticDirectorCameraOptions;
+  photos?: Record<string, string>;
+  playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
+  pitchAppearance?: PitchAppearanceConfig;
+  screenBackground?: ScreenBackgroundConfig;
+  teamVisibility?: 'both' | 'home' | 'away';
+  externalIsPlaying?: boolean;
+  onToggleExternalPlay?: () => void;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  timeLabelRef: React.RefObject<HTMLSpanElement | null>;
+  sliderRef: React.RefObject<HTMLInputElement | null>;
+}
 
 export const PREVIEW_DIMENSIONS: Record<
   AspectRatio,

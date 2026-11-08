@@ -1,8 +1,10 @@
 import type { StateCreator } from 'zustand';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { MarkerStyle, Player } from '@/lib/types/tactical-unified';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { getSlide, recordHistory, updateSlideInProject } from './store-helpers';
 import type { TacticalUnifiedState } from './tactical-unified-store';
+
+export type PlayerStyle = MarkerStyle;
 
 export interface SlidePlayerCrudSlice {
   addPlayer: (player: Player) => void;
@@ -30,6 +32,12 @@ export interface SlidePlayerCrudSlice {
     updates: { id: string; patch: Partial<Player> }[],
   ) => void;
   removePlayer: (slideId: string, playerId: string) => void;
+  applyPlayerStyleToPhaseSlides: (
+    phaseId: string,
+    stylePartial: Partial<MarkerStyle>,
+    targetTeam: 'home' | 'away' | 'both',
+  ) => void;
+  applyBallScaleToPhaseSlides: (phaseId: string, sizeScale: number) => void;
 }
 
 export const createSlidePlayerCrudSlice: StateCreator<
@@ -230,6 +238,58 @@ export const createSlidePlayerCrudSlice: StateCreator<
         })),
         isDirty: true,
         selectedObjects: s.selectedObjects.filter((o) => o.id !== playerId),
+      };
+    }),
+
+  applyPlayerStyleToPhaseSlides: (phaseId, stylePartial, targetTeam) =>
+    set((s) => {
+      if (!s.project.phases.some((ph) => ph.id === phaseId)) return s;
+      return {
+        ...recordHistory(s),
+        project: {
+          ...s.project,
+          phases: s.project.phases.map((ph) =>
+            ph.id !== phaseId
+              ? ph
+              : {
+                  ...ph,
+                  slides: ph.slides.map((sl) => ({
+                    ...sl,
+                    players: sl.players.map((p) =>
+                      targetTeam === 'both' || p.team === targetTeam
+                        ? { ...p, style: { ...p.style, ...stylePartial } }
+                        : p,
+                    ),
+                  })),
+                },
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+        isDirty: true,
+      };
+    }),
+
+  applyBallScaleToPhaseSlides: (phaseId, sizeScale) =>
+    set((s) => {
+      if (!s.project.phases.some((ph) => ph.id === phaseId)) return s;
+      return {
+        ...recordHistory(s),
+        project: {
+          ...s.project,
+          phases: s.project.phases.map((ph) =>
+            ph.id !== phaseId
+              ? ph
+              : {
+                  ...ph,
+                  slides: ph.slides.map((sl) => ({
+                    ...sl,
+                    ball: { ...sl.ball, sizeScale },
+                  })),
+                },
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+        isDirty: true,
       };
     }),
 });

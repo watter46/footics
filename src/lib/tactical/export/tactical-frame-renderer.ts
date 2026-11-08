@@ -12,6 +12,7 @@
 import {
   getInterpolatedUnifiedSlideFrame,
   type InterpolatedUnifiedFrame,
+  type ResolveSyntheticDirectorCameraOptions,
 } from '@/lib/tactical/unified-interpolation';
 import type {
   AspectRatio,
@@ -80,6 +81,10 @@ export interface RenderTacticalFrameOptions {
   screenBackground?: ScreenBackgroundConfig;
   /** ディレクターモード疑似マルチカメラトラック（指定時は合成カメラで描画） */
   directorCamera?: DirectorCameraTrack | null;
+  /** ディレクターカメラ解決オプション（isEditing, selectedCueId 等） */
+  directorCameraOptions?: ResolveSyntheticDirectorCameraOptions;
+  /** チーム表示フィルタ ('both' | 'home' | 'away') */
+  teamVisibility?: 'both' | 'home' | 'away';
   /** 事前計算済み補間フレーム（指定時は getInterpolatedUnifiedSlideFrame の再計算をスキップ） */
   precomputedFrame?: InterpolatedUnifiedSlideFrame;
 }
@@ -95,12 +100,14 @@ export function isPauseFrame(
   slides: Slide[],
   timeMs: number,
   directorCamera?: DirectorCameraTrack | null,
+  directorCameraOptions?: ResolveSyntheticDirectorCameraOptions,
 ): boolean {
   if (slides.length <= 1) return false;
   const frame = getInterpolatedUnifiedSlideFrame(
     slides,
     timeMs,
     directorCamera,
+    directorCameraOptions,
   );
   return frame.isPaused;
 }
@@ -126,6 +133,8 @@ export function renderTacticalFrameToCanvas(
     marbleTexture,
     screenBackground,
     directorCamera,
+    directorCameraOptions,
+    teamVisibility,
   } = options;
 
   if (w <= 0 || h <= 0) return;
@@ -133,7 +142,12 @@ export function renderTacticalFrameToCanvas(
   // 補間済みフレームデータを先行取得
   const frame =
     options.precomputedFrame ??
-    getInterpolatedUnifiedSlideFrame(slides, timeMs, directorCamera);
+    getInterpolatedUnifiedSlideFrame(
+      slides,
+      timeMs,
+      directorCamera,
+      directorCameraOptions,
+    );
 
   const isBoundaryActive =
     boundaryBox?.enabled &&
@@ -253,7 +267,7 @@ export function renderTacticalFrameToCanvas(
   renderArrows(frameContext, frame.arrows, frame.players);
 
   // 6. Players
-  renderPlayers(frameContext, frame.players, playerPhotos);
+  renderPlayers(frameContext, frame.players, playerPhotos, teamVisibility);
 
   // 7. Soccer Ball
   renderBall(frameContext, frame.ball);

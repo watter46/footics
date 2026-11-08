@@ -1,6 +1,6 @@
 'use client';
 
-import { Circle, Hash, ImageIcon, Palette } from 'lucide-react';
+import { Circle, Hash, ImageIcon, Layers, Palette } from 'lucide-react';
 import { useState } from 'react';
 import { FormationTeamColorPicker } from './formation-team-color-picker';
 import { ScaleSlider } from './scale-slider';
@@ -20,6 +20,7 @@ export interface FormationTeamToggleProps {
   onMarkerScaleChange: (scale: number) => void;
   currentBallScale: number;
   onBallScaleChange: (scale: number) => void;
+  onApplyToPhaseSlides?: () => void;
 }
 
 function TeamDots({
@@ -131,6 +132,7 @@ export function FormationTeamToggle({
   onMarkerScaleChange,
   currentBallScale,
   onBallScaleChange,
+  onApplyToPhaseSlides,
 }: FormationTeamToggleProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
 
@@ -264,6 +266,19 @@ export function FormationTeamToggle({
         value={currentBallScale}
         onChange={onBallScaleChange}
       />
+      {onApplyToPhaseSlides && (
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={onApplyToPhaseSlides}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md bg-white/10 hover:bg-white/15 border border-white/10 text-white/90 hover:text-white text-[11px] font-medium transition-colors cursor-pointer"
+            title="Apply marker styles and ball size to all slides in current phase"
+          >
+            <Layers size={13} className="text-[#FFA336]" />
+            <span>Apply to All Slides in Phase</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

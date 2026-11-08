@@ -177,6 +177,7 @@ export async function exportVideoWithMediabunny(
             marbleTexture: options.marbleTexture,
             screenBackground: options.screenBackground,
             precomputedFrame: interpolated,
+            teamVisibility: options.teamVisibility,
           });
           lastRenderedSlideIdx = interpolated.isPaused
             ? interpolated.currentSlideIndex

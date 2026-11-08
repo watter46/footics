@@ -162,6 +162,7 @@ export async function exportVideoWithMediaRecorder(
           mvpMatrix,
           playerPhotos: options.playerPhotos,
           pitchAppearance: options.pitchAppearance,
+          teamVisibility: options.teamVisibility,
         });
       } else {
         await onRenderFrame?.(timeMs);

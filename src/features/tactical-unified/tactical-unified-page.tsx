@@ -159,7 +159,7 @@ function TacticalUnifiedPageContent({
         {/* Main Area (3-Pane Workspace or Director View) */}
         <div className="flex flex-1 min-h-0 relative">
           {/* Left Panel (Tactical Sequences / Toggleable) */}
-          {!isDirectorMode && !isFocusMode && sidebarOpen && (
+          {!isFocusMode && sidebarOpen && (
             <LeftPanel
               phases={phases}
               activePhaseId={activePhaseId}

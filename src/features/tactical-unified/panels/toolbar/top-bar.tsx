@@ -159,7 +159,10 @@ export function TopBar({
           variant="ghost"
           size="sm"
           isActive={sidebarOpen && !isFocusMode}
-          onClick={toggleSidebar}
+          onClick={() => {
+            (document.activeElement as HTMLElement)?.blur();
+            toggleSidebar();
+          }}
           title="Toggle Left Sequences Sidebar"
           aria-label="Toggle Sequences Sidebar"
           className="whitespace-nowrap shrink-0"

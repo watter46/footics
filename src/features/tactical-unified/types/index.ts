@@ -80,3 +80,6 @@ export type {
   SelectedObject,
   SelectedObjectKind,
 } from '../stores/tool-slice';
+
+export type PlayerStyle = import('@/lib/types/tactical-unified').MarkerStyle;
+export type TacticalTeamVisibility = 'both' | 'home' | 'away';

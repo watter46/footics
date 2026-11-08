@@ -17,6 +17,7 @@ import { FormationTeamToggle } from './formation-team-toggle';
 export function FormationPanel() {
   const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
   const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
+  const activePhaseId = useTacticalUnifiedStoreContext((s) => s.activePhaseId);
   const project = useTacticalUnifiedStoreContext((s) => s.project);
 
   // Store actions
@@ -30,6 +31,12 @@ export function FormationPanel() {
   const setTeamColor = useTacticalUnifiedStoreContext((s) => s.setTeamColor);
   const setBallSizeScale = useTacticalUnifiedStoreContext(
     (s) => s.setBallSizeScale,
+  );
+  const applyPlayerStyleToPhaseSlides = useTacticalUnifiedStoreContext(
+    (s) => s.applyPlayerStyleToPhaseSlides,
+  );
+  const applyBallScaleToPhaseSlides = useTacticalUnifiedStoreContext(
+    (s) => s.applyBallScaleToPhaseSlides,
   );
   const swapTeamSides = useTacticalUnifiedStoreContext((s) => s.swapTeamSides);
 
@@ -131,6 +138,20 @@ export function FormationPanel() {
     setBallSizeScale(activeSlideId, scale);
   };
 
+  const handleApplyToAllPhaseSlides = () => {
+    if (!activePhaseId) return;
+    applyPlayerStyleToPhaseSlides(
+      activePhaseId,
+      {
+        insideContent: currentInsideContent,
+        bottomLabel: currentBottomLabel,
+        sizeScale: currentMarkerScale,
+      },
+      activeTeam,
+    );
+    applyBallScaleToPhaseSlides(activePhaseId, currentBallScale);
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#121214] text-white text-xs select-none">
       <div className="flex-1 overflow-y-auto divide-y divide-white/5 custom-scrollbar">
@@ -150,6 +171,7 @@ export function FormationPanel() {
           onMarkerScaleChange={handleMarkerScaleChange}
           currentBallScale={currentBallScale}
           onBallScaleChange={handleBallScaleChange}
+          onApplyToPhaseSlides={handleApplyToAllPhaseSlides}
         />
 
         {/* 2. Formation Presets Section Header & Selector */}

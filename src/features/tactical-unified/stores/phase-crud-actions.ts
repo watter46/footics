@@ -8,6 +8,7 @@ import {
   DEFAULT_BOUNDARY_BOX_16_9,
 } from '@/lib/types/tactical-unified';
 import { resolvePanelStateForSlide } from './slide-helpers';
+import { resetSlideKeepSquadData } from './slide-reset-helpers';
 import { recordHistory } from './store-helpers';
 import type { PanelState, SelectedObject } from './tool-types';
 
@@ -32,12 +33,35 @@ export function createPhaseCrudActions(set: StoreSetter, get: StoreGetter) {
     addPhase: (name?: string): string => {
       const p = get().project;
       const nextIdx = p.phases.length;
+      const targetAspect = p.aspectRatio ?? '16:9';
+      const targetBoundary = p.boundaryBox ?? DEFAULT_BOUNDARY_BOX_16_9;
       const newPhase = createDefaultPhase(
         undefined,
         name ?? `Phase ${nextIdx + 1}`,
         p.homeColor.primary,
         p.awayColor.primary,
+        undefined,
+        undefined,
+        targetAspect,
+        targetBoundary,
       );
+
+      const firstPhase = p.phases[0];
+      const sourceSlide = firstPhase?.slides[0];
+      if (sourceSlide && (p.matchId || p.matchFormations)) {
+        const resetSlide = resetSlideKeepSquadData(
+          sourceSlide,
+          newPhase.aspectRatio ?? '16:9',
+          p.matchFormations,
+        );
+        newPhase.slides[0].players = resetSlide.players;
+        newPhase.slides[0].ball = { ...resetSlide.ball };
+      } else if (sourceSlide) {
+        newPhase.slides[0].players = sourceSlide.players.map((pl) => ({
+          ...pl,
+        }));
+      }
+
       const newSlideId = newPhase.slides[0].id;
 
       set((s) => ({

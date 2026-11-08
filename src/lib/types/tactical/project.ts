@@ -29,6 +29,7 @@ export const ActionCameraCueSchema = z.object({
   id: z.string(),
   startTimeMs: z.number().min(0),
   durationMs: z.number().min(100).default(1000),
+  transitionInMs: z.number().min(0).optional(),
   holdMs: z.number().min(0).default(0).optional(),
   returnDurationMs: z.number().min(100).default(800).optional(),
   zoom: z.number().min(0.4).max(3.0),

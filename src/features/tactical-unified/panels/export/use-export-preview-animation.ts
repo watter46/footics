@@ -45,6 +45,7 @@ export function useExportPreviewAnimation({
   playerPhotos,
   pitchAppearance,
   screenBackground,
+  teamVisibility,
   externalIsPlaying,
   onToggleExternalPlay,
   canvasRef,
@@ -59,6 +60,11 @@ export function useExportPreviewAnimation({
 
   const seekTo = useTacticalUnifiedStoreContext((s) => s.seekTo);
   const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
+  const storeTeamVisibility = useTacticalUnifiedStoreContext(
+    (s) => s.teamVisibility,
+  );
+  const effectiveTeamVisibility =
+    teamVisibility ?? storeTeamVisibility ?? 'both';
   const lastSeekNoticeTimeRef = useRef<number>(-9999);
   const isInternalSeekRef = useRef<boolean>(false);
   const workspaceModeRef = useRef(workspaceMode);
@@ -174,6 +180,7 @@ export function useExportPreviewAnimation({
         screenBackground,
         directorCamera,
         directorCameraOptions: effectiveDirectorCameraOptions,
+        teamVisibility: effectiveTeamVisibility,
       });
 
       if (timeLabelRef.current) {
@@ -208,6 +215,7 @@ export function useExportPreviewAnimation({
       screenBackground,
       directorCamera,
       effectiveDirectorCameraOptions,
+      effectiveTeamVisibility,
       canvasRef,
       timeLabelRef,
       sliderRef,
@@ -226,6 +234,7 @@ export function useExportPreviewAnimation({
     pitchAppearance,
     screenBackground,
     boundaryBox,
+    effectiveTeamVisibility,
   ]);
 
   const { seek } = useAnimationFrameLoop(

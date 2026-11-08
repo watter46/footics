@@ -30,6 +30,7 @@ export interface VideoExportOptions {
   pitchAppearance?: PitchAppearanceConfig;
   mvpMatrix?: Float32Array | null;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
+  teamVisibility?: 'both' | 'home' | 'away';
   fullCodecString?: string;
   marbleTexture?: CanvasImageSource | null;
   screenBackground?: ScreenBackgroundConfig;

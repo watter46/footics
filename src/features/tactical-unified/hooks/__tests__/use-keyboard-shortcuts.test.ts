@@ -11,6 +11,7 @@ import { useKeyboardShortcuts } from '../use-keyboard-shortcuts';
 
 describe('useKeyboardShortcuts', () => {
   beforeEach(() => {
+    (document.activeElement as HTMLElement)?.blur();
     const store = useTacticalUnifiedStore.getState();
     store.resetProject();
     store.clearSelection();
@@ -153,6 +154,148 @@ describe('useKeyboardShortcuts', () => {
     });
 
     expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(0);
+  });
+
+  describe('段階的 Escape キー', () => {
+    it('① input / textarea にフォーカス中は blur され、オブジェクト選択や右パネル開閉は変化しない', () => {
+      renderHook(() => useKeyboardShortcuts());
+      const store = useTacticalUnifiedStore.getState();
+      const player = createDefaultPlayer('home', 50, 50, '#034694');
+      act(() => {
+        store.setRightPanelOpen(true);
+        store.addPlayer(player);
+        store.selectObject({ id: player.id, kind: 'player' });
+      });
+
+      const inputElement = document.createElement('input');
+      document.body.appendChild(inputElement);
+      try {
+        inputElement.focus();
+        expect(document.activeElement).toBe(inputElement);
+
+        act(() => {
+          fireEvent.keyDown(inputElement, {
+            key: 'Escape',
+            code: 'Escape',
+          });
+        });
+
+        // input が blur される
+        expect(document.activeElement).not.toBe(inputElement);
+        // オブジェクト選択は解除されない
+        expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(
+          1,
+        );
+        // 右パネルも開いたまま
+        expect(useTacticalUnifiedStore.getState().panels.isRightPanelOpen).toBe(
+          true,
+        );
+      } finally {
+        if (inputElement.parentNode) {
+          document.body.removeChild(inputElement);
+        }
+      }
+    });
+
+    it('② オブジェクト選択中は clearSelection のみ実行され、右パネルは閉じない', () => {
+      renderHook(() => useKeyboardShortcuts());
+      const store = useTacticalUnifiedStore.getState();
+      const player = createDefaultPlayer('home', 50, 50, '#034694');
+      act(() => {
+        store.setRightPanelOpen(true);
+        store.addPlayer(player);
+        store.selectObject({ id: player.id, kind: 'player' });
+      });
+
+      expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(
+        1,
+      );
+      expect(useTacticalUnifiedStore.getState().panels.isRightPanelOpen).toBe(
+        true,
+      );
+
+      act(() => {
+        fireEvent.keyDown(document, {
+          key: 'Escape',
+          code: 'Escape',
+        });
+      });
+
+      // オブジェクト選択は解除される
+      expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(
+        0,
+      );
+      // 右パネルは開いたまま維持される
+      expect(useTacticalUnifiedStore.getState().panels.isRightPanelOpen).toBe(
+        true,
+      );
+    });
+
+    it('③ オブジェクト非選択かつ右パネル展開中は右パネルが閉じられる', () => {
+      renderHook(() => useKeyboardShortcuts());
+      const store = useTacticalUnifiedStore.getState();
+      act(() => {
+        store.clearSelection();
+        store.setRightPanelOpen(true);
+      });
+
+      expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(
+        0,
+      );
+      expect(useTacticalUnifiedStore.getState().panels.isRightPanelOpen).toBe(
+        true,
+      );
+
+      act(() => {
+        fireEvent.keyDown(document, {
+          key: 'Escape',
+          code: 'Escape',
+        });
+      });
+
+      // 右パネルが閉じる
+      expect(useTacticalUnifiedStore.getState().panels.isRightPanelOpen).toBe(
+        false,
+      );
+    });
+  });
+
+  describe('右パネル開閉ショートカット Mod+]', () => {
+    it('Ctrl+] / Cmd+] で右パネルの開閉がトグルされる', () => {
+      renderHook(() => useKeyboardShortcuts());
+      const store = useTacticalUnifiedStore.getState();
+
+      act(() => {
+        store.setRightPanelOpen(true);
+      });
+      expect(useTacticalUnifiedStore.getState().panels.isRightPanelOpen).toBe(
+        true,
+      );
+
+      // 1. Ctrl+] で閉じる
+      act(() => {
+        fireEvent.keyDown(document, {
+          key: ']',
+          code: 'BracketRight',
+          ctrlKey: true,
+        });
+      });
+      expect(useTacticalUnifiedStore.getState().panels.isRightPanelOpen).toBe(
+        false,
+      );
+
+      // 2. Cmd+] で開く
+      act(() => {
+        fireEvent.keyDown(document, {
+          key: ']',
+          code: 'BracketRight',
+          metaKey: true,
+        });
+      });
+      expect(useTacticalUnifiedStore.getState().panels.isRightPanelOpen).toBe(
+        true,
+      );
+    });
   });
 
   it('Delete / Backspace で選択中のオブジェクトが削除される', () => {

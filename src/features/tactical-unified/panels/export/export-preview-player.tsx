@@ -11,9 +11,11 @@
  */
 
 import { useEffect, useRef } from 'react';
+import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/unified-interpolation';
 import type {
   AspectRatio,
   BoundaryBox,
+  DirectorCameraTrack,
   PitchAppearanceConfig,
   PitchTransform,
   ScreenBackgroundConfig,
@@ -53,10 +55,13 @@ export interface ExportPreviewPlayerProps {
   canvasAspectRatio?: AspectRatio;
   boundaryBox?: BoundaryBox | null;
   pitchTransform?: PitchTransform | null;
+  directorCamera?: DirectorCameraTrack | null;
+  directorCameraOptions?: ResolveSyntheticDirectorCameraOptions;
   photos?: Record<string, string>;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   pitchAppearance?: PitchAppearanceConfig;
   screenBackground?: ScreenBackgroundConfig;
+  teamVisibility?: 'both' | 'home' | 'away';
   bottomBarSlot?: React.ReactNode;
 }
 
@@ -66,10 +71,13 @@ export function ExportPreviewPlayer({
   canvasAspectRatio,
   boundaryBox,
   pitchTransform,
+  directorCamera,
+  directorCameraOptions,
   photos,
   playerPhotos,
   pitchAppearance,
   screenBackground,
+  teamVisibility,
   bottomBarSlot,
 }: ExportPreviewPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -91,10 +99,13 @@ export function ExportPreviewPlayer({
     canvasAspectRatio: canvasAspectRatio ?? '16:9',
     boundaryBox,
     pitchTransform,
+    directorCamera,
+    directorCameraOptions,
     photos,
     playerPhotos,
     pitchAppearance,
     screenBackground,
+    teamVisibility,
     canvasRef,
     timeLabelRef,
     sliderRef,

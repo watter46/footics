@@ -1,9 +1,12 @@
 'use client';
 
 import { Copy, Download, Smartphone, Upload } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
+import { buildPlayerPhotoRecord } from '@/features/tactical-unified/panels/split-preview/preview-player-photos';
+import { selectActivePhase } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import {
   exportTacticalProjectToJson,
@@ -36,8 +39,22 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
 
   const project = useTacticalUnifiedStoreContext((s) => s.project);
   const loadProject = useTacticalUnifiedStoreContext((s) => s.loadProject);
+  const activePhase = useTacticalUnifiedStoreContext(selectActivePhase);
+  const teamVisibility = useTacticalUnifiedStoreContext(
+    (s) => s.teamVisibility,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
+
+  const allPhasePlayers = useMemo(
+    () => slides.flatMap((s) => s.players ?? []),
+    [slides],
+  );
+  const playerPhotoMap = usePlayerPhotoRegistry(allPhasePlayers);
+  const playerPhotos = useMemo(
+    () => buildPlayerPhotoRecord(allPhasePlayers, playerPhotoMap),
+    [allPhasePlayers, playerPhotoMap],
+  );
 
   const isBusy = isExporting || share.isCreatingShareLink;
 
@@ -254,8 +271,11 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
         canvasAspectRatio="16:9"
         boundaryBox={boundaryBox ?? activeSlide?.boundaryBox}
         pitchTransform={activeSlide?.pitchTransform}
+        directorCamera={activePhase?.directorCamera}
+        playerPhotos={playerPhotos}
         pitchAppearance={pitchAppearance}
         screenBackground={project.screenBackground}
+        teamVisibility={teamVisibility}
         bottomBarSlot={renderBottomControls()}
       />
     </div>

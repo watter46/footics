@@ -130,7 +130,10 @@ export function RightPanel() {
 
             {/* Collapse Button */}
             <IconButton
-              onClick={toggleRightPanel}
+              onClick={() => {
+                (document.activeElement as HTMLElement)?.blur();
+                toggleRightPanel();
+              }}
               className="shrink-0"
               title="Collapse Panel"
               aria-label="Collapse Panel"

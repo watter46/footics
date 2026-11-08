@@ -3,6 +3,7 @@
  * Keyboard shortcuts: Delete, Escape, Backspace, Copy (Mod+C), Paste (Mod+V), Duplicate (Mod+D), Tool switching, Tab (Workspace Mode), Space (Playback), Undo/Redo
  */
 
+import { useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { toast } from 'sonner';
 import { getToolShortcutMap } from '@/features/tactical-unified/core/components/toolbar';
@@ -119,16 +120,53 @@ export function useKeyboardShortcuts() {
     { enableOnFormTags: false },
   );
 
-  // Escape: Clear selection
+  // Escape: 段階的キャンセル (① blur -> ② clearSelection -> ③ setRightPanelOpen(false))
   useHotkeys(
     'escape',
     (e) => {
-      if (isInputFocused()) return;
-      e.preventDefault();
-      storeApi.getState().clearSelection();
+      // 1. フォーム入力中ならフォーカス解除
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea') {
+        (document.activeElement as HTMLElement)?.blur();
+        e.preventDefault();
+        return;
+      }
+      // 2. ピッチ上のオブジェクトが選択されている場合は選択解除
+      const store = storeApi.getState();
+      if (store.selectedObjects.length > 0) {
+        store.clearSelection();
+        e.preventDefault();
+        return;
+      }
+      // 3. 何も選択されていない場合は右パネルを閉じる
+      if (store.panels.isRightPanelOpen) {
+        store.setRightPanelOpen(false);
+        (document.activeElement as HTMLElement)?.blur();
+        e.preventDefault();
+      }
     },
-    { enableOnFormTags: false },
+    { enableOnFormTags: true },
   );
+
+  // Right panel toggle: Mod+] (Ctrl+] / Cmd+])
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isInputFocused()) return;
+      if (e.key === ']' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        const store = storeApi.getState();
+        const nextOpen = !store.panels.isRightPanelOpen;
+        store.setRightPanelOpen(nextOpen);
+        if (!nextOpen) {
+          (document.activeElement as HTMLElement)?.blur();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [storeApi]);
 
   // Tools: registered shortcuts
   const shortcutMap = getToolShortcutMap();

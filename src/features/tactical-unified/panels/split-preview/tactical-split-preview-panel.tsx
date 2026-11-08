@@ -37,6 +37,9 @@ export function TacticalSplitPreviewPanel() {
     (s) => s.project.screenBackground,
   );
   const isPlaying = useTacticalUnifiedStoreContext((s) => s.isPlaying);
+  const teamVisibility = useTacticalUnifiedStoreContext(
+    (s) => s.teamVisibility,
+  );
   const playbackSeekTimeMs = useTacticalUnifiedStoreContext(
     (s) => s.playbackSeekTimeMs,
   );
@@ -115,6 +118,7 @@ export function TacticalSplitPreviewPanel() {
     playerPhotos,
     pitchAppearance,
     screenBackground,
+    teamVisibility,
     externalIsPlaying: isPlaying,
     onToggleExternalPlay: togglePlayback,
     canvasRef,
