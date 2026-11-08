@@ -61,7 +61,9 @@ export function DirectorGlobalTrack({
             <div
               key={kf.id}
               style={{ left: `${leftPct}%` }}
-              className="absolute -translate-x-1/2 flex items-center justify-center z-10"
+              className={`absolute -translate-x-1/2 flex items-center justify-center ${
+                isPopoverOpen ? 'z-40' : isSelected ? 'z-20' : 'z-10'
+              }`}
             >
               <button
                 type="button"
@@ -100,7 +102,7 @@ export function DirectorGlobalTrack({
                       onDeleteKeyframe?.(kf.id);
                       setActivePopoverId(null);
                     }}
-                    className="ml-1 p-0.5 rounded text-white/50 hover:text-red-400 hover:bg-white/10 transition-colors cursor-pointer"
+                    className="ml-1 p-0.5 rounded text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
                     title="ピンを削除"
                     aria-label="ピンを削除"
                   >

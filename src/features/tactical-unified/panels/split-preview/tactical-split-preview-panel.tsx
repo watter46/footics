@@ -18,6 +18,7 @@ import {
 import type { PitchTransform } from '@/lib/types/tactical/slide';
 import { PreviewBoundaryOverlay } from './preview-boundary-overlay';
 import { buildPlayerPhotoRecord } from './preview-player-photos';
+import { usePreviewWheelZoom } from './use-preview-wheel-zoom';
 
 export function TacticalSplitPreviewPanel() {
   const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
@@ -75,6 +76,7 @@ export function TacticalSplitPreviewPanel() {
     ? resolveSyntheticDirectorCamera(
         activePhase!.directorCamera!,
         currentTimeMs,
+        { isEditing: !isPlaying },
       )
     : (activeSlide?.pitchTransform ?? null);
   const activeCue = activePhase?.directorCamera?.actionCues?.find(
@@ -109,6 +111,7 @@ export function TacticalSplitPreviewPanel() {
           ? null
           : (activeSlide?.pitchTransform ?? null))),
     directorCamera: activePhase?.directorCamera ?? null,
+    directorCameraOptions: { isEditing: !isPlaying },
     playerPhotos,
     pitchAppearance,
     screenBackground,
@@ -209,47 +212,15 @@ export function TacticalSplitPreviewPanel() {
     }
   };
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleNativeWheel = (e: globalThis.WheelEvent) => {
-      e.preventDefault();
-      const currentZoom =
-        activeCue?.zoom ??
-        resolvedCamera?.zoom ??
-        activeSlide?.pitchTransform?.zoom ??
-        1;
-      const nextZoom = Math.max(
-        0.4,
-        Math.min(3.0, +(currentZoom - e.deltaY * 0.0015).toFixed(2)),
-      );
-      upsertActionCameraCue(
-        currentTimeMs,
-        {
-          zoom: nextZoom,
-          panX: resolvedCamera?.panX ?? 0,
-          panY: resolvedCamera?.panY ?? 0,
-        },
-        activeCue?.id,
-      );
-      if (activeSlide) {
-        updatePitchTransform(activeSlide.id, { zoom: nextZoom });
-      }
-    };
-
-    container.addEventListener('wheel', handleNativeWheel, { passive: false });
-    return () => {
-      container.removeEventListener('wheel', handleNativeWheel);
-    };
-  }, [
+  usePreviewWheelZoom({
+    containerRef,
     activeCue,
     resolvedCamera,
     activeSlide,
     currentTimeMs,
     upsertActionCameraCue,
     updatePitchTransform,
-  ]);
+  });
 
   const ratioNum =
     previewWidth > 0 && previewHeight > 0

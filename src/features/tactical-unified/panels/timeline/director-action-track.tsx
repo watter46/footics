@@ -159,10 +159,12 @@ export function DirectorActionTrack({
                 <div
                   key={cue.id}
                   style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
-                  className={`absolute h-4.5 rounded px-1 flex items-center justify-between text-[9px] font-mono truncate cursor-pointer transition-colors border ${
-                    isSelected
-                      ? 'bg-[#FF8100]/40 border-[#FF8100] text-white z-20 shadow-sm'
-                      : 'bg-[#FF8100]/20 border-[#FF8100]/40 text-white/90 hover:bg-[#FF8100]/30 z-10'
+                  className={`absolute h-4.5 rounded px-1 flex items-center justify-between text-[9px] font-mono cursor-pointer transition-colors border ${
+                    isPopoverOpen
+                      ? 'bg-[#FF8100]/40 border-[#FF8100] text-white z-40 shadow-sm'
+                      : isSelected
+                        ? 'bg-[#FF8100]/40 border-[#FF8100] text-white z-20 shadow-sm'
+                        : 'bg-[#FF8100]/20 border-[#FF8100]/40 text-white/90 hover:bg-[#FF8100]/30 z-10'
                   }`}
                   data-testid={`action-cue-block-${cue.id}`}
                   data-lane-index={laneIdx}
@@ -208,7 +210,7 @@ export function DirectorActionTrack({
                           onDeleteCue?.(cue.id);
                           setActivePopoverId(null);
                         }}
-                        className="ml-1 p-0.5 rounded text-white/50 hover:text-red-400 hover:bg-white/10 transition-colors cursor-pointer"
+                        className="ml-1 p-0.5 rounded text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
                         title="Cueを削除"
                         aria-label="Cueを削除"
                       >

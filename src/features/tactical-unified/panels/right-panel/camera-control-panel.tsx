@@ -45,6 +45,7 @@ export function CameraControlPanel(): React.ReactElement {
   const updatePitchTransform = useTacticalUnifiedStoreContext(
     (s) => s.updatePitchTransform,
   );
+  const pushHistory = useTacticalUnifiedStoreContext((s) => s.pushHistory);
 
   const isDirectorMode = workspaceMode === 'director';
   const currentTimeMs = playbackSeekTimeMs ?? 0;
@@ -147,6 +148,10 @@ export function CameraControlPanel(): React.ReactElement {
     syncSlide({ panX: nextX, panY: nextY });
   };
 
+  const handleSliderChangeEnd = () => {
+    pushHistory();
+  };
+
   return (
     <div className="h-full overflow-y-auto p-4 flex flex-col gap-5 text-xs text-white/90 select-none">
       {/* Header with Title and Reset Button */}
@@ -232,6 +237,7 @@ export function CameraControlPanel(): React.ReactElement {
         minLabel="0° (平面)"
         maxLabel="65° (斜め俯瞰)"
         onChange={handleTiltChange}
+        onChangeEnd={handleSliderChangeEnd}
       />
 
       {/* Yaw Control (0° - 180°) */}
@@ -247,6 +253,7 @@ export function CameraControlPanel(): React.ReactElement {
         midLabel="90° (正面)"
         maxLabel="180° (右)"
         onChange={handleYawChange}
+        onChangeEnd={handleSliderChangeEnd}
       />
 
       {/* Zoom Control (0.4x - 3.0x) */}
@@ -264,6 +271,7 @@ export function CameraControlPanel(): React.ReactElement {
         midValue={1.0}
         maxLabel="3.0x (拡大)"
         onChange={handleZoomChange}
+        onChangeEnd={handleSliderChangeEnd}
       />
 
       {/* Pan Control & Display */}

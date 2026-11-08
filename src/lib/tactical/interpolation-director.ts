@@ -22,13 +22,27 @@ export function hasActiveDirectorCameraTrack(
 }
 
 /**
+ * ディレクターカメラ解決オプション
+ */
+export interface ResolveSyntheticDirectorCameraOptions {
+  /** 停止・編集中フラグ（true の場合、アクティブ/選択Cueのターゲット値を100%即時反映） */
+  isEditing?: boolean;
+  selectedCueId?: string | null;
+}
+
+/**
  * ディレクターカメラトラック（全体カメラ＋アクションカメラ）を合成解決
  */
 export function resolveSyntheticDirectorCamera(
   track: DirectorCameraTrack,
   timeMs: number,
-  _totalDurationMs?: number,
+  options?: number | ResolveSyntheticDirectorCameraOptions,
 ): InterpolatedPitchTransformState {
+  const opts: ResolveSyntheticDirectorCameraOptions =
+    typeof options === 'object' && options !== null ? options : {};
+  const isEditing = opts.isEditing ?? false;
+  const selectedCueId = opts.selectedCueId ?? null;
+
   // ① 全体カメラ (Tilt / Yaw)
   const sortedGlobal = [...(track.globalKeyframes ?? [])].sort(
     (a, b) => a.timeMs - b.timeMs,
@@ -71,6 +85,30 @@ export function resolveSyntheticDirectorCamera(
   let panX = 0;
   let panY = 0;
 
+  if (isEditing) {
+    let editingCue: (typeof sortedCues)[number] | undefined;
+    if (selectedCueId) {
+      editingCue = sortedCues.find((c) => c.id === selectedCueId);
+    }
+    if (!editingCue) {
+      editingCue = sortedCues.find(
+        (c) =>
+          timeMs >= c.startTimeMs &&
+          timeMs <= c.startTimeMs + (c.durationMs ?? 1000),
+      );
+    }
+    if (editingCue) {
+      return {
+        tilt,
+        yaw,
+        zoom: editingCue.zoom,
+        panX: editingCue.panX,
+        panY: editingCue.panY,
+        isLocked: true,
+      };
+    }
+  }
+
   for (const cue of sortedCues) {
     if (timeMs < cue.startTimeMs) break;
     const fromZoom = zoom;
@@ -78,7 +116,7 @@ export function resolveSyntheticDirectorCamera(
     const fromPanY = panY;
     const moveDur = Math.max(100, cue.durationMs ?? 1000);
     const moveEnd = cue.startTimeMs + moveDur;
-    const transitionInMs = Math.min(250, moveDur * 0.3);
+    const transitionInMs = cue.transitionInMs ?? Math.min(250, moveDur * 0.3);
 
     if (timeMs <= moveEnd) {
       if (timeMs < cue.startTimeMs + transitionInMs) {

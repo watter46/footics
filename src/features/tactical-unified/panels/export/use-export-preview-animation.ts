@@ -8,16 +8,9 @@ import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
 import {
   calculateUnifiedTotalDuration,
   hasActiveDirectorCameraTrack,
+  type ResolveSyntheticDirectorCameraOptions,
 } from '@/lib/tactical/unified-interpolation';
-import type {
-  AspectRatio,
-  BoundaryBox,
-  DirectorCameraTrack,
-  PitchAppearanceConfig,
-  PitchTransform,
-  ScreenBackgroundConfig,
-  Slide,
-} from '@/lib/types/tactical-unified';
+import type { Slide } from '@/lib/types/tactical-unified';
 
 import {
   ASPECT_CONTAINER_CLASSES,
@@ -25,6 +18,7 @@ import {
   hasActivePitchTransform,
   PREVIEW_DIMENSIONS,
   SPLIT_PREVIEW_CONTAINER_CLASSES,
+  type UseExportPreviewAnimationParams,
 } from './export-preview-constants';
 import { useAnimationFrameLoop } from './use-animation-frame-loop';
 import { useExportPreviewTextures } from './use-export-preview-textures';
@@ -35,27 +29,9 @@ export {
   hasActivePitchTransform,
   PREVIEW_DIMENSIONS,
   SPLIT_PREVIEW_CONTAINER_CLASSES,
+  type UseExportPreviewAnimationParams,
   useAnimationFrameLoop,
 };
-
-export interface UseExportPreviewAnimationParams {
-  slides: Slide[];
-  aspectRatio: AspectRatio;
-  /** キャンバス自体の出力アスペクト比（省略時は aspectRatio、レイアウト画面では '16:9' 固定） */
-  canvasAspectRatio?: AspectRatio;
-  boundaryBox?: BoundaryBox | null;
-  pitchTransform?: PitchTransform | null;
-  directorCamera?: DirectorCameraTrack | null;
-  photos?: Record<string, string>;
-  playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
-  pitchAppearance?: PitchAppearanceConfig;
-  screenBackground?: ScreenBackgroundConfig;
-  externalIsPlaying?: boolean;
-  onToggleExternalPlay?: () => void;
-  canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  timeLabelRef: React.RefObject<HTMLSpanElement | null>;
-  sliderRef: React.RefObject<HTMLInputElement | null>;
-}
 
 export function useExportPreviewAnimation({
   slides,
@@ -64,6 +40,7 @@ export function useExportPreviewAnimation({
   boundaryBox,
   pitchTransform,
   directorCamera,
+  directorCameraOptions,
   photos,
   playerPhotos,
   pitchAppearance,
@@ -102,33 +79,35 @@ export function useExportPreviewAnimation({
   const basePreviewDim =
     PREVIEW_DIMENSIONS[effectiveCanvasAspect] ?? PREVIEW_DIMENSIONS['16:9'];
 
-  const cropInfo = useMemo(() => {
-    return calculateBoundaryCrop(
-      boundaryBox,
-      basePreviewDim.width,
-      basePreviewDim.height,
-      1,
-      basePreviewDim.width > 0
-        ? {
-            x: 0,
-            y: 0,
-            width: basePreviewDim.width,
-            height: basePreviewDim.height,
-          }
-        : undefined,
-    );
-  }, [boundaryBox, basePreviewDim.width, basePreviewDim.height]);
+  const cropInfo = useMemo(
+    () =>
+      calculateBoundaryCrop(
+        boundaryBox,
+        basePreviewDim.width,
+        basePreviewDim.height,
+        1,
+        basePreviewDim.width > 0
+          ? {
+              x: 0,
+              y: 0,
+              width: basePreviewDim.width,
+              height: basePreviewDim.height,
+            }
+          : undefined,
+      ),
+    [boundaryBox, basePreviewDim.width, basePreviewDim.height],
+  );
 
   // 静止時・再生時に関わらず、境界線が有効であれば常時クロップを適用
   const shouldCropPreview = cropInfo.isCropped;
-  const previewWidth = useMemo(() => {
-    if (!shouldCropPreview) return basePreviewDim.width;
-    return cropInfo.exportWidth;
-  }, [shouldCropPreview, cropInfo.exportWidth, basePreviewDim.width]);
-  const previewHeight = useMemo(() => {
-    if (!shouldCropPreview) return basePreviewDim.height;
-    return cropInfo.exportHeight;
-  }, [shouldCropPreview, cropInfo.exportHeight, basePreviewDim.height]);
+  const previewWidth = useMemo(
+    () => (shouldCropPreview ? cropInfo.exportWidth : basePreviewDim.width),
+    [shouldCropPreview, cropInfo.exportWidth, basePreviewDim.width],
+  );
+  const previewHeight = useMemo(
+    () => (shouldCropPreview ? cropInfo.exportHeight : basePreviewDim.height),
+    [shouldCropPreview, cropInfo.exportHeight, basePreviewDim.height],
+  );
 
   const mvpMatrix = useMemo(() => {
     if (
@@ -162,6 +141,11 @@ export function useExportPreviewAnimation({
     return `${previewWidth} / ${previewHeight}`;
   }, [shouldCropPreview, previewWidth, previewHeight]);
 
+  const effectiveDirectorCameraOptions = useMemo(
+    () => directorCameraOptions ?? { isEditing: !effectiveIsPlaying },
+    [directorCameraOptions, effectiveIsPlaying],
+  );
+
   // ── Canvas Frame Drawing ──
   const drawFrame = useCallback(
     (timeMs: number) => {
@@ -189,6 +173,7 @@ export function useExportPreviewAnimation({
         marbleTexture,
         screenBackground,
         directorCamera,
+        directorCameraOptions: effectiveDirectorCameraOptions,
       });
 
       if (timeLabelRef.current) {
@@ -222,6 +207,7 @@ export function useExportPreviewAnimation({
       marbleTexture,
       screenBackground,
       directorCamera,
+      effectiveDirectorCameraOptions,
       canvasRef,
       timeLabelRef,
       sliderRef,
