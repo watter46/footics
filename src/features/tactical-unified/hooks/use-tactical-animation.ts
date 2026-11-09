@@ -10,16 +10,18 @@ import {
   useTacticalUnifiedStoreContext,
 } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
+import { renderFrameToCanvas } from './tactical-animation-canvas';
+import {
+  pausePlayback,
+  seekPlayback,
+  stopPlayback,
+} from './tactical-playback-controls';
 import {
   calculatePitchDimensions,
   createTacticalTimeline,
-  pausePlayback,
-  renderFrameToCanvas,
-  seekPlayback,
-  stopPlayback,
   type UseTacticalAnimationOptions,
   useAnimationPlaybackRefs,
-} from './tactical-animation-canvas';
+} from './tactical-timeline';
 
 export type { UseTacticalAnimationOptions };
 

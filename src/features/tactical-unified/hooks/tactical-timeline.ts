@@ -1,3 +1,5 @@
+'use client';
+
 import gsap from 'gsap';
 import { useMemo, useRef } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';

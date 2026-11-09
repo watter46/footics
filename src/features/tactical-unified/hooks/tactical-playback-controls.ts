@@ -4,7 +4,7 @@ import {
   resolveEffectiveSlideSegments,
 } from '@/lib/tactical/unified-interpolation';
 import type { Slide } from '@/lib/types/tactical-unified';
-import type { AnimationPlaybackRefs } from './tactical-animation-canvas';
+import type { AnimationPlaybackRefs } from './tactical-timeline';
 
 /**
  * 特定スライドインデックスへの到達完了（静止開始）時刻 (ms) を計算

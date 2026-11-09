@@ -31,7 +31,7 @@ import {
 import { Sliders } from 'lucide-react';
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { ActionButton } from '@/components/ui/action-button';
-import { getSlideSnapTime } from '@/features/tactical-unified/hooks/tactical-animation-canvas';
+import { getSlideSnapTime } from '@/features/tactical-unified/hooks/tactical-playback-controls';
 import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { AddSlideButton } from './add-slide-button';
