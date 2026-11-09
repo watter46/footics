@@ -33,15 +33,17 @@ export function ScreenBoundarySection() {
   );
 
   const boundaryBox = activeSlide?.boundaryBox;
-  const isBoundaryEnabled = boundaryBox?.enabled ?? true;
+  const isBoundaryVisible = boundaryBox?.visible ?? false;
 
   const handleToggleBoundary = () => {
-    const nextEnabled = !isBoundaryEnabled;
-    const baseBox = boundaryBox ?? DEFAULT_BOUNDARY_BOX_FULL;
     updateActiveSlideBoundaryBox({
-      ...baseBox,
-      enabled: nextEnabled,
-      visible: nextEnabled,
+      x: boundaryBox?.x ?? 0,
+      y: boundaryBox?.y ?? 0,
+      width: boundaryBox?.width ?? 100,
+      height: boundaryBox?.height ?? 100,
+      fitTarget: boundaryBox?.fitTarget ?? 'canvas',
+      enabled: true,
+      visible: !isBoundaryVisible,
     });
   };
 
@@ -49,9 +51,13 @@ export function ScreenBoundarySection() {
     switch (presetId) {
       case 'ratio_16_9':
         return {
-          ...createXBoundaryBox('16:9'),
           enabled: true,
           visible: true,
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 100,
+          fitTarget: 'canvas',
         };
       case 'ratio_9_16':
         return {
@@ -81,7 +87,7 @@ export function ScreenBoundarySection() {
   };
 
   const activePresetId = useMemo(() => {
-    if (!boundaryBox || !boundaryBox.enabled) return null;
+    if (!boundaryBox) return null;
     const stageAspect = 16 / 9;
     const currentRatio = (boundaryBox.width / boundaryBox.height) * stageAspect;
 
@@ -108,16 +114,16 @@ export function ScreenBoundarySection() {
         <button
           type="button"
           role="switch"
-          aria-checked={isBoundaryEnabled}
+          aria-checked={isBoundaryVisible}
           aria-label="境界線有効切替"
           onClick={handleToggleBoundary}
           className={`px-2.5 py-0.5 rounded text-[11px] font-medium transition-all cursor-pointer ${
-            isBoundaryEnabled
+            isBoundaryVisible
               ? 'bg-[#FF8100] text-black font-semibold shadow-[0_0_8px_rgba(255,129,0,0.4)]'
               : 'bg-white/10 text-white/50 hover:bg-white/15 hover:text-white'
           }`}
         >
-          {isBoundaryEnabled ? 'ON' : 'OFF'}
+          {isBoundaryVisible ? 'ON' : 'OFF'}
         </button>
       </div>
       <p className="text-[11px] text-white/50 mb-3">
@@ -127,7 +133,7 @@ export function ScreenBoundarySection() {
       <div className="grid grid-cols-2 gap-2">
         {PRESET_DEFINITIONS.map((preset) => {
           const currentId = selectedPresetId ?? activePresetId;
-          const isSelected = isBoundaryEnabled && currentId === preset.id;
+          const isSelected = isBoundaryVisible && currentId === preset.id;
           return (
             <button
               key={preset.id}

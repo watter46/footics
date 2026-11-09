@@ -6,7 +6,6 @@ import {
   DraggableToolbar,
   type DrawingToolPlugin,
   getDrawingTools,
-  ToolbarBoundaryBoxToggle,
   ToolbarContinuousLock,
   ToolbarDivider,
   ToolbarEraser,
@@ -41,7 +40,6 @@ export function CoreDrawingToolbar({
       <ToolbarContinuousLock />
       <ToolbarEraser />
       {shouldShowPitchLock && <ToolbarPitchLock />}
-      <ToolbarBoundaryBoxToggle />
       <ToolbarDivider />
       <ToolbarResetButton />
     </DraggableToolbar>

@@ -185,7 +185,11 @@ export function PreviewBoundaryOverlay({
       >
         <div
           data-testid="boundary-box-frame"
-          className="absolute inset-0 border-2 border-dashed border-[#00A8FF] pointer-events-none"
+          className={`absolute inset-0 border-2 border-dashed pointer-events-none transition-colors ${
+            dragBox !== null
+              ? 'border-neutral-200/90 shadow-[0_0_12px_rgba(255,255,255,0.2)]'
+              : 'border-neutral-300/80 hover:border-neutral-200/90'
+          }`}
         >
           {/* 4辺エッジバー (ドラッグ移動用) */}
           <div
@@ -229,9 +233,9 @@ export function PreviewBoundaryOverlay({
             role="button"
             tabIndex={-1}
             aria-label={`リサイズハンドル ${id}`}
-            data-testid={`boundary-corner-${id}`}
+            data-testid={`boundary-handle-${id}`}
             onPointerDown={(e) => handleCornerPointerDown(id, e)}
-            className="absolute w-3.5 h-3.5 rounded-full bg-white border-2 border-sky-600 shadow-md cursor-pointer pointer-events-auto touch-none -translate-x-1/2 -translate-y-1/2"
+            className="absolute w-3.5 h-3.5 rounded-full bg-white border-2 border-neutral-400 shadow-md cursor-pointer pointer-events-auto touch-none -translate-x-1/2 -translate-y-1/2"
             style={{ ...style, cursor }}
           />
         ))}

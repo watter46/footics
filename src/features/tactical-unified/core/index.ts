@@ -13,14 +13,6 @@ export {
   sortBillboardItemsByDepth,
 } from './components/BillboardObjectLayer';
 export {
-  BoundaryBoxHud,
-  type BoundaryBoxHudProps,
-} from './components/BoundaryBoxHud';
-export {
-  BoundaryBoxOverlay,
-  type BoundaryBoxOverlayProps,
-} from './components/BoundaryBoxOverlay';
-export {
   CanvasOverlays,
   type CanvasOverlaysProps,
 } from './components/CanvasOverlays';
@@ -77,19 +69,11 @@ export {
 } from './components/PlayerConnectLines';
 export * from './components/toolbar';
 export {
-  ViewportCropOverlay,
-  type ViewportCropOverlayProps,
-} from './components/ViewportCropOverlay';
-export {
   type PlayerPhotoMap,
   PlayerPhotoProvider,
   usePlayerPhotoContext,
   usePlayerPhotoImage,
 } from './hooks/player-photo-context';
-export {
-  type CornerId,
-  useBoundaryBoxDrag,
-} from './hooks/use-boundary-box-drag';
 export {
   type UseCanvasExportOptions,
   useCanvasExport,

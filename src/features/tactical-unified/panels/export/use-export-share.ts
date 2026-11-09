@@ -3,9 +3,8 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import {
-  selectActivePhase,
   selectActivePhaseSlides,
-  selectActiveSlide,
+  selectTacticalRenderSnapshot,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import {
   useTacticalUnifiedStoreApi,
@@ -34,26 +33,23 @@ export function useExportShare({ onError }: ShareOptions) {
     try {
       const state = storeApi.getState();
       const { project } = state;
-      const activePhase = selectActivePhase(state);
-      const activeSlide = selectActiveSlide(state);
+      const snapshot = selectTacticalRenderSnapshot(state);
       const currentSlides = selectActivePhaseSlides(state);
       const photos = await packPlayerPhotos(currentSlides);
 
-      const effectiveAspectRatio =
-        activePhase?.aspectRatio ?? project.aspectRatio ?? '16:9';
       const payload = {
         version: 1,
         createdAt: Date.now(),
         title: project.title || 'Untitled',
         orientation:
-          effectiveAspectRatio === '9:16' ? 'vertical' : 'horizontal',
-        aspectRatio: effectiveAspectRatio,
-        boundaryBox: activePhase?.boundaryBox ?? null,
-        pitchTransform: activeSlide?.pitchTransform ?? null,
-        directorCamera: activePhase?.directorCamera ?? null,
-        screenBackground: project.screenBackground ?? null,
-        pitchAppearance: project.pitchAppearance,
-        teamVisibility: 'both',
+          snapshot.aspectRatio === '9:16' ? 'vertical' : 'horizontal',
+        aspectRatio: snapshot.aspectRatio,
+        boundaryBox: snapshot.boundaryBox,
+        pitchTransform: snapshot.pitchTransform,
+        directorCamera: snapshot.directorCamera,
+        screenBackground: snapshot.screenBackground ?? null,
+        pitchAppearance: snapshot.pitchAppearance,
+        teamVisibility: snapshot.teamVisibility,
         exportFps: 60,
         scenes: currentSlides,
         photos,

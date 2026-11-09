@@ -1,5 +1,4 @@
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
-import { calculatePitchRect } from '../pitch-geometry';
 import { renderTacticalFrameToCanvas } from './tactical-frame-renderer';
 import { calculateBoundaryCrop } from './video-crop-calc';
 import type { VideoExportOptions } from './video-export-types';
@@ -13,7 +12,7 @@ export async function exportVideoWithMediaRecorder(
   const {
     format,
     fps,
-    scale = 2,
+    scale = 1,
     transparent = false,
     totalDurationMs,
     boundaryBox,
@@ -32,20 +31,11 @@ export async function exportVideoWithMediaRecorder(
     throw new Error('MediaRecorder API is not supported in this browser.');
   }
 
-  const pitchRect = calculatePitchRect(
-    { width: stageWidth, height: stageHeight },
-    aspectRatio,
-  );
-  const baseRect =
-    boundaryBox?.fitTarget === 'canvas'
-      ? { x: 0, y: 0, width: stageWidth, height: stageHeight }
-      : pitchRect;
   const cropInfo = calculateBoundaryCrop(
     boundaryBox,
     stageWidth,
     stageHeight,
     scale,
-    baseRect,
   );
   const { exportWidth, exportHeight } = cropInfo;
 
@@ -156,12 +146,18 @@ export async function exportVideoWithMediaRecorder(
           timeMs,
           width: exportWidth,
           height: exportHeight,
+          baseWidth: options.stageWidth,
+          baseHeight: options.stageHeight,
           aspectRatio,
           boundaryBox,
           transparent,
           mvpMatrix,
           playerPhotos: options.playerPhotos,
           pitchAppearance: options.pitchAppearance,
+          marbleTexture: options.marbleTexture,
+          screenBackground: options.screenBackground,
+          directorCamera: options.directorCamera,
+          directorCameraOptions: options.directorCameraOptions,
           teamVisibility: options.teamVisibility,
         });
       } else {

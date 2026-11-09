@@ -12,7 +12,6 @@ import {
   getDrawingTools,
   getToolShortcutMap,
   registerDrawingToolPlugin,
-  ToolbarBoundaryBoxToggle,
   ToolbarContinuousLock,
   ToolbarDivider,
   ToolbarEraser,
@@ -108,11 +107,10 @@ describe('Toolbar Compound Components & Registry', () => {
     expect(store.getState().annotations.arrows).toHaveLength(0);
   });
 
-  it('ToolbarPitchLock と ToolbarBoundaryBoxToggle が単体で動作すること', () => {
+  it('ToolbarPitchLock が単体で動作すること', () => {
     const { store } = renderWithStore(
       <div>
         <ToolbarPitchLock />
-        <ToolbarBoundaryBoxToggle />
       </div>,
     );
 
@@ -120,11 +118,6 @@ describe('Toolbar Compound Components & Registry', () => {
     const pitchBtn = screen.getByTitle(/Pitch Lock/i);
     fireEvent.click(pitchBtn);
     expect(store.getState().pitchTransform.isLocked).toBe(true);
-
-    expect(store.getState().boundaryBox.visible).toBe(false);
-    const bboxBtn = screen.getByTitle(/Boundary Box/i);
-    fireEvent.click(bboxBtn);
-    expect(store.getState().boundaryBox.visible).toBe(true);
   });
 
   it('FixedToolbar が右側固定配置スタイルを持つこと', () => {

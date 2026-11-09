@@ -2,6 +2,10 @@ import {
   type AspectRatio,
   type BoundaryBox,
   DEFAULT_BOUNDARY_BOX_16_9,
+  type DirectorCameraTrack,
+  type PitchAppearanceConfig,
+  type PitchTransform,
+  type ScreenBackgroundConfig,
   type Slide,
   type TacticalPhase,
   type TacticalProject,
@@ -15,6 +19,19 @@ export interface SelectorStateContext {
   selectedObjects: SelectedObject[];
   past: TacticalPhase[][];
   future: TacticalPhase[][];
+  teamVisibility?: 'both' | 'home' | 'away';
+}
+
+export interface TacticalRenderSnapshot {
+  slides: Slide[];
+  activeSlide: Slide | undefined;
+  aspectRatio: AspectRatio;
+  boundaryBox: BoundaryBox;
+  pitchTransform: PitchTransform | null;
+  directorCamera: DirectorCameraTrack | null;
+  pitchAppearance: PitchAppearanceConfig | undefined;
+  screenBackground: ScreenBackgroundConfig | undefined;
+  teamVisibility: 'both' | 'home' | 'away';
 }
 
 /** アクティブ Phase を取得 */
@@ -41,18 +58,64 @@ export const selectActivePhaseAspectRatio = <
   return activePhase?.aspectRatio ?? s.project?.aspectRatio ?? '16:9';
 };
 
-/** アクティブ Phase の boundaryBox を取得 (Phase -> Project -> DEFAULT_BOUNDARY_BOX_16_9) */
-export const selectActivePhaseBoundaryBox = <
-  T extends Pick<SelectorStateContext, 'project'> & { activePhaseId?: string },
+/** アクティブな境界線を取得 (Slide -> Phase -> Project -> DEFAULT_BOUNDARY_BOX_16_9) */
+export const selectActiveBoundaryBox = <
+  T extends Pick<SelectorStateContext, 'project'> & {
+    activePhaseId?: string;
+    activeSlideId?: string;
+  },
 >(
   s: T,
 ): BoundaryBox => {
   const activePhase = selectActivePhase(s);
+  const activeSlide =
+    s.activeSlideId != null
+      ? selectActiveSlide({
+          project: s.project,
+          activePhaseId: s.activePhaseId,
+          activeSlideId: s.activeSlideId,
+        })
+      : activePhase?.slides?.[0];
   return (
+    activeSlide?.boundaryBox ??
     activePhase?.boundaryBox ??
     s.project?.boundaryBox ??
     DEFAULT_BOUNDARY_BOX_16_9
   );
+};
+
+/** アクティブ Phase の boundaryBox を取得 (後方互換: 内部で selectActiveBoundaryBox を呼び出し) */
+export const selectActivePhaseBoundaryBox = <
+  T extends Pick<SelectorStateContext, 'project'> & {
+    activePhaseId?: string;
+    activeSlideId?: string;
+  },
+>(
+  s: T,
+): BoundaryBox => selectActiveBoundaryBox(s);
+
+/** 単一描画スナップショットを取得 */
+export const selectTacticalRenderSnapshot = <
+  T extends Pick<SelectorStateContext, 'project' | 'activeSlideId'> & {
+    activePhaseId?: string;
+    teamVisibility?: 'both' | 'home' | 'away';
+  },
+>(
+  s: T,
+): TacticalRenderSnapshot => {
+  const activePhase = selectActivePhase(s);
+  const activeSlide = selectActiveSlide(s);
+  return {
+    slides: activePhase?.slides ?? [],
+    activeSlide,
+    aspectRatio: activePhase?.aspectRatio ?? s.project?.aspectRatio ?? '16:9',
+    boundaryBox: selectActiveBoundaryBox(s),
+    pitchTransform: activeSlide?.pitchTransform ?? null,
+    directorCamera: activePhase?.directorCamera ?? null,
+    pitchAppearance: s.project?.pitchAppearance,
+    screenBackground: s.project?.screenBackground,
+    teamVisibility: s.teamVisibility ?? 'both',
+  };
 };
 
 /** アクティブ Phase 配下のスライド配列を取得 (空なら []) */

@@ -9,7 +9,6 @@ import type { SelectionBox } from '../utils/canvas-selection-helpers';
 import { BillboardObjectLayer } from './BillboardObjectLayer';
 import { InteractionPreviewLayer } from './InteractionPreviewLayer';
 import { PitchGroundLayer } from './PitchGroundLayer';
-import { ViewportCropOverlay } from './ViewportCropOverlay';
 
 export interface CanvasStageInteraction {
   stageHandlers: Pick<
@@ -108,12 +107,6 @@ export function CanvasStage({
           cleanRender={cleanRender}
         />
       </Stage>
-
-      <ViewportCropOverlay
-        stageSize={size}
-        pitchRect={vRect}
-        cleanRender={cleanRender}
-      />
 
       {children}
     </div>

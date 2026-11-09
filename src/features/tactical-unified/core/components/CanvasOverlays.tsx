@@ -4,8 +4,6 @@ import type React from 'react';
 import type { TextAnnotation } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
-import { BoundaryBoxHud } from './BoundaryBoxHud';
-import { BoundaryBoxOverlay } from './BoundaryBoxOverlay';
 import { ContextHud } from './ContextHud';
 import { PitchInlineTextEditor } from './PitchInlineTextEditor';
 
@@ -58,17 +56,11 @@ export function CanvasOverlays({
           <span>🔗 接続先マーカーをクリックしてください (ESCでキャンセル)</span>
         </div>
       )}
-      <BoundaryBoxOverlay
-        width={vRect.width}
-        height={vRect.height}
-        pitchRect={pitchRect}
-      />
       <ContextHud
         stageSize={stageSize}
         pitchRect={pitchRect}
         nodesRegistryRef={nodesRegistryRef}
       />
-      <BoundaryBoxHud stageSize={stageSize} pitchRect={pitchRect} />
       <PitchInlineTextEditor
         editingText={editingText}
         stageSize={stageSize}

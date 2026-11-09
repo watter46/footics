@@ -20,7 +20,6 @@ import type {
   ScreenBackgroundConfig,
   Slide,
 } from '@/lib/types/tactical-unified';
-import { PITCH_BOUNDARY_CONFIGS } from '../pitch-geometry';
 import {
   calculateUnifiedTotalDuration,
   matchSlidePlayers,
@@ -64,6 +63,7 @@ export interface MultiSlideVideoExportOptions {
   directorCamera?: DirectorCameraTrack | null;
   directorCameraOptions?: ResolveSyntheticDirectorCameraOptions;
   screenBackground?: ScreenBackgroundConfig;
+  teamVisibility?: 'both' | 'home' | 'away';
   onProgress?: (progress: ExportProgress) => void;
   checkCancelled?: () => boolean;
 }
@@ -117,11 +117,8 @@ export async function exportMultiSlideMp4Video(
   });
 
   const totalDurationMs = calculateUnifiedTotalDuration(effectiveSlides);
-  const config =
-    PITCH_BOUNDARY_CONFIGS[options.aspectRatio ?? '16:9'] ??
-    PITCH_BOUNDARY_CONFIGS['16:9'];
-  const stageWidth = options.stageWidth ?? config.widthPx;
-  const stageHeight = options.stageHeight ?? config.heightPx;
+  const stageWidth = options.stageWidth ?? 1920;
+  const stageHeight = options.stageHeight ?? 1080;
 
   const shouldPreload = !options.playerPhotos;
   const loadedPhotos =
@@ -135,7 +132,7 @@ export async function exportMultiSlideMp4Video(
     return await exportTacticalVideo({
       format: 'mp4',
       fps: options.fps ?? 60,
-      scale: options.scale ?? 2,
+      scale: options.scale ?? 1,
       quality: options.quality ?? 'high',
       bitrate: options.bitrate,
       keyFrameIntervalSec: options.keyFrameIntervalSec ?? 2,
@@ -156,6 +153,7 @@ export async function exportMultiSlideMp4Video(
       stageHeight,
       slides: effectiveSlides,
       aspectRatio: options.aspectRatio ?? '16:9',
+      teamVisibility: options.teamVisibility,
       onProgress: options.onProgress,
       checkCancelled: options.checkCancelled,
     });
@@ -202,11 +200,8 @@ export async function exportMultiSlideWebmVideo(
   });
 
   const totalDurationMs = calculateUnifiedTotalDuration(effectiveSlides);
-  const config =
-    PITCH_BOUNDARY_CONFIGS[options.aspectRatio ?? '16:9'] ??
-    PITCH_BOUNDARY_CONFIGS['16:9'];
-  const stageWidth = options.stageWidth ?? config.widthPx;
-  const stageHeight = options.stageHeight ?? config.heightPx;
+  const stageWidth = options.stageWidth ?? 1920;
+  const stageHeight = options.stageHeight ?? 1080;
 
   const shouldPreload = !options.playerPhotos;
   const loadedPhotos =
@@ -220,7 +215,7 @@ export async function exportMultiSlideWebmVideo(
     return await exportTacticalVideo({
       format: 'webm',
       fps: options.fps ?? 60,
-      scale: options.scale ?? 2,
+      scale: options.scale ?? 1,
       quality: options.quality ?? 'high',
       bitrate: options.bitrate,
       keyFrameIntervalSec: options.keyFrameIntervalSec ?? 2,
@@ -241,6 +236,7 @@ export async function exportMultiSlideWebmVideo(
       stageHeight,
       slides: effectiveSlides,
       aspectRatio: options.aspectRatio ?? '16:9',
+      teamVisibility: options.teamVisibility,
       onProgress: options.onProgress,
       checkCancelled: options.checkCancelled,
     });

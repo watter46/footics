@@ -5,9 +5,9 @@ export interface StandaloneExportSharePageProps {
   params?: Promise<{ shareId: string }>;
 }
 
-export default function StandaloneExportSharePage(
-  props?: StandaloneExportSharePageProps,
-) {
-  const resolvedParams = props?.params ? use(props.params) : undefined;
+export default function StandaloneExportSharePage({
+  params,
+}: StandaloneExportSharePageProps) {
+  const resolvedParams = params ? use(params) : undefined;
   return <SharePageClientView shareId={resolvedParams?.shareId} />;
 }

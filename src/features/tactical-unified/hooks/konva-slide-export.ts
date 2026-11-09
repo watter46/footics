@@ -6,14 +6,14 @@
 import { zipSync } from 'fflate';
 import { preloadSlidePlayerPhotos } from '@/lib/tactical/export/share-payload';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
-import { calculateBoundaryCrop } from '@/lib/tactical/export/video-export-engine';
-import {
-  calculatePitchRect,
-  PITCH_BOUNDARY_CONFIGS,
-} from '@/lib/tactical/pitch-geometry';
+import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
 import type {
   AspectRatio,
   BoundaryBox,
+  DirectorCameraTrack,
+  PitchAppearanceConfig,
+  PitchTransform,
+  ScreenBackgroundConfig,
   Slide,
 } from '@/lib/types/tactical-unified';
 
@@ -38,6 +38,11 @@ export interface RenderSlideImageOptions {
   stageWidth?: number;
   stageHeight?: number;
   boundaryBox?: BoundaryBox | null;
+  pitchTransform?: PitchTransform | null;
+  directorCamera?: DirectorCameraTrack | null;
+  pitchAppearance?: PitchAppearanceConfig;
+  screenBackground?: ScreenBackgroundConfig;
+  teamVisibility?: 'both' | 'home' | 'away';
 }
 
 export interface ExportSlidesArchiveOptions {
@@ -46,36 +51,25 @@ export interface ExportSlidesArchiveOptions {
   scale?: number;
   stageWidth?: number;
   stageHeight?: number;
+  boundaryBox?: BoundaryBox | null;
+  pitchTransform?: PitchTransform | null;
+  directorCamera?: DirectorCameraTrack | null;
+  pitchAppearance?: PitchAppearanceConfig;
+  screenBackground?: ScreenBackgroundConfig;
+  teamVisibility?: 'both' | 'home' | 'away';
 }
 
 export async function renderSlideToPngBlob(
   options: RenderSlideImageOptions,
 ): Promise<Blob> {
-  const config =
-    PITCH_BOUNDARY_CONFIGS[options.aspectRatio] ??
-    PITCH_BOUNDARY_CONFIGS['16:9'];
-  const stageWidth = options.stageWidth ?? config.widthPx;
-  const stageHeight = options.stageHeight ?? config.heightPx;
-  const scale = options.scale ?? 2;
+  const stageWidth = options.stageWidth ?? 1920;
+  const stageHeight = options.stageHeight ?? 1080;
+  const scale = options.scale ?? 1;
   const box =
     options.boundaryBox !== undefined
       ? options.boundaryBox
       : options.slide.boundaryBox;
-  const pitchRect = calculatePitchRect(
-    { width: stageWidth, height: stageHeight },
-    options.aspectRatio,
-  );
-  const baseRect =
-    box?.fitTarget === 'canvas'
-      ? { x: 0, y: 0, width: stageWidth, height: stageHeight }
-      : pitchRect;
-  const crop = calculateBoundaryCrop(
-    box,
-    stageWidth,
-    stageHeight,
-    scale,
-    baseRect,
-  );
+  const crop = calculateBoundaryCrop(box, stageWidth, stageHeight, scale);
   const canvas = document.createElement('canvas');
   canvas.width = crop.exportWidth;
   canvas.height = crop.exportHeight;
@@ -90,8 +84,18 @@ export async function renderSlideToPngBlob(
       timeMs: 0,
       width: crop.exportWidth,
       height: crop.exportHeight,
+      baseWidth: stageWidth,
+      baseHeight: stageHeight,
       aspectRatio: options.aspectRatio,
       boundaryBox: box,
+      pitchTransform:
+        options.pitchTransform !== undefined
+          ? options.pitchTransform
+          : (options.slide.pitchTransform ?? null),
+      directorCamera: options.directorCamera ?? null,
+      pitchAppearance: options.pitchAppearance,
+      screenBackground: options.screenBackground,
+      teamVisibility: options.teamVisibility,
       playerPhotos,
     });
 
@@ -126,19 +130,28 @@ export async function exportSingleSlidePng(
 export async function exportAllSlidesZip(
   options: ExportSlidesArchiveOptions,
 ): Promise<void> {
-  const config =
-    PITCH_BOUNDARY_CONFIGS[options.aspectRatio] ??
-    PITCH_BOUNDARY_CONFIGS['16:9'];
-  const stageWidth = options.stageWidth ?? config.widthPx;
-  const stageHeight = options.stageHeight ?? config.heightPx;
+  const stageWidth = options.stageWidth ?? 1920;
+  const stageHeight = options.stageHeight ?? 1080;
   const files: Record<string, Uint8Array> = {};
   for (const slide of options.slides) {
     const blob = await renderSlideToPngBlob({
       slide,
       aspectRatio: options.aspectRatio,
-      scale: options.scale,
+      scale: options.scale ?? 1,
       stageWidth,
       stageHeight,
+      boundaryBox:
+        options.boundaryBox !== undefined
+          ? options.boundaryBox
+          : slide.boundaryBox,
+      pitchTransform:
+        options.pitchTransform !== undefined
+          ? options.pitchTransform
+          : (slide.pitchTransform ?? null),
+      directorCamera: options.directorCamera ?? null,
+      pitchAppearance: options.pitchAppearance,
+      screenBackground: options.screenBackground,
+      teamVisibility: options.teamVisibility,
     });
     const buffer = await blob.arrayBuffer();
     files[`slide-${String(slide.index + 1).padStart(2, '0')}.png`] =

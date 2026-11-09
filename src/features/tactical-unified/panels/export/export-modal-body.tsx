@@ -269,7 +269,7 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
         slides={slides}
         aspectRatio={aspectRatio}
         canvasAspectRatio="16:9"
-        boundaryBox={boundaryBox ?? activeSlide?.boundaryBox}
+        boundaryBox={boundaryBox}
         pitchTransform={activeSlide?.pitchTransform}
         directorCamera={activePhase?.directorCamera}
         playerPhotos={playerPhotos}

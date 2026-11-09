@@ -28,7 +28,6 @@ export {
   type ToolVisibility,
   WEB_DRAWING_TOOLS,
 } from './drawing-tool-plugin';
-export { ToolbarBoundaryBoxToggle } from './ToolbarBoundaryBoxToggle';
 export { ToolbarContinuousLock } from './ToolbarContinuousLock';
 export { ToolbarDivider } from './ToolbarDivider';
 export { ToolbarEraser } from './ToolbarEraser';

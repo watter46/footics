@@ -11,7 +11,6 @@ import {
 } from '@/features/tactical-unified/panels/export/ios-export-presets';
 import type { TacticalExportSharePayload } from '@/lib/tactical/export/share-payload';
 import { exportMultiSlideMp4Video } from '@/lib/tactical/export/tactical-video-exporter';
-import { PITCH_BOUNDARY_CONFIGS } from '@/lib/tactical/pitch-geometry';
 import type { AspectRatio, Slide } from '@/lib/types/tactical-unified';
 
 export interface UseSharePageExportOptions {
@@ -96,11 +95,8 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
   const effectiveAspectRatio: AspectRatio =
     shareData?.aspectRatio ||
     (shareData?.orientation === 'vertical' ? '9:16' : '16:9');
-  const boundaryConfig =
-    PITCH_BOUNDARY_CONFIGS[effectiveAspectRatio] ??
-    PITCH_BOUNDARY_CONFIGS['16:9'];
-  const stageWidth = boundaryConfig.widthPx;
-  const stageHeight = boundaryConfig.heightPx;
+  const stageWidth = 1920;
+  const stageHeight = 1080;
   const slides: Slide[] = shareData?.scenes
     ? shareData.scenes.map((s) => s as Slide)
     : [];
@@ -135,7 +131,7 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
       const blob = await exportMultiSlideMp4Video({
         slides,
         fps: activePreset.fps,
-        scale: 2,
+        scale: 1,
         quality: 'high',
         bitrate: activePreset.bitrateMbps * 1_000_000,
         h264Profile: 'high',
@@ -149,10 +145,11 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
         screenBackground: shareData?.screenBackground ?? undefined,
         pitchAppearance: shareData?.pitchAppearance,
         mvpMatrix,
-        stageWidth,
-        stageHeight,
+        stageWidth: 1920,
+        stageHeight: 1080,
         aspectRatio: effectiveAspectRatio,
         photos: shareData?.photos,
+        teamVisibility: shareData?.teamVisibility ?? 'both',
         onProgress: (p) => setExportProgress(p.percent),
       });
       setExportedBlob(blob);

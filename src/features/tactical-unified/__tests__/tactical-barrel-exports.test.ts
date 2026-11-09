@@ -10,7 +10,6 @@ describe('Tactical Unified Barrel Exports', () => {
     expect(TacticalBarrel.TimelineBar).toBeDefined();
     expect(TacticalBarrel.TopBar).toBeDefined();
     expect(TacticalBarrel.DrawingToolbar).toBeDefined();
-    expect(TacticalBarrel.BoundaryBox).toBeDefined();
     expect(TacticalBarrel.UnifiedCanvas).toBeDefined();
   });
 
@@ -19,6 +18,7 @@ describe('Tactical Unified Barrel Exports', () => {
     expect(barrel['InspectorPanel']).toBeUndefined();
     expect(barrel['FormationSubPanel']).toBeUndefined();
     expect(barrel['SlideStrip']).toBeUndefined();
+    expect(barrel['BoundaryBox']).toBeUndefined();
   });
 
   it('should not export dead boundary-box controls from toolbar barrel', () => {
@@ -33,5 +33,8 @@ describe('Tactical Unified Barrel Exports', () => {
     expect(core['DrawingPreviewLayer']).toBeUndefined();
     expect(core['PlayerLayer']).toBeUndefined();
     expect(core['BallLayer']).toBeUndefined();
+    expect(core['BoundaryBoxOverlay']).toBeUndefined();
+    expect(core['BoundaryBoxHud']).toBeUndefined();
+    expect(core['ViewportCropOverlay']).toBeUndefined();
   });
 });

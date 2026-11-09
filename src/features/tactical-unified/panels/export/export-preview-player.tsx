@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { isBoundaryCropActive } from '@/lib/tactical/export/video-crop-calc';
 import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/unified-interpolation';
 import type {
   AspectRatio,
@@ -134,14 +135,7 @@ export function ExportPreviewPlayer({
     };
   }, [togglePlay]);
 
-  const isBoundaryActive =
-    boundaryBox?.enabled &&
-    boundaryBox.width > 0 &&
-    boundaryBox.height > 0 &&
-    (boundaryBox.width < 100 ||
-      boundaryBox.height < 100 ||
-      boundaryBox.x > 0 ||
-      boundaryBox.y > 0);
+  const isBoundaryActive = isBoundaryCropActive(boundaryBox);
 
   const ratioNum =
     previewWidth > 0 && previewHeight > 0
@@ -159,7 +153,7 @@ export function ExportPreviewPlayer({
           : '16 / 9');
 
   return (
-    <div className="flex-1 min-h-0 w-full flex flex-col rounded-xl bg-black/40 border border-white/10 overflow-hidden">
+    <div className="relative flex flex-col w-full h-full flex-1 min-h-0 select-none overflow-hidden rounded-xl bg-black/40 border border-white/10">
       {/* Upper Viewport: 境界線アスペクト比連動 最大フィット */}
       <div
         className="relative flex-1 min-h-0 w-full p-4 flex items-center justify-center bg-[#020617]/40 overflow-hidden"

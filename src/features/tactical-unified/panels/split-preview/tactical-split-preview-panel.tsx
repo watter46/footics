@@ -4,13 +4,14 @@ import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { useExportPreviewAnimation } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
+  selectActiveBoundaryBox,
   selectActivePhase,
   selectActivePhaseAspectRatio,
-  selectActivePhaseBoundaryBox,
   selectActivePhaseSlides,
   selectActiveSlide,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { isBoundaryCropActive } from '@/lib/tactical/export/video-crop-calc';
 import {
   hasActiveDirectorCameraTrack,
   resolveSyntheticDirectorCamera,
@@ -27,9 +28,7 @@ export function TacticalSplitPreviewPanel() {
   const aspectRatio = useTacticalUnifiedStoreContext(
     selectActivePhaseAspectRatio,
   );
-  const phaseBoundaryBox = useTacticalUnifiedStoreContext(
-    selectActivePhaseBoundaryBox,
-  );
+  const boundaryBox = useTacticalUnifiedStoreContext(selectActiveBoundaryBox);
   const pitchAppearance = useTacticalUnifiedStoreContext(
     (s) => s.project.pitchAppearance,
   );
@@ -89,8 +88,7 @@ export function TacticalSplitPreviewPanel() {
   );
 
   // 境界線の状態
-  const boundaryBox = activeSlide?.boundaryBox ?? phaseBoundaryBox;
-  const isBoundaryActive = Boolean(boundaryBox?.enabled);
+  const isBoundaryActive = isBoundaryCropActive(boundaryBox);
 
   const allPhasePlayers = useMemo(
     () => slides.flatMap((s) => s.players ?? []),
@@ -259,8 +257,8 @@ export function TacticalSplitPreviewPanel() {
             className="w-full h-full block object-contain cursor-grab active:cursor-grabbing touch-none"
           />
 
-          {/* 静止時 かつ 境界線有効時: 編集用ドラッグ枠 & 暗転マスク */}
-          {isBoundaryActive && !isPlaying && boundaryBox && (
+          {/* 静止時 かつ 境界線表示時: 編集用ドラッグ枠 & 暗転マスク */}
+          {Boolean(boundaryBox?.visible) && !isPlaying && boundaryBox && (
             <PreviewBoundaryOverlay
               boundaryBox={boundaryBox}
               containerRef={containerRef}

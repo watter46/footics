@@ -20,7 +20,6 @@ import {
 import { HtmlHudOverlay } from '../HtmlHudOverlay';
 import { InteractionPreviewLayer } from '../InteractionPreviewLayer';
 import { PitchGroundLayer } from '../PitchGroundLayer';
-import { ViewportCropOverlay } from '../ViewportCropOverlay';
 
 beforeEach(() => {
   const mockCtx = new Proxy(
@@ -462,13 +461,14 @@ describe('BillboardObjectLayer', () => {
       });
     });
 
-    // bench へ移動されず、updateMarker で nx=110, ny=110 が保存されること
+    // bench へ移動されず、updateMarker で 0..100 スクリーン内にクランプされて保存されること
     expect(capturedStore).not.toBeNull();
     const updatedMarker = (
       capturedStore as unknown as CanvasState
     ).annotations.markers.find((m: { id: string }) => m.id === 'm-drop-test');
-    expect(updatedMarker?.x).toBeCloseTo(110);
-    expect(updatedMarker?.y).toBeCloseTo(110);
+    expect(updatedMarker?.area).toBe('pitch');
+    expect(updatedMarker?.x).toBeCloseTo(100);
+    expect(updatedMarker?.y).toBeCloseTo(100);
   });
 
   it('capabilities.hasBall に基づいてボールを描画・非表示制御すること', () => {
@@ -857,60 +857,6 @@ describe('InteractionPreviewLayer', () => {
       (r) => r.attrs.stroke === '#38bdf8' && r.attrs.dash !== undefined,
     );
     expect(selectionRect).toBeDefined();
-  });
-});
-
-describe('ViewportCropOverlay', () => {
-  it('cleanRender={true} のときは null を返すこと', () => {
-    const { container } = render(
-      <CanvasStoreProvider
-        config={{
-          mode: 'tactical-board',
-          defaultBoundaryBox: {
-            x: 0,
-            y: 0,
-            width: 100,
-            height: 100,
-            enabled: true,
-            visible: true,
-          },
-        }}
-      >
-        <ViewportCropOverlay
-          stageSize={defaultStageSize}
-          pitchRect={defaultPitchRect}
-          cleanRender={true}
-        />
-      </CanvasStoreProvider>,
-    );
-
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('cleanRender={false} かつ enabled のときは BoundaryBoxOverlay を描画すること', () => {
-    const { container } = render(
-      <CanvasStoreProvider
-        config={{
-          mode: 'tactical-board',
-          defaultBoundaryBox: {
-            x: 0,
-            y: 0,
-            width: 100,
-            height: 100,
-            enabled: true,
-            visible: true,
-          },
-        }}
-      >
-        <ViewportCropOverlay
-          stageSize={defaultStageSize}
-          pitchRect={defaultPitchRect}
-          cleanRender={false}
-        />
-      </CanvasStoreProvider>,
-    );
-
-    expect(container.querySelector('svg')).not.toBeNull();
   });
 });
 

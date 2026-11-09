@@ -4,10 +4,7 @@
  */
 
 export * from './core';
-export {
-  BoundaryBoxOverlay as BoundaryBox,
-  CanvasStageContainer as UnifiedCanvas,
-} from './core';
+export { CanvasStageContainer as UnifiedCanvas } from './core';
 export { ExportModal } from './panels/export/export-modal';
 export { RightPanel } from './panels/right-panel/right-panel';
 export { TimelineBar } from './panels/timeline/timeline-bar';

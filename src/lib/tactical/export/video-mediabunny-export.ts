@@ -7,7 +7,6 @@ import {
 } from 'mediabunny';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
-import { calculatePitchRect } from '../pitch-geometry';
 import {
   type AnyCanvasRenderingContext2D,
   renderTacticalFrameToCanvas,
@@ -21,20 +20,11 @@ import type { VideoExportOptions } from './video-export-types';
 export async function exportVideoWithMediabunny(
   options: VideoExportOptions,
 ): Promise<Blob> {
-  const pitchRect = calculatePitchRect(
-    { width: options.stageWidth, height: options.stageHeight },
-    options.aspectRatio ?? '16:9',
-  );
-  const baseRect =
-    options.boundaryBox?.fitTarget === 'canvas'
-      ? { x: 0, y: 0, width: options.stageWidth, height: options.stageHeight }
-      : pitchRect;
   const cropInfo = calculateBoundaryCrop(
     options.boundaryBox,
     options.stageWidth,
     options.stageHeight,
-    options.scale ?? 2,
-    baseRect,
+    options.scale ?? 1,
   );
   const { exportWidth, exportHeight } = cropInfo;
 

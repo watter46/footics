@@ -11,13 +11,24 @@ export interface BoundaryCropInfo {
 }
 
 /**
+ * 境界線による切り抜きが有効（全体表示ではない）かどうかを判定する。
+ * enabled や visible フラグには依存せず、座標値のみで判定する。
+ */
+export function isBoundaryCropActive(
+  box: BoundaryBox | undefined | null,
+): box is BoundaryBox {
+  if (!box || box.width <= 0 || box.height <= 0) return false;
+  return box.width < 100 || box.height < 100 || box.x > 0 || box.y > 0;
+}
+
+/**
  * Calculates crop dimensions from Boundary Box and stage dimensions with even-number snapping.
  */
 export function calculateBoundaryCrop(
   box: BoundaryBox | undefined | null,
-  stageWidth: number,
-  stageHeight: number,
-  scale = 2,
+  stageWidth = 1920,
+  stageHeight = 1080,
+  scale = 1,
   pitchRect?: { x: number; y: number; width: number; height: number },
 ): BoundaryCropInfo {
   const rect = pitchRect ?? {
@@ -37,21 +48,15 @@ export function calculateBoundaryCrop(
     rect.y !== 0 ||
     rect.width !== stageWidth ||
     rect.height !== stageHeight;
-  const isBoxCropped =
-    Boolean(box?.enabled) &&
-    (box?.width ?? 0) > 0 &&
-    (box?.height ?? 0) > 0 &&
-    ((box?.width ?? 100) < 100 ||
-      (box?.height ?? 100) < 100 ||
-      (box?.x ?? 0) > 0 ||
-      (box?.y ?? 0) > 0);
 
-  if (box?.enabled && box.width > 0 && box.height > 0) {
+  if (isBoundaryCropActive(box)) {
     cropX = rect.x + (box.x / 100) * rect.width;
     cropY = rect.y + (box.y / 100) * rect.height;
     cropW = (box.width / 100) * rect.width;
     cropH = (box.height / 100) * rect.height;
-    isCropped = hasCustomPitchRect || isBoxCropped;
+    isCropped = true;
+  } else if (hasCustomPitchRect) {
+    isCropped = true;
   }
 
   // Baseline Resolution Guarantee depending on selected scale preset:

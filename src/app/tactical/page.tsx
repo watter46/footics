@@ -15,9 +15,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export interface TacticalPageProps {
-  searchParams?:
-    | Promise<{ [key: string]: string | string[] | undefined }>
-    | { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 // Full-screen canvas — body overflow hidden は globals.css で管理

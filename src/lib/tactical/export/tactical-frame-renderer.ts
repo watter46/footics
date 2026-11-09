@@ -43,6 +43,7 @@ import {
 } from './renderers/renderer-context';
 import { renderTexts } from './renderers/text-renderer';
 import { renderZones } from './renderers/zone-renderer';
+import { isBoundaryCropActive } from './video-crop-calc';
 
 export {
   _resetSharedOffscreenCanvas,
@@ -71,6 +72,8 @@ export interface RenderTacticalFrameOptions {
   mvpMatrix?: Float32Array | null;
   /** スライドのカメラ設定を強制上書きするPitchTransform */
   pitchTransformOverride?: PitchTransform | null;
+  /** スライドのカメラ設定（pitchTransformOverride のエイリアス） */
+  pitchTransform?: PitchTransform | null;
   /** 選手の顔写真ソースマップ (playerId または player.id -> CanvasImageSource) */
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   /** ピッチ外観カスタム設定 */
@@ -149,14 +152,7 @@ export function renderTacticalFrameToCanvas(
       directorCameraOptions,
     );
 
-  const isBoundaryActive =
-    boundaryBox?.enabled &&
-    boundaryBox.width > 0 &&
-    boundaryBox.height > 0 &&
-    (boundaryBox.width < 100 ||
-      boundaryBox.height < 100 ||
-      boundaryBox.x > 0 ||
-      boundaryBox.y > 0);
+  const isBoundaryActive = isBoundaryCropActive(boundaryBox);
 
   if (isBoundaryActive && boundaryBox) {
     const canonicalW =
@@ -243,7 +239,8 @@ export function renderTacticalFrameToCanvas(
     baseHeight,
     aspectRatio,
     mvpMatrix,
-    pitchTransformOverride: options.pitchTransformOverride,
+    pitchTransformOverride:
+      options.pitchTransformOverride ?? options.pitchTransform,
     framePitchTransform: frame.pitchTransform,
   });
 

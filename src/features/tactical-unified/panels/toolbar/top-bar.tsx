@@ -18,11 +18,11 @@ import {
   CanvasToast,
   useCanvasToast,
 } from '@/features/tactical-unified/core';
-import {
-  selectActivePhaseBoundaryBox,
-  selectActiveSlide,
-} from '@/features/tactical-unified/stores/tactical-unified-selectors';
+import { selectTacticalRenderSnapshot } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { preloadSlidePlayerPhotos } from '@/lib/tactical/export/share-payload';
+import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
+import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
 import { TopBarCenter } from './top-bar-center';
 import { TopBarHistory } from './top-bar-history';
 import { TopBarMoreMenu } from './top-bar-more-menu';
@@ -63,79 +63,71 @@ export function TopBar({
     (s) => s.panels.sidebarOpen,
   );
   const toggleSidebar = useTacticalUnifiedStoreContext((s) => s.toggleSidebar);
-  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
-  const activeBoundaryBox = useTacticalUnifiedStoreContext(
-    selectActivePhaseBoundaryBox,
-  );
+  const snapshot = useTacticalUnifiedStoreContext(selectTacticalRenderSnapshot);
   const { toastMessage, showToast } = useCanvasToast();
 
-  async function handleCopy() {
+  async function handleCopySlideImage() {
     if (workspaceMode === 'director') {
-      const canvas = document.querySelector('canvas');
-      if (canvas && typeof canvas.toBlob === 'function') {
-        const boundaryBox = activeBoundaryBox ?? activeSlide?.boundaryBox;
-        let sourceCanvas: HTMLCanvasElement = canvas;
+      const activeSlide = snapshot.activeSlide ?? snapshot.slides[0];
+      if (activeSlide) {
+        const baseW = 1920;
+        const baseH = 1080;
+        const boundaryBox = snapshot.boundaryBox;
+        const crop = calculateBoundaryCrop(boundaryBox, baseW, baseH, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = crop.exportWidth;
+        canvas.height = crop.exportHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const playerPhotos = await preloadSlidePlayerPhotos([activeSlide]);
+          try {
+            renderTacticalFrameToCanvas(ctx, {
+              slides: [activeSlide],
+              timeMs: 0,
+              width: crop.exportWidth,
+              height: crop.exportHeight,
+              baseWidth: baseW,
+              baseHeight: baseH,
+              aspectRatio: snapshot.aspectRatio,
+              boundaryBox,
+              pitchTransform: snapshot.pitchTransform,
+              directorCamera: snapshot.directorCamera,
+              pitchAppearance: snapshot.pitchAppearance,
+              screenBackground: snapshot.screenBackground,
+              teamVisibility: snapshot.teamVisibility,
+              playerPhotos,
+            });
 
-        const isBoundaryActive = Boolean(
-          boundaryBox?.enabled &&
-            boundaryBox.width > 0 &&
-            boundaryBox.height > 0 &&
-            (boundaryBox.width < 100 ||
-              boundaryBox.height < 100 ||
-              boundaryBox.x > 0 ||
-              boundaryBox.y > 0),
-        );
-
-        if (
-          isBoundaryActive &&
-          boundaryBox &&
-          canvas.dataset.cropped !== 'true'
-        ) {
-          const sx = Math.round((boundaryBox.x / 100) * canvas.width);
-          const sy = Math.round((boundaryBox.y / 100) * canvas.height);
-          const sw = Math.max(
-            1,
-            Math.round((boundaryBox.width / 100) * canvas.width),
-          );
-          const sh = Math.max(
-            1,
-            Math.round((boundaryBox.height / 100) * canvas.height),
-          );
-
-          const cropCanvas = document.createElement('canvas');
-          cropCanvas.width = sw;
-          cropCanvas.height = sh;
-          const ctx = cropCanvas.getContext('2d');
-          ctx?.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
-          sourceCanvas = cropCanvas;
+            await new Promise<void>((resolve, reject) => {
+              canvas.toBlob(async (blob) => {
+                if (!blob) {
+                  resolve();
+                  return;
+                }
+                try {
+                  if (
+                    typeof navigator !== 'undefined' &&
+                    navigator.clipboard?.write
+                  ) {
+                    await navigator.clipboard.write([
+                      new ClipboardItem({ 'image/png': blob }),
+                    ]);
+                  }
+                  resolve();
+                } catch (err) {
+                  reject(err);
+                }
+              });
+            });
+          } finally {
+            for (const bitmap of Object.values(playerPhotos)) {
+              bitmap?.close?.();
+            }
+          }
         }
-
-        await new Promise<void>((resolve, reject) => {
-          sourceCanvas.toBlob(async (blob) => {
-            if (!blob) {
-              resolve();
-              return;
-            }
-            try {
-              if (
-                typeof navigator !== 'undefined' &&
-                navigator.clipboard?.write
-              ) {
-                await navigator.clipboard.write([
-                  new ClipboardItem({ 'image/png': blob }),
-                ]);
-              }
-              resolve();
-            } catch (err) {
-              reject(err);
-            }
-          });
-        });
-      } else if (canvasRef?.current?.copyToClipboard) {
-        await canvasRef.current.copyToClipboard();
       }
-    } else {
-      await canvasRef?.current?.copyToClipboard();
+    } else if (canvasRef?.current?.copyToClipboard) {
+      await canvasRef.current.copyToClipboard();
     }
     showToast('📋 画像をクリップボードにコピーしました！');
   }
@@ -186,7 +178,7 @@ export function TopBar({
         <Button
           variant="secondary"
           size="sm"
-          onClick={handleCopy}
+          onClick={handleCopySlideImage}
           icon={<Copy size={13} strokeWidth={1.5} />}
           aria-label="Copy"
           title="Copy current slide image to clipboard"

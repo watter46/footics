@@ -93,7 +93,7 @@ export function SharePageClientView({
 
       <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 max-w-xl mx-auto w-full">
         <Card className="w-full bg-surface-l2 border-white/[0.08] p-6 rounded-2xl flex flex-col gap-5 shadow-2xl">
-          <div className="w-full h-[45vh] min-h-[300px] max-h-[520px] flex items-center justify-center">
+          <div className="w-full h-[45vh] min-h-[300px] max-h-[520px] flex flex-col items-stretch justify-center">
             <ExportPreviewPlayer
               slides={exp.slides}
               aspectRatio={exp.effectiveAspectRatio}
@@ -103,6 +103,7 @@ export function SharePageClientView({
               screenBackground={shareData.screenBackground ?? undefined}
               photos={shareData.photos}
               pitchAppearance={shareData.pitchAppearance}
+              teamVisibility={shareData.teamVisibility}
             />
           </div>
 

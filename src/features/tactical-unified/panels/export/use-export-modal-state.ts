@@ -6,8 +6,9 @@ import {
   exportSingleSlidePng,
 } from '@/features/tactical-unified/hooks/konva-export-helpers';
 import {
+  selectActiveBoundaryBox,
+  selectActivePhase,
   selectActivePhaseAspectRatio,
-  selectActivePhaseBoundaryBox,
   selectActivePhaseSlides,
   selectActiveSlide,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
@@ -27,15 +28,20 @@ export function useExportModalState() {
   );
   const pendingExport = useTacticalUnifiedStoreContext((s) => s.pendingExport);
   const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
+  const activePhase = useTacticalUnifiedStoreContext(selectActivePhase);
   const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
   const aspectRatio = useTacticalUnifiedStoreContext(
     selectActivePhaseAspectRatio,
   );
-  const boundaryBox = useTacticalUnifiedStoreContext(
-    selectActivePhaseBoundaryBox,
-  );
+  const boundaryBox = useTacticalUnifiedStoreContext(selectActiveBoundaryBox);
   const pitchAppearance = useTacticalUnifiedStoreContext(
     (s) => s.project.pitchAppearance,
+  );
+  const screenBackground = useTacticalUnifiedStoreContext(
+    (s) => s.project.screenBackground,
+  );
+  const teamVisibility = useTacticalUnifiedStoreContext(
+    (s) => s.teamVisibility,
   );
 
   const initFmt = pendingExport?.format;
@@ -62,7 +68,12 @@ export function useExportModalState() {
           slide: slideToExport,
           aspectRatio,
           scale: imageScale,
-          boundaryBox: slideToExport.boundaryBox ?? boundaryBox,
+          boundaryBox,
+          pitchTransform: activeSlide?.pitchTransform ?? null,
+          directorCamera: activePhase?.directorCamera ?? null,
+          pitchAppearance,
+          screenBackground,
+          teamVisibility,
         });
         closeExportModal();
       } else if (selectedFormat === 'zip') {
@@ -72,6 +83,12 @@ export function useExportModalState() {
           slides,
           aspectRatio,
           scale: imageScale,
+          boundaryBox,
+          pitchTransform: activeSlide?.pitchTransform ?? null,
+          directorCamera: activePhase?.directorCamera ?? null,
+          pitchAppearance,
+          screenBackground,
+          teamVisibility,
         });
         closeExportModal();
       }

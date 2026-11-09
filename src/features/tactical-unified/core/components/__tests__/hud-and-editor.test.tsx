@@ -10,7 +10,6 @@ import type { CanvasConfig, CanvasStoreApi } from '../../types';
 import { calculatePitchTransform } from '../../utils/canvas-pitch-transform-helper';
 import { getPointerCoordinates } from '../../utils/geometry';
 import { BillboardObjectLayer } from '../BillboardObjectLayer';
-import { BoundaryBoxHud } from '../BoundaryBoxHud';
 import { ContextHud } from '../ContextHud';
 import { CoreDrawingToolbar } from '../CoreDrawingToolbar';
 import { MiniColorPicker } from '../hud/mini-color-picker';
@@ -162,96 +161,6 @@ describe('ContextHud', () => {
   });
 });
 
-describe('BoundaryBoxHud', () => {
-  it('デフォルト表示で 3D Tilt コントロールが非表示であり、showTiltControls={true} 指定時のみ表示されること', () => {
-    const defaultBox = {
-      x: 10,
-      y: 10,
-      width: 80,
-      height: 80,
-      enabled: true,
-      visible: true,
-    };
-
-    // 1. デフォルト (showTiltControls 未指定 -> false)
-    const { unmount } = renderWithStore(
-      <BoundaryBoxHud stageSize={{ width: 800, height: 600 }} />,
-      { defaultBoundaryBox: defaultBox },
-    );
-
-    const toggleBtn = screen.getByRole('button', {
-      name: /Toggle Boundary Box Settings/i,
-    });
-    fireEvent.click(toggleBtn);
-
-    expect(screen.queryByText('Pitch 2.5D Tilt')).toBeNull();
-    unmount();
-
-    // 2. showTiltControls={true}
-    renderWithStore(
-      <BoundaryBoxHud
-        stageSize={{ width: 800, height: 600 }}
-        showTiltControls={true}
-      />,
-      { defaultBoundaryBox: defaultBox },
-    );
-
-    const toggleBtnTrue = screen.getByRole('button', {
-      name: /Toggle Boundary Box Settings/i,
-    });
-    fireEvent.click(toggleBtnTrue);
-
-    expect(screen.getByText('Pitch 2.5D Tilt')).toBeDefined();
-  });
-
-  it('BoundaryBoxHud で「全画面」「ピッチフィット」ボタンが機能すること', () => {
-    const { store } = renderWithStore(
-      <BoundaryBoxHud
-        stageSize={{ width: 800, height: 600 }}
-        showTiltControls={true}
-      />,
-      {
-        defaultBoundaryBox: {
-          x: 10,
-          y: 10,
-          width: 80,
-          height: 80,
-          enabled: true,
-          visible: true,
-        },
-      },
-    );
-
-    const toggleBtn = screen.getByRole('button', {
-      name: /Toggle Boundary Box Settings/i,
-    });
-    fireEvent.click(toggleBtn);
-
-    // 1. 全画面ボタン押下
-    const fullBtn = screen.getByRole('button', {
-      name: '全画面',
-    });
-    fireEvent.click(fullBtn);
-
-    let updatedBox = store.getState().boundaryBox;
-    expect(updatedBox.visible).toBe(true);
-    expect(updatedBox.width).toBe(100);
-    expect(updatedBox.height).toBe(100);
-    expect(updatedBox.x).toBe(0);
-    expect(updatedBox.y).toBe(0);
-
-    // 2. ピッチフィットボタン押下
-    const fitBtn = screen.getByRole('button', {
-      name: 'ピッチフィット',
-    });
-    fireEvent.click(fitBtn);
-
-    updatedBox = store.getState().boundaryBox;
-    expect(updatedBox.visible).toBe(true);
-    expect(updatedBox.fitTarget).toBe('pitch');
-  });
-});
-
 describe('getPointerCoordinates with 2D zoom/pan transform', () => {
   it('ズーム・パン変換を渡した際に stageToPitch 逆変換された normPos が返り pixelPos は Stage 座標のまま維持されること', () => {
     const mockEvent = {
@@ -332,7 +241,7 @@ describe('PitchInlineTextEditor', () => {
 });
 
 describe('CoreDrawingToolbar', () => {
-  it('CoreDrawingToolbar で全11ツール、連続描画ロック、消しゴム、ピッチロック、クロップ枠、リセットが動作すること', () => {
+  it('CoreDrawingToolbar で全11ツール、連続描画ロック、消しゴム、ピッチロック、リセットが動作すること', () => {
     const { store } = renderWithStore(<CoreDrawingToolbar markerMode="all" />, {
       mode: 'tactical-board',
     });
@@ -365,11 +274,6 @@ describe('CoreDrawingToolbar', () => {
     const pitchLockBtn = screen.getByTitle(/Pitch Lock/i);
     fireEvent.click(pitchLockBtn);
     expect(store.getState().pitchTransform.isLocked).toBe(true);
-
-    // BoundaryBox 切替
-    const bboxToggleBtn = screen.getByTitle(/Boundary Box/i);
-    fireEvent.click(bboxToggleBtn);
-    expect(store.getState().boundaryBox.visible).toBe(true);
 
     // リセットボタン (全消去)
     act(() => {
