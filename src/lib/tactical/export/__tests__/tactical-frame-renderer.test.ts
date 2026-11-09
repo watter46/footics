@@ -2129,6 +2129,66 @@ describe('Tactical Frame Renderer', () => {
       });
     });
 
+    it('renders canvas during pauseMs when directorCamera is moving, skipping only when camera is also static', async () => {
+      const renderSpy = vi.spyOn(
+        tacticalFrameRenderer,
+        'renderTacticalFrameToCanvas',
+      );
+      renderSpy.mockClear();
+
+      const slide1 = SlideSchema.parse({
+        id: 's1',
+        index: 0,
+        transitionDurationMs: 200,
+        pauseMs: 400,
+        players: [],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: true },
+      });
+      const slide2 = SlideSchema.parse({
+        id: 's2',
+        index: 1,
+        transitionDurationMs: 200,
+        pauseMs: 400,
+        players: [],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: true },
+      });
+
+      const directorCamera = {
+        enabled: true,
+        globalKeyframes: [
+          { id: 'g1', timeMs: 200, tilt: 0, yaw: 90 },
+          { id: 'g2', timeMs: 300, tilt: 30, yaw: 45 },
+        ],
+        actionCues: [],
+      };
+
+      const blob = await exportVideoWithMediabunny({
+        format: 'mp4',
+        fps: 10,
+        totalDurationMs: 600,
+        stageWidth: 1000,
+        stageHeight: 1000,
+        slides: [slide1, slide2],
+        scale: 1,
+        isWorkerContext: true,
+        directorCamera,
+      });
+
+      expect(blob).toBeInstanceOf(Blob);
+      expect(mockCanvasSourceAdd).toHaveBeenCalledTimes(6);
+
+      // In frames 2, 3 (200ms - 300ms), player is paused but director camera is moving.
+      // Canvas must be rendered for all frames with camera motion (frames 2, 3) and first settled frame (frame 4).
+      // Only the fully static frame at 500ms (frame 5) should be skipped (5 rendered out of 6 total frames).
+      expect(renderSpy.mock.calls.length).toBe(5);
+    });
+
     it('calculates player marker radius based on pitch baseDim (short edge) * 0.032', () => {
       const ctx = createMockContext();
       renderTacticalFrameToCanvas(ctx, {

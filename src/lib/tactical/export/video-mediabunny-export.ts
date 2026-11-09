@@ -6,6 +6,10 @@ import {
   WebMOutputFormat,
 } from 'mediabunny';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
+import {
+  hasCameraDelta,
+  type InterpolatedPitchTransformState,
+} from '@/lib/tactical/interpolation-camera';
 import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
 import {
   type AnyCanvasRenderingContext2D,
@@ -134,6 +138,7 @@ export async function exportVideoWithMediabunny(
   }
 
   let lastRenderedSlideIdx = -1;
+  let lastRenderedTransform: InterpolatedPitchTransformState | null = null;
 
   try {
     for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
@@ -152,9 +157,14 @@ export async function exportVideoWithMediabunny(
           options.directorCamera,
           options.directorCameraOptions,
         );
+        const isTransformIdentical =
+          lastRenderedTransform !== null &&
+          !hasCameraDelta(lastRenderedTransform, interpolated.pitchTransform);
+
         const shouldSkipRender =
           frameIdx > 0 &&
           interpolated.isPaused &&
+          isTransformIdentical &&
           lastRenderedSlideIdx === interpolated.currentSlideIndex;
 
         if (!shouldSkipRender) {
@@ -181,6 +191,7 @@ export async function exportVideoWithMediabunny(
           lastRenderedSlideIdx = interpolated.isPaused
             ? interpolated.currentSlideIndex
             : -1;
+          lastRenderedTransform = interpolated.pitchTransform;
         }
       } else {
         await options.onRenderFrame?.(timeMs);

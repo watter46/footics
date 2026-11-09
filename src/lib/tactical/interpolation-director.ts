@@ -6,7 +6,10 @@
 
 import type { DirectorCameraTrack } from '@/lib/types/tactical-unified';
 import { applyEasing } from './easing';
-import type { InterpolatedPitchTransformState } from './interpolation-camera';
+import {
+  hasCameraDelta,
+  type InterpolatedPitchTransformState,
+} from './interpolation-camera';
 
 /**
  * ディレクターカメラトラックが有効かつキーフレームが存在するか判定
@@ -176,4 +179,23 @@ export function resolveSyntheticDirectorCamera(
     panY,
     isLocked: true,
   };
+}
+
+/**
+ * ディレクターカメラが指定時刻で移動中か判定
+ */
+export function isDirectorCameraMoving(
+  track: DirectorCameraTrack,
+  timeMs: number,
+  options?: ResolveSyntheticDirectorCameraOptions,
+): boolean {
+  if (!hasActiveDirectorCameraTrack(track)) return false;
+  const current = resolveSyntheticDirectorCamera(track, timeMs, options);
+  const next = resolveSyntheticDirectorCamera(track, timeMs + 16, options);
+  const prev = resolveSyntheticDirectorCamera(
+    track,
+    Math.max(0, timeMs - 16),
+    options,
+  );
+  return hasCameraDelta(current, next) || hasCameraDelta(prev, current);
 }

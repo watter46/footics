@@ -8,6 +8,7 @@ import type {
 import { applyEasing } from './easing';
 import {
   hasActiveDirectorCameraTrack,
+  isDirectorCameraMoving,
   type ResolveSyntheticDirectorCameraOptions,
   resolveSyntheticDirectorCamera,
 } from './interpolation-director';
@@ -223,7 +224,11 @@ export function resolveCameraAtTime(
         timeMs,
         directorCameraOptions,
       ),
-      isCameraMoving: false,
+      isCameraMoving: isDirectorCameraMoving(
+        directorCamera,
+        timeMs,
+        directorCameraOptions,
+      ),
     };
   }
 

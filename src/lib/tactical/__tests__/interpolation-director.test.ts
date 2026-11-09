@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DirectorCameraTrack } from '@/lib/types/tactical-unified';
 import {
   hasActiveDirectorCameraTrack,
+  isDirectorCameraMoving,
   resolveSyntheticDirectorCamera,
 } from '../interpolation-director';
 
@@ -76,5 +77,43 @@ describe('resolveSyntheticDirectorCamera', () => {
     expect(res.zoom).toBeCloseTo(2.5, 5);
     expect(res.panX).toBeCloseTo(15, 5);
     expect(res.panY).toBeCloseTo(-10, 5);
+  });
+});
+
+describe('isDirectorCameraMoving', () => {
+  it('detects camera moving correctly during globalKeyframes transition', () => {
+    const track: DirectorCameraTrack = {
+      enabled: true,
+      globalKeyframes: [
+        { id: 'g1', timeMs: 1000, tilt: 0, yaw: 90 },
+        { id: 'g2', timeMs: 3000, tilt: 30, yaw: 45 },
+      ],
+      actionCues: [],
+    };
+
+    expect(isDirectorCameraMoving(track, 500)).toBe(false);
+    expect(isDirectorCameraMoving(track, 2000)).toBe(true);
+    expect(isDirectorCameraMoving(track, 4000)).toBe(false);
+  });
+
+  it('detects camera moving correctly during actionCues transition', () => {
+    const track: DirectorCameraTrack = {
+      enabled: true,
+      globalKeyframes: [],
+      actionCues: [
+        {
+          id: 'c1',
+          startTimeMs: 1000,
+          durationMs: 1000,
+          zoom: 2.0,
+          panX: 10,
+          panY: 0,
+          autoReturn: false,
+        },
+      ],
+    };
+
+    expect(isDirectorCameraMoving(track, 1100)).toBe(true);
+    expect(isDirectorCameraMoving(track, 2500)).toBe(false);
   });
 });
