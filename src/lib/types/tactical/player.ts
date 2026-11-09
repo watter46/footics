@@ -1,9 +1,24 @@
 import { z } from 'zod';
+import { type EffectExitAction, EffectExitActionSchema } from './annotations';
 import { NormalizedCoordSchema } from './primitives';
 
 // ─────────────────────────────────────────
 // § 3. マーカー (選手アイコン) スタイル
 // ─────────────────────────────────────────
+
+export const MarkerEffectTypeSchema = z.enum(['none', 'ripple']);
+export type MarkerEffectType = z.infer<typeof MarkerEffectTypeSchema>;
+
+export const MarkerEffectConfigSchema = z.object({
+  type: MarkerEffectTypeSchema.default('none'),
+  delay: z.number().min(0).max(10).default(0.0),
+  duration: z.number().min(0.1).max(10).default(1.0),
+  ringsCount: z.number().min(1).max(8).default(3),
+  repeatCount: z.number().min(0).max(100).default(2),
+  maxRadiusScale: z.number().min(1.0).max(10.0).default(2.5),
+  exitAction: EffectExitActionSchema.default('keep'),
+});
+export type MarkerEffectConfig = z.infer<typeof MarkerEffectConfigSchema>;
 
 export const MarkerStyleSchema = z.object({
   markerType: z
@@ -24,6 +39,7 @@ export const MarkerStyleSchema = z.object({
   labelSizeScale: z.number().min(0.6).max(1.8).default(1.0),
   glowBlur: z.number().min(0).max(100).default(50).optional(),
   glowOpacity: z.number().min(0).max(1).default(1.0).optional(),
+  markerEffect: MarkerEffectConfigSchema.optional(),
 });
 export type MarkerStyle = z.infer<typeof MarkerStyleSchema>;
 
@@ -129,6 +145,7 @@ export const PlayerSchema = z.object({
   badges: z.array(PlayerBadgeSchema).default([]),
   focus: PlayerFocusSchema.optional(),
   trajectory: PlayerTrajectorySchema.optional(),
+  markerEffect: MarkerEffectConfigSchema.optional(),
   locked: z.boolean().optional(),
   isCustom: z.boolean().optional(),
 });

@@ -1,4 +1,8 @@
 import {
+  computeRippleRings,
+  type RippleRing,
+} from '@/lib/tactical/effect-geometry';
+import {
   MARKER_PATHS,
   MARKER_VIEWBOX_SIZE,
 } from '@/lib/tactical/marker-assets';
@@ -33,6 +37,8 @@ export function renderPlayers(
   players: Record<string, InterpolatedPlayerState>,
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>,
   teamVisibility?: 'both' | 'home' | 'away',
+  playerRings?: Record<string, RippleRing[]>,
+  timeInSlideMs?: number,
 ): void {
   const { ctx, w, h, m, projectObjToScreen, snap, toScreenSizeX } = context;
   const aspectRatio = context.aspectRatio ?? '16:9';
@@ -70,6 +76,8 @@ export function renderPlayers(
       Math.round(baseDim * 0.032 * sizeScale * depthScale),
     );
     const scale = w / 800;
+    const markerColor =
+      p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
 
     ctx.save();
     ctx.globalAlpha = p.opacity;
@@ -83,10 +91,35 @@ export function renderPlayers(
     // ── Vision Cone ──
     renderPlayerVisionCone(context, p, px, py, radius, isRingMarker);
 
-    // ── 100% Visual Parity with player-layer.tsx ──
-    const markerColor =
-      p.style?.color || (p.team === 'home' ? '#2563eb' : '#dc2626');
+    // ── Ripple Rings ──
+    const markerEffect = p.style?.markerEffect;
+    let rings: RippleRing[] | undefined = playerRings?.[p.id];
+    if (
+      !rings &&
+      timeInSlideMs !== undefined &&
+      markerEffect &&
+      markerEffect.type === 'ripple'
+    ) {
+      rings = computeRippleRings(timeInSlideMs, markerEffect, radius);
+    }
 
+    if (rings && rings.length > 0) {
+      ctx.save();
+      ctx.strokeStyle = markerColor;
+      ctx.lineWidth = Math.max(1.5, Math.round(2 * scale));
+      for (const ring of rings) {
+        if (ring.opacity <= 0) continue;
+        ctx.save();
+        ctx.globalAlpha = p.opacity * ring.opacity;
+        ctx.beginPath();
+        ctx.arc(px, py, ring.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    // ── 100% Visual Parity with player-layer.tsx ──
     if (p.style?.markerType === 'ring') {
       // ── 3D Foot Ring (立体足元楕円リング) ──
       const ringScale = (radius * 2) / MARKER_VIEWBOX_SIZE;

@@ -761,7 +761,6 @@ describe('animation-node-updater', () => {
             { x: 10, y: 10 },
             { x: 50, y: 10 },
           ],
-          dashArray: [],
           color: '#ffffff',
           strokeWidth: 2,
           opacity: 1,
@@ -866,9 +865,150 @@ describe('animation-node-updater', () => {
         } as any,
       });
 
-      // Dot end uses ctx.arc, not polygon closePath
-      expect(mockCtx.arc).toHaveBeenCalledTimes(1);
+      // Dot end uses ctx.arc for start and end, not polygon closePath
+      expect(mockCtx.arc).toHaveBeenCalledTimes(2);
       expect(mockCtx.closePath).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('arrow growth effect and player ripple effect', () => {
+    it('trims arrow points to half distance when progress is 0.5', () => {
+      const registry = createCanvasNodesRegistry();
+      const mockPoints = vi.fn();
+      const mockVisible = vi.fn();
+      const mockArrowNode = {
+        points: mockPoints,
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        strokeWidth: vi.fn(),
+        opacity: vi.fn(),
+        visible: mockVisible,
+      } as any;
+
+      registry.arrowNodes.set('grow-1', {
+        node: mockArrowNode,
+      });
+
+      // (10, 10) to (20, 20) on 1000x500 canvas with offset 100, 200
+      // start: (200, 250), full end: (300, 300)
+      // with progress = 0.5 -> trimmed end: (250, 275)
+      updateArrowNodes(
+        {
+          'grow-1': {
+            id: 'grow-1',
+            arrowType: 'pass',
+            curveType: 'straight',
+            points: [
+              { x: 10, y: 10 },
+              { x: 20, y: 20 },
+            ],
+            color: '#38bdf8',
+            strokeWidth: 2,
+            opacity: 1,
+            visible: true,
+            progress: 0.5,
+          } as any,
+        },
+        registry,
+        1000,
+        500,
+        100,
+        200,
+      );
+
+      expect(mockPoints).toHaveBeenCalledWith([200, 250, 250, 275]);
+      expect(mockVisible).toHaveBeenCalledWith(true);
+    });
+
+    it('sets visible to false when arrow visible is false during effect', () => {
+      const registry = createCanvasNodesRegistry();
+      const mockVisible = vi.fn();
+      const mockArrowNode = {
+        points: vi.fn(),
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        strokeWidth: vi.fn(),
+        opacity: vi.fn(),
+        visible: mockVisible,
+      } as any;
+
+      registry.arrowNodes.set('hidden-1', {
+        node: mockArrowNode,
+      });
+
+      updateArrowNodes(
+        {
+          'hidden-1': {
+            id: 'hidden-1',
+            arrowType: 'pass',
+            curveType: 'straight',
+            points: [
+              { x: 10, y: 10 },
+              { x: 20, y: 20 },
+            ],
+            color: '#38bdf8',
+            strokeWidth: 2,
+            opacity: 0,
+            visible: false,
+            progress: 0,
+          } as any,
+        },
+        registry,
+        1000,
+        500,
+      );
+
+      expect(mockVisible).toHaveBeenCalledWith(false);
+    });
+
+    it('updates player ripple ring nodes when playing and hides them when stopped', () => {
+      const registry = createCanvasNodesRegistry();
+      const existingRings: any[] = [];
+      const mockAdd = vi.fn((node) => existingRings.push(node));
+      const mockPlayerGroup = {
+        position: vi.fn(),
+        opacity: vi.fn(),
+        visible: vi.fn(),
+        find: vi.fn(() => existingRings),
+        add: mockAdd,
+      } as any;
+      registry.playerNodes.set('p1', mockPlayerGroup);
+
+      const players = {
+        p1: {
+          id: 'p1',
+          x: 50,
+          y: 50,
+          opacity: 1,
+          visible: true,
+          style: {
+            color: '#ef4444',
+            sizeScale: 1,
+            markerEffect: {
+              type: 'ripple',
+              delay: 0,
+              duration: 1.0,
+              ringsCount: 3,
+              repeatCount: 2,
+              maxRadiusScale: 2.5,
+              exitAction: 'keep',
+            },
+          },
+        } as any,
+      };
+
+      // 1. When playing at t = 200ms
+      updatePlayerNodes(players, registry, 1000, 500, 0, 0, 200, true);
+
+      // Should find or add ripple-ring circles
+      expect(mockPlayerGroup.find).toHaveBeenCalled();
+      expect(existingRings.length).toBeGreaterThan(0);
+
+      // 2. When stopped (isPlaying = false)
+      updatePlayerNodes(players, registry, 1000, 500, 0, 0, 0, false);
+      for (const ring of existingRings) {
+        expect(ring.visible()).toBe(false);
+      }
     });
   });
 });

@@ -2216,4 +2216,173 @@ describe('Tactical Frame Renderer', () => {
       expect(radius).toBe(35);
     });
   });
+
+  describe('Phase 3: Tactical Effects Animation Export Parity', () => {
+    it('does not draw arrow when timeMs is before arrow effect delay', () => {
+      const ctx = createMockContext();
+      const slideWithEffect: Slide = SlideSchema.parse({
+        id: 'slide-effect-1',
+        index: 0,
+        transitionDurationMs: 2000,
+        pauseMs: 0,
+        players: [],
+        zones: [],
+        arrows: [
+          {
+            id: 'arr-1',
+            annotationType: 'arrow',
+            arrowType: 'pass',
+            points: [
+              { x: 10, y: 20 },
+              { x: 50, y: 20 },
+            ],
+            color: '#38bdf8',
+            effect: {
+              type: 'grow',
+              delay: 0.5,
+              duration: 1.0,
+              holdDuration: 0.5,
+              exitAction: 'keep',
+              fadeDuration: 0.3,
+              easing: 'linear',
+            },
+          },
+        ],
+        texts: [],
+      });
+
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [slideWithEffect],
+        timeMs: 200, // < 500ms delay
+        width: 1000,
+        height: 1000,
+        aspectRatio: '1:1',
+        transparent: false,
+      });
+
+      // At 200ms, visible = false, so no lineTo to the arrow endpoint (500, 200) should occur
+      const lineToCalls = vi.mocked(ctx.lineTo).mock.calls;
+      const arrowEndpointCall = lineToCalls.find(
+        ([x, y]) => Math.abs(x - 500) < 1 && Math.abs(y - 200) < 1,
+      );
+      expect(arrowEndpointCall).toBeUndefined();
+    });
+
+    it('trims arrow path and positions arrowhead at progress point during animation', () => {
+      const ctx = createMockContext();
+      const slideWithEffect: Slide = SlideSchema.parse({
+        id: 'slide-effect-2',
+        index: 0,
+        transitionDurationMs: 2000,
+        pauseMs: 0,
+        players: [],
+        zones: [],
+        arrows: [
+          {
+            id: 'arr-1',
+            annotationType: 'arrow',
+            arrowType: 'move',
+            points: [
+              { x: 10, y: 20 },
+              { x: 50, y: 20 },
+            ],
+            color: '#38bdf8',
+            strokeWidth: 4,
+            effect: {
+              type: 'grow',
+              delay: 0.5,
+              duration: 1.0,
+              holdDuration: 0.5,
+              exitAction: 'keep',
+              fadeDuration: 0.3,
+              easing: 'linear',
+            },
+          },
+        ],
+        texts: [],
+      });
+
+      // At 1000ms: delay is 500ms, elapsed in grow is 500ms / 1000ms -> progress = 0.5
+      // 1000x1000, 1:1:
+      // start: x: 10% -> 100, y: 20% -> 200
+      // end: x: 50% -> 500, y: 20% -> 200
+      // At progress 0.5: trimmed end is at x: 300, y: 200
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [slideWithEffect],
+        timeMs: 1000,
+        width: 1000,
+        height: 1000,
+        aspectRatio: '1:1',
+        transparent: false,
+      });
+
+      // Check lineTo was called with (300, 200)
+      const lineToCalls = vi.mocked(ctx.lineTo).mock.calls;
+      const trimmedEndCall = lineToCalls.find(
+        ([x, y]) => Math.abs(x - 300) < 1 && Math.abs(y - 200) < 1,
+      );
+      expect(trimmedEndCall).toBeDefined();
+
+      // Check moveTo for arrowhead was called at (300, 200)
+      const moveToCalls = vi.mocked(ctx.moveTo).mock.calls;
+      const arrowHeadMoveCall = moveToCalls.find(
+        ([x, y]) => Math.abs(x - 300) < 1 && Math.abs(y - 200) < 1,
+      );
+      expect(arrowHeadMoveCall).toBeDefined();
+    });
+
+    it('renders ripple rings for players with markerEffect during export frame rendering', () => {
+      const ctx = createMockContext();
+      const slideWithPlayerEffect: Slide = SlideSchema.parse({
+        id: 'slide-effect-player',
+        index: 0,
+        transitionDurationMs: 2000,
+        pauseMs: 0,
+        players: [
+          {
+            id: 'p-ripple',
+            x: 50,
+            y: 50,
+            team: 'home',
+            shirtNo: '7',
+            name: 'Ronaldo',
+            area: 'pitch',
+            style: {
+              color: '#3b82f6',
+              markerEffect: {
+                type: 'ripple',
+                delay: 0,
+                duration: 1.0,
+                ringsCount: 3,
+                repeatCount: 2,
+                maxRadiusScale: 2.5,
+                exitAction: 'keep',
+              },
+            },
+          },
+        ],
+        zones: [],
+        arrows: [],
+        texts: [],
+      });
+
+      // 1000x1000 1:1, p-ripple is at (500, 500).
+      // Base player radius for 1000 baseDim: Math.round(1000 * 0.032) = 32
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [slideWithPlayerEffect],
+        timeMs: 500, // half of 1st cycle (duration: 1.0s)
+        width: 1000,
+        height: 1000,
+        aspectRatio: '1:1',
+        transparent: false,
+      });
+
+      const arcCalls = vi.mocked(ctx.arc).mock.calls;
+      const rippleRingCalls = arcCalls.filter(
+        ([x, y, r]) => Math.abs(x - 500) < 2 && Math.abs(y - 500) < 2 && r > 32,
+      );
+
+      expect(rippleRingCalls.length).toBeGreaterThan(0);
+    });
+  });
 });

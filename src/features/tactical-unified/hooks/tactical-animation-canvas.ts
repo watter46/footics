@@ -6,9 +6,11 @@ import {
   defaultTacticalUnifiedStore,
   type TacticalUnifiedStoreApi,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { computeArrowEffectState } from '@/lib/tactical/effect-geometry';
 import {
   calculateUnifiedTotalDuration,
   getInterpolatedUnifiedSlideFrame,
+  resolveEffectiveSlideSegments,
 } from '@/lib/tactical/unified-interpolation';
 import type { Slide } from '@/lib/types/tactical-unified';
 import {
@@ -192,6 +194,46 @@ export function renderFrameToCanvas(
     }
   }
 
+  const isPlaying = storeApi.getState().isPlaying;
+
+  let timeInSlideMs = timeMs;
+  let activeSlide = currentSlides[0];
+
+  if (currentSlides.length > 1) {
+    const segments = resolveEffectiveSlideSegments(currentSlides);
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      const isLastSegment = i === segments.length - 1;
+      if (timeMs < seg.startTimeMs + seg.effectiveDurationMs || isLastSegment) {
+        timeInSlideMs = Math.max(0, timeMs - seg.startTimeMs);
+        activeSlide = currentSlides[seg.slideIndex - 1] ?? currentSlides[0];
+        break;
+      }
+    }
+  }
+
+  const effectArrows = { ...frame.arrows };
+  for (const [arrowId, arrowState] of Object.entries(effectArrows)) {
+    if (!isPlaying) {
+      arrowState.progress = 1.0;
+      arrowState.opacity = 1.0;
+      arrowState.visible = true;
+    } else {
+      const originalArrow =
+        activeSlide?.arrows.find((a) => a.id === arrowId) ??
+        currentSlides[frame.nextSlideIndex]?.arrows.find(
+          (a) => a.id === arrowId,
+        );
+      const effectState = computeArrowEffectState(
+        timeInSlideMs,
+        originalArrow?.effect,
+      );
+      arrowState.progress = effectState.progress;
+      arrowState.opacity = arrowState.opacity * effectState.opacity;
+      arrowState.visible = arrowState.visible && effectState.visible;
+    }
+  }
+
   updatePlayerNodes(
     frame.players,
     registry,
@@ -199,6 +241,8 @@ export function renderFrameToCanvas(
     stageHeight,
     offsetX,
     offsetY,
+    timeInSlideMs,
+    isPlaying,
   );
   updateBallNode(
     frame.ball,
@@ -217,7 +261,7 @@ export function renderFrameToCanvas(
     offsetY,
   );
   updateArrowNodes(
-    frame.arrows,
+    effectArrows,
     registry,
     stageWidth,
     stageHeight,

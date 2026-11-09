@@ -1,6 +1,6 @@
 'use client';
 
-import { Lock, Minus, Plus, Trash2, Unlock } from 'lucide-react';
+import { Lock, Minus, Plus, Trash2, Unlock, Zap } from 'lucide-react';
 import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import { DashedLineIcon, SolidLineIcon } from './hud-icons';
 import { MiniColorPicker } from './mini-color-picker';
@@ -20,9 +20,62 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
   if (!arrow) return null;
 
   const isDashed = Boolean(arrow.dashArray && arrow.dashArray.length > 0);
+  const isGrowEffect = arrow.effect?.type === 'grow';
+
+  const toggleEffect = () => {
+    if (isGrowEffect) {
+      updateArrow(arrow.id, {
+        effect: {
+          ...(arrow.effect ?? {
+            delay: 0.5,
+            duration: 0.8,
+            holdDuration: 0.5,
+            exitAction: 'keep',
+            fadeDuration: 0.3,
+            easing: 'ease-out',
+          }),
+          type: 'none',
+        },
+      });
+    } else {
+      updateArrow(arrow.id, {
+        effect: {
+          type: 'grow',
+          delay: arrow.effect?.delay ?? 0.5,
+          duration: arrow.effect?.duration ?? 0.8,
+          holdDuration: arrow.effect?.holdDuration ?? 0.5,
+          exitAction: arrow.effect?.exitAction ?? 'keep',
+          fadeDuration: arrow.effect?.fadeDuration ?? 0.3,
+          easing: arrow.effect?.easing ?? 'ease-out',
+        },
+      });
+    }
+  };
 
   return (
     <>
+      {/* 伸長エフェクト トグル (⚡️) */}
+      <button
+        type="button"
+        onClick={toggleEffect}
+        style={
+          isGrowEffect
+            ? { backgroundColor: '#FF8100', color: '#ffffff' }
+            : undefined
+        }
+        className={`p-1 rounded-md transition-colors cursor-pointer ${
+          isGrowEffect
+            ? 'bg-[#FF8100] text-white shadow-sm'
+            : 'text-white/60 hover:text-white hover:bg-white/[0.08]'
+        }`}
+        title={isGrowEffect ? 'エフェクト解除 (⚡️)' : '伸長エフェクト (⚡️)'}
+        aria-label={isGrowEffect ? 'エフェクト解除' : '伸長エフェクト'}
+      >
+        <Zap size={13} className={isGrowEffect ? 'fill-current' : undefined} />
+      </button>
+
+      <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
+
       {/* 実線 / 点線 切替 */}
       <button
         type="button"

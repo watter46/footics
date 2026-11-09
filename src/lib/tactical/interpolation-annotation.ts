@@ -45,6 +45,8 @@ export interface InterpolatedArrowState {
   endMarker?: ArrowAnnotation['endMarker'];
   dashArray?: number[];
   arrowHead?: boolean;
+  progress?: number;
+  tipAngle?: number;
 }
 
 export interface InterpolatedTextState {

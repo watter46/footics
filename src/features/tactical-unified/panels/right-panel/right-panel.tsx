@@ -25,6 +25,7 @@ import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stor
 import type { RightPanelTab } from '@/features/tactical-unified/stores/tool-types';
 import { DEFAULT_PITCH_APPEARANCE } from '@/lib/types/tactical-unified';
 import { CameraControlPanel } from './camera-control-panel';
+import { EffectInspectorPanel } from './effect-inspector-panel';
 import { FormationPanel } from './formation-panel';
 import { PitchAppearancePanel } from './pitch-appearance-panel';
 import { ScreenBackgroundPanel } from './screen-background-panel';
@@ -141,6 +142,9 @@ export function RightPanel() {
               <ChevronRight size={16} />
             </IconButton>
           </div>
+
+          {/* Effect Inspector Accordion (矢印 or マーカー選択時) */}
+          <EffectInspectorPanel />
 
           {/* Tab Body */}
           <div className="flex-1 overflow-hidden">

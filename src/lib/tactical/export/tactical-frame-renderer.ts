@@ -43,6 +43,11 @@ import {
 } from './renderers/renderer-context';
 import { renderTexts } from './renderers/text-renderer';
 import { renderZones } from './renderers/zone-renderer';
+
+import { computeFrameEffects, isPauseFrame } from './tactical-frame-effects';
+
+export { computeFrameEffects, isPauseFrame };
+
 import { isBoundaryCropActive } from './video-crop-calc';
 
 export {
@@ -93,27 +98,6 @@ export interface RenderTacticalFrameOptions {
 }
 
 export type RenderTacticalFrameParams = RenderTacticalFrameOptions;
-
-/**
- * Returns true when `timeMs` falls within a `pauseMs` (static freeze) interval
- * between two slides, meaning the canvas content is identical to the previous frame.
- * Used by the VideoFrame.clone() static-frame cache to skip redundant GPU re-uploads.
- */
-export function isPauseFrame(
-  slides: Slide[],
-  timeMs: number,
-  directorCamera?: DirectorCameraTrack | null,
-  directorCameraOptions?: ResolveSyntheticDirectorCameraOptions,
-): boolean {
-  if (slides.length <= 1) return false;
-  const frame = getInterpolatedUnifiedSlideFrame(
-    slides,
-    timeMs,
-    directorCamera,
-    directorCameraOptions,
-  );
-  return frame.isPaused;
-}
 
 /**
  * Draws a complete tactical animation frame onto a 2D canvas context.
@@ -257,14 +241,37 @@ export function renderTacticalFrameToCanvas(
   // 2. Zones (Vertex Morphing)
   renderZones(frameContext, frame.zones);
 
+  const baseDim = frameContext.outerPitchRect
+    ? Math.min(
+        frameContext.outerPitchRect.width,
+        frameContext.outerPitchRect.height,
+      )
+    : Math.min(baseWidth, baseHeight);
+
+  const { effectArrows, playerRings, timeInSlideMs } = computeFrameEffects(
+    slides,
+    timeMs,
+    frame.arrows,
+    frame.players,
+    frame.nextSlideIndex,
+    baseDim,
+  );
+
   // 4. Connect Lines between players
   renderConnectLines(frameContext, frame.players);
 
-  // 5. Arrows
-  renderArrows(frameContext, frame.arrows, frame.players);
+  // 5. Arrows (with Grow Arrow effect state)
+  renderArrows(frameContext, effectArrows, frame.players);
 
-  // 6. Players
-  renderPlayers(frameContext, frame.players, playerPhotos, teamVisibility);
+  // 6. Players (with Ripple Pulse effect state)
+  renderPlayers(
+    frameContext,
+    frame.players,
+    playerPhotos,
+    teamVisibility,
+    playerRings,
+    timeInSlideMs,
+  );
 
   // 7. Soccer Ball
   renderBall(frameContext, frame.ball);

@@ -4,20 +4,22 @@
  * (Zero React re-render: imperatively mutates Konva node properties)
  */
 
-import type Konva from 'konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import { applyDotOffsets } from '@/features/tactical-unified/core/components/annotations/arrow-geometry';
 import {
   getQuadraticBezierPoints,
   getWavyPoints,
 } from '@/features/tactical-unified/core/components/annotations/wavy-arrow-math';
+import { trimRenderPoints } from '@/lib/tactical/effect-geometry';
 import type {
   InterpolatedArrowState,
   InterpolatedBallState,
   InterpolatedPlayerState,
   InterpolatedTextState,
-  InterpolatedZoneState,
 } from '@/lib/tactical/unified-interpolation';
+import { updatePlayerRippleRings } from './animation-ripple-updater';
+
+export { updateZoneNodes } from './animation-zone-updater';
 
 declare module '@/lib/tactical/interpolation-annotation' {
   interface InterpolatedArrowState {
@@ -32,7 +34,9 @@ export function updatePlayerNodes(
   stageHeight: number,
   offsetX = 0,
   offsetY = 0,
-) {
+  timeInSlideMs = 0,
+  isPlaying = false,
+): void {
   for (const [playerId, pState] of Object.entries(players)) {
     const playerGroup =
       registry.playerNodes.get(playerId) ||
@@ -43,6 +47,8 @@ export function updatePlayerNodes(
       playerGroup.position({ x: pxX, y: pxY });
       playerGroup.opacity(pState.opacity);
       playerGroup.visible(pState.visible);
+
+      updatePlayerRippleRings(playerGroup, pState, timeInSlideMs, isPlaying);
     }
   }
 }
@@ -54,7 +60,7 @@ export function updateBallNode(
   stageHeight: number,
   offsetX = 0,
   offsetY = 0,
-) {
+): void {
   if (!registry.ballNode) return;
   const ballPxX = offsetX + (ball.x / 100) * stageWidth;
   const ballPxY = offsetY + (ball.y / 100) * stageHeight;
@@ -66,86 +72,6 @@ export function updateBallNode(
   }
 }
 
-export function updateZoneNodes(
-  zones: Record<string, InterpolatedZoneState>,
-  registry: CanvasNodesRegistry,
-  stageWidth: number,
-  stageHeight: number,
-  offsetX = 0,
-  offsetY = 0,
-) {
-  for (const [zoneId, zState] of Object.entries(zones)) {
-    const zoneShape = registry.zoneNodes.get(zoneId);
-    if (!zoneShape) continue;
-
-    const opacity = zState.opacity ?? 0.25;
-    const alphaHex = Math.round(Math.max(0, Math.min(1, opacity)) * 255)
-      .toString(16)
-      .padStart(2, '0');
-    const fillRGBA = (zState.color || '#22c55e') + alphaHex;
-
-    const strokeOpacity = zState.strokeOpacity ?? 1;
-    const strokeAlphaHex = Math.round(
-      Math.max(0, Math.min(1, strokeOpacity)) * 255,
-    )
-      .toString(16)
-      .padStart(2, '0');
-    const strokeBaseColor = zState.strokeColor ?? zState.color ?? '#22c55e';
-    const strokeColorRGBA = strokeBaseColor + strokeAlphaHex;
-
-    zoneShape.visible(zState.visible);
-    zoneShape.opacity(1);
-
-    if (zState.shapeType === 'polygon' && 'points' in zoneShape) {
-      const pxPoints = zState.points.flatMap((pt) => [
-        offsetX + (pt.x / 100) * stageWidth,
-        offsetY + (pt.y / 100) * stageHeight,
-      ]);
-      const polygonNode = zoneShape as unknown as Konva.Line;
-      polygonNode.points(pxPoints);
-      polygonNode.fill(fillRGBA);
-      polygonNode.stroke(strokeColorRGBA);
-      polygonNode.strokeWidth(zState.strokeWidth);
-    } else if (zState.shapeType === 'rect') {
-      const normX = zState.x ?? zState.points[0]?.x ?? 20;
-      const normY = zState.y ?? zState.points[0]?.y ?? 20;
-      const normW = zState.width ?? 30;
-      const normH = zState.height ?? 20;
-      const pxW = (normW / 100) * stageWidth;
-      const pxH = (normH / 100) * stageHeight;
-      const cx = offsetX + (normX / 100) * stageWidth + pxW / 2;
-      const cy = offsetY + (normY / 100) * stageHeight + pxH / 2;
-      zoneShape.position({ x: cx, y: cy });
-      const rectNode = zoneShape as unknown as Konva.Rect;
-      rectNode.width(pxW);
-      rectNode.height(pxH);
-      rectNode.offsetX(pxW / 2);
-      rectNode.offsetY(pxH / 2);
-      rectNode.rotation(zState.rotation || 0);
-      rectNode.fill(fillRGBA);
-      rectNode.stroke(strokeColorRGBA);
-      rectNode.strokeWidth(zState.strokeWidth);
-    } else if (zState.shapeType === 'ellipse') {
-      const normX = zState.x ?? zState.points[0]?.x ?? 20;
-      const normY = zState.y ?? zState.points[0]?.y ?? 20;
-      const normW = zState.width ?? 30;
-      const normH = zState.height ?? 20;
-      const pxW = (normW / 100) * stageWidth;
-      const pxH = (normH / 100) * stageHeight;
-      const cx = offsetX + (normX / 100) * stageWidth + pxW / 2;
-      const cy = offsetY + (normY / 100) * stageHeight + pxH / 2;
-      zoneShape.position({ x: cx, y: cy });
-      const ellipseNode = zoneShape as unknown as Konva.Ellipse;
-      ellipseNode.radiusX(pxW / 2);
-      ellipseNode.radiusY(pxH / 2);
-      ellipseNode.rotation(zState.rotation || 0);
-      ellipseNode.fill(fillRGBA);
-      ellipseNode.stroke(strokeColorRGBA);
-      ellipseNode.strokeWidth(zState.strokeWidth);
-    }
-  }
-}
-
 export function updateArrowNodes(
   arrows: Record<string, InterpolatedArrowState>,
   registry: CanvasNodesRegistry,
@@ -153,7 +79,7 @@ export function updateArrowNodes(
   stageHeight: number,
   offsetX = 0,
   offsetY = 0,
-) {
+): void {
   for (const [arrowId, aState] of Object.entries(arrows)) {
     const arrowEntry = registry.arrowNodes.get(arrowId);
     if (!arrowEntry?.node) continue;
@@ -209,6 +135,21 @@ export function updateArrowNodes(
       renderPts = [rsx, rsy, rex, rey];
     }
 
+    if (aState.progress !== undefined) {
+      const clampedProgress = Math.max(0, Math.min(1, aState.progress));
+      const ptsList: { x: number; y: number }[] = [];
+      for (let i = 0; i < renderPts.length; i += 2) {
+        ptsList.push({ x: renderPts[i], y: renderPts[i + 1] });
+      }
+      const { trimmedPoints } = trimRenderPoints(ptsList, clampedProgress);
+      renderPts = trimmedPoints.flatMap((pt) => [pt.x, pt.y]);
+
+      if (arrowEntry.endDotNode && trimmedPoints.length > 0) {
+        const lastPt = trimmedPoints[trimmedPoints.length - 1];
+        arrowEntry.endDotNode.position({ x: lastPt.x, y: lastPt.y });
+      }
+    }
+
     arrowEntry.node.points(renderPts);
     arrowEntry.node.stroke(aState.color);
     arrowEntry.node.fill(aState.color);
@@ -226,7 +167,9 @@ export function updateArrowNodes(
     }
 
     if (arrowEntry.endDotNode) {
-      arrowEntry.endDotNode.position({ x: ePxX, y: ePxY });
+      if (aState.progress === undefined) {
+        arrowEntry.endDotNode.position({ x: ePxX, y: ePxY });
+      }
       arrowEntry.endDotNode.opacity(aState.opacity);
       arrowEntry.endDotNode.visible(aState.visible);
     }
@@ -240,7 +183,7 @@ export function updateTextNodes(
   stageHeight: number,
   offsetX = 0,
   offsetY = 0,
-) {
+): void {
   for (const [textId, tState] of Object.entries(texts)) {
     const textNode = registry.textNodes.get(textId);
     if (!textNode) continue;
@@ -258,7 +201,7 @@ export function updateTextNodes(
 export function batchDrawLayers(
   registry: CanvasNodesRegistry,
   synchronous: boolean,
-) {
+): void {
   if (synchronous) {
     registry.backgroundLayer?.draw();
     registry.annotationLayer?.draw();
