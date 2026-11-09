@@ -1,3 +1,4 @@
+import { computeZonePulseOpacity } from '@/lib/tactical/effect-geometry';
 import type { InterpolatedZoneState } from '@/lib/tactical/unified-interpolation';
 import type { FrameRenderContext } from './renderer-context';
 
@@ -7,6 +8,7 @@ import type { FrameRenderContext } from './renderer-context';
 export function renderZones(
   context: FrameRenderContext,
   zones: Record<string, InterpolatedZoneState>,
+  timeInSlideMs?: number,
 ): void {
   const {
     ctx,
@@ -20,6 +22,8 @@ export function renderZones(
     toScreenSizeY,
   } = context;
 
+  const effectiveTimeInSlideMs = timeInSlideMs ?? context.timeInSlideMs;
+
   Object.values(zones).forEach((z) => {
     if (!z.visible) return;
     ctx.save();
@@ -29,7 +33,25 @@ export function renderZones(
       1.5,
       Math.round((z.strokeWidth || 1.5) * (w / 800)),
     );
-    ctx.globalAlpha = z.opacity ?? 0.25;
+
+    let opacity = z.opacity ?? 0.25;
+    let strokeOpacity = z.strokeOpacity ?? 1;
+
+    if (effectiveTimeInSlideMs !== undefined && z.effect?.type === 'pulse') {
+      const baseOpacity = z.opacity ?? 0.25;
+      opacity = computeZonePulseOpacity(
+        effectiveTimeInSlideMs,
+        z.effect,
+        baseOpacity,
+      );
+      if (baseOpacity > 0) {
+        strokeOpacity = Math.min(1, strokeOpacity * (opacity / baseOpacity));
+      } else {
+        strokeOpacity = opacity;
+      }
+    }
+
+    ctx.globalAlpha = opacity;
 
     if (z.shapeType === 'polygon' && z.points.length > 2) {
       ctx.beginPath();
@@ -42,6 +64,7 @@ export function renderZones(
       ctx.closePath();
       ctx.fill();
       if (z.strokeWidth && z.strokeWidth > 0) {
+        ctx.globalAlpha = strokeOpacity;
         ctx.stroke();
       }
     } else if (z.shapeType === 'rect') {
@@ -63,6 +86,7 @@ export function renderZones(
         ctx.closePath();
         ctx.fill();
         if (z.strokeWidth && z.strokeWidth > 0) {
+          ctx.globalAlpha = strokeOpacity;
           ctx.stroke();
         }
       } else {
@@ -72,6 +96,7 @@ export function renderZones(
         const rh = snap(toScreenSizeY(zh));
         ctx.fillRect(rx, ry, rw, rh);
         if (z.strokeWidth && z.strokeWidth > 0) {
+          ctx.globalAlpha = strokeOpacity;
           ctx.strokeRect(rx, ry, rw, rh);
         }
       }
@@ -102,6 +127,7 @@ export function renderZones(
         ctx.closePath();
         ctx.fill();
         if (z.strokeWidth && z.strokeWidth > 0) {
+          ctx.globalAlpha = strokeOpacity;
           ctx.stroke();
         }
       } else {
@@ -121,6 +147,7 @@ export function renderZones(
         );
         ctx.fill();
         if (z.strokeWidth && z.strokeWidth > 0) {
+          ctx.globalAlpha = strokeOpacity;
           ctx.stroke();
         }
       }

@@ -11,6 +11,7 @@ import { getLastName } from '@/lib/tactical/player-formatting';
 import type { InterpolatedPlayerState } from '@/lib/tactical/unified-interpolation';
 import { renderPlayerVisionCone } from './player-cone-renderer';
 import { renderPlayerFocus } from './player-focus-renderer';
+import { renderPlayerTrajectory } from './player-trajectory-renderer';
 import {
   type FrameRenderContext,
   getOpticalCenterX,
@@ -91,6 +92,9 @@ export function renderPlayers(
     // ── Vision Cone ──
     renderPlayerVisionCone(context, p, px, py, radius, isRingMarker);
 
+    // ── Player Ghost Trajectory Effect ──
+    renderPlayerTrajectory(context, p, px, py, scale);
+
     // ── Ripple Rings ──
     const markerEffect = p.style?.markerEffect;
     let rings: RippleRing[] | undefined = playerRings?.[p.id];
@@ -105,11 +109,11 @@ export function renderPlayers(
 
     if (rings && rings.length > 0) {
       ctx.save();
-      ctx.strokeStyle = markerColor;
       ctx.lineWidth = Math.max(1.5, Math.round(2 * scale));
       for (const ring of rings) {
         if (ring.opacity <= 0) continue;
         ctx.save();
+        ctx.strokeStyle = ring.color || markerColor;
         ctx.globalAlpha = p.opacity * ring.opacity;
         ctx.beginPath();
         ctx.arc(px, py, ring.radius, 0, Math.PI * 2);

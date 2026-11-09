@@ -4,7 +4,12 @@ import { z } from 'zod';
 // § 6. フリーアノテーション群
 // ─────────────────────────────────────────
 
-export const ArrowEffectTypeSchema = z.enum(['none', 'grow']);
+export const ArrowEffectTypeSchema = z.enum([
+  'none',
+  'grow',
+  'flow',
+  'grow-and-flow',
+]);
 export type ArrowEffectType = z.infer<typeof ArrowEffectTypeSchema>;
 
 export const EffectEasingSchema = z.enum(['linear', 'ease-out', 'ease-in-out']);
@@ -60,6 +65,14 @@ export const ArrowAnnotationSchema = z.object({
 export type ArrowAnnotation = z.infer<typeof ArrowAnnotationSchema>;
 export type Arrow = ArrowAnnotation;
 
+export const ZoneEffectConfigSchema = z.object({
+  type: z.enum(['none', 'pulse']).default('none'),
+  duration: z.number().min(0.1).max(10).default(1.2),
+  minOpacity: z.number().min(0).max(1).default(0.15),
+  maxOpacity: z.number().min(0).max(1).default(0.45),
+});
+export type ZoneEffectConfig = z.infer<typeof ZoneEffectConfigSchema>;
+
 export const ZoneAnnotationSchema = z.object({
   id: z.string(),
   annotationType: z.literal('zone'),
@@ -94,6 +107,7 @@ export const ZoneAnnotationSchema = z.object({
   strokeWidth: z.number().min(0).max(8).default(3),
   label: z.string().max(200).optional(),
   locked: z.boolean().optional(),
+  effect: ZoneEffectConfigSchema.optional(),
 });
 export type ZoneAnnotation = z.infer<typeof ZoneAnnotationSchema>;
 export type Zone = ZoneAnnotation;

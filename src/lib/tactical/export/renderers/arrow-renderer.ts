@@ -6,11 +6,15 @@ import {
   getQuadraticBezierPoints,
   getWavyPoints,
 } from '@/features/tactical-unified/core/components/annotations/wavy-arrow-math';
-import { trimRenderPoints } from '@/lib/tactical/effect-geometry';
+import {
+  computeArrowEffectState,
+  trimRenderPoints,
+} from '@/lib/tactical/effect-geometry';
 import type {
   InterpolatedArrowState,
   InterpolatedPlayerState,
 } from '@/lib/tactical/unified-interpolation';
+import type { ArrowEffectConfig } from '@/lib/types/tactical/annotations';
 import { renderConnectLines } from './connect-line-renderer';
 import type { FrameRenderContext } from './renderer-context';
 
@@ -124,6 +128,24 @@ export function renderArrows(
         ? [8 * scale, 5 * scale]
         : [];
     ctx.setLineDash(dash);
+
+    let effectiveDashOffset = a.dashOffset;
+    const arrowWithEffect = a as { effect?: ArrowEffectConfig };
+    if (
+      effectiveDashOffset === undefined &&
+      arrowWithEffect.effect &&
+      context.timeInSlideMs !== undefined
+    ) {
+      const effectState = computeArrowEffectState(
+        context.timeInSlideMs,
+        arrowWithEffect.effect,
+      );
+      effectiveDashOffset = effectState.dashOffset;
+    }
+
+    if (effectiveDashOffset !== undefined) {
+      ctx.lineDashOffset = effectiveDashOffset;
+    }
 
     let headEx = lineEx;
     let headEy = lineEy;

@@ -238,9 +238,6 @@ export function renderTacticalFrameToCanvas(
     screenBackground,
   );
 
-  // 2. Zones (Vertex Morphing)
-  renderZones(frameContext, frame.zones);
-
   const baseDim = frameContext.outerPitchRect
     ? Math.min(
         frameContext.outerPitchRect.width,
@@ -256,6 +253,10 @@ export function renderTacticalFrameToCanvas(
     frame.nextSlideIndex,
     baseDim,
   );
+  frameContext.timeInSlideMs = timeInSlideMs;
+
+  // 2. Zones (Vertex Morphing & Pulse)
+  renderZones(frameContext, frame.zones, timeInSlideMs);
 
   // 4. Connect Lines between players
   renderConnectLines(frameContext, frame.players);

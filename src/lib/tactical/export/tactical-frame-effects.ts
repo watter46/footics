@@ -83,6 +83,7 @@ export function computeFrameEffects(
       progress: effectState.progress,
       opacity: arrowState.opacity * effectState.opacity,
       visible: arrowState.visible && effectState.visible,
+      dashOffset: effectState.dashOffset,
     };
   }
 

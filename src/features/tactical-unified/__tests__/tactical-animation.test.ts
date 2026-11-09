@@ -14,6 +14,31 @@ describe('useTacticalAnimation hook', () => {
     const slide1 = createDefaultSlide(0, 'slide-1');
     slide1.transitionDurationMs = 1000;
     slide1.pauseMs = 500;
+    slide1.arrows = [
+      {
+        id: 'arrow-1',
+        annotationType: 'arrow',
+        arrowType: 'pass',
+        curveType: 'straight',
+        points: [
+          { x: 10, y: 10 },
+          { x: 50, y: 10 },
+        ],
+        color: '#38bdf8',
+        strokeWidth: 3,
+        arrowHead: true,
+        dashArray: [],
+        effect: {
+          type: 'grow',
+          delay: 0,
+          duration: 500,
+          holdDuration: 0,
+          exitAction: 'keep',
+          fadeDuration: 0,
+          easing: 'linear',
+        },
+      },
+    ];
     slide1.zones = [
       {
         id: 'z-morph',
@@ -378,5 +403,93 @@ describe('useTacticalAnimation hook', () => {
     expect(
       useTacticalUnifiedStore.getState().playbackTransitionIndex,
     ).toBeNull();
+  });
+
+  it('synchronously renders initial 0ms frame on playAnimation to eliminate flicker', () => {
+    const registry = createCanvasNodesRegistry();
+    registry.playerLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
+    registry.ballLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
+    registry.annotationLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
+    registry.stage = {
+      draw: vi.fn(),
+      batchDraw: vi.fn(),
+      width: () => 800,
+      height: () => 450,
+    } as any;
+
+    const mockArrowNode = {
+      points: vi.fn(),
+      stroke: vi.fn(),
+      fill: vi.fn(),
+      strokeWidth: vi.fn(),
+      opacity: vi.fn(),
+      visible: vi.fn(),
+      dash: vi.fn(),
+    } as any;
+    registry.arrowNodes.set('arrow-1', { node: mockArrowNode } as any);
+
+    const registryRef = { current: registry };
+    const { result } = renderHook(() =>
+      useTacticalAnimation({ nodesRegistryRef: registryRef }),
+    );
+
+    act(() => {
+      result.current.playAnimation();
+    });
+
+    // Synchronous frame application must call annotationLayer.draw()
+    expect(registry.annotationLayer?.draw).toHaveBeenCalled();
+  });
+
+  it('restores arrow opacity and visibility to 1.0 when stopping and pausing playback', () => {
+    const registry = createCanvasNodesRegistry();
+    const mockOpacity = vi.fn();
+    const mockVisible = vi.fn();
+    const mockArrowNode = {
+      points: vi.fn(),
+      stroke: vi.fn(),
+      fill: vi.fn(),
+      strokeWidth: vi.fn(),
+      opacity: mockOpacity,
+      visible: mockVisible,
+      dash: vi.fn(),
+    } as any;
+    registry.arrowNodes.set('arrow-1', { node: mockArrowNode } as any);
+    registry.annotationLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
+    registry.playerLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
+    registry.ballLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
+    registry.stage = {
+      draw: vi.fn(),
+      batchDraw: vi.fn(),
+      width: () => 800,
+      height: () => 450,
+    } as any;
+
+    const registryRef = { current: registry };
+    const { result } = renderHook(() =>
+      useTacticalAnimation({ nodesRegistryRef: registryRef }),
+    );
+
+    act(() => {
+      result.current.playAnimation();
+    });
+
+    mockOpacity.mockClear();
+
+    // Pause playback
+    act(() => {
+      result.current.pauseAnimation();
+    });
+
+    expect(mockOpacity).toHaveBeenCalledWith(1.0);
+
+    mockOpacity.mockClear();
+
+    // Stop playback
+    act(() => {
+      result.current.stopAnimation();
+    });
+
+    expect(mockOpacity).toHaveBeenCalledWith(1.0);
   });
 });

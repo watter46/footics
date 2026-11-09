@@ -21,6 +21,7 @@ import type {
   InterpolatedTextState,
 } from '@/lib/tactical/unified-interpolation';
 import { updatePlayerRippleRings } from './animation-ripple-updater';
+import { updatePlayerTrajectory } from './animation-trajectory-updater';
 
 export { updateZoneNodes } from './animation-zone-updater';
 
@@ -52,6 +53,15 @@ export function updatePlayerNodes(
       playerGroup.visible(pState.visible);
 
       updatePlayerRippleRings(playerGroup, pState, timeInSlideMs, isPlaying);
+      updatePlayerTrajectory(
+        playerGroup,
+        pState,
+        stageWidth,
+        stageHeight,
+        offsetX,
+        offsetY,
+        isPlaying,
+      );
     }
   }
 }
@@ -168,6 +178,9 @@ export function updateArrowNodes(
     arrowEntry.node.dash?.(
       aState.dashArray && aState.dashArray.length > 0 ? aState.dashArray : [],
     );
+    if (typeof (arrowEntry.node as any).dashOffset === 'function') {
+      (arrowEntry.node as any).dashOffset(aState.dashOffset ?? 0);
+    }
 
     if (arrowEntry.startDotNode) {
       arrowEntry.startDotNode.position({ x: sPxX, y: sPxY });

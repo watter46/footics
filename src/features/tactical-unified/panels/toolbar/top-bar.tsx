@@ -19,7 +19,10 @@ import {
   useCanvasToast,
 } from '@/features/tactical-unified/core';
 import { selectTacticalRenderSnapshot } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import {
+  useTacticalUnifiedStoreApi,
+  useTacticalUnifiedStoreContext,
+} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 import { preloadSlidePlayerPhotos } from '@/lib/tactical/export/share-payload';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
@@ -63,11 +66,12 @@ export function TopBar({
     (s) => s.panels.sidebarOpen,
   );
   const toggleSidebar = useTacticalUnifiedStoreContext((s) => s.toggleSidebar);
-  const snapshot = useTacticalUnifiedStoreContext(selectTacticalRenderSnapshot);
+  const storeApi = useTacticalUnifiedStoreApi();
   const { toastMessage, showToast } = useCanvasToast();
 
   async function handleCopySlideImage() {
     if (workspaceMode === 'director') {
+      const snapshot = selectTacticalRenderSnapshot(storeApi.getState());
       const activeSlide = snapshot.activeSlide ?? snapshot.slides[0];
       if (activeSlide) {
         const baseW = 1920;

@@ -1,7 +1,20 @@
 import type Konva from 'konva';
 import { describe, expect, it, vi } from 'vitest';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
+import type {
+  ArrowNodeEntry,
+  CanvasNodesRegistry,
+} from '@/features/tactical-unified/core';
+import type {
+  InterpolatedArrowState,
+  InterpolatedPlayerState,
+  InterpolatedZoneState,
+} from '@/lib/tactical/unified-interpolation';
 import { createDefaultSlide } from '@/lib/types/tactical-unified';
+import {
+  updateArrowNodes,
+  updatePlayerNodes,
+  updateZoneNodes,
+} from '../animation-node-updater';
 import {
   calculatePitchDimensions,
   createTacticalTimeline,
@@ -130,8 +143,9 @@ describe('createTacticalTimeline (GSAP integration)', () => {
 describe('playback control helpers with GSAP Timeline', () => {
   it('pausePlayback pauses the timeline and sets isPlaying to false', () => {
     const mockPause = vi.fn();
+    const mockSeek = vi.fn();
     const refs = {
-      timelineRef: { current: { pause: mockPause } as any },
+      timelineRef: { current: { pause: mockPause, seek: mockSeek } as any },
       currentPlaybackTimeRef: { current: 500 },
       lastActiveSlideIndexRef: { current: 0 },
       lastPlaybackIndicesRef: {
@@ -139,11 +153,34 @@ describe('playback control helpers with GSAP Timeline', () => {
       },
     };
     const setIsPlaying = vi.fn();
+    const applyFrameToCanvas = vi.fn();
+    const setActiveSlide = vi.fn();
 
-    pausePlayback(refs, setIsPlaying);
+    const slide1 = createDefaultSlide(0, 'slide-1');
+    slide1.transitionDurationMs = 1000;
+    slide1.pauseMs = 500;
+    const slide2 = createDefaultSlide(1, 'slide-2');
+    const slides = [slide1, slide2];
+
+    pausePlayback(refs, setIsPlaying, {
+      slides,
+      registry: undefined,
+      pitchDimensions: { width: 800, height: 450 },
+      applyFrameToCanvas,
+      setActiveSlide,
+    });
 
     expect(mockPause).toHaveBeenCalled();
     expect(setIsPlaying).toHaveBeenCalledWith(false);
+    expect(applyFrameToCanvas).toHaveBeenCalledWith(
+      1000,
+      undefined,
+      800,
+      450,
+      true, // must be synchronous
+      0,
+      0,
+    );
   });
 
   it('stopPlayback pauses timeline at 0, resets refs, and resets slide', () => {
@@ -161,6 +198,7 @@ describe('playback control helpers with GSAP Timeline', () => {
     const applyFrameToCanvas = vi.fn();
 
     stopPlayback({
+      slides: [createDefaultSlide(0, 'slide-1')],
       refs,
       registry: undefined,
       pitchDimensions: { width: 800, height: 450 },
@@ -173,6 +211,15 @@ describe('playback control helpers with GSAP Timeline', () => {
     expect(refs.currentPlaybackTimeRef.current).toBe(0);
     expect(refs.lastActiveSlideIndexRef.current).toBe(0);
     expect(setIsPlaying).toHaveBeenCalledWith(false);
+    expect(applyFrameToCanvas).toHaveBeenCalledWith(
+      0,
+      undefined,
+      800,
+      450,
+      true,
+      0,
+      0,
+    );
   });
 
   it('seekPlayback updates currentPlaybackTimeRef and seeks the timeline', () => {
@@ -207,5 +254,163 @@ describe('playback control helpers with GSAP Timeline', () => {
       0,
       0,
     );
+  });
+});
+
+describe('Phase 2: Animation node updaters (Zone pulse, Arrow dashOffset, Player trajectory)', () => {
+  it('updateZoneNodes applies pulse opacity when effect is pulse', () => {
+    const mockRect = {
+      visible: vi.fn(),
+      opacity: vi.fn(),
+      position: vi.fn(),
+      width: vi.fn(),
+      height: vi.fn(),
+      offsetX: vi.fn(),
+      offsetY: vi.fn(),
+      rotation: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+      strokeWidth: vi.fn(),
+    } as unknown as Konva.Rect;
+
+    const registry = {
+      zoneNodes: new Map([['zone-1', mockRect]]),
+    } as unknown as CanvasNodesRegistry;
+
+    const zoneState: InterpolatedZoneState = {
+      id: 'zone-1',
+      zoneType: 'generic',
+      shapeType: 'rect',
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 20,
+      color: '#22c55e',
+      opacity: 0.25,
+      strokeWidth: 2,
+      points: [],
+      visible: true,
+      effect: {
+        type: 'pulse',
+        duration: 1.0,
+        minOpacity: 0.1,
+        maxOpacity: 0.5,
+      },
+    };
+
+    // t=0s: minOpacity (0.1) -> 0.1 * 255 ≈ 26 (0x1a)
+    updateZoneNodes({ 'zone-1': zoneState }, registry, 800, 450, 0, 0, 0);
+    expect(mockRect.fill).toHaveBeenCalledWith('#22c55e1a');
+
+    // t=500ms (0.5s): maxOpacity (0.5) -> 0.5 * 255 ≈ 128 (0x80)
+    updateZoneNodes({ 'zone-1': zoneState }, registry, 800, 450, 0, 0, 500);
+    expect(mockRect.fill).toHaveBeenCalledWith('#22c55e80');
+  });
+
+  it('updateArrowNodes updates dashOffset on Konva node when aState.dashOffset is present', () => {
+    const mockArrow = {
+      points: vi.fn(),
+      stroke: vi.fn(),
+      fill: vi.fn(),
+      strokeWidth: vi.fn(),
+      opacity: vi.fn(),
+      visible: vi.fn(),
+      dash: vi.fn(),
+      dashOffset: vi.fn(),
+    } as unknown as Konva.Arrow;
+
+    const registry = {
+      arrowNodes: new Map<string, ArrowNodeEntry>([
+        ['arrow-1', { node: mockArrow }],
+      ]),
+    } as unknown as CanvasNodesRegistry;
+
+    const arrowState: InterpolatedArrowState & { dashOffset?: number } = {
+      id: 'arrow-1',
+      arrowType: 'generic',
+      curveType: 'straight',
+      points: [
+        { x: 10, y: 10 },
+        { x: 30, y: 30 },
+      ],
+      color: '#ffffff',
+      strokeWidth: 3,
+      opacity: 1,
+      visible: true,
+      dashOffset: -35,
+    };
+
+    updateArrowNodes({ 'arrow-1': arrowState }, registry, 800, 450);
+    expect(mockArrow.dashOffset).toHaveBeenCalledWith(-35);
+  });
+
+  it('updatePlayerNodes creates and updates trajectory nodes when trajectoryEffect.enabled and moving', () => {
+    const createdNodes: any[] = [];
+    const mockPlayerGroup = {
+      position: vi.fn(),
+      opacity: vi.fn(),
+      visible: vi.fn(),
+      findOne: vi.fn().mockReturnValue(null),
+      add: vi.fn((node: any) => {
+        createdNodes.push(node);
+      }),
+      find: vi.fn().mockReturnValue([]),
+    } as unknown as Konva.Group;
+
+    const registry = {
+      playerNodes: new Map([['p-1', mockPlayerGroup]]),
+    } as unknown as CanvasNodesRegistry;
+
+    const playerState: InterpolatedPlayerState = {
+      id: 'p-1',
+      x: 30, // currently at 30% (moved from 10%)
+      y: 40,
+      opacity: 1,
+      visible: true,
+      team: 'home',
+      area: 'pitch',
+      connectLines: [],
+      badges: [],
+      style: {
+        markerType: 'circle',
+        insideContent: 'number',
+        bottomLabel: 'name',
+        color: '#ff0000',
+        strokeColor: '#ffffff',
+        strokeWidth: 2,
+        sizeScale: 1,
+        numberSizeScale: 1,
+        labelSizeScale: 1,
+      },
+      startPos: { x: 10, y: 20 },
+      trajectoryEffect: {
+        enabled: true,
+        lineStyle: 'dashed',
+        color: '#00ff00',
+        exitAction: 'keep',
+      },
+    };
+
+    updatePlayerNodes(
+      { 'p-1': playerState },
+      registry,
+      1000,
+      500,
+      0,
+      0,
+      500,
+      true, // isPlaying
+    );
+
+    // 始点マーカーと軌跡ラインが playerGroup に追加されること
+    expect(mockPlayerGroup.add).toHaveBeenCalledTimes(2);
+    const marker = createdNodes.find(
+      (n) => n.name() === 'trajectory-start-marker',
+    );
+    const line = createdNodes.find((n) => n.name() === 'trajectory-line');
+    expect(marker).toBeDefined();
+    expect(line).toBeDefined();
+    expect(line.dash()).toEqual([6, 4]);
+    expect(line.stroke()).toBe('#00ff00');
   });
 });

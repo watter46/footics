@@ -1,6 +1,7 @@
 import type {
   ArrowEffectConfig,
   EffectEasing,
+  ZoneEffectConfig,
 } from '@/lib/types/tactical/annotations';
 import type { MarkerEffectConfig } from '@/lib/types/tactical/player';
 import type { NormalizedPoint } from '@/lib/types/tactical/primitives';
@@ -9,6 +10,7 @@ export interface ArrowEffectState {
   progress: number;
   opacity: number;
   visible: boolean;
+  dashOffset?: number;
 }
 
 export interface TrimmedPointsResult {
@@ -19,22 +21,46 @@ export interface TrimmedPointsResult {
 export interface RippleRing {
   radius: number;
   opacity: number;
+  color?: string;
 }
 
 function applyEasing(t: number, easing?: EffectEasing): number {
-  const clamped = Math.max(0, Math.min(1, t));
-  switch (easing) {
-    case 'linear':
-      return clamped;
-    case 'ease-out':
-      return 1 - (1 - clamped) ** 3;
-    case 'ease-in-out':
-      return clamped < 0.5
-        ? 4 * clamped * clamped * clamped
-        : 1 - (-2 * clamped + 2) ** 3 / 2;
-    default:
-      return 1 - (1 - clamped) ** 3;
+  const c = Math.max(0, Math.min(1, t));
+  if (easing === 'linear') return c;
+  if (easing === 'ease-in-out') {
+    return c < 0.5 ? 4 * c * c * c : 1 - (-2 * c + 2) ** 3 / 2;
   }
+  return 1 - (1 - c) ** 3;
+}
+
+/**
+ * 矢印の点線フロー用 dashOffset を算出（先端へ向かって流すため負方向）
+ */
+export function computeArrowFlowDashOffset(
+  timeInSlideMs: number,
+  _config?: ArrowEffectConfig,
+  speed = 25,
+): number {
+  return -(timeInSlideMs / 1000) * speed;
+}
+
+/**
+ * ゾーンのパルス用 opacity を算出
+ */
+export function computeZonePulseOpacity(
+  timeInSlideMs: number,
+  config?: ZoneEffectConfig,
+  baseOpacity = 0.25,
+): number {
+  if (!config || config.type !== 'pulse') {
+    return baseOpacity;
+  }
+  const duration = Math.max(0.1, config.duration ?? 1.2);
+  const minOpacity = config.minOpacity ?? 0.15;
+  const maxOpacity = config.maxOpacity ?? 0.45;
+  const cycle = timeInSlideMs / 1000 / duration;
+  const pulse = (Math.sin(cycle * Math.PI * 2 - Math.PI / 2) + 1) / 2;
+  return minOpacity + pulse * (maxOpacity - minOpacity);
 }
 
 /**
@@ -48,25 +74,53 @@ export function computeArrowEffectState(
     return { progress: 1.0, opacity: 1.0, visible: true };
   }
 
+  if (config.type === 'flow') {
+    return {
+      progress: 1.0,
+      opacity: 1.0,
+      visible: true,
+      dashOffset: computeArrowFlowDashOffset(timeInSlideMs, config),
+    };
+  }
+
   const delayMs = (config.delay ?? 0) * 1000;
   const durationMs = Math.max(1, (config.duration ?? 0.8) * 1000);
   const holdMs = (config.holdDuration ?? 0.5) * 1000;
   const fadeMs = Math.max(1, (config.fadeDuration ?? 0.3) * 1000);
+  const isGrowAndFlow = config.type === 'grow-and-flow';
 
   if (timeInSlideMs < delayMs) {
-    return { visible: false, progress: 0.0, opacity: 0.0 };
+    return {
+      visible: false,
+      progress: 0,
+      opacity: 0,
+      dashOffset: isGrowAndFlow ? 0 : undefined,
+    };
   }
 
   // 1. 伸長フェーズ
   if (timeInSlideMs < delayMs + durationMs) {
     const rawProgress = (timeInSlideMs - delayMs) / durationMs;
-    const progress = applyEasing(rawProgress, config.easing);
-    return { visible: true, progress, opacity: 1.0 };
+    return {
+      visible: true,
+      progress: applyEasing(rawProgress, config.easing),
+      opacity: 1.0,
+      dashOffset: isGrowAndFlow ? 0 : undefined,
+    };
   }
+
+  const flowOffset = isGrowAndFlow
+    ? computeArrowFlowDashOffset(timeInSlideMs - delayMs - durationMs, config)
+    : undefined;
 
   // 2. 維持フェーズ
   if (timeInSlideMs < delayMs + durationMs + holdMs) {
-    return { visible: true, progress: 1.0, opacity: 1.0 };
+    return {
+      visible: true,
+      progress: 1.0,
+      opacity: 1.0,
+      dashOffset: flowOffset,
+    };
   }
 
   // 3. 退場フェーズ
@@ -75,13 +129,18 @@ export function computeArrowEffectState(
     if (timeInSlideMs < fadeStartMs + fadeMs) {
       const elapsedFade = timeInSlideMs - fadeStartMs;
       const opacity = Math.max(0, 1.0 - elapsedFade / fadeMs);
-      return { visible: true, progress: 1.0, opacity };
+      return { visible: true, progress: 1.0, opacity, dashOffset: flowOffset };
     }
-    return { visible: false, opacity: 0.0, progress: 1.0 };
+    return {
+      visible: false,
+      opacity: 0.0,
+      progress: 1.0,
+      dashOffset: flowOffset,
+    };
   }
 
   // exitAction === 'keep'
-  return { visible: true, opacity: 1.0, progress: 1.0 };
+  return { visible: true, opacity: 1.0, progress: 1.0, dashOffset: flowOffset };
 }
 
 /**
@@ -232,7 +291,7 @@ export function computeRippleRings(
     if (p_i < 0) p_i += 1.0;
     const radius = baseRadius * (1.0 + (maxRadiusScale - 1.0) * p_i);
     const opacity = Math.max(0, 1.0 - p_i);
-    rings.push({ radius, opacity });
+    rings.push({ radius, opacity, color: config.color });
   }
 
   return rings;

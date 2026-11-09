@@ -4,6 +4,7 @@ import type {
   PlayerBadge,
   PlayerFocus,
   PlayerTrajectory,
+  PlayerTrajectoryEffectConfig,
   VisionCone,
 } from '@/lib/types/tactical-unified';
 import { interpolateColor, lerp, lerpAngle } from './interpolation-geometry';
@@ -26,6 +27,9 @@ export interface InterpolatedPlayerState {
   badges: PlayerBadge[];
   focus?: PlayerFocus;
   trajectory?: PlayerTrajectory;
+  trajectoryEffect?: PlayerTrajectoryEffectConfig;
+  startPos?: { x: number; y: number };
+  endPos?: { x: number; y: number };
 }
 
 export interface MatchedPlayerPair {
@@ -152,6 +156,7 @@ export function interpolatePlayer(
       connectLines: pA.connectLines,
       badges: pA.badges,
       focus: pA.focus,
+      trajectoryEffect: pA.trajectoryEffect,
     };
   }
 
@@ -172,6 +177,7 @@ export function interpolatePlayer(
       connectLines: pB.connectLines,
       badges: pB.badges,
       focus: pB.focus,
+      trajectoryEffect: pB.trajectoryEffect,
     };
   }
 
@@ -266,5 +272,17 @@ export function interpolatePlayer(
     badges: endP.badges,
     focus: endP.focus,
     trajectory: endP.trajectory,
+    trajectoryEffect:
+      (ease < 1 ? startP.trajectoryEffect : endP.trajectoryEffect) ??
+      endP.trajectoryEffect ??
+      startP.trajectoryEffect,
+    startPos:
+      startP.area === 'pitch' && endP.area === 'pitch'
+        ? { x: startP.x, y: startP.y }
+        : undefined,
+    endPos:
+      startP.area === 'pitch' && endP.area === 'pitch'
+        ? { x: endP.x, y: endP.y }
+        : undefined,
   };
 }

@@ -33,7 +33,9 @@ export function ArrowEffectSection({
     ...DEFAULT_ARROW_EFFECT,
     type: 'none',
   };
-  const isEffectActive = currentEffect.type === 'grow';
+  const isDashed = Boolean(arrow.dashArray && arrow.dashArray.length > 0);
+  const isEffectActive =
+    currentEffect.type === 'grow' || currentEffect.type === 'grow-and-flow';
 
   const handleEffectTypeChange = (type: ArrowEffectType) => {
     onUpdate({
@@ -53,6 +55,18 @@ export function ArrowEffectSection({
     });
   };
 
+  const effectOptions = isDashed
+    ? [
+        { id: 'none' as const, label: 'なし' },
+        { id: 'grow' as const, label: '伸長 (Grow)' },
+        { id: 'flow' as const, label: '点線Flow' },
+        { id: 'grow-and-flow' as const, label: '伸長+Flow' },
+      ]
+    : [
+        { id: 'none' as const, label: 'なし' },
+        { id: 'grow' as const, label: '伸長 (Grow)' },
+      ];
+
   return (
     <div className="flex flex-col gap-3">
       {/* エフェクト種別 */}
@@ -63,13 +77,23 @@ export function ArrowEffectSection({
         <SegmentedControl<ArrowEffectType>
           value={currentEffect.type}
           onChange={handleEffectTypeChange}
-          options={[
-            { id: 'none', label: 'なし' },
-            { id: 'grow', label: '伸長 (Grow)' },
-          ]}
+          options={effectOptions}
           className="w-full [&>button]:flex-1"
         />
       </div>
+
+      {!isDashed && (
+        <div className="flex items-center justify-between p-2 rounded bg-white/[0.03] border border-white/[0.06] text-[11px] text-white/60">
+          <span>※ 点線矢印で Flow / 伸長+Flow が利用可能</span>
+          <button
+            type="button"
+            onClick={() => onUpdate({ dashArray: [8, 6] })}
+            className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white/90 text-[11px] font-medium transition-colors cursor-pointer"
+          >
+            点線にする
+          </button>
+        </div>
+      )}
 
       {isEffectActive && (
         <>

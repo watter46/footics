@@ -17,6 +17,10 @@ export const MarkerEffectConfigSchema = z.object({
   repeatCount: z.number().min(0).max(100).default(2),
   maxRadiusScale: z.number().min(1.0).max(10.0).default(2.5),
   exitAction: EffectExitActionSchema.default('keep'),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
 });
 export type MarkerEffectConfig = z.infer<typeof MarkerEffectConfigSchema>;
 
@@ -122,6 +126,20 @@ export const PlayerTrajectorySchema = z.object({
 });
 export type PlayerTrajectory = z.infer<typeof PlayerTrajectorySchema>;
 
+/** 選手移動ゴースト軌跡エフェクト設定 */
+export const PlayerTrajectoryEffectConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  lineStyle: z.enum(['solid', 'dashed']).default('solid'),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
+  exitAction: z.enum(['keep', 'auto-hide']).default('keep'),
+});
+export type PlayerTrajectoryEffectConfig = z.infer<
+  typeof PlayerTrajectoryEffectConfigSchema
+>;
+
 // ─────────────────────────────────────────
 // § 5. Player オブジェクト
 // ─────────────────────────────────────────
@@ -145,6 +163,7 @@ export const PlayerSchema = z.object({
   badges: z.array(PlayerBadgeSchema).default([]),
   focus: PlayerFocusSchema.optional(),
   trajectory: PlayerTrajectorySchema.optional(),
+  trajectoryEffect: PlayerTrajectoryEffectConfigSchema.optional(),
   markerEffect: MarkerEffectConfigSchema.optional(),
   locked: z.boolean().optional(),
   isCustom: z.boolean().optional(),

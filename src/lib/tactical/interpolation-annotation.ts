@@ -3,6 +3,7 @@ import type {
   NormalizedPoint,
   TextAnnotation,
   ZoneAnnotation,
+  ZoneEffectConfig,
 } from '@/lib/types/tactical-unified';
 import {
   interpolateColor,
@@ -28,6 +29,7 @@ export interface InterpolatedZoneState {
   strokeOpacity?: number;
   label?: string;
   visible: boolean;
+  effect?: ZoneEffectConfig;
 }
 
 export interface InterpolatedArrowState {
@@ -44,6 +46,7 @@ export interface InterpolatedArrowState {
   targetPlayerId?: string;
   endMarker?: ArrowAnnotation['endMarker'];
   dashArray?: number[];
+  dashOffset?: number;
   arrowHead?: boolean;
   progress?: number;
   tipAngle?: number;
@@ -87,6 +90,7 @@ export function interpolateZone(
         (singleZone.opacity ?? 0.25) *
         (startZone ? Math.max(0, 1 - ease) : Math.min(1, ease)),
       visible: startZone ? ease < 1 : true,
+      effect: singleZone.effect,
     };
   }
   const zA = startZone;
@@ -136,6 +140,7 @@ export function interpolateZone(
       strokeOpacity,
       label: zB.label || zA.label,
       visible: true,
+      effect: (ease < 1 ? zA.effect : zB.effect) ?? zB.effect ?? zA.effect,
     };
   }
 
@@ -174,6 +179,7 @@ export function interpolateZone(
     strokeOpacity,
     label: zB.label || zA.label,
     visible: true,
+    effect: (ease < 1 ? zA.effect : zB.effect) ?? zB.effect ?? zA.effect,
   };
 }
 

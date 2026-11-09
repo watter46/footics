@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { computeArrowDimensions } from '@/features/tactical-unified/core/components/annotations/arrow-geometry';
 import { getWavyPoints } from '@/features/tactical-unified/core/components/annotations/wavy-arrow-math';
-import type { ArrowEffectConfig } from '@/lib/types/tactical/annotations';
+import type {
+  ArrowEffectConfig,
+  ZoneEffectConfig,
+} from '@/lib/types/tactical/annotations';
 import type { MarkerEffectConfig } from '@/lib/types/tactical/player';
 import type { NormalizedPoint } from '@/lib/types/tactical/primitives';
 import {
   computeArrowEffectState,
+  computeArrowFlowDashOffset,
   computeRippleRings,
+  computeZonePulseOpacity,
   trimRenderPoints,
 } from '../effect-geometry';
 
@@ -324,6 +329,132 @@ describe('effect-geometry', () => {
 
       const rings = computeRippleRings(10500, config, 10);
       expect(rings).toHaveLength(3);
+    });
+
+    it('propagates custom color from config to ripple rings', () => {
+      const config: MarkerEffectConfig = {
+        type: 'ripple',
+        delay: 0.0,
+        duration: 1.0,
+        ringsCount: 2,
+        repeatCount: 1,
+        maxRadiusScale: 2.0,
+        exitAction: 'keep',
+        color: '#ff0000',
+      };
+
+      const rings = computeRippleRings(500, config, 10);
+      expect(rings).toHaveLength(2);
+      expect(rings[0].color).toBe('#ff0000');
+      expect(rings[1].color).toBe('#ff0000');
+    });
+  });
+
+  describe('computeZonePulseOpacity', () => {
+    it('returns baseOpacity when config is undefined or type is not pulse', () => {
+      expect(computeZonePulseOpacity(500, undefined, 0.3)).toBe(0.3);
+      expect(
+        computeZonePulseOpacity(
+          500,
+          {
+            type: 'none',
+            duration: 1.2,
+            minOpacity: 0.1,
+            maxOpacity: 0.5,
+          },
+          0.25,
+        ),
+      ).toBe(0.25);
+    });
+
+    it('computes sinusoidal pulse opacity according to duration and min/max bounds', () => {
+      const config: ZoneEffectConfig = {
+        type: 'pulse',
+        duration: 1.0,
+        minOpacity: 0.2,
+        maxOpacity: 0.6,
+      };
+
+      // t = 0s -> pulse = 0 -> minOpacity (0.2)
+      expect(computeZonePulseOpacity(0, config)).toBeCloseTo(0.2, 4);
+
+      // t = 0.25s -> pulse = 0.5 -> 0.4
+      expect(computeZonePulseOpacity(250, config)).toBeCloseTo(0.4, 4);
+
+      // t = 0.5s -> pulse = 1.0 -> maxOpacity (0.6)
+      expect(computeZonePulseOpacity(500, config)).toBeCloseTo(0.6, 4);
+
+      // t = 0.75s -> pulse = 0.5 -> 0.4
+      expect(computeZonePulseOpacity(750, config)).toBeCloseTo(0.4, 4);
+
+      // t = 1.0s -> pulse = 0 -> minOpacity (0.2)
+      expect(computeZonePulseOpacity(1000, config)).toBeCloseTo(0.2, 4);
+    });
+  });
+
+  describe('computeArrowFlowDashOffset', () => {
+    it('computes negative dash offset based on time and speed', () => {
+      // t = 1000ms, speed = 20 -> -20
+      expect(computeArrowFlowDashOffset(1000, undefined, 20)).toBe(-20);
+
+      // default speed = 25
+      expect(computeArrowFlowDashOffset(1000)).toBe(-25);
+      expect(computeArrowFlowDashOffset(2000)).toBe(-50);
+    });
+  });
+
+  describe('computeArrowEffectState flow and grow-and-flow', () => {
+    it('handles flow effect with constant visibility and flowing dash offset', () => {
+      const config: ArrowEffectConfig = {
+        type: 'flow',
+        delay: 0,
+        duration: 1.0,
+        holdDuration: 0,
+        fadeDuration: 0,
+        exitAction: 'keep',
+        easing: 'linear',
+      };
+
+      const state0 = computeArrowEffectState(0, config);
+      expect(state0.visible).toBe(true);
+      expect(state0.progress).toBe(1.0);
+      expect(state0.opacity).toBe(1.0);
+      expect(state0.dashOffset).toBeCloseTo(0, 4);
+
+      const state1000 = computeArrowEffectState(1000, config);
+      expect(state1000.visible).toBe(true);
+      expect(state1000.progress).toBe(1.0);
+      expect(state1000.dashOffset).toBeCloseTo(-25, 4);
+    });
+
+    it('handles grow-and-flow effect with zero dash offset during growth and flowing offset after growth', () => {
+      const config: ArrowEffectConfig = {
+        type: 'grow-and-flow',
+        delay: 0.5, // 500ms
+        duration: 0.8, // 800ms (growth ends at 1300ms)
+        holdDuration: 1.0,
+        fadeDuration: 0.3,
+        exitAction: 'keep',
+        easing: 'linear',
+      };
+
+      // During growth (t = 900ms)
+      const growing = computeArrowEffectState(900, config);
+      expect(growing.visible).toBe(true);
+      expect(growing.progress).toBeCloseTo(0.5, 4);
+      expect(growing.dashOffset).toBe(0);
+
+      // Exactly at end of growth (t = 1300ms)
+      const endGrowth = computeArrowEffectState(1300, config);
+      expect(endGrowth.visible).toBe(true);
+      expect(endGrowth.progress).toBe(1.0);
+      expect(endGrowth.dashOffset).toBeCloseTo(0, 4);
+
+      // Flowing after growth (t = 2300ms -> 1000ms after growth end)
+      const flowing = computeArrowEffectState(2300, config);
+      expect(flowing.visible).toBe(true);
+      expect(flowing.progress).toBe(1.0);
+      expect(flowing.dashOffset).toBeCloseTo(-25, 4);
     });
   });
 });

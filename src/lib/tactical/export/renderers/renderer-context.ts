@@ -32,6 +32,7 @@ export interface FrameRenderContext {
     y2: number,
   ) => [{ x: number; y: number }, { x: number; y: number }] | null;
   snap: (n: number) => number;
+  timeInSlideMs?: number;
 }
 
 export const NEAR_PLANE_W = 0.05;
@@ -172,6 +173,7 @@ export interface CreateFrameRenderContextParams {
   mvpMatrix?: Float32Array | null;
   pitchTransformOverride?: PitchTransform | null;
   framePitchTransform?: PitchTransform | null;
+  timeInSlideMs?: number;
 }
 
 export function createFrameRenderContext({
@@ -182,6 +184,7 @@ export function createFrameRenderContext({
   mvpMatrix,
   pitchTransformOverride,
   framePitchTransform,
+  timeInSlideMs,
 }: CreateFrameRenderContextParams): FrameRenderContext {
   const outerPitchRect = calculatePitchRect(
     { width: baseWidth, height: baseHeight },
@@ -278,5 +281,6 @@ export function createFrameRenderContext({
     projectObjToScreen,
     project3DSegment,
     snap,
+    timeInSlideMs,
   };
 }

@@ -4,6 +4,7 @@
  */
 import type Konva from 'konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
+import { computeZonePulseOpacity } from '@/lib/tactical/effect-geometry';
 import type { InterpolatedZoneState } from '@/lib/tactical/unified-interpolation';
 
 function isKonvaLine(shape: Konva.Shape): shape is Konva.Line {
@@ -25,18 +26,34 @@ export function updateZoneNodes(
   stageHeight: number,
   offsetX = 0,
   offsetY = 0,
+  timeInSlideMs = 0,
 ): void {
   for (const [zoneId, zState] of Object.entries(zones)) {
     const zoneShape = registry.zoneNodes.get(zoneId);
     if (!zoneShape) continue;
 
-    const opacity = zState.opacity ?? 0.25;
+    let opacity = zState.opacity ?? 0.25;
+    let strokeOpacity = zState.strokeOpacity ?? 1;
+
+    if (zState.effect?.type === 'pulse') {
+      const baseOpacity = zState.opacity ?? 0.25;
+      opacity = computeZonePulseOpacity(
+        timeInSlideMs,
+        zState.effect,
+        baseOpacity,
+      );
+      if (baseOpacity > 0) {
+        strokeOpacity = Math.min(1, strokeOpacity * (opacity / baseOpacity));
+      } else {
+        strokeOpacity = opacity;
+      }
+    }
+
     const alphaHex = Math.round(Math.max(0, Math.min(1, opacity)) * 255)
       .toString(16)
       .padStart(2, '0');
     const fillRGBA = (zState.color || '#22c55e') + alphaHex;
 
-    const strokeOpacity = zState.strokeOpacity ?? 1;
     const strokeAlphaHex = Math.round(
       Math.max(0, Math.min(1, strokeOpacity)) * 255,
     )

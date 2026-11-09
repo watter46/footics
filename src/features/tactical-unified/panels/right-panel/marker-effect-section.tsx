@@ -6,6 +6,7 @@ import type {
   MarkerEffectType,
   Player,
 } from '@/lib/types/tactical/player';
+import { ColorInput } from './color-input';
 import { NumberSliderField } from './effect-number-slider';
 
 export const DEFAULT_MARKER_EFFECT: MarkerEffectConfig = {
@@ -138,6 +139,42 @@ export function MarkerEffectSection({
                 { id: '0', label: '無限' },
               ]}
               className="w-full [&>button]:flex-1"
+            />
+          </div>
+
+          {/* 最大拡大倍率 */}
+          <NumberSliderField
+            id="player-effect-max-radius"
+            label="最大拡大倍率 (Max Radius)"
+            value={currentEffect.maxRadiusScale ?? 2.5}
+            min={1.0}
+            max={5.0}
+            step={0.1}
+            onChange={(maxRadiusScale) =>
+              handleConfigChange({ maxRadiusScale })
+            }
+          />
+
+          {/* 波紋カラー */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-white/60 font-medium">
+                波紋カラー (未指定: チーム色)
+              </span>
+              {currentEffect.color && (
+                <button
+                  type="button"
+                  onClick={() => handleConfigChange({ color: undefined })}
+                  className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
+                >
+                  チーム色に戻す
+                </button>
+              )}
+            </div>
+            <ColorInput
+              value={currentEffect.color ?? player.style?.color ?? '#ffffff'}
+              onChange={(color) => handleConfigChange({ color })}
+              className="w-full"
             />
           </div>
         </>
