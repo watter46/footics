@@ -5,7 +5,10 @@
  */
 
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
-import { applyDotOffsets } from '@/features/tactical-unified/core/components/annotations/arrow-geometry';
+import {
+  applyDotOffsets,
+  computeArrowDimensions,
+} from '@/features/tactical-unified/core/components/annotations/arrow-geometry';
 import {
   getQuadraticBezierPoints,
   getWavyPoints,
@@ -84,6 +87,8 @@ export function updateArrowNodes(
     const arrowEntry = registry.arrowNodes.get(arrowId);
     if (!arrowEntry?.node) continue;
 
+    const dims = computeArrowDimensions(stageWidth, aState.strokeWidth);
+
     const rawP0 = aState.points[0] ?? { x: 20, y: 50 };
     const rawP1 = aState.points[1] ?? { x: 40, y: 50 };
     const sPxX = offsetX + (rawP0.x / 100) * stageWidth;
@@ -141,7 +146,11 @@ export function updateArrowNodes(
       for (let i = 0; i < renderPts.length; i += 2) {
         ptsList.push({ x: renderPts[i], y: renderPts[i + 1] });
       }
-      const { trimmedPoints } = trimRenderPoints(ptsList, clampedProgress);
+      const { trimmedPoints } = trimRenderPoints(
+        ptsList,
+        clampedProgress,
+        isWavy,
+      );
       renderPts = trimmedPoints.flatMap((pt) => [pt.x, pt.y]);
 
       if (arrowEntry.endDotNode && trimmedPoints.length > 0) {
@@ -153,7 +162,7 @@ export function updateArrowNodes(
     arrowEntry.node.points(renderPts);
     arrowEntry.node.stroke(aState.color);
     arrowEntry.node.fill(aState.color);
-    arrowEntry.node.strokeWidth(aState.strokeWidth);
+    arrowEntry.node.strokeWidth(dims.strokeWidth);
     arrowEntry.node.opacity(aState.opacity);
     arrowEntry.node.visible(aState.visible);
     arrowEntry.node.dash?.(

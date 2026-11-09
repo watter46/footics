@@ -234,6 +234,19 @@ export function renderFrameToCanvas(
     }
   }
 
+  if (!isPlaying) {
+    for (const playerGroup of registry.playerNodes.values()) {
+      if (typeof playerGroup.find === 'function') {
+        const rings = playerGroup.find('.ripple-ring');
+        for (const ring of rings) {
+          if (typeof ring.visible === 'function') {
+            ring.visible(false);
+          }
+        }
+      }
+    }
+  }
+
   updatePlayerNodes(
     frame.players,
     registry,

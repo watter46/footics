@@ -90,6 +90,7 @@ export function computeArrowEffectState(
 export function trimRenderPoints(
   points: NormalizedPoint[],
   progress: number,
+  isWavy = false,
 ): TrimmedPointsResult {
   if (points.length < 2) {
     return { trimmedPoints: [...points], tipAngle: 0 };
@@ -97,26 +98,39 @@ export function trimRenderPoints(
 
   const p0 = points[0];
   const p1 = points[1];
+  const pLast = points[points.length - 1];
+  const pPrev = points[points.length - 2];
+  const fullAngle = Math.atan2(pLast.y - pPrev.y, pLast.x - pPrev.x);
+  const mainAngle = Math.atan2(pLast.y - p0.y, pLast.x - p0.x);
 
   if (progress <= 0) {
-    const tipAngle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+    const tipAngle = isWavy ? mainAngle : Math.atan2(p1.y - p0.y, p1.x - p0.x);
     return {
       trimmedPoints: [
-        { x: p0.x, y: p0.y },
+        isWavy
+          ? {
+              x: p0.x - Math.cos(mainAngle) * 0.1,
+              y: p0.y - Math.sin(mainAngle) * 0.1,
+            }
+          : { x: p0.x, y: p0.y },
         { x: p0.x, y: p0.y },
       ],
       tipAngle,
     };
   }
 
-  const pLast = points[points.length - 1];
-  const pPrev = points[points.length - 2];
-  const fullAngle = Math.atan2(pLast.y - pPrev.y, pLast.x - pPrev.x);
-
   if (progress >= 1.0) {
+    const pts = points.map((p) => ({ x: p.x, y: p.y }));
+    if (isWavy && pts.length >= 2) {
+      const lastPt = pts[pts.length - 1];
+      pts[pts.length - 2] = {
+        x: lastPt.x - Math.cos(mainAngle) * 0.1,
+        y: lastPt.y - Math.sin(mainAngle) * 0.1,
+      };
+    }
     return {
-      trimmedPoints: points.map((p) => ({ x: p.x, y: p.y })),
-      tipAngle: fullAngle,
+      trimmedPoints: pts,
+      tipAngle: isWavy ? mainAngle : fullAngle,
     };
   }
 
@@ -167,6 +181,17 @@ export function trimRenderPoints(
 
   if (resultPoints.length === 1) {
     resultPoints.push({ ...resultPoints[0] });
+  }
+
+  if (isWavy) {
+    tipAngle = mainAngle;
+    if (resultPoints.length >= 2) {
+      const lastPt = resultPoints[resultPoints.length - 1];
+      resultPoints[resultPoints.length - 2] = {
+        x: lastPt.x - Math.cos(mainAngle) * 0.1,
+        y: lastPt.y - Math.sin(mainAngle) * 0.1,
+      };
+    }
   }
 
   return { trimmedPoints: resultPoints, tipAngle };

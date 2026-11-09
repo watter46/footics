@@ -192,6 +192,46 @@ describe('animation-node-updater', () => {
     ]);
   });
 
+  it('scales arrow strokeWidth using computeArrowDimensions based on stageWidth', () => {
+    const registry = createCanvasNodesRegistry();
+    const mockStrokeWidth = vi.fn();
+    const mockArrow = {
+      node: {
+        points: vi.fn(),
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        strokeWidth: mockStrokeWidth,
+        opacity: vi.fn(),
+        visible: vi.fn(),
+      },
+    } as any;
+    registry.arrowNodes.set('a_scaled', mockArrow);
+
+    // stageWidth: 600, strokeWidth: 3 -> scale = 600 / 1200 = 0.5, strokeWidth = Math.max(2, Math.round(3 * 0.5)) = 2
+    updateArrowNodes(
+      {
+        a_scaled: {
+          id: 'a_scaled',
+          arrowType: 'pass',
+          points: [
+            { x: 10, y: 10 },
+            { x: 20, y: 20 },
+          ],
+          curveType: 'straight',
+          color: '#ff0000',
+          strokeWidth: 3,
+          opacity: 1,
+          visible: true,
+        } as any,
+      },
+      registry,
+      600,
+      300,
+    );
+
+    expect(mockStrokeWidth).toHaveBeenCalledWith(2);
+  });
+
   it('updates curved arrow node with quadratic bezier sampled points', () => {
     const registry = createCanvasNodesRegistry();
     const mockPoints = vi.fn();
@@ -719,21 +759,21 @@ describe('animation-node-updater', () => {
       };
       const mockRenderContext: FrameRenderContext = {
         ctx: mockCtx as any,
-        w: 600,
-        h: 400,
+        w: 1200,
+        h: 800,
         m: null,
-        toScreenX: (x) => (x / 100) * 600,
-        toScreenY: (y) => (y / 100) * 400,
-        toScreenSizeX: (w) => (w / 100) * 600,
-        toScreenSizeY: (h) => (h / 100) * 400,
+        toScreenX: (x) => (x / 100) * 1200,
+        toScreenY: (y) => (y / 100) * 800,
+        toScreenSizeX: (w) => (w / 100) * 1200,
+        toScreenSizeY: (h) => (h / 100) * 800,
         projectObjToScreen: (x, y) => ({
-          x: (x / 100) * 600,
-          y: (y / 100) * 400,
+          x: (x / 100) * 1200,
+          y: (y / 100) * 800,
         }),
         snap: (v) => v,
       };
 
-      // Custom dashArray
+      // Custom dashArray at baseline scale (w = 1200, scale = 1)
       renderArrows(mockRenderContext, {
         a1: {
           id: 'a1',
@@ -752,7 +792,7 @@ describe('animation-node-updater', () => {
 
       expect(mockCtx.setLineDash).toHaveBeenCalledWith([12, 4]);
 
-      // Fallback for pass
+      // Fallback for pass at baseline scale (w = 1200, scale = 1)
       renderArrows(mockRenderContext, {
         a2: {
           id: 'a2',
@@ -769,6 +809,29 @@ describe('animation-node-updater', () => {
       });
 
       expect(mockCtx.setLineDash).toHaveBeenCalledWith([8, 5]);
+
+      // Scaled dashArray at w = 600 (scale = 600 / 1200 = 0.5)
+      const halfScaleContext: FrameRenderContext = {
+        ...mockRenderContext,
+        w: 600,
+      };
+      renderArrows(halfScaleContext, {
+        a3: {
+          id: 'a3',
+          arrowType: 'move',
+          points: [
+            { x: 10, y: 10 },
+            { x: 50, y: 10 },
+          ],
+          dashArray: [12, 4],
+          color: '#ffffff',
+          strokeWidth: 2,
+          opacity: 1,
+          visible: true,
+        } as any,
+      });
+
+      expect(mockCtx.setLineDash).toHaveBeenCalledWith([6, 2]);
     });
 
     it('renderArrows renders wavy path for arrow_wavy arrowType', () => {

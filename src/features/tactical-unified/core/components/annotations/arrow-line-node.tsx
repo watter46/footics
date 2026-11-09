@@ -3,11 +3,12 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Arrow } from 'react-konva';
 import type { ArrowAnnotation } from '@/lib/types/tactical-unified';
+import { computeArrowDimensions } from './arrow-geometry';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
 export interface ArrowLineNodeProps {
-  arrow: ArrowAnnotation;
+  arrow: ArrowAnnotation & { opacity?: number };
   stageSize: { width: number; height: number };
   isSelected: boolean;
   isInteractive: boolean;
@@ -58,13 +59,11 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
   updateArrow,
 }: ArrowLineNodeProps) {
   const { width, height } = stageSize;
-  const scale = width > 0 ? width / 600 : 1;
-  const scaledStrokeWidth = Math.max(
-    2,
-    Math.round((arrow.strokeWidth || 3) * scale),
-  );
-  const pointerLength = Math.max(8, Math.round(15 * scale));
-  const pointerWidth = Math.max(8, Math.round(15 * scale));
+  const {
+    strokeWidth: scaledStrokeWidth,
+    pointerLength,
+    pointerWidth,
+  } = computeArrowDimensions(width, arrow.strokeWidth);
 
   return (
     <Arrow
@@ -76,6 +75,7 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
       dash={arrow.dashArray.length > 0 ? arrow.dashArray : undefined}
       pointerLength={hasArrowHead ? pointerLength : 0}
       pointerWidth={hasArrowHead ? pointerWidth : 0}
+      opacity={arrow.opacity ?? 1}
       tension={0}
       onClick={onSelect}
       onTap={onSelect}

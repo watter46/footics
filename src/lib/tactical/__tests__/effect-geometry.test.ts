@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { computeArrowDimensions } from '@/features/tactical-unified/core/components/annotations/arrow-geometry';
+import { getWavyPoints } from '@/features/tactical-unified/core/components/annotations/wavy-arrow-math';
 import type { ArrowEffectConfig } from '@/lib/types/tactical/annotations';
 import type { MarkerEffectConfig } from '@/lib/types/tactical/player';
+import type { NormalizedPoint } from '@/lib/types/tactical/primitives';
 import {
   computeArrowEffectState,
   computeRippleRings,
@@ -196,6 +199,50 @@ describe('effect-geometry', () => {
       expect(res2.trimmedPoints[2].x).toBeCloseTo(50, 4);
       expect(res2.trimmedPoints[2].y).toBeCloseTo(25, 4);
       expect(res2.tipAngle).toBeCloseTo(Math.PI / 2, 4);
+    });
+
+    it('smooths tip angle and aligns last two points to main heading when isWavy is true', () => {
+      const rawWavy = getWavyPoints(0, 0, 100, 0);
+      const points: NormalizedPoint[] = [];
+      for (let i = 0; i < rawWavy.length; i += 2) {
+        points.push({ x: rawWavy[i], y: rawWavy[i + 1] });
+      }
+
+      // Without isWavy: tipAngle follows local wave derivative (non-zero)
+      const normalResult = trimRenderPoints(points, 0.5, false);
+      expect(Math.abs(normalResult.tipAngle)).toBeGreaterThan(0.1);
+
+      // With isWavy: tipAngle follows main heading (0)
+      const wavyResult = trimRenderPoints(points, 0.5, true);
+      expect(wavyResult.tipAngle).toBeCloseTo(0, 2);
+
+      const len = wavyResult.trimmedPoints.length;
+      const lastPt = wavyResult.trimmedPoints[len - 1];
+      const prevPt = wavyResult.trimmedPoints[len - 2];
+      const segmentAngle = Math.atan2(lastPt.y - prevPt.y, lastPt.x - prevPt.x);
+      expect(segmentAngle).toBeCloseTo(0, 2);
+    });
+  });
+
+  describe('computeArrowDimensions', () => {
+    it('calculates expected dimensions for 1200px stage and baseStrokeWidth 3', () => {
+      expect(computeArrowDimensions(1200, 3)).toEqual({
+        scale: 1,
+        strokeWidth: 3,
+        pointerLength: 15,
+        pointerWidth: 15,
+        dotRadius: 5,
+      });
+    });
+
+    it('calculates expected dimensions for 600px stage and baseStrokeWidth 3', () => {
+      expect(computeArrowDimensions(600, 3)).toEqual({
+        scale: 0.5,
+        strokeWidth: 2,
+        pointerLength: 8,
+        pointerWidth: 8,
+        dotRadius: 3.2,
+      });
     });
   });
 

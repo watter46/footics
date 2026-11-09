@@ -2,6 +2,26 @@ import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
 import type { Player } from '@/lib/types/tactical-unified';
 import { getQuadraticBezierPoints, getWavyPoints } from './wavy-arrow-math';
 
+export interface ArrowDimensions {
+  scale: number;
+  strokeWidth: number;
+  pointerLength: number;
+  pointerWidth: number;
+  dotRadius: number;
+}
+
+export function computeArrowDimensions(
+  stageWidth: number,
+  baseStrokeWidth = 3,
+): ArrowDimensions {
+  const scale = stageWidth > 0 ? stageWidth / 1200 : 1;
+  const strokeWidth = Math.max(2, Math.round(baseStrokeWidth * scale));
+  const pointerLength = Math.max(8, Math.round(15 * scale));
+  const pointerWidth = Math.max(8, Math.round(15 * scale));
+  const dotRadius = Math.max(5 * scale, strokeWidth * 1.6);
+  return { scale, strokeWidth, pointerLength, pointerWidth, dotRadius };
+}
+
 export interface ComputeArrowPointsParams {
   sx: number;
   sy: number;

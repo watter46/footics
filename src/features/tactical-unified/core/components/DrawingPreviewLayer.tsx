@@ -15,6 +15,7 @@ import {
   type PreviewShapeKind,
   resolveToolPreviewColor,
 } from '../utils/canvas-drawing-factory';
+import { computeArrowDimensions } from './annotations/arrow-geometry';
 import { getWavyPoints } from './annotations/wavy-arrow-math';
 
 export interface PreviewShapeRenderContext {
@@ -24,6 +25,9 @@ export interface PreviewShapeRenderContext {
   cPxY: number;
   color: string;
   strokeWidth: number;
+  pointerLength?: number;
+  pointerWidth?: number;
+  dotRadius?: number;
 }
 
 export type PreviewShapeRenderer = (
@@ -43,7 +47,15 @@ export const PREVIEW_SHAPE_RENDERERS: Record<
       perfectDrawEnabled={false}
     />
   ),
-  route_line: ({ sPxX, sPxY, cPxX, cPxY, color, strokeWidth }) => (
+  route_line: ({
+    sPxX,
+    sPxY,
+    cPxX,
+    cPxY,
+    color,
+    strokeWidth,
+    dotRadius = 6,
+  }) => (
     <Group>
       <KonvaLine
         points={[sPxX, sPxY, cPxX, cPxY]}
@@ -55,7 +67,7 @@ export const PREVIEW_SHAPE_RENDERERS: Record<
       <KonvaCircle
         x={sPxX}
         y={sPxY}
-        radius={6}
+        radius={dotRadius}
         stroke={color}
         strokeWidth={2}
         fill="transparent"
@@ -64,7 +76,7 @@ export const PREVIEW_SHAPE_RENDERERS: Record<
       <KonvaCircle
         x={cPxX}
         y={cPxY}
-        radius={6}
+        radius={dotRadius}
         stroke={color}
         strokeWidth={2}
         fill="transparent"
@@ -72,39 +84,66 @@ export const PREVIEW_SHAPE_RENDERERS: Record<
       />
     </Group>
   ),
-  arrow_solid: ({ sPxX, sPxY, cPxX, cPxY, color, strokeWidth }) => (
+  arrow_solid: ({
+    sPxX,
+    sPxY,
+    cPxX,
+    cPxY,
+    color,
+    strokeWidth,
+    pointerLength = 15,
+    pointerWidth = 15,
+  }) => (
     <KonvaArrow
       points={[sPxX, sPxY, cPxX, cPxY]}
       stroke={color}
       strokeWidth={strokeWidth}
       fill={color}
-      pointerLength={15}
-      pointerWidth={15}
+      pointerLength={pointerLength}
+      pointerWidth={pointerWidth}
       opacity={0.85}
       perfectDrawEnabled={false}
     />
   ),
-  arrow_dash: ({ sPxX, sPxY, cPxX, cPxY, color, strokeWidth }) => (
+  arrow_dash: ({
+    sPxX,
+    sPxY,
+    cPxX,
+    cPxY,
+    color,
+    strokeWidth,
+    pointerLength = 15,
+    pointerWidth = 15,
+  }) => (
     <KonvaArrow
       points={[sPxX, sPxY, cPxX, cPxY]}
       stroke={color}
       strokeWidth={strokeWidth}
       fill={color}
       dash={[6, 4]}
-      pointerLength={15}
-      pointerWidth={15}
+      pointerLength={pointerLength}
+      pointerWidth={pointerWidth}
       opacity={0.85}
       perfectDrawEnabled={false}
     />
   ),
-  arrow_wavy: ({ sPxX, sPxY, cPxX, cPxY, color, strokeWidth }) => (
+  arrow_wavy: ({
+    sPxX,
+    sPxY,
+    cPxX,
+    cPxY,
+    color,
+    strokeWidth,
+    pointerLength = 15,
+    pointerWidth = 15,
+  }) => (
     <KonvaArrow
       points={getWavyPoints(sPxX, sPxY, cPxX, cPxY)}
       stroke={color}
       strokeWidth={strokeWidth}
       fill={color}
-      pointerLength={15}
-      pointerWidth={15}
+      pointerLength={pointerLength}
+      pointerWidth={pointerWidth}
       opacity={0.85}
       perfectDrawEnabled={false}
     />
@@ -160,6 +199,8 @@ export function renderDrawingPreviewNode(
     ? PREVIEW_SHAPE_RENDERERS[behavior.previewKind]
     : undefined;
 
+  const dims = computeArrowDimensions(width, strokeWidth);
+
   return (
     <Group listening={false}>
       {renderer?.({
@@ -168,7 +209,10 @@ export function renderDrawingPreviewNode(
         cPxX,
         cPxY,
         color: previewColor,
-        strokeWidth,
+        strokeWidth: dims.strokeWidth,
+        pointerLength: dims.pointerLength,
+        pointerWidth: dims.pointerWidth,
+        dotRadius: dims.dotRadius,
       })}
       {dp.points && dp.points.length >= 4 && (
         <KonvaLine
@@ -176,7 +220,7 @@ export function renderDrawingPreviewNode(
             i % 2 === 0 ? (p / 100) * width : (p / 100) * height,
           )}
           stroke={previewColor}
-          strokeWidth={strokeWidth}
+          strokeWidth={dims.strokeWidth}
           lineCap="round"
           lineJoin="round"
           perfectDrawEnabled={false}

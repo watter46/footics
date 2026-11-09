@@ -136,6 +136,7 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
                   storeApi.getState().setPlaybackIndices(lastSlideIndex, null);
                 }
               }
+              setIsPlaying(false);
               applyFrameToCanvas(
                 totalDurationMs,
                 options?.nodesRegistryRef?.current,
@@ -145,7 +146,6 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
                 dims.x,
                 dims.y,
               );
-              setIsPlaying(false);
               onComplete?.();
             }
           },
@@ -153,9 +153,19 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
       );
       refs.timelineRef.current = tl;
 
-      if (refs.currentPlaybackTimeRef.current > 0) {
-        tl.time(refs.currentPlaybackTimeRef.current / 1000);
+      const initialTime = refs.currentPlaybackTimeRef.current;
+      if (initialTime > 0) {
+        tl.time(initialTime / 1000);
       }
+      applyFrameToCanvas(
+        initialTime,
+        options?.nodesRegistryRef?.current,
+        dims.width,
+        dims.height,
+        true,
+        dims.x,
+        dims.y,
+      );
       tl.play();
     },
     [

@@ -66,6 +66,8 @@ export function snapToSlideOnStop({
     frame.progress < 1 &&
     frame.currentSlideIndex !== frame.nextSlideIndex;
 
+  let targetTimeMs = currentTime;
+
   if (isTransitioning) {
     const targetIndex = frame.nextSlideIndex;
     const snapTimeMs = getSlideSnapTime(slides, targetIndex);
@@ -76,7 +78,7 @@ export function snapToSlideOnStop({
       transitionIndex: null,
     };
 
-    if (refs.timelineRef.current) {
+    if (typeof refs.timelineRef.current?.seek === 'function') {
       refs.timelineRef.current.seek(snapTimeMs / 1000, false);
     }
 
@@ -86,16 +88,7 @@ export function snapToSlideOnStop({
     }
 
     setPlaybackIndices?.(targetIndex, null);
-
-    applyFrameToCanvas(
-      snapTimeMs,
-      registry,
-      pitchDimensions.width,
-      pitchDimensions.height,
-      false,
-      pitchDimensions.x ?? 0,
-      pitchDimensions.y ?? 0,
-    );
+    targetTimeMs = snapTimeMs;
   } else {
     const targetIndex = frame.currentSlideIndex;
     refs.lastActiveSlideIndexRef.current = targetIndex;
@@ -111,6 +104,16 @@ export function snapToSlideOnStop({
 
     setPlaybackIndices?.(targetIndex, null);
   }
+
+  applyFrameToCanvas(
+    targetTimeMs,
+    registry,
+    pitchDimensions.width,
+    pitchDimensions.height,
+    true,
+    pitchDimensions.x ?? 0,
+    pitchDimensions.y ?? 0,
+  );
 }
 
 export function stopPlayback({
@@ -160,7 +163,7 @@ export function stopPlayback({
       registry,
       pitchDimensions.width,
       pitchDimensions.height,
-      false,
+      true,
       pitchDimensions.x ?? 0,
       pitchDimensions.y ?? 0,
     );
@@ -195,7 +198,6 @@ export function pausePlayback(
 
   if (
     options?.slides &&
-    options?.registry &&
     options?.pitchDimensions &&
     options?.applyFrameToCanvas &&
     options?.setActiveSlide

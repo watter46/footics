@@ -1,4 +1,8 @@
 import {
+  applyDotOffsets,
+  computeArrowDimensions,
+} from '@/features/tactical-unified/core/components/annotations/arrow-geometry';
+import {
   getQuadraticBezierPoints,
   getWavyPoints,
 } from '@/features/tactical-unified/core/components/annotations/wavy-arrow-math';
@@ -28,10 +32,12 @@ export function renderArrows(
     const arrowColor = a.color || '#38bdf8';
     ctx.strokeStyle = arrowColor;
     ctx.fillStyle = arrowColor;
-    const scale = w > 0 ? w / 600 : 1;
-    const arrowWidth = Math.max(2, Math.round((a.strokeWidth || 3) * scale));
-    const pointerLength = Math.max(8, Math.round(15 * scale));
-    const pointerWidth = Math.max(8, Math.round(15 * scale));
+    const dims = computeArrowDimensions(w, a.strokeWidth);
+    const scale = dims.scale;
+    const arrowWidth = dims.strokeWidth;
+    const pointerLength = dims.pointerLength;
+    const pointerWidth = dims.pointerWidth;
+    const dotRadius = dims.dotRadius;
 
     ctx.lineWidth = arrowWidth;
     ctx.globalAlpha = a.opacity ?? 1;
@@ -94,31 +100,23 @@ export function renderArrows(
       ey = snap(ey - targetRadius * Math.sin(angle));
     }
 
-    const dotRadius = Math.max(5 * scale, arrowWidth * 1.8);
-    let lineSx = sx;
-    let lineSy = sy;
-    let lineEx = ex;
-    let lineEy = ey;
-
-    if (isDotEnd) {
-      if (isCurved && a.controlPoint) {
-        const startAngle = Math.atan2(cy - sy, cx - sx);
-        lineSx = sx + dotRadius * Math.cos(startAngle);
-        lineSy = sy + dotRadius * Math.sin(startAngle);
-        const endAngle = Math.atan2(ey - cy, ex - cx);
-        lineEx = ex - dotRadius * Math.cos(endAngle);
-        lineEy = ey - dotRadius * Math.sin(endAngle);
-      } else {
-        const angle = Math.atan2(ey - sy, ex - sx);
-        const dist = Math.hypot(ex - sx, ey - sy);
-        if (dist > dotRadius * 2) {
-          lineSx = sx + dotRadius * Math.cos(angle);
-          lineSy = sy + dotRadius * Math.sin(angle);
-          lineEx = ex - dotRadius * Math.cos(angle);
-          lineEy = ey - dotRadius * Math.sin(angle);
-        }
-      }
-    }
+    const {
+      rsx: lineSx,
+      rsy: lineSy,
+      rex: lineEx,
+      rey: lineEy,
+    } = applyDotOffsets(
+      sx,
+      sy,
+      ex,
+      ey,
+      isCurved && a.controlPoint ? cx : undefined,
+      isCurved && a.controlPoint ? cy : undefined,
+      isCurved,
+      isWavy,
+      isDotEnd,
+      dotRadius,
+    );
 
     const dash = Array.isArray(a.dashArray)
       ? a.dashArray.map((d) => d * scale)
@@ -170,6 +168,7 @@ export function renderArrows(
       const { trimmedPoints, tipAngle } = trimRenderPoints(
         ptsList,
         clampedProgress,
+        isWavy,
       );
       if (trimmedPoints.length >= 2) {
         ctx.moveTo(trimmedPoints[0].x, trimmedPoints[0].y);
@@ -229,7 +228,6 @@ export function renderArrows(
       ctx.lineTo(bx + halfWidth * sin, by - halfWidth * cos);
       ctx.closePath();
       ctx.fill();
-      ctx.stroke();
     }
 
     ctx.restore();

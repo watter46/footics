@@ -1533,7 +1533,7 @@ describe('Tactical Frame Renderer', () => {
   });
 
   describe('renderArrows scaling & arrowhead synchronization', () => {
-    it('scales arrow strokeWidth, pointerLength, and pointerWidth relative to 600px baseline and uses arrow color without dark border', () => {
+    it('scales arrow strokeWidth, pointerLength, and pointerWidth relative to 1200px baseline and uses arrow color without dark border or arrowhead stroke', () => {
       const ctx = createMockContext();
       const mockRenderContext: FrameRenderContext = {
         ctx,
@@ -1569,28 +1569,29 @@ describe('Tactical Frame Renderer', () => {
 
       renderArrows(mockRenderContext, arrows);
 
-      // w = 1200, baseline = 600 => scale = 2
-      // strokeWidth = max(2, round(3 * 2)) = 6
-      // pointerLength = max(8, round(15 * 2)) = 30
-      // pointerWidth = max(8, round(15 * 2)) = 30
+      // w = 1200, baseline = 1200 => scale = 1
+      // strokeWidth = max(2, round(3 * 1)) = 3
+      // pointerLength = max(8, round(15 * 1)) = 15
+      // pointerWidth = max(8, round(15 * 1)) = 15
       // sx = 120, sy = 338, ex = 1080, ey = 338
       // angle = 0, cos = 1, sin = 0
-      // bx = 1080 - 30 = 1050, by = 338
-      // halfWidth = 15
-      // c1: (1050, 338 + 15) = (1050, 353)
-      // c2: (1050, 338 - 15) = (1050, 323)
+      // bx = 1080 - 15 = 1065, by = 338
+      // halfWidth = 7.5
+      // c1: (1065, 338 + 7.5) = (1065, 345.5)
+      // c2: (1065, 338 - 7.5) = (1065, 330.5)
 
-      expect(ctx.lineWidth).toBe(6);
+      expect(ctx.lineWidth).toBe(3);
       expect(ctx.strokeStyle).toBe('#ef4444');
       expect(ctx.fillStyle).toBe('#ef4444');
 
       // Tip and arrowhead vertices
       expect(ctx.moveTo).toHaveBeenCalledWith(1080, 338);
-      expect(ctx.lineTo).toHaveBeenCalledWith(1050, 353);
-      expect(ctx.lineTo).toHaveBeenCalledWith(1050, 323);
+      expect(ctx.lineTo).toHaveBeenCalledWith(1065, 345.5);
+      expect(ctx.lineTo).toHaveBeenCalledWith(1065, 330.5);
       expect(ctx.closePath).toHaveBeenCalled();
       expect(ctx.fill).toHaveBeenCalled();
-      expect(ctx.stroke).toHaveBeenCalled();
+      // Arrowhead must NOT call stroke() - line body calls stroke once, so total stroke calls === 1
+      expect(ctx.stroke).toHaveBeenCalledTimes(1);
 
       // Ensure #020617 dark border is NOT used anywhere
       expect(ctx.strokeStyle).not.toBe('#020617');
