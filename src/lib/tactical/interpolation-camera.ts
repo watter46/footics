@@ -1,8 +1,4 @@
-/**
- * interpolation-camera.ts
- * Tactical pitch camera interpolation, drift, and segment resolution.
- */
-
+// Tactical pitch camera interpolation, drift, and segment resolution.
 import type {
   CameraTransitionMode,
   DirectorCameraTrack,
@@ -12,6 +8,7 @@ import type {
 import { applyEasing } from './easing';
 import {
   hasActiveDirectorCameraTrack,
+  type ResolveSyntheticDirectorCameraOptions,
   resolveSyntheticDirectorCamera,
 } from './interpolation-director';
 
@@ -53,27 +50,21 @@ export function hasCameraDelta(
   );
 }
 
-/**
- * スライド間のピッチカメラ変換（panX, panY, zoom, tilt, yaw, isLocked）を補間
- * 水平回転 yaw（0〜360度）は最短経路で補間
- */
+/** スライド間のピッチカメラ変換を補間（水平回転 yaw は最短経路で補間） */
 export function interpolatePitchTransform(
   transformA?: PitchTransform | null,
   transformB?: PitchTransform | null,
   t = 0,
 ): InterpolatedPitchTransformState {
-  const panXA = transformA?.panX ?? 0;
-  const panXB = transformB?.panX ?? 0;
-  const panYA = transformA?.panY ?? 0;
-  const panYB = transformB?.panY ?? 0;
-  const zoomA = transformA?.zoom ?? 1;
-  const zoomB = transformB?.zoom ?? 1;
-  const tiltA = transformA?.tilt ?? 0;
-  const tiltB = transformB?.tilt ?? 0;
-  const yawA = transformA?.yaw ?? 90;
-  const yawB = transformB?.yaw ?? 90;
-  const lockedA = transformA?.isLocked ?? false;
-  const lockedB = transformB?.isLocked ?? false;
+  const [panXA, panXB] = [transformA?.panX ?? 0, transformB?.panX ?? 0];
+  const [panYA, panYB] = [transformA?.panY ?? 0, transformB?.panY ?? 0];
+  const [zoomA, zoomB] = [transformA?.zoom ?? 1, transformB?.zoom ?? 1];
+  const [tiltA, tiltB] = [transformA?.tilt ?? 0, transformB?.tilt ?? 0];
+  const [yawA, yawB] = [transformA?.yaw ?? 90, transformB?.yaw ?? 90];
+  const [lockedA, lockedB] = [
+    transformA?.isLocked ?? false,
+    transformB?.isLocked ?? false,
+  ];
 
   let deltaYaw = ((((yawB - yawA) % 360) + 540) % 360) - 180;
   if (deltaYaw === -180 && yawB > yawA) deltaYaw = 180;
@@ -104,9 +95,7 @@ interface Span {
   segEnd: number;
 }
 
-/**
- * スライド配列から各セグメントの実効時間およびカメラスパンを解決
- */
+/** スライド配列から各セグメントの実効時間およびカメラスパンを解決 */
 export function resolveEffectiveSlideSegments(
   slides: Slide[],
 ): EffectiveSlideSegment[] {
@@ -175,10 +164,9 @@ export function resolveEffectiveSlideSegments(
         segStartRaw.cameraDurationMs ?? 10000,
       );
     } else {
-      let intermediateSum = 0;
-      for (let k = 0; k < spanRawSegs.length - 1; k++) {
-        intermediateSum += spanRawSegs[k].baseDurationMs;
-      }
+      const intermediateSum = spanRawSegs
+        .slice(0, -1)
+        .reduce((sum, s) => sum + s.baseDurationMs, 0);
       cameraSpanDurationMs = intermediateSum + segEndRaw.playerMoveMs;
     }
 
@@ -188,16 +176,14 @@ export function resolveEffectiveSlideSegments(
     for (let idx = 0; idx < spanRawSegs.length; idx++) {
       const raw = spanRawSegs[idx];
       const isLastInSpan = idx === spanRawSegs.length - 1;
+      const effectiveDurationMs = isLastInSpan
+        ? Math.max(
+            raw.baseDurationMs,
+            cameraSpanDurationMs - precedingSpanDurationMs,
+          )
+        : raw.baseDurationMs;
 
-      let effectiveDurationMs = raw.baseDurationMs;
-      if (isLastInSpan) {
-        effectiveDurationMs = Math.max(
-          raw.baseDurationMs,
-          cameraSpanDurationMs - precedingSpanDurationMs,
-        );
-      }
-
-      const seg: EffectiveSlideSegment = {
+      segmentMap.set(raw.slideIndex, {
         slideIndex: raw.slideIndex,
         startTimeMs: accumulatedStartTime,
         effectiveDurationMs,
@@ -208,9 +194,7 @@ export function resolveEffectiveSlideSegments(
         cameraSpanStartTimeMs,
         cameraSpanDurationMs,
         cameraMode: raw.cameraMode,
-      };
-
-      segmentMap.set(raw.slideIndex, seg);
+      });
       accumulatedStartTime += effectiveDurationMs;
       precedingSpanDurationMs += effectiveDurationMs;
     }
@@ -219,9 +203,7 @@ export function resolveEffectiveSlideSegments(
   return rawSegments.map((r) => segmentMap.get(r.slideIndex)!);
 }
 
-/**
- * 指定時間におけるカメラ姿勢および移動状態を算出
- */
+/** 指定時間におけるカメラ姿勢および移動状態を算出 */
 export function resolveCameraAtTime(
   slides: Slide[],
   _segments: EffectiveSlideSegment[],
@@ -229,20 +211,24 @@ export function resolveCameraAtTime(
   timeMs: number,
   elapsedInSegment: number,
   directorCamera?: DirectorCameraTrack | null,
+  directorCameraOptions?: ResolveSyntheticDirectorCameraOptions,
 ): {
   pitchTransform: InterpolatedPitchTransformState;
   isCameraMoving: boolean;
 } {
   if (hasActiveDirectorCameraTrack(directorCamera)) {
     return {
-      pitchTransform: resolveSyntheticDirectorCamera(directorCamera, timeMs),
+      pitchTransform: resolveSyntheticDirectorCamera(
+        directorCamera,
+        timeMs,
+        directorCameraOptions,
+      ),
       isCameraMoving: false,
     };
   }
 
   const slideA = slides[activeSegment.cameraSpanStartSlideIdx - 1];
   const slideB = slides[activeSegment.cameraSpanEndSlideIdx];
-
   const transformA = slideA?.pitchTransform;
   const transformB = slideB?.pitchTransform;
   const hasDelta = hasCameraDelta(transformA, transformB);
@@ -273,10 +259,9 @@ export function resolveCameraAtTime(
       clampedRawT,
       slides[activeSegment.slideIndex]?.easing ?? 'ease-in-out',
     );
-    const isCameraMoving = rawT < 1 && hasDelta;
     return {
       pitchTransform: interpolatePitchTransform(transformA, transformB, easeT),
-      isCameraMoving,
+      isCameraMoving: rawT < 1 && hasDelta,
     };
   }
 
@@ -286,13 +271,12 @@ export function resolveCameraAtTime(
   const rawCameraT = timeInSpan / spanDuration;
   const clampedCameraT = Math.min(1, Math.max(0, rawCameraT));
 
-  const isCameraMoving = rawCameraT < 1 && hasDelta;
   return {
     pitchTransform: interpolatePitchTransform(
       transformA,
       transformB,
       clampedCameraT,
     ),
-    isCameraMoving,
+    isCameraMoving: rawCameraT < 1 && hasDelta,
   };
 }

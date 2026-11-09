@@ -3,10 +3,14 @@ import {
   type AspectRatio,
   type BoundaryBox,
   BoundaryBoxSchema,
+  type DirectorCameraTrack,
+  DirectorCameraTrackSchema,
   type PitchAppearanceConfig,
   PitchAppearanceConfigSchema,
   type PitchTransform,
   PitchTransformSchema,
+  type ScreenBackgroundConfig,
+  ScreenBackgroundConfigSchema,
 } from '@/lib/types/tactical-unified';
 
 export const AspectRatioSchema = z.enum(['16:9', '4:5', '1:1', '9:16']);
@@ -60,6 +64,8 @@ export const TacticalExportSharePayloadSchema = z
     aspectRatio: AspectRatioSchema.optional(),
     boundaryBox: BoundaryBoxSchema.nullable().optional(),
     pitchTransform: PitchTransformSchema.nullable().optional(),
+    directorCamera: DirectorCameraTrackSchema.nullable().optional(),
+    screenBackground: ScreenBackgroundConfigSchema.nullable().optional(),
     pitchAppearance: PitchAppearanceConfigSchema.optional(),
   })
   .transform((data) => ({
@@ -77,6 +83,8 @@ export type TacticalExportSharePayload = z.infer<
   aspectRatio: AspectRatio;
   boundaryBox?: BoundaryBox | null;
   pitchTransform?: PitchTransform | null;
+  directorCamera?: DirectorCameraTrack | null;
+  screenBackground?: ScreenBackgroundConfig | null;
   pitchAppearance?: PitchAppearanceConfig;
 };
 

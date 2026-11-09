@@ -56,8 +56,7 @@ export function calculateBoundaryCrop(
 
   // Baseline Resolution Guarantee depending on selected scale preset:
   // scale >= 2.5 (2K / 1440p QHD): 2560x1440 for 16:9, 1440x2560 for 9:16
-  // scale >= 1.5 (1080p Full HD): 1920x1080 for 16:9, 1080x1920 for 9:16
-  // scale < 1.5 (720p HD): 1280x720 for 16:9, 720x1280 for 9:16
+  // Default / scale < 2.5 (1080p Full HD Lock): 1920x1080 for 16:9, 1080x1920 for 9:16
   const targetW = isCropped && cropW > 0 ? cropW : stageWidth;
   const targetH = isCropped && cropH > 0 ? cropH : stageHeight;
   const isSquare = targetW === targetH;
@@ -86,8 +85,8 @@ export function calculateBoundaryCrop(
       baseWidth = 2560;
       baseHeight = 1440;
     }
-  } else if (scale >= 1.5) {
-    // 1080p (Full HD - Recommended)
+  } else {
+    // 1080p (Full HD - Locked Default)
     if (isFourFive) {
       baseWidth = 1080;
       baseHeight = 1350;
@@ -103,24 +102,6 @@ export function calculateBoundaryCrop(
     } else {
       baseWidth = 1920;
       baseHeight = 1080;
-    }
-  } else {
-    // 720p (HD - Lightweight)
-    if (isFourFive) {
-      baseWidth = 720;
-      baseHeight = 900;
-    } else if (isVertical) {
-      baseWidth = 720;
-      baseHeight = 1280;
-    } else if (isSquare) {
-      baseWidth = 720;
-      baseHeight = 720;
-    } else if (isFourThree) {
-      baseWidth = 960;
-      baseHeight = 720;
-    } else {
-      baseWidth = 1280;
-      baseHeight = 720;
     }
   }
 

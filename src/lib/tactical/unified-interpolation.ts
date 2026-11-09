@@ -1,8 +1,4 @@
-/**
- * unified-interpolation.ts
- * Unified Tactical Canvas — Animation Interpolation & Zone Vertex Morphing Engine
- */
-
+// Unified Tactical Canvas — Animation Interpolation & Zone Vertex Morphing Engine
 import type { DirectorCameraTrack, Slide } from '@/lib/types/tactical-unified';
 import { applyEasing } from './easing';
 import {
@@ -23,6 +19,7 @@ import {
   hasActiveDirectorCameraTrack,
   type InterpolatedPitchTransformState,
   interpolatePitchTransform,
+  type ResolveSyntheticDirectorCameraOptions,
   resolveCameraAtTime,
   resolveEffectiveSlideSegments,
   resolveSyntheticDirectorCamera,
@@ -54,9 +51,7 @@ export interface InterpolatedUnifiedFrame {
   isPaused: boolean;
 }
 
-/**
- * 全スライドの総再生時間 (ms) を計算
- */
+/** 全スライドの総再生時間 (ms) を計算 */
 export function calculateUnifiedTotalDuration(slides: Slide[]): number {
   if (slides.length <= 1) return 0;
   const segments = resolveEffectiveSlideSegments(slides);
@@ -112,13 +107,27 @@ function syncArrowsWithPlayers(
   return synced;
 }
 
-/**
- * 指定時間 (timeMs) における全オブジェクトの補間フレーム状態を計算
- */
+function interpolateEntityMap<T extends { id: string }, R>(
+  listA: T[],
+  listB: T[],
+  interp: (a?: T, b?: T) => R | null,
+): Record<string, R> {
+  const mapA = new Map(listA.map((item) => [item.id, item]));
+  const mapB = new Map(listB.map((item) => [item.id, item]));
+  const result: Record<string, R> = {};
+  for (const id of new Set([...mapA.keys(), ...mapB.keys()])) {
+    const res = interp(mapA.get(id), mapB.get(id));
+    if (res) result[id] = res;
+  }
+  return result;
+}
+
+/** 指定時間 (timeMs) における全オブジェクトの補間フレーム状態を計算 */
 export function getInterpolatedUnifiedSlideFrame(
   slides: Slide[],
   timeMs: number,
   directorCamera?: DirectorCameraTrack | null,
+  directorCameraOptions?: ResolveSyntheticDirectorCameraOptions,
 ): InterpolatedUnifiedFrame {
   if (slides.length === 0) return EMPTY_FRAME;
 
@@ -139,7 +148,11 @@ export function getInterpolatedUnifiedSlideFrame(
     );
 
     const pitchTransform = hasActiveDirectorCameraTrack(directorCamera)
-      ? resolveSyntheticDirectorCamera(directorCamera, timeMs, 0)
+      ? resolveSyntheticDirectorCamera(
+          directorCamera,
+          timeMs,
+          directorCameraOptions,
+        )
       : interpolatePitchTransform(
           slide.pitchTransform,
           slide.pitchTransform,
@@ -188,7 +201,6 @@ export function getInterpolatedUnifiedSlideFrame(
   const slideA = slides[currentSlideIdx];
   const slideB = slides[nextSlideIdx];
   const segmentSlide = slideB ?? slides[0];
-
   const transitionDuration = Math.max(100, activeSegment.playerMoveMs);
 
   let rawT = elapsedInSegment / transitionDuration;
@@ -205,17 +217,15 @@ export function getInterpolatedUnifiedSlideFrame(
     timeMs,
     elapsedInSegment,
     directorCamera,
+    directorCameraOptions,
   );
 
   // 1. Players 補間 (ID / 背番号 / 名前マッチングによるスムーズモーフィング)
   const players: Record<string, InterpolatedPlayerState> = {};
   const matchedPairs = matchSlidePlayers(slideA.players, slideB.players);
-
   matchedPairs.forEach(({ key, playerA, playerB }) => {
     const interpolated = interpolatePlayer(playerA, playerB, ease);
-    if (interpolated) {
-      players[key] = interpolated;
-    }
+    if (interpolated) players[key] = interpolated;
   });
 
   // 2. Ball 補間
@@ -231,44 +241,20 @@ export function getInterpolatedUnifiedSlideFrame(
   );
 
   // 3. Zones 補間 (Vertex Morphing)
-  const zones: Record<string, InterpolatedZoneState> = {};
-  const zoneMapA = new Map(slideA.zones.map((z) => [z.id, z]));
-  const zoneMapB = new Map(slideB.zones.map((z) => [z.id, z]));
-  const allZoneIds = new Set([...zoneMapA.keys(), ...zoneMapB.keys()]);
-
-  allZoneIds.forEach((id) => {
-    const zA = zoneMapA.get(id);
-    const zB = zoneMapB.get(id);
-    const interpolated = interpolateZone(zA, zB, ease);
-    if (interpolated) zones[id] = interpolated;
-  });
+  const zones = interpolateEntityMap(slideA.zones, slideB.zones, (a, b) =>
+    interpolateZone(a, b, ease),
+  );
 
   // 4. Arrows 補間
-  const rawArrows: Record<string, InterpolatedArrowState> = {};
-  const arrowMapA = new Map(slideA.arrows.map((a) => [a.id, a]));
-  const arrowMapB = new Map(slideB.arrows.map((a) => [a.id, a]));
-  const allArrowIds = new Set([...arrowMapA.keys(), ...arrowMapB.keys()]);
-
-  allArrowIds.forEach((id) => {
-    const aA = arrowMapA.get(id);
-    const aB = arrowMapB.get(id);
-    const interpolated = interpolateArrow(aA, aB, ease);
-    if (interpolated) rawArrows[id] = interpolated;
-  });
+  const rawArrows = interpolateEntityMap(slideA.arrows, slideB.arrows, (a, b) =>
+    interpolateArrow(a, b, ease),
+  );
   const arrows = syncArrowsWithPlayers(rawArrows, players);
 
   // 5. Texts 補間
-  const texts: Record<string, InterpolatedTextState> = {};
-  const textMapA = new Map(slideA.texts.map((t) => [t.id, t]));
-  const textMapB = new Map(slideB.texts.map((t) => [t.id, t]));
-  const allTextIds = new Set([...textMapA.keys(), ...textMapB.keys()]);
-
-  allTextIds.forEach((id) => {
-    const tA = textMapA.get(id);
-    const tB = textMapB.get(id);
-    const interpolated = interpolateText(tA, tB, ease);
-    if (interpolated) texts[id] = interpolated;
-  });
+  const texts = interpolateEntityMap(slideA.texts, slideB.texts, (a, b) =>
+    interpolateText(a, b, ease),
+  );
 
   const totalDurationMs = calculateUnifiedTotalDuration(slides);
   const isPastTotal = totalDurationMs > 0 && timeMs >= totalDurationMs;

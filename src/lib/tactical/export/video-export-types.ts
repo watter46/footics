@@ -1,6 +1,8 @@
+import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/unified-interpolation';
 import type {
   AspectRatio,
   BoundaryBox,
+  DirectorCameraTrack,
   ExportProgress,
   PitchAppearanceConfig,
   PitchTransform,
@@ -34,6 +36,8 @@ export interface VideoExportOptions {
   fullCodecString?: string;
   marbleTexture?: CanvasImageSource | null;
   screenBackground?: ScreenBackgroundConfig;
+  directorCamera?: DirectorCameraTrack | null;
+  directorCameraOptions?: ResolveSyntheticDirectorCameraOptions;
   isWorkerContext?: boolean;
   onRenderFrame?: (timeMs: number) => Promise<void> | void;
   onCaptureFrame?: (cropInfo: BoundaryCropInfo) => HTMLCanvasElement | null;

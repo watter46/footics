@@ -156,7 +156,12 @@ export async function exportVideoWithMediabunny(
       const timestamp = frameIdx / fps;
 
       if (slides && slides.length > 0) {
-        const interpolated = getInterpolatedUnifiedSlideFrame(slides, timeMs);
+        const interpolated = getInterpolatedUnifiedSlideFrame(
+          slides,
+          timeMs,
+          options.directorCamera,
+          options.directorCameraOptions,
+        );
         const shouldSkipRender =
           frameIdx > 0 &&
           interpolated.isPaused &&
@@ -168,6 +173,8 @@ export async function exportVideoWithMediabunny(
             timeMs,
             width: exportWidth,
             height: exportHeight,
+            baseWidth: options.stageWidth,
+            baseHeight: options.stageHeight,
             aspectRatio,
             boundaryBox,
             transparent,
@@ -176,6 +183,8 @@ export async function exportVideoWithMediabunny(
             pitchAppearance: options.pitchAppearance,
             marbleTexture: options.marbleTexture,
             screenBackground: options.screenBackground,
+            directorCamera: options.directorCamera,
+            directorCameraOptions: options.directorCameraOptions,
             precomputedFrame: interpolated,
             teamVisibility: options.teamVisibility,
           });

@@ -13,15 +13,18 @@
 import type {
   AspectRatio,
   BoundaryBox,
+  DirectorCameraTrack,
   ExportProgress,
   PitchAppearanceConfig,
   PitchTransform,
+  ScreenBackgroundConfig,
   Slide,
 } from '@/lib/types/tactical-unified';
 import { PITCH_BOUNDARY_CONFIGS } from '../pitch-geometry';
 import {
   calculateUnifiedTotalDuration,
   matchSlidePlayers,
+  type ResolveSyntheticDirectorCameraOptions,
 } from '../unified-interpolation';
 import {
   preloadMarbleTextureBitmap,
@@ -58,6 +61,9 @@ export interface MultiSlideVideoExportOptions {
   mvpMatrix?: Float32Array | null;
   playerPhotos?: Record<string, CanvasImageSource | null | undefined>;
   photos?: Record<string, string>;
+  directorCamera?: DirectorCameraTrack | null;
+  directorCameraOptions?: ResolveSyntheticDirectorCameraOptions;
+  screenBackground?: ScreenBackgroundConfig;
   onProgress?: (progress: ExportProgress) => void;
   checkCancelled?: () => boolean;
 }
@@ -143,6 +149,9 @@ export async function exportMultiSlideMp4Video(
       mvpMatrix: options.mvpMatrix,
       playerPhotos: loadedPhotos,
       marbleTexture,
+      screenBackground: options.screenBackground,
+      directorCamera: options.directorCamera,
+      directorCameraOptions: options.directorCameraOptions,
       stageWidth,
       stageHeight,
       slides: effectiveSlides,
@@ -225,6 +234,9 @@ export async function exportMultiSlideWebmVideo(
       mvpMatrix: options.mvpMatrix,
       playerPhotos: loadedPhotos,
       marbleTexture,
+      screenBackground: options.screenBackground,
+      directorCamera: options.directorCamera,
+      directorCameraOptions: options.directorCameraOptions,
       stageWidth,
       stageHeight,
       slides: effectiveSlides,

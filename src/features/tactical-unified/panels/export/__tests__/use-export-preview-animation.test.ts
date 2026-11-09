@@ -263,15 +263,15 @@ describe('useExportPreviewAnimation', () => {
       }),
     );
 
-    expect(result.current.previewWidth).toBe(864);
-    expect(result.current.previewHeight).toBe(1080);
-    expect(result.current.previewAspectStyle).toBe('864 / 1080');
+    expect(result.current.previewWidth).toBe(1080);
+    expect(result.current.previewHeight).toBe(1352);
+    expect(result.current.previewAspectStyle).toBe('1080 / 1352');
     expect(
       result.current.previewWidth / result.current.previewHeight,
     ).toBeCloseTo(4 / 5, 2);
   });
 
-  it('correctly calculates preview dimensions 864x1080 when slide project aspectRatio is 4:5 with 4:5 boundary preset', () => {
+  it('correctly calculates preview dimensions 1080x1352 when slide project aspectRatio is 4:5 with 4:5 boundary preset', () => {
     const boundaryBox = createXBoundaryBox('4:5', '16:9');
 
     const { result } = renderHook(() =>
@@ -286,9 +286,9 @@ describe('useExportPreviewAnimation', () => {
       }),
     );
 
-    expect(result.current.previewWidth).toBe(864);
-    expect(result.current.previewHeight).toBe(1080);
-    expect(result.current.previewAspectStyle).toBe('864 / 1080');
+    expect(result.current.previewWidth).toBe(1080);
+    expect(result.current.previewHeight).toBe(1352);
+    expect(result.current.previewAspectStyle).toBe('1080 / 1352');
     expect(
       result.current.previewWidth / result.current.previewHeight,
     ).toBeCloseTo(4 / 5, 2);
@@ -368,5 +368,49 @@ describe('useExportPreviewAnimation', () => {
     rerender();
 
     expect(seekSpy).toHaveBeenCalledWith(200);
+  });
+
+  it('renders initial frame with directorCamera and screenBackground passed via props without store provider', () => {
+    const directorCamera = {
+      enabled: true,
+      globalKeyframes: [
+        {
+          id: 'k1',
+          timeMs: 0,
+          tilt: 25,
+          yaw: 15,
+          zoom: 1.1,
+          panX: 0,
+          panY: 0,
+        },
+      ],
+      actionCues: [],
+    };
+    const screenBackground = {
+      type: 'cinematic' as const,
+      color: '#1a1a2e',
+    };
+
+    renderHook(() =>
+      useExportPreviewAnimation({
+        slides: [mockSlide1],
+        aspectRatio: '16:9',
+        directorCamera,
+        screenBackground,
+        teamVisibility: 'home',
+        externalIsPlaying: false,
+        canvasRef,
+        timeLabelRef,
+        sliderRef,
+      }),
+    );
+
+    const calls = vi.mocked(frameRendererModule.renderTacticalFrameToCanvas)
+      .mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    const lastCall = calls[calls.length - 1];
+    expect(lastCall[1].directorCamera).toEqual(directorCamera);
+    expect(lastCall[1].screenBackground).toEqual(screenBackground);
+    expect(lastCall[1].teamVisibility).toBe('home');
   });
 });

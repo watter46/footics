@@ -59,7 +59,10 @@ export function useExportPreviewAnimation({
   const currentTimeMsRef = useRef<number>(0);
 
   const seekTo = useTacticalUnifiedStoreContext((s) => s.seekTo);
-  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
+  const rawWorkspaceMode = useTacticalUnifiedStoreContext(
+    (s) => s.workspaceMode,
+  );
+  const workspaceMode = rawWorkspaceMode ?? 'normal';
   const storeTeamVisibility = useTacticalUnifiedStoreContext(
     (s) => s.teamVisibility,
   );
@@ -197,7 +200,7 @@ export function useExportPreviewAnimation({
         if (Math.abs(timeMs - lastSeekNoticeTimeRef.current) >= 60) {
           lastSeekNoticeTimeRef.current = timeMs;
           isInternalSeekRef.current = true;
-          seekToRef.current(timeMs);
+          seekToRef.current?.(timeMs);
         }
       }
     },
@@ -270,7 +273,7 @@ export function useExportPreviewAnimation({
       workspaceModeRef.current === 'director'
     ) {
       isInternalSeekRef.current = true;
-      seekToRef.current(currentTimeMsRef.current);
+      seekToRef.current?.(currentTimeMsRef.current);
     }
     prevPlayingRef.current = effectiveIsPlaying;
   }, [effectiveIsPlaying]);

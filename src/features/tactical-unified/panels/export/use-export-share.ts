@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import {
+  selectActivePhase,
   selectActivePhaseSlides,
   selectActiveSlide,
 } from '@/features/tactical-unified/stores/tactical-unified-selectors';
@@ -33,18 +34,24 @@ export function useExportShare({ onError }: ShareOptions) {
     try {
       const state = storeApi.getState();
       const { project } = state;
+      const activePhase = selectActivePhase(state);
       const activeSlide = selectActiveSlide(state);
       const currentSlides = selectActivePhaseSlides(state);
       const photos = await packPlayerPhotos(currentSlides);
 
+      const effectiveAspectRatio =
+        activePhase?.aspectRatio ?? project.aspectRatio ?? '16:9';
       const payload = {
         version: 1,
         createdAt: Date.now(),
         title: project.title || 'Untitled',
-        orientation: project.aspectRatio === '9:16' ? 'vertical' : 'horizontal',
-        aspectRatio: project.aspectRatio,
-        boundaryBox: activeSlide?.boundaryBox,
-        pitchTransform: activeSlide?.pitchTransform,
+        orientation:
+          effectiveAspectRatio === '9:16' ? 'vertical' : 'horizontal',
+        aspectRatio: effectiveAspectRatio,
+        boundaryBox: activePhase?.boundaryBox ?? null,
+        pitchTransform: activeSlide?.pitchTransform ?? null,
+        directorCamera: activePhase?.directorCamera ?? null,
+        screenBackground: project.screenBackground ?? null,
         pitchAppearance: project.pitchAppearance,
         teamVisibility: 'both',
         exportFps: 60,

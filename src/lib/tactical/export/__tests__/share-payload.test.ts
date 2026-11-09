@@ -106,6 +106,53 @@ describe('src/lib/tactical/export/share-payload', () => {
     }
   });
 
+  it('validates and preserves directorCamera and screenBackground', () => {
+    const validData = {
+      version: 1,
+      createdAt: Date.now(),
+      title: 'Director Camera & Screen Background',
+      orientation: 'horizontal' as const,
+      aspectRatio: '4:5' as const,
+      boundaryBox: {
+        enabled: true,
+        x: 5,
+        y: 5,
+        width: 90,
+        height: 90,
+      },
+      directorCamera: {
+        enabled: true,
+        globalKeyframes: [
+          {
+            id: 'k1',
+            timeMs: 0,
+            tilt: 25,
+            yaw: 10,
+          },
+        ],
+        actionCues: [],
+      },
+      screenBackground: {
+        type: 'cinematic',
+      },
+      scenes: [
+        {
+          id: 'scene-1',
+          players: {},
+        },
+      ],
+      photos: {},
+    };
+
+    const result = TacticalExportSharePayloadSchema.safeParse(validData);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.aspectRatio).toBe('4:5');
+      expect(result.data.directorCamera?.globalKeyframes?.[0]?.tilt).toBe(25);
+      expect(result.data.screenBackground?.type).toBe('cinematic');
+    }
+  });
+
   it('converts Blob to base64 data URL', async () => {
     const blob = new Blob(['hello world'], { type: 'text/plain' });
     const base64 = await blobToBase64(blob);

@@ -135,7 +135,7 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
       const blob = await exportMultiSlideMp4Video({
         slides,
         fps: activePreset.fps,
-        scale: 1,
+        scale: 2,
         quality: 'high',
         bitrate: activePreset.bitrateMbps * 1_000_000,
         h264Profile: 'high',
@@ -145,6 +145,8 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
         transparent: false,
         boundaryBox: shareData?.boundaryBox ?? null,
         pitchTransform: effectivePitchTransform,
+        directorCamera: shareData?.directorCamera ?? null,
+        screenBackground: shareData?.screenBackground ?? undefined,
         pitchAppearance: shareData?.pitchAppearance,
         mvpMatrix,
         stageWidth,
