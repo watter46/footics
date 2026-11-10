@@ -4,6 +4,7 @@ import { renderArrows } from '@/lib/tactical/export/renderers/arrow-renderer';
 import type { FrameRenderContext } from '@/lib/tactical/export/renderers/renderer-context';
 import { interpolateArrow } from '@/lib/tactical/interpolation-annotation';
 import {
+  batchDrawLayers,
   updateArrowNodes,
   updateBallNode,
   updatePlayerNodes,
@@ -1072,6 +1073,204 @@ describe('animation-node-updater', () => {
       for (const ring of existingRings) {
         expect(ring.visible()).toBe(false);
       }
+    });
+  });
+
+  describe('batchDrawLayers asynchronous draw', () => {
+    it('does not call stage.batchDraw when synchronous is false', () => {
+      const registry = createCanvasNodesRegistry();
+      const mockStageBatchDraw = vi.fn();
+      const mockPlayerBatchDraw = vi.fn();
+      const mockBallBatchDraw = vi.fn();
+      const mockAnnotationBatchDraw = vi.fn();
+
+      registry.stage = { batchDraw: mockStageBatchDraw } as any;
+      registry.playerLayer = { batchDraw: mockPlayerBatchDraw } as any;
+      registry.ballLayer = { batchDraw: mockBallBatchDraw } as any;
+      registry.annotationLayer = { batchDraw: mockAnnotationBatchDraw } as any;
+
+      batchDrawLayers(registry, false);
+
+      expect(mockPlayerBatchDraw).toHaveBeenCalledTimes(1);
+      expect(mockBallBatchDraw).toHaveBeenCalledTimes(1);
+      expect(mockAnnotationBatchDraw).toHaveBeenCalledTimes(1);
+      expect(mockStageBatchDraw).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateArrowNodes boundary offsets, progress <= 0, and handle restoration', () => {
+    it('sets visible to false on node and endDotNode when progress <= 0', () => {
+      const registry = createCanvasNodesRegistry();
+      const mockVisible = vi.fn();
+      const mockEndDotVisible = vi.fn();
+      const mockArrowNode = {
+        visible: mockVisible,
+        points: vi.fn(),
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        strokeWidth: vi.fn(),
+        opacity: vi.fn(),
+        pointerLength: vi.fn(),
+        pointerWidth: vi.fn(),
+      } as any;
+      const mockEndDotNode = {
+        visible: mockEndDotVisible,
+        position: vi.fn(),
+        opacity: vi.fn(),
+      } as any;
+
+      registry.arrowNodes.set('grow-zero', {
+        node: mockArrowNode,
+        endDotNode: mockEndDotNode,
+      });
+
+      updateArrowNodes(
+        {
+          'grow-zero': {
+            id: 'grow-zero',
+            arrowType: 'pass',
+            points: [
+              { x: 10, y: 10 },
+              { x: 30, y: 10 },
+            ],
+            curveType: 'straight',
+            color: '#38bdf8',
+            strokeWidth: 3,
+            opacity: 1,
+            visible: true,
+            progress: 0,
+          } as any,
+        },
+        registry,
+        1000,
+        500,
+      );
+
+      expect(mockVisible).toHaveBeenCalledWith(false);
+      expect(mockEndDotVisible).toHaveBeenCalledWith(false);
+    });
+
+    it('offsets arrow start point by marker boundary when connected to player', () => {
+      const registry = createCanvasNodesRegistry();
+      const mockPoints = vi.fn();
+      const mockArrowNode = {
+        points: mockPoints,
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        strokeWidth: vi.fn(),
+        opacity: vi.fn(),
+        visible: vi.fn(),
+        pointerLength: vi.fn(),
+        pointerWidth: vi.fn(),
+      } as any;
+
+      registry.arrowNodes.set('attached-arrow', {
+        node: mockArrowNode,
+      });
+
+      const players = {
+        p1: {
+          id: 'p1',
+          x: 10,
+          y: 60, // on 1000x500 canvas -> center is (100, 300)
+          opacity: 1,
+          visible: true,
+          style: {
+            color: '#38bdf8',
+            markerType: 'ring',
+            sizeScale: 1,
+          },
+        } as any,
+      };
+
+      updateArrowNodes(
+        {
+          'attached-arrow': {
+            id: 'attached-arrow',
+            arrowType: 'pass',
+            sourcePlayerId: 'p1',
+            points: [
+              { x: 10, y: 60 },
+              { x: 30, y: 60 }, // target at (300, 300)
+            ],
+            curveType: 'straight',
+            color: '#38bdf8',
+            strokeWidth: 3,
+            opacity: 1,
+            visible: true,
+          } as any,
+        },
+        registry,
+        1000,
+        500,
+        0,
+        0,
+        players,
+        true,
+      );
+
+      expect(mockPoints).toHaveBeenCalledTimes(1);
+      const points = mockPoints.mock.calls[0][0];
+      // Start X should be offset from player center 100 by marker radius (~18.4px)
+      expect(points[0]).toBeGreaterThan(115);
+      expect(points[1]).toBeCloseTo(300);
+    });
+
+    it('syncs startHandleNode, endHandleNode, and controlHandleNode positions when isPlaying is false', () => {
+      const registry = createCanvasNodesRegistry();
+      const mockStartHandlePos = vi.fn();
+      const mockEndHandlePos = vi.fn();
+      const mockControlHandlePos = vi.fn();
+
+      const mockArrowNode = {
+        points: vi.fn(),
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        strokeWidth: vi.fn(),
+        opacity: vi.fn(),
+        visible: vi.fn(),
+        pointerLength: vi.fn(),
+        pointerWidth: vi.fn(),
+      } as any;
+
+      registry.arrowNodes.set('curved-sync', {
+        node: mockArrowNode,
+        startHandleNode: { position: mockStartHandlePos } as any,
+        endHandleNode: { position: mockEndHandlePos } as any,
+        controlHandleNode: { position: mockControlHandlePos } as any,
+      });
+
+      // sPx: (100, 200), ePx: (300, 200), cpPx: (200, 100) on 1000x500 canvas
+      updateArrowNodes(
+        {
+          'curved-sync': {
+            id: 'curved-sync',
+            arrowType: 'pass',
+            points: [
+              { x: 10, y: 40 },
+              { x: 30, y: 40 },
+            ],
+            controlPoint: { x: 20, y: 20 },
+            curveType: 'curved',
+            color: '#38bdf8',
+            strokeWidth: 3,
+            opacity: 1,
+            visible: true,
+          } as any,
+        },
+        registry,
+        1000,
+        500,
+        0,
+        0,
+        undefined,
+        false, // isPlaying = false
+      );
+
+      expect(mockStartHandlePos).toHaveBeenCalledWith({ x: 100, y: 200 });
+      expect(mockEndHandlePos).toHaveBeenCalledWith({ x: 300, y: 200 });
+      // midHandle: (100 + 300) / 4 + 200 / 2 = 100 + 100 = 200, y: (200 + 200) / 4 + 100 / 2 = 100 + 50 = 150
+      expect(mockControlHandlePos).toHaveBeenCalledWith({ x: 200, y: 150 });
     });
   });
 });

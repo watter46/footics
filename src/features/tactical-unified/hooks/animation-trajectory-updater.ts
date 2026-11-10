@@ -5,6 +5,11 @@
 import Konva from 'konva';
 import type { InterpolatedPlayerState } from '@/lib/tactical/unified-interpolation';
 
+const trajectoryNodesCache = new WeakMap<
+  Konva.Group,
+  { startMarker: Konva.Circle; line: Konva.Line }
+>();
+
 export function updatePlayerTrajectory(
   playerGroup: Konva.Group,
   pState: InterpolatedPlayerState,
@@ -19,15 +24,24 @@ export function updatePlayerTrajectory(
   }
 
   const trajectoryEffect = pState.trajectoryEffect;
-  const startMarker =
-    typeof playerGroup.findOne === 'function'
-      ? playerGroup.findOne<Konva.Circle>('.trajectory-start-marker')
-      : (playerGroup.find<Konva.Circle>('.trajectory-start-marker')?.[0] ??
-        null);
-  const line =
-    typeof playerGroup.findOne === 'function'
-      ? playerGroup.findOne<Konva.Line>('.trajectory-line')
-      : (playerGroup.find<Konva.Line>('.trajectory-line')?.[0] ?? null);
+  const cached = trajectoryNodesCache.get(playerGroup);
+  let startMarker = cached?.startMarker ?? null;
+  let line = cached?.line ?? null;
+
+  if (!startMarker || !line) {
+    startMarker =
+      startMarker ??
+      (typeof playerGroup.findOne === 'function'
+        ? (playerGroup.findOne<Konva.Circle>('.trajectory-start-marker') ??
+          null)
+        : (playerGroup.find<Konva.Circle>('.trajectory-start-marker')?.[0] ??
+          null));
+    line =
+      line ??
+      (typeof playerGroup.findOne === 'function'
+        ? (playerGroup.findOne<Konva.Line>('.trajectory-line') ?? null)
+        : (playerGroup.find<Konva.Line>('.trajectory-line')?.[0] ?? null));
+  }
 
   if (!isPlaying || !trajectoryEffect?.enabled || !pState.startPos) {
     if (startMarker && typeof startMarker.visible === 'function') {
@@ -35,6 +49,9 @@ export function updatePlayerTrajectory(
     }
     if (line && typeof line.visible === 'function') {
       line.visible(false);
+    }
+    if (startMarker && line) {
+      trajectoryNodesCache.set(playerGroup, { startMarker, line });
     }
     return;
   }
@@ -121,4 +138,11 @@ export function updatePlayerTrajectory(
   lineNode.dash(isDashed ? [6, 4] : []);
   lineNode.opacity(0.8 * pState.opacity);
   lineNode.visible(pState.visible);
+
+  if (markerNode && lineNode) {
+    trajectoryNodesCache.set(playerGroup, {
+      startMarker: markerNode,
+      line: lineNode,
+    });
+  }
 }

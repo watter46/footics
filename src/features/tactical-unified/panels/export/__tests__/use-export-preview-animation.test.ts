@@ -55,6 +55,12 @@ describe('useExportPreviewAnimation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    useTacticalUnifiedStore.getState().resetProject();
+    useTacticalUnifiedStore.setState({
+      playbackSeekTimeMs: null,
+      playbackSeekId: 0,
+      workspaceMode: 'board',
+    });
     mockContext = {
       save: vi.fn(),
       restore: vi.fn(),
@@ -412,5 +418,76 @@ describe('useExportPreviewAnimation', () => {
     expect(lastCall[1].directorCamera).toEqual(directorCamera);
     expect(lastCall[1].screenBackground).toEqual(screenBackground);
     expect(lastCall[1].teamVisibility).toBe('home');
+  });
+
+  it('runs requestAnimationFrame idle effect loop when paused with active frame effects and cancels on unmount', () => {
+    let rafCallback: FrameRequestCallback | null = null;
+    const rafSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((cb) => {
+        rafCallback = cb;
+        return 12345;
+      });
+    const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame');
+
+    const slideWithEffect: Slide = {
+      ...mockSlide1,
+      arrows: [
+        {
+          id: 'a1',
+          annotationType: 'arrow',
+          arrowType: 'pass',
+          curveType: 'straight',
+          points: [
+            { x: 10, y: 10 },
+            { x: 50, y: 50 },
+          ],
+          color: '#ffffff',
+          strokeWidth: 3,
+          dashArray: [],
+          arrowHead: true,
+          effect: {
+            type: 'grow',
+            duration: 0.8,
+            delay: 0,
+            holdDuration: 1,
+            exitAction: 'keep',
+            fadeDuration: 0.3,
+            easing: 'linear',
+          },
+        },
+      ],
+    };
+
+    const { unmount } = renderHook(() =>
+      useExportPreviewAnimation({
+        slides: [slideWithEffect],
+        aspectRatio: '16:9',
+        externalIsPlaying: false,
+        canvasRef,
+        timeLabelRef,
+        sliderRef,
+      }),
+    );
+
+    expect(rafSpy).toHaveBeenCalled();
+    expect(rafCallback).not.toBeNull();
+
+    // 1 tick of rAF
+    act(() => {
+      rafCallback?.(1500);
+    });
+
+    const calls = vi.mocked(frameRendererModule.renderTacticalFrameToCanvas)
+      .mock.calls;
+    const lastCall = calls[calls.length - 1];
+    expect(lastCall[1].timeMs).toBe(0);
+    expect(lastCall[1].effectTimeMs).toBeDefined();
+
+    unmount();
+    expect(cancelSpy).toHaveBeenCalledWith(12345);
+
+    rafSpy.mockRestore();
+    cancelSpy.mockRestore();
   });
 });

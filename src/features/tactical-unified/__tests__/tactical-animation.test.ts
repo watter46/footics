@@ -250,7 +250,7 @@ describe('useTacticalAnimation hook', () => {
     expect(registry.playerLayer?.batchDraw).not.toHaveBeenCalled();
   });
 
-  it('calls stage.batchDraw() and layer batchDraw() when synchronous is false', () => {
+  it('calls layer batchDraw() and not stage.batchDraw() when synchronous is false', () => {
     const registry = createCanvasNodesRegistry();
     registry.playerLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
     registry.ballLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
@@ -269,7 +269,7 @@ describe('useTacticalAnimation hook', () => {
     expect(registry.playerLayer?.batchDraw).toHaveBeenCalled();
     expect(registry.ballLayer?.batchDraw).toHaveBeenCalled();
     expect(registry.annotationLayer?.batchDraw).toHaveBeenCalled();
-    expect(registry.stage?.batchDraw).toHaveBeenCalled();
+    expect(registry.stage?.batchDraw).not.toHaveBeenCalled();
   });
 
   it('resets to 0ms and activates first slide when playing from end or initial state (Option B)', () => {
@@ -491,5 +491,37 @@ describe('useTacticalAnimation hook', () => {
     });
 
     expect(mockOpacity).toHaveBeenCalledWith(1.0);
+  });
+
+  it('single slide playback: totalDurationMs is resolved and playAnimation starts timeline', () => {
+    const project = createDefaultProject('single-slide-proj');
+    const singleSlide = createDefaultSlide(0, 'slide-single');
+    singleSlide.transitionDurationMs = 2000;
+    singleSlide.pauseMs = 1000;
+    project.phases = [
+      {
+        id: 'phase-single',
+        name: 'Single',
+        slides: [singleSlide],
+      },
+    ];
+    project.activePhaseId = 'phase-single';
+    project.activeSlideId = 'slide-single';
+    useTacticalUnifiedStore.getState().loadProject(project);
+
+    const registry = createCanvasNodesRegistry();
+    const registryRef = { current: registry };
+    const { result } = renderHook(() =>
+      useTacticalAnimation({ nodesRegistryRef: registryRef }),
+    );
+
+    // duration: 2s + pauseDuration: 1s => 3000ms
+    expect(result.current.totalDurationMs).toBe(3000);
+
+    act(() => {
+      result.current.playAnimation();
+    });
+
+    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
   });
 });

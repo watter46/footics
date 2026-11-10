@@ -46,6 +46,9 @@ export function getWavyPoints(
   const points: number[] = [];
 
   for (let i = 0; i <= steps; i++) {
+    if (i === steps && dist > 1) {
+      points.push(endX - ux * 0.5, endY - uy * 0.5);
+    }
     const t = i / steps;
     const baseDist = t * dist;
     const bx = startX + ux * baseDist;

@@ -71,6 +71,7 @@ export const SceneCanvasThumbnail = memo(function SceneCanvasThumbnail({
       aspectRatio,
       boundaryBox: slide.boundaryBox,
       pitchAppearance,
+      applyEffects: false,
     });
     ctx.restore();
   }, [slide, dims.width, dims.height, aspectRatio, pitchAppearance]);

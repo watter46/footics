@@ -2458,5 +2458,120 @@ describe('Tactical Frame Renderer', () => {
 
       expect(rippleRingCalls.length).toBeGreaterThan(0);
     });
+
+    it('computeFrameEffects handles applyEffects: false and effectTimeOverrideMs correctly', () => {
+      const slideWithArrowEffect: Slide = SlideSchema.parse({
+        id: 'slide-effect-arrow',
+        index: 0,
+        transitionDurationMs: 2000,
+        pauseMs: 0,
+        players: [],
+        zones: [
+          {
+            id: 'z-pulse',
+            annotationType: 'zone',
+            zoneType: 'space',
+            shapeType: 'rect',
+            x: 10,
+            y: 10,
+            width: 20,
+            height: 20,
+            color: '#22c55e',
+            opacity: 0.5,
+            strokeColor: '#16a34a',
+            strokeWidth: 2,
+            effect: {
+              type: 'pulse',
+              speed: 1,
+              minOpacity: 0.2,
+              maxOpacity: 0.8,
+            },
+          },
+        ],
+        arrows: [
+          {
+            id: 'a-grow',
+            annotationType: 'arrow',
+            arrowType: 'move',
+            curveType: 'straight',
+            points: [
+              { x: 10, y: 10 },
+              { x: 30, y: 30 },
+            ],
+            color: '#38bdf8',
+            strokeWidth: 3,
+            effect: {
+              type: 'grow',
+              duration: 0.8,
+              delay: 0.5,
+            },
+          },
+        ],
+        texts: [],
+      });
+
+      const initialArrow: InterpolatedArrowState = {
+        id: 'a-grow',
+        arrowType: 'move',
+        curveType: 'straight',
+        points: [
+          { x: 10, y: 10 },
+          { x: 30, y: 30 },
+        ],
+        color: '#38bdf8',
+        strokeWidth: 3,
+        opacity: 1,
+        visible: true,
+      };
+
+      const initialZone = {
+        id: 'z-pulse',
+        name: 'Zone',
+        points: [
+          { x: 10, y: 10 },
+          { x: 30, y: 10 },
+          { x: 30, y: 30 },
+          { x: 10, y: 30 },
+        ],
+        color: '#22c55e',
+        strokeColor: '#16a34a',
+        strokeWidth: 2,
+        opacity: 0.5,
+        visible: true,
+      };
+
+      // 1. applyEffects: false -> progress: 1, visible: true
+      const resNoEffect = tacticalFrameRenderer.computeFrameEffects(
+        [slideWithArrowEffect],
+        0,
+        { 'a-grow': initialArrow },
+        {},
+        0,
+        1000,
+        { applyEffects: false, zones: { 'z-pulse': initialZone as any } },
+      );
+      expect(resNoEffect.effectArrows['a-grow'].progress).toBe(1);
+      expect(resNoEffect.effectArrows['a-grow'].visible).toBe(true);
+      expect(resNoEffect.effectZones['z-pulse'].effect).toBeUndefined();
+
+      // 2. effectTimeOverrideMs: 900 (delay 500ms + 400ms passed -> progress ~ 0.5)
+      const resOverride = tacticalFrameRenderer.computeFrameEffects(
+        [slideWithArrowEffect],
+        0,
+        { 'a-grow': initialArrow },
+        {},
+        0,
+        1000,
+        {
+          applyEffects: true,
+          effectTimeOverrideMs: 900,
+          zones: { 'z-pulse': initialZone as any },
+        },
+      );
+      expect(resOverride.effectArrows['a-grow'].visible).toBe(true);
+      expect(resOverride.effectArrows['a-grow'].progress).toBeGreaterThan(0.4);
+      expect(resOverride.effectArrows['a-grow'].progress).toBeLessThan(0.9);
+      expect(resOverride.effectZones['z-pulse'].opacity).not.toBe(0.5);
+    });
   });
 });

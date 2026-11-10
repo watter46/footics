@@ -100,6 +100,7 @@ export function TopBar({
               screenBackground: snapshot.screenBackground,
               teamVisibility: snapshot.teamVisibility,
               playerPhotos,
+              applyEffects: false,
             });
 
             await new Promise<void>((resolve, reject) => {

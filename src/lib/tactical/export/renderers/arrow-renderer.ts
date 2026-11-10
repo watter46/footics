@@ -31,7 +31,8 @@ export function renderArrows(
   const { ctx, w, projectObjToScreen, snap } = context;
 
   Object.values(arrows).forEach((a) => {
-    if (!a.visible || a.points.length < 2) return;
+    if (!a.visible || a.opacity <= 0 || a.points.length < 2) return;
+    if (a.progress !== undefined && a.progress <= 0) return;
     ctx.save();
     const arrowColor = a.color || '#38bdf8';
     ctx.strokeStyle = arrowColor;

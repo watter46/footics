@@ -59,6 +59,25 @@ describe('effect-geometry', () => {
         opacity: 0.0,
       });
 
+      // t = 0 with delay = 0: invisible at 0ms so arrowhead doesn't pop up
+      expect(
+        computeArrowEffectState(0, { type: 'grow', duration: 0.8, delay: 0 }),
+      ).toEqual({
+        progress: 0,
+        opacity: 1,
+        visible: false,
+        dashOffset: 0,
+      });
+
+      // During delay waiting (t = 100ms, delay = 0.3s)
+      const waiting = computeArrowEffectState(100, {
+        type: 'grow',
+        duration: 0.8,
+        delay: 0.3,
+      });
+      expect(waiting.progress).toBe(0);
+      expect(waiting.visible).toBe(false);
+
       // Midpoint of grow (t = 900ms: 400ms into 800ms duration)
       const midGrow = computeArrowEffectState(900, config);
       expect(midGrow.visible).toBe(true);
@@ -164,8 +183,22 @@ describe('effect-geometry', () => {
 
       expect(result.trimmedPoints).toHaveLength(2);
       expect(result.trimmedPoints[0]).toEqual({ x: 10, y: 20 });
-      expect(result.trimmedPoints[1]).toEqual({ x: 10, y: 20 });
+      expect(result.trimmedPoints[1].x).toBeCloseTo(10, 2);
+      expect(result.trimmedPoints[1].y).toBeCloseTo(20, 2);
       expect(result.tipAngle).toBeCloseTo(Math.atan2(40, 40), 4);
+    });
+
+    it('preserves start point p0 and inserts guide point for wavy arrow trimming at small progress', () => {
+      const pts = [
+        { x: 0, y: 0 },
+        { x: 10, y: 5 },
+        { x: 20, y: -5 },
+        { x: 30, y: 0 },
+      ];
+      const res = trimRenderPoints(pts, 0.05, true);
+      expect(res.trimmedPoints[0]).toEqual({ x: 0, y: 0 });
+      expect(res.trimmedPoints.length).toBeGreaterThanOrEqual(3);
+      expect(res.tipAngle).toBeCloseTo(0, 3);
     });
 
     it('handles progress >= 1.0 by returning all points and last segment angle', () => {

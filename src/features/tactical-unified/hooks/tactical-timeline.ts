@@ -3,7 +3,7 @@
 import gsap from 'gsap';
 import { useMemo, useRef } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
-import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
+import { resolvePlaybackDurationMs } from '@/lib/tactical/unified-interpolation';
 import type { Slide } from '@/lib/types/tactical-unified';
 
 export interface AnimationPlaybackRefs {
@@ -32,7 +32,7 @@ export function createTacticalTimeline(
   onUpdate: (timeMs: number) => void,
   options?: TacticalTimelineOptions,
 ): gsap.core.Timeline {
-  const totalDurationMs = calculateUnifiedTotalDuration(slides);
+  const totalDurationMs = resolvePlaybackDurationMs(slides);
   const totalDurationSec = totalDurationMs / 1000;
 
   const tl = gsap.timeline({
@@ -41,7 +41,7 @@ export function createTacticalTimeline(
     onComplete: options?.onComplete,
   });
 
-  if (totalDurationSec <= 0) {
+  if (slides.length === 0 || totalDurationMs <= 0) {
     return tl;
   }
 

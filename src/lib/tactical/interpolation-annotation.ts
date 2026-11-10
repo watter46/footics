@@ -1,5 +1,6 @@
 import type {
   ArrowAnnotation,
+  ArrowEffectConfig,
   NormalizedPoint,
   TextAnnotation,
   ZoneAnnotation,
@@ -50,6 +51,7 @@ export interface InterpolatedArrowState {
   arrowHead?: boolean;
   progress?: number;
   tipAngle?: number;
+  effect?: ArrowEffectConfig;
 }
 
 export interface InterpolatedTextState {
@@ -73,24 +75,21 @@ export function interpolateZone(
   endZone: ZoneAnnotation | undefined,
   ease: number,
 ): InterpolatedZoneState | null {
-  if (!startZone && !endZone) return null;
-
-  const singleZone = startZone ?? endZone;
   if (!startZone || !endZone) {
-    if (!singleZone) return null;
+    const s = startZone ?? endZone;
+    if (!s) return null;
     return {
-      ...singleZone,
-      id: singleZone.id,
-      shapeType: singleZone.shapeType || 'rect',
-      points: singleZone.points || [],
-      color: singleZone.color || '#f59e0b',
-      strokeWidth: singleZone.strokeWidth ?? 3,
-      strokeOpacity: singleZone.strokeOpacity ?? 1,
+      ...s,
+      shapeType: s.shapeType || 'rect',
+      points: s.points || [],
+      color: s.color || '#f59e0b',
+      strokeWidth: s.strokeWidth ?? 3,
+      strokeOpacity: s.strokeOpacity ?? 1,
       opacity:
-        (singleZone.opacity ?? 0.25) *
+        (s.opacity ?? 0.25) *
         (startZone ? Math.max(0, 1 - ease) : Math.min(1, ease)),
       visible: startZone ? ease < 1 : true,
-      effect: singleZone.effect,
+      effect: s.effect,
     };
   }
   const zA = startZone;
@@ -114,6 +113,7 @@ export function interpolateZone(
     zB.strokeOpacity ?? 1,
     ease,
   );
+  const effect = (ease < 1 ? zA.effect : zB.effect) ?? zB.effect ?? zA.effect;
 
   // 1. Polygon ⇄ Polygon または Polygon ⇄ Rect モーフィング
   if (shapeA === 'polygon' || shapeB === 'polygon') {
@@ -140,7 +140,7 @@ export function interpolateZone(
       strokeOpacity,
       label: zB.label || zA.label,
       visible: true,
-      effect: (ease < 1 ? zA.effect : zB.effect) ?? zB.effect ?? zA.effect,
+      effect,
     };
   }
 
@@ -179,7 +179,7 @@ export function interpolateZone(
     strokeOpacity,
     label: zB.label || zA.label,
     visible: true,
-    effect: (ease < 1 ? zA.effect : zB.effect) ?? zB.effect ?? zA.effect,
+    effect,
   };
 }
 
@@ -218,15 +218,15 @@ export function interpolateArrow(
   let controlPoint: NormalizedPoint | undefined;
   let curveType = aB.curveType;
 
+  const getCp = (a: ArrowAnnotation) =>
+    a.controlPoint ?? {
+      x: ((a.points[0]?.x ?? 0) + (a.points[1]?.x ?? 0)) / 2,
+      y: ((a.points[0]?.y ?? 0) + (a.points[1]?.y ?? 0)) / 2,
+    };
+
   if (aAIsCurved || aBIsCurved) {
-    const cpA = aA.controlPoint ?? {
-      x: ((aA.points[0]?.x ?? 0) + (aA.points[1]?.x ?? 0)) / 2,
-      y: ((aA.points[0]?.y ?? 0) + (aA.points[1]?.y ?? 0)) / 2,
-    };
-    const cpB = aB.controlPoint ?? {
-      x: ((aB.points[0]?.x ?? 0) + (aB.points[1]?.x ?? 0)) / 2,
-      y: ((aB.points[0]?.y ?? 0) + (aB.points[1]?.y ?? 0)) / 2,
-    };
+    const cpA = getCp(aA);
+    const cpB = getCp(aB);
 
     controlPoint = {
       x: lerp(cpA.x, cpB.x, ease),
@@ -258,6 +258,7 @@ export function interpolateArrow(
     endMarker: aB.endMarker ?? aA.endMarker,
     dashArray: aB.dashArray ?? aA.dashArray,
     arrowHead: aB.arrowHead ?? aA.arrowHead,
+    effect: (ease < 1 ? aA.effect : aB.effect) ?? aB.effect ?? aA.effect,
   };
 }
 

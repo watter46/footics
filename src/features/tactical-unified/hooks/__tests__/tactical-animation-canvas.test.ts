@@ -21,6 +21,7 @@ import {
   calculatePitchDimensions,
   createTacticalTimeline,
   pausePlayback,
+  renderFrameToCanvas,
   seekPlayback,
   stopPlayback,
 } from '../tactical-animation-canvas';
@@ -133,11 +134,20 @@ describe('createTacticalTimeline (GSAP integration)', () => {
     tl.kill();
   });
 
-  it('スライド数が 1枚以下の場合、duration 0 のタイムラインを返す', () => {
+  it('スライド数が 0枚の場合、duration 0 のタイムラインを返す', () => {
+    const onUpdate = vi.fn();
+    const tl = createTacticalTimeline([], onUpdate);
+
+    expect(tl.duration()).toBe(0);
+    tl.kill();
+  });
+
+  it('スライド数が 1枚の場合、resolvePlaybackDurationMs に基づく duration のタイムラインを返す', () => {
     const onUpdate = vi.fn();
     const tl = createTacticalTimeline([slide1], onUpdate);
 
-    expect(tl.duration()).toBe(0);
+    // slide1: transitionDurationMs(1000) + pauseMs(500) = 1500ms = 1.5s
+    expect(tl.duration()).toBe(1.5);
     tl.kill();
   });
 });
@@ -455,6 +465,119 @@ describe('Phase 2: Animation node updaters (Zone pulse, Arrow dashOffset, Player
       expect(content).not.toContain(
         "from '@/features/tactical-unified/hooks/tactical-animation-canvas'",
       );
+    });
+  });
+
+  describe('renderFrameToCanvas - React re-render optimization during playback', () => {
+    it('isPlaying === true の状態でスライド遷移境界を越えたとき、setActiveSlide は呼ばれず setPlaybackIndices のみ呼ばれる', () => {
+      const slide1 = createDefaultSlide(0, 'slide-1');
+      slide1.transitionDurationMs = 1000;
+      slide1.pauseMs = 500;
+      const slide2 = createDefaultSlide(1, 'slide-2');
+      slide2.transitionDurationMs = 1000;
+      slide2.pauseMs = 500;
+
+      const setPlaybackIndicesMock = vi.fn();
+      const mockStoreApi = {
+        getState: () => ({
+          project: {
+            activePhaseId: 'phase-1',
+            phases: [{ id: 'phase-1', slides: [slide1, slide2] }],
+          },
+          activeSlideId: 'slide-1',
+          isPlaying: true,
+          setPlaybackIndices: setPlaybackIndicesMock,
+        }),
+      } as any;
+
+      const lastActiveSlideIndexRef = { current: 0 };
+      const lastPlaybackIndicesRef = {
+        current: { slideIndex: 0, transitionIndex: null },
+      };
+      const setActiveSlide = vi.fn();
+
+      const mockRegistry = {
+        playerNodes: new Map(),
+        arrowNodes: new Map(),
+        zoneNodes: new Map(),
+        textNodes: new Map(),
+        playerLayer: { batchDraw: vi.fn() },
+        ballLayer: { batchDraw: vi.fn() },
+        annotationLayer: { batchDraw: vi.fn() },
+      } as any;
+
+      // 1500ms: Slide 0 から Slide 1 のポーズ区間へ突入 (currentSlideIndex === 1)
+      renderFrameToCanvas(
+        1500,
+        mockRegistry,
+        800,
+        450,
+        lastActiveSlideIndexRef,
+        setActiveSlide,
+        false,
+        0,
+        0,
+        lastPlaybackIndicesRef,
+        mockStoreApi,
+      );
+
+      expect(setActiveSlide).not.toHaveBeenCalled();
+      expect(setPlaybackIndicesMock).toHaveBeenCalledWith(1, null);
+    });
+
+    it('isPlaying === false (シーク操作時) にスライド遷移境界を越えたとき、setActiveSlide が呼ばれる', () => {
+      const slide1 = createDefaultSlide(0, 'slide-1');
+      slide1.transitionDurationMs = 1000;
+      slide1.pauseMs = 500;
+      const slide2 = createDefaultSlide(1, 'slide-2');
+      slide2.transitionDurationMs = 1000;
+      slide2.pauseMs = 500;
+
+      const setPlaybackIndicesMock = vi.fn();
+      const mockStoreApi = {
+        getState: () => ({
+          project: {
+            activePhaseId: 'phase-1',
+            phases: [{ id: 'phase-1', slides: [slide1, slide2] }],
+          },
+          activeSlideId: 'slide-1',
+          isPlaying: false,
+          setPlaybackIndices: setPlaybackIndicesMock,
+        }),
+      } as any;
+
+      const lastActiveSlideIndexRef = { current: 0 };
+      const lastPlaybackIndicesRef = {
+        current: { slideIndex: 0, transitionIndex: null },
+      };
+      const setActiveSlide = vi.fn();
+
+      const mockRegistry = {
+        playerNodes: new Map(),
+        arrowNodes: new Map(),
+        zoneNodes: new Map(),
+        textNodes: new Map(),
+        playerLayer: { batchDraw: vi.fn() },
+        ballLayer: { batchDraw: vi.fn() },
+        annotationLayer: { batchDraw: vi.fn() },
+      } as any;
+
+      // 1500ms: Slide 0 から Slide 1 のポーズ区間へ突入 (currentSlideIndex === 1)
+      renderFrameToCanvas(
+        1500,
+        mockRegistry,
+        800,
+        450,
+        lastActiveSlideIndexRef,
+        setActiveSlide,
+        false,
+        0,
+        0,
+        lastPlaybackIndicesRef,
+        mockStoreApi,
+      );
+
+      expect(setActiveSlide).toHaveBeenCalledWith('slide-2');
     });
   });
 });

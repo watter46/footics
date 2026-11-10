@@ -6,6 +6,8 @@ import Konva from 'konva';
 import { computeRippleRings } from '@/lib/tactical/effect-geometry';
 import type { InterpolatedPlayerState } from '@/lib/tactical/unified-interpolation';
 
+const rippleNodesCache = new WeakMap<Konva.Group, Konva.Circle[]>();
+
 export function updatePlayerRippleRings(
   playerGroup: Konva.Group,
   pState: InterpolatedPlayerState,
@@ -17,11 +19,17 @@ export function updatePlayerRippleRings(
   }
 
   const markerEffect = pState.style?.markerEffect;
-  const existingRings = playerGroup.find<Konva.Circle>('.ripple-ring');
+  let existingRings = rippleNodesCache.get(playerGroup);
+  if (!existingRings) {
+    existingRings = playerGroup.find<Konva.Circle>('.ripple-ring');
+  }
 
   if (!isPlaying || !markerEffect || markerEffect.type !== 'ripple') {
     for (const ring of existingRings) {
       ring.visible(false);
+    }
+    if (existingRings.length >= 3) {
+      rippleNodesCache.set(playerGroup, existingRings);
     }
     return;
   }
@@ -39,6 +47,10 @@ export function updatePlayerRippleRings(
     playerGroup.add(newRing);
     newRing.moveToBottom();
     existingRings.push(newRing);
+  }
+
+  if (existingRings.length >= 3 || existingRings.length >= rings.length) {
+    rippleNodesCache.set(playerGroup, existingRings);
   }
 
   for (let i = 0; i < existingRings.length; i++) {

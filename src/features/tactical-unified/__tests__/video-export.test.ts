@@ -53,22 +53,22 @@ vi.mock('mediabunny', () => {
 describe('Video Export Engine & Boundary Crop', () => {
   describe('calculateBoundaryCrop', () => {
     it('returns full stage dimensions snapped to even numbers when boundary box is undefined or disabled', () => {
-      // 720p preset (scale = 1): 801x451 -> 1280x720 baseline
+      // 1080p preset (locked default): 801x451 -> 1920x1080 baseline
       const cropNoBox = calculateBoundaryCrop(undefined, 801, 451, 1);
       expect(cropNoBox.isCropped).toBe(false);
       expect(cropNoBox.cropX).toBe(0);
       expect(cropNoBox.cropY).toBe(0);
       expect(cropNoBox.cropW).toBe(801);
       expect(cropNoBox.cropH).toBe(451);
-      expect(cropNoBox.exportWidth).toBe(1280);
+      expect(cropNoBox.exportWidth).toBe(1920);
       expect(cropNoBox.exportHeight % 2).toBe(0);
 
       const disabledBox: BoundaryBox = {
         enabled: false,
-        x: 10,
-        y: 10,
-        width: 50,
-        height: 50,
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
       };
       // 2K preset (scale = 3): 800x450 -> 2560x1440
       const crop2K = calculateBoundaryCrop(disabledBox, 800, 450, 3);
@@ -407,7 +407,7 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
     expect(callArgs.mvpMatrix).toHaveLength(16);
   });
 
-  it('useExportPreviewAnimation で複数スライド時は mvpMatrix: null が渡されること', () => {
+  it('useExportPreviewAnimation で複数スライド再生時は mvpMatrix: null が渡されること', () => {
     const slide1 = {
       ...createDefaultSlide(0, 's1'),
       pitchTransform: {
@@ -451,6 +451,7 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
           panY: 0,
           isLocked: false,
         },
+        externalIsPlaying: true,
         canvasRef,
         timeLabelRef,
         sliderRef,
@@ -568,6 +569,133 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
       // アンマウント時に全ビットマップが一括して close される
       expect(mockClose1).toHaveBeenCalledTimes(1);
       expect(mockClose2).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('hasActiveFrameEffects and video export pause frame handling', () => {
+    it('hasActiveFrameEffects returns true when arrow or zone has effect, even without player markerEffect', () => {
+      const baseSlide = createDefaultSlide(0, 's1');
+      expect(tacticalFrameRenderer.hasActiveFrameEffects([baseSlide])).toBe(
+        false,
+      );
+
+      const slideWithArrow: Slide = {
+        ...baseSlide,
+        arrows: [
+          {
+            id: 'a1',
+            annotationType: 'arrow',
+            arrowType: 'move',
+            curveType: 'straight',
+            points: [
+              { x: 10, y: 10 },
+              { x: 20, y: 20 },
+            ],
+            color: '#38bdf8',
+            strokeWidth: 3,
+            dashArray: [],
+            arrowHead: true,
+            effect: {
+              type: 'flow',
+              duration: 1,
+              delay: 0,
+              holdDuration: 0,
+              exitAction: 'keep',
+              fadeDuration: 0,
+              easing: 'linear',
+            },
+          },
+        ],
+      };
+      expect(
+        tacticalFrameRenderer.hasActiveFrameEffects([slideWithArrow]),
+      ).toBe(true);
+
+      const slideWithZone: Slide = {
+        ...baseSlide,
+        zones: [
+          {
+            id: 'z1',
+            annotationType: 'zone',
+            zoneType: 'space',
+            points: [
+              { x: 10, y: 10 },
+              { x: 30, y: 10 },
+              { x: 30, y: 30 },
+              { x: 10, y: 30 },
+            ],
+            color: '#22c55e',
+            opacity: 0.5,
+            strokeWidth: 2,
+            effect: {
+              type: 'pulse',
+              duration: 1,
+              minOpacity: 0.2,
+              maxOpacity: 0.8,
+            },
+          },
+        ],
+      };
+      expect(tacticalFrameRenderer.hasActiveFrameEffects([slideWithZone])).toBe(
+        true,
+      );
+    });
+
+    it('exportVideoWithMediabunny renders every frame during pauseMs when arrow effect is active', async () => {
+      const baseSlide = createDefaultSlide(0, 's1');
+      const slide1: Slide = {
+        ...baseSlide,
+        transitionDurationMs: 100,
+        pauseMs: 200,
+        arrows: [
+          {
+            id: 'a1',
+            annotationType: 'arrow',
+            arrowType: 'move',
+            curveType: 'straight',
+            points: [
+              { x: 10, y: 10 },
+              { x: 20, y: 20 },
+            ],
+            color: '#38bdf8',
+            strokeWidth: 3,
+            dashArray: [],
+            arrowHead: true,
+            effect: {
+              type: 'flow',
+              duration: 1,
+              delay: 0,
+              holdDuration: 0,
+              exitAction: 'keep',
+              fadeDuration: 0,
+              easing: 'linear',
+            },
+          },
+        ],
+      };
+      const slide2: Slide = {
+        ...createDefaultSlide(1, 's2'),
+        transitionDurationMs: 100,
+        pauseMs: 200,
+      };
+
+      const spyRender = vi.spyOn(
+        tacticalFrameRenderer,
+        'renderTacticalFrameToCanvas',
+      );
+
+      // total 600ms @ 30fps = 18 frames
+      await exportVideoWithMediabunny({
+        format: 'mp4',
+        fps: 30,
+        totalDurationMs: 600,
+        stageWidth: 800,
+        stageHeight: 450,
+        slides: [slide1, slide2],
+      });
+
+      // All frames should be rendered (not skipped during pauseMs)
+      expect(spyRender).toHaveBeenCalledTimes(18);
     });
   });
 });

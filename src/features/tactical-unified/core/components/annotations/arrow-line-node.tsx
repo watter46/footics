@@ -118,11 +118,21 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
       onDragEnd={(e) => {
         e.cancelBubble = true;
         const node = e.target;
-        const dxNorm = (node.x() / width) * 100;
-        const dyNorm = (node.y() / height) * 100;
+        const dx = node.x();
+        const dy = node.y();
+        const dxNorm = (dx / width) * 100;
+        const dyNorm = (dy / height) * 100;
         node.position({ x: 0, y: 0 });
-        startDotRef.current?.position({ x: sPxX, y: sPxY });
-        endDotRef.current?.position({ x: ePxX, y: ePxY });
+
+        startHandleRef.current?.position({ x: sPxX + dx, y: sPxY + dy });
+        endHandleRef.current?.position({ x: ePxX + dx, y: ePxY + dy });
+        controlHandleRef.current?.position({
+          x: midHandlePxX + dx,
+          y: midHandlePxY + dy,
+        });
+        startDotRef.current?.position({ x: sPxX + dx, y: sPxY + dy });
+        endDotRef.current?.position({ x: ePxX + dx, y: ePxY + dy });
+
         const stage = node.getStage();
         if (stage) stage.container().style.cursor = 'default';
 
@@ -132,6 +142,10 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
             { x: p1.x + dxNorm, y: p1.y + dyNorm },
           ],
         };
+        if (arrow.sourcePlayerId || arrow.targetPlayerId) {
+          patch.sourcePlayerId = undefined;
+          patch.targetPlayerId = undefined;
+        }
         if (arrow.controlPoint) {
           patch.controlPoint = {
             x: arrow.controlPoint.x + dxNorm,

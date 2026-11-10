@@ -13,6 +13,7 @@ import {
 import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
 import {
   type AnyCanvasRenderingContext2D,
+  hasActiveFrameEffects,
   renderTacticalFrameToCanvas,
 } from './tactical-frame-renderer';
 import { calculateBoundaryCrop } from './video-crop-calc';
@@ -161,17 +162,12 @@ export async function exportVideoWithMediabunny(
           lastRenderedTransform !== null &&
           !hasCameraDelta(lastRenderedTransform, interpolated.pitchTransform);
 
-        const hasDynamicMarkerEffect = slides.some((s) =>
-          s.players.some(
-            (p) =>
-              p.style?.markerEffect && p.style.markerEffect.type !== 'none',
-          ),
-        );
+        const hasDynamicEffect = hasActiveFrameEffects(slides);
 
         const shouldSkipRender =
           frameIdx > 0 &&
           interpolated.isPaused &&
-          !hasDynamicMarkerEffect &&
+          !hasDynamicEffect &&
           isTransformIdentical &&
           lastRenderedSlideIdx === interpolated.currentSlideIndex;
 

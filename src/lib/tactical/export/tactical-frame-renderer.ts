@@ -44,9 +44,13 @@ import {
 import { renderTexts } from './renderers/text-renderer';
 import { renderZones } from './renderers/zone-renderer';
 
-import { computeFrameEffects, isPauseFrame } from './tactical-frame-effects';
+import {
+  computeFrameEffects,
+  hasActiveFrameEffects,
+  isPauseFrame,
+} from './tactical-frame-effects';
 
-export { computeFrameEffects, isPauseFrame };
+export { computeFrameEffects, hasActiveFrameEffects, isPauseFrame };
 
 import { isBoundaryCropActive } from './video-crop-calc';
 
@@ -95,6 +99,10 @@ export interface RenderTacticalFrameOptions {
   teamVisibility?: 'both' | 'home' | 'away';
   /** 事前計算済み補間フレーム（指定時は getInterpolatedUnifiedSlideFrame の再計算をスキップ） */
   precomputedFrame?: InterpolatedUnifiedSlideFrame;
+  /** エフェクト適用フラグ（false の場合は静止プレビューやサムネイル用に矢印伸長などを 100% 描画） */
+  applyEffects?: boolean;
+  /** 静止中常時エフェクト用の時刻オーバーライド (ms) */
+  effectTimeMs?: number;
 }
 
 export type RenderTacticalFrameParams = RenderTacticalFrameOptions;
@@ -245,18 +253,24 @@ export function renderTacticalFrameToCanvas(
       )
     : Math.min(baseWidth, baseHeight);
 
-  const { effectArrows, playerRings, timeInSlideMs } = computeFrameEffects(
-    slides,
-    timeMs,
-    frame.arrows,
-    frame.players,
-    frame.nextSlideIndex,
-    baseDim,
-  );
+  const { effectArrows, effectZones, playerRings, timeInSlideMs } =
+    computeFrameEffects(
+      slides,
+      timeMs,
+      frame.arrows,
+      frame.players,
+      frame.nextSlideIndex,
+      baseDim,
+      {
+        applyEffects: options.applyEffects,
+        effectTimeOverrideMs: options.effectTimeMs,
+        zones: frame.zones,
+      },
+    );
   frameContext.timeInSlideMs = timeInSlideMs;
 
   // 2. Zones (Vertex Morphing & Pulse)
-  renderZones(frameContext, frame.zones, timeInSlideMs);
+  renderZones(frameContext, effectZones, timeInSlideMs);
 
   // 4. Connect Lines between players
   renderConnectLines(frameContext, frame.players);
@@ -271,7 +285,7 @@ export function renderTacticalFrameToCanvas(
     playerPhotos,
     teamVisibility,
     playerRings,
-    timeInSlideMs,
+    options.applyEffects === false ? undefined : timeInSlideMs,
   );
 
   // 7. Soccer Ball

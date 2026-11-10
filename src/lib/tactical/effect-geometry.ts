@@ -33,28 +33,20 @@ function applyEasing(t: number, easing?: EffectEasing): number {
   return 1 - (1 - c) ** 3;
 }
 
-/**
- * 矢印の点線フロー用 dashOffset を算出（先端へ向かって流すため負方向）
- */
-export function computeArrowFlowDashOffset(
+/** 矢印の点線フロー用 dashOffset を算出（先端へ向かって流すため負方向） */
+export const computeArrowFlowDashOffset = (
   timeInSlideMs: number,
-  _config?: ArrowEffectConfig,
+  _config?: Partial<ArrowEffectConfig>,
   speed = 25,
-): number {
-  return -(timeInSlideMs / 1000) * speed;
-}
+): number => -(timeInSlideMs / 1000) * speed;
 
-/**
- * ゾーンのパルス用 opacity を算出
- */
+/** ゾーンのパルス用 opacity を算出 */
 export function computeZonePulseOpacity(
   timeInSlideMs: number,
   config?: ZoneEffectConfig,
   baseOpacity = 0.25,
 ): number {
-  if (!config || config.type !== 'pulse') {
-    return baseOpacity;
-  }
+  if (!config || config.type !== 'pulse') return baseOpacity;
   const duration = Math.max(0.1, config.duration ?? 1.2);
   const minOpacity = config.minOpacity ?? 0.15;
   const maxOpacity = config.maxOpacity ?? 0.45;
@@ -68,7 +60,7 @@ export function computeZonePulseOpacity(
  */
 export function computeArrowEffectState(
   timeInSlideMs: number,
-  config?: ArrowEffectConfig,
+  config?: Partial<ArrowEffectConfig>,
 ): ArrowEffectState {
   if (!config || config.type === 'none') {
     return { progress: 1.0, opacity: 1.0, visible: true };
@@ -98,12 +90,18 @@ export function computeArrowEffectState(
     };
   }
 
+  const elapsed = timeInSlideMs - delayMs;
+  if (elapsed <= 0) {
+    return { progress: 0, opacity: 1, visible: false, dashOffset: 0 };
+  }
+
   // 1. 伸長フェーズ
   if (timeInSlideMs < delayMs + durationMs) {
-    const rawProgress = (timeInSlideMs - delayMs) / durationMs;
+    const rawProgress = elapsed / durationMs;
+    const progress = applyEasing(rawProgress, config.easing);
     return {
-      visible: true,
-      progress: applyEasing(rawProgress, config.easing),
+      visible: progress > 0,
+      progress,
       opacity: 1.0,
       dashOffset: isGrowAndFlow ? 0 : undefined,
     };
@@ -143,6 +141,23 @@ export function computeArrowEffectState(
   return { visible: true, opacity: 1.0, progress: 1.0, dashOffset: flowOffset };
 }
 
+function insertWavyGuidePoint(
+  pts: NormalizedPoint[],
+  p0: NormalizedPoint,
+  mainAngle: number,
+): void {
+  if (pts.length < 2) return;
+  const lastPt = pts[pts.length - 1];
+  const distFromStart = Math.hypot(lastPt.x - p0.x, lastPt.y - p0.y);
+  if (distFromStart > 0.001) {
+    const stepBack = Math.min(0.5, distFromStart * 0.5);
+    pts.splice(pts.length - 1, 0, {
+      x: lastPt.x - Math.cos(mainAngle) * stepBack,
+      y: lastPt.y - Math.sin(mainAngle) * stepBack,
+    });
+  }
+}
+
 /**
  * 進行度 (0.0 〜 1.0) に応じて点列をトリミングし、先端接線角度を算出
  */
@@ -163,34 +178,21 @@ export function trimRenderPoints(
   const mainAngle = Math.atan2(pLast.y - p0.y, pLast.x - p0.x);
 
   if (progress <= 0) {
-    const tipAngle = isWavy ? mainAngle : Math.atan2(p1.y - p0.y, p1.x - p0.x);
-    return {
-      trimmedPoints: [
-        isWavy
-          ? {
-              x: p0.x - Math.cos(mainAngle) * 0.1,
-              y: p0.y - Math.sin(mainAngle) * 0.1,
-            }
-          : { x: p0.x, y: p0.y },
-        { x: p0.x, y: p0.y },
-      ],
-      tipAngle,
+    const baseAngle =
+      isWavy || points.length < 2
+        ? mainAngle
+        : Math.atan2(p1.y - p0.y, p1.x - p0.x);
+    const epsPt = {
+      x: p0.x + Math.cos(baseAngle) * 0.001,
+      y: p0.y + Math.sin(baseAngle) * 0.001,
     };
+    return { trimmedPoints: [p0, epsPt], tipAngle: baseAngle };
   }
 
   if (progress >= 1.0) {
     const pts = points.map((p) => ({ x: p.x, y: p.y }));
-    if (isWavy && pts.length >= 2) {
-      const lastPt = pts[pts.length - 1];
-      pts[pts.length - 2] = {
-        x: lastPt.x - Math.cos(mainAngle) * 0.1,
-        y: lastPt.y - Math.sin(mainAngle) * 0.1,
-      };
-    }
-    return {
-      trimmedPoints: pts,
-      tipAngle: isWavy ? mainAngle : fullAngle,
-    };
+    if (isWavy) insertWavyGuidePoint(pts, p0, mainAngle);
+    return { trimmedPoints: pts, tipAngle: isWavy ? mainAngle : fullAngle };
   }
 
   // 累積距離テーブルの作成
@@ -244,13 +246,7 @@ export function trimRenderPoints(
 
   if (isWavy) {
     tipAngle = mainAngle;
-    if (resultPoints.length >= 2) {
-      const lastPt = resultPoints[resultPoints.length - 1];
-      resultPoints[resultPoints.length - 2] = {
-        x: lastPt.x - Math.cos(mainAngle) * 0.1,
-        y: lastPt.y - Math.sin(mainAngle) * 0.1,
-      };
-    }
+    insertWavyGuidePoint(resultPoints, p0, mainAngle);
   }
 
   return { trimmedPoints: resultPoints, tipAngle };

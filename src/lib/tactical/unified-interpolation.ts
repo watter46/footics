@@ -54,8 +54,30 @@ export interface InterpolatedUnifiedFrame {
 /** 全スライドの総再生時間 (ms) を計算 */
 export function calculateUnifiedTotalDuration(slides: Slide[]): number {
   if (slides.length <= 1) return 0;
-  const segments = resolveEffectiveSlideSegments(slides);
-  return segments.reduce((sum, seg) => sum + seg.effectiveDurationMs, 0);
+  return resolveEffectiveSlideSegments(slides).reduce(
+    (sum, seg) => sum + seg.effectiveDurationMs,
+    0,
+  );
+}
+
+/** 単一スライドを含む総再生時間 (ms) を解決 */
+export function resolvePlaybackDurationMs(slides: Slide[]): number {
+  if (!slides || slides.length === 0) return 0;
+  if (slides.length === 1) {
+    const s = slides[0] as Slide & {
+      duration?: number;
+      pauseDuration?: number;
+    };
+    const dur =
+      s.duration ??
+      (s.transitionDurationMs !== undefined
+        ? s.transitionDurationMs / 1000
+        : 2);
+    const pause =
+      s.pauseDuration ?? (s.pauseMs !== undefined ? s.pauseMs / 1000 : 1);
+    return Math.max(1000, (dur + pause) * 1000);
+  }
+  return calculateUnifiedTotalDuration(slides);
 }
 
 const EMPTY_FRAME: InterpolatedUnifiedFrame = {
@@ -86,23 +108,14 @@ function syncArrowsWithPlayers(
   for (const [id, arrow] of Object.entries(arrows)) {
     const sp = arrow.sourcePlayerId ? players[arrow.sourcePlayerId] : undefined;
     const tp = arrow.targetPlayerId ? players[arrow.targetPlayerId] : undefined;
-
     if (!sp && !tp) {
       synced[id] = arrow;
       continue;
     }
-
     const nextPoints = [...arrow.points];
-    if (sp && nextPoints[0]) {
-      nextPoints[0] = { x: sp.x, y: sp.y };
-    }
-    if (tp && nextPoints.length > 1) {
-      nextPoints[1] = { x: tp.x, y: tp.y };
-    }
-    synced[id] = {
-      ...arrow,
-      points: nextPoints,
-    };
+    if (sp && nextPoints[0]) nextPoints[0] = { x: sp.x, y: sp.y };
+    if (tp && nextPoints.length > 1) nextPoints[1] = { x: tp.x, y: tp.y };
+    synced[id] = { ...arrow, points: nextPoints };
   }
   return synced;
 }

@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { hasActiveFrameEffects } from '@/lib/tactical/export/tactical-frame-effects';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
 import {
-  calculateUnifiedTotalDuration,
   hasActiveDirectorCameraTrack,
   type ResolveSyntheticDirectorCameraOptions,
+  resolvePlaybackDurationMs,
 } from '@/lib/tactical/unified-interpolation';
 import type { Slide } from '@/lib/types/tactical-unified';
 
@@ -55,14 +56,12 @@ export function useExportPreviewAnimation({
   const [isPlaying, setIsPlaying] = useState(false);
   const effectiveIsPlaying =
     externalIsPlaying !== undefined ? externalIsPlaying : isPlaying;
-  const totalDurationMs = calculateUnifiedTotalDuration(slides) || 1000;
+  const totalDurationMs = resolvePlaybackDurationMs(slides) || 1000;
   const currentTimeMsRef = useRef<number>(0);
 
   const seekTo = useTacticalUnifiedStoreContext((s) => s.seekTo);
-  const rawWorkspaceMode = useTacticalUnifiedStoreContext(
-    (s) => s.workspaceMode,
-  );
-  const workspaceMode = rawWorkspaceMode ?? 'normal';
+  const workspaceMode =
+    useTacticalUnifiedStoreContext((s) => s.workspaceMode) ?? 'normal';
   const storeTeamVisibility = useTacticalUnifiedStoreContext(
     (s) => s.teamVisibility,
   );
@@ -70,12 +69,8 @@ export function useExportPreviewAnimation({
     teamVisibility ?? storeTeamVisibility ?? 'both';
   const lastSeekNoticeTimeRef = useRef<number>(-9999);
   const isInternalSeekRef = useRef<boolean>(false);
-  const workspaceModeRef = useRef(workspaceMode);
-  workspaceModeRef.current = workspaceMode;
-  const effectiveIsPlayingRef = useRef(effectiveIsPlaying);
-  effectiveIsPlayingRef.current = effectiveIsPlaying;
-  const seekToRef = useRef(seekTo);
-  seekToRef.current = seekTo;
+  const stateRef = useRef({ workspaceMode, effectiveIsPlaying, seekTo });
+  stateRef.current = { workspaceMode, effectiveIsPlaying, seekTo };
 
   const { effectivePlayerPhotos, marbleTexture } = useExportPreviewTextures({
     slides,
@@ -88,35 +83,21 @@ export function useExportPreviewAnimation({
   const basePreviewDim =
     PREVIEW_DIMENSIONS[effectiveCanvasAspect] ?? PREVIEW_DIMENSIONS['16:9'];
 
-  const cropInfo = useMemo(
-    () =>
-      calculateBoundaryCrop(
-        boundaryBox,
-        basePreviewDim.width,
-        basePreviewDim.height,
-        1,
-        basePreviewDim.width > 0
-          ? {
-              x: 0,
-              y: 0,
-              width: basePreviewDim.width,
-              height: basePreviewDim.height,
-            }
-          : undefined,
-      ),
-    [boundaryBox, basePreviewDim.width, basePreviewDim.height],
-  );
+  const cropInfo = useMemo(() => {
+    const box = boundaryBox?.enabled !== false ? boundaryBox : null;
+    const { width: w, height: h } = basePreviewDim;
+    const pitchRect = w > 0 ? { x: 0, y: 0, width: w, height: h } : undefined;
+    return calculateBoundaryCrop(box, w, h, 1, pitchRect);
+  }, [boundaryBox, basePreviewDim]);
 
   // 静止時・再生時に関わらず、境界線が有効であれば常時クロップを適用
   const shouldCropPreview = cropInfo.isCropped;
-  const previewWidth = useMemo(
-    () => (shouldCropPreview ? cropInfo.exportWidth : basePreviewDim.width),
-    [shouldCropPreview, cropInfo.exportWidth, basePreviewDim.width],
-  );
-  const previewHeight = useMemo(
-    () => (shouldCropPreview ? cropInfo.exportHeight : basePreviewDim.height),
-    [shouldCropPreview, cropInfo.exportHeight, basePreviewDim.height],
-  );
+  const previewWidth = shouldCropPreview
+    ? cropInfo.exportWidth
+    : basePreviewDim.width;
+  const previewHeight = shouldCropPreview
+    ? cropInfo.exportHeight
+    : basePreviewDim.height;
 
   const mvpMatrix = useMemo(() => {
     if (
@@ -145,26 +126,27 @@ export function useExportPreviewAnimation({
     aspectRatio,
   ]);
 
-  const previewAspectStyle = useMemo(() => {
-    if (!shouldCropPreview) return undefined;
-    return `${previewWidth} / ${previewHeight}`;
-  }, [shouldCropPreview, previewWidth, previewHeight]);
+  const previewAspectStyle = shouldCropPreview
+    ? `${previewWidth} / ${previewHeight}`
+    : undefined;
 
-  const effectiveDirectorCameraOptions = useMemo(
-    () => directorCameraOptions ?? { isEditing: !effectiveIsPlaying },
-    [directorCameraOptions, effectiveIsPlaying],
-  );
+  const effectiveDirectorCameraOptions = directorCameraOptions ?? {
+    isEditing: !effectiveIsPlaying,
+  };
 
   // ── Canvas Frame Drawing ──
   const drawFrame = useCallback(
-    (timeMs: number) => {
+    (timeMs: number, effectTimeMs?: number) => {
       currentTimeMsRef.current = timeMs;
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      const effectiveBoundaryBox = shouldCropPreview ? boundaryBox : null;
+      const effectiveBoundaryBox =
+        shouldCropPreview && boundaryBox?.enabled !== false
+          ? boundaryBox
+          : null;
 
       renderTacticalFrameToCanvas(ctx, {
         slides,
@@ -184,6 +166,7 @@ export function useExportPreviewAnimation({
         directorCamera,
         directorCameraOptions: effectiveDirectorCameraOptions,
         teamVisibility: effectiveTeamVisibility,
+        ...(effectTimeMs !== undefined ? { effectTimeMs } : {}),
       });
 
       if (timeLabelRef.current) {
@@ -194,20 +177,19 @@ export function useExportPreviewAnimation({
       }
 
       if (
-        effectiveIsPlayingRef.current &&
-        workspaceModeRef.current === 'director'
+        stateRef.current.effectiveIsPlaying &&
+        stateRef.current.workspaceMode === 'director'
       ) {
         if (Math.abs(timeMs - lastSeekNoticeTimeRef.current) >= 60) {
           lastSeekNoticeTimeRef.current = timeMs;
           isInternalSeekRef.current = true;
-          seekToRef.current?.(timeMs);
+          stateRef.current.seekTo?.(timeMs);
         }
       }
     },
     [
       slides,
-      basePreviewDim.width,
-      basePreviewDim.height,
+      basePreviewDim,
       shouldCropPreview,
       boundaryBox,
       aspectRatio,
@@ -240,6 +222,22 @@ export function useExportPreviewAnimation({
     effectiveTeamVisibility,
   ]);
 
+  // 静止中（!effectiveIsPlaying）の常時エフェクトループ（RAII クリーンアップ必須）
+  useEffect(() => {
+    if (effectiveIsPlaying || !hasActiveFrameEffects(slides)) return;
+    let rafId = 0;
+    let startTime: number | null = null;
+    const IDLE_CYCLE_MS = 3000;
+    const tick = (now: number) => {
+      if (startTime === null) startTime = now;
+      const elapsed = (now - startTime) % IDLE_CYCLE_MS;
+      drawFrame(currentTimeMsRef.current, elapsed);
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [effectiveIsPlaying, slides, drawFrame]);
+
   const { seek } = useAnimationFrameLoop(
     effectiveIsPlaying,
     totalDurationMs,
@@ -270,18 +268,21 @@ export function useExportPreviewAnimation({
     if (
       prevPlayingRef.current &&
       !effectiveIsPlaying &&
-      workspaceModeRef.current === 'director'
+      stateRef.current.workspaceMode === 'director'
     ) {
       isInternalSeekRef.current = true;
-      seekToRef.current?.(currentTimeMsRef.current);
+      stateRef.current.seekTo?.(currentTimeMsRef.current);
     }
     prevPlayingRef.current = effectiveIsPlaying;
   }, [effectiveIsPlaying]);
 
-  const togglePlay = useCallback(() => {
-    if (onToggleExternalPlay) onToggleExternalPlay();
-    else setIsPlaying((prev) => !prev);
-  }, [onToggleExternalPlay]);
+  const togglePlay = useCallback(
+    () =>
+      onToggleExternalPlay
+        ? onToggleExternalPlay()
+        : setIsPlaying((prev) => !prev),
+    [onToggleExternalPlay],
+  );
   const handleReset = useCallback(() => seek(0), [seek]);
 
   return {

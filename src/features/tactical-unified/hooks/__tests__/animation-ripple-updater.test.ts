@@ -1,5 +1,5 @@
 import Konva from 'konva';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { updatePlayerRippleRings } from '@/features/tactical-unified/hooks/animation-ripple-updater';
 import type { InterpolatedPlayerState } from '@/lib/tactical/unified-interpolation';
 
@@ -65,5 +65,37 @@ describe('updatePlayerRippleRings', () => {
     const visibleRing = rings.find((r) => r.visible());
     expect(visibleRing).toBeDefined();
     expect(visibleRing?.stroke()).toBe('#10b981');
+  });
+
+  it('同一 playerGroup に対して updatePlayerRippleRings を 2 回連続で呼んだ際、2 回目は WeakMap キャッシュが使われ playerGroup.find が再実行されないこと', () => {
+    const group = new Konva.Group();
+    const findSpy = vi.spyOn(group, 'find');
+    const pState = {
+      id: 'p1',
+      x: 50,
+      y: 50,
+      visible: true,
+      opacity: 1,
+      style: {
+        color: '#ff0000',
+        markerEffect: {
+          type: 'ripple',
+          delay: 0,
+          duration: 1.0,
+          ringsCount: 3,
+          repeatCount: 1,
+          maxRadiusScale: 2.0,
+          exitAction: 'keep',
+        },
+      },
+    } as unknown as InterpolatedPlayerState;
+
+    // 1 回目の実行: find が呼ばれて WeakMap にキャッシュされる
+    updatePlayerRippleRings(group, pState, 200, true);
+    expect(findSpy).toHaveBeenCalledTimes(1);
+
+    // 2 回目の実行: キャッシュが使われ、find は再度呼ばれない
+    updatePlayerRippleRings(group, pState, 400, true);
+    expect(findSpy).toHaveBeenCalledTimes(1);
   });
 });

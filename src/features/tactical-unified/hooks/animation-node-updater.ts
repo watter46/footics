@@ -6,13 +6,9 @@
 
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import {
-  applyDotOffsets,
   computeArrowDimensions,
+  computeArrowRenderPoints,
 } from '@/features/tactical-unified/core/components/annotations/arrow-geometry';
-import {
-  getQuadraticBezierPoints,
-  getWavyPoints,
-} from '@/features/tactical-unified/core/components/annotations/wavy-arrow-math';
 import { trimRenderPoints } from '@/lib/tactical/effect-geometry';
 import type {
   InterpolatedArrowState,
@@ -20,6 +16,7 @@ import type {
   InterpolatedPlayerState,
   InterpolatedTextState,
 } from '@/lib/tactical/unified-interpolation';
+import type { Player } from '@/lib/types/tactical-unified';
 import { updatePlayerRippleRings } from './animation-ripple-updater';
 import { updatePlayerTrajectory } from './animation-trajectory-updater';
 
@@ -92,19 +89,42 @@ export function updateArrowNodes(
   stageHeight: number,
   offsetX = 0,
   offsetY = 0,
+  players?: Record<string, InterpolatedPlayerState>,
+  isPlaying = true,
 ): void {
   for (const [arrowId, aState] of Object.entries(arrows)) {
     const arrowEntry = registry.arrowNodes.get(arrowId);
     if (!arrowEntry?.node) continue;
 
-    const dims = computeArrowDimensions(stageWidth, aState.strokeWidth);
+    const dims = computeArrowDimensions(stageWidth, aState.strokeWidth ?? 3);
+    const dotRadius = aState.strokeWidth
+      ? Math.max(5, aState.strokeWidth * 1.6)
+      : 6;
 
+    if (aState.progress !== undefined && aState.progress <= 0) {
+      arrowEntry.node.visible(false);
+      arrowEntry.endDotNode?.visible(false);
+      arrowEntry.startDotNode?.visible(false);
+      continue;
+    }
+
+    const sourceP =
+      aState.sourcePlayerId && players
+        ? players[aState.sourcePlayerId]
+        : undefined;
+    const targetP =
+      aState.targetPlayerId && players
+        ? players[aState.targetPlayerId]
+        : undefined;
     const rawP0 = aState.points[0] ?? { x: 20, y: 50 };
     const rawP1 = aState.points[1] ?? { x: 40, y: 50 };
-    const sPxX = offsetX + (rawP0.x / 100) * stageWidth;
-    const sPxY = offsetY + (rawP0.y / 100) * stageHeight;
-    const ePxX = offsetX + (rawP1.x / 100) * stageWidth;
-    const ePxY = offsetY + (rawP1.y / 100) * stageHeight;
+    const p0 = sourceP ? { x: sourceP.x, y: sourceP.y } : rawP0;
+    const p1 = targetP ? { x: targetP.x, y: targetP.y } : rawP1;
+
+    const sPxX = offsetX + (p0.x / 100) * stageWidth;
+    const sPxY = offsetY + (p0.y / 100) * stageHeight;
+    const ePxX = offsetX + (p1.x / 100) * stageWidth;
+    const ePxY = offsetY + (p1.y / 100) * stageHeight;
 
     const isCurved =
       aState.curveType === 'curved' ||
@@ -115,9 +135,7 @@ export function updateArrowNodes(
       (aState.arrowType as string) === 'arrow_wavy';
     const isDotEnd =
       aState.arrowType === 'route_line' || aState.endMarker === 'dot';
-    const dotRadius = aState.strokeWidth
-      ? Math.max(5, aState.strokeWidth * 1.6)
-      : 6;
+    const isBlocked = (aState.arrowType as string) === 'block';
 
     const cpPxX =
       isCurved && aState.controlPoint
@@ -128,27 +146,38 @@ export function updateArrowNodes(
         ? offsetY + (aState.controlPoint.y / 100) * stageHeight
         : undefined;
 
-    const { rsx, rsy, rex, rey } = applyDotOffsets(
-      sPxX,
-      sPxY,
-      ePxX,
-      ePxY,
-      cpPxX,
-      cpPxY,
+    const sourcePlayer = sourceP
+      ? ({
+          id: sourceP.id ?? aState.sourcePlayerId,
+          x: sourceP.x,
+          y: sourceP.y,
+          style: sourceP.style ?? { sizeScale: 1 },
+        } as Player)
+      : undefined;
+    const targetPlayer = targetP
+      ? ({
+          id: targetP.id ?? aState.targetPlayerId,
+          x: targetP.x,
+          y: targetP.y,
+          style: targetP.style ?? { sizeScale: 1 },
+        } as Player)
+      : undefined;
+
+    let renderPts = computeArrowRenderPoints({
+      sx: sPxX,
+      sy: sPxY,
+      ex: ePxX,
+      ey: ePxY,
+      cpX: cpPxX,
+      cpY: cpPxY,
       isCurved,
       isWavy,
       isDotEnd,
       dotRadius,
-    );
-
-    let renderPts: number[];
-    if (isWavy) {
-      renderPts = getWavyPoints(rsx, rsy, rex, rey);
-    } else if (isCurved && cpPxX !== undefined && cpPxY !== undefined) {
-      renderPts = getQuadraticBezierPoints(rsx, rsy, cpPxX, cpPxY, rex, rey);
-    } else {
-      renderPts = [rsx, rsy, rex, rey];
-    }
+      sourcePlayer,
+      targetPlayer,
+      stageSize: { width: stageWidth, height: stageHeight },
+    });
 
     if (aState.progress !== undefined) {
       const clampedProgress = Math.max(0, Math.min(1, aState.progress));
@@ -169,6 +198,20 @@ export function updateArrowNodes(
       }
     }
 
+    const hasArrowHead = !isBlocked && !isDotEnd && aState.arrowHead !== false;
+    if (
+      'pointerLength' in arrowEntry.node &&
+      typeof arrowEntry.node.pointerLength === 'function'
+    ) {
+      arrowEntry.node.pointerLength(hasArrowHead ? dims.pointerLength : 0);
+    }
+    if (
+      'pointerWidth' in arrowEntry.node &&
+      typeof arrowEntry.node.pointerWidth === 'function'
+    ) {
+      arrowEntry.node.pointerWidth(hasArrowHead ? dims.pointerWidth : 0);
+    }
+
     arrowEntry.node.points(renderPts);
     arrowEntry.node.stroke(aState.color);
     arrowEntry.node.fill(aState.color);
@@ -178,8 +221,11 @@ export function updateArrowNodes(
     arrowEntry.node.dash?.(
       aState.dashArray && aState.dashArray.length > 0 ? aState.dashArray : [],
     );
-    if (typeof (arrowEntry.node as any).dashOffset === 'function') {
-      (arrowEntry.node as any).dashOffset(aState.dashOffset ?? 0);
+    if (
+      'dashOffset' in arrowEntry.node &&
+      typeof arrowEntry.node.dashOffset === 'function'
+    ) {
+      arrowEntry.node.dashOffset(aState.dashOffset ?? 0);
     }
 
     if (arrowEntry.startDotNode) {
@@ -194,6 +240,21 @@ export function updateArrowNodes(
       }
       arrowEntry.endDotNode.opacity(aState.opacity);
       arrowEntry.endDotNode.visible(aState.visible);
+    }
+
+    if (!isPlaying) {
+      arrowEntry.startHandleNode?.position({ x: sPxX, y: sPxY });
+      arrowEntry.endHandleNode?.position({ x: ePxX, y: ePxY });
+      if (
+        arrowEntry.controlHandleNode &&
+        cpPxX !== undefined &&
+        cpPxY !== undefined
+      ) {
+        arrowEntry.controlHandleNode.position({
+          x: (sPxX + ePxX) / 4 + cpPxX / 2,
+          y: (sPxY + ePxY) / 4 + cpPxY / 2,
+        });
+      }
     }
   }
 }
@@ -234,6 +295,5 @@ export function batchDrawLayers(
     registry.playerLayer?.batchDraw();
     registry.ballLayer?.batchDraw();
     registry.annotationLayer?.batchDraw();
-    registry.stage?.batchDraw();
   }
 }

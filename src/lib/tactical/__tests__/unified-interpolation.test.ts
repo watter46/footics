@@ -21,6 +21,7 @@ import {
   interpolateZone,
   rectToPoints,
   resamplePolygon,
+  resolvePlaybackDurationMs,
 } from '../unified-interpolation';
 
 describe('unified-interpolation engine', () => {
@@ -288,6 +289,50 @@ describe('unified-interpolation engine', () => {
         { ...mockSlides[1], transitionDurationMs: 500, pauseMs: 200 },
       ];
       expect(calculateUnifiedTotalDuration(variedSlides)).toBe(700); // Only slide 1 counts: 500 + 200
+    });
+
+    it('resolves playback duration for empty, single, and multi slides', () => {
+      expect(resolvePlaybackDurationMs([])).toBe(0);
+
+      const singleCustom = {
+        ...mockSlides[0],
+        duration: 2,
+        pauseDuration: 1,
+      } as unknown as Slide;
+      expect(resolvePlaybackDurationMs([singleCustom])).toBe(3000);
+      expect(calculateUnifiedTotalDuration([singleCustom])).toBe(0);
+
+      expect(resolvePlaybackDurationMs(mockSlides)).toBe(1500);
+    });
+
+    it('preserves arrow effect config in directInterpolateArrow', () => {
+      const arrowA = {
+        id: 'a1',
+        annotationType: 'arrow' as const,
+        arrowType: 'pass' as const,
+        curveType: 'straight' as const,
+        points: [
+          { x: 10, y: 10 },
+          { x: 30, y: 30 },
+        ],
+        color: '#ffffff',
+        strokeWidth: 3,
+        dashArray: [],
+        arrowHead: true,
+        effect: {
+          type: 'grow' as const,
+          duration: 0.8,
+          delay: 0.2,
+          holdDuration: 0.5,
+          exitAction: 'keep' as const,
+          fadeDuration: 0.3,
+          easing: 'linear' as const,
+        },
+      };
+
+      const interpolated = directInterpolateArrow(arrowA, arrowA, 0.5);
+      expect(interpolated).not.toBeNull();
+      expect(interpolated?.effect).toEqual(arrowA.effect);
     });
 
     it('interpolates positions at 50% transition progress (500ms)', () => {

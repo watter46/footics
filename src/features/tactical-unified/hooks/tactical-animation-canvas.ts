@@ -4,11 +4,8 @@ import {
   defaultTacticalUnifiedStore,
   type TacticalUnifiedStoreApi,
 } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { computeArrowEffectState } from '@/lib/tactical/effect-geometry';
-import {
-  getInterpolatedUnifiedSlideFrame,
-  resolveEffectiveSlideSegments,
-} from '@/lib/tactical/unified-interpolation';
+import { computeFrameEffects } from '@/lib/tactical/export/tactical-frame-effects';
+import { getInterpolatedUnifiedSlideFrame } from '@/lib/tactical/unified-interpolation';
 import {
   batchDrawLayers,
   updateArrowNodes,
@@ -73,93 +70,32 @@ export function renderFrameToCanvas(
     }
   }
 
-  if (frame.currentSlideIndex !== lastActiveSlideIndexRef.current) {
-    lastActiveSlideIndexRef.current = frame.currentSlideIndex;
-    const targetSlide = currentSlides[frame.currentSlideIndex];
-    if (targetSlide && targetSlide.id !== storeApi.getState().activeSlideId) {
-      setActiveSlide(targetSlide.id);
-    }
-  }
-
   const isPlaying = storeApi.getState().isPlaying;
 
-  let timeInSlideMs = timeMs;
-  let activeSlide = currentSlides[0];
-
-  if (currentSlides.length > 1) {
-    const segments = resolveEffectiveSlideSegments(currentSlides);
-    for (let i = 0; i < segments.length; i++) {
-      const seg = segments[i];
-      const isLastSegment = i === segments.length - 1;
-      if (timeMs < seg.startTimeMs + seg.effectiveDurationMs || isLastSegment) {
-        timeInSlideMs = Math.max(0, timeMs - seg.startTimeMs);
-        activeSlide = currentSlides[seg.slideIndex - 1] ?? currentSlides[0];
-        break;
+  if (frame.currentSlideIndex !== lastActiveSlideIndexRef.current) {
+    lastActiveSlideIndexRef.current = frame.currentSlideIndex;
+    if (!isPlaying) {
+      const targetSlide = currentSlides[frame.currentSlideIndex];
+      if (targetSlide && targetSlide.id !== storeApi.getState().activeSlideId) {
+        setActiveSlide(targetSlide.id);
       }
     }
   }
 
-  const effectArrows = { ...frame.arrows };
-  for (const [arrowId, arrowState] of Object.entries(effectArrows)) {
-    if (!isPlaying) {
-      arrowState.progress = 1.0;
-      arrowState.opacity = 1.0;
-      arrowState.visible = true;
-    } else {
-      const originalArrow =
-        activeSlide?.arrows.find((a) => a.id === arrowId) ??
-        currentSlides[frame.nextSlideIndex]?.arrows.find(
-          (a) => a.id === arrowId,
-        );
-      const effectState = computeArrowEffectState(
-        timeInSlideMs,
-        originalArrow?.effect,
-      );
-      arrowState.progress = effectState.progress;
-      arrowState.opacity = arrowState.opacity * effectState.opacity;
-      arrowState.visible = arrowState.visible && effectState.visible;
-      arrowState.dashOffset = effectState.dashOffset;
-    }
-  }
-
-  const effectZones = { ...frame.zones };
-  for (const [zoneId, zoneState] of Object.entries(effectZones)) {
-    if (!isPlaying) {
-      // 再生停止時は通常描画
-    } else {
-      const originalZone =
-        activeSlide?.zones?.find((z) => z.id === zoneId) ??
-        currentSlides[frame.nextSlideIndex]?.zones?.find(
-          (z) => z.id === zoneId,
-        );
-      if (originalZone?.effect) {
-        zoneState.effect = originalZone.effect;
-      }
-    }
-  }
+  const { effectArrows, effectZones, timeInSlideMs } = computeFrameEffects(
+    currentSlides,
+    timeMs,
+    frame.arrows,
+    frame.players,
+    frame.nextSlideIndex,
+    stageWidth,
+    { applyEffects: isPlaying, zones: frame.zones },
+  );
 
   if (!isPlaying) {
-    for (const playerGroup of registry.playerNodes.values()) {
-      if (typeof playerGroup.find === 'function') {
-        const rings = playerGroup.find('.ripple-ring');
-        for (const ring of rings) {
-          if (typeof ring.visible === 'function') {
-            ring.visible(false);
-          }
-        }
-        const trajectoryMarkers = playerGroup.find('.trajectory-start-marker');
-        for (const marker of trajectoryMarkers) {
-          if (typeof marker.visible === 'function') {
-            marker.visible(false);
-          }
-        }
-        const trajectoryLines = playerGroup.find('.trajectory-line');
-        for (const line of trajectoryLines) {
-          if (typeof line.visible === 'function') {
-            line.visible(false);
-          }
-        }
-      }
+    for (const arrowState of Object.values(effectArrows)) {
+      arrowState.opacity = 1.0;
+      arrowState.visible = true;
     }
   }
 
@@ -197,6 +133,8 @@ export function renderFrameToCanvas(
     stageHeight,
     offsetX,
     offsetY,
+    frame.players,
+    isPlaying,
   );
   updateTextNodes(
     frame.texts,

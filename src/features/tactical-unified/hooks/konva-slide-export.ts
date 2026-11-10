@@ -97,6 +97,7 @@ export async function renderSlideToPngBlob(
       screenBackground: options.screenBackground,
       teamVisibility: options.teamVisibility,
       playerPhotos,
+      applyEffects: false,
     });
 
     const blob: Blob | null = await new Promise((resolve) => {
