@@ -277,4 +277,26 @@ describe('FormationPanel (Step 5)', () => {
 
     expect(btn4231.className).toMatch(/bg-(\[#FF8100\]|blue-600)/);
   });
+
+  it('12. handleBottomLabelChange calls updatePlayers atomically instead of individual updatePlayer calls', () => {
+    const store = useTacticalUnifiedStore.getState();
+    const updatePlayersSpy = vi.spyOn(store, 'updatePlayers');
+
+    render(<FormationPanel />);
+
+    const noneBottomBtn = screen.getByRole('button', {
+      name: /Bottom Label None/i,
+    });
+    fireEvent.click(noneBottomBtn);
+
+    expect(updatePlayersSpy).toHaveBeenCalledTimes(1);
+    const [slideId, updates] = updatePlayersSpy.mock.calls[0];
+    expect(slideId).toBe(store.activeSlideId);
+    expect(updates.length).toBeGreaterThan(0);
+    expect(updates.every((u) => u.patch.style?.bottomLabel === 'none')).toBe(
+      true,
+    );
+
+    updatePlayersSpy.mockRestore();
+  });
 });

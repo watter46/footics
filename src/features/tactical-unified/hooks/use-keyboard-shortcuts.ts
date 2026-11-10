@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { toast } from 'sonner';
 import { getToolShortcutMap } from '@/features/tactical-unified/core/components/toolbar';
+import { getSlideSnapTime } from '@/features/tactical-unified/hooks/tactical-playback-controls';
 import {
   selectActivePhaseSlides,
   selectActiveSlide,
@@ -116,6 +117,71 @@ export function useKeyboardShortcuts() {
       if (isInputFocused()) return;
       e.preventDefault();
       storeApi.getState().toggleWorkspaceMode();
+    },
+    { enableOnFormTags: false },
+  );
+
+  // Previous Scene: D
+  useHotkeys(
+    'd',
+    (e) => {
+      if (isInputFocused()) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      e.preventDefault();
+      const store = storeApi.getState();
+      const slides = selectActivePhaseSlides(store);
+      const currentIndex = slides.findIndex(
+        (s) => s.id === store.activeSlideId,
+      );
+      if (currentIndex > 0) {
+        const target = slides[currentIndex - 1];
+        store.setActiveSlide(target.id);
+        store.setPlaybackIndices(currentIndex - 1, null);
+        const snapTime = getSlideSnapTime(slides, currentIndex - 1);
+        store.seekTo(snapTime);
+      }
+    },
+    { enableOnFormTags: false },
+  );
+
+  // Next Scene: F
+  useHotkeys(
+    'f',
+    (e) => {
+      if (isInputFocused()) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      e.preventDefault();
+      const store = storeApi.getState();
+      const slides = selectActivePhaseSlides(store);
+      const currentIndex = slides.findIndex(
+        (s) => s.id === store.activeSlideId,
+      );
+      if (currentIndex >= 0 && currentIndex < slides.length - 1) {
+        const target = slides[currentIndex + 1];
+        store.setActiveSlide(target.id);
+        store.setPlaybackIndices(currentIndex + 1, null);
+        const snapTime = getSlideSnapTime(slides, currentIndex + 1);
+        store.seekTo(snapTime);
+      }
+    },
+    { enableOnFormTags: false },
+  );
+
+  // Restart & Play: R
+  useHotkeys(
+    'r',
+    (e) => {
+      if (isInputFocused()) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      e.preventDefault();
+      const store = storeApi.getState();
+      const slides = selectActivePhaseSlides(store);
+      if (slides.length > 0) {
+        store.setActiveSlide(slides[0].id);
+        store.setPlaybackIndices(0, null);
+        store.seekTo(0);
+        store.setIsPlaying(true);
+      }
     },
     { enableOnFormTags: false },
   );

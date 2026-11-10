@@ -29,7 +29,6 @@ export function updatePlayerRippleRings(
   const sizeScale = pState.style?.sizeScale ?? 1.0;
   const baseRadius = 15 * sizeScale;
   const rings = computeRippleRings(timeInSlideMs, markerEffect, baseRadius);
-  const color = pState.style?.color ?? '#38bdf8';
 
   while (existingRings.length < rings.length) {
     const newRing = new Konva.Circle({
@@ -47,7 +46,7 @@ export function updatePlayerRippleRings(
     if (i < rings.length) {
       const ringData = rings[i];
       ringNode.radius(ringData.radius);
-      ringNode.stroke(color);
+      ringNode.stroke(ringData.color || pState.style?.color || '#38bdf8');
       ringNode.opacity(ringData.opacity * pState.opacity);
       ringNode.visible(pState.visible && ringData.opacity > 0);
     } else {

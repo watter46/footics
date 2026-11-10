@@ -42,6 +42,9 @@ export function PlayerInfoPopover({
     getFloatingProps: getInfoFloatingProps,
   } = useInteractions([infoClick, infoDismiss]);
 
+  const currentBottomLabel = player.style?.bottomLabel ?? 'name';
+  const isTransparentBg = player.style?.transparentBackground ?? false;
+
   return (
     <div className="relative flex items-center">
       <button
@@ -105,10 +108,6 @@ export function PlayerInfoPopover({
                 const name = e.target.value;
                 updateMarker(player.id, {
                   name,
-                  style: {
-                    ...player.style,
-                    bottomLabel: name ? 'name' : 'none',
-                  },
                 });
               }}
               placeholder="選手名 (例: Saka)"
@@ -117,6 +116,72 @@ export function PlayerInfoPopover({
               aria-label="選手名"
             />
           </div>
+
+          {/* Bottom Label トグル (Name / Num / None) */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] text-white/60">ラベル表示</label>
+            <div className="grid grid-cols-3 gap-1 bg-[#121214] p-0.5 rounded border border-white/[0.08]">
+              {(['name', 'number', 'none'] as const).map((mode) => {
+                const labelText =
+                  mode === 'name' ? 'Name' : mode === 'number' ? 'Num' : 'None';
+                const isActive = currentBottomLabel === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-label={`ラベル ${labelText}`}
+                    onClick={() => {
+                      updateMarker(player.id, {
+                        style: { ...player.style, bottomLabel: mode },
+                      });
+                    }}
+                    className={`py-0.5 text-[10px] font-medium rounded transition-colors cursor-pointer ${
+                      isActive
+                        ? 'bg-[#FF8100] text-white font-semibold'
+                        : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    {labelText}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 背景塗り切替 (!isRing 時のみ) */}
+          {!isRing && (
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-white/60">マーカー背景</label>
+              <button
+                type="button"
+                aria-label="背景塗り切替"
+                onClick={() => {
+                  updateMarker(player.id, {
+                    style: {
+                      ...player.style,
+                      transparentBackground: !isTransparentBg,
+                    },
+                  });
+                }}
+                className={`w-full py-1 px-2 text-[10px] font-medium rounded border transition-colors cursor-pointer flex items-center justify-between ${
+                  isTransparentBg
+                    ? 'bg-white/10 border-white/20 text-white/90'
+                    : 'bg-[#121214] border-white/[0.08] text-white/70 hover:bg-white/[0.04]'
+                }`}
+              >
+                <span>背景の塗りつぶし</span>
+                <span
+                  className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                    isTransparentBg
+                      ? 'bg-amber-500/20 text-amber-300'
+                      : 'bg-blue-500/20 text-blue-300'
+                  }`}
+                >
+                  {isTransparentBg ? '背景なし (透明)' : '塗りあり'}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

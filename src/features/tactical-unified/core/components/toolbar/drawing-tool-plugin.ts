@@ -38,35 +38,30 @@ export const DRAWING_TOOLS_CORE: DrawingToolPlugin[] = [
     id: 'line',
     label: 'Straight Line (L)',
     icon: StraightLineIcon,
-    shortcutKey: 'l',
     visibility: 'core',
   },
   {
     id: 'route_line',
     label: 'Route Line (R)',
     icon: RouteLineIcon,
-    shortcutKey: 'r',
     visibility: 'core',
   },
   {
     id: 'arrow_solid',
     label: 'Solid Arrow (A)',
     icon: MoveRight,
-    shortcutKey: 'a',
     visibility: 'core',
   },
   {
     id: 'arrow_dash',
     label: 'Dashed Arrow (D)',
     icon: DashedArrowIcon,
-    shortcutKey: 'd',
     visibility: 'core',
   },
   {
     id: 'arrow_wavy',
     label: 'Wavy Arrow (W)',
     icon: WavyArrowIcon,
-    shortcutKey: 'w',
     visibility: 'core',
   },
   {
@@ -79,14 +74,12 @@ export const DRAWING_TOOLS_CORE: DrawingToolPlugin[] = [
     id: 'polygon_zone',
     label: 'Polygon Zone (P)',
     icon: CustomPolygonZoneIcon,
-    shortcutKey: 'p',
     visibility: 'core',
   },
   {
     id: 'text',
     label: 'Text (T)',
     icon: Type,
-    shortcutKey: 't',
     visibility: 'core',
   },
 ];
@@ -95,7 +88,6 @@ export const TOOL_PLUGIN_PLAYER_2D: DrawingToolPlugin = {
   id: 'player',
   label: '2D Player Marker (M)',
   icon: CircleMarkerIcon,
-  shortcutKey: 'm',
   visibility: '2d-marker',
 };
 
@@ -103,7 +95,6 @@ export const TOOL_PLUGIN_PLAYER_3D_RING: DrawingToolPlugin = {
   id: 'player-ring',
   label: '3D Foot Ring (O)',
   icon: RingMarkerIcon,
-  shortcutKey: 'o',
   visibility: '3d-marker',
 };
 
@@ -118,7 +109,6 @@ export const TOOL_PLUGIN_ERASER: DrawingToolPlugin = {
   id: 'eraser',
   label: 'Eraser (E)',
   icon: Eraser,
-  shortcutKey: 'e',
   visibility: 'shortcut-only',
 };
 
@@ -126,7 +116,6 @@ export const TOOL_PLUGIN_ZONE_CIRCLE: DrawingToolPlugin = {
   id: 'zone_circle',
   label: 'Zone Circle (Z)',
   icon: Square,
-  shortcutKey: 'z',
   visibility: 'shortcut-only',
 };
 

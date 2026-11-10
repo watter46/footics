@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type Konva from 'konva';
 import { describe, expect, it, vi } from 'vitest';
 import type {
@@ -412,5 +414,47 @@ describe('Phase 2: Animation node updaters (Zone pulse, Arrow dashOffset, Player
     expect(line).toBeDefined();
     expect(line.dash()).toEqual([6, 4]);
     expect(line.stroke()).toBe('#00ff00');
+  });
+
+  describe('Turbopack HMR & Clean Module Imports (TASK-175)', () => {
+    it('tactical-timeline.ts starts with use client directive', () => {
+      const filePath = path.resolve(__dirname, '../tactical-timeline.ts');
+      const content = fs.readFileSync(filePath, 'utf-8');
+      expect(
+        content.startsWith("'use client';") ||
+          content.startsWith('"use client";'),
+      ).toBe(true);
+    });
+
+    it('tactical-playback-controls.ts imports AnimationPlaybackRefs directly from ./tactical-timeline to avoid circular dependencies', () => {
+      const filePath = path.resolve(
+        __dirname,
+        '../tactical-playback-controls.ts',
+      );
+      const content = fs.readFileSync(filePath, 'utf-8');
+      expect(content).toContain("from './tactical-timeline'");
+      expect(content).not.toContain("from './tactical-animation-canvas'");
+    });
+
+    it('use-tactical-animation.ts directly imports from tactical-timeline and tactical-playback-controls', () => {
+      const filePath = path.resolve(__dirname, '../use-tactical-animation.ts');
+      const content = fs.readFileSync(filePath, 'utf-8');
+      expect(content).toContain("from './tactical-timeline'");
+      expect(content).toContain("from './tactical-playback-controls'");
+    });
+
+    it('timeline-bar.tsx directly imports getSlideSnapTime from tactical-playback-controls', () => {
+      const filePath = path.resolve(
+        __dirname,
+        '../../panels/timeline/timeline-bar.tsx',
+      );
+      const content = fs.readFileSync(filePath, 'utf-8');
+      expect(content).toContain(
+        "from '@/features/tactical-unified/hooks/tactical-playback-controls'",
+      );
+      expect(content).not.toContain(
+        "from '@/features/tactical-unified/hooks/tactical-animation-canvas'",
+      );
+    });
   });
 });

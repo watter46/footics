@@ -2190,6 +2190,79 @@ describe('Tactical Frame Renderer', () => {
       expect(renderSpy.mock.calls.length).toBe(5);
     });
 
+    it('does NOT skip canvas redraw during pauseMs when markerEffect is present (renders every frame for ripple)', async () => {
+      const renderSpy = vi.spyOn(
+        tacticalFrameRenderer,
+        'renderTacticalFrameToCanvas',
+      );
+      renderSpy.mockClear();
+
+      const slideWithRipple = SlideSchema.parse({
+        id: 's-ripple',
+        index: 0,
+        transitionDurationMs: 200,
+        pauseMs: 400,
+        players: [
+          {
+            id: 'p1',
+            x: 50,
+            y: 50,
+            team: 'home',
+            shirtNo: '10',
+            name: 'Messi',
+            area: 'pitch',
+            style: {
+              insideContent: 'number',
+              bottomLabel: 'name',
+              color: '#3b82f6',
+              strokeColor: '#ffffff',
+              strokeWidth: 2,
+              sizeScale: 1,
+              numberSizeScale: 1,
+              labelSizeScale: 1,
+              markerEffect: {
+                type: 'ripple',
+                speed: 1,
+                color: '#38bdf8',
+              },
+            },
+          },
+        ],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: true },
+      });
+      const slide2 = SlideSchema.parse({
+        id: 's2',
+        index: 1,
+        transitionDurationMs: 200,
+        pauseMs: 400,
+        players: [],
+        arrows: [],
+        zones: [],
+        texts: [],
+        ball: { x: 50, y: 50, visible: true },
+      });
+
+      const blob = await exportVideoWithMediabunny({
+        format: 'mp4',
+        fps: 10,
+        totalDurationMs: 600,
+        stageWidth: 1000,
+        stageHeight: 1000,
+        slides: [slideWithRipple, slide2],
+        scale: 1,
+        isWorkerContext: true,
+      });
+
+      expect(blob).toBeInstanceOf(Blob);
+      expect(mockCanvasSourceAdd).toHaveBeenCalledTimes(6);
+
+      // MarkerEffect があるため、静止フレームであっても毎フレーム再描画され、スキップされない (全6フレーム描画)
+      expect(renderSpy.mock.calls.length).toBe(6);
+    });
+
     it('calculates player marker radius based on pitch baseDim (short edge) * 0.032', () => {
       const ctx = createMockContext();
       renderTacticalFrameToCanvas(ctx, {

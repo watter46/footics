@@ -28,6 +28,7 @@ export function FormationPanel() {
     (s) => s.clearPitchPlayers,
   );
   const updatePlayer = useTacticalUnifiedStoreContext((s) => s.updatePlayer);
+  const updatePlayers = useTacticalUnifiedStoreContext((s) => s.updatePlayers);
   const setTeamColor = useTacticalUnifiedStoreContext((s) => s.setTeamColor);
   const setBallSizeScale = useTacticalUnifiedStoreContext(
     (s) => s.setBallSizeScale,
@@ -72,18 +73,23 @@ export function FormationPanel() {
     return { home, away };
   }, [activeSlide]);
 
-  const targetPitchPlayers = useMemo(() => {
+  const targetTeamPlayers = useMemo(() => {
     if (!activeSlide) return [];
     return activeSlide.players.filter(
-      (p) =>
-        p.area === 'pitch' && (activeTeam === 'both' || p.team === activeTeam),
+      (p) => activeTeam === 'both' || p.team === activeTeam,
     );
   }, [activeSlide, activeTeam]);
 
+  const targetPitchPlayers = useMemo(() => {
+    return targetTeamPlayers.filter((p) => p.area === 'pitch');
+  }, [targetTeamPlayers]);
+
+  const representativePlayer = targetPitchPlayers[0] ?? targetTeamPlayers[0];
+
   const currentInsideContent =
-    targetPitchPlayers[0]?.style.insideContent ?? 'number';
-  const currentBottomLabel = targetPitchPlayers[0]?.style.bottomLabel ?? 'name';
-  const currentMarkerScale = targetPitchPlayers[0]?.style.sizeScale ?? 1.0;
+    representativePlayer?.style.insideContent ?? 'number';
+  const currentBottomLabel = representativePlayer?.style.bottomLabel ?? 'name';
+  const currentMarkerScale = representativePlayer?.style.sizeScale ?? 1.0;
   const currentBallScale = activeSlide?.ball.sizeScale ?? 1.0;
 
   const handleApplyFormation = (f: FormationType) => {
@@ -112,11 +118,13 @@ export function FormationPanel() {
         ? activeSlide.players
         : activeSlide.players.filter((p) => p.team === activeTeam);
 
-    for (const p of targetPlayers) {
-      updatePlayer(activeSlideId, p.id, {
-        style: { ...p.style, bottomLabel: label },
-      });
-    }
+    updatePlayers(
+      activeSlideId,
+      targetPlayers.map((p) => ({
+        id: p.id,
+        patch: { style: { ...p.style, bottomLabel: label } },
+      })),
+    );
   };
 
   const handleMarkerScaleChange = (scale: number) => {

@@ -209,22 +209,14 @@ describe('Toolbar Compound Components & Registry', () => {
   });
 
   describe('Drawing Tool Plugin Registry & Shortcuts', () => {
-    it('getToolShortcutMap が規定のショートカットマッピングを返すこと', () => {
+    it('getToolShortcutMap が規定のショートカットマッピングを返すこと (select のみ)', () => {
       const map = getToolShortcutMap();
-      expect(map).toMatchObject({
+      expect(map).toEqual({
         v: 'select',
-        l: 'line',
-        r: 'route_line',
-        a: 'arrow_solid',
-        d: 'arrow_dash',
-        w: 'arrow_wavy',
-        z: 'zone_circle',
-        p: 'polygon_zone',
-        t: 'text',
-        m: 'player',
-        o: 'player-ring',
-        e: 'eraser',
       });
+      expect(map.d).toBeUndefined();
+      expect(map.r).toBeUndefined();
+      expect(map.w).toBeUndefined();
     });
 
     it('registerDrawingToolPlugin で新しいツールが登録され、getDrawingTools や getToolShortcutMap に反映されること', () => {

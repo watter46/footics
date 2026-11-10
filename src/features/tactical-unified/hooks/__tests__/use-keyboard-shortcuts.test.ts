@@ -14,6 +14,7 @@ describe('useKeyboardShortcuts', () => {
     (document.activeElement as HTMLElement)?.blur();
     const store = useTacticalUnifiedStore.getState();
     store.resetProject();
+    store.setIsPlaying(false);
     store.clearSelection();
   });
 
@@ -330,33 +331,180 @@ describe('useKeyboardShortcuts', () => {
     expect(useTacticalUnifiedStore.getState().selectedObjects).toHaveLength(0);
   });
 
-  it('ツールショートカットキー (v, l, r, a, d, w, z, p, t, m, o, e) でアクティブツールが切り替わる', () => {
+  it('描画ツールショートカットは v (select) のみ動作し、他の文字キー (l, a, w, m) では切り替わらないこと', () => {
     renderHook(() => useKeyboardShortcuts());
 
     act(() => {
-      fireEvent.keyDown(document, { key: 'l', code: 'KeyL' });
+      useTacticalUnifiedStore.getState().setActiveTool('line');
     });
     expect(useTacticalUnifiedStore.getState().activeTool).toBe('line');
 
     act(() => {
       fireEvent.keyDown(document, { key: 'a', code: 'KeyA' });
     });
-    expect(useTacticalUnifiedStore.getState().activeTool).toBe('arrow_solid');
+    expect(useTacticalUnifiedStore.getState().activeTool).toBe('line');
 
     act(() => {
       fireEvent.keyDown(document, { key: 'w', code: 'KeyW' });
     });
-    expect(useTacticalUnifiedStore.getState().activeTool).toBe('arrow_wavy');
+    expect(useTacticalUnifiedStore.getState().activeTool).toBe('line');
 
     act(() => {
       fireEvent.keyDown(document, { key: 'm', code: 'KeyM' });
     });
-    expect(useTacticalUnifiedStore.getState().activeTool).toBe('player');
+    expect(useTacticalUnifiedStore.getState().activeTool).toBe('line');
 
     act(() => {
       fireEvent.keyDown(document, { key: 'v', code: 'KeyV' });
     });
     expect(useTacticalUnifiedStore.getState().activeTool).toBe('select');
+  });
+
+  describe('シーン操作ショートカット (d: 前へ, f: 次へ, r: 初めから再生)', () => {
+    it('d キーで前のシーンに移動し、f キーで次のシーンに移動する', () => {
+      renderHook(() => useKeyboardShortcuts());
+      const store = useTacticalUnifiedStore.getState();
+
+      // スライドを3つ作成 (A, B, C)
+      act(() => {
+        store.addSlide(); // B
+      });
+      act(() => {
+        store.addSlide(); // C
+      });
+
+      const slides = useTacticalUnifiedStore.getState().project.slides;
+      expect(slides).toHaveLength(3);
+      const [slideA, slideB, slideC] = slides;
+
+      // 現在 B をアクティブにする
+      act(() => {
+        useTacticalUnifiedStore.getState().setActiveSlide(slideB.id);
+        useTacticalUnifiedStore.getState().setPlaybackIndices(1, null);
+      });
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(slideB.id);
+
+      // 1. d キー押下 -> A (インデックス 0) へ移動
+      act(() => {
+        fireEvent.keyDown(document, { key: 'd', code: 'KeyD' });
+      });
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(slideA.id);
+      expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(0);
+
+      // 先頭 (インデックス 0) でさらに d を押しても変化しない
+      act(() => {
+        fireEvent.keyDown(document, { key: 'd', code: 'KeyD' });
+      });
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(slideA.id);
+
+      // 2. f キー押下 -> B (インデックス 1) へ移動
+      act(() => {
+        fireEvent.keyDown(document, { key: 'f', code: 'KeyF' });
+      });
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(slideB.id);
+      expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(1);
+
+      // f キー押下 -> C (インデックス 2) へ移動
+      act(() => {
+        fireEvent.keyDown(document, { key: 'f', code: 'KeyF' });
+      });
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(slideC.id);
+      expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(2);
+
+      // 末尾でさらに f を押しても変化しない
+      act(() => {
+        fireEvent.keyDown(document, { key: 'f', code: 'KeyF' });
+      });
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(slideC.id);
+    });
+
+    it('r キーで先頭シーンに移動し、シーク時間0で再生を開始する', () => {
+      renderHook(() => useKeyboardShortcuts());
+      const store = useTacticalUnifiedStore.getState();
+
+      act(() => {
+        store.addSlide(); // B
+      });
+      act(() => {
+        store.addSlide(); // C
+      });
+
+      const slides = useTacticalUnifiedStore.getState().project.slides;
+      const [slideA, , slideC] = slides;
+
+      // C をアクティブ、再生停止、シーク時間を 5000ms に設定
+      act(() => {
+        useTacticalUnifiedStore.getState().setActiveSlide(slideC.id);
+        useTacticalUnifiedStore.getState().setPlaybackIndices(2, null);
+        useTacticalUnifiedStore.getState().seekTo(5000);
+        useTacticalUnifiedStore.getState().setIsPlaying(false);
+      });
+
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(slideC.id);
+      expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
+
+      // r キー押下 -> A へ移動し再生開始
+      act(() => {
+        fireEvent.keyDown(document, { key: 'r', code: 'KeyR' });
+      });
+
+      const updatedStore = useTacticalUnifiedStore.getState();
+      expect(updatedStore.activeSlideId).toBe(slideA.id);
+      expect(updatedStore.playbackSlideIndex).toBe(0);
+      expect(updatedStore.playbackSeekTimeMs).toBe(0);
+      expect(updatedStore.isPlaying).toBe(true);
+    });
+
+    it('input / textarea にフォーカス中は d, f, r が発火しないこと', () => {
+      renderHook(() => useKeyboardShortcuts());
+      const store = useTacticalUnifiedStore.getState();
+
+      act(() => {
+        store.addSlide();
+      });
+      const [slideA] = useTacticalUnifiedStore.getState().project.slides;
+
+      act(() => {
+        useTacticalUnifiedStore.getState().setActiveSlide(slideA.id);
+      });
+
+      const inputElement = document.createElement('input');
+      document.body.appendChild(inputElement);
+      try {
+        inputElement.focus();
+        act(() => {
+          fireEvent.keyDown(inputElement, { key: 'f', code: 'KeyF' });
+        });
+        // スライドは変化しない
+        expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(
+          slideA.id,
+        );
+      } finally {
+        if (inputElement.parentNode) {
+          document.body.removeChild(inputElement);
+        }
+      }
+    });
+
+    it('Ctrl / Meta / Alt などの修飾キー付きではシーン操作 (d, f, r) が発火しないこと', () => {
+      renderHook(() => useKeyboardShortcuts());
+      const store = useTacticalUnifiedStore.getState();
+
+      act(() => {
+        store.addSlide();
+      });
+      const [, slideB] = useTacticalUnifiedStore.getState().project.slides;
+
+      act(() => {
+        useTacticalUnifiedStore.getState().setActiveSlide(slideB.id);
+      });
+
+      // Ctrl+D (オブジェクト複製等) -> d によるシーン移動は発火しない
+      act(() => {
+        fireEvent.keyDown(document, { key: 'd', code: 'KeyD', ctrlKey: true });
+      });
+      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(slideB.id);
+    });
   });
 
   it('Ctrl+M / Cmd+M でアクティブシーンが複製され、ツール切替 (m) と競合しない', () => {
@@ -545,6 +693,7 @@ describe('useKeyboardShortcuts', () => {
 
   it('TacticalUnifiedStoreContext から渡された独立ストアを正しく操作する', () => {
     const customStore = createTacticalUnifiedStore();
+    customStore.getState().setActiveTool('line');
     const wrapper = ({ children }: { children: ReactNode }) =>
       createElement(
         TacticalUnifiedStoreContext.Provider,
@@ -555,11 +704,11 @@ describe('useKeyboardShortcuts', () => {
     renderHook(() => useKeyboardShortcuts(), { wrapper });
 
     act(() => {
-      fireEvent.keyDown(document, { key: 'l', code: 'KeyL' });
+      fireEvent.keyDown(document, { key: 'v', code: 'KeyV' });
     });
 
     // customStore の activeTool が更新され、グローバルストアは影響を受けない
-    expect(customStore.getState().activeTool).toBe('line');
+    expect(customStore.getState().activeTool).toBe('select');
     expect(useTacticalUnifiedStore.getState().activeTool).toBe('select');
   });
 

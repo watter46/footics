@@ -44,6 +44,7 @@ export const MarkerStyleSchema = z.object({
   glowBlur: z.number().min(0).max(100).default(50).optional(),
   glowOpacity: z.number().min(0).max(1).default(1.0).optional(),
   markerEffect: MarkerEffectConfigSchema.optional(),
+  transparentBackground: z.boolean().default(false).optional(),
 });
 export type MarkerStyle = z.infer<typeof MarkerStyleSchema>;
 

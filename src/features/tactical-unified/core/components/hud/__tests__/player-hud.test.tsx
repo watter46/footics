@@ -85,4 +85,22 @@ describe('PlayerHud', () => {
       .annotations.markers.find((m) => m.id === 'p1');
     expect(updatedPlayer?.style?.glowOpacity).toBeCloseTo(1.0);
   });
+
+  it('サークルマーカー描画時でもインライン背番号 input が HUD 上に存在しないこと (コンパクト化)', () => {
+    const store = createCanvasStore({
+      mode: 'tactical-board',
+      aspectRatio: '16:9',
+    });
+    const player = {
+      ...createDefaultPlayer('home', 50, 50, '#38bdf8'),
+      id: 'p1',
+      shirtNo: '10',
+    };
+    store.getState().addMarker(player);
+
+    renderWithStore(<PlayerHud playerId="p1" />, store);
+
+    expect(screen.queryByRole('textbox', { name: '背番号' })).toBeNull();
+    expect(screen.queryByLabelText('背番号')).toBeNull();
+  });
 });

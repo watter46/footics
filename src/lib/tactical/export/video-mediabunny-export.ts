@@ -161,9 +161,17 @@ export async function exportVideoWithMediabunny(
           lastRenderedTransform !== null &&
           !hasCameraDelta(lastRenderedTransform, interpolated.pitchTransform);
 
+        const hasDynamicMarkerEffect = slides.some((s) =>
+          s.players.some(
+            (p) =>
+              p.style?.markerEffect && p.style.markerEffect.type !== 'none',
+          ),
+        );
+
         const shouldSkipRender =
           frameIdx > 0 &&
           interpolated.isPaused &&
+          !hasDynamicMarkerEffect &&
           isTransformIdentical &&
           lastRenderedSlideIdx === interpolated.currentSlideIndex;
 

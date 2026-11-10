@@ -23,18 +23,22 @@ export function PlayerMarkerCircle({
       {/* 写真表示時は周りの境界線（border/stroke）を無くし、選択時のみ選択枠を表示 */}
       <Circle
         radius={radius}
-        fill={player.style.color}
+        fill={
+          player.style.transparentBackground
+            ? 'transparent'
+            : player.style.color
+        }
         stroke={
           isSelected
             ? '#60a5fa'
-            : player.style.insideContent === 'photo' && loadedImage
-              ? undefined
+            : player.style.insideContent === 'photo'
+              ? 'transparent'
               : (player.style.strokeColor ?? '#ffffff')
         }
         strokeWidth={
           isSelected
             ? 3
-            : player.style.insideContent === 'photo' && loadedImage
+            : player.style.insideContent === 'photo'
               ? 0
               : (player.style.strokeWidth ?? 2)
         }

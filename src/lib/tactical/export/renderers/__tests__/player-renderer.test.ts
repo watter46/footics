@@ -124,4 +124,56 @@ describe('renderPlayers - teamVisibility filtering', () => {
     expect(textsUndef).toContain('Defender');
     expect(textsUndef).toContain('Neutral');
   });
+
+  it('4. p.style.transparentBackground === true の場合、背景円の ctx.fill() が呼ばれないこと', () => {
+    const { ctx, frameCtx } = createMockContext();
+    const transparentPlayer = {
+      p1: {
+        id: 'p1',
+        name: 'Transparent Player',
+        shirtNo: '10',
+        team: 'home',
+        x: 50,
+        y: 50,
+        visible: true,
+        opacity: 1,
+        style: {
+          insideContent: 'number',
+          bottomLabel: 'none',
+          transparentBackground: true,
+          color: '#38bdf8',
+        },
+      },
+    } as unknown as Record<string, InterpolatedPlayerState>;
+
+    renderPlayers(frameCtx, transparentPlayer);
+
+    expect(ctx.fill).not.toHaveBeenCalled();
+  });
+
+  it('5. p.style.insideContent === "photo" かつ写真がロードされていない場合、ctx.stroke() が呼ばれないこと', () => {
+    const { ctx, frameCtx } = createMockContext();
+    const photoPlayer = {
+      p1: {
+        id: 'p1',
+        name: 'Photo Player',
+        shirtNo: '7',
+        team: 'home',
+        x: 50,
+        y: 50,
+        visible: true,
+        opacity: 1,
+        style: {
+          insideContent: 'photo',
+          bottomLabel: 'none',
+          strokeColor: '#ffffff',
+          strokeWidth: 2,
+        },
+      },
+    } as unknown as Record<string, InterpolatedPlayerState>;
+
+    renderPlayers(frameCtx, photoPlayer, {});
+
+    expect(ctx.stroke).not.toHaveBeenCalled();
+  });
 });

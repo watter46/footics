@@ -29,31 +29,7 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
 
   return (
     <>
-      {/* 1. 背番号入力 (サークルマーカー時のみ表示) */}
-      {!isRing && (
-        <>
-          <div className="flex items-center bg-white/10 rounded-md px-1.5 py-0.5 text-xs text-white">
-            <span className="text-white/40 font-semibold text-[10px] select-none mr-1">
-              #
-            </span>
-            <input
-              type="text"
-              value={player.shirtNo ?? ''}
-              onChange={(e) => {
-                updateMarker(player.id, { shirtNo: e.target.value });
-              }}
-              className="w-6 bg-transparent text-white font-mono text-xs text-center focus:outline-none focus:bg-white/10 rounded"
-              maxLength={3}
-              placeholder="-"
-              title="背番号"
-              aria-label="背番号"
-            />
-          </div>
-          <div className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" />
-        </>
-      )}
-
-      {/* 2. メインカラー */}
+      {/* 1. メインカラー */}
       <MiniColorPicker
         value={player.style?.color ?? '#034694'}
         onChange={(color) => {
