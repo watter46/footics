@@ -333,11 +333,33 @@ function checkViewGuard(payload: any): GuardDecision | null {
     }
   }
 
+  // 4b. Architect による 4 ファイル以上の調査用ソースコード直接読込の遮断 (Architect Investigation Guard: 3ファイルまで許可)
+  if (role === 'architect') {
+    const workspacePath = payload.workspacePaths?.[0];
+    const relPath = normalizeRelativePath(resolvedPath, workspacePath);
+
+    if (isInvestigationTarget(relPath)) {
+      const recentTargets = getRecentInvestigatedFiles(
+        payload.transcriptPath,
+        workspacePath,
+      );
+
+      // すでに読んだファイルでなく、かつ既に3ファイル以上の調査対象を読んでいる場合は 4ファイル目となるため遮断
+      if (!recentTargets.has(resolvedPath) && recentTargets.size >= 3) {
+        return {
+          decision: 'deny',
+          reason: `[GUARD] Source code investigation limit reached for Architect (Architect is attempting to read 4+ source files directly: '${baseName}').\nReason: Full source reads cause severe token explosion. Architect needs interfaces/signatures rather than implementation logic.\nAction: Use 'bun run ai:outline <file>' to extract signatures with 90% fewer tokens, or invoke Scout (TypeName: "scout", Model: "flash_lite") for broad codebase research.`,
+        };
+      }
+    }
+  }
+
   return { decision: 'allow' };
 }
 
 /**
- * Planner による run_command 経由の調査用ソースコード直接読込の遮断 (5ファイルまで許可、6ファイル目で遮断)
+ * Planner / Architect による run_command 経由の調査用ソースコード直接読込の遮断
+ * (Planner は 5ファイルまで許可、Architect は 3ファイルまで許可)
  */
 function checkCommandInvestigationGuard(
   payload: any,
@@ -345,8 +367,9 @@ function checkCommandInvestigationGuard(
 ): GuardDecision | null {
   if (!payload || !cmdLine) return null;
   const role = detectAgentRole(payload.transcriptPath);
-  if (role !== 'planner') return null;
+  if (role !== 'planner' && role !== 'architect') return null;
 
+  const maxAllowed = role === 'architect' ? 3 : 5;
   const workspacePath = payload.workspacePaths?.[0];
   const targets = extractReadTargetsFromCommand(cmdLine);
   if (targets.length === 0) return null;
@@ -360,8 +383,17 @@ function checkCommandInvestigationGuard(
     const resolvedPath = path.resolve(rawPath);
     const relPath = normalizeRelativePath(resolvedPath, workspacePath);
     if (isInvestigationTarget(relPath)) {
-      if (!recentTargets.has(resolvedPath) && recentTargets.size >= 5) {
+      if (
+        !recentTargets.has(resolvedPath) &&
+        recentTargets.size >= maxAllowed
+      ) {
         const baseName = path.basename(resolvedPath);
+        if (role === 'architect') {
+          return {
+            decision: 'deny',
+            reason: `[GUARD] Source code investigation limit reached for Architect (Architect is attempting to read 4+ source files directly via shell: '${baseName}').\nReason: Full source reads cause severe token explosion. Architect needs interfaces/signatures rather than implementation logic.\nAction: Use 'bun run ai:outline <file>' to extract signatures with 90% fewer tokens, or invoke Scout (TypeName: "scout", Model: "flash_lite") for broad codebase research.`,
+          };
+        }
         return {
           decision: 'deny',
           reason: `[GUARD] Codebase investigation limit reached (Planner is attempting to read 6+ source files directly via shell: '${baseName}').\nReason: Reading multiple source files directly inflates Planner's context (>50K tokens) and causes severe token explosion.\nAction: You MUST delegate codebase investigation to Scout.\n1. Invoke subagent with TypeName: "scout" (Model: "flash_lite") to extract types, signatures, and patterns.\n2. Scout will return Context Snippets (Import Specs, Interfaces & Types, Reference Pattern).\n3. Terminate the Scout immediately via manage_subagents(Action: "kill", ConversationIds: [...]) and embed the snippets into 'tasks/TASK-XXX.md'.`,

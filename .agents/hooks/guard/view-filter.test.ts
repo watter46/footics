@@ -465,6 +465,66 @@ describe('view-filter: planner investigation guard', () => {
     });
     expect(resAuditor?.decision).toBe('allow');
   });
+
+  it('restricts architect from reading 4 or more source files directly', () => {
+    const file1 = createDummyFile(
+      '.agents/hooks/guard/__tests__/fixtures-view/src/arch-1.ts',
+    );
+    const file2 = createDummyFile(
+      '.agents/hooks/guard/__tests__/fixtures-view/src/arch-2.ts',
+    );
+    const file3 = createDummyFile(
+      '.agents/hooks/guard/__tests__/fixtures-view/src/arch-3.ts',
+    );
+    const file4 = createDummyFile(
+      '.agents/hooks/guard/__tests__/fixtures-view/src/arch-4.ts',
+    );
+
+    // Architect ロールの transcript (USER_INPUT で tactical-architect)
+    const architectTranscript = createTranscript([
+      {
+        step_index: 0,
+        type: 'USER_INPUT',
+        content: 'tactical-architect としてアーキテクチャを監査して',
+      },
+      {
+        step_index: 1,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          { name: 'view_file', args: { AbsolutePath: file1 } },
+          { name: 'view_file', args: { AbsolutePath: file2 } },
+          { name: 'view_file', args: { AbsolutePath: file3 } },
+        ],
+      },
+    ]);
+
+    // 4ファイル目の view_file は deny される
+    const res4 = checkViewGuard({
+      transcriptPath: architectTranscript,
+      workspacePaths: [testDir],
+      toolCall: {
+        name: 'view_file',
+        args: { AbsolutePath: file4 },
+      },
+    });
+    expect(res4?.decision).toBe('deny');
+    expect(res4?.reason).toContain(
+      'Source code investigation limit reached for Architect',
+    );
+
+    // run_command 経由の 4ファイル目も deny される
+    const resCmd4 = checkCommandInvestigationGuard(
+      {
+        transcriptPath: architectTranscript,
+        workspacePaths: [testDir],
+      },
+      `rtk read ${file4}`,
+    );
+    expect(resCmd4?.decision).toBe('deny');
+    expect(resCmd4?.reason).toContain(
+      'Source code investigation limit reached for Architect',
+    );
+  });
 });
 
 describe('view-filter: small file transparent overwrite', () => {

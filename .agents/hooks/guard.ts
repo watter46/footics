@@ -1,4 +1,5 @@
 import { checkAgentAccessGuard } from './guard/agent-access-guard';
+import { checkArchitectGuard } from './guard/architect-guard';
 import { checkAuditorGuard } from './guard/auditor-guard';
 import { checkGateguard } from './guard/gateguard-filter';
 import { parseExecutable, splitCommands, tokenize } from './guard/parser';
@@ -134,6 +135,11 @@ function evaluatePayload(payload: any): any {
   const auditorRes = checkAuditorGuard(payload);
   if (auditorRes) {
     return auditorRes;
+  }
+
+  const architectRes = checkArchitectGuard(payload);
+  if (architectRes) {
+    return architectRes;
   }
 
   if (

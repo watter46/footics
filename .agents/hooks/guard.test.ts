@@ -814,6 +814,115 @@ describe('guard.ts Security & Token Guard Tests', () => {
         fs.unlinkSync(transcript);
       } catch (_e) {}
     });
+
+    test('routes architect role through checkArchitectGuard and checkAgentAccessGuard', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-arch-'));
+      const transcript = path.join(dir, 'transcript.jsonl');
+      fs.writeFileSync(
+        transcript,
+        `${[
+          JSON.stringify({
+            step_index: 0,
+            type: 'USER_INPUT',
+            content: 'tactical-architect mode: enforce 4-tier rules',
+          }),
+          JSON.stringify({
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'view_file',
+                args: { AbsolutePath: path.resolve('AGENTS.md') },
+              },
+            ],
+          }),
+        ].join('\n')}\n`,
+      );
+
+      // 1. Permitted commands
+      const resAllowedCmd = evaluatePayload({
+        toolCall: {
+          name: 'run_command',
+          args: { CommandLine: 'bun run ai:outline src/foo.ts' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resAllowedCmd.decision).toBe('allow');
+
+      // 2. Denied commands (vitest)
+      const resDeniedCmd = evaluatePayload({
+        toolCall: {
+          name: 'run_command',
+          args: { CommandLine: 'vitest run' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resDeniedCmd.decision).toBe('deny');
+
+      // 3. Subagents: Scout is allowed, Worker is denied
+      const resScout = evaluatePayload({
+        toolCall: {
+          name: 'invoke_subagent',
+          args: { TypeName: 'scout', Model: 'flash_lite' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resScout.decision).toBe('allow');
+
+      const resWorker = evaluatePayload({
+        toolCall: {
+          name: 'invoke_subagent',
+          args: { TypeName: 'worker' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resWorker.decision).toBe('deny');
+      expect(resWorker.reason).toContain('Architect may only invoke Scout');
+
+      // 4. File writes: .agents/** and root files allowed, src/** and tasks/** denied
+      const resWriteRule = evaluatePayload({
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '.agents/rules/new-rule.md' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resWriteRule.decision).toBe('allow');
+
+      const resWriteRoot = evaluatePayload({
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: 'AGENTS.md' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resWriteRoot.decision).toBe('allow');
+
+      const resWriteSrc = evaluatePayload({
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: 'src/lib/foo.ts' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resWriteSrc.decision).toBe('deny');
+      expect(resWriteSrc.reason).toContain(
+        'Architect is prohibited from editing',
+      );
+
+      const resWriteTask = evaluatePayload({
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: 'tasks/TASK-001.md' },
+        },
+        transcriptPath: transcript,
+      });
+      expect(resWriteTask.decision).toBe('deny');
+
+      try {
+        fs.unlinkSync(transcript);
+      } catch (_e) {}
+    });
   });
 });
 

@@ -101,6 +101,29 @@ describe('agent-access-guard', () => {
       }),
     ).toBe('auditor');
 
+    // 4d. Architect (tactical-architect or architect in prompt/first step)
+    const architectFile = createTranscript(
+      JSON.stringify({
+        step_index: 0,
+        type: 'USER_INPUT',
+        content: 'tactical-architect として設計を監査して',
+      }),
+    );
+    expect(detectAgentRole(architectFile)).toBe('architect');
+    expect(
+      detectRoleFromFirstStep({
+        type: 'USER_INPUT',
+        content:
+          '# ROLE AND MISSION\nあなたは戦術ボードアプリ専任の冷徹なシステムアーキテクトです。',
+      }),
+    ).toBe('architect');
+    expect(
+      detectRoleFromFirstStep({
+        type: 'SYSTEM_MESSAGE',
+        content: 'type: "ARCHITECT_REQUEST"',
+      }),
+    ).toBe('architect');
+
     // 5. Unknown
     expect(detectAgentRole(undefined)).toBe('unknown');
     expect(detectAgentRole('/non/existent/path.jsonl')).toBe('unknown');
@@ -287,6 +310,106 @@ describe('agent-access-guard', () => {
       },
     };
     expect(checkAgentAccessGuard(editTaskPayload)?.decision).toBe('allow');
+
+    fs.rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('allows .agents, docs, and root files for architect role but denies production/test/tasks code', () => {
+    const architectFile = createTranscript(
+      JSON.stringify({
+        step_index: 0,
+        type: 'USER_INPUT',
+        content: 'tactical-architect mode',
+      }),
+    );
+
+    // Architect can edit .agents/**
+    expect(
+      checkAgentAccessGuard({
+        transcriptPath: architectFile,
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '/home/watter46/src/footics/.agents/rules/test.md' },
+        },
+      })?.decision,
+    ).toBe('allow');
+
+    // Architect can edit docs/**
+    expect(
+      checkAgentAccessGuard({
+        transcriptPath: architectFile,
+        toolCall: {
+          name: 'write_file',
+          args: { Path: '/home/watter46/src/footics/docs/architecture.md' },
+        },
+      })?.decision,
+    ).toBe('allow');
+
+    // Architect can edit root-level files (e.g., AGENTS.md, package.json)
+    expect(
+      checkAgentAccessGuard({
+        transcriptPath: architectFile,
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '/home/watter46/src/footics/AGENTS.md' },
+        },
+      })?.decision,
+    ).toBe('allow');
+    expect(
+      checkAgentAccessGuard({
+        transcriptPath: architectFile,
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '/home/watter46/src/footics/package.json' },
+        },
+      })?.decision,
+    ).toBe('allow');
+
+    // Architect cannot edit src/**
+    const srcRes = checkAgentAccessGuard({
+      transcriptPath: architectFile,
+      toolCall: {
+        name: 'edit_file',
+        args: { Path: '/home/watter46/src/footics/src/index.ts' },
+      },
+    });
+    expect(srcRes?.decision).toBe('deny');
+    expect(srcRes?.reason).toContain(
+      "Architect is prohibited from editing 'src/index.ts'",
+    );
+
+    // Architect cannot edit extension/**
+    expect(
+      checkAgentAccessGuard({
+        transcriptPath: architectFile,
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '/home/watter46/src/footics/extension/manifest.json' },
+        },
+      })?.decision,
+    ).toBe('deny');
+
+    // Architect cannot edit tests/**
+    expect(
+      checkAgentAccessGuard({
+        transcriptPath: architectFile,
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '/home/watter46/src/footics/tests/foo.test.ts' },
+        },
+      })?.decision,
+    ).toBe('deny');
+
+    // Architect cannot edit tasks/**
+    expect(
+      checkAgentAccessGuard({
+        transcriptPath: architectFile,
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '/home/watter46/src/footics/tasks/TASK-001.md' },
+        },
+      })?.decision,
+    ).toBe('deny');
 
     fs.rmSync(testDir, { recursive: true, force: true });
   });

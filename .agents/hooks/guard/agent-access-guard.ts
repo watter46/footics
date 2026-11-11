@@ -7,6 +7,7 @@ export type AgentRole =
   | 'reviewer'
   | 'scout'
   | 'auditor'
+  | 'architect'
   | 'unknown';
 
 export interface AgentAccessDecision {
@@ -33,6 +34,20 @@ export function detectRoleFromFirstStep(firstStep: {
     /\bai:audit\b/i.test(content)
   ) {
     return 'auditor';
+  }
+
+  // 1b. Architect: tactical-architect, architect, または ARCHITECT_REQUEST / システムアーキテクト
+  if (
+    content.includes('tactical-architect') ||
+    content.includes('tactical_architect') ||
+    (content.includes('ROLE AND MISSION') &&
+      content.includes('システムアーキテクト')) ||
+    content.includes('type: "ARCHITECT_REQUEST"') ||
+    content.includes("type: 'ARCHITECT_REQUEST'") ||
+    /@architect\b/i.test(content) ||
+    /@tactical-architect\b/i.test(content)
+  ) {
+    return 'architect';
   }
 
   // 2. Scout: SCOUT_REQUEST
@@ -236,6 +251,22 @@ export function checkAgentAccessGuard(
       };
     }
     return { decision: 'allow' };
+  }
+
+  // 2d. Architect の書き込み制限: .agents/**, docs/**, ルート直下のファイルを許可、プロダクション/テスト/tasksは禁止
+  if (role === 'architect') {
+    const isAgents = relPath.startsWith('.agents/');
+    const isDocs = relPath.startsWith('docs/');
+    const isRootFile = !relPath.includes('/');
+
+    if (isAgents || isDocs || isRootFile) {
+      return { decision: 'allow' };
+    }
+
+    return {
+      decision: 'deny',
+      reason: `[GUARD] Access Denied: Architect is prohibited from editing '${relPath}'. Architect's write scope is strictly limited to '.agents/**', 'docs/**', and root directory files (e.g., 'AGENTS.md'). Production code, tests, and tasks must not be modified directly.`,
+    };
   }
 
   // 3. Worker の書き込み権限
