@@ -5,6 +5,9 @@
 - **Created**: 2026-11-12
 - **Target Files**:
   - `src/lib/tactical/export/scene-graph-canvas2d-rasterizer.ts` (CREATE)
+  - `src/lib/tactical/export/scene-graph-billboard-rasterizer.ts` (CREATE)
+  - `src/lib/tactical/export/scene-graph-ball-rasterizer.ts` (CREATE)
+  - `src/lib/tactical/export/tactical-phase-frame-renderer.ts` (CREATE)
   - `src/lib/tactical/export/tactical-frame-renderer.ts` (MODIFY)
   - `src/lib/tactical/export/share-payload.ts` (MODIFY)
   - `src/lib/db/tactical-projects-db.ts` (MODIFY)
