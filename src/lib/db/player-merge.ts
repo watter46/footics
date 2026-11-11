@@ -1,7 +1,9 @@
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import {
   CHELSEA_PRESETS_BY_SEASON,
   type Season,
 } from '@/lib/tactical/chelsea-preset';
+import { ensureTacticalProject } from '@/lib/types/tactical-unified';
 import { dispatchRefreshEvent } from './extension-db-queries';
 import { getPlayerPhotosBatch } from './player-photos';
 import { db, type PlayerMaster } from './schema';
@@ -32,8 +34,8 @@ export function normalizePlayerNameForMatch(name: string): string {
 }
 
 export function resolveMergedShirtNo(
-  manualNo: number | undefined,
-  officialNo: number | undefined,
+  manualNo?: number,
+  officialNo?: number,
 ): number | undefined {
   return manualNo !== undefined && manualNo !== 99
     ? manualNo
@@ -41,8 +43,8 @@ export function resolveMergedShirtNo(
 }
 
 export function resolveMergedPosition(
-  manualPos: string | undefined,
-  officialPos: string | undefined,
+  manualPos?: string,
+  officialPos?: string,
 ): string {
   if (manualPos && manualPos !== 'Sub' && manualPos !== 'Other')
     return manualPos;
@@ -54,24 +56,38 @@ export async function updateTacticalProjectsPlayerIds(
   idMap: Map<string, string>,
 ): Promise<void> {
   if (idMap.size === 0) return;
-  const projects = await db.tactical_projects.toArray();
-  for (const project of projects) {
+  const rawProjects = await db.tactical_projects.toArray();
+  for (const rawProject of rawProjects) {
+    const bundle = normalizeTacticalProject(rawProject);
+    const project = bundle.project;
     let updated = false;
-    for (const phase of project.phases ?? []) {
-      for (const slide of phase.slides ?? []) {
-        for (const player of slide.players ?? []) {
+
+    const newPhases = project.phases.map((phase) => ({
+      ...phase,
+      slides: phase.slides.map((slide) => ({
+        ...slide,
+        players: slide.players.map((player) => {
           if (player.playerId && idMap.has(player.playerId)) {
-            player.playerId = idMap.get(player.playerId)!;
             updated = true;
+            return { ...player, playerId: idMap.get(player.playerId)! };
           }
-        }
-      }
-    }
+          return player;
+        }),
+      })),
+    }));
+
     if (updated) {
-      await db.tactical_projects.put({
+      const updatedBundle = normalizeTacticalProject({
         ...project,
+        phases: newPhases,
         updatedAt: new Date().toISOString(),
       });
+      const cleanProject = ensureTacticalProject({
+        ...updatedBundle.project,
+        activePhaseId: bundle.activePhaseId,
+        activeSlideId: bundle.activeSlideId,
+      });
+      await db.tactical_projects.put(cleanProject);
     }
   }
 }
@@ -129,10 +145,9 @@ export async function mergePlayerId(
         await db.player_photos.delete(tempPlayerId);
       }
 
-      const idMap = new Map<string, string>([
-        [String(tempPlayerId), String(officialPlayerId)],
-      ]);
-      await updateTacticalProjectsPlayerIds(idMap);
+      await updateTacticalProjectsPlayerIds(
+        new Map([[String(tempPlayerId), String(officialPlayerId)]]),
+      );
     },
   );
 
@@ -159,39 +174,28 @@ export async function findPlayerPhotosByNames(
   names: string[],
 ): Promise<Map<string, Blob>> {
   const result = new Map<string, Blob>();
-  if (!names || names.length === 0) return result;
+  if (!names?.length) return result;
 
   const normToNames = new Map<string, string[]>();
   for (const name of names) {
     const norm = normalizePlayerNameForMatch(name);
-    if (!norm) continue;
-    const list = normToNames.get(norm);
-    if (list) list.push(name);
-    else normToNames.set(norm, [name]);
+    if (norm) normToNames.set(norm, [...(normToNames.get(norm) ?? []), name]);
   }
-  if (normToNames.size === 0) return result;
+  if (!normToNames.size) return result;
 
   const players = await db.players.toArray();
-  const normToPlayers = new Map<string, PlayerMaster[]>();
-  const matchedPlayerIds: number[] = [];
+  const matched = players.filter((p) =>
+    normToNames.has(normalizePlayerNameForMatch(p.name)),
+  );
+  if (!matched.length) return result;
 
-  for (const p of players) {
-    const pNorm = normalizePlayerNameForMatch(p.name);
-    if (normToNames.has(pNorm)) {
-      const list = normToPlayers.get(pNorm);
-      if (list) list.push(p);
-      else normToPlayers.set(pNorm, [p]);
-      matchedPlayerIds.push(p.playerId);
-    }
-  }
-  if (matchedPlayerIds.length === 0) return result;
-
-  const photosMap = await getPlayerPhotosBatch(matchedPlayerIds);
-  for (const [norm, matchedList] of normToPlayers.entries()) {
-    const match = matchedList.find((p) => photosMap.has(p.playerId));
-    if (match) {
-      const blob = photosMap.get(match.playerId)!;
-      for (const inputName of normToNames.get(norm) ?? []) {
+  const photosMap = await getPlayerPhotosBatch(matched.map((p) => p.playerId));
+  for (const p of matched) {
+    const blob = photosMap.get(p.playerId);
+    if (blob) {
+      for (const inputName of normToNames.get(
+        normalizePlayerNameForMatch(p.name),
+      ) ?? []) {
         result.set(inputName, blob);
       }
     }
@@ -252,12 +256,9 @@ export async function mergeLegacyPlayersAndPhotos(
           }
         }
 
-        if (!officialRecord) {
-          continue;
-        }
+        if (!officialRecord) continue;
 
         idMap.set(String(legacy.playerId), String(officialRecord.playerId));
-
         await db.players.put({
           ...officialRecord,
           defaultShirtNo: resolveMergedShirtNo(
@@ -284,7 +285,6 @@ export async function mergeLegacyPlayersAndPhotos(
             updatedAt: Date.now(),
           });
         }
-
         await db.players.delete(legacy.id);
         await db.player_photos.delete(legacy.playerId);
       }

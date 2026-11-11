@@ -5,10 +5,10 @@
  */
 
 import { strFromU8, unzipSync } from 'fflate';
-import { attachProjectSlidesGetter } from '@/lib/types/tactical/project';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import {
+  ensureTacticalProject,
   type TacticalProject,
-  TacticalProjectSchema,
 } from '@/lib/types/tactical-unified';
 import { saveTacticalProject } from './tactical-projects-db';
 
@@ -125,24 +125,26 @@ export async function importTacticalProjectFromJson(
   }
 
   const sanitized = sanitizeTacticalProjectForImport(rawJson);
-  const parseResult = TacticalProjectSchema.safeParse(sanitized);
-  if (!parseResult.success) {
-    const details = parseResult.error.issues
-      .map((i) => `${i.path.join('.') || 'root'}: ${i.message}`)
-      .join(', ');
-    throw new Error(`Invalid tactical project JSON format: ${details}`);
+  if (
+    !isRecord(sanitized) ||
+    (!Array.isArray(sanitized.phases) && !Array.isArray(sanitized.slides))
+  ) {
+    throw new Error('Invalid tactical project JSON format: phases: Required');
   }
 
-  const project = parseResult.data;
+  const bundle = normalizeTacticalProject(sanitized);
+  const project = bundle.project;
   const now = new Date().toISOString();
 
-  const importedProject: TacticalProject = attachProjectSlidesGetter({
+  const importedProject: TacticalProject = ensureTacticalProject({
     ...project,
     id: assignNewId ? crypto.randomUUID() : project.id,
     title: project.title?.trim() || 'Untitled Project',
     createdAt: assignNewId ? now : project.createdAt,
     updatedAt: now,
-  } as TacticalProject);
+    activePhaseId: bundle.activePhaseId,
+    activeSlideId: bundle.activeSlideId,
+  });
 
   await saveTacticalProject(importedProject, false);
   return importedProject;
@@ -174,25 +176,28 @@ export async function importMultipleTacticalProjects(
             const jsonText = strFromU8(bytes);
             const raw = JSON.parse(jsonText);
             const sanitized = sanitizeTacticalProjectForImport(raw);
-            const parsed = TacticalProjectSchema.safeParse(sanitized);
-            if (!parsed.success) {
-              const details = parsed.error.issues
-                .map((i) => `${i.path.join('.') || 'root'}: ${i.message}`)
-                .join(', ');
+            if (
+              !isRecord(sanitized) ||
+              (!Array.isArray(sanitized.phases) &&
+                !Array.isArray(sanitized.slides))
+            ) {
               errors.push(
-                `${relativePath}: スキーマ検証に失敗しました (${details})`,
+                `${relativePath}: スキーマ検証に失敗しました (phases: Required)`,
               );
               continue;
             }
 
+            const bundle = normalizeTacticalProject(sanitized);
             const now = new Date().toISOString();
-            const proj: TacticalProject = attachProjectSlidesGetter({
-              ...parsed.data,
+            const proj: TacticalProject = ensureTacticalProject({
+              ...bundle.project,
               id: crypto.randomUUID(),
-              title: parsed.data.title?.trim() || 'Untitled Project',
+              title: bundle.project.title?.trim() || 'Untitled Project',
               createdAt: now,
               updatedAt: now,
-            } as TacticalProject);
+              activePhaseId: bundle.activePhaseId,
+              activeSlideId: bundle.activeSlideId,
+            });
             await saveTacticalProject(proj, false);
             imported.push(proj);
           } catch (err) {

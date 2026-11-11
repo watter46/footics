@@ -2,12 +2,11 @@
  * tactical-projects-db.ts
  *
  * Dexie.js (IndexedDB) Multi-Project Persistence Layer.
- * Provides CRUD operations, active project synchronization, duplication,
- * and JSON export/import for TacticalProject entities.
  */
 
 import { strToU8, zipSync } from 'fflate';
 import { db } from '@/lib/db/schema';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import {
   clearActiveProjectFromDb,
   loadActiveProjectFromDb,
@@ -19,6 +18,10 @@ import {
   type TacticalProject,
 } from '@/lib/types/tactical-unified';
 import type { Match } from '@/types';
+import {
+  getTimestampForFilename,
+  sanitizeFilenameTitle,
+} from './tactical-projects-import';
 
 export interface TacticalProjectSummary {
   id: string;
@@ -36,25 +39,28 @@ export async function listTacticalProjects(): Promise<
   TacticalProjectSummary[]
 > {
   try {
-    const projects = await db.tactical_projects
+    const rawProjects = await db.tactical_projects
       .orderBy('updatedAt')
       .reverse()
       .toArray();
-
-    return projects.map((p) => ({
-      id: p.id,
-      title: p.title || 'Untitled Project',
-      updatedAt: p.updatedAt,
-      createdAt: p.createdAt,
-      slideCount:
-        p.phases?.reduce((acc, ph) => acc + (ph.slides?.length ?? 0), 0) ??
-        ('slides' in p && Array.isArray((p as { slides?: unknown[] }).slides)
-          ? ((p as { slides?: unknown[] }).slides?.length ?? 0)
-          : 0),
-      aspectRatio: p.aspectRatio,
-      thumbnail: p.thumbnail,
-      backgroundType: p.backgroundType,
-    }));
+    return rawProjects.map((raw) => {
+      const bundle = normalizeTacticalProject(raw);
+      const norm = bundle.project;
+      const phase = norm.phases[0];
+      return {
+        id: norm.id,
+        title: norm.title || 'Untitled Project',
+        updatedAt: norm.updatedAt,
+        createdAt: norm.createdAt,
+        slideCount: norm.phases.reduce(
+          (acc, ph) => acc + (ph.slides?.length ?? 0),
+          0,
+        ),
+        aspectRatio: phase?.aspectRatio ?? '4:5',
+        thumbnail: norm.thumbnail,
+        backgroundType: phase?.backgroundType ?? 'pitch',
+      };
+    });
   } catch (error) {
     console.error('Failed to list tactical projects from Dexie:', error);
     return [];
@@ -66,8 +72,14 @@ export async function getTacticalProjectById(
   id: string,
 ): Promise<TacticalProject | null> {
   try {
-    const project = await db.tactical_projects.get(id);
-    return project ? ensureTacticalProject(project) : null;
+    const raw = await db.tactical_projects.get(id);
+    if (!raw) return null;
+    const bundle = normalizeTacticalProject(raw);
+    return ensureTacticalProject({
+      ...bundle.project,
+      activePhaseId: bundle.activePhaseId,
+      activeSlideId: bundle.activeSlideId,
+    });
   } catch (error) {
     console.error(`Failed to get tactical project ${id}:`, error);
     return null;
@@ -83,11 +95,14 @@ export async function saveTacticalProject(
   syncActive = true,
 ): Promise<void> {
   try {
-    const cleanProject: TacticalProject = {
-      ...project,
+    const bundle = normalizeTacticalProject(project);
+    const cleanProject: TacticalProject = ensureTacticalProject({
+      ...bundle.project,
+      activePhaseId: bundle.activePhaseId,
+      activeSlideId: bundle.activeSlideId,
       updatedAt: new Date().toISOString(),
-      title: project.title?.trim() || 'Untitled Project',
-    };
+      title: bundle.project.title?.trim() || 'Untitled Project',
+    });
 
     await db.tactical_projects.put(cleanProject);
 
@@ -192,11 +207,6 @@ export async function deleteTacticalProjects(ids: string[]): Promise<void> {
     throw error;
   }
 }
-
-import {
-  getTimestampForFilename,
-  sanitizeFilenameTitle,
-} from './tactical-projects-import';
 
 /**
  * Export a tactical project as a formatted JSON blob file download.

@@ -207,6 +207,135 @@ describe('tactical-projects-import', () => {
         'Invalid file format: JSON could not be parsed.',
       );
     });
+
+    it('successfully imports legacy format JSON with normalization (phase.aspectRatio and arrow.endMarker)', async () => {
+      const legacyProject = {
+        id: 'legacy-proj-1',
+        version: '2.0.0',
+        title: 'Legacy Raw Project',
+        aspectRatio: '16:9',
+        phases: [
+          {
+            id: 'phase-old',
+            name: 'Old Phase',
+            slides: [
+              {
+                id: 'slide-old',
+                index: 0,
+                aspectRatio: '9:16',
+                arrows: [
+                  {
+                    id: 'arr-old',
+                    points: [
+                      { x: 10, y: 10 },
+                      { x: 20, y: 20 },
+                    ],
+                    arrowHead: true,
+                    color: '#ffffff',
+                    strokeWidth: 2,
+                  },
+                ],
+                zones: [
+                  {
+                    id: 'z-incomplete',
+                    shapeType: 'polygon',
+                    points: [{ x: 10, y: 10 }],
+                    isComplete: false,
+                  },
+                ],
+                players: [
+                  {
+                    id: 'b-old',
+                    shirtNo: '99',
+                    team: 'away',
+                    x: 5,
+                    y: 95,
+                    area: 'bench',
+                    connectLines: [{ id: 'cl-bad', toPlayerId: 'p1' }],
+                  },
+                ],
+                ball: { x: 50, y: 50, visible: true },
+              },
+            ],
+          },
+        ],
+      };
+
+      const file = new File([JSON.stringify(legacyProject)], 'legacy.json', {
+        type: 'application/json',
+      });
+      const imported = await importTacticalProjectFromJson(file);
+
+      expect(imported.phases[0].aspectRatio).toBe('9:16');
+      expect(imported.phases[0].slides[0].arrows[0].endMarker).toBe('arrow');
+      expect(imported.phases[0].slides[0].zones).toHaveLength(0);
+      const benchPlayer = imported.phases[0].slides[0].players.find(
+        (p) => p.id === 'b-old',
+      );
+      expect(benchPlayer?.area).toBe('bench');
+      expect(
+        'connectLines' in (benchPlayer as unknown as Record<string, unknown>),
+      ).toBe(false);
+      expect(imported.slides).toBeDefined();
+    });
+
+    it('successfully imports v3.0.0 format JSON', async () => {
+      const v3Project = {
+        id: 'v3-proj-1',
+        version: '3.0.0',
+        title: 'V3 Project',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        phases: [
+          {
+            id: 'phase-v3',
+            name: 'V3 Phase',
+            aspectRatio: '4:5',
+            boundaryBox: {
+              x: 0,
+              y: 0,
+              width: 100,
+              height: 100,
+              enabled: true,
+              visible: false,
+              fitTarget: 'pitch',
+            },
+            slides: [
+              {
+                id: 'slide-v3',
+                index: 0,
+                arrows: [
+                  {
+                    id: 'arr-v3',
+                    points: [
+                      { x: 0, y: 0 },
+                      { x: 50, y: 50 },
+                    ],
+                    startMarker: 'none',
+                    endMarker: 'dot',
+                    strokeWidth: 2,
+                    color: '#ffff00',
+                  },
+                ],
+                zones: [],
+                texts: [],
+                players: [],
+                ball: { x: 50, y: 50, visible: true },
+              },
+            ],
+          },
+        ],
+      };
+
+      const file = new File([JSON.stringify(v3Project)], 'v3.json', {
+        type: 'application/json',
+      });
+      const imported = await importTacticalProjectFromJson(file);
+
+      expect(imported.phases[0].aspectRatio).toBe('4:5');
+      expect(imported.phases[0].slides[0].arrows[0].endMarker).toBe('dot');
+      expect(imported.slides).toBeDefined();
+    });
   });
 
   describe('importMultipleTacticalProjects', () => {

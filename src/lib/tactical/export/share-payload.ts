@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import {
+  type NormalizedProjectBundle,
+  normalizeTacticalProject,
+} from '@/lib/tactical/acl/legacy-project-translator';
+import {
   type AspectRatio,
   type BoundaryBox,
   BoundaryBoxSchema,
@@ -96,6 +100,31 @@ export interface TacticalExportShareSummary {
   aspectRatio: AspectRatio;
   orientation: AnimationOrientation;
   hasBoundaryCrop: boolean;
+}
+
+/**
+ * Convert a TacticalExportSharePayload to a normalized TacticalProject bundle via ACL.
+ */
+export function sharePayloadToNormalizedProject(
+  payload: TacticalExportSharePayload,
+): NormalizedProjectBundle {
+  const rawProject = {
+    title: payload.title,
+    phases: [
+      {
+        id: crypto.randomUUID(),
+        name: 'Phase 1',
+        aspectRatio: payload.aspectRatio,
+        boundaryBox: payload.boundaryBox ?? undefined,
+        directorCamera: payload.directorCamera ?? undefined,
+        backgroundType: 'pitch' as const,
+        slides: payload.scenes,
+      },
+    ],
+    pitchAppearance: payload.pitchAppearance,
+    screenBackground: payload.screenBackground ?? undefined,
+  };
+  return normalizeTacticalProject(rawProject);
 }
 
 export {
