@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createTacticalCanvasStoreAdapter } from '@/features/tactical-unified/adapters/tactical-canvas-store-adapter';
 import { createCanvasStore } from '@/features/tactical-unified/core/store/canvas-store';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
@@ -87,7 +86,7 @@ describe('Multi-Marker Drag & Bulk Bench Actions', () => {
     });
   });
 
-  describe('updateMarkers in canvas-store & adapter', () => {
+  describe('updateMarkers in canvas-store', () => {
     it('createCanvasStore で updateMarkers を呼び出すと複数マーカーが1回のUndoで更新される', () => {
       const p1 = createDefaultPlayer('home', 10, 10, '#ff0000');
       const p2 = createDefaultPlayer('away', 20, 20, '#0000ff');
@@ -118,31 +117,6 @@ describe('Multi-Marker Drag & Bulk Bench Actions', () => {
       const u2 = undoneState.annotations.markers.find((m) => m.id === p2.id);
       expect(u1?.x).toBe(10);
       expect(u2?.x).toBe(20);
-    });
-
-    it('tactical-canvas-store-adapter 経由で updateMarkers を呼ぶと unifiedStore の slide players が更新される', () => {
-      const adapter = createTacticalCanvasStoreAdapter(useTacticalUnifiedStore);
-      const slideId = useTacticalUnifiedStore.getState().activeSlideId;
-
-      const p1 = createDefaultPlayer('home', 15, 25, '#ff0000');
-      const p2 = createDefaultPlayer('away', 35, 45, '#0000ff');
-      useTacticalUnifiedStore.getState().addPlayer(p1);
-      useTacticalUnifiedStore.getState().addPlayer(p2);
-
-      adapter.getState().updateMarkers([
-        { id: p1.id, patch: { x: 50, y: 60 } },
-        { id: p2.id, patch: { x: 70, y: 80 } },
-      ]);
-
-      const slide = useTacticalUnifiedStore
-        .getState()
-        .project.slides.find((s) => s.id === slideId);
-      const m1 = slide?.players.find((m) => m.id === p1.id);
-      const m2 = slide?.players.find((m) => m.id === p2.id);
-      expect(m1?.x).toBe(50);
-      expect(m1?.y).toBe(60);
-      expect(m2?.x).toBe(70);
-      expect(m2?.y).toBe(80);
     });
   });
 

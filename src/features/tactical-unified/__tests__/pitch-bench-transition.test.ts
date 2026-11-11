@@ -202,40 +202,6 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
     });
   });
 
-  describe('CanvasStoreAdapter: moveMarkerToBench', () => {
-    it('Adapter 経由で moveMarkerToBench を呼び出すと、選手がベンチへ退避され選択がクリアされる', async () => {
-      const { createTacticalCanvasStoreAdapter } = await import(
-        '../adapters/tactical-canvas-store-adapter'
-      );
-      const store = useTacticalUnifiedStore;
-      const slideId = store.getState().activeSlideId;
-      const slide = store
-        .getState()
-        .project.slides.find((s) => s.id === slideId)!;
-      const target = slide.players.find((p) => p.area === 'pitch')!;
-
-      // 選択状態
-      store.getState().selectObject({ id: target.id, kind: 'player' });
-
-      const adapter = createTacticalCanvasStoreAdapter(store);
-      expect(adapter.getState().moveMarkerToBench).toBeDefined();
-
-      // Adapter 経由でベンチ退避
-      adapter.getState().moveMarkerToBench!(target.id);
-
-      const afterSlide = store
-        .getState()
-        .project.slides.find((s) => s.id === slideId)!;
-      const benched = afterSlide.players.find((p) => p.id === target.id)!;
-
-      expect(benched.area).toBe('bench');
-      expect(benched.visionCone).toBeUndefined();
-      expect(
-        store.getState().selectedObjects.some((o) => o.id === target.id),
-      ).toBe(false);
-    });
-  });
-
   describe('PlayerLayer: 右側パネル領域へのドロップによるベンチ退避判定', () => {
     it('キャンバス右端外 (x >= width) にドロップされた場合、movePlayerToBench が発火する', () => {
       const store = useTacticalUnifiedStore;

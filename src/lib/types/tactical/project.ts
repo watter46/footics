@@ -115,6 +115,10 @@ export const TacticalProjectSchema = z.object({
   boundaryBox: BoundaryBoxSchema.optional(),
 });
 export type TacticalProject = z.infer<typeof TacticalProjectSchema> & {
+  /**
+   * @deprecated Phase 構造化に伴い project.phases[].slides の参照を推奨。
+   * 下位互換性のために attachProjectSlidesGetter で注入される非列挙ゲッター。
+   */
   readonly slides: Slide[];
 };
 
@@ -234,6 +238,7 @@ export type DrawingTool = z.infer<typeof DrawingToolSchema>;
 // ─────────────────────────────────────────
 
 /**
+ * @deprecated Phase 構造化に伴い project.phases[].slides の参照を推奨。
  * プロジェクトオブジェクトに非列挙の slides getter を付与する。
  * イミュータブルなスプレッドコピーやシリアライズで getter が消失した場合でも、
  * 本関数を通すことで安全に project.slides へのアクセスが可能になる。

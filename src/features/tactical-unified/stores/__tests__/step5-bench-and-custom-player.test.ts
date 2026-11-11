@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createTacticalCanvasStoreAdapter } from '@/features/tactical-unified/adapters/tactical-canvas-store-adapter';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 
@@ -95,39 +94,6 @@ describe('step5: bench and custom player store logic', () => {
       expect(updatedPlayer.area).toBe('bench');
       expect(updatedPlayer.x).toBe(65);
       expect(updatedPlayer.y).toBe(45);
-    });
-  });
-
-  describe('tactical-canvas-store-adapter: moveMarkerToBench', () => {
-    it('moveMarkerToBench 呼び出しで右パネルが自動展開され squad タブに切り替わる', () => {
-      const adapter = createTacticalCanvasStoreAdapter(store);
-      const activeSlideId = store.getState().activeSlideId;
-      const slide = store
-        .getState()
-        .project.slides.find((s) => s.id === activeSlideId)!;
-      const pitchPlayer = slide.players.find((p) => p.area === 'pitch')!;
-
-      // 最初は右パネルが閉じている状態
-      store.getState().setRightPanelOpen(false);
-      store.getState().setRightPanelTab('formation');
-
-      expect(store.getState().panels.isRightPanelOpen).toBe(false);
-      expect(store.getState().panels.rightPanelTab).toBe('formation');
-
-      adapter.getState().moveMarkerToBench!(pitchPlayer.id, 50, 50);
-
-      expect(store.getState().panels.isRightPanelOpen).toBe(true);
-      expect(store.getState().panels.rightPanelTab).toBe('squad');
-
-      const updatedSlide = store
-        .getState()
-        .project.slides.find((s) => s.id === activeSlideId)!;
-      const updatedPlayer = updatedSlide.players.find(
-        (p) => p.id === pitchPlayer.id,
-      )!;
-      expect(updatedPlayer.area).toBe('bench');
-      expect(updatedPlayer.x).toBe(50);
-      expect(updatedPlayer.y).toBe(50);
     });
   });
 });

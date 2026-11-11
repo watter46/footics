@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { executeRemoveSelected } from '@/features/tactical-unified/adapters/adapter-selection-helpers';
 import {
   cloneSlideShallow,
   cloneSlidesShallow,
@@ -302,24 +301,5 @@ describe('deleteSelectedObjects (Batch Delete)', () => {
     expect(updatedState.selectedObjects).toEqual([
       { id: 'locked-p', kind: 'player' },
     ]);
-  });
-
-  it('executeRemoveSelected が deleteSelectedObjects を経由して削除する', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
-
-    const player = {
-      ...createDefaultPlayer('home', 10, 10, '#034694'),
-      id: 'p1',
-    };
-    store.addPlayer(player);
-    store.selectObject({ id: 'p1', kind: 'player' });
-
-    executeRemoveSelected(useTacticalUnifiedStore.getState());
-
-    const updatedSlide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === slideId);
-    expect(updatedSlide?.players.some((p) => p.id === 'p1')).toBe(false);
   });
 });

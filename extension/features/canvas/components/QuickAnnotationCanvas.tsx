@@ -4,6 +4,7 @@ import {
   forwardRef,
   type ReactElement,
   type Ref,
+  useCallback,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -19,6 +20,14 @@ import type {
   CanvasConfig,
   CanvasCoreHandle,
 } from '@/features/tactical-unified/core/types';
+import {
+  TacticalStoreProvider,
+  useTacticalStoresContext,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import {
+  serializeProjectToScreenshotJson,
+  translateScreenshotToProject,
+} from '@/lib/tactical/acl/screenshot-translator';
 import {
   type AspectRatio,
   createXBoundaryBox,
@@ -45,7 +54,7 @@ function QuickAnnotationCanvasInner(
     className?: string;
     imageAspect?: number;
   },
-  ref: Ref<CanvasCoreHandle>,
+  ref: Ref<QuickAnnotationCanvasHandle>,
 ) {
   const stageRef = useRef<CanvasCoreHandle | null>(null);
   const setBoundaryBox = useCanvasStore((s) => s.setBoundaryBox);
@@ -96,35 +105,94 @@ function QuickAnnotationCanvasInner(
 }
 
 const ForwardedInner = forwardRef<
-  CanvasCoreHandle,
+  QuickAnnotationCanvasHandle,
   { className?: string; imageAspect?: number }
 >(QuickAnnotationCanvasInner);
 
-export const QuickAnnotationCanvas = forwardRef<
-  CanvasCoreHandle,
-  QuickAnnotationCanvasProps
->(function QuickAnnotationCanvas(
-  { screenshot, onAutoSave, className = '', imageAspect = 16 / 9 },
-  ref,
-): ReactElement {
+function QuickAnnotationCanvasBridge(
+  {
+    screenshot,
+    onAutoSave,
+    className = '',
+    imageAspect = 16 / 9,
+  }: QuickAnnotationCanvasProps,
+  ref: Ref<QuickAnnotationCanvasHandle>,
+) {
+  const { documentStore } = useTacticalStoresContext();
+
+  const handleCanvasAutoSave = useCallback(
+    (annotationsJson: string) => {
+      const bundle = translateScreenshotToProject({
+        screenshotId: screenshot.id,
+        backgroundImageUrl: screenshot.imageDataUrl,
+        canvasAnnotationsJson: annotationsJson,
+      });
+      documentStore.getState().loadProject(bundle.project);
+      const serialized = serializeProjectToScreenshotJson(bundle.project);
+      onAutoSave?.(serialized);
+    },
+    [screenshot.id, screenshot.imageDataUrl, documentStore, onAutoSave],
+  );
+
+  const initialAnnotations = useMemo(
+    () => serializeProjectToScreenshotJson(documentStore.getState().project),
+    [documentStore],
+  );
+
   const config = useMemo<CanvasConfig>(
     () => ({
       mode: 'screenshot-edit',
       backgroundImageUrl: screenshot.imageDataUrl,
-      initialAnnotations: screenshot.canvasAnnotations,
+      initialAnnotations,
       markerMode: '3d-only',
       defaultBoundaryBox: DEFAULT_BOUNDARY_BOX_FULL,
     }),
-    [screenshot.imageDataUrl, screenshot.canvasAnnotations],
+    [screenshot.imageDataUrl, initialAnnotations],
   );
 
   return (
-    <CanvasStoreProvider config={config} onAutoSave={onAutoSave}>
+    <CanvasStoreProvider config={config} onAutoSave={handleCanvasAutoSave}>
       <ForwardedInner
         ref={ref}
         className={className}
         imageAspect={imageAspect}
       />
     </CanvasStoreProvider>
+  );
+}
+
+const ForwardedBridge = forwardRef<
+  QuickAnnotationCanvasHandle,
+  QuickAnnotationCanvasProps
+>(QuickAnnotationCanvasBridge);
+
+export const QuickAnnotationCanvas = forwardRef<
+  QuickAnnotationCanvasHandle,
+  QuickAnnotationCanvasProps
+>(function QuickAnnotationCanvas(
+  props: QuickAnnotationCanvasProps,
+  ref,
+): ReactElement {
+  const { screenshot } = props;
+  const initialBundle = useMemo(
+    () =>
+      translateScreenshotToProject({
+        screenshotId: screenshot.id,
+        backgroundImageUrl: screenshot.imageDataUrl,
+        canvasAnnotationsJson: screenshot.canvasAnnotations,
+      }),
+    [screenshot.id, screenshot.imageDataUrl, screenshot.canvasAnnotations],
+  );
+
+  return (
+    <TacticalStoreProvider
+      initialProject={initialBundle.project}
+      initialSession={{
+        activePhaseId: initialBundle.activePhaseId,
+        activeSlideId: initialBundle.activeSlideId,
+      }}
+    >
+      <ForwardedBridge ref={ref} {...props} />
+    </TacticalStoreProvider>
   );
 });

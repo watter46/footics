@@ -4,23 +4,28 @@ import {
   type ReactNode,
   type Ref,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
 } from 'react';
-import { createTacticalCanvasStoreAdapter } from '@/features/tactical-unified/adapters/tactical-canvas-store-adapter';
 import {
   type CanvasCoreHandle,
   type CanvasNodesRegistry,
   CanvasStageContainer,
   CanvasStoreProvider,
   createCanvasNodesRegistry,
+  createCanvasStore,
   PlayerPhotoProvider,
   usePlayerPhotoContext,
 } from '@/features/tactical-unified/core';
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { DrawingToolbar } from '@/features/tactical-unified/panels/toolbar/drawing-toolbar';
+import {
+  TacticalStoreProvider,
+  TacticalStoresContext,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   selectActivePhaseAspectRatio,
   selectActivePhaseBoundaryBox,
@@ -38,7 +43,7 @@ export interface FullTacticalCanvasProps {
   ref?: Ref<CanvasCoreHandle>;
 }
 
-export function FullTacticalCanvas({
+function FullTacticalCanvasInner({
   className = '',
   imageAspect,
   toolbar,
@@ -68,10 +73,12 @@ export function FullTacticalCanvas({
   );
   const playerPhotos = parentPhotos ?? fallbackPhotos;
 
-  // マスターストア（storeApi）を唯一の真実源としてアダプター経由で接続
+  // Canvas 専用ストアを独立初期化（旧双方向アダプターは完全撤去）
   const canvasStore = useMemo(() => {
-    return createTacticalCanvasStoreAdapter(storeApi);
-  }, [storeApi]);
+    return createCanvasStore({
+      mode: 'tactical-board',
+    });
+  }, []);
 
   // 再生配線: レジストリを親で保持して core に注入し、アニメーション hook と共有
   const nodesRegistryRef = useRef<CanvasNodesRegistry>(
@@ -140,4 +147,16 @@ export function FullTacticalCanvas({
       </PlayerPhotoProvider>
     </CanvasStoreProvider>
   );
+}
+
+export function FullTacticalCanvas(props: FullTacticalCanvasProps) {
+  const tacticalStores = useContext(TacticalStoresContext);
+  if (!tacticalStores) {
+    return (
+      <TacticalStoreProvider>
+        <FullTacticalCanvasInner {...props} />
+      </TacticalStoreProvider>
+    );
+  }
+  return <FullTacticalCanvasInner {...props} />;
 }
