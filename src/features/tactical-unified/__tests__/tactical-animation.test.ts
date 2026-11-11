@@ -1,527 +1,333 @@
 import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCanvasNodesRegistry } from '@/features/tactical-unified/core';
-import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import React, { type ReactNode } from 'react';
+import { describe, expect, it } from 'vitest';
 import {
-  createDefaultProject,
-  createDefaultSlide,
-} from '@/lib/types/tactical-unified';
+  resolveSceneGraphFromState,
+  useResolvedSceneGraph,
+} from '@/features/tactical-unified/hooks/use-resolved-scene-graph';
+import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
+import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { EphemeralSessionState } from '@/lib/tactical/compiler/scene-graph-dto';
+import type { StageViewport } from '@/lib/tactical/engine/coordinates';
+import {
+  clampToScreenNorm,
+  toMilliseconds,
+} from '@/lib/types/tactical/branded';
+import type {
+  DomainSlide,
+  DomainTacticalPhase,
+  DomainTacticalProject,
+} from '@/lib/types/tactical/domain-hierarchy';
 
-describe('useTacticalAnimation hook', () => {
-  beforeEach(() => {
-    const project = createDefaultProject('test-proj');
-    const slide1 = createDefaultSlide(0, 'slide-1');
-    slide1.transitionDurationMs = 1000;
-    slide1.pauseMs = 500;
-    slide1.arrows = [
+function createTestProject(): DomainTacticalProject {
+  const slide1: DomainSlide = {
+    id: 'slide-1',
+    index: 0,
+    label: 'Slide 1',
+    players: [
       {
-        id: 'arrow-1',
-        annotationType: 'arrow',
-        arrowType: 'pass',
-        curveType: 'straight',
-        points: [
-          { x: 10, y: 10 },
-          { x: 50, y: 10 },
-        ],
-        color: '#38bdf8',
-        strokeWidth: 3,
-        arrowHead: true,
-        dashArray: [],
-        effect: {
-          type: 'grow',
-          delay: 0,
-          duration: 500,
-          holdDuration: 0,
-          exitAction: 'keep',
-          fadeDuration: 0,
-          easing: 'linear',
+        id: 'p1',
+        shirtNo: '10',
+        name: 'Player 1',
+        position: 'FW',
+        area: 'pitch',
+        team: 'home',
+        x: clampToScreenNorm(10),
+        y: clampToScreenNorm(10),
+        style: {
+          markerType: 'circle',
+          insideContent: 'number',
+          bottomLabel: 'name',
+          color: '#034694',
+          strokeColor: '#ffffff',
+          strokeWidth: 2,
+          sizeScale: 1.0,
+          numberSizeScale: 1.0,
+          labelSizeScale: 1.0,
         },
+        connectLines: [],
+        badges: [],
       },
-    ];
-    slide1.zones = [
-      {
-        id: 'z-morph',
-        annotationType: 'zone',
-        zoneType: 'space',
-        shapeType: 'polygon',
-        points: [
-          { x: 10, y: 10 },
-          { x: 20, y: 10 },
-          { x: 20, y: 20 },
-          { x: 10, y: 20 },
-        ],
-        color: '#3b82f6',
-        opacity: 0.3,
-        strokeWidth: 2,
-      },
-    ];
+    ],
+    arrows: [],
+    zones: [],
+    texts: [],
+    ball: {
+      x: clampToScreenNorm(10),
+      y: clampToScreenNorm(10),
+      visible: true,
+    },
+    transitionDurationMs: 1000,
+    pauseMs: 500,
+    easing: 'linear',
+  };
 
-    const slide2 = createDefaultSlide(1, 'slide-2');
-    slide2.transitionDurationMs = 1000;
-    slide2.pauseMs = 500;
-    slide2.zones = [
+  const slide2: DomainSlide = {
+    id: 'slide-2',
+    index: 1,
+    label: 'Slide 2',
+    players: [
       {
-        id: 'z-morph',
-        annotationType: 'zone',
-        zoneType: 'space',
-        shapeType: 'polygon',
-        points: [
-          { x: 30, y: 30 },
-          { x: 60, y: 30 },
-          { x: 60, y: 60 },
-          { x: 30, y: 60 },
-        ],
-        color: '#ef4444',
-        opacity: 0.8,
-        strokeWidth: 4,
+        id: 'p1',
+        shirtNo: '10',
+        name: 'Player 1',
+        position: 'FW',
+        area: 'pitch',
+        team: 'home',
+        x: clampToScreenNorm(30),
+        y: clampToScreenNorm(30),
+        style: {
+          markerType: 'circle',
+          insideContent: 'number',
+          bottomLabel: 'name',
+          color: '#034694',
+          strokeColor: '#ffffff',
+          strokeWidth: 2,
+          sizeScale: 1.0,
+          numberSizeScale: 1.0,
+          labelSizeScale: 1.0,
+        },
+        connectLines: [],
+        badges: [],
       },
-    ];
+    ],
+    arrows: [],
+    zones: [],
+    texts: [],
+    ball: {
+      x: clampToScreenNorm(50),
+      y: clampToScreenNorm(50),
+      visible: true,
+    },
+    transitionDurationMs: 1000,
+    pauseMs: 500,
+    easing: 'linear',
+  };
 
-    project.phases = [
-      {
-        id: 'phase-1',
-        name: 'Phase 1',
-        slides: [slide1, slide2],
-      },
-      {
-        id: 'phase-2',
-        name: 'Phase 2',
-        slides: [
-          createDefaultSlide(0, 'slide-3'),
+  const phase: DomainTacticalPhase = {
+    id: 'phase-1',
+    name: 'Phase 1',
+    aspectRatio: '16:9',
+    boundaryBox: {
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      enabled: true,
+      visible: false,
+      fitTarget: 'pitch',
+    },
+    backgroundType: 'pitch',
+    slides: [slide1, slide2],
+  };
+
+  return {
+    id: 'test-project',
+    version: '3.0.0',
+    title: 'Test Project',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    homeColor: { primary: '#034694' },
+    awayColor: { primary: '#ef4444' },
+    pitchAppearance: {
+      pitchBackgroundType: 'solid',
+      overlayColor: '#0B303E',
+      overlayOpacity: 1.0,
+      lineColor: '#ffffff',
+      lineWidth: 2.5,
+      lineOpacity: 1.0,
+    },
+    screenBackground: { type: 'cinematic' },
+    phases: [phase],
+    tags: [],
+  };
+}
+
+const viewport: StageViewport = {
+  width: 1000,
+  height: 500,
+  offsetX: 0,
+  offsetY: 0,
+};
+
+describe('Tactical Animation & Scene Graph Resolution (Phase 2)', () => {
+  describe('resolveSceneGraphFromState', () => {
+    it('静止フレーム (isPlaying: false) では activeSlideId のスライド状態をそのまま解決すること', () => {
+      const project = createTestProject();
+      const session: EphemeralSessionState = {
+        activePhaseId: 'phase-1',
+        activeSlideId: 'slide-1',
+        selectedIds: [],
+        activeDragDelta: null,
+        drawingPreview: null,
+      };
+
+      const sceneGraph = resolveSceneGraphFromState({
+        project,
+        session,
+        isPlaying: false,
+        timeMs: toMilliseconds(0),
+        viewport,
+      });
+
+      expect(sceneGraph).toBeDefined();
+      expect(sceneGraph.viewport).toEqual(viewport);
+      // slide-1 では p1 は x=10, y=10。viewport 1000x500 なので x = 100, y = 50
+      const playerItem = sceneGraph.billboardItems.find(
+        (b) => b.kind === 'player' && b.id === 'p1',
+      );
+      expect(playerItem).toBeDefined();
+      if (playerItem && playerItem.kind === 'player') {
+        expect(playerItem.positionPx.x).toBeCloseTo(100, 1);
+        expect(playerItem.positionPx.y).toBeCloseTo(50, 1);
+      }
+    });
+
+    it('再生中フレーム (isPlaying: true, timeMs: 750) では補間された座標が解決されること (Concrete Test Value: 750ms)', () => {
+      const project = createTestProject();
+      const session: EphemeralSessionState = {
+        activePhaseId: 'phase-1',
+        activeSlideId: 'slide-1',
+        selectedIds: [],
+        activeDragDelta: null,
+        drawingPreview: null,
+      };
+
+      // slide 1: pauseMs: 500, transitionDurationMs: 1000.
+      // At timeMs: 750: elapsed in seg = 750.
+      // pauseMs = 500 なので、transition 進捗 = (750 - 500) / 1000 = 0.25 (linear).
+      // p1 x: 10 + (30 - 10) * 0.25 = 15.
+      // p1 y: 10 + (30 - 10) * 0.25 = 15.
+      // positionPx.x = 1000 * 0.15 = 150, positionPx.y = 500 * 0.15 = 75.
+      const sceneGraph = resolveSceneGraphFromState({
+        project,
+        session,
+        isPlaying: true,
+        timeMs: toMilliseconds(750),
+        viewport,
+      });
+
+      expect(sceneGraph).toBeDefined();
+      const playerItem = sceneGraph.billboardItems.find(
+        (b) => b.kind === 'player' && b.id === 'p1',
+      );
+      expect(playerItem).toBeDefined();
+      if (playerItem && playerItem.kind === 'player') {
+        expect(playerItem.positionPx.x).toBeCloseTo(150, 1);
+        expect(playerItem.positionPx.y).toBeCloseTo(75, 1);
+      }
+    });
+  });
+
+  describe('useTacticalAnimation hook', () => {
+    it('playback-store の状態を更新し、ノードの命令的ミューテーションなしで再生・停止・シークを制御できること', () => {
+      const project = createTestProject();
+      const docStore = createDocumentStore(project);
+      const sessStore = createSessionStore({
+        activePhaseId: 'phase-1',
+        activeSlideId: 'slide-1',
+      });
+      const playStore = createPlaybackStore();
+
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        React.createElement(
+          TacticalStoreProvider,
           {
-            ...createDefaultSlide(1, 'slide-4'),
-            transitionDurationMs: 2000,
-            pauseMs: 1000,
+            stores: {
+              documentStore: docStore,
+              sessionStore: sessStore,
+              playbackStore: playStore,
+            },
           },
-        ],
-      },
-    ];
-    project.activePhaseId = 'phase-1';
-    project.activeSlideId = 'slide-1';
-    useTacticalUnifiedStore.getState().loadProject(project);
-    useTacticalUnifiedStore.getState().stopPlayback();
+          children,
+        );
+
+      const { result } = renderHook(() => useTacticalAnimation(), {
+        wrapper,
+      });
+
+      // slide-1 (1000+500=1500)
+      expect(result.current.totalDurationMs).toBe(1500);
+      expect(result.current.currentPlaybackTime).toBe(0);
+
+      // 1. play
+      act(() => {
+        result.current.playAnimation();
+      });
+      expect(playStore.getState().isPlaying).toBe(true);
+
+      // 2. seekTo
+      act(() => {
+        result.current.seekTo(750);
+      });
+      expect(playStore.getState().timeMs).toBe(750);
+
+      // 3. pause
+      act(() => {
+        result.current.pauseAnimation();
+      });
+      expect(playStore.getState().isPlaying).toBe(false);
+      expect(playStore.getState().timeMs).toBe(750);
+
+      // 4. stop
+      act(() => {
+        result.current.stopAnimation();
+      });
+      expect(playStore.getState().isPlaying).toBe(false);
+      expect(playStore.getState().timeMs).toBe(0);
+    });
   });
 
-  it('calculates total duration for active phase only, not across all phases', () => {
-    const registry = createCanvasNodesRegistry();
-    const registryRef = { current: registry };
+  describe('useResolvedSceneGraph hook', () => {
+    it('TacticalStoreProvider の状態変化に応じて ResolvedSceneGraphDTO を導出すること', () => {
+      const project = createTestProject();
+      const docStore = createDocumentStore(project);
+      const sessStore = createSessionStore({
+        activePhaseId: 'phase-1',
+        activeSlideId: 'slide-1',
+      });
+      const playStore = createPlaybackStore();
 
-    const { result, rerender } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        React.createElement(
+          TacticalStoreProvider,
+          {
+            stores: {
+              documentStore: docStore,
+              sessionStore: sessStore,
+              playbackStore: playStore,
+            },
+          },
+          children,
+        );
 
-    // Phase 1 has slide1 + slide2: 1000ms + 500ms = 1500ms
-    expect(result.current.totalDurationMs).toBe(1500);
+      const { result } = renderHook(() => useResolvedSceneGraph(viewport), {
+        wrapper,
+      });
 
-    // Switch to Phase 2 (slide-3: 2000ms + 1000ms = 3000ms)
-    act(() => {
-      useTacticalUnifiedStore.getState().setActivePhase('phase-2');
+      // 静止状態: slide-1 の座標 (x: 100)
+      const player1 = result.current.billboardItems.find(
+        (b) => b.kind === 'player' && b.id === 'p1',
+      );
+      if (player1 && player1.kind === 'player') {
+        expect(player1.positionPx.x).toBeCloseTo(100, 1);
+      }
+
+      // 再生中かつ 750ms に更新
+      act(() => {
+        playStore.getState().startPlayback();
+        playStore.getState().setTimeMs(toMilliseconds(750));
+      });
+
+      const playerUpdated = result.current.billboardItems.find(
+        (b) => b.kind === 'player' && b.id === 'p1',
+      );
+      if (playerUpdated && playerUpdated.kind === 'player') {
+        expect(playerUpdated.positionPx.x).toBeCloseTo(150, 1);
+      }
     });
-    rerender();
-
-    expect(result.current.totalDurationMs).toBe(3000);
-  });
-
-  it('calculates total duration across all slides correctly', () => {
-    const registry = createCanvasNodesRegistry();
-    const registryRef = { current: registry };
-
-    const { result } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    expect(result.current.totalDurationMs).toBe(1500); // 1000ms + 500ms for slide 1
-  });
-
-  it('updates Konva nodes on seekTo directly without React state overhead', () => {
-    const registry = createCanvasNodesRegistry();
-
-    // Mock Konva zone Line shape
-    const mockPointsFn = vi.fn();
-    const mockFillFn = vi.fn();
-    const mockStrokeFn = vi.fn();
-    const mockStrokeWidthFn = vi.fn();
-
-    const mockZoneNode = {
-      visible: vi.fn(),
-      opacity: vi.fn(),
-      points: mockPointsFn,
-      fill: mockFillFn,
-      stroke: mockStrokeFn,
-      strokeWidth: mockStrokeWidthFn,
-    } as any;
-
-    registry.zoneNodes.set('z-morph', mockZoneNode);
-
-    // Mock Konva player Group node
-    const mockPlayerPositionFn = vi.fn();
-    const mockPlayerGroup = {
-      position: mockPlayerPositionFn,
-      opacity: vi.fn(),
-      visible: vi.fn(),
-    } as any;
-
-    const firstPlayerId =
-      useTacticalUnifiedStore.getState().project.phases[0].slides[0].players[0]
-        .id;
-    registry.playerNodes.set(firstPlayerId, mockPlayerGroup);
-
-    // Mock Layers
-    registry.playerLayer = { batchDraw: vi.fn() } as any;
-    registry.ballLayer = { batchDraw: vi.fn() } as any;
-    registry.annotationLayer = { batchDraw: vi.fn() } as any;
-
-    const registryRef = { current: registry };
-
-    const { result } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    // Seek to 500ms (50% progress between slide 1 and slide 2)
-    act(() => {
-      result.current.seekTo(500);
-    });
-
-    // Verify Zone vertex morphing was applied to Konva node
-    expect(mockPointsFn).toHaveBeenCalled();
-    const passedPoints = mockPointsFn.mock.calls[0][0];
-    expect(passedPoints.length).toBe(8); // 4 vertices * 2 coords
-    // At t=0.5: x=10->30 => 20 (px: 20% of 800 = 160)
-    expect(passedPoints[0]).toBeCloseTo(160, 1);
-    expect(passedPoints[1]).toBeCloseTo(90, 1);
-
-    // Verify Player position was applied
-    expect(mockPlayerPositionFn).toHaveBeenCalled();
-
-    // Verify Layers batchDraw was called
-    expect(registry.annotationLayer?.batchDraw).toHaveBeenCalled();
-    expect(registry.playerLayer?.batchDraw).toHaveBeenCalled();
-  });
-
-  it('pauses and stops animation updating store isPlaying state', () => {
-    const registry = createCanvasNodesRegistry();
-    const registryRef = { current: registry };
-
-    const { result } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    act(() => {
-      result.current.playAnimation();
-    });
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
-
-    act(() => {
-      result.current.pauseAnimation();
-    });
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
-
-    act(() => {
-      result.current.stopAnimation();
-    });
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
-    expect(useTacticalUnifiedStore.getState().activeSlideId).toBe('slide-1');
-  });
-
-  it('performs synchronous layer.draw() and stage.draw() when synchronous is true', () => {
-    const registry = createCanvasNodesRegistry();
-    registry.playerLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.ballLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.annotationLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.backgroundLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.stage = { draw: vi.fn() } as any;
-
-    const registryRef = { current: registry };
-    const { result } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    // Call applyFrameToCanvas with synchronous = true
-    act(() => {
-      result.current.applyFrameToCanvas(500, registry, 800, 450, true);
-    });
-
-    expect(registry.playerLayer?.draw).toHaveBeenCalled();
-    expect(registry.ballLayer?.draw).toHaveBeenCalled();
-    expect(registry.annotationLayer?.draw).toHaveBeenCalled();
-    expect(registry.backgroundLayer?.draw).toHaveBeenCalled();
-    expect(registry.stage?.draw).toHaveBeenCalled();
-    expect(registry.playerLayer?.batchDraw).not.toHaveBeenCalled();
-  });
-
-  it('calls layer batchDraw() and not stage.batchDraw() when synchronous is false', () => {
-    const registry = createCanvasNodesRegistry();
-    registry.playerLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.ballLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.annotationLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.stage = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-
-    const registryRef = { current: registry };
-    const { result } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    act(() => {
-      result.current.applyFrameToCanvas(500, registry, 800, 450, false);
-    });
-
-    expect(registry.playerLayer?.batchDraw).toHaveBeenCalled();
-    expect(registry.ballLayer?.batchDraw).toHaveBeenCalled();
-    expect(registry.annotationLayer?.batchDraw).toHaveBeenCalled();
-    expect(registry.stage?.batchDraw).not.toHaveBeenCalled();
-  });
-
-  it('resets to 0ms and activates first slide when playing from end or initial state (Option B)', () => {
-    const registry = createCanvasNodesRegistry();
-    const registryRef = { current: registry };
-    const { result } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    // Initial state: select slide-2
-    act(() => {
-      useTacticalUnifiedStore.getState().setActiveSlide('slide-2');
-    });
-    expect(useTacticalUnifiedStore.getState().activeSlideId).toBe('slide-2');
-
-    // Calling playAnimation when currentPlaybackTime is 0 should switch to slide-1
-    act(() => {
-      result.current.playAnimation();
-    });
-    expect(useTacticalUnifiedStore.getState().activeSlideId).toBe('slide-1');
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
-
-    // Simulate seeking to end (1500ms) and pausing
-    act(() => {
-      result.current.seekTo(1500);
-      result.current.pauseAnimation();
-      useTacticalUnifiedStore.getState().setActiveSlide('slide-2');
-    });
-
-    // Calling playAnimation when currentPlaybackTime >= totalDurationMs resets to slide-1
-    act(() => {
-      result.current.playAnimation();
-    });
-    expect(useTacticalUnifiedStore.getState().activeSlideId).toBe('slide-1');
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
-  });
-
-  it('resumes from snapped playback time when paused midway without resetting to slide-1', () => {
-    const registry = createCanvasNodesRegistry();
-    const registryRef = { current: registry };
-    const { result, rerender } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    // Seek to 500ms and pause (snaps to slide-2 at 1000ms)
-    act(() => {
-      result.current.seekTo(500);
-      result.current.pauseAnimation();
-    });
-
-    // Resume playing
-    act(() => {
-      result.current.playAnimation();
-    });
-
-    rerender();
-    expect(result.current.currentPlaybackTime).toBe(1000);
-  });
-
-  it('snaps to next scene and updates activeSlideId when paused midway during slide transition', () => {
-    const registry = createCanvasNodesRegistry();
-    const registryRef = { current: registry };
-    const { result, rerender } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    // Seek to 500ms (midway between slide-1 and slide-2)
-    act(() => {
-      result.current.seekTo(500);
-    });
-
-    // Pause animation
-    act(() => {
-      result.current.pauseAnimation();
-    });
-
-    rerender();
-
-    // Should snap to next slide (slide-2), updating activeSlideId and playback indices
-    expect(useTacticalUnifiedStore.getState().activeSlideId).toBe('slide-2');
-    expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(1);
-    expect(
-      useTacticalUnifiedStore.getState().playbackTransitionIndex,
-    ).toBeNull();
-    // Time snapped to transition end (1000ms)
-    expect(result.current.currentPlaybackTime).toBe(1000);
-  });
-
-  it('remains on current scene when paused during hold/pause time', () => {
-    const registry = createCanvasNodesRegistry();
-    const registryRef = { current: registry };
-    const { result } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    // Seek to 1200ms (during slide-2 pause time: 1000ms ~ 1500ms)
-    act(() => {
-      result.current.seekTo(1200);
-    });
-
-    act(() => {
-      result.current.pauseAnimation();
-    });
-
-    expect(useTacticalUnifiedStore.getState().activeSlideId).toBe('slide-2');
-    expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(1);
-    expect(
-      useTacticalUnifiedStore.getState().playbackTransitionIndex,
-    ).toBeNull();
-  });
-
-  it('updates playback indices boundary states properly for orange highlight', () => {
-    const registry = createCanvasNodesRegistry();
-    const registryRef = { current: registry };
-    const { result } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    // At 500ms: transitioning from slide 0 to slide 1
-    act(() => {
-      result.current.applyFrameToCanvas(500, registry, 800, 450);
-    });
-    expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(0);
-    expect(useTacticalUnifiedStore.getState().playbackTransitionIndex).toBe(1);
-
-    // At 1200ms: arrived at slide 1, paused
-    act(() => {
-      result.current.applyFrameToCanvas(1200, registry, 800, 450);
-    });
-    expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(1);
-    expect(
-      useTacticalUnifiedStore.getState().playbackTransitionIndex,
-    ).toBeNull();
-  });
-
-  it('synchronously renders initial 0ms frame on playAnimation to eliminate flicker', () => {
-    const registry = createCanvasNodesRegistry();
-    registry.playerLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.ballLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.annotationLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.stage = {
-      draw: vi.fn(),
-      batchDraw: vi.fn(),
-      width: () => 800,
-      height: () => 450,
-    } as any;
-
-    const mockArrowNode = {
-      points: vi.fn(),
-      stroke: vi.fn(),
-      fill: vi.fn(),
-      strokeWidth: vi.fn(),
-      opacity: vi.fn(),
-      visible: vi.fn(),
-      dash: vi.fn(),
-    } as any;
-    registry.arrowNodes.set('arrow-1', { node: mockArrowNode } as any);
-
-    const registryRef = { current: registry };
-    const { result } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    act(() => {
-      result.current.playAnimation();
-    });
-
-    // Synchronous frame application must call annotationLayer.draw()
-    expect(registry.annotationLayer?.draw).toHaveBeenCalled();
-  });
-
-  it('restores arrow opacity and visibility to 1.0 when stopping and pausing playback', () => {
-    const registry = createCanvasNodesRegistry();
-    const mockOpacity = vi.fn();
-    const mockVisible = vi.fn();
-    const mockArrowNode = {
-      points: vi.fn(),
-      stroke: vi.fn(),
-      fill: vi.fn(),
-      strokeWidth: vi.fn(),
-      opacity: mockOpacity,
-      visible: mockVisible,
-      dash: vi.fn(),
-    } as any;
-    registry.arrowNodes.set('arrow-1', { node: mockArrowNode } as any);
-    registry.annotationLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.playerLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.ballLayer = { draw: vi.fn(), batchDraw: vi.fn() } as any;
-    registry.stage = {
-      draw: vi.fn(),
-      batchDraw: vi.fn(),
-      width: () => 800,
-      height: () => 450,
-    } as any;
-
-    const registryRef = { current: registry };
-    const { result } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    act(() => {
-      result.current.playAnimation();
-    });
-
-    mockOpacity.mockClear();
-
-    // Pause playback
-    act(() => {
-      result.current.pauseAnimation();
-    });
-
-    expect(mockOpacity).toHaveBeenCalledWith(1.0);
-
-    mockOpacity.mockClear();
-
-    // Stop playback
-    act(() => {
-      result.current.stopAnimation();
-    });
-
-    expect(mockOpacity).toHaveBeenCalledWith(1.0);
-  });
-
-  it('single slide playback: totalDurationMs is resolved and playAnimation starts timeline', () => {
-    const project = createDefaultProject('single-slide-proj');
-    const singleSlide = createDefaultSlide(0, 'slide-single');
-    singleSlide.transitionDurationMs = 2000;
-    singleSlide.pauseMs = 1000;
-    project.phases = [
-      {
-        id: 'phase-single',
-        name: 'Single',
-        slides: [singleSlide],
-      },
-    ];
-    project.activePhaseId = 'phase-single';
-    project.activeSlideId = 'slide-single';
-    useTacticalUnifiedStore.getState().loadProject(project);
-
-    const registry = createCanvasNodesRegistry();
-    const registryRef = { current: registry };
-    const { result } = renderHook(() =>
-      useTacticalAnimation({ nodesRegistryRef: registryRef }),
-    );
-
-    // duration: 2s + pauseDuration: 1s => 3000ms
-    expect(result.current.totalDurationMs).toBe(3000);
-
-    act(() => {
-      result.current.playAnimation();
-    });
-
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
   });
 });

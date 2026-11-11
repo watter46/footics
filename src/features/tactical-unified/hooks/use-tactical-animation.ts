@@ -1,281 +1,156 @@
 'use client';
 
-/** Tactical Unified Canvas — 60fps/120fps Animation Engine Hook */
+/** Tactical Unified Canvas — Animation Engine Hook (Stream Store Driver) */
 
 import { useCallback, useEffect, useRef } from 'react';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
-import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import {
-  useTacticalUnifiedStoreApi,
-  useTacticalUnifiedStoreContext,
-} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import {
-  getInterpolatedUnifiedSlideFrame,
-  resolvePlaybackDurationMs,
-} from '@/lib/tactical/unified-interpolation';
-import { renderFrameToCanvas } from './tactical-animation-canvas';
-import {
-  pausePlayback,
-  seekPlayback,
-  stopPlayback,
-} from './tactical-playback-controls';
-import {
-  calculatePitchDimensions,
-  createTacticalTimeline,
-  type UseTacticalAnimationOptions,
-  useAnimationPlaybackRefs,
-} from './tactical-timeline';
+  useDocumentStore,
+  usePlaybackStore,
+  useSessionStore,
+  useTacticalStoresContext,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { toMilliseconds } from '@/lib/types/tactical/branded';
+import type { DomainTacticalPhase } from '@/lib/types/tactical/domain-hierarchy';
 
-export type { UseTacticalAnimationOptions };
+export interface UseTacticalAnimationOptions {
+  pitchSize?: { width: number; height: number };
+  nodesRegistryRef?: { current?: unknown };
+  loop?: boolean;
+}
+
+export function calculatePhaseTotalDuration(
+  phase?: DomainTacticalPhase,
+): number {
+  if (!phase || !phase.slides || phase.slides.length === 0) return 0;
+  if (phase.slides.length === 1) {
+    const s = phase.slides[0];
+    const dur = s.transitionDurationMs ?? 1000;
+    const pause = s.pauseMs ?? 500;
+    return Math.max(1000, dur + pause);
+  }
+  return phase.slides.slice(0, -1).reduce((sum, s) => {
+    const dur = s.transitionDurationMs ?? 1000;
+    const pause = s.pauseMs ?? 500;
+    return sum + dur + pause;
+  }, 0);
+}
 
 export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
-  const storeApi = useTacticalUnifiedStoreApi();
-  const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
-  const setActiveSlide = useTacticalUnifiedStoreContext(
-    (s) => s.setActiveSlide,
-  );
-  const setIsPlaying = useTacticalUnifiedStoreContext((s) => s.setIsPlaying);
-  const playbackSeekTimeMs = useTacticalUnifiedStoreContext(
-    (s) => s.playbackSeekTimeMs,
-  );
-  const playbackSeekId = useTacticalUnifiedStoreContext(
-    (s) => s.playbackSeekId,
-  );
-  const lastHandledSeekIdRef = useRef(0);
+  const { playbackStore } = useTacticalStoresContext();
+  const project = useDocumentStore((s) => s.project);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const isPlaying = usePlaybackStore((s) => s.isPlaying);
+  const currentPlaybackTime = usePlaybackStore((s) => s.timeMs);
 
-  const refs = useAnimationPlaybackRefs();
-  const totalDurationMs = resolvePlaybackDurationMs(slides);
+  const activePhase =
+    project.phases.find((p) => p.id === activePhaseId) ?? project.phases[0];
 
-  const applyFrameToCanvas = useCallback(
-    (
-      timeMs: number,
-      registry: CanvasNodesRegistry | undefined,
-      stageWidth: number,
-      stageHeight: number,
-      synchronous = false,
-      offsetX = 0,
-      offsetY = 0,
-    ) => {
-      renderFrameToCanvas(
-        timeMs,
-        registry,
-        stageWidth,
-        stageHeight,
-        refs.lastActiveSlideIndexRef,
-        setActiveSlide,
-        synchronous,
-        offsetX,
-        offsetY,
-        refs.lastPlaybackIndicesRef,
-        storeApi,
-      );
-    },
-    [
-      setActiveSlide,
-      refs.lastActiveSlideIndexRef,
-      refs.lastPlaybackIndicesRef,
-      storeApi,
-    ],
-  );
+  const totalDurationMs = calculatePhaseTotalDuration(activePhase);
 
-  const getPitchDimensions = useCallback(
-    () =>
-      calculatePitchDimensions(options?.pitchSize, options?.nodesRegistryRef),
-    [options?.pitchSize, options?.nodesRegistryRef],
-  );
+  const rafIdRef = useRef<number | null>(null);
+  const lastTimestampRef = useRef<number | null>(null);
+  const onCompleteRef = useRef<(() => void) | undefined>(undefined);
+  const loopRef = useRef(options?.loop ?? false);
+  loopRef.current = options?.loop ?? false;
+
+  const totalDurationRef = useRef(totalDurationMs);
+  totalDurationRef.current = totalDurationMs;
+
+  const stopAnimationLoop = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    lastTimestampRef.current = null;
+  }, []);
+
+  const startAnimationLoop = useCallback(() => {
+    stopAnimationLoop();
+
+    const loopStep = (timestamp: number) => {
+      if (lastTimestampRef.current === null) {
+        lastTimestampRef.current = timestamp;
+      }
+      const delta = timestamp - lastTimestampRef.current;
+      lastTimestampRef.current = timestamp;
+
+      const currentTime = playbackStore.getState().timeMs;
+      const total = totalDurationRef.current;
+      let nextTime = currentTime + delta;
+
+      if (total > 0 && nextTime >= total) {
+        if (loopRef.current) {
+          nextTime = nextTime % total;
+          playbackStore.getState().setTimeMs(toMilliseconds(nextTime));
+          rafIdRef.current = requestAnimationFrame(loopStep);
+        } else {
+          playbackStore.getState().setTimeMs(toMilliseconds(total));
+          playbackStore.getState().pausePlayback();
+          stopAnimationLoop();
+          onCompleteRef.current?.();
+        }
+      } else {
+        playbackStore.getState().setTimeMs(toMilliseconds(nextTime));
+        rafIdRef.current = requestAnimationFrame(loopStep);
+      }
+    };
+
+    rafIdRef.current = requestAnimationFrame(loopStep);
+  }, [playbackStore, stopAnimationLoop]);
 
   const playAnimation = useCallback(
     (onComplete?: () => void) => {
-      const currentSlides = selectActivePhaseSlides(storeApi.getState());
-      if (currentSlides.length === 0) {
-        onComplete?.();
-        return;
+      onCompleteRef.current = onComplete;
+      const currentTime = playbackStore.getState().timeMs;
+      const total = totalDurationRef.current;
+      if (total > 0 && currentTime >= total) {
+        playbackStore.getState().setTimeMs(toMilliseconds(0));
       }
-      setIsPlaying(true);
-      const dims = getPitchDimensions();
-      const totalDur = resolvePlaybackDurationMs(currentSlides);
-
-      const isAtEnd = refs.currentPlaybackTimeRef.current >= totalDur;
-      if (isAtEnd || refs.currentPlaybackTimeRef.current === 0) {
-        refs.currentPlaybackTimeRef.current = 0;
-        refs.lastActiveSlideIndexRef.current = 0;
-        refs.lastPlaybackIndicesRef.current = {
-          slideIndex: 0,
-          transitionIndex: null,
-        };
-        storeApi.getState().setPlaybackIndices(0, null);
-        if (currentSlides[0]) {
-          setActiveSlide(currentSlides[0].id);
-        }
-      }
-
-      refs.timelineRef.current?.kill();
-      const tl = createTacticalTimeline(
-        currentSlides,
-        (timeMs) => {
-          refs.currentPlaybackTimeRef.current = timeMs;
-          applyFrameToCanvas(
-            timeMs,
-            options?.nodesRegistryRef?.current,
-            dims.width,
-            dims.height,
-            false,
-            dims.x,
-            dims.y,
-          );
-        },
-        {
-          loop: options?.loop,
-          onComplete: () => {
-            if (!options?.loop) {
-              const frame = getInterpolatedUnifiedSlideFrame(
-                currentSlides,
-                refs.currentPlaybackTimeRef.current,
-              );
-              const targetSlideIndex = frame.currentSlideIndex;
-              const targetSlide = currentSlides[targetSlideIndex];
-              if (targetSlide) {
-                if (storeApi.getState().activeSlideId !== targetSlide.id) {
-                  setActiveSlide(targetSlide.id);
-                }
-                refs.lastActiveSlideIndexRef.current = targetSlideIndex;
-                refs.lastPlaybackIndicesRef.current = {
-                  slideIndex: targetSlideIndex,
-                  transitionIndex: null,
-                };
-                refs.currentPlaybackTimeRef.current = totalDur;
-                storeApi.getState().setPlaybackIndices(targetSlideIndex, null);
-              }
-              setIsPlaying(false);
-              applyFrameToCanvas(
-                totalDur,
-                options?.nodesRegistryRef?.current,
-                dims.width,
-                dims.height,
-                true,
-                dims.x,
-                dims.y,
-              );
-              onComplete?.();
-            }
-          },
-        },
-      );
-      refs.timelineRef.current = tl;
-
-      const initialTime = refs.currentPlaybackTimeRef.current;
-      if (initialTime > 0) {
-        tl.time(initialTime / 1000);
-      }
-      applyFrameToCanvas(
-        initialTime,
-        options?.nodesRegistryRef?.current,
-        dims.width,
-        dims.height,
-        true,
-        dims.x,
-        dims.y,
-      );
-      tl.play();
+      playbackStore.getState().startPlayback();
+      startAnimationLoop();
     },
-    [
-      applyFrameToCanvas,
-      setIsPlaying,
-      setActiveSlide,
-      options?.loop,
-      options?.nodesRegistryRef,
-      getPitchDimensions,
-      refs,
-      storeApi,
-    ],
+    [playbackStore, startAnimationLoop],
   );
 
   const pauseAnimation = useCallback(() => {
-    const currentSlides = selectActivePhaseSlides(storeApi.getState());
-    pausePlayback(refs, setIsPlaying, {
-      slides: currentSlides,
-      registry: options?.nodesRegistryRef?.current,
-      pitchDimensions: getPitchDimensions(),
-      applyFrameToCanvas,
-      setActiveSlide,
-      setPlaybackIndices: storeApi.getState().setPlaybackIndices,
-    });
-    const frame = getInterpolatedUnifiedSlideFrame(
-      currentSlides,
-      refs.currentPlaybackTimeRef.current,
-    );
-    const targetSlide = currentSlides[frame.currentSlideIndex];
-    if (targetSlide && storeApi.getState().activeSlideId !== targetSlide.id) {
-      setActiveSlide(targetSlide.id);
-    }
-  }, [
-    refs,
-    setIsPlaying,
-    options?.nodesRegistryRef,
-    getPitchDimensions,
-    applyFrameToCanvas,
-    setActiveSlide,
-    storeApi,
-  ]);
+    stopAnimationLoop();
+    playbackStore.getState().pausePlayback();
+  }, [playbackStore, stopAnimationLoop]);
 
   const stopAnimation = useCallback(() => {
-    stopPlayback({
-      slides: selectActivePhaseSlides(storeApi.getState()),
-      refs,
-      registry: options?.nodesRegistryRef?.current,
-      pitchDimensions: getPitchDimensions(),
-      applyFrameToCanvas,
-      setIsPlaying,
-      setActiveSlide,
-      setPlaybackIndices: storeApi.getState().setPlaybackIndices,
-    });
-    refs.timelineRef.current?.kill();
-    refs.timelineRef.current = null;
-  }, [
-    refs,
-    options?.nodesRegistryRef,
-    getPitchDimensions,
-    applyFrameToCanvas,
-    setIsPlaying,
-    setActiveSlide,
-    storeApi,
-  ]);
+    stopAnimationLoop();
+    playbackStore.getState().stopPlayback();
+  }, [playbackStore, stopAnimationLoop]);
 
   const seekTo = useCallback(
     (timeMs: number) => {
-      seekPlayback({
-        timeMs,
-        totalDurationMs,
-        refs,
-        registry: options?.nodesRegistryRef?.current,
-        pitchDimensions: getPitchDimensions(),
-        applyFrameToCanvas,
-      });
+      playbackStore.getState().seekTo(toMilliseconds(timeMs));
     },
-    [
-      applyFrameToCanvas,
-      totalDurationMs,
-      options?.nodesRegistryRef,
-      getPitchDimensions,
-      refs,
-    ],
+    [playbackStore],
   );
 
-  useEffect(() => {
-    if (playbackSeekId > 0 && playbackSeekId !== lastHandledSeekIdRef.current) {
-      lastHandledSeekIdRef.current = playbackSeekId;
-      if (playbackSeekTimeMs !== null) {
-        seekTo(playbackSeekTimeMs);
-      }
-    }
-  }, [playbackSeekId, playbackSeekTimeMs, seekTo]);
+  const applyFrameToCanvas = useCallback(
+    (timeMs: number) => {
+      seekTo(timeMs);
+    },
+    [seekTo],
+  );
 
+  // isPlaying が外部から切り替えられた場合の同期
+  useEffect(() => {
+    if (isPlaying && rafIdRef.current === null) {
+      startAnimationLoop();
+    } else if (!isPlaying && rafIdRef.current !== null) {
+      stopAnimationLoop();
+    }
+  }, [isPlaying, startAnimationLoop, stopAnimationLoop]);
+
+  // RAII: アンマウント時のクリーンアップ
   useEffect(() => {
     return () => {
-      refs.timelineRef.current?.kill();
-      refs.timelineRef.current = null;
+      stopAnimationLoop();
     };
-  }, [refs.timelineRef]);
+  }, [stopAnimationLoop]);
 
   return {
     playAnimation,
@@ -284,6 +159,6 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
     seekTo,
     applyFrameToCanvas,
     totalDurationMs,
-    currentPlaybackTime: refs.currentPlaybackTimeRef.current,
+    currentPlaybackTime,
   };
 }
