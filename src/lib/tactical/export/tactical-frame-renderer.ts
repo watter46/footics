@@ -1,8 +1,3 @@
-/**
- * tactical-frame-renderer.ts
- * Deterministic 2D canvas renderer for Tactical Unified animations.
- */
-
 import {
   getInterpolatedUnifiedSlideFrame,
   type InterpolatedUnifiedFrame,
@@ -138,9 +133,6 @@ function renderBoundaryCropSlice(
   return true;
 }
 
-/**
- * Draws a complete tactical animation frame onto a 2D canvas context.
- */
 export function renderTacticalFrameToCanvas(
   ctx: AnyCanvasRenderingContext2D,
   options: RenderTacticalFrameOptions,
@@ -190,8 +182,7 @@ export function renderTacticalFrameToCanvas(
   if (
     options.phase != null &&
     mvpMatrix == null &&
-    options.precomputedFrame == null &&
-    options.directorCamera == null
+    options.precomputedFrame == null
   ) {
     renderTacticalPhaseFrameToCanvas({
       ctx,
@@ -209,6 +200,10 @@ export function renderTacticalFrameToCanvas(
       teamVisibility,
       pitchTransform: options.pitchTransform,
       pitchTransformOverride: options.pitchTransformOverride,
+      directorCamera,
+      directorCameraOptions,
+      applyEffects: options.applyEffects,
+      effectTimeMs: options.effectTimeMs,
     });
     return;
   }

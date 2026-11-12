@@ -1,8 +1,14 @@
 import { compileSceneGraph } from '@/lib/tactical/compiler/compile-scene-graph';
 import {
   type EvaluatedTimelineFrame,
+  evaluateStaticSlideFrame,
   evaluateTimelineFrame,
 } from '@/lib/tactical/engine/timeline-evaluator';
+import {
+  hasActiveDirectorCameraTrack,
+  type ResolveSyntheticDirectorCameraOptions,
+  resolveSyntheticDirectorCamera,
+} from '@/lib/tactical/interpolation-camera';
 import {
   type Milliseconds,
   toMilliseconds,
@@ -13,6 +19,7 @@ import type {
 } from '@/lib/types/tactical/domain-hierarchy';
 import {
   DEFAULT_PITCH_APPEARANCE,
+  type DirectorCameraTrack,
   type PitchAppearanceConfig,
   type PitchTransform,
   type ScreenBackgroundConfig,
@@ -107,6 +114,10 @@ export interface RenderTacticalPhaseFrameOptions {
   teamVisibility?: 'both' | 'home' | 'away';
   pitchTransform?: PitchTransform | null;
   pitchTransformOverride?: PitchTransform | null;
+  directorCamera?: DirectorCameraTrack | null;
+  directorCameraOptions?: ResolveSyntheticDirectorCameraOptions;
+  applyEffects?: boolean;
+  effectTimeMs?: number;
 }
 
 export function renderTacticalPhaseFrameToCanvas(
@@ -126,6 +137,10 @@ export function renderTacticalPhaseFrameToCanvas(
     teamVisibility = 'both',
     pitchTransform,
     pitchTransformOverride,
+    directorCamera,
+    directorCameraOptions,
+    applyEffects,
+    effectTimeMs,
   } = options;
 
   if (w <= 0 || h <= 0) return;
@@ -137,7 +152,61 @@ export function renderTacticalPhaseFrameToCanvas(
   if (typeof ctx.rect === 'function') ctx.rect(0, 0, w, h);
   if (typeof ctx.clip === 'function') ctx.clip();
 
-  const cacheKey = `${baseWidth}x${baseHeight}:${phase.aspectRatio}:${JSON.stringify(pitchAppearance ?? DEFAULT_PITCH_APPEARANCE)}:${Boolean(marbleTexture)}`;
+  const evaluated = evaluateTimelineFrame(
+    phase,
+    toMilliseconds(Number(timeMs)),
+  );
+
+  const effectiveDirectorCamera =
+    directorCamera !== undefined ? directorCamera : phase.directorCamera;
+  const directorPitchTransform = hasActiveDirectorCameraTrack(
+    effectiveDirectorCamera,
+  )
+    ? resolveSyntheticDirectorCamera(
+        effectiveDirectorCamera,
+        Number(timeMs),
+        directorCameraOptions,
+      )
+    : undefined;
+
+  const effectivePitchTransform =
+    pitchTransformOverride ??
+    pitchTransform ??
+    directorPitchTransform ??
+    evaluated.slide.pitchTransform;
+
+  const hasNonIdentityTransform = Boolean(
+    effectivePitchTransform &&
+      (effectivePitchTransform.zoom !== 1 ||
+        effectivePitchTransform.panX !== 0 ||
+        effectivePitchTransform.panY !== 0 ||
+        effectivePitchTransform.tilt !== 0 ||
+        (effectivePitchTransform.yaw !== undefined &&
+          effectivePitchTransform.yaw !== 90)),
+  );
+
+  const transformCacheSuffix = hasNonIdentityTransform
+    ? `:${JSON.stringify(effectivePitchTransform)}`
+    : '';
+  const cacheKey = `${baseWidth}x${baseHeight}:${phase.aspectRatio}:${JSON.stringify(pitchAppearance ?? DEFAULT_PITCH_APPEARANCE)}:${Boolean(marbleTexture)}:${transparent}${transformCacheSuffix}`;
+
+  const drawPitchTo = (targetCtx: AnyCanvasRenderingContext2D) => {
+    const frameContext = createFrameRenderContext({
+      ctx: targetCtx,
+      baseWidth,
+      baseHeight,
+      aspectRatio: phase.aspectRatio,
+      framePitchTransform: effectivePitchTransform,
+    });
+    renderPitch(
+      frameContext,
+      phase.aspectRatio,
+      transparent,
+      pitchAppearance,
+      marbleTexture,
+      screenBackground,
+    );
+  };
 
   let pitchDrawn = false;
   if (pitchCache && pitchCache.key === cacheKey) {
@@ -151,26 +220,11 @@ export function renderTacticalPhaseFrameToCanvas(
     pitchDrawn = true;
   } else {
     const created = createPitchCanvasAndContext(baseWidth, baseHeight);
-
     if (created) {
-      const { canvas: cacheCanvas, ctx: cacheCtx } = created;
-      const frameContext = createFrameRenderContext({
-        ctx: cacheCtx,
-        baseWidth,
-        baseHeight,
-        aspectRatio: phase.aspectRatio,
-      });
-      renderPitch(
-        frameContext,
-        phase.aspectRatio,
-        transparent,
-        pitchAppearance,
-        marbleTexture,
-        screenBackground,
-      );
-      pitchCache = { key: cacheKey, canvas: cacheCanvas };
+      drawPitchTo(created.ctx);
+      pitchCache = { key: cacheKey, canvas: created.canvas };
       ctx.drawImage(
-        cacheCanvas as CanvasImageSource,
+        created.canvas as CanvasImageSource,
         0,
         0,
         baseWidth,
@@ -181,29 +235,8 @@ export function renderTacticalPhaseFrameToCanvas(
   }
 
   if (!pitchDrawn) {
-    const frameContext = createFrameRenderContext({
-      ctx,
-      baseWidth,
-      baseHeight,
-      aspectRatio: phase.aspectRatio,
-    });
-    renderPitch(
-      frameContext,
-      phase.aspectRatio,
-      transparent,
-      pitchAppearance,
-      marbleTexture,
-      screenBackground,
-    );
+    drawPitchTo(ctx);
   }
-
-  const evaluated = evaluateTimelineFrame(
-    phase,
-    toMilliseconds(Number(timeMs)),
-  );
-
-  const effectivePitchTransform =
-    pitchTransformOverride ?? pitchTransform ?? evaluated.slide.pitchTransform;
 
   let players = evaluated.slide.players;
   if (teamVisibility === 'home' || teamVisibility === 'away') {
@@ -225,10 +258,26 @@ export function renderTacticalPhaseFrameToCanvas(
     players,
   };
 
-  const frameToCompile: EvaluatedTimelineFrame = {
-    ...evaluated,
-    slide: slideToCompile,
-  };
+  let frameToCompile: EvaluatedTimelineFrame;
+  if (applyEffects === false) {
+    const staticMaps = evaluateStaticSlideFrame(
+      slideToCompile,
+      evaluated.slideIndex,
+    );
+    frameToCompile = {
+      ...evaluated,
+      timeInSlideMs: 0,
+      slide: slideToCompile,
+      arrowProgressMap: staticMaps.arrowProgressMap,
+      zoneOpacityMap: staticMaps.zoneOpacityMap,
+    };
+  } else {
+    frameToCompile = {
+      ...evaluated,
+      ...(effectTimeMs !== undefined ? { timeInSlideMs: effectTimeMs } : {}),
+      slide: slideToCompile,
+    };
+  }
 
   const prevSlide =
     phase.slides.length > 0

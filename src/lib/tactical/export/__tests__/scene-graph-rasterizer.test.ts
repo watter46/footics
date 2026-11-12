@@ -665,4 +665,103 @@ describe('rasterizeSceneGraphToCanvas2D (Dumb Rasterizer)', () => {
       _resetSharedOffscreenCanvas();
     }
   });
+
+  it('delegates to renderTacticalPhaseFrameToCanvas even when directorCamera is active', () => {
+    const phase: DomainTacticalPhase = {
+      id: 'phase-director',
+      name: 'Director Camera Phase',
+      aspectRatio: '16:9',
+      boundaryBox: { x: 0, y: 0, width: 100, height: 100, enabled: false },
+      backgroundType: 'pitch',
+      slides: [
+        {
+          id: 'slide-1',
+          index: 0,
+          players: [
+            {
+              id: 'p1',
+              area: 'pitch',
+              team: 'home',
+              shirtNo: '10',
+              name: 'Messi',
+              x: toScreenNormCoord(30),
+              y: toScreenNormCoord(40),
+              style: {
+                markerType: 'circle',
+                insideContent: 'number',
+                bottomLabel: 'name',
+                color: '#034694',
+                strokeColor: '#ffffff',
+                strokeWidth: 2,
+                sizeScale: 1.0,
+                numberSizeScale: 1.0,
+                labelSizeScale: 1.0,
+              },
+              connectLines: [],
+              badges: [],
+            },
+          ],
+          arrows: [],
+          zones: [],
+          texts: [],
+          ball: {
+            x: toScreenNormCoord(50),
+            y: toScreenNormCoord(50),
+            visible: true,
+          },
+          transitionDurationMs: 1000,
+          pauseMs: 500,
+          easing: 'linear',
+        },
+      ],
+    };
+
+    const ctx = createMockCanvasContext();
+    renderTacticalFrameToCanvas(ctx, {
+      slides: [],
+      phase,
+      timeMs: 200,
+      width: 1280,
+      height: 720,
+      aspectRatio: '16:9',
+      directorCamera: {
+        enabled: true,
+        globalKeyframes: [
+          {
+            id: 'kf-1',
+            timeMs: 0,
+            tilt: 25,
+            yaw: 90,
+            easing: 'ease-in-out',
+          },
+        ],
+        actionCues: [
+          {
+            id: 'cue-1',
+            startTimeMs: 0,
+            durationMs: 1000,
+            zoom: 1.4,
+            panX: 10,
+            panY: -5,
+            autoReturn: false,
+          },
+        ],
+      },
+      applyEffects: false,
+    });
+
+    // Cached offscreen pitch transfer + SceneGraph player render
+    expect(ctx.drawImage).toHaveBeenCalledWith(
+      expect.anything(),
+      0,
+      0,
+      1280,
+      720,
+    );
+    expect(ctx.fillText).toHaveBeenCalledWith(
+      '10',
+      expect.any(Number),
+      expect.any(Number),
+    );
+  });
 });
