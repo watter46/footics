@@ -109,11 +109,16 @@ export function useResolvedSceneGraph(
   const project = useDocumentStore((s) => s.project);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
-  const selectedIds = useSessionStore((s) => s.selectedIds);
+  const selectedObjects = useSessionStore((s) => s.selectedObjects);
   const activeDragDelta = useSessionStore((s) => s.activeDragDelta);
   const drawingPreview = useSessionStore((s) => s.drawingPreview);
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
   const timeMs = usePlaybackStore((s) => s.timeMs);
+
+  const selectedIds = useMemo(
+    () => selectedObjects.map((o) => o.id),
+    [selectedObjects],
+  );
 
   const session: EphemeralSessionState = useMemo(
     () => ({

@@ -176,7 +176,7 @@ function FullTacticalCanvasInner({
           activePhaseId: state.activePhaseId,
           activeSlideId: state.activeSlideId,
           activeTool: state.activeTool,
-          selectedIds: state.selectedObjects.map((o) => o.id),
+          selectedObjects: state.selectedObjects,
         });
       } catch {}
 

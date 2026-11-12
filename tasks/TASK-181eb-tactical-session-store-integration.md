@@ -1,7 +1,7 @@
 # TASK-181eb: SessionStore への画面状態統合と選択状態の置換（SessionStore 移設 2/2）
 
 ## 1. Metadata & Goal
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): integrate ui state into session store`
 - **前提**: TASK-181ea が `DONE`（`session-ui-state.ts` / `session-ui-transitions.ts` が存在すること）。
 - **Goal**: 新 `SessionStore`（Hot State）に画面状態とそのアクションを追加し、選択状態を `selectedIds`（ID 配列）から `selectedObjects`（種別付き）へ置換する。Consumer の移行は 181j/181k、旧ストア削除は 181l で行う。
@@ -516,11 +516,11 @@ export function createSessionStore(
 ```
 
 - **Phase Verification**:
-  - [ ] 1. `rg -n "selectedIds|toggleSelectId|setSelectedIds" src/features/tactical-unified/stores/session-store.ts` が 0 件であること
-  - [ ] 2. `bun run ai:check src/features/tactical-unified/stores/session-store.ts src/features/tactical-unified/hooks/use-resolved-scene-graph.ts src/features/tactical-unified/views/FullTacticalCanvas.tsx src/features/tactical-unified/stores/__tests__/three-frequency-stores.test.ts` が PASS すること
+  - [x] 1. `rg -n "selectedIds|toggleSelectId|setSelectedIds" src/features/tactical-unified/stores/session-store.ts` が 0 件であること
+  - [x] 2. `bun run ai:check src/features/tactical-unified/stores/session-store.ts src/features/tactical-unified/hooks/use-resolved-scene-graph.ts src/features/tactical-unified/views/FullTacticalCanvas.tsx src/features/tactical-unified/stores/__tests__/three-frequency-stores.test.ts` が PASS すること
 - **Worker Handoff Log**:
 ```
-(Worker が記入)
+Phase 1 完了: SessionStore への UI 状態統合・selectedObjects 置換・useResolvedSceneGraph / FullTacticalCanvas / three-frequency-stores.test.ts 更新、ai:check (17 tests) PASS。
 ```
 
 ## 4. 次タスクへの申し送り（スコープ外）

@@ -232,7 +232,7 @@ describe('3-Frequency Independent Stores (Cold / Hot / Stream)', () => {
 
       expect(sessionStore.getState().activePhaseId).toBe('phase-1');
       expect(sessionStore.getState().activeSlideId).toBe('slide-1');
-      expect(sessionStore.getState().selectedIds).toEqual([]);
+      expect(sessionStore.getState().selectedObjects).toEqual([]);
       expect(sessionStore.getState().activeDragDelta).toBeNull();
 
       sessionStore.getState().setActiveDragDelta({
@@ -247,14 +247,120 @@ describe('3-Frequency Independent Stores (Cold / Hot / Stream)', () => {
         deltaScreenNormY: 10,
       });
 
-      sessionStore.getState().setSelectedIds(['player-1', 'arrow-1']);
-      expect(sessionStore.getState().selectedIds).toEqual([
+      sessionStore.getState().selectObjects([
+        { id: 'player-1', kind: 'player' },
+        { id: 'arrow-1', kind: 'arrow' },
+      ]);
+      expect(sessionStore.getState().selectedObjects.map((o) => o.id)).toEqual([
         'player-1',
         'arrow-1',
       ]);
 
       sessionStore.getState().setActiveTool('select');
       expect(sessionStore.getState().activeTool).toBe('select');
+    });
+  });
+
+  describe('Hot Store UI 状態（ツール・色・パネル・ワークスペース）', () => {
+    it('同値の色・線幅の設定では購読者が発火しないこと', () => {
+      const sessionStore = createSessionStore();
+      const listener = vi.fn();
+      sessionStore.subscribe(listener);
+
+      sessionStore.getState().setColor('#ffffff');
+      sessionStore.getState().setStrokeWidth(2);
+      expect(listener).not.toHaveBeenCalled();
+
+      sessionStore.getState().setColor('#ef4444');
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(sessionStore.getState().color).toBe('#ef4444');
+    });
+
+    it('director への切替でパネル状態を退避し、board 復帰で復元すること', () => {
+      const sessionStore = createSessionStore();
+      sessionStore.getState().setSidebarOpen(true);
+      sessionStore.getState().setRightPanelOpen(true);
+
+      sessionStore.getState().setWorkspaceMode('director');
+      let s = sessionStore.getState();
+      expect(s.workspaceMode).toBe('director');
+      expect(s.panels.sidebarOpen).toBe(false);
+      expect(s.panels.rightPanelTab).toBe('camera');
+      expect(s.savedPanelStateBeforeDirector).toEqual({
+        sidebarOpen: true,
+        isRightPanelOpen: true,
+      });
+
+      sessionStore.getState().toggleWorkspaceMode();
+      s = sessionStore.getState();
+      expect(s.workspaceMode).toBe('board');
+      expect(s.panels.sidebarOpen).toBe(true);
+      expect(s.panels.isRightPanelOpen).toBe(true);
+      expect(s.panels.rightPanelTab).toBe('formation');
+      expect(s.savedPanelStateBeforeDirector).toBeNull();
+    });
+
+    it('selectObject は単一選択・複数トグル・null 解除を行うこと', () => {
+      const sessionStore = createSessionStore();
+      sessionStore.getState().selectObject({ id: 'p1', kind: 'player' });
+      sessionStore.getState().selectObject({ id: 'a1', kind: 'arrow' }, true);
+      expect(sessionStore.getState().selectedObjects.map((o) => o.id)).toEqual([
+        'p1',
+        'a1',
+      ]);
+
+      sessionStore.getState().selectObject({ id: 'p1', kind: 'player' }, true);
+      expect(sessionStore.getState().selectedObjects.map((o) => o.id)).toEqual([
+        'a1',
+      ]);
+
+      sessionStore.getState().selectObject(null);
+      expect(sessionStore.getState().selectedObjects).toEqual([]);
+      expect(sessionStore.getState().activeMarkerOptionTab).toBeNull();
+    });
+
+    it('選手1件の selectObjects で視野角タブが開き、clearSelection で閉じること', () => {
+      const sessionStore = createSessionStore();
+      sessionStore.getState().selectObjects([{ id: 'p1', kind: 'player' }]);
+      expect(sessionStore.getState().activeMarkerOptionTab).toBe('vision');
+
+      sessionStore.getState().clearSelection();
+      expect(sessionStore.getState().selectedObjects).toEqual([]);
+      expect(sessionStore.getState().activeMarkerOptionTab).toBeNull();
+    });
+
+    it('スプリットプレビューを開くと右パネルが閉じること', () => {
+      const sessionStore = createSessionStore();
+      sessionStore.getState().setRightPanelOpen(true);
+      sessionStore.getState().toggleSplitPreview();
+      expect(sessionStore.getState().panels.splitPreviewOpen).toBe(true);
+      expect(sessionStore.getState().panels.isRightPanelOpen).toBe(false);
+    });
+
+    it('エクスポート画面の開閉で pendingExport が設定・解除されること', () => {
+      const sessionStore = createSessionStore();
+      sessionStore
+        .getState()
+        .openExportModal({ format: 'png', scope: 'current', scale: 2 });
+      expect(sessionStore.getState().panels.exportModalOpen).toBe(true);
+      expect(sessionStore.getState().pendingExport?.format).toBe('png');
+
+      sessionStore.getState().closeExportModal();
+      expect(sessionStore.getState().panels.exportModalOpen).toBe(false);
+      expect(sessionStore.getState().pendingExport).toBeNull();
+    });
+
+    it('UI 状態の更新が documentStore の past と isDirty に影響しないこと', () => {
+      const documentStore = createDocumentStore(createDummyProject());
+      const sessionStore = createSessionStore();
+
+      sessionStore.getState().setActiveTool('pan');
+      sessionStore.getState().setColor('#00ff00');
+      sessionStore.getState().toggleSidebar();
+      sessionStore.getState().selectObject({ id: 'player-1', kind: 'player' });
+
+      expect(documentStore.getState().past).toHaveLength(0);
+      expect(documentStore.getState().isDirty).toBe(false);
     });
   });
 
@@ -391,9 +497,9 @@ describe('3-Frequency Independent Stores (Cold / Hot / Stream)', () => {
 
       // Session のみ更新
       act(() => {
-        sessStore.getState().setActiveTool('laser');
+        sessStore.getState().setActiveTool('pan');
       });
-      expect(result.current.activeTool).toBe('laser');
+      expect(result.current.activeTool).toBe('pan');
 
       // Playback のみ更新
       act(() => {

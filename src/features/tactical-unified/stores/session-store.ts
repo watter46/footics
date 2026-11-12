@@ -3,82 +3,112 @@ import type {
   EphemeralDragDelta,
   EphemeralSessionState,
 } from '@/lib/tactical/compiler/scene-graph-dto';
+import {
+  DEFAULT_SESSION_UI_STATE,
+  type DrawingTool,
+  type ExportTarget,
+  type MarkerMode,
+  type MarkerOptionTab,
+  type RightPanelTab,
+  type SelectedObject,
+  type SessionUiState,
+  type TeamVisibility,
+  type WorkspaceMode,
+} from './session-ui-state';
+import {
+  CLEARED_SELECTION,
+  selectObjectsTransition,
+  selectObjectTransition,
+  splitPreviewTransition,
+  transitionWorkspaceMode,
+} from './session-ui-transitions';
 
-export interface SessionStoreState {
+export interface SessionStoreState extends SessionUiState {
   readonly activePhaseId: string;
   readonly activeSlideId: string;
-  readonly activeTool: string;
-  readonly selectedIds: readonly string[];
   readonly activeDragDelta: EphemeralDragDelta | null;
   readonly drawingPreview: EphemeralSessionState['drawingPreview'] | null;
 
   readonly setActivePhaseId: (phaseId: string) => void;
   readonly setActiveSlideId: (slideId: string) => void;
-  readonly setActiveTool: (tool: string) => void;
-  readonly setSelectedIds: (ids: readonly string[]) => void;
-  readonly toggleSelectId: (id: string, multi?: boolean) => void;
-  readonly clearSelection: () => void;
   readonly setActiveDragDelta: (delta: EphemeralDragDelta | null) => void;
   readonly setDrawingPreview: (
     preview: EphemeralSessionState['drawingPreview'] | null,
   ) => void;
   readonly resetSession: (init?: Partial<SessionStoreState>) => void;
+
+  readonly setActiveTool: (tool: DrawingTool) => void;
+  readonly setContinuousDrawing: (val: boolean) => void;
+  readonly toggleContinuousDrawing: () => void;
+  readonly setColor: (color: string) => void;
+  readonly setCustomColor: (color: string) => void;
+  readonly setStrokeWidth: (width: number) => void;
+  readonly setFontSize: (size: number) => void;
+  readonly setMarkerMode: (mode: MarkerMode) => void;
+  readonly setIsDragging: (dragging: boolean) => void;
+  readonly setIsHudOpen: (open: boolean) => void;
+  readonly setConnectingPlayerId: (id: string | null) => void;
+  readonly setActiveMarkerOptionTab: (tab: MarkerOptionTab | null) => void;
+  readonly setTeamVisibility: (visibility: TeamVisibility) => void;
+
+  readonly selectObject: (obj: SelectedObject | null, multi?: boolean) => void;
+  readonly selectObjects: (
+    objects: readonly SelectedObject[],
+    multi?: boolean,
+  ) => void;
+  readonly clearSelection: () => void;
+
+  readonly setWorkspaceMode: (mode: WorkspaceMode) => void;
+  readonly toggleWorkspaceMode: () => void;
+  readonly toggleSidebar: () => void;
+  readonly setSidebarOpen: (open: boolean) => void;
+  readonly setInspectorOpen: (open: boolean) => void;
+  readonly setRightPanelTab: (tab: RightPanelTab) => void;
+  readonly toggleRightPanel: () => void;
+  readonly setRightPanelOpen: (open: boolean) => void;
+  readonly toggleSplitPreview: () => void;
+  readonly setSplitPreviewOpen: (open: boolean) => void;
+  readonly openExportModal: (target?: ExportTarget) => void;
+  readonly closeExportModal: () => void;
+  readonly openProjectManagerModal: () => void;
+  readonly closeProjectManagerModal: () => void;
 }
 
 export type SessionStore = StoreApi<SessionStoreState>;
 
-export interface CreateSessionStoreOptions {
+export type CreateSessionStoreOptions = Partial<SessionUiState> & {
   activePhaseId?: string;
   activeSlideId?: string;
-  activeTool?: string;
-  selectedIds?: readonly string[];
   activeDragDelta?: EphemeralDragDelta | null;
   drawingPreview?: EphemeralSessionState['drawingPreview'] | null;
-}
+};
 
 export function createSessionStore(
   initial?: CreateSessionStoreOptions,
 ): SessionStore {
+  const {
+    activePhaseId,
+    activeSlideId,
+    activeDragDelta,
+    drawingPreview,
+    ...initialUi
+  } = initial ?? {};
+
   return createStore<SessionStoreState>((set) => ({
-    activePhaseId: initial?.activePhaseId ?? '',
-    activeSlideId: initial?.activeSlideId ?? '',
-    activeTool: initial?.activeTool ?? 'select',
-    selectedIds: initial?.selectedIds ?? [],
-    activeDragDelta: initial?.activeDragDelta ?? null,
-    drawingPreview: initial?.drawingPreview ?? null,
+    ...DEFAULT_SESSION_UI_STATE,
+    ...initialUi,
+    activePhaseId: activePhaseId ?? '',
+    activeSlideId: activeSlideId ?? '',
+    activeDragDelta: activeDragDelta ?? null,
+    drawingPreview: drawingPreview ?? null,
 
     setActivePhaseId: (phaseId: string) => set({ activePhaseId: phaseId }),
-
     setActiveSlideId: (slideId: string) => set({ activeSlideId: slideId }),
-
-    setActiveTool: (tool: string) => set({ activeTool: tool }),
-
-    setSelectedIds: (ids: readonly string[]) => set({ selectedIds: ids }),
-
-    toggleSelectId: (id: string, multi = false) => {
-      set((state) => {
-        if (!multi) {
-          const isAlreadySingle =
-            state.selectedIds.length === 1 && state.selectedIds[0] === id;
-          return { selectedIds: isAlreadySingle ? [] : [id] };
-        }
-        const exists = state.selectedIds.includes(id);
-        const nextIds = exists
-          ? state.selectedIds.filter((item) => item !== id)
-          : [...state.selectedIds, id];
-        return { selectedIds: nextIds };
-      });
-    },
-
-    clearSelection: () => set({ selectedIds: [] }),
-
     setActiveDragDelta: (delta: EphemeralDragDelta | null) =>
       set({ activeDragDelta: delta }),
-
     setDrawingPreview: (
       preview: EphemeralSessionState['drawingPreview'] | null,
     ) => set({ drawingPreview: preview }),
-
     resetSession: (init?: Partial<SessionStoreState>) =>
       set((state) => ({
         ...state,
@@ -86,5 +116,80 @@ export function createSessionStore(
         drawingPreview: null,
         ...init,
       })),
+
+    setActiveTool: (tool) => set({ activeTool: tool }),
+    setContinuousDrawing: (val) => set({ continuousDrawing: val }),
+    toggleContinuousDrawing: () =>
+      set((s) => ({ continuousDrawing: !s.continuousDrawing })),
+    setColor: (color) => set((s) => (s.color === color ? s : { color })),
+    setCustomColor: (customColor) =>
+      set((s) => (s.customColor === customColor ? s : { customColor })),
+    setStrokeWidth: (strokeWidth) =>
+      set((s) => (s.strokeWidth === strokeWidth ? s : { strokeWidth })),
+    setFontSize: (fontSize) =>
+      set((s) => (s.fontSize === fontSize ? s : { fontSize })),
+    setMarkerMode: (markerMode) =>
+      set((s) => (s.markerMode === markerMode ? s : { markerMode })),
+    setIsDragging: (isDragging) =>
+      set((s) => (s.isDragging === isDragging ? s : { isDragging })),
+    setIsHudOpen: (isHudOpen) =>
+      set((s) => (s.isHudOpen === isHudOpen ? s : { isHudOpen })),
+    setConnectingPlayerId: (id) => set({ connectingPlayerId: id }),
+    setActiveMarkerOptionTab: (tab) => set({ activeMarkerOptionTab: tab }),
+    setTeamVisibility: (visibility) => set({ teamVisibility: visibility }),
+
+    selectObject: (obj, multi = false) =>
+      set((s) => selectObjectTransition(s, obj, multi)),
+    selectObjects: (objects, multi = false) =>
+      set((s) => selectObjectsTransition(s, objects, multi)),
+    clearSelection: () => set({ ...CLEARED_SELECTION }),
+
+    setWorkspaceMode: (mode) =>
+      set((s) =>
+        s.workspaceMode === mode ? s : transitionWorkspaceMode(s, mode),
+      ),
+    toggleWorkspaceMode: () =>
+      set((s) =>
+        transitionWorkspaceMode(
+          s,
+          s.workspaceMode === 'board' ? 'director' : 'board',
+        ),
+      ),
+    toggleSidebar: () =>
+      set((s) => ({
+        panels: { ...s.panels, sidebarOpen: !s.panels.sidebarOpen },
+      })),
+    setSidebarOpen: (open) =>
+      set((s) => ({ panels: { ...s.panels, sidebarOpen: open } })),
+    setInspectorOpen: (open) =>
+      set((s) => ({ panels: { ...s.panels, inspectorOpen: open } })),
+    setRightPanelTab: (tab) =>
+      set((s) => ({
+        panels: { ...s.panels, rightPanelTab: tab, inspectorOpen: true },
+      })),
+    toggleRightPanel: () =>
+      set((s) => ({
+        panels: { ...s.panels, isRightPanelOpen: !s.panels.isRightPanelOpen },
+      })),
+    setRightPanelOpen: (open) =>
+      set((s) => ({ panels: { ...s.panels, isRightPanelOpen: open } })),
+    toggleSplitPreview: () =>
+      set((s) => splitPreviewTransition(s.panels, !s.panels.splitPreviewOpen)),
+    setSplitPreviewOpen: (open) =>
+      set((s) => splitPreviewTransition(s.panels, open)),
+    openExportModal: (target) =>
+      set((s) => ({
+        pendingExport: target ?? null,
+        panels: { ...s.panels, exportModalOpen: true },
+      })),
+    closeExportModal: () =>
+      set((s) => ({
+        pendingExport: null,
+        panels: { ...s.panels, exportModalOpen: false },
+      })),
+    openProjectManagerModal: () =>
+      set((s) => ({ panels: { ...s.panels, projectManagerModalOpen: true } })),
+    closeProjectManagerModal: () =>
+      set((s) => ({ panels: { ...s.panels, projectManagerModalOpen: false } })),
   }));
 }
