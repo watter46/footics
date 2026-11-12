@@ -24,10 +24,7 @@ import {
   TacticalStoreProvider,
   useTacticalStoresContext,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import {
-  serializeProjectToScreenshotJson,
-  translateScreenshotToProject,
-} from '@/lib/tactical/acl/screenshot-translator';
+import { translateScreenshotToProject } from '@/lib/tactical/acl/screenshot-translator';
 import {
   type AspectRatio,
   createXBoundaryBox,
@@ -128,26 +125,20 @@ function QuickAnnotationCanvasBridge(
         canvasAnnotationsJson: annotationsJson,
       });
       documentStore.getState().loadProject(bundle.project);
-      const serialized = serializeProjectToScreenshotJson(bundle.project);
-      onAutoSave?.(serialized);
+      onAutoSave?.(annotationsJson);
     },
     [screenshot.id, screenshot.imageDataUrl, documentStore, onAutoSave],
-  );
-
-  const initialAnnotations = useMemo(
-    () => serializeProjectToScreenshotJson(documentStore.getState().project),
-    [documentStore],
   );
 
   const config = useMemo<CanvasConfig>(
     () => ({
       mode: 'screenshot-edit',
       backgroundImageUrl: screenshot.imageDataUrl,
-      initialAnnotations,
+      initialAnnotations: screenshot.canvasAnnotations,
       markerMode: '3d-only',
       defaultBoundaryBox: DEFAULT_BOUNDARY_BOX_FULL,
     }),
-    [screenshot.imageDataUrl, initialAnnotations],
+    [screenshot.imageDataUrl, screenshot.canvasAnnotations],
   );
 
   return (

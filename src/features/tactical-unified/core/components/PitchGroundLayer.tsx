@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Group, Layer, Rect } from 'react-konva';
 import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
+import type { ResolvedSceneGraphDTO } from '@/lib/tactical/compiler/scene-graph-dto';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import { calculatePitchTransform } from '../utils/canvas-pitch-transform-helper';
@@ -26,6 +27,7 @@ export interface PitchGroundLayerProps {
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   cleanRender?: boolean;
   listening?: boolean;
+  sceneGraph?: ResolvedSceneGraphDTO | null;
 }
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
@@ -38,6 +40,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
   nodesRegistryRef,
   cleanRender,
   listening = true,
+  sceneGraph,
 }: PitchGroundLayerProps): ReactNode {
   const zones = useCanvasStore((s) => s.annotations.zones);
   const arrows = useCanvasStore((s) => s.annotations.arrows);
@@ -162,19 +165,24 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
         ))}
 
         {/* 矢印オブジェクト群 */}
-        {sortedArrows.map((arrow) => (
-          <ArrowObject
-            key={arrow.id}
-            arrow={arrow}
-            players={pitchMarkers}
-            stageSize={{ width: pitchRect.width, height: pitchRect.height }}
-            isSelected={!cleanRender && selectedIds.includes(arrow.id)}
-            isInteractive={!cleanRender && isInteractive}
-            onSelect={makeSelectHandler(arrow.id, 'arrow')}
-            updateArrow={updateArrow}
-            nodesRegistryRef={nodesRegistryRef}
-          />
-        ))}
+        {sortedArrows.map((arrow) => {
+          const resolvedArrow =
+            sceneGraph?.arrows.find((a) => a.id === arrow.id) ?? null;
+          return (
+            <ArrowObject
+              key={arrow.id}
+              arrow={arrow}
+              players={pitchMarkers}
+              stageSize={{ width: pitchRect.width, height: pitchRect.height }}
+              isSelected={!cleanRender && selectedIds.includes(arrow.id)}
+              isInteractive={!cleanRender && isInteractive}
+              onSelect={makeSelectHandler(arrow.id, 'arrow')}
+              updateArrow={updateArrow}
+              nodesRegistryRef={nodesRegistryRef}
+              resolvedArrow={resolvedArrow}
+            />
+          );
+        })}
 
         {/* 選手間コネクトライン */}
         <PlayerConnectLines

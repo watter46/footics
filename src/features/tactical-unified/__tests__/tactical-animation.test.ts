@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import React, { type ReactNode } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   resolveSceneGraphFromState,
   useResolvedSceneGraph,
@@ -278,6 +278,64 @@ describe('Tactical Animation & Scene Graph Resolution (Phase 2)', () => {
       });
       expect(playStore.getState().isPlaying).toBe(false);
       expect(playStore.getState().timeMs).toBe(0);
+    });
+
+    it('再生中 (isPlaying: true) で RAF を進めた際、onFrameEvaluated コールバックに補間された EvaluatedTimelineFrame が通知されること (Concrete Test Value: t=750ms)', () => {
+      const callbacks: FrameRequestCallback[] = [];
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+        callbacks.push(cb);
+        return callbacks.length;
+      });
+      vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+      const project = createTestProject();
+      const docStore = createDocumentStore(project);
+      const sessStore = createSessionStore({
+        activePhaseId: 'phase-1',
+        activeSlideId: 'slide-1',
+      });
+      const playStore = createPlaybackStore();
+
+      const onFrameEvaluated = vi.fn();
+
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        React.createElement(
+          TacticalStoreProvider,
+          {
+            stores: {
+              documentStore: docStore,
+              sessionStore: sessStore,
+              playbackStore: playStore,
+            },
+          },
+          children,
+        );
+
+      const { result } = renderHook(
+        () => useTacticalAnimation({ onFrameEvaluated }),
+        { wrapper },
+      );
+
+      act(() => {
+        result.current.playAnimation();
+      });
+
+      // advance RAF: start at 1000, then 1750 (delta = 750ms)
+      act(() => {
+        callbacks.shift()?.(1000);
+      });
+      act(() => {
+        callbacks.shift()?.(1750);
+      });
+
+      expect(onFrameEvaluated).toHaveBeenCalled();
+      const lastCall = onFrameEvaluated.mock.lastCall?.[0];
+      expect(lastCall).toBeDefined();
+      expect(lastCall.slide).toBeDefined();
+      // slide-1 (x=10, pause=500), slide-2 (x=30, dur=1000) -> at 750ms: 10 + 20 * 0.25 = 15
+      expect(lastCall.slide.players[0].x).toBe(15);
+
+      vi.unstubAllGlobals();
     });
   });
 

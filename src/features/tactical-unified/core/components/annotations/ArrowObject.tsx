@@ -5,6 +5,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useRef } from 'react';
 import { Group } from 'react-konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
+import type { ResolvedArrowPrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { ArrowAnnotation, Player } from '@/lib/types/tactical-unified';
 import { ArrowHandlesGroup } from './arrow-handles-group';
 import { ArrowHeadNode } from './arrow-head-node';
@@ -26,6 +27,7 @@ export interface ArrowObjectProps {
   onSelect: (e: KonvaClickEvent) => void;
   updateArrow: (arrowId: string, patch: Partial<ArrowAnnotation>) => void;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
+  resolvedArrow?: ResolvedArrowPrimitive | null;
 }
 
 export const ArrowObject = React.memo(function ArrowObject({
@@ -37,6 +39,7 @@ export const ArrowObject = React.memo(function ArrowObject({
   onSelect,
   updateArrow,
   nodesRegistryRef,
+  resolvedArrow,
 }: ArrowObjectProps) {
   const curve = useArrowCurve({ arrow, players, stageSize });
 
@@ -73,6 +76,11 @@ export const ArrowObject = React.memo(function ArrowObject({
     stageSize,
   });
 
+  const renderPoints =
+    resolvedArrow && resolvedArrow.flatPointsPx.length > 0
+      ? (resolvedArrow.flatPointsPx as number[])
+      : curve.renderPoints;
+
   const hp = {
     arrow,
     stageSize,
@@ -98,7 +106,7 @@ export const ArrowObject = React.memo(function ArrowObject({
       <ArrowLineNode
         {...hp}
         hasArrowHead={curve.hasArrowHead}
-        renderPoints={curve.renderPoints}
+        renderPoints={renderPoints}
         p0={curve.p0}
         p1={curve.p1}
         midHandlePxX={curve.midHandlePxX}

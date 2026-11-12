@@ -5,6 +5,7 @@ import type React from 'react';
 import type { ReactNode } from 'react';
 import { memo, useCallback, useMemo } from 'react';
 import { Group, Layer } from 'react-konva';
+import type { ResolvedSceneGraphDTO } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { Player, TextAnnotation } from '@/lib/types/tactical-unified';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
@@ -18,11 +19,16 @@ import {
   type BillboardItem,
   buildBillboardItems,
   sortBillboardItemsByDepth,
+  sortBillboardItemsBySceneGraph,
 } from './billboard-depth-sort';
 import { BillboardItemNode } from './billboard-item-node';
 import { useMarkerDragHandlers } from './use-marker-drag-handlers';
 
-export { type BillboardItem, sortBillboardItemsByDepth };
+export {
+  type BillboardItem,
+  sortBillboardItemsByDepth,
+  sortBillboardItemsBySceneGraph,
+};
 
 export interface BillboardObjectLayerProps {
   stageSize: { width: number; height: number };
@@ -33,6 +39,7 @@ export interface BillboardObjectLayerProps {
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   cleanRender?: boolean;
   listening?: boolean;
+  sceneGraph?: ResolvedSceneGraphDTO | null;
 }
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
@@ -45,6 +52,7 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   nodesRegistryRef,
   cleanRender,
   listening = true,
+  sceneGraph,
 }: BillboardObjectLayerProps): ReactNode {
   const markers = useCanvasStore((s) => s.annotations.markers);
   const arrows = useCanvasStore((s) => s.annotations.arrows);
@@ -179,11 +187,20 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
     [visibleMarkers, ball, showBall, texts],
   );
 
-  const sortedItems = useMemo(
-    () =>
-      sortBillboardItemsByDepth(billboardItems, pitchRect, camera, selectedIds),
-    [billboardItems, pitchRect, camera, selectedIds],
-  );
+  const sortedItems = useMemo(() => {
+    if (sceneGraph && sceneGraph.billboardItems.length > 0) {
+      return sortBillboardItemsBySceneGraph(
+        billboardItems,
+        sceneGraph.billboardItems,
+      );
+    }
+    return sortBillboardItemsByDepth(
+      billboardItems,
+      pitchRect,
+      camera,
+      selectedIds,
+    );
+  }, [billboardItems, pitchRect, camera, selectedIds, sceneGraph]);
 
   return (
     <Layer id="billboard-object-layer" listening={listening}>

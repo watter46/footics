@@ -9,6 +9,10 @@ import {
   useSessionStore,
   useTacticalStoresContext,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
+import {
+  type EvaluatedTimelineFrame,
+  evaluateTimelineFrame,
+} from '@/lib/tactical/engine/timeline-evaluator';
 import { toMilliseconds } from '@/lib/types/tactical/branded';
 import type { DomainTacticalPhase } from '@/lib/types/tactical/domain-hierarchy';
 
@@ -16,6 +20,7 @@ export interface UseTacticalAnimationOptions {
   pitchSize?: { width: number; height: number };
   nodesRegistryRef?: { current?: unknown };
   loop?: boolean;
+  onFrameEvaluated?: (frame: EvaluatedTimelineFrame) => void;
 }
 
 export function calculatePhaseTotalDuration(
@@ -52,6 +57,10 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
   const onCompleteRef = useRef<(() => void) | undefined>(undefined);
   const loopRef = useRef(options?.loop ?? false);
   loopRef.current = options?.loop ?? false;
+  const onFrameEvaluatedRef = useRef(options?.onFrameEvaluated);
+  onFrameEvaluatedRef.current = options?.onFrameEvaluated;
+  const activePhaseRef = useRef(activePhase);
+  activePhaseRef.current = activePhase;
 
   const totalDurationRef = useRef(totalDurationMs);
   totalDurationRef.current = totalDurationMs;
@@ -82,15 +91,36 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
         if (loopRef.current) {
           nextTime = nextTime % total;
           playbackStore.getState().setTimeMs(toMilliseconds(nextTime));
+          if (activePhaseRef.current && onFrameEvaluatedRef.current) {
+            const evaluated = evaluateTimelineFrame(
+              activePhaseRef.current,
+              toMilliseconds(nextTime),
+            );
+            onFrameEvaluatedRef.current(evaluated);
+          }
           rafIdRef.current = requestAnimationFrame(loopStep);
         } else {
           playbackStore.getState().setTimeMs(toMilliseconds(total));
+          if (activePhaseRef.current && onFrameEvaluatedRef.current) {
+            const evaluated = evaluateTimelineFrame(
+              activePhaseRef.current,
+              toMilliseconds(total),
+            );
+            onFrameEvaluatedRef.current(evaluated);
+          }
           playbackStore.getState().pausePlayback();
           stopAnimationLoop();
           onCompleteRef.current?.();
         }
       } else {
         playbackStore.getState().setTimeMs(toMilliseconds(nextTime));
+        if (activePhaseRef.current && onFrameEvaluatedRef.current) {
+          const evaluated = evaluateTimelineFrame(
+            activePhaseRef.current,
+            toMilliseconds(nextTime),
+          );
+          onFrameEvaluatedRef.current(evaluated);
+        }
         rafIdRef.current = requestAnimationFrame(loopStep);
       }
     };
@@ -125,6 +155,13 @@ export function useTacticalAnimation(options?: UseTacticalAnimationOptions) {
   const seekTo = useCallback(
     (timeMs: number) => {
       playbackStore.getState().seekTo(toMilliseconds(timeMs));
+      if (activePhaseRef.current && onFrameEvaluatedRef.current) {
+        const evaluated = evaluateTimelineFrame(
+          activePhaseRef.current,
+          toMilliseconds(timeMs),
+        );
+        onFrameEvaluatedRef.current(evaluated);
+      }
     },
     [playbackStore],
   );

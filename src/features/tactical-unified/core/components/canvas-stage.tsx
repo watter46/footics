@@ -2,7 +2,12 @@
 
 import type Konva from 'konva';
 import type React from 'react';
+import { useContext } from 'react';
 import { Stage } from 'react-konva';
+import { useResolvedSceneGraph } from '@/features/tactical-unified/hooks/use-resolved-scene-graph';
+import { TacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { ResolvedSceneGraphDTO } from '@/lib/tactical/compiler/scene-graph-dto';
+import type { StageViewport } from '@/lib/tactical/engine/coordinates';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import type { SelectionBox } from '../utils/canvas-selection-helpers';
@@ -41,7 +46,22 @@ export type CanvasStageProps = CanvasStageViewProps;
 
 const NOOP_START_EDIT_TEXT = () => {};
 
-export function CanvasStage({
+function ResolvedSceneGraphBridge({
+  viewport,
+  children,
+}: {
+  viewport: StageViewport;
+  children: (sceneGraph: ResolvedSceneGraphDTO) => React.ReactNode;
+}) {
+  const sceneGraph = useResolvedSceneGraph(viewport);
+  return <>{children(sceneGraph)}</>;
+}
+
+interface CanvasStageInnerProps extends CanvasStageViewProps {
+  sceneGraph: ResolvedSceneGraphDTO | null;
+}
+
+function CanvasStageInner({
   stageRef,
   size,
   vRect,
@@ -49,11 +69,8 @@ export function CanvasStage({
   cleanRender,
   interaction,
   children,
-}: CanvasStageViewProps) {
-  if (size.width <= 0 || size.height <= 0) {
-    return null;
-  }
-
+  sceneGraph,
+}: CanvasStageInnerProps) {
   const isInteractive = Boolean(interaction);
   const stageHandlers = interaction?.stageHandlers;
 
@@ -88,6 +105,7 @@ export function CanvasStage({
           nodesRegistryRef={nodesRegistryRef}
           cleanRender={cleanRender}
           listening={isInteractive}
+          sceneGraph={sceneGraph}
         />
         <BillboardObjectLayer
           stageSize={size}
@@ -97,6 +115,7 @@ export function CanvasStage({
           nodesRegistryRef={nodesRegistryRef}
           cleanRender={cleanRender}
           listening={isInteractive}
+          sceneGraph={sceneGraph}
         />
         <InteractionPreviewLayer
           stageSize={size}
@@ -110,5 +129,30 @@ export function CanvasStage({
 
       {children}
     </div>
+  );
+}
+
+export function CanvasStage(props: CanvasStageViewProps) {
+  const tacticalStores = useContext(TacticalStoresContext);
+
+  if (props.size.width <= 0 || props.size.height <= 0) {
+    return null;
+  }
+
+  if (!tacticalStores) {
+    return <CanvasStageInner {...props} sceneGraph={null} />;
+  }
+
+  const viewport: StageViewport = {
+    width: props.vRect.width,
+    height: props.vRect.height,
+    offsetX: 0,
+    offsetY: 0,
+  };
+
+  return (
+    <ResolvedSceneGraphBridge viewport={viewport}>
+      {(sceneGraph) => <CanvasStageInner {...props} sceneGraph={sceneGraph} />}
+    </ResolvedSceneGraphBridge>
   );
 }

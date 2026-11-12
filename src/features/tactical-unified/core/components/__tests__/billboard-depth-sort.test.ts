@@ -3,6 +3,7 @@ import type { PitchRectBounds } from '../../utils/canvas-coordinates';
 import {
   type BillboardItem,
   sortBillboardItemsByDepth,
+  sortBillboardItemsBySceneGraph,
 } from '../billboard-depth-sort';
 
 const mockPitchRect: PitchRectBounds = {
@@ -78,5 +79,33 @@ describe('sortBillboardItemsByDepth', () => {
       ['other-id'],
     );
     expect(sortedBothUnselected).toEqual([itemB, itemA]);
+  });
+
+  describe('sortBillboardItemsBySceneGraph', () => {
+    it('should sort items based on sceneGraph.billboardItems depthSortKey order (p-back -> p-front)', () => {
+      const itemFront = {
+        kind: 'player' as const,
+        data: { id: 'p-front' } as any,
+        x: 50,
+        y: 80,
+      };
+      const itemBack = {
+        kind: 'player' as const,
+        data: { id: 'p-back' } as any,
+        x: 50,
+        y: 20,
+      };
+
+      const sceneGraphBillboardItems = [
+        { kind: 'player' as const, id: 'p-back', depthSortKey: 100 },
+        { kind: 'player' as const, id: 'p-front', depthSortKey: 300 },
+      ] as any;
+
+      const sorted = sortBillboardItemsBySceneGraph(
+        [itemFront, itemBack],
+        sceneGraphBillboardItems,
+      );
+      expect(sorted).toEqual([itemBack, itemFront]);
+    });
   });
 });
