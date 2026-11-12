@@ -25,6 +25,7 @@ const ALLOWED_BUN_SCRIPTS = new Set([
   'ai:report',
   'ai:audit',
   'task:validate',
+  '.agents/scripts/outline.ts',
   '.agents/scripts/audit-session.ts',
   '.agents/scripts/session-report.ts',
   '.agents/scripts/validate-task.ts',
@@ -57,26 +58,22 @@ export function checkArchitectGuard(payload: any): GuardDecision | null {
   const toolName = payload?.toolCall?.name;
 
   // 1. サブエージェント起動の制御
-  // Scout のみ許可（TypeName: "scout"）。Worker や Reviewer 等の実装・審査エージェント起動は遮断。
+  // Scout / Reviewer 廃止に伴い、Architect からのサブエージェント起動は全面遮断（ai:outline や read_file を直接使用する）。
   if (toolName === 'invoke_subagent') {
     const rawTypeName =
       payload?.toolCall?.args?.TypeName ||
       payload?.toolCall?.args?.typeName ||
       '';
-    const typeName = cleanString(rawTypeName).toLowerCase();
-    if (typeName !== 'scout') {
-      return {
-        decision: 'deny',
-        reason: `[GUARD] Access Denied: Architect may only invoke Scout ('TypeName: "scout"') for token-efficient reconnaissance. Spawning '${rawTypeName || 'unknown'}' is prohibited. Implementation and review must be handled by Planner/Worker/Reviewer pipeline.`,
-      };
-    }
-    return null;
+    return {
+      decision: 'deny',
+      reason: `[GUARD] Access Denied: Architect is prohibited from spawning subagents ('${rawTypeName || 'unknown'}'). Use 'bun run ai:outline <files>', 'rg -l', and 'read_file' directly.`,
+    };
   }
 
   if (toolName === 'define_subagent') {
     return {
       decision: 'deny',
-      reason: `[GUARD] Access Denied: Dynamic subagent definition with 'define_subagent' is prohibited. Use predefined Scout via invoke_subagent(TypeName: "scout").`,
+      reason: `[GUARD] Access Denied: Dynamic subagent definition with 'define_subagent' is prohibited.`,
     };
   }
 

@@ -7,165 +7,114 @@ description: 仕様や要件から、Worker（Flash）が推論なしで実装�
 
 ## 概要 (Overview)
 
-要件・仕様から詳細な実装計画（タスクファイル）を作成するためのスキルです。
-推論能力の低い Worker エージェント（Flash モデル）でも手戻りなく迷わず実装作業に集中できるよう、対象ファイル、TypeScript 型シグネチャ、テストケース、検証手順を極小粒度で規定します。
-Footics の「極限のトークン最適化」「4層分離パイプライン（Scout → Planner → Worker → Reviewer）」の設計思想に基づいています。
+要件・仕様から、推論能力の低い Worker エージェント（`flash` / `flash_lite`）が一切の推論や自律探索なしに一発で実装できるタスクファイル（`tasks/TASK-*.md`）を作成するためのスキルです。
+本プロジェクトは **Planner（計画・実行管理）と Worker（Phase 実装）の2階層パイプライン** で動作します（旧 `Scout` および `Reviewer` は廃止）。
 
-**開始時の宣言:** `📝 実装計画（TASKファイル）の作成を開始します。`
+## 1. 計画書 (Plan Artifact) とタスク指示書 (Task File) の役割分担
 
-## 計画の保存先と二重管理の解消 (Artifact vs Task File)
-
-設計計画と作業タスクは、対象読者に応じて完全に分離します：
 1. **ユーザー向け設計合意 (Plan Artifact)**:
-   - 保存先: `<appDataDir>/brain/<conversation-id>/plan.md` (Artifact)
-   - 目的: ユーザーとの設計・アーキテクチャ・振る舞いの合意形成。
-   - 制約: **コードスニペット、ファイルパス、テスト手順、Mermaid、横長テーブルは一切禁止**。`.agents/rules/plan-artifact.md` のテンプレート（Alerts + 縦型リスト）を厳格に適用すること。
+   - 保存先: `<appDataDir>/brain/<conversation-id>/plan.md` (または `implementation_plan.md`)
+   - 制約: `.agents/rules/plan-artifact.md` に準拠し、**コード・ファイルパス・図表・システム用語を一切排除** し、**Footics ユビキタス言語** を用いた平易な日本語（4セクション構成）で「どう変わるか」「何を廃止するか」を合意する。
 2. **Worker向け内部指示書 (Task File)**:
-   - 保存先: `tasks/TASK-<連番>-<feature-name>.md` (例: `tasks/TASK-001-player-marker.md`)
-   - 目的: Worker (Flash) が迷わず実装するためのコンテキスト注入（型・import・テスト期待値・ファイルパス）。
-   - ユーザーはこのファイルの中身を直接見ません。
+   - 保存先: `tasks/TASK-<連番>-<slug>.md`
+   - 構造: **「タスクファイル ＞ フェーズ（1 Worker単位） ＞ タスク」** の階層構造とし、**事前コミットメッセージ（`Commit:`）**、**残存禁止条件（Negative Contracts）**、およびファイルごとの **`[ADD]` / `[MODIFY: Before ➔ After]` / `[DELETE]`** を省略なしで記述する。
 
-## 事前探索プロトコル (Exploration Protocol)
+## 2. 事前探索プロトコル (Planner による直接探索)
 
-計画立案に必要な既存コードベースの調査には、以下の手順とツールを厳格に使用します：
-1. **全体像把握**: `rtk read .agents/.cache/repo_summary.txt`（高レベル地図）
-2. **シンボル・ファイル特定**: `bun run ai:find <キーワード>`（repo_map.txt から一発検索・次手ガイド付き）
-3. **シグネチャ・型抽出**: `bun run ai:outline <ファイルパス>` で export シンボル・interface を最少トークン（90%削減）で抽出
-4. **行・構造特定**: `rtk grep "<キーワード>" <ファイル>` または `ast-grep`
-5. **5ファイル以下は自前並列・6ファイル以上は Scout の活用**: 調査対象が5ファイル以下の場合は Planner 自前の並列読込で完結させ、6ファイル以上に及ぶ場合のみ Scout サブエージェント（`TypeName: "scout"`, `Model: "flash_lite"`）を `type: "SCOUT_REQUEST"` で起動（最大6ターン完了）して対象パスと型シグネチャを抽出させ、回収後に即 kill すること。
-※ 生の `ls`, `cat`, `grep`, `find`, `tree` などの直接実行は Hook により自動書き換えまたは遮断されます。
+Planner はサブエージェントに探索を丸投げせず、以下の決定論的ツールで自ら調査を完結させます：
+1. **シンボル・呼び出し元の全件特定**:
+   - 定義元検索: `bun run ai:find <keyword>`
+   - 呼び出し元（Consumer）の全件網羅特定: `rg -l '<symbol>' src/ extension/` および `rg -c '<symbol>' src/ extension/`（切り詰めなしで全ファイル特定）
+2. **シグネチャ・行番号・内部importの一括抽出**:
+   - `bun run ai:outline <file1> [file2 ...]`（複数ファイル一括指定可。`[L開始-L終了]` 行番号と内部 import 一覧を取得）
+3. **対象箇所の無加工読込 (`read_file`)**:
+   - 400行以下のファイルは1回の `read_file` で全文取得、400行超のファイルは `ai:outline` の行番号を使って該当関数範囲を取得し、タスクファイルに書く `Before` アンカーコードを正確に把握する。
 
-## タスク分割と指示の鉄則 (Task Right-Sizing)
+## 3. Planner と Worker (`flash`) の契約境界・タスク作成の鉄則
 
-1. **行数制限（旧250行）の撤廃とファイル数ベースの分割基準（厳守）**:
-   - Worker (`flash`) が推論や自律探索なしで実装できるよう、タスクファイルの行数制限（旧250行制限）は撤廃します。Invariants・計算式・具体テスト値の情報を絶対に削ってはなりません。
-   - **1〜4ファイルの変更**: 細切れ Phase に分けず、**1つの Phase（1 Worker）で一括完遂**させます。
-   - **5ファイル以上の変更**: **1 Phase あたり最大4プロダクションファイル（テスト含め最大6ファイル）以下**に分割します（1 Phase に7ファイル以上詰め込むとフック `task-size-guard` により遮断されます）。ファイル被りのない複数 Phase は並列 Worker 起動できるようスコープを分離します。
-   - **15ファイル超の大規模変更**: 1タスクの Phase 上限（最大 5 Phase）を超えないよう、**連番タスク（`TASK-XXXa`, `TASK-XXXb`）に分割**します。
-2. **Architectural Invariants & Consumers 同期確認リストの必須化（幽霊パイプライン禁止）**:
-   - `## 2.5 Architectural Invariants & Why (破壊禁止の前提と設計理由)` を必ず記述し、ちゃぶ台返し防止の前提条件（なぜその構造になっているか）と、影響を受ける別画面・呼び出し元（Consumers）の**全件同期確認リスト**を明記します。
-   - **新モジュール孤立作成（Ghost Pipeline）の禁止**: 新 Store / Hook / Compiler / Rasterizer を作成する際、本番コンポーネント（Stage / Layer / Panel / Exporter）への配線と旧コードの参照ゼロ化（`rtk grep "<旧シンボル>" src/ extension/` が 0 件）までを連番タスクに含めること。
-3. **Exact Contract（具体式・分岐条件）と Concrete Test Values（全フィールド具体テスト値）の必須化**:
-   - 各 Phase の契約には抽象的な言葉ではなく、**具体的な計算式・座標変換式・状態遷移・分岐条件（Exact Contract）**を明記します。
-   - Testing Strategy には「〇〇をテストする」ではなく、**DTO の全フィールドに対する具体的な入力値と期待出力値（Concrete Test Values: 例 `input={x:10} ➔ expected={x:20}`）**を必須化します（一部フィールドのテストを省略すると Worker が空配列プレースホルダを返すため厳禁）。
-   - 既存コードの長大な丸写しコピペは避け、`## 3. Context Snippets` には「対象ファイルパス＋変更契約シグネチャ（Import Specs / Interfaces）＋実装上の注意点（Gotcha）」を過不足なく記載します。
-4. **Phase の本質定義**:
-   - 開発工程（「型定義だけ」「テストだけ」）の分割ではなく、**「機能・サブシステムごとの完結した段階」** として分割します。
-   - 各 Phase 内で Worker が単独で **TDD（テスト作成 ➔ 実装 ➔ スコープ検証）を一通り完結** させます。
-5. **4層モデル & 6大設計品質原則の反映（What & Contract）**:
-   Worker に指示する契約とテスト戦略には、以下の原則を反映させます：
-   - **階層配置 (Level 1〜4)**: コンポーネントが属する階層を明記。
-   - **Store Provider 契約**: Level 2 以下ではグローバルストア直接参照を禁止し、Context Hook 経由または Props 確定注入を指定。
-   - **Shell Purity**: Level 4（Shell）は組み立て専用とし、低レベル複合ロジックやデータフェッチを直書きさせない。
-   - **OCP プラグイン設計**: 拡張ポイントはレジストリ登録形式とする。
-   - **RAII 副作用クリーンアップ**: リスナーやタイマー等の副作用は `cleanup()` 関数を必須とする。
-   - **Testing Strategy**: 具体的なテストファイルパスと具体的な入力値・期待出力値（Concrete Test Values）を明記。
-   - **戦術ボード領域（`tactical-unified` / `lib/tactical`）の関数型DDD契約（`.agents/rules/tactical-domain-architecture.md` 準拠）**:
-     - **6コンテキスト境界と OOP 禁止**: クラス設計を禁止し、Functional Core（`src/lib/tactical/**`）は React/Konva/Zustand 非依存の純粋関数として契約化する。
-     - **Branded Coordinates & Discriminated Unions**: `Exact Contract` の座標型には素の `{ x: number, y: number }` ではなく `ScreenNormPoint`, `PitchNormPoint`, `StagePixelPoint` を明記し、`PitchPlayer | BenchPlayer` 等の直和型を使用する。
-     - **3周波数状態分離 & Pure Command Reducer**: ドラッグ移動中（`onDragMove`）は `EphemeralSessionState` 更新、確定時（`onDragEnd`）は `applySlideCommand` + `enforceSlideInvariants` 経由の更新とし、それぞれの Concrete Test Values を記述する。
-     - **Dumb Rasterizer & `compileSceneGraph`**: 描画幾何計算は Konva コンポーネント内ではなく `compileSceneGraph`（`ResolvedSceneGraphDTO`）の純粋関数テストとして定義する。
+1. **一時的フォールバック・新旧二重持ちの全面禁止 (Zero Fallback Rule)**:
+   - 「既存の呼び出し元や既存テストを壊さないために optional 引数や旧ストアを残す」という設計を **厳禁** とする。
+   - 破壊的変更時は、古い仕組みを `[DELETE]` または完全置換し、影響を受けるすべての呼び出し元（Consumers）と既存テストを同一タスク（または連番タスク）内で一括更新する。
+2. **タスクファイルは「厳格な契約（Contract）」であり「全コードの写経」ではない**:
+   - **Worker に推論させてはいけないこと（タスクファイルに明記する契約）**:
+     - ① **事前コミットメッセージ (`Commit`)**: `feat(scope): ...` や `refactor(scope): ...`
+     - ② **残存禁止条件 (`Negative Contracts`)**: 完了時に `0件` でなければならない検索条件と削除対象ファイル（`[DELETE]`）
+     - ③ **局所的な変更契約 (`Before ➔ After`)**: 変更対象の関数・ブロックの入出力・ロジック仕様
+     - ④ **具体テスト仕様 (`Concrete Test Cases`)**: モック禁止の実Store / 純粋関数I/O
+   - **Worker に任せるべきこと（タスクファイルに書かないこと）**:
+     - 周辺の無関係な既存コードの維持、既存ファイルの行位置調整、Biome や型エラーに対する自律修正
+3. **ファイル丸ごとコピペの厳禁とサイズ制約 (Hard Limits)**:
+   - **局所ブロック対比**: `[MODIFY]` タスクではファイル冒頭から末尾までの全貼り付けを **厳禁** とする。変更対象の **最小限の関数・TSXブロック（前後2〜3行のアンカー付き、10〜40行程度）** のみを `Before ➔ After` として記述する。import の追加はファイル全体の import を貼るのではなく、追加する 1〜2 行のみを独立して明記する。
+   - **ブロック上限**: 1つのコードブロックは **120行以内**（`task-size-guard` および `task:validate` により 120行超は遮断）。
+   - **タスクファイル上限**: 1ファイルあたり **300〜500 行（最大 800行）** に収めること（800行超はガードにより物理遮断）。800行を超える規模の場合は、連番タスク（例: `TASK-XXXa`, `TASK-XXXb`）に分割する。
+   - **新規ファイル (`[ADD]`) の適正サイズ**: 1ファイル 150〜250行以内（単一責任の原則）にモジュール分割し、タスクファイル全体でも 300〜500行に収まるように設計する。
+4. **Phase 分割基準**:
+   - **1〜4ファイル**: 1 Phase（1 Worker）で一括完遂。
+   - **5ファイル以上**: 1 Phase あたり **最大4プロダクションファイル＋2テストファイル（計6ファイル）以下** に分割する（**`[DELETE]` ファイルは上限カウントから除外**）。
+   - 各 Phase の Worker は担当ファイル限定の `bun run ai:check <担当ファイル>` のみを通し、全 Phase 完了後に Planner が全体統合検証（`bun run ai:preflight` / `bun run ai:commit`）を実行する。
 
-## TASK-*.md 正式テンプレート
+## 4. `TASK-*.md` 正式テンプレート
 
-タスクファイルは以下のフォーマットに**厳密に準拠**して生成してください（`bun run task:new <num> <slug>` で自動生成されます）：
+タスクファイル作成後は必ず `bun run task:validate tasks/TASK-XXX.md` を実行して検証すること：
 
 ```markdown
 # TASK-XXX: [タイトル]
 
-## 1. Metadata
-- **Status**: `TODO` | `IN_PROGRESS` | `IN_REVIEW` | `REJECTED` | `DONE`
-- **Created**: YYYY-MM-DD
-- **Target Files**:
-  - `src/.../target-a.ts` (NEW)
-  - `src/.../target-b.ts` (MODIFY)
+## 1. Metadata & Goal
+- **Status**: `TODO` | `IN_PROGRESS` | `DONE`
+- **Commit**: `refactor(scope): concise commit message`
+- **Negative Contracts (完了時に0件であるべき条件)**:
+  - `rg -l "OldSymbolName" src/ extension/` ➔ 0 files
+  - Deleted files must not exist: `src/path/to/old-file.ts`
 
-## 2. Requirements & Acceptance Criteria (受入要件)
-<!-- Reviewer が審査時に要件充足を確認してチェックする -->
-- [ ] 1. [明確かつ客観的に検証可能な振る舞い]
-- [ ] 2. [型定義や制約事項]
+## 2. Architectural Invariants & Consumers
+- **Invariants (壊してはいけない前提条件)**:
+  1. [前提条件と理由]
+- **Consumers (同期更新対象の全ファイルリスト)**:
+  - `src/.../consumer-a.tsx`
+  - `extension/.../consumer-b.tsx`
 
-## 2.5 Architectural Invariants & Why (破壊禁止の前提と設計理由)
-<!-- ちゃぶ台返し防止の前提条件と、影響を受ける呼び出し元（Consumers）の同期確認リストを明記する -->
-- **Invariants (破壊禁止の不変条件と理由)**:
-  1. [不変条件と設計上の理由（Why）]
-- **Consumers (呼び出し元・別画面の同期確認リスト)**:
-  - `src/.../consumer.tsx` — [シグネチャ・状態遷移の整合確認]
+## 3. Implementation Phases (タスクファイル > フェーズ > タスク)
 
-## 3. Context Snippets (参照コード・型定義・import)
-<!-- Workerが自律探索（Read/Grep）を行わずに実装できるよう、必要な文脈を過不足なく事前注入する -->
-
-### 3.1 Import Specs
-\`\`\`ts
-// 実装に必要なインポートパスの確定仕様
-import type { SomeType } from '@/path/to/types';
-import { someUtil } from '@/path/to/utils';
-\`\`\`
-
-### 3.2 Key Interfaces & Types
-\`\`\`ts
-// 参照・利用する主要な型定義
-export interface TargetProps { ... }
-\`\`\`
-
-### 3.3 Implementation Notes & Gotchas (注意点・境界契約)
-\`\`\`ts
-// 既存コードの丸写しは行わず、対象パス・変更契約シグネチャ・注意点（'use client' 必須、StoreProvider Context経由等）のみを簡潔に記述
-\`\`\`
-
-## 4. Implementation Phases (Worker 実装手順)
-<!-- 1〜4ファイルは1 Phase一括、5ファイル以上は1 Phase最大4ファイル（テスト含め6ファイル）以下に分割、15ファイル超は連番タスク（TASK-XXXa, TASK-XXXb）に分割 -->
-
-### Phase 1: [サブシステム名]
+### Phase 1: [1 Worker が担当する論理単位]
 - **Worker Model**: `flash` | `flash_lite`
-- **対象ファイル**: `src/.../service.ts`, `src/.../__tests__/service.test.ts`
-- **契約 (Exact Contract & Formula)**:
-  \`\`\`ts
-  // 公開シグネチャおよび具体的な計算式・座標変換式・分岐条件
-  export function doSomething(param: string): Promise<Result>;
-  \`\`\`
-- **Testing Strategy (Concrete Test Values)**: [テストファイルパス、具体的な入力値と期待出力値（例: input={x:10} ➔ expected={x:20}）]
-- **Tasks**:
-  - [ ] 1. TDD実装: `bun run ai:check:red <テストファイル>` ➔ 実装 ➔ `bun run ai:check <対象ファイル>` PASS
-- **Worker Handoff Log**:
-  <!-- 確定したexportシンボルや注意点のみを1〜2行で記録 -->
+- **Target Files**:
+  - `[ADD]` `src/.../new-module.ts`
+  - `[MODIFY]` `src/.../consumer-a.tsx`
+  - `[DELETE]` `src/.../old-file.ts`
+  - `[MODIFY]` `src/.../__tests__/consumer-a.test.tsx`
 
----
-
-## 5. Reviewer Assessment (コード差分監査)
-<!-- 機械的チェック（型・Lint・Vitest・depcruise）はスクリプトが自動検証。Reviewer はコード差分の意味を監査する -->
-- **Reviewer Model**: `pro`
-- **Reviewed At**: 
-- **Decision**: `TODO` | `LGTM` | `REJECTED`
-- **Audit Checklist**:
-  - [ ] 1. ドメイン論理 & 要件網羅性 & テスタビリティ: 数式/座標/状態遷移の整合性、受入要件の全網羅、Concrete Test Values検証、ハック排除
-  - [ ] 2. Invariants保護 & Consumer同期: Section 2.5 の不変条件（ちゃぶ台返し防止）遵守、別画面・呼び出し元（Consumers）の更新漏れゼロ
-  - [ ] 3. ホスト境界 & Store Provider & Zero-Flicker & RAII: Level 2以下のホスト非依存、Store Provider経由取得、初期値Props確定注入、副作用クリーンアップ
-  - [ ] 4. 設計負債 & サイレント破壊防止: OCPプラグイン/レジストリ化、SLAP/Shell Purity遵守、公開シグネチャ保護、指示外変更の排除
-- **Summary**:
-  <!-- 判定理由または改善指示を簡潔に記載 -->
-
-## 6. Rejections / Additional Tasks (不可逆修正欄)
-<!-- 既存のタスクやPhaseは絶対に消去・上書きせず、追記のみ行う -->
-### Fix 1 (YYYY-MM-DD)
-- **Worker Model**: `flash`
-- **Rejection Reason**: [不合格理由]
-- **Target Files**: `対象ファイルパス`
-- **Required Steps**:
-  - [ ] 1. [具体的な修正指示]
-  - [ ] 2. `bun run ai:check <ファイル>` で PASS 確認
+#### Task 1.1: `[ADD]` `src/.../new-module.ts`
+```ts
+// 完全な新規実装コード（省略禁止）
 ```
 
-## 計画確定後のセッション分離ハンドオフ (Context Separation)
- 
-ユーザー向け Plan Artifact の承認後、`tasks/TASK-*.md` の生成が完了したら、チャットへの最終出力を以下の**定型フォーマット**で出力し、新規チャットでの実装開始を案内してターンを終了してください：
- 
-```markdown
-📝 **[TASK READY]**
-実装タスクファイルを作成しました。
-- **Plan Artifact**: [plan.md](file:///<appDataDir>/brain/<conversation-id>/plan.md)
-- **Task File**: [TASK-XXX.md](file:///path/to/tasks/TASK-XXX.md)
+#### Task 1.2: `[MODIFY]` `src/.../consumer-a.tsx` (L25-L50)
+- **追加 import**:
+```tsx
+import { newHelper } from '@/lib/helpers';
+```
+- **変更箇所 (前後2〜3行アンカー付き、局所ブロック・全コピペ禁止)**:
+- **Before**:
+```tsx
+// 置換対象の既存関数またはTSXブロック（前後2〜3行のアンカーコードを含む）
+```
+- **After**:
+```tsx
+// 置換後の完全なコード（ファイル全体のコピペ禁止・ブロック内省略禁止）
+```
 
-実装精度を最大化するため、**新しいチャット画面を開き、以下の指示で実装を開始してください**：
-> `tasks/TASK-XXX.md を実装してください`
+#### Task 1.3: `[DELETE]` `src/.../old-file.ts`
+- `rm src/.../old-file.ts` を実行して物理削除する。
+
+#### Task 1.4: `[MODIFY]` `src/.../__tests__/consumer-a.test.tsx`
+- **Concrete Test Implementation (モックなし・実Storeまたは純粋関数I/O)**:
+```tsx
+// 具体的なテストコード
+```
+
+- **Phase Verification**:
+  - [ ] 1. 全タスク反映・ファイル削除完了
+  - [ ] 2. `bun run ai:check <Target Files（DELETE除く）>` が PASS すること
+- **Worker Handoff Log**:
 ```

@@ -17,10 +17,8 @@
     "extension:sync": "bun scripts/extension/sync-windows.ts",
     "extension:dev:sync": "bun scripts/extension/sync-windows.ts --watch",
     "ai:check": "bun .agents/scripts/check-worker.ts",
-    "ai:check:red": "bun scripts/verify/check-worker-red.ts",
-    "ai:reviewer:check": "bun .agents/scripts/check-reviewer.ts",
     "ai:find": "bun scripts/map/find-symbol.ts",
-    "ai:outline": "bun scripts/ast/extract-types.ts",
+    "ai:outline": "bun .agents/scripts/outline.ts",
     "ai:preflight": "bun .agents/scripts/preflight.ts",
     "ai:commit": "bun .agents/scripts/commit.ts",
     "ai:report": "bun .agents/scripts/session-report.ts",
@@ -34,7 +32,7 @@
     "test:coverage": "rtk vitest run --coverage",
     "test:agents": "bun test ./.agents",
     "task:new": "bun scripts/task/new-task.ts",
-    "task:validate": "bun scripts/task/validate-task.ts",
+    "task:validate": "bun .agents/scripts/validate-task.ts",
     "map": "bun scripts/map/generate-repo-map.ts"
   },
   "dependencies": {

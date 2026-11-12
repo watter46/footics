@@ -6,23 +6,18 @@ description: Zustand v5 を使用した複数スライス構成のグローバ�
 # Zustand v5 スキルガイド
 
 Footics における Zustand v5 状態管理のガイドラインです。
-特に **戦術ボード領域（`src/features/tactical-unified/**`）** では、状態の不整合・肥大化・パフォーマンス劣化を防ぐため、従来の「多数スライスへのビジネスロジック直書き」および「二重ストア＋Adapter同期」を廃止し、**関数型DDDに基づく「Thin Store Shell + Pure Command Reducer + 3頻度状態分離」** を強制します（詳細は `.agents/rules/tactical-domain-architecture.md` 参照）。
+（戦術ボード固有のドメインモデル・6コンテキスト仕様については `.agents/rules/tactical-domain-architecture.md` を唯一の正本として参照してください。）
 
 ---
 
-## 1. 戦術ボードにおける「3頻度状態分離」と Thin Store Shell 原則
+## 1. Thin Store Shell 原則（Store 内のビジネスロジック排除と高頻度状態分離）
 
-戦術ボードでは、Zustand の `set((s) => ...)` コールバック内にドメインロジック（座標計算、ロック判定、ベンチ移動時のカスケード削除、追従矢印の端点更新など）を直接記述することを **固く禁じます**。
-Zustand ストアは以下の3つの更新頻度の状態を保持し、ドメインロジックはすべて外部の純粋関数（Functional Core）に委譲する「薄いリアクティブ・シェル（Thin Store Shell）」として実装してください。
+Zustand の `set((s) => ...)` コールバック内に複雑なドメインロジック（座標変換、ロック判定、カスケード削除など）を直接記述することを禁止します。
+ドメインロジックは外部の純粋関数（Reducer / Normalizer）に委譲し、Zustand ストアは状態を保持・通知する「薄いリアクティブ・シェル（Thin Store Shell）」として構成してください。
 
-1. **Cold State (`document: TacticalProject` & `history: HistoryStack`)**:
-   - 操作確定時（`onDragEnd`, `onPointerUp`, HUD操作、ショートカット）にのみ、`dispatch(command: TacticalCommand)` アクション経由で更新します。
-   - `dispatch` の内部では純粋関数 `applyTacticalCommand(state.document, command)`（内部で `enforceSlideInvariants` を強制実行）を呼び出し、`changed === true` の場合のみ `history` スタックに旧状態を積んで `document` を差し替えます。
-2. **Hot State (`session: EphemeralSessionState`)**:
-   - `activePhaseId`, `activeSlideId`, `workspaceMode`, `activeTool`, `selectedIds`、および **60〜120Hz で変化する操作中状態（`activeDragDelta`, `drawingPreview`, `selectionBox`）**。
-   - ドラッグ中（`onDragMove`）は `updateSession(patch)` のみを呼び出し、`document` のクローンや `history` 記録を一切発生させません。
-3. **Stream State (`playbackClock`)**:
-   - アニメーション再生中の時刻 `timeMs`（60fps）。`document` を書き換えず、純粋関数 `evaluateTimelineFrame` ➔ `compileSceneGraph` へ入力します。
+1. **確定状態（Cold State）**: 操作確定時（`onDragEnd`, `onPointerUp`, ボタン操作）にのみ純粋 Reducer 関数を通して更新し、Undo/Redo 履歴を記録します。
+2. **操作中一時状態（Hot State）**: ドラッグ移動中（`onDragMove` 60〜120Hz）のデルタやプレビュー座標は一時状態スライスのみを更新し、確定状態や Undo 履歴を汚染させません。
+3. **再生クロック（Stream State）**: アニメーション再生時刻 `timeMs` は独立して管理し、確定状態を書き換えません。
 
 ```typescript
 import { createStore } from 'zustand/vanilla';

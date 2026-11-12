@@ -179,7 +179,19 @@ export function validateFileAgainstBaseline(
     );
   }
 
-  if (!isScopedSourceFile(normFile) || isTestFile(normFile)) return errors;
+  // Test file guardrails: prohibit mocking internal Zustand stores
+  if (isTestFile(normFile)) {
+    const storeMockRe =
+      /\b(?:vi|jest)\.mock\s*\(\s*['"][^'"]*(?:\/stores\/|-store\b)[^'"]*['"]/g;
+    if (storeMockRe.test(content)) {
+      errors.push(
+        `[ERROR] [R12: No Store Mocks] ${normFile}: Mocking internal Zustand stores with 'vi.mock' is prohibited. Wrap with the real StoreProvider or pass a real create*Store(initialState) instance instead.`,
+      );
+    }
+    return errors;
+  }
+
+  if (!isScopedSourceFile(normFile)) return errors;
 
   const m = computeFileMetrics(normFile, content);
 

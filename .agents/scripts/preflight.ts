@@ -223,6 +223,24 @@ function runSize(files: string[]): Promise<StepResult> {
   ]);
 }
 
+function runDepcruise(files: string[], cwd: string): Promise<StepResult> {
+  const appFiles = files.filter(
+    (f) => /^(src|extension)\//.test(f) && /\.(tsx?|jsx?)$/.test(f),
+  );
+  if (appFiles.length === 0) {
+    return Promise.resolve(skippedStep('depcruise', 'no app files'));
+  }
+  const hasConfig = fs.existsSync(path.join(cwd, '.dependency-cruiser.cjs'));
+  const configArgs = hasConfig
+    ? ['--config', '.dependency-cruiser.cjs']
+    : ['--no-config'];
+  return runStep('depcruise', [
+    './node_modules/.bin/depcruise',
+    ...configArgs,
+    ...appFiles,
+  ]);
+}
+
 export interface PreflightResult {
   ok: boolean;
   code: number;
@@ -267,6 +285,7 @@ export async function executePreflight(
     runSize(files),
     runBiome(plan.biome),
     runTypes(plan.tsc, args.length > 0),
+    runDepcruise(files, cwd),
     ...runTests(plan),
   ]);
 

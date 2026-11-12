@@ -53,37 +53,13 @@ describe('view-filter: planner investigation guard', () => {
     return fullPath;
   }
 
-  it('allows planner to read up to 5 investigation target files and denies on 6th', () => {
+  it('allows planner to read 6+ investigation target files directly without blocking for Scout', () => {
     const files = ['a', 'b', 'c', 'd', 'e', 'f'].map((k) =>
       createDummyFile(
         `.agents/hooks/guard/__tests__/fixtures-view/src/feat-${k}.ts`,
       ),
     );
 
-    // 5ファイル読込済みの transcript
-    const transcriptWith5 = createTranscript([
-      { step_index: 0, type: 'USER_INPUT', content: 'Implement new feature' },
-      {
-        step_index: 1,
-        type: 'PLANNER_RESPONSE',
-        tool_calls: files
-          .slice(0, 4)
-          .map((f) => ({ name: 'view_file', args: { AbsolutePath: f } })),
-      },
-    ]);
-
-    // 5ファイル目は allow
-    const res5 = checkViewGuard({
-      transcriptPath: transcriptWith5,
-      workspacePaths: [testDir],
-      toolCall: {
-        name: 'view_file',
-        args: { AbsolutePath: files[4] },
-      },
-    });
-    expect(res5?.decision).toBe('allow');
-
-    // 6ファイル目は deny
     const transcriptWithFiveRead = createTranscript([
       { step_index: 0, type: 'USER_INPUT', content: 'Implement new feature' },
       {
@@ -104,43 +80,16 @@ describe('view-filter: planner investigation guard', () => {
       },
     });
 
-    expect(res6).not.toBeNull();
-    expect(res6?.decision).toBe('deny');
-    expect(res6?.reason).toContain('Codebase investigation limit reached');
-    expect(res6?.reason).toContain('delegate codebase investigation to Scout');
-    expect(res6?.reason).toContain('TypeName: "scout"');
+    expect(res6?.decision).toBe('allow');
   });
 
-  it('allows planner to read up to 5 files via run_command (rtk read) and denies on 6th', () => {
+  it('allows planner to read 6+ files via run_command (rtk read) without blocking', () => {
     const files = ['a', 'b', 'c', 'd', 'e', 'f'].map((k) =>
       createDummyFile(
         `.agents/hooks/guard/__tests__/fixtures-view/src/feat-cmd-${k}.ts`,
       ),
     );
 
-    const transcriptWith5 = createTranscript([
-      { step_index: 0, type: 'USER_INPUT', content: 'Explore codebase' },
-      {
-        step_index: 1,
-        type: 'PLANNER_RESPONSE',
-        tool_calls: files.slice(0, 4).map((f) => ({
-          name: 'run_command',
-          args: { CommandLine: `rtk read ${f}` },
-        })),
-      },
-    ]);
-
-    // 5ファイル目の rtk read は allow (null)
-    const res5 = checkCommandInvestigationGuard(
-      {
-        transcriptPath: transcriptWith5,
-        workspacePaths: [testDir],
-      },
-      `rtk read ${files[4]}`,
-    );
-    expect(res5).toBeNull();
-
-    // 5ファイル読込済みの transcript
     const transcriptWithFiveRead = createTranscript([
       { step_index: 0, type: 'USER_INPUT', content: 'Explore codebase' },
       {
@@ -153,7 +102,6 @@ describe('view-filter: planner investigation guard', () => {
       },
     ]);
 
-    // 6ファイル目の rtk read は deny
     const res6 = checkCommandInvestigationGuard(
       {
         transcriptPath: transcriptWithFiveRead,
@@ -162,20 +110,16 @@ describe('view-filter: planner investigation guard', () => {
       `rtk read ${files[5]}`,
     );
 
-    expect(res6).not.toBeNull();
-    expect(res6?.decision).toBe('deny');
-    expect(res6?.reason).toContain('Codebase investigation limit reached');
-    expect(res6?.reason).toContain('delegate codebase investigation to Scout');
+    expect(res6).toBeNull();
   });
 
-  it('denies 6th investigation file across combined view_file and run_command', () => {
+  it('allows 6th investigation file across combined view_file and run_command', () => {
     const files = ['a', 'b', 'c', 'd', 'e', 'f'].map((k) =>
       createDummyFile(
         `.agents/hooks/guard/__tests__/fixtures-view/src/feat-hybrid-${k}.ts`,
       ),
     );
 
-    // 3件 view_file, 2件 run_command で計5件
     const transcriptHybrid = createTranscript([
       { step_index: 0, type: 'USER_INPUT', content: 'Explore codebase' },
       {
@@ -197,15 +141,13 @@ describe('view-filter: planner investigation guard', () => {
       },
     ]);
 
-    // 6ファイル目を view_file で読もうとすると deny
     const resView6 = checkViewGuard({
       transcriptPath: transcriptHybrid,
       workspacePaths: [testDir],
       toolCall: { name: 'view_file', args: { AbsolutePath: files[5] } },
     });
-    expect(resView6?.decision).toBe('deny');
+    expect(resView6?.decision).toBe('allow');
 
-    // 6ファイル目を rtk read で読もうとしても deny
     const resCmd6 = checkCommandInvestigationGuard(
       {
         transcriptPath: transcriptHybrid,
@@ -213,7 +155,7 @@ describe('view-filter: planner investigation guard', () => {
       },
       `rtk read ${files[5]}`,
     );
-    expect(resCmd6?.decision).toBe('deny');
+    expect(resCmd6).toBeNull();
   });
 
   it('allows reading .system_generated/tasks/*.log without line limit and does not block sequential slice or reviewer views', () => {
@@ -466,7 +408,7 @@ describe('view-filter: planner investigation guard', () => {
     expect(resAuditor?.decision).toBe('allow');
   });
 
-  it('restricts architect from reading 4 or more source files directly', () => {
+  it('allows architect to read 4 or more source files directly', () => {
     const file1 = createDummyFile(
       '.agents/hooks/guard/__tests__/fixtures-view/src/arch-1.ts',
     );
@@ -480,7 +422,6 @@ describe('view-filter: planner investigation guard', () => {
       '.agents/hooks/guard/__tests__/fixtures-view/src/arch-4.ts',
     );
 
-    // Architect ロールの transcript (USER_INPUT で tactical-architect)
     const architectTranscript = createTranscript([
       {
         step_index: 0,
@@ -498,7 +439,6 @@ describe('view-filter: planner investigation guard', () => {
       },
     ]);
 
-    // 4ファイル目の view_file は deny される
     const res4 = checkViewGuard({
       transcriptPath: architectTranscript,
       workspacePaths: [testDir],
@@ -507,12 +447,8 @@ describe('view-filter: planner investigation guard', () => {
         args: { AbsolutePath: file4 },
       },
     });
-    expect(res4?.decision).toBe('deny');
-    expect(res4?.reason).toContain(
-      'Source code investigation limit reached for Architect',
-    );
+    expect(res4?.decision).toBe('allow');
 
-    // run_command 経由の 4ファイル目も deny される
     const resCmd4 = checkCommandInvestigationGuard(
       {
         transcriptPath: architectTranscript,
@@ -520,10 +456,7 @@ describe('view-filter: planner investigation guard', () => {
       },
       `rtk read ${file4}`,
     );
-    expect(resCmd4?.decision).toBe('deny');
-    expect(resCmd4?.reason).toContain(
-      'Source code investigation limit reached for Architect',
-    );
+    expect(resCmd4).toBeNull();
   });
 });
 

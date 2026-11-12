@@ -1,53 +1,25 @@
-import type { DrawingTool, ExportTarget } from '@/lib/types/tactical-unified';
 import type { DrawingPreviewState } from '../core/types';
+import type {
+  DrawingTool,
+  ExportTarget,
+  MarkerOptionTab,
+  PanelState,
+  RightPanelTab,
+  SelectedObject,
+  SelectedObjectKind,
+  WorkspaceMode,
+} from './session-ui-state';
 
-export type { DrawingTool, ExportTarget };
-
-export type WorkspaceMode = 'board' | 'director';
-
-export type SelectedObjectKind =
-  | 'player'
-  | 'arrow'
-  | 'zone'
-  | 'text'
-  | 'ball'
-  | 'vision-cone'
-  | 'connect-line'
-  | 'badge'
-  | 'focus';
-
-export type MarkerOptionTab =
-  | 'vision'
-  | 'connect'
-  | 'arrow_solid'
-  | 'arrow_dash'
-  | 'badge'
-  | 'focus'
-  | 'basic';
-
-export interface SelectedObject {
-  id: string;
-  kind: SelectedObjectKind;
-  /** 親選手ID (ネストアノテーションの場合) */
-  parentPlayerId?: string;
-}
-
-export type RightPanelTab =
-  | 'formation'
-  | 'squad'
-  | 'pitch'
-  | 'camera'
-  | 'screen';
-
-export interface PanelState {
-  sidebarOpen: boolean;
-  inspectorOpen: boolean;
-  rightPanelTab: RightPanelTab;
-  isRightPanelOpen: boolean;
-  splitPreviewOpen?: boolean;
-  exportModalOpen: boolean;
-  projectManagerModalOpen: boolean;
-}
+export type {
+  DrawingTool,
+  ExportTarget,
+  MarkerOptionTab,
+  PanelState,
+  RightPanelTab,
+  SelectedObject,
+  SelectedObjectKind,
+  WorkspaceMode,
+};
 
 export interface ToolSlice {
   // ── ツール & 選択状態

@@ -1,7 +1,41 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { checkSubagentGuard, checkSubagentPollGuard } from './subagent-guard';
+import {
+  checkSubagentGuard,
+  checkSubagentInvokeGuard,
+  checkSubagentPollGuard,
+} from './subagent-guard';
+
+describe('checkSubagentInvokeGuard', () => {
+  it('denies invoking abolished scout or reviewer subagents and allows worker', () => {
+    const scoutRes = checkSubagentInvokeGuard({
+      toolCall: {
+        name: 'invoke_subagent',
+        args: { TypeName: 'scout' },
+      },
+    });
+    expect(scoutRes?.decision).toBe('deny');
+    expect(scoutRes?.reason).toContain("Subagent 'scout' is abolished");
+
+    const reviewerRes = checkSubagentInvokeGuard({
+      toolCall: {
+        name: 'invoke_subagent',
+        args: { TypeName: 'reviewer' },
+      },
+    });
+    expect(reviewerRes?.decision).toBe('deny');
+    expect(reviewerRes?.reason).toContain("Subagent 'reviewer' is abolished");
+
+    const workerRes = checkSubagentInvokeGuard({
+      toolCall: {
+        name: 'invoke_subagent',
+        args: { TypeName: 'worker' },
+      },
+    });
+    expect(workerRes?.decision).toBe('allow');
+  });
+});
 
 describe('checkSubagentGuard', () => {
   it('allows non-send_message tool calls', () => {

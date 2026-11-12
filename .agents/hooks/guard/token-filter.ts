@@ -150,23 +150,18 @@ function checkTokenGuard(
     };
   }
 
-  // 5. 検証コマンドのスコープ強制 (ai:check / ai:reviewer:check)
+  // 5. 廃止された旧検証コマンドの案内および :all の無断実行抑止
   if (['pnpm', 'npm', 'yarn', 'bun'].includes(executable)) {
     if (
+      args.includes('ai:check:red') ||
       args.includes('ai:reviewer:check') ||
       args.includes('agent:check-reviewer')
     ) {
-      const idx = args.findIndex(
-        (a) => a === 'ai:reviewer:check' || a === 'agent:check-reviewer',
-      );
-      const targetFiles = args.slice(idx + 1);
-      if (targetFiles.length === 0 || targetFiles[0].startsWith('-')) {
-        return {
-          decision: 'deny',
-          reason:
-            "[GUARD] 'ai:reviewer:check' requires target file paths to minimize scope. Example: bun run ai:reviewer:check src/foo.ts",
-        };
-      }
+      return {
+        decision: 'deny',
+        reason:
+          "[GUARD] 'ai:check:red' and 'ai:reviewer:check' are abolished. Workers must use 'bun run ai:check <files>' after implementing code + tests; Planner must use 'bun run ai:preflight' or 'bun run ai:commit' after all phases complete.",
+      };
     }
     // 全体検証コマンド (:all) の無断実行抑止 (Scope-First Guard: ユーザー承認必須)
     if (
@@ -202,11 +197,24 @@ function checkTokenGuard(
   }
 
   // 6c. rg (制限なし) -> rtk grep
+  // ただし -l (--files-with-matches), -c (--count), --files, -m (--max-count) 指定時は
+  // 呼び出し元の全件網羅特定に必要なため、切り詰めが発生する rtk grep へ書き換えずそのまま許可する。
   if (executable === 'rg') {
-    const hasLimit = args.some(
-      (a) => a === '-m' || a === '--max-count' || /^-m\d+/.test(a),
+    const isBoundedOrList = args.some(
+      (a) =>
+        a === '-m' ||
+        a === '--max-count' ||
+        /^-m\d+/.test(a) ||
+        a === '-l' ||
+        a === '--files-with-matches' ||
+        a === '--files-without-match' ||
+        a === '-c' ||
+        a === '--count' ||
+        a === '--count-matches' ||
+        a === '--files' ||
+        /^-[a-zA-Z]*[lc][a-zA-Z]*$/.test(a),
     );
-    if (!hasLimit) {
+    if (!isBoundedOrList) {
       return {
         decision: 'allow',
         overwrite: { CommandLine: rawSubCmd.replace(/^rg\b/, 'rtk grep') },

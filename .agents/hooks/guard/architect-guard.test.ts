@@ -59,40 +59,21 @@ describe('architect-guard', () => {
   });
 
   describe('subagent restrictions', () => {
-    it('allows invoke_subagent with TypeName "scout"', () => {
-      const payload = {
-        transcriptPath: architectTranscript,
-        toolCall: {
-          name: 'invoke_subagent',
-          args: { TypeName: 'scout', Model: 'flash_lite' },
-        },
-      };
-      expect(checkArchitectGuard(payload)).toBeNull();
-    });
-
-    it('denies invoke_subagent with TypeName "worker" or "reviewer"', () => {
-      const workerPayload = {
-        transcriptPath: architectTranscript,
-        toolCall: {
-          name: 'invoke_subagent',
-          args: { TypeName: 'worker' },
-        },
-      };
-      const workerRes = checkArchitectGuard(workerPayload);
-      expect(workerRes?.decision).toBe('deny');
-      expect(workerRes?.reason).toContain(
-        'Architect may only invoke Scout (\'TypeName: "scout"\')',
-      );
-
-      const reviewerPayload = {
-        transcriptPath: architectTranscript,
-        toolCall: {
-          name: 'invoke_subagent',
-          args: { TypeName: 'reviewer' },
-        },
-      };
-      const reviewerRes = checkArchitectGuard(reviewerPayload);
-      expect(reviewerRes?.decision).toBe('deny');
+    it('denies invoke_subagent for all types including scout, worker, and reviewer', () => {
+      for (const typeName of ['scout', 'worker', 'reviewer']) {
+        const payload = {
+          transcriptPath: architectTranscript,
+          toolCall: {
+            name: 'invoke_subagent',
+            args: { TypeName: typeName },
+          },
+        };
+        const res = checkArchitectGuard(payload);
+        expect(res?.decision).toBe('deny');
+        expect(res?.reason).toContain(
+          'Architect is prohibited from spawning subagents',
+        );
+      }
     });
 
     it('denies define_subagent', () => {

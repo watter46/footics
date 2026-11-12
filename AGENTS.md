@@ -4,25 +4,24 @@
 
 ## コア原則
 
-1. **極限のトークン最適化** — 標準コマンド（`ls`, `cat`, `grep` 等）は `guard.ts` により自動最適化。探索初手は `repo_summary.txt`（高レベル把握）を参照し、シンボル特定は `bun run ai:find <symbol>` を使用すること
-2. **高品質な実装の担保** — TDD 厳守、Biome v2 strict、TypeScript strict
-3. **モデル階層と並列・短時間パイプライン** — Planner / Brainstormer / Reviewer / Auditor(`pro`)、Worker(`flash` / `flash_lite`)、Scout(`flash_lite`、6ファイル以上の調査のみ起動・6ターン以内完了) によるタスク駆動開発。Planner / Brainstormer は要望に破綻や副作用がある場合、迎合せず『⚠️ 設計破綻・副作用の指摘』として反論・代替案を提示する。1〜4ファイルの変更は 1 Phase（1 Worker）で一括完遂し、5ファイル以上は 1 Phase 最大4プロダクションファイル（テスト含め6ファイル）以下に分割（250行制限は撤廃）、非重複 Phase は並列 Worker 起動で高速化する
-4. **推論の排除とスクリプト化** — タスクファイルには `## 2.5 Architectural Invariants & Why`・具体計算式（Exact Contract）・具体テスト値（Concrete Test Values）を必須化し、Worker TDD（`ai:check`）とコミットゲート（`ai:commit` / `task:validate`）で機械検証を徹底する。Reviewer はコマンドを実行せず 4大定性監査（ドメイン論理/要件網羅・Invariants破壊/Consumer更新漏れ・ホスト境界/Flicker・OCP/サイレント破壊）に専念
+1. **極限のトークン最適化と直接探索** — 標準コマンド（`ls`, `cat`, `grep` 等）は `guard.ts` により自動最適化。探索は `repo_summary.txt`、`bun run ai:find <symbol>`、`rg -l '<symbol>' src/ extension/`（Consumer 全件特定）、`bun run ai:outline <files...>`（行番号・内部import・折りたたみシグネチャ抽出）、および `read_file`（400行以下は1回で全文、400行超は行範囲指定）で Planner 自らが直接行う（旧 `Scout` は廃止）。
+2. **高品質な実装とモックテスト排除** — Biome v2 strict、TypeScript strict、および内部 Store / Hook の `vi.mock` を禁止した「純粋関数 I/O テスト ＋ 実 `StoreProvider` 結合テスト」により、`bun dev` でのブラウザ実行時エラーを根絶する。
+3. **2階層モデル（Planner + Worker）と並列パイプライン** — 旧 `Scout` / `Reviewer` を廃止し、`Planner (pro)` と `Worker (flash / flash_lite)` の2階層に純化する。Planner / Brainstormer は要望に破綻や副作用がある場合、迎合せず『⚠️ 設計破綻・副作用の指摘』として反論・代替案を提示する。1〜4ファイルの変更は 1 Phase（1 Worker）で一括完遂し、5ファイル以上は 1 Phase 最大6ファイル（プロダクション4＋テスト2、`[DELETE]` はカウント対象外）以下に分割、非重複 Phase は並列 Worker 起動で高速化する。
+4. **Worker 推論ゼロの局所タスク契約と2段階検証ゲート** — タスクファイル（`tasks/TASK-*.md`）は **「タスクファイル ＞ フェーズ（1 Worker単位） ＞ タスク」** の階層とし、事前コミットメッセージ（`Commit:`）、残存禁止条件（Negative Contracts）、およびファイルごとの局所契約（`[ADD]` / `[MODIFY: Before ➔ After]` / `[DELETE]`）を完全コードで記述する。**ファイル全体のコピペ（import〜末尾）は厳禁**とし、変更箇所の関数・TSXブロック（前後2〜3行アンカー付き、10〜40行程度、120行以内）に局所化してタスクファイル全体を **300〜500 行（最大 800行）** に収める。古い仕組みや既存テストを温存する一時的フォールバック（二重持ち）は全面禁止とする。各 Phase の Worker は担当ファイル限定の `bun run ai:check <files>` を実行し、全 Phase 完了後に Planner が全体統合検証（`bun run ai:preflight` / `bun run ai:commit`）を一括実行する。
 5. **4層コンポーネントモデルとホスト境界の厳守** — Web と Extension で共用するコードは Level 2（Domain UI Block）以下に配置し、`chrome.*` や Web専用ストア等のホスト依存を絶対に混入させないこと。Store Provider パターンにより初期チラつき（Flicker）を根絶すること。
 6. **レジストリ・パッケージ型拡張設計（OCP 厳守）** — ツールや機能追加でコアコンポーネント（Stage, Toolbar, DashboardView, Background Commands等）に巨大な `switch / if` をベタ書きすることを禁止し、レジストリ登録または自律的なモジュール分離で拡張すること。
-7. **平易な対話（`caveman`）と2項目完了サマリー** — ユーザー対話は結論最優先・前置き排除（`caveman`）を徹底し、難解カタカナ語を禁止する。実装完了報告は「① 変更された内容（ユーザー目線の変化）」「② 手動・目視での確認手順（画面・操作・期待結果）」の2項目のみで端的に出力すること。
+7. **平易な対話（`caveman` + ユビキタス言語）と2項目完了サマリー** — ユーザー対話および Plan Artifact は結論最優先・前置き排除（`caveman`）を徹底し、抽象的なシステム用語ではなく Footics の画面・機能用語（ユビキタス言語）を使用する。実装完了報告は「① 変更された内容（ユーザー目線の変化）」「② 手動・目視での確認手順（画面・操作・期待結果）」の2項目のみで端的に出力すること。
 
 ## 開発運用の基本フロー
 
 - **起点**: すべての実装・変更は `tasks/TASK-*.md` を唯一の真実源（Single Source of Truth）として行います。
-- **初動探索・現状確認**: 初手は `rtk read .agents/.cache/repo_summary.txt` で全体像を把握。現状の検証確認は差分スコープ（`bun run ai:check [path]`）を使用し、差分0の状態で `ai:preflight` を叩かないこと。
-- **コミット手順**: コミット時は手動コミットを行わず、`bun run ai:commit -m "<msg>" [paths]` を実行します。Preflight並列検証・合格ファイルの自動ステージング・コミットが1手で完結します（生 `git commit` は禁止。詳細は `notes/agent-ideal-trace.md`）。
-- **ルール自動適用**: ディレクトリ・ファイル編集時に `.agents/rules/`（コーディング規約、テスト規約、データアクセス規約、コンポーネント規約）が自動適用されます。ドキュメントを明示的に読みに行く必要はありません。
-- **オンデマンド手順**: Dexie, Zustand, Konva 等の固有実装は `.agents/skills/` を必要時にロードして参照します。
+- **タスク作成時検証**: タスクファイル作成・更新時は `bun run task:validate <tasks/TASK-XXX.md>` を実行し、省略記号やフォーマット不備がないことを確認します。
+- **Phase 実装中検証（Worker）**: 各 Phase の Worker は実装とテストを同時に作成し、`bun run ai:check <担当ファイル群>` で Guardrails・Biome・担当テストを検証します（旧 `ai:check:red` は廃止）。
+- **最終統合検証・コミット（Planner）**: 全 Phase 完了後、Planner が `GIT_EXTERNAL_DIFF=difft rtk git diff` で差分を確認した上で、`bun run ai:commit -m "<msg>" [paths]`（またはタスクファイル内の `Commit:` メッセージ自動適用）を実行します。内部で `task:validate`・全体 `tsc`・関連 `vitest`・`depcruise`・`[DELETE]` ファイル削除確認が一括実行されます（生 `git commit` は禁止）。
 
 ## 行動制約 (Guardrails)
 
-- **スコープ原則の厳守（全体用コマンドの無断実行禁止）**: 検証は常に差分スコープ付き（対象ファイル指定、または差分自動検知の `bun run ai:check [files]`）で実行すること。無断の全体検査は禁止。
+- **スコープ原則の厳守**: Worker は担当ファイルのみを `bun run ai:check <files>` で検証し、全体検証は全 Phase 完了後の `bun run ai:preflight` / `bun run ai:commit` で行うこと。
 - **ライブラリ無断追加の禁止**: `package.json` への新規依存追加はユーザーの明示的承認を得ること。
 - **未決定事項（Open Decisions）の勝手な実装禁止**: 仕様が未定の領域は推測で実装せず、ユーザーへ確認すること。
 - **DB スキーマ変更時のマイグレーション必須**: `src/lib/db/schema.ts` のバージョンアップと `.upgrade()` ブロックの記述が必須。
@@ -43,8 +42,8 @@
 - `react-nextjs.md` — `src/**`, `extension/**` アクセス時に自動適用（React 19・Compiler・`useEffect` 規律・Next.js 16 境界）
 - `testing-standards.md` — `**/*.test.ts(x)`, `tests/**` アクセス時に自動適用
 - `data-access.md` — `src/lib/db/**`, `src/stores/**` 等アクセス時に自動適用（Dexie / TanStack Query / Zustand 3層モデル）
-- `agent-delegation.md` — サブエージェント委任時の完了回収・成果物契約を規定
-- `plan-artifact.md` — 設計計画立案時（`/plan`, `tasks/**`, `.agents/**`）の Artifact 構成規約（Mermaid/コード/ファイルパス排除）
+- `agent-delegation.md` — 2階層（Planner + Worker）委任時の完了回収・成果物契約を規定
+- `plan-artifact.md` — 設計計画立案時（`/plan`, `tasks/**`, `.agents/**`）の日本語 Artifact 構成規約（ユビキタス言語・コード/ファイルパス排除）
 
 
 <!-- BEGIN:nextjs-agent-rules -->

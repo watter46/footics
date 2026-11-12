@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { executePreflight } from './preflight';
+import { extractTaskCommitMessage } from './validate-task';
 
 export function parseCommitArgs(args: string[]): {
   message: string | null;
@@ -39,6 +40,10 @@ export function findTaskTitle(cwd: string): string | null {
         fs.statSync(path.join(tasksDir, a)).mtimeMs,
     );
     const content = fs.readFileSync(path.join(tasksDir, files[0]), 'utf8');
+    const explicitCommit = extractTaskCommitMessage(content);
+    if (explicitCommit) {
+      return explicitCommit;
+    }
     const firstLine = content.split('\n').find((l) => l.startsWith('# '));
     if (firstLine) {
       const title = firstLine.replace(/^#\s*/, '').trim();
@@ -77,16 +82,20 @@ export async function runCommit(
     console.error('[ERROR] Commit message is required.');
     console.error('Usage: bun run ai:commit -m "<message>" [files...]');
     console.error(
-      'Hint: If tasks/TASK-*.md exists, its title will be used as fallback.',
+      'Hint: If tasks/TASK-*.md exists, its Commit field or title will be used as fallback.',
     );
     return 1;
   }
 
   // 0. Task File Validation (コミット前にタスクファイルの整合性を検査)
-  const taskCheckProc = spawnSync('bun', ['scripts/task/validate-task.ts'], {
-    cwd,
-    encoding: 'utf8',
-  });
+  const taskCheckProc = spawnSync(
+    'bun',
+    [path.resolve(__dirname, 'validate-task.ts')],
+    {
+      cwd,
+      encoding: 'utf8',
+    },
+  );
   if (taskCheckProc.status !== 0) {
     console.error(taskCheckProc.stdout || taskCheckProc.stderr);
     console.error(
@@ -115,7 +124,7 @@ export async function runCommit(
   // 2. ステージング: 検証合格ファイルおよび削除ファイルのみ追加
   const filesToAdd =
     targetFiles.length > 0
-      ? targetFiles
+      ? [...new Set([...targetFiles, ...deletedFiles])]
       : [...new Set([...preflightRes.files, ...deletedFiles])];
 
   const existingFiles = filesToAdd.filter((f) =>

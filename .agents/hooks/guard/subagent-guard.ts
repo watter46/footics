@@ -56,6 +56,28 @@ export function checkSubagentPollGuard(payload: any): GuardDecision | null {
 }
 
 /**
+ * 廃止された Scout / Reviewer サブエージェントの起動を物理遮断するガード。
+ * 2階層アーキテクチャ（Planner + Worker）のみを強制する。
+ */
+export function checkSubagentInvokeGuard(payload: any): GuardDecision | null {
+  const toolCall = payload?.toolCall;
+  if (!toolCall || toolCall.name !== 'invoke_subagent') {
+    return null;
+  }
+  const rawTypeName = toolCall.args?.TypeName || toolCall.args?.typeName || '';
+  const typeName = cleanString(rawTypeName).toLowerCase();
+
+  if (typeName === 'scout' || typeName === 'reviewer') {
+    return {
+      decision: 'deny',
+      reason: `[GUARD] Subagent '${typeName}' is abolished in the 2-tier (Planner + Worker) workflow.\n- For exploration: Use 'bun run ai:outline <files>', 'rg -l <pattern> src/ extension/', and 'read_file' directly.\n- For verification: After all Worker phases complete, run 'bun run ai:preflight' or 'bun run ai:commit' directly from Planner.`,
+    };
+  }
+
+  return { decision: 'allow' };
+}
+
+/**
  * サブエージェントの再利用（特に完了済Workerへのsend_message使い回し）を物理遮断するガード。
  *
  * 背景:

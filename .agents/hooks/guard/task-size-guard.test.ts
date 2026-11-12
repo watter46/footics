@@ -99,6 +99,34 @@ describe('checkTaskSizeGuard', () => {
     expect(res?.reason).toContain('Phase file limit exceeded');
   });
 
+  it('excludes [DELETE] target files from the 6-file per-phase limit', () => {
+    const code = [
+      '# TASK-099',
+      '### Phase 1: Unify and delete legacy files',
+      '- **Target Files**:',
+      '  - `[MODIFY]` `src/1.ts`',
+      '  - `[MODIFY]` `src/2.ts`',
+      '  - `[MODIFY]` `src/3.ts`',
+      '  - `[MODIFY]` `src/4.ts`',
+      '  - `[MODIFY]` `src/1.test.ts`',
+      '  - `[MODIFY]` `src/2.test.ts`',
+      '  - `[DELETE]` `src/old-1.ts`',
+      '  - `[DELETE]` `src/old-2.ts`',
+      '  - `[DELETE]` `src/old-3.ts`',
+    ].join('\n');
+
+    const payload = {
+      toolCall: {
+        name: 'write_to_file',
+        args: {
+          TargetFile: 'tasks/TASK-099-delete.md',
+          CodeContent: code,
+        },
+      },
+    };
+    expect(checkTaskSizeGuard(payload)).toEqual({ decision: 'allow' });
+  });
+
   it('denies appending a new phase to a task file already marked as DONE', () => {
     const tmpDoneFile = path.resolve('tasks/TASK-999-tmp-done.md');
     fs.writeFileSync(
@@ -126,5 +154,57 @@ describe('checkTaskSizeGuard', () => {
         fs.unlinkSync(tmpDoneFile);
       }
     }
+  });
+
+  it('denies task files exceeding 800 lines limit', () => {
+    const hugeTask = [
+      '# TASK-099',
+      '### Phase 1: Massive Scope',
+      '- **Target Files**: `src/1.ts`, `src/1.test.ts`',
+      ...new Array(850).fill('- line item contract'),
+    ].join('\n');
+
+    const payload = {
+      toolCall: {
+        name: 'write_to_file',
+        args: {
+          TargetFile: 'tasks/TASK-099-huge.md',
+          CodeContent: hugeTask,
+        },
+      },
+    };
+    const res = checkTaskSizeGuard(payload);
+    expect(res?.decision).toBe('deny');
+    expect(res?.reason).toContain('Task file line limit exceeded');
+    expect(res?.reason).toContain('<=800 lines');
+  });
+
+  it('denies task files containing code blocks over 120 lines (full file copy-paste prevention)', () => {
+    const codeWithMassiveBlock = [
+      '# TASK-099',
+      '### Phase 1: Core',
+      '- **Target Files**: `src/1.ts`',
+      '#### Task 1.1: `[MODIFY]` `src/1.ts`',
+      '- **Before**:',
+      '```ts',
+      ...new Array(150).fill('const x = 1;'),
+      '```',
+    ].join('\n');
+
+    const payload = {
+      toolCall: {
+        name: 'write_to_file',
+        args: {
+          TargetFile: 'tasks/TASK-099-massive-block.md',
+          CodeContent: codeWithMassiveBlock,
+        },
+      },
+    };
+    const res = checkTaskSizeGuard(payload);
+    expect(res?.decision).toBe('deny');
+    expect(res?.reason).toContain('Oversized code block detected');
+    expect(res?.reason).toContain(
+      'Full file copy-pasting is strictly prohibited',
+    );
   });
 });

@@ -6,6 +6,7 @@ import { parseExecutable, splitCommands, tokenize } from './guard/parser';
 import { checkSafetyGuard } from './guard/safety-filter';
 import {
   checkSubagentGuard,
+  checkSubagentInvokeGuard,
   checkSubagentPollGuard,
 } from './guard/subagent-guard';
 import { checkTaskSizeGuard } from './guard/task-size-guard';
@@ -170,6 +171,12 @@ function evaluatePayload(payload: any): any {
     return { decision: 'allow' };
   }
 
+  if (payload.toolCall && payload.toolCall.name === 'invoke_subagent') {
+    const invokeRes = checkSubagentInvokeGuard(payload);
+    if (invokeRes) return invokeRes;
+    return { decision: 'allow' };
+  }
+
   if (payload.toolCall && payload.toolCall.name === 'send_message') {
     const subagentRes = checkSubagentGuard(payload);
     if (subagentRes) return subagentRes;
@@ -186,7 +193,7 @@ function evaluatePayload(payload: any): any {
     return {
       decision: 'deny',
       reason:
-        "[GUARD] Dynamic subagent definition with 'define_subagent' is prohibited. You MUST use project-standard predefined agents via invoke_subagent (TypeName: 'worker' | 'scout' | 'reviewer') to ensure rule enforcement and token reduction.",
+        "[GUARD] Dynamic subagent definition with 'define_subagent' is prohibited. You MUST use the predefined 'worker' agent via invoke_subagent (TypeName: 'worker').",
     };
   }
 

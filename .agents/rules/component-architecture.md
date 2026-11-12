@@ -128,14 +128,12 @@ export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;
 
 ## 5. 不具合を生まない状態・振る舞い分離原則
 
-1. **頭脳（Functional Core）と見た目（Dumb Rasterizer / View）の完全分離**:
-   戦術ボードの各オブジェクト（選手・ボール・矢印・ゾーン・テキスト）の状態遷移・不変条件検証・幾何計算は、React や Konva に依存しない純粋関数（`applySlideCommand`, `enforceSlideInvariants`, `evaluateTimelineFrame`, `compileSceneGraph`）に100%集約し、Konva / React コンポーネントは `ResolvedSceneGraphDTO` を画面に投影するだけの Dumb Rasterizer とします（詳細は `.agents/rules/tactical-domain-architecture.md` 参照）。
-2. **派生状態の二重保存禁止（Derived State via Pure Pipeline）**:
-   生データから計算できる値（ピクセル座標、カメラ投影座標、矢印の制御点や先端短縮座標、フィルタ結果）を別 State や変換アダプターとして二重保存せず、`compileSceneGraph` または純粋セレクターで導出してください。
-3. **複合操作の単一 Command 化（Pure Command Reducer）**:
-   「リセット」「アスペクト比切替」「フォーメーション適用」「ベンチ移動」など複数データを同時更新する操作は、UI の `onClick` や Zustand の `set()` 内にインライン記述せず、判別可能な `SlideCommand` / `TacticalCommand` として発行し、単一の純粋 Reducer（`applySlideCommand` + `enforceSlideInvariants`）で原子的に処理してください。
-4. **Branded Coordinates（ブランド型座標系）による空間分離**:
-   永続化データは常に第1層 16:9 スクリーン正規化座標（`ScreenNormCoord: 0〜100`）で管理し、ピッチ内相対座標（`PitchNormCoord`）およびキャンバス描画ピクセル（`StagePixel`）とは Branded Types で型レベルに区別してください。素の `{ x: number, y: number }` を異なる座標空間の間で直接受け渡すことを禁止します。
+1. **ビジネスロジック（純粋関数）と UI 描画の分離**:
+   状態遷移・検証・幾何計算は React や描画ライブラリに依存しない純粋関数に集約し、UI コンポーネントは計算済みデータの投影とイベント発火に専念させます（戦術ボード領域の詳細アーキテクチャは `.agents/rules/tactical-domain-architecture.md` を唯一の正本とします）。
+2. **派生状態の二重保存禁止**:
+   生データから導出できる値（ピクセル座標、投影座標、フィルタ結果）を別 State や変換アダプターとして二重保存せず、純粋関数またはセレクターで導出してください。
+3. **新旧フォールバック・二重ストアの禁止**:
+   仕様変更やストア統合時に、古いストアや変換アダプター、optional な旧 Props フォールバックを残すことを禁止します。
 
 ---
 
@@ -227,12 +225,3 @@ export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;
 3. **Konvaキャンバスのパフォーマンス保護（60fps維持）**:
    - **再描画の完全隔離**: キャンバス（Konva）の再描画をDOM UIのホバー、アニメーション、ツールバーのステート変化でトリガーさせないこと（Zustandセレクタの局所化・React.memoの徹底）。
    - **GPU合成レイヤーの明示**: アニメーションするフローティングUIやトーストには `transform: translateZ(0)` または `will-change: transform` を適用し、メインスレッドの再レイアウト（Reflow）を誘発させないこと。
-
----
-
-## 8. 将来の目標（未実装・段階移行ロードマップ）
-
-以下はターゲットアーキテクチャとして計画されている概念ですが、**現時点のコードベースにはまだ該当インターフェース名としては存在しない**ため、既存コードで勝手に import してはなりません（該当リファクタリングタスクで段階的に導入します）：
-- **`useTacticalUnifiedStore` の完全 Store Provider 化と `tactical-canvas-store-adapter.ts` の撤去**（是正タスクで実施）
-- **`CustomEvent('footics-action')` 残存 5 ファイルの完全撤去**（是正タスクで実施）
-- **ツール・オブジェクト定義の統一プラグインインターフェース化**

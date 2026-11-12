@@ -434,22 +434,26 @@ describe('guard.ts Security & Token Guard Tests', () => {
       }
     });
 
-    test('enforces scope on ai:reviewer:check', () => {
-      // pnpm runner
-      expect(evaluateCommand('pnpm run ai:reviewer:check').decision).toBe(
-        'deny',
-      );
-      expect(
-        evaluateCommand('pnpm run ai:reviewer:check src/foo.ts').decision,
-      ).toBe('allow');
+    test('denies abolished ai:check:red and ai:reviewer:check commands', () => {
+      const resRed = evaluateCommand('bun run ai:check:red src/foo.test.ts');
+      expect(resRed.decision).toBe('deny');
+      expect(resRed.reason).toContain('abolished');
 
-      // bun runner
-      expect(evaluateCommand('bun run ai:reviewer:check').decision).toBe(
-        'deny',
-      );
+      const resRev = evaluateCommand('bun run ai:reviewer:check src/foo.ts');
+      expect(resRev.decision).toBe('deny');
+      expect(resRev.reason).toContain('abolished');
+    });
+
+    test('allows rg -l and rg -c without rewriting to lossy rtk grep, while rewriting unbounded rg', () => {
       expect(
-        evaluateCommand('bun run ai:reviewer:check src/foo.ts').decision,
-      ).toBe('allow');
+        evaluateCommand('rg -l "useCanvasStore" src/ extension/').overwrite,
+      ).toBeUndefined();
+      expect(
+        evaluateCommand('rg -c "useCanvasStore" src/').overwrite,
+      ).toBeUndefined();
+      expect(
+        evaluateCommand('rg "useCanvasStore" src/').overwrite?.CommandLine,
+      ).toBe('rtk grep "useCanvasStore" src/');
     });
   });
 
@@ -859,7 +863,7 @@ describe('guard.ts Security & Token Guard Tests', () => {
       });
       expect(resDeniedCmd.decision).toBe('deny');
 
-      // 3. Subagents: Scout is allowed, Worker is denied
+      // 3. Subagents: All subagents (including Scout and Worker) are denied for Architect
       const resScout = evaluatePayload({
         toolCall: {
           name: 'invoke_subagent',
@@ -867,7 +871,7 @@ describe('guard.ts Security & Token Guard Tests', () => {
         },
         transcriptPath: transcript,
       });
-      expect(resScout.decision).toBe('allow');
+      expect(resScout.decision).toBe('deny');
 
       const resWorker = evaluatePayload({
         toolCall: {
@@ -877,7 +881,9 @@ describe('guard.ts Security & Token Guard Tests', () => {
         transcriptPath: transcript,
       });
       expect(resWorker.decision).toBe('deny');
-      expect(resWorker.reason).toContain('Architect may only invoke Scout');
+      expect(resWorker.reason).toContain(
+        'Architect is prohibited from spawning subagents',
+      );
 
       // 4. File writes: .agents/** and root files allowed, src/** and tasks/** denied
       const resWriteRule = evaluatePayload({

@@ -326,17 +326,14 @@ export function CanvasStageContainer({ ref, ...props }: CanvasStageProps) {
 
 ---
 
-## 4. 汎用パッケージ設計 ＆ 不具合を生まない状態・操作分離 (OCP & Bug-Resistant Design)
+## 4. 汎用パッケージ設計 ＆ 状態・操作分離 (OCP & Bug-Resistant Design)
 
-ツールに限らず、キャンバス上の全オブジェクト（選手、ボール、矢印、ゾーン、テキスト、コネクタ）、UIパネル、タイムライン、エクスポート機能は以下の原則で設計します（戦術ボードの詳細は `.agents/rules/tactical-domain-architecture.md` を厳守）。
+Web アプリと Extension で共用する UI パッケージは、以下の原則で設計します（戦術ボード固有の6コンテキスト・ドメイン仕様は `.agents/rules/tactical-domain-architecture.md` を唯一の正本とします）：
 
-1. **頭脳（Functional Core）と見た目（Dumb Rasterizer）の完全分離 & 単一スキーマ共有**:
-   - Web版（フル戦術ボード）と Extension版（Quick Canvas）で別々のストアスキーマや双方向変換アダプター（`tactical-canvas-store-adapter` 等）を持つことを禁止し、単一の `Slide` スキーマ・`applySlideCommand`（内部で `enforceSlideInvariants` 実行）・`compileSceneGraph` を共有する。
-   - 選手マーカーは共通の `Player` モデル（`PitchPlayer | BenchPlayer`）を持ち、見た目のみ `style.markerType`（Web既定: `'circle'`, Extension既定: `'ring' | 'ring-fade'`）とホスト別カタログ設定で切り替える（どちらも名前設定時はマーカー下部に名前ラベルを表示）。
-   - Konva コンポーネントは `compileSceneGraph` が生成した `ResolvedSceneGraphDTO` を描画投影するだけの Dumb Rasterizer に徹し、ドラッグ中は `EphemeralSessionState`（Hot State）のみを更新し、`onDragEnd` 時にのみ `SlideCommand` を dispatch する。
-2. **オブジェクトオプション（`ObjectOptions`）への完全一本化**:
-   - オブジェクトの属性変更 UI は、Web・Extension ともに選択時に対象の近くへ表示される浮動メニュー（`ObjectOptions`）に100%一本化する（旧右パネルの Inspector は完全廃止し、二重管理を根絶）。
-3. **派生状態の保存禁止（Derived State via Pure Pipeline）**:
-   - ストアには最小限の「正規化された生データ（`ScreenNormCoord` 基準）」のみを保存し、ピクセル座標（`StagePixel`）やカメラ投影座標、矢印の幾何頂点、フィルタ済みリストなどの派生状態を別 State にコピー保存してはならない（必ず `compileSceneGraph` または純粋セレクタで算出する）。
-4. **複合操作の単一 Command 化（Pure Command Reducer）**:
-   - 「メンバー維持リセット」「アスペクト比変更」「フォーメーション適用」「Home/Away/Both一括設定」「ベンチ移動」などの複合操作は、UIコンポーネントや `set()` 内にインライン記述せず、`SlideCommand` / `TacticalCommand` として定義し、単一の純粋 Reducer（`applySlideCommand` + `enforceSlideInvariants`）に集約する。
+1. **ビジネスロジック（純粋関数）と見た目（View）の完全分離 & 単一スキーマ共有**:
+   - Web版と Extension版で別々のストアスキーマや双方向変換アダプターを持つことを禁止し、単一のドメインスキーマと純粋 Reducer を共有する。
+   - ホスト間の違い（初期ツール構成やデフォルトスタイル等）は、マウント時に渡す設定（Config / Catalog Props）で宣言的に切り替える。
+2. **派生状態の保存禁止**:
+   - ストアには正規化された基準データのみを保存し、ピクセル座標やフィルタ済みリストなどの派生状態を別 State にコピー保存しない。
+3. **複合操作の単一 Command 化**:
+   - 複数データを同時更新する操作は UI のイベントハンドラ内に直書きせず、純粋 Reducer 関数で原子的に処理する。

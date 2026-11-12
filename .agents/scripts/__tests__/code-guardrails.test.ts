@@ -161,4 +161,17 @@ describe('code-guardrails validateFileAgainstBaseline', () => {
       true,
     );
   });
+
+  it('blocks vi.mock on internal Zustand stores in test files (R12)', () => {
+    const badTest = `
+      import { vi } from 'vitest';
+      vi.mock('@/features/tactical-unified/stores/tactical-stores', () => ({}));
+    `;
+    const errs = validateFileAgainstBaseline(
+      'src/features/tactical-unified/core/stage.test.tsx',
+      badTest,
+      createEmptyBaseline(),
+    );
+    expect(errs.some((e) => e.includes('[R12: No Store Mocks]'))).toBe(true);
+  });
 });

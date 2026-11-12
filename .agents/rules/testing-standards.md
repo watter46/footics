@@ -1,5 +1,5 @@
 ---
-description: "Footicsプロジェクトのテスト規約（Vitest、TDD、React Testing Library、テスタビリティ）"
+description: "Footicsプロジェクトのテスト規約（モック禁止、純粋関数I/Oテスト、実StoreProvider結合テスト、console.error即失敗）"
 globs:
   - "**/*.test.ts"
   - "**/*.test.tsx"
@@ -8,91 +8,67 @@ globs:
 ---
 # テスト規約 (Testing Standards)
 
-本プロジェクト（Footics）におけるテスト規約です。テストを記述、または新機能を実装する際は、必ず本規約に従ってください。
+テストは通っているのに `bun dev`（実ブラウザ操作）で無限ループや初期化エラーが発生する事態を根絶するため、形骸化したモックテストを廃止し、**本物のロジックと本物の Store を動かすテスト**のみを記述する。
 
 ---
 
-## 1. Test-Driven Development (TDD) の厳格な遵守
+## 1. 実装とテストの一体作成（旧 `ai:check:red` の廃止）
 
-- **RED-GREEN-REFACTOR**: 必ずテストを先に書き、**`bun run ai:check:red <test-file>`（または `rtk vitest run <test-file>`）を実行して失敗（RED）することを確認してから**実装を開始してください。
-- 実装後は `bun run ai:check <files>` を実行し、Lint・型検査・関連テストがすべて PASS（GREEN）することを確認してください。
-
----
-
-## 2. カバレッジとテスト配置要件
-
-- **目標カバレッジ**: 変更・新規作成モジュールのカバレッジ **80%以上** を維持してください（計測コマンド: `bun run test:coverage`）。
-- **ファイル配置**:
-  - ユニット/コンポーネントテスト: 対象ファイルと同階層の `__tests__/[name].test.ts(x)`、または同ディレクトリの `[name].test.ts(x)`。
-  - エージェント・フックテスト: `.agents/**/__tests__/*.test.ts`（`bun test ./.agents` で実行）。
+- 実装前にわざと失敗するテストを実行する旧 `bun run ai:check:red` ステップは廃止する。
+- Worker は自身の Phase スコープ内でプロダクションコードとテストコードを同時に作成・更新し、**`bun run ai:check <担当ファイル群>`** を1手で実行して整形・規約検査・テスト通過を確認する。
+- 破壊的変更やリファクタリング時は、古い仕様を前提とした既存テストを温存せず、新しい契約に合わせて既存テストを直接書き換えるか削除する。
 
 ---
 
-## 3. テスト品質と決定論的テスト規約 (R12)
+## 2. 自前モジュールのモック（`vi.mock`）原則禁止 (R12)
 
-### 判定基準
-1. **AAA パターン (Arrange / Act / Assert)**: 準備・実行・検証のフェーズを明確に分けて記述してください。
-2. **`querySelector` の禁止**: コンポーネントテストで `container.querySelector(...)` による CSS クラスや DOM 構造の直接探索を禁止します。`screen.getByRole`, `getByLabelText`, `getByText` を優先し、Konva キャンバス等の特殊なケースのみ `getByTestId` を使用してください。
-3. **ユーザー操作は `userEvent` を優先**:
-   - 標準 DOM コンポーネント（ボタン、フォーム、ダイアログ等）の操作には `@testing-library/user-event`（`const user = userEvent.setup(); await user.click(...)`）を使用してください。
-   - Konva Stage のカスタムポインター座標イベントや `window` キーボードイベント発火など、低レベルイベントのシミュレートが必要な箇所に限り `fireEvent` を許可します。
-4. **テスト内の `as any` 禁止（型付きファクトリ関数の使用）**:
-   - テストデータ生成時に `{ id: '1' } as any` で型チェックを黙らせることを禁止します。`createMockPlayer(overrides?: Partial<Player>): Player` のような型付きファクトリ関数を定義して使用してください。
-5. **非決定論的要素（時刻・乱数・タイマー）の排除**:
-   - 本体コードで `Date.now()` や `Math.random()` を扱う関数は、引数で注入可能にするか、テスト側で `vi.useFakeTimers()` / `vi.setSystemTime()` を使用し、実行タイミングに依存しない決定論的テストにしてください。
-   - テスト内で生の `await new Promise((r) => setTimeout(r, 100))` による待機を書くことを禁止します。
-6. **スナップショットの原則禁止**: UI コンポーネントに対する `toMatchSnapshot()` は原則禁止とします。
+1. **内部 Store・Hook・子コンポーネントに対する `vi.mock()` の禁止**:
+   - `vi.mock('@/stores/...')`, `vi.mock('.../tactical-stores')`, `vi.mock('../hooks/...')`, `vi.mock('./ChildComponent')` のように自前の状態管理や内部モジュールを偽物に置き換えることを禁止する（`ai:check` の `code-guardrails` により機械遮断される）。
+   - モックで Store を偽装すると、React 19 + Zustand v5 のセレクタ参照不一致による無限再レンダリング（`Maximum update depth exceeded`）や `StoreProvider` のラップ漏れを100%見逃す原因となる。
+2. **モックが許可される唯一の例外（外部ブラウザ境界のみ）**:
+   - `chrome.*`（WebExtension API）、`navigator.clipboard`、WebCodecs（`VideoEncoder` 等）、オフスクリーン Canvas2D コンテキスト等のブラウザ外部 API のみ `vi.fn()` / DI による代替を許可する。
+
+---
+
+## 3. 書くべき2種類のテスト
+
+### ① 純粋関数の入出力（I/O）テスト（最優先・モックゼロ）
+- ドメインロジック、Command Reducer（`applySlideCommand` 等）、座標変換、時間補間（`evaluateTimelineFrame`）、Scene Compiler（`compileSceneGraph`）は、すべて React/Zustand 非依存の純粋関数として実装し、**具体的な入力値に対して期待される出力オブジェクトが返ること**を直接検証する。
+
+### ② 実 `StoreProvider` を接続した結合テスト（UI・カスタムフック）
+- カスタムフック（`renderHook`）や UI コンポーネント（`render`）をテストする際は、必ず **本物の Store ファクトリ（`create*Store(initialData)`）と本物の `<*StoreProvider>`** でラップして実行する。
+- アクション発火後、`vi.fn()` が呼ばれたかではなく **「本物の Store の状態（`store.getState()`）や描画結果がどう変化したか」** を検証する。
 
 ```tsx
-// ❌ 禁止: as any テストデータ・querySelector・生 setTimeout 待機
-test('saves player', async () => {
-  const player = { id: 'p1', name: 'Palmer' } as any;
-  const { container } = render(<PlayerForm player={player} />);
-  fireEvent.click(container.querySelector('.save-btn')!);
-  await new Promise((r) => setTimeout(r, 100));
-  expect(mockSave).toHaveBeenCalled();
-});
+// ❌ 禁止: Store を vi.mock で偽装し、モック関数が呼ばれたかだけを見るハリボテテスト
+vi.mock('@/features/tactical-unified/stores/tactical-stores', () => ({
+  useDocumentStore: vi.fn(),
+}));
 
-// ✅ 推奨: 型付きファクトリ・getByRole・userEvent
-import userEvent from '@testing-library/user-event';
-
-function createMockPlayer(overrides: Partial<Player> = {}): Player {
-  return {
-    id: 'p1',
-    name: 'Palmer',
-    number: 20,
-    team: 'home',
-    x: 50,
-    y: 50,
-    ...overrides,
-  };
-}
-
-test('saves player when save button is clicked', async () => {
-  // Arrange
+// ✅ 推奨: 本物の StoreProvider でラップし、操作後の実 Store 状態変化と再レンダリング安全性を検証する
+test('dispatches move command and updates real store state without render loops', async () => {
   const user = userEvent.setup();
-  const player = createMockPlayer({ name: 'Palmer' });
-  render(<PlayerForm player={player} onSave={mockSave} />);
+  const initialProject = createTestProject();
+  render(
+    <TacticalStoreProvider initialProject={initialProject}>
+      <TargetComponent />
+    </TacticalStoreProvider>,
+  );
 
-  // Act
-  await user.click(screen.getByRole('button', { name: /保存|save/i }));
-
-  // Assert
-  expect(mockSave).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }));
+  await user.click(screen.getByRole('button', { name: 'リセット' }));
+  // 実 Store の状態変化と DOM 反映を検証
+  expect(screen.getByText('初期配置')).toBeInTheDocument();
 });
 ```
 
 ---
 
-## 4. 独立性と WXT エントリポイントのテスタビリティ
+## 4. 決定論的テスト品質基準
 
-- **テストの独立性**: 各テスト (`it` / `test`) は完全に独立して実行可能でなければなりません。共有のモック状態や IndexedDB テーブルは `beforeEach` / `afterEach` で必ずリセット・クリアしてください。
-- **WXT エントリポイントの DI**:
-  - `defineBackground` や `defineContentScript` 内に全処理を無名クロージャでベタ書きすることを禁じます。
-  - コマンドディスパッチや IPC リレー等の実ロジックは独立した関数・クラスとして export し、Chrome API をモック注入可能（DI）にして単体テストを作成してください。
-
----
-
-## 5. エージェントの検証責務
-
-タスク完了の宣言を行う前に、必ず統合検証コマンド **`bun run ai:check <対象ファイル>`** を実行し、すべてのチェックとテストが exit code 0 で PASS することを確認してください。
+1. **`console.error` の発火はテスト失敗とみなす**:
+   - テスト実行中に React の無限ループ警告（`Maximum update depth exceeded`）、Context Provider 未ラップエラー、key 重複警告などの `console.error` が発火した場合、テストを即座に失敗として扱うこと。
+2. **テスト内の `as any` 禁止（型付きファクトリ関数の使用）**:
+   - `{ id: '1' } as any` で型チェックを黙らせることを禁止する。必ず `createTestSlide(overrides?: Partial<Slide>): Slide` のような型付きファクトリ関数を使用する。
+3. **`querySelector` と生 `setTimeout` の禁止**:
+   - DOM 要素の取得には `screen.getByRole`, `getByLabelText`, `getByText` を使用し、操作には `@testing-library/user-event` を使用する。
+   - 時刻やタイマーは引数注入または `vi.useFakeTimers()` で決定論的に制御する。

@@ -83,20 +83,27 @@ try {
     process.exit(1);
   }
 
-  // 1. Biome (Lint & Format)
-  run(
-    `./node_modules/.bin/biome check --diagnostic-level=error --max-diagnostics=20 ${fileArgs}`,
+  // 1. Biome (Lint & Format on assigned files)
+  const biomeFiles = files.filter((f) => /\.(jsx?|tsx?|jsonc?|css)$/.test(f));
+  if (biomeFiles.length > 0) {
+    const biomeArgs = biomeFiles.map((f) => `"${f}"`).join(' ');
+    run(
+      `./node_modules/.bin/biome check --write --diagnostic-level=error --max-diagnostics=20 ${biomeArgs}`,
+    );
+  }
+
+  // 2. Vitest (Run explicit test files in this Phase directly)
+  const testFiles = files.filter((f) => /\.(test|spec)\.[tj]sx?$/.test(f));
+  if (testFiles.length > 0) {
+    const testArgs = testFiles.map((f) => `"${f}"`).join(' ');
+    run(
+      `./node_modules/.bin/vitest run ${testArgs} --passWithNoTests --reporter=default --no-color`,
+    );
+  }
+
+  console.log(
+    '\n✅ Phase checks passed (guardrails, biome, phase tests). Full tsc & integration tests will run in ai:preflight / ai:commit.',
   );
-
-  // 2. Type Check (Scoped)
-  run(`bun scripts/verify/type-check-scoped.ts ${fileArgs}`);
-
-  // 3. Vitest (Test)
-  run(
-    `./node_modules/.bin/vitest run related ${fileArgs} --passWithNoTests --reporter=default --no-color`,
-  );
-
-  console.log('\n✅ Worker checks passed.');
 } catch (err) {
   console.error('\n❌ Worker checks failed:', err);
   process.exit(1);

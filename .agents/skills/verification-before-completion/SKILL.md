@@ -1,13 +1,9 @@
 ---
 name: verification-before-completion
-description: 作業完了の宣言、コミット、レビュー依頼の前に、最新の検証コマンドを実行し exit code 0 の証拠を確認・提示するスキル
+description: Phase完了時（Worker）および全Phase統合完了時（Planner）に検証コマンドを実行し、exit code 0 の証拠を確認するスキル
 ---
 
 # Verification Before Completion (完了前検証スキル)
-
-## 概要 (Overview)
-
-作業の完了宣言、コミット、レビュー依頼を行う前に、必ず検証コマンドを最新の状態で実行し、出力結果（エビデンス）を確認した上で主張を行うための規約です。
 
 ## 鉄の掟 (The Iron Law)
 
@@ -16,27 +12,21 @@ NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE
 (最新の検証エビデンスなしに、完了を宣言してはならない)
 ```
 
-直前に検証コマンドを実行していない場合、「パスしました」「完了しました」と主張してはなりません。「おそらく大丈夫」「動くはず」という推測による完了宣言は厳禁です。
+## 2段階の検証ゲート (2-Stage Verification Gate)
 
-## ロール別検証ゲートの手順 (The Gate Function)
+### 1. 各 Phase 完了時（Worker エージェント）
+- **検証コマンド**: `bun run ai:check <担当ファイル群（DELETE除く）>`
+- **実行内容**:
+  1. `code-guardrails`（`any` 禁止、内部 Store `vi.mock` 禁止、ファイルサイズ、Store シングルトン直参照禁止）
+  2. `biome check --write`（自動フォーマット＆Lint検証）
+  3. 担当 Phase に含まれるテストファイルの `vitest run <test-files>`
+- **報告義務**: exit code 0 を確認した上で、タスクファイルのチェックボックスを埋め、Planner へ `TASK_COMPLETE` を送信する。
 
-### 1. Worker エージェント
-- **検証コマンド**: `bun run agent:check-worker <変更ファイル群>`
-- **基準**: Biome、TypeScript (Scoped)、Vitest のすべてが exit code 0 でパスすること。
-- **報告義務**: `send_message` による完了報告メッセージ内に、PASS した旨を明記すること。
-
-### 2. Reviewer エージェント
-- **検証コマンド**: `bun run agent:check-reviewer <全変更ファイル群>`
-- **基準**: 上記に加えて Dependency Cruiser の依存関係グラフ検証を含め exit code 0 でパスすること。
-- **報告義務**: タスクファイルの `## 4. Reviewer Checklist & Assessment` に結果を記録し、LGTM / REJECTED を判定すること。
-
-### 3. Planner / メインエージェント
-- **検証コマンド**: `bun run agent:preflight`
-- **基準**: コミット前に手探りせず preflight を叩き、未コミット差分が全件 PASS することを確認すること。
-
-## 危険な兆候（レッドフラグ）
-
-- 「〜のはずです」「問題ないと思われます」「たぶん通ります」という曖昧な表現
-- 検証コマンドを叩く前に「完了しました！」「完璧です！」とチャットに出力すること
-- 前回の検証結果をそのまま引用し、最新の修正後に再実行していないこと
-- スコープ外のエラーを無視すること
+### 2. 全 Phase 完了後・コミット時（Planner エージェント）
+- **検証コマンド**: `bun run ai:preflight` および `bun run ai:commit -m "<Commit Message>"`
+- **実行内容**:
+  1. `bun run task:validate`（タスクファイルの未完了項目ゼロ確認、`[DELETE]` 指定ファイルの物理削除確認）
+  2. プロジェクト全体の `tsc --noEmit`（Phase 間の型整合性の完全保証）
+  3. 変更に関連する全テストの `vitest run related`
+  4. `depcruise`（循環 import および Web/Extension ホスト境界違反の遮断）
+  5. `GIT_EXTERNAL_DIFF=difft rtk git diff` による最終差分確認と自動ステージング・コミット
