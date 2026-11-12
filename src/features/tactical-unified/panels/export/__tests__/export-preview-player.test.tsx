@@ -50,6 +50,8 @@ describe('ExportPreviewPlayer Keyboard Shortcuts', () => {
       clip: vi.fn(),
       setLineDash: vi.fn(),
       getLineDash: vi.fn().mockReturnValue([]),
+      createRadialGradient: vi.fn().mockReturnValue({ addColorStop: vi.fn() }),
+      createLinearGradient: vi.fn().mockReturnValue({ addColorStop: vi.fn() }),
     };
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
       mockCtx as unknown as CanvasRenderingContext2D,
@@ -165,7 +167,7 @@ describe('ExportPreviewPlayer Viewport & Boundary Crop Layout', () => {
     expect(canvas?.height).toBe(544);
   });
 
-  it('renders viewport with 4:5 aspect ratio (864 / 1080) when 4:5 boundary preset is active', () => {
+  it('renders viewport with 4:5 aspect ratio (1080 / 1352) when 4:5 boundary preset is active', () => {
     const boundaryBox = createXBoundaryBox('4:5', '16:9');
 
     render(
@@ -180,12 +182,12 @@ describe('ExportPreviewPlayer Viewport & Boundary Crop Layout', () => {
 
     const viewport = screen.getByTestId('export-preview-viewport');
     expect(viewport).toBeDefined();
-    expect(viewport.style.aspectRatio).toBe('864 / 1080');
+    expect(viewport.style.aspectRatio).toBe('1080 / 1352');
 
     const canvas = viewport.querySelector('canvas');
     expect(canvas).toBeDefined();
-    expect(canvas?.width).toBe(864);
-    expect(canvas?.height).toBe(1080);
+    expect(canvas?.width).toBe(1080);
+    expect(canvas?.height).toBe(1352);
   });
 });
 

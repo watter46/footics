@@ -1,4 +1,5 @@
 import type { BallObjectProps } from '@/features/tactical-unified/objects/ball/types';
+import type { ResolvedBillboardItem } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { Player, TextAnnotation } from '@/lib/types/tactical-unified';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import {
@@ -68,4 +69,46 @@ export function buildBillboardItems(
       y: t.y,
     })),
   ];
+}
+
+export function sortBillboardItemsBySceneGraph(
+  items: readonly BillboardItem[],
+  sceneGraphItems: readonly ResolvedBillboardItem[],
+): BillboardItem[] {
+  const itemMap = new Map<string, BillboardItem>();
+  let ballItem: BillboardItem | null = null;
+
+  for (const b of items) {
+    if (b.kind === 'player' || b.kind === 'text') {
+      itemMap.set(b.data.id, b);
+    } else if (b.kind === 'ball') {
+      ballItem = b;
+    }
+  }
+
+  const resolved: BillboardItem[] = [];
+  for (const rb of sceneGraphItems) {
+    if (rb.kind === 'player' || rb.kind === 'text') {
+      const item = itemMap.get(rb.id);
+      if (item) {
+        resolved.push(item);
+      }
+    } else if (rb.kind === 'ball') {
+      if (ballItem) {
+        resolved.push(ballItem);
+      }
+    }
+  }
+
+  if (resolved.length === items.length) {
+    return resolved;
+  }
+
+  const mappedSet = new Set(resolved);
+  for (const b of items) {
+    if (!mappedSet.has(b)) {
+      resolved.push(b);
+    }
+  }
+  return resolved;
 }

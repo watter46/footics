@@ -46,10 +46,13 @@ export function renderScreenBackground(
     const cx = w / 2;
     const cy = h / 2;
     const r = Math.max(w, h) / 2;
-    gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    gradient.addColorStop(0, '#2B2B2B');
-    gradient.addColorStop(1, '#050505');
-    radialGradientCache.set(key, gradient);
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    if (grad && typeof grad.addColorStop === 'function') {
+      grad.addColorStop(0, '#2B2B2B');
+      grad.addColorStop(1, '#050505');
+      radialGradientCache.set(key, grad);
+      gradient = grad;
+    }
   }
 
   if (gradient) {
