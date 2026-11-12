@@ -44,30 +44,44 @@ describe('QuickAnnotationCanvas', () => {
     expect(typeof canvasRef.current?.redo).toBe('function');
   });
 
-  it('supports applyRatio for boundaryBox aspect ratio presets', () => {
+  it('supports applyRatio for boundaryBox aspect ratio presets and triggers onAutoSave via documentStore UPDATE_PHASE', () => {
     const canvasRef = createRef<QuickAnnotationCanvasHandle>();
+    const onAutoSaveSpy = vi.fn();
 
     render(
       <div style={{ width: 800, height: 600 }}>
         <QuickAnnotationCanvas
           ref={canvasRef}
           screenshot={mockScreenshot}
+          onAutoSave={onAutoSaveSpy}
           imageAspect={16 / 9}
         />
       </div>,
     );
 
+    onAutoSaveSpy.mockClear();
+
     expect(typeof canvasRef.current?.applyRatio).toBe('function');
-    expect(() => {
-      act(() => {
-        canvasRef.current?.applyRatio?.('4:5');
-      });
-    }).not.toThrow();
-    expect(() => {
-      act(() => {
-        canvasRef.current?.applyRatio?.('full');
-      });
-    }).not.toThrow();
+    act(() => {
+      canvasRef.current?.applyRatio?.('4:5');
+    });
+
+    expect(onAutoSaveSpy).toHaveBeenCalled();
+    const savedJson =
+      onAutoSaveSpy.mock.calls[onAutoSaveSpy.mock.calls.length - 1][0];
+    const parsed = JSON.parse(savedJson);
+    expect(parsed.boundaryBox).toBeDefined();
+    expect(parsed.boundaryBox.enabled).toBe(true);
+    expect(parsed.boundaryBox.width).toBeLessThan(100);
+
+    act(() => {
+      canvasRef.current?.applyRatio?.('full');
+    });
+    const savedFullJson =
+      onAutoSaveSpy.mock.calls[onAutoSaveSpy.mock.calls.length - 1][0];
+    const parsedFull = JSON.parse(savedFullJson);
+    expect(parsedFull.boundaryBox.width).toBe(100);
+    expect(parsedFull.boundaryBox.height).toBe(100);
   });
 
   it('Extensionツールバーに 3D リングが含まれ、2D マーカーと PitchLock が含まれないこと', () => {

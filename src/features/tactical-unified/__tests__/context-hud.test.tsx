@@ -6,11 +6,11 @@ import type {
   Player,
   ZoneAnnotation,
 } from '@/lib/types/tactical-unified';
+import { BallHud } from '../components/hud/ball-hud';
 import {
   ContextHud,
   HUD_CONTENT_RENDERERS,
 } from '../core/components/ContextHud';
-import { BallHud } from '../core/components/hud';
 import { resolveHudTarget } from '../core/components/hud/hud-targets';
 import { computeClampedHudPos } from '../core/components/hud/use-hud-position';
 import { createCanvasStore } from '../core/store/canvas-store';

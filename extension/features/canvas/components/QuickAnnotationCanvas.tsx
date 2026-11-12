@@ -5,6 +5,7 @@ import {
   type ReactElement,
   type Ref,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -24,9 +25,13 @@ import {
   TacticalStoreProvider,
   useTacticalStoresContext,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import { translateScreenshotToProject } from '@/lib/tactical/acl/screenshot-translator';
+import {
+  serializeProjectToScreenshotJson,
+  translateScreenshotToProject,
+} from '@/lib/tactical/acl/screenshot-translator';
 import {
   type AspectRatio,
+  type BoundaryBox,
   createXBoundaryBox,
   DEFAULT_BOUNDARY_BOX_FULL,
 } from '@/lib/types/tactical-unified';
@@ -55,6 +60,7 @@ function QuickAnnotationCanvasInner(
 ) {
   const stageRef = useRef<CanvasCoreHandle | null>(null);
   const setBoundaryBox = useCanvasStore((s) => s.setBoundaryBox);
+  const { documentStore, sessionStore } = useTacticalStoresContext();
 
   useImperativeHandle(
     ref,
@@ -72,23 +78,37 @@ function QuickAnnotationCanvasInner(
       canUndo: () => stageRef.current?.canUndo() ?? false,
       canRedo: () => stageRef.current?.canRedo() ?? false,
       applyRatio: (ratio: AspectRatio | 'full') => {
-        if (ratio === 'full') {
-          setBoundaryBox({
-            ...DEFAULT_BOUNDARY_BOX_FULL,
-            enabled: true,
-            visible: false,
-          });
-        } else {
-          const newBox = createXBoundaryBox(ratio, '16:9');
-          setBoundaryBox({
-            ...newBox,
-            enabled: true,
-            visible: true,
+        const nextBox: BoundaryBox =
+          ratio === 'full'
+            ? {
+                ...DEFAULT_BOUNDARY_BOX_FULL,
+                enabled: true,
+                visible: false,
+              }
+            : {
+                ...createXBoundaryBox(ratio, '16:9'),
+                enabled: true,
+                visible: true,
+              };
+
+        const docState = documentStore.getState();
+        const activePhaseId =
+          sessionStore.getState().activePhaseId ||
+          docState.project.phases[0]?.id;
+        if (activePhaseId) {
+          docState.dispatch({
+            type: 'UPDATE_PHASE',
+            phaseId: activePhaseId,
+            patch: {
+              boundaryBox: nextBox,
+              ...(ratio !== 'full' ? { aspectRatio: ratio } : {}),
+            },
           });
         }
+        setBoundaryBox(nextBox);
       },
     }),
-    [setBoundaryBox],
+    [setBoundaryBox, documentStore, sessionStore],
   );
 
   return (
@@ -115,30 +135,62 @@ function QuickAnnotationCanvasBridge(
   }: QuickAnnotationCanvasProps,
   ref: Ref<QuickAnnotationCanvasHandle>,
 ) {
-  const { documentStore } = useTacticalStoresContext();
+  const { documentStore, sessionStore } = useTacticalStoresContext();
+  const isSyncingFromCanvasRef = useRef(false);
+
+  useEffect(() => {
+    let prevProject = documentStore.getState().project;
+    return documentStore.subscribe((state) => {
+      if (state.project === prevProject) return;
+      prevProject = state.project;
+      if (isSyncingFromCanvasRef.current) return;
+      const json = serializeProjectToScreenshotJson(state.project);
+      const activePhase =
+        state.project.phases.find(
+          (p) => p.id === sessionStore.getState().activePhaseId,
+        ) ?? state.project.phases[0];
+      const finalJson = activePhase?.boundaryBox
+        ? JSON.stringify({
+            ...JSON.parse(json),
+            boundaryBox: activePhase.boundaryBox,
+          })
+        : json;
+      onAutoSave?.(finalJson);
+    });
+  }, [documentStore, sessionStore, onAutoSave]);
 
   const handleCanvasAutoSave = useCallback(
     (annotationsJson: string) => {
-      const bundle = translateScreenshotToProject({
-        screenshotId: screenshot.id,
-        backgroundImageUrl: screenshot.imageDataUrl,
-        canvasAnnotationsJson: annotationsJson,
-      });
-      documentStore.getState().loadProject(bundle.project);
+      isSyncingFromCanvasRef.current = true;
+      try {
+        const bundle = translateScreenshotToProject({
+          screenshotId: screenshot.id,
+          backgroundImageUrl: screenshot.imageDataUrl,
+          canvasAnnotationsJson: annotationsJson,
+        });
+        documentStore.getState().loadProject(bundle.project);
+      } finally {
+        isSyncingFromCanvasRef.current = false;
+      }
       onAutoSave?.(annotationsJson);
     },
     [screenshot.id, screenshot.imageDataUrl, documentStore, onAutoSave],
+  );
+
+  const initialAnnotations = useMemo(
+    () => serializeProjectToScreenshotJson(documentStore.getState().project),
+    [documentStore],
   );
 
   const config = useMemo<CanvasConfig>(
     () => ({
       mode: 'screenshot-edit',
       backgroundImageUrl: screenshot.imageDataUrl,
-      initialAnnotations: screenshot.canvasAnnotations,
+      initialAnnotations,
       markerMode: '3d-only',
       defaultBoundaryBox: DEFAULT_BOUNDARY_BOX_FULL,
     }),
-    [screenshot.imageDataUrl, screenshot.canvasAnnotations],
+    [screenshot.imageDataUrl, initialAnnotations],
   );
 
   return (

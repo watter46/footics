@@ -24,6 +24,7 @@ import type {
   SelectedObject,
   SelectedObjectKind,
 } from '@/features/tactical-unified/core/types';
+import '@/features/tactical-unified/components/hud/ball-hud';
 import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { DrawingToolbar } from '@/features/tactical-unified/panels/toolbar/drawing-toolbar';

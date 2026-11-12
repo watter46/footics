@@ -9,7 +9,6 @@ import type { SelectedObject, SelectedObjectKind } from '../types';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import {
   ArrowHud,
-  BallHud,
   ConnectLineHud,
   type HudOffsetRect,
   type HudTarget,
@@ -50,7 +49,6 @@ export const HUD_CONTENT_RENDERERS = new Map<
         />
       ) : null,
   ],
-  ['ball', () => <BallHud />],
 ]);
 
 export function registerHudContentRenderer(

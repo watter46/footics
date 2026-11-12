@@ -1,6 +1,7 @@
 'use client';
 
 import type React from 'react';
+import { registerHudContentRenderer } from '@/features/tactical-unified/core';
 import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
 
@@ -37,3 +38,5 @@ export function BallHud(): React.ReactElement | null {
     </div>
   );
 }
+
+registerHudContentRenderer('ball', () => <BallHud />);

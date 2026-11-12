@@ -26,6 +26,9 @@ export {
 export {
   ContextHud,
   type ContextHudProps,
+  HUD_CONTENT_RENDERERS,
+  type HudContentRenderer,
+  registerHudContentRenderer,
 } from './components/ContextHud';
 export {
   CoreDrawingToolbar,

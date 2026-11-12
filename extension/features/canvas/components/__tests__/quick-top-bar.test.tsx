@@ -2,8 +2,13 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanvasCoreHandle } from '@/features/tactical-unified/core/types';
+import {
+  TacticalStoreProvider,
+  useTacticalStoresContext,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { CapturedScreenshot } from '../../../capture/db/screenshot-db';
 import { QuickCanvasTopBar } from '../QuickCanvasTopBar';
+import { RatioPresetSelector } from '../RatioPresetSelector';
 
 const mockScreenshot: CapturedScreenshot = {
   id: 'shot-1',
@@ -178,12 +183,45 @@ describe('QuickCanvasTopBar', () => {
       expect(icon?.getAttribute('class')).toContain('text-blue-400');
     });
 
-    it('applies bg-blue-600 to primary X share button', () => {
+    it('applies primary guideline styling to primary X share button', () => {
       render(<QuickCanvasTopBar screenshot={mockScreenshot} />);
 
       const shareBtn = screen.getByRole('button', { name: 'X共有' });
-      expect(shareBtn.className).toContain('bg-blue-600');
+      expect(shareBtn.className).toContain('btn-guideline-primary');
       expect(shareBtn.className).not.toContain('bg-sky-600');
+    });
+
+    it('RatioPresetSelector dispatches UPDATE_PHASE to TacticalStoreProvider documentStore when clicked', () => {
+      let capturedBoundaryWidth = 0;
+      let capturedAspectRatio = '';
+
+      function Inspector() {
+        const { documentStore } = useTacticalStoresContext();
+        documentStore.subscribe((state) => {
+          const phase = state.project.phases[0];
+          if (phase) {
+            capturedBoundaryWidth = phase.boundaryBox.width;
+            capturedAspectRatio = phase.aspectRatio;
+          }
+        });
+        return <RatioPresetSelector />;
+      }
+
+      render(
+        <TacticalStoreProvider>
+          <Inspector />
+        </TacticalStoreProvider>,
+      );
+
+      const ratio45Btn = screen.getByRole('button', {
+        name: '境界線比率 4:5',
+      });
+      fireEvent.click(ratio45Btn);
+
+      expect(capturedAspectRatio).toBe('4:5');
+      expect(capturedBoundaryWidth).toBeGreaterThan(0);
+      expect(capturedBoundaryWidth).toBeLessThan(100);
+      expect(ratio45Btn.getAttribute('aria-pressed')).toBe('true');
     });
   });
 });

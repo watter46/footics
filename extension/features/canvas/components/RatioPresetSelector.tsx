@@ -2,19 +2,18 @@
 
 import { Expand, LayoutTemplate } from 'lucide-react';
 import type React from 'react';
-import { useContext, useRef } from 'react';
-import { useStore } from 'zustand';
-import {
-  CanvasStoreContext,
-  createCanvasStore,
-} from '@/features/tactical-unified/core';
-import type { CanvasStoreApi } from '@/features/tactical-unified/core/types';
+import { useCallback, useContext, useSyncExternalStore } from 'react';
+import { CanvasStoreContext } from '@/features/tactical-unified/core';
+import { TacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   ASPECT_RATIOS,
   type AspectRatio,
+  type BoundaryBox,
   createXBoundaryBox,
   DEFAULT_BOUNDARY_BOX_FULL,
 } from '@/lib/types/tactical-unified';
+
+const noopSubscribe = () => () => {};
 
 export interface RatioPresetSelectorProps {
   currentRatio?: AspectRatio | 'full' | null;
@@ -54,13 +53,50 @@ export function RatioPresetSelector({
   onSelectRatio,
   className = '',
 }: RatioPresetSelectorProps): React.ReactElement {
-  const store = useContext(CanvasStoreContext);
-  const fallbackStoreRef = useRef<CanvasStoreApi | null>(null);
-  if (!fallbackStoreRef.current) {
-    fallbackStoreRef.current = createCanvasStore({ mode: 'screenshot-edit' });
-  }
-  const activeStore = store ?? fallbackStoreRef.current;
-  const boundaryBox = useStore(activeStore, (s) => s.boundaryBox);
+  const tacticalStores = useContext(TacticalStoresContext);
+  const canvasStore = useContext(CanvasStoreContext);
+
+  const subscribeBoundaryBox = useCallback(
+    (onStoreChange: () => void) => {
+      const unsubs: (() => void)[] = [];
+      if (tacticalStores) {
+        unsubs.push(tacticalStores.documentStore.subscribe(onStoreChange));
+        unsubs.push(tacticalStores.sessionStore.subscribe(onStoreChange));
+      }
+      if (canvasStore) {
+        unsubs.push(canvasStore.subscribe(onStoreChange));
+      }
+      if (unsubs.length === 0) return noopSubscribe();
+      return () => {
+        for (const u of unsubs) u();
+      };
+    },
+    [tacticalStores, canvasStore],
+  );
+
+  const getBoundaryBoxSnapshot = useCallback((): BoundaryBox | null => {
+    if (tacticalStores) {
+      const doc = tacticalStores.documentStore.getState();
+      const activePhaseId =
+        tacticalStores.sessionStore.getState().activePhaseId;
+      const phase =
+        doc.project.phases.find((p) => p.id === activePhaseId) ??
+        doc.project.phases[0];
+      if (phase?.boundaryBox) {
+        return phase.boundaryBox;
+      }
+    }
+    if (canvasStore) {
+      return canvasStore.getState().boundaryBox;
+    }
+    return null;
+  }, [tacticalStores, canvasStore]);
+
+  const boundaryBox = useSyncExternalStore(
+    subscribeBoundaryBox,
+    getBoundaryBoxSnapshot,
+    getBoundaryBoxSnapshot,
+  );
 
   // 比率の現在値判定
   const activeRatio = (() => {
@@ -92,21 +128,37 @@ export function RatioPresetSelector({
       onSelectRatio(ratio);
       return;
     }
-    if (!store) return;
-    const setBoundaryBox = store.getState().setBoundaryBox;
-    if (ratio === 'full') {
-      setBoundaryBox({
-        ...DEFAULT_BOUNDARY_BOX_FULL,
-        enabled: true,
-        visible: false,
-      });
-    } else {
-      const newBox = createXBoundaryBox(ratio, '16:9');
-      setBoundaryBox({
-        ...newBox,
-        enabled: true,
-        visible: true,
-      });
+    const nextBox: BoundaryBox =
+      ratio === 'full'
+        ? {
+            ...DEFAULT_BOUNDARY_BOX_FULL,
+            enabled: true,
+            visible: false,
+          }
+        : {
+            ...createXBoundaryBox(ratio, '16:9'),
+            enabled: true,
+            visible: true,
+          };
+
+    if (tacticalStores) {
+      const docState = tacticalStores.documentStore.getState();
+      const activePhaseId =
+        tacticalStores.sessionStore.getState().activePhaseId ||
+        docState.project.phases[0]?.id;
+      if (activePhaseId) {
+        docState.dispatch({
+          type: 'UPDATE_PHASE',
+          phaseId: activePhaseId,
+          patch: {
+            boundaryBox: nextBox,
+            ...(ratio !== 'full' ? { aspectRatio: ratio } : {}),
+          },
+        });
+      }
+    }
+    if (canvasStore) {
+      canvasStore.getState().setBoundaryBox(nextBox);
     }
   };
 
