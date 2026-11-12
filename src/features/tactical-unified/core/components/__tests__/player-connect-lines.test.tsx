@@ -1,8 +1,13 @@
-import { render } from '@testing-library/react';
+import { act, render, renderHook } from '@testing-library/react';
 import type Konva from 'konva';
-import { createRef } from 'react';
+import type { KonvaEventObject } from 'konva/lib/Node';
+import { createRef, type ReactNode } from 'react';
 import { Layer, Stage } from 'react-konva';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  TacticalStoreProvider,
+  useTacticalStoresContext,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import type {
   ResolvedBillboardTextItem,
   ResolvedConnectLinePrimitive,
@@ -13,6 +18,7 @@ import { CanvasStoreProvider } from '../../store/canvas-store-provider';
 import type { CanvasNodesRegistry } from '../../utils/canvas-registry';
 import { TextObject } from '../annotations/TextObject';
 import { PlayerConnectLines } from '../PlayerConnectLines';
+import { useMarkerDragHandlers } from '../use-marker-drag-handlers';
 
 describe('PlayerConnectLines', () => {
   it('多層フォグ減衰（広域＋中間＋コアライン）と glowBlur / glowOpacity が反映される', () => {
@@ -227,5 +233,80 @@ describe('PlayerConnectLines', () => {
     expect(textNode?.y()).toBe(180);
     expect(textNode?.fontSize()).toBe(24);
     expect(textNode?.opacity()).toBeCloseTo(0.85);
+  });
+
+  it('useMarkerDragHandlers: ドラッグ移動中に sessionStore.activeDragDelta を更新し、ドラッグ終了時に null にリセットする', () => {
+    const p1 = {
+      ...createDefaultPlayer('home', 20, 30, '#034694'),
+      id: 'p1',
+    };
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <TacticalStoreProvider>{children}</TacticalStoreProvider>
+    );
+
+    const { result } = renderHook(
+      () => {
+        const stores = useTacticalStoresContext();
+        const handlers = useMarkerDragHandlers({
+          pitchRect: { x: 0, y: 0, width: 1000, height: 500 },
+          visibleMarkers: [p1],
+          arrows: [],
+          selectedIds: ['p1'],
+          selectObject: vi.fn(),
+          updateMarker: vi.fn(),
+          updateMarkers: vi.fn(),
+          setIsDragging: vi.fn(),
+          setIsHudOpen: vi.fn(),
+        });
+        return { stores, handlers };
+      },
+      { wrapper },
+    );
+
+    const createDragEvent = (x: number, y: number) =>
+      ({
+        evt: { shiftKey: false, clientX: x, clientY: y },
+        target: {
+          x: () => x,
+          y: () => y,
+          getLayer: () => ({ batchDraw: vi.fn() }),
+          getStage: () => ({
+            container: () => ({
+              getBoundingClientRect: () => ({
+                left: 0,
+                top: 0,
+                width: 1000,
+                height: 500,
+              }),
+            }),
+          }),
+        },
+      }) as unknown as KonvaEventObject<DragEvent>;
+
+    act(() => {
+      result.current.handlers.handleDragStart(createDragEvent(200, 150), 'p1');
+      // Move from (200, 150) [20%, 30%] to (350, 200) [35%, 40%] -> delta (+15%, +10%)
+      result.current.handlers.handleMarkerDragMove(
+        createDragEvent(350, 200),
+        'p1',
+      );
+    });
+
+    const deltaDuringDrag =
+      result.current.stores.sessionStore.getState().activeDragDelta;
+    expect(deltaDuringDrag).toEqual({
+      entityIds: ['p1'],
+      deltaScreenNormX: 15,
+      deltaScreenNormY: 10,
+    });
+
+    act(() => {
+      result.current.handlers.handleDragEnd(createDragEvent(350, 200), p1);
+    });
+
+    expect(
+      result.current.stores.sessionStore.getState().activeDragDelta,
+    ).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import type { PlayerTrajectory } from '@/lib/types/tactical-unified';
 
 export interface GhostTrajectoryArrowProps {

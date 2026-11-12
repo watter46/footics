@@ -2,7 +2,7 @@
 
 import type React from 'react';
 import { Circle, Group, Text } from 'react-konva';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import { GhostTrajectoryArrow } from '@/features/tactical-unified/objects/arrow';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type {

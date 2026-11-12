@@ -3,7 +3,7 @@ import {
   clampNorm,
   normToPx,
   pxToNorm,
-} from '@/features/tactical-unified/core';
+} from '@/features/tactical-unified/core/utils/canvas-coordinates';
 
 export function setupGhostGroup(
   ghostGroup: Konva.Group | null,

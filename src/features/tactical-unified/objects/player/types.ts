@@ -1,7 +1,7 @@
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
+import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import type {
   ArrowAnnotation,
   Player,

@@ -5,9 +5,12 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Group, Layer, Rect } from 'react-konva';
+import { Group, Layer, Line, Rect } from 'react-konva';
 import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
-import type { ResolvedSceneGraphDTO } from '@/lib/tactical/compiler/scene-graph-dto';
+import type {
+  ResolvedBillboardPlayerItem,
+  ResolvedSceneGraphDTO,
+} from '@/lib/tactical/compiler/scene-graph-dto';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import { calculatePitchTransform } from '../utils/canvas-pitch-transform-helper';
@@ -208,7 +211,25 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
           resolvedConnectLines={sceneGraph?.connectLines ?? null}
         />
 
-        {/* スライド間ゴーストマーカー & 追跡曲線矢印 (cleanRender時は非表示) */}
+        {/* ── 6. ゴースト & 移動軌道 (Ghost & Trajectories) ── */}
+        {!cleanRender &&
+          sceneGraph?.trajectories.map((traj) => {
+            if (!traj.visible || selectedIds.includes(traj.playerId))
+              return null;
+            return (
+              <Line
+                key={`traj-dto-${traj.playerId}`}
+                points={traj.flatPointsPx as number[]}
+                stroke={traj.color}
+                strokeWidth={2}
+                dash={traj.dashArrayPx as number[]}
+                lineCap="round"
+                lineJoin="round"
+                listening={false}
+                perfectDrawEnabled={false}
+              />
+            );
+          })}
         {!cleanRender &&
           visibleMarkers.map((marker) => {
             if (marker.area === 'bench') return null;
@@ -216,12 +237,31 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
               (p) => p.id === marker.id && p.area === 'pitch',
             );
             if (!prevPlayer) return null;
-            if (!selectedIds.includes(marker.id)) return null;
-            if (
-              Math.hypot(marker.x - prevPlayer.x, marker.y - prevPlayer.y) < 1
-            ) {
+
+            const isSelected = selectedIds.includes(marker.id);
+            const isEffectEnabled = marker.trajectoryEffect?.enabled === true;
+            if (!isSelected && (sceneGraph ? true : !isEffectEnabled)) {
               return null;
             }
+
+            const resolvedPlayer = sceneGraph?.billboardItems.find(
+              (item): item is ResolvedBillboardPlayerItem =>
+                item.kind === 'player' && item.id === marker.id,
+            );
+            const effectivePlayer =
+              resolvedPlayer && stageSize.width > 0 && stageSize.height > 0
+                ? {
+                    ...marker,
+                    x: (resolvedPlayer.positionPx.x / stageSize.width) * 100,
+                    y: (resolvedPlayer.positionPx.y / stageSize.height) * 100,
+                  }
+                : marker;
+
+            const dist = Math.hypot(
+              effectivePlayer.x - prevPlayer.x,
+              effectivePlayer.y - prevPlayer.y,
+            );
+            if (dist < 1.0) return null;
 
             return (
               <Group
@@ -229,7 +269,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
                 id={`ghost-trajectory-${marker.id}`}
               >
                 <PlayerGhostTrajectory
-                  player={marker}
+                  player={effectivePlayer}
                   prevPlayer={prevPlayer}
                   stageSize={{
                     width: pitchRect.width,

@@ -1,19 +1,17 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useContext, useRef } from 'react';
+import { TacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ArrowAnnotation, Player } from '@/lib/types/tactical-unified';
 import type { CanvasCapabilities, SelectedObject } from '../types';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
-import { updateAttachedArrowPositions } from './annotations/arrow-drag-updater';
-import { updateTrajectoryArrowPositions } from './annotations/trajectory-arrow-drag-updater';
-import { updateConnectLinePositions } from './PlayerConnectLines';
 import { resolveBenchDrop } from './player-bench-drop';
 
 export interface UseMarkerDragHandlersParams {
   pitchRect: PitchRectBounds;
   visibleMarkers: Player[];
-  arrows: ArrowAnnotation[];
+  arrows?: ArrowAnnotation[];
   selectedIds: string[];
   selectObject: (
     target: string | SelectedObject | null,
@@ -31,7 +29,6 @@ export interface UseMarkerDragHandlersParams {
 export function useMarkerDragHandlers({
   pitchRect,
   visibleMarkers,
-  arrows,
   selectedIds,
   selectObject,
   updateMarker,
@@ -42,6 +39,14 @@ export function useMarkerDragHandlers({
   moveMarkerToBench,
   nodesRegistryRef,
 }: UseMarkerDragHandlersParams) {
+  const tacticalStores = useContext(TacticalStoresContext);
+
+  const dragStartNormRef = useRef<{
+    markerId: string;
+    normX: number;
+    normY: number;
+  } | null>(null);
+
   const dragMultiStateRef = useRef<{
     draggedMarkerId: string;
     startPx: { x: number; y: number };
@@ -55,6 +60,11 @@ export function useMarkerDragHandlers({
     (e: KonvaEventObject<DragEvent>, markerId: string) => {
       setIsDragging(true);
       setIsHudOpen(false);
+
+      const draggedMarker = visibleMarkers.find((p) => p.id === markerId);
+      dragStartNormRef.current = draggedMarker
+        ? { markerId, normX: draggedMarker.x, normY: draggedMarker.y }
+        : null;
 
       const effectiveSelectedIds = selectedIds.includes(markerId)
         ? selectedIds
@@ -121,85 +131,60 @@ export function useMarkerDragHandlers({
           if (id === markerId) continue;
           const node = reg?.playerNodes.get(id);
           if (node) {
-            const nextX = initial.pxX + deltaX;
-            const nextY = initial.pxY + deltaY;
-            node.position({ x: nextX, y: nextY });
-
-            if (reg?.connectLineNodeMap) {
-              updateConnectLinePositions(
-                reg.connectLineNodeMap,
-                visibleMarkers,
-                id,
-                nextX,
-                nextY,
-                pitchRect.width,
-                pitchRect.height,
-              );
-            }
-            updateAttachedArrowPositions(
-              reg?.arrowNodes,
-              arrows,
-              visibleMarkers,
-              id,
-              nextX,
-              nextY,
-              pitchRect.width,
-              pitchRect.height,
-            );
-            updateTrajectoryArrowPositions(
-              reg?.trajectoryArrowNodes,
-              id,
-              nextX,
-              nextY,
-              pitchRect.width,
-              pitchRect.height,
-            );
+            node.position({
+              x: initial.pxX + deltaX,
+              y: initial.pxY + deltaY,
+            });
           }
+        }
+
+        if (tacticalStores && pitchRect.width > 0 && pitchRect.height > 0) {
+          tacticalStores.sessionStore.getState().setActiveDragDelta({
+            entityIds: Array.from(multi.markers.keys()),
+            deltaScreenNormX: (deltaX / pitchRect.width) * 100,
+            deltaScreenNormY: (deltaY / pitchRect.height) * 100,
+          });
+        }
+      } else if (
+        tacticalStores &&
+        pitchRect.width > 0 &&
+        pitchRect.height > 0
+      ) {
+        const startNorm =
+          dragStartNormRef.current?.markerId === markerId
+            ? dragStartNormRef.current
+            : (() => {
+                const found = visibleMarkers.find((p) => p.id === markerId);
+                return found
+                  ? { markerId, normX: found.x, normY: found.y }
+                  : null;
+              })();
+        if (startNorm) {
+          const curNormX = (curX / pitchRect.width) * 100;
+          const curNormY = (curY / pitchRect.height) * 100;
+          tacticalStores.sessionStore.getState().setActiveDragDelta({
+            entityIds: [markerId],
+            deltaScreenNormX: curNormX - startNorm.normX,
+            deltaScreenNormY: curNormY - startNorm.normY,
+          });
         }
       }
 
-      if (reg?.connectLineNodeMap) {
-        updateConnectLinePositions(
-          reg.connectLineNodeMap,
-          visibleMarkers,
-          markerId,
-          curX,
-          curY,
-          pitchRect.width,
-          pitchRect.height,
-        );
-      }
-      updateAttachedArrowPositions(
-        reg?.arrowNodes,
-        arrows,
-        visibleMarkers,
-        markerId,
-        curX,
-        curY,
-        pitchRect.width,
-        pitchRect.height,
-      );
-      updateTrajectoryArrowPositions(
-        reg?.trajectoryArrowNodes,
-        markerId,
-        curX,
-        curY,
-        pitchRect.width,
-        pitchRect.height,
-      );
       e.target.getLayer()?.batchDraw();
     },
     [
       visibleMarkers,
-      arrows,
       pitchRect.width,
       pitchRect.height,
       nodesRegistryRef,
+      tacticalStores,
     ],
   );
 
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>, marker: Player) => {
+      tacticalStores?.sessionStore.getState().setActiveDragDelta(null);
+      dragStartNormRef.current = null;
       setIsDragging(false);
       setIsHudOpen(true);
 
@@ -268,6 +253,7 @@ export function useMarkerDragHandlers({
       setIsHudOpen,
       capabilities?.hasBench,
       moveMarkerToBench,
+      tacticalStores,
     ],
   );
 
