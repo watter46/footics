@@ -2,9 +2,10 @@ import {
   type StageViewport,
   screenNormToStagePixel,
 } from '@/lib/tactical/engine/coordinates';
+import { projectStagePixelWithPitchTransform } from '@/lib/tactical/engine/projection-3d';
 import type { EvaluatedTimelineFrame } from '@/lib/tactical/engine/timeline-evaluator';
 import {
-  type ScreenNormPoint,
+  type StagePixelPoint,
   toScreenNormPoint,
   toStagePixelPoint,
 } from '@/lib/types/tactical/branded';
@@ -77,6 +78,7 @@ export function compileArrows(
   const dragDy = activeDrag?.deltaScreenNormY ?? 0;
   const selectedIds = new Set(session?.selectedIds ?? []);
   const scale = viewport.width > 0 ? viewport.width / 1200 : 1;
+  const pitchTransform = frame.slide.pitchTransform;
 
   return frame.slide.arrows.map((arrow) => {
     const isArrowDragged = draggedIds.has(arrow.id);
@@ -90,36 +92,58 @@ export function compileArrows(
       ? resolvedPlayersMap.get(arrow.targetPlayerId)
       : undefined;
 
-    let startNorm: ScreenNormPoint;
+    let startPx: StagePixelPoint;
     if (sourcePlayer) {
-      startNorm = sourcePlayer.screenNormPos;
+      startPx = sourcePlayer.positionPx;
     } else {
       const basePt = arrow.points[0] ?? { x: 0, y: 0 };
-      startNorm = toScreenNormPoint(basePt.x + aDx, basePt.y + aDy, false);
+      const rawStartNorm = toScreenNormPoint(
+        basePt.x + aDx,
+        basePt.y + aDy,
+        false,
+      );
+      const rawStartPx = screenNormToStagePixel(rawStartNorm, viewport);
+      startPx = projectStagePixelWithPitchTransform(
+        rawStartPx,
+        viewport,
+        pitchTransform,
+      );
     }
 
-    let endNorm: ScreenNormPoint;
+    let endPx: StagePixelPoint;
     if (targetPlayer) {
-      endNorm = targetPlayer.screenNormPos;
+      endPx = targetPlayer.positionPx;
     } else {
       const basePt = arrow.points[arrow.points.length - 1] ?? {
         x: 100,
         y: 100,
       };
-      endNorm = toScreenNormPoint(basePt.x + aDx, basePt.y + aDy, false);
+      const rawEndNorm = toScreenNormPoint(
+        basePt.x + aDx,
+        basePt.y + aDy,
+        false,
+      );
+      const rawEndPx = screenNormToStagePixel(rawEndNorm, viewport);
+      endPx = projectStagePixelWithPitchTransform(
+        rawEndPx,
+        viewport,
+        pitchTransform,
+      );
     }
 
-    const startPx = screenNormToStagePixel(startNorm, viewport);
-    const endPx = screenNormToStagePixel(endNorm, viewport);
-
-    let cpPx: ReturnType<typeof toStagePixelPoint> | undefined;
+    let cpPx: StagePixelPoint | undefined;
     if (arrow.controlPoint) {
       const cpNorm = toScreenNormPoint(
         arrow.controlPoint.x + aDx,
         arrow.controlPoint.y + aDy,
         false,
       );
-      cpPx = screenNormToStagePixel(cpNorm, viewport);
+      const rawCpPx = screenNormToStagePixel(cpNorm, viewport);
+      cpPx = projectStagePixelWithPitchTransform(
+        rawCpPx,
+        viewport,
+        pitchTransform,
+      );
     }
 
     const dims = computeArrowDimensions(viewport.width, arrow.strokeWidth);

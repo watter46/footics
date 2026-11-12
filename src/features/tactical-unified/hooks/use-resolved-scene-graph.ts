@@ -47,14 +47,23 @@ function createFallbackSlide(): DomainSlide {
   };
 }
 
+export interface ResolveSceneGraphOptions {
+  /**
+   * false の場合、compileSceneGraph 内での pitchTransform 投影をスキップする。
+   * Konva ボードのように親 <Group> が既に pan/zoom 変形を担っている場合は false を指定し二重変形を防ぐ。
+   */
+  readonly applyPitchTransform?: boolean;
+}
+
 export function resolveSceneGraphFromState(params: {
   readonly project: DomainTacticalProject;
   readonly session: EphemeralSessionState;
   readonly isPlaying: boolean;
   readonly timeMs: Milliseconds;
   readonly viewport: StageViewport;
+  readonly options?: ResolveSceneGraphOptions;
 }): ResolvedSceneGraphDTO {
-  const { project, session, isPlaying, timeMs, viewport } = params;
+  const { project, session, isPlaying, timeMs, viewport, options } = params;
 
   const activePhase: DomainTacticalPhase | undefined =
     project.phases.find((p) => p.id === session.activePhaseId) ??
@@ -79,6 +88,16 @@ export function resolveSceneGraphFromState(params: {
       activePhase && slideIndex > 0 ? activePhase.slides[slideIndex - 1] : null;
 
     frame = evaluateStaticSlideFrame(activeSlide, activeSlide.index ?? 0);
+  }
+
+  if (options?.applyPitchTransform === false && frame.slide.pitchTransform) {
+    frame = {
+      ...frame,
+      slide: {
+        ...frame.slide,
+        pitchTransform: undefined,
+      },
+    };
   }
 
   return compileSceneGraph(frame, session, viewport, prevSlide);
@@ -121,6 +140,7 @@ export function useResolvedSceneGraph(
         isPlaying,
         timeMs,
         viewport,
+        options: { applyPitchTransform: false },
       }),
     [
       project,

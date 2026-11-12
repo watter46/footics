@@ -241,4 +241,77 @@ describe('Scene Compiler Phase 1 Tests', () => {
     const depthTilt60 = computeBillboardDepthKey(pt, 'player', 60);
     expect(depthTilt60).toBeLessThan(depthTilt0);
   });
+
+  it('6. projects zones, arrows, and billboard items uniformly when slide.pitchTransform is set', () => {
+    const pitchTransform = {
+      zoom: 2,
+      panX: 10,
+      panY: -10,
+      tilt: 20,
+      isLocked: false,
+    };
+    const slide = createBaseSlide({
+      pitchTransform,
+      zones: [
+        {
+          id: 'z-poly',
+          annotationType: 'zone',
+          zoneType: 'generic',
+          shapeType: 'polygon',
+          points: [
+            toScreenNormPoint(20, 50, false),
+            toScreenNormPoint(40, 50, false),
+            toScreenNormPoint(30, 70, false),
+          ],
+          color: '#22c55e',
+          opacity: 0.3,
+          strokeColor: '#22c55e',
+          strokeOpacity: 0.8,
+          strokeWidth: 2,
+        },
+      ],
+      arrows: [
+        {
+          id: 'a-1',
+          annotationType: 'arrow',
+          arrowType: 'pass',
+          curveType: 'straight',
+          points: [
+            toScreenNormPoint(20, 50, false),
+            toScreenNormPoint(80, 50, false),
+          ],
+          color: '#ffffff',
+          strokeWidth: 3,
+          dashArray: [],
+          startMarker: 'none',
+          endMarker: 'arrow',
+        },
+      ],
+    });
+
+    const frame = evaluateStaticSlideFrame(slide);
+    const scene = compileSceneGraph(frame, null, viewport);
+
+    const expectedP1 = projectStagePixelWithPitchTransform(
+      toStagePixelPoint(200, 400),
+      viewport,
+      pitchTransform,
+    );
+
+    const playerItem = scene.billboardItems.find(
+      (item) => item.kind === 'player' && item.id === 'p1',
+    );
+    expect(playerItem?.positionPx.x).toBeCloseTo(expectedP1.x, 2);
+    expect(playerItem?.positionPx.y).toBeCloseTo(expectedP1.y, 2);
+
+    // Zone first vertex is also at (20%, 50%) -> must match player positionPx exactly!
+    const zoneDto = scene.zones[0];
+    expect(zoneDto.flatPointsPx?.[0]).toBeCloseTo(expectedP1.x, 2);
+    expect(zoneDto.flatPointsPx?.[1]).toBeCloseTo(expectedP1.y, 2);
+
+    // Arrow start is also at (20%, 50%) -> must match player positionPx!
+    const arrowDto = scene.arrows[0];
+    expect(arrowDto.flatPointsPx[0]).toBeCloseTo(expectedP1.x, 2);
+    expect(arrowDto.flatPointsPx[1]).toBeCloseTo(expectedP1.y, 2);
+  });
 });

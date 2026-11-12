@@ -2,6 +2,7 @@ import {
   type StageViewport,
   screenNormToStagePixel,
 } from '@/lib/tactical/engine/coordinates';
+import { projectStagePixelWithPitchTransform } from '@/lib/tactical/engine/projection-3d';
 import type { EvaluatedTimelineFrame } from '@/lib/tactical/engine/timeline-evaluator';
 import {
   type StagePixel,
@@ -24,6 +25,7 @@ export function compileZones(
   const dragDy = activeDrag?.deltaScreenNormY ?? 0;
   const selectedIds = new Set(session?.selectedIds ?? []);
   const scale = viewport.width > 0 ? viewport.width / 1200 : 1;
+  const pitchTransform = frame.slide.pitchTransform;
 
   return frame.slide.zones.map((zone) => {
     const isDragged = draggedIds.has(zone.id);
@@ -38,9 +40,14 @@ export function compileZones(
 
     if (zone.shapeType === 'polygon') {
       const flatPointsPx = zone.points.flatMap((pt) => {
-        const px = screenNormToStagePixel(
+        const rawPx = screenNormToStagePixel(
           toScreenNormPoint(pt.x + zDx, pt.y + zDy, false),
           viewport,
+        );
+        const px = projectStagePixelWithPitchTransform(
+          rawPx,
+          viewport,
+          pitchTransform,
         );
         return [px.x, px.y];
       });
@@ -59,18 +66,36 @@ export function compileZones(
       };
     }
 
-    const pos = screenNormToStagePixel(
+    const rawTopLeft = screenNormToStagePixel(
       toScreenNormPoint(zone.x + zDx, zone.y + zDy, false),
       viewport,
     );
-    const widthPx = (zone.width / 100) * viewport.width;
-    const heightPx = (zone.height / 100) * viewport.height;
+    const rawBottomRight = screenNormToStagePixel(
+      toScreenNormPoint(
+        zone.x + zDx + zone.width,
+        zone.y + zDy + zone.height,
+        false,
+      ),
+      viewport,
+    );
+    const topLeft = projectStagePixelWithPitchTransform(
+      rawTopLeft,
+      viewport,
+      pitchTransform,
+    );
+    const bottomRight = projectStagePixelWithPitchTransform(
+      rawBottomRight,
+      viewport,
+      pitchTransform,
+    );
+    const widthPx = bottomRight.x - topLeft.x;
+    const heightPx = bottomRight.y - topLeft.y;
 
     return {
       id: zone.id,
       shapeType: zone.shapeType,
-      xPx: pos.x as StagePixel,
-      yPx: pos.y as StagePixel,
+      xPx: topLeft.x as StagePixel,
+      yPx: topLeft.y as StagePixel,
       widthPx,
       heightPx,
       rotationDeg: zone.rotation ?? 0,
