@@ -46,6 +46,24 @@ export interface ResolvedArrowPrimitive {
   readonly selected: boolean;
 }
 
+export interface ResolvedVisionConeDTO {
+  readonly id: string;
+  readonly angleRad: number;
+  readonly spreadRad: number;
+  readonly radiusPx: number;
+  readonly color: string;
+  readonly opacity: number;
+  readonly visible: boolean;
+}
+
+export interface ResolvedPlayerFocusDTO {
+  readonly enabled: boolean;
+  readonly color: string;
+  readonly radiusPx: number;
+  readonly opacity: number;
+  readonly style: 'spotlight' | 'ring' | 'halo';
+}
+
 export interface ResolvedBillboardPlayerItem {
   readonly kind: 'player';
   readonly id: string;
@@ -61,6 +79,8 @@ export interface ResolvedBillboardPlayerItem {
     readonly opacity: number;
     readonly color: string;
   }[];
+  readonly visionCone?: ResolvedVisionConeDTO | null;
+  readonly focus?: ResolvedPlayerFocusDTO | null;
 }
 
 export interface ResolvedBillboardBallItem {

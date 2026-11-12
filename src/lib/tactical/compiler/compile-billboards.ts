@@ -3,12 +3,15 @@ import {
   type StageViewport,
   screenNormToStagePixel,
 } from '@/lib/tactical/engine/coordinates';
-import { computeBillboardDepthKey } from '@/lib/tactical/engine/projection-3d';
+import {
+  computeBillboardDepthKey,
+  projectStagePixelWithPitchTransform,
+} from '@/lib/tactical/engine/projection-3d';
 import type { EvaluatedTimelineFrame } from '@/lib/tactical/engine/timeline-evaluator';
 import {
   type ScreenNormPoint,
+  type StagePixelPoint,
   toScreenNormPoint,
-  type toStagePixelPoint,
 } from '@/lib/types/tactical/branded';
 import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 import {
@@ -19,12 +22,14 @@ import type {
   EphemeralSessionState,
   ResolvedBillboardItem,
   ResolvedBillboardPlayerItem,
+  ResolvedPlayerFocusDTO,
+  ResolvedVisionConeDTO,
 } from './scene-graph-dto';
 
 export interface ResolvedPlayerInternal {
   readonly player: PitchPlayer;
   readonly screenNormPos: ScreenNormPoint;
-  readonly positionPx: ReturnType<typeof toStagePixelPoint>;
+  readonly positionPx: StagePixelPoint;
   readonly radiusPx: number;
   readonly depthSortKey: number;
   readonly opacity: number;
@@ -52,7 +57,9 @@ export function compileBillboardItems(
   const dragDy = activeDrag?.deltaScreenNormY ?? 0;
 
   const selectedIds = new Set(session?.selectedIds ?? []);
-  const tiltDeg = frame.slide.pitchTransform?.tilt ?? 0;
+  const pitchTransform = frame.slide.pitchTransform;
+  const tiltDeg = pitchTransform?.tilt ?? 0;
+  const zoom = pitchTransform?.zoom ?? 1;
   const scale = viewport.width > 0 ? viewport.width / 1200 : 1;
 
   const resolvedPlayersMap = new Map<string, ResolvedPlayerInternal>();
@@ -66,7 +73,12 @@ export function compileBillboardItems(
     const effNormX = isDragged ? player.x + dragDx : player.x;
     const effNormY = isDragged ? player.y + dragDy : player.y;
     const screenNormPos = toScreenNormPoint(effNormX, effNormY, false);
-    const positionPx = screenNormToStagePixel(screenNormPos, viewport);
+    const rawPosPx = screenNormToStagePixel(screenNormPos, viewport);
+    const positionPx = projectStagePixelWithPitchTransform(
+      rawPosPx,
+      viewport,
+      pitchTransform,
+    );
 
     const radiusPx = computePlayerRadiusPx(
       viewport,
@@ -95,6 +107,33 @@ export function compileBillboardItems(
       color: r.color ?? pitchPlayer.style.color,
     }));
 
+    const visionCone: ResolvedVisionConeDTO | null =
+      pitchPlayer.visionCone && pitchPlayer.visionCone.visible !== false
+        ? {
+            id: pitchPlayer.visionCone.id ?? `${player.id}-vision`,
+            angleRad: pitchPlayer.visionCone.angleRad,
+            spreadRad: pitchPlayer.visionCone.spreadRad,
+            radiusPx:
+              (pitchPlayer.visionCone.radius / 100) *
+              Math.min(viewport.width, viewport.height) *
+              zoom,
+            color: pitchPlayer.visionCone.color,
+            opacity: pitchPlayer.visionCone.opacity,
+            visible: true,
+          }
+        : null;
+
+    const focus: ResolvedPlayerFocusDTO | null =
+      pitchPlayer.focus && pitchPlayer.focus.enabled !== false
+        ? {
+            enabled: true,
+            color: pitchPlayer.focus.color,
+            radiusPx: radiusPx * pitchPlayer.focus.radius,
+            opacity: pitchPlayer.focus.opacity,
+            style: pitchPlayer.focus.style,
+          }
+        : null;
+
     const resolvedPlayer: ResolvedPlayerInternal = {
       player: pitchPlayer,
       screenNormPos,
@@ -120,6 +159,8 @@ export function compileBillboardItems(
       selected: isSelected,
       player: pitchPlayer,
       rippleRingsPx,
+      visionCone,
+      focus,
     });
   }
 
@@ -131,9 +172,14 @@ export function compileBillboardItems(
   const effBallNormY = isBallDragged
     ? frame.slide.ball.y + dragDy
     : frame.slide.ball.y;
-  const ballPos = screenNormToStagePixel(
+  const rawBallPos = screenNormToStagePixel(
     toScreenNormPoint(effBallNormX, effBallNormY, false),
     viewport,
+  );
+  const ballPos = projectStagePixelWithPitchTransform(
+    rawBallPos,
+    viewport,
+    pitchTransform,
   );
   const ballRadiusPx = computeBallRadiusPx(viewport);
   const ballDepthSortKey = computeBillboardDepthKey(ballPos, 'ball', tiltDeg);
@@ -154,9 +200,14 @@ export function compileBillboardItems(
       const isTextDragged = draggedIds.has(text.id);
       const effNormX = isTextDragged ? text.x + dragDx : text.x;
       const effNormY = isTextDragged ? text.y + dragDy : text.y;
-      const textPos = screenNormToStagePixel(
+      const rawTextPos = screenNormToStagePixel(
         toScreenNormPoint(effNormX, effNormY, false),
         viewport,
+      );
+      const textPos = projectStagePixelWithPitchTransform(
+        rawTextPos,
+        viewport,
+        pitchTransform,
       );
       const depthSortKey = computeBillboardDepthKey(textPos, 'text', tiltDeg);
       const fontSizePx = Math.max(8, Math.round(text.fontSize * scale));

@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { compileSceneGraph } from '@/lib/tactical/compiler/compile-scene-graph';
-import type { ResolvedSceneGraphDTO } from '@/lib/tactical/compiler/scene-graph-dto';
+import type {
+  ResolvedBillboardPlayerItem,
+  ResolvedSceneGraphDTO,
+} from '@/lib/tactical/compiler/scene-graph-dto';
 import { evaluateStaticSlideFrame } from '@/lib/tactical/engine/timeline-evaluator';
+import { renderPlayerItem } from '@/lib/tactical/export/scene-graph-billboard-rasterizer';
 import {
   type RasterizeSceneGraphOptions,
   rasterizeSceneGraphToCanvas2D,
@@ -13,6 +17,7 @@ import {
 import {
   toScreenNormCoord,
   toScreenNormPoint,
+  toStagePixelPoint,
 } from '@/lib/types/tactical/branded';
 import type {
   DomainArrowAnnotation,
@@ -308,8 +313,14 @@ describe('rasterizeSceneGraphToCanvas2D (Dumb Rasterizer)', () => {
       height: 1080,
     });
 
-    // Pitch fill
-    expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 1920, 1080);
+    // Pitch draw (cached offscreen transfer)
+    expect(ctx.drawImage).toHaveBeenCalledWith(
+      expect.anything(),
+      0,
+      0,
+      1920,
+      1080,
+    );
     // Player arc & text
     expect(ctx.arc).toHaveBeenCalled();
     expect(ctx.fillText).toHaveBeenCalledWith(
@@ -356,6 +367,129 @@ describe('rasterizeSceneGraphToCanvas2D (Dumb Rasterizer)', () => {
       aspectRatio: '16:9',
     });
 
-    expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 1920, 1080);
+    expect(ctx.drawImage).toHaveBeenCalledWith(
+      expect.anything(),
+      0,
+      0,
+      1920,
+      1080,
+    );
+  });
+
+  it('renders player vision cone and focus in renderPlayerItem before marker body', () => {
+    const ctx = createMockCanvasContext();
+    const playerItem: ResolvedBillboardPlayerItem = {
+      kind: 'player',
+      id: 'p-focus',
+      positionPx: toStagePixelPoint(200, 300),
+      radiusPx: 18,
+      depthSortKey: 300,
+      opacity: 1,
+      visible: true,
+      selected: false,
+      rippleRingsPx: [],
+      focus: {
+        enabled: true,
+        color: '#ffffff',
+        radiusPx: 54,
+        opacity: 0.4,
+        style: 'spotlight',
+      },
+      visionCone: {
+        id: 'vc-1',
+        radiusPx: 160,
+        angleRad: 0,
+        spreadRad: 1.0,
+        color: '#38bdf8',
+        opacity: 0.3,
+        visible: true,
+      },
+      player: {
+        id: 'p-focus',
+        area: 'pitch',
+        team: 'home',
+        shirtNo: '10',
+        name: 'Player',
+        x: toScreenNormCoord(20),
+        y: toScreenNormCoord(30),
+        style: {
+          markerType: 'circle',
+          insideContent: 'number',
+          bottomLabel: 'name',
+          color: '#034694',
+          strokeColor: '#ffffff',
+          strokeWidth: 2,
+          sizeScale: 1.0,
+          numberSizeScale: 1.0,
+          labelSizeScale: 1.0,
+        },
+        connectLines: [],
+        badges: [],
+      },
+    };
+
+    renderPlayerItem(ctx, playerItem);
+
+    // Focus: arc at (200, 300) with radius 54
+    expect(ctx.arc).toHaveBeenCalledWith(200, 300, 54, 0, Math.PI * 2);
+
+    // Vision cone: moveTo(200, 300) -> arc with radius 160, angleRad - spreadRad / 2 (-0.5) to angleRad + spreadRad / 2 (0.5)
+    expect(ctx.moveTo).toHaveBeenCalledWith(200, 300);
+    expect(ctx.arc).toHaveBeenCalledWith(200, 300, 160, -0.5, 0.5);
+  });
+
+  it('caches pitch background across consecutive renderTacticalPhaseFrameToCanvas calls', () => {
+    const phase: DomainTacticalPhase = {
+      id: 'phase-cached',
+      name: 'Build up',
+      aspectRatio: '16:9',
+      boundaryBox: { x: 0, y: 0, width: 100, height: 100, enabled: false },
+      backgroundType: 'pitch',
+      slides: [
+        {
+          id: 'slide-1',
+          index: 0,
+          players: [],
+          arrows: [],
+          zones: [],
+          texts: [],
+          ball: {
+            x: toScreenNormCoord(50),
+            y: toScreenNormCoord(50),
+            visible: false,
+          },
+          transitionDurationMs: 1000,
+          pauseMs: 500,
+          easing: 'linear',
+        },
+      ],
+    };
+
+    const ctx1 = createMockCanvasContext();
+    renderTacticalPhaseFrameToCanvas({
+      ctx: ctx1,
+      phase,
+      timeMs: 0,
+      width: 800,
+      height: 600,
+    });
+
+    const ctx2 = createMockCanvasContext();
+    renderTacticalPhaseFrameToCanvas({
+      ctx: ctx2,
+      phase,
+      timeMs: 500,
+      width: 800,
+      height: 600,
+    });
+
+    // 2nd call should draw cached pitch canvas via drawImage
+    expect(ctx2.drawImage).toHaveBeenCalledWith(
+      expect.anything(),
+      0,
+      0,
+      800,
+      600,
+    );
   });
 });

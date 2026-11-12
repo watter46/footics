@@ -42,6 +42,41 @@ export function renderPlayerItem(
   ctx.save();
   ctx.globalAlpha = item.opacity;
 
+  // 0. Focus & Vision Cone
+  if (item.focus && item.focus.enabled) {
+    ctx.save();
+    ctx.globalAlpha = item.opacity * item.focus.opacity;
+    ctx.beginPath();
+    ctx.arc(px, py, item.focus.radiusPx, 0, Math.PI * 2);
+    if (item.focus.style === 'ring') {
+      ctx.strokeStyle = item.focus.color;
+      ctx.lineWidth = Math.max(2, item.radiusPx * 0.2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = item.focus.color;
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  if (item.visionCone && item.visionCone.visible) {
+    ctx.save();
+    ctx.globalAlpha = item.opacity * item.visionCone.opacity;
+    ctx.fillStyle = item.visionCone.color;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.arc(
+      px,
+      py,
+      item.visionCone.radiusPx,
+      item.visionCone.angleRad - item.visionCone.spreadRad / 2,
+      item.visionCone.angleRad + item.visionCone.spreadRad / 2,
+    );
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
   // 1. Ripple Rings
   if (item.rippleRingsPx && item.rippleRingsPx.length > 0) {
     ctx.save();

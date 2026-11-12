@@ -61,28 +61,57 @@ export function resolveSceneGraphFromState(params: {
     project.phases[0];
 
   let frame: EvaluatedTimelineFrame;
+  let prevSlide: DomainSlide | null = null;
 
   if (isPlaying && activePhase) {
     frame = evaluateTimelineFrame(activePhase, timeMs);
+    prevSlide =
+      frame.slideIndex > 0 ? activePhase.slides[frame.slideIndex - 1] : null;
   } else {
     const activeSlide =
       activePhase?.slides.find((s) => s.id === session.activeSlideId) ??
       activePhase?.slides[0] ??
       createFallbackSlide();
 
+    const slideIndex =
+      activePhase?.slides.findIndex((s) => s.id === activeSlide.id) ?? -1;
+    prevSlide =
+      activePhase && slideIndex > 0 ? activePhase.slides[slideIndex - 1] : null;
+
     frame = evaluateStaticSlideFrame(activeSlide, activeSlide.index ?? 0);
   }
 
-  return compileSceneGraph(frame, session, viewport);
+  return compileSceneGraph(frame, session, viewport, prevSlide);
 }
 
 export function useResolvedSceneGraph(
   viewport: StageViewport,
 ): ResolvedSceneGraphDTO {
   const project = useDocumentStore((s) => s.project);
-  const session = useSessionStore((s) => s);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const selectedIds = useSessionStore((s) => s.selectedIds);
+  const activeDragDelta = useSessionStore((s) => s.activeDragDelta);
+  const drawingPreview = useSessionStore((s) => s.drawingPreview);
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
   const timeMs = usePlaybackStore((s) => s.timeMs);
+
+  const session: EphemeralSessionState = useMemo(
+    () => ({
+      activePhaseId,
+      activeSlideId,
+      selectedIds,
+      activeDragDelta,
+      drawingPreview,
+    }),
+    [
+      activePhaseId,
+      activeSlideId,
+      selectedIds,
+      activeDragDelta,
+      drawingPreview,
+    ],
+  );
 
   return useMemo(
     () =>
@@ -93,6 +122,15 @@ export function useResolvedSceneGraph(
         timeMs,
         viewport,
       }),
-    [project, session, isPlaying, timeMs, viewport],
+    [
+      project,
+      session,
+      isPlaying,
+      timeMs,
+      viewport.width,
+      viewport.height,
+      viewport.offsetX,
+      viewport.offsetY,
+    ],
   );
 }
