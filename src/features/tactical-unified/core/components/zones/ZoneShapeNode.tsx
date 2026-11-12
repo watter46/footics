@@ -27,6 +27,27 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
     handleTransformEnd,
   } = useZoneShape(props);
 
+  const hasResolvedRect =
+    props.resolvedZone != null &&
+    props.resolvedZone.xPx !== undefined &&
+    props.resolvedZone.yPx !== undefined &&
+    props.resolvedZone.widthPx !== undefined &&
+    props.resolvedZone.heightPx !== undefined;
+  const effectivePxW = hasResolvedRect
+    ? (props.resolvedZone!.widthPx as number)
+    : pxW;
+  const effectivePxH = hasResolvedRect
+    ? (props.resolvedZone!.heightPx as number)
+    : pxH;
+  const effectiveCx = hasResolvedRect
+    ? (props.resolvedZone!.xPx as number) + effectivePxW / 2
+    : cx;
+  const effectiveCy = hasResolvedRect
+    ? (props.resolvedZone!.yPx as number) + effectivePxH / 2
+    : cy;
+  const effectiveRotation = props.resolvedZone?.rotationDeg ?? rotation;
+  const effectiveStrokeWidth = props.resolvedZone?.strokeWidthPx ?? strokeWidth;
+
   const handleDragStart = (e: KonvaEventObject<DragEvent>) => {
     setIsDragging(true);
     setIsHudOpen(false);
@@ -51,15 +72,17 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
       {shapeType === 'ellipse' ? (
         <Ellipse
           ref={setShapeNodeRef}
-          x={cx}
-          y={cy}
-          radiusX={pxW / 2}
-          radiusY={pxH / 2}
-          rotation={rotation}
+          x={effectiveCx}
+          y={effectiveCy}
+          radiusX={effectivePxW / 2}
+          radiusY={effectivePxH / 2}
+          rotation={effectiveRotation}
           fill={fillRGBA}
           opacity={1}
           stroke={isSelected ? '#60a5fa' : strokeColorRGBA}
-          strokeWidth={isSelected ? strokeWidth + 1 : strokeWidth}
+          strokeWidth={
+            isSelected ? effectiveStrokeWidth + 1 : effectiveStrokeWidth
+          }
           draggable={isInteractive && !zone.locked}
           onClick={onSelect}
           onTap={onSelect}
@@ -70,17 +93,19 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
       ) : (
         <Rect
           ref={setShapeNodeRef}
-          x={cx}
-          y={cy}
-          width={pxW}
-          height={pxH}
-          offsetX={pxW / 2}
-          offsetY={pxH / 2}
-          rotation={rotation}
+          x={effectiveCx}
+          y={effectiveCy}
+          width={effectivePxW}
+          height={effectivePxH}
+          offsetX={effectivePxW / 2}
+          offsetY={effectivePxH / 2}
+          rotation={effectiveRotation}
           fill={fillRGBA}
           opacity={1}
           stroke={isSelected ? '#60a5fa' : strokeColorRGBA}
-          strokeWidth={isSelected ? strokeWidth + 1 : strokeWidth}
+          strokeWidth={
+            isSelected ? effectiveStrokeWidth + 1 : effectiveStrokeWidth
+          }
           draggable={isInteractive && !zone.locked}
           onClick={onSelect}
           onTap={onSelect}

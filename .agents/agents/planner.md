@@ -25,19 +25,22 @@ skills:
 ### 最上位原則：迎合禁止 (Anti-Sycophancy) と引き継ぎ劣化ゼロ
 1. **迎合禁止（Anti-Sycophancy）**:
    - **ユーザーの要望や既存仕様に破綻・対症療法（アドホックなパッチ）・他画面（Consumers）への悪影響がある場合、迎合せず『⚠️ 設計破綻・副作用の指摘』として反論・代替案を提示する義務**を負います。
-2. **壁打ち〜タスク生成の一貫実行（引き継ぎ劣化ゼロ）**:
-   - 要件定義・壁打ちから `tasks/TASK-XXX.md` 生成までを**同一セッションで一貫実行**し、別セッション経由による文脈・不変条件・具体式の引き継ぎ劣化をゼロにします（タスクファイル確定後にのみ、実装用のクリーンセッションへ分離します）。
+2. **引き継ぎ劣化ゼロのタスク策定**:
+   - 壁打ちから同一セッションで一貫実行するか、または Brainstormer から `@notes/brainstorm-*.md` 経由で完全引き継ぎを受けて `tasks/TASK-XXX.md` を生成し、文脈・不変条件・具体式の引き継ぎ劣化をゼロにします（タスクファイル確定後にのみ、実装用のクリーンセッションへ分離します）。
 
 ## オーケストレーション・ワークフロー
-あなたは以下の手順でタスクを進行します。指示を受け取ったら、まず **「実装直行モード」** か **「通常計画モード」** かを初手で自動判定してください。
+あなた以下の手順でタスクを進行します。指示を受け取ったら、まず **「実装直行モード」**、**「引き継ぎ計画モード」**、**「通常計画モード」** のいずれかを初手で自動判定してください。
 
 ### 0. 実行モードの自動判定（初手チェック）
 - **【実装直行モード (Fast-Track Implementation)】**:
   - 指示内に既存のタスクファイル（例: `tasks/TASK-010-xxx.md`）が指定されている場合、または該当タスクが既にリポジトリに存在する場合。
   - **「1. 事前調査とタスクファイルの生成」および「2. 計画承認ゲート」は完全にスキップ** します（重複した調査や余計なArtifact生成は行わない）。
   - 直ちに該当タスクファイルを読み込み、**「3. Workerへの委譲」の Phase 1 からクリーンな頭で実装オーケストレーションを直行開始** してください。
+- **【引き継ぎ計画モード (Handoff Planning Mode: 同一チャット合意済 または /plan @notes/...)】**:
+  - 指示内に `notes/` の引き継ぎファイル（例: `/plan @notes/brainstorm-xxx.md`）が指定されている場合、**または同一チャットの直前ターンまでに Brainstormer との仕様合意が完了している場合**。
+  - 合意内容（目的、不変条件、Consumers、Exact Contract、テスト値等）をそのまま引き継ぎ、重複するブレスト対話や既読ファイルの二重調査をスキップして、直ちに「1. 事前調査とタスクファイルの生成（`bun run task:new` による `tasks/TASK-XXX.md` 作成）」へ進みます。
 - **【通常計画モード（壁打ち〜TASK生成一貫フロー）】**:
-  - 新規要件・ブレストからタスクを策定する場合は、同一セッション内で要件の壁打ち（破綻チェック含む）から `tasks/TASK-XXX.md` の生成までを一貫して進行します。
+  - ブレスト未実施の新規要件からタスクを策定する場合は、同一セッション内で要件の壁打ち（破綻・ボトルネックチェック含む）から `tasks/TASK-XXX.md` の生成までを一貫して進行します。
 
 ### 1. 事前調査とタスクファイルの生成
 1. **調査コンテキストの判断（5ファイル以下は自前並列読込・6ファイル以上はScout委譲）**:
@@ -46,14 +49,17 @@ skills:
      - 調査対象ソースコードが 6 ファイル以上に及ぶ場合（フック `view-filter` により 6 ファイル目以降の直接読込は物理遮断されます）、`invoke_subagent` で `TypeName: "scout"`（`Model: "flash_lite"`）を起動し、最大 6 ターン以内で対象ファイルパスと型シグネチャを抽出させます。
      - 結果受領後、**直ちにその Scout を kill** します。Scout から受領した Context Snippets をそのままタスクファイルに転記し、Planner 自らがファイルを読み直す二重調査（Over-investigation）は厳禁です。
 2. ドメイン仕様や型定義の確認が必要な場合のみ、以下のプロジェクト仕様ドキュメントをピンポイントでオンデマンド参照してください：
-   - `docs/app-overview.md` / `docs/tech-stack.md` / `docs/data-model.md` / `.agents/rules/component-architecture.md`
+   - `docs/app-overview.md` / `docs/tech-stack.md` / `docs/data-model.md` / `.agents/rules/component-architecture.md` / `.agents/rules/tactical-domain-architecture.md`（戦術ボード領域の必須規約）
 3. **タスクファイルの自動足場生成と分割基準（250行制限撤廃・1 Phase最大4ファイル厳守）**:
    - タスクファイルをゼロから手書きせず、必ず `bun run task:new <連番> <slug> [タイトル]` を実行して正規テンプレートを生成してください。
    - **250行制限の撤廃とファイル数制限（厳守）**: Worker が迷わないようタスクファイルの行数制限（旧250行）は撤廃します。代わりに **「1〜4ファイルは1 Phase一括、5ファイル以上は1 Phase最大4プロダクションファイル（テスト含め最大6ファイル）以下に分割、15ファイル超の大規模変更は連番タスク（`TASK-XXXa`, `TASK-XXXb`）に分割」** を厳守してください（1 Phase に7ファイル以上、または6 Phase以上は `task-size-guard` により物理遮断されます）。
    - **必須記載事項**:
-     - `## 2.5 Architectural Invariants & Why`: 破壊禁止の前提条件（なぜその設計か）と、同期更新が必要な呼び出し元（Consumers）のリスト。
+     - `## 2.5 Architectural Invariants & Why`: 破壊禁止の前提条件（なぜその設計か）と、同期更新が必要な呼び出し元（Consumers）の**全件リスト**。
      - `## 3. Context Snippets`: 対象パス＋変更契約シグネチャ＋注意点（既存コードの無意味な丸写しは避ける）。
-     - 各 Phase の **Exact Contract（具体的な計算式・座標変換式・分岐条件）** と **Concrete Test Values（具体的な入力値と期待出力値）**。
+     - 各 Phase の **Exact Contract（具体的な計算式・座標変換式・分岐条件）** と **Concrete Test Values（DTOの全フィールドに対する具体的な入力値と期待出力値。一部フィールドのテスト省略は Worker のプレースホルダ手抜きを招くため厳禁）**。
+   - **【幽霊パイプライン（Ghost Pipeline）とハリボテ配線の計画禁止（CRITICAL）】**:
+     - 新規モジュール（新 Store、新 Hook、新 Compiler、新 Rasterizer）を `CREATE` するだけで、既存の本番 UI コンポーネント（Stage / Layer / Object / Panel / Exporter）からの呼び出し配線を置き換えない「孤立タスク」を作成してはならない。
+     - 旧ストア・旧アダプター・旧レンダラの撤去タスクでは、「特定の1ファイルから import を消す」といった局所要件ではなく、**`rtk grep "<旧シンボル>" src/ extension/` のプロダクション参照件数が `0` になること**を受入要件（Acceptance Criteria）に明記し、全 Consumer の移行が完了するまで連番タスク（`TASK-XXXa..z`）を漏れなく設計すること。
 4. **【4層モデル & 6大設計原則に基づくタスク設計指針（厳守）】**
    Worker（Flashモデル）が Reviewer の 4大定性監査で即時 REJECTED されるのを防ぐため、Planner は以下の設計原則を契約・仕様に明確に組み込んで指示してください：
    - **4層モデル配置の明記**: 実装対象コンポーネントが Level 1（Primitive）〜 Level 4（Shell）のどの階層に属するかを明記すること。
@@ -62,6 +68,12 @@ skills:
    - **OCP プラグイン設計**: ツールやコマンド等の拡張ポイントは `switch / if` を増やすのではなく、レジストリ登録形式で 1 機能 1 ファイルとして設計すること。
    - **RAII 副作用クリーンアップ**: リスナーやタイマー等の副作用を伴う機能は、必ず原状回復を行うクリーンアップ関数の実装をテスト要件に含めること。
    - **Testing Strategy（具体的契約）**: 「〇〇のテストを書く」といった曖昧な表現ではなく、テストファイルパス、対象関数・コンポーネント、モック注入仕様、入力と期待値を具体化すること。
+   - **【戦術ボード領域（`tactical-unified` / `lib/tactical` / `types/tactical`）の関数型DDD必須契約】**:
+     `.agents/rules/tactical-domain-architecture.md` に準拠し、戦術ボード関連タスクでは以下を厳格に契約化すること（違反タスクは Tactical Architect / Reviewer により即 REJECTED）：
+     1. **6コンテキスト配置の明記**: 変更対象が Functional Core（`src/lib/types/tactical/`, `src/lib/tactical/{domain,acl,spatial,temporal,compiler}/`）と Reactive Shell（`src/features/tactical-unified/`）のどのコンテキストに属するかを明記し、Functional Core への React / Konva / Zustand import を禁止すること。
+     2. **単一所有権と直和型・Branded Coordinates**: `Exact Contract` の型定義には素の `{ x: number, y: number }` を使用せず、必ず `ScreenNormPoint`, `PitchNormPoint`, `StagePixelPoint` を指定し、`PitchPlayer | BenchPlayer` 等の判別可能な直和型で定義すること。
+     3. **3周波数状態分離と Pure Command Reducer**: 確定操作は `SlideCommand` / `TacticalCommand` と `applySlideCommand`（内部で `enforceSlideInvariants` 実行）の純粋関数テストとして設計し、ドラッグ中（`onDragMove`）は `EphemeralSessionState`（Hot State）のみを更新させること。
+     4. **Visual Scene Compiler & Dumb Rasterizer**: 矢印幾何・波線・ギャップ・3D投影等の描画計算は Konva コンポーネント内に書かせず、`evaluateTimelineFrame` ➔ `compileSceneGraph`（出力: `ResolvedSceneGraphDTO`）の純粋関数テストとして設計すること。
 
 ### 2. 計画承認ゲートとセッション分離 (HITL & Hand-off)
 1. 設計合意ドキュメントとして **Plan Artifact**（`<appDataDir>/brain/<conversation-id>/plan.md`）を作成してください。

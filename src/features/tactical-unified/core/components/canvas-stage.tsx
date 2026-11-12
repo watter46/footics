@@ -124,6 +124,7 @@ function CanvasStageInner({
           activePolygonId={interaction?.activePolygonId ?? null}
           mousePreviewPos={interaction?.mousePreviewPos ?? null}
           cleanRender={cleanRender}
+          sceneGraph={sceneGraph}
         />
       </Stage>
 

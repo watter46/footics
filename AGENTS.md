@@ -37,6 +37,7 @@
 
 スコープ付きルールが `.agents/rules/` に配置済み：
 - `efficient-exploration.md` — ディレクトリ走査・ファイル探索時に常時適用（トークン最適化プロトコル）
+- `tactical-domain-architecture.md` — `src/features/tactical-unified/**`, `src/lib/tactical/**`, `src/lib/types/tactical/**` アクセス時に自動適用（戦術ボード専任・関数型DDD・6コンテキスト・決定論的パイプライン規約）
 - `component-architecture.md` — `src/**`, `extension/**` アクセス時に自動適用（4層モデル・Store Provider・副作用ゼロ）
 - `coding-standards.md` — `src/**`, `extension/**`, `tests/**` アクセス時に自動適用
 - `react-nextjs.md` — `src/**`, `extension/**` アクセス時に自動適用（React 19・Compiler・`useEffect` 規律・Next.js 16 境界）
@@ -45,3 +46,13 @@
 - `agent-delegation.md` — サブエージェント委任時の完了回収・成果物契約を規定
 - `plan-artifact.md` — 設計計画立案時（`/plan`, `tasks/**`, `.agents/**`）の Artifact 構成規約（Mermaid/コード/ファイルパス排除）
 
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

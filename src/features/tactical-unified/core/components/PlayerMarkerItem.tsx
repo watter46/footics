@@ -11,6 +11,7 @@ import { PlayerMarkerLabel } from '@/features/tactical-unified/objects/player/co
 import { PlayerMarkerRing } from '@/features/tactical-unified/objects/player/components/player-marker-ring';
 import { PlayerMarkerRingFade } from '@/features/tactical-unified/objects/player/components/player-marker-ring-fade';
 import { PlayerVisionCone } from '@/features/tactical-unified/objects/player/components/player-vision-cone';
+import type { ResolvedBillboardPlayerItem } from '@/lib/tactical/compiler/scene-graph-dto';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type { AspectRatio, Player } from '@/lib/types/tactical-unified';
 
@@ -31,6 +32,7 @@ export interface PlayerMarkerItemProps {
   onDragEnd: (e: KonvaEventObject<DragEvent>, marker: Player) => void;
   onClick: (markerId: string, isShift: boolean) => void;
   onUpdateVisionCone: (patch: Record<string, unknown>) => void;
+  resolvedPlayer?: ResolvedBillboardPlayerItem | null;
 }
 
 export const PlayerMarkerItem = memo(function PlayerMarkerItem({
@@ -50,21 +52,26 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
   onDragEnd,
   onClick,
   onUpdateVisionCone,
+  resolvedPlayer,
 }: PlayerMarkerItemProps) {
   const groupRef = useRef<Konva.Group | null>(null);
-  const pxX = (marker.x / 100) * width;
-  const pxY = (marker.y / 100) * height;
+  const effectivePx = resolvedPlayer
+    ? { x: resolvedPlayer.positionPx.x, y: resolvedPlayer.positionPx.y }
+    : { x: (marker.x / 100) * width, y: (marker.y / 100) * height };
 
   useEffect(() => {
     if (groupRef.current && !cleanRender) {
-      groupRef.current.position({ x: pxX, y: pxY });
+      groupRef.current.position({ x: effectivePx.x, y: effectivePx.y });
     }
-  }, [pxX, pxY, cleanRender]);
+  }, [effectivePx.x, effectivePx.y, cleanRender]);
 
   const sizeScale = marker.style?.sizeScale ?? 1.0;
   const isVerticalAspect = aspectRatio === '4:5' || aspectRatio === '9:16';
   const verticalScale = isVerticalAspect ? 0.85 : 1.0;
-  const radius = baseDim * 0.032 * sizeScale * verticalScale;
+  const radius = resolvedPlayer
+    ? resolvedPlayer.radiusPx
+    : baseDim * 0.032 * sizeScale * verticalScale;
+  const opacity = resolvedPlayer ? resolvedPlayer.opacity : 1;
   const numScale = marker.style?.numberSizeScale ?? 1.0;
   const labelScale = marker.style?.labelSizeScale ?? 1.0;
   const displayName = marker.name ? getLastName(marker.name) : '';
@@ -91,8 +98,9 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
           else reg.playerNodes.delete(marker.id);
         }
       }}
-      x={pxX}
-      y={pxY}
+      x={effectivePx.x}
+      y={effectivePx.y}
+      opacity={opacity}
       draggable={!cleanRender && isInteractive && !marker.locked}
       // 選手マーカーは 16:9 スクリーン内（0..100）にクランプ
       dragBoundFunc={function (this: Konva.Node, pos: Konva.Vector2d) {

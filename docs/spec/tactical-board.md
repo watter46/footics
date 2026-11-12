@@ -26,37 +26,39 @@
 
 ---
 
-## 3. 4大設計原則と不変条件（Architecture Invariants）
+## 3. 関数型DDD・6コンテキストと不変条件（Architecture Invariants）
 
-「どこかを直すと別の場所が壊れる」事象を根絶するため、ツールだけでなく全オブジェクト・パネル・タイムライン・座標/カメラ処理において以下の4原則を絶対条件とします。
+「どこかを直すと別の場所が壊れる」事象を根絶するため、ツールだけでなく全オブジェクト・パネル・タイムライン・座標/カメラ処理において `.agents/rules/tactical-domain-architecture.md` の **関数型DDD（6つの境界づけられたコンテキスト）** と以下の設計原則を絶対条件とします。
 
-### 原則1：単一真実源 ＆ 派生状態の二重保存禁止（Single Source of Truth）
-- **1つのUI要素・1つの計算式・1つのデータ管理は、必ずコードベース内の1箇所にのみ存在する**構造とする。
-- 実画面から参照されない旧コンポーネント群（旧 `panels/hud/`、旧 `panels/inspector/`、旧 `panels/slides/`、旧 `formation-sub-panel.tsx`、旧 `objects/` 内の重複ファイル等）は完全に削除する。
-- **派生状態の保存禁止**: ストアに保存するデータは最小限の「正規化された生データ」のみとする。画面表示用の座標、カメラ投影後の位置、フィルタ後の選手リストなどを別 State や翻訳アダプターに二重コピーして保存することを禁止し、必ず純粋関数（Selector / Projection）でリアルタイムに算出する。
+### 原則1：単一所有権階層（Single Ownership）＆ 3周波数状態分離（Cold / Hot / Stream）
+- **単一所有権階層（Single Ownership Hierarchy）**:
+  - すべての永続化フィールドは `TacticalProject` ➔ `TacticalPhase` ➔ `Slide` のただ1つの階層にのみ属する（`Slide` に `aspectRatio` や `boundaryBox` の重複オプショナルフィールドを持たせず、`project.slides` のような仮想 getter も廃止する）。
+  - Web版とExtension版で同一の `Slide` スキーマを共有し、旧 `CanvasStore`（`annotations.markers`）および双方向変換アダプター（`tactical-canvas-store-adapter.ts`）は完全に撤去する。
+- **3周波数状態分離（Three-Frequency State Separation）**:
+  1. **Cold State (`DocumentState: TacticalProject`)**: 確定操作（`onDragEnd` 等）でのみ `dispatch(command)` 経由で更新し、Undo/Redo 履歴および Dexie 自動保存の唯一の対象とする。
+  2. **Hot State (`EphemeralSessionState`)**: 60fps ドラッグ移動中（`onDragMove`）の差分・ラバーバンド選択枠・ポリゴン未確定頂点・ホバー状態のみを保持し、Undo 履歴や DB 保存の対象外とする。
+  3. **Stream State (`PlaybackClock`)**: GSAP 駆動の再生時刻 `currentTimeMs` のみを管理し、再生中に `DocumentState` を書き換えない。
 
-### 原則2：全要素の自己完結パッケージ化 ＋「頭脳（振る舞い）」と「見た目（Renderer）」の分離 ＋ 複合操作の単一トランザクション化
-- **頭脳と見た目の完全分離**:
-  - ツールに限らず、すべてのキャンバスオブジェクト（選手マーカー、ボール、矢印、ゾーン、テキスト、コネクタ）、右パネル（Formation / Squad）、タイムラインをそれぞれ独立したモジュールとして構成する。
-  - 各モジュールは **「頭脳（状態更新・ドラッグ移動・選択・検証を担うロジック/Hook）」** と **「見た目（Konva描画・React UIのRenderer）」** を明確に分離し、UIコンポーネント内に直接の座標計算式や複雑な状態書き換えを書かない。
-  - **選手マーカーの共通化**: 位置・ドラッグ移動・選択・オブジェクトオプション制御の「頭脳」と「マーカー下部の選手名ラベル表示」は1箇所で共通管理し、Web版の「2D丸マーカー」とExtension版の「3D足元リング」は見た目（Renderer）とホスト固有項目（背番号入力の有無、削除ボタンの有無）のみを差し替える。
-- **複合操作の単一トランザクション化（Atomic Commands）**:
-  - 「メンバー維持リセット」「アスペクト比切替」「フォーメーション適用」「Home/Away/Both一括変更」「ベンチ移動」などの複数データを同時に動かす操作は、ボタンの `onClick` 等に個別記述せず、ストア内の**1つの純粋コマンド関数**に集約する。どのUIから呼び出しても100%同じ処理を通ることで同期漏れバグを防ぐ。
-- **ホスト別カタログ方式**:
-  - Web版とExtension版のツールバー構成やオプションの違いは、コード内の `if` 分岐ではなく、起動時に注入するカタログ設定で宣言的に切り替える。
+### 原則2：Functional Core（純粋 Command Reducer + Visual Scene Compiler）と Dumb Rasterizer（Konva / Canvas2D）の分離
+- **頭脳（Functional Core）と見た目（Dumb Rasterizer）の完全分離**:
+  - 状態遷移・不変条件検証・空間投影・時間補間・視覚シーンコンパイルはすべて React や Konva に依存しない `src/lib/tactical/{domain,acl,spatial,temporal,compiler}/` の純粋関数に集約する。
+  - Konva コンポーネントおよび Canvas2D エクスポーターは `evaluateTimelineFrame` ➔ `compileSceneGraph` が生成した単一の描画用 DTO（`ResolvedSceneGraphDTO`）を画面に投影するだけの **Dumb Rasterizer** に徹し、コンポーネント内にベジェ曲線・波線・ギャップ・3D投影の計算式や `node.x()` 等の命令的ミューテーションを書かない。
+  - **選手マーカーの共通化**: `PitchPlayer | BenchPlayer` の判別可能な直和型で管理し、Web版の「2D丸マーカー（`circle`）」とExtension版の「3D足元リング（`ring` / `ring-fade`）」は `style.markerType` とホスト別カタログ設定のみで切り替える。
+- **複合操作の単一 Command 化（Pure Command Reducer & Single Invariant Gate）**:
+  - 「メンバー維持リセット」「アスペクト比切替」「フォーメーション適用」「Home/Away/Both一括変更」「ベンチ移動」などの操作は、判別可能な `SlideCommand` / `TacticalCommand` として発行し、`applySlideCommand` の出口で必ず単一の不変条件ノーマライザ **`enforceSlideInvariants(slide)`**（座標クランプ、ロック保護、ベンチ移動時のカスケード削除、孤立参照除去）を通す。
 
-### 原則3：4層単一座標系アーキテクチャ ＆ 3Dカメラ投影・境界線クロップとレイヤー構造
+### 原則3：Branded Coordinates（ブランド型座標系）＆ 3Dカメラ投影・境界線クロップとレイヤー構造
 作図の正確性と操作性を極限まで高めるため、メインキャンバスは「作業用ズーム・パンが可能な完全平面2Dビューポート（傾き0°）」として維持し、3Dカメラ操作（チルト・ヨー回転・パン・ズーム・6大プリセット）は独立した「3Dレイアウトプレビュー（Layout Mode）」およびエクスポートパイプラインに集約する。
 
-1. **4層単一座標系アーキテクチャ（4-Layer Single Coordinate Architecture）**:
-   - **第1層: スクリーン外枠（`16:9` 固定・`X: 0〜100, Y: 0〜100` 単一座標系）**:
-     全画面（Board編集・Layoutプレビュー・エクスポート）で外枠を `16:9`（1920×1080）に固定。ストアに保存される全オブジェクト座標はこの `16:9` 空間基準の単一正規化座標 `(0.0〜100.0)` として保持される。選手・ボールはスクリーン `[0, 100]` にクランプ（ピッチ白線外の余白配置可）され、矢印・ゾーン・テキストは `allowOverflow: true` によりスクリーン外（`< 0` や `> 100`）にも配置可能。
-   - **第2層: 中央配置サブピッチ（`pitch-geometry.ts`）と3D投影（`canvas-screen-coordinates.ts`）**:
-     `16:9` スクリーン中央に選択アスペクト比（`16:9`: 横向き、`4:5`, `9:16`, `1:1`: 縦向き）のピッチを内接配置（`calculatePitchRect`, `getScreenOuterPitchRect`, `getScreenPitchBounds`）。3Dカメラ時は `canvas-screen-coordinates.ts`（`DEFAULT_PITCH_PERSPECTIVE = 1200`, `applyPitchPerspectiveTransform` 等）によりピッチ・描画物を3D投影する。
+1. **Branded Coordinates による単一座標パイプライン**:
+   - **第1層: スクリーン正規化空間（`16:9` 固定・`ScreenNormCoord: 0〜100`）**:
+     全画面（Board編集・Layoutプレビュー・エクスポート）で外枠を `16:9`（1920×1080）に固定。ストアに保存される全オブジェクト座標はこの `ScreenNormCoord (0.0〜100.0)` として保持される。選手・ボールは `[0, 100]` にクランプされ、矢印・ゾーン・テキストは範囲外配置も許容。
+   - **第2層: 中央配置サブピッチ（`PitchNormCoord`）と空間投影エンジン（`StagePixel`）**:
+     `16:9` スクリーン中央に選択アスペクト比（`16:9`: 横向き、`4:5`, `9:16`, `1:1`: 縦向き）のピッチを内接配置し、空間投影エンジン（`src/lib/tactical/spatial/`）および視覚シーンコンパイラ（`compileSceneGraph`）で `StagePixelPoint` へ一括変換する。素の `{ x: number, y: number }` を異なる座標空間の間で直接受け渡すことを禁止する。
    - **第3層: フェーズ単位の境界線クロップ（`TacticalPhase.boundaryBox`）**:
-     `aspectRatio` と独立して `TacticalPhase` 単位で保持される。レイアウト画面およびエクスポート画面では、第1層＋第2層を `16:9` で正規描画した後に `core/utils/geometry.ts` の `resolveBoundaryBoxPixelRect` に基づいて `boundaryBox` 領域をクロップ出力する。
-   - **第4層: フォーメーション配置と比率変換（`formations.ts` / `transformCoord`）**:
-     Full（フルコート）/ Half（ハーフコート）展開モードに応じた座標配置（`getFormationActualPos`）および、比率変更時のオブジェクト座標変換（`transformCoord(point, fromAspect, toAspect, { clamp })`）を実施する。
+     `aspectRatio` と独立して `TacticalPhase` 単位で単一所有される。レイアウト画面およびエクスポート画面では、`compileSceneGraph` が解決した `cropRect: StagePixelRect` に基づいて `boundaryBox` 領域をクロップ出力する。
+   - **第4層: フォーメーション配置と比率変換（`PitchNormPoint` ⇄ `ScreenNormPoint`）**:
+     Full（フルコート）/ Half（ハーフコート）展開モードに応じた座標配置および、比率変更時のオブジェクト座標変換を実施する。
 
 2. **カメラ・純粋描画に対応するレイヤー構造（Konva Layers & Overlays）**:
    - **Layer 1: `PitchGroundLayer`（地面・平面投影レイヤー）**:

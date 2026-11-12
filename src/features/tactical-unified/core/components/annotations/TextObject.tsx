@@ -5,6 +5,7 @@ import React from 'react';
 import { Text as KonvaText } from 'react-konva';
 import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
+import type { ResolvedBillboardTextItem } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { TextAnnotation } from '@/lib/types/tactical-unified';
 import { normX, normY, pxToNormX, pxToNormY } from './math-utils';
 
@@ -20,6 +21,7 @@ export interface TextObjectProps {
   onDblClick: (e: KonvaClickEvent) => void;
   updateText: (textId: string, patch: Partial<TextAnnotation>) => void;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
+  resolvedText?: ResolvedBillboardTextItem | null;
 }
 
 export const TextObject = React.memo(function TextObject({
@@ -32,6 +34,7 @@ export const TextObject = React.memo(function TextObject({
   onDblClick,
   updateText,
   nodesRegistryRef,
+  resolvedText,
 }: TextObjectProps) {
   const { width, height } = stageSize;
   const setIsDragging = useCanvasStore((s) => s.setIsDragging);
@@ -52,13 +55,14 @@ export const TextObject = React.memo(function TextObject({
           }
         }
       }}
-      x={normX(text.x, width)}
-      y={normY(text.y, height)}
+      x={resolvedText ? resolvedText.positionPx.x : normX(text.x, width)}
+      y={resolvedText ? resolvedText.positionPx.y : normY(text.y, height)}
       text={text.content}
-      fontSize={text.fontSize}
+      fontSize={resolvedText ? resolvedText.fontSizePx : text.fontSize}
       fontFamily="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
       fill={isSelected ? '#60a5fa' : text.color}
       fontStyle={fontStyle}
+      opacity={resolvedText ? resolvedText.opacity : 1}
       visible={!isEditing}
       onClick={onSelect}
       onTap={onSelect}

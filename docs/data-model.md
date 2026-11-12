@@ -220,200 +220,250 @@ type PlayerPhoto = {
 
 ---
 
-## 4. 戦術ボード系エンティティ
+## 4. 戦術ボード系エンティティ（関数型DDD・単一所有権・直和型・Branded座標）
 
-型定義ファイル: モジュール分割構成 [`src/lib/types/tactical/`](file:///home/watter46/src/footics/src/lib/types/tactical/)（`primitives.ts`, `project.ts`, `slide.ts`, `player.ts`, `annotations.ts`, `ball.ts`, `formations.ts`, `capture.ts`, `factory.ts`, `migration.ts`）およびバレル [`src/lib/types/tactical-unified.ts`](file:///home/watter46/src/footics/src/lib/types/tactical-unified.ts)（Contract-First Zod スキーマ）
+型定義ファイル: モジュール分割構成 [`src/lib/types/tactical/`](file:///home/watter46/src/footics/src/lib/types/tactical/) およびバレル [`src/lib/types/tactical-unified.ts`](file:///home/watter46/src/footics/src/lib/types/tactical-unified.ts)（Contract-First Zod スキーマ、詳細は [`.agents/rules/tactical-domain-architecture.md`](file:///home/watter46/src/footics/.agents/rules/tactical-domain-architecture.md) 参照）
 
-### 4-1. TacticalProject（プロジェクト全体）
+### 4-0. Branded Coordinates（ブランド型座標プリミティブ）
+
+異なる座標空間の混同をコンパイル時に遮断するため、素の `{ x: number, y: number }` ではなく以下の Branded Types を使用する：
 
 ```typescript
-// Zod スキーマから導出 (Phase 構造化 v2.0.0, TASK-154〜161)
-type TacticalProject = {
-  id: string;
-  version: '2.0.0';
-  title?: string;
-  createdAt: string;      // ISO 8601
-  updatedAt: string;
-  aspectRatio: AspectRatio;                   // デフォルト '16:9' ('16:9' | '9:16' | '4:5' | '1:1')
-  backgroundType: 'pitch' | 'image' | 'blank';
-  backgroundImageUrl?: string;
-  pitchAppearance?: PitchAppearanceConfig;    // ピッチ外観（solid / marble、ライン設定）
-  homeColor: { primary: string; secondary?: string };
-  awayColor: { primary: string; secondary?: string };
-  phases: TacticalPhase[];                    // フェーズフォルダ配列（最低1個）
-  activePhaseId: string;                      // 現在アクティブなフェーズID
-  activeSlideId: string;                      // 現在アクティブなシーンID
-  matchId?: string;                           // 関連試合ID（任意）
-  matchFormations?: {                         // 試合連携フォーメーション
-    home: FormationType;
-    away: FormationType;
-  };
-  tags: string[];
-  thumbnail?: string;
-  screenshotSourceUrl?: string;
-  boundaryBox?: BoundaryBox;                  // デフォルト DEFAULT_BOUNDARY_BOX_16_9 (visible: false)
-  readonly slides: Slide[];                   // activePhaseId のスライドを指す仮想非列挙 getter
+export type Brand<T, B extends string> = T & { readonly __brand: B };
+
+export type ScreenNormCoord = Brand<number, 'ScreenNormCoord'>; // 16:9スクリーン基準 (0..100, overflow時任意実数)
+export type PitchNormCoord = Brand<number, 'PitchNormCoord'>;   // ピッチ白線内相対 (0..100)
+export type StagePixel = Brand<number, 'StagePixel'>;           // キャンバス描画ピクセル
+
+export interface ScreenNormPoint {
+  readonly x: ScreenNormCoord;
+  readonly y: ScreenNormCoord;
 }
 
-type TacticalPhase = {
-  id: string;
-  name: string;                               // フェーズ名 (1〜200文字)
-  aspectRatio: AspectRatio;                   // フェーズ単位のアスペクト比（デフォルト '16:9'）
-  boundaryBox: BoundaryBox;                   // フェーズ単位の境界線枠（デフォルト DEFAULT_BOUNDARY_BOX_16_9, visible: false）
-  slides: Slide[];                            // スライド配列（最低1枚）
+export interface PitchNormPoint {
+  readonly x: PitchNormCoord;
+  readonly y: PitchNormCoord;
+}
+
+export interface StagePixelPoint {
+  readonly x: StagePixel;
+  readonly y: StagePixel;
+}
+```
+
+### 4-1. TacticalProject & TacticalPhase（単一所有権階層）
+
+すべてのプロパティは **`TacticalProject` ➔ `TacticalPhase` ➔ `Slide`** のただ1つの階層にのみ属し、親子間での重複オプショナルフィールドや仮想 getter（旧 `project.slides`）を持たない。
+
+```typescript
+export interface TacticalProject {
+  readonly id: string;
+  readonly version: '2.0.0';
+  readonly title?: string;
+  readonly createdAt: string; // ISO 8601
+  readonly updatedAt: string;
+  readonly homeColor: { readonly primary: string; readonly secondary?: string };
+  readonly awayColor: { readonly primary: string; readonly secondary?: string };
+  readonly pitchAppearance: PitchAppearanceConfig; // プロジェクト単位で単一所有
+  readonly backgroundType: 'pitch' | 'image' | 'blank';
+  readonly backgroundImageUrl?: string;
+  readonly matchId?: string;
+  readonly matchFormations?: {
+    readonly home: FormationType;
+    readonly away: FormationType;
+  };
+  readonly tags: readonly string[];
+  readonly thumbnail?: string;
+  readonly screenshotSourceUrl?: string;
+  readonly phases: readonly TacticalPhase[];       // 最低1個
+  readonly activePhaseId: string;
+  readonly activeSlideId: string;
+}
+
+export interface TacticalPhase {
+  readonly id: string;
+  readonly name: string;                           // フェーズ名 (1〜200文字)
+  readonly aspectRatio: AspectRatio;               // フェーズ単位で単一所有 ('16:9' | '9:16' | '4:5' | '1:1')
+  readonly boundaryBox: BoundaryBox;               // フェーズ単位で単一所有 (DEFAULT_BOUNDARY_BOX_16_9)
+  readonly slides: readonly Slide[];               // 最低1枚
 }
 ```
 
 ### 4-2. Slide（スライド＝シーン）
 
-1プロジェクトは複数のフェーズ（`TacticalPhase`）とスライドで構成される。スライド間の遷移でアニメーション動画を生成する。
+`Slide` は自身の配置オブジェクト・トランジション時間・3Dカメラ姿勢・陣地反転状態のみを所有し、親階層（`aspectRatio`, `boundaryBox`, `pitchAppearance`, `backgroundType`）の重複フィールドを持たない。
 
 ```typescript
-type Slide = {
-  id: string;
-  index: number;
-  label?: string;
-  players: Player[];              // 戦術ボード上の選手オブジェクト
-  arrows: ArrowAnnotation[];      // 矢印・ライン
-  zones: ZoneAnnotation[];        // ゾーン
-  texts: TextAnnotation[];        // テキスト
-  ball: BallState;                // ボール
-  transitionDurationMs: number;   // 遷移アニメーション時間 (100–30000ms, デフォルト1000ms)
-  pauseMs: number;                // 停止時間 (0–10000ms, デフォルト500ms)
-  easing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
-  cameraTransitionMode?: 'sync' | 'slow' | 'continuous' | 'cut'; // カメラ遷移モード
-  cameraDurationMs?: number;      // カメラドリフト時間 (500–60000ms, デフォルト10000ms)
-  pitchTransform?: PitchTransform; // 3Dカメラ位置 (tilt 0〜70, yaw 0〜360, zoom, panX, panY)
-  pitchPosition?: { x: number; y: number };
-  pitchAppearance?: PitchAppearanceConfig;
-  backgroundImageUrl?: string;
-  backgroundType?: 'pitch' | 'image' | 'blank';
-  boundaryBox?: BoundaryBox;
-  aspectRatio?: AspectRatio;
-  isSidesSwapped?: boolean;       // 陣地反転状態（Swap Sides 適用時に true）
+export interface Slide {
+  readonly id: string;
+  readonly index: number;
+  readonly label?: string;
+  readonly players: readonly Player[];             // 判別可能な直和型 (PitchPlayer | BenchPlayer)
+  readonly arrows: readonly ArrowAnnotation[];
+  readonly zones: readonly ZoneAnnotation[];       // 判別可能な直和型 (RectZone | EllipseZone | PolygonZone)
+  readonly texts: readonly TextAnnotation[];
+  readonly ball: BallState;
+  readonly transitionDurationMs: number;           // 100–30000ms (デフォルト 1000ms)
+  readonly pauseMs: number;                        // 0–10000ms (デフォルト 500ms)
+  readonly easing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+  readonly cameraTransitionMode: 'sync' | 'slow' | 'continuous' | 'cut';
+  readonly cameraDurationMs: number;               // 500–60000ms (デフォルト 10000ms)
+  readonly pitchTransform: PitchTransform;         // 3Dカメラ姿勢 (tilt 0〜70, yaw 0〜360, zoom, panX, panY)
+  readonly isSidesSwapped: boolean;                // 陣地反転状態
 }
 
-type PitchTransform = {
-  panX: number;
-  panY: number;
-  zoom: number;                   // 0.5〜2.5
-  tilt: number;                   // 0〜70度
-  yaw?: number;                   // 0〜360度
-  isLocked: boolean;
+export interface PitchTransform {
+  readonly panX: number;
+  readonly panY: number;
+  readonly zoom: number;                           // 0.5〜2.5
+  readonly tilt: number;                           // 0〜70度
+  readonly yaw: number;                            // 0〜360度
+  readonly isLocked: boolean;
 }
 
-type PitchAppearanceConfig = {
-  pitchBackgroundType: 'solid' | 'marble';
-  overlayColor: string;           // デフォルト '#0B303E'
-  overlayOpacity: number;         // 0〜1.0
-  lineColor: string;              // デフォルト '#ffffff' (ピッチSVG初期値はサイアン '#38bdf8')
-  lineWidth: number;              // 1〜6 (デフォルト 2.5)
-  lineOpacity: number;            // 0〜1.0 (デフォルト 1.0)
+export interface PitchAppearanceConfig {
+  readonly pitchBackgroundType: 'solid' | 'marble';
+  readonly overlayColor: string;                   // デフォルト '#0B303E'
+  readonly overlayOpacity: number;                 // 0〜1.0
+  readonly lineColor: string;                      // デフォルト '#38bdf8'
+  readonly lineWidth: number;                      // 1〜6 (デフォルト 2.5)
+  readonly lineOpacity: number;                    // 0〜1.0 (デフォルト 1.0)
 }
 ```
 
-### 4-3. キャンバスオブジェクト
+### 4-3. キャンバスオブジェクト（Discriminated Unions）
 
-**座標系**: すべて `16:9` 固定スクリーン基準の正規化単一座標 `(0.0 ～ 100.0)`。選手・ボールは `[0, 100]` にクランプされ（白線外余白は配置可）、矢印・ゾーン・テキストは `allowOverflow: true` により範囲外配置も許容。アスペクト比変換は `getScreenPitchBounds` に基づく `transformCoord(point, fromAspect, toAspect, { clamp })` で実施。
+**座標系**: すべて第1層 `16:9` 固定スクリーン基準の正規化座標 `ScreenNormCoord (0.0 ～ 100.0)`。選手・ボールは `[0, 100]` にクランプされ（白線外余白は配置可）、矢印・ゾーン・テキストは範囲外配置も許容。UI作図途中の一時フラグ（`isComplete` 等）は永続ドメインモデルに混入させず `EphemeralSessionState` に分離する。
 
-#### Player（戦術ボード上の選手）
-
-```typescript
-type Player = {           // type TacticalPlayer = Player
-  id: string;
-  playerId?: string;
-  name?: string;
-  shirtNo?: string;
-  team: 'home' | 'away' | 'neutral';
-  area: 'pitch' | 'bench';
-  x: number;              // 正規化座標
-  y: number;
-  style: MarkerStyle;
-  // ネストオブジェクト（オプション）
-  visionCone?: VisionCone;          // 視野コーン (color: #38bdf8, opacity: 0.3, radius: 13)
-  connectLines: ConnectLine[];      // 選手間関係線
-  badges: PlayerBadge[];            // バッジラベル
-  focus?: PlayerFocus;              // スポットライト強調
-  trajectory?: PlayerTrajectory;    // 移動軌道
-  locked?: boolean;
-}
-
-type MarkerStyle = {
-  markerType?: 'circle' | 'ring' | 'ring-fade'; // 2D丸 / 3D足元リング / 3Dフェードリング
-  insideContent: 'number' | 'photo' | 'none';
-  bottomLabel: 'name' | 'number' | 'none';
-  color: string;
-  strokeColor: string;
-  strokeWidth: number;
-  sizeScale: number;
-  numberSizeScale: number;
-  labelSizeScale: number;
-  glowBlur?: number;               // 0〜100 (リングマーカー用)
-  glowOpacity?: number;            // 0〜1.0 (リングマーカー用)
-}
-```
-
-#### ArrowAnnotation（矢印）
+#### Player（ピッチ選手とベンチ選手の判別可能な直和型）
 
 ```typescript
-type ArrowAnnotation = {
-  id: string;
-  annotationType: 'arrow';
-  arrowType: 'pass' | 'move' | 'dribble' | 'defend' | 'run' | 'line' | 'route_line' | 'generic';
-  curveType: 'straight' | 'curved' | 'arc';
-  points: { x: number; y: number }[];  // 最低2点
-  controlPoint?: { x: number; y: number };
-  color: string;                        // #RRGGBB
-  strokeWidth: number;                  // 1–10
-  arrowHead: boolean;
-  endMarker?: 'none' | 'arrow' | 'dot';
-  startMarker?: 'none' | 'arrow' | 'dot';
-  label?: string;
+interface BasePlayer {
+  readonly id: string;
+  readonly playerId?: string;
+  readonly name?: string;
+  readonly shirtNo?: string;
+  readonly role?: string;
+  readonly team: 'home' | 'away' | 'neutral';
+  readonly x: ScreenNormCoord;
+  readonly y: ScreenNormCoord;
+  readonly style: MarkerStyle;
+  readonly locked: boolean;
+}
+
+export interface PitchPlayer extends BasePlayer {
+  readonly area: 'pitch';
+  readonly visionCone?: VisionCone;
+  readonly connectLines: readonly ConnectLine[];
+  readonly badges: readonly PlayerBadge[];
+  readonly focus?: PlayerFocus;
+  readonly trajectory?: PlayerTrajectory;
+}
+
+export interface BenchPlayer extends BasePlayer {
+  readonly area: 'bench';
+  // ベンチ選手はピッチ専用装飾（visionCone, connectLines, focus, trajectory）を型レベルで持てない
+}
+
+export type Player = PitchPlayer | BenchPlayer;
+
+export interface MarkerStyle {
+  readonly markerType: 'circle' | 'ring' | 'ring-fade'; // 2D丸 / 3D足元リング / 3Dフェードリング
+  readonly insideContent: 'number' | 'photo' | 'none';
+  readonly bottomLabel: 'name' | 'number' | 'none';
+  readonly color: string;
+  readonly strokeColor: string;
+  readonly strokeWidth: number;
+  readonly sizeScale: number;
+  readonly numberSizeScale: number;
+  readonly labelSizeScale: number;
+  readonly glowBlur?: number;                           // 0〜100 (リングマーカー用)
+  readonly glowOpacity?: number;                        // 0〜1.0 (リングマーカー用)
 }
 ```
 
-#### ZoneAnnotation（ゾーン）
+#### ArrowAnnotation（矢印・ルートルート線）
 
 ```typescript
-type ZoneAnnotation = {
-  id: string;
-  annotationType: 'zone';
-  zoneType: 'highlight' | 'space' | 'danger' | 'pressing' | 'buildup' | 'generic';
-  shapeType?: 'rect' | 'ellipse' | 'polygon';
-  x?: number; y?: number; width?: number; height?: number;
-  rotation?: number;
-  points: { x: number; y: number }[];
-  color: string;
-  opacity: number;                      // 0–1
-  strokeColor?: string;
-  strokeOpacity?: number;               // 0–1.0
-  strokeWidth: number;                  // 0–8
+export interface ArrowAnnotation {
+  readonly id: string;
+  readonly annotationType: 'arrow';
+  readonly arrowType: 'pass' | 'move' | 'dribble' | 'defend' | 'run' | 'line' | 'route_line' | 'generic';
+  readonly curveType: 'straight' | 'curved' | 'arc';
+  readonly points: readonly ScreenNormPoint[];          // 最低2点
+  readonly controlPoint?: ScreenNormPoint;
+  readonly color: string;                               // #RRGGBB
+  readonly strokeWidth: number;                         // 1–10
+  readonly startMarker: 'none' | 'arrow' | 'dot';
+  readonly endMarker: 'none' | 'arrow' | 'dot';         // 旧 arrowHead: boolean の二重定義は廃止し一本化
+  readonly label?: string;
+  readonly locked?: boolean;
 }
 ```
 
-#### TextAnnotation（テキスト）
+#### ZoneAnnotation（形状別の判別可能な直和型）
 
 ```typescript
-type TextAnnotation = {
-  id: string;
-  annotationType: 'text';
-  x: number; y: number;
-  content: string;    // 最大200文字
-  fontSize: number;   // 8–72
-  color: string;
-  bold: boolean;
-  italic: boolean;
+interface BaseZone {
+  readonly id: string;
+  readonly annotationType: 'zone';
+  readonly zoneType: 'highlight' | 'space' | 'danger' | 'pressing' | 'buildup' | 'generic';
+  readonly color: string;
+  readonly opacity: number;                             // 0–1
+  readonly strokeColor?: string;
+  readonly strokeOpacity: number;                       // 0–1.0
+  readonly strokeWidth: number;                         // 0–8
+  readonly locked: boolean;
 }
+
+export interface RectZone extends BaseZone {
+  readonly shapeType: 'rect';
+  readonly x: ScreenNormCoord;
+  readonly y: ScreenNormCoord;
+  readonly width: ScreenNormCoord;
+  readonly height: ScreenNormCoord;
+  readonly rotation: number;
+}
+
+export interface EllipseZone extends BaseZone {
+  readonly shapeType: 'ellipse';
+  readonly x: ScreenNormCoord;
+  readonly y: ScreenNormCoord;
+  readonly width: ScreenNormCoord;
+  readonly height: ScreenNormCoord;
+  readonly rotation: number;
+}
+
+export interface PolygonZone extends BaseZone {
+  readonly shapeType: 'polygon';
+  readonly points: readonly ScreenNormPoint[];          // 確定した3頂点以上（作図中プレビューは EphemeralSessionState）
+}
+
+export type ZoneAnnotation = RectZone | EllipseZone | PolygonZone;
 ```
 
-#### BallState（ボール）
+#### TextAnnotation（テキスト） & BallState（ボール）
 
 ```typescript
-type BallState = {
-  x: number; y: number;
-  visible: boolean;
-  trajectory?: PlayerTrajectory;
-  locked?: boolean;
+export interface TextAnnotation {
+  readonly id: string;
+  readonly annotationType: 'text';
+  readonly x: ScreenNormCoord;
+  readonly y: ScreenNormCoord;
+  readonly content: string;                             // 最大200文字
+  readonly fontSize: number;                            // 8–72
+  readonly color: string;
+  readonly bold: boolean;
+  readonly italic: boolean;
+  readonly locked?: boolean;
+}
+
+export interface BallState {
+  readonly x: ScreenNormCoord;
+  readonly y: ScreenNormCoord;
+  readonly visible: boolean;
+  readonly trajectory?: PlayerTrajectory;
+  readonly locked: boolean;
 }
 ```
 

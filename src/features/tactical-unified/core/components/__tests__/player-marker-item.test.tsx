@@ -7,7 +7,9 @@ import {
   type PlayerPhotoMap,
   PlayerPhotoProvider,
 } from '@/features/tactical-unified/core/hooks/player-photo-context';
+import type { ResolvedBillboardPlayerItem } from '@/lib/tactical/compiler/scene-graph-dto';
 import { getPlayerPhotoKey } from '@/lib/tactical/player-photo-key';
+import type { StagePixel } from '@/lib/types/tactical/branded';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { PlayerMarkerItem } from '../PlayerMarkerItem';
 
@@ -110,7 +112,7 @@ describe('PlayerMarkerItem vertical scale', () => {
       style: {
         ...createDefaultPlayer('home', 50, 50, '#ff0000').style,
         markerType: 'ring' as const,
-        bottomLabel: 'none' as const,
+        bottomLabel: 'name' as const,
       },
     };
     const width = 800;
@@ -381,5 +383,62 @@ describe('PlayerMarkerItem vertical scale', () => {
 
     const konvaImages = stageRef.current?.find('Image') as Konva.Image[];
     expect(konvaImages.length).toBe(0);
+  });
+
+  it('resolvedPlayer が渡された場合、ルート Group の x, y, opacity および内部 Circle の半径に計算済み値が適用される', () => {
+    const stageRef = createRef<Konva.Stage>();
+    const marker = createDefaultPlayer('home', 50, 50, '#ff0000');
+    const width = 800;
+    const height = 450;
+    const baseDim = 450;
+
+    const resolvedPlayer: ResolvedBillboardPlayerItem = {
+      kind: 'player',
+      id: marker.id,
+      positionPx: { x: 333 as StagePixel, y: 222 as StagePixel },
+      radiusPx: 28,
+      depthSortKey: 222,
+      opacity: 0.75,
+      visible: true,
+      selected: false,
+      player: marker as unknown as ResolvedBillboardPlayerItem['player'],
+      rippleRingsPx: [],
+      visionCone: null,
+      focus: null,
+    };
+
+    render(
+      <Stage ref={stageRef} width={width} height={height}>
+        <Layer>
+          <PlayerMarkerItem
+            marker={marker}
+            width={width}
+            height={height}
+            baseDim={baseDim}
+            markerMode="2d-only"
+            aspectRatio="16:9"
+            isSelected={false}
+            isInteractive={true}
+            connectingPlayerId={null}
+            onDragStart={vi.fn()}
+            onDragMove={vi.fn()}
+            onDragEnd={vi.fn()}
+            onClick={vi.fn()}
+            onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={resolvedPlayer}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    const group = stageRef.current?.findOne('Group') as Konva.Group | null;
+    expect(group).not.toBeNull();
+    expect(group?.x()).toBe(333);
+    expect(group?.y()).toBe(222);
+    expect(group?.opacity()).toBe(0.75);
+
+    const circle = stageRef.current?.findOne('Circle') as Konva.Circle | null;
+    expect(circle).not.toBeNull();
+    expect(circle?.radius()).toBe(28);
   });
 });

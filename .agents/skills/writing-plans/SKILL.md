@@ -42,11 +42,12 @@ Footics の「極限のトークン最適化」「4層分離パイプライン�
    - **1〜4ファイルの変更**: 細切れ Phase に分けず、**1つの Phase（1 Worker）で一括完遂**させます。
    - **5ファイル以上の変更**: **1 Phase あたり最大4プロダクションファイル（テスト含め最大6ファイル）以下**に分割します（1 Phase に7ファイル以上詰め込むとフック `task-size-guard` により遮断されます）。ファイル被りのない複数 Phase は並列 Worker 起動できるようスコープを分離します。
    - **15ファイル超の大規模変更**: 1タスクの Phase 上限（最大 5 Phase）を超えないよう、**連番タスク（`TASK-XXXa`, `TASK-XXXb`）に分割**します。
-2. **Architectural Invariants & Consumers 同期確認リストの必須化**:
-   - `## 2.5 Architectural Invariants & Why (破壊禁止の前提と設計理由)` を必ず記述し、ちゃぶ台返し防止の前提条件（なぜその構造になっているか）と、影響を受ける別画面・呼び出し元（Consumers）の同期確認リストを明記します。
-3. **Exact Contract（具体式・分岐条件）と Concrete Test Values（具体テスト値）の必須化**:
+2. **Architectural Invariants & Consumers 同期確認リストの必須化（幽霊パイプライン禁止）**:
+   - `## 2.5 Architectural Invariants & Why (破壊禁止の前提と設計理由)` を必ず記述し、ちゃぶ台返し防止の前提条件（なぜその構造になっているか）と、影響を受ける別画面・呼び出し元（Consumers）の**全件同期確認リスト**を明記します。
+   - **新モジュール孤立作成（Ghost Pipeline）の禁止**: 新 Store / Hook / Compiler / Rasterizer を作成する際、本番コンポーネント（Stage / Layer / Panel / Exporter）への配線と旧コードの参照ゼロ化（`rtk grep "<旧シンボル>" src/ extension/` が 0 件）までを連番タスクに含めること。
+3. **Exact Contract（具体式・分岐条件）と Concrete Test Values（全フィールド具体テスト値）の必須化**:
    - 各 Phase の契約には抽象的な言葉ではなく、**具体的な計算式・座標変換式・状態遷移・分岐条件（Exact Contract）**を明記します。
-   - Testing Strategy には「〇〇をテストする」ではなく、**具体的な入力値と期待出力値（Concrete Test Values: 例 `input={x:10} ➔ expected={x:20}`）**を必須化します。
+   - Testing Strategy には「〇〇をテストする」ではなく、**DTO の全フィールドに対する具体的な入力値と期待出力値（Concrete Test Values: 例 `input={x:10} ➔ expected={x:20}`）**を必須化します（一部フィールドのテストを省略すると Worker が空配列プレースホルダを返すため厳禁）。
    - 既存コードの長大な丸写しコピペは避け、`## 3. Context Snippets` には「対象ファイルパス＋変更契約シグネチャ（Import Specs / Interfaces）＋実装上の注意点（Gotcha）」を過不足なく記載します。
 4. **Phase の本質定義**:
    - 開発工程（「型定義だけ」「テストだけ」）の分割ではなく、**「機能・サブシステムごとの完結した段階」** として分割します。
@@ -59,6 +60,11 @@ Footics の「極限のトークン最適化」「4層分離パイプライン�
    - **OCP プラグイン設計**: 拡張ポイントはレジストリ登録形式とする。
    - **RAII 副作用クリーンアップ**: リスナーやタイマー等の副作用は `cleanup()` 関数を必須とする。
    - **Testing Strategy**: 具体的なテストファイルパスと具体的な入力値・期待出力値（Concrete Test Values）を明記。
+   - **戦術ボード領域（`tactical-unified` / `lib/tactical`）の関数型DDD契約（`.agents/rules/tactical-domain-architecture.md` 準拠）**:
+     - **6コンテキスト境界と OOP 禁止**: クラス設計を禁止し、Functional Core（`src/lib/tactical/**`）は React/Konva/Zustand 非依存の純粋関数として契約化する。
+     - **Branded Coordinates & Discriminated Unions**: `Exact Contract` の座標型には素の `{ x: number, y: number }` ではなく `ScreenNormPoint`, `PitchNormPoint`, `StagePixelPoint` を明記し、`PitchPlayer | BenchPlayer` 等の直和型を使用する。
+     - **3周波数状態分離 & Pure Command Reducer**: ドラッグ移動中（`onDragMove`）は `EphemeralSessionState` 更新、確定時（`onDragEnd`）は `applySlideCommand` + `enforceSlideInvariants` 経由の更新とし、それぞれの Concrete Test Values を記述する。
+     - **Dumb Rasterizer & `compileSceneGraph`**: 描画幾何計算は Konva コンポーネント内ではなく `compileSceneGraph`（`ResolvedSceneGraphDTO`）の純粋関数テストとして定義する。
 
 ## TASK-*.md 正式テンプレート
 

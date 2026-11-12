@@ -23,7 +23,7 @@ globs:
 | :--- | :--- | :--- | :--- |
 | **1. 永続化層 (SoT)** | **Dexie.js v4 (IndexedDB)** | 試合データ、イベント、選手マスタ、戦術プロジェクト、スクリーンショット等の永続データ | UI コンポーネント（`.tsx`）から `db.<tableName>.*` を直接呼び出すこと |
 | **2. 非同期サーバー/DBキャッシュ層** | **TanStack Query v5 (`useQuery` / `useMutation`)** | IndexedDB や Route Handler から取得する非同期データのキャッシュ、ローディング状態、更新後の再検証（Invalidation） | `queryKey` に配列リテラルを直書きすること、コンポーネント内で直接 `invalidateQueries` を乱発すること |
-| **3. インメモリ UI / 高頻度操作層** | **Zustand v5 (`createStore` / `create`)** | モーダル開閉、選択中タブ、および **60fps で更新される戦術ボードのキャンバス状態・ドラッグ中座標** | 通常のマスタ・一覧データ（選手一覧・試合一覧等）を Zustand に手動コピーして保持すること |
+| **3. インメモリ UI / 高頻度操作層** | **Zustand v5 (`createStore` / `create`)** | モーダル開閉、選択中タブ、および戦術ボードの **3周波数分離状態（Cold: `DocumentState` / Hot: `EphemeralSessionState` / Stream: `PlaybackClock`）** | 通常のマスタ・一覧データを Zustand に手動コピーすること、および 60fps ドラッグ中に Cold State（`DocumentState`）を直接更新すること |
 
 ---
 
@@ -95,15 +95,20 @@ export function useSavePlayer(season: string, team: string) {
 
 ---
 
-## 3. 高頻度更新に対するハイブリッド同期モデル (Tactical Board)
+## 3. 3周波数状態分離に基づくハイブリッド同期モデル (Tactical Board)
 
-戦術ボードの選手移動・描画操作など、**60fps で発生する高頻度の状態更新** に限り、以下のハイブリッド同期モデルを適用します。
+戦術ボード（`src/features/tactical-unified/**`）では、60fps のドラッグ操作による Undo 履歴汚染・自動保存デバウンス暴発・全パネル再描画を防ぐため、`.agents/rules/tactical-domain-architecture.md` に基づく **3周波数状態分離モデル** を厳守します。
 
-1. **Zustand でのインメモリ管理**: ドラッグ中の座標やキャンバス上のオブジェクト編集は Zustand で管理し、UI を即時更新します。
-2. **初期値確定注入による Flicker ゼロ保証**:
-   - Level 3（Feature View）で IndexedDB からプロジェクトデータをロードし、初期状態を確定させてからキャンバスを描画します。
-   - マウント後に非同期 `useEffect` で空キャンバスを後から上書きして初期チラつき（Flicker）を起こす実装を禁止します。
-3. **デバウンス永続化**: 状態変更を購読（または自動保存フック `use-tactical-auto-save.ts` を使用）し、デバウンスをかけて `tactical-projects-db.ts` 経由で IndexedDB に書き戻します。
+1. **Cold State (`DocumentState: TacticalProject`) — 確定操作のみ更新・永続化対象**:
+   - `onDragEnd` やボタン押下などの確定操作時にのみ、`dispatch(command)` ➔ `applyTacticalCommand`（内部で `enforceSlideInvariants` 実行）を経由して更新します。
+   - **Undo / Redo 履歴スタックおよび Dexie（`tactical-projects-db.ts`）へのデバウンス自動保存は、この `DocumentState` のみを監視対象**とします。
+2. **Hot State (`EphemeralSessionState`) — 60fps ドラッグ・作図プレビュー専用（非永続）**:
+   - `onDragMove`（60fps〜120Hz）のドラッグ差分、ラバーバンド選択枠、ポリゴン作図中の未確定頂点、ホバー対象、選択IDを保持します。
+   - **Undo 履歴および Dexie 自動保存の対象外**とし、ドラッグ中の JSON シリアライズ負荷と不要な DB 書き込みを完全にゼロにします。
+3. **Stream State (`PlaybackClock`) — アニメーション再生時刻（非永続）**:
+   - GSAP Timeline が駆動する再生時刻 `currentTimeMs` のみを管理し、再生中に `DocumentState` を書き換えてはなりません。
+4. **初期値確定注入による Flicker ゼロ保証**:
+   - Level 3（Feature View）で IndexedDB からプロジェクトデータをロードし、`TacticalStoreProvider` に初期状態を確定注入してからキャンバスを描画します（マウント後の非同期 `useEffect` による空キャンバス上書きは禁止）。
 
 ---
 

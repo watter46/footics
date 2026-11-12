@@ -20,10 +20,11 @@ globs:
 
 ---
 
-## 2. Immutability (不変性の徹底)
+## 2. Immutability (不変性の徹底) & 関数型ドメインモデリング
 
 - **破壊的変更の禁止**: オブジェクトや配列を変更する際は、既存データや関数引数（Parameter）への再代入・直接書き換えを行わず、新しいコピーを返してください（Biome `noParameterAssign: "error"`）。
 - **Zustand / React**: Zustand の State 更新や React の Props 伝播において直接代入（ミューテーション）は厳禁です。
+- **戦術ボード領域における OOP（クラス設計）禁止と関数型DDD**: `src/lib/tactical/**`、`src/lib/types/tactical/**`、`src/features/tactical-unified/**` では、状態とメソッドをカプセル化した `class` の使用を禁止します。すべてのドメインデータはシリアライズ可能な不変データ（Zod から導出した判別可能な直和型 Discriminated Unions + Branded Types）として定義し、すべての振る舞いは純粋関数として分離してください（詳細は `.agents/rules/tactical-domain-architecture.md` 参照）。
 
 ---
 
@@ -176,11 +177,11 @@ try {
 
 ```ts
 // ❌ 禁止: 2階層以上の相対遡り・全面再エクスポート
-import { DEFAULT_BOUNDARY_BOX } from '../../core/store/canvas-store-pitch';
+import { DEFAULT_BOUNDARY_BOX_16_9 } from '../../lib/types/tactical/primitives';
 export * from '@/features/tactical-unified/stores/tactical-unified-store';
 
 // ✅ 推奨: エイリアスによる直接 import・明示的な名前付き import
-import { DEFAULT_BOUNDARY_BOX } from '@/features/tactical-unified/core/store/canvas-store-pitch';
+import { DEFAULT_BOUNDARY_BOX_16_9 } from '@/lib/types/tactical/primitives';
 ```
 
 ---
@@ -203,8 +204,10 @@ import { DEFAULT_BOUNDARY_BOX } from '@/features/tactical-unified/core/store/can
 
 ## 9. Konva.js 利用時の制約
 
-戦術ボードやアノテーションキャンバスで Konva を使用する場合:
+戦術ボードやアノテーションキャンバスで Konva を使用する場合（詳細は `.agents/rules/tactical-domain-architecture.md` 参照）:
 - Fabric.js / 生の Canvas 2D API のコンポーネント内直接使用は禁止です（オフスクリーン動画エクスポート用レンダラーを除く）。
 - **ゼロマージン描画**: 画像背景モードでは周囲余白 0% を徹底し、BoundaryBox との隙間（黒枠）を排除してください。
-- **4層単一座標系（16:9 スクリーン 0〜100）**: 全画面の第1層スクリーン外枠は 16:9 固定とし、永続化データは常に 16:9 スクリーン全体の単一論理座標（0〜100）で管理します（選手・ボールは [0, 100] クランプ、矢印・ゾーン・テキストは範囲外配置可）。ピッチ枠計算は src/lib/tactical/pitch-geometry.ts（calculatePitchRect / getScreenOuterPitchRect / getScreenPitchBounds）、3D・スクリーン投影は src/features/tactical-unified/core/utils/canvas-screen-coordinates.ts（worldToScreen / screenToWorld）、幾何判定・境界線変換は src/features/tactical-unified/core/utils/geometry.ts（resolveBoundaryBoxPixelRect / pointerToNormalizedCoord / isPointInPolygon / distToSegment）に一本化してください。
+- **Branded Coordinates & Dumb Rasterizer パイプライン**:
+  - 永続化データは第1層 16:9 スクリーン正規化座標（`ScreenNormCoord: 0〜100`）で管理し、ピッチ内相対座標（`PitchNormCoord`）およびキャンバス描画ピクセル（`StagePixel`）とは Branded Types で厳格に区別します。
+  - Konva コンポーネント内で直接ベジェ曲線・波線・選手半径ギャップ・3D投影を計算したり、Konva ノード属性を命令的に直接書き換えることを禁止します。必ず `evaluateTimelineFrame` ➔ `compileSceneGraph` が生成した `ResolvedSceneGraphDTO` をそのまま描画投影してください。
 - パフォーマンス最適化のため、レイヤー分離、静的要素への `listening={false}`、`perfectDrawEnabled={false}` を徹底してください。

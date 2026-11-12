@@ -5,6 +5,7 @@ import React from 'react';
 import { Group, Line } from 'react-konva';
 import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
+import type { ResolvedZonePrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
 import { useZonePolygon } from './use-zone-polygon';
 import { ZonePolygonHandles } from './ZonePolygonHandles';
@@ -20,12 +21,20 @@ export interface ZoneNodeProps {
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   isCreatingThis?: boolean;
   mousePreviewPos?: { x: number; y: number } | null;
+  resolvedZone?: ResolvedZonePrimitive | null;
 }
 
 export const ZonePolygonNode = React.memo(function ZonePolygonNode(
   props: ZoneNodeProps,
 ) {
-  const { zone, isSelected, onSelect, isInteractive = true } = props;
+  const {
+    zone,
+    isSelected,
+    onSelect,
+    isInteractive = true,
+    resolvedZone,
+    isCreatingThis,
+  } = props;
   const { fillRGBA, strokeColorRGBA, strokeWidth } = getZoneStyle(zone);
   const setIsDragging = useCanvasStore((s) => s.setIsDragging);
   const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
@@ -37,6 +46,14 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
     handleGroupDragEnd: rawHandleGroupDragEnd,
     setLineRef,
   } = useZonePolygon(props);
+
+  const effectivePoints =
+    !isCreatingThis &&
+    resolvedZone?.flatPointsPx &&
+    resolvedZone.flatPointsPx.length >= 4
+      ? [...resolvedZone.flatPointsPx]
+      : renderPts;
+  const effectiveStrokeWidth = resolvedZone?.strokeWidthPx ?? strokeWidth;
 
   const handleGroupDragEnd = (e: KonvaEventObject<DragEvent>) => {
     rawHandleGroupDragEnd(e);
@@ -60,12 +77,14 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
     >
       <Line
         ref={setLineRef}
-        points={renderPts}
+        points={effectivePoints}
         closed={isComplete}
         fill={isComplete ? fillRGBA : undefined}
         opacity={1}
         stroke={isSelected ? '#60a5fa' : strokeColorRGBA}
-        strokeWidth={isSelected ? strokeWidth + 1 : strokeWidth}
+        strokeWidth={
+          isSelected ? effectiveStrokeWidth + 1 : effectiveStrokeWidth
+        }
         lineCap="round"
         lineJoin="round"
         hitStrokeWidth={20}

@@ -37,13 +37,15 @@ Plannerから `SCOUT_REQUEST` のメッセージを受け取ったら、以下�
 ### 2. Context Snippets の整形
 抽出した情報を、Worker（Flashモデル）が「外部ファイルを 1 回も読まずにそのままコピペして実装できる」レベルに整形します。
 
-**含めるべき 4 大要素:**
+**含めるべき 5 大要素:**
 1. **Target Line Map (必須)**:
    - 調査対象ファイルの正確なパスと該当行番号（`path:line`）。
    - 現在実装されている問題箇所・処理ロジックの要約（3〜5行）。
-2. **Import Specs**: どのモジュールからどの型・関数を import すべきか。
-3. **Interface & Types**: 関連する正確な型定義。
-4. **Reference Pattern (最新設計の優先抜粋)**:
+2. **Consumer Call Graph & Legacy Dependency Count (移行・改修時は必須)**:
+   - 変更・撤去対象のストア、フック、関数を実際に `import` している **全プロダクションファイルのリストと件数**（`rtk grep` で全件抽出）。一部だけ抜粋して残りの Consumer を隠蔽してはならない。
+3. **Import Specs**: どのモジュールからどの型・関数を import すべきか。
+4. **Interface & Types**: 関連する正確な型定義。
+5. **Reference Pattern (最新設計の優先抜粋)**:
    - 類似機能の既存テストや呼び出しコードの最小限の抜粋（3〜10行程度）。
    - **最新設計原則の厳守**: 4層モデル（Level 1〜4）、Store Provider（Context Hook経由取得）、プラグインレジストリパターンに準拠したコードを優先抽出すること。
 

@@ -1,7 +1,13 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Group, Rect as KonvaRect, Layer } from 'react-konva';
+import { Ellipse, Group, Rect as KonvaRect, Layer, Line } from 'react-konva';
+import type {
+  ResolvedArrowPrimitive,
+  ResolvedDrawingPreview,
+  ResolvedSceneGraphDTO,
+  ResolvedZonePrimitive,
+} from '@/lib/tactical/compiler/scene-graph-dto';
 import type { SelectionBox } from '../hooks/use-canvas-selection-box';
 import { useCanvasStore } from '../hooks/use-canvas-store';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
@@ -9,6 +15,17 @@ import { calculatePitchTransform } from '../utils/canvas-pitch-transform-helper'
 import type { CameraState } from '../utils/matrix-coordinates';
 import { renderDrawingPreviewNode } from './DrawingPreviewLayer';
 import { PlayerConnectingGuide } from './PlayerConnectingGuide';
+
+export type DrawingPreviewDTO =
+  | ResolvedArrowPrimitive
+  | ResolvedZonePrimitive
+  | ResolvedDrawingPreview;
+
+export type PreviewSceneGraph =
+  | (Omit<ResolvedSceneGraphDTO, 'drawingPreview'> & {
+      readonly drawingPreview?: DrawingPreviewDTO | null;
+    })
+  | ResolvedSceneGraphDTO;
 
 export interface InteractionPreviewLayerProps {
   stageSize: { width: number; height: number };
@@ -18,12 +35,123 @@ export interface InteractionPreviewLayerProps {
   activePolygonId?: string | null;
   mousePreviewPos?: { x: number; y: number } | null;
   cleanRender?: boolean;
+  sceneGraph?: PreviewSceneGraph | null;
+}
+
+function isZonePrimitive(
+  preview: DrawingPreviewDTO,
+): preview is ResolvedZonePrimitive {
+  return 'shapeType' in preview;
+}
+
+function isArrowPrimitive(
+  preview: DrawingPreviewDTO,
+): preview is ResolvedArrowPrimitive {
+  return (
+    'flatPointsPx' in preview &&
+    !('shapeType' in preview) &&
+    'strokeWidthPx' in preview
+  );
+}
+
+function renderSceneGraphDrawingPreview(preview: DrawingPreviewDTO): ReactNode {
+  if (isZonePrimitive(preview)) {
+    if (preview.shapeType === 'ellipse') {
+      const widthPx = preview.widthPx ?? 0;
+      const heightPx = preview.heightPx ?? 0;
+      return (
+        <Ellipse
+          x={(preview.xPx ?? 0) + widthPx / 2}
+          y={(preview.yPx ?? 0) + heightPx / 2}
+          radiusX={widthPx / 2}
+          radiusY={heightPx / 2}
+          fill={preview.color}
+          opacity={preview.opacity}
+          stroke={preview.strokeColor}
+          strokeWidth={preview.strokeWidthPx}
+          listening={false}
+        />
+      );
+    }
+    if (preview.shapeType === 'rect') {
+      return (
+        <KonvaRect
+          x={preview.xPx ?? 0}
+          y={preview.yPx ?? 0}
+          width={preview.widthPx ?? 0}
+          height={preview.heightPx ?? 0}
+          fill={preview.color}
+          opacity={preview.opacity}
+          stroke={preview.strokeColor}
+          strokeWidth={preview.strokeWidthPx}
+          listening={false}
+        />
+      );
+    }
+    if (preview.shapeType === 'polygon') {
+      return (
+        <Line
+          points={[...(preview.flatPointsPx ?? [])]}
+          stroke={preview.strokeColor}
+          strokeWidth={preview.strokeWidthPx}
+          closed={false}
+          listening={false}
+        />
+      );
+    }
+  }
+
+  if (isArrowPrimitive(preview)) {
+    return (
+      <Line
+        points={[...preview.flatPointsPx]}
+        stroke={preview.color}
+        strokeWidth={preview.strokeWidthPx}
+        dash={
+          preview.dashArrayPx.length > 0 ? [...preview.dashArrayPx] : undefined
+        }
+        opacity={preview.opacity}
+        lineCap="round"
+        lineJoin="round"
+        listening={false}
+      />
+    );
+  }
+
+  if ('flatPolygonPointsPx' in preview && preview.flatPolygonPointsPx) {
+    return (
+      <Line
+        points={[...preview.flatPolygonPointsPx]}
+        stroke="#ffffff"
+        strokeWidth={2}
+        listening={false}
+      />
+    );
+  }
+  if ('startPointPx' in preview && 'currentPointPx' in preview) {
+    return (
+      <Line
+        points={[
+          preview.startPointPx.x,
+          preview.startPointPx.y,
+          preview.currentPointPx.x,
+          preview.currentPointPx.y,
+        ]}
+        stroke="#ffffff"
+        strokeWidth={2}
+        listening={false}
+      />
+    );
+  }
+
+  return null;
 }
 
 export function InteractionPreviewLayer({
   pitchRect,
   selectionBox,
   cleanRender,
+  sceneGraph,
 }: InteractionPreviewLayerProps): ReactNode {
   const drawingPreview = useCanvasStore((s) => s.drawingPreview);
   const color = useCanvasStore((s) => s.color);
@@ -89,7 +217,15 @@ export function InteractionPreviewLayer({
           />
         )}
 
-        {renderDrawingPreviewNode(drawingPreview, pw, ph, color, strokeWidth)}
+        {sceneGraph?.drawingPreview != null
+          ? renderSceneGraphDrawingPreview(sceneGraph.drawingPreview)
+          : renderDrawingPreviewNode(
+              drawingPreview,
+              pw,
+              ph,
+              color,
+              strokeWidth,
+            )}
       </Group>
     </Layer>
   );

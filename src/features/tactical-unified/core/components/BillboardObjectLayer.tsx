@@ -163,8 +163,10 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   const handleSelectText = useCallback(
     (e: KonvaClickEvent, id: string) => {
       e.cancelBubble = true;
-      const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
-      selectObject({ id, kind: 'text' }, isShift);
+      selectObject(
+        { id, kind: 'text' },
+        (e.evt as MouseEvent)?.shiftKey ?? false,
+      );
       setIsHudOpen(true);
     },
     [selectObject, setIsHudOpen],
@@ -240,6 +242,7 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
             updateText={(id, patch) =>
               updateText(id, patch as Partial<TextAnnotation>)
             }
+            sceneGraph={sceneGraph}
           />
         ))}
       </Group>

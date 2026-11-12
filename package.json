@@ -7,8 +7,7 @@
     "extension"
   ],
   "scripts": {
-    "dev": "bun scripts/dev/start-dev.ts",
-    "dev:next": "next dev --turbo",
+    "dev": "next dev --turbo",
     "dev:https": "bun x next dev --experimental-https",
     "build": "next build --webpack",
     "deploy": "opennextjs-cloudflare build && wrangler deploy",

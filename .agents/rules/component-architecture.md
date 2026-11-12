@@ -18,8 +18,11 @@ globs:
 | :--- | :--- | :--- | :--- |
 | **Level 4** | **Application Shell** | 画面全体のエントリーポイント、URLパラメータ解決、ルーティング、タブ/ウィンドウ制御。**純粋マウンターに徹し、低レベルなパイプライン処理のインライン記述を禁止する。ホスト（Web / Extension）固有のコードをここに限定する。** | `src/app/tactical/page.tsx`, `extension/entrypoints/overlay.content.tsx`, `extension/entrypoints/background.ts` |
 | **Level 3** | **Feature View** | データソース（IndexedDB / Query）のロードと永続化ライフサイクル管理。**`StoreProvider` による初期値（Props）確定注入** を行い、複数の Level 2 を組み立てる。 | `FullTacticalCanvas.tsx`, `QuickAnnotationCanvas.tsx`, `memo-overlay-bridge.tsx` |
-| **Level 2** | **Domain UI Block** | 単一の関心事を持つ自律的な UI パーツ。**ホスト非依存（Web / Extension 完全共用）**。ビジネスロジックはカスタムフックに逃がし、UIファイルは描画に集中。状態は Context Hook 経由で取得。 | `CanvasStageContainer.tsx`, `CoreDrawingToolbar.tsx`, `PitchGroundLayer.tsx`, `BillboardObjectLayer.tsx`, `MemoOverlayView.tsx` |
-| **Level 1** | **Pure Primitive / Headless** | ドメイン知識を持たない汎用部品、純粋幾何計算、汎用フック。完全純粋でテスト容易性が 100%。 | `calculateContainVideoCrop`, `worldToScreen`, `button.tsx`, `select.tsx` |
+| **Level 2** | **Domain UI Block** | 単一の関心事を持つ自律的な UI パーツ。**ホスト非依存（Web / Extension 完全共用）**。UIファイルは描画投影とイベント発火に集中し、状態は Context Hook 経由で取得。 | `CanvasStageContainer.tsx`, `CoreDrawingToolbar.tsx`, `PitchGroundLayer.tsx`, `BillboardObjectLayer.tsx`, `MemoOverlayView.tsx` |
+| **Level 1** | **Pure Primitive / Headless** | ドメイン知識を持たない汎用部品、純粋幾何計算、汎用フック。完全純粋でテスト容易性が 100%。 | `calculateContainVideoCrop`, `button.tsx`, `select.tsx` |
+
+> **[!IMPORTANT] 戦術ボード領域（`tactical-unified` / `lib/tactical`）における 6コンテキスト特則**:
+> 戦術ボードでは、カスタムフック（React 依存）内にドメインロジックや幾何計算を分散させることを禁止し、`.agents/rules/tactical-domain-architecture.md` に定める **6つの境界づけられたコンテキスト**（React/Konva 非依存の純粋関数コア `src/lib/tactical/{domain,acl,spatial,temporal,compiler}/` ＋ Level 1〜4 の薄い Reactive Shell & Dumb View）を厳格に適用します。
 
 ---
 
@@ -64,18 +67,18 @@ globs:
 ```tsx
 // ❌ 禁止: ストア丸ごと購読・描画パスでの getState()
 export function SlideToolbar() {
-  const store = useCanvasStore((s) => s);
-  const currentSlide = useTacticalUnifiedStore.getState().slides[0];
-  return <div>{store.activeTool}</div>;
+  const store = useTacticalStoreContext((s) => s);
+  const currentProject = useTacticalStoreContext.getState().document;
+  return <div>{store.ephemeral.activeTool}</div>;
 }
 
 // ✅ 推奨: プリミティブセレクターまたは useShallow
 import { useShallow } from 'zustand/react/shallow';
 
 export function SlideToolbar() {
-  const { activeTool, setActiveTool } = useCanvasStore(
+  const { activeTool, setActiveTool } = useTacticalStoreContext(
     useShallow((s) => ({
-      activeTool: s.activeTool,
+      activeTool: s.ephemeral.activeTool,
       setActiveTool: s.setActiveTool,
     })),
   );
@@ -86,11 +89,10 @@ export function SlideToolbar() {
 ### 3.2 Store Provider 対象ドメインと移行ステータス一覧
 Web と Extension で共用する機能、または複数インスタンス・初期値確定注入（Flicker ゼロ保証）が必要なドメインでは、Vanilla Store Factory（`createStore`）+ React Context による **Store Provider パターン** を使用します。
 
-| ドメイン | 現在のステータス | ルール・機械検証（`ai:check`） |
+| ドメイン | アーキテクチャ契約 | ルール・機械検証（`ai:check`） |
 | :--- | :--- | :--- |
 | **`memo-overlay` (Web)** | **移行完了** (`MemoOverlayStoreProvider` + `useMemoOverlayStoreContext`) | ドメイン内部からのシングルトン直接参照は全面禁止。 |
-| **`tactical-unified/core` (Level 2 共用キャンバス)** | **移行完了** (`CanvasStoreProvider` + `useCanvasStore`) | `core/` 配下から `useTacticalUnifiedStore` の import は **`ai:check` で即時エラー遮断**。 |
-| **`tactical-unified` (Web パネル・フック群)** | **段階移行中（凍結例外）** (`useTacticalUnifiedStore` 57ファイル + `tactical-canvas-store-adapter.ts`) | 既存の 57 ファイルはベースライン（許可リスト）として凍結。**新規ファイルでの `useTacticalUnifiedStore` 直接参照・アダプター拡張は `ai:check` でエラー遮断**。 |
+| **`tactical-unified` (Web / Extension 共用)** | **単一 `TacticalStoreProvider` + 3周波数状態分離**（Cold: `DocumentState` / Hot: `EphemeralSessionState` / Stream: `PlaybackClock`）。旧 `CanvasStore` および双方向変換アダプター（`tactical-canvas-store-adapter.ts`）は廃止対象。 | 新規・改修ファイルでの `useTacticalUnifiedStore` シングルトン直参照および `tactical-canvas-store-adapter.ts` の拡張は全面禁止（`ai:check` で遮断）。 |
 
 ---
 
@@ -126,14 +128,14 @@ export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;
 
 ## 5. 不具合を生まない状態・振る舞い分離原則
 
-1. **頭脳（ロジック）と見た目（Renderer）の分離**:
-   各オブジェクト（選手・ボール・矢印・ゾーン・テキスト）は、座標計算・状態更新を担う Hook / 純粋関数と、描画のみを担う Konva / React コンポーネントに分離してください。
-2. **派生状態の二重保存禁止（Derived State via Pure Selectors）**:
-   生データから計算できる値（ピクセル座標、カメラ投影座標、フィルタ結果）を別 State として二重保存せず、`tactical-unified-selectors.ts` 等の純粋セレクターで算出してください。
-3. **複合操作の単一トランザクション化（Atomic Command Functions）**:
-   「リセット」「アスペクト比切替」「フォーメーション適用」など複数データを同時更新する操作は、UI の `onClick` にインライン記述せず、ストアまたはヘルパーの単一コマンド関数に集約してください。
-4. **16:9 スクリーン単一座標系（0〜100）と投影座標（Screen Space）の分離**:
-   永続化データは常に第1層 16:9 スクリーン全体の単一座標（0〜100）で管理し、サブピッチ矩形計算（src/lib/tactical/pitch-geometry.ts）、3D・スクリーン投影（src/features/tactical-unified/core/utils/canvas-screen-coordinates.ts）、境界線・幾何変換（src/features/tactical-unified/core/utils/geometry.ts）を経由してください。
+1. **頭脳（Functional Core）と見た目（Dumb Rasterizer / View）の完全分離**:
+   戦術ボードの各オブジェクト（選手・ボール・矢印・ゾーン・テキスト）の状態遷移・不変条件検証・幾何計算は、React や Konva に依存しない純粋関数（`applySlideCommand`, `enforceSlideInvariants`, `evaluateTimelineFrame`, `compileSceneGraph`）に100%集約し、Konva / React コンポーネントは `ResolvedSceneGraphDTO` を画面に投影するだけの Dumb Rasterizer とします（詳細は `.agents/rules/tactical-domain-architecture.md` 参照）。
+2. **派生状態の二重保存禁止（Derived State via Pure Pipeline）**:
+   生データから計算できる値（ピクセル座標、カメラ投影座標、矢印の制御点や先端短縮座標、フィルタ結果）を別 State や変換アダプターとして二重保存せず、`compileSceneGraph` または純粋セレクターで導出してください。
+3. **複合操作の単一 Command 化（Pure Command Reducer）**:
+   「リセット」「アスペクト比切替」「フォーメーション適用」「ベンチ移動」など複数データを同時更新する操作は、UI の `onClick` や Zustand の `set()` 内にインライン記述せず、判別可能な `SlideCommand` / `TacticalCommand` として発行し、単一の純粋 Reducer（`applySlideCommand` + `enforceSlideInvariants`）で原子的に処理してください。
+4. **Branded Coordinates（ブランド型座標系）による空間分離**:
+   永続化データは常に第1層 16:9 スクリーン正規化座標（`ScreenNormCoord: 0〜100`）で管理し、ピッチ内相対座標（`PitchNormCoord`）およびキャンバス描画ピクセル（`StagePixel`）とは Branded Types で型レベルに区別してください。素の `{ x: number, y: number }` を異なる座標空間の間で直接受け渡すことを禁止します。
 
 ---
 

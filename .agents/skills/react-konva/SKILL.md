@@ -41,11 +41,18 @@ Konvaはデフォルトでバッファキャンバスを使用して、透明度
 />
 ```
 
-## 3. ドラッグ操作と状態管理
+## 3. ドラッグ操作・3頻度状態分離・Dumb Rasterizer 原則
 
-ドラッグ操作による頻繁な状態更新を避けるため、React の State や Zustand の更新は必要最小限に留めてください。
-Footics では `useNodePositionTransition` フック等を用いたり、ゴースト（Onionskin）専用のレイヤーを用いて、ドラッグ中の重い再描画を回避する工夫がされています。
-最終的な位置の保存は `onDragEnd` でのみ行います。
+戦術ボードの描画（Konva）と動画・プレビュー出力（Canvas2D）で1ピクセルの描画ズレも起こさず、かつ 60〜120Hz の操作レスポンスを維持するため、以下の **Dumb Rasterizer & 3頻度状態分離原則** を厳守してください（詳細は `.agents/rules/tactical-domain-architecture.md` 参照）。
+
+1. **Konva コンポーネント内での幾何学計算・ドメイン計算の全面禁止**:
+   - Konva コンポーネント（`ArrowObject`, `PlayerMarkerItem`, `ZoneObject` 等）の内部や専用フックで、ベジェ曲線・波線の頂点分割、選手半径分のオフセット計算、伸長エフェクトのポリライントリミング、波紋リング計算、3D遠近投影を個別に計算してはなりません。
+   - すべての幾何学・エフェクト解決は、React/Konva 非依存の純粋関数 **`compileSceneGraph(frame, session, viewport): ResolvedSceneGraphDTO`** で一括計算し、Konva コンポーネントはその DTO の計算済みピクセル座標列（`flatPointsPx` 等）をそのまま `<Line points={dto.flatPointsPx} />` 等に投影するだけの **Dumb Rasterizer（純粋出力装置）** として実装してください。
+2. **命令的 Konva ノード直接書き換えの禁止**:
+   - アニメーション再生時に React や Scene Compiler を迂回して `node.x()`, `node.points()` 等を命令的に直接ミューテートするハック（旧 `animation-node-updater` パターン）は禁止です。再生時も静止時も必ず `evaluateTimelineFrame` ➔ `compileSceneGraph` の単一導出パイプラインを通してください。
+3. **高頻度ドラッグ（Hot Session State）と確定コミット（Cold Document Command）の分離**:
+   - `onDragMove` / `onPointerMove`（60〜120Hz）のたびに永続ドメイン状態（`DocumentState`）を更新・クローンしたり Undo History を記録してはなりません。
+   - ドラッグ移動中は軽量な一時状態 **`EphemeralSessionState`（`activeDragDelta` / `drawingPreview`）** のみを更新し、`onDragEnd` / `onPointerUp` の確定瞬間にのみ **1回だけ `dispatch(command: TacticalCommand)`** を発行して `DocumentState` にコミットしてください。
 
 ## 4. カメラ・チルト・パン・ズームを見据えた 5層レイヤー分離 (Layer Separation)
 

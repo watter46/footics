@@ -4,6 +4,12 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { BallObject } from '@/features/tactical-unified/objects/ball/components/ball-object';
 import type {
+  ResolvedBillboardBallItem,
+  ResolvedBillboardPlayerItem,
+  ResolvedBillboardTextItem,
+  ResolvedSceneGraphDTO,
+} from '@/lib/tactical/compiler/scene-graph-dto';
+import type {
   AspectRatio,
   Player,
   TextAnnotation,
@@ -40,6 +46,7 @@ export interface BillboardItemNodeProps {
     textId: string,
   ) => void;
   updateText: (id: string, patch: Partial<TextAnnotation>) => void;
+  sceneGraph?: ResolvedSceneGraphDTO | null;
 }
 
 export function BillboardItemNode({
@@ -62,9 +69,15 @@ export function BillboardItemNode({
   onUpdateVisionCone,
   onSelectText,
   updateText,
+  sceneGraph,
 }: BillboardItemNodeProps) {
   if (item.kind === 'player') {
     const marker = item.data;
+    const resolvedPlayer =
+      sceneGraph?.billboardItems.find(
+        (b): b is ResolvedBillboardPlayerItem =>
+          b.kind === 'player' && b.id === marker.id,
+      ) ?? null;
     return (
       <PlayerMarkerItem
         key={marker.id}
@@ -84,15 +97,35 @@ export function BillboardItemNode({
         onDragEnd={onDragEnd}
         onClick={onClickMarker}
         onUpdateVisionCone={(patch) => onUpdateVisionCone(marker, patch)}
+        resolvedPlayer={resolvedPlayer}
       />
     );
   }
 
   if (item.kind === 'ball') {
+    const ball = item.data;
+    const resolvedBall = sceneGraph?.billboardItems.find(
+      (b): b is ResolvedBillboardBallItem => b.kind === 'ball',
+    );
+    const effectiveBall = (() => {
+      if (!resolvedBall || pitchRect.width <= 0 || pitchRect.height <= 0) {
+        return ball;
+      }
+      const defaultBaseRadius = Math.max(8, baseDim * 0.022);
+      const calculatedSizeScale =
+        defaultBaseRadius > 0 ? resolvedBall.radiusPx / defaultBaseRadius : 1.0;
+      return {
+        ...ball,
+        x: (resolvedBall.positionPx.x / pitchRect.width) * 100,
+        y: (resolvedBall.positionPx.y / pitchRect.height) * 100,
+        sizeScale: calculatedSizeScale,
+      };
+    })();
+
     return (
       <BallObject
         key="ball-object"
-        ball={item.data}
+        ball={effectiveBall}
         stageSize={{
           width: pitchRect.width,
           height: pitchRect.height,
@@ -105,6 +138,11 @@ export function BillboardItemNode({
 
   if (item.kind === 'text') {
     const text = item.data;
+    const resolvedText =
+      sceneGraph?.billboardItems.find(
+        (b): b is ResolvedBillboardTextItem =>
+          b.kind === 'text' && b.id === text.id,
+      ) ?? null;
     return (
       <TextObject
         key={text.id}
@@ -123,6 +161,7 @@ export function BillboardItemNode({
         }}
         updateText={updateText}
         nodesRegistryRef={nodesRegistryRef}
+        resolvedText={resolvedText}
       />
     );
   }

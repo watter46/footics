@@ -149,20 +149,25 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
         />
 
         {/* ゾーンオブジェクト群 */}
-        {sortedZones.map((zone) => (
-          <ZoneObject
-            key={zone.id}
-            zone={zone}
-            stageSize={{ width: pitchRect.width, height: pitchRect.height }}
-            isSelected={!cleanRender && selectedIds.includes(zone.id)}
-            isInteractive={!cleanRender && isInteractive}
-            onSelect={makeSelectHandler(zone.id, 'zone')}
-            updateZone={updateZone}
-            nodesRegistryRef={nodesRegistryRef}
-            isCreatingThis={zone.id === activePolygonId}
-            mousePreviewPos={mousePreviewPos}
-          />
-        ))}
+        {sortedZones.map((zone) => {
+          const resolvedZone =
+            sceneGraph?.zones.find((z) => z.id === zone.id) ?? null;
+          return (
+            <ZoneObject
+              key={zone.id}
+              zone={zone}
+              stageSize={{ width: pitchRect.width, height: pitchRect.height }}
+              isSelected={!cleanRender && selectedIds.includes(zone.id)}
+              isInteractive={!cleanRender && isInteractive}
+              onSelect={makeSelectHandler(zone.id, 'zone')}
+              updateZone={updateZone}
+              nodesRegistryRef={nodesRegistryRef}
+              isCreatingThis={zone.id === activePolygonId}
+              mousePreviewPos={mousePreviewPos}
+              resolvedZone={resolvedZone}
+            />
+          );
+        })}
 
         {/* 矢印オブジェクト群 */}
         {sortedArrows.map((arrow) => {
@@ -200,6 +205,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
             });
             setIsHudOpen(true);
           }}
+          resolvedConnectLines={sceneGraph?.connectLines ?? null}
         />
 
         {/* スライド間ゴーストマーカー & 追跡曲線矢印 (cleanRender時は非表示) */}

@@ -72,8 +72,9 @@ Phase 1 の実装および `bun run ai:check` のローカル検証が完了し�
 
 ## 制約事項 (Constraints)
 - **Zero-Exploration 原則（自律探索の厳禁）**: あなたはコードベースを自前で探索（Read/Grep）してはなりません。実装に必要なインポート・型・パターンはすべてタスクファイルの `Context Snippets` に記載されています。対象スコープ外のファイルを `view_file` したり、広範囲に `rtk grep` を走らせることはコンテキスト爆発を招くため禁止です。触るべきファイル（対象ファイルおよび対象テストファイル）のみ `view_file` してください。
-- **推論の禁止**: あなたはFlashモデルです。高度な推論による勝手なアーキテクチャ変更や、指示されていないファイルの追加・削除を行ってはいけません。タスクファイルに書かれた具体的な指示（契約インターフェース、ファイルパス、テストケース）に極めて忠実に従ってください。
+- **推論の禁止 & ハリボテ実装（Stub / Placeholder / Dummy Wiring）の絶対禁止 (CRITICAL)**: あなたはFlashモデルです。高度な推論による勝手なアーキテクチャ変更や、指示されていないファイルの追加・削除を行ってはいけません。同時に、**テストや型検査を表面的に通すためだけの「空配列プレースホルダ（`// placeholder for Phase 2`）」「未接続の空ストア生成（`createCanvasStore()` の独立放置）」「新ストアから旧ストアへ JSON 文字列を再シリアライズして流し込む往復ハック」「旧経路を残す `if (options.phase)` 二重分岐」を絶対に書いてはなりません**。タスクの Target Files スコープ不足により正当なパイプライン接続が不可能な場合は、ハリボテコードを書かず即座に `TASK_BLOCKED`（理由: `MISSING_CONSUMER_SCOPE`）で Planner に差し戻してください。
 - **Store Provider 配下でのシングルトン直参照の絶対禁止 (CRITICAL)**: `StoreProvider`（Vanilla Store Factory + React Context）を採用した機能ドメイン（`memo-overlay`, `tactical-unified` 等）において、Level 2 以下のコンポーネントからグローバルシングルトン（`useXxxStore` 直呼び出し）を行ってはなりません。必ず Context 購読フック（`useXxxStoreContext` 等）経由で状態・アクションを取得してください（Reviewer の即時 REJECTED 対象）。
+- **戦術ボード領域（`tactical-unified` / `lib/tactical`）の関数型DDD厳守 (CRITICAL)**: `.agents/rules/tactical-domain-architecture.md` に従い、① `class`（OOP）の使用禁止、② Zustand の `set()` 内へのドメインロジック直書き禁止（`applySlideCommand` + `enforceSlideInvariants` へ完全委譲）、③ ドラッグ中（`onDragMove`）での `DocumentState` 更新禁止（`EphemeralSessionState` のみ更新し `onDragEnd` で Command dispatch）、④ Konva コンポーネント内での幾何計算・直接ノード操作禁止（`compileSceneGraph` の `ResolvedSceneGraphDTO` をそのまま描画バインド）を厳守してください。
 - **4層コンポーネントモデルとホスト境界の厳守**: コンポーネント実装時は Level 4〜Level 1 の階層を厳守し、Level 2 以下の共用コンポーネントに `chrome.*` や Web専用ストア等のホスト依存を絶対に混入させてはなりません。
 - **Shell Purity（純粋マウンター原則）**: Level 4 コンポーネント（Content Script、HTML main 等）には複合ロジックやデータフェッチを直書きせず、UI マウントと配線のみに徹し、処理は Service 層へカプセル化してください。
 - **副作用の RAII 原則（クリーンアップ義務）**: `useEffect`、DOM一時変更、タイマー、イベントリスナー等の副作用には、必ず原状回復を行うクリーンアップ関数（`return () => ...`）を実装してください。
