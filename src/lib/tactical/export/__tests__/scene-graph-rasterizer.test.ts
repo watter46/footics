@@ -11,6 +11,7 @@ import {
   rasterizeSceneGraphToCanvas2D,
 } from '@/lib/tactical/export/scene-graph-canvas2d-rasterizer';
 import {
+  _resetSharedOffscreenCanvas,
   renderTacticalFrameToCanvas,
   renderTacticalPhaseFrameToCanvas,
 } from '@/lib/tactical/export/tactical-frame-renderer';
@@ -491,5 +492,177 @@ describe('rasterizeSceneGraphToCanvas2D (Dumb Rasterizer)', () => {
       800,
       600,
     );
+  });
+
+  it('filters out away team players when teamVisibility is "home"', () => {
+    const phase: DomainTacticalPhase = {
+      id: 'phase-visibility',
+      name: 'Team Visibility Test',
+      aspectRatio: '16:9',
+      boundaryBox: { x: 0, y: 0, width: 100, height: 100, enabled: false },
+      backgroundType: 'pitch',
+      slides: [
+        {
+          id: 'slide-1',
+          index: 0,
+          players: [
+            {
+              id: 'p1',
+              area: 'pitch',
+              team: 'home',
+              shirtNo: '10',
+              name: 'Messi',
+              x: toScreenNormCoord(20),
+              y: toScreenNormCoord(50),
+              style: {
+                markerType: 'circle',
+                insideContent: 'number',
+                bottomLabel: 'name',
+                color: '#034694',
+                strokeColor: '#ffffff',
+                strokeWidth: 2,
+                sizeScale: 1.0,
+                numberSizeScale: 1.0,
+                labelSizeScale: 1.0,
+              },
+              connectLines: [],
+              badges: [],
+            },
+            {
+              id: 'p2',
+              area: 'pitch',
+              team: 'away',
+              shirtNo: '7',
+              name: 'Ronaldo',
+              x: toScreenNormCoord(80),
+              y: toScreenNormCoord(50),
+              style: {
+                markerType: 'circle',
+                insideContent: 'number',
+                bottomLabel: 'name',
+                color: '#ef4444',
+                strokeColor: '#ffffff',
+                strokeWidth: 2,
+                sizeScale: 1.0,
+                numberSizeScale: 1.0,
+                labelSizeScale: 1.0,
+              },
+              connectLines: [],
+              badges: [],
+            },
+          ],
+          arrows: [],
+          zones: [],
+          texts: [],
+          ball: {
+            x: toScreenNormCoord(50),
+            y: toScreenNormCoord(50),
+            visible: false,
+          },
+          transitionDurationMs: 1000,
+          pauseMs: 500,
+          easing: 'linear',
+        },
+      ],
+    };
+
+    const ctx = createMockCanvasContext();
+    renderTacticalPhaseFrameToCanvas({
+      ctx,
+      phase,
+      timeMs: 0,
+      width: 1000,
+      height: 600,
+      teamVisibility: 'home',
+    });
+
+    expect(ctx.fillText).toHaveBeenCalledWith(
+      '10',
+      expect.any(Number),
+      expect.any(Number),
+    );
+    expect(ctx.fillText).not.toHaveBeenCalledWith(
+      '7',
+      expect.any(Number),
+      expect.any(Number),
+    );
+  });
+
+  it('executes boundary cropping when boundaryBox is provided with phase in renderTacticalFrameToCanvas', () => {
+    _resetSharedOffscreenCanvas();
+    const offscreenCtx = createMockCanvasContext();
+    const origCreateElement = document.createElement.bind(document);
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: string) => {
+        if (tagName.toLowerCase() === 'canvas') {
+          const mockC = origCreateElement('canvas');
+          vi.spyOn(mockC, 'getContext').mockReturnValue(offscreenCtx as any);
+          return mockC;
+        }
+        return origCreateElement(tagName);
+      });
+
+    const phase: DomainTacticalPhase = {
+      id: 'phase-crop',
+      name: 'Boundary Crop Test',
+      aspectRatio: '16:9',
+      boundaryBox: { x: 0, y: 0, width: 100, height: 100, enabled: false },
+      backgroundType: 'pitch',
+      slides: [
+        {
+          id: 'slide-1',
+          index: 0,
+          players: [],
+          arrows: [],
+          zones: [],
+          texts: [],
+          ball: {
+            x: toScreenNormCoord(50),
+            y: toScreenNormCoord(50),
+            visible: false,
+          },
+          transitionDurationMs: 1000,
+          pauseMs: 500,
+          easing: 'linear',
+        },
+      ],
+    };
+
+    try {
+      const ctx = createMockCanvasContext();
+      renderTacticalFrameToCanvas(ctx, {
+        slides: [],
+        phase,
+        timeMs: 0,
+        width: 500,
+        height: 300,
+        aspectRatio: '16:9',
+        boundaryBox: {
+          x: 10,
+          y: 10,
+          width: 50,
+          height: 50,
+          enabled: true,
+        },
+      });
+
+      // When boundaryBox is enabled and active, renderBoundaryCropSlice draws offscreen slice to ctx via drawImage
+      // cropX = 10% * canonicalW, cropY = 10% * canonicalH
+      expect(ctx.drawImage).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.any(Number),
+        expect.any(Number),
+        expect.any(Number),
+        expect.any(Number),
+        0,
+        0,
+        500,
+        300,
+      );
+    } finally {
+      createElementSpy.mockRestore();
+      _resetSharedOffscreenCanvas();
+    }
   });
 });

@@ -1,24 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
 import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
 import { hasActiveFrameEffects } from '@/lib/tactical/export/tactical-frame-effects';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
-import {
-  hasActiveDirectorCameraTrack,
-  type ResolveSyntheticDirectorCameraOptions,
-  resolvePlaybackDurationMs,
-} from '@/lib/tactical/unified-interpolation';
+import { resolvePlaybackDurationMs } from '@/lib/tactical/unified-interpolation';
 import type { Slide } from '@/lib/types/tactical-unified';
 
 import {
-  ASPECT_CONTAINER_CLASSES,
-  CINEMATIC_MASK_FILL,
-  hasActivePitchTransform,
   PREVIEW_DIMENSIONS,
-  SPLIT_PREVIEW_CONTAINER_CLASSES,
+  resolveExportPreviewMVPMatrix,
   type UseExportPreviewAnimationParams,
 } from './export-preview-constants';
 import { useAnimationFrameLoop } from './use-animation-frame-loop';
@@ -31,8 +24,8 @@ export {
   PREVIEW_DIMENSIONS,
   SPLIT_PREVIEW_CONTAINER_CLASSES,
   type UseExportPreviewAnimationParams,
-  useAnimationFrameLoop,
-};
+} from './export-preview-constants';
+export { useAnimationFrameLoop } from './use-animation-frame-loop';
 
 export function useExportPreviewAnimation({
   slides,
@@ -54,8 +47,7 @@ export function useExportPreviewAnimation({
   sliderRef,
 }: UseExportPreviewAnimationParams) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const effectiveIsPlaying =
-    externalIsPlaying !== undefined ? externalIsPlaying : isPlaying;
+  const effectiveIsPlaying = externalIsPlaying ?? isPlaying;
   const totalDurationMs = resolvePlaybackDurationMs(slides) || 1000;
   const currentTimeMsRef = useRef<number>(0);
 
@@ -83,6 +75,19 @@ export function useExportPreviewAnimation({
   const basePreviewDim =
     PREVIEW_DIMENSIONS[effectiveCanvasAspect] ?? PREVIEW_DIMENSIONS['16:9'];
 
+  const phase = useMemo(
+    () =>
+      slides.length > 0
+        ? normalizePhases({
+            slides,
+            aspectRatio,
+            boundaryBox,
+            directorCamera,
+          })[0]
+        : undefined,
+    [slides, aspectRatio, boundaryBox, directorCamera],
+  );
+
   const cropInfo = useMemo(() => {
     const box = boundaryBox?.enabled !== false ? boundaryBox : null;
     const { width: w, height: h } = basePreviewDim;
@@ -90,7 +95,6 @@ export function useExportPreviewAnimation({
     return calculateBoundaryCrop(box, w, h, 1, pitchRect);
   }, [boundaryBox, basePreviewDim]);
 
-  // 静止時・再生時に関わらず、境界線が有効であれば常時クロップを適用
   const shouldCropPreview = cropInfo.isCropped;
   const previewWidth = shouldCropPreview
     ? cropInfo.exportWidth
@@ -98,41 +102,34 @@ export function useExportPreviewAnimation({
   const previewHeight = shouldCropPreview
     ? cropInfo.exportHeight
     : basePreviewDim.height;
-
-  const mvpMatrix = useMemo(() => {
-    if (
-      (effectiveIsPlaying && slides.length > 1) ||
-      (!pitchTransform && hasActiveDirectorCameraTrack(directorCamera)) ||
-      !hasActivePitchTransform(pitchTransform) ||
-      !pitchTransform
-    ) {
-      return null;
-    }
-    return new Float32Array(
-      buildExportMVPMatrix(
-        pitchTransform,
-        basePreviewDim.width,
-        basePreviewDim.height,
-        aspectRatio,
-      ),
-    );
-  }, [
-    effectiveIsPlaying,
-    slides.length,
-    directorCamera,
-    pitchTransform,
-    basePreviewDim.width,
-    basePreviewDim.height,
-    aspectRatio,
-  ]);
-
   const previewAspectStyle = shouldCropPreview
     ? `${previewWidth} / ${previewHeight}`
     : undefined;
-
   const effectiveDirectorCameraOptions = directorCameraOptions ?? {
     isEditing: !effectiveIsPlaying,
   };
+
+  const mvpMatrix = useMemo(
+    () =>
+      resolveExportPreviewMVPMatrix({
+        effectiveIsPlaying,
+        slidesCount: slides.length,
+        pitchTransform,
+        directorCamera,
+        width: basePreviewDim.width,
+        height: basePreviewDim.height,
+        aspectRatio,
+      }),
+    [
+      effectiveIsPlaying,
+      slides.length,
+      directorCamera,
+      pitchTransform,
+      basePreviewDim.width,
+      basePreviewDim.height,
+      aspectRatio,
+    ],
+  );
 
   // ── Canvas Frame Drawing ──
   const drawFrame = useCallback(
@@ -150,6 +147,7 @@ export function useExportPreviewAnimation({
 
       renderTacticalFrameToCanvas(ctx, {
         slides,
+        phase,
         timeMs,
         width: canvas.width,
         height: canvas.height,
@@ -189,6 +187,7 @@ export function useExportPreviewAnimation({
     },
     [
       slides,
+      phase,
       basePreviewDim,
       shouldCropPreview,
       boundaryBox,

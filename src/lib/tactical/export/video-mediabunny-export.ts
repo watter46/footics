@@ -6,6 +6,7 @@ import {
   WebMOutputFormat,
 } from 'mediabunny';
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
+import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
 import {
   hasCameraDelta,
   type InterpolatedPitchTransformState,
@@ -141,6 +142,16 @@ export async function exportVideoWithMediabunny(
   let lastRenderedSlideIdx = -1;
   let lastRenderedTransform: InterpolatedPitchTransformState | null = null;
 
+  const phase =
+    slides && slides.length > 0
+      ? normalizePhases({
+          slides,
+          aspectRatio,
+          boundaryBox,
+          directorCamera: options.directorCamera,
+        })[0]
+      : undefined;
+
   try {
     for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
       if (options.checkCancelled?.()) {
@@ -191,6 +202,7 @@ export async function exportVideoWithMediabunny(
             directorCameraOptions: options.directorCameraOptions,
             precomputedFrame: interpolated,
             teamVisibility: options.teamVisibility,
+            phase,
           });
           lastRenderedSlideIdx = interpolated.isPaused
             ? interpolated.currentSlideIndex

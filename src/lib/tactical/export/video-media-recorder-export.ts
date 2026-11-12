@@ -1,4 +1,5 @@
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
+import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
 import { renderTacticalFrameToCanvas } from './tactical-frame-renderer';
 import { calculateBoundaryCrop } from './video-crop-calc';
 import type { VideoExportOptions } from './video-export-types';
@@ -126,6 +127,16 @@ export async function exportVideoWithMediaRecorder(
   );
   const frameDelayMs = 1000 / fps;
 
+  const phase =
+    slides && slides.length > 0
+      ? normalizePhases({
+          slides,
+          aspectRatio,
+          boundaryBox,
+          directorCamera: options.directorCamera,
+        })[0]
+      : undefined;
+
   try {
     recorder.start();
 
@@ -159,6 +170,7 @@ export async function exportVideoWithMediaRecorder(
           directorCamera: options.directorCamera,
           directorCameraOptions: options.directorCameraOptions,
           teamVisibility: options.teamVisibility,
+          phase,
         });
       } else {
         await onRenderFrame?.(timeMs);

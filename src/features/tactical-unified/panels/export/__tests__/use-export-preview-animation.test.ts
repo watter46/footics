@@ -490,4 +490,24 @@ describe('useExportPreviewAnimation', () => {
     rafSpy.mockRestore();
     cancelSpy.mockRestore();
   });
+
+  it('passes normalized phase to renderTacticalFrameToCanvas', () => {
+    renderHook(() =>
+      useExportPreviewAnimation({
+        slides: [mockSlide1, mockSlide2],
+        aspectRatio: '16:9',
+        externalIsPlaying: false,
+        canvasRef,
+        timeLabelRef,
+        sliderRef,
+      }),
+    );
+
+    const calls = vi.mocked(frameRendererModule.renderTacticalFrameToCanvas)
+      .mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    const lastCall = calls[calls.length - 1];
+    expect(lastCall[1].phase).toBeDefined();
+    expect(lastCall[1].phase?.slides.length).toBe(2);
+  });
 });

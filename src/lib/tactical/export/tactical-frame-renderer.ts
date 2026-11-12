@@ -1,12 +1,6 @@
 /**
  * tactical-frame-renderer.ts
- * High-performance, 100% deterministic 2D canvas renderer for Tactical Unified animations.
- *
- * Used for:
- *   - Offline MP4 video encoding (WebCodecs & mp4-muxer / MediaRecorder)
- *   - Offline Transparent WebM overlay encoding (MediaRecorder / VP9)
- *   - Real-time Animation Preview Player (Export Modal)
- *   - Snapshot / GIF frame rendering
+ * Deterministic 2D canvas renderer for Tactical Unified animations.
  */
 
 import {
@@ -115,9 +109,7 @@ function renderBoundaryCropSlice(
   const offscreen = getOffscreenCanvas(canonicalW, canonicalH);
   if (!offscreen || typeof ctx.drawImage !== 'function') return false;
 
-  if (typeof offscreen.ctx.clearRect === 'function') {
-    offscreen.ctx.clearRect(0, 0, canonicalW, canonicalH);
-  }
+  offscreen.ctx.clearRect?.(0, 0, canonicalW, canonicalH);
   renderTacticalFrameToCanvas(offscreen.ctx, {
     ...options,
     width: canonicalW,
@@ -174,24 +166,6 @@ export function renderTacticalFrameToCanvas(
 
   if (w <= 0 || h <= 0) return;
 
-  if (phase) {
-    renderTacticalPhaseFrameToCanvas({
-      ctx,
-      phase,
-      timeMs,
-      width: w,
-      height: h,
-      baseWidth: options.baseWidth,
-      baseHeight: options.baseHeight,
-      playerPhotos,
-      pitchAppearance,
-      marbleTexture,
-      screenBackground,
-      transparent,
-    });
-    return;
-  }
-
   const isBoundaryActive = isBoundaryCropActive(boundaryBox);
   const canonicalW =
     isBoundaryActive && boundaryBox
@@ -207,8 +181,35 @@ export function renderTacticalFrameToCanvas(
   if (
     isBoundaryActive &&
     boundaryBox &&
+    mvpMatrix == null &&
     renderBoundaryCropSlice(ctx, options, boundaryBox, canonicalW, canonicalH)
   ) {
+    return;
+  }
+
+  if (
+    options.phase != null &&
+    mvpMatrix == null &&
+    options.precomputedFrame == null &&
+    options.directorCamera == null
+  ) {
+    renderTacticalPhaseFrameToCanvas({
+      ctx,
+      phase: options.phase,
+      timeMs,
+      width: w,
+      height: h,
+      baseWidth: options.baseWidth,
+      baseHeight: options.baseHeight,
+      playerPhotos,
+      pitchAppearance,
+      marbleTexture,
+      screenBackground,
+      transparent,
+      teamVisibility,
+      pitchTransform: options.pitchTransform,
+      pitchTransformOverride: options.pitchTransformOverride,
+    });
     return;
   }
 

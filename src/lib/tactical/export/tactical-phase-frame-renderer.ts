@@ -1,10 +1,20 @@
 import { compileSceneGraph } from '@/lib/tactical/compiler/compile-scene-graph';
-import { evaluateTimelineFrame } from '@/lib/tactical/engine/timeline-evaluator';
-import type { Milliseconds } from '@/lib/types/tactical/branded';
-import type { DomainTacticalPhase } from '@/lib/types/tactical/domain-hierarchy';
+import {
+  type EvaluatedTimelineFrame,
+  evaluateTimelineFrame,
+} from '@/lib/tactical/engine/timeline-evaluator';
+import {
+  type Milliseconds,
+  toMilliseconds,
+} from '@/lib/types/tactical/branded';
+import type {
+  DomainSlide,
+  DomainTacticalPhase,
+} from '@/lib/types/tactical/domain-hierarchy';
 import {
   DEFAULT_PITCH_APPEARANCE,
   type PitchAppearanceConfig,
+  type PitchTransform,
   type ScreenBackgroundConfig,
 } from '@/lib/types/tactical-unified';
 import { renderPitch } from './renderers/pitch-renderer';
@@ -94,6 +104,9 @@ export interface RenderTacticalPhaseFrameOptions {
   marbleTexture?: CanvasImageSource | null;
   screenBackground?: ScreenBackgroundConfig;
   transparent?: boolean;
+  teamVisibility?: 'both' | 'home' | 'away';
+  pitchTransform?: PitchTransform | null;
+  pitchTransformOverride?: PitchTransform | null;
 }
 
 export function renderTacticalPhaseFrameToCanvas(
@@ -110,6 +123,9 @@ export function renderTacticalPhaseFrameToCanvas(
     marbleTexture,
     screenBackground,
     transparent = false,
+    teamVisibility = 'both',
+    pitchTransform,
+    pitchTransformOverride,
   } = options;
 
   if (w <= 0 || h <= 0) return;
@@ -181,13 +197,45 @@ export function renderTacticalPhaseFrameToCanvas(
     );
   }
 
-  const evaluated = evaluateTimelineFrame(phase, timeMs as Milliseconds);
+  const evaluated = evaluateTimelineFrame(
+    phase,
+    toMilliseconds(Number(timeMs)),
+  );
+
+  const effectivePitchTransform =
+    pitchTransformOverride ?? pitchTransform ?? evaluated.slide.pitchTransform;
+
+  let players = evaluated.slide.players;
+  if (teamVisibility === 'home' || teamVisibility === 'away') {
+    players = players.filter(
+      (p) =>
+        !(
+          p.area === 'pitch' &&
+          p.team !== teamVisibility &&
+          p.team !== 'neutral'
+        ),
+    );
+  }
+
+  const slideToCompile: DomainSlide = {
+    ...evaluated.slide,
+    ...(effectivePitchTransform !== undefined
+      ? { pitchTransform: effectivePitchTransform ?? undefined }
+      : {}),
+    players,
+  };
+
+  const frameToCompile: EvaluatedTimelineFrame = {
+    ...evaluated,
+    slide: slideToCompile,
+  };
+
   const prevSlide =
     phase.slides.length > 0
       ? phase.slides[Math.max(0, evaluated.slideIndex - 1)]
       : null;
   const sceneGraph = compileSceneGraph(
-    evaluated,
+    frameToCompile,
     null,
     {
       width: baseWidth,

@@ -1,6 +1,7 @@
 'use client';
 
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
+import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import type {
   AspectRatio,
@@ -47,6 +48,16 @@ export const SceneCanvasThumbnail = memo(function SceneCanvasThumbnail({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const dims = calculateDimensions(width, propHeight, aspectRatio);
 
+  const phase = useMemo(
+    () =>
+      normalizePhases({
+        slides: [slide],
+        aspectRatio,
+        boundaryBox: slide.boundaryBox,
+      })[0],
+    [slide, aspectRatio],
+  );
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -65,6 +76,7 @@ export const SceneCanvasThumbnail = memo(function SceneCanvasThumbnail({
     ctx.scale(dpr, dpr);
     renderTacticalFrameToCanvas(ctx, {
       slides: [slide],
+      phase,
       timeMs: 0,
       width: dims.width,
       height: dims.height,
@@ -74,7 +86,7 @@ export const SceneCanvasThumbnail = memo(function SceneCanvasThumbnail({
       applyEffects: false,
     });
     ctx.restore();
-  }, [slide, dims.width, dims.height, aspectRatio, pitchAppearance]);
+  }, [slide, phase, dims.width, dims.height, aspectRatio, pitchAppearance]);
 
   return (
     <canvas

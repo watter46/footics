@@ -4,6 +4,7 @@
  */
 
 import { zipSync } from 'fflate';
+import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
 import { preloadSlidePlayerPhotos } from '@/lib/tactical/export/share-payload';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
@@ -77,10 +78,17 @@ export async function renderSlideToPngBlob(
   if (!ctx) throw new Error('Failed to get 2D context from canvas');
 
   const playerPhotos = await preloadSlidePlayerPhotos([options.slide]);
+  const phase = normalizePhases({
+    slides: [options.slide],
+    aspectRatio: options.aspectRatio,
+    boundaryBox: box,
+    directorCamera: options.directorCamera ?? null,
+  })[0];
 
   try {
     renderTacticalFrameToCanvas(ctx, {
       slides: [options.slide],
+      phase,
       timeMs: 0,
       width: crop.exportWidth,
       height: crop.exportHeight,
