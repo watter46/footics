@@ -42,8 +42,8 @@ function wrapContextSafe(
   ctx: AnyCanvasRenderingContext2D,
 ): AnyCanvasRenderingContext2D {
   return new Proxy(ctx, {
-    get(target, prop, receiver) {
-      const val = Reflect.get(target, prop, receiver);
+    get(target, prop) {
+      const val = Reflect.get(target, prop, target);
       if (typeof val === 'function') {
         return (val as (...args: unknown[]) => unknown).bind(target);
       }
@@ -51,6 +51,9 @@ function wrapContextSafe(
         return () => {};
       }
       return val;
+    },
+    set(target, prop, value) {
+      return Reflect.set(target, prop, value, target);
     },
   });
 }
@@ -142,7 +145,6 @@ export function renderTacticalPhaseFrameToCanvas(
     applyEffects,
     effectTimeMs,
   } = options;
-
   if (w <= 0 || h <= 0) return;
   const baseWidth = options.baseWidth ?? w;
   const baseHeight = options.baseHeight ?? h;
@@ -156,7 +158,6 @@ export function renderTacticalPhaseFrameToCanvas(
     phase,
     toMilliseconds(Number(timeMs)),
   );
-
   const effectiveDirectorCamera =
     directorCamera !== undefined ? directorCamera : phase.directorCamera;
   const directorPitchTransform = hasActiveDirectorCameraTrack(
