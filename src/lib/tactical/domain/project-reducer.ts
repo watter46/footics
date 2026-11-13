@@ -1,68 +1,21 @@
-import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import type {
   DomainSlide,
   DomainTacticalPhase,
   DomainTacticalProject,
 } from '@/lib/types/tactical/domain-hierarchy';
 import type { TacticalCommand } from './commands';
+import {
+  createFreshSlide,
+  handleApplyBallScaleToPhaseSlides,
+  handleApplyImageBackground,
+  handleApplyPlayerStyleToPhaseSlides,
+  handleApplyXMediaPreset,
+  handleAutoFitBoundaryBox,
+  handleCenterPitchAndBoundary,
+  handleChangePhaseAspectRatio,
+  handleRestoreDefaultPitch,
+} from './project-phase-handlers';
 import { applySlideCommand } from './slide-reducer';
-
-function createFreshSlide(
-  templateSlide?: DomainSlide,
-  index = 0,
-  label = `Scene ${index + 1}`,
-): DomainSlide {
-  if (templateSlide) {
-    return {
-      id: crypto.randomUUID(),
-      index,
-      label,
-      players: templateSlide.players.map((p) =>
-        p.area === 'pitch'
-          ? {
-              ...p,
-              connectLines: [],
-              badges: [],
-              visionCone: undefined,
-              focus: undefined,
-              trajectory: undefined,
-            }
-          : { ...p },
-      ),
-      arrows: [],
-      zones: [],
-      texts: [],
-      ball: { ...templateSlide.ball, trajectory: undefined },
-      transitionDurationMs: templateSlide.transitionDurationMs,
-      pauseMs: templateSlide.pauseMs,
-      easing: templateSlide.easing,
-      cameraTransitionMode: templateSlide.cameraTransitionMode,
-      cameraDurationMs: templateSlide.cameraDurationMs,
-      pitchTransform: templateSlide.pitchTransform
-        ? { ...templateSlide.pitchTransform }
-        : undefined,
-      isSidesSwapped: templateSlide.isSidesSwapped,
-    };
-  }
-
-  return {
-    id: crypto.randomUUID(),
-    index,
-    label,
-    players: [],
-    arrows: [],
-    zones: [],
-    texts: [],
-    ball: {
-      x: clampToScreenNorm(50),
-      y: clampToScreenNorm(50),
-      visible: true,
-    },
-    transitionDurationMs: 1000,
-    pauseMs: 500,
-    easing: 'ease-in-out',
-  };
-}
 
 /**
  * TacticalCommand をプロジェクト階層に適用する純粋レデューサー。
@@ -281,6 +234,55 @@ export function applyTacticalCommand(
         })),
         updatedAt: now,
       };
+
+    case 'CHANGE_PHASE_ASPECT_RATIO':
+      return handleChangePhaseAspectRatio(project, command, now);
+
+    case 'APPLY_IMAGE_BACKGROUND':
+      return handleApplyImageBackground(project, command, now);
+
+    case 'RESTORE_DEFAULT_PITCH':
+      return handleRestoreDefaultPitch(project, command, now);
+
+    case 'AUTO_FIT_BOUNDARY_BOX':
+      return handleAutoFitBoundaryBox(project, command, now);
+
+    case 'APPLY_X_MEDIA_PRESET':
+      return handleApplyXMediaPreset(project, command, now);
+
+    case 'CENTER_PITCH_AND_BOUNDARY':
+      return handleCenterPitchAndBoundary(project, command, now);
+
+    case 'APPLY_PLAYER_STYLE_TO_PHASE_SLIDES':
+      return handleApplyPlayerStyleToPhaseSlides(project, command, now);
+
+    case 'APPLY_BALL_SCALE_TO_PHASE_SLIDES':
+      return handleApplyBallScaleToPhaseSlides(project, command, now);
+
+    case 'SET_TEAM_COLOR': {
+      const colorEntry = {
+        primary: command.primary,
+        ...(command.secondary ? { secondary: command.secondary } : {}),
+      };
+      return {
+        ...project,
+        ...(command.team === 'home'
+          ? { homeColor: colorEntry }
+          : { awayColor: colorEntry }),
+        phases: project.phases.map((p) => ({
+          ...p,
+          slides: p.slides.map((s) => ({
+            ...s,
+            players: s.players.map((pl) =>
+              pl.team === command.team
+                ? { ...pl, style: { ...pl.style, color: command.primary } }
+                : pl,
+            ),
+          })),
+        })),
+        updatedAt: now,
+      };
+    }
 
     case 'UPDATE_PROJECT_META':
       return {

@@ -1,7 +1,7 @@
 # TASK-181hb: フェーズ一括スタイル・チームカラー・比率変更・背景・ピッチ視点命令の追加（旧ストア完全廃止シリーズ）
 
 ## 1. Metadata & Goal
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `feat(tactical): add phase bulk style, aspect, background and pitch view commands`
 - **Series**: 旧ストア完全廃止シリーズ。181ha（比率変換・背景画像・境界線純粋関数）➔ 181hb（本タスク）➔ 181i ➔ 181j〜。181ha の完了を前提とする。
 - **Goal**: 旧 `slide-player-crud-slice.ts`（`applyPlayerStyleToPhaseSlides` / `applyBallScaleToPhaseSlides`）、`project-slice-config-actions.ts`（`setTeamColor` / `setAspectRatio`）、`project-slice-actions.ts`（`setImageBackground` / `restoreDefaultPitch`）、`pitch-slice.ts`（`centerPitchAndBoundary` / `autoFitBoundaryBox` / `applyXMediaPreset`）を `TacticalCommand` と `applyTacticalCommand` へ統合する。旧スライスの削除は 181l。

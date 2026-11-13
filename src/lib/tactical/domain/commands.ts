@@ -15,10 +15,15 @@ import type {
 } from '@/lib/types/tactical/domain-hierarchy';
 import type {
   ConnectLine,
+  MarkerStyle,
   PlayerBadge,
   PlayerFocus,
   VisionCone,
 } from '@/lib/types/tactical/player';
+import type {
+  AspectRatio,
+  XMediaPresetKey,
+} from '@/lib/types/tactical/primitives';
 
 export type EntityKind = 'player' | 'arrow' | 'zone' | 'text';
 
@@ -196,6 +201,55 @@ export type TacticalCommand =
           | 'cameraDurationMs'
         >
       >;
+    }
+  | {
+      readonly type: 'CHANGE_PHASE_ASPECT_RATIO';
+      readonly phaseId: string;
+      readonly aspectRatio: AspectRatio;
+    }
+  | {
+      readonly type: 'APPLY_IMAGE_BACKGROUND';
+      readonly phaseId: string;
+      readonly slideId: string;
+      readonly url: string;
+      readonly newSlideId?: string;
+    }
+  | {
+      readonly type: 'RESTORE_DEFAULT_PITCH';
+      readonly phaseId: string;
+    }
+  | {
+      readonly type: 'AUTO_FIT_BOUNDARY_BOX';
+      readonly phaseId: string;
+      readonly slideId?: string;
+      readonly pitchRect?: { readonly width: number; readonly height: number };
+    }
+  | {
+      readonly type: 'APPLY_X_MEDIA_PRESET';
+      readonly phaseId: string;
+      readonly presetKey: XMediaPresetKey | 'pitch_fit';
+    }
+  | {
+      readonly type: 'CENTER_PITCH_AND_BOUNDARY';
+      readonly phaseId: string;
+      readonly slideId: string;
+    }
+  | {
+      readonly type: 'APPLY_PLAYER_STYLE_TO_PHASE_SLIDES';
+      readonly phaseId: string;
+      readonly stylePatch: Partial<MarkerStyle>;
+      readonly targetTeam: 'home' | 'away' | 'both';
+    }
+  | {
+      readonly type: 'APPLY_BALL_SCALE_TO_PHASE_SLIDES';
+      readonly phaseId: string;
+      readonly sizeScale: number;
+    }
+  | {
+      readonly type: 'SET_TEAM_COLOR';
+      readonly team: 'home' | 'away';
+      readonly primary: string;
+      readonly secondary?: string;
     }
   | {
       readonly type: 'UPDATE_PROJECT_META';
