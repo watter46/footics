@@ -63,6 +63,11 @@ export function normalizeBall(rawBall: unknown): DomainBallState {
     y: clampToScreenNorm(typeof b.y === 'number' ? b.y : 50),
     visible: typeof b.visible === 'boolean' ? b.visible : true,
     color: typeof b.color === 'string' ? b.color : undefined,
+    sizeScale:
+      typeof b.sizeScale === 'number'
+        ? Math.max(0.4, Math.min(2.0, b.sizeScale))
+        : undefined,
+    locked: typeof b.locked === 'boolean' ? b.locked : undefined,
     trajectory:
       b.trajectory && typeof b.trajectory === 'object'
         ? (b.trajectory as DomainBallState['trajectory'])

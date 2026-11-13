@@ -1,9 +1,3 @@
-import {
-  clampToScreenNorm,
-  type ScreenNormCoord,
-  type ScreenNormPoint,
-  toScreenNormPoint,
-} from '@/lib/types/tactical/branded';
 import type {
   DomainPlayer,
   DomainZoneAnnotation,
@@ -12,76 +6,7 @@ import type {
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { SlideCommand } from './commands';
 import { enforceSlideInvariants, toBenchPlayer } from './invariants';
-
-const flipCoord = (c: ScreenNormCoord | number) => clampToScreenNorm(100 - c);
-const flipPt = (pt: ScreenNormPoint) =>
-  toScreenNormPoint(100 - pt.x, 100 - pt.y);
-
-function flipZone(z: DomainZoneAnnotation): DomainZoneAnnotation {
-  if (z.shapeType === 'polygon') {
-    return {
-      ...z,
-      points: z.points.map(flipPt),
-    };
-  }
-  return {
-    ...z,
-    x: flipCoord(z.x + z.width),
-    y: flipCoord(z.y + z.height),
-  };
-}
-
-function flipSlideCandidate(slide: DomainSlide): DomainSlide {
-  const players = slide.players.map((p) => {
-    if (p.area === 'bench') return p;
-    const cp = p.trajectory?.controlPoint;
-    return {
-      ...p,
-      x: flipCoord(p.x),
-      y: flipCoord(p.y),
-      trajectory: p.trajectory
-        ? { ...p.trajectory, controlPoint: cp ? flipPt(cp) : undefined }
-        : undefined,
-    };
-  });
-
-  const arrows = slide.arrows.map((a) => ({
-    ...a,
-    points: a.points.map(flipPt),
-    controlPoint: a.controlPoint ? flipPt(a.controlPoint) : undefined,
-  }));
-
-  const zones = slide.zones.map(flipZone);
-
-  const texts = slide.texts.map((t) => ({
-    ...t,
-    x: flipCoord(t.x),
-    y: flipCoord(t.y),
-  }));
-
-  const ballCp = slide.ball.trajectory?.controlPoint;
-  const ball = {
-    ...slide.ball,
-    x: flipCoord(slide.ball.x),
-    y: flipCoord(slide.ball.y),
-    trajectory: slide.ball.trajectory
-      ? {
-          ...slide.ball.trajectory,
-          controlPoint: ballCp ? flipPt(ballCp) : undefined,
-        }
-      : undefined,
-  };
-
-  return {
-    ...slide,
-    players,
-    arrows,
-    zones,
-    texts,
-    ball,
-    isSidesSwapped: !slide.isSidesSwapped,
-  };
-}
+import { flipSlideCandidate } from './slide-flip';
 
 const toggleLock = <T extends { id: string; locked?: boolean }>(
   list: readonly T[],
@@ -90,6 +15,20 @@ const toggleLock = <T extends { id: string; locked?: boolean }>(
   list.map((item) =>
     item.id === id ? { ...item, locked: !item.locked } : item,
   );
+
+/** ピッチ上の選手 1 名だけに updater を適用する（ベンチ・不在 ID は無変更）。 */
+function updatePitchPlayer(
+  slide: DomainSlide,
+  playerId: string,
+  updater: (p: PitchPlayer) => PitchPlayer,
+): DomainSlide {
+  return {
+    ...slide,
+    players: slide.players.map((p) =>
+      p.id === playerId && p.area === 'pitch' ? updater(p) : p,
+    ),
+  };
+}
 
 function reduceSlideCandidate(
   prevSlide: DomainSlide,
@@ -208,6 +147,62 @@ function reduceSlideCandidate(
 
     case 'UPDATE_BALL':
       return { ...prevSlide, ball: { ...prevSlide.ball, ...command.patch } };
+
+    case 'TOGGLE_BALL_LOCK':
+      return {
+        ...prevSlide,
+        ball: { ...prevSlide.ball, locked: !prevSlide.ball.locked },
+      };
+
+    case 'SET_PLAYER_TRAJECTORY':
+      return updatePitchPlayer(prevSlide, command.playerId, (p) => ({
+        ...p,
+        trajectory: command.trajectory,
+      }));
+
+    case 'SET_PLAYER_VISION_CONE':
+      return updatePitchPlayer(prevSlide, command.playerId, (p) => ({
+        ...p,
+        visionCone: command.cone,
+      }));
+
+    case 'ADD_CONNECT_LINE':
+      return updatePitchPlayer(prevSlide, command.playerId, (p) => ({
+        ...p,
+        connectLines: [...p.connectLines, command.line],
+      }));
+
+    case 'UPDATE_CONNECT_LINE':
+      return updatePitchPlayer(prevSlide, command.playerId, (p) => ({
+        ...p,
+        connectLines: p.connectLines.map((l) =>
+          l.id === command.lineId ? { ...l, ...command.patch } : l,
+        ),
+      }));
+
+    case 'REMOVE_CONNECT_LINE':
+      return updatePitchPlayer(prevSlide, command.playerId, (p) => ({
+        ...p,
+        connectLines: p.connectLines.filter((l) => l.id !== command.lineId),
+      }));
+
+    case 'ADD_PLAYER_BADGE':
+      return updatePitchPlayer(prevSlide, command.playerId, (p) => ({
+        ...p,
+        badges: [...p.badges, command.badge],
+      }));
+
+    case 'REMOVE_PLAYER_BADGE':
+      return updatePitchPlayer(prevSlide, command.playerId, (p) => ({
+        ...p,
+        badges: p.badges.filter((b) => b.id !== command.badgeId),
+      }));
+
+    case 'SET_PLAYER_FOCUS':
+      return updatePitchPlayer(prevSlide, command.playerId, (p) => ({
+        ...p,
+        focus: command.focus,
+      }));
 
     case 'TOGGLE_ENTITY_LOCK': {
       if (command.kind === 'player')

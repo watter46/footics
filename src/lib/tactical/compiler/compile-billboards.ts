@@ -181,7 +181,10 @@ export function compileBillboardItems(
     viewport,
     pitchTransform,
   );
-  const ballRadiusPx = computeBallRadiusPx(viewport);
+  const ballRadiusPx = computeBallRadiusPx(
+    viewport,
+    frame.slide.ball.sizeScale,
+  );
   const ballDepthSortKey = computeBillboardDepthKey(ballPos, 'ball', tiltDeg);
 
   const billboardBall: ResolvedBillboardItem = {

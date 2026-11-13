@@ -134,10 +134,16 @@ export function enforceSlideInvariants(
     },
   );
 
+  // ボールロックは「位置固定」のみ。TOGGLE_BALL_LOCK 自体は素通りさせる。
+  const isBallPositionLocked =
+    prevSlide.ball.locked === true && command.type !== 'TOGGLE_BALL_LOCK';
+  const baseBall = isBallPositionLocked
+    ? { ...candidateSlide.ball, x: prevSlide.ball.x, y: prevSlide.ball.y }
+    : candidateSlide.ball;
   const normalizedBall = {
-    ...candidateSlide.ball,
-    x: clampToScreenNorm(candidateSlide.ball.x),
-    y: clampToScreenNorm(candidateSlide.ball.y),
+    ...baseBall,
+    x: clampToScreenNorm(baseBall.x),
+    y: clampToScreenNorm(baseBall.y),
   };
 
   // 3. Cascade Clean

@@ -106,12 +106,18 @@ function interpolateBallState(
     y = clampToScreenNorm(lerp(ballA.y, ballB.y, ease));
   }
 
+  const hasSizeScale =
+    ballA.sizeScale !== undefined || ballB.sizeScale !== undefined;
+
   return {
     ...ballB,
     x,
     y,
     visible: ease < 0.5 ? ballA.visible : ballB.visible,
     color: ballB.color ?? ballA.color,
+    sizeScale: hasSizeScale
+      ? lerp(ballA.sizeScale ?? 1, ballB.sizeScale ?? 1, ease)
+      : undefined,
   };
 }
 

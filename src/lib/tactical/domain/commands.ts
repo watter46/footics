@@ -3,6 +3,7 @@ import type {
   DomainArrowAnnotation,
   DomainBallState,
   DomainPlayer,
+  DomainPlayerTrajectory,
   DomainTextAnnotation,
   DomainZoneAnnotation,
   PitchPlayer,
@@ -12,6 +13,12 @@ import type {
   DomainTacticalPhase,
   DomainTacticalProject,
 } from '@/lib/types/tactical/domain-hierarchy';
+import type {
+  ConnectLine,
+  PlayerBadge,
+  PlayerFocus,
+  VisionCone,
+} from '@/lib/types/tactical/player';
 
 export type EntityKind = 'player' | 'arrow' | 'zone' | 'text';
 
@@ -67,6 +74,48 @@ export type SlideCommand =
     }
   | { readonly type: 'REMOVE_TEXT'; readonly id: string }
   | { readonly type: 'UPDATE_BALL'; readonly patch: Partial<DomainBallState> }
+  | { readonly type: 'TOGGLE_BALL_LOCK' }
+  | {
+      readonly type: 'SET_PLAYER_TRAJECTORY';
+      readonly playerId: string;
+      readonly trajectory: DomainPlayerTrajectory | undefined;
+    }
+  | {
+      readonly type: 'SET_PLAYER_VISION_CONE';
+      readonly playerId: string;
+      readonly cone: VisionCone | undefined;
+    }
+  | {
+      readonly type: 'ADD_CONNECT_LINE';
+      readonly playerId: string;
+      readonly line: ConnectLine;
+    }
+  | {
+      readonly type: 'UPDATE_CONNECT_LINE';
+      readonly playerId: string;
+      readonly lineId: string;
+      readonly patch: Partial<ConnectLine>;
+    }
+  | {
+      readonly type: 'REMOVE_CONNECT_LINE';
+      readonly playerId: string;
+      readonly lineId: string;
+    }
+  | {
+      readonly type: 'ADD_PLAYER_BADGE';
+      readonly playerId: string;
+      readonly badge: PlayerBadge;
+    }
+  | {
+      readonly type: 'REMOVE_PLAYER_BADGE';
+      readonly playerId: string;
+      readonly badgeId: string;
+    }
+  | {
+      readonly type: 'SET_PLAYER_FOCUS';
+      readonly playerId: string;
+      readonly focus: PlayerFocus | undefined;
+    }
   | {
       readonly type: 'TOGGLE_ENTITY_LOCK';
       readonly id: string;

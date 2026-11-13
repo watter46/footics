@@ -180,7 +180,9 @@ export const DomainBallStateSchema = z.object({
   y: ScreenNormCoordSchema,
   visible: z.boolean().default(true),
   color: z.string().optional(),
+  sizeScale: z.number().min(0.4).max(2.0).optional(),
   trajectory: DomainPlayerTrajectorySchema.optional(),
+  locked: z.boolean().optional(),
 });
 export type DomainBallState = Readonly<z.infer<typeof DomainBallStateSchema>>;
 
