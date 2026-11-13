@@ -1,120 +1,101 @@
 ---
 name: writing-plans
-description: 仕様や要件から、Worker（Flash）が推論なしで実装できる高解像度なタスクファイル（tasks/TASK-*.md）を作成するスキル
+description: 仕様や要件から、実行モデル（Gemini 4 Hydrogen/low）が迷わず・脱線せず・高速に組み立てられる契約仕様書（tasks/TASK-*.md）を作成するスキル
 ---
 
 # Writing Plans (実装計画立案スキル)
 
 ## 概要 (Overview)
 
-要件・仕様から、推論能力の低い Worker エージェント（`flash` / `flash_lite`）が一切の推論や自律探索なしに一発で実装できるタスクファイル（`tasks/TASK-*.md`）を作成するためのスキルです。
-本プロジェクトは **Planner（計画・実行管理）と Worker（Phase 実装）の2階層パイプライン** で動作します（旧 `Scout` および `Reviewer` は廃止）。
+本プロジェクトは **コンテキストA（高推論モデル：設計・タスク分解）** と **コンテキストB（`Gemini 4 Hydrogen/low`：実行オーケストレート＆Phase 実装）** の役割分担で動作します（旧 `Scout` および `Reviewer` は廃止）。
+コンテキストA の Planner は、設計・型境界・並列順・テスト観点をすべて確定させ、実行モデル（`Hydrogen/low`）が**勝手な設計やフォールバック作成をせず、迷わず組み立てられる部品契約**として `tasks/TASK-*.md` を作成します。
 
-## 1. 計画書 (Plan Artifact) とタスク指示書 (Task File) の役割分担
+## 1. Plan Artifact と Task File の役割分担
 
 1. **ユーザー向け設計合意 (Plan Artifact)**:
-   - 保存先: `<appDataDir>/brain/<conversation-id>/plan.md` (または `implementation_plan.md`)
-   - 制約: `.agents/rules/plan-artifact.md` に準拠し、**コード・ファイルパス・図表・システム用語を一切排除** し、**Footics ユビキタス言語** を用いた平易な日本語（4セクション構成）で「どう変わるか」「何を廃止するか」を合意する。
-2. **Worker向け内部指示書 (Task File)**:
+   - 保存先: `<appDataDir>/brain/<conversation-id>/implementation_plan.md`
+   - 制約: `.agents/rules/plan-artifact.md` に準拠し、**コード・ファイルパス・図表・システム用語を一切排除**し、Footics ユビキタス言語の4セクション構成で合意する。
+2. **実行モデル向け設計契約書 (Task File)**:
    - 保存先: `tasks/TASK-<連番>-<slug>.md`
-   - 構造: **「タスクファイル ＞ フェーズ（1 Worker単位） ＞ タスク」** の階層構造とし、**事前コミットメッセージ（`Commit:`）**、**残存禁止条件（Negative Contracts）**、およびファイルごとの **`[ADD]` / `[MODIFY: Before ➔ After]` / `[DELETE]`** を省略なしで記述する。
+   - 構造: **Execution Waves（並列/直列順）＋ Negative Contracts（機械検証）＋ Invariants & Design Decisions ＋ Phase（1 Phase = 1 Worker 契約）**。
 
 ## 2. 事前探索プロトコル (Planner による直接探索)
 
-Planner はサブエージェントに探索を丸投げせず、以下の決定論的ツールで自ら調査を完結させます：
+Planner はサブエージェントに探索を丸投げせず、以下の決定論的ツールで調査を完結させます：
 1. **シンボル・呼び出し元の全件特定**:
    - 定義元検索: `bun run ai:find <keyword>`
-   - 呼び出し元（Consumer）の全件網羅特定: `rg -l '<symbol>' src/ extension/` および `rg -c '<symbol>' src/ extension/`（切り詰めなしで全ファイル特定）
+   - 呼び出し元（Consumer）の全件網羅特定: `rg -l '<symbol>' src/ extension/` および `rg -c '<symbol>' src/ extension/`
 2. **シグネチャ・行番号・内部importの一括抽出**:
-   - `bun run ai:outline <file1> [file2 ...]`（複数ファイル一括指定可。`[L開始-L終了]` 行番号と内部 import 一覧を取得）
+   - `bun run ai:outline <file1> [file2 ...]`（`[L開始-L終了]` 行番号と内部 import を抽出）
 3. **対象箇所の無加工読込 (`read_file`)**:
-   - 400行以下のファイルは1回の `read_file` で全文取得、400行超のファイルは `ai:outline` の行番号を使って該当関数範囲を取得し、タスクファイルに書く `Before` アンカーコードを正確に把握する。
+   - 400行以下のファイルは1回の `read_file` で全文取得、400行超は `ai:outline` の行番号で該当範囲を取得し、タスクファイルに書く対象シンボル・行範囲アンカーと公開型を正確に把握する。
 
-## 3. Planner と Worker (`flash`) の契約境界・タスク作成の鉄則
+## 3. 記述粒度・サイズ上限・詰め込み防止ルール（`Hydrogen/low` 最適化）
 
 1. **一時的フォールバック・新旧二重持ちの全面禁止 (Zero Fallback Rule)**:
-   - 「既存の呼び出し元や既存テストを壊さないために optional 引数や旧ストアを残す」という設計を **厳禁** とする。
-   - 破壊的変更時は、古い仕組みを `[DELETE]` または完全置換し、影響を受けるすべての呼び出し元（Consumers）と既存テストを同一タスク（または連番タスク）内で一括更新する。
-2. **タスクファイルは「厳格な契約（Contract）」であり「全コードの写経」ではない**:
-   - **Worker に推論させてはいけないこと（タスクファイルに明記する契約）**:
-     - ① **事前コミットメッセージ (`Commit`)**: `feat(scope): ...` や `refactor(scope): ...`
-     - ② **残存禁止条件 (`Negative Contracts`)**: 完了時に `0件` でなければならない検索条件と削除対象ファイル（`[DELETE]`）
-     - ③ **局所的な変更契約 (`Before ➔ After`)**: 変更対象の関数・ブロックの入出力・ロジック仕様
-     - ④ **具体テスト仕様 (`Concrete Test Cases`)**: モック禁止の実Store / 純粋関数I/O
-   - **Worker に任せるべきこと（タスクファイルに書かないこと）**:
-     - 周辺の無関係な既存コードの維持、既存ファイルの行位置調整、Biome や型エラーに対する自律修正
-3. **ファイル丸ごとコピペの厳禁とサイズ制約 (Hard Limits)**:
-   - **局所ブロック対比**: `[MODIFY]` タスクではファイル冒頭から末尾までの全貼り付けを **厳禁** とする。変更対象の **最小限の関数・TSXブロック（前後2〜3行のアンカー付き、10〜40行程度）** のみを `Before ➔ After` として記述する。import の追加はファイル全体の import を貼るのではなく、追加する 1〜2 行のみを独立して明記する。
-   - **ブロック上限**: 1つのコードブロックは **120行以内**（`task-size-guard` および `task:validate` により 120行超は遮断）。
-   - **タスクファイル上限**: 1ファイルあたり **300〜500 行（最大 800行）** に収めること（800行超はガードにより物理遮断）。800行を超える規模の場合は、連番タスク（例: `TASK-XXXa`, `TASK-XXXb`）に分割する。
-   - **新規ファイル (`[ADD]`) の適正サイズ**: 1ファイル 150〜250行以内（単一責任の原則）にモジュール分割し、タスクファイル全体でも 300〜500行に収まるように設計する。
-4. **Phase 分割基準**:
-   - **1〜4ファイル**: 1 Phase（1 Worker）で一括完遂。
-   - **5ファイル以上**: 1 Phase あたり **最大4プロダクションファイル＋2テストファイル（計6ファイル）以下** に分割する（**`[DELETE]` ファイルは上限カウントから除外**）。
-   - 各 Phase の Worker は担当ファイル限定の `bun run ai:check <担当ファイル>` のみを通し、全 Phase 完了後に Planner が全体統合検証（`bun run ai:preflight` / `bun run ai:commit`）を実行する。
+   - 既存テストや呼び出し元を温存する optional 引数や旧ストアを残してはならない。破壊的変更時は `[DELETE]` または完全置換し、全 Consumer と既存テストを同一タスク（または連番タスク）内で一括更新する。
+2. **`Before ➔ After` 写経と実装コード丸書きの完全廃止**:
+   - タスクファイル内に既存コード（`Before`）や実装本体（`After`）を貼り付けてはならない（二重トークン消費と未コンパイル誤コード生成の原因）。
+   - 代わりに、**① 対象ファイル＋シンボル/行範囲アンカー、② 公開型・関数シグネチャ・計算式、③ 分岐・状態遷移・確定設計判断、④ 具体的テスト仕様（入力 ➔ 期待値）** を記載し、実装コード自体は実ファイルを読んだ `Hydrogen/low` Worker に書かせる。
+   - **Worker による `TASK-*.md` 直接編集は廃止**（並列実行時の編集競合防止）。進捗・完了・エラーはメッセージ（`TASK_COMPLETE` / `TASK_BLOCKED`）で返す。
+3. **サイズハード上限（`task-size-guard` & `task:validate` で物理強制）**:
+   - **1 Phase の実作業ファイル数**: 推奨 `2〜3`、**ハード上限 `4 ファイル`**（`[ADD]` / `[MODIFY]` 合算、`[DELETE]` はカウント除外）。
+   - **大ファイル・リファクタ移行の詰め込み防止特例**: 既存 `300行超` のファイルや大型テスト移行を含む場合、ファイル数上限に関わらず **`1 Phase = 1 プロダクションファイル（＋対応テスト1まで）`**、読込合計目安 **`600行以内`** に限定する。
+   - **1 Phase の責務単一性**: ドメインロジック・UI・複数 Consumer 移行を1 Worker に混載せず、閉じた単一責務ごとに Phase を分ける。
+   - **1 タスクの Phase 数**: 推奨 `1〜4`、**ハード上限 `5 Phase`**（総実編集目安 12ファイル以内）。超過時は連番タスク（`TASK-XXXa`, `TASK-XXXb`）へ分割する。
+   - **タスクファイル全体行数**: 推奨 `100〜250行`、**ハード上限 `400 行`**。
+   - **単一コードブロック行数**: **ハード上限 `40 行`**（公開型定義・関数シグネチャ・数式のみ許可）。
+4. **全領域共通テスト基準**:
+   - テスト仕様は「**内部モジュールの `vi.mock` 禁止**（純粋関数 I/O テスト、または本物の `StoreProvider`/Context 接続テスト。外部ブラウザ境界のみ DI/mock 可）」で記述する。
+5. **機械検証可能な `Negative Contracts`**:
+   - 自然文メモではなく、``- `rg: <pattern>` ``（または ``- `rg(dir1,dir2): <pattern>` ``）、``- `absent: <filePath>` ``、該当なしなら ``- `none` `` を必ず記載する（`ai:commit` 時に自動実行検証される）。
 
 ## 4. `TASK-*.md` 正式テンプレート
 
-タスクファイル作成後は必ず `bun run task:validate tasks/TASK-XXX.md` を実行して検証すること：
+作成直後に必ず `bun run task:validate tasks/TASK-XXX.md` を実行すること：
 
 ```markdown
 # TASK-XXX: [タイトル]
 
-## 1. Metadata & Goal
-- **Status**: `TODO` | `IN_PROGRESS` | `DONE`
+- **Status**: `TODO`
 - **Commit**: `refactor(scope): concise commit message`
-- **Negative Contracts (完了時に0件であるべき条件)**:
-  - `rg -l "OldSymbolName" src/ extension/` ➔ 0 files
-  - Deleted files must not exist: `src/path/to/old-file.ts`
+- **Execution Waves**:
+  - Wave 1: Phase 1, Phase 2 (parallel)
+  - Wave 2: Phase 3 (sequential after Wave 1)
+- **Negative Contracts**:
+  - `rg: OldSymbolName`
+  - `absent: src/path/to/old-file.ts`
 
-## 2. Architectural Invariants & Consumers
+## 1. Architectural Invariants & Design Decisions
 - **Invariants (壊してはいけない前提条件)**:
-  1. [前提条件と理由]
-- **Consumers (同期更新対象の全ファイルリスト)**:
+  1. [不変条件と理由]
+- **Design Decisions (実行時に迷わせない確定事項)**:
+  1. [フォールバック禁止、エラー時挙動、状態配置先など]
+- **Consumers (同期更新対象)**:
   - `src/.../consumer-a.tsx`
   - `extension/.../consumer-b.tsx`
 
-## 3. Implementation Phases (タスクファイル > フェーズ > タスク)
+## 2. Implementation Phases
 
-### Phase 1: [1 Worker が担当する論理単位]
-- **Worker Model**: `flash` | `flash_lite`
+### Phase 1: [閉じた単一責務の名称]
 - **Target Files**:
-  - `[ADD]` `src/.../new-module.ts`
-  - `[MODIFY]` `src/.../consumer-a.tsx`
+  - `[ADD]` `src/.../new-module.ts` (~120 lines)
+  - `[MODIFY]` `src/.../consumer-a.tsx` (`TargetFn`, L25-L60)
   - `[DELETE]` `src/.../old-file.ts`
   - `[MODIFY]` `src/.../__tests__/consumer-a.test.tsx`
-
-#### Task 1.1: `[ADD]` `src/.../new-module.ts`
-```ts
-// 完全な新規実装コード（省略禁止）
-```
-
-#### Task 1.2: `[MODIFY]` `src/.../consumer-a.tsx` (L25-L50)
-- **追加 import**:
-```tsx
-import { newHelper } from '@/lib/helpers';
-```
-- **変更箇所 (前後2〜3行アンカー付き、局所ブロック・全コピペ禁止)**:
-- **Before**:
-```tsx
-// 置換対象の既存関数またはTSXブロック（前後2〜3行のアンカーコードを含む）
-```
-- **After**:
-```tsx
-// 置換後の完全なコード（ファイル全体のコピペ禁止・ブロック内省略禁止）
-```
-
-#### Task 1.3: `[DELETE]` `src/.../old-file.ts`
-- `rm src/.../old-file.ts` を実行して物理削除する。
-
-#### Task 1.4: `[MODIFY]` `src/.../__tests__/consumer-a.test.tsx`
-- **Concrete Test Implementation (モックなし・実Storeまたは純粋関数I/O)**:
-```tsx
-// 具体的なテストコード
-```
-
-- **Phase Verification**:
-  - [ ] 1. 全タスク反映・ファイル削除完了
-  - [ ] 2. `bun run ai:check <Target Files（DELETE除く）>` が PASS すること
-- **Worker Handoff Log**:
+- **Reference Files (Read-Only)**:
+  - `src/.../shared-types.ts`
+- **Contract**:
+  ```ts
+  // 公開型・関数シグネチャ・数式のみ（40行以内、実装本体は書かない）
+  export function targetFn(input: FooInput): FooResult;
+  ```
+  - 振る舞い仕様・境界条件:
+    1. [仕様を箇条書きで曖昧さなく記述]
+- **Concrete Test Cases**:
+  - `src/.../__tests__/consumer-a.test.tsx`（内部 `vi.mock` 禁止・純粋関数 I/O または実 StoreProvider 接続）:
+    - `case 1`: 入力 X ➔ 期待値 Y
+    - `case 2`: 異常系 A ➔ Error throw / 状態 Z
+- **Verification**:
+  - `bun run ai:check src/.../new-module.ts src/.../consumer-a.tsx src/.../__tests__/consumer-a.test.tsx`
 ```

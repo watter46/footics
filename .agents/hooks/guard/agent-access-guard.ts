@@ -36,10 +36,11 @@ export function detectRoleFromFirstStep(firstStep: {
     return 'auditor';
   }
 
-  // 1b. Architect: tactical-architect, architect, または ARCHITECT_REQUEST / システムアーキテクト
+  // 1b. Architect: tactical-architect, Tactical Architect, architect, または ARCHITECT_REQUEST
   if (
     content.includes('tactical-architect') ||
     content.includes('tactical_architect') ||
+    content.includes('Tactical Architect') ||
     (content.includes('ROLE AND MISSION') &&
       content.includes('システムアーキテクト')) ||
     content.includes('type: "ARCHITECT_REQUEST"') ||
@@ -66,6 +67,10 @@ export function detectRoleFromFirstStep(firstStep: {
     return 'reviewer';
   }
 
+  if (firstStep.type === 'USER_INPUT') {
+    return 'planner';
+  }
+
   // 4. Worker: TASK_ASSIGN または Worker 指示
   if (
     content.includes('TASK_ASSIGN') ||
@@ -82,10 +87,6 @@ export function detectRoleFromFirstStep(firstStep: {
   // 子サブエージェント（SYSTEM_MESSAGE）で上記特定ロール以外は Worker とみなす
   if (firstStep.type === 'SYSTEM_MESSAGE') {
     return 'worker';
-  }
-
-  if (firstStep.type === 'USER_INPUT') {
-    return 'planner';
   }
 
   return 'planner';

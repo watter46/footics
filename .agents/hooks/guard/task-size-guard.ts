@@ -8,17 +8,17 @@ export interface GuardDecision {
 }
 
 const MAX_TASK_PHASES = 5;
-const MAX_PHASE_FILES = 6;
-const MAX_TASK_LINES = 800;
-const MAX_CODE_BLOCK_LINES = 120;
+const MAX_PHASE_FILES = 4;
+const MAX_TASK_LINES = 400;
+const MAX_CODE_BLOCK_LINES = 40;
 
 function isDoneTask(content: string): boolean {
   return /-\s+\*\*Status\*\*:\s*`?DONE`?\b/i.test(content);
 }
 
 /**
- * タスクファイル内のコードブロック（```〜```）の中で、指定行数（120行）を超える巨大コピペがないか検査する。
- * ※ ファイル全体のコピペを禁止し、変更箇所の局所関数・TSXブロック（前後2〜3行アンカー付き、30〜60行以内）に局所化させる。
+ * タスクファイル内のコードブロック（```〜```）の中で、40行を超えるブロックがないか検査する。
+ * 実装本体や Before/After 全文写経を物理遮断し、型・シグネチャ・数式のみに限定させる。
  */
 export function findOversizedCodeBlock(
   content: string,
@@ -34,7 +34,7 @@ export function findOversizedCodeBlock(
 }
 
 /**
- * タスクファイル全体の行数が上限（800行）を超えていないか検査する。
+ * タスクファイル全体の行数が上限（400行）を超えていないか検査する。
  */
 export function checkTaskLineCount(
   content: string,
@@ -47,9 +47,8 @@ export function checkTaskLineCount(
 }
 
 /**
- * 各 Phase セクション内の「対象ファイル」に指定されたファイル数が上限（6個: プロダクション4+テスト2相当）
- * を超えていないか検査する。
- * ※ `[DELETE]` タグが付与された削除対象ファイルは Worker の推論負荷を増やさないため上限カウントから除外する。
+ * 各 Phase セクション内の Target Files に指定された実作業ファイル数が上限（4個）
+ * を超えていないか検査する（※ `[DELETE]` タグ行は上限カウントから除外）。
  */
 export function findOverstuffedPhase(
   content: string,
@@ -62,26 +61,33 @@ export function findOverstuffedPhase(
     const body = match[2];
 
     const targetMatch = body.match(
-      /-\s+\*\*(?:対象ファイル|Target Files|対象スコープ)\*\*:\s*([^\n]*(?:\n\s+-\s+[^\n]*)*)/i,
+      /-\s+\*\*(?:対象ファイル|Target Files)\*\*:\s*([^\n]*(?:\n\s+-\s+[^\n]*)*)/i,
     );
     if (!targetMatch) continue;
 
-    // [DELETE] 指定された行・項目はファイル数上限から除外する
-    const targetBlock = targetMatch[1]
+    const lines = targetMatch[1]
       .split('\n')
-      .filter((line) => !/\[DELETE\]/i.test(line))
-      .join('\n')
-      .replace(/`?\[(?:ADD|MODIFY|DELETE)\]`?/gi, '');
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .filter((l) => !/`?\[DELETE\]`?/i.test(l));
 
-    const backtickFiles = targetBlock.match(/`[^`\n]+`/g);
     let fileCount = 0;
-    if (backtickFiles && backtickFiles.length > 0) {
-      fileCount = backtickFiles.length;
-    } else {
-      fileCount = targetBlock
-        .split(/[,\n]/)
-        .map((s) => s.replace(/^\s*-\s*/, '').trim())
-        .filter(Boolean).length;
+    for (const line of lines) {
+      const backticks = line.match(/`[^`\n]+`/g);
+      if (backticks && backticks.length > 0) {
+        const files = backticks
+          .map((b) => b.slice(1, -1).trim())
+          .filter((t) => !/^\[(?:ADD|MODIFY|DELETE)\]$/i.test(t));
+        fileCount += files.length;
+      } else {
+        const stripped = line
+          .replace(/^-\s*/, '')
+          .replace(/\[(?:ADD|MODIFY|DELETE)\]/gi, '')
+          .trim();
+        if (stripped) {
+          fileCount += stripped.split(',').filter((s) => s.trim()).length;
+        }
+      }
     }
 
     if (fileCount > MAX_PHASE_FILES) {
@@ -92,10 +98,8 @@ export function findOverstuffedPhase(
 }
 
 /**
- * タスクファイル（tasks/TASK-*.md）のスコープクリープ（6 Phase以上の継ぎ足し、DONEタスクへのPhase追記、
- * 1 Phaseあたり6ファイル超の詰め込み、全体800行超過、コードブロック120行超過の全コピペ）を物理遮断するガード。
- * ※ Worker が推論なしで実装できるよう Invariants・具体式・具体テスト値を十分に記述できるよう、
- * 適正上限（800行）および単一コードブロックの全コピペ防止（120行上限）を強制する。
+ * タスクファイル（tasks/TASK-*.md）の過積載（6 Phase以上、DONE後追記、1 Phase 4ファイル超、
+ * 全体400行超、コードブロック40行超の実装写経）を物理遮断するガード。
  */
 export function checkTaskSizeGuard(payload: any): GuardDecision | null {
   const toolCall = payload.toolCall;
@@ -111,7 +115,6 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
   const normalized = rawTargetFile.replace(/\\/g, '/');
   const baseName = path.basename(normalized);
 
-  // tasks/TASK-*.md のみを対象とする
   if (!normalized.includes('tasks/TASK-') || !baseName.endsWith('.md')) {
     return null;
   }
@@ -130,7 +133,7 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
     if (lineCountResult) {
       return {
         decision: 'deny',
-        reason: `[GUARD] Task file line limit exceeded ('${baseName}' has ${lineCountResult.totalLines} lines. Hard limit: <=${MAX_TASK_LINES} lines).\nReason: Oversized task files cause context dilution and hallucination in Worker (Flash).\nAction: Do NOT dump entire file source code. Narrow Before ➔ After down to local diff blocks (30-60 lines), or split into smaller sequential tasks (e.g. TASK-XXXa, TASK-XXXb).`,
+        reason: `[GUARD] Task file line limit exceeded ('${baseName}' has ${lineCountResult.totalLines} lines. Hard limit: <=${MAX_TASK_LINES} lines).\nReason: Oversized specs degrade Hydrogen/low execution quality.\nAction: Remove implementation code / Before-After dumps and split into sequential tasks (e.g. TASK-XXXa, TASK-XXXb).`,
       };
     }
 
@@ -138,7 +141,7 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
     if (oversizedBlock) {
       return {
         decision: 'deny',
-        reason: `[GUARD] Oversized code block detected in '${baseName}' (${oversizedBlock.lineCount} lines > ${MAX_CODE_BLOCK_LINES} lines limit).\nReason: Full file copy-pasting is strictly prohibited. Task files must provide targeted contracts (localized Before ➔ After blocks of 30-60 lines with 2-3 anchor lines).\nAction: Narrow down the code block to only the function or TSX block being modified.`,
+        reason: `[GUARD] Oversized code block detected in '${baseName}' (${oversizedBlock.lineCount} lines > ${MAX_CODE_BLOCK_LINES} lines limit).\nReason: Implementation bodies and Before/After copy-pasting are prohibited. Only public interfaces, signatures, and formulas (<= ${MAX_CODE_BLOCK_LINES} lines) are allowed.\nAction: Replace implementation blocks with Design Contracts and leave coding to the Worker.`,
       };
     }
 
@@ -148,7 +151,7 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
       if (phaseMatches.length > prevPhases) {
         return {
           decision: 'deny',
-          reason: `[GUARD] Task file modification blocked: '${baseName}' is already marked as DONE. Appending new phases to a completed task is prohibited.\nAction: Create a new task file (e.g. TASK-003) for additional requirements.`,
+          reason: `[GUARD] Task file modification blocked: '${baseName}' is already marked as DONE. Appending new phases to a completed task is prohibited.\nAction: Create a new task file (e.g. TASK-XXX) for additional requirements.`,
         };
       }
     }
@@ -156,7 +159,7 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
     if (phaseMatches.length > MAX_TASK_PHASES) {
       return {
         decision: 'deny',
-        reason: `[GUARD] Task file limit exceeded ('${baseName}' has ${phaseMatches.length} phases. Limit: <=${MAX_TASK_PHASES} phases).\nReason: Oversized task scopes cause context bloat across agents.\nAction: Do NOT append additional phases to this task. Split into a new task file (e.g. TASK-003).`,
+        reason: `[GUARD] Task file limit exceeded ('${baseName}' has ${phaseMatches.length} phases. Limit: <=${MAX_TASK_PHASES} phases).\nAction: Split into sequential task files (e.g. TASK-XXXa, TASK-XXXb).`,
       };
     }
 
@@ -164,7 +167,7 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
     if (overstuffed) {
       return {
         decision: 'deny',
-        reason: `[GUARD] Phase file limit exceeded in '${baseName}' (${overstuffed.phaseHeader} has ${overstuffed.fileCount} target files. Limit: <=${MAX_PHASE_FILES} files [max 4 production + 2 test]).\nAction: Split the phase into smaller phases of <=4 production files each.`,
+        reason: `[GUARD] Phase file limit exceeded in '${baseName}' (${overstuffed.phaseHeader} has ${overstuffed.fileCount} target files. Limit: <=${MAX_PHASE_FILES} active files, [DELETE] excluded).\nReason: Exceeding 4 files degrades Hydrogen/low Worker quality.\nAction: Split the phase into smaller phases of <=${MAX_PHASE_FILES} active files each.`,
       };
     }
 
@@ -181,20 +184,18 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
     const targetContent =
       toolCall.args.TargetContent || toolCall.args.Target || '';
 
-    // 置換文字列単体でのコードブロック超過チェック
     const oversizedInReplacement = findOversizedCodeBlock(replacement);
     if (oversizedInReplacement) {
       return {
         decision: 'deny',
-        reason: `[GUARD] Oversized code block detected in '${baseName}' (${oversizedInReplacement.lineCount} lines > ${MAX_CODE_BLOCK_LINES} lines limit).\nReason: Full file copy-pasting is strictly prohibited. Task files must provide targeted contracts (localized Before ➔ After blocks of 30-60 lines with 2-3 anchor lines).\nAction: Narrow down the code block to only the function or TSX block being modified.`,
+        reason: `[GUARD] Oversized code block detected in '${baseName}' (${oversizedInReplacement.lineCount} lines > ${MAX_CODE_BLOCK_LINES} lines limit).\nReason: Implementation bodies and Before/After copy-pasting are prohibited.\nAction: Keep code blocks to public signatures/interfaces (<= ${MAX_CODE_BLOCK_LINES} lines).`,
       };
     }
 
-    // 新たに Phase 6 以降を追加しようとしているか直接チェック
     if (/###\s+Phase\s+([6-9]|\d{2,})/i.test(replacement)) {
       return {
         decision: 'deny',
-        reason: `[GUARD] Task file limit exceeded: Adding Phase 6+ to '${baseName}' is prohibited (Max allowed: ${MAX_TASK_PHASES} phases).\nAction: Do NOT append additional phases to this task. Mark this task as DONE, commit the changes, and create a new task file (e.g. TASK-003) for additional requirements.`,
+        reason: `[GUARD] Task file limit exceeded: Adding Phase 6+ to '${baseName}' is prohibited (Max allowed: ${MAX_TASK_PHASES} phases).\nAction: Create a new sequential task file instead.`,
       };
     }
 
@@ -206,30 +207,27 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
     ).length;
     const isAddingPhase = nextPhaseCountInReplacement > prevPhaseCountInTarget;
 
-    // TargetContent 自体に Status: DONE が含まれており、新規 Phase を追記しようとしている場合
     if (isDoneTask(targetContent) && isAddingPhase) {
       return {
         decision: 'deny',
-        reason: `[GUARD] Task file modification blocked: '${baseName}' is already marked as DONE. Appending new phases to a completed task is prohibited.\nAction: Create a new task file (e.g. TASK-003) for additional requirements.`,
+        reason: `[GUARD] Task file modification blocked: '${baseName}' is already marked as DONE. Appending new phases is prohibited.`,
       };
     }
 
-    // 置換文字列単体での 1 Phase ファイル数超過チェック
     const overstuffedInReplacement = findOverstuffedPhase(replacement);
     if (overstuffedInReplacement) {
       return {
         decision: 'deny',
-        reason: `[GUARD] Phase file limit exceeded in '${baseName}' (${overstuffedInReplacement.phaseHeader} has ${overstuffedInReplacement.fileCount} target files. Limit: <=${MAX_PHASE_FILES} files [max 4 production + 2 test]).\nAction: Split the phase into smaller phases of <=4 production files each.`,
+        reason: `[GUARD] Phase file limit exceeded in '${baseName}' (${overstuffedInReplacement.phaseHeader} has ${overstuffedInReplacement.fileCount} target files. Limit: <=${MAX_PHASE_FILES} active files, [DELETE] excluded).\nAction: Split into smaller phases.`,
       };
     }
 
-    // ファイルが存在する場合、置換後の全体構造を検査
     if (existingContent !== null) {
       try {
         if (isDoneTask(existingContent) && isAddingPhase) {
           return {
             decision: 'deny',
-            reason: `[GUARD] Task file modification blocked: '${baseName}' is already marked as DONE. Appending new phases to a completed task is prohibited.\nAction: Create a new task file (e.g. TASK-003) for additional requirements.`,
+            reason: `[GUARD] Task file modification blocked: '${baseName}' is already marked as DONE. Appending new phases is prohibited.`,
           };
         }
 
@@ -242,7 +240,7 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
         if (lineCountNext) {
           return {
             decision: 'deny',
-            reason: `[GUARD] Task file line limit exceeded ('${baseName}' reached ${lineCountNext.totalLines} lines > ${MAX_TASK_LINES} lines).\nAction: Split into a new task file (e.g. TASK-XXXb) or narrow Before ➔ After blocks.`,
+            reason: `[GUARD] Task file line limit exceeded ('${baseName}' reached ${lineCountNext.totalLines} lines > ${MAX_TASK_LINES} lines).\nAction: Split into a new sequential task file or tighten contracts.`,
           };
         }
 
@@ -250,7 +248,7 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
         if (oversizedBlockNext) {
           return {
             decision: 'deny',
-            reason: `[GUARD] Oversized code block detected in '${baseName}' (${oversizedBlockNext.lineCount} lines > ${MAX_CODE_BLOCK_LINES} lines limit).\nAction: Narrow down the code block to only the function or TSX block being modified.`,
+            reason: `[GUARD] Oversized code block detected in '${baseName}' (${oversizedBlockNext.lineCount} lines > ${MAX_CODE_BLOCK_LINES} lines limit).`,
           };
         }
 
@@ -260,7 +258,7 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
         if (nextPhases > MAX_TASK_PHASES && isAddingPhase) {
           return {
             decision: 'deny',
-            reason: `[GUARD] Task file limit exceeded ('${baseName}' has ${nextPhases} phases > ${MAX_TASK_PHASES}).\nAction: Create a new task file (e.g. TASK-003) for additional requirements.`,
+            reason: `[GUARD] Task file limit exceeded ('${baseName}' has ${nextPhases} phases > ${MAX_TASK_PHASES}).`,
           };
         }
 
@@ -273,7 +271,7 @@ export function checkTaskSizeGuard(payload: any): GuardDecision | null {
         ) {
           return {
             decision: 'deny',
-            reason: `[GUARD] Phase file limit exceeded in '${baseName}' (${overstuffedNext.phaseHeader} has ${overstuffedNext.fileCount} target files. Limit: <=${MAX_PHASE_FILES} files [max 4 production + 2 test]).\nAction: Split the phase into smaller phases of <=4 production files each.`,
+            reason: `[GUARD] Phase file limit exceeded in '${baseName}' (${overstuffedNext.phaseHeader} has ${overstuffedNext.fileCount} target files. Limit: <=${MAX_PHASE_FILES} active files, [DELETE] excluded).`,
           };
         }
       } catch (_e) {}

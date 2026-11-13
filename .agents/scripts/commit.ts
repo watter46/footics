@@ -87,21 +87,29 @@ export async function runCommit(
     return 1;
   }
 
-  // 0. Task File Validation (コミット前にタスクファイルの整合性を検査)
-  const taskCheckProc = spawnSync(
-    'bun',
-    [path.resolve(__dirname, 'validate-task.ts')],
-    {
-      cwd,
-      encoding: 'utf8',
-    },
-  );
-  if (taskCheckProc.status !== 0) {
-    console.error(taskCheckProc.stdout || taskCheckProc.stderr);
-    console.error(
-      '\n[COMMIT ABORTED] Task file validation failed. All checklist items and reviewer decisions must be consistent.',
+  // 0. Task File Validation (対象ファイルに tasks/ が含まれるか、全体コミット時のみ実行)
+  const shouldValidateTask =
+    targetFiles.length === 0 || targetFiles.some((f) => f.startsWith('tasks/'));
+  if (shouldValidateTask) {
+    const taskCheckProc = spawnSync(
+      'bun',
+      [
+        path.resolve(__dirname, 'validate-task.ts'),
+        '--verify-contracts',
+        '--require-done',
+      ],
+      {
+        cwd,
+        encoding: 'utf8',
+      },
     );
-    return 1;
+    if (taskCheckProc.status !== 0) {
+      console.error(taskCheckProc.stdout || taskCheckProc.stderr);
+      console.error(
+        '\n[COMMIT ABORTED] Task file validation failed. Ensure Status is DONE, [DELETE] files are removed, and Negative Contracts match 0 files.',
+      );
+      return 1;
+    }
   }
 
   // 1. Preflight 検証（並列実行・Fast-Path判定含む）
@@ -130,9 +138,19 @@ export async function runCommit(
   const existingFiles = filesToAdd.filter((f) =>
     fs.existsSync(path.join(cwd, f)),
   );
-  const missingFiles = filesToAdd.filter(
-    (f) => !fs.existsSync(path.join(cwd, f)),
-  );
+  const missingFiles = filesToAdd
+    .filter((f) => !fs.existsSync(path.join(cwd, f)))
+    .filter((f) => {
+      const tracked = spawnSync(
+        'git',
+        ['ls-files', '--error-unmatch', '--', f],
+        {
+          cwd,
+          encoding: 'utf8',
+        },
+      );
+      return tracked.status === 0;
+    });
 
   if (existingFiles.length > 0) {
     const addRes = spawnSync('git', ['add', '--', ...existingFiles], {

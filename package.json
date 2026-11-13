@@ -31,7 +31,6 @@
     "test": "rtk vitest run",
     "test:coverage": "rtk vitest run --coverage",
     "test:agents": "bun test ./.agents",
-    "task:new": "bun scripts/task/new-task.ts",
     "task:validate": "bun .agents/scripts/validate-task.ts",
     "map": "bun scripts/map/generate-repo-map.ts"
   },

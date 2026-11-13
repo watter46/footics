@@ -25,8 +25,8 @@ description: 新機能の設計や大きな振る舞い変更の着手前に、�
    - `tasks/TASK-*.md`（Planner専管）、`src/**`, `extension/**`, `tests/**`（Worker専管）、`docs/spec/**`（実装完了後の正本のみ）の作成・編集は厳禁です。
 5. **コンテキスト量に応じた Planner 引き継ぎの使い分け**:
    - **短ターン（対話1〜3ターン程度・低コンテキスト消費）**: メモファイル（`notes/`）は作成せず、チャット上に合意事項サマリーを出力し、**同一チャットでユーザーが Planner に切り替えて（`/plan`）タスク作成へ進む**よう案内します。
-   - **長ターン（対話4ターン以上・高コンテキスト消費、またはユーザー指定時）**: 合意内容（背景・目的、Invariants & Why、Consumers、Exact Contract、Concrete Test Values、決定事項）を漏れなく `notes/brainstorm-<機能名>.md` に保存し、**新チャットで `@notes/brainstorm-<機能名>.md` と `/plan` を使って Planner に引き継ぐ**よう案内します。
-   - タスク化の分割基準：「1〜4ファイルは1 Phase一括、5ファイル以上は1 Phase最大4ファイル（テスト含め6ファイル）以下に分割、15ファイル超の大規模変更は連番タスク（`TASK-XXXa`, `TASK-XXXb`）に分割」。
+   - **長ターン（対話4ターン以上・高コンテキスト消費、またはユーザー指定時）**: 合意内容（背景・目的、Invariants & Design Decisions、Consumers、公開インターフェース/Contract、Concrete Test Cases、Negative Contracts）を漏れなく `notes/brainstorm-<機能名>.md` に保存し、**新チャットで `@notes/brainstorm-<機能名>.md` と `/plan` を使って Planner に引き継ぐ**よう案内します。
+   - タスク化の分割基準：「1 Phase 実作業（`[ADD]`/`[MODIFY]`）推奨2〜3・上限4ファイル（`[DELETE]` 除外）、既存300行超ファイル移行は `1+1`（読込 ~600行以内）、1タスク上限5 Phase・全体400行以内・コードブロック40行以内（超過時は `TASK-XXXa`, `TASK-XXXb` に分割）」。
 
 ## ブレインストーミングの3ステップ
 

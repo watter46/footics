@@ -1,19 +1,19 @@
 ---
-description: "PlannerとWorker間の通信プロトコル、ステータスバッジ出力、および差し戻しルール（2階層パイプライン）"
+description: "PlannerとWorker間の通信プロトコル、ステータス出力、およびエラー時エスカレーションルール（2階層パイプライン）"
 globs:
   - "tasks/**"
   - ".agents/agents/**"
 ---
 # エージェント通信・状態管理規約 (Agent Communication Protocol)
 
-本ドキュメントは、2階層（Planner + Worker）で協調して動作するための通信プロトコルと、状態管理の Single Source of Truth となるタスクファイルの運用ルールを定義します（旧 `Scout` / `Reviewer` は廃止済み）。
+本ドキュメントは、2階層（Planner + Worker）で協調して動作するための通信プロトコルを定義します（旧 `Scout` / `Reviewer` は廃止済み）。
 
 ## 1. 通信方式 (YAML Frontmatter + Markdown)
 
 エージェント間のメッセージング（`invoke_subagent` / `send_message`）は、**YAML Frontmatter + Markdown** 形式を採用します。
-メッセージには「タスクの具体的な中身」や長文コードを貼り付けず、最小限の信号（シグナル）と対象ファイル・Phaseへのポインタのみを含めます。タスクの詳細は常に `tasks/TASK-*.md` を参照してください。
+`invoke_subagent` には長文コードを貼り付けず、対象タスクファイルと Phase 番号へのポインタのみを含めます。
 
-### 1.1 Planner → Worker (タスク開始 / Phase委譲)
+### 1.1 Planner → Worker (Phase 委譲)
 ```markdown
 ---
 type: "TASK_ASSIGN"
@@ -21,24 +21,26 @@ target_file: "tasks/TASK-XXX.md"
 target_phase: 1
 ---
 タスク `tasks/TASK-XXX.md` の Phase 1 の実装を開始してください。
-（再作成・追加指示時は該当 Fix セクション名のみ記載）
+（直列 Wave での引き継ぎ事項や Fix 指示がある場合は1〜2行のみ追記）
 ```
 
-### 1.2 Worker → Planner (Phase 実装完了報告)
+### 1.2 Worker → Planner (Phase 完了 / ブロック報告)
+Worker は並列競合を防ぐため `tasks/TASK-*.md` を直接編集せず、結果と要点をメッセージで返します。
 ```markdown
 ---
 type: "TASK_COMPLETE"
 target_file: "tasks/TASK-XXX.md"
 phase: 1
 ---
-Phase 1 の実装および `bun run ai:check <ファイル>` のローカル検証が完了しました。
+Phase 1 の実装および `bun run ai:check` が PASS しました。
 ```
+`ai:check` が3回連続で失敗した場合は `type: "TASK_BLOCKED"` を送信し、詰まった原因と対象箇所を2〜3行で報告します。
 
-## 2. 差し戻し・終了のルール（使い捨てワーカー原則）
+## 2. 終了・再試行のルール（使い捨てワーカー原則）
 
-1. **完了済 Worker の即時破棄**: Planner は `TASK_COMPLETE` を受信したら、次ステップで必ず `manage_subagents(Action: "kill", ConversationIds: [...])` を実行して Worker を破棄する。同一 Worker の別 Phase 再利用は禁止。
-2. **修正が必要な場合**: 問題が見つかった場合はタスクファイル末尾 `## 6. Rejections / Additional Tasks` に `### Fix 1 (YYYY-MM-DD)` を追記して `task:validate` を通し、**新規 Worker** を起動して再実装させる。
-3. **上限**: 同一 Phase の再試行が改善しない場合、Planner はユーザーに制御を返す。
+1. **完了/ブロック Worker の即時破棄**: Planner は `TASK_COMPLETE` または `TASK_BLOCKED` を受信したら、次ステップで必ず `manage_subagents(Action: "kill", ConversationIds: [...])` を実行して Worker を破棄する。同一 Worker の再利用は禁止。
+2. **修正が必要な場合**: タスクファイル末尾への追記（旧 `Rejections` 欄）は廃止。修正内容（エラー要約・対象ファイル）を指示文に含めた **新規 Fix Worker** を1回起動して解決する。
+3. **上限**: 再試行が改善しない場合、Planner はユーザーに制御を返す。
 
 ## 3. ユーザー対話スタイル (`caveman`) と実装完了サマリーテンプレート
 

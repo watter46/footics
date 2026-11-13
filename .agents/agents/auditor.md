@@ -73,7 +73,7 @@ bun run ai:audit --steps <session_id> --range <start>:<end>
 - **Planner**: タスク分解が粗い、`ai:outline`/`rg` を使わず自前探索、`task:validate`/`ai:preflight`/`ai:commit` 漏れ、完了済 Worker の `kill` 漏れや直列起動
 - **Worker**: TDD 違反、ガード遮断後に同一コマンド反復、生コマンドやスコープ外コマンド実行、スライス読込、モック/Lint逃避
 - **Architect**: `.agents/**`・`docs/**` 範囲外の編集試行、非許可テスト/ビルドコマンド試行
-- **Task設計 (`tasks/TASK-*.md`)**: 局所契約不備、行サイズ超過、二重持ち/フォールバック設計、モックテスト指示
+- **Task設計 (`tasks/TASK-*.md`)**: 契約不備、サイズ上限超過（>400行 / >4ファイル / >40行ブロック）、二重持ち/フォールバック設計、モックテスト指示
 - **Hook (ガード)**: ロール誤認による誤爆、不親切なエラーメッセージによる迷走誘発
 - **Rule (.agents/rules/)**: 規約の記述が曖昧・矛盾・旧世代残存
 - **Agent 定義 (.agents/agents/)**: ツール権限やプロンプト指示の不備

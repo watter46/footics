@@ -159,7 +159,6 @@ export function validateFileAgainstBaseline(
 
   if (
     !normFile.includes('check-worker.ts') &&
-    !normFile.includes('check-reviewer.ts') &&
     !normFile.includes('code-guardrails.ts') &&
     !isTestFile(normFile) &&
     /(TODO:\s*ASK|FIXME)/i.test(content)

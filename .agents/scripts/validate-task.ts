@@ -8,6 +8,19 @@ export interface TaskValidationResult {
   warnings: string[];
 }
 
+export interface NegativeContractRule {
+  kind: 'rg' | 'absent' | 'none';
+  pattern?: string;
+  targets?: string[];
+  filePath?: string;
+  raw: string;
+}
+
+export const MAX_TASK_LINES = 400;
+export const MAX_CODE_BLOCK_LINES = 40;
+export const MAX_TASK_PHASES = 5;
+export const MAX_PHASE_FILES = 4;
+
 function extractCodeBlocks(markdown: string): string[] {
   const blocks: string[] = [];
   const regex = /```[a-zA-Z0-9_-]*\n([\s\S]*?)```/g;
@@ -36,13 +49,11 @@ export function extractDeletedTargetFiles(markdown: string): string[] {
  * タスクファイルから事前定義された Commit メッセージを抽出する
  */
 export function extractTaskCommitMessage(markdown: string): string | null {
-  // 1. YAML frontmatter `commit: "..."`
   const fmMatch = markdown.match(
     /^---\n[\s\S]*?^commit:\s*["']?([^"'\n]+)["']?/m,
   );
   if (fmMatch?.[1]) return fmMatch[1].trim();
 
-  // 2. Markdown bullet `- **Commit**: \`...\`` or `- **Commit Message**: \`...\``
   const bulletMatch = markdown.match(
     /-\s+\*\*Commit(?:\s+Message)?\*\*:\s*`?([^`\n]+)`?/i,
   );
@@ -51,12 +62,190 @@ export function extractTaskCommitMessage(markdown: string): string | null {
   return null;
 }
 
+/**
+ * `Negative Contracts` セクションから機械検証可能なルール (`rg:`, `absent:`, `none`) を抽出する
+ */
+export function extractNegativeContracts(
+  markdown: string,
+): NegativeContractRule[] {
+  const rules: NegativeContractRule[] = [];
+  const sectionMatch = markdown.match(
+    /(?:^|\n)(?:-\s+\*\*Negative Contracts\*\*:|##+\s+Negative Contracts[^\n]*)\n([\s\S]*?)(?=\n##+\s+|\n-\s+\*\*[A-Z]|$)/i,
+  );
+  if (!sectionMatch) return rules;
+
+  const lines = sectionMatch[1].split('\n');
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line.startsWith('-')) continue;
+    const item = line.replace(/^-\s+/, '').trim();
+    const unwrapped = item.replace(/^`([^`]+)`(?:\s*\(.*\))?$/, '$1').trim();
+
+    if (/^none\b/i.test(unwrapped)) {
+      rules.push({ kind: 'none', raw: item });
+      continue;
+    }
+
+    const rgScoped = unwrapped.match(/^rg\(([^)]+)\):\s*(.+)$/i);
+    if (rgScoped) {
+      const targets = rgScoped[1]
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const pattern = rgScoped[2].trim();
+      if (pattern) {
+        rules.push({ kind: 'rg', targets, pattern, raw: item });
+      }
+      continue;
+    }
+
+    const rgDefault = unwrapped.match(/^rg:\s*(.+)$/i);
+    if (rgDefault) {
+      const pattern = rgDefault[1].trim();
+      if (pattern) {
+        rules.push({ kind: 'rg', pattern, raw: item });
+      }
+      continue;
+    }
+
+    const absentMatch = unwrapped.match(/^absent:\s*(.+)$/i);
+    if (absentMatch) {
+      const filePath = absentMatch[1].trim();
+      if (filePath) {
+        rules.push({ kind: 'absent', filePath, raw: item });
+      }
+    }
+  }
+
+  return rules;
+}
+
+/**
+ * 抽出された `Negative Contracts` を実際にファイルシステム / `rg` で検証する
+ */
+export function verifyNegativeContracts(
+  rules: NegativeContractRule[],
+  cwd: string,
+): string[] {
+  const errors: string[] = [];
+
+  for (const rule of rules) {
+    if (rule.kind === 'none') continue;
+
+    if (rule.kind === 'absent' && rule.filePath) {
+      const absPath = path.resolve(cwd, rule.filePath);
+      if (fs.existsSync(absPath)) {
+        errors.push(
+          `[NEGATIVE CONTRACT] File marked absent still exists on disk: '${rule.filePath}'`,
+        );
+      }
+      continue;
+    }
+
+    if (rule.kind === 'rg' && rule.pattern) {
+      const candidateTargets =
+        rule.targets && rule.targets.length > 0
+          ? rule.targets
+          : ['src', 'extension'];
+      const existingTargets = candidateTargets.filter((t) =>
+        fs.existsSync(path.resolve(cwd, t)),
+      );
+      const searchTargets =
+        existingTargets.length > 0 ? existingTargets : ['.'];
+
+      const rgRes = spawnSync(
+        'rg',
+        ['-l', '--', rule.pattern, ...searchTargets],
+        {
+          cwd,
+          encoding: 'utf8',
+        },
+      );
+
+      if (rgRes.status === 0) {
+        const matched = (rgRes.stdout ?? '')
+          .split('\n')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        errors.push(
+          `[NEGATIVE CONTRACT] Prohibited pattern '${rule.pattern}' still matched ${matched.length} file(s): ${matched.slice(0, 5).join(', ')}`,
+        );
+      } else if (rgRes.status !== 1) {
+        errors.push(
+          `[NEGATIVE CONTRACT] Failed to execute 'rg' for pattern '${rule.pattern}': ${rgRes.stderr ?? 'unknown error'}`,
+        );
+      }
+    }
+  }
+
+  return errors;
+}
+
+interface PhaseTargetAnalysis {
+  phaseHeader: string;
+  activeFiles: string[];
+  untaggedEntries: string[];
+}
+
+export function analyzePhaseTargets(markdown: string): PhaseTargetAnalysis[] {
+  const results: PhaseTargetAnalysis[] = [];
+  const phaseRegex =
+    /^(###\s+Phase\s+\d+[^\n]*)\n([\s\S]*?)(?=^###\s+Phase\s+\d+|^##\s+\d+\.|$(?![\s\S]))/gm;
+
+  for (const match of markdown.matchAll(phaseRegex)) {
+    const phaseHeader = match[1].trim();
+    const body = match[2];
+    const targetMatch = body.match(
+      /-\s+\*\*(?:対象ファイル|Target Files)\*\*:\s*([^\n]*(?:\n\s+-\s+[^\n]*)*)/i,
+    );
+    if (!targetMatch) {
+      results.push({ phaseHeader, activeFiles: [], untaggedEntries: [] });
+      continue;
+    }
+
+    const lines = targetMatch[1]
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    const activeFiles: string[] = [];
+    const untaggedEntries: string[] = [];
+
+    for (const line of lines) {
+      if (/`?\[DELETE\]`?/i.test(line)) {
+        continue;
+      }
+      const hasAddOrModify = /`?\[(?:ADD|MODIFY)\]`?/i.test(line);
+      const backticks = line.match(/`[^`\n]+`/g) ?? [];
+      const fileTokens = backticks
+        .map((b) => b.slice(1, -1).trim())
+        .filter((t) => !/^\[(?:ADD|MODIFY|DELETE)\]$/i.test(t))
+        .filter((t) => t.includes('/') || /\.[tj]sx?$/.test(t));
+
+      if (!hasAddOrModify && fileTokens.length > 0) {
+        untaggedEntries.push(...fileTokens);
+      }
+      activeFiles.push(...fileTokens);
+    }
+
+    results.push({ phaseHeader, activeFiles, untaggedEntries });
+  }
+
+  return results;
+}
+
 export function validateTaskMarkdown(
   filePath: string,
   content: string,
-  options: { cwd?: string; checkNewFormat?: boolean } = {},
+  options: {
+    cwd?: string;
+    strictFormat?: boolean;
+    verifyContracts?: boolean;
+  } = {},
 ): TaskValidationResult {
   const cwd = options.cwd ?? process.cwd();
+  const strictFormat = options.strictFormat ?? true;
+  const verifyContracts = options.verifyContracts ?? false;
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -72,73 +261,129 @@ export function validateTaskMarkdown(
   }
   const status = statusMatch ? statusMatch[1].toUpperCase() : 'UNKNOWN';
 
-  // 2. Phase セクションの存在確認
+  // 2. Phase セクション数確認 (1..5)
   const phases = content.match(/^###\s+Phase\s+\d+/gim) ?? [];
   if (phases.length === 0) {
     errors.push(
       `[TASK VALIDATION] ${filePath}: Must contain at least one '### Phase N' section.`,
     );
-  }
-
-  // 3. 行数上限（800行）およびコードブロック行数（120行）のチェック
-  const totalLines = content.split('\n').length;
-  if (totalLines > 800) {
+  } else if (phases.length > MAX_TASK_PHASES) {
     errors.push(
-      `[TASK VALIDATION] ${filePath}: Task file exceeds 800 lines (${totalLines} lines). Task files must define targeted contracts instead of dumping entire source files. Split into smaller sequential tasks (e.g. TASK-XXXa, TASK-XXXb).`,
+      `[TASK VALIDATION] ${filePath}: Task has ${phases.length} phases (hard limit: <= ${MAX_TASK_PHASES}). Split into sequential tasks (e.g. TASK-XXXa, TASK-XXXb).`,
     );
   }
 
-  // 4. 省略記号・未決定事項（Workerの推論を誘発する曖昧表現）および巨大コピペの禁止チェック
+  // 3. 行数上限（400行）およびコードブロック行数上限（40行）
+  const totalLines = content.split('\n').length;
+  if (totalLines > MAX_TASK_LINES) {
+    errors.push(
+      `[TASK VALIDATION] ${filePath}: Task file exceeds ${MAX_TASK_LINES} lines (${totalLines} lines). Keep specs concise and split large scopes into sequential tasks.`,
+    );
+  }
+
   const codeBlocks = extractCodeBlocks(content);
   for (const block of codeBlocks) {
     const blockLines = block.split('\n').length;
-    if (blockLines > 120) {
+    if (blockLines > MAX_CODE_BLOCK_LINES) {
       errors.push(
-        `[TASK VALIDATION] ${filePath}: Code block exceeds 120 lines (${blockLines} lines). Full file copy-pasting is strictly prohibited. Narrow Before ➔ After down to targeted functions or TSX blocks (30-60 lines with 2-3 anchor lines).`,
+        `[TASK VALIDATION] ${filePath}: Code block exceeds ${MAX_CODE_BLOCK_LINES} lines (${blockLines} lines). Only public interfaces, signatures, and formulas are allowed (no implementation bodies or Before/After dumps).`,
       );
       break;
     }
 
     if (
-      /\/\/\s*\.\.\.\s*$|\/\*\s*\.\.\.\s*\*\/|\/\/\s*既存のまま|\/\/\s*省略|TODO:\s*ASK/m.test(
+      /\/\/\s*\.\.\.\s*$|\/\*\s*\.\.\.\s*\*\/|\/\/\s*既存のまま|\/\/\s*省略|TODO:\s*ASK|\.\.\.existing code\.\.\./im.test(
         block,
       )
     ) {
       errors.push(
-        `[TASK VALIDATION] ${filePath}: Code block contains lazy placeholder ('// ...', '// 既存のまま', '// 省略', or 'TODO: ASK'). Planner must write complete, copy-pasteable contracts for Worker.`,
+        `[TASK VALIDATION] ${filePath}: Code block contains lazy placeholder ('// ...', '// 既存のまま', '// 省略', or 'TODO: ASK').`,
       );
       break;
     }
   }
 
-  // 5. 新フォーマット検証（明示的にファイル指定された場合、または Commit が含まれる新タスク）
-  const hasActionTags = /\[(ADD|MODIFY|DELETE)\]/i.test(content);
-  const commitMsg = extractTaskCommitMessage(content);
+  // 4. Phase ごとの Target Files 数上限 (<= 4, [DELETE] 除外) およびタグ検査
+  const phaseTargets = analyzePhaseTargets(content);
+  for (const pt of phaseTargets) {
+    if (pt.activeFiles.length > MAX_PHASE_FILES) {
+      errors.push(
+        `[TASK VALIDATION] ${filePath}: ${pt.phaseHeader} specifies ${pt.activeFiles.length} active target files (hard limit: <= ${MAX_PHASE_FILES}, [DELETE] excluded).`,
+      );
+    }
+    if (strictFormat && pt.untaggedEntries.length > 0) {
+      errors.push(
+        `[TASK VALIDATION] ${filePath}: ${pt.phaseHeader} target files missing [ADD]/[MODIFY]/[DELETE] tag: ${pt.untaggedEntries.join(', ')}`,
+      );
+    }
+  }
 
-  if (options.checkNewFormat && status !== 'DONE') {
+  // 5. 新契約フォーマット検証（省略禁止・旧写経/競合セクション禁止）
+  if (strictFormat) {
+    const commitMsg = extractTaskCommitMessage(content);
     if (!commitMsg) {
       errors.push(
         `[TASK VALIDATION] ${filePath}: Missing pre-defined commit message ('- **Commit**: \`type(scope): summary\`').`,
       );
     }
-    if (!hasActionTags) {
+
+    if (!/-\s+\*\*Execution Waves\*\*:/i.test(content)) {
+      errors.push(
+        `[TASK VALIDATION] ${filePath}: Missing '- **Execution Waves**:' section specifying parallel/sequential execution order.`,
+      );
+    }
+
+    if (
+      !/^##\s+\d*\.*\s*(?:Architectural\s+)?Invariants\s*&\s*(?:Design Decisions|Consumers)/im.test(
+        content,
+      )
+    ) {
+      errors.push(
+        `[TASK VALIDATION] ${filePath}: Missing '## 1. Architectural Invariants & Design Decisions' section.`,
+      );
+    }
+
+    if (!/\[(ADD|MODIFY|DELETE)\]/i.test(content)) {
       errors.push(
         `[TASK VALIDATION] ${filePath}: Target files must specify action tags ('[ADD]', '[MODIFY]', or '[DELETE]').`,
       );
     }
-  }
 
-  // 5. Status: DONE 時の完了条件チェック
-  if (status === 'DONE') {
-    // 5a. 未完了チェックボックスがないか
-    const unchecked = content.match(/^[\s]*-\s+\[\s\]\s+.+$/gm) ?? [];
-    if (unchecked.length > 0) {
+    const negRules = extractNegativeContracts(content);
+    if (negRules.length === 0) {
       errors.push(
-        `[TASK VALIDATION] ${filePath}: Status is DONE, but ${unchecked.length} unchecked item(s) ('- [ ]') remain.`,
+        `[TASK VALIDATION] ${filePath}: Missing machine-verifiable Negative Contracts ('rg: <pattern>', 'absent: <path>', or 'none').`,
       );
     }
 
-    // 5b. [DELETE] 指定されたファイルが物理削除されているか
+    if (/^\s*\*{0,2}Before\*{0,2}\s*:\*{0,2}\s*$/im.test(content)) {
+      errors.push(
+        `[TASK VALIDATION] ${filePath}: Legacy 'Before:' / 'After:' code copying is abolished. Specify symbol/line range and Contract instead.`,
+      );
+    }
+
+    if (
+      /\*{0,2}Worker Model\*{0,2}\s*:|\*{0,2}Worker Handoff Log\*{0,2}|##\s*\d*\.?\s*Rejections/i.test(
+        content,
+      )
+    ) {
+      errors.push(
+        `[TASK VALIDATION] ${filePath}: Contains abolished legacy metadata ('Worker Model', 'Worker Handoff Log', or '## 6. Rejections').`,
+      );
+    }
+  }
+
+  // 6. Status: DONE または --verify-contracts 時の物理・機械検証
+  if (status === 'DONE' || verifyContracts) {
+    if (status === 'DONE') {
+      const unchecked = content.match(/^[\s]*-\s+\[\s\]\s+.+$/gm) ?? [];
+      if (unchecked.length > 0) {
+        errors.push(
+          `[TASK VALIDATION] ${filePath}: Status is DONE, but ${unchecked.length} unchecked item(s) ('- [ ]') remain.`,
+        );
+      }
+    }
+
     const deletedTargets = extractDeletedTargetFiles(content);
     for (const delFile of deletedTargets) {
       const absDel = path.resolve(cwd, delFile);
@@ -148,6 +393,9 @@ export function validateTaskMarkdown(
         );
       }
     }
+
+    const negRules = extractNegativeContracts(content);
+    errors.push(...verifyNegativeContracts(negRules, cwd));
   }
 
   return {
@@ -183,7 +431,10 @@ export function findLatestActiveTaskFile(cwd = process.cwd()): string | null {
 }
 
 if (import.meta.main) {
-  const args = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+  const rawArgs = process.argv.slice(2);
+  const verifyContracts = rawArgs.includes('--verify-contracts');
+  const requireDone = rawArgs.includes('--require-done');
+  const args = rawArgs.filter((a) => !a.startsWith('-'));
   const explicitTarget = args[0] ?? null;
   const target = explicitTarget ?? findLatestActiveTaskFile(process.cwd());
 
@@ -201,8 +452,19 @@ if (import.meta.main) {
   const content = fs.readFileSync(abs, 'utf8');
   const res = validateTaskMarkdown(target, content, {
     cwd: process.cwd(),
-    checkNewFormat: explicitTarget !== null,
+    strictFormat: true,
+    verifyContracts,
   });
+
+  if (requireDone) {
+    const isDone = /-\s+\*\*Status\*\*:\s*`?DONE`?/i.test(content);
+    if (!isDone) {
+      res.errors.push(
+        `[TASK VALIDATION] ${target}: Status must be updated to 'DONE' before committing.`,
+      );
+      res.ok = false;
+    }
+  }
 
   for (const w of res.warnings) console.warn(w);
   if (!res.ok) {

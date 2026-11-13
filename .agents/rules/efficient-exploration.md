@@ -57,9 +57,9 @@ Scout サブエージェントは廃止されており、Planner / Brainstormer 
 | **シンボル定義元の特定** | `bun run ai:find <keyword>` | `repo_map.txt` 高速検索 |
 | **呼び出し元（Consumer）の全件特定** | `rg -l '<pattern>' src/ extension/` | 切り詰めなしで全ファイル特定 |
 | **行内容の検索** | `rtk grep '<pattern>' <path>` | コード内容の検索 |
-| **Phase 単位の高速チェック（Worker用）** | `bun run ai:check <files...>` | Guardrails + Biome (`--write`) + 担当テスト実行 |
+| **Phase 単位の高速チェック（Worker用）** | `bun run ai:check <files...>` | Guardrails + Biome (`--write`) + Scoped tsc + 担当テスト実行 |
 | **最終一括検証（Planner用）** | `bun run ai:preflight` | 全体 `tsc` + 関連 `vitest` + `depcruise` + サイズ検査 |
-| **最終コミット一括実行（Planner用）** | `bun run ai:commit -m "<msg>" [files]` | `task:validate` + `ai:preflight` + 自動ステージング & コミット |
-| **タスクファイル検証（Planner用）** | `bun run task:validate <tasks/TASK-XXX.md>` | `Commit:`・`[ADD]/[MODIFY]/[DELETE]`・省略記号禁止の検査 |
+| **最終コミット一括実行（Planner用）** | `bun run ai:commit [-m "<msg>"] [files]` | `task:validate --verify-contracts --require-done` + `ai:preflight` + コミット |
+| **タスクファイル検証（Planner用）** | `bun run task:validate <tasks/TASK-XXX.md>` | `Commit:`・`Execution Waves`・`Negative Contracts`・サイズ上限検査 |
 | **エージェントテスト** | `bun test ./.agents` | `.agents` フック・スクリプトの検証 |
 | **Git差分確認** | `GIT_EXTERNAL_DIFF=difft rtk git diff` | 構造的 diff 表示 |

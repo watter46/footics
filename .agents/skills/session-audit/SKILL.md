@@ -116,7 +116,7 @@ bun run ai:audit --compare <before_id> <after_id>
 1. **Planner**: タスク分解不備、`ai:outline`/`rg` 不使用、並列 Phase 化漏れ、完了 Worker の `kill` 漏れ、`ai:commit`/`ai:preflight` 漏れ
 2. **Worker**: TDD 手順違反、ガード遮断後の反省なし再実行、生コマンド連打、スライス読込、Lint/テスト/モック逃避
 3. **Architect**: `.agents/**`・`docs/**` スコープ外アクセス試行、非許可コマンド試行
-4. **Task設計 (`tasks/TASK-*.md`)**: 局所契約違反、二重持ち/フォールバック設計、ストアモック指示、肥大化
+4. **Task設計 (`tasks/TASK-*.md`)**: 契約不備（Before/After写経混入・型未定義）、二重持ち/フォールバック設計、ストアモック指示、肥大化（>400行 / >4ファイル）
 5. **Hook (ガード)**: 親/子ロール誤認による誤爆、不親切なエラーメッセージによる迷走誘発
 6. **Rule (.agents/rules/)**: 規約の曖昧さ、矛盾、旧世代用語の残存
 7. **Agent 定義 (.agents/agents/)**: ツール権限欠落、モデル・プロンプト不備
