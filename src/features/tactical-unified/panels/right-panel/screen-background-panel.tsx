@@ -1,17 +1,24 @@
 'use client';
 
 import { Monitor, Sparkles } from 'lucide-react';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import { DEFAULT_SCREEN_BACKGROUND } from '@/lib/types/tactical-unified';
+import { useDocumentStore } from '@/features/tactical-unified/stores/tactical-store-provider';
+import {
+  DEFAULT_SCREEN_BACKGROUND,
+  type ScreenBackgroundConfig,
+} from '@/lib/types/tactical/slide';
 import { ScreenBoundarySection } from './screen-boundary-section';
 
 export function ScreenBackgroundPanel() {
-  const screenBackground = useTacticalUnifiedStoreContext(
+  const screenBackground = useDocumentStore(
     (s) => s.project.screenBackground ?? DEFAULT_SCREEN_BACKGROUND,
   );
-  const updateScreenBackground = useTacticalUnifiedStoreContext(
-    (s) => s.updateScreenBackground,
-  );
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const updateScreenBackground = (patch: Partial<ScreenBackgroundConfig>) => {
+    dispatch({
+      type: 'UPDATE_PROJECT_META',
+      patch: { screenBackground: { ...screenBackground, ...patch } },
+    });
+  };
 
   return (
     <div className="flex flex-col h-full bg-[#121214] text-white text-xs select-none">

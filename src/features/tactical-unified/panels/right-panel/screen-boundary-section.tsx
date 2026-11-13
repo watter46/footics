@@ -2,13 +2,16 @@
 
 import { Crop } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { selectDomainActivePhase } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   type BoundaryBox,
   createXBoundaryBox,
   DEFAULT_BOUNDARY_BOX_FULL,
-} from '@/lib/types/tactical-unified';
+} from '@/lib/types/tactical/slide';
 
 interface BoundaryPreset {
   id: string;
@@ -27,16 +30,26 @@ const PRESET_DEFINITIONS: BoundaryPreset[] = [
 export function ScreenBoundarySection() {
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 
-  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
-  const updateActiveSlideBoundaryBox = useTacticalUnifiedStoreContext(
-    (s) => s.updateActiveSlideBoundaryBox,
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activePhase = useDocumentStore((s) =>
+    selectDomainActivePhase(s.project, activePhaseId),
   );
+  const dispatch = useDocumentStore((s) => s.dispatch);
 
-  const boundaryBox = activeSlide?.boundaryBox;
+  const boundaryBox = activePhase?.boundaryBox;
   const isBoundaryVisible = boundaryBox?.visible ?? false;
 
+  const updatePhaseBoundaryBox = (nextBox: BoundaryBox) => {
+    if (!activePhaseId) return;
+    dispatch({
+      type: 'UPDATE_PHASE',
+      phaseId: activePhaseId,
+      patch: { boundaryBox: nextBox },
+    });
+  };
+
   const handleToggleBoundary = () => {
-    updateActiveSlideBoundaryBox({
+    updatePhaseBoundaryBox({
       x: boundaryBox?.x ?? 0,
       y: boundaryBox?.y ?? 0,
       width: boundaryBox?.width ?? 100,
@@ -101,7 +114,7 @@ export function ScreenBoundarySection() {
   const handleSelectPreset = (presetId: string) => {
     setSelectedPresetId(presetId);
     const box = getPresetBox(presetId);
-    updateActiveSlideBoundaryBox(box);
+    updatePhaseBoundaryBox(box);
   };
 
   return (

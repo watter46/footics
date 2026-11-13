@@ -1,6 +1,6 @@
 # TASK-181jh: Domain フォーメーション・スカッド配置ヘルパー & 画面背景・境界線パネル移行
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181j)
