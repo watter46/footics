@@ -18,12 +18,16 @@ import {
   CanvasToast,
   useCanvasToast,
 } from '@/features/tactical-unified/core';
-import { selectTacticalRenderSnapshot } from '@/features/tactical-unified/stores/tactical-unified-selectors';
+import { selectDomainRenderSnapshot } from '@/features/tactical-unified/stores/domain-selectors';
 import {
-  useTacticalUnifiedStoreApi,
-  useTacticalUnifiedStoreContext,
-} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import { preloadSlidePlayerPhotos } from '@/lib/tactical/export/share-payload';
+  useDocumentStore,
+  useSessionStore,
+  useTacticalStoresContext,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import {
+  preloadSlidePlayerPhotos,
+  type TacticalSceneLike,
+} from '@/lib/tactical/export/share-payload';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
 import { TopBarCenter } from './top-bar-center';
@@ -45,9 +49,7 @@ export function TopBar({
 }: TopBarProps = {}): React.ReactElement {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const projectMatchId = useTacticalUnifiedStoreContext(
-    (s) => s.project.matchId,
-  );
+  const projectMatchId = useDocumentStore((s) => s.project.matchId);
   const matchId = searchParams?.get('matchId') || projectMatchId;
 
   const handleBack = () => {
@@ -58,20 +60,23 @@ export function TopBar({
     }
   };
 
-  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
-  const openExportModal = useTacticalUnifiedStoreContext(
-    (s) => s.openExportModal,
-  );
-  const sidebarOpen = useTacticalUnifiedStoreContext(
-    (s) => s.panels.sidebarOpen,
-  );
-  const toggleSidebar = useTacticalUnifiedStoreContext((s) => s.toggleSidebar);
-  const storeApi = useTacticalUnifiedStoreApi();
+  const workspaceMode = useSessionStore((s) => s.workspaceMode);
+  const openExportModal = useSessionStore((s) => s.openExportModal);
+  const sidebarOpen = useSessionStore((s) => s.panels.sidebarOpen);
+  const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
+  const { documentStore, sessionStore } = useTacticalStoresContext();
   const { toastMessage, showToast } = useCanvasToast();
 
   async function handleCopySlideImage() {
     if (workspaceMode === 'director') {
-      const snapshot = selectTacticalRenderSnapshot(storeApi.getState());
+      const docState = documentStore.getState();
+      const sessState = sessionStore.getState();
+      const snapshot = selectDomainRenderSnapshot(
+        docState.project,
+        sessState.activePhaseId,
+        sessState.activeSlideId,
+        sessState.teamVisibility,
+      );
       const activeSlide = snapshot.activeSlide ?? snapshot.slides[0];
       if (activeSlide) {
         const baseW = 1920;
@@ -83,10 +88,13 @@ export function TopBar({
         canvas.height = crop.exportHeight;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          const playerPhotos = await preloadSlidePlayerPhotos([activeSlide]);
+          const playerPhotos = await preloadSlidePlayerPhotos([
+            activeSlide as TacticalSceneLike,
+          ]);
           try {
             renderTacticalFrameToCanvas(ctx, {
-              slides: [activeSlide],
+              slides: [],
+              phase: snapshot.activePhase,
               timeMs: 0,
               width: crop.exportWidth,
               height: crop.exportHeight,

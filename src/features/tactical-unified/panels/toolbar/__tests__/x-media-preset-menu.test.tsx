@@ -1,16 +1,45 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { describe, expect, it } from 'vitest';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { selectDomainActiveBoundaryBox } from '@/features/tactical-unified/stores/domain-selectors';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { XMediaPresetMenu } from '../x-media-preset-menu';
 
-describe('XMediaPresetMenu rendering and toggle', () => {
-  beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
-    useTacticalUnifiedStore.getState().setAspectRatio('16:9');
+function renderPresetMenu() {
+  const project = createDefaultTacticalProject();
+  const p0 = project.phases[0]!;
+  const documentStore = createDocumentStore(project);
+  documentStore.getState().dispatch({
+    type: 'CHANGE_PHASE_ASPECT_RATIO',
+    phaseId: p0.id,
+    aspectRatio: '16:9',
   });
+  const stores = {
+    documentStore,
+    sessionStore: createSessionStore({
+      activePhaseId: p0.id,
+      activeSlideId: p0.slides[0]?.id ?? '',
+    }),
+    playbackStore: createPlaybackStore(),
+  };
+  return {
+    stores,
+    ...render(
+      <TacticalStoreProvider stores={stores}>
+        <XMediaPresetMenu />
+      </TacticalStoreProvider>,
+    ),
+  };
+}
 
+describe('XMediaPresetMenu rendering and toggle', () => {
   it('renders trigger button and toggles menu on click', () => {
-    render(<XMediaPresetMenu />);
+    renderPresetMenu();
 
     const triggerBtn = screen.getByRole('button', {
       name: /Xメディア最適化比率メニュー/i,
@@ -29,7 +58,7 @@ describe('XMediaPresetMenu rendering and toggle', () => {
   });
 
   it('displays all 4 primary X presets and pitch fit reset option', () => {
-    render(<XMediaPresetMenu />);
+    renderPresetMenu();
 
     const triggerBtn = screen.getByRole('button', {
       name: /Xメディア最適化比率メニュー/i,
@@ -44,7 +73,7 @@ describe('XMediaPresetMenu rendering and toggle', () => {
   });
 
   it('closes menu when Escape key is pressed', () => {
-    render(<XMediaPresetMenu />);
+    renderPresetMenu();
 
     const triggerBtn = screen.getByRole('button', {
       name: /Xメディア最適化比率メニュー/i,
@@ -58,13 +87,8 @@ describe('XMediaPresetMenu rendering and toggle', () => {
 });
 
 describe('XMediaPresetMenu preset selection actions', () => {
-  beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
-    useTacticalUnifiedStore.getState().setAspectRatio('16:9');
-  });
-
-  it('applies 4:5 preset when clicked and updates slide boundaryBox', () => {
-    render(<XMediaPresetMenu />);
+  it('applies 4:5 preset when clicked and updates phase boundaryBox', () => {
+    const { stores } = renderPresetMenu();
 
     const triggerBtn = screen.getByRole('button', {
       name: /Xメディア最適化比率メニュー/i,
@@ -74,17 +98,18 @@ describe('XMediaPresetMenu preset selection actions', () => {
     fireEvent.click(screen.getByText(/画像1枚 \(4:5\)/i));
     expect(screen.queryByRole('dialog')).toBeNull();
 
-    const state = useTacticalUnifiedStore.getState();
-    const activeSlide = state.project.slides.find(
-      (s) => s.id === state.activeSlideId,
+    const activePhaseId = stores.sessionStore.getState().activePhaseId;
+    const box = selectDomainActiveBoundaryBox(
+      stores.documentStore.getState().project,
+      activePhaseId,
     );
-    expect(activeSlide?.boundaryBox?.enabled).toBe(true);
-    expect(activeSlide?.boundaryBox?.height).toBe(100);
-    expect(activeSlide?.boundaryBox?.width).toBe(45);
+    expect(box.enabled).toBe(true);
+    expect(box.height).toBe(100);
+    expect(box.width).toBe(45);
   });
 
   it('applies 9:16 preset and pitch fit reset option', () => {
-    render(<XMediaPresetMenu />);
+    const { stores } = renderPresetMenu();
 
     const triggerBtn = screen.getByRole('button', {
       name: /Xメディア最適化比率メニュー/i,
@@ -92,23 +117,23 @@ describe('XMediaPresetMenu preset selection actions', () => {
     fireEvent.click(triggerBtn);
     fireEvent.click(screen.getByText(/画像2枚カルーセル \(9:16\)/i));
 
-    let state = useTacticalUnifiedStore.getState();
-    let activeSlide = state.project.slides.find(
-      (s) => s.id === state.activeSlideId,
+    const activePhaseId = stores.sessionStore.getState().activePhaseId;
+    let box = selectDomainActiveBoundaryBox(
+      stores.documentStore.getState().project,
+      activePhaseId,
     );
-    expect(activeSlide?.boundaryBox?.width).toBe(31.64);
+    expect(box.width).toBe(31.64);
 
-    // Apply pitch_fit
     fireEvent.click(triggerBtn);
     fireEvent.click(screen.getByText(/ピッチ白線フィット/i));
 
-    state = useTacticalUnifiedStore.getState();
-    activeSlide = state.project.slides.find(
-      (s) => s.id === state.activeSlideId,
+    box = selectDomainActiveBoundaryBox(
+      stores.documentStore.getState().project,
+      activePhaseId,
     );
-    expect(activeSlide?.boundaryBox?.x).toBe(0);
-    expect(activeSlide?.boundaryBox?.y).toBe(0);
-    expect(activeSlide?.boundaryBox?.width).toBe(100);
-    expect(activeSlide?.boundaryBox?.height).toBe(100);
+    expect(box.x).toBe(0);
+    expect(box.y).toBe(0);
+    expect(box.width).toBe(100);
+    expect(box.height).toBe(100);
   });
 });

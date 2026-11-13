@@ -12,10 +12,13 @@ import {
   SegmentedControl,
   type SegmentOption,
 } from '@/components/ui/segmented-control';
+import { selectDomainActivePhaseAspectRatio } from '@/features/tactical-unified/stores/domain-selectors';
 import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
-import { selectActivePhaseAspectRatio } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import type { AspectRatio } from '@/lib/types/tactical-unified';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
 
 const ASPECT_RATIO_OPTIONS: SegmentOption<AspectRatio>[] = [
   { id: '16:9', label: '16:9' },
@@ -38,32 +41,42 @@ function createTeamDot(color: string) {
 }
 
 export function TopBarCenter() {
-  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
-  const toggleWorkspaceMode = useTacticalUnifiedStoreContext(
-    (s) => s.toggleWorkspaceMode,
+  const workspaceMode = useSessionStore((s) => s.workspaceMode);
+  const toggleWorkspaceMode = useSessionStore((s) => s.toggleWorkspaceMode);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const teamVisibility = useSessionStore((s) => s.teamVisibility);
+  const setTeamVisibility = useSessionStore((s) => s.setTeamVisibility);
+
+  const aspectRatio = useDocumentStore((s) =>
+    selectDomainActivePhaseAspectRatio(s.project, activePhaseId),
   );
-  const aspectRatio = useTacticalUnifiedStoreContext(
-    selectActivePhaseAspectRatio,
-  );
-  const setAspectRatio = useTacticalUnifiedStoreContext(
-    (s) => s.setAspectRatio,
-  );
-  const teamVisibility = useTacticalUnifiedStoreContext(
-    (s) => s.teamVisibility,
-  );
-  const setTeamVisibility = useTacticalUnifiedStoreContext(
-    (s) => s.setTeamVisibility,
-  );
-  const homeColor = useTacticalUnifiedStoreContext(
-    (s) => s.project.homeColor.primary,
-  );
-  const awayColor = useTacticalUnifiedStoreContext(
-    (s) => s.project.awayColor.primary,
-  );
-  const swapTeamSides = useTacticalUnifiedStoreContext((s) => s.swapTeamSides);
-  const resetSlideKeepSquad = useTacticalUnifiedStoreContext(
-    (s) => s.resetSlideKeepSquad,
-  );
+  const homeColor = useDocumentStore((s) => s.project.homeColor.primary);
+  const awayColor = useDocumentStore((s) => s.project.awayColor.primary);
+  const dispatch = useDocumentStore((s) => s.dispatch);
+
+  const setAspectRatio = (next: AspectRatio) => {
+    dispatch({
+      type: 'CHANGE_PHASE_ASPECT_RATIO',
+      phaseId: activePhaseId,
+      aspectRatio: next,
+    });
+  };
+  const swapTeamSides = () => {
+    dispatch({
+      type: 'APPLY_SLIDE_COMMAND',
+      phaseId: activePhaseId,
+      slideId: activeSlideId,
+      command: { type: 'SWAP_TEAM_SIDES' },
+    });
+  };
+  const resetSlideKeepSquad = () => {
+    dispatch({
+      type: 'RESET_SLIDE_KEEP_SQUAD',
+      phaseId: activePhaseId,
+      slideId: activeSlideId,
+    });
+  };
 
   const isVertical = isVerticalPitch(aspectRatio);
 
