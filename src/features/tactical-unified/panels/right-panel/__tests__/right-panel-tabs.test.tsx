@@ -1,10 +1,33 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { CameraControlPanel } from '../camera-control-panel';
 import { FormationPanel } from '../formation-panel';
 import { RightPanel } from '../right-panel';
 import { SquadSubPanel } from '../squad-sub-panel';
+
+function setupRightPanelStores(workspaceMode: 'board' | 'director' = 'board') {
+  const project = createDefaultTacticalProject();
+  const p0 = project.phases[0]!;
+  const s0 = p0.slides[0]!;
+  const stores = {
+    documentStore: createDocumentStore(project),
+    sessionStore: createSessionStore({
+      workspaceMode,
+      activePhaseId: p0.id,
+      activeSlideId: s0.id,
+    }),
+    playbackStore: createPlaybackStore(),
+  };
+  return { stores, phaseId: p0.id, slideId: s0.id };
+}
 
 describe('RightPanel Tab & Sub-components Architecture', () => {
   beforeEach(() => {
@@ -19,16 +42,20 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
       } as Record<string, unknown>,
       {
         get: (target, prop: string) =>
-          prop in target ? target[prop] : vi.fn(),
+          prop in target ? target[prop] : () => {},
       },
     );
-    HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
-    useTacticalUnifiedStore.getState().resetProject();
-    useTacticalUnifiedStore.getState().setWorkspaceMode('board');
+    HTMLCanvasElement.prototype.getContext = (() =>
+      mockCtx) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   });
 
   it('renders RightPanel collapsed by default and opens tabs correctly in board mode', () => {
-    render(<RightPanel />);
+    const { stores } = setupRightPanelStores('board');
+    render(
+      <TacticalStoreProvider stores={stores}>
+        <RightPanel />
+      </TacticalStoreProvider>,
+    );
 
     // Initially collapsed: board tabs exist, director tabs do not
     expect(screen.getByRole('button', { name: /formation/i })).toBeDefined();
@@ -52,9 +79,13 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
   });
 
   it('switches tabs to Camera and Screen in director mode', () => {
-    useTacticalUnifiedStore.getState().setWorkspaceMode('director');
-    useTacticalUnifiedStore.getState().setRightPanelOpen(false);
-    render(<RightPanel />);
+    const { stores } = setupRightPanelStores('director');
+    stores.sessionStore.getState().setRightPanelOpen(false);
+    render(
+      <TacticalStoreProvider stores={stores}>
+        <RightPanel />
+      </TacticalStoreProvider>,
+    );
 
     // Collapsed state: director tabs exist, board tabs do not
     expect(screen.queryByRole('button', { name: /formation/i })).toBeNull();
@@ -75,8 +106,12 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
   });
 
   it('CameraControlPanel updates pitch transform via presets, sliders, number inputs, and reset', () => {
-    const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-    render(<CameraControlPanel />);
+    const { stores, phaseId, slideId } = setupRightPanelStores('director');
+    render(
+      <TacticalStoreProvider stores={stores}>
+        <CameraControlPanel />
+      </TacticalStoreProvider>,
+    );
 
     expect(screen.getByText('Camera Controls')).toBeDefined();
 
@@ -89,9 +124,11 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
     });
     fireEvent.click(shallowFrontBtn);
 
-    let activeSlide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === activeSlideId);
+    let activeSlide = selectDomainActiveSlide(
+      stores.documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
     expect(activeSlide?.pitchTransform?.tilt).toBe(15);
     expect(activeSlide?.pitchTransform?.yaw).toBe(90);
 
@@ -100,18 +137,22 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
       selector: 'input[type="number"]',
     });
     fireEvent.change(tiltInput, { target: { value: '45' } });
-    activeSlide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === activeSlideId);
+    activeSlide = selectDomainActiveSlide(
+      stores.documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
     expect(activeSlide?.pitchTransform?.tilt).toBe(45);
 
     const tiltSlider = screen.getByLabelText(/tilt/i, {
       selector: 'input[type="range"]',
     });
     fireEvent.change(tiltSlider, { target: { value: '30' } });
-    activeSlide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === activeSlideId);
+    activeSlide = selectDomainActiveSlide(
+      stores.documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
     expect(activeSlide?.pitchTransform?.tilt).toBe(30);
 
     // Yaw slider and input change
@@ -119,26 +160,32 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
       selector: 'input[type="number"]',
     });
     fireEvent.change(yawInput, { target: { value: '120' } });
-    activeSlide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === activeSlideId);
+    activeSlide = selectDomainActiveSlide(
+      stores.documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
     expect(activeSlide?.pitchTransform?.yaw).toBe(120);
 
     const yawSlider = screen.getByLabelText(/yaw/i, {
       selector: 'input[type="range"]',
     });
     fireEvent.change(yawSlider, { target: { value: '75' } });
-    activeSlide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === activeSlideId);
+    activeSlide = selectDomainActiveSlide(
+      stores.documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
     expect(activeSlide?.pitchTransform?.yaw).toBe(75);
 
     // Reset button
     const resetBtn = screen.getByRole('button', { name: /reset camera/i });
     fireEvent.click(resetBtn);
-    activeSlide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find((s) => s.id === activeSlideId);
+    activeSlide = selectDomainActiveSlide(
+      stores.documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
     expect(activeSlide?.pitchTransform?.tilt).toBe(0);
     expect(activeSlide?.pitchTransform?.yaw).toBe(90);
     expect(activeSlide?.pitchTransform?.zoom).toBe(1);
@@ -147,7 +194,12 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
   });
 
   it('FormationPanel allows applying formation and changing team', () => {
-    render(<FormationPanel />);
+    const { stores, phaseId, slideId } = setupRightPanelStores('board');
+    render(
+      <TacticalStoreProvider stores={stores}>
+        <FormationPanel />
+      </TacticalStoreProvider>,
+    );
 
     expect(screen.getByText('Formation Presets')).toBeDefined();
     // Open More Formations accordion
@@ -164,11 +216,11 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
     const formation442 = screen.getAllByRole('button', { name: '4-4-2' })[0];
     fireEvent.click(formation442);
 
-    const activeSlide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find(
-        (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
-      );
+    const activeSlide = selectDomainActiveSlide(
+      stores.documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
     const awayPitch = activeSlide?.players.filter(
       (p) => p.team === 'away' && p.area === 'pitch',
     );
@@ -176,20 +228,46 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
   });
 
   it('SquadSubPanel renders bench player in tactical-bench-canvas sub-canvas', () => {
-    const store = useTacticalUnifiedStore.getState();
-    const activeSlideId = store.activeSlideId;
+    const { stores, phaseId, slideId } = setupRightPanelStores('board');
+    const playerId = 'bench-deploy-sub';
+    const baseSlide = selectDomainActiveSlide(
+      stores.documentStore.getState().project,
+      phaseId,
+      slideId,
+    )!;
+    const templatePlayer = baseSlide.players[0]!;
 
     // Add custom bench player
-    const playerId = store.addCustomPlayer(
-      activeSlideId,
-      'home',
-      'Deploy Sub',
-      '12',
-      'GK',
-      'bench',
-    );
+    stores.documentStore.getState().dispatch({
+      type: 'APPLY_SLIDE_COMMAND',
+      phaseId,
+      slideId,
+      command: {
+        type: 'ADD_PLAYER',
+        player: {
+          ...templatePlayer,
+          id: playerId,
+          team: 'home',
+          name: 'Deploy Sub',
+          shirtNo: '12',
+          position: 'GK',
+          area: 'bench',
+          style: {
+            ...templatePlayer.style,
+            color: '#3b82f6',
+            insideContent: 'number',
+            bottomLabel: 'name',
+            sizeScale: 1,
+          },
+        },
+      },
+    });
 
-    const { container } = render(<SquadSubPanel />);
+    const { container } = render(
+      <TacticalStoreProvider stores={stores}>
+        <SquadSubPanel />
+      </TacticalStoreProvider>,
+    );
 
     expect(screen.getByText('Squad & Bench')).toBeDefined();
 
@@ -201,12 +279,20 @@ describe('RightPanel Tab & Sub-components Architecture', () => {
     expect(screen.queryByTitle('Remove')).toBeNull();
 
     // Player can be removed via store action
-    store.removePlayer(activeSlideId, playerId);
-    const activeSlide = useTacticalUnifiedStore
-      .getState()
-      .project.slides.find(
-        (s) => s.id === useTacticalUnifiedStore.getState().activeSlideId,
-      );
+    stores.documentStore.getState().dispatch({
+      type: 'APPLY_SLIDE_COMMAND',
+      phaseId,
+      slideId,
+      command: {
+        type: 'REMOVE_PLAYER',
+        id: playerId,
+      },
+    });
+    const activeSlide = selectDomainActiveSlide(
+      stores.documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
     const removedPlayer = activeSlide?.players.find(
       (p) => p.name === 'Deploy Sub',
     );

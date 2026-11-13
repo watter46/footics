@@ -6,43 +6,52 @@ import {
   exportSingleSlidePng,
 } from '@/features/tactical-unified/hooks/konva-export-helpers';
 import {
-  selectActiveBoundaryBox,
-  selectActivePhase,
-  selectActivePhaseAspectRatio,
-  selectActivePhaseSlides,
-  selectActiveSlide,
-} from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+  exportTacticalProjectToJson,
+  importTacticalProjectFromJson,
+} from '@/features/tactical-unified/hooks/use-project-json-io';
+import {
+  selectDomainActiveBoundaryBox,
+  selectDomainActivePhase,
+  selectDomainActivePhaseAspectRatio,
+  selectDomainActivePhaseSlides,
+  selectDomainActiveSlide,
+} from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import { useExportShare } from './use-export-share';
 
 export type ExportTab = 'video' | 'image' | 'json';
 export type ExportFormat = 'png' | 'zip';
 
 export function useExportModalState() {
-  const closeExportModal = useTacticalUnifiedStoreContext(
-    (s) => s.closeExportModal,
+  const closeExportModal = useSessionStore((s) => s.closeExportModal);
+  const isExporting = useSessionStore((s) => s.isExporting);
+  const setIsExporting = useSessionStore((s) => s.setIsExporting);
+  const pendingExport = useSessionStore((s) => s.pendingExport);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const setActivePhaseId = useSessionStore((s) => s.setActivePhaseId);
+  const setActiveSlideId = useSessionStore((s) => s.setActiveSlideId);
+  const teamVisibility = useSessionStore((s) => s.teamVisibility);
+  const project = useDocumentStore((s) => s.project);
+  const loadProject = useDocumentStore((s) => s.loadProject);
+  const activeSlide = selectDomainActiveSlide(
+    project,
+    activePhaseId,
+    activeSlideId,
   );
-  const isExporting = useTacticalUnifiedStoreContext((s) => s.isExporting);
-  const setIsExporting = useTacticalUnifiedStoreContext(
-    (s) => s.setIsExporting,
+  const activePhase = selectDomainActivePhase(project, activePhaseId);
+  const slides = selectDomainActivePhaseSlides(project, activePhaseId);
+  const aspectRatio = selectDomainActivePhaseAspectRatio(
+    project,
+    activePhaseId,
   );
-  const pendingExport = useTacticalUnifiedStoreContext((s) => s.pendingExport);
-  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
-  const activePhase = useTacticalUnifiedStoreContext(selectActivePhase);
-  const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
-  const aspectRatio = useTacticalUnifiedStoreContext(
-    selectActivePhaseAspectRatio,
-  );
-  const boundaryBox = useTacticalUnifiedStoreContext(selectActiveBoundaryBox);
-  const pitchAppearance = useTacticalUnifiedStoreContext(
-    (s) => s.project.pitchAppearance,
-  );
-  const screenBackground = useTacticalUnifiedStoreContext(
-    (s) => s.project.screenBackground,
-  );
-  const teamVisibility = useTacticalUnifiedStoreContext(
-    (s) => s.teamVisibility,
-  );
+  const boundaryBox = selectDomainActiveBoundaryBox(project, activePhaseId);
+  const pitchAppearance = project.pitchAppearance;
+  const screenBackground = project.screenBackground;
 
   const initFmt = pendingExport?.format;
   const [activeTab, setActiveTab] = useState<ExportTab>(
@@ -101,6 +110,19 @@ export function useExportModalState() {
     }
   };
 
+  const exportJson = () => {
+    exportTacticalProjectToJson(project);
+  };
+
+  const importJson = async (file: File) => {
+    const imported = await importTacticalProjectFromJson(file, false);
+    const bundle = normalizeTacticalProject(imported);
+    loadProject(bundle.project);
+    setActivePhaseId(bundle.activePhaseId);
+    setActiveSlideId(bundle.activeSlideId);
+    return bundle.project.title ?? 'Untitled';
+  };
+
   return {
     activeTab,
     setActiveTab,
@@ -111,6 +133,8 @@ export function useExportModalState() {
     exportError,
     setExportError,
     handleExport,
+    exportJson,
+    importJson,
     share,
     isExporting,
     closeExportModal,

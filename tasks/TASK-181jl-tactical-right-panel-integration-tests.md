@@ -1,6 +1,6 @@
 # TASK-181jl: Right Panel 統合テスト群の Domain 移行
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181j)

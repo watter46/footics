@@ -37,7 +37,8 @@ export function ScreenBoundarySection() {
   const dispatch = useDocumentStore((s) => s.dispatch);
 
   const boundaryBox = activePhase?.boundaryBox;
-  const isBoundaryVisible = boundaryBox?.visible ?? false;
+  const isBoundaryEnabled = boundaryBox?.enabled ?? true;
+  const isBoundaryVisible = boundaryBox?.visible ?? isBoundaryEnabled;
 
   const updatePhaseBoundaryBox = (nextBox: BoundaryBox) => {
     if (!activePhaseId) return;
@@ -49,14 +50,15 @@ export function ScreenBoundarySection() {
   };
 
   const handleToggleBoundary = () => {
+    const nextEnabled = !isBoundaryEnabled;
     updatePhaseBoundaryBox({
       x: boundaryBox?.x ?? 0,
       y: boundaryBox?.y ?? 0,
       width: boundaryBox?.width ?? 100,
       height: boundaryBox?.height ?? 100,
       fitTarget: boundaryBox?.fitTarget ?? 'canvas',
-      enabled: true,
-      visible: !isBoundaryVisible,
+      enabled: nextEnabled,
+      visible: nextEnabled,
     });
   };
 

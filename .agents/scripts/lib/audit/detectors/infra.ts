@@ -89,7 +89,7 @@ export const detectHookRoleMismatch: Detector = (
   const findings: Finding[] = [];
 
   const roleMentionRegex =
-    /(Planner|Scout|Worker|Reviewer|Auditor)\s+(?:is prohibited|is a read-only|can only modify)/i;
+    /(Planner|Scout|Worker|Reviewer|Auditor|Architect)\s+(?:is prohibited|is a read-only|can only modify)/i;
   const workerIdRegex = /Worker\s+'([^']+)'/i;
 
   for (const r of ctx.records) {

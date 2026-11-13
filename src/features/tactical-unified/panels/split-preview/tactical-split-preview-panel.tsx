@@ -4,13 +4,17 @@ import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { useExportPreviewAnimation } from '@/features/tactical-unified/panels/export/export-preview-player';
 import {
-  selectActiveBoundaryBox,
-  selectActivePhase,
-  selectActivePhaseAspectRatio,
-  selectActivePhaseSlides,
-  selectActiveSlide,
-} from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+  selectDomainActiveBoundaryBox,
+  selectDomainActivePhase,
+  selectDomainActivePhaseAspectRatio,
+  selectDomainActivePhaseSlides,
+  selectDomainActiveSlide,
+} from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  usePlaybackStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { isBoundaryCropActive } from '@/lib/tactical/export/video-crop-calc';
 import {
   hasActiveDirectorCameraTrack,
@@ -20,43 +24,43 @@ import type { PitchTransform } from '@/lib/types/tactical/slide';
 import { PreviewBoundaryOverlay } from './preview-boundary-overlay';
 import { buildPlayerPhotoRecord } from './preview-player-photos';
 import { usePreviewWheelZoom } from './use-preview-wheel-zoom';
+import { useSplitPreviewCommands } from './use-split-preview-commands';
 
 export function TacticalSplitPreviewPanel() {
-  const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
-  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
-  const activePhase = useTacticalUnifiedStoreContext(selectActivePhase);
-  const aspectRatio = useTacticalUnifiedStoreContext(
-    selectActivePhaseAspectRatio,
+  const project = useDocumentStore((s) => s.project);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const teamVisibility = useSessionStore((s) => s.teamVisibility);
+  const isPlaying = usePlaybackStore((s) => s.isPlaying);
+  const playbackTimeMs = usePlaybackStore((s) => Number(s.timeMs));
+  const togglePlayback = usePlaybackStore((s) => s.togglePlayback);
+
+  const slides = selectDomainActivePhaseSlides(project, activePhaseId);
+  const activeSlide = selectDomainActiveSlide(
+    project,
+    activePhaseId,
+    activeSlideId,
   );
-  const boundaryBox = useTacticalUnifiedStoreContext(selectActiveBoundaryBox);
-  const pitchAppearance = useTacticalUnifiedStoreContext(
-    (s) => s.project.pitchAppearance,
+  const activePhase = selectDomainActivePhase(project, activePhaseId);
+  const aspectRatio = selectDomainActivePhaseAspectRatio(
+    project,
+    activePhaseId,
   );
-  const screenBackground = useTacticalUnifiedStoreContext(
-    (s) => s.project.screenBackground,
-  );
-  const isPlaying = useTacticalUnifiedStoreContext((s) => s.isPlaying);
-  const teamVisibility = useTacticalUnifiedStoreContext(
-    (s) => s.teamVisibility,
-  );
-  const playbackSeekTimeMs = useTacticalUnifiedStoreContext(
-    (s) => s.playbackSeekTimeMs,
-  );
-  const togglePlayback = useTacticalUnifiedStoreContext(
-    (s) => s.togglePlayback,
-  );
-  const updatePitchTransform = useTacticalUnifiedStoreContext(
-    (s) => s.updatePitchTransform,
-  );
-  const updateActiveSlideBoundaryBox = useTacticalUnifiedStoreContext(
-    (s) => s.updateActiveSlideBoundaryBox,
-  );
-  const upsertGlobalCameraKeyframe = useTacticalUnifiedStoreContext(
-    (s) => s.upsertGlobalCameraKeyframe,
-  );
-  const upsertActionCameraCue = useTacticalUnifiedStoreContext(
-    (s) => s.upsertActionCameraCue,
-  );
+  const boundaryBox = selectDomainActiveBoundaryBox(project, activePhaseId);
+  const pitchAppearance = project.pitchAppearance;
+  const screenBackground = project.screenBackground;
+  const targetPhaseId = activePhase?.id ?? activePhaseId;
+
+  const {
+    updatePitchTransform,
+    updatePhaseBoundaryBox,
+    upsertGlobalCameraKeyframe,
+    upsertActionCameraCue,
+  } = useSplitPreviewCommands({
+    targetPhaseId,
+    activeSlideId: activeSlide?.id,
+    activeSlidePitchTransform: activeSlide?.pitchTransform,
+  });
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -70,7 +74,7 @@ export function TacticalSplitPreviewPanel() {
     useState<PitchTransform | null>(null);
   const latestPitchTransformRef = useRef<PitchTransform | null>(null);
 
-  const currentTimeMs = playbackSeekTimeMs ?? 0;
+  const currentTimeMs = playbackTimeMs;
   const isDirectorCameraActive = hasActiveDirectorCameraTrack(
     activePhase?.directorCamera,
   );
@@ -262,7 +266,7 @@ export function TacticalSplitPreviewPanel() {
             <PreviewBoundaryOverlay
               boundaryBox={boundaryBox}
               containerRef={containerRef}
-              onCommit={updateActiveSlideBoundaryBox}
+              onCommit={updatePhaseBoundaryBox}
             />
           )}
         </div>

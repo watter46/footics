@@ -1,6 +1,6 @@
 # TASK-181jp: Split Preview パネルの 3ストア・Domain コマンド移行
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181j)

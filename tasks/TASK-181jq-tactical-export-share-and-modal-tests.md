@@ -1,6 +1,6 @@
 # TASK-181jq: Export Share & Export Modal テストの 3ストア・Domain V3 移行
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181j)

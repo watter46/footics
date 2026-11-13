@@ -26,12 +26,12 @@ export function detectRoleFromFirstStep(firstStep: {
 
   const content = firstStep.content || '';
 
-  // 1. Auditor: 子セッションの AUDIT_REQUEST、または親チャットの @auditor / AUDIT_REQUEST / ai:audit 指定
+  // 1. Auditor: 子セッションの AUDIT_REQUEST、または親チャットの @auditor / 先頭 ai:audit コマンド
   if (
     content.includes('type: "AUDIT_REQUEST"') ||
     content.includes("type: 'AUDIT_REQUEST'") ||
     /@auditor\b/i.test(content) ||
-    /\bai:audit\b/i.test(content)
+    /^\s*(?:bun\s+run\s+)?ai:audit\b/i.test(content)
   ) {
     return 'auditor';
   }

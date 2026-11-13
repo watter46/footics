@@ -1,8 +1,73 @@
 import { act, renderHook } from '@testing-library/react';
+import { createElement, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
+import type { DomainTacticalProject } from '@/lib/types/tactical/domain-hierarchy';
 import { useExportShare } from '../use-export-share';
+
+function buildShareTestProject(): DomainTacticalProject {
+  return normalizeTacticalProject({
+    id: 'proj-1',
+    title: 'Tactical Analysis',
+    screenBackground: { type: 'cinematic' },
+    pitchAppearance: {
+      lineColor: '#ffffff',
+      lineWidth: 2,
+      lineOpacity: 0.8,
+      pitchBackgroundType: 'marble',
+      overlayColor: '#0B303E',
+      overlayOpacity: 0.2,
+    },
+    phases: [
+      {
+        id: 'phase-1',
+        name: 'Phase 1',
+        aspectRatio: '4:5',
+        boundaryBox: {
+          enabled: true,
+          x: 10,
+          y: 20,
+          width: 800,
+          height: 1000,
+        },
+        directorCamera: {
+          enabled: true,
+          globalKeyframes: [{ id: 'k1', timeMs: 0, tilt: 25, yaw: 10 }],
+          actionCues: [],
+        },
+        slides: [
+          {
+            id: 'slide-1',
+            index: 0,
+            label: 'Scene 1',
+            pitchTransform: {
+              tilt: 25,
+              yaw: 90,
+              zoom: 1.2,
+              panX: 10,
+              panY: 0,
+            },
+            players: [],
+            arrows: [],
+            zones: [],
+            texts: [],
+          },
+          {
+            id: 'slide-2',
+            index: 1,
+            label: 'Scene 2',
+            players: [],
+            arrows: [],
+            zones: [],
+            texts: [],
+          },
+        ],
+      },
+    ],
+  }).project;
+}
 
 vi.mock('sonner', () => ({
   toast: {
@@ -16,119 +81,6 @@ describe('useExportShare', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    useTacticalUnifiedStore.setState({
-      activePhaseId: 'phase-1',
-      activeSlideId: 'slide-1',
-      project: {
-        id: 'proj-1',
-        title: 'Tactical Analysis',
-        aspectRatio: '4:5',
-        screenBackground: {
-          type: 'cinematic',
-        },
-        pitchAppearance: {
-          lineColor: '#ffffff',
-          lineWidth: 2,
-          lineOpacity: 0.8,
-          pitchBackgroundType: 'marble',
-          overlayColor: '#0B303E',
-          overlayOpacity: 0.2,
-        },
-        phases: [
-          {
-            id: 'phase-1',
-            name: 'Phase 1',
-            aspectRatio: '4:5',
-            boundaryBox: {
-              enabled: true,
-              x: 10,
-              y: 20,
-              width: 800,
-              height: 1000,
-            },
-            directorCamera: {
-              enabled: true,
-              globalKeyframes: [{ id: 'k1', timeMs: 0, tilt: 25, yaw: 10 }],
-              actionCues: [],
-            },
-            slides: [
-              {
-                id: 'slide-1',
-                name: 'Scene 1',
-                boundaryBox: {
-                  enabled: true,
-                  x: 10,
-                  y: 20,
-                  width: 800,
-                  height: 1000,
-                },
-                pitchTransform: {
-                  pitchTilt: 25,
-                  pitchPan: 10,
-                  pitchZoom: 1.2,
-                  cameraElevation: 45,
-                },
-                players: [],
-                balls: [],
-                lines: [],
-                arrows: [],
-                shapes: [],
-                zones: [],
-                textLabels: [],
-              },
-              {
-                id: 'slide-2',
-                name: 'Scene 2',
-                players: [],
-                balls: [],
-                lines: [],
-                arrows: [],
-                shapes: [],
-                zones: [],
-                textLabels: [],
-              },
-            ],
-          },
-        ],
-        slides: [
-          {
-            id: 'slide-1',
-            name: 'Scene 1',
-            boundaryBox: {
-              enabled: true,
-              x: 10,
-              y: 20,
-              width: 800,
-              height: 1000,
-            },
-            pitchTransform: {
-              pitchTilt: 25,
-              pitchPan: 10,
-              pitchZoom: 1.2,
-              cameraElevation: 45,
-            },
-            players: [],
-            balls: [],
-            lines: [],
-            arrows: [],
-            shapes: [],
-            zones: [],
-            textLabels: [],
-          },
-          {
-            id: 'slide-2',
-            name: 'Scene 2',
-            players: [],
-            balls: [],
-            lines: [],
-            arrows: [],
-            shapes: [],
-            zones: [],
-            textLabels: [],
-          },
-        ],
-      } as any,
-    });
   });
 
   afterEach(() => {
@@ -146,8 +98,24 @@ describe('useExportShare', () => {
     });
     global.fetch = fetchMock as any;
 
+    const initialProject = buildShareTestProject();
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(
+        TacticalStoreProvider,
+        {
+          initialProject,
+          initialSession: {
+            activePhaseId: 'phase-1',
+            activeSlideId: 'slide-1',
+          },
+        },
+        children,
+      );
+
     const onError = vi.fn();
-    const { result } = renderHook(() => useExportShare({ onError }));
+    const { result } = renderHook(() => useExportShare({ onError }), {
+      wrapper,
+    });
 
     await act(async () => {
       await result.current.createShareLink();
@@ -163,18 +131,13 @@ describe('useExportShare', () => {
     const body = JSON.parse(requestInit.body);
     expect(body.title).toBe('Tactical Analysis');
     expect(body.aspectRatio).toBe('4:5');
-    expect(body.boundaryBox).toEqual({
-      enabled: true,
-      x: 10,
-      y: 20,
-      width: 800,
-      height: 1000,
-    });
-    expect(body.pitchTransform).toEqual({
-      pitchTilt: 25,
-      pitchPan: 10,
-      pitchZoom: 1.2,
-      cameraElevation: 45,
+    expect(body.boundaryBox).toEqual(initialProject.phases[0].boundaryBox);
+    expect(body.pitchTransform).toMatchObject({
+      tilt: 25,
+      yaw: 90,
+      zoom: 1.2,
+      panX: 10,
+      panY: 0,
     });
     expect(body.pitchAppearance).toEqual({
       lineColor: '#ffffff',
@@ -184,11 +147,9 @@ describe('useExportShare', () => {
       overlayColor: '#0B303E',
       overlayOpacity: 0.2,
     });
-    expect(body.directorCamera).toEqual({
-      enabled: true,
-      globalKeyframes: [{ id: 'k1', timeMs: 0, tilt: 25, yaw: 10 }],
-      actionCues: [],
-    });
+    expect(body.directorCamera).toEqual(
+      initialProject.phases[0].directorCamera,
+    );
     expect(body.screenBackground).toEqual({
       type: 'cinematic',
     });
@@ -199,7 +160,7 @@ describe('useExportShare', () => {
     );
   });
 
-  it('prefers activeSlide.boundaryBox over activePhase.boundaryBox in share payload', async () => {
+  it('uses activePhase.boundaryBox and session teamVisibility in share payload', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -210,43 +171,39 @@ describe('useExportShare', () => {
     });
     global.fetch = fetchMock as any;
 
-    const state = useTacticalUnifiedStore.getState();
-    useTacticalUnifiedStore.setState({
-      ...state,
-      teamVisibility: 'home',
-      project: {
-        ...state.project,
-        phases: [
-          {
-            ...state.project.phases[0],
-            boundaryBox: {
-              enabled: true,
-              x: 0,
-              y: 0,
-              width: 100,
-              height: 100,
-            },
-            slides: [
-              {
-                ...state.project.phases[0].slides[0],
-                boundaryBox: {
-                  enabled: false,
-                  visible: false,
-                  x: 28.9,
-                  y: 3,
-                  width: 42.2,
-                  height: 94,
-                },
-              },
-              state.project.phases[0].slides[1],
-            ],
+    const baseProject = buildShareTestProject();
+    const customBox = {
+      enabled: false,
+      visible: false,
+      fitTarget: 'pitch' as const,
+      x: 28.9,
+      y: 3,
+      width: 42.2,
+      height: 94,
+    };
+    const initialProject: DomainTacticalProject = {
+      ...baseProject,
+      phases: [{ ...baseProject.phases[0], boundaryBox: customBox }],
+    };
+
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(
+        TacticalStoreProvider,
+        {
+          initialProject,
+          initialSession: {
+            activePhaseId: 'phase-1',
+            activeSlideId: 'slide-1',
+            teamVisibility: 'home',
           },
-        ],
-      } as any,
-    });
+        },
+        children,
+      );
 
     const onError = vi.fn();
-    const { result } = renderHook(() => useExportShare({ onError }));
+    const { result } = renderHook(() => useExportShare({ onError }), {
+      wrapper,
+    });
 
     await act(async () => {
       await result.current.createShareLink();
@@ -257,14 +214,7 @@ describe('useExportShare', () => {
     const [, requestInit] = fetchMock.mock.calls[0];
     const body = JSON.parse(requestInit.body);
 
-    expect(body.boundaryBox).toEqual({
-      enabled: false,
-      visible: false,
-      x: 28.9,
-      y: 3,
-      width: 42.2,
-      height: 94,
-    });
+    expect(body.boundaryBox).toEqual(customBox);
     expect(body.teamVisibility).toBe('home');
   });
 });

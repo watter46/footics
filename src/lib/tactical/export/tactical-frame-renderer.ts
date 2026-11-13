@@ -3,16 +3,19 @@ import {
   type InterpolatedUnifiedFrame,
   type ResolveSyntheticDirectorCameraOptions,
 } from '@/lib/tactical/unified-interpolation';
-import type { DomainTacticalPhase } from '@/lib/types/tactical/domain-hierarchy';
 import type {
-  AspectRatio,
+  DomainSlide,
+  DomainTacticalPhase,
+} from '@/lib/types/tactical/domain-hierarchy';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
+import type { DirectorCameraTrack } from '@/lib/types/tactical/project';
+import type {
   BoundaryBox,
-  DirectorCameraTrack,
   PitchAppearanceConfig,
   PitchTransform,
   ScreenBackgroundConfig,
   Slide,
-} from '@/lib/types/tactical-unified';
+} from '@/lib/types/tactical/slide';
 import { renderArrows, renderConnectLines } from './renderers/arrow-renderer';
 import {
   renderBall,
@@ -67,7 +70,7 @@ export {
 export type InterpolatedUnifiedSlideFrame = InterpolatedUnifiedFrame;
 
 export interface RenderTacticalFrameOptions {
-  slides: Slide[];
+  slides: readonly (Slide | DomainSlide)[];
   timeMs: number;
   width: number;
   height: number;

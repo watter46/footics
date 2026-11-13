@@ -3,19 +3,21 @@ import {
   type NormalizedProjectBundle,
   normalizeTacticalProject,
 } from '@/lib/tactical/acl/legacy-project-translator';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import {
-  type AspectRatio,
-  type BoundaryBox,
-  BoundaryBoxSchema,
   type DirectorCameraTrack,
   DirectorCameraTrackSchema,
+} from '@/lib/types/tactical/project';
+import {
+  type BoundaryBox,
+  BoundaryBoxSchema,
   type PitchAppearanceConfig,
   PitchAppearanceConfigSchema,
   type PitchTransform,
   PitchTransformSchema,
   type ScreenBackgroundConfig,
   ScreenBackgroundConfigSchema,
-} from '@/lib/types/tactical-unified';
+} from '@/lib/types/tactical/slide';
 
 export const AspectRatioSchema = z.enum(['16:9', '4:5', '1:1', '9:16']);
 export type { AspectRatio };

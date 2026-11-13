@@ -9,6 +9,7 @@ export type SuspectLayer =
   | 'scout'
   | 'reviewer'
   | 'auditor'
+  | 'architect'
   | 'agent-def'
   | 'hook'
   | 'rule'

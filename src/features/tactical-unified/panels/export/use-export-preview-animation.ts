@@ -1,16 +1,28 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useStore } from 'zustand';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
+import { TacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
 import { hasActiveFrameEffects } from '@/lib/tactical/export/tactical-frame-effects';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
-import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
 import { resolvePlaybackDurationMs } from '@/lib/tactical/unified-interpolation';
-import type { Slide } from '@/lib/types/tactical-unified';
+
+const fallbackSessionStore = createSessionStore();
+const fallbackPlaybackStore = createPlaybackStore();
 
 import {
   PREVIEW_DIMENSIONS,
+  resolveExportPreviewCropInfo,
   resolveExportPreviewMVPMatrix,
   type UseExportPreviewAnimationParams,
 } from './export-preview-constants';
@@ -51,16 +63,21 @@ export function useExportPreviewAnimation({
   const totalDurationMs = resolvePlaybackDurationMs(slides) || 1000;
   const currentTimeMsRef = useRef<number>(0);
 
-  const seekTo = useTacticalUnifiedStoreContext((s) => s.seekTo);
-  const workspaceMode =
-    useTacticalUnifiedStoreContext((s) => s.workspaceMode) ?? 'normal';
-  const storeTeamVisibility = useTacticalUnifiedStoreContext(
-    (s) => s.teamVisibility,
+  const stores = useContext(TacticalStoresContext);
+  const sessionStore = stores?.sessionStore ?? fallbackSessionStore;
+  const playbackStore = stores?.playbackStore ?? fallbackPlaybackStore;
+
+  const seekTo = useStore(playbackStore, (s) =>
+    stores ? s.seekTo : undefined,
   );
+  const workspaceMode = useStore(sessionStore, (s) => s.workspaceMode);
+  const storeTeamVisibility = useStore(sessionStore, (s) => s.teamVisibility);
+  const playbackTimeMs = useStore(playbackStore, (s) => Number(s.timeMs));
   const effectiveTeamVisibility =
     teamVisibility ?? storeTeamVisibility ?? 'both';
   const lastSeekNoticeTimeRef = useRef<number>(-9999);
-  const isInternalSeekRef = useRef<boolean>(false);
+  const lastDispatchedSeekMsRef = useRef<number | null>(null);
+  const lastStoreTimeMsRef = useRef<number>(playbackTimeMs);
   const stateRef = useRef({ workspaceMode, effectiveIsPlaying, seekTo });
   stateRef.current = { workspaceMode, effectiveIsPlaying, seekTo };
 
@@ -88,23 +105,11 @@ export function useExportPreviewAnimation({
     [slides, aspectRatio, boundaryBox, directorCamera],
   );
 
-  const cropInfo = useMemo(() => {
-    const box = boundaryBox?.enabled !== false ? boundaryBox : null;
-    const { width: w, height: h } = basePreviewDim;
-    const pitchRect = w > 0 ? { x: 0, y: 0, width: w, height: h } : undefined;
-    return calculateBoundaryCrop(box, w, h, 1, pitchRect);
-  }, [boundaryBox, basePreviewDim]);
-
-  const shouldCropPreview = cropInfo.isCropped;
-  const previewWidth = shouldCropPreview
-    ? cropInfo.exportWidth
-    : basePreviewDim.width;
-  const previewHeight = shouldCropPreview
-    ? cropInfo.exportHeight
-    : basePreviewDim.height;
-  const previewAspectStyle = shouldCropPreview
-    ? `${previewWidth} / ${previewHeight}`
-    : undefined;
+  const { shouldCropPreview, previewWidth, previewHeight, previewAspectStyle } =
+    useMemo(
+      () => resolveExportPreviewCropInfo(boundaryBox, basePreviewDim),
+      [boundaryBox, basePreviewDim],
+    );
   const effectiveDirectorCameraOptions = directorCameraOptions ?? {
     isEditing: !effectiveIsPlaying,
   };
@@ -180,7 +185,7 @@ export function useExportPreviewAnimation({
       ) {
         if (Math.abs(timeMs - lastSeekNoticeTimeRef.current) >= 60) {
           lastSeekNoticeTimeRef.current = timeMs;
-          isInternalSeekRef.current = true;
+          lastDispatchedSeekMsRef.current = Math.max(0, timeMs);
           stateRef.current.seekTo?.(timeMs);
         }
       }
@@ -243,24 +248,19 @@ export function useExportPreviewAnimation({
     drawFrame,
   );
 
-  const playbackSeekTimeMs = useTacticalUnifiedStoreContext(
-    (s) => s.playbackSeekTimeMs,
-  );
-  const playbackSeekId = useTacticalUnifiedStoreContext(
-    (s) => s.playbackSeekId,
-  );
-  const lastHandledSeekIdRef = useRef(0);
-
   useEffect(() => {
-    if (playbackSeekId > 0 && playbackSeekId !== lastHandledSeekIdRef.current) {
-      lastHandledSeekIdRef.current = playbackSeekId;
-      if (isInternalSeekRef.current) {
-        isInternalSeekRef.current = false;
-        return;
-      }
-      if (playbackSeekTimeMs !== null) seek(playbackSeekTimeMs);
+    if (!stores) return;
+    if (playbackTimeMs === lastStoreTimeMsRef.current) return;
+    lastStoreTimeMsRef.current = playbackTimeMs;
+    if (
+      lastDispatchedSeekMsRef.current !== null &&
+      Math.abs(playbackTimeMs - lastDispatchedSeekMsRef.current) < 1e-6
+    ) {
+      lastDispatchedSeekMsRef.current = null;
+      return;
     }
-  }, [playbackSeekId, playbackSeekTimeMs, seek]);
+    seek(playbackTimeMs);
+  }, [stores, playbackTimeMs, seek]);
 
   const prevPlayingRef = useRef(effectiveIsPlaying);
   useEffect(() => {
@@ -269,7 +269,7 @@ export function useExportPreviewAnimation({
       !effectiveIsPlaying &&
       stateRef.current.workspaceMode === 'director'
     ) {
-      isInternalSeekRef.current = true;
+      lastDispatchedSeekMsRef.current = Math.max(0, currentTimeMsRef.current);
       stateRef.current.seekTo?.(currentTimeMsRef.current);
     }
     prevPlayingRef.current = effectiveIsPlaying;

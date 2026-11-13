@@ -52,8 +52,15 @@ export function renderStepDetail(
 
   const lines: string[] = [];
   for (const r of targetRecords) {
+    const hasTok =
+      r.input_tokens !== undefined ||
+      r.cache_read_tokens !== undefined ||
+      r.output_tokens !== undefined;
+    const tokSuffix = hasTok
+      ? ` tokens(in=${r.input_tokens ?? 0},cache=${r.cache_read_tokens ?? 0},out=${r.output_tokens ?? 0})`
+      : '';
     lines.push(
-      `=== Step ${r.step_index} [${r.type}] status=${r.status ?? 'N/A'} at=${r.created_at ?? 'N/A'} ===`,
+      `=== Step ${r.step_index} [${r.type}] status=${r.status ?? 'N/A'} at=${r.created_at ?? 'N/A'}${tokSuffix} ===`,
     );
 
     if (r.thinking) {

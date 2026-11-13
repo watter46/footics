@@ -1,32 +1,51 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { describe, expect, it } from 'vitest';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { selectDomainActivePhase } from '@/features/tactical-unified/stores/domain-selectors';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { RightPanel } from '../right-panel';
 import { ScreenBackgroundPanel } from '../screen-background-panel';
 
-describe('ScreenBackgroundPanel & RightPanel screen tab', () => {
-  beforeEach(() => {
-    const mockCtx = new Proxy(
-      {
-        getImageData: () => ({ data: new Array(4) }),
-        createImageData: () => [],
-        getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
-        measureText: () => ({ width: 0 }),
-        getLineDash: () => [],
-        isPointInPath: () => true,
-      } as Record<string, unknown>,
-      {
-        get: (target, prop: string) =>
-          prop in target ? target[prop] : vi.fn(),
-      },
-    );
-    HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
-    useTacticalUnifiedStore.getState().resetProject();
+function renderWithDomainStores(
+  ui: React.ReactElement,
+  options?: {
+    isRightPanelOpen?: boolean;
+    workspaceMode?: 'board' | 'director';
+  },
+) {
+  const project = createDefaultTacticalProject();
+  const p0 = project.phases[0]!;
+  const sessionStore = createSessionStore({
+    activePhaseId: p0.id,
+    activeSlideId: p0.slides[0]?.id ?? '',
+    workspaceMode: options?.workspaceMode,
   });
+  if (options?.isRightPanelOpen !== undefined) {
+    sessionStore.getState().setRightPanelOpen(options.isRightPanelOpen);
+  }
+  const stores = {
+    documentStore: createDocumentStore(project),
+    sessionStore,
+    playbackStore: createPlaybackStore(),
+  };
+  return {
+    stores,
+    phaseId: p0.id,
+    ...render(
+      <TacticalStoreProvider stores={stores}>{ui}</TacticalStoreProvider>,
+    ),
+  };
+}
 
+describe('ScreenBackgroundPanel & RightPanel screen tab', () => {
   describe('ScreenBackgroundPanel', () => {
     it('renders title and description properly', () => {
-      render(<ScreenBackgroundPanel />);
+      renderWithDomainStores(<ScreenBackgroundPanel />);
 
       expect(screen.getByText('Screen Background')).toBeDefined();
       expect(
@@ -35,7 +54,7 @@ describe('ScreenBackgroundPanel & RightPanel screen tab', () => {
     });
 
     it('displays cinematic and dark cards and allows toggling', () => {
-      render(<ScreenBackgroundPanel />);
+      const { stores } = renderWithDomainStores(<ScreenBackgroundPanel />);
 
       const cinematicCard = screen
         .getByText('ダークシネマティック')
@@ -47,7 +66,7 @@ describe('ScreenBackgroundPanel & RightPanel screen tab', () => {
 
       // Initial state is cinematic
       expect(
-        useTacticalUnifiedStore.getState().project.screenBackground?.type,
+        stores.documentStore.getState().project.screenBackground?.type,
       ).toBe('cinematic');
 
       // Click dark
@@ -56,7 +75,7 @@ describe('ScreenBackgroundPanel & RightPanel screen tab', () => {
       }
 
       expect(
-        useTacticalUnifiedStore.getState().project.screenBackground?.type,
+        stores.documentStore.getState().project.screenBackground?.type,
       ).toBe('dark');
 
       // Click cinematic
@@ -65,13 +84,13 @@ describe('ScreenBackgroundPanel & RightPanel screen tab', () => {
       }
 
       expect(
-        useTacticalUnifiedStore.getState().project.screenBackground?.type,
+        stores.documentStore.getState().project.screenBackground?.type,
       ).toBe('cinematic');
     });
 
     describe('Boundary Box Section & Presets', () => {
       it('renders boundary box toggle and only 4 preset buttons (16:9, 9:16, 4:5, 1:1)', () => {
-        render(<ScreenBackgroundPanel />);
+        renderWithDomainStores(<ScreenBackgroundPanel />);
 
         expect(screen.getByText('Boundary Box')).toBeDefined();
         const toggleBtn = screen.getByRole('switch', { name: /境界線/i });
@@ -94,117 +113,124 @@ describe('ScreenBackgroundPanel & RightPanel screen tab', () => {
       });
 
       it('toggles boundary box enabled state when toggle button is clicked', () => {
-        render(<ScreenBackgroundPanel />);
+        const { stores, phaseId } = renderWithDomainStores(
+          <ScreenBackgroundPanel />,
+        );
 
         const toggleBtn = screen.getByRole('switch', { name: /境界線/i });
-        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
 
         // Default: enabled is true
         expect(
-          useTacticalUnifiedStore
-            .getState()
-            .project.slides.find((s) => s.id === activeSlideId)?.boundaryBox
-            ?.enabled,
+          selectDomainActivePhase(
+            stores.documentStore.getState().project,
+            phaseId,
+          )?.boundaryBox?.enabled,
         ).toBe(true);
 
         // Click toggle to disable
         fireEvent.click(toggleBtn);
         expect(
-          useTacticalUnifiedStore
-            .getState()
-            .project.slides.find((s) => s.id === activeSlideId)?.boundaryBox
-            ?.enabled,
+          selectDomainActivePhase(
+            stores.documentStore.getState().project,
+            phaseId,
+          )?.boundaryBox?.enabled,
         ).toBe(false);
 
         // Click toggle to enable
         fireEvent.click(toggleBtn);
         expect(
-          useTacticalUnifiedStore
-            .getState()
-            .project.slides.find((s) => s.id === activeSlideId)?.boundaryBox
-            ?.enabled,
+          selectDomainActivePhase(
+            stores.documentStore.getState().project,
+            phaseId,
+          )?.boundaryBox?.enabled,
         ).toBe(true);
       });
 
-      it('applies 16:9 preset and updates active slide boundaryBox', () => {
-        render(<ScreenBackgroundPanel />);
+      it('applies 16:9 preset and updates active phase boundaryBox', () => {
+        const { stores, phaseId } = renderWithDomainStores(
+          <ScreenBackgroundPanel />,
+        );
 
         const btn169 = screen.getByRole('button', { name: /^16:9/i });
         fireEvent.click(btn169);
 
-        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-        const activeSlide = useTacticalUnifiedStore
-          .getState()
-          .project.slides.find((s) => s.id === activeSlideId);
+        const activePhase = selectDomainActivePhase(
+          stores.documentStore.getState().project,
+          phaseId,
+        );
 
-        expect(activeSlide?.boundaryBox?.width).toBe(100);
-        expect(activeSlide?.boundaryBox?.height).toBe(100);
-        expect(activeSlide?.boundaryBox?.x).toBe(0);
-        expect(activeSlide?.boundaryBox?.y).toBe(0);
-        expect(activeSlide?.boundaryBox?.enabled).toBe(true);
+        expect(activePhase?.boundaryBox?.width).toBe(100);
+        expect(activePhase?.boundaryBox?.height).toBe(100);
+        expect(activePhase?.boundaryBox?.x).toBe(0);
+        expect(activePhase?.boundaryBox?.y).toBe(0);
+        expect(activePhase?.boundaryBox?.enabled).toBe(true);
       });
 
-      it('applies 4:5 preset and updates active slide boundaryBox', () => {
-        render(<ScreenBackgroundPanel />);
+      it('applies 4:5 preset and updates active phase boundaryBox', () => {
+        const { stores, phaseId } = renderWithDomainStores(
+          <ScreenBackgroundPanel />,
+        );
 
         const btn45 = screen.getByRole('button', { name: /^4:5/i });
         fireEvent.click(btn45);
 
-        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-        const activeSlide = useTacticalUnifiedStore
-          .getState()
-          .project.slides.find((s) => s.id === activeSlideId);
+        const activePhase = selectDomainActivePhase(
+          stores.documentStore.getState().project,
+          phaseId,
+        );
 
-        expect(activeSlide?.boundaryBox?.width).toBe(45);
-        expect(activeSlide?.boundaryBox?.height).toBe(100);
-        expect(activeSlide?.boundaryBox?.x).toBe(27.5);
-        expect(activeSlide?.boundaryBox?.y).toBe(0);
-        expect(activeSlide?.boundaryBox?.enabled).toBe(true);
+        expect(activePhase?.boundaryBox?.width).toBe(45);
+        expect(activePhase?.boundaryBox?.height).toBe(100);
+        expect(activePhase?.boundaryBox?.x).toBe(27.5);
+        expect(activePhase?.boundaryBox?.y).toBe(0);
+        expect(activePhase?.boundaryBox?.enabled).toBe(true);
       });
 
-      it('applies 9:16 preset and updates active slide boundaryBox', () => {
-        render(<ScreenBackgroundPanel />);
+      it('applies 9:16 preset and updates active phase boundaryBox', () => {
+        const { stores, phaseId } = renderWithDomainStores(
+          <ScreenBackgroundPanel />,
+        );
 
         const btn916 = screen.getByRole('button', { name: /^9:16/i });
         fireEvent.click(btn916);
 
-        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-        const activeSlide = useTacticalUnifiedStore
-          .getState()
-          .project.slides.find((s) => s.id === activeSlideId);
+        const activePhase = selectDomainActivePhase(
+          stores.documentStore.getState().project,
+          phaseId,
+        );
 
-        expect(activeSlide?.boundaryBox?.width).toBe(31.64);
-        expect(activeSlide?.boundaryBox?.height).toBe(100);
-        expect(activeSlide?.boundaryBox?.x).toBe(34.18);
-        expect(activeSlide?.boundaryBox?.enabled).toBe(true);
+        expect(activePhase?.boundaryBox?.width).toBe(31.64);
+        expect(activePhase?.boundaryBox?.height).toBe(100);
+        expect(activePhase?.boundaryBox?.x).toBe(34.18);
+        expect(activePhase?.boundaryBox?.enabled).toBe(true);
       });
 
       it('applies 1:1 preset with correct aspect ratio', () => {
-        render(<ScreenBackgroundPanel />);
+        const { stores, phaseId } = renderWithDomainStores(
+          <ScreenBackgroundPanel />,
+        );
 
         const btn11 = screen.getByRole('button', { name: /^1:1/i });
         fireEvent.click(btn11);
 
-        const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-        const activeSlide = useTacticalUnifiedStore
-          .getState()
-          .project.slides.find((s) => s.id === activeSlideId);
+        const activePhase = selectDomainActivePhase(
+          stores.documentStore.getState().project,
+          phaseId,
+        );
 
-        expect(activeSlide?.boundaryBox?.width).toBe(56.25);
-        expect(activeSlide?.boundaryBox?.height).toBe(100);
-        expect(activeSlide?.boundaryBox?.x).toBe(21.88);
+        expect(activePhase?.boundaryBox?.width).toBe(56.25);
+        expect(activePhase?.boundaryBox?.height).toBe(100);
+        expect(activePhase?.boundaryBox?.x).toBe(21.88);
       });
     });
   });
 
   describe('RightPanel Screen Tab Integration', () => {
-    beforeEach(() => {
-      useTacticalUnifiedStore.getState().setWorkspaceMode('director');
-    });
-
     it('expands right panel and renders screen background panel when screen rail icon is clicked', () => {
-      useTacticalUnifiedStore.getState().setRightPanelOpen(false);
-      render(<RightPanel />);
+      renderWithDomainStores(<RightPanel />, {
+        isRightPanelOpen: false,
+        workspaceMode: 'director',
+      });
 
       const screenRailBtn = screen.getByRole('button', { name: /screen/i });
       expect(screenRailBtn).toBeDefined();
@@ -215,8 +241,10 @@ describe('ScreenBackgroundPanel & RightPanel screen tab', () => {
     });
 
     it('switches to screen tab via segmented control when panel is open', () => {
-      useTacticalUnifiedStore.getState().setRightPanelOpen(true);
-      render(<RightPanel />);
+      renderWithDomainStores(<RightPanel />, {
+        isRightPanelOpen: true,
+        workspaceMode: 'director',
+      });
 
       const screenTab = screen.getByRole('radio', { name: /screen/i });
       expect(screenTab).toBeDefined();

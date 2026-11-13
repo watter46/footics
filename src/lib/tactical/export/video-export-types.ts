@@ -1,14 +1,17 @@
 import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/unified-interpolation';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import type {
-  AspectRatio,
-  BoundaryBox,
   DirectorCameraTrack,
   ExportProgress,
+} from '@/lib/types/tactical/project';
+import type {
+  BoundaryBox,
   PitchAppearanceConfig,
   PitchTransform,
   ScreenBackgroundConfig,
   Slide,
-} from '@/lib/types/tactical-unified';
+} from '@/lib/types/tactical/slide';
 import type { BoundaryCropInfo } from './video-crop-calc';
 
 export interface VideoExportOptions {
@@ -26,7 +29,7 @@ export interface VideoExportOptions {
   boundaryBox?: BoundaryBox | null;
   stageWidth: number;
   stageHeight: number;
-  slides?: Slide[];
+  slides?: readonly (Slide | DomainSlide)[];
   aspectRatio?: AspectRatio;
   pitchTransform?: PitchTransform | null;
   pitchAppearance?: PitchAppearanceConfig;

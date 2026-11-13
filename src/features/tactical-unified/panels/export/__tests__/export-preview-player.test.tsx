@@ -1,12 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TacticalUnifiedStoreProvider } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import * as tacticalFrameRenderer from '@/lib/tactical/export/tactical-frame-renderer';
 import {
   createXBoundaryBox,
   type ScreenBackgroundConfig,
   SlideSchema,
-} from '@/lib/types/tactical-unified';
+} from '@/lib/types/tactical/slide';
 import { ExportPreviewPlayer } from '../export-preview-player';
 
 const mockSlide = SlideSchema.parse({
@@ -60,13 +60,13 @@ describe('ExportPreviewPlayer Keyboard Shortcuts', () => {
 
   it('toggles playback when Space key is pressed on window', async () => {
     render(
-      <TacticalUnifiedStoreProvider>
+      <TacticalStoreProvider>
         <ExportPreviewPlayer
           slides={[mockSlide]}
           aspectRatio="16:9"
           boundaryBox={null}
         />
-      </TacticalUnifiedStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
     const playBtn = screen.getByRole('button', { name: /play preview/i });
@@ -87,7 +87,7 @@ describe('ExportPreviewPlayer Keyboard Shortcuts', () => {
 
   it('does not toggle playback when typing Space in input or textarea elements', async () => {
     render(
-      <TacticalUnifiedStoreProvider>
+      <TacticalStoreProvider>
         <div>
           <input data-testid="test-input" type="text" />
           <textarea data-testid="test-textarea" />
@@ -97,7 +97,7 @@ describe('ExportPreviewPlayer Keyboard Shortcuts', () => {
             boundaryBox={null}
           />
         </div>
-      </TacticalUnifiedStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
     const input = screen.getByTestId('test-input');
@@ -116,13 +116,13 @@ describe('ExportPreviewPlayer Keyboard Shortcuts', () => {
     const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
 
     const { unmount } = render(
-      <TacticalUnifiedStoreProvider>
+      <TacticalStoreProvider>
         <ExportPreviewPlayer
           slides={[mockSlide]}
           aspectRatio="16:9"
           boundaryBox={null}
         />
-      </TacticalUnifiedStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
     unmount();
@@ -147,13 +147,13 @@ describe('ExportPreviewPlayer Viewport & Boundary Crop Layout', () => {
     };
 
     render(
-      <TacticalUnifiedStoreProvider>
+      <TacticalStoreProvider>
         <ExportPreviewPlayer
           slides={[mockSlide]}
           aspectRatio="16:9"
           boundaryBox={boundaryBox}
         />
-      </TacticalUnifiedStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
     const viewport = screen.getByTestId('export-preview-viewport');
@@ -171,13 +171,13 @@ describe('ExportPreviewPlayer Viewport & Boundary Crop Layout', () => {
     const boundaryBox = createXBoundaryBox('4:5', '16:9');
 
     render(
-      <TacticalUnifiedStoreProvider>
+      <TacticalStoreProvider>
         <ExportPreviewPlayer
           slides={[mockSlide]}
           aspectRatio="4:5"
           boundaryBox={boundaryBox}
         />
-      </TacticalUnifiedStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
     const viewport = screen.getByTestId('export-preview-viewport');
@@ -203,14 +203,14 @@ describe('ExportPreviewPlayer ScreenBackground', () => {
 
     await act(async () => {
       render(
-        <TacticalUnifiedStoreProvider>
+        <TacticalStoreProvider>
           <ExportPreviewPlayer
             slides={[mockSlide]}
             aspectRatio="16:9"
             boundaryBox={null}
             screenBackground={screenBackground}
           />
-        </TacticalUnifiedStoreProvider>,
+        </TacticalStoreProvider>,
       );
     });
 

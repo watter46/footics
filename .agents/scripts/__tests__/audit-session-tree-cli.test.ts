@@ -124,6 +124,77 @@ describe('audit-session Phase 5: CLI --tree, Findings, and role label', () => {
       );
       expect(output).toContain('=== TREE SUMMARY ===');
       expect(output).toContain('Sessions: 2');
+      expect(output).toContain('Total Tokens: In+Cache=');
+      expect(output).toContain('Hook Denials: ');
+      expect(output).toContain('Bypasses: ');
+    } finally {
+      console.log = origLog;
+      if (orig !== undefined) process.env.BRAIN_DIR = orig;
+      else delete process.env.BRAIN_DIR;
+      fs.rmSync(tmpBrain, { recursive: true, force: true });
+    }
+  });
+
+  test('main() supports --list and --tree --compact', () => {
+    createSession('root-compact', {
+      firstType: 'USER_INPUT',
+      children: ['clean-worker'],
+    });
+    const cleanDir = path.join(
+      tmpBrain,
+      'clean-worker',
+      '.system_generated',
+      'logs',
+    );
+    fs.mkdirSync(cleanDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(cleanDir, 'transcript.jsonl'),
+      [
+        {
+          step_index: 0,
+          type: 'SYSTEM_MESSAGE',
+          content:
+            'type: "TASK_ASSIGN"\ntarget: "TASK-001.md"\nfiles: ["src/index.ts"]',
+          created_at: '2026-10-22T10:00:00Z',
+        },
+        {
+          step_index: 1,
+          type: 'PLANNER_RESPONSE',
+          tool_calls: [{ name: 'read_file', args: { Path: 'src/index.ts' } }],
+          created_at: '2026-10-22T10:00:04Z',
+        },
+        {
+          step_index: 2,
+          type: 'PLANNER_RESPONSE',
+          tool_calls: [{ name: 'edit_file', args: { Path: 'src/index.ts' } }],
+          created_at: '2026-10-22T10:00:08Z',
+        },
+      ]
+        .map((r) => JSON.stringify(r))
+        .join('\n'),
+    );
+
+    const orig = process.env.BRAIN_DIR;
+    process.env.BRAIN_DIR = tmpBrain;
+
+    const logs: string[] = [];
+    const origLog = console.log;
+    console.log = (...args) => logs.push(args.join(' '));
+
+    try {
+      expect(main(['--list', '5'])).toBe(0);
+      const listOutput = logs.join('\n');
+      expect(listOutput).toContain(
+        'Session ID | Updated | Role | Turns | First Request',
+      );
+      expect(listOutput).toContain('root-compact');
+
+      logs.length = 0;
+      expect(main(['root-compact', '--tree', '--compact'])).toBe(0);
+      const compactOutput = logs.join('\n');
+      expect(compactOutput).toContain(
+        '=== AUDIT REPORT (COMPACT): clean-worker',
+      );
     } finally {
       console.log = origLog;
       if (orig !== undefined) process.env.BRAIN_DIR = orig;

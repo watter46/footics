@@ -1,8 +1,8 @@
 import { getPlayerPhotoKey } from '@/lib/tactical/player-photo-key';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 export function buildPlayerPhotoRecord(
-  players: Player[],
+  players: readonly Pick<DomainPlayer, 'id' | 'playerId'>[],
   photoMap: ReadonlyMap<string, HTMLImageElement | CanvasImageSource>,
 ): Record<string, CanvasImageSource> {
   const record: Record<string, CanvasImageSource> = {};

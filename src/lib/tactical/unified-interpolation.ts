@@ -1,4 +1,3 @@
-// Unified Tactical Canvas — Animation Interpolation & Zone Vertex Morphing Engine
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { DirectorCameraTrack, Slide } from '@/lib/types/tactical-unified';
 import { applyEasing } from './easing';
@@ -36,7 +35,6 @@ export * from './interpolation-annotation';
 export * from './interpolation-ball';
 export * from './interpolation-camera';
 export * from './interpolation-director';
-// Re-export submodules to preserve public API without breaking changes
 export * from './interpolation-geometry';
 export * from './interpolation-player';
 
@@ -143,11 +141,12 @@ function interpolateEntityMap<T extends { id: string }, R>(
 
 /** 指定時間 (timeMs) における全オブジェクトの補間フレーム状態を計算 */
 export function getInterpolatedUnifiedSlideFrame(
-  slides: Slide[],
+  rawSlides: readonly (Slide | DomainSlide)[],
   timeMs: number,
   directorCamera?: DirectorCameraTrack | null,
   directorCameraOptions?: ResolveSyntheticDirectorCameraOptions,
 ): InterpolatedUnifiedFrame {
+  const slides = rawSlides as Slide[];
   if (slides.length === 0) return EMPTY_FRAME;
 
   if (slides.length === 1) {
@@ -238,7 +237,7 @@ export function getInterpolatedUnifiedSlideFrame(
     directorCameraOptions,
   );
 
-  // 1. Players 補間 (ID / 背番号 / 名前マッチングによるスムーズモーフィング)
+  // 1. Players 補間
   const players: Record<string, InterpolatedPlayerState> = {};
   const matchedPairs = matchSlidePlayers(slideA.players, slideB.players);
   matchedPairs.forEach(({ key, playerA, playerB }) => {

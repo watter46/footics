@@ -5,18 +5,18 @@ import {
   detectExploreShare,
   detectGuessedPath,
   detectLinecountPuzzle,
+  detectOutlineBypass,
   detectRepeatDenial,
   detectRoleViolation,
   detectScopeViolation,
-  detectScoutBypass,
   detectSerialIndependent,
   EXPLORATION_DETECTORS,
 } from '../lib/audit/detectors/exploration';
 import type { AuditContext } from '../lib/audit/types';
 
 describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () => {
-  describe('EXP-01: SCOUT_BYPASS', () => {
-    test('detects planner reading 3+ source files without invoking scout', () => {
+  describe('EXP-01: OUTLINE_BYPASS', () => {
+    test('detects planner reading 3+ source files without ai:outline or rg/ai:find', () => {
       const ctx: AuditContext = {
         sessionId: 'test-scout-bypass',
         role: 'planner',
@@ -46,14 +46,47 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
         ],
       };
 
-      const findings = detectScoutBypass(ctx);
+      const findings = detectOutlineBypass(ctx);
       expect(findings.length).toBe(1);
       expect(findings[0].id).toBe('EXP-01');
       expect(findings[0].severity).toBe('HIGH');
       expect(findings[0].layers).toEqual(['planner', 'rule']);
     });
 
-    test('returns empty if scout was invoked', () => {
+    test('returns empty if ai:outline or rg/ai:find was used', () => {
+      const ctx: AuditContext = {
+        sessionId: 'test-outline-ok',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'run_command',
+                args: {
+                  CommandLine: 'bun run ai:outline src/a.ts src/b.ts src/c.ts',
+                },
+              },
+            ],
+          },
+          {
+            step_index: 2,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              { name: 'read_file', args: { Path: 'src/a.ts' } },
+              { name: 'read_file', args: { Path: 'src/b.ts' } },
+              { name: 'read_file', args: { Path: 'src/c.ts' } },
+            ],
+          },
+        ],
+      };
+
+      expect(detectOutlineBypass(ctx).length).toBe(0);
+    });
+
+    test('returns empty if legacy scout was invoked', () => {
       const ctx: AuditContext = {
         sessionId: 'test-scout-ok',
         role: 'planner',
@@ -76,7 +109,7 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
         ],
       };
 
-      expect(detectScoutBypass(ctx).length).toBe(0);
+      expect(detectOutlineBypass(ctx).length).toBe(0);
     });
   });
 
@@ -125,6 +158,43 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
       };
 
       expect(detectBadFirstMove(ctx).length).toBe(0);
+    });
+
+    test('returns empty if first move reads tasks/TASK-*.md or runs rg -l', () => {
+      const taskFirstCtx: AuditContext = {
+        sessionId: 'test-task-first',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              { name: 'read_file', args: { Path: 'tasks/TASK-001.md' } },
+            ],
+          },
+        ],
+      };
+      const rgFirstCtx: AuditContext = {
+        sessionId: 'test-rg-first',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'run_command',
+                args: { CommandLine: "rg -l 'Foo' src/ extension/" },
+              },
+            ],
+          },
+        ],
+      };
+
+      expect(detectBadFirstMove(taskFirstCtx).length).toBe(0);
+      expect(detectBadFirstMove(rgFirstCtx).length).toBe(0);
     });
   });
 
@@ -205,6 +275,60 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
       expect(findings.length).toBe(1);
       expect(findings[0].id).toBe('EXP-04');
       expect(findings[0].severity).toBe('LOW');
+    });
+
+    test('reports multiple separate serial read chains', () => {
+      const ctx: AuditContext = {
+        sessionId: 'test-multi-serial',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [{ name: 'read_file', args: { Path: 'src/1.ts' } }],
+          },
+          {
+            step_index: 2,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [{ name: 'read_file', args: { Path: 'src/2.ts' } }],
+          },
+          {
+            step_index: 3,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [{ name: 'read_file', args: { Path: 'src/3.ts' } }],
+          },
+          {
+            step_index: 4,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'run_command',
+                args: { CommandLine: 'bun run ai:outline src/1.ts' },
+              },
+            ],
+          },
+          {
+            step_index: 5,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [{ name: 'read_file', args: { Path: 'src/4.ts' } }],
+          },
+          {
+            step_index: 6,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [{ name: 'read_file', args: { Path: 'src/5.ts' } }],
+          },
+          {
+            step_index: 7,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [{ name: 'read_file', args: { Path: 'src/6.ts' } }],
+          },
+        ],
+      };
+
+      const findings = detectSerialIndependent(ctx);
+      expect(findings.length).toBe(2);
+      expect(findings.every((f) => f.id === 'EXP-04')).toBe(true);
     });
   });
 
@@ -298,6 +422,40 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
       expect(findings[0].id).toBe('EXP-07');
       expect(findings[0].severity).toBe('HIGH');
     });
+
+    test('detects directory target in ai:check and raw bun test in worker', () => {
+      const ctx: AuditContext = {
+        sessionId: 'test-scope-dir-bun',
+        role: 'worker',
+        childIds: [],
+        records: [
+          {
+            step_index: 10,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'run_command',
+                args: { CommandLine: 'bun run ai:check src/a.ts src/' },
+              },
+            ],
+          },
+          {
+            step_index: 11,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'run_command',
+                args: { CommandLine: 'bun test src/foo.test.ts' },
+              },
+            ],
+          },
+        ],
+      };
+
+      const findings = detectScopeViolation(ctx);
+      expect(findings.length).toBe(2);
+      expect(findings.every((f) => f.id === 'EXP-07')).toBe(true);
+    });
   });
 
   describe('EXP-08: REPEAT_DENIAL', () => {
@@ -352,6 +510,34 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
       expect(findings.length).toBe(1);
       expect(findings[0].id).toBe('EXP-09');
       expect(findings[0].severity).toBe('HIGH');
+    });
+
+    test('detects Architect and Auditor role boundary violations', () => {
+      const ctx: AuditContext = {
+        sessionId: 'test-architect-auditor-role',
+        role: 'architect',
+        childIds: [],
+        records: [
+          {
+            step_index: 3,
+            type: 'GENERIC',
+            status: 'ERROR',
+            content:
+              "tool call denied by pre-tool hook: [GUARD] Access Denied: Architect is prohibited from editing 'src/app.ts'.",
+          },
+          {
+            step_index: 4,
+            type: 'GENERIC',
+            status: 'ERROR',
+            content:
+              "tool call denied by pre-tool hook: [GUARD] Access Denied: Auditor is prohibited from modifying 'tasks/TASK-001.md'.",
+          },
+        ],
+      };
+
+      const findings = detectRoleViolation(ctx);
+      expect(findings.length).toBe(2);
+      expect(findings.every((f) => f.id === 'EXP-09')).toBe(true);
     });
   });
 

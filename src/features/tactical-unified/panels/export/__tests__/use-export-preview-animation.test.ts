@@ -1,6 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
+import { createElement, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
+import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import * as frameRendererModule from '@/lib/tactical/export/tactical-frame-renderer';
 import {
   createXBoundaryBox,
@@ -12,7 +15,7 @@ import {
   type PitchTransform,
   type Slide,
   SlideSchema,
-} from '@/lib/types/tactical-unified';
+} from '@/lib/types/tactical/slide';
 import {
   CINEMATIC_MASK_FILL,
   useExportPreviewAnimation,
@@ -55,12 +58,6 @@ describe('useExportPreviewAnimation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    useTacticalUnifiedStore.getState().resetProject();
-    useTacticalUnifiedStore.setState({
-      playbackSeekTimeMs: null,
-      playbackSeekId: 0,
-      workspaceMode: 'board',
-    });
     mockContext = {
       save: vi.fn(),
       restore: vi.fn(),
@@ -332,20 +329,28 @@ describe('useExportPreviewAnimation', () => {
   });
 
   it('notifies seekTo throttled during playback and on stop in director mode', () => {
-    useTacticalUnifiedStore.getState().resetProject();
-    useTacticalUnifiedStore.getState().setWorkspaceMode('director');
-    const seekSpy = vi.spyOn(useTacticalUnifiedStore.getState(), 'seekTo');
+    const sessionStore = createSessionStore({ workspaceMode: 'director' });
+    const playbackStore = createPlaybackStore();
+    const seekSpy = vi.spyOn(playbackStore.getState(), 'seekTo');
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(
+        TacticalStoreProvider,
+        { stores: { sessionStore, playbackStore } },
+        children,
+      );
 
     let externalIsPlaying = true;
-    const { rerender, result } = renderHook(() =>
-      useExportPreviewAnimation({
-        slides: [mockSlide1, mockSlide2],
-        aspectRatio: '16:9',
-        externalIsPlaying,
-        canvasRef,
-        timeLabelRef,
-        sliderRef,
-      }),
+    const { rerender, result } = renderHook(
+      () =>
+        useExportPreviewAnimation({
+          slides: [mockSlide1, mockSlide2],
+          aspectRatio: '16:9',
+          externalIsPlaying,
+          canvasRef,
+          timeLabelRef,
+          sliderRef,
+        }),
+      { wrapper },
     );
 
     // 再生中に handleSeek などの呼び出しでフレームが進んだ時、スロットル間隔で seekTo が呼ばれること

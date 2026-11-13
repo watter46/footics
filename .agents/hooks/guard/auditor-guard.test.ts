@@ -166,7 +166,7 @@ describe('auditor-guard', () => {
     };
     expect(checkAuditorGuard(taskValidatePayload)).toBeNull();
 
-    // 4. Prohibited bun run ai:check
+    // 4. Prohibited bun run ai:check; ai:preflight / biome allowed ONLY for .agents/**
     const checkPayload = {
       transcriptPath: auditorFile,
       toolCall: {
@@ -175,6 +175,46 @@ describe('auditor-guard', () => {
       },
     };
     expect(checkAuditorGuard(checkPayload)?.decision).toBe('deny');
+
+    expect(
+      checkAuditorGuard({
+        transcriptPath: auditorFile,
+        toolCall: {
+          name: 'run_command',
+          args: {
+            CommandLine:
+              'bun run ai:preflight .agents/scripts/audit-session.ts',
+          },
+        },
+      }),
+    ).toBeNull();
+    expect(
+      checkAuditorGuard({
+        transcriptPath: auditorFile,
+        toolCall: {
+          name: 'run_command',
+          args: { CommandLine: 'bun run ai:preflight src/index.ts' },
+        },
+      })?.decision,
+    ).toBe('deny');
+    expect(
+      checkAuditorGuard({
+        transcriptPath: auditorFile,
+        toolCall: {
+          name: 'run_command',
+          args: { CommandLine: 'biome check .agents/scripts/audit-session.ts' },
+        },
+      }),
+    ).toBeNull();
+    expect(
+      checkAuditorGuard({
+        transcriptPath: auditorFile,
+        toolCall: {
+          name: 'run_command',
+          args: { CommandLine: 'biome check src/' },
+        },
+      })?.decision,
+    ).toBe('deny');
 
     // 5. Allowed git show / log / diff
     const gitShowPayload = {

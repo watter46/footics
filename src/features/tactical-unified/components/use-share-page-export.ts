@@ -11,7 +11,8 @@ import {
 } from '@/features/tactical-unified/panels/export/ios-export-presets';
 import type { TacticalExportSharePayload } from '@/lib/tactical/export/share-payload';
 import { exportMultiSlideMp4Video } from '@/lib/tactical/export/tactical-video-exporter';
-import type { AspectRatio, Slide } from '@/lib/types/tactical-unified';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
+import type { Slide } from '@/lib/types/tactical/slide';
 
 export interface UseSharePageExportOptions {
   shareId?: string;

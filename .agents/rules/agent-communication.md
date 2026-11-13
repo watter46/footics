@@ -1,17 +1,17 @@
 ---
-description: "Planner, Worker, Reviewer間の通信プロトコル、ステータスバッジ出力、および差し戻しルール"
+description: "PlannerとWorker間の通信プロトコル、ステータスバッジ出力、および差し戻しルール（2階層パイプライン）"
 globs:
   - "tasks/**"
   - ".agents/agents/**"
 ---
 # エージェント通信・状態管理規約 (Agent Communication Protocol)
 
-本ドキュメントは、Planner, Worker, Reviewer エージェントが協調して動作するための通信プロトコルと、状態管理の Single Source of Truth となるタスクファイルの運用ルールを定義します。
+本ドキュメントは、2階層（Planner + Worker）で協調して動作するための通信プロトコルと、状態管理の Single Source of Truth となるタスクファイルの運用ルールを定義します（旧 `Scout` / `Reviewer` は廃止済み）。
 
 ## 1. 通信方式 (YAML Frontmatter + Markdown)
 
-エージェント間のメッセージング（`send_message` / `invoke_subagent`）は、**YAML Frontmatter + Markdown** 形式を採用します。
-メッセージには「タスクの具体的な中身」は記述せず、最小限の信号（シグナル）と対象ファイルへのポインタのみを含めます。タスクの詳細は常に `tasks/TASK-*.md` を参照してください。
+エージェント間のメッセージング（`invoke_subagent` / `send_message`）は、**YAML Frontmatter + Markdown** 形式を採用します。
+メッセージには「タスクの具体的な中身」や長文コードを貼り付けず、最小限の信号（シグナル）と対象ファイル・Phaseへのポインタのみを含めます。タスクの詳細は常に `tasks/TASK-*.md` を参照してください。
 
 ### 1.1 Planner → Worker (タスク開始 / Phase委譲)
 ```markdown
@@ -21,7 +21,7 @@ target_file: "tasks/TASK-XXX.md"
 target_phase: 1
 ---
 タスク `tasks/TASK-XXX.md` の Phase 1 の実装を開始してください。
-（差し戻しの場合は「Fix 1 の指示に従って修正してください」等と記載）
+（再作成・追加指示時は該当 Fix セクション名のみ記載）
 ```
 
 ### 1.2 Worker → Planner (Phase 実装完了報告)
@@ -31,43 +31,14 @@ type: "TASK_COMPLETE"
 target_file: "tasks/TASK-XXX.md"
 phase: 1
 ---
-Phase 1 の実装および `bun run ai:check <ファイル>` のローカル検証が完了しました。Handoff Log を追記済みです。
+Phase 1 の実装および `bun run ai:check <ファイル>` のローカル検証が完了しました。
 ```
 
-### 1.3 Planner → Reviewer (全Phase完了後のレビュー依頼)
-```markdown
----
-type: "REVIEW_REQUEST"
-target_file: "tasks/TASK-XXX.md"
----
-全 Phase の実装が完了しました。タスク `tasks/TASK-XXX.md` の総合レビューをお願いします。
-```
+## 2. 差し戻し・終了のルール（使い捨てワーカー原則）
 
-### 1.4 Reviewer → Planner (レビュー結果報告)
-```markdown
----
-type: "REVIEW_RESULT"
-status: "LGTM" | "REJECTED"
-target_file: "tasks/TASK-XXX.md"
----
-（判定結果の概要を記載）
-```
-
-### 1.5 Planner → Scout (6ファイル以上の広範囲調査依頼)
-```markdown
----
-type: "SCOUT_REQUEST"
----
-以下の調査対象について、6ターン以内で対象ファイルパスと型シグネチャを抽出してください：
-- [調査項目]
-```
-
-## 2. Reviewer による差し戻し（REJECTED）のルール
-
-1. **不可逆修正欄への追記**: Reviewer は既存のタスクや Phase を消去・上書きせず、必ず `tasks/TASK-*.md` の末尾 `## 6. Rejections / Additional Tasks` に `### Fix 1 (YYYY-MM-DD)` の形式で追記する。
-2. **自己完結な指示**: Worker がチャット履歴を遡らなくて済むよう、追加修正欄には対象ファイルパスと具体的な修正ステップ（`bun run ai:check <ファイル>` での検証指示含む）を明記する。
-3. **ステータス更新**: タスクファイル内の Metadata の Status を `REJECTED` に変更する。
-4. **上限**: 差し戻しは原則1回までとする。解決しない場合は Planner はユーザーに制御を返すこと。
+1. **完了済 Worker の即時破棄**: Planner は `TASK_COMPLETE` を受信したら、次ステップで必ず `manage_subagents(Action: "kill", ConversationIds: [...])` を実行して Worker を破棄する。同一 Worker の別 Phase 再利用は禁止。
+2. **修正が必要な場合**: 問題が見つかった場合はタスクファイル末尾 `## 6. Rejections / Additional Tasks` に `### Fix 1 (YYYY-MM-DD)` を追記して `task:validate` を通し、**新規 Worker** を起動して再実装させる。
+3. **上限**: 同一 Phase の再試行が改善しない場合、Planner はユーザーに制御を返す。
 
 ## 3. ユーザー対話スタイル (`caveman`) と実装完了サマリーテンプレート
 

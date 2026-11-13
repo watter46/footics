@@ -13,15 +13,16 @@
 import { useEffect, useRef } from 'react';
 import { isBoundaryCropActive } from '@/lib/tactical/export/video-crop-calc';
 import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/unified-interpolation';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
+import type { DirectorCameraTrack } from '@/lib/types/tactical/project';
 import type {
-  AspectRatio,
   BoundaryBox,
-  DirectorCameraTrack,
   PitchAppearanceConfig,
   PitchTransform,
   ScreenBackgroundConfig,
   Slide,
-} from '@/lib/types/tactical-unified';
+} from '@/lib/types/tactical/slide';
 import {
   ExportPreviewControls,
   type ExportPreviewControlsProps,
@@ -51,7 +52,7 @@ export {
 };
 
 export interface ExportPreviewPlayerProps {
-  slides: Slide[];
+  slides: readonly (Slide | DomainSlide)[];
   aspectRatio: AspectRatio;
   canvasAspectRatio?: AspectRatio;
   boundaryBox?: BoundaryBox | null;

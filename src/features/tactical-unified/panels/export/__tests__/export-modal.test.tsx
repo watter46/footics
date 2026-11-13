@@ -1,7 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as konvaExportHelpers from '@/features/tactical-unified/hooks/konva-export-helpers';
-import { TacticalUnifiedStoreProvider } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
+import { DEFAULT_SESSION_UI_STATE } from '@/features/tactical-unified/stores/session-ui-state';
+import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import { ExportModal } from '../export-modal';
 
 vi.mock('@/features/tactical-unified/hooks/konva-export-helpers', () => ({
@@ -62,44 +65,43 @@ describe('ExportModal Fullscreen & Compact Bottom Bar', () => {
     texts: [],
   };
 
-  const createInitialState = (slideOverrides = {}) => {
-    const slide = { ...baseSlide, ...slideOverrides };
-    return {
-      isExportModalOpen: true,
-      pendingExport: {
-        format: 'png' as const,
-        scope: 'current' as const,
-        scale: 2,
-      },
-      activeSlideId: slide.id,
-      project: {
-        id: 'proj-1',
-        title: 'Tactics A',
-        version: '2.0.0',
-        matchId: 'match-1',
-        aspectRatio: '16:9' as const,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        activePhaseId: 'phase-1',
-        activeSlideId: slide.id,
-        phases: [
-          {
-            id: 'phase-1',
-            name: 'Phase 1',
-            slides: [slide as any],
-          },
-        ],
-      } as any,
-    };
+  const createInitialStores = (
+    phaseOverrides: Record<string, unknown> = {},
+  ) => {
+    const bundle = normalizeTacticalProject({
+      id: 'proj-1',
+      title: 'Tactics A',
+      matchId: 'match-1',
+      phases: [
+        {
+          id: 'phase-1',
+          name: 'Phase 1',
+          aspectRatio: '16:9',
+          slides: [baseSlide],
+          ...phaseOverrides,
+        },
+      ],
+    });
+    const sessionStore = createSessionStore({
+      activePhaseId: bundle.activePhaseId,
+      activeSlideId: bundle.activeSlideId,
+      pendingExport: { format: 'png', scope: 'current', scale: 2 },
+      panels: { ...DEFAULT_SESSION_UI_STATE.panels, exportModalOpen: true },
+    });
+    return { initialProject: bundle.project, sessionStore };
   };
 
   it('完全全画面スタイル (w-screen h-screen rounded-none 等) を持つダイアログとしてレンダリングされること', async () => {
+    const { initialProject, sessionStore } = createInitialStores();
     let renderResult: any;
     await act(async () => {
       renderResult = render(
-        <TacticalUnifiedStoreProvider initialState={createInitialState()}>
+        <TacticalStoreProvider
+          initialProject={initialProject}
+          stores={{ sessionStore }}
+        >
           <ExportModal />
-        </TacticalUnifiedStoreProvider>,
+        </TacticalStoreProvider>,
       );
     });
 
@@ -119,22 +121,24 @@ describe('ExportModal Fullscreen & Compact Bottom Bar', () => {
   });
 
   it('境界線有効時にプレビュー枠のアスペクト比スタイルが連動し、Boundary Croppedバッジが表示されること', async () => {
+    const { initialProject, sessionStore } = createInitialStores({
+      boundaryBox: {
+        enabled: true,
+        x: 20,
+        y: 10,
+        width: 40,
+        height: 30,
+      },
+    });
     let renderResult: any;
     await act(async () => {
       renderResult = render(
-        <TacticalUnifiedStoreProvider
-          initialState={createInitialState({
-            boundaryBox: {
-              enabled: true,
-              x: 20,
-              y: 10,
-              width: 40,
-              height: 30,
-            },
-          })}
+        <TacticalStoreProvider
+          initialProject={initialProject}
+          stores={{ sessionStore }}
         >
           <ExportModal />
-        </TacticalUnifiedStoreProvider>,
+        </TacticalStoreProvider>,
       );
     });
 
@@ -154,12 +158,16 @@ describe('ExportModal Fullscreen & Compact Bottom Bar', () => {
   it('下部1行バーからフォーマット切替（ZIP）と解像度変更（4x）を行いエクスポートを実行できること', async () => {
     const exportZipSpy = vi.spyOn(konvaExportHelpers, 'exportAllSlidesZip');
 
+    const { initialProject, sessionStore } = createInitialStores();
     let renderResult: any;
     await act(async () => {
       renderResult = render(
-        <TacticalUnifiedStoreProvider initialState={createInitialState()}>
+        <TacticalStoreProvider
+          initialProject={initialProject}
+          stores={{ sessionStore }}
+        >
           <ExportModal />
-        </TacticalUnifiedStoreProvider>,
+        </TacticalStoreProvider>,
       );
     });
 

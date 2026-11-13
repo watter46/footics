@@ -100,6 +100,12 @@ describe('agent-access-guard', () => {
           'bun run ai:audit c2ed8fa3-3d8b-44c6-bc2c-59b80300d362 --tree で監査して',
       }),
     ).toBe('auditor');
+    expect(
+      detectRoleFromFirstStep({
+        type: 'USER_INPUT',
+        content: 'スクリプト ai:audit の品質チェックを強化して',
+      }),
+    ).toBe('planner');
 
     // 4d. Architect (tactical-architect or architect in prompt/first step)
     const architectFile = createTranscript(

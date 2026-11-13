@@ -14,7 +14,11 @@ import {
   type ResolveSyntheticDirectorCameraOptions,
   resolveEffectiveSlideSegments,
 } from '@/lib/tactical/unified-interpolation';
-import type { DirectorCameraTrack, Slide } from '@/lib/types/tactical-unified';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+import type { DirectorCameraTrack } from '@/lib/types/tactical/project';
+import type { Slide } from '@/lib/types/tactical/slide';
+
+type ExportSlide = Slide | DomainSlide;
 
 export interface ComputeFrameEffectsOptions {
   applyEffects?: boolean;
@@ -35,13 +39,13 @@ export interface FrameEffectsResult {
  * - Arrow effect (effect.type !== 'none')
  * - Zone effect (effect.type !== 'none')
  */
-export function hasActiveFrameEffects(slides: Slide[]): boolean {
+export function hasActiveFrameEffects(slides: readonly ExportSlide[]): boolean {
   if (!slides || slides.length === 0) return false;
   return slides.some((slide) => {
     const hasPlayerEffect = slide.players?.some(
       (p) =>
         (p.style?.markerEffect?.type && p.style.markerEffect.type !== 'none') ||
-        p.trajectoryEffect?.enabled,
+        ('trajectoryEffect' in p && p.trajectoryEffect?.enabled),
     );
     const hasArrowEffect = slide.arrows?.some(
       (a) => a.effect?.type && a.effect.type !== 'none',
@@ -59,7 +63,7 @@ export function hasActiveFrameEffects(slides: Slide[]): boolean {
  * Used by the VideoFrame.clone() static-frame cache to skip redundant GPU re-uploads.
  */
 export function isPauseFrame(
-  slides: Slide[],
+  slides: readonly ExportSlide[],
   timeMs: number,
   directorCamera?: DirectorCameraTrack | null,
   directorCameraOptions?: ResolveSyntheticDirectorCameraOptions,
@@ -76,7 +80,7 @@ export function isPauseFrame(
 }
 
 export function computeFrameEffects(
-  slides: Slide[],
+  slides: readonly ExportSlide[],
   timeMs: number,
   arrows: Record<string, InterpolatedArrowState>,
   players: Record<string, InterpolatedPlayerState>,

@@ -2,8 +2,8 @@ import { unzipSync } from 'fflate';
 import type Konva from 'konva';
 import { describe, expect, it, vi } from 'vitest';
 import * as frameRenderer from '@/lib/tactical/export/tactical-frame-renderer';
-import * as videoEngine from '@/lib/tactical/export/video-export-engine';
-import type { Slide } from '@/lib/types/tactical-unified';
+import * as videoCropCalc from '@/lib/tactical/export/video-crop-calc';
+import type { Slide } from '@/lib/types/tactical/slide';
 import {
   exportAllSlidesZip,
   exportSingleSlidePng,
@@ -158,7 +158,7 @@ describe('konva-export-helpers', () => {
       const renderSpy = vi
         .spyOn(frameRenderer, 'renderTacticalFrameToCanvas')
         .mockImplementation(() => {});
-      const cropSpy = vi.spyOn(videoEngine, 'calculateBoundaryCrop');
+      const cropSpy = vi.spyOn(videoCropCalc, 'calculateBoundaryCrop');
 
       const mockBlob = new Blob(['png-bytes'], { type: 'image/png' });
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
@@ -184,7 +184,6 @@ describe('konva-export-helpers', () => {
           1280,
           720,
           2,
-          { x: 0, y: 0, width: 1280, height: 720 },
         );
         expect(renderSpy).toHaveBeenCalledWith(
           expect.anything(),
@@ -227,7 +226,7 @@ describe('konva-export-helpers', () => {
       const renderSpy = vi
         .spyOn(frameRenderer, 'renderTacticalFrameToCanvas')
         .mockImplementation(() => {});
-      const cropSpy = vi.spyOn(videoEngine, 'calculateBoundaryCrop');
+      const cropSpy = vi.spyOn(videoCropCalc, 'calculateBoundaryCrop');
 
       const mockBlob = new Blob(['png-bytes-45'], { type: 'image/png' });
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
@@ -250,10 +249,9 @@ describe('konva-export-helpers', () => {
         // Since fitTarget is 'canvas', baseRect should be { x: 0, y: 0, width: 1080, height: 1350 }
         expect(cropSpy).toHaveBeenCalledWith(
           mockSlide.boundaryBox,
+          1920,
           1080,
-          1350,
-          2,
-          { x: 0, y: 0, width: 1080, height: 1350 },
+          1,
         );
         expect(renderSpy).toHaveBeenCalledWith(
           expect.anything(),

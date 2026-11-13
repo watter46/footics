@@ -10,16 +10,19 @@
  *   - Automatic MediaRecorder fallback for non-WebCodecs environments
  */
 
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import type {
-  AspectRatio,
-  BoundaryBox,
   DirectorCameraTrack,
   ExportProgress,
+} from '@/lib/types/tactical/project';
+import type {
+  BoundaryBox,
   PitchAppearanceConfig,
   PitchTransform,
   ScreenBackgroundConfig,
   Slide,
-} from '@/lib/types/tactical-unified';
+} from '@/lib/types/tactical/slide';
 import {
   calculateUnifiedTotalDuration,
   matchSlidePlayers,
@@ -37,7 +40,7 @@ import {
 } from './video-export-engine';
 
 export interface MultiSlideVideoExportOptions {
-  slides: Slide[];
+  slides: readonly (Slide | DomainSlide)[];
   format?: 'mp4' | 'webm';
   fps?: number;
   scale?: number;
@@ -71,14 +74,14 @@ export interface MultiSlideVideoExportOptions {
 /**
  * Applies transition duration, pause, and easing overrides to a sequence of slides.
  */
-export function applySlideTimelineOverrides(
-  slides: Slide[],
+export function applySlideTimelineOverrides<T extends Slide | DomainSlide>(
+  slides: readonly T[],
   overrides?: {
     transitionDurationMs?: number;
     pauseMs?: number;
     easing?: Slide['easing'];
   },
-): Slide[] {
+): readonly T[] {
   if (
     !overrides ||
     (!overrides.transitionDurationMs && !overrides.pauseMs && !overrides.easing)

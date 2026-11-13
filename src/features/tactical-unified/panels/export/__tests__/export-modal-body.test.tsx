@@ -1,10 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TacticalUnifiedStoreProvider } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import {
   DEFAULT_BOUNDARY_BOX_4_5,
+  DEFAULT_PITCH_APPEARANCE,
   type ScreenBackgroundConfig,
-} from '@/lib/types/tactical-unified';
+} from '@/lib/types/tactical/slide';
 import { ExportModalBody } from '../export-modal-body';
 import { ExportPreviewPlayer } from '../export-preview-player';
 import type { ExportModalState } from '../use-export-modal-state';
@@ -52,10 +54,12 @@ describe('ExportModalBody screenBackground transmission', () => {
     slides: [],
     aspectRatio: '4:5',
     boundaryBox: DEFAULT_BOUNDARY_BOX_4_5,
-    pitchAppearance: undefined,
+    pitchAppearance: DEFAULT_PITCH_APPEARANCE,
     isExporting: false,
     closeExportModal: vi.fn(),
     handleExport: vi.fn(),
+    exportJson: vi.fn(),
+    importJson: vi.fn().mockResolvedValue('Untitled'),
     share: {
       isCreatingShareLink: false,
       shareUrl: null,
@@ -65,31 +69,30 @@ describe('ExportModalBody screenBackground transmission', () => {
   });
 
   it('passes project.screenBackground to ExportPreviewPlayer', () => {
-    const initialState = {
-      project: {
-        id: 'proj-1',
-        title: 'Tactics Test',
-        version: '2.0.0',
-        aspectRatio: '4:5' as const,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        activePhaseId: 'phase-1',
-        activeSlideId: 'slide-1',
-        screenBackground: mockScreenBackground,
-        phases: [
-          {
-            id: 'phase-1',
-            name: 'Phase 1',
-            slides: [],
-          },
-        ],
-      } as any,
-    };
+    const bundle = normalizeTacticalProject({
+      id: 'proj-1',
+      title: 'Tactics Test',
+      screenBackground: mockScreenBackground,
+      phases: [
+        {
+          id: 'phase-1',
+          name: 'Phase 1',
+          aspectRatio: '4:5',
+          slides: [{ id: 'slide-1', index: 0 }],
+        },
+      ],
+    });
 
     render(
-      <TacticalUnifiedStoreProvider initialState={initialState}>
+      <TacticalStoreProvider
+        initialProject={bundle.project}
+        initialSession={{
+          activePhaseId: bundle.activePhaseId,
+          activeSlideId: bundle.activeSlideId,
+        }}
+      >
         <ExportModalBody state={createMockState()} />
-      </TacticalUnifiedStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
     expect(vi.mocked(ExportPreviewPlayer).mock.calls[0][0]).toEqual(

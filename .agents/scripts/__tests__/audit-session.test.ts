@@ -116,6 +116,28 @@ describe('detectHookDenials and Bypasses', () => {
     expect(bypasses.some((b) => b.type === 'quality_gate_bypass')).toBe(true);
     expect(bypasses[0].description).toContain('biome-ignore');
   });
+
+  test('detects quality gate bypass via edit_file Replacement and store vi.mock', () => {
+    const records: TranscriptRecord[] = [
+      {
+        step_index: 1,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          {
+            name: 'edit_file',
+            args: {
+              Path: 'tests/board.test.ts',
+              Replacement: "vi.mock('@/stores/tactical-store', () => ({}));",
+            },
+          },
+        ],
+      },
+    ];
+
+    const bypasses = detectBypasses(records);
+    expect(bypasses.some((b) => b.type === 'quality_gate_bypass')).toBe(true);
+    expect(bypasses[0].description).toContain('Zustand store');
+  });
 });
 
 describe('detectSubagentContracts', () => {
@@ -248,5 +270,41 @@ describe('renderComparisonTable and extractStepSummaries', () => {
     const rendered = renderStepSummaries(summaries);
     expect(rendered).toContain('Step | Tool / Type | Target / Command | Flag');
     expect(rendered).toContain('2 | run_command | cat file.ts | **DENIED**');
+  });
+
+  test('detectHookDenials and extractStepSummaries handle parallel tool_calls individually', () => {
+    const records: TranscriptRecord[] = [
+      {
+        step_index: 1,
+        type: 'PLANNER_RESPONSE',
+        tool_calls: [
+          { name: 'read_file', args: { Path: 'src/ok.ts' } },
+          { name: 'run_command', args: { CommandLine: 'git commit -m x' } },
+        ],
+      },
+      {
+        step_index: 2,
+        type: 'GENERIC',
+        content: 'Showing lines 1-10 of 10\nok',
+      },
+      {
+        step_index: 3,
+        type: 'GENERIC',
+        status: 'ERROR',
+        content:
+          "tool call denied by pre-tool hook: [GUARD] Direct 'git commit' is prohibited",
+      },
+    ];
+
+    const denials = detectHookDenials(records);
+    expect(denials.length).toBe(1);
+    expect(denials[0].tool).toBe('run_command');
+    expect(denials[0].target).toContain('git commit -m x');
+
+    const summaries = extractStepSummaries(records);
+    expect(summaries.length).toBe(2);
+    expect(summaries[0].flag).toBeUndefined();
+    expect(summaries[1].tool).toBe('run_command');
+    expect(summaries[1].flag).toBe('DENIED');
   });
 });

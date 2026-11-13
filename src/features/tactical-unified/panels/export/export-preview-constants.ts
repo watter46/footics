@@ -1,20 +1,22 @@
 import { buildExportMVPMatrix } from '@/features/tactical-unified/core';
+import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
 import {
   hasActiveDirectorCameraTrack,
   type ResolveSyntheticDirectorCameraOptions,
 } from '@/lib/tactical/unified-interpolation';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
+import type { DirectorCameraTrack } from '@/lib/types/tactical/project';
 import type {
-  AspectRatio,
   BoundaryBox,
-  DirectorCameraTrack,
   PitchAppearanceConfig,
   PitchTransform,
   ScreenBackgroundConfig,
   Slide,
-} from '@/lib/types/tactical-unified';
+} from '@/lib/types/tactical/slide';
 
 export interface UseExportPreviewAnimationParams {
-  slides: Slide[];
+  slides: readonly (Slide | DomainSlide)[];
   aspectRatio: AspectRatio;
   /** キャンバス自体の出力アスペクト比（省略時は aspectRatio、レイアウト画面では '16:9' 固定） */
   canvasAspectRatio?: AspectRatio;
@@ -100,4 +102,26 @@ export function resolveExportPreviewMVPMatrix(params: {
   return new Float32Array(
     buildExportMVPMatrix(pitchTransform, width, height, aspectRatio),
   );
+}
+
+export function resolveExportPreviewCropInfo(
+  boundaryBox: BoundaryBox | null | undefined,
+  basePreviewDim: { width: number; height: number },
+) {
+  const box = boundaryBox?.enabled !== false ? boundaryBox : null;
+  const { width: w, height: h } = basePreviewDim;
+  const pitchRect = w > 0 ? { x: 0, y: 0, width: w, height: h } : undefined;
+  const cropInfo = calculateBoundaryCrop(box, w, h, 1, pitchRect);
+  const shouldCropPreview = cropInfo.isCropped;
+  const previewWidth = shouldCropPreview ? cropInfo.exportWidth : w;
+  const previewHeight = shouldCropPreview ? cropInfo.exportHeight : h;
+  const previewAspectStyle = shouldCropPreview
+    ? `${previewWidth} / ${previewHeight}`
+    : undefined;
+  return {
+    shouldCropPreview,
+    previewWidth,
+    previewHeight,
+    previewAspectStyle,
+  };
 }

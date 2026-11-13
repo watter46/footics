@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
   detectDuplicateRead,
   detectEditWithoutRawRead,
@@ -49,6 +51,46 @@ describe('audit-session Phase 1-3: reading detectors (READ-01〜READ-10)', () =>
       expect(findings.length).toBe(1);
       expect(findings[0].id).toBe('READ-01');
       expect(findings[0].severity).toBe('MED');
+    });
+
+    test('matches parallel read_file tool_calls to individual results', () => {
+      const ctx: AuditContext = {
+        sessionId: 'test-small-parallel',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'read_file',
+                args: { Path: 'src/large.ts', StartLine: 1, EndLine: 50 },
+              },
+              {
+                name: 'read_file',
+                args: { Path: 'src/small.ts', StartLine: 1, EndLine: 20 },
+              },
+            ],
+          },
+          {
+            step_index: 2,
+            type: 'GENERIC',
+            status: 'DONE',
+            content: 'Showing lines 1-50 of 600\n1: large',
+          },
+          {
+            step_index: 3,
+            type: 'GENERIC',
+            status: 'DONE',
+            content: 'Showing lines 1-20 of 80\n1: small',
+          },
+        ],
+      };
+
+      const findings = detectSmallSliced(ctx);
+      expect(findings.length).toBe(1);
+      expect(findings[0].evidence).toContain('src/small.ts');
     });
   });
 
@@ -117,6 +159,41 @@ describe('audit-session Phase 1-3: reading detectors (READ-01〜READ-10)', () =>
       expect(findings[0].id).toBe('READ-03');
       expect(findings[0].severity).toBe('MED');
     });
+
+    test('returns empty if multi-arg ai:outline already inspected the file', () => {
+      const ctx: AuditContext = {
+        sessionId: 'test-large-outlined',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'run_command',
+                args: {
+                  CommandLine: 'bun run ai:outline src/other.ts src/large.ts',
+                },
+              },
+            ],
+          },
+          {
+            step_index: 2,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [{ name: 'read_file', args: { Path: 'src/large.ts' } }],
+          },
+          {
+            step_index: 3,
+            type: 'GENERIC',
+            status: 'DONE',
+            content: 'Showing lines 1-600 of 600\n1: // large file',
+          },
+        ],
+      };
+
+      expect(detectLargeFullBlind(ctx).length).toBe(0);
+    });
   });
 
   describe('READ-04: DUPLICATE_READ', () => {
@@ -171,6 +248,41 @@ describe('audit-session Phase 1-3: reading detectors (READ-01〜READ-10)', () =>
       expect(findings.length).toBe(1);
       expect(findings[0].id).toBe('READ-05');
       expect(findings[0].severity).toBe('HIGH');
+    });
+
+    test('normalizes relative/absolute paths and handles write_file Overwrite', () => {
+      const absPath = `${process.cwd()}/src/seen.ts`;
+      const ctx: AuditContext = {
+        sessionId: 'test-path-norm-write',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [{ name: 'read_file', args: { Path: 'src/seen.ts' } }],
+          },
+          {
+            step_index: 2,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [{ name: 'edit_file', args: { Path: absPath } }],
+          },
+          {
+            step_index: 3,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'write_file',
+                args: { Path: 'src/overwritten.ts', Overwrite: true },
+              },
+            ],
+          },
+        ],
+      };
+
+      const findings = detectEditWithoutRawRead(ctx);
+      expect(findings.length).toBe(1);
+      expect(findings[0].evidence).toContain('src/overwritten.ts');
     });
   });
 
@@ -303,6 +415,41 @@ describe('audit-session Phase 1-3: reading detectors (READ-01〜READ-10)', () =>
       expect(findings[0].id).toBe('READ-09');
       expect(findings[0].severity).toBe('LOW');
     });
+
+    test('treats file referenced in subsequent tool_calls args as used', () => {
+      const ctx: AuditContext = {
+        sessionId: 'test-used-in-toolcall',
+        role: 'planner',
+        childIds: [],
+        records: [
+          {
+            step_index: 1,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'read_file',
+                args: { Path: 'src/utilized-widget.ts' },
+              },
+            ],
+          },
+          {
+            step_index: 2,
+            type: 'PLANNER_RESPONSE',
+            tool_calls: [
+              {
+                name: 'edit_file',
+                args: {
+                  Path: 'tasks/TASK-001.md',
+                  Replacement: 'Modify `src/utilized-widget.ts`',
+                },
+              },
+            ],
+          },
+        ],
+      };
+
+      expect(detectReadUnused(ctx).length).toBe(0);
+    });
   });
 
   describe('READ-10: WORKER_EXPLORES', () => {
@@ -335,6 +482,53 @@ describe('audit-session Phase 1-3: reading detectors (READ-01〜READ-10)', () =>
       expect(findings.length).toBe(1);
       expect(findings[0].id).toBe('READ-10');
       expect(findings[0].severity).toBe('MED');
+    });
+
+    test('allows files listed inside assigned Phase of target_file on disk', () => {
+      const fixtureDir = path.resolve(
+        '.agents/scripts/__tests__/fixtures-read10',
+      );
+      const taskPath = path.join(fixtureDir, 'TASK-999.md');
+      fs.mkdirSync(fixtureDir, { recursive: true });
+      fs.writeFileSync(
+        taskPath,
+        `### Phase 1: Setup\n- Target Files: \`src/phase1-target.ts\`\n\n### Phase 2: Other\n- Target Files: \`src/phase2-other.ts\`\n`,
+      );
+
+      try {
+        const ctx: AuditContext = {
+          sessionId: 'test-worker-phase-ok',
+          role: 'worker',
+          childIds: [],
+          records: [
+            {
+              step_index: 0,
+              type: 'SYSTEM_MESSAGE',
+              content: `type: "TASK_ASSIGN"\ntarget_file: "${taskPath}"\ntarget_phase: 1`,
+            },
+            {
+              step_index: 1,
+              type: 'PLANNER_RESPONSE',
+              tool_calls: [
+                {
+                  name: 'read_file',
+                  args: { Path: 'src/phase1-target.ts' },
+                },
+                {
+                  name: 'read_file',
+                  args: { Path: 'src/phase2-other.ts' },
+                },
+              ],
+            },
+          ],
+        };
+
+        const findings = detectWorkerExplores(ctx);
+        expect(findings.length).toBe(1);
+        expect(findings[0].evidence).toContain('src/phase2-other.ts');
+      } finally {
+        fs.rmSync(fixtureDir, { recursive: true, force: true });
+      }
     });
   });
 

@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import {
-  selectActivePhaseSlides,
-  selectTacticalRenderSnapshot,
-} from '@/features/tactical-unified/stores/tactical-unified-selectors';
+  selectDomainActivePhaseSlides,
+  selectDomainRenderSnapshot,
+} from '@/features/tactical-unified/stores/domain-selectors';
 import {
-  useTacticalUnifiedStoreApi,
-  useTacticalUnifiedStoreContext,
-} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+  useDocumentStore,
+  useSessionStore,
+  useTacticalStoresContext,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { packPlayerPhotos } from '@/lib/tactical/export/share-payload';
 
 interface ShareOptions {
@@ -17,8 +18,10 @@ interface ShareOptions {
 }
 
 export function useExportShare({ onError }: ShareOptions) {
-  const storeApi = useTacticalUnifiedStoreApi();
-  const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
+  const { documentStore, sessionStore } = useTacticalStoresContext();
+  const project = useDocumentStore((s) => s.project);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const slides = selectDomainActivePhaseSlides(project, activePhaseId);
   const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
 
@@ -31,10 +34,22 @@ export function useExportShare({ onError }: ShareOptions) {
     setShareUrl(null);
 
     try {
-      const state = storeApi.getState();
-      const { project } = state;
-      const snapshot = selectTacticalRenderSnapshot(state);
-      const currentSlides = selectActivePhaseSlides(state);
+      const currentProject = documentStore.getState().project;
+      const {
+        activePhaseId: currentPhaseId,
+        activeSlideId: currentSlideId,
+        teamVisibility,
+      } = sessionStore.getState();
+      const snapshot = selectDomainRenderSnapshot(
+        currentProject,
+        currentPhaseId,
+        currentSlideId,
+        teamVisibility,
+      );
+      const currentSlides = selectDomainActivePhaseSlides(
+        currentProject,
+        currentPhaseId,
+      );
       const photos = await packPlayerPhotos(currentSlides);
 
       const payload = {

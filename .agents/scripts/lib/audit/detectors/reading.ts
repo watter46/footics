@@ -1,17 +1,14 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import {
+  extractTargetFile,
+  findToolResultRecord,
+  isEditToolName,
+  isModifyToolName,
+  isReadToolName,
+  isWriteToolName,
+} from '../tool-helpers';
 import type { AuditContext, Detector, Finding } from '../types';
-
-function extractTargetFile(tc: {
-  name: string;
-  args?: Record<string, unknown>;
-}): string {
-  const raw =
-    tc.args?.AbsolutePath ??
-    tc.args?.Path ??
-    tc.args?.TargetFile ??
-    tc.args?.file ??
-    '';
-  return String(raw).trim().replace(/^"|"$/g, '');
-}
 
 const LINES_REGEX = /Showing lines (\d+)-(\d+) of (\d+)/;
 
@@ -25,12 +22,13 @@ export const detectSmallSliced: Detector = (ctx: AuditContext): Finding[] => {
   for (let i = 0; i < ctx.records.length; i++) {
     const r = ctx.records[i];
     if (r.type === 'PLANNER_RESPONSE' && r.tool_calls) {
-      for (const tc of r.tool_calls) {
-        if (tc.name === 'view_file' || tc.name === 'read_file') {
+      for (let tcIdx = 0; tcIdx < r.tool_calls.length; tcIdx++) {
+        const tc = r.tool_calls[tcIdx];
+        if (isReadToolName(tc.name)) {
           const hasSlice =
             tc.args?.StartLine !== undefined || tc.args?.EndLine !== undefined;
           if (hasSlice) {
-            const next = ctx.records[i + 1];
+            const next = findToolResultRecord(ctx.records, i, tcIdx);
             if (next?.type === 'GENERIC' && next.content) {
               const m = LINES_REGEX.exec(next.content);
               if (m) {
@@ -70,12 +68,13 @@ export const detectSeqSlicing: Detector = (ctx: AuditContext): Finding[] => {
   for (const r of ctx.records) {
     if (r.type === 'PLANNER_RESPONSE' && r.tool_calls) {
       for (const tc of r.tool_calls) {
-        if (tc.name === 'view_file' || tc.name === 'read_file') {
+        if (isReadToolName(tc.name)) {
           const hasSlice =
             tc.args?.StartLine !== undefined || tc.args?.EndLine !== undefined;
           const file = extractTargetFile(tc);
           if (hasSlice && file) {
-            if (file === prevFile) {
+            const resolved = path.resolve(file);
+            if (resolved === prevFile) {
               findings.push({
                 id: 'READ-02',
                 name: 'SEQ_SLICING',
@@ -86,7 +85,7 @@ export const detectSeqSlicing: Detector = (ctx: AuditContext): Finding[] => {
                 layers: ['planner', 'worker'],
               });
             }
-            prevFile = file;
+            prevFile = resolved;
             prevStep = r.step_index;
             continue;
           }
@@ -95,7 +94,7 @@ export const detectSeqSlicing: Detector = (ctx: AuditContext): Finding[] => {
       }
     } else if (
       r.status === 'ERROR' &&
-      r.content?.includes('Sequential slicing loop detected')
+      r.content?.includes('Sequential slicing loop')
     ) {
       findings.push({
         id: 'READ-02',
@@ -112,6 +111,16 @@ export const detectSeqSlicing: Detector = (ctx: AuditContext): Finding[] => {
   return findings;
 };
 
+function isFileProbed(file: string, probedTokens: Set<string>): boolean {
+  if (probedTokens.has(file)) return true;
+  const resolved = path.resolve(file);
+  for (const p of probedTokens) {
+    if (path.resolve(p) === resolved) return true;
+    if (file.endsWith(p) || p.endsWith(file)) return true;
+  }
+  return false;
+}
+
 /**
  * READ-03: LARGE_FULL_BLIND
  * 400行超の巨大ファイルを grep/outline なしに全文一括読込
@@ -120,33 +129,53 @@ export const detectLargeFullBlind: Detector = (
   ctx: AuditContext,
 ): Finding[] => {
   const findings: Finding[] = [];
-  const probedFiles = new Set<string>();
+  const probedTokens = new Set<string>();
 
   for (let i = 0; i < ctx.records.length; i++) {
     const r = ctx.records[i];
     if (r.type === 'PLANNER_RESPONSE' && r.tool_calls) {
-      for (const tc of r.tool_calls) {
+      for (let tcIdx = 0; tcIdx < r.tool_calls.length; tcIdx++) {
+        const tc = r.tool_calls[tcIdx];
         const cmd = String(tc.args?.CommandLine ?? '');
         if (
           cmd.includes('grep') ||
           cmd.includes('outline') ||
-          cmd.includes('find')
+          cmd.includes('find') ||
+          /\brg\b/.test(cmd)
         ) {
-          const match = /(?:grep|outline|find)[^\s]*\s+([^\s]+)/.exec(cmd);
-          if (match?.[1]) probedFiles.add(match[1]);
+          for (const token of cmd.split(/\s+/)) {
+            const clean = token.replace(/^["']|["']$/g, '');
+            if (
+              !clean ||
+              clean.startsWith('-') ||
+              [
+                'bun',
+                'run',
+                'rtk',
+                'ai:outline',
+                'ai:find',
+                'rg',
+                'grep',
+                'find',
+              ].includes(clean)
+            ) {
+              continue;
+            }
+            probedTokens.add(clean);
+          }
         }
 
-        if (tc.name === 'view_file' || tc.name === 'read_file') {
+        if (isReadToolName(tc.name)) {
           const hasSlice =
             tc.args?.StartLine !== undefined || tc.args?.EndLine !== undefined;
           if (!hasSlice) {
             const file = extractTargetFile(tc);
-            const next = ctx.records[i + 1];
+            const next = findToolResultRecord(ctx.records, i, tcIdx);
             if (next?.type === 'GENERIC' && next.content) {
               const m = LINES_REGEX.exec(next.content);
               if (m) {
                 const totalLines = Number.parseInt(m[3], 10);
-                if (totalLines > 400 && !probedFiles.has(file)) {
+                if (totalLines > 400 && !isFileProbed(file, probedTokens)) {
                   findings.push({
                     id: 'READ-03',
                     name: 'LARGE_FULL_BLIND',
@@ -179,20 +208,16 @@ export const detectDuplicateRead: Detector = (ctx: AuditContext): Finding[] => {
   for (const r of ctx.records) {
     if (r.type === 'PLANNER_RESPONSE' && r.tool_calls) {
       for (const tc of r.tool_calls) {
-        const isEdit =
-          tc.name === 'edit_file' ||
-          tc.name === 'write_file' ||
-          tc.name === 'replace_file_content' ||
-          tc.name === 'write_to_file';
-        if (isEdit) {
+        if (isModifyToolName(tc.name)) {
           const file = extractTargetFile(tc);
-          readStepsByFile.delete(file);
+          if (file) readStepsByFile.delete(path.resolve(file));
         }
 
-        if (tc.name === 'view_file' || tc.name === 'read_file') {
+        if (isReadToolName(tc.name)) {
           const file = extractTargetFile(tc);
           if (file) {
-            const prev = readStepsByFile.get(file);
+            const resolved = path.resolve(file);
+            const prev = readStepsByFile.get(resolved);
             if (prev && prev.length > 0) {
               findings.push({
                 id: 'READ-04',
@@ -204,7 +229,7 @@ export const detectDuplicateRead: Detector = (ctx: AuditContext): Finding[] => {
                 layers: ['planner', 'worker'],
               });
             } else {
-              readStepsByFile.set(file, [r.step_index]);
+              readStepsByFile.set(resolved, [r.step_index]);
             }
           }
         }
@@ -217,42 +242,45 @@ export const detectDuplicateRead: Detector = (ctx: AuditContext): Finding[] => {
 
 /**
  * READ-05: EDIT_WITHOUT_RAW_READ
- * 直前の無加工 read なしに edit_file を実行
+ * 直前の無加工 read なしに edit_file / Overwrite write_file を実行
  */
 export const detectEditWithoutRawRead: Detector = (
   ctx: AuditContext,
 ): Finding[] => {
-  if (ctx.role !== 'worker') return [];
-
   const findings: Finding[] = [];
   const recentRawReads = new Set<string>();
 
   for (let i = 0; i < ctx.records.length; i++) {
     const r = ctx.records[i];
     if (r.type === 'PLANNER_RESPONSE' && r.tool_calls) {
-      for (const tc of r.tool_calls) {
-        if (tc.name === 'view_file' || tc.name === 'read_file') {
+      for (let tcIdx = 0; tcIdx < r.tool_calls.length; tcIdx++) {
+        const tc = r.tool_calls[tcIdx];
+        if (isReadToolName(tc.name)) {
           const file = extractTargetFile(tc);
-          recentRawReads.add(file);
+          if (file) recentRawReads.add(path.resolve(file));
         }
 
-        const isEdit =
-          tc.name === 'edit_file' || tc.name === 'replace_file_content';
-        if (isEdit) {
+        const isTargetEdit =
+          isEditToolName(tc.name) ||
+          (isWriteToolName(tc.name) && tc.args?.Overwrite === true);
+
+        if (isTargetEdit) {
           const file = extractTargetFile(tc);
-          const next = ctx.records[i + 1];
+          if (!file) continue;
+          const resolved = path.resolve(file);
+          const next = findToolResultRecord(ctx.records, i, tcIdx);
           const wasBlocked =
             next?.status === 'ERROR' && next?.content?.includes('GATEGUARD');
 
-          if (!recentRawReads.has(file) || wasBlocked) {
+          if (wasBlocked || (isTargetEdit && !recentRawReads.has(resolved))) {
             findings.push({
               id: 'READ-05',
               name: 'EDIT_WITHOUT_RAW_READ',
               severity: 'HIGH',
               sessionId: ctx.sessionId,
               steps: [r.step_index],
-              evidence: `Attempted to edit '${file}' without prior raw read_file/view_file`,
-              layers: ['worker'],
+              evidence: `Attempted to edit '${file}' without prior raw read_file`,
+              layers: [ctx.role === 'planner' ? 'planner' : 'worker'],
             });
           }
         }
@@ -284,11 +312,11 @@ export const detectRtkReadBasis: Detector = (ctx: AuditContext): Finding[] => {
           }
         }
 
-        if (tc.name === 'view_file' || tc.name === 'read_file') {
+        if (isReadToolName(tc.name)) {
           lastRtkReadFile = '';
         }
 
-        if (tc.name === 'edit_file' || tc.name === 'replace_file_content') {
+        if (isEditToolName(tc.name)) {
           const file = extractTargetFile(tc);
           if (file && lastRtkReadFile && file.includes(lastRtkReadFile)) {
             findings.push({
@@ -297,7 +325,7 @@ export const detectRtkReadBasis: Detector = (ctx: AuditContext): Finding[] => {
               severity: 'HIGH',
               sessionId: ctx.sessionId,
               steps: [r.step_index],
-              evidence: `Edited '${file}' directly based on lossy 'rtk read' output without raw view_file`,
+              evidence: `Edited '${file}' directly based on lossy 'rtk read' output without raw read_file`,
               layers: ['worker'],
             });
           }
@@ -350,10 +378,11 @@ export const detectHeavyReadTop: Detector = (ctx: AuditContext): Finding[] => {
   for (let i = 0; i < ctx.records.length; i++) {
     const r = ctx.records[i];
     if (r.type === 'PLANNER_RESPONSE' && r.tool_calls) {
-      for (const tc of r.tool_calls) {
-        if (tc.name === 'view_file' || tc.name === 'read_file') {
+      for (let tcIdx = 0; tcIdx < r.tool_calls.length; tcIdx++) {
+        const tc = r.tool_calls[tcIdx];
+        if (isReadToolName(tc.name)) {
           const file = extractTargetFile(tc);
-          const next = ctx.records[i + 1];
+          const next = findToolResultRecord(ctx.records, i, tcIdx);
           const len = (next?.content ?? '').length;
           fileChars.set(file, (fileChars.get(file) ?? 0) + len);
         }
@@ -386,7 +415,7 @@ export const detectHeavyReadTop: Detector = (ctx: AuditContext): Finding[] => {
 
 /**
  * READ-09: READ_UNUSED
- * 読まれたが以後の会話・編集・サブエージェント指示で全く使われなかったファイル
+ * 読まれたが以後の会話・編集・ツール引数で全く使われなかったファイル
  */
 export const detectReadUnused: Detector = (ctx: AuditContext): Finding[] => {
   if (ctx.role !== 'planner') return [];
@@ -398,7 +427,7 @@ export const detectReadUnused: Detector = (ctx: AuditContext): Finding[] => {
     const r = ctx.records[i];
     if (r.type === 'PLANNER_RESPONSE' && r.tool_calls) {
       for (const tc of r.tool_calls) {
-        if (tc.name === 'view_file' || tc.name === 'read_file') {
+        if (isReadToolName(tc.name)) {
           const file = extractTargetFile(tc);
           if (file && !file.includes('repo_summary')) {
             readFilesWithStep.set(file, r.step_index);
@@ -415,10 +444,12 @@ export const detectReadUnused: Detector = (ctx: AuditContext): Finding[] => {
         .pop()
         ?.replace(/\.[^.]+$/, '') ?? '';
 
-    // 当該読込結果（step + 1）より後のステップを対象にチェック
     const subsequentText = ctx.records
-      .filter((r) => r.step_index > step + 1)
-      .map((r) => `${r.content ?? ''} ${r.thinking ?? ''}`)
+      .filter((r) => r.step_index > step && r.type !== 'GENERIC')
+      .map((r) => {
+        const callsStr = r.tool_calls ? JSON.stringify(r.tool_calls) : '';
+        return `${r.content ?? ''} ${r.thinking ?? ''} ${callsStr}`;
+      })
       .join(' ');
 
     if (base.length > 3 && !subsequentText.includes(base)) {
@@ -438,8 +469,40 @@ export const detectReadUnused: Detector = (ctx: AuditContext): Finding[] => {
 };
 
 /**
+ * タスクファイルから対象 Phase の Target Files パス一覧を抽出する
+ */
+function extractPhaseTargetsFromTaskFile(
+  taskFilePath: string,
+  phaseNum?: number,
+): string[] | null {
+  const abs = path.resolve(taskFilePath);
+  if (!fs.existsSync(abs)) return null;
+  try {
+    const md = fs.readFileSync(abs, 'utf8');
+    let scopeSection = md;
+    if (phaseNum !== undefined) {
+      const re = new RegExp(
+        `###\\s+Phase\\s+${phaseNum}\\b[\\s\\S]*?(?=###\\s+Phase\\s+\\d+|\\n##\\s+\\d+\\.|$)`,
+      );
+      const m = re.exec(md);
+      if (m) scopeSection = m[0];
+    }
+    const paths: string[] = [taskFilePath];
+    for (const match of scopeSection.matchAll(/`([^`\n]+)`/g)) {
+      const candidate = match[1].trim();
+      if (candidate.includes('/') || /\.[tj]sx?$/.test(candidate)) {
+        paths.push(candidate);
+      }
+    }
+    return paths;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * READ-10: WORKER_EXPLORES
- * Worker がタスクプロンプト外のファイルを自前探索
+ * Worker がタスクプロンプト（および割り当て Phase の Target Files）外のファイルを自前探索
  */
 export const detectWorkerExplores: Detector = (
   ctx: AuditContext,
@@ -448,19 +511,46 @@ export const detectWorkerExplores: Detector = (
 
   const firstMsg =
     ctx.records.find((r) => r.type === 'SYSTEM_MESSAGE')?.content ?? '';
+  const taskMatch =
+    /target_file:\s*["']?([^"'\n]+)["']?/i.exec(firstMsg) ??
+    /\b(tasks\/TASK-[^"'\s`\n]+\.md)/.exec(firstMsg);
+  const phaseMatch =
+    /target_phase:\s*(\d+)/i.exec(firstMsg) ?? /Phase\s+(\d+)/i.exec(firstMsg);
+
+  const taskFile = taskMatch?.[1]?.trim();
+  const phaseNum = phaseMatch ? Number.parseInt(phaseMatch[1], 10) : undefined;
+  const taskTargets = taskFile
+    ? extractPhaseTargetsFromTaskFile(taskFile, phaseNum)
+    : null;
+
   const findings: Finding[] = [];
 
   for (const r of ctx.records) {
     if (r.type === 'PLANNER_RESPONSE' && r.tool_calls) {
       for (const tc of r.tool_calls) {
-        if (tc.name === 'view_file' || tc.name === 'read_file') {
+        if (isReadToolName(tc.name)) {
           const file = extractTargetFile(tc);
           const base = file.split('/').pop() ?? '';
-          if (
-            (file.startsWith('src/') || file.startsWith('extension/')) &&
-            !firstMsg.includes(file) &&
-            !firstMsg.includes(base)
-          ) {
+          const isSourceScope =
+            file.startsWith('src/') ||
+            file.startsWith('extension/') ||
+            /\/(?:src|extension)\//.test(file);
+
+          if (!isSourceScope) continue;
+
+          const inPrompt =
+            firstMsg.includes(file) || (base && firstMsg.includes(base));
+          const inTaskFile =
+            taskTargets !== null &&
+            taskTargets.some(
+              (t) =>
+                file === t ||
+                file.endsWith(`/${t}`) ||
+                t.endsWith(`/${file}`) ||
+                path.resolve(file) === path.resolve(t),
+            );
+
+          if (!inPrompt && !inTaskFile) {
             findings.push({
               id: 'READ-10',
               name: 'WORKER_EXPLORES',

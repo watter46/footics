@@ -1,25 +1,19 @@
+import {
+  extractTargetFile,
+  isModifyToolName,
+  isReadToolName,
+} from '../tool-helpers';
 import type { AuditContext, Detector, Finding } from '../types';
 
-function extractTargetFile(tc: {
-  name: string;
-  args?: Record<string, unknown>;
-}): string {
-  const raw =
-    tc.args?.AbsolutePath ??
-    tc.args?.Path ??
-    tc.args?.TargetFile ??
-    tc.args?.file ??
-    '';
-  return String(raw).trim().replace(/^"|"$/g, '');
-}
-
 /**
- * EXP-01: SCOUT_BYPASS
- * Planner が Scout を起動せずに 3 以上のソースコードファイルを直接読込
+ * EXP-01: OUTLINE_BYPASS
+ * Planner が ai:outline / ai:find / rg / repo_summary を使わずに 3 件以上のソースファイルを直接読込
+ * （※旧 Scout 時代ログで invoke_subagent(scout) がある場合は対象外）
  */
-export const detectScoutBypass: Detector = (ctx: AuditContext): Finding[] => {
+export const detectOutlineBypass: Detector = (ctx: AuditContext): Finding[] => {
   if (ctx.role !== 'planner') return [];
 
+  let usedDiscoveryTool = false;
   let scoutInvoked = false;
   const readSourceFiles = new Set<string>();
   const steps: number[] = [];
@@ -35,9 +29,27 @@ export const detectScoutBypass: Detector = (ctx: AuditContext): Finding[] => {
           scoutInvoked = true;
         }
 
-        if (tc.name === 'view_file' || tc.name === 'read_file') {
+        if (tc.name === 'run_command') {
+          const cmd = String(tc.args?.CommandLine ?? '');
+          if (
+            cmd.includes('ai:outline') ||
+            cmd.includes('ai:find') ||
+            /\b(?:rg|rtk\s+grep)\b/.test(cmd) ||
+            cmd.includes('repo_summary.txt')
+          ) {
+            usedDiscoveryTool = true;
+          }
+        }
+
+        if (isReadToolName(tc.name)) {
           const file = extractTargetFile(tc);
-          if (file.startsWith('src/') || file.startsWith('extension/')) {
+          if (file.includes('repo_summary.txt')) {
+            usedDiscoveryTool = true;
+          } else if (
+            file.startsWith('src/') ||
+            file.startsWith('extension/') ||
+            /\/(?:src|extension)\//.test(file)
+          ) {
             readSourceFiles.add(file);
             steps.push(r.step_index);
           }
@@ -46,15 +58,15 @@ export const detectScoutBypass: Detector = (ctx: AuditContext): Finding[] => {
     }
   }
 
-  if (!scoutInvoked && readSourceFiles.size >= 3) {
+  if (!scoutInvoked && !usedDiscoveryTool && readSourceFiles.size >= 3) {
     return [
       {
         id: 'EXP-01',
-        name: 'SCOUT_BYPASS',
+        name: 'OUTLINE_BYPASS',
         severity: 'HIGH',
         sessionId: ctx.sessionId,
         steps: Array.from(new Set(steps)),
-        evidence: `Planner read ${readSourceFiles.size} source files directly without invoking Scout: ${Array.from(readSourceFiles).slice(0, 5).join(', ')}`,
+        evidence: `Planner read ${readSourceFiles.size} source files directly without using ai:outline / ai:find / rg: ${Array.from(readSourceFiles).slice(0, 5).join(', ')}`,
         layers: ['planner', 'rule'],
       },
     ];
@@ -65,7 +77,7 @@ export const detectScoutBypass: Detector = (ctx: AuditContext): Finding[] => {
 
 /**
  * EXP-02: BAD_FIRST_MOVE
- * 初動 3 ターンで repo_summary.txt / ai:find / ai:outline を使わず漫然探索
+ * 初動 3 ターンで repo_summary.txt / ai:find / ai:outline / rg -l / tasks/TASK-*.md を使わず漫然探索
  */
 export const detectBadFirstMove: Detector = (ctx: AuditContext): Finding[] => {
   if (ctx.role !== 'planner') return [];
@@ -82,22 +94,26 @@ export const detectBadFirstMove: Detector = (ctx: AuditContext): Finding[] => {
 
   for (const r of firstTurns) {
     for (const tc of r.tool_calls ?? []) {
-      const cmd = String(tc.args?.CommandLine ?? '');
+      const cmd = String(tc.args?.CommandLine ?? '').trim();
       const file = extractTargetFile(tc);
 
       if (
         file.includes('repo_summary.txt') ||
+        /(?:^|\/)tasks\/TASK-[^/]+\.md$/.test(file) ||
         cmd.includes('repo_summary.txt') ||
         cmd.includes('ai:find') ||
-        cmd.includes('ai:outline')
+        cmd.includes('ai:outline') ||
+        /\brg\s+(?:-[a-zA-Z]*[lc]|--files-with-matches|--count)\b/.test(cmd)
       ) {
         hasGoodFirstMove = true;
       }
 
       if (
-        tc.name === 'view_file' ||
-        tc.name === 'read_file' ||
-        /^(?:grep|rg|find|ls)\b/.test(cmd.trim())
+        (isReadToolName(tc.name) &&
+          !file.includes('repo_summary.txt') &&
+          !/(?:^|\/)tasks\/TASK-[^/]+\.md$/.test(file)) ||
+        (/^(?:grep|rg|find|ls)\b/.test(cmd) &&
+          !/^rg\s+(?:-[a-zA-Z]*[lc]|--files-with-matches|--count)\b/.test(cmd))
       ) {
         hasRawExploration = true;
         steps.push(r.step_index);
@@ -114,7 +130,7 @@ export const detectBadFirstMove: Detector = (ctx: AuditContext): Finding[] => {
         sessionId: ctx.sessionId,
         steps,
         evidence:
-          'Initial 3 turns used raw file exploration without repo_summary.txt, ai:find, or ai:outline',
+          'Initial 3 turns used raw file exploration without repo_summary.txt, ai:find, ai:outline, rg -l, or TASK file',
         layers: ['planner', 'rule'],
       },
     ];
@@ -138,12 +154,7 @@ export const detectExploreShare: Detector = (ctx: AuditContext): Finding[] => {
   for (let i = 0; i < plannerTurns.length; i++) {
     const r = plannerTurns[i];
     const hasAction = r.tool_calls?.some(
-      (tc) =>
-        tc.name === 'invoke_subagent' ||
-        tc.name === 'write_file' ||
-        tc.name === 'edit_file' ||
-        tc.name === 'write_to_file' ||
-        tc.name === 'replace_file_content',
+      (tc) => tc.name === 'invoke_subagent' || isModifyToolName(tc.name),
     );
     if (hasAction) {
       firstActionTurn = i;
@@ -183,18 +194,32 @@ export const detectExploreShare: Detector = (ctx: AuditContext): Finding[] => {
 export const detectSerialIndependent: Detector = (
   ctx: AuditContext,
 ): Finding[] => {
-  const steps: number[] = [];
+  const findings: Finding[] = [];
+  let steps: number[] = [];
   let consecutive = 0;
   let prevFile = '';
+
+  const flush = () => {
+    if (consecutive >= 3) {
+      findings.push({
+        id: 'EXP-04',
+        name: 'SERIAL_INDEPENDENT',
+        severity: 'LOW',
+        sessionId: ctx.sessionId,
+        steps: [...steps],
+        evidence: `${consecutive} consecutive single-file read calls issued without parallelizing independent reads`,
+        layers: ['planner', 'worker'],
+      });
+    }
+    consecutive = 0;
+    prevFile = '';
+    steps = [];
+  };
 
   for (const r of ctx.records) {
     if (r.type === 'PLANNER_RESPONSE') {
       const tc = r.tool_calls;
-      if (
-        tc &&
-        tc.length === 1 &&
-        (tc[0].name === 'view_file' || tc[0].name === 'read_file')
-      ) {
+      if (tc && tc.length === 1 && isReadToolName(tc[0].name)) {
         const file = extractTargetFile(tc[0]);
         if (file && file !== prevFile) {
           consecutive++;
@@ -203,28 +228,12 @@ export const detectSerialIndependent: Detector = (
           continue;
         }
       }
-      if (consecutive >= 3) break;
-      consecutive = 0;
-      prevFile = '';
-      steps.length = 0;
+      flush();
     }
   }
+  flush();
 
-  if (consecutive >= 3) {
-    return [
-      {
-        id: 'EXP-04',
-        name: 'SERIAL_INDEPENDENT',
-        severity: 'LOW',
-        sessionId: ctx.sessionId,
-        steps,
-        evidence: `${consecutive} consecutive single-file read calls issued without parallelizing independent reads`,
-        layers: ['planner', 'worker'],
-      },
-    ];
-  }
-
-  return [];
+  return findings;
 };
 
 /**
@@ -243,15 +252,14 @@ export const detectLinecountPuzzle: Detector = (
         if (tc.name === 'run_command') {
           const cmd = String(tc.args?.CommandLine ?? '');
           if (/\bwc\s+-l\b/.test(cmd)) {
-            // 直前直後をチェック
             const prev = ctx.records[i - 1];
             const next = ctx.records[i + 1];
             const prevWasDenial =
               prev?.content?.includes('slicing loop') ||
               prev?.content?.includes('400') ||
               prev?.content?.includes('denied');
-            const nextIsRead = next?.tool_calls?.some(
-              (x) => x.name === 'view_file' || x.name === 'read_file',
+            const nextIsRead = next?.tool_calls?.some((x) =>
+              isReadToolName(x.name),
             );
 
             if (prevWasDenial || nextIsRead) {
@@ -307,7 +315,7 @@ export const detectGuessedPath: Detector = (ctx: AuditContext): Finding[] => {
 
 /**
  * EXP-07: SCOPE_VIOLATION
- * 引数なし・ディレクトリ指定の ai:check または生 vitest/biome/tsc
+ * 引数なし・ディレクトリ指定の ai:check または生 vitest/biome/tsc/bun test
  */
 export const detectScopeViolation: Detector = (
   ctx: AuditContext,
@@ -320,20 +328,26 @@ export const detectScopeViolation: Detector = (
         if (tc.name === 'run_command') {
           const cmd = String(tc.args?.CommandLine ?? '').trim();
 
-          // 1. ai:check 無引数またはディレクトリ
-          if (
-            /^(?:bun\s+run\s+|pnpm\s+run\s+)?ai:check(?:\s+([^\s]+))?$/.test(
-              cmd,
-            )
-          ) {
-            const m = /ai:check(?:\s+([^\s]+))?$/.exec(cmd);
-            const arg = m?.[1];
-            if (
-              !arg ||
-              arg.endsWith('/') ||
-              arg === 'src' ||
-              arg === 'extension'
-            ) {
+          // 1. ai:check 無引数またはディレクトリ指定（複数引数も考慮）
+          const checkMatch =
+            /^(?:bun\s+run\s+|pnpm\s+run\s+)?ai:check(?:\s+(.+))?$/.exec(cmd);
+          if (checkMatch) {
+            const rawArgs = (checkMatch[1] ?? '').trim();
+            const argList = rawArgs
+              .split(/\s+/)
+              .filter((a) => a && !a.startsWith('-'));
+            const hasDirTarget =
+              argList.length === 0 ||
+              argList.some(
+                (a) =>
+                  a === '.' ||
+                  a === './' ||
+                  a.endsWith('/') ||
+                  a === 'src' ||
+                  a === 'extension' ||
+                  a === 'tests',
+              );
+            if (hasDirTarget) {
               findings.push({
                 id: 'EXP-07',
                 name: 'SCOPE_VIOLATION',
@@ -347,13 +361,23 @@ export const detectScopeViolation: Detector = (
             }
           }
 
-          // 2. 生 vitest, biome check, tsc 直接実行
-          if (
+          // 2. 生 vitest, biome check, tsc, または Worker の生 bun test/lint/typecheck 直接実行
+          const isRawTool =
             /^(?:npx\s+|bunx\s+)?(?:vitest(?:\s+run)?|biome\s+check|tsc(?:\s+--noEmit)?)\b/.test(
               cmd,
+            );
+          const isWorkerRawBun =
+            ctx.role === 'worker' &&
+            /^(?:bun\s+test\b|bun\s+run\s+(?:test|lint|typecheck(?::full)?)\b)/.test(
+              cmd,
             ) &&
+            !cmd.includes('.agents');
+
+          if (
+            (isRawTool || isWorkerRawBun) &&
             !cmd.startsWith('rtk') &&
             !cmd.includes('ai:check') &&
+            !cmd.includes('ai:preflight') &&
             !cmd.includes('ai:commit')
           ) {
             findings.push({
@@ -418,7 +442,7 @@ export const detectRepeatDenial: Detector = (ctx: AuditContext): Finding[] => {
 
 /**
  * EXP-09: ROLE_VIOLATION
- * 役割ごとの禁止行為（Plannerのコード編集、Scoutの書込など）
+ * 役割ごとの禁止行為（Plannerのコード編集、Workerの.agents編集、Architect/Auditor境界違反など）
  */
 export const detectRoleViolation: Detector = (ctx: AuditContext): Finding[] => {
   const findings: Finding[] = [];
@@ -431,7 +455,9 @@ export const detectRoleViolation: Detector = (ctx: AuditContext): Finding[] => {
     /Worker is prohibited from modifying 'package\.json'/i,
     /Worker can only modify files in/i,
     /Auditor is a read-only audit agent/i,
+    /Auditor is prohibited from/i,
     /Auditor operates as a standalone direct audit agent/i,
+    /Architect is prohibited from/i,
   ];
 
   for (const r of ctx.records) {
@@ -493,7 +519,7 @@ export const detectBlindRedo: Detector = (ctx: AuditContext): Finding[] => {
 };
 
 export const EXPLORATION_DETECTORS: Detector[] = [
-  detectScoutBypass,
+  detectOutlineBypass,
   detectBadFirstMove,
   detectExploreShare,
   detectSerialIndependent,

@@ -6,12 +6,11 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { usePlayerPhotoRegistry } from '@/features/tactical-unified/objects/player/hooks/use-player-photo-registry';
 import { buildPlayerPhotoRecord } from '@/features/tactical-unified/panels/split-preview/preview-player-photos';
-import { selectActivePhase } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { selectDomainActivePhase } from '@/features/tactical-unified/stores/domain-selectors';
 import {
-  exportTacticalProjectToJson,
-  importTacticalProjectFromJson,
-} from '@/lib/db/tactical-projects-db';
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { ExportPreviewPlayer } from './export-preview-player';
 import type { ExportModalState } from './use-export-modal-state';
 
@@ -29,6 +28,8 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
     isExporting,
     closeExportModal,
     handleExport,
+    exportJson,
+    importJson,
     share,
     activeSlide,
     slides,
@@ -37,12 +38,10 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
     pitchAppearance,
   } = state;
 
-  const project = useTacticalUnifiedStoreContext((s) => s.project);
-  const loadProject = useTacticalUnifiedStoreContext((s) => s.loadProject);
-  const activePhase = useTacticalUnifiedStoreContext(selectActivePhase);
-  const teamVisibility = useTacticalUnifiedStoreContext(
-    (s) => s.teamVisibility,
-  );
+  const project = useDocumentStore((s) => s.project);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activePhase = selectDomainActivePhase(project, activePhaseId);
+  const teamVisibility = useSessionStore((s) => s.teamVisibility);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -60,7 +59,7 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
 
   const handleExportJson = () => {
     try {
-      exportTacticalProjectToJson(project);
+      exportJson();
       toast.success('Project JSON exported successfully');
     } catch (_err) {
       toast.error('Failed to export project JSON');
@@ -81,9 +80,8 @@ export function ExportModalBody({ state }: ExportModalBodyProps) {
     if (!file) return;
     setIsImporting(true);
     try {
-      const imported = await importTacticalProjectFromJson(file, false);
-      loadProject(imported);
-      toast.success(`Loaded project: "${imported.title}"`);
+      const title = await importJson(file);
+      toast.success(`Loaded project: "${title}"`);
       closeExportModal();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to import JSON');

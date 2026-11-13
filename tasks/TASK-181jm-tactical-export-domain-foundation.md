@@ -1,6 +1,6 @@
 # TASK-181jm: Export パイプライン＆プレビュー基盤の Domain Slide 型互換化
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181j)

@@ -8,15 +8,18 @@ import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
 import { preloadSlidePlayerPhotos } from '@/lib/tactical/export/share-payload';
 import { renderTacticalFrameToCanvas } from '@/lib/tactical/export/tactical-frame-renderer';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
+import type { DirectorCameraTrack } from '@/lib/types/tactical/project';
 import type {
-  AspectRatio,
   BoundaryBox,
-  DirectorCameraTrack,
   PitchAppearanceConfig,
   PitchTransform,
   ScreenBackgroundConfig,
   Slide,
-} from '@/lib/types/tactical-unified';
+} from '@/lib/types/tactical/slide';
+
+type ExportableSlide = Slide | DomainSlide;
 
 export async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   const res = await fetch(dataUrl);
@@ -33,7 +36,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
 }
 
 export interface RenderSlideImageOptions {
-  slide: Slide;
+  slide: ExportableSlide;
   aspectRatio: AspectRatio;
   scale?: number;
   stageWidth?: number;
@@ -47,7 +50,7 @@ export interface RenderSlideImageOptions {
 }
 
 export interface ExportSlidesArchiveOptions {
-  slides: Slide[];
+  slides: readonly ExportableSlide[];
   aspectRatio: AspectRatio;
   scale?: number;
   stageWidth?: number;
@@ -69,7 +72,9 @@ export async function renderSlideToPngBlob(
   const box =
     options.boundaryBox !== undefined
       ? options.boundaryBox
-      : options.slide.boundaryBox;
+      : 'boundaryBox' in options.slide
+        ? options.slide.boundaryBox
+        : undefined;
   const crop = calculateBoundaryCrop(box, stageWidth, stageHeight, scale);
   const canvas = document.createElement('canvas');
   canvas.width = crop.exportWidth;
@@ -152,7 +157,9 @@ export async function exportAllSlidesZip(
       boundaryBox:
         options.boundaryBox !== undefined
           ? options.boundaryBox
-          : slide.boundaryBox,
+          : 'boundaryBox' in slide
+            ? slide.boundaryBox
+            : undefined,
       pitchTransform:
         options.pitchTransform !== undefined
           ? options.pitchTransform

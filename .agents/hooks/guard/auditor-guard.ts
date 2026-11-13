@@ -8,6 +8,7 @@ export interface GuardDecision {
 
 export const AUDITOR_ALLOWED_EXECUTABLES: readonly string[] = [
   'bun',
+  'biome',
   'rtk',
   'git',
   'fd',
@@ -30,9 +31,11 @@ const ALLOWED_BUN_SCRIPTS = new Set([
   'ai:report',
   'ai:find',
   'ai:outline',
+  'ai:preflight',
   'task:validate',
   '.agents/scripts/audit-session.ts',
   '.agents/scripts/session-report.ts',
+  '.agents/scripts/preflight.ts',
   '.agents/scripts/validate-task.ts',
   'scripts/map/find-symbol.ts',
   'scripts/ast/extract-types.ts',
@@ -156,7 +159,51 @@ export function checkAuditorGuard(payload: any): GuardDecision | null {
         if (!isAllowedScript) {
           return {
             decision: 'deny',
-            reason: `[GUARD] Access Denied: Auditor may only execute authorized audit scripts with bun (ai:audit, ai:report, ai:find, ai:outline, task:validate, or bun test ./.agents). '${targetScript ?? 'bun'}' is not allowed.`,
+            reason: `[GUARD] Access Denied: Auditor may only execute authorized audit scripts with bun (ai:audit, ai:report, ai:find, ai:outline, ai:preflight .agents/..., task:validate, or bun test ./.agents). '${targetScript ?? 'bun'}' is not allowed.`,
+          };
+        }
+
+        if (
+          targetScript === 'ai:preflight' ||
+          targetScript === '.agents/scripts/preflight.ts'
+        ) {
+          const scriptArgs = parsed.args
+            .slice(isRun ? 2 : 1)
+            .filter((a) => !a.startsWith('-'));
+          const scopedToAgents =
+            scriptArgs.length > 0 &&
+            scriptArgs.every(
+              (a) =>
+                a === '.agents' ||
+                a === './.agents' ||
+                a.startsWith('.agents/') ||
+                a.startsWith('./.agents/'),
+            );
+          if (!scopedToAgents) {
+            return {
+              decision: 'deny',
+              reason: `[GUARD] Access Denied: Auditor may only run 'ai:preflight' scoped to '.agents/**'.`,
+            };
+          }
+        }
+      }
+
+      // biome の制限（.agents/** のみ許可）
+      if (parsed.executable === 'biome') {
+        const targets = parsed.args.slice(1).filter((a) => !a.startsWith('-'));
+        const scopedToAgents =
+          targets.length > 0 &&
+          targets.every(
+            (t) =>
+              t === '.agents' ||
+              t === './.agents' ||
+              t.startsWith('.agents/') ||
+              t.startsWith('./.agents/'),
+          );
+        if (!scopedToAgents) {
+          return {
+            decision: 'deny',
+            reason: `[GUARD] Access Denied: Auditor may only run 'biome' scoped to '.agents/**'.`,
           };
         }
       }

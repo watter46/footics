@@ -8,6 +8,12 @@ import {
   renderStepDetail,
   resolveFullTranscript,
 } from './lib/audit/step-detail';
+import {
+  extractTargetFile,
+  extractWriteContent,
+  findToolResultRecord,
+  isModifyToolName,
+} from './lib/audit/tool-helpers';
 import { collectSessionTree } from './lib/audit/tree';
 import type { AuditContext, Finding } from './lib/audit/types';
 
@@ -181,18 +187,23 @@ export function detectHookDenials(records: TranscriptRecord[]): HookDenial[] {
       content.includes('[GATEGUARD]');
 
     if (isDenied && r.type === 'GENERIC') {
-      // 拒否されたツール呼び出しを特定 (直前の PLANNER_RESPONSE)
-      const prev = records
-        .slice(0, i)
-        .reverse()
-        .find((p) => p.type === 'PLANNER_RESPONSE');
-      const tc = prev?.tool_calls?.[0];
+      // 拒否されたツール呼び出しを特定 (直前の PLANNER_RESPONSE 内の対応インデックス)
+      let prevIdx = -1;
+      let genericOffset = 0;
+      for (let j = i - 1; j >= 0; j--) {
+        if (records[j].type === 'PLANNER_RESPONSE') {
+          prevIdx = j;
+          break;
+        }
+        if (records[j].type === 'GENERIC') {
+          genericOffset++;
+        }
+      }
+      const prev = prevIdx >= 0 ? records[prevIdx] : undefined;
+      const tc = prev?.tool_calls?.[genericOffset] ?? prev?.tool_calls?.[0];
       const tool = tc?.name ?? 'unknown';
       const target = String(
-        tc?.args?.CommandLine ??
-          tc?.args?.AbsolutePath ??
-          tc?.args?.TargetFile ??
-          '',
+        tc?.args?.CommandLine ?? (tc ? extractTargetFile(tc) : ''),
       ).slice(0, 80);
 
       // 拒否直後のアクション (直後の PLANNER_RESPONSE)
@@ -203,10 +214,7 @@ export function detectHookDenials(records: TranscriptRecord[]): HookDenial[] {
       let subsequentTurnAction: string | undefined;
       if (nextTc) {
         const nextTarget = String(
-          nextTc.args?.CommandLine ??
-            nextTc.args?.AbsolutePath ??
-            nextTc.args?.TargetFile ??
-            '',
+          nextTc.args?.CommandLine ?? extractTargetFile(nextTc),
         ).slice(0, 80);
         subsequentTurnAction = `${nextTc.name}: ${nextTarget}`;
       }
@@ -239,15 +247,13 @@ export function detectBypasses(records: TranscriptRecord[]): BypassEvent[] {
     if (r.type === 'PLANNER_RESPONSE' && r.tool_calls) {
       for (const tc of r.tool_calls) {
         const cmd = String(tc.args?.CommandLine ?? '');
-        const content = String(
-          tc.args?.ReplacementContent ?? tc.args?.CodeContent ?? '',
-        );
+        const content = extractWriteContent(tc);
+        const targetFile = extractTargetFile(tc);
+        const isAppFile =
+          !targetFile || /(?:^|\/)(?:src|extension|tests)\//.test(targetFile);
 
-        // 1. 品質バイパス: biome-ignore, test.skip, as any, @ts-expect-error
-        if (
-          (tc.name === 'replace_file_content' || tc.name === 'write_to_file') &&
-          content
-        ) {
+        // 1. 品質バイパス: biome-ignore, test.skip, @ts-expect-error, vi.mock(store)
+        if (isModifyToolName(tc.name) && content && isAppFile) {
           if (content.includes('biome-ignore')) {
             bypasses.push({
               step: r.step_index,
@@ -271,6 +277,20 @@ export function detectBypasses(records: TranscriptRecord[]): BypassEvent[] {
               step: r.step_index,
               type: 'quality_gate_bypass',
               description: 'Inserted @ts-ignore / @ts-expect-error',
+              commandOrSnippet: content.slice(0, 100),
+              thinkingSnippet: r.thinking?.slice(0, 100),
+            });
+          }
+          if (
+            /\.(?:test|spec)\.[tj]sx?$/.test(targetFile) &&
+            /\b(?:vi|jest)\.mock\s*\(\s*['"][^'"]*(?:\/stores\/|-store\b)[^'"]*['"]/.test(
+              content,
+            )
+          ) {
+            bypasses.push({
+              step: r.step_index,
+              type: 'quality_gate_bypass',
+              description: 'Mocked internal Zustand store (R12 violation)',
               commandOrSnippet: content.slice(0, 100),
               thinkingSnippet: r.thinking?.slice(0, 100),
             });
@@ -442,20 +462,21 @@ export function auditSession(
   const inefficiencies: CommandInefficiency[] = [];
   let prevCmd = '';
   for (const r of filtered) {
-    if (
-      r.type === 'PLANNER_RESPONSE' &&
-      r.tool_calls?.[0]?.name === 'run_command'
-    ) {
-      const cmd = String(r.tool_calls[0].args?.CommandLine ?? '').trim();
-      if (cmd && cmd === prevCmd) {
-        inefficiencies.push({
-          step: r.step_index,
-          type: 'blind_redo',
-          command: cmd.slice(0, 60),
-          count: 1,
-        });
+    if (r.type === 'PLANNER_RESPONSE' && r.tool_calls) {
+      for (const tc of r.tool_calls) {
+        if (tc.name === 'run_command') {
+          const cmd = String(tc.args?.CommandLine ?? '').trim();
+          if (cmd && cmd === prevCmd) {
+            inefficiencies.push({
+              step: r.step_index,
+              type: 'blind_redo',
+              command: cmd.slice(0, 60),
+              count: 1,
+            });
+          }
+          prevCmd = cmd;
+        }
       }
-      prevCmd = cmd;
     }
   }
 
@@ -475,12 +496,14 @@ export function auditSession(
     role = 'Scout / Inspector';
   } else if (detectedRole === 'auditor') {
     role = 'Auditor';
+  } else if (detectedRole === 'architect') {
+    role = 'Architect';
   } else {
     const firstPlanner = filtered.find((r) => r.type === 'PLANNER_RESPONSE');
     role = firstPlanner?.tool_calls?.some((t) => t.name === 'invoke_subagent')
       ? 'Planner / Coordinator'
       : filtered.some((r) =>
-            r.tool_calls?.some((t) => t.name === 'replace_file_content'),
+            r.tool_calls?.some((t) => isModifyToolName(t.name)),
           )
         ? 'Worker'
         : 'Scout / Inspector';
@@ -664,39 +687,40 @@ export function extractStepSummaries(
       r.tool_calls &&
       r.tool_calls.length > 0
     ) {
-      const tc = r.tool_calls[0];
-      const target = String(
-        tc.args?.CommandLine ??
-          tc.args?.AbsolutePath ??
-          tc.args?.TargetFile ??
-          tc.args?.TypeName ??
-          '',
-      ).slice(0, 90);
+      for (let tcIdx = 0; tcIdx < r.tool_calls.length; tcIdx++) {
+        const tc = r.tool_calls[tcIdx];
+        const target = String(
+          tc.args?.CommandLine ??
+            (extractTargetFile(tc) || tc.args?.TypeName || ''),
+        ).slice(0, 90);
 
-      const nxt = records.find((x) => x.step_index === r.step_index + 1);
-      let flag: string | undefined;
-      if (nxt?.content) {
-        if (
-          nxt.content.includes('denied by pre-tool hook') ||
-          nxt.content.includes('[GUARD]') ||
-          nxt.content.includes('[GATEGUARD]')
-        ) {
-          flag = 'DENIED';
-        } else if (
-          nxt.content.includes('Encountered error') ||
-          nxt.content.includes('exited with code 1')
-        ) {
-          flag = 'FAIL';
+        const nxt =
+          findToolResultRecord(records, records.indexOf(r), tcIdx) ??
+          records.find((x) => x.step_index === r.step_index + 1);
+        let flag: string | undefined;
+        if (nxt?.content) {
+          if (
+            nxt.content.includes('denied by pre-tool hook') ||
+            nxt.content.includes('[GUARD]') ||
+            nxt.content.includes('[GATEGUARD]')
+          ) {
+            flag = 'DENIED';
+          } else if (
+            nxt.content.includes('Encountered error') ||
+            nxt.content.includes('exited with code 1')
+          ) {
+            flag = 'FAIL';
+          }
         }
-      }
 
-      summaries.push({
-        step: r.step_index,
-        type: r.type,
-        tool: tc.name,
-        target,
-        flag,
-      });
+        summaries.push({
+          step: r.step_index,
+          type: r.type,
+          tool: tc.name,
+          target,
+          flag,
+        });
+      }
     } else if (r.type === 'USER_INPUT') {
       summaries.push({
         step: r.step_index,
@@ -722,9 +746,69 @@ export function renderStepSummaries(summaries: StepSummary[]): string {
   return lines.join('\n');
 }
 
+export function listRecentSessions(limit = 15): string {
+  const base = brainDir();
+  if (!fs.existsSync(base)) {
+    return '(No brain directory found)';
+  }
+  const rel = '.system_generated/logs/transcript.jsonl';
+  const entries = fs
+    .readdirSync(base)
+    .map((id) => {
+      const p = path.join(base, id, rel);
+      return fs.existsSync(p)
+        ? { id, p, mtimeMs: fs.statSync(p).mtimeMs }
+        : null;
+    })
+    .filter((x): x is { id: string; p: string; mtimeMs: number } => x !== null)
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+    .slice(0, limit);
+
+  if (entries.length === 0) {
+    return '(No sessions found)';
+  }
+
+  const lines: string[] = [
+    'Session ID | Updated | Role | Turns | First Request',
+    '---|---|---|---|---',
+  ];
+
+  for (const e of entries) {
+    try {
+      const records = parseJsonl(fs.readFileSync(e.p, 'utf8'));
+      const first = records[0];
+      const role = first ? detectRoleFromFirstStep(first) : 'unknown';
+      const turns = records.filter((r) => r.type === 'PLANNER_RESPONSE').length;
+      const req = (first?.content ?? '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 50);
+      const dt = new Date(e.mtimeMs)
+        .toISOString()
+        .slice(0, 16)
+        .replace('T', ' ');
+      lines.push(`${e.id} | ${dt} | ${role} | ${turns} | ${req}`);
+    } catch {
+      lines.push(`${e.id} | error | unknown | 0 | (unreadable)`);
+    }
+  }
+  return lines.join('\n');
+}
+
 export function main(argv: string[]): number {
   const flags = argv.filter((a) => a.startsWith('--'));
   const pos = argv.filter((a) => !a.startsWith('--'));
+
+  // 0. --list モード
+  if (flags.includes('--list') || flags.some((f) => f.startsWith('--list='))) {
+    const listFlag = flags.find((f) => f.startsWith('--list='));
+    const rawLimit = listFlag ? listFlag.slice('--list='.length) : pos[0];
+    const parsed = rawLimit ? Number.parseInt(rawLimit, 10) : 15;
+    const limit = Number.isNaN(parsed) || parsed <= 0 ? 15 : parsed;
+    console.log(listRecentSessions(limit));
+    return 0;
+  }
 
   // 1. --compare モード
   if (flags.includes('--compare')) {
@@ -841,6 +925,7 @@ export function main(argv: string[]): number {
 
   const isTree = flags.includes('--tree');
   const isJson = flags.includes('--json');
+  const isCompact = flags.includes('--compact');
 
   const rawJsonl = fs.readFileSync(file, 'utf8');
   const records = parseJsonl(rawJsonl);
@@ -852,21 +937,45 @@ export function main(argv: string[]): number {
 
   if (isTree) {
     const treeNodes = collectSessionTree(sessionId);
-    const effectiveNodes =
+    let effectiveNodes =
       treeNodes.length > 0 ? treeNodes : [{ sessionId, depth: 0, records }];
+
+    if (fromRequest) {
+      const allowedChildren = new Set([sessionId, ...report.childIds]);
+      effectiveNodes = effectiveNodes.filter(
+        (n) => n.sessionId === sessionId || allowedChildren.has(n.sessionId),
+      );
+    }
 
     const allReports: AuditReport[] = [];
     const allFindings: Finding[] = [];
+    const roleCounts = new Map<string, number>();
 
     for (const node of effectiveNodes) {
-      const rep = auditSession(node.records, { sessionId: node.sessionId });
+      const rep = auditSession(node.records, {
+        sessionId: node.sessionId,
+        fromRequest: node.sessionId === sessionId ? fromRequest : undefined,
+      });
       allReports.push(rep);
+      const roleLabel = rep.role ?? 'Unknown';
+      roleCounts.set(roleLabel, (roleCounts.get(roleLabel) ?? 0) + 1);
 
       const first = node.records[0];
       const role = first ? detectRoleFromFirstStep(first) : 'unknown';
       const ctx: AuditContext = {
         sessionId: node.sessionId,
-        records: node.records,
+        records:
+          node.sessionId === sessionId && fromRequest
+            ? node.records.filter(
+                (r) =>
+                  r.step_index >=
+                  (records.find(
+                    (x) =>
+                      x.type === 'USER_INPUT' &&
+                      x.content?.includes(fromRequest),
+                  )?.step_index ?? 0),
+              )
+            : node.records,
         role,
         childIds: rep.childIds,
       };
@@ -881,7 +990,21 @@ export function main(argv: string[]): number {
     }
 
     for (const r of allReports) {
-      console.log(renderAuditReport(r));
+      const hasIssues =
+        r.sessionId === sessionId ||
+        r.hookDenials.length > 0 ||
+        r.bypasses.length > 0 ||
+        r.inefficiencies.length > 0 ||
+        allFindings.some(
+          (f) => f.sessionId === r.sessionId && f.severity !== 'INFO',
+        );
+      if (isCompact && !hasIssues) {
+        console.log(
+          `=== AUDIT REPORT (COMPACT): ${r.sessionId} [${r.role ?? 'Unknown'}] Turns=${r.summary.totalTurns} Tokens=${k(r.summary.tokens.input + r.summary.tokens.cache)} (Clean) ===`,
+        );
+      } else {
+        console.log(renderAuditReport(r));
+      }
       console.log(
         '\n------------------------------------------------------------\n',
       );
@@ -909,21 +1032,49 @@ export function main(argv: string[]): number {
       (sum, r) => sum + r.summary.time.toolSec,
       0,
     );
+    const totalInput = allReports.reduce(
+      (sum, r) => sum + r.summary.tokens.input,
+      0,
+    );
+    const totalCache = allReports.reduce(
+      (sum, r) => sum + r.summary.tokens.cache,
+      0,
+    );
+    const totalOutput = allReports.reduce(
+      (sum, r) => sum + r.summary.tokens.output,
+      0,
+    );
     const totalDenials = allReports.reduce(
       (sum, r) => sum + r.hookDenials.length,
+      0,
+    );
+    const totalBypasses = allReports.reduce(
+      (sum, r) => sum + r.bypasses.length,
+      0,
+    );
+    const totalIneff = allReports.reduce(
+      (sum, r) => sum + r.inefficiencies.length,
       0,
     );
     const highCount = allFindings.filter((f) => f.severity === 'HIGH').length;
     const medCount = allFindings.filter((f) => f.severity === 'MED').length;
     const lowCount = allFindings.filter((f) => f.severity === 'LOW').length;
     const infoCount = allFindings.filter((f) => f.severity === 'INFO').length;
+    const rolesText = Array.from(roleCounts.entries())
+      .map(([name, cnt]) => `${name}=${cnt}`)
+      .join(', ');
 
-    console.log(`Sessions: ${totalSessions}`);
+    console.log(`Sessions: ${totalSessions} (${rolesText})`);
     console.log(`Total Turns: ${totalTurns}`);
     console.log(
       `Duration: ${totalDuration}s (Think: ${thinkSec}s / Tool: ${toolSec}s)`,
     );
-    console.log(`Hook Denials: ${totalDenials}件`);
+    console.log(
+      `Total Tokens: In+Cache=${k(totalInput + totalCache)} (In: ${k(totalInput)}, Cache: ${k(totalCache)}) | Out: ${totalOutput}`,
+    );
+    console.log(
+      `Hook Denials: ${totalDenials}件 | Bypasses: ${totalBypasses}件 | Inefficiencies: ${totalIneff}件`,
+    );
     console.log(
       `Findings: HIGH=${highCount}, MED=${medCount}, LOW=${lowCount}, INFO=${infoCount}`,
     );

@@ -94,19 +94,26 @@ function callTarget(call: {
   args: Record<string, unknown>;
 }): string {
   const a = call.args;
-  return unquote(a.CommandLine ?? a.AbsolutePath ?? a.TargetFile ?? '').slice(
-    0,
-    60,
-  );
+  return unquote(
+    a.CommandLine ?? a.Path ?? a.AbsolutePath ?? a.TargetFile ?? '',
+  ).slice(0, 60);
 }
 
 function isReadOnly(call: {
   name: string;
   args: Record<string, unknown>;
 }): boolean {
-  if (call.name === 'view_file') return true;
+  if (call.name === 'view_file' || call.name === 'read_file') return true;
   if (call.name !== 'run_command') return false;
-  const fam = commandFamily(String(call.args.CommandLine ?? ''));
+  const cmd = String(call.args.CommandLine ?? '');
+  if (
+    cmd.includes('ai:outline') ||
+    cmd.includes('ai:find') ||
+    /^\s*rg\b/.test(cmd)
+  ) {
+    return true;
+  }
+  const fam = commandFamily(cmd);
   return READ_ONLY_FAMILIES.some((f) => fam === f || fam.startsWith(`${f} `));
 }
 
