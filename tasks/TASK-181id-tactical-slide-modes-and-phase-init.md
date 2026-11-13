@@ -1,7 +1,7 @@
 # TASK-181id: スライド3モード・Phase試合初期化・`RESET_SLIDE_KEEP_SQUAD` 実装（旧ストア完全廃止シリーズ）
 
 ## 1. Metadata & Goal
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `feat(tactical): support slide modes, match phase init, and keep-squad reset`
 - **Series**: 旧ストア完全廃止シリーズ。181ic（リセット整理）➔ **181id（本タスク）** ➔ 181ie（Match ACL）➔ 181j〜。181ic の完了を前提とする。
 - **Goal**:

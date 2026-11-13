@@ -1,12 +1,10 @@
 import type {
   DomainSlide,
-  DomainTacticalPhase,
   DomainTacticalProject,
 } from '@/lib/types/tactical/domain-hierarchy';
 import type { TacticalCommand } from './commands';
 import { handleDirectorCameraCommand } from './director-camera';
 import {
-  createFreshSlide,
   handleApplyBallScaleToPhaseSlides,
   handleApplyImageBackground,
   handleApplyPlayerStyleToPhaseSlides,
@@ -16,6 +14,12 @@ import {
   handleChangePhaseAspectRatio,
   handleRestoreDefaultPitch,
 } from './project-phase-handlers';
+import {
+  duplicateSlideInPhase,
+  handleAddPhase,
+  handleAddSlide,
+  handleResetSlideKeepSquad,
+} from './project-slide-handlers';
 import { applySlideCommand } from './slide-reducer';
 
 /** TacticalCommand をプロジェクト階層に適用する純粋レデューサー。 */
@@ -52,39 +56,8 @@ export function applyTacticalCommand(
       };
     }
 
-    case 'ADD_SLIDE': {
-      const targetPhase = project.phases.find((p) => p.id === command.phaseId);
-      if (!targetPhase) return project;
-
-      const targetIndex = command.afterSlideId
-        ? targetPhase.slides.findIndex((s) => s.id === command.afterSlideId)
-        : -1;
-      const template =
-        targetIndex !== -1
-          ? targetPhase.slides[targetIndex]
-          : targetPhase.slides[targetPhase.slides.length - 1];
-
-      const newSlide = createFreshSlide(template, targetPhase.slides.length);
-      const nextSlides = [...targetPhase.slides];
-      if (targetIndex !== -1) {
-        nextSlides.splice(targetIndex + 1, 0, newSlide);
-      } else {
-        nextSlides.push(newSlide);
-      }
-
-      return {
-        ...project,
-        phases: project.phases.map((p) =>
-          p.id === command.phaseId
-            ? {
-                ...p,
-                slides: nextSlides.map((s, idx) => ({ ...s, index: idx })),
-              }
-            : p,
-        ),
-        updatedAt: now,
-      };
-    }
+    case 'ADD_SLIDE':
+      return handleAddSlide(project, command, now);
 
     case 'DUPLICATE_SLIDE': {
       const targetPhase = project.phases.find((p) => p.id === command.phaseId);
@@ -92,18 +65,11 @@ export function applyTacticalCommand(
         targetPhase?.slides.findIndex((s) => s.id === command.slideId) ?? -1;
       if (!targetPhase || targetIndex === -1) return project;
 
-      const targetSlide = targetPhase.slides[targetIndex];
-      const duplicated: DomainSlide = {
-        ...targetSlide,
-        id: crypto.randomUUID(),
-        label: targetSlide.label ? `${targetSlide.label} (copy)` : undefined,
-        players: targetSlide.players.map((p) => ({ ...p })),
-        arrows: targetSlide.arrows.map((a) => ({ ...a })),
-        zones: targetSlide.zones.map((z) => ({ ...z })),
-        texts: targetSlide.texts.map((t) => ({ ...t })),
-        ball: { ...targetSlide.ball },
-      };
-
+      const duplicated = duplicateSlideInPhase(
+        targetPhase.slides[targetIndex],
+        targetIndex + 1,
+        command.newSlideId,
+      );
       const nextSlides = [...targetPhase.slides];
       nextSlides.splice(targetIndex + 1, 0, duplicated);
 
@@ -170,32 +136,8 @@ export function applyTacticalCommand(
       };
     }
 
-    case 'ADD_PHASE': {
-      const firstPhase = project.phases[0];
-      const sourceSlide = firstPhase?.slides[0];
-      const newPhase: DomainTacticalPhase = {
-        id: crypto.randomUUID(),
-        name: command.name,
-        aspectRatio: firstPhase?.aspectRatio ?? '4:5',
-        boundaryBox: firstPhase?.boundaryBox ?? {
-          x: 0,
-          y: 0,
-          width: 100,
-          height: 100,
-          enabled: true,
-          visible: false,
-          fitTarget: 'pitch',
-        },
-        backgroundType: 'pitch',
-        slides: [createFreshSlide(sourceSlide, 0, 'Scene 1')],
-      };
-
-      return {
-        ...project,
-        phases: [...project.phases, newPhase],
-        updatedAt: now,
-      };
-    }
+    case 'ADD_PHASE':
+      return handleAddPhase(project, command, now);
 
     case 'UPDATE_PHASE': {
       const targetPhase = project.phases.find((p) => p.id === command.phaseId);
@@ -241,6 +183,9 @@ export function applyTacticalCommand(
 
     case 'RESTORE_DEFAULT_PITCH':
       return handleRestoreDefaultPitch(project, command, now);
+
+    case 'RESET_SLIDE_KEEP_SQUAD':
+      return handleResetSlideKeepSquad(project, command, now);
 
     case 'AUTO_FIT_BOUNDARY_BOX':
       return handleAutoFitBoundaryBox(project, command, now);

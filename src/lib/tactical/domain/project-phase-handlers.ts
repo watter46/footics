@@ -9,23 +9,24 @@ export function createFreshSlide(
   templateSlide?: DomainSlide,
   index = 0,
   label = `Scene ${index + 1}`,
+  newSlideId?: string,
 ): DomainSlide {
   if (templateSlide) {
     return {
-      id: crypto.randomUUID(),
+      id: newSlideId ?? crypto.randomUUID(),
       index,
       label,
       players: templateSlide.players.map((p) =>
         p.area === 'pitch'
           ? {
-              ...p,
+              ...structuredClone(p),
               connectLines: [],
               badges: [],
               visionCone: undefined,
               focus: undefined,
               trajectory: undefined,
             }
-          : { ...p },
+          : structuredClone(p),
       ),
       arrows: [],
       zones: [],
@@ -44,7 +45,7 @@ export function createFreshSlide(
   }
 
   return {
-    id: crypto.randomUUID(),
+    id: newSlideId ?? crypto.randomUUID(),
     index,
     label,
     players: [],

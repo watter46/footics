@@ -238,6 +238,11 @@ export type TacticalCommand =
       readonly phaseId: string;
     }
   | {
+      readonly type: 'RESET_SLIDE_KEEP_SQUAD';
+      readonly phaseId: string;
+      readonly slideId: string;
+    }
+  | {
       readonly type: 'AUTO_FIT_BOUNDARY_BOX';
       readonly phaseId: string;
       readonly slideId?: string;
