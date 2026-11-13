@@ -1,23 +1,22 @@
 'use client';
 
-/**
- * camera-control-panel.tsx
- * Right Panel sub-panel for 3D Camera Controls in Director/Board mode
- */
-
 import { RotateCcw } from 'lucide-react';
 import type React from 'react';
 import { SPLIT_CAMERA_PRESETS } from '@/features/tactical-unified/panels/split-preview/split-preview-camera-bar';
 import {
-  selectActivePhase,
-  selectActiveSlide,
-} from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+  selectDomainActivePhase,
+  selectDomainActiveSlide,
+} from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  usePlaybackStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   hasActiveDirectorCameraTrack,
   resolveSyntheticDirectorCamera,
 } from '@/lib/tactical/unified-interpolation';
-import type { PitchTransform } from '@/lib/types/tactical-unified';
+import type { PitchTransform } from '@/lib/types/tactical/slide';
 import { CameraPanControl } from './camera-pan-control';
 import { CameraSliderField } from './camera-slider-field';
 import {
@@ -26,48 +25,34 @@ import {
 } from './director-cue-inspector';
 
 export function CameraControlPanel(): React.ReactElement {
-  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
-  const playbackSeekTimeMs = useTacticalUnifiedStoreContext(
-    (s) => s.playbackSeekTimeMs,
+  const workspaceMode = useSessionStore((s) => s.workspaceMode);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const playbackTimeMs = usePlaybackStore((s) => s.timeMs);
+  const activePhase = useDocumentStore((s) =>
+    selectDomainActivePhase(s.project, activePhaseId),
   );
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
-  const activePhase = useTacticalUnifiedStoreContext(selectActivePhase);
-  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
-  const upsertGlobalCameraKeyframe = useTacticalUnifiedStoreContext(
-    (s) => s.upsertGlobalCameraKeyframe,
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
   );
-  const upsertActionCameraCue = useTacticalUnifiedStoreContext(
-    (s) => s.upsertActionCameraCue,
-  );
-  const deleteActionCameraCue = useTacticalUnifiedStoreContext(
-    (s) => s.deleteActionCameraCue,
-  );
-  const updatePitchTransform = useTacticalUnifiedStoreContext(
-    (s) => s.updatePitchTransform,
-  );
-  const pushHistory = useTacticalUnifiedStoreContext((s) => s.pushHistory);
+  const dispatch = useDocumentStore((s) => s.dispatch);
 
   const isDirectorMode = workspaceMode === 'director';
-  const currentTimeMs = playbackSeekTimeMs ?? 0;
+  const currentTimeMs = Number(playbackTimeMs ?? 0);
   const directorCamera = activePhase?.directorCamera;
 
-  const currentCamera = isDirectorMode
-    ? hasActiveDirectorCameraTrack(directorCamera)
+  const DEFAULT_CAMERA: PitchTransform = {
+    tilt: 0,
+    yaw: 90,
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+    isLocked: false,
+  };
+  const currentCamera =
+    isDirectorMode && hasActiveDirectorCameraTrack(directorCamera)
       ? resolveSyntheticDirectorCamera(directorCamera, currentTimeMs)
-      : (activeSlide?.pitchTransform ?? {
-          tilt: 0,
-          yaw: 90,
-          zoom: 1,
-          panX: 0,
-          panY: 0,
-        })
-    : (activeSlide?.pitchTransform ?? {
-        tilt: 0,
-        yaw: 90,
-        zoom: 1,
-        panX: 0,
-        panY: 0,
-      });
+      : (activeSlide?.pitchTransform ?? DEFAULT_CAMERA);
 
   const activeCue = isDirectorMode
     ? findActiveActionCue(directorCamera?.actionCues ?? [], currentTimeMs)
@@ -83,14 +68,60 @@ export function CameraControlPanel(): React.ReactElement {
   const panX = Math.round(currentCamera.panX ?? 0);
   const panY = Math.round(currentCamera.panY ?? 0);
 
+  const upsertGlobalKeyframe = (
+    timeMs: number,
+    patch: { tilt?: number; yaw?: number },
+  ) => {
+    if (!activePhaseId) return;
+    dispatch({
+      type: 'UPSERT_GLOBAL_CAMERA_KEYFRAME',
+      phaseId: activePhaseId,
+      timeMs,
+      patch,
+      activeSlideId: activeSlideId || undefined,
+    });
+  };
+
+  type ActionCuePatch = Partial<{
+    zoom: number;
+    panX: number;
+    panY: number;
+    durationMs: number;
+    autoReturn: boolean;
+  }>;
+  const upsertActionCue = (
+    startTimeMs: number,
+    patch: ActionCuePatch,
+    cueId?: string,
+  ) => {
+    if (!activePhaseId) return;
+    dispatch({
+      type: 'UPSERT_ACTION_CAMERA_CUE',
+      phaseId: activePhaseId,
+      startTimeMs,
+      patch,
+      cueId,
+    });
+  };
+
   const syncSlide = (patch: Partial<PitchTransform>) => {
-    if (activeSlideId) updatePitchTransform(activeSlideId, patch);
+    if (!activePhaseId || !activeSlideId) return;
+    const base = activeSlide?.pitchTransform ?? DEFAULT_CAMERA;
+    dispatch({
+      type: 'APPLY_SLIDE_COMMAND',
+      phaseId: activePhaseId,
+      slideId: activeSlideId,
+      command: {
+        type: 'UPDATE_SLIDE_META',
+        patch: { pitchTransform: { ...base, ...patch } },
+      },
+    });
   };
 
   const handleTiltChange = (v: number) => {
     const nextTilt = Math.max(0, Math.min(65, Number.isNaN(v) ? 0 : v));
     if (isDirectorMode) {
-      upsertGlobalCameraKeyframe(currentTimeMs, { tilt: nextTilt });
+      upsertGlobalKeyframe(currentTimeMs, { tilt: nextTilt });
     }
     syncSlide({ tilt: nextTilt });
   };
@@ -98,7 +129,7 @@ export function CameraControlPanel(): React.ReactElement {
   const handleYawChange = (v: number) => {
     const nextYaw = (((Number.isNaN(v) ? 90 : v) % 360) + 360) % 360;
     if (isDirectorMode) {
-      upsertGlobalCameraKeyframe(currentTimeMs, { yaw: nextYaw });
+      upsertGlobalKeyframe(currentTimeMs, { yaw: nextYaw });
     }
     syncSlide({ yaw: nextYaw });
   };
@@ -106,15 +137,15 @@ export function CameraControlPanel(): React.ReactElement {
   const handlePresetSelect = (preset: { tilt: number; yaw: number }) => {
     const patch = { tilt: preset.tilt, yaw: preset.yaw };
     if (isDirectorMode) {
-      upsertGlobalCameraKeyframe(currentTimeMs, patch);
+      upsertGlobalKeyframe(currentTimeMs, patch);
     }
     syncSlide(patch);
   };
 
   const handleResetCamera = () => {
     if (isDirectorMode) {
-      upsertGlobalCameraKeyframe(currentTimeMs, { tilt: 0, yaw: 90 });
-      upsertActionCameraCue(currentTimeMs, { zoom: 1, panX: 0, panY: 0 });
+      upsertGlobalKeyframe(currentTimeMs, { tilt: 0, yaw: 90 });
+      upsertActionCue(currentTimeMs, { zoom: 1, panX: 0, panY: 0 });
     }
     syncSlide({ panX: 0, panY: 0, zoom: 1, tilt: 0, yaw: 90 });
   };
@@ -122,15 +153,11 @@ export function CameraControlPanel(): React.ReactElement {
   const handleZoomChange = (v: number) => {
     const nextZoom = Math.max(0.4, Math.min(3.0, Number.isNaN(v) ? 1 : v));
     if (isDirectorMode) {
-      if (activeCue) {
-        upsertActionCameraCue(
-          currentTimeMs,
-          { zoom: nextZoom, panX, panY },
-          activeCue.id,
-        );
-      } else {
-        upsertActionCameraCue(currentTimeMs, { zoom: nextZoom, panX, panY });
-      }
+      upsertActionCue(
+        currentTimeMs,
+        { zoom: nextZoom, panX, panY },
+        activeCue?.id,
+      );
     }
     syncSlide({ zoom: nextZoom });
   };
@@ -139,22 +166,13 @@ export function CameraControlPanel(): React.ReactElement {
     const nextX = Number.isNaN(newX) ? 0 : Math.round(newX);
     const nextY = Number.isNaN(newY) ? 0 : Math.round(newY);
     if (isDirectorMode) {
-      upsertActionCameraCue(currentTimeMs, {
-        panX: nextX,
-        panY: nextY,
-        zoom,
-      });
+      upsertActionCue(currentTimeMs, { panX: nextX, panY: nextY, zoom });
     }
     syncSlide({ panX: nextX, panY: nextY });
   };
 
-  const handleSliderChangeEnd = () => {
-    pushHistory();
-  };
-
   return (
     <div className="h-full overflow-y-auto p-4 flex flex-col gap-5 text-xs text-white/90 select-none">
-      {/* Header with Title and Reset Button */}
       <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
         <div>
           <h3 className="text-sm font-semibold text-white">Camera Controls</h3>
@@ -174,25 +192,30 @@ export function CameraControlPanel(): React.ReactElement {
         </button>
       </div>
 
-      {/* Action Cue Inspector Section (Director Mode only, when active cue exists) */}
       {isDirectorMode && activeCue && (
         <DirectorCueInspector
           cue={activeCue}
           onUpdateDuration={(cue, durationMs) =>
-            upsertActionCameraCue(cue.startTimeMs, { durationMs }, cue.id)
+            upsertActionCue(cue.startTimeMs, { durationMs }, cue.id)
           }
           onToggleAutoReturn={(cue) =>
-            upsertActionCameraCue(
+            upsertActionCue(
               cue.startTimeMs,
               { autoReturn: !cue.autoReturn },
               cue.id,
             )
           }
-          onDeleteCue={(cueId) => deleteActionCameraCue(cueId)}
+          onDeleteCue={(cueId) =>
+            activePhaseId &&
+            dispatch({
+              type: 'DELETE_ACTION_CAMERA_CUE',
+              phaseId: activePhaseId,
+              cueId,
+            })
+          }
         />
       )}
 
-      {/* Camera Presets Section */}
       <div className="flex flex-col gap-2">
         <span className="text-[11px] font-medium text-white/60 uppercase tracking-wider">
           Camera Presets
@@ -225,7 +248,6 @@ export function CameraControlPanel(): React.ReactElement {
         </div>
       </div>
 
-      {/* Tilt Control (0° - 65°) */}
       <CameraSliderField
         id="camera-tilt"
         label="Tilt (俯瞰角度)"
@@ -237,10 +259,8 @@ export function CameraControlPanel(): React.ReactElement {
         minLabel="0° (平面)"
         maxLabel="65° (斜め俯瞰)"
         onChange={handleTiltChange}
-        onChangeEnd={handleSliderChangeEnd}
+        onChangeEnd={() => {}}
       />
-
-      {/* Yaw Control (0° - 180°) */}
       <CameraSliderField
         id="camera-yaw"
         label="Yaw (水平旋回)"
@@ -253,10 +273,8 @@ export function CameraControlPanel(): React.ReactElement {
         midLabel="90° (正面)"
         maxLabel="180° (右)"
         onChange={handleYawChange}
-        onChangeEnd={handleSliderChangeEnd}
+        onChangeEnd={() => {}}
       />
-
-      {/* Zoom Control (0.4x - 3.0x) */}
       <CameraSliderField
         id="camera-zoom"
         label="Zoom (ズーム)"
@@ -271,10 +289,8 @@ export function CameraControlPanel(): React.ReactElement {
         midValue={1.0}
         maxLabel="3.0x (拡大)"
         onChange={handleZoomChange}
-        onChangeEnd={handleSliderChangeEnd}
+        onChangeEnd={() => {}}
       />
-
-      {/* Pan Control & Display */}
       <CameraPanControl panX={panX} panY={panY} onChange={handlePanChange} />
     </div>
   );

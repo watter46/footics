@@ -1,10 +1,11 @@
 'use client';
 
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 import type {
   MarkerEffectConfig,
   MarkerEffectType,
-  Player,
+  MarkerStyle,
 } from '@/lib/types/tactical/player';
 import { ColorInput } from './color-input';
 import { NumberSliderField } from './effect-number-slider';
@@ -20,8 +21,8 @@ export const DEFAULT_MARKER_EFFECT: MarkerEffectConfig = {
 };
 
 export interface MarkerEffectSectionProps {
-  player: Player;
-  onUpdate: (patch: Partial<Player>) => void;
+  player: Pick<PitchPlayer, 'style'>;
+  onUpdate: (patch: { style?: MarkerStyle }) => void;
 }
 
 export function MarkerEffectSection({

@@ -1,122 +1,142 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { toMilliseconds } from '@/lib/types/tactical/branded';
 import { CameraControlPanel } from '../camera-control-panel';
 
+function renderCameraPanel(options?: {
+  workspaceMode?: 'board' | 'director';
+  timeMs?: number;
+}) {
+  const project = createDefaultTacticalProject();
+  const p0 = project.phases[0]!;
+  const stores = {
+    documentStore: createDocumentStore(project),
+    sessionStore: createSessionStore({
+      workspaceMode: options?.workspaceMode ?? 'board',
+      activePhaseId: p0.id,
+      activeSlideId: p0.slides[0]?.id ?? '',
+    }),
+    playbackStore: createPlaybackStore(toMilliseconds(options?.timeMs ?? 0)),
+  };
+  return {
+    stores,
+    phaseId: p0.id,
+    slideId: p0.slides[0]?.id ?? '',
+    ...render(
+      <TacticalStoreProvider stores={stores}>
+        <CameraControlPanel />
+      </TacticalStoreProvider>,
+    ),
+  };
+}
+
 describe('CameraControlPanel (Phase 1)', () => {
-  beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
-    useTacticalUnifiedStore.getState().stopPlayback();
-    useTacticalUnifiedStore.setState({
-      workspaceMode: 'board',
-      playbackSeekTimeMs: 0,
-    });
-  });
-
-  it('1. workspaceMode: "director", playbackSeekTimeMs: 1500 のとき、Tiltスライダーを 30 に変更すると upsertGlobalCameraKeyframe(1500, { tilt: 30 }) が呼ばれること', () => {
-    const upsertSpy = vi.spyOn(
-      useTacticalUnifiedStore.getState(),
-      'upsertGlobalCameraKeyframe',
-    );
-    useTacticalUnifiedStore.setState({
+  it('1. workspaceMode: "director", timeMs: 1500 のとき、Tiltスライダーを 30 に変更すると globalKeyframes に timeMs: 1500, tilt: 30 が登録されること', () => {
+    const { stores } = renderCameraPanel({
       workspaceMode: 'director',
-      playbackSeekTimeMs: 1500,
+      timeMs: 1500,
     });
-
-    render(<CameraControlPanel />);
 
     const tiltSlider = screen.getByLabelText('Tilt', {
       selector: 'input[type="range"]',
     });
     fireEvent.change(tiltSlider, { target: { value: '30' } });
 
-    expect(upsertSpy).toHaveBeenCalledWith(1500, { tilt: 30 });
-    upsertSpy.mockRestore();
+    const keyframes =
+      stores.documentStore.getState().project.phases[0]?.directorCamera
+        ?.globalKeyframes ?? [];
+    expect(keyframes).toContainEqual(
+      expect.objectContaining({ timeMs: 1500, tilt: 30 }),
+    );
   });
 
-  it('2. workspaceMode: "director", playbackSeekTimeMs: 2000 のとき、Zoomスライダーを 2.0 に変更すると upsertActionCameraCue(2000, expect.objectContaining({ zoom: 2.0 })) が呼ばれること', () => {
-    const upsertActionSpy = vi.spyOn(
-      useTacticalUnifiedStore.getState(),
-      'upsertActionCameraCue',
-    );
-    useTacticalUnifiedStore.setState({
+  it('2. workspaceMode: "director", timeMs: 2000 のとき、Zoomスライダーを 2.0 に変更すると actionCues に startTimeMs: 2000, zoom: 2 が登録されること', () => {
+    const { stores } = renderCameraPanel({
       workspaceMode: 'director',
-      playbackSeekTimeMs: 2000,
+      timeMs: 2000,
     });
-
-    render(<CameraControlPanel />);
 
     const zoomSlider = screen.getByLabelText('Zoom', {
       selector: 'input[type="range"]',
     });
     fireEvent.change(zoomSlider, { target: { value: '2' } });
 
-    expect(upsertActionSpy).toHaveBeenCalledWith(
-      2000,
-      expect.objectContaining({ zoom: 2 }),
+    const cues =
+      stores.documentStore.getState().project.phases[0]?.directorCamera
+        ?.actionCues ?? [];
+    expect(cues).toContainEqual(
+      expect.objectContaining({ startTimeMs: 2000, zoom: 2 }),
     );
-    upsertActionSpy.mockRestore();
   });
 
-  it('3. workspaceMode: "director" でプリセットボタンをクリックしたとき、upsertGlobalCameraKeyframe が現在シーク時刻で呼ばれること', () => {
-    const upsertSpy = vi.spyOn(
-      useTacticalUnifiedStore.getState(),
-      'upsertGlobalCameraKeyframe',
-    );
-    useTacticalUnifiedStore.setState({
+  it('3. workspaceMode: "director" でプリセットボタンをクリックしたとき、globalKeyframes に現在シーク時刻で登録されること', () => {
+    const { stores } = renderCameraPanel({
       workspaceMode: 'director',
-      playbackSeekTimeMs: 800,
+      timeMs: 800,
     });
 
-    render(<CameraControlPanel />);
-
-    // Click "トップダウン（完全平面・縦向き）" preset (tilt: 0, yaw: 90)
     const presetBtn = screen.getByRole('button', {
       name: /トップダウン/i,
     });
     fireEvent.click(presetBtn);
 
-    expect(upsertSpy).toHaveBeenCalledWith(800, { tilt: 0, yaw: 90 });
-    upsertSpy.mockRestore();
+    const keyframes =
+      stores.documentStore.getState().project.phases[0]?.directorCamera
+        ?.globalKeyframes ?? [];
+    expect(keyframes).toContainEqual(
+      expect.objectContaining({ timeMs: 800, tilt: 0, yaw: 90 }),
+    );
   });
 
-  it('4. workspaceMode: "board" のときは従来通り updatePitchTransform が呼ばれること', () => {
-    const updateSpy = vi.spyOn(
-      useTacticalUnifiedStore.getState(),
-      'updatePitchTransform',
-    );
-    useTacticalUnifiedStore.setState({
+  it('4. workspaceMode: "board" のときはアクティブスライドの pitchTransform.tilt が更新されること', () => {
+    const { stores, phaseId, slideId } = renderCameraPanel({
       workspaceMode: 'board',
     });
-
-    render(<CameraControlPanel />);
 
     const tiltSlider = screen.getByLabelText('Tilt', {
       selector: 'input[type="range"]',
     });
     fireEvent.change(tiltSlider, { target: { value: '45' } });
 
-    const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-    expect(updateSpy).toHaveBeenCalledWith(activeSlideId, { tilt: 45 });
-    updateSpy.mockRestore();
+    const slide = selectDomainActiveSlide(
+      stores.documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
+    expect(slide?.pitchTransform?.tilt).toBe(45);
   });
 
   it('5. workspaceMode: "director" で現在シーク時刻にアクションCueが存在する場合、インスペクターが表示されチップ・トグル・削除が動作すること', () => {
-    const store = useTacticalUnifiedStore.getState();
-    store.setWorkspaceMode('director');
-    store.seekTo(1000);
-    // Add an action cue at 1000ms
-    store.upsertActionCameraCue(1000, {
-      durationMs: 1000,
-      zoom: 1.5,
-      autoReturn: false,
+    const { stores, phaseId } = renderCameraPanel({
+      workspaceMode: 'director',
+      timeMs: 1000,
     });
 
-    const activePhase = useTacticalUnifiedStore.getState().project.phases[0];
-    const cue = activePhase?.directorCamera?.actionCues?.[0];
-    expect(cue).toBeDefined();
+    act(() => {
+      stores.documentStore.getState().dispatch({
+        type: 'UPSERT_ACTION_CAMERA_CUE',
+        phaseId,
+        startTimeMs: 1000,
+        patch: {
+          durationMs: 1000,
+          zoom: 1.5,
+          autoReturn: false,
+        },
+      });
+    });
 
-    render(<CameraControlPanel />);
+    const cue =
+      stores.documentStore.getState().project.phases[0]?.directorCamera
+        ?.actionCues?.[0];
+    expect(cue).toBeDefined();
 
     // Inspector section should be visible
     expect(screen.getByTestId('director-cue-inspector')).toBeDefined();
@@ -125,7 +145,7 @@ describe('CameraControlPanel (Phase 1)', () => {
     const chip2000 = screen.getByTestId('action-duration-chip-2000');
     fireEvent.click(chip2000);
 
-    let currentCue = useTacticalUnifiedStore
+    let currentCue = stores.documentStore
       .getState()
       .project.phases[0]?.directorCamera?.actionCues?.find(
         (c) => c.id === cue!.id,
@@ -136,7 +156,7 @@ describe('CameraControlPanel (Phase 1)', () => {
     const autoReturnToggle = screen.getByTestId('action-auto-return-toggle');
     fireEvent.click(autoReturnToggle);
 
-    currentCue = useTacticalUnifiedStore
+    currentCue = stores.documentStore
       .getState()
       .project.phases[0]?.directorCamera?.actionCues?.find(
         (c) => c.id === cue!.id,
@@ -148,30 +168,33 @@ describe('CameraControlPanel (Phase 1)', () => {
     fireEvent.click(deleteBtn);
 
     const cuesAfter =
-      useTacticalUnifiedStore.getState().project.phases[0]?.directorCamera
+      stores.documentStore.getState().project.phases[0]?.directorCamera
         ?.actionCues ?? [];
     expect(cuesAfter.some((c) => c.id === cue!.id)).toBe(false);
   });
 
-  it('6. DirectorCueInspector の秒数手入力フィールドに 1.5 を入力すると、upsertActionCameraCue が durationMs: 1500 で呼ばれること', () => {
-    const store = useTacticalUnifiedStore.getState();
-    store.setWorkspaceMode('director');
-    store.seekTo(1000);
-    store.upsertActionCameraCue(1000, {
-      durationMs: 1000,
-      zoom: 1.5,
+  it('6. DirectorCueInspector の秒数手入力フィールドに 1.5 を入力すると、durationMs: 1500 に更新されること', () => {
+    const { stores, phaseId } = renderCameraPanel({
+      workspaceMode: 'director',
+      timeMs: 1000,
     });
 
-    const activePhase = useTacticalUnifiedStore.getState().project.phases[0];
-    const cue = activePhase?.directorCamera?.actionCues?.[0];
+    act(() => {
+      stores.documentStore.getState().dispatch({
+        type: 'UPSERT_ACTION_CAMERA_CUE',
+        phaseId,
+        startTimeMs: 1000,
+        patch: {
+          durationMs: 1000,
+          zoom: 1.5,
+        },
+      });
+    });
+
+    const cue =
+      stores.documentStore.getState().project.phases[0]?.directorCamera
+        ?.actionCues?.[0];
     expect(cue).toBeDefined();
-
-    const upsertActionSpy = vi.spyOn(
-      useTacticalUnifiedStore.getState(),
-      'upsertActionCameraCue',
-    );
-
-    render(<CameraControlPanel />);
 
     const durationInput = screen.getByTestId('action-duration-input');
     expect(durationInput).toBeDefined();
@@ -179,33 +202,36 @@ describe('CameraControlPanel (Phase 1)', () => {
 
     fireEvent.change(durationInput, { target: { value: '1.5' } });
 
-    expect(upsertActionSpy).toHaveBeenCalledWith(
-      cue!.startTimeMs,
-      expect.objectContaining({ durationMs: 1500 }),
-      cue!.id,
-    );
-    upsertActionSpy.mockRestore();
+    const updatedCue = stores.documentStore
+      .getState()
+      .project.phases[0]?.directorCamera?.actionCues?.find(
+        (c) => c.id === cue!.id,
+      );
+    expect(updatedCue?.durationMs).toBe(1500);
   });
 
-  it('7. activeCue が存在するとき、Zoomスライダー操作で activeCue.id を含む upsertActionCameraCue が呼ばれ、activeCue.zoom が表示されること', () => {
-    const store = useTacticalUnifiedStore.getState();
-    store.setWorkspaceMode('director');
-    store.seekTo(1200);
-    store.upsertActionCameraCue(1000, {
-      durationMs: 2000,
-      zoom: 2.2,
+  it('7. activeCue が存在するとき、Zoomスライダー操作で activeCue.zoom が更新され、初期値も activeCue.zoom が表示されること', () => {
+    const { stores, phaseId } = renderCameraPanel({
+      workspaceMode: 'director',
+      timeMs: 1200,
     });
 
-    const activePhase = useTacticalUnifiedStore.getState().project.phases[0];
-    const cue = activePhase?.directorCamera?.actionCues?.[0];
+    act(() => {
+      stores.documentStore.getState().dispatch({
+        type: 'UPSERT_ACTION_CAMERA_CUE',
+        phaseId,
+        startTimeMs: 1000,
+        patch: {
+          durationMs: 2000,
+          zoom: 2.2,
+        },
+      });
+    });
+
+    const cue =
+      stores.documentStore.getState().project.phases[0]?.directorCamera
+        ?.actionCues?.[0];
     expect(cue).toBeDefined();
-
-    const upsertActionSpy = vi.spyOn(
-      useTacticalUnifiedStore.getState(),
-      'upsertActionCameraCue',
-    );
-
-    render(<CameraControlPanel />);
 
     const zoomSlider = screen.getByLabelText('Zoom', {
       selector: 'input[type="range"]',
@@ -214,31 +240,32 @@ describe('CameraControlPanel (Phase 1)', () => {
 
     fireEvent.change(zoomSlider, { target: { value: '2.5' } });
 
-    expect(upsertActionSpy).toHaveBeenCalledWith(
-      1200,
-      expect.objectContaining({ zoom: 2.5 }),
-      cue!.id,
-    );
-    upsertActionSpy.mockRestore();
+    const updatedCue = stores.documentStore
+      .getState()
+      .project.phases[0]?.directorCamera?.actionCues?.find(
+        (c) => c.id === cue!.id,
+      );
+    expect(updatedCue?.zoom).toBe(2.5);
   });
 
   it('8. Zoomスライダーの midLabel (1.0x (標準)) をクリックすると 1.0 にリセットされること', () => {
-    const store = useTacticalUnifiedStore.getState();
-    store.setWorkspaceMode('board');
+    const { stores, phaseId, slideId } = renderCameraPanel({
+      workspaceMode: 'board',
+    });
 
-    render(<CameraControlPanel />);
+    const zoomSlider = screen.getByLabelText('Zoom', {
+      selector: 'input[type="range"]',
+    });
+    fireEvent.change(zoomSlider, { target: { value: '2.0' } });
 
     const midLabel = screen.getByText('1.0x (標準)');
     fireEvent.click(midLabel);
 
-    const updateSpy = vi.spyOn(
-      useTacticalUnifiedStore.getState(),
-      'updatePitchTransform',
+    const slide = selectDomainActiveSlide(
+      stores.documentStore.getState().project,
+      phaseId,
+      slideId,
     );
-    fireEvent.click(midLabel);
-
-    const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-    expect(updateSpy).toHaveBeenCalledWith(activeSlideId, { zoom: 1 });
-    updateSpy.mockRestore();
+    expect(slide?.pitchTransform?.zoom).toBe(1);
   });
 });

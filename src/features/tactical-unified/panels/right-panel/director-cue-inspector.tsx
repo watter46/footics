@@ -2,7 +2,7 @@
 
 import { Trash2 } from 'lucide-react';
 import type React from 'react';
-import type { ActionCameraCue } from '@/lib/types/tactical-unified';
+import type { ActionCameraCue } from '@/lib/types/tactical/project';
 
 const DURATION_PRESETS = [
   { label: '0.5s', ms: 500 },

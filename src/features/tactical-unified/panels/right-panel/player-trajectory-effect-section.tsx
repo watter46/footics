@@ -2,10 +2,8 @@
 
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import type { EffectExitAction } from '@/lib/types/tactical/annotations';
-import type {
-  Player,
-  PlayerTrajectoryEffectConfig,
-} from '@/lib/types/tactical/player';
+import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
+import type { PlayerTrajectoryEffectConfig } from '@/lib/types/tactical/player';
 
 export const DEFAULT_PLAYER_TRAJECTORY_EFFECT: PlayerTrajectoryEffectConfig = {
   enabled: false,
@@ -14,8 +12,10 @@ export const DEFAULT_PLAYER_TRAJECTORY_EFFECT: PlayerTrajectoryEffectConfig = {
 };
 
 export interface PlayerTrajectoryEffectSectionProps {
-  player: Player;
-  onUpdate: (patch: Partial<Player>) => void;
+  player: Pick<PitchPlayer, 'trajectoryEffect'>;
+  onUpdate: (patch: {
+    trajectoryEffect?: PlayerTrajectoryEffectConfig;
+  }) => void;
 }
 
 export function PlayerTrajectoryEffectSection({

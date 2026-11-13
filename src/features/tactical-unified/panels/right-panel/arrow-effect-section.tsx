@@ -2,12 +2,12 @@
 
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import type {
-  ArrowAnnotation,
   ArrowEffectConfig,
   ArrowEffectType,
   EffectEasing,
   EffectExitAction,
 } from '@/lib/types/tactical/annotations';
+import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
 import { NumberSliderField } from './effect-number-slider';
 
 export const DEFAULT_ARROW_EFFECT: ArrowEffectConfig = {
@@ -21,8 +21,11 @@ export const DEFAULT_ARROW_EFFECT: ArrowEffectConfig = {
 };
 
 export interface ArrowEffectSectionProps {
-  arrow: ArrowAnnotation;
-  onUpdate: (patch: Partial<ArrowAnnotation>) => void;
+  arrow: Pick<DomainArrowAnnotation, 'effect' | 'dashArray'>;
+  onUpdate: (patch: {
+    effect?: ArrowEffectConfig;
+    dashArray?: number[];
+  }) => void;
 }
 
 export function ArrowEffectSection({

@@ -9,7 +9,11 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   ArrowEffectSection,
   DEFAULT_ARROW_EFFECT,
@@ -34,14 +38,11 @@ export {
 export function EffectInspectorPanel(): React.ReactElement | null {
   const [isExpanded, setIsExpanded] = useState(true);
 
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
-  const selectedObjects = useTacticalUnifiedStoreContext(
-    (s) => s.selectedObjects,
-  );
-  const project = useTacticalUnifiedStoreContext((s) => s.project);
-  const updateArrow = useTacticalUnifiedStoreContext((s) => s.updateArrow);
-  const updatePlayer = useTacticalUnifiedStoreContext((s) => s.updatePlayer);
-  const updateZone = useTacticalUnifiedStoreContext((s) => s.updateZone);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const selectedObjects = useSessionStore((s) => s.selectedObjects);
+  const project = useDocumentStore((s) => s.project);
+  const dispatch = useDocumentStore((s) => s.dispatch);
 
   if (selectedObjects.length !== 1) {
     return null;
@@ -52,9 +53,7 @@ export function EffectInspectorPanel(): React.ReactElement | null {
     return null;
   }
 
-  const slide = project.phases
-    .flatMap((ph) => ph.slides)
-    .find((sl) => sl.id === activeSlideId);
+  const slide = selectDomainActiveSlide(project, activePhaseId, activeSlideId);
 
   if (!slide) {
     return null;
@@ -85,7 +84,14 @@ export function EffectInspectorPanel(): React.ReactElement | null {
           <div className="p-3 pt-1">
             <ZoneEffectSection
               zone={zone}
-              onUpdate={(patch) => updateZone(activeSlideId, zone.id, patch)}
+              onUpdate={(patch) =>
+                dispatch({
+                  type: 'APPLY_SLIDE_COMMAND',
+                  phaseId: activePhaseId,
+                  slideId: activeSlideId,
+                  command: { type: 'UPDATE_ZONE', id: zone.id, patch },
+                })
+              }
             />
           </div>
         )}
@@ -118,7 +124,14 @@ export function EffectInspectorPanel(): React.ReactElement | null {
           <div className="p-3 pt-1">
             <ArrowEffectSection
               arrow={arrow}
-              onUpdate={(patch) => updateArrow(activeSlideId, arrow.id, patch)}
+              onUpdate={(patch) =>
+                dispatch({
+                  type: 'APPLY_SLIDE_COMMAND',
+                  phaseId: activePhaseId,
+                  slideId: activeSlideId,
+                  command: { type: 'UPDATE_ARROW', id: arrow.id, patch },
+                })
+              }
             />
           </div>
         )}
@@ -128,7 +141,7 @@ export function EffectInspectorPanel(): React.ReactElement | null {
 
   if (selected.kind === 'player') {
     const player = slide.players.find((p) => p.id === selected.id);
-    if (!player) return null;
+    if (!player || player.area !== 'pitch') return null;
 
     return (
       <div
@@ -152,14 +165,24 @@ export function EffectInspectorPanel(): React.ReactElement | null {
             <MarkerEffectSection
               player={player}
               onUpdate={(patch) =>
-                updatePlayer(activeSlideId, player.id, patch)
+                dispatch({
+                  type: 'APPLY_SLIDE_COMMAND',
+                  phaseId: activePhaseId,
+                  slideId: activeSlideId,
+                  command: { type: 'UPDATE_PLAYER', id: player.id, patch },
+                })
               }
             />
             <div className="border-t border-white/[0.06] pt-3">
               <PlayerTrajectoryEffectSection
                 player={player}
                 onUpdate={(patch) =>
-                  updatePlayer(activeSlideId, player.id, patch)
+                  dispatch({
+                    type: 'APPLY_SLIDE_COMMAND',
+                    phaseId: activePhaseId,
+                    slideId: activeSlideId,
+                    command: { type: 'UPDATE_PLAYER', id: player.id, patch },
+                  })
                 }
               />
             </div>

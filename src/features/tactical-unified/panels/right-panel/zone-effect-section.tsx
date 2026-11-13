@@ -1,10 +1,8 @@
 'use client';
 
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import type {
-  ZoneAnnotation,
-  ZoneEffectConfig,
-} from '@/lib/types/tactical/annotations';
+import type { ZoneEffectConfig } from '@/lib/types/tactical/annotations';
+import type { DomainZoneAnnotation } from '@/lib/types/tactical/domain-entities';
 import { NumberSliderField } from './effect-number-slider';
 
 export const DEFAULT_ZONE_EFFECT: ZoneEffectConfig = {
@@ -15,8 +13,8 @@ export const DEFAULT_ZONE_EFFECT: ZoneEffectConfig = {
 };
 
 export interface ZoneEffectSectionProps {
-  zone: ZoneAnnotation;
-  onUpdate: (patch: Partial<ZoneAnnotation>) => void;
+  zone: Pick<DomainZoneAnnotation, 'effect'>;
+  onUpdate: (patch: { effect?: ZoneEffectConfig }) => void;
 }
 
 export function ZoneEffectSection({ zone, onUpdate }: ZoneEffectSectionProps) {
