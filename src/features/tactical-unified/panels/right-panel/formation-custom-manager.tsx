@@ -2,16 +2,27 @@
 
 import { ChevronDown, Shield } from 'lucide-react';
 import { useState } from 'react';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { fetchPlayerMastersBySeason } from '@/features/tactical-unified/hooks/use-player-masters';
+import {
+  selectDomainActivePhaseAspectRatio,
+  selectDomainActiveSlide,
+} from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { FormationMode } from '@/lib/data/formations';
-import { getPlayerMastersBySeason } from '@/lib/db/queries';
 import {
   CHELSEA_PRESETS_BY_SEASON,
   type PresetPlayer,
 } from '@/lib/tactical/chelsea-preset';
-import { injectTeamSquadToTactical } from '@/lib/tactical/squad-to-tactical-bridge';
+import {
+  buildDomainSquadPlayers,
+  computeDomainPresetPlayers,
+  type DomainSquadPlayerItem,
+} from '@/lib/tactical/domain/squad-placement';
 import { SUPPORTED_TEAMS } from '@/lib/tactical/teams-config';
-import type { SeasonFormationPreset } from '@/lib/types/tactical-unified';
+import type { SeasonFormationPreset } from '@/lib/types/tactical/project';
 import { SAMPLE_SEASON_PRESETS } from './formation-presets-data';
 
 interface FormationCustomManagerProps {
@@ -26,19 +37,35 @@ export function FormationCustomManager({
   formationMode,
 }: FormationCustomManagerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const applyFormationPreset = useTacticalUnifiedStoreContext(
-    (s) => s.applyFormationPreset,
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const sessionActiveSlideId = useSessionStore((s) => s.activeSlideId);
+  const project = useDocumentStore((s) => s.project);
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const targetSlideId = activeSlideId || sessionActiveSlideId;
+  const activeSlide = selectDomainActiveSlide(
+    project,
+    activePhaseId,
+    targetSlideId,
+  );
+  const aspectRatio = selectDomainActivePhaseAspectRatio(
+    project,
+    activePhaseId,
   );
 
   const handleApplySeasonPreset = (preset: SeasonFormationPreset) => {
-    applyFormationPreset(
-      {
-        name: preset.name,
-        team: activeTeam,
-        players: preset.players,
-      },
-      activeSlideId,
+    if (!activePhaseId || !targetSlideId || !activeSlide) return;
+    const nextPlayers = computeDomainPresetPlayers(
+      activeSlide,
+      project,
+      activeTeam,
+      preset,
     );
+    dispatch({
+      type: 'APPLY_SLIDE_COMMAND',
+      phaseId: activePhaseId,
+      slideId: targetSlideId,
+      command: { type: 'REPLACE_PLAYERS', players: nextPlayers },
+    });
   };
 
   const handleApplyClubPreset = async (teamSlug: string) => {
@@ -53,7 +80,7 @@ export function FormationCustomManager({
         { photoBlob?: Blob; photoUrl?: string }
       >();
       try {
-        const masters = await getPlayerMastersBySeason('26-27', 'Chelsea');
+        const masters = await fetchPlayerMastersBySeason('26-27', 'Chelsea');
         masters.forEach((m) => {
           masterMap.set(m.playerId, m);
         });
@@ -61,10 +88,9 @@ export function FormationCustomManager({
         console.warn('Failed to load masters from IndexedDB', err);
       }
 
-      injectTeamSquadToTactical({
-        teamName: 'Chelsea FC',
-        team: activeTeam,
-        players: chelseaPreset.map((p: PresetPlayer) => {
+      if (!activePhaseId || !targetSlideId || !activeSlide) return;
+      const squadItems: DomainSquadPlayerItem[] = chelseaPreset.map(
+        (p: PresetPlayer) => {
           const m = masterMap.get(p.playerId);
           return {
             playerId: p.playerId,
@@ -72,19 +98,33 @@ export function FormationCustomManager({
             shirtNo: p.shirtNo,
             position: p.position,
             isFirstEleven: Boolean(p.isFirstEleven),
-            field: activeTeam,
-            stats: {},
-            height: 180,
-            weight: 75,
-            age: 24,
-            isManOfTheMatch: false,
             photoBlob: m?.photoBlob,
             photoUrl: m?.photoUrl,
           };
-        }),
+        },
+      );
+      const primaryColor =
+        activeTeam === 'home'
+          ? project.homeColor.primary
+          : project.awayColor.primary;
+      const teamPlayers = buildDomainSquadPlayers(squadItems, {
+        team: activeTeam,
         formation: '4-2-3-1',
         mode: formationMode,
-        slideId: activeSlideId,
+        primaryColor,
+        aspectRatio,
+      });
+      const otherPlayers = activeSlide.players.filter(
+        (p) => p.team !== activeTeam,
+      );
+      dispatch({
+        type: 'APPLY_SLIDE_COMMAND',
+        phaseId: activePhaseId,
+        slideId: targetSlideId,
+        command: {
+          type: 'REPLACE_PLAYERS',
+          players: [...otherPlayers, ...teamPlayers],
+        },
       });
     }
   };

@@ -9,7 +9,7 @@ import {
   POSITION_GROUPS,
   type PositionGroup,
 } from '@/lib/tactical/player-formatting';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 import { FormationBenchAddForm } from './formation-bench-add-form';
 import { FormationBenchItem } from './formation-bench-item';
 
@@ -17,8 +17,8 @@ interface FormationBenchSectionProps {
   activeSlideId: string;
   activeTeam: 'home' | 'away';
   teamColor: string;
-  benchPlayers: Player[];
-  pitchPlayers: Player[];
+  benchPlayers: readonly DomainPlayer[];
+  pitchPlayers: readonly DomainPlayer[];
   onMoveToPitch: (slideId: string, playerId: string) => void;
   onSwapPlayers: (slideId: string, p1: string, p2: string) => void;
   onAddPlayer: (
@@ -58,7 +58,7 @@ export function FormationBenchSection({
   const [isAddingSub, setIsAddingSub] = useState(false);
 
   const benchGroups = useMemo(
-    () => groupPlayersByPosition(benchPlayers),
+    () => groupPlayersByPosition([...benchPlayers]),
     [benchPlayers],
   );
 

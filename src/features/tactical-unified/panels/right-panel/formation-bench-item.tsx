@@ -4,15 +4,15 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2 } from 'lucide-react';
 import { getPositionBadgeClass } from '@/lib/tactical/player-formatting';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 export interface FormationBenchItemProps {
-  player: Player;
+  player: DomainPlayer;
   teamColor: string;
   activeSlideId: string;
   onRemovePlayer: (slideId: string, playerId: string) => void;
   // Backward compatibility optional props
-  pitchPlayers?: Player[];
+  pitchPlayers?: readonly DomainPlayer[];
   activeSwapPlayerId?: string | null;
   onToggleSwap?: (playerId: string) => void;
   onCloseSwap?: () => void;

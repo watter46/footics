@@ -1,6 +1,6 @@
 # TASK-181jj: Formation 関連サブコンポーネント & FormationPanel の Domain 移行
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181j)

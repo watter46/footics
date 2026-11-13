@@ -7,41 +7,36 @@
 
 import { Shield } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  selectDomainActivePhaseAspectRatio,
+  selectDomainActiveSlide,
+} from '@/features/tactical-unified/stores/domain-selectors';
 import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
-import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { FormationMode, FormationType } from '@/lib/data/formations';
+import { computeDomainSlideAfterFormation } from '@/lib/tactical/domain/formation-placement';
 import { FormationPresetSelector } from './formation-preset-selector';
 import { FormationTeamToggle } from './formation-team-toggle';
 
 export function FormationPanel() {
-  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
-  const activePhaseId = useTacticalUnifiedStoreContext((s) => s.activePhaseId);
-  const project = useTacticalUnifiedStoreContext((s) => s.project);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const project = useDocumentStore((s) => s.project);
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const activeSlide = selectDomainActiveSlide(
+    project,
+    activePhaseId,
+    activeSlideId,
+  );
+  const aspectRatio = selectDomainActivePhaseAspectRatio(
+    project,
+    activePhaseId,
+  );
 
-  // Store actions
-  const applyFormation = useTacticalUnifiedStoreContext(
-    (s) => s.applyFormation,
-  );
-  const clearPitchPlayers = useTacticalUnifiedStoreContext(
-    (s) => s.clearPitchPlayers,
-  );
-  const updatePlayer = useTacticalUnifiedStoreContext((s) => s.updatePlayer);
-  const updatePlayers = useTacticalUnifiedStoreContext((s) => s.updatePlayers);
-  const setTeamColor = useTacticalUnifiedStoreContext((s) => s.setTeamColor);
-  const setBallSizeScale = useTacticalUnifiedStoreContext(
-    (s) => s.setBallSizeScale,
-  );
-  const applyPlayerStyleToPhaseSlides = useTacticalUnifiedStoreContext(
-    (s) => s.applyPlayerStyleToPhaseSlides,
-  );
-  const applyBallScaleToPhaseSlides = useTacticalUnifiedStoreContext(
-    (s) => s.applyBallScaleToPhaseSlides,
-  );
-  const swapTeamSides = useTacticalUnifiedStoreContext((s) => s.swapTeamSides);
-
-  const isVertical = isVerticalPitch(project.aspectRatio);
+  const isVertical = isVerticalPitch(aspectRatio);
 
   // Local states
   const [activeTeam, setActiveTeam] = useState<'home' | 'away' | 'both'>(
@@ -94,70 +89,84 @@ export function FormationPanel() {
 
   const handleApplyFormation = (f: FormationType) => {
     setSelectedFormation(f);
-    applyFormation(activeSlideId, f, formationMode, activeTeam);
+    if (!activePhaseId || !activeSlideId || !activeSlide) return;
+    const targetTeam: 'home' | 'away' =
+      activeTeam === 'both' ? 'home' : activeTeam;
+    const nextPlayers = computeDomainSlideAfterFormation(
+      activeSlide,
+      project,
+      aspectRatio,
+      f,
+      formationMode,
+      targetTeam,
+    );
+    dispatch({
+      type: 'APPLY_SLIDE_COMMAND',
+      phaseId: activePhaseId,
+      slideId: activeSlideId,
+      command: { type: 'REPLACE_PLAYERS', players: nextPlayers },
+    });
+  };
+
+  const applyBatchPlayerStyle = (
+    stylePatch: Partial<{
+      insideContent: 'number' | 'photo' | 'none';
+      bottomLabel: 'name' | 'number' | 'none';
+      sizeScale: number;
+    }>,
+  ) => {
+    if (!activePhaseId || !activeSlideId || !activeSlide) return;
+    const nextPlayers = activeSlide.players.map((p) => {
+      if (activeTeam !== 'both' && p.team !== activeTeam) return p;
+      return { ...p, style: { ...p.style, ...stylePatch } };
+    });
+    dispatch({
+      type: 'APPLY_SLIDE_COMMAND',
+      phaseId: activePhaseId,
+      slideId: activeSlideId,
+      command: { type: 'REPLACE_PLAYERS', players: nextPlayers },
+    });
   };
 
   const handleDisplayModeChange = (mode: 'number' | 'photo' | 'none') => {
-    if (!activeSlide) return;
-    const targetPlayers =
-      activeTeam === 'both'
-        ? activeSlide.players
-        : activeSlide.players.filter((p) => p.team === activeTeam);
-
-    for (const p of targetPlayers) {
-      updatePlayer(activeSlideId, p.id, {
-        style: { ...p.style, insideContent: mode },
-      });
-    }
+    applyBatchPlayerStyle({ insideContent: mode });
   };
 
   const handleBottomLabelChange = (label: 'name' | 'number' | 'none') => {
-    if (!activeSlide) return;
-    const targetPlayers =
-      activeTeam === 'both'
-        ? activeSlide.players
-        : activeSlide.players.filter((p) => p.team === activeTeam);
-
-    updatePlayers(
-      activeSlideId,
-      targetPlayers.map((p) => ({
-        id: p.id,
-        patch: { style: { ...p.style, bottomLabel: label } },
-      })),
-    );
+    applyBatchPlayerStyle({ bottomLabel: label });
   };
 
   const handleMarkerScaleChange = (scale: number) => {
-    if (!activeSlide) return;
-    const targetPlayers =
-      activeTeam === 'both'
-        ? activeSlide.players
-        : activeSlide.players.filter((p) => p.team === activeTeam);
-
-    for (const p of targetPlayers) {
-      updatePlayer(activeSlideId, p.id, {
-        style: { ...p.style, sizeScale: scale },
-      });
-    }
+    applyBatchPlayerStyle({ sizeScale: scale });
   };
 
   const handleBallScaleChange = (scale: number) => {
-    if (!activeSlideId) return;
-    setBallSizeScale(activeSlideId, scale);
+    if (!activePhaseId || !activeSlideId) return;
+    dispatch({
+      type: 'APPLY_SLIDE_COMMAND',
+      phaseId: activePhaseId,
+      slideId: activeSlideId,
+      command: { type: 'UPDATE_BALL', patch: { sizeScale: scale } },
+    });
   };
 
   const handleApplyToAllPhaseSlides = () => {
     if (!activePhaseId) return;
-    applyPlayerStyleToPhaseSlides(
-      activePhaseId,
-      {
+    dispatch({
+      type: 'APPLY_PLAYER_STYLE_TO_PHASE_SLIDES',
+      phaseId: activePhaseId,
+      stylePatch: {
         insideContent: currentInsideContent,
         bottomLabel: currentBottomLabel,
         sizeScale: currentMarkerScale,
       },
-      activeTeam,
-    );
-    applyBallScaleToPhaseSlides(activePhaseId, currentBallScale);
+      targetTeam: activeTeam,
+    });
+    dispatch({
+      type: 'APPLY_BALL_SCALE_TO_PHASE_SLIDES',
+      phaseId: activePhaseId,
+      sizeScale: currentBallScale,
+    });
   };
 
   return (
@@ -169,7 +178,9 @@ export function FormationPanel() {
           onTeamChange={setActiveTeam}
           homeColor={project.homeColor.primary}
           awayColor={project.awayColor.primary}
-          onColorChange={setTeamColor}
+          onColorChange={(team, color) =>
+            dispatch({ type: 'SET_TEAM_COLOR', team, primary: color })
+          }
           teamPlayersCount={teamPlayersCount}
           currentInsideContent={currentInsideContent}
           onDisplayModeChange={handleDisplayModeChange}
@@ -224,8 +235,24 @@ export function FormationPanel() {
             selectedFormation={selectedFormation}
             onSelectFormation={handleApplyFormation}
             onResetFormation={() => handleApplyFormation(selectedFormation)}
-            onClearPitch={() => clearPitchPlayers(activeSlideId)}
-            onSwapSides={() => swapTeamSides(activeSlideId)}
+            onClearPitch={() => {
+              if (!activePhaseId || !activeSlideId) return;
+              dispatch({
+                type: 'APPLY_SLIDE_COMMAND',
+                phaseId: activePhaseId,
+                slideId: activeSlideId,
+                command: { type: 'CLEAR_PITCH_PLAYERS' },
+              });
+            }}
+            onSwapSides={() => {
+              if (!activePhaseId || !activeSlideId) return;
+              dispatch({
+                type: 'APPLY_SLIDE_COMMAND',
+                phaseId: activePhaseId,
+                slideId: activeSlideId,
+                command: { type: 'SWAP_TEAM_SIDES' },
+              });
+            }}
             isVertical={isVertical}
           />
         </div>

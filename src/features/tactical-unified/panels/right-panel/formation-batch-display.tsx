@@ -2,17 +2,17 @@
 
 import { ChevronDown, Circle, Hash, ImageIcon, Users } from 'lucide-react';
 import { useState } from 'react';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 interface FormationBatchDisplayProps {
   activeSlideId: string;
-  players: Player[];
+  players: readonly DomainPlayer[];
   homeColor: string;
   awayColor: string;
   onUpdatePlayer: (
     slideId: string,
     playerId: string,
-    updates: Partial<Player>,
+    updates: Partial<DomainPlayer>,
   ) => void;
 }
 
