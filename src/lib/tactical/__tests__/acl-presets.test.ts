@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyFormationPresetToSlide,
-  type FormationSlotPreset,
-  projectFormationSlotsToScreenNorm,
+  buildFormationPlacements,
+  buildPlacementsFromPreset,
+} from '@/lib/tactical/acl/formation-placements';
+import {
+  applyFormationPlacementsToSlide,
+  applySingleTeamFormationToSlide,
+  type FormationPlacement,
 } from '@/lib/tactical/acl/formation-translator';
 import {
   type SquadMemberInput,
@@ -13,34 +17,7 @@ import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 
 describe('Formation Translator ACL', () => {
-  it('projectFormationSlotsToScreenNorm: projects slots for home team in full pitch mode correctly', () => {
-    const slots: FormationSlotPreset[] = [
-      { shirtNo: '1', position: 'GK', x: 10, y: 50 },
-    ];
-    const projected = projectFormationSlotsToScreenNorm(slots, 'home', 'full');
-
-    expect(projected).toHaveLength(1);
-    expect(projected[0].shirtNo).toBe('1');
-    expect(projected[0].position).toBe('GK');
-    // x = 6 + (10 * 0.5 / 100) * 88 = 10.4
-    // y = 6 + (50 / 100) * 88 = 50
-    expect(projected[0].point.x).toBeCloseTo(10.4);
-    expect(projected[0].point.y).toBeCloseTo(50);
-  });
-
-  it('projectFormationSlotsToScreenNorm: projects slots for away team in full pitch mode correctly', () => {
-    const slots: FormationSlotPreset[] = [
-      { shirtNo: '1', position: 'GK', x: 10, y: 50 },
-    ];
-    const projected = projectFormationSlotsToScreenNorm(slots, 'away', 'full');
-
-    expect(projected).toHaveLength(1);
-    // x = 6 + ((100 - 10 * 0.5) / 100) * 88 = 6 + 83.6 = 89.6
-    expect(projected[0].point.x).toBeCloseTo(89.6);
-    expect(projected[0].point.y).toBeCloseTo(50);
-  });
-
-  it('applyFormationPresetToSlide: applies formation to slide players and sends excess to bench', () => {
+  it('applyFormationPlacementsToSlide: applies placements to team players and sends excess to bench', () => {
     const initialSlide: DomainSlide = {
       id: 'slide-1',
       index: 0,
@@ -131,16 +108,21 @@ describe('Formation Translator ACL', () => {
       easing: 'ease-in-out',
     };
 
-    // Apply preset with only 1 slot
-    const slots: FormationSlotPreset[] = [
-      { shirtNo: '1', position: 'GK', x: 10, y: 50 },
+    // Apply placements with only 1 slot
+    const slots: FormationPlacement[] = [
+      {
+        shirtNo: '1',
+        position: 'GK',
+        x: toScreenNormPoint(10, 50).x,
+        y: toScreenNormPoint(10, 50).y,
+      },
     ];
 
-    const nextSlide = applyFormationPresetToSlide(
+    const nextSlide = applyFormationPlacementsToSlide(
       initialSlide,
       slots,
       'home',
-      'full',
+      (team, i) => `new-${team}-${i}`,
     );
 
     // Away player must be untouched
@@ -158,7 +140,7 @@ describe('Formation Translator ACL', () => {
 
     expect(homePitch).toHaveLength(1);
     expect(homePitch[0].id).toBe('p-1');
-    expect(homePitch[0].x).toBeCloseTo(10.4);
+    expect(homePitch[0].x).toBeCloseTo(10);
     expect(homePitch[0].y).toBeCloseTo(50);
 
     expect(homeBench).toHaveLength(1);
@@ -211,5 +193,92 @@ describe('Match Squad Translator ACL', () => {
     expect('visionCone' in (sub ?? {})).toBe(false);
     expect(sub?.team).toBe('home');
     expect(sub?.style.color).toBe('#034694');
+  });
+});
+
+describe('Formation Placements ACL', () => {
+  it('buildFormationPlacements: 4-3-3 は 11 人分・GK は自陣ゴール前に固定される', () => {
+    const home = buildFormationPlacements('4-3-3', 'home', 'full', {
+      aspectRatio: '16:9',
+    });
+    expect(home).toHaveLength(11);
+    expect(home[0].position).toBe('GK');
+    expect(home[0].x).toBeCloseTo(7);
+    const away = buildFormationPlacements('4-3-3', 'away', 'full', {
+      aspectRatio: '16:9',
+    });
+    expect(away[0].x).toBeCloseTo(93);
+  });
+
+  it('buildFormationPlacements: サイド入れ替え時は座標が反転する', () => {
+    const swapped = buildFormationPlacements('4-3-3', 'home', 'full', {
+      aspectRatio: '16:9',
+      isSidesSwapped: true,
+    });
+    expect(swapped[0].x).toBeCloseTo(93);
+    expect(swapped[0].y).toBeCloseTo(50);
+  });
+
+  it('buildPlacementsFromPreset: 横画面ではそのまま、範囲外は丸められる', () => {
+    const placed = buildPlacementsFromPreset(
+      [{ shirtNo: '9', position: 'ST', x: 120, y: 40 }],
+      '16:9',
+    );
+    expect(placed[0].x).toBe(115);
+    expect(placed[0].y).toBe(40);
+  });
+});
+
+describe('applySingleTeamFormationToSlide', () => {
+  it('相手チームは全員ベンチへ、自チームは配置どおりピッチへ', () => {
+    const awayPlayer: PitchPlayer = {
+      id: 'away-1',
+      team: 'away',
+      area: 'pitch',
+      x: toScreenNormPoint(70, 50).x,
+      y: toScreenNormPoint(70, 50).y,
+      style: {
+        markerType: 'circle',
+        insideContent: 'number',
+        bottomLabel: 'name',
+        color: '#ef4444',
+        strokeColor: '#ffffff',
+        strokeWidth: 2,
+        sizeScale: 1,
+        numberSizeScale: 1,
+        labelSizeScale: 1,
+      },
+      connectLines: [],
+      badges: [],
+    };
+    const slide: DomainSlide = {
+      id: 's',
+      index: 0,
+      players: [awayPlayer],
+      arrows: [],
+      zones: [],
+      texts: [],
+      ball: {
+        x: toScreenNormPoint(50, 50).x,
+        y: toScreenNormPoint(50, 50).y,
+        visible: true,
+      },
+      transitionDurationMs: 1000,
+      pauseMs: 500,
+      easing: 'linear',
+    };
+    const placements = buildFormationPlacements('4-4-2', 'home', 'full', {
+      aspectRatio: '16:9',
+    });
+    const next = applySingleTeamFormationToSlide(
+      slide,
+      placements,
+      'home',
+      (team, i) => `new-${team}-${i}`,
+    );
+    expect(next.players.find((p) => p.id === 'away-1')?.area).toBe('bench');
+    expect(
+      next.players.filter((p) => p.team === 'home' && p.area === 'pitch'),
+    ).toHaveLength(11);
   });
 });

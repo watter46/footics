@@ -1,72 +1,32 @@
 import { toBenchPlayer } from '@/lib/tactical/domain/invariants';
-import { pitchNormToScreenNorm } from '@/lib/tactical/engine/coordinates';
-import {
-  type ScreenNormPoint,
-  toPitchNormPoint,
-} from '@/lib/types/tactical/branded';
+import type { ScreenNormCoord } from '@/lib/types/tactical/branded';
 import type {
   DomainPlayer,
   PitchPlayer,
 } from '@/lib/types/tactical/domain-entities';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 
-export interface FormationSlotPreset {
+/** フォーメーション 1 スロットの配置結果（ScreenNorm 座標・計算済み）。 */
+export interface FormationPlacement {
   readonly shirtNo: string;
   readonly position: string;
-  readonly x: number;
-  readonly y: number;
+  readonly x: ScreenNormCoord;
+  readonly y: ScreenNormCoord;
 }
 
-export function projectFormationSlotsToScreenNorm(
-  slots: readonly FormationSlotPreset[],
-  team: 'home' | 'away',
-  mode?: 'full' | 'half',
-): readonly {
-  readonly shirtNo: string;
-  readonly position: string;
-  readonly point: ScreenNormPoint;
-}[] {
-  const isHalfMode = mode === 'half';
-  return slots.map((slot) => {
-    let pitchX: number;
-    let pitchY: number;
+export type FormationTeam = 'home' | 'away';
+export type FormationIdFactory = (team: FormationTeam, index: number) => string;
 
-    if (isHalfMode) {
-      if (team === 'home') {
-        pitchX = slot.x;
-        pitchY = slot.y;
-      } else {
-        pitchX = 100 - slot.x;
-        pitchY = 100 - slot.y;
-      }
-    } else {
-      // mode === 'full': home occupies 0..50%, away occupies 50..100%
-      if (team === 'home') {
-        pitchX = slot.x * 0.5;
-        pitchY = slot.y;
-      } else {
-        pitchX = 100 - slot.x * 0.5;
-        pitchY = 100 - slot.y;
-      }
-    }
-
-    const point = pitchNormToScreenNorm(toPitchNormPoint(pitchX, pitchY));
-    return {
-      shirtNo: slot.shirtNo,
-      position: slot.position,
-      point,
-    };
-  });
-}
-
-export function applyFormationPresetToSlide(
+/**
+ * 指定チームの選手プール（ピッチ → ベンチの順）へ配置を適用する純粋関数。
+ * 不足分は createId で新規選手を作成し、余剰はベンチへ戻す。相手チームは無変更。
+ */
+export function applyFormationPlacementsToSlide(
   slide: DomainSlide,
-  slots: readonly FormationSlotPreset[],
-  team: 'home' | 'away',
-  mode?: 'full' | 'half',
+  placements: readonly FormationPlacement[],
+  team: FormationTeam,
+  createId: FormationIdFactory,
 ): DomainSlide {
-  const projectedSlots = projectFormationSlotsToScreenNorm(slots, team, mode);
-
   const otherPlayers = slide.players.filter((p) => p.team !== team);
   const teamPitchPlayers = slide.players.filter(
     (p) => p.team === team && p.area === 'pitch',
@@ -78,8 +38,8 @@ export function applyFormationPresetToSlide(
 
   const updatedTeamPlayers: DomainPlayer[] = [];
 
-  for (let i = 0; i < projectedSlots.length; i++) {
-    const slot = projectedSlots[i];
+  for (let i = 0; i < placements.length; i++) {
+    const slot = placements[i];
     const existing = teamPool[i];
 
     if (existing) {
@@ -91,8 +51,8 @@ export function applyFormationPresetToSlide(
         position: slot.position || existing.position,
         team,
         area: 'pitch',
-        x: slot.point.x,
-        y: slot.point.y,
+        x: slot.x,
+        y: slot.y,
         style: existing.style,
         locked: existing.locked,
         isCustom: existing.isCustom,
@@ -111,13 +71,13 @@ export function applyFormationPresetToSlide(
       updatedTeamPlayers.push(pitchPlayer);
     } else {
       const newPlayer: PitchPlayer = {
-        id: `player-${team}-${i + 1}-${Date.now()}`,
+        id: createId(team, i),
         shirtNo: slot.shirtNo,
         position: slot.position,
         team,
         area: 'pitch',
-        x: slot.point.x,
-        y: slot.point.y,
+        x: slot.x,
+        y: slot.y,
         style: {
           markerType: 'circle',
           insideContent: 'number',
@@ -136,7 +96,7 @@ export function applyFormationPresetToSlide(
     }
   }
 
-  for (let i = projectedSlots.length; i < teamPool.length; i++) {
+  for (let i = placements.length; i < teamPool.length; i++) {
     updatedTeamPlayers.push(toBenchPlayer(teamPool[i]));
   }
 
@@ -144,4 +104,24 @@ export function applyFormationPresetToSlide(
     ...slide,
     players: [...otherPlayers, ...updatedTeamPlayers],
   };
+}
+
+/**
+ * 単一チームのフォーメーション適用。相手チームの選手は全員ベンチへ退避し、
+ * 中立（neutral）選手は無変更で残す。
+ */
+export function applySingleTeamFormationToSlide(
+  slide: DomainSlide,
+  placements: readonly FormationPlacement[],
+  team: FormationTeam,
+  createId: FormationIdFactory,
+): DomainSlide {
+  const otherTeam: FormationTeam = team === 'home' ? 'away' : 'home';
+  const benched: DomainSlide = {
+    ...slide,
+    players: slide.players.map((p) =>
+      p.team === otherTeam ? toBenchPlayer(p) : p,
+    ),
+  };
+  return applyFormationPlacementsToSlide(benched, placements, team, createId);
 }

@@ -1,7 +1,7 @@
 # TASK-181gb: フォーメーション配置の ACL 化と消しゴム当たり判定（旧ストア完全廃止シリーズ）
 
 ## 1. Metadata & Goal
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `feat(tactical): add formation placement ACL and eraser hit test`
 - **Series**: 旧ストア完全廃止シリーズ。181ga（入れ替え・クリア・選手置換・遷移一括）→ 181gb（本タスク）→ 181h → 181i → 181j〜。181ga の `REPLACE_PLAYERS` 命令を前提とする（本タスクのコードは Reducer を直接呼ばず ACL/純粋関数のみ）。
 - **Goal**: 旧 `slide-formation-slice.ts` / `slide-formation-helpers.ts`（フォーメーション適用）と `canvas-store-eraser.ts`（消しゴム）の計算を、新ドメイン側の純粋関数へ移す。旧ファイルの削除は 181l。
