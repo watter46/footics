@@ -1,7 +1,7 @@
 # TASK-181ie: Match Project ACL (`buildMatchToDomainProject`) の独立実装（旧ストア完全廃止シリーズ）
 
 ## 1. Metadata & Goal
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `feat(tactical): add standalone match-to-domain project translator ACL`
 - **Series**: 旧ストア完全廃止シリーズ。181id（スライドモード＆Phase初期化）➔ **181ie（本タスク）** ➔ 181j〜（UI Consumer 移行）➔ 181l（旧削除）。181id の完了を前提とする。
 - **Goal**: 旧 `match-to-tactical-bridge.ts` / `squad-to-tactical-bridge.ts` の `defaultTacticalUnifiedStore` 依存から完全に切り離された、純粋な試合データ ➔ `DomainTacticalProject` 変換 ACL（`buildMatchToDomainProject`）を実装する（`181j–181k` での `use-tactical-match-init.ts` / `tactical-client-page.tsx` 直接切り替えを可能にする）。
