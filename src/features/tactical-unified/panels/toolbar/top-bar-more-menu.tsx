@@ -14,12 +14,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/menu';
-import { injectMatchToTactical } from '@/features/tactical-unified/hooks/use-tactical-match-init';
+import { selectDomainActivePhase } from '@/features/tactical-unified/stores/domain-selectors';
+import { buildMatchResetPayload } from '@/features/tactical-unified/stores/reset-tactical-project';
 import {
-  useTacticalUnifiedStoreApi,
-  useTacticalUnifiedStoreContext,
-} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import { getMatchForTacticalProject } from '@/lib/db/tactical-match-helper';
+  createDefaultTacticalProject,
+  useDocumentStore,
+  useSessionStore,
+  useTacticalStoresContext,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import { clearActiveProjectFromDb } from '@/lib/tactical/tactical-storage';
 import {
   MoreMenuPitchSection,
@@ -32,23 +35,31 @@ export {
 } from './top-bar-more-menu-sections';
 
 export function TopBarMoreMenu() {
-  const storeApi = useTacticalUnifiedStoreApi();
+  const { documentStore, sessionStore } = useTacticalStoresContext();
   const searchParams = useSearchParams();
   const urlMatchId = searchParams?.get('matchId') ?? null;
   const [isOpen, setIsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const setImageBackground = useTacticalUnifiedStoreContext(
-    (s) => s.setImageBackground,
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const isImageBackground = useDocumentStore(
+    (s) =>
+      selectDomainActivePhase(s.project, activePhaseId)?.backgroundType ===
+      'image',
   );
-  const resetProject = useTacticalUnifiedStoreContext((s) => s.resetProject);
-  const isImageBackground = useTacticalUnifiedStoreContext(
-    (s) => s.project.backgroundType === 'image',
-  );
-  const restoreDefaultPitch = useTacticalUnifiedStoreContext(
-    (s) => s.restoreDefaultPitch,
-  );
-  const loadProject = useTacticalUnifiedStoreContext((s) => s.loadProject);
+
+  const resetToFreshProject = () => {
+    const fresh = createDefaultTacticalProject();
+    const p0 = fresh.phases[0];
+    documentStore.getState().loadProject(fresh);
+    sessionStore.getState().resetSession({
+      activePhaseId: p0?.id ?? '',
+      activeSlideId: p0?.slides[0]?.id ?? '',
+      saveStatus: 'saved',
+    });
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -56,7 +67,14 @@ export function TopBarMoreMenu() {
       const reader = new FileReader();
       reader.onload = (event) => {
         const dataUrl = event.target?.result as string;
-        if (dataUrl) setImageBackground(dataUrl);
+        if (dataUrl) {
+          dispatch({
+            type: 'APPLY_IMAGE_BACKGROUND',
+            phaseId: activePhaseId,
+            slideId: activeSlideId,
+            url: dataUrl,
+          });
+        }
       };
       reader.readAsDataURL(files[0]);
     }
@@ -71,21 +89,31 @@ export function TopBarMoreMenu() {
     if (!confirmed) return;
 
     if (urlMatchId) {
-      const match = await getMatchForTacticalProject(urlMatchId);
-      if (match) {
-        resetProject();
-        injectMatchToTactical({ match, minute: 0, storeApi });
-        await clearActiveProjectFromDb(urlMatchId);
-        storeApi.getState().setSaveStatus('saved');
+      const payload = await buildMatchResetPayload(urlMatchId);
+      if (payload) {
+        documentStore.getState().loadProject(payload.project);
+        sessionStore.getState().resetSession({
+          activePhaseId: payload.activePhaseId,
+          activeSlideId: payload.activeSlideId,
+          saveStatus: 'saved',
+        });
         setIsOpen(false);
         return;
       }
     }
 
-    resetProject();
+    resetToFreshProject();
     await clearActiveProjectFromDb(null);
-    storeApi.getState().setSaveStatus('saved');
     setIsOpen(false);
+  };
+
+  const handleLoadPreset = (rawProject: unknown) => {
+    const bundle = normalizeTacticalProject(rawProject);
+    documentStore.getState().loadProject(bundle.project);
+    sessionStore.getState().resetSession({
+      activePhaseId: bundle.activePhaseId,
+      activeSlideId: bundle.activeSlideId,
+    });
   };
 
   return (
@@ -130,7 +158,9 @@ export function TopBarMoreMenu() {
 
         <MoreMenuPitchSection
           isImageBackground={isImageBackground}
-          onRestoreDefaultPitch={restoreDefaultPitch}
+          onRestoreDefaultPitch={() =>
+            dispatch({ type: 'RESTORE_DEFAULT_PITCH', phaseId: activePhaseId })
+          }
           onImportClick={() => fileInputRef.current?.click()}
           onClose={() => setIsOpen(false)}
         />
@@ -138,7 +168,7 @@ export function TopBarMoreMenu() {
         <DropdownMenuSeparator />
 
         <MoreMenuPresetsSection
-          onLoadProject={loadProject}
+          onLoadProject={handleLoadPreset}
           onClose={() => setIsOpen(false)}
         />
       </DropdownMenuContent>

@@ -28,17 +28,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/menu';
 import {
-  selectActivePhaseAspectRatio,
-  selectActivePhaseBoundaryBox,
-} from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+  selectDomainActiveBoundaryBox,
+  selectDomainActivePhaseAspectRatio,
+} from '@/features/tactical-unified/stores/domain-selectors';
 import {
-  ASPECT_RATIOS,
-  type AspectRatio,
-  type BoundaryBox,
-  X_MEDIA_PRESETS,
-  type XMediaPresetKey,
-} from '@/lib/types/tactical-unified';
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import type {
+  AspectRatio,
+  XMediaPresetKey,
+} from '@/lib/types/tactical/primitives';
+import { type BoundaryBox, X_MEDIA_PRESETS } from '@/lib/types/tactical/slide';
 
 interface PresetItem {
   id: XMediaPresetKey | 'pitch_fit';
@@ -113,28 +114,30 @@ function detectActivePreset(
 export function XMediaPresetMenu() {
   const [isOpen, setIsOpen] = useState(false);
 
-  const applyXMediaPreset = useTacticalUnifiedStoreContext(
-    (s) => s.applyXMediaPreset,
-  );
-  const activePhaseId = useTacticalUnifiedStoreContext((s) => s.activePhaseId);
-  const project = useTacticalUnifiedStoreContext((s) => s.project);
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const project = useDocumentStore((s) => s.project);
 
-  const activeBoundaryBox = selectActivePhaseBoundaryBox({
+  const activeBoundaryBox = selectDomainActiveBoundaryBox(
     project,
     activePhaseId,
-  });
-  const activeAspect = selectActivePhaseAspectRatio({
+  );
+  const activeAspect = selectDomainActivePhaseAspectRatio(
     project,
     activePhaseId,
-  });
+  );
   const activePresetKey = detectActivePreset(activeBoundaryBox, activeAspect);
 
   const handleSelectPreset = useCallback(
     (presetKey: XMediaPresetKey | 'pitch_fit') => {
-      applyXMediaPreset(presetKey);
+      dispatch({
+        type: 'APPLY_X_MEDIA_PRESET',
+        phaseId: activePhaseId,
+        presetKey,
+      });
       setIsOpen(false);
     },
-    [applyXMediaPreset],
+    [dispatch, activePhaseId],
   );
 
   useEffect(() => {

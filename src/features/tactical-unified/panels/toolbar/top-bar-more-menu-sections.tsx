@@ -12,7 +12,6 @@ import {
   createSixSlideBenchmarkProject,
   createTenSlideFullSequenceBenchmarkProject,
 } from '@/lib/tactical/benchmark-presets';
-import type { TacticalProject } from '@/lib/types/tactical-unified';
 
 export interface PitchSectionProps {
   isImageBackground: boolean;
@@ -64,7 +63,7 @@ export function MoreMenuPitchSection({
 }
 
 export interface PresetsSectionProps {
-  onLoadProject: (project: TacticalProject) => void;
+  onLoadProject: (project: unknown) => void;
   onClose: () => void;
 }
 

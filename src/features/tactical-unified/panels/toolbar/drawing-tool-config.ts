@@ -5,7 +5,7 @@
 
 import type React from 'react';
 import { getDrawingTools } from '@/features/tactical-unified/core/components/toolbar';
-import type { DrawingTool } from '@/lib/types/tactical-unified';
+import type { DrawingTool } from '@/lib/types/tactical/project';
 
 export const PRIMARY_TOOLS: {
   tool: DrawingTool;

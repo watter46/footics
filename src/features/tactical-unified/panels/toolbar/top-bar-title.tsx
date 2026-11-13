@@ -10,15 +10,18 @@ import {
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 
 export function TopBarTitle() {
-  const projectTitle = useTacticalUnifiedStoreContext(
+  const projectTitle = useDocumentStore(
     (s) => s.project.title || 'Untitled Project',
   );
-  const setTitle = useTacticalUnifiedStoreContext((s) => s.setTitle);
-  const saveStatus = useTacticalUnifiedStoreContext((s) => s.saveStatus);
-  const openProjectManagerModal = useTacticalUnifiedStoreContext(
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const saveStatus = useSessionStore((s) => s.saveStatus);
+  const openProjectManagerModal = useSessionStore(
     (s) => s.openProjectManagerModal,
   );
 
@@ -36,7 +39,7 @@ export function TopBarTitle() {
 
   const handleSaveTitle = () => {
     const trimmed = tempTitle.trim() || 'Untitled Project';
-    setTitle(trimmed);
+    dispatch({ type: 'UPDATE_PROJECT_META', patch: { title: trimmed } });
     setIsEditingTitle(false);
   };
 
