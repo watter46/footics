@@ -6,18 +6,22 @@
  */
 
 import { Pause, Play } from 'lucide-react';
-import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { selectDomainActivePhaseSlides } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  usePlaybackStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { resolvePlaybackDurationMs } from '@/lib/tactical/unified-interpolation';
 
 export function PlaybackControls() {
-  const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
-  const isPlaying = useTacticalUnifiedStoreContext((s) => s.isPlaying);
-  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
-  const togglePlayback = useTacticalUnifiedStoreContext(
-    (s) => s.togglePlayback,
-  );
+  const project = useDocumentStore((s) => s.project);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const workspaceMode = useSessionStore((s) => s.workspaceMode);
+  const isPlaying = usePlaybackStore((s) => s.isPlaying);
+  const togglePlayback = usePlaybackStore((s) => s.togglePlayback);
+  const slides = selectDomainActivePhaseSlides(project, activePhaseId);
 
   const activeIndex = slides.findIndex((sl) => sl.id === activeSlideId);
   const currentIndex = activeIndex === -1 ? 0 : activeIndex;
@@ -36,7 +40,7 @@ export function PlaybackControls() {
           togglePlayback();
         }}
         className={[
-          'flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-bold transition-all select-none active:scale-95',
+          'flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-bold transition-all select-none active:scale-95 focus:outline-none',
           slides.length === 0
             ? 'opacity-40 cursor-not-allowed bg-zinc-800 text-zinc-500'
             : isPlaying

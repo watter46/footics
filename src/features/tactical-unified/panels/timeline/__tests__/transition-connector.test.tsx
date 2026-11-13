@@ -1,26 +1,38 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Slide } from '@/lib/types/tactical-unified';
+import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import { TransitionConnector } from '../transition-connector';
 
-function createMockSlide(overrides?: Partial<Slide>): Slide {
+function renderWithProvider(ui: ReactNode) {
+  return render(<TacticalStoreProvider>{ui}</TacticalStoreProvider>);
+}
+
+function createMockSlide(overrides?: Partial<DomainSlide>): DomainSlide {
   return {
     id: 'mock-slide-2',
     index: 1,
     label: 'Scene 2',
     players: [],
-    drawings: [],
+    arrows: [],
+    zones: [],
+    texts: [],
+    ball: { x: clampToScreenNorm(50), y: clampToScreenNorm(50), visible: true },
     transitionDurationMs: 1500,
     pauseMs: 500,
     easing: 'ease-in-out',
     ...overrides,
-  } as Slide;
+  };
 }
 
 describe('TransitionConnector Component', () => {
   it('秒数表示（durationSec）が「1.5s」形式で正しくレンダリングされること', () => {
     const slide = createMockSlide({ transitionDurationMs: 1500 });
-    render(<TransitionConnector targetSlide={slide} targetIndex={1} />);
+    renderWithProvider(
+      <TransitionConnector targetSlide={slide} targetIndex={1} />,
+    );
 
     const button = screen.getByRole('button', {
       name: /Scene 2 トランジション: 1.5s/i,
@@ -31,7 +43,9 @@ describe('TransitionConnector Component', () => {
 
   it('クリックで SlideTransitionPopover が開くこと', () => {
     const slide = createMockSlide();
-    render(<TransitionConnector targetSlide={slide} targetIndex={1} />);
+    renderWithProvider(
+      <TransitionConnector targetSlide={slide} targetIndex={1} />,
+    );
 
     expect(
       screen.queryByRole('dialog', { name: /シーン トランジション設定/i }),
@@ -49,7 +63,9 @@ describe('TransitionConnector Component', () => {
 
   it('onPointerDown / onClick で stopPropagation が呼ばれること', () => {
     const slide = createMockSlide();
-    render(<TransitionConnector targetSlide={slide} targetIndex={1} />);
+    renderWithProvider(
+      <TransitionConnector targetSlide={slide} targetIndex={1} />,
+    );
 
     const button = screen.getByRole('button', {
       name: /Scene 2 トランジション/i,
@@ -72,13 +88,15 @@ describe('TransitionConnector Component', () => {
         cameraTransitionMode: 'slow',
         cameraDurationMs: 10000,
       });
-      render(<TransitionConnector targetSlide={slowSlide} targetIndex={1} />);
+      renderWithProvider(
+        <TransitionConnector targetSlide={slowSlide} targetIndex={1} />,
+      );
       expect(screen.queryByText(/CAM/)).toBeNull();
 
       const continuousSlide = createMockSlide({
         cameraTransitionMode: 'continuous',
       });
-      render(
+      renderWithProvider(
         <TransitionConnector targetSlide={continuousSlide} targetIndex={1} />,
       );
       expect(screen.queryByText(/CAM/)).toBeNull();
@@ -86,7 +104,9 @@ describe('TransitionConnector Component', () => {
       const cutSlide = createMockSlide({
         cameraTransitionMode: 'cut',
       });
-      render(<TransitionConnector targetSlide={cutSlide} targetIndex={1} />);
+      renderWithProvider(
+        <TransitionConnector targetSlide={cutSlide} targetIndex={1} />,
+      );
       expect(screen.queryByText(/CAM/)).toBeNull();
     });
   });

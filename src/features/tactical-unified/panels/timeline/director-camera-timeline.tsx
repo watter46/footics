@@ -1,40 +1,30 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { selectDomainActivePhase } from '@/features/tactical-unified/stores/domain-selectors';
 import {
-  selectActivePhase,
-  selectActivePhaseSlides,
-} from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+  useDocumentStore,
+  usePlaybackStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { calculateUnifiedTotalDuration } from '@/lib/tactical/unified-interpolation';
 import { DirectorActionTrack } from './director-action-track';
 import { DirectorGlobalTrack } from './director-global-track';
 
 export function DirectorCameraTimeline() {
-  const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
-  const activePhase = useTacticalUnifiedStoreContext(selectActivePhase);
-  const playbackSeekTimeMs = useTacticalUnifiedStoreContext(
-    (s) => s.playbackSeekTimeMs,
-  );
-  const seekTo = useTacticalUnifiedStoreContext((s) => s.seekTo);
-  const deleteGlobalCameraKeyframe = useTacticalUnifiedStoreContext(
-    (s) => s.deleteGlobalCameraKeyframe,
-  );
-  const deleteActionCameraCue = useTacticalUnifiedStoreContext(
-    (s) => s.deleteActionCameraCue,
-  );
-  const upsertActionCameraCue = useTacticalUnifiedStoreContext(
-    (s) => s.upsertActionCameraCue,
-  );
+  const project = useDocumentStore((s) => s.project);
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const timeMs = usePlaybackStore((s) => s.timeMs);
+  const seekTo = usePlaybackStore((s) => s.seekTo);
+  const activePhase = selectDomainActivePhase(project, activePhaseId);
+  const slides = activePhase?.slides ?? [];
 
   const [selectedGlobalId, setSelectedGlobalId] = useState<string | null>(null);
   const [selectedCueId, setSelectedCueId] = useState<string | null>(null);
 
   const totalDurationMs = Math.max(1000, calculateUnifiedTotalDuration(slides));
-  const currentTimeMs = Math.min(
-    totalDurationMs,
-    Math.max(0, playbackSeekTimeMs ?? 0),
-  );
+  const currentTimeMs = Math.min(totalDurationMs, Math.max(0, Number(timeMs)));
   const directorCamera = activePhase?.directorCamera;
   const globalKeyframes = directorCamera?.globalKeyframes ?? [];
   const actionCues = directorCamera?.actionCues ?? [];
@@ -57,9 +47,37 @@ export function DirectorCameraTimeline() {
 
   const handleUpdateCueDuration = useCallback(
     (cue: (typeof actionCues)[number], durationMs: number) => {
-      upsertActionCameraCue(cue.startTimeMs, { durationMs }, cue.id);
+      dispatch({
+        type: 'UPSERT_ACTION_CAMERA_CUE',
+        phaseId: activePhaseId,
+        startTimeMs: cue.startTimeMs,
+        patch: { durationMs },
+        cueId: cue.id,
+      });
     },
-    [upsertActionCameraCue],
+    [dispatch, activePhaseId],
+  );
+
+  const handleDeleteKeyframe = useCallback(
+    (keyframeId: string) => {
+      dispatch({
+        type: 'DELETE_GLOBAL_CAMERA_KEYFRAME',
+        phaseId: activePhaseId,
+        keyframeId,
+      });
+    },
+    [dispatch, activePhaseId],
+  );
+
+  const handleDeleteCue = useCallback(
+    (cueId: string) => {
+      dispatch({
+        type: 'DELETE_ACTION_CAMERA_CUE',
+        phaseId: activePhaseId,
+        cueId,
+      });
+    },
+    [dispatch, activePhaseId],
   );
 
   return (
@@ -97,7 +115,7 @@ export function DirectorCameraTimeline() {
         totalDurationMs={totalDurationMs}
         currentTimeMs={currentTimeMs}
         onSelectKeyframe={handleSelectKeyframe}
-        onDeleteKeyframe={deleteGlobalCameraKeyframe}
+        onDeleteKeyframe={handleDeleteKeyframe}
       />
 
       {/* 下段: ② アクションカメラトラック */}
@@ -108,7 +126,7 @@ export function DirectorCameraTimeline() {
         currentTimeMs={currentTimeMs}
         onSelectCue={handleSelectCue}
         onUpdateDuration={handleUpdateCueDuration}
-        onDeleteCue={deleteActionCameraCue}
+        onDeleteCue={handleDeleteCue}
         onSeek={seekTo}
       />
     </div>

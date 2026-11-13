@@ -2,7 +2,7 @@
 
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import type { GlobalCameraKeyframe } from '@/lib/types/tactical-unified';
+import type { GlobalCameraKeyframe } from '@/lib/types/tactical/project';
 
 export interface DirectorGlobalTrackProps {
   globalKeyframes: GlobalCameraKeyframe[];

@@ -10,13 +10,13 @@ import { CSS } from '@dnd-kit/utilities';
 import { Layers, Pause } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useRef, useState } from 'react';
-import type { Slide } from '@/lib/types/tactical-unified';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import { SlideCardActions } from './slide-card-actions';
 import { SlideContextMenu } from './slide-context-menu';
 import { SlideTransitionPopover } from './slide-transition-popover';
 
 export interface SlideCardProps {
-  slide: Slide;
+  slide: DomainSlide;
   index: number;
   isActive: boolean;
   isPlaybackActive?: boolean;
@@ -224,7 +224,7 @@ export function SlideCardOverlay({
   slide,
   index,
 }: {
-  slide: Slide;
+  slide: DomainSlide;
   index: number;
 }) {
   const pauseSec = (slide.pauseMs ?? 500) / 1000;

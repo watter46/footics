@@ -1,37 +1,62 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import type { ReactNode } from 'react';
+import { describe, expect, it } from 'vitest';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import {
-  DirectorActionTrack,
-  layoutActionCuesIntoLanes,
-} from '../director-action-track';
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { layoutActionCuesIntoLanes } from '../director-action-track';
 import { DirectorCameraTimeline } from '../director-camera-timeline';
 import { TimelineBar } from '../timeline-bar';
 
-describe('DirectorCameraTimeline Component', () => {
-  beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
-    useTacticalUnifiedStore.getState().stopPlayback();
-    useTacticalUnifiedStore.getState().setWorkspaceMode('director');
-    // シーンを複数追加して totalDurationMs を確保 (例: 3シーンで 1000 + 500 + 1000 + 500 = 3000ms等)
-    const addSlide = useTacticalUnifiedStore.getState().addSlide;
-    addSlide();
-    addSlide();
+function setupDirectorStores(workspaceMode: 'board' | 'director' = 'director') {
+  const project = createDefaultTacticalProject();
+  const phaseId = project.phases[0]!.id;
+  const slideId = project.phases[0]!.slides[0]!.id;
+  const docStore = createDocumentStore(project);
+  docStore.getState().dispatch({ type: 'ADD_SLIDE', phaseId });
+  docStore.getState().dispatch({ type: 'ADD_SLIDE', phaseId });
+  const sessStore = createSessionStore({
+    activePhaseId: phaseId,
+    activeSlideId: slideId,
+    workspaceMode,
   });
+  const playStore = createPlaybackStore();
+  const renderWithProvider = (ui: ReactNode) =>
+    render(
+      <TacticalStoreProvider
+        stores={{
+          documentStore: docStore,
+          sessionStore: sessStore,
+          playbackStore: playStore,
+        }}
+      >
+        {ui}
+      </TacticalStoreProvider>,
+    );
+  return { docStore, sessStore, playStore, phaseId, renderWithProvider };
+}
 
-  it('シークバー（director-scrubber-input）を value: 2000 に変更したとき、Store の playbackSeekTimeMs が 2000 に更新され、2.0s が表示されること', () => {
-    render(<DirectorCameraTimeline />);
+describe('DirectorCameraTimeline Component', () => {
+  it('シークバー（director-scrubber-input）を value: 2000 に変更したとき、PlaybackStore.timeMs が 2000 に更新され、2.0s が表示されること', () => {
+    const { playStore, renderWithProvider } = setupDirectorStores();
+    renderWithProvider(<DirectorCameraTimeline />);
 
     const scrubberInput = screen.getByTestId('director-scrubber-input');
     fireEvent.change(scrubberInput, { target: { value: '2000' } });
 
-    expect(useTacticalUnifiedStore.getState().playbackSeekTimeMs).toBe(2000);
-    const timeDisplay = screen.getByTestId('director-scrubber-time');
-    expect(timeDisplay.textContent).toBe('2.0s');
+    expect(playStore.getState().timeMs).toBe(2000);
+    expect(screen.getByTestId('director-scrubber-time').textContent).toBe(
+      '2.0s',
+    );
   });
 
   it('上段シークバー、中段全体トラック、下段アクショントラックのラベル幅がすべて w-14 で統一されていること', () => {
-    render(<DirectorCameraTimeline />);
+    const { renderWithProvider } = setupDirectorStores();
+    renderWithProvider(<DirectorCameraTimeline />);
 
     const scrubberTime = screen.getByTestId('director-scrubber-time');
     expect(scrubberTime.className).toContain('w-14');
@@ -44,31 +69,35 @@ describe('DirectorCameraTimeline Component', () => {
   });
 
   it('重複する2つのアクションCueがあるとき、サブレーンが2段生成され、各ブロックが異なる縦位置にレンダリングされること', () => {
-    const store = useTacticalUnifiedStore.getState();
-    store.upsertActionCameraCue(
-      1000,
-      {
+    const { docStore, phaseId, renderWithProvider } = setupDirectorStores();
+    docStore.getState().dispatch({
+      type: 'UPSERT_ACTION_CAMERA_CUE',
+      phaseId,
+      startTimeMs: 1000,
+      patch: {
         durationMs: 2000,
         zoom: 1.5,
         panX: 0,
         panY: 0,
         autoReturn: false,
       },
-      'cue-overlap-1',
-    );
-    store.upsertActionCameraCue(
-      2000,
-      {
+      cueId: 'cue-overlap-1',
+    });
+    docStore.getState().dispatch({
+      type: 'UPSERT_ACTION_CAMERA_CUE',
+      phaseId,
+      startTimeMs: 2000,
+      patch: {
         durationMs: 1000,
         zoom: 2.0,
         panX: 0,
         panY: 0,
         autoReturn: false,
       },
-      'cue-overlap-2',
-    );
+      cueId: 'cue-overlap-2',
+    });
 
-    render(<DirectorCameraTimeline />);
+    renderWithProvider(<DirectorCameraTimeline />);
 
     const sublane0 = screen.getByTestId('action-sublane-0');
     const sublane1 = screen.getByTestId('action-sublane-1');
@@ -76,8 +105,7 @@ describe('DirectorCameraTimeline Component', () => {
     expect(sublane1).toBeDefined();
 
     const cues =
-      useTacticalUnifiedStore.getState().project.phases[0]?.directorCamera
-        ?.actionCues ?? [];
+      docStore.getState().project.phases[0]?.directorCamera?.actionCues ?? [];
     expect(cues.length).toBe(2);
 
     const block1 = screen.getByTestId(`action-cue-block-${cues[0].id}`);
@@ -88,34 +116,36 @@ describe('DirectorCameraTimeline Component', () => {
   });
 
   it('workspaceMode === "director" のとき、右側の一括設定ボタンとショートカットヒントが非表示になっていること', () => {
-    act(() => {
-      useTacticalUnifiedStore.getState().setWorkspaceMode('director');
-    });
-    const { rerender } = render(<TimelineBar />);
+    const { sessStore, renderWithProvider } = setupDirectorStores('director');
+    renderWithProvider(<TimelineBar />);
 
     expect(screen.queryByRole('button', { name: '一括設定' })).toBeNull();
     expect(screen.queryByText('L-Click')).toBeNull();
 
     act(() => {
-      useTacticalUnifiedStore.getState().setWorkspaceMode('board');
+      sessStore.getState().setWorkspaceMode('board');
     });
-    rerender(<TimelineBar />);
 
     expect(screen.getByRole('button', { name: '一括設定' })).toBeDefined();
     expect(screen.getByText('L-Click')).toBeDefined();
   });
 
   it('全体ピン（◆）をクリックしたとき、削除ポップオーバーが表示され、削除ボタン押下で deleteGlobalCameraKeyframe が呼ばれること', () => {
-    const store = useTacticalUnifiedStore.getState();
-    store.upsertGlobalCameraKeyframe(1000, { tilt: 30, yaw: 45 });
+    const { docStore, phaseId, renderWithProvider } = setupDirectorStores();
+    docStore.getState().dispatch({
+      type: 'UPSERT_GLOBAL_CAMERA_KEYFRAME',
+      phaseId,
+      timeMs: 1000,
+      patch: { tilt: 30, yaw: 45 },
+    });
     const kfs =
-      useTacticalUnifiedStore.getState().project.phases[0]?.directorCamera
-        ?.globalKeyframes ?? [];
+      docStore.getState().project.phases[0]?.directorCamera?.globalKeyframes ??
+      [];
     const kf = kfs.find((k) => k.timeMs === 1000)!;
     expect(kf).toBeDefined();
     const kfId = kf.id;
 
-    render(<DirectorCameraTimeline />);
+    renderWithProvider(<DirectorCameraTimeline />);
 
     const pin = screen.getByTestId(`global-kf-pin-${kfId}`);
     fireEvent.click(pin);
@@ -128,25 +158,27 @@ describe('DirectorCameraTimeline Component', () => {
     fireEvent.click(deleteBtn);
 
     const afterKfs =
-      useTacticalUnifiedStore.getState().project.phases[0]?.directorCamera
-        ?.globalKeyframes ?? [];
+      docStore.getState().project.phases[0]?.directorCamera?.globalKeyframes ??
+      [];
     expect(afterKfs.find((k) => k.id === kfId)).toBeUndefined();
   });
 
   it('アクションCueをクリックしたとき、削除ポップオーバーが表示され、削除ボタン押下で deleteActionCameraCue が呼ばれること', () => {
-    const store = useTacticalUnifiedStore.getState();
-    store.upsertActionCameraCue(
-      1000,
-      {
+    const { docStore, phaseId, renderWithProvider } = setupDirectorStores();
+    docStore.getState().dispatch({
+      type: 'UPSERT_ACTION_CAMERA_CUE',
+      phaseId,
+      startTimeMs: 1000,
+      patch: {
         durationMs: 1500,
         zoom: 2.0,
         panX: 0,
         panY: 0,
       },
-      'cue-test-del',
-    );
+      cueId: 'cue-test-del',
+    });
 
-    render(<DirectorCameraTimeline />);
+    renderWithProvider(<DirectorCameraTimeline />);
 
     const cueBlock = screen.getByTestId('action-cue-block-cue-test-del');
     fireEvent.click(cueBlock);
@@ -160,25 +192,27 @@ describe('DirectorCameraTimeline Component', () => {
     fireEvent.click(deleteBtn);
 
     const cues =
-      useTacticalUnifiedStore.getState().project.phases[0]?.directorCamera
-        ?.actionCues ?? [];
+      docStore.getState().project.phases[0]?.directorCamera?.actionCues ?? [];
     expect(cues.find((c) => c.id === 'cue-test-del')).toBeUndefined();
   });
 
   it('アクションCueの右端リサイズハンドルをドラッグしたとき、durationMs が更新され seekTo が呼ばれること', () => {
-    const store = useTacticalUnifiedStore.getState();
-    store.upsertActionCameraCue(
-      1000,
-      {
+    const { docStore, playStore, phaseId, renderWithProvider } =
+      setupDirectorStores();
+    docStore.getState().dispatch({
+      type: 'UPSERT_ACTION_CAMERA_CUE',
+      phaseId,
+      startTimeMs: 1000,
+      patch: {
         durationMs: 1000,
         zoom: 2.0,
         panX: 0,
         panY: 0,
       },
-      'cue-test-resize',
-    );
+      cueId: 'cue-test-resize',
+    });
 
-    render(<DirectorCameraTimeline />);
+    renderWithProvider(<DirectorCameraTimeline />);
 
     const resizeHandle = screen.getByTestId(
       'action-cue-resize-handle-cue-test-resize',
@@ -205,19 +239,16 @@ describe('DirectorCameraTimeline Component', () => {
     fireEvent.pointerUp(window);
 
     const cues =
-      useTacticalUnifiedStore.getState().project.phases[0]?.directorCamera
-        ?.actionCues ?? [];
+      docStore.getState().project.phases[0]?.directorCamera?.actionCues ?? [];
     const cue = cues.find((c) => c.id === 'cue-test-resize');
     expect(cue?.durationMs).toBe(1300);
     // seekTo は cue.startTimeMs + newDurationMs = 1000 + 1300 = 2300 に追従
-    expect(useTacticalUnifiedStore.getState().playbackSeekTimeMs).toBe(2300);
+    expect(playStore.getState().timeMs).toBe(2300);
   });
 
   it('workspaceMode === "director" のとき、TimelineBar 内のディレクターコンテナに max-w-6xl が適用されていること', () => {
-    act(() => {
-      useTacticalUnifiedStore.getState().setWorkspaceMode('director');
-    });
-    render(<TimelineBar />);
+    const { renderWithProvider } = setupDirectorStores('director');
+    renderWithProvider(<TimelineBar />);
 
     const timeline = screen.getByTestId('director-camera-timeline');
     const container = timeline.parentElement;

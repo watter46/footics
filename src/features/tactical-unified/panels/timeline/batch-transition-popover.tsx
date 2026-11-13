@@ -15,9 +15,12 @@ import {
 import { Clock, Pause, Sliders, X } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import type { Easing } from '@/lib/types/tactical-unified';
+import { selectDomainActivePhaseSlides } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { Easing } from '@/lib/types/tactical/slide';
 
 export interface BatchTransitionPopoverProps {
   isOpen: boolean;
@@ -37,10 +40,10 @@ export function BatchTransitionPopover({
   onClose,
   referenceElement,
 }: BatchTransitionPopoverProps) {
-  const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
-  const updateAllSlideTransitions = useTacticalUnifiedStoreContext(
-    (s) => s.updateAllSlideTransitions,
-  );
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const project = useDocumentStore((s) => s.project);
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const slides = selectDomainActivePhaseSlides(project, activePhaseId);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const { refs, floatingStyles } = useFloating({
@@ -92,8 +95,9 @@ export function BatchTransitionPopover({
   const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number.parseFloat(e.target.value);
     if (!Number.isNaN(val)) {
-      updateAllSlideTransitions({
-        transitionDurationMs: Math.round(val * 1000),
+      dispatch({
+        type: 'UPDATE_ALL_SLIDE_TRANSITIONS',
+        patch: { transitionDurationMs: Math.round(val * 1000) },
       });
     }
   };
@@ -101,15 +105,17 @@ export function BatchTransitionPopover({
   const handlePauseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number.parseFloat(e.target.value);
     if (!Number.isNaN(val)) {
-      updateAllSlideTransitions({
-        pauseMs: Math.round(val * 1000),
+      dispatch({
+        type: 'UPDATE_ALL_SLIDE_TRANSITIONS',
+        patch: { pauseMs: Math.round(val * 1000) },
       });
     }
   };
 
   const handleEasingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    updateAllSlideTransitions({
-      easing: e.target.value as Easing,
+    dispatch({
+      type: 'UPDATE_ALL_SLIDE_TRANSITIONS',
+      patch: { easing: e.target.value as Easing },
     });
   };
 

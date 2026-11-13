@@ -7,11 +7,11 @@
 
 import type React from 'react';
 import { useState } from 'react';
-import type { Slide } from '@/lib/types/tactical-unified';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import { SlideTransitionPopover } from './slide-transition-popover';
 
 export interface TransitionConnectorProps {
-  targetSlide: Slide;
+  targetSlide: DomainSlide;
   targetIndex: number;
   isPlaybackActive?: boolean;
 }

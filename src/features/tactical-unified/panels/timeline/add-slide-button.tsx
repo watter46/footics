@@ -19,23 +19,40 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/menu';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 
 const ITEM_CLASS = 'items-start gap-2 px-2 py-2';
 
 export function AddSlideButton() {
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
-  const addSlide = useTacticalUnifiedStoreContext((s) => s.addSlide);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const setActiveSlideId = useSessionStore((s) => s.setActiveSlideId);
+  const dispatch = useDocumentStore((s) => s.dispatch);
+
+  const handleAddSlide = (mode: 'blank' | 'full' | 'object-free') => {
+    const newSlideId = crypto.randomUUID();
+    dispatch({
+      type: 'ADD_SLIDE',
+      phaseId: activePhaseId,
+      afterSlideId: activeSlideId || undefined,
+      mode,
+      newSlideId,
+    });
+    setActiveSlideId(newSlideId);
+  };
 
   const handleLeftClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    addSlide(activeSlideId, 'blank');
+    handleAddSlide('blank');
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addSlide(activeSlideId, 'full');
+    handleAddSlide('full');
   };
 
   return (
@@ -77,7 +94,7 @@ export function AddSlideButton() {
               <DropdownMenuLabel>Add New Scene</DropdownMenuLabel>
               <DropdownMenuItem
                 className={ITEM_CLASS}
-                onClick={() => addSlide(activeSlideId, 'blank')}
+                onClick={() => handleAddSlide('blank')}
               >
                 <SquareDashed
                   size={14}
@@ -94,7 +111,7 @@ export function AddSlideButton() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 className={ITEM_CLASS}
-                onClick={() => addSlide(activeSlideId, 'full')}
+                onClick={() => handleAddSlide('full')}
               >
                 <Copy size={14} className="text-[#60A5FA] mt-0.5 shrink-0" />
                 <div>
@@ -108,7 +125,7 @@ export function AddSlideButton() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 className={ITEM_CLASS}
-                onClick={() => addSlide(activeSlideId, 'object-free')}
+                onClick={() => handleAddSlide('object-free')}
               >
                 <Sparkles
                   size={14}

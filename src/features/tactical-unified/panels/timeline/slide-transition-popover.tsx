@@ -15,11 +15,15 @@ import {
 import { Clock, Pause, Sliders, X } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import type { Easing, Slide } from '@/lib/types/tactical-unified';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+import type { Easing } from '@/lib/types/tactical/slide';
 
 export interface SlideTransitionPopoverProps {
-  slide: Slide;
+  slide: DomainSlide;
   index: number;
   isOpen: boolean;
   onClose: () => void;
@@ -40,9 +44,8 @@ export function SlideTransitionPopover({
   onClose,
   referenceElement,
 }: SlideTransitionPopoverProps) {
-  const updateSlideTransition = useTacticalUnifiedStoreContext(
-    (s) => s.updateSlideTransition,
-  );
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const { refs, floatingStyles } = useFloating({
@@ -92,8 +95,9 @@ export function SlideTransitionPopover({
   const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number.parseFloat(e.target.value);
     if (!Number.isNaN(val)) {
-      updateSlideTransition(slide.id, {
-        transitionDurationMs: Math.round(val * 1000),
+      dispatchSlide(activePhaseId, slide.id, {
+        type: 'UPDATE_SLIDE_META',
+        patch: { transitionDurationMs: Math.round(val * 1000) },
       });
     }
   };
@@ -101,15 +105,17 @@ export function SlideTransitionPopover({
   const handlePauseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number.parseFloat(e.target.value);
     if (!Number.isNaN(val)) {
-      updateSlideTransition(slide.id, {
-        pauseMs: Math.round(val * 1000),
+      dispatchSlide(activePhaseId, slide.id, {
+        type: 'UPDATE_SLIDE_META',
+        patch: { pauseMs: Math.round(val * 1000) },
       });
     }
   };
 
   const handleEasingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    updateSlideTransition(slide.id, {
-      easing: e.target.value as Easing,
+    dispatchSlide(activePhaseId, slide.id, {
+      type: 'UPDATE_SLIDE_META',
+      patch: { easing: e.target.value as Easing },
     });
   };
 

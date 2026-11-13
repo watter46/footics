@@ -1,14 +1,7 @@
 'use client';
 
 /**
- * timeline-bar.tsx
- * Professional Bottom Timeline Bar for Unified Tactical Canvas
- *
- * Features:
- *   - Playback controller (Play/Pause, Scene counter, Total duration)
- *   - Scene thumbnail strip with quick reordering, duplication & deletion
- *   - Add Scene button with Left-click (Object-free) & Right-click (Full Duplicate)
- *   - Keyboard shortcut hint
+ * timeline-bar.tsx — Bottom Timeline Bar for Unified Tactical Canvas
  */
 
 import {
@@ -32,8 +25,12 @@ import { Sliders } from 'lucide-react';
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { ActionButton } from '@/components/ui/action-button';
 import { getSlideSnapTime } from '@/features/tactical-unified/hooks/tactical-playback-controls';
-import { selectActivePhaseSlides } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { selectDomainActivePhaseSlides } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  usePlaybackStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { AddSlideButton } from './add-slide-button';
 import { BatchTransitionPopover } from './batch-transition-popover';
 import { DirectorCameraTimeline } from './director-camera-timeline';
@@ -43,28 +40,59 @@ import { TransitionConnector } from './transition-connector';
 import { useTimelineScroll } from './use-timeline-scroll';
 
 export function TimelineBar() {
-  const slides = useTacticalUnifiedStoreContext(selectActivePhaseSlides);
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
-  const isPlaying = useTacticalUnifiedStoreContext((s) => s.isPlaying);
-  const playbackSlideIndex = useTacticalUnifiedStoreContext(
-    (s) => s.playbackSlideIndex,
-  );
-  const playbackTransitionIndex = useTacticalUnifiedStoreContext(
+  const project = useDocumentStore((s) => s.project);
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const setActiveSlideId = useSessionStore((s) => s.setActiveSlideId);
+  const workspaceMode = useSessionStore((s) => s.workspaceMode);
+  const isPlaying = usePlaybackStore((s) => s.isPlaying);
+  const playbackSlideIndex = usePlaybackStore((s) => s.playbackSlideIndex);
+  const playbackTransitionIndex = usePlaybackStore(
     (s) => s.playbackTransitionIndex,
   );
-  const setActiveSlide = useTacticalUnifiedStoreContext(
-    (s) => s.setActiveSlide,
+  const setPlaybackIndices = usePlaybackStore((s) => s.setPlaybackIndices);
+  const seekTo = usePlaybackStore((s) => s.seekTo);
+  const slides = selectDomainActivePhaseSlides(project, activePhaseId);
+
+  const reorderSlides = useCallback(
+    (orderedSlideIds: string[]) => {
+      dispatch({
+        type: 'REORDER_SLIDES',
+        phaseId: activePhaseId,
+        orderedSlideIds,
+      });
+    },
+    [dispatch, activePhaseId],
   );
-  const setPlaybackIndices = useTacticalUnifiedStoreContext(
-    (s) => s.setPlaybackIndices,
+
+  const handleDeleteSlide = useCallback(
+    (slideId: string) => {
+      const remaining = slides.filter((s) => s.id !== slideId);
+      const deletedIdx = slides.findIndex((s) => s.id === slideId);
+      dispatch({ type: 'DELETE_SLIDE', phaseId: activePhaseId, slideId });
+      if (activeSlideId === slideId && remaining.length > 0) {
+        const nextSlide =
+          remaining[Math.max(0, deletedIdx - 1)] ?? remaining[0];
+        if (nextSlide) setActiveSlideId(nextSlide.id);
+      }
+    },
+    [slides, dispatch, activePhaseId, activeSlideId, setActiveSlideId],
   );
-  const seekTo = useTacticalUnifiedStoreContext((s) => s.seekTo);
-  const deleteSlide = useTacticalUnifiedStoreContext((s) => s.deleteSlide);
-  const duplicateSlide = useTacticalUnifiedStoreContext(
-    (s) => s.duplicateSlide,
+
+  const handleDuplicateSlide = useCallback(
+    (slideId: string) => {
+      const newSlideId = crypto.randomUUID();
+      dispatch({
+        type: 'DUPLICATE_SLIDE',
+        phaseId: activePhaseId,
+        slideId,
+        newSlideId,
+      });
+      setActiveSlideId(newSlideId);
+    },
+    [dispatch, activePhaseId, setActiveSlideId],
   );
-  const reorderSlides = useTacticalUnifiedStoreContext((s) => s.reorderSlides);
-  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
@@ -73,17 +101,10 @@ export function TimelineBar() {
   );
 
   const { containerRef, isDragging, onWheel, onPointerDown } =
-    useTimelineScroll({
-      activeSlideId,
-      slideCount: slides.length,
-    });
+    useTimelineScroll({ activeSlideId, slideCount: slides.length });
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
-    }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
@@ -113,7 +134,7 @@ export function TimelineBar() {
       const newIndex = slides.findIndex((sl) => sl.id === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-        const newOrder = arrayMove(slides, oldIndex, newIndex);
+        const newOrder = arrayMove([...slides], oldIndex, newIndex);
         reorderSlides(newOrder.map((sl) => sl.id));
       }
     },
@@ -139,7 +160,7 @@ export function TimelineBar() {
 
   const handleSelectSlide = useCallback(
     (slideId: string) => {
-      setActiveSlide(slideId);
+      setActiveSlideId(slideId);
       const targetIndex = slides.findIndex((s) => s.id === slideId);
       if (targetIndex !== -1) {
         setPlaybackIndices(targetIndex, null);
@@ -147,7 +168,7 @@ export function TimelineBar() {
         seekTo(startTimeMs);
       }
     },
-    [slides, setActiveSlide, setPlaybackIndices, seekTo],
+    [slides, setActiveSlideId, setPlaybackIndices, seekTo],
   );
 
   return (
@@ -156,14 +177,12 @@ export function TimelineBar() {
         workspaceMode === 'director' ? 'h-24' : 'h-16'
       } px-4 bg-[#121214] border-t border-white/[0.07] shrink-0 select-none z-10`}
     >
-      {/* Left: Playback Controls */}
       <div className="flex items-center gap-3 shrink-0">
         <PlaybackControls />
       </div>
 
       <div className="w-px h-7 bg-white/[0.07] mx-3 shrink-0" />
 
-      {/* Center: Director Timeline or Slide Strip with @dnd-kit horizontal sorting */}
       {workspaceMode === 'director' ? (
         <div className="flex-1 max-w-6xl mx-auto px-6 w-full flex items-center">
           <DirectorCameraTimeline />
@@ -209,8 +228,8 @@ export function TimelineBar() {
                     canMoveLeft={i > 0}
                     canMoveRight={i < slides.length - 1}
                     onSelect={handleSelectSlide}
-                    onDelete={deleteSlide}
-                    onDuplicate={duplicateSlide}
+                    onDelete={handleDeleteSlide}
+                    onDuplicate={handleDuplicateSlide}
                     onMoveLeft={() => handleMoveSlide(i, 'left')}
                     onMoveRight={() => handleMoveSlide(i, 'right')}
                   />
@@ -218,11 +237,9 @@ export function TimelineBar() {
               ))}
             </SortableContext>
 
-            {/* Add Scene Button */}
             <AddSlideButton />
           </div>
 
-          {/* Drag Overlay with visual card clone */}
           <DragOverlay>
             {activeDragSlide ? (
               <SlideCardOverlay
@@ -234,7 +251,6 @@ export function TimelineBar() {
         </DndContext>
       )}
 
-      {/* Right: Quick Action & Shortcut Guides */}
       {workspaceMode !== 'director' && (
         <div className="flex items-center gap-3 shrink-0">
           <ActionButton
@@ -272,7 +288,6 @@ export function TimelineBar() {
         </div>
       )}
 
-      {/* Batch Transition Popover */}
       <BatchTransitionPopover
         isOpen={isBatchOpen}
         onClose={() => setIsBatchOpen(false)}

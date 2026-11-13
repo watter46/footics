@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type {
   ActionCameraCue,
   GlobalCameraKeyframe,
-} from '@/lib/types/tactical-unified';
+} from '@/lib/types/tactical/project';
 import { DirectorActionTrack } from '../director-action-track';
 import { DirectorGlobalTrack } from '../director-global-track';
 

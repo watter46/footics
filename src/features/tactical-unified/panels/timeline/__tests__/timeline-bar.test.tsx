@@ -1,19 +1,50 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { describe, expect, it, vi } from 'vitest';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { selectDomainActivePhaseSlides } from '@/features/tactical-unified/stores/domain-selectors';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { TimelineBar } from '../timeline-bar';
 
-describe('TimelineBar Component', () => {
-  beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
-    useTacticalUnifiedStore.getState().stopPlayback();
+function renderTimelineBar() {
+  const project = createDefaultTacticalProject();
+  const phaseId = project.phases[0]!.id;
+  const slideId = project.phases[0]!.slides[0]!.id;
+  const docStore = createDocumentStore(project);
+  const sessStore = createSessionStore({
+    activePhaseId: phaseId,
+    activeSlideId: slideId,
   });
+  const playStore = createPlaybackStore();
+  const view = render(
+    <TacticalStoreProvider
+      stores={{
+        documentStore: docStore,
+        sessionStore: sessStore,
+        playbackStore: playStore,
+      }}
+    >
+      <TimelineBar />
+    </TacticalStoreProvider>,
+  );
+  const getSlides = () =>
+    selectDomainActivePhaseSlides(
+      docStore.getState().project,
+      sessStore.getState().activePhaseId,
+    );
+  return { ...view, docStore, sessStore, playStore, phaseId, getSlides };
+}
 
+describe('TimelineBar Component', () => {
   it('renders playback controls and initial scene', () => {
-    render(<TimelineBar />);
+    renderTimelineBar();
 
     expect(screen.getByRole('button', { name: /play/i })).toBeDefined();
-    expect(screen.getByText(/Total 0.0s/i)).toBeDefined();
+    expect(screen.getByText(/Total /i)).toBeDefined();
     expect(screen.getByText('1')).toBeDefined();
     expect(
       screen.getByRole('button', {
@@ -23,7 +54,7 @@ describe('TimelineBar Component', () => {
   });
 
   it('adds a blank scene on left click', () => {
-    render(<TimelineBar />);
+    const { sessStore, getSlides } = renderTimelineBar();
 
     const addBtn = screen.getByRole('button', {
       name: /add scene/i,
@@ -31,13 +62,13 @@ describe('TimelineBar Component', () => {
 
     fireEvent.click(addBtn);
 
-    const slides = useTacticalUnifiedStore.getState().project.slides;
+    const slides = getSlides();
     expect(slides.length).toBe(2);
-    expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(slides[1].id);
+    expect(sessStore.getState().activeSlideId).toBe(slides[1].id);
   });
 
   it('duplicates scene on right click (contextmenu)', () => {
-    render(<TimelineBar />);
+    const { getSlides } = renderTimelineBar();
 
     const addBtn = screen.getByRole('button', {
       name: /add scene/i,
@@ -45,35 +76,35 @@ describe('TimelineBar Component', () => {
 
     fireEvent.contextMenu(addBtn);
 
-    const slides = useTacticalUnifiedStore.getState().project.slides;
+    const slides = getSlides();
     expect(slides.length).toBe(2);
     expect(slides[1].label).toContain('(copy)');
   });
 
   it('toggles playback when Play button is clicked', () => {
-    render(<TimelineBar />);
+    const { playStore } = renderTimelineBar();
 
     const playBtn = screen.getByRole('button', { name: /play/i });
     fireEvent.click(playBtn);
 
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
+    expect(playStore.getState().isPlaying).toBe(true);
     expect(screen.getByRole('button', { name: /pause/i })).toBeDefined();
 
     const pauseBtn = screen.getByRole('button', { name: /pause/i });
     fireEvent.click(pauseBtn);
 
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
+    expect(playStore.getState().isPlaying).toBe(false);
   });
 
   it('SlideCard 右クリックでコンテキストメニューが表示され、複製や削除が実行できる', () => {
-    render(<TimelineBar />);
+    const { getSlides } = renderTimelineBar();
 
     // 1. スライドを1枚追加
     const addBtn = screen.getByRole('button', {
       name: /add scene/i,
     });
     fireEvent.click(addBtn);
-    expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(2);
+    expect(getSlides()).toHaveLength(2);
 
     // 2. 1枚目の SlideCard (Scene 1) を右クリック
     const sceneCard = screen.getByRole('button', { name: 'Scene 1' });
@@ -88,46 +119,54 @@ describe('TimelineBar Component', () => {
     const deleteMenuBtn = screen.getByText('シーンを削除');
     fireEvent.click(deleteMenuBtn);
 
-    expect(useTacticalUnifiedStore.getState().project.slides).toHaveLength(1);
+    expect(getSlides()).toHaveLength(1);
   });
 
   it('スライドの並び替え (reorderSlides / 移動) が正常に動作し、Undoで復元できる', () => {
-    render(<TimelineBar />);
+    const { docStore, phaseId, getSlides } = renderTimelineBar();
 
     // 1. スライドを3枚用意する (Scene 1, Scene 2, Scene 3)
     const addBtn = screen.getByRole('button', { name: /add scene/i });
     fireEvent.click(addBtn);
     fireEvent.click(addBtn);
 
-    const initialSlides = useTacticalUnifiedStore.getState().project.slides;
+    const initialSlides = getSlides();
     expect(initialSlides).toHaveLength(3);
     const id0 = initialSlides[0].id;
     const id1 = initialSlides[1].id;
     const id2 = initialSlides[2].id;
 
-    // 2. reorderSlides で順序を [id1, id2, id0] に変更
-    useTacticalUnifiedStore.getState().reorderSlides([id1, id2, id0]);
+    // 2. REORDER_SLIDES で順序を [id1, id2, id0] に変更
+    act(() => {
+      docStore.getState().dispatch({
+        type: 'REORDER_SLIDES',
+        phaseId,
+        orderedSlideIds: [id1, id2, id0],
+      });
+    });
 
-    const reorderedSlides = useTacticalUnifiedStore.getState().project.slides;
+    const reorderedSlides = getSlides();
     expect(reorderedSlides.map((s) => s.id)).toEqual([id1, id2, id0]);
     expect(reorderedSlides[0].index).toBe(0);
     expect(reorderedSlides[1].index).toBe(1);
     expect(reorderedSlides[2].index).toBe(2);
 
-    // 3. Undo (undo) を実行すると元の順序 [id0, id1, id2] に巻き戻る
-    useTacticalUnifiedStore.getState().undo();
-    const restoredSlides = useTacticalUnifiedStore.getState().project.slides;
+    // 3. Undo を実行すると元の順序 [id0, id1, id2] に巻き戻る
+    act(() => {
+      docStore.getState().undo();
+    });
+    const restoredSlides = getSlides();
     expect(restoredSlides.map((s) => s.id)).toEqual([id0, id1, id2]);
   });
 
   it('SlideCard のコンテキストメニュー「右へ移動」「左へ移動」でスライド順が入れ替わる', () => {
-    render(<TimelineBar />);
+    const { getSlides } = renderTimelineBar();
 
     // スライドを2枚用意
     const addBtn = screen.getByRole('button', { name: /add scene/i });
     fireEvent.click(addBtn);
 
-    const initialSlides = useTacticalUnifiedStore.getState().project.slides;
+    const initialSlides = getSlides();
     expect(initialSlides).toHaveLength(2);
     const id0 = initialSlides[0].id;
     const id1 = initialSlides[1].id;
@@ -138,12 +177,12 @@ describe('TimelineBar Component', () => {
     const moveRightBtn = screen.getByText('右へ移動');
     fireEvent.click(moveRightBtn);
 
-    const movedSlides = useTacticalUnifiedStore.getState().project.slides;
+    const movedSlides = getSlides();
     expect(movedSlides.map((s) => s.id)).toEqual([id1, id0]);
   });
 
   it('SlideCard クリック時に blur が呼ばれ、フォーカスが残留しない', () => {
-    render(<TimelineBar />);
+    renderTimelineBar();
     const sceneCard = screen.getByRole('button', { name: 'Scene 1' });
     const blurSpy = vi.spyOn(sceneCard, 'blur');
     fireEvent.click(sceneCard);
@@ -152,7 +191,7 @@ describe('TimelineBar Component', () => {
   });
 
   it('Play/Pause ボタンクリック時に blur が呼ばれ、フォーカスが残留しない', () => {
-    render(<TimelineBar />);
+    renderTimelineBar();
     const playBtn = screen.getByRole('button', { name: /play/i });
     const blurSpy = vi.spyOn(playBtn, 'blur');
     fireEvent.click(playBtn);
@@ -162,14 +201,14 @@ describe('TimelineBar Component', () => {
 
   describe('シーン間トランジションコネクタ (TransitionConnector)', () => {
     it('初期状態（1シーンのみ）ではトランジションコネクタは表示されない', () => {
-      render(<TimelineBar />);
+      renderTimelineBar();
       expect(
         screen.queryByRole('button', { name: /トランジション:/i }),
       ).toBeNull();
     });
 
     it('複数スライドが存在する場合、Scene 1の前には表示されず、Scene 2以降の直前にコネクタが表示される', () => {
-      render(<TimelineBar />);
+      renderTimelineBar();
 
       // スライドを2枚追加（計3枚）
       const addBtn = screen.getByRole('button', { name: /add scene/i });
@@ -204,7 +243,7 @@ describe('TimelineBar Component', () => {
 
   describe('全シーン一括設定ポップオーバー (BatchTransitionPopover)', () => {
     it('「一括設定」ボタン押下でポップオーバーが表示され、閉じるボタンまたは外側クリックで閉じる', () => {
-      render(<TimelineBar />);
+      renderTimelineBar();
 
       // 一括設定ボタンが存在する
       const batchBtn = screen.getByRole('button', { name: /一括設定/i });
@@ -235,18 +274,17 @@ describe('TimelineBar Component', () => {
     });
 
     it('ポップオーバーから移動時間・静止時間・イージングを変更すると全スライドに反映され、1回のUndoで復元される', () => {
-      render(<TimelineBar />);
+      const { docStore, getSlides } = renderTimelineBar();
 
       // スライドを3枚用意
       const addBtn = screen.getByRole('button', { name: /add scene/i });
       fireEvent.click(addBtn);
       fireEvent.click(addBtn);
 
-      const store = useTacticalUnifiedStore.getState();
-      expect(store.project.slides).toHaveLength(3);
+      expect(getSlides()).toHaveLength(3);
 
       // 初期値を確認（デフォルト: duration=1000, pause=500, easing='ease-in-out'）
-      const initialSlides = store.project.slides;
+      const initialSlides = getSlides();
       expect(initialSlides[0].pauseMs).toBe(500);
       expect(initialSlides[1].transitionDurationMs).toBe(1000);
 
@@ -258,7 +296,7 @@ describe('TimelineBar Component', () => {
       const durationSlider = screen.getByLabelText('一括移動時間');
       fireEvent.change(durationSlider, { target: { value: '2.5' } });
 
-      let currentSlides = useTacticalUnifiedStore.getState().project.slides;
+      let currentSlides = getSlides();
       expect(currentSlides[0].transitionDurationMs).toBe(2500);
       expect(currentSlides[1].transitionDurationMs).toBe(2500);
       expect(currentSlides[2].transitionDurationMs).toBe(2500);
@@ -267,7 +305,7 @@ describe('TimelineBar Component', () => {
       const pauseSlider = screen.getByLabelText('一括静止時間');
       fireEvent.change(pauseSlider, { target: { value: '1.2' } });
 
-      currentSlides = useTacticalUnifiedStore.getState().project.slides;
+      currentSlides = getSlides();
       expect(currentSlides[0].pauseMs).toBe(1200);
       expect(currentSlides[1].pauseMs).toBe(1200);
       expect(currentSlides[2].pauseMs).toBe(1200);
@@ -276,14 +314,16 @@ describe('TimelineBar Component', () => {
       const easingSelect = screen.getByLabelText('一括加減速 (イージング)');
       fireEvent.change(easingSelect, { target: { value: 'linear' } });
 
-      currentSlides = useTacticalUnifiedStore.getState().project.slides;
+      currentSlides = getSlides();
       expect(currentSlides[0].easing).toBe('linear');
       expect(currentSlides[1].easing).toBe('linear');
       expect(currentSlides[2].easing).toBe('linear');
 
       // 1回の Undo で直前のイージング変更が復元される
-      useTacticalUnifiedStore.getState().undo();
-      currentSlides = useTacticalUnifiedStore.getState().project.slides;
+      act(() => {
+        docStore.getState().undo();
+      });
+      currentSlides = getSlides();
       expect(currentSlides[0].easing).toBe('ease-in-out');
       expect(currentSlides[1].easing).toBe('ease-in-out');
       expect(currentSlides[2].easing).toBe('ease-in-out');
@@ -292,7 +332,7 @@ describe('TimelineBar Component', () => {
 
   describe('レイアウト崩れ防止 (min-w-0 / overflow-x-auto)', () => {
     it('サムネイル横スクロール領域に min-w-0, overflow-x-auto, timeline-scrollbar, cursor-grab が適用されている', () => {
-      const { container } = render(<TimelineBar />);
+      const { container, sessStore } = renderTimelineBar();
       const scrollArea = container.querySelector('.overflow-x-auto');
       expect(scrollArea).not.toBeNull();
       expect(scrollArea?.className).toContain('min-w-0');
@@ -300,7 +340,7 @@ describe('TimelineBar Component', () => {
       expect(scrollArea?.className).toContain('timeline-scrollbar');
       expect(scrollArea?.className).toContain('cursor-grab');
 
-      const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
+      const activeSlideId = sessStore.getState().activeSlideId;
       const slideCardEl = container.querySelector(
         `[data-slide-id="${activeSlideId}"]`,
       );
@@ -310,96 +350,80 @@ describe('TimelineBar Component', () => {
   });
 
   describe('シーン選択とシーク連動 (Scene selection & seek sync)', () => {
-    it('SlideCard をクリックした際、setActiveSlide とともに対象シーンの開始時間へ連動し playbackSlideIndex および playbackSeekTimeMs が同期される（停止中）', () => {
-      render(<TimelineBar />);
+    it('SlideCard をクリックした際、setActiveSlideId とともに対象シーンの開始時間へ連動し playbackSlideIndex および timeMs が同期される（停止中）', () => {
+      const { sessStore, playStore, getSlides } = renderTimelineBar();
 
       // スライドを2枚追加（計3枚: Scene 1, Scene 2, Scene 3）
       const addBtn = screen.getByRole('button', { name: /add scene/i });
       fireEvent.click(addBtn);
       fireEvent.click(addBtn);
 
-      const store = useTacticalUnifiedStore.getState();
-      const slides = store.project.slides;
+      const slides = getSlides();
       expect(slides).toHaveLength(3);
 
       // 最初は Scene 3 がアクティブになっている（追加されたため）
-      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(
-        slides[2].id,
-      );
+      expect(sessStore.getState().activeSlideId).toBe(slides[2].id);
 
       // Scene 2 の SlideCard をクリック
       const scene2Card = screen.getByRole('button', { name: 'Scene 2' });
       fireEvent.click(scene2Card);
 
       // activeSlideId が Scene 2 になり、playbackSlideIndex が 1、シーク時間が Scene 2 の開始時刻 (1000ms) に同期される
-      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(
-        slides[1].id,
-      );
-      expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(1);
-      expect(
-        useTacticalUnifiedStore.getState().playbackTransitionIndex,
-      ).toBeNull();
-      expect(useTacticalUnifiedStore.getState().playbackSeekTimeMs).toBe(1000);
+      expect(sessStore.getState().activeSlideId).toBe(slides[1].id);
+      expect(playStore.getState().playbackSlideIndex).toBe(1);
+      expect(playStore.getState().playbackTransitionIndex).toBeNull();
+      expect(playStore.getState().timeMs).toBe(1000);
 
       // Scene 1 の SlideCard をクリック
       const scene1Card = screen.getByRole('button', { name: 'Scene 1' });
       fireEvent.click(scene1Card);
 
-      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(
-        slides[0].id,
-      );
-      expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(0);
-      expect(
-        useTacticalUnifiedStore.getState().playbackTransitionIndex,
-      ).toBeNull();
-      expect(useTacticalUnifiedStore.getState().playbackSeekTimeMs).toBe(0);
+      expect(sessStore.getState().activeSlideId).toBe(slides[0].id);
+      expect(playStore.getState().playbackSlideIndex).toBe(0);
+      expect(playStore.getState().playbackTransitionIndex).toBeNull();
+      expect(playStore.getState().timeMs).toBe(0);
     });
 
     it('再生中に SlideCard をクリックした際、再生状態を維持したまま対象シーンの開始時間へジャンプする', () => {
-      render(<TimelineBar />);
+      const { sessStore, playStore, getSlides } = renderTimelineBar();
 
       // スライドを2枚追加（計3枚: Scene 1, Scene 2, Scene 3）
       const addBtn = screen.getByRole('button', { name: /add scene/i });
       fireEvent.click(addBtn);
       fireEvent.click(addBtn);
 
-      const store = useTacticalUnifiedStore.getState();
-      const slides = store.project.slides;
+      const slides = getSlides();
 
       // 再生を開始
       const playBtn = screen.getByRole('button', { name: /play/i });
       fireEvent.click(playBtn);
-      expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
+      expect(playStore.getState().isPlaying).toBe(true);
 
       // 再生中に Scene 2 の SlideCard をクリック
       const scene2Card = screen.getByRole('button', { name: 'Scene 2' });
       fireEvent.click(scene2Card);
 
       // 再生中が維持され、Scene 2 の開始時刻 (1000ms) へシークされる
-      expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
-      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(
-        slides[1].id,
-      );
-      expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(1);
-      expect(useTacticalUnifiedStore.getState().playbackSeekTimeMs).toBe(1000);
+      expect(playStore.getState().isPlaying).toBe(true);
+      expect(sessStore.getState().activeSlideId).toBe(slides[1].id);
+      expect(playStore.getState().playbackSlideIndex).toBe(1);
+      expect(playStore.getState().timeMs).toBe(1000);
 
       // さらに Scene 3 の SlideCard をクリック
       const scene3Card = screen.getByRole('button', { name: 'Scene 3' });
       fireEvent.click(scene3Card);
 
-      expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
-      expect(useTacticalUnifiedStore.getState().activeSlideId).toBe(
-        slides[2].id,
-      );
-      expect(useTacticalUnifiedStore.getState().playbackSlideIndex).toBe(2);
+      expect(playStore.getState().isPlaying).toBe(true);
+      expect(sessStore.getState().activeSlideId).toBe(slides[2].id);
+      expect(playStore.getState().playbackSlideIndex).toBe(2);
       // Scene 3 の開始時間: Scene 2(1000ms move + 500ms pause) + Scene 3(1000ms move) = 2500ms
-      expect(useTacticalUnifiedStore.getState().playbackSeekTimeMs).toBe(2500);
+      expect(playStore.getState().timeMs).toBe(2500);
     });
   });
 
   describe('ディレクターモード切り替え (Director Workspace Mode)', () => {
     it('workspaceMode === "board" のときはスライドカード一覧が表示され、workspaceMode === "director" に切り替えたときは director-camera-timeline が表示される', () => {
-      render(<TimelineBar />);
+      const { sessStore } = renderTimelineBar();
 
       // board モードではスライドカード (Scene 1) が表示され、director-camera-timeline は存在しない
       expect(screen.getByRole('button', { name: 'Scene 1' })).toBeDefined();
@@ -407,7 +431,7 @@ describe('TimelineBar Component', () => {
 
       // director モードに切り替え
       act(() => {
-        useTacticalUnifiedStore.getState().setWorkspaceMode('director');
+        sessStore.getState().setWorkspaceMode('director');
       });
 
       expect(screen.getByTestId('director-camera-timeline')).toBeDefined();

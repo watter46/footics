@@ -1,31 +1,59 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { createDefaultSlide, type Slide } from '@/lib/types/tactical-unified';
+import type { ReactNode } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  createDocumentStore,
+  type DocumentStore,
+} from '@/features/tactical-unified/stores/document-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import { BatchTransitionPopover } from '../batch-transition-popover';
 import { SlideCard } from '../slide-card';
 import { SlideCardActions } from '../slide-card-actions';
 import { SlideContextMenu } from '../slide-context-menu';
 import { SlideTransitionPopover } from '../slide-transition-popover';
 
-describe('SlideTransitionPopover Component', () => {
-  const dummySlide = {
-    ...createDefaultSlide(1, 'slide-2'),
+function createTestSetup() {
+  const base = createDefaultTacticalProject();
+  const phase = base.phases[0]!;
+  const slide1 = phase.slides[0]!;
+  const slide2: DomainSlide = {
+    ...slide1,
+    id: 'slide-2',
+    index: 1,
     label: 'Scene 2',
     transitionDurationMs: 1500,
     pauseMs: 800,
-    easing: 'ease-in-out' as const,
+    easing: 'ease-in-out',
   };
-
-  beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
+  const project = { ...base, phases: [{ ...phase, slides: [slide1, slide2] }] };
+  const docStore = createDocumentStore(project);
+  const sessStore = createSessionStore({
+    activePhaseId: phase.id,
+    activeSlideId: slide2.id,
   });
-
-  it('renders nothing when isOpen is false', () => {
-    const handleClose = vi.fn();
+  const renderWithProvider = (ui: ReactNode) =>
     render(
+      <TacticalStoreProvider
+        stores={{ documentStore: docStore, sessionStore: sessStore }}
+      >
+        {ui}
+      </TacticalStoreProvider>,
+    );
+  return { docStore, slide1, slide2, renderWithProvider };
+}
+
+describe('SlideTransitionPopover Component', () => {
+  it('renders nothing when isOpen is false', () => {
+    const { slide2, renderWithProvider } = createTestSetup();
+    const handleClose = vi.fn();
+    renderWithProvider(
       <SlideTransitionPopover
-        slide={dummySlide}
+        slide={slide2}
         index={1}
         isOpen={false}
         onClose={handleClose}
@@ -37,11 +65,12 @@ describe('SlideTransitionPopover Component', () => {
   });
 
   it('renders transition controls when isOpen is true', () => {
+    const { slide2, renderWithProvider } = createTestSetup();
     const handleClose = vi.fn();
     const anchor = document.createElement('div');
-    render(
+    renderWithProvider(
       <SlideTransitionPopover
-        slide={dummySlide}
+        slide={slide2}
         index={1}
         isOpen={true}
         onClose={handleClose}
@@ -56,15 +85,12 @@ describe('SlideTransitionPopover Component', () => {
   });
 
   it('updates transitionDurationMs and pauseMs on change', () => {
-    const updateSpy = vi.spyOn(
-      useTacticalUnifiedStore.getState(),
-      'updateSlideTransition',
-    );
+    const { docStore, slide2, renderWithProvider } = createTestSetup();
     const anchor = document.createElement('div');
 
-    render(
+    renderWithProvider(
       <SlideTransitionPopover
-        slide={dummySlide}
+        slide={slide2}
         index={1}
         isOpen={true}
         onClose={vi.fn()}
@@ -72,31 +98,28 @@ describe('SlideTransitionPopover Component', () => {
       />,
     );
 
-    const durationInput = screen.getByLabelText(/移動時間/i);
-    fireEvent.change(durationInput, { target: { value: '2.5' } });
-
-    expect(updateSpy).toHaveBeenCalledWith('slide-2', {
-      transitionDurationMs: 2500,
+    fireEvent.change(screen.getByLabelText(/移動時間/i), {
+      target: { value: '2.5' },
     });
+    expect(
+      docStore.getState().project.phases[0]?.slides[1]?.transitionDurationMs,
+    ).toBe(2500);
 
-    const pauseInput = screen.getByLabelText(/静止時間/i);
-    fireEvent.change(pauseInput, { target: { value: '1.2' } });
-
-    expect(updateSpy).toHaveBeenCalledWith('slide-2', {
-      pauseMs: 1200,
+    fireEvent.change(screen.getByLabelText(/静止時間/i), {
+      target: { value: '1.2' },
     });
+    expect(docStore.getState().project.phases[0]?.slides[1]?.pauseMs).toBe(
+      1200,
+    );
   });
 
   it('updates easing on change', () => {
-    const updateSpy = vi.spyOn(
-      useTacticalUnifiedStore.getState(),
-      'updateSlideTransition',
-    );
+    const { docStore, slide2, renderWithProvider } = createTestSetup();
     const anchor = document.createElement('div');
 
-    render(
+    renderWithProvider(
       <SlideTransitionPopover
-        slide={dummySlide}
+        slide={slide2}
         index={1}
         isOpen={true}
         onClose={vi.fn()}
@@ -104,26 +127,21 @@ describe('SlideTransitionPopover Component', () => {
       />,
     );
 
-    const easingSelect = screen.getByLabelText(/イージング|加減速/i);
-    fireEvent.change(easingSelect, { target: { value: 'linear' } });
-
-    expect(updateSpy).toHaveBeenCalledWith('slide-2', {
-      easing: 'linear',
+    fireEvent.change(screen.getByLabelText(/加減速/i), {
+      target: { value: 'linear' },
     });
+    expect(docStore.getState().project.phases[0]?.slides[1]?.easing).toBe(
+      'linear',
+    );
   });
 
   it('disables duration input for Scene 1 (index === 0) while keeping pause enabled', () => {
+    const { slide1, renderWithProvider } = createTestSetup();
     const anchor = document.createElement('div');
-    const firstSlide: Slide = {
-      ...dummySlide,
-      id: 'slide-1',
-      index: 0,
-      label: 'Scene 1',
-    };
 
-    render(
+    renderWithProvider(
       <SlideTransitionPopover
-        slide={firstSlide}
+        slide={slide1}
         index={0}
         isOpen={true}
         onClose={vi.fn()}
@@ -141,10 +159,11 @@ describe('SlideTransitionPopover Component', () => {
   });
 
   it('does not render camera transition settings in SlideTransitionPopover', () => {
+    const { slide2, renderWithProvider } = createTestSetup();
     const anchor = document.createElement('div');
-    render(
+    renderWithProvider(
       <SlideTransitionPopover
-        slide={dummySlide}
+        slide={slide2}
         index={1}
         isOpen={true}
         onClose={vi.fn()}
@@ -162,19 +181,9 @@ describe('SlideTransitionPopover Component', () => {
 });
 
 describe('SlideCard Integration with SlideTransitionPopover', () => {
-  const slide1 = {
-    ...createDefaultSlide(0, 's-1'),
-    label: 'Scene 1',
-    transitionDurationMs: 1000,
-    pauseMs: 500,
-  };
-
-  beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
-  });
-
   it('opens popover when clicking the duration time display', () => {
-    render(
+    const { slide1, renderWithProvider } = createTestSetup();
+    renderWithProvider(
       <SlideCard
         slide={slide1}
         index={0}
@@ -204,7 +213,8 @@ describe('SlideCard Integration with SlideTransitionPopover', () => {
   });
 
   it('opens popover when clicking settings button in hover actions', () => {
-    render(
+    const { slide1, renderWithProvider } = createTestSetup();
+    renderWithProvider(
       <SlideCard
         slide={slide1}
         index={0}
@@ -230,7 +240,8 @@ describe('SlideCard Integration with SlideTransitionPopover', () => {
   });
 
   it('opens popover when selecting transition settings from right-click context menu', () => {
-    render(
+    const { slide1, renderWithProvider } = createTestSetup();
+    renderWithProvider(
       <SlideCard
         slide={slide1}
         index={0}
@@ -260,7 +271,8 @@ describe('SlideCard Integration with SlideTransitionPopover', () => {
   });
 
   it('displays pause duration instead of total transition duration', () => {
-    render(
+    const { slide1, renderWithProvider } = createTestSetup();
+    renderWithProvider(
       <SlideCard
         slide={slide1}
         index={0}
@@ -308,8 +320,9 @@ describe('SlideCardActions Component', () => {
 
 describe('BatchTransitionPopover Component', () => {
   it('renders in FloatingPortal when isOpen is true', () => {
+    const { renderWithProvider } = createTestSetup();
     const anchor = document.createElement('div');
-    render(
+    renderWithProvider(
       <BatchTransitionPopover
         isOpen={true}
         onClose={vi.fn()}
@@ -326,8 +339,9 @@ describe('BatchTransitionPopover Component', () => {
   });
 
   it('uses L3 background and eliminates legacy blue #60A5FA', () => {
+    const { renderWithProvider } = createTestSetup();
     const anchor = document.createElement('div');
-    render(
+    renderWithProvider(
       <BatchTransitionPopover
         isOpen={true}
         onClose={vi.fn()}
@@ -342,8 +356,9 @@ describe('BatchTransitionPopover Component', () => {
   });
 
   it('does not render camera transition settings in BatchTransitionPopover', () => {
+    const { renderWithProvider } = createTestSetup();
     const anchor = document.createElement('div');
-    render(
+    renderWithProvider(
       <BatchTransitionPopover
         isOpen={true}
         onClose={vi.fn()}
@@ -406,17 +421,11 @@ describe('Design System Token & Primitives Verification', () => {
   });
 
   it('SlideTransitionPopover uses L3 background and eliminates legacy blue #60A5FA', () => {
-    const dummySlide = {
-      ...createDefaultSlide(1, 'slide-2'),
-      label: 'Scene 2',
-      transitionDurationMs: 1500,
-      pauseMs: 800,
-      easing: 'ease-in-out' as const,
-    };
+    const { slide2, renderWithProvider } = createTestSetup();
     const anchor = document.createElement('div');
-    render(
+    renderWithProvider(
       <SlideTransitionPopover
-        slide={dummySlide}
+        slide={slide2}
         index={1}
         isOpen={true}
         onClose={vi.fn()}
