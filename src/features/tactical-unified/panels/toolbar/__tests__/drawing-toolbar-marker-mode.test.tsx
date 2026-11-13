@@ -1,11 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import type React from 'react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   CanvasStoreProvider,
   createCanvasStore,
 } from '@/features/tactical-unified/core';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { DrawingToolbar } from '../drawing-toolbar';
 
 function renderWithStore(ui: React.ReactElement) {
@@ -14,10 +13,6 @@ function renderWithStore(ui: React.ReactElement) {
 }
 
 describe('DrawingToolbar markerMode filtering', () => {
-  beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
-  });
-
   it('hides both 2D marker (delegated to Squad) and 3D foot ring marker when markerMode is "2d-only"', () => {
     renderWithStore(<DrawingToolbar markerMode="2d-only" />);
 

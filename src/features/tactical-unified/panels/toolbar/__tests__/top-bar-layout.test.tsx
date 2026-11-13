@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { TopBar } from '../top-bar';
 
 const mockPush = vi.fn();
@@ -27,11 +30,14 @@ describe('TopBar 3-column layout robustness', () => {
     (useSearchParams as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       get: vi.fn().mockReturnValue(null),
     });
-    useTacticalUnifiedStore.getState().resetProject();
   });
 
   it('applies responsive min-w-0 and shrink constraints to header columns', () => {
-    const { container } = render(<TopBar />);
+    const { container } = render(
+      <TacticalStoreProvider>
+        <TopBar />
+      </TacticalStoreProvider>,
+    );
 
     const header = container.querySelector('header');
     expect(header).toBeDefined();
@@ -59,7 +65,9 @@ describe('TopBar 3-column layout robustness', () => {
 
   it('does not render Focus mode button even when onToggleFocusMode is passed', () => {
     const { queryByText, queryByTitle } = render(
-      <TopBar onToggleFocusMode={() => {}} />,
+      <TacticalStoreProvider>
+        <TopBar onToggleFocusMode={() => {}} />
+      </TacticalStoreProvider>,
     );
 
     expect(queryByText('Focus')).toBeNull();
@@ -68,7 +76,11 @@ describe('TopBar 3-column layout robustness', () => {
 
   describe('Back button navigation', () => {
     it('renders back button and navigates back using router.back() when no matchId is present', () => {
-      render(<TopBar />);
+      render(
+        <TacticalStoreProvider>
+          <TopBar />
+        </TacticalStoreProvider>,
+      );
 
       const backButton = screen.getByRole('button', { name: /戻る|Back/i });
       expect(backButton).toBeDefined();
@@ -83,7 +95,11 @@ describe('TopBar 3-column layout robustness', () => {
         get: vi.fn((key: string) => (key === 'matchId' ? 'm-456' : null)),
       });
 
-      render(<TopBar />);
+      render(
+        <TacticalStoreProvider>
+          <TopBar />
+        </TacticalStoreProvider>,
+      );
 
       const backButton = screen.getByRole('button', { name: /戻る|Back/i });
       fireEvent.click(backButton);
@@ -93,15 +109,13 @@ describe('TopBar 3-column layout robustness', () => {
     });
 
     it('navigates to /match/${matchId} when matchId is present in store project', () => {
-      useTacticalUnifiedStore.setState((s) => ({
-        ...s,
-        project: {
-          ...s.project,
-          matchId: 'm-789',
-        },
-      }));
+      const project = { ...createDefaultTacticalProject(), matchId: 'm-789' };
 
-      render(<TopBar />);
+      render(
+        <TacticalStoreProvider initialProject={project}>
+          <TopBar />
+        </TacticalStoreProvider>,
+      );
 
       const backButton = screen.getByRole('button', { name: /戻る|Back/i });
       fireEvent.click(backButton);

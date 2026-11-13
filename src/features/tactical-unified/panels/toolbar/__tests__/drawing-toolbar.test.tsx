@@ -5,7 +5,6 @@ import {
   CanvasStoreProvider,
   createCanvasStore,
 } from '@/features/tactical-unified/core';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { DrawingToolbar } from '../drawing-toolbar';
 
 function renderWithStore(ui: React.ReactElement) {
@@ -15,11 +14,10 @@ function renderWithStore(ui: React.ReactElement) {
 
 describe('DrawingToolbar component', () => {
   beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
+    // No shared legacy store reset required
   });
 
   it('renders toolbar positioned on the right for 16:9 aspect ratio', () => {
-    useTacticalUnifiedStore.getState().setAspectRatio('16:9');
     const { container } = renderWithStore(<DrawingToolbar />);
 
     const toolbarEl = container.firstElementChild as HTMLElement;
@@ -30,7 +28,6 @@ describe('DrawingToolbar component', () => {
   });
 
   it('renders toolbar positioned on the right for non-16:9 aspect ratio (e.g. 4:5)', () => {
-    useTacticalUnifiedStore.getState().setAspectRatio('4:5');
     const { container } = renderWithStore(<DrawingToolbar />);
 
     const toolbarEl = container.firstElementChild as HTMLElement;
