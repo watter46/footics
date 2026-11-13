@@ -539,5 +539,38 @@ describe('3-Frequency Independent Stores (Cold / Hot / Stream)', () => {
       });
       expect(result.current.title).toBe('Provider Updated');
     });
+
+    it('supports markSaved, session saveStatus/exporting state, and playback indices', () => {
+      const docStore = createDocumentStore(createDummyProject());
+      const sessStore = createSessionStore();
+      const playStore = createPlaybackStore();
+
+      docStore.getState().dispatch({
+        type: 'UPDATE_PROJECT_META',
+        patch: { title: 'Dirty Title' },
+      });
+      expect(docStore.getState().isDirty).toBe(true);
+      docStore.getState().markSaved();
+      expect(docStore.getState().isDirty).toBe(false);
+
+      sessStore.getState().setSaveStatus('saving');
+      sessStore.getState().setLastSavedAt(1700000000000);
+      sessStore.getState().setIsExporting(true);
+      sessStore.getState().setStageAspect(1.777);
+      expect(sessStore.getState().saveStatus).toBe('saving');
+      expect(sessStore.getState().lastSavedAt).toBe(1700000000000);
+      expect(sessStore.getState().isExporting).toBe(true);
+      expect(sessStore.getState().stageAspect).toBe(1.777);
+
+      playStore.getState().togglePlayback();
+      playStore.getState().setPlaybackIndices(2, 1);
+      expect(playStore.getState().isPlaying).toBe(true);
+      expect(playStore.getState().playbackSlideIndex).toBe(2);
+      expect(playStore.getState().playbackTransitionIndex).toBe(1);
+      playStore.getState().stopPlayback();
+      expect(playStore.getState().isPlaying).toBe(false);
+      expect(playStore.getState().playbackSlideIndex).toBe(0);
+      expect(playStore.getState().playbackTransitionIndex).toBeNull();
+    });
   });
 });

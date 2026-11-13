@@ -11,6 +11,7 @@ import {
   type MarkerMode,
   type MarkerOptionTab,
   type RightPanelTab,
+  type SaveStatus,
   type SelectedObject,
   type SessionUiState,
   type TeamVisibility,
@@ -74,6 +75,10 @@ export interface SessionStoreState extends SessionUiState {
   readonly closeExportModal: () => void;
   readonly openProjectManagerModal: () => void;
   readonly closeProjectManagerModal: () => void;
+  readonly setSaveStatus: (status: SaveStatus) => void;
+  readonly setLastSavedAt: (timestamp: number | null) => void;
+  readonly setIsExporting: (exporting: boolean) => void;
+  readonly setStageAspect: (aspect: number | null) => void;
 }
 
 export type SessionStore = StoreApi<SessionStoreState>;
@@ -194,5 +199,9 @@ export function createSessionStore(
       set((s) => ({ panels: { ...s.panels, projectManagerModalOpen: true } })),
     closeProjectManagerModal: () =>
       set((s) => ({ panels: { ...s.panels, projectManagerModalOpen: false } })),
+    setSaveStatus: (saveStatus) => set({ saveStatus }),
+    setLastSavedAt: (lastSavedAt) => set({ lastSavedAt }),
+    setIsExporting: (isExporting) => set({ isExporting }),
+    setStageAspect: (stageAspect) => set({ stageAspect }),
   }));
 }

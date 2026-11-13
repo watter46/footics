@@ -24,6 +24,7 @@ export interface DocumentStoreState {
   readonly canUndo: () => boolean;
   readonly canRedo: () => boolean;
   readonly loadProject: (project: DomainTacticalProject) => void;
+  readonly markSaved: () => void;
 }
 
 export type DocumentStore = StoreApi<DocumentStoreState>;
@@ -118,6 +119,10 @@ export function createDocumentStore(
         future: [],
         isDirty: false,
       });
+    },
+
+    markSaved: () => {
+      set({ isDirty: false });
     },
   }));
 }

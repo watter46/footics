@@ -2,6 +2,7 @@
 
 import { createContext, type ReactNode, useContext, useRef } from 'react';
 import { useStore } from 'zustand';
+import { createDefaultDomainPlayers } from '@/lib/tactical/domain/default-players';
 import type { Milliseconds } from '@/lib/types/tactical/branded';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import type { DomainTacticalProject } from '@/lib/types/tactical/domain-hierarchy';
@@ -31,7 +32,7 @@ export interface TacticalStoresContextValue {
 export const TacticalStoresContext =
   createContext<TacticalStoresContextValue | null>(null);
 
-function createDefaultTacticalProject(): DomainTacticalProject {
+export function createDefaultTacticalProject(): DomainTacticalProject {
   const now = new Date().toISOString();
   return {
     id: crypto.randomUUID(),
@@ -70,7 +71,7 @@ function createDefaultTacticalProject(): DomainTacticalProject {
             id: crypto.randomUUID(),
             index: 0,
             label: 'Scene 1',
-            players: [],
+            players: createDefaultDomainPlayers('#034694', '#ef4444', '4:5'),
             arrows: [],
             zones: [],
             texts: [],
@@ -115,8 +116,16 @@ export function TacticalStoreProvider({
     const documentStore =
       stores?.documentStore ??
       createDocumentStore(initialProject ?? createDefaultTacticalProject());
+    const resolvedProject = documentStore.getState().project;
+    const defaultPhase = resolvedProject.phases[0];
+    const defaultSlide = defaultPhase?.slides[0];
     const sessionStore =
-      stores?.sessionStore ?? createSessionStore(initialSession);
+      stores?.sessionStore ??
+      createSessionStore({
+        ...initialSession,
+        activePhaseId: initialSession?.activePhaseId || defaultPhase?.id || '',
+        activeSlideId: initialSession?.activeSlideId || defaultSlide?.id || '',
+      });
     const playbackStore =
       stores?.playbackStore ?? createPlaybackStore(initialTimeMs);
 

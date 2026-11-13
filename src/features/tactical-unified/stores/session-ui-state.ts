@@ -51,6 +51,7 @@ export interface PanelState {
 
 export type TeamVisibility = 'both' | 'home' | 'away';
 export type MarkerMode = '2d-only' | '3d-only' | 'all';
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 export interface SavedPanelState {
   sidebarOpen: boolean;
@@ -77,6 +78,10 @@ export interface SessionUiState {
   readonly workspaceMode: WorkspaceMode;
   readonly savedPanelStateBeforeDirector: SavedPanelState | null;
   readonly pendingExport: ExportTarget | null;
+  readonly saveStatus: SaveStatus;
+  readonly lastSavedAt: number | null;
+  readonly isExporting: boolean;
+  readonly stageAspect: number | null;
 }
 
 export const DEFAULT_SESSION_UI_STATE: SessionUiState = {
@@ -106,4 +111,8 @@ export const DEFAULT_SESSION_UI_STATE: SessionUiState = {
   workspaceMode: 'board',
   savedPanelStateBeforeDirector: null,
   pendingExport: null,
+  saveStatus: 'idle',
+  lastSavedAt: null,
+  isExporting: false,
+  stageAspect: null,
 };
