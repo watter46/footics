@@ -4,6 +4,7 @@ import type {
   DomainTacticalProject,
 } from '@/lib/types/tactical/domain-hierarchy';
 import type { TacticalCommand } from './commands';
+import { handleDirectorCameraCommand } from './director-camera';
 import {
   createFreshSlide,
   handleApplyBallScaleToPhaseSlides,
@@ -17,10 +18,7 @@ import {
 } from './project-phase-handlers';
 import { applySlideCommand } from './slide-reducer';
 
-/**
- * TacticalCommand をプロジェクト階層に適用する純粋レデューサー。
- * 最低1フェーズ、各フェーズ最低1スライドの不変条件を厳格に維持する。
- */
+/** TacticalCommand をプロジェクト階層に適用する純粋レデューサー。 */
 export function applyTacticalCommand(
   project: DomainTacticalProject,
   command: TacticalCommand,
@@ -283,6 +281,12 @@ export function applyTacticalCommand(
         updatedAt: now,
       };
     }
+
+    case 'UPSERT_GLOBAL_CAMERA_KEYFRAME':
+    case 'DELETE_GLOBAL_CAMERA_KEYFRAME':
+    case 'UPSERT_ACTION_CAMERA_CUE':
+    case 'DELETE_ACTION_CAMERA_CUE':
+      return handleDirectorCameraCommand(project, command, now);
 
     case 'UPDATE_PROJECT_META':
       return {
