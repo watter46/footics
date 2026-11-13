@@ -2,14 +2,19 @@ import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import {
   getInterpolatedUnifiedSlideFrame,
   resolveEffectiveSlideSegments,
+  type SlideTimingLike,
 } from '@/lib/tactical/unified-interpolation';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { Slide } from '@/lib/types/tactical-unified';
 import type { AnimationPlaybackRefs } from './tactical-timeline';
 
 /**
  * 特定スライドインデックスへの到達完了（静止開始）時刻 (ms) を計算
  */
-export function getSlideSnapTime(slides: Slide[], targetIndex: number): number {
+export function getSlideSnapTime(
+  slides: readonly (Slide | DomainSlide | SlideTimingLike)[],
+  targetIndex: number,
+): number {
   if (targetIndex <= 0 || slides.length === 0) return 0;
   const clampedIndex = Math.min(targetIndex, slides.length - 1);
   const segments = resolveEffectiveSlideSegments(slides);

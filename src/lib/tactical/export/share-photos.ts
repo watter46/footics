@@ -73,12 +73,12 @@ export async function preloadMarbleTextureBitmap(
 }
 
 function extractTargetPlayers(
-  scenes: TacticalSceneLike[],
+  scenes: readonly TacticalSceneLike[],
 ): Map<string, PlayerPhotoTarget> {
   const target = new Map<string, PlayerPhotoTarget>();
   for (const scene of scenes) {
     if (!scene.players) continue;
-    const list: TacticalPlayerLike[] = Array.isArray(scene.players)
+    const list: readonly TacticalPlayerLike[] = Array.isArray(scene.players)
       ? scene.players
       : Object.values(scene.players);
     for (const p of list) {
@@ -111,7 +111,7 @@ function extractTargetPlayers(
  * IndexedDB の photoBlob または指定 URL から Base64 / URL の辞書を作成する
  */
 export async function packPlayerPhotos(
-  scenes: TacticalSceneLike[],
+  scenes: readonly TacticalSceneLike[],
 ): Promise<Record<string, string>> {
   const photoMap: Record<string, string> = {};
   const targetPlayers = extractTargetPlayers(scenes);
@@ -181,7 +181,7 @@ export async function packPlayerPhotos(
  * ImageBitmap のマップ (playerId -> ImageBitmap) を返す
  */
 export async function preloadPlayerPhotos(
-  scenes: TacticalSceneLike[],
+  scenes: readonly TacticalSceneLike[],
   existingPhotos?: Record<string, string>,
 ): Promise<Record<string, ImageBitmap>> {
   const result: Record<string, ImageBitmap> = {};

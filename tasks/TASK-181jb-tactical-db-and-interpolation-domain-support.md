@@ -1,6 +1,6 @@
 # TASK-181jb: Storage・DB・補間・写真パックのDomain型直接受入拡張
 
-- **Status**: TODO
+- **Status**: DONE
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181j)

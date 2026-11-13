@@ -1,4 +1,5 @@
 // Unified Tactical Canvas — Animation Interpolation & Zone Vertex Morphing Engine
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { DirectorCameraTrack, Slide } from '@/lib/types/tactical-unified';
 import { applyEasing } from './easing';
 import {
@@ -23,6 +24,7 @@ import {
   resolveCameraAtTime,
   resolveEffectiveSlideSegments,
   resolveSyntheticDirectorCamera,
+  type SlideTimingLike,
 } from './interpolation-camera';
 import {
   type InterpolatedPlayerState,
@@ -52,7 +54,9 @@ export interface InterpolatedUnifiedFrame {
 }
 
 /** 全スライドの総再生時間 (ms) を計算 */
-export function calculateUnifiedTotalDuration(slides: Slide[]): number {
+export function calculateUnifiedTotalDuration(
+  slides: readonly (Slide | DomainSlide | SlideTimingLike)[],
+): number {
   if (slides.length <= 1) return 0;
   return resolveEffectiveSlideSegments(slides).reduce(
     (sum, seg) => sum + seg.effectiveDurationMs,
@@ -61,10 +65,12 @@ export function calculateUnifiedTotalDuration(slides: Slide[]): number {
 }
 
 /** 単一スライドを含む総再生時間 (ms) を解決 */
-export function resolvePlaybackDurationMs(slides: Slide[]): number {
+export function resolvePlaybackDurationMs(
+  slides: readonly (Slide | DomainSlide | SlideTimingLike)[],
+): number {
   if (!slides || slides.length === 0) return 0;
   if (slides.length === 1) {
-    const s = slides[0] as Slide & {
+    const s = slides[0] as (Slide | DomainSlide | SlideTimingLike) & {
       duration?: number;
       pauseDuration?: number;
     };
@@ -171,7 +177,6 @@ export function getInterpolatedUnifiedSlideFrame(
           slide.pitchTransform,
           0,
         );
-
     return {
       players,
       ball: {
@@ -272,7 +277,6 @@ export function getInterpolatedUnifiedSlideFrame(
   const totalDurationMs = calculateUnifiedTotalDuration(slides);
   const isPastTotal = totalDurationMs > 0 && timeMs >= totalDurationMs;
   const isPaused = (isPlayerPaused && !isCameraMoving) || isPastTotal;
-
   const resolvedCurrentSlideIndex = isPastTotal
     ? slides.length - 1
     : isPaused

@@ -1,10 +1,20 @@
 // Tactical pitch camera interpolation, drift, and segment resolution.
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type {
   CameraTransitionMode,
   DirectorCameraTrack,
   PitchTransform,
   Slide,
 } from '@/lib/types/tactical-unified';
+
+export type SlideTimingLike = Pick<
+  Slide,
+  | 'transitionDurationMs'
+  | 'pauseMs'
+  | 'cameraTransitionMode'
+  | 'cameraDurationMs'
+>;
+
 import { applyEasing } from './easing';
 import {
   hasActiveDirectorCameraTrack,
@@ -98,7 +108,7 @@ interface Span {
 
 /** スライド配列から各セグメントの実効時間およびカメラスパンを解決 */
 export function resolveEffectiveSlideSegments(
-  slides: Slide[],
+  slides: readonly (Slide | DomainSlide | SlideTimingLike)[],
 ): EffectiveSlideSegment[] {
   if (slides.length <= 1) return [];
 

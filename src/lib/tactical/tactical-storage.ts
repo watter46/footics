@@ -4,6 +4,7 @@
  */
 
 import { db } from '@/lib/db/schema';
+import type { DomainTacticalProject } from '@/lib/types/tactical/domain-hierarchy';
 import {
   ensureTacticalProject,
   type TacticalProject,
@@ -25,7 +26,7 @@ export function getTacticalProjectStorageKey(matchId?: string | null): string {
  * Save active tactical project to Dexie IndexedDB keyval store and tactical_projects table.
  */
 export async function saveActiveProjectToDb(
-  project: TacticalProject,
+  project: TacticalProject | DomainTacticalProject,
   matchId?: string | null,
 ): Promise<void> {
   try {
@@ -37,7 +38,7 @@ export async function saveActiveProjectToDb(
     });
     // Multi-project synchronization
     if (db.tactical_projects) {
-      await db.tactical_projects.put(project);
+      await db.tactical_projects.put(project as TacticalProject);
     }
   } catch (error) {
     console.error('Failed to save tactical project to Dexie:', error);

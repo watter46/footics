@@ -12,6 +12,7 @@ import {
   loadActiveProjectFromDb,
   saveActiveProjectToDb,
 } from '@/lib/tactical/tactical-storage';
+import type { DomainTacticalProject } from '@/lib/types/tactical/domain-hierarchy';
 import {
   createDefaultProject,
   ensureTacticalProject,
@@ -91,7 +92,7 @@ export async function getTacticalProjectById(
  * If syncActive is true, also updates the active project keyval store.
  */
 export async function saveTacticalProject(
-  project: TacticalProject,
+  project: TacticalProject | DomainTacticalProject,
   syncActive = true,
 ): Promise<void> {
   try {
@@ -212,11 +213,12 @@ export async function deleteTacticalProjects(ids: string[]): Promise<void> {
  * Export a tactical project as a formatted JSON blob file download.
  * Naming convention: footics_tactical_{title}_{YYYYMMDD_HHmm}.json
  */
-export function exportTacticalProjectToJson(project: TacticalProject): void {
+export function exportTacticalProjectToJson(
+  project: TacticalProject | DomainTacticalProject,
+): void {
   const safeTitle = sanitizeFilenameTitle(project.title);
   const timestamp = getTimestampForFilename();
   const filename = `footics_tactical_${safeTitle}_${timestamp}.json`;
-
   const blob = new Blob([JSON.stringify(project, null, 2)], {
     type: 'application/json',
   });
@@ -238,9 +240,7 @@ export async function exportTacticalProjectsAsZip(
   ids: string[],
 ): Promise<void> {
   if (ids.length === 0) return;
-
   const files: Record<string, Uint8Array> = {};
-
   let count = 0;
   for (const id of ids) {
     const proj = await getTacticalProjectById(id);
