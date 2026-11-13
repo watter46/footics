@@ -1,7 +1,7 @@
 # TASK-181ib: クリップボード純粋関数・`INSERT_ENTITIES`・SessionStore 統合（旧ストア完全廃止シリーズ）
 
 ## 1. Metadata & Goal
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `feat(tactical): add domain clipboard, insert command, and session integration`
 - **Series**: 旧ストア完全廃止シリーズ。181ia（ディレクターカメラ）➔ **181ib（本タスク）** ➔ 181ic（スライド生成・リセット・試合ACL）➔ 181j〜。181ia の完了を前提とする。
 - **Goal**: 旧 `clipboard-helpers.ts` / `clipboard-slice.ts` を型安全な Domain クリップボード純粋関数（`extractSelectedObjects` / `cloneAndOffsetClipboard`）、一括挿入コマンド `INSERT_ENTITIES`（1手 Undo）、および `SessionStore.clipboard` 状態へ統合する。

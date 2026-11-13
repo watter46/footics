@@ -7,6 +7,11 @@ import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { SlideCommand } from './commands';
 import { enforceSlideInvariants, toBenchPlayer } from './invariants';
 import { swapPlayers } from './player-swap';
+import {
+  handleDeleteEntities,
+  handleInsertEntities,
+  handleResetSlideObjects,
+} from './slide-entity-handlers';
 import { flipSlideCandidate } from './slide-flip';
 
 const toggleLock = <T extends { id: string; locked?: boolean }>(
@@ -227,44 +232,17 @@ function reduceSlideCandidate(
       };
     }
 
-    case 'DELETE_ENTITIES': {
-      const idSet = new Set(command.ids);
-      return {
-        ...prevSlide,
-        players: prevSlide.players.filter((p) => !idSet.has(p.id)),
-        arrows: prevSlide.arrows.filter((a) => !idSet.has(a.id)),
-        zones: prevSlide.zones.filter((z) => !idSet.has(z.id)),
-        texts: prevSlide.texts.filter((t) => !idSet.has(t.id)),
-      };
-    }
+    case 'INSERT_ENTITIES':
+      return handleInsertEntities(prevSlide, command);
+
+    case 'DELETE_ENTITIES':
+      return handleDeleteEntities(prevSlide, command.ids);
 
     case 'SWAP_TEAM_SIDES':
       return flipSlideCandidate(prevSlide);
 
-    case 'RESET_SLIDE_OBJECTS': {
-      const players = command.keepSquad
-        ? prevSlide.players.map((p) => {
-            if (p.area === 'bench') return p;
-            return {
-              ...p,
-              connectLines: [],
-              badges: [],
-              visionCone: undefined,
-              focus: undefined,
-              trajectory: undefined,
-            };
-          })
-        : [];
-
-      return {
-        ...prevSlide,
-        players,
-        arrows: [],
-        zones: [],
-        texts: [],
-        ball: { ...prevSlide.ball, trajectory: undefined },
-      };
-    }
+    case 'RESET_SLIDE_OBJECTS':
+      return handleResetSlideObjects(prevSlide, command.keepSquad);
 
     case 'SWAP_PLAYERS':
       return swapPlayers(prevSlide, command.playerAId, command.playerBId);

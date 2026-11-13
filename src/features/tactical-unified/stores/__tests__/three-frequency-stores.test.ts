@@ -484,6 +484,7 @@ describe('3-Frequency Independent Stores (Cold / Hot / Stream)', () => {
         () => ({
           title: useDocumentStore((s) => s.project.title),
           activeTool: useSessionStore((s) => s.activeTool),
+          clipboard: useSessionStore((s) => s.clipboard),
           isPlaying: usePlaybackStore((s) => s.isPlaying),
           context: useTacticalStoresContext(),
         }),
@@ -492,14 +493,36 @@ describe('3-Frequency Independent Stores (Cold / Hot / Stream)', () => {
 
       expect(result.current.title).toBe('Initial Project');
       expect(result.current.activeTool).toBe('select');
+      expect(result.current.clipboard).toBeNull();
       expect(result.current.isPlaying).toBe(false);
       expect(result.current.context.documentStore).toBe(docStore);
 
-      // Session のみ更新
+      // Session のみ更新（clipboard 更新で DocumentStore.isDirty / past は増えない）
       act(() => {
         sessStore.getState().setActiveTool('pan');
+        sessStore.getState().setClipboard({
+          players: [],
+          arrows: [],
+          zones: [],
+          texts: [
+            {
+              id: 't-copy',
+              annotationType: 'text',
+              x: clampToScreenNorm(20),
+              y: clampToScreenNorm(30),
+              content: 'Press',
+              fontSize: 16,
+              color: '#ffffff',
+              bold: false,
+              italic: false,
+            },
+          ],
+        });
       });
       expect(result.current.activeTool).toBe('pan');
+      expect(result.current.clipboard?.texts).toHaveLength(1);
+      expect(docStore.getState().isDirty).toBe(false);
+      expect(docStore.getState().past).toHaveLength(0);
 
       // Playback のみ更新
       act(() => {

@@ -5,6 +5,7 @@ import type {
 } from '@/lib/tactical/compiler/scene-graph-dto';
 import {
   DEFAULT_SESSION_UI_STATE,
+  type DomainTacticalClipboard,
   type DrawingTool,
   type ExportTarget,
   type MarkerMode,
@@ -50,6 +51,7 @@ export interface SessionStoreState extends SessionUiState {
   readonly setConnectingPlayerId: (id: string | null) => void;
   readonly setActiveMarkerOptionTab: (tab: MarkerOptionTab | null) => void;
   readonly setTeamVisibility: (visibility: TeamVisibility) => void;
+  readonly setClipboard: (clipboard: DomainTacticalClipboard | null) => void;
 
   readonly selectObject: (obj: SelectedObject | null, multi?: boolean) => void;
   readonly selectObjects: (
@@ -137,6 +139,7 @@ export function createSessionStore(
     setConnectingPlayerId: (id) => set({ connectingPlayerId: id }),
     setActiveMarkerOptionTab: (tab) => set({ activeMarkerOptionTab: tab }),
     setTeamVisibility: (visibility) => set({ teamVisibility: visibility }),
+    setClipboard: (clipboard) => set({ clipboard }),
 
     selectObject: (obj, multi = false) =>
       set((s) => selectObjectTransition(s, obj, multi)),

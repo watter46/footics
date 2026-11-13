@@ -1,6 +1,7 @@
+import type { DomainTacticalClipboard } from '@/lib/tactical/domain/clipboard';
 import type { DrawingTool, ExportTarget } from '@/lib/types/tactical/project';
 
-export type { DrawingTool, ExportTarget };
+export type { DomainTacticalClipboard, DrawingTool, ExportTarget };
 
 export type WorkspaceMode = 'board' | 'director';
 
@@ -71,6 +72,7 @@ export interface SessionUiState {
   readonly customColor: string;
   readonly markerMode: MarkerMode;
   readonly teamVisibility: TeamVisibility;
+  readonly clipboard: DomainTacticalClipboard | null;
   readonly panels: PanelState;
   readonly workspaceMode: WorkspaceMode;
   readonly savedPanelStateBeforeDirector: SavedPanelState | null;
@@ -91,6 +93,7 @@ export const DEFAULT_SESSION_UI_STATE: SessionUiState = {
   customColor: '#ffffff',
   markerMode: 'all',
   teamVisibility: 'both',
+  clipboard: null,
   panels: {
     sidebarOpen: false,
     inspectorOpen: true,

@@ -24,8 +24,10 @@ import type {
   AspectRatio,
   XMediaPresetKey,
 } from '@/lib/types/tactical/primitives';
-import type { ActionCameraCue } from '@/lib/types/tactical/project';
 import type { Easing } from '@/lib/types/tactical/slide';
+import type { DirectorCameraCommand } from './commands-director';
+
+export type { DirectorCameraCommand };
 
 export type EntityKind = 'player' | 'arrow' | 'zone' | 'text';
 
@@ -127,6 +129,13 @@ export type SlideCommand =
       readonly type: 'TOGGLE_ENTITY_LOCK';
       readonly id: string;
       readonly kind: EntityKind;
+    }
+  | {
+      readonly type: 'INSERT_ENTITIES';
+      readonly players?: readonly DomainPlayer[];
+      readonly arrows?: readonly DomainArrowAnnotation[];
+      readonly zones?: readonly DomainZoneAnnotation[];
+      readonly texts?: readonly DomainTextAnnotation[];
     }
   | { readonly type: 'DELETE_ENTITIES'; readonly ids: readonly string[] }
   | { readonly type: 'SWAP_TEAM_SIDES' }
@@ -253,35 +262,7 @@ export type TacticalCommand =
       readonly primary: string;
       readonly secondary?: string;
     }
-  | {
-      readonly type: 'UPSERT_GLOBAL_CAMERA_KEYFRAME';
-      readonly phaseId: string;
-      readonly timeMs: number;
-      readonly patch: {
-        readonly tilt?: number;
-        readonly yaw?: number;
-        readonly easing?: Easing;
-      };
-      readonly keyframeId?: string;
-      readonly activeSlideId?: string;
-    }
-  | {
-      readonly type: 'DELETE_GLOBAL_CAMERA_KEYFRAME';
-      readonly phaseId: string;
-      readonly keyframeId: string;
-    }
-  | {
-      readonly type: 'UPSERT_ACTION_CAMERA_CUE';
-      readonly phaseId: string;
-      readonly startTimeMs: number;
-      readonly patch: Partial<Omit<ActionCameraCue, 'id'>>;
-      readonly cueId?: string;
-    }
-  | {
-      readonly type: 'DELETE_ACTION_CAMERA_CUE';
-      readonly phaseId: string;
-      readonly cueId: string;
-    }
+  | DirectorCameraCommand
   | {
       readonly type: 'UPDATE_PROJECT_META';
       readonly patch: Partial<
