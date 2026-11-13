@@ -425,9 +425,15 @@ describe('applySlideCommand', () => {
     expect(swapped.arrows[0].points[1]).toEqual({ x: 50, y: 50 });
   });
 
-  it('RESET_SLIDE_OBJECTS: resets non-locked annotations and options, respects keepSquad', () => {
-    const lockedP = dummyPitchPlayer('p1', 20, 30, { locked: true });
-    const normalP = dummyPitchPlayer('p2', 40, 50, {
+  it('RESET_SLIDE_OBJECTS: keeps circle/locked players with cleared decorations, removes unlocked ring players and annotations', () => {
+    const lockedRing = dummyPitchPlayer('p-locked-ring', 15, 25, {
+      locked: true,
+      style: { ...dummyPitchPlayer('tmp').style, markerType: 'ring' },
+    });
+    const unlockedRing = dummyPitchPlayer('p-ring', 30, 35, {
+      style: { ...dummyPitchPlayer('tmp').style, markerType: 'ring' },
+    });
+    const circleP = dummyPitchPlayer('p-circle', 40, 50, {
       badges: [
         {
           id: 'b1',
@@ -443,30 +449,19 @@ describe('applySlideCommand', () => {
     const lockedA = dummyArrow('a1', { locked: true });
     const normalA = dummyArrow('a2');
     const slide = dummySlide({
-      players: [lockedP, normalP],
+      players: [lockedRing, unlockedRing, circleP],
       arrows: [lockedA, normalA],
     });
 
-    // keepSquad: true -> keeps normal player but clears badges, locked arrow kept, normal arrow removed
-    const resetKeep = applySlideCommand(slide, {
-      type: 'RESET_SLIDE_OBJECTS',
-      keepSquad: true,
-    });
-    expect(resetKeep.players).toHaveLength(2);
-    const resetNormalP = resetKeep.players.find(
-      (p) => p.id === 'p2',
+    const reset = applySlideCommand(slide, { type: 'RESET_SLIDE_OBJECTS' });
+    expect(reset.players.some((p) => p.id === 'p-locked-ring')).toBe(true);
+    expect(reset.players.some((p) => p.id === 'p-ring')).toBe(false);
+    const resetCircle = reset.players.find(
+      (p) => p.id === 'p-circle',
     ) as PitchPlayer;
-    expect(resetNormalP.badges).toHaveLength(0);
-    expect(resetKeep.arrows.some((a) => a.id === 'a1')).toBe(true);
-    expect(resetKeep.arrows.some((a) => a.id === 'a2')).toBe(false);
-
-    // keepSquad: false -> normal player removed, locked player kept
-    const resetNoKeep = applySlideCommand(slide, {
-      type: 'RESET_SLIDE_OBJECTS',
-      keepSquad: false,
-    });
-    expect(resetNoKeep.players.some((p) => p.id === 'p1')).toBe(true);
-    expect(resetNoKeep.players.some((p) => p.id === 'p2')).toBe(false);
+    expect(resetCircle.badges).toHaveLength(0);
+    expect(reset.arrows.some((a) => a.id === 'a1')).toBe(true);
+    expect(reset.arrows.some((a) => a.id === 'a2')).toBe(false);
   });
 
   it('UPDATE_SLIDE_META: updates slide metadata', () => {

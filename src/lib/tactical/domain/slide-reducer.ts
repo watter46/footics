@@ -10,9 +10,9 @@ import { swapPlayers } from './player-swap';
 import {
   handleDeleteEntities,
   handleInsertEntities,
-  handleResetSlideObjects,
 } from './slide-entity-handlers';
 import { flipSlideCandidate } from './slide-flip';
+import { resetSlideObjectsData } from './slide-reset';
 
 const toggleLock = <T extends { id: string; locked?: boolean }>(
   list: readonly T[],
@@ -242,7 +242,7 @@ function reduceSlideCandidate(
       return flipSlideCandidate(prevSlide);
 
     case 'RESET_SLIDE_OBJECTS':
-      return handleResetSlideObjects(prevSlide, command.keepSquad);
+      return resetSlideObjectsData(prevSlide);
 
     case 'SWAP_PLAYERS':
       return swapPlayers(prevSlide, command.playerAId, command.playerBId);

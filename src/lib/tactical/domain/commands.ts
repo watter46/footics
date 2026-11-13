@@ -139,7 +139,7 @@ export type SlideCommand =
     }
   | { readonly type: 'DELETE_ENTITIES'; readonly ids: readonly string[] }
   | { readonly type: 'SWAP_TEAM_SIDES' }
-  | { readonly type: 'RESET_SLIDE_OBJECTS'; readonly keepSquad: boolean }
+  | { readonly type: 'RESET_SLIDE_OBJECTS' }
   | {
       readonly type: 'SWAP_PLAYERS';
       readonly playerAId: string;
@@ -177,11 +177,14 @@ export type TacticalCommand =
       readonly type: 'ADD_SLIDE';
       readonly phaseId: string;
       readonly afterSlideId?: string;
+      readonly mode?: 'object-free' | 'full' | 'blank';
+      readonly newSlideId?: string;
     }
   | {
       readonly type: 'DUPLICATE_SLIDE';
       readonly phaseId: string;
       readonly slideId: string;
+      readonly newSlideId?: string;
     }
   | {
       readonly type: 'DELETE_SLIDE';
@@ -193,7 +196,12 @@ export type TacticalCommand =
       readonly phaseId: string;
       readonly orderedSlideIds: readonly string[];
     }
-  | { readonly type: 'ADD_PHASE'; readonly name: string }
+  | {
+      readonly type: 'ADD_PHASE';
+      readonly name: string;
+      readonly newPhaseId?: string;
+      readonly newSlideId?: string;
+    }
   | {
       readonly type: 'UPDATE_PHASE';
       readonly phaseId: string;
