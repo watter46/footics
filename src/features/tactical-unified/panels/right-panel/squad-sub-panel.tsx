@@ -1,20 +1,21 @@
 'use client';
 
-/**
- * squad-sub-panel.tsx
- * Dedicated Right Panel: Squad & Substitutes (Bench) Management
- */
-
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { Sparkles, UserPlus, Users } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { selectActiveSlide } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
 import {
-  computeBenchGridPositions,
-  type Player,
-} from '@/lib/types/tactical-unified';
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { createDefaultDomainPlayer } from '@/lib/tactical/domain/formation-placement';
+import { computeDomainBenchGridPositions } from '@/lib/tactical/domain/squad-placement';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import type {
+  BenchPlayer,
+  DomainPlayer,
+} from '@/lib/types/tactical/domain-entities';
 import { FormationCustomManager } from './formation-custom-manager';
 import {
   BASE_BENCH_HEIGHT,
@@ -38,20 +39,33 @@ export {
 };
 
 export function SquadSubPanel() {
-  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
-  const project = useTacticalUnifiedStoreContext((s) => s.project);
-  const selectedObjects = useTacticalUnifiedStoreContext(
-    (s) => s.selectedObjects,
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const selectedObjects = useSessionStore((s) => s.selectedObjects);
+  const selectObject = useSessionStore((s) => s.selectObject);
+  const project = useDocumentStore((s) => s.project);
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const activeSlide = selectDomainActiveSlide(
+    project,
+    activePhaseId,
+    activeSlideId,
   );
-  const selectObject = useTacticalUnifiedStoreContext((s) => s.selectObject);
-  const updatePlayer = useTacticalUnifiedStoreContext((s) => s.updatePlayer);
-  const updateSlide = useTacticalUnifiedStoreContext((s) => s.updateSlide);
-  const movePlayerToPitch = useTacticalUnifiedStoreContext(
-    (s) => s.movePlayerToPitch,
-  );
-  const addCustomPlayer = useTacticalUnifiedStoreContext(
-    (s) => s.addCustomPlayer,
+
+  const dispatchSlide = useCallback(
+    (
+      command: Extract<
+        Parameters<typeof dispatch>[0],
+        { type: 'APPLY_SLIDE_COMMAND' }
+      >['command'],
+    ) => {
+      dispatch({
+        type: 'APPLY_SLIDE_COMMAND',
+        phaseId: activePhaseId,
+        slideId: activeSlideId,
+        command,
+      });
+    },
+    [activePhaseId, activeSlideId, dispatch],
   );
 
   const [activeTeam, setActiveTeam] = useState<'home' | 'away'>('home');
@@ -66,37 +80,35 @@ export function SquadSubPanel() {
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const updateWidth = () => {
-      const w = el.clientWidth;
-      if (w > 0) setCanvasWidth(w);
+    const update = () => {
+      if (el.clientWidth > 0) setCanvasWidth(el.clientWidth);
     };
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
+    update();
+    const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
   const teamPlayers = useMemo(() => {
     if (!activeSlide) return { pitch: [], bench: [] };
-    const pitch = activeSlide.players.filter(
-      (p) => p.team === activeTeam && p.area === 'pitch',
-    );
-    const bench = activeSlide.players.filter(
-      (p) => p.team === activeTeam && p.area === 'bench',
-    );
-    return { pitch, bench };
+    return {
+      pitch: activeSlide.players.filter(
+        (p) => p.team === activeTeam && p.area === 'pitch',
+      ),
+      bench: activeSlide.players.filter(
+        (p) => p.team === activeTeam && p.area === 'bench',
+      ),
+    };
   }, [activeSlide, activeTeam]);
 
   const selectedIds = useMemo(
     () => selectedObjects.map((o) => o.id),
     [selectedObjects],
   );
-
-  const maxBenchY = useMemo(() => {
-    if (teamPlayers.bench.length === 0) return 80;
-    return teamPlayers.bench.reduce((max, p) => Math.max(max, p.y), 80);
-  }, [teamPlayers.bench]);
-
+  const maxBenchY = teamPlayers.bench.reduce(
+    (max, p) => Math.max(max, p.y),
+    80,
+  );
   const stageHeight = Math.max(
     BASE_BENCH_HEIGHT,
     Math.ceil(((maxBenchY + 15) / 100) * BASE_BENCH_HEIGHT),
@@ -104,88 +116,100 @@ export function SquadSubPanel() {
 
   const handleOrganizeBench = () => {
     if (!activeSlide || teamPlayers.bench.length === 0) return;
-    const positionedBench = computeBenchGridPositions(teamPlayers.bench);
-    const benchMap = new Map(positionedBench.map((p) => [p.id, p]));
-    const nextPlayers = activeSlide.players.map((p) => benchMap.get(p.id) ?? p);
-    updateSlide(activeSlideId, { players: nextPlayers });
+    const positioned = computeDomainBenchGridPositions(
+      teamPlayers.bench.filter((p): p is BenchPlayer => p.area === 'bench'),
+    );
+    const benchMap = new Map(positioned.map((p) => [p.id, p]));
+    dispatchSlide({
+      type: 'REPLACE_PLAYERS',
+      players: activeSlide.players.map((p) => benchMap.get(p.id) ?? p),
+    });
   };
 
   const handleDragStart = useCallback(
     (_e: KonvaEventObject<DragEvent>, markerId: string) => {
-      if (!selectedIds.includes(markerId)) {
+      if (!selectedIds.includes(markerId))
         selectObject({ id: markerId, kind: 'player' }, false);
-      }
     },
     [selectedIds, selectObject],
   );
 
   const handleDragEnd = useCallback(
-    (e: KonvaEventObject<DragEvent>, marker: Player) => {
-      const clientX = (e.evt as MouseEvent | undefined)?.clientX;
-      const clientY = (e.evt as MouseEvent | undefined)?.clientY;
-
+    (e: KonvaEventObject<DragEvent>, marker: DomainPlayer) => {
+      const evt = e.evt as MouseEvent | undefined;
+      const clientX = evt?.clientX;
+      const clientY = evt?.clientY;
       const benchEl =
         typeof document !== 'undefined'
           ? document.getElementById('tactical-bench-canvas')
           : null;
-      const benchRect = benchEl?.getBoundingClientRect();
       const panelLeft =
-        benchRect?.left ??
+        benchEl?.getBoundingClientRect().left ??
         (typeof window !== 'undefined' ? window.innerWidth - 400 : 0);
 
-      // 右パネルの左境界より左側（メインキャンバス上）にドロップされた場合
       if (clientX !== undefined && clientX < panelLeft) {
-        const pitchDroppable =
+        const pitchEl =
           typeof document !== 'undefined'
             ? document.getElementById('tactical-pitch-droppable')
             : null;
-        if (pitchDroppable && clientY !== undefined) {
-          const pRect = pitchDroppable.getBoundingClientRect();
-          const pitchX = Math.max(
+        let pitchX = 50;
+        let pitchY = 50;
+        if (pitchEl && clientY !== undefined) {
+          const r = pitchEl.getBoundingClientRect();
+          pitchX = Math.max(
             0,
-            Math.min(100, ((clientX - pRect.left) / pRect.width) * 100),
+            Math.min(100, ((clientX - r.left) / r.width) * 100),
           );
-          const pitchY = Math.max(
+          pitchY = Math.max(
             0,
-            Math.min(100, ((clientY - pRect.top) / pRect.height) * 100),
+            Math.min(100, ((clientY - r.top) / r.height) * 100),
           );
-          movePlayerToPitch(activeSlideId, marker.id, pitchX, pitchY);
-        } else {
-          movePlayerToPitch(activeSlideId, marker.id);
         }
+        dispatchSlide({
+          type: 'MOVE_PLAYER_TO_PITCH',
+          id: marker.id,
+          x: clampToScreenNorm(pitchX),
+          y: clampToScreenNorm(pitchY),
+        });
         return;
       }
 
-      // サブキャンバス内での自由ドラッグ配置
-      const targetNode = e.target;
-      const newX = Math.max(
-        0,
-        Math.min(100, (targetNode.x() / canvasWidth) * 100),
-      );
-      const newY = Math.max(0, (targetNode.y() / BASE_BENCH_HEIGHT) * 100);
-      updatePlayer(activeSlideId, marker.id, { x: newX, y: newY });
+      const node = e.target;
+      const newX = Math.max(0, Math.min(100, (node.x() / canvasWidth) * 100));
+      const newY = Math.max(0, (node.y() / BASE_BENCH_HEIGHT) * 100);
+      dispatchSlide({
+        type: 'UPDATE_PLAYER',
+        id: marker.id,
+        patch: { x: clampToScreenNorm(newX), y: clampToScreenNorm(newY) },
+      });
     },
-    [activeSlideId, canvasWidth, movePlayerToPitch, updatePlayer],
+    [canvasWidth, dispatchSlide],
   );
 
   const handleClick = useCallback(
-    (markerId: string, isShift: boolean) => {
-      selectObject({ id: markerId, kind: 'player' }, isShift);
-    },
+    (markerId: string, isShift: boolean) =>
+      selectObject({ id: markerId, kind: 'player' }, isShift),
     [selectObject],
   );
 
   const handleAddSub = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubName.trim() && !newSubNo.trim()) return;
-    addCustomPlayer(
-      activeSlideId,
-      activeTeam,
-      newSubName.trim() || undefined,
-      newSubNo.trim() || undefined,
-      newSubPos.trim() || undefined,
-      'bench',
-    );
+    const color =
+      activeTeam === 'home'
+        ? project.homeColor.primary
+        : project.awayColor.primary;
+    const base = createDefaultDomainPlayer(activeTeam, 20, 14, color, 'bench');
+    dispatchSlide({
+      type: 'ADD_PLAYER',
+      player: {
+        ...base,
+        ...(newSubName.trim() ? { name: newSubName.trim() } : {}),
+        ...(newSubNo.trim() ? { shirtNo: newSubNo.trim() } : {}),
+        ...(newSubPos.trim() ? { position: newSubPos.trim() } : {}),
+        isCustom: true,
+      },
+    });
     setNewSubName('');
     setNewSubNo('');
     setIsAddingSub(false);
@@ -193,7 +217,6 @@ export function SquadSubPanel() {
 
   return (
     <div className="flex flex-col h-full bg-[#121214] text-white text-xs select-none">
-      {/* Panel Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.08] shrink-0 bg-[#18181B]">
         <div className="flex items-center gap-2">
           <Users size={14} className="text-[#FFA336]" />
@@ -214,7 +237,6 @@ export function SquadSubPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto divide-y divide-white/5 custom-scrollbar">
-        {/* 1. Team Switcher */}
         <SquadTeamSwitcher
           activeTeam={activeTeam}
           setActiveTeam={setActiveTeam}
@@ -224,7 +246,6 @@ export function SquadSubPanel() {
           awaySubCount={teamPlayers.bench.length}
         />
 
-        {/* 2. Substitutes / Bench Area (Konva Stage + PlayerMarkerItem サブキャンバス) */}
         <div className="p-2.5 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
@@ -241,7 +262,6 @@ export function SquadSubPanel() {
             </button>
           </div>
 
-          {/* New Sub Player Form */}
           {isAddingSub && (
             <SquadSubForm
               newSubNo={newSubNo}
@@ -254,7 +274,6 @@ export function SquadSubPanel() {
             />
           )}
 
-          {/* Sub-canvas Area (Konva Stage) */}
           <SquadBenchCanvas
             benchPlayers={teamPlayers.bench}
             selectedIds={selectedIds}
@@ -267,7 +286,6 @@ export function SquadSubPanel() {
           />
         </div>
 
-        {/* 3. Club & Season Presets (Only displayed for normal boards without matchId) */}
         {!project.matchId && (
           <FormationCustomManager
             activeTeam={activeTeam}

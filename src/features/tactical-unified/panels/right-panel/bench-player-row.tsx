@@ -6,13 +6,13 @@
  */
 
 import { ArrowLeftRight, Plus, Trash2 } from 'lucide-react';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 import { BenchSwapSelector } from './bench-swap-selector';
 
 interface BenchPlayerRowProps {
-  player: Player;
+  player: DomainPlayer;
   activeSlideId: string;
-  pitchPlayers: Player[];
+  pitchPlayers: readonly DomainPlayer[];
   teamColor: string;
   isSwapActive: boolean;
   onDeploy: (playerId: string) => void;

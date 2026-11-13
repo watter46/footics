@@ -7,11 +7,11 @@
 
 import { X } from 'lucide-react';
 import { getPositionBadgeClass } from '@/lib/tactical/player-formatting';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 interface BenchSwapSelectorProps {
-  benchPlayer: Player;
-  pitchPlayers: Player[];
+  benchPlayer: DomainPlayer;
+  pitchPlayers: readonly DomainPlayer[];
   teamColor: string;
   onSwap: (pitchPlayerId: string) => void;
   onClose: () => void;

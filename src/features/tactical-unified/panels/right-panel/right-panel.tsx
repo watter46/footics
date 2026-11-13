@@ -21,9 +21,15 @@ import {
 } from 'lucide-react';
 import { IconButton } from '@/components/ui/icon-button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import type { RightPanelTab } from '@/features/tactical-unified/stores/tool-types';
-import { DEFAULT_PITCH_APPEARANCE } from '@/lib/types/tactical-unified';
+import type { RightPanelTab } from '@/features/tactical-unified/stores/session-ui-state';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import {
+  DEFAULT_PITCH_APPEARANCE,
+  type PitchAppearanceConfig,
+} from '@/lib/types/tactical/slide';
 import { CameraControlPanel } from './camera-control-panel';
 import { EffectInspectorPanel } from './effect-inspector-panel';
 import { FormationPanel } from './formation-panel';
@@ -43,28 +49,22 @@ const DIRECTOR_TABS = [
 ];
 
 export function RightPanel() {
-  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
-  const rightPanelTab = useTacticalUnifiedStoreContext(
-    (s) => s.panels.rightPanelTab,
-  );
-  const setRightPanelTab = useTacticalUnifiedStoreContext(
-    (s) => s.setRightPanelTab,
-  );
-  const isRightPanelOpen = useTacticalUnifiedStoreContext(
-    (s) => s.panels.isRightPanelOpen,
-  );
-  const toggleRightPanel = useTacticalUnifiedStoreContext(
-    (s) => s.toggleRightPanel,
-  );
-  const setRightPanelOpen = useTacticalUnifiedStoreContext(
-    (s) => s.setRightPanelOpen,
-  );
-  const pitchAppearance = useTacticalUnifiedStoreContext(
+  const workspaceMode = useSessionStore((s) => s.workspaceMode);
+  const rightPanelTab = useSessionStore((s) => s.panels.rightPanelTab);
+  const setRightPanelTab = useSessionStore((s) => s.setRightPanelTab);
+  const isRightPanelOpen = useSessionStore((s) => s.panels.isRightPanelOpen);
+  const toggleRightPanel = useSessionStore((s) => s.toggleRightPanel);
+  const setRightPanelOpen = useSessionStore((s) => s.setRightPanelOpen);
+  const pitchAppearance = useDocumentStore(
     (s) => s.project.pitchAppearance ?? DEFAULT_PITCH_APPEARANCE,
   );
-  const updatePitchAppearance = useTacticalUnifiedStoreContext(
-    (s) => s.updatePitchAppearance,
-  );
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const updatePitchAppearance = (patch: Partial<PitchAppearanceConfig>) => {
+    dispatch({
+      type: 'UPDATE_PROJECT_META',
+      patch: { pitchAppearance: { ...pitchAppearance, ...patch } },
+    });
+  };
 
   const tabs = workspaceMode === 'director' ? DIRECTOR_TABS : BOARD_TABS;
 

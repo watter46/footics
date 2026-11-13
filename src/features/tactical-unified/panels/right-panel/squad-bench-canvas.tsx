@@ -4,18 +4,30 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { Layer, Stage } from 'react-konva';
 import { PlayerMarkerItem } from '@/features/tactical-unified/core/components/PlayerMarkerItem';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 export const BASE_BENCH_HEIGHT = 280;
 
+type RenderMarker = React.ComponentProps<typeof PlayerMarkerItem>['marker'];
+
+function toBenchRenderMarker(player: DomainPlayer): RenderMarker {
+  return {
+    ...player,
+    x: Number(player.x),
+    y: Number(player.y),
+    connectLines: player.area === 'pitch' ? [...player.connectLines] : [],
+    badges: player.area === 'pitch' ? [...player.badges] : [],
+  };
+}
+
 export interface SquadBenchCanvasProps {
-  benchPlayers: Player[];
+  benchPlayers: readonly DomainPlayer[];
   selectedIds: string[];
   containerRef: React.RefObject<HTMLDivElement | null>;
   canvasWidth: number;
   stageHeight: number;
   onDragStart: (e: KonvaEventObject<DragEvent>, markerId: string) => void;
-  onDragEnd: (e: KonvaEventObject<DragEvent>, marker: Player) => void;
+  onDragEnd: (e: KonvaEventObject<DragEvent>, marker: DomainPlayer) => void;
   onClick: (markerId: string, isShift: boolean) => void;
 }
 
@@ -50,7 +62,7 @@ export function SquadBenchCanvas({
               {benchPlayers.map((player) => (
                 <PlayerMarkerItem
                   key={player.id}
-                  marker={player}
+                  marker={toBenchRenderMarker(player)}
                   width={canvasWidth}
                   height={BASE_BENCH_HEIGHT}
                   baseDim={canvasWidth}
@@ -60,7 +72,7 @@ export function SquadBenchCanvas({
                   connectingPlayerId={null}
                   onDragStart={onDragStart}
                   onDragMove={() => {}}
-                  onDragEnd={onDragEnd}
+                  onDragEnd={(e) => onDragEnd(e, player)}
                   onClick={onClick}
                   onUpdateVisionCone={() => {}}
                 />

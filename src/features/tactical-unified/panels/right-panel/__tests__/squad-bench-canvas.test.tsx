@@ -4,7 +4,8 @@ import { createRef } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerPhotoProvider } from '@/features/tactical-unified/core';
 import { SquadBenchCanvas } from '@/features/tactical-unified/panels/right-panel/squad-bench-canvas';
-import { createDefaultPlayer, type Player } from '@/lib/types/tactical-unified';
+import { createDefaultDomainPlayer } from '@/lib/tactical/domain/formation-placement';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -38,14 +39,20 @@ describe('SquadBenchCanvas Player Photo Display', () => {
     const dummyImage = new Image();
     const photos = new Map<string, HTMLImageElement>([['bench-1', dummyImage]]);
 
-    const benchPlayer: Player = {
-      ...createDefaultPlayer('home', 20, 20, '#38bdf8'),
-      id: 'bench-1',
+    const base = createDefaultDomainPlayer(
+      'home',
+      20,
+      20,
+      '#38bdf8',
+      'bench',
+      'bench-1',
+    );
+    const benchPlayer: DomainPlayer = {
+      ...base,
       name: 'Kevin De Bruyne',
       shirtNo: '17',
-      area: 'bench',
       style: {
-        ...createDefaultPlayer('home', 20, 20, '#38bdf8').style,
+        ...base.style,
         insideContent: 'photo',
       },
     };
@@ -76,14 +83,20 @@ describe('SquadBenchCanvas Player Photo Display', () => {
   });
 
   it('falls back to shirt number text when PlayerPhotoProvider is absent', () => {
-    const benchPlayer: Player = {
-      ...createDefaultPlayer('home', 20, 20, '#38bdf8'),
-      id: 'bench-1',
+    const base = createDefaultDomainPlayer(
+      'home',
+      20,
+      20,
+      '#38bdf8',
+      'bench',
+      'bench-1',
+    );
+    const benchPlayer: DomainPlayer = {
+      ...base,
       name: 'Kevin De Bruyne',
       shirtNo: '10',
-      area: 'bench',
       style: {
-        ...createDefaultPlayer('home', 20, 20, '#38bdf8').style,
+        ...base.style,
         insideContent: 'photo',
       },
     };
