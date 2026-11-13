@@ -272,6 +272,16 @@ export function applyTacticalCommand(
       };
     }
 
+    case 'UPDATE_ALL_SLIDE_TRANSITIONS':
+      return {
+        ...project,
+        phases: project.phases.map((p) => ({
+          ...p,
+          slides: p.slides.map((s) => ({ ...s, ...command.patch })),
+        })),
+        updatedAt: now,
+      };
+
     case 'UPDATE_PROJECT_META':
       return {
         ...project,

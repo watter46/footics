@@ -6,6 +6,7 @@ import type {
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { SlideCommand } from './commands';
 import { enforceSlideInvariants, toBenchPlayer } from './invariants';
+import { swapPlayers } from './player-swap';
 import { flipSlideCandidate } from './slide-flip';
 
 const toggleLock = <T extends { id: string; locked?: boolean }>(
@@ -264,6 +265,21 @@ function reduceSlideCandidate(
         ball: { ...prevSlide.ball, trajectory: undefined },
       };
     }
+
+    case 'SWAP_PLAYERS':
+      return swapPlayers(prevSlide, command.playerAId, command.playerBId);
+
+    case 'CLEAR_PITCH_PLAYERS':
+      return {
+        ...prevSlide,
+        players: prevSlide.players.map((p) =>
+          p.area === 'pitch' ? toBenchPlayer(p) : p,
+        ),
+        arrows: [],
+      };
+
+    case 'REPLACE_PLAYERS':
+      return { ...prevSlide, players: [...command.players] };
 
     case 'UPDATE_SLIDE_META':
       return { ...prevSlide, ...command.patch };

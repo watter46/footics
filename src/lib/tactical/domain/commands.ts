@@ -125,6 +125,16 @@ export type SlideCommand =
   | { readonly type: 'SWAP_TEAM_SIDES' }
   | { readonly type: 'RESET_SLIDE_OBJECTS'; readonly keepSquad: boolean }
   | {
+      readonly type: 'SWAP_PLAYERS';
+      readonly playerAId: string;
+      readonly playerBId: string;
+    }
+  | { readonly type: 'CLEAR_PITCH_PLAYERS' }
+  | {
+      readonly type: 'REPLACE_PLAYERS';
+      readonly players: readonly DomainPlayer[];
+    }
+  | {
       readonly type: 'UPDATE_SLIDE_META';
       readonly patch: Partial<
         Pick<
@@ -174,6 +184,19 @@ export type TacticalCommand =
       readonly patch: Partial<Omit<DomainTacticalPhase, 'id' | 'slides'>>;
     }
   | { readonly type: 'DELETE_PHASE'; readonly phaseId: string }
+  | {
+      readonly type: 'UPDATE_ALL_SLIDE_TRANSITIONS';
+      readonly patch: Partial<
+        Pick<
+          DomainSlide,
+          | 'transitionDurationMs'
+          | 'pauseMs'
+          | 'easing'
+          | 'cameraTransitionMode'
+          | 'cameraDurationMs'
+        >
+      >;
+    }
   | {
       readonly type: 'UPDATE_PROJECT_META';
       readonly patch: Partial<
