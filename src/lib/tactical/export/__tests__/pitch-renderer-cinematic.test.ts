@@ -186,6 +186,21 @@ describe('pitch-renderer cinematic and screen background', () => {
     );
   });
 
+  it('isolates cached gradient per canvas context to avoid cross-context reuse', () => {
+    const ctx1 = createMockContext();
+    const ctx2 = createMockContext();
+    const frameCtx1 = createMockFrameContext(ctx1, 1920, 1080);
+    const frameCtx2 = createMockFrameContext(ctx2, 1920, 1080);
+
+    renderPitch(frameCtx1, '16:9', false);
+    expect(ctx1.createRadialGradient).toHaveBeenCalledTimes(1);
+    expect(ctx2.createRadialGradient).toHaveBeenCalledTimes(0);
+
+    // Different ctx with same size must create its own gradient
+    renderPitch(frameCtx2, '16:9', false);
+    expect(ctx2.createRadialGradient).toHaveBeenCalledTimes(1);
+  });
+
   it('renders solid dark background (#0D0D0E) without creating gradient when screenBackground is dark', () => {
     const ctx = createMockContext();
     const frameCtx = createMockFrameContext(ctx, 1920, 1080);

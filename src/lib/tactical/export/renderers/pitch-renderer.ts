@@ -15,13 +15,19 @@ import type { FrameRenderContext } from './renderer-context';
 export { renderPitchMarkings2D } from './pitch-markings-2d';
 export { renderPitchMarkings3D } from './pitch-markings-3d';
 
-const radialGradientCache = new Map<string, CanvasGradient>();
+let radialGradientCache = new WeakMap<
+  FrameRenderContext['ctx'],
+  Map<string, CanvasGradient>
+>();
 
 /**
  * Clears the cached radial gradients used by pitch renderer.
  */
 export function clearPitchRendererCache(): void {
-  radialGradientCache.clear();
+  radialGradientCache = new WeakMap<
+    FrameRenderContext['ctx'],
+    Map<string, CanvasGradient>
+  >();
 }
 
 /**
@@ -41,7 +47,13 @@ export function renderScreenBackground(
 
   // cinematic (or default)
   const key = `${w}x${h}`;
-  let gradient = radialGradientCache.get(key);
+  let ctxCache = radialGradientCache.get(ctx);
+  if (!ctxCache) {
+    ctxCache = new Map<string, CanvasGradient>();
+    radialGradientCache.set(ctx, ctxCache);
+  }
+
+  let gradient = ctxCache.get(key);
   if (!gradient && typeof ctx.createRadialGradient === 'function') {
     const cx = w / 2;
     const cy = h / 2;
@@ -50,7 +62,7 @@ export function renderScreenBackground(
     if (grad && typeof grad.addColorStop === 'function') {
       grad.addColorStop(0, '#2B2B2B');
       grad.addColorStop(1, '#050505');
-      radialGradientCache.set(key, grad);
+      ctxCache.set(key, grad);
       gradient = grad;
     }
   }
