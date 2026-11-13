@@ -1,7 +1,7 @@
 # TASK-181ic: リセット命令の整理統一と初期選手生成（旧ストア完全廃止シリーズ）
 
 ## 1. Metadata & Goal
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `feat(tactical): align reset commands and default domain players helper`
 - **Series**: 旧ストア完全廃止シリーズ。181ib（クリップボード）➔ **181ic（本タスク）** ➔ 181id（スライドモード＆Phase初期化）➔ 181ie（Match ACL）➔ 181j〜。181ib の完了を前提とする。
 - **Goal**:
