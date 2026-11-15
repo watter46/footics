@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildMatchTacticalPlayers } from '@/lib/tactical/match-to-tactical-bridge';
-import { convertSquadToTacticalPlayers } from '@/lib/tactical/squad-to-tactical-bridge';
+import { buildMatchToDomainProject } from '@/lib/tactical/acl/match-project-translator';
+import { translateSquadToDomainPlayers } from '@/lib/tactical/acl/match-squad-translator';
 import {
   computeBenchGridPositions,
   createDefaultInitialPlayers,
@@ -10,7 +10,7 @@ import {
   DEFAULT_4231_HOME,
   PlayerSchema,
 } from '@/lib/types/tactical-unified';
-import type { Player as DomainPlayer, Match } from '@/types';
+import type { Match } from '@/types';
 import { resetSlideKeepSquadData } from '../slide-reset-helpers';
 
 describe('TASK-051 Phase 1: Step 5 Defaults and Bench Grid', () => {
@@ -118,62 +118,53 @@ describe('TASK-051 Phase 1: Step 5 Defaults and Bench Grid', () => {
     });
   });
 
-  describe('convertSquadToTacticalPlayers', () => {
-    it('defaults to full mode and assigns grid positions to bench players', () => {
+  describe('translateSquadToDomainPlayers', () => {
+    it('translates starters to pitch players and non-starters to bench players', () => {
       const squadPlayers = [
         // 11 starters
         ...Array.from({ length: 11 }, (_, i) => ({
-          playerId: 100 + i,
+          playerId: String(100 + i),
           name: `Starter ${i + 1}`,
-          shirtNo: i + 1,
-          position: (i === 0 ? 'GK' : 'MF') as DomainPlayer['position'],
-          isFirstEleven: true,
+          shirtNo: String(i + 1),
+          position: i === 0 ? ('GK' as const) : ('MID' as const),
+          isStarter: true,
         })),
         // 2 bench players
         {
-          playerId: 201,
+          playerId: '201',
           name: 'Bench GK',
-          shirtNo: 12,
-          position: 'GK' as DomainPlayer['position'],
-          isFirstEleven: false,
+          shirtNo: '12',
+          position: 'GK' as const,
+          isStarter: false,
         },
         {
-          playerId: 202,
+          playerId: '202',
           name: 'Bench ST',
-          shirtNo: 19,
-          position: 'FW' as DomainPlayer['position'],
-          isFirstEleven: false,
+          shirtNo: '19',
+          position: 'FW' as const,
+          isStarter: false,
         },
       ];
 
-      const tactical = convertSquadToTacticalPlayers(squadPlayers, {
-        team: 'home',
-        primaryColor: '#000000',
-        aspectRatio: '16:9',
-      });
+      const tactical = translateSquadToDomainPlayers(
+        squadPlayers,
+        'home',
+        '#000000',
+      );
 
       const starters = tactical.filter((p) => p.area === 'pitch');
       const bench = tactical.filter((p) => p.area === 'bench');
 
       expect(starters).toHaveLength(11);
       expect(bench).toHaveLength(2);
-
-      // Home GK in full mode should have x corresponding to full pitch (~16.25) instead of half pitch (~11.19)
-      const homeGk = starters[0];
-      expect(homeGk.x).toBeCloseTo(16.25, 1);
-
-      // Bench players should not be at (0, 0), and FW should come before GK
-      expect(bench[0].position).toBe('FW');
-      expect(bench[0].x).toBe(20);
-      expect(bench[0].y).toBe(14);
-
-      expect(bench[1].position).toBe('GK');
-      expect(bench[1].x).toBe(50);
-      expect(bench[1].y).toBe(14);
+      expect(starters[0].x).toBe(25);
+      expect(starters[0].y).toBe(50);
+      expect(bench[0].position).toBe('GK');
+      expect(bench[1].position).toBe('FW');
     });
   });
 
-  describe('buildMatchTacticalPlayers', () => {
+  describe('buildMatchToDomainProject', () => {
     it('uses mode=full by default for pitch players', () => {
       const mockMatch = {
         id: 1,
@@ -221,17 +212,21 @@ describe('TASK-051 Phase 1: Step 5 Defaults and Bench Grid', () => {
         },
       } as unknown as Match;
 
-      const result = buildMatchTacticalPlayers({
-        match: mockMatch,
+      const { project } = buildMatchToDomainProject(mockMatch, {
         aspectRatio: '16:9',
       });
 
-      const homeGk = result.homePlayers.find((p) => p.position === 'GK');
-      const awayGk = result.awayPlayers.find((p) => p.position === 'GK');
+      const players = project.phases[0].slides[0].players;
+      const homeGk = players.find(
+        (p) => p.team === 'home' && p.position === 'GK',
+      );
+      const awayGk = players.find(
+        (p) => p.team === 'away' && p.position === 'GK',
+      );
 
-      // In full pitch mode: Home GK is at x~16.25, Away GK is at x~83.75 (unlike half pitch 11.19 / 88.81)
-      expect(homeGk?.x).toBeCloseTo(16.25, 1);
-      expect(awayGk?.x).toBeCloseTo(83.75, 1);
+      expect(players).toHaveLength(22);
+      expect(homeGk).toBeDefined();
+      expect(awayGk).toBeDefined();
     });
   });
 

@@ -59,27 +59,15 @@ export interface SelectionBox {
   isShift: boolean;
 }
 
-export type { TacticalClipboard } from '../stores/clipboard-helpers';
-export type { ClipboardSlice } from '../stores/clipboard-slice';
-export type { HistorySlice } from '../stores/history-slice';
-
-export type { SlideSlice } from '../stores/slide-slice';
-export type {
-  AnnotationSlice,
-  PitchSlice,
-  ProjectSlice,
-  TacticalUnifiedState,
-  ToolSlice,
-} from '../stores/tactical-unified-store';
 // ─────────────────────────────────────────
-// § 3. Store, Selection & Clipboard Types
+// § 3. Session UI & Selection Types
 // ─────────────────────────────────────────
 export type {
   MarkerOptionTab,
   PanelState,
   SelectedObject,
   SelectedObjectKind,
-} from '../stores/tool-slice';
+} from '../stores/session-ui-state';
 
 export type PlayerStyle = import('@/lib/types/tactical-unified').MarkerStyle;
 export type TacticalTeamVisibility = 'both' | 'home' | 'away';

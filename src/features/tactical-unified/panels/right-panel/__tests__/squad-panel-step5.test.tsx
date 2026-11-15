@@ -24,7 +24,6 @@ type TacticalStores = {
 
 import { db } from '@/lib/db';
 import { createDefaultDomainPlayer } from '@/lib/tactical/domain/formation-placement';
-import * as matchBridge from '@/lib/tactical/match-to-tactical-bridge';
 import * as tacticalStorage from '@/lib/tactical/tactical-storage';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
@@ -44,10 +43,6 @@ vi.mock('@/lib/db', () => ({
       get: vi.fn(),
     },
   },
-}));
-
-vi.mock('@/lib/tactical/match-to-tactical-bridge', () => ({
-  injectMatchToTactical: vi.fn(),
 }));
 
 vi.mock('@/lib/tactical/tactical-storage', () => ({

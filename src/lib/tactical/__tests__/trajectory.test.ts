@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Player } from '@/lib/types/tactical-unified';
+import { matchSlidePlayers } from '../export/tactical-video-exporter';
 import {
   calculateBezierPoint,
   getBezierControlPoint,
   type PlayerTrajectory,
 } from '../trajectory';
-import { matchSlidePlayers } from '../unified-interpolation';
 
 describe('trajectory utility', () => {
   const p0 = { x: 20, y: 80 };

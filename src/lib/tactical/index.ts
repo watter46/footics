@@ -7,5 +7,3 @@ export * from './image-utils';
 export * from './initial-mapping';
 export * from './player-formatting';
 export * from './trajectory';
-export * from './unified-interpolation';
-export { calculateUnifiedTotalDuration } from './unified-interpolation';

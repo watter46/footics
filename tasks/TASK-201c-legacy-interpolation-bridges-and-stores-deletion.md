@@ -12,7 +12,7 @@
   - `absent: src/lib/tactical/unified-interpolation.ts`
   - `absent: src/lib/tactical/match-to-tactical-bridge.ts`
   - `absent: src/lib/tactical/squad-to-tactical-bridge.ts`
-  - `rg(src/,extension/): tactical-unified-store|unified-interpolation|match-to-tactical-bridge|squad-to-tactical-bridge`
+  - `rg(src/,extension/): tactical-unified-store|unified-interpolation|match-to-tactical-bridge|squad-to-tactical-bridge|tool-slice`
 
 ---
 
@@ -22,7 +22,7 @@
   1. 旧 `TacticalUnifiedStore`・旧 `*-slice.ts`・旧 `unified-interpolation.ts` / `interpolation-*.ts`・旧 `*-to-tactical-bridge.ts` はすべて物理削除し、後方互換シムや再エクスポートを一切残さない。
   2. 現用 3-frequency ストア群（`document-store.ts`, `session-store.ts`, `playback-store.ts`, `tactical-store-provider.tsx`, `domain-selectors.ts`, `reset-tactical-project.ts`, `session-ui-*.ts`）およびパネル等から参照される共有ヘルパー（`slide-flip-helpers.ts`, `slide-reset-helpers.ts`, `store-helpers.ts` 等）とそのテスト（`three-frequency-stores.test.ts`, `domain-selectors.test.ts`, `tactical-store-provider.test.ts`, `session-ui-transitions.test.ts`, `slide-flip-helpers.test.ts`, `slide-reset-helpers.test.ts`, `store-helpers.test.ts`）は破壊せず全通過を維持する。
 - **Design Decisions (実行時に迷わせない確定事項)**:
-  1. `stores/` 配下で旧 `*-slice.ts` のみから参照されていたアクションモジュール（`project-slice-actions.ts`, `project-slice-config-actions.ts`, `phase-crud-actions.ts`, `director-camera-actions.ts`）も同時に `[DELETE]` する。
+  1. `stores/` 配下で旧 `*-slice.ts` のみから参照されていたアクション・ヘルパー・旧型モジュール（`project-slice-actions.ts`, `project-slice-config-actions.ts`, `phase-crud-actions.ts`, `director-camera-actions.ts`, `clipboard-helpers.ts`, `slide-helpers.ts`, `slide-batch-delete-helpers.ts`, `slide-lock-helpers.ts`, `annotation-erase-helpers.ts`, `boundary-box-helpers.ts`, `slide-aspect-helpers.ts`, `slide-background-helpers.ts`, `slide-formation-helpers.ts`, `slide-player-helpers.ts`, `slide-player-swap-helper.ts`, `tool-types.ts`）も同時に `[DELETE]` する（現用の `slide-player-move-helper.ts` は維持）。
   2. 削除完了後、3-frequency store テストおよび全 Wave F Negative Contracts を検証する。
 - **Consumers (同期更新対象)**:
   - 全 Wave F 物理削除対象ファイルと現用 3-frequency ストア検証ファイル
@@ -84,8 +84,20 @@
   - `[DELETE]` `src/features/tactical-unified/stores/slide-slice.ts`
   - `[DELETE]` `src/features/tactical-unified/stores/slide-transition-slice.ts`
   - `[DELETE]` `src/features/tactical-unified/stores/tool-slice.ts`
+  - `[DELETE]` `src/features/tactical-unified/stores/tool-types.ts`
+  - `[DELETE]` `src/features/tactical-unified/stores/clipboard-helpers.ts`
+  - `[DELETE]` `src/features/tactical-unified/stores/slide-helpers.ts`
+  - `[DELETE]` `src/features/tactical-unified/stores/slide-batch-delete-helpers.ts`
+  - `[DELETE]` `src/features/tactical-unified/stores/slide-lock-helpers.ts`
+  - `[DELETE]` `src/features/tactical-unified/stores/annotation-erase-helpers.ts`
+  - `[DELETE]` `src/features/tactical-unified/stores/boundary-box-helpers.ts`
+  - `[DELETE]` `src/features/tactical-unified/stores/slide-aspect-helpers.ts`
+  - `[DELETE]` `src/features/tactical-unified/stores/slide-background-helpers.ts`
+  - `[DELETE]` `src/features/tactical-unified/stores/slide-formation-helpers.ts`
+  - `[DELETE]` `src/features/tactical-unified/stores/slide-player-helpers.ts`
+  - `[DELETE]` `src/features/tactical-unified/stores/slide-player-swap-helper.ts`
 - **Contract**:
-  - 上記 24 ファイルをすべて物理削除する。現用 3-frequency store（`document-store.ts`, `session-store.ts`, `playback-store.ts`, `tactical-store-provider.tsx`）に型・インポートエラーが出ないこと。
+  - 上記 36 ファイルをすべて物理削除する。現用 3-frequency store（`document-store.ts`, `session-store.ts`, `playback-store.ts`, `tactical-store-provider.tsx`）に型・インポートエラーが出ないこと。
 - **Concrete Test Cases**:
   - `bun run ai:check src/features/tactical-unified/stores/tactical-store-provider.tsx src/features/tactical-unified/stores/document-store.ts` で 3-frequency store の整合を検証する。
 - **Verification**:

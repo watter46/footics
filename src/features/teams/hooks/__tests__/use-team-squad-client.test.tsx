@@ -2,7 +2,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { injectTeamSquadToTactical } from '@/lib/tactical/squad-to-tactical-bridge';
 import type { MergedSquadPlayer } from '../../components/squad-player-card';
 import { useTeamSquadClient } from '../use-team-squad-client';
 
@@ -12,11 +11,6 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
-}));
-
-// mock tactical bridge
-vi.mock('@/lib/tactical/squad-to-tactical-bridge', () => ({
-  injectTeamSquadToTactical: vi.fn(),
 }));
 
 describe('useTeamSquadClient', () => {
@@ -96,24 +90,16 @@ describe('useTeamSquadClient', () => {
     expect(result.current.isCopySeasonOpen).toBe(true);
   });
 
-  it('opens tactical canvas and navigates to /tactical', () => {
+  it('opens tactical canvas and navigates to /tactical', async () => {
     const { result } = renderHook(
       () => useTeamSquadClient({ teamId: 'chelsea' }),
       { wrapper: createWrapper() },
     );
 
-    act(() => {
-      result.current.handleOpenTacticalCanvas();
+    await act(async () => {
+      await result.current.handleOpenTacticalCanvas();
     });
 
-    expect(injectTeamSquadToTactical).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamName: result.current.teamConfig.name,
-        team: 'home',
-        formation: '4-2-3-1',
-        mode: 'half',
-      }),
-    );
     expect(pushMock).toHaveBeenCalledWith('/tactical');
   });
 });

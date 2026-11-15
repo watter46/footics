@@ -1,7 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { TacticalUnifiedState } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { db } from '@/lib/db';
 import TacticalError from '../error';
 import TacticalPage, { dynamic } from '../page';
@@ -16,7 +15,7 @@ const { MockTacticalUnifiedPage } = vi.hoisted(() => {
     }: {
       initialMatchId?: string;
       initialMinute?: number;
-      initialState?: Partial<TacticalUnifiedState>;
+      initialState?: { project?: { matchId?: string } };
     }) => (
       <div
         data-testid="tactical-page-mock"
