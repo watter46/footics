@@ -36,7 +36,7 @@ skills:
 1. **【実装直行モード (コンテキスト B: Execution Orchestrator)】**:
    - 指示内に既存タスクファイル（例: `tasks/TASK-XXX.md を実装してください`）が指定されている場合。
    - 事前調査や Plan Artifact 生成はスキップし、対象タスクファイルを `read_file` で読んで **「2. Worker への委譲」の Wave 1 から即座に開始** する。
-2. **【引き継ぎ計画モード (コンテキスト A: `/plan @notes/...` または同一チャット合意済)】**:
+2. **【引き継ぎ計画モード (コンテキスト A: `/plan <Artifactパス>` または同一チャット合意済)】**:
    - 合意内容を引き継ぎ、不足箇所のみ確認して Plan Artifact ➔ タスクファイル作成へ進む。
 3. **【通常計画モード (コンテキスト A)】**:
    - 直接探索 ➔ 日本語 Plan Artifact 提示・承認 ➔ タスクファイル生成を一貫して行う。
@@ -47,7 +47,7 @@ skills:
 
 1. **Planner 自身による高速・直接探索**:
    - `.agents/rules/efficient-exploration.md` に従い `bun run ai:impact` / `bun run ai:peek` / `rg -l` で最小探索し、150行超コードは構造確認後の範囲指定 `read_file` で確認する。
-   - **停止条件（大規模リファクタリング時）**: コンテキスト膨張を防ぐため、`large-codebase-research` スキルに従い調査結果を `notes/research-<topic>.md` へ蒸留し、新規セッションの `/plan @notes/research-<topic>.md` へ引き継ぐ。
+   - **停止条件（大規模リファクタリング時）**: コンテキスト膨張を防ぐため、`large-codebase-research` スキルに従い調査結果を Artifact（`research-<topic>.md`）へ蒸留し、新規セッションの `/plan <Artifactパス>` へ引き継ぐ。
 2. **日本語 Plan Artifact の作成と承認ゲート**:
    - `.agents/rules/plan-artifact.md` に従い、コード・ファイル名・図表・システム用語を含めず Footics ユビキタス言語の4セクション構成で Artifact を作成し、承認を得る。
 3. **契約型タスクファイルの生成（詳細は `.agents/skills/writing-plans/SKILL.md`）**:

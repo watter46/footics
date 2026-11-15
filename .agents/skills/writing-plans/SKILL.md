@@ -25,7 +25,7 @@ description: 仕様や要件から、実行モデル（Gemini 4 Hydrogen/low）�
 1. **影響・Consumers 全件特定**: `bun run ai:impact <symbol|file>` と `rg -l '<symbol>' src/ extension/`
 2. **構造・型・行範囲抽出**: `bun run ai:peek <file|dir> [Symbol]`
 3. **対象箇所の無加工読込 (`read_file`)**: 150行以下は一括、150行超コードは事前 `ai:peek`/`ai:impact`/`rg` 後に `StartLine`/`EndLine` 指定で該当範囲を確認し、タスクファイルに書くシンボル・行範囲アンカー・公開型を正確に把握する。
-   - 大規模リファクタリング時は `large-codebase-research` スキルで `notes/research-<topic>.md` へ蒸留し、新規セッションで `/plan @notes/research-<topic>.md` を実行する。
+   - 大規模リファクタリング時は `large-codebase-research` スキルで Artifact（`research-<topic>.md`）へ蒸留し、新規セッションで `/plan <Artifactパス>` を実行する。
 
 ## 3. 記述粒度・サイズ上限・詰め込み防止ルール（`Hydrogen/low` 最適化）
 

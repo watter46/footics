@@ -75,7 +75,7 @@ export const detectOutlineBypass: Detector = (ctx: AuditContext): Finding[] => {
 
 /**
  * EXP-02: BAD_FIRST_MOVE
- * 初動 3 ターンで ai:peek / ai:impact / ast-grep / rg -l / tasks/TASK-*.md / notes/*.md を使わず漫然探索
+ * 初動 3 ターンで ai:peek / ai:impact / ast-grep / rg -l / tasks/TASK-*.md を使わず漫然探索
  */
 export const detectBadFirstMove: Detector = (ctx: AuditContext): Finding[] => {
   if (ctx.role !== 'planner') return [];
@@ -97,7 +97,6 @@ export const detectBadFirstMove: Detector = (ctx: AuditContext): Finding[] => {
 
       if (
         /(?:^|\/)tasks\/TASK-[^/]+\.md$/.test(file) ||
-        /(?:^|\/)notes\/[^/]+\.md$/.test(file) ||
         cmd.includes('ai:peek') ||
         cmd.includes('ai:impact') ||
         cmd.includes('ast-grep') ||
@@ -108,8 +107,7 @@ export const detectBadFirstMove: Detector = (ctx: AuditContext): Finding[] => {
 
       if (
         (isReadToolName(tc.name) &&
-          !/(?:^|\/)tasks\/TASK-[^/]+\.md$/.test(file) &&
-          !/(?:^|\/)notes\/[^/]+\.md$/.test(file)) ||
+          !/(?:^|\/)tasks\/TASK-[^/]+\.md$/.test(file)) ||
         (/^(?:grep|rg|find|ls)\b/.test(cmd) &&
           !/^rg\s+(?:-[a-zA-Z]*[lc]|--files-with-matches|--count)\b/.test(cmd))
       ) {
@@ -128,7 +126,7 @@ export const detectBadFirstMove: Detector = (ctx: AuditContext): Finding[] => {
         sessionId: ctx.sessionId,
         steps,
         evidence:
-          'Initial 3 turns used raw file exploration without ai:peek, ai:impact, ast-grep, rg -l, notes, or TASK file',
+          'Initial 3 turns used raw file exploration without ai:peek, ai:impact, ast-grep, rg -l, or TASK file',
         layers: ['planner', 'rule'],
       },
     ];

@@ -82,7 +82,7 @@ export function getViewFilePath(toolCall: any): string {
 
 /**
  * ファイルがコードベース調査の対象（ソースコード、テスト、スクリプト等）かを判定する。
- * tasks/, docs/, .agents/, notes/, ルート設定ファイル等は除外する。
+ * tasks/, docs/, .agents/, ルート設定ファイル等は除外する。
  */
 function isInvestigationTarget(relPath: string): boolean {
   const normalized = relPath.replace(/\\/g, '/').replace(/^\.\//, '');
@@ -90,7 +90,6 @@ function isInvestigationTarget(relPath: string): boolean {
     normalized.startsWith('tasks/') ||
     normalized.startsWith('.agents/') ||
     normalized.startsWith('docs/') ||
-    normalized.startsWith('notes/') ||
     normalized.startsWith('.git/') ||
     normalized.startsWith('node_modules/')
   ) {

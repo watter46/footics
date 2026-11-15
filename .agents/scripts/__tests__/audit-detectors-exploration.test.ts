@@ -143,7 +143,7 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
   });
 
   describe('EXP-02: BAD_FIRST_MOVE', () => {
-    test('detects raw file read in first turns without ai:peek / ai:impact / rg / notes', () => {
+    test('detects raw file read in first turns without ai:peek / ai:impact / rg', () => {
       const ctx: AuditContext = {
         sessionId: 'test-bad-first',
         role: 'planner',
@@ -165,7 +165,7 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
       expect(findings[0].severity).toBe('MED');
     });
 
-    test('returns empty if first move uses ai:peek, ai:impact, or notes/*.md', () => {
+    test('returns empty if first move uses ai:peek or ai:impact', () => {
       const peekCtx: AuditContext = {
         sessionId: 'test-good-first-peek',
         role: 'planner',
@@ -203,22 +203,6 @@ describe('audit-session Phase 1-3: exploration detectors (EXP-01〜EXP-10)', () 
         ],
       };
       expect(detectBadFirstMove(impactCtx).length).toBe(0);
-
-      const notesCtx: AuditContext = {
-        sessionId: 'test-good-first-notes',
-        role: 'planner',
-        childIds: [],
-        records: [
-          {
-            step_index: 1,
-            type: 'PLANNER_RESPONSE',
-            tool_calls: [
-              { name: 'read_file', args: { Path: 'notes/design.md' } },
-            ],
-          },
-        ],
-      };
-      expect(detectBadFirstMove(notesCtx).length).toBe(0);
     });
 
     test('returns empty if first move reads tasks/TASK-*.md or runs rg -l', () => {

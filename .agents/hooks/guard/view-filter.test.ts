@@ -468,7 +468,6 @@ describe('view-filter: adaptive read guard (no forced overwrite + 150-line struc
     fs.mkdirSync(testDir, { recursive: true });
     fs.mkdirSync(path.join(testDir, 'src'), { recursive: true });
     fs.mkdirSync(path.join(testDir, 'tasks'), { recursive: true });
-    fs.mkdirSync(path.join(testDir, 'notes'), { recursive: true });
     fs.mkdirSync(path.join(testDir, 'docs'), { recursive: true });
     fs.mkdirSync(path.join(testDir, '.agents'), { recursive: true });
   });
@@ -621,7 +620,6 @@ describe('view-filter: adaptive read guard (no forced overwrite + 150-line struc
 
     for (const rel of [
       'tasks/TASK-1.md',
-      'notes/design.md',
       '.agents/rules/r.md',
       'docs/arch.md',
     ]) {

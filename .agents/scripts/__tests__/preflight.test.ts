@@ -41,14 +41,14 @@ describe('parsePorcelain', () => {
   test('extracts modified, untracked and renamed paths; skips deletions', () => {
     const text = [
       ' M .agents/hooks/guard.ts',
-      '?? notes/a.md',
+      '?? docs/a.md',
       'R  old.ts -> src/new.ts',
       ' D gone.ts',
       '',
     ].join('\n');
     expect(parsePorcelain(text)).toEqual([
       '.agents/hooks/guard.ts',
-      'notes/a.md',
+      'docs/a.md',
       'src/new.ts',
     ]);
   });
@@ -73,7 +73,7 @@ describe('findBunTests / classify', () => {
         '.agents/hooks/guard.ts',
         '.agents/scripts/preflight.ts',
         'src/lib/a.ts',
-        'notes/x.md',
+        'docs/x.md',
         'src/types/g.d.ts',
       ],
       root,
@@ -84,7 +84,7 @@ describe('findBunTests / classify', () => {
     ]);
     expect(plan.vitest).toEqual(['src/lib/a.ts', 'src/types/g.d.ts']);
     expect(plan.tsc).toEqual(['src/lib/a.ts']);
-    expect(plan.biome).not.toContain('notes/x.md');
+    expect(plan.biome).not.toContain('docs/x.md');
   });
 });
 
@@ -160,11 +160,11 @@ describe('runStep / formatVerdict', () => {
 
 describe('executePreflight', () => {
   test('fast-path passes immediately for markdown files', async () => {
-    const res = await executePreflight(['notes/a.md'], root);
+    const res = await executePreflight(['docs/a.md'], root);
     expect(res.ok).toBe(true);
     expect(res.code).toBe(0);
     expect(res.verdict).toContain('fast-path(non-code only)');
-    expect(res.files).toEqual(['notes/a.md']);
+    expect(res.files).toEqual(['docs/a.md']);
   });
 
   test('empty files returns ok with 0 files', async () => {

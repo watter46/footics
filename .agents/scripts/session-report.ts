@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-// ---- Budget (notes/agent-ideal-trace.md と同値) ---------------------------------
+// ---- Budget -----------------------------------------------------------------
 export const BUDGET = {
   maxTurns: 6,
   maxFail: 0,

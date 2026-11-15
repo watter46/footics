@@ -77,7 +77,7 @@ bun run ai:audit --compare <before_id> <after_id>
 | | INFRA-02 | `HOOK_ROLE_MISMATCH` | HIGH | ガードがエージェントのロールまたは Worker ID を誤認して誤爆 |
 | | INFRA-03 | `UNEXPANDED_TEMPLATE` | LOW | `${var}` 等の未展開テンプレート文字列がガード文言に残存 |
 | **EXP** | EXP-01 | `OUTLINE_BYPASS` | HIGH | Planner が `ai:peek` / `ai:impact` / `ast-grep` / `rg` 未使用のまま 3 件以上の対象ソースを直読 |
-| | EXP-02 | `BAD_FIRST_MOVE` | MED | `ai:peek` / `ai:impact` / `rg -l` / `tasks/TASK-*.md` / `notes/*.md` を経由せずソースコードを初手読込 |
+| | EXP-02 | `BAD_FIRST_MOVE` | MED | `ai:peek` / `ai:impact` / `rg -l` / `tasks/TASK-*.md` を経由せずソースコードを初手読込 |
 | | EXP-03 | `EXPLORE_SHARE` | MED | 最初の編集/サブエージェント起動までの探索ターン率が 30% 超過 |
 | | EXP-04 | `SERIAL_INDEPENDENT` | LOW | 独立した単一ファイル `read_file` の 3 連続以上直列実行（並列化違反） |
 | | EXP-05 | `LINECOUNT_PUZZLE` | MED | スライス遮断前後での `wc -l` / `nl` 行数確認パズル |
