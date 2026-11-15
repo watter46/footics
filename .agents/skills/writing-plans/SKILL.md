@@ -21,14 +21,11 @@ description: 仕様や要件から、実行モデル（Gemini 4 Hydrogen/low）�
 
 ## 2. 事前探索プロトコル (Planner による直接探索)
 
-Planner はサブエージェントに探索を丸投げせず、以下の決定論的ツールで調査を完結させます：
-1. **シンボル・呼び出し元の全件特定**:
-   - 定義元検索: `bun run ai:find <keyword>`
-   - 呼び出し元（Consumer）の全件網羅特定: `rg -l '<symbol>' src/ extension/` および `rg -c '<symbol>' src/ extension/`
-2. **シグネチャ・行番号・内部importの一括抽出**:
-   - `bun run ai:outline <file1> [file2 ...]`（`[L開始-L終了]` 行番号と内部 import を抽出）
-3. **対象箇所の無加工読込 (`read_file`)**:
-   - 400行以下のファイルは1回の `read_file` で全文取得、400行超は `ai:outline` の行番号で該当範囲を取得し、タスクファイルに書く対象シンボル・行範囲アンカーと公開型を正確に把握する。
+`.agents/rules/efficient-exploration.md` を唯一正本とし、Planner はサブエージェントへ探索を丸投げせず決定論的ツールで調査を完結させます：
+1. **影響・Consumers 全件特定**: `bun run ai:impact <symbol|file>` と `rg -l '<symbol>' src/ extension/`
+2. **構造・型・行範囲抽出**: `bun run ai:peek <file|dir> [Symbol]`
+3. **対象箇所の無加工読込 (`read_file`)**: 150行以下は一括、150行超コードは事前 `ai:peek`/`ai:impact`/`rg` 後に `StartLine`/`EndLine` 指定で該当範囲を確認し、タスクファイルに書くシンボル・行範囲アンカー・公開型を正確に把握する。
+   - 大規模リファクタリング時は `large-codebase-research` スキルで `notes/research-<topic>.md` へ蒸留し、新規セッションで `/plan @notes/research-<topic>.md` を実行する。
 
 ## 3. 記述粒度・サイズ上限・詰め込み防止ルール（`Hydrogen/low` 最適化）
 

@@ -4,7 +4,7 @@
 
 ## コア原則
 
-1. **極限のトークン最適化と直接探索** — 標準コマンド（`ls`, `cat`, `grep` 等）は `guard.ts` により自動最適化。探索は `repo_summary.txt`、`bun run ai:find <symbol>`、`rg -l '<symbol>' src/ extension/`（Consumer 全件特定）、`bun run ai:outline <files...>`（行番号・内部import・折りたたみシグネチャ抽出）、および `read_file`（400行以下は1回で全文、400行超は行範囲指定）で Planner 自らが直接行う（旧 `Scout` は廃止）。
+1. **極限のトークン最適化と直接探索** — 探索パイプライン・禁止コマンドの唯一正本は `.agents/rules/efficient-exploration.md`（常時適用）とし、150行超ソースコードの事前構造確認なし丸読みをガードで物理遮断する（旧 `Scout` は廃止）。
 2. **高品質な実装とモックテスト排除** — Biome v2 strict、TypeScript strict、および内部 Store / Hook の `vi.mock` を禁止した「純粋関数 I/O テスト ＋ 実 `StoreProvider` 結合テスト」により、`bun dev` でのブラウザ実行時エラーを根絶する。
 3. **2階層モデル（Planner + Worker）とコンテキスト分離** — 旧 `Scout` / `Reviewer` を廃止し、Planner（コンテキストA 高推論設計・分解 / コンテキストB `Gemini 4 Hydrogen/low` 実行オーケストレート）と Worker（`Gemini 4 Hydrogen/low`）の2階層に純化する。Planner / Brainstormer は要望に破綻や副作用がある場合、迎合せず『⚠️ 設計破綻・副作用の指摘』として反論・代替案を提示する。
 4. **組み立て部品契約（`Before ➔ After` 写経廃止）とサイズ上限** — タスクファイル（`tasks/TASK-*.md`）は事前 `Commit:`、`Execution Waves`（並列/直列順）、機械検証 `Negative Contracts`（`rg:` / `absent:`）、公開型・振る舞い仕様・具体テスト仕様を記述し、実装コード本体の写経を禁止する。1 Phase は実作業推奨2〜3・上限 **4ファイル**（`[DELETE]` 除外、既存300行超ファイル移行は `1+1` かつ読込 ~600行以内）、1タスク最大 **5 Phase**・全体 **400行**・コードブロック **40行** を上限とし、超過規模は連番タスクに分割する。古い仕組み温存のフォールバックは全面禁止とし、並列競合を防ぐため Worker による `TASK-*.md` 直接編集は禁止する。各 Phase の Worker は `bun run ai:check <files>`（Guardrails + Biome + Scoped tsc + 担当テスト）を実行し、全 Phase 完了後に Planner が `Status: DONE` 更新と `bun run ai:commit` を実行する。

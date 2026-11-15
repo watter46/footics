@@ -76,8 +76,8 @@ bun run ai:audit --compare <before_id> <after_id>
 | **INFRA** | INFRA-01 | `TOOL_MISSING` | HIGH/MED | 必須ツール（Worker の `run_command`/`edit_file`/`write_file` 等）未呼出・欠落訴え |
 | | INFRA-02 | `HOOK_ROLE_MISMATCH` | HIGH | ガードがエージェントのロールまたは Worker ID を誤認して誤爆 |
 | | INFRA-03 | `UNEXPANDED_TEMPLATE` | LOW | `${var}` 等の未展開テンプレート文字列がガード文言に残存 |
-| **EXP** | EXP-01 | `OUTLINE_BYPASS` | HIGH | Planner が `ai:outline` / `rg` / `ai:find` 未使用のまま 3 件以上の対象ソースを直読 |
-| | EXP-02 | `BAD_FIRST_MOVE` | MED | `repo_summary.txt` / `tasks/TASK-*.md` / `ai:outline` 等を経由せずソースコードを初手読込 |
+| **EXP** | EXP-01 | `OUTLINE_BYPASS` | HIGH | Planner が `ai:peek` / `ai:impact` / `ast-grep` / `rg` 未使用のまま 3 件以上の対象ソースを直読 |
+| | EXP-02 | `BAD_FIRST_MOVE` | MED | `ai:peek` / `ai:impact` / `rg -l` / `tasks/TASK-*.md` / `notes/*.md` を経由せずソースコードを初手読込 |
 | | EXP-03 | `EXPLORE_SHARE` | MED | 最初の編集/サブエージェント起動までの探索ターン率が 30% 超過 |
 | | EXP-04 | `SERIAL_INDEPENDENT` | LOW | 独立した単一ファイル `read_file` の 3 連続以上直列実行（並列化違反） |
 | | EXP-05 | `LINECOUNT_PUZZLE` | MED | スライス遮断前後での `wc -l` / `nl` 行数確認パズル |
@@ -86,9 +86,8 @@ bun run ai:audit --compare <before_id> <after_id>
 | | EXP-08 | `REPEAT_DENIAL` | HIGH | 同一ファイル/コマンドへの連続ガード遮断 |
 | | EXP-09 | `ROLE_VIOLATION` | HIGH | Planner / Worker / Architect / Auditor の編集・コマンド越権 |
 | | EXP-10 | `BLIND_REDO` | MED | 直近コマンドの引数を変えない無意味な連続再実行 |
-| **READ** | READ-01 | `SMALL_SLICED` | MED | 400 行以下小型ファイルの `StartLine`/`EndLine` スライス読込 |
-| | READ-02 | `SEQ_SLICING` | HIGH | 同一ファイルへの連続スライス読込（ページ送り）または遮断 |
-| | READ-03 | `LARGE_FULL_BLIND` | MED | 400 行超大型ファイルの事前 `ai:outline` / `rg` / `grep` なし全文読込 |
+| **READ** | READ-02 | `SEQ_SLICING` | HIGH | 同一ファイルへの連続スライス読込（ページ送り）または遮断（`READ-01` は廃止） |
+| | READ-03 | `LARGE_FULL_BLIND` | MED | 150 行超ファイルの事前 `ai:peek` / `ai:impact` / `rg` なし全文読込 |
 | | READ-04 | `DUPLICATE_READ` | LOW | 間に編集を挟まない同一ファイルの重複読込 |
 | | READ-05 | `EDIT_WITHOUT_RAW_READ` | HIGH | `read_file` 未実行ファイルへの `edit_file` / `write_file(Overwrite: true)` |
 | | READ-06 | `RTK_READ_BASIS` | HIGH | 要約出力（`rtk read`）のみを根拠にしたコード編集 |
@@ -96,6 +95,7 @@ bun run ai:audit --compare <before_id> <after_id>
 | | READ-08 | `HEAVY_READ_TOP` | INFO | 読込容量上位 5 ファイルのサマリー提示 |
 | | READ-09 | `READ_UNUSED` | LOW | 読込後に本文・次ステップ `tool_calls` のいずれにも参照されないファイル |
 | | READ-10 | `WORKER_EXPLORES` | MED | `TASK_ASSIGN` および割り当て Phase の `Target Files` 外ファイルへの Worker 読込 |
+| | READ-11 | `COMPACT_LOOP_ALERT` | HIGH/MED | Planner ターン間で `cache_read_tokens` (>=80K) が 50% 超急落したオートコンパクション発生 |
 | **PIPE** | PIPE-01 | `WORKER_REUSE_OR_NO_KILL` | HIGH/MED | 完了済/肥大化 Worker の再利用試行、または `TASK_COMPLETE` 後の `manage_subagents(kill)` 漏れ |
 | | PIPE-02 | `POLLING_LOOP` | MED | `manage_subagents(list)` の連続ポーリング |
 | | PIPE-03 | `INTEGRATION_GATE_BYPASS` | HIGH | `TASK_COMPLETE` 後の `ai:preflight`/`ai:commit` 未実行、または生 `git commit` 試行 |
@@ -113,7 +113,7 @@ bun run ai:audit --compare <before_id> <after_id>
 
 監査官は、検出された Finding・Bypass・定性問題の根本原因を以下の 8 層から客観的に特定する：
 
-1. **Planner**: タスク分解不備、`ai:outline`/`rg` 不使用、並列 Phase 化漏れ、完了 Worker の `kill` 漏れ、`ai:commit`/`ai:preflight` 漏れ
+1. **Planner**: タスク分解不備、`ai:peek`/`ai:impact`/`rg` 不使用、並列 Phase 化漏れ、完了 Worker の `kill` 漏れ、`ai:commit`/`ai:preflight` 漏れ
 2. **Worker**: TDD 手順違反、ガード遮断後の反省なし再実行、生コマンド連打、スライス読込、Lint/テスト/モック逃避
 3. **Architect**: `.agents/**`・`docs/**` スコープ外アクセス試行、非許可コマンド試行
 4. **Task設計 (`tasks/TASK-*.md`)**: 契約不備（Before/After写経混入・型未定義）、二重持ち/フォールバック設計、ストアモック指示、肥大化（>400行 / >4ファイル）

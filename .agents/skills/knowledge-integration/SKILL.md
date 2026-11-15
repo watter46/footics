@@ -21,7 +21,7 @@ description: Use this skill when you encounter unknown domains or technologies n
 - **比較検討**: 複数の選択肢がある場合、長所と短所を客観的に評価します。
 
 ### Phase 3: 1次データからの知見の蒸留 (Distill)
-- Phase 2 で保存した1次データファイル (`.agents/research/raw/`) を `view_file` で読み込み、以下の観点で「本プロジェクトで採用すべきアーキテクチャパターン」を蒸留（抽出）してドキュメント (`docs/` 配下等) にまとめます。
+- Phase 2 で保存した1次データファイル (`.agents/research/raw/`) を `read_file` で読み込み、以下の観点で「本プロジェクトで採用すべきアーキテクチャパターン」を蒸留（抽出）してドキュメント (`docs/` 配下等) にまとめます。
   1. **ディレクトリ構造**
   2. **責務の分離**
   3. **データフローと同期**

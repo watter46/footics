@@ -32,7 +32,7 @@ globs:
 
 | 役割 | 想定モデル | 責務 |
 | :--- | :--- | :--- |
-| **Planner (コンテキスト A: 設計・タスク作成)** | 高推論モデル（`mid` / `high`） | 直接探索（`ai:outline` / `rg -l` / `read_file`）、Plan Artifact 作成、部品契約型タスクファイル（`Execution Waves` / 機械検証 `Negative Contracts` / 公開型・振る舞い仕様 / 具体テストケース）作成、`bun run task:validate` 検証 |
+| **Planner (コンテキスト A: 設計・タスク作成)** | 高推論モデル（`mid` / `high`） | 直接探索（`ai:impact` / `ai:peek` / `rg -l` / `read_file`）、Plan Artifact 作成、部品契約型タスクファイル（`Execution Waves` / 機械検証 `Negative Contracts` / 公開型・振る舞い仕様 / 具体テストケース）作成、`bun run task:validate` 検証 |
 | **Planner (コンテキスト B: 実行オーケストレーター)** | `Gemini 4 Hydrogen/low` (`inherit`) | `Execution Waves` に沿った Worker 起動・回収・破棄、`Status: DONE` 更新、および全 Phase 完了後の `bun run ai:commit` 実行（`task:validate --verify-contracts --require-done` + `ai:preflight` + 自動コミット） |
 | **Worker (Phase 実装担当)** | `Gemini 4 Hydrogen/low` (`inherit`) | 担当 Phase の `Target Files` / `Reference Files` を読み込み、`Contract` 通りに実装＋削除＋共通規約準拠テスト（内部 `vi.mock` 禁止）を作成、`bun run ai:check <担当ファイル>`（Guardrails + Biome + Scoped tsc + Phase テスト）で自己修復・完遂 |
 | **Auditor / Architect** | 高推論モデル | セッション監査（`ai:audit`）および `.agents/**`・ドメインアーキテクチャ規約の保守 |

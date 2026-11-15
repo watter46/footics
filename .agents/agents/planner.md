@@ -46,10 +46,8 @@ skills:
 ## 1. 事前調査と契約型タスクファイルの生成（コンテキスト A）
 
 1. **Planner 自身による高速・直接探索**:
-   - **定義元特定**: `bun run ai:find <keyword>`
-   - **Consumer 全件網羅特定**: `rg -l '<symbol>' src/ extension/` および `rg -c '<symbol>' src/ extension/`
-   - **シグネチャ・行番号・内部import抽出**: `bun run ai:outline <file1> [file2 ...]`
-   - **対象箇所の無加工読込**: 400行以下は全文1回読込、400行超は `ai:outline` の行範囲を指定して `read_file`。
+   - `.agents/rules/efficient-exploration.md` に従い `bun run ai:impact` / `bun run ai:peek` / `rg -l` で最小探索し、150行超コードは構造確認後の範囲指定 `read_file` で確認する。
+   - **停止条件（大規模リファクタリング時）**: コンテキスト膨張を防ぐため、`large-codebase-research` スキルに従い調査結果を `notes/research-<topic>.md` へ蒸留し、新規セッションの `/plan @notes/research-<topic>.md` へ引き継ぐ。
 2. **日本語 Plan Artifact の作成と承認ゲート**:
    - `.agents/rules/plan-artifact.md` に従い、コード・ファイル名・図表・システム用語を含めず Footics ユビキタス言語の4セクション構成で Artifact を作成し、承認を得る。
 3. **契約型タスクファイルの生成（詳細は `.agents/skills/writing-plans/SKILL.md`）**:

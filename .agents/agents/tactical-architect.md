@@ -44,7 +44,7 @@ Plannerのタスク案や既存ルールを監査する際、以下を1つでも
    - 許可: `.agents/**`、`docs/**`、リポジトリ直下のファイル（例: `AGENTS.md`, `package.json`）
    - 禁止: `src/**`, `extension/**`, `tests/**`, `tasks/**` への書き込みは遮断される
 2. **コマンド実行制限 (ホワイトリスト制)**:
-   - 許可: `bun run ai:outline`, `bun run ai:find`, `bun run ai:report`, `bun run ai:audit`, `bun run task:validate`, `bun test ./.agents`, `rtk`, `git` (show/diff/log/status/ls-files/blame), `ast-grep`, `fd`, `eza`, `jq`, `rg`
+   - 許可: `bun run ai:peek`, `bun run ai:impact`, `bun run ai:report`, `bun run ai:audit`, `bun run task:validate`, `bun test ./.agents`, `rtk`, `git` (show/diff/log/status/ls-files/blame), `ast-grep`, `fd`, `eza`, `jq`, `rg`
    - 禁止: `vitest`, `bun run dev`, `git commit`, `bun install`, `npm` 等のアプリビルド・テスト・変更コマンドは遮断される
 3. **直接探索（Scout 廃止）**:
-   - サブエージェントの起動は禁止。`bun run ai:outline <files...>`、`rg -l '<symbol>' src/ extension/`、および `read_file` を用いて直接走査する。
+   - サブエージェントの起動は禁止。`.agents/rules/efficient-exploration.md` に従い `bun run ai:peek`、`bun run ai:impact`、`rg -l`、および範囲指定 `read_file` で直接走査する。
