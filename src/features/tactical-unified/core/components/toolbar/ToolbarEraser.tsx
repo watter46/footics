@@ -2,11 +2,11 @@
 
 import { Eraser } from 'lucide-react';
 import { IconButton } from '@/components/ui/icon-button';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import { useSessionStore } from '@/features/tactical-unified/stores/tactical-store-provider';
 
 export function ToolbarEraser() {
-  const activeTool = useCanvasStore((s) => s.activeTool);
-  const setActiveTool = useCanvasStore((s) => s.setActiveTool);
+  const activeTool = useSessionStore((s) => s.activeTool);
+  const setActiveTool = useSessionStore((s) => s.setActiveTool);
   const isEraser = activeTool === 'eraser';
 
   return (

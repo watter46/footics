@@ -1,7 +1,6 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useCanvasStore } from '../hooks/use-canvas-store';
 import {
   DraggableToolbar,
   type DrawingToolPlugin,
@@ -27,11 +26,8 @@ export function CoreDrawingToolbar({
   tools,
   showPitchLock,
 }: CoreDrawingToolbarProps): ReactNode {
-  const hasPitchLock = useCanvasStore(
-    (s) => s.capabilities?.hasPitchLock ?? true,
-  );
   const resolvedTools = tools ?? getDrawingTools(markerMode);
-  const shouldShowPitchLock = showPitchLock ?? hasPitchLock;
+  const shouldShowPitchLock = showPitchLock ?? true;
 
   return (
     <DraggableToolbar className={`right-3 ${className}`.trim()}>

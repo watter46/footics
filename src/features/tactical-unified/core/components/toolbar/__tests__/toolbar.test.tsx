@@ -1,9 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { createCanvasStore } from '../../../store/canvas-store';
-import { CanvasStoreContext } from '../../../store/canvas-store-provider';
-import type { CanvasStoreApi } from '../../../types';
+import { createDocumentStore } from '../../../../stores/document-store';
+import { selectDomainActiveSlide } from '../../../../stores/domain-selectors';
+import { createSessionStore } from '../../../../stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '../../../../stores/tactical-store-provider';
 import { CoreDrawingToolbar } from '../../CoreDrawingToolbar';
 import {
   DraggableToolbar,
@@ -23,20 +27,30 @@ import {
 
 function renderWithStore(
   ui: React.ReactElement,
-  initialStore?: CanvasStoreApi,
+  initialProject = createDefaultTacticalProject(),
 ) {
-  const store =
-    initialStore ??
-    createCanvasStore({
-      mode: 'screenshot-edit',
-      aspectRatio: '16:9',
-    });
+  const phase = initialProject.phases[0];
+  const slide = phase?.slides[0];
+  if (!phase || !slide) {
+    throw new Error('Default project must have at least one phase and slide');
+  }
+  const documentStore = createDocumentStore(initialProject);
+  const sessionStore = createSessionStore({
+    activePhaseId: phase.id,
+    activeSlideId: slide.id,
+  });
   const utils = render(
-    <CanvasStoreContext.Provider value={store}>
+    <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
       {ui}
-    </CanvasStoreContext.Provider>,
+    </TacticalStoreProvider>,
   );
-  return { store, ...utils };
+  return {
+    documentStore,
+    sessionStore,
+    phaseId: phase.id,
+    slideId: slide.id,
+    ...utils,
+  };
 }
 
 describe('Toolbar Compound Components & Registry', () => {
@@ -54,7 +68,27 @@ describe('Toolbar Compound Components & Registry', () => {
   });
 
   it('DraggableToolbar と ToolbarToolsGroup が連携してツールを切り替えられること', () => {
-    const { store } = renderWithStore(
+    const project = createDefaultTacticalProject();
+    const initialSlide = project.phases[0]?.slides[0];
+    if (initialSlide) {
+      initialSlide.arrows.push({
+        id: 'test-arr',
+        annotationType: 'arrow',
+        arrowType: 'pass',
+        curveType: 'straight',
+        points: [
+          { x: 0 as never, y: 0 as never },
+          { x: 10 as never, y: 10 as never },
+        ],
+        color: '#ffffff',
+        strokeWidth: 3,
+        dashArray: [],
+        startMarker: 'none',
+        endMarker: 'arrow',
+      });
+    }
+
+    const { documentStore, sessionStore, phaseId, slideId } = renderWithStore(
       <DraggableToolbar>
         <ToolbarToolsGroup tools={EXTENSION_DRAWING_TOOLS} />
         <ToolbarDivider />
@@ -63,61 +97,85 @@ describe('Toolbar Compound Components & Registry', () => {
         <ToolbarDivider />
         <ToolbarResetButton />
       </DraggableToolbar>,
+      project,
     );
 
     // Initial tool is select
-    expect(store.getState().activeTool).toBe('select');
+    expect(sessionStore.getState().activeTool).toBe('select');
 
     // Click line tool
     const lineBtn = screen.getByTitle('Straight Line (L)');
     fireEvent.click(lineBtn);
-    expect(store.getState().activeTool).toBe('line');
+    expect(sessionStore.getState().activeTool).toBe('line');
+    expect(documentStore.getState().past).toHaveLength(0);
 
     // Continuous lock
     const continuousBtn = screen.getByTitle(/Continuous Draw/i);
     fireEvent.click(continuousBtn);
-    expect(store.getState().continuousDrawing).toBe(true);
+    expect(sessionStore.getState().continuousDrawing).toBe(true);
+    expect(documentStore.getState().past).toHaveLength(0);
 
     // Eraser
     const eraserBtn = screen.getByTitle(/Eraser/i);
     fireEvent.click(eraserBtn);
-    expect(store.getState().activeTool).toBe('eraser');
+    expect(sessionStore.getState().activeTool).toBe('eraser');
+    expect(documentStore.getState().past).toHaveLength(0);
 
     // Reset button
-    store.getState().addArrow({
-      id: 'test-arr',
-      annotationType: 'arrow',
-      arrowType: 'pass',
-      curveType: 'straight',
-      points: [
-        { x: 0, y: 0 },
-        { x: 10, y: 10 },
-      ],
-      color: '#ffffff',
-      strokeWidth: 3,
-      dashArray: [],
-      arrowHead: true,
-    });
-    expect(store.getState().annotations.arrows).toHaveLength(1);
+    const beforeSlide = selectDomainActiveSlide(
+      documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
+    expect(beforeSlide?.arrows).toHaveLength(1);
+    const initialPlayerCount = beforeSlide?.players.length ?? 0;
+    expect(initialPlayerCount).toBeGreaterThan(0);
 
     window.confirm = vi.fn(() => true);
     const resetBtn = screen.getByTitle('Reset all annotations');
     fireEvent.click(resetBtn);
     expect(window.confirm).toHaveBeenCalled();
-    expect(store.getState().annotations.arrows).toHaveLength(0);
+
+    const afterSlide = selectDomainActiveSlide(
+      documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
+    expect(afterSlide?.arrows).toHaveLength(0);
+    expect(afterSlide?.players).toHaveLength(initialPlayerCount);
   });
 
-  it('ToolbarPitchLock が単体で動作すること', () => {
-    const { store } = renderWithStore(
+  it('ToolbarPitchLock が単体で動作し documentStore の pitchTransform.isLocked を反転すること', () => {
+    const { documentStore, phaseId, slideId } = renderWithStore(
       <div>
         <ToolbarPitchLock />
       </div>,
     );
 
-    expect(store.getState().pitchTransform.isLocked).toBe(false);
+    const initialSlide = selectDomainActiveSlide(
+      documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
+    expect(initialSlide?.pitchTransform?.isLocked ?? true).toBe(true);
+
     const pitchBtn = screen.getByTitle(/Pitch Lock/i);
     fireEvent.click(pitchBtn);
-    expect(store.getState().pitchTransform.isLocked).toBe(true);
+
+    const unlockedSlide = selectDomainActiveSlide(
+      documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
+    expect(unlockedSlide?.pitchTransform?.isLocked).toBe(false);
+
+    fireEvent.click(pitchBtn);
+    const relockedSlide = selectDomainActiveSlide(
+      documentStore.getState().project,
+      phaseId,
+      slideId,
+    );
+    expect(relockedSlide?.pitchTransform?.isLocked).toBe(true);
   });
 
   it('FixedToolbar が右側固定配置スタイルを持つこと', () => {
@@ -182,29 +240,24 @@ describe('Toolbar Compound Components & Registry', () => {
       expect(screen.getByTestId('tool-player-ring')).toBeDefined();
     });
 
-    it('CoreDrawingToolbar で capabilities.hasPitchLock に基づいて ToolbarPitchLock が制御されること', () => {
-      // mode: 'screenshot-edit' では hasPitchLock = false なので非表示
+    it('CoreDrawingToolbar で showPitchLock Props に基づいて ToolbarPitchLock が制御されること', () => {
+      // showPitchLock={false} では非表示
       const { unmount } = renderWithStore(
-        <CoreDrawingToolbar />,
-        createCanvasStore({ mode: 'screenshot-edit' }),
+        <CoreDrawingToolbar showPitchLock={false} />,
       );
       expect(screen.queryByTitle(/Pitch Lock/i)).toBeNull();
       unmount();
 
-      // mode: 'tactical-board' では hasPitchLock = true なので表示
+      // showPitchLock={true} では表示
       const { unmount: unmount2 } = renderWithStore(
-        <CoreDrawingToolbar />,
-        createCanvasStore({ mode: 'tactical-board' }),
+        <CoreDrawingToolbar showPitchLock={true} />,
       );
       expect(screen.getByTitle(/Pitch Lock/i)).toBeDefined();
       unmount2();
 
-      // showPitchLock prop での上書きも可能であること
-      renderWithStore(
-        <CoreDrawingToolbar showPitchLock={false} />,
-        createCanvasStore({ mode: 'tactical-board' }),
-      );
-      expect(screen.queryByTitle(/Pitch Lock/i)).toBeNull();
+      // showPitchLock 省略時はデフォルト true で表示
+      renderWithStore(<CoreDrawingToolbar />);
+      expect(screen.getByTitle(/Pitch Lock/i)).toBeDefined();
     });
   });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { IconButton } from '@/components/ui/icon-button';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import { useSessionStore } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { DrawingToolPlugin } from './drawing-tool-plugin';
 
 export interface ToolbarToolsGroupProps {
@@ -9,8 +9,8 @@ export interface ToolbarToolsGroupProps {
 }
 
 export function ToolbarToolsGroup({ tools }: ToolbarToolsGroupProps) {
-  const activeTool = useCanvasStore((s) => s.activeTool);
-  const setActiveTool = useCanvasStore((s) => s.setActiveTool);
+  const activeTool = useSessionStore((s) => s.activeTool);
+  const setActiveTool = useSessionStore((s) => s.setActiveTool);
 
   return (
     <>

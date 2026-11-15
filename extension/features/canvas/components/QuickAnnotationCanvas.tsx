@@ -116,7 +116,12 @@ function QuickAnnotationCanvasInner(
       ref={stageRef}
       className={className}
       imageAspect={imageAspect}
-      toolbar={<CoreDrawingToolbar tools={EXTENSION_DRAWING_TOOLS} />}
+      toolbar={
+        <CoreDrawingToolbar
+          tools={EXTENSION_DRAWING_TOOLS}
+          showPitchLock={false}
+        />
+      }
     />
   );
 }

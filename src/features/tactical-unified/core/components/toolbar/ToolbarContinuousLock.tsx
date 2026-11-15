@@ -2,11 +2,11 @@
 
 import { Pin } from 'lucide-react';
 import { IconButton } from '@/components/ui/icon-button';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import { useSessionStore } from '@/features/tactical-unified/stores/tactical-store-provider';
 
 export function ToolbarContinuousLock() {
-  const continuousDrawing = useCanvasStore((s) => s.continuousDrawing);
-  const toggleContinuousDrawing = useCanvasStore(
+  const continuousDrawing = useSessionStore((s) => s.continuousDrawing);
+  const toggleContinuousDrawing = useSessionStore(
     (s) => s.toggleContinuousDrawing,
   );
 

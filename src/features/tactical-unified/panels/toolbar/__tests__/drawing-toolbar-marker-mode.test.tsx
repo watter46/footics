@@ -1,15 +1,28 @@
 import { render, screen } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it } from 'vitest';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import {
-  CanvasStoreProvider,
-  createCanvasStore,
-} from '@/features/tactical-unified/core';
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { DrawingToolbar } from '../drawing-toolbar';
 
 function renderWithStore(ui: React.ReactElement) {
-  const store = createCanvasStore({ mode: 'tactical-board' });
-  return render(<CanvasStoreProvider store={store}>{ui}</CanvasStoreProvider>);
+  const project = createDefaultTacticalProject();
+  const phase = project.phases[0];
+  const slide = phase?.slides[0];
+  const documentStore = createDocumentStore(project);
+  const sessionStore = createSessionStore({
+    activePhaseId: phase?.id ?? null,
+    activeSlideId: slide?.id ?? null,
+  });
+  return render(
+    <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
+      {ui}
+    </TacticalStoreProvider>,
+  );
 }
 
 describe('DrawingToolbar markerMode filtering', () => {
