@@ -2,17 +2,17 @@ import {
   getScreenOuterPitchRect,
   PITCH_BOUNDARY_CONFIGS,
 } from '@/lib/tactical/pitch-geometry';
-import type {
-  AspectRatio,
-  XMediaPresetKey,
-} from '@/lib/types/tactical/primitives';
+import type { PitchTransform } from '@/lib/types/tactical/camera-config';
 import {
   type BoundaryBox,
   createXBoundaryBox,
   DEFAULT_BOUNDARY_BOX_SCREENSHOT,
-  type PitchTransform,
   X_MEDIA_PRESETS,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
+import type {
+  AspectRatio,
+  XMediaPresetKey,
+} from '@/lib/types/tactical/primitives';
 
 export interface AutoFitBoundaryOptions {
   readonly aspectRatio: AspectRatio;

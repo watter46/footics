@@ -1,4 +1,5 @@
 import type { ScreenNormCoord } from '@/lib/types/tactical/branded';
+import type { Easing } from '@/lib/types/tactical/camera-config';
 import type {
   DomainArrowAnnotation,
   DomainBallState,
@@ -19,12 +20,11 @@ import type {
   PlayerBadge,
   PlayerFocus,
   VisionCone,
-} from '@/lib/types/tactical/player';
+} from '@/lib/types/tactical/effect-config';
 import type {
   AspectRatio,
   XMediaPresetKey,
 } from '@/lib/types/tactical/primitives';
-import type { Easing } from '@/lib/types/tactical/slide';
 import type { DirectorCameraCommand } from './commands-director';
 
 export type { DirectorCameraCommand };

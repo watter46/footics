@@ -1,13 +1,13 @@
 import type {
+  ActionCameraCue,
+  DirectorCameraTrack,
+  Easing,
+  GlobalCameraKeyframe,
+} from '@/lib/types/tactical/camera-config';
+import type {
   DomainTacticalPhase,
   DomainTacticalProject,
 } from '@/lib/types/tactical/domain-hierarchy';
-import type {
-  ActionCameraCue,
-  DirectorCameraTrack,
-  GlobalCameraKeyframe,
-} from '@/lib/types/tactical/project';
-import type { Easing } from '@/lib/types/tactical/slide';
 import type { TacticalCommand } from './commands';
 
 const SNAP_THRESHOLD_MS = 150;

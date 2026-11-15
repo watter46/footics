@@ -3,7 +3,7 @@ import type {
   DomainSlide,
   DomainTacticalProject,
 } from '@/lib/types/tactical/domain-hierarchy';
-import { DEFAULT_BOUNDARY_BOX_16_9 } from '@/lib/types/tactical/slide';
+import { DEFAULT_BOUNDARY_BOX_16_9 } from '@/lib/types/tactical/pitch-config';
 
 export function createFreshSlide(
   templateSlide?: DomainSlide,

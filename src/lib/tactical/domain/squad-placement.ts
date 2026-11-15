@@ -8,7 +8,7 @@ import type {
   PitchPlayer,
 } from '@/lib/types/tactical/domain-entities';
 import type { AspectRatio } from '@/lib/types/tactical/primitives';
-import type { SeasonFormationPreset } from '@/lib/types/tactical/project';
+import type { SeasonFormationPreset } from '@/lib/types/tactical/project-config';
 import {
   createDefaultDomainPlayer,
   DEFAULT_DOMAIN_MARKER_STYLE,

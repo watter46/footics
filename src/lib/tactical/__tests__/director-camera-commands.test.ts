@@ -4,7 +4,7 @@ import type { DomainTacticalProject } from '@/lib/types/tactical/domain-hierarch
 import {
   DEFAULT_BOUNDARY_BOX_16_9,
   DEFAULT_PITCH_APPEARANCE,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
 import { applyTacticalCommand } from '../domain/project-reducer';
 
 function createBaseProject(): DomainTacticalProject {

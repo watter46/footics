@@ -3,7 +3,7 @@ import type {
   DomainTacticalPhase,
   DomainTacticalProject,
 } from '@/lib/types/tactical/domain-hierarchy';
-import { getDefaultBoundaryBoxForAspect } from '@/lib/types/tactical/slide';
+import { getDefaultBoundaryBoxForAspect } from '@/lib/types/tactical/pitch-config';
 import type { TacticalCommand } from './commands';
 import { createDefaultDomainPlayers } from './default-players';
 import { createFreshSlide } from './project-phase-handlers';

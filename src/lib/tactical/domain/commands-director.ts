@@ -1,5 +1,7 @@
-import type { ActionCameraCue } from '@/lib/types/tactical/project';
-import type { Easing } from '@/lib/types/tactical/slide';
+import type {
+  ActionCameraCue,
+  Easing,
+} from '@/lib/types/tactical/camera-config';
 
 export type DirectorCameraCommand =
   | {

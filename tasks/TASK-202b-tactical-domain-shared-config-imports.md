@@ -1,12 +1,12 @@
 # TASK-202b: Domain 層の共有設定 import 先を中立モジュールへ統一
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): point tactical domain modules to neutral shared config modules`
 - **Execution Waves**:
   - Wave 1 (parallel): Phase 1, Phase 2, Phase 3
 - **Negative Contracts**:
-  - `rg(src/lib/tactical/domain): types/tactical/(annotations|player|project|slide)`
-  - `rg(src/lib/tactical/__tests__/director-camera-commands.test.ts,src/lib/tactical/__tests__/slide-modes-and-reset.test.ts): types/tactical/(annotations|player|project|slide)`
+  - `rg(src/lib/tactical/domain): types/tactical/(annotations|player|project|slide)(['"]|$)`
+  - `rg(src/lib/tactical/__tests__/director-camera-commands.test.ts,src/lib/tactical/__tests__/slide-modes-and-reset.test.ts): types/tactical/(annotations|player|project|slide)(['"]|$)`
 
 ## 1. Architectural Invariants & Design Decisions
 - **Invariants (壊してはいけない前提条件)**:

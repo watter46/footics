@@ -9,12 +9,12 @@ import {
   DEFAULT_442_HOME,
   DEFAULT_4231_HOME,
 } from '@/lib/types/tactical/formations';
+import { DEFAULT_BOUNDARY_BOX_SCREENSHOT } from '@/lib/types/tactical/pitch-config';
 import {
   type AspectRatio,
   isVerticalAspectRatio,
   transformCoord,
 } from '@/lib/types/tactical/primitives';
-import { DEFAULT_BOUNDARY_BOX_SCREENSHOT } from '@/lib/types/tactical/slide';
 import { toBenchPlayer } from './invariants';
 
 function isPlayerInInitialPosition(

@@ -11,7 +11,7 @@ import {
   DEFAULT_PITCH_APPEARANCE,
   DEFAULT_SCREEN_BACKGROUND,
   getDefaultBoundaryBoxForAspect,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
 import { createDefaultDomainPlayers } from '../domain/default-players';
 import { applyTacticalCommand } from '../domain/project-reducer';
 
