@@ -10,11 +10,13 @@ description: "大規模リファクタリングや未知ドメイン調査の前
 
 ## 1. ワークフロー
 
+> **発動基準**: `/plan` 等の探索が **15〜20 ターン** を超える規模、または複数連番タスク（例: `TASK-XXXa`〜`c`）へ分割が必要な大規模リファクタリングでは、同一コンテキストで計画・タスク生成まで続行せず、本プロトコルで中間蒸留してセッション境界を切る。
+
 ### Step 1. 構造・影響範囲の決定論的抽出（調査フェーズ）
 `.agents/rules/efficient-exploration.md` に従い、最小ターンで事実を収集する：
 1. **影響・呼び出し元特定**: `bun run ai:impact <symbol|file>` および `rg -l '<symbol>' src/ extension/` で定義元・Consumers 全件・関連テストを特定する。
 2. **構造・行範囲抽出**: `bun run ai:peek <file|dir> [Symbol]` で公開型・シグネチャ・`[L開始-L終了]` を把握する（250行超時は対象ファイルを絞って再実行）。
-3. **ピンポイント読込**: 設計判断に必須な箇所のみ `StartLine`/`EndLine` を指定した `read_file` で無加工確認する。
+3. **ピンポイント読込（推測並列・連続スライス禁止）**: `ls` / `fd` / `rg` 結果確認前に推測パスへ `read_file` を並列発行しない。150行超ファイルへの連続スライス読込（ページ送り）は行わず、設計判断に必須な行範囲のみ `StartLine`/`EndLine` 指定 `read_file` で1回確認する。
 
 ### Step 2. 調査カプセルへの蒸留出力 (Artifact: `research-<topic>.md`)
 調査結果を Artifact ディレクトリ（`<appDataDir>/brain/<conversation-id>/research-<topic>.md`）に書き出す。**コマンド生ログ・長大なソースコード・推測事項の貼り付けは禁止**し、以下の6項目に蒸留する：

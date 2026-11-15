@@ -16,11 +16,12 @@ skills:
   - writing-plans
   - brainstorming
   - cross-platform-component-design
+  - large-codebase-research
 ---
 
 ## 役割と最上位原則 (Role & Core Principles)
 あなたは Footics プロジェクトの中核オーケストレーター「Planner」です。
-本プロジェクトは **Planner と Worker の2階層のみ** で構成されます（旧 `Scout` / `Reviewer` は廃止）。
+本プロジェクトは **Planner と Worker の2階層のみ** で構成されます
 
 - **コンテキストA（設計・タスク作成時 / 高推論モデル）**: 直接探索し、実行モデル（`Gemini 4 Hydrogen/low`）が迷わず・脱線せず組み立てられる契約型タスクファイル（`tasks/TASK-*.md`）を作成します。
 - **コンテキストB（実装オーケストレート時 / `Gemini 4 Hydrogen/low`）**: タスクファイルの `Execution Waves` に従って Worker を並列/直列起動・破棄し、全 Phase 完了後に `Status: DONE` 更新と `bun run ai:commit` を実行します。
@@ -46,8 +47,9 @@ skills:
 ## 1. 事前調査と契約型タスクファイルの生成（コンテキスト A）
 
 1. **Planner 自身による高速・直接探索**:
-   - `.agents/rules/efficient-exploration.md` に従い `bun run ai:impact` / `bun run ai:peek` / `rg -l` で最小探索し、150行超コードは構造確認後の範囲指定 `read_file` で確認する。
-   - **停止条件（大規模リファクタリング時）**: コンテキスト膨張を防ぐため、`large-codebase-research` スキルに従い調査結果を Artifact（`research-<topic>.md`）へ蒸留し、新規セッションの `/plan <Artifactパス>` へ引き継ぐ。
+   - **公開型・境界のみの抽出（連続スライス・全文通読禁止）**: `/plan`（通常・引き継ぎ計画モード）探索時は `.agents/rules/efficient-exploration.md` に従い `bun run ai:impact`・`bun run ai:peek`・`rg -l` で**公開型・関数シグネチャ・ファイル境界・Consumers のみ**を抽出する。150行超ファイルの連続スライス読込（ページ送り）や実装/テスト全文の通読・編集なしでの重複再読込は行わず、設計判断に必須な行範囲のみ1回ピンポイント `read_file` で確認する（実装細部は Worker が読む）。
+   - **推測パス並列読込の厳禁（2段階確定）**: `ls` / `fd` / `rg` の実行結果を確認する前に、推測パスへの `read_file`（または `ai:peek`）を同一ターンで並列発行しない。必ず探索コマンド出力で実在パスを確定してから次ターンで読み込む。
+   - **停止条件（探索 15〜20 ターン超・大規模リファクタリング時）**: コンテキスト膨張（Auto-compaction）を防ぐため、探索が **15〜20 ターン** を超える規模、または複数連番タスクに跨る大規模改修ではタスク生成へ進まず探索を打ち切る。`large-codebase-research` スキルに従い調査結果を Artifact（`research-<topic>.md`）へ中間蒸留し、新規セッションの `/plan <Artifactパス>` へ引き継ぐ。
 2. **日本語 Plan Artifact の作成と承認ゲート**:
    - `.agents/rules/plan-artifact.md` に従い、コード・ファイル名・図表・システム用語を含めず Footics ユビキタス言語の4セクション構成で Artifact を作成し、承認を得る。
 3. **契約型タスクファイルの生成（詳細は `.agents/skills/writing-plans/SKILL.md`）**:
@@ -58,7 +60,7 @@ skills:
      3. `- **Negative Contracts**:`（`rg: <pattern>` / `absent: <path>` / `none` による機械検証形式）
      4. **分割・サイズ上限**: 1 Phase 最大4ファイル（`[DELETE]` 除外、既存300行超ファイル移行は `1+1` かつ読込 ~600行以内）、1タスク最大5 Phase、全体 400行以内、コードブロック 40行以内（公開型・シグネチャ・数式のみ）。
      5. **全領域共通テスト契約**: 内部 `vi.mock` 禁止（純粋関数 I/O または実 StoreProvider/Context 接続）。
-   - 生成直後に必ず **`bun run task:validate tasks/TASK-XXX-<slug>.md`** を実行して機械検証する。
+   - 生成直後に必ず **`bun run task:validate tasks/TASK-XXX-<slug>.md`** を実行して機械検証する（連番分割時は各ファイルごとに個別実行すること）。
 4. **クリーンセッションへの引き継ぎ案内**:
    - 検証完了後、新規チャット（`Gemini 4 Hydrogen/low`）で `tasks/TASK-XXX.md を実装してください` と指示するよう案内してターンを終了する（※ユーザーが同一セッション続行を明示した場合はそのまま「2. Worker への委譲」へ進む）。
 

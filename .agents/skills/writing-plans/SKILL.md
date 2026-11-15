@@ -21,11 +21,11 @@ description: 仕様や要件から、実行モデル（Gemini 4 Hydrogen/low）�
 
 ## 2. 事前探索プロトコル (Planner による直接探索)
 
-`.agents/rules/efficient-exploration.md` を唯一正本とし、Planner はサブエージェントへ探索を丸投げせず決定論的ツールで調査を完結させます：
-1. **影響・Consumers 全件特定**: `bun run ai:impact <symbol|file>` と `rg -l '<symbol>' src/ extension/`
-2. **構造・型・行範囲抽出**: `bun run ai:peek <file|dir> [Symbol]`
-3. **対象箇所の無加工読込 (`read_file`)**: 150行以下は一括、150行超コードは事前 `ai:peek`/`ai:impact`/`rg` 後に `StartLine`/`EndLine` 指定で該当範囲を確認し、タスクファイルに書くシンボル・行範囲アンカー・公開型を正確に把握する。
-   - 大規模リファクタリング時は `large-codebase-research` スキルで Artifact（`research-<topic>.md`）へ蒸留し、新規セッションで `/plan <Artifactパス>` を実行する。
+`.agents/rules/efficient-exploration.md` を唯一正本とし、Planner はサブエージェントへ探索を丸投げせず決定論的ツールで最小探索します：
+1. **公開型・境界・Consumers のみ抽出**: `bun run ai:impact <symbol|file>`・`rg -l '<symbol>' src/ extension/`・`bun run ai:peek <file|dir> [Symbol]` で公開型・シグネチャ・`[L開始-L終了]`・参照関係のみを把握する。
+2. **連続スライス・全文通読・重複読込の禁止**: `/plan` 探索時は 150行超ファイルの連続スライス読込（ページ送り）や実装/テスト全文の通読を行わず、契約記述に必須な行範囲のみ `StartLine`/`EndLine` 指定 `read_file` で1回確認する（編集なしでの同一ファイル再読込も禁止）。
+3. **推測パス並列読込の厳禁**: `ls` / `fd` / `rg` の結果確認前に、実在未確認の推測パスへの `read_file` を同一ターンで並列発行しない（必ずパス確定後の次ターンで読込）。
+4. **中間蒸留ゲート（15〜20ターン上限）**: 探索が **15〜20 ターン** を超える規模、または多モジュール横断の大規模リファクタリング時は、その場でタスク生成を続行せず `large-codebase-research` スキルで Artifact（`research-<topic>.md`）へ中間蒸留し、新規セッションで `/plan <Artifactパス>` を実行する。
 
 ## 3. 記述粒度・サイズ上限・詰め込み防止ルール（`Hydrogen/low` 最適化）
 
@@ -49,7 +49,7 @@ description: 仕様や要件から、実行モデル（Gemini 4 Hydrogen/low）�
 
 ## 4. `TASK-*.md` 正式テンプレート
 
-作成直後に必ず `bun run task:validate tasks/TASK-XXX.md` を実行すること：
+作成直後に必ず `bun run task:validate tasks/TASK-XXX.md` を実行すること（連番分割時は各ファイルごとに個別実行すること）：
 
 ```markdown
 # TASK-XXX: [タイトル]
