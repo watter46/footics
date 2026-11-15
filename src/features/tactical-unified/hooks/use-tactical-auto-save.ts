@@ -8,9 +8,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  useTacticalUnifiedStoreApi,
-  useTacticalUnifiedStoreContext,
-} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+  createDefaultTacticalProject,
+  useDocumentStore,
+  usePlaybackStore,
+  useSessionStore,
+  useTacticalStoresContext,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import {
   loadActiveProjectFromDb,
   saveActiveProjectToDb,
@@ -25,20 +29,18 @@ export interface UseTacticalAutoSaveOptions {
 
 export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
   const { skipRestore = false, matchId = null } = options;
-  const storeApi = useTacticalUnifiedStoreApi();
+  const { documentStore, sessionStore } = useTacticalStoresContext();
   const isLoadedRef = useRef(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isPointerDown, setIsPointerDown] = useState(false);
 
-  const project = useTacticalUnifiedStoreContext((s) => s.project);
-  const isDirty = useTacticalUnifiedStoreContext((s) => s.isDirty);
-  const isPlaying = useTacticalUnifiedStoreContext((s) => s.isPlaying);
-  const loadProject = useTacticalUnifiedStoreContext((s) => s.loadProject);
-  const resetProject = useTacticalUnifiedStoreContext((s) => s.resetProject);
-  const setSaveStatus = useTacticalUnifiedStoreContext((s) => s.setSaveStatus);
-  const setLastSavedAt = useTacticalUnifiedStoreContext(
-    (s) => s.setLastSavedAt,
-  );
+  const project = useDocumentStore((s) => s.project);
+  const isDirty = useDocumentStore((s) => s.isDirty);
+  const loadProject = useDocumentStore((s) => s.loadProject);
+  const markSaved = useDocumentStore((s) => s.markSaved);
+  const isPlaying = usePlaybackStore((s) => s.isPlaying);
+  const setSaveStatus = useSessionStore((s) => s.setSaveStatus);
+  const setLastSavedAt = useSessionStore((s) => s.setLastSavedAt);
 
   // ポインタドラッグ中の保存保留（RAII監視）
   useEffect(() => {
@@ -79,14 +81,26 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
         const savedProject = await loadActiveProjectFromDb(matchId);
         if (isMounted) {
           if (savedProject) {
-            loadProject(savedProject);
+            const bundle = normalizeTacticalProject(savedProject);
+            loadProject(bundle.project);
+            sessionStore.getState().setActivePhaseId(bundle.activePhaseId);
+            sessionStore.getState().setActiveSlideId(bundle.activeSlideId);
             setSaveStatus('saved');
           } else {
-            // 前試合のスライドを引き継がない
-            if (matchId && storeApi.getState().project.matchId !== matchId) {
-              resetProject();
-            } else if (!matchId && storeApi.getState().project.matchId) {
-              resetProject();
+            const currentMatchId = documentStore.getState().project.matchId;
+            if (
+              (matchId && currentMatchId !== matchId) ||
+              (!matchId && currentMatchId)
+            ) {
+              const fresh = createDefaultTacticalProject();
+              loadProject(fresh);
+              const firstPhase = fresh.phases[0];
+              if (firstPhase) {
+                sessionStore.getState().setActivePhaseId(firstPhase.id);
+                sessionStore
+                  .getState()
+                  .setActiveSlideId(firstPhase.slides[0]?.id ?? '');
+              }
             }
             setSaveStatus('idle');
           }
@@ -108,11 +122,11 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
     };
   }, [
     loadProject,
-    resetProject,
     setSaveStatus,
     skipRestore,
     matchId,
-    storeApi,
+    documentStore,
+    sessionStore,
   ]);
 
   // 2. Debounced Auto-Save
@@ -137,7 +151,7 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
         await saveActiveProjectToDb(project, matchId);
         setSaveStatus('saved');
         setLastSavedAt(Date.now());
-        storeApi.setState({ isDirty: false });
+        markSaved();
       } catch (err) {
         console.error('Auto-save failed:', err);
         setSaveStatus('error');
@@ -157,13 +171,13 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
     matchId,
     setSaveStatus,
     setLastSavedAt,
-    storeApi,
+    markSaved,
   ]);
 
   // 3. Save on BeforeUnload
   useEffect(() => {
     const handleBeforeUnload = () => {
-      const state = storeApi.getState();
+      const state = documentStore.getState();
       if (
         state.isDirty &&
         isLoadedRef.current &&
@@ -177,5 +191,5 @@ export function useTacticalAutoSave(options: UseTacticalAutoSaveOptions = {}) {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [matchId, storeApi]);
+  }, [matchId, documentStore]);
 }

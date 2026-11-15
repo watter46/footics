@@ -3,7 +3,11 @@
 import gsap from 'gsap';
 import { useMemo, useRef } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
-import { resolvePlaybackDurationMs } from '@/lib/tactical/unified-interpolation';
+import {
+  resolvePlaybackDurationMs,
+  type SlideTimingLike,
+} from '@/lib/tactical/unified-interpolation';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { Slide } from '@/lib/types/tactical-unified';
 
 export interface AnimationPlaybackRefs {
@@ -28,7 +32,7 @@ export interface TacticalTimelineOptions {
 }
 
 export function createTacticalTimeline(
-  slides: Slide[],
+  slides: readonly (Slide | DomainSlide | SlideTimingLike)[],
   onUpdate: (timeMs: number) => void,
   options?: TacticalTimelineOptions,
 ): gsap.core.Timeline {

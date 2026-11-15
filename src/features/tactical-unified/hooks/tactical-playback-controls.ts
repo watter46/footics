@@ -40,7 +40,7 @@ export function snapToSlideOnStop({
   setActiveSlide,
   setPlaybackIndices,
 }: {
-  slides: Slide[];
+  slides: readonly (Slide | DomainSlide)[];
   refs: AnimationPlaybackRefs;
   registry: CanvasNodesRegistry | undefined;
   pitchDimensions: { width: number; height: number; x?: number; y?: number };
@@ -62,7 +62,10 @@ export function snapToSlideOnStop({
   if (slides.length === 0) return;
 
   const currentTime = refs.currentPlaybackTimeRef.current;
-  const frame = getInterpolatedUnifiedSlideFrame(slides, currentTime);
+  const frame = getInterpolatedUnifiedSlideFrame(
+    slides as Slide[],
+    currentTime,
+  );
 
   // 遷移中 (0 < progress < 1 かつ !isPaused) なら直後シーン (nextSlideIndex) にスナップ
   // pause 時間中または完了時なら currentSlideIndex に留まる
@@ -130,7 +133,7 @@ export function stopPlayback({
   setIsPlaying,
   setActiveSlide,
 }: {
-  slides?: Slide[];
+  slides?: readonly (Slide | DomainSlide)[];
   refs: AnimationPlaybackRefs;
   registry: CanvasNodesRegistry | undefined;
   pitchDimensions: { width: number; height: number; x?: number; y?: number };
@@ -179,7 +182,7 @@ export function pausePlayback(
   refs: AnimationPlaybackRefs,
   setIsPlaying: (playing: boolean) => void,
   options?: {
-    slides?: Slide[];
+    slides?: readonly (Slide | DomainSlide)[];
     registry?: CanvasNodesRegistry | undefined;
     pitchDimensions?: { width: number; height: number; x?: number; y?: number };
     applyFrameToCanvas?: (

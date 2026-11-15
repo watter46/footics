@@ -1,22 +1,11 @@
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { updateSlideInProject } from '@/features/tactical-unified/stores/store-helpers';
-import type {
-  TacticalUnifiedState,
-  TacticalUnifiedStoreApi,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
-import { useTacticalUnifiedStoreApi } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { useContext, useEffect, useRef, useState } from 'react';
+import { TacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { db } from '@/lib/db';
 import {
-  buildMatchTacticalPlayers,
-  injectMatchToTactical,
-} from '@/lib/tactical/match-to-tactical-bridge';
-import {
-  createDefaultProject,
-  ensureTacticalProject,
-} from '@/lib/types/tactical-unified';
-
-export { injectMatchToTactical } from '@/lib/tactical/match-to-tactical-bridge';
+  buildMatchToDomainProject,
+  type MatchDomainProjectBundle,
+} from '@/lib/tactical/acl/match-project-translator';
 
 export interface UseTacticalMatchInitOptions {
   initialMatchId?: string;
@@ -24,58 +13,23 @@ export interface UseTacticalMatchInitOptions {
   injectToStore?: boolean;
 }
 
+export type TacticalMatchInitialState = MatchDomainProjectBundle;
+
 export interface UseTacticalMatchInitResult {
   isLoading: boolean;
   hasMatchQuery: boolean;
   matchId: string | null;
-  initialState?: Partial<TacticalUnifiedState>;
+  initialState?: TacticalMatchInitialState;
   error: Error | null;
 }
 
 export async function resolveMatchInitialState(
   matchId: string,
   minute: number,
-): Promise<Partial<TacticalUnifiedState> | undefined> {
+): Promise<TacticalMatchInitialState | undefined> {
   const match = await db.matches.get(matchId);
   if (!match) return undefined;
-
-  const baseProject = createDefaultProject(crypto.randomUUID());
-  const { allPlayers, homeFormation, awayFormation } =
-    buildMatchTacticalPlayers({
-      match,
-      minute,
-      homeColor: baseProject.homeColor.primary,
-      awayColor: baseProject.awayColor.primary,
-      aspectRatio: baseProject.aspectRatio,
-    });
-
-  const title =
-    match.homeTeam?.name && match.awayTeam?.name
-      ? `${match.homeTeam.name} vs ${match.awayTeam.name} (${minute}')`
-      : baseProject.title;
-
-  const targetSlideId = baseProject.activeSlideId;
-  const updatedProject = {
-    ...updateSlideInProject(baseProject, targetSlideId, (s) => ({
-      ...s,
-      players: allPlayers,
-    })),
-    matchId: String(match.id),
-    matchFormations: {
-      home: homeFormation,
-      away: awayFormation,
-    },
-    title,
-    updatedAt: new Date().toISOString(),
-  };
-
-  const normalized = ensureTacticalProject(updatedProject);
-  return {
-    project: normalized,
-    activePhaseId: normalized.activePhaseId,
-    activeSlideId: normalized.activeSlideId,
-    pitchFitPending: false,
-  };
+  return buildMatchToDomainProject(match, { minute });
 }
 
 /**
@@ -86,7 +40,7 @@ export function useTacticalMatchInit(
   options: UseTacticalMatchInitOptions = {},
 ): UseTacticalMatchInitResult {
   const { initialMatchId, initialMinute, injectToStore = true } = options;
-  const storeApi = useTacticalUnifiedStoreApi();
+  const storesContext = useContext(TacticalStoresContext);
   const searchParams = useSearchParams();
 
   const matchIdParam =
@@ -104,7 +58,7 @@ export function useTacticalMatchInit(
   const hasMatchQuery = Boolean(matchIdParam);
   const [isLoading, setIsLoading] = useState<boolean>(hasMatchQuery);
   const [initialState, setInitialState] = useState<
-    Partial<TacticalUnifiedState> | undefined
+    TacticalMatchInitialState | undefined
   >(undefined);
   const [error, setError] = useState<Error | null>(null);
   const hasInitializedRef = useRef<string | null>(null);
@@ -129,8 +83,16 @@ export function useTacticalMatchInit(
         hasInitializedRef.current = initKey;
         if (resolved) {
           setInitialState(resolved);
-          if (injectToStore && resolved.project) {
-            storeApi.getState().loadProject(resolved.project);
+          if (injectToStore && storesContext) {
+            storesContext.documentStore
+              .getState()
+              .loadProject(resolved.project);
+            storesContext.sessionStore
+              .getState()
+              .setActivePhaseId(resolved.activePhaseId);
+            storesContext.sessionStore
+              .getState()
+              .setActiveSlideId(resolved.activeSlideId);
           }
         }
         setIsLoading(false);
@@ -147,7 +109,7 @@ export function useTacticalMatchInit(
     return () => {
       isMounted = false;
     };
-  }, [matchIdParam, minute, storeApi, injectToStore]);
+  }, [matchIdParam, minute, storesContext, injectToStore]);
 
   return {
     isLoading,

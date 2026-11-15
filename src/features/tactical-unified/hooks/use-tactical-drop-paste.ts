@@ -1,6 +1,11 @@
 import type React from 'react';
 import { useCallback, useEffect } from 'react';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import {
+  useDocumentStore,
+  useSessionStore,
+  useTacticalStoresContext,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 
 function handleImageFile(
   file: File,
@@ -49,13 +54,54 @@ function handleBenchDrop(
 }
 
 export function useTacticalDropPaste() {
-  const setImageBackground = useTacticalUnifiedStoreContext(
-    (s) => s.setImageBackground,
+  const { documentStore } = useTacticalStoresContext();
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const setActiveSlideId = useSessionStore((s) => s.setActiveSlideId);
+
+  const setImageBackground = useCallback(
+    (url: string) => {
+      const targetPhaseId =
+        activePhaseId || documentStore.getState().project.phases[0]?.id || '';
+      const targetSlideId =
+        activeSlideId ||
+        documentStore.getState().project.phases[0]?.slides[0]?.id ||
+        '';
+      if (!targetPhaseId || !targetSlideId) return;
+
+      const newSlideId = crypto.randomUUID();
+      documentStore.getState().dispatch({
+        type: 'APPLY_IMAGE_BACKGROUND',
+        phaseId: targetPhaseId,
+        slideId: targetSlideId,
+        url,
+        newSlideId,
+      });
+      const updatedPhase = documentStore
+        .getState()
+        .project.phases.find((p) => p.id === targetPhaseId);
+      if (updatedPhase?.slides.some((s) => s.id === newSlideId)) {
+        setActiveSlideId(newSlideId);
+      }
+    },
+    [activePhaseId, activeSlideId, documentStore, setActiveSlideId],
   );
-  const movePlayerToPitch = useTacticalUnifiedStoreContext(
-    (s) => s.movePlayerToPitch,
+
+  const movePlayerToPitch = useCallback(
+    (slideId: string, playerId: string, x: number, y: number) => {
+      const targetPhaseId =
+        activePhaseId || documentStore.getState().project.phases[0]?.id || '';
+      if (!targetPhaseId || !slideId) return;
+      dispatchSlide(targetPhaseId, slideId, {
+        type: 'MOVE_PLAYER_TO_PITCH',
+        id: playerId,
+        x: clampToScreenNorm(x),
+        y: clampToScreenNorm(y),
+      });
+    },
+    [activePhaseId, dispatchSlide, documentStore],
   );
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
 
   // 📋 クリップボード画像貼り付け (Ctrl+V / Paste)
   useEffect(() => {

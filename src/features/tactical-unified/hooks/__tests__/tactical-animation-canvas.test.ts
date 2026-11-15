@@ -3,7 +3,8 @@ import path from 'node:path';
 import type Konva from 'konva';
 import { describe, expect, it, vi } from 'vitest';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
-import { createDefaultSlide } from '@/lib/types/tactical-unified';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import {
   calculatePitchDimensions,
   createTacticalTimeline,
@@ -82,13 +83,29 @@ describe('calculatePitchDimensions', () => {
   });
 });
 
+function createTestDomainSlide(index: number, id: string): DomainSlide {
+  return {
+    id,
+    index,
+    label: `Scene ${index + 1}`,
+    players: [],
+    arrows: [],
+    zones: [],
+    texts: [],
+    ball: {
+      x: clampToScreenNorm(50),
+      y: clampToScreenNorm(50),
+      visible: true,
+    },
+    transitionDurationMs: 1000,
+    pauseMs: 500,
+    easing: 'ease-in-out',
+  };
+}
+
 describe('createTacticalTimeline (GSAP integration)', () => {
-  const slide1 = createDefaultSlide(0, 'slide-1');
-  slide1.transitionDurationMs = 1000;
-  slide1.pauseMs = 500;
-  const slide2 = createDefaultSlide(1, 'slide-2');
-  slide2.transitionDurationMs = 1000;
-  slide2.pauseMs = 500;
+  const slide1 = createTestDomainSlide(0, 'slide-1');
+  const slide2 = createTestDomainSlide(1, 'slide-2');
   const slides = [slide1, slide2];
 
   it('GSAP Timeline インスタンスを生成し、シーク時に onUpdate(timeMs) を呼び出す', () => {
@@ -154,10 +171,8 @@ describe('playback control helpers with GSAP Timeline', () => {
     const applyFrameToCanvas = vi.fn();
     const setActiveSlide = vi.fn();
 
-    const slide1 = createDefaultSlide(0, 'slide-1');
-    slide1.transitionDurationMs = 1000;
-    slide1.pauseMs = 500;
-    const slide2 = createDefaultSlide(1, 'slide-2');
+    const slide1 = createTestDomainSlide(0, 'slide-1');
+    const slide2 = createTestDomainSlide(1, 'slide-2');
     const slides = [slide1, slide2];
 
     pausePlayback(refs, setIsPlaying, {
@@ -196,7 +211,7 @@ describe('playback control helpers with GSAP Timeline', () => {
     const applyFrameToCanvas = vi.fn();
 
     stopPlayback({
-      slides: [createDefaultSlide(0, 'slide-1')],
+      slides: [createTestDomainSlide(0, 'slide-1')],
       refs,
       registry: undefined,
       pitchDimensions: { width: 800, height: 450 },

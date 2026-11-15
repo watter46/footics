@@ -5,28 +5,23 @@
 
 import { useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { toast } from 'sonner';
 import { getToolShortcutMap } from '@/features/tactical-unified/core/components/toolbar';
-import { getSlideSnapTime } from '@/features/tactical-unified/hooks/tactical-playback-controls';
 import {
-  selectActivePhaseSlides,
-  selectActiveSlide,
-} from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreApi } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+  handleCopyObjects,
+  handleDeleteOrBackspace,
+  handleDuplicateObjects,
+  handleDuplicateScene,
+  handleEscapeKey,
+  handleNavigateScene,
+  handlePasteObjects,
+  handleRestartPlayback,
+} from '@/features/tactical-unified/hooks/keyboard-shortcut-handlers';
+import { useTacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { isInputFocused } from '@/lib/shortcuts';
 
-const OBJECT_KIND_TO_COLLECTION: Record<
-  string,
-  'players' | 'arrows' | 'zones' | 'texts'
-> = {
-  player: 'players',
-  arrow: 'arrows',
-  zone: 'zones',
-  text: 'texts',
-};
-
 export function useKeyboardShortcuts() {
-  const storeApi = useTacticalUnifiedStoreApi();
+  const stores = useTacticalStoresContext();
+  const { documentStore, sessionStore, playbackStore } = stores;
 
   // Undo: Mod+Z (Ctrl+Z / Cmd+Z)
   useHotkeys(
@@ -34,7 +29,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      storeApi.getState().undo();
+      documentStore.getState().undo();
     },
     { enableOnFormTags: false },
   );
@@ -45,7 +40,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      storeApi.getState().redo();
+      documentStore.getState().redo();
     },
     { enableOnFormTags: false },
   );
@@ -56,8 +51,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      const currentSlideId = storeApi.getState().activeSlideId;
-      storeApi.getState().copySelectedObjects(currentSlideId);
+      handleCopyObjects(stores);
     },
     { enableOnFormTags: false },
   );
@@ -68,8 +62,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      const currentSlideId = storeApi.getState().activeSlideId;
-      storeApi.getState().pasteObjects(currentSlideId);
+      handlePasteObjects(stores);
     },
     { enableOnFormTags: false },
   );
@@ -80,8 +73,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      const currentSlideId = storeApi.getState().activeSlideId;
-      storeApi.getState().duplicateSelectedObjects(currentSlideId);
+      handleDuplicateObjects(stores);
     },
     { enableOnFormTags: false },
   );
@@ -92,9 +84,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      const currentSlideId = storeApi.getState().activeSlideId;
-      storeApi.getState().duplicateSlide(currentSlideId);
-      toast.success('シーンを複製しました');
+      handleDuplicateScene(stores);
     },
     { enableOnFormTags: false },
   );
@@ -105,7 +95,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      storeApi.getState().togglePlayback();
+      playbackStore.getState().togglePlayback();
     },
     { enableOnFormTags: false },
   );
@@ -116,7 +106,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      storeApi.getState().toggleWorkspaceMode();
+      sessionStore.getState().toggleWorkspaceMode();
     },
     { enableOnFormTags: false },
   );
@@ -128,18 +118,7 @@ export function useKeyboardShortcuts() {
       if (isInputFocused()) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       e.preventDefault();
-      const store = storeApi.getState();
-      const slides = selectActivePhaseSlides(store);
-      const currentIndex = slides.findIndex(
-        (s) => s.id === store.activeSlideId,
-      );
-      if (currentIndex > 0) {
-        const target = slides[currentIndex - 1];
-        store.setActiveSlide(target.id);
-        store.setPlaybackIndices(currentIndex - 1, null);
-        const snapTime = getSlideSnapTime(slides, currentIndex - 1);
-        store.seekTo(snapTime);
-      }
+      handleNavigateScene(stores, 'prev');
     },
     { enableOnFormTags: false },
   );
@@ -151,18 +130,7 @@ export function useKeyboardShortcuts() {
       if (isInputFocused()) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       e.preventDefault();
-      const store = storeApi.getState();
-      const slides = selectActivePhaseSlides(store);
-      const currentIndex = slides.findIndex(
-        (s) => s.id === store.activeSlideId,
-      );
-      if (currentIndex >= 0 && currentIndex < slides.length - 1) {
-        const target = slides[currentIndex + 1];
-        store.setActiveSlide(target.id);
-        store.setPlaybackIndices(currentIndex + 1, null);
-        const snapTime = getSlideSnapTime(slides, currentIndex + 1);
-        store.seekTo(snapTime);
-      }
+      handleNavigateScene(stores, 'next');
     },
     { enableOnFormTags: false },
   );
@@ -174,14 +142,7 @@ export function useKeyboardShortcuts() {
       if (isInputFocused()) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       e.preventDefault();
-      const store = storeApi.getState();
-      const slides = selectActivePhaseSlides(store);
-      if (slides.length > 0) {
-        store.setActiveSlide(slides[0].id);
-        store.setPlaybackIndices(0, null);
-        store.seekTo(0);
-        store.setIsPlaying(true);
-      }
+      handleRestartPlayback(stores);
     },
     { enableOnFormTags: false },
   );
@@ -190,26 +151,7 @@ export function useKeyboardShortcuts() {
   useHotkeys(
     'escape',
     (e) => {
-      // 1. フォーム入力中ならフォーカス解除
-      const activeTag = document.activeElement?.tagName?.toLowerCase();
-      if (activeTag === 'input' || activeTag === 'textarea') {
-        (document.activeElement as HTMLElement)?.blur();
-        e.preventDefault();
-        return;
-      }
-      // 2. ピッチ上のオブジェクトが選択されている場合は選択解除
-      const store = storeApi.getState();
-      if (store.selectedObjects.length > 0) {
-        store.clearSelection();
-        e.preventDefault();
-        return;
-      }
-      // 3. 何も選択されていない場合は右パネルを閉じる
-      if (store.panels.isRightPanelOpen) {
-        store.setRightPanelOpen(false);
-        (document.activeElement as HTMLElement)?.blur();
-        e.preventDefault();
-      }
+      handleEscapeKey(stores, e);
     },
     { enableOnFormTags: true },
   );
@@ -220,9 +162,9 @@ export function useKeyboardShortcuts() {
       if (isInputFocused()) return;
       if (e.key === ']' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        const store = storeApi.getState();
-        const nextOpen = !store.panels.isRightPanelOpen;
-        store.setRightPanelOpen(nextOpen);
+        const session = sessionStore.getState();
+        const nextOpen = !session.panels.isRightPanelOpen;
+        session.setRightPanelOpen(nextOpen);
         if (!nextOpen) {
           (document.activeElement as HTMLElement)?.blur();
         }
@@ -232,7 +174,7 @@ export function useKeyboardShortcuts() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [storeApi]);
+  }, [sessionStore]);
 
   // Tools: registered shortcuts
   const shortcutMap = getToolShortcutMap();
@@ -247,7 +189,7 @@ export function useKeyboardShortcuts() {
       const tool = currentMap[e.key.toLowerCase()];
       if (tool) {
         e.preventDefault();
-        storeApi.getState().setActiveTool(tool);
+        sessionStore.getState().setActiveTool(tool);
       }
     },
     { enableOnFormTags: false },
@@ -259,38 +201,7 @@ export function useKeyboardShortcuts() {
     (e) => {
       if (isInputFocused()) return;
       e.preventDefault();
-      const store = storeApi.getState();
-      const currentSlideId = store.activeSlideId;
-      const currentSelected = store.selectedObjects;
-
-      if (currentSelected.length > 0) {
-        const slide = selectActiveSlide(store);
-        const hasLockedObject = currentSelected.some((obj) => {
-          const collectionKey = OBJECT_KIND_TO_COLLECTION[obj.kind];
-          if (!collectionKey || !slide) return false;
-          const list = slide[collectionKey];
-          return Boolean(
-            (list as { id: string; locked?: boolean }[]).find(
-              (item) => item.id === obj.id,
-            )?.locked,
-          );
-        });
-
-        store.deleteSelectedObjects(currentSlideId);
-
-        if (hasLockedObject) {
-          toast.info('ロック中のオブジェクトは保護されています');
-        }
-      } else {
-        // ピッチ上オブジェクト非選択時はアクティブスライドを削除
-        const activeSlides = selectActivePhaseSlides(store);
-        if (activeSlides.length <= 1) {
-          toast.error('これ以上スライドを削除できません（最低1枚必要です）');
-          return;
-        }
-        store.deleteSlide(currentSlideId);
-        toast.success('スライドを削除しました（Ctrl+Zで復元可能）');
-      }
+      handleDeleteOrBackspace(stores);
     },
     { enableOnFormTags: false },
   );

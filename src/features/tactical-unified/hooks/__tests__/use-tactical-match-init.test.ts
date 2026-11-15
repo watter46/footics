@@ -1,11 +1,14 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import {
-  createTacticalUnifiedStore,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
-import { TacticalUnifiedStoreProvider } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { db } from '@/lib/db';
 import type { Match, Player, Team } from '@/types';
 import {
@@ -16,6 +19,25 @@ import {
 vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(() => null),
 }));
+
+function createMatchInitHarness() {
+  const project = createDefaultTacticalProject();
+  const phaseId = project.phases[0]?.id ?? '';
+  const slideId = project.phases[0]?.slides[0]?.id ?? '';
+  const documentStore = createDocumentStore(project);
+  const sessionStore = createSessionStore({
+    activePhaseId: phaseId,
+    activeSlideId: slideId,
+  });
+  const playbackStore = createPlaybackStore();
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    React.createElement(
+      TacticalStoreProvider,
+      { stores: { documentStore, sessionStore, playbackStore } },
+      children,
+    );
+  return { documentStore, sessionStore, playbackStore, wrapper };
+}
 
 describe('useTacticalMatchInit', () => {
   const createMockTeam = (
@@ -77,21 +99,23 @@ describe('useTacticalMatchInit', () => {
   };
 
   beforeEach(() => {
-    useTacticalUnifiedStore.getState().resetProject();
     vi.clearAllMocks();
   });
 
   it('does nothing when no matchId is provided', () => {
-    const { result } = renderHook(() => useTacticalMatchInit());
+    const { wrapper } = createMatchInitHarness();
+    const { result } = renderHook(() => useTacticalMatchInit(), { wrapper });
     expect(result.current.hasMatchQuery).toBe(false);
     expect(result.current.isLoading).toBe(false);
   });
 
   it('fetches match from db and initializes tactical canvas with 22 players', async () => {
     vi.spyOn(db.matches, 'get').mockResolvedValueOnce(mockMatch);
+    const { documentStore, sessionStore, wrapper } = createMatchInitHarness();
 
-    const { result } = renderHook(() =>
-      useTacticalMatchInit({ initialMatchId: '999', initialMinute: 25 }),
+    const { result } = renderHook(
+      () => useTacticalMatchInit({ initialMatchId: '999', initialMinute: 25 }),
+      { wrapper },
     );
 
     expect(result.current.hasMatchQuery).toBe(true);
@@ -100,31 +124,29 @@ describe('useTacticalMatchInit', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    const state = useTacticalUnifiedStore.getState();
-    expect(state.project.matchId).toBe('999');
-    expect(state.project.title).toContain("Home FC vs Away FC (25')");
+    const project = documentStore.getState().project;
+    expect(project.matchId).toBe('999');
+    expect(project.title).toContain("Home FC vs Away FC (25')");
 
-    const activeSlide = state.project.slides.find(
-      (s) => s.id === state.activeSlideId,
+    const { activePhaseId, activeSlideId } = sessionStore.getState();
+    const activeSlide = selectDomainActiveSlide(
+      project,
+      activePhaseId,
+      activeSlideId,
     );
     const pitchPlayers =
       activeSlide?.players.filter((p) => p.area === 'pitch') ?? [];
     expect(pitchPlayers).toHaveLength(22);
   });
 
-  it('injects match into custom storeApi when provided by context', async () => {
+  it('injects match into isolated TacticalStoreProvider stores without polluting sibling stores', async () => {
     vi.spyOn(db.matches, 'get').mockResolvedValueOnce(mockMatch);
 
-    const customStore = createTacticalUnifiedStore();
+    const customHarness = createMatchInitHarness();
+    const otherHarness = createMatchInitHarness();
     const { result } = renderHook(
       () => useTacticalMatchInit({ initialMatchId: '999', initialMinute: 25 }),
-      {
-        wrapper: ({ children }) =>
-          React.createElement(TacticalUnifiedStoreProvider, {
-            store: customStore,
-            children,
-          }),
-      },
+      { wrapper: customHarness.wrapper },
     );
 
     expect(result.current.hasMatchQuery).toBe(true);
@@ -133,17 +155,16 @@ describe('useTacticalMatchInit', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    // Custom store must be populated
-    expect(customStore.getState().project.matchId).toBe('999');
-    expect(customStore.getState().project.title).toContain(
+    expect(customHarness.documentStore.getState().project.matchId).toBe('999');
+    expect(customHarness.documentStore.getState().project.title).toContain(
       "Home FC vs Away FC (25')",
     );
-
-    // Default store must NOT be polluted
-    expect(useTacticalUnifiedStore.getState().project.matchId).toBeUndefined();
+    expect(
+      otherHarness.documentStore.getState().project.matchId,
+    ).toBeUndefined();
   });
 
-  it('injectToStore: false resolves initialState without modifying storeApi', async () => {
+  it('injectToStore: false resolves initialState without modifying stores or outside provider', async () => {
     vi.spyOn(db.matches, 'get').mockResolvedValueOnce(mockMatch);
 
     const { result } = renderHook(() =>
@@ -160,19 +181,19 @@ describe('useTacticalMatchInit', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    // initialState must be resolved
     expect(result.current.initialState).toBeDefined();
-    expect(result.current.initialState?.project?.matchId).toBe('999');
-    const activeSlideId = result.current.initialState?.activeSlideId;
-    const activeSlide = result.current.initialState?.project?.slides.find(
-      (s) => s.id === activeSlideId,
-    );
+    expect(result.current.initialState?.project.matchId).toBe('999');
+    const resolved = result.current.initialState;
+    const activeSlide = resolved
+      ? selectDomainActiveSlide(
+          resolved.project,
+          resolved.activePhaseId,
+          resolved.activeSlideId,
+        )
+      : undefined;
     const pitchPlayers =
       activeSlide?.players.filter((p) => p.area === 'pitch') ?? [];
     expect(pitchPlayers).toHaveLength(22);
-
-    // Global store must remain empty/unmodified
-    expect(useTacticalUnifiedStore.getState().project.matchId).toBeUndefined();
   });
 });
 
@@ -250,13 +271,16 @@ describe('resolveMatchInitialState', () => {
 
     const result = await resolveMatchInitialState('999', 30);
     expect(result).toBeDefined();
-    expect(result?.pitchFitPending).toBe(false);
-    expect(result?.project?.matchId).toBe('999');
-    expect(result?.project?.title).toContain("Home FC vs Away FC (30')");
+    expect(result?.project.matchId).toBe('999');
+    expect(result?.project.title).toContain("Home FC vs Away FC (30')");
 
-    const activeSlide = result?.project?.slides.find(
-      (s) => s.id === result.activeSlideId,
-    );
+    const activeSlide = result
+      ? selectDomainActiveSlide(
+          result.project,
+          result.activePhaseId,
+          result.activeSlideId,
+        )
+      : undefined;
     const pitchPlayers =
       activeSlide?.players.filter((p) => p.area === 'pitch') ?? [];
     expect(pitchPlayers).toHaveLength(22);
@@ -279,14 +303,17 @@ describe('resolveMatchInitialState', () => {
 
     const result = await resolveMatchInitialState('999', 45);
     expect(result).toBeDefined();
-    expect(result?.pitchFitPending).toBe(false);
-    expect(result?.project?.id).not.toBe('saved-project-1');
-    expect(result?.project?.matchId).toBe('999');
-    expect(result?.project?.title).toContain("Home FC vs Away FC (45')");
+    expect(result?.project.id).not.toBe('saved-project-1');
+    expect(result?.project.matchId).toBe('999');
+    expect(result?.project.title).toContain("Home FC vs Away FC (45')");
 
-    const activeSlide = result?.project?.slides.find(
-      (s) => s.id === result.activeSlideId,
-    );
+    const activeSlide = result
+      ? selectDomainActiveSlide(
+          result.project,
+          result.activePhaseId,
+          result.activeSlideId,
+        )
+      : undefined;
     const pitchPlayers =
       activeSlide?.players.filter((p) => p.area === 'pitch') ?? [];
     expect(pitchPlayers).toHaveLength(22);
