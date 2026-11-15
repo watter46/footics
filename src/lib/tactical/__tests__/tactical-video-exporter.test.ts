@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Player, Slide } from '@/lib/types/tactical-unified';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import * as sharePayloadModule from '../export/share-payload';
 import {
   applySlideTimelineOverrides,
@@ -82,11 +84,11 @@ function createMockPlayer(
   y: number,
   shirtNo?: string,
   name?: string,
-): Player {
+): DomainPlayer {
   return {
     id,
-    x,
-    y,
+    x: clampToScreenNorm(x),
+    y: clampToScreenNorm(y),
     team,
     shirtNo,
     name,
@@ -109,11 +111,11 @@ function createMockPlayer(
 
 function createSampleSlide(
   id: string,
-  players: Player[],
+  players: DomainPlayer[],
   durationMs = 1500,
   pauseMs = 500,
-  easing: Slide['easing'] = 'ease-in-out',
-): Slide {
+  easing: DomainSlide['easing'] = 'ease-in-out',
+): DomainSlide {
   return {
     id,
     index: 0,
@@ -121,7 +123,11 @@ function createSampleSlide(
     arrows: [],
     zones: [],
     texts: [],
-    ball: { x: 50, y: 50, visible: true },
+    ball: {
+      x: clampToScreenNorm(50),
+      y: clampToScreenNorm(50),
+      visible: true,
+    },
     transitionDurationMs: durationMs,
     pauseMs,
     easing,

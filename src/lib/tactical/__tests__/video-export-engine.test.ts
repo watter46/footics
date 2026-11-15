@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { exportPngBlob } from '@/features/tactical-unified/hooks/konva-export-helpers';
-import type { Slide } from '@/lib/types/tactical-unified';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import { normalizePhases } from '../acl/slide-normalizer';
 import type { AnyCanvasRenderingContext2D } from '../export/renderers/renderer-context';
 import { renderTacticalPhaseFrameToCanvas } from '../export/tactical-phase-frame-renderer';
@@ -272,7 +273,7 @@ describe('video-export-engine & pipeline', () => {
   });
 
   describe('renderTacticalPhaseFrameToCanvas', () => {
-    const mockSlide: Slide = {
+    const mockSlide: DomainSlide = {
       id: 'slide-1',
       index: 0,
       transitionDurationMs: 1000,
@@ -285,8 +286,8 @@ describe('video-export-engine & pipeline', () => {
           shirtNo: '20',
           team: 'home',
           area: 'pitch',
-          x: 45,
-          y: 40,
+          x: clampToScreenNorm(45),
+          y: clampToScreenNorm(40),
           style: {
             markerType: 'circle',
             insideContent: 'number',
@@ -303,8 +304,8 @@ describe('video-export-engine & pipeline', () => {
         },
       ],
       ball: {
-        x: 46,
-        y: 41,
+        x: clampToScreenNorm(46),
+        y: clampToScreenNorm(41),
         visible: true,
       },
       arrows: [
@@ -314,13 +315,14 @@ describe('video-export-engine & pipeline', () => {
           arrowType: 'run',
           curveType: 'straight',
           points: [
-            { x: 45, y: 40 },
-            { x: 55, y: 30 },
+            { x: clampToScreenNorm(45), y: clampToScreenNorm(40) },
+            { x: clampToScreenNorm(55), y: clampToScreenNorm(30) },
           ],
           color: '#38bdf8',
           strokeWidth: 2,
           dashArray: [],
-          arrowHead: true,
+          startMarker: 'none',
+          endMarker: 'arrow',
         },
       ],
       zones: [
@@ -330,11 +332,10 @@ describe('video-export-engine & pipeline', () => {
           annotationType: 'zone',
           zoneType: 'space',
           shapeType: 'rect',
-          x: 30,
-          y: 20,
+          x: clampToScreenNorm(30),
+          y: clampToScreenNorm(20),
           width: 25,
           height: 30,
-          points: [],
           color: '#22c55e',
           opacity: 0.3,
           strokeWidth: 2,
@@ -345,8 +346,8 @@ describe('video-export-engine & pipeline', () => {
           id: 't-1',
           annotationType: 'text',
           content: 'Key Space',
-          x: 32,
-          y: 22,
+          x: clampToScreenNorm(32),
+          y: clampToScreenNorm(22),
           fontSize: 16,
           color: '#ffffff',
           bold: false,
@@ -418,14 +419,18 @@ describe('video-export-engine & pipeline', () => {
     });
 
     describe('Mediabunny Pipeline & Backward Compatibility', () => {
-      const mockSlideItem: Slide = {
+      const mockSlideItem: DomainSlide = {
         id: 'slide-1',
         index: 0,
         transitionDurationMs: 1000,
         pauseMs: 500,
         easing: 'ease-in-out',
         players: [],
-        ball: { x: 46, y: 41, visible: true },
+        ball: {
+          x: clampToScreenNorm(46),
+          y: clampToScreenNorm(41),
+          visible: true,
+        },
         arrows: [],
         zones: [],
         texts: [],
@@ -707,14 +712,18 @@ describe('video-export-engine & pipeline', () => {
 
   describe('Phase 4: Mediabunny Video Export & stage.toBlob Static Export', () => {
     it('exports mp4 video using Mediabunny Output and CanvasSource', async () => {
-      const mockSlide: Slide = {
+      const mockSlide: DomainSlide = {
         id: 'slide-1',
         index: 0,
         transitionDurationMs: 500,
         pauseMs: 200,
         easing: 'ease-in-out',
         players: [],
-        ball: { x: 50, y: 50, visible: true },
+        ball: {
+          x: clampToScreenNorm(50),
+          y: clampToScreenNorm(50),
+          visible: true,
+        },
         arrows: [],
         zones: [],
         texts: [],
@@ -735,14 +744,18 @@ describe('video-export-engine & pipeline', () => {
     });
 
     it('exports webm video using Mediabunny Output and CanvasSource', async () => {
-      const mockSlide: Slide = {
+      const mockSlide: DomainSlide = {
         id: 'slide-1',
         index: 0,
         transitionDurationMs: 500,
         pauseMs: 200,
         easing: 'ease-in-out',
         players: [],
-        ball: { x: 50, y: 50, visible: true },
+        ball: {
+          x: clampToScreenNorm(50),
+          y: clampToScreenNorm(50),
+          visible: true,
+        },
         arrows: [],
         zones: [],
         texts: [],

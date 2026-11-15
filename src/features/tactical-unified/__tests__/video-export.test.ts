@@ -17,12 +17,34 @@ import {
   getSupportedH264Codec,
 } from '@/lib/tactical/export/video-export-engine';
 import { exportVideoWithMediabunny } from '@/lib/tactical/export/video-mediabunny-export';
-import {
-  type BoundaryBox,
-  createDefaultSlide,
-  ExportTargetSchema,
-  type Slide,
-} from '@/lib/types/tactical-unified';
+import { toScreenNormCoord } from '@/lib/types/tactical/branded';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+import type { BoundaryBox } from '@/lib/types/tactical/pitch-config';
+import { ExportTargetSchema } from '@/lib/types/tactical/project-config';
+
+function createTestSlide(
+  index: number,
+  id: string,
+  overrides: Partial<DomainSlide> = {},
+): DomainSlide {
+  return {
+    id,
+    index,
+    players: [],
+    arrows: [],
+    zones: [],
+    texts: [],
+    ball: {
+      x: toScreenNormCoord(50),
+      y: toScreenNormCoord(50),
+      visible: true,
+    },
+    transitionDurationMs: 1000,
+    pauseMs: 500,
+    easing: 'ease-in-out',
+    ...overrides,
+  };
+}
 
 vi.mock('mediabunny', () => {
   class BufferTarget {
@@ -212,7 +234,7 @@ describe('ExportPreviewPlayer controls', () => {
     HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
   });
 
-  const dummySlide = createDefaultSlide(0, 'slide-1');
+  const dummySlide = createTestSlide(0, 'slide-1');
 
   it('初期状態は停止状態（Playボタン表示）であり、Playボタンクリックで再生に切り替わること', () => {
     render(
@@ -287,8 +309,8 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
   });
 
   it('マルチスライド動画出力時、renderTacticalPhaseFrameToCanvas に phase と pitchTransform が渡され各フレーム動的カメラワークが使われること', async () => {
-    const slide1: Slide = {
-      ...createDefaultSlide(0, 'slide-1'),
+    const slide1: DomainSlide = {
+      ...createTestSlide(0, 'slide-1'),
       pitchTransform: {
         tilt: 10,
         zoom: 1.1,
@@ -297,8 +319,8 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
         isLocked: false,
       },
     };
-    const slide2: Slide = {
-      ...createDefaultSlide(1, 'slide-2'),
+    const slide2: DomainSlide = {
+      ...createTestSlide(1, 'slide-2'),
       pitchTransform: {
         tilt: 35,
         zoom: 1.8,
@@ -338,8 +360,8 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
   });
 
   it('単一スライド時は renderTacticalPhaseFrameToCanvas に phase と options.pitchTransform が渡されること', async () => {
-    const slide1: Slide = {
-      ...createDefaultSlide(0, 'slide-1'),
+    const slide1: DomainSlide = {
+      ...createTestSlide(0, 'slide-1'),
       pitchTransform: {
         tilt: 20,
         zoom: 1.5,
@@ -380,7 +402,7 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
 
   it('useExportPreviewAnimation で複数スライド再生時は renderTacticalPhaseFrameToCanvas に phase と pitchTransform が渡されること', () => {
     const slide1 = {
-      ...createDefaultSlide(0, 's1'),
+      ...createTestSlide(0, 's1'),
       pitchTransform: {
         tilt: 15,
         zoom: 1.2,
@@ -390,7 +412,7 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
       },
     };
     const slide2 = {
-      ...createDefaultSlide(1, 's2'),
+      ...createTestSlide(1, 's2'),
       pitchTransform: {
         tilt: 30,
         zoom: 1.5,
@@ -464,42 +486,8 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
         },
       );
 
-      const baseSlide1 = createDefaultSlide(0, 's1');
-      const baseSlide2 = createDefaultSlide(1, 's2');
-
-      const slide1: Slide = {
-        ...baseSlide1,
-        players: baseSlide1.players.map((p, idx) =>
-          idx === 0
-            ? {
-                ...p,
-                id: 'p1',
-                playerId: 'player-1',
-                style: {
-                  ...p.style,
-                  insideContent: 'photo' as const,
-                },
-              }
-            : p,
-        ),
-      };
-
-      const slide2: Slide = {
-        ...baseSlide2,
-        players: baseSlide2.players.map((p, idx) =>
-          idx === 0
-            ? {
-                ...p,
-                id: 'p2',
-                playerId: 'player-2',
-                style: {
-                  ...p.style,
-                  insideContent: 'photo' as const,
-                },
-              }
-            : p,
-        ),
-      };
+      const slide1 = createTestSlide(0, 's1');
+      const slide2 = createTestSlide(1, 's2');
 
       const canvas = document.createElement('canvas');
       canvas.width = 640;
@@ -509,15 +497,21 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
       const sliderRef = { current: document.createElement('input') };
 
       const { rerender, unmount } = renderHook(
-        ({ slides }) =>
+        ({ slides, photos }) =>
           useExportPreviewAnimation({
             slides,
+            photos,
             aspectRatio: '16:9',
             canvasRef,
             timeLabelRef,
             sliderRef,
           }),
-        { initialProps: { slides: [slide1] } },
+        {
+          initialProps: {
+            slides: [slide1],
+            photos: { p1: 'photo-1' } as Record<string, string>,
+          },
+        },
       );
 
       await waitFor(() => {
@@ -526,7 +520,7 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
       await new Promise((r) => setTimeout(r, 50));
 
       // スライド変更で再レンダリング
-      rerender({ slides: [slide2] });
+      rerender({ slides: [slide2], photos: { p2: 'photo-2' } });
 
       await waitFor(() => {
         expect(callCount).toBe(2);
@@ -548,10 +542,10 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
 
   describe('hasActiveFrameEffects and video export pause frame handling', () => {
     it('hasActiveFrameEffects returns true when arrow or zone has effect, even without player markerEffect', () => {
-      const baseSlide = createDefaultSlide(0, 's1');
+      const baseSlide = createTestSlide(0, 's1');
       expect(hasActiveFrameEffects([baseSlide])).toBe(false);
 
-      const slideWithArrow: Slide = {
+      const slideWithArrow: DomainSlide = {
         ...baseSlide,
         arrows: [
           {
@@ -560,13 +554,14 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
             arrowType: 'move',
             curveType: 'straight',
             points: [
-              { x: 10, y: 10 },
-              { x: 20, y: 20 },
+              { x: toScreenNormCoord(10), y: toScreenNormCoord(10) },
+              { x: toScreenNormCoord(20), y: toScreenNormCoord(20) },
             ],
             color: '#38bdf8',
             strokeWidth: 3,
             dashArray: [],
-            arrowHead: true,
+            startMarker: 'none',
+            endMarker: 'arrow',
             effect: {
               type: 'flow',
               duration: 1,
@@ -581,18 +576,19 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
       };
       expect(hasActiveFrameEffects([slideWithArrow])).toBe(true);
 
-      const slideWithZone: Slide = {
+      const slideWithZone: DomainSlide = {
         ...baseSlide,
         zones: [
           {
             id: 'z1',
             annotationType: 'zone',
             zoneType: 'space',
+            shapeType: 'polygon',
             points: [
-              { x: 10, y: 10 },
-              { x: 30, y: 10 },
-              { x: 30, y: 30 },
-              { x: 10, y: 30 },
+              { x: toScreenNormCoord(10), y: toScreenNormCoord(10) },
+              { x: toScreenNormCoord(30), y: toScreenNormCoord(10) },
+              { x: toScreenNormCoord(30), y: toScreenNormCoord(30) },
+              { x: toScreenNormCoord(10), y: toScreenNormCoord(30) },
             ],
             color: '#22c55e',
             opacity: 0.5,
@@ -610,8 +606,8 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
     });
 
     it('exportVideoWithMediabunny renders every frame during pauseMs when arrow effect is active', async () => {
-      const baseSlide = createDefaultSlide(0, 's1');
-      const slide1: Slide = {
+      const baseSlide = createTestSlide(0, 's1');
+      const slide1: DomainSlide = {
         ...baseSlide,
         transitionDurationMs: 100,
         pauseMs: 200,
@@ -622,13 +618,14 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
             arrowType: 'move',
             curveType: 'straight',
             points: [
-              { x: 10, y: 10 },
-              { x: 20, y: 20 },
+              { x: toScreenNormCoord(10), y: toScreenNormCoord(10) },
+              { x: toScreenNormCoord(20), y: toScreenNormCoord(20) },
             ],
             color: '#38bdf8',
             strokeWidth: 3,
             dashArray: [],
-            arrowHead: true,
+            startMarker: 'none',
+            endMarker: 'arrow',
             effect: {
               type: 'flow',
               duration: 1,
@@ -641,8 +638,8 @@ describe('Dynamic Camera Work in Video Export & Preview', () => {
           },
         ],
       };
-      const slide2: Slide = {
-        ...createDefaultSlide(1, 's2'),
+      const slide2: DomainSlide = {
+        ...createTestSlide(1, 's2'),
         transitionDurationMs: 100,
         pauseMs: 200,
       };

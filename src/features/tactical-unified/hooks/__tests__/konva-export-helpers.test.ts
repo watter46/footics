@@ -3,7 +3,8 @@ import type Konva from 'konva';
 import { describe, expect, it, vi } from 'vitest';
 import * as frameRenderer from '@/lib/tactical/export/tactical-phase-frame-renderer';
 import * as videoCropCalc from '@/lib/tactical/export/video-crop-calc';
-import type { Slide } from '@/lib/types/tactical/slide';
+import { toScreenNormCoord } from '@/lib/types/tactical/branded';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import {
   exportAllSlidesZip,
   exportSingleSlidePng,
@@ -79,7 +80,7 @@ describe('konva-export-helpers', () => {
       const sampleDataUrl =
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
-      const mockSlides: Slide[] = [
+      const mockSlides: DomainSlide[] = [
         {
           id: 'slide-1',
           index: 0,
@@ -87,7 +88,11 @@ describe('konva-export-helpers', () => {
           arrows: [],
           zones: [],
           texts: [],
-          ball: { x: 50, y: 50, visible: true },
+          ball: {
+            x: toScreenNormCoord(50),
+            y: toScreenNormCoord(50),
+            visible: true,
+          },
           transitionDurationMs: 1000,
           pauseMs: 500,
           easing: 'ease-in-out',
@@ -99,7 +104,11 @@ describe('konva-export-helpers', () => {
           arrows: [],
           zones: [],
           texts: [],
-          ball: { x: 50, y: 50, visible: true },
+          ball: {
+            x: toScreenNormCoord(50),
+            y: toScreenNormCoord(50),
+            visible: true,
+          },
           transitionDurationMs: 1000,
           pauseMs: 500,
           easing: 'ease-in-out',
@@ -134,25 +143,21 @@ describe('konva-export-helpers', () => {
 
   describe('renderSlideToPngBlob', () => {
     it('uses calculateBoundaryCrop and renderTacticalPhaseFrameToCanvas to render and return a Blob', async () => {
-      const mockSlide: Slide = {
+      const mockSlide: DomainSlide = {
         id: 'slide-1',
         index: 0,
         players: [],
         arrows: [],
         zones: [],
         texts: [],
-        ball: { x: 50, y: 50, visible: true },
+        ball: {
+          x: toScreenNormCoord(50),
+          y: toScreenNormCoord(50),
+          visible: true,
+        },
         transitionDurationMs: 1000,
         pauseMs: 500,
         easing: 'ease-in-out',
-        boundaryBox: {
-          x: 10,
-          y: 10,
-          width: 80,
-          height: 80,
-          visible: true,
-          enabled: true,
-        },
       };
 
       const renderSpy = vi
@@ -179,17 +184,12 @@ describe('konva-export-helpers', () => {
           stageHeight: 720,
         });
 
-        expect(cropSpy).toHaveBeenCalledWith(
-          mockSlide.boundaryBox,
-          1280,
-          720,
-          2,
-        );
+        expect(cropSpy).toHaveBeenCalledWith(undefined, 1280, 720, 2);
         expect(renderSpy).toHaveBeenCalledWith(
           expect.objectContaining({
             timeMs: 0,
             aspectRatio: '16:9',
-            boundaryBox: mockSlide.boundaryBox,
+            boundaryBox: undefined,
             phase: expect.objectContaining({
               slides: [expect.objectContaining({ id: mockSlide.id })],
             }),
@@ -202,26 +202,21 @@ describe('konva-export-helpers', () => {
     });
 
     it('defaults to 1080x1350 stage dimensions and calculates pitch rect when aspectRatio is 4:5 and stageWidth/Height is omitted', async () => {
-      const mockSlide: Slide = {
+      const mockSlide: DomainSlide = {
         id: 'slide-4-5',
         index: 0,
         players: [],
         arrows: [],
         zones: [],
         texts: [],
-        ball: { x: 50, y: 50, visible: true },
+        ball: {
+          x: toScreenNormCoord(50),
+          y: toScreenNormCoord(50),
+          visible: true,
+        },
         transitionDurationMs: 1000,
         pauseMs: 500,
         easing: 'ease-in-out',
-        boundaryBox: {
-          x: 10,
-          y: 10,
-          width: 80,
-          height: 80,
-          visible: true,
-          enabled: true,
-          fitTarget: 'canvas',
-        },
       };
 
       const renderSpy = vi
@@ -248,17 +243,12 @@ describe('konva-export-helpers', () => {
         // stageWidth should default to 1080, stageHeight to 1350 (from PITCH_BOUNDARY_CONFIGS['4:5'])
         // scale defaults to 2
         // Since fitTarget is 'canvas', baseRect should be { x: 0, y: 0, width: 1080, height: 1350 }
-        expect(cropSpy).toHaveBeenCalledWith(
-          mockSlide.boundaryBox,
-          1920,
-          1080,
-          1,
-        );
+        expect(cropSpy).toHaveBeenCalledWith(undefined, 1920, 1080, 1);
         expect(renderSpy).toHaveBeenCalledWith(
           expect.objectContaining({
             timeMs: 0,
             aspectRatio: '4:5',
-            boundaryBox: mockSlide.boundaryBox,
+            boundaryBox: undefined,
             phase: expect.objectContaining({
               slides: [expect.objectContaining({ id: mockSlide.id })],
             }),
@@ -273,14 +263,18 @@ describe('konva-export-helpers', () => {
 
   describe('exportSingleSlidePng', () => {
     it('triggers download with tactical-slide-02.png when slide.index = 1', async () => {
-      const mockSlide: Slide = {
+      const mockSlide: DomainSlide = {
         id: 'slide-2',
         index: 1,
         players: [],
         arrows: [],
         zones: [],
         texts: [],
-        ball: { x: 50, y: 50, visible: true },
+        ball: {
+          x: toScreenNormCoord(50),
+          y: toScreenNormCoord(50),
+          visible: true,
+        },
         transitionDurationMs: 1000,
         pauseMs: 500,
         easing: 'ease-in-out',
@@ -336,7 +330,7 @@ describe('konva-export-helpers', () => {
 
   describe('exportAllSlidesZip', () => {
     it('renders all slides and downloads tactical-slides.zip containing slide-01.png and slide-02.png', async () => {
-      const mockSlides: Slide[] = [
+      const mockSlides: DomainSlide[] = [
         {
           id: 'slide-1',
           index: 0,
@@ -344,7 +338,11 @@ describe('konva-export-helpers', () => {
           arrows: [],
           zones: [],
           texts: [],
-          ball: { x: 50, y: 50, visible: true },
+          ball: {
+            x: toScreenNormCoord(50),
+            y: toScreenNormCoord(50),
+            visible: true,
+          },
           transitionDurationMs: 1000,
           pauseMs: 500,
           easing: 'ease-in-out',
@@ -356,7 +354,11 @@ describe('konva-export-helpers', () => {
           arrows: [],
           zones: [],
           texts: [],
-          ball: { x: 50, y: 50, visible: true },
+          ball: {
+            x: toScreenNormCoord(50),
+            y: toScreenNormCoord(50),
+            visible: true,
+          },
           transitionDurationMs: 1000,
           pauseMs: 500,
           easing: 'ease-in-out',

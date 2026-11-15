@@ -8,16 +8,13 @@ import {
   type ResolveSyntheticDirectorCameraOptions,
   resolveEffectiveSlideSegments,
 } from '@/lib/tactical/engine/director-camera';
+import type { DirectorCameraTrack } from '@/lib/types/tactical/camera-config';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type {
   ArrowEffectConfig,
+  MarkerEffectConfig,
   ZoneEffectConfig,
-} from '@/lib/types/tactical/annotations';
-import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import type { MarkerEffectConfig } from '@/lib/types/tactical/player';
-import type { DirectorCameraTrack } from '@/lib/types/tactical/project';
-import type { Slide } from '@/lib/types/tactical/slide';
-
-type ExportSlide = Slide | DomainSlide;
+} from '@/lib/types/tactical/effect-config';
 
 export interface EffectArrowState {
   progress?: number;
@@ -62,7 +59,7 @@ export interface FrameEffectsResult {
  * - Arrow effect (effect.type !== 'none')
  * - Zone effect (effect.type !== 'none')
  */
-export function hasActiveFrameEffects(slides: readonly ExportSlide[]): boolean {
+export function hasActiveFrameEffects(slides: readonly DomainSlide[]): boolean {
   if (!slides || slides.length === 0) return false;
   return slides.some((slide) => {
     const hasPlayerEffect = slide.players?.some(
@@ -86,7 +83,7 @@ export function hasActiveFrameEffects(slides: readonly ExportSlide[]): boolean {
  * Used by the VideoFrame.clone() static-frame cache to skip redundant GPU re-uploads.
  */
 export function isPauseFrame(
-  slides: readonly ExportSlide[],
+  slides: readonly DomainSlide[],
   timeMs: number,
   _directorCamera?: DirectorCameraTrack | null,
   _directorCameraOptions?: ResolveSyntheticDirectorCameraOptions,
@@ -103,7 +100,7 @@ export function isPauseFrame(
 }
 
 export function computeFrameEffects(
-  slides: readonly ExportSlide[],
+  slides: readonly DomainSlide[],
   timeMs: number,
   arrows: Record<string, EffectArrowState>,
   players: Record<string, EffectPlayerState>,

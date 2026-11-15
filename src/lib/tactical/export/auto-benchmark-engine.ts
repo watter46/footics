@@ -7,11 +7,8 @@
  * Generates structured Markdown reports with rankings and bottleneck analysis.
  */
 
-import type {
-  AspectRatio,
-  BoundaryBox,
-  Slide,
-} from '@/lib/types/tactical-unified';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+import type { AspectRatio, BoundaryBox } from '@/lib/types/tactical-unified';
 import { calculateUnifiedTotalDuration } from '../engine/director-camera';
 import { exportMultiSlideVideo } from './tactical-video-exporter';
 
@@ -84,7 +81,7 @@ export const QUICK_BENCHMARK_PATTERNS: BenchmarkPattern[] = [
 export const DEFAULT_BENCHMARK_PATTERNS = FULL_BENCHMARK_PATTERNS;
 
 export interface AutoBenchmarkOptions {
-  slides: Slide[];
+  slides: readonly DomainSlide[];
   fps?: number;
   scale?: number;
   format?: 'mp4' | 'webm';

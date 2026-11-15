@@ -1,12 +1,12 @@
 # TASK-202h: Hooks & Export 境界の `DomainSlide` 純化と共有設定移行
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): purify tactical hooks and export pipeline to DomainSlide and neutral configs`
 - **Execution Waves**:
   - Wave 1 (parallel): Phase 1, Phase 2, Phase 3
   - Wave 2 (sequential): Phase 4, Phase 5
 - **Negative Contracts**:
-  - `rg(src/features/tactical-unified/hooks,src/features/tactical-unified/components/use-share-page-export.ts,src/lib/tactical/export): types/tactical/(annotations|player|project|slide)|\b(ExportSlide|ExportableSlide|Slide\s*\|\s*DomainSlide)\b`
+  - `rg(src/features/tactical-unified/hooks,src/features/tactical-unified/components/use-share-page-export.ts,src/lib/tactical/export): types/tactical/(annotations|player|project|slide)(['"]|/|$)|\b(ExportSlide|ExportableSlide|Slide\s*\|\s*DomainSlide)\b`
 
 ## 1. Architectural Invariants & Design Decisions
 - **Invariants (壊してはいけない前提条件)**:

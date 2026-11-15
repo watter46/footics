@@ -1,17 +1,16 @@
 import type { ResolveSyntheticDirectorCameraOptions } from '@/lib/tactical/engine/director-camera';
-import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import type {
   DirectorCameraTrack,
-  ExportProgress,
-} from '@/lib/types/tactical/project';
+  PitchTransform,
+} from '@/lib/types/tactical/camera-config';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type {
   BoundaryBox,
   PitchAppearanceConfig,
-  PitchTransform,
   ScreenBackgroundConfig,
-  Slide,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
+import type { ExportProgress } from '@/lib/types/tactical/project-config';
 import type { BoundaryCropInfo } from './video-crop-calc';
 
 export interface VideoExportOptions {
@@ -29,7 +28,7 @@ export interface VideoExportOptions {
   boundaryBox?: BoundaryBox | null;
   stageWidth: number;
   stageHeight: number;
-  slides?: readonly (Slide | DomainSlide)[];
+  slides?: readonly DomainSlide[];
   aspectRatio?: AspectRatio;
   pitchTransform?: PitchTransform | null;
   pitchAppearance?: PitchAppearanceConfig;

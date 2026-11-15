@@ -10,19 +10,18 @@
  *   - Automatic MediaRecorder fallback for non-WebCodecs environments
  */
 
-import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import type {
   DirectorCameraTrack,
-  ExportProgress,
-} from '@/lib/types/tactical/project';
+  PitchTransform,
+} from '@/lib/types/tactical/camera-config';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type {
   BoundaryBox,
   PitchAppearanceConfig,
-  PitchTransform,
   ScreenBackgroundConfig,
-  Slide,
-} from '@/lib/types/tactical/slide';
+} from '@/lib/types/tactical/pitch-config';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
+import type { ExportProgress } from '@/lib/types/tactical/project-config';
 import {
   calculateUnifiedTotalDuration,
   type ResolveSyntheticDirectorCameraOptions,
@@ -40,7 +39,7 @@ import {
 } from './video-export-engine';
 
 export interface MultiSlideVideoExportOptions {
-  slides: readonly (Slide | DomainSlide)[];
+  slides: readonly DomainSlide[];
   format?: 'mp4' | 'webm';
   fps?: number;
   scale?: number;
@@ -49,7 +48,7 @@ export interface MultiSlideVideoExportOptions {
   h264Profile?: 'baseline' | 'main' | 'high';
   transitionDurationMs?: number;
   pauseMs?: number;
-  easing?: Slide['easing'];
+  easing?: DomainSlide['easing'];
   keyFrameIntervalSec?: number;
   latencyMode?: 'realtime' | 'quality';
   maxQueueSize?: number;
@@ -73,12 +72,12 @@ export interface MultiSlideVideoExportOptions {
 /**
  * Applies transition duration, pause, and easing overrides to a sequence of slides.
  */
-export function applySlideTimelineOverrides<T extends Slide | DomainSlide>(
+export function applySlideTimelineOverrides<T extends DomainSlide>(
   slides: readonly T[],
   overrides?: {
     transitionDurationMs?: number;
     pauseMs?: number;
-    easing?: Slide['easing'];
+    easing?: DomainSlide['easing'];
   },
 ): readonly T[] {
   if (

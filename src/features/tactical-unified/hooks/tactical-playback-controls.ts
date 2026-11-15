@@ -4,14 +4,13 @@ import {
   type SlideTimingLike,
 } from '@/lib/tactical/engine/director-camera';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import type { Slide } from '@/lib/types/tactical-unified';
 import type { AnimationPlaybackRefs } from './tactical-timeline';
 
 /**
  * 特定スライドインデックスへの到達完了（静止開始）時刻 (ms) を計算
  */
 export function getSlideSnapTime(
-  slides: readonly (Slide | DomainSlide | SlideTimingLike)[],
+  slides: readonly (DomainSlide | SlideTimingLike)[],
   targetIndex: number,
 ): number {
   if (targetIndex <= 0 || slides.length === 0) return 0;
@@ -39,7 +38,7 @@ export function snapToSlideOnStop({
   setActiveSlide,
   setPlaybackIndices,
 }: {
-  slides: readonly (Slide | DomainSlide)[];
+  slides: readonly DomainSlide[];
   refs: AnimationPlaybackRefs;
   registry: CanvasNodesRegistry | undefined;
   pitchDimensions: { width: number; height: number; x?: number; y?: number };
@@ -145,7 +144,7 @@ export function stopPlayback({
   setIsPlaying,
   setActiveSlide,
 }: {
-  slides?: readonly (Slide | DomainSlide)[];
+  slides?: readonly DomainSlide[];
   refs: AnimationPlaybackRefs;
   registry: CanvasNodesRegistry | undefined;
   pitchDimensions: { width: number; height: number; x?: number; y?: number };
@@ -194,7 +193,7 @@ export function pausePlayback(
   refs: AnimationPlaybackRefs,
   setIsPlaying: (playing: boolean) => void,
   options?: {
-    slides?: readonly (Slide | DomainSlide)[];
+    slides?: readonly DomainSlide[];
     registry?: CanvasNodesRegistry | undefined;
     pitchDimensions?: { width: number; height: number; x?: number; y?: number };
     applyFrameToCanvas?: (

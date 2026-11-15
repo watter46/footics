@@ -6,10 +6,7 @@
 import { zipSync } from 'fflate';
 import type Konva from 'konva';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import type { ExportTarget } from '@/lib/types/tactical/project';
-import type { Slide } from '@/lib/types/tactical/slide';
-
-type ExportableSlide = Slide | DomainSlide;
+import type { ExportTarget } from '@/lib/types/tactical/project-config';
 
 import {
   downloadBlob,
@@ -39,7 +36,7 @@ export {
   renderSlideToPngBlob,
 } from './konva-slide-export';
 
-export function getTargetSlides<T extends ExportableSlide>(
+export function getTargetSlides<T extends DomainSlide>(
   slides: readonly T[],
   target: ExportTarget,
 ): T[] {
@@ -50,7 +47,7 @@ export function getTargetSlides<T extends ExportableSlide>(
 }
 
 export async function collectSlideFrames(
-  slides: readonly ExportableSlide[],
+  slides: readonly DomainSlide[],
   captureSlide: (scale: number, slideId?: string) => string | null,
   activateSlide?: (slideId: string) => Promise<void>,
 ): Promise<string[]> {
@@ -65,7 +62,7 @@ export async function collectSlideFrames(
 }
 
 export async function exportZipSlides(options: {
-  slides: readonly ExportableSlide[];
+  slides: readonly DomainSlide[];
   captureSlide: (scale: number, slideId?: string) => string | null;
   activateSlide?: (slideId: string) => Promise<void>;
   scale: number;
@@ -114,7 +111,7 @@ export async function exportMp4Frames(options: {
 
 export interface ExecuteExportOptions {
   stage: Konva.Stage | null;
-  slides: readonly ExportableSlide[];
+  slides: readonly DomainSlide[];
   captureSlide: (scale: number, slideId?: string) => string | null;
   activateSlide?: (slideId: string) => Promise<void>;
 }

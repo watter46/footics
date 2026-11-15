@@ -8,7 +8,6 @@ import {
   type SlideTimingLike,
 } from '@/lib/tactical/engine/director-camera';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import type { Slide } from '@/lib/types/tactical-unified';
 
 export interface AnimationPlaybackRefs {
   timelineRef: React.MutableRefObject<gsap.core.Timeline | null>;
@@ -32,7 +31,7 @@ export interface TacticalTimelineOptions {
 }
 
 export function createTacticalTimeline(
-  slides: readonly (Slide | DomainSlide | SlideTimingLike)[],
+  slides: readonly (DomainSlide | SlideTimingLike)[],
   onUpdate: (timeMs: number) => void,
   options?: TacticalTimelineOptions,
 ): gsap.core.Timeline {

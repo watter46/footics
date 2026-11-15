@@ -16,6 +16,7 @@ import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
 import { resolvePlaybackDurationMs } from '@/lib/tactical/engine/director-camera';
 import { hasActiveFrameEffects } from '@/lib/tactical/export/tactical-frame-effects';
 import { renderTacticalPhaseFrameToCanvas } from '@/lib/tactical/export/tactical-phase-frame-renderer';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 
 const fallbackSessionStore = createSessionStore();
 const fallbackPlaybackStore = createPlaybackStore();
@@ -208,7 +209,11 @@ export function useExportPreviewAnimation({
 
   // 静止中（!effectiveIsPlaying）の常時エフェクトループ（RAII クリーンアップ必須）
   useEffect(() => {
-    if (effectiveIsPlaying || !hasActiveFrameEffects(slides)) return;
+    if (
+      effectiveIsPlaying ||
+      !hasActiveFrameEffects(slides as readonly DomainSlide[])
+    )
+      return;
     let rafId = 0;
     let startTime: number | null = null;
     const IDLE_CYCLE_MS = 3000;

@@ -8,18 +8,17 @@ import { normalizePhases } from '@/lib/tactical/acl/slide-normalizer';
 import { preloadSlidePlayerPhotos } from '@/lib/tactical/export/share-payload';
 import { renderTacticalPhaseFrameToCanvas } from '@/lib/tactical/export/tactical-phase-frame-renderer';
 import { calculateBoundaryCrop } from '@/lib/tactical/export/video-crop-calc';
+import type {
+  DirectorCameraTrack,
+  PitchTransform,
+} from '@/lib/types/tactical/camera-config';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import type { AspectRatio } from '@/lib/types/tactical/primitives';
-import type { DirectorCameraTrack } from '@/lib/types/tactical/project';
 import type {
   BoundaryBox,
   PitchAppearanceConfig,
-  PitchTransform,
   ScreenBackgroundConfig,
-  Slide,
-} from '@/lib/types/tactical/slide';
-
-type ExportableSlide = Slide | DomainSlide;
+} from '@/lib/types/tactical/pitch-config';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
 
 export async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   const res = await fetch(dataUrl);
@@ -36,7 +35,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
 }
 
 export interface RenderSlideImageOptions {
-  slide: ExportableSlide;
+  slide: DomainSlide;
   aspectRatio: AspectRatio;
   scale?: number;
   stageWidth?: number;
@@ -50,7 +49,7 @@ export interface RenderSlideImageOptions {
 }
 
 export interface ExportSlidesArchiveOptions {
-  slides: readonly ExportableSlide[];
+  slides: readonly DomainSlide[];
   aspectRatio: AspectRatio;
   scale?: number;
   stageWidth?: number;
@@ -69,12 +68,7 @@ export async function renderSlideToPngBlob(
   const stageWidth = options.stageWidth ?? 1920;
   const stageHeight = options.stageHeight ?? 1080;
   const scale = options.scale ?? 1;
-  const box =
-    options.boundaryBox !== undefined
-      ? options.boundaryBox
-      : 'boundaryBox' in options.slide
-        ? options.slide.boundaryBox
-        : undefined;
+  const box = options.boundaryBox;
   const crop = calculateBoundaryCrop(box, stageWidth, stageHeight, scale);
   const canvas = document.createElement('canvas');
   canvas.width = crop.exportWidth;
@@ -154,12 +148,7 @@ export async function exportAllSlidesZip(
       scale: options.scale ?? 1,
       stageWidth,
       stageHeight,
-      boundaryBox:
-        options.boundaryBox !== undefined
-          ? options.boundaryBox
-          : 'boundaryBox' in slide
-            ? slide.boundaryBox
-            : undefined,
+      boundaryBox: options.boundaryBox,
       pitchTransform:
         options.pitchTransform !== undefined
           ? options.pitchTransform

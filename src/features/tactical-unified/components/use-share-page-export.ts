@@ -10,8 +10,8 @@ import {
 } from '@/features/tactical-unified/panels/export/ios-export-presets';
 import type { TacticalExportSharePayload } from '@/lib/tactical/export/share-payload';
 import { exportMultiSlideMp4Video } from '@/lib/tactical/export/tactical-video-exporter';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import type { AspectRatio } from '@/lib/types/tactical/primitives';
-import type { Slide } from '@/lib/types/tactical/slide';
 
 export interface UseSharePageExportOptions {
   shareId?: string;
@@ -97,8 +97,8 @@ export function useSharePageExport(options?: UseSharePageExportOptions) {
     (shareData?.orientation === 'vertical' ? '9:16' : '16:9');
   const stageWidth = 1920;
   const stageHeight = 1080;
-  const slides: Slide[] = shareData?.scenes
-    ? shareData.scenes.map((s) => s as Slide)
+  const slides: DomainSlide[] = shareData?.scenes
+    ? shareData.scenes.map((s) => s as DomainSlide)
     : [];
   const [presetKey, setPresetKey] = useState<IosEncoderPresetKey>('24mbps');
   const activePreset = IOS_ENCODER_PRESETS[presetKey];
