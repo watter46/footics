@@ -11,10 +11,7 @@ import {
   toScreenNormPoint,
   toStagePixelPoint,
 } from '@/lib/types/tactical/branded';
-import type {
-  DomainPlayer,
-  PitchPlayer,
-} from '@/lib/types/tactical/domain-entities';
+import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 
 function createBaseSlide(overrides?: Partial<DomainSlide>): DomainSlide {
@@ -313,5 +310,104 @@ describe('Scene Compiler Phase 1 Tests', () => {
     const arrowDto = scene.arrows[0];
     expect(arrowDto.flatPointsPx[0]).toBeCloseTo(expectedP1.x, 2);
     expect(arrowDto.flatPointsPx[1]).toBeCloseTo(expectedP1.y, 2);
+  });
+
+  it('7. computes controlHandlePx on the quadratic Bezier curve (t=0.5) matching flatPointsPx midpoint', () => {
+    const slide = createBaseSlide({
+      arrows: [
+        {
+          id: 'a-curved',
+          annotationType: 'arrow',
+          arrowType: 'pass',
+          curveType: 'curved',
+          points: [
+            toScreenNormPoint(20, 50, false),
+            toScreenNormPoint(80, 50, false),
+          ],
+          controlPoint: toScreenNormPoint(50, 20, false),
+          color: '#ffffff',
+          strokeWidth: 3,
+          dashArray: [],
+          startMarker: 'none',
+          endMarker: 'arrow',
+        },
+      ],
+    });
+
+    const frame = evaluateStaticSlideFrame(slide);
+    const scene = compileSceneGraph(frame, null, viewport);
+    const arrowDto = scene.arrows[0];
+
+    // S=(200, 400), Pc=(500, 160), E=(800, 400) -> B(0.5) = (500, 280)
+    expect(arrowDto.controlHandlePx).toBeDefined();
+    expect(arrowDto.controlHandlePx?.x).toBeCloseTo(500, 2);
+    expect(arrowDto.controlHandlePx?.y).toBeCloseTo(280, 2);
+
+    // Must match the center vertex of subdivided flatPointsPx
+    const vertexCount = arrowDto.flatPointsPx.length / 2;
+    const midIdx = Math.floor(vertexCount / 2) * 2;
+    expect(arrowDto.flatPointsPx[midIdx]).toBeCloseTo(
+      arrowDto.controlHandlePx!.x,
+      2,
+    );
+    expect(arrowDto.flatPointsPx[midIdx + 1]).toBeCloseTo(
+      arrowDto.controlHandlePx!.y,
+      2,
+    );
+  });
+
+  it('8. keeps controlHandlePx on the curve when activeDragDelta moves the arrow', () => {
+    const slide = createBaseSlide({
+      arrows: [
+        {
+          id: 'a-drag',
+          annotationType: 'arrow',
+          arrowType: 'pass',
+          curveType: 'curved',
+          points: [
+            toScreenNormPoint(20, 50, false),
+            toScreenNormPoint(80, 50, false),
+          ],
+          controlPoint: toScreenNormPoint(50, 20, false),
+          color: '#ffffff',
+          strokeWidth: 3,
+          dashArray: [],
+          startMarker: 'none',
+          endMarker: 'arrow',
+        },
+      ],
+    });
+
+    const frame = evaluateStaticSlideFrame(slide);
+    const scene = compileSceneGraph(
+      frame,
+      {
+        activePhaseId: 'phase-1',
+        activeSlideId: 'slide-1',
+        selectedIds: ['a-drag'],
+        activeDragDelta: {
+          entityIds: ['a-drag'],
+          deltaScreenNormX: 10,
+          deltaScreenNormY: 5,
+        },
+      },
+      viewport,
+    );
+    const arrowDto = scene.arrows[0];
+
+    // Moved by (+100px, +40px): S=(300,440), Pc=(600,200), E=(900,440) -> B(0.5)=(600,320)
+    expect(arrowDto.controlHandlePx?.x).toBeCloseTo(600, 2);
+    expect(arrowDto.controlHandlePx?.y).toBeCloseTo(320, 2);
+
+    const vertexCount = arrowDto.flatPointsPx.length / 2;
+    const midIdx = Math.floor(vertexCount / 2) * 2;
+    expect(arrowDto.flatPointsPx[midIdx]).toBeCloseTo(
+      arrowDto.controlHandlePx!.x,
+      2,
+    );
+    expect(arrowDto.flatPointsPx[midIdx + 1]).toBeCloseTo(
+      arrowDto.controlHandlePx!.y,
+      2,
+    );
   });
 });

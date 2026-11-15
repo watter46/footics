@@ -5,48 +5,45 @@ import type React from 'react';
 import type { ReactNode } from 'react';
 import { memo, useCallback, useMemo } from 'react';
 import { Group, Layer } from 'react-konva';
+import {
+  selectDomainActivePhase,
+  selectDomainActiveSlide,
+} from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ResolvedSceneGraphDTO } from '@/lib/tactical/compiler/scene-graph-dto';
-import type { Player, TextAnnotation } from '@/lib/types/tactical-unified';
-import { useCanvasStore } from '../hooks/use-canvas-store';
-import type { PitchRectBounds } from '../utils/canvas-coordinates';
-import { calculatePitchTransform } from '../utils/canvas-pitch-transform-helper';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import type {
+  DomainTextAnnotation,
+  PitchPlayer,
+} from '@/lib/types/tactical/domain-entities';
+import type { Player } from '@/lib/types/tactical-unified';
+import type { SelectedObject } from '../types';
+import {
+  type PitchRectBounds,
+  resolvePitchGroupTransform,
+} from '../utils/canvas-coordinates';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
-import {
-  type CameraState,
-  DEFAULT_CAMERA_STATE,
-} from '../utils/matrix-coordinates';
-import {
-  type BillboardItem,
-  buildBillboardItems,
-  sortBillboardItemsByDepth,
-  sortBillboardItemsBySceneGraph,
-} from './billboard-depth-sort';
 import { BillboardItemNode } from './billboard-item-node';
 import { useMarkerDragHandlers } from './use-marker-drag-handlers';
-
-export {
-  type BillboardItem,
-  sortBillboardItemsByDepth,
-  sortBillboardItemsBySceneGraph,
-};
 
 export interface BillboardObjectLayerProps {
   stageSize: { width: number; height: number };
   pitchRect: PitchRectBounds;
-  camera?: Partial<CameraState>;
   editingTextId?: string | null;
   onStartEditText?: (textId: string) => void;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   cleanRender?: boolean;
   listening?: boolean;
-  sceneGraph?: ResolvedSceneGraphDTO | null;
+  sceneGraph: ResolvedSceneGraphDTO;
 }
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
 export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   pitchRect,
-  camera = DEFAULT_CAMERA_STATE,
   editingTextId,
   onStartEditText,
   nodesRegistryRef,
@@ -54,45 +51,42 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   listening = true,
   sceneGraph,
 }: BillboardObjectLayerProps): ReactNode {
-  const markers = useCanvasStore((s) => s.annotations.markers);
-  const arrows = useCanvasStore((s) => s.annotations.arrows);
-  const texts = useCanvasStore((s) => s.annotations.texts);
-  const markerMode = useCanvasStore((s) => s.markerMode);
-  const selectedIds = useCanvasStore((s) => s.selectedIds);
-  const activeTool = useCanvasStore((s) => s.activeTool);
-  const selectObject = useCanvasStore((s) => s.selectObject);
-  const updateMarker = useCanvasStore((s) => s.updateMarker);
-  const updateMarkers = useCanvasStore((s) => s.updateMarkers);
-  const updateText = useCanvasStore((s) => s.updateText);
-  const setIsDragging = useCanvasStore((s) => s.setIsDragging);
-  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
-  const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
-  const setConnectingPlayerId = useCanvasStore((s) => s.setConnectingPlayerId);
-  const aspectRatio = useCanvasStore((s) => s.aspectRatio);
+  const project = useDocumentStore((s) => s.project);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
 
-  const capabilities = useCanvasStore((s) => s.capabilities);
-  const ball = useCanvasStore((s) => s.ball);
-  const teamVisibility = useCanvasStore((s) => s.teamVisibility ?? 'both');
-  const moveMarkerToBench = useCanvasStore((s) => s.moveMarkerToBench);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const markerMode = useSessionStore((s) => s.markerMode);
+  const selectedObjects = useSessionStore((s) => s.selectedObjects);
+  const activeTool = useSessionStore((s) => s.activeTool);
+  const connectingPlayerId = useSessionStore((s) => s.connectingPlayerId);
+  const teamVisibility = useSessionStore((s) => s.teamVisibility);
+  const selectObject = useSessionStore((s) => s.selectObject);
+  const setIsDragging = useSessionStore((s) => s.setIsDragging);
+  const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
+  const setConnectingPlayerId = useSessionStore((s) => s.setConnectingPlayerId);
 
-  const showBall =
-    (capabilities?.hasBall ?? false) && ball != null && ball.visible !== false;
+  const activePhase = selectDomainActivePhase(project, activePhaseId);
+  const activeSlide = selectDomainActiveSlide(
+    project,
+    activePhaseId,
+    activeSlideId,
+  );
 
-  const pitchTransform = useCanvasStore((s) => s.pitchTransform);
+  const selectedIds = useMemo(
+    () => selectedObjects.map((o) => o.id),
+    [selectedObjects],
+  );
+  const aspectRatio = activePhase?.aspectRatio;
 
-  const groupTransform = calculatePitchTransform(
+  const groupTransform = resolvePitchGroupTransform(
     pitchRect,
-    pitchTransform.panX,
-    pitchTransform.panY,
-    pitchTransform.zoom,
-    0,
+    activeSlide?.pitchTransform,
   );
-
   const pitchMarkers = useMemo(
-    () => markers.filter((m) => m.area !== 'bench'),
-    [markers],
+    () => (activeSlide?.players ?? []).filter((m) => m.area === 'pitch'),
+    [activeSlide?.players],
   );
-
   const visibleMarkers = useMemo(
     () =>
       teamVisibility === 'both'
@@ -102,6 +96,60 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
           ),
     [pitchMarkers, teamVisibility],
   );
+  const capabilities = useMemo(
+    () => ({
+      hasBench: activePhase?.backgroundType !== 'image',
+      hasBall: activeSlide?.ball.visible ?? false,
+    }),
+    [activePhase?.backgroundType, activeSlide?.ball.visible],
+  );
+
+  const updateMarker = useCallback(
+    (id: string, patch: Partial<Player>) => {
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'UPDATE_PLAYER',
+        id,
+        patch: patch as Partial<PitchPlayer>,
+      });
+    },
+    [dispatchSlide, activePhaseId, activeSlideId],
+  );
+
+  const updateMarkers = useCallback(
+    (updates: { id: string; patch: Partial<Player> }[]) => {
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'MOVE_PLAYERS',
+        moves: updates.map((u) => ({
+          id: u.id,
+          x: clampToScreenNorm(u.patch.x ?? 0),
+          y: clampToScreenNorm(u.patch.y ?? 0),
+        })),
+      });
+    },
+    [dispatchSlide, activePhaseId, activeSlideId],
+  );
+
+  const moveMarkerToBench = useCallback(
+    (id: string, x?: number, y?: number) => {
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'MOVE_PLAYER_TO_BENCH',
+        id,
+        benchX: x !== undefined ? clampToScreenNorm(x) : undefined,
+        benchY: y !== undefined ? clampToScreenNorm(y) : undefined,
+      });
+    },
+    [dispatchSlide, activePhaseId, activeSlideId],
+  );
+
+  const handleSelectObjectForDrag = useCallback(
+    (target: string | SelectedObject | null, isShift?: boolean) => {
+      selectObject(
+        typeof target === 'string' ? { id: target, kind: 'player' } : target,
+        isShift,
+      );
+    },
+    [selectObject],
+  );
 
   const isInteractive = activeTool === 'select';
   const baseDim = Math.min(pitchRect.width, pitchRect.height);
@@ -110,9 +158,8 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
     useMarkerDragHandlers({
       pitchRect,
       visibleMarkers,
-      arrows,
       selectedIds,
-      selectObject,
+      selectObject: handleSelectObjectForDrag,
       updateMarker,
       updateMarkers,
       setIsDragging,
@@ -125,35 +172,35 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   const handleMarkerClick = useCallback(
     (markerId: string, isShift: boolean) => {
       if (connectingPlayerId && connectingPlayerId !== markerId) {
-        const src = markers.find((m) => m.id === connectingPlayerId);
+        const src = (activeSlide?.players ?? []).find(
+          (m) => m.id === connectingPlayerId,
+        );
         if (src) {
-          const lines = (src.connectLines ?? []).filter(
-            (c) => c.toPlayerId !== markerId,
-          );
-          updateMarker(src.id, {
-            connectLines: [
-              ...lines,
-              {
-                id: `cl-${Date.now()}`,
-                toPlayerId: markerId,
-                lineStyle: 'solid',
-                color: src.style?.color ?? '#034694',
-                strokeWidth: 2,
-                visible: true,
-              },
-            ],
+          dispatchSlide(activePhaseId, activeSlideId, {
+            type: 'ADD_CONNECT_LINE',
+            playerId: src.id,
+            line: {
+              id: `cl-${Date.now()}`,
+              toPlayerId: markerId,
+              lineStyle: 'solid',
+              color: src.style?.color ?? '#034694',
+              strokeWidth: 2,
+              visible: true,
+            },
           });
           setConnectingPlayerId(null);
           return;
         }
       }
-      selectObject(markerId, isShift);
+      selectObject({ id: markerId, kind: 'player' }, isShift);
       setIsHudOpen(true);
     },
     [
       connectingPlayerId,
-      markers,
-      updateMarker,
+      activeSlide?.players,
+      dispatchSlide,
+      activePhaseId,
+      activeSlideId,
       setConnectingPlayerId,
       selectObject,
       setIsHudOpen,
@@ -173,36 +220,44 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   );
 
   const handleUpdateVisionCone = useCallback(
-    (marker: Player, patch: Partial<NonNullable<Player['visionCone']>>) => {
-      updateMarker(marker.id, {
-        visionCone: marker.visionCone
+    (
+      marker: PitchPlayer,
+      patch: Partial<NonNullable<PitchPlayer['visionCone']>>,
+    ) => {
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'SET_PLAYER_VISION_CONE',
+        playerId: marker.id,
+        cone: marker.visionCone
           ? { ...marker.visionCone, ...patch }
           : undefined,
       });
     },
-    [updateMarker],
+    [dispatchSlide, activePhaseId, activeSlideId],
   );
 
-  // 深さソート対象アイテム群の構築
-  const billboardItems = useMemo(
-    () => buildBillboardItems(visibleMarkers, ball, showBall, texts),
-    [visibleMarkers, ball, showBall, texts],
+  const handleUpdateText = useCallback(
+    (id: string, patch: Partial<DomainTextAnnotation>) => {
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'UPDATE_TEXT',
+        id,
+        patch,
+      });
+    },
+    [dispatchSlide, activePhaseId, activeSlideId],
   );
 
-  const sortedItems = useMemo(() => {
-    if (sceneGraph && sceneGraph.billboardItems.length > 0) {
-      return sortBillboardItemsBySceneGraph(
-        billboardItems,
-        sceneGraph.billboardItems,
-      );
-    }
-    return sortBillboardItemsByDepth(
-      billboardItems,
-      pitchRect,
-      camera,
-      selectedIds,
-    );
-  }, [billboardItems, pitchRect, camera, selectedIds, sceneGraph]);
+  const visibleItems = useMemo(
+    () =>
+      teamVisibility === 'both'
+        ? sceneGraph.billboardItems
+        : sceneGraph.billboardItems.filter(
+            (item) =>
+              item.kind !== 'player' ||
+              item.player.team === teamVisibility ||
+              item.player.team === 'neutral',
+          ),
+    [sceneGraph.billboardItems, teamVisibility],
+  );
 
   return (
     <Layer id="billboard-object-layer" listening={listening}>
@@ -212,15 +267,9 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
         scaleX={groupTransform.scaleX}
         scaleY={groupTransform.scaleY}
       >
-        {sortedItems.map((item) => (
+        {visibleItems.map((item) => (
           <BillboardItemNode
-            key={
-              item.kind === 'player'
-                ? item.data.id
-                : item.kind === 'ball'
-                  ? 'ball-object'
-                  : item.data.id
-            }
+            key={item.kind === 'ball' ? 'ball-object' : item.id}
             item={item}
             pitchRect={pitchRect}
             baseDim={baseDim}
@@ -239,10 +288,7 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
             onClickMarker={handleMarkerClick}
             onUpdateVisionCone={handleUpdateVisionCone}
             onSelectText={handleSelectText}
-            updateText={(id, patch) =>
-              updateText(id, patch as Partial<TextAnnotation>)
-            }
-            sceneGraph={sceneGraph}
+            updateText={handleUpdateText}
           />
         ))}
       </Group>

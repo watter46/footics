@@ -5,6 +5,9 @@ import { Layer, Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerMarkerItem } from '@/features/tactical-unified/core/components/PlayerMarkerItem';
 import { PlayerMarkerRingFade } from '@/features/tactical-unified/objects/player/components/player-marker-ring-fade';
+import type { ResolvedBillboardPlayerItem } from '@/lib/tactical/compiler/scene-graph-dto';
+import { toStagePixelPoint } from '@/lib/types/tactical/branded';
+import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 
 beforeEach(() => {
@@ -153,6 +156,19 @@ describe('PlayerMarkerRingFade', () => {
       },
     };
 
+    const resolvedPlayer: ResolvedBillboardPlayerItem = {
+      kind: 'player',
+      id: marker.id,
+      positionPx: toStagePixelPoint(400, 225),
+      radiusPx: 14.4,
+      depthSortKey: 0,
+      opacity: 1,
+      visible: true,
+      selected: true,
+      player: marker as PitchPlayer,
+      rippleRingsPx: [],
+    };
+
     render(
       <Stage ref={stageRef} width={800} height={450}>
         <Layer>
@@ -171,6 +187,7 @@ describe('PlayerMarkerRingFade', () => {
             onDragEnd={vi.fn()}
             onClick={vi.fn()}
             onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={resolvedPlayer}
           />
         </Layer>
       </Stage>,

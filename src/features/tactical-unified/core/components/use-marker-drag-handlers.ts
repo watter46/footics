@@ -120,23 +120,11 @@ export function useMarkerDragHandlers({
     (e: KonvaEventObject<DragEvent>, markerId: string) => {
       const curX = e.target.x();
       const curY = e.target.y();
-      const reg = nodesRegistryRef?.current as CanvasNodesRegistry | undefined;
 
       const multi = dragMultiStateRef.current;
       if (multi && multi.draggedMarkerId === markerId) {
         const deltaX = curX - multi.startPx.x;
         const deltaY = curY - multi.startPx.y;
-
-        for (const [id, initial] of multi.markers.entries()) {
-          if (id === markerId) continue;
-          const node = reg?.playerNodes.get(id);
-          if (node) {
-            node.position({
-              x: initial.pxX + deltaX,
-              y: initial.pxY + deltaY,
-            });
-          }
-        }
 
         if (tacticalStores && pitchRect.width > 0 && pitchRect.height > 0) {
           tacticalStores.sessionStore.getState().setActiveDragDelta({
@@ -172,13 +160,7 @@ export function useMarkerDragHandlers({
 
       e.target.getLayer()?.batchDraw();
     },
-    [
-      visibleMarkers,
-      pitchRect.width,
-      pitchRect.height,
-      nodesRegistryRef,
-      tacticalStores,
-    ],
+    [visibleMarkers, pitchRect.width, pitchRect.height, tacticalStores],
   );
 
   const handleDragEnd = useCallback(

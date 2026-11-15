@@ -8,124 +8,23 @@ import {
   TacticalStoreProvider,
   useTacticalStoresContext,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { compileConnectLines } from '@/lib/tactical/compiler/compile-arrows';
+import type { ResolvedPlayerInternal } from '@/lib/tactical/compiler/compile-billboards';
 import type {
-  ResolvedBillboardTextItem,
+  ResolvedBillboardPlayerItem,
   ResolvedConnectLinePrimitive,
 } from '@/lib/tactical/compiler/scene-graph-dto';
-import type { TextAnnotation } from '@/lib/types/tactical-unified';
+import {
+  toScreenNormCoord,
+  toScreenNormPoint,
+  toStagePixelPoint,
+} from '@/lib/types/tactical/branded';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
-import { CanvasStoreProvider } from '../../store/canvas-store-provider';
-import type { CanvasNodesRegistry } from '../../utils/canvas-registry';
-import { TextObject } from '../annotations/TextObject';
 import { PlayerConnectLines } from '../PlayerConnectLines';
 import { useMarkerDragHandlers } from '../use-marker-drag-handlers';
 
 describe('PlayerConnectLines', () => {
-  it('多層フォグ減衰（広域＋中間＋コアライン）と glowBlur / glowOpacity が反映される', () => {
-    const stageRef = createRef<Konva.Stage>();
-    const nodeMapRef = { current: new Map<string, Konva.Line>() };
-
-    const p1 = {
-      ...createDefaultPlayer('home', 20, 20, '#034694'),
-      id: 'p1',
-      connectLines: [
-        {
-          id: 'cl-1',
-          toPlayerId: 'p2',
-          lineStyle: 'solid' as const,
-          color: '#ffffff',
-          strokeWidth: 3,
-          glowBlur: 50,
-          glowOpacity: 0.8,
-          visible: true,
-        },
-      ],
-    };
-    const p2 = {
-      ...createDefaultPlayer('home', 80, 80, '#034694'),
-      id: 'p2',
-    };
-
-    render(
-      <Stage ref={stageRef} width={800} height={450}>
-        <Layer>
-          <PlayerConnectLines
-            markers={[p1, p2]}
-            width={800}
-            height={450}
-            selectedIds={[]}
-            isInteractive={true}
-            connectLineNodesRef={nodeMapRef}
-            onSelectConnectLine={vi.fn()}
-          />
-        </Layer>
-      </Stage>,
-    );
-
-    const coreLine = nodeMapRef.current.get('cl-1');
-    expect(coreLine).toBeDefined();
-    // コアライン: glowBlur * 0.35 = 17.5
-    expect(coreLine?.shadowBlur()).toBeCloseTo(17.5);
-
-    const fogA = nodeMapRef.current.get('cl-1-fog-a');
-    expect(fogA).toBeDefined();
-    // 広域フォグ: glowBlur * 1.5 = 75, opacity = 0.8 * 0.25 = 0.2
-    expect(fogA?.shadowBlur()).toBeCloseTo(75);
-    expect(fogA?.opacity()).toBeCloseTo(0.2);
-
-    const fogB = nodeMapRef.current.get('cl-1-fog-b');
-    expect(fogB).toBeDefined();
-    // 中間フォグ: glowBlur * 0.8 = 40, opacity = 0.8 * 0.55 = 0.44
-    expect(fogB?.shadowBlur()).toBeCloseTo(40);
-    expect(fogB?.opacity()).toBeCloseTo(0.44);
-  });
-
-  it('cl.glowBlur が未指定の場合、デフォルトの 50 が shadowBlur に適用される', () => {
-    const stageRef = createRef<Konva.Stage>();
-    const nodeMapRef = { current: new Map<string, Konva.Line>() };
-
-    const p1 = {
-      ...createDefaultPlayer('home', 20, 20, '#034694'),
-      id: 'p1',
-      connectLines: [
-        {
-          id: 'cl-2',
-          toPlayerId: 'p2',
-          lineStyle: 'solid' as const,
-          color: '#ffffff',
-          strokeWidth: 3,
-          visible: true,
-        },
-      ],
-    };
-    const p2 = {
-      ...createDefaultPlayer('home', 80, 80, '#034694'),
-      id: 'p2',
-    };
-
-    render(
-      <Stage ref={stageRef} width={800} height={450}>
-        <Layer>
-          <PlayerConnectLines
-            markers={[p1, p2]}
-            width={800}
-            height={450}
-            selectedIds={[]}
-            isInteractive={true}
-            connectLineNodesRef={nodeMapRef}
-            onSelectConnectLine={vi.fn()}
-          />
-        </Layer>
-      </Stage>,
-    );
-
-    const line = nodeMapRef.current.get('cl-2');
-    expect(line).toBeDefined();
-    // コアライン: デフォルト 50 * 0.35 = 17.5
-    expect(line?.shadowBlur()).toBeCloseTo(17.5);
-  });
-
-  it('resolvedConnectLines が指定されている場合、markers からの座標探索をスキップして DTO 値を描画する', () => {
+  it('resolvedConnectLines の線座標・色・破線・クリック選択コールバックが反映される', () => {
     const stageRef = createRef<Konva.Stage>();
     const nodeMapRef = { current: new Map<string, Konva.Line>() };
     const onSelectConnectLine = vi.fn();
@@ -141,15 +40,22 @@ describe('PlayerConnectLines', () => {
         dashArrayPx: [8, 4],
         visible: true,
       },
+      {
+        id: 'cl-hidden',
+        fromPlayerId: 'p1',
+        toPlayerId: 'p3',
+        flatPointsPx: [100, 120, 400, 300],
+        color: '#ef4444',
+        strokeWidthPx: 2,
+        dashArrayPx: [],
+        visible: false,
+      },
     ];
 
     render(
       <Stage ref={stageRef} width={800} height={450}>
         <Layer>
           <PlayerConnectLines
-            markers={[]}
-            width={800}
-            height={450}
             selectedIds={[]}
             isInteractive={true}
             connectLineNodesRef={nodeMapRef}
@@ -166,76 +72,158 @@ describe('PlayerConnectLines', () => {
     expect(line?.stroke()).toBe('#22c55e');
     expect(line?.strokeWidth()).toBe(3);
     expect(line?.dash()).toEqual([8, 4]);
+    expect(line?.opacity()).toBeCloseTo(0.85);
+
+    expect(nodeMapRef.current.get('cl-hidden')).toBeUndefined();
 
     line?.fire('click', { cancelBubble: false });
     expect(onSelectConnectLine).toHaveBeenCalledWith('cl-1', 'p1');
   });
 
-  it('TextObject: resolvedText が渡されたとき、positionPx, fontSizePx, opacity が優先適用される', () => {
+  it('selectedIds に含まれる連結線はハイライト色・太さ+1・opacity=1 で描画される', () => {
     const stageRef = createRef<Konva.Stage>();
-    const textNodes = new Map<string, Konva.Text>();
-    const nodesRegistryRef = {
-      current: { textNodes } as unknown as CanvasNodesRegistry,
-    };
+    const nodeMapRef = { current: new Map<string, Konva.Line>() };
 
-    const textAnnotation: TextAnnotation = {
-      id: 't-1',
-      annotationType: 'text',
-      x: 10,
-      y: 10,
-      content: 'Old Content',
-      fontSize: 14,
-      color: '#ffffff',
-      bold: false,
-      italic: false,
-    };
-
-    const resolvedText: ResolvedBillboardTextItem = {
-      kind: 'text',
-      id: 't-1',
-      positionPx: {
-        x: 420 as unknown as number,
-        y: 180 as unknown as number,
-      } as any,
-      depthSortKey: 180,
-      content: 'High Press',
-      fontSizePx: 24,
-      color: '#ffffff',
-      bold: true,
-      italic: false,
-      opacity: 0.85,
-      visible: true,
-      selected: false,
-    };
+    const resolvedConnectLines: ResolvedConnectLinePrimitive[] = [
+      {
+        id: 'cl-selected',
+        fromPlayerId: 'p1',
+        toPlayerId: 'p2',
+        flatPointsPx: [50, 60, 250, 160],
+        color: '#ffffff',
+        strokeWidthPx: 4,
+        dashArrayPx: [],
+        visible: true,
+      },
+    ];
 
     render(
-      <CanvasStoreProvider config={{} as any}>
-        <Stage ref={stageRef} width={800} height={450}>
-          <Layer>
-            <TextObject
-              text={textAnnotation}
-              stageSize={{ width: 800, height: 450 }}
-              isSelected={false}
-              onSelect={vi.fn()}
-              onDblClick={vi.fn()}
-              updateText={vi.fn()}
-              nodesRegistryRef={nodesRegistryRef}
-              resolvedText={resolvedText}
-            />
-          </Layer>
-        </Stage>
-      </CanvasStoreProvider>,
+      <Stage ref={stageRef} width={800} height={450}>
+        <Layer>
+          <PlayerConnectLines
+            selectedIds={['cl-selected']}
+            isInteractive={true}
+            connectLineNodesRef={nodeMapRef}
+            onSelectConnectLine={vi.fn()}
+            resolvedConnectLines={resolvedConnectLines}
+          />
+        </Layer>
+      </Stage>,
     );
 
-    const textNode = textNodes.get('t-1');
-    expect(textNode).toBeDefined();
-    expect(textNode?.x()).toBe(420);
-    expect(textNode?.y()).toBe(180);
-    expect(textNode?.fontSize()).toBe(24);
-    expect(textNode?.opacity()).toBeCloseTo(0.85);
+    const line = nodeMapRef.current.get('cl-selected');
+    expect(line).toBeDefined();
+    expect(line?.stroke()).toBe('#60a5fa');
+    expect(line?.strokeWidth()).toBe(5);
+    expect(line?.opacity()).toBe(1);
+    expect(line?.dash()).toBeUndefined();
   });
+});
 
-  it('useMarkerDragHandlers: ドラッグ移動中に sessionStore.activeDragDelta を更新し、ドラッグ終了時に null にリセットする', () => {
+describe('compileConnectLines', () => {
+  it('billboardPlayers と resolvedPlayersMap から ResolvedConnectLinePrimitive[] を生成する', () => {
+    const p1 = {
+      ...createDefaultPlayer('home', 20, 20, '#034694'),
+      id: 'p1',
+      area: 'pitch' as const,
+      x: toScreenNormCoord(20),
+      y: toScreenNormCoord(20),
+      trajectory: undefined,
+      connectLines: [
+        {
+          id: 'cl-dashed',
+          toPlayerId: 'p2',
+          lineStyle: 'dashed' as const,
+          color: '#22c55e',
+          strokeWidth: 4,
+          visible: true,
+        },
+        {
+          id: 'cl-missing-target',
+          toPlayerId: 'p-missing',
+          lineStyle: 'solid' as const,
+          color: '#ffffff',
+          strokeWidth: 2,
+          visible: true,
+        },
+      ],
+    };
+    const p2 = {
+      ...createDefaultPlayer('home', 80, 80, '#034694'),
+      id: 'p2',
+      area: 'pitch' as const,
+      x: toScreenNormCoord(80),
+      y: toScreenNormCoord(80),
+      trajectory: undefined,
+    };
+
+    const p1Pos = toStagePixelPoint(160, 90);
+    const p2Pos = toStagePixelPoint(640, 360);
+
+    const billboardPlayers: ResolvedBillboardPlayerItem[] = [
+      {
+        kind: 'player',
+        id: 'p1',
+        player: p1,
+        positionPx: p1Pos,
+        radiusPx: 20,
+        depthSortKey: 90,
+        opacity: 1,
+        visible: true,
+        selected: false,
+        rippleRingsPx: [],
+      },
+    ];
+
+    const resolvedPlayersMap = new Map<string, ResolvedPlayerInternal>([
+      [
+        'p1',
+        {
+          player: p1,
+          screenNormPos: toScreenNormPoint(20, 20),
+          positionPx: p1Pos,
+          radiusPx: 20,
+          depthSortKey: 90,
+          opacity: 1,
+          visible: true,
+          selected: false,
+          rippleRingsPx: [],
+        },
+      ],
+      [
+        'p2',
+        {
+          player: p2,
+          screenNormPos: toScreenNormPoint(80, 80),
+          positionPx: p2Pos,
+          radiusPx: 20,
+          depthSortKey: 360,
+          opacity: 1,
+          visible: true,
+          selected: false,
+          rippleRingsPx: [],
+        },
+      ],
+    ]);
+
+    const result = compileConnectLines(billboardPlayers, resolvedPlayersMap, 1);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      id: 'cl-dashed',
+      fromPlayerId: 'p1',
+      toPlayerId: 'p2',
+      flatPointsPx: [160, 90, 640, 360],
+      color: '#22c55e',
+      strokeWidthPx: 4,
+      dashArrayPx: [8, 6],
+      visible: true,
+    });
+  });
+});
+
+describe('useMarkerDragHandlers', () => {
+  it('ドラッグ移動中に sessionStore.activeDragDelta を更新し、ドラッグ終了時に null にリセットする', () => {
     const p1 = {
       ...createDefaultPlayer('home', 20, 30, '#034694'),
       id: 'p1',

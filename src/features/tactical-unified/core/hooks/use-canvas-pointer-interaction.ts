@@ -11,6 +11,7 @@ import {
   type CanvasPointerInteractionResult,
   dispatchPointerMove,
   dispatchPointerUp,
+  isAnchorTarget,
   type UseCanvasPointerInteractionOptions,
 } from '../utils/canvas-pointer-dispatcher';
 import { useCanvasPointerStore } from '../utils/canvas-pointer-state';
@@ -63,7 +64,11 @@ export function useCanvasPointerInteraction({
         effectiveVRect,
         pitchTransform,
       );
-      if (zoneRotation.handlePointerDown(pixelPos)) return;
+      const isAnchor = isAnchorTarget(e.target);
+      const stageContainer = e.target?.getStage?.()?.container?.() ?? null;
+      if (zoneRotation.handlePointerDown(pixelPos, isAnchor, stageContainer)) {
+        return;
+      }
       if (polygonZone.handlePointerDown(normPos)) return;
 
       const isStage = e.target === e.target.getStage();

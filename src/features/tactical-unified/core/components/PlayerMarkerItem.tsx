@@ -2,7 +2,7 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { type MutableRefObject, memo, useEffect, useRef } from 'react';
+import { type MutableRefObject, memo } from 'react';
 import { Group } from 'react-konva';
 import { usePlayerPhotoImage } from '@/features/tactical-unified/core/hooks/player-photo-context';
 import { PlayerFocusSpotlight } from '@/features/tactical-unified/objects/player/components/player-focus-spotlight';
@@ -32,21 +32,21 @@ export interface PlayerMarkerItemProps {
   onDragEnd: (e: KonvaEventObject<DragEvent>, marker: Player) => void;
   onClick: (markerId: string, isShift: boolean) => void;
   onUpdateVisionCone: (patch: Record<string, unknown>) => void;
-  resolvedPlayer?: ResolvedBillboardPlayerItem | null;
+  resolvedPlayer: ResolvedBillboardPlayerItem;
 }
 
 export const PlayerMarkerItem = memo(function PlayerMarkerItem({
   marker,
   width,
   height,
-  baseDim,
+  baseDim: _baseDim,
   markerMode,
   isSelected,
   isInteractive,
   cleanRender,
   connectingPlayerId,
   nodesRegistryRef,
-  aspectRatio,
+  aspectRatio: _aspectRatio,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -54,24 +54,8 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
   onUpdateVisionCone,
   resolvedPlayer,
 }: PlayerMarkerItemProps) {
-  const groupRef = useRef<Konva.Group | null>(null);
-  const effectivePx = resolvedPlayer
-    ? { x: resolvedPlayer.positionPx.x, y: resolvedPlayer.positionPx.y }
-    : { x: (marker.x / 100) * width, y: (marker.y / 100) * height };
-
-  useEffect(() => {
-    if (groupRef.current && !cleanRender) {
-      groupRef.current.position({ x: effectivePx.x, y: effectivePx.y });
-    }
-  }, [effectivePx.x, effectivePx.y, cleanRender]);
-
-  const sizeScale = marker.style?.sizeScale ?? 1.0;
-  const isVerticalAspect = aspectRatio === '4:5' || aspectRatio === '9:16';
-  const verticalScale = isVerticalAspect ? 0.85 : 1.0;
-  const radius = resolvedPlayer
-    ? resolvedPlayer.radiusPx
-    : baseDim * 0.032 * sizeScale * verticalScale;
-  const opacity = resolvedPlayer ? resolvedPlayer.opacity : 1;
+  const radius = resolvedPlayer.radiusPx;
+  const opacity = resolvedPlayer.opacity;
   const numScale = marker.style?.numberSizeScale ?? 1.0;
   const labelScale = marker.style?.labelSizeScale ?? 1.0;
   const displayName = marker.name ? getLastName(marker.name) : '';
@@ -89,7 +73,6 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
   return (
     <Group
       ref={(node: Konva.Group | null) => {
-        groupRef.current = node;
         const reg = nodesRegistryRef?.current as
           | { playerNodes?: Map<string, Konva.Group> }
           | undefined;
@@ -98,19 +81,31 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
           else reg.playerNodes.delete(marker.id);
         }
       }}
-      x={effectivePx.x}
-      y={effectivePx.y}
+      x={resolvedPlayer.positionPx.x}
+      y={resolvedPlayer.positionPx.y}
       opacity={opacity}
+      visible={resolvedPlayer.visible}
       draggable={!cleanRender && isInteractive && !marker.locked}
       // 選手マーカーは 16:9 スクリーン内（0..100）にクランプ
       dragBoundFunc={function (this: Konva.Node, pos: Konva.Vector2d) {
-        const parentPos = this.getParent?.()?.getAbsolutePosition?.() ?? {
+        const parent = this.getParent?.();
+        const parentPos = parent?.getAbsolutePosition?.() ?? {
           x: 0,
           y: 0,
         };
+        const parentScale = parent?.getAbsoluteScale?.() ?? {
+          x: 1,
+          y: 1,
+        };
         return {
-          x: Math.max(parentPos.x, Math.min(parentPos.x + width, pos.x)),
-          y: Math.max(parentPos.y, Math.min(parentPos.y + height, pos.y)),
+          x: Math.max(
+            parentPos.x,
+            Math.min(parentPos.x + width * parentScale.x, pos.x),
+          ),
+          y: Math.max(
+            parentPos.y,
+            Math.min(parentPos.y + height * parentScale.y, pos.y),
+          ),
         };
       }}
       onMouseEnter={(e) => {

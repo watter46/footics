@@ -6,14 +6,19 @@ import { Layer, Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BallObject } from '@/features/tactical-unified/objects/ball/components/ball-object';
 import type { BallObjectProps } from '@/features/tactical-unified/objects/ball/types';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
 import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
-import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
-import type { ResolvedBillboardBallItem } from '@/lib/tactical/compiler/scene-graph-dto';
-import type { StagePixel } from '@/lib/types/tactical/branded';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import type {
+  ResolvedBillboardBallItem,
+  ResolvedBillboardPlayerItem,
+} from '@/lib/tactical/compiler/scene-graph-dto';
+import type { ScreenNormCoord, StagePixel } from '@/lib/types/tactical/branded';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
-import { createCanvasStore } from '../../store/canvas-store';
-import { CanvasStoreContext } from '../../store/canvas-store-provider';
-import type { CanvasStoreApi } from '../../types';
 import { createCanvasNodesRegistry } from '../../utils/canvas-registry';
 import { CanvasStageContainer } from '../CanvasStageContainer';
 import { PlayerMarkerItem } from '../PlayerMarkerItem';
@@ -59,41 +64,29 @@ beforeEach(() => {
   HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
 });
 
-function renderWithStore(
-  ui: React.ReactElement,
-  initialStore?: CanvasStoreApi,
-) {
-  const store =
-    initialStore ??
-    createCanvasStore({
-      mode: 'screenshot-edit',
-      aspectRatio: '16:9',
-    });
+function renderWithStore(ui: React.ReactElement) {
+  const documentStore = createDocumentStore(createDefaultTacticalProject());
   const sessionStore = createSessionStore();
+  const playbackStore = createPlaybackStore();
   const utils = render(
-    <TacticalStoreProvider stores={{ sessionStore }}>
-      <CanvasStoreContext.Provider value={store}>
-        {ui}
-      </CanvasStoreContext.Provider>
+    <TacticalStoreProvider
+      stores={{ documentStore, sessionStore, playbackStore }}
+    >
+      {ui}
     </TacticalStoreProvider>,
   );
-  return { store, sessionStore, ...utils };
+  return { documentStore, sessionStore, playbackStore, ...utils };
 }
 
 describe('Clean Render Propagation', () => {
   it('cleanRender=true 時に CanvasStageContainer で HUD や InteractionPreviewLayer が描画されないこと', () => {
     const registryRef = { current: createCanvasNodesRegistry() };
-    const store = createCanvasStore({
-      mode: 'screenshot-edit',
-      aspectRatio: '16:9',
-    });
 
     const { container, sessionStore } = renderWithStore(
       <CanvasStageContainer
         nodesRegistryRef={registryRef}
         cleanRender={true}
       />,
-      store,
     );
 
     sessionStore.getState().selectObject({ kind: 'player', id: 'p1' });
@@ -144,6 +137,24 @@ describe('Clean Render Propagation', () => {
             onDragEnd={vi.fn()}
             onClick={vi.fn()}
             onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={{
+              kind: 'player',
+              id: marker.id,
+              positionPx: { x: 400 as StagePixel, y: 225 as StagePixel },
+              radiusPx: 14,
+              depthSortKey: 225,
+              opacity: 1,
+              visible: true,
+              selected: true,
+              player: {
+                ...marker,
+                area: 'pitch' as const,
+                x: marker.x as ScreenNormCoord,
+                y: marker.y as ScreenNormCoord,
+                trajectory: undefined,
+              },
+              rippleRingsPx: [],
+            }}
           />
         </Layer>
       </Stage>,
@@ -159,7 +170,7 @@ describe('Clean Render Propagation', () => {
     expect(handleCircles?.length ?? 0).toBe(0);
   });
 
-  it('PlayerMarkerItem: cleanRender が true から false に切り替わった際に命令的に変更された position が静止座標に自己復元されること', () => {
+  it('PlayerMarkerItem: cleanRender が true から false に切り替わると draggable が true に戻り、resolvedPlayer.positionPx 変更に Group 座標が追従すること', () => {
     const stageRef = createRef<Konva.Stage>();
     const marker = createDefaultPlayer('home', 50, 50, '#ff0000');
 
@@ -182,6 +193,24 @@ describe('Clean Render Propagation', () => {
             onDragEnd={vi.fn()}
             onClick={vi.fn()}
             onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={{
+              kind: 'player',
+              id: marker.id,
+              positionPx: { x: 400 as StagePixel, y: 225 as StagePixel },
+              radiusPx: 14,
+              depthSortKey: 225,
+              opacity: 1,
+              visible: true,
+              selected: true,
+              player: {
+                ...marker,
+                area: 'pitch' as const,
+                x: marker.x as ScreenNormCoord,
+                y: marker.y as ScreenNormCoord,
+                trajectory: undefined,
+              },
+              rippleRingsPx: [],
+            }}
           />
         </Layer>
       </Stage>,
@@ -189,14 +218,11 @@ describe('Clean Render Propagation', () => {
 
     const group = stageRef.current?.findOne('Group') as Konva.Group | null;
     expect(group).not.toBeNull();
+    expect(group?.draggable()).toBe(false);
     // 初期位置: (50 / 100) * 800 = 400, (50 / 100) * 450 = 225
     expect(group?.position()).toEqual({ x: 400, y: 225 });
 
-    // GSAPアニメーション等で命令的に位置が変更されたと仮定
-    group?.position({ x: 999, y: 888 });
-    expect(group?.position()).toEqual({ x: 999, y: 888 });
-
-    // cleanRender=false（再生終了または一時停止）で再レンダリング
+    // cleanRender=false（再生終了または一時停止）かつ resolvedPlayer.positionPx 更新で再レンダリング
     rerender(
       <Stage ref={stageRef} width={800} height={450}>
         <Layer>
@@ -216,13 +242,32 @@ describe('Clean Render Propagation', () => {
             onDragEnd={vi.fn()}
             onClick={vi.fn()}
             onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={{
+              kind: 'player',
+              id: marker.id,
+              positionPx: { x: 520 as StagePixel, y: 310 as StagePixel },
+              radiusPx: 14,
+              depthSortKey: 310,
+              opacity: 1,
+              visible: true,
+              selected: true,
+              player: {
+                ...marker,
+                area: 'pitch' as const,
+                x: marker.x as ScreenNormCoord,
+                y: marker.y as ScreenNormCoord,
+                trajectory: undefined,
+              },
+              rippleRingsPx: [],
+            }}
           />
         </Layer>
       </Stage>,
     );
 
-    // cleanRender=false により、静止座標に自己復元される
-    expect(group?.position()).toEqual({ x: 400, y: 225 });
+    // Dumb View として draggable=true に戻り、resolvedPlayer.positionPx に追従する
+    expect(group?.draggable()).toBe(true);
+    expect(group?.position()).toEqual({ x: 520, y: 310 });
   });
 
   it('BallObject: cleanRender=true 時は draggable が false となり、ゴースト矢印が描画されないこと', () => {

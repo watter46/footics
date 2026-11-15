@@ -17,6 +17,9 @@ export interface UseZoneShapeParams {
   isSelected: boolean;
   updateZone: (zoneId: string, patch: Partial<ZoneAnnotation>) => void;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
+  resolvedWidthPx?: number;
+  resolvedHeightPx?: number;
+  resolvedRotationDeg?: number;
 }
 
 export function useZoneShape({
@@ -25,6 +28,9 @@ export function useZoneShape({
   isSelected,
   updateZone,
   nodesRegistryRef,
+  resolvedWidthPx,
+  resolvedHeightPx,
+  resolvedRotationDeg,
 }: UseZoneShapeParams) {
   const { width, height } = stageSize;
   const shapeType = zone.shapeType || 'rect';
@@ -32,22 +38,25 @@ export function useZoneShape({
   const shapeNodeRef = useRef<Konva.Shape | null>(null);
   const transformerRef = useRef<Konva.Transformer | null>(null);
 
-  useEffect(() => {
-    if (!transformerRef.current) return;
-    if (isSelected && shapeNodeRef.current) {
-      transformerRef.current.nodes([shapeNodeRef.current]);
-      transformerRef.current.getLayer()?.batchDraw();
-    } else {
-      transformerRef.current.nodes([]);
-      transformerRef.current.getLayer()?.batchDraw();
-    }
-  }, [isSelected]);
-
   const { pxW, pxH, cx, cy, rotation } = computeZoneShapeMetrics(
     zone,
     width,
     height,
   );
+  const effectivePxW = resolvedWidthPx ?? pxW;
+  const effectivePxH = resolvedHeightPx ?? pxH;
+
+  useEffect(() => {
+    if (!transformerRef.current) return;
+    if (isSelected && shapeNodeRef.current) {
+      transformerRef.current.nodes([shapeNodeRef.current]);
+      transformerRef.current.forceUpdate();
+      transformerRef.current.getLayer()?.batchDraw();
+    } else {
+      transformerRef.current.nodes([]);
+      transformerRef.current.getLayer()?.batchDraw();
+    }
+  }, [isSelected, effectivePxW, effectivePxH, resolvedRotationDeg, zone]);
 
   const setShapeNodeRef = useCallback(
     (node: Konva.Shape | null) => {
@@ -64,15 +73,15 @@ export function useZoneShape({
     (e: KonvaEventObject<DragEvent>) => {
       e.cancelBubble = true;
       const node = e.target;
-      const newNormX = pxToNormX(node.x() - pxW / 2, width);
-      const newNormY = pxToNormY(node.y() - pxH / 2, height);
+      const newNormX = pxToNormX(node.x() - effectivePxW / 2, width);
+      const newNormY = pxToNormY(node.y() - effectivePxH / 2, height);
       updateZone(zone.id, {
         x: newNormX,
         y: newNormY,
         rotation: node.rotation(),
       });
     },
-    [pxW, pxH, width, height, zone.id, updateZone],
+    [effectivePxW, effectivePxH, width, height, zone.id, updateZone],
   );
 
   const boundBoxFunc = useCallback((oldBox: Box, newBox: Box) => {
@@ -84,9 +93,15 @@ export function useZoneShape({
   const handleTransformEnd = useCallback(() => {
     const node = shapeNodeRef.current;
     if (!node) return;
-    const patch = computeTransformedZonePatch(node, pxW, pxH, width, height);
+    const patch = computeTransformedZonePatch(
+      node,
+      effectivePxW,
+      effectivePxH,
+      width,
+      height,
+    );
     updateZone(zone.id, patch);
-  }, [pxW, pxH, width, height, zone.id, updateZone]);
+  }, [effectivePxW, effectivePxH, width, height, zone.id, updateZone]);
 
   return {
     shapeType,

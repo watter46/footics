@@ -225,6 +225,14 @@ export function compileArrows(
       dashArrayPx = [Math.round(8 * scale), Math.round(6 * scale)];
     }
 
+    const controlHandlePx =
+      !isWavy && cpPx
+        ? toStagePixelPoint(
+            0.25 * offsetRes.startX + 0.5 * cpPx.x + 0.25 * offsetRes.endX,
+            0.25 * offsetRes.startY + 0.5 * cpPx.y + 0.25 * offsetRes.endY,
+          )
+        : undefined;
+
     return {
       id: arrow.id,
       flatPointsPx,
@@ -233,7 +241,7 @@ export function compileArrows(
         flatPointsPx[flatPointsPx.length - 2],
         flatPointsPx[flatPointsPx.length - 1],
       ),
-      controlHandlePx: cpPx,
+      controlHandlePx,
       color: arrow.color,
       strokeWidthPx: dims.strokeWidth,
       dashArrayPx,

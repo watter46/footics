@@ -3,11 +3,12 @@ import type Konva from 'konva';
 import type React from 'react';
 import { createRef } from 'react';
 import { Stage } from 'react-konva';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   toScreenNormCoord,
   toScreenNormPoint,
 } from '@/lib/types/tactical/branded';
+import { useResolvedSceneGraph } from '../../../hooks/use-resolved-scene-graph';
 import {
   createDocumentStore,
   type DocumentStore,
@@ -21,10 +22,7 @@ import {
   createDefaultTacticalProject,
   TacticalStoreProvider,
 } from '../../../stores/tactical-store-provider';
-import { createCanvasStore } from '../../store/canvas-store';
-import { CanvasStoreContext } from '../../store/canvas-store-provider';
-import type { CanvasConfig, CanvasStoreApi } from '../../types';
-import { calculatePitchTransform } from '../../utils/canvas-pitch-transform-helper';
+import { resolvePitchGroupTransform } from '../../utils/canvas-coordinates';
 import { getPointerCoordinates } from '../../utils/geometry';
 import { BillboardObjectLayer } from '../BillboardObjectLayer';
 import { ContextHud } from '../ContextHud';
@@ -34,20 +32,10 @@ import { InteractionPreviewLayer } from '../InteractionPreviewLayer';
 import { PitchGroundLayer } from '../PitchGroundLayer';
 import { PitchInlineTextEditor } from '../PitchInlineTextEditor';
 
-function renderWithStore(
-  ui: React.ReactElement,
-  config?: Partial<CanvasConfig>,
-): {
-  store: CanvasStoreApi;
+function renderWithStore(ui: React.ReactElement): {
   documentStore: DocumentStore;
   sessionStore: SessionStore;
 } & ReturnType<typeof render> {
-  const store = createCanvasStore({
-    mode: 'screenshot-edit',
-    markerMode: 'all',
-    aspectRatio: '16:9',
-    ...config,
-  });
   const baseProject = createDefaultTacticalProject();
   const initialProject = {
     ...baseProject,
@@ -222,39 +210,23 @@ function renderWithStore(
   });
   const utils = render(
     <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
-      <CanvasStoreContext.Provider value={store}>
-        {ui}
-      </CanvasStoreContext.Provider>
+      {ui}
     </TacticalStoreProvider>,
   );
-  return { store, documentStore, sessionStore, ...utils };
+  return { documentStore, sessionStore, ...utils };
 }
 
 describe('ContextHud', () => {
   it('renders nothing when no object is selected or eraser is active', () => {
-    const { container, store } = renderWithStore(
+    const { container, sessionStore } = renderWithStore(
       <ContextHud stageSize={{ width: 800, height: 600 }} />,
     );
     expect(container.firstChild).toBeNull();
 
     // Eraser active even if object selected -> should be null
     act(() => {
-      store.getState().addArrow({
-        id: 'arrow-1',
-        annotationType: 'arrow',
-        arrowType: 'pass',
-        curveType: 'straight',
-        points: [
-          { x: 10, y: 10 },
-          { x: 40, y: 40 },
-        ],
-        color: '#ffffff',
-        strokeWidth: 3,
-        dashArray: [],
-        arrowHead: true,
-      });
-      store.getState().selectObject({ id: 'arrow-1', kind: 'arrow' });
-      store.getState().setActiveTool('eraser');
+      sessionStore.getState().selectObject({ id: 'arrow-1', kind: 'arrow' });
+      sessionStore.getState().setActiveTool('eraser');
     });
 
     expect(container.firstChild).toBeNull();
@@ -401,11 +373,8 @@ describe('PitchInlineTextEditor', () => {
 
 describe('CoreDrawingToolbar', () => {
   it('CoreDrawingToolbar で全11ツール、連続描画ロック、消しゴム、ピッチロック、リセットが動作すること', () => {
-    const { store, documentStore, sessionStore } = renderWithStore(
+    const { documentStore, sessionStore } = renderWithStore(
       <CoreDrawingToolbar markerMode="all" />,
-      {
-        mode: 'tactical-board',
-      },
     );
 
     const tools: { title: string; expected: string }[] = [
@@ -444,23 +413,13 @@ describe('CoreDrawingToolbar', () => {
     expect(getPitchLocked()).toBe(false);
 
     // リセットボタン (全消去)
-    act(() => {
-      store.getState().addArrow({
-        id: 'arrow-reset-test',
-        annotationType: 'arrow',
-        arrowType: 'pass',
-        curveType: 'straight',
-        points: [
-          { x: 0, y: 0 },
-          { x: 10, y: 10 },
-        ],
-        color: '#ffffff',
-        strokeWidth: 3,
-        dashArray: [],
-        arrowHead: true,
-      });
-    });
-    expect(store.getState().annotations.arrows).toHaveLength(1);
+    expect(
+      selectDomainActiveSlide(
+        documentStore.getState().project,
+        sessionStore.getState().activePhaseId,
+        sessionStore.getState().activeSlideId,
+      )?.arrows.length,
+    ).toBeGreaterThan(0);
 
     window.confirm = vi.fn(() => true);
     const resetBtn = screen.getByTitle(/Reset all annotations/i);
@@ -648,19 +607,88 @@ describe('PlayerHud', () => {
   });
 });
 
+function KonvaThreeLayersWithSceneGraph({
+  stageRef,
+  stageSize,
+  pitchRect,
+}: {
+  stageRef: React.RefObject<Konva.Stage | null>;
+  stageSize: { width: number; height: number };
+  pitchRect: { x: number; y: number; width: number; height: number };
+}) {
+  const sceneGraph = useResolvedSceneGraph({
+    width: pitchRect.width,
+    height: pitchRect.height,
+  });
+  return (
+    <Stage ref={stageRef} width={stageSize.width} height={stageSize.height}>
+      <PitchGroundLayer
+        stageSize={stageSize}
+        pitchRect={pitchRect}
+        sceneGraph={sceneGraph}
+      />
+      <BillboardObjectLayer
+        stageSize={stageSize}
+        pitchRect={pitchRect}
+        sceneGraph={sceneGraph}
+      />
+      <InteractionPreviewLayer
+        stageSize={stageSize}
+        pitchRect={pitchRect}
+        sceneGraph={sceneGraph}
+      />
+    </Stage>
+  );
+}
+
 describe('Konva 3レイヤーへの2Dズーム・パン描画接続 (Phase 3)', () => {
+  beforeAll(() => {
+    const origGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      contextId: string,
+      options?: unknown,
+    ) {
+      const ctx = origGetContext.call(
+        this,
+        contextId as '2d',
+        options as CanvasRenderingContext2DSettings,
+      );
+      if (contextId === '2d' && ctx) {
+        const ctxRecord = ctx as unknown as Record<string, unknown>;
+        if (typeof ctxRecord.getTransform !== 'function') {
+          ctxRecord.getTransform = () =>
+            typeof DOMMatrix !== 'undefined'
+              ? new DOMMatrix()
+              : { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+        }
+        for (const method of [
+          'ellipse',
+          'bezierCurveTo',
+          'quadraticCurveTo',
+          'arcTo',
+          'roundRect',
+        ]) {
+          if (typeof ctxRecord[method] !== 'function') {
+            ctxRecord[method] = () => {};
+          }
+        }
+      }
+      return ctx;
+    } as typeof HTMLCanvasElement.prototype.getContext;
+  });
+
   it('pitchTransform 更新時に PitchGroundLayer, BillboardObjectLayer, InteractionPreviewLayer のピッチ Group に 2D ズーム・パン変形が適用されること', () => {
     const stageRef = createRef<Konva.Stage>();
     const pitchRect = { x: 100, y: 50, width: 800, height: 450 };
     const stageSize = { width: 1000, height: 600 };
 
-    const { store } = renderWithStore(
-      <Stage ref={stageRef} width={stageSize.width} height={stageSize.height}>
-        <PitchGroundLayer stageSize={stageSize} pitchRect={pitchRect} />
-        <BillboardObjectLayer stageSize={stageSize} pitchRect={pitchRect} />
-        <InteractionPreviewLayer stageSize={stageSize} pitchRect={pitchRect} />
-      </Stage>,
-      { mode: 'tactical-board' },
+    const { documentStore, sessionStore } = renderWithStore(
+      <KonvaThreeLayersWithSceneGraph
+        stageRef={stageRef}
+        stageSize={stageSize}
+        pitchRect={pitchRect}
+      />,
     );
 
     const stage = stageRef.current;
@@ -702,15 +730,31 @@ describe('Konva 3レイヤーへの2Dズーム・パン描画接続 (Phase 3)', 
     expect(previewGroup.scaleY()).toBe(1);
 
     // 2Dズーム・パン状態の更新
+    const { activePhaseId, activeSlideId } = sessionStore.getState();
+    if (!activePhaseId || !activeSlideId) {
+      throw new Error('Active phase or slide not found');
+    }
     act(() => {
-      store.getState().setPitchTransform({
-        zoom: 2,
-        panX: 40,
-        panY: -20,
+      documentStore.getState().dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'UPDATE_SLIDE_META',
+        patch: {
+          pitchTransform: {
+            zoom: 2,
+            panX: 40,
+            panY: -20,
+            tilt: 0,
+            isLocked: false,
+          },
+        },
       });
     });
 
-    const expectedTransform = calculatePitchTransform(pitchRect, 40, -20, 2, 0);
+    const expectedTransform = resolvePitchGroupTransform(pitchRect, {
+      zoom: 2,
+      panX: 40,
+      panY: -20,
+      tilt: 0,
+    });
 
     expect(groundGroup.x()).toBe(expectedTransform.x);
     expect(groundGroup.y()).toBe(expectedTransform.y);

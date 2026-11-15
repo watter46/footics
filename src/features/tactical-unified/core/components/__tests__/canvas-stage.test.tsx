@@ -4,18 +4,18 @@ import type React from 'react';
 import { createRef } from 'react';
 import { Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type {
   ResolvedArrowPrimitive,
-  ResolvedSceneGraphDTO,
   ResolvedZonePrimitive,
 } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { StagePixel } from '@/lib/types/tactical/branded';
-import { createCanvasStore } from '../../store/canvas-store';
-import { CanvasStoreContext } from '../../store/canvas-store-provider';
-import type { CanvasStoreApi } from '../../types';
 import { createCanvasNodesRegistry } from '../../utils/canvas-registry';
-import { CanvasStage, type CanvasStageViewProps } from '../canvas-stage';
-import { InteractionPreviewLayer } from '../InteractionPreviewLayer';
+import { CanvasStage } from '../canvas-stage';
+import {
+  InteractionPreviewLayer,
+  type PreviewSceneGraph,
+} from '../InteractionPreviewLayer';
 
 beforeEach(() => {
   const mockCtx = new Proxy(
@@ -36,22 +36,8 @@ beforeEach(() => {
   HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
 });
 
-function renderWithStore(
-  ui: React.ReactElement,
-  initialStore?: CanvasStoreApi,
-) {
-  const store =
-    initialStore ??
-    createCanvasStore({
-      mode: 'screenshot-edit',
-      aspectRatio: '16:9',
-    });
-  const utils = render(
-    <CanvasStoreContext.Provider value={store}>
-      {ui}
-    </CanvasStoreContext.Provider>,
-  );
-  return { store, ...utils };
+function renderWithStore(ui: React.ReactElement) {
+  return render(<TacticalStoreProvider>{ui}</TacticalStoreProvider>);
 }
 
 describe('CanvasStage Component', () => {
@@ -140,7 +126,7 @@ describe('CanvasStage Component', () => {
     const registryRef = { current: createCanvasNodesRegistry() };
     const stageRef = { current: null as Konva.Stage | null };
 
-    const { rerender, store } = renderWithStore(
+    const { rerender } = renderWithStore(
       <CanvasStage
         stageRef={stageRef}
         size={defaultSize}
@@ -156,14 +142,14 @@ describe('CanvasStage Component', () => {
 
     // 同じ props で再レンダー
     rerender(
-      <CanvasStoreContext.Provider value={store}>
+      <TacticalStoreProvider>
         <CanvasStage
           stageRef={stageRef}
           size={defaultSize}
           vRect={defaultVRect}
           nodesRegistryRef={registryRef}
         />
-      </CanvasStoreContext.Provider>,
+      </TacticalStoreProvider>,
     );
 
     const postRerenderLayers = stageRef.current?.getLayers() ?? [];
@@ -196,15 +182,14 @@ describe('InteractionPreviewLayer with sceneGraph.drawingPreview', () => {
       endAngleRad: 0,
       selected: false,
     };
-    const sceneGraph: ResolvedSceneGraphDTO = {
+    const sceneGraph: PreviewSceneGraph = {
       viewport: { width: 800, height: 450, offsetX: 0, offsetY: 0 },
       zones: [],
       arrows: [],
       trajectories: [],
       connectLines: [],
       billboardItems: [],
-      drawingPreview:
-        arrowPreview as unknown as ResolvedSceneGraphDTO['drawingPreview'],
+      drawingPreview: arrowPreview,
     };
 
     renderWithStore(
@@ -246,15 +231,14 @@ describe('InteractionPreviewLayer with sceneGraph.drawingPreview', () => {
       visible: true,
       selected: false,
     };
-    const sceneGraph: ResolvedSceneGraphDTO = {
+    const sceneGraph: PreviewSceneGraph = {
       viewport: { width: 800, height: 450, offsetX: 0, offsetY: 0 },
       zones: [],
       arrows: [],
       trajectories: [],
       connectLines: [],
       billboardItems: [],
-      drawingPreview:
-        zonePreview as unknown as ResolvedSceneGraphDTO['drawingPreview'],
+      drawingPreview: zonePreview,
     };
 
     renderWithStore(

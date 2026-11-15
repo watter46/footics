@@ -4,18 +4,30 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { ReactNode } from 'react';
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 import { Group, Layer, Line, Rect } from 'react-konva';
 import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
+import {
+  selectDomainActivePhase,
+  selectDomainActivePhaseAspectRatio,
+  selectDomainActiveSlide,
+  selectDomainPreviousSlide,
+} from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { ResolvedSceneGraphDTO } from '@/lib/tactical/compiler/scene-graph-dto';
 import type {
-  ResolvedBillboardPlayerItem,
-  ResolvedSceneGraphDTO,
-} from '@/lib/tactical/compiler/scene-graph-dto';
-import { useCanvasStore } from '../hooks/use-canvas-store';
-import type { PitchRectBounds } from '../utils/canvas-coordinates';
-import { calculatePitchTransform } from '../utils/canvas-pitch-transform-helper';
+  ArrowAnnotation,
+  ZoneAnnotation,
+} from '@/lib/types/tactical/annotations';
+import type { PlayerTrajectory } from '@/lib/types/tactical/player';
+import {
+  type PitchRectBounds,
+  resolvePitchGroupTransform,
+} from '../utils/canvas-coordinates';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
-import type { CameraState } from '../utils/matrix-coordinates';
 import { ArrowObject } from './annotations/ArrowObject';
 import { PitchBackgroundImage } from './BackgroundImageLayer';
 import { PlayerConnectLines } from './PlayerConnectLines';
@@ -24,91 +36,106 @@ import { ZoneObject } from './zones/ZoneObject';
 export interface PitchGroundLayerProps {
   stageSize: { width: number; height: number };
   pitchRect: PitchRectBounds;
-  camera?: Partial<CameraState>;
-  activePolygonId?: string | null;
-  mousePreviewPos?: { x: number; y: number } | null;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   cleanRender?: boolean;
   listening?: boolean;
-  sceneGraph?: ResolvedSceneGraphDTO | null;
+  sceneGraph: ResolvedSceneGraphDTO;
 }
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
+function sortBySelectedIds<T extends { id: string }>(
+  items: readonly T[],
+  selectedIds: readonly string[],
+): readonly T[] {
+  if (selectedIds.length === 0) return items;
+  return [...items].sort((a, b) => {
+    const aSelected = selectedIds.includes(a.id);
+    const bSelected = selectedIds.includes(b.id);
+    if (aSelected === bSelected) return 0;
+    return aSelected ? 1 : -1;
+  });
+}
+
 export const PitchGroundLayer = memo(function PitchGroundLayer({
   stageSize,
   pitchRect,
-  activePolygonId,
-  mousePreviewPos,
   nodesRegistryRef,
   cleanRender,
   listening = true,
   sceneGraph,
 }: PitchGroundLayerProps): ReactNode {
-  const zones = useCanvasStore((s) => s.annotations.zones);
-  const arrows = useCanvasStore((s) => s.annotations.arrows);
-  const markers = useCanvasStore((s) => s.annotations.markers);
-  const selectedIds = useCanvasStore((s) => s.selectedIds);
-  const activeTool = useCanvasStore((s) => s.activeTool);
-  const selectObject = useCanvasStore((s) => s.selectObject);
-  const updateZone = useCanvasStore((s) => s.updateZone);
-  const updateArrow = useCanvasStore((s) => s.updateArrow);
-  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
-  const aspectRatio = useCanvasStore((s) => s.aspectRatio);
+  const project = useDocumentStore((s) => s.project);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const selectedObjects = useSessionStore((s) => s.selectedObjects);
+  const activeTool = useSessionStore((s) => s.activeTool);
+  const teamVisibility = useSessionStore((s) => s.teamVisibility);
+  const selectObject = useSessionStore((s) => s.selectObject);
+  const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
 
-  const teamVisibility = useCanvasStore((s) => s.teamVisibility ?? 'both');
-  const prevSlide = useCanvasStore((s) => s.prevSlide);
-  const activeSlideId = useCanvasStore((s) => s.activeSlideId ?? '');
-  const updatePlayerTrajectory = useCanvasStore(
-    (s) => s.updatePlayerTrajectory,
+  const activePhase = selectDomainActivePhase(project, activePhaseId);
+  const activeSlide = selectDomainActiveSlide(
+    project,
+    activePhaseId,
+    activeSlideId,
   );
-  const pitchTransform = useCanvasStore((s) => s.pitchTransform);
-
-  const groupTransform = calculatePitchTransform(
+  const prevSlide = selectDomainPreviousSlide(
+    project,
+    activePhaseId,
+    activeSlideId,
+  );
+  const aspectRatio =
+    activePhase?.aspectRatio ??
+    selectDomainActivePhaseAspectRatio(project, activePhaseId);
+  const selectedIds = useMemo(
+    () => selectedObjects.map((o) => o.id),
+    [selectedObjects],
+  );
+  const groupTransform = resolvePitchGroupTransform(
     pitchRect,
-    pitchTransform.panX,
-    pitchTransform.panY,
-    pitchTransform.zoom,
-    0,
+    activeSlide?.pitchTransform,
   );
 
-  const pitchMarkers = useMemo(
-    () => markers.filter((m) => m.area !== 'bench'),
-    [markers],
-  );
-
-  const visibleMarkers = useMemo(
-    () =>
+  const { pitchMarkers, visibleMarkers } = useMemo(() => {
+    const pitch = (activeSlide?.players ?? []).filter(
+      (m) => m.area === 'pitch',
+    );
+    const visible =
       teamVisibility === 'both'
-        ? pitchMarkers
-        : pitchMarkers.filter(
+        ? pitch
+        : pitch.filter(
             (m) => m.team === teamVisibility || m.team === 'neutral',
-          ),
-    [pitchMarkers, teamVisibility],
-  );
+          );
+    return { pitchMarkers: pitch, visibleMarkers: visible };
+  }, [activeSlide?.players, teamVisibility]);
 
   const isInteractive = activeTool === 'select';
   const connectLineNodesRef = useRef<Map<string, Konva.Line>>(new Map());
 
-  const sortedZones = useMemo(() => {
-    if (selectedIds.length === 0) return zones;
-    return [...zones].sort((a, b) => {
-      const aSelected = selectedIds.includes(a.id);
-      const bSelected = selectedIds.includes(b.id);
-      if (aSelected === bSelected) return 0;
-      return aSelected ? 1 : -1;
+  const updateZone = (id: string, patch: Partial<ZoneAnnotation>) =>
+    dispatchSlide(activePhaseId, activeSlideId, {
+      type: 'UPDATE_ZONE',
+      id,
+      patch: patch as never,
     });
-  }, [zones, selectedIds]);
-
-  const sortedArrows = useMemo(() => {
-    if (selectedIds.length === 0) return arrows;
-    return [...arrows].sort((a, b) => {
-      const aSelected = selectedIds.includes(a.id);
-      const bSelected = selectedIds.includes(b.id);
-      if (aSelected === bSelected) return 0;
-      return aSelected ? 1 : -1;
+  const updateArrow = (id: string, patch: Partial<ArrowAnnotation>) =>
+    dispatchSlide(activePhaseId, activeSlideId, {
+      type: 'UPDATE_ARROW',
+      id,
+      patch: patch as never,
     });
-  }, [arrows, selectedIds]);
+  const updatePlayerTrajectory = (
+    slideId: string,
+    playerId: string,
+    trajectory: PlayerTrajectory | undefined,
+  ) =>
+    dispatchSlide(activePhaseId, slideId, {
+      type: 'SET_PLAYER_TRAJECTORY',
+      playerId,
+      trajectory: trajectory as never,
+    });
 
   useEffect(() => {
     if (nodesRegistryRef?.current) {
@@ -116,17 +143,12 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
     }
   }, [nodesRegistryRef]);
 
-  const makeSelectHandler = useCallback(
-    (id: string, kind: 'arrow' | 'zone') => {
-      return (e: KonvaClickEvent) => {
-        e.cancelBubble = true;
-        const isShift = (e.evt as MouseEvent)?.shiftKey ?? false;
-        selectObject({ id, kind }, isShift);
-        setIsHudOpen(true);
-      };
-    },
-    [selectObject, setIsHudOpen],
-  );
+  const makeSelectHandler =
+    (id: string, kind: 'arrow' | 'zone') => (e: KonvaClickEvent) => {
+      e.cancelBubble = true;
+      selectObject({ id, kind }, (e.evt as MouseEvent)?.shiftKey ?? false);
+      setIsHudOpen(true);
+    };
 
   return (
     <Layer id="pitch-ground-layer" listening={listening}>
@@ -152,68 +174,66 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
         />
 
         {/* ゾーンオブジェクト群 */}
-        {sortedZones.map((zone) => {
-          const resolvedZone =
-            sceneGraph?.zones.find((z) => z.id === zone.id) ?? null;
-          return (
-            <ZoneObject
-              key={zone.id}
-              zone={zone}
-              stageSize={{ width: pitchRect.width, height: pitchRect.height }}
-              isSelected={!cleanRender && selectedIds.includes(zone.id)}
-              isInteractive={!cleanRender && isInteractive}
-              onSelect={makeSelectHandler(zone.id, 'zone')}
-              updateZone={updateZone}
-              nodesRegistryRef={nodesRegistryRef}
-              isCreatingThis={zone.id === activePolygonId}
-              mousePreviewPos={mousePreviewPos}
-              resolvedZone={resolvedZone}
-            />
-          );
-        })}
+        {sortBySelectedIds(sceneGraph.zones, selectedIds).map(
+          (resolvedZone) => {
+            const zone = activeSlide?.zones.find(
+              (z) => z.id === resolvedZone.id,
+            );
+            if (!zone) return null;
+            return (
+              <ZoneObject
+                key={zone.id}
+                zone={'points' in zone ? zone : { ...zone, points: [] }}
+                stageSize={{ width: pitchRect.width, height: pitchRect.height }}
+                isSelected={!cleanRender && selectedIds.includes(zone.id)}
+                isInteractive={!cleanRender && isInteractive}
+                onSelect={makeSelectHandler(zone.id, 'zone')}
+                updateZone={updateZone}
+                nodesRegistryRef={nodesRegistryRef}
+                resolvedZone={resolvedZone}
+              />
+            );
+          },
+        )}
 
         {/* 矢印オブジェクト群 */}
-        {sortedArrows.map((arrow) => {
-          const resolvedArrow =
-            sceneGraph?.arrows.find((a) => a.id === arrow.id) ?? null;
-          return (
-            <ArrowObject
-              key={arrow.id}
-              arrow={arrow}
-              players={pitchMarkers}
-              stageSize={{ width: pitchRect.width, height: pitchRect.height }}
-              isSelected={!cleanRender && selectedIds.includes(arrow.id)}
-              isInteractive={!cleanRender && isInteractive}
-              onSelect={makeSelectHandler(arrow.id, 'arrow')}
-              updateArrow={updateArrow}
-              nodesRegistryRef={nodesRegistryRef}
-              resolvedArrow={resolvedArrow}
-            />
-          );
-        })}
+        {sortBySelectedIds(sceneGraph.arrows, selectedIds).map(
+          (resolvedArrow) => {
+            const arrow = activeSlide?.arrows.find(
+              (a) => a.id === resolvedArrow.id,
+            );
+            if (!arrow) return null;
+            return (
+              <ArrowObject
+                key={arrow.id}
+                arrow={{ ...arrow, arrowHead: true }}
+                stageSize={{ width: pitchRect.width, height: pitchRect.height }}
+                isSelected={!cleanRender && selectedIds.includes(arrow.id)}
+                isInteractive={!cleanRender && isInteractive}
+                onSelect={makeSelectHandler(arrow.id, 'arrow')}
+                updateArrow={updateArrow}
+                nodesRegistryRef={nodesRegistryRef}
+                resolvedArrow={resolvedArrow}
+              />
+            );
+          },
+        )}
 
         {/* 選手間コネクトライン */}
         <PlayerConnectLines
-          markers={visibleMarkers}
-          width={pitchRect.width}
-          height={pitchRect.height}
           selectedIds={cleanRender ? [] : selectedIds}
           isInteractive={!cleanRender && isInteractive}
           connectLineNodesRef={connectLineNodesRef}
           onSelectConnectLine={(id, parentPlayerId) => {
-            selectObject({
-              id,
-              kind: 'connect-line',
-              parentPlayerId,
-            });
+            selectObject({ id, kind: 'connect-line', parentPlayerId });
             setIsHudOpen(true);
           }}
-          resolvedConnectLines={sceneGraph?.connectLines ?? null}
+          resolvedConnectLines={sceneGraph.connectLines}
         />
 
         {/* ── 6. ゴースト & 移動軌道 (Ghost & Trajectories) ── */}
         {!cleanRender &&
-          sceneGraph?.trajectories.map((traj) => {
+          sceneGraph.trajectories.map((traj) => {
             if (!traj.visible || selectedIds.includes(traj.playerId))
               return null;
             return (
@@ -232,44 +252,24 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
           })}
         {!cleanRender &&
           visibleMarkers.map((marker) => {
-            if (marker.area === 'bench') return null;
+            if (!selectedIds.includes(marker.id)) return null;
             const prevPlayer = prevSlide?.players.find(
-              (p) => p.id === marker.id && p.area === 'pitch',
+              (p): p is typeof marker =>
+                p.area === 'pitch' && p.id === marker.id,
             );
-            if (!prevPlayer) return null;
-
-            const isSelected = selectedIds.includes(marker.id);
-            const isEffectEnabled = marker.trajectoryEffect?.enabled === true;
-            if (!isSelected && (sceneGraph ? true : !isEffectEnabled)) {
+            if (
+              !prevPlayer ||
+              Math.hypot(marker.x - prevPlayer.x, marker.y - prevPlayer.y) < 1.0
+            ) {
               return null;
             }
-
-            const resolvedPlayer = sceneGraph?.billboardItems.find(
-              (item): item is ResolvedBillboardPlayerItem =>
-                item.kind === 'player' && item.id === marker.id,
-            );
-            const effectivePlayer =
-              resolvedPlayer && stageSize.width > 0 && stageSize.height > 0
-                ? {
-                    ...marker,
-                    x: (resolvedPlayer.positionPx.x / stageSize.width) * 100,
-                    y: (resolvedPlayer.positionPx.y / stageSize.height) * 100,
-                  }
-                : marker;
-
-            const dist = Math.hypot(
-              effectivePlayer.x - prevPlayer.x,
-              effectivePlayer.y - prevPlayer.y,
-            );
-            if (dist < 1.0) return null;
-
             return (
               <Group
                 key={`ghost-${marker.id}`}
                 id={`ghost-trajectory-${marker.id}`}
               >
                 <PlayerGhostTrajectory
-                  player={effectivePlayer}
+                  player={marker}
                   prevPlayer={prevPlayer}
                   stageSize={{
                     width: pitchRect.width,
@@ -278,7 +278,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
                   activeSlideId={activeSlideId}
                   nodesRegistryRef={nodesRegistryRef}
                   aspectRatio={aspectRatio}
-                  onUpdateTrajectory={updatePlayerTrajectory ?? (() => {})}
+                  onUpdateTrajectory={updatePlayerTrajectory}
                 />
               </Group>
             );

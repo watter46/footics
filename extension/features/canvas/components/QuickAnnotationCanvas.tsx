@@ -4,7 +4,7 @@ import {
   forwardRef,
   type ReactElement,
   type Ref,
-  useCallback,
+  useContext,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -12,23 +12,16 @@ import {
 } from 'react';
 import {
   CanvasStageContainer,
-  CanvasStoreProvider,
   CoreDrawingToolbar,
   EXTENSION_DRAWING_TOOLS,
-  useCanvasStore,
 } from '@/features/tactical-unified/core';
-import type {
-  CanvasConfig,
-  CanvasCoreHandle,
-} from '@/features/tactical-unified/core/types';
+import type { CanvasCoreHandle } from '@/features/tactical-unified/core/types';
 import {
   TacticalStoreProvider,
+  TacticalStoresContext,
   useTacticalStoresContext,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import {
-  serializeProjectToScreenshotJson,
-  translateScreenshotToProject,
-} from '@/lib/tactical/acl/screenshot-translator';
+import { translateScreenshotToProject } from '@/lib/tactical/acl/screenshot-translator';
 import {
   type AspectRatio,
   type BoundaryBox,
@@ -50,17 +43,40 @@ export type QuickAnnotationCanvasHandle = CanvasCoreHandle & {
 
 function QuickAnnotationCanvasInner(
   {
+    onAutoSave,
     className = '',
     imageAspect = 16 / 9,
   }: {
+    onAutoSave?: (annotationsJson: string) => void;
     className?: string;
     imageAspect?: number;
   },
   ref: Ref<QuickAnnotationCanvasHandle>,
 ) {
   const stageRef = useRef<CanvasCoreHandle | null>(null);
-  const setBoundaryBox = useCanvasStore((s) => s.setBoundaryBox);
   const { documentStore, sessionStore } = useTacticalStoresContext();
+
+  useEffect(() => {
+    let prevProject = documentStore.getState().project;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = documentStore.subscribe((state) => {
+      if (state.project === prevProject) return;
+      prevProject = state.project;
+      if (timerId !== null) {
+        clearTimeout(timerId);
+      }
+      timerId = setTimeout(() => {
+        timerId = null;
+        onAutoSave?.(JSON.stringify(state.project));
+      }, 300);
+    });
+    return () => {
+      unsubscribe();
+      if (timerId !== null) {
+        clearTimeout(timerId);
+      }
+    };
+  }, [documentStore, onAutoSave]);
 
   useImperativeHandle(
     ref,
@@ -105,10 +121,9 @@ function QuickAnnotationCanvasInner(
             },
           });
         }
-        setBoundaryBox(nextBox);
       },
     }),
-    [setBoundaryBox, documentStore, sessionStore],
+    [documentStore, sessionStore],
   );
 
   return (
@@ -128,91 +143,12 @@ function QuickAnnotationCanvasInner(
 
 const ForwardedInner = forwardRef<
   QuickAnnotationCanvasHandle,
-  { className?: string; imageAspect?: number }
->(QuickAnnotationCanvasInner);
-
-function QuickAnnotationCanvasBridge(
   {
-    screenshot,
-    onAutoSave,
-    className = '',
-    imageAspect = 16 / 9,
-  }: QuickAnnotationCanvasProps,
-  ref: Ref<QuickAnnotationCanvasHandle>,
-) {
-  const { documentStore, sessionStore } = useTacticalStoresContext();
-  const isSyncingFromCanvasRef = useRef(false);
-
-  useEffect(() => {
-    let prevProject = documentStore.getState().project;
-    return documentStore.subscribe((state) => {
-      if (state.project === prevProject) return;
-      prevProject = state.project;
-      if (isSyncingFromCanvasRef.current) return;
-      const json = serializeProjectToScreenshotJson(state.project);
-      const activePhase =
-        state.project.phases.find(
-          (p) => p.id === sessionStore.getState().activePhaseId,
-        ) ?? state.project.phases[0];
-      const finalJson = activePhase?.boundaryBox
-        ? JSON.stringify({
-            ...JSON.parse(json),
-            boundaryBox: activePhase.boundaryBox,
-          })
-        : json;
-      onAutoSave?.(finalJson);
-    });
-  }, [documentStore, sessionStore, onAutoSave]);
-
-  const handleCanvasAutoSave = useCallback(
-    (annotationsJson: string) => {
-      isSyncingFromCanvasRef.current = true;
-      try {
-        const bundle = translateScreenshotToProject({
-          screenshotId: screenshot.id,
-          backgroundImageUrl: screenshot.imageDataUrl,
-          canvasAnnotationsJson: annotationsJson,
-        });
-        documentStore.getState().loadProject(bundle.project);
-      } finally {
-        isSyncingFromCanvasRef.current = false;
-      }
-      onAutoSave?.(annotationsJson);
-    },
-    [screenshot.id, screenshot.imageDataUrl, documentStore, onAutoSave],
-  );
-
-  const initialAnnotations = useMemo(
-    () => serializeProjectToScreenshotJson(documentStore.getState().project),
-    [documentStore],
-  );
-
-  const config = useMemo<CanvasConfig>(
-    () => ({
-      mode: 'screenshot-edit',
-      backgroundImageUrl: screenshot.imageDataUrl,
-      initialAnnotations,
-      markerMode: '3d-only',
-      defaultBoundaryBox: DEFAULT_BOUNDARY_BOX_FULL,
-    }),
-    [screenshot.imageDataUrl, initialAnnotations],
-  );
-
-  return (
-    <CanvasStoreProvider config={config} onAutoSave={handleCanvasAutoSave}>
-      <ForwardedInner
-        ref={ref}
-        className={className}
-        imageAspect={imageAspect}
-      />
-    </CanvasStoreProvider>
-  );
-}
-
-const ForwardedBridge = forwardRef<
-  QuickAnnotationCanvasHandle,
-  QuickAnnotationCanvasProps
->(QuickAnnotationCanvasBridge);
+    onAutoSave?: (annotationsJson: string) => void;
+    className?: string;
+    imageAspect?: number;
+  }
+>(QuickAnnotationCanvasInner);
 
 export const QuickAnnotationCanvas = forwardRef<
   QuickAnnotationCanvasHandle,
@@ -221,7 +157,13 @@ export const QuickAnnotationCanvas = forwardRef<
   props: QuickAnnotationCanvasProps,
   ref,
 ): ReactElement {
-  const { screenshot } = props;
+  const {
+    screenshot,
+    onAutoSave,
+    className = '',
+    imageAspect = 16 / 9,
+  } = props;
+  const existingStores = useContext(TacticalStoresContext);
   const initialBundle = useMemo(
     () =>
       translateScreenshotToProject({
@@ -232,6 +174,17 @@ export const QuickAnnotationCanvas = forwardRef<
     [screenshot.id, screenshot.imageDataUrl, screenshot.canvasAnnotations],
   );
 
+  if (existingStores) {
+    return (
+      <ForwardedInner
+        ref={ref}
+        onAutoSave={onAutoSave}
+        className={className}
+        imageAspect={imageAspect}
+      />
+    );
+  }
+
   return (
     <TacticalStoreProvider
       initialProject={initialBundle.project}
@@ -240,7 +193,12 @@ export const QuickAnnotationCanvas = forwardRef<
         activeSlideId: initialBundle.activeSlideId,
       }}
     >
-      <ForwardedBridge ref={ref} {...props} />
+      <ForwardedInner
+        ref={ref}
+        onAutoSave={onAutoSave}
+        className={className}
+        imageAspect={imageAspect}
+      />
     </TacticalStoreProvider>
   );
 });

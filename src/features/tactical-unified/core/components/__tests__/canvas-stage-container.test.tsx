@@ -15,9 +15,7 @@ import {
   TacticalStoreProvider,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { toScreenNormPoint } from '@/lib/types/tactical/branded';
-import { createCanvasStore } from '../../store/canvas-store';
-import { CanvasStoreContext } from '../../store/canvas-store-provider';
-import type { CanvasCoreHandle, CanvasStoreApi } from '../../types';
+import type { AspectRatio, CanvasCoreHandle } from '../../types';
 import { createCanvasNodesRegistry } from '../../utils/canvas-registry';
 import { CanvasStageContainer } from '../CanvasStageContainer';
 
@@ -64,21 +62,29 @@ beforeEach(() => {
 
 function renderWithStore(
   ui: React.ReactElement,
-  initialStore?: CanvasStoreApi,
+  options?: {
+    mode?: 'screenshot-edit' | 'full-tactical';
+    aspectRatio?: AspectRatio;
+    boundaryBox?: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      enabled: boolean;
+    };
+  },
 ): {
-  store: CanvasStoreApi;
   documentStore: DocumentStore;
   sessionStore: SessionStore;
 } & ReturnType<typeof render> {
-  const store =
-    initialStore ??
-    createCanvasStore({
-      mode: 'screenshot-edit',
-      aspectRatio: '16:9',
-    });
-  const initialProject = createDefaultTacticalProject();
-  const firstPhase = initialProject.phases[0];
+  const baseProject = createDefaultTacticalProject();
+  const firstPhase = baseProject.phases[0];
   const firstSlide = firstPhase?.slides[0];
+  const initialProject = {
+    ...baseProject,
+    ...(options?.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
+    ...(options?.boundaryBox ? { boundaryBox: options.boundaryBox } : {}),
+  };
   if (firstSlide) {
     firstSlide.arrows.push({
       id: 'arrow-del-1',
@@ -103,21 +109,20 @@ function renderWithStore(
   }
   const utils = render(
     <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
-      <CanvasStoreContext.Provider value={store}>
-        {ui}
-      </CanvasStoreContext.Provider>
+      {ui}
     </TacticalStoreProvider>,
   );
-  return { store, documentStore, sessionStore, ...utils };
+  return { documentStore, sessionStore, ...utils };
 }
 
 describe('CanvasCoreHandle Imperative API', () => {
   it('ref.current.exportPng({ crop: true }) が BoundaryBox の枠内のみを出力すること', async () => {
     const handleRef = createRef<CanvasCoreHandle>();
-    const store = createCanvasStore({
+
+    renderWithStore(<CanvasStageContainer ref={handleRef} />, {
       mode: 'screenshot-edit',
       aspectRatio: '16:9',
-      defaultBoundaryBox: {
+      boundaryBox: {
         x: 10,
         y: 10,
         width: 80,
@@ -125,8 +130,6 @@ describe('CanvasCoreHandle Imperative API', () => {
         enabled: true,
       },
     });
-
-    renderWithStore(<CanvasStageContainer ref={handleRef} />, store);
     expect(handleRef.current).toBeTruthy();
 
     const dataUrl = await handleRef.current?.exportPng({
@@ -304,12 +307,10 @@ describe('CanvasStageContainer Action & History Shortcuts', () => {
   });
 
   it('テキスト編集中（input/textarea）はショートカットが無視されること', () => {
-    const store = createCanvasStore({
-      mode: 'screenshot-edit',
-      aspectRatio: '16:9',
-    });
-    const { container } = renderWithStore(<CanvasStageContainer />, store);
-    store.getState().setActiveTool('select');
+    const { container, sessionStore } = renderWithStore(
+      <CanvasStageContainer />,
+    );
+    sessionStore.getState().setActiveTool('select');
 
     const textarea = document.createElement('textarea');
     container.appendChild(textarea);
@@ -318,7 +319,7 @@ describe('CanvasStageContainer Action & History Shortcuts', () => {
     act(() => {
       fireEvent.keyDown(textarea, { key: 'a' });
     });
-    expect(store.getState().activeTool).toBe('select');
+    expect(sessionStore.getState().activeTool).toBe('select');
   });
 
   it('toolbar prop が渡されない場合はツールバーを描画せず、渡された場合にのみスロット描画すること', () => {
@@ -340,10 +341,6 @@ describe('CanvasStageContainer Fixed Stage Size & Dynamic PitchRect', () => {
   it('アスペクト比を 4:5, 9:16, 1:1, 16:9 に切り替えても Stage 外枠サイズがコンテナサイズ(800x450)のまま不変であること', () => {
     const registryRef = { current: createCanvasNodesRegistry() };
     const onStageSizeChange = vi.fn();
-    const store = createCanvasStore({
-      mode: 'screenshot-edit',
-      aspectRatio: '16:9',
-    });
 
     const { rerender, container, documentStore, sessionStore } =
       renderWithStore(
@@ -351,7 +348,10 @@ describe('CanvasStageContainer Fixed Stage Size & Dynamic PitchRect', () => {
           nodesRegistryRef={registryRef}
           onStageSizeChange={onStageSizeChange}
         />,
-        store,
+        {
+          mode: 'screenshot-edit',
+          aspectRatio: '16:9',
+        },
       );
 
     const aspectRatios: ('4:5' | '9:16' | '1:1' | '16:9')[] = [
@@ -363,16 +363,19 @@ describe('CanvasStageContainer Fixed Stage Size & Dynamic PitchRect', () => {
 
     for (const ratio of aspectRatios) {
       act(() => {
-        store.getState().setAspectRatio(ratio);
+        const { activePhaseId } = sessionStore.getState();
+        documentStore.getState().dispatch({
+          type: 'CHANGE_PHASE_ASPECT_RATIO',
+          phaseId: activePhaseId,
+          aspectRatio: ratio,
+        });
       });
       rerender(
         <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
-          <CanvasStoreContext.Provider value={store}>
-            <CanvasStageContainer
-              nodesRegistryRef={registryRef}
-              onStageSizeChange={onStageSizeChange}
-            />
-          </CanvasStoreContext.Provider>
+          <CanvasStageContainer
+            nodesRegistryRef={registryRef}
+            onStageSizeChange={onStageSizeChange}
+          />
         </TacticalStoreProvider>,
       );
 
@@ -392,10 +395,6 @@ describe('CanvasStageContainer Full-Tactical Margin & PNG Export Offset', () => 
     const handleRef = createRef<CanvasCoreHandle>();
     const registryRef = { current: createCanvasNodesRegistry() };
     const onStageSizeChange = vi.fn();
-    const store = createCanvasStore({
-      mode: 'full-tactical',
-      aspectRatio: '16:9',
-    });
 
     renderWithStore(
       <CanvasStageContainer
@@ -404,7 +403,10 @@ describe('CanvasStageContainer Full-Tactical Margin & PNG Export Offset', () => 
         nodesRegistryRef={registryRef}
         onStageSizeChange={onStageSizeChange}
       />,
-      store,
+      {
+        mode: 'full-tactical',
+        aspectRatio: '16:9',
+      },
     );
 
     expect(onStageSizeChange).toHaveBeenCalledWith({ width: 704, height: 396 });
@@ -424,5 +426,68 @@ describe('CanvasStageContainer Full-Tactical Margin & PNG Export Offset', () => 
         pixelRatio: 2,
       }),
     );
+  });
+
+  it('boundaryBox オーバーレイがグレー系で表示され、四つ角のハンドルドラッグでリサイズできること', async () => {
+    const { container, documentStore } = renderWithStore(
+      <CanvasStageContainer />,
+      {
+        mode: 'screenshot-edit',
+        aspectRatio: '16:9',
+      },
+    );
+
+    const phaseId = documentStore.getState().project.phases[0]?.id;
+    expect(phaseId).toBeTruthy();
+
+    await act(async () => {
+      documentStore.getState().dispatch({
+        type: 'UPDATE_PHASE',
+        phaseId: phaseId!,
+        patch: {
+          boundaryBox: {
+            x: 10,
+            y: 10,
+            width: 50,
+            height: 50,
+            enabled: true,
+          },
+        },
+      });
+    });
+
+    const overlay = container.querySelector(
+      '[data-testid="canvas-boundary-box-overlay"]',
+    );
+    expect(overlay).toBeTruthy();
+    expect(overlay?.className).toContain('border-zinc-400');
+
+    const seHandle = container.querySelector(
+      '[data-testid="boundary-resize-handle-se"]',
+    );
+    expect(seHandle).toBeTruthy();
+    expect(seHandle?.className).toContain('pointer-events-auto');
+
+    act(() => {
+      seHandle?.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          clientX: 100,
+          clientY: 100,
+        }),
+      );
+      window.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          clientX: 180,
+          clientY: 145,
+        }),
+      );
+      window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    });
+
+    const updatedPhase = documentStore.getState().project.phases[0];
+    expect(updatedPhase?.boundaryBox?.width).toBeGreaterThan(50);
+    expect(updatedPhase?.boundaryBox?.height).toBeGreaterThan(50);
   });
 });

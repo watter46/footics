@@ -111,6 +111,7 @@ export function useResolvedSceneGraph(
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
   const selectedObjects = useSessionStore((s) => s.selectedObjects);
   const activeDragDelta = useSessionStore((s) => s.activeDragDelta);
+  const activeZoneRotation = useSessionStore((s) => s.activeZoneRotation);
   const drawingPreview = useSessionStore((s) => s.drawingPreview);
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
   const timeMs = usePlaybackStore((s) => s.timeMs);
@@ -126,6 +127,7 @@ export function useResolvedSceneGraph(
       activeSlideId,
       selectedIds,
       activeDragDelta,
+      activeZoneRotation,
       drawingPreview,
     }),
     [
@@ -133,6 +135,7 @@ export function useResolvedSceneGraph(
       activeSlideId,
       selectedIds,
       activeDragDelta,
+      activeZoneRotation,
       drawingPreview,
     ],
   );

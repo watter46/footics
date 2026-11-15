@@ -2,80 +2,72 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Arrow } from 'react-konva';
+import type { ResolvedArrowPrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { ArrowAnnotation } from '@/lib/types/tactical-unified';
-import { computeArrowDimensions } from './arrow-geometry';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
+export interface ArrowBodyDragDelta {
+  readonly dxPx: number;
+  readonly dyPx: number;
+}
+
 export interface ArrowLineNodeProps {
-  arrow: ArrowAnnotation & { opacity?: number };
+  arrow: ArrowAnnotation;
+  resolvedArrow: ResolvedArrowPrimitive;
   stageSize: { width: number; height: number };
   isSelected: boolean;
   isInteractive: boolean;
   isAttachedToPlayer: boolean;
-  hasArrowHead: boolean;
   renderPoints: number[];
   p0: { x: number; y: number };
   p1: { x: number; y: number };
-  sPxX: number;
-  sPxY: number;
-  ePxX: number;
-  ePxY: number;
-  midHandlePxX: number;
-  midHandlePxY: number;
   arrowRef: React.RefObject<Konva.Arrow | null>;
-  startHandleRef: React.RefObject<Konva.Circle | null>;
-  endHandleRef: React.RefObject<Konva.Circle | null>;
-  controlHandleRef: React.RefObject<Konva.Circle | null>;
-  startDotRef: React.RefObject<Konva.Circle | null>;
-  endDotRef: React.RefObject<Konva.Circle | null>;
   onSelect: (e: KonvaClickEvent) => void;
   updateArrow: (arrowId: string, patch: Partial<ArrowAnnotation>) => void;
+  onBodyDragMove?: (delta: ArrowBodyDragDelta | null) => void;
 }
 
 export const ArrowLineNode = React.memo(function ArrowLineNode({
   arrow,
+  resolvedArrow,
   stageSize,
   isSelected,
   isInteractive,
   isAttachedToPlayer,
-  hasArrowHead,
   renderPoints,
   p0,
   p1,
-  sPxX,
-  sPxY,
-  ePxX,
-  ePxY,
-  midHandlePxX,
-  midHandlePxY,
   arrowRef,
-  startHandleRef,
-  endHandleRef,
-  controlHandleRef,
-  startDotRef,
-  endDotRef,
   onSelect,
   updateArrow,
+  onBodyDragMove,
 }: ArrowLineNodeProps) {
   const { width, height } = stageSize;
-  const {
-    strokeWidth: scaledStrokeWidth,
-    pointerLength,
-    pointerWidth,
-  } = computeArrowDimensions(width, arrow.strokeWidth);
+  const hasArrowHead = resolvedArrow.endMarker === 'arrow';
+  const strokeColor = isSelected ? '#60a5fa' : resolvedArrow.color;
 
   return (
     <Arrow
       ref={arrowRef}
       points={renderPoints}
-      stroke={isSelected ? '#60a5fa' : arrow.color}
-      fill={isSelected ? '#60a5fa' : arrow.color}
-      strokeWidth={isSelected ? scaledStrokeWidth + 1 : scaledStrokeWidth}
-      dash={arrow.dashArray.length > 0 ? arrow.dashArray : undefined}
-      pointerLength={hasArrowHead ? pointerLength : 0}
-      pointerWidth={hasArrowHead ? pointerWidth : 0}
-      opacity={arrow.opacity ?? 1}
+      stroke={strokeColor}
+      fill={strokeColor}
+      strokeWidth={
+        isSelected
+          ? resolvedArrow.strokeWidthPx + 1
+          : resolvedArrow.strokeWidthPx
+      }
+      dash={
+        resolvedArrow.dashArrayPx.length > 0
+          ? [...resolvedArrow.dashArrayPx]
+          : undefined
+      }
+      dashOffset={resolvedArrow.dashOffsetPx}
+      pointerLength={hasArrowHead ? resolvedArrow.pointerLengthPx : 0}
+      pointerWidth={hasArrowHead ? resolvedArrow.pointerWidthPx : 0}
+      opacity={resolvedArrow.opacity}
+      visible={resolvedArrow.visible}
       tension={0}
       onClick={onSelect}
       onTap={onSelect}
@@ -102,18 +94,10 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
         if (stage) stage.container().style.cursor = 'grabbing';
       }}
       onDragMove={(e) => {
+        if (isAttachedToPlayer) return;
+        e.cancelBubble = true;
         const node = e.target;
-        const dx = node.x();
-        const dy = node.y();
-        startHandleRef.current?.position({ x: sPxX + dx, y: sPxY + dy });
-        endHandleRef.current?.position({ x: ePxX + dx, y: ePxY + dy });
-        controlHandleRef.current?.position({
-          x: midHandlePxX + dx,
-          y: midHandlePxY + dy,
-        });
-        startDotRef.current?.position({ x: sPxX + dx, y: sPxY + dy });
-        endDotRef.current?.position({ x: ePxX + dx, y: ePxY + dy });
-        node.getLayer()?.batchDraw();
+        onBodyDragMove?.({ dxPx: node.x(), dyPx: node.y() });
       }}
       onDragEnd={(e) => {
         e.cancelBubble = true;
@@ -123,15 +107,7 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
         const dxNorm = (dx / width) * 100;
         const dyNorm = (dy / height) * 100;
         node.position({ x: 0, y: 0 });
-
-        startHandleRef.current?.position({ x: sPxX + dx, y: sPxY + dy });
-        endHandleRef.current?.position({ x: ePxX + dx, y: ePxY + dy });
-        controlHandleRef.current?.position({
-          x: midHandlePxX + dx,
-          y: midHandlePxY + dy,
-        });
-        startDotRef.current?.position({ x: sPxX + dx, y: sPxY + dy });
-        endDotRef.current?.position({ x: ePxX + dx, y: ePxY + dy });
+        onBodyDragMove?.(null);
 
         const stage = node.getStage();
         if (stage) stage.container().style.cursor = 'default';

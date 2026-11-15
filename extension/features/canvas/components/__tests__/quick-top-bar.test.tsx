@@ -95,12 +95,9 @@ describe('QuickCanvasTopBar', () => {
       });
       fireEvent.click(ratio169Btn);
       expect(onSelectRatio).toHaveBeenCalledWith('16:9');
-
-      const ratioFullBtn = screen.getByRole('button', {
-        name: '全画面クロップなし',
-      });
-      fireEvent.click(ratioFullBtn);
-      expect(onSelectRatio).toHaveBeenCalledWith('full');
+      expect(
+        screen.queryByRole('button', { name: '全画面クロップなし' }),
+      ).toBeNull();
     });
   });
 
@@ -222,6 +219,14 @@ describe('QuickCanvasTopBar', () => {
       expect(capturedBoundaryWidth).toBeGreaterThan(0);
       expect(capturedBoundaryWidth).toBeLessThan(100);
       expect(ratio45Btn.getAttribute('aria-pressed')).toBe('true');
+
+      const ratio169Btn = screen.getByRole('button', {
+        name: '境界線比率 16:9',
+      });
+      fireEvent.click(ratio169Btn);
+      expect(capturedAspectRatio).toBe('16:9');
+      expect(capturedBoundaryWidth).toBe(100);
+      expect(ratio169Btn.getAttribute('aria-pressed')).toBe('true');
     });
   });
 });

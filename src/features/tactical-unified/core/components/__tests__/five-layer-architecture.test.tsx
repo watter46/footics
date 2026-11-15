@@ -3,30 +3,38 @@ import type Konva from 'konva';
 import { createRef, type ReactNode } from 'react';
 import { Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useResolvedSceneGraph } from '@/features/tactical-unified/hooks/use-resolved-scene-graph';
 import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
 import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import {
   createDefaultTacticalProject,
   TacticalStoreProvider,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { compileSceneGraph } from '@/lib/tactical/compiler/compile-scene-graph';
 import { createDefaultDomainPlayer } from '@/lib/tactical/domain/formation-placement';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
-import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
-import { createDefaultPlayer } from '@/lib/types/tactical-unified';
+import type {
+  DomainSlide,
+  DomainTacticalProject,
+} from '@/lib/types/tactical/domain-hierarchy';
 import { useCanvasSelectionBox } from '../../hooks/use-canvas-selection-box';
-import { useCanvasStore } from '../../hooks/use-canvas-store';
-import { CanvasStoreProvider } from '../../store/canvas-store-provider';
 import type { PitchRectBounds } from '../../utils/canvas-coordinates';
 import { getPointerCoordinates } from '../../utils/geometry';
 import {
   BillboardObjectLayer,
-  sortBillboardItemsByDepth,
+  type BillboardObjectLayerProps,
 } from '../BillboardObjectLayer';
 import { HtmlHudOverlay } from '../HtmlHudOverlay';
-import { InteractionPreviewLayer } from '../InteractionPreviewLayer';
-import { PitchGroundLayer } from '../PitchGroundLayer';
+import {
+  InteractionPreviewLayer,
+  type InteractionPreviewLayerProps,
+} from '../InteractionPreviewLayer';
+import {
+  PitchGroundLayer,
+  type PitchGroundLayerProps,
+} from '../PitchGroundLayer';
 
 beforeEach(() => {
   const mockCtx = new Proxy(
@@ -45,10 +53,7 @@ beforeEach(() => {
     },
   );
   HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
-  useTacticalUnifiedStore.getState().resetProject();
 });
-
-type CanvasState = Parameters<Parameters<typeof useCanvasStore>[0]>[0];
 
 const defaultPitchRect: PitchRectBounds = {
   x: 100,
@@ -58,32 +63,134 @@ const defaultPitchRect: PitchRectBounds = {
 };
 const defaultStageSize = { width: 1000, height: 550 };
 
-describe('sortBillboardItemsByDepth', () => {
-  it('スクリーンY座標（手前・奥）に基づいて小さいYから大きいYへと昇順ソートすること', () => {
-    const items = [
-      { id: 'player-deep', x: 50, y: 80 },
-      { id: 'player-top', x: 50, y: 15 },
-      { id: 'player-mid', x: 50, y: 50 },
-    ];
+function createProjectWithPlayers(
+  players: readonly DomainPlayer[],
+): DomainTacticalProject {
+  const base = createDefaultTacticalProject();
+  return {
+    ...base,
+    phases: [
+      {
+        ...base.phases[0],
+        slides: [
+          {
+            ...base.phases[0].slides[0],
+            players: [...players],
+          },
+        ],
+      },
+    ],
+  };
+}
 
-    const sorted = sortBillboardItemsByDepth(items, defaultPitchRect);
-    expect(sorted.map((item) => item.id)).toEqual([
-      'player-top',
-      'player-mid',
-      'player-deep',
-    ]);
+function PitchGroundLayerWithSceneGraph(
+  props: Omit<PitchGroundLayerProps, 'sceneGraph'>,
+) {
+  const sceneGraph = useResolvedSceneGraph(props.stageSize);
+  return <PitchGroundLayer {...props} sceneGraph={sceneGraph} />;
+}
+
+function BillboardObjectLayerWithSceneGraph(
+  props: Omit<BillboardObjectLayerProps, 'sceneGraph'>,
+) {
+  const sceneGraph = useResolvedSceneGraph(props.stageSize);
+  return <BillboardObjectLayer {...props} sceneGraph={sceneGraph} />;
+}
+
+function InteractionPreviewLayerWithSceneGraph(
+  props: Omit<InteractionPreviewLayerProps, 'sceneGraph'>,
+) {
+  const sceneGraph = useResolvedSceneGraph(props.stageSize);
+  return <InteractionPreviewLayer {...props} sceneGraph={sceneGraph} />;
+}
+
+describe('compileSceneGraph 深度ソート', () => {
+  it('スクリーンY座標（手前・奥）に基づいて小さいYから大きいYへと昇順ソートすること', () => {
+    const project = createDefaultTacticalProject();
+    const baseSlide = project.phases[0].slides[0];
+    const players: DomainPlayer[] = [
+      {
+        ...createDefaultDomainPlayer('home', 50, 80, '#001489'),
+        id: 'player-deep',
+      },
+      {
+        ...createDefaultDomainPlayer('home', 50, 15, '#001489'),
+        id: 'player-top',
+      },
+      {
+        ...createDefaultDomainPlayer('home', 50, 50, '#001489'),
+        id: 'player-mid',
+      },
+    ];
+    const slide: DomainSlide = {
+      ...baseSlide,
+      players,
+      ball: { ...baseSlide.ball, visible: false },
+    };
+
+    const sceneGraph = compileSceneGraph(
+      {
+        slideIndex: 0,
+        nextSlideIndex: 0,
+        progress: 0,
+        isPaused: true,
+        timeInSlideMs: 0,
+        slide,
+        arrowProgressMap: {},
+        zoneOpacityMap: {},
+        playerOpacityMap: {},
+      },
+      null,
+      defaultStageSize,
+    );
+
+    const playerIds = sceneGraph.billboardItems
+      .filter((item) => item.kind === 'player')
+      .map((item) => item.id);
+    expect(playerIds).toEqual(['player-top', 'player-mid', 'player-deep']);
   });
 
   it('カメラの tilt (傾き) がある場合もスクリーン投影後のY座標でソートすること', () => {
-    const camera = { tilt: 30, yaw: 0, zoom: 1, panX: 0, panY: 0 };
-    const items = [
-      { id: 'item-bottom', x: 50, y: 90 },
-      { id: 'item-top', x: 50, y: 10 },
+    const project = createDefaultTacticalProject();
+    const baseSlide = project.phases[0].slides[0];
+    const players: DomainPlayer[] = [
+      {
+        ...createDefaultDomainPlayer('home', 50, 90, '#001489'),
+        id: 'item-bottom',
+      },
+      {
+        ...createDefaultDomainPlayer('home', 50, 10, '#001489'),
+        id: 'item-top',
+      },
     ];
+    const slide: DomainSlide = {
+      ...baseSlide,
+      players,
+      ball: { ...baseSlide.ball, visible: false },
+      pitchTransform: { zoom: 1, panX: 0, panY: 0, tilt: 30, isLocked: false },
+    };
 
-    const sorted = sortBillboardItemsByDepth(items, defaultPitchRect, camera);
-    expect(sorted[0].id).toBe('item-top');
-    expect(sorted[1].id).toBe('item-bottom');
+    const sceneGraph = compileSceneGraph(
+      {
+        slideIndex: 0,
+        nextSlideIndex: 0,
+        progress: 0,
+        isPaused: true,
+        timeInSlideMs: 0,
+        slide,
+        arrowProgressMap: {},
+        zoneOpacityMap: {},
+        playerOpacityMap: {},
+      },
+      null,
+      defaultStageSize,
+    );
+
+    const playerIds = sceneGraph.billboardItems
+      .filter((item) => item.kind === 'player')
+      .map((item) => item.id);
+    expect(playerIds[0]).toBe('item-top');
+    expect(playerIds[1]).toBe('item-bottom');
   });
 });
 
@@ -92,18 +199,16 @@ describe('PitchGroundLayer', () => {
     const stageRef = createRef<Konva.Stage>();
     render(
       <TacticalStoreProvider>
-        <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
-          <Stage
-            ref={stageRef}
-            width={defaultStageSize.width}
-            height={defaultStageSize.height}
-          >
-            <PitchGroundLayer
-              stageSize={defaultStageSize}
-              pitchRect={defaultPitchRect}
-            />
-          </Stage>
-        </CanvasStoreProvider>
+        <Stage
+          ref={stageRef}
+          width={defaultStageSize.width}
+          height={defaultStageSize.height}
+        >
+          <PitchGroundLayerWithSceneGraph
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+          />
+        </Stage>
       </TacticalStoreProvider>,
     );
 
@@ -129,47 +234,52 @@ describe('PitchGroundLayer', () => {
   });
 
   it('cleanRender={true} のときはゴースト軌道（GhostTrajectory）が描画されないこと', () => {
-    const slide1Id = useTacticalUnifiedStore.getState().activeSlideId;
-    const basePlayer = createDefaultPlayer('home', 20, 20, '#001489');
-    const playerA = { ...basePlayer, id: 'p-ghost-1', x: 20, y: 20 };
-    useTacticalUnifiedStore
-      .getState()
-      .updateSlide(slide1Id, { players: [playerA] });
-
-    const slide2Id = useTacticalUnifiedStore
-      .getState()
-      .duplicateSlide(slide1Id);
-    useTacticalUnifiedStore.getState().updateSlide(slide2Id, {
-      players: [{ ...playerA, x: 70, y: 70 }],
+    const base = createDefaultTacticalProject();
+    const playerA = {
+      ...createDefaultDomainPlayer('home', 20, 20, '#001489'),
+      id: 'p-ghost-1',
+    };
+    const slide1: DomainSlide = {
+      ...base.phases[0].slides[0],
+      id: 'slide-1',
+      index: 0,
+      players: [playerA],
+    };
+    const slide2: DomainSlide = {
+      ...base.phases[0].slides[0],
+      id: 'slide-2',
+      index: 1,
+      players: [
+        { ...playerA, x: clampToScreenNorm(70), y: clampToScreenNorm(70) },
+      ],
+    };
+    const project: DomainTacticalProject = {
+      ...base,
+      phases: [{ ...base.phases[0], slides: [slide1, slide2] }],
+    };
+    const documentStore = createDocumentStore(project);
+    const sessionStore = createSessionStore({
+      activePhaseId: base.phases[0].id,
+      activeSlideId: 'slide-2',
     });
-    useTacticalUnifiedStore.getState().setActiveSlide(slide2Id);
+    const playbackStore = createPlaybackStore();
 
     const stageRef = createRef<Konva.Stage>();
     render(
-      <TacticalStoreProvider>
-        <CanvasStoreProvider
-          config={{
-            mode: 'tactical-board',
-            initialAnnotations: JSON.stringify({
-              markers: [{ ...playerA, x: 70, y: 70 }],
-              arrows: [],
-              zones: [],
-              texts: [],
-            }),
-          }}
+      <TacticalStoreProvider
+        stores={{ documentStore, sessionStore, playbackStore }}
+      >
+        <Stage
+          ref={stageRef}
+          width={defaultStageSize.width}
+          height={defaultStageSize.height}
         >
-          <Stage
-            ref={stageRef}
-            width={defaultStageSize.width}
-            height={defaultStageSize.height}
-          >
-            <PitchGroundLayer
-              stageSize={defaultStageSize}
-              pitchRect={defaultPitchRect}
-              cleanRender={true}
-            />
-          </Stage>
-        </CanvasStoreProvider>
+          <PitchGroundLayerWithSceneGraph
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+            cleanRender={true}
+          />
+        </Stage>
       </TacticalStoreProvider>,
     );
 
@@ -181,19 +291,17 @@ describe('PitchGroundLayer', () => {
     const stageRef = createRef<Konva.Stage>();
     render(
       <TacticalStoreProvider>
-        <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
-          <Stage
-            ref={stageRef}
-            width={defaultStageSize.width}
-            height={defaultStageSize.height}
-          >
-            <PitchGroundLayer
-              stageSize={defaultStageSize}
-              pitchRect={defaultPitchRect}
-              cleanRender={false}
-            />
-          </Stage>
-        </CanvasStoreProvider>
+        <Stage
+          ref={stageRef}
+          width={defaultStageSize.width}
+          height={defaultStageSize.height}
+        >
+          <PitchGroundLayerWithSceneGraph
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+            cleanRender={false}
+          />
+        </Stage>
       </TacticalStoreProvider>,
     );
 
@@ -206,49 +314,43 @@ describe('PitchGroundLayer', () => {
 
 describe('BillboardObjectLayer', () => {
   it('pitchRectオフセット付きGroup内に深さソートされたマーカーとボールを描画すること', () => {
+    const project = createProjectWithPlayers([
+      {
+        ...createDefaultDomainPlayer('home', 50, 80, '#001489'),
+        id: 'm-deep',
+        shirtNo: '9',
+      },
+      {
+        ...createDefaultDomainPlayer('away', 50, 20, '#da020e'),
+        id: 'm-top',
+        shirtNo: '10',
+      },
+    ]);
+    const documentStore = createDocumentStore(project);
+    const phaseId = project.phases[0].id;
+    const slideId = project.phases[0].slides[0].id;
+    const sessionStore = createSessionStore({
+      activePhaseId: phaseId,
+      activeSlideId: slideId,
+    });
+    const playbackStore = createPlaybackStore();
+
     const stageRef = createRef<Konva.Stage>();
     render(
-      <CanvasStoreProvider
-        config={{
-          mode: 'tactical-board',
-          initialAnnotations: JSON.stringify({
-            markers: [
-              {
-                id: 'm-deep',
-                shirtNo: '9',
-                x: 50,
-                y: 80,
-                team: 'home',
-                area: 'pitch',
-                style: { color: '#001489', markerType: 'circle' },
-              },
-              {
-                id: 'm-top',
-                shirtNo: '10',
-                x: 50,
-                y: 20,
-                team: 'away',
-                area: 'pitch',
-                style: { color: '#da020e', markerType: 'circle' },
-              },
-            ],
-            arrows: [],
-            zones: [],
-            texts: [],
-          }),
-        }}
+      <TacticalStoreProvider
+        stores={{ documentStore, sessionStore, playbackStore }}
       >
         <Stage
           ref={stageRef}
           width={defaultStageSize.width}
           height={defaultStageSize.height}
         >
-          <BillboardObjectLayer
+          <BillboardObjectLayerWithSceneGraph
             stageSize={defaultStageSize}
             pitchRect={defaultPitchRect}
           />
         </Stage>
-      </CanvasStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
     const stage = stageRef.current;
@@ -267,40 +369,38 @@ describe('BillboardObjectLayer', () => {
   });
 
   it('PlayerMarkerItem の dragBoundFunc が Stage 全体（余白領域含む）を許容し、右側の見えない壁を解消すること', () => {
+    const project = createProjectWithPlayers([
+      {
+        ...createDefaultDomainPlayer('home', 50, 50, '#001489'),
+        id: 'm-bound-test',
+        shirtNo: '7',
+      },
+    ]);
+    const documentStore = createDocumentStore(project);
+    const phaseId = project.phases[0].id;
+    const slideId = project.phases[0].slides[0].id;
+    const sessionStore = createSessionStore({
+      activePhaseId: phaseId,
+      activeSlideId: slideId,
+    });
+    const playbackStore = createPlaybackStore();
+
     const stageRef = createRef<Konva.Stage>();
     render(
-      <CanvasStoreProvider
-        config={{
-          mode: 'tactical-board',
-          initialAnnotations: JSON.stringify({
-            markers: [
-              {
-                id: 'm-bound-test',
-                shirtNo: '7',
-                x: 50,
-                y: 50,
-                team: 'home',
-                area: 'pitch',
-                style: { color: '#001489', markerType: 'circle' },
-              },
-            ],
-            arrows: [],
-            zones: [],
-            texts: [],
-          }),
-        }}
+      <TacticalStoreProvider
+        stores={{ documentStore, sessionStore, playbackStore }}
       >
         <Stage
           ref={stageRef}
           width={defaultStageSize.width}
           height={defaultStageSize.height}
         >
-          <BillboardObjectLayer
+          <BillboardObjectLayerWithSceneGraph
             stageSize={defaultStageSize}
             pitchRect={defaultPitchRect}
           />
         </Stage>
-      </CanvasStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
     const stage = stageRef.current;
@@ -329,56 +429,46 @@ describe('BillboardObjectLayer', () => {
   });
 
   it('marker.x, marker.y 更新時に Konva Group の position が同期されること', () => {
-    let capturedStore: CanvasState | null = null;
-    const TestConsumer = () => {
-      const store = useCanvasStore((s) => s);
-      capturedStore = store;
-      return null;
-    };
+    const project = createProjectWithPlayers([
+      {
+        ...createDefaultDomainPlayer('home', 20, 30, '#001489'),
+        id: 'm-sync-test',
+        shirtNo: '10',
+      },
+    ]);
+    const documentStore = createDocumentStore(project);
+    const phaseId = project.phases[0].id;
+    const slideId = project.phases[0].slides[0].id;
+    const sessionStore = createSessionStore({
+      activePhaseId: phaseId,
+      activeSlideId: slideId,
+    });
+    const playbackStore = createPlaybackStore();
 
     const stageRef = createRef<Konva.Stage>();
     render(
-      <CanvasStoreProvider
-        config={{
-          mode: 'tactical-board',
-          initialAnnotations: JSON.stringify({
-            markers: [
-              {
-                id: 'm-sync-test',
-                shirtNo: '10',
-                x: 20,
-                y: 30,
-                team: 'home',
-                area: 'pitch',
-                style: { color: '#001489', markerType: 'circle' },
-              },
-            ],
-            arrows: [],
-            zones: [],
-            texts: [],
-          }),
-        }}
+      <TacticalStoreProvider
+        stores={{ documentStore, sessionStore, playbackStore }}
       >
-        <TestConsumer />
         <Stage
           ref={stageRef}
           width={defaultStageSize.width}
           height={defaultStageSize.height}
         >
-          <BillboardObjectLayer
+          <BillboardObjectLayerWithSceneGraph
             stageSize={defaultStageSize}
             pitchRect={defaultPitchRect}
           />
         </Stage>
-      </CanvasStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
     const stage = stageRef.current;
     const markerGroup = (stage?.find('Group') ?? []).find((g) => g.draggable());
     expect(markerGroup).toBeDefined();
-    // 初期位置: x = 20% * 800 = 160, y = 30% * 450 = 135
-    expect(markerGroup?.x()).toBe(160);
-    expect(markerGroup?.y()).toBe(135);
+    // 初期位置: x = 20% * 1000 = 200, y = 30% * 550 = 165
+    expect(markerGroup?.x()).toBe(200);
+    expect(markerGroup?.y()).toBe(165);
 
     // ドラッグ等で一時的にズレた状態を模倣
     markerGroup?.x(300);
@@ -386,60 +476,51 @@ describe('BillboardObjectLayer', () => {
 
     // store 経由で marker.x, marker.y を更新 (リセット動作等)
     act(() => {
-      (capturedStore as unknown as CanvasState)?.updateMarker('m-sync-test', {
-        x: 40,
-        y: 50,
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'UPDATE_PLAYER',
+        id: 'm-sync-test',
+        patch: { x: clampToScreenNorm(40), y: clampToScreenNorm(50) },
       });
     });
 
-    // pxX = 40% * 800 = 320, pxY = 50% * 450 = 225 に同期されていること
-    expect(markerGroup?.x()).toBe(320);
-    expect(markerGroup?.y()).toBe(225);
+    // pxX = 40% * 1000 = 400, pxY = 50% * 550 = 275 に同期されていること
+    expect(markerGroup?.x()).toBe(400);
+    expect(markerGroup?.y()).toBe(275);
   });
 
   it('ドロップ位置が Stage コンテナ内の場合、ベンチ退避せず余白座標で updateMarker を実行すること', () => {
-    let capturedStore: CanvasState | null = null;
-    const TestConsumer = () => {
-      const store = useCanvasStore((s) => s);
-      capturedStore = store;
-      return null;
-    };
+    const project = createProjectWithPlayers([
+      {
+        ...createDefaultDomainPlayer('home', 50, 50, '#001489'),
+        id: 'm-drop-test',
+        shirtNo: '8',
+      },
+    ]);
+    const documentStore = createDocumentStore(project);
+    const phaseId = project.phases[0].id;
+    const slideId = project.phases[0].slides[0].id;
+    const sessionStore = createSessionStore({
+      activePhaseId: phaseId,
+      activeSlideId: slideId,
+    });
+    const playbackStore = createPlaybackStore();
 
     const stageRef = createRef<Konva.Stage>();
     render(
-      <CanvasStoreProvider
-        config={{
-          mode: 'tactical-board',
-          initialAnnotations: JSON.stringify({
-            markers: [
-              {
-                id: 'm-drop-test',
-                shirtNo: '8',
-                x: 50,
-                y: 50,
-                team: 'home',
-                area: 'pitch',
-                style: { color: '#001489', markerType: 'circle' },
-              },
-            ],
-            arrows: [],
-            zones: [],
-            texts: [],
-          }),
-        }}
+      <TacticalStoreProvider
+        stores={{ documentStore, sessionStore, playbackStore }}
       >
-        <TestConsumer />
         <Stage
           ref={stageRef}
           width={defaultStageSize.width}
           height={defaultStageSize.height}
         >
-          <BillboardObjectLayer
+          <BillboardObjectLayerWithSceneGraph
             stageSize={defaultStageSize}
             pitchRect={defaultPitchRect}
           />
         </Stage>
-      </CanvasStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
     const stage = stageRef.current;
@@ -474,107 +555,72 @@ describe('BillboardObjectLayer', () => {
       });
     });
 
-    // bench へ移動されず、updateMarker で 0..100 スクリーン内にクランプされて保存されること
-    expect(capturedStore).not.toBeNull();
-    const updatedMarker = (
-      capturedStore as unknown as CanvasState
-    ).annotations.markers.find((m: { id: string }) => m.id === 'm-drop-test');
+    // bench へ移動されず、UPDATE_PLAYER で 0..100 スクリーン内にクランプされて保存されること
+    const currentSlide = documentStore
+      .getState()
+      .project.phases.find((p) => p.id === phaseId)
+      ?.slides.find((s) => s.id === slideId);
+    const updatedMarker = currentSlide?.players.find(
+      (m) => m.id === 'm-drop-test',
+    );
     expect(updatedMarker?.area).toBe('pitch');
     expect(updatedMarker?.x).toBeCloseTo(100);
     expect(updatedMarker?.y).toBeCloseTo(100);
   });
 
-  it('capabilities.hasBall に基づいてボールを描画・非表示制御すること', () => {
+  it('UPDATE_BALL (visible: true | false) に基づいてボールを描画・非表示制御すること', () => {
     const project = createDefaultTacticalProject();
-    const slide = project.phases[0].slides[0];
-    const sceneGraph = compileSceneGraph(
-      {
-        slideIndex: 0,
-        nextSlideIndex: 0,
-        progress: 0,
-        isPaused: true,
-        timeInSlideMs: 0,
-        slide,
-        arrowProgressMap: {},
-        zoneOpacityMap: {},
-        playerOpacityMap: {},
-      },
-      null,
-      {
-        width: defaultStageSize.width,
-        height: defaultStageSize.height,
-      },
-    );
+    const documentStore = createDocumentStore(project);
+    const phaseId = project.phases[0].id;
+    const slideId = project.phases[0].slides[0].id;
+    const sessionStore = createSessionStore({
+      activePhaseId: phaseId,
+      activeSlideId: slideId,
+    });
+    const playbackStore = createPlaybackStore();
 
-    // 1. mode: 'screenshot-edit' のときは capabilities.hasBall が false となりボールを描画しないこと
+    // 1. ball.visible = false のときはボールを描画しないこと
+    documentStore.getState().dispatchSlide(phaseId, slideId, {
+      type: 'UPDATE_BALL',
+      patch: { visible: false },
+    });
     const registryRef1 = { current: {} as any };
     const { unmount: unmount1 } = render(
-      <TacticalStoreProvider initialProject={project}>
-        <CanvasStoreProvider config={{ mode: 'screenshot-edit' }}>
-          <Stage
-            width={defaultStageSize.width}
-            height={defaultStageSize.height}
-          >
-            <BillboardObjectLayer
-              stageSize={defaultStageSize}
-              pitchRect={defaultPitchRect}
-              nodesRegistryRef={registryRef1}
-              sceneGraph={sceneGraph}
-            />
-          </Stage>
-        </CanvasStoreProvider>
+      <TacticalStoreProvider
+        stores={{ documentStore, sessionStore, playbackStore }}
+      >
+        <Stage width={defaultStageSize.width} height={defaultStageSize.height}>
+          <BillboardObjectLayerWithSceneGraph
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+            nodesRegistryRef={registryRef1}
+          />
+        </Stage>
       </TacticalStoreProvider>,
     );
     expect(registryRef1.current.ballNode).toBeUndefined();
     unmount1();
 
-    // 2. capabilities.hasBall = false を明示指定したときはボールを描画しないこと
+    // 2. ball.visible = true のときはボールが描画されること
+    documentStore.getState().dispatchSlide(phaseId, slideId, {
+      type: 'UPDATE_BALL',
+      patch: { visible: true },
+    });
     const registryRef2 = { current: {} as any };
-    const { unmount: unmount2 } = render(
-      <TacticalStoreProvider initialProject={project}>
-        <CanvasStoreProvider
-          config={{
-            mode: 'tactical-board',
-            capabilities: { hasBall: false },
-          }}
-        >
-          <Stage
-            width={defaultStageSize.width}
-            height={defaultStageSize.height}
-          >
-            <BillboardObjectLayer
-              stageSize={defaultStageSize}
-              pitchRect={defaultPitchRect}
-              nodesRegistryRef={registryRef2}
-              sceneGraph={sceneGraph}
-            />
-          </Stage>
-        </CanvasStoreProvider>
-      </TacticalStoreProvider>,
-    );
-    expect(registryRef2.current.ballNode).toBeUndefined();
-    unmount2();
-
-    // 3. mode: 'tactical-board' (capabilities.hasBall デフォルト true) ではボールが描画されること
-    const registryRef3 = { current: {} as any };
     render(
-      <TacticalStoreProvider initialProject={project}>
-        <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
-          <Stage
-            width={defaultStageSize.width}
-            height={defaultStageSize.height}
-          >
-            <BillboardObjectLayer
-              stageSize={defaultStageSize}
-              pitchRect={defaultPitchRect}
-              nodesRegistryRef={registryRef3}
-              sceneGraph={sceneGraph}
-            />
-          </Stage>
-        </CanvasStoreProvider>
+      <TacticalStoreProvider
+        stores={{ documentStore, sessionStore, playbackStore }}
+      >
+        <Stage width={defaultStageSize.width} height={defaultStageSize.height}>
+          <BillboardObjectLayerWithSceneGraph
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+            nodesRegistryRef={registryRef2}
+          />
+        </Stage>
       </TacticalStoreProvider>,
     );
-    expect(registryRef3.current.ballNode).toBeDefined();
+    expect(registryRef2.current.ballNode).toBeDefined();
   });
 });
 
@@ -833,19 +879,19 @@ describe('InteractionPreviewLayer', () => {
   it('cleanRender={true} のときは null を返すこと', () => {
     const stageRef = createRef<Konva.Stage>();
     render(
-      <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
+      <TacticalStoreProvider>
         <Stage
           ref={stageRef}
           width={defaultStageSize.width}
           height={defaultStageSize.height}
         >
-          <InteractionPreviewLayer
+          <InteractionPreviewLayerWithSceneGraph
             stageSize={defaultStageSize}
             pitchRect={defaultPitchRect}
             cleanRender={true}
           />
         </Stage>
-      </CanvasStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
     const layer = stageRef.current?.findOne('#interaction-preview-layer');
@@ -855,13 +901,13 @@ describe('InteractionPreviewLayer', () => {
   it('cleanRender={false} のときはレイヤーおよび selectionBox を描画すること', () => {
     const stageRef = createRef<Konva.Stage>();
     render(
-      <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
+      <TacticalStoreProvider>
         <Stage
           ref={stageRef}
           width={defaultStageSize.width}
           height={defaultStageSize.height}
         >
-          <InteractionPreviewLayer
+          <InteractionPreviewLayerWithSceneGraph
             stageSize={defaultStageSize}
             pitchRect={defaultPitchRect}
             selectionBox={{
@@ -874,7 +920,7 @@ describe('InteractionPreviewLayer', () => {
             cleanRender={false}
           />
         </Stage>
-      </CanvasStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
     const stage = stageRef.current;
@@ -891,17 +937,15 @@ describe('HtmlHudOverlay', () => {
   it('cleanRender={true} のときは null を返すこと', () => {
     const { container } = render(
       <TacticalStoreProvider>
-        <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
-          <HtmlHudOverlay
-            stageSize={defaultStageSize}
-            pitchRect={defaultPitchRect}
-            editingText={null}
-            cleanRender={true}
-            onSaveText={vi.fn()}
-            onRemoveText={vi.fn()}
-            onCloseText={vi.fn()}
-          />
-        </CanvasStoreProvider>
+        <HtmlHudOverlay
+          stageSize={defaultStageSize}
+          pitchRect={defaultPitchRect}
+          editingText={null}
+          cleanRender={true}
+          onSaveText={vi.fn()}
+          onRemoveText={vi.fn()}
+          onCloseText={vi.fn()}
+        />
       </TacticalStoreProvider>,
     );
 
@@ -909,31 +953,34 @@ describe('HtmlHudOverlay', () => {
   });
 
   it('connectingPlayerId があるときは接続ガイダンスバッジを表示すること', () => {
+    const project = createProjectWithPlayers([
+      {
+        ...createDefaultDomainPlayer('home', 20, 20, '#001489'),
+        id: 'm-src',
+      },
+    ]);
+    const documentStore = createDocumentStore(project);
+    const phaseId = project.phases[0].id;
+    const slideId = project.phases[0].slides[0].id;
+    const sessionStore = createSessionStore({
+      activePhaseId: phaseId,
+      activeSlideId: slideId,
+    });
+    const playbackStore = createPlaybackStore();
+
     const { getByTestId } = render(
-      <TacticalStoreProvider>
-        <CanvasStoreProvider
-          config={{
-            mode: 'tactical-board',
-            initialAnnotations: JSON.stringify({
-              markers: [
-                { id: 'm-src', x: 20, y: 20, team: 'home', area: 'pitch' },
-              ],
-              arrows: [],
-              zones: [],
-              texts: [],
-            }),
-          }}
-        >
-          <HtmlHudOverlay
-            stageSize={defaultStageSize}
-            pitchRect={defaultPitchRect}
-            editingText={null}
-            cleanRender={false}
-            onSaveText={vi.fn()}
-            onRemoveText={vi.fn()}
-            onCloseText={vi.fn()}
-          />
-        </CanvasStoreProvider>
+      <TacticalStoreProvider
+        stores={{ documentStore, sessionStore, playbackStore }}
+      >
+        <HtmlHudOverlay
+          stageSize={defaultStageSize}
+          pitchRect={defaultPitchRect}
+          editingText={null}
+          cleanRender={false}
+          onSaveText={vi.fn()}
+          onRemoveText={vi.fn()}
+          onCloseText={vi.fn()}
+        />
       </TacticalStoreProvider>,
     );
 

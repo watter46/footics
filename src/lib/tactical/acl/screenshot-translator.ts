@@ -1,4 +1,3 @@
-import type { DomainTacticalProject } from '@/lib/types/tactical/domain-hierarchy';
 import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import {
   type NormalizedProjectBundle,
@@ -24,6 +23,31 @@ export function translateScreenshotToProject(
     try {
       const parsed = JSON.parse(input.canvasAnnotationsJson);
       if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.phases)) {
+          const bundle = normalizeTacticalProject(parsed);
+          const firstPhase = bundle.project.phases[0];
+          const patchedPhases = firstPhase
+            ? [
+                {
+                  ...firstPhase,
+                  backgroundImageUrl:
+                    firstPhase.backgroundImageUrl ?? input.backgroundImageUrl,
+                  aspectRatio:
+                    firstPhase.aspectRatio ?? input.aspectRatio ?? '16:9',
+                },
+                ...bundle.project.phases.slice(1),
+              ]
+            : bundle.project.phases;
+          return {
+            ...bundle,
+            project: {
+              ...bundle.project,
+              screenshotSourceUrl:
+                bundle.project.screenshotSourceUrl ?? input.backgroundImageUrl,
+              phases: patchedPhases,
+            },
+          };
+        }
         arrows = Array.isArray(parsed.arrows) ? parsed.arrows : [];
         zones = Array.isArray(parsed.zones) ? parsed.zones : [];
         texts = Array.isArray(parsed.texts) ? parsed.texts : [];
@@ -70,18 +94,4 @@ export function translateScreenshotToProject(
   };
 
   return normalizeTacticalProject(rawProject);
-}
-
-export function serializeProjectToScreenshotJson(
-  project: DomainTacticalProject,
-): string {
-  const phase = project.phases[0];
-  const slide = phase?.slides[0];
-
-  return JSON.stringify({
-    arrows: slide?.arrows ?? [],
-    zones: slide?.zones ?? [],
-    texts: slide?.texts ?? [],
-    markers: slide?.players ?? [],
-  });
 }

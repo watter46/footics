@@ -2,10 +2,11 @@ import { render } from '@testing-library/react';
 import type Konva from 'konva';
 import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDefaultPlayer } from '@/lib/types/tactical-unified';
-import { createCanvasStore } from '../../store/canvas-store';
-import { CanvasStoreContext } from '../../store/canvas-store-provider';
-import type { CanvasStoreApi } from '../../types';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+  type TacticalStoreProviderProps,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { createCanvasNodesRegistry } from '../../utils/canvas-registry';
 import { CanvasDisplayStage } from '../canvas-display-stage';
 
@@ -61,20 +62,11 @@ beforeEach(() => {
 
 function renderWithStore(
   ui: React.ReactElement,
-  initialStore?: CanvasStoreApi,
+  providerProps?: Omit<TacticalStoreProviderProps, 'children'>,
 ) {
-  const store =
-    initialStore ??
-    createCanvasStore({
-      mode: 'screenshot-edit',
-      aspectRatio: '16:9',
-    });
-  const utils = render(
-    <CanvasStoreContext.Provider value={store}>
-      {ui}
-    </CanvasStoreContext.Provider>,
+  return render(
+    <TacticalStoreProvider {...providerProps}>{ui}</TacticalStoreProvider>,
   );
-  return { store, ...utils };
 }
 
 describe('CanvasDisplayStage Component', () => {
@@ -120,21 +112,11 @@ describe('CanvasDisplayStage Component', () => {
 
   it('③ 選手マーカーの draggable() が false であること', () => {
     const registryRef = { current: createCanvasNodesRegistry() };
-    const store = createCanvasStore({
-      mode: 'screenshot-edit',
-      aspectRatio: '16:9',
-      initialAnnotations: JSON.stringify({
-        arrows: [],
-        zones: [],
-        texts: [],
-        markers: [createDefaultPlayer('home', 50, 50, '#ff0000')],
-      }),
-    });
+    const project = createDefaultTacticalProject();
 
-    renderWithStore(
-      <CanvasDisplayStage nodesRegistryRef={registryRef} />,
-      store,
-    );
+    renderWithStore(<CanvasDisplayStage nodesRegistryRef={registryRef} />, {
+      initialProject: project,
+    });
 
     const stage = registryRef.current.stage;
     expect(stage).toBeTruthy();

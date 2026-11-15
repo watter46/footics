@@ -2,11 +2,13 @@
 
 import { LayoutDashboard } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   type CanvasCoreHandle,
   CanvasToast,
 } from '@/features/tactical-unified/core';
+import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { translateScreenshotToProject } from '@/lib/tactical/acl/screenshot-translator';
 import {
   type CapturedScreenshot,
   getScreenshotById,
@@ -66,6 +68,18 @@ export function QuickTacticalCanvas({
     handleOpenDashboard,
   } = useQuickCanvasActions({ screenshot, canvasRef });
 
+  const initialBundle = useMemo(
+    () =>
+      screenshot
+        ? translateScreenshotToProject({
+            screenshotId: screenshot.id,
+            backgroundImageUrl: screenshot.imageDataUrl,
+            canvasAnnotationsJson: screenshot.canvasAnnotations,
+          })
+        : null,
+    [screenshot],
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-zinc-950 text-zinc-300">
@@ -75,7 +89,7 @@ export function QuickTacticalCanvas({
     );
   }
 
-  if (error || !screenshot) {
+  if (error || !screenshot || !initialBundle) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-zinc-300 p-6">
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl max-w-md text-center">
@@ -97,25 +111,33 @@ export function QuickTacticalCanvas({
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-zinc-950 text-zinc-100 select-none overflow-hidden font-sans">
-      <QuickCanvasTopBar
-        screenshot={screenshot}
-        canvasRef={canvasRef}
-        isFavorite={isFavorite}
-        onToggleFavorite={handleToggleFavorite}
-        onCopyClipboard={handleCopyClipboard}
-        onDownload={handleDownload}
-        onShareX={handleShareX}
-        onOpenDashboard={handleOpenDashboard}
-      />
-      <main className="relative flex-1 w-full h-[calc(100vh-2.75rem)] overflow-hidden">
-        <QuickAnnotationCanvas
-          ref={canvasRef}
+    <TacticalStoreProvider
+      initialProject={initialBundle.project}
+      initialSession={{
+        activePhaseId: initialBundle.activePhaseId,
+        activeSlideId: initialBundle.activeSlideId,
+      }}
+    >
+      <div className="flex flex-col h-screen w-screen bg-zinc-950 text-zinc-100 select-none overflow-hidden font-sans">
+        <QuickCanvasTopBar
           screenshot={screenshot}
-          onAutoSave={handleAutoSave}
+          canvasRef={canvasRef}
+          isFavorite={isFavorite}
+          onToggleFavorite={handleToggleFavorite}
+          onCopyClipboard={handleCopyClipboard}
+          onDownload={handleDownload}
+          onShareX={handleShareX}
+          onOpenDashboard={handleOpenDashboard}
         />
-      </main>
-      <CanvasToast message={toastMessage} />
-    </div>
+        <main className="relative flex-1 w-full h-[calc(100vh-2.75rem)] overflow-hidden">
+          <QuickAnnotationCanvas
+            ref={canvasRef}
+            screenshot={screenshot}
+            onAutoSave={handleAutoSave}
+          />
+        </main>
+        <CanvasToast message={toastMessage} />
+      </div>
+    </TacticalStoreProvider>
   );
 }

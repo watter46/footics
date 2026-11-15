@@ -2,18 +2,15 @@ import { act, render, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CanvasCoreHandle } from '@/features/tactical-unified/core';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { createPlaybackStore } from '@/features/tactical-unified/stores/playback-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import {
-  type TacticalUnifiedStoreApi,
-  useTacticalUnifiedStore,
-} from '@/features/tactical-unified/stores/tactical-unified-store';
-import {
-  TacticalUnifiedStoreProvider,
-  useTacticalUnifiedStoreApi,
-} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import {
-  type ArrowAnnotation,
-  createDefaultPlayer,
-} from '@/lib/types/tactical-unified';
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+  type TacticalStoresContextValue,
+  useTacticalStoresContext,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { FullTacticalCanvas } from '../FullTacticalCanvas';
 
 class MockResizeObserver {
@@ -68,37 +65,31 @@ beforeEach(() => {
 });
 
 describe('FullTacticalCanvas (Level 3 Feature View)', () => {
-  it('activeSlide のマーカー・矢印情報がキャンバスストアに注入されて描画されること', async () => {
-    const mockPlayer = createDefaultPlayer('home', 50, 50, '#ff0000');
-    const mockArrow: ArrowAnnotation = {
-      id: 'arrow-1',
-      annotationType: 'arrow',
-      arrowType: 'pass',
-      curveType: 'straight',
-      points: [
-        { x: 10, y: 10 },
-        { x: 20, y: 20 },
-      ],
-      color: '#ffffff',
-      strokeWidth: 3,
-      dashArray: [],
-      arrowHead: true,
-    };
-
-    const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-    useTacticalUnifiedStore.getState().updateSlide(activeSlideId, {
-      players: [mockPlayer],
-      arrows: [mockArrow],
-    });
+  it('TacticalStoreProvider の initialProject が documentStore にロードされ、ステージとツールバーが描画されること', async () => {
+    const initialProject = createDefaultTacticalProject();
+    let capturedStores!: TacticalStoresContextValue;
+    function StoreCapturer() {
+      capturedStores = useTacticalStoresContext();
+      return null;
+    }
 
     const { container } = render(
-      <div style={{ width: 800, height: 450 }}>
-        <FullTacticalCanvas imageAspect={16 / 9} />
-      </div>,
+      <TacticalStoreProvider initialProject={initialProject}>
+        <StoreCapturer />
+        <div style={{ width: 800, height: 450 }}>
+          <FullTacticalCanvas imageAspect={16 / 9} />
+        </div>
+      </TacticalStoreProvider>,
     );
 
     expect(container).toBeDefined();
-    // Konva stage container should be rendered
+    expect(capturedStores.documentStore.getState().project.id).toBe(
+      initialProject.id,
+    );
+    expect(
+      capturedStores.documentStore.getState().project.phases.length,
+    ).toBeGreaterThan(0);
+
     await waitFor(() => {
       const stageElement = container.querySelector('.konvajs-content');
       expect(stageElement).not.toBeNull();
@@ -132,93 +123,76 @@ describe('FullTacticalCanvas (Level 3 Feature View)', () => {
     expect(writeMock).toHaveBeenCalled();
   });
 
-  it('マスターストアで選手が動いた時、キャンバスが即座に最新選手情報を参照できること', async () => {
+  it('documentStore で選手が動いた時、キャンバスが即座に最新選手情報を参照できること', async () => {
+    const documentStore = createDocumentStore(createDefaultTacticalProject());
+    const sessionStore = createSessionStore();
+    const playbackStore = createPlaybackStore();
     const handleRef = createRef<CanvasCoreHandle>();
+
     render(
-      <div style={{ width: 800, height: 450 }}>
-        <FullTacticalCanvas ref={handleRef} imageAspect={16 / 9} />
-      </div>,
+      <TacticalStoreProvider
+        stores={{ documentStore, sessionStore, playbackStore }}
+      >
+        <div style={{ width: 800, height: 450 }}>
+          <FullTacticalCanvas ref={handleRef} imageAspect={16 / 9} />
+        </div>
+      </TacticalStoreProvider>,
     );
 
-    const activeSlideId = useTacticalUnifiedStore.getState().activeSlideId;
-    const initialPlayers =
-      useTacticalUnifiedStore
-        .getState()
-        .project.slides.find((s) => s.id === activeSlideId)?.players ?? [];
+    const activePhase = documentStore.getState().project.phases[0];
+    expect(activePhase).toBeDefined();
+    const activeSlide = activePhase.slides[0];
+    expect(activeSlide).toBeDefined();
+    expect(activeSlide.players.length).toBeGreaterThan(0);
+    const targetPlayer = activeSlide.players[0];
 
-    expect(initialPlayers.length).toBeGreaterThan(0);
-    const targetPlayer = initialPlayers[0];
-
-    // マスターストアを直接更新（フォーメーション変更やドラッグ等）
     act(() => {
-      useTacticalUnifiedStore
-        .getState()
-        .updatePlayer(activeSlideId, targetPlayer.id, { x: 99, y: 99 });
+      documentStore.getState().dispatchSlide(activePhase.id, activeSlide.id, {
+        type: 'UPDATE_PLAYER',
+        id: targetPlayer.id,
+        patch: { name: 'Test Player' },
+      });
     });
 
-    const updatedSlide = useTacticalUnifiedStore
+    const updatedSlide = documentStore
       .getState()
-      .project.slides.find((s) => s.id === activeSlideId);
+      .project.phases[0].slides.find((s) => s.id === activeSlide.id);
     const updatedPlayer = updatedSlide?.players.find(
       (p) => p.id === targetPlayer.id,
     );
-    expect(updatedPlayer?.x).toBe(99);
-    expect(updatedPlayer?.y).toBe(99);
+    expect(updatedPlayer?.name).toBe('Test Player');
   });
 
-  it('TacticalUnifiedStoreProvider 配下で Context 経由のストアがキャンバスに反映されアンマウント時もContextストアが操作されること', async () => {
-    let capturedApi!: TacticalUnifiedStoreApi;
-    function ApiCapturer() {
-      capturedApi = useTacticalUnifiedStoreApi();
+  it('TacticalStoreProvider 配下で Context 経由のストアがキャンバスに反映され stageAspect が更新されること', async () => {
+    const documentStore = createDocumentStore(createDefaultTacticalProject());
+    const sessionStore = createSessionStore();
+    const playbackStore = createPlaybackStore();
+
+    let capturedStores!: TacticalStoresContextValue;
+    function StoreCapturer() {
+      capturedStores = useTacticalStoresContext();
       return null;
     }
 
-    const initialGlobalPlaying = useTacticalUnifiedStore.getState().isPlaying;
-    expect(initialGlobalPlaying).toBe(false);
-
-    const { unmount, container } = render(
-      <TacticalUnifiedStoreProvider initialState={{ isPlaying: true }}>
-        <ApiCapturer />
+    const { container } = render(
+      <TacticalStoreProvider
+        stores={{ documentStore, sessionStore, playbackStore }}
+      >
+        <StoreCapturer />
         <div style={{ width: 800, height: 450 }}>
           <FullTacticalCanvas imageAspect={16 / 9} />
         </div>
-      </TacticalUnifiedStoreProvider>,
+      </TacticalStoreProvider>,
     );
 
-    // Context ストアの activeSlide にカスタム選手を追加
-    const activeSlideId = capturedApi.getState().activeSlideId;
-    const customPlayer = createDefaultPlayer('away', 30, 40, '#00ff00');
-    customPlayer.id = 'ctx-player-1';
-
-    act(() => {
-      capturedApi.getState().updateSlide(activeSlideId, {
-        players: [customPlayer],
-      });
-    });
+    expect(capturedStores.documentStore).toBe(documentStore);
+    expect(capturedStores.sessionStore).toBe(sessionStore);
+    expect(capturedStores.playbackStore).toBe(playbackStore);
 
     await waitFor(() => {
       const stageElement = container.querySelector('.konvajs-content');
       expect(stageElement).not.toBeNull();
-      // 初期化時、Provider 側の stageAspect が MockResizeObserver (800x450, 16:9) により更新されていること
-      expect(capturedApi.getState().stageAspect).toBeCloseTo(16 / 9);
+      expect(sessionStore.getState().stageAspect).toBeCloseTo(16 / 9);
     });
-
-    // Context ストアの選手情報が正しく更新されていること
-    const slide = capturedApi
-      .getState()
-      .project.slides.find((s) => s.id === activeSlideId);
-    expect(slide?.players[0].id).toBe('ctx-player-1');
-
-    const setIsPlayingSpy = vi.spyOn(capturedApi.getState(), 'setIsPlaying');
-    const globalSetIsPlayingSpy = vi.spyOn(
-      useTacticalUnifiedStore.getState(),
-      'setIsPlaying',
-    );
-
-    unmount();
-
-    // アンマウント時に Context ストアの setIsPlaying(false) が呼ばれ、グローバル側は呼ばれないこと
-    expect(setIsPlayingSpy).toHaveBeenCalledWith(false);
-    expect(globalSetIsPlayingSpy).not.toHaveBeenCalled();
   });
 });

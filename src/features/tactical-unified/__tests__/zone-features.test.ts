@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { getZoneStyle } from '@/features/tactical-unified/core/components/zones/zone-geometry';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { compileZones } from '@/lib/tactical/compiler/compile-zones';
+import type { EvaluatedTimelineFrame } from '@/lib/tactical/engine/timeline-evaluator';
 import { interpolateZone } from '@/lib/tactical/interpolation-annotation';
+import { toScreenNormCoord } from '@/lib/types/tactical/branded';
 import {
   type ZoneAnnotation,
   ZoneAnnotationSchema,
@@ -36,40 +38,79 @@ describe('tactical-unified Zone Features', () => {
     expect(custom.strokeWidth).toBe(5);
   });
 
-  it('getZoneStyle reflects strokeColor, strokeColorRGBA, and strokeWidth with default 3', () => {
-    const customZone: ZoneAnnotation = {
-      id: 'z-custom',
-      annotationType: 'zone',
-      zoneType: 'generic',
-      shapeType: 'rect',
-      color: '#ef4444',
-      opacity: 0.3,
-      strokeColor: '#3b82f6',
-      strokeOpacity: 0.8,
-      strokeWidth: 5,
-      points: [],
+  it('compileZones reflects custom strokeColor, strokeOpacity, strokeWidthPx, and defaults', () => {
+    const frame: EvaluatedTimelineFrame = {
+      slideIndex: 0,
+      nextSlideIndex: 0,
+      progress: 0,
+      isPaused: false,
+      timeInSlideMs: 0,
+      arrowProgressMap: {},
+      zoneOpacityMap: {},
+      playerOpacityMap: {},
+      slide: {
+        id: 'slide-1',
+        index: 0,
+        players: [],
+        ball: {
+          x: toScreenNormCoord(0.5),
+          y: toScreenNormCoord(0.5),
+          visible: false,
+        },
+        transitionDurationMs: 1000,
+        pauseMs: 0,
+        easing: 'ease-in-out',
+        arrows: [],
+        texts: [],
+        zones: [
+          {
+            id: 'z-custom',
+            annotationType: 'zone',
+            zoneType: 'generic',
+            shapeType: 'rect',
+            color: '#ef4444',
+            opacity: 0.3,
+            strokeColor: '#3b82f6',
+            strokeOpacity: 0.8,
+            strokeWidth: 5,
+            x: toScreenNormCoord(0.1),
+            y: toScreenNormCoord(0.2),
+            width: 0.3,
+            height: 0.4,
+          },
+          {
+            id: 'z-default',
+            annotationType: 'zone',
+            zoneType: 'generic',
+            shapeType: 'rect',
+            color: '#f59e0b',
+            opacity: 0.25,
+            strokeWidth: 3,
+            x: toScreenNormCoord(0.1),
+            y: toScreenNormCoord(0.2),
+            width: 0.3,
+            height: 0.4,
+          },
+        ],
+      },
     };
-    const customStyle = getZoneStyle(customZone);
-    expect(customStyle.fillRGBA).toBe('#ef44444d');
-    expect(customStyle.strokeColorRGBA).toBe('#3b82f6cc');
-    expect(customStyle.strokeWidth).toBe(5);
-    expect(customStyle.strokeOpacity).toBe(0.8);
 
-    const defaultZone: ZoneAnnotation = {
-      id: 'z-default',
-      annotationType: 'zone',
-      zoneType: 'generic',
-      shapeType: 'rect',
-      color: '#f59e0b',
-      opacity: 0.25,
-      points: [],
-      strokeWidth: undefined as unknown as number,
-    };
-    const defaultStyle = getZoneStyle(defaultZone);
-    expect(defaultStyle.fillRGBA).toBe('#f59e0b40');
-    expect(defaultStyle.strokeColorRGBA).toBe('#f59e0bff');
-    expect(defaultStyle.strokeWidth).toBe(3);
-    expect(defaultStyle.strokeOpacity).toBe(1);
+    const resolved = compileZones(frame, null, { width: 1200, height: 800 });
+    expect(resolved).toHaveLength(2);
+
+    const custom = resolved[0];
+    expect(custom?.color).toBe('#ef4444');
+    expect(custom?.opacity).toBe(0.3);
+    expect(custom?.strokeColor).toBe('#3b82f6');
+    expect(custom?.strokeOpacity).toBe(0.8);
+    expect(custom?.strokeWidthPx).toBe(5);
+
+    const defaults = resolved[1];
+    expect(defaults?.color).toBe('#f59e0b');
+    expect(defaults?.opacity).toBe(0.25);
+    expect(defaults?.strokeColor).toBe('#f59e0b');
+    expect(defaults?.strokeOpacity).toBe(1);
+    expect(defaults?.strokeWidthPx).toBe(3);
   });
 
   it('interpolateZone preserves strokeWidth fallback of 3 and interpolates strokeColor and strokeOpacity', () => {

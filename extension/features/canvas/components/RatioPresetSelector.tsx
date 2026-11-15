@@ -1,9 +1,8 @@
 'use client';
 
-import { Expand, LayoutTemplate } from 'lucide-react';
+import { LayoutTemplate } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useContext, useSyncExternalStore } from 'react';
-import { CanvasStoreContext } from '@/features/tactical-unified/core';
 import { TacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   ASPECT_RATIOS,
@@ -54,43 +53,30 @@ export function RatioPresetSelector({
   className = '',
 }: RatioPresetSelectorProps): React.ReactElement {
   const tacticalStores = useContext(TacticalStoresContext);
-  const canvasStore = useContext(CanvasStoreContext);
 
   const subscribeBoundaryBox = useCallback(
     (onStoreChange: () => void) => {
-      const unsubs: (() => void)[] = [];
-      if (tacticalStores) {
-        unsubs.push(tacticalStores.documentStore.subscribe(onStoreChange));
-        unsubs.push(tacticalStores.sessionStore.subscribe(onStoreChange));
-      }
-      if (canvasStore) {
-        unsubs.push(canvasStore.subscribe(onStoreChange));
-      }
-      if (unsubs.length === 0) return noopSubscribe();
+      if (!tacticalStores) return noopSubscribe();
+      const unsubs = [
+        tacticalStores.documentStore.subscribe(onStoreChange),
+        tacticalStores.sessionStore.subscribe(onStoreChange),
+      ];
       return () => {
         for (const u of unsubs) u();
       };
     },
-    [tacticalStores, canvasStore],
+    [tacticalStores],
   );
 
   const getBoundaryBoxSnapshot = useCallback((): BoundaryBox | null => {
-    if (tacticalStores) {
-      const doc = tacticalStores.documentStore.getState();
-      const activePhaseId =
-        tacticalStores.sessionStore.getState().activePhaseId;
-      const phase =
-        doc.project.phases.find((p) => p.id === activePhaseId) ??
-        doc.project.phases[0];
-      if (phase?.boundaryBox) {
-        return phase.boundaryBox;
-      }
-    }
-    if (canvasStore) {
-      return canvasStore.getState().boundaryBox;
-    }
-    return null;
-  }, [tacticalStores, canvasStore]);
+    if (!tacticalStores) return null;
+    const doc = tacticalStores.documentStore.getState();
+    const activePhaseId = tacticalStores.sessionStore.getState().activePhaseId;
+    const phase =
+      doc.project.phases.find((p) => p.id === activePhaseId) ??
+      doc.project.phases[0];
+    return phase?.boundaryBox ?? null;
+  }, [tacticalStores]);
 
   const boundaryBox = useSyncExternalStore(
     subscribeBoundaryBox,
@@ -102,14 +88,6 @@ export function RatioPresetSelector({
   const activeRatio = (() => {
     if (currentRatio !== undefined) return currentRatio;
     if (!boundaryBox?.enabled || boundaryBox.height === 0) return null;
-    if (
-      boundaryBox.width >= 99 &&
-      boundaryBox.height >= 99 &&
-      boundaryBox.x <= 1 &&
-      boundaryBox.y <= 1
-    ) {
-      return 'full';
-    }
     const stageAspect = 16 / 9;
     const currentAspect =
       (boundaryBox.width / boundaryBox.height) * stageAspect;
@@ -157,9 +135,6 @@ export function RatioPresetSelector({
         });
       }
     }
-    if (canvasStore) {
-      canvasStore.getState().setBoundaryBox(nextBox);
-    }
   };
 
   return (
@@ -189,21 +164,6 @@ export function RatioPresetSelector({
           </button>
         );
       })}
-      <button
-        type="button"
-        onClick={() => handleSelect('full')}
-        className={`px-2 py-0.5 rounded transition-colors text-[11px] font-medium cursor-pointer flex items-center gap-1 ${
-          activeRatio === 'full'
-            ? 'bg-blue-600 text-white font-semibold shadow-xs'
-            : 'text-white/60 hover:text-white hover:bg-white/10'
-        }`}
-        title="全画面 (100% × 100%) - クロップなし"
-        aria-label="全画面クロップなし"
-        aria-pressed={activeRatio === 'full'}
-      >
-        <Expand size={11} />
-        <span>全画面</span>
-      </button>
     </div>
   );
 }

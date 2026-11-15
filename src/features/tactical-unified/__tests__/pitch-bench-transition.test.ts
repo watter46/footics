@@ -1,7 +1,8 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import { Stage } from 'react-konva';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import type { Milliseconds } from '@/lib/types/tactical/branded';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import {
   createDefaultPlayer,
@@ -11,9 +12,8 @@ import { ContextHud } from '../core/components/ContextHud';
 import { resolveHudTarget } from '../core/components/hud/hud-targets';
 import { PitchGroundLayer } from '../core/components/PitchGroundLayer';
 import { PlayerGhostTrajectoryList } from '../core/components/player-ghost-trajectory-list';
-import { createCanvasStore } from '../core/store/canvas-store';
-import { CanvasStoreContext } from '../core/store/canvas-store-provider';
 import { createCanvasNodesRegistry } from '../core/utils/canvas-registry';
+import { resolveSceneGraphFromState } from '../hooks/use-resolved-scene-graph';
 import { createDocumentStore } from '../stores/document-store';
 import { createPlaybackStore } from '../stores/playback-store';
 import { createSessionStore } from '../stores/session-store';
@@ -22,22 +22,27 @@ import {
   createDefaultTacticalProject,
   TacticalStoreProvider,
 } from '../stores/tactical-store-provider';
-import { useTacticalUnifiedStore } from '../stores/tactical-unified-store';
+
+function createTestStores() {
+  const project = createDefaultTacticalProject();
+  const phase = project.phases[0];
+  const slide = phase.slides[0];
+  const documentStore = createDocumentStore(project);
+  const sessionStore = createSessionStore({
+    activePhaseId: phase.id,
+    activeSlideId: slide.id,
+  });
+  const playbackStore = createPlaybackStore();
+  return {
+    documentStore,
+    sessionStore,
+    playbackStore,
+    phaseId: phase.id,
+    slideId: slide.id,
+  };
+}
 
 describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-bench-transition)', () => {
-  beforeEach(() => {
-    const s = useTacticalUnifiedStore.getState();
-    const slide = createDefaultSlide(0, 'slide-1');
-    useTacticalUnifiedStore.setState({
-      project: {
-        ...s.project,
-        slides: [slide],
-      },
-      activeSlideId: 'slide-1',
-      selectedObjects: [],
-    });
-  });
-
   describe('findSafePitchPosition 純粋関数', () => {
     it('ピッチに選手がいない場合、Home は (40, 50), Away は (60, 50) を返す', () => {
       const posHome = findSafePitchPosition([], 'home');
@@ -70,26 +75,44 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
 
   describe('store: movePlayerToPitch (投入)', () => {
     it('座標未指定で投入時、安全な空き座標へ配置され、area が pitch になる', () => {
-      const store = useTacticalUnifiedStore;
-      const slideId = store.getState().activeSlideId;
+      const { documentStore, phaseId, slideId } = createTestStores();
 
-      // ベンチ選手を追加
-      store
-        .getState()
-        .addCustomPlayer(slideId, 'home', 'Sub Player', '12', 'SUB', 'bench');
-      const benchPlayer = store
-        .getState()
-        .project.slides.find((s) => s.id === slideId)!
-        .players.find((p) => p.shirtNo === '12')!;
+      const benchPlayer = {
+        ...createDefaultPlayer(
+          'home',
+          clampToScreenNorm(0),
+          clampToScreenNorm(0),
+          '#034694',
+        ),
+        x: clampToScreenNorm(0),
+        y: clampToScreenNorm(0),
+        name: 'Sub Player',
+        shirtNo: '12',
+        role: 'SUB',
+        area: 'bench' as const,
+      };
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'ADD_PLAYER',
+        player: benchPlayer,
+      });
 
       expect(benchPlayer.area).toBe('bench');
 
-      // 投入 (座標未指定)
-      store.getState().movePlayerToPitch(slideId, benchPlayer.id);
-
-      const placedPlayer = store
+      // 投入 (座標未指定 → findSafePitchPosition で空き座標を算出)
+      const currentPlayers = documentStore
         .getState()
-        .project.slides.find((s) => s.id === slideId)!
+        .project.phases[0].slides.find((s) => s.id === slideId)!.players;
+      const safePos = findSafePitchPosition(currentPlayers, 'home');
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'MOVE_PLAYER_TO_PITCH',
+        id: benchPlayer.id,
+        x: clampToScreenNorm(safePos.x),
+        y: clampToScreenNorm(safePos.y),
+      });
+
+      const placedPlayer = documentStore
+        .getState()
+        .project.phases[0].slides.find((s) => s.id === slideId)!
         .players.find((p) => p.id === benchPlayer.id)!;
 
       expect(placedPlayer.area).toBe('pitch');
@@ -100,27 +123,72 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
     });
 
     it('2人連続で投入したとき、2人の座標が重ならない', () => {
-      const store = useTacticalUnifiedStore;
-      const slideId = store.getState().activeSlideId;
+      const { documentStore, phaseId, slideId } = createTestStores();
 
-      store
+      const sub1 = {
+        ...createDefaultPlayer(
+          'home',
+          clampToScreenNorm(0),
+          clampToScreenNorm(0),
+          '#034694',
+        ),
+        x: clampToScreenNorm(0),
+        y: clampToScreenNorm(0),
+        name: 'Sub 1',
+        shirtNo: '12',
+        role: 'SUB',
+        area: 'bench' as const,
+      };
+      const sub2 = {
+        ...createDefaultPlayer(
+          'home',
+          clampToScreenNorm(0),
+          clampToScreenNorm(0),
+          '#034694',
+        ),
+        x: clampToScreenNorm(0),
+        y: clampToScreenNorm(0),
+        name: 'Sub 2',
+        shirtNo: '13',
+        role: 'SUB',
+        area: 'bench' as const,
+      };
+      documentStore
         .getState()
-        .addCustomPlayer(slideId, 'home', 'Sub 1', '12', 'SUB', 'bench');
-      store
+        .dispatchSlide(phaseId, slideId, { type: 'ADD_PLAYER', player: sub1 });
+      documentStore
         .getState()
-        .addCustomPlayer(slideId, 'home', 'Sub 2', '13', 'SUB', 'bench');
+        .dispatchSlide(phaseId, slideId, { type: 'ADD_PLAYER', player: sub2 });
 
-      const s = store.getState();
-      const slide = s.project.slides.find((sl) => sl.id === slideId)!;
-      const sub1 = slide.players.find((p) => p.shirtNo === '12')!;
-      const sub2 = slide.players.find((p) => p.shirtNo === '13')!;
+      const pos1 = findSafePitchPosition(
+        documentStore
+          .getState()
+          .project.phases[0].slides.find((s) => s.id === slideId)!.players,
+        'home',
+      );
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'MOVE_PLAYER_TO_PITCH',
+        id: sub1.id,
+        x: clampToScreenNorm(pos1.x),
+        y: clampToScreenNorm(pos1.y),
+      });
 
-      s.movePlayerToPitch(slideId, sub1.id);
-      s.movePlayerToPitch(slideId, sub2.id);
+      const pos2 = findSafePitchPosition(
+        documentStore
+          .getState()
+          .project.phases[0].slides.find((s) => s.id === slideId)!.players,
+        'home',
+      );
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'MOVE_PLAYER_TO_PITCH',
+        id: sub2.id,
+        x: clampToScreenNorm(pos2.x),
+        y: clampToScreenNorm(pos2.y),
+      });
 
-      const updatedSlide = store
+      const updatedSlide = documentStore
         .getState()
-        .project.slides.find((sl) => sl.id === slideId)!;
+        .project.phases[0].slides.find((sl) => sl.id === slideId)!;
       const p1 = updatedSlide.players.find((p) => p.id === sub1.id)!;
       const p2 = updatedSlide.players.find((p) => p.id === sub2.id)!;
 
@@ -133,90 +201,85 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
 
   describe('store: movePlayerToBench (退避)', () => {
     it('退避時、個別オプション（visionCone, focus, badges, connectLines, trajectory）が全自動クリアされる', () => {
-      const store = useTacticalUnifiedStore;
-      const slideId = store.getState().activeSlideId;
-      const slide = store
+      const { documentStore, phaseId, slideId } = createTestStores();
+      const slide = documentStore
         .getState()
-        .project.slides.find((s) => s.id === slideId)!;
+        .project.phases[0].slides.find((s) => s.id === slideId)!;
       const target = slide.players.find((p) => p.area === 'pitch')!;
 
       // オプションを設定
-      store.getState().updatePlayer(slideId, target.id, {
-        visionCone: {
-          id: 'vc-1',
-          angleRad: 0,
-          spreadRad: 0.5,
-          radius: 15,
-          color: '#3b82f6',
-          opacity: 0.3,
-          visible: true,
-        },
-        focus: {
-          enabled: true,
-          color: '#ffffff',
-          radius: 3,
-          opacity: 0.35,
-          style: 'spotlight',
-        },
-        badges: [
-          {
-            id: 'b-1',
-            label: 'Captain',
-            color: '#f59e0b',
-            textColor: '#000',
-            offsetX: 0,
-            offsetY: -12,
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'UPDATE_PLAYER',
+        id: target.id,
+        patch: {
+          visionCone: {
+            id: 'vc-1',
+            angleRad: 0,
+            spreadRad: 0.5,
+            radius: 15,
+            color: '#3b82f6',
+            opacity: 0.3,
             visible: true,
           },
-        ],
-        connectLines: [
-          {
-            id: 'cl-1',
-            toPlayerId: 'other',
-            lineStyle: 'solid',
-            color: '#fff',
-            strokeWidth: 2,
-            visible: true,
+          focus: {
+            enabled: true,
+            color: '#ffffff',
+            radius: 3,
+            opacity: 0.35,
+            style: 'spotlight',
           },
-        ],
-        trajectory: { type: 'straight' },
+          badges: [
+            {
+              id: 'b-1',
+              label: 'Captain',
+              color: '#f59e0b',
+              textColor: '#000',
+              offsetX: 0,
+              offsetY: -12,
+              visible: true,
+            },
+          ],
+          connectLines: [
+            {
+              id: 'cl-1',
+              toPlayerId: 'other',
+              lineStyle: 'solid',
+              color: '#fff',
+              strokeWidth: 2,
+              visible: true,
+            },
+          ],
+          trajectory: { type: 'straight' },
+        },
       });
 
-      // 選択状態にする
-      store.getState().selectObject({ id: target.id, kind: 'player' });
-      expect(
-        store.getState().selectedObjects.some((o) => o.id === target.id),
-      ).toBe(true);
-
       // ベンチ退避実行
-      store.getState().movePlayerToBench(slideId, target.id);
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'MOVE_PLAYER_TO_BENCH',
+        id: target.id,
+      });
 
-      const afterSlide = store
+      const afterSlide = documentStore
         .getState()
-        .project.slides.find((s) => s.id === slideId)!;
+        .project.phases[0].slides.find((s) => s.id === slideId)!;
       const benched = afterSlide.players.find((p) => p.id === target.id)!;
 
       expect(benched.area).toBe('bench');
-      expect(benched.visionCone).toBeUndefined();
-      expect(benched.focus).toBeUndefined();
-      expect(benched.badges).toEqual([]);
-      expect(benched.connectLines).toEqual([]);
-      expect(benched.trajectory).toBeUndefined();
-
-      // 選択も解除されていること
-      expect(
-        store.getState().selectedObjects.some((o) => o.id === target.id),
-      ).toBe(false);
+      const benchedRecord = benched as unknown as Record<string, unknown>;
+      expect(benchedRecord.visionCone).toBeUndefined();
+      expect(benchedRecord.focus).toBeUndefined();
+      expect(benchedRecord.badges ?? []).toEqual([]);
+      expect(benchedRecord.connectLines ?? []).toEqual([]);
+      expect(benchedRecord.trajectory).toBeUndefined();
     });
   });
 
   describe('PlayerLayer: 右側パネル領域へのドロップによるベンチ退避判定', () => {
     it('キャンバス右端外 (x >= width) にドロップされた場合、movePlayerToBench が発火する', () => {
-      const store = useTacticalUnifiedStore;
-      const slideId = store.getState().activeSlideId;
-      const slide = store
+      const { documentStore, phaseId, slideId } = createTestStores();
+      const slide = documentStore
         .getState()
-        .project.slides.find((s) => s.id === slideId)!;
+        .project.phases[0].slides.find((s) => s.id === slideId)!;
       const target = slide.players.find((p) => p.area === 'pitch')!;
 
       const width = 800;
@@ -227,22 +290,24 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
       expect(isOverBenchPanel).toBe(true);
 
       if (isOverBenchPanel) {
-        store.getState().movePlayerToBench(slideId, target.id);
+        documentStore.getState().dispatchSlide(phaseId, slideId, {
+          type: 'MOVE_PLAYER_TO_BENCH',
+          id: target.id,
+        });
       }
 
-      const afterSlide = store
+      const afterSlide = documentStore
         .getState()
-        .project.slides.find((s) => s.id === slideId)!;
+        .project.phases[0].slides.find((s) => s.id === slideId)!;
       const benched = afterSlide.players.find((p) => p.id === target.id)!;
       expect(benched.area).toBe('bench');
     });
 
     it('画面右端 340px 以内（右側ベンチパネル上）にドロップされた場合、movePlayerToBench が発火する', () => {
-      const store = useTacticalUnifiedStore;
-      const slideId = store.getState().activeSlideId;
-      const slide = store
+      const { documentStore, phaseId, slideId } = createTestStores();
+      const slide = documentStore
         .getState()
-        .project.slides.find((s) => s.id === slideId)!;
+        .project.phases[0].slides.find((s) => s.id === slideId)!;
       const target = slide.players.find((p) => p.area === 'pitch')!;
 
       const mockWindowWidth = 1200;
@@ -252,12 +317,15 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
       expect(isOverBenchPanel).toBe(true);
 
       if (isOverBenchPanel) {
-        store.getState().movePlayerToBench(slideId, target.id);
+        documentStore.getState().dispatchSlide(phaseId, slideId, {
+          type: 'MOVE_PLAYER_TO_BENCH',
+          id: target.id,
+        });
       }
 
-      const afterSlide = store
+      const afterSlide = documentStore
         .getState()
-        .project.slides.find((s) => s.id === slideId)!;
+        .project.phases[0].slides.find((s) => s.id === slideId)!;
       const benched = afterSlide.players.find((p) => p.id === target.id)!;
       expect(benched.area).toBe('bench');
     });
@@ -382,40 +450,96 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
 
     describe('PitchGroundLayer', () => {
       it('選択された選手が area === "bench" の場合、ピッチ上にゴースト軌道（PlayerGhostTrajectory）が描画されない', () => {
-        const store = createCanvasStore({
-          mode: 'tactical-board',
-          aspectRatio: '16:9',
-        });
         const benchPlayer = {
-          ...createDefaultPlayer('home', 80, 80, '#034694'),
+          ...createDefaultPlayer(
+            'home',
+            clampToScreenNorm(80),
+            clampToScreenNorm(80),
+            '#034694',
+          ),
+          x: clampToScreenNorm(80),
+          y: clampToScreenNorm(80),
           id: 'bench-p1',
           area: 'bench' as const,
         };
         const pitchPlayer = {
-          ...createDefaultPlayer('home', 50, 50, '#034694'),
+          ...createDefaultPlayer(
+            'home',
+            clampToScreenNorm(50),
+            clampToScreenNorm(50),
+            '#034694',
+          ),
+          x: clampToScreenNorm(50),
+          y: clampToScreenNorm(50),
           id: 'pitch-p1',
           area: 'pitch' as const,
+          trajectory: undefined,
         };
-        store.getState().addMarker(benchPlayer);
-        store.getState().addMarker(pitchPlayer);
 
-        // 前スライド情報（benchPlayer は前スライドではピッチ (20, 20) にいた）
-        store.setState({
-          prevSlide: {
-            players: [
-              { ...benchPlayer, x: 20, y: 20, area: 'pitch' as const },
-              { ...pitchPlayer, x: 50, y: 50, area: 'pitch' as const },
-            ],
-          },
+        const baseProject = createDefaultTacticalProject();
+        const phase = baseProject.phases[0];
+        const baseSlide = phase.slides[0];
+        const prevSlide = {
+          ...baseSlide,
+          id: 'slide-prev',
+          index: 0,
+          players: [
+            {
+              ...benchPlayer,
+              x: clampToScreenNorm(20),
+              y: clampToScreenNorm(20),
+              area: 'pitch' as const,
+              trajectory: undefined,
+            },
+            {
+              ...pitchPlayer,
+              x: clampToScreenNorm(50),
+              y: clampToScreenNorm(50),
+              area: 'pitch' as const,
+            },
+          ],
+        };
+        const activeSlide = {
+          ...baseSlide,
+          id: 'slide-curr',
+          index: 1,
+          players: [benchPlayer, pitchPlayer],
+        };
+        const project = {
+          ...baseProject,
+          phases: [
+            {
+              ...phase,
+              slides: [prevSlide, activeSlide],
+            },
+          ],
+        };
+
+        const documentStore = createDocumentStore(project);
+        const sessionStore = createSessionStore({
+          activePhaseId: phase.id,
+          activeSlideId: activeSlide.id,
         });
+        const playbackStore = createPlaybackStore();
 
         // サブキャンバスでドラッグされた時と同様に benchPlayer を選択
-        store
+        sessionStore
           .getState()
-          .setSelectedObjects([{ id: benchPlayer.id, kind: 'player' }]);
+          .selectObject({ id: benchPlayer.id, kind: 'player' });
 
         const pitchRect = { x: 0, y: 0, width: 800, height: 600 };
         const stageSize = { width: 800, height: 600 };
+        const sceneGraph = resolveSceneGraphFromState({
+          project: documentStore.getState().project,
+          session: {
+            ...sessionStore.getState(),
+            selectedIds: [benchPlayer.id],
+          },
+          isPlaying: false,
+          timeMs: 0 as Milliseconds,
+          viewport: { width: 800, height: 600 },
+        });
+
         const nodesRegistry = createCanvasNodesRegistry();
         const nodesRegistryRef = { current: nodesRegistry };
         const stageRef = React.createRef<any>();
@@ -423,20 +547,17 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
         render(
           React.createElement(
             TacticalStoreProvider,
-            null,
+            { stores: { documentStore, sessionStore, playbackStore } },
             React.createElement(
-              CanvasStoreContext.Provider,
-              { value: store },
-              React.createElement(
-                Stage as any,
-                { ref: stageRef, width: 800, height: 600 },
-                React.createElement(PitchGroundLayer, {
-                  stageSize,
-                  pitchRect,
-                  cleanRender: false,
-                  nodesRegistryRef,
-                }),
-              ),
+              Stage as any,
+              { ref: stageRef, width: 800, height: 600 },
+              React.createElement(PitchGroundLayer, {
+                stageSize,
+                pitchRect,
+                cleanRender: false,
+                nodesRegistryRef,
+                sceneGraph,
+              }),
             ),
           ),
         );

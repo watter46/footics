@@ -1,8 +1,8 @@
-import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Circle } from 'react-konva';
 import type { ArrowAnnotation } from '@/lib/types/tactical-unified';
+import type { ArrowHandlePreviewDelta } from './arrow-handles-group';
 import { cpPxToNormX, cpPxToNormY } from './math-utils';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
@@ -12,7 +12,6 @@ export interface ArrowControlPointsProps {
   stageSize: { width: number; height: number };
   isSelected: boolean;
   isInteractive: boolean;
-  isAttachedToPlayer: boolean;
   isWavy: boolean;
   sPxX: number;
   sPxY: number;
@@ -22,19 +21,9 @@ export interface ArrowControlPointsProps {
   midHandlePxY: number;
   p0: { x: number; y: number };
   p1: { x: number; y: number };
-  startHandleRef: React.RefObject<Konva.Circle | null>;
-  endHandleRef: React.RefObject<Konva.Circle | null>;
-  controlHandleRef: React.RefObject<Konva.Circle | null>;
   onSelect: (e: KonvaClickEvent) => void;
   updateArrow: (arrowId: string, patch: Partial<ArrowAnnotation>) => void;
-  updateKonvaPoints: (
-    sx: number,
-    sy: number,
-    ex: number,
-    ey: number,
-    cpx?: number,
-    cpy?: number,
-  ) => void;
+  onPreviewMove?: (delta: ArrowHandlePreviewDelta | null) => void;
 }
 
 export const ArrowControlPoints = React.memo(function ArrowControlPoints({
@@ -42,7 +31,6 @@ export const ArrowControlPoints = React.memo(function ArrowControlPoints({
   stageSize,
   isSelected,
   isInteractive,
-  isAttachedToPlayer,
   isWavy,
   sPxX,
   sPxY,
@@ -52,18 +40,14 @@ export const ArrowControlPoints = React.memo(function ArrowControlPoints({
   midHandlePxY,
   p0,
   p1,
-  startHandleRef,
-  endHandleRef,
-  controlHandleRef,
   onSelect,
   updateArrow,
-  updateKonvaPoints,
+  onPreviewMove,
 }: ArrowControlPointsProps) {
   const { width, height } = stageSize;
 
   return (
     <Circle
-      ref={controlHandleRef}
       x={midHandlePxX}
       y={midHandlePxY}
       radius={6.5}
@@ -93,50 +77,26 @@ export const ArrowControlPoints = React.memo(function ArrowControlPoints({
       onDragMove={(e) => {
         e.cancelBubble = true;
         const pos = e.target.position();
-        const curSx =
-          !isAttachedToPlayer && startHandleRef.current
-            ? startHandleRef.current.x()
-            : sPxX;
-        const curSy =
-          !isAttachedToPlayer && startHandleRef.current
-            ? startHandleRef.current.y()
-            : sPxY;
-        const curEx = endHandleRef.current ? endHandleRef.current.x() : ePxX;
-        const curEy = endHandleRef.current ? endHandleRef.current.y() : ePxY;
-
-        const calcCpX = 2 * pos.x - 0.5 * (curSx + curEx);
-        const calcCpY = 2 * pos.y - 0.5 * (curSy + curEy);
-
-        updateKonvaPoints(curSx, curSy, curEx, curEy, calcCpX, calcCpY);
+        onPreviewMove?.({ kind: 'control', pxX: pos.x, pxY: pos.y });
       }}
       onDragEnd={(e) => {
         e.cancelBubble = true;
         const pos = e.target.position();
-        const curSx =
-          !isAttachedToPlayer && startHandleRef.current
-            ? startHandleRef.current.x()
-            : sPxX;
-        const curSy =
-          !isAttachedToPlayer && startHandleRef.current
-            ? startHandleRef.current.y()
-            : sPxY;
-        const curEx = endHandleRef.current ? endHandleRef.current.x() : ePxX;
-        const curEy = endHandleRef.current ? endHandleRef.current.y() : ePxY;
-
-        const calcCpX = 2 * pos.x - 0.5 * (curSx + curEx);
-        const calcCpY = 2 * pos.y - 0.5 * (curSy + curEy);
+        const calcCpX = 2 * pos.x - 0.5 * (sPxX + ePxX);
+        const calcCpY = 2 * pos.y - 0.5 * (sPxY + ePxY);
 
         const newNormX = cpPxToNormX(calcCpX, width);
         const newNormY = cpPxToNormY(calcCpY, height);
         const stage = e.target.getStage();
         if (stage) stage.container().style.cursor = 'default';
 
-        const midPxX = (curSx + curEx) / 2;
-        const midPxY = (curSy + curEy) / 2;
+        const midPxX = (sPxX + ePxX) / 2;
+        const midPxY = (sPxY + ePxY) / 2;
         const distFromMidPx = Math.hypot(pos.x - midPxX, pos.y - midPxY);
 
+        onPreviewMove?.(null);
+
         if (distFromMidPx < 6.0) {
-          e.target.position({ x: midPxX, y: midPxY });
           updateArrow(arrow.id, {
             sourcePlayerId: arrow.sourcePlayerId,
             curveType: 'straight',

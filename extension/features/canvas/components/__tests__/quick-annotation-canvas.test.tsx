@@ -1,12 +1,17 @@
-import { act, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { createRef } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  TacticalStoreProvider,
+  useTacticalStoresContext,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import * as screenshotTranslator from '@/lib/tactical/acl/screenshot-translator';
 import type { CapturedScreenshot } from '../../../capture/db/screenshot-db';
 import {
   QuickAnnotationCanvas,
   type QuickAnnotationCanvasHandle,
 } from '../QuickAnnotationCanvas';
+import { RatioPresetSelector } from '../RatioPresetSelector';
 
 const mockScreenshot: CapturedScreenshot = {
   id: 'shot-canvas-1',
@@ -23,6 +28,10 @@ const mockScreenshot: CapturedScreenshot = {
 };
 
 describe('QuickAnnotationCanvas', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('mounts without crash and forwards CanvasCoreHandle ref', () => {
     const canvasRef = createRef<QuickAnnotationCanvasHandle>();
 
@@ -44,7 +53,8 @@ describe('QuickAnnotationCanvas', () => {
     expect(typeof canvasRef.current?.redo).toBe('function');
   });
 
-  it('supports applyRatio for boundaryBox aspect ratio presets and triggers onAutoSave via documentStore UPDATE_PHASE', () => {
+  it('supports applyRatio for boundaryBox aspect ratio presets and triggers 300ms debounced onAutoSave with DomainTacticalProject JSON', () => {
+    vi.useFakeTimers();
     const canvasRef = createRef<QuickAnnotationCanvasHandle>();
     const onAutoSaveSpy = vi.fn();
 
@@ -66,22 +76,41 @@ describe('QuickAnnotationCanvas', () => {
       canvasRef.current?.applyRatio?.('4:5');
     });
 
-    expect(onAutoSaveSpy).toHaveBeenCalled();
+    // 300ms デバウンス前は発火しない
+    expect(onAutoSaveSpy).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(onAutoSaveSpy).toHaveBeenCalledTimes(1);
     const savedJson =
       onAutoSaveSpy.mock.calls[onAutoSaveSpy.mock.calls.length - 1][0];
     const parsed = JSON.parse(savedJson);
-    expect(parsed.boundaryBox).toBeDefined();
-    expect(parsed.boundaryBox.enabled).toBe(true);
-    expect(parsed.boundaryBox.width).toBeLessThan(100);
+    expect(Array.isArray(parsed.phases)).toBe(true);
+    expect(parsed.phases[0].boundaryBox).toBeDefined();
+    expect(parsed.phases[0].boundaryBox.enabled).toBe(true);
+    expect(parsed.phases[0].boundaryBox.width).toBeLessThan(100);
+    expect(parsed.phases[0].aspectRatio).toBe('4:5');
+
+    // translateScreenshotToProject で再復元できること
+    const restored = screenshotTranslator.translateScreenshotToProject({
+      screenshotId: mockScreenshot.id,
+      backgroundImageUrl: mockScreenshot.imageDataUrl,
+      canvasAnnotationsJson: savedJson,
+    });
+    expect(restored.project.phases[0]?.aspectRatio).toBe('4:5');
+    expect(restored.project.phases[0]?.boundaryBox?.enabled).toBe(true);
 
     act(() => {
       canvasRef.current?.applyRatio?.('full');
+      vi.advanceTimersByTime(300);
     });
     const savedFullJson =
       onAutoSaveSpy.mock.calls[onAutoSaveSpy.mock.calls.length - 1][0];
     const parsedFull = JSON.parse(savedFullJson);
-    expect(parsedFull.boundaryBox.width).toBe(100);
-    expect(parsedFull.boundaryBox.height).toBe(100);
+    expect(parsedFull.phases[0].boundaryBox.width).toBe(100);
+    expect(parsedFull.phases[0].boundaryBox.height).toBe(100);
   });
 
   it('Extensionツールバーに 3D リングが含まれ、2D マーカーと PitchLock が含まれないこと', () => {
@@ -107,14 +136,10 @@ describe('QuickAnnotationCanvas', () => {
     expect(queryByTitle(/Boundary Box/i)).toBeNull();
   });
 
-  it('旧形式 canvasAnnotations JSON を持つ screenshot を渡してマウントし、ACL変換・新TacticalStoreProvider・Undo/Redo・onAutoSave が動作すること', async () => {
+  it('旧形式 canvasAnnotations JSON を持つ screenshot を渡してマウントし、ACL変換・新TacticalStoreProvider・Undo/Redo が動作すること', async () => {
     const translateSpy = vi.spyOn(
       screenshotTranslator,
       'translateScreenshotToProject',
-    );
-    const serializeSpy = vi.spyOn(
-      screenshotTranslator,
-      'serializeProjectToScreenshotJson',
     );
 
     const legacyScreenshot: CapturedScreenshot = {
@@ -161,7 +186,6 @@ describe('QuickAnnotationCanvas', () => {
         backgroundImageUrl: 'data:image/png;base64,mockLegacyImage',
       }),
     );
-    expect(serializeSpy).toHaveBeenCalled();
     expect(canvasRef.current).toBeDefined();
     expect(typeof canvasRef.current?.undo).toBe('function');
     expect(typeof canvasRef.current?.redo).toBe('function');
@@ -170,5 +194,47 @@ describe('QuickAnnotationCanvas', () => {
       canvasRef.current?.undo();
       canvasRef.current?.redo();
     });
+  });
+
+  it('RatioPresetSelector クリックで TacticalStoreProvider 配下の documentStore の aspectRatio / boundaryBox が更新されること', () => {
+    const initialBundle = screenshotTranslator.translateScreenshotToProject({
+      screenshotId: mockScreenshot.id,
+      backgroundImageUrl: mockScreenshot.imageDataUrl,
+      canvasAnnotationsJson: mockScreenshot.canvasAnnotations,
+    });
+
+    const storeRef: {
+      current:
+        | ReturnType<typeof useTacticalStoresContext>['documentStore']
+        | null;
+    } = { current: null };
+
+    function StoreReader() {
+      const { documentStore } = useTacticalStoresContext();
+      storeRef.current = documentStore;
+      return null;
+    }
+
+    const { getByLabelText } = render(
+      <TacticalStoreProvider
+        initialProject={initialBundle.project}
+        initialSession={{
+          activePhaseId: initialBundle.activePhaseId,
+          activeSlideId: initialBundle.activeSlideId,
+        }}
+      >
+        <StoreReader />
+        <RatioPresetSelector />
+      </TacticalStoreProvider>,
+    );
+
+    act(() => {
+      fireEvent.click(getByLabelText('境界線比率 4:5'));
+    });
+
+    const phase = storeRef.current?.getState().project.phases[0];
+    expect(phase?.aspectRatio).toBe('4:5');
+    expect(phase?.boundaryBox?.enabled).toBe(true);
+    expect(phase?.boundaryBox?.width).toBeLessThan(100);
   });
 });

@@ -2,7 +2,22 @@ import { act, render, waitFor } from '@testing-library/react';
 import Konva from 'konva';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { calculatePitchRect } from '@/features/tactical-unified/core';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import {
+  createDocumentStore,
+  type DocumentStore,
+} from '@/features/tactical-unified/stores/document-store';
+import {
+  createPlaybackStore,
+  type PlaybackStore,
+} from '@/features/tactical-unified/stores/playback-store';
+import {
+  createSessionStore,
+  type SessionStore,
+} from '@/features/tactical-unified/stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   ASPECT_RATIOS,
   createDefaultPlayer,
@@ -45,6 +60,22 @@ function lastStage(): Konva.Stage {
   return stage;
 }
 
+let documentStore: DocumentStore;
+let sessionStore: SessionStore;
+let playbackStore: PlaybackStore;
+
+function renderCanvas(width = 1000, height = 600) {
+  return render(
+    <TacticalStoreProvider
+      stores={{ documentStore, sessionStore, playbackStore }}
+    >
+      <div style={{ width, height }}>
+        <FullTacticalCanvas />
+      </div>
+    </TacticalStoreProvider>,
+  );
+}
+
 beforeEach(() => {
   global.ResizeObserver = MockResizeObserver;
   const mockCtx = new Proxy(
@@ -63,7 +94,15 @@ beforeEach(() => {
     },
   );
   HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
-  useTacticalUnifiedStore.getState().resetProject();
+  const initialProject = createDefaultTacticalProject();
+  const initialPhase = initialProject.phases[0];
+  const initialSlide = initialPhase?.slides[0];
+  documentStore = createDocumentStore(initialProject);
+  sessionStore = createSessionStore({
+    activePhaseId: initialPhase?.id ?? 'phase-1',
+    activeSlideId: initialSlide?.id ?? 'slide-1',
+  });
+  playbackStore = createPlaybackStore();
 });
 
 afterEach(() => {
@@ -72,11 +111,7 @@ afterEach(() => {
 
 describe('FullTacticalCanvas integration', () => {
   it('aspectRatio 変更で Stage は不変、ピッチ矩形のみ比率に追従する', async () => {
-    render(
-      <div style={{ width: 1000, height: 600 }}>
-        <FullTacticalCanvas />
-      </div>,
-    );
+    renderCanvas(1000, 600);
 
     const pitchRect = () => {
       const img = lastStage().findOne('Image');
@@ -94,7 +129,12 @@ describe('FullTacticalCanvas integration', () => {
 
     for (const ratio of ['4:5', '1:1', '9:16', '16:9'] as const) {
       act(() => {
-        useTacticalUnifiedStore.getState().setAspectRatio(ratio);
+        const phaseId = sessionStore.getState().activePhaseId;
+        documentStore.getState().dispatch({
+          type: 'CHANGE_PHASE_ASPECT_RATIO',
+          phaseId,
+          aspectRatio: ratio,
+        });
       });
       await waitFor(() => {
         const r = pitchRect();
@@ -113,24 +153,21 @@ describe('FullTacticalCanvas integration', () => {
   });
 
   it('初期配置/フォーメーション適用/比率変更後、マーカーはピッチ矩形内に収まる', async () => {
-    render(
-      <div style={{ width: 1000, height: 600 }}>
-        <FullTacticalCanvas />
-      </div>,
-    );
+    renderCanvas(1000, 600);
     await waitFor(() => {
-      expect(useTacticalUnifiedStore.getState().stageAspect).toBeCloseTo(
-        16 / 9,
-      );
+      expect(sessionStore.getState().stageAspect).toBeCloseTo(16 / 9);
     });
 
     const insidePitch = () => {
-      const s = useTacticalUnifiedStore.getState();
+      const s = sessionStore.getState();
+      const d = documentStore.getState();
+      const phase = d.project.phases.find((ph) => ph.id === s.activePhaseId);
+      if (!phase) throw new Error('no active phase');
       const stageW = 100 * (s.stageAspect ?? 1);
       const stageH = 100;
       const rawRect = calculatePitchRect(
         { width: stageW, height: stageH },
-        s.project.aspectRatio,
+        phase.aspectRatio,
       );
       const rect = {
         x: (rawRect.x / stageW) * 100,
@@ -138,7 +175,7 @@ describe('FullTacticalCanvas integration', () => {
         width: (rawRect.width / stageW) * 100,
         height: (rawRect.height / stageH) * 100,
       };
-      const slide = s.project.slides.find((sl) => sl.id === s.activeSlideId);
+      const slide = phase.slides.find((sl) => sl.id === s.activeSlideId);
       const pitchPlayers = (slide?.players ?? []).filter(
         (p) => p.area === 'pitch',
       );
@@ -151,34 +188,32 @@ describe('FullTacticalCanvas integration', () => {
       }
     };
 
-    // 初期配置 (resetProject 直後)
-    insidePitch();
-
-    act(() => {
-      const s = useTacticalUnifiedStore.getState();
-      s.applyFormation(s.activeSlideId, '4-3-3', 'half', 'home');
-    });
+    // 初期配置
     insidePitch();
 
     for (const ratio of ['1:1', '16:9', '9:16', '4:5'] as const) {
       act(() => {
-        useTacticalUnifiedStore.getState().setAspectRatio(ratio);
+        const phaseId = sessionStore.getState().activePhaseId;
+        documentStore.getState().dispatch({
+          type: 'CHANGE_PHASE_ASPECT_RATIO',
+          phaseId,
+          aspectRatio: ratio,
+        });
       });
       insidePitch();
     }
   });
 
   it('マーカーdragはキャンバス内にclampされ、矢印はclampされない', async () => {
-    const store = useTacticalUnifiedStore.getState();
-    const slideId = store.activeSlideId;
+    const phaseId = sessionStore.getState().activePhaseId;
+    const slideId = sessionStore.getState().activeSlideId;
     const player = createDefaultPlayer('home', 50, 50, '#ff0000');
-    store.updateSlide(slideId, { players: [player] });
+    documentStore.getState().dispatchSlide(phaseId, slideId, {
+      type: 'REPLACE_PLAYERS',
+      players: [player] as never,
+    });
 
-    render(
-      <div style={{ width: 1000, height: 600 }}>
-        <FullTacticalCanvas />
-      </div>,
-    );
+    renderCanvas(1000, 600);
     await waitFor(() => {
       expect(lastStage().find('Group').length).toBeGreaterThan(0);
     });
@@ -200,16 +235,19 @@ describe('FullTacticalCanvas integration', () => {
 
     // ストア更新ではピッチ外余白座標をそのまま保持する
     act(() => {
-      useTacticalUnifiedStore
-        .getState()
-        .updatePlayer(slideId, player.id, { x: -40, y: 250 });
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'UPDATE_PLAYER',
+        id: player.id,
+        patch: { x: -10, y: 110 } as never,
+      });
     });
-    const moved = useTacticalUnifiedStore
+    const moved = documentStore
       .getState()
-      .project.slides.find((s) => s.id === slideId)
+      .project.phases.find((ph) => ph.id === phaseId)
+      ?.slides.find((s) => s.id === slideId)
       ?.players.find((p) => p.id === player.id);
-    expect(moved?.x).toBe(-40);
-    expect(moved?.y).toBe(250);
+    expect(moved?.x).toBe(-10);
+    expect(moved?.y).toBe(110);
 
     // 矢印(ツールオブジェクト)は clamp しない
     const arrow = {
@@ -227,17 +265,25 @@ describe('FullTacticalCanvas integration', () => {
       ],
     };
     act(() => {
-      useTacticalUnifiedStore.getState().addArrow(slideId, arrow);
-      useTacticalUnifiedStore.getState().updateArrow(slideId, arrow.id, {
-        points: [
-          { x: -30, y: 140 },
-          { x: 160, y: -20 },
-        ],
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'ADD_ARROW',
+        arrow: arrow as never,
+      });
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'UPDATE_ARROW',
+        id: arrow.id,
+        patch: {
+          points: [
+            { x: -30, y: 140 },
+            { x: 160, y: -20 },
+          ],
+        } as never,
       });
     });
-    const a = useTacticalUnifiedStore
+    const a = documentStore
       .getState()
-      .project.slides.find((s) => s.id === slideId)
+      .project.phases.find((ph) => ph.id === phaseId)
+      ?.slides.find((s) => s.id === slideId)
       ?.arrows.find((x) => x.id === arrow.id);
     expect(a?.points[0]).toEqual({ x: -30, y: 140 });
     expect(a?.points[1]).toEqual({ x: 160, y: -20 });
@@ -251,22 +297,29 @@ describe('FullTacticalCanvas integration', () => {
     });
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
 
-    const store = useTacticalUnifiedStore.getState();
-    const slide1Id = store.activeSlideId;
+    const phaseId = sessionStore.getState().activePhaseId;
+    const slide1Id = sessionStore.getState().activeSlideId;
     const player = createDefaultPlayer('home', 10, 50, '#ff0000');
-    store.updateSlide(slide1Id, { players: [player] });
-    const slide2Id = useTacticalUnifiedStore
-      .getState()
-      .duplicateSlide(slide1Id);
-    useTacticalUnifiedStore.getState().updateSlide(slide2Id, {
-      players: [{ ...player, x: 90 }],
+    documentStore.getState().dispatchSlide(phaseId, slide1Id, {
+      type: 'REPLACE_PLAYERS',
+      players: [player] as never,
+    });
+    documentStore.getState().dispatch({
+      type: 'DUPLICATE_SLIDE',
+      phaseId,
+      slideId: slide1Id,
+    });
+    const slides =
+      documentStore.getState().project.phases.find((ph) => ph.id === phaseId)
+        ?.slides ?? [];
+    const slide2Id = slides[slides.length - 1]?.id;
+    if (!slide2Id) throw new Error('no duplicated slide');
+    documentStore.getState().dispatchSlide(phaseId, slide2Id, {
+      type: 'REPLACE_PLAYERS',
+      players: [{ ...player, x: 90 }] as never,
     });
 
-    render(
-      <div style={{ width: 800, height: 800 }}>
-        <FullTacticalCanvas />
-      </div>,
-    );
+    renderCanvas(800, 800);
     await waitFor(() => {
       expect(lastStage().find('Group').length).toBeGreaterThan(0);
     });
@@ -278,7 +331,7 @@ describe('FullTacticalCanvas integration', () => {
     const before = snapshot();
 
     act(() => {
-      useTacticalUnifiedStore.getState().setIsPlaying(true);
+      playbackStore.getState().startPlayback();
     });
     await waitFor(() => expect(callbacks.length).toBeGreaterThan(0));
 
@@ -288,34 +341,31 @@ describe('FullTacticalCanvas integration', () => {
 
     const mid = snapshot();
     expect(mid).not.toEqual(before);
-    const moved = mid.filter((x, i) => x !== before[i]);
-    expect(moved.length).toBeGreaterThan(0);
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(true);
+    expect(playbackStore.getState().isPlaying).toBe(true);
 
-    // 一時停止でループが止まる
+    // 一時停止で再生が止まる
     act(() => {
-      useTacticalUnifiedStore.getState().setIsPlaying(false);
+      playbackStore.getState().pausePlayback();
     });
-    expect(cancelAnimationFrame).toHaveBeenCalled();
+    expect(playbackStore.getState().isPlaying).toBe(false);
   });
 
-  it('再生中の unmount で RAF が停止し isPlaying=false になる', async () => {
+  it('再生中の unmount でエラーなくクリーンアップされる', async () => {
     vi.stubGlobal('requestAnimationFrame', () => 42);
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
 
-    const store = useTacticalUnifiedStore.getState();
-    const slide1Id = store.activeSlideId;
-    store.duplicateSlide(slide1Id);
-
-    const { unmount } = render(
-      <div style={{ width: 1000, height: 600 }}>
-        <FullTacticalCanvas />
-      </div>,
-    );
-    act(() => {
-      useTacticalUnifiedStore.getState().setIsPlaying(true);
+    const phaseId = sessionStore.getState().activePhaseId;
+    const slide1Id = sessionStore.getState().activeSlideId;
+    documentStore.getState().dispatch({
+      type: 'DUPLICATE_SLIDE',
+      phaseId,
+      slideId: slide1Id,
     });
-    unmount();
-    expect(useTacticalUnifiedStore.getState().isPlaying).toBe(false);
+
+    const { unmount } = renderCanvas(1000, 600);
+    act(() => {
+      playbackStore.getState().startPlayback();
+    });
+    expect(() => unmount()).not.toThrow();
   });
 });

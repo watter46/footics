@@ -148,6 +148,32 @@ export function getStagePitchAndNormPos(
   return { pitchPos, normPos };
 }
 
+export interface PitchGroupTransform {
+  readonly x: number;
+  readonly y: number;
+  readonly scaleX: number;
+  readonly scaleY: number;
+}
+
+/**
+ * Konva レイヤー親 <Group> 用の 2D 変形パラメータを解決
+ * (ピッチ左上オフセット + ピッチ幾何学中心基準の 2D Zoom/Pan)
+ */
+export function resolvePitchGroupTransform(
+  pitchRect: PitchRectBounds,
+  pitchTransform?: PitchTransformState | null,
+): PitchGroupTransform {
+  const zoom = pitchTransform?.zoom ?? 1;
+  const panX = pitchTransform?.panX ?? 0;
+  const panY = pitchTransform?.panY ?? 0;
+  return {
+    x: pitchRect.x + panX + (pitchRect.width / 2) * (1 - zoom),
+    y: pitchRect.y + panY + (pitchRect.height / 2) * (1 - zoom),
+    scaleX: zoom,
+    scaleY: zoom,
+  };
+}
+
 /**
  * 0-100% 正規化値を範囲内 [min, max] に clamp
  */

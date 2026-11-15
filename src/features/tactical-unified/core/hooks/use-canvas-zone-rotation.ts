@@ -11,9 +11,10 @@ import {
   checkCornerRotateZone,
   updateRotateCursor,
 } from '../utils/canvas-zone-rotation-helpers';
+import { pointerToNormalizedCoord } from '../utils/geometry';
 
 export interface UseCanvasZoneRotationOptions {
-  vRect: { width: number; height: number };
+  vRect: { x?: number; y?: number; width: number; height: number };
   containerRef?: React.RefObject<HTMLDivElement | null>;
   isDrawing: boolean;
   isPanning: boolean;
@@ -31,6 +32,7 @@ export function useCanvasZoneRotation({
   const activeSlideId = useSessionStore((s) => s.activeSlideId);
   const setIsDragging = useSessionStore((s) => s.setIsDragging);
   const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
+  const setActiveZoneRotation = useSessionStore((s) => s.setActiveZoneRotation);
 
   const project = useDocumentStore((s) => s.project);
   const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
@@ -52,18 +54,48 @@ export function useCanvasZoneRotation({
   const startShapeRotationRef = useRef(0);
   const currentRotationRef = useRef<number | null>(null);
   const isOverRotateZoneRef = useRef(false);
+  const stageContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const toPitchLocalPos = useCallback(
+    (pixelPos: { x: number; y: number }) => {
+      const norm = pointerToNormalizedCoord(
+        pixelPos,
+        {
+          x: vRect.x ?? 0,
+          y: vRect.y ?? 0,
+          width: vRect.width,
+          height: vRect.height,
+        },
+        { allowOverflow: true, transform: activeSlide?.pitchTransform },
+      );
+      return {
+        x: (norm.x / 100) * vRect.width,
+        y: (norm.y / 100) * vRect.height,
+      };
+    },
+    [vRect.x, vRect.y, vRect.width, vRect.height, activeSlide?.pitchTransform],
+  );
 
   const handlePointerDown = useCallback(
-    (pixelPos: { x: number; y: number }, isAnchor = false) => {
+    (
+      pixelPos: { x: number; y: number },
+      isAnchor = false,
+      stageContainer?: HTMLDivElement | null,
+    ) => {
+      if (stageContainer !== undefined) {
+        stageContainerRef.current = stageContainer;
+      }
+      const pitchPos = toPitchLocalPos(pixelPos);
       const res = checkAndStartRotation(
         activeTool,
         selectedZone,
         isOverRotateZoneRef.current,
         isAnchor,
-        pixelPos,
+        pitchPos,
         vRect.width,
         vRect.height,
         containerRef?.current ?? null,
+        stageContainer ?? stageContainerRef.current,
       );
       if (res.started) {
         isRotatingRef.current = true;
@@ -78,6 +110,7 @@ export function useCanvasZoneRotation({
       return false;
     },
     [
+      toPitchLocalPos,
       activeTool,
       selectedZone,
       vRect.width,
@@ -89,21 +122,25 @@ export function useCanvasZoneRotation({
   );
 
   const handlePointerMove = useCallback(
-    (pixelPos: { x: number; y: number }, isAnchor = false) => {
+    (
+      pixelPos: { x: number; y: number },
+      isAnchor = false,
+      stageContainer?: HTMLDivElement | null,
+    ) => {
+      if (stageContainer !== undefined) {
+        stageContainerRef.current = stageContainer;
+      }
+      const pitchPos = toPitchLocalPos(pixelPos);
       if (isRotatingRef.current && selectedZone) {
         const currentAngle = Math.atan2(
-          pixelPos.y - rotateCenterRef.current.y,
-          pixelPos.x - rotateCenterRef.current.x,
+          pitchPos.y - rotateCenterRef.current.y,
+          pitchPos.x - rotateCenterRef.current.x,
         );
         const diffDeg =
           ((currentAngle - startMouseAngleRef.current) * 180) / Math.PI;
         const newRot = (startShapeRotationRef.current + diffDeg + 360) % 360;
         currentRotationRef.current = newRot;
-        dispatchSlide(activePhaseId, activeSlideId, {
-          type: 'UPDATE_ZONE',
-          id: selectedZone.id,
-          patch: { rotation: newRot },
-        });
+        setActiveZoneRotation({ zoneId: selectedZone.id, rotationDeg: newRot });
         return true;
       }
 
@@ -117,17 +154,22 @@ export function useCanvasZoneRotation({
         const isOver =
           !isAnchor &&
           checkCornerRotateZone(
-            pixelPos,
+            pitchPos,
             selectedZone,
             vRect.width,
             vRect.height,
           );
         isOverRotateZoneRef.current = isOver;
-        updateRotateCursor(containerRef?.current ?? null, isOver);
+        updateRotateCursor(
+          containerRef?.current ?? null,
+          isOver,
+          stageContainer ?? stageContainerRef.current,
+        );
       }
       return false;
     },
     [
+      toPitchLocalPos,
       selectedZone,
       activeTool,
       isDrawing,
@@ -135,25 +177,30 @@ export function useCanvasZoneRotation({
       vRect.width,
       vRect.height,
       containerRef,
-      activePhaseId,
-      activeSlideId,
-      dispatchSlide,
+      setActiveZoneRotation,
     ],
   );
 
   const handlePointerUp = useCallback(() => {
     if (isRotatingRef.current) {
       isRotatingRef.current = false;
-      if (currentRotationRef.current !== null && selectedZone) {
+      const finalRot = currentRotationRef.current;
+      currentRotationRef.current = null;
+      setActiveZoneRotation(null);
+      if (finalRot !== null && selectedZone) {
         dispatchSlide(activePhaseId, activeSlideId, {
           type: 'UPDATE_ZONE',
           id: selectedZone.id,
-          patch: { rotation: currentRotationRef.current },
+          patch: { rotation: finalRot },
         });
       }
       setIsDragging(false);
       setIsHudOpen(true);
-      updateRotateCursor(containerRef?.current ?? null, false);
+      updateRotateCursor(
+        containerRef?.current ?? null,
+        false,
+        stageContainerRef.current,
+      );
       return true;
     }
     return false;
@@ -163,6 +210,7 @@ export function useCanvasZoneRotation({
     activePhaseId,
     activeSlideId,
     dispatchSlide,
+    setActiveZoneRotation,
     setIsDragging,
     setIsHudOpen,
   ]);

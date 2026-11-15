@@ -3,7 +3,7 @@
 /**
  * drawing-toolbar.tsx
  * Web-layer toolbar component.
- * Renders CoreDrawingToolbar inside CanvasStoreContext provided by FullTacticalCanvas.
+ * Renders CoreDrawingToolbar inside TacticalStoreProvider provided by FullTacticalCanvas.
  */
 
 import type { ReactNode } from 'react';

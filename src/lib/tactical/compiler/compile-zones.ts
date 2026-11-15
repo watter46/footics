@@ -98,7 +98,10 @@ export function compileZones(
       yPx: topLeft.y as StagePixel,
       widthPx,
       heightPx,
-      rotationDeg: zone.rotation ?? 0,
+      rotationDeg:
+        session?.activeZoneRotation?.zoneId === zone.id
+          ? session.activeZoneRotation.rotationDeg
+          : (zone.rotation ?? 0),
       color: zone.color,
       opacity: zoneOpacity.opacity,
       strokeColor: zone.strokeColor ?? zone.color,

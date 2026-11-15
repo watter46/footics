@@ -1,8 +1,8 @@
-import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Circle } from 'react-konva';
 import type { ArrowAnnotation } from '@/lib/types/tactical-unified';
+import type { ArrowHandlePreviewDelta } from './arrow-handles-group';
 import { pxToNormX, pxToNormY } from './math-utils';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
@@ -13,26 +13,12 @@ export interface ArrowEndHandleProps {
   isSelected: boolean;
   isInteractive: boolean;
   isAttachedToPlayer: boolean;
-  sPxX: number;
-  sPxY: number;
   ePxX: number;
   ePxY: number;
-  cpPxX: number;
-  cpPxY: number;
   p0: { x: number; y: number };
-  startHandleRef: React.RefObject<Konva.Circle | null>;
-  endHandleRef: React.RefObject<Konva.Circle | null>;
-  controlHandleRef: React.RefObject<Konva.Circle | null>;
   onSelect: (e: KonvaClickEvent) => void;
   updateArrow: (id: string, p: Partial<ArrowAnnotation>) => void;
-  updateKonvaPoints: (
-    sx: number,
-    sy: number,
-    ex: number,
-    ey: number,
-    cpx?: number,
-    cpy?: number,
-  ) => void;
+  onPreviewMove?: (delta: ArrowHandlePreviewDelta | null) => void;
 }
 
 const handleStyle = {
@@ -53,82 +39,29 @@ function setCursor(
   if (stage) stage.container().style.cursor = cursor;
 }
 
-function calcEndMid(
-  curSx: number,
-  curSy: number,
-  posX: number,
-  posY: number,
-  cpX?: number,
-  cpY?: number,
-  hasCp?: boolean,
-) {
-  if (!hasCp || cpX === undefined || cpY === undefined) {
-    return { x: (curSx + posX) / 2, y: (curSy + posY) / 2 };
-  }
-  return {
-    x: 0.25 * curSx + 0.5 * cpX + 0.25 * posX,
-    y: 0.25 * curSy + 0.5 * cpY + 0.25 * posY,
-  };
-}
-
 export const ArrowEndHandle = React.memo(function ArrowEndHandle({
   arrow,
   stageSize,
   isSelected,
   isInteractive,
   isAttachedToPlayer,
-  sPxX,
-  sPxY,
   ePxX,
   ePxY,
-  cpPxX,
-  cpPxY,
   p0,
-  startHandleRef,
-  endHandleRef,
-  controlHandleRef,
   onSelect,
   updateArrow,
-  updateKonvaPoints,
+  onPreviewMove,
 }: ArrowEndHandleProps) {
   const { width, height } = stageSize;
 
   const onDragMove = (e: KonvaEventObject<DragEvent>) => {
     e.cancelBubble = true;
     const pos = e.target.position();
-    const curSx =
-      !isAttachedToPlayer && startHandleRef.current
-        ? startHandleRef.current.x()
-        : sPxX;
-    const curSy =
-      !isAttachedToPlayer && startHandleRef.current
-        ? startHandleRef.current.y()
-        : sPxY;
-    if (controlHandleRef.current) {
-      const mid = calcEndMid(
-        curSx,
-        curSy,
-        pos.x,
-        pos.y,
-        cpPxX,
-        cpPxY,
-        Boolean(arrow.controlPoint),
-      );
-      controlHandleRef.current.position(mid);
-    }
-    updateKonvaPoints(
-      curSx,
-      curSy,
-      pos.x,
-      pos.y,
-      arrow.controlPoint ? cpPxX : undefined,
-      arrow.controlPoint ? cpPxY : undefined,
-    );
+    onPreviewMove?.({ kind: 'end', pxX: pos.x, pxY: pos.y });
   };
 
   return (
     <Circle
-      ref={endHandleRef}
       x={ePxX}
       y={ePxY}
       {...handleStyle}
@@ -151,6 +84,7 @@ export const ArrowEndHandle = React.memo(function ArrowEndHandle({
         e.cancelBubble = true;
         const pos = e.target.position();
         setCursor(e, 'default');
+        onPreviewMove?.(null);
         updateArrow(arrow.id, {
           targetPlayerId: undefined,
           points: [

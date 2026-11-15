@@ -12,11 +12,17 @@ export interface EphemeralDragDelta {
   readonly deltaScreenNormY: number;
 }
 
+export interface EphemeralZoneRotation {
+  readonly zoneId: string;
+  readonly rotationDeg: number;
+}
+
 export interface EphemeralSessionState {
   readonly activePhaseId: string;
   readonly activeSlideId: string;
   readonly selectedIds: readonly string[];
   readonly activeDragDelta?: EphemeralDragDelta | null;
+  readonly activeZoneRotation?: EphemeralZoneRotation | null;
   readonly drawingPreview?: {
     readonly tool: string;
     readonly startPoint: ScreenNormPoint;

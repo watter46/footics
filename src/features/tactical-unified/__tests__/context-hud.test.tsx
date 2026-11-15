@@ -18,8 +18,6 @@ import {
 } from '../core/components/ContextHud';
 import { resolveHudTarget } from '../core/components/hud/hud-targets';
 import { computeClampedHudPos } from '../core/components/hud/use-hud-position';
-import { createCanvasStore } from '../core/store/canvas-store';
-import { CanvasStoreProvider } from '../core/store/canvas-store-provider';
 import {
   type ArrowNodeEntry,
   type CanvasNodesRegistry,
@@ -33,10 +31,6 @@ import {
   createDefaultTacticalProject,
   TacticalStoreProvider,
 } from '../stores/tactical-store-provider';
-import {
-  createTacticalUnifiedStore,
-  TacticalUnifiedStoreContext,
-} from '../stores/tactical-unified-store';
 
 function createMockRegistry(
   partial: Partial<CanvasNodesRegistry>,
@@ -362,15 +356,6 @@ describe('Context HUD Positioning and Target Resolution', () => {
     });
 
     it('ContextHud で ball 選択時に BallHud が描画される', () => {
-      const canvasStore = createCanvasStore({ mode: 'full-tactical' });
-      canvasStore.setState({
-        selectedObjects: [{ id: 'ball', kind: 'ball' }],
-        isHudOpen: true,
-        isDragging: false,
-        activeTool: 'select',
-      });
-
-      const tacticalStore = createTacticalUnifiedStore();
       const project = createDefaultTacticalProject();
       const documentStore = createDocumentStore(project);
       const sessionStore = createSessionStore({
@@ -401,14 +386,10 @@ describe('Context HUD Positioning and Target Resolution', () => {
         <TacticalStoreProvider
           stores={{ documentStore, sessionStore, playbackStore }}
         >
-          <TacticalUnifiedStoreContext.Provider value={tacticalStore}>
-            <CanvasStoreProvider store={canvasStore}>
-              <ContextHud
-                stageSize={{ width: 800, height: 600 }}
-                nodesRegistryRef={nodesRegistryRef}
-              />
-            </CanvasStoreProvider>
-          </TacticalUnifiedStoreContext.Provider>
+          <ContextHud
+            stageSize={{ width: 800, height: 600 }}
+            nodesRegistryRef={nodesRegistryRef}
+          />
         </TacticalStoreProvider>,
       );
 

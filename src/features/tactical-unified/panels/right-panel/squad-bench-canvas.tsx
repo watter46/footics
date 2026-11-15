@@ -4,19 +4,45 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { Layer, Stage } from 'react-konva';
 import { PlayerMarkerItem } from '@/features/tactical-unified/core/components/PlayerMarkerItem';
-import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
+import type { ResolvedBillboardPlayerItem } from '@/lib/tactical/compiler/scene-graph-dto';
+import { toStagePixelPoint } from '@/lib/types/tactical/branded';
+import type {
+  DomainPlayer,
+  PitchPlayer,
+} from '@/lib/types/tactical/domain-entities';
 
 export const BASE_BENCH_HEIGHT = 280;
 
-type RenderMarker = React.ComponentProps<typeof PlayerMarkerItem>['marker'];
-
-function toBenchRenderMarker(player: DomainPlayer): RenderMarker {
+function toBenchRenderMarker(player: DomainPlayer): PitchPlayer {
   return {
     ...player,
+    area: 'pitch',
     x: Number(player.x),
     y: Number(player.y),
     connectLines: player.area === 'pitch' ? [...player.connectLines] : [],
     badges: player.area === 'pitch' ? [...player.badges] : [],
+  } as PitchPlayer;
+}
+
+function toBenchResolvedPlayer(
+  player: DomainPlayer,
+  canvasWidth: number,
+  selected: boolean,
+): ResolvedBillboardPlayerItem {
+  return {
+    kind: 'player',
+    id: player.id,
+    positionPx: toStagePixelPoint(
+      (player.x / 100) * canvasWidth,
+      (player.y / 100) * BASE_BENCH_HEIGHT,
+    ),
+    radiusPx: canvasWidth * 0.032 * (player.style?.sizeScale ?? 1),
+    depthSortKey: 0,
+    opacity: 1,
+    visible: true,
+    selected,
+    player: toBenchRenderMarker(player),
+    rippleRingsPx: [],
   };
 }
 
@@ -59,24 +85,32 @@ export function SquadBenchCanvas({
         >
           <Stage width={canvasWidth} height={stageHeight} listening={true}>
             <Layer>
-              {benchPlayers.map((player) => (
-                <PlayerMarkerItem
-                  key={player.id}
-                  marker={toBenchRenderMarker(player)}
-                  width={canvasWidth}
-                  height={BASE_BENCH_HEIGHT}
-                  baseDim={canvasWidth}
-                  markerMode="2d-only"
-                  isSelected={selectedIds.includes(player.id)}
-                  isInteractive={true}
-                  connectingPlayerId={null}
-                  onDragStart={onDragStart}
-                  onDragMove={() => {}}
-                  onDragEnd={(e) => onDragEnd(e, player)}
-                  onClick={onClick}
-                  onUpdateVisionCone={() => {}}
-                />
-              ))}
+              {benchPlayers.map((player) => {
+                const isSelected = selectedIds.includes(player.id);
+                return (
+                  <PlayerMarkerItem
+                    key={player.id}
+                    marker={toBenchRenderMarker(player)}
+                    width={canvasWidth}
+                    height={BASE_BENCH_HEIGHT}
+                    baseDim={canvasWidth}
+                    markerMode="2d-only"
+                    isSelected={isSelected}
+                    isInteractive={true}
+                    connectingPlayerId={null}
+                    onDragStart={onDragStart}
+                    onDragMove={() => {}}
+                    onDragEnd={(e) => onDragEnd(e, player)}
+                    onClick={onClick}
+                    onUpdateVisionCone={() => {}}
+                    resolvedPlayer={toBenchResolvedPlayer(
+                      player,
+                      canvasWidth,
+                      isSelected,
+                    )}
+                  />
+                );
+              })}
             </Layer>
           </Stage>
         </div>

@@ -10,7 +10,6 @@ export {
 export {
   BillboardObjectLayer,
   type BillboardObjectLayerProps,
-  sortBillboardItemsByDepth,
 } from './components/BillboardObjectLayer';
 export {
   CanvasOverlays,
@@ -85,33 +84,14 @@ export {
   type UseCanvasShortcutsOptions,
   useCanvasShortcuts,
 } from './hooks/use-canvas-shortcuts';
-export { useCanvasStore, useCanvasStoreApi } from './hooks/use-canvas-store';
 export {
   type UseCanvasZoomPanOptions,
   useCanvasZoomPan,
 } from './hooks/use-canvas-zoom-pan';
-export {
-  type UseNodePositionTransitionOptions,
-  useNodePositionTransition,
-} from './hooks/use-node-position-transition';
-export { createCanvasStore } from './store/canvas-store';
-export {
-  CanvasStoreContext,
-  CanvasStoreProvider,
-  type CanvasStoreProviderProps,
-} from './store/canvas-store-provider';
 export type {
-  AnnotationsData,
-  CanvasActions,
   CanvasCapabilities,
-  CanvasClipboard,
-  CanvasConfig,
   CanvasCoreHandle,
-  CanvasHistorySnapshot,
   CanvasStageProps,
-  CanvasState,
-  CanvasStore,
-  CanvasStoreApi,
   DrawingPreviewState,
   SelectedObject,
   SelectedObjectKind,

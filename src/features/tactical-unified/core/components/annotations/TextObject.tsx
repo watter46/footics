@@ -3,29 +3,32 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Text as KonvaText } from 'react-konva';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
+import { useSessionStore } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ResolvedBillboardTextItem } from '@/lib/tactical/compiler/scene-graph-dto';
-import type { TextAnnotation } from '@/lib/types/tactical-unified';
-import { normX, normY, pxToNormX, pxToNormY } from './math-utils';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import type { DomainTextAnnotation } from '@/lib/types/tactical/domain-entities';
+import { pxToNormX, pxToNormY } from './math-utils';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
 export interface TextObjectProps {
-  text: TextAnnotation;
+  textId: string;
+  locked?: boolean;
   stageSize: { width: number; height: number };
   isSelected: boolean;
   isEditing?: boolean;
   isInteractive?: boolean;
   onSelect: (e: KonvaClickEvent) => void;
   onDblClick: (e: KonvaClickEvent) => void;
-  updateText: (textId: string, patch: Partial<TextAnnotation>) => void;
+  updateText: (textId: string, patch: Partial<DomainTextAnnotation>) => void;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
-  resolvedText?: ResolvedBillboardTextItem | null;
+  resolvedText: ResolvedBillboardTextItem;
 }
 
 export const TextObject = React.memo(function TextObject({
-  text,
+  textId,
+  locked = false,
   stageSize,
   isSelected,
   isEditing = false,
@@ -37,10 +40,10 @@ export const TextObject = React.memo(function TextObject({
   resolvedText,
 }: TextObjectProps) {
   const { width, height } = stageSize;
-  const setIsDragging = useCanvasStore((s) => s.setIsDragging);
-  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
+  const setIsDragging = useSessionStore((s) => s.setIsDragging);
+  const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
   const fontStyle =
-    [text.bold ? 'bold' : '', text.italic ? 'italic' : '']
+    [resolvedText.bold ? 'bold' : '', resolvedText.italic ? 'italic' : '']
       .filter(Boolean)
       .join(' ') || 'normal';
 
@@ -49,27 +52,27 @@ export const TextObject = React.memo(function TextObject({
       ref={(node) => {
         if (nodesRegistryRef?.current?.textNodes) {
           if (node) {
-            nodesRegistryRef.current.textNodes.set(text.id, node);
+            nodesRegistryRef.current.textNodes.set(textId, node);
           } else {
-            nodesRegistryRef.current.textNodes.delete(text.id);
+            nodesRegistryRef.current.textNodes.delete(textId);
           }
         }
       }}
-      x={resolvedText ? resolvedText.positionPx.x : normX(text.x, width)}
-      y={resolvedText ? resolvedText.positionPx.y : normY(text.y, height)}
-      text={text.content}
-      fontSize={resolvedText ? resolvedText.fontSizePx : text.fontSize}
+      x={resolvedText.positionPx.x}
+      y={resolvedText.positionPx.y}
+      text={resolvedText.content}
+      fontSize={resolvedText.fontSizePx}
       fontFamily="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-      fill={isSelected ? '#60a5fa' : text.color}
+      fill={isSelected ? '#60a5fa' : resolvedText.color}
       fontStyle={fontStyle}
-      opacity={resolvedText ? resolvedText.opacity : 1}
-      visible={!isEditing}
+      opacity={resolvedText.opacity}
+      visible={!isEditing && resolvedText.visible}
       onClick={onSelect}
       onTap={onSelect}
       onDblClick={onDblClick}
       onDblTap={onDblClick}
       perfectDrawEnabled={false}
-      draggable={isInteractive && !isEditing && !text.locked}
+      draggable={isInteractive && !isEditing && !locked}
       onDragStart={(e) => {
         setIsDragging(true);
         setIsHudOpen(false);
@@ -83,9 +86,9 @@ export const TextObject = React.memo(function TextObject({
         setIsHudOpen(false);
         e.cancelBubble = true;
         const node = e.target;
-        const newX = pxToNormX(node.x(), width);
-        const newY = pxToNormY(node.y(), height);
-        updateText(text.id, { x: newX, y: newY });
+        const newX = clampToScreenNorm(pxToNormX(node.x(), width));
+        const newY = clampToScreenNorm(pxToNormY(node.y(), height));
+        updateText(textId, { x: newX, y: newY });
       }}
     />
   );

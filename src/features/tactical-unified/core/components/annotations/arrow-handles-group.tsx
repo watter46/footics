@@ -1,10 +1,15 @@
-import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import type { ArrowAnnotation } from '@/lib/types/tactical-unified';
 import { ArrowControlPoints } from './arrow-control-points';
 import { ArrowEndHandle } from './arrow-end-handle';
 import { ArrowStartHandle } from './arrow-start-handle';
+
+export interface ArrowHandlePreviewDelta {
+  readonly kind: 'start' | 'end' | 'control';
+  readonly pxX: number;
+  readonly pxY: number;
+}
 
 export interface ArrowHandleCommonProps {
   arrow: ArrowAnnotation;
@@ -16,21 +21,9 @@ export interface ArrowHandleCommonProps {
   sPxY: number;
   ePxX: number;
   ePxY: number;
-  cpPxX: number;
-  cpPxY: number;
-  startHandleRef: React.RefObject<Konva.Circle | null>;
-  endHandleRef: React.RefObject<Konva.Circle | null>;
-  controlHandleRef: React.RefObject<Konva.Circle | null>;
   onSelect: (e: KonvaEventObject<MouseEvent | TouchEvent>) => void;
   updateArrow: (id: string, p: Partial<ArrowAnnotation>) => void;
-  updateKonvaPoints: (
-    sx: number,
-    sy: number,
-    ex: number,
-    ey: number,
-    cpx?: number,
-    cpy?: number,
-  ) => void;
+  onPreviewMove?: (delta: ArrowHandlePreviewDelta | null) => void;
 }
 
 export interface ArrowHandlesGroupProps {

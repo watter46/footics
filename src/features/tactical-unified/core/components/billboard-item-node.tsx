@@ -3,30 +3,24 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { BallObject } from '@/features/tactical-unified/objects/ball/components/ball-object';
+import type { ResolvedBillboardItem } from '@/lib/tactical/compiler/scene-graph-dto';
 import type {
-  ResolvedBillboardBallItem,
-  ResolvedBillboardPlayerItem,
-  ResolvedBillboardTextItem,
-  ResolvedSceneGraphDTO,
-} from '@/lib/tactical/compiler/scene-graph-dto';
-import type {
-  AspectRatio,
-  Player,
-  TextAnnotation,
-} from '@/lib/types/tactical-unified';
+  DomainTextAnnotation,
+  PitchPlayer,
+} from '@/lib/types/tactical/domain-entities';
+import type { AspectRatio } from '@/lib/types/tactical-unified';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import { TextObject } from './annotations/TextObject';
-import type { BillboardItem } from './billboard-depth-sort';
 import { PlayerMarkerItem } from './PlayerMarkerItem';
 
 export interface BillboardItemNodeProps {
-  item: BillboardItem;
+  item: ResolvedBillboardItem;
   pitchRect: PitchRectBounds;
   baseDim: number;
   markerMode: string;
   aspectRatio?: AspectRatio;
-  selectedIds: string[];
+  selectedIds: readonly string[];
   cleanRender?: boolean;
   isInteractive: boolean;
   connectingPlayerId: string | null;
@@ -35,18 +29,17 @@ export interface BillboardItemNodeProps {
   onStartEditText?: (textId: string) => void;
   onDragStart: (e: KonvaEventObject<DragEvent>, markerId: string) => void;
   onDragMove: (e: KonvaEventObject<DragEvent>, markerId: string) => void;
-  onDragEnd: (e: KonvaEventObject<DragEvent>, marker: Player) => void;
+  onDragEnd: (e: KonvaEventObject<DragEvent>, marker: PitchPlayer) => void;
   onClickMarker: (markerId: string, isShift: boolean) => void;
   onUpdateVisionCone: (
-    marker: Player,
-    patch: Partial<NonNullable<Player['visionCone']>>,
+    marker: PitchPlayer,
+    patch: Partial<NonNullable<PitchPlayer['visionCone']>>,
   ) => void;
   onSelectText: (
     e: KonvaEventObject<MouseEvent | TouchEvent>,
     textId: string,
   ) => void;
-  updateText: (id: string, patch: Partial<TextAnnotation>) => void;
-  sceneGraph?: ResolvedSceneGraphDTO | null;
+  updateText: (id: string, patch: Partial<DomainTextAnnotation>) => void;
 }
 
 export function BillboardItemNode({
@@ -69,15 +62,13 @@ export function BillboardItemNode({
   onUpdateVisionCone,
   onSelectText,
   updateText,
-  sceneGraph,
 }: BillboardItemNodeProps) {
+  if (!item.visible) {
+    return null;
+  }
+
   if (item.kind === 'player') {
-    const marker = item.data;
-    const resolvedPlayer =
-      sceneGraph?.billboardItems.find(
-        (b): b is ResolvedBillboardPlayerItem =>
-          b.kind === 'player' && b.id === marker.id,
-      ) ?? null;
+    const marker = item.player;
     return (
       <PlayerMarkerItem
         key={marker.id}
@@ -94,26 +85,20 @@ export function BillboardItemNode({
         nodesRegistryRef={nodesRegistryRef}
         onDragStart={onDragStart}
         onDragMove={onDragMove}
-        onDragEnd={onDragEnd}
+        onDragEnd={(e) => onDragEnd(e, marker)}
         onClick={onClickMarker}
         onUpdateVisionCone={(patch) => onUpdateVisionCone(marker, patch)}
-        resolvedPlayer={resolvedPlayer}
+        resolvedPlayer={item}
       />
     );
   }
 
   if (item.kind === 'ball') {
-    const ball = item.data;
-    const resolvedBall = sceneGraph?.billboardItems.find(
-      (b): b is ResolvedBillboardBallItem => b.kind === 'ball',
-    );
-    if (!resolvedBall) return null;
-
     return (
       <BallObject
         key="ball-object"
-        ball={ball}
-        resolvedBall={resolvedBall}
+        ball={{ x: 50, y: 50, visible: item.visible }}
+        resolvedBall={item}
         stageSize={{
           width: pitchRect.width,
           height: pitchRect.height,
@@ -125,31 +110,25 @@ export function BillboardItemNode({
   }
 
   if (item.kind === 'text') {
-    const text = item.data;
-    const resolvedText =
-      sceneGraph?.billboardItems.find(
-        (b): b is ResolvedBillboardTextItem =>
-          b.kind === 'text' && b.id === text.id,
-      ) ?? null;
     return (
       <TextObject
-        key={text.id}
-        text={text}
+        key={item.id}
+        textId={item.id}
         stageSize={{
           width: pitchRect.width,
           height: pitchRect.height,
         }}
-        isSelected={!cleanRender && selectedIds.includes(text.id)}
-        isEditing={editingTextId === text.id}
+        isSelected={!cleanRender && selectedIds.includes(item.id)}
+        isEditing={editingTextId === item.id}
         isInteractive={!cleanRender && isInteractive}
-        onSelect={(e) => onSelectText(e, text.id)}
+        onSelect={(e) => onSelectText(e, item.id)}
         onDblClick={(e) => {
           e.cancelBubble = true;
-          onStartEditText?.(text.id);
+          onStartEditText?.(item.id);
         }}
         updateText={updateText}
         nodesRegistryRef={nodesRegistryRef}
-        resolvedText={resolvedText}
+        resolvedText={item}
       />
     );
   }

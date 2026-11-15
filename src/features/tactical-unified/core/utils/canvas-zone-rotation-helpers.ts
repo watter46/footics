@@ -56,25 +56,23 @@ export function checkCornerRotateZone(
   );
 
   const rad = (rotation * Math.PI) / 180;
+  const relX = pos.x - cx;
+  const relY = pos.y - cy;
+  const cos = Math.cos(-rad);
+  const sin = Math.sin(-rad);
+  const lx = relX * cos - relY * sin;
+  const ly = relX * sin + relY * cos;
+
   const hw = pxW / 2;
   const hh = pxH / 2;
-  const cornersLocal = [
-    { x: -hw, y: -hh },
-    { x: hw, y: -hh },
-    { x: -hw, y: hh },
-    { x: hw, y: hh },
-  ];
+  const ax = Math.abs(lx);
+  const ay = Math.abs(ly);
 
-  const corners = cornersLocal.map((pt) => ({
-    x: cx + pt.x * Math.cos(rad) - pt.y * Math.sin(rad),
-    y: cy + pt.x * Math.sin(rad) + pt.y * Math.cos(rad),
-  }));
+  if (ax <= hw && ay <= hh) return false;
+  if (ax < hw - 8 || ay < hh - 8) return false;
 
-  for (const corner of corners) {
-    const dist = Math.hypot(pos.x - corner.x, pos.y - corner.y);
-    if (dist >= 6 && dist <= 28) return true;
-  }
-  return false;
+  const dist = Math.hypot(ax - hw, ay - hh);
+  return dist >= 7 && dist <= 28;
 }
 
 export function applyZoneNodeRotation(
@@ -99,12 +97,17 @@ export function applyZoneNodeRotation(
 export function updateRotateCursor(
   container: HTMLDivElement | null,
   isOver: boolean,
+  stageContainer?: HTMLDivElement | null,
 ): void {
-  if (!container) return;
-  if (isOver) {
-    container.style.cursor = ROTATE_CURSOR;
-  } else if (container.style.cursor.includes('data:image/svg+xml')) {
-    container.style.cursor = 'default';
+  const targets = [container, stageContainer].filter(
+    (el): el is HTMLDivElement => el != null,
+  );
+  for (const el of targets) {
+    if (isOver) {
+      el.style.cursor = ROTATE_CURSOR;
+    } else if (el.style.cursor.includes('data:image/svg+xml')) {
+      el.style.cursor = 'default';
+    }
   }
 }
 
@@ -117,6 +120,7 @@ export function checkAndStartRotation(
   pitchWidth: number,
   pitchHeight: number,
   container: HTMLDivElement | null,
+  stageContainer?: HTMLDivElement | null,
 ) {
   if (
     activeTool === 'select' &&
@@ -130,7 +134,7 @@ export function checkAndStartRotation(
       pitchWidth,
       pitchHeight,
     );
-    if (container) container.style.cursor = ROTATE_CURSOR;
+    updateRotateCursor(container, true, stageContainer);
     return {
       started: true,
       rotateCenter: { x: cx, y: cy },

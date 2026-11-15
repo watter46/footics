@@ -6,6 +6,7 @@
  */
 
 import { Pause, Play } from 'lucide-react';
+import { useTacticalAnimation } from '@/features/tactical-unified/hooks/use-tactical-animation';
 import { selectDomainActivePhaseSlides } from '@/features/tactical-unified/stores/domain-selectors';
 import {
   useDocumentStore,
@@ -15,6 +16,7 @@ import {
 import { resolvePlaybackDurationMs } from '@/lib/tactical/unified-interpolation';
 
 export function PlaybackControls() {
+  useTacticalAnimation();
   const project = useDocumentStore((s) => s.project);
   const activePhaseId = useSessionStore((s) => s.activePhaseId);
   const activeSlideId = useSessionStore((s) => s.activeSlideId);

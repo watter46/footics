@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import type Konva from 'konva';
 import { createRef } from 'react';
-import { Layer, Stage } from 'react-konva';
+import { Group, Layer, Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type PlayerPhotoMap,
@@ -31,6 +31,27 @@ beforeEach(() => {
   HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
 });
 
+function createTestResolvedPlayer(
+  marker: ReturnType<typeof createDefaultPlayer>,
+  overrides: Partial<ResolvedBillboardPlayerItem> = {},
+): ResolvedBillboardPlayerItem {
+  return {
+    kind: 'player',
+    id: marker.id,
+    positionPx: { x: 400 as StagePixel, y: 225 as StagePixel },
+    radiusPx: 450 * 0.032,
+    depthSortKey: 225,
+    opacity: 1,
+    visible: true,
+    selected: false,
+    player: marker as unknown as ResolvedBillboardPlayerItem['player'],
+    rippleRingsPx: [],
+    visionCone: null,
+    focus: null,
+    ...overrides,
+  };
+}
+
 describe('PlayerMarkerItem vertical scale', () => {
   it('aspectRatio が 16:9 のときは通常スケール (1.0) の半径になる', () => {
     const stageRef = createRef<Konva.Stage>();
@@ -57,6 +78,9 @@ describe('PlayerMarkerItem vertical scale', () => {
             onDragEnd={vi.fn()}
             onClick={vi.fn()}
             onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={createTestResolvedPlayer(marker, {
+              radiusPx: baseDim * 0.032,
+            })}
           />
         </Layer>
       </Stage>,
@@ -93,6 +117,9 @@ describe('PlayerMarkerItem vertical scale', () => {
             onDragEnd={vi.fn()}
             onClick={vi.fn()}
             onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={createTestResolvedPlayer(marker, {
+              radiusPx: baseDim * 0.032 * 0.85,
+            })}
           />
         </Layer>
       </Stage>,
@@ -137,6 +164,9 @@ describe('PlayerMarkerItem vertical scale', () => {
             onDragEnd={vi.fn()}
             onClick={vi.fn()}
             onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={createTestResolvedPlayer(marker, {
+              radiusPx: baseDim * 0.032,
+            })}
           />
         </Layer>
       </Stage>,
@@ -180,6 +210,9 @@ describe('PlayerMarkerItem vertical scale', () => {
             onDragEnd={vi.fn()}
             onClick={vi.fn()}
             onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={createTestResolvedPlayer(marker, {
+              radiusPx: baseDim * 0.032,
+            })}
           />
         </Layer>
       </Stage>,
@@ -227,6 +260,9 @@ describe('PlayerMarkerItem vertical scale', () => {
             onDragEnd={vi.fn()}
             onClick={vi.fn()}
             onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={createTestResolvedPlayer(marker, {
+              radiusPx: baseDim * 0.032,
+            })}
           />
         </Layer>
       </Stage>,
@@ -277,6 +313,9 @@ describe('PlayerMarkerItem vertical scale', () => {
               onDragEnd={vi.fn()}
               onClick={vi.fn()}
               onUpdateVisionCone={vi.fn()}
+              resolvedPlayer={createTestResolvedPlayer(marker, {
+                radiusPx: baseDim * 0.032,
+              })}
             />
           </Layer>
         </Stage>
@@ -321,6 +360,9 @@ describe('PlayerMarkerItem vertical scale', () => {
             onDragEnd={vi.fn()}
             onClick={vi.fn()}
             onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={createTestResolvedPlayer(marker, {
+              radiusPx: baseDim * 0.032,
+            })}
           />
         </Layer>
       </Stage>,
@@ -371,6 +413,9 @@ describe('PlayerMarkerItem vertical scale', () => {
               onDragEnd={vi.fn()}
               onClick={vi.fn()}
               onUpdateVisionCone={vi.fn()}
+              resolvedPlayer={createTestResolvedPlayer(marker, {
+                radiusPx: baseDim * 0.032,
+              })}
             />
           </Layer>
         </Stage>
@@ -440,5 +485,142 @@ describe('PlayerMarkerItem vertical scale', () => {
     const circle = stageRef.current?.findOne('Circle') as Konva.Circle | null;
     expect(circle).not.toBeNull();
     expect(circle?.radius()).toBe(28);
+  });
+
+  it('resolvedPlayer.positionPx が更新されるとルート Group の座標がリアクティブに追従する', () => {
+    const stageRef = createRef<Konva.Stage>();
+    const marker = createDefaultPlayer('home', 50, 50, '#ff0000');
+    const width = 800;
+    const height = 450;
+    const baseDim = 450;
+
+    const initialResolved = createTestResolvedPlayer(marker, {
+      positionPx: { x: 100 as StagePixel, y: 120 as StagePixel },
+      radiusPx: 20,
+    });
+
+    const { rerender } = render(
+      <Stage ref={stageRef} width={width} height={height}>
+        <Layer>
+          <PlayerMarkerItem
+            marker={marker}
+            width={width}
+            height={height}
+            baseDim={baseDim}
+            markerMode="2d-only"
+            aspectRatio="16:9"
+            isSelected={false}
+            isInteractive={true}
+            connectingPlayerId={null}
+            onDragStart={vi.fn()}
+            onDragMove={vi.fn()}
+            onDragEnd={vi.fn()}
+            onClick={vi.fn()}
+            onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={initialResolved}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    const group = stageRef.current?.findOne('Group') as Konva.Group | null;
+    expect(group?.x()).toBe(100);
+    expect(group?.y()).toBe(120);
+
+    const updatedResolved = createTestResolvedPlayer(marker, {
+      positionPx: { x: 260 as StagePixel, y: 310 as StagePixel },
+      radiusPx: 20,
+    });
+
+    rerender(
+      <Stage ref={stageRef} width={width} height={height}>
+        <Layer>
+          <PlayerMarkerItem
+            marker={marker}
+            width={width}
+            height={height}
+            baseDim={baseDim}
+            markerMode="2d-only"
+            aspectRatio="16:9"
+            isSelected={false}
+            isInteractive={true}
+            connectingPlayerId={null}
+            onDragStart={vi.fn()}
+            onDragMove={vi.fn()}
+            onDragEnd={vi.fn()}
+            onClick={vi.fn()}
+            onUpdateVisionCone={vi.fn()}
+            resolvedPlayer={updatedResolved}
+          />
+        </Layer>
+      </Stage>,
+    );
+
+    expect(group?.x()).toBe(260);
+    expect(group?.y()).toBe(310);
+  });
+
+  it('親 Group にズーム（scale !== 1）が適用されている場合、dragBoundFunc が parentScale を考慮してクランプする', () => {
+    const marker = createDefaultPlayer('home', 50, 50, '#ff0000');
+    const resolvedPlayer = createTestResolvedPlayer(marker);
+    const width = 800;
+    const height = 450;
+    const baseDim = 450;
+    const stageRef = createRef<Konva.Stage>();
+    const zoom = 2;
+    const offsetX = 50;
+    const offsetY = 40;
+
+    render(
+      <Stage ref={stageRef} width={width} height={height}>
+        <Layer>
+          <Group x={offsetX} y={offsetY} scaleX={zoom} scaleY={zoom}>
+            <PlayerMarkerItem
+              marker={marker}
+              width={width}
+              height={height}
+              baseDim={baseDim}
+              markerMode="2d-only"
+              aspectRatio="16:9"
+              isSelected={false}
+              isInteractive={true}
+              connectingPlayerId={null}
+              onDragStart={vi.fn()}
+              onDragMove={vi.fn()}
+              onDragEnd={vi.fn()}
+              onClick={vi.fn()}
+              onUpdateVisionCone={vi.fn()}
+              resolvedPlayer={resolvedPlayer}
+            />
+          </Group>
+        </Layer>
+      </Stage>,
+    );
+
+    const parentGroup = stageRef.current?.findOne(
+      'Group',
+    ) as Konva.Group | null;
+    const markerGroup = parentGroup?.getChildren()[0] as
+      | Konva.Group
+      | undefined;
+    expect(markerGroup).toBeDefined();
+
+    const dragBoundFunc = markerGroup?.dragBoundFunc() as
+      | ((this: Konva.Node, pos: Konva.Vector2d) => Konva.Vector2d)
+      | undefined;
+    expect(dragBoundFunc).toBeTypeOf('function');
+    if (!markerGroup || !dragBoundFunc) return;
+
+    const minClamped = dragBoundFunc.call(markerGroup, { x: 0, y: 0 });
+    expect(minClamped).toEqual({ x: offsetX, y: offsetY });
+
+    const maxClamped = dragBoundFunc.call(markerGroup, { x: 2000, y: 2000 });
+    expect(maxClamped).toEqual({
+      x: offsetX + width * zoom,
+      y: offsetY + height * zoom,
+    });
+
+    const inBounds = dragBoundFunc.call(markerGroup, { x: 1000, y: 500 });
+    expect(inBounds).toEqual({ x: 1000, y: 500 });
   });
 });

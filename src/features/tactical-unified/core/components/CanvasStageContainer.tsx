@@ -10,7 +10,10 @@ import {
   useRef,
   useState,
 } from 'react';
-import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  selectDomainActiveBoundaryBox,
+  selectDomainActiveSlide,
+} from '@/features/tactical-unified/stores/domain-selectors';
 import {
   useDocumentStore,
   useSessionStore,
@@ -24,6 +27,7 @@ import {
   type CanvasNodesRegistry,
   createCanvasNodesRegistry,
 } from '../utils/canvas-registry';
+import { BoundaryBoxOverlay } from './BoundaryBoxOverlay';
 import { CanvasStage, type CanvasStageInteraction } from './canvas-stage';
 import { HtmlHudOverlay } from './HtmlHudOverlay';
 
@@ -58,6 +62,9 @@ export function CanvasStageContainer({
 
   const activeSlide = useDocumentStore((s) =>
     selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
+  );
+  const boundaryBox = useDocumentStore((s) =>
+    selectDomainActiveBoundaryBox(s.project, activePhaseId),
   );
   const texts = activeSlide?.texts ?? [];
   const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
@@ -211,6 +218,20 @@ export function CanvasStageContainer({
           onCloseText={() => setEditingTextId(null)}
         />
       </CanvasStage>
+
+      {!cleanRender &&
+        boundaryBox?.enabled &&
+        boundaryBox.visible !== false &&
+        boundaryBox.width > 0 &&
+        boundaryBox.height > 0 &&
+        vRect.width > 0 &&
+        vRect.height > 0 && (
+          <BoundaryBoxOverlay
+            boundaryBox={boundaryBox}
+            activePhaseId={activePhaseId}
+            vRect={vRect}
+          />
+        )}
 
       {toolbar}
     </div>

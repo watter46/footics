@@ -1,52 +1,42 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Ellipse, Group, Rect, Transformer } from 'react-konva';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import { useSessionStore } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { useZoneShape } from './use-zone-shape';
 import type { ZoneNodeProps } from './ZonePolygonNode';
-import { getZoneStyle } from './zone-geometry';
 
 export const ZoneShapeNode = React.memo(function ZoneShapeNode(
   props: ZoneNodeProps,
 ) {
-  const { zone, isSelected, onSelect, isInteractive = true } = props;
-  const { fillRGBA, strokeColorRGBA, strokeWidth } = getZoneStyle(zone);
-  const setIsDragging = useCanvasStore((s) => s.setIsDragging);
-  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
+  const {
+    zone,
+    isSelected,
+    onSelect,
+    isInteractive = true,
+    resolvedZone,
+  } = props;
+  const setIsDragging = useSessionStore((s) => s.setIsDragging);
+  const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
   const {
     shapeType,
-    cx,
-    cy,
-    pxW,
-    pxH,
-    rotation,
     transformerRef,
     setShapeNodeRef,
     handleDragEnd: rawHandleDragEnd,
     boundBoxFunc,
-    handleTransformEnd,
-  } = useZoneShape(props);
+    handleTransformEnd: rawHandleTransformEnd,
+  } = useZoneShape({
+    ...props,
+    resolvedWidthPx: resolvedZone.widthPx,
+    resolvedHeightPx: resolvedZone.heightPx,
+    resolvedRotationDeg: resolvedZone.rotationDeg,
+  });
 
-  const hasResolvedRect =
-    props.resolvedZone != null &&
-    props.resolvedZone.xPx !== undefined &&
-    props.resolvedZone.yPx !== undefined &&
-    props.resolvedZone.widthPx !== undefined &&
-    props.resolvedZone.heightPx !== undefined;
-  const effectivePxW = hasResolvedRect
-    ? (props.resolvedZone!.widthPx as number)
-    : pxW;
-  const effectivePxH = hasResolvedRect
-    ? (props.resolvedZone!.heightPx as number)
-    : pxH;
-  const effectiveCx = hasResolvedRect
-    ? (props.resolvedZone!.xPx as number) + effectivePxW / 2
-    : cx;
-  const effectiveCy = hasResolvedRect
-    ? (props.resolvedZone!.yPx as number) + effectivePxH / 2
-    : cy;
-  const effectiveRotation = props.resolvedZone?.rotationDeg ?? rotation;
-  const effectiveStrokeWidth = props.resolvedZone?.strokeWidthPx ?? strokeWidth;
+  const effectivePxW = resolvedZone.widthPx ?? 0;
+  const effectivePxH = resolvedZone.heightPx ?? 0;
+  const effectiveCx = (resolvedZone.xPx ?? 0) + effectivePxW / 2;
+  const effectiveCy = (resolvedZone.yPx ?? 0) + effectivePxH / 2;
+  const effectiveRotation = resolvedZone.rotationDeg ?? 0;
+  const effectiveStrokeWidth = resolvedZone.strokeWidthPx;
 
   const handleDragStart = (e: KonvaEventObject<DragEvent>) => {
     setIsDragging(true);
@@ -67,6 +57,17 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
     setIsHudOpen(true);
   };
 
+  const handleTransformStart = () => {
+    setIsDragging(true);
+    setIsHudOpen(false);
+  };
+
+  const handleTransformEnd = () => {
+    rawHandleTransformEnd();
+    setIsDragging(false);
+    setIsHudOpen(true);
+  };
+
   return (
     <Group>
       {shapeType === 'ellipse' ? (
@@ -77,12 +78,13 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
           radiusX={effectivePxW / 2}
           radiusY={effectivePxH / 2}
           rotation={effectiveRotation}
-          fill={fillRGBA}
-          opacity={1}
-          stroke={isSelected ? '#60a5fa' : strokeColorRGBA}
+          fill={resolvedZone.color}
+          opacity={resolvedZone.opacity}
+          stroke={isSelected ? '#60a5fa' : resolvedZone.strokeColor}
           strokeWidth={
             isSelected ? effectiveStrokeWidth + 1 : effectiveStrokeWidth
           }
+          visible={resolvedZone.visible}
           draggable={isInteractive && !zone.locked}
           onClick={onSelect}
           onTap={onSelect}
@@ -100,12 +102,13 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
           offsetX={effectivePxW / 2}
           offsetY={effectivePxH / 2}
           rotation={effectiveRotation}
-          fill={fillRGBA}
-          opacity={1}
-          stroke={isSelected ? '#60a5fa' : strokeColorRGBA}
+          fill={resolvedZone.color}
+          opacity={resolvedZone.opacity}
+          stroke={isSelected ? '#60a5fa' : resolvedZone.strokeColor}
           strokeWidth={
             isSelected ? effectiveStrokeWidth + 1 : effectiveStrokeWidth
           }
+          visible={resolvedZone.visible}
           draggable={isInteractive && !zone.locked}
           onClick={onSelect}
           onTap={onSelect}
@@ -136,6 +139,7 @@ export const ZoneShapeNode = React.memo(function ZoneShapeNode(
           anchorFill="#ffffff"
           anchorSize={9}
           anchorCornerRadius={2}
+          onTransformStart={handleTransformStart}
           onTransformEnd={handleTransformEnd}
         />
       )}

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import {
   type ScreenshotTranslateInput,
-  serializeProjectToScreenshotJson,
   translateScreenshotToProject,
 } from '@/lib/tactical/acl/screenshot-translator';
 import { DomainTacticalProjectSchema } from '@/lib/types/tactical/domain-hierarchy';
@@ -311,31 +310,43 @@ describe('screenshot-translator', () => {
     const schemaResult = DomainTacticalProjectSchema.safeParse(project);
     expect(schemaResult.success).toBe(true);
 
-    // 往復変換 (serializeProjectToScreenshotJson)
-    const serializedJson = serializeProjectToScreenshotJson(project);
-    const parsedData = JSON.parse(serializedJson);
-
-    expect(parsedData.arrows).toHaveLength(1);
-    expect(parsedData.arrows[0].id).toBe('arr-ext-1');
-    expect(parsedData.zones).toHaveLength(1);
-    expect(parsedData.zones[0].id).toBe('zone-ext-1');
-    expect(parsedData.texts).toHaveLength(1);
-    expect(parsedData.texts[0].id).toBe('txt-ext-1');
-    expect(parsedData.markers).toHaveLength(1);
-    expect(parsedData.markers[0].id).toBe('marker-ext-1');
-
-    // 再度 translateScreenshotToProject を通した際に完全一致
+    // DomainTacticalProject JSON の直接ラウンドトリップ
+    const serializedProjectJson = JSON.stringify(project);
     const roundTripBundle = translateScreenshotToProject({
       screenshotId: 'shot-ext-42',
       backgroundImageUrl: initialInput.backgroundImageUrl,
-      canvasAnnotationsJson: serializedJson,
+      canvasAnnotationsJson: serializedProjectJson,
       aspectRatio: '16:9',
     });
+    expect(roundTripBundle.project.phases[0].aspectRatio).toBe('16:9');
+    expect(roundTripBundle.project.phases[0].boundaryBox).toEqual(
+      phase.boundaryBox,
+    );
     expect(roundTripBundle.project.phases[0].slides[0].players[0].id).toBe(
       'marker-ext-1',
     );
     expect(roundTripBundle.project.phases[0].slides[0].arrows[0].id).toBe(
       'arr-ext-1',
     );
+    expect(roundTripBundle.project.phases[0].slides[0].zones[0].id).toBe(
+      'zone-ext-1',
+    );
+    expect(roundTripBundle.project.phases[0].slides[0].texts[0].id).toBe(
+      'txt-ext-1',
+    );
+  });
+
+  it('不正な JSON 文字列が渡された場合でも空配列として安全にフォールバックする', () => {
+    const bundle = translateScreenshotToProject({
+      screenshotId: 'shot-invalid-json',
+      backgroundImageUrl: 'blob:https://youtube.com/invalid',
+      canvasAnnotationsJson: '{invalid-json',
+      aspectRatio: '1:1',
+    });
+    expect(bundle.project.phases[0].aspectRatio).toBe('1:1');
+    expect(bundle.project.phases[0].slides[0].players).toEqual([]);
+    expect(bundle.project.phases[0].slides[0].arrows).toEqual([]);
+    expect(bundle.project.phases[0].slides[0].zones).toEqual([]);
+    expect(bundle.project.phases[0].slides[0].texts).toEqual([]);
   });
 });

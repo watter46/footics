@@ -1,67 +1,16 @@
 import { render } from '@testing-library/react';
-import type Konva from 'konva';
+import Konva from 'konva';
 import React from 'react';
 import { Layer, Stage } from 'react-konva';
 import { describe, expect, it, vi } from 'vitest';
 import { ZonePolygonNode } from '@/features/tactical-unified/core/components/zones/ZonePolygonNode';
 import { ZoneShapeNode } from '@/features/tactical-unified/core/components/zones/ZoneShapeNode';
-import { getZoneStyle } from '@/features/tactical-unified/core/components/zones/zone-geometry';
-import { createCanvasStore } from '@/features/tactical-unified/core/store/canvas-store';
-import { CanvasStoreContext } from '@/features/tactical-unified/core/store/canvas-store-provider';
+import { computeTransformedZonePatch } from '@/features/tactical-unified/core/components/zones/zone-geometry';
 import * as PlayerComponents from '@/features/tactical-unified/objects/player/components';
+import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ResolvedZonePrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { StagePixel } from '@/lib/types/tactical/branded';
 import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
-
-describe('ZoneObject components & helpers', () => {
-  const sampleZone: ZoneAnnotation = {
-    id: 'zone-test-1',
-    annotationType: 'zone',
-    zoneType: 'generic',
-    shapeType: 'rect',
-    x: 10,
-    y: 20,
-    width: 30,
-    height: 40,
-    rotation: 15,
-    points: [
-      { x: 10, y: 20 },
-      { x: 40, y: 20 },
-      { x: 40, y: 60 },
-      { x: 10, y: 60 },
-    ],
-    color: '#3b82f6',
-    opacity: 0.5,
-    strokeColor: '#1d4ed8',
-    strokeWidth: 3,
-  };
-
-  it('getZoneStyle calculates fillRGBA and strokeColor with default strokeWidth and opacity', () => {
-    const style = getZoneStyle(sampleZone);
-    expect(style.strokeColor).toBe('#1d4ed8');
-    expect(style.strokeWidth).toBe(3);
-    expect(style.fillRGBA).toBe('#3b82f680');
-    expect(style.opacity).toBe(0.5);
-  });
-
-  it('getZoneStyle handles default opacity and fallback colors', () => {
-    const defaultZone: ZoneAnnotation = {
-      id: 'zone-default',
-      annotationType: 'zone',
-      zoneType: 'generic',
-      shapeType: 'polygon',
-      points: [{ x: 5, y: 5 }],
-      color: '',
-      opacity: 0.25,
-      strokeWidth: 2,
-    };
-    const style = getZoneStyle(defaultZone);
-    expect(style.strokeColor).toBe('#3b82f6');
-    expect(style.strokeWidth).toBe(2);
-    expect(style.fillRGBA).toBe('#3b82f640');
-    expect(style.opacity).toBe(0.25);
-  });
-});
 
 describe('Player components exports', () => {
   it('does not export dead player components', () => {
@@ -98,7 +47,7 @@ describe('ZoneObject Dumb View (ResolvedZonePrimitive)', () => {
       heightPx: 100,
       rotationDeg: 15,
       color: '#ef4444',
-      opacity: 0.3,
+      opacity: 1,
       strokeColor: '#ef4444',
       strokeOpacity: 0.8,
       strokeWidthPx: 4,
@@ -120,11 +69,10 @@ describe('ZoneObject Dumb View (ResolvedZonePrimitive)', () => {
       strokeWidth: 3,
     };
 
-    const store = createCanvasStore({ mode: 'full-tactical' });
     render(
       React.createElement(
-        CanvasStoreContext.Provider,
-        { value: store },
+        TacticalStoreProvider,
+        null,
         React.createElement(
           Stage,
           { width: 800, height: 600 },
@@ -153,7 +101,85 @@ describe('ZoneObject Dumb View (ResolvedZonePrimitive)', () => {
     expect(shape?.width()).toBe(200);
     expect(shape?.height()).toBe(100);
     expect(shape?.rotation()).toBe(15);
+    expect(shape?.fill()).toBe('#ef4444');
+    expect(shape?.stroke()).toBe('#ef4444');
     expect(shape?.strokeWidth()).toBe(4);
+  });
+
+  it('ZoneShapeNode uses resolvedZone for ellipse', () => {
+    const nodesRegistryRef = {
+      current: {
+        zoneNodes: new Map<string, Konva.Shape>(),
+      } as any,
+    };
+    const resolvedZone: ResolvedZonePrimitive = {
+      id: 'z-ellipse',
+      shapeType: 'ellipse',
+      xPx: 100 as StagePixel,
+      yPx: 50 as StagePixel,
+      widthPx: 160,
+      heightPx: 80,
+      rotationDeg: 30,
+      color: '#10b981',
+      opacity: 1,
+      strokeColor: '#047857',
+      strokeOpacity: 0.9,
+      strokeWidthPx: 2,
+      visible: false,
+      selected: false,
+    };
+    const zone: ZoneAnnotation = {
+      id: 'z-ellipse',
+      annotationType: 'zone',
+      zoneType: 'generic',
+      shapeType: 'ellipse',
+      x: 0,
+      y: 0,
+      width: 10,
+      height: 10,
+      points: [],
+      color: '#000000',
+      opacity: 0.5,
+      strokeWidth: 1,
+    };
+
+    render(
+      React.createElement(
+        TacticalStoreProvider,
+        null,
+        React.createElement(
+          Stage,
+          { width: 800, height: 600 },
+          React.createElement(
+            Layer,
+            null,
+            React.createElement(ZoneShapeNode, {
+              zone,
+              stageSize: { width: 800, height: 600 },
+              isSelected: false,
+              isInteractive: true,
+              onSelect: vi.fn(),
+              updateZone: vi.fn(),
+              nodesRegistryRef,
+              resolvedZone,
+            }),
+          ),
+        ),
+      ),
+    );
+
+    const shape = nodesRegistryRef.current.zoneNodes.get(
+      'z-ellipse',
+    ) as Konva.Ellipse;
+    expect(shape).toBeDefined();
+    expect(shape?.x()).toBe(180);
+    expect(shape?.y()).toBe(90);
+    expect(shape?.radiusX()).toBe(80);
+    expect(shape?.radiusY()).toBe(40);
+    expect(shape?.rotation()).toBe(30);
+    expect(shape?.fill()).toBe('#10b981');
+    expect(shape?.stroke()).toBe('#047857');
+    expect(shape?.strokeWidth()).toBe(2);
   });
 
   it('ZonePolygonNode uses resolvedZone when provided', () => {
@@ -167,7 +193,7 @@ describe('ZoneObject Dumb View (ResolvedZonePrimitive)', () => {
       shapeType: 'polygon',
       flatPointsPx: [50, 60, 150, 60, 150, 160],
       color: '#3b82f6',
-      opacity: 0.25,
+      opacity: 1,
       strokeColor: '#3b82f6',
       strokeOpacity: 0.8,
       strokeWidthPx: 3,
@@ -188,11 +214,10 @@ describe('ZoneObject Dumb View (ResolvedZonePrimitive)', () => {
       strokeWidth: 3,
     };
 
-    const store = createCanvasStore({ mode: 'full-tactical' });
     render(
       React.createElement(
-        CanvasStoreContext.Provider,
-        { value: store },
+        TacticalStoreProvider,
+        null,
         React.createElement(
           Stage,
           { width: 800, height: 600 },
@@ -217,6 +242,129 @@ describe('ZoneObject Dumb View (ResolvedZonePrimitive)', () => {
     const line = nodesRegistryRef.current.zoneNodes.get('zp1') as Konva.Line;
     expect(line).toBeDefined();
     expect(line?.points()).toEqual([50, 60, 150, 60, 150, 160]);
+    expect(line?.fill()).toBe('#3b82f6');
+    expect(line?.stroke()).toBe('#3b82f6');
     expect(line?.strokeWidth()).toBe(3);
+  });
+
+  it('computeTransformedZonePatch returns normalized rect/rotation without points', () => {
+    const node = new Konva.Rect({
+      x: 200,
+      y: 150,
+      scaleX: 1.5,
+      scaleY: 0.5,
+      rotation: 45,
+    });
+
+    const patch = computeTransformedZonePatch(node, 100, 100, 800, 600);
+
+    expect(patch.rotation).toBe(45);
+    expect(patch.width).toBeCloseTo((150 / 800) * 100);
+    expect(patch.height).toBeCloseTo((50 / 600) * 100);
+    expect(patch.x).toBeCloseTo(((200 - 75) / 800) * 100);
+    expect(patch.y).toBeCloseTo(((150 - 25) / 600) * 100);
+    expect('points' in patch).toBe(false);
+    expect(node.scaleX()).toBe(1);
+    expect(node.scaleY()).toBe(1);
+  });
+
+  it('ZoneShapeNode attaches Transformer with rotateEnabled=false and 8 anchors and syncs rotationDeg', () => {
+    const nodesRegistryRef = {
+      current: {
+        zoneNodes: new Map<string, Konva.Shape>(),
+      } as any,
+    };
+    const baseResolvedZone: ResolvedZonePrimitive = {
+      id: 'z-rot',
+      shapeType: 'rect',
+      xPx: 100 as StagePixel,
+      yPx: 100 as StagePixel,
+      widthPx: 160 as StagePixel,
+      heightPx: 80 as StagePixel,
+      rotationDeg: 0,
+      color: '#3b82f6',
+      opacity: 1,
+      strokeColor: '#3b82f6',
+      strokeOpacity: 0.8,
+      strokeWidthPx: 2,
+      visible: true,
+      selected: true,
+    };
+    const zone: ZoneAnnotation = {
+      id: 'z-rot',
+      annotationType: 'zone',
+      zoneType: 'generic',
+      shapeType: 'rect',
+      points: [],
+      x: 12.5,
+      y: 16.6,
+      width: 20,
+      height: 13.3,
+      color: '#3b82f6',
+      opacity: 0.5,
+      strokeWidth: 2,
+    };
+
+    const { rerender } = render(
+      React.createElement(
+        TacticalStoreProvider,
+        null,
+        React.createElement(
+          Stage,
+          { width: 800, height: 600 },
+          React.createElement(
+            Layer,
+            null,
+            React.createElement(ZoneShapeNode, {
+              zone,
+              stageSize: { width: 800, height: 600 },
+              isSelected: true,
+              isInteractive: true,
+              onSelect: vi.fn(),
+              updateZone: vi.fn(),
+              nodesRegistryRef,
+              resolvedZone: baseResolvedZone,
+            }),
+          ),
+        ),
+      ),
+    );
+
+    const shape = nodesRegistryRef.current.zoneNodes.get('z-rot') as Konva.Rect;
+    const transformer = shape
+      ?.getLayer()
+      ?.findOne('Transformer') as Konva.Transformer;
+    expect(transformer).toBeDefined();
+    expect(transformer?.rotateEnabled()).toBe(false);
+    expect(transformer?.enabledAnchors()).toHaveLength(8);
+    expect(transformer?.nodes()).toHaveLength(1);
+    expect(shape?.rotation()).toBe(0);
+
+    rerender(
+      React.createElement(
+        TacticalStoreProvider,
+        null,
+        React.createElement(
+          Stage,
+          { width: 800, height: 600 },
+          React.createElement(
+            Layer,
+            null,
+            React.createElement(ZoneShapeNode, {
+              zone,
+              stageSize: { width: 800, height: 600 },
+              isSelected: true,
+              isInteractive: true,
+              onSelect: vi.fn(),
+              updateZone: vi.fn(),
+              nodesRegistryRef,
+              resolvedZone: { ...baseResolvedZone, rotationDeg: 45 },
+            }),
+          ),
+        ),
+      ),
+    );
+
+    expect(shape?.rotation()).toBe(45);
   });
 });

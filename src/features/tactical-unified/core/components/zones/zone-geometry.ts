@@ -62,6 +62,8 @@ export function computeTransformedZonePatch(
   width: number,
   height: number,
 ): Partial<ZoneAnnotation> {
+  if (width <= 0 || height <= 0) return {};
+
   const scaleX = node.scaleX();
   const scaleY = node.scaleY();
   const rot = node.rotation();
@@ -83,36 +85,6 @@ export function computeTransformedZonePatch(
     y: newNormY,
     width: newNormW,
     height: newNormH,
-    rotation: rot,
-    points: [
-      { x: newNormX, y: newNormY },
-      { x: newNormX + newNormW, y: newNormY },
-      { x: newNormX + newNormW, y: newNormY + newNormH },
-      { x: newNormX, y: newNormY + newNormH },
-    ],
-  };
-}
-
-function alphaHex(opacity: number): string {
-  const clamped = Math.max(0, Math.min(1, opacity));
-  return Math.round(clamped * 255)
-    .toString(16)
-    .padStart(2, '0');
-}
-
-export function getZoneStyle(zone: ZoneAnnotation) {
-  const color = zone.color || '#3b82f6';
-  const opacity = zone.opacity ?? 0.25;
-  const strokeOpacity = zone.strokeOpacity ?? 1;
-  const strokeColor = zone.strokeColor || color;
-  const strokeWidth = zone.strokeWidth ?? 3;
-
-  return {
-    fillRGBA: color + alphaHex(opacity),
-    strokeColor,
-    strokeColorRGBA: strokeColor + alphaHex(strokeOpacity),
-    strokeWidth,
-    strokeOpacity,
-    opacity,
+    rotation: Number.isFinite(rot) ? rot : 0,
   };
 }

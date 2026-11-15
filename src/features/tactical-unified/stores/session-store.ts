@@ -2,6 +2,7 @@ import { createStore, type StoreApi } from 'zustand';
 import type {
   EphemeralDragDelta,
   EphemeralSessionState,
+  EphemeralZoneRotation,
 } from '@/lib/tactical/compiler/scene-graph-dto';
 import {
   DEFAULT_SESSION_UI_STATE,
@@ -29,11 +30,13 @@ export interface SessionStoreState extends SessionUiState {
   readonly activePhaseId: string;
   readonly activeSlideId: string;
   readonly activeDragDelta: EphemeralDragDelta | null;
+  readonly activeZoneRotation: EphemeralZoneRotation | null;
   readonly drawingPreview: EphemeralSessionState['drawingPreview'] | null;
 
   readonly setActivePhaseId: (phaseId: string) => void;
   readonly setActiveSlideId: (slideId: string) => void;
   readonly setActiveDragDelta: (delta: EphemeralDragDelta | null) => void;
+  readonly setActiveZoneRotation: (rot: EphemeralZoneRotation | null) => void;
   readonly setDrawingPreview: (
     preview: EphemeralSessionState['drawingPreview'] | null,
   ) => void;
@@ -87,6 +90,7 @@ export type CreateSessionStoreOptions = Partial<SessionUiState> & {
   activePhaseId?: string;
   activeSlideId?: string;
   activeDragDelta?: EphemeralDragDelta | null;
+  activeZoneRotation?: EphemeralZoneRotation | null;
   drawingPreview?: EphemeralSessionState['drawingPreview'] | null;
 };
 
@@ -97,6 +101,7 @@ export function createSessionStore(
     activePhaseId,
     activeSlideId,
     activeDragDelta,
+    activeZoneRotation,
     drawingPreview,
     ...initialUi
   } = initial ?? {};
@@ -107,12 +112,15 @@ export function createSessionStore(
     activePhaseId: activePhaseId ?? '',
     activeSlideId: activeSlideId ?? '',
     activeDragDelta: activeDragDelta ?? null,
+    activeZoneRotation: activeZoneRotation ?? null,
     drawingPreview: drawingPreview ?? null,
 
     setActivePhaseId: (phaseId: string) => set({ activePhaseId: phaseId }),
     setActiveSlideId: (slideId: string) => set({ activeSlideId: slideId }),
     setActiveDragDelta: (delta: EphemeralDragDelta | null) =>
       set({ activeDragDelta: delta }),
+    setActiveZoneRotation: (rot: EphemeralZoneRotation | null) =>
+      set({ activeZoneRotation: rot }),
     setDrawingPreview: (
       preview: EphemeralSessionState['drawingPreview'] | null,
     ) => set({ drawingPreview: preview }),
@@ -120,6 +128,7 @@ export function createSessionStore(
       set((state) => ({
         ...state,
         activeDragDelta: null,
+        activeZoneRotation: null,
         drawingPreview: null,
         ...init,
       })),

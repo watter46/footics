@@ -37,11 +37,30 @@ export interface DispatcherMoveOptions {
   activeTool: DrawingTool;
   drawingPreview: DrawingPreviewState | null;
   onPanMove: (e: KonvaEventObject<PointerEvent>) => boolean;
-  onRotateMove: (pixelPos: { x: number; y: number }) => boolean;
+  onRotateMove: (
+    pixelPos: { x: number; y: number },
+    isAnchor?: boolean,
+    stageContainer?: HTMLDivElement | null,
+  ) => boolean;
   onPolygonMove: (normPos: { x: number; y: number }) => boolean;
   onSelectionMove: (pixelPos: { x: number; y: number }) => boolean;
   eraseAtPoint: (normPos: { x: number; y: number }, radius: number) => void;
   setDrawingPreview: (p: DrawingPreviewState | null) => void;
+}
+
+export function isAnchorTarget(
+  target: KonvaEventObject<PointerEvent>['target'] | null | undefined,
+): boolean {
+  if (!target) return false;
+  const name = typeof target.name === 'function' ? target.name() : '';
+  if (typeof name === 'string' && name.includes('_anchor')) return true;
+  const parent =
+    typeof target.getParent === 'function' ? target.getParent() : null;
+  const className =
+    parent && typeof parent.getClassName === 'function'
+      ? parent.getClassName()
+      : '';
+  return className === 'Transformer';
 }
 
 export function dispatchPointerMove(
@@ -54,7 +73,9 @@ export function dispatchPointerMove(
     opts.vRect,
     opts.pitchTransform,
   );
-  if (opts.onRotateMove(pixelPos)) return;
+  const isAnchor = isAnchorTarget(e.target);
+  const stageContainer = e.target?.getStage?.()?.container?.() ?? null;
+  if (opts.onRotateMove(pixelPos, isAnchor, stageContainer)) return;
   if (opts.onPolygonMove(normPos)) return;
   if (opts.onSelectionMove(pixelPos)) return;
 

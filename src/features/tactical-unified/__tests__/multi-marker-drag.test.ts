@@ -1,37 +1,62 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createCanvasStore } from '@/features/tactical-unified/core/store/canvas-store';
-import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
-import { createDefaultPlayer } from '@/lib/types/tactical-unified';
+import {
+  createDocumentStore,
+  type DocumentStore,
+} from '@/features/tactical-unified/stores/document-store';
+import { createDefaultTacticalProject } from '@/features/tactical-unified/stores/tactical-store-provider';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 
 describe('Multi-Marker Drag & Bulk Bench Actions', () => {
+  let documentStore: DocumentStore;
+  let phaseId: string;
+  let slideId: string;
+
   beforeEach(() => {
-    useTacticalUnifiedStore.setState((state) => ({
-      ...state,
-      selectedObjects: [],
-      activeTool: 'select',
-    }));
+    const project = createDefaultTacticalProject();
+    documentStore = createDocumentStore(project);
+    phaseId = project.phases[0].id;
+    slideId = project.phases[0].slides[0].id;
   });
 
-  describe('updatePlayers in slide-player-crud-slice', () => {
+  const getSlide = () => {
+    const phase = documentStore
+      .getState()
+      .project.phases.find((p) => p.id === phaseId);
+    return phase?.slides.find((s) => s.id === slideId);
+  };
+
+  describe('MOVE_PLAYERS in documentStore', () => {
     it('1回の履歴記録で複数プレイヤーの座標を一括アトミック更新し、1回のundoで元に戻る', () => {
-      const store = useTacticalUnifiedStore.getState();
-      const slideId = store.activeSlideId;
+      const slideBefore = getSlide();
+      const p1 = slideBefore?.players[0];
+      const p2 = slideBefore?.players[1];
+      expect(p1).toBeDefined();
+      expect(p2).toBeDefined();
+      if (!p1 || !p2) return;
 
-      const p1 = createDefaultPlayer('home', 20, 30, '#ff0000');
-      const p2 = createDefaultPlayer('home', 40, 50, '#ff0000');
-      store.addPlayer(p1);
-      store.addPlayer(p2);
+      const origX1 = p1.x;
+      const origY1 = p1.y;
+      const origX2 = p2.x;
+      const origY2 = p2.y;
+      const pastCountBefore = documentStore.getState().past.length;
 
-      const pastCountBefore = useTacticalUnifiedStore.getState().past.length;
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'MOVE_PLAYERS',
+        moves: [
+          {
+            id: p1.id,
+            x: clampToScreenNorm(25),
+            y: clampToScreenNorm(35),
+          },
+          {
+            id: p2.id,
+            x: clampToScreenNorm(45),
+            y: clampToScreenNorm(55),
+          },
+        ],
+      });
 
-      store.updatePlayers(slideId, [
-        { id: p1.id, patch: { x: 25, y: 35 } },
-        { id: p2.id, patch: { x: 45, y: 55 } },
-      ]);
-
-      const slideAfter = useTacticalUnifiedStore
-        .getState()
-        .project.slides.find((s) => s.id === slideId);
+      const slideAfter = getSlide();
       const updatedP1 = slideAfter?.players.find((p) => p.id === p1.id);
       const updatedP2 = slideAfter?.players.find((p) => p.id === p2.id);
 
@@ -41,104 +66,78 @@ describe('Multi-Marker Drag & Bulk Bench Actions', () => {
       expect(updatedP2?.y).toBe(55);
 
       // 履歴は1件のみ増加していること
-      const pastCountAfter = useTacticalUnifiedStore.getState().past.length;
-      expect(pastCountAfter).toBe(pastCountBefore + 1);
+      expect(documentStore.getState().past.length).toBe(pastCountBefore + 1);
 
       // undo 1回で両方のプレイヤーの座標が元に戻ること
-      useTacticalUnifiedStore.getState().undo();
-      const slideUndone = useTacticalUnifiedStore
-        .getState()
-        .project.slides.find((s) => s.id === slideId);
+      documentStore.getState().undo();
+      const slideUndone = getSlide();
       const undoneP1 = slideUndone?.players.find((p) => p.id === p1.id);
       const undoneP2 = slideUndone?.players.find((p) => p.id === p2.id);
 
-      expect(undoneP1?.x).toBe(20);
-      expect(undoneP1?.y).toBe(30);
-      expect(undoneP2?.x).toBe(40);
-      expect(undoneP2?.y).toBe(50);
+      expect(undoneP1?.x).toBe(origX1);
+      expect(undoneP1?.y).toBe(origY1);
+      expect(undoneP2?.x).toBe(origX2);
+      expect(undoneP2?.y).toBe(origY2);
     });
 
     it('ロックされたプレイヤーは locked 変更なしの更新をスキップする', () => {
-      const store = useTacticalUnifiedStore.getState();
-      const slideId = store.activeSlideId;
+      const slideBefore = getSlide();
+      const lockedPlayer = slideBefore?.players[0];
+      const normalPlayer = slideBefore?.players[1];
+      expect(lockedPlayer).toBeDefined();
+      expect(normalPlayer).toBeDefined();
+      if (!lockedPlayer || !normalPlayer) return;
 
-      const lockedPlayer = {
-        ...createDefaultPlayer('home', 10, 10, '#ff0000'),
-        locked: true,
-      };
-      const normalPlayer = createDefaultPlayer('away', 20, 20, '#0000ff');
-      store.addPlayer(lockedPlayer);
-      store.addPlayer(normalPlayer);
+      const origLockedX = lockedPlayer.x;
 
-      store.updatePlayers(slideId, [
-        { id: lockedPlayer.id, patch: { x: 99, y: 99 } },
-        { id: normalPlayer.id, patch: { x: 88, y: 88 } },
-      ]);
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'UPDATE_PLAYER',
+        id: lockedPlayer.id,
+        patch: { locked: true },
+      });
 
-      const slide = useTacticalUnifiedStore
-        .getState()
-        .project.slides.find((s) => s.id === slideId);
+      documentStore.getState().dispatchSlide(phaseId, slideId, {
+        type: 'MOVE_PLAYERS',
+        moves: [
+          {
+            id: lockedPlayer.id,
+            x: clampToScreenNorm(99),
+            y: clampToScreenNorm(99),
+          },
+          {
+            id: normalPlayer.id,
+            x: clampToScreenNorm(88),
+            y: clampToScreenNorm(88),
+          },
+        ],
+      });
+
+      const slide = getSlide();
       const p1 = slide?.players.find((p) => p.id === lockedPlayer.id);
       const p2 = slide?.players.find((p) => p.id === normalPlayer.id);
 
-      expect(p1?.x).toBe(10); // 変更されない
-      expect(p2?.x).toBe(88); // 正常に更新される
-    });
-  });
-
-  describe('updateMarkers in canvas-store', () => {
-    it('createCanvasStore で updateMarkers を呼び出すと複数マーカーが1回のUndoで更新される', () => {
-      const p1 = createDefaultPlayer('home', 10, 10, '#ff0000');
-      const p2 = createDefaultPlayer('away', 20, 20, '#0000ff');
-      const canvasStore = createCanvasStore({
-        mode: 'tactical-board',
-        initialAnnotations: JSON.stringify({
-          markers: [p1, p2],
-        }),
-      });
-
-      canvasStore.getState().updateMarkers([
-        { id: p1.id, patch: { x: 30, y: 30 } },
-        { id: p2.id, patch: { x: 40, y: 40 } },
-      ]);
-
-      const state = canvasStore.getState();
-      const m1 = state.annotations.markers.find((m) => m.id === p1.id);
-      const m2 = state.annotations.markers.find((m) => m.id === p2.id);
-      expect(m1?.x).toBe(30);
-      expect(m2?.x).toBe(40);
-
-      // 履歴テスト
-      expect(canvasStore.getState().history.past.length).toBe(1);
-      canvasStore.getState().undo();
-
-      const undoneState = canvasStore.getState();
-      const u1 = undoneState.annotations.markers.find((m) => m.id === p1.id);
-      const u2 = undoneState.annotations.markers.find((m) => m.id === p2.id);
-      expect(u1?.x).toBe(10);
-      expect(u2?.x).toBe(20);
+      expect(p1?.x).toBe(origLockedX);
+      expect(p2?.x).toBe(88);
     });
   });
 
   describe('Bulk bench drop logic', () => {
     it('複数マーカー選択状態でベンチドロップ時、全マーカーがベンチに移動する', () => {
-      const store = useTacticalUnifiedStore.getState();
-      const slideId = store.activeSlideId;
+      const slideBefore = getSlide();
+      const p1 = slideBefore?.players[0];
+      const p2 = slideBefore?.players[1];
+      expect(p1).toBeDefined();
+      expect(p2).toBeDefined();
+      if (!p1 || !p2) return;
 
-      const p1 = createDefaultPlayer('home', 10, 10, '#ff0000');
-      const p2 = createDefaultPlayer('home', 20, 20, '#ff0000');
-      store.addPlayer(p1);
-      store.addPlayer(p2);
-
-      // 複数マーカーをベンチ移動
-      const selectedIds = [p1.id, p2.id];
-      for (const id of selectedIds) {
-        store.movePlayerToBench(slideId, id);
+      for (const id of [p1.id, p2.id]) {
+        documentStore.getState().dispatchSlide(phaseId, slideId, {
+          type: 'MOVE_PLAYER_TO_BENCH',
+          id,
+        });
       }
 
-      const slide = useTacticalUnifiedStore
-        .getState()
-        .project.slides.find((s) => s.id === slideId);
+      const slide = getSlide();
       const m1 = slide?.players.find((m) => m.id === p1.id);
       const m2 = slide?.players.find((m) => m.id === p2.id);
 

@@ -2,10 +2,8 @@
 
 import type Konva from 'konva';
 import type React from 'react';
-import { useContext } from 'react';
 import { Stage } from 'react-konva';
 import { useResolvedSceneGraph } from '@/features/tactical-unified/hooks/use-resolved-scene-graph';
-import { TacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ResolvedSceneGraphDTO } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { StageViewport } from '@/lib/tactical/engine/coordinates';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
@@ -58,7 +56,7 @@ function ResolvedSceneGraphBridge({
 }
 
 interface CanvasStageInnerProps extends CanvasStageViewProps {
-  sceneGraph: ResolvedSceneGraphDTO | null;
+  sceneGraph: ResolvedSceneGraphDTO;
 }
 
 function CanvasStageInner({
@@ -100,8 +98,6 @@ function CanvasStageInner({
         <PitchGroundLayer
           stageSize={size}
           pitchRect={vRect}
-          activePolygonId={interaction?.activePolygonId ?? null}
-          mousePreviewPos={interaction?.mousePreviewPos ?? null}
           nodesRegistryRef={nodesRegistryRef}
           cleanRender={cleanRender}
           listening={isInteractive}
@@ -121,8 +117,6 @@ function CanvasStageInner({
           stageSize={size}
           pitchRect={vRect}
           selectionBox={interaction?.selectionBox ?? null}
-          activePolygonId={interaction?.activePolygonId ?? null}
-          mousePreviewPos={interaction?.mousePreviewPos ?? null}
           cleanRender={cleanRender}
           sceneGraph={sceneGraph}
         />
@@ -134,14 +128,8 @@ function CanvasStageInner({
 }
 
 export function CanvasStage(props: CanvasStageViewProps) {
-  const tacticalStores = useContext(TacticalStoresContext);
-
   if (props.size.width <= 0 || props.size.height <= 0) {
     return null;
-  }
-
-  if (!tacticalStores) {
-    return <CanvasStageInner {...props} sceneGraph={null} />;
   }
 
   const viewport: StageViewport = {

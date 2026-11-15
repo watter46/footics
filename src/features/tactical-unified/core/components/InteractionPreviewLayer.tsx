@@ -2,6 +2,11 @@
 
 import type { ReactNode } from 'react';
 import { Ellipse, Group, Rect as KonvaRect, Layer, Line } from 'react-konva';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import type {
   ResolvedArrowPrimitive,
   ResolvedDrawingPreview,
@@ -9,11 +14,10 @@ import type {
   ResolvedZonePrimitive,
 } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { SelectionBox } from '../hooks/use-canvas-selection-box';
-import { useCanvasStore } from '../hooks/use-canvas-store';
-import type { PitchRectBounds } from '../utils/canvas-coordinates';
-import { calculatePitchTransform } from '../utils/canvas-pitch-transform-helper';
-import type { CameraState } from '../utils/matrix-coordinates';
-import { renderDrawingPreviewNode } from './DrawingPreviewLayer';
+import {
+  type PitchRectBounds,
+  resolvePitchGroupTransform,
+} from '../utils/canvas-coordinates';
 import { PlayerConnectingGuide } from './PlayerConnectingGuide';
 
 export type DrawingPreviewDTO =
@@ -30,12 +34,9 @@ export type PreviewSceneGraph =
 export interface InteractionPreviewLayerProps {
   stageSize: { width: number; height: number };
   pitchRect: PitchRectBounds;
-  camera?: Partial<CameraState>;
   selectionBox?: SelectionBox | null;
-  activePolygonId?: string | null;
-  mousePreviewPos?: { x: number; y: number } | null;
   cleanRender?: boolean;
-  sceneGraph?: PreviewSceneGraph | null;
+  sceneGraph: PreviewSceneGraph;
 }
 
 function isZonePrimitive(
@@ -153,29 +154,27 @@ export function InteractionPreviewLayer({
   cleanRender,
   sceneGraph,
 }: InteractionPreviewLayerProps): ReactNode {
-  const drawingPreview = useCanvasStore((s) => s.drawingPreview);
-  const color = useCanvasStore((s) => s.color);
-  const strokeWidth = useCanvasStore((s) => s.strokeWidth);
-  const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
-  const markers = useCanvasStore((s) => s.annotations.markers);
-  const teamVisibility = useCanvasStore((s) => s.teamVisibility ?? 'both');
-  const pitchTransform = useCanvasStore((s) => s.pitchTransform);
-
-  const groupTransform = calculatePitchTransform(
-    pitchRect,
-    pitchTransform.panX,
-    pitchTransform.panY,
-    pitchTransform.zoom,
-    0,
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const connectingPlayerId = useSessionStore((s) => s.connectingPlayerId);
+  const teamVisibility = useSessionStore((s) => s.teamVisibility);
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
   );
 
+  const players = activeSlide?.players ?? [];
+  const pitchTransform = activeSlide?.pitchTransform;
+  const groupTransform = resolvePitchGroupTransform(pitchRect, pitchTransform);
+
   if (cleanRender) return null;
-  const visibleMarkers =
-    teamVisibility === 'both'
-      ? markers
-      : markers.filter(
-          (m) => m.team === teamVisibility || m.team === 'neutral',
-        );
+  const visibleMarkers = players
+    .filter((p) => p.area === 'pitch')
+    .filter(
+      (p) =>
+        teamVisibility === 'both' ||
+        p.team === teamVisibility ||
+        p.team === 'neutral',
+    );
 
   const pw = pitchRect.width;
   const ph = pitchRect.height;
@@ -217,15 +216,9 @@ export function InteractionPreviewLayer({
           />
         )}
 
-        {sceneGraph?.drawingPreview != null
+        {sceneGraph.drawingPreview != null
           ? renderSceneGraphDrawingPreview(sceneGraph.drawingPreview)
-          : renderDrawingPreviewNode(
-              drawingPreview,
-              pw,
-              ph,
-              color,
-              strokeWidth,
-            )}
+          : null}
       </Group>
     </Layer>
   );
