@@ -1,6 +1,6 @@
 # TASK-181kf: TacticalUnifiedPage エントリーポイント・Page統合テスト・BallHudテスト橋渡し
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181k)

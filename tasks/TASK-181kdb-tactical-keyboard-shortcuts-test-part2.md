@@ -1,6 +1,6 @@
 # TASK-181kdb: useKeyboardShortcuts テスト第2弾（Mod+]・削除・ツール・シーン操作）移行
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181k)

@@ -1,6 +1,6 @@
 # TASK-181ke: Left Panel 群（SceneCanvasThumbnail / PhaseSection / LeftPanel & Tests）Domain 型移行
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181k)

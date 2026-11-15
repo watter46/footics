@@ -1,6 +1,6 @@
 # TASK-181kdc: useKeyboardShortcuts テスト第3弾（複製/再生/Undo・削除〜Tab・旧依存完全削除）
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181k)

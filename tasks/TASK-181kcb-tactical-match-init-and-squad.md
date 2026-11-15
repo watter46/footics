@@ -1,6 +1,6 @@
 # TASK-181kcb: 試合初期化フック (useTacticalMatchInit) ・スカッド連携 (squad-actions) 移行
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181j-181k)

@@ -1,6 +1,6 @@
 # TASK-181kda: useKeyboardShortcuts テスト第1弾（Harness 導入・Copy/Paste〜Escape）移行
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181k)

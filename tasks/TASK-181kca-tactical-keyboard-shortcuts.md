@@ -1,6 +1,6 @@
 # TASK-181kca: useKeyboardShortcuts の3周波数ストア・ドメインコマンド完全移行
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181k)

@@ -1,6 +1,6 @@
 # TASK-181kb: HUD・PhotoProvider・再生/D&D/自動保存フック移行
 
-- **Status**: TODO
+- **Status**: `DONE`
 - **Priority**: HIGH
 - **Created**: 2026-11-13
 - **Parent**: plan-tactical-legacy-removal.md (181j-181k)
