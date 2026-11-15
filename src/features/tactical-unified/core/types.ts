@@ -212,6 +212,7 @@ export interface CanvasStageProps {
   className?: string;
   /** 明示指定時のみ Stage 矩形を比率で contain フィット。未指定ならコンテナ全面。 */
   imageAspect?: number;
+  paddingRatio?: number;
   /** 親(Level3)から注入するノードレジストリ（アニメーション hook と共有） */
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   /** Stage 実サイズ(px)の変化通知。親が座標写像（ピッチ矩形）に用いる */

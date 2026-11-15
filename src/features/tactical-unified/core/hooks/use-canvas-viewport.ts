@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import { calculateVirtualCanvasRect } from '../utils/virtual-canvas-rect';
-import { useCanvasStore } from './use-canvas-store';
 
 export interface UseCanvasViewportParams {
   imageAspect?: number;
+  paddingRatio?: number;
   onStageSizeChange?: (size: { width: number; height: number }) => void;
 }
 
@@ -18,6 +18,7 @@ export interface UseCanvasViewportResult {
 
 export function useCanvasViewport({
   imageAspect,
+  paddingRatio = 0,
   onStageSizeChange,
 }: UseCanvasViewportParams = {}): UseCanvasViewportResult {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -47,7 +48,6 @@ export function useCanvasViewport({
     return () => observer.disconnect();
   }, []);
 
-  const paddingRatio = useCanvasStore((s) => s.capabilities?.paddingRatio ?? 0);
   const effectiveAspect = imageAspect ?? 16 / 9;
 
   const rawVRect = useMemo(

@@ -1,10 +1,10 @@
 'use client';
 
-import type { TextAnnotation } from '@/lib/types/tactical-unified';
+import type { DomainTextAnnotation } from '@/lib/types/tactical/domain-entities';
 import { normToScreen } from '../utils/canvas-coordinates';
 
 export interface PitchInlineTextEditorProps {
-  editingText: TextAnnotation | null;
+  editingText: DomainTextAnnotation | null;
   stageSize: { width: number; height: number };
   pitchRect?: { x: number; y: number; width: number; height: number };
   pitchTransform?: { panX: number; panY: number; zoom: number; tilt?: number };

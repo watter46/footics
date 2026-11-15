@@ -1,11 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  toScreenNormCoord,
+  toScreenNormPoint,
+} from '@/lib/types/tactical/branded';
 import type {
-  ArrowAnnotation,
-  Player,
-  ZoneAnnotation,
-} from '@/lib/types/tactical-unified';
+  DomainArrowAnnotation,
+  DomainPlayer,
+  DomainZoneAnnotation,
+} from '@/lib/types/tactical/domain-entities';
+import type { Player } from '@/lib/types/tactical-unified';
 import { BallHud } from '../components/hud/ball-hud';
 import {
   ContextHud,
@@ -51,21 +56,18 @@ describe('Context HUD Positioning and Target Resolution', () => {
       const arrow = {
         id: 'arrow-1',
         annotationType: 'arrow',
-        points: [
-          { x: 10, y: 20 },
-          { x: 50, y: 20 },
-        ],
-        controlPoint: { x: 30, y: 80 },
+        points: [toScreenNormPoint(10, 20), toScreenNormPoint(50, 20)],
+        controlPoint: toScreenNormPoint(30, 80),
         color: '#ffffff',
         arrowType: 'pass',
         curveType: 'curved',
-      } as unknown as ArrowAnnotation;
+      } as unknown as DomainArrowAnnotation;
 
       const target = resolveHudTarget({
         selected: { kind: 'arrow', id: 'arrow-1' },
         offset,
         data: {
-          markers: [],
+          players: [],
           arrows: [arrow],
           zones: [],
           texts: [],
@@ -85,20 +87,17 @@ describe('Context HUD Positioning and Target Resolution', () => {
       const arrow = {
         id: 'arrow-2',
         annotationType: 'arrow',
-        points: [
-          { x: 20, y: 30 },
-          { x: 40, y: 50 },
-        ],
+        points: [toScreenNormPoint(20, 30), toScreenNormPoint(40, 50)],
         color: '#ffffff',
         arrowType: 'pass',
         curveType: 'straight',
-      } as unknown as ArrowAnnotation;
+      } as unknown as DomainArrowAnnotation;
 
       const target = resolveHudTarget({
         selected: { kind: 'arrow', id: 'arrow-2' },
         offset,
         data: {
-          markers: [],
+          players: [],
           arrows: [arrow],
           zones: [],
           texts: [],
@@ -118,14 +117,11 @@ describe('Context HUD Positioning and Target Resolution', () => {
       const arrow = {
         id: 'arrow-node',
         annotationType: 'arrow',
-        points: [
-          { x: 0, y: 0 },
-          { x: 10, y: 10 },
-        ],
+        points: [toScreenNormPoint(0, 0), toScreenNormPoint(10, 10)],
         color: '#ffffff',
         arrowType: 'pass',
         curveType: 'straight',
-      } as unknown as ArrowAnnotation;
+      } as unknown as DomainArrowAnnotation;
 
       const mockRegistry = createMockRegistry({
         arrowNodes: new Map<string, ArrowNodeEntry>([
@@ -150,7 +146,7 @@ describe('Context HUD Positioning and Target Resolution', () => {
         offset,
         nodesRegistryRef: { current: mockRegistry },
         data: {
-          markers: [],
+          players: [],
           arrows: [arrow],
           zones: [],
           texts: [],
@@ -170,22 +166,22 @@ describe('Context HUD Positioning and Target Resolution', () => {
       const zone = {
         id: 'zone-1',
         annotationType: 'zone',
+        shapeType: 'rect',
         zoneType: 'generic',
-        x: 20,
-        y: 30,
-        width: 40,
-        height: 20,
+        x: toScreenNormCoord(20),
+        y: toScreenNormCoord(30),
+        width: toScreenNormCoord(40),
+        height: toScreenNormCoord(20),
         color: 'rgba(255,0,0,0.2)',
         opacity: 0.2,
         strokeWidth: 2,
-        points: [],
-      } as unknown as ZoneAnnotation;
+      } as unknown as DomainZoneAnnotation;
 
       const target = resolveHudTarget({
         selected: { kind: 'zone', id: 'zone-1' },
         offset,
         data: {
-          markers: [],
+          players: [],
           arrows: [],
           zones: [zone],
           texts: [],
@@ -206,12 +202,13 @@ describe('Context HUD Positioning and Target Resolution', () => {
       const zone = {
         id: 'zone-node',
         annotationType: 'zone',
+        shapeType: 'polygon',
         zoneType: 'generic',
         color: '#ff0000',
         opacity: 0.2,
         strokeWidth: 2,
         points: [],
-      } as unknown as ZoneAnnotation;
+      } as unknown as DomainZoneAnnotation;
 
       const mockRegistry = createMockRegistry({
         zoneNodes: new Map([
@@ -234,7 +231,7 @@ describe('Context HUD Positioning and Target Resolution', () => {
         offset,
         nodesRegistryRef: { current: mockRegistry },
         data: {
-          markers: [],
+          players: [],
           arrows: [],
           zones: [zone],
           texts: [],
@@ -253,8 +250,8 @@ describe('Context HUD Positioning and Target Resolution', () => {
     it('Konva node が存在する場合、中心Yを返す', () => {
       const player = {
         id: 'player-1',
-        x: 50,
-        y: 50,
+        x: toScreenNormCoord(50),
+        y: toScreenNormCoord(50),
         team: 'home',
         area: 'pitch',
         style: {
@@ -270,7 +267,7 @@ describe('Context HUD Positioning and Target Resolution', () => {
         },
         connectLines: [],
         badges: [],
-      } as unknown as Player;
+      } as unknown as DomainPlayer;
 
       const mockRegistry = createMockRegistry({
         playerNodes: new Map([
@@ -293,7 +290,7 @@ describe('Context HUD Positioning and Target Resolution', () => {
         offset,
         nodesRegistryRef: { current: mockRegistry },
         data: {
-          markers: [player],
+          players: [player],
           arrows: [],
           zones: [],
           texts: [],
@@ -379,6 +376,10 @@ describe('Context HUD Positioning and Target Resolution', () => {
       const sessionStore = createSessionStore({
         activePhaseId: project.phases[0]!.id,
         activeSlideId: project.phases[0]!.slides[0]!.id,
+        selectedObjects: [{ id: 'ball', kind: 'ball' }],
+        isHudOpen: true,
+        isDragging: false,
+        activeTool: 'select',
       });
       const playbackStore = createPlaybackStore();
       const mockNode = {

@@ -3,9 +3,11 @@ import type Konva from 'konva';
 import { createRef } from 'react';
 import { Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import * as pitchSvg from '@/lib/tactical/pitch-svg';
-import { createCanvasStore } from '../../store/canvas-store';
-import { CanvasStoreContext } from '../../store/canvas-store-provider';
 import { BackgroundImageLayer } from '../BackgroundImageLayer';
 
 beforeEach(() => {
@@ -30,14 +32,13 @@ beforeEach(() => {
 describe('BackgroundImageLayer', () => {
   it('マウント時に preloadAllPitchSvgImages を呼び出すこと', () => {
     const preloadSpy = vi.spyOn(pitchSvg, 'preloadAllPitchSvgImages');
-    const store = createCanvasStore({ mode: 'tactical-board' });
     const stageRef = createRef<Konva.Stage>();
     render(
-      <CanvasStoreContext.Provider value={store}>
+      <TacticalStoreProvider>
         <Stage ref={stageRef} width={800} height={450}>
           <BackgroundImageLayer width={800} height={450} />
         </Stage>
-      </CanvasStoreContext.Provider>,
+      </TacticalStoreProvider>,
     );
     expect(preloadSpy).toHaveBeenCalledTimes(1);
   });
@@ -49,17 +50,20 @@ describe('BackgroundImageLayer', () => {
     } as unknown as HTMLImageElement;
     vi.spyOn(pitchSvg, 'getCachedPitchSvgImage').mockReturnValue(dummyPitchImg);
 
-    const store = createCanvasStore({
-      mode: 'tactical-board',
-      aspectRatio: '16:9',
-    });
+    const baseProject = createDefaultTacticalProject();
+    const project = {
+      ...baseProject,
+      phases: baseProject.phases.map((p, idx) =>
+        idx === 0 ? { ...p, aspectRatio: '16:9' as const } : p,
+      ),
+    };
     const stageRef = createRef<Konva.Stage>();
     render(
-      <CanvasStoreContext.Provider value={store}>
+      <TacticalStoreProvider initialProject={project}>
         <Stage ref={stageRef} width={800} height={450}>
           <BackgroundImageLayer width={800} height={450} />
         </Stage>
-      </CanvasStoreContext.Provider>,
+      </TacticalStoreProvider>,
     );
 
     const stage = stageRef.current;
@@ -83,17 +87,20 @@ describe('BackgroundImageLayer', () => {
       .spyOn(pitchSvg, 'loadPitchSvgImage')
       .mockResolvedValue(dummyPitchImg);
 
-    const store = createCanvasStore({
-      mode: 'tactical-board',
-      aspectRatio: '4:5',
-    });
+    const baseProject = createDefaultTacticalProject();
+    const project = {
+      ...baseProject,
+      phases: baseProject.phases.map((p, idx) =>
+        idx === 0 ? { ...p, aspectRatio: '4:5' as const } : p,
+      ),
+    };
     const stageRef = createRef<Konva.Stage>();
     render(
-      <CanvasStoreContext.Provider value={store}>
+      <TacticalStoreProvider initialProject={project}>
         <Stage ref={stageRef} width={400} height={500}>
           <BackgroundImageLayer width={400} height={500} />
         </Stage>
-      </CanvasStoreContext.Provider>,
+      </TacticalStoreProvider>,
     );
 
     expect(loadSpy).toHaveBeenCalledWith('4:5', expect.anything());
@@ -129,17 +136,22 @@ describe('BackgroundImageLayer', () => {
     window.Image = MockImage;
 
     try {
-      const store = createCanvasStore({
-        mode: 'screenshot-edit',
-        backgroundImageUrl: 'https://example.com/field.png',
-      });
+      const baseProject = createDefaultTacticalProject();
+      const project = {
+        ...baseProject,
+        phases: baseProject.phases.map((p, idx) =>
+          idx === 0
+            ? { ...p, backgroundImageUrl: 'https://example.com/field.png' }
+            : p,
+        ),
+      };
       const stageRef = createRef<Konva.Stage>();
       render(
-        <CanvasStoreContext.Provider value={store}>
+        <TacticalStoreProvider initialProject={project}>
           <Stage ref={stageRef} width={800} height={450}>
             <BackgroundImageLayer width={800} height={450} />
           </Stage>
-        </CanvasStoreContext.Provider>,
+        </TacticalStoreProvider>,
       );
 
       await act(async () => {

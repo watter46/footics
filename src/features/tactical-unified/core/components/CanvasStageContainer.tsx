@@ -10,10 +10,14 @@ import {
   useRef,
   useState,
 } from 'react';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { useCanvasExport } from '../hooks/use-canvas-export';
 import { useCanvasPointerInteraction } from '../hooks/use-canvas-pointer-interaction';
 import { useCanvasShortcuts } from '../hooks/use-canvas-shortcuts';
-import { useCanvasStore } from '../hooks/use-canvas-store';
 import { useCanvasViewport } from '../hooks/use-canvas-viewport';
 import type { CanvasCoreHandle, CanvasStageProps } from '../types';
 import {
@@ -30,6 +34,7 @@ export interface CanvasStageContainerProps extends CanvasStageProps {
 export function CanvasStageContainer({
   className = '',
   imageAspect,
+  paddingRatio,
   nodesRegistryRef: injectedRegistryRef,
   onStageSizeChange,
   toolbar,
@@ -41,20 +46,25 @@ export function CanvasStageContainer({
 
   const { containerRef, containerSize, vRect } = useCanvasViewport({
     imageAspect,
+    paddingRatio,
     onStageSizeChange,
   });
 
-  const texts = useCanvasStore((s) => s.annotations.texts);
-  const updateText = useCanvasStore((s) => s.updateText);
-  const removeText = useCanvasStore((s) => s.removeText);
-  const clearSelection = useCanvasStore((s) => s.clearSelection);
-  const undo = useCanvasStore((s) => s.undo);
-  const redo = useCanvasStore((s) => s.redo);
-  const canUndo = useCanvasStore((s) => s.canUndo);
-  const canRedo = useCanvasStore((s) => s.canRedo);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const clearSelection = useSessionStore((s) => s.clearSelection);
+  const setIsDragging = useSessionStore((s) => s.setIsDragging);
+  const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
 
-  const setIsDragging = useCanvasStore((s) => s.setIsDragging);
-  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
+  );
+  const texts = activeSlide?.texts ?? [];
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const undo = useDocumentStore((s) => s.undo);
+  const redo = useDocumentStore((s) => s.redo);
+  const canUndoState = useDocumentStore((s) => s.past.length > 0);
+  const canRedoState = useDocumentStore((s) => s.future.length > 0);
 
   useCanvasShortcuts();
 
@@ -85,10 +95,10 @@ export function CanvasStageContainer({
       copyToClipboard,
       undo,
       redo,
-      canUndo: () => canUndo(),
-      canRedo: () => canRedo(),
+      canUndo: () => canUndoState,
+      canRedo: () => canRedoState,
     }),
-    [exportPng, copyToClipboard, undo, redo, canUndo, canRedo],
+    [exportPng, copyToClipboard, undo, redo, canUndoState, canRedoState],
   );
 
   const internalRegistryRef = useRef<CanvasNodesRegistry>(
@@ -184,9 +194,18 @@ export function CanvasStageContainer({
           editingText={editingText}
           nodesRegistryRef={nodesRegistryRef}
           cleanRender={cleanRender}
-          onSaveText={(textId, content) => updateText(textId, { content })}
+          onSaveText={(textId, content) =>
+            dispatchSlide(activePhaseId, activeSlideId, {
+              type: 'UPDATE_TEXT',
+              id: textId,
+              patch: { content },
+            })
+          }
           onRemoveText={(textId) => {
-            removeText(textId);
+            dispatchSlide(activePhaseId, activeSlideId, {
+              type: 'REMOVE_TEXT',
+              id: textId,
+            });
             clearSelection();
           }}
           onCloseText={() => setEditingTextId(null)}

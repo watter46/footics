@@ -4,7 +4,11 @@ import { flip, offset, shift, useFloating } from '@floating-ui/react';
 import type React from 'react';
 import { useEffect } from 'react';
 import { FloatingSurface } from '@/components/ui/floating-surface';
-import { useCanvasStore } from '../hooks/use-canvas-store';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { SelectedObject, SelectedObjectKind } from '../types';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import {
@@ -65,17 +69,22 @@ export function ContextHud({
   renderExtraHud,
   resolveExtraTarget,
 }: ContextHudProps) {
-  const selectedObjects = useCanvasStore((s) => s.selectedObjects);
-  const activeTool = useCanvasStore((s) => s.activeTool);
-  const isHudOpen = useCanvasStore((s) => s.isHudOpen);
-  const isDragging = useCanvasStore((s) => s.isDragging);
-  const markers = useCanvasStore((s) => s.annotations.markers);
+  const selectedObjects = useSessionStore((s) => s.selectedObjects);
+  const activeTool = useSessionStore((s) => s.activeTool);
+  const isHudOpen = useSessionStore((s) => s.isHudOpen);
+  const isDragging = useSessionStore((s) => s.isDragging);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const players = useDocumentStore(
+    (s) =>
+      selectDomainActiveSlide(s.project, activePhaseId, activeSlideId)?.players,
+  );
 
   const selected =
     selectedObjects.length === 1 ? selectedObjects[0] : undefined;
   const isBenchPlayer =
     selected?.kind === 'player' &&
-    markers.find((m) => m.id === selected.id)?.area === 'bench';
+    players?.find((m) => m.id === selected.id)?.area === 'bench';
   const position = useHudPosition({
     selected,
     stageSize,

@@ -11,7 +11,7 @@ import {
 } from '@floating-ui/react';
 import { useState } from 'react';
 import { HexColorPicker } from 'react-colorful';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import { useSessionStore } from '@/features/tactical-unified/stores/tactical-store-provider';
 
 export const HUD_COLOR_PALETTE = [
   '#ffffff',
@@ -40,8 +40,8 @@ export function MiniColorPicker({
   isRing = false,
 }: MiniColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const customColor = useCanvasStore((s) => s.customColor);
-  const setCustomColor = useCanvasStore((s) => s.setCustomColor);
+  const customColor = useSessionStore((s) => s.customColor);
+  const setCustomColor = useSessionStore((s) => s.setCustomColor);
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,

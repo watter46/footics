@@ -2,6 +2,7 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import { Stage } from 'react-konva';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import {
   createDefaultPlayer,
   createDefaultSlide,
@@ -13,7 +14,14 @@ import { PlayerGhostTrajectoryList } from '../core/components/player-ghost-traje
 import { createCanvasStore } from '../core/store/canvas-store';
 import { CanvasStoreContext } from '../core/store/canvas-store-provider';
 import { createCanvasNodesRegistry } from '../core/utils/canvas-registry';
+import { createDocumentStore } from '../stores/document-store';
+import { createPlaybackStore } from '../stores/playback-store';
+import { createSessionStore } from '../stores/session-store';
 import { findSafePitchPosition } from '../stores/slide-player-move-helper';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '../stores/tactical-store-provider';
 import { useTacticalUnifiedStore } from '../stores/tactical-unified-store';
 
 describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-bench-transition)', () => {
@@ -272,6 +280,12 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
         const offset = { x: 0, y: 0, width: 800, height: 600 };
         const data = {
           markers: [benchPlayer, pitchPlayer],
+          players: [benchPlayer, pitchPlayer].map((p) => ({
+            ...p,
+            x: clampToScreenNorm(p.x),
+            y: clampToScreenNorm(p.y),
+            trajectory: undefined,
+          })),
           arrows: [],
           zones: [],
           texts: [],
@@ -297,24 +311,32 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
 
     describe('ContextHud', () => {
       it('選択された選手が area === "bench" の場合は描画をガード（null を返す）', () => {
-        const store = createCanvasStore({
-          mode: 'tactical-board',
-          aspectRatio: '16:9',
-        });
+        const documentStore = createDocumentStore(
+          createDefaultTacticalProject(),
+        );
+        const sessionStore = createSessionStore();
+        const playbackStore = createPlaybackStore();
+
         const benchPlayer = {
           ...createDefaultPlayer('home', 10, 10, '#034694'),
           id: 'bench-p1',
           area: 'bench' as const,
         };
-        store.getState().addMarker(benchPlayer);
-        store
-          .getState()
-          .setSelectedObjects([{ id: benchPlayer.id, kind: 'player' }]);
+        const activeSlide =
+          documentStore.getState().project.phases[0]?.slides[0];
+        if (activeSlide) {
+          sessionStore.setState({
+            activePhaseId:
+              documentStore.getState().project.phases[0]?.id ?? null,
+            activeSlideId: activeSlide.id,
+            selectedObjects: [{ id: benchPlayer.id, kind: 'player' }],
+          });
+        }
 
         const { container } = render(
           React.createElement(
-            CanvasStoreContext.Provider,
-            { value: store },
+            TacticalStoreProvider,
+            { stores: { documentStore, sessionStore, playbackStore } },
             React.createElement(ContextHud, {
               stageSize: { width: 800, height: 600 },
             }),
@@ -400,17 +422,21 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
 
         render(
           React.createElement(
-            CanvasStoreContext.Provider,
-            { value: store },
+            TacticalStoreProvider,
+            null,
             React.createElement(
-              Stage as any,
-              { ref: stageRef, width: 800, height: 600 },
-              React.createElement(PitchGroundLayer, {
-                stageSize,
-                pitchRect,
-                cleanRender: false,
-                nodesRegistryRef,
-              }),
+              CanvasStoreContext.Provider,
+              { value: store },
+              React.createElement(
+                Stage as any,
+                { ref: stageRef, width: 800, height: 600 },
+                React.createElement(PitchGroundLayer, {
+                  stageSize,
+                  pitchRect,
+                  cleanRender: false,
+                  nodesRegistryRef,
+                }),
+              ),
             ),
           ),
         );

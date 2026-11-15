@@ -1,7 +1,11 @@
 'use client';
 
 import { Minus, Plus, Trash2 } from 'lucide-react';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { DashedLineIcon, SolidLineIcon } from './hud-icons';
 import { MiniColorPicker } from './mini-color-picker';
 
@@ -14,13 +18,22 @@ export function ConnectLineHud({
   connectLineId,
   parentPlayerId,
 }: ConnectLineHudProps) {
-  const markers = useCanvasStore((s) => s.annotations.markers);
-  const updateMarker = useCanvasStore((s) => s.updateMarker);
-  const clearSelection = useCanvasStore((s) => s.clearSelection);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const clearSelection = useSessionStore((s) => s.clearSelection);
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
+  );
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
 
+  const pitchPlayers = (activeSlide?.players ?? []).filter(
+    (p) => p.area === 'pitch',
+  );
   const parent = parentPlayerId
-    ? markers.find((m) => m.id === parentPlayerId)
-    : markers.find((m) => m.connectLines?.some((c) => c.id === connectLineId));
+    ? pitchPlayers.find((p) => p.id === parentPlayerId)
+    : pitchPlayers.find((p) =>
+        p.connectLines?.some((c) => c.id === connectLineId),
+      );
 
   const cl = parent?.connectLines?.find((c) => c.id === connectLineId);
 
@@ -29,18 +42,26 @@ export function ConnectLineHud({
   const isDashed = cl.lineStyle === 'dashed';
 
   const updateLine = (patch: Partial<typeof cl>) => {
-    updateMarker(parent.id, {
-      connectLines: (parent.connectLines ?? []).map((c) =>
-        c.id === connectLineId ? { ...c, ...patch } : c,
-      ),
+    dispatchSlide(activePhaseId, activeSlideId, {
+      type: 'UPDATE_PLAYER',
+      id: parent.id,
+      patch: {
+        connectLines: (parent.connectLines ?? []).map((c) =>
+          c.id === connectLineId ? { ...c, ...patch } : c,
+        ),
+      },
     });
   };
 
   const removeLine = () => {
-    updateMarker(parent.id, {
-      connectLines: (parent.connectLines ?? []).filter(
-        (c) => c.id !== connectLineId,
-      ),
+    dispatchSlide(activePhaseId, activeSlideId, {
+      type: 'UPDATE_PLAYER',
+      id: parent.id,
+      patch: {
+        connectLines: (parent.connectLines ?? []).filter(
+          (c) => c.id !== connectLineId,
+        ),
+      },
     });
     clearSelection();
   };

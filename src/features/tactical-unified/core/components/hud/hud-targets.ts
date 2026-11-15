@@ -5,11 +5,11 @@ import type {
 } from '@/features/tactical-unified/core/types';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import type {
-  ArrowAnnotation,
-  Player,
-  TextAnnotation,
-  ZoneAnnotation,
-} from '@/lib/types/tactical-unified';
+  DomainArrowAnnotation,
+  DomainPlayer,
+  DomainTextAnnotation,
+  DomainZoneAnnotation,
+} from '@/lib/types/tactical/domain-entities';
 
 export interface HudTarget {
   x: number;
@@ -24,8 +24,35 @@ export interface HudOffsetRect {
   height: number;
 }
 
+function getNodeCenterTarget(
+  node:
+    | {
+        getClientRect: () => {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+        };
+      }
+    | undefined
+    | null,
+  minHeight: number,
+): HudTarget | null {
+  if (!node) return null;
+  try {
+    const rect = node.getClientRect();
+    return {
+      x: rect.x + rect.width / 2,
+      y: rect.y + rect.height / 2,
+      height: Math.max(rect.height, minHeight),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function resolvePlayerTarget(
-  player: Player,
+  player: DomainPlayer,
   offset: HudOffsetRect,
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>,
 ): HudTarget {
@@ -48,23 +75,15 @@ function resolvePlayerTarget(
 }
 
 function resolveArrowTarget(
-  arrow: ArrowAnnotation,
+  arrow: DomainArrowAnnotation,
   offset: HudOffsetRect,
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>,
 ): HudTarget | null {
-  const node = nodesRegistryRef?.current?.arrowNodes?.get?.(arrow.id)?.node;
-  if (node) {
-    try {
-      const rect = node.getClientRect();
-      return {
-        x: rect.x + rect.width / 2,
-        y: rect.y + rect.height / 2,
-        height: Math.max(rect.height, 24),
-      };
-    } catch {
-      // fallback
-    }
-  }
+  const nodeTarget = getNodeCenterTarget(
+    nodesRegistryRef?.current?.arrowNodes?.get?.(arrow.id)?.node,
+    24,
+  );
+  if (nodeTarget) return nodeTarget;
   if (arrow.points && arrow.points.length >= 2) {
     const allPoints = [...arrow.points];
     if (arrow.controlPoint) {
@@ -87,36 +106,33 @@ function resolveArrowTarget(
 }
 
 function resolveZoneTarget(
-  zone: ZoneAnnotation,
+  zone: DomainZoneAnnotation,
   offset: HudOffsetRect,
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>,
 ): HudTarget {
-  const node = nodesRegistryRef?.current?.zoneNodes?.get?.(zone.id);
-  if (node) {
-    try {
-      const rect = node.getClientRect();
-      return {
-        x: rect.x + rect.width / 2,
-        y: rect.y + rect.height / 2,
-        height: Math.max(rect.height, 30),
-      };
-    } catch {
-      // fallback
-    }
-  }
+  const nodeTarget = getNodeCenterTarget(
+    nodesRegistryRef?.current?.zoneNodes?.get?.(zone.id),
+    30,
+  );
+  if (nodeTarget) return nodeTarget;
 
-  let normX = zone.x ?? 20;
-  let normY = zone.y ?? 20;
-  let normW = zone.width ?? 30;
-  let normH = zone.height ?? 20;
+  let normX = 20;
+  let normY = 20;
+  let normW = 30;
+  let normH = 20;
 
-  if (zone.points && zone.points.length > 0) {
+  if (zone.shapeType === 'polygon' && zone.points.length > 0) {
     const xs = zone.points.map((p) => p.x);
     const ys = zone.points.map((p) => p.y);
     normX = Math.min(...xs);
     normY = Math.min(...ys);
     normW = Math.max(...xs) - normX;
     normH = Math.max(...ys) - normY;
+  } else if (zone.shapeType !== 'polygon') {
+    normX = zone.x;
+    normY = zone.y;
+    normW = zone.width;
+    normH = zone.height;
   }
 
   const pxW = (normW / 100) * offset.width;
@@ -130,23 +146,15 @@ function resolveZoneTarget(
 }
 
 function resolveTextTarget(
-  text: TextAnnotation,
+  text: DomainTextAnnotation,
   offset: HudOffsetRect,
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>,
 ): HudTarget {
-  const node = nodesRegistryRef?.current?.textNodes?.get?.(text.id);
-  if (node) {
-    try {
-      const rect = node.getClientRect();
-      return {
-        x: rect.x + rect.width / 2,
-        y: rect.y + rect.height / 2,
-        height: Math.max(rect.height, 24),
-      };
-    } catch {
-      // fallback
-    }
-  }
+  const nodeTarget = getNodeCenterTarget(
+    nodesRegistryRef?.current?.textNodes?.get?.(text.id),
+    24,
+  );
+  if (nodeTarget) return nodeTarget;
   return {
     x: offset.x + (text.x / 100) * offset.width,
     y: offset.y + (text.y / 100) * offset.height,
@@ -158,15 +166,19 @@ function resolveConnectLineTarget(
   selectedId: string,
   parentPlayerId: string | undefined,
   offset: HudOffsetRect,
-  markers: Player[],
+  players: readonly DomainPlayer[],
 ): HudTarget | null {
   const p1 = parentPlayerId
-    ? markers.find((m) => m.id === parentPlayerId)
-    : markers.find((m) => m.connectLines?.some((cl) => cl.id === selectedId));
-  if (!p1) return null;
+    ? players.find((m) => m.id === parentPlayerId)
+    : players.find(
+        (m) =>
+          m.area !== 'bench' &&
+          m.connectLines?.some((cl) => cl.id === selectedId),
+      );
+  if (!p1 || p1.area === 'bench') return null;
   const cl = p1.connectLines?.find((c) => c.id === selectedId);
   if (!cl) return null;
-  const p2 = markers.find((m) => m.id === cl.toPlayerId);
+  const p2 = players.find((m) => m.id === cl.toPlayerId);
   if (!p2) return null;
 
   const sX = offset.x + (p1.x / 100) * offset.width;
@@ -176,16 +188,18 @@ function resolveConnectLineTarget(
   return { x: (sX + eX) / 2, y: (sY + eY) / 2, height: 16 };
 }
 
+export type HudTargetData = {
+  players: readonly DomainPlayer[];
+  arrows: readonly DomainArrowAnnotation[];
+  zones: readonly DomainZoneAnnotation[];
+  texts: readonly DomainTextAnnotation[];
+};
+
 export type HudTargetResolver = (ctx: {
   selected: SelectedObject;
   offset: HudOffsetRect;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
-  data: {
-    markers: Player[];
-    arrows: ArrowAnnotation[];
-    zones: ZoneAnnotation[];
-    texts: TextAnnotation[];
-  };
+  data: HudTargetData;
 }) => HudTarget | null;
 
 export const HUD_TARGET_RESOLVERS = new Map<
@@ -194,27 +208,13 @@ export const HUD_TARGET_RESOLVERS = new Map<
 >([
   [
     'ball',
-    ({ nodesRegistryRef }) => {
-      const ballNode = nodesRegistryRef?.current?.ballNode;
-      if (ballNode) {
-        try {
-          const rect = ballNode.getClientRect();
-          return {
-            x: rect.x + rect.width / 2,
-            y: rect.y + rect.height / 2,
-            height: Math.max(rect.height, 24),
-          };
-        } catch {
-          // fallback
-        }
-      }
-      return null;
-    },
+    ({ nodesRegistryRef }) =>
+      getNodeCenterTarget(nodesRegistryRef?.current?.ballNode, 24),
   ],
   [
     'player',
     ({ selected, offset, nodesRegistryRef, data }) => {
-      const player = data.markers.find((p) => p.id === selected.id);
+      const player = data.players.find((p) => p.id === selected.id);
       if (!player || player.area === 'bench') return null;
       return resolvePlayerTarget(player, offset, nodesRegistryRef);
     },
@@ -247,7 +247,7 @@ export const HUD_TARGET_RESOLVERS = new Map<
         selected.id,
         selected.parentPlayerId,
         offset,
-        data.markers,
+        data.players,
       );
     },
   ],
@@ -270,12 +270,7 @@ export function resolveHudTarget({
   selected: SelectedObject;
   offset: HudOffsetRect;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
-  data: {
-    markers: Player[];
-    arrows: ArrowAnnotation[];
-    zones: ZoneAnnotation[];
-    texts: TextAnnotation[];
-  };
+  data: HudTargetData;
   resolveExtraTarget?: (
     selected: SelectedObject,
     offset: HudOffsetRect,

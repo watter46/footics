@@ -1,7 +1,11 @@
 import type React from 'react';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
 import type { SelectedObject } from '@/features/tactical-unified/core/types';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   type HudOffsetRect,
   type HudTarget,
@@ -57,12 +61,18 @@ export function useHudPosition({
   nodesRegistryRef,
   resolveExtraTarget,
 }: UseHudPositionProps): HudPosition | null {
-  const arrows = useCanvasStore((s) => s.annotations.arrows);
-  const zones = useCanvasStore((s) => s.annotations.zones);
-  const texts = useCanvasStore((s) => s.annotations.texts);
-  const markers = useCanvasStore((s) => s.annotations.markers);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
+  );
 
   if (!selected) return null;
+
+  const players = activeSlide?.players ?? [];
+  const arrows = activeSlide?.arrows ?? [];
+  const zones = activeSlide?.zones ?? [];
+  const texts = activeSlide?.texts ?? [];
 
   const offset = pitchRect ?? {
     x: 0,
@@ -75,7 +85,7 @@ export function useHudPosition({
     selected,
     offset,
     nodesRegistryRef,
-    data: { markers, arrows, zones, texts },
+    data: { players, arrows, zones, texts },
     resolveExtraTarget,
   });
 

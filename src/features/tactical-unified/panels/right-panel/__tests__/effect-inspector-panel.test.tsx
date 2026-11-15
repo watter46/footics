@@ -1,10 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { ArrowHud } from '@/features/tactical-unified/core/components/hud/arrow-hud';
-import { createCanvasStore } from '@/features/tactical-unified/core/store/canvas-store';
-import { CanvasStoreContext } from '@/features/tactical-unified/core/store/canvas-store-provider';
-import type { CanvasStoreApi } from '@/features/tactical-unified/core/types';
 import { EffectInspectorPanel } from '@/features/tactical-unified/panels/right-panel/effect-inspector-panel';
 import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
 import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
@@ -15,7 +12,6 @@ import {
   TacticalStoreProvider,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { createDefaultDomainPlayer } from '@/lib/tactical/domain/formation-placement';
-import type { ArrowAnnotation } from '@/lib/types/tactical/annotations';
 import { toScreenNormCoord } from '@/lib/types/tactical/branded';
 import type {
   DomainArrowAnnotation,
@@ -34,14 +30,6 @@ function renderWithTacticalStores(
 ) {
   return render(
     <TacticalStoreProvider stores={stores}>{ui}</TacticalStoreProvider>,
-  );
-}
-
-function renderWithCanvasStore(ui: React.ReactElement, store: CanvasStoreApi) {
-  return render(
-    <CanvasStoreContext.Provider value={store}>
-      {ui}
-    </CanvasStoreContext.Provider>,
   );
 }
 
@@ -378,81 +366,49 @@ describe('EffectInspectorPanel & ArrowHud (Phase 4)', () => {
 
   describe('ArrowHud ⚡️ ボタン', () => {
     it('9. ⚡️ ボタンをクリックすると伸長エフェクト (grow) と none がトグルすること', () => {
-      const canvasStore = createCanvasStore({
-        mode: 'tactical-board',
-        aspectRatio: '16:9',
-      });
-      const arrow: ArrowAnnotation = {
-        id: 'arrow-hud-1',
-        annotationType: 'arrow',
-        arrowType: 'pass',
-        curveType: 'straight',
-        points: [
-          { x: 10, y: 10 },
-          { x: 50, y: 50 },
-        ],
-        color: '#ffffff',
-        strokeWidth: 3,
-        dashArray: [],
-        arrowHead: true,
+      const arrow = createTestArrow('arrow-hud-1');
+      const project = createDefaultTacticalProject();
+      const firstPhase = project.phases[0];
+      const firstSlide = firstPhase.slides[0];
+      project.phases[0] = {
+        ...firstPhase,
+        slides: [{ ...firstSlide, arrows: [arrow] }],
       };
 
-      canvasStore.getState().addArrow(arrow);
+      const documentStore = createDocumentStore(project);
+      const sessionStore = createSessionStore({
+        activePhaseId: firstPhase.id,
+        activeSlideId: firstSlide.id,
+      });
+      const playbackStore = createPlaybackStore();
 
-      const updateArrowSpy = vi.spyOn(canvasStore.getState(), 'updateArrow');
-
-      const { rerender } = renderWithCanvasStore(
-        <ArrowHud arrowId="arrow-hud-1" />,
-        canvasStore,
-      );
+      renderWithTacticalStores(<ArrowHud arrowId="arrow-hud-1" />, {
+        documentStore,
+        sessionStore,
+        playbackStore,
+      });
 
       const toggleBtn = screen.getByTitle(/伸長エフェクト/i);
       expect(toggleBtn).toBeDefined();
 
       // 初回クリック: none/未設定 -> grow
       fireEvent.click(toggleBtn);
-      expect(updateArrowSpy).toHaveBeenCalledWith(
-        'arrow-hud-1',
-        expect.objectContaining({
-          effect: expect.objectContaining({
-            type: 'grow',
-          }),
-        }),
+      const slideAfterEnable = selectDomainActiveSlide(
+        documentStore.getState().project,
+        firstPhase.id,
+        firstSlide.id,
       );
-
-      // エフェクト付与状態にストアを更新して再レンダー
-      canvasStore.getState().updateArrow('arrow-hud-1', {
-        effect: {
-          type: 'grow',
-          delay: 0.5,
-          duration: 0.8,
-          holdDuration: 0.5,
-          exitAction: 'keep',
-          fadeDuration: 0.3,
-          easing: 'ease-out',
-        },
-      });
-
-      rerender(
-        <CanvasStoreContext.Provider value={canvasStore}>
-          <ArrowHud arrowId="arrow-hud-1" />
-        </CanvasStoreContext.Provider>,
-      );
+      expect(slideAfterEnable?.arrows[0]?.effect?.type).toBe('grow');
 
       // 2回目クリック: grow -> none
       const activeToggleBtn = screen.getByTitle(/エフェクト解除/i);
       fireEvent.click(activeToggleBtn);
-
-      expect(updateArrowSpy).toHaveBeenCalledWith(
-        'arrow-hud-1',
-        expect.objectContaining({
-          effect: expect.objectContaining({
-            type: 'none',
-          }),
-        }),
+      const slideAfterDisable = selectDomainActiveSlide(
+        documentStore.getState().project,
+        firstPhase.id,
+        firstSlide.id,
       );
-
-      updateArrowSpy.mockRestore();
+      expect(slideAfterDisable?.arrows[0]?.effect?.type).toBe('none');
     });
   });
 });

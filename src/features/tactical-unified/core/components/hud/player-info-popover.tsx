@@ -11,12 +11,13 @@ import {
 } from '@floating-ui/react';
 import { UserCog } from 'lucide-react';
 import { useState } from 'react';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 export interface PlayerInfoPopoverProps {
-  player: Player;
-  isRing: boolean;
-  updateMarker: (id: string, patch: Partial<Player>) => void;
+  player: DomainPlayer;
+  isRing?: boolean;
+  updateMarker: (id: string, patch: Partial<DomainPlayer>) => void;
+  onClose?: () => void;
 }
 
 export function PlayerInfoPopover({

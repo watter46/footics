@@ -1,23 +1,33 @@
 'use client';
 
 import { Eye, Link, MoveRight, Sparkles } from 'lucide-react';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
-import type { Player } from '@/lib/types/tactical-unified';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { toScreenNormPoint } from '@/lib/types/tactical/branded';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 import { WavyArrowIcon } from '../toolbar/core-toolbar-icons';
 import { DashedArrowIcon } from './hud-icons';
 import { MiniColorPicker } from './mini-color-picker';
 
 export interface PlayerQuickActionsProps {
-  player: Player;
+  player: DomainPlayer;
 }
 
 export function VisionConeAction({ player }: PlayerQuickActionsProps) {
-  const updateMarker = useCanvasStore((s) => s.updateMarker);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  if (player.area !== 'pitch') return null;
   const visible = player.visionCone?.visible ?? false;
 
   const toggleVisionCone = () => {
-    updateMarker(player.id, {
-      visionCone: {
+    dispatchSlide(activePhaseId, activeSlideId, {
+      type: 'SET_PLAYER_VISION_CONE',
+      playerId: player.id,
+      cone: {
         id: player.visionCone?.id ?? `vc-${Date.now()}`,
         angleRad: player.visionCone?.angleRad ?? 0,
         spreadRad: player.visionCone?.spreadRad ?? (60 * Math.PI) / 180,
@@ -51,8 +61,12 @@ export function VisionConeAction({ player }: PlayerQuickActionsProps) {
           value={player.visionCone.color ?? '#38bdf8'}
           onChange={(color) => {
             if (player.visionCone) {
-              updateMarker(player.id, {
-                visionCone: { ...player.visionCone, color },
+              dispatchSlide(activePhaseId, activeSlideId, {
+                type: 'UPDATE_PLAYER',
+                id: player.id,
+                patch: {
+                  visionCone: { ...player.visionCone, color },
+                },
               });
             }
           }}
@@ -64,37 +78,53 @@ export function VisionConeAction({ player }: PlayerQuickActionsProps) {
 }
 
 export function ConnectLineAction({ player }: PlayerQuickActionsProps) {
-  const markers = useCanvasStore((s) => s.annotations.markers);
-  const selectedIds = useCanvasStore((s) => s.selectedIds);
-  const updateMarker = useCanvasStore((s) => s.updateMarker);
-  const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
-  const setConnectingPlayerId = useCanvasStore((s) => s.setConnectingPlayerId);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const slide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
+  );
+  const players = slide?.players ?? [];
+  const selectedObjects = useSessionStore((s) => s.selectedObjects);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const connectingPlayerId = useSessionStore((s) => s.connectingPlayerId);
+  const setConnectingPlayerId = useSessionStore((s) => s.setConnectingPlayerId);
 
+  if (player.area !== 'pitch') return null;
   const hasLines = (player.connectLines ?? []).length > 0;
   const isConnecting = connectingPlayerId === player.id;
 
   const toggleConnectLine = () => {
     if (isConnecting) return setConnectingPlayerId(null);
     if (hasLines) {
-      updateMarker(player.id, { connectLines: [] });
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'UPDATE_PLAYER',
+        id: player.id,
+        patch: { connectLines: [] },
+      });
       return setConnectingPlayerId(null);
     }
-    const otherMarkers = markers.filter((m) => m.id !== player.id);
+    const otherMarkers = players.filter((m) => m.id !== player.id);
     if (otherMarkers.length === 0) return;
-    const selectedOther = otherMarkers.find((m) => selectedIds.includes(m.id));
+    const selectedOther = otherMarkers.find((m) =>
+      selectedObjects.some((obj) => obj.kind === 'player' && obj.id === m.id),
+    );
     if (selectedOther) {
-      updateMarker(player.id, {
-        connectLines: [
-          ...(player.connectLines ?? []),
-          {
-            id: `cl-${Date.now()}`,
-            toPlayerId: selectedOther.id,
-            lineStyle: 'solid',
-            color: player.style?.color ?? '#034694',
-            strokeWidth: 2,
-            visible: true,
-          },
-        ],
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'UPDATE_PLAYER',
+        id: player.id,
+        patch: {
+          connectLines: [
+            ...(player.connectLines ?? []),
+            {
+              id: `cl-${Date.now()}`,
+              toPlayerId: selectedOther.id,
+              lineStyle: 'solid',
+              color: player.style?.color ?? '#034694',
+              strokeWidth: 2,
+              visible: true,
+            },
+          ],
+        },
       });
       return;
     }
@@ -133,7 +163,9 @@ export function ConnectLineAction({ player }: PlayerQuickActionsProps) {
 }
 
 export function ArrowActionGroup({ player }: PlayerQuickActionsProps) {
-  const addArrow = useCanvasStore((s) => s.addArrow);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
   const dir = player.team === 'away' ? -15 : 15;
 
   const addPlayerArrow = (
@@ -141,21 +173,24 @@ export function ArrowActionGroup({ player }: PlayerQuickActionsProps) {
     color: string,
     dashArray: number[],
   ) => {
-    addArrow({
-      id: `arrow-${Date.now()}`,
-      annotationType: 'arrow',
-      arrowType,
-      curveType: 'straight',
-      sourcePlayerId: player.id,
-      points: [
-        { x: player.x, y: player.y },
-        { x: player.x + dir, y: player.y },
-      ],
-      color,
-      strokeWidth: 3,
-      dashArray,
-      arrowHead: true,
-      endMarker: 'arrow',
+    dispatchSlide(activePhaseId, activeSlideId, {
+      type: 'ADD_ARROW',
+      arrow: {
+        id: `arrow-${Date.now()}`,
+        annotationType: 'arrow',
+        arrowType,
+        curveType: 'straight',
+        sourcePlayerId: player.id,
+        points: [
+          toScreenNormPoint(player.x, player.y),
+          toScreenNormPoint(player.x + dir, player.y),
+        ],
+        color,
+        strokeWidth: 3,
+        dashArray,
+        startMarker: 'none',
+        endMarker: 'arrow',
+      },
     });
   };
 
@@ -190,11 +225,16 @@ export function ArrowActionGroup({ player }: PlayerQuickActionsProps) {
 }
 
 export function SpotlightAction({ player }: PlayerQuickActionsProps) {
-  const updateMarker = useCanvasStore((s) => s.updateMarker);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  if (player.area !== 'pitch') return null;
   const hasFocus = player.focus?.enabled ?? false;
 
   const toggleSpotlight = () => {
-    updateMarker(player.id, {
+    dispatchSlide(activePhaseId, activeSlideId, {
+      type: 'SET_PLAYER_FOCUS',
+      playerId: player.id,
       focus: {
         enabled: !hasFocus,
         color: player.focus?.color ?? '#ffffff',

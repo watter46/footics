@@ -1,9 +1,14 @@
 'use client';
 
 import { useHotkeys } from 'react-hotkeys-hook';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import { useTacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
+import {
+  cloneAndOffsetClipboard,
+  extractSelectedObjects,
+} from '@/lib/tactical/domain/clipboard';
 import { getToolShortcutMap } from '../components/toolbar/drawing-tool-plugin';
 import type { SelectedObject } from '../types';
-import { useCanvasStoreApi } from './use-canvas-store';
 
 export interface UseCanvasShortcutsOptions {
   disabled?: boolean;
@@ -12,7 +17,7 @@ export interface UseCanvasShortcutsOptions {
 export function useCanvasShortcuts({
   disabled = false,
 }: UseCanvasShortcutsOptions = {}) {
-  const store = useCanvasStoreApi();
+  const { documentStore, sessionStore } = useTacticalStoresContext();
 
   const isEnabled = !disabled;
 
@@ -21,10 +26,10 @@ export function useCanvasShortcuts({
     ['mod+z', 'meta+z'],
     (e) => {
       e.preventDefault();
-      store.getState().undo();
+      documentStore.getState().undo();
     },
     { enabled: isEnabled, enableOnFormTags: false },
-    [store, isEnabled],
+    [documentStore, isEnabled],
   );
 
   // Redo: Mod+Shift+Z / Mod+Y
@@ -32,10 +37,10 @@ export function useCanvasShortcuts({
     ['mod+shift+z', 'meta+shift+z', 'mod+y', 'meta+y'],
     (e) => {
       e.preventDefault();
-      store.getState().redo();
+      documentStore.getState().redo();
     },
     { enabled: isEnabled, enableOnFormTags: false },
-    [store, isEnabled],
+    [documentStore, isEnabled],
   );
 
   // Select All: Mod+A
@@ -43,17 +48,23 @@ export function useCanvasShortcuts({
     ['mod+a', 'meta+a'],
     (e) => {
       e.preventDefault();
-      const { arrows, zones, texts, markers } = store.getState().annotations;
+      const { activePhaseId, activeSlideId } = sessionStore.getState();
+      const slide = selectDomainActiveSlide(
+        documentStore.getState().project,
+        activePhaseId,
+        activeSlideId,
+      );
+      if (!slide) return;
       const all: SelectedObject[] = [
-        ...arrows.map((a) => ({ id: a.id, kind: 'arrow' as const })),
-        ...zones.map((z) => ({ id: z.id, kind: 'zone' as const })),
-        ...texts.map((t) => ({ id: t.id, kind: 'text' as const })),
-        ...markers.map((m) => ({ id: m.id, kind: 'player' as const })),
+        ...slide.arrows.map((a) => ({ id: a.id, kind: 'arrow' as const })),
+        ...slide.zones.map((z) => ({ id: z.id, kind: 'zone' as const })),
+        ...slide.texts.map((t) => ({ id: t.id, kind: 'text' as const })),
+        ...slide.players.map((p) => ({ id: p.id, kind: 'player' as const })),
       ];
-      store.getState().setSelectedObjects(all);
+      sessionStore.getState().selectObjects(all);
     },
     { enabled: isEnabled, enableOnFormTags: false },
-    [store, isEnabled],
+    [documentStore, sessionStore, isEnabled],
   );
 
   // Copy: Mod+C
@@ -61,10 +72,20 @@ export function useCanvasShortcuts({
     ['mod+c', 'meta+c'],
     (e) => {
       e.preventDefault();
-      store.getState().copySelectedObjects();
+      const { activePhaseId, activeSlideId, selectedObjects } =
+        sessionStore.getState();
+      if (selectedObjects.length === 0) return;
+      const slide = selectDomainActiveSlide(
+        documentStore.getState().project,
+        activePhaseId,
+        activeSlideId,
+      );
+      if (!slide) return;
+      const clipboard = extractSelectedObjects(slide, selectedObjects);
+      sessionStore.getState().setClipboard(clipboard);
     },
     { enabled: isEnabled, enableOnFormTags: false },
-    [store, isEnabled],
+    [documentStore, sessionStore, isEnabled],
   );
 
   // Paste: Mod+V
@@ -72,10 +93,21 @@ export function useCanvasShortcuts({
     ['mod+v', 'meta+v'],
     (e) => {
       e.preventDefault();
-      store.getState().pasteObjects();
+      const { activePhaseId, activeSlideId, clipboard } =
+        sessionStore.getState();
+      if (!clipboard) return;
+      const cloned = cloneAndOffsetClipboard(clipboard);
+      documentStore.getState().dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'INSERT_ENTITIES',
+        players: cloned.players,
+        arrows: cloned.arrows,
+        zones: cloned.zones,
+        texts: cloned.texts,
+      });
+      sessionStore.getState().selectObjects(cloned.selectedRefs);
     },
     { enabled: isEnabled, enableOnFormTags: false },
-    [store, isEnabled],
+    [documentStore, sessionStore, isEnabled],
   );
 
   // Duplicate: Mod+D
@@ -83,10 +115,28 @@ export function useCanvasShortcuts({
     ['mod+d', 'meta+d'],
     (e) => {
       e.preventDefault();
-      store.getState().duplicateSelectedObjects();
+      const { activePhaseId, activeSlideId, selectedObjects } =
+        sessionStore.getState();
+      if (selectedObjects.length === 0) return;
+      const slide = selectDomainActiveSlide(
+        documentStore.getState().project,
+        activePhaseId,
+        activeSlideId,
+      );
+      if (!slide) return;
+      const clipboard = extractSelectedObjects(slide, selectedObjects);
+      const cloned = cloneAndOffsetClipboard(clipboard);
+      documentStore.getState().dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'INSERT_ENTITIES',
+        players: cloned.players,
+        arrows: cloned.arrows,
+        zones: cloned.zones,
+        texts: cloned.texts,
+      });
+      sessionStore.getState().selectObjects(cloned.selectedRefs);
     },
     { enabled: isEnabled, enableOnFormTags: false },
-    [store, isEnabled],
+    [documentStore, sessionStore, isEnabled],
   );
 
   // Space: Prevent default
@@ -99,17 +149,19 @@ export function useCanvasShortcuts({
     [isEnabled],
   );
 
-  // Escape: cancelConnecting, clearSelection, setActiveTool('select')
+  // Escape: setDrawingPreview(null), cancelConnecting, clearSelection, setActiveTool('select')
   useHotkeys(
     'escape',
     (e) => {
       e.preventDefault();
-      store.getState().setConnectingPlayerId(null);
-      store.getState().clearSelection();
-      store.getState().setActiveTool('select');
+      const session = sessionStore.getState();
+      session.setDrawingPreview(null);
+      session.setConnectingPlayerId(null);
+      session.clearSelection();
+      session.setActiveTool('select');
     },
     { enabled: isEnabled, enableOnFormTags: false },
-    [store, isEnabled],
+    [sessionStore, isEnabled],
   );
 
   // Delete / Backspace: removeSelected
@@ -117,10 +169,17 @@ export function useCanvasShortcuts({
     ['delete', 'backspace'],
     (e) => {
       e.preventDefault();
-      store.getState().removeSelected();
+      const { activePhaseId, activeSlideId, selectedObjects } =
+        sessionStore.getState();
+      if (selectedObjects.length === 0) return;
+      documentStore.getState().dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'DELETE_ENTITIES',
+        ids: selectedObjects.map((o) => o.id),
+      });
+      sessionStore.getState().clearSelection();
     },
     { enabled: isEnabled, enableOnFormTags: false },
-    [store, isEnabled],
+    [documentStore, sessionStore, isEnabled],
   );
 
   // Tools: registered shortcuts (v, l, r, a, d, w, z, p, t, m, o, e)
@@ -134,10 +193,10 @@ export function useCanvasShortcuts({
       const tool = currentMap[e.key.toLowerCase()];
       if (tool) {
         e.preventDefault();
-        store.getState().setActiveTool(tool);
+        sessionStore.getState().setActiveTool(tool);
       }
     },
     { enabled: isEnabled, enableOnFormTags: false },
-    [store, isEnabled],
+    [sessionStore, isEnabled],
   );
 }

@@ -1,14 +1,19 @@
 'use client';
 
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { PitchTransform } from '@/lib/types/tactical/slide';
 import {
   computeCursorZoomAdjustment,
   computePanDelta,
   computeWheelZoom,
   type PanStartState,
 } from '../utils/canvas-zoom-pan-helper';
-import { useCanvasStore } from './use-canvas-store';
 
 export interface UseCanvasZoomPanOptions {
   vRect: { width: number; height: number };
@@ -29,9 +34,44 @@ function getEventPos(
 }
 
 export function useCanvasZoomPan({ vRect, disabled }: UseCanvasZoomPanOptions) {
-  const pitchTransform = useCanvasStore((s) => s.pitchTransform);
-  const setPitchTransform = useCanvasStore((s) => s.setPitchTransform);
-  const isPitchLocked = Boolean(pitchTransform.isLocked);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const rawPitchTransform = useDocumentStore(
+    (s) =>
+      selectDomainActiveSlide(s.project, activePhaseId, activeSlideId)
+        ?.pitchTransform,
+  );
+
+  const pitchTransform: PitchTransform = useMemo(
+    () => ({
+      panX: rawPitchTransform?.panX ?? 0,
+      panY: rawPitchTransform?.panY ?? 0,
+      zoom: rawPitchTransform?.zoom ?? 1,
+      tilt: rawPitchTransform?.tilt ?? 0,
+      ...(rawPitchTransform?.yaw !== undefined
+        ? { yaw: rawPitchTransform.yaw }
+        : {}),
+      isLocked: rawPitchTransform?.isLocked ?? false,
+    }),
+    [rawPitchTransform],
+  );
+  const isPitchLocked = pitchTransform.isLocked;
+
+  const setPitchTransform = useCallback(
+    (patch: Partial<PitchTransform>) => {
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'UPDATE_SLIDE_META',
+        patch: {
+          pitchTransform: {
+            ...pitchTransform,
+            ...patch,
+          },
+        },
+      });
+    },
+    [dispatchSlide, activePhaseId, activeSlideId, pitchTransform],
+  );
 
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [isPanning, setIsPanning] = useState(false);

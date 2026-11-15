@@ -2,54 +2,67 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it } from 'vitest';
 import { VisionConeAction } from '@/features/tactical-unified/core/components/hud/player-quick-actions';
-import { createCanvasStore } from '@/features/tactical-unified/core/store/canvas-store';
-import { CanvasStoreContext } from '@/features/tactical-unified/core/store/canvas-store-provider';
-import type { CanvasStoreApi } from '@/features/tactical-unified/core/types';
-import { createDefaultPlayer } from '@/lib/types/tactical-unified';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { createDefaultDomainPlayers } from '@/lib/tactical/domain/default-players';
 
 function renderWithStore(
   ui: React.ReactElement,
-  initialStore?: CanvasStoreApi,
+  stores?: {
+    documentStore: ReturnType<typeof createDocumentStore>;
+    sessionStore: ReturnType<typeof createSessionStore>;
+  },
 ) {
-  const store =
-    initialStore ??
-    createCanvasStore({
-      mode: 'tactical-board',
-      aspectRatio: '16:9',
-    });
+  const documentStore =
+    stores?.documentStore ??
+    createDocumentStore(createDefaultTacticalProject());
+  const sessionStore = stores?.sessionStore ?? createSessionStore();
   const utils = render(
-    <CanvasStoreContext.Provider value={store}>
+    <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
       {ui}
-    </CanvasStoreContext.Provider>,
+    </TacticalStoreProvider>,
   );
-  return { store, ...utils };
+  return { documentStore, sessionStore, ...utils };
 }
 
 describe('PlayerQuickActions - VisionConeAction', () => {
   it('視野コーンがOFF (visible: false または undefined) の時は視野カラーピッカーが表示されないこと', () => {
-    const store = createCanvasStore({
-      mode: 'tactical-board',
-      aspectRatio: '16:9',
-    });
+    const documentStore = createDocumentStore(createDefaultTacticalProject());
+    const sessionStore = createSessionStore();
+    const { activePhaseId, activeSlideId } = sessionStore.getState();
+
     const player = {
-      ...createDefaultPlayer('home', 50, 50, '#38bdf8'),
+      ...createDefaultDomainPlayers('#38bdf8')[0],
       id: 'p1',
       visionCone: undefined,
     };
-    store.getState().addMarker(player);
+    documentStore.getState().dispatchSlide(activePhaseId, activeSlideId, {
+      type: 'ADD_PLAYER',
+      player,
+    });
 
-    renderWithStore(<VisionConeAction player={player} />, store);
+    renderWithStore(<VisionConeAction player={player} />, {
+      documentStore,
+      sessionStore,
+    });
 
     expect(screen.queryByTitle('視野カラー変更')).toBeNull();
   });
 
-  it('視野コーンがON (visible: true) の時に視野カラーピッカーが表示され、色変更時に updateMarker が呼ばれて色が更新されること', () => {
-    const store = createCanvasStore({
-      mode: 'tactical-board',
-      aspectRatio: '16:9',
-    });
+  it('視野コーンがON (visible: true) の時に視野カラーピッカーが表示され、色変更時に documentStore が更新されること', () => {
+    const project = createDefaultTacticalProject();
+    const activePhaseId = project.phases[0].id;
+    const activeSlideId = project.phases[0].slides[0].id;
+    const documentStore = createDocumentStore(project);
+    const sessionStore = createSessionStore({ activePhaseId, activeSlideId });
+
     const player = {
-      ...createDefaultPlayer('home', 50, 50, '#38bdf8'),
+      ...createDefaultDomainPlayers('#38bdf8')[0],
       id: 'p1',
       visionCone: {
         id: 'vc-1',
@@ -61,9 +74,15 @@ describe('PlayerQuickActions - VisionConeAction', () => {
         visible: true,
       },
     };
-    store.getState().addMarker(player);
+    documentStore.getState().dispatchSlide(activePhaseId, activeSlideId, {
+      type: 'ADD_PLAYER',
+      player,
+    });
 
-    renderWithStore(<VisionConeAction player={player} />, store);
+    renderWithStore(<VisionConeAction player={player} />, {
+      documentStore,
+      sessionStore,
+    });
 
     const colorPickerTrigger = screen.getByTitle('視野カラー変更');
     expect(colorPickerTrigger).toBeDefined();
@@ -77,9 +96,15 @@ describe('PlayerQuickActions - VisionConeAction', () => {
     fireEvent.click(redColorBtn);
 
     // ストアのマーカーの visionCone.color が更新されたことを検証
-    const updatedPlayer = store
-      .getState()
-      .annotations.markers.find((m) => m.id === 'p1');
-    expect(updatedPlayer?.visionCone?.color).toBe('#ef4444');
+    const slide = selectDomainActiveSlide(
+      documentStore.getState().project,
+      activePhaseId,
+      activeSlideId,
+    );
+    const updatedPlayer = slide?.players.find((m) => m.id === 'p1');
+    expect(updatedPlayer?.area).toBe('pitch');
+    if (updatedPlayer?.area === 'pitch') {
+      expect(updatedPlayer.visionCone?.color).toBe('#ef4444');
+    }
   });
 });

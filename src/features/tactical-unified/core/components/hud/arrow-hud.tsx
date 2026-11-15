@@ -1,7 +1,12 @@
 'use client';
 
 import { Lock, Minus, Plus, Trash2, Unlock, Zap } from 'lucide-react';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
 import { DashedLineIcon, SolidLineIcon } from './hud-icons';
 import { MiniColorPicker } from './mini-color-picker';
 
@@ -10,21 +15,32 @@ export interface ArrowHudProps {
 }
 
 export function ArrowHud({ arrowId }: ArrowHudProps) {
-  const arrow = useCanvasStore((s) =>
-    s.annotations.arrows.find((a) => a.id === arrowId),
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const clearSelection = useSessionStore((s) => s.clearSelection);
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
   );
-  const updateArrow = useCanvasStore((s) => s.updateArrow);
-  const removeArrow = useCanvasStore((s) => s.removeArrow);
-  const clearSelection = useCanvasStore((s) => s.clearSelection);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
 
-  if (!arrow) return null;
+  const arrow = activeSlide?.arrows.find((a) => a.id === arrowId);
+
+  if (!arrow || !activePhaseId || !activeSlideId) return null;
+
+  const updateArrow = (patch: Partial<DomainArrowAnnotation>) => {
+    dispatchSlide(activePhaseId, activeSlideId, {
+      type: 'UPDATE_ARROW',
+      id: arrow.id,
+      patch,
+    });
+  };
 
   const isDashed = Boolean(arrow.dashArray && arrow.dashArray.length > 0);
   const isGrowEffect = arrow.effect?.type === 'grow';
 
   const toggleEffect = () => {
     if (isGrowEffect) {
-      updateArrow(arrow.id, {
+      updateArrow({
         effect: {
           ...(arrow.effect ?? {
             delay: 0.5,
@@ -38,7 +54,7 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
         },
       });
     } else {
-      updateArrow(arrow.id, {
+      updateArrow({
         effect: {
           type: 'grow',
           delay: arrow.effect?.delay ?? 0.5,
@@ -80,7 +96,7 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
       <button
         type="button"
         onClick={() => {
-          updateArrow(arrow.id, {
+          updateArrow({
             dashArray: isDashed ? [] : [6, 4],
           });
         }}
@@ -108,7 +124,7 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
           onClick={() => {
             const cur = arrow.strokeWidth ?? 3;
             if (cur > 1) {
-              updateArrow(arrow.id, { strokeWidth: cur - 1 });
+              updateArrow({ strokeWidth: cur - 1 });
             }
           }}
           disabled={(arrow.strokeWidth ?? 3) <= 1}
@@ -125,7 +141,7 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
           onClick={() => {
             const cur = arrow.strokeWidth ?? 3;
             if (cur < 10) {
-              updateArrow(arrow.id, { strokeWidth: cur + 1 });
+              updateArrow({ strokeWidth: cur + 1 });
             }
           }}
           disabled={(arrow.strokeWidth ?? 3) >= 10}
@@ -142,7 +158,7 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
       <MiniColorPicker
         value={arrow.color ?? '#ffffff'}
         onChange={(color) => {
-          updateArrow(arrow.id, { color });
+          updateArrow({ color });
         }}
         title="線の色"
       />
@@ -152,7 +168,13 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
       {/* ロック / ロック解除 */}
       <button
         type="button"
-        onClick={() => updateArrow(arrow.id, { locked: !arrow.locked })}
+        onClick={() => {
+          dispatchSlide(activePhaseId, activeSlideId, {
+            type: 'TOGGLE_ENTITY_LOCK',
+            id: arrow.id,
+            kind: 'arrow',
+          });
+        }}
         style={
           arrow.locked
             ? { backgroundColor: 'rgba(245, 158, 11, 0.25)', color: '#fbbf24' }
@@ -174,7 +196,10 @@ export function ArrowHud({ arrowId }: ArrowHudProps) {
       <button
         type="button"
         onClick={() => {
-          removeArrow(arrow.id);
+          dispatchSlide(activePhaseId, activeSlideId, {
+            type: 'REMOVE_ARROW',
+            id: arrow.id,
+          });
           clearSelection();
         }}
         className="p-1 rounded-md text-white/50 hover:text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"

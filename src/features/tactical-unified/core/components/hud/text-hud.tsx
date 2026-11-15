@@ -1,7 +1,11 @@
 'use client';
 
 import { Lock, Minus, Plus, Trash2, Unlock } from 'lucide-react';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { MiniColorPicker } from './mini-color-picker';
 
 export interface TextHudProps {
@@ -9,12 +13,15 @@ export interface TextHudProps {
 }
 
 export function TextHud({ textId }: TextHudProps) {
-  const text = useCanvasStore((s) =>
-    s.annotations.texts.find((t) => t.id === textId),
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const clearSelection = useSessionStore((s) => s.clearSelection);
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
   );
-  const updateText = useCanvasStore((s) => s.updateText);
-  const removeText = useCanvasStore((s) => s.removeText);
-  const clearSelection = useCanvasStore((s) => s.clearSelection);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+
+  const text = activeSlide?.texts.find((t) => t.id === textId);
 
   if (!text) return null;
 
@@ -27,7 +34,11 @@ export function TextHud({ textId }: TextHudProps) {
           onClick={() => {
             const cur = text.fontSize ?? 16;
             if (cur > 10) {
-              updateText(text.id, { fontSize: cur - 2 });
+              dispatchSlide(activePhaseId, activeSlideId, {
+                type: 'UPDATE_TEXT',
+                id: text.id,
+                patch: { fontSize: cur - 2 },
+              });
             }
           }}
           disabled={(text.fontSize ?? 16) <= 10}
@@ -44,7 +55,11 @@ export function TextHud({ textId }: TextHudProps) {
           onClick={() => {
             const cur = text.fontSize ?? 16;
             if (cur < 64) {
-              updateText(text.id, { fontSize: cur + 2 });
+              dispatchSlide(activePhaseId, activeSlideId, {
+                type: 'UPDATE_TEXT',
+                id: text.id,
+                patch: { fontSize: cur + 2 },
+              });
             }
           }}
           disabled={(text.fontSize ?? 16) >= 64}
@@ -61,7 +76,11 @@ export function TextHud({ textId }: TextHudProps) {
       <MiniColorPicker
         value={text.color ?? '#ffffff'}
         onChange={(color) => {
-          updateText(text.id, { color });
+          dispatchSlide(activePhaseId, activeSlideId, {
+            type: 'UPDATE_TEXT',
+            id: text.id,
+            patch: { color },
+          });
         }}
         title="文字色"
       />
@@ -71,7 +90,13 @@ export function TextHud({ textId }: TextHudProps) {
       {/* ロック / ロック解除 */}
       <button
         type="button"
-        onClick={() => updateText(text.id, { locked: !text.locked })}
+        onClick={() =>
+          dispatchSlide(activePhaseId, activeSlideId, {
+            type: 'TOGGLE_ENTITY_LOCK',
+            id: text.id,
+            kind: 'text',
+          })
+        }
         className={`p-1 rounded-md transition-colors cursor-pointer ${
           text.locked
             ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'
@@ -88,7 +113,10 @@ export function TextHud({ textId }: TextHudProps) {
       <button
         type="button"
         onClick={() => {
-          removeText(text.id);
+          dispatchSlide(activePhaseId, activeSlideId, {
+            type: 'REMOVE_TEXT',
+            id: text.id,
+          });
           clearSelection();
         }}
         className="p-1 rounded-md text-white/50 hover:text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"

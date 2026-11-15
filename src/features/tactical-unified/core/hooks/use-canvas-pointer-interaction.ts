@@ -2,6 +2,11 @@
 
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCallback, useRef } from 'react';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   type CanvasPointerInteractionResult,
   dispatchPointerMove,
@@ -13,7 +18,6 @@ import { handleToolPointerDown } from '../utils/canvas-pointer-tools';
 import { getPointerCoordinates } from '../utils/geometry';
 import { useCanvasPolygonZone } from './use-canvas-polygon-zone';
 import { useCanvasSelectionBox } from './use-canvas-selection-box';
-import { useCanvasStore } from './use-canvas-store';
 import { useCanvasZoneRotation } from './use-canvas-zone-rotation';
 import { useCanvasZoomPan } from './use-canvas-zoom-pan';
 
@@ -28,7 +32,13 @@ export function useCanvasPointerInteraction({
   onStartEditText,
 }: UseCanvasPointerInteractionOptions): CanvasPointerInteractionResult {
   const s = useCanvasPointerStore();
-  const pitchTransform = useCanvasStore((st) => st.pitchTransform);
+  const activePhaseId = useSessionStore((st) => st.activePhaseId);
+  const activeSlideId = useSessionStore((st) => st.activeSlideId);
+  const pitchTransform = useDocumentStore(
+    (st) =>
+      selectDomainActiveSlide(st.project, activePhaseId, activeSlideId)
+        ?.pitchTransform,
+  );
   const isPointerDownRef = useRef(false);
 
   const zoomPan = useCanvasZoomPan({ vRect });

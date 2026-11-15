@@ -2,12 +2,19 @@ import { act, renderHook } from '@testing-library/react';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useCanvasZoomPan } from '@/features/tactical-unified/core';
 import {
-  type CanvasStoreApi,
-  CanvasStoreContext,
-  createCanvasStore,
-  useCanvasZoomPan,
-} from '@/features/tactical-unified/core';
+  createDocumentStore,
+  type DocumentStore,
+} from '@/features/tactical-unified/stores/document-store';
+import {
+  createSessionStore,
+  type SessionStore,
+} from '@/features/tactical-unified/stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 
 function createMockKonvaPointerEvent(
   pos: { x: number; y: number },
@@ -29,25 +36,33 @@ function createMockKonvaPointerEvent(
 }
 
 describe('L1-Tactical-051: Pitch Pan Control & Lock Guard', () => {
-  let store: CanvasStoreApi;
+  let documentStore: DocumentStore;
+  let sessionStore: SessionStore;
 
   beforeEach(() => {
-    store = createCanvasStore({ mode: 'tactical-board' });
+    const project = createDefaultTacticalProject();
+    documentStore = createDocumentStore(project);
+    const activePhase = project.phases[0];
+    const activeSlide = activePhase?.slides[0];
+    sessionStore = createSessionStore({
+      activePhaseId: activePhase?.id ?? '',
+      activeSlideId: activeSlide?.id ?? '',
+    });
   });
 
   const createWrapper =
-    (canvasStore: CanvasStoreApi) =>
+    () =>
     ({ children }: { children: React.ReactNode }) =>
       React.createElement(
-        CanvasStoreContext.Provider,
-        { value: canvasStore },
+        TacticalStoreProvider,
+        { stores: { documentStore, sessionStore } },
         children,
       );
 
   it('スペースキー未押下の通常クリックではパンが開始されない', () => {
     const { result } = renderHook(
       () => useCanvasZoomPan({ vRect: { width: 1000, height: 600 } }),
-      { wrapper: createWrapper(store) },
+      { wrapper: createWrapper() },
     );
 
     let handled = false;
@@ -64,7 +79,7 @@ describe('L1-Tactical-051: Pitch Pan Control & Lock Guard', () => {
   it('スペースキー押下中はポインタダウンでパンが開始される', () => {
     const { result } = renderHook(
       () => useCanvasZoomPan({ vRect: { width: 1000, height: 600 } }),
-      { wrapper: createWrapper(store) },
+      { wrapper: createWrapper() },
     );
 
     act(() => {
@@ -91,11 +106,17 @@ describe('L1-Tactical-051: Pitch Pan Control & Lock Guard', () => {
   });
 
   it('ピッチがロック状態 (isLocked = true) の場合はスペースキー押下中でもパンが開始されない', () => {
-    store.getState().setPitchTransform({ isLocked: true });
+    const { activePhaseId, activeSlideId } = sessionStore.getState();
+    documentStore.getState().dispatchSlide(activePhaseId, activeSlideId, {
+      type: 'UPDATE_SLIDE_META',
+      patch: {
+        pitchTransform: { zoom: 1, panX: 0, panY: 0, tilt: 0, isLocked: true },
+      },
+    });
 
     const { result } = renderHook(
       () => useCanvasZoomPan({ vRect: { width: 1000, height: 600 } }),
-      { wrapper: createWrapper(store) },
+      { wrapper: createWrapper() },
     );
 
     act(() => {

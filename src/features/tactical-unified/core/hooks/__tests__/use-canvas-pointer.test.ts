@@ -2,9 +2,20 @@ import { act, renderHook } from '@testing-library/react';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCanvasStore } from '../../store/canvas-store';
-import { CanvasStoreContext } from '../../store/canvas-store-provider';
-import type { CanvasStoreApi, DrawingTool } from '../../types';
+import {
+  createDocumentStore,
+  type DocumentStore,
+} from '../../../stores/document-store';
+import { selectDomainActiveSlide } from '../../../stores/domain-selectors';
+import {
+  createSessionStore,
+  type SessionStore,
+} from '../../../stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '../../../stores/tactical-store-provider';
+import type { DrawingTool } from '../../types';
 import { useCanvasPointerInteraction } from '../use-canvas-pointer-interaction';
 
 function createMockKonvaPointerEvent(
@@ -49,18 +60,35 @@ function createMockKonvaWheelEvent(
 }
 
 describe('useCanvasPointerInteraction', () => {
-  let store: CanvasStoreApi;
+  let documentStore: DocumentStore;
+  let sessionStore: SessionStore;
+
+  const getActiveSlide = () => {
+    const { activePhaseId, activeSlideId } = sessionStore.getState();
+    return selectDomainActiveSlide(
+      documentStore.getState().project,
+      activePhaseId,
+      activeSlideId,
+    );
+  };
 
   beforeEach(() => {
-    store = createCanvasStore({ mode: 'tactical-board' });
+    const project = createDefaultTacticalProject();
+    documentStore = createDocumentStore(project);
+    const activePhase = project.phases[0];
+    const activeSlide = activePhase?.slides[0];
+    sessionStore = createSessionStore({
+      activePhaseId: activePhase?.id ?? '',
+      activeSlideId: activeSlide?.id ?? '',
+    });
   });
 
   const createWrapper =
-    (canvasStore: CanvasStoreApi) =>
+    () =>
     ({ children }: { children: React.ReactNode }) =>
       React.createElement(
-        CanvasStoreContext.Provider,
-        { value: canvasStore },
+        TacticalStoreProvider,
+        { stores: { documentStore, sessionStore } },
         children,
       );
 
@@ -70,10 +98,10 @@ describe('useCanvasPointerInteraction', () => {
         useCanvasPointerInteraction({
           vRect: { width: 1000, height: 1000 },
         }),
-      { wrapper: createWrapper(store) },
+      { wrapper: createWrapper() },
     );
 
-    expect(store.getState().pitchTransform.zoom).toBe(1);
+    expect(getActiveSlide()?.pitchTransform?.zoom ?? 1).toBe(1);
 
     // ズームイン (deltaY < 0)
     act(() => {
@@ -82,7 +110,7 @@ describe('useCanvasPointerInteraction', () => {
       );
     });
 
-    const zoomAfterIn = store.getState().pitchTransform.zoom;
+    const zoomAfterIn = getActiveSlide()?.pitchTransform?.zoom ?? 1;
     expect(zoomAfterIn).toBeGreaterThan(1);
 
     // ズームアウト (deltaY > 0)
@@ -92,7 +120,7 @@ describe('useCanvasPointerInteraction', () => {
       );
     });
 
-    const zoomAfterOut = store.getState().pitchTransform.zoom;
+    const zoomAfterOut = getActiveSlide()?.pitchTransform?.zoom ?? 1;
     expect(zoomAfterOut).toBeLessThan(zoomAfterIn);
   });
 
@@ -102,7 +130,7 @@ describe('useCanvasPointerInteraction', () => {
         useCanvasPointerInteraction({
           vRect: { width: 1000, height: 1000 },
         }),
-      { wrapper: createWrapper(store) },
+      { wrapper: createWrapper() },
     );
 
     // Spaceキー押下
@@ -125,8 +153,8 @@ describe('useCanvasPointerInteraction', () => {
         createMockKonvaPointerEvent({ x: 150, y: 130 }),
       );
     });
-    expect(store.getState().pitchTransform.panX).toBe(50);
-    expect(store.getState().pitchTransform.panY).toBe(30);
+    expect(getActiveSlide()?.pitchTransform?.panX).toBe(50);
+    expect(getActiveSlide()?.pitchTransform?.panY).toBe(30);
 
     // ドラッグ終了
     act(() => {
@@ -145,7 +173,7 @@ describe('useCanvasPointerInteraction', () => {
 
   it('多角形ツールでクリックごとに頂点が追加され、始点近接で閉路確定すること', () => {
     act(() => {
-      store.getState().setActiveTool('polygon_zone' as DrawingTool);
+      sessionStore.getState().setActiveTool('polygon_zone' as DrawingTool);
     });
 
     const { result } = renderHook(
@@ -153,7 +181,7 @@ describe('useCanvasPointerInteraction', () => {
         useCanvasPointerInteraction({
           vRect: { width: 1000, height: 1000 },
         }),
-      { wrapper: createWrapper(store) },
+      { wrapper: createWrapper() },
     );
 
     // 1点目クリック (x: 100, y: 100 -> norm: 10, 10)
@@ -163,10 +191,10 @@ describe('useCanvasPointerInteraction', () => {
       );
     });
 
-    const activeId = result.current.activePolygonId;
-    expect(activeId).toBeTruthy();
-    expect(store.getState().annotations.zones).toHaveLength(1);
-    expect(store.getState().annotations.zones[0]?.points).toHaveLength(1);
+    expect(sessionStore.getState().drawingPreview?.polygonPoints).toHaveLength(
+      1,
+    );
+    expect(getActiveSlide()?.zones).toHaveLength(0);
 
     // 2点目クリック (x: 200, y: 100 -> norm: 20, 10)
     act(() => {
@@ -174,7 +202,10 @@ describe('useCanvasPointerInteraction', () => {
         createMockKonvaPointerEvent({ x: 200, y: 100 }),
       );
     });
-    expect(store.getState().annotations.zones[0]?.points).toHaveLength(2);
+    expect(sessionStore.getState().drawingPreview?.polygonPoints).toHaveLength(
+      2,
+    );
+    expect(getActiveSlide()?.zones).toHaveLength(0);
 
     // 3点目クリック (x: 200, y: 200 -> norm: 20, 20)
     act(() => {
@@ -182,7 +213,10 @@ describe('useCanvasPointerInteraction', () => {
         createMockKonvaPointerEvent({ x: 200, y: 200 }),
       );
     });
-    expect(store.getState().annotations.zones[0]?.points).toHaveLength(3);
+    expect(sessionStore.getState().drawingPreview?.polygonPoints).toHaveLength(
+      3,
+    );
+    expect(getActiveSlide()?.zones).toHaveLength(0);
 
     // 始点近接クリック (x: 102, y: 102 -> norm: 10.2, 10.2, dist < 3.5%)
     act(() => {
@@ -192,17 +226,19 @@ describe('useCanvasPointerInteraction', () => {
     });
 
     // 閉路確定
-    expect(result.current.activePolygonId).toBeNull();
-    const completedZone = store.getState().annotations.zones[0];
-    expect(completedZone?.isComplete).toBe(true);
-    expect(store.getState().selectedObjects).toEqual([
+    expect(sessionStore.getState().drawingPreview).toBeNull();
+    expect(getActiveSlide()?.zones).toHaveLength(1);
+    const completedZone = getActiveSlide()?.zones[0];
+    expect(completedZone?.shapeType).toBe('polygon');
+    expect(completedZone).not.toHaveProperty('isComplete');
+    expect(sessionStore.getState().selectedObjects).toEqual([
       { id: completedZone?.id, kind: 'zone' },
     ]);
   });
 
   it('空白ドラッグで範囲選択矩形（SelectionBox）が拡張されること', () => {
     act(() => {
-      store.getState().setActiveTool('select');
+      sessionStore.getState().setActiveTool('select');
     });
 
     const { result } = renderHook(
@@ -210,7 +246,7 @@ describe('useCanvasPointerInteraction', () => {
         useCanvasPointerInteraction({
           vRect: { width: 1000, height: 1000 },
         }),
-      { wrapper: createWrapper(store) },
+      { wrapper: createWrapper() },
     );
 
     // 空白ドラッグ開始 (isStage = true)

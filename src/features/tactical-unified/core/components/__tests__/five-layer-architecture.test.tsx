@@ -1,20 +1,22 @@
 import { act, render, renderHook } from '@testing-library/react';
 import type Konva from 'konva';
-import { createRef } from 'react';
+import { createRef, type ReactNode } from 'react';
 import { Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDocumentStore } from '@/features/tactical-unified/stores/document-store';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import {
   createDefaultTacticalProject,
   TacticalStoreProvider,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import { compileSceneGraph } from '@/lib/tactical/compiler/compile-scene-graph';
+import { createDefaultDomainPlayer } from '@/lib/tactical/domain/formation-placement';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { useCanvasSelectionBox } from '../../hooks/use-canvas-selection-box';
-import {
-  useCanvasStore,
-  useCanvasStoreApi,
-} from '../../hooks/use-canvas-store';
+import { useCanvasStore } from '../../hooks/use-canvas-store';
 import { CanvasStoreProvider } from '../../store/canvas-store-provider';
 import type { PitchRectBounds } from '../../utils/canvas-coordinates';
 import { getPointerCoordinates } from '../../utils/geometry';
@@ -89,18 +91,20 @@ describe('PitchGroundLayer', () => {
   it('ステージ全体の背景RectとpitchRectオフセット付きGroupを描画すること', () => {
     const stageRef = createRef<Konva.Stage>();
     render(
-      <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
-        <Stage
-          ref={stageRef}
-          width={defaultStageSize.width}
-          height={defaultStageSize.height}
-        >
-          <PitchGroundLayer
-            stageSize={defaultStageSize}
-            pitchRect={defaultPitchRect}
-          />
-        </Stage>
-      </CanvasStoreProvider>,
+      <TacticalStoreProvider>
+        <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
+          <Stage
+            ref={stageRef}
+            width={defaultStageSize.width}
+            height={defaultStageSize.height}
+          >
+            <PitchGroundLayer
+              stageSize={defaultStageSize}
+              pitchRect={defaultPitchRect}
+            />
+          </Stage>
+        </CanvasStoreProvider>
+      </TacticalStoreProvider>,
     );
 
     const stage = stageRef.current;
@@ -142,29 +146,31 @@ describe('PitchGroundLayer', () => {
 
     const stageRef = createRef<Konva.Stage>();
     render(
-      <CanvasStoreProvider
-        config={{
-          mode: 'tactical-board',
-          initialAnnotations: JSON.stringify({
-            markers: [{ ...playerA, x: 70, y: 70 }],
-            arrows: [],
-            zones: [],
-            texts: [],
-          }),
-        }}
-      >
-        <Stage
-          ref={stageRef}
-          width={defaultStageSize.width}
-          height={defaultStageSize.height}
+      <TacticalStoreProvider>
+        <CanvasStoreProvider
+          config={{
+            mode: 'tactical-board',
+            initialAnnotations: JSON.stringify({
+              markers: [{ ...playerA, x: 70, y: 70 }],
+              arrows: [],
+              zones: [],
+              texts: [],
+            }),
+          }}
         >
-          <PitchGroundLayer
-            stageSize={defaultStageSize}
-            pitchRect={defaultPitchRect}
-            cleanRender={true}
-          />
-        </Stage>
-      </CanvasStoreProvider>,
+          <Stage
+            ref={stageRef}
+            width={defaultStageSize.width}
+            height={defaultStageSize.height}
+          >
+            <PitchGroundLayer
+              stageSize={defaultStageSize}
+              pitchRect={defaultPitchRect}
+              cleanRender={true}
+            />
+          </Stage>
+        </CanvasStoreProvider>
+      </TacticalStoreProvider>,
     );
 
     const arrows = stageRef.current?.find('Arrow') ?? [];
@@ -174,19 +180,21 @@ describe('PitchGroundLayer', () => {
   it('メインキャンバス外枠確認枠線 (stroke="#38bdf8") が描画されないこと', () => {
     const stageRef = createRef<Konva.Stage>();
     render(
-      <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
-        <Stage
-          ref={stageRef}
-          width={defaultStageSize.width}
-          height={defaultStageSize.height}
-        >
-          <PitchGroundLayer
-            stageSize={defaultStageSize}
-            pitchRect={defaultPitchRect}
-            cleanRender={false}
-          />
-        </Stage>
-      </CanvasStoreProvider>,
+      <TacticalStoreProvider>
+        <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
+          <Stage
+            ref={stageRef}
+            width={defaultStageSize.width}
+            height={defaultStageSize.height}
+          >
+            <PitchGroundLayer
+              stageSize={defaultStageSize}
+              pitchRect={defaultPitchRect}
+              cleanRender={false}
+            />
+          </Stage>
+        </CanvasStoreProvider>
+      </TacticalStoreProvider>,
     );
 
     const stage = stageRef.current;
@@ -570,44 +578,57 @@ describe('BillboardObjectLayer', () => {
   });
 });
 
+function createSelectionBoxTestHarness(
+  players: DomainPlayer[],
+  pitchTransform?: DomainSlide['pitchTransform'],
+) {
+  const baseProject = createDefaultTacticalProject();
+  const phase = baseProject.phases[0];
+  const slide = phase.slides[0];
+  const project = {
+    ...baseProject,
+    phases: [
+      {
+        ...phase,
+        slides: [
+          {
+            ...slide,
+            players,
+            ...(pitchTransform ? { pitchTransform } : {}),
+          },
+        ],
+      },
+    ],
+  };
+  const documentStore = createDocumentStore(project);
+  const sessionStore = createSessionStore({
+    activePhaseId: phase.id,
+    activeSlideId: slide.id,
+    activeTool: 'select',
+  });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
+      {children}
+    </TacticalStoreProvider>
+  );
+  return { documentStore, sessionStore, wrapper };
+}
+
 describe('useCanvasSelectionBox', () => {
   it('vRect に x, y オフセットがある場合、オフセットを差し引いて正規化選択領域を算出してマーカーを選択すること', () => {
-    let selectedIdsResult: string[] = [];
-    const StoreObserver = () => {
-      const selectedIds = useCanvasStore((s) => s.selectedIds);
-      selectedIdsResult = selectedIds;
-      return null;
-    };
-
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <CanvasStoreProvider
-        config={{
-          mode: 'tactical-board',
-          initialAnnotations: JSON.stringify({
-            markers: [
-              // ピッチ内正規化座標: x=50, y=50
-              // vRect: x=100, y=50, width=800, height=450 のとき、
-              // 絶対ピクセル座標は x = 100 + 50% * 800 = 500, y = 50 + 50% * 450 = 275
-              {
-                id: 'm-selected',
-                shirtNo: '11',
-                x: 50,
-                y: 50,
-                team: 'home',
-                area: 'pitch',
-                style: { color: '#001489', markerType: 'circle' },
-              },
-            ],
-            arrows: [],
-            zones: [],
-            texts: [],
-          }),
-        }}
-      >
-        <StoreObserver />
-        {children}
-      </CanvasStoreProvider>
-    );
+    const { sessionStore, wrapper } = createSelectionBoxTestHarness([
+      // ピッチ内正規化座標: x=50, y=50
+      // vRect: x=100, y=50, width=800, height=450 のとき、
+      // 絶対ピクセル座標は x = 100 + 50% * 800 = 500, y = 50 + 50% * 450 = 275
+      createDefaultDomainPlayer(
+        'home',
+        50,
+        50,
+        '#001489',
+        'pitch',
+        'm-selected',
+      ),
+    ]);
 
     const { result } = renderHook(
       () =>
@@ -635,54 +656,35 @@ describe('useCanvasSelectionBox', () => {
       result.current.handleSelectionUp();
     });
 
-    expect(selectedIdsResult).toContain('m-selected');
+    expect(sessionStore.getState().selectedObjects.map((o) => o.id)).toContain(
+      'm-selected',
+    );
   });
 
   it('pitchTransform（zoom, panX, panY）適用時にスクリーン座標系でのドラッグ範囲選択からピッチ正規化座標が正しく逆変換されマーカーが選択されること', () => {
-    let selectedIdsResult: string[] = [];
-    const StoreObserver = () => {
-      const selectedIds = useCanvasStore((s) => s.selectedIds);
-      selectedIdsResult = selectedIds;
-      return null;
-    };
-
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <CanvasStoreProvider
-        config={{
-          mode: 'tactical-board',
-          defaultPitchTransform: {
-            zoom: 1.5,
-            panX: 80,
-            panY: -40,
-            tilt: 0,
-            isLocked: false,
-          },
-          initialAnnotations: JSON.stringify({
-            markers: [
-              // ピッチ内正規化座標: x=60, y=60
-              // vRect: x=100, y=50, width=800, height=450
-              // pitchPos: x = 480, y = 270
-              // local: x = 480 - 400 = 80, y = 270 - 225 = 45
-              // stagePos: x = 500 + 80 + 80 * 1.5 = 700, y = 275 - 40 + 45 * 1.5 = 302.5
-              {
-                id: 'm-transformed',
-                shirtNo: '9',
-                x: 60,
-                y: 60,
-                team: 'home',
-                area: 'pitch',
-                style: { color: '#001489', markerType: 'circle' },
-              },
-            ],
-            arrows: [],
-            zones: [],
-            texts: [],
-          }),
-        }}
-      >
-        <StoreObserver />
-        {children}
-      </CanvasStoreProvider>
+    const { sessionStore, wrapper } = createSelectionBoxTestHarness(
+      [
+        // ピッチ内正規化座標: x=60, y=60
+        // vRect: x=100, y=50, width=800, height=450
+        // pitchPos: x = 480, y = 270
+        // local: x = 480 - 400 = 80, y = 270 - 225 = 45
+        // stagePos: x = 500 + 80 + 80 * 1.5 = 700, y = 275 - 40 + 45 * 1.5 = 302.5
+        createDefaultDomainPlayer(
+          'home',
+          60,
+          60,
+          '#001489',
+          'pitch',
+          'm-transformed',
+        ),
+      ],
+      {
+        zoom: 1.5,
+        panX: 80,
+        panY: -40,
+        tilt: 0,
+        isLocked: false,
+      },
     );
 
     const { result } = renderHook(
@@ -704,60 +706,38 @@ describe('useCanvasSelectionBox', () => {
       result.current.handleSelectionUp();
     });
 
-    expect(selectedIdsResult).toContain('m-transformed');
+    expect(sessionStore.getState().selectedObjects.map((o) => o.id)).toContain(
+      'm-transformed',
+    );
   });
 
   it('area: bench の選手や teamVisibility で非表示の選手が範囲選択から除外されること', () => {
-    let selectedIdsResult: string[] = [];
-    let canvasStoreApi: ReturnType<typeof useCanvasStoreApi> | null = null;
-    const StoreObserver = () => {
-      const selectedIds = useCanvasStore((s) => s.selectedIds);
-      canvasStoreApi = useCanvasStoreApi();
-      selectedIdsResult = selectedIds;
-      return null;
-    };
-
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <CanvasStoreProvider
-        config={{
-          mode: 'tactical-board',
-          initialAnnotations: JSON.stringify({
-            markers: [
-              {
-                id: 'm-visible-home',
-                shirtNo: '1',
-                x: 50,
-                y: 50,
-                team: 'home',
-                area: 'pitch',
-              },
-              {
-                id: 'm-bench-home',
-                shirtNo: '2',
-                x: 50,
-                y: 50,
-                team: 'home',
-                area: 'bench',
-              },
-              {
-                id: 'm-away-hidden',
-                shirtNo: '3',
-                x: 50,
-                y: 50,
-                team: 'away',
-                area: 'pitch',
-              },
-            ],
-            arrows: [],
-            zones: [],
-            texts: [],
-          }),
-        }}
-      >
-        <StoreObserver />
-        {children}
-      </CanvasStoreProvider>
-    );
+    const { sessionStore, wrapper } = createSelectionBoxTestHarness([
+      createDefaultDomainPlayer(
+        'home',
+        50,
+        50,
+        '#001489',
+        'pitch',
+        'm-visible-home',
+      ),
+      createDefaultDomainPlayer(
+        'home',
+        50,
+        50,
+        '#001489',
+        'bench',
+        'm-bench-home',
+      ),
+      createDefaultDomainPlayer(
+        'away',
+        50,
+        50,
+        '#ef4444',
+        'pitch',
+        'm-away-hidden',
+      ),
+    ]);
 
     const { result } = renderHook(
       () =>
@@ -769,7 +749,7 @@ describe('useCanvasSelectionBox', () => {
 
     // teamVisibility を 'home' に変更
     act(() => {
-      canvasStoreApi?.setState({ teamVisibility: 'home' });
+      sessionStore.getState().setTeamVisibility('home');
     });
 
     // (40, 40) 〜 (60, 60) の範囲 (norm: 40%〜60%) を選択
@@ -784,9 +764,12 @@ describe('useCanvasSelectionBox', () => {
     });
 
     // homeかつpitchの選手のみが選択され、benchとawayは除外されていること
-    expect(selectedIdsResult).toContain('m-visible-home');
-    expect(selectedIdsResult).not.toContain('m-bench-home');
-    expect(selectedIdsResult).not.toContain('m-away-hidden');
+    const selectedIds = sessionStore
+      .getState()
+      .selectedObjects.map((o) => o.id);
+    expect(selectedIds).toContain('m-visible-home');
+    expect(selectedIds).not.toContain('m-bench-home');
+    expect(selectedIds).not.toContain('m-away-hidden');
   });
 });
 
@@ -907,17 +890,19 @@ describe('InteractionPreviewLayer', () => {
 describe('HtmlHudOverlay', () => {
   it('cleanRender={true} のときは null を返すこと', () => {
     const { container } = render(
-      <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
-        <HtmlHudOverlay
-          stageSize={defaultStageSize}
-          pitchRect={defaultPitchRect}
-          editingText={null}
-          cleanRender={true}
-          onSaveText={vi.fn()}
-          onRemoveText={vi.fn()}
-          onCloseText={vi.fn()}
-        />
-      </CanvasStoreProvider>,
+      <TacticalStoreProvider>
+        <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
+          <HtmlHudOverlay
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+            editingText={null}
+            cleanRender={true}
+            onSaveText={vi.fn()}
+            onRemoveText={vi.fn()}
+            onCloseText={vi.fn()}
+          />
+        </CanvasStoreProvider>
+      </TacticalStoreProvider>,
     );
 
     expect(container.firstChild).toBeNull();
@@ -925,29 +910,31 @@ describe('HtmlHudOverlay', () => {
 
   it('connectingPlayerId があるときは接続ガイダンスバッジを表示すること', () => {
     const { getByTestId } = render(
-      <CanvasStoreProvider
-        config={{
-          mode: 'tactical-board',
-          initialAnnotations: JSON.stringify({
-            markers: [
-              { id: 'm-src', x: 20, y: 20, team: 'home', area: 'pitch' },
-            ],
-            arrows: [],
-            zones: [],
-            texts: [],
-          }),
-        }}
-      >
-        <HtmlHudOverlay
-          stageSize={defaultStageSize}
-          pitchRect={defaultPitchRect}
-          editingText={null}
-          cleanRender={false}
-          onSaveText={vi.fn()}
-          onRemoveText={vi.fn()}
-          onCloseText={vi.fn()}
-        />
-      </CanvasStoreProvider>,
+      <TacticalStoreProvider>
+        <CanvasStoreProvider
+          config={{
+            mode: 'tactical-board',
+            initialAnnotations: JSON.stringify({
+              markers: [
+                { id: 'm-src', x: 20, y: 20, team: 'home', area: 'pitch' },
+              ],
+              arrows: [],
+              zones: [],
+              texts: [],
+            }),
+          }}
+        >
+          <HtmlHudOverlay
+            stageSize={defaultStageSize}
+            pitchRect={defaultPitchRect}
+            editingText={null}
+            cleanRender={false}
+            onSaveText={vi.fn()}
+            onRemoveText={vi.fn()}
+            onCloseText={vi.fn()}
+          />
+        </CanvasStoreProvider>
+      </TacticalStoreProvider>,
     );
 
     // Default connectingPlayerId is null, so badge is not visible yet

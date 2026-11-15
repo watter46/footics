@@ -19,13 +19,14 @@ export function handleToolPointerDown(
 ): void {
   const {
     activeTool,
-    markers,
+    players,
     continuousDrawing,
+    color,
     onStartEditText,
     setActiveTool,
     setDrawingPreview,
     addText,
-    addMarker,
+    addPlayer,
     eraseAtPoint,
   } = ctx;
 
@@ -51,9 +52,10 @@ export function handleToolPointerDown(
 
   if (behavior.interactionKind === 'point-place' && behavior.placePoint) {
     behavior.placePoint(normPos, {
-      markersCount: markers.length,
+      color,
+      markersCount: players.length,
       addText,
-      addMarker,
+      addMarker: addPlayer,
       onStartEditText,
     });
     if (!continuousDrawing) setActiveTool('select');

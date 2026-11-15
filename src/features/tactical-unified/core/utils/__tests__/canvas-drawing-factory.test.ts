@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
+import { toScreenNormPoint } from '@/lib/types/tactical/branded';
 import type {
-  ArrowAnnotation,
-  ZoneAnnotation,
-} from '@/lib/types/tactical-unified';
+  DomainArrowAnnotation,
+  DomainZoneAnnotation,
+} from '@/lib/types/tactical/domain-entities';
 import {
   commitDrawingShape,
   createRingFadeMarker,
   createRingMarker,
+  type DrawingPreview,
   getDrawingToolBehavior,
   registerDrawingToolBehavior,
   resolveToolPreviewColor,
@@ -30,18 +32,15 @@ describe('canvas-drawing-factory', () => {
   });
 
   it('commitDrawingShape が直線・ルートラインをコミットすること', () => {
-    const addArrow = vi.fn<(a: ArrowAnnotation) => void>();
-    const addZone = vi.fn<(z: ZoneAnnotation) => void>();
+    const addArrow = vi.fn<(a: DomainArrowAnnotation) => void>();
+    const addZone = vi.fn<(z: DomainZoneAnnotation) => void>();
 
     // Straight Line (line)
     commitDrawingShape(
       {
-        isDrawing: true,
         tool: 'line',
-        startX: 10,
-        startY: 10,
-        currentX: 50,
-        currentY: 50,
+        startPoint: toScreenNormPoint(10, 10),
+        currentPoint: toScreenNormPoint(50, 50),
       },
       '#ffffff',
       3,
@@ -51,8 +50,8 @@ describe('canvas-drawing-factory', () => {
     expect(addArrow).toHaveBeenLastCalledWith(
       expect.objectContaining({
         arrowType: 'line',
-        arrowHead: false,
         dashArray: [],
+        startMarker: 'none',
         endMarker: 'none',
       }),
     );
@@ -60,12 +59,9 @@ describe('canvas-drawing-factory', () => {
     // Route Line (route_line)
     commitDrawingShape(
       {
-        isDrawing: true,
         tool: 'route_line',
-        startX: 10,
-        startY: 10,
-        currentX: 50,
-        currentY: 50,
+        startPoint: toScreenNormPoint(10, 10),
+        currentPoint: toScreenNormPoint(50, 50),
       },
       '#ffffff',
       3,
@@ -75,8 +71,8 @@ describe('canvas-drawing-factory', () => {
     expect(addArrow).toHaveBeenLastCalledWith(
       expect.objectContaining({
         arrowType: 'route_line',
-        arrowHead: false,
         dashArray: [],
+        startMarker: 'none',
         endMarker: 'dot',
         color: '#38bdf8',
       }),
@@ -84,18 +80,15 @@ describe('canvas-drawing-factory', () => {
   });
 
   it('commitDrawingShape が矢印ツール群を正確にコミットすること', () => {
-    const addArrow = vi.fn<(a: ArrowAnnotation) => void>();
-    const addZone = vi.fn<(z: ZoneAnnotation) => void>();
+    const addArrow = vi.fn<(a: DomainArrowAnnotation) => void>();
+    const addZone = vi.fn<(z: DomainZoneAnnotation) => void>();
 
     // Solid Arrow (arrow_solid)
     commitDrawingShape(
       {
-        isDrawing: true,
         tool: 'arrow_solid',
-        startX: 10,
-        startY: 10,
-        currentX: 50,
-        currentY: 50,
+        startPoint: toScreenNormPoint(10, 10),
+        currentPoint: toScreenNormPoint(50, 50),
       },
       '#ffffff',
       3,
@@ -105,8 +98,8 @@ describe('canvas-drawing-factory', () => {
     expect(addArrow).toHaveBeenLastCalledWith(
       expect.objectContaining({
         arrowType: 'pass',
-        arrowHead: true,
         dashArray: [],
+        startMarker: 'none',
         endMarker: 'arrow',
         color: '#ffffff',
       }),
@@ -115,12 +108,9 @@ describe('canvas-drawing-factory', () => {
     // Dashed Arrow (arrow_dash)
     commitDrawingShape(
       {
-        isDrawing: true,
         tool: 'arrow_dash',
-        startX: 10,
-        startY: 10,
-        currentX: 50,
-        currentY: 50,
+        startPoint: toScreenNormPoint(10, 10),
+        currentPoint: toScreenNormPoint(50, 50),
       },
       '#ffffff',
       3,
@@ -130,8 +120,8 @@ describe('canvas-drawing-factory', () => {
     expect(addArrow).toHaveBeenLastCalledWith(
       expect.objectContaining({
         arrowType: 'pass',
-        arrowHead: true,
         dashArray: [6, 4],
+        startMarker: 'none',
         endMarker: 'arrow',
         color: '#ffffff',
       }),
@@ -140,12 +130,9 @@ describe('canvas-drawing-factory', () => {
     // Wavy Arrow (arrow_wavy)
     commitDrawingShape(
       {
-        isDrawing: true,
         tool: 'arrow_wavy',
-        startX: 10,
-        startY: 10,
-        currentX: 50,
-        currentY: 50,
+        startPoint: toScreenNormPoint(10, 10),
+        currentPoint: toScreenNormPoint(50, 50),
       },
       '#ffffff',
       3,
@@ -155,8 +142,8 @@ describe('canvas-drawing-factory', () => {
     expect(addArrow).toHaveBeenLastCalledWith(
       expect.objectContaining({
         arrowType: 'dribble',
-        arrowHead: true,
         dashArray: [],
+        startMarker: 'none',
         endMarker: 'arrow',
         color: '#eab308',
       }),
@@ -164,17 +151,14 @@ describe('canvas-drawing-factory', () => {
   });
 
   it('commitDrawingShape がゾーンを赤色(#ef4444)・透明度0.25でコミットすること', () => {
-    const addArrow = vi.fn<(a: ArrowAnnotation) => void>();
-    const addZone = vi.fn<(z: ZoneAnnotation) => void>();
+    const addArrow = vi.fn<(a: DomainArrowAnnotation) => void>();
+    const addZone = vi.fn<(z: DomainZoneAnnotation) => void>();
 
     commitDrawingShape(
       {
-        isDrawing: true,
         tool: 'zone',
-        startX: 10,
-        startY: 10,
-        currentX: 60,
-        currentY: 60,
+        startPoint: toScreenNormPoint(10, 10),
+        currentPoint: toScreenNormPoint(60, 60),
       },
       '#ffffff',
       3,
@@ -185,6 +169,7 @@ describe('canvas-drawing-factory', () => {
     expect(addZone).toHaveBeenCalledWith(
       expect.objectContaining({
         annotationType: 'zone',
+        shapeType: 'rect',
         color: '#ef4444',
         opacity: 0.25,
       }),
@@ -212,15 +197,12 @@ describe('canvas-drawing-factory', () => {
     expect(getDrawingToolBehavior('custom_star')).toBeDefined();
     expect(resolveToolPreviewColor('custom_star')).toBe('#a855f7');
 
-    const addArrow = vi.fn<(a: ArrowAnnotation) => void>();
-    const addZone = vi.fn<(z: ZoneAnnotation) => void>();
-    const preview = {
-      isDrawing: true,
-      tool: 'custom_star' as never,
-      startX: 0,
-      startY: 0,
-      currentX: 10,
-      currentY: 10,
+    const addArrow = vi.fn<(a: DomainArrowAnnotation) => void>();
+    const addZone = vi.fn<(z: DomainZoneAnnotation) => void>();
+    const preview: DrawingPreview = {
+      tool: 'custom_star',
+      startPoint: toScreenNormPoint(0, 0),
+      currentPoint: toScreenNormPoint(10, 10),
     };
 
     commitDrawingShape(preview, '#a855f7', 2, addArrow, addZone);

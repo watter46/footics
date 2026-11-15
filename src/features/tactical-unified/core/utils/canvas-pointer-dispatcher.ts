@@ -1,8 +1,9 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
+import { toScreenNormPoint } from '@/lib/types/tactical/branded';
 import type {
-  ArrowAnnotation,
-  ZoneAnnotation,
-} from '@/lib/types/tactical-unified';
+  DomainArrowAnnotation,
+  DomainZoneAnnotation,
+} from '@/lib/types/tactical/domain-entities';
 import type { DrawingPreviewState, DrawingTool } from '../types';
 import type { PitchTransformState } from './canvas-coordinates';
 import { commitDrawingShape } from './canvas-drawing-factory';
@@ -78,8 +79,8 @@ export interface DispatcherUpOptions {
   onPanUp: () => boolean;
   onRotateUp: () => boolean;
   onSelectionUp: () => boolean;
-  addArrow: (a: ArrowAnnotation) => void;
-  addZone: (z: ZoneAnnotation) => void;
+  addArrow: (a: DomainArrowAnnotation) => void;
+  addZone: (z: DomainZoneAnnotation) => void;
   setDrawingPreview: (p: DrawingPreviewState | null) => void;
   setActiveTool: (tool: DrawingTool) => void;
 }
@@ -90,7 +91,17 @@ export function dispatchPointerUp(opts: DispatcherUpOptions): void {
   if (opts.onSelectionUp()) return;
   if (opts.drawingPreview?.isDrawing) {
     commitDrawingShape(
-      opts.drawingPreview,
+      {
+        tool: opts.drawingPreview.tool,
+        startPoint: toScreenNormPoint(
+          opts.drawingPreview.startX,
+          opts.drawingPreview.startY,
+        ),
+        currentPoint: toScreenNormPoint(
+          opts.drawingPreview.currentX,
+          opts.drawingPreview.currentY,
+        ),
+      },
       opts.color,
       opts.strokeWidth,
       opts.addArrow,

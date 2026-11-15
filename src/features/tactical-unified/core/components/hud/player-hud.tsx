@@ -1,7 +1,12 @@
 'use client';
 
 import { Lock, Minus, Plus, Trash2, Unlock } from 'lucide-react';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 import { MiniColorPicker } from './mini-color-picker';
 import { PlayerInfoPopover } from './player-info-popover';
 import { PlayerQuickActions } from './player-quick-actions';
@@ -11,14 +16,28 @@ export interface PlayerHudProps {
 }
 
 export function PlayerHud({ playerId }: PlayerHudProps) {
-  const player = useCanvasStore((s) =>
-    s.annotations.markers.find((p) => p.id === playerId),
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const clearSelection = useSessionStore((s) => s.clearSelection);
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
   );
-  const updateMarker = useCanvasStore((s) => s.updateMarker);
-  const removeMarker = useCanvasStore((s) => s.removeMarker);
-  const clearSelection = useCanvasStore((s) => s.clearSelection);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+
+  const player = activeSlide?.players.find((p) => p.id === playerId);
 
   if (!player) return null;
+
+  const updateMarker = (id: string, patch: Partial<DomainPlayer>) => {
+    if (activePhaseId && activeSlideId) {
+      const { area: _area, ...rest } = patch;
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'UPDATE_PLAYER',
+        id,
+        patch: rest,
+      });
+    }
+  };
 
   const isRing =
     player.style?.markerType === 'ring' ||
@@ -193,7 +212,15 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
       {/* ロック / ロック解除 */}
       <button
         type="button"
-        onClick={() => updateMarker(player.id, { locked: !player.locked })}
+        onClick={() => {
+          if (activePhaseId && activeSlideId) {
+            dispatchSlide(activePhaseId, activeSlideId, {
+              type: 'TOGGLE_ENTITY_LOCK',
+              id: player.id,
+              kind: 'player',
+            });
+          }
+        }}
         className={`p-1 rounded-md transition-colors cursor-pointer ${
           player.locked
             ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30'
@@ -220,7 +247,12 @@ export function PlayerHud({ playerId }: PlayerHudProps) {
           <button
             type="button"
             onClick={() => {
-              removeMarker(player.id);
+              if (activePhaseId && activeSlideId) {
+                dispatchSlide(activePhaseId, activeSlideId, {
+                  type: 'REMOVE_PLAYER',
+                  id: player.id,
+                });
+              }
               clearSelection();
             }}
             className="p-1 rounded-md text-white/50 hover:text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"

@@ -1,18 +1,25 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useCanvasStore } from './use-canvas-store';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { toScreenNormPoint } from '@/lib/types/tactical/branded';
+import type { DomainZoneAnnotation } from '@/lib/types/tactical/domain-entities';
 
 export function useCanvasPolygonZone() {
-  const activeTool = useCanvasStore((s) => s.activeTool);
-  const continuousDrawing = useCanvasStore((s) => s.continuousDrawing);
-  const setActiveTool = useCanvasStore((s) => s.setActiveTool);
-  const addZone = useCanvasStore((s) => s.addZone);
-  const updateZone = useCanvasStore((s) => s.updateZone);
-  const removeZone = useCanvasStore((s) => s.removeZone);
-  const selectObject = useCanvasStore((s) => s.selectObject);
-  const color = useCanvasStore((s) => s.color);
-  const zones = useCanvasStore((s) => s.annotations.zones);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const activeTool = useSessionStore((s) => s.activeTool);
+  const continuousDrawing = useSessionStore((s) => s.continuousDrawing);
+  const color = useSessionStore((s) => s.color);
+  const drawingPreview = useSessionStore((s) => s.drawingPreview);
+  const setDrawingPreview = useSessionStore((s) => s.setDrawingPreview);
+  const setActiveTool = useSessionStore((s) => s.setActiveTool);
+  const selectObject = useSessionStore((s) => s.selectObject);
+
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
 
   const [activePolygonId, setActivePolygonId] = useState<string | null>(null);
   const [mousePreviewPos, setMousePreviewPos] = useState<{
@@ -22,63 +29,83 @@ export function useCanvasPolygonZone() {
 
   useEffect(() => {
     if (activeTool !== 'polygon_zone' && activePolygonId) {
-      removeZone(activePolygonId);
+      if (drawingPreview?.tool === 'polygon_zone') {
+        setDrawingPreview(null);
+      }
       setActivePolygonId(null);
       setMousePreviewPos(null);
     }
-  }, [activeTool, activePolygonId, removeZone]);
+  }, [activeTool, activePolygonId, drawingPreview?.tool, setDrawingPreview]);
 
   const handlePointerDown = useCallback(
     (normPos: { x: number; y: number }): boolean => {
       if (activeTool !== 'polygon_zone') return false;
 
-      if (!activePolygonId) {
+      const pt = toScreenNormPoint(normPos.x, normPos.y);
+      const existingPoints =
+        drawingPreview?.tool === 'polygon_zone'
+          ? (drawingPreview.polygonPoints ?? [])
+          : [];
+
+      if (existingPoints.length === 0) {
         const id = crypto.randomUUID();
+        setActivePolygonId(id);
+        setDrawingPreview({
+          tool: 'polygon_zone',
+          startPoint: pt,
+          currentPoint: pt,
+          polygonPoints: [pt],
+        });
+        return true;
+      }
+
+      const startPt = existingPoints[0];
+      if (!startPt) return true;
+      const dist = Math.hypot(normPos.x - startPt.x, normPos.y - startPt.y);
+
+      if (existingPoints.length >= 3 && dist < 3.5) {
+        const id = activePolygonId ?? crypto.randomUUID();
         const stroke = color && color !== '#ffffff' ? color : '#ef4444';
-        addZone({
+        const zone: DomainZoneAnnotation = {
           id,
           annotationType: 'zone',
           zoneType: 'generic',
           shapeType: 'polygon',
-          rotation: 0,
-          points: [{ x: normPos.x, y: normPos.y }],
+          points: [...existingPoints],
           color: stroke,
           opacity: 0.25,
           strokeColor: stroke,
           strokeWidth: 2,
-          isComplete: false,
+        };
+        dispatchSlide(activePhaseId, activeSlideId, {
+          type: 'ADD_ZONE',
+          zone,
         });
-        setActivePolygonId(id);
-        return true;
-      }
-
-      const poly = zones.find((z) => z.id === activePolygonId);
-      if (!poly?.points?.length) return true;
-
-      const startPt = poly.points[0];
-      const dist = Math.hypot(normPos.x - startPt.x, normPos.y - startPt.y);
-
-      if (poly.points.length >= 3 && dist < 3.5) {
-        updateZone(activePolygonId, { isComplete: true });
-        selectObject({ id: activePolygonId, kind: 'zone' });
+        selectObject({ id, kind: 'zone' });
+        setDrawingPreview(null);
         setActivePolygonId(null);
         setMousePreviewPos(null);
         if (!continuousDrawing) setActiveTool('select');
         return true;
       }
 
-      updateZone(activePolygonId, {
-        points: [...poly.points, { x: normPos.x, y: normPos.y }],
+      setDrawingPreview({
+        tool: 'polygon_zone',
+        startPoint: startPt,
+        currentPoint: pt,
+        polygonPoints: [...existingPoints, pt],
       });
       return true;
     },
     [
       activeTool,
       activePolygonId,
+      activePhaseId,
+      activeSlideId,
       color,
-      addZone,
-      zones,
-      updateZone,
+      drawingPreview,
+      setDrawingPreview,
+      dispatchSlide,
       selectObject,
       continuousDrawing,
       setActiveTool,

@@ -1,18 +1,19 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { PlayerInfoPopover } from '@/features/tactical-unified/core/components/hud/player-info-popover';
-import { createDefaultPlayer } from '@/lib/types/tactical-unified';
+import { createDefaultDomainPlayers } from '@/lib/tactical/domain/default-players';
 
 describe('PlayerInfoPopover', () => {
   it('Popover を開くと背番号・選手名・Bottom Label切替・背景塗り切替が表示され、操作できること', () => {
     const updateMarker = vi.fn();
+    const basePlayer = createDefaultDomainPlayers('#38bdf8')[0];
     const player = {
-      ...createDefaultPlayer('home', 50, 50, '#38bdf8'),
+      ...basePlayer,
       id: 'p1',
       shirtNo: '7',
       name: 'Saka',
       style: {
-        ...createDefaultPlayer('home', 50, 50, '#38bdf8').style,
+        ...basePlayer.style,
         bottomLabel: 'name' as const,
         transparentBackground: false,
       },

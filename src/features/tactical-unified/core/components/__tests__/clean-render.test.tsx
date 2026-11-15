@@ -6,6 +6,7 @@ import { Layer, Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BallObject } from '@/features/tactical-unified/objects/ball/components/ball-object';
 import type { BallObjectProps } from '@/features/tactical-unified/objects/ball/types';
+import { createSessionStore } from '@/features/tactical-unified/stores/session-store';
 import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ResolvedBillboardBallItem } from '@/lib/tactical/compiler/scene-graph-dto';
 import type { StagePixel } from '@/lib/types/tactical/branded';
@@ -68,12 +69,15 @@ function renderWithStore(
       mode: 'screenshot-edit',
       aspectRatio: '16:9',
     });
+  const sessionStore = createSessionStore();
   const utils = render(
-    <CanvasStoreContext.Provider value={store}>
-      {ui}
-    </CanvasStoreContext.Provider>,
+    <TacticalStoreProvider stores={{ sessionStore }}>
+      <CanvasStoreContext.Provider value={store}>
+        {ui}
+      </CanvasStoreContext.Provider>
+    </TacticalStoreProvider>,
   );
-  return { store, ...utils };
+  return { store, sessionStore, ...utils };
 }
 
 describe('Clean Render Propagation', () => {
@@ -84,13 +88,15 @@ describe('Clean Render Propagation', () => {
       aspectRatio: '16:9',
     });
 
-    const { container } = renderWithStore(
+    const { container, sessionStore } = renderWithStore(
       <CanvasStageContainer
         nodesRegistryRef={registryRef}
         cleanRender={true}
       />,
       store,
     );
+
+    sessionStore.getState().selectObject({ kind: 'player', id: 'p1' });
 
     const stage = registryRef.current.stage;
     expect(stage).toBeTruthy();

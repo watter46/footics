@@ -2,12 +2,16 @@
 
 import type Konva from 'konva';
 import { useCallback } from 'react';
+import { selectDomainActiveBoundaryBox } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   downloadBlob,
   exportPngBlob as exportPngBlobHelper,
 } from '../utils/canvas-export-primitives';
 import { resolveBoundaryBoxPixelRect } from '../utils/geometry';
-import { useCanvasStore } from './use-canvas-store';
 
 export interface UseCanvasExportOptions {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -20,7 +24,10 @@ export function useCanvasExport({
   vRect,
   pitchRect,
 }: UseCanvasExportOptions) {
-  const boundaryBox = useCanvasStore((s) => s.boundaryBox);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const boundaryBox = useDocumentStore((s) =>
+    selectDomainActiveBoundaryBox(s.project, activePhaseId),
+  );
 
   const exportPngBlob = useCallback(
     async (options?: { crop?: boolean; scale?: number }): Promise<Blob> => {

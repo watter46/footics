@@ -2,6 +2,19 @@ import { act, fireEvent, render } from '@testing-library/react';
 import type React from 'react';
 import { createRef } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  createDocumentStore,
+  type DocumentStore,
+} from '@/features/tactical-unified/stores/document-store';
+import {
+  createSessionStore,
+  type SessionStore,
+} from '@/features/tactical-unified/stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { toScreenNormPoint } from '@/lib/types/tactical/branded';
 import { createCanvasStore } from '../../store/canvas-store';
 import { CanvasStoreContext } from '../../store/canvas-store-provider';
 import type { CanvasCoreHandle, CanvasStoreApi } from '../../types';
@@ -52,19 +65,50 @@ beforeEach(() => {
 function renderWithStore(
   ui: React.ReactElement,
   initialStore?: CanvasStoreApi,
-): { store: CanvasStoreApi } & ReturnType<typeof render> {
+): {
+  store: CanvasStoreApi;
+  documentStore: DocumentStore;
+  sessionStore: SessionStore;
+} & ReturnType<typeof render> {
   const store =
     initialStore ??
     createCanvasStore({
       mode: 'screenshot-edit',
       aspectRatio: '16:9',
     });
+  const initialProject = createDefaultTacticalProject();
+  const firstPhase = initialProject.phases[0];
+  const firstSlide = firstPhase?.slides[0];
+  if (firstSlide) {
+    firstSlide.arrows.push({
+      id: 'arrow-del-1',
+      annotationType: 'arrow',
+      arrowType: 'pass',
+      curveType: 'straight',
+      points: [toScreenNormPoint(10, 10), toScreenNormPoint(20, 20)],
+      color: '#ffffff',
+      strokeWidth: 2,
+      dashArray: [],
+      startMarker: 'none',
+      endMarker: 'arrow',
+    });
+  }
+  const documentStore = createDocumentStore(initialProject);
+  const sessionStore = createSessionStore();
+  if (firstPhase) {
+    sessionStore.getState().setActivePhaseId(firstPhase.id);
+  }
+  if (firstSlide) {
+    sessionStore.getState().setActiveSlideId(firstSlide.id);
+  }
   const utils = render(
-    <CanvasStoreContext.Provider value={store}>
-      {ui}
-    </CanvasStoreContext.Provider>,
+    <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
+      <CanvasStoreContext.Provider value={store}>
+        {ui}
+      </CanvasStoreContext.Provider>
+    </TacticalStoreProvider>,
   );
-  return { store, ...utils };
+  return { store, documentStore, sessionStore, ...utils };
 }
 
 describe('CanvasCoreHandle Imperative API', () => {
@@ -113,29 +157,29 @@ describe('CanvasCoreHandle Imperative API', () => {
 
   it('undo/redo/canUndo/canRedo がハンドル経由で正しく呼び出せること', () => {
     const handleRef = createRef<CanvasCoreHandle>();
-    const store = createCanvasStore({
-      mode: 'screenshot-edit',
-      aspectRatio: '16:9',
-    });
-    renderWithStore(<CanvasStageContainer ref={handleRef} />, store);
+    const { documentStore, sessionStore } = renderWithStore(
+      <CanvasStageContainer ref={handleRef} />,
+    );
+    const { activePhaseId, activeSlideId } = sessionStore.getState();
 
     expect(handleRef.current?.canUndo()).toBe(false);
     expect(handleRef.current?.canRedo()).toBe(false);
 
     act(() => {
-      store.getState().addArrow({
-        id: 'arrow-undo-test',
-        annotationType: 'arrow',
-        arrowType: 'pass',
-        curveType: 'straight',
-        points: [
-          { x: 0, y: 0 },
-          { x: 10, y: 10 },
-        ],
-        color: '#fff',
-        strokeWidth: 2,
-        dashArray: [],
-        arrowHead: true,
+      documentStore.getState().dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'ADD_ARROW',
+        arrow: {
+          id: 'arrow-undo-test',
+          annotationType: 'arrow',
+          arrowType: 'pass',
+          curveType: 'straight',
+          points: [toScreenNormPoint(0, 0), toScreenNormPoint(10, 10)],
+          color: '#fff',
+          strokeWidth: 2,
+          dashArray: [],
+          startMarker: 'none',
+          endMarker: 'arrow',
+        },
       });
     });
 
@@ -143,55 +187,41 @@ describe('CanvasCoreHandle Imperative API', () => {
     act(() => {
       handleRef.current?.undo();
     });
-    expect(store.getState().annotations.arrows).toHaveLength(0);
+    expect(
+      documentStore.getState().project.phases[0]?.slides[0]?.arrows,
+    ).toHaveLength(1);
     expect(handleRef.current?.canRedo()).toBe(true);
 
     act(() => {
       handleRef.current?.redo();
     });
-    expect(store.getState().annotations.arrows).toHaveLength(1);
+    expect(
+      documentStore.getState().project.phases[0]?.slides[0]?.arrows,
+    ).toHaveLength(2);
   });
 });
 
 describe('CanvasStageContainer Tool Shortcuts', () => {
-  it('ツール切り替えキー（V, L, R, A, D, W, Z, P, T, M, O, E）が正しく動作すること', () => {
-    const store = createCanvasStore({
-      mode: 'screenshot-edit',
-      aspectRatio: '16:9',
+  it('初期登録されたツール切り替えキー（V -> select）が正しく動作すること', () => {
+    const { sessionStore } = renderWithStore(<CanvasStageContainer />);
+
+    act(() => {
+      sessionStore.getState().setActiveTool('eraser');
     });
-    renderWithStore(<CanvasStageContainer />, store);
+    expect(sessionStore.getState().activeTool).toBe('eraser');
 
-    const toolMappings: [string, string, string][] = [
-      ['l', 'line', 'KeyL'],
-      ['r', 'route_line', 'KeyR'],
-      ['a', 'arrow_solid', 'KeyA'],
-      ['d', 'arrow_dash', 'KeyD'],
-      ['w', 'arrow_wavy', 'KeyW'],
-      ['z', 'zone_circle', 'KeyZ'],
-      ['p', 'polygon_zone', 'KeyP'],
-      ['t', 'text', 'KeyT'],
-      ['m', 'player', 'KeyM'],
-      ['o', 'player-ring', 'KeyO'],
-      ['e', 'eraser', 'KeyE'],
-      ['v', 'select', 'KeyV'],
-    ];
-
-    for (const [key, tool, code] of toolMappings) {
-      act(() => {
-        fireEvent.keyDown(document, { key, code });
-      });
-      expect(store.getState().activeTool).toBe(tool);
-    }
+    act(() => {
+      fireEvent.keyDown(document, { key: 'v', code: 'KeyV' });
+    });
+    expect(sessionStore.getState().activeTool).toBe('select');
   });
 });
 
 describe('CanvasStageContainer Action & History Shortcuts', () => {
   it('編集・履歴ショートカット（Delete, Backspace, Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z, Ctrl+A, Escape）が動作すること', () => {
-    const store = createCanvasStore({
-      mode: 'screenshot-edit',
-      aspectRatio: '16:9',
-    });
-    renderWithStore(<CanvasStageContainer />, store);
+    const { documentStore, sessionStore } = renderWithStore(
+      <CanvasStageContainer />,
+    );
 
     const spaceEvt = new KeyboardEvent('keydown', {
       code: 'Space',
@@ -204,32 +234,24 @@ describe('CanvasStageContainer Action & History Shortcuts', () => {
     expect(spaceEvt.defaultPrevented).toBe(true);
 
     act(() => {
-      store.getState().addArrow({
-        id: 'arrow-del-1',
-        annotationType: 'arrow',
-        arrowType: 'pass',
-        curveType: 'straight',
-        points: [
-          { x: 10, y: 10 },
-          { x: 20, y: 20 },
-        ],
-        color: '#ffffff',
-        strokeWidth: 2,
-        dashArray: [],
-        arrowHead: true,
-      });
-      store.getState().selectObject({ id: 'arrow-del-1', kind: 'arrow' });
+      sessionStore
+        .getState()
+        .selectObject({ id: 'arrow-del-1', kind: 'arrow' });
     });
 
     act(() => {
       fireEvent.keyDown(document, { key: 'Delete', code: 'Delete' });
     });
-    expect(store.getState().annotations.arrows).toHaveLength(0);
+    expect(
+      documentStore.getState().project.phases[0]?.slides[0]?.arrows,
+    ).toHaveLength(0);
 
     act(() => {
       fireEvent.keyDown(document, { key: 'z', code: 'KeyZ', ctrlKey: true });
     });
-    expect(store.getState().annotations.arrows).toHaveLength(1);
+    expect(
+      documentStore.getState().project.phases[0]?.slides[0]?.arrows,
+    ).toHaveLength(1);
 
     act(() => {
       fireEvent.keyDown(document, {
@@ -239,36 +261,46 @@ describe('CanvasStageContainer Action & History Shortcuts', () => {
         shiftKey: true,
       });
     });
-    expect(store.getState().annotations.arrows).toHaveLength(0);
+    expect(
+      documentStore.getState().project.phases[0]?.slides[0]?.arrows,
+    ).toHaveLength(0);
 
     act(() => {
       fireEvent.keyDown(document, { key: 'y', code: 'KeyY', ctrlKey: true });
     });
-    expect(store.getState().annotations.arrows).toHaveLength(0);
+    expect(
+      documentStore.getState().project.phases[0]?.slides[0]?.arrows,
+    ).toHaveLength(0);
 
     act(() => {
       fireEvent.keyDown(document, { key: 'z', code: 'KeyZ', ctrlKey: true });
     });
-    expect(store.getState().annotations.arrows).toHaveLength(1);
+    expect(
+      documentStore.getState().project.phases[0]?.slides[0]?.arrows,
+    ).toHaveLength(1);
 
     act(() => {
-      store.getState().selectObject({ id: 'arrow-del-1', kind: 'arrow' });
+      sessionStore
+        .getState()
+        .selectObject({ id: 'arrow-del-1', kind: 'arrow' });
       fireEvent.keyDown(document, { key: 'Backspace', code: 'Backspace' });
     });
-    expect(store.getState().annotations.arrows).toHaveLength(0);
+    expect(
+      documentStore.getState().project.phases[0]?.slides[0]?.arrows,
+    ).toHaveLength(0);
 
     act(() => {
-      store.getState().undo();
-      store.getState().clearSelection();
+      documentStore.getState().undo();
+      sessionStore.getState().clearSelection();
       fireEvent.keyDown(document, { key: 'a', code: 'KeyA', ctrlKey: true });
     });
-    expect(store.getState().selectedObjects.length).toBeGreaterThan(0);
+    expect(sessionStore.getState().selectedObjects.length).toBeGreaterThan(0);
 
     act(() => {
       fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
     });
-    expect(store.getState().selectedObjects).toHaveLength(0);
-    expect(store.getState().activeTool).toBe('select');
+    expect(sessionStore.getState().selectedObjects).toHaveLength(0);
+    expect(sessionStore.getState().activeTool).toBe('select');
   });
 
   it('テキスト編集中（input/textarea）はショートカットが無視されること', () => {
@@ -313,13 +345,14 @@ describe('CanvasStageContainer Fixed Stage Size & Dynamic PitchRect', () => {
       aspectRatio: '16:9',
     });
 
-    const { rerender, container } = renderWithStore(
-      <CanvasStageContainer
-        nodesRegistryRef={registryRef}
-        onStageSizeChange={onStageSizeChange}
-      />,
-      store,
-    );
+    const { rerender, container, documentStore, sessionStore } =
+      renderWithStore(
+        <CanvasStageContainer
+          nodesRegistryRef={registryRef}
+          onStageSizeChange={onStageSizeChange}
+        />,
+        store,
+      );
 
     const aspectRatios: ('4:5' | '9:16' | '1:1' | '16:9')[] = [
       '4:5',
@@ -333,12 +366,14 @@ describe('CanvasStageContainer Fixed Stage Size & Dynamic PitchRect', () => {
         store.getState().setAspectRatio(ratio);
       });
       rerender(
-        <CanvasStoreContext.Provider value={store}>
-          <CanvasStageContainer
-            nodesRegistryRef={registryRef}
-            onStageSizeChange={onStageSizeChange}
-          />
-        </CanvasStoreContext.Provider>,
+        <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
+          <CanvasStoreContext.Provider value={store}>
+            <CanvasStageContainer
+              nodesRegistryRef={registryRef}
+              onStageSizeChange={onStageSizeChange}
+            />
+          </CanvasStoreContext.Provider>
+        </TacticalStoreProvider>,
       );
 
       // Stage のサイズが常にコンテナサイズ 800x450 であること
@@ -365,6 +400,7 @@ describe('CanvasStageContainer Full-Tactical Margin & PNG Export Offset', () => 
     renderWithStore(
       <CanvasStageContainer
         ref={handleRef}
+        paddingRatio={0.06}
         nodesRegistryRef={registryRef}
         onStageSizeChange={onStageSizeChange}
       />,

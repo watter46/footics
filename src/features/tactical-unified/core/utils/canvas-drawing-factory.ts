@@ -1,10 +1,18 @@
+import type { EphemeralSessionState } from '@/lib/tactical/compiler/scene-graph-dto';
+import {
+  toScreenNormCoord,
+  toScreenNormPoint,
+} from '@/lib/types/tactical/branded';
 import type {
-  ArrowAnnotation,
-  Player,
-  TextAnnotation,
-  ZoneAnnotation,
-} from '@/lib/types/tactical-unified';
-import type { DrawingPreviewState } from '../types';
+  DomainArrowAnnotation,
+  DomainTextAnnotation,
+  DomainZoneAnnotation,
+  PitchPlayer,
+} from '@/lib/types/tactical/domain-entities';
+
+export type DrawingPreview = NonNullable<
+  EphemeralSessionState['drawingPreview']
+>;
 
 export type PreviewShapeKind =
   | 'line'
@@ -16,15 +24,15 @@ export type PreviewShapeKind =
   | 'zone_ellipse';
 
 export type DrawingCommitActions = {
-  addArrow: (a: ArrowAnnotation) => void;
-  addZone: (z: ZoneAnnotation) => void;
+  addArrow: (a: DomainArrowAnnotation) => void;
+  addZone: (z: DomainZoneAnnotation) => void;
 };
 
 export type DrawingPointPlaceContext = {
   color?: string;
   markersCount: number;
-  addText: (t: TextAnnotation) => void;
-  addMarker: (m: Player) => void;
+  addText: (t: DomainTextAnnotation) => void;
+  addMarker: (m: PitchPlayer) => void;
   onStartEditText?: (textId: string) => void;
 };
 
@@ -33,7 +41,7 @@ export interface DrawingToolBehavior {
   previewKind?: PreviewShapeKind;
   defaultPreviewColor?: string;
   commitDrag?: (
-    preview: DrawingPreviewState,
+    preview: DrawingPreview,
     color: string,
     strokeWidth: number,
     actions: DrawingCommitActions,
@@ -74,18 +82,18 @@ export function resolveToolPreviewColor(
 }
 
 function createPlayerMarkerEntity(
-  markerType: Player['style']['markerType'],
+  markerType: PitchPlayer['style']['markerType'],
   x: number,
   y: number,
   color: string,
   shirtNo = '',
-): Player {
+): PitchPlayer {
   const isC = markerType === 'circle';
   return {
     id: `${isC ? 'player' : 'marker'}-${Date.now()}`,
     area: 'pitch',
-    x,
-    y,
+    x: toScreenNormCoord(x),
+    y: toScreenNormCoord(y),
     team: 'neutral',
     shirtNo: isC ? shirtNo : '',
     style: {
@@ -109,21 +117,21 @@ export const createRingMarker = (
   y: number,
   c = '#034694',
   _s = '',
-): Player => createPlayerMarkerEntity('ring', x, y, c || '#034694');
+): PitchPlayer => createPlayerMarkerEntity('ring', x, y, c || '#034694');
 
 export const createRingFadeMarker = (
   x: number,
   y: number,
   c = '#ffffff',
   _s = '',
-): Player => createPlayerMarkerEntity('ring-fade', x, y, c || '#ffffff');
+): PitchPlayer => createPlayerMarkerEntity('ring-fade', x, y, c || '#ffffff');
 
 export const create2DPlayerMarker = (
   x: number,
   y: number,
   c = '#034694',
   shirtNo = '',
-): Player => ({
+): PitchPlayer => ({
   ...createPlayerMarkerEntity('circle', x, y, c || '#034694', shirtNo),
   team: 'home',
   name: `Player ${shirtNo}`,
@@ -134,12 +142,12 @@ export const createTextAnnotation = (
   x: number,
   y: number,
   color = '#ffffff',
-): TextAnnotation => ({
+): DomainTextAnnotation => ({
   id: `text-${Date.now()}`,
   annotationType: 'text',
   content: 'Tactics Note',
-  x,
-  y,
+  x: toScreenNormCoord(x),
+  y: toScreenNormCoord(y),
   color: color || '#ffffff',
   fontSize: 16,
   bold: false,
@@ -148,10 +156,9 @@ export const createTextAnnotation = (
 
 type ArrowCfg = [
   kind: PreviewShapeKind,
-  type: ArrowAnnotation['arrowType'],
-  head: boolean,
+  type: DomainArrowAnnotation['arrowType'],
   dash: number[],
-  end: ArrowAnnotation['endMarker'],
+  end: DomainArrowAnnotation['endMarker'],
   color?: string,
   curve?: boolean,
 ];
@@ -159,30 +166,26 @@ type ArrowCfg = [
 const createArrowBehavior = (cfg: ArrowCfg): DrawingToolBehavior => ({
   interactionKind: 'drag-shape',
   previewKind: cfg[0],
-  defaultPreviewColor: cfg[5],
-  commitDrag: (
-    { startX: sx, startY: sy, currentX: cx, currentY: cy },
-    color,
-    strokeWidth,
-    actions,
-  ) => {
+  defaultPreviewColor: cfg[4],
+  commitDrag: ({ startPoint, currentPoint }, color, strokeWidth, actions) => {
+    const sx = startPoint.x;
+    const sy = startPoint.y;
+    const cx = currentPoint.x;
+    const cy = currentPoint.y;
     if (Math.hypot(cx - sx, cy - sy) <= 1.5) return;
     const finalColor =
-      (color === '#ffffff' || !color) && cfg[5] ? cfg[5] : color || '#ffffff';
+      (color === '#ffffff' || !color) && cfg[4] ? cfg[4] : color || '#ffffff';
     actions.addArrow({
       id: `arrow-${Date.now()}`,
       annotationType: 'arrow',
       arrowType: cfg[1],
-      curveType: cfg[6] ? 'curved' : 'straight',
-      points: [
-        { x: sx, y: sy },
-        { x: cx, y: cy },
-      ],
+      curveType: cfg[5] ? 'curved' : 'straight',
+      points: [toScreenNormPoint(sx, sy), toScreenNormPoint(cx, cy)],
       color: finalColor,
       strokeWidth,
-      dashArray: cfg[3],
-      arrowHead: cfg[2],
-      endMarker: cfg[4],
+      dashArray: cfg[2],
+      startMarker: 'none',
+      endMarker: cfg[3],
     });
   },
 });
@@ -194,12 +197,11 @@ const createZoneBehavior = (
   interactionKind: 'drag-shape',
   previewKind: kind,
   defaultPreviewColor: '#ef4444',
-  commitDrag: (
-    { startX: sx, startY: sy, currentX: cx, currentY: cy },
-    color,
-    _sw,
-    actions,
-  ) => {
+  commitDrag: ({ startPoint, currentPoint }, color, _sw, actions) => {
+    const sx = startPoint.x;
+    const sy = startPoint.y;
+    const cx = currentPoint.x;
+    const cy = currentPoint.y;
     if (Math.hypot(cx - sx, cy - sy) <= 1.5) return;
     const x = Math.min(sx, cx);
     const y = Math.min(sy, cy);
@@ -210,16 +212,10 @@ const createZoneBehavior = (
       annotationType: 'zone',
       zoneType: 'highlight',
       shapeType,
-      x,
-      y,
+      x: toScreenNormCoord(x),
+      y: toScreenNormCoord(y),
       width: w,
       height: h,
-      points: [
-        { x, y },
-        { x: x + w, y },
-        { x: x + w, y: y + h },
-        { x, y: y + h },
-      ],
       color: color && color !== '#ffffff' ? color : '#ef4444',
       opacity: 0.25,
       strokeWidth: 2,
@@ -228,23 +224,15 @@ const createZoneBehavior = (
 });
 
 const ARROW_DEFAULTS: Record<string, ArrowCfg> = {
-  line: ['line', 'line', false, [], 'none'],
-  route_line: ['route_line', 'route_line', false, [], 'dot', '#38bdf8'],
-  arrow_solid: ['arrow_solid', 'pass', true, [], 'arrow'],
-  'arrow-straight': ['arrow_solid', 'pass', true, [], 'arrow'],
-  pass: ['arrow_solid', 'pass', true, [], 'arrow'],
-  arrow_dash: ['arrow_dash', 'pass', true, [6, 4], 'arrow'],
-  'arrow-curved': [
-    'arrow_dash',
-    'pass',
-    true,
-    [6, 4],
-    'arrow',
-    undefined,
-    true,
-  ],
-  arrow_wavy: ['arrow_wavy', 'dribble', true, [], 'arrow', '#eab308'],
-  dribble: ['arrow_wavy', 'dribble', true, [6, 4], 'arrow'],
+  line: ['line', 'line', [], 'none'],
+  route_line: ['route_line', 'route_line', [], 'dot', '#38bdf8'],
+  arrow_solid: ['arrow_solid', 'pass', [], 'arrow'],
+  'arrow-straight': ['arrow_solid', 'pass', [], 'arrow'],
+  pass: ['arrow_solid', 'pass', [], 'arrow'],
+  arrow_dash: ['arrow_dash', 'pass', [6, 4], 'arrow'],
+  'arrow-curved': ['arrow_dash', 'pass', [6, 4], 'arrow', undefined, true],
+  arrow_wavy: ['arrow_wavy', 'dribble', [], 'arrow', '#eab308'],
+  dribble: ['arrow_wavy', 'dribble', [6, 4], 'arrow'],
 };
 
 for (const [k, v] of Object.entries(ARROW_DEFAULTS)) {
@@ -273,7 +261,10 @@ addPointTool('text', (p, c) => {
   c.onStartEditText?.(t.id);
 });
 
-const regMk = (t: string, fn: (x: number, y: number, no: string) => Player) =>
+const regMk = (
+  t: string,
+  fn: (x: number, y: number, no: string) => PitchPlayer,
+) =>
   addPointTool(t, (p, c) => c.addMarker(fn(p.x, p.y, `${c.markersCount + 1}`)));
 
 regMk('player', (x, y, n) => create2DPlayerMarker(x, y, '#034694', n));
@@ -281,14 +272,14 @@ regMk('player-ring', (x, y) => createRingMarker(x, y, '#034694'));
 regMk('player-ring-fade', (x, y) => createRingFadeMarker(x, y, '#ffffff'));
 
 export function commitDrawingShape(
-  preview: DrawingPreviewState,
+  drawingPreview: DrawingPreview,
   color: string,
   strokeWidth: number,
-  addArrow: (a: ArrowAnnotation) => void,
-  addZone: (z: ZoneAnnotation) => void,
+  addArrow: (arrow: DomainArrowAnnotation) => void,
+  addZone: (zone: DomainZoneAnnotation) => void,
 ): void {
-  getDrawingToolBehavior(preview.tool as string)?.commitDrag?.(
-    preview,
+  getDrawingToolBehavior(drawingPreview.tool)?.commitDrag?.(
+    drawingPreview,
     color,
     strokeWidth,
     { addArrow, addZone },

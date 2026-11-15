@@ -3,14 +3,17 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Image as KonvaImage, Layer, Rect } from 'react-konva';
+import { selectDomainActivePhase } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { calculatePitchRect } from '@/lib/tactical/pitch-geometry';
 import {
   getCachedPitchSvgImage,
   loadPitchSvgImage,
   preloadAllPitchSvgImages,
 } from '@/lib/tactical/pitch-svg';
-import { DEFAULT_PITCH_APPEARANCE } from '@/lib/types/tactical-unified';
-import { useCanvasStore } from '../hooks/use-canvas-store';
 import { PitchMarbleBackground } from './pitch-marble-background';
 
 export interface PitchBackgroundImageProps {
@@ -22,11 +25,13 @@ export function PitchBackgroundImage({
   width,
   height,
 }: PitchBackgroundImageProps): ReactNode {
-  const backgroundImageUrl = useCanvasStore((s) => s.backgroundImageUrl);
-  const aspectRatio = useCanvasStore((s) => s.aspectRatio ?? '16:9');
-  const pitchAppearance = useCanvasStore(
-    (s) => s.pitchAppearance ?? DEFAULT_PITCH_APPEARANCE,
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activePhase = useDocumentStore((s) =>
+    selectDomainActivePhase(s.project, activePhaseId),
   );
+  const backgroundImageUrl = activePhase?.backgroundImageUrl;
+  const aspectRatio = activePhase?.aspectRatio ?? '16:9';
+  const pitchAppearance = useDocumentStore((s) => s.project.pitchAppearance);
 
   const [customImage, setCustomImage] = useState<HTMLImageElement | null>(null);
   const [pitchImage, setPitchImage] = useState<HTMLImageElement | null>(() => {

@@ -4,6 +4,23 @@ import type React from 'react';
 import { createRef } from 'react';
 import { Stage } from 'react-konva';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  toScreenNormCoord,
+  toScreenNormPoint,
+} from '@/lib/types/tactical/branded';
+import {
+  createDocumentStore,
+  type DocumentStore,
+} from '../../../stores/document-store';
+import { selectDomainActiveSlide } from '../../../stores/domain-selectors';
+import {
+  createSessionStore,
+  type SessionStore,
+} from '../../../stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '../../../stores/tactical-store-provider';
 import { createCanvasStore } from '../../store/canvas-store';
 import { CanvasStoreContext } from '../../store/canvas-store-provider';
 import type { CanvasConfig, CanvasStoreApi } from '../../types';
@@ -20,19 +37,197 @@ import { PitchInlineTextEditor } from '../PitchInlineTextEditor';
 function renderWithStore(
   ui: React.ReactElement,
   config?: Partial<CanvasConfig>,
-): { store: CanvasStoreApi } & ReturnType<typeof render> {
+): {
+  store: CanvasStoreApi;
+  documentStore: DocumentStore;
+  sessionStore: SessionStore;
+} & ReturnType<typeof render> {
   const store = createCanvasStore({
     mode: 'screenshot-edit',
     markerMode: 'all',
     aspectRatio: '16:9',
     ...config,
   });
+  const baseProject = createDefaultTacticalProject();
+  const initialProject = {
+    ...baseProject,
+    phases: baseProject.phases.map((phase, pIdx) =>
+      pIdx === 0
+        ? {
+            ...phase,
+            slides: phase.slides.map((slide, sIdx) =>
+              sIdx === 0
+                ? {
+                    ...slide,
+                    arrows: [
+                      {
+                        id: 'arrow-1',
+                        annotationType: 'arrow' as const,
+                        arrowType: 'pass' as const,
+                        curveType: 'straight' as const,
+                        points: [
+                          toScreenNormPoint(20, 20),
+                          toScreenNormPoint(50, 50),
+                        ],
+                        color: '#ffffff',
+                        strokeWidth: 3,
+                        dashArray: [] as number[],
+                        startMarker: 'none' as const,
+                        endMarker: 'arrow' as const,
+                      },
+                    ],
+                    zones: [
+                      {
+                        id: 'zone-1',
+                        annotationType: 'zone' as const,
+                        zoneType: 'generic' as const,
+                        shapeType: 'rect' as const,
+                        x: toScreenNormCoord(10),
+                        y: toScreenNormCoord(10),
+                        width: toScreenNormCoord(20),
+                        height: toScreenNormCoord(20),
+                        color: '#f59e0b',
+                        opacity: 0.25,
+                        strokeWidth: 0,
+                      },
+                    ],
+                    players: [
+                      {
+                        id: 'player-1',
+                        shirtNo: '10',
+                        x: toScreenNormCoord(30),
+                        y: toScreenNormCoord(40),
+                        team: 'home' as const,
+                        position: 'FW',
+                        area: 'pitch' as const,
+                        connectLines: [],
+                        badges: [],
+                        style: {
+                          markerType: 'circle' as const,
+                          insideContent: 'number' as const,
+                          bottomLabel: 'name' as const,
+                          color: '#ef4444',
+                          strokeColor: '#ffffff',
+                          strokeWidth: 2,
+                          sizeScale: 1.0,
+                          numberSizeScale: 1.0,
+                          labelSizeScale: 1.0,
+                        },
+                      },
+                      {
+                        id: 'player-2d',
+                        shirtNo: '10',
+                        name: 'Initial Name',
+                        x: toScreenNormCoord(30),
+                        y: toScreenNormCoord(40),
+                        team: 'home' as const,
+                        position: 'FW',
+                        area: 'pitch' as const,
+                        connectLines: [],
+                        badges: [],
+                        style: {
+                          markerType: 'circle' as const,
+                          insideContent: 'number' as const,
+                          bottomLabel: 'name' as const,
+                          color: '#ef4444',
+                          strokeColor: '#ffffff',
+                          strokeWidth: 2,
+                          sizeScale: 1.0,
+                          numberSizeScale: 1.0,
+                          labelSizeScale: 1.0,
+                        },
+                      },
+                      {
+                        id: 'player-3d',
+                        shirtNo: '4',
+                        name: 'White',
+                        x: toScreenNormCoord(50),
+                        y: toScreenNormCoord(50),
+                        team: 'home' as const,
+                        position: 'DF',
+                        area: 'pitch' as const,
+                        connectLines: [],
+                        badges: [],
+                        style: {
+                          markerType: 'ring' as const,
+                          insideContent: 'number' as const,
+                          bottomLabel: 'name' as const,
+                          color: '#034694',
+                          strokeColor: '#ffffff',
+                          strokeWidth: 2,
+                          sizeScale: 1.0,
+                          numberSizeScale: 1.0,
+                          labelSizeScale: 1.0,
+                        },
+                      },
+                      {
+                        id: 'player-ds',
+                        shirtNo: '7',
+                        name: 'Saka',
+                        x: toScreenNormCoord(50),
+                        y: toScreenNormCoord(50),
+                        team: 'home' as const,
+                        position: 'FW',
+                        area: 'pitch' as const,
+                        connectLines: [],
+                        badges: [],
+                        style: {
+                          markerType: 'ring' as const,
+                          insideContent: 'number' as const,
+                          bottomLabel: 'name' as const,
+                          color: '#034694',
+                          strokeColor: '#ffffff',
+                          strokeWidth: 2,
+                          sizeScale: 1.0,
+                          numberSizeScale: 1.0,
+                          labelSizeScale: 1.0,
+                        },
+                      },
+                      {
+                        id: 'player-ring-fade-hud',
+                        shirtNo: '',
+                        name: 'Havertz',
+                        x: toScreenNormCoord(50),
+                        y: toScreenNormCoord(50),
+                        team: 'home' as const,
+                        position: 'FW',
+                        area: 'pitch' as const,
+                        connectLines: [],
+                        badges: [],
+                        style: {
+                          markerType: 'ring-fade' as const,
+                          insideContent: 'none' as const,
+                          bottomLabel: 'name' as const,
+                          color: '#38bdf8',
+                          strokeColor: '#ffffff',
+                          strokeWidth: 2,
+                          sizeScale: 1.0,
+                          numberSizeScale: 1.0,
+                          labelSizeScale: 1.0,
+                          glowBlur: 16,
+                        },
+                      },
+                    ],
+                  }
+                : slide,
+            ),
+          }
+        : phase,
+    ),
+  };
+  const documentStore = createDocumentStore(initialProject);
+  const sessionStore = createSessionStore({
+    activePhaseId: initialProject.phases[0]?.id,
+    activeSlideId: initialProject.phases[0]?.slides[0]?.id,
+  });
   const utils = render(
-    <CanvasStoreContext.Provider value={store}>
-      {ui}
-    </CanvasStoreContext.Provider>,
+    <TacticalStoreProvider stores={{ documentStore, sessionStore }}>
+      <CanvasStoreContext.Provider value={store}>
+        {ui}
+      </CanvasStoreContext.Provider>
+    </TacticalStoreProvider>,
   );
-  return { store, ...utils };
+  return { store, documentStore, sessionStore, ...utils };
 }
 
 describe('ContextHud', () => {
@@ -66,27 +261,13 @@ describe('ContextHud', () => {
   });
 
   it('矢印・ゾーン・マーカー単一選択時に直上に ContextHud が表示され、色・太さ変更が反映されること', () => {
-    const { store } = renderWithStore(
+    const { documentStore, sessionStore } = renderWithStore(
       <ContextHud stageSize={{ width: 800, height: 600 }} />,
     );
 
     // 1. Arrow selection
     act(() => {
-      store.getState().addArrow({
-        id: 'arrow-1',
-        annotationType: 'arrow',
-        arrowType: 'pass',
-        curveType: 'straight',
-        points: [
-          { x: 20, y: 20 },
-          { x: 50, y: 50 },
-        ],
-        color: '#ffffff',
-        strokeWidth: 3,
-        dashArray: [],
-        arrowHead: true,
-      });
-      store.getState().selectObject({ id: 'arrow-1', kind: 'arrow' });
+      sessionStore.getState().selectObject({ id: 'arrow-1', kind: 'arrow' });
     });
 
     expect(
@@ -97,67 +278,45 @@ describe('ContextHud', () => {
     // Stroke width + 1
     const plusBtn = screen.getByTitle('線を太く');
     fireEvent.click(plusBtn);
-    expect(store.getState().annotations.arrows[0].strokeWidth).toBe(4);
+    const getActiveSlide = () =>
+      selectDomainActiveSlide(
+        documentStore.getState().project,
+        sessionStore.getState().activePhaseId,
+        sessionStore.getState().activeSlideId,
+      );
+    expect(getActiveSlide()?.arrows[0].strokeWidth).toBe(4);
 
     // Toggle dash
     const dashBtn = screen.getByTitle('実線 (点線に切替)');
     fireEvent.click(dashBtn);
-    expect(store.getState().annotations.arrows[0].dashArray).toEqual([6, 4]);
+    expect(getActiveSlide()?.arrows[0].dashArray).toEqual([6, 4]);
 
     // 2. Zone selection
     act(() => {
-      store.getState().addZone({
-        id: 'zone-1',
-        annotationType: 'zone',
-        zoneType: 'generic',
-        points: [
-          { x: 10, y: 10 },
-          { x: 30, y: 10 },
-          { x: 30, y: 30 },
-        ],
-        color: '#f59e0b',
-        opacity: 0.25,
-        strokeWidth: 0,
-      });
-      store.getState().selectObject({ id: 'zone-1', kind: 'zone' });
+      sessionStore.getState().selectObject({ id: 'zone-1', kind: 'zone' });
     });
 
     const opacityBtn = screen.getByTitle('塗りの不透明度 (クリックで切替)');
     expect(opacityBtn.textContent).toBe('25%');
     fireEvent.click(opacityBtn);
-    expect(store.getState().annotations.zones[0].opacity).toBe(0.6);
+    expect(getActiveSlide()?.zones[0].opacity).toBe(0.6);
 
     // 3. Marker selection
     act(() => {
-      store.getState().addMarker({
-        id: 'player-1',
-        shirtNo: '10',
-        x: 30,
-        y: 40,
-        team: 'home',
-        position: 'FW',
-        area: 'pitch',
-        connectLines: [],
-        badges: [],
-        style: {
-          markerType: 'circle',
-          insideContent: 'number',
-          bottomLabel: 'name',
-          color: '#ef4444',
-          strokeColor: '#ffffff',
-          strokeWidth: 2,
-          sizeScale: 1.0,
-          numberSizeScale: 1.0,
-          labelSizeScale: 1.0,
-        },
-      });
-      store.getState().selectObject({ id: 'player-1', kind: 'player' });
+      sessionStore.getState().selectObject({ id: 'player-1', kind: 'player' });
     });
 
-    const shirtInput = screen.getByTitle('背番号') as HTMLInputElement;
+    const infoBtn = screen.getByRole('button', { name: '選手情報変更' });
+    fireEvent.click(infoBtn);
+    const dialog = screen.getByRole('dialog', { name: '選手情報変更フォーム' });
+    const shirtInput = within(dialog).getByLabelText(
+      '背番号',
+    ) as HTMLInputElement;
     expect(shirtInput.value).toBe('10');
     fireEvent.change(shirtInput, { target: { value: '7' } });
-    expect(store.getState().annotations.markers[0].shirtNo).toBe('7');
+    expect(
+      getActiveSlide()?.players.find((p) => p.id === 'player-1')?.shirtNo,
+    ).toBe('7');
   });
 });
 
@@ -211,8 +370,8 @@ describe('PitchInlineTextEditor', () => {
       id: 'txt-1',
       annotationType: 'text' as const,
       content: 'Initial Text',
-      x: 20,
-      y: 30,
+      x: toScreenNormCoord(20),
+      y: toScreenNormCoord(30),
       fontSize: 16,
       color: '#ffffff',
       bold: false,
@@ -242,9 +401,12 @@ describe('PitchInlineTextEditor', () => {
 
 describe('CoreDrawingToolbar', () => {
   it('CoreDrawingToolbar で全11ツール、連続描画ロック、消しゴム、ピッチロック、リセットが動作すること', () => {
-    const { store } = renderWithStore(<CoreDrawingToolbar markerMode="all" />, {
-      mode: 'tactical-board',
-    });
+    const { store, documentStore, sessionStore } = renderWithStore(
+      <CoreDrawingToolbar markerMode="all" />,
+      {
+        mode: 'tactical-board',
+      },
+    );
 
     const tools: { title: string; expected: string }[] = [
       { title: 'Select (V)', expected: 'select' },
@@ -258,22 +420,28 @@ describe('CoreDrawingToolbar', () => {
     for (const { title, expected } of tools) {
       const btn = screen.getByTitle(title);
       fireEvent.click(btn);
-      expect(store.getState().activeTool).toBe(expected);
+      expect(sessionStore.getState().activeTool).toBe(expected);
     }
 
     // 連続描画ロックのトグル
-    expect(store.getState().continuousDrawing).toBe(false);
+    expect(sessionStore.getState().continuousDrawing).toBe(false);
     const continuousBtn = screen.getByTitle(/Continuous Draw/i);
     fireEvent.click(continuousBtn);
-    expect(store.getState().continuousDrawing).toBe(true);
+    expect(sessionStore.getState().continuousDrawing).toBe(true);
     fireEvent.click(continuousBtn);
-    expect(store.getState().continuousDrawing).toBe(false);
+    expect(sessionStore.getState().continuousDrawing).toBe(false);
 
     // ピッチロック
-    expect(store.getState().pitchTransform.isLocked).toBe(false);
+    const getPitchLocked = () =>
+      selectDomainActiveSlide(
+        documentStore.getState().project,
+        sessionStore.getState().activePhaseId,
+        sessionStore.getState().activeSlideId,
+      )?.pitchTransform?.isLocked ?? true;
+    expect(getPitchLocked()).toBe(true);
     const pitchLockBtn = screen.getByTitle(/Pitch Lock/i);
     fireEvent.click(pitchLockBtn);
-    expect(store.getState().pitchTransform.isLocked).toBe(true);
+    expect(getPitchLocked()).toBe(false);
 
     // リセットボタン (全消去)
     act(() => {
@@ -298,7 +466,13 @@ describe('CoreDrawingToolbar', () => {
     const resetBtn = screen.getByTitle(/Reset all annotations/i);
     fireEvent.click(resetBtn);
     expect(window.confirm).toHaveBeenCalled();
-    expect(store.getState().annotations.arrows).toHaveLength(0);
+    expect(
+      selectDomainActiveSlide(
+        documentStore.getState().project,
+        sessionStore.getState().activePhaseId,
+        sessionStore.getState().activeSlideId,
+      )?.arrows,
+    ).toHaveLength(0);
   });
 });
 
@@ -336,35 +510,12 @@ describe('MiniColorPicker', () => {
 
 describe('PlayerHud', () => {
   it('Web 2Dマーカー時にベンチ退避ボタンと削除ボタンが存在せず、選手情報変更ポップオーバーから背番号・選手名を更新できること', () => {
-    const { store } = renderWithStore(
+    const { documentStore, sessionStore } = renderWithStore(
       <ContextHud stageSize={{ width: 800, height: 600 }} />,
     );
 
     act(() => {
-      store.getState().addMarker({
-        id: 'player-2d',
-        shirtNo: '10',
-        name: 'Initial Name',
-        x: 30,
-        y: 40,
-        team: 'home',
-        position: 'FW',
-        area: 'pitch',
-        connectLines: [],
-        badges: [],
-        style: {
-          markerType: 'circle',
-          insideContent: 'number',
-          bottomLabel: 'name',
-          color: '#ef4444',
-          strokeColor: '#ffffff',
-          strokeWidth: 2,
-          sizeScale: 1.0,
-          numberSizeScale: 1.0,
-          labelSizeScale: 1.0,
-        },
-      });
-      store.getState().selectObject({ id: 'player-2d', kind: 'player' });
+      sessionStore.getState().selectObject({ id: 'player-2d', kind: 'player' });
     });
 
     // ベンチ退避ボタンと削除ボタンが存在しないこと
@@ -378,50 +529,32 @@ describe('PlayerHud', () => {
     const dialog = screen.getByRole('dialog', { name: '選手情報変更フォーム' });
     expect(dialog).toBeDefined();
 
+    const getPlayer = () =>
+      selectDomainActiveSlide(
+        documentStore.getState().project,
+        sessionStore.getState().activePhaseId,
+        sessionStore.getState().activeSlideId,
+      )?.players.find((p) => p.id === 'player-2d');
+
     // 背番号変更
     const shirtInput = within(dialog).getByLabelText('背番号');
     fireEvent.change(shirtInput, { target: { value: '8' } });
-    expect(store.getState().annotations.markers[0].shirtNo).toBe('8');
+    expect(getPlayer()?.shirtNo).toBe('8');
 
     // 選手名変更
     const nameInput = within(dialog).getByLabelText('選手名');
     fireEvent.change(nameInput, { target: { value: 'Odegaard' } });
-    expect(store.getState().annotations.markers[0].name).toBe('Odegaard');
-    expect(store.getState().annotations.markers[0].style.bottomLabel).toBe(
-      'name',
-    );
+    expect(getPlayer()?.name).toBe('Odegaard');
+    expect(getPlayer()?.style.bottomLabel).toBe('name');
   });
 
   it('Extension 3Dマーカー時に選手情報変更ポップオーバーから選手名を更新でき削除ボタンが表示されること', () => {
-    const { store } = renderWithStore(
+    const { documentStore, sessionStore } = renderWithStore(
       <ContextHud stageSize={{ width: 800, height: 600 }} />,
     );
 
     act(() => {
-      store.getState().addMarker({
-        id: 'player-3d',
-        shirtNo: '4',
-        name: 'White',
-        x: 50,
-        y: 50,
-        team: 'home',
-        position: 'DF',
-        area: 'pitch',
-        connectLines: [],
-        badges: [],
-        style: {
-          markerType: 'ring',
-          insideContent: 'number',
-          bottomLabel: 'name',
-          color: '#034694',
-          strokeColor: '#ffffff',
-          strokeWidth: 2,
-          sizeScale: 1.0,
-          numberSizeScale: 1.0,
-          labelSizeScale: 1.0,
-        },
-      });
-      store.getState().selectObject({ id: 'player-3d', kind: 'player' });
+      sessionStore.getState().selectObject({ id: 'player-3d', kind: 'player' });
     });
 
     // ベンチ退避ボタンは存在せず、削除ボタンが存在すること
@@ -439,49 +572,31 @@ describe('PlayerHud', () => {
     // 3Dマーカー時、ポップオーバー内に背番号入力は存在しないこと
     expect(within(dialog).queryByLabelText('背番号')).toBeNull();
 
+    const getPlayer = () =>
+      selectDomainActiveSlide(
+        documentStore.getState().project,
+        sessionStore.getState().activePhaseId,
+        sessionStore.getState().activeSlideId,
+      )?.players.find((p) => p.id === 'player-3d');
+
     // 選手名変更
     const nameInput = within(dialog).getByLabelText('選手名');
     fireEvent.change(nameInput, { target: { value: 'Saliba' } });
-    expect(store.getState().annotations.markers[0].name).toBe('Saliba');
-    expect(store.getState().annotations.markers[0].style.bottomLabel).toBe(
-      'name',
-    );
+    expect(getPlayer()?.name).toBe('Saliba');
+    expect(getPlayer()?.style.bottomLabel).toBe('name');
 
     // 削除ボタンをクリックするとマーカーが削除されること
     fireEvent.click(deleteBtn);
-    expect(store.getState().annotations.markers).toHaveLength(0);
+    expect(getPlayer()).toBeUndefined();
   });
 
   it('PlayerHud と MiniColorPicker が新UIデザイントークン (L3 #222226, L1 #121214 入力欄) を適用していること', () => {
-    const { store } = renderWithStore(
+    const { sessionStore } = renderWithStore(
       <ContextHud stageSize={{ width: 800, height: 600 }} />,
     );
 
     act(() => {
-      store.getState().addMarker({
-        id: 'player-ds',
-        shirtNo: '7',
-        name: 'Saka',
-        x: 50,
-        y: 50,
-        team: 'home',
-        position: 'FW',
-        area: 'pitch',
-        connectLines: [],
-        badges: [],
-        style: {
-          markerType: 'ring',
-          insideContent: 'number',
-          bottomLabel: 'name',
-          color: '#034694',
-          strokeColor: '#ffffff',
-          strokeWidth: 2,
-          sizeScale: 1.0,
-          numberSizeScale: 1.0,
-          labelSizeScale: 1.0,
-        },
-      });
-      store.getState().selectObject({ id: 'player-ds', kind: 'player' });
+      sessionStore.getState().selectObject({ id: 'player-ds', kind: 'player' });
     });
 
     const infoBtn = screen.getByRole('button', { name: '選手情報変更' });
@@ -498,36 +613,12 @@ describe('PlayerHud', () => {
   });
 
   it('markerType="ring-fade" または "ring" のとき発光幅調整コントロールが表示され、glowBlur を調整できること', () => {
-    const { store } = renderWithStore(
+    const { documentStore, sessionStore } = renderWithStore(
       <ContextHud stageSize={{ width: 800, height: 600 }} />,
     );
 
     act(() => {
-      store.getState().addMarker({
-        id: 'player-ring-fade-hud',
-        shirtNo: '',
-        name: 'Havertz',
-        x: 50,
-        y: 50,
-        team: 'home',
-        position: 'FW',
-        area: 'pitch',
-        connectLines: [],
-        badges: [],
-        style: {
-          markerType: 'ring-fade',
-          insideContent: 'none',
-          bottomLabel: 'name',
-          color: '#38bdf8',
-          strokeColor: '#ffffff',
-          strokeWidth: 2,
-          sizeScale: 1.0,
-          numberSizeScale: 1.0,
-          labelSizeScale: 1.0,
-          glowBlur: 16,
-        },
-      });
-      store
+      sessionStore
         .getState()
         .selectObject({ id: 'player-ring-fade-hud', kind: 'player' });
     });
@@ -539,14 +630,21 @@ describe('PlayerHud', () => {
     expect(incBtn).toBeDefined();
     expect(screen.getByText('16px')).toBeDefined();
 
+    const getPlayer = () =>
+      selectDomainActiveSlide(
+        documentStore.getState().project,
+        sessionStore.getState().activePhaseId,
+        sessionStore.getState().activeSlideId,
+      )?.players.find((p) => p.id === 'player-ring-fade-hud');
+
     // 拡大ボタンをクリック (+5px)
     fireEvent.click(incBtn);
-    expect(store.getState().annotations.markers[0].style?.glowBlur).toBe(21);
+    expect(getPlayer()?.style?.glowBlur).toBe(21);
     expect(screen.getByText('21px')).toBeDefined();
 
     // 縮小ボタンをクリック (-5px)
     fireEvent.click(decBtn);
-    expect(store.getState().annotations.markers[0].style?.glowBlur).toBe(16);
+    expect(getPlayer()?.style?.glowBlur).toBe(16);
   });
 });
 

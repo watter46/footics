@@ -1,12 +1,16 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { getStagePitchAndNormPos } from '../utils/canvas-coordinates';
 import {
   getEnclosedObjects,
   type SelectionBox,
 } from '../utils/canvas-selection-helpers';
-import { useCanvasStore } from './use-canvas-store';
 
 export type { SelectionBox };
 
@@ -15,12 +19,16 @@ export interface UseCanvasSelectionBoxOptions {
 }
 
 export function useCanvasSelectionBox({ vRect }: UseCanvasSelectionBoxOptions) {
-  const activeTool = useCanvasStore((s) => s.activeTool);
-  const selectObjects = useCanvasStore((s) => s.selectObjects);
-  const clearSelection = useCanvasStore((s) => s.clearSelection);
-  const annotations = useCanvasStore((s) => s.annotations);
-  const pitchTransform = useCanvasStore((s) => s.pitchTransform);
-  const teamVisibility = useCanvasStore((s) => s.teamVisibility ?? 'both');
+  const activeTool = useSessionStore((s) => s.activeTool);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const teamVisibility = useSessionStore((s) => s.teamVisibility);
+  const selectObjects = useSessionStore((s) => s.selectObjects);
+  const clearSelection = useSessionStore((s) => s.clearSelection);
+  const activeSlide = useDocumentStore((s) =>
+    selectDomainActiveSlide(s.project, activePhaseId, activeSlideId),
+  );
+  const pitchTransform = activeSlide?.pitchTransform;
 
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
   const selectionBoxRef = useRef<SelectionBox | null>(null);
@@ -96,16 +104,18 @@ export function useCanvasSelectionBox({ vRect }: UseCanvasSelectionBoxOptions) {
         const minNormY = Math.min(p1.normPos.y, p2.normPos.y);
         const maxNormY = Math.max(p1.normPos.y, p2.normPos.y);
 
-        const enclosed = getEnclosedObjects(
-          annotations,
-          {
-            minNormX,
-            maxNormX,
-            minNormY,
-            maxNormY,
-          },
-          teamVisibility,
-        );
+        const enclosed = activeSlide
+          ? getEnclosedObjects(
+              activeSlide,
+              {
+                minNormX,
+                maxNormX,
+                minNormY,
+                maxNormY,
+              },
+              teamVisibility,
+            )
+          : [];
         selectObjects(enclosed, isShift);
       } else if (!isShift) {
         clearSelection();
@@ -123,7 +133,7 @@ export function useCanvasSelectionBox({ vRect }: UseCanvasSelectionBoxOptions) {
     vRect.y,
     pitchTransform,
     teamVisibility,
-    annotations,
+    activeSlide,
     selectObjects,
     clearSelection,
   ]);

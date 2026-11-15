@@ -1,10 +1,11 @@
 import type {
-  ArrowAnnotation,
-  Player,
-  TextAnnotation,
-  ZoneAnnotation,
-} from '@/lib/types/tactical-unified';
-import type { AnnotationsData, SelectedObject } from '../types';
+  DomainArrowAnnotation,
+  DomainPlayer,
+  DomainTextAnnotation,
+  DomainZoneAnnotation,
+} from '@/lib/types/tactical/domain-entities';
+import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
+import type { SelectedObject } from '../types';
 
 export interface NormBBox {
   minNormX: number;
@@ -31,13 +32,13 @@ function isInsideBBox(x: number, y: number, bbox: NormBBox): boolean {
 }
 
 function findEnclosedMarkers(
-  markers: Player[],
+  markers: readonly DomainPlayer[],
   bbox: NormBBox,
   teamVisibility?: 'both' | 'home' | 'away',
 ): SelectedObject[] {
   const result: SelectedObject[] = [];
   for (const m of markers) {
-    if (m.area === 'bench') {
+    if (m.area !== 'pitch') {
       continue;
     }
     if (teamVisibility && teamVisibility !== 'both') {
@@ -53,7 +54,7 @@ function findEnclosedMarkers(
 }
 
 function findEnclosedTexts(
-  texts: TextAnnotation[],
+  texts: readonly DomainTextAnnotation[],
   bbox: NormBBox,
 ): SelectedObject[] {
   const result: SelectedObject[] = [];
@@ -66,7 +67,7 @@ function findEnclosedTexts(
 }
 
 function findEnclosedArrows(
-  arrows: ArrowAnnotation[],
+  arrows: readonly DomainArrowAnnotation[],
   bbox: NormBBox,
 ): SelectedObject[] {
   const result: SelectedObject[] = [];
@@ -79,13 +80,16 @@ function findEnclosedArrows(
 }
 
 function findEnclosedZones(
-  zones: ZoneAnnotation[],
+  zones: readonly DomainZoneAnnotation[],
   bbox: NormBBox,
 ): SelectedObject[] {
   const result: SelectedObject[] = [];
   for (const z of zones) {
-    const pts = z.points ?? [{ x: z.x ?? 0, y: z.y ?? 0 }];
-    if (pts.some((pt) => isInsideBBox(pt.x, pt.y, bbox))) {
+    if (z.shapeType === 'polygon') {
+      if (z.points.some((pt) => isInsideBBox(pt.x, pt.y, bbox))) {
+        result.push({ id: z.id, kind: 'zone' });
+      }
+    } else if (isInsideBBox(z.x, z.y, bbox)) {
       result.push({ id: z.id, kind: 'zone' });
     }
   }
@@ -93,14 +97,14 @@ function findEnclosedZones(
 }
 
 export function getEnclosedObjects(
-  annotations: AnnotationsData,
+  slide: DomainSlide,
   bbox: NormBBox,
   teamVisibility?: 'both' | 'home' | 'away',
 ): SelectedObject[] {
   return [
-    ...findEnclosedMarkers(annotations.markers, bbox, teamVisibility),
-    ...findEnclosedTexts(annotations.texts, bbox),
-    ...findEnclosedArrows(annotations.arrows, bbox),
-    ...findEnclosedZones(annotations.zones, bbox),
+    ...findEnclosedMarkers(slide.players, bbox, teamVisibility),
+    ...findEnclosedTexts(slide.texts, bbox),
+    ...findEnclosedArrows(slide.arrows, bbox),
+    ...findEnclosedZones(slide.zones, bbox),
   ];
 }

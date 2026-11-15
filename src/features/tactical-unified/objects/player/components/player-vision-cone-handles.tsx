@@ -4,7 +4,7 @@ import type Konva from 'konva';
 import type React from 'react';
 import { useRef } from 'react';
 import { Circle, Group } from 'react-konva';
-import { useCanvasStore } from '@/features/tactical-unified/core/hooks/use-canvas-store';
+import { useSessionStore } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { Player } from '@/lib/types/tactical-unified';
 import { computeRingConePoints } from './player-vision-cone';
 
@@ -32,8 +32,8 @@ export function PlayerVisionConeHandles({
   coneShapeRef,
   onUpdateVisionCone,
 }: PlayerVisionConeHandlesProps) {
-  const setIsDragging = useCanvasStore((s) => s.setIsDragging);
-  const setIsHudOpen = useCanvasStore((s) => s.setIsHudOpen);
+  const setIsDragging = useSessionStore((s) => s.setIsDragging);
+  const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
 
   const dirDragStateRef = useRef<{ angleRad: number; radius: number } | null>(
     null,

@@ -2,8 +2,12 @@
 
 import type React from 'react';
 import type { ReactNode } from 'react';
-import type { TextAnnotation } from '@/lib/types/tactical-unified';
-import { useCanvasStore } from '../hooks/use-canvas-store';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { DomainTextAnnotation } from '@/lib/types/tactical/domain-entities';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 import { ContextHud } from './ContextHud';
@@ -12,7 +16,7 @@ import { PitchInlineTextEditor } from './PitchInlineTextEditor';
 export interface HtmlHudOverlayProps {
   stageSize: { width: number; height: number };
   pitchRect: PitchRectBounds;
-  editingText: TextAnnotation | null;
+  editingText: DomainTextAnnotation | null;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   cleanRender?: boolean;
   onSaveText: (id: string, content: string) => void;
@@ -30,7 +34,15 @@ export function HtmlHudOverlay({
   onRemoveText,
   onCloseText,
 }: HtmlHudOverlayProps): ReactNode {
-  const connectingPlayerId = useCanvasStore((s) => s.connectingPlayerId);
+  const connectingPlayerId = useSessionStore((s) => s.connectingPlayerId);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const project = useDocumentStore((s) => s.project);
+  const pitchTransform = selectDomainActiveSlide(
+    project,
+    activePhaseId,
+    activeSlideId,
+  )?.pitchTransform;
 
   if (cleanRender) return null;
 
@@ -60,6 +72,7 @@ export function HtmlHudOverlay({
         editingText={editingText}
         stageSize={stageSize}
         pitchRect={pitchRect}
+        pitchTransform={pitchTransform}
         onSave={onSaveText}
         onRemove={onRemoveText}
         onClose={onCloseText}

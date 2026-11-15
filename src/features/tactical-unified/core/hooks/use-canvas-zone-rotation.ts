@@ -1,12 +1,16 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   checkAndStartRotation,
   checkCornerRotateZone,
   updateRotateCursor,
 } from '../utils/canvas-zone-rotation-helpers';
-import { useCanvasStore } from './use-canvas-store';
 
 export interface UseCanvasZoneRotationOptions {
   vRect: { width: number; height: number };
@@ -21,10 +25,21 @@ export function useCanvasZoneRotation({
   isDrawing,
   isPanning,
 }: UseCanvasZoneRotationOptions) {
-  const activeTool = useCanvasStore((s) => s.activeTool);
-  const updateZone = useCanvasStore((s) => s.updateZone);
-  const selectedObjects = useCanvasStore((s) => s.selectedObjects);
-  const zones = useCanvasStore((s) => s.annotations.zones);
+  const activeTool = useSessionStore((s) => s.activeTool);
+  const selectedObjects = useSessionStore((s) => s.selectedObjects);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const setIsDragging = useSessionStore((s) => s.setIsDragging);
+  const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
+
+  const project = useDocumentStore((s) => s.project);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const activeSlide = selectDomainActiveSlide(
+    project,
+    activePhaseId,
+    activeSlideId,
+  );
+  const zones = activeSlide?.zones ?? [];
 
   const selectedZone =
     selectedObjects.length === 1 && selectedObjects[0]?.kind === 'zone'
@@ -56,11 +71,21 @@ export function useCanvasZoneRotation({
         rotateCenterRef.current = res.rotateCenter;
         startMouseAngleRef.current = res.startMouseAngle;
         startShapeRotationRef.current = res.startShapeRotation;
+        setIsDragging(true);
+        setIsHudOpen(false);
         return true;
       }
       return false;
     },
-    [activeTool, selectedZone, vRect.width, vRect.height, containerRef],
+    [
+      activeTool,
+      selectedZone,
+      vRect.width,
+      vRect.height,
+      containerRef,
+      setIsDragging,
+      setIsHudOpen,
+    ],
   );
 
   const handlePointerMove = useCallback(
@@ -74,7 +99,11 @@ export function useCanvasZoneRotation({
           ((currentAngle - startMouseAngleRef.current) * 180) / Math.PI;
         const newRot = (startShapeRotationRef.current + diffDeg + 360) % 360;
         currentRotationRef.current = newRot;
-        updateZone(selectedZone.id, { rotation: newRot });
+        dispatchSlide(activePhaseId, activeSlideId, {
+          type: 'UPDATE_ZONE',
+          id: selectedZone.id,
+          patch: { rotation: newRot },
+        });
         return true;
       }
 
@@ -106,7 +135,9 @@ export function useCanvasZoneRotation({
       vRect.width,
       vRect.height,
       containerRef,
-      updateZone,
+      activePhaseId,
+      activeSlideId,
+      dispatchSlide,
     ],
   );
 
@@ -114,15 +145,27 @@ export function useCanvasZoneRotation({
     if (isRotatingRef.current) {
       isRotatingRef.current = false;
       if (currentRotationRef.current !== null && selectedZone) {
-        updateZone(selectedZone.id, {
-          rotation: currentRotationRef.current,
+        dispatchSlide(activePhaseId, activeSlideId, {
+          type: 'UPDATE_ZONE',
+          id: selectedZone.id,
+          patch: { rotation: currentRotationRef.current },
         });
       }
+      setIsDragging(false);
+      setIsHudOpen(true);
       updateRotateCursor(containerRef?.current ?? null, false);
       return true;
     }
     return false;
-  }, [containerRef, selectedZone, updateZone]);
+  }, [
+    containerRef,
+    selectedZone,
+    activePhaseId,
+    activeSlideId,
+    dispatchSlide,
+    setIsDragging,
+    setIsHudOpen,
+  ]);
 
   return {
     isRotatingRef,

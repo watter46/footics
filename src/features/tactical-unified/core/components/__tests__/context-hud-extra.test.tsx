@@ -1,10 +1,19 @@
 import { render, screen } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it } from 'vitest';
-import { createDefaultPlayer } from '@/lib/types/tactical-unified';
-import { createCanvasStore } from '../../store/canvas-store';
-import { CanvasStoreContext } from '../../store/canvas-store-provider';
-import type { CanvasStoreApi } from '../../types';
+import {
+  createDocumentStore,
+  type DocumentStore,
+} from '@/features/tactical-unified/stores/document-store';
+import {
+  createSessionStore,
+  type SessionStore,
+} from '@/features/tactical-unified/stores/session-store';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { toScreenNormCoord } from '@/lib/types/tactical/branded';
 import type { CanvasNodesRegistry } from '../../utils/canvas-registry';
 import {
   ContextHud,
@@ -17,31 +26,68 @@ import {
   resolveHudTarget,
 } from '../hud/hud-targets';
 
+function createTestStores() {
+  const project = createDefaultTacticalProject();
+  const phase = project.phases[0];
+  const slide = phase.slides[0];
+  const documentStore = createDocumentStore({
+    ...project,
+    phases: [
+      {
+        ...phase,
+        slides: [
+          {
+            ...slide,
+            players: [
+              {
+                id: 'p1',
+                team: 'home',
+                area: 'pitch',
+                x: toScreenNormCoord(10),
+                y: toScreenNormCoord(10),
+                shirtNo: '10',
+                connectLines: [],
+                badges: [],
+                style: {
+                  color: '#034694',
+                  strokeColor: '#ffffff',
+                  strokeWidth: 2,
+                  markerType: 'circle',
+                  insideContent: 'number',
+                  bottomLabel: 'name',
+                  sizeScale: 1.0,
+                  numberSizeScale: 1.0,
+                  labelSizeScale: 1.0,
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+  const sessionStore = createSessionStore({
+    activePhaseId: phase.id,
+    activeSlideId: slide.id,
+  });
+  return { documentStore, sessionStore };
+}
+
 function renderWithStore(
   ui: React.ReactElement,
-  initialStore?: CanvasStoreApi,
+  stores?: { documentStore: DocumentStore; sessionStore: SessionStore },
 ) {
-  const store =
-    initialStore ??
-    createCanvasStore({
-      mode: 'tactical-board',
-      aspectRatio: '16:9',
-    });
+  const resolvedStores = stores ?? createTestStores();
   const utils = render(
-    <CanvasStoreContext.Provider value={store}>
-      {ui}
-    </CanvasStoreContext.Provider>,
+    <TacticalStoreProvider stores={resolvedStores}>{ui}</TacticalStoreProvider>,
   );
-  return { store, ...utils };
+  return { ...resolvedStores, ...utils };
 }
 
 describe('ContextHud Extra Plugins (renderExtraHud & resolveExtraTarget)', () => {
   it('renderExtraHud で渡したカスタムコンポーネントが描画されること', () => {
-    const store = createCanvasStore({
-      mode: 'tactical-board',
-      aspectRatio: '16:9',
-    });
-    store.getState().setSelectedObjects([{ id: 'ball', kind: 'ball' }]);
+    const stores = createTestStores();
+    stores.sessionStore.getState().selectObject({ id: 'ball', kind: 'ball' });
 
     renderWithStore(
       <ContextHud
@@ -58,7 +104,7 @@ describe('ContextHud Extra Plugins (renderExtraHud & resolveExtraTarget)', () =>
           </button>
         )}
       />,
-      store,
+      stores,
     );
 
     const extraHud = screen.getByTestId('custom-ball-hud');
@@ -67,17 +113,8 @@ describe('ContextHud Extra Plugins (renderExtraHud & resolveExtraTarget)', () =>
   });
 
   it('resolveExtraTarget が標準のターゲット解決より優先されること', () => {
-    const store = createCanvasStore({
-      mode: 'tactical-board',
-      aspectRatio: '16:9',
-    });
-    const player = {
-      ...createDefaultPlayer('home', 10, 10, '#034694'),
-      id: 'p1',
-      shirtNo: '10',
-    };
-    store.getState().addMarker(player);
-    store.getState().setSelectedObjects([{ id: 'p1', kind: 'player' }]);
+    const stores = createTestStores();
+    stores.sessionStore.getState().selectObject({ id: 'p1', kind: 'player' });
 
     const { container } = renderWithStore(
       <ContextHud
@@ -87,7 +124,7 @@ describe('ContextHud Extra Plugins (renderExtraHud & resolveExtraTarget)', () =>
           return { x: 500, y: 400, height: 32 };
         }}
       />,
-      store,
+      stores,
     );
 
     const toolbar = container.querySelector('[role="toolbar"]') as HTMLElement;
@@ -97,11 +134,8 @@ describe('ContextHud Extra Plugins (renderExtraHud & resolveExtraTarget)', () =>
   });
 
   it('selected.kind === "ball" で nodesRegistryRef.current.ballNode からフォールバック解決されること', () => {
-    const store = createCanvasStore({
-      mode: 'tactical-board',
-      aspectRatio: '16:9',
-    });
-    store.getState().setSelectedObjects([{ id: 'ball', kind: 'ball' }]);
+    const stores = createTestStores();
+    stores.sessionStore.getState().selectObject({ id: 'ball', kind: 'ball' });
 
     const fakeNodesRegistryRef = {
       current: {
@@ -122,7 +156,7 @@ describe('ContextHud Extra Plugins (renderExtraHud & resolveExtraTarget)', () =>
         nodesRegistryRef={fakeNodesRegistryRef}
         renderExtraHud={() => <span data-testid="ball-indicator">Ball</span>}
       />,
-      store,
+      stores,
     );
 
     const toolbar = container.querySelector('[role="toolbar"]') as HTMLElement;
@@ -133,22 +167,13 @@ describe('ContextHud Extra Plugins (renderExtraHud & resolveExtraTarget)', () =>
   });
 
   it('isDragging === true の時は ContextHud が null (描画されない) になること', () => {
-    const store = createCanvasStore({
-      mode: 'tactical-board',
-      aspectRatio: '16:9',
-    });
-    const player = {
-      ...createDefaultPlayer('home', 10, 10, '#034694'),
-      id: 'p1',
-      shirtNo: '10',
-    };
-    store.getState().addMarker(player);
-    store.getState().setSelectedObjects([{ id: 'p1', kind: 'player' }]);
-    store.setState({ isDragging: true });
+    const stores = createTestStores();
+    stores.sessionStore.getState().selectObject({ id: 'p1', kind: 'player' });
+    stores.sessionStore.getState().setIsDragging(true);
 
     const { container } = renderWithStore(
       <ContextHud stageSize={{ width: 800, height: 600 }} />,
-      store,
+      stores,
     );
 
     expect(container.firstChild).toBeNull();
@@ -167,7 +192,7 @@ describe('ContextHud Extra Plugins (renderExtraHud & resolveExtraTarget)', () =>
       const target = resolveHudTarget({
         selected: { id: 'c1', kind: 'custom-item' as any },
         offset: { x: 10, y: 20, width: 100, height: 100 },
-        data: { markers: [], arrows: [], zones: [], texts: [] },
+        data: { players: [], arrows: [], zones: [], texts: [] },
       });
 
       expect(target).toEqual({ x: 60, y: 70, height: 20 });
@@ -179,20 +204,17 @@ describe('ContextHud Extra Plugins (renderExtraHud & resolveExtraTarget)', () =>
         <span data-testid="custom-item-hud">Item: {selected.id}</span>
       ));
 
-      const store = createCanvasStore({
-        mode: 'tactical-board',
-        aspectRatio: '16:9',
-      });
-      store
+      const stores = createTestStores();
+      stores.sessionStore
         .getState()
-        .setSelectedObjects([{ id: 'c1', kind: 'custom-item' as any }]);
+        .selectObject({ id: 'c1', kind: 'custom-item' as any });
 
       renderWithStore(
         <ContextHud
           stageSize={{ width: 800, height: 600 }}
           resolveExtraTarget={() => ({ x: 400, y: 300, height: 20 })}
         />,
-        store,
+        stores,
       );
 
       const hudItem = screen.getByTestId('custom-item-hud');
