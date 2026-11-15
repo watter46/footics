@@ -9,8 +9,16 @@ import { computeTransformedZonePatch } from '@/features/tactical-unified/core/co
 import * as PlayerComponents from '@/features/tactical-unified/objects/player/components';
 import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ResolvedZonePrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
-import type { StagePixel } from '@/lib/types/tactical/branded';
-import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
+import {
+  type StagePixel,
+  toScreenNormCoord,
+  toScreenNormPoint,
+} from '@/lib/types/tactical/branded';
+import type {
+  EllipseZone,
+  PolygonZone,
+  RectZone,
+} from '@/lib/types/tactical/domain-entities';
 
 describe('Player components exports', () => {
   it('does not export dead player components', () => {
@@ -54,16 +62,15 @@ describe('ZoneObject Dumb View (ResolvedZonePrimitive)', () => {
       visible: true,
       selected: false,
     };
-    const zone: ZoneAnnotation = {
+    const zone: RectZone = {
       id: 'z1',
       annotationType: 'zone',
       zoneType: 'generic',
       shapeType: 'rect',
-      x: 0,
-      y: 0,
+      x: toScreenNormCoord(0),
+      y: toScreenNormCoord(0),
       width: 50,
       height: 50,
-      points: [],
       color: '#000000',
       opacity: 0.5,
       strokeWidth: 3,
@@ -128,16 +135,15 @@ describe('ZoneObject Dumb View (ResolvedZonePrimitive)', () => {
       visible: false,
       selected: false,
     };
-    const zone: ZoneAnnotation = {
+    const zone: EllipseZone = {
       id: 'z-ellipse',
       annotationType: 'zone',
       zoneType: 'generic',
       shapeType: 'ellipse',
-      x: 0,
-      y: 0,
+      x: toScreenNormCoord(0),
+      y: toScreenNormCoord(0),
       width: 10,
       height: 10,
-      points: [],
       color: '#000000',
       opacity: 0.5,
       strokeWidth: 1,
@@ -200,14 +206,15 @@ describe('ZoneObject Dumb View (ResolvedZonePrimitive)', () => {
       visible: true,
       selected: false,
     };
-    const zone: ZoneAnnotation = {
+    const zone: PolygonZone = {
       id: 'zp1',
       annotationType: 'zone',
       zoneType: 'generic',
       shapeType: 'polygon',
       points: [
-        { x: 10, y: 10 },
-        { x: 20, y: 20 },
+        toScreenNormPoint(10, 10),
+        toScreenNormPoint(20, 20),
+        toScreenNormPoint(30, 10),
       ],
       color: '#000000',
       opacity: 0.5,
@@ -290,14 +297,13 @@ describe('ZoneObject Dumb View (ResolvedZonePrimitive)', () => {
       visible: true,
       selected: true,
     };
-    const zone: ZoneAnnotation = {
+    const zone: RectZone = {
       id: 'z-rot',
       annotationType: 'zone',
       zoneType: 'generic',
       shapeType: 'rect',
-      points: [],
-      x: 12.5,
-      y: 16.6,
+      x: toScreenNormCoord(12.5),
+      y: toScreenNormCoord(16.6),
       width: 20,
       height: 13.3,
       color: '#3b82f6',

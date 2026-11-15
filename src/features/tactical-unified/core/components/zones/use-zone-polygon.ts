@@ -2,13 +2,17 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCallback } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
-import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
+import { toScreenNormPoint } from '@/lib/types/tactical/branded';
+import type {
+  DomainZoneAnnotation,
+  PolygonZone,
+} from '@/lib/types/tactical/domain-entities';
 import { normX, normY } from './zone-geometry';
 
 export interface UseZonePolygonParams {
-  zone: ZoneAnnotation;
+  zone: PolygonZone;
   stageSize: { width: number; height: number };
-  updateZone: (zoneId: string, patch: Partial<ZoneAnnotation>) => void;
+  updateZone: (zoneId: string, patch: Partial<DomainZoneAnnotation>) => void;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   isCreatingThis?: boolean;
   mousePreviewPos?: { x: number; y: number } | null;
@@ -24,7 +28,7 @@ export function useZonePolygon({
 }: UseZonePolygonParams) {
   const { width, height } = stageSize;
   const pts = zone.points;
-  const isComplete = zone.isComplete !== false;
+  const isComplete = !isCreatingThis;
 
   let renderPts = pts.flatMap((p) => [normX(p.x, width), normY(p.y, height)]);
   if (isCreatingThis && mousePreviewPos) {
@@ -59,10 +63,9 @@ export function useZonePolygon({
       const dxNorm = (dxPx / width) * 100;
       const dyNorm = (dyPx / height) * 100;
 
-      const newPts = pts.map((p) => ({
-        x: p.x + dxNorm,
-        y: p.y + dyNorm,
-      }));
+      const newPts = pts.map((p) =>
+        toScreenNormPoint(p.x + dxNorm, p.y + dyNorm),
+      );
 
       updateZone(zone.id, { points: newPts });
     },

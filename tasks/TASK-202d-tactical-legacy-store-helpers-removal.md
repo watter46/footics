@@ -1,6 +1,6 @@
 # TASK-202d: 旧ストア補助モジュール & 未使用バレルの物理削除
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): delete legacy store helpers, dead types barrel, and migrate remaining utility callers`
 - **Execution Waves**:
   - Wave 1 (parallel): Phase 1, Phase 2

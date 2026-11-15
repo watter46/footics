@@ -9,7 +9,11 @@ import {
 } from '@/features/tactical-unified/core/hooks/player-photo-context';
 import type { ResolvedBillboardPlayerItem } from '@/lib/tactical/compiler/scene-graph-dto';
 import { getPlayerPhotoKey } from '@/lib/tactical/player-photo-key';
-import type { StagePixel } from '@/lib/types/tactical/branded';
+import {
+  type StagePixel,
+  toScreenNormCoord,
+} from '@/lib/types/tactical/branded';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { PlayerMarkerItem } from '../PlayerMarkerItem';
 
@@ -31,8 +35,33 @@ beforeEach(() => {
   HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx);
 });
 
+function createTestDomainPlayer(
+  overrides: Partial<DomainPlayer> = {},
+): DomainPlayer {
+  const base = createDefaultPlayer('home', 50, 50, '#ff0000');
+  const trajectory = base.trajectory
+    ? {
+        ...base.trajectory,
+        controlPoint: base.trajectory.controlPoint
+          ? {
+              x: toScreenNormCoord(base.trajectory.controlPoint.x),
+              y: toScreenNormCoord(base.trajectory.controlPoint.y),
+            }
+          : undefined,
+      }
+    : undefined;
+  return {
+    ...base,
+    area: 'pitch',
+    x: toScreenNormCoord(base.x),
+    y: toScreenNormCoord(base.y),
+    trajectory,
+    ...overrides,
+  };
+}
+
 function createTestResolvedPlayer(
-  marker: ReturnType<typeof createDefaultPlayer>,
+  marker: DomainPlayer,
   overrides: Partial<ResolvedBillboardPlayerItem> = {},
 ): ResolvedBillboardPlayerItem {
   return {
@@ -55,7 +84,7 @@ function createTestResolvedPlayer(
 describe('PlayerMarkerItem vertical scale', () => {
   it('aspectRatio が 16:9 のときは通常スケール (1.0) の半径になる', () => {
     const stageRef = createRef<Konva.Stage>();
-    const marker = createDefaultPlayer('home', 50, 50, '#ff0000');
+    const marker = createTestDomainPlayer();
     const width = 800;
     const height = 450;
     const baseDim = 450;
@@ -94,7 +123,7 @@ describe('PlayerMarkerItem vertical scale', () => {
 
   it('aspectRatio が 4:5 または 9:16 のときは 0.85 倍に縮小された半径になる', () => {
     const stageRef = createRef<Konva.Stage>();
-    const marker = createDefaultPlayer('home', 50, 50, '#ff0000');
+    const marker = createTestDomainPlayer();
     const width = 480;
     const height = 600;
     const baseDim = 480;
@@ -134,7 +163,7 @@ describe('PlayerMarkerItem vertical scale', () => {
   it('markerMode="3d-only" かつ name: "Saka" の 3Dマーカー下部に "Saka" の Konva Text が描画されること', () => {
     const stageRef = createRef<Konva.Stage>();
     const marker = {
-      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      ...createTestDomainPlayer(),
       name: 'Bukayo Saka',
       style: {
         ...createDefaultPlayer('home', 50, 50, '#ff0000').style,
@@ -181,7 +210,7 @@ describe('PlayerMarkerItem vertical scale', () => {
   it('PlayerMarkerCircle renders shirt number with verticalAlign="middle", height={radius*2}, y={-radius}', () => {
     const stageRef = createRef<Konva.Stage>();
     const marker = {
-      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      ...createTestDomainPlayer(),
       shirtNo: '9',
       style: {
         ...createDefaultPlayer('home', 50, 50, '#ff0000').style,
@@ -230,7 +259,7 @@ describe('PlayerMarkerItem vertical scale', () => {
   it('PlayerMarkerRing does not render shirt number in center (center text is removed)', () => {
     const stageRef = createRef<Konva.Stage>();
     const marker = {
-      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      ...createTestDomainPlayer(),
       shirtNo: '10',
       style: {
         ...createDefaultPlayer('home', 50, 50, '#ff0000').style,
@@ -280,7 +309,7 @@ describe('PlayerMarkerItem vertical scale', () => {
     } as unknown as HTMLImageElement;
     const stageRef = createRef<Konva.Stage>();
     const marker = {
-      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      ...createTestDomainPlayer(),
       playerId: '12345',
       shirtNo: '7',
       style: {
@@ -330,7 +359,7 @@ describe('PlayerMarkerItem vertical scale', () => {
   it('PlayerPhotoProvider が無い場合、背番号テキストが描画されエラーにならない', () => {
     const stageRef = createRef<Konva.Stage>();
     const marker = {
-      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      ...createTestDomainPlayer(),
       playerId: '12345',
       shirtNo: '7',
       style: {
@@ -380,7 +409,7 @@ describe('PlayerMarkerItem vertical scale', () => {
     } as unknown as HTMLImageElement;
     const stageRef = createRef<Konva.Stage>();
     const marker = {
-      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      ...createTestDomainPlayer(),
       playerId: '12345',
       shirtNo: '7',
       style: {
@@ -432,7 +461,7 @@ describe('PlayerMarkerItem vertical scale', () => {
 
   it('resolvedPlayer が渡された場合、ルート Group の x, y, opacity および内部 Circle の半径に計算済み値が適用される', () => {
     const stageRef = createRef<Konva.Stage>();
-    const marker = createDefaultPlayer('home', 50, 50, '#ff0000');
+    const marker = createTestDomainPlayer();
     const width = 800;
     const height = 450;
     const baseDim = 450;
@@ -489,7 +518,7 @@ describe('PlayerMarkerItem vertical scale', () => {
 
   it('resolvedPlayer.positionPx が更新されるとルート Group の座標がリアクティブに追従する', () => {
     const stageRef = createRef<Konva.Stage>();
-    const marker = createDefaultPlayer('home', 50, 50, '#ff0000');
+    const marker = createTestDomainPlayer();
     const width = 800;
     const height = 450;
     const baseDim = 450;
@@ -561,7 +590,7 @@ describe('PlayerMarkerItem vertical scale', () => {
   });
 
   it('親 Group にズーム（scale !== 1）が適用されている場合、dragBoundFunc が parentScale を考慮してクランプする', () => {
-    const marker = createDefaultPlayer('home', 50, 50, '#ff0000');
+    const marker = createTestDomainPlayer();
     const resolvedPlayer = createTestResolvedPlayer(marker);
     const width = 800;
     const height = 450;

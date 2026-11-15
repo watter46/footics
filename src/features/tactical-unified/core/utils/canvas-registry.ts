@@ -1,5 +1,5 @@
 import type Konva from 'konva';
-import type { PlayerTrajectory } from '@/lib/types/tactical-unified';
+import type { DomainPlayerTrajectory } from '@/lib/types/tactical/domain-entities';
 import type { PitchRectBounds } from './canvas-coordinates';
 
 export interface ArrowNodeEntry {
@@ -17,7 +17,7 @@ export interface TrajectoryArrowNodeEntry {
   controlHandleNode?: Konva.Circle | null;
   startPx: { x: number; y: number };
   startPos: { x: number; y: number };
-  trajectory?: PlayerTrajectory;
+  trajectory?: DomainPlayerTrajectory;
 }
 
 export interface ConnectLineNodeEntry {

@@ -10,7 +10,8 @@ import {
   subdivideQuadraticBezier,
 } from '@/lib/tactical/compiler/geometry-primitives';
 import type { ResolvedArrowPrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
-import type { ArrowAnnotation } from '@/lib/types/tactical-unified';
+import { toScreenNormPoint } from '@/lib/types/tactical/branded';
+import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
 import {
   type ArrowHandlePreviewDelta,
   ArrowHandlesGroup,
@@ -21,12 +22,12 @@ import { type ArrowBodyDragDelta, ArrowLineNode } from './arrow-line-node';
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
 export interface ArrowObjectProps {
-  arrow: ArrowAnnotation;
+  arrow: DomainArrowAnnotation;
   stageSize: { width: number; height: number };
   isSelected: boolean;
   isInteractive?: boolean;
   onSelect: (e: KonvaClickEvent) => void;
-  updateArrow: (arrowId: string, patch: Partial<ArrowAnnotation>) => void;
+  updateArrow: (arrowId: string, patch: Partial<DomainArrowAnnotation>) => void;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   resolvedArrow: ResolvedArrowPrimitive;
 }
@@ -110,8 +111,8 @@ export const ArrowObject = React.memo(function ArrowObject({
     renderPoints = [sPxX, sPxY, ePxX, ePxY];
   }
 
-  const p0 = arrow.points[0] ?? { x: 0, y: 0 };
-  const p1 = arrow.points[1] ?? { x: 0, y: 0 };
+  const p0 = arrow.points[0] ?? toScreenNormPoint(0, 0);
+  const p1 = arrow.points[1] ?? toScreenNormPoint(0, 0);
   const isAttachedToPlayer = Boolean(
     arrow.sourcePlayerId || arrow.targetPlayerId,
   );

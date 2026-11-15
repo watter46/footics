@@ -3,8 +3,11 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import type {
+  DomainPlayer,
+  PitchPlayer,
+} from '@/lib/types/tactical/domain-entities';
+import type {
   ArrowAnnotation,
-  Player,
   Slide,
   TextAnnotation,
   ZoneAnnotation,
@@ -20,8 +23,8 @@ export function normY(v: number, h: number): number {
 
 export interface AttachedArrowEntry {
   arrow: ArrowAnnotation;
-  sourcePlayer?: Player;
-  targetPlayer?: Player;
+  sourcePlayer?: DomainPlayer;
+  targetPlayer?: DomainPlayer;
   isSourceMoved: boolean;
   isTargetMoved: boolean;
   initialP0: { x: number; y: number };
@@ -31,8 +34,8 @@ export interface AttachedArrowEntry {
 
 export interface AttachedConnectLineEntry {
   lineId: string;
-  sourcePlayer: Player;
-  targetPlayer: Player;
+  sourcePlayer: DomainPlayer;
+  targetPlayer: DomainPlayer;
   sourcePlayerId: string;
   targetPlayerId: string;
   isSourceMoved: boolean;
@@ -76,7 +79,7 @@ export interface OnionSkinRefs {
 }
 
 export interface PlayerMarkerProps {
-  player: Player;
+  player: DomainPlayer;
   slide: Slide;
   stageSize: { width: number; height: number };
   isSelected: boolean;
@@ -88,11 +91,11 @@ export interface PlayerMarkerProps {
   ) => void;
   onSelectOption: (tab: 'vision' | 'connect' | 'badge' | 'focus') => void;
   onUpdateVisionCone: (
-    patch: Partial<NonNullable<Player['visionCone']>>,
+    patch: Partial<NonNullable<PitchPlayer['visionCone']>>,
   ) => void;
-  onDragStart: (e: KonvaEventObject<DragEvent>, player: Player) => void;
-  onDragMove: (e: KonvaEventObject<DragEvent>, player: Player) => void;
-  onDragEnd: (e: KonvaEventObject<DragEvent>, player: Player) => void;
+  onDragStart: (e: KonvaEventObject<DragEvent>, player: DomainPlayer) => void;
+  onDragMove: (e: KonvaEventObject<DragEvent>, player: DomainPlayer) => void;
+  onDragEnd: (e: KonvaEventObject<DragEvent>, player: DomainPlayer) => void;
 }
 
 export interface BasePlayerLayerProps {

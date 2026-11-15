@@ -1,10 +1,10 @@
 'use client';
 
 import { Text } from 'react-konva';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 export interface PlayerMarkerLabelProps {
-  player: Player;
+  player: DomainPlayer;
   radius: number;
   displayName: string;
   labelScale: number;

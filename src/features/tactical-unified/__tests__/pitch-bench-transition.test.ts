@@ -2,6 +2,7 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import { Stage } from 'react-konva';
 import { describe, expect, it } from 'vitest';
+import { findSafePitchPosition } from '@/lib/tactical/domain/squad-placement';
 import type { Milliseconds } from '@/lib/types/tactical/branded';
 import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import {
@@ -17,7 +18,6 @@ import { resolveSceneGraphFromState } from '../hooks/use-resolved-scene-graph';
 import { createDocumentStore } from '../stores/document-store';
 import { createPlaybackStore } from '../stores/playback-store';
 import { createSessionStore } from '../stores/session-store';
-import { findSafePitchPosition } from '../stores/slide-player-move-helper';
 import {
   createDefaultTacticalProject,
   TacticalStoreProvider,
@@ -418,20 +418,46 @@ describe('Phase 3: メインキャンバス ↔ ベンチ双方向移動 (pitch-
     describe('PlayerGhostTrajectoryList', () => {
       it('marker.area === "bench" の選手は除外（null を返却）されゴースト軌道が描画されない', () => {
         const benchPlayer = {
-          ...createDefaultPlayer('home', 80, 80, '#034694'),
+          ...createDefaultPlayer(
+            'home',
+            clampToScreenNorm(80),
+            clampToScreenNorm(80),
+            '#034694',
+          ),
+          x: clampToScreenNorm(80),
+          y: clampToScreenNorm(80),
+          trajectory: undefined,
           id: 'bench-p1',
           area: 'bench' as const,
         };
         const pitchPlayer = {
-          ...createDefaultPlayer('home', 50, 50, '#034694'),
+          ...createDefaultPlayer(
+            'home',
+            clampToScreenNorm(50),
+            clampToScreenNorm(50),
+            '#034694',
+          ),
+          x: clampToScreenNorm(50),
+          y: clampToScreenNorm(50),
+          trajectory: undefined,
           id: 'pitch-p1',
           area: 'pitch' as const,
         };
 
         const prevSlide = {
           players: [
-            { ...benchPlayer, x: 20, y: 20, area: 'pitch' as const },
-            { ...pitchPlayer, x: 30, y: 30, area: 'pitch' as const },
+            {
+              ...benchPlayer,
+              x: clampToScreenNorm(20),
+              y: clampToScreenNorm(20),
+              area: 'pitch' as const,
+            },
+            {
+              ...pitchPlayer,
+              x: clampToScreenNorm(30),
+              y: clampToScreenNorm(30),
+              area: 'pitch' as const,
+            },
           ],
         };
 

@@ -3,7 +3,8 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Box } from 'konva/lib/shapes/Transformer';
 import { useCallback, useEffect, useRef } from 'react';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
-import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import type { DomainZoneAnnotation } from '@/lib/types/tactical/domain-entities';
 import {
   computeTransformedZonePatch,
   computeZoneShapeMetrics,
@@ -12,10 +13,10 @@ import {
 } from './zone-geometry';
 
 export interface UseZoneShapeParams {
-  zone: ZoneAnnotation;
+  zone: DomainZoneAnnotation;
   stageSize: { width: number; height: number };
   isSelected: boolean;
-  updateZone: (zoneId: string, patch: Partial<ZoneAnnotation>) => void;
+  updateZone: (zoneId: string, patch: Partial<DomainZoneAnnotation>) => void;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   resolvedWidthPx?: number;
   resolvedHeightPx?: number;
@@ -76,8 +77,8 @@ export function useZoneShape({
       const newNormX = pxToNormX(node.x() - effectivePxW / 2, width);
       const newNormY = pxToNormY(node.y() - effectivePxH / 2, height);
       updateZone(zone.id, {
-        x: newNormX,
-        y: newNormY,
+        x: clampToScreenNorm(newNormX),
+        y: clampToScreenNorm(newNormY),
         rotation: node.rotation(),
       });
     },

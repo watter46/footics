@@ -3,13 +3,13 @@
  * マーカー外周クリップ・オフセット幾何計算ユーティリティ
  */
 
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 /**
  * 選手のマーカー半径 (px) を算出
  */
 export function getPlayerMarkerRadius(
-  player: Player,
+  player: DomainPlayer,
   stageSize: { width: number; height: number },
 ): number {
   const baseDim = Math.min(stageSize.width, stageSize.height);
@@ -31,7 +31,7 @@ export function getPlayerMarkerRadius(
 export function getMarkerBoundaryPoint(
   center: { x: number; y: number },
   target: { x: number; y: number },
-  player: Player,
+  player: DomainPlayer,
   stageSize: { width: number; height: number },
   onlyRing = true,
 ): { x: number; y: number } {

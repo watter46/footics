@@ -121,7 +121,25 @@ function useBallObjectState({
     ? Math.hypot(px - prevPx.x, py - prevPx.y) >= 4
     : false;
 
+  const domainBall: DomainBallState = activeSlide?.ball ?? {
+    ...ball,
+    x: clampToScreenNorm(ball.x),
+    y: clampToScreenNorm(ball.y),
+    trajectory: ball.trajectory
+      ? {
+          ...ball.trajectory,
+          controlPoint: ball.trajectory.controlPoint
+            ? {
+                x: clampToScreenNorm(ball.trajectory.controlPoint.x),
+                y: clampToScreenNorm(ball.trajectory.controlPoint.y),
+              }
+            : undefined,
+        }
+      : undefined,
+  };
+
   return {
+    domainBall,
     isSelected,
     ballImage,
     drag,
@@ -150,6 +168,7 @@ export const BallObject = React.memo(function BallObject(
   if (!resolvedBall.visible) return null;
 
   const {
+    domainBall,
     isSelected,
     ballImage,
     drag,
@@ -172,7 +191,7 @@ export const BallObject = React.memo(function BallObject(
           cleanRender={cleanRender}
           hasPrevBall={prevInfo.hasPrevBall}
           prevBall={prevInfo.prevBall}
-          ball={ball}
+          ball={domainBall}
           prevPxX={prevInfo.prevPxX}
           prevPxY={prevInfo.prevPxY}
           radius={radius}

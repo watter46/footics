@@ -9,28 +9,29 @@ import {
   subdivideQuadraticBezier,
 } from '@/lib/tactical/compiler/geometry-primitives';
 import type { ResolvedArrowPrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
-import type { ArrowAnnotation } from '@/lib/types/tactical-unified';
+import { toScreenNormPoint } from '@/lib/types/tactical/branded';
+import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
 
 const STAGE_SIZE = { width: 800, height: 500 };
 type StagePixelPoint = ResolvedArrowPrimitive['startPointPx'];
 const px = (x: number, y: number): StagePixelPoint =>
   ({ x, y }) as StagePixelPoint;
 
-function makeArrow(overrides: Partial<ArrowAnnotation> = {}): ArrowAnnotation {
+function makeArrow(
+  overrides: Partial<DomainArrowAnnotation> = {},
+): DomainArrowAnnotation {
   return {
     id: 'arrow-1',
     annotationType: 'arrow',
-    points: [
-      { x: 10, y: 50 },
-      { x: 60, y: 50 },
-    ],
+    points: [toScreenNormPoint(10, 50), toScreenNormPoint(60, 50)],
     arrowType: 'pass',
     curveType: 'curved',
-    controlPoint: { x: 35, y: 20 },
+    controlPoint: toScreenNormPoint(35, 20),
     color: '#ffffff',
     strokeWidth: 3,
     dashArray: [],
-    arrowHead: true,
+    startMarker: 'none',
+    endMarker: 'arrow',
     ...overrides,
   };
 }

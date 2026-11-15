@@ -1,17 +1,11 @@
 'use client';
 
-import { ImagePlus, RotateCcw, Sparkles } from 'lucide-react';
+import { ImagePlus, RotateCcw } from 'lucide-react';
 import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
 } from '@/components/ui/menu';
-import {
-  createHighPressBenchmarkProject,
-  createLowBlockBenchmarkProject,
-  createSixSlideBenchmarkProject,
-  createTenSlideFullSequenceBenchmarkProject,
-} from '@/lib/tactical/benchmark-presets';
 
 export interface PitchSectionProps {
   isImageBackground: boolean;
@@ -58,61 +52,6 @@ export function MoreMenuPitchSection({
           </span>
         </div>
       </DropdownMenuItem>
-    </DropdownMenuGroup>
-  );
-}
-
-export interface PresetsSectionProps {
-  onLoadProject: (project: unknown) => void;
-  onClose: () => void;
-}
-
-const PRESETS = [
-  {
-    title: '10-Slide Full Progression (16s)',
-    desc: '10 Slides • 984 frames benchmark (Build-up to Goal)',
-    factory: createTenSlideFullSequenceBenchmarkProject,
-  },
-  {
-    title: '6-Slide Overload & Cutback (9.6s)',
-    desc: '6 Slides • 576 frames benchmark (Mid-Range)',
-    factory: createSixSlideBenchmarkProject,
-  },
-  {
-    title: 'Low Block Penetration (3.8s)',
-    desc: '3 Slides • Flank overload, underlap & cutback',
-    factory: createLowBlockBenchmarkProject,
-  },
-  {
-    title: 'High Press vs Build-up (1.8s)',
-    desc: '2 Slides • Pressing trap bait & turnover',
-    factory: createHighPressBenchmarkProject,
-  },
-];
-
-export function MoreMenuPresetsSection({
-  onLoadProject,
-  onClose,
-}: PresetsSectionProps) {
-  return (
-    <DropdownMenuGroup>
-      <DropdownMenuLabel>Benchmark Presets</DropdownMenuLabel>
-      {PRESETS.map((p) => (
-        <DropdownMenuItem
-          key={p.title}
-          onClick={() => {
-            onLoadProject(p.factory());
-            onClose();
-          }}
-          className="flex-col items-start gap-0.5"
-        >
-          <div className="flex items-center gap-1.5 font-medium text-[#60A5FA]">
-            <Sparkles size={12} />
-            <span>{p.title}</span>
-          </div>
-          <span className="text-[10px] text-[#A1A1AA] pl-4.5">{p.desc}</span>
-        </DropdownMenuItem>
-      ))}
     </DropdownMenuGroup>
   );
 }

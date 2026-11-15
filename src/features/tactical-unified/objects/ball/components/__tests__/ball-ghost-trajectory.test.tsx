@@ -3,6 +3,7 @@ import type Konva from 'konva';
 import { createRef } from 'react';
 import { Layer, Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { toScreenNormCoord } from '@/lib/types/tactical/branded';
 import { BallGhostTrajectory } from '../ball-ghost-trajectory';
 
 beforeEach(() => {
@@ -25,8 +26,12 @@ beforeEach(() => {
 describe('BallGhostTrajectory', () => {
   const defaultProps = {
     hasPrevBall: true,
-    prevBall: { x: 50, y: 50, visible: true },
-    ball: { x: 50, y: 50, visible: true },
+    prevBall: {
+      x: toScreenNormCoord(50),
+      y: toScreenNormCoord(50),
+      visible: true,
+    },
+    ball: { x: toScreenNormCoord(50), y: toScreenNormCoord(50), visible: true },
     prevPxX: 400,
     prevPxY: 300,
     radius: 12,

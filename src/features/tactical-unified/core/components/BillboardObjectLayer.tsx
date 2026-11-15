@@ -19,7 +19,6 @@ import type {
   DomainTextAnnotation,
   PitchPlayer,
 } from '@/lib/types/tactical/domain-entities';
-import type { Player } from '@/lib/types/tactical-unified';
 import type { SelectedObject } from '../types';
 import {
   type PitchRectBounds,
@@ -105,18 +104,18 @@ export const BillboardObjectLayer = memo(function BillboardObjectLayer({
   );
 
   const updateMarker = useCallback(
-    (id: string, patch: Partial<Player>) => {
+    (id: string, patch: Partial<PitchPlayer>) => {
       dispatchSlide(activePhaseId, activeSlideId, {
         type: 'UPDATE_PLAYER',
         id,
-        patch: patch as Partial<PitchPlayer>,
+        patch,
       });
     },
     [dispatchSlide, activePhaseId, activeSlideId],
   );
 
   const updateMarkers = useCallback(
-    (updates: { id: string; patch: Partial<Player> }[]) => {
+    (updates: { id: string; patch: Partial<PitchPlayer> }[]) => {
       dispatchSlide(activePhaseId, activeSlideId, {
         type: 'MOVE_PLAYERS',
         moves: updates.map((u) => ({

@@ -4,7 +4,10 @@ import React from 'react';
 import { Group } from 'react-konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core';
 import { GhostTrajectoryArrow } from '@/features/tactical-unified/objects/arrow';
-import type { BallState, PlayerTrajectory } from '@/lib/types/tactical-unified';
+import type {
+  DomainBallState,
+  DomainPlayerTrajectory,
+} from '@/lib/types/tactical/domain-entities';
 import { BallGhost } from './ball-ghost';
 
 interface BallGhostTrajectoryProps {
@@ -12,8 +15,8 @@ interface BallGhostTrajectoryProps {
   isDragging?: boolean;
   cleanRender?: boolean;
   hasPrevBall: boolean;
-  prevBall?: BallState;
-  ball: BallState;
+  prevBall?: DomainBallState;
+  ball: DomainBallState;
   isBallMoved?: boolean;
   prevPxX: number;
   prevPxY: number;
@@ -21,7 +24,7 @@ interface BallGhostTrajectoryProps {
   ballImage: HTMLImageElement | null;
   stageSize: { width: number; height: number };
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
-  onUpdateTrajectory: (traj: PlayerTrajectory | undefined) => void;
+  onUpdateTrajectory: (traj: DomainPlayerTrajectory | undefined) => void;
 }
 
 export const BallGhostTrajectory = React.memo(function BallGhostTrajectory({

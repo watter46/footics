@@ -24,15 +24,9 @@ import {
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import { clearActiveProjectFromDb } from '@/lib/tactical/tactical-storage';
-import {
-  MoreMenuPitchSection,
-  MoreMenuPresetsSection,
-} from './top-bar-more-menu-sections';
+import { MoreMenuPitchSection } from './top-bar-more-menu-sections';
 
-export {
-  MoreMenuPitchSection,
-  MoreMenuPresetsSection,
-} from './top-bar-more-menu-sections';
+export { MoreMenuPitchSection } from './top-bar-more-menu-sections';
 
 export function TopBarMoreMenu() {
   const { documentStore, sessionStore } = useTacticalStoresContext();
@@ -162,13 +156,6 @@ export function TopBarMoreMenu() {
             dispatch({ type: 'RESTORE_DEFAULT_PITCH', phaseId: activePhaseId })
           }
           onImportClick={() => fileInputRef.current?.click()}
-          onClose={() => setIsOpen(false)}
-        />
-
-        <DropdownMenuSeparator />
-
-        <MoreMenuPresetsSection
-          onLoadProject={handleLoadPreset}
           onClose={() => setIsOpen(false)}
         />
       </DropdownMenuContent>

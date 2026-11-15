@@ -1,5 +1,5 @@
 import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 import { getQuadraticBezierPoints, getWavyPoints } from './wavy-arrow-math';
 
 export interface ArrowDimensions {
@@ -33,8 +33,8 @@ export interface ComputeArrowPointsParams {
   isWavy: boolean;
   isDotEnd: boolean;
   dotRadius: number;
-  sourcePlayer?: Player;
-  targetPlayer?: Player;
+  sourcePlayer?: DomainPlayer;
+  targetPlayer?: DomainPlayer;
   stageSize: { width: number; height: number };
 }
 
@@ -46,8 +46,8 @@ function computeBoundaryEndpoints(
   cpX: number | undefined,
   cpY: number | undefined,
   isCurved: boolean,
-  sourcePlayer: Player | undefined,
-  targetPlayer: Player | undefined,
+  sourcePlayer: DomainPlayer | undefined,
+  targetPlayer: DomainPlayer | undefined,
   stageSize: { width: number; height: number },
 ) {
   let effSx = sx;
@@ -55,7 +55,7 @@ function computeBoundaryEndpoints(
   let effEx = ex;
   let effEy = ey;
 
-  if (sourcePlayer) {
+  if (sourcePlayer && sourcePlayer.area === 'pitch') {
     const targetPt =
       isCurved && cpX !== undefined && cpY !== undefined
         ? { x: cpX, y: cpY }
@@ -71,7 +71,7 @@ function computeBoundaryEndpoints(
     effSy = bStart.y;
   }
 
-  if (targetPlayer) {
+  if (targetPlayer && targetPlayer.area === 'pitch') {
     const sourcePt =
       isCurved && cpX !== undefined && cpY !== undefined
         ? { x: cpX, y: cpY }
@@ -198,8 +198,8 @@ export interface ResolveDynamicPointsParams {
   isWavy: boolean;
   isDotEnd: boolean;
   dotRadius: number;
-  sourcePlayer?: Player;
-  targetPlayer?: Player;
+  sourcePlayer?: DomainPlayer;
+  targetPlayer?: DomainPlayer;
   stageSize: { width: number; height: number };
 }
 

@@ -5,11 +5,11 @@ import type React from 'react';
 import { useRef } from 'react';
 import { Circle, Group } from 'react-konva';
 import { useSessionStore } from '@/features/tactical-unified/stores/tactical-store-provider';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 import { computeRingConePoints } from './player-vision-cone';
 
 export interface PlayerVisionConeHandlesProps {
-  cone: NonNullable<Player['visionCone']>;
+  cone: NonNullable<PitchPlayer['visionCone']>;
   pxRadius: number;
   stageSize: { width: number; height: number };
   isRing?: boolean;
@@ -18,7 +18,7 @@ export interface PlayerVisionConeHandlesProps {
   ry?: number;
   coneShapeRef?: React.MutableRefObject<Konva.Line | Konva.Arc | null>;
   onUpdateVisionCone: (
-    patch: Partial<NonNullable<Player['visionCone']>>,
+    patch: Partial<NonNullable<PitchPlayer['visionCone']>>,
   ) => void;
 }
 

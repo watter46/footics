@@ -227,6 +227,10 @@ describe('useMarkerDragHandlers', () => {
     const p1 = {
       ...createDefaultPlayer('home', 20, 30, '#034694'),
       id: 'p1',
+      area: 'pitch' as const,
+      x: toScreenNormCoord(20),
+      y: toScreenNormCoord(30),
+      trajectory: undefined,
     };
 
     const wrapper = ({ children }: { children: ReactNode }) => (

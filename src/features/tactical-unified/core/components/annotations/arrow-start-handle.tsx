@@ -1,23 +1,27 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Circle } from 'react-konva';
-import type { ArrowAnnotation } from '@/lib/types/tactical-unified';
+import {
+  type ScreenNormPoint,
+  toScreenNormPoint,
+} from '@/lib/types/tactical/branded';
+import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
 import type { ArrowHandlePreviewDelta } from './arrow-handles-group';
 import { pxToNormX, pxToNormY } from './math-utils';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
 export interface ArrowStartHandleProps {
-  arrow: ArrowAnnotation;
+  arrow: DomainArrowAnnotation;
   stageSize: { width: number; height: number };
   isSelected: boolean;
   isInteractive: boolean;
   isAttachedToPlayer: boolean;
   sPxX: number;
   sPxY: number;
-  p1: { x: number; y: number };
+  p1: ScreenNormPoint;
   onSelect: (e: KonvaClickEvent) => void;
-  updateArrow: (id: string, p: Partial<ArrowAnnotation>) => void;
+  updateArrow: (id: string, p: Partial<DomainArrowAnnotation>) => void;
   onPreviewMove?: (delta: ArrowHandlePreviewDelta | null) => void;
 }
 
@@ -85,7 +89,10 @@ export const ArrowStartHandle = React.memo(function ArrowStartHandle({
         onPreviewMove?.(null);
         updateArrow(arrow.id, {
           points: [
-            { x: pxToNormX(pos.x, width), y: pxToNormY(pos.y, height) },
+            toScreenNormPoint(
+              pxToNormX(pos.x, width),
+              pxToNormY(pos.y, height),
+            ),
             p1,
           ],
         });

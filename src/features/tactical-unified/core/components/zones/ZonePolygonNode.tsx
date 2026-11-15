@@ -6,17 +6,17 @@ import { Group, Line } from 'react-konva';
 import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
 import { useSessionStore } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ResolvedZonePrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
-import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
+import type { DomainZoneAnnotation } from '@/lib/types/tactical/domain-entities';
 import { useZonePolygon } from './use-zone-polygon';
 import { ZonePolygonHandles } from './ZonePolygonHandles';
 
 export interface ZoneNodeProps {
-  zone: ZoneAnnotation;
+  zone: DomainZoneAnnotation;
   stageSize: { width: number; height: number };
   isSelected: boolean;
   isInteractive?: boolean;
   onSelect: (e: KonvaEventObject<MouseEvent | TouchEvent>) => void;
-  updateZone: (zoneId: string, patch: Partial<ZoneAnnotation>) => void;
+  updateZone: (zoneId: string, patch: Partial<DomainZoneAnnotation>) => void;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
   resolvedZone: ResolvedZonePrimitive;
 }
@@ -33,6 +33,14 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
   } = props;
   const setIsDragging = useSessionStore((s) => s.setIsDragging);
   const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
+  const polygonZone =
+    zone.shapeType === 'polygon'
+      ? zone
+      : {
+          ...zone,
+          shapeType: 'polygon' as const,
+          points: [],
+        };
   const {
     isComplete,
     renderPts,
@@ -40,7 +48,10 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
     handleGroupDragStart,
     handleGroupDragEnd: rawHandleGroupDragEnd,
     setLineRef,
-  } = useZonePolygon(props);
+  } = useZonePolygon({
+    ...props,
+    zone: polygonZone,
+  });
 
   const effectivePoints = resolvedZone.flatPointsPx
     ? [...resolvedZone.flatPointsPx]
@@ -86,7 +97,7 @@ export const ZonePolygonNode = React.memo(function ZonePolygonNode(
       />
 
       <ZonePolygonHandles
-        zone={zone}
+        zone={polygonZone}
         stageSize={props.stageSize}
         isSelected={isSelected}
         isComplete={isComplete}

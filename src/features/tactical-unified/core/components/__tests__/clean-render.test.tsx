@@ -17,7 +17,11 @@ import type {
   ResolvedBillboardBallItem,
   ResolvedBillboardPlayerItem,
 } from '@/lib/tactical/compiler/scene-graph-dto';
-import type { ScreenNormCoord, StagePixel } from '@/lib/types/tactical/branded';
+import {
+  type ScreenNormCoord,
+  type StagePixel,
+  toScreenNormCoord,
+} from '@/lib/types/tactical/branded';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { createCanvasNodesRegistry } from '../../utils/canvas-registry';
 import { CanvasStageContainer } from '../CanvasStageContainer';
@@ -105,8 +109,13 @@ describe('Clean Render Propagation', () => {
 
   it('cleanRender=true 時に PlayerMarkerItem の draggable が false になり、選択状態・ハンドルが抑制されること', () => {
     const stageRef = createRef<Konva.Stage>();
+    const baseMarker = createDefaultPlayer('home', 50, 50, '#ff0000');
     const marker = {
-      ...createDefaultPlayer('home', 50, 50, '#ff0000'),
+      ...baseMarker,
+      area: 'pitch' as const,
+      x: toScreenNormCoord(baseMarker.x),
+      y: toScreenNormCoord(baseMarker.y),
+      trajectory: undefined,
       visionCone: {
         id: 'cone-1',
         visible: true,
@@ -146,13 +155,7 @@ describe('Clean Render Propagation', () => {
               opacity: 1,
               visible: true,
               selected: true,
-              player: {
-                ...marker,
-                area: 'pitch' as const,
-                x: marker.x as ScreenNormCoord,
-                y: marker.y as ScreenNormCoord,
-                trajectory: undefined,
-              },
+              player: marker,
               rippleRingsPx: [],
             }}
           />
@@ -172,7 +175,14 @@ describe('Clean Render Propagation', () => {
 
   it('PlayerMarkerItem: cleanRender が true から false に切り替わると draggable が true に戻り、resolvedPlayer.positionPx 変更に Group 座標が追従すること', () => {
     const stageRef = createRef<Konva.Stage>();
-    const marker = createDefaultPlayer('home', 50, 50, '#ff0000');
+    const baseMarker = createDefaultPlayer('home', 50, 50, '#ff0000');
+    const marker = {
+      ...baseMarker,
+      area: 'pitch' as const,
+      x: toScreenNormCoord(baseMarker.x),
+      y: toScreenNormCoord(baseMarker.y),
+      trajectory: undefined,
+    };
 
     const { rerender } = render(
       <Stage ref={stageRef} width={800} height={450}>
@@ -202,13 +212,7 @@ describe('Clean Render Propagation', () => {
               opacity: 1,
               visible: true,
               selected: true,
-              player: {
-                ...marker,
-                area: 'pitch' as const,
-                x: marker.x as ScreenNormCoord,
-                y: marker.y as ScreenNormCoord,
-                trajectory: undefined,
-              },
+              player: marker,
               rippleRingsPx: [],
             }}
           />
@@ -251,13 +255,7 @@ describe('Clean Render Propagation', () => {
               opacity: 1,
               visible: true,
               selected: true,
-              player: {
-                ...marker,
-                area: 'pitch' as const,
-                x: marker.x as ScreenNormCoord,
-                y: marker.y as ScreenNormCoord,
-                trajectory: undefined,
-              },
+              player: marker,
               rippleRingsPx: [],
             }}
           />

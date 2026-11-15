@@ -9,8 +9,8 @@ import type {
   DomainArrowAnnotation,
   DomainPlayer,
   DomainZoneAnnotation,
+  PitchPlayer,
 } from '@/lib/types/tactical/domain-entities';
-import type { Player } from '@/lib/types/tactical-unified';
 import { BallHud } from '../components/hud/ball-hud';
 import {
   ContextHud,
@@ -261,7 +261,7 @@ describe('Context HUD Positioning and Target Resolution', () => {
         },
         connectLines: [],
         badges: [],
-      } as unknown as DomainPlayer;
+      } as unknown as PitchPlayer;
 
       const mockRegistry = createMockRegistry({
         playerNodes: new Map([
@@ -421,7 +421,7 @@ describe('Context HUD Positioning and Target Resolution', () => {
         },
         connectLines: [],
         badges: [],
-      } as unknown as Player;
+      } as unknown as PitchPlayer;
 
       const result = PlayerMarkerLabel({
         player,
@@ -455,7 +455,7 @@ describe('Context HUD Positioning and Target Resolution', () => {
         },
         connectLines: [],
         badges: [],
-      } as unknown as Player;
+      } as unknown as PitchPlayer;
 
       const result = PlayerMarkerLabel({
         player,

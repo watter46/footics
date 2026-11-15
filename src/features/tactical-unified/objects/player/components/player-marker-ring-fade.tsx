@@ -3,10 +3,10 @@
 import type Konva from 'konva';
 import type React from 'react';
 import { Ellipse, Group, Shape } from 'react-konva';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 export interface PlayerMarkerRingFadeProps {
-  player: Player;
+  player: DomainPlayer;
   radius: number;
   numScale: number;
   isSelected: boolean;

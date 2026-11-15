@@ -2,7 +2,12 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type React from 'react';
 import { useCallback, useContext, useRef } from 'react';
 import { TacticalStoresContext } from '@/features/tactical-unified/stores/tactical-store-provider';
-import type { ArrowAnnotation, Player } from '@/lib/types/tactical-unified';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import type {
+  DomainArrowAnnotation,
+  DomainPlayer,
+  PitchPlayer,
+} from '@/lib/types/tactical/domain-entities';
 import type { CanvasCapabilities, SelectedObject } from '../types';
 import type { PitchRectBounds } from '../utils/canvas-coordinates';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
@@ -10,15 +15,17 @@ import { resolveBenchDrop } from './player-bench-drop';
 
 export interface UseMarkerDragHandlersParams {
   pitchRect: PitchRectBounds;
-  visibleMarkers: Player[];
-  arrows?: ArrowAnnotation[];
+  visibleMarkers: DomainPlayer[];
+  arrows?: DomainArrowAnnotation[];
   selectedIds: string[];
   selectObject: (
     target: string | SelectedObject | null,
     isShift?: boolean,
   ) => void;
-  updateMarker: (id: string, patch: Partial<Player>) => void;
-  updateMarkers: (updates: { id: string; patch: Partial<Player> }[]) => void;
+  updateMarker: (id: string, patch: Partial<PitchPlayer>) => void;
+  updateMarkers: (
+    updates: { id: string; patch: Partial<PitchPlayer> }[],
+  ) => void;
   setIsDragging: (isDragging: boolean) => void;
   setIsHudOpen: (isOpen: boolean) => void;
   capabilities?: Partial<CanvasCapabilities>;
@@ -164,7 +171,7 @@ export function useMarkerDragHandlers({
   );
 
   const handleDragEnd = useCallback(
-    (e: KonvaEventObject<DragEvent>, marker: Player) => {
+    (e: KonvaEventObject<DragEvent>, marker: DomainPlayer) => {
       tacticalStores?.sessionStore.getState().setActiveDragDelta(null);
       dragStartNormRef.current = null;
       setIsDragging(false);
@@ -201,13 +208,13 @@ export function useMarkerDragHandlers({
         const deltaNormX = (deltaX / pitchRect.width) * 100;
         const deltaNormY = (deltaY / pitchRect.height) * 100;
 
-        const updates: { id: string; patch: Partial<Player> }[] = [];
+        const updates: { id: string; patch: Partial<PitchPlayer> }[] = [];
         for (const [id, initial] of multi.markers.entries()) {
           updates.push({
             id,
             patch: {
-              x: Math.max(0, Math.min(100, initial.normX + deltaNormX)),
-              y: Math.max(0, Math.min(100, initial.normY + deltaNormY)),
+              x: clampToScreenNorm(initial.normX + deltaNormX, 0, 100),
+              y: clampToScreenNorm(initial.normY + deltaNormY, 0, 100),
             },
           });
         }
@@ -216,13 +223,15 @@ export function useMarkerDragHandlers({
       }
 
       // 16:9 スクリーン（0..100）にクランプ（白線外余白は配置可・境界線は無視）
-      const nx = Math.max(
+      const nx = clampToScreenNorm(
+        (e.target.x() / pitchRect.width) * 100,
         0,
-        Math.min(100, (e.target.x() / pitchRect.width) * 100),
+        100,
       );
-      const ny = Math.max(
+      const ny = clampToScreenNorm(
+        (e.target.y() / pitchRect.height) * 100,
         0,
-        Math.min(100, (e.target.y() / pitchRect.height) * 100),
+        100,
       );
       updateMarker(marker.id, { x: nx, y: ny });
     },

@@ -6,7 +6,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerMarkerItem } from '@/features/tactical-unified/core/components/PlayerMarkerItem';
 import { PlayerMarkerRingFade } from '@/features/tactical-unified/objects/player/components/player-marker-ring-fade';
 import type { ResolvedBillboardPlayerItem } from '@/lib/tactical/compiler/scene-graph-dto';
-import { toStagePixelPoint } from '@/lib/types/tactical/branded';
+import {
+  toScreenNormCoord,
+  toStagePixelPoint,
+} from '@/lib/types/tactical/branded';
 import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 
@@ -34,10 +37,15 @@ beforeEach(() => {
 describe('PlayerMarkerRingFade', () => {
   it('PlayerMarkerRingFade が正常に Konva Stage 内でレンダリングされる', () => {
     const stageRef = createRef<Konva.Stage>();
+    const base = createDefaultPlayer('home', 50, 50, '#38bdf8');
     const marker = {
-      ...createDefaultPlayer('home', 50, 50, '#38bdf8'),
+      ...base,
+      area: 'pitch' as const,
+      x: toScreenNormCoord(base.x),
+      y: toScreenNormCoord(base.y),
+      trajectory: undefined,
       style: {
-        ...createDefaultPlayer('home', 50, 50, '#38bdf8').style,
+        ...base.style,
         markerType: 'ring-fade' as const,
       },
     };
@@ -61,10 +69,15 @@ describe('PlayerMarkerRingFade', () => {
 
   it('基準サイズが従来の2倍相当 (rx=radius*2.3, ry=radius*1.1) でレンダリングされる', () => {
     const stageRef = createRef<Konva.Stage>();
+    const base = createDefaultPlayer('home', 50, 50, '#38bdf8');
     const marker = {
-      ...createDefaultPlayer('home', 50, 50, '#38bdf8'),
+      ...base,
+      area: 'pitch' as const,
+      x: toScreenNormCoord(base.x),
+      y: toScreenNormCoord(base.y),
+      trajectory: undefined,
       style: {
-        ...createDefaultPlayer('home', 50, 50, '#38bdf8').style,
+        ...base.style,
         markerType: 'ring-fade' as const,
       },
     };
@@ -94,11 +107,16 @@ describe('PlayerMarkerRingFade', () => {
 
   it('多層フォグ減衰（外側ほど薄くなる）と glowBlur / glowOpacity が反映される', () => {
     const stageRef = createRef<Konva.Stage>();
-    const marker = {
-      ...createDefaultPlayer('home', 50, 50, '#38bdf8'),
+    const base = createDefaultPlayer('home', 50, 50, '#38bdf8');
+    const marker: PitchPlayer = {
+      ...base,
+      area: 'pitch',
+      x: toScreenNormCoord(base.x),
+      y: toScreenNormCoord(base.y),
+      trajectory: undefined,
       style: {
-        ...createDefaultPlayer('home', 50, 50, '#38bdf8').style,
-        markerType: 'ring-fade' as const,
+        ...base.style,
+        markerType: 'ring-fade',
         glowBlur: 50,
         glowOpacity: 0.8,
       },
@@ -148,10 +166,15 @@ describe('PlayerMarkerRingFade', () => {
 
   it('PlayerMarkerItem に markerType="ring-fade" を渡したとき PlayerMarkerRingFade の要素が描画される', () => {
     const stageRef = createRef<Konva.Stage>();
+    const base = createDefaultPlayer('home', 50, 50, '#38bdf8');
     const marker = {
-      ...createDefaultPlayer('home', 50, 50, '#38bdf8'),
+      ...base,
+      area: 'pitch' as const,
+      x: toScreenNormCoord(base.x),
+      y: toScreenNormCoord(base.y),
+      trajectory: undefined,
       style: {
-        ...createDefaultPlayer('home', 50, 50, '#38bdf8').style,
+        ...base.style,
         markerType: 'ring-fade' as const,
       },
     };
@@ -165,7 +188,7 @@ describe('PlayerMarkerRingFade', () => {
       opacity: 1,
       visible: true,
       selected: true,
-      player: marker as PitchPlayer,
+      player: marker,
       rippleRingsPx: [],
     };
 

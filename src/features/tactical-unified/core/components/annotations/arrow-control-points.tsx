@@ -1,14 +1,18 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Circle } from 'react-konva';
-import type { ArrowAnnotation } from '@/lib/types/tactical-unified';
+import {
+  type ScreenNormPoint,
+  toScreenNormPoint,
+} from '@/lib/types/tactical/branded';
+import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
 import type { ArrowHandlePreviewDelta } from './arrow-handles-group';
 import { cpPxToNormX, cpPxToNormY } from './math-utils';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
 export interface ArrowControlPointsProps {
-  arrow: ArrowAnnotation;
+  arrow: DomainArrowAnnotation;
   stageSize: { width: number; height: number };
   isSelected: boolean;
   isInteractive: boolean;
@@ -19,10 +23,10 @@ export interface ArrowControlPointsProps {
   ePxY: number;
   midHandlePxX: number;
   midHandlePxY: number;
-  p0: { x: number; y: number };
-  p1: { x: number; y: number };
+  p0: ScreenNormPoint;
+  p1: ScreenNormPoint;
   onSelect: (e: KonvaClickEvent) => void;
-  updateArrow: (arrowId: string, patch: Partial<ArrowAnnotation>) => void;
+  updateArrow: (arrowId: string, patch: Partial<DomainArrowAnnotation>) => void;
   onPreviewMove?: (delta: ArrowHandlePreviewDelta | null) => void;
 }
 
@@ -107,7 +111,7 @@ export const ArrowControlPoints = React.memo(function ArrowControlPoints({
           updateArrow(arrow.id, {
             sourcePlayerId: arrow.sourcePlayerId,
             curveType: 'curved',
-            controlPoint: { x: newNormX, y: newNormY },
+            controlPoint: toScreenNormPoint(newNormX, newNormY),
             points: [p0, p1],
           });
         }

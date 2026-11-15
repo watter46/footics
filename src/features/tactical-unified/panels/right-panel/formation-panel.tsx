@@ -11,13 +11,13 @@ import {
   selectDomainActivePhaseAspectRatio,
   selectDomainActiveSlide,
 } from '@/features/tactical-unified/stores/domain-selectors';
-import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
 import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { FormationMode, FormationType } from '@/lib/data/formations';
 import { computeDomainSlideAfterFormation } from '@/lib/tactical/domain/formation-placement';
+import { isVerticalAspectRatio } from '@/lib/types/tactical/primitives';
 import { FormationPresetSelector } from './formation-preset-selector';
 import { FormationTeamToggle } from './formation-team-toggle';
 
@@ -36,7 +36,7 @@ export function FormationPanel() {
     activePhaseId,
   );
 
-  const isVertical = isVerticalPitch(aspectRatio);
+  const isVertical = isVerticalAspectRatio(aspectRatio);
 
   // Local states
   const [activeTeam, setActiveTeam] = useState<'home' | 'away' | 'both'>(

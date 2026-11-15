@@ -9,10 +9,10 @@ import {
   SPOTLIGHT_BEAM_BOTTOM_WIDTH,
   SPOTLIGHT_BEAM_PATH,
 } from '@/lib/tactical/marker-assets';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 
 export interface PlayerFocusSpotlightProps {
-  focus: NonNullable<Player['focus']>;
+  focus: NonNullable<PitchPlayer['focus']>;
   radius: number;
   isRing?: boolean;
   spotlightGroupRef?: React.Ref<Konva.Group>;

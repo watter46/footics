@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildMatchToDomainProject } from '@/lib/tactical/acl/match-project-translator';
 import { translateSquadToDomainPlayers } from '@/lib/tactical/acl/match-squad-translator';
+import { resetSlideKeepSquadPositions } from '@/lib/tactical/domain/slide-reset';
 import {
   computeBenchGridPositions,
   createDefaultInitialPlayers,
@@ -11,7 +12,6 @@ import {
   PlayerSchema,
 } from '@/lib/types/tactical-unified';
 import type { Match } from '@/types';
-import { resetSlideKeepSquadData } from '../slide-reset-helpers';
 
 describe('TASK-051 Phase 1: Step 5 Defaults and Bench Grid', () => {
   describe('PlayerSchema', () => {
@@ -257,7 +257,7 @@ describe('TASK-051 Phase 1: Step 5 Defaults and Bench Grid', () => {
       expect(awayGk?.x).toBe(93);
     });
 
-    it('resetSlideKeepSquadData applies full pitch coordinates without matchFormations', () => {
+    it('resetSlideKeepSquadPositions applies full pitch coordinates without matchFormations', () => {
       const slide = createDefaultSlide(
         0,
         's1',
@@ -272,7 +272,10 @@ describe('TASK-051 Phase 1: Step 5 Defaults and Bench Grid', () => {
         p.y = 0;
       });
 
-      const resetSlide = resetSlideKeepSquadData(slide, '16:9');
+      const resetSlide = resetSlideKeepSquadPositions(
+        slide as unknown as Parameters<typeof resetSlideKeepSquadPositions>[0],
+        '16:9',
+      );
       const homeGk = resetSlide.players.find(
         (p) => p.team === 'home' && p.position === 'GK',
       );

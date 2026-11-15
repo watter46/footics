@@ -1,25 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import type { Player } from '@/lib/types/tactical-unified';
+import { toScreenNormCoord } from '@/lib/types/tactical/branded';
+import type {
+  DomainPlayer,
+  DomainPlayerTrajectory,
+} from '@/lib/types/tactical/domain-entities';
 import { matchSlidePlayers } from '../export/tactical-video-exporter';
-import {
-  calculateBezierPoint,
-  getBezierControlPoint,
-  type PlayerTrajectory,
-} from '../trajectory';
+import { calculateBezierPoint, getBezierControlPoint } from '../trajectory';
 
 describe('trajectory utility', () => {
   const p0 = { x: 20, y: 80 };
   const p1 = { x: 20, y: 20 };
 
   it('calculates linear midpoint for straight trajectory', () => {
-    const straightTraj: PlayerTrajectory = { type: 'straight' };
+    const straightTraj: DomainPlayerTrajectory = { type: 'straight' };
     const pt = calculateBezierPoint(p0, p1, 0.5, straightTraj);
     expect(pt.x).toBeCloseTo(20);
     expect(pt.y).toBeCloseTo(50);
   });
 
   it('calculates curved control point and arc offset for arc_right', () => {
-    const arcRightTraj: PlayerTrajectory = {
+    const arcRightTraj: DomainPlayerTrajectory = {
       type: 'arc_right',
       curveOffset: 30,
     };
@@ -38,7 +38,7 @@ describe('trajectory utility', () => {
   });
 
   it('calculates curved control point and arc offset for arc_left', () => {
-    const arcLeftTraj: PlayerTrajectory = {
+    const arcLeftTraj: DomainPlayerTrajectory = {
       type: 'arc_left',
       curveOffset: 30,
     };
@@ -52,9 +52,12 @@ describe('trajectory utility', () => {
   });
 
   it('uses custom control point directly when trajectory type is custom', () => {
-    const customTraj: PlayerTrajectory = {
+    const customTraj: DomainPlayerTrajectory = {
       type: 'custom',
-      controlPoint: { x: 75, y: 45 },
+      controlPoint: {
+        x: toScreenNormCoord(75),
+        y: toScreenNormCoord(45),
+      },
     };
     const cp = getBezierControlPoint(p0, p1, customTraj);
     expect(cp.x).toBe(75);
@@ -68,7 +71,7 @@ describe('trajectory utility', () => {
   });
 
   it('calculates midpoint and reverses control point correctly', () => {
-    const cp = { x: 80, y: 30 };
+    const cp = { x: toScreenNormCoord(80), y: toScreenNormCoord(30) };
     const _mid = getBezierControlPoint(p0, p1, {
       type: 'custom',
       controlPoint: cp,
@@ -89,9 +92,12 @@ describe('trajectory utility', () => {
   it('returns destination coordinate immediately when distance between p0 and p1 is less than 0.1', () => {
     const start = { x: 30, y: 40 };
     const end = { x: 30.05, y: 40.05 }; // hypot is ~0.0707 < 0.1
-    const customTraj: PlayerTrajectory = {
+    const customTraj: DomainPlayerTrajectory = {
       type: 'custom',
-      controlPoint: { x: 80, y: 90 },
+      controlPoint: {
+        x: toScreenNormCoord(80),
+        y: toScreenNormCoord(90),
+      },
     };
 
     const cp = getBezierControlPoint(start, end, customTraj);
@@ -115,11 +121,11 @@ describe('trajectory utility', () => {
       numberSizeScale: 1,
       labelSizeScale: 1,
     };
-    const playersA: Player[] = [
+    const playersA: DomainPlayer[] = [
       {
         id: 'p1',
-        x: 10,
-        y: 20,
+        x: toScreenNormCoord(10),
+        y: toScreenNormCoord(20),
         team: 'home',
         area: 'pitch',
         style: defaultStyle,
@@ -127,11 +133,11 @@ describe('trajectory utility', () => {
         badges: [],
       },
     ];
-    const playersB: Player[] = [
+    const playersB: DomainPlayer[] = [
       {
         id: 'p1',
-        x: 30,
-        y: 40,
+        x: toScreenNormCoord(30),
+        y: toScreenNormCoord(40),
         team: 'home',
         area: 'pitch',
         style: defaultStyle,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Player } from '@/lib/types/tactical-unified';
+import { toScreenNormCoord } from '@/lib/types/tactical/branded';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 import {
   getMarkerBoundaryPoint,
   getPlayerMarkerRadius,
@@ -10,12 +11,12 @@ describe('marker-geometry', () => {
 
   const createPlayer = (
     markerType: 'circle' | 'ring' | 'ring-fade',
-  ): Player => ({
+  ): DomainPlayer => ({
     id: 'p1',
     team: 'home',
     area: 'pitch',
-    x: 50,
-    y: 50,
+    x: toScreenNormCoord(50),
+    y: toScreenNormCoord(50),
     connectLines: [],
     badges: [],
     style: {

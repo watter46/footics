@@ -4,11 +4,11 @@ import type Konva from 'konva';
 import { useEffect, useRef, useState } from 'react';
 import { Circle, Group, Line } from 'react-konva';
 import { getMarkerBoundaryPoint } from '@/lib/tactical/marker-geometry';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 export interface PlayerConnectingGuideProps {
   connectingPlayerId: string;
-  markers: Player[];
+  markers: DomainPlayer[];
   width: number;
   height: number;
   baseDim: number;
@@ -45,7 +45,7 @@ export function PlayerConnectingGuide({
     };
   }, []);
 
-  if (!source) return null;
+  if (!source || source.area !== 'pitch') return null;
 
   const sPos = {
     x: (source.x / 100) * width,

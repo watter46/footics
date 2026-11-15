@@ -1,6 +1,6 @@
 # TASK-202g: Core Konva Layers & Drag Handlers の Domain 型移行
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): migrate core Konva layers, marker drag handlers, and context-hud tests to Domain types`
 - **Execution Waves**:
   - Wave 1 (parallel): Phase 1, Phase 2, Phase 3

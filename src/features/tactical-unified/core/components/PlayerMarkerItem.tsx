@@ -13,10 +13,11 @@ import { PlayerMarkerRingFade } from '@/features/tactical-unified/objects/player
 import { PlayerVisionCone } from '@/features/tactical-unified/objects/player/components/player-vision-cone';
 import type { ResolvedBillboardPlayerItem } from '@/lib/tactical/compiler/scene-graph-dto';
 import { getLastName } from '@/lib/tactical/player-formatting';
-import type { AspectRatio, Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
 
 export interface PlayerMarkerItemProps {
-  marker: Player;
+  marker: DomainPlayer;
   width: number;
   height: number;
   baseDim: number;
@@ -29,7 +30,7 @@ export interface PlayerMarkerItemProps {
   aspectRatio?: AspectRatio;
   onDragStart: (e: KonvaEventObject<DragEvent>, markerId: string) => void;
   onDragMove: (e: KonvaEventObject<DragEvent>, markerId: string) => void;
-  onDragEnd: (e: KonvaEventObject<DragEvent>, marker: Player) => void;
+  onDragEnd: (e: KonvaEventObject<DragEvent>, marker: DomainPlayer) => void;
   onClick: (markerId: string, isShift: boolean) => void;
   onUpdateVisionCone: (patch: Record<string, unknown>) => void;
   resolvedPlayer: ResolvedBillboardPlayerItem;
@@ -67,6 +68,8 @@ export const PlayerMarkerItem = memo(function PlayerMarkerItem({
       (marker.style?.markerType === 'ring' || isRingFade));
 
   const photoImage = usePlayerPhotoImage(marker);
+
+  if (marker.area !== 'pitch') return null;
 
   const effectiveIsSelected = !cleanRender && isSelected;
 

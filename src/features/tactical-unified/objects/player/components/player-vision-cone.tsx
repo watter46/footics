@@ -3,18 +3,18 @@
 import type Konva from 'konva';
 import { useRef } from 'react';
 import { Arc, Group, Line } from 'react-konva';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { PitchPlayer } from '@/lib/types/tactical/domain-entities';
 import { normX } from '../types';
 import { PlayerVisionConeHandles } from './player-vision-cone-handles';
 
 export interface PlayerVisionConeProps {
-  cone: NonNullable<Player['visionCone']>;
+  cone: NonNullable<PitchPlayer['visionCone']>;
   radius: number;
   isRing?: boolean;
   stageSize: { width: number; height: number };
   isSelected?: boolean;
   onUpdateVisionCone?: (
-    patch: Partial<NonNullable<Player['visionCone']>>,
+    patch: Partial<NonNullable<PitchPlayer['visionCone']>>,
   ) => void;
   onSelectOption?: () => void;
 }

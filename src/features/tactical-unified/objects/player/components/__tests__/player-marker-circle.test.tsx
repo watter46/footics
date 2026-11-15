@@ -1,10 +1,13 @@
 import { render } from '@testing-library/react';
 import type Konva from 'konva';
-import { createRef } from 'react';
+import { type ComponentProps, createRef } from 'react';
 import { Layer, Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerMarkerCircle } from '@/features/tactical-unified/objects/player/components/player-marker-circle';
+import { toScreenNormCoord } from '@/lib/types/tactical/branded';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
+
+type DomainPlayer = ComponentProps<typeof PlayerMarkerCircle>['player'];
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -27,10 +30,15 @@ beforeEach(() => {
 describe('PlayerMarkerCircle', () => {
   it('insideContent === "photo" かつ loadedImage === null でも strokeWidth=0, stroke="transparent" になり、白枠が出ないこと', () => {
     const stageRef = createRef<Konva.Stage>();
+    const basePlayer = createDefaultPlayer('home', 50, 50, '#38bdf8');
     const player = {
-      ...createDefaultPlayer('home', 50, 50, '#38bdf8'),
+      ...basePlayer,
+      area: 'pitch' as const,
+      x: toScreenNormCoord(basePlayer.x),
+      y: toScreenNormCoord(basePlayer.y),
+      trajectory: undefined,
       style: {
-        ...createDefaultPlayer('home', 50, 50, '#38bdf8').style,
+        ...basePlayer.style,
         insideContent: 'photo' as const,
         transparentBackground: true,
       },
@@ -62,10 +70,15 @@ describe('PlayerMarkerCircle', () => {
 
   it('isSelected === true の場合は photo マーカーであっても青い選択枠 (strokeWidth=3, stroke="#60a5fa") が表示されること', () => {
     const stageRef = createRef<Konva.Stage>();
+    const basePlayer = createDefaultPlayer('home', 50, 50, '#38bdf8');
     const player = {
-      ...createDefaultPlayer('home', 50, 50, '#38bdf8'),
+      ...basePlayer,
+      area: 'pitch' as const,
+      x: toScreenNormCoord(basePlayer.x),
+      y: toScreenNormCoord(basePlayer.y),
+      trajectory: undefined,
       style: {
-        ...createDefaultPlayer('home', 50, 50, '#38bdf8').style,
+        ...basePlayer.style,
         insideContent: 'photo' as const,
       },
     };

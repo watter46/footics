@@ -19,10 +19,10 @@ import {
 } from '@/features/tactical-unified/stores/tactical-store-provider';
 import type { ResolvedSceneGraphDTO } from '@/lib/tactical/compiler/scene-graph-dto';
 import type {
-  ArrowAnnotation,
-  ZoneAnnotation,
-} from '@/lib/types/tactical/annotations';
-import type { PlayerTrajectory } from '@/lib/types/tactical/player';
+  DomainArrowAnnotation,
+  DomainPlayerTrajectory,
+  DomainZoneAnnotation,
+} from '@/lib/types/tactical/domain-entities';
 import {
   type PitchRectBounds,
   resolvePitchGroupTransform,
@@ -114,27 +114,27 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
   const isInteractive = activeTool === 'select';
   const connectLineNodesRef = useRef<Map<string, Konva.Line>>(new Map());
 
-  const updateZone = (id: string, patch: Partial<ZoneAnnotation>) =>
+  const updateZone = (id: string, patch: Partial<DomainZoneAnnotation>) =>
     dispatchSlide(activePhaseId, activeSlideId, {
       type: 'UPDATE_ZONE',
       id,
-      patch: patch as never,
+      patch,
     });
-  const updateArrow = (id: string, patch: Partial<ArrowAnnotation>) =>
+  const updateArrow = (id: string, patch: Partial<DomainArrowAnnotation>) =>
     dispatchSlide(activePhaseId, activeSlideId, {
       type: 'UPDATE_ARROW',
       id,
-      patch: patch as never,
+      patch,
     });
   const updatePlayerTrajectory = (
     slideId: string,
     playerId: string,
-    trajectory: PlayerTrajectory | undefined,
+    trajectory: DomainPlayerTrajectory | undefined,
   ) =>
     dispatchSlide(activePhaseId, slideId, {
       type: 'SET_PLAYER_TRAJECTORY',
       playerId,
-      trajectory: trajectory as never,
+      trajectory,
     });
 
   useEffect(() => {
@@ -183,12 +183,14 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
             return (
               <ZoneObject
                 key={zone.id}
-                zone={'points' in zone ? zone : { ...zone, points: [] }}
+                zone={
+                  ('points' in zone ? zone : { ...zone, points: [] }) as never
+                }
                 stageSize={{ width: pitchRect.width, height: pitchRect.height }}
                 isSelected={!cleanRender && selectedIds.includes(zone.id)}
                 isInteractive={!cleanRender && isInteractive}
                 onSelect={makeSelectHandler(zone.id, 'zone')}
-                updateZone={updateZone}
+                updateZone={updateZone as never}
                 nodesRegistryRef={nodesRegistryRef}
                 resolvedZone={resolvedZone}
               />
@@ -206,12 +208,12 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
             return (
               <ArrowObject
                 key={arrow.id}
-                arrow={{ ...arrow, arrowHead: true }}
+                arrow={arrow}
                 stageSize={{ width: pitchRect.width, height: pitchRect.height }}
                 isSelected={!cleanRender && selectedIds.includes(arrow.id)}
                 isInteractive={!cleanRender && isInteractive}
                 onSelect={makeSelectHandler(arrow.id, 'arrow')}
-                updateArrow={updateArrow}
+                updateArrow={updateArrow as never}
                 nodesRegistryRef={nodesRegistryRef}
                 resolvedArrow={resolvedArrow}
               />
@@ -278,7 +280,7 @@ export const PitchGroundLayer = memo(function PitchGroundLayer({
                   activeSlideId={activeSlideId}
                   nodesRegistryRef={nodesRegistryRef}
                   aspectRatio={aspectRatio}
-                  onUpdateTrajectory={updatePlayerTrajectory}
+                  onUpdateTrajectory={updatePlayerTrajectory as never}
                 />
               </Group>
             );

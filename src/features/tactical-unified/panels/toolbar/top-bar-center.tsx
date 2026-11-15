@@ -13,12 +13,14 @@ import {
   type SegmentOption,
 } from '@/components/ui/segmented-control';
 import { selectDomainActivePhaseAspectRatio } from '@/features/tactical-unified/stores/domain-selectors';
-import { isVerticalPitch } from '@/features/tactical-unified/stores/slide-flip-helpers';
 import {
   useDocumentStore,
   useSessionStore,
 } from '@/features/tactical-unified/stores/tactical-store-provider';
-import type { AspectRatio } from '@/lib/types/tactical/primitives';
+import {
+  type AspectRatio,
+  isVerticalAspectRatio,
+} from '@/lib/types/tactical/primitives';
 
 const ASPECT_RATIO_OPTIONS: SegmentOption<AspectRatio>[] = [
   { id: '16:9', label: '16:9' },
@@ -78,7 +80,7 @@ export function TopBarCenter() {
     });
   };
 
-  const isVertical = isVerticalPitch(aspectRatio);
+  const isVertical = isVerticalAspectRatio(aspectRatio);
 
   const visibilityOptions = useMemo<SegmentOption<Visibility>[]>(
     () => [

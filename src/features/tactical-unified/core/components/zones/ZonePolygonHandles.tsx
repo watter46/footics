@@ -4,7 +4,11 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React, { useCallback } from 'react';
 import { Circle } from 'react-konva';
-import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
+import { toScreenNormPoint } from '@/lib/types/tactical/branded';
+import type {
+  DomainZoneAnnotation,
+  PolygonZone,
+} from '@/lib/types/tactical/domain-entities';
 import { pxToNormX, pxToNormY } from './zone-geometry';
 
 export interface VertexPair {
@@ -15,12 +19,12 @@ export interface VertexPair {
 }
 
 export interface ZonePolygonHandlesProps {
-  zone: ZoneAnnotation;
+  zone: PolygonZone;
   stageSize: { width: number; height: number };
   isSelected: boolean;
   isComplete: boolean;
   vertexPairs: VertexPair[];
-  updateZone: (zoneId: string, patch: Partial<ZoneAnnotation>) => void;
+  updateZone: (zoneId: string, patch: Partial<DomainZoneAnnotation>) => void;
 }
 
 export const ZonePolygonHandles = React.memo(function ZonePolygonHandles({
@@ -90,7 +94,7 @@ export const ZonePolygonHandles = React.memo(function ZonePolygonHandles({
       const newNormY = pxToNormY(newPxY, height);
 
       const updatedPoints = [...pts];
-      updatedPoints[idx] = { x: newNormX, y: newNormY };
+      updatedPoints[idx] = toScreenNormPoint(newNormX, newNormY);
 
       updateZone(zone.id, { points: updatedPoints });
     },

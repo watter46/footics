@@ -1,6 +1,6 @@
 # TASK-202f: Player / Ball Objects & 幾何計算の Domain 型移行
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): migrate player/ball Konva objects and geometry helpers to DomainPlayer and DomainPlayerTrajectory`
 - **Execution Waves**:
   - Wave 1 (parallel): Phase 1, Phase 2, Phase 3, Phase 4

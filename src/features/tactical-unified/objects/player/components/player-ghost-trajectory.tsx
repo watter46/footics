@@ -6,15 +6,16 @@ import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils
 import { GhostTrajectoryArrow } from '@/features/tactical-unified/objects/arrow';
 import { getLastName } from '@/lib/tactical/player-formatting';
 import type {
-  AspectRatio,
-  Player,
-  PlayerTrajectory,
-} from '@/lib/types/tactical-unified';
+  DomainPlayer,
+  DomainPlayerTrajectory,
+  PitchPlayer,
+} from '@/lib/types/tactical/domain-entities';
+import type { AspectRatio } from '@/lib/types/tactical-unified';
 import { normX, normY } from '../types';
 
 export interface PlayerGhostTrajectoryProps {
-  player: Player;
-  prevPlayer: Player;
+  player: PitchPlayer;
+  prevPlayer: DomainPlayer;
   stageSize: { width: number; height: number };
   activeSlideId: string;
   nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
@@ -22,7 +23,7 @@ export interface PlayerGhostTrajectoryProps {
   onUpdateTrajectory: (
     slideId: string,
     playerId: string,
-    trajectory: PlayerTrajectory | undefined,
+    trajectory: DomainPlayerTrajectory | undefined,
   ) => void;
 }
 

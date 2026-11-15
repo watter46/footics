@@ -1,6 +1,6 @@
 # TASK-202e: Core Zones & Arrows コンポーネント群の Domain 型直和型化
 
-- **Status**: `TODO`
+- **Status**: `DONE`
 - **Commit**: `refactor(tactical): migrate core zone and arrow Konva components to DomainZoneAnnotation and DomainArrowAnnotation`
 - **Execution Waves**:
   - Wave 1 (parallel): Phase 1, Phase 2, Phase 3

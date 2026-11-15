@@ -1,5 +1,10 @@
 import type Konva from 'konva';
-import type { ZoneAnnotation } from '@/lib/types/tactical-unified';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import type {
+  DomainZoneAnnotation,
+  EllipseZone,
+  RectZone,
+} from '@/lib/types/tactical/domain-entities';
 
 export function normX(v: number, w: number): number {
   return (v / 100) * w;
@@ -26,30 +31,42 @@ export interface ZoneShapeMetrics {
 }
 
 export function computeZoneShapeMetrics(
-  zone: ZoneAnnotation,
+  zone: DomainZoneAnnotation,
   width: number,
   height: number,
 ): ZoneShapeMetrics {
-  const normPosX = zone.x ?? zone.points[0]?.x ?? 20;
-  const normPosY = zone.y ?? zone.points[0]?.y ?? 20;
-  let normW =
-    zone.width ??
-    (zone.points.length >= 2
-      ? Math.abs(zone.points[1].x - zone.points[0].x)
-      : 30);
-  let normH =
-    zone.height ??
-    (zone.points.length >= 4
-      ? Math.abs(zone.points[2].y - zone.points[0].y)
-      : 20);
+  if (zone.shapeType === 'polygon') {
+    const normPosX = zone.points[0]?.x ?? 20;
+    const normPosY = zone.points[0]?.y ?? 20;
+    let normW =
+      zone.points.length >= 2
+        ? Math.abs(zone.points[1].x - zone.points[0].x)
+        : 30;
+    let normH =
+      zone.points.length >= 4
+        ? Math.abs(zone.points[2].y - zone.points[0].y)
+        : 20;
 
+    if (normW <= 0) normW = 20;
+    if (normH <= 0) normH = 15;
+
+    const pxW = normX(normW, width);
+    const pxH = normY(normH, height);
+    const cx = normX(normPosX, width) + pxW / 2;
+    const cy = normY(normPosY, height) + pxH / 2;
+
+    return { pxW, pxH, cx, cy, rotation: 0 };
+  }
+
+  let normW = zone.width;
+  let normH = zone.height;
   if (normW <= 0) normW = 20;
   if (normH <= 0) normH = 15;
 
   const pxW = normX(normW, width);
   const pxH = normY(normH, height);
-  const cx = normX(normPosX, width) + pxW / 2;
-  const cy = normY(normPosY, height) + pxH / 2;
+  const cx = normX(zone.x, width) + pxW / 2;
+  const cy = normY(zone.y, height) + pxH / 2;
   const rotation = zone.rotation || 0;
 
   return { pxW, pxH, cx, cy, rotation };
@@ -61,7 +78,7 @@ export function computeTransformedZonePatch(
   pxH: number,
   width: number,
   height: number,
-): Partial<ZoneAnnotation> {
+): Partial<RectZone | EllipseZone> {
   if (width <= 0 || height <= 0) return {};
 
   const scaleX = node.scaleX();
@@ -81,8 +98,8 @@ export function computeTransformedZonePatch(
   const newNormH = (newPxH / height) * 100;
 
   return {
-    x: newNormX,
-    y: newNormY,
+    x: clampToScreenNorm(newNormX),
+    y: clampToScreenNorm(newNormY),
     width: newNormW,
     height: newNormH,
     rotation: Number.isFinite(rot) ? rot : 0,

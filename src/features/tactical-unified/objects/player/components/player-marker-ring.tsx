@@ -7,10 +7,10 @@ import {
   MARKER_PATHS,
   MARKER_VIEWBOX_SIZE,
 } from '@/lib/tactical/marker-assets';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 export interface PlayerMarkerRingProps {
-  player: Player;
+  player: DomainPlayer;
   radius: number;
   numScale: number;
   isSelected: boolean;

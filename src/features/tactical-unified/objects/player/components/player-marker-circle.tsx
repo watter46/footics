@@ -1,10 +1,10 @@
 'use client';
 
 import { Circle, Group, Image as KonvaImage, Text } from 'react-konva';
-import type { Player } from '@/lib/types/tactical-unified';
+import type { DomainPlayer } from '@/lib/types/tactical/domain-entities';
 
 export interface PlayerMarkerCircleProps {
-  player: Player;
+  player: DomainPlayer;
   radius: number;
   numScale: number;
   isSelected: boolean;

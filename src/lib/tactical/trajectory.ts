@@ -1,10 +1,6 @@
-export type TrajectoryType = 'straight' | 'arc_left' | 'arc_right' | 'custom';
+import type { DomainPlayerTrajectory } from '@/lib/types/tactical/domain-entities';
 
-export interface PlayerTrajectory {
-  type: TrajectoryType;
-  curveOffset?: number; // -50 〜 +50 (デフォルト: 0)
-  controlPoint?: { x: number; y: number }; // カスタム制御点 (0-100%)
-}
+export type TrajectoryType = 'straight' | 'arc_left' | 'arc_right' | 'custom';
 
 export interface Point2D {
   x: number;
@@ -17,7 +13,7 @@ export interface Point2D {
 export function getBezierControlPoint(
   p0: Point2D,
   p1: Point2D,
-  trajectory?: PlayerTrajectory,
+  trajectory?: DomainPlayerTrajectory,
 ): Point2D {
   if (Math.hypot(p1.x - p0.x, p1.y - p0.y) < 0.1) {
     return { x: p1.x, y: p1.y };
@@ -89,7 +85,7 @@ export function calculateBezierPoint(
   p0: Point2D,
   p1: Point2D,
   t: number,
-  trajectory?: PlayerTrajectory,
+  trajectory?: DomainPlayerTrajectory,
 ): Point2D {
   if (Math.hypot(p1.x - p0.x, p1.y - p0.y) < 0.1) {
     return { x: p1.x, y: p1.y };

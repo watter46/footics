@@ -3,16 +3,16 @@
 import type React from 'react';
 import { PlayerGhostTrajectory } from '@/features/tactical-unified/objects/player/components/player-ghost-trajectory';
 import type {
-  AspectRatio,
-  Player,
-  PlayerTrajectory,
-  Slide,
-} from '@/lib/types/tactical-unified';
+  DomainPlayer,
+  DomainPlayerTrajectory,
+  PitchPlayer,
+} from '@/lib/types/tactical/domain-entities';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
 import type { CanvasNodesRegistry } from '../utils/canvas-registry';
 
 export interface PlayerGhostTrajectoryListProps {
-  markers: Player[];
-  prevSlide?: { players: Player[] } | null;
+  markers: DomainPlayer[];
+  prevSlide?: { players: DomainPlayer[] } | null;
   width: number;
   height: number;
   activeSlideId: string;
@@ -23,7 +23,7 @@ export interface PlayerGhostTrajectoryListProps {
   updatePlayerTrajectory?: (
     slideId: string,
     playerId: string,
-    trajectory: PlayerTrajectory | undefined,
+    trajectory: DomainPlayerTrajectory | undefined,
   ) => void;
 }
 
@@ -44,7 +44,7 @@ export function PlayerGhostTrajectoryList({
       {markers.map((marker) => {
         if (marker.area === 'bench') return null;
         const prevPlayer = prevSlide.players.find(
-          (p) => p.id === marker.id && p.area === 'pitch',
+          (p): p is PitchPlayer => p.id === marker.id && p.area === 'pitch',
         );
         if (!prevPlayer) return null;
         const isMoved =
@@ -65,10 +65,16 @@ export function PlayerGhostTrajectoryList({
             }
             aspectRatio={aspectRatio}
             onUpdateTrajectory={
-              updatePlayerTrajectory ??
-              (() => {
-                /* noop */
-              })
+              updatePlayerTrajectory
+                ? (slideId, playerId, trajectory) =>
+                    updatePlayerTrajectory(
+                      slideId,
+                      playerId,
+                      trajectory as DomainPlayerTrajectory | undefined,
+                    )
+                : () => {
+                    /* noop */
+                  }
             }
           />
         );

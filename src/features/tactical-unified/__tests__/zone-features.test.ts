@@ -15,7 +15,10 @@ import type { DomainSlide } from '@/lib/types/tactical/domain-hierarchy';
 
 type DomainZoneAnnotation = DomainSlide['zones'][number];
 
-import { ZoneAnnotationSchema } from '@/lib/types/tactical-unified';
+import {
+  DomainZoneAnnotationSchema,
+  RectZoneSchema,
+} from '@/lib/types/tactical/domain-entities';
 
 describe('tactical-unified Zone Features', () => {
   let docStore: DocumentStore;
@@ -29,19 +32,29 @@ describe('tactical-unified Zone Features', () => {
     slideId = project.phases[0]?.slides[0]?.id ?? '';
   });
 
-  it('ZoneAnnotationSchema parses with strokeWidth default 3 and strokeOpacity default 1', () => {
-    const parsed = ZoneAnnotationSchema.parse({
+  it('DomainZoneAnnotationSchema parses with strokeWidth default 3 and strokeOpacity default 1', () => {
+    const parsed = DomainZoneAnnotationSchema.parse({
       id: 'z-test-default',
       annotationType: 'zone',
       zoneType: 'generic',
+      shapeType: 'rect',
+      x: 10,
+      y: 20,
+      width: 30,
+      height: 40,
     });
     expect(parsed.strokeWidth).toBe(3);
     expect(parsed.strokeOpacity).toBe(1);
 
-    const custom = ZoneAnnotationSchema.parse({
+    const custom = RectZoneSchema.parse({
       id: 'z-test-custom',
       annotationType: 'zone',
       zoneType: 'generic',
+      shapeType: 'rect',
+      x: 10,
+      y: 20,
+      width: 30,
+      height: 40,
       strokeOpacity: 0.6,
       strokeWidth: 5,
     });

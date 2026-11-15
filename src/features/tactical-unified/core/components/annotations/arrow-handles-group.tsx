@@ -1,6 +1,7 @@
 import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
-import type { ArrowAnnotation } from '@/lib/types/tactical-unified';
+import type { ScreenNormPoint } from '@/lib/types/tactical/branded';
+import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
 import { ArrowControlPoints } from './arrow-control-points';
 import { ArrowEndHandle } from './arrow-end-handle';
 import { ArrowStartHandle } from './arrow-start-handle';
@@ -12,7 +13,7 @@ export interface ArrowHandlePreviewDelta {
 }
 
 export interface ArrowHandleCommonProps {
-  arrow: ArrowAnnotation;
+  arrow: DomainArrowAnnotation;
   stageSize: { width: number; height: number };
   isSelected: boolean;
   isInteractive: boolean;
@@ -22,14 +23,14 @@ export interface ArrowHandleCommonProps {
   ePxX: number;
   ePxY: number;
   onSelect: (e: KonvaEventObject<MouseEvent | TouchEvent>) => void;
-  updateArrow: (id: string, p: Partial<ArrowAnnotation>) => void;
+  updateArrow: (id: string, p: Partial<DomainArrowAnnotation>) => void;
   onPreviewMove?: (delta: ArrowHandlePreviewDelta | null) => void;
 }
 
 export interface ArrowHandlesGroupProps {
   commonProps: ArrowHandleCommonProps;
-  p0: { x: number; y: number };
-  p1: { x: number; y: number };
+  p0: ScreenNormPoint;
+  p1: ScreenNormPoint;
   isWavy: boolean;
   midHandlePxX: number;
   midHandlePxY: number;

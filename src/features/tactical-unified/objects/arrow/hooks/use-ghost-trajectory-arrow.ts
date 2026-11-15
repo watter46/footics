@@ -1,6 +1,10 @@
 import type Konva from 'konva';
 import { useEffect, useRef } from 'react';
 import { getQuadraticBezierPoints } from '@/lib/tactical/trajectory';
+import {
+  toScreenNormCoord,
+  toScreenNormPoint,
+} from '@/lib/types/tactical/branded';
 import type { GhostTrajectoryArrowProps } from '../types';
 
 export interface UseGhostTrajectoryArrowParams {
@@ -128,10 +132,10 @@ export function useGhostTrajectoryArrow({
     } else {
       onUpdateTrajectory({
         type: 'custom',
-        controlPoint: {
-          x: Math.round(newNormX * 10) / 10,
-          y: Math.round(newNormY * 10) / 10,
-        },
+        controlPoint: toScreenNormPoint(
+          Math.round(newNormX * 10) / 10,
+          Math.round(newNormY * 10) / 10,
+        ),
       });
     }
   };

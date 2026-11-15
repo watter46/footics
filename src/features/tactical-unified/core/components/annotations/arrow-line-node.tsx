@@ -3,7 +3,8 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import React from 'react';
 import { Arrow } from 'react-konva';
 import type { ResolvedArrowPrimitive } from '@/lib/tactical/compiler/scene-graph-dto';
-import type { ArrowAnnotation } from '@/lib/types/tactical-unified';
+import { toScreenNormPoint } from '@/lib/types/tactical/branded';
+import type { DomainArrowAnnotation } from '@/lib/types/tactical/domain-entities';
 
 type KonvaClickEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
@@ -13,7 +14,7 @@ export interface ArrowBodyDragDelta {
 }
 
 export interface ArrowLineNodeProps {
-  arrow: ArrowAnnotation;
+  arrow: DomainArrowAnnotation;
   resolvedArrow: ResolvedArrowPrimitive;
   stageSize: { width: number; height: number };
   isSelected: boolean;
@@ -24,7 +25,7 @@ export interface ArrowLineNodeProps {
   p1: { x: number; y: number };
   arrowRef: React.RefObject<Konva.Arrow | null>;
   onSelect: (e: KonvaClickEvent) => void;
-  updateArrow: (arrowId: string, patch: Partial<ArrowAnnotation>) => void;
+  updateArrow: (arrowId: string, patch: Partial<DomainArrowAnnotation>) => void;
   onBodyDragMove?: (delta: ArrowBodyDragDelta | null) => void;
 }
 
@@ -112,22 +113,23 @@ export const ArrowLineNode = React.memo(function ArrowLineNode({
         const stage = node.getStage();
         if (stage) stage.container().style.cursor = 'default';
 
-        const patch: Partial<ArrowAnnotation> = {
+        const patch: Partial<DomainArrowAnnotation> = {
           points: [
-            { x: p0.x + dxNorm, y: p0.y + dyNorm },
-            { x: p1.x + dxNorm, y: p1.y + dyNorm },
+            toScreenNormPoint(p0.x + dxNorm, p0.y + dyNorm),
+            toScreenNormPoint(p1.x + dxNorm, p1.y + dyNorm),
           ],
+          ...(arrow.sourcePlayerId || arrow.targetPlayerId
+            ? { sourcePlayerId: undefined, targetPlayerId: undefined }
+            : {}),
+          ...(arrow.controlPoint
+            ? {
+                controlPoint: toScreenNormPoint(
+                  arrow.controlPoint.x + dxNorm,
+                  arrow.controlPoint.y + dyNorm,
+                ),
+              }
+            : {}),
         };
-        if (arrow.sourcePlayerId || arrow.targetPlayerId) {
-          patch.sourcePlayerId = undefined;
-          patch.targetPlayerId = undefined;
-        }
-        if (arrow.controlPoint) {
-          patch.controlPoint = {
-            x: arrow.controlPoint.x + dxNorm,
-            y: arrow.controlPoint.y + dyNorm,
-          };
-        }
         updateArrow(arrow.id, patch);
       }}
     />
