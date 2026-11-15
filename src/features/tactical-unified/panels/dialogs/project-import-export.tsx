@@ -3,11 +3,11 @@
 import { Archive, Download, FileArchive, Loader2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { useDocumentStore } from '@/features/tactical-unified/stores/tactical-store-provider';
 import {
   importMultipleTacticalProjects,
   type TacticalProjectSummary,
-} from '@/lib/db/tactical-projects-db';
+} from '@/lib/tactical/tactical-projects-service';
 import {
   exportProjectsZip,
   exportSingleProjectJson,
@@ -22,7 +22,7 @@ export function ProjectImportExport({
   projects,
   onImportCompleted,
 }: ProjectImportExportProps) {
-  const currentProjectId = useTacticalUnifiedStoreContext((s) => s.project.id);
+  const currentProjectId = useDocumentStore((s) => s.project.id);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

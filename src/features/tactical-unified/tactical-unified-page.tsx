@@ -18,12 +18,15 @@ import { handleTacticalDndEnd } from '@/features/tactical-unified/core/utils/dnd
 import { useKeyboardShortcuts } from '@/features/tactical-unified/hooks/use-keyboard-shortcuts';
 import { useTacticalAutoSave } from '@/features/tactical-unified/hooks/use-tactical-auto-save';
 import { useTacticalDropPaste } from '@/features/tactical-unified/hooks/use-tactical-drop-paste';
+import type { TacticalMatchInitialState } from '@/features/tactical-unified/hooks/use-tactical-match-init';
 import { useTacticalShortcuts } from '@/features/tactical-unified/hooks/use-tactical-shortcuts';
-import type { TacticalUnifiedState } from '@/features/tactical-unified/stores/tactical-unified-store';
+import type { CreateSessionStoreOptions } from '@/features/tactical-unified/stores/session-store';
 import {
-  TacticalUnifiedStoreProvider,
-  useTacticalUnifiedStoreContext,
-} from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+  TacticalStoreProvider,
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 import { TacticalPlayerPhotoProvider } from './objects/player/components/tactical-player-photo-provider';
 import { ProjectManagerModal } from './panels/dialogs/project-manager-modal';
 import { ExportModal } from './panels/export/export-modal';
@@ -42,16 +45,34 @@ const FullTacticalCanvas = dynamic(
 export interface TacticalUnifiedPageProps {
   initialMatchId?: string;
   initialMinute?: number;
-  initialState?: Partial<TacticalUnifiedState>;
+  initialState?: TacticalMatchInitialState;
+  initialSession?: CreateSessionStoreOptions;
 }
 
 export function TacticalUnifiedPage({
   initialMatchId,
   initialMinute,
   initialState,
+  initialSession,
 }: TacticalUnifiedPageProps = {}) {
+  const mergedInitialSession: CreateSessionStoreOptions | undefined =
+    initialState || initialSession
+      ? {
+          ...initialSession,
+          ...(initialState?.activePhaseId
+            ? { activePhaseId: initialState.activePhaseId }
+            : {}),
+          ...(initialState?.activeSlideId
+            ? { activeSlideId: initialState.activeSlideId }
+            : {}),
+        }
+      : undefined;
+
   return (
-    <TacticalUnifiedStoreProvider initialState={initialState}>
+    <TacticalStoreProvider
+      initialProject={initialState?.project}
+      initialSession={mergedInitialSession}
+    >
       <TacticalPlayerPhotoProvider>
         <TacticalUnifiedPageContent
           initialMatchId={initialMatchId}
@@ -59,14 +80,14 @@ export function TacticalUnifiedPage({
           initialState={initialState}
         />
       </TacticalPlayerPhotoProvider>
-    </TacticalUnifiedStoreProvider>
+    </TacticalStoreProvider>
   );
 }
 
 interface TacticalUnifiedPageContentProps {
   initialMatchId?: string;
   initialMinute?: number;
-  initialState?: Partial<TacticalUnifiedState>;
+  initialState?: TacticalMatchInitialState;
 }
 
 function TacticalUnifiedPageContent({
@@ -79,19 +100,15 @@ function TacticalUnifiedPageContent({
     skipRestore: Boolean(initialState?.project),
   });
 
-  const exportModalOpen = useTacticalUnifiedStoreContext(
-    (s) => s.panels.exportModalOpen,
-  );
-  const projectManagerModalOpen = useTacticalUnifiedStoreContext(
+  const exportModalOpen = useSessionStore((s) => s.panels.exportModalOpen);
+  const projectManagerModalOpen = useSessionStore(
     (s) => s.panels.projectManagerModalOpen,
   );
-  const closeProjectManagerModal = useTacticalUnifiedStoreContext(
+  const closeProjectManagerModal = useSessionStore(
     (s) => s.closeProjectManagerModal,
   );
-  const sidebarOpen = useTacticalUnifiedStoreContext(
-    (s) => s.panels.sidebarOpen,
-  );
-  const workspaceMode = useTacticalUnifiedStoreContext((s) => s.workspaceMode);
+  const sidebarOpen = useSessionStore((s) => s.panels.sidebarOpen);
+  const workspaceMode = useSessionStore((s) => s.workspaceMode);
   const isDirectorMode = workspaceMode === 'director';
 
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -109,34 +126,32 @@ function TacticalUnifiedPageContent({
 
   const canvasRef = useRef<CanvasCoreHandle | null>(null);
 
-  const movePlayerToPitch = useTacticalUnifiedStoreContext(
-    (s) => s.movePlayerToPitch,
-  );
-  const movePlayerToBench = useTacticalUnifiedStoreContext(
-    (s) => s.movePlayerToBench,
-  );
-  const phases = useTacticalUnifiedStoreContext((s) => s.project.phases);
-  const activePhaseId = useTacticalUnifiedStoreContext((s) => s.activePhaseId);
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
-  const pitchAppearance = useTacticalUnifiedStoreContext(
-    (s) => s.project.pitchAppearance,
-  );
-  const selectPhaseAndSlide = useTacticalUnifiedStoreContext(
-    (s) => s.selectPhaseAndSlide,
-  );
-  const addPhase = useTacticalUnifiedStoreContext((s) => s.addPhase);
-  const deletePhase = useTacticalUnifiedStoreContext((s) => s.deletePhase);
-  const renamePhase = useTacticalUnifiedStoreContext((s) => s.renamePhase);
-  const setActivePhase = useTacticalUnifiedStoreContext(
-    (s) => s.setActivePhase,
-  );
-  const addSlide = useTacticalUnifiedStoreContext((s) => s.addSlide);
+  const phases = useDocumentStore((s) => s.project.phases);
+  const pitchAppearance = useDocumentStore((s) => s.project.pitchAppearance);
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const setActivePhaseId = useSessionStore((s) => s.setActivePhaseId);
+  const setActiveSlideId = useSessionStore((s) => s.setActiveSlideId);
 
   const handleDndEnd = (event: DragEndEvent) => {
     handleTacticalDndEnd(event, {
       activeSlideId,
-      movePlayerToPitch,
-      movePlayerToBench,
+      movePlayerToPitch: (slideId, playerId, x, y) => {
+        dispatchSlide(activePhaseId, slideId, {
+          type: 'MOVE_PLAYER_TO_PITCH',
+          id: playerId,
+          x: clampToScreenNorm(x),
+          y: clampToScreenNorm(y),
+        });
+      },
+      movePlayerToBench: (slideId, playerId) => {
+        dispatchSlide(activePhaseId, slideId, {
+          type: 'MOVE_PLAYER_TO_BENCH',
+          id: playerId,
+        });
+      },
     });
   };
 
@@ -165,15 +180,48 @@ function TacticalUnifiedPageContent({
               activePhaseId={activePhaseId}
               activeSlideId={activeSlideId}
               pitchAppearance={pitchAppearance}
-              onSelectScene={selectPhaseAndSlide}
-              onAddPhase={() => addPhase()}
-              onDeletePhase={deletePhase}
-              onRenamePhase={renamePhase}
-              onAddSlideToPhase={(phaseId) => {
-                if (phaseId !== activePhaseId) {
-                  setActivePhase(phaseId);
+              onSelectScene={(phaseId, slideId) => {
+                setActivePhaseId(phaseId);
+                setActiveSlideId(slideId);
+              }}
+              onAddPhase={() => {
+                const newPhaseId = crypto.randomUUID();
+                const newSlideId = crypto.randomUUID();
+                dispatch({
+                  type: 'ADD_PHASE',
+                  name: `Phase ${phases.length + 1}`,
+                  newPhaseId,
+                  newSlideId,
+                });
+                setActivePhaseId(newPhaseId);
+                setActiveSlideId(newSlideId);
+              }}
+              onDeletePhase={(phaseId) => {
+                const remaining = phases.filter((p) => p.id !== phaseId);
+                dispatch({ type: 'DELETE_PHASE', phaseId });
+                if (phaseId === activePhaseId && remaining.length > 0) {
+                  const fallback = remaining[0];
+                  setActivePhaseId(fallback.id);
+                  setActiveSlideId(fallback.slides[0]?.id ?? '');
                 }
-                addSlide(undefined, 'full');
+              }}
+              onRenamePhase={(phaseId, name) => {
+                dispatch({
+                  type: 'UPDATE_PHASE',
+                  phaseId,
+                  patch: { name },
+                });
+              }}
+              onAddSlideToPhase={(phaseId) => {
+                const newSlideId = crypto.randomUUID();
+                dispatch({
+                  type: 'ADD_SLIDE',
+                  phaseId,
+                  mode: 'full',
+                  newSlideId,
+                });
+                setActivePhaseId(phaseId);
+                setActiveSlideId(newSlideId);
               }}
             />
           )}

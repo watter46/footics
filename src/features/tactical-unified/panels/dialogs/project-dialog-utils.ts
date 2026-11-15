@@ -1,5 +1,4 @@
 import { toast } from 'sonner';
-import { defaultTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
 import {
   createNewTacticalProject,
   deleteTacticalProject,
@@ -11,9 +10,9 @@ import {
   listTacticalProjects,
   renameTacticalProject,
   type TacticalProjectSummary,
-} from '@/lib/db/tactical-projects-db';
+} from '@/lib/tactical/tactical-projects-service';
 import { saveActiveProjectToDb } from '@/lib/tactical/tactical-storage';
-import type { TacticalProject } from '@/lib/types/tactical-unified';
+import type { TacticalProject } from '@/lib/types/tactical/project';
 
 /** Format ISO date string to localized Japanese format. */
 export function formatProjectDate(isoString: string): string {
@@ -110,7 +109,7 @@ export async function renameProjectHelper(
   try {
     await renameTacticalProject(editingId, trimmed);
     if (currentProjectId === editingId) {
-      (setTitle ?? defaultTacticalUnifiedStore.getState().setTitle)(trimmed);
+      setTitle?.(trimmed);
     }
     onDone();
     await onRefresh();

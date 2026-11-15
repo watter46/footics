@@ -3,8 +3,8 @@
 import { FolderKanban, Loader2 } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import type { TacticalProjectSummary } from '@/lib/db/tactical-projects-db';
+import { useDocumentStore } from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { TacticalProjectSummary } from '@/lib/tactical/tactical-projects-service';
 import { ProjectCard } from './project-card';
 import { ProjectListToolbar } from './project-list-toolbar';
 import { ProjectRow } from './project-row';
@@ -25,7 +25,7 @@ export function ProjectListView({
   onClose,
   onCreateClick,
 }: ProjectListViewProps) {
-  const currentProjectId = useTacticalUnifiedStoreContext((s) => s.project.id);
+  const currentProjectId = useDocumentStore((s) => s.project.id);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');

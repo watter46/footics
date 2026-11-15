@@ -3,11 +3,15 @@
 import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import {
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
 import {
   getTacticalProjectById,
   type TacticalProjectSummary,
-} from '@/lib/db/tactical-projects-db';
+} from '@/lib/tactical/tactical-projects-service';
 import { saveActiveProjectToDb } from '@/lib/tactical/tactical-storage';
 import {
   bulkDeleteProjectsHelper,
@@ -27,12 +31,26 @@ export function useProjectActions({
   onRefresh,
   onClose,
 }: UseProjectActionsOptions) {
-  const currentProject = useTacticalUnifiedStoreContext((s) => s.project);
-  const isDirty = useTacticalUnifiedStoreContext((s) => s.isDirty);
-  const loadProject = useTacticalUnifiedStoreContext((s) => s.loadProject);
-  const setSaveStatus = useTacticalUnifiedStoreContext((s) => s.setSaveStatus);
-  const setTitle = useTacticalUnifiedStoreContext((s) => s.setTitle);
+  const currentProject = useDocumentStore((s) => s.project);
+  const isDirty = useDocumentStore((s) => s.isDirty);
+  const loadProject = useDocumentStore((s) => s.loadProject);
+  const dispatch = useDocumentStore((s) => s.dispatch);
+  const setActivePhaseId = useSessionStore((s) => s.setActivePhaseId);
+  const setActiveSlideId = useSessionStore((s) => s.setActiveSlideId);
+  const setSaveStatus = useSessionStore((s) => s.setSaveStatus);
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+
+  const applyLoadedProject = (rawProject: unknown) => {
+    const bundle = normalizeTacticalProject(rawProject);
+    loadProject(bundle.project);
+    setActivePhaseId(bundle.activePhaseId);
+    setActiveSlideId(bundle.activeSlideId);
+    return bundle.project;
+  };
+
+  const setTitle = (title: string) => {
+    dispatch({ type: 'UPDATE_PROJECT_META', patch: { title } });
+  };
 
   const switchActiveProject = async (id: string) => {
     if (id === currentProject.id) return onClose();
@@ -40,10 +58,12 @@ export function useProjectActions({
       if (isDirty) await saveActiveProjectToDb(currentProject);
       const full = await getTacticalProjectById(id);
       if (!full) return toast.error('プロジェクトが見つかりませんでした');
-      await saveActiveProjectToDb(full);
-      loadProject(full);
+      const domainProj = applyLoadedProject(full);
+      await saveActiveProjectToDb(domainProj);
       setSaveStatus('saved');
-      toast.success(`「${full.title || 'Untitled Project'}」を読み込みました`);
+      toast.success(
+        `「${domainProj.title || 'Untitled Project'}」を読み込みました`,
+      );
       onClose();
     } catch (err) {
       console.error('Failed to switch project:', err);
@@ -57,7 +77,7 @@ export function useProjectActions({
       await bulkDeleteProjectsHelper(
         ids,
         currentProject.id,
-        loadProject,
+        applyLoadedProject,
         onClear,
         onRefresh,
       );
@@ -104,7 +124,7 @@ export function useProjectActions({
       deleteProjectHelper(
         p,
         currentProject.id,
-        loadProject,
+        applyLoadedProject,
         onDeselect,
         onRefresh,
       );

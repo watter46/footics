@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { IconButton } from '@/components/ui/icon-button';
-import type { TacticalProjectSummary } from '@/lib/db/tactical-projects-db';
+import type { TacticalProjectSummary } from '@/lib/tactical/tactical-projects-service';
 import { cn } from '@/lib/utils';
 import { formatProjectDate } from './project-dialog-utils';
 

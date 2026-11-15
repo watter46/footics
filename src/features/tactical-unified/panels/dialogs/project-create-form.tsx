@@ -7,13 +7,15 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
-import { saveTacticalProject } from '@/lib/db/tactical-projects-db';
 import {
-  type AspectRatio,
-  createDefaultProject,
-  getDefaultBoundaryBoxForAspect,
-} from '@/lib/types/tactical-unified';
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { normalizeTacticalProject } from '@/lib/tactical/acl/legacy-project-translator';
+import { saveTacticalProject } from '@/lib/tactical/tactical-projects-service';
+import { createDefaultProject } from '@/lib/types/tactical/factory';
+import type { AspectRatio } from '@/lib/types/tactical/primitives';
+import { getDefaultBoundaryBoxForAspect } from '@/lib/types/tactical/slide';
 import { cn } from '@/lib/utils';
 
 export interface ProjectCreateFormProps {
@@ -45,8 +47,10 @@ export function ProjectCreateForm({
   onCancel,
   onCreated,
 }: ProjectCreateFormProps) {
-  const loadProject = useTacticalUnifiedStoreContext((s) => s.loadProject);
-  const setSaveStatus = useTacticalUnifiedStoreContext((s) => s.setSaveStatus);
+  const loadProject = useDocumentStore((s) => s.loadProject);
+  const setActivePhaseId = useSessionStore((s) => s.setActivePhaseId);
+  const setActiveSlideId = useSessionStore((s) => s.setActiveSlideId);
+  const setSaveStatus = useSessionStore((s) => s.setSaveStatus);
 
   const [title, setTitle] = useState('新規戦術プロジェクト');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('4:5');
@@ -76,9 +80,14 @@ export function ProjectCreateForm({
         firstSlide.backgroundType = backgroundType;
       }
       await saveTacticalProject(proj, true);
-      loadProject(proj);
+      const bundle = normalizeTacticalProject(proj);
+      loadProject(bundle.project);
+      setActivePhaseId(bundle.activePhaseId);
+      setActiveSlideId(bundle.activeSlideId);
       setSaveStatus('saved');
-      toast.success(`「${proj.title}」を作成しました`);
+      toast.success(
+        `「${bundle.project.title ?? '新規戦術プロジェクト'}」を作成しました`,
+      );
       onCreated();
     } catch (err) {
       console.error('Failed to create project:', err);

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDefaultProject } from '@/lib/types/tactical-unified';
+import { createDefaultTacticalProject } from '../stores/tactical-store-provider';
 import { TacticalUnifiedPage } from '../tactical-unified-page';
 
 vi.mock('next/navigation', () => ({
@@ -74,7 +74,7 @@ describe('TacticalUnifiedPage Integration', () => {
     render(<TacticalUnifiedPage />);
 
     expect(screen.getByRole('application')).toBeDefined();
-    expect(screen.getByRole('button', { name: /Copy PNG/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeDefined();
 
     const canvasElement = await screen.findByTestId('full-tactical-canvas');
     expect(canvasElement).toBeDefined();
@@ -83,7 +83,7 @@ describe('TacticalUnifiedPage Integration', () => {
   it('initialState で projectManagerModalOpen: true を確定注入した場合、モーダルが表示されること', async () => {
     render(
       <TacticalUnifiedPage
-        initialState={{
+        initialSession={{
           panels: {
             sidebarOpen: true,
             inspectorOpen: true,
@@ -105,7 +105,7 @@ describe('TacticalUnifiedPage Integration', () => {
   it('\\ キー押下により集中モードが切り替わり、左右パネルの表示がトグルされること', async () => {
     render(
       <TacticalUnifiedPage
-        initialState={{
+        initialSession={{
           panels: {
             sidebarOpen: true,
             inspectorOpen: true,
@@ -137,13 +137,18 @@ describe('TacticalUnifiedPage Integration', () => {
   });
 
   it('initialState で渡したプロジェクト情報（タイトル等）が初期描画から即座に反映されること', async () => {
-    const customProject = createDefaultProject('custom-project-1');
-    customProject.title = 'Champions League Final Tactics';
+    const customProject = {
+      ...createDefaultTacticalProject(),
+      id: 'custom-project-1',
+      title: 'Champions League Final Tactics',
+    };
 
     render(
       <TacticalUnifiedPage
         initialState={{
           project: customProject,
+          activePhaseId: customProject.phases[0].id,
+          activeSlideId: customProject.phases[0].slides[0].id,
         }}
       />,
     );
@@ -154,7 +159,7 @@ describe('TacticalUnifiedPage Integration', () => {
   it('TopBar の Toggle 3D Split Preview ボタン押下で 3D プレビューパネルが展開され、右パネルが自動折りたたみされること', async () => {
     render(
       <TacticalUnifiedPage
-        initialState={{
+        initialSession={{
           panels: {
             sidebarOpen: true,
             inspectorOpen: false,
@@ -169,21 +174,20 @@ describe('TacticalUnifiedPage Integration', () => {
     );
 
     // 初期状態: 3Dプレビューパネルは存在しない
-    expect(screen.queryByText(/3D Camera Preview/)).toBeNull();
+    expect(screen.queryByTestId('preview-container')).toBeNull();
 
     // TopBar の Toggle Director Mode ボタンを取得してクリック
     const splitToggleBtn = screen.getByRole('button', {
-      name: /Toggle Director Mode|Toggle 3D Split Preview/i,
+      name: 'Toggle Layout Mode',
     });
     expect(splitToggleBtn).toBeDefined();
     fireEvent.click(splitToggleBtn);
 
     // 3Dプレビューパネルが表示されること
-    expect(await screen.findByText(/3D Camera Preview/)).toBeDefined();
-    expect(screen.getByLabelText('Reset 3D Camera')).toBeDefined();
+    expect(await screen.findByTestId('preview-container')).toBeDefined();
 
     // 再度クリックで閉じること
     fireEvent.click(splitToggleBtn);
-    expect(screen.queryByText(/3D Camera Preview/)).toBeNull();
+    expect(screen.queryByTestId('preview-container')).toBeNull();
   });
 });

@@ -72,7 +72,7 @@ describe('tactical-unified-page modes (Board <-> Director)', () => {
   it('初期状態（board モード）で作図キャンバスと左右パネルが表示され、演出ビューは非表示であること', async () => {
     render(
       <TacticalUnifiedPage
-        initialState={{
+        initialSession={{
           workspaceMode: 'board',
           panels: {
             sidebarOpen: true,
@@ -91,7 +91,7 @@ describe('tactical-unified-page modes (Board <-> Director)', () => {
     expect(await screen.findByTestId('full-tactical-canvas')).toBeDefined();
 
     // 演出ビューは非表示
-    expect(screen.queryByText(/Layout Mode/)).toBeNull();
+    expect(screen.queryByTestId('preview-container')).toBeNull();
 
     // 左右パネルが表示されている
     expect(screen.getByLabelText('Tactical Phases')).toBeDefined();
@@ -106,7 +106,7 @@ describe('tactical-unified-page modes (Board <-> Director)', () => {
   it('TopBarCenter の「Toggle Layout Mode」をクリックすると Director モードに切り替わり、演出ビューと右パネルが表示され左パネルが非表示になること', async () => {
     render(
       <TacticalUnifiedPage
-        initialState={{
+        initialSession={{
           workspaceMode: 'board',
           panels: {
             sidebarOpen: true,
@@ -128,7 +128,7 @@ describe('tactical-unified-page modes (Board <-> Director)', () => {
     fireEvent.click(layoutModeBtn);
 
     // 演出ビューが表示される
-    expect(await screen.findByText(/Layout Mode/)).toBeDefined();
+    expect(await screen.findByTestId('preview-container')).toBeDefined();
 
     // 作図キャンバスは非表示になる
     expect(screen.queryByTestId('full-tactical-canvas')).toBeNull();
@@ -138,10 +138,10 @@ describe('tactical-unified-page modes (Board <-> Director)', () => {
     expect(screen.getByText('Camera')).toBeDefined();
   });
 
-  it('Director モード時に閉じるボタン（X）をクリックすると board モードに復帰し、左右パネルの状態が復元されること', async () => {
+  it('Director モード時に「Toggle Layout Mode」を再クリックすると board モードに復帰し、左右パネルの状態が復元されること', async () => {
     render(
       <TacticalUnifiedPage
-        initialState={{
+        initialSession={{
           workspaceMode: 'board',
           panels: {
             sidebarOpen: true,
@@ -157,18 +157,19 @@ describe('tactical-unified-page modes (Board <-> Director)', () => {
     );
 
     // 「Toggle Layout Mode」をクリックして Director モードへ移行
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle Layout Mode' }));
-    expect(await screen.findByText(/Layout Mode/)).toBeDefined();
-
-    // 演出ビューの閉じるボタンをクリック
-    const closeBtn = screen.getByRole('button', {
-      name: /Close.*Layout|Close.*Preview/i,
+    const toggleBtn = screen.getByRole('button', {
+      name: 'Toggle Layout Mode',
     });
-    fireEvent.click(closeBtn);
+    fireEvent.click(toggleBtn);
+    expect(await screen.findByTestId('preview-container')).toBeDefined();
+    expect(screen.queryByTestId('full-tactical-canvas')).toBeNull();
+
+    // 「Toggle Layout Mode」を再クリックして board モードへ復帰
+    fireEvent.click(toggleBtn);
 
     // board モードに復帰し、キャンバスが再表示される
     expect(await screen.findByTestId('full-tactical-canvas')).toBeDefined();
-    expect(screen.queryByText(/Layout Mode/)).toBeNull();
+    expect(screen.queryByTestId('preview-container')).toBeNull();
 
     // 左右パネルの状態が復元される
     expect(screen.getByLabelText('Tactical Phases')).toBeDefined();
@@ -178,7 +179,7 @@ describe('tactical-unified-page modes (Board <-> Director)', () => {
   it('TopBarCenter の Layout トグルボタンを連続クリックしてモード切り替えができること', async () => {
     render(
       <TacticalUnifiedPage
-        initialState={{
+        initialSession={{
           workspaceMode: 'board',
           panels: {
             sidebarOpen: false,
@@ -201,7 +202,7 @@ describe('tactical-unified-page modes (Board <-> Director)', () => {
 
     // クリックして Director モードへ
     fireEvent.click(toggleBtn);
-    expect(await screen.findByText(/Layout Mode/)).toBeDefined();
+    expect(await screen.findByTestId('preview-container')).toBeDefined();
 
     // 再度クリックして board モードへ
     fireEvent.click(toggleBtn);
