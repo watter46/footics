@@ -3,7 +3,12 @@ import type Konva from 'konva';
 import { createRef } from 'react';
 import { Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  createDefaultTacticalProject,
+  TacticalStoreProvider,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
 import { useTacticalUnifiedStore } from '@/features/tactical-unified/stores/tactical-unified-store';
+import { compileSceneGraph } from '@/lib/tactical/compiler/compile-scene-graph';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { useCanvasSelectionBox } from '../../hooks/use-canvas-selection-box';
 import {
@@ -472,18 +477,45 @@ describe('BillboardObjectLayer', () => {
   });
 
   it('capabilities.hasBall に基づいてボールを描画・非表示制御すること', () => {
+    const project = createDefaultTacticalProject();
+    const slide = project.phases[0].slides[0];
+    const sceneGraph = compileSceneGraph(
+      {
+        slideIndex: 0,
+        nextSlideIndex: 0,
+        progress: 0,
+        isPaused: true,
+        timeInSlideMs: 0,
+        slide,
+        arrowProgressMap: {},
+        zoneOpacityMap: {},
+        playerOpacityMap: {},
+      },
+      null,
+      {
+        width: defaultStageSize.width,
+        height: defaultStageSize.height,
+      },
+    );
+
     // 1. mode: 'screenshot-edit' のときは capabilities.hasBall が false となりボールを描画しないこと
     const registryRef1 = { current: {} as any };
     const { unmount: unmount1 } = render(
-      <CanvasStoreProvider config={{ mode: 'screenshot-edit' }}>
-        <Stage width={defaultStageSize.width} height={defaultStageSize.height}>
-          <BillboardObjectLayer
-            stageSize={defaultStageSize}
-            pitchRect={defaultPitchRect}
-            nodesRegistryRef={registryRef1}
-          />
-        </Stage>
-      </CanvasStoreProvider>,
+      <TacticalStoreProvider initialProject={project}>
+        <CanvasStoreProvider config={{ mode: 'screenshot-edit' }}>
+          <Stage
+            width={defaultStageSize.width}
+            height={defaultStageSize.height}
+          >
+            <BillboardObjectLayer
+              stageSize={defaultStageSize}
+              pitchRect={defaultPitchRect}
+              nodesRegistryRef={registryRef1}
+              sceneGraph={sceneGraph}
+            />
+          </Stage>
+        </CanvasStoreProvider>
+      </TacticalStoreProvider>,
     );
     expect(registryRef1.current.ballNode).toBeUndefined();
     unmount1();
@@ -491,20 +523,26 @@ describe('BillboardObjectLayer', () => {
     // 2. capabilities.hasBall = false を明示指定したときはボールを描画しないこと
     const registryRef2 = { current: {} as any };
     const { unmount: unmount2 } = render(
-      <CanvasStoreProvider
-        config={{
-          mode: 'tactical-board',
-          capabilities: { hasBall: false },
-        }}
-      >
-        <Stage width={defaultStageSize.width} height={defaultStageSize.height}>
-          <BillboardObjectLayer
-            stageSize={defaultStageSize}
-            pitchRect={defaultPitchRect}
-            nodesRegistryRef={registryRef2}
-          />
-        </Stage>
-      </CanvasStoreProvider>,
+      <TacticalStoreProvider initialProject={project}>
+        <CanvasStoreProvider
+          config={{
+            mode: 'tactical-board',
+            capabilities: { hasBall: false },
+          }}
+        >
+          <Stage
+            width={defaultStageSize.width}
+            height={defaultStageSize.height}
+          >
+            <BillboardObjectLayer
+              stageSize={defaultStageSize}
+              pitchRect={defaultPitchRect}
+              nodesRegistryRef={registryRef2}
+              sceneGraph={sceneGraph}
+            />
+          </Stage>
+        </CanvasStoreProvider>
+      </TacticalStoreProvider>,
     );
     expect(registryRef2.current.ballNode).toBeUndefined();
     unmount2();
@@ -512,15 +550,21 @@ describe('BillboardObjectLayer', () => {
     // 3. mode: 'tactical-board' (capabilities.hasBall デフォルト true) ではボールが描画されること
     const registryRef3 = { current: {} as any };
     render(
-      <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
-        <Stage width={defaultStageSize.width} height={defaultStageSize.height}>
-          <BillboardObjectLayer
-            stageSize={defaultStageSize}
-            pitchRect={defaultPitchRect}
-            nodesRegistryRef={registryRef3}
-          />
-        </Stage>
-      </CanvasStoreProvider>,
+      <TacticalStoreProvider initialProject={project}>
+        <CanvasStoreProvider config={{ mode: 'tactical-board' }}>
+          <Stage
+            width={defaultStageSize.width}
+            height={defaultStageSize.height}
+          >
+            <BillboardObjectLayer
+              stageSize={defaultStageSize}
+              pitchRect={defaultPitchRect}
+              nodesRegistryRef={registryRef3}
+              sceneGraph={sceneGraph}
+            />
+          </Stage>
+        </CanvasStoreProvider>
+      </TacticalStoreProvider>,
     );
     expect(registryRef3.current.ballNode).toBeDefined();
   });

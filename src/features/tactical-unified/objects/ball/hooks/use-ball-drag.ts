@@ -2,65 +2,69 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import type React from 'react';
 import { useCallback, useRef, useState } from 'react';
-import type { CanvasNodesRegistry } from '@/features/tactical-unified/core/utils/canvas-registry';
-import { selectPreviousSlide } from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+import { pxToNorm } from '@/features/tactical-unified/core';
+import { selectDomainActiveSlide } from '@/features/tactical-unified/stores/domain-selectors';
 import {
-  computeFallbackNormPos,
-  hideGhostGroup,
-  setupBallGhostOnDragStart,
-  updateBallGhostLine,
-} from './ball-drag-helper';
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
 
 interface UseBallDragProps {
   stageSize: { width: number; height: number };
-  ghostGroupRef: React.RefObject<Konva.Group | null>;
-  ghostLineRef: React.RefObject<Konva.Line | null>;
-  nodesRegistryRef?: React.MutableRefObject<CanvasNodesRegistry>;
 }
 
-export function useBallDrag({
-  stageSize,
-  ghostGroupRef,
-  ghostLineRef,
-}: UseBallDragProps) {
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
-  const prevSlide = useTacticalUnifiedStoreContext(selectPreviousSlide);
-  const setBallPosition = useTacticalUnifiedStoreContext(
-    (s) => s.setBallPosition,
+export function useBallDrag({ stageSize }: UseBallDragProps) {
+  const project = useDocumentStore((s) => s.project);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const setActiveDragDelta = useSessionStore((s) => s.setActiveDragDelta);
+  const setIsHudOpen = useSessionStore((s) => s.setIsHudOpen);
+
+  const activeSlide = selectDomainActiveSlide(
+    project,
+    activePhaseId,
+    activeSlideId,
   );
 
   const [isDragging, setIsDragging] = useState(false);
-  const prevBallPxRef = useRef<{ x: number; y: number } | null>(null);
+  const startPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleDragStart = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
       setIsDragging(true);
+      setIsHudOpen(false);
+      startPosRef.current = activeSlide
+        ? { x: activeSlide.ball.x, y: activeSlide.ball.y }
+        : null;
+
       const node = e.currentTarget as Konva.Group;
       node.scale({ x: 1.25, y: 1.25 });
       node.moveToTop();
       const stage = node.getStage();
       if (stage) stage.container().style.cursor = 'grabbing';
-
-      prevBallPxRef.current = setupBallGhostOnDragStart(
-        prevSlide?.ball,
-        stageSize,
-        node,
-        ghostGroupRef.current,
-        ghostLineRef.current,
-      );
     },
-    [prevSlide?.ball, stageSize, ghostGroupRef, ghostLineRef],
+    [activeSlide, setIsHudOpen],
   );
 
   const handleDragMove = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
+      const startPos = startPosRef.current;
+      if (!startPos) return;
+
       const node = e.currentTarget as Konva.Group;
-      updateBallGhostLine(ghostLineRef.current, prevBallPxRef.current, node);
+      const currX = pxToNorm(node.x(), stageSize.width);
+      const currY = pxToNorm(node.y(), stageSize.height);
+
+      setActiveDragDelta({
+        entityIds: ['ball'],
+        deltaScreenNormX: currX - startPos.x,
+        deltaScreenNormY: currY - startPos.y,
+      });
     },
-    [ghostLineRef],
+    [stageSize.width, stageSize.height, setActiveDragDelta],
   );
 
   const dragBoundFunc = useCallback(
@@ -86,18 +90,30 @@ export function useBallDrag({
   const handleDragEnd = useCallback(
     (e: KonvaEventObject<DragEvent>) => {
       setIsDragging(false);
+      setActiveDragDelta(null);
+      startPosRef.current = null;
+
       const node = e.currentTarget as Konva.Group;
       node.scale({ x: 1, y: 1 });
       const stage = node.getStage();
       if (stage) stage.container().style.cursor = 'default';
 
-      hideGhostGroup(ghostGroupRef.current);
-      prevBallPxRef.current = null;
+      const finalX = clampToScreenNorm(pxToNorm(node.x(), stageSize.width));
+      const finalY = clampToScreenNorm(pxToNorm(node.y(), stageSize.height));
 
-      const finalPos = computeFallbackNormPos(node, stageSize);
-      setBallPosition(activeSlideId, finalPos.x, finalPos.y);
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'UPDATE_BALL',
+        patch: { x: finalX, y: finalY },
+      });
     },
-    [activeSlideId, setBallPosition, stageSize, ghostGroupRef],
+    [
+      activePhaseId,
+      activeSlideId,
+      dispatchSlide,
+      setActiveDragDelta,
+      stageSize.width,
+      stageSize.height,
+    ],
   );
 
   return {

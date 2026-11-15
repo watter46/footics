@@ -7,17 +7,19 @@
 
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback } from 'react';
 import { Group } from 'react-konva';
 import {
-  normToPx,
-  useNodePositionTransition,
-} from '@/features/tactical-unified/core';
+  selectDomainActiveSlide,
+  selectDomainPreviousSlide,
+} from '@/features/tactical-unified/stores/domain-selectors';
 import {
-  selectActiveSlide,
-  selectPreviousSlide,
-} from '@/features/tactical-unified/stores/tactical-unified-selectors';
-import { useTacticalUnifiedStoreContext } from '@/features/tactical-unified/stores/tactical-unified-store-provider';
+  useDocumentStore,
+  useSessionStore,
+} from '@/features/tactical-unified/stores/tactical-store-provider';
+import { screenNormToStagePixel } from '@/lib/tactical/engine/coordinates';
+import { clampToScreenNorm } from '@/lib/types/tactical/branded';
+import type { DomainBallState } from '@/lib/types/tactical/domain-entities';
 import { useBallDrag } from '../hooks/use-ball-drag';
 import { useBallImage } from '../hooks/use-ball-image';
 import type { BallObjectProps } from '../types';
@@ -27,55 +29,63 @@ import { BallVisual } from './ball-visual';
 function useBallObjectState({
   stageSize,
   ball,
-  cleanRender,
+  resolvedBall,
   nodesRegistryRef,
 }: BallObjectProps) {
-  const activeSlideId = useTacticalUnifiedStoreContext((s) => s.activeSlideId);
-  const activeSlide = useTacticalUnifiedStoreContext(selectActiveSlide);
-  const prevSlide = useTacticalUnifiedStoreContext(selectPreviousSlide);
-  const updateBallTrajectory = useTacticalUnifiedStoreContext(
-    (s) => s.updateBallTrajectory,
-  );
-  const selectObject = useTacticalUnifiedStoreContext((s) => s.selectObject);
-  const isSelected = useTacticalUnifiedStoreContext((s) =>
+  const project = useDocumentStore((s) => s.project);
+  const dispatchSlide = useDocumentStore((s) => s.dispatchSlide);
+  const activePhaseId = useSessionStore((s) => s.activePhaseId);
+  const activeSlideId = useSessionStore((s) => s.activeSlideId);
+  const selectObject = useSessionStore((s) => s.selectObject);
+  const isSelected = useSessionStore((s) =>
     s.selectedObjects.some((o) => o.kind === 'ball'),
   );
 
+  const activeSlide = selectDomainActiveSlide(
+    project,
+    activePhaseId,
+    activeSlideId,
+  );
+  const prevSlide = selectDomainPreviousSlide(
+    project,
+    activePhaseId,
+    activeSlideId,
+  );
+
   const ballImage = useBallImage();
-  const ghostGroupRef = useRef<Konva.Group | null>(null);
-  const ghostLineRef = useRef<Konva.Line | null>(null);
-  const ballGroupRef = useRef<Konva.Group | null>(null);
+  const drag = useBallDrag({ stageSize });
 
-  const drag = useBallDrag({
-    stageSize,
-    ghostGroupRef,
-    ghostLineRef,
-    nodesRegistryRef,
-  });
-
-  const baseDim = Math.min(stageSize.width, stageSize.height);
-  const radius = Math.max(8, baseDim * 0.022) * (ball.sizeScale ?? 1.0);
-  const px = normToPx(ball.x, stageSize.width);
-  const py = normToPx(ball.y, stageSize.height);
-
-  useNodePositionTransition({
-    nodeRef: ballGroupRef,
-    x: px,
-    y: py,
-    disabled: Boolean(cleanRender),
-  });
-
-  useEffect(() => {
-    if (ballGroupRef.current && !cleanRender) {
-      ballGroupRef.current.position({ x: px, y: py });
-    }
-  }, [px, py, cleanRender]);
+  const radius = resolvedBall.radiusPx;
+  const px = resolvedBall.positionPx.x;
+  const py = resolvedBall.positionPx.y;
 
   const handleUpdateTrajectory = useCallback(
-    (traj: Parameters<typeof updateBallTrajectory>[1]) => {
-      updateBallTrajectory(activeSlideId, traj);
+    (
+      traj:
+        | {
+            type: 'straight' | 'arc_left' | 'arc_right' | 'custom';
+            curveOffset?: number;
+            controlPoint?: { x: number; y: number };
+          }
+        | undefined,
+    ) => {
+      const domainTraj: DomainBallState['trajectory'] = traj
+        ? {
+            ...traj,
+            controlPoint: traj.controlPoint
+              ? {
+                  x: clampToScreenNorm(traj.controlPoint.x),
+                  y: clampToScreenNorm(traj.controlPoint.y),
+                }
+              : undefined,
+          }
+        : undefined;
+      dispatchSlide(activePhaseId, activeSlideId, {
+        type: 'UPDATE_BALL',
+        patch: { trajectory: domainTraj },
+      });
     },
-    [updateBallTrajectory, activeSlideId],
+    [dispatchSlide, activePhaseId, activeSlideId],
   );
 
   const handleSelect = useCallback(
@@ -89,7 +99,6 @@ function useBallObjectState({
 
   const setBallGroupRef = useCallback(
     (node: Konva.Group | null) => {
-      ballGroupRef.current = node;
       if (nodesRegistryRef?.current) {
         nodesRegistryRef.current.ballNode = node;
       }
@@ -101,18 +110,20 @@ function useBallObjectState({
   const hasPrevBall =
     (activeSlide?.index ?? 0) >= 1 &&
     Boolean(prevBall?.visible) &&
-    ball.visible;
-  const prevPxX = prevBall ? normToPx(prevBall.x, stageSize.width) : 0;
-  const prevPxY = prevBall ? normToPx(prevBall.y, stageSize.height) : 0;
+    resolvedBall.visible;
+  const prevPx = prevBall
+    ? screenNormToStagePixel(
+        { x: prevBall.x, y: prevBall.y },
+        { width: stageSize.width, height: stageSize.height },
+      )
+    : { x: 0, y: 0 };
   const isBallMoved = prevBall
-    ? Math.hypot(px - prevPxX, py - prevPxY) >= 4
+    ? Math.hypot(px - prevPx.x, py - prevPx.y) >= 4
     : false;
 
   return {
     isSelected,
     ballImage,
-    ghostGroupRef,
-    ghostLineRef,
     drag,
     radius,
     px,
@@ -120,23 +131,27 @@ function useBallObjectState({
     handleUpdateTrajectory,
     handleSelect,
     setBallGroupRef,
-    prevInfo: { prevBall, hasPrevBall, prevPxX, prevPxY, isBallMoved },
+    prevInfo: {
+      prevBall,
+      hasPrevBall,
+      prevPxX: prevPx.x,
+      prevPxY: prevPx.y,
+      isBallMoved,
+    },
   };
 }
 
 export const BallObject = React.memo(function BallObject(
   props: BallObjectProps,
 ) {
-  const { ball, stageSize, cleanRender } = props;
+  const { ball, resolvedBall, stageSize, cleanRender } = props;
   const state = useBallObjectState(props);
 
-  if (!ball.visible) return null;
+  if (!resolvedBall.visible) return null;
 
   const {
     isSelected,
     ballImage,
-    ghostGroupRef,
-    ghostLineRef,
     drag,
     radius,
     px,

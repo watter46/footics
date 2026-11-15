@@ -6,6 +6,9 @@ import { Layer, Stage } from 'react-konva';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BallObject } from '@/features/tactical-unified/objects/ball/components/ball-object';
 import type { BallObjectProps } from '@/features/tactical-unified/objects/ball/types';
+import { TacticalStoreProvider } from '@/features/tactical-unified/stores/tactical-store-provider';
+import type { ResolvedBillboardBallItem } from '@/lib/tactical/compiler/scene-graph-dto';
+import type { StagePixel } from '@/lib/types/tactical/branded';
 import { createDefaultPlayer } from '@/lib/types/tactical-unified';
 import { createCanvasStore } from '../../store/canvas-store';
 import { CanvasStoreContext } from '../../store/canvas-store-provider';
@@ -216,7 +219,7 @@ describe('Clean Render Propagation', () => {
     expect(group?.position()).toEqual({ x: 400, y: 225 });
   });
 
-  it('BallObject: cleanRender が true から false に切り替わった際に命令的に変更された position が静止座標に自己復元されること', () => {
+  it('BallObject: cleanRender=true 時は draggable が false となり、ゴースト矢印が描画されないこと', () => {
     const stageRef = createRef<Konva.Stage>();
     const registryRef = { current: createCanvasNodesRegistry() };
     const ball: BallObjectProps['ball'] = {
@@ -225,91 +228,109 @@ describe('Clean Render Propagation', () => {
       visible: true,
       locked: false,
     };
+    const resolvedBall: ResolvedBillboardBallItem = {
+      kind: 'ball',
+      positionPx: { x: 400 as StagePixel, y: 225 as StagePixel },
+      radiusPx: 12,
+      visible: true,
+      opacity: 1,
+      depthSortKey: 0,
+    };
 
-    const { rerender } = render(
-      <Stage ref={stageRef} width={800} height={450}>
-        <Layer>
-          <BallObject
-            ball={ball}
-            stageSize={{ width: 800, height: 450 }}
-            cleanRender={true}
-            nodesRegistryRef={registryRef}
-          />
-        </Layer>
-      </Stage>,
+    render(
+      <TacticalStoreProvider>
+        <Stage ref={stageRef} width={800} height={450}>
+          <Layer>
+            <BallObject
+              ball={ball}
+              resolvedBall={resolvedBall}
+              stageSize={{ width: 800, height: 450 }}
+              cleanRender={true}
+              nodesRegistryRef={registryRef}
+            />
+          </Layer>
+        </Stage>
+      </TacticalStoreProvider>,
     );
 
     const ballNode = registryRef.current.ballNode;
     expect(ballNode).toBeTruthy();
-    // 初期位置: normToPx(50, 800) = 400, normToPx(50, 450) = 225
     expect(ballNode?.position()).toEqual({ x: 400, y: 225 });
-
-    // GSAPアニメーション等で命令的に位置が変更されたと仮定
-    ballNode?.position({ x: 999, y: 888 });
-    expect(ballNode?.position()).toEqual({ x: 999, y: 888 });
-
-    // cleanRender=false で再レンダリング
-    rerender(
-      <Stage ref={stageRef} width={800} height={450}>
-        <Layer>
-          <BallObject
-            ball={ball}
-            stageSize={{ width: 800, height: 450 }}
-            cleanRender={false}
-            nodesRegistryRef={registryRef}
-          />
-        </Layer>
-      </Stage>,
-    );
-
-    // cleanRender=false により、静止座標に自己復元される
-    expect(ballNode?.position()).toEqual({ x: 400, y: 225 });
+    expect(ballNode?.draggable()).toBe(false);
+    expect(stageRef.current?.find('Arrow')).toHaveLength(0);
   });
 
-  it('BallObject: cleanRender=true 時に座標が更新されても Konva.Tween が発火しないこと', () => {
+  it('BallObject: cleanRender=true で resolvedBall.positionPx を変更しても Konva.Tween が発火せず即座に新しい座標へ追従すること', () => {
     const tweenSpy = vi.spyOn(Konva, 'Tween');
     const stageRef = createRef<Konva.Stage>();
-    const ball1: BallObjectProps['ball'] = {
+    const registryRef = { current: createCanvasNodesRegistry() };
+    const ball: BallObjectProps['ball'] = {
       x: 50,
       y: 50,
       visible: true,
       locked: false,
     };
-    const ball2: BallObjectProps['ball'] = {
-      x: 70,
-      y: 70,
+    const resolvedBall1: ResolvedBillboardBallItem = {
+      kind: 'ball',
+      positionPx: { x: 400 as StagePixel, y: 225 as StagePixel },
+      radiusPx: 12,
       visible: true,
-      locked: false,
+      opacity: 1,
+      depthSortKey: 0,
+    };
+    const resolvedBall2: ResolvedBillboardBallItem = {
+      kind: 'ball',
+      positionPx: { x: 560 as StagePixel, y: 315 as StagePixel },
+      radiusPx: 12,
+      visible: true,
+      opacity: 1,
+      depthSortKey: 0,
     };
 
     const { rerender } = render(
-      <Stage ref={stageRef} width={800} height={450}>
-        <Layer>
-          <BallObject
-            ball={ball1}
-            stageSize={{ width: 800, height: 450 }}
-            cleanRender={true}
-          />
-        </Layer>
-      </Stage>,
+      <TacticalStoreProvider>
+        <Stage ref={stageRef} width={800} height={450}>
+          <Layer>
+            <BallObject
+              ball={ball}
+              resolvedBall={resolvedBall1}
+              stageSize={{ width: 800, height: 450 }}
+              cleanRender={true}
+              nodesRegistryRef={registryRef}
+            />
+          </Layer>
+        </Stage>
+      </TacticalStoreProvider>,
     );
 
     expect(tweenSpy).not.toHaveBeenCalled();
+    expect(registryRef.current.ballNode?.position()).toEqual({
+      x: 400,
+      y: 225,
+    });
 
     // 座標変更
     rerender(
-      <Stage ref={stageRef} width={800} height={450}>
-        <Layer>
-          <BallObject
-            ball={ball2}
-            stageSize={{ width: 800, height: 450 }}
-            cleanRender={true}
-          />
-        </Layer>
-      </Stage>,
+      <TacticalStoreProvider>
+        <Stage ref={stageRef} width={800} height={450}>
+          <Layer>
+            <BallObject
+              ball={ball}
+              resolvedBall={resolvedBall2}
+              stageSize={{ width: 800, height: 450 }}
+              cleanRender={true}
+              nodesRegistryRef={registryRef}
+            />
+          </Layer>
+        </Stage>
+      </TacticalStoreProvider>,
     );
 
     expect(tweenSpy).not.toHaveBeenCalled();
+    expect(registryRef.current.ballNode?.position()).toEqual({
+      x: 560,
+      y: 315,
+    });
     tweenSpy.mockRestore();
   });
 });

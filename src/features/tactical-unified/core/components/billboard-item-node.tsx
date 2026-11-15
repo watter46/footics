@@ -107,25 +107,13 @@ export function BillboardItemNode({
     const resolvedBall = sceneGraph?.billboardItems.find(
       (b): b is ResolvedBillboardBallItem => b.kind === 'ball',
     );
-    const effectiveBall = (() => {
-      if (!resolvedBall || pitchRect.width <= 0 || pitchRect.height <= 0) {
-        return ball;
-      }
-      const defaultBaseRadius = Math.max(8, baseDim * 0.022);
-      const calculatedSizeScale =
-        defaultBaseRadius > 0 ? resolvedBall.radiusPx / defaultBaseRadius : 1.0;
-      return {
-        ...ball,
-        x: (resolvedBall.positionPx.x / pitchRect.width) * 100,
-        y: (resolvedBall.positionPx.y / pitchRect.height) * 100,
-        sizeScale: calculatedSizeScale,
-      };
-    })();
+    if (!resolvedBall) return null;
 
     return (
       <BallObject
         key="ball-object"
-        ball={effectiveBall}
+        ball={ball}
+        resolvedBall={resolvedBall}
         stageSize={{
           width: pitchRect.width,
           height: pitchRect.height,
